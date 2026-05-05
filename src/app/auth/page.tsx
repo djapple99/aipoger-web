@@ -26,7 +26,7 @@ function AuthContent() {
           </p>
           <button 
             className="bg-white text-black hover:bg-[#ff6a00] hover:text-white transition-colors py-3 px-6 rounded-md font-bold text-lg"
-            onClick={() => window.location.href = '/'}
+            onClick={() => window.location.href = '/battle/setup'}
           >
             以測試帳號進入
           </button>
