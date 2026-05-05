@@ -382,18 +382,3 @@ export default function BattlePage() {
     </Suspense>
   );
 }
-
-import { Suspense } from "react";
-
-// 如果 BattleContent 或下層元件有用到 useSearchParams，則需繞一層
-function BattleContentWithSuspense() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <BattleContent />
-    </Suspense>
-  );
-}
-
-export default function BattlePage() {
-  return <BattleContentWithSuspense />;
-}
