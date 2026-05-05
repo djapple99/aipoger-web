@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 import { supabase } from "@/lib/supabase";
 
@@ -15,7 +15,9 @@ type QueueRow = {
   opponent_user_id: string | null;
 };
 
-export default function MatchmakingPage() {
+// ─── 主要邏輯元件（useSearchParams 在這裡呼叫）───────────────────────────────
+
+function MatchmakingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fighterName = searchParams.get("fighterName") ?? "未命名鬥士";
@@ -163,5 +165,21 @@ export default function MatchmakingPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+// ─── Page export（只負責 Suspense 包裝）─────────────────────────────────────
+
+export default function MatchmakingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#15181b] flex items-center justify-center text-[#ffb88f] text-sm tracking-[0.2em]">
+          載入中...
+        </div>
+      }
+    >
+      <MatchmakingContent />
+    </Suspense>
   );
 }
