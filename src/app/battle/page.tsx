@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 import { supabase } from "@/lib/supabase";
 
@@ -110,9 +110,11 @@ function VoteButton({ team }: { team: "A" | "B" }) {
   );
 }
 
-export default function BattlePage() {
+// ─── 主要邏輯元件（useSearchParams 在這裡呼叫）───────────────────────────────
+
+function BattleContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams(); // ← 必須在 Suspense 內部的元件才能呼叫
   const [comments, setComments] = useState(seedComments);
   const [message, setMessage] = useState("");
   const [battleData, setBattleData] = useState<BattleViewData>(mockBattleData);
@@ -362,5 +364,21 @@ export default function BattlePage() {
         />
       </div>
     </main>
+  );
+}
+
+// ─── Page export（只負責 Suspense 包裝）─────────────────────────────────────
+
+export default function BattlePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#1b1d20] flex items-center justify-center text-[#ff8d40] text-sm tracking-[0.2em]">
+          載入中...
+        </div>
+      }
+    >
+      <BattleContent />
+    </Suspense>
   );
 }
