@@ -5,10 +5,7 @@ const nextConfig = {
     // 允許在有 TypeScript 錯誤時強行編譯，為了快速測試上線
     ignoreBuildErrors: true,
   },
-  eslint: {
-    // 允許在有 ESLint 錯誤時強行編譯
-    ignoreDuringBuilds: true,
-  },
+  // eslint 配置已移除（已移到 .eslintrc.json 管理）
 };
 
 export default nextConfig;

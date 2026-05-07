@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { supabase } from "@/lib/supabase";
+import type { Session, User } from "@supabase/supabase-js";
 
 const SPLASH_STEPS = {
   fadeIn: 700,
@@ -52,6 +54,155 @@ function WatchIcon() {
   );
 }
 
+function userAvatarUrl(user: User): string | null {
+  const m = user.user_metadata as Record<string, unknown> | undefined;
+  if (!m) return null;
+  const a = m.avatar_url;
+  const p = m.picture;
+  if (typeof a === "string" && a.length > 0) return a;
+  if (typeof p === "string" && p.length > 0) return p;
+  return null;
+}
+
+function HomeAuthBar() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [aipoCoins, setAipoCoins] = useState<number | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const forceShowLogin = process.env.NEXT_PUBLIC_FORCE_SHOW_LOGIN === "true";
+
+  const loadCoins = useCallback(async (userId: string) => {
+    setProfileLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("user_profiles")
+        .select("aipo_coins")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error(error);
+        setAipoCoins(0);
+        return;
+      }
+      setAipoCoins(data?.aipo_coins ?? 0);
+    } finally {
+      setProfileLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    void supabase.auth.getSession().then(({ data: { session: s } }) => {
+      if (!mounted) return;
+      setSession(s);
+      if (s?.user) void loadCoins(s.user.id);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+      if (s?.user) void loadCoins(s.user.id);
+      else {
+        setAipoCoins(null);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [loadCoins]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [menuOpen]);
+
+  const handleSignOut = async () => {
+    setMenuOpen(false);
+    await supabase.auth.signOut();
+  };
+
+  const user = session?.user ?? null;
+  const avatarUrl = user ? userAvatarUrl(user) : null;
+
+  if (forceShowLogin || !user) {
+    return (
+      <Link
+        href="/auth"
+        className="inline-flex items-center gap-2 rounded-2xl border border-zinc-600 bg-zinc-950/90 px-4 py-2.5 text-sm font-semibold text-zinc-100 shadow-lg backdrop-blur transition hover:border-[#ff6a00] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00]"
+      >
+        登入
+      </Link>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      <div
+        className="hidden min-w-0 sm:block rounded-2xl border border-zinc-700/80 bg-zinc-950/80 px-3 py-2 text-right shadow-lg backdrop-blur"
+        title="AIPO Coin 餘額"
+      >
+        <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">AIPO Coin</p>
+        <p className="truncate text-sm font-bold tabular-nums text-[#ff6a00]">
+          {profileLoading ? "…" : (aipoCoins ?? 0).toLocaleString()}
+        </p>
+      </div>
+
+      <div className="relative" ref={menuRef}>
+        <button
+          type="button"
+          onClick={() => setMenuOpen((v) => !v)}
+          className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border-2 border-zinc-600 bg-zinc-900 shadow-lg transition hover:border-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00]"
+          aria-expanded={menuOpen}
+          aria-haspopup="menu"
+          aria-label="帳戶選單"
+        >
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatarUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+          ) : (
+            <span className="text-lg font-bold text-zinc-400">
+              {(user.email ?? user.user_metadata?.full_name ?? "?").slice(0, 1).toUpperCase()}
+            </span>
+          )}
+        </button>
+
+        {menuOpen && (
+          <div
+            role="menu"
+            className="absolute right-0 mt-2 w-44 overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-950 py-1 shadow-xl ring-1 ring-black/40"
+          >
+            <div className="border-b border-zinc-800 px-3 py-2 sm:hidden">
+              <p className="text-[10px] uppercase tracking-wider text-zinc-500">AIPO Coin</p>
+              <p className="font-bold tabular-nums text-[#ff6a00]">
+                {profileLoading ? "…" : (aipoCoins ?? 0).toLocaleString()}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => void handleSignOut()}
+              className="w-full px-3 py-2.5 text-left text-sm text-zinc-200 transition hover:bg-zinc-800 hover:text-white"
+            >
+              登出
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function HomePage() {
   const [isSplashFinished, setIsSplashFinished] = useState(false);
   const [phase, setPhase] = useState<SplashPhase>("fadeIn");
@@ -84,10 +235,10 @@ export default function HomePage() {
           <Image
             src="/logo.png"
             alt="AIPOGER Logo"
-            width={220}
-            height={220}
+            width={440}
+            height={440}
             priority
-            className="h-auto w-[42vw] max-w-[220px] min-w-[140px] object-contain"
+            className="h-auto w-[min(88vw,440px)] max-w-[440px] min-w-[280px] object-contain"
           />
         </div>
       </main>
@@ -97,6 +248,10 @@ export default function HomePage() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#050505] px-6 py-10 text-[#f5f5f5] md:px-10">
       <div className="pointer-events-none absolute inset-0 opacity-20 [background:radial-gradient(circle_at_22%_38%,_rgba(255,106,0,0.25),_transparent_50%)]" />
+
+      <header className="pointer-events-auto fixed right-4 top-4 z-40 md:right-6 md:top-6">
+        <HomeAuthBar />
+      </header>
 
       <section className="relative z-10 mx-auto grid w-full max-w-7xl gap-10 border-b border-zinc-700/70 pb-10 md:grid-cols-12 md:items-end">
         <div className="md:col-span-8">

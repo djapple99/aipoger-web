@@ -1,199 +1,161 @@
-"use client";
+// src/app/battle/setup/page.tsx
+'use client';
 
-import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
-import { HookCropper } from "@/components/hook-cropper";
-import { isAuthBypassEnabled, mockUserId } from "@/lib/auth-bypass";
-import { supabase } from "@/lib/supabase";
-
-const genres = ["流行", "抒情", "搖滾", "電音", "自創"] as const;
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function BattleSetupPage() {
   const router = useRouter();
-  const [fighterName, setFighterName] = useState("");
-  const [genre, setGenre] = useState<(typeof genres)[number]>("流行");
-  const [songFile, setSongFile] = useState<File | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isCropMode, setIsCropMode] = useState(false);
 
-  useEffect(() => {
-    if (isAuthBypassEnabled) return;
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const [fighterName, setFighterName] = useState('');
+  const [songName, setSongName] = useState('');
+  const [genre, setGenre] = useState('');
+  const [aiTool, setAiTool] = useState('');
+  const [otherTool, setOtherTool] = useState('');
 
-    const ensureSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
-        router.replace("/auth?intent=battle");
-      }
-    };
-    ensureSession();
-  }, [router]);
-
-  const handleGoCropper = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setErrorMessage(null);
-
-    if (!fighterName.trim()) {
-      setErrorMessage("請輸入鬥士名稱。");
-      return;
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (ev) => setAvatar(ev.target?.result as string);
+      reader.readAsDataURL(file);
     }
-
-    if (!songFile) {
-      setErrorMessage("請先上傳音樂檔案。");
-      return;
-    }
-
-    setIsCropMode(true);
   };
 
-  const handleConfirmCrop = async (payload: {
-    blob: Blob;
-    start: number;
-    end: number;
-    duration: number;
-  }) => {
-    if (!songFile) return;
+  const handleSubmit = () => {
+    const finalAiTool = aiTool === '其他' ? otherTool.trim() : aiTool;
 
-    setIsSubmitting(true);
-
-    try {
-      const safeFileName = songFile.name.replace(/\s+/g, "-").replace(/\.[^/.]+$/, "");
-      const hookFileName = `${safeFileName}-hook.wav`;
-      let filePath = `${mockUserId}/${Date.now()}-${hookFileName}`;
-      let queueId = `mock-${crypto.randomUUID()}`;
-      if (!isAuthBypassEnabled) {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-          router.replace("/auth?intent=battle");
-          return;
-        }
-
-        filePath = `${user.id}/${Date.now()}-${hookFileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("battle-audio")
-          .upload(filePath, payload.blob, {
-            upsert: false,
-            contentType: "audio/wav",
-          });
-
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        const { data: queueRow, error: queueError } = await supabase
-          .from("battle_queue")
-          .insert({
-            user_id: user.id,
-            fighter_name: fighterName.trim(),
-            genre,
-            audio_path: filePath,
-            original_file_name: hookFileName,
-            status: "waiting",
-          })
-          .select("id")
-          .single<{ id: string }>();
-
-        if (queueError || !queueRow) {
-          throw queueError ?? new Error("建立配對佇列失敗");
-        }
-
-        queueId = queueRow.id;
-      }
-
-      const params = new URLSearchParams({
-        fighterName: fighterName.trim(),
-        genre,
-        fileName: songFile.name,
-        audioPath: filePath,
-        queueId,
-        hookStart: payload.start.toFixed(2),
-        hookEnd: payload.end.toFixed(2),
-        hookDuration: payload.duration.toFixed(2),
-      });
-
-      router.push(`/battle/matchmaking?${params.toString()}`);
-    } catch (error) {
-      const fallbackMessage = "音樂上傳失敗，請稍後重試。";
-      setErrorMessage(error instanceof Error ? error.message || fallbackMessage : fallbackMessage);
-      setIsSubmitting(false);
-      setIsCropMode(false);
+    if (!fighterName.trim() || !songName.trim() || !genre || !aiTool || (aiTool === '其他' && !finalAiTool)) {
+      alert('請填寫所有必填欄位');
+      return;
     }
+
+    console.log('✅ 送出資料：', {
+      fighterName: fighterName.trim(),
+      songName: songName.trim(),
+      genre,
+      aiTool: finalAiTool,
+    });
+
+    // 跳轉到 Hook 裁切頁面，並用 query 帶上表單資料
+    const params = new URLSearchParams({
+      fighterName: fighterName.trim(),
+      songName: songName.trim(),
+      genre,
+      aiTool: finalAiTool,
+    });
+    router.push(`/battle/hook-cut?${params.toString()}`);
   };
 
   return (
-    <main className="min-h-screen bg-[#16181b] text-[#efebe8]">
-      <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 md:py-10">
-        {isCropMode && songFile ? (
-          <HookCropper
-            file={songFile}
-            onBack={() => {
-              if (isSubmitting) return;
-              setIsCropMode(false);
-            }}
-            onConfirm={handleConfirmCrop}
-          />
-        ) : (
-          <section className="rounded-3xl border border-[#4d5258] bg-[#1f2226]/90 p-6 md:p-8">
-          <p className="text-xs tracking-[0.38em] text-[#8f847e]">AIPOGER</p>
-          <h1 className="mt-3 text-2xl font-semibold tracking-[0.16em] text-[#f4f0ed]">鬥歌資料填寫</h1>
-          <p className="mt-3 text-sm text-[#cfc7c2]">先填寫資料並上傳音樂，下一步會進入 Hook 裁切。</p>
+    <div className="min-h-screen bg-black text-white flex items-center justify-center p-6">
+      <div className="max-w-2xl w-full">
+        <div className="text-center mb-10">
+          <h1 className="text-5xl font-black tracking-tighter text-orange-400">鬥歌資料填寫</h1>
+          <p className="text-zinc-400 mt-2">先填寫資料，下一步會進入 Hook 裁切</p>
+        </div>
 
-          <form className="mt-7 space-y-5" onSubmit={handleGoCropper}>
-            <label className="block">
-              <span className="mb-2 block text-sm tracking-[0.12em] text-[#d5ccc7]">鬥士名稱</span>
-              <input
-                value={fighterName}
-                onChange={(event) => setFighterName(event.target.value)}
-                placeholder="例如：夜色迴響"
-                className="h-12 w-full rounded-xl border border-[#5f646b] bg-[#272b30] px-4 text-sm text-[#f4efeb] placeholder:text-[#968f8a] focus:outline-none focus:ring-2 focus:ring-[#ff7a28]"
-              />
+        <div className="bg-zinc-900 border border-zinc-700 rounded-3xl p-10 space-y-10">
+          {/* 頭像上傳 */}
+          <div className="flex flex-col items-center">
+            <label className="cursor-pointer">
+              <div className="w-40 h-40 rounded-full border-4 border-orange-500 overflow-hidden bg-zinc-800 flex items-center justify-center hover:scale-105 transition">
+                {avatar ? (
+                  <img src={avatar} alt="頭像" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="text-center">
+                    <div className="text-6xl mb-2">📸</div>
+                    <div className="text-orange-400 text-sm font-medium">上傳頭像</div>
+                  </div>
+                )}
+              </div>
+              <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
             </label>
+          </div>
 
-            <label className="block">
-              <span className="mb-2 block text-sm tracking-[0.12em] text-[#d5ccc7]">歌曲種類</span>
+          <div className="space-y-6">
+            {/* 鬥士名稱 */}
+            <div>
+              <label className="block text-sm text-zinc-400 mb-2">鬥士名稱</label>
+              <input
+                type="text"
+                value={fighterName}
+                onChange={(e) => setFighterName(e.target.value)}
+                placeholder="例如：夜色迴響"
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-6 py-4 text-lg focus:outline-none focus:border-orange-500"
+              />
+            </div>
+
+            {/* 歌曲名稱 */}
+            <div>
+              <label className="block text-sm text-zinc-400 mb-2">歌曲名稱</label>
+              <input
+                type="text"
+                value={songName}
+                onChange={(e) => setSongName(e.target.value)}
+                placeholder="輸入你的歌曲名稱"
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-6 py-4 text-lg focus:outline-none focus:border-orange-500"
+              />
+            </div>
+
+            {/* 歌曲種類 */}
+            <div>
+              <label className="block text-sm text-zinc-400 mb-2">歌曲種類</label>
               <select
                 value={genre}
-                onChange={(event) => setGenre(event.target.value as (typeof genres)[number])}
-                className="h-12 w-full rounded-xl border border-[#5f646b] bg-[#272b30] px-4 text-sm text-[#f4efeb] focus:outline-none focus:ring-2 focus:ring-[#ff7a28]"
+                onChange={(e) => setGenre(e.target.value)}
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-6 py-4 text-lg focus:outline-none focus:border-orange-500"
               >
-                {genres.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
+                <option value="">請選擇種類</option>
+                <option value="流行舞曲">流行舞曲</option>
+                <option value="感人抒情">感人抒情</option>
+                <option value="熱血搖滾">熱血搖滾</option>
+                <option value="動感電音">動感電音</option>
+                <option value="自我風格">自我風格</option>
               </select>
-            </label>
+            </div>
 
-            <label className="block">
-              <span className="mb-2 block text-sm tracking-[0.12em] text-[#d5ccc7]">上傳音樂</span>
-              <input
-                type="file"
-                accept="audio/*"
-                onChange={(event) => setSongFile(event.target.files?.[0] ?? null)}
-                className="block w-full rounded-xl border border-[#5f646b] bg-[#272b30] p-3 text-sm text-[#efeae6] file:mr-3 file:rounded-lg file:border-0 file:bg-[#4e535a] file:px-3 file:py-2 file:text-sm file:text-[#f7f1ed]"
-              />
-              {songFile && <p className="mt-2 text-xs text-[#c1b6b0]">已選擇：{songFile.name}</p>}
-            </label>
+            {/* 使用什麼 AI 工具製作 */}
+            <div>
+              <label className="block text-sm text-zinc-400 mb-2">使用什麼 AI 工具製作</label>
+              <select
+                value={aiTool}
+                onChange={(e) => setAiTool(e.target.value)}
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-6 py-4 text-lg focus:outline-none focus:border-orange-500"
+              >
+                <option value="">請選擇 AI 工具</option>
+                <option value="Suno">Suno</option>
+                <option value="Udio">Udio</option>
+                <option value="Lyria">Lyria</option>
+                <option value="Mureka">Mureka</option>
+                <option value="AceStudio">AceStudio</option>
+                <option value="MiniMax">MiniMax</option>
+                <option value="ElevenLabs">ElevenLabs</option>
+                <option value="其他">其他（自行填寫）</option>
+              </select>
 
-            {errorMessage && <p className="text-sm text-[#ffba92]">{errorMessage}</p>}
+              {aiTool === '其他' && (
+                <input
+                  type="text"
+                  value={otherTool}
+                  onChange={(e) => setOtherTool(e.target.value)}
+                  placeholder="請輸入使用的 AI 工具名稱"
+                  className="mt-3 w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-6 py-4 text-lg focus:outline-none focus:border-orange-500"
+                />
+              )}
+            </div>
+          </div>
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full rounded-2xl border border-[#767c83] bg-gradient-to-b from-[#666c73] to-[#4a5057] px-5 py-4 text-base font-semibold tracking-[0.14em] text-[#f8f3ef] transition hover:border-[#ff8d40] hover:shadow-[0_0_18px_rgba(255,121,40,0.45)] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              開始 Hook 裁切
-            </button>
-          </form>
-          </section>
-        )}
+          {/* 送出按鈕 */}
+          <button
+            onClick={handleSubmit}
+            className="w-full bg-orange-500 hover:bg-orange-600 text-black font-bold py-6 text-xl rounded-3xl transition"
+          >
+            開始 Hook 裁切 →
+          </button>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }
