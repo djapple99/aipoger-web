@@ -77,12 +77,13 @@ create index if not exists battle_votes_count_idx
 on public.battle_votes (battle_id, voted_for);
 
 -- ============================================================
--- fighter_avatars：鬥士頭像/封面（讓唱片可以顯示）
+-- fighter_profiles：鬥士頭像 + 歌曲封面（讓唱片可以顯示）
 -- ============================================================
 create table if not exists public.fighter_profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   display_name text,
   avatar_url text,
+  song_cover_url text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -124,7 +125,7 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into public.fighter_profiles (id, display_name, avatar_url)
+  insert into public.fighter_profiles (id, display_name, avatar_url, song_cover_url)
   values (
     new.id,
     coalesce(
@@ -132,7 +133,8 @@ begin
       new.raw_user_meta_data->>'name',
       split_part(new.email, '@', 1)
     ),
-    new.raw_user_meta_data->>'avatar_url'
+    new.raw_user_meta_data->>'avatar_url',
+    null
   )
   on conflict (id) do nothing;
   return new;

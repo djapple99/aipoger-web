@@ -22,6 +22,8 @@ type ChatMessage = {
 
 type BattleData = {
   id: string;
+  fighter_a_user_id: string;
+  fighter_b_user_id: string;
   fighter_a_name: string;
   fighter_b_name: string;
   song_a_name: string;
@@ -213,6 +215,8 @@ function BattleArenaContent() {
       if (battleId.startsWith("mock-") || isAuthBypassEnabled) {
         setBattle({
           id: battleId,
+          fighter_a_user_id: mockUserId,
+          fighter_b_user_id: mockUserId,
           fighter_a_name: "夜色迴響",
           fighter_b_name: "蒼藍頻段",
           song_a_name: "Neon Dust",
@@ -242,7 +246,22 @@ function BattleArenaContent() {
         return;
       }
 
-      setBattle(data as BattleData);
+      const bdata = data as any;
+      // 同步載入兩邊的 fighter_profiles（頭像 + 封面）
+      const [profileA, profileB] = await Promise.all([
+        supabase.from("fighter_profiles").select("avatar_url, song_cover_url").eq("id", bdata.fighter_a_user_id).maybeSingle(),
+        supabase.from("fighter_profiles").select("avatar_url, song_cover_url").eq("id", bdata.fighter_b_user_id).maybeSingle(),
+      ]);
+
+      setBattle({
+        ...(data as BattleData),
+        fighter_a_user_id: bdata.fighter_a_user_id,
+        fighter_b_user_id: bdata.fighter_b_user_id,
+        fighter_a_avatar: profileA?.avatar_url ?? null,
+        fighter_b_avatar: profileB?.avatar_url ?? null,
+        song_a_cover: profileA?.song_cover_url ?? null,
+        song_b_cover: profileB?.song_cover_url ?? null,
+      });
       setLoading(false);
     };
 

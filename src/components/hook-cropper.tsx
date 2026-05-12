@@ -1,217 +1,356 @@
-// src/app/battle/hook-cut/page.tsx
-'use client';
+"use client";
 
-import { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef, useState } from "react";
 
-export default function HookCutPage() {
-  const [audioFile, setAudioFile] = useState<File | null>(null);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [startTime, setStartTime] = useState(0);
-  const [duration, setDuration] = useState(30);
+const MAX_HOOK_SECONDS = 45;
 
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+type HookCropperProps = {
+  file: File;
+  onBack: () => void;
+  onConfirm: (payload: {
+    blob: Blob;
+    start: number;
+    end: number;
+    duration: number;
+  }) => Promise<void> | void;
+};
 
-  const maxDuration = 45;
-  const isDragging = useRef<'left' | 'right' | 'move' | null>(null);
-  const dragStartX = useRef(0);
-  const dragStartValue = useRef(0);
+function encodeWavFromAudioBuffer(audioBuffer: AudioBuffer): Blob {
+  const numberOfChannels = audioBuffer.numberOfChannels;
+  const sampleRate = audioBuffer.sampleRate;
+  const format = 1;
+  const bitDepth = 16;
+  const bytesPerSample = bitDepth / 8;
+  const blockAlign = numberOfChannels * bytesPerSample;
+  const dataLength = audioBuffer.length * blockAlign;
+  const buffer = new ArrayBuffer(44 + dataLength);
+  const view = new DataView(buffer);
 
-  // 上傳音檔
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setAudioFile(file);
-      const url = URL.createObjectURL(file);
-      setAudioUrl(url);
-      setStartTime(0);
-      setDuration(30);
+  const writeString = (offset: number, value: string) => {
+    for (let index = 0; index < value.length; index += 1) {
+      view.setUint8(offset + index, value.charCodeAt(index));
     }
   };
 
-  // 繪製波形 + 高亮框
-  const drawWaveform = async () => {
-    if (!audioUrl || !canvasRef.current) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+  let offset = 0;
+  writeString(offset, "RIFF");
+  offset += 4;
+  view.setUint32(offset, 36 + dataLength, true);
+  offset += 4;
+  writeString(offset, "WAVE");
+  offset += 4;
+  writeString(offset, "fmt ");
+  offset += 4;
+  view.setUint32(offset, 16, true);
+  offset += 4;
+  view.setUint16(offset, format, true);
+  offset += 2;
+  view.setUint16(offset, numberOfChannels, true);
+  offset += 2;
+  view.setUint32(offset, sampleRate, true);
+  offset += 4;
+  view.setUint32(offset, sampleRate * blockAlign, true);
+  offset += 4;
+  view.setUint16(offset, blockAlign, true);
+  offset += 2;
+  view.setUint16(offset, bitDepth, true);
+  offset += 2;
+  writeString(offset, "data");
+  offset += 4;
+  view.setUint32(offset, dataLength, true);
+  offset += 4;
 
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const response = await fetch(audioUrl);
-    const arrayBuffer = await response.arrayBuffer();
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+  const channels = Array.from({ length: numberOfChannels }, (_, channel) =>
+    audioBuffer.getChannelData(channel),
+  );
 
-    const data = audioBuffer.getChannelData(0);
-    const step = Math.ceil(data.length / canvas.width);
-    const amp = canvas.height / 2;
-    const totalDuration = audioBuffer.duration || 1;
+  let sampleOffset = offset;
+  for (let frame = 0; frame < audioBuffer.length; frame += 1) {
+    for (let channel = 0; channel < numberOfChannels; channel += 1) {
+      const sample = Math.max(-1, Math.min(1, channels[channel][frame]));
+      view.setInt16(sampleOffset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+      sampleOffset += 2;
+    }
+  }
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  return new Blob([buffer], { type: "audio/wav" });
+}
 
-    // 背景波形
-    ctx.fillStyle = '#4b5563';
-    for (let i = 0; i < canvas.width; i++) {
-      let min = 1, max = -1;
-      for (let j = 0; j < step; j++) {
-        const datum = data[i * step + j] || 0;
-        if (datum < min) min = datum;
-        if (datum > max) max = datum;
+async function estimateIntegratedLufs(audioBuffer: AudioBuffer): Promise<number> {
+  const offlineContext = new OfflineAudioContext(
+    audioBuffer.numberOfChannels,
+    audioBuffer.length,
+    audioBuffer.sampleRate,
+  );
+
+  const source = offlineContext.createBufferSource();
+  source.buffer = audioBuffer;
+
+  // Approximate ITU-R BS.1770 K-weighting using high-pass + high-shelf.
+  const highPass = offlineContext.createBiquadFilter();
+  highPass.type = "highpass";
+  highPass.frequency.value = 38;
+  highPass.Q.value = 0.5;
+
+  const highShelf = offlineContext.createBiquadFilter();
+  highShelf.type = "highshelf";
+  highShelf.frequency.value = 1500;
+  highShelf.gain.value = 4;
+
+  source.connect(highPass);
+  highPass.connect(highShelf);
+  highShelf.connect(offlineContext.destination);
+
+  source.start(0);
+  const weightedBuffer = await offlineContext.startRendering();
+
+  let weightedPower = 0;
+  for (let channel = 0; channel < weightedBuffer.numberOfChannels; channel += 1) {
+    const data = weightedBuffer.getChannelData(channel);
+    let channelPower = 0;
+    for (let index = 0; index < data.length; index += 1) {
+      const sample = data[index];
+      channelPower += sample * sample;
+    }
+    channelPower /= Math.max(1, data.length);
+    weightedPower += channelPower;
+  }
+
+  weightedPower /= Math.max(1, weightedBuffer.numberOfChannels);
+  const safePower = Math.max(weightedPower, 1e-12);
+
+  // LUFS approximation with BS.1770 offset.
+  return -0.691 + 10 * Math.log10(safePower);
+}
+
+async function trimAudioToHook(file: File, start: number, end: number): Promise<Blob> {
+  const audioContext = new AudioContext();
+  try {
+    const sourceArrayBuffer = await file.arrayBuffer();
+    const decoded = await audioContext.decodeAudioData(sourceArrayBuffer);
+    const sampleRate = decoded.sampleRate;
+    const startSample = Math.floor(start * sampleRate);
+    const endSample = Math.floor(end * sampleRate);
+    const frameCount = Math.max(1, endSample - startSample);
+    const trimmedBuffer = audioContext.createBuffer(decoded.numberOfChannels, frameCount, sampleRate);
+
+    for (let channel = 0; channel < decoded.numberOfChannels; channel += 1) {
+      const sourceChannel = decoded.getChannelData(channel).slice(startSample, endSample);
+      trimmedBuffer.copyToChannel(sourceChannel, channel, 0);
+    }
+
+    // Loudness normalization (LUFS-oriented) for more consistent perceived volume.
+    const targetLufs = -14;
+    const measuredLufs = await estimateIntegratedLufs(trimmedBuffer);
+    const gainLinear = Math.pow(10, (targetLufs - measuredLufs) / 20);
+
+    for (let channel = 0; channel < trimmedBuffer.numberOfChannels; channel += 1) {
+      const data = trimmedBuffer.getChannelData(channel);
+      for (let index = 0; index < data.length; index += 1) {
+        data[index] *= gainLinear;
       }
-      ctx.fillRect(i, (1 + min) * amp, 1, Math.max(1, (max - min) * amp));
     }
 
-    // 高亮選取框
-    const startPercent = startTime / totalDuration;
-    const endPercent = Math.min((startTime + duration) / totalDuration, 1);
-    const startX = startPercent * canvas.width;
-    const endX = endPercent * canvas.width;
-
-    ctx.fillStyle = 'rgba(249, 115, 22, 0.35)';
-    ctx.fillRect(startX, 0, endX - startX, canvas.height);
-
-    ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = 6;
-    ctx.strokeRect(startX, 0, endX - startX, canvas.height);
-
-    // 左把手
-    ctx.fillStyle = '#f59e0b';
-    ctx.fillRect(startX - 14, 0, 28, canvas.height);
-    // 右把手
-    ctx.fillRect(endX - 14, 0, 28, canvas.height);
-  };
-
-  // 拖曳判斷
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current || !audioRef.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const totalWidth = rect.width;
-    const totalDuration = audioRef.current.duration || 1;
-
-    const startX = (startTime / totalDuration) * totalWidth;
-    const endX = ((startTime + duration) / totalDuration) * totalWidth;
-
-    if (Math.abs(clickX - startX) < 35) isDragging.current = 'left';
-    else if (Math.abs(clickX - endX) < 35) isDragging.current = 'right';
-    else if (clickX > startX && clickX < endX) {
-      isDragging.current = 'move';
-      dragStartX.current = clickX;
-      dragStartValue.current = startTime;
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDragging.current || !canvasRef.current || !audioRef.current) return;
-
-    const rect = canvasRef.current.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const totalWidth = rect.width;
-    const totalDuration = audioRef.current.duration || 1;
-    const clickTime = (clickX / totalWidth) * totalDuration;
-
-    if (isDragging.current === 'left') {
-      setStartTime(Math.max(0, clickTime));
-    } else if (isDragging.current === 'right') {
-      const newDuration = Math.min(maxDuration, clickTime - startTime);
-      setDuration(Math.max(10, newDuration));
-    } else if (isDragging.current === 'move') {
-      const delta = (clickX - dragStartX.current) / totalWidth * totalDuration;
-      const newStart = Math.max(0, dragStartValue.current + delta);
-      setStartTime(newStart);
-    }
-  };
-
-  const handleMouseUp = () => {
-    isDragging.current = null;
-  };
-
-  // 即時預覽
-  const previewSelection = () => {
-    if (!audioRef.current) return;
-    audioRef.current.currentTime = startTime;
-    audioRef.current.play();
-
-    const stopAt = startTime + duration;
-    const timer = setInterval(() => {
-      if (audioRef.current && audioRef.current.currentTime >= stopAt) {
-        audioRef.current.pause();
-        clearInterval(timer);
+    // Peak safety pass to avoid clipping after loudness gain.
+    let peak = 0;
+    for (let channel = 0; channel < trimmedBuffer.numberOfChannels; channel += 1) {
+      const data = trimmedBuffer.getChannelData(channel);
+      for (let index = 0; index < data.length; index += 1) {
+        const amplitude = Math.abs(data[index]);
+        if (amplitude > peak) {
+          peak = amplitude;
+        }
       }
-    }, 50);
-  };
+    }
 
-  // 空白鍵
+    if (peak > 0) {
+      const targetPeak = 0.98;
+      if (peak > targetPeak) {
+        const safetyGain = targetPeak / peak;
+        for (let channel = 0; channel < trimmedBuffer.numberOfChannels; channel += 1) {
+          const data = trimmedBuffer.getChannelData(channel);
+          for (let index = 0; index < data.length; index += 1) {
+            data[index] *= safetyGain;
+          }
+        }
+      }
+    }
+
+    return encodeWavFromAudioBuffer(trimmedBuffer);
+  } finally {
+    await audioContext.close();
+  }
+}
+
+export function HookCropper({ file, onBack, onConfirm }: HookCropperProps) {
+  const waveformRef = useRef<HTMLDivElement | null>(null);
+  const wavesurferRef = useRef<any>(null);
+  const regionRef = useRef<any>(null);
+  const [isReady, setIsReady] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [regionStart, setRegionStart] = useState(0);
+  const [regionEnd, setRegionEnd] = useState(0);
+
   useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === ' ' && audioRef.current) {
-        e.preventDefault();
-        audioRef.current.paused ? audioRef.current.play() : audioRef.current.pause();
+    let mounted = true;
+    let objectUrl: string | null = null;
+
+    const setupWaveform = async () => {
+      if (!waveformRef.current) return;
+
+      const [{ default: WaveSurfer }, { default: RegionsPlugin }] = await Promise.all([
+        import("wavesurfer.js"),
+        import("wavesurfer.js/dist/plugins/regions.esm.js"),
+      ]);
+
+      objectUrl = URL.createObjectURL(file);
+      const regions = RegionsPlugin.create();
+      const wavesurfer = WaveSurfer.create({
+        container: waveformRef.current,
+        waveColor: "#ff8d40",
+        progressColor: "#ffd7be",
+        cursorColor: "#f7ede7",
+        height: 140,
+        normalize: true,
+        barWidth: 2,
+        barGap: 1,
+        barRadius: 2,
+        url: objectUrl,
+        plugins: [regions],
+      });
+
+      wavesurferRef.current = wavesurfer;
+      wavesurfer.on("ready", () => {
+        if (!mounted) return;
+        const duration = wavesurfer.getDuration();
+        const initialEnd = Math.min(duration, MAX_HOOK_SECONDS);
+        regionRef.current = regions.addRegion({
+          start: 0,
+          end: initialEnd,
+          drag: true,
+          resize: true,
+          color: "rgba(255, 141, 64, 0.25)",
+        });
+        setRegionStart(0);
+        setRegionEnd(initialEnd);
+        setIsReady(true);
+      });
+
+      wavesurfer.on("play", () => setIsPlaying(true));
+      wavesurfer.on("pause", () => setIsPlaying(false));
+
+      regions.on("region-updated", (region: any) => {
+        const duration = wavesurfer.getDuration();
+        let start = Math.max(0, region.start);
+        let end = Math.min(duration, region.end);
+
+        if (end - start > MAX_HOOK_SECONDS) {
+          if (region.end > region.start) {
+            end = start + MAX_HOOK_SECONDS;
+          } else {
+            start = end - MAX_HOOK_SECONDS;
+          }
+          region.setOptions({ start, end });
+        }
+
+        setRegionStart(start);
+        setRegionEnd(end);
+      });
+    };
+
+    setupWaveform().catch(() => {
+      setErrorMessage("波形初始化失敗，請重新選擇檔案。");
+    });
+
+    return () => {
+      mounted = false;
+      if (wavesurferRef.current) {
+        wavesurferRef.current.destroy();
+        wavesurferRef.current = null;
+      }
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
       }
     };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, []);
+  }, [file]);
 
-  // 重繪
-  useEffect(() => {
-    if (audioUrl) drawWaveform();
-  }, [audioUrl, startTime, duration]);
+  const playRegion = () => {
+    const wavesurfer = wavesurferRef.current;
+    const region = regionRef.current;
+    if (!wavesurfer || !region) return;
+    wavesurfer.play(region.start, region.end);
+  };
+
+  const handleConfirm = async () => {
+    try {
+      setIsExporting(true);
+      setErrorMessage(null);
+      const clipBlob = await trimAudioToHook(file, regionStart, regionEnd);
+      await onConfirm({
+        blob: clipBlob,
+        start: regionStart,
+        end: regionEnd,
+        duration: regionEnd - regionStart,
+      });
+    } catch {
+      setErrorMessage("裁切或上傳失敗，請再試一次。");
+      setIsExporting(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-black text-white p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-black text-orange-400 text-center mb-1">Hook 裁切</h1>
-        <p className="text-zinc-400 text-center mb-10">最多 45 秒 • 系統會自動 Mastering 美化聲音</p>
+    <section className="rounded-3xl border border-[#4d5258] bg-[#1f2226]/90 p-6 md:p-8">
+      <p className="text-xs tracking-[0.38em] text-[#8f847e]">AIPOGER</p>
+      <h2 className="mt-3 text-2xl font-semibold tracking-[0.16em] text-[#f4f0ed]">Hook 裁切工具</h2>
+      <p className="mt-3 text-sm text-[#cfc7c2]">拖曳橘色區塊選取 Hook（最多 45 秒），先預聽再確認上傳。</p>
 
-        {!audioUrl && (
-          <div className="border-2 border-dashed border-zinc-700 rounded-3xl p-16 text-center">
-            <input type="file" accept="audio/*" onChange={handleFileUpload} className="hidden" id="hook-upload" />
-            <label htmlFor="hook-upload" className="cursor-pointer block">
-              <div className="text-7xl mb-6">🎵</div>
-              <p className="text-2xl font-medium">上傳完整歌曲</p>
-              <p className="text-zinc-500 mt-2">在波形上拖曳選擇 Hook</p>
-            </label>
-          </div>
-        )}
-
-        {audioUrl && (
-          <div className="space-y-10">
-            <audio ref={audioRef} src={audioUrl} controls className="w-full" />
-
-            <div className="bg-zinc-900 border border-zinc-700 rounded-3xl p-6">
-              <canvas
-                ref={canvasRef}
-                width={1000}
-                height={220}
-                className="w-full cursor-pointer rounded-2xl bg-black"
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
-              />
-              <p className="text-center text-xs text-zinc-500 mt-3">
-                拖左邊線調整開始 • 拖右邊線調整長度 • 拖中間移動區間 • 空白鍵播放/暫停
-              </p>
-            </div>
-
-            <div className="flex gap-4">
-              <button
-                onClick={previewSelection}
-                className="flex-1 bg-white text-black font-bold py-6 rounded-3xl text-xl hover:bg-zinc-200 transition"
-              >
-                ▶️ 即時預覽選取區間
-              </button>
-
-              <button
-                onClick={() => alert('🎉 自動 Mastering + 上傳 Hook 功能開發中')}
-                className="flex-1 bg-orange-500 hover:bg-orange-600 text-black font-bold py-6 rounded-3xl text-xl transition"
-              >
-                ✨ 自動 Mastering + 確認上傳
-              </button>
-            </div>
-          </div>
-        )}
+      <div className="mt-6 rounded-2xl border border-[#3f444b] bg-[#24282d] p-4">
+        <div ref={waveformRef} className="w-full overflow-hidden rounded-lg bg-[#2b2f34] px-2 py-4" />
       </div>
-    </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-2 text-sm text-[#d9d2cc] md:grid-cols-3">
+        <p>開始：{regionStart.toFixed(2)}s</p>
+        <p>結束：{regionEnd.toFixed(2)}s</p>
+        <p>長度：{Math.max(0, regionEnd - regionStart).toFixed(2)}s / 45s</p>
+      </div>
+
+      {errorMessage && <p className="mt-4 text-sm text-[#ffba92]">{errorMessage}</p>}
+
+      <div className="mt-6 flex flex-wrap gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="rounded-xl border border-[#5d636a] px-4 py-2 text-sm tracking-[0.1em] text-[#ddd6d1] transition hover:border-[#ff8d40] hover:text-[#ffd6bd]"
+        >
+          返回修改資料
+        </button>
+        <button
+          type="button"
+          disabled={!isReady}
+          onClick={() => wavesurferRef.current?.playPause()}
+          className="rounded-xl border border-[#6f757c] bg-gradient-to-b from-[#626870] to-[#4a5057] px-4 py-2 text-sm tracking-[0.1em] text-[#f7f1ed] transition hover:border-[#ff8d40] hover:shadow-[0_0_14px_rgba(255,121,40,0.42)] disabled:opacity-50"
+        >
+          {isPlaying ? "暫停" : "播放全曲"}
+        </button>
+        <button
+          type="button"
+          disabled={!isReady}
+          onClick={playRegion}
+          className="rounded-xl border border-[#6f757c] bg-gradient-to-b from-[#626870] to-[#4a5057] px-4 py-2 text-sm tracking-[0.1em] text-[#f7f1ed] transition hover:border-[#ff8d40] hover:shadow-[0_0_14px_rgba(255,121,40,0.42)] disabled:opacity-50"
+        >
+          預聽 Hook
+        </button>
+        <button
+          type="button"
+          disabled={!isReady || isExporting}
+          onClick={handleConfirm}
+          className="rounded-xl border border-[#767c83] bg-gradient-to-b from-[#666c73] to-[#4a5057] px-4 py-2 text-sm font-semibold tracking-[0.12em] text-[#f8f3ef] transition hover:border-[#ff8d40] hover:shadow-[0_0_18px_rgba(255,121,40,0.45)] disabled:opacity-60"
+        >
+          {isExporting ? "裁切上傳中..." : "確認 Hook 並上傳"}
+        </button>
+      </div>
+    </section>
   );
 }
