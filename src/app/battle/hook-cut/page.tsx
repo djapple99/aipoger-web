@@ -120,22 +120,61 @@ export default function HookCutPage() {
     const src = ctx.createBufferSource();
     src.buffer = buffer;
 
-    // Mastering chain: Compressor + Gain
+    // Mastering chain: 3-band EQ → Compressor → Limiter → Gain
     let out: AudioNode = src;
     if (enableMastering) {
+      // ── 3-band EQ ──────────────────────────────────────────
+      const createEQ = (ctx: AudioContext) => {
+        // 低頻 +3dB：讓 Bass / Kick 更厚實
+        const low = ctx.createBiquadFilter();
+        low.type = 'lowshelf';
+        low.frequency.value = 200;
+        low.gain.value = 3;
+
+        // 中頻 -2dB @ 1kHz：減少渾濁感，增加清晰度
+        const mid = ctx.createBiquadFilter();
+        mid.type = 'peaking';
+        mid.frequency.value = 1000;
+        mid.Q.value = 0.8;
+        mid.gain.value = -2;
+
+        // 高頻 +2dB：讓人聲、吉他更亮
+        const high = ctx.createBiquadFilter();
+        high.type = 'highshelf';
+        high.frequency.value = 4000;
+        high.gain.value = 2;
+
+        return { low, mid, high };
+      };
+
+      // ── 動態壓縮 ───────────────────────────────────────────
       const comp = ctx.createDynamicsCompressor();
-      comp.threshold.value = -18;
-      comp.knee.value = 24;
-      comp.ratio.value = 4;
-      comp.attack.value = 0.003;
-      comp.release.value = 0.18;
+      comp.threshold.value = -20;   // 開始壓縮的閾值
+      comp.knee.value = 8;          // 壓縮膝部（越低越平滑）
+      comp.ratio.value = 5;         // 壓縮比
+      comp.attack.value = 0.002;    // 快速反應捕捉 transient
+      comp.release.value = 0.15;    // 適中釋放時間
 
+      // ── 限制器（防止爆音）──────────────────────────────────
+      const limiter = ctx.createDynamicsCompressor();
+      limiter.threshold.value = -1; // 讓所有聲音不超過 -1 dB
+      limiter.knee.value = 0;
+      limiter.ratio.value = 20;     // 近乎無限壓縮 = 限制器
+      limiter.attack.value = 0.001;
+      limiter.release.value = 0.05;
+
+      // ── 輸出增益 +2dB ───────────────────────────────────────
       const gain = ctx.createGain();
-      // +1 dB ≈ 10^(1/20) = 1.122018...
-      gain.gain.value = Math.pow(10, 1 / 20);
+      gain.gain.value = Math.pow(10, 2 / 20); // +2dB
 
-      out.connect(comp);
-      comp.connect(gain);
+      // 連接：src → EQ(low→mid→high) → Compressor → Limiter → Gain → destination
+      const { low, mid, high } = createEQ(ctx);
+      src.connect(low);
+      low.connect(mid);
+      mid.connect(high);
+      high.connect(comp);
+      comp.connect(limiter);
+      limiter.connect(gain);
       out = gain;
     }
 
@@ -411,7 +450,9 @@ export default function HookCutPage() {
               <div className="mt-6 flex items-center justify-between gap-4 rounded-3xl bg-black/30 ring-1 ring-zinc-800 px-5 py-4">
                 <div>
                   <div className="text-sm font-semibold text-zinc-100">啟用自動 Mastering</div>
-                  <div className="text-xs text-zinc-500">Compressor + Gain 提升清晰度與響度</div>
+                  <div className="text-xs text-zinc-500">
+                    3-band EQ + Compressor + Limiter + Gain 提升清晰度與響度
+                  </div>
                 </div>
 
                 <button
