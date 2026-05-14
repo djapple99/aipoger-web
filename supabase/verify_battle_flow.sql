@@ -24,6 +24,8 @@ FROM public.battle_queue
 ORDER BY created_at DESC
 LIMIT 8;
 
+-- 3b) hook-cut 出現 battle_queue 400 / insert 無回傳 id：在專案執行 supabase/battle_queue_grants.sql
+
 -- 4) 指定使用者的 APC（將 UUID 換成自己）
 SELECT id, apc_balance, level, total_wins
 FROM public.user_profiles

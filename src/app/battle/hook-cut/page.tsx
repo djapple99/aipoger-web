@@ -565,14 +565,18 @@ function HookCutContent() {
 // 進配對前扣挑戰費 200 APC，並寫入佇列（含 AI 工具供擂台顯示）
       if (!isAuthBypassEnabled) {
         // 先確保 user_profiles 存在（第一次報名時建立）
-        await supabase.from('user_profiles').upsert({ id: userId }, { onConflict: 'id' });
+        const { error: profileErr } = await supabase.from("user_profiles").upsert({ id: userId }, { onConflict: "id" });
+        if (profileErr) {
+          console.error("[hook-cut] user_profiles upsert", profileErr);
+          throw profileErr;
+        }
 
-        const { data: deducted, error: feeErr } = await supabase.rpc('deduct_challenge_fee', {
+        const { data: deducted, error: feeErr } = await supabase.rpc("deduct_challenge_fee", {
           user_uuid: userId,
           fee: 200,
         });
         if (feeErr) {
-          console.error(feeErr);
+          console.error("[hook-cut] deduct_challenge_fee", feeErr);
           throw feeErr;
         }
         if (deducted !== true) {
@@ -581,22 +585,45 @@ function HookCutContent() {
           return;
         }
 
-        const { data: queueRow, error: queueError } = await supabase
-          .from('battle_queue')
-          .insert({
-            user_id: userId,
-            fighter_name: fighterName,
-            genre,
-            audio_path: storagePath,
-            original_file_name: songName.trim() || fileName,
-            ai_tool: aiTool.trim() || null,
-            status: 'waiting',
-          })
-          .select('id')
-          .single();
+        const baseRow = {
+          user_id: userId,
+          fighter_name: fighterName.trim() || "未命名鬥士",
+          genre: genre.trim() || "未指定",
+          audio_path: storagePath,
+          original_file_name: (songName.trim() || fileName).slice(0, 500),
+          status: "waiting" as const,
+        };
 
-        if (queueError || !queueRow?.id) throw queueError ?? new Error('queue insert failed');
-        queueIdForNav = queueRow.id;
+        let queueRows: { id: string }[] | null = null;
+        let queueError: { message: string; code?: string; details?: string; hint?: string } | null = null;
+
+        const withAi = { ...baseRow, ai_tool: aiTool.trim() || null };
+        const res1 = await supabase.from("battle_queue").insert(withAi).select("id");
+        queueError = res1.error;
+        queueRows = res1.data;
+
+        if (queueError) {
+          const msg = `${queueError.message ?? ""} ${queueError.details ?? ""} ${queueError.hint ?? ""}`;
+          const missingAiToolCol =
+            /ai_tool|column.*does not exist|schema cache/i.test(msg) || queueError.code === "PGRST204";
+          if (missingAiToolCol) {
+            const res2 = await supabase.from("battle_queue").insert(baseRow).select("id");
+            queueError = res2.error;
+            queueRows = res2.data;
+          }
+        }
+
+        if (queueError) {
+          console.error("[hook-cut] battle_queue insert", queueError);
+          throw queueError;
+        }
+
+        const first = queueRows?.[0];
+        if (!first?.id) {
+          console.error("[hook-cut] battle_queue insert returned no rows (check RLS / grants)", queueRows);
+          throw new Error("queue insert returned no id — 請在 Supabase 執行 supabase/battle_queue_grants.sql 並確認 battle_queue RLS");
+        }
+        queueIdForNav = first.id;
       } else {
         queueIdForNav = `mock-${Date.now()}`;
       }
@@ -621,9 +648,13 @@ function HookCutContent() {
         router.push(`/battle/matchmaking?${params.toString()}`);
       }, 1200);
     } catch (err) {
-      console.error('Upload failed:', err);
+      console.error("Upload failed:", err);
+      const msg =
+        typeof err === "object" && err !== null && "message" in err
+          ? String((err as { message: unknown }).message)
+          : String(err);
       setUploadPhase(null);
-      alert(t.uploadError);
+      alert(`${t.uploadError}\n\n${msg.slice(0, 400)}`);
     }
   };
 
