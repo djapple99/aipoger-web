@@ -532,8 +532,11 @@ function HookCutContent() {
 
       let queueIdForNav: string;
 
-      // 進配對前扣挑戰費 200 APC，並寫入佇列（含 AI 工具供擂台顯示）
+// 進配對前扣挑戰費 200 APC，並寫入佇列（含 AI 工具供擂台顯示）
       if (!isAuthBypassEnabled) {
+        // 先確保 user_profiles 存在（第一次報名時建立）
+        await supabase.from('user_profiles').upsert({ id: userId }, { onConflict: 'id' });
+
         const { data: deducted, error: feeErr } = await supabase.rpc('deduct_challenge_fee', {
           user_uuid: userId,
           fee: 200,
@@ -542,6 +545,12 @@ function HookCutContent() {
           console.error(feeErr);
           throw feeErr;
         }
+        if (deducted !== true) {
+          alert(t.challengeFeeFail);
+          setUploadPhase(null);
+          return;
+        }
+      }
         if (deducted !== true) {
           alert(t.challengeFeeFail);
           setUploadPhase(null);
