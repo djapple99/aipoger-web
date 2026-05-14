@@ -1,16 +1,187 @@
 // src/app/battle/hook-cut/page.tsx
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import WaveSurfer from 'wavesurfer.js';
 import Regions from 'wavesurfer.js/dist/plugins/regions.esm.js';
+import { supabase } from '@/lib/supabase';
+import { isAuthBypassEnabled, mockUserId } from '@/lib/auth-bypass';
 
 const MAX_HOOK_SECONDS = 45;
 const MIN_REGION_SECONDS = 0.25;
 
 type RegionTimes = { start: number; end: number };
 
-export default function HookCutPage() {
+// ─── i18n ───────────────────────────────────────────────
+type Lang = 'zh' | 'en';
+
+const T = {
+  zh: {
+    title: 'Hook 裁切',
+    subtitle: '最多 45 秒 · 系統會自動 Mastering 美化聲音',
+    uploadPrompt: '上傳完整歌曲',
+    uploadHint: '拖曳波形選擇 Hook',
+    selection: '選取',
+    duration: '（{s}秒）',
+    dragHint: '拖左/右邊緣調整長度（最多 45 秒） · 拖中間移動 · 空白鍵預覽/暫停（從選取起點）',
+    mastering: '啟用自動 Mastering',
+    masteringDesc: '3-band EQ + Compressor + Limiter + Gain 提升清晰度與響度',
+    preview: '▶️ 即時預覽選取區間',
+    masteringOn: '自動 Mastering',
+    masteringOff: '原始音檔',
+    confirmUpload: '確認上傳',
+    uploadingPrepare: '準備上傳…',
+    uploadingAudio: '正在處理音檔…',
+    uploading: '上傳中…',
+    uploadingSaving: '寫入資料庫…',
+    success: '上傳成功！即將進入配對…',
+    uploadError: '上傳失敗，請稍後再試',
+    noFile: '請先上傳音檔並選擇 Hook 區間',
+    decording: '解析音檔中…',
+    playing: '播放中',
+    fighter: '鬥士',
+    song: '歌曲',
+    proTip: '專業模式：拖曳中即時硬限制 45 秒（超過會自動彈回）',
+  },
+  en: {
+    title: 'Hook Cut',
+    subtitle: 'Max 45 seconds · Auto Mastering to enhance sound',
+    uploadPrompt: 'Upload Full Song',
+    uploadHint: 'Drag waveform to select Hook',
+    selection: 'Selection',
+    duration: '({s}s)',
+    dragHint: 'Drag edges to adjust length (max 45s) · Drag middle to move · Spacebar to preview/pause',
+    mastering: 'Enable Auto Mastering',
+    masteringDesc: '3-band EQ + Compressor + Limiter + Gain for clarity and loudness',
+    preview: '▶️ Preview Selection',
+    masteringOn: 'Auto Mastering',
+    masteringOff: 'Original',
+    confirmUpload: 'Confirm Upload',
+    uploadingPrepare: 'Preparing…',
+    uploadingAudio: 'Processing audio…',
+    uploading: 'Uploading…',
+    uploadingSaving: 'Saving to database…',
+    success: 'Uploaded! Entering matchmaking…',
+    uploadError: 'Upload failed, please try again',
+    noFile: 'Please upload audio and select a Hook region first',
+    decording: 'Decoding audio…',
+    playing: 'Playing',
+    fighter: 'Fighter',
+    song: 'Song',
+    proTip: 'Professional: Real-time hard limit 45s (auto-corrects on drag)',
+  },
+} as const;
+
+function getT(lang: Lang) {
+  return T[lang];
+}
+
+// ─── WAV 渲染工廠（OfflineAudioContext）─────────────────────
+async function renderAudioWithMastering(
+  buffer: AudioBuffer,
+  start: number,
+  end: number,
+  enableMastering: boolean,
+): Promise<Blob> {
+  const sampleRate = buffer.sampleRate;
+  const clampedEnd = Math.min(end, buffer.duration);
+  const startSample = Math.floor(start * sampleRate);
+  const endSample = Math.floor(clampedEnd * sampleRate);
+  const length = Math.max(1, endSample - startSample);
+  const maxLength = MAX_HOOK_SECONDS * sampleRate;
+  const renderLength = Math.min(length, maxLength);
+
+  const offlineCtx = new OfflineAudioContext(2, renderLength, sampleRate);
+
+  const src = offlineCtx.createBufferSource();
+  src.buffer = buffer;
+  let out: AudioNode = src;
+
+  if (enableMastering) {
+    const low = offlineCtx.createBiquadFilter();
+    low.type = 'lowshelf'; low.frequency.value = 200; low.gain.value = 3;
+    const mid = offlineCtx.createBiquadFilter();
+    mid.type = 'peaking'; mid.frequency.value = 1000; mid.Q.value = 0.8; mid.gain.value = -2;
+    const high = offlineCtx.createBiquadFilter();
+    high.type = 'highshelf'; high.frequency.value = 4000; high.gain.value = 2;
+    const comp = offlineCtx.createDynamicsCompressor();
+    comp.threshold.value = -20; comp.knee.value = 8; comp.ratio.value = 5;
+    comp.attack.value = 0.002; comp.release.value = 0.15;
+    const limiter = offlineCtx.createDynamicsCompressor();
+    limiter.threshold.value = -1; limiter.knee.value = 0; limiter.ratio.value = 20;
+    limiter.attack.value = 0.001; limiter.release.value = 0.05;
+    const gainNode = offlineCtx.createGain();
+    gainNode.gain.value = Math.pow(10, 2 / 20);
+
+    src.connect(low); low.connect(mid); mid.connect(high);
+    high.connect(comp); comp.connect(limiter); limiter.connect(gainNode);
+    out = gainNode;
+  }
+
+  out.connect(offlineCtx.destination);
+  src.start(0, start, renderLength / sampleRate);
+
+  const renderedBuffer = await offlineCtx.startRendering();
+  return audioBufferToWav(renderedBuffer);
+}
+
+function audioBufferToWav(buffer: AudioBuffer): Blob {
+  const numChannels = buffer.numberOfChannels;
+  const sampleRate = buffer.sampleRate;
+  const length = buffer.length;
+  const bytesPerSample = 2;
+  const blockAlign = numChannels * bytesPerSample;
+  const byteRate = sampleRate * blockAlign;
+  const dataSize = length * blockAlign;
+
+  const header = new ArrayBuffer(44);
+  const view = new DataView(header);
+  const write = (offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  };
+  write(0, 'RIFF');
+  view.setUint32(4, 36 + dataSize, true);
+  write(8, 'WAVE');
+  write(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, 16, true);
+  write(36, 'data');
+  view.setUint32(40, dataSize, true);
+
+  const body = new ArrayBuffer(dataSize);
+  const bodyView = new DataView(body);
+  let offset = 0;
+  for (let i = 0; i < length; i++) {
+    for (let ch = 0; ch < numChannels; ch++) {
+      const s = Math.max(-1, Math.min(1, buffer.getChannelData(ch)[i]));
+      bodyView.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+      offset += 2;
+    }
+  }
+  return new Blob([header, body], { type: 'audio/wav' });
+}
+
+// ─── 主要內容（Suspense 內才能用 useSearchParams）───────────
+
+function HookCutContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const fighterName = searchParams.get('fighterName') ?? '未命名鬥士';
+  const songName = searchParams.get('songName') ?? '未提供';
+  const genre = searchParams.get('genre') ?? '';
+  const aiTool = searchParams.get('aiTool') ?? '';
+  const coverUrl = searchParams.get('coverUrl');
+  const lang = (searchParams.get('lang') ?? 'zh') as Lang;
+
+  const t = getT(lang);
+
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -18,6 +189,7 @@ export default function HookCutPage() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [enableMastering, setEnableMastering] = useState(true);
   const [regionTimes, setRegionTimes] = useState<RegionTimes>({ start: 0, end: 0 });
+  const [uploadPhase, setUploadPhase] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
@@ -25,15 +197,14 @@ export default function HookCutPage() {
   const durationRef = useRef<number>(0);
   const lastRegionRef = useRef<RegionTimes | null>(null);
 
-  // Web Audio mastering/playback
   const audioCtxRef = useRef<AudioContext | null>(null);
   const audioBufferRef = useRef<AudioBuffer | null>(null);
   const sourceRef = useRef<AudioBufferSourceNode | null>(null);
   const stopTimerRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
   const playWindowRef = useRef<RegionTimes | null>(null);
-  const playStartedAtRef = useRef<number>(0); // audioCtx.currentTime when started
-  const playOffsetRef = useRef<number>(0); // seconds offset into buffer when started
+  const playStartedAtRef = useRef<number>(0);
+  const playOffsetRef = useRef<number>(0);
 
   const formatTime = useMemo(() => {
     const two = (n: number) => String(Math.floor(n)).padStart(2, '0');
@@ -69,21 +240,11 @@ export default function HookCutPage() {
     cancelRaf();
     playWindowRef.current = null;
     setIsPlaying(false);
-
     const src = sourceRef.current;
     sourceRef.current = null;
     if (src) {
-      try {
-        src.onended = null;
-        src.stop();
-      } catch {
-        // ignore
-      }
-      try {
-        src.disconnect();
-      } catch {
-        // ignore
-      }
+      try { src.onended = null; src.stop(); } catch { /* ignore */ }
+      try { src.disconnect(); } catch { /* ignore */ }
     }
   };
 
@@ -92,13 +253,11 @@ export default function HookCutPage() {
     const ctx = audioCtxRef.current;
     const windowTimes = playWindowRef.current;
     if (!ws || !ctx || !windowTimes) return;
-
     const now = ctx.currentTime;
     const played = Math.max(0, now - playStartedAtRef.current);
     const current = playOffsetRef.current + played;
     const clamped = Math.min(windowTimes.end, Math.max(windowTimes.start, current));
     ws.setTime(clamped);
-
     rafRef.current = requestAnimationFrame(syncCursorWhilePlaying);
   };
 
@@ -113,73 +272,35 @@ export default function HookCutPage() {
     if (length <= 0.01) return;
 
     stopPlayback();
-
     const ctx = ensureAudioContext();
     if (ctx.state === 'suspended') await ctx.resume();
 
     const src = ctx.createBufferSource();
     src.buffer = buffer;
-
-    // Mastering chain: 3-band EQ → Compressor → Limiter → Gain
     let out: AudioNode = src;
+
     if (enableMastering) {
-      // ── 3-band EQ ──────────────────────────────────────────
-      const createEQ = (ctx: AudioContext) => {
-        // 低頻 +3dB：讓 Bass / Kick 更厚實
-        const low = ctx.createBiquadFilter();
-        low.type = 'lowshelf';
-        low.frequency.value = 200;
-        low.gain.value = 3;
-
-        // 中頻 -2dB @ 1kHz：減少渾濁感，增加清晰度
-        const mid = ctx.createBiquadFilter();
-        mid.type = 'peaking';
-        mid.frequency.value = 1000;
-        mid.Q.value = 0.8;
-        mid.gain.value = -2;
-
-        // 高頻 +2dB：讓人聲、吉他更亮
-        const high = ctx.createBiquadFilter();
-        high.type = 'highshelf';
-        high.frequency.value = 4000;
-        high.gain.value = 2;
-
-        return { low, mid, high };
-      };
-
-      // ── 動態壓縮 ───────────────────────────────────────────
+      const low = ctx.createBiquadFilter();
+      low.type = 'lowshelf'; low.frequency.value = 200; low.gain.value = 3;
+      const mid = ctx.createBiquadFilter();
+      mid.type = 'peaking'; mid.frequency.value = 1000; mid.Q.value = 0.8; mid.gain.value = -2;
+      const high = ctx.createBiquadFilter();
+      high.type = 'highshelf'; high.frequency.value = 4000; high.gain.value = 2;
       const comp = ctx.createDynamicsCompressor();
-      comp.threshold.value = -20;   // 開始壓縮的閾值
-      comp.knee.value = 8;          // 壓縮膝部（越低越平滑）
-      comp.ratio.value = 5;         // 壓縮比
-      comp.attack.value = 0.002;    // 快速反應捕捉 transient
-      comp.release.value = 0.15;    // 適中釋放時間
-
-      // ── 限制器（防止爆音）──────────────────────────────────
+      comp.threshold.value = -20; comp.knee.value = 8; comp.ratio.value = 5;
+      comp.attack.value = 0.002; comp.release.value = 0.15;
       const limiter = ctx.createDynamicsCompressor();
-      limiter.threshold.value = -1; // 讓所有聲音不超過 -1 dB
-      limiter.knee.value = 0;
-      limiter.ratio.value = 20;     // 近乎無限壓縮 = 限制器
-      limiter.attack.value = 0.001;
-      limiter.release.value = 0.05;
+      limiter.threshold.value = -1; limiter.knee.value = 0; limiter.ratio.value = 20;
+      limiter.attack.value = 0.001; limiter.release.value = 0.05;
+      const gainNode = ctx.createGain();
+      gainNode.gain.value = Math.pow(10, 2 / 20);
 
-      // ── 輸出增益 +2dB ───────────────────────────────────────
-      const gain = ctx.createGain();
-      gain.gain.value = Math.pow(10, 2 / 20); // +2dB
-
-      // 連接：src → EQ(low→mid→high) → Compressor → Limiter → Gain → destination
-      const { low, mid, high } = createEQ(ctx);
-      src.connect(low);
-      low.connect(mid);
-      mid.connect(high);
-      high.connect(comp);
-      comp.connect(limiter);
-      limiter.connect(gain);
-      out = gain;
+      src.connect(low); low.connect(mid); mid.connect(high);
+      high.connect(comp); comp.connect(limiter); limiter.connect(gainNode);
+      out = gainNode;
     }
 
     out.connect(ctx.destination);
-
     sourceRef.current = src;
     playWindowRef.current = { start, end };
     playStartedAtRef.current = ctx.currentTime;
@@ -203,20 +324,16 @@ export default function HookCutPage() {
     rafRef.current = requestAnimationFrame(syncCursorWhilePlaying);
   };
 
-  // 上傳音檔
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     stopPlayback();
-
     if (audioUrl) URL.revokeObjectURL(audioUrl);
     setAudioFile(file);
     const url = URL.createObjectURL(file);
     setAudioUrl(url);
     setIsReady(false);
     setRegionTimes({ start: 0, end: 0 });
-
     setIsDecoding(true);
     try {
       const ctx = ensureAudioContext();
@@ -228,16 +345,12 @@ export default function HookCutPage() {
     }
   };
 
-  // 初始化 WaveSurfer + Regions（波形 + 選取框拖曳）
+  // WaveSurfer init
   useEffect(() => {
     if (!audioUrl || !containerRef.current) return;
 
     if (wavesurferRef.current) {
-      try {
-        wavesurferRef.current.destroy();
-      } catch {
-        // ignore
-      }
+      try { wavesurferRef.current.destroy(); } catch { /* ignore */ }
       wavesurferRef.current = null;
     }
     regionRef.current = null;
@@ -266,21 +379,17 @@ export default function HookCutPage() {
       const duration = durationRef.current || 0;
       let start = Number.isFinite(nextStart) ? nextStart : 0;
       let end = Number.isFinite(nextEnd) ? nextEnd : 0;
-
       start = Math.max(0, start);
       end = Math.min(Math.max(0, end), duration);
-
       if (end - start < MIN_REGION_SECONDS) end = Math.min(duration, start + MIN_REGION_SECONDS);
       if (end - start > MAX_HOOK_SECONDS) end = Math.min(duration, start + MAX_HOOK_SECONDS);
       if (end - start < MIN_REGION_SECONDS) start = Math.max(0, end - MIN_REGION_SECONDS);
-
       return { start, end };
     };
 
     const applyRegion = (start: number, end: number) => {
       const region = regionRef.current;
       if (!region) return;
-
       const next = clampRegion(start, end);
       const eps = 0.002;
       if (Math.abs(region.start - next.start) > eps) region.setOptions({ start: next.start });
@@ -293,14 +402,12 @@ export default function HookCutPage() {
 
     ws.on('ready', () => {
       durationRef.current = ws.getDuration() || 0;
-
       const initialEnd = Math.min(MAX_HOOK_SECONDS, durationRef.current);
       const region = regions.addRegion({
         id: 'hook',
         start: 0,
         end: Math.max(MIN_REGION_SECONDS, initialEnd),
-        // Selected region tint (gray) for clarity on dark UI
-        color: 'rgba(228, 228, 231, 0.22)', // zinc-200 @ 22%
+        color: 'rgba(228, 228, 231, 0.22)',
         drag: true,
         resize: true,
       });
@@ -312,44 +419,32 @@ export default function HookCutPage() {
 
       region.on('update', () => {
         const prev = lastRegionRef.current;
-        if (!prev) {
-          lastRegionRef.current = { start: region.start, end: region.end };
-          return;
-        }
+        if (!prev) { lastRegionRef.current = { start: region.start, end: region.end }; return; }
 
         const rawStart = region.start;
         const rawEnd = region.end;
         let start = rawStart;
         let end = rawEnd;
-
-        const startChanged = Math.abs(rawStart - prev.start) > 0.001;
-        const endChanged = Math.abs(rawEnd - prev.end) > 0.001;
         const duration = durationRef.current || 0;
 
         start = Math.max(0, start);
         end = Math.min(duration, end);
 
         if (end - start > MAX_HOOK_SECONDS) {
-          if (startChanged && !endChanged) start = end - MAX_HOOK_SECONDS;
-          else if (endChanged && !startChanged) end = start + MAX_HOOK_SECONDS;
-          else end = start + MAX_HOOK_SECONDS;
+          if (Math.abs(rawStart - prev.start) > 0.001 && Math.abs(rawEnd - prev.end) <= 0.001) {
+            start = end - MAX_HOOK_SECONDS;
+          } else {
+            end = start + MAX_HOOK_SECONDS;
+          }
         }
 
         if (end - start < MIN_REGION_SECONDS) {
-          if (startChanged && !endChanged) start = end - MIN_REGION_SECONDS;
+          if (Math.abs(rawStart - prev.start) > 0.001) start = end - MIN_REGION_SECONDS;
           else end = start + MIN_REGION_SECONDS;
         }
 
-        if (start < 0) {
-          const shift = -start;
-          start = 0;
-          end = Math.min(duration, end + shift);
-        }
-        if (end > duration) {
-          const shift = end - duration;
-          end = duration;
-          start = Math.max(0, start - shift);
-        }
+        if (start < 0) { const shift = -start; start = 0; end = Math.min(duration, end + shift); }
+        if (end > duration) { const shift = end - duration; end = duration; start = Math.max(0, start - shift); }
 
         applyRegion(start, end);
       });
@@ -365,33 +460,25 @@ export default function HookCutPage() {
     wavesurferRef.current = ws;
 
     return () => {
-      try {
-        ws.destroy();
-      } catch {
-        // ignore
-      } finally {
-        if (wavesurferRef.current === ws) wavesurferRef.current = null;
-      }
+      try { ws.destroy(); } catch { /* ignore */ }
+      if (wavesurferRef.current === ws) wavesurferRef.current = null;
     };
   }, [audioUrl]);
 
-  // Spacebar: play/pause from region start to end (honor mastering)
+  // Spacebar preview
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== ' ') return;
-      if (!isReady) return;
-      if (!audioBufferRef.current) return;
-
+      if (!isReady || !audioBufferRef.current) return;
       e.preventDefault();
       if (isPlaying) stopPlayback();
       else void playFromRegion();
     };
-
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [isReady, isPlaying, enableMastering]);
 
-  // Cleanup on unmount
+  // Cleanup
   useEffect(() => {
     return () => {
       stopPlayback();
@@ -400,61 +487,154 @@ export default function HookCutPage() {
       audioCtxRef.current = null;
       if (ctx) void ctx.close();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── 確認上傳（核心流程）──────────────────────────────
+  const handleConfirmUpload = async () => {
+    if (!isReady || !audioBufferRef.current || !regionRef.current) {
+      alert(t.noFile);
+      return;
+    }
+
+    const region = regionRef.current;
+    const { start, end } = region;
+
+    setUploadPhase(t.uploadingPrepare);
+
+    try {
+      const buffer = audioBufferRef.current;
+
+      setUploadPhase(t.uploadingAudio);
+
+      // Offline render → WAV blob（含 mastering）
+      const wavBlob = await renderAudioWithMastering(buffer, start, end, enableMastering);
+      const sanitizedFighter = fighterName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\u4e00-\u9fff]/g, '');
+      const sanitizedSong = songName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\u4e00-\u9fff]/g, '');
+      const fileName = `${sanitizedFighter}_${sanitizedSong}_${Date.now()}.wav`;
+
+      setUploadPhase(t.uploading);
+
+      const userId = isAuthBypassEnabled
+        ? mockUserId
+        : (await supabase.auth.getSession()).data.session?.user.id ?? mockUserId;
+
+      // 上傳到 Supabase Storage
+      const storagePath = `${userId}/hooks/${fileName}`;
+      const { error: uploadError } = await supabase.storage
+        .from('battle-audio')
+        .upload(storagePath, wavBlob, { contentType: 'audio/wav', upsert: false });
+
+      if (uploadError) throw uploadError;
+
+      setUploadPhase(t.uploadingSaving);
+
+      // 寫入 battle_queue（等待配對）
+      if (!isAuthBypassEnabled) {
+        const { error: queueError } = await supabase.from('battle_queue').insert({
+          user_id: userId,
+          fighter_name: fighterName,
+          genre,
+          audio_path: storagePath,
+          original_file_name: fileName,
+          status: 'waiting',
+        });
+        if (queueError) throw queueError;
+      }
+
+      setUploadPhase(t.success);
+
+      // 跳轉配對頁
+      setTimeout(() => {
+        const params = new URLSearchParams({
+          fighterName,
+          songName,
+          genre,
+          aiTool,
+          hookStart: start.toFixed(2),
+          hookEnd: end.toFixed(2),
+          hookDuration: (end - start).toFixed(2),
+          lang,
+          audioPath: storagePath,
+          queueId: isAuthBypassEnabled ? `mock-${Date.now()}` : 'pending',
+        });
+        if (coverUrl) params.set('coverUrl', coverUrl);
+        router.push(`/battle/matchmaking?${params.toString()}`);
+      }, 1200);
+    } catch (err) {
+      console.error('Upload failed:', err);
+      setUploadPhase(null);
+      alert(t.uploadError);
+    }
+  };
 
   const previewSelection = async () => {
     if (!isReady || isDecoding || !audioBufferRef.current) return;
     await playFromRegion();
   };
 
+  const selectedDuration = Math.max(0, regionTimes.end - regionTimes.start);
+  const isUploading = uploadPhase !== null;
+
   return (
     <div className="min-h-screen bg-black text-white p-8 selection:bg-orange-500/30 selection:text-white">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-black text-orange-400 text-center mb-1">Hook 裁切</h1>
-        <p className="text-zinc-400 text-center mb-10">最多 45 秒 • 系統會自動 Mastering 美化聲音</p>
+        {/* 頂部列 */}
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-black text-orange-400">{t.title}</h1>
+            <p className="text-zinc-400 mt-1 text-sm">{t.subtitle}</p>
+          </div>
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 px-4 py-3 text-right">
+            <p className="text-xs text-zinc-500">{t.fighter}</p>
+            <p className="font-bold text-orange-400">{fighterName}</p>
+            <p className="text-xs text-zinc-500 mt-1">{t.song}: {songName}</p>
+          </div>
+        </div>
 
         {!audioUrl && (
-          <div className="border-2 border-dashed border-zinc-700 rounded-3xl p-16 text-center">
+          <div className="border-2 border-dashed border-zinc-700 rounded-3xl p-16 text-center hover:border-orange-500 transition-colors">
             <input type="file" accept="audio/*" onChange={handleFileUpload} className="hidden" id="hook-upload" />
             <label htmlFor="hook-upload" className="cursor-pointer block">
               <div className="text-7xl mb-6">🎵</div>
-              <p className="text-2xl font-medium">上傳完整歌曲</p>
-              <p className="text-zinc-500 mt-2">拖曳波形選擇 Hook</p>
+              <p className="text-2xl font-medium">{t.uploadPrompt}</p>
+              <p className="text-zinc-500 mt-2 text-sm">{t.uploadHint}</p>
             </label>
           </div>
         )}
 
         {audioUrl && (
           <div className="space-y-10">
+            {/* 波形 */}
             <div className="bg-zinc-900 border border-zinc-700 rounded-3xl p-6">
               <div className="rounded-2xl overflow-hidden bg-zinc-800/60 ring-1 ring-zinc-700/70">
                 <div ref={containerRef} />
               </div>
 
+              {/* 選取資訊 */}
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="text-sm text-zinc-200">
-                  <span className="font-semibold text-orange-300">選取</span>{' '}
+                  <span className="font-semibold text-orange-300">{t.selection}</span>
+                  {' '}
                   <span className="tabular-nums">
                     {formatTime(regionTimes.start)} - {formatTime(regionTimes.end)}
                   </span>
-                  <span className="text-zinc-500">（{Math.max(0, regionTimes.end - regionTimes.start).toFixed(2)}s）</span>
+                  <span className="text-zinc-500">
+                    {t.duration.replace('{s}', selectedDuration.toFixed(2))}
+                  </span>
                 </div>
                 <div className="text-xs text-zinc-500">
-                  拖左/右邊緣調整長度（最多 45 秒） • 拖中間移動 • 空白鍵預覽/暫停（從選取起點）
-                  {isPlaying ? <span className="ml-2 text-orange-400">播放中</span> : null}
-                  {isDecoding ? <span className="ml-2 text-zinc-400">解析音檔中…</span> : null}
+                  {t.dragHint}
+                  {isPlaying && <span className="ml-2 text-orange-400">{t.playing}</span>}
+                  {isDecoding && <span className="ml-2 text-zinc-400">{t.decording}</span>}
                 </div>
               </div>
 
+              {/* Mastering 開關 */}
               <div className="mt-6 flex items-center justify-between gap-4 rounded-3xl bg-black/30 ring-1 ring-zinc-800 px-5 py-4">
                 <div>
-                  <div className="text-sm font-semibold text-zinc-100">啟用自動 Mastering</div>
-                  <div className="text-xs text-zinc-500">
-                    3-band EQ + Compressor + Limiter + Gain 提升清晰度與響度
-                  </div>
+                  <div className="text-sm font-semibold text-zinc-100">{t.mastering}</div>
+                  <div className="text-xs text-zinc-500">{t.masteringDesc}</div>
                 </div>
-
                 <button
                   type="button"
                   onClick={() => setEnableMastering((v) => !v)}
@@ -465,7 +645,7 @@ export default function HookCutPage() {
                     'focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/60',
                   ].join(' ')}
                   aria-pressed={enableMastering}
-                  aria-label="啟用自動 Mastering"
+                  aria-label={t.mastering}
                 >
                   <span
                     className={[
@@ -477,29 +657,44 @@ export default function HookCutPage() {
                 </button>
               </div>
 
-              <p className="text-center text-xs text-zinc-500 mt-5">專業模式：拖曳中即時硬限制 45 秒（超過會自動彈回）</p>
+              <p className="text-center text-xs text-zinc-500 mt-5">{t.proTip}</p>
             </div>
 
+            {/* 按鈕 */}
             <div className="flex gap-4">
               <button
                 onClick={previewSelection}
-                disabled={!isReady || isDecoding || !audioBufferRef.current}
+                disabled={!isReady || isDecoding || !audioBufferRef.current || isUploading}
                 className="flex-1 bg-white text-black font-bold py-6 rounded-3xl text-xl hover:bg-zinc-200 transition disabled:opacity-50"
               >
-                ▶️ 即時預覽選取區間
+                {t.preview}
               </button>
 
               <button
-                onClick={() => alert('🎉 上傳 Hook 功能開發中')}
-                disabled={!isReady || isDecoding}
-                className="flex-1 bg-orange-500 hover:bg-orange-600 text-black font-bold py-6 rounded-3xl text-xl transition disabled:opacity-50"
+                onClick={handleConfirmUpload}
+                disabled={!isReady || isDecoding || isUploading}
+                className="flex-1 bg-orange-500 hover:bg-orange-600 text-black font-bold py-6 rounded-3xl text-xl transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-orange-500/20"
               >
-                ✨ {enableMastering ? '自動 Mastering' : '原始音檔'} + 確認上傳
+                {isUploading
+                  ? `⏳ ${uploadPhase}`
+                  : `✨ ${enableMastering ? t.masteringOn : t.masteringOff} + ${t.confirmUpload}`}
               </button>
             </div>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+export default function HookCutPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-black text-orange-400 text-sm tracking-widest">
+        載入中…
+      </div>
+    }>
+      <HookCutContent />
+    </Suspense>
   );
 }
