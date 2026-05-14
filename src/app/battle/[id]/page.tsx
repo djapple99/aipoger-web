@@ -219,9 +219,10 @@ function BattleArenaContent() {
     void getUser();
   }, [router]);
 
-  // ── 載入 Battle 資料 ─────────────────────────────────
+  // ── 載入 Battle 資料（查詢前先 await getSession，避免 JWT 未就緒被 RLS 擋）────
   useEffect(() => {
     if (!battleId) return;
+
     let mounted = true;
 
     const loadBattle = async () => {
@@ -248,6 +249,21 @@ function BattleArenaContent() {
         return;
       }
 
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      // 還原 session 可能略晚於首次 render，短重試避免 RLS 擋讀
+      let authed = session;
+      for (let i = 0; i < 6 && !authed?.user && !isAuthBypassEnabled; i++) {
+        await new Promise((r) => setTimeout(r, 80));
+        const { data: d2 } = await supabase.auth.getSession();
+        authed = d2.session;
+      }
+      if (!isAuthBypassEnabled && !authed?.user && !battleId.startsWith("mock-")) {
+        if (mounted) setLoading(false);
+        return;
+      }
+
       const { data, error: battleError } = await supabase
         .from("battles")
         .select("*")
@@ -267,8 +283,8 @@ function BattleArenaContent() {
       }
 
       const bdata = data as any;
-      // 同步載入兩邊的 fighter_profiles（頭像 + 封面）
-      const [profileA, profileB] = await Promise.all([
+      // 同步載入兩邊的 fighter_profiles（頭像 + 封面；必須取 .data）
+      const [{ data: rowA }, { data: rowB }] = await Promise.all([
         supabase.from("fighter_profiles").select("avatar_url, song_cover_url").eq("id", bdata.fighter_a_user_id).maybeSingle(),
         supabase.from("fighter_profiles").select("avatar_url, song_cover_url").eq("id", bdata.fighter_b_user_id).maybeSingle(),
       ]);
@@ -277,17 +293,17 @@ function BattleArenaContent() {
         ...(data as BattleData),
         fighter_a_user_id: bdata.fighter_a_user_id,
         fighter_b_user_id: bdata.fighter_b_user_id,
-        fighter_a_avatar: profileA?.avatar_url ?? null,
-        fighter_b_avatar: profileB?.avatar_url ?? null,
-        song_a_cover: profileA?.song_cover_url ?? null,
-        song_b_cover: profileB?.song_cover_url ?? null,
+        fighter_a_avatar: rowA?.avatar_url ?? null,
+        fighter_b_avatar: rowB?.avatar_url ?? null,
+        song_a_cover: rowA?.song_cover_url ?? null,
+        song_b_cover: rowB?.song_cover_url ?? null,
         ai_tool_a: (bdata.ai_tool_a as string | null | undefined) ?? null,
         ai_tool_b: (bdata.ai_tool_b as string | null | undefined) ?? null,
       });
       setLoading(false);
     };
 
-    loadBattle();
+    void loadBattle();
     return () => {
       mounted = false;
     };

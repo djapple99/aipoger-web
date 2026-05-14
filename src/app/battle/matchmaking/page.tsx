@@ -28,6 +28,8 @@ function MatchmakingContent() {
 
   const queueId = searchParams.get("queueId");
   const [phase, setPhase] = useState<MatchPhase>("searching");
+  /** 配對成功後的 public.battles.id（絕對不要用 battle_queue 列 id 進擂台） */
+  const [resolvedBattleId, setResolvedBattleId] = useState<string | null>(null);
   const [pulseCount, setPulseCount] = useState(0);
   const [countdown, setCountdown] = useState(5);
 
@@ -49,13 +51,37 @@ function MatchmakingContent() {
   }, [phase, countdown]);
 
   useEffect(() => {
-    if (phase === "found" && countdown === 0 && queueId) {
-      router.replace(`/battle/${queueId}`);
-    }
-  }, [phase, countdown, queueId, router]);
+    if (phase !== "found" || countdown > 0) return;
+    const target =
+      resolvedBattleId ?? (queueId?.startsWith("mock-") ? queueId : null);
+    if (!target) return;
+    router.replace(`/battle/${target}`);
+  }, [phase, countdown, resolvedBattleId, queueId, router]);
+
+  // 重新整理配對頁時：若佇列已是 matched，直接帶入 battles.id
+  useEffect(() => {
+    if (!queueId || isAuthBypassEnabled || queueId.startsWith("mock-")) return;
+    let cancelled = false;
+    void (async () => {
+      const { data: row } = await supabase
+        .from("battle_queue")
+        .select("status, match_group_id")
+        .eq("id", queueId)
+        .maybeSingle<{ status: QueueStatus; match_group_id: string | null }>();
+      if (cancelled || !row) return;
+      if (row.status === "matched" && row.match_group_id) {
+        setResolvedBattleId(row.match_group_id);
+        setPhase("found");
+        setCountdown(5);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [queueId]);
 
   useEffect(() => {
-    let intervalId: number | null = null;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
     let mounted = true;
 
     const startMatchmaking = async () => {
@@ -84,14 +110,11 @@ function MatchmakingContent() {
 
         if (!mounted || !row) return;
 
-        if (row.status === "matched") {
+        if (row.status === "matched" && row.match_group_id) {
           if (intervalId) clearInterval(intervalId);
-          const battleId = row.match_group_id ?? row.id;
+          setResolvedBattleId(row.match_group_id);
           setPhase("found");
-          // 替換 URL 參數為正確的 battle ID
-          const newParams = new URLSearchParams(searchParams.toString());
-          newParams.set("queueId", battleId);
-          router.replace(`/battle/${battleId}?${newParams.toString()}`);
+          setCountdown(5);
         }
       };
 
@@ -114,9 +137,12 @@ function MatchmakingContent() {
             const nextStatus = (payload.new as QueueRow).status;
             if (nextStatus === "matched") {
               if (intervalId) clearInterval(intervalId);
-              const battleId = (payload.new as QueueRow).match_group_id ?? queueId;
-              setPhase("found");
-              router.replace(`/battle/${battleId}?${searchParams.toString()}`);
+              const battleId = (payload.new as QueueRow).match_group_id;
+              if (battleId) {
+                setResolvedBattleId(battleId);
+                setPhase("found");
+                setCountdown(5);
+              }
             }
           },
         )
@@ -127,7 +153,7 @@ function MatchmakingContent() {
       if (intervalId) clearInterval(intervalId);
       if (channel) supabase.removeChannel(channel);
     };
-  }, [queueId, router, searchParams]);
+  }, [queueId, router]);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#050505] text-zinc-100">
