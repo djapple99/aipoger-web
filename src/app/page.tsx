@@ -82,7 +82,7 @@ function HomeAuthBar() {
       try {
         const { data, error } = await supabase
           .from("user_profiles")
-          .select("aipo_coins, apc_balance, level")
+          .select("aipo_coins, apc_balance, level, total_wins")
           .eq("id", userId)
           .maybeSingle();
 
@@ -118,20 +118,39 @@ function HomeAuthBar() {
     [lang],
   );
 
+  const runDailyCheckIn = useCallback(async (userId: string) => {
+    if (process.env.NEXT_PUBLIC_AUTH_BYPASS === "true") return;
+    try {
+      const { data: gained, error } = await supabase.rpc("award_daily_login_points");
+      if (error) {
+        console.warn("[daily login]", error);
+        return;
+      }
+      if (gained === 50) void loadProfile(userId);
+    } catch (e) {
+      console.warn("[daily login]", e);
+    }
+  }, [loadProfile]);
+
   useEffect(() => {
     let mounted = true;
     void supabase.auth.getSession().then(({ data: { session: s } }) => {
       if (!mounted) return;
       setSession(s);
-      if (s?.user) void loadProfile(s.user.id);
+      if (s?.user) {
+        void loadProfile(s.user.id);
+        void runDailyCheckIn(s.user.id);
+      }
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
-      if (s?.user) void loadProfile(s.user.id);
-      else {
+      if (s?.user) {
+        void loadProfile(s.user.id);
+        void runDailyCheckIn(s.user.id);
+      } else {
         setAipoCoins(null);
         setApcBalance(null);
         setLevelLine(null);
@@ -142,7 +161,7 @@ function HomeAuthBar() {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [loadProfile]);
+  }, [loadProfile, runDailyCheckIn]);
 
   useEffect(() => {
     if (!menuOpen) return;

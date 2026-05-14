@@ -52,7 +52,11 @@ function AuthCallbackInner() {
             userId: data.session.user?.id,
             email: data.session.user?.email,
           });
-          void supabase.rpc("award_signup_bonus", { user_uuid: data.session.user.id }).catch(() => {});
+          await new Promise((r) => setTimeout(r, 400));
+          {
+            const { error: bonusErr } = await supabase.rpc("award_signup_bonus", { user_uuid: data.session.user.id });
+            if (bonusErr) console.warn("[signup bonus]", bonusErr);
+          }
           router.replace("/");
           return;
         }
@@ -113,7 +117,11 @@ function AuthCallbackInner() {
         userId: session.user?.id,
         email: session.user?.email,
       });
-      void supabase.rpc("award_signup_bonus", { user_uuid: session.user.id }).catch(() => {});
+      await new Promise((r) => setTimeout(r, 400));
+      {
+        const { error: bonusErr } = await supabase.rpc("award_signup_bonus", { user_uuid: session.user.id });
+        if (bonusErr) console.warn("[signup bonus]", bonusErr);
+      }
       router.replace("/");
     })();
 

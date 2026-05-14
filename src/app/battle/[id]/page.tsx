@@ -188,13 +188,14 @@ function BattleArenaContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [myUserId, setMyUserId] = useState<string>("");
+  const [audioUrls, setAudioUrls] = useState<{ A: string | null; B: string | null }>({ A: null, B: null });
+  const [viewerCount, setViewerCount] = useState(1);
 
   // Refs
   const audioARef = useRef<HTMLAudioElement>(null);
   const audioBRef = useRef<HTMLAudioElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
-  const audioUrlsRef = useRef<{ A: string | null; B: string | null }>({ A: null, B: null });
 
   // ── 取得目前用戶 ──────────────────────────────────────
   useEffect(() => {
@@ -252,7 +253,8 @@ function BattleArenaContent() {
 
       if (!mounted) return;
       if (battleError || !data) {
-        setError("找不到這場戰鬥");
+        console.error("[battle load]", battleError);
+        setError(battleError?.message ?? "找不到這場戰鬥");
         setLoading(false);
         return;
       }
@@ -284,7 +286,76 @@ function BattleArenaContent() {
     };
   }, [battleId]);
 
-  // ── 即時訊息訂閱 ──────────────────────────────────────
+  // ── Storage signed URL（雙方音檔；RLS 需允許讀取 battle 引用路徑）────
+  useEffect(() => {
+    if (!battle || battleId.startsWith("mock-") || isAuthBypassEnabled) {
+      setAudioUrls({ A: null, B: null });
+      return;
+    }
+
+    let cancelled = false;
+
+    const resolveUrls = async () => {
+      const next: { A: string | null; B: string | null } = { A: null, B: null };
+      const paths: Array<["A" | "B", string | null]> = [
+        ["A", battle.audio_a_path],
+        ["B", battle.audio_b_path],
+      ];
+
+      for (const [deck, path] of paths) {
+        if (!path || path.startsWith("mock-")) continue;
+        const { data: signed, error: signErr } = await supabase.storage
+          .from("battle-audio")
+          .createSignedUrl(path, 60 * 60);
+        if (signErr) {
+          console.error(`[battle audio ${deck}]`, signErr, path);
+          continue;
+        }
+        next[deck] = signed?.signedUrl ?? null;
+      }
+
+      if (!cancelled) setAudioUrls(next);
+    };
+
+    void resolveUrls();
+    return () => {
+      cancelled = true;
+    };
+  }, [battle, battleId]);
+
+  // ── 即時觀戰人數（Presence）────────────────────────────
+  useEffect(() => {
+    if (!battleId || loading || isAuthBypassEnabled || !myUserId || battleId.startsWith("mock-")) return;
+
+    const channel = supabase.channel(`presence-battle-${battleId}`, {
+      config: { presence: { key: myUserId } },
+    });
+
+    const countFromState = () => {
+      const state = channel.presenceState();
+      const users = new Set<string>();
+      for (const presences of Object.values(state)) {
+        for (const p of presences as { user_id?: string }[]) {
+          if (p?.user_id) users.add(p.user_id);
+        }
+      }
+      setViewerCount(Math.max(1, users.size));
+    };
+
+    channel.on("presence", { event: "sync" }, countFromState);
+
+    void channel.subscribe(async (status) => {
+      if (status === "SUBSCRIBED") {
+        await channel.track({ user_id: myUserId, at: Date.now() });
+        countFromState();
+      }
+    });
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [battleId, loading, myUserId]);
+
   useEffect(() => {
     if (!battleId || loading) return;
 
@@ -505,17 +576,24 @@ function BattleArenaContent() {
   return (
     <div className="flex min-h-screen flex-col bg-[#0a0a0a] text-zinc-100">
       {/* 頂部列 */}
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-zinc-800 bg-[#0a0a0a]/90 px-4 py-3 backdrop-blur">
-        <div>
+      <header className="sticky top-0 z-30 grid grid-cols-3 items-center border-b border-zinc-800 bg-[#0a0a0a]/90 px-4 py-3 backdrop-blur">
+        <div className="min-w-0">
           <p className="text-[10px] tracking-[0.4em] text-zinc-600">AIPOGER</p>
-          <h1 className="text-lg font-bold tracking-widest text-zinc-200">🎤 鬥歌擂台</h1>
+          <h1 className="truncate text-lg font-bold tracking-widest text-zinc-200">🎤 鬥歌擂台</h1>
         </div>
-        <Link
-          href="/"
-          className="rounded-xl border border-zinc-700 px-4 py-2 text-xs tracking-wider text-zinc-400 transition hover:border-orange-500 hover:text-orange-400"
-        >
-          ← 首頁
-        </Link>
+        <div className="flex justify-center">
+          <div className="rounded-full border border-zinc-700 bg-zinc-900/80 px-3 py-1.5 text-center text-[10px] tracking-wider text-zinc-400">
+            觀戰 <span className="font-bold text-orange-400">{viewerCount}</span> 人
+          </div>
+        </div>
+        <div className="flex justify-end">
+          <Link
+            href="/"
+            className="rounded-xl border border-zinc-700 px-4 py-2 text-xs tracking-wider text-zinc-400 transition hover:border-orange-500 hover:text-orange-400"
+          >
+            ← 首頁
+          </Link>
+        </div>
       </header>
 
       {/* 擂台主體 */}
@@ -648,8 +726,8 @@ function BattleArenaContent() {
       </main>
 
       {/* 隱藏音檔 */}
-      <audio ref={audioARef} src={audioUrlsRef.current.A ?? undefined} onEnded={() => setActiveDeck((p) => (p === "A" ? null : p))} />
-      <audio ref={audioBRef} src={audioUrlsRef.current.B ?? undefined} onEnded={() => setActiveDeck((p) => (p === "B" ? null : p))} />
+      <audio ref={audioARef} src={audioUrls.A ?? undefined} onEnded={() => setActiveDeck((p) => (p === "A" ? null : p))} />
+      <audio ref={audioBRef} src={audioUrls.B ?? undefined} onEnded={() => setActiveDeck((p) => (p === "B" ? null : p))} />
     </div>
   );
 }
