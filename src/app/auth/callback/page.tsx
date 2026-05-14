@@ -52,6 +52,7 @@ function AuthCallbackInner() {
             userId: data.session.user?.id,
             email: data.session.user?.email,
           });
+          void supabase.rpc("award_signup_bonus", { user_uuid: data.session.user.id }).catch(() => {});
           router.replace("/");
           return;
         }
@@ -112,6 +113,7 @@ function AuthCallbackInner() {
         userId: session.user?.id,
         email: session.user?.email,
       });
+      void supabase.rpc("award_signup_bonus", { user_uuid: session.user.id }).catch(() => {});
       router.replace("/");
     })();
 

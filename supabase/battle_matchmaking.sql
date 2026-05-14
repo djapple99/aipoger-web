@@ -5,6 +5,7 @@ create table if not exists public.battle_queue (
   genre text not null,
   audio_path text not null,
   original_file_name text not null,
+  ai_tool text,
   status text not null default 'waiting' check (status in ('waiting', 'matched', 'cancelled')),
   opponent_user_id uuid references auth.users(id) on delete set null,
   match_group_id uuid,
@@ -45,75 +46,5 @@ before update on public.battle_queue
 for each row
 execute function public.set_updated_at();
 
-create or replace function public.attempt_matchmaking(p_queue_id uuid)
-returns public.battle_queue
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  me_row public.battle_queue%rowtype;
-  opponent_row public.battle_queue%rowtype;
-  generated_match_id uuid;
-begin
-  if auth.uid() is null then
-    raise exception 'Not authenticated';
-  end if;
-
-  select *
-  into me_row
-  from public.battle_queue
-  where id = p_queue_id
-    and user_id = auth.uid()
-  for update;
-
-  if me_row.id is null then
-    raise exception 'Queue row not found';
-  end if;
-
-  if me_row.status <> 'waiting' then
-    return me_row;
-  end if;
-
-  select *
-  into opponent_row
-  from public.battle_queue
-  where status = 'waiting'
-    and genre = me_row.genre
-    and user_id <> me_row.user_id
-    and id <> me_row.id
-  order by created_at asc
-  for update skip locked
-  limit 1;
-
-  if opponent_row.id is null then
-    return me_row;
-  end if;
-
-  generated_match_id := gen_random_uuid();
-
-  update public.battle_queue
-  set
-    status = 'matched',
-    opponent_user_id = opponent_row.user_id,
-    match_group_id = generated_match_id
-  where id = me_row.id;
-
-  update public.battle_queue
-  set
-    status = 'matched',
-    opponent_user_id = me_row.user_id,
-    match_group_id = generated_match_id
-  where id = opponent_row.id;
-
-  select *
-  into me_row
-  from public.battle_queue
-  where id = p_queue_id;
-
-  return me_row;
-end;
-$$;
-
-revoke all on function public.attempt_matchmaking(uuid) from public;
-grant execute on function public.attempt_matchmaking(uuid) to authenticated;
+-- attempt_matchmaking 定義在 supabase/battles.sql（建立 battles 列並寫入 ai_tool_a/b）。
+-- 若曾單獨執行本檔舊版函式，請改執行 supabase/battle_queue_ai_tool.sql 以同步欄位與函式本體。

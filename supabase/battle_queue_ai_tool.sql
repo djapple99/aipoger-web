@@ -1,49 +1,12 @@
-create table if not exists public.battles (
-  id uuid primary key default gen_random_uuid(),
-  queue_a_id uuid not null references public.battle_queue(id) on delete restrict,
-  queue_b_id uuid not null references public.battle_queue(id) on delete restrict,
-  fighter_a_user_id uuid not null references auth.users(id) on delete restrict,
-  fighter_b_user_id uuid not null references auth.users(id) on delete restrict,
-  fighter_a_name text not null,
-  fighter_b_name text not null,
-  song_a_name text not null,
-  song_b_name text not null,
-  audio_a_path text not null,
-  audio_b_path text not null,
-  genre text not null,
-  status text not null default 'live' check (status in ('live', 'finished', 'cancelled')),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint battles_distinct_fighters check (fighter_a_user_id <> fighter_b_user_id),
-  constraint battles_distinct_queues check (queue_a_id <> queue_b_id)
-);
+-- battle_queue：每位鬥士使用的 AI 工具（供擂台顯示與寫入 battles.ai_tool_a/b）
+-- 請在 Supabase SQL Editor 執行（需已存在 mvp_points_and_levels 的 battles.ai_tool_* 欄位）。
 
-create index if not exists battles_status_created_idx
-on public.battles (status, created_at desc);
+alter table public.battle_queue
+  add column if not exists ai_tool text;
 
-alter table public.battles enable row level security;
+comment on column public.battle_queue.ai_tool is 'AI tool label for this queue row (e.g. Suno, Udio)';
 
-drop policy if exists "authenticated can read battles" on public.battles;
-create policy "authenticated can read battles"
-on public.battles
-for select
-to authenticated
-using (true);
-
-drop policy if exists "service can manage battles" on public.battles;
-create policy "service can manage battles"
-on public.battles
-for all
-to service_role
-using (true)
-with check (true);
-
-drop trigger if exists set_battles_updated_at on public.battles;
-create trigger set_battles_updated_at
-before update on public.battles
-for each row
-execute function public.set_updated_at();
-
+-- 配對成功建立 battles 時帶入雙方 AI 工具
 create or replace function public.attempt_matchmaking(p_queue_id uuid)
 returns public.battle_queue
 language plpgsql

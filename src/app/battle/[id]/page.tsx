@@ -34,6 +34,8 @@ type BattleData = {
   fighter_b_avatar: string | null;
   song_a_cover: string | null;
   song_b_cover: string | null;
+  ai_tool_a: string | null;
+  ai_tool_b: string | null;
   status: "live" | "finished" | "cancelled";
 };
 
@@ -48,6 +50,7 @@ function VinylDisc({
   isPlaying,
   onToggle,
   color,
+  aiTool,
 }: {
   label: string;
   fighterName: string;
@@ -56,6 +59,7 @@ function VinylDisc({
   isPlaying: boolean;
   onToggle: () => void;
   color: string;
+  aiTool: string | null;
 }) {
   return (
     <div className="flex flex-col items-center gap-5">
@@ -116,6 +120,11 @@ function VinylDisc({
       <div className="text-center">
         <p className="text-sm font-bold tracking-widest text-zinc-400">{fighterName}</p>
         <p className="mt-1 text-base font-semibold text-zinc-200">{songName}</p>
+        {aiTool ? (
+          <p className="mt-1.5 text-xs font-medium tracking-wide text-zinc-500">
+            🤖 {aiTool}
+          </p>
+        ) : null}
         <p className={`mt-1 text-xs ${isPlaying ? "text-orange-400" : "text-zinc-500"}`}>
           {isPlaying ? "播放中" : "待機中"}
         </p>
@@ -227,6 +236,8 @@ function BattleArenaContent() {
           fighter_b_avatar: null,
           song_a_cover: null,
           song_b_cover: null,
+          ai_tool_a: "Suno",
+          ai_tool_b: "Udio",
           status: "live",
         });
         setLoading(false);
@@ -261,6 +272,8 @@ function BattleArenaContent() {
         fighter_b_avatar: profileB?.avatar_url ?? null,
         song_a_cover: profileA?.song_cover_url ?? null,
         song_b_cover: profileB?.song_cover_url ?? null,
+        ai_tool_a: (bdata.ai_tool_a as string | null | undefined) ?? null,
+        ai_tool_b: (bdata.ai_tool_b as string | null | undefined) ?? null,
       });
       setLoading(false);
     };
@@ -519,6 +532,7 @@ function BattleArenaContent() {
               isPlaying={activeDeck === "A"}
               onToggle={() => handleToggleDeck("A")}
               color="#ff6a00"
+              aiTool={battle.ai_tool_a}
             />
             {/* 投票按鈕 */}
             <button
@@ -571,6 +585,7 @@ function BattleArenaContent() {
               isPlaying={activeDeck === "B"}
               onToggle={() => handleToggleDeck("B")}
               color="#3b82f6"
+              aiTool={battle.ai_tool_b}
             />
             <button
               type="button"

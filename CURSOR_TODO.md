@@ -7,33 +7,54 @@
 
 ## 🚨 優先任務（請先處理）
 
-### 1. 把其他頁面接上 i18n 雙語系統
-- **狀態：✅ 已完成** — `src/app/page.tsx`、`src/app/auth/page.tsx`、`src/components/nav-home-link.tsx` 已使用 `useI18n()`；字典在 `src/lib/i18n.tsx`。
-- **待做：** `/battle` 內嵌預覽頁其餘字串、`/battle/[id]`、`hook-cut` 內建 `T` 字典、`/auth/callback` 等可續接。
+## 🚨 優先任務
 
-### 2. 頭像上傳到 Supabase Storage
-- **狀態：✅ 已完成** — `src/app/battle/setup/page.tsx` 的 `uploadFile()` 上傳至 `battle-audio` bucket（路徑 `{userId}/avatar|cover.ext`）；請確認遠端已套用 `supabase/storage_battle_audio.sql`（含圖片 MIME）。
+### 1-2. i18n / 頭像上傳
+- **狀態：✅ 已完成**
 
-### 3. Supabase Realtime 啟用（重要！）
-- **狀態：⏳ 須在 Dashboard 手動操作**（無法由 repo 代開）
-- Supabase Dashboard → Database → Replication：啟用 Logical Replication，將 `battles`、`chat_messages`、`battle_votes` 加入 publication。  
-- 說明亦見 `supabase/chat_and_votes.sql` 檔頭註解。
+### 3. AI 工具標示（廣告商務核心 ⚠️）— 正在做
+- **`battles` 表新增欄位**：`ai_tool_a`、`ai_tool_b`（TEXT）
+- **Battle 擂台 UI**：每位參賽者的唱片下方顯示 `🤖 製作工具：{工具名}`
+- 若 setup 頁有「選擇 AI 工具」選項則串上；若沒有則直接在手動填入
+
+### 4. Supabase Realtime 啟用
+- **狀態：✅ 已完成** — `battles`、`chat_messages`、`battle_votes` 已啟用
+
+### 5. SQL Migration（點數+等級系統）
+- **狀態：✅ 已完成** — `user_profiles` 已有 `apc_balance`、`level`、`total_wins`、`total_losses`、`last_sign_in_at`、`ai_tool_preference`
 
 ---
 
 ## 📋 待辦任務（依序做）
 
-### 4. 首頁「觀戰聽歌」— 進行中的鬥歌列表
-- **狀態：✅ 已完成** — 造訪 `/battle`（無 `?matchId=`）會從 `battles` 撈 `status = 'live'`，每列連結至 `/battle/[id]` 即時擂台。
+### 6. 首頁「觀戰聽歌」— 進行中的鬥歌列表
+- **狀態：✅ 已完成**
 
-### 5. 投票功能完整串接
-- `/battle/[id]` 投票與 `cast_vote` RPC 行為與視覺回饋需再驗證（見該頁實作）。
+### 7. 投票功能完整串接
+- `/battle/[id]` 投票與 `cast_vote` RPC 行為與視覺回饋需再驗證。
 
-### 6. 每日簽到點數系統
+### 8. 每日簽到點數系統
 - `award_daily_login_points()` 等 RPC 接上首頁載入與 toast。
 
-### 7. 段位/天梯系統（PPT 15 級）
-- MVP 後再規劃。
+### 9. 來賓禮 1000 點 + 挑戰費扣 200 點
+- `award_signup_bonus()` RPC 需在使用者首次登入時觸發
+- 配對前需檢查 APC 餘額是否 ≥ 200，不夠則提示
+
+### 10. 等級顯示 + 贏家結算
+- 在使用者資料卡顯示 Lv. 等級名稱（中英對照見下）
+- 鬥歌結束後更新 `battles.winner` 並結算勝敗 + APC
+- 等級計算函數 `calculate_user_level(wins)` 已存在於 DB
+- 等級名稱對照：
+  - Lv.1 Signal Starter（訊號啟動者）
+  - Lv.2 Melody Crafter（旋律達人）
+  - Lv.3 Lyric Ghost（詞曲鬼匠）
+  - Lv.4 Rhythm Pilot（節奏動感領航員）
+  - Lv.5 Acoustic Philosopher（聲學哲學家）
+  - Lv.6 Spirit Pharaoh（靈性薩滿法老王）
+  - Lv.7 Symphony Pope（交響樂之教皇）
+  - Lv.8 Top 100 Titan（百大 DJ 泰坦）
+  - Lv.9 Melody Monarch（優美旋律之王）
+  - Lv.10 Pure Sound Master（音純大師）
 
 ---
 

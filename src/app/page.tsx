@@ -66,49 +66,75 @@ function userAvatarUrl(user: User): string | null {
 }
 
 function HomeAuthBar() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [session, setSession] = useState<Session | null>(null);
   const [aipoCoins, setAipoCoins] = useState<number | null>(null);
+  const [apcBalance, setApcBalance] = useState<number | null>(null);
+  const [levelLine, setLevelLine] = useState<string | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const forceShowLogin = process.env.NEXT_PUBLIC_FORCE_SHOW_LOGIN === "true";
 
-  const loadCoins = useCallback(async (userId: string) => {
-    setProfileLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("user_profiles")
-        .select("aipo_coins")
-        .eq("id", userId)
-        .maybeSingle();
+  const loadProfile = useCallback(
+    async (userId: string) => {
+      setProfileLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("user_profiles")
+          .select("aipo_coins, apc_balance, level")
+          .eq("id", userId)
+          .maybeSingle();
 
-      if (error) {
-        console.error(error);
-        setAipoCoins(0);
-        return;
+        if (error) {
+          console.error(error);
+          setAipoCoins(0);
+          setApcBalance(null);
+          setLevelLine(null);
+          return;
+        }
+
+        setAipoCoins(data?.aipo_coins ?? 0);
+        setApcBalance(typeof data?.apc_balance === "number" ? data.apc_balance : null);
+
+        const lv = data?.level;
+        if (typeof lv !== "number" || lv < 1) {
+          setLevelLine(null);
+          return;
+        }
+
+        const { data: info, error: rpcErr } = await supabase.rpc("get_level_info", { lv });
+        if (rpcErr || info == null) {
+          setLevelLine(`Lv.${lv}`);
+          return;
+        }
+        const row = info as { name_cn?: string; name_en?: string };
+        const name = lang === "en" ? (row.name_en ?? row.name_cn) : (row.name_cn ?? row.name_en);
+        setLevelLine(name ? `Lv.${lv} · ${name}` : `Lv.${lv}`);
+      } finally {
+        setProfileLoading(false);
       }
-      setAipoCoins(data?.aipo_coins ?? 0);
-    } finally {
-      setProfileLoading(false);
-    }
-  }, []);
+    },
+    [lang],
+  );
 
   useEffect(() => {
     let mounted = true;
     void supabase.auth.getSession().then(({ data: { session: s } }) => {
       if (!mounted) return;
       setSession(s);
-      if (s?.user) void loadCoins(s.user.id);
+      if (s?.user) void loadProfile(s.user.id);
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
-      if (s?.user) void loadCoins(s.user.id);
+      if (s?.user) void loadProfile(s.user.id);
       else {
         setAipoCoins(null);
+        setApcBalance(null);
+        setLevelLine(null);
       }
     });
 
@@ -116,7 +142,7 @@ function HomeAuthBar() {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [loadCoins]);
+  }, [loadProfile]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -158,6 +184,18 @@ function HomeAuthBar() {
         <p className="truncate text-sm font-bold tabular-nums text-[#ff6a00]">
           {profileLoading ? "…" : (aipoCoins ?? 0).toLocaleString()}
         </p>
+        {typeof apcBalance === "number" && (
+          <p className="mt-1 text-[10px] text-zinc-500">
+            {t("home_apc_balance")}{" "}
+            <span className="font-mono font-semibold text-zinc-300">{apcBalance.toLocaleString()}</span>
+          </p>
+        )}
+        {levelLine && (
+          <p className="mt-1 truncate text-[10px] leading-tight text-zinc-400">
+            <span className="text-zinc-500">{t("home_profile_level")} </span>
+            <span className="font-semibold text-zinc-200">{levelLine}</span>
+          </p>
+        )}
       </div>
 
       <div className="relative" ref={menuRef}>
@@ -189,6 +227,18 @@ function HomeAuthBar() {
               <p className="font-bold tabular-nums text-[#ff6a00]">
                 {profileLoading ? "…" : (aipoCoins ?? 0).toLocaleString()}
               </p>
+              {typeof apcBalance === "number" && (
+                <p className="mt-1 text-[10px] text-zinc-500">
+                  {t("home_apc_balance")}{" "}
+                  <span className="font-mono font-semibold text-zinc-300">{apcBalance.toLocaleString()}</span>
+                </p>
+              )}
+              {levelLine && (
+                <p className="mt-1 text-[10px] leading-tight text-zinc-400">
+                  <span className="text-zinc-500">{t("home_profile_level")} </span>
+                  <span className="font-semibold text-zinc-200">{levelLine}</span>
+                </p>
+              )}
             </div>
             <button
               type="button"

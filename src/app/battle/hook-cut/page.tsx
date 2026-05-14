@@ -38,6 +38,7 @@ const T = {
     success: '上傳成功！即將進入配對…',
     uploadError: '上傳失敗，請稍後再試',
     noFile: '請先上傳音檔並選擇 Hook 區間',
+    challengeFeeFail: 'APC 點數不足 200，無法進入配對。請先累積點數（每日簽到或來賓禮）。',
     decording: '解析音檔中…',
     playing: '播放中',
     fighter: '鬥士',
@@ -65,6 +66,7 @@ const T = {
     success: 'Uploaded! Entering matchmaking…',
     uploadError: 'Upload failed, please try again',
     noFile: 'Please upload audio and select a Hook region first',
+    challengeFeeFail: 'You need 200 APC to enter matchmaking. Earn points via daily check-in or signup bonus.',
     decording: 'Decoding audio…',
     playing: 'Playing',
     fighter: 'Fighter',
@@ -528,17 +530,42 @@ function HookCutContent() {
 
       setUploadPhase(t.uploadingSaving);
 
-      // 寫入 battle_queue（等待配對）
+      let queueIdForNav: string;
+
+      // 進配對前扣挑戰費 200 APC，並寫入佇列（含 AI 工具供擂台顯示）
       if (!isAuthBypassEnabled) {
-        const { error: queueError } = await supabase.from('battle_queue').insert({
-          user_id: userId,
-          fighter_name: fighterName,
-          genre,
-          audio_path: storagePath,
-          original_file_name: fileName,
-          status: 'waiting',
+        const { data: deducted, error: feeErr } = await supabase.rpc('deduct_challenge_fee', {
+          user_uuid: userId,
+          fee: 200,
         });
-        if (queueError) throw queueError;
+        if (feeErr) {
+          console.error(feeErr);
+          throw feeErr;
+        }
+        if (deducted !== true) {
+          alert(t.challengeFeeFail);
+          setUploadPhase(null);
+          return;
+        }
+
+        const { data: queueRow, error: queueError } = await supabase
+          .from('battle_queue')
+          .insert({
+            user_id: userId,
+            fighter_name: fighterName,
+            genre,
+            audio_path: storagePath,
+            original_file_name: songName.trim() || fileName,
+            ai_tool: aiTool.trim() || null,
+            status: 'waiting',
+          })
+          .select('id')
+          .single();
+
+        if (queueError || !queueRow?.id) throw queueError ?? new Error('queue insert failed');
+        queueIdForNav = queueRow.id;
+      } else {
+        queueIdForNav = `mock-${Date.now()}`;
       }
 
       setUploadPhase(t.success);
@@ -555,7 +582,7 @@ function HookCutContent() {
           hookDuration: (end - start).toFixed(2),
           lang,
           audioPath: storagePath,
-          queueId: isAuthBypassEnabled ? `mock-${Date.now()}` : 'pending',
+          queueId: queueIdForNav,
         });
         if (coverUrl) params.set('coverUrl', coverUrl);
         router.push(`/battle/matchmaking?${params.toString()}`);
