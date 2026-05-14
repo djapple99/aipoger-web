@@ -550,12 +550,6 @@ function HookCutContent() {
           setUploadPhase(null);
           return;
         }
-      }
-        if (deducted !== true) {
-          alert(t.challengeFeeFail);
-          setUploadPhase(null);
-          return;
-        }
 
         const { data: queueRow, error: queueError } = await supabase
           .from('battle_queue')
