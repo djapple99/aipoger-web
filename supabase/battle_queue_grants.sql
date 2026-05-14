@@ -9,5 +9,8 @@ grant usage on schema public to anon, authenticated;
 
 grant select, insert, update on table public.battle_queue to authenticated;
 
+-- hook-cut 上傳後會立刻呼叫 RPC（需函式已部署，見 battle_queue_ai_tool.sql / battles.sql）
+grant execute on function public.attempt_matchmaking(uuid) to authenticated;
+
 -- 若仍無法寫入，請確認 RLS policy 已建立（見 battle_matchmaking.sql）：
 --   "users can insert own queue row" / read / update

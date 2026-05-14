@@ -100,7 +100,10 @@ function MatchmakingContent() {
           p_queue_id: queueId,
         });
 
-        if (rpcError) return;
+        if (rpcError) {
+          console.error("[matchmaking] attempt_matchmaking", rpcError);
+          return;
+        }
 
         const { data: row } = await supabase
           .from("battle_queue")

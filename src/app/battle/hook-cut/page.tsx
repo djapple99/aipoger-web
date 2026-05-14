@@ -203,6 +203,12 @@ async function uploadHookWav(
   throw lastError;
 }
 
+type RpcQueueRow = {
+  id?: string;
+  status?: string;
+  match_group_id?: string | null;
+};
+
 // ─── 主要內容（Suspense 內才能用 useSearchParams）───────────
 
 function HookCutContent() {
@@ -561,6 +567,7 @@ function HookCutContent() {
       setUploadPhase(t.uploadingSaving);
 
       let queueIdForNav: string;
+      let nextPath: string;
 
 // 進配對前扣挑戰費 200 APC，並寫入佇列（含 AI 工具供擂台顯示）
       if (!isAuthBypassEnabled) {
@@ -624,15 +631,18 @@ function HookCutContent() {
           throw new Error("queue insert returned no id — 請在 Supabase 執行 supabase/battle_queue_grants.sql 並確認 battle_queue RLS");
         }
         queueIdForNav = first.id;
-      } else {
-        queueIdForNav = `mock-${Date.now()}`;
-      }
 
-      setUploadPhase(t.success);
+        const { data: rpcRaw, error: rpcErr } = await supabase.rpc("attempt_matchmaking", {
+          p_queue_id: queueIdForNav,
+        });
+        if (rpcErr) {
+          console.error("[hook-cut] attempt_matchmaking", rpcErr);
+          throw rpcErr;
+        }
+        const rpcRow = (Array.isArray(rpcRaw) ? rpcRaw[0] : rpcRaw) as RpcQueueRow | null;
+        console.log("[hook-cut] attempt_matchmaking result", rpcRow);
 
-      // 跳轉配對頁
-      setTimeout(() => {
-        const params = new URLSearchParams({
+        const mmParams = new URLSearchParams({
           fighterName,
           songName,
           genre,
@@ -644,8 +654,34 @@ function HookCutContent() {
           audioPath: storagePath,
           queueId: queueIdForNav,
         });
-        if (coverUrl) params.set('coverUrl', coverUrl);
-        router.push(`/battle/matchmaking?${params.toString()}`);
+        if (coverUrl) mmParams.set("coverUrl", coverUrl);
+
+        nextPath =
+          rpcRow?.status === "matched" && rpcRow.match_group_id
+            ? `/battle/${rpcRow.match_group_id}`
+            : `/battle/matchmaking?${mmParams.toString()}`;
+      } else {
+        queueIdForNav = `mock-${Date.now()}`;
+        const mmParams = new URLSearchParams({
+          fighterName,
+          songName,
+          genre,
+          aiTool,
+          hookStart: start.toFixed(2),
+          hookEnd: end.toFixed(2),
+          hookDuration: (end - start).toFixed(2),
+          lang,
+          audioPath: storagePath,
+          queueId: queueIdForNav,
+        });
+        if (coverUrl) mmParams.set("coverUrl", coverUrl);
+        nextPath = `/battle/matchmaking?${mmParams.toString()}`;
+      }
+
+      setUploadPhase(t.success);
+
+      setTimeout(() => {
+        router.push(nextPath);
       }, 1200);
     } catch (err) {
       console.error("Upload failed:", err);
