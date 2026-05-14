@@ -2,11 +2,11 @@
 -- Realtime（Supabase Dashboard）
 -- ------------------------------------------------------------
 -- 若前端使用 postgres_changes 訂閱 chat_messages / battle_votes / battles，
--- 請在 Project Settings → Database → Replication（或 Realtime 設定）中
--- 啟用 Logical Replication，並將下列表加入 publication（常見名稱：supabase_realtime）：
+-- 本檔末尾會將下列表加入 publication supabase_realtime（可重複執行，已存在則略過）：
 --   public.battles
 --   public.chat_messages
 --   public.battle_votes
+-- 若仍無事件，請在 Dashboard 確認 Realtime 已啟用、且表已出現在 Database → Publications。
 -- ============================================================
 -- chat_messages：鬥歌場即時聊天訊息
 -- ============================================================
@@ -197,3 +197,40 @@ $$;
 
 revoke all on function public.cast_vote(uuid, text) from public;
 grant execute on function public.cast_vote(uuid, text) to authenticated;
+
+-- ============================================================
+-- Realtime publication（可重複執行）
+-- ------------------------------------------------------------
+-- 將表加入 supabase_realtime，postgres_changes 才能收到 INSERT/UPDATE。
+-- 若專案尚未建立 publication（極少見），請先在 Dashboard 啟用 Realtime。
+-- Dashboard：Database → Publications，或舊版 Replication 設定。
+-- ============================================================
+do $pub$
+begin
+  alter publication supabase_realtime add table public.battles;
+exception
+  when duplicate_object then null;
+  when undefined_object then
+    raise notice 'publication supabase_realtime missing; enable Realtime in Dashboard';
+end
+$pub$;
+
+do $pub$
+begin
+  alter publication supabase_realtime add table public.chat_messages;
+exception
+  when duplicate_object then null;
+  when undefined_object then
+    raise notice 'publication supabase_realtime missing; enable Realtime in Dashboard';
+end
+$pub$;
+
+do $pub$
+begin
+  alter publication supabase_realtime add table public.battle_votes;
+exception
+  when duplicate_object then null;
+  when undefined_object then
+    raise notice 'publication supabase_realtime missing; enable Realtime in Dashboard';
+end
+$pub$;
