@@ -169,6 +169,40 @@ function audioBufferToWav(buffer: AudioBuffer): Blob {
   return new Blob([header, body], { type: 'audio/wav' });
 }
 
+/** Supabase Storage 依 bucket allowed_mime_types 驗證 Content-Type；失敗時可改試常見 WAV 別名 */
+function isLikelyStorageMimeRejection(err: unknown): boolean {
+  const msg = String((err as { message?: string })?.message ?? err).toLowerCase();
+  return (
+    msg.includes('mime') ||
+    (msg.includes('invalid') && msg.includes('type')) ||
+    msg.includes('not allowed') ||
+    msg.includes('unsupported') ||
+    msg.includes('415')
+  );
+}
+
+async function uploadHookWav(
+  storagePath: string,
+  wavBlob: Blob,
+  fileName: string,
+): Promise<void> {
+  const mimeAttempts = ['audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave'] as const;
+  let lastError: unknown;
+
+  for (const contentType of mimeAttempts) {
+    const body = new File([wavBlob], fileName, { type: contentType });
+    const { error } = await supabase.storage.from('battle-audio').upload(storagePath, body, {
+      contentType,
+      upsert: false,
+    });
+    if (!error) return;
+    lastError = error;
+    if (!isLikelyStorageMimeRejection(error)) break;
+  }
+
+  throw lastError;
+}
+
 // ─── 主要內容（Suspense 內才能用 useSearchParams）───────────
 
 function HookCutContent() {
@@ -520,13 +554,9 @@ function HookCutContent() {
         ? mockUserId
         : (await supabase.auth.getSession()).data.session?.user.id ?? mockUserId;
 
-      // 上傳到 Supabase Storage
+      // 上傳到 Supabase Storage（WAV MIME 與 bucket 白名單一致；失敗時自動試別名）
       const storagePath = `${userId}/hooks/${fileName}`;
-      const { error: uploadError } = await supabase.storage
-        .from('battle-audio')
-        .upload(storagePath, wavBlob, { contentType: 'audio/wav', upsert: false });
-
-      if (uploadError) throw uploadError;
+      await uploadHookWav(storagePath, wavBlob, fileName);
 
       setUploadPhase(t.uploadingSaving);
 

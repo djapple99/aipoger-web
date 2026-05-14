@@ -4,8 +4,12 @@ values (
   'battle-audio',
   false,
   52428800,
-  array['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/x-m4a', 'audio/ogg', 'audio/webm',
-        'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif']
+  array[
+    'audio/mpeg', 'audio/mp4', 'audio/x-m4a', 'audio/ogg', 'audio/webm',
+    -- WAV：不同瀏覽器／Storage 驗證可能只認其中一種
+    'audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave',
+    'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif'
+  ]
 )
 on conflict (id) do update
 set
