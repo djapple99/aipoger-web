@@ -8,7 +8,8 @@ interface I18nContextValue {
   lang: Lang;
   setLang: (l: Lang) => void;
   toggleLang: () => void;
-  t: (key: string) => string;
+  /** 可選 `vars`：將字串中的 `{{key}}` 取代為對應值（例如 `{{count}}`）。 */
+  t: (key: string, vars?: Record<string, string | number>) => string;
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null);
@@ -104,6 +105,18 @@ const dict: Record<Lang, Record<string, string>> = {
     battle_list_title: '鬥歌場',
     battle_back_home: '返回首頁',
     first_attack: '先攻',
+
+    arena_viewers: '觀戰 {{n}} 人',
+    battle_not_found: '找不到這場戰鬥',
+    battle_load_failed: '載入失敗',
+    battle_back_home_link: '返回首頁',
+    battle_vote_duplicate: '你已經投過票了！',
+    battle_vote_total: '{{count}} 票已投',
+    battle_wait_votes: '等待投票',
+    battle_chat_title: '💬 實時彈幕',
+    battle_deck_vote_line: '{{n}} 票',
+    deck_play_aria: '播放',
+    deck_pause_aria: '暫停',
   },
   en: {
     home_title: 'AIPOGER',
@@ -195,6 +208,18 @@ const dict: Record<Lang, Record<string, string>> = {
     battle_list_title: 'Battle hall',
     battle_back_home: 'Back to home',
     first_attack: 'First attack',
+
+    arena_viewers: '{{n}} watching',
+    battle_not_found: 'This battle was not found.',
+    battle_load_failed: 'Could not load the arena.',
+    battle_back_home_link: 'Back to home',
+    battle_vote_duplicate: 'You have already voted.',
+    battle_vote_total: '{{count}} votes cast',
+    battle_wait_votes: 'Waiting for votes',
+    battle_chat_title: '💬 Live chat',
+    battle_deck_vote_line: '{{n}} votes',
+    deck_play_aria: 'Play',
+    deck_pause_aria: 'Pause',
   },
 };
 
@@ -220,8 +245,14 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   }, [lang, setLang]);
 
   const t = useCallback(
-    (key: string): string => {
-      return dict[lang][key] ?? key;
+    (key: string, vars?: Record<string, string | number>): string => {
+      let s = dict[lang][key] ?? key;
+      if (vars) {
+        for (const [k, v] of Object.entries(vars)) {
+          s = s.replaceAll(`{{${k}}}`, String(v));
+        }
+      }
+      return s;
     },
     [lang],
   );

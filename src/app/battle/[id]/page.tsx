@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { FormEvent, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { isAuthBypassEnabled, mockUserId } from "@/lib/auth-bypass";
+import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
 
 type SenderType = "audience" | "fighter_a" | "fighter_b";
@@ -61,6 +62,7 @@ function VinylDisc({
   color: string;
   aiTool: string | null;
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex flex-col items-center gap-5">
       {/* 唱片外框 */}
@@ -70,7 +72,7 @@ function VinylDisc({
         role="button"
         tabIndex={0}
         onKeyDown={(e) => e.key === " " && onToggle()}
-        aria-label={isPlaying ? "暫停" : "播放"}
+        aria-label={isPlaying ? t("deck_pause_aria") : t("deck_play_aria")}
       >
         {/* 外圈 */}
         <div
@@ -174,6 +176,7 @@ function ChatBubble({ msg, currentUserId }: { msg: ChatMessage; currentUserId: s
 // ─── 主內容（useParams 需在 Suspense 內）───────────────────
 
 function BattleArenaContent() {
+  const { t } = useI18n();
   const router = useRouter();
   const params = useParams();
   const battleId = (params?.id as string) ?? "";
@@ -254,7 +257,11 @@ function BattleArenaContent() {
       if (!mounted) return;
       if (battleError || !data) {
         console.error("[battle load]", battleError);
-        setError(battleError?.message ?? "找不到這場戰鬥");
+        if (!data || battleError?.code === "PGRST116") {
+          setError("i18n:battle_not_found");
+        } else {
+          setError(battleError?.message ?? "i18n:battle_load_failed");
+        }
         setLoading(false);
         return;
       }
@@ -284,7 +291,7 @@ function BattleArenaContent() {
     return () => {
       mounted = false;
     };
-  }, [battleId]);
+  }, [battleId, t]);
 
   // ── Storage signed URL（雙方音檔；RLS 需允許讀取 battle 引用路徑）────
   useEffect(() => {
@@ -538,7 +545,7 @@ function BattleArenaContent() {
 
     if (voteError) {
       if (voteError.message.includes("already voted")) {
-        alert("你已經投過票了！");
+        alert(t("battle_vote_duplicate"));
       }
       return;
     }
@@ -554,19 +561,20 @@ function BattleArenaContent() {
       <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] text-orange-400">
         <div className="text-center">
           <div className="h-12 w-12 animate-spin rounded-full border-4 border-orange-500 border-t-transparent" />
-          <p className="mt-4 text-sm tracking-widest">載入擂台上…</p>
+          <p className="mt-4 text-sm tracking-widest">{t("battle_loading")}</p>
         </div>
       </div>
     );
   }
 
   if (error || !battle) {
+    const errText = error?.startsWith("i18n:") ? t(error.slice(6)) : (error ?? t("battle_load_failed"));
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] text-zinc-400">
         <div className="text-center">
-          <p className="text-2xl">⚠️ {error ?? "載入失敗"}</p>
+          <p className="text-2xl">⚠️ {errText}</p>
           <Link href="/" className="mt-6 inline-block rounded-xl border border-zinc-700 px-6 py-3 text-sm hover:border-orange-500">
-            返回首頁
+            {t("battle_back_home_link")}
           </Link>
         </div>
       </div>
@@ -579,11 +587,23 @@ function BattleArenaContent() {
       <header className="sticky top-0 z-30 grid grid-cols-3 items-center border-b border-zinc-800 bg-[#0a0a0a]/90 px-4 py-3 backdrop-blur">
         <div className="min-w-0">
           <p className="text-[10px] tracking-[0.4em] text-zinc-600">AIPOGER</p>
-          <h1 className="truncate text-lg font-bold tracking-widest text-zinc-200">🎤 鬥歌擂台</h1>
+          <h1 className="truncate text-lg font-bold tracking-widest text-zinc-200">{t("battle_title")}</h1>
         </div>
         <div className="flex justify-center">
           <div className="rounded-full border border-zinc-700 bg-zinc-900/80 px-3 py-1.5 text-center text-[10px] tracking-wider text-zinc-400">
-            觀戰 <span className="font-bold text-orange-400">{viewerCount}</span> 人
+            {(() => {
+              const parts = t("arena_viewers").split("{{n}}");
+              if (parts.length === 2) {
+                return (
+                  <>
+                    {parts[0]}
+                    <span className="font-bold text-orange-400">{viewerCount}</span>
+                    {parts[1]}
+                  </>
+                );
+              }
+              return t("arena_viewers", { n: viewerCount });
+            })()}
           </div>
         </div>
         <div className="flex justify-end">
@@ -591,7 +611,7 @@ function BattleArenaContent() {
             href="/"
             className="rounded-xl border border-zinc-700 px-4 py-2 text-xs tracking-wider text-zinc-400 transition hover:border-orange-500 hover:text-orange-400"
           >
-            ← 首頁
+            {t("battle_back")}
           </Link>
         </div>
       </header>
@@ -603,7 +623,7 @@ function BattleArenaContent() {
           {/* A 隊 */}
           <div className="flex flex-col items-center rounded-3xl border border-zinc-800 bg-zinc-900/50 p-6">
             <VinylDisc
-              label="DECK A"
+              label={t("deck_a")}
               fighterName={battle.fighter_a_name}
               songName={battle.song_a_name}
               coverUrl={battle.song_a_cover ?? battle.fighter_a_avatar ?? null}
@@ -625,12 +645,12 @@ function BattleArenaContent() {
                     : "border-orange-500/50 bg-zinc-800 text-orange-400 hover:bg-orange-500/20 hover:border-orange-500"
               }`}
             >
-              {hasVoted === "fighter_a" ? "✓ 已投票" : "投票給 A 隊"}
+              {hasVoted === "fighter_a" ? t("voted") : t("vote_a")}
             </button>
             {/* 票數進度 */}
             <div className="mt-3 w-full">
               <div className="flex justify-between text-[10px] text-zinc-500">
-                <span>{votes.fighter_a} 票</span>
+                <span>{t("battle_deck_vote_line", { n: votes.fighter_a })}</span>
                 <span>{pctA}%</span>
               </div>
               <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
@@ -644,11 +664,11 @@ function BattleArenaContent() {
             <div className="flex flex-col items-center">
               <p className="text-6xl font-black text-orange-500 md:text-8xl">VS</p>
               <p className="mt-2 text-[10px] tracking-widest text-zinc-600">
-                {totalVotes === 0 ? "等待投票" : `${totalVotes} 票已投`}
+                {totalVotes === 0 ? t("battle_wait_votes") : t("battle_vote_total", { count: totalVotes })}
               </p>
             </div>
             <div className="flex flex-col gap-2 text-center">
-              <p className="text-xs text-zinc-500">先攻</p>
+              <p className="text-xs text-zinc-500">{t("first_attack")}</p>
               <p className="text-sm font-bold text-orange-400">A</p>
             </div>
           </div>
@@ -656,7 +676,7 @@ function BattleArenaContent() {
           {/* B 隊 */}
           <div className="flex flex-col items-center rounded-3xl border border-zinc-800 bg-zinc-900/50 p-6">
             <VinylDisc
-              label="DECK B"
+              label={t("deck_b")}
               fighterName={battle.fighter_b_name}
               songName={battle.song_b_name}
               coverUrl={battle.song_b_cover ?? battle.fighter_b_avatar ?? null}
@@ -677,11 +697,11 @@ function BattleArenaContent() {
                     : "border-blue-500/50 bg-zinc-800 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500"
               }`}
             >
-              {hasVoted === "fighter_b" ? "✓ 已投票" : "投票給 B 隊"}
+              {hasVoted === "fighter_b" ? t("voted") : t("vote_b")}
             </button>
             <div className="mt-3 w-full">
               <div className="flex justify-between text-[10px] text-zinc-500">
-                <span>{votes.fighter_b} 票</span>
+                <span>{t("battle_deck_vote_line", { n: votes.fighter_b })}</span>
                 <span>{pctB}%</span>
               </div>
               <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
@@ -693,13 +713,13 @@ function BattleArenaContent() {
 
         {/* 聊天區 */}
         <section className="mt-8 rounded-3xl border border-zinc-800 bg-zinc-900/50 p-4">
-          <h2 className="mb-3 text-xs font-semibold tracking-widest text-zinc-500">💬 實時彈幕</h2>
+          <h2 className="mb-3 text-xs font-semibold tracking-widest text-zinc-500">{t("battle_chat_title")}</h2>
           <div
             ref={chatContainerRef}
             className="flex h-[200px] flex-col gap-2 overflow-y-auto rounded-2xl bg-black/50 p-4 scrollbar-thin scrollbar-thumb-zinc-700"
           >
             {messages.length === 0 && (
-              <p className="text-center text-xs text-zinc-600">還沒有人留言，快來發言！</p>
+              <p className="text-center text-xs text-zinc-600">{t("no_messages")}</p>
             )}
             {messages.map((msg) => (
               <ChatBubble key={msg.id} msg={msg} currentUserId={myUserId} />
@@ -710,7 +730,7 @@ function BattleArenaContent() {
             <input
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
-              placeholder="說點什麼…"
+              placeholder={t("chat_placeholder")}
               maxLength={200}
               className="flex-1 rounded-xl border border-zinc-700 bg-black/60 px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-600 focus:border-orange-500 focus:outline-none"
             />
@@ -719,7 +739,7 @@ function BattleArenaContent() {
               disabled={!chatInput.trim()}
               className="rounded-xl bg-orange-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              發送
+              {t("chat_send")}
             </button>
           </form>
         </section>
@@ -734,15 +754,18 @@ function BattleArenaContent() {
 
 // ─── Page export（只負責 Suspense 包裝）───────────────────
 
+function BattleArenaSuspenseFallback() {
+  const { t } = useI18n();
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] text-orange-400 text-sm tracking-widest">
+      {t("common_loading")}
+    </div>
+  );
+}
+
 export default function BattleArenaPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] text-orange-400 text-sm tracking-widest">
-          載入中…
-        </div>
-      }
-    >
+    <Suspense fallback={<BattleArenaSuspenseFallback />}>
       <BattleArenaContent />
     </Suspense>
   );
