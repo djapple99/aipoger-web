@@ -1,3 +1,9 @@
+-- =============================================================================
+-- ONE-SHOT: MVP 欄位／函式 + Realtime publication（僅供 SQL Editor 整份貼上執行）
+-- 前置：已存在 public.battles、public.user_profiles、public.chat_messages、public.battle_votes
+-- 產生方式：cat mvp_points_and_levels.sql + chat_and_votes.sql 201-236（勿手改本檔，改源檔後請重新產生）
+-- =============================================================================
+
 -- AIPOGER MVP：battles / user_profiles 欄位升級 + APC 點數與等級
 -- 請在 Supabase Dashboard → SQL Editor 執行（建議在 user_profiles.sql、battles.sql、user_profiles_aipo_coins.sql 之後）。
 -- 執行完再跑 supabase/chat_and_votes.sql（含 Realtime publication 段落），或改貼「整包」：supabase/one_shot_mvp_and_publication.sql
@@ -276,3 +282,41 @@ $$;
 
 REVOKE ALL ON FUNCTION public.get_level_info(integer) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_level_info(integer) TO authenticated;
+
+-- ---- Realtime publication（與 chat_and_votes.sql 末尾相同）----
+-- ============================================================
+-- Realtime publication（可重複執行）
+-- ------------------------------------------------------------
+-- 將表加入 supabase_realtime，postgres_changes 才能收到 INSERT/UPDATE。
+-- 若專案尚未建立 publication（極少見），請先在 Dashboard 啟用 Realtime。
+-- Dashboard：Database → Publications，或舊版 Replication 設定。
+-- ============================================================
+do $pub$
+begin
+  alter publication supabase_realtime add table public.battles;
+exception
+  when duplicate_object then null;
+  when undefined_object then
+    raise notice 'publication supabase_realtime missing; enable Realtime in Dashboard';
+end
+$pub$;
+
+do $pub$
+begin
+  alter publication supabase_realtime add table public.chat_messages;
+exception
+  when duplicate_object then null;
+  when undefined_object then
+    raise notice 'publication supabase_realtime missing; enable Realtime in Dashboard';
+end
+$pub$;
+
+do $pub$
+begin
+  alter publication supabase_realtime add table public.battle_votes;
+exception
+  when duplicate_object then null;
+  when undefined_object then
+    raise notice 'publication supabase_realtime missing; enable Realtime in Dashboard';
+end
+$pub$;
