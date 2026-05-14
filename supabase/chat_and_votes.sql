@@ -1,4 +1,13 @@
 -- ============================================================
+-- Realtime（Supabase Dashboard）
+-- ------------------------------------------------------------
+-- 若前端使用 postgres_changes 訂閱 chat_messages / battle_votes / battles，
+-- 請在 Project Settings → Database → Replication（或 Realtime 設定）中
+-- 啟用 Logical Replication，並將下列表加入 publication（常見名稱：supabase_realtime）：
+--   public.battles
+--   public.chat_messages
+--   public.battle_votes
+-- ============================================================
 -- chat_messages：鬥歌場即時聊天訊息
 -- ============================================================
 create table if not exists public.chat_messages (

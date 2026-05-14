@@ -5,6 +5,7 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { isAuthBypassEnabled, mockUserId } from '@/lib/auth-bypass';
+import { useI18n } from '@/lib/i18n';
 
 type GenreOption = { value: string; label: string };
 
@@ -20,8 +21,24 @@ const AI_TOOLS = [
   'Suno', 'Udio', 'Lyria', 'Mureka', 'AceStudio', 'MiniMax', 'ElevenLabs', '其他',
 ];
 
+function imageContentType(file: File): string {
+  if (file.type && file.type.startsWith('image/')) return file.type;
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+  const map: Record<string, string> = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    gif: 'image/gif',
+    heic: 'image/heic',
+    heif: 'image/heif',
+  };
+  return map[ext] ?? 'image/jpeg';
+}
+
 export default function BattleSetupPage() {
   const router = useRouter();
+  const { t } = useI18n();
 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
@@ -68,19 +85,25 @@ export default function BattleSetupPage() {
   const uploadFile = async (file: File, userId: string, type: 'avatar' | 'cover'): Promise<string | null> => {
     const ext = file.name.split('.').pop() ?? 'jpg';
     const path = `${userId}/${type}.${ext}`;
+    const contentType = imageContentType(file);
 
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from('battle-audio')
-      .upload(path, file, { upsert: true });
+      .upload(path, file, { upsert: true, contentType });
 
     if (error) {
       console.error(`Upload ${type} failed:`, error);
       return null;
     }
 
-    const { data: signed } = await supabase.storage
+    const { data: signed, error: signErr } = await supabase.storage
       .from('battle-audio')
       .createSignedUrl(path, 60 * 60 * 24 * 365); // 1年有效期
+
+    if (signErr) {
+      console.error(`Signed URL ${type}:`, signErr);
+      return null;
+    }
 
     return signed?.signedUrl ?? null;
   };
@@ -116,27 +139,47 @@ export default function BattleSetupPage() {
     setUploadProgress('準備上傳…');
 
     try {
-      const userId = isAuthBypassEnabled
-        ? mockUserId
-        : (await supabase.auth.getSession()).data.session?.user.id ?? mockUserId;
-
-      // 上傳頭像
-      let avatarUrl: string | null = null;
-      if (avatarFile) {
-        setUploadProgress('上傳頭像…');
-        avatarUrl = await uploadFile(avatarFile, userId, 'avatar');
+      let userId: string;
+      if (isAuthBypassEnabled) {
+        userId = mockUserId;
+      } else {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session?.user) {
+          alert(t('setup_need_login'));
+          router.push('/auth');
+          setUploading(false);
+          return;
+        }
+        userId = session.user.id;
       }
 
-      // 上傳封面
+      // 上傳頭像（略過遠端儲存：開發 bypass 無有效 JWT，無法通過 Storage RLS）
+      let avatarUrl: string | null = null;
+      if (avatarFile && !isAuthBypassEnabled) {
+        setUploadProgress('上傳頭像…');
+        avatarUrl = await uploadFile(avatarFile, userId, 'avatar');
+        if (!avatarUrl) {
+          alert(t('storage_upload_failed'));
+          setUploading(false);
+          return;
+        }
+      }
+
       let coverUrl: string | null = null;
-      if (coverFile) {
+      if (coverFile && !isAuthBypassEnabled) {
         setUploadProgress('上傳封面…');
         coverUrl = await uploadFile(coverFile, userId, 'cover');
+        if (!coverUrl) {
+          alert(t('storage_upload_failed'));
+          setUploading(false);
+          return;
+        }
       }
 
       setUploadProgress('儲存資料…');
 
-      // 儲存 fighter_profiles
       if (!isAuthBypassEnabled) {
         await saveFighterProfile(userId, fighterName.trim(), avatarUrl, coverUrl);
       }
