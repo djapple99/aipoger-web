@@ -184,16 +184,17 @@ export default function BattleSetupPage() {
         await saveFighterProfile(userId, fighterName.trim(), avatarUrl, coverUrl);
       }
 
-      setUploadProgress('完成！即將進入配對…');
+      setUploadProgress('完成！即將進入 Hook 裁切…');
 
+      // 正確：先去 hook-cut 裁切音檔
       const params = new URLSearchParams({
         fighterName: fighterName.trim(),
         songName: songName.trim(),
         genre,
         aiTool: finalAiTool,
-        ...(coverUrl ? { coverUrl } : {}),
       });
-      router.push(`/battle/matchmaking?${params.toString()}`);
+      if (coverUrl) params.set('coverUrl', coverUrl);
+      router.push(`/battle/hook-cut?${params.toString()}`);
     } catch (err) {
       console.error(err);
       alert('上傳失敗，請稍後再試');
