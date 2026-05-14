@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
+import { useI18n } from "@/lib/i18n";
 import type { Session, User } from "@supabase/supabase-js";
 
 const SPLASH_STEPS = {
@@ -65,6 +66,7 @@ function userAvatarUrl(user: User): string | null {
 }
 
 function HomeAuthBar() {
+  const { t } = useI18n();
   const [session, setSession] = useState<Session | null>(null);
   const [aipoCoins, setAipoCoins] = useState<number | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -141,7 +143,7 @@ function HomeAuthBar() {
         href="/auth"
         className="inline-flex items-center gap-2 rounded-2xl border border-zinc-600 bg-zinc-950/90 px-4 py-2.5 text-sm font-semibold text-zinc-100 shadow-lg backdrop-blur transition hover:border-[#ff6a00] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00]"
       >
-        登入
+        {t("login")}
       </Link>
     );
   }
@@ -150,9 +152,9 @@ function HomeAuthBar() {
     <div className="flex items-center gap-3">
       <div
         className="hidden min-w-0 sm:block rounded-2xl border border-zinc-700/80 bg-zinc-950/80 px-3 py-2 text-right shadow-lg backdrop-blur"
-        title="AIPO Coin 餘額"
+        title={t("home_coin_tooltip")}
       >
-        <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">AIPO Coin</p>
+        <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">{t("aipo_coin")}</p>
         <p className="truncate text-sm font-bold tabular-nums text-[#ff6a00]">
           {profileLoading ? "…" : (aipoCoins ?? 0).toLocaleString()}
         </p>
@@ -165,7 +167,7 @@ function HomeAuthBar() {
           className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border-2 border-zinc-600 bg-zinc-900 shadow-lg transition hover:border-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00]"
           aria-expanded={menuOpen}
           aria-haspopup="menu"
-          aria-label="帳戶選單"
+          aria-label={t("home_account_menu_aria")}
         >
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -183,7 +185,7 @@ function HomeAuthBar() {
             className="absolute right-0 mt-2 w-44 overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-950 py-1 shadow-xl ring-1 ring-black/40"
           >
             <div className="border-b border-zinc-800 px-3 py-2 sm:hidden">
-              <p className="text-[10px] uppercase tracking-wider text-zinc-500">AIPO Coin</p>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-500">{t("aipo_coin")}</p>
               <p className="font-bold tabular-nums text-[#ff6a00]">
                 {profileLoading ? "…" : (aipoCoins ?? 0).toLocaleString()}
               </p>
@@ -194,7 +196,7 @@ function HomeAuthBar() {
               onClick={() => void handleSignOut()}
               className="w-full px-3 py-2.5 text-left text-sm text-zinc-200 transition hover:bg-zinc-800 hover:text-white"
             >
-              登出
+              {t("logout")}
             </button>
           </div>
         )}
@@ -204,6 +206,7 @@ function HomeAuthBar() {
 }
 
 export default function HomePage() {
+  const { t } = useI18n();
   const [isSplashFinished, setIsSplashFinished] = useState(false);
   const [phase, setPhase] = useState<SplashPhase>("fadeIn");
 
@@ -234,7 +237,7 @@ export default function HomePage() {
         <div className={`transition-opacity duration-700 ${splashOpacity}`}>
           <Image
             src="/logo.png"
-            alt="AIPOGER Logo"
+            alt={t("home_logo_alt")}
             width={440}
             height={440}
             priority
@@ -258,14 +261,12 @@ export default function HomePage() {
           <p className="text-[clamp(3rem,10vw,9rem)] font-black uppercase leading-[0.85] tracking-tight text-zinc-100">
             AIPOGER
           </p>
-          <p className="mt-3 text-sm text-zinc-400 md:text-xl">Where AI Beats Bleed.</p>
+          <p className="mt-3 text-sm text-zinc-400 md:text-xl">{t("home_subtitle")}</p>
 
           <h1 className="mt-8 text-[clamp(3.3rem,13vw,10rem)] font-black leading-[0.88] tracking-tight text-zinc-100">
-            愛播歌
+            {t("home_secondary_title")}
           </h1>
-          <p className="mt-4 text-sm text-zinc-300 md:text-2xl">
-            在 AI 節奏交鋒之處，流淌著真實的音樂血液
-          </p>
+          <p className="mt-4 text-sm text-zinc-300 md:text-2xl">{t("home_tagline")}</p>
         </div>
 
         <div className="md:col-span-4 md:pb-4">
@@ -276,7 +277,7 @@ export default function HomePage() {
             >
               <BattleIcon />
               <span className="text-2xl font-bold tracking-[0.08em] text-red-500 transition group-hover:text-red-400">
-                我要鬥歌
+                {t("btn_battle")}
               </span>
             </Link>
 
@@ -286,7 +287,7 @@ export default function HomePage() {
             >
               <WatchIcon />
               <span className="text-2xl font-bold tracking-[0.08em] text-red-500 transition group-hover:text-red-400">
-                觀戰聽歌
+                {t("btn_watch")}
               </span>
             </Link>
           </div>

@@ -5,8 +5,19 @@ import Image from "next/image";
 import { useEffect, useState, Suspense } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useI18n } from "@/lib/i18n";
+
+function AuthLoadingFallback() {
+  const { t } = useI18n();
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-black text-zinc-400">
+      {t("common_loading")}
+    </div>
+  );
+}
 
 function AuthPageInner() {
+  const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -16,9 +27,9 @@ function AuthPageInner() {
 
   useEffect(() => {
     if (searchParams.get("error")) {
-      setError("登入發生錯誤，請再試一次");
+      setError(t("auth_error"));
     }
-  }, [searchParams]);
+  }, [searchParams, t]);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -60,7 +71,7 @@ function AuthPageInner() {
 
     if (oauthError) {
       console.error(oauthError);
-      setError("登入發生錯誤，請再試一次");
+      setError(t("auth_error"));
       setLoading(false);
     }
   };
@@ -72,35 +83,33 @@ function AuthPageInner() {
           <div className="mx-auto flex max-w-[240px] justify-center sm:max-w-[280px]">
             <Image
               src="/logo.png"
-              alt="AIPOGER 愛播歌"
+              alt={t("home_logo_alt")}
               width={280}
               height={280}
               priority
               className="h-auto w-full max-h-[min(88vw,280px)] max-w-[min(88vw,280px)] object-contain sm:max-h-[280px] sm:max-w-[280px]"
             />
           </div>
-          <p className="mt-5 text-xl text-zinc-400 sm:mt-6">Where AI Beats Bleed.</p>
+          <p className="mt-5 text-xl text-zinc-400 sm:mt-6">{t("login_subtitle")}</p>
         </div>
 
         <div className="rounded-3xl border border-zinc-700 bg-zinc-900 p-8 text-sm leading-relaxed">
-          <h2 className="mb-5 text-lg font-semibold text-yellow-400">免則聲明（請務必閱讀）</h2>
+          <h2 className="mb-5 text-lg font-semibold text-yellow-400">{t("disclaimer_title")}</h2>
           <ul className="space-y-4 text-[15px] text-zinc-300">
             <li className="rounded-2xl border border-red-500/40 bg-red-500/10 p-4 font-medium leading-relaxed text-red-300">
-              • 不得上傳任何受版權保護的歌曲，您必須確保上傳的所有歌曲都是使用 AI 工具生成的
-              <strong className="text-red-200">原創作品</strong>
-              ，版權完全屬於您本人。若違反將立即下架並可能封鎖帳號。
+              • {t("disclaimer_1")}
             </li>
-            <li>• 無論點擊鬥歌還是聽眾，都會進入免則聲明與登入帳號</li>
-            <li>• 建議使用 Google 或社群 FB / Discord 認證，避免信箱註冊產生水軍</li>
-            <li>• 選擇鬥歌者勝利的一方，系統會詢問是否願意提供歌曲作為首頁輪播歌單之一</li>
-            <li>• 版權仍完全屬於您本人，我們僅取得首頁輪播使用權</li>
-            <li>• 您可隨時寫信要求下架，我們會立即處理</li>
-            <li className="text-red-400">• 鬥歌場上傳的歌曲，我們會協助記錄上傳時間作為原創證明</li>
+            <li>• {t("disclaimer_2")}</li>
+            <li>• {t("disclaimer_3")}</li>
+            <li>• {t("disclaimer_4")}</li>
+            <li>• {t("disclaimer_5")}</li>
+            <li>• {t("disclaimer_6")}</li>
+            <li className="text-red-400">• {t("disclaimer_7")}</li>
           </ul>
         </div>
 
         <div className="space-y-3">
-          <p className="text-center text-xs text-zinc-500">僅支援以下方式登入</p>
+          <p className="text-center text-xs text-zinc-500">{t("login_methods")}</p>
           <button
             type="button"
             onClick={() => void handleOAuthLogin("google")}
@@ -113,7 +122,7 @@ function AuthPageInner() {
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
               <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
             </svg>
-            <span>使用 Google 登入</span>
+            <span>{t("login_google")}</span>
           </button>
           <button
             type="button"
@@ -122,7 +131,7 @@ function AuthPageInner() {
             className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[#1877F2] px-6 py-4 font-medium text-white transition hover:bg-[#1666d6] disabled:opacity-70"
           >
             <span className="text-2xl" aria-hidden>f</span>
-            <span>使用 Facebook 登入</span>
+            <span>{t("login_fb")}</span>
           </button>
         </div>
 
@@ -132,7 +141,7 @@ function AuthPageInner() {
           </div>
         )}
 
-        <p className="pt-4 text-center text-xs text-zinc-500">登入即代表您已閱讀並同意上述免則聲明</p>
+        <p className="pt-4 text-center text-xs text-zinc-500">{t("login_agree")}</p>
       </div>
     </div>
   );
@@ -141,11 +150,7 @@ function AuthPageInner() {
 export default function AuthPage() {
   return (
     <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center bg-black text-zinc-400">
-          載入中…
-        </div>
-      }
+      fallback={<AuthLoadingFallback />}
     >
       <AuthPageInner />
     </Suspense>

@@ -17,7 +17,17 @@ const dict: Record<Lang, Record<string, string>> = {
   zh: {
     home_title: 'AIPOGER 愛播歌',
     home_subtitle: 'Where AI Beats Bleed.',
+    home_secondary_title: '愛播歌',
     home_tagline: '在 AI 節奏交鋒之處，流淌著真實的音樂血液',
+    home_logo_alt: 'AIPOGER 愛播歌',
+    home_coin_tooltip: 'AIPO Coin 餘額',
+    home_account_menu_aria: '帳戶選單',
+    nav_home_aria: '回到主畫面',
+    common_loading: '載入中…',
+    auth_error: '登入發生錯誤，請再試一次',
+    storage_upload_failed:
+      '圖檔上傳失敗，請確認已登入、檔案小於上限，並已套用 Supabase 儲存桶允許的圖片格式（JPEG / PNG / WebP）。',
+    setup_need_login: '請先登入再上傳頭像與封面。',
     btn_battle: '我要鬥歌',
     btn_watch: '觀戰聽歌',
     login: '登入',
@@ -88,7 +98,17 @@ const dict: Record<Lang, Record<string, string>> = {
   en: {
     home_title: 'AIPOGER',
     home_subtitle: 'Where AI Beats Bleed.',
+    home_secondary_title: 'AI Music Arena',
     home_tagline: 'Real music blood flows in AI rhythm battles',
+    home_logo_alt: 'AIPOGER',
+    home_coin_tooltip: 'AIPO Coin balance',
+    home_account_menu_aria: 'Account menu',
+    nav_home_aria: 'Back to home',
+    common_loading: 'Loading…',
+    auth_error: 'Something went wrong. Please try again.',
+    storage_upload_failed:
+      'Image upload failed. Make sure you are signed in, within the size limit, and using JPEG, PNG, or WebP (see Supabase bucket MIME allowlist).',
+    setup_need_login: 'Please sign in to upload your avatar and cover art.',
     btn_battle: 'Battle!',
     btn_watch: 'Watch & Listen',
     login: 'Login',
@@ -161,6 +181,8 @@ const dict: Record<Lang, Record<string, string>> = {
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>(() => {
     if (typeof window !== 'undefined') {
+      const fromUrl = new URLSearchParams(window.location.search).get('lang');
+      if (fromUrl === 'en' || fromUrl === 'zh') return fromUrl;
       return (localStorage.getItem('aipoger_lang') as Lang) ?? 'zh';
     }
     return 'zh';
@@ -190,6 +212,11 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     const url = new URL(window.location.href);
     url.searchParams.set('lang', lang);
     window.history.replaceState(null, '', url.toString());
+  }, [lang]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.documentElement.lang = lang === 'zh' ? 'zh-Hant' : 'en';
   }, [lang]);
 
   return (

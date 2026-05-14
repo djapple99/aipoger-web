@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import Image from "next/image";
-import Link from "next/link";
 import "./globals.css";
 import { I18nProvider } from "@/lib/i18n";
 import LangToggle from "@/components/lang-toggle";
+import NavHomeLink from "@/components/nav-home-link";
 
 export const metadata: Metadata = {
   title: "AIPOGER",
@@ -19,20 +18,7 @@ export default function RootLayout({
     <html lang="zh-Hant">
       <body>
         <I18nProvider>
-          <Link
-            href="/"
-            aria-label="回到主畫面"
-            className="fixed left-4 top-4 z-50 rounded-3xl bg-black/40 p-2 ring-1 ring-white/10 backdrop-blur hover:bg-black/55 transition"
-          >
-            <Image
-              src="/aipoger-logo.png"
-              alt="AIPOGER 愛播歌"
-              width={44}
-              height={44}
-              priority
-              className="h-11 w-11"
-            />
-          </Link>
+          <NavHomeLink />
 
           {/* 右上角語系切換 */}
           <LangToggle />
