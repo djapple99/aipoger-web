@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
+import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
 
 const seedComments = [
@@ -110,11 +111,126 @@ function VoteButton({ team }: { team: "A" | "B" }) {
   );
 }
 
-// ─── 主要邏輯元件（useSearchParams 在這裡呼叫）───────────────────────────────
+type LiveBattleRow = {
+  id: string;
+  fighter_a_name: string;
+  fighter_b_name: string;
+  song_a_name: string;
+  song_b_name: string;
+  genre: string;
+  created_at: string;
+};
 
-function BattleContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams(); // ← 必須在 Suspense 內部的元件才能呼叫
+function LiveBattleList() {
+  const { t } = useI18n();
+  const [rows, setRows] = useState<LiveBattleRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const load = async () => {
+      if (isAuthBypassEnabled) {
+        setRows([]);
+        setLoading(false);
+        return;
+      }
+
+      const { data, error: qErr } = await supabase
+        .from("battles")
+        .select("id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at")
+        .eq("status", "live")
+        .order("created_at", { ascending: false })
+        .limit(30);
+
+      if (!mounted) return;
+      if (qErr) {
+        console.error(qErr);
+        setError(t("watch_list_error"));
+        setRows([]);
+      } else {
+        setError(null);
+        setRows((data as LiveBattleRow[]) ?? []);
+      }
+      setLoading(false);
+    };
+
+    void load();
+    return () => {
+      mounted = false;
+    };
+  }, [t]);
+
+  return (
+    <main className="min-h-screen bg-[#1b1d20] text-[#ece9e6]">
+      <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col px-4 pb-8 pt-6 sm:px-6 md:px-10">
+        <header className="mb-6 flex items-center justify-between border-b border-[#4f5358] pb-4">
+          <div>
+            <p className="text-xs tracking-[0.4em] text-[#8e847f]">AIPOGER</p>
+            <h1 className="mt-2 text-2xl font-semibold tracking-[0.12em] text-[#f2efec] md:text-3xl">
+              {t("watch_page_title")}
+            </h1>
+            <p className="mt-2 text-sm text-[#b1a59f]">{t("watch_live_section")}</p>
+          </div>
+          <Link
+            href="/"
+            className="rounded-xl border border-[#5d6268] px-4 py-2 text-sm tracking-[0.12em] text-[#d8d3cf] transition hover:border-[#ff8d40] hover:text-[#ffd8bf] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff7a28]"
+          >
+            {t("battle_back_home")}
+          </Link>
+        </header>
+
+        {isAuthBypassEnabled && (
+          <p className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/90">
+            {t("watch_bypass_list")}
+          </p>
+        )}
+
+        {loading ? (
+          <p className="text-center text-sm tracking-[0.2em] text-[#ff8d40]">{t("common_loading")}</p>
+        ) : error ? (
+          <p className="text-center text-sm text-red-400">{error}</p>
+        ) : rows.length === 0 ? (
+          <p className="rounded-xl border border-[#4f5358] bg-[#25292d] px-4 py-6 text-center text-sm text-[#c6bbb5]">
+            {t("watch_no_battles")}
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {rows.map((b) => (
+              <li key={b.id}>
+                <Link
+                  href={`/battle/${b.id}`}
+                  className="block rounded-2xl border border-[#4d5257] bg-[#24272b]/90 px-4 py-4 transition hover:border-[#ff8d40] hover:shadow-[0_0_14px_rgba(255,121,40,0.25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff7a28]"
+                >
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-base font-semibold text-[#f0ebe7]">
+                        {b.fighter_a_name} <span className="text-[#8e847f]">vs</span> {b.fighter_b_name}
+                      </p>
+                      <p className="mt-1 text-sm text-[#c6bbb5]">
+                        {b.song_a_name} / {b.song_b_name}
+                      </p>
+                      <p className="mt-1 text-xs tracking-[0.14em] text-[#9b938e]">
+                        {t("mq_genre")} · {b.genre}
+                      </p>
+                    </div>
+                    <span className="mt-2 shrink-0 text-sm font-medium text-[#ffbf99] sm:mt-0">
+                      {t("watch_enter")} →
+                    </span>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </main>
+  );
+}
+
+function BattleArena({ matchId }: { matchId: string }) {
+  const { t } = useI18n();
   const [comments, setComments] = useState(seedComments);
   const [message, setMessage] = useState("");
   const [battleData, setBattleData] = useState<BattleViewData>(mockBattleData);
@@ -125,8 +241,6 @@ function BattleContent() {
   const audioARef = useRef<HTMLAudioElement | null>(null);
   const audioBRef = useRef<HTMLAudioElement | null>(null);
 
-  const matchId = searchParams.get("matchId");
-
   const canPlayMap = useMemo(
     () => ({
       A: !forfeitedDecks.A,
@@ -136,22 +250,6 @@ function BattleContent() {
   );
 
   useEffect(() => {
-    if (isAuthBypassEnabled) return;
-
-    const ensureSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        router.replace("/auth?intent=watch");
-      }
-    };
-
-    ensureSession();
-  }, [router]);
-
-  useEffect(() => {
     setFirstAttack(Math.random() >= 0.5 ? "A" : "B");
   }, []);
 
@@ -159,7 +257,7 @@ function BattleContent() {
     let isMounted = true;
 
     const fetchBattleData = async () => {
-      if (!matchId || matchId.startsWith("mock-") || isAuthBypassEnabled) {
+      if (matchId.startsWith("mock-") || isAuthBypassEnabled) {
         return;
       }
 
@@ -278,13 +376,15 @@ function BattleContent() {
         <header className="mb-5 flex items-center justify-between border-b border-[#4f5358] pb-4">
           <div>
             <p className="text-xs tracking-[0.4em] text-[#8e847f]">AIPOGER</p>
-            <h1 className="mt-2 text-2xl font-semibold tracking-[0.2em] text-[#f2efec] md:text-3xl">鬥歌場</h1>
+            <h1 className="mt-2 text-2xl font-semibold tracking-[0.2em] text-[#f2efec] md:text-3xl">
+              {t("battle_list_title")}
+            </h1>
           </div>
           <Link
             href="/"
             className="rounded-xl border border-[#5d6268] px-4 py-2 text-sm tracking-[0.12em] text-[#d8d3cf] transition hover:border-[#ff8d40] hover:text-[#ffd8bf] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff7a28]"
           >
-            返回首頁
+            {t("battle_back_home")}
           </Link>
         </header>
 
@@ -367,17 +467,48 @@ function BattleContent() {
   );
 }
 
+function BattleContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const matchId = searchParams.get("matchId");
+
+  useEffect(() => {
+    if (isAuthBypassEnabled) return;
+
+    const ensureSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        router.replace("/auth?intent=watch");
+      }
+    };
+
+    void ensureSession();
+  }, [router]);
+
+  if (!matchId) {
+    return <LiveBattleList />;
+  }
+
+  return <BattleArena matchId={matchId} />;
+}
+
+function BattleSuspenseFallback() {
+  const { t } = useI18n();
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#1b1d20] text-sm tracking-[0.2em] text-[#ff8d40]">
+      {t("common_loading")}
+    </div>
+  );
+}
+
 // ─── Page export（只負責 Suspense 包裝）─────────────────────────────────────
 
 export default function BattlePage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-[#1b1d20] flex items-center justify-center text-[#ff8d40] text-sm tracking-[0.2em]">
-          載入中...
-        </div>
-      }
-    >
+    <Suspense fallback={<BattleSuspenseFallback />}>
       <BattleContent />
     </Suspense>
   );
