@@ -1,3 +1,4 @@
+-- 若 bucket 尚未建立，可改跑 storage_battle_audio_bootstrap.sql（一次建立 bucket + policies + 擂台讀音檔）。
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
   'battle-audio',
