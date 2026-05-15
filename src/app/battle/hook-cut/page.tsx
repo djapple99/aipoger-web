@@ -199,28 +199,6 @@ async function uploadHookWav(
   wavBlob: Blob,
   fileName: string,
 ): Promise<void> {
-  if (isAuthBypassEnabled) {
-    const segments = storagePath.split("/");
-    const userId = segments[0] ?? "";
-    if (!userId) {
-      throw new Error("Invalid storagePath for upload-hook");
-    }
-    const audioBase64 = await blobToBase64(wavBlob);
-    const formData = new FormData();
-    formData.append("storagePath", storagePath);
-    formData.append("audioBase64", audioBase64);
-    formData.append("userId", userId);
-    const res = await fetch("/api/upload-hook", {
-      method: "POST",
-      body: formData,
-    });
-    const payload = (await res.json().catch(() => ({}))) as { path?: string; error?: string };
-    if (!res.ok || !payload.path) {
-      throw new Error(payload.error ?? res.statusText ?? "upload-hook failed");
-    }
-    return;
-  }
-
   const mimeAttempts = ['audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave'] as const;
   let lastError: unknown;
 
@@ -228,11 +206,36 @@ async function uploadHookWav(
     const body = new File([wavBlob], fileName, { type: contentType });
     const { error } = await supabase.storage.from('battle-audio').upload(storagePath, body, {
       contentType,
-      upsert: false,
+      upsert: true,
     });
     if (!error) return;
     lastError = error;
     if (!isLikelyStorageMimeRejection(error)) break;
+  }
+
+  if (isAuthBypassEnabled) {
+    const audioBase64 = await blobToBase64(wavBlob);
+    const segments = storagePath.split("/");
+    const userId = segments[0] ?? "";
+    if (!userId) {
+      throw new Error("Invalid storagePath for upload-hook");
+    }
+    const res = await fetch("/api/upload-hook", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ storagePath, audioBase64, userId }),
+    });
+    const payload = (await res.json().catch(() => ({}))) as { path?: string; error?: string };
+    if (!res.ok || !payload.path) {
+      throw new Error(
+        payload.error ??
+          (res.status === 413
+            ? "Payload too large (413)：請在 Vercel 放寬 body 限制，或於 Supabase 執行 anon hooks 政策後改為僅用客戶端 Storage 上傳"
+            : res.statusText) ??
+          "upload-hook failed",
+      );
+    }
+    return;
   }
 
   throw lastError;

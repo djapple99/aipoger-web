@@ -1,6 +1,23 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+/**
+ * JSON body（非 multipart）：{ storagePath, audioBase64, userId }
+ * 大檔 WAV 在 Vercel 可能觸發 413：可調高方案限制，或改用客戶端 supabase.storage（見 battle_arena_rls_and_storage.sql 之 anon hooks 政策）。
+ */
+const MIME_ATTEMPTS = ["audio/wav", "audio/x-wav", "audio/wave", "audio/vnd.wave"] as const;
+
+function isLikelyStorageMimeRejection(err: unknown): boolean {
+  const msg = String((err as { message?: string })?.message ?? err).toLowerCase();
+  return (
+    msg.includes("mime") ||
+    (msg.includes("invalid") && msg.includes("type")) ||
+    msg.includes("not allowed") ||
+    msg.includes("unsupported") ||
+    msg.includes("415")
+  );
+}
+
 export async function POST(req: Request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey =
@@ -13,16 +30,16 @@ export async function POST(req: Request) {
     );
   }
 
-  let form: FormData;
+  let body: { storagePath?: string; audioBase64?: string; userId?: string };
   try {
-    form = await req.formData();
+    body = (await req.json()) as typeof body;
   } catch {
-    return NextResponse.json({ error: "Expected multipart/form-data" }, { status: 400 });
+    return NextResponse.json({ error: "Expected application/json" }, { status: 400 });
   }
 
-  const storagePath = form.get("storagePath");
-  const audioBase64 = form.get("audioBase64");
-  const userId = form.get("userId");
+  const storagePath = body.storagePath;
+  const audioBase64 = body.audioBase64;
+  const userId = body.userId;
 
   if (typeof storagePath !== "string" || !storagePath.trim()) {
     return NextResponse.json({ error: "storagePath is required" }, { status: 400 });
@@ -55,13 +72,21 @@ export async function POST(req: Request) {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { data, error } = await supabase.storage
-    .from("battle-audio")
-    .upload(path, buffer, { contentType: "audio/wav", upsert: false });
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  let lastError: { message: string } | null = null;
+  for (const contentType of MIME_ATTEMPTS) {
+    const { data, error } = await supabase.storage.from("battle-audio").upload(path, buffer, {
+      contentType,
+      upsert: true,
+    });
+    if (!error && data) {
+      return NextResponse.json({ path: data.path });
+    }
+    lastError = error;
+    if (error && !isLikelyStorageMimeRejection(error)) break;
   }
 
-  return NextResponse.json({ path: data.path });
+  return NextResponse.json(
+    { error: lastError?.message ?? "Upload failed" },
+    { status: 500 },
+  );
 }

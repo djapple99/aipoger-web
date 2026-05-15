@@ -4,6 +4,7 @@
 -- 1) authenticated：可讀 battles / chat_messages / battle_votes / fighter_profiles
 -- 2) anon：同上（未登入觀戰列表、匿名 JWT 簽音檔 URL）
 -- 3) 允許讀取「出現在任一 battle 音檔路徑」的 storage.objects（雙方檔案）
+-- 4) anon：可 INSERT/UPDATE battle-audio 下 */hooks/*（AUTH_BYPASS 客戶端直傳；需搭配 upsert）
 -- ============================================================
 
 -- ---- Table privileges（若專案曾 revoke 過會補回）----
@@ -108,4 +109,33 @@ using (
     where b.audio_a_path = storage.objects.name
        or b.audio_b_path = storage.objects.name
   )
+);
+
+-- ---- Storage：anon 可寫入 */hooks/*（供 NEXT_PUBLIC_AUTH_BYPASS 時客戶端直傳，避開 API 413）----
+-- upsert 需要 INSERT + UPDATE。僅限路徑含 /hooks/ 且不含 .. 。生產環境請自行評估濫用風險。
+drop policy if exists anon_insert_battle_audio_hooks on storage.objects;
+create policy anon_insert_battle_audio_hooks
+on storage.objects
+for insert
+to anon
+with check (
+  bucket_id = 'battle-audio'
+  and position('/hooks/' in name) > 0
+  and name not like '%..%'
+);
+
+drop policy if exists anon_update_battle_audio_hooks on storage.objects;
+create policy anon_update_battle_audio_hooks
+on storage.objects
+for update
+to anon
+using (
+  bucket_id = 'battle-audio'
+  and position('/hooks/' in name) > 0
+  and name not like '%..%'
+)
+with check (
+  bucket_id = 'battle-audio'
+  and position('/hooks/' in name) > 0
+  and name not like '%..%'
 );
