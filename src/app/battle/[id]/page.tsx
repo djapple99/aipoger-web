@@ -2,6 +2,7 @@
 "use client";
 
 import NextImage from "next/image";
+import LangToggle from "@/components/lang-toggle";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { FormEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -48,6 +49,8 @@ type BattleData = {
 type VoteCount = { fighter_a: number; fighter_b: number };
 
 const VINYL_COVER_PLACEHOLDER = "https://picsum.photos/300";
+/** `public/aipoger vinlyarm.png` — 唱臂單圖 */
+const VINYL_ARM_IMAGE_SRC = encodeURI("/aipoger vinlyarm.png");
 
 function isHttpOrDataImageUrl(s: string): boolean {
   const t = s.trim();
@@ -74,31 +77,24 @@ async function resolveMediaUrl(raw: string | null | undefined): Promise<string |
   return null;
 }
 
-// ─── 唱臂裝飾 ────────────────────────────────────────────
-function TonearmGraphic({ accent }: { accent: "orange" | "blue" }) {
-  const stroke = accent === "orange" ? "#fb923c" : "#60a5fa";
+function VinylTonearmImage({ side }: { side: "left" | "right" }) {
   return (
-    <svg
-      className="pointer-events-none absolute -right-1 top-[16%] z-10 h-[74%] w-[40%] md:-right-2"
-      viewBox="0 0 48 120"
-      fill="none"
+    <NextImage
+      src={VINYL_ARM_IMAGE_SRC}
+      alt=""
+      width={200}
+      height={320}
+      className={`pointer-events-none absolute top-[8%] z-20 h-[80%] w-auto max-w-[min(52%,120px)] select-none object-contain object-top md:max-w-[min(52%,150px)] ${
+        side === "left" ? "left-[-6%]" : "right-[-6%] scale-x-[-1]"
+      }`}
       aria-hidden
-    >
-      <circle cx="40" cy="14" r="5" stroke={stroke} strokeWidth="2" opacity={0.85} />
-      <path
-        d="M40 19 Q 22 48 14 112"
-        stroke={stroke}
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        opacity={0.9}
-      />
-      <circle cx="12" cy="114" r="4.5" fill="#27272a" stroke={stroke} strokeWidth="1.5" />
-    </svg>
+    />
   );
 }
 
 // ─── 旋轉唱片元件 ──────────────────────────────────────────
 function VinylDisc({
+  side,
   fighterName,
   songName,
   coverUrl,
@@ -109,6 +105,7 @@ function VinylDisc({
   aiTool,
   accent,
 }: {
+  side: "left" | "right";
   fighterName: string;
   songName: string;
   coverUrl: string | null;
@@ -131,25 +128,22 @@ function VinylDisc({
 
   const avatarRing =
     accent === "orange"
-      ? "border-orange-500 shadow-[0_0_24px_rgba(251,146,60,0.25)]"
-      : "border-blue-400 shadow-[0_0_24px_rgba(96,165,250,0.25)]";
+      ? "border-orange-500/90"
+      : "border-blue-400/90";
 
   const playAura =
     accent === "orange"
-      ? "shadow-[0_0_40px_rgba(255,106,0,0.38)]"
-      : "shadow-[0_0_40px_rgba(59,130,246,0.38)]";
-
-  const cueDot =
-    accent === "orange" ? "bg-orange-500 text-black" : "bg-blue-500 text-black";
+      ? "shadow-[0_0_42px_rgba(255,106,0,0.42)]"
+      : "shadow-[0_0_42px_rgba(59,130,246,0.4)]";
 
   const playClasses =
     accent === "orange"
       ? isPlaying
-        ? "border-orange-500 bg-orange-500/20 text-orange-400 hover:bg-orange-500/30"
-        : "border-zinc-600 bg-zinc-800 text-zinc-200 hover:border-orange-500 hover:text-orange-400"
+        ? "border-orange-500/70 bg-orange-500/15 text-orange-400"
+        : "border-white/20 bg-transparent text-white hover:border-orange-400/70"
       : isPlaying
-        ? "border-blue-400 bg-blue-500/15 text-blue-300 hover:bg-blue-500/25"
-        : "border-zinc-600 bg-zinc-800 text-zinc-200 hover:border-blue-400 hover:text-blue-300";
+        ? "border-blue-400/70 bg-blue-500/15 text-blue-200"
+        : "border-white/20 bg-transparent text-white hover:border-blue-400/70";
 
   useEffect(() => {
     setCoverBroken(false);
@@ -168,22 +162,28 @@ function VinylDisc({
   }, [trimmedCover]);
 
   return (
-    <div className="flex w-full max-w-[320px] flex-col items-center gap-4">
-      <div className="w-full text-center leading-snug">
-        <p className="text-[15px] text-white">{fighterName}</p>
-        <p className="mt-1 text-sm text-zinc-200">{songName}</p>
-        {aiTool ? <p className="mt-1 text-[11px] text-zinc-500">{aiTool}</p> : null}
+    <div className="flex w-full flex-col items-center">
+      {/* 對應稿件：標籤＋姓名／歌名在唱片上方 */}
+      <div className="w-full space-y-5 text-center">
+        <div>
+          <p className="text-[11px] text-zinc-500">{t("battle_label_fighter")}</p>
+          <p className="mt-1 text-[15px] text-white">{fighterName}</p>
+        </div>
+        <div>
+          <p className="text-[11px] text-zinc-500">{t("battle_label_song")}</p>
+          <p className="mt-1 text-sm text-white">{songName}</p>
+        </div>
       </div>
 
-      <div className="relative w-full">
-        <div
-          className={`relative mx-auto flex h-[220px] w-[220px] items-center justify-center md:h-[280px] md:w-[280px] ${
-            isPlaying ? playAura : ""
-          }`}
-        >
-          <TonearmGraphic accent={accent} />
+      <div
+        className={`relative mx-auto mt-8 shrink-0 ${
+          isPlaying ? playAura + " rounded-full" : "rounded-full"
+        }`}
+      >
+        <div className="relative flex h-[220px] w-[220px] items-center justify-center md:h-[280px] md:w-[280px]">
+          <VinylTonearmImage side={side} />
           <div
-            className="relative flex h-full w-full cursor-pointer items-center justify-center"
+            className="relative flex h-full w-full cursor-pointer items-center justify-center rounded-full"
             onClick={onToggle}
             onKeyDown={(e) => {
               if (e.key === " " || e.key === "Enter") onToggle();
@@ -193,25 +193,25 @@ function VinylDisc({
             aria-label={isPlaying ? t("deck_pause_aria") : t("deck_play_aria")}
           >
             <div
-              className="absolute inset-0 rounded-full transition-all duration-300"
+              className="absolute inset-0 rounded-full"
               style={{
                 background: hasCover
-                  ? `linear-gradient(135deg, #111 0%, #1a1a1a 100%)`
-                  : `linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 50%, #111 100%)`,
+                  ? `linear-gradient(135deg, #0a0a0a 0%, #141414 100%)`
+                  : `linear-gradient(135deg, #080808 0%, #161616 50%, #0b0b0b 100%)`,
               }}
             >
               {[8, 16, 24, 32, 40, 48].map((r) => (
                 <div
                   key={r}
-                  className="absolute rounded-full border border-zinc-800/30"
+                  className="absolute rounded-full border border-zinc-800/40"
                   style={{ inset: `${r}%` }}
                 />
               ))}
-              <div className="absolute inset-0 rounded-full border border-zinc-700/40" />
+              <div className="absolute inset-0 rounded-full border border-zinc-600/35" />
             </div>
 
             <div
-              className={`absolute -left-0.5 -top-0.5 z-30 h-[3.75rem] w-[3.75rem] overflow-hidden rounded-full border-[3px] bg-zinc-900 ring-2 ring-black/70 md:h-[5rem] md:w-[5rem] ${avatarRing}`}
+              className={`absolute left-2 top-2 z-30 h-12 w-12 overflow-hidden rounded-full border-[2.5px] bg-black ring-2 ring-black/90 md:h-14 md:w-14 ${avatarRing}`}
               aria-hidden
             >
               {showAvatarImg ? (
@@ -225,8 +225,8 @@ function VinylDisc({
                 />
               ) : (
                 <span
-                  className={`flex h-full w-full items-center justify-center text-2xl md:text-3xl ${
-                    accent === "orange" ? "text-orange-400" : "text-blue-400"
+                  className={`flex h-full w-full items-center justify-center text-lg ${
+                    accent === "orange" ? "text-orange-400" : "text-blue-300"
                   }`}
                 >
                   {initialMark}
@@ -236,11 +236,11 @@ function VinylDisc({
 
             {hasCover ? (
               <div
-                className={`relative z-10 flex h-[55%] w-[55%] items-center justify-center overflow-hidden rounded-full ${
+                className={`relative z-10 flex h-[58%] w-[58%] items-center justify-center overflow-hidden rounded-full ${
                   isPlaying ? "animate-spin" : ""
                 }`}
                 style={{
-                  animationDuration: isPlaying ? "3s" : undefined,
+                  animationDuration: isPlaying ? "3.2s" : undefined,
                   animationTimingFunction: "linear",
                 }}
               >
@@ -251,42 +251,50 @@ function VinylDisc({
                   className="h-full w-full object-cover"
                   onError={() => setCoverBroken(true)}
                 />
-                <div className="absolute inset-[46%] rounded-full bg-zinc-900 ring-1 ring-zinc-700/80" />
-                <div className="absolute inset-[49%] rounded-full bg-zinc-950" />
+                <div className="absolute inset-[46%] rounded-full bg-neutral-950 ring-[1px] ring-zinc-700/85" />
+                <div className="absolute inset-[49%] rounded-full bg-black" />
               </div>
             ) : (
               <div
-                className={`relative z-10 flex h-[55%] w-[55%] items-center justify-center overflow-hidden rounded-full ${
+                className={`relative z-10 flex h-[58%] w-[58%] items-center justify-center overflow-hidden rounded-full ${
                   isPlaying ? "animate-spin" : ""
                 }`}
                 style={{
-                  background: `linear-gradient(145deg, ${color}33 0%, ${color}66 50%, ${color}22 100%)`,
-                  animationDuration: isPlaying ? "3s" : undefined,
+                  background: `linear-gradient(145deg, ${color}22 0%, ${color}55 52%, ${color}18 100%)`,
+                  animationDuration: isPlaying ? "3.2s" : undefined,
                   animationTimingFunction: "linear",
                 }}
               >
-                <div className="absolute inset-[42%] rounded-full border border-zinc-800 bg-zinc-900" />
-                <div className="absolute inset-[46%] rounded-full bg-zinc-950" />
+                <div className="absolute inset-[42%] rounded-full border border-zinc-800 bg-zinc-950" />
+                <div className="absolute inset-[46%] rounded-full bg-black" />
               </div>
             )}
-
-            {isPlaying ? (
-              <div
-                className={`absolute -right-0 top-3 z-20 flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold shadow-lg ${cueDot}`}
-              >
-                ▶
-              </div>
-            ) : null}
           </div>
         </div>
+      </div>
+
+      {/* AI 工具／PLAY */}
+      <div className="mt-8 w-full text-center">
+        <p className="text-[11px] text-zinc-500">{t("battle_label_ai_tool")}</p>
+        <p className="mt-1.5 text-[13px] text-white">{aiTool ?? "—"}</p>
       </div>
 
       <button
         type="button"
         onClick={onToggle}
-        className={`rounded-full border-2 px-6 py-2 text-xs tracking-[0.2em] transition-all md:text-sm ${playClasses}`}
+        className={`mt-5 inline-flex items-center justify-center gap-2 rounded-[10px] border px-10 py-2.5 text-[11px] tracking-[0.28em] transition ${playClasses}`}
       >
-        {isPlaying ? "⏸ PAUSE" : "▶ PLAY"}
+        {isPlaying ? (
+          <>
+            <span aria-hidden>⏸</span>
+            {t("battle_pause_label")}
+          </>
+        ) : (
+          <>
+            <span aria-hidden>▶</span>
+            {t("battle_play_label")}
+          </>
+        )}
       </button>
     </div>
   );
@@ -296,12 +304,10 @@ function VoteHeartButton({
   selected,
   voteLocked,
   onVote,
-  alignEnd,
 }: {
   selected: boolean;
   voteLocked: boolean;
   onVote: () => void;
-  alignEnd?: boolean;
 }) {
   const { t } = useI18n();
   const notChosenOther = voteLocked && !selected;
@@ -314,13 +320,13 @@ function VoteHeartButton({
       title={t("battle_vote_heart_aria")}
       aria-label={t("battle_vote_heart_aria")}
       aria-pressed={selected}
-      className={`p-2 transition disabled:opacity-40 ${alignEnd ? "self-end" : "self-start"}`}
+      className="p-1 transition disabled:opacity-40"
     >
-      <svg viewBox="0 0 24 24" className="h-10 w-10 md:h-11 md:w-11">
+      <svg viewBox="0 0 24 24" className="h-9 w-9 md:h-10 md:w-10">
         <path
           fill={selected ? "#ef4444" : "none"}
-          stroke={selected ? "#ef4444" : notChosenOther ? "#52525b" : "#f4f4f5"}
-          strokeWidth={1.6}
+          stroke={selected ? "#ef4444" : notChosenOther ? "#52525b" : "#e5e5e5"}
+          strokeWidth={1.5}
           d="M12 21.35l-1.05-.96C6.96 17.06 4 13.92 4 10.94 4 8.73 5.71 7 8.02 7c1.53 0 3.04.93 4 2.43.96-1.5 2.47-2.43 4-2.43C18.29 7 20 8.73 20 10.94c0 3-2.97 6.17-7.94 11.43L12 21.35z"
         />
       </svg>
@@ -899,25 +905,26 @@ function BattleArenaContent() {
   const voteLocked = hasVoted !== null;
   const lyricA = battle.lyrics_a?.trim() ?? "";
   const lyricB = battle.lyrics_b?.trim() ?? "";
-  const hasLyrics = Boolean(lyricA || lyricB);
 
   return (
-    <div className={`${fontGlowSansBattle.className} flex min-h-screen flex-col bg-[#0a0a0a] text-zinc-100 antialiased`}>
-      {/* 頂部列 */}
-      <header className="sticky top-0 z-30 grid grid-cols-3 items-center border-b border-zinc-800 bg-[#0a0a0a]/90 px-4 py-3 backdrop-blur">
-        <div className="min-w-0">
-          <p className="text-[10px] tracking-[0.4em] text-zinc-600">AIPOGER</p>
-          <h1 className="truncate text-lg font-bold tracking-widest text-zinc-200">{t("battle_title")}</h1>
-        </div>
+    <div className={`${fontGlowSansBattle.className} flex min-h-screen flex-col bg-black text-zinc-100 antialiased`}>
+      {/* 頂部：照稿 — 圖示 + 歌擂台｜觀戰｜語言 */}
+      <header className="sticky top-0 z-30 grid grid-cols-3 items-center border-b border-white/10 bg-black px-4 py-3 backdrop-blur">
+        <Link href="/" className="flex min-w-0 items-center gap-2.5">
+          <span className="flex shrink-0 rounded-full border border-white/10 bg-black p-1">
+            <NextImage src="/aipoger-logo.png" alt="" width={28} height={28} className="h-7 w-7 object-contain" />
+          </span>
+          <span className="truncate text-[15px] text-white">{t("battle_arena_nav")}</span>
+        </Link>
         <div className="flex justify-center">
-          <div className="rounded-full border border-zinc-700 bg-zinc-900/80 px-3 py-1.5 text-center text-[10px] tracking-wider text-zinc-400">
+          <div className="rounded-full border border-white/10 bg-neutral-950/90 px-3 py-1.5 text-center text-[11px] text-zinc-400">
             {(() => {
               const parts = t("arena_viewers").split("{{n}}");
               if (parts.length === 2) {
                 return (
                   <>
                     {parts[0]}
-                    <span className="font-bold text-orange-400">{viewerCount}</span>
+                    <span className="mx-0.5 font-semibold text-orange-400">{viewerCount}</span>
                     {parts[1]}
                   </>
                 );
@@ -927,21 +934,17 @@ function BattleArenaContent() {
           </div>
         </div>
         <div className="flex justify-end">
-          <Link
-            href="/"
-            className="rounded-xl border border-zinc-700 px-4 py-2 text-xs tracking-wider text-zinc-400 transition hover:border-orange-500 hover:text-orange-400"
-          >
-            {t("battle_back")}
-          </Link>
+          <LangToggle variant="inline" />
         </div>
       </header>
 
       {/* 擂台主體 */}
-      <main className="flex-1 overflow-hidden px-3 py-5 md:px-6">
-        <section className="mx-auto grid max-w-7xl grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(224px,292px)_minmax(0,1fr)] lg:items-start">
-          {/* 左：左欄 */}
-          <div className="order-2 flex min-h-0 flex-col rounded-2xl border border-zinc-800/80 bg-black/25 p-5 md:p-6">
+      <main className="flex-1 px-4 py-8 md:px-8">
+        <section className="mx-auto grid max-w-[1320px] grid-cols-1 gap-y-14 lg:grid-cols-[1fr_auto_1fr] lg:gap-x-6 lg:gap-y-0">
+          {/* 左欄（稿件：唱片 → 歌詞 → 愛心／票數） */}
+          <div className="order-2 flex flex-col border border-white/[0.06] px-6 py-8 md:px-8 lg:order-none">
             <VinylDisc
+              side="left"
               fighterName={battle.fighter_a_name}
               songName={battle.song_a_name}
               coverUrl={vinylCoverA ?? VINYL_COVER_PLACEHOLDER}
@@ -952,55 +955,56 @@ function BattleArenaContent() {
               accent="orange"
               aiTool={battle.ai_tool_a}
             />
-            <div className="mt-6 flex flex-1 flex-col justify-end gap-3">
-              <VoteHeartButton
-                selected={hasVoted === "fighter_a"}
-                voteLocked={voteLocked}
-                onVote={() => handleVote("fighter_a")}
-              />
+            <div className="mt-12 flex min-h-[120px] flex-1 whitespace-pre-wrap text-center text-[13px] leading-[1.8] text-white md:text-[14px]">
+              {lyricA ? lyricA : <span className="w-full text-zinc-600">{t("battle_lyrics_label")}</span>}
+            </div>
+            <div className="mt-auto flex flex-col gap-3 pt-10">
+              <div className="flex w-full items-end justify-between">
+                <VoteHeartButton
+                  selected={hasVoted === "fighter_a"}
+                  voteLocked={voteLocked}
+                  onVote={() => handleVote("fighter_a")}
+                />
+              </div>
               <div className="w-full">
-                <div className="flex justify-between text-[10px] text-zinc-400">
+                <div className="flex justify-between text-[11px] text-zinc-500">
                   <span>{t("battle_deck_vote_line", { n: votes.fighter_a })}</span>
                   <span>{pctA}%</span>
                 </div>
-                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-900">
+                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-neutral-950">
                   <div className="h-full rounded-full bg-orange-500 transition-all" style={{ width: `${pctA}%` }} />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* 中：LOGO + VS + 歌詞（無框、白字） */}
-          <div className="order-1 flex flex-col items-center lg:order-none">
+          {/* 中：LOGO + VS + 狀態（稿件含先攻標記） */}
+          <div className="order-1 flex flex-col items-center px-2 lg:order-none lg:w-[min(280px,24vw)]">
             <NextImage
               src="/aipoger-logo.png"
-              alt="AIPOGER"
-              width={128}
-              height={128}
-              className="h-auto w-[92px] select-none object-contain md:w-[118px]"
+              alt=""
+              width={148}
+              height={148}
+              className="h-auto w-[108px] select-none object-contain md:w-[132px]"
               priority
             />
-            <p className="mt-1.5 text-center text-[12px] tracking-wide text-zinc-200">{t("battle_tagline_logo")}</p>
-            <p className="mt-5 text-[clamp(3rem,8vw,5.25rem)] leading-none text-orange-500">VS</p>
-            <p className="mt-3 text-[11px] text-zinc-500">
+            <p className="mt-2 text-[13px] tracking-wide text-white">{t("battle_tagline_logo")}</p>
+            <p className="mt-10 text-[clamp(3.5rem,11vw,5.85rem)] font-semibold leading-none tracking-tighter text-orange-500">
+              VS
+            </p>
+            <p className="mt-6 text-[12px] text-orange-400/95">
               {totalVotes === 0 ? t("battle_wait_votes") : t("battle_vote_total", { count: totalVotes })}
             </p>
-            <div className="mt-8 min-h-[4.5rem] w-full max-w-sm px-2 text-center text-[13px] leading-[1.65] text-white md:max-w-none md:text-[14px]">
-              {hasLyrics ? (
-                <div className="space-y-5">
-                  {lyricA ? <p className="whitespace-pre-wrap">{lyricA}</p> : null}
-                  {lyricA && lyricB ? <hr className="border-zinc-800" /> : null}
-                  {lyricB ? <p className="whitespace-pre-wrap">{lyricB}</p> : null}
-                </div>
-              ) : (
-                <p className="text-zinc-500">{t("battle_lyrics_empty")}</p>
-              )}
-            </div>
+            <p className="mt-4 text-[11px] text-zinc-500">{t("first_attack")}</p>
+            <p className="mt-1 text-2xl font-semibold text-orange-400 md:text-[1.85rem]">
+              {t("battle_first_move_mark")}
+            </p>
           </div>
 
-          {/* 右 */}
-          <div className="order-3 flex min-h-0 flex-col rounded-2xl border border-zinc-800/80 bg-black/25 p-5 md:p-6">
+          {/* 右欄 */}
+          <div className="order-3 flex flex-col border border-white/[0.06] px-6 py-8 md:px-8">
             <VinylDisc
+              side="right"
               fighterName={battle.fighter_b_name}
               songName={battle.song_b_name}
               coverUrl={vinylCoverB ?? VINYL_COVER_PLACEHOLDER}
@@ -1011,19 +1015,23 @@ function BattleArenaContent() {
               accent="blue"
               aiTool={battle.ai_tool_b}
             />
-            <div className="mt-6 flex flex-1 flex-col justify-end gap-3">
-              <VoteHeartButton
-                selected={hasVoted === "fighter_b"}
-                voteLocked={voteLocked}
-                onVote={() => handleVote("fighter_b")}
-                alignEnd
-              />
+            <div className="mt-12 flex min-h-[120px] flex-1 whitespace-pre-wrap text-center text-[13px] leading-[1.8] text-white md:text-[14px]">
+              {lyricB ? lyricB : <span className="w-full text-zinc-600">{t("battle_lyrics_label")}</span>}
+            </div>
+            <div className="mt-auto flex flex-col gap-3 pt-10">
+              <div className="flex w-full items-end justify-end">
+                <VoteHeartButton
+                  selected={hasVoted === "fighter_b"}
+                  voteLocked={voteLocked}
+                  onVote={() => handleVote("fighter_b")}
+                />
+              </div>
               <div className="w-full">
-                <div className="flex justify-between text-[10px] text-zinc-400">
+                <div className="flex justify-between text-[11px] text-zinc-500">
                   <span>{t("battle_deck_vote_line", { n: votes.fighter_b })}</span>
                   <span>{pctB}%</span>
                 </div>
-                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-900">
+                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-neutral-950">
                   <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${pctB}%` }} />
                 </div>
               </div>

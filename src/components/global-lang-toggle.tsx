@@ -6,6 +6,11 @@ import LangToggle from '@/components/lang-toggle';
 /** 首頁頂欄自行放置語系按鈕，其餘頁面用固定右上角 */
 export default function GlobalLangToggle() {
   const pathname = usePathname();
-  if (pathname === '/') return null;
+  if (!pathname || pathname === '/') return null;
+  const battleArenaMatch = pathname.match(/^\/battle\/([^/]+)$/);
+  const battlePanelIds = ['setup', 'hook-cut', 'matchmaking'];
+  const hideFixedLangOnArena =
+    Boolean(battleArenaMatch && !battlePanelIds.includes(battleArenaMatch[1]));
+  if (hideFixedLangOnArena) return null;
   return <LangToggle variant="fixed" />;
 }

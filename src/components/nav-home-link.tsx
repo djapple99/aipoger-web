@@ -2,10 +2,18 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useI18n } from '@/lib/i18n';
+
+const BATTLE_FIXED_ROUTES = ['setup', 'hook-cut', 'matchmaking'];
 
 export default function NavHomeLink() {
   const { t } = useI18n();
+  const pathname = usePathname();
+  /** 僅擂台單場（/battle/:id）；排除列表與固定子路徑 */
+  const seg = pathname?.match(/^\/battle\/([^/]+)$/)?.[1];
+  const isBattleArena = Boolean(seg && !BATTLE_FIXED_ROUTES.includes(seg));
+  if (isBattleArena) return null;
 
   return (
     <Link
