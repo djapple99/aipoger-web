@@ -1,12 +1,4 @@
 {
-  "env": {
-    "NEXT_PUBLIC_AUTH_BYPASS": "true"
-  },
-  "build": {
-    "env": {
-      "NEXT_PUBLIC_AUTH_BYPASS": "true"
-    }
-  },
   "functions": {
     "src/app/api/upload-hook/route.ts": {
       "maxDuration": 120

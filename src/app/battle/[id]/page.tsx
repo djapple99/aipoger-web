@@ -208,27 +208,6 @@ return (
         )}
       </div>
 
-        {/* 頭像：唱片內左上、高於外圈(z-1)/溝槽(z-7)/中心(z-10)，低於狀態角標與 label(z-60) */}
-        <div
-          className={`pointer-events-none absolute left-0 top-0 z-[40] flex h-14 w-14 translate-y-0 items-center justify-center rounded-full border-2 border-orange-500 text-xl font-black shadow-xl md:h-16 md:w-16 md:text-2xl ${avatarBg}`}
-          aria-hidden
-        >
-          <span className="text-orange-400">{initialMark}</span>
-        </div>
-
-        {isPlaying && (
-          <div className="absolute -top-2 -right-2 z-[60] flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-black shadow-lg">
-            ▶
-          </div>
-        )}
-        {label && (
-          <div
-            className="absolute -bottom-2 left-1/2 z-[60] -translate-x-1/2 rounded-full border border-zinc-700 bg-zinc-900/90 px-3 py-1 text-[10px] font-semibold tracking-widest text-zinc-400"
-          >
-            {label}
-          </div>
-        )}
-      </div>
 
       {/* 資訊 */}
       <div className="text-center">

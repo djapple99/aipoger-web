@@ -28,12 +28,26 @@ WITH CHECK (
   )
 );
 
--- 允許已認證用戶上傳 Hook 音檔
+-- 允許已認證用戶上傳 Hook 音檔（upsert 需 INSERT + UPDATE）
 CREATE POLICY "Allow hooks upload" ON storage.objects
 FOR INSERT TO authenticated
 WITH CHECK (
   bucket_id = 'battle-audio'
   AND name LIKE '%/hooks/%'
+  AND auth.uid()::text = (storage.foldername(name))[1]
+);
+
+CREATE POLICY "Allow hooks update" ON storage.objects
+FOR UPDATE TO authenticated
+USING (
+  bucket_id = 'battle-audio'
+  AND name LIKE '%/hooks/%'
+  AND auth.uid()::text = (storage.foldername(name))[1]
+)
+WITH CHECK (
+  bucket_id = 'battle-audio'
+  AND name LIKE '%/hooks/%'
+  AND auth.uid()::text = (storage.foldername(name))[1]
 );
 
 -- 允許所有人讀取所有已上傳的檔案（公開展示用）

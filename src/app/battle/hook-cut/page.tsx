@@ -182,19 +182,6 @@ function isLikelyStorageMimeRejection(err: unknown): boolean {
   );
 }
 
-async function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      const comma = dataUrl.indexOf(",");
-      resolve(comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl);
-    };
-    reader.onerror = () => reject(reader.error ?? new Error("readAsDataURL failed"));
-    reader.readAsDataURL(blob);
-  });
-}
-
 async function uploadHookWav(
   storagePath: string,
   wavBlob: Blob,
@@ -214,32 +201,16 @@ async function uploadHookWav(
     if (!isLikelyStorageMimeRejection(error)) break;
   }
 
-  if (isAuthBypassEnabled) {
-    const audioBase64 = await blobToBase64(wavBlob);
-    const segments = storagePath.split("/");
-    const userId = segments[0] ?? "";
-    if (!userId) {
-      throw new Error("Invalid storagePath for upload-hook");
-    }
-    const res = await fetch("/api/upload-hook", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ storagePath, audioBase64, userId }),
-    });
-    const payload = (await res.json().catch(() => ({}))) as { path?: string; error?: string };
-    if (!res.ok || !payload.path) {
-      throw new Error(
-        payload.error ??
-          (res.status === 413
-            ? "Payload too large (413)：請在 Vercel 放寬 body 限制，或於 Supabase 執行 anon hooks 政策後改為僅用客戶端 Storage 上傳"
-            : res.statusText) ??
-          "upload-hook failed",
-      );
-    }
-    return;
-  }
+  const detail =
+    lastError && typeof lastError === 'object' && 'message' in lastError
+      ? String((lastError as { message: unknown }).message)
+      : String(lastError ?? 'Storage upload failed');
 
-  throw lastError;
+  const hint = isAuthBypassEnabled
+    ? '請在 Supabase SQL Editor 執行 supabase/battle_arena_rls_and_storage.sql（anon 可寫入 */hooks/*），或於 .env.local 關閉 NEXT_PUBLIC_AUTH_BYPASS 後登入再上傳。勿經 Vercel API 轉傳大檔。'
+    : '請確認已登入，並已在 Supabase 套用 supabase/storage_battle_audio.sql 與 storage_rls_fix.sql。';
+
+  throw new Error(`${detail}\n\n${hint}`);
 }
 
 type RpcQueueRow = {
