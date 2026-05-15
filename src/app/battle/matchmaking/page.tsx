@@ -255,16 +255,11 @@ function MatchmakingContent() {
                 if (creatingTestBattle) return;
 
                 if (isAuthBypassEnabled) {
-                  const qs = new URLSearchParams({
-                    test: "1",
-                    fighterName: fighterName || "未命名鬥士",
-                    songName: songName || "未提供",
-                    genre,
-                    audioPath: audioPath.trim(),
-                    aiTool: aiToolParam,
-                  });
-                  if (coverUrl?.trim()) qs.set("coverUrl", coverUrl.trim());
-                  router.push(`/battle/${mockSkipMatchBattleId}?${qs.toString()}`);
+                  const path = audioPath.trim();
+                  const id = mockSkipMatchBattleId;
+                  router.push(
+                    `/battle/${id}?test=1&audioPath=${encodeURIComponent(path)}&fighterName=${encodeURIComponent(fighterName)}&songName=${encodeURIComponent(songName)}&aiTool=${encodeURIComponent(aiToolParam)}&coverUrl=${encodeURIComponent(coverUrl ?? "https://picsum.photos/300")}`,
+                  );
                   return;
                 }
 
@@ -296,16 +291,10 @@ function MatchmakingContent() {
                     alert("建立測試擂臺失敗：" + (error?.message ?? "未知錯誤"));
                     return;
                   }
-                  const nextQs = new URLSearchParams({
-                    test: "1",
-                    fighterName: fighterName || "未命名鬥士",
-                    songName: songName || "未提供",
-                    genre,
-                    audioPath: path,
-                    aiTool: aiToolParam,
-                  });
-                  if (coverUrl?.trim()) nextQs.set("coverUrl", coverUrl.trim());
-                  router.push(`/battle/${battleData.id}?${nextQs.toString()}`);
+                  const id = battleData.id;
+                  router.push(
+                    `/battle/${id}?test=1&audioPath=${encodeURIComponent(path)}&fighterName=${encodeURIComponent(fighterName)}&songName=${encodeURIComponent(songName)}&aiTool=${encodeURIComponent(aiToolParam)}&coverUrl=${encodeURIComponent(coverUrl ?? "https://picsum.photos/300")}`,
+                  );
                 } finally {
                   setCreatingTestBattle(false);
                 }

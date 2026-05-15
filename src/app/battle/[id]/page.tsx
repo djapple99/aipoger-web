@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
-import { FormEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useSearchParams } from "next/navigation";
 import { isAuthBypassEnabled, mockUserId } from "@/lib/auth-bypass";
 import { useI18n } from "@/lib/i18n";
@@ -43,6 +43,8 @@ type BattleData = {
 
 type VoteCount = { fighter_a: number; fighter_b: number };
 
+const VINYL_COVER_PLACEHOLDER = "https://picsum.photos/300";
+
 function isHttpOrDataImageUrl(s: string): boolean {
   const t = s.trim();
   return /^https?:\/\//i.test(t) || /^data:image\//i.test(t) || /^blob:/i.test(t);
@@ -81,57 +83,59 @@ function VinylDisc({
   aiTool: string | null;
 }) {
   const { t } = useI18n();
+
   const [coverBroken, setCoverBroken] = useState(false);
   const trimmedCover = coverUrl?.trim() ?? "";
   const hasCover = Boolean(trimmedCover) && !coverBroken;
   const initialMark = [...(fighterName.trim() || "?")].slice(0, 1).join("") || "?";
-  const avatarBg = hasCover ? "bg-zinc-900/80" : "bg-zinc-800";
+  const avatarBg = hasCover ? "bg-zinc-900/85" : "bg-zinc-800";
+
+  useEffect(() => {
+    console.log("[VinylDisc] coverUrl", coverUrl);
+  }, [coverUrl]);
 
   useEffect(() => {
     setCoverBroken(false);
   }, [trimmedCover]);
 
+  useEffect(() => {
+    if (!trimmedCover) return;
+    const img = new Image();
+    img.onload = () => setCoverBroken(false);
+    img.onerror = () => setCoverBroken(true);
+    img.src = trimmedCover;
+  }, [trimmedCover]);
+
+  const escapedUrl = trimmedCover.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  const outerRingStyle: CSSProperties = hasCover
+    ? {
+        background: `url("${escapedUrl}") center / cover no-repeat`,
+        backgroundSize: "cover",
+      }
+    : {
+        background: `conic-gradient(from 0deg, #1a1a1a 0deg, #2a2a2a 30deg, #1a1a1a 60deg, #252525 90deg, #1a1a1a 120deg, #2a2a2a 150deg, #1a1a1a 180deg, #252525 210deg, #1a1a1a 240deg, #2a2a2a 270deg, #1a1a1a 300deg, #252525 330deg, #1a1a1a 360deg)`,
+      };
+
   return (
     <div className="flex flex-col items-center gap-5">
       <div
-        className="relative flex h-[220px] w-[220px] items-center justify-center overflow-visible md:h-[280px] md:w-[280px]"
+        className="relative flex h-[220px] w-[220px] items-center justify-center overflow-hidden rounded-full md:h-[280px] md:w-[280px]"
         onClick={onToggle}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => e.key === " " && onToggle()}
         aria-label={isPlaying ? t("deck_pause_aria") : t("deck_play_aria")}
       >
+        {/* 外圈底：有封面時整面圖（無 conic）；無封面時黑膠紋理 */}
         <div
-          className={`absolute left-0 top-0 z-[50] flex h-14 w-14 items-center justify-center rounded-full border-2 border-orange-500 text-lg font-black shadow-xl ${avatarBg}`}
-          aria-hidden
-        >
-          <span className="text-orange-400">{initialMark}</span>
-        </div>
-
-        {hasCover ? (
-          // eslint-disable-next-line @next/next/no-img-element -- 動態簽名 URL
-          <img
-            alt=""
-            src={trimmedCover}
-            className="pointer-events-none absolute inset-0 z-[5] h-full w-full rounded-full object-cover"
-            onError={() => setCoverBroken(true)}
-          />
-        ) : (
-          <div
-            className="pointer-events-none absolute inset-0 z-[5] rounded-full"
-            style={{
-              background: `conic-gradient(from 0deg, #1a1a1a 0deg, #2a2a2a 30deg, #1a1a1a 60deg, #252525 90deg, #1a1a1a 120deg, #2a2a2a 150deg, #1a1a1a 180deg, #252525 210deg, #1a1a1a 240deg, #2a2a2a 270deg, #1a1a1a 300deg, #252525 330deg, #1a1a1a 360deg)`,
-            }}
-          />
-        )}
-        <div
-          className={`pointer-events-none absolute inset-0 z-[6] rounded-full border-[4px] transition-all duration-300 ${
+          className={`pointer-events-none absolute inset-0 z-[1] rounded-full border-[4px] transition-all duration-300 ${
             isPlaying ? "border-orange-500 shadow-[0_0_30px_rgba(255,106,0,0.5)]" : "border-zinc-600"
           }`}
+          style={outerRingStyle}
         />
         <div
           className={`pointer-events-none absolute inset-[10%] z-[7] rounded-full border border-zinc-700/50 ${
-            hasCover ? "bg-black/30" : "bg-zinc-900/40"
+            hasCover ? "bg-black/25" : "bg-zinc-900/40"
           }`}
         />
         <div
@@ -150,14 +154,22 @@ function VinylDisc({
           <div className="absolute inset-[38%] rounded-full bg-zinc-800" />
         </div>
 
+        {/* 頭像：唱片內左側、加大、蓋在封面與溝槽之上 */}
+        <div
+          className={`absolute left-3 top-1/2 z-[55] flex h-[4.25rem] w-[4.25rem] -translate-y-1/2 items-center justify-center rounded-full border-2 border-orange-500 text-2xl font-black shadow-xl md:left-4 md:h-[4.75rem] md:w-[4.75rem] md:text-3xl ${avatarBg}`}
+          aria-hidden
+        >
+          <span className="text-orange-400">{initialMark}</span>
+        </div>
+
         {isPlaying && (
-          <div className="absolute -top-2 -right-2 z-[50] flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-black shadow-lg">
+          <div className="absolute -top-2 -right-2 z-[60] flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-black shadow-lg">
             ▶
           </div>
         )}
         {label && (
           <div
-            className="absolute -bottom-2 left-1/2 z-[50] -translate-x-1/2 rounded-full border border-zinc-700 bg-zinc-900/90 px-3 py-1 text-[10px] font-semibold tracking-widest text-zinc-400"
+            className="absolute -bottom-2 left-1/2 z-[60] -translate-x-1/2 rounded-full border border-zinc-700 bg-zinc-900/90 px-3 py-1 text-[10px] font-semibold tracking-widest text-zinc-400"
           >
             {label}
           </div>
@@ -757,7 +769,7 @@ function BattleArenaContent() {
               label={t("deck_a")}
               fighterName={battle.fighter_a_name}
               songName={battle.song_a_name}
-              coverUrl={vinylCoverA}
+              coverUrl={vinylCoverA ?? VINYL_COVER_PLACEHOLDER}
               isPlaying={activeDeck === "A"}
               onToggle={() => handleToggleDeck("A")}
               color="#ff6a00"
@@ -810,7 +822,7 @@ function BattleArenaContent() {
               label={t("deck_b")}
               fighterName={battle.fighter_b_name}
               songName={battle.song_b_name}
-              coverUrl={vinylCoverB}
+              coverUrl={vinylCoverB ?? VINYL_COVER_PLACEHOLDER}
               isPlaying={activeDeck === "B"}
               onToggle={() => handleToggleDeck("B")}
               color="#3b82f6"
