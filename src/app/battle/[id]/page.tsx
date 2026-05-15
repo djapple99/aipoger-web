@@ -11,6 +11,7 @@ import { isAuthBypassEnabled, mockUserId } from "@/lib/auth-bypass";
 import { useI18n } from "@/lib/i18n";
 import { fontGlowSansBattle } from "@/lib/fonts";
 import { supabase } from "@/lib/supabase";
+import type { User } from "@supabase/supabase-js";
 
 type SenderType = "audience" | "fighter_a" | "fighter_b";
 
@@ -57,6 +58,26 @@ function isHttpOrDataImageUrl(s: string): boolean {
   return /^https?:\/\//i.test(t) || /^data:image\//i.test(t) || /^blob:/i.test(t);
 }
 
+/** 本站個人頭像優先於 fighter_profiles（內為 OAuth／擂台設定同步） */
+function firstAvatarUrl(...candidates: Array<string | null | undefined>): string | null {
+  for (const raw of candidates) {
+    const t = raw?.trim();
+    if (t) return t;
+  }
+  return null;
+}
+
+/** OAuth／登入供應商頭像（與首頁 userAvatarUrl 一致） */
+function oauthProviderAvatar(user: User | null | undefined): string | null {
+  const m = user?.user_metadata as Record<string, unknown> | undefined;
+  if (!m) return null;
+  const a = m.avatar_url;
+  const p = m.picture;
+  if (typeof a === "string" && a.trim().length > 0) return a.trim();
+  if (typeof p === "string" && p.trim().length > 0) return p.trim();
+  return null;
+}
+
 async function resolveMediaUrl(raw: string | null | undefined): Promise<string | null> {
   const t = raw?.trim();
   if (!t) return null;
@@ -78,14 +99,17 @@ async function resolveMediaUrl(raw: string | null | undefined): Promise<string |
 }
 
 function VinylTonearmImage({ side }: { side: "left" | "right" }) {
+  /** 對齊參考稿：唱臂緊貼外緣略向內、略上移 */
   return (
     <NextImage
       src={VINYL_ARM_IMAGE_SRC}
       alt=""
-      width={200}
-      height={320}
-      className={`pointer-events-none absolute top-[8%] z-20 h-[80%] w-auto max-w-[min(52%,120px)] select-none object-contain object-top md:max-w-[min(52%,150px)] ${
-        side === "left" ? "left-[-6%]" : "right-[-6%] scale-x-[-1]"
+      width={240}
+      height={360}
+      className={`pointer-events-none absolute z-20 select-none object-contain object-top ${
+        side === "left"
+          ? "top-[14%] left-[2%] h-[72%] w-auto max-w-[min(44%,118px)] md:left-[4%] md:max-w-[min(44%,148px)]"
+          : "top-[14%] right-[2%] h-[72%] w-auto max-w-[min(44%,118px)] scale-x-[-1] md:right-[4%] md:max-w-[min(44%,148px)]"
       }`}
       aria-hidden
     />
@@ -131,6 +155,8 @@ function VinylDisc({
       ? "border-orange-500/90"
       : "border-blue-400/90";
 
+  const avatarBubbleClass = `overflow-hidden rounded-full border-[3px] bg-black ring-2 ring-black/90 md:ring-[2.5px] h-[3.625rem] w-[3.625rem] md:h-[4.25rem] md:w-[4.25rem] ${avatarRing}`;
+
   const playAura =
     accent === "orange"
       ? "shadow-[0_0_42px_rgba(255,106,0,0.42)]"
@@ -163,22 +189,14 @@ function VinylDisc({
 
   return (
     <div className="flex w-full flex-col items-center">
-      {/* 對應稿件：標籤＋姓名／歌名在唱片上方 */}
-      <div className="w-full space-y-5 text-center">
-        <div>
-          <p className="text-[11px] text-zinc-500">{t("battle_label_fighter")}</p>
-          <p className="mt-1 text-[15px] text-white">{fighterName}</p>
-        </div>
-        <div>
-          <p className="text-[11px] text-zinc-500">{t("battle_label_song")}</p>
-          <p className="mt-1 text-sm text-white">{songName}</p>
-        </div>
+      {/* 僅資料，無「鬥士名稱／歌名」標題 */}
+      <div className="w-full space-y-2 text-center">
+        <p className="text-[clamp(14px,2.9vw,16px)] text-white">{fighterName}</p>
+        <p className="text-[clamp(12px,2.6vw,14px)] text-white">{songName}</p>
       </div>
 
       <div
-        className={`relative mx-auto mt-8 shrink-0 ${
-          isPlaying ? playAura + " rounded-full" : "rounded-full"
-        }`}
+        className={`relative mx-auto mt-5 w-fit shrink-0 ${isPlaying ? playAura + " rounded-full p-px" : ""}`}
       >
         <div className="relative flex h-[220px] w-[220px] items-center justify-center md:h-[280px] md:w-[280px]">
           <VinylTonearmImage side={side} />
@@ -192,6 +210,7 @@ function VinylDisc({
             tabIndex={0}
             aria-label={isPlaying ? t("deck_pause_aria") : t("deck_play_aria")}
           >
+            {/* 黑膠本體 */}
             <div
               className="absolute inset-0 rounded-full"
               style={{
@@ -210,10 +229,8 @@ function VinylDisc({
               <div className="absolute inset-0 rounded-full border border-zinc-600/35" />
             </div>
 
-            <div
-              className={`absolute left-2 top-2 z-30 h-12 w-12 overflow-hidden rounded-full border-[2.5px] bg-black ring-2 ring-black/90 md:h-14 md:w-14 ${avatarRing}`}
-              aria-hidden
-            >
+            {/* 頭像：左側在左上角，右側在右上角，絕對定位在唱片外層 */}
+            <div className={`absolute z-30 ${side === "left" ? "left-1 top-1" : "right-1 top-1"} ${avatarBubbleClass}`} aria-hidden>
               {showAvatarImg ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -225,15 +242,14 @@ function VinylDisc({
                 />
               ) : (
                 <span
-                  className={`flex h-full w-full items-center justify-center text-lg ${
-                    accent === "orange" ? "text-orange-400" : "text-blue-300"
-                  }`}
+                  className={`flex h-full w-full items-center justify-center text-xl md:text-2xl ${accent === "orange" ? "text-orange-400" : "text-blue-300"}`}
                 >
                   {initialMark}
                 </span>
               )}
             </div>
 
+            {/* 封面：中心圓形貼紙 */}
             {hasCover ? (
               <div
                 className={`relative z-10 flex h-[58%] w-[58%] items-center justify-center overflow-hidden rounded-full ${
@@ -273,16 +289,13 @@ function VinylDisc({
         </div>
       </div>
 
-      {/* AI 工具／PLAY */}
-      <div className="mt-8 w-full text-center">
-        <p className="text-[11px] text-zinc-500">{t("battle_label_ai_tool")}</p>
-        <p className="mt-1.5 text-[13px] text-white">{aiTool ?? "—"}</p>
-      </div>
+      {/* AI 工具：拿掉，不顯示 */}
+      <div className="mt-5 w-full text-center" />
 
       <button
         type="button"
         onClick={onToggle}
-        className={`mt-5 inline-flex items-center justify-center gap-2 rounded-[10px] border px-10 py-2.5 text-[11px] tracking-[0.28em] transition ${playClasses}`}
+        className={`mt-3 inline-flex items-center justify-center gap-2 rounded-lg border px-9 py-2 text-[10px] tracking-[0.26em] transition md:text-[11px] ${playClasses}`}
       >
         {isPlaying ? (
           <>
@@ -426,10 +439,12 @@ function BattleArenaContent() {
         const testFlag = searchParams.get("test") === "1";
 
         let profileAvatar: string | null = null;
+        let oauthAv: string | null = null;
         if (!isAuthBypassEnabled) {
           const {
             data: { session },
           } = await supabase.auth.getSession();
+          oauthAv = oauthProviderAvatar(session?.user);
           const uid = session?.user?.id;
           if (uid) {
             const { data: prof } = await supabase
@@ -453,7 +468,7 @@ function BattleArenaContent() {
           song_b_name: testFlag ? "測試歌曲B" : "Cold Pulse",
           audio_a_path: qAudio || null,
           audio_b_path: null,
-          fighter_a_avatar: profileAvatar,
+          fighter_a_avatar: firstAvatarUrl(profileAvatar, oauthAv),
           fighter_b_avatar: null,
           song_a_cover: qCover || null,
           song_b_cover: null,
@@ -513,8 +528,8 @@ function BattleArenaContent() {
         ...(data as BattleData),
         fighter_a_user_id: bdata.fighter_a_user_id,
         fighter_b_user_id: bdata.fighter_b_user_id,
-        fighter_a_avatar: rowA?.avatar_url ?? profA?.avatar_url ?? null,
-        fighter_b_avatar: rowB?.avatar_url ?? profB?.avatar_url ?? null,
+        fighter_a_avatar: firstAvatarUrl(profA?.avatar_url, rowA?.avatar_url),
+        fighter_b_avatar: firstAvatarUrl(profB?.avatar_url, rowB?.avatar_url),
         song_a_cover: rowA?.song_cover_url ?? (bdata.song_a_cover as string | null | undefined) ?? null,
         song_b_cover: rowB?.song_cover_url ?? (bdata.song_b_cover as string | null | undefined) ?? null,
         ai_tool_a: (bdata.ai_tool_a as string | null | undefined) ?? null,
@@ -909,12 +924,9 @@ function BattleArenaContent() {
   return (
     <div className={`${fontGlowSansBattle.className} flex min-h-screen flex-col bg-black text-zinc-100 antialiased`}>
       {/* 頂部：照稿 — 圖示 + 歌擂台｜觀戰｜語言 */}
-      <header className="sticky top-0 z-30 grid grid-cols-3 items-center border-b border-white/10 bg-black px-4 py-3 backdrop-blur">
-        <Link href="/" className="flex min-w-0 items-center gap-2.5">
-          <span className="flex shrink-0 rounded-full border border-white/10 bg-black p-1">
-            <NextImage src="/aipoger-logo.png" alt="" width={28} height={28} className="h-7 w-7 object-contain" />
-          </span>
-          <span className="truncate text-[15px] text-white">{t("battle_arena_nav")}</span>
+      <header className="sticky top-0 z-30 grid grid-cols-3 items-center border-b border-white/10 bg-black px-4 py-2.5 backdrop-blur">
+        <Link href="/" className="min-w-0 text-[clamp(14px,2.8vw,16px)] font-medium tracking-wide text-white hover:opacity-85">
+          {t("battle_arena_nav")}
         </Link>
         <div className="flex justify-center">
           <div className="rounded-full border border-white/10 bg-neutral-950/90 px-3 py-1.5 text-center text-[11px] text-zinc-400">
@@ -939,10 +951,10 @@ function BattleArenaContent() {
       </header>
 
       {/* 擂台主體 */}
-      <main className="flex-1 px-4 py-8 md:px-8">
-        <section className="mx-auto grid max-w-[1320px] grid-cols-1 gap-y-14 lg:grid-cols-[1fr_auto_1fr] lg:gap-x-6 lg:gap-y-0">
-          {/* 左欄（稿件：唱片 → 歌詞 → 愛心／票數） */}
-          <div className="order-2 flex flex-col border border-white/[0.06] px-6 py-8 md:px-8 lg:order-none">
+      <main className="flex-1 px-4 py-5 md:px-7">
+        <section className="mx-auto grid max-w-[1320px] grid-cols-1 gap-y-8 lg:grid-cols-[1fr_auto_1fr] lg:gap-x-5 lg:gap-y-0">
+          {/* 左欄 */}
+          <div className="order-2 flex flex-col border border-white/[0.06] px-5 py-6 md:px-7 lg:order-none">
             <VinylDisc
               side="left"
               fighterName={battle.fighter_a_name}
@@ -955,11 +967,11 @@ function BattleArenaContent() {
               accent="orange"
               aiTool={battle.ai_tool_a}
             />
-            <div className="mt-12 flex min-h-[120px] flex-1 whitespace-pre-wrap text-center text-[13px] leading-[1.8] text-white md:text-[14px]">
+            <div className="mt-2 min-h-[52px] whitespace-pre-wrap text-center text-[13px] leading-[1.75] text-white md:text-[14px]">
               {lyricA ? lyricA : <span className="w-full text-zinc-600">{t("battle_lyrics_label")}</span>}
             </div>
-            <div className="mt-auto flex flex-col gap-3 pt-10">
-              <div className="flex w-full items-end justify-between">
+            <div className="mt-auto flex flex-col gap-2 pb-2 pt-2">
+              <div className="flex w-full justify-start pr-8">
                 <VoteHeartButton
                   selected={hasVoted === "fighter_a"}
                   voteLocked={voteLocked}
@@ -978,31 +990,26 @@ function BattleArenaContent() {
             </div>
           </div>
 
-          {/* 中：LOGO + VS + 狀態（稿件含先攻標記） */}
-          <div className="order-1 flex flex-col items-center px-2 lg:order-none lg:w-[min(280px,24vw)]">
+          {/* 中：LOGO + VS */}
+          <div className="order-1 flex flex-col items-center gap-4 lg:order-none lg:w-[min(280px,24vw)]">
             <NextImage
               src="/aipoger-logo.png"
-              alt=""
-              width={148}
-              height={148}
-              className="h-auto w-[108px] select-none object-contain md:w-[132px]"
+              alt="AIPOGER"
+              width={180}
+              height={180}
+              className="h-auto w-[clamp(96px,18vw,160px)] select-none object-contain"
               priority
             />
-            <p className="mt-2 text-[13px] tracking-wide text-white">{t("battle_tagline_logo")}</p>
-            <p className="mt-10 text-[clamp(3.5rem,11vw,5.85rem)] font-semibold leading-none tracking-tighter text-orange-500">
+            <p className="text-[clamp(3.5rem,11vw,5.85rem)] font-semibold leading-none tracking-tighter text-orange-500">
               VS
             </p>
-            <p className="mt-6 text-[12px] text-orange-400/95">
+            <p className="text-[12px] text-orange-400/95">
               {totalVotes === 0 ? t("battle_wait_votes") : t("battle_vote_total", { count: totalVotes })}
-            </p>
-            <p className="mt-4 text-[11px] text-zinc-500">{t("first_attack")}</p>
-            <p className="mt-1 text-2xl font-semibold text-orange-400 md:text-[1.85rem]">
-              {t("battle_first_move_mark")}
             </p>
           </div>
 
           {/* 右欄 */}
-          <div className="order-3 flex flex-col border border-white/[0.06] px-6 py-8 md:px-8">
+          <div className="order-3 flex flex-col border border-white/[0.06] px-5 py-6 md:px-7">
             <VinylDisc
               side="right"
               fighterName={battle.fighter_b_name}
@@ -1015,11 +1022,11 @@ function BattleArenaContent() {
               accent="blue"
               aiTool={battle.ai_tool_b}
             />
-            <div className="mt-12 flex min-h-[120px] flex-1 whitespace-pre-wrap text-center text-[13px] leading-[1.8] text-white md:text-[14px]">
+            <div className="mt-2 min-h-[52px] whitespace-pre-wrap text-center text-[13px] leading-[1.75] text-white md:text-[14px]">
               {lyricB ? lyricB : <span className="w-full text-zinc-600">{t("battle_lyrics_label")}</span>}
             </div>
-            <div className="mt-auto flex flex-col gap-3 pt-10">
-              <div className="flex w-full items-end justify-end">
+            <div className="mt-auto flex flex-col gap-2 pb-2 pt-2">
+              <div className="flex w-full justify-end pl-8">
                 <VoteHeartButton
                   selected={hasVoted === "fighter_b"}
                   voteLocked={voteLocked}
@@ -1040,11 +1047,11 @@ function BattleArenaContent() {
         </section>
 
         {/* 聊天區 */}
-        <section className="mt-8 rounded-3xl border border-zinc-800 bg-zinc-900/50 p-4">
-          <h2 className="mb-3 text-xs font-semibold tracking-widest text-zinc-500">{t("battle_chat_title")}</h2>
+        <section className="mt-3 rounded-2xl bg-zinc-950/40 p-3">
+          <h2 className="mb-2 text-[11px] font-medium tracking-wider text-zinc-500">{t("battle_chat_title")}</h2>
           <div
             ref={chatContainerRef}
-            className="flex h-[200px] flex-col gap-2 overflow-y-auto rounded-2xl bg-black/50 p-4 scrollbar-thin scrollbar-thumb-zinc-700"
+            className="flex h-[160px] flex-col gap-1.5 overflow-y-auto rounded-xl bg-black/60 px-3 py-2.5 scrollbar-thin scrollbar-thumb-zinc-700"
           >
             {messages.length === 0 && (
               <p className="text-center text-xs text-zinc-600">{t("no_messages")}</p>
