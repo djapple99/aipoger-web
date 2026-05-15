@@ -557,7 +557,7 @@ function HookCutContent() {
       setUploadPhase(t.uploading);
 
       const userId = isAuthBypassEnabled
-        ? "test-user"
+        ? "00000000-0000-0000-0000-000000000001"
         : (await supabase.auth.getSession()).data.session?.user.id ?? mockUserId;
 
       // 上傳到 Supabase Storage（WAV MIME 與 bucket 白名單一致；失敗時自動試別名）
