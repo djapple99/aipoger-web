@@ -208,12 +208,21 @@ SET search_path = public
 AS $$
 DECLARE
   current_balance INTEGER;
+  admin_flag BOOLEAN;
 BEGIN
   IF auth.uid() IS DISTINCT FROM user_uuid THEN
     RAISE EXCEPTION 'Not allowed';
   END IF;
 
-  SELECT apc_balance INTO current_balance FROM public.user_profiles WHERE id = user_uuid;
+  SELECT COALESCE(is_admin, false), apc_balance
+  INTO admin_flag, current_balance
+  FROM public.user_profiles
+  WHERE id = user_uuid;
+
+  IF admin_flag THEN
+    RETURN TRUE;
+  END IF;
+
   IF current_balance IS NULL OR current_balance < fee THEN
     RETURN FALSE;
   END IF;

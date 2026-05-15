@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
 import { writeFighterNameToStorage } from "@/lib/fighter-name-storage";
 import { isMissingFighterNameColumn } from "@/lib/user-profile-fighter-name";
+import { loadIsAdmin } from "@/lib/user-profile-admin";
 import type { Session, User } from "@supabase/supabase-js";
 
 const SPLASH_STEPS = {
@@ -75,6 +76,7 @@ function HomeAuthBar() {
   const [levelLine, setLevelLine] = useState<string | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const forceShowLogin = process.env.NEXT_PUBLIC_FORCE_SHOW_LOGIN === "true";
@@ -105,9 +107,11 @@ function HomeAuthBar() {
           setApcBalance(null);
           setLevelLine(null);
           setProfileAvatarUrl(null);
+          setIsAdmin(false);
           return;
         }
 
+        setIsAdmin(await loadIsAdmin(userId));
         setAipoCoins(data?.aipo_coins ?? 0);
         setApcBalance(typeof data?.apc_balance === "number" ? data.apc_balance : null);
         setProfileAvatarUrl(typeof data?.avatar_url === "string" && data.avatar_url.length > 0 ? data.avatar_url : null);
@@ -230,6 +234,9 @@ function HomeAuthBar() {
             {t("home_apc_balance")}{" "}
             <span className="font-mono font-semibold text-zinc-300">{apcBalance.toLocaleString()}</span>
           </p>
+        )}
+        {isAdmin && (
+          <p className="mt-1 text-[10px] font-semibold text-amber-400">{t("home_admin_badge")} · 免 APC 挑戰費</p>
         )}
         {levelLine && (
           <p className="mt-1 truncate text-[10px] leading-tight text-zinc-400">
