@@ -91,10 +91,6 @@ function VinylDisc({
   const avatarBg = hasCover ? "bg-zinc-900/85" : "bg-zinc-800";
 
   useEffect(() => {
-    console.log("[VinylDisc] coverUrl", coverUrl);
-  }, [coverUrl]);
-
-  useEffect(() => {
     setCoverBroken(false);
   }, [trimmedCover]);
 
@@ -154,9 +150,9 @@ function VinylDisc({
           <div className="absolute inset-[38%] rounded-full bg-zinc-800" />
         </div>
 
-        {/* 頭像：唱片內左側、加大、蓋在封面與溝槽之上 */}
+        {/* 頭像：唱片內左上、高於外圈(z-1)/溝槽(z-7)/中心(z-10)，低於狀態角標與 label(z-60) */}
         <div
-          className={`absolute left-3 top-1/2 z-[55] flex h-[4.25rem] w-[4.25rem] -translate-y-1/2 items-center justify-center rounded-full border-2 border-orange-500 text-2xl font-black shadow-xl md:left-4 md:h-[4.75rem] md:w-[4.75rem] md:text-3xl ${avatarBg}`}
+          className={`pointer-events-none absolute left-0 top-0 z-[40] flex h-14 w-14 translate-y-0 items-center justify-center rounded-full border-2 border-orange-500 text-xl font-black shadow-xl md:h-16 md:w-16 md:text-2xl ${avatarBg}`}
           aria-hidden
         >
           <span className="text-orange-400">{initialMark}</span>

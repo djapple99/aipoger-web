@@ -1,11 +1,12 @@
 // src/app/battle/setup/page.tsx
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { isAuthBypassEnabled, mockUserId } from '@/lib/auth-bypass';
 import { useI18n } from '@/lib/i18n';
+import { AvatarCropUploadModal } from '@/components/avatar-crop-upload-modal';
 
 type GenreOption = { value: string; label: string };
 
@@ -56,6 +57,28 @@ export default function BattleSetupPage() {
 
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const cropFileInputRef = useRef<HTMLInputElement>(null);
+  const avatarUploadSectionRef = useRef<HTMLDivElement>(null);
+
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [uploadUserId, setUploadUserId] = useState<string | null>(null);
+  const [profileAvatarPreview, setProfileAvatarPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    void supabase.auth.getSession().then(({ data }) => {
+      setUploadUserId(data.session?.user?.id ?? null);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.location.hash !== '#avatar-upload') return;
+    const timer = window.setTimeout(() => {
+      avatarUploadSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   // ── 頭像上傳 ──────────────────────────────────────────
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -64,6 +87,31 @@ export default function BattleSetupPage() {
     setAvatarFile(file);
     const reader = new FileReader();
     reader.onload = (ev) => setAvatarPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const openCroppedProfileAvatar = () => {
+    if (isAuthBypassEnabled) {
+      alert('開發模式（AUTH_BYPASS）無法上傳至 Storage，請關閉後再試。');
+      return;
+    }
+    if (!uploadUserId) {
+      alert(t('setup_need_login'));
+      router.push('/auth');
+      return;
+    }
+    cropFileInputRef.current?.click();
+  };
+
+  const handleCropFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropImageSrc(reader.result as string);
+      setCropModalOpen(true);
+    };
     reader.readAsDataURL(file);
   };
 
@@ -214,13 +262,13 @@ export default function BattleSetupPage() {
         {/* 頭像 + 封面 雙上傳 */}
         <div className="grid grid-cols-2 gap-6">
           {/* 頭像 */}
-          <div className="flex flex-col items-center">
+          <div ref={avatarUploadSectionRef} id="avatar-upload" className="flex flex-col items-center gap-2">
             <label className="cursor-pointer group">
               <div className="relative">
-                {avatarPreview ? (
+                {profileAvatarPreview || avatarPreview ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={avatarPreview}
+                    src={(profileAvatarPreview ?? avatarPreview) as string}
                     alt="頭像"
                     className="w-36 h-36 rounded-full object-cover border-4 border-zinc-700 group-hover:border-orange-500 transition-all"
                   />
@@ -237,11 +285,23 @@ export default function BattleSetupPage() {
               </div>
               <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
             </label>
-            <p className="mt-2 text-xs text-zinc-500">上傳頭像（可選）</p>
-            {avatarPreview && (
+            <p className="mt-2 text-xs text-zinc-500">{t('upload_avatar')}</p>
+            <button
+              type="button"
+              onClick={openCroppedProfileAvatar}
+              className="rounded-xl border border-orange-500/60 bg-orange-500/10 px-4 py-2 text-xs font-semibold text-orange-300 transition hover:bg-orange-500/20"
+            >
+              {t('setup_avatar_upload_btn')}
+            </button>
+            <input ref={cropFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleCropFileChange} />
+            {(profileAvatarPreview || avatarPreview) && (
               <button
                 type="button"
-                onClick={() => { setAvatarFile(null); setAvatarPreview(null); }}
+                onClick={() => {
+                  setAvatarFile(null);
+                  setAvatarPreview(null);
+                  setProfileAvatarPreview(null);
+                }}
                 className="mt-1 text-xs text-zinc-600 hover:text-red-400"
               >
                 移除
@@ -337,8 +397,8 @@ export default function BattleSetupPage() {
               className="w-full bg-zinc-800/80 border border-zinc-700 rounded-2xl px-6 py-4 text-lg focus:outline-none focus:border-orange-500 transition-colors"
             >
               <option value="">請選擇 AI 工具</option>
-              {AI_TOOLS.map((t) => (
-                <option key={t} value={t}>{t}</option>
+              {AI_TOOLS.map((tool) => (
+                <option key={tool} value={tool}>{tool}</option>
               ))}
             </select>
             {aiTool === '其他' && (
@@ -367,6 +427,24 @@ export default function BattleSetupPage() {
           {uploading ? `⏳ ${uploadProgress}` : '🚀 開始 Hook 裁切 →'}
         </button>
       </div>
+
+      {uploadUserId ? (
+        <AvatarCropUploadModal
+          open={cropModalOpen}
+          imageDataUrl={cropImageSrc}
+          userId={uploadUserId}
+          onClose={() => {
+            setCropModalOpen(false);
+            setCropImageSrc(null);
+          }}
+          onUploaded={(url) => {
+            setProfileAvatarPreview(url);
+            setAvatarPreview(url);
+            setAvatarFile(null);
+            alert(t('avatar_crop_success'));
+          }}
+        />
+      ) : null}
     </div>
   );
 }

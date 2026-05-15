@@ -72,6 +72,7 @@ function HomeAuthBar() {
   const [apcBalance, setApcBalance] = useState<number | null>(null);
   const [levelLine, setLevelLine] = useState<string | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const forceShowLogin = process.env.NEXT_PUBLIC_FORCE_SHOW_LOGIN === "true";
@@ -82,7 +83,7 @@ function HomeAuthBar() {
       try {
         const { data, error } = await supabase
           .from("user_profiles")
-          .select("aipo_coins, apc_balance, level, total_wins")
+          .select("aipo_coins, apc_balance, level, total_wins, avatar_url")
           .eq("id", userId)
           .maybeSingle();
 
@@ -91,11 +92,13 @@ function HomeAuthBar() {
           setAipoCoins(0);
           setApcBalance(null);
           setLevelLine(null);
+          setProfileAvatarUrl(null);
           return;
         }
 
         setAipoCoins(data?.aipo_coins ?? 0);
         setApcBalance(typeof data?.apc_balance === "number" ? data.apc_balance : null);
+        setProfileAvatarUrl(typeof data?.avatar_url === "string" && data.avatar_url.length > 0 ? data.avatar_url : null);
 
         const lv = data?.level;
         if (typeof lv !== "number" || lv < 1) {
@@ -154,6 +157,7 @@ function HomeAuthBar() {
         setAipoCoins(null);
         setApcBalance(null);
         setLevelLine(null);
+        setProfileAvatarUrl(null);
       }
     });
 
@@ -180,7 +184,7 @@ function HomeAuthBar() {
   };
 
   const user = session?.user ?? null;
-  const avatarUrl = user ? userAvatarUrl(user) : null;
+  const avatarUrl = profileAvatarUrl ?? (user ? userAvatarUrl(user) : null);
 
   if (forceShowLogin || !user) {
     return (
@@ -259,6 +263,14 @@ function HomeAuthBar() {
                 </p>
               )}
             </div>
+            <Link
+              href="/battle/setup#avatar-upload"
+              role="menuitem"
+              className="block w-full px-3 py-2.5 text-left text-sm text-zinc-200 transition hover:bg-zinc-800 hover:text-white"
+              onClick={() => setMenuOpen(false)}
+            >
+              {t("home_avatar_upload_link")}
+            </Link>
             <button
               type="button"
               role="menuitem"
