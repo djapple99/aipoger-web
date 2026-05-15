@@ -112,43 +112,101 @@ function VinylDisc({
         background: `conic-gradient(from 0deg, #1a1a1a 0deg, #2a2a2a 30deg, #1a1a1a 60deg, #252525 90deg, #1a1a1a 120deg, #2a2a2a 150deg, #1a1a1a 180deg, #252525 210deg, #1a1a1a 240deg, #2a2a2a 270deg, #1a1a1a 300deg, #252525 330deg, #1a1a1a 360deg)`,
       };
 
-  return (
+return (
     <div className="flex flex-col items-center gap-5">
+      {/* 唱片外框：黑膠紋理為底，頭像左上角，封面在中心 */}
       <div
-        className="relative flex h-[220px] w-[220px] items-center justify-center overflow-hidden rounded-full md:h-[280px] md:w-[280px]"
+        className="relative flex h-[240px] w-[240px] items-center justify-center md:h-[300px] md:w-[300px]"
         onClick={onToggle}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => e.key === " " && onToggle()}
         aria-label={isPlaying ? t("deck_pause_aria") : t("deck_play_aria")}
       >
-        {/* 外圈底：有封面時整面圖（無 conic）；無封面時黑膠紋理 */}
+        {/* 黑膠唱片本體：圓形黑膠 + 同心溝槽 */}
         <div
-          className={`pointer-events-none absolute inset-0 z-[1] rounded-full border-[4px] transition-all duration-300 ${
-            isPlaying ? "border-orange-500 shadow-[0_0_30px_rgba(255,106,0,0.5)]" : "border-zinc-600"
-          }`}
-          style={outerRingStyle}
-        />
-        <div
-          className={`pointer-events-none absolute inset-[10%] z-[7] rounded-full border border-zinc-700/50 ${
-            hasCover ? "bg-black/25" : "bg-zinc-900/40"
-          }`}
-        />
-        <div
-          className={`relative z-[10] flex h-[36%] w-[36%] items-center justify-center rounded-full overflow-hidden shadow-inner ${
-            isPlaying ? "animate-spin" : ""
+          className={`absolute inset-0 rounded-full transition-all duration-300 ${
+            isPlaying ? "shadow-[0_0_40px_rgba(255,106,0,0.4)]" : ""
           }`}
           style={{
             background: hasCover
-              ? `linear-gradient(145deg, #0f0f0f 0%, #252525 45%, #121212 100%)`
-              : `linear-gradient(135deg, ${color}33 0%, ${color}66 100%)`,
-            animationDuration: isPlaying ? "2.8s" : undefined,
-            animationPlayState: isPlaying ? "running" : "paused",
+              ? `linear-gradient(135deg, #111 0%, #1a1a1a 100%)`
+              : `linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 50%, #111 100%)`,
           }}
         >
-          <div className="absolute inset-[33%] rounded-full border-2 border-zinc-700 bg-zinc-900" />
-          <div className="absolute inset-[38%] rounded-full bg-zinc-800" />
+          {/* 同心溝槽線 */}
+          {[8, 16, 24, 32, 40, 48].map((r) => (
+            <div
+              key={r}
+              className="absolute rounded-full border border-zinc-800/30"
+              style={{
+                inset: `${r}%`,
+                background: "transparent",
+              }}
+            />
+          ))}
+          {/* 外圈亮線 */}
+          <div className="absolute inset-0 rounded-full border border-zinc-700/40" />
         </div>
+
+        {/* 頭像：左上角小圓形覆蓋在唱片上 */}
+        <div
+          className="absolute left-2 top-2 z-20 flex h-9 w-9 items-center justify-center rounded-full border-2 border-orange-500 bg-zinc-900 text-sm font-bold shadow-lg md:h-11 md:w-11 md:text-base"
+          aria-hidden
+        >
+          <span className="text-orange-400">{initialMark}</span>
+        </div>
+
+        {/* 封面圖：中心圓形貼紙（像真實唱片） */}
+        {hasCover ? (
+          <div
+            className={`relative z-10 flex h-[55%] w-[55%] items-center justify-center overflow-hidden rounded-full ${
+              isPlaying ? "animate-spin" : ""
+            }`}
+            style={{
+              animationDuration: isPlaying ? "3s" : undefined,
+              animationPlayState: isPlaying ? "running" : "paused",
+            }}
+          >
+            <img
+              src={trimmedCover}
+              alt={songName}
+              className="h-full w-full object-cover"
+              onError={() => setCoverBroken(true)}
+            />
+            {/* 中心孔 */}
+            <div className="absolute inset-[38%] rounded-full bg-zinc-900 ring-2 ring-zinc-700" />
+            <div className="absolute inset-[43%] rounded-full bg-zinc-800" />
+          </div>
+        ) : (
+          /* 無封面：中心的 Label 區 */
+          <div
+            className={`relative z-10 flex h-[55%] w-[55%] items-center justify-center overflow-hidden rounded-full ${
+              isPlaying ? "animate-spin" : ""
+            }`}
+            style={{
+              background: `linear-gradient(145deg, ${color}33 0%, ${color}66 50%, ${color}22 100%)`,
+              animationDuration: isPlaying ? "3s" : undefined,
+              animationPlayState: isPlaying ? "running" : "paused",
+            }}
+          >
+            <div className="absolute inset-[35%] rounded-full border-2 border-zinc-800 bg-zinc-900" />
+            <div className="absolute inset-[40%] rounded-full bg-zinc-800" />
+          </div>
+        )}
+
+        {/* 播放中標示 */}
+        {isPlaying && (
+          <div className="absolute -top-1 -right-1 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-black shadow-lg">
+            ▶
+          </div>
+        )}
+        {label && (
+          <div className="absolute -bottom-1 left-1/2 z-20 -translate-x-1/2 rounded-full border border-zinc-700 bg-zinc-900/90 px-2.5 py-0.5 text-[9px] font-semibold tracking-widest text-zinc-400">
+            {label}
+          </div>
+        )}
+      </div>
 
         {/* 頭像：唱片內左上、高於外圈(z-1)/溝槽(z-7)/中心(z-10)，低於狀態角標與 label(z-60) */}
         <div
