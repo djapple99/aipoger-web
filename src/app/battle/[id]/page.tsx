@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
-import { FormEvent, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { FormEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { isAuthBypassEnabled, mockUserId } from "@/lib/auth-bypass";
 import { useI18n } from "@/lib/i18n";
@@ -43,6 +43,23 @@ type BattleData = {
 
 type VoteCount = { fighter_a: number; fighter_b: number };
 
+function isHttpOrDataImageUrl(s: string): boolean {
+  const t = s.trim();
+  return /^https?:\/\//i.test(t) || /^data:image\//i.test(t) || /^blob:/i.test(t);
+}
+
+async function resolveCoverForDisplay(raw: string | null | undefined): Promise<string | null> {
+  const t = raw?.trim();
+  if (!t) return null;
+  if (isHttpOrDataImageUrl(t)) return t;
+  const { data, error } = await supabase.storage.from("battle-audio").createSignedUrl(t, 60 * 60);
+  if (error) {
+    console.error("[battle cover] signed url", error, t);
+    return null;
+  }
+  return data?.signedUrl ?? null;
+}
+
 // ─── 旋轉唱片元件 ──────────────────────────────────────────
 function VinylDisc({
   label,
@@ -64,55 +81,83 @@ function VinylDisc({
   aiTool: string | null;
 }) {
   const { t } = useI18n();
+  const [coverBroken, setCoverBroken] = useState(false);
+  const trimmedCover = coverUrl?.trim() ?? "";
+  const hasCover = Boolean(trimmedCover) && !coverBroken;
+  const initialMark = [...(fighterName.trim() || "?")].slice(0, 1).join("") || "?";
+  const avatarBg = hasCover ? "bg-zinc-900/80" : "bg-zinc-800";
+
+  useEffect(() => {
+    setCoverBroken(false);
+  }, [trimmedCover]);
+
   return (
     <div className="flex flex-col items-center gap-5">
-      {/* 唱片外框 */}
       <div
-        className="relative flex h-[220px] w-[220px] items-center justify-center md:h-[280px] md:w-[280px]"
+        className="relative flex h-[220px] w-[220px] items-center justify-center overflow-visible md:h-[280px] md:w-[280px]"
         onClick={onToggle}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => e.key === " " && onToggle()}
         aria-label={isPlaying ? t("deck_pause_aria") : t("deck_play_aria")}
       >
-        {/* 外圈 */}
         <div
-          className={`absolute inset-0 rounded-full border-[3px] transition-all duration-300 ${
-            isPlaying ? "border-orange-500 shadow-[0_0_30px_rgba(255,106,0,0.4)]" : "border-zinc-600"
+          className={`absolute left-0 top-0 z-[50] flex h-14 w-14 items-center justify-center rounded-full border-2 border-orange-500 text-lg font-black shadow-xl ${avatarBg}`}
+          aria-hidden
+        >
+          <span className="text-orange-400">{initialMark}</span>
+        </div>
+
+        {hasCover ? (
+          // eslint-disable-next-line @next/next/no-img-element -- 動態簽名 URL
+          <img
+            alt=""
+            src={trimmedCover}
+            className="pointer-events-none absolute inset-0 z-[5] h-full w-full rounded-full object-cover"
+            onError={() => setCoverBroken(true)}
+          />
+        ) : (
+          <div
+            className="pointer-events-none absolute inset-0 z-[5] rounded-full"
+            style={{
+              background: `conic-gradient(from 0deg, #1a1a1a 0deg, #2a2a2a 30deg, #1a1a1a 60deg, #252525 90deg, #1a1a1a 120deg, #2a2a2a 150deg, #1a1a1a 180deg, #252525 210deg, #1a1a1a 240deg, #2a2a2a 270deg, #1a1a1a 300deg, #252525 330deg, #1a1a1a 360deg)`,
+            }}
+          />
+        )}
+        <div
+          className={`pointer-events-none absolute inset-0 z-[6] rounded-full border-[4px] transition-all duration-300 ${
+            isPlaying ? "border-orange-500 shadow-[0_0_30px_rgba(255,106,0,0.5)]" : "border-zinc-600"
           }`}
-          style={{
-            background: `conic-gradient(from 0deg, #1a1a1a 0deg, #2a2a2a 30deg, #1a1a1a 60deg, #252525 90deg, #1a1a1a 120deg, #2a2a2a 150deg, #1a1a1a 180deg, #252525 210deg, #1a1a1a 240deg, #2a2a2a 270deg, #1a1a1a 300deg, #252525 330deg, #1a1a1a 360deg)`,
-          }}
         />
-        {/* 溝槽 */}
-        <div className="absolute inset-[12%] rounded-full border border-zinc-800 bg-zinc-900/50" />
-        {/* 中心標籤 */}
         <div
-          className={`relative flex h-[38%] w-[38%] items-center justify-center rounded-full overflow-hidden shadow-inner ${
+          className={`pointer-events-none absolute inset-[10%] z-[7] rounded-full border border-zinc-700/50 ${
+            hasCover ? "bg-black/30" : "bg-zinc-900/40"
+          }`}
+        />
+        <div
+          className={`relative z-[10] flex h-[36%] w-[36%] items-center justify-center rounded-full overflow-hidden shadow-inner ${
             isPlaying ? "animate-spin" : ""
           }`}
           style={{
-            background: coverUrl
-              ? `url(${coverUrl}) center/cover`
+            background: hasCover
+              ? `linear-gradient(145deg, #0f0f0f 0%, #252525 45%, #121212 100%)`
               : `linear-gradient(135deg, ${color}33 0%, ${color}66 100%)`,
             animationDuration: isPlaying ? "2.8s" : undefined,
             animationPlayState: isPlaying ? "running" : "paused",
           }}
         >
-          {/* 中心孔 */}
-          <div className="absolute inset-[35%] rounded-full border-2 border-zinc-800 bg-zinc-900" />
-          <div className="absolute inset-[40%] rounded-full bg-zinc-800" />
+          <div className="absolute inset-[33%] rounded-full border-2 border-zinc-700 bg-zinc-900" />
+          <div className="absolute inset-[38%] rounded-full bg-zinc-800" />
         </div>
 
-        {/* 狀態標示 */}
         {isPlaying && (
-          <div className="absolute -top-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-black shadow-lg">
+          <div className="absolute -top-2 -right-2 z-[50] flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-black shadow-lg">
             ▶
           </div>
         )}
         {label && (
           <div
-            className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full border border-zinc-700 bg-zinc-900/90 px-3 py-1 text-[10px] font-semibold tracking-widest text-zinc-400"
+            className="absolute -bottom-2 left-1/2 z-[50] -translate-x-1/2 rounded-full border border-zinc-700 bg-zinc-900/90 px-3 py-1 text-[10px] font-semibold tracking-widest text-zinc-400"
           >
             {label}
           </div>
@@ -183,14 +228,6 @@ function BattleArenaContent() {
   const searchParams = useSearchParams();
   const battleId = (params?.id as string) ?? "";
 
-  // 測試模式：從 URL params 拿資料（跳過配對時傳入）
-  const isTestMode = searchParams.get("test") === "1";
-  const testAudioPath = searchParams.get("audioPath") ?? "";
-  const testCoverUrl = searchParams.get("coverUrl") ? decodeURIComponent(searchParams.get("coverUrl")!) : "";
-  const testFighterName = searchParams.get("fighterName") ? decodeURIComponent(searchParams.get("fighterName")!) : "";
-  const testSongName = searchParams.get("songName") ? decodeURIComponent(searchParams.get("songName")!) : "";
-  const testAiTool = searchParams.get("aiTool") ? decodeURIComponent(searchParams.get("aiTool")!) : "Suno";
-
   // 狀態
   const [battle, setBattle] = useState<BattleData | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -202,6 +239,8 @@ function BattleArenaContent() {
   const [error, setError] = useState<string | null>(null);
   const [myUserId, setMyUserId] = useState<string>("");
   const [audioUrls, setAudioUrls] = useState<{ A: string | null; B: string | null }>({ A: null, B: null });
+  const [coverDisplayA, setCoverDisplayA] = useState<string | null>(null);
+  const [coverDisplayB, setCoverDisplayB] = useState<string | null>(null);
   const [viewerCount, setViewerCount] = useState(1);
 
   // Refs
@@ -237,22 +276,29 @@ function BattleArenaContent() {
 
     const loadBattle = async () => {
       if (battleId.startsWith("mock-") || isAuthBypassEnabled) {
+        const qFighter = searchParams.get("fighterName")?.trim() ?? "";
+        const qSong = searchParams.get("songName")?.trim() ?? "";
+        const qCover = searchParams.get("coverUrl")?.trim() ?? "";
+        const qAudio = searchParams.get("audioPath")?.trim() ?? "";
+        const qAi = searchParams.get("aiTool")?.trim() ?? "";
+        const testFlag = searchParams.get("test") === "1";
+
         setBattle({
           id: battleId,
           fighter_a_user_id: mockUserId,
           fighter_b_user_id: mockUserId,
-          fighter_a_name: isTestMode ? testFighterName || "測試鬥士" : "夜色迴響",
-          fighter_b_name: isTestMode ? "測試對手" : "蒼藍頻段",
-          song_a_name: isTestMode ? testSongName || "測試歌曲" : "Neon Dust",
-          song_b_name: isTestMode ? "測試歌曲B" : "Cold Pulse",
-          audio_a_path: isTestMode ? testAudioPath : null,
+          fighter_a_name: qFighter || (testFlag ? "測試鬥士" : "夜色迴響"),
+          fighter_b_name: testFlag ? "測試對手" : "蒼藍頻段",
+          song_a_name: qSong || (testFlag ? "測試歌曲" : "Neon Dust"),
+          song_b_name: testFlag ? "測試歌曲B" : "Cold Pulse",
+          audio_a_path: qAudio || null,
           audio_b_path: null,
           fighter_a_avatar: null,
           fighter_b_avatar: null,
-          song_a_cover: isTestMode ? (testCoverUrl || null) : null,
+          song_a_cover: qCover || null,
           song_b_cover: null,
-          ai_tool_a: isTestMode ? testAiTool : "Suno",
-          ai_tool_b: isTestMode ? "Udio" : "Udio",
+          ai_tool_a: qAi || "Suno",
+          ai_tool_b: testFlag ? "Udio" : "Udio",
           status: "live",
         });
         setLoading(false);
@@ -317,28 +363,56 @@ function BattleArenaContent() {
     return () => {
       mounted = false;
     };
-  }, [battleId, t]);
+  }, [battleId, isAuthBypassEnabled, searchParams, t]);
+
+  // ── 封面：http(s)/data 直用；否則視為 Storage 路徑簽署後給 VinylDisc ────
+  useEffect(() => {
+    if (!battle) {
+      setCoverDisplayA(null);
+      setCoverDisplayB(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const rawA = battle.song_a_cover ?? battle.fighter_a_avatar;
+      const rawB = battle.song_b_cover ?? battle.fighter_b_avatar;
+      const [a, b] = await Promise.all([resolveCoverForDisplay(rawA), resolveCoverForDisplay(rawB)]);
+      if (!cancelled) {
+        setCoverDisplayA(a);
+        setCoverDisplayB(b);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [battle?.song_a_cover, battle?.song_b_cover, battle?.fighter_a_avatar, battle?.fighter_b_avatar]);
 
   // ── Storage signed URL（雙方音檔；RLS 需允許讀取 battle 引用路徑）────
   useEffect(() => {
     if (!battle) return;
 
-    // 測試模式：直接用 URL params 裡的 audioPath 取 signed URL
-    if (isTestMode && testAudioPath) {
+    const queryAudio = searchParams.get("audioPath")?.trim() ?? "";
+    const mockOrBypass = battleId.startsWith("mock-") || isAuthBypassEnabled;
+    const testFlag = searchParams.get("test") === "1";
+    const signAudioFromQuery = Boolean(queryAudio && (testFlag || mockOrBypass));
+
+    if (signAudioFromQuery) {
       let cancelled = false;
       void (async () => {
         const { data: signed, error } = await supabase.storage
           .from("battle-audio")
-          .createSignedUrl(testAudioPath, 60 * 60);
+          .createSignedUrl(queryAudio, 60 * 60);
         if (!cancelled) {
           if (error) console.error("[battle audio test]", error);
           else setAudioUrls({ A: signed?.signedUrl ?? null, B: null });
         }
       })();
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
-    if (battleId.startsWith("mock-") || isAuthBypassEnabled) {
+    if (mockOrBypass && !queryAudio) {
       setAudioUrls({ A: null, B: null });
       return;
     }
@@ -371,7 +445,7 @@ function BattleArenaContent() {
     return () => {
       cancelled = true;
     };
-  }, [battle, battleId]);
+  }, [battle, battleId, searchParams, isAuthBypassEnabled]);
 
   // ── 即時觀戰人數（Presence）────────────────────────────
   useEffect(() => {
@@ -599,6 +673,20 @@ function BattleArenaContent() {
   const pctA = totalVotes > 0 ? Math.round((votes.fighter_a / totalVotes) * 100) : 50;
   const pctB = 100 - pctA;
 
+  const vinylCoverA = useMemo(() => {
+    if (!battle) return null;
+    if (coverDisplayA) return coverDisplayA;
+    const raw = battle.song_a_cover ?? battle.fighter_a_avatar ?? "";
+    return raw && isHttpOrDataImageUrl(raw) ? raw : null;
+  }, [battle, coverDisplayA]);
+
+  const vinylCoverB = useMemo(() => {
+    if (!battle) return null;
+    if (coverDisplayB) return coverDisplayB;
+    const raw = battle.song_b_cover ?? battle.fighter_b_avatar ?? "";
+    return raw && isHttpOrDataImageUrl(raw) ? raw : null;
+  }, [battle, coverDisplayB]);
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] text-orange-400">
@@ -669,7 +757,7 @@ function BattleArenaContent() {
               label={t("deck_a")}
               fighterName={battle.fighter_a_name}
               songName={battle.song_a_name}
-              coverUrl={battle.song_a_cover ?? battle.fighter_a_avatar ?? null}
+              coverUrl={vinylCoverA}
               isPlaying={activeDeck === "A"}
               onToggle={() => handleToggleDeck("A")}
               color="#ff6a00"
@@ -722,7 +810,7 @@ function BattleArenaContent() {
               label={t("deck_b")}
               fighterName={battle.fighter_b_name}
               songName={battle.song_b_name}
-              coverUrl={battle.song_b_cover ?? battle.fighter_b_avatar ?? null}
+              coverUrl={vinylCoverB}
               isPlaying={activeDeck === "B"}
               onToggle={() => handleToggleDeck("B")}
               color="#3b82f6"
