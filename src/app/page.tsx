@@ -9,6 +9,7 @@ import { writeFighterNameToStorage } from "@/lib/fighter-name-storage";
 import { isMissingFighterNameColumn } from "@/lib/user-profile-fighter-name";
 import { loadIsAdmin } from "@/lib/user-profile-admin";
 import LangToggle from "@/components/lang-toggle";
+import { fontGlowSans, fontRighteous } from "@/lib/fonts";
 import type { Session, User } from "@supabase/supabase-js";
 
 const SPLASH_STEPS = {
@@ -321,7 +322,7 @@ function HomeAuthBar() {
 }
 
 export default function HomePage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [isSplashFinished, setIsSplashFinished] = useState(false);
   const [phase, setPhase] = useState<SplashPhase>("fadeIn");
 
@@ -377,12 +378,28 @@ export default function HomePage() {
           <p className="text-[clamp(3rem,10vw,9rem)] font-black uppercase leading-[0.85] tracking-tight text-zinc-100">
             AIPOGER
           </p>
-          <p className="mt-3 text-sm text-zinc-400 md:text-xl">{t("home_subtitle")}</p>
+          <p
+            className={`mt-3 text-sm text-zinc-400 md:text-xl ${fontRighteous.className}`}
+          >
+            {t("home_subtitle")}
+          </p>
 
-          <h1 className="mt-8 text-[clamp(3.3rem,13vw,10rem)] font-black leading-[0.88] tracking-tight text-zinc-100">
+          <h1
+            className={`mt-8 text-[clamp(3.3rem,13vw,10rem)] leading-[0.88] tracking-tight text-zinc-100 ${
+              lang === "en"
+                ? `${fontRighteous.className} font-normal`
+                : "font-black"
+            }`}
+          >
             {t("home_secondary_title")}
           </h1>
-          <p className="mt-4 text-sm text-zinc-300 md:text-2xl">{t("home_tagline")}</p>
+          <p
+            className={`mt-4 text-sm text-zinc-300 md:text-2xl ${
+              lang === "en" ? fontRighteous.className : fontGlowSans.className
+            }`}
+          >
+            {t("home_tagline")}
+          </p>
         </div>
 
         <div className="md:col-span-4 md:pb-4">

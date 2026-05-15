@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "subset:glow-sans": "node scripts/subset-glow-sans.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.104.0",
@@ -23,6 +24,7 @@
     "@types/react-dom": "19.1.2",
     "eslint": "9.24.0",
     "eslint-config-next": "15.3.1",
+    "subset-font": "^2.5.0",
     "tailwindcss": "4.1.5",
     "typescript": "5.8.3"
   }
