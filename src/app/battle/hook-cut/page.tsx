@@ -10,7 +10,7 @@ import { isAuthBypassEnabled, mockUserId } from '@/lib/auth-bypass';
 import { readFighterNameFromStorage, writeFighterNameToStorage } from '@/lib/fighter-name-storage';
 import { buildHookStoragePath, isValidStorageObjectKey } from '@/lib/storage-path';
 import { saveFighterNameToProfile } from '@/lib/user-profile-fighter-name';
-import { loadIsAdmin } from '@/lib/user-profile-admin';
+import { shouldSkipChallengeFee } from '@/lib/challenge-fee';
 
 const MAX_HOOK_SECONDS = 45;
 const MIN_REGION_SECONDS = 0.25;
@@ -606,8 +606,8 @@ function HookCutContent() {
         }
         await saveFighterNameToProfile(userId, fighterName.trim() || "未命名鬥士");
 
-        const isAdmin = await loadIsAdmin(userId);
-        if (!isAdmin) {
+        const skipFee = await shouldSkipChallengeFee(userId);
+        if (!skipFee) {
           const { data: deducted, error: feeErr } = await supabase.rpc("deduct_challenge_fee", {
             user_uuid: userId,
             fee: 200,

@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { isAdminEmail } from "@/lib/admin-emails";
 
 export function isMissingIsAdminColumn(err: unknown): boolean {
   const msg = String((err as { message?: string })?.message ?? err).toLowerCase();
@@ -8,8 +9,13 @@ export function isMissingIsAdminColumn(err: unknown): boolean {
   );
 }
 
-/** 是否為管理員（免 APC 挑戰費）；欄位未 migration 時視為 false */
+/** 是否為管理員（免 APC 挑戰費） */
 export async function loadIsAdmin(userId: string): Promise<boolean> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (isAdminEmail(session?.user?.email)) return true;
+
   const { data, error } = await supabase
     .from("user_profiles")
     .select("is_admin")
