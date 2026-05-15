@@ -181,11 +181,49 @@ function isLikelyStorageMimeRejection(err: unknown): boolean {
   );
 }
 
+async function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const comma = dataUrl.indexOf(",");
+      resolve(comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl);
+    };
+    reader.onerror = () => reject(reader.error ?? new Error("readAsDataURL failed"));
+    reader.readAsDataURL(blob);
+  });
+}
+
 async function uploadHookWav(
   storagePath: string,
   wavBlob: Blob,
   fileName: string,
 ): Promise<void> {
+  if (isAuthBypassEnabled) {
+    const segments = storagePath.split("/");
+    const userId = segments[0] ?? "";
+    const hookFileName =
+      segments.length >= 3 && segments[1] === "hooks" ? segments.slice(2).join("/") : fileName;
+    if (!userId) {
+      throw new Error("Invalid storagePath for upload-hook");
+    }
+    const audioBase64 = await blobToBase64(wavBlob);
+    const res = await fetch("/api/upload-hook", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        audioBase64,
+        fileName: hookFileName || fileName,
+        userId,
+      }),
+    });
+    const payload = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+    if (!res.ok || !payload.ok) {
+      throw new Error(payload.error ?? res.statusText ?? "upload-hook failed");
+    }
+    return;
+  }
+
   const mimeAttempts = ['audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave'] as const;
   let lastError: unknown;
 
