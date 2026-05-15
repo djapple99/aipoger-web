@@ -7,6 +7,7 @@ import WaveSurfer from 'wavesurfer.js';
 import Regions from 'wavesurfer.js/dist/plugins/regions.esm.js';
 import { supabase } from '@/lib/supabase';
 import { isAuthBypassEnabled, mockUserId } from '@/lib/auth-bypass';
+import { readFighterNameFromStorage, writeFighterNameToStorage } from '@/lib/fighter-name-storage';
 
 const MAX_HOOK_SECONDS = 45;
 const MIN_REGION_SECONDS = 0.25;
@@ -253,7 +254,9 @@ function HookCutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const fighterName = searchParams.get('fighterName') ?? '未命名鬥士';
+  const urlFighter = searchParams.get('fighterName')?.trim() ?? '';
+  const [fighterName, setFighterName] = useState(() => urlFighter || '未命名鬥士');
+
   const songName = searchParams.get('songName') ?? '未提供';
   const genre = searchParams.get('genre') ?? '';
   const aiTool = searchParams.get('aiTool') ?? '';
@@ -270,6 +273,15 @@ function HookCutContent() {
   const [enableMastering, setEnableMastering] = useState(true);
   const [regionTimes, setRegionTimes] = useState<RegionTimes>({ start: 0, end: 0 });
   const [uploadPhase, setUploadPhase] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (urlFighter) {
+      setFighterName(urlFighter);
+      return;
+    }
+    const ls = readFighterNameFromStorage();
+    setFighterName(ls ?? '未命名鬥士');
+  }, [urlFighter]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
@@ -611,7 +623,10 @@ function HookCutContent() {
       // 測試模式：NEXT_PUBLIC_AUTH_BYPASS=true 時跳過扣費（老闆模式）
       if (!isAuthBypassEnabled) {
         // 先確保 user_profiles 存在（第一次報名時建立）
-        const { error: profileErr } = await supabase.from("user_profiles").upsert({ id: userId }, { onConflict: "id" });
+        const { error: profileErr } = await supabase.from("user_profiles").upsert(
+          { id: userId, fighter_name: fighterName.trim() || "未命名鬥士" },
+          { onConflict: "id" },
+        );
         if (profileErr) {
           console.error("[hook-cut] user_profiles upsert", profileErr);
           throw profileErr;
@@ -716,6 +731,8 @@ function HookCutContent() {
         if (coverUrl) mmParams.set("coverUrl", coverUrl);
         nextPath = `/battle/matchmaking?${mmParams.toString()}`;
       }
+
+      writeFighterNameToStorage(fighterName.trim() || "未命名鬥士");
 
       setUploadPhase(t.success);
 

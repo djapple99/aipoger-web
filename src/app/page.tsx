@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
+import { writeFighterNameToStorage } from "@/lib/fighter-name-storage";
 import type { Session, User } from "@supabase/supabase-js";
 
 const SPLASH_STEPS = {
@@ -83,7 +84,7 @@ function HomeAuthBar() {
       try {
         const { data, error } = await supabase
           .from("user_profiles")
-          .select("aipo_coins, apc_balance, level, total_wins, avatar_url")
+          .select("aipo_coins, apc_balance, level, total_wins, avatar_url, fighter_name")
           .eq("id", userId)
           .maybeSingle();
 
@@ -99,6 +100,9 @@ function HomeAuthBar() {
         setAipoCoins(data?.aipo_coins ?? 0);
         setApcBalance(typeof data?.apc_balance === "number" ? data.apc_balance : null);
         setProfileAvatarUrl(typeof data?.avatar_url === "string" && data.avatar_url.length > 0 ? data.avatar_url : null);
+
+        const fn = typeof data?.fighter_name === "string" ? data.fighter_name.trim() : "";
+        if (fn) writeFighterNameToStorage(fn);
 
         const lv = data?.level;
         if (typeof lv !== "number" || lv < 1) {
@@ -263,6 +267,14 @@ function HomeAuthBar() {
                 </p>
               )}
             </div>
+            <Link
+              href="/profile"
+              role="menuitem"
+              className="block w-full px-3 py-2.5 text-left text-sm text-zinc-200 transition hover:bg-zinc-800 hover:text-white"
+              onClick={() => setMenuOpen(false)}
+            >
+              {t("home_profile_link")}
+            </Link>
             <Link
               href="/battle/setup#avatar-upload"
               role="menuitem"

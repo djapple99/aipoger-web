@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { isAuthBypassEnabled, mockUserId } from '@/lib/auth-bypass';
 import { useI18n } from '@/lib/i18n';
 import { AvatarCropUploadModal } from '@/components/avatar-crop-upload-modal';
+import { readFighterNameFromStorage, writeFighterNameToStorage } from '@/lib/fighter-name-storage';
 
 type GenreOption = { value: string; label: string };
 
@@ -35,6 +36,16 @@ function imageContentType(file: File): string {
     heif: 'image/heif',
   };
   return map[ext] ?? 'image/jpeg';
+}
+
+const MAX_AVATAR_CROP_BYTES = 2 * 1024 * 1024;
+const AVATAR_CROP_ACCEPT = 'image/jpeg,image/png,image/webp';
+
+function isAllowedAvatarCropFile(file: File): boolean {
+  const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+  if (allowed.includes(file.type)) return true;
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+  return ext === 'jpg' || ext === 'jpeg' || ext === 'png' || ext === 'webp';
 }
 
 export default function BattleSetupPage() {
@@ -73,6 +84,52 @@ export default function BattleSetupPage() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    void (async () => {
+      const params = new URLSearchParams(window.location.search);
+      const urlName = params.get('fighterName');
+      if (urlName) {
+        try {
+          setFighterName(decodeURIComponent(urlName.replace(/\+/g, ' ')));
+        } catch {
+          setFighterName(urlName);
+        }
+      }
+      if (isAuthBypassEnabled) {
+        if (!urlName) {
+          const ls = readFighterNameFromStorage();
+          if (ls) setFighterName(ls);
+        }
+        return;
+      }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data } = await supabase
+          .from('user_profiles')
+          .select('fighter_name, avatar_url')
+          .eq('id', session.user.id)
+          .maybeSingle();
+        if (!urlName) {
+          const fromDb = data?.fighter_name?.trim();
+          if (fromDb) setFighterName(fromDb);
+          else {
+            const ls = readFighterNameFromStorage();
+            if (ls) setFighterName(ls);
+          }
+        }
+        if (typeof data?.avatar_url === 'string' && data.avatar_url.length > 0) {
+          setProfileAvatarPreview(data.avatar_url);
+        }
+        return;
+      }
+      if (!urlName) {
+        const ls = readFighterNameFromStorage();
+        if (ls) setFighterName(ls);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
     if (window.location.hash !== '#avatar-upload') return;
     const timer = window.setTimeout(() => {
       avatarUploadSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -106,7 +163,15 @@ export default function BattleSetupPage() {
   const handleCropFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (!file || !file.type.startsWith('image/')) return;
+    if (!file) return;
+    if (!isAllowedAvatarCropFile(file)) {
+      alert(t('avatar_invalid_type'));
+      return;
+    }
+    if (file.size > MAX_AVATAR_CROP_BYTES) {
+      alert(t('avatar_max_2mb'));
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       setCropImageSrc(reader.result as string);
@@ -230,6 +295,13 @@ export default function BattleSetupPage() {
 
       if (!isAuthBypassEnabled) {
         await saveFighterProfile(userId, fighterName.trim(), avatarUrl, coverUrl);
+        writeFighterNameToStorage(fighterName.trim());
+        const { error: fnErr } = await supabase
+          .from('user_profiles')
+          .upsert({ id: userId, fighter_name: fighterName.trim() }, { onConflict: 'id' });
+        if (fnErr) console.error('[setup] fighter_name upsert', fnErr);
+      } else {
+        writeFighterNameToStorage(fighterName.trim());
       }
 
       setUploadProgress('完成！即將進入 Hook 裁切…');
@@ -293,7 +365,7 @@ export default function BattleSetupPage() {
             >
               {t('setup_avatar_upload_btn')}
             </button>
-            <input ref={cropFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleCropFileChange} />
+            <input ref={cropFileInputRef} type="file" accept={AVATAR_CROP_ACCEPT} className="hidden" onChange={handleCropFileChange} />
             {(profileAvatarPreview || avatarPreview) && (
               <button
                 type="button"

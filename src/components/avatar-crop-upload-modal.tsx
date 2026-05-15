@@ -31,16 +31,16 @@ export function AvatarCropUploadModal({ open, imageDataUrl, userId, onClose, onU
     setBusy(true);
     try {
       const blob = await getCroppedPngBlob(imageDataUrl, croppedAreaPixels, 512);
-      const storagePath = `avatars/${userId}/avatar.png`;
+      const storagePath = `${userId}/avatar.png`;
       const { error: upErr } = await supabase.storage
-        .from("battle-audio")
+        .from("avatars")
         .upload(storagePath, blob, { contentType: "image/png", upsert: true });
       if (upErr) {
         console.error("[avatar upload]", upErr);
         alert(t("avatar_crop_fail"));
         return;
       }
-      const { data: pub } = supabase.storage.from("battle-audio").getPublicUrl(storagePath);
+      const { data: pub } = supabase.storage.from("avatars").getPublicUrl(storagePath);
       const publicUrl = pub.publicUrl;
 
       const { data: row } = await supabase.from("user_profiles").select("id").eq("id", userId).maybeSingle();

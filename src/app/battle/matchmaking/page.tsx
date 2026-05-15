@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { isAuthBypassEnabled, mockSkipMatchBattleId } from "@/lib/auth-bypass";
 import { supabase } from "@/lib/supabase";
+import { resolveCoverUrlFromParam } from "@/lib/cover-url";
 
 type QueueStatus = "waiting" | "matched" | "cancelled";
 
@@ -17,14 +18,21 @@ type QueueRow = {
 
 type MatchPhase = "searching" | "found" | "entering";
 
-function MatchmakingContent() {
+type MatchmakingContentProps = {
+  /** 若 URL 無 coverUrl，可由此傳入（例如程式導向時） */
+  coverUrlOverride?: string | null;
+};
+
+function MatchmakingContent(props: MatchmakingContentProps) {
+  const { coverUrlOverride } = props;
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const fighterName = searchParams.get("fighterName") ?? "未命名鬥士";
   const genre = searchParams.get("genre") ?? "未指定";
   const songName = searchParams.get("songName") ?? "未提供";
-  const coverUrl = searchParams.get("coverUrl");
+  const coverForNav = coverUrlOverride ?? searchParams.get("coverUrl");
+  const displayCoverUrl = useMemo(() => resolveCoverUrlFromParam(coverForNav), [coverForNav]);
   const audioPath = searchParams.get("audioPath") ?? "";
   const aiToolParam = searchParams.get("aiTool") ?? "";
 
@@ -35,8 +43,7 @@ function MatchmakingContent() {
   const [pulseCount, setPulseCount] = useState(0);
   const [countdown, setCountdown] = useState(5);
   const [creatingTestBattle, setCreatingTestBattle] = useState(false);
-
-  const fighterAvatarRef = useRef<string | null>(null);
+  const [cardAvatarUrl, setCardAvatarUrl] = useState<string | null>(null);
 
   // Pulse 動畫
   useEffect(() => {
@@ -67,11 +74,11 @@ function MatchmakingContent() {
       aiTool: aiToolParam,
       audioPath: audioPath,
     });
-    if (coverUrl) mmParams.set("coverUrl", coverUrl);
+    if (coverForNav) mmParams.set("coverUrl", coverForNav);
     if (queueId) mmParams.set("queueId", queueId);
 
     router.replace(`/battle/${target}?test=1&${mmParams.toString()}`);
-  }, [phase, countdown, resolvedBattleId, queueId, router]);
+  }, [phase, countdown, resolvedBattleId, queueId, router, fighterName, songName, genre, aiToolParam, audioPath, coverForNav]);
 
   // 重新整理配對頁時：若佇列已是 matched，直接帶入 battles.id
   useEffect(() => {
@@ -94,6 +101,28 @@ function MatchmakingContent() {
       cancelled = true;
     };
   }, [queueId]);
+
+  useEffect(() => {
+    if (isAuthBypassEnabled) {
+      setCardAvatarUrl(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const uid = session?.user?.id;
+      if (!uid) return;
+      const { data } = await supabase.from("user_profiles").select("avatar_url").eq("id", uid).maybeSingle();
+      if (cancelled) return;
+      const u = data?.avatar_url;
+      setCardAvatarUrl(typeof u === "string" && u.length > 0 ? u : null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval> | null = null;
@@ -217,22 +246,34 @@ function MatchmakingContent() {
               <p className="mt-3 text-sm text-zinc-500">風格：{genre} · 搜尋中…</p>
             </div>
 
-            {/* 鬥士卡片 */}
-            <div className="flex items-center gap-6 rounded-3xl border border-zinc-800 bg-zinc-900/80 px-8 py-5 backdrop-blur">
-              {coverUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={coverUrl}
-                  alt={fighterName}
-                  className="h-14 w-14 rounded-full border-2 border-orange-500 object-cover"
-                  referrerPolicy="no-referrer"
-                />
+            {/* 鬥士卡片：封面 + 左上角頭像 */}
+            <div className="relative flex min-w-[min(92vw,380px)] gap-4 overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900/80 py-5 pl-5 pr-6 backdrop-blur">
+              <div className="absolute left-5 top-5 z-20 h-11 w-11 overflow-hidden rounded-full border-2 border-orange-500 bg-zinc-800 shadow-lg ring-2 ring-black/70">
+                {cardAvatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={cardAvatarUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-sm font-bold text-orange-400">
+                    {fighterName.slice(0, 1)}
+                  </div>
+                )}
+              </div>
+              {displayCoverUrl ? (
+                <div className="relative z-0 mt-2 h-28 w-28 shrink-0 overflow-hidden rounded-2xl border border-zinc-700">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={displayCoverUrl}
+                    alt={fighterName}
+                    className="h-full w-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
               ) : (
-                <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-orange-500 bg-zinc-800 text-xl font-bold text-orange-400">
-                  {fighterName.slice(0, 1)}
+                <div className="relative z-0 mt-2 flex h-28 w-28 shrink-0 items-center justify-center rounded-2xl border border-zinc-700 bg-zinc-800 text-3xl">
+                  🎵
                 </div>
               )}
-              <div>
+              <div className="min-w-0 flex-1 pt-1">
                 <p className="text-xs text-zinc-500">即將上場</p>
                 <p className="font-bold text-zinc-200">{fighterName}</p>
                 <p className="text-xs text-zinc-500">{songName}</p>
@@ -258,7 +299,7 @@ function MatchmakingContent() {
                   const path = audioPath.trim();
                   const id = mockSkipMatchBattleId;
                   router.push(
-                    `/battle/${id}?test=1&audioPath=${encodeURIComponent(path)}&fighterName=${encodeURIComponent(fighterName)}&songName=${encodeURIComponent(songName)}&aiTool=${encodeURIComponent(aiToolParam)}&coverUrl=${encodeURIComponent(coverUrl ?? "https://picsum.photos/300")}`,
+                    `/battle/${id}?test=1&audioPath=${encodeURIComponent(path)}&fighterName=${encodeURIComponent(fighterName)}&songName=${encodeURIComponent(songName)}&aiTool=${encodeURIComponent(aiToolParam)}&coverUrl=${encodeURIComponent(displayCoverUrl ?? coverForNav ?? "https://picsum.photos/300")}`,
                   );
                   return;
                 }
@@ -277,7 +318,7 @@ function MatchmakingContent() {
                       fighter_a_name: fighterName || "未命名鬥士",
                       song_a_name: songName || "未提供",
                       audio_a_path: path,
-                      song_a_cover: coverUrl?.trim() || null,
+                      song_a_cover: displayCoverUrl?.trim() || coverForNav?.trim() || null,
                       ai_tool_a: aiToolParam.trim() || null,
                       fighter_b_name: "測試對手",
                       song_b_name: "測試歌曲",
@@ -293,7 +334,7 @@ function MatchmakingContent() {
                   }
                   const id = battleData.id;
                   router.push(
-                    `/battle/${id}?test=1&audioPath=${encodeURIComponent(path)}&fighterName=${encodeURIComponent(fighterName)}&songName=${encodeURIComponent(songName)}&aiTool=${encodeURIComponent(aiToolParam)}&coverUrl=${encodeURIComponent(coverUrl ?? "https://picsum.photos/300")}`,
+                    `/battle/${id}?test=1&audioPath=${encodeURIComponent(path)}&fighterName=${encodeURIComponent(fighterName)}&songName=${encodeURIComponent(songName)}&aiTool=${encodeURIComponent(aiToolParam)}&coverUrl=${encodeURIComponent(displayCoverUrl ?? coverForNav ?? "https://picsum.photos/300")}`,
                   );
                 } finally {
                   setCreatingTestBattle(false);
