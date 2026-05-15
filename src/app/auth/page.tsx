@@ -2,7 +2,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
@@ -24,6 +24,13 @@ function AuthPageInner() {
   const searchParams = useSearchParams();
   /** 登入成功後一律回首頁 */
   const nextPath = "/";
+  const redirectingRef = useRef(false);
+
+  const goHomeOnce = useCallback(() => {
+    if (redirectingRef.current) return;
+    redirectingRef.current = true;
+    router.replace(nextPath);
+  }, [router, nextPath]);
 
   useEffect(() => {
     if (searchParams.get("error")) {
@@ -37,25 +44,25 @@ function AuthPageInner() {
         data: { session },
       } = await supabase.auth.getSession();
       if (session) {
-        router.replace(nextPath);
+        goHomeOnce();
       }
     };
     void checkUser();
-  }, [router, nextPath]);
+  }, [goHomeOnce]);
 
   useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
-        router.replace(nextPath);
+        goHomeOnce();
       }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [router, nextPath]);
+  }, [goHomeOnce]);
 
   const handleOAuthLogin = async (provider: "google" | "facebook") => {
     setLoading(true);

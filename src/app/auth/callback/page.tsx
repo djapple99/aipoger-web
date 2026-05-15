@@ -1,117 +1,136 @@
 // src/app/auth/callback/page.tsx
 "use client";
 
-import { Suspense, useEffect, useState, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 type Phase = "idle" | "exchanging" | "saving" | "redirecting" | "error";
 
 function AuthCallbackInner() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [phase, setPhase] = useState<Phase>("idle");
   const [errorMsg, setErrorMsg] = useState("");
-  // 防止 useEffect 重複執行（尤其 searchParams 改變時）
-  const processedRef = useRef(false);
 
   useEffect(() => {
-    if (processedRef.current) return;
-    const code = searchParams.get("code");
-    const error = searchParams.get("error");
-    const errorDescription = searchParams.get("error_description");
-
-    console.log("[AuthCallback] loaded", {
-      hasCode: Boolean(code),
-      error,
-      errorDescription,
-    });
-
-    if (error) {
-      console.error("[OAuth callback error]", { error, errorDescription });
-      setPhase("error");
-      setErrorMsg("登入失敗，請重試");
-      const t = window.setTimeout(() => router.replace("/auth?error=1"), 1800);
-      return () => window.clearTimeout(t);
-    }
-
-    if (!code) {
-      // 無 code，先檢查 session 是否已經存在（OAuth 流程可能已處理完）
-      let cancelled = false;
-      void (async () => {
-        console.log("[AuthCallback] no code; try getSession()");
-        const { data, error: sessionError } = await supabase.auth.getSession();
-        if (cancelled) return;
-        if (sessionError) console.error("[AuthCallback] getSession error", sessionError);
-        if (data.session) {
-          console.log("[AuthCallback] session exists; redirect /");
-          if (!cancelled) {
-            setPhase("redirecting");
-            router.replace("/");
-          }
-        } else {
-          console.error("[AuthCallback] no code and no session");
-          if (!cancelled) {
-            setPhase("error");
-            setErrorMsg("登入資訊不完整，請重試");
-            window.setTimeout(() => router.replace("/auth?error=1"), 1800);
-          }
-        }
-      })();
-      return () => { cancelled = true; };
-    }
-
-    // 有 code， exchange
-    processedRef.current = true;
     let cancelled = false;
 
-    void (async () => {
-      setPhase("exchanging");
-      console.log("[AuthCallback] exchangeCodeForSession start");
+    const goHome = () => {
+      if (cancelled) return;
+      setPhase("redirecting");
+      // 使用硬導向，避免 router.replace("/") 與 Suspense / session 競態造成白屏或與首頁互踢迴圈
+      if (typeof window !== "undefined") {
+        window.location.replace("/");
+      }
+    };
 
-      const { data: exchangeData, error: exchangeError } =
-        await supabase.auth.exchangeCodeForSession(code);
+    const goAuthError = (msg: string) => {
+      if (cancelled) return;
+      setErrorMsg(msg);
+      setPhase("error");
+      window.setTimeout(() => {
+        if (!cancelled && typeof window !== "undefined") {
+          window.location.replace("/auth?error=1");
+        }
+      }, 1600);
+    };
+
+    void (async () => {
+      const code = searchParams.get("code");
+      const oauthError = searchParams.get("error");
+      const errorDescription = searchParams.get("error_description");
+
+      console.log("[AuthCallback]", {
+        hasCode: Boolean(code),
+        error: oauthError,
+        errorDescription,
+      });
+
+      if (oauthError) {
+        console.error("[OAuth callback error]", { oauthError, errorDescription });
+        goAuthError("登入失敗，請重試");
+        return;
+      }
+
+      setPhase("exchanging");
+
+      const {
+        data: { session: existing },
+      } = await supabase.auth.getSession();
+      if (cancelled) return;
+
+      // 無 code：可能已由其他 tab / detectSessionInUrl 寫入 session
+      if (!code) {
+        if (existing) {
+          console.log("[AuthCallback] no code, session present → home");
+          goHome();
+          return;
+        }
+        console.error("[AuthCallback] no code and no session");
+        goAuthError("登入資訊不完整，請重試");
+        return;
+      }
+
+      // 有 code 但已有 session（Strict Mode 第二次 mount 或重入）：勿重複 exchange
+      if (existing?.user) {
+        console.log("[AuthCallback] session already present → skip exchange, home");
+        goHome();
+        return;
+      }
+
+      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
       if (cancelled) return;
 
       if (exchangeError) {
         console.error("[exchangeCodeForSession]", exchangeError);
-        if (!cancelled) {
-          setPhase("error");
-          setErrorMsg("登入失敗，請重試");
-          window.setTimeout(() => router.replace("/auth?error=1"), 1800);
+        const em = (exchangeError.message ?? "").toLowerCase();
+        if (em.includes("code") && (em.includes("invalid") || em.includes("expired") || em.includes("used"))) {
+          const { data: afterFail } = await supabase.auth.getSession();
+          if (afterFail.session?.user) {
+            goHome();
+            return;
+          }
         }
+        goAuthError("登入失敗，請重試");
         return;
       }
 
       const {
         data: { session },
-        error: getSessionError,
       } = await supabase.auth.getSession();
-      if (getSessionError) console.error("[AuthCallback] getSession error", getSessionError);
-      if (!session) {
-        if (!cancelled) {
-          setPhase("error");
-          setErrorMsg("登入狀態建立失敗，請重試");
-          window.setTimeout(() => router.replace("/auth?error=1"), 1800);
-        }
+      if (!session?.user) {
+        goAuthError("登入狀態建立失敗，請重試");
         return;
       }
 
-      // 寫入 user_profiles（第一次登入時建立）
       setPhase("saving");
-      await supabase.from("user_profiles").upsert({ id: session.user.id }, { onConflict: "id" });
 
-      // 發新手 bonus
-      await supabase.rpc("award_signup_bonus", { user_uuid: session.user.id });
+      try {
+        const { error: upErr } = await supabase
+          .from("user_profiles")
+          .upsert({ id: session.user.id }, { onConflict: "id" });
+        if (upErr) console.warn("[AuthCallback] user_profiles upsert", upErr);
+      } catch (e) {
+        console.warn("[AuthCallback] user_profiles upsert", e);
+      }
+
+      await new Promise((r) => setTimeout(r, 300));
+      try {
+        const { error: bonusErr } = await supabase.rpc("award_signup_bonus", { user_uuid: session.user.id });
+        if (bonusErr) console.warn("[AuthCallback] award_signup_bonus", bonusErr);
+      } catch (e) {
+        console.warn("[AuthCallback] award_signup_bonus", e);
+      }
 
       if (cancelled) return;
-      console.log("[AuthCallback] done; redirect /");
-      setPhase("redirecting");
-      router.replace("/");
+      console.log("[AuthCallback] done → home");
+      goHome();
     })();
 
-    return () => { cancelled = true; };
-  }, [router, searchParams]);
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams]);
 
   const phaseText: Record<Phase, string> = {
     idle: "正在完成登入…",
@@ -124,12 +143,14 @@ function AuthCallbackInner() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-black text-zinc-200">
       <div className="text-center">
-        {phase === "redirecting" && (
+        {(phase === "idle" || phase === "exchanging" || phase === "saving" || phase === "redirecting") && (
           <div className="mb-4 flex justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-yellow-400 border-t-transparent" />
           </div>
         )}
-        <p className="text-sm tracking-wide text-zinc-400">{phaseText[phase]}</p>
+        <p className={`text-sm tracking-wide ${phase === "error" ? "text-red-400" : "text-zinc-400"}`}>
+          {phaseText[phase]}
+        </p>
       </div>
     </div>
   );
@@ -139,8 +160,9 @@ export default function AuthCallbackPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-black text-zinc-400">
-          正在完成登入…
+        <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-black text-zinc-400">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-yellow-400 border-t-transparent" />
+          <p className="text-sm">正在完成登入…</p>
         </div>
       }
     >
