@@ -295,8 +295,8 @@ function BattleArenaContent() {
         fighter_b_user_id: bdata.fighter_b_user_id,
         fighter_a_avatar: rowA?.avatar_url ?? null,
         fighter_b_avatar: rowB?.avatar_url ?? null,
-        song_a_cover: rowA?.song_cover_url ?? null,
-        song_b_cover: rowB?.song_cover_url ?? null,
+        song_a_cover: rowA?.song_cover_url ?? (bdata.song_a_cover as string | null | undefined) ?? null,
+        song_b_cover: rowB?.song_cover_url ?? (bdata.song_b_cover as string | null | undefined) ?? null,
         ai_tool_a: (bdata.ai_tool_a as string | null | undefined) ?? null,
         ai_tool_b: (bdata.ai_tool_b as string | null | undefined) ?? null,
       });

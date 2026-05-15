@@ -24,7 +24,9 @@ function MatchmakingContent() {
   const fighterName = searchParams.get("fighterName") ?? "未命名鬥士";
   const genre = searchParams.get("genre") ?? "未指定";
   const songName = searchParams.get("songName") ?? "未提供";
-  const coverUrl = searchParams.get("coverUrl") ?? null;
+  const coverUrl = searchParams.get("coverUrl");
+  const audioPath = searchParams.get("audioPath") ?? "";
+  const aiToolParam = searchParams.get("aiTool") ?? "";
 
   const queueId = searchParams.get("queueId");
   const [phase, setPhase] = useState<MatchPhase>("searching");
@@ -32,6 +34,7 @@ function MatchmakingContent() {
   const [resolvedBattleId, setResolvedBattleId] = useState<string | null>(null);
   const [pulseCount, setPulseCount] = useState(0);
   const [countdown, setCountdown] = useState(5);
+  const [creatingTestBattle, setCreatingTestBattle] = useState(false);
 
   const fighterAvatarRef = useRef<string | null>(null);
 
@@ -232,42 +235,58 @@ function MatchmakingContent() {
               取消配對
             </Link>
 
-            {/* 測試跳過配對 */}
+            {/* 跳過配對（測試擂臺）：寫入 battles + 導向 /battle/[id]?test=1（需 Supabase RPC create_test_arena_battle） */}
             <button
+              type="button"
+              disabled={creatingTestBattle}
               onClick={async () => {
+                if (creatingTestBattle) return;
+                const path = audioPath.trim();
+                if (!path) {
+                  alert("缺少 URL 參數 audioPath（Hook 上傳後的 Storage 路徑）");
+                  return;
+                }
+                if (isAuthBypassEnabled) {
+                  alert(
+                    "AUTH_BYPASS 模式下無法寫入真實 battles（無 auth.uid）。請關閉 NEXT_PUBLIC_AUTH_BYPASS 並登入後再按此鈕，或僅用上方 mock 配對流程。",
+                  );
+                  return;
+                }
+                setCreatingTestBattle(true);
                 try {
-                  // 建立測試 battle 並直接進入
-                  const { data: battle, error } = await supabase
-                    .from("battles")
-                    .insert({
-                      status: "live",
-                      winner: null,
-                      started_at: new Date().toISOString(),
-                    })
-                    .select("id")
-                    .single();
-
-                  if (error || !battle) {
-                    alert("建立測試擂臺失敗：" + (error?.message ?? "未知錯誤"));
+                  const { data: bid, error } = await supabase.rpc("create_test_arena_battle", {
+                    p_fighter_a_name: fighterName,
+                    p_song_a_name: songName,
+                    p_audio_a_path: path,
+                    p_genre: genre,
+                    p_ai_tool_a: aiToolParam.trim() || null,
+                    p_cover_url: coverUrl?.trim() || null,
+                  });
+                  if (error) {
+                    console.error("[matchmaking] create_test_arena_battle", error);
+                    alert(
+                      `建立測試擂臺失敗：${error.message}\n\n若尚未部署，請在 Supabase SQL Editor 執行專案內 supabase/create_test_arena_battle_rpc.sql`,
+                    );
                     return;
                   }
-
-                  // 更新佇列為 matched（可選，不影響）
-                  if (queueId && !queueId.startsWith("mock-")) {
-                    await supabase
-                      .from("battle_queue")
-                      .update({ status: "matched", match_group_id: battle.id })
-                      .eq("id", queueId);
+                  const id =
+                    typeof bid === "string"
+                      ? bid
+                      : Array.isArray(bid)
+                        ? (bid[0] as string)
+                        : (bid as string | null | undefined);
+                  if (!id) {
+                    alert("建立測試擂臺失敗：未回傳 battle id");
+                    return;
                   }
-
-                  router.replace(`/battle/${battle.id}?test=1`);
-                } catch (err) {
-                  console.error("[matchmaking] skip error", err);
+                  router.push(`/battle/${id}?test=1`);
+                } finally {
+                  setCreatingTestBattle(false);
                 }
               }}
-              className="rounded-xl border border-orange-500/50 px-6 py-2.5 text-sm text-orange-400 transition hover:border-orange-400 hover:bg-orange-500/10"
+              className="rounded-xl border border-orange-500/50 px-6 py-2.5 text-sm text-orange-400 transition hover:border-orange-400 hover:bg-orange-500/10 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              跳過配對（測試擂臺）
+              {creatingTestBattle ? "建立中…" : "跳過配對（測試擂臺）"}
             </button>
           </>
         )}
