@@ -231,6 +231,44 @@ function MatchmakingContent() {
             >
               取消配對
             </Link>
+
+            {/* 測試跳過配對 */}
+            <button
+              onClick={async () => {
+                try {
+                  // 建立測試 battle 並直接進入
+                  const { data: battle, error } = await supabase
+                    .from("battles")
+                    .insert({
+                      status: "live",
+                      winner: null,
+                      started_at: new Date().toISOString(),
+                    })
+                    .select("id")
+                    .single();
+
+                  if (error || !battle) {
+                    alert("建立測試擂臺失敗：" + (error?.message ?? "未知錯誤"));
+                    return;
+                  }
+
+                  // 更新佇列為 matched（可選，不影響）
+                  if (queueId && !queueId.startsWith("mock-")) {
+                    await supabase
+                      .from("battle_queue")
+                      .update({ status: "matched", match_group_id: battle.id })
+                      .eq("id", queueId);
+                  }
+
+                  router.replace(`/battle/${battle.id}?test=1`);
+                } catch (err) {
+                  console.error("[matchmaking] skip error", err);
+                }
+              }}
+              className="rounded-xl border border-orange-500/50 px-6 py-2.5 text-sm text-orange-400 transition hover:border-orange-400 hover:bg-orange-500/10"
+            >
+              跳過配對（測試擂臺）
+            </button>
           </>
         )}
 
