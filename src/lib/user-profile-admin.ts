@@ -1,5 +1,13 @@
+import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { isAdminEmail } from "@/lib/admin-emails";
+
+function userIsAdminByEmail(user: User | null | undefined): boolean {
+  if (!user) return false;
+  if (isAdminEmail(user.email)) return true;
+  const meta = user.user_metadata as Record<string, unknown> | undefined;
+  return isAdminEmail(typeof meta?.email === "string" ? meta.email : null);
+}
 
 export function isMissingIsAdminColumn(err: unknown): boolean {
   const msg = String((err as { message?: string })?.message ?? err).toLowerCase();
@@ -14,7 +22,7 @@ export async function loadIsAdmin(userId: string): Promise<boolean> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
-  if (isAdminEmail(session?.user?.email)) return true;
+  if (userIsAdminByEmail(session?.user)) return true;
 
   const { data, error } = await supabase
     .from("user_profiles")
