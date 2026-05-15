@@ -1325,17 +1325,24 @@ function BattleArenaSuspenseFallback() {
 
 export default function BattleArenaPage() {
   return (
-    <Suspense fallback={<BattleArenaSuspenseFallback />}>
-      <BattleArenaContent />
+    <>
+      <Suspense fallback={<BattleArenaSuspenseFallback />}>
+        <BattleArenaContent />
+      </Suspense>
       <DebugPanel vars={vinylVars} />
-    </Suspense>
+    </>
   );
 }
 
 // ─── Debug Panel ────────────────────────────────────────────
 function DebugPanel({ vars }: { vars: Record<string, string> }) {
-  const [searchParams] = useSearchParams();
-  if (searchParams.get("debug") !== "1") return null;
+  const [isDebug, setIsDebug] = useState(false);
+
+  useEffect(() => {
+    setIsDebug(new URLSearchParams(window.location.search).get("debug") === "1");
+  }, []);
+
+  if (!isDebug) return null;
 
   const [vals, setVals] = useState(vars);
   const cssVars = Object.entries(vals)
