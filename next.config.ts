@@ -6,6 +6,9 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   // eslint 配置已移除（已移到 .eslintrc.json 管理）
+  turbopack: {
+    root: process.cwd(),
+  },
 };
 
 export default nextConfig;

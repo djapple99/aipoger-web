@@ -1,138 +1,136 @@
-// src/app/auth/page.tsx
+// src/app/auth/callback/page.tsx
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+
+type Phase = "idle" | "exchanging" | "saving" | "redirecting" | "error";
 
 function AuthCallbackInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [message, setMessage] = useState("正在完成登入…");
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+  // 防止 useEffect 重複執行（尤其 searchParams 改變時）
+  const processedRef = useRef(false);
 
   useEffect(() => {
+    if (processedRef.current) return;
     const code = searchParams.get("code");
     const error = searchParams.get("error");
     const errorDescription = searchParams.get("error_description");
-    const allParams = Object.fromEntries(searchParams.entries());
 
     console.log("[AuthCallback] loaded", {
-      href: window.location.href,
-      search: window.location.search,
-      hash: window.location.hash,
       hasCode: Boolean(code),
-      codePreview: typeof code === "string" ? `${code.slice(0, 6)}...` : null,
-      allParams,
       error,
       errorDescription,
     });
 
     if (error) {
       console.error("[OAuth callback error]", { error, errorDescription });
-      setMessage("登入失敗，請重試");
-      const t = window.setTimeout(() => router.replace("/auth?error=1"), 1600);
+      setPhase("error");
+      setErrorMsg("登入失敗，請重試");
+      const t = window.setTimeout(() => router.replace("/auth?error=1"), 1800);
       return () => window.clearTimeout(t);
     }
 
     if (!code) {
-      // 某些情況（implicit/hash 或 SDK 自動解析）可能不會有 ?code=
-      // 先嘗試讀取 session，避免誤判為「資訊不完整」。
+      // 無 code，先檢查 session 是否已經存在（OAuth 流程可能已處理完）
       let cancelled = false;
       void (async () => {
         console.log("[AuthCallback] no code; try getSession()");
         const { data, error: sessionError } = await supabase.auth.getSession();
         if (cancelled) return;
-
-        if (sessionError) {
-          console.error("[AuthCallback] getSession error (no code path)", sessionError);
-        }
-
+        if (sessionError) console.error("[AuthCallback] getSession error", sessionError);
         if (data.session) {
-          console.log("[AuthCallback] session exists without code; redirect /", {
-            userId: data.session.user?.id,
-            email: data.session.user?.email,
-          });
-          await new Promise((r) => setTimeout(r, 400));
-          {
-            const { error: bonusErr } = await supabase.rpc("award_signup_bonus", { user_uuid: data.session.user.id });
-            if (bonusErr) console.warn("[signup bonus]", bonusErr);
+          console.log("[AuthCallback] session exists; redirect /");
+          if (!cancelled) {
+            setPhase("redirecting");
+            router.replace("/");
           }
-          router.replace("/");
-          return;
+        } else {
+          console.error("[AuthCallback] no code and no session");
+          if (!cancelled) {
+            setPhase("error");
+            setErrorMsg("登入資訊不完整，請重試");
+            window.setTimeout(() => router.replace("/auth?error=1"), 1800);
+          }
         }
-
-        console.error("[AuthCallback] missing code and session is null", {
-          href: window.location.href,
-          allParams,
-        });
-        setMessage("登入資訊不完整，請重試");
-        window.setTimeout(() => router.replace("/auth?error=1"), 1600);
       })();
-
-      return () => {
-        cancelled = true;
-      };
+      return () => { cancelled = true; };
     }
 
+    // 有 code， exchange
+    processedRef.current = true;
     let cancelled = false;
+
     void (async () => {
+      setPhase("exchanging");
       console.log("[AuthCallback] exchangeCodeForSession start");
+
       const { data: exchangeData, error: exchangeError } =
         await supabase.auth.exchangeCodeForSession(code);
       if (cancelled) return;
 
       if (exchangeError) {
-        console.error("[exchangeCodeForSession]", {
-          name: exchangeError.name,
-          message: exchangeError.message,
-          status: exchangeError.status,
-          error: exchangeError,
-          exchangeData,
-          href: window.location.href,
-          allParams,
-        });
-        setMessage("登入失敗，請重試");
-        window.setTimeout(() => router.replace("/auth?error=1"), 1600);
+        console.error("[exchangeCodeForSession]", exchangeError);
+        if (!cancelled) {
+          setPhase("error");
+          setErrorMsg("登入失敗，請重試");
+          window.setTimeout(() => router.replace("/auth?error=1"), 1800);
+        }
         return;
       }
 
-      console.log("[AuthCallback] exchangeCodeForSession success; getSession...");
       const {
         data: { session },
         error: getSessionError,
       } = await supabase.auth.getSession();
-
-      if (getSessionError) {
-        console.error("[AuthCallback] getSession error after exchange", getSessionError);
-      }
-
+      if (getSessionError) console.error("[AuthCallback] getSession error", getSessionError);
       if (!session) {
-        console.error("[Auth callback] session is null after exchange");
-        setMessage("登入狀態建立失敗，請重試");
-        window.setTimeout(() => router.replace("/auth?error=1"), 1600);
+        if (!cancelled) {
+          setPhase("error");
+          setErrorMsg("登入狀態建立失敗，請重試");
+          window.setTimeout(() => router.replace("/auth?error=1"), 1800);
+        }
         return;
       }
 
-      console.log("[AuthCallback] session ok; redirect /", {
-        userId: session.user?.id,
-        email: session.user?.email,
-      });
-      await new Promise((r) => setTimeout(r, 400));
-      {
-        const { error: bonusErr } = await supabase.rpc("award_signup_bonus", { user_uuid: session.user.id });
-        if (bonusErr) console.warn("[signup bonus]", bonusErr);
-      }
+      // 寫入 user_profiles（第一次登入時建立）
+      setPhase("saving");
+      await supabase.from("user_profiles").upsert({ id: session.user.id }, { onConflict: "id" });
+
+      // 發新手 bonus
+      await supabase.rpc("award_signup_bonus", { user_uuid: session.user.id });
+
+      if (cancelled) return;
+      console.log("[AuthCallback] done; redirect /");
+      setPhase("redirecting");
       router.replace("/");
     })();
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [router, searchParams]);
+
+  const phaseText: Record<Phase, string> = {
+    idle: "正在完成登入…",
+    exchanging: "驗證中…",
+    saving: "設定帳號…",
+    redirecting: "即將進入…",
+    error: errorMsg || "發生錯誤",
+  };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-black text-zinc-200">
-      <p className="text-sm tracking-wide text-zinc-400">{message}</p>
+      <div className="text-center">
+        {phase === "redirecting" && (
+          <div className="mb-4 flex justify-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-yellow-400 border-t-transparent" />
+          </div>
+        )}
+        <p className="text-sm tracking-wide text-zinc-400">{phaseText[phase]}</p>
+      </div>
     </div>
   );
 }
