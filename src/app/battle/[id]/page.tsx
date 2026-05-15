@@ -99,17 +99,17 @@ async function resolveMediaUrl(raw: string | null | undefined): Promise<string |
 }
 
 function VinylTonearmImage({ side }: { side: "left" | "right" }) {
-  /** 對齊參考稿：唱臂緊貼外緣略向內、略上移 */
+  /** 唱臂固定在唱片右側外緣，不遮封面 */
   return (
     <NextImage
       src={VINYL_ARM_IMAGE_SRC}
       alt=""
-      width={240}
-      height={360}
+      width={200}
+      height={300}
       className={`pointer-events-none absolute z-20 select-none object-contain object-top ${
         side === "left"
-          ? "top-[14%] left-[2%] h-[72%] w-auto max-w-[min(44%,118px)] md:left-[4%] md:max-w-[min(44%,148px)]"
-          : "top-[14%] right-[2%] h-[72%] w-auto max-w-[min(44%,118px)] scale-x-[-1] md:right-[4%] md:max-w-[min(44%,148px)]"
+          ? "-right-[52px] top-[5%] h-[70%] w-auto md:-right-[60px] md:top-[8%]"
+          : "-left-[52px] top-[5%] h-[70%] w-auto scale-x-[-1] md:-left-[60px] md:top-[8%]"
       }`}
       aria-hidden
     />
@@ -187,127 +187,93 @@ function VinylDisc({
     img.src = trimmedCover;
   }, [trimmedCover]);
 
-  return (
+return (
     <div className="flex w-full flex-col items-center">
-      {/* 僅資料，無「鬥士名稱／歌名」標題 */}
-      <div className="w-full space-y-2 text-center">
-        <p className="text-[clamp(14px,2.9vw,16px)] text-white">{fighterName}</p>
-        <p className="text-[clamp(12px,2.6vw,14px)] text-white">{songName}</p>
+      {/* 鬥士名 + 歌名：唱片上方，垂直排列 */}
+      <div className="mb-3 w-full space-y-1 text-center">
+        <p className="text-[clamp(12px,2.5vw,15px)] text-white">{fighterName}</p>
+        <p className="text-[clamp(11px,2.3vw,14px)] text-zinc-400">{songName}</p>
       </div>
 
-      <div
-        className={`relative mx-auto mt-5 w-fit shrink-0 ${isPlaying ? playAura + " rounded-full p-px" : ""}`}
-      >
-        <div className="relative flex h-[220px] w-[220px] items-center justify-center md:h-[280px] md:w-[280px]">
-          <VinylTonearmImage side={side} />
-          <div
-            className="relative flex h-full w-full cursor-pointer items-center justify-center rounded-full"
-            onClick={onToggle}
-            onKeyDown={(e) => {
-              if (e.key === " " || e.key === "Enter") onToggle();
-            }}
-            role="button"
-            tabIndex={0}
-            aria-label={isPlaying ? t("deck_pause_aria") : t("deck_play_aria")}
-          >
-            {/* 黑膠本體 */}
-            <div
-              className="absolute inset-0 rounded-full"
-              style={{
-                background: hasCover
-                  ? `linear-gradient(135deg, #0a0a0a 0%, #141414 100%)`
-                  : `linear-gradient(135deg, #080808 0%, #161616 50%, #0b0b0b 100%)`,
-              }}
-            >
-              {[8, 16, 24, 32, 40, 48].map((r) => (
-                <div
-                  key={r}
-                  className="absolute rounded-full border border-zinc-800/40"
-                  style={{ inset: `${r}%` }}
-                />
-              ))}
-              <div className="absolute inset-0 rounded-full border border-zinc-600/35" />
-            </div>
-
-            {/* 頭像：左側在左上角，右側在右上角，絕對定位在唱片外層 */}
-            <div className={`absolute z-30 ${side === "left" ? "left-1 top-1" : "right-1 top-1"} ${avatarBubbleClass}`} aria-hidden>
-              {showAvatarImg ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={trimmedAvatar}
-                  alt=""
-                  className="h-full w-full object-cover"
-                  referrerPolicy="no-referrer"
-                  onError={() => setAvatarBroken(true)}
-                />
-              ) : (
-                <span
-                  className={`flex h-full w-full items-center justify-center text-xl md:text-2xl ${accent === "orange" ? "text-orange-400" : "text-blue-300"}`}
-                >
-                  {initialMark}
-                </span>
-              )}
-            </div>
-
-            {/* 封面：中心圓形貼紙 */}
-            {hasCover ? (
-              <div
-                className={`relative z-10 flex h-[58%] w-[58%] items-center justify-center overflow-hidden rounded-full ${
-                  isPlaying ? "animate-spin" : ""
-                }`}
-                style={{
-                  animationDuration: isPlaying ? "3.2s" : undefined,
-                  animationTimingFunction: "linear",
-                }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={trimmedCover}
-                  alt={songName}
-                  className="h-full w-full object-cover"
-                  onError={() => setCoverBroken(true)}
-                />
-                <div className="absolute inset-[46%] rounded-full bg-neutral-950 ring-[1px] ring-zinc-700/85" />
-                <div className="absolute inset-[49%] rounded-full bg-black" />
-              </div>
+      {/* 唱片 + 頭像 + 唱臂：相對定位 */}
+      <div className="relative">
+        {/* 左側頭像：唱片正上方，左上角 */}
+        {side === "left" && (
+          <div className={`absolute -top-2 left-1 z-30 ${avatarBubbleClass}`} style={{ marginBottom: "-1rem" }} aria-hidden>
+            {showAvatarImg ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={trimmedAvatar} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" onError={() => setAvatarBroken(true)} />
             ) : (
-              <div
-                className={`relative z-10 flex h-[58%] w-[58%] items-center justify-center overflow-hidden rounded-full ${
-                  isPlaying ? "animate-spin" : ""
-                }`}
-                style={{
-                  background: `linear-gradient(145deg, ${color}22 0%, ${color}55 52%, ${color}18 100%)`,
-                  animationDuration: isPlaying ? "3.2s" : undefined,
-                  animationTimingFunction: "linear",
-                }}
-              >
-                <div className="absolute inset-[42%] rounded-full border border-zinc-800 bg-zinc-950" />
-                <div className="absolute inset-[46%] rounded-full bg-black" />
-              </div>
+              <span className={`flex h-full w-full items-center justify-center text-lg md:text-xl ${accent === "orange" ? "text-orange-400" : "text-blue-300"}`}>{initialMark}</span>
             )}
           </div>
+        )}
+
+        {/* 唱臂：絕對定位在唱片右側外緣，不遮擋封面 */}
+        <VinylTonearmImage side={side} />
+
+        {/* 唱片主體 */}
+        <div
+          className={`relative flex h-[220px] w-[220px] items-center justify-center md:h-[280px] md:w-[280px] ${isPlaying ? playAura + " rounded-full p-px" : ""}`}
+          onClick={onToggle}
+          onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") onToggle(); }}
+          role="button"
+          tabIndex={0}
+          aria-label={isPlaying ? t("deck_pause_aria") : t("deck_play_aria")}
+        >
+          {/* 黑膠本體 */}
+          <div
+            className="absolute inset-0 rounded-full"
+            style={{ background: hasCover ? `linear-gradient(135deg, #0a0a0a 0%, #141414 100%)` : `linear-gradient(135deg, #080808 0%, #161616 50%, #0b0b0b 100%)` }}
+          >
+            {[8, 16, 24, 32, 40, 48].map((r) => (
+              <div key={r} className="absolute rounded-full border border-zinc-800/40" style={{ inset: `${r}%` }} />
+            ))}
+            <div className="absolute inset-0 rounded-full border border-zinc-600/35" />
+          </div>
+
+          {/* 封面：中心圓形 */}
+          {hasCover ? (
+            <div className={`relative z-10 flex h-[58%] w-[58%] items-center justify-center overflow-hidden rounded-full ${isPlaying ? "animate-spin" : ""}`} style={{ animationDuration: isPlaying ? "3.2s" : undefined, animationTimingFunction: "linear" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={trimmedCover} alt={songName} className="h-full w-full object-cover" onError={() => setCoverBroken(true)} />
+              <div className="absolute inset-[46%] rounded-full bg-neutral-950 ring-[1px] ring-zinc-700/85" />
+              <div className="absolute inset-[49%] rounded-full bg-black" />
+            </div>
+          ) : (
+            <div className={`relative z-10 flex h-[58%] w-[58%] items-center justify-center overflow-hidden rounded-full ${isPlaying ? "animate-spin" : ""}`} style={{ background: `linear-gradient(145deg, ${color}22 0%, ${color}55 52%, ${color}18 100%)`, animationDuration: isPlaying ? "3.2s" : undefined, animationTimingFunction: "linear" }}>
+              <div className="absolute inset-[42%] rounded-full border border-zinc-800 bg-zinc-950" />
+              <div className="absolute inset-[46%] rounded-full bg-black" />
+            </div>
+          )}
         </div>
+
+        {/* 右側頭像：在唱臂上方（不遮擋唱片） */}
+        {side === "right" && (
+          <div className={`absolute right-0 top-0 z-30 ${avatarBubbleClass}`} style={{ transform: "translate(30%, -10%)" }} aria-hidden>
+            {showAvatarImg ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={trimmedAvatar} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" onError={() => setAvatarBroken(true)} />
+            ) : (
+              <span className={`flex h-full w-full items-center justify-center text-lg md:text-xl ${accent === "blue" ? "text-blue-300" : "text-orange-400"}`}>{initialMark}</span>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* AI 工具：拿掉，不顯示 */}
-      <div className="mt-5 w-full text-center" />
+      {/* AI 工具名稱 */}
+      <div className="mt-3 w-full text-center">
+        <p className="text-[clamp(11px,2.2vw,13px)] text-zinc-500">{aiTool ?? ""}</p>
+      </div>
 
+      {/* PLAY 按鈕 */}
       <button
         type="button"
         onClick={onToggle}
-        className={`mt-3 inline-flex items-center justify-center gap-2 rounded-lg border px-9 py-2 text-[10px] tracking-[0.26em] transition md:text-[11px] ${playClasses}`}
+        className={`mt-2 flex items-center gap-2 rounded-full border-2 px-5 py-2 text-sm font-bold tracking-widest transition-all ${playClasses}`}
       >
-        {isPlaying ? (
-          <>
-            <span aria-hidden>⏸</span>
-            {t("battle_pause_label")}
-          </>
-        ) : (
-          <>
-            <span aria-hidden>▶</span>
-            {t("battle_play_label")}
-          </>
-        )}
+        <span>{isPlaying ? "⏸" : "▶"}</span>
+        <span>{isPlaying ? "PAUSE" : "PLAY"}</span>
       </button>
     </div>
   );
@@ -968,7 +934,7 @@ function BattleArenaContent() {
               aiTool={battle.ai_tool_a}
             />
             <div className="mt-2 min-h-[52px] whitespace-pre-wrap text-center text-[13px] leading-[1.75] text-white md:text-[14px]">
-              {lyricA ? lyricA : <span className="w-full text-zinc-600">{t("battle_lyrics_label")}</span>}
+              {lyricA || ""}
             </div>
             <div className="mt-auto flex flex-col gap-2 pb-2 pt-2">
               <div className="flex w-full justify-start pr-8">
@@ -1023,7 +989,7 @@ function BattleArenaContent() {
               aiTool={battle.ai_tool_b}
             />
             <div className="mt-2 min-h-[52px] whitespace-pre-wrap text-center text-[13px] leading-[1.75] text-white md:text-[14px]">
-              {lyricB ? lyricB : <span className="w-full text-zinc-600">{t("battle_lyrics_label")}</span>}
+              {lyricB || ""}
             </div>
             <div className="mt-auto flex flex-col gap-2 pb-2 pt-2">
               <div className="flex w-full justify-end pl-8">
