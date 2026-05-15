@@ -27,6 +27,9 @@ const dict: Record<Lang, Record<string, string>> = {
     home_admin_badge: '管理員',
     home_account_menu_aria: '帳戶選單',
     nav_home_aria: '回到主畫面',
+    home_bgm_play_aria: '播放首頁背景音樂《我整天都想起肖》',
+    home_bgm_pause_aria: '暫停首頁背景音樂',
+    home_bgm_tooltip: '背景音樂：我整天都想起肖',
     common_loading: '載入中…',
     auth_error: '登入發生錯誤，請再試一次',
     storage_upload_failed:
@@ -153,6 +156,9 @@ const dict: Record<Lang, Record<string, string>> = {
     home_admin_badge: 'Admin',
     home_account_menu_aria: 'Account menu',
     nav_home_aria: 'Back to home',
+    home_bgm_play_aria: 'Play home background music',
+    home_bgm_pause_aria: 'Pause home background music',
+    home_bgm_tooltip: 'Background music: 我整天都想起肖',
     common_loading: 'Loading…',
     auth_error: 'Something went wrong. Please try again.',
     storage_upload_failed:

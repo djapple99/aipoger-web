@@ -9,6 +9,7 @@ import { writeFighterNameToStorage } from "@/lib/fighter-name-storage";
 import { isMissingFighterNameColumn } from "@/lib/user-profile-fighter-name";
 import { loadIsAdmin } from "@/lib/user-profile-admin";
 import LangToggle from "@/components/lang-toggle";
+import HomeBgmPlayer from "@/components/home-bgm-player";
 import { fontGlowSans, fontRighteous } from "@/lib/fonts";
 import type { Session, User } from "@supabase/supabase-js";
 
@@ -372,6 +373,8 @@ export default function HomePage() {
         <LangToggle variant="inline" />
         <HomeAuthBar />
       </header>
+
+      <HomeBgmPlayer />
 
       <section className="relative z-10 mx-auto grid w-full max-w-7xl gap-10 border-b border-zinc-700/70 pb-10 md:grid-cols-12 md:items-end">
         <div className="md:col-span-8">
