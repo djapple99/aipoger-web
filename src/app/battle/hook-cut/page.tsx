@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { isAuthBypassEnabled, mockUserId } from '@/lib/auth-bypass';
 import { readFighterNameFromStorage, writeFighterNameToStorage } from '@/lib/fighter-name-storage';
 import { buildHookStoragePath, isValidStorageObjectKey } from '@/lib/storage-path';
+import { saveFighterNameToProfile } from '@/lib/user-profile-fighter-name';
 
 const MAX_HOOK_SECONDS = 45;
 const MIN_REGION_SECONDS = 0.25;
@@ -595,14 +596,14 @@ function HookCutContent() {
       // 測試模式：NEXT_PUBLIC_AUTH_BYPASS=true 時跳過扣費（老闆模式）
       if (!isAuthBypassEnabled) {
         // 先確保 user_profiles 存在（第一次報名時建立）
-        const { error: profileErr } = await supabase.from("user_profiles").upsert(
-          { id: userId, fighter_name: fighterName.trim() || "未命名鬥士" },
-          { onConflict: "id" },
-        );
+        const { error: profileErr } = await supabase
+          .from("user_profiles")
+          .upsert({ id: userId }, { onConflict: "id" });
         if (profileErr) {
           console.error("[hook-cut] user_profiles upsert", profileErr);
           throw profileErr;
         }
+        await saveFighterNameToProfile(userId, fighterName.trim() || "未命名鬥士");
 
         const { data: deducted, error: feeErr } = await supabase.rpc("deduct_challenge_fee", {
           user_uuid: userId,

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
 import { writeFighterNameToStorage } from "@/lib/fighter-name-storage";
+import { isMissingFighterNameColumn } from "@/lib/user-profile-fighter-name";
 import type { Session, User } from "@supabase/supabase-js";
 
 const SPLASH_STEPS = {
@@ -82,11 +83,21 @@ function HomeAuthBar() {
     async (userId: string) => {
       setProfileLoading(true);
       try {
-        const { data, error } = await supabase
+        let { data, error } = await supabase
           .from("user_profiles")
           .select("aipo_coins, apc_balance, level, total_wins, avatar_url, fighter_name")
           .eq("id", userId)
           .maybeSingle();
+
+        if (error && isMissingFighterNameColumn(error)) {
+          const fallback = await supabase
+            .from("user_profiles")
+            .select("aipo_coins, apc_balance, level, total_wins, avatar_url")
+            .eq("id", userId)
+            .maybeSingle();
+          data = fallback.data;
+          error = fallback.error;
+        }
 
         if (error) {
           console.error(error);
@@ -101,7 +112,10 @@ function HomeAuthBar() {
         setApcBalance(typeof data?.apc_balance === "number" ? data.apc_balance : null);
         setProfileAvatarUrl(typeof data?.avatar_url === "string" && data.avatar_url.length > 0 ? data.avatar_url : null);
 
-        const fn = typeof data?.fighter_name === "string" ? data.fighter_name.trim() : "";
+        const fn =
+          data && "fighter_name" in data && typeof data.fighter_name === "string"
+            ? data.fighter_name.trim()
+            : "";
         if (fn) writeFighterNameToStorage(fn);
 
         const lv = data?.level;

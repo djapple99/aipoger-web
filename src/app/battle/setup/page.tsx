@@ -8,6 +8,7 @@ import { isAuthBypassEnabled, mockUserId } from '@/lib/auth-bypass';
 import { useI18n } from '@/lib/i18n';
 import { AvatarCropUploadModal } from '@/components/avatar-crop-upload-modal';
 import { readFighterNameFromStorage, writeFighterNameToStorage } from '@/lib/fighter-name-storage';
+import { loadFighterNameFromProfile, saveFighterNameToProfile } from '@/lib/user-profile-fighter-name';
 
 type GenreOption = { value: string; label: string };
 
@@ -103,20 +104,16 @@ export default function BattleSetupPage() {
       }
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        const { data } = await supabase
+        if (!urlName) {
+          const fromProfile = await loadFighterNameFromProfile(session.user.id);
+          if (fromProfile) setFighterName(fromProfile);
+        }
+        const { data, error: avErr } = await supabase
           .from('user_profiles')
-          .select('fighter_name, avatar_url')
+          .select('avatar_url')
           .eq('id', session.user.id)
           .maybeSingle();
-        if (!urlName) {
-          const fromDb = data?.fighter_name?.trim();
-          if (fromDb) setFighterName(fromDb);
-          else {
-            const ls = readFighterNameFromStorage();
-            if (ls) setFighterName(ls);
-          }
-        }
-        if (typeof data?.avatar_url === 'string' && data.avatar_url.length > 0) {
+        if (!avErr && typeof data?.avatar_url === 'string' && data.avatar_url.length > 0) {
           setProfileAvatarPreview(data.avatar_url);
         }
         return;
@@ -295,11 +292,7 @@ export default function BattleSetupPage() {
 
       if (!isAuthBypassEnabled) {
         await saveFighterProfile(userId, fighterName.trim(), avatarUrl, coverUrl);
-        writeFighterNameToStorage(fighterName.trim());
-        const { error: fnErr } = await supabase
-          .from('user_profiles')
-          .upsert({ id: userId, fighter_name: fighterName.trim() }, { onConflict: 'id' });
-        if (fnErr) console.error('[setup] fighter_name upsert', fnErr);
+        await saveFighterNameToProfile(userId, fighterName.trim());
       } else {
         writeFighterNameToStorage(fighterName.trim());
       }

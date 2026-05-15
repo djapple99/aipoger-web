@@ -8,6 +8,7 @@ import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 import { useI18n } from "@/lib/i18n";
 import { AvatarCropUploadModal } from "@/components/avatar-crop-upload-modal";
 import { readFighterNameFromStorage, writeFighterNameToStorage } from "@/lib/fighter-name-storage";
+import { loadFighterNameFromProfile, saveFighterNameToProfile } from "@/lib/user-profile-fighter-name";
 
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 const AVATAR_ACCEPT = "image/jpeg,image/png,image/webp";
@@ -55,20 +56,12 @@ function ProfileInner() {
       setFighterName(urlFighter);
     }
 
-    const { data } = await supabase
-      .from("user_profiles")
-      .select("fighter_name, avatar_url")
-      .eq("id", uid)
-      .maybeSingle();
-
     if (!urlFighter) {
-      const fromDb = data?.fighter_name?.trim();
-      if (fromDb) setFighterName(fromDb);
-      else {
-        const ls = readFighterNameFromStorage();
-        if (ls) setFighterName(ls);
-      }
+      const fromProfile = await loadFighterNameFromProfile(uid);
+      if (fromProfile) setFighterName(fromProfile);
     }
+
+    const { data } = await supabase.from("user_profiles").select("avatar_url").eq("id", uid).maybeSingle();
 
     if (typeof data?.avatar_url === "string" && data.avatar_url.length > 0) {
       setAvatarPreview(data.avatar_url);
@@ -141,8 +134,9 @@ function ProfileInner() {
     setFighterBusy(true);
     setFighterSaved(false);
     try {
-      const { error } = await supabase.from("user_profiles").upsert({ id: userId, fighter_name: name }, { onConflict: "id" });
-      if (error) {
+      try {
+        await saveFighterNameToProfile(userId, name);
+      } catch (error) {
         console.error(error);
         alert(t("profile_fighter_save_fail"));
         return;
