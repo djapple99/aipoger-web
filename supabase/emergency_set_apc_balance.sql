@@ -4,9 +4,14 @@
 -- 執行前請把 UUID 改成目標使用者（須已存在於 auth.users / user_profiles）
 -- ============================================================
 
-UPDATE public.user_profiles
+-- 依 email（建議）
+UPDATE public.user_profiles p
 SET apc_balance = 1000
-WHERE id = '3336dd37-7fe8-4203-bd55-9eb1067ca047';
+FROM auth.users u
+WHERE p.id = u.id AND lower(u.email) = lower('djapple99@gmail.com');
+
+-- 或依 UUID：
+-- UPDATE public.user_profiles SET apc_balance = 1000 WHERE id = '3336dd37-7fe8-4203-bd55-9eb1067ca047';
 
 -- 若 UPDATE 影響 0 列，代表尚無 profile 列，可改用手動 INSERT（欄位依你專案 mvp 版 user_profiles 為準），例如：
 -- INSERT INTO public.user_profiles (id, apc_balance, level, total_wins, total_losses)

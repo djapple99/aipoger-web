@@ -74,15 +74,14 @@ $$;
 revoke all on function public.deduct_challenge_fee(uuid, integer) from public;
 grant execute on function public.deduct_challenge_fee(uuid, integer) to authenticated;
 
--- 設為管理員：請改成你的 user id 或 email（二擇一執行）
+-- 設為管理員：djapple99@gmail.com（無 profile 列時會自動建立）
+insert into public.user_profiles (id, is_admin)
+select u.id, true
+from auth.users u
+where lower(u.email) = lower('djapple99@gmail.com')
+on conflict (id) do update set is_admin = excluded.is_admin;
 
--- 方式 A：已知 UUID（愛波哥帳號，來自專案 emergency_set_apc_balance.sql）
-update public.user_profiles
-set is_admin = true
-where id = '3336dd37-7fe8-4203-bd55-9eb1067ca047';
+-- 若上面影響 0 列，代表 auth.users 尚無此 email，請先用該信箱登入一次再重跑本檔。
 
--- 方式 B：依登入 email（取消註解並改 email）
--- update public.user_profiles p
--- set is_admin = true
--- from auth.users u
--- where p.id = u.id and lower(u.email) = lower('your@email.com');
+-- 備用：已知 UUID
+-- update public.user_profiles set is_admin = true where id = '3336dd37-7fe8-4203-bd55-9eb1067ca047';
