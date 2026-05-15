@@ -5,36 +5,85 @@ import { useI18n } from "@/lib/i18n";
 
 const BGM_SRC = "/music/home-bgm.mp3";
 
-function BgmIcon({ playing }: { playing: boolean }) {
+function SpeakerIcon({ playing }: { playing: boolean }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden="true">
-      <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.5" className="opacity-40" />
-      <path
-        d="M12 6v6l4 2"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className={playing ? "animate-pulse" : ""}
-      />
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-6 w-6"
+      aria-hidden="true"
+    >
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+      {playing ? (
+        <>
+          <path d="M15.54 8.46a5 5 0 017.072 7.068" />
+          <path d="M17.66 6.34a9 9 0 019.758 13.932" className="opacity-90 [animation-duration:2.2s] animate-pulse" />
+        </>
+      ) : (
+        <>
+          <path d="M15 10v4" className="opacity-35" strokeWidth="1.75" />
+          <path d="M17.8 10.3v7.4" className="opacity-25" strokeWidth="1.5" />
+        </>
+      )}
     </svg>
   );
 }
 
-/** 僅首頁：左上角 logo 右側，播放／暫停全曲循環 */
+/** 僅首頁：左上角 logo 右側；進入自動嘗試播放，喇叭可暫停 */
 export default function HomeBgmPlayer() {
   const { t } = useI18n();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
+  const autoplayBlockedRef = useRef(false);
+  const userPausedRef = useRef(false);
 
   useEffect(() => {
     const el = audioRef.current;
     if (!el) return undefined;
+
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
     el.addEventListener("play", onPlay);
     el.addEventListener("pause", onPause);
+
+    autoplayBlockedRef.current = false;
+    userPausedRef.current = false;
+
+    void el.play().then(
+      () => {
+        autoplayBlockedRef.current = false;
+      },
+      () => {
+        autoplayBlockedRef.current = true;
+      },
+    );
+
+    const onFirstPointer = (ev: PointerEvent) => {
+      const target = ev.target;
+      const onSpeaker =
+        target instanceof Element && Boolean(target.closest("[data-home-bgm]"));
+
+      if (
+        !onSpeaker &&
+        autoplayBlockedRef.current &&
+        !userPausedRef.current &&
+        el.paused
+      ) {
+        void el.play().catch(() => {});
+      }
+
+      autoplayBlockedRef.current = false;
+      window.removeEventListener("pointerdown", onFirstPointer, true);
+    };
+
+    window.addEventListener("pointerdown", onFirstPointer, { capture: true });
+
     return () => {
+      window.removeEventListener("pointerdown", onFirstPointer, true);
       el.pause();
       el.removeEventListener("play", onPlay);
       el.removeEventListener("pause", onPause);
@@ -45,21 +94,24 @@ export default function HomeBgmPlayer() {
     const el = audioRef.current;
     if (!el) return;
     if (el.paused) {
+      userPausedRef.current = false;
       try {
         await el.play();
       } catch {
-        /* autoplay policies: user must tap again */
+        /* still blocked until gesture on some browsers */
       }
     } else {
+      userPausedRef.current = true;
       el.pause();
     }
   }, []);
 
   return (
     <>
-      <audio ref={audioRef} src={BGM_SRC} loop preload="metadata" />
+      <audio ref={audioRef} src={BGM_SRC} loop preload="auto" />
       <button
         type="button"
+        data-home-bgm
         onClick={toggle}
         title={t("home_bgm_tooltip")}
         aria-label={playing ? t("home_bgm_pause_aria") : t("home_bgm_play_aria")}
@@ -69,7 +121,7 @@ export default function HomeBgmPlayer() {
             : "ring-1 ring-white/15 hover:border-zinc-500 hover:bg-black/65"
         }`}
       >
-        <BgmIcon playing={playing} />
+        <SpeakerIcon playing={playing} />
       </button>
     </>
   );
