@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { isAuthBypassEnabled, mockUserId } from "@/lib/auth-bypass";
+import { isAuthBypassEnabled, mockSkipMatchBattleId } from "@/lib/auth-bypass";
 import { supabase } from "@/lib/supabase";
 
 type QueueStatus = "waiting" | "matched" | "cancelled";
@@ -58,7 +58,19 @@ function MatchmakingContent() {
     const target =
       resolvedBattleId ?? (queueId?.startsWith("mock-") ? queueId : null);
     if (!target) return;
-    router.replace(`/battle/${target}`);
+
+    // 重建帶上所有 URL params（test mode、audioPath 等）
+    const mmParams = new URLSearchParams({
+      fighterName: fighterName || "未命名鬥士",
+      songName: songName || "未提供",
+      genre: genre,
+      aiTool: aiToolParam,
+      audioPath: audioPath,
+    });
+    if (coverUrl) mmParams.set("coverUrl", coverUrl);
+    if (queueId) mmParams.set("queueId", queueId);
+
+    router.replace(`/battle/${target}?test=1&${mmParams.toString()}`);
   }, [phase, countdown, resolvedBattleId, queueId, router]);
 
   // 重新整理配對頁時：若佇列已是 matched，直接帶入 battles.id
@@ -235,12 +247,27 @@ function MatchmakingContent() {
               取消配對
             </Link>
 
-            {/* 跳過配對（測試擂臺）：寫入 battles + 導向 /battle/[id]?test=1（需 Supabase RPC create_test_arena_battle） */}
+            {/* 跳過配對（測試擂臺）：AUTH_BYPASS 用假 id 直跳；否則 insert battles 後導向（測試環境可關 RLS，見 disable_rls_testing.sql） */}
             <button
               type="button"
               disabled={creatingTestBattle}
               onClick={async () => {
                 if (creatingTestBattle) return;
+
+                if (isAuthBypassEnabled) {
+                  const qs = new URLSearchParams({
+                    test: "1",
+                    fighterName: fighterName || "未命名鬥士",
+                    songName: songName || "未提供",
+                    genre,
+                    audioPath: audioPath.trim(),
+                    aiTool: aiToolParam,
+                  });
+                  if (coverUrl?.trim()) qs.set("coverUrl", coverUrl.trim());
+                  router.push(`/battle/${mockSkipMatchBattleId}?${qs.toString()}`);
+                  return;
+                }
+
                 const path = audioPath.trim();
                 if (!path) {
                   alert("缺少 URL 參數 audioPath（Hook 上傳後的 Storage 路徑）");
@@ -248,7 +275,6 @@ function MatchmakingContent() {
                 }
                 setCreatingTestBattle(true);
                 try {
-                  // 透過 REST API 直接寫入 battles（繞過 RPC 需 auth.uid 的問題）
                   const { data: battleData, error } = await supabase
                     .from("battles")
                     .insert({
@@ -265,16 +291,24 @@ function MatchmakingContent() {
                     .select("id")
                     .single();
 
-                  if (error) {
+                  if (error || !battleData) {
                     console.error("[matchmaking] direct insert battle", error);
-                    alert("建立測試擂臺失敗：" + error.message);
+                    alert("建立測試擂臺失敗：" + (error?.message ?? "未知錯誤"));
                     return;
                   }
-                  id = battleData.id;
+                  const nextQs = new URLSearchParams({
+                    test: "1",
+                    fighterName: fighterName || "未命名鬥士",
+                    songName: songName || "未提供",
+                    genre,
+                    audioPath: path,
+                    aiTool: aiToolParam,
+                  });
+                  if (coverUrl?.trim()) nextQs.set("coverUrl", coverUrl.trim());
+                  router.push(`/battle/${battleData.id}?${nextQs.toString()}`);
                 } finally {
                   setCreatingTestBattle(false);
                 }
-                router.push(`/battle/${id}?test=1&audioPath=${encodeURIComponent(path)}&coverUrl=${encodeURIComponent(coverUrl ?? "")}&fighterName=${encodeURIComponent(fighterName)}&songName=${encodeURIComponent(songName)}&aiTool=${encodeURIComponent(aiToolParam)}`);
               }}
               className="rounded-xl border border-orange-500/50 px-6 py-2.5 text-sm text-orange-400 transition hover:border-orange-400 hover:bg-orange-500/10 disabled:cursor-not-allowed disabled:opacity-50"
             >
