@@ -397,6 +397,7 @@ export default function HomePage() {
             className={`mt-4 text-sm text-zinc-300 md:text-2xl ${
               lang === "en" ? fontRighteous.className : fontGlowSans.className
             }`}
+            style={lang === "zh" ? fontGlowSans.style : undefined}
           >
             {t("home_tagline")}
           </p>

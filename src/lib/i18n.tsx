@@ -19,7 +19,7 @@ const dict: Record<Lang, Record<string, string>> = {
     home_title: 'AIPOGER 愛播歌',
     home_subtitle: 'Where AI Beats Bleed.',
     home_secondary_title: '愛播歌',
-    home_tagline: '在 AI 節奏交鋒之處，流淌著真實的音樂血液',
+    home_tagline: '在 AI 節奏交鋒之處流淌著真實的音樂血液',
     home_logo_alt: 'AIPOGER 愛播歌',
     home_coin_tooltip: 'AIPO Coin 餘額',
     home_profile_level: '段位',
