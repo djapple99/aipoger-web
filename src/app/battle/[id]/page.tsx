@@ -1,12 +1,14 @@
 // src/app/battle/[id]/page.tsx
 "use client";
 
+import NextImage from "next/image";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
-import { FormEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { FormEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { isAuthBypassEnabled, mockUserId } from "@/lib/auth-bypass";
 import { useI18n } from "@/lib/i18n";
+import { fontGlowSansBattle } from "@/lib/fonts";
 import { supabase } from "@/lib/supabase";
 
 type SenderType = "audience" | "fighter_a" | "fighter_b";
@@ -38,6 +40,8 @@ type BattleData = {
   song_b_cover: string | null;
   ai_tool_a: string | null;
   ai_tool_b: string | null;
+  lyrics_a: string | null;
+  lyrics_b: string | null;
   status: "live" | "finished" | "cancelled";
 };
 
@@ -70,9 +74,31 @@ async function resolveMediaUrl(raw: string | null | undefined): Promise<string |
   return null;
 }
 
+// ─── 唱臂裝飾 ────────────────────────────────────────────
+function TonearmGraphic({ accent }: { accent: "orange" | "blue" }) {
+  const stroke = accent === "orange" ? "#fb923c" : "#60a5fa";
+  return (
+    <svg
+      className="pointer-events-none absolute -right-1 top-[16%] z-10 h-[74%] w-[40%] md:-right-2"
+      viewBox="0 0 48 120"
+      fill="none"
+      aria-hidden
+    >
+      <circle cx="40" cy="14" r="5" stroke={stroke} strokeWidth="2" opacity={0.85} />
+      <path
+        d="M40 19 Q 22 48 14 112"
+        stroke={stroke}
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        opacity={0.9}
+      />
+      <circle cx="12" cy="114" r="4.5" fill="#27272a" stroke={stroke} strokeWidth="1.5" />
+    </svg>
+  );
+}
+
 // ─── 旋轉唱片元件 ──────────────────────────────────────────
 function VinylDisc({
-  label,
   fighterName,
   songName,
   coverUrl,
@@ -81,8 +107,8 @@ function VinylDisc({
   onToggle,
   color,
   aiTool,
+  accent,
 }: {
-  label: string;
   fighterName: string;
   songName: string;
   coverUrl: string | null;
@@ -91,6 +117,7 @@ function VinylDisc({
   onToggle: () => void;
   color: string;
   aiTool: string | null;
+  accent: "orange" | "blue";
 }) {
   const { t } = useI18n();
 
@@ -102,6 +129,28 @@ function VinylDisc({
   const [avatarBroken, setAvatarBroken] = useState(false);
   const showAvatarImg = Boolean(trimmedAvatar) && !avatarBroken;
 
+  const avatarRing =
+    accent === "orange"
+      ? "border-orange-500 shadow-[0_0_24px_rgba(251,146,60,0.25)]"
+      : "border-blue-400 shadow-[0_0_24px_rgba(96,165,250,0.25)]";
+
+  const playAura =
+    accent === "orange"
+      ? "shadow-[0_0_40px_rgba(255,106,0,0.38)]"
+      : "shadow-[0_0_40px_rgba(59,130,246,0.38)]";
+
+  const cueDot =
+    accent === "orange" ? "bg-orange-500 text-black" : "bg-blue-500 text-black";
+
+  const playClasses =
+    accent === "orange"
+      ? isPlaying
+        ? "border-orange-500 bg-orange-500/20 text-orange-400 hover:bg-orange-500/30"
+        : "border-zinc-600 bg-zinc-800 text-zinc-200 hover:border-orange-500 hover:text-orange-400"
+      : isPlaying
+        ? "border-blue-400 bg-blue-500/15 text-blue-300 hover:bg-blue-500/25"
+        : "border-zinc-600 bg-zinc-800 text-zinc-200 hover:border-blue-400 hover:text-blue-300";
+
   useEffect(() => {
     setCoverBroken(false);
   }, [trimmedCover]);
@@ -112,159 +161,170 @@ function VinylDisc({
 
   useEffect(() => {
     if (!trimmedCover) return;
-    const img = new Image();
+    const img = new window.Image();
     img.onload = () => setCoverBroken(false);
     img.onerror = () => setCoverBroken(true);
     img.src = trimmedCover;
   }, [trimmedCover]);
 
-  const escapedUrl = trimmedCover.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-  const outerRingStyle: CSSProperties = hasCover
-    ? {
-        background: `url("${escapedUrl}") center / cover no-repeat`,
-        backgroundSize: "cover",
-      }
-    : {
-        background: `conic-gradient(from 0deg, #1a1a1a 0deg, #2a2a2a 30deg, #1a1a1a 60deg, #252525 90deg, #1a1a1a 120deg, #2a2a2a 150deg, #1a1a1a 180deg, #252525 210deg, #1a1a1a 240deg, #2a2a2a 270deg, #1a1a1a 300deg, #252525 330deg, #1a1a1a 360deg)`,
-      };
+  return (
+    <div className="flex w-full max-w-[320px] flex-col items-center gap-4">
+      <div className="w-full text-center leading-snug">
+        <p className="text-[15px] text-white">{fighterName}</p>
+        <p className="mt-1 text-sm text-zinc-200">{songName}</p>
+        {aiTool ? <p className="mt-1 text-[11px] text-zinc-500">{aiTool}</p> : null}
+      </div>
 
-return (
-    <div className="flex flex-col items-center gap-5">
-      {/* 唱片外框：黑膠紋理為底，頭像左上角，封面在中心 */}
-      <div
-        className="relative flex h-[240px] w-[240px] items-center justify-center md:h-[300px] md:w-[300px]"
-        onClick={onToggle}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => e.key === " " && onToggle()}
-        aria-label={isPlaying ? t("deck_pause_aria") : t("deck_play_aria")}
-      >
-        {/* 黑膠唱片本體：圓形黑膠 + 同心溝槽 */}
+      <div className="relative w-full">
         <div
-          className={`absolute inset-0 rounded-full transition-all duration-300 ${
-            isPlaying ? "shadow-[0_0_40px_rgba(255,106,0,0.4)]" : ""
+          className={`relative mx-auto flex h-[220px] w-[220px] items-center justify-center md:h-[280px] md:w-[280px] ${
+            isPlaying ? playAura : ""
           }`}
-          style={{
-            background: hasCover
-              ? `linear-gradient(135deg, #111 0%, #1a1a1a 100%)`
-              : `linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 50%, #111 100%)`,
-          }}
         >
-          {/* 同心溝槽線 */}
-          {[8, 16, 24, 32, 40, 48].map((r) => (
+          <TonearmGraphic accent={accent} />
+          <div
+            className="relative flex h-full w-full cursor-pointer items-center justify-center"
+            onClick={onToggle}
+            onKeyDown={(e) => {
+              if (e.key === " " || e.key === "Enter") onToggle();
+            }}
+            role="button"
+            tabIndex={0}
+            aria-label={isPlaying ? t("deck_pause_aria") : t("deck_play_aria")}
+          >
             <div
-              key={r}
-              className="absolute rounded-full border border-zinc-800/30"
+              className="absolute inset-0 rounded-full transition-all duration-300"
               style={{
-                inset: `${r}%`,
-                background: "transparent",
+                background: hasCover
+                  ? `linear-gradient(135deg, #111 0%, #1a1a1a 100%)`
+                  : `linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 50%, #111 100%)`,
               }}
-            />
-          ))}
-          {/* 外圈亮線 */}
-          <div className="absolute inset-0 rounded-full border border-zinc-700/40" />
+            >
+              {[8, 16, 24, 32, 40, 48].map((r) => (
+                <div
+                  key={r}
+                  className="absolute rounded-full border border-zinc-800/30"
+                  style={{ inset: `${r}%` }}
+                />
+              ))}
+              <div className="absolute inset-0 rounded-full border border-zinc-700/40" />
+            </div>
+
+            <div
+              className={`absolute -left-0.5 -top-0.5 z-30 h-[3.75rem] w-[3.75rem] overflow-hidden rounded-full border-[3px] bg-zinc-900 ring-2 ring-black/70 md:h-[5rem] md:w-[5rem] ${avatarRing}`}
+              aria-hidden
+            >
+              {showAvatarImg ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={trimmedAvatar}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  referrerPolicy="no-referrer"
+                  onError={() => setAvatarBroken(true)}
+                />
+              ) : (
+                <span
+                  className={`flex h-full w-full items-center justify-center text-2xl md:text-3xl ${
+                    accent === "orange" ? "text-orange-400" : "text-blue-400"
+                  }`}
+                >
+                  {initialMark}
+                </span>
+              )}
+            </div>
+
+            {hasCover ? (
+              <div
+                className={`relative z-10 flex h-[55%] w-[55%] items-center justify-center overflow-hidden rounded-full ${
+                  isPlaying ? "animate-spin" : ""
+                }`}
+                style={{
+                  animationDuration: isPlaying ? "3s" : undefined,
+                  animationTimingFunction: "linear",
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={trimmedCover}
+                  alt={songName}
+                  className="h-full w-full object-cover"
+                  onError={() => setCoverBroken(true)}
+                />
+                <div className="absolute inset-[46%] rounded-full bg-zinc-900 ring-1 ring-zinc-700/80" />
+                <div className="absolute inset-[49%] rounded-full bg-zinc-950" />
+              </div>
+            ) : (
+              <div
+                className={`relative z-10 flex h-[55%] w-[55%] items-center justify-center overflow-hidden rounded-full ${
+                  isPlaying ? "animate-spin" : ""
+                }`}
+                style={{
+                  background: `linear-gradient(145deg, ${color}33 0%, ${color}66 50%, ${color}22 100%)`,
+                  animationDuration: isPlaying ? "3s" : undefined,
+                  animationTimingFunction: "linear",
+                }}
+              >
+                <div className="absolute inset-[42%] rounded-full border border-zinc-800 bg-zinc-900" />
+                <div className="absolute inset-[46%] rounded-full bg-zinc-950" />
+              </div>
+            )}
+
+            {isPlaying ? (
+              <div
+                className={`absolute -right-0 top-3 z-20 flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold shadow-lg ${cueDot}`}
+              >
+                ▶
+              </div>
+            ) : null}
+          </div>
         </div>
-
-        {/* 頭像：唱片左上（加大；有 URL 顯示圖，否則首字） */}
-        <div
-          className="absolute -left-1 -top-1 z-30 h-[4.25rem] w-[4.25rem] overflow-hidden rounded-full border-[3px] border-orange-500 bg-zinc-900 shadow-[0_4px_20px_rgba(0,0,0,0.55)] ring-2 ring-black/70 md:h-[5.25rem] md:w-[5.25rem]"
-          aria-hidden
-        >
-          {showAvatarImg ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={trimmedAvatar}
-              alt=""
-              className="h-full w-full object-cover"
-              referrerPolicy="no-referrer"
-              onError={() => setAvatarBroken(true)}
-            />
-          ) : (
-            <span className="flex h-full w-full items-center justify-center text-2xl font-black text-orange-400 md:text-3xl">
-              {initialMark}
-            </span>
-          )}
-        </div>
-
-        {/* 封面圖：中心圓形貼紙（像真實唱片） */}
-        {hasCover ? (
-          <div
-            className={`relative z-10 flex h-[55%] w-[55%] items-center justify-center overflow-hidden rounded-full ${
-              isPlaying ? "animate-spin" : ""
-            }`}
-            style={{
-              animationDuration: isPlaying ? "3s" : undefined,
-              animationPlayState: isPlaying ? "running" : "paused",
-            }}
-          >
-            <img
-              src={trimmedCover}
-              alt={songName}
-              className="h-full w-full object-cover"
-              onError={() => setCoverBroken(true)}
-            />
-            {/* 中心孔（縮小） */}
-            <div className="absolute inset-[46%] rounded-full bg-zinc-900 ring-1 ring-zinc-700/80" />
-            <div className="absolute inset-[49%] rounded-full bg-zinc-950" />
-          </div>
-        ) : (
-          /* 無封面：中心的 Label 區 */
-          <div
-            className={`relative z-10 flex h-[55%] w-[55%] items-center justify-center overflow-hidden rounded-full ${
-              isPlaying ? "animate-spin" : ""
-            }`}
-            style={{
-              background: `linear-gradient(145deg, ${color}33 0%, ${color}66 50%, ${color}22 100%)`,
-              animationDuration: isPlaying ? "3s" : undefined,
-              animationPlayState: isPlaying ? "running" : "paused",
-            }}
-          >
-            <div className="absolute inset-[42%] rounded-full border border-zinc-800 bg-zinc-900" />
-            <div className="absolute inset-[46%] rounded-full bg-zinc-950" />
-          </div>
-        )}
-
-        {/* 播放中標示 */}
-        {isPlaying && (
-          <div className="absolute -top-1 -right-1 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-black shadow-lg">
-            ▶
-          </div>
-        )}
-        {label && (
-          <div className="absolute -bottom-1 left-1/2 z-20 -translate-x-1/2 rounded-full border border-zinc-700 bg-zinc-900/90 px-2.5 py-0.5 text-[9px] font-semibold tracking-widest text-zinc-400">
-            {label}
-          </div>
-        )}
       </div>
 
-
-      {/* 資訊 */}
-      <div className="text-center">
-        <p className="text-sm font-bold tracking-widest text-zinc-400">{fighterName}</p>
-        <p className="mt-1 text-base font-semibold text-zinc-200">{songName}</p>
-        {aiTool ? (
-          <p className="mt-1.5 text-xs font-medium tracking-wide text-zinc-500">
-            🤖 {aiTool}
-          </p>
-        ) : null}
-        <p className={`mt-1 text-xs ${isPlaying ? "text-orange-400" : "text-zinc-500"}`}>
-          {isPlaying ? "播放中" : "待機中"}
-        </p>
-      </div>
-
-      {/* Play/Pause 按鈕 */}
       <button
         type="button"
         onClick={onToggle}
-        className={`rounded-full border-2 px-6 py-2 text-sm font-bold tracking-widest transition-all ${
-          isPlaying
-            ? "border-orange-500 bg-orange-500/20 text-orange-400 hover:bg-orange-500/30"
-            : "border-zinc-600 bg-zinc-800 text-zinc-300 hover:border-orange-500 hover:text-orange-400"
-        }`}
+        className={`rounded-full border-2 px-6 py-2 text-xs tracking-[0.2em] transition-all md:text-sm ${playClasses}`}
       >
         {isPlaying ? "⏸ PAUSE" : "▶ PLAY"}
       </button>
     </div>
+  );
+}
+
+function VoteHeartButton({
+  selected,
+  voteLocked,
+  onVote,
+  alignEnd,
+}: {
+  selected: boolean;
+  voteLocked: boolean;
+  onVote: () => void;
+  alignEnd?: boolean;
+}) {
+  const { t } = useI18n();
+  const notChosenOther = voteLocked && !selected;
+
+  return (
+    <button
+      type="button"
+      onClick={() => void onVote()}
+      disabled={voteLocked}
+      title={t("battle_vote_heart_aria")}
+      aria-label={t("battle_vote_heart_aria")}
+      aria-pressed={selected}
+      className={`p-2 transition disabled:opacity-40 ${alignEnd ? "self-end" : "self-start"}`}
+    >
+      <svg viewBox="0 0 24 24" className="h-10 w-10 md:h-11 md:w-11">
+        <path
+          fill={selected ? "#ef4444" : "none"}
+          stroke={selected ? "#ef4444" : notChosenOther ? "#52525b" : "#f4f4f5"}
+          strokeWidth={1.6}
+          d="M12 21.35l-1.05-.96C6.96 17.06 4 13.92 4 10.94 4 8.73 5.71 7 8.02 7c1.53 0 3.04.93 4 2.43.96-1.5 2.47-2.43 4-2.43C18.29 7 20 8.73 20 10.94c0 3-2.97 6.17-7.94 11.43L12 21.35z"
+        />
+      </svg>
+    </button>
   );
 }
 
@@ -317,7 +377,6 @@ function BattleArenaContent() {
   const [coverDisplayB, setCoverDisplayB] = useState<string | null>(null);
   const [avatarDisplayA, setAvatarDisplayA] = useState<string | null>(null);
   const [avatarDisplayB, setAvatarDisplayB] = useState<string | null>(null);
-  const [myProfileAvatarUrl, setMyProfileAvatarUrl] = useState<string | null>(null);
   const [viewerCount, setViewerCount] = useState(1);
 
   // Refs
@@ -344,38 +403,6 @@ function BattleArenaContent() {
     };
     void getUser();
   }, [router]);
-
-  // 登入者頭像（左上角 DECK A；含 Google OAuth 頭像後援）
-  useEffect(() => {
-    if (!myUserId || isAuthBypassEnabled) {
-      setMyProfileAvatarUrl(null);
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      const { data: prof } = await supabase
-        .from("user_profiles")
-        .select("avatar_url")
-        .eq("id", myUserId)
-        .maybeSingle();
-
-      let raw =
-        typeof prof?.avatar_url === "string" && prof.avatar_url.length > 0 ? prof.avatar_url : null;
-
-      if (!raw) {
-        const { data: { user } } = await supabase.auth.getUser();
-        const meta = user?.user_metadata as Record<string, unknown> | undefined;
-        const oauth = meta?.avatar_url ?? meta?.picture;
-        if (typeof oauth === "string" && oauth.length > 0) raw = oauth;
-      }
-
-      const resolved = await resolveMediaUrl(raw);
-      if (!cancelled) setMyProfileAvatarUrl(resolved);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [myUserId]);
 
   // ── 載入 Battle 資料（查詢前先 await getSession，避免 JWT 未就緒被 RLS 擋）────
   useEffect(() => {
@@ -426,6 +453,8 @@ function BattleArenaContent() {
           song_b_cover: null,
           ai_tool_a: qAi || "Suno",
           ai_tool_b: testFlag ? "Udio" : "Udio",
+          lyrics_a: null,
+          lyrics_b: null,
           status: "live",
         });
         setLoading(false);
@@ -484,6 +513,8 @@ function BattleArenaContent() {
         song_b_cover: rowB?.song_cover_url ?? (bdata.song_b_cover as string | null | undefined) ?? null,
         ai_tool_a: (bdata.ai_tool_a as string | null | undefined) ?? null,
         ai_tool_b: (bdata.ai_tool_b as string | null | undefined) ?? null,
+        lyrics_a: typeof bdata.lyrics_a === "string" && bdata.lyrics_a.length > 0 ? bdata.lyrics_a : null,
+        lyrics_b: typeof bdata.lyrics_b === "string" && bdata.lyrics_b.length > 0 ? bdata.lyrics_b : null,
       });
       setLoading(false);
     };
@@ -830,10 +861,9 @@ function BattleArenaContent() {
 
   const vinylAvatarA = useMemo(() => {
     if (avatarDisplayA) return avatarDisplayA;
-    if (myProfileAvatarUrl) return myProfileAvatarUrl;
     const raw = battle?.fighter_a_avatar ?? "";
     return raw && isHttpOrDataImageUrl(raw) ? raw : null;
-  }, [battle?.fighter_a_avatar, avatarDisplayA, myProfileAvatarUrl]);
+  }, [battle?.fighter_a_avatar, avatarDisplayA]);
 
   const vinylAvatarB = useMemo(() => {
     if (avatarDisplayB) return avatarDisplayB;
@@ -866,8 +896,13 @@ function BattleArenaContent() {
     );
   }
 
+  const voteLocked = hasVoted !== null;
+  const lyricA = battle.lyrics_a?.trim() ?? "";
+  const lyricB = battle.lyrics_b?.trim() ?? "";
+  const hasLyrics = Boolean(lyricA || lyricB);
+
   return (
-    <div className="flex min-h-screen flex-col bg-[#0a0a0a] text-zinc-100">
+    <div className={`${fontGlowSansBattle.className} flex min-h-screen flex-col bg-[#0a0a0a] text-zinc-100 antialiased`}>
       {/* 頂部列 */}
       <header className="sticky top-0 z-30 grid grid-cols-3 items-center border-b border-zinc-800 bg-[#0a0a0a]/90 px-4 py-3 backdrop-blur">
         <div className="min-w-0">
@@ -902,67 +937,70 @@ function BattleArenaContent() {
       </header>
 
       {/* 擂台主體 */}
-      <main className="flex-1 overflow-hidden px-4 py-6 md:px-8">
-        {/* 唱片區 */}
-        <section className="grid grid-cols-1 gap-8 md:grid-cols-3">
-          {/* A 隊 */}
-          <div className="flex flex-col items-center rounded-3xl border border-zinc-800 bg-zinc-900/50 p-6">
+      <main className="flex-1 overflow-hidden px-3 py-5 md:px-6">
+        <section className="mx-auto grid max-w-7xl grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(224px,292px)_minmax(0,1fr)] lg:items-start">
+          {/* 左：左欄 */}
+          <div className="order-2 flex min-h-0 flex-col rounded-2xl border border-zinc-800/80 bg-black/25 p-5 md:p-6">
             <VinylDisc
-              label={t("deck_a")}
               fighterName={battle.fighter_a_name}
               songName={battle.song_a_name}
               coverUrl={vinylCoverA ?? VINYL_COVER_PLACEHOLDER}
-              avatarUrl={myProfileAvatarUrl ?? vinylAvatarA}
+              avatarUrl={vinylAvatarA}
               isPlaying={activeDeck === "A"}
               onToggle={() => handleToggleDeck("A")}
               color="#ff6a00"
+              accent="orange"
               aiTool={battle.ai_tool_a}
             />
-            {/* 投票按鈕 */}
-            <button
-              type="button"
-              onClick={() => void handleVote("fighter_a")}
-              disabled={!!hasVoted}
-              className={`mt-4 w-full rounded-2xl border-2 py-3 text-sm font-bold tracking-widest transition-all ${
-                hasVoted === "fighter_a"
-                  ? "border-orange-500 bg-orange-500/30 text-orange-400"
-                  : hasVoted
-                    ? "cursor-not-allowed border-zinc-700 bg-zinc-800 text-zinc-600"
-                    : "border-orange-500/50 bg-zinc-800 text-orange-400 hover:bg-orange-500/20 hover:border-orange-500"
-              }`}
-            >
-              {hasVoted === "fighter_a" ? t("voted") : t("vote_a")}
-            </button>
-            {/* 票數進度 */}
-            <div className="mt-3 w-full">
-              <div className="flex justify-between text-[10px] text-zinc-500">
-                <span>{t("battle_deck_vote_line", { n: votes.fighter_a })}</span>
-                <span>{pctA}%</span>
-              </div>
-              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
-                <div className="h-full rounded-full bg-orange-500 transition-all" style={{ width: `${pctA}%` }} />
+            <div className="mt-6 flex flex-1 flex-col justify-end gap-3">
+              <VoteHeartButton
+                selected={hasVoted === "fighter_a"}
+                voteLocked={voteLocked}
+                onVote={() => handleVote("fighter_a")}
+              />
+              <div className="w-full">
+                <div className="flex justify-between text-[10px] text-zinc-400">
+                  <span>{t("battle_deck_vote_line", { n: votes.fighter_a })}</span>
+                  <span>{pctA}%</span>
+                </div>
+                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-900">
+                  <div className="h-full rounded-full bg-orange-500 transition-all" style={{ width: `${pctA}%` }} />
+                </div>
               </div>
             </div>
           </div>
 
-          {/* VS 中間 */}
-          <div className="flex flex-col items-center justify-center gap-4">
-            <div className="flex flex-col items-center">
-              <p className="text-6xl font-black text-orange-500 md:text-8xl">VS</p>
-              <p className="mt-2 text-[10px] tracking-widest text-zinc-600">
-                {totalVotes === 0 ? t("battle_wait_votes") : t("battle_vote_total", { count: totalVotes })}
-              </p>
-            </div>
-            <div className="flex flex-col gap-2 text-center">
-              <p className="text-xs text-zinc-500">{t("first_attack")}</p>
-              <p className="text-sm font-bold text-orange-400">A</p>
+          {/* 中：LOGO + VS + 歌詞（無框、白字） */}
+          <div className="order-1 flex flex-col items-center lg:order-none">
+            <NextImage
+              src="/aipoger-logo.png"
+              alt="AIPOGER"
+              width={128}
+              height={128}
+              className="h-auto w-[92px] select-none object-contain md:w-[118px]"
+              priority
+            />
+            <p className="mt-1.5 text-center text-[12px] tracking-wide text-zinc-200">{t("battle_tagline_logo")}</p>
+            <p className="mt-5 text-[clamp(3rem,8vw,5.25rem)] leading-none text-orange-500">VS</p>
+            <p className="mt-3 text-[11px] text-zinc-500">
+              {totalVotes === 0 ? t("battle_wait_votes") : t("battle_vote_total", { count: totalVotes })}
+            </p>
+            <div className="mt-8 min-h-[4.5rem] w-full max-w-sm px-2 text-center text-[13px] leading-[1.65] text-white md:max-w-none md:text-[14px]">
+              {hasLyrics ? (
+                <div className="space-y-5">
+                  {lyricA ? <p className="whitespace-pre-wrap">{lyricA}</p> : null}
+                  {lyricA && lyricB ? <hr className="border-zinc-800" /> : null}
+                  {lyricB ? <p className="whitespace-pre-wrap">{lyricB}</p> : null}
+                </div>
+              ) : (
+                <p className="text-zinc-500">{t("battle_lyrics_empty")}</p>
+              )}
             </div>
           </div>
 
-          {/* B 隊 */}
-          <div className="flex flex-col items-center rounded-3xl border border-zinc-800 bg-zinc-900/50 p-6">
+          {/* 右 */}
+          <div className="order-3 flex min-h-0 flex-col rounded-2xl border border-zinc-800/80 bg-black/25 p-5 md:p-6">
             <VinylDisc
-              label={t("deck_b")}
               fighterName={battle.fighter_b_name}
               songName={battle.song_b_name}
               coverUrl={vinylCoverB ?? VINYL_COVER_PLACEHOLDER}
@@ -970,29 +1008,24 @@ function BattleArenaContent() {
               isPlaying={activeDeck === "B"}
               onToggle={() => handleToggleDeck("B")}
               color="#3b82f6"
+              accent="blue"
               aiTool={battle.ai_tool_b}
             />
-            <button
-              type="button"
-              onClick={() => void handleVote("fighter_b")}
-              disabled={!!hasVoted}
-              className={`mt-4 w-full rounded-2xl border-2 py-3 text-sm font-bold tracking-widest transition-all ${
-                hasVoted === "fighter_b"
-                  ? "border-blue-500 bg-blue-500/30 text-blue-400"
-                  : hasVoted
-                    ? "cursor-not-allowed border-zinc-700 bg-zinc-800 text-zinc-600"
-                    : "border-blue-500/50 bg-zinc-800 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500"
-              }`}
-            >
-              {hasVoted === "fighter_b" ? t("voted") : t("vote_b")}
-            </button>
-            <div className="mt-3 w-full">
-              <div className="flex justify-between text-[10px] text-zinc-500">
-                <span>{t("battle_deck_vote_line", { n: votes.fighter_b })}</span>
-                <span>{pctB}%</span>
-              </div>
-              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
-                <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${pctB}%` }} />
+            <div className="mt-6 flex flex-1 flex-col justify-end gap-3">
+              <VoteHeartButton
+                selected={hasVoted === "fighter_b"}
+                voteLocked={voteLocked}
+                onVote={() => handleVote("fighter_b")}
+                alignEnd
+              />
+              <div className="w-full">
+                <div className="flex justify-between text-[10px] text-zinc-400">
+                  <span>{t("battle_deck_vote_line", { n: votes.fighter_b })}</span>
+                  <span>{pctB}%</span>
+                </div>
+                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-900">
+                  <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${pctB}%` }} />
+                </div>
               </div>
             </div>
           </div>

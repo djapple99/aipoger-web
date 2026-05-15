@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "subset:glow-sans": "node scripts/subset-glow-sans.mjs"
+    "subset:glow-sans": "node scripts/subset-glow-sans.mjs",
+    "subset:glow-sans:battle": "node scripts/subset-glow-sans-battle.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.104.0",

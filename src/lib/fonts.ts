@@ -15,3 +15,10 @@ export const fontGlowSans = localFont({
   weight: "400",
   preload: true,
 });
+
+/** 鬥歌場全頁：涵蓋 i18n 字元的子集（動態歌名／歌詞缺字時回退系統字） */
+export const fontGlowSansBattle = localFont({
+  src: "../assets/fonts/GlowSansTC-battle.subset.woff2",
+  display: "swap",
+  weight: "400",
+});
