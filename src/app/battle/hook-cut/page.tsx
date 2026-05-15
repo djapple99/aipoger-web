@@ -570,6 +570,7 @@ function HookCutContent() {
       let nextPath: string;
 
 // 進配對前扣挑戰費 200 APC，並寫入佇列（含 AI 工具供擂台顯示）
+      // 測試模式：NEXT_PUBLIC_AUTH_BYPASS=true 時跳過扣費（老闆模式）
       if (!isAuthBypassEnabled) {
         // 先確保 user_profiles 存在（第一次報名時建立）
         const { error: profileErr } = await supabase.from("user_profiles").upsert({ id: userId }, { onConflict: "id" });

@@ -246,43 +246,35 @@ function MatchmakingContent() {
                   alert("缺少 URL 參數 audioPath（Hook 上傳後的 Storage 路徑）");
                   return;
                 }
-                if (isAuthBypassEnabled) {
-                  alert(
-                    "AUTH_BYPASS 模式下無法寫入真實 battles（無 auth.uid）。請關閉 NEXT_PUBLIC_AUTH_BYPASS 並登入後再按此鈕，或僅用上方 mock 配對流程。",
-                  );
-                  return;
-                }
                 setCreatingTestBattle(true);
                 try {
-                  const { data: bid, error } = await supabase.rpc("create_test_arena_battle", {
-                    p_fighter_a_name: fighterName,
-                    p_song_a_name: songName,
-                    p_audio_a_path: path,
-                    p_genre: genre,
-                    p_ai_tool_a: aiToolParam.trim() || null,
-                    p_cover_url: coverUrl?.trim() || null,
-                  });
+                  // 透過 REST API 直接寫入 battles（繞過 RPC 需 auth.uid 的問題）
+                  const { data: battleData, error } = await supabase
+                    .from("battles")
+                    .insert({
+                      status: "live",
+                      fighter_a_name: fighterName || "未命名鬥士",
+                      song_a_name: songName || "未提供",
+                      audio_a_path: path,
+                      song_a_cover: coverUrl?.trim() || null,
+                      ai_tool_a: aiToolParam.trim() || null,
+                      fighter_b_name: "測試對手",
+                      song_b_name: "測試歌曲",
+                      started_at: new Date().toISOString(),
+                    })
+                    .select("id")
+                    .single();
+
                   if (error) {
-                    console.error("[matchmaking] create_test_arena_battle", error);
-                    alert(
-                      `建立測試擂臺失敗：${error.message}\n\n若尚未部署，請在 Supabase SQL Editor 執行專案內 supabase/create_test_arena_battle_rpc.sql`,
-                    );
+                    console.error("[matchmaking] direct insert battle", error);
+                    alert("建立測試擂臺失敗：" + error.message);
                     return;
                   }
-                  const id =
-                    typeof bid === "string"
-                      ? bid
-                      : Array.isArray(bid)
-                        ? (bid[0] as string)
-                        : (bid as string | null | undefined);
-                  if (!id) {
-                    alert("建立測試擂臺失敗：未回傳 battle id");
-                    return;
-                  }
-                  router.push(`/battle/${id}?test=1`);
+                  id = battleData.id;
                 } finally {
                   setCreatingTestBattle(false);
                 }
+                router.push(`/battle/${id}?test=1&audioPath=${encodeURIComponent(path)}&coverUrl=${encodeURIComponent(coverUrl ?? "")}&fighterName=${encodeURIComponent(fighterName)}&songName=${encodeURIComponent(songName)}&aiTool=${encodeURIComponent(aiToolParam)}`);
               }}
               className="rounded-xl border border-orange-500/50 px-6 py-2.5 text-sm text-orange-400 transition hover:border-orange-400 hover:bg-orange-500/10 disabled:cursor-not-allowed disabled:opacity-50"
             >

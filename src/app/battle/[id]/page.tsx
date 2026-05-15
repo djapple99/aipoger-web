@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { FormEvent, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { isAuthBypassEnabled, mockUserId } from "@/lib/auth-bypass";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
@@ -179,7 +180,16 @@ function BattleArenaContent() {
   const { t } = useI18n();
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const battleId = (params?.id as string) ?? "";
+
+  // 測試模式：從 URL params 拿資料（跳過配對時傳入）
+  const isTestMode = searchParams.get("test") === "1";
+  const testAudioPath = searchParams.get("audioPath") ?? "";
+  const testCoverUrl = searchParams.get("coverUrl") ? decodeURIComponent(searchParams.get("coverUrl")!) : "";
+  const testFighterName = searchParams.get("fighterName") ? decodeURIComponent(searchParams.get("fighterName")!) : "";
+  const testSongName = searchParams.get("songName") ? decodeURIComponent(searchParams.get("songName")!) : "";
+  const testAiTool = searchParams.get("aiTool") ? decodeURIComponent(searchParams.get("aiTool")!) : "Suno";
 
   // 狀態
   const [battle, setBattle] = useState<BattleData | null>(null);
@@ -231,18 +241,18 @@ function BattleArenaContent() {
           id: battleId,
           fighter_a_user_id: mockUserId,
           fighter_b_user_id: mockUserId,
-          fighter_a_name: "夜色迴響",
-          fighter_b_name: "蒼藍頻段",
-          song_a_name: "Neon Dust",
-          song_b_name: "Cold Pulse",
-          audio_a_path: null,
+          fighter_a_name: isTestMode ? testFighterName || "測試鬥士" : "夜色迴響",
+          fighter_b_name: isTestMode ? "測試對手" : "蒼藍頻段",
+          song_a_name: isTestMode ? testSongName || "測試歌曲" : "Neon Dust",
+          song_b_name: isTestMode ? "測試歌曲B" : "Cold Pulse",
+          audio_a_path: isTestMode ? testAudioPath : null,
           audio_b_path: null,
           fighter_a_avatar: null,
           fighter_b_avatar: null,
-          song_a_cover: null,
+          song_a_cover: isTestMode ? (testCoverUrl || null) : null,
           song_b_cover: null,
-          ai_tool_a: "Suno",
-          ai_tool_b: "Udio",
+          ai_tool_a: isTestMode ? testAiTool : "Suno",
+          ai_tool_b: isTestMode ? "Udio" : "Udio",
           status: "live",
         });
         setLoading(false);
@@ -311,7 +321,24 @@ function BattleArenaContent() {
 
   // ── Storage signed URL（雙方音檔；RLS 需允許讀取 battle 引用路徑）────
   useEffect(() => {
-    if (!battle || battleId.startsWith("mock-") || isAuthBypassEnabled) {
+    if (!battle) return;
+
+    // 測試模式：直接用 URL params 裡的 audioPath 取 signed URL
+    if (isTestMode && testAudioPath) {
+      let cancelled = false;
+      void (async () => {
+        const { data: signed, error } = await supabase.storage
+          .from("battle-audio")
+          .createSignedUrl(testAudioPath, 60 * 60);
+        if (!cancelled) {
+          if (error) console.error("[battle audio test]", error);
+          else setAudioUrls({ A: signed?.signedUrl ?? null, B: null });
+        }
+      })();
+      return;
+    }
+
+    if (battleId.startsWith("mock-") || isAuthBypassEnabled) {
       setAudioUrls({ A: null, B: null });
       return;
     }
