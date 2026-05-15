@@ -8,6 +8,7 @@ import Regions from 'wavesurfer.js/dist/plugins/regions.esm.js';
 import { supabase } from '@/lib/supabase';
 import { isAuthBypassEnabled, mockUserId } from '@/lib/auth-bypass';
 import { readFighterNameFromStorage, writeFighterNameToStorage } from '@/lib/fighter-name-storage';
+import { buildHookStoragePath, isValidStorageObjectKey } from '@/lib/storage-path';
 
 const MAX_HOOK_SECONDS = 45;
 const MIN_REGION_SECONDS = 0.25;
@@ -187,6 +188,9 @@ async function uploadHookWav(
   wavBlob: Blob,
   fileName: string,
 ): Promise<void> {
+  if (!isValidStorageObjectKey(storagePath)) {
+    throw new Error(`Invalid storage path (ASCII only): ${storagePath}`);
+  }
   const mimeAttempts = ['audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave'] as const;
   let lastError: unknown;
 
@@ -571,18 +575,15 @@ function HookCutContent() {
 
       // Offline render → WAV blob（含 mastering）
       const wavBlob = await renderAudioWithMastering(buffer, start, end, enableMastering);
-      const sanitizedFighter = fighterName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\u4e00-\u9fff]/g, '');
-      const sanitizedSong = songName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\u4e00-\u9fff]/g, '');
-      const fileName = `${sanitizedFighter}_${sanitizedSong}_${Date.now()}.wav`;
-
       setUploadPhase(t.uploading);
 
       const userId = isAuthBypassEnabled
         ? "00000000-0000-0000-0000-000000000001"
         : (await supabase.auth.getSession()).data.session?.user.id ?? mockUserId;
 
-      // 上傳到 Supabase Storage（WAV MIME 與 bucket 白名單一致；失敗時自動試別名）
-      const storagePath = `${userId}/hooks/${fileName}`;
+      const { storagePath, fileName } = buildHookStoragePath(userId, fighterName, songName);
+
+      // 上傳到 Supabase Storage（路徑僅 ASCII；WAV MIME 與 bucket 白名單一致）
       await uploadHookWav(storagePath, wavBlob, fileName);
 
       setUploadPhase(t.uploadingSaving);
