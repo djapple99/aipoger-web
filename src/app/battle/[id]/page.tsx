@@ -5,6 +5,7 @@ import NextImage from "next/image";
 import LangToggle from "@/components/lang-toggle";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
+import type { CSSProperties } from "react";
 import { FormEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { isAuthBypassEnabled, mockUserId } from "@/lib/auth-bypass";
@@ -53,6 +54,26 @@ const VINYL_COVER_PLACEHOLDER = "https://picsum.photos/300";
 /** `public/aipoger vinlyarm.png` — 唱臂單圖 */
 const VINYL_ARM_IMAGE_SRC = encodeURI("/aipoger vinlyarm.png");
 
+/** 擂台 CSS 變數（可透過 debug panel 即時調整） */
+const vinylVars = {
+  "--vinyl-size": "220px",
+  "--vinyl-size-md": "280px",
+  "--avatar-size": "3.5rem",
+  "--avatar-size-md": "4rem",
+  "--avatar-top": "4px",
+  "--avatar-left": "4px",
+  "--tonearm-right": "-52px",
+  "--tonearm-top": "5%",
+  "--tonearm-h": "70%",
+  "--tonearm-right-md": "-60px",
+  "--tonearm-top-md": "8%",
+  "--card-px": "20px",
+  "--card-py": "24px",
+  "--name-gap": "4px",
+  "--ai-tool-top": "12px",
+  "--play-btn-top": "8px",
+};
+
 function isHttpOrDataImageUrl(s: string): boolean {
   const t = s.trim();
   return /^https?:\/\//i.test(t) || /^data:image\//i.test(t) || /^blob:/i.test(t);
@@ -98,19 +119,109 @@ async function resolveMediaUrl(raw: string | null | undefined): Promise<string |
   return null;
 }
 
+/** VinylDisc 版面數值 → 對應 CSS custom properties（皆掛在元件 root，子元素用 var(...)） */
+type VinylLayoutNumbers = {
+  vinylSize: number;
+  vinylSizeMd: number;
+  avatarSize: number;
+  avatarBorderWidth: number;
+  avatarTop: number;
+  avatarLeft: number;
+  coverHubPercent: number;
+  tonearmOffset: number;
+  tonearmTopPercent: number;
+  tonearmHeightPercent: number;
+  avatarRightTxPercent: number;
+  avatarRightTyPercent: number;
+  namesBlockMarginBottom: number;
+  aiBlockMarginTop: number;
+  playButtonMarginTop: number;
+};
+
+const VINYL_LAYOUT_DEFAULTS: VinylLayoutNumbers = {
+  vinylSize: 220,
+  vinylSizeMd: 280,
+  avatarSize: 58,
+  avatarBorderWidth: 3,
+  avatarTop: -8,
+  avatarLeft: 4,
+  coverHubPercent: 58,
+  tonearmOffset: 52,
+  tonearmTopPercent: 5,
+  tonearmHeightPercent: 70,
+  avatarRightTxPercent: 30,
+  avatarRightTyPercent: -10,
+  namesBlockMarginBottom: 12,
+  aiBlockMarginTop: 12,
+  playButtonMarginTop: 8,
+};
+
+const VINYL_LAYOUT_SLIDER_META: {
+  key: keyof VinylLayoutNumbers;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  unit?: "px" | "%";
+}[] = [
+  { key: "vinylSize", label: "--vinyl-size（寬高，基準）", min: 160, max: 360, step: 1, unit: "px" },
+  { key: "vinylSizeMd", label: "--vinyl-size-md（md 覆寫）", min: 200, max: 400, step: 1, unit: "px" },
+  { key: "avatarSize", label: "--avatar-size", min: 28, max: 96, step: 1, unit: "px" },
+  { key: "avatarBorderWidth", label: "--avatar-border-width", min: 1, max: 8, step: 1, unit: "px" },
+  { key: "avatarTop", label: "--avatar-top（左頭像）", min: -80, max: 80, step: 1, unit: "px" },
+  { key: "avatarLeft", label: "--avatar-left（左頭像）", min: -40, max: 120, step: 1, unit: "px" },
+  { key: "coverHubPercent", label: "--vinyl-cover-hub-pct（中心貼紙）", min: 40, max: 78, step: 1, unit: "%" },
+  { key: "tonearmOffset", label: "--tonearm-offset", min: 20, max: 120, step: 1, unit: "px" },
+  { key: "tonearmTopPercent", label: "--tonearm-top-pct", min: 0, max: 40, step: 1, unit: "%" },
+  { key: "tonearmHeightPercent", label: "--tonearm-height-pct", min: 40, max: 95, step: 1, unit: "%" },
+  { key: "avatarRightTxPercent", label: "--avatar-right-tx（右頭像 translate X）", min: -80, max: 80, step: 1, unit: "%" },
+  { key: "avatarRightTyPercent", label: "--avatar-right-ty（右頭像 translate Y）", min: -80, max: 80, step: 1, unit: "%" },
+  { key: "namesBlockMarginBottom", label: "--vinyl-names-mb", min: 0, max: 48, step: 1, unit: "px" },
+  { key: "aiBlockMarginTop", label: "--vinyl-ai-mt", min: 0, max: 48, step: 1, unit: "px" },
+  { key: "playButtonMarginTop", label: "--vinyl-play-mt", min: 0, max: 48, step: 1, unit: "px" },
+];
+
+function vinylLayoutToCss(vars: VinylLayoutNumbers): CSSProperties {
+  return {
+    "--vinyl-size": `${vars.vinylSize}px`,
+    "--vinyl-size-md": `${vars.vinylSizeMd}px`,
+    "--avatar-size": `${vars.avatarSize}px`,
+    "--avatar-border-width": `${vars.avatarBorderWidth}px`,
+    "--avatar-top": `${vars.avatarTop}px`,
+    "--avatar-left": `${vars.avatarLeft}px`,
+    "--vinyl-cover-hub-pct": `${vars.coverHubPercent}%`,
+    "--tonearm-offset": `${vars.tonearmOffset}px`,
+    "--tonearm-top-pct": `${vars.tonearmTopPercent}%`,
+    "--tonearm-height-pct": `${vars.tonearmHeightPercent}%`,
+    "--avatar-right-tx": `${vars.avatarRightTxPercent}%`,
+    "--avatar-right-ty": `${vars.avatarRightTyPercent}%`,
+    "--vinyl-names-mb": `${vars.namesBlockMarginBottom}px`,
+    "--vinyl-ai-mt": `${vars.aiBlockMarginTop}px`,
+    "--vinyl-play-mt": `${vars.playButtonMarginTop}px`,
+  } as CSSProperties;
+}
+
 function VinylTonearmImage({ side }: { side: "left" | "right" }) {
-  /** 唱臂固定在唱片右側外緣，不遮封面 */
+  const edge =
+    side === "left"
+      ? { right: "calc(-1 * var(--tonearm-offset))" }
+      : { left: "calc(-1 * var(--tonearm-offset))" };
+
   return (
     <NextImage
       src={VINYL_ARM_IMAGE_SRC}
       alt=""
       width={200}
       height={300}
-      className={`pointer-events-none absolute z-20 select-none object-contain object-top ${
-        side === "left"
-          ? "-right-[52px] top-[5%] h-[70%] w-auto md:-right-[60px] md:top-[8%]"
-          : "-left-[52px] top-[5%] h-[70%] w-auto scale-x-[-1] md:-left-[60px] md:top-[8%]"
+      className={`pointer-events-none absolute z-20 w-auto select-none object-contain object-top ${
+        side === "right" ? "scale-x-[-1]" : ""
       }`}
+      style={{
+        top: "var(--tonearm-top-pct)",
+        height: "var(--tonearm-height-pct)",
+        maxWidth: "min(44%, 148px)",
+        ...edge,
+      }}
       aria-hidden
     />
   );
@@ -128,6 +239,7 @@ function VinylDisc({
   color,
   aiTool,
   accent,
+  layoutNumbers,
 }: {
   side: "left" | "right";
   fighterName: string;
@@ -139,8 +251,16 @@ function VinylDisc({
   color: string;
   aiTool: string | null;
   accent: "orange" | "blue";
+  /** 未傳則用 VINYL_LAYOUT_DEFAULTS */
+  layoutNumbers?: Partial<VinylLayoutNumbers>;
 }) {
   const { t } = useI18n();
+
+  const resolvedLayout = useMemo(
+    () => ({ ...VINYL_LAYOUT_DEFAULTS, ...layoutNumbers }),
+    [layoutNumbers],
+  );
+  const rootCssVars = useMemo(() => vinylLayoutToCss(resolvedLayout), [resolvedLayout]);
 
   const [coverBroken, setCoverBroken] = useState(false);
   const trimmedCover = coverUrl?.trim() ?? "";
@@ -155,7 +275,7 @@ function VinylDisc({
       ? "border-orange-500/90"
       : "border-blue-400/90";
 
-  const avatarBubbleClass = `overflow-hidden rounded-full border-[3px] bg-black ring-2 ring-black/90 md:ring-[2.5px] h-[3.625rem] w-[3.625rem] md:h-[4.25rem] md:w-[4.25rem] ${avatarRing}`;
+  const avatarBubbleBase = `box-border overflow-hidden rounded-full bg-black ring-2 ring-black/90 md:ring-[2.5px] ${avatarRing}`;
 
   const playAura =
     accent === "orange"
@@ -187,44 +307,71 @@ function VinylDisc({
     img.src = trimmedCover;
   }, [trimmedCover]);
 
-return (
-    <div className="flex w-full flex-col items-center">
-      {/* 鬥士名 + 歌名：唱片上方，垂直排列 */}
-      <div className="mb-3 w-full space-y-1 text-center">
+  return (
+    <div
+      className="vinyl-disc-root flex w-full flex-col items-center md:[--vinyl-size:var(--vinyl-size-md)]"
+      style={rootCssVars}
+    >
+      {/* 鬥士名 + 歌名 */}
+      <div className="w-full space-y-1 text-center" style={{ marginBottom: "var(--vinyl-names-mb)" }}>
         <p className="text-[clamp(12px,2.5vw,15px)] text-white">{fighterName}</p>
         <p className="text-[clamp(11px,2.3vw,14px)] text-zinc-400">{songName}</p>
       </div>
 
-      {/* 唱片 + 頭像 + 唱臂：相對定位 */}
-      <div className="relative">
-        {/* 左側頭像：唱片正上方，左上角 */}
+      <div className="relative inline-block">
         {side === "left" && (
-          <div className={`absolute -top-2 left-1 z-30 ${avatarBubbleClass}`} style={{ marginBottom: "-1rem" }} aria-hidden>
+          <div
+            className={`absolute z-30 ${avatarBubbleBase}`}
+            style={{
+              top: "var(--avatar-top)",
+              left: "var(--avatar-left)",
+              width: "var(--avatar-size)",
+              height: "var(--avatar-size)",
+              borderWidth: "var(--avatar-border-width)",
+              borderStyle: "solid",
+            }}
+            aria-hidden
+          >
             {showAvatarImg ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={trimmedAvatar} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" onError={() => setAvatarBroken(true)} />
+              <img
+                src={trimmedAvatar}
+                alt=""
+                className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
+                onError={() => setAvatarBroken(true)}
+              />
             ) : (
-              <span className={`flex h-full w-full items-center justify-center text-lg md:text-xl ${accent === "orange" ? "text-orange-400" : "text-blue-300"}`}>{initialMark}</span>
+              <span
+                className={`flex h-full w-full items-center justify-center font-semibold ${accent === "orange" ? "text-orange-400" : "text-blue-300"}`}
+                style={{ fontSize: "calc(var(--avatar-size) * 0.42)" }}
+              >
+                {initialMark}
+              </span>
             )}
           </div>
         )}
 
-        {/* 唱臂：絕對定位在唱片右側外緣，不遮擋封面 */}
         <VinylTonearmImage side={side} />
 
-        {/* 唱片主體 */}
         <div
-          className={`relative flex h-[220px] w-[220px] items-center justify-center md:h-[280px] md:w-[280px] ${isPlaying ? playAura + " rounded-full p-px" : ""}`}
+          className={`relative flex items-center justify-center rounded-full ${isPlaying ? playAura + " p-px" : ""}`}
+          style={{ width: "var(--vinyl-size)", height: "var(--vinyl-size)" }}
           onClick={onToggle}
-          onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") onToggle(); }}
+          onKeyDown={(e) => {
+            if (e.key === " " || e.key === "Enter") onToggle();
+          }}
           role="button"
           tabIndex={0}
           aria-label={isPlaying ? t("deck_pause_aria") : t("deck_play_aria")}
         >
-          {/* 黑膠本體 */}
           <div
             className="absolute inset-0 rounded-full"
-            style={{ background: hasCover ? `linear-gradient(135deg, #0a0a0a 0%, #141414 100%)` : `linear-gradient(135deg, #080808 0%, #161616 50%, #0b0b0b 100%)` }}
+            style={{
+              background: hasCover
+                ? `linear-gradient(135deg, #0a0a0a 0%, #141414 100%)`
+                : `linear-gradient(135deg, #080808 0%, #161616 50%, #0b0b0b 100%)`,
+            }}
           >
             {[8, 16, 24, 32, 40, 48].map((r) => (
               <div key={r} className="absolute rounded-full border border-zinc-800/40" style={{ inset: `${r}%` }} />
@@ -232,49 +379,145 @@ return (
             <div className="absolute inset-0 rounded-full border border-zinc-600/35" />
           </div>
 
-          {/* 封面：中心圓形 */}
           {hasCover ? (
-            <div className={`relative z-10 flex h-[58%] w-[58%] items-center justify-center overflow-hidden rounded-full ${isPlaying ? "animate-spin" : ""}`} style={{ animationDuration: isPlaying ? "3.2s" : undefined, animationTimingFunction: "linear" }}>
+            <div
+              className={`relative z-10 flex items-center justify-center overflow-hidden rounded-full ${isPlaying ? "animate-spin" : ""}`}
+              style={{
+                width: "var(--vinyl-cover-hub-pct)",
+                height: "var(--vinyl-cover-hub-pct)",
+                animationDuration: isPlaying ? "3.2s" : undefined,
+                animationTimingFunction: "linear",
+              }}
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={trimmedCover} alt={songName} className="h-full w-full object-cover" onError={() => setCoverBroken(true)} />
               <div className="absolute inset-[46%] rounded-full bg-neutral-950 ring-[1px] ring-zinc-700/85" />
               <div className="absolute inset-[49%] rounded-full bg-black" />
             </div>
           ) : (
-            <div className={`relative z-10 flex h-[58%] w-[58%] items-center justify-center overflow-hidden rounded-full ${isPlaying ? "animate-spin" : ""}`} style={{ background: `linear-gradient(145deg, ${color}22 0%, ${color}55 52%, ${color}18 100%)`, animationDuration: isPlaying ? "3.2s" : undefined, animationTimingFunction: "linear" }}>
+            <div
+              className={`relative z-10 flex items-center justify-center overflow-hidden rounded-full ${isPlaying ? "animate-spin" : ""}`}
+              style={{
+                width: "var(--vinyl-cover-hub-pct)",
+                height: "var(--vinyl-cover-hub-pct)",
+                background: `linear-gradient(145deg, ${color}22 0%, ${color}55 52%, ${color}18 100%)`,
+                animationDuration: isPlaying ? "3.2s" : undefined,
+                animationTimingFunction: "linear",
+              }}
+            >
               <div className="absolute inset-[42%] rounded-full border border-zinc-800 bg-zinc-950" />
               <div className="absolute inset-[46%] rounded-full bg-black" />
             </div>
           )}
         </div>
 
-        {/* 右側頭像：在唱臂上方（不遮擋唱片） */}
         {side === "right" && (
-          <div className={`absolute right-0 top-0 z-30 ${avatarBubbleClass}`} style={{ transform: "translate(30%, -10%)" }} aria-hidden>
+          <div
+            className={`absolute right-0 top-0 z-30 ${avatarBubbleBase}`}
+            style={{
+              width: "var(--avatar-size)",
+              height: "var(--avatar-size)",
+              borderWidth: "var(--avatar-border-width)",
+              borderStyle: "solid",
+              transform: "translate(var(--avatar-right-tx), var(--avatar-right-ty))",
+            }}
+            aria-hidden
+          >
             {showAvatarImg ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={trimmedAvatar} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" onError={() => setAvatarBroken(true)} />
+              <img
+                src={trimmedAvatar}
+                alt=""
+                className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
+                onError={() => setAvatarBroken(true)}
+              />
             ) : (
-              <span className={`flex h-full w-full items-center justify-center text-lg md:text-xl ${accent === "blue" ? "text-blue-300" : "text-orange-400"}`}>{initialMark}</span>
+              <span
+                className={`flex h-full w-full items-center justify-center font-semibold ${accent === "blue" ? "text-blue-300" : "text-orange-400"}`}
+                style={{ fontSize: "calc(var(--avatar-size) * 0.42)" }}
+              >
+                {initialMark}
+              </span>
             )}
           </div>
         )}
       </div>
 
-      {/* AI 工具名稱 */}
-      <div className="mt-3 w-full text-center">
+      <div className="w-full text-center" style={{ marginTop: "var(--vinyl-ai-mt)" }}>
         <p className="text-[clamp(11px,2.2vw,13px)] text-zinc-500">{aiTool ?? ""}</p>
       </div>
 
-      {/* PLAY 按鈕 */}
       <button
         type="button"
         onClick={onToggle}
-        className={`mt-2 flex items-center gap-2 rounded-full border-2 px-5 py-2 text-sm font-bold tracking-widest transition-all ${playClasses}`}
+        className={`flex items-center gap-2 rounded-full border-2 px-5 py-2 text-sm font-bold tracking-widest transition-all ${playClasses}`}
+        style={{ marginTop: "var(--vinyl-play-mt)" }}
       >
         <span>{isPlaying ? "⏸" : "▶"}</span>
         <span>{isPlaying ? "PAUSE" : "PLAY"}</span>
       </button>
+    </div>
+  );
+}
+
+function VinylDebugPanel({
+  open,
+  onToggleOpen,
+  values,
+  onChange,
+}: {
+  open: boolean;
+  onToggleOpen: () => void;
+  values: VinylLayoutNumbers;
+  onChange: (next: VinylLayoutNumbers) => void;
+}) {
+  return (
+    <div className="pointer-events-auto fixed inset-x-0 bottom-0 z-[100] border-t border-orange-500/30 bg-zinc-950/95 text-zinc-200 shadow-[0_-8px_32px_rgba(0,0,0,0.55)] backdrop-blur-md">
+      <button
+        type="button"
+        onClick={onToggleOpen}
+        className="flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left text-xs font-semibold tracking-wide text-orange-400 hover:bg-zinc-900/80"
+      >
+        <span>Vinyl layout debug（CSS variables）</span>
+        <span className="text-zinc-500">{open ? "▼ 收合" : "▲ 展開"}</span>
+      </button>
+      {open ? (
+        <div className="max-h-[42vh] overflow-y-auto border-t border-white/10 px-4 pb-4 pt-2">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {VINYL_LAYOUT_SLIDER_META.map(({ key, label, min, max, step, unit }) => (
+              <label key={key} className="flex flex-col gap-1 text-[11px]">
+                <span className="flex justify-between gap-2 text-zinc-400">
+                  <span className="font-mono leading-snug">{label}</span>
+                  <span className="shrink-0 tabular-nums text-orange-400/90">
+                    {values[key]}
+                    {unit === "%" ? "%" : "px"}
+                  </span>
+                </span>
+                <input
+                  type="range"
+                  min={min}
+                  max={max}
+                  step={step}
+                  value={values[key]}
+                  onChange={(e) => {
+                    const n = Number(e.target.value);
+                    onChange({ ...values, [key]: Number.isFinite(n) ? n : values[key] });
+                  }}
+                  className="h-2 w-full cursor-pointer accent-orange-500"
+                />
+              </label>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="mt-3 w-full rounded-lg border border-zinc-600 py-2 text-xs font-medium text-zinc-300 hover:border-orange-500/60 hover:text-white"
+            onClick={() => onChange({ ...VINYL_LAYOUT_DEFAULTS })}
+          >
+            重置為預設值
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -363,6 +606,9 @@ function BattleArenaContent() {
   const [avatarDisplayA, setAvatarDisplayA] = useState<string | null>(null);
   const [avatarDisplayB, setAvatarDisplayB] = useState<string | null>(null);
   const [viewerCount, setViewerCount] = useState(1);
+  const vinylDebugMode = searchParams.get("debug") === "1";
+  const [vinylDebugOpen, setVinylDebugOpen] = useState(false);
+  const [vinylLayout, setVinylLayout] = useState<VinylLayoutNumbers>(() => ({ ...VINYL_LAYOUT_DEFAULTS }));
 
   // Refs
   const audioARef = useRef<HTMLAudioElement>(null);
@@ -888,7 +1134,9 @@ function BattleArenaContent() {
   const lyricB = battle.lyrics_b?.trim() ?? "";
 
   return (
-    <div className={`${fontGlowSansBattle.className} flex min-h-screen flex-col bg-black text-zinc-100 antialiased`}>
+    <div
+      className={`${fontGlowSansBattle.className} flex min-h-screen flex-col bg-black text-zinc-100 antialiased ${vinylDebugMode ? "pb-24" : ""}`}
+    >
       {/* 頂部：照稿 — 圖示 + 歌擂台｜觀戰｜語言 */}
       <header className="sticky top-0 z-30 grid grid-cols-3 items-center border-b border-white/10 bg-black px-4 py-2.5 backdrop-blur">
         <Link href="/" className="min-w-0 text-[clamp(14px,2.8vw,16px)] font-medium tracking-wide text-white hover:opacity-85">
@@ -932,6 +1180,7 @@ function BattleArenaContent() {
               color="#ff6a00"
               accent="orange"
               aiTool={battle.ai_tool_a}
+              layoutNumbers={vinylLayout}
             />
             <div className="mt-2 min-h-[52px] whitespace-pre-wrap text-center text-[13px] leading-[1.75] text-white md:text-[14px]">
               {lyricA || ""}
@@ -987,6 +1236,7 @@ function BattleArenaContent() {
               color="#3b82f6"
               accent="blue"
               aiTool={battle.ai_tool_b}
+              layoutNumbers={vinylLayout}
             />
             <div className="mt-2 min-h-[52px] whitespace-pre-wrap text-center text-[13px] leading-[1.75] text-white md:text-[14px]">
               {lyricB || ""}
@@ -1049,6 +1299,15 @@ function BattleArenaContent() {
       {/* 隱藏音檔 */}
       <audio ref={audioARef} src={audioUrls.A ?? undefined} onEnded={() => setActiveDeck((p) => (p === "A" ? null : p))} />
       <audio ref={audioBRef} src={audioUrls.B ?? undefined} onEnded={() => setActiveDeck((p) => (p === "B" ? null : p))} />
+
+      {vinylDebugMode ? (
+        <VinylDebugPanel
+          open={vinylDebugOpen}
+          onToggleOpen={() => setVinylDebugOpen((o) => !o)}
+          values={vinylLayout}
+          onChange={setVinylLayout}
+        />
+      ) : null}
     </div>
   );
 }
@@ -1068,6 +1327,46 @@ export default function BattleArenaPage() {
   return (
     <Suspense fallback={<BattleArenaSuspenseFallback />}>
       <BattleArenaContent />
+      <DebugPanel vars={vinylVars} />
     </Suspense>
+  );
+}
+
+// ─── Debug Panel ────────────────────────────────────────────
+function DebugPanel({ vars }: { vars: Record<string, string> }) {
+  const [searchParams] = useSearchParams();
+  if (searchParams.get("debug") !== "1") return null;
+
+  const [vals, setVals] = useState(vars);
+  const cssVars = Object.entries(vals)
+    .map(([k, v]) => `${k}: ${v}`)
+    .join("; ");
+
+  return (
+    <div
+      style={{ all: "initial" } as React.CSSProperties}
+      className="fixed bottom-0 left-0 right-0 z-50 bg-black/95 border-t border-orange-500 p-4 font-mono text-white"
+    >
+      <div className="mx-auto max-w-4xl">
+        <p className="mb-3 text-xs text-orange-400">🎛 ARENA DEBUG — 調整完告訴 Mavis 固化</p>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {Object.entries(vars).map(([key, defaultVal]) => (
+            <label key={key} className="flex flex-col text-[11px]">
+              <span className="text-zinc-400">{key.replace("--", "")}</span>
+              <input
+                type="range"
+                min={key.includes("size") || key.includes("-size") ? 80 : 0}
+                max={key.includes("size") || key.includes("-size") ? 350 : 200}
+                value={parseInt(vals[key]) || 0}
+                onChange={(e) => setVals((v) => ({ ...v, [key]: e.target.value + "px" }))}
+                className="w-full accent-orange-500"
+              />
+              <span className="text-zinc-600">{vals[key]}</span>
+            </label>
+          ))}
+        </div>
+        <p className="mt-3 break-all text-[10px] text-zinc-500">{cssVars}</p>
+      </div>
+    </div>
   );
 }
