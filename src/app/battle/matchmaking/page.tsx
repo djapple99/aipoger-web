@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { isAuthBypassEnabled, mockSkipMatchBattleId } from "@/lib/auth-bypass";
 import { supabase } from "@/lib/supabase";
 import { resolveCoverUrlFromParam } from "@/lib/cover-url";
+import { useI18n } from "@/lib/i18n";
 
 type QueueStatus = "waiting" | "matched" | "cancelled";
 
@@ -25,6 +26,7 @@ type MatchmakingContentProps = {
 
 function MatchmakingContent(props: MatchmakingContentProps) {
   const { coverUrlOverride } = props;
+  const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -45,6 +47,77 @@ function MatchmakingContent(props: MatchmakingContentProps) {
   const [creatingTestBattle, setCreatingTestBattle] = useState(false);
   const [cardAvatarUrl, setCardAvatarUrl] = useState<string | null>(null);
 
+  const buildArenaSearch = useCallback(() => {
+    const mmParams = new URLSearchParams({
+      fighterName: fighterName || "未命名鬥士",
+      songName: songName || "未提供",
+      genre,
+      aiTool: aiToolParam,
+      audioPath: audioPath,
+    });
+    if (coverForNav) mmParams.set("coverUrl", coverForNav);
+    if (queueId) mmParams.set("queueId", queueId);
+    return mmParams;
+  }, [fighterName, songName, genre, aiToolParam, audioPath, coverForNav, queueId]);
+
+  const goToArena = useCallback(
+    (battleId: string) => {
+      router.push(`/battle/${battleId}?test=1&${buildArenaSearch().toString()}`);
+    },
+    [router, buildArenaSearch],
+  );
+
+  /** 建立測試擂臺（RPC）或 fallback 至 mock 擂台（單人即可） */
+  const enterTestArena = async () => {
+    const path = audioPath.trim();
+    if (!path) {
+      alert("缺少 audioPath（請從 Hook 裁切上傳後再進配對）");
+      return;
+    }
+    setCreatingTestBattle(true);
+    try {
+      if (isAuthBypassEnabled) {
+        goToArena(mockSkipMatchBattleId);
+        return;
+      }
+      const { data: battleId, error } = await supabase.rpc("create_test_arena_battle", {
+        p_fighter_a_name: fighterName || "未命名鬥士",
+        p_song_a_name: songName || "未提供",
+        p_audio_a_path: path,
+        p_genre: genre || "未指定",
+        p_ai_tool_a: aiToolParam.trim() || null,
+        p_cover_url: displayCoverUrl ?? coverForNav ?? null,
+      });
+      if (!error && battleId) {
+        goToArena(String(battleId));
+        return;
+      }
+      if (error) {
+        console.warn("[matchmaking] create_test_arena_battle", error);
+        const msg = error.message ?? "";
+        if (msg.includes("two registered users")) {
+          goToArena(mockSkipMatchBattleId);
+          return;
+        }
+        alert(`建立測試擂臺失敗：${msg}\n\n若尚未執行 SQL，請在 Supabase 跑 supabase/create_test_arena_battle_rpc.sql`);
+        return;
+      }
+      goToArena(mockSkipMatchBattleId);
+    } finally {
+      setCreatingTestBattle(false);
+    }
+  };
+
+  const simulateMatch = () => {
+    setResolvedBattleId(mockSkipMatchBattleId);
+    setPhase("found");
+    setCountdown(3);
+  };
+
+  const enterArenaNow = () => {
+    goToArena(resolvedBattleId ?? mockSkipMatchBattleId);
+  };
+
   // Pulse 動畫
   useEffect(() => {
     if (phase !== "searching") return;
@@ -63,22 +136,9 @@ function MatchmakingContent(props: MatchmakingContentProps) {
   useEffect(() => {
     if (phase !== "found" || countdown > 0) return;
     const target =
-      resolvedBattleId ?? (queueId?.startsWith("mock-") ? queueId : null);
-    if (!target) return;
-
-    // 重建帶上所有 URL params（test mode、audioPath 等）
-    const mmParams = new URLSearchParams({
-      fighterName: fighterName || "未命名鬥士",
-      songName: songName || "未提供",
-      genre: genre,
-      aiTool: aiToolParam,
-      audioPath: audioPath,
-    });
-    if (coverForNav) mmParams.set("coverUrl", coverForNav);
-    if (queueId) mmParams.set("queueId", queueId);
-
-    router.replace(`/battle/${target}?test=1&${mmParams.toString()}`);
-  }, [phase, countdown, resolvedBattleId, queueId, router, fighterName, songName, genre, aiToolParam, audioPath, coverForNav]);
+      resolvedBattleId ?? (queueId?.startsWith("mock-") ? queueId : null) ?? mockSkipMatchBattleId;
+    goToArena(target);
+  }, [phase, countdown, resolvedBattleId, queueId, goToArena]);
 
   // 重新整理配對頁時：若佇列已是 matched，直接帶入 battles.id
   useEffect(() => {
@@ -280,70 +340,29 @@ function MatchmakingContent(props: MatchmakingContentProps) {
               </div>
             </div>
 
-            {/* 取消按鈕 */}
-            <Link
-              href="/"
-              className="rounded-xl border border-zinc-700 px-6 py-2.5 text-sm text-zinc-500 transition hover:border-red-500 hover:text-red-400"
-            >
-              取消配對
-            </Link>
-
-            {/* 跳過配對（測試擂臺）：AUTH_BYPASS 用假 id 直跳；否則 insert battles 後導向（測試環境可關 RLS，見 disable_rls_testing.sql） */}
-            <button
-              type="button"
-              disabled={creatingTestBattle}
-              onClick={async () => {
-                if (creatingTestBattle) return;
-
-                if (isAuthBypassEnabled) {
-                  const path = audioPath.trim();
-                  const id = mockSkipMatchBattleId;
-                  router.push(
-                    `/battle/${id}?test=1&audioPath=${encodeURIComponent(path)}&fighterName=${encodeURIComponent(fighterName)}&songName=${encodeURIComponent(songName)}&aiTool=${encodeURIComponent(aiToolParam)}&coverUrl=${encodeURIComponent(displayCoverUrl ?? coverForNav ?? "https://picsum.photos/300")}`,
-                  );
-                  return;
-                }
-
-                const path = audioPath.trim();
-                if (!path) {
-                  alert("缺少 URL 參數 audioPath（Hook 上傳後的 Storage 路徑）");
-                  return;
-                }
-                setCreatingTestBattle(true);
-                try {
-                  const { data: battleData, error } = await supabase
-                    .from("battles")
-                    .insert({
-                      status: "live",
-                      fighter_a_name: fighterName || "未命名鬥士",
-                      song_a_name: songName || "未提供",
-                      audio_a_path: path,
-                      song_a_cover: displayCoverUrl?.trim() || coverForNav?.trim() || null,
-                      ai_tool_a: aiToolParam.trim() || null,
-                      fighter_b_name: "測試對手",
-                      song_b_name: "測試歌曲",
-                      started_at: new Date().toISOString(),
-                    })
-                    .select("id")
-                    .single();
-
-                  if (error || !battleData) {
-                    console.error("[matchmaking] direct insert battle", error);
-                    alert("建立測試擂臺失敗：" + (error?.message ?? "未知錯誤"));
-                    return;
-                  }
-                  const id = battleData.id;
-                  router.push(
-                    `/battle/${id}?test=1&audioPath=${encodeURIComponent(path)}&fighterName=${encodeURIComponent(fighterName)}&songName=${encodeURIComponent(songName)}&aiTool=${encodeURIComponent(aiToolParam)}&coverUrl=${encodeURIComponent(displayCoverUrl ?? coverForNav ?? "https://picsum.photos/300")}`,
-                  );
-                } finally {
-                  setCreatingTestBattle(false);
-                }
-              }}
-              className="rounded-xl border border-orange-500/50 px-6 py-2.5 text-sm text-orange-400 transition hover:border-orange-400 hover:bg-orange-500/10 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {creatingTestBattle ? "建立中…" : "跳過配對（測試擂臺）"}
-            </button>
+            <div className="flex w-full max-w-sm flex-col gap-3">
+              <button
+                type="button"
+                onClick={simulateMatch}
+                className="w-full rounded-xl border border-green-500/60 bg-green-500/15 px-6 py-3 text-sm font-semibold text-green-300 transition hover:bg-green-500/25"
+              >
+                {t("mq_simulate_match")}
+              </button>
+              <button
+                type="button"
+                disabled={creatingTestBattle}
+                onClick={() => void enterTestArena()}
+                className="w-full rounded-xl border border-orange-500 bg-orange-500/20 px-6 py-3 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {creatingTestBattle ? "建立中…" : t("mq_skip_arena")}
+              </button>
+              <Link
+                href="/"
+                className="block w-full rounded-xl border border-zinc-700 px-6 py-2.5 text-center text-sm text-zinc-500 transition hover:border-red-500 hover:text-red-400"
+              >
+                {t("mq_cancel")}
+              </Link>
+            </div>
           </>
         )}
 
@@ -395,6 +414,13 @@ function MatchmakingContent(props: MatchmakingContentProps) {
                 <p className="text-2xl font-black text-green-400">{countdown}s</p>
               </div>
             </div>
+            <button
+              type="button"
+              onClick={enterArenaNow}
+              className="rounded-xl border border-orange-500 bg-orange-500 px-8 py-3 text-sm font-bold text-black shadow-lg shadow-orange-500/30 transition hover:bg-orange-400"
+            >
+              {t("mq_enter_now")}
+            </button>
           </>
         )}
       </div>
