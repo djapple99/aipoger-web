@@ -202,23 +202,20 @@ async function uploadHookWav(
   if (isAuthBypassEnabled) {
     const segments = storagePath.split("/");
     const userId = segments[0] ?? "";
-    const hookFileName =
-      segments.length >= 3 && segments[1] === "hooks" ? segments.slice(2).join("/") : fileName;
     if (!userId) {
       throw new Error("Invalid storagePath for upload-hook");
     }
     const audioBase64 = await blobToBase64(wavBlob);
+    const formData = new FormData();
+    formData.append("storagePath", storagePath);
+    formData.append("audioBase64", audioBase64);
+    formData.append("userId", userId);
     const res = await fetch("/api/upload-hook", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        audioBase64,
-        fileName: hookFileName || fileName,
-        userId,
-      }),
+      body: formData,
     });
-    const payload = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
-    if (!res.ok || !payload.ok) {
+    const payload = (await res.json().catch(() => ({}))) as { path?: string; error?: string };
+    if (!res.ok || !payload.path) {
       throw new Error(payload.error ?? res.statusText ?? "upload-hook failed");
     }
     return;
