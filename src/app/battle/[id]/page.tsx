@@ -50,16 +50,24 @@ function isHttpOrDataImageUrl(s: string): boolean {
   return /^https?:\/\//i.test(t) || /^data:image\//i.test(t) || /^blob:/i.test(t);
 }
 
-async function resolveCoverForDisplay(raw: string | null | undefined): Promise<string | null> {
+async function resolveMediaUrl(raw: string | null | undefined): Promise<string | null> {
   const t = raw?.trim();
   if (!t) return null;
   if (isHttpOrDataImageUrl(t)) return t;
-  const { data, error } = await supabase.storage.from("battle-audio").createSignedUrl(t, 60 * 60);
-  if (error) {
-    console.error("[battle cover] signed url", error, t);
-    return null;
-  }
-  return data?.signedUrl ?? null;
+
+  const tryBucket = async (bucket: "battle-audio" | "avatars") => {
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(t, 60 * 60);
+    if (error) return null;
+    return data?.signedUrl ?? null;
+  };
+
+  const fromAvatars = await tryBucket("avatars");
+  if (fromAvatars) return fromAvatars;
+  const fromAudio = await tryBucket("battle-audio");
+  if (fromAudio) return fromAudio;
+
+  console.warn("[battle media] signed url failed", t);
+  return null;
 }
 
 // ─── 旋轉唱片元件 ──────────────────────────────────────────
@@ -195,9 +203,9 @@ return (
               className="h-full w-full object-cover"
               onError={() => setCoverBroken(true)}
             />
-            {/* 中心孔 */}
-            <div className="absolute inset-[38%] rounded-full bg-zinc-900 ring-2 ring-zinc-700" />
-            <div className="absolute inset-[43%] rounded-full bg-zinc-800" />
+            {/* 中心孔（縮小） */}
+            <div className="absolute inset-[46%] rounded-full bg-zinc-900 ring-1 ring-zinc-700/80" />
+            <div className="absolute inset-[49%] rounded-full bg-zinc-950" />
           </div>
         ) : (
           /* 無封面：中心的 Label 區 */
@@ -211,8 +219,8 @@ return (
               animationPlayState: isPlaying ? "running" : "paused",
             }}
           >
-            <div className="absolute inset-[35%] rounded-full border-2 border-zinc-800 bg-zinc-900" />
-            <div className="absolute inset-[40%] rounded-full bg-zinc-800" />
+            <div className="absolute inset-[42%] rounded-full border border-zinc-800 bg-zinc-900" />
+            <div className="absolute inset-[46%] rounded-full bg-zinc-950" />
           </div>
         )}
 
@@ -309,6 +317,7 @@ function BattleArenaContent() {
   const [coverDisplayB, setCoverDisplayB] = useState<string | null>(null);
   const [avatarDisplayA, setAvatarDisplayA] = useState<string | null>(null);
   const [avatarDisplayB, setAvatarDisplayB] = useState<string | null>(null);
+  const [myProfileAvatarUrl, setMyProfileAvatarUrl] = useState<string | null>(null);
   const [viewerCount, setViewerCount] = useState(1);
 
   // Refs
@@ -335,6 +344,38 @@ function BattleArenaContent() {
     };
     void getUser();
   }, [router]);
+
+  // 登入者頭像（左上角 DECK A；含 Google OAuth 頭像後援）
+  useEffect(() => {
+    if (!myUserId || isAuthBypassEnabled) {
+      setMyProfileAvatarUrl(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const { data: prof } = await supabase
+        .from("user_profiles")
+        .select("avatar_url")
+        .eq("id", myUserId)
+        .maybeSingle();
+
+      let raw =
+        typeof prof?.avatar_url === "string" && prof.avatar_url.length > 0 ? prof.avatar_url : null;
+
+      if (!raw) {
+        const { data: { user } } = await supabase.auth.getUser();
+        const meta = user?.user_metadata as Record<string, unknown> | undefined;
+        const oauth = meta?.avatar_url ?? meta?.picture;
+        if (typeof oauth === "string" && oauth.length > 0) raw = oauth;
+      }
+
+      const resolved = await resolveMediaUrl(raw);
+      if (!cancelled) setMyProfileAvatarUrl(resolved);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [myUserId]);
 
   // ── 載入 Battle 資料（查詢前先 await getSession，避免 JWT 未就緒被 RLS 擋）────
   useEffect(() => {
@@ -465,10 +506,10 @@ function BattleArenaContent() {
     let cancelled = false;
     void (async () => {
       const [coverA, coverB, avA, avB] = await Promise.all([
-        resolveCoverForDisplay(battle.song_a_cover),
-        resolveCoverForDisplay(battle.song_b_cover),
-        resolveCoverForDisplay(battle.fighter_a_avatar),
-        resolveCoverForDisplay(battle.fighter_b_avatar),
+        resolveMediaUrl(battle.song_a_cover),
+        resolveMediaUrl(battle.song_b_cover),
+        resolveMediaUrl(battle.fighter_a_avatar),
+        resolveMediaUrl(battle.fighter_b_avatar),
       ]);
       if (!cancelled) {
         setCoverDisplayA(coverA);
@@ -789,9 +830,10 @@ function BattleArenaContent() {
 
   const vinylAvatarA = useMemo(() => {
     if (avatarDisplayA) return avatarDisplayA;
+    if (myProfileAvatarUrl) return myProfileAvatarUrl;
     const raw = battle?.fighter_a_avatar ?? "";
     return raw && isHttpOrDataImageUrl(raw) ? raw : null;
-  }, [battle?.fighter_a_avatar, avatarDisplayA]);
+  }, [battle?.fighter_a_avatar, avatarDisplayA, myProfileAvatarUrl]);
 
   const vinylAvatarB = useMemo(() => {
     if (avatarDisplayB) return avatarDisplayB;
@@ -870,7 +912,7 @@ function BattleArenaContent() {
               fighterName={battle.fighter_a_name}
               songName={battle.song_a_name}
               coverUrl={vinylCoverA ?? VINYL_COVER_PLACEHOLDER}
-              avatarUrl={vinylAvatarA}
+              avatarUrl={myProfileAvatarUrl ?? vinylAvatarA}
               isPlaying={activeDeck === "A"}
               onToggle={() => handleToggleDeck("A")}
               color="#ff6a00"
