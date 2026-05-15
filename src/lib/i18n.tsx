@@ -144,8 +144,8 @@ const dict: Record<Lang, Record<string, string>> = {
   en: {
     home_title: 'AIPOGER',
     home_subtitle: 'Where AI Beats Bleed.',
-    home_secondary_title: 'AI Music Arena',
-    home_tagline: 'Real music blood flows in AI rhythm battles',
+    home_secondary_title: 'Hook Warfare',
+    home_tagline: 'Let the rhythm bleed',
     home_logo_alt: 'AIPOGER',
     home_coin_tooltip: 'AIPO Coin balance',
     home_profile_level: 'Rank',

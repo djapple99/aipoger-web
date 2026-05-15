@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { I18nProvider } from "@/lib/i18n";
-import LangToggle from "@/components/lang-toggle";
+import GlobalLangToggle from "@/components/global-lang-toggle";
 import NavHomeLink from "@/components/nav-home-link";
 
 export const metadata: Metadata = {
@@ -21,7 +21,7 @@ export default function RootLayout({
           <NavHomeLink />
 
           {/* 右上角語系切換 */}
-          <LangToggle />
+          <GlobalLangToggle />
 
           {children}
         </I18nProvider>

@@ -8,6 +8,7 @@ import { useI18n } from "@/lib/i18n";
 import { writeFighterNameToStorage } from "@/lib/fighter-name-storage";
 import { isMissingFighterNameColumn } from "@/lib/user-profile-fighter-name";
 import { loadIsAdmin } from "@/lib/user-profile-admin";
+import LangToggle from "@/components/lang-toggle";
 import type { Session, User } from "@supabase/supabase-js";
 
 const SPLASH_STEPS = {
@@ -366,7 +367,8 @@ export default function HomePage() {
     <main className="relative min-h-screen overflow-hidden bg-[#050505] px-6 py-10 text-[#f5f5f5] md:px-10">
       <div className="pointer-events-none absolute inset-0 opacity-20 [background:radial-gradient(circle_at_22%_38%,_rgba(255,106,0,0.25),_transparent_50%)]" />
 
-      <header className="pointer-events-auto fixed right-4 top-4 z-40 md:right-6 md:top-6">
+      <header className="pointer-events-auto fixed right-4 top-4 z-40 flex max-w-[min(100vw-2rem,28rem)] items-start justify-end gap-2.5 md:right-6 md:top-6 md:gap-3">
+        <LangToggle variant="inline" />
         <HomeAuthBar />
       </header>
 
