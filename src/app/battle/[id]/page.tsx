@@ -68,6 +68,7 @@ function VinylDisc({
   fighterName,
   songName,
   coverUrl,
+  avatarUrl,
   isPlaying,
   onToggle,
   color,
@@ -77,6 +78,7 @@ function VinylDisc({
   fighterName: string;
   songName: string;
   coverUrl: string | null;
+  avatarUrl: string | null;
   isPlaying: boolean;
   onToggle: () => void;
   color: string;
@@ -88,11 +90,17 @@ function VinylDisc({
   const trimmedCover = coverUrl?.trim() ?? "";
   const hasCover = Boolean(trimmedCover) && !coverBroken;
   const initialMark = [...(fighterName.trim() || "?")].slice(0, 1).join("") || "?";
-  const avatarBg = hasCover ? "bg-zinc-900/85" : "bg-zinc-800";
+  const trimmedAvatar = avatarUrl?.trim() ?? "";
+  const [avatarBroken, setAvatarBroken] = useState(false);
+  const showAvatarImg = Boolean(trimmedAvatar) && !avatarBroken;
 
   useEffect(() => {
     setCoverBroken(false);
   }, [trimmedCover]);
+
+  useEffect(() => {
+    setAvatarBroken(false);
+  }, [trimmedAvatar]);
 
   useEffect(() => {
     if (!trimmedCover) return;
@@ -149,12 +157,25 @@ return (
           <div className="absolute inset-0 rounded-full border border-zinc-700/40" />
         </div>
 
-        {/* 頭像：左上角小圓形覆蓋在唱片上 */}
+        {/* 頭像：唱片左上（加大；有 URL 顯示圖，否則首字） */}
         <div
-          className="absolute left-2 top-2 z-20 flex h-9 w-9 items-center justify-center rounded-full border-2 border-orange-500 bg-zinc-900 text-sm font-bold shadow-lg md:h-11 md:w-11 md:text-base"
+          className="absolute -left-1 -top-1 z-30 h-[4.25rem] w-[4.25rem] overflow-hidden rounded-full border-[3px] border-orange-500 bg-zinc-900 shadow-[0_4px_20px_rgba(0,0,0,0.55)] ring-2 ring-black/70 md:h-[5.25rem] md:w-[5.25rem]"
           aria-hidden
         >
-          <span className="text-orange-400">{initialMark}</span>
+          {showAvatarImg ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={trimmedAvatar}
+              alt=""
+              className="h-full w-full object-cover"
+              referrerPolicy="no-referrer"
+              onError={() => setAvatarBroken(true)}
+            />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center text-2xl font-black text-orange-400 md:text-3xl">
+              {initialMark}
+            </span>
+          )}
         </div>
 
         {/* 封面圖：中心圓形貼紙（像真實唱片） */}
@@ -286,6 +307,8 @@ function BattleArenaContent() {
   const [audioUrls, setAudioUrls] = useState<{ A: string | null; B: string | null }>({ A: null, B: null });
   const [coverDisplayA, setCoverDisplayA] = useState<string | null>(null);
   const [coverDisplayB, setCoverDisplayB] = useState<string | null>(null);
+  const [avatarDisplayA, setAvatarDisplayA] = useState<string | null>(null);
+  const [avatarDisplayB, setAvatarDisplayB] = useState<string | null>(null);
   const [viewerCount, setViewerCount] = useState(1);
 
   // Refs
@@ -328,6 +351,24 @@ function BattleArenaContent() {
         const qAi = searchParams.get("aiTool")?.trim() ?? "";
         const testFlag = searchParams.get("test") === "1";
 
+        let profileAvatar: string | null = null;
+        if (!isAuthBypassEnabled) {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          const uid = session?.user?.id;
+          if (uid) {
+            const { data: prof } = await supabase
+              .from("user_profiles")
+              .select("avatar_url")
+              .eq("id", uid)
+              .maybeSingle();
+            if (typeof prof?.avatar_url === "string" && prof.avatar_url.length > 0) {
+              profileAvatar = prof.avatar_url;
+            }
+          }
+        }
+
         setBattle({
           id: battleId,
           fighter_a_user_id: mockUserId,
@@ -338,7 +379,7 @@ function BattleArenaContent() {
           song_b_name: testFlag ? "測試歌曲B" : "Cold Pulse",
           audio_a_path: qAudio || null,
           audio_b_path: null,
-          fighter_a_avatar: null,
+          fighter_a_avatar: profileAvatar,
           fighter_b_avatar: null,
           song_a_cover: qCover || null,
           song_b_cover: null,
@@ -385,17 +426,19 @@ function BattleArenaContent() {
 
       const bdata = data as any;
       // 同步載入兩邊的 fighter_profiles（頭像 + 封面；必須取 .data）
-      const [{ data: rowA }, { data: rowB }] = await Promise.all([
+      const [{ data: rowA }, { data: rowB }, { data: profA }, { data: profB }] = await Promise.all([
         supabase.from("fighter_profiles").select("avatar_url, song_cover_url").eq("id", bdata.fighter_a_user_id).maybeSingle(),
         supabase.from("fighter_profiles").select("avatar_url, song_cover_url").eq("id", bdata.fighter_b_user_id).maybeSingle(),
+        supabase.from("user_profiles").select("avatar_url").eq("id", bdata.fighter_a_user_id).maybeSingle(),
+        supabase.from("user_profiles").select("avatar_url").eq("id", bdata.fighter_b_user_id).maybeSingle(),
       ]);
 
       setBattle({
         ...(data as BattleData),
         fighter_a_user_id: bdata.fighter_a_user_id,
         fighter_b_user_id: bdata.fighter_b_user_id,
-        fighter_a_avatar: rowA?.avatar_url ?? null,
-        fighter_b_avatar: rowB?.avatar_url ?? null,
+        fighter_a_avatar: rowA?.avatar_url ?? profA?.avatar_url ?? null,
+        fighter_b_avatar: rowB?.avatar_url ?? profB?.avatar_url ?? null,
         song_a_cover: rowA?.song_cover_url ?? (bdata.song_a_cover as string | null | undefined) ?? null,
         song_b_cover: rowB?.song_cover_url ?? (bdata.song_b_cover as string | null | undefined) ?? null,
         ai_tool_a: (bdata.ai_tool_a as string | null | undefined) ?? null,
@@ -410,27 +453,39 @@ function BattleArenaContent() {
     };
   }, [battleId, isAuthBypassEnabled, searchParams, t]);
 
-  // ── 封面：http(s)/data 直用；否則視為 Storage 路徑簽署後給 VinylDisc ────
+  // ── 封面（中心唱片貼紙）與頭像（左上角）分開解析 ────
   useEffect(() => {
     if (!battle) {
       setCoverDisplayA(null);
       setCoverDisplayB(null);
+      setAvatarDisplayA(null);
+      setAvatarDisplayB(null);
       return;
     }
     let cancelled = false;
     void (async () => {
-      const rawA = battle.song_a_cover ?? battle.fighter_a_avatar;
-      const rawB = battle.song_b_cover ?? battle.fighter_b_avatar;
-      const [a, b] = await Promise.all([resolveCoverForDisplay(rawA), resolveCoverForDisplay(rawB)]);
+      const [coverA, coverB, avA, avB] = await Promise.all([
+        resolveCoverForDisplay(battle.song_a_cover),
+        resolveCoverForDisplay(battle.song_b_cover),
+        resolveCoverForDisplay(battle.fighter_a_avatar),
+        resolveCoverForDisplay(battle.fighter_b_avatar),
+      ]);
       if (!cancelled) {
-        setCoverDisplayA(a);
-        setCoverDisplayB(b);
+        setCoverDisplayA(coverA);
+        setCoverDisplayB(coverB);
+        setAvatarDisplayA(avA);
+        setAvatarDisplayB(avB);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [battle?.song_a_cover, battle?.song_b_cover, battle?.fighter_a_avatar, battle?.fighter_b_avatar]);
+  }, [
+    battle?.song_a_cover,
+    battle?.song_b_cover,
+    battle?.fighter_a_avatar,
+    battle?.fighter_b_avatar,
+  ]);
 
   // ── Storage signed URL（雙方音檔；RLS 需允許讀取 battle 引用路徑）────
   useEffect(() => {
@@ -721,16 +776,28 @@ function BattleArenaContent() {
   const vinylCoverA = useMemo(() => {
     if (!battle) return null;
     if (coverDisplayA) return coverDisplayA;
-    const raw = battle.song_a_cover ?? battle.fighter_a_avatar ?? "";
+    const raw = battle.song_a_cover ?? "";
     return raw && isHttpOrDataImageUrl(raw) ? raw : null;
   }, [battle, coverDisplayA]);
 
   const vinylCoverB = useMemo(() => {
     if (!battle) return null;
     if (coverDisplayB) return coverDisplayB;
-    const raw = battle.song_b_cover ?? battle.fighter_b_avatar ?? "";
+    const raw = battle.song_b_cover ?? "";
     return raw && isHttpOrDataImageUrl(raw) ? raw : null;
   }, [battle, coverDisplayB]);
+
+  const vinylAvatarA = useMemo(() => {
+    if (avatarDisplayA) return avatarDisplayA;
+    const raw = battle?.fighter_a_avatar ?? "";
+    return raw && isHttpOrDataImageUrl(raw) ? raw : null;
+  }, [battle?.fighter_a_avatar, avatarDisplayA]);
+
+  const vinylAvatarB = useMemo(() => {
+    if (avatarDisplayB) return avatarDisplayB;
+    const raw = battle?.fighter_b_avatar ?? "";
+    return raw && isHttpOrDataImageUrl(raw) ? raw : null;
+  }, [battle?.fighter_b_avatar, avatarDisplayB]);
 
   if (loading) {
     return (
@@ -803,6 +870,7 @@ function BattleArenaContent() {
               fighterName={battle.fighter_a_name}
               songName={battle.song_a_name}
               coverUrl={vinylCoverA ?? VINYL_COVER_PLACEHOLDER}
+              avatarUrl={vinylAvatarA}
               isPlaying={activeDeck === "A"}
               onToggle={() => handleToggleDeck("A")}
               color="#ff6a00"
@@ -856,6 +924,7 @@ function BattleArenaContent() {
               fighterName={battle.fighter_b_name}
               songName={battle.song_b_name}
               coverUrl={vinylCoverB ?? VINYL_COVER_PLACEHOLDER}
+              avatarUrl={vinylAvatarB}
               isPlaying={activeDeck === "B"}
               onToggle={() => handleToggleDeck("B")}
               color="#3b82f6"
