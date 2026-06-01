@@ -1,4 +1,14 @@
 {
+  "crons": [
+    {
+      "path": "/api/listen-bar/process-rotation",
+      "schedule": "0 */4 * * *"
+    },
+    {
+      "path": "/api/battle-pool/process-fallbacks",
+      "schedule": "*/5 * * * *"
+    }
+  ],
   "functions": {
     "src/app/api/upload-hook/route.ts": {
       "maxDuration": 120

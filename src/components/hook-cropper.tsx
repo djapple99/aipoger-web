@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type WaveSurfer from "wavesurfer.js";
 
 const MAX_HOOK_SECONDS = 45;
 
@@ -13,6 +14,12 @@ type HookCropperProps = {
     end: number;
     duration: number;
   }) => Promise<void> | void;
+};
+
+type WaveRegion = {
+  start: number;
+  end: number;
+  setOptions: (options: { start?: number; end?: number }) => void;
 };
 
 function encodeWavFromAudioBuffer(audioBuffer: AudioBuffer): Blob {
@@ -184,8 +191,8 @@ async function trimAudioToHook(file: File, start: number, end: number): Promise<
 
 export function HookCropper({ file, onBack, onConfirm }: HookCropperProps) {
   const waveformRef = useRef<HTMLDivElement | null>(null);
-  const wavesurferRef = useRef<any>(null);
-  const regionRef = useRef<any>(null);
+  const wavesurferRef = useRef<WaveSurfer | null>(null);
+  const regionRef = useRef<WaveRegion | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -241,7 +248,7 @@ export function HookCropper({ file, onBack, onConfirm }: HookCropperProps) {
       wavesurfer.on("play", () => setIsPlaying(true));
       wavesurfer.on("pause", () => setIsPlaying(false));
 
-      regions.on("region-updated", (region: any) => {
+      regions.on("region-updated", (region: WaveRegion) => {
         const duration = wavesurfer.getDuration();
         let start = Math.max(0, region.start);
         let end = Math.min(duration, region.end);
@@ -303,8 +310,8 @@ export function HookCropper({ file, onBack, onConfirm }: HookCropperProps) {
   return (
     <section className="rounded-3xl border border-[#4d5258] bg-[#1f2226]/90 p-6 md:p-8">
       <p className="text-xs tracking-[0.38em] text-[#8f847e]">AIPOGER</p>
-      <h2 className="mt-3 text-2xl font-semibold tracking-[0.16em] text-[#f4f0ed]">Hook 裁切工具</h2>
-      <p className="mt-3 text-sm text-[#cfc7c2]">拖曳橘色區塊選取 Hook（最多 45 秒），先預聽再確認上傳。</p>
+      <h2 className="mt-3 text-2xl font-semibold tracking-[0.16em] text-[#f4f0ed]">最強抓波Drop Battle 裁切工具</h2>
+      <p className="mt-3 text-sm text-[#cfc7c2]">拖曳橘色區塊選取 Drop（最多 45 秒），先預聽再確認上傳。</p>
 
       <div className="mt-6 rounded-2xl border border-[#3f444b] bg-[#24282d] p-4">
         <div ref={waveformRef} className="w-full overflow-hidden rounded-lg bg-[#2b2f34] px-2 py-4" />
@@ -340,7 +347,7 @@ export function HookCropper({ file, onBack, onConfirm }: HookCropperProps) {
           onClick={playRegion}
           className="rounded-xl border border-[#6f757c] bg-gradient-to-b from-[#626870] to-[#4a5057] px-4 py-2 text-sm tracking-[0.1em] text-[#f7f1ed] transition hover:border-[#ff8d40] hover:shadow-[0_0_14px_rgba(255,121,40,0.42)] disabled:opacity-50"
         >
-          預聽 Hook
+          預聽 Drop
         </button>
         <button
           type="button"
@@ -348,7 +355,7 @@ export function HookCropper({ file, onBack, onConfirm }: HookCropperProps) {
           onClick={handleConfirm}
           className="rounded-xl border border-[#767c83] bg-gradient-to-b from-[#666c73] to-[#4a5057] px-4 py-2 text-sm font-semibold tracking-[0.12em] text-[#f8f3ef] transition hover:border-[#ff8d40] hover:shadow-[0_0_18px_rgba(255,121,40,0.45)] disabled:opacity-60"
         >
-          {isExporting ? "裁切上傳中..." : "確認 Hook 並上傳"}
+          {isExporting ? "裁切上傳中..." : "確認 Drop 並上傳"}
         </button>
       </div>
     </section>

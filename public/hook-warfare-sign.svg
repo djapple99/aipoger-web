@@ -1,0 +1,69 @@
+<svg width="760" height="170" viewBox="0 0 760 170" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="plate" x1="80" y1="22" x2="680" y2="148" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1A1A1D"/>
+      <stop offset="0.42" stop-color="#050505"/>
+      <stop offset="1" stop-color="#15151A"/>
+    </linearGradient>
+    <linearGradient id="orangeStroke" x1="103" y1="16" x2="669" y2="154" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFD4A3"/>
+      <stop offset="0.18" stop-color="#FF7A18"/>
+      <stop offset="0.58" stop-color="#FF3D00"/>
+      <stop offset="1" stop-color="#38BDF8"/>
+    </linearGradient>
+    <linearGradient id="textFill" x1="160" y1="44" x2="608" y2="120" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF7ED"/>
+      <stop offset="0.34" stop-color="#FFB86B"/>
+      <stop offset="0.62" stop-color="#FF5A00"/>
+      <stop offset="1" stop-color="#E6F7FF"/>
+    </linearGradient>
+    <filter id="outerGlow" x="0" y="-35" width="760" height="240" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feGaussianBlur in="SourceAlpha" stdDeviation="9" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 1 0 0 0 0 0.38 0 0 0 0 0 0 0 0 0.85 0" result="orangeGlow"/>
+      <feGaussianBlur in="SourceAlpha" stdDeviation="18" result="wideBlur"/>
+      <feColorMatrix in="wideBlur" type="matrix" values="0 0 0 0 0.15 0 0 0 0 0.57 0 0 0 0 1 0 0 0 0.32 0" result="blueGlow"/>
+      <feMerge>
+        <feMergeNode in="blueGlow"/>
+        <feMergeNode in="orangeGlow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="textGlow" x="64" y="18" width="632" height="130" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2.4" result="textBlur"/>
+      <feColorMatrix in="textBlur" type="matrix" values="1 0 0 0 1 0 0 0 0 0.42 0 0 0 0 0.05 0 0 0 0.9 0"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="shadow" x="94" y="31" width="588" height="115" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#000000" flood-opacity="0.75"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#outerGlow)">
+    <path d="M88 38C91.5 28.5 100.6 22 110.8 22H649.2C659.4 22 668.5 28.5 672 38L704 85L672 132C668.5 141.5 659.4 148 649.2 148H110.8C100.6 148 91.5 141.5 88 132L56 85L88 38Z" fill="url(#plate)" stroke="url(#orangeStroke)" stroke-width="4"/>
+    <path d="M113 38H647L676 85L647 132H113L84 85L113 38Z" stroke="white" stroke-opacity="0.08" stroke-width="2"/>
+    <path d="M126 48H236" stroke="#FF7A18" stroke-width="3" stroke-linecap="round"/>
+    <path d="M524 122H634" stroke="#38BDF8" stroke-width="3" stroke-linecap="round"/>
+    <path d="M111 114C173 89 219 89 280 113" stroke="#FF6A00" stroke-opacity="0.22" stroke-width="2"/>
+    <path d="M480 57C539 82 588 82 649 57" stroke="#38BDF8" stroke-opacity="0.22" stroke-width="2"/>
+  </g>
+
+  <g opacity="0.88">
+    <path d="M111 71V99" stroke="#FF7A18" stroke-width="4" stroke-linecap="round"/>
+    <path d="M126 58V112" stroke="#FFB86B" stroke-width="4" stroke-linecap="round"/>
+    <path d="M141 67V103" stroke="#FF7A18" stroke-width="4" stroke-linecap="round"/>
+    <path d="M649 71V99" stroke="#38BDF8" stroke-width="4" stroke-linecap="round"/>
+    <path d="M634 58V112" stroke="#E6F7FF" stroke-width="4" stroke-linecap="round"/>
+    <path d="M619 67V103" stroke="#38BDF8" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  <g filter="url(#shadow)">
+    <text x="380" y="104" text-anchor="middle" font-family="Impact, Haettenschweiler, 'Arial Black', sans-serif" font-size="58" font-weight="900" letter-spacing="3.5" fill="url(#textFill)" stroke="#210B00" stroke-width="2.6" paint-order="stroke fill" filter="url(#textGlow)">DROP BATTLE</text>
+    <text x="380" y="126" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="7" fill="#D4D4D8" opacity="0.72">AIPOGER BATTLE STAGE</text>
+  </g>
+
+  <path d="M162 136H598" stroke="url(#orangeStroke)" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+</svg>

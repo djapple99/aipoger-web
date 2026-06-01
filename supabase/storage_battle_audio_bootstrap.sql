@@ -12,7 +12,7 @@ VALUES (
   'battle-audio',
   'battle-audio',
   false,
-  52428800,
+  209715200,
   ARRAY[
     'audio/mpeg', 'audio/mp4', 'audio/x-m4a', 'audio/ogg', 'audio/webm',
     'audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave',

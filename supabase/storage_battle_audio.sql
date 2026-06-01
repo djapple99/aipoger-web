@@ -4,7 +4,7 @@ values (
   'battle-audio',
   'battle-audio',
   false,
-  52428800,
+  209715200,
   array[
     'audio/mpeg', 'audio/mp4', 'audio/x-m4a', 'audio/ogg', 'audio/webm',
     -- WAV：不同瀏覽器／Storage 驗證可能只認其中一種

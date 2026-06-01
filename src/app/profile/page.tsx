@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 import { useI18n } from "@/lib/i18n";
 import { AvatarCropUploadModal } from "@/components/avatar-crop-upload-modal";
+import SafetyNotice from "@/components/safety-notice";
 import { readFighterNameFromStorage, writeFighterNameToStorage } from "@/lib/fighter-name-storage";
 import { loadFighterNameFromProfile, saveFighterNameToProfile } from "@/lib/user-profile-fighter-name";
 
@@ -164,6 +165,7 @@ function ProfileInner() {
         <div ref={avatarSectionRef} id="avatar-upload" className="rounded-3xl border border-zinc-800 bg-zinc-900/80 p-6 backdrop-blur">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">{t("upload_avatar")}</h2>
           <p className="mt-1 text-xs text-zinc-600">JPEG / PNG / WebP · {t("avatar_max_2mb")}</p>
+          <SafetyNotice kind="upload" compact className="mt-4" />
           <div className="mt-6 flex flex-col items-center gap-4">
             <button type="button" onClick={openCropPicker} className="group relative">
               {avatarPreview ? (

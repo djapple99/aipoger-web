@@ -9,9 +9,11 @@ if (!supabaseUrl || !supabaseKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
-    // 明確指定，避免不同環境/版本預設差異導致 callback 沒解析 session
+    // OAuth 一律使用 PKCE，callback 頁會明確呼叫 exchangeCodeForSession。
+    // 關閉自動 URL 偵測可避免 callback 頁與 SDK 同時交換 code，造成偶發登入失敗。
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
+    detectSessionInUrl: false,
+    flowType: "pkce",
   },
 });

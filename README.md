@@ -21,6 +21,6 @@ npm run dev
 
 Place your logo file at:
 
-`public/logo.png`
+`public/aipoger-brand-logo.png`
 
 The splash screen uses this file and plays a fade-in/fade-out animation before showing the main page.

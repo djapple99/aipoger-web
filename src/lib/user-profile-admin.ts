@@ -17,7 +17,7 @@ export function isMissingIsAdminColumn(err: unknown): boolean {
   );
 }
 
-/** 是否為管理員（免 APC 挑戰費） */
+/** 是否為管理員 */
 export async function loadIsAdmin(userId: string): Promise<boolean> {
   const {
     data: { session },

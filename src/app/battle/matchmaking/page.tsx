@@ -2,41 +2,106 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isAuthBypassEnabled, mockSkipMatchBattleId } from "@/lib/auth-bypass";
 import { supabase } from "@/lib/supabase";
 import { resolveCoverUrlFromParam } from "@/lib/cover-url";
 import { useI18n } from "@/lib/i18n";
+import { INSTANT_MATCH_TIMEOUT_SECONDS } from "@/lib/battle-pool-rules";
+import { attemptMatchmakingWithoutApcGate } from "@/lib/battle-pool-client";
 
-type QueueStatus = "waiting" | "matched" | "cancelled";
+const DROP_BATTLE_MIN_LEAD_MS = 30_000;
+
+type QueueStatus =
+  | "searching"
+  | "waiting"
+  | "waiting_challenge"
+  | "matched"
+  | "active"
+  | "completed"
+  | "expired"
+  | "ghost_battle"
+  | "public_voting"
+  | "cancelled";
 
 type QueueRow = {
   id: string;
   status: QueueStatus;
   match_group_id: string | null;
   opponent_user_id: string | null;
+  expires_at?: string | null;
+  fallback_kind?: string | null;
 };
 
-type MatchPhase = "searching" | "found" | "entering";
+type MatchPhase = "searching" | "found" | "waiting" | "ghost_battle" | "public_voting" | "cancelled";
 
 type MatchmakingContentProps = {
   /** 若 URL 無 coverUrl，可由此傳入（例如程式導向時） */
   coverUrlOverride?: string | null;
 };
 
+function readBattleAssetSession(assetKey: string | null): { avatarUrl: string | null; coverUrl: string | null } {
+  if (!assetKey || typeof window === "undefined") return { avatarUrl: null, coverUrl: null };
+  try {
+    const raw = window.sessionStorage.getItem(`aipoger:battle-assets:${assetKey}`);
+    if (!raw) return { avatarUrl: null, coverUrl: null };
+    const parsed = JSON.parse(raw) as { avatarUrl?: unknown; coverUrl?: unknown };
+    return {
+      avatarUrl: typeof parsed.avatarUrl === "string" ? parsed.avatarUrl : null,
+      coverUrl: typeof parsed.coverUrl === "string" ? parsed.coverUrl : null,
+    };
+  } catch {
+    return { avatarUrl: null, coverUrl: null };
+  }
+}
+
+function defaultHookCardTimeText() {
+  const date = new Date(Date.now() + 30 * 60 * 1000);
+  date.setSeconds(0, 0);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function promptHookCardStartIso(lang: string) {
+  const input = window.prompt(
+    lang === "zh" ? "設定 Drop Battle 戰帖開戰時間（YYYY-MM-DD HH:mm）" : "Set Drop Battle time (YYYY-MM-DD HH:mm)",
+    defaultHookCardTimeText(),
+  );
+  if (input === null) return null;
+  const date = new Date(input.trim().replace(" ", "T"));
+  if (!Number.isFinite(date.getTime()) || date.getTime() < Date.now() + DROP_BATTLE_MIN_LEAD_MS) {
+    alert(lang === "zh" ? "時間格式不正確，或開戰時間少於 30 秒。" : "Invalid time, or start time is less than 30 seconds away.");
+    return null;
+  }
+  return date.toISOString();
+}
+
 function MatchmakingContent(props: MatchmakingContentProps) {
   const { coverUrlOverride } = props;
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const fighterName = searchParams.get("fighterName") ?? "未命名鬥士";
-  const genre = searchParams.get("genre") ?? "未指定";
-  const songName = searchParams.get("songName") ?? "未提供";
+  const fighterName = searchParams.get("fighterName") ?? t("mq_unnamed_fighter");
+  const genre = searchParams.get("genre") ?? t("mq_unknown_genre");
+  const songName = searchParams.get("songName") ?? t("mq_missing_song");
   const coverForNav = coverUrlOverride ?? searchParams.get("coverUrl");
-  const displayCoverUrl = useMemo(() => resolveCoverUrlFromParam(coverForNav), [coverForNav]);
+  const avatarForNav = searchParams.get("avatarUrl");
+  const assetKey = searchParams.get("assetKey");
+  const [sessionAssets, setSessionAssets] = useState<{ avatarUrl: string | null; coverUrl: string | null }>({
+    avatarUrl: null,
+    coverUrl: null,
+  });
+  const displayCoverUrl = useMemo(
+    () => resolveCoverUrlFromParam(coverForNav ?? sessionAssets.coverUrl),
+    [coverForNav, sessionAssets.coverUrl],
+  );
   const audioPath = searchParams.get("audioPath") ?? "";
   const aiToolParam = searchParams.get("aiTool") ?? "";
+  const lyricsParam = searchParams.get("lyrics") ?? "";
+  const challengeTargetQueueId = searchParams.get("challengeEntryId");
+  const matchmakingIssue = searchParams.get("matchmakingIssue");
+  const debugMode = searchParams.get("debug") === "1";
 
   const queueId = searchParams.get("queueId");
   const [phase, setPhase] = useState<MatchPhase>("searching");
@@ -46,32 +111,48 @@ function MatchmakingContent(props: MatchmakingContentProps) {
   const [countdown, setCountdown] = useState(5);
   const [creatingTestBattle, setCreatingTestBattle] = useState(false);
   const [cardAvatarUrl, setCardAvatarUrl] = useState<string | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState(INSTANT_MATCH_TIMEOUT_SECONDS);
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const queueClosedRef = useRef(false);
+  const [decisionBusy, setDecisionBusy] = useState<"invite" | "listen" | "cancel" | null>(null);
+
+  useEffect(() => {
+    if (!matchmakingIssue) return;
+    setNotice(t("mq_matchmaking_degraded_notice"));
+  }, [matchmakingIssue, t]);
 
   const buildArenaSearch = useCallback(() => {
     const mmParams = new URLSearchParams({
-      fighterName: fighterName || "未命名鬥士",
-      songName: songName || "未提供",
+      fighterName: fighterName || t("mq_unnamed_fighter"),
+      songName: songName || t("mq_missing_song"),
       genre,
       aiTool: aiToolParam,
       audioPath: audioPath,
     });
     if (coverForNav) mmParams.set("coverUrl", coverForNav);
+    if (avatarForNav) mmParams.set("avatarUrl", avatarForNav);
+    if (assetKey) mmParams.set("assetKey", assetKey);
     if (queueId) mmParams.set("queueId", queueId);
+    if (lyricsParam.trim()) mmParams.set("lyrics", lyricsParam.trim());
+    if (challengeTargetQueueId) mmParams.set("challengeEntryId", challengeTargetQueueId);
     return mmParams;
-  }, [fighterName, songName, genre, aiToolParam, audioPath, coverForNav, queueId]);
+  }, [fighterName, songName, genre, aiToolParam, audioPath, coverForNav, avatarForNav, assetKey, queueId, lyricsParam, challengeTargetQueueId, t]);
 
   const goToArena = useCallback(
     (battleId: string) => {
-      router.push(`/battle/${battleId}?test=1&${buildArenaSearch().toString()}`);
+      const arenaSearch = buildArenaSearch();
+      if (debugMode) arenaSearch.set("test", "1");
+      router.push(`/battle/${battleId}?${arenaSearch.toString()}`);
     },
-    [router, buildArenaSearch],
+    [router, buildArenaSearch, debugMode],
   );
 
   /** 建立測試擂臺（RPC）或 fallback 至 mock 擂台（單人即可） */
   const enterTestArena = async () => {
     const path = audioPath.trim();
     if (!path) {
-      alert("缺少 audioPath（請從 Hook 裁切上傳後再進配對）");
+      alert(t("mq_missing_audio_alert"));
       return;
     }
     setCreatingTestBattle(true);
@@ -81,12 +162,13 @@ function MatchmakingContent(props: MatchmakingContentProps) {
         return;
       }
       const { data: battleId, error } = await supabase.rpc("create_test_arena_battle", {
-        p_fighter_a_name: fighterName || "未命名鬥士",
-        p_song_a_name: songName || "未提供",
+        p_fighter_a_name: fighterName || t("mq_unnamed_fighter"),
+        p_song_a_name: songName || t("mq_missing_song"),
         p_audio_a_path: path,
-        p_genre: genre || "未指定",
+        p_genre: genre || t("mq_unknown_genre"),
         p_ai_tool_a: aiToolParam.trim() || null,
         p_cover_url: displayCoverUrl ?? coverForNav ?? null,
+        p_lyrics_a: lyricsParam.trim() || null,
       });
       if (!error && battleId) {
         goToArena(String(battleId));
@@ -99,7 +181,7 @@ function MatchmakingContent(props: MatchmakingContentProps) {
           goToArena(mockSkipMatchBattleId);
           return;
         }
-        alert(`建立測試擂臺失敗：${msg}\n\n若尚未執行 SQL，請在 Supabase 跑 supabase/create_test_arena_battle_rpc.sql`);
+        alert(t("mq_create_test_failed", { message: msg }));
         return;
       }
       goToArena(mockSkipMatchBattleId);
@@ -117,6 +199,70 @@ function MatchmakingContent(props: MatchmakingContentProps) {
   const enterArenaNow = () => {
     goToArena(resolvedBattleId ?? mockSkipMatchBattleId);
   };
+
+  const closeCurrentQueue = useCallback(
+    async (options?: { quiet?: boolean }) => {
+      if (!queueId || queueId.startsWith("mock-") || isAuthBypassEnabled || queueClosedRef.current) {
+        queueClosedRef.current = true;
+        return true;
+      }
+      const { error } = await supabase.rpc("cancel_battle_entry", { p_queue_id: queueId });
+      if (error) {
+        const msg = error.message ?? "";
+        const harmless = /not found|already|cancel|expired|inactive|no active|無法|不存在|取消/i.test(msg);
+        if (!harmless && !options?.quiet) {
+          console.error("[matchmaking] cancel_battle_entry", error);
+          alert(msg);
+          return false;
+        }
+        if (!harmless) console.warn("[matchmaking] cancel_battle_entry fallback", error);
+      }
+      queueClosedRef.current = true;
+      return true;
+    },
+    [queueId],
+  );
+
+  const openHookBattleCard = useCallback(async () => {
+    setDecisionBusy("invite");
+    try {
+      if (!queueId || queueId.startsWith("mock-") || isAuthBypassEnabled) {
+        router.push(`/battle?lang=${lang}`);
+        return;
+      }
+      const scheduledStartIso = promptHookCardStartIso(lang);
+      if (!scheduledStartIso) return;
+      const { data, error } = await supabase.rpc("move_entry_to_waiting_challenge", { p_queue_id: queueId });
+      if (error) throw error;
+      const { error: scheduleError } = await supabase
+        .from("battle_queue")
+        .update({ expires_at: scheduledStartIso })
+        .eq("id", queueId);
+      if (scheduleError) throw scheduleError;
+      const row = data as { expires_at?: string | null } | null;
+      setExpiresAt(scheduledStartIso ?? row?.expires_at ?? null);
+      setPhase("waiting");
+      setNotice(t("mq_hook_card_opened_notice"));
+      router.push(`/battle?lang=${lang}&focusQueue=${queueId}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t("mq_matchmaking_degraded_notice");
+      console.warn("[matchmaking] open Drop Battle card failed", error);
+      setNotice(message);
+    } finally {
+      setDecisionBusy(null);
+    }
+  }, [lang, queueId, router, t]);
+
+  const closeAndFindAtBar = useCallback(async () => {
+    setDecisionBusy("listen");
+    try {
+      const ok = await closeCurrentQueue();
+      if (!ok) return;
+      router.push(`/listen-bar?lang=${lang}`);
+    } finally {
+      setDecisionBusy(null);
+    }
+  }, [closeCurrentQueue, lang, router]);
 
   // Pulse 動畫
   useEffect(() => {
@@ -147,22 +293,37 @@ function MatchmakingContent(props: MatchmakingContentProps) {
     void (async () => {
       const { data: row } = await supabase
         .from("battle_queue")
-        .select("status, match_group_id")
+        .select("status, match_group_id, expires_at")
         .eq("id", queueId)
-        .maybeSingle<{ status: QueueStatus; match_group_id: string | null }>();
+        .maybeSingle<{ status: QueueStatus; match_group_id: string | null; expires_at: string | null }>();
       if (cancelled || !row) return;
       if (row.status === "matched" && row.match_group_id) {
+        goToArena(row.match_group_id);
+      } else if (row.status === "waiting_challenge") {
+        setExpiresAt(row.expires_at);
+        setPhase("waiting");
+        setNotice(t("mq_hook_card_opened_notice"));
+      } else if (row.status === "ghost_battle" && row.match_group_id) {
         setResolvedBattleId(row.match_group_id);
-        setPhase("found");
-        setCountdown(5);
+        setPhase("ghost_battle");
+      } else if (row.status === "public_voting") {
+        setPhase("public_voting");
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [queueId]);
+  }, [goToArena, queueId, t]);
 
   useEffect(() => {
+    setSessionAssets(readBattleAssetSession(assetKey));
+  }, [assetKey]);
+
+  useEffect(() => {
+    if (avatarForNav || sessionAssets.avatarUrl) {
+      setCardAvatarUrl(avatarForNav ?? sessionAssets.avatarUrl);
+      return;
+    }
     if (isAuthBypassEnabled) {
       setCardAvatarUrl(null);
       return;
@@ -182,11 +343,12 @@ function MatchmakingContent(props: MatchmakingContentProps) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [avatarForNav, sessionAssets.avatarUrl]);
 
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval> | null = null;
     let mounted = true;
+    const startedAt = Date.now();
 
     const startMatchmaking = async () => {
       if (!queueId) return;
@@ -199,29 +361,94 @@ function MatchmakingContent(props: MatchmakingContentProps) {
         return;
       }
 
-      const runAttempt = async () => {
-        const { error: rpcError } = await supabase.rpc("attempt_matchmaking", {
-          p_queue_id: queueId,
-        });
+      const moveToWaiting = async () => {
+        if (!mounted) return;
+        setExpiresAt(null);
+        setPhase("waiting");
+        setNotice(t("mq_entered_pool_notice"));
+      };
 
-        if (rpcError) {
-          console.error("[matchmaking] attempt_matchmaking", rpcError);
+      const runAttempt = async () => {
+        const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
+        setSecondsLeft(Math.max(0, INSTANT_MATCH_TIMEOUT_SECONDS - elapsedSeconds));
+        if (elapsedSeconds >= INSTANT_MATCH_TIMEOUT_SECONDS) {
+          if (intervalId) clearInterval(intervalId);
+          await moveToWaiting();
           return;
         }
 
-        const { data: row } = await supabase
+        const rpcArgs = {
+          p_queue_id: queueId,
+          p_target_queue_id:
+            challengeTargetQueueId && /^[0-9a-f-]{36}$/i.test(challengeTargetQueueId)
+              ? challengeTargetQueueId
+              : null,
+        };
+        let rpcError: { message?: string; details?: string | null; hint?: string | null } | null = null;
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData.session?.access_token;
+          if (!token) throw new Error("Missing session token");
+          await attemptMatchmakingWithoutApcGate({
+            queueId,
+            targetQueueId: rpcArgs.p_target_queue_id,
+            accessToken: token,
+          });
+        } catch (apiError) {
+          const message = apiError instanceof Error ? apiError.message : "matchmaking api failed";
+          if (challengeTargetQueueId) {
+            if (intervalId) clearInterval(intervalId);
+            setNotice(message);
+            setPhase("cancelled");
+            return;
+          }
+          rpcError = { message };
+          console.warn("[matchmaking] public beta matchmaking api unavailable; trying RPC fallback", apiError);
+        }
+        if (rpcError) {
+          let { error: rpcFallbackError } = await supabase.rpc("attempt_matchmaking", rpcArgs);
+          const msg = `${rpcFallbackError?.message ?? ""} ${rpcFallbackError?.details ?? ""} ${rpcFallbackError?.hint ?? ""}`;
+          if (/p_target_queue_id|function.*does not exist|schema cache/i.test(msg)) {
+            const retry = await supabase.rpc("attempt_matchmaking", { p_queue_id: queueId });
+            rpcFallbackError = retry.error;
+          }
+          rpcError = rpcFallbackError;
+        }
+
+        if (rpcError) {
+          console.warn("[matchmaking] attempt_matchmaking unavailable; keeping queue alive", rpcError);
+          setNotice(t("mq_matchmaking_degraded_notice"));
+        }
+
+        const { data: row, error: rowError } = await supabase
           .from("battle_queue")
           .select("id, status, match_group_id, opponent_user_id")
           .eq("id", queueId)
-          .single<QueueRow>();
+          .maybeSingle<QueueRow>();
+
+        if (rowError) {
+          console.error("[matchmaking] battle_queue status read", rowError);
+          setNotice(t("mq_matchmaking_degraded_notice"));
+          return;
+        }
 
         if (!mounted || !row) return;
 
         if (row.status === "matched" && row.match_group_id) {
           if (intervalId) clearInterval(intervalId);
+          goToArena(row.match_group_id);
+        } else if (row.status === "waiting_challenge") {
+          if (intervalId) clearInterval(intervalId);
+          setExpiresAt(row.expires_at ?? null);
+          setPhase("waiting");
+          setNotice(t("mq_hook_card_opened_notice"));
+        } else if (row.status === "ghost_battle" && row.match_group_id) {
+          if (intervalId) clearInterval(intervalId);
           setResolvedBattleId(row.match_group_id);
-          setPhase("found");
-          setCountdown(5);
+          setPhase("ghost_battle");
+        } else if (row.status === "public_voting") {
+          if (intervalId) clearInterval(intervalId);
+          setPhase("public_voting");
         }
       };
 
@@ -246,10 +473,24 @@ function MatchmakingContent(props: MatchmakingContentProps) {
               if (intervalId) clearInterval(intervalId);
               const battleId = (payload.new as QueueRow).match_group_id;
               if (battleId) {
-                setResolvedBattleId(battleId);
-                setPhase("found");
-                setCountdown(5);
+                setNotice(t("mq_match_notice"));
+                goToArena(battleId);
               }
+            } else if (nextStatus === "waiting_challenge") {
+              if (intervalId) clearInterval(intervalId);
+              setExpiresAt((payload.new as QueueRow).expires_at ?? null);
+              setPhase("waiting");
+              setNotice(t("mq_hook_card_opened_notice"));
+            } else if (nextStatus === "ghost_battle") {
+              if (intervalId) clearInterval(intervalId);
+              const battleId = (payload.new as QueueRow).match_group_id;
+              if (battleId) setResolvedBattleId(battleId);
+              setPhase("ghost_battle");
+              setNotice(t("mq_ghost_notice"));
+            } else if (nextStatus === "public_voting") {
+              if (intervalId) clearInterval(intervalId);
+              setPhase("public_voting");
+              setNotice(t("mq_public_notice"));
             }
           },
         )
@@ -260,7 +501,60 @@ function MatchmakingContent(props: MatchmakingContentProps) {
       if (intervalId) clearInterval(intervalId);
       if (channel) supabase.removeChannel(channel);
     };
-  }, [queueId, router]);
+  }, [queueId, router, challengeTargetQueueId, t, goToArena]);
+
+  useEffect(() => {
+    if (isAuthBypassEnabled) return;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let mounted = true;
+
+    void (async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const uid = session?.user?.id;
+      if (!mounted || !uid) return;
+
+      channel = supabase
+        .channel(`battle-notifications-${uid}`)
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "battle_notifications", filter: `user_id=eq.${uid}` },
+          (payload) => {
+            const next = payload.new as {
+              type?: string;
+              body?: string;
+              battle_id?: string | null;
+              queue_id?: string | null;
+            };
+            if (queueId && next.queue_id && next.queue_id !== queueId) return;
+            if (next.body) setNotice(next.body);
+            if (next.type === "battle_matched" && next.battle_id) {
+              goToArena(next.battle_id);
+            }
+          },
+        )
+        .subscribe();
+    })();
+
+    return () => {
+      mounted = false;
+      if (channel) void supabase.removeChannel(channel);
+    };
+  }, [goToArena, queueId]);
+
+  const cancelEntry = async () => {
+    if (!queueId || queueId.startsWith("mock-") || isAuthBypassEnabled) {
+      router.push("/");
+      return;
+    }
+    setDecisionBusy("cancel");
+    const ok = await closeCurrentQueue();
+    setDecisionBusy(null);
+    if (!ok) return;
+    setPhase("cancelled");
+    setNotice(t("mq_cancelled_notice"));
+  };
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#050505] text-zinc-100">
@@ -302,8 +596,12 @@ function MatchmakingContent(props: MatchmakingContentProps) {
             </div>
 
             <div className="text-center">
-              <p className="text-4xl font-black tracking-tight text-zinc-100">尋找對手</p>
-              <p className="mt-3 text-sm text-zinc-500">風格：{genre} · 搜尋中…</p>
+              <p className="text-4xl font-black tracking-tight text-zinc-100">{t("mq_searching")}</p>
+              <p className="mt-3 text-sm text-zinc-500">{t("mq_style_with_timer", { genre, seconds: secondsLeft })}</p>
+              <p className="mx-auto mt-3 max-w-lg text-sm leading-7 text-zinc-300">
+                {t("mq_searching_body")}
+              </p>
+              {notice && <p className="mx-auto mt-4 max-w-lg rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-3 text-sm text-cyan-100">{notice}</p>}
             </div>
 
             {/* 鬥士卡片：封面 + 左上角頭像 */}
@@ -334,36 +632,91 @@ function MatchmakingContent(props: MatchmakingContentProps) {
                 </div>
               )}
               <div className="min-w-0 flex-1 pt-1">
-                <p className="text-xs text-zinc-500">即將上場</p>
+                <p className="text-xs text-zinc-500">{t("mq_next_on_stage")}</p>
                 <p className="font-bold text-zinc-200">{fighterName}</p>
                 <p className="text-xs text-zinc-500">{songName}</p>
               </div>
             </div>
 
             <div className="flex w-full max-w-sm flex-col gap-3">
+              {debugMode && (
+                <>
+                  <button
+                    type="button"
+                    onClick={simulateMatch}
+                    className="w-full rounded-xl border border-green-500/60 bg-green-500/15 px-6 py-3 text-sm font-semibold text-green-300 transition hover:bg-green-500/25"
+                  >
+                    {t("mq_simulate_match")}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={creatingTestBattle}
+                    onClick={() => void enterTestArena()}
+                    className="w-full rounded-xl border border-orange-500 bg-orange-500/20 px-6 py-3 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {creatingTestBattle ? t("mq_creating") : t("mq_skip_arena")}
+                  </button>
+                </>
+              )}
               <button
                 type="button"
-                onClick={simulateMatch}
-                className="w-full rounded-xl border border-green-500/60 bg-green-500/15 px-6 py-3 text-sm font-semibold text-green-300 transition hover:bg-green-500/25"
-              >
-                {t("mq_simulate_match")}
-              </button>
-              <button
-                type="button"
-                disabled={creatingTestBattle}
-                onClick={() => void enterTestArena()}
-                className="w-full rounded-xl border border-orange-500 bg-orange-500/20 px-6 py-3 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/30 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {creatingTestBattle ? "建立中…" : t("mq_skip_arena")}
-              </button>
-              <Link
-                href="/"
-                className="block w-full rounded-xl border border-zinc-700 px-6 py-2.5 text-center text-sm text-zinc-500 transition hover:border-red-500 hover:text-red-400"
+                onClick={() => void cancelEntry()}
+                disabled={decisionBusy === "cancel"}
+                className="block w-full rounded-xl border border-zinc-700 px-6 py-2.5 text-center text-sm text-zinc-500 transition hover:border-red-500 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {t("mq_cancel")}
-              </Link>
+              </button>
             </div>
           </>
+        )}
+
+        {phase === "waiting" && (
+          <div className="w-full max-w-2xl rounded-[2rem] border border-orange-400/25 bg-black/70 p-7 text-center shadow-[0_0_60px_rgba(255,106,0,0.14)] backdrop-blur">
+            <p className="text-xs uppercase tracking-[0.45em] text-orange-300/80">Battle Pool</p>
+            <h1 className="mt-4 text-3xl font-black text-white md:text-5xl">{t("mq_waiting_title")}</h1>
+            <p className="mx-auto mt-5 max-w-xl text-base leading-8 text-zinc-300">
+              {t("mq_waiting_body")}
+            </p>
+            {notice && <p className="mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-3 text-sm text-cyan-100">{notice}</p>}
+            <div className="mt-6 grid gap-3 text-left text-sm text-zinc-400 sm:grid-cols-2">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                <p className="text-xs uppercase tracking-[0.24em] text-zinc-500">{t("mq_work")}</p>
+                <p className="mt-2 font-black text-white">{songName}</p>
+                <p className="mt-1 text-orange-200">{genre}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                <p className="text-xs uppercase tracking-[0.24em] text-zinc-500">{lang === "zh" ? "兩條路" : "Two Paths"}</p>
+                <p className="mt-2 font-black text-white">{lang === "zh" ? "90s Drop Battle 戰帖卡" : "90s Drop Battle Card"}</p>
+                <p className="mt-1 text-zinc-400">
+                  {expiresAt
+                    ? lang === "zh"
+                      ? "已公開，可分享邀人接戰"
+                      : "Published and ready to share"
+                    : lang === "zh"
+                      ? "開卡邀人接戰，或去傷心酒吧找對手"
+                      : "Publish a challenge card, or find an opponent at Bar Heartbreak"}
+                </p>
+              </div>
+            </div>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
+              <button
+                type="button"
+                onClick={() => void openHookBattleCard()}
+                disabled={Boolean(decisionBusy)}
+                className="rounded-full bg-orange-500 px-6 py-3 text-sm font-black text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {decisionBusy === "invite" ? t("mq_creating") : t("mq_open_hook_card")}
+              </button>
+              <button
+                type="button"
+                onClick={() => void closeAndFindAtBar()}
+                disabled={Boolean(decisionBusy)}
+                className="rounded-full border border-cyan-200/35 px-6 py-3 text-sm font-bold text-cyan-50 transition hover:bg-cyan-200/10 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {decisionBusy === "listen" ? t("mq_creating") : t("mq_go_bar")}
+              </button>
+            </div>
+          </div>
         )}
 
         {phase === "found" && (
@@ -403,14 +756,14 @@ function MatchmakingContent(props: MatchmakingContentProps) {
             </div>
 
             <div className="text-center">
-              <p className="text-4xl font-black text-green-400">🎉 配對成功！</p>
-              <p className="mt-2 text-sm text-zinc-500">風格對決即將開始</p>
+              <p className="text-4xl font-black text-green-400">{t("mq_found_title")}</p>
+              <p className="mt-2 text-sm text-zinc-500">{t("mq_match_notice")}</p>
             </div>
 
             <div className="flex items-center gap-4 rounded-2xl border border-green-500/30 bg-green-500/10 px-6 py-4">
               <div className="text-2xl">⏱</div>
               <div>
-                <p className="text-xs text-zinc-500">即將進入鬥歌場</p>
+                <p className="text-xs text-zinc-500">{lang === "zh" ? "進入鬥歌場倒數" : "Entering arena countdown"}</p>
                 <p className="text-2xl font-black text-green-400">{countdown}s</p>
               </div>
             </div>
@@ -419,9 +772,46 @@ function MatchmakingContent(props: MatchmakingContentProps) {
               onClick={enterArenaNow}
               className="rounded-xl border border-orange-500 bg-orange-500 px-8 py-3 text-sm font-bold text-black shadow-lg shadow-orange-500/30 transition hover:bg-orange-400"
             >
-              {t("mq_enter_now")}
+              {lang === "zh" ? "立即進入鬥歌場" : "Enter Arena"}
             </button>
           </>
+        )}
+
+        {(phase === "ghost_battle" || phase === "public_voting" || phase === "cancelled") && (
+          <div className="w-full max-w-2xl rounded-[2rem] border border-white/10 bg-black/70 p-7 text-center backdrop-blur">
+            <p className="text-xs uppercase tracking-[0.45em] text-orange-300/80">
+              {phase === "ghost_battle" ? "Ghost Battle" : phase === "public_voting" ? "Public Voting" : "Cancelled"}
+            </p>
+            <h1 className="mt-4 text-3xl font-black text-white md:text-5xl">
+              {phase === "ghost_battle"
+                ? t("mq_ghost_title")
+                : phase === "public_voting"
+                  ? t("mq_public_title")
+                  : t("mq_cancelled_title")}
+            </h1>
+            <p className="mx-auto mt-5 max-w-xl text-base leading-8 text-zinc-300">
+              {notice ??
+                (phase === "ghost_battle"
+                  ? t("mq_ghost_notice")
+                  : phase === "public_voting"
+                    ? t("mq_public_notice")
+                    : t("mq_cancelled_body"))}
+            </p>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
+              {phase === "ghost_battle" && resolvedBattleId && (
+                <button
+                  type="button"
+                  onClick={enterArenaNow}
+                  className="rounded-full bg-orange-500 px-6 py-3 text-sm font-black text-black transition hover:bg-orange-300"
+                >
+                  {t("pool_enter_ghost")}
+                </button>
+              )}
+              <Link href="/battle" className="rounded-full border border-white/15 px-6 py-3 text-sm font-bold text-zinc-200 transition hover:border-cyan-200/60 hover:text-white">
+                {t("mq_back_battle")}
+              </Link>
+            </div>
+          </div>
         )}
       </div>
 
@@ -445,12 +835,17 @@ function MatchmakingContent(props: MatchmakingContentProps) {
   );
 }
 
+function MatchmakingFallback() {
+  const { t } = useI18n();
+  return <>{t("common_loading")}</>;
+}
+
 export default function MatchmakingPage() {
   return (
     <Suspense
       fallback={
         <div className="flex min-h-screen items-center justify-center bg-[#050505] text-orange-400 text-sm tracking-widest">
-          載入中…
+          <MatchmakingFallback />
         </div>
       }
     >

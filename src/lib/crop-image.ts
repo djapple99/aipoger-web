@@ -1,4 +1,4 @@
-import type { Area } from "react-easy-crop/types";
+import type { Area } from "react-easy-crop";
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {

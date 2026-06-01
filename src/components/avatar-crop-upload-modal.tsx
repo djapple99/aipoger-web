@@ -6,6 +6,7 @@ import "react-easy-crop/react-easy-crop.css";
 import { supabase } from "@/lib/supabase";
 import { getCroppedPngBlob } from "@/lib/crop-image";
 import { useI18n } from "@/lib/i18n";
+import SafetyNotice from "@/components/safety-notice";
 
 type Props = {
   open: boolean;
@@ -100,6 +101,7 @@ export function AvatarCropUploadModal({ open, imageDataUrl, userId, onClose, onU
             className="flex-1 accent-orange-500"
           />
         </div>
+        <SafetyNotice kind="upload" compact />
         <div className="flex justify-end gap-2">
           <button
             type="button"

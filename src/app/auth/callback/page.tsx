@@ -1,62 +1,91 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { safeNextPath } from "@/lib/auth-urls";
 
 function AuthCallbackInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState("完成登入中…");
-  const [done, setDone] = useState(false);
+  const handledRef = useRef(false);
 
   useEffect(() => {
-    // 只執行一次，不要讓 React StrictMode 造成問題
-    if (done) return;
+    if (handledRef.current) return;
+    handledRef.current = true;
 
     const code = searchParams.get("code");
     const error = searchParams.get("error");
+    const errorDescription =
+      searchParams.get("error_description") ??
+      searchParams.get("error_code") ??
+      "";
+    const nextPath = safeNextPath(searchParams.get("next"));
 
     if (error) {
+      console.error("[auth callback]", error, errorDescription);
       setStatus("登入失敗，請重試");
-      setTimeout(() => router.replace("/auth"), 1500);
+      setTimeout(() => router.replace(`/auth?error=oauth&next=${encodeURIComponent(nextPath)}`), 1500);
       return;
     }
 
-    // 等待一下再跳轉，避免還沒處理完就離開
-    const timer = setTimeout(async () => {
-      // 嘗試拿 session（OAuth flow 會自動設定 cookie）
+    const finish = () => {
+      setStatus("登入成功！");
+      setTimeout(() => router.replace(nextPath), 500);
+    };
+
+    const fail = (message = "登入失敗，請重試") => {
+      setStatus(message);
+      setTimeout(() => router.replace(`/auth?error=oauth&next=${encodeURIComponent(nextPath)}`), 1500);
+    };
+
+    const handleCallback = async () => {
       const { data } = await supabase.auth.getSession();
       if (data.session) {
-        // 登入成功，直接跳首頁
-        setStatus("登入成功！");
-        setDone(true);
-        setTimeout(() => router.replace("/"), 800);
-      } else if (code) {
-        // 沒有 session 但有 code，嘗試 exchange
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-        if (!exchangeError) {
-          setStatus("登入成功！");
-          setDone(true);
-          setTimeout(() => router.replace("/"), 800);
-        } else {
-          setStatus("登入失敗，請重試");
-          setTimeout(() => router.replace("/auth"), 1500);
-        }
-      } else {
-        // 既沒有 code 也沒有 session
-        setStatus("登入資訊不完整，請重試");
-        setTimeout(() => router.replace("/auth"), 1500);
+        finish();
+        return;
       }
-    }, 600);
 
-    return () => clearTimeout(timer);
-  }, []); // 空的 dependency，只跑一次
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (exchangeError) {
+          console.error("[auth callback] code exchange failed", exchangeError);
+          fail();
+          return;
+        }
+        finish();
+        return;
+      }
+
+      // 舊的 implicit OAuth redirect 會把 token 放在 hash；保留這段避免舊連結失效。
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
+      if (accessToken && refreshToken) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (sessionError) {
+          console.error("[auth callback] hash session failed", sessionError);
+          fail();
+          return;
+        }
+        finish();
+        return;
+      }
+
+      fail("登入資訊不完整，請重試");
+    };
+
+    void handleCallback();
+  }, [router, searchParams]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-black text-white">
       <div className="text-center">
-        <div className="mb-4 text-4xl">🎵</div>
+        <div className="mb-4 text-4xl">AIPOGER</div>
         <p className="text-zinc-400">{status}</p>
       </div>
     </div>

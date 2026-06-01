@@ -24,6 +24,18 @@ body {
   font-family: "Inter", "Noto Sans TC", "PingFang TC", "Segoe UI", sans-serif;
 }
 
+.aipoger-brand-wordmark {
+  font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "Noto Sans CJK TC", "Noto Sans TC", "PingFang TC", sans-serif;
+  font-weight: 900;
+  letter-spacing: 0;
+  -webkit-text-stroke: 0.018em rgba(255, 250, 241, 0.24);
+  text-shadow:
+    0 0.055em 0 rgba(255, 255, 255, 0.08),
+    0.075em 0.075em 0 rgba(46, 18, 4, 0.58),
+    0 0.17em 0.28em rgba(0, 0, 0, 0.72),
+    0 0 0.22em rgba(255, 106, 0, 0.08);
+}
+
 a {
   color: inherit;
   text-decoration: none;

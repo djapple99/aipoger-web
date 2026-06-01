@@ -1,5 +1,7 @@
-/** 內建管理員信箱（免 APC 挑戰費）；可再加 NEXT_PUBLIC_ADMIN_EMAILS= a@x.com,b@y.com */
-const BUILTIN_ADMIN_EMAILS = ["djapple99@gmail.com"];
+/** 內建管理員信箱；可再加 NEXT_PUBLIC_ADMIN_EMAILS= a@x.com,b@y.com */
+import { AIPOGER_CONTACT_EMAIL } from "@/lib/brand";
+
+const BUILTIN_ADMIN_EMAILS = [AIPOGER_CONTACT_EMAIL, "djapple99@gmail.com"];
 
 export function getAdminEmails(): string[] {
   const fromEnv =

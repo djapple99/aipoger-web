@@ -11,6 +11,6 @@ export default function GlobalLangToggle() {
   const battlePanelIds = ['setup', 'hook-cut', 'matchmaking'];
   const hideFixedLangOnArena =
     Boolean(battleArenaMatch && !battlePanelIds.includes(battleArenaMatch[1]));
-  if (hideFixedLangOnArena) return null;
+  if (hideFixedLangOnArena || pathname === '/listen-bar') return null;
   return <LangToggle variant="fixed" />;
 }
