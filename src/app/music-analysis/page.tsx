@@ -13,7 +13,7 @@ function appendLang(url: string, lang: string) {
 }
 
 export default function MusicAnalysisPage() {
-  const { lang, t } = useI18n();
+  const { lang } = useI18n();
   const isZh = lang === "zh";
   const [session, setSession] = useState<Session | null>(null);
   const [checking, setChecking] = useState(true);
@@ -87,7 +87,7 @@ export default function MusicAnalysisPage() {
             AIPOGER A&R GATE
           </p>
           <h1 className="mt-5 text-[clamp(2.7rem,8vw,5.5rem)] font-black leading-none text-[#fffaf1] [text-shadow:0_18px_38px_rgba(0,0,0,0.78)]">
-            {t("btn_analyze_music")}
+            {isZh ? "分析你的音樂" : "Analyze Your Music"}
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-base font-bold leading-7 text-zinc-300 md:text-lg">
             {isZh
