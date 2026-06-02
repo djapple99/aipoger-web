@@ -108,7 +108,7 @@ function AuthPageInner() {
 
   const handleOAuthLogin = async (provider: "google" | "facebook") => {
     if (isEmbeddedBrowser) {
-      setNotice("你目前在 App 內建瀏覽器中，Google / Facebook 登入已暫停。請用 Email 收登入連結，或複製網址到 Safari / Chrome 開啟。");
+      setNotice("你目前在 App 內建瀏覽器中。Google / Facebook 登入容易被這類瀏覽器擋掉，請用 Email 登入連結，或改用 Safari / Chrome 開啟。");
       return;
     }
     setLoading(true);
@@ -213,12 +213,12 @@ function AuthPageInner() {
           <p className="text-center text-xs text-zinc-500">{t("login_methods")}</p>
           {isEmbeddedBrowser ? (
             <div className="rounded-3xl border border-orange-300/40 bg-orange-500/10 p-5 text-sm leading-7 text-orange-50">
-              <p className="text-base font-black text-orange-200">請改用 Safari / Chrome 登入</p>
+              <p className="text-base font-black text-orange-200">App 內建瀏覽器會限制社群登入</p>
               <p className="mt-2 text-zinc-200">
-                你目前可能在 IG、LINE、Facebook、TikTok 或 Google App 的內建瀏覽器中。這類環境常會封鎖 Google / Facebook 登入。
+                你目前可能在 Gmail、IG、LINE、Facebook、TikTok 或 Google App 的內建瀏覽器中。這類環境常會封鎖 Google / Facebook 登入，不是 AIPOGER 帳號壞掉。
               </p>
               <p className="mt-2 text-zinc-100">
-                最穩方式：直接輸入 Email 收登入連結；或點右上角分享 / 選單，改用 Safari 或 Chrome 開啟後再登入。
+                最穩方式：直接輸入 Email 收登入連結；如果要用 Google / Facebook，請點右上角分享 / 選單，改用 Safari 或 Chrome 開啟後再登入。
               </p>
               <div className="mt-4 grid gap-2 sm:grid-cols-2">
                 <button
@@ -278,7 +278,7 @@ function AuthPageInner() {
           </form>
           {isEmbeddedBrowser ? (
             <p className="rounded-2xl border border-zinc-700 bg-zinc-900/80 p-4 text-center text-sm leading-relaxed text-zinc-300">
-              Google / Facebook 登入在 App 內建瀏覽器中已暫停。請使用 Email 登入連結，或改用 Safari / Chrome 開啟本頁。
+              目前在 App 內建瀏覽器中，Google / Facebook 按鈕會先暫停，避免跳轉失敗。Email 登入可直接使用。
             </p>
           ) : null}
           <button
