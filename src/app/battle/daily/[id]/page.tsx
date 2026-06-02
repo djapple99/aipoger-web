@@ -25,6 +25,7 @@ type DailyBattleRow = {
   id: string;
   status?: string | null;
   ends_at?: string | null;
+  winner_entry_id?: string | null;
   entry_a?: DailyEntry | DailyEntry[] | null;
   entry_b?: DailyEntry | DailyEntry[] | null;
 };
@@ -33,6 +34,7 @@ type LoadedBattle = {
   id: string;
   status: string;
   endsAt: string | null;
+  winnerEntryId: string | null;
   A: DailyEntry;
   B: DailyEntry;
 };
@@ -134,10 +136,12 @@ export default function DailyBattleRoomPage() {
     id: "demo-daily",
     status: "live",
     endsAt: null,
+    winnerEntryId: null,
     A: demoEntryA,
     B: demoEntryB,
   });
   const [audioUrls, setAudioUrls] = useState<Record<DailySide, string | null>>({ A: demoEntryA.audio_path ?? null, B: demoEntryB.audio_path ?? null });
+  const [voteCounts, setVoteCounts] = useState<Record<DailySide, number>>({ A: 0, B: 0 });
   const [activeSide, setActiveSide] = useState<DailySide | null>(null);
   const [pickedSide, setPickedSide] = useState<DailySide | null>(null);
   const [comment, setComment] = useState("");
@@ -161,6 +165,7 @@ export default function DailyBattleRoomPage() {
           id,
           status,
           ends_at,
+          winner_entry_id,
           entry_a:daily_battle_entries!daily_battles_entry_a_id_fkey(id,user_id,title,genre,ai_tool,audio_path,cover_url,avatar_url),
           entry_b:daily_battle_entries!daily_battles_entry_b_id_fkey(id,user_id,title,genre,ai_tool,audio_path,cover_url,avatar_url)
         `)
@@ -176,6 +181,7 @@ export default function DailyBattleRoomPage() {
             id: data.id,
             status: data.status || "live",
             endsAt: data.ends_at ?? null,
+            winnerEntryId: data.winner_entry_id ?? null,
             A: entryA,
             B: entryB,
           });
@@ -189,6 +195,27 @@ export default function DailyBattleRoomPage() {
       mounted = false;
     };
   }, [battleId]);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadVotes = async () => {
+      if (!battle.id || battle.id.startsWith("demo")) return;
+      const { data, error } = await supabase
+        .from("daily_battle_votes")
+        .select("picked_entry_id")
+        .eq("battle_id", battle.id);
+      if (!mounted || error) return;
+      const votes = (data ?? []) as Array<{ picked_entry_id?: string | null }>;
+      setVoteCounts({
+        A: votes.filter((vote) => vote.picked_entry_id === battle.A.id).length,
+        B: votes.filter((vote) => vote.picked_entry_id === battle.B.id).length,
+      });
+    };
+    void loadVotes();
+    return () => {
+      mounted = false;
+    };
+  }, [battle.A.id, battle.B.id, battle.id]);
 
   useEffect(() => {
     let mounted = true;
@@ -213,13 +240,20 @@ export default function DailyBattleRoomPage() {
   }, [battle]);
 
   const timeLeftLabel = useMemo(() => {
+    if (battle.status === "finished") return isZh ? "已結束" : "Finished";
+    if (battle.status === "cancelled") return isZh ? "已取消" : "Cancelled";
     if (!battle.endsAt) return isZh ? "24H 開放中" : "24H open";
     const ms = new Date(battle.endsAt).getTime() - Date.now();
     if (!Number.isFinite(ms) || ms <= 0) return isZh ? "結算中" : "Settling";
     const hours = Math.floor(ms / 3_600_000);
     const minutes = Math.floor((ms % 3_600_000) / 60_000);
     return `${hours}h ${minutes}m`;
-  }, [battle.endsAt, isZh]);
+  }, [battle.endsAt, battle.status, isZh]);
+
+  const isFinished = battle.status === "finished";
+  const isClosed = isFinished || battle.status === "cancelled" || timeLeftLabel === (isZh ? "結算中" : "Settling");
+  const winnerSide: DailySide | null =
+    battle.winnerEntryId === battle.A.id ? "A" : battle.winnerEntryId === battle.B.id ? "B" : null;
 
   const handlePlay = (side: DailySide) => {
     setActiveSide(side);
@@ -331,39 +365,68 @@ export default function DailyBattleRoomPage() {
             </section>
 
             <section className="mt-5 rounded-[1.7rem] border border-white/10 bg-black/66 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.38)] backdrop-blur">
-              <SafetyNotice kind="chat" compact className="mb-4" />
-              <form onSubmit={handleVote} className="grid gap-4 lg:grid-cols-[auto_1fr_auto] lg:items-center">
-                <div className="grid grid-cols-2 gap-2">
-                  {(["A", "B"] as const).map((side) => (
-                    <button
-                      key={side}
-                      type="button"
-                      onClick={() => setPickedSide(side)}
-                      className={`rounded-2xl border px-5 py-4 text-sm font-black transition ${
-                        pickedSide === side
-                          ? "border-orange-200 bg-orange-500 text-black shadow-[0_0_26px_rgba(255,106,0,0.24)]"
-                          : "border-white/10 bg-white/[0.045] text-zinc-200 hover:border-orange-300/45"
-                      }`}
-                    >
-                      {side === "A" ? "A SIDE" : "B SIDE"}
-                    </button>
-                  ))}
+              {isClosed ? (
+                <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.32em] text-yellow-100/80">24H RESULT</p>
+                    <h2 className="mt-2 text-3xl font-black text-white">
+                      {battle.status === "cancelled"
+                        ? isZh
+                          ? "這場已取消"
+                          : "Battle cancelled"
+                        : winnerSide
+                          ? isZh
+                            ? `${winnerSide} Side 勝出`
+                            : `${winnerSide} Side wins`
+                          : isZh
+                            ? "平手收場"
+                            : "Tie"}
+                    </h2>
+                    <p className="mt-2 text-sm font-bold text-zinc-400">
+                      A Side {voteCounts.A} · B Side {voteCounts.B}
+                    </p>
+                  </div>
+                  <Link href={`/battle?lang=${lang}`} className="rounded-full bg-yellow-300 px-5 py-3 text-center text-sm font-black text-black transition hover:bg-yellow-100">
+                    {isZh ? "回鬥歌場" : "Back to Battle"}
+                  </Link>
                 </div>
-                <input
-                  value={comment}
-                  onChange={(event) => setComment(event.target.value)}
-                  placeholder={isZh ? "留下觀眾評價後投票，例如：副歌記憶點更強" : "Leave a listener comment before voting"}
-                  maxLength={240}
-                  className="h-14 rounded-2xl border border-white/10 bg-black/58 px-5 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
-                />
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="h-14 rounded-2xl bg-orange-500 px-8 text-sm font-black tracking-[0.12em] text-black transition hover:bg-orange-300 disabled:opacity-55"
-                >
-                  {submitting ? (isZh ? "送出中" : "Sending") : (isZh ? "投票" : "Vote")}
-                </button>
-              </form>
+              ) : (
+                <>
+                  <SafetyNotice kind="chat" compact className="mb-4" />
+                  <form onSubmit={handleVote} className="grid gap-4 lg:grid-cols-[auto_1fr_auto] lg:items-center">
+                    <div className="grid grid-cols-2 gap-2">
+                      {(["A", "B"] as const).map((side) => (
+                        <button
+                          key={side}
+                          type="button"
+                          onClick={() => setPickedSide(side)}
+                          className={`rounded-2xl border px-5 py-4 text-sm font-black transition ${
+                            pickedSide === side
+                              ? "border-orange-200 bg-orange-500 text-black shadow-[0_0_26px_rgba(255,106,0,0.24)]"
+                              : "border-white/10 bg-white/[0.045] text-zinc-200 hover:border-orange-300/45"
+                          }`}
+                        >
+                          {side === "A" ? "A SIDE" : "B SIDE"}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      value={comment}
+                      onChange={(event) => setComment(event.target.value)}
+                      placeholder={isZh ? "留下觀眾評價後投票，例如：副歌記憶點更強" : "Leave a listener comment before voting"}
+                      maxLength={240}
+                      className="h-14 rounded-2xl border border-white/10 bg-black/58 px-5 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
+                    />
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="h-14 rounded-2xl bg-orange-500 px-8 text-sm font-black tracking-[0.12em] text-black transition hover:bg-orange-300 disabled:opacity-55"
+                    >
+                      {submitting ? (isZh ? "送出中" : "Sending") : (isZh ? "投票" : "Vote")}
+                    </button>
+                  </form>
+                </>
+              )}
               {voteMessage ? <p className="mt-3 text-sm font-black text-orange-200">{voteMessage}</p> : null}
             </section>
           </>

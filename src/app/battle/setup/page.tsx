@@ -868,6 +868,7 @@ export default function BattleSetupPage() {
 
         setUploadProgress(lang === 'zh' ? '建立 24H Daily Battle…' : 'Creating 24H Daily Battle…');
 
+        let dailyPayload: { error?: string; entryId?: string; battleId?: string | null } | null = null;
         if (!isAuthBypassEnabled) {
           const response = await fetch('/api/daily-battle/create-entry', {
             method: 'POST',
@@ -889,22 +890,26 @@ export default function BattleSetupPage() {
               challengeDailyEntryId,
             }),
           });
-          const payload = (await response.json().catch(() => null)) as { error?: string; entryId?: string; battleId?: string | null } | null;
+          dailyPayload = (await response.json().catch(() => null)) as { error?: string; entryId?: string; battleId?: string | null } | null;
           if (!response.ok) {
-            throw new Error(payload?.error || (lang === 'zh' ? '建立 24H Daily Battle 失敗。' : 'Failed to create 24H Daily Battle.'));
+            throw new Error(dailyPayload?.error || (lang === 'zh' ? '建立 24H Daily Battle 失敗。' : 'Failed to create 24H Daily Battle.'));
           }
 
-          if (payload?.battleId) {
+          if (dailyPayload?.battleId) {
             setUploadProgress(lang === 'zh' ? '挑戰成立，進入 24H 戰場…' : 'Challenge created. Entering 24H room...');
-            router.push(`/battle/daily/${payload.battleId}?lang=${lang}`);
+            router.push(`/battle/daily/${dailyPayload.battleId}?lang=${lang}`);
             return;
           }
         }
 
         setDailyBattleCount((count) => count + 1);
-        setUploadProgress(lang === 'zh' ? '完成！已放入 24H 配對池。' : 'Done. Added to the 24H pool.');
-        const params = new URLSearchParams({ lang, dailyBattle: 'queued', mode: dailyPairingMode });
-        router.push(`/battle?${params.toString()}`);
+        setUploadProgress(lang === 'zh' ? '完成！進入 24H 等待房…' : 'Done. Entering 24H waiting room...');
+        if (dailyPayload?.entryId) {
+          router.push(`/battle/daily/waiting-room/${dailyPayload.entryId}?lang=${lang}`);
+        } else {
+          const params = new URLSearchParams({ lang, dailyBattle: 'queued', mode: dailyPairingMode });
+          router.push(`/battle?${params.toString()}`);
+        }
         return;
       }
 

@@ -436,6 +436,7 @@ function DailyBattleList() {
       }
       const nowIso = new Date().toISOString();
       const dailyQueueCutoffIso = new Date(Date.now() - DAILY_BATTLE_QUEUE_MS).toISOString();
+      await fetch("/api/daily-battle/expire-open-entries", { method: "POST" }).catch(() => null);
 
       const [{ data, error }, { data: queueData, error: queueError }] = await Promise.all([
         supabase
@@ -596,6 +597,7 @@ function DailyBattleList() {
               <ul className="grid gap-3 md:grid-cols-2">
                 {queueRows.map((row) => {
                   const isMine = Boolean(currentUserId && row.user_id === currentUserId);
+                  const dailyWaitingRoomPath = `/battle/daily/waiting-room/${row.id}?lang=${lang}`;
                   return (
                     <li key={row.id}>
                       <div
@@ -645,16 +647,24 @@ function DailyBattleList() {
                         </Link>
                       ) : null}
                       {row.status === "queued" && row.user_id === currentUserId ? (
-                        <button
-                          type="button"
-                          disabled={dailyCancelId === row.id}
-                          onClick={() => void cancelDailyEntry(row.id)}
-                          className="mt-3 inline-flex rounded-full border border-red-200/35 bg-red-500/10 px-4 py-1.5 text-xs font-black text-red-100 transition hover:border-red-100 hover:bg-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {dailyCancelId === row.id
-                            ? (isZh ? "取消中…" : "Cancelling...")
-                            : (isZh ? "取消我的 Daily Battle" : "Cancel My Daily Battle")}
-                        </button>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Link
+                            href={dailyWaitingRoomPath}
+                            className="inline-flex rounded-full bg-cyan-300 px-4 py-1.5 text-xs font-black text-black transition hover:bg-cyan-100"
+                          >
+                            {isZh ? "進入等待房" : "Enter Waiting Room"}
+                          </Link>
+                          <button
+                            type="button"
+                            disabled={dailyCancelId === row.id}
+                            onClick={() => void cancelDailyEntry(row.id)}
+                            className="inline-flex rounded-full border border-red-200/35 bg-red-500/10 px-4 py-1.5 text-xs font-black text-red-100 transition hover:border-red-100 hover:bg-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {dailyCancelId === row.id
+                              ? (isZh ? "取消中…" : "Cancelling...")
+                              : (isZh ? "取消我的 Daily Battle" : "Cancel My Daily Battle")}
+                          </button>
+                        </div>
                       ) : null}
                       <div className="mt-3">
                         <ShareButton
@@ -799,6 +809,8 @@ function BattlePoolList() {
         return;
       }
 
+      await fetch("/api/battle-pool/expire-open-cards", { method: "POST" }).catch(() => null);
+
       const { data, error } = await supabase
         .from("battle_queue")
         .select("id, user_id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, public_vote_score, created_at")
@@ -815,14 +827,6 @@ function BattlePoolList() {
         setRows([]);
       } else {
         const baseRows = ((data as PoolEntryRow[]) ?? []);
-        const expiredIds = baseRows.filter(isExpiredOpenPoolEntry).map((row) => row.id);
-        if (expiredIds.length > 0) {
-          void supabase
-            .from("battle_queue")
-            .update({ status: "expired", updated_at: new Date().toISOString() })
-            .in("id", expiredIds);
-        }
-
         const visibleRows = baseRows.filter((row) => !isExpiredOpenPoolEntry(row));
         setHookSongStats(await fetchHookSongBattleStats(visibleRows.map((row) => row.original_file_name)));
         const userIds = Array.from(new Set(visibleRows.map((row) => row.user_id).filter(Boolean)));
@@ -942,6 +946,7 @@ function BattlePoolList() {
             const href = isGhost
               ? `/battle/${entry.match_group_id}`
               : invitePath;
+            const waitingRoomPath = `/battle/waiting-room/${entry.id}?lang=${lang}`;
             const shareUrl = isGhost
               ? `/battle/${entry.match_group_id}?lang=${lang}`
               : invitePath;
@@ -1013,8 +1018,8 @@ function BattlePoolList() {
                   <p className="mt-1 text-xs text-zinc-500">
                     {isMine
                       ? isZh
-                        ? "你的 90s 最強抓波Drop Battle 正在等待挑戰。對手加入後會直接進鬥場倒數，開打前可分享並聽雙方 5 秒 teaser。"
-                        : "Your 90s Drop Battle is open in the Battle Pool. You will be notified when someone accepts."
+                        ? "你的 90s 最強抓波Drop Battle 正在等待挑戰。可先進等待場看倒數、聽 5 秒 teaser；對手加入後會直接進鬥場。"
+                        : "Your 90s Drop Battle is open. Enter the waiting room for countdown and a 5-second teaser."
                       : entry.status === "waiting_challenge"
                         ? isZh
                           ? `${entry.ai_tool || "AI Tool"} · 點卡片可選擇挑戰或觀戰`
@@ -1022,14 +1027,22 @@ function BattlePoolList() {
                         : `${entry.ai_tool || "AI Tool"} ${isPublicVoting && entry.public_vote_score ? `· +${entry.public_vote_score} APC` : ""}`}
                   </p>
                   {isMine ? (
-                    <button
-                      type="button"
-                      onClick={() => void cancelOwnHook(entry.id)}
-                      disabled={cancelQueueId === entry.id}
-                      className="mt-4 rounded-full border border-red-300/30 bg-red-500/10 px-4 py-2 text-sm font-black text-red-100 transition hover:border-red-200/70 hover:bg-red-400/20 disabled:cursor-wait disabled:opacity-60"
-                    >
-                      {cancelQueueId === entry.id ? (isZh ? "取消中..." : "Cancelling...") : isZh ? "取消 / 離開" : "Cancel / Leave"}
-                    </button>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Link
+                        href={waitingRoomPath}
+                        className="rounded-full bg-cyan-300 px-4 py-2 text-sm font-black text-black transition hover:bg-cyan-100"
+                      >
+                        {isZh ? "進入等待場" : "Enter Waiting Room"}
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => void cancelOwnHook(entry.id)}
+                        disabled={cancelQueueId === entry.id}
+                        className="rounded-full border border-red-300/30 bg-red-500/10 px-4 py-2 text-sm font-black text-red-100 transition hover:border-red-200/70 hover:bg-red-400/20 disabled:cursor-wait disabled:opacity-60"
+                      >
+                        {cancelQueueId === entry.id ? (isZh ? "取消中..." : "Cancelling...") : isZh ? "取消 / 離開" : "Cancel / Leave"}
+                      </button>
+                    </div>
                   ) : null}
                 </div>
                 <span

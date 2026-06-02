@@ -1,4 +1,4 @@
-export const WAITING_ROOM_SECONDS = 0;
+export const WAITING_ROOM_SECONDS = 90;
 export const TEASER_SECONDS = 5;
 export const HUMAN_MATCH_TIMEOUT_SECONDS = 30;
 export const APC_SUPPORT_MAX = 88;

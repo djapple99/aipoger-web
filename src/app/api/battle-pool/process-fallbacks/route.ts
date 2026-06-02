@@ -34,6 +34,21 @@ type DailyEntryRow = {
   title: string;
 };
 
+type ExpiredDailyQueueRow = {
+  id: string;
+  user_id: string | null;
+  title?: string | null;
+  created_at?: string | null;
+};
+
+type ExpiredHookQueueRow = {
+  id: string;
+  user_id: string | null;
+  original_file_name?: string | null;
+  status?: string | null;
+  expires_at?: string | null;
+};
+
 export async function GET(request: NextRequest) {
   return processFallbacks(request);
 }
@@ -96,15 +111,37 @@ async function expireStaleHookQueue(admin: SupabaseAdmin, warnings: string[]) {
   const now = new Date().toISOString();
   const { data, error } = await admin
     .from("battle_queue")
-    .update({ status: "cancelled", updated_at: now })
+    .update({ status: "expired", updated_at: now })
     .in("status", ["searching", "waiting", "waiting_challenge", "public_voting", "ghost_battle"])
     .lte("expires_at", now)
-    .select("id");
+    .select("id,user_id,original_file_name,status,expires_at");
 
   if (error) {
     warnings.push(`expire stale 90s queue: ${error.message}`);
     return 0;
   }
+
+  const rows = ((data ?? []) as ExpiredHookQueueRow[]).filter((row) => row.user_id);
+  if (rows.length > 0) {
+    const noticeResult = await admin.from("battle_notifications").insert(
+      rows.map((row) => ({
+        user_id: row.user_id,
+        queue_id: row.id,
+        battle_id: null,
+        type: "battle_queue_expired",
+        title: "Drop Battle 已取消",
+        body: `你剛有一場 Drop Battle 因等待時間結束，已從公開挑戰池移除。${row.original_file_name ? `作品：${row.original_file_name}` : "可以重新上傳或開新戰帖。"}`,
+        metadata: {
+          originalFileName: row.original_file_name ?? null,
+          expiredAt: now,
+          sourceStatus: row.status ?? null,
+          expiresAt: row.expires_at ?? null,
+        },
+      })),
+    );
+    if (noticeResult.error) warnings.push(`notify expired 90s queue: ${noticeResult.error.message}`);
+  }
+
   return (data ?? []).length;
 }
 
@@ -116,7 +153,7 @@ async function expireStaleDailyQueue(admin: SupabaseAdmin, warnings: string[]) {
     .update({ status: "expired", updated_at: now })
     .eq("status", "queued")
     .lt("created_at", staleBefore)
-    .select("id");
+    .select("id,user_id,title,created_at");
 
   if (error) {
     if (!/schema cache|does not exist|Could not find/i.test(error.message)) {
@@ -124,6 +161,28 @@ async function expireStaleDailyQueue(admin: SupabaseAdmin, warnings: string[]) {
     }
     return 0;
   }
+
+  const rows = ((data ?? []) as ExpiredDailyQueueRow[]).filter((row) => row.user_id);
+  if (rows.length > 0) {
+    const noticeResult = await admin.from("battle_notifications").insert(
+      rows.map((row) => ({
+        user_id: row.user_id,
+        queue_id: null,
+        battle_id: null,
+        type: "daily_battle_expired",
+        title: "24H Full Song 已過期",
+        body: `你剛有一場 24H Full Song 因 24 小時內沒有對手接受，已從公開挑戰池移除。${row.title ? `作品：${row.title}` : "可以重新上傳或開新戰帖。"}`,
+        metadata: {
+          dailyEntryId: row.id,
+          title: row.title ?? null,
+          expiredAt: now,
+          createdAt: row.created_at ?? null,
+        },
+      })),
+    );
+    if (noticeResult.error) warnings.push(`notify expired daily queue: ${noticeResult.error.message}`);
+  }
+
   return (data ?? []).length;
 }
 

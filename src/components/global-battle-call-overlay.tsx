@@ -31,6 +31,11 @@ type BattleNotificationRow = {
     opponentName?: string;
     stakeApc?: number;
     potApc?: number;
+    originalFileName?: string | null;
+    expiredAt?: string | null;
+    dailyBattleId?: string | null;
+    dailyEntryId?: string | null;
+    winnerEntryId?: string | null;
   } | null;
   read_at?: string | null;
   created_at?: string | null;
@@ -120,6 +125,8 @@ export default function GlobalBattleCallOverlay() {
   const [activeNoticeOpen, setActiveNoticeOpen] = useState(false);
   const [activeNoticeBusy, setActiveNoticeBusy] = useState(false);
   const [activeNoticeError, setActiveNoticeError] = useState("");
+  const [expiredNotice, setExpiredNotice] = useState<BattleNotificationRow | null>(null);
+  const [expiredNoticeOpen, setExpiredNoticeOpen] = useState(true);
 
   const routeTone = useMemo(() => {
     const seg = pathname?.match(/^\/battle\/([^/]+)$/)?.[1];
@@ -140,6 +147,7 @@ export default function GlobalBattleCallOverlay() {
   const showCall = useCallback(
     (next: BattleCall) => {
       if (pathname?.startsWith(`/battle/${next.battleId}`)) return;
+      setExpiredNotice(null);
       setCall(next);
       setAccepted(false);
       setCollapsed(false);
@@ -190,13 +198,17 @@ export default function GlobalBattleCallOverlay() {
 
       const { data: activeQueueRows } = await supabase
         .from("battle_queue")
-        .select("id, status, match_group_id, created_at")
+        .select("id, status, match_group_id, expires_at, created_at")
         .eq("user_id", uid)
         .in("status", ACTIVE_NOTICE_QUEUE_STATUSES)
         .order("created_at", { ascending: false })
         .limit(1);
-      const activeQueue = activeQueueRows?.[0] as { id: string; status: string; match_group_id?: string | null; created_at?: string | null } | undefined;
-      if (mounted && activeQueue?.id) {
+      const activeQueue = activeQueueRows?.[0] as { id: string; status: string; match_group_id?: string | null; expires_at?: string | null; created_at?: string | null } | undefined;
+      const activeQueueExpired =
+        Boolean(activeQueue?.expires_at) &&
+        Number.isFinite(new Date(activeQueue?.expires_at ?? "").getTime()) &&
+        new Date(activeQueue?.expires_at ?? "").getTime() <= Date.now();
+      if (mounted && activeQueue?.id && !activeQueueExpired) {
         setActiveNotice({
           kind: "queue",
           id: activeQueue.id,
@@ -222,13 +234,14 @@ export default function GlobalBattleCallOverlay() {
             createdAt: activeBattle.created_at ?? null,
           });
         }
+        if (mounted && !activeBattle?.id) setActiveNotice(null);
       }
 
       const { data: latest } = await supabase
         .from("battle_notifications")
         .select("id, queue_id, battle_id, type, title, body, metadata, read_at, created_at")
         .eq("user_id", uid)
-        .eq("type", "battle_matched")
+        .in("type", ["battle_matched", "battle_queue_expired", "daily_battle_expired", "daily_battle_finished"])
         .is("read_at", null)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -236,6 +249,12 @@ export default function GlobalBattleCallOverlay() {
 
       const latestCall = latest ? toBattleCall(latest, isZh ? "對手" : "Opponent") : null;
       if (mounted && latestCall) showCall(latestCall);
+      if (mounted && (latest?.type === "battle_queue_expired" || latest?.type === "daily_battle_expired" || latest?.type === "daily_battle_finished")) {
+        setCall(null);
+        setActiveNotice(null);
+        setExpiredNotice(latest);
+        setExpiredNoticeOpen(true);
+      }
 
       channel = supabase
         .channel(`global-battle-call-${uid}`)
@@ -243,8 +262,15 @@ export default function GlobalBattleCallOverlay() {
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "battle_notifications", filter: `user_id=eq.${uid}` },
           (payload) => {
-            const next = toBattleCall(payload.new as BattleNotificationRow, isZh ? "對手" : "Opponent");
+            const row = payload.new as BattleNotificationRow;
+            const next = toBattleCall(row, isZh ? "對手" : "Opponent");
             if (next) showCall(next);
+            if (row.type === "battle_queue_expired" || row.type === "daily_battle_expired" || row.type === "daily_battle_finished") {
+              setCall(null);
+              setActiveNotice(null);
+              setExpiredNotice(row);
+              setExpiredNoticeOpen(true);
+            }
           },
         )
         .subscribe();
@@ -283,6 +309,12 @@ export default function GlobalBattleCallOverlay() {
     setCollapsed(false);
   };
 
+  const dismissExpiredNotice = () => {
+    if (expiredNotice) void markRead(expiredNotice.id);
+    setExpiredNotice(null);
+    setExpiredNoticeOpen(false);
+  };
+
   const cancelActiveNotice = async () => {
     if (!activeNotice || !accessToken) return;
     const ok = window.confirm(isZh ? "要取消目前未完成的 Battle 嗎？取消後才可以重新上傳下一首最強抓波Drop Battle。" : "Cancel your unfinished Battle so you can upload another Drop Battle clip?");
@@ -302,6 +334,96 @@ export default function GlobalBattleCallOverlay() {
 
   if (!ready) return null;
 
+  if (!call && expiredNotice) {
+    const isDailyFinishedNotice = expiredNotice.type === "daily_battle_finished";
+    const isDailyExpiredNotice = expiredNotice.type === "daily_battle_expired";
+    const title =
+      expiredNotice.title ||
+      (isDailyFinishedNotice
+        ? isZh
+          ? "24H Battle 已結束"
+          : "24H Battle finished"
+        : isDailyExpiredNotice
+          ? isZh
+            ? "24H Full Song 已過期"
+            : "24H Full Song expired"
+          : isZh
+            ? "Drop Battle 已取消"
+            : "Drop Battle cancelled");
+    const body =
+      expiredNotice.body ||
+      (isDailyFinishedNotice
+        ? isZh
+          ? "你的 24H Full Song 對決已結束，結果已可查看。"
+          : "Your 24H Full Song battle has finished. Results are ready."
+        : isDailyExpiredNotice
+          ? isZh
+            ? "你剛有一場 24H Full Song 因 24 小時內沒有對手接受，已從公開挑戰池移除。"
+            : "One 24H Full Song card expired because no challenger joined within 24 hours."
+          : isZh
+            ? "你剛有一場 Drop Battle 因等待時間結束，已從公開挑戰池移除。可以重新上傳或開新戰帖。"
+            : "One Drop Battle waiting card ended and was removed from the public pool. You can open a new card.");
+    const primaryHref =
+      isDailyFinishedNotice && expiredNotice.metadata?.dailyBattleId
+        ? `/battle/daily/${encodeURIComponent(expiredNotice.metadata.dailyBattleId)}?lang=${lang}`
+        : isDailyExpiredNotice
+          ? `/battle/setup?battleMode=daily&from=expired-card&lang=${lang}`
+          : `/battle/setup?battleMode=instant&from=expired-card&lang=${lang}`;
+    const primaryLabel =
+      isDailyFinishedNotice
+        ? isZh
+          ? "查看結果"
+          : "View Result"
+        : isDailyExpiredNotice
+          ? isZh
+            ? "重新開 24H"
+            : "Open New 24H"
+          : isZh
+            ? "重新開 Drop"
+            : "Open New Drop";
+    return (
+      <div className="fixed right-4 top-20 z-[92] w-[min(calc(100vw-2rem),340px)] sm:right-5">
+        <div className="overflow-hidden rounded-2xl border border-cyan-200/25 bg-black/82 text-white shadow-[0_22px_76px_rgba(0,0,0,0.52),0_0_30px_rgba(0,203,255,0.12)] backdrop-blur-xl">
+          <button
+            type="button"
+            onClick={() => setExpiredNoticeOpen((value) => !value)}
+            className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-white/[0.04]"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cyan-300 text-black">
+              <BellIcon />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-cyan-100/80">
+                {isZh ? "帳號消息" : "Account Notice"}
+              </span>
+              <span className="block truncate text-sm font-black">{title}</span>
+            </span>
+            <span className="rounded-full border border-zinc-200/20 bg-white/10 px-2 py-1 text-[10px] font-black text-zinc-200">
+              {isDailyFinishedNotice ? (isZh ? "已結束" : "Finished") : isDailyExpiredNotice ? (isZh ? "已過期" : "Expired") : (isZh ? "已取消" : "Cancelled")}
+            </span>
+          </button>
+          {expiredNoticeOpen ? (
+            <div className="space-y-3 border-t border-white/10 px-4 py-4">
+              <p className="text-sm font-bold leading-6 text-zinc-300">{body}</p>
+              <div className="grid grid-cols-2 gap-2 text-xs font-black">
+                <Link href={primaryHref} className="rounded-xl bg-cyan-300 px-3 py-3 text-center text-black transition hover:bg-cyan-100">
+                  {primaryLabel}
+                </Link>
+                <button
+                  type="button"
+                  onClick={dismissExpiredNotice}
+                  className="rounded-xl border border-white/15 bg-white/[0.06] px-3 py-3 text-zinc-100 transition hover:bg-white/[0.1]"
+                >
+                  {isZh ? "知道了" : "Dismiss"}
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
   if (!call && activeNotice) {
     const isQueueNotice = activeNotice.kind === "queue";
     const isPoolWaitingNotice =
@@ -309,7 +431,7 @@ export default function GlobalBattleCallOverlay() {
       ["searching", "waiting", "waiting_challenge", "public_voting"].includes(activeNotice.status) &&
       !activeNotice.battleId;
     const activeHref = isPoolWaitingNotice
-      ? `/battle?lang=${lang}&focusQueue=${encodeURIComponent(activeNotice.id)}`
+      ? `/battle/waiting-room/${encodeURIComponent(activeNotice.id)}?lang=${lang}`
       : isQueueNotice && activeNotice.battleId
         ? `/battle/${encodeURIComponent(activeNotice.battleId)}?lang=${lang}`
         : activeNotice.battleId
@@ -324,15 +446,15 @@ export default function GlobalBattleCallOverlay() {
         : "Unfinished Battle";
     const activeBody = isPoolWaitingNotice
       ? isZh
-        ? "目前還沒有配到對手。回到公開挑戰池會直接看到你的等待卡，讓你確認作品還在掛池，也可以取消後重新上傳。"
-        : "No opponent yet. Return to the Battle Pool to see your waiting card, confirm it is still listed, or cancel and upload again."
+        ? "目前還沒有配到對手。你可以進等待場看倒數、確認作品還在掛池，也可以取消後重新上傳。"
+        : "No opponent yet. Enter the waiting room for countdown, confirm your card is still listed, or cancel and upload again."
       : isZh
         ? "目前帳號一次只能保留一場 Battle。你可以回到場內，或直接取消後重新上傳。"
         : "One account can only hold one active Battle. Enter it or cancel to upload again.";
     const activeCta = isPoolWaitingNotice
       ? isZh
-        ? "查看我的等待卡"
-        : "View My Card"
+        ? "進入等待場"
+        : "Enter Waiting Room"
       : isZh
         ? "回到場內"
         : "Enter";
