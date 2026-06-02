@@ -2,7 +2,9 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { getFreshSession } from "@/lib/auth-session";
 import { consumeFreshAuthReturnPath } from "@/lib/auth-urls";
 
 function AuthCallbackInner() {
@@ -24,6 +26,15 @@ function AuthCallbackInner() {
       hashParams.get("error_code") ??
       "";
     const nextPath = consumeFreshAuthReturnPath(searchParams.get("next"));
+    const cleanCallbackUrl = () => {
+      try {
+        window.history.replaceState(window.history.state, "", window.location.pathname);
+      } catch {
+        // Ignore history errors; auth handling can still continue.
+      }
+    };
+
+    cleanCallbackUrl();
 
     const buildAuthErrorUrl = (message: string) =>
       `/auth?error=oauth&auth_message=${encodeURIComponent(message)}&next=${encodeURIComponent(nextPath)}`;
@@ -46,12 +57,36 @@ function AuthCallbackInner() {
       setTimeout(() => window.location.replace(buildAuthErrorUrl(message)), 3500);
     };
 
+    const finishAfterVerifiedSession = async (session: Session | null | undefined) => {
+      let current = (await supabase.auth.getSession().catch(() => ({ data: { session: null } }))).data.session;
+      if (!current?.user && session?.access_token && session.refresh_token) {
+        const { error: persistError } = await supabase.auth.setSession({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+        });
+        if (persistError) {
+          console.error("[auth callback] session persist failed", persistError);
+          fail(persistError.message);
+          return;
+        }
+        current = (await supabase.auth.getSession().catch(() => ({ data: { session: null } }))).data.session;
+      }
+
+      const verified = current?.user ? current : await getFreshSession(3000);
+      if (!verified?.user) {
+        fail("登入資料沒有成功保存，請清除登入狀態後再試一次");
+        return;
+      }
+
+      finish();
+    };
+
     const handleCallback = async () => {
       // Implicit OAuth and Email Magic Links put tokens in the URL hash.
       const accessToken = hashParams.get("access_token");
       const refreshToken = hashParams.get("refresh_token");
       if (accessToken && refreshToken) {
-        const { error: sessionError } = await supabase.auth.setSession({
+        const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
         });
@@ -60,24 +95,24 @@ function AuthCallbackInner() {
           fail(sessionError.message);
           return;
         }
-        finish();
+        await finishAfterVerifiedSession(sessionData.session);
         return;
       }
 
       const { data } = await supabase.auth.getSession();
       if (data.session) {
-        finish();
+        await finishAfterVerifiedSession(data.session);
         return;
       }
 
       if (code) {
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
         if (exchangeError) {
           console.error("[auth callback] code exchange failed", exchangeError);
           fail(exchangeError.message);
           return;
         }
-        finish();
+        await finishAfterVerifiedSession(exchangeData.session);
         return;
       }
 

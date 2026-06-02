@@ -221,6 +221,19 @@ function HomeAuthBar() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, s) => {
       if (!initialSessionResolved && !s?.user && event !== "SIGNED_OUT") return;
+      if (!s?.user) {
+        void (async () => {
+          const freshSession = await getFreshSession(1200);
+          if (freshSession?.user) {
+            applySession(freshSession);
+            setCheckingSession(false);
+            return;
+          }
+          if (event === "SIGNED_OUT") applySession(null);
+          setCheckingSession(false);
+        })();
+        return;
+      }
       applySession(s);
       setCheckingSession(false);
     });
