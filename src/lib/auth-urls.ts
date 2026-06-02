@@ -1,6 +1,8 @@
 export const AIPOGER_PUBLIC_ORIGIN = "https://aipoger.com";
 
 const AIPOGER_HOSTS = new Set(["aipoger.com", "www.aipoger.com"]);
+const AUTH_RETURN_STORAGE_KEY = "aipoger:auth-return";
+const AUTH_RETURN_MAX_AGE_MS = 5 * 60 * 1000;
 
 function normalizeOrigin(value: string | null | undefined): string | null {
   const raw = value?.trim();
@@ -77,4 +79,68 @@ export function buildAuthCallbackUrl(nextPath: string | null | undefined): strin
 export function buildAuthPageUrl(nextPath: string | null | undefined): string {
   const safeNext = safeNextPath(nextPath);
   return `${getAuthSiteOrigin()}/auth?next=${encodeURIComponent(safeNext)}`;
+}
+
+type AuthReturnRecord = {
+  nextPath: string;
+  createdAt: number;
+};
+
+function readAuthReturnRecord(): AuthReturnRecord | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(AUTH_RETURN_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<AuthReturnRecord>;
+    if (typeof parsed.nextPath !== "string" || typeof parsed.createdAt !== "number") return null;
+    return {
+      nextPath: safeNextPath(parsed.nextPath),
+      createdAt: parsed.createdAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function clearAuthReturnRecord() {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.removeItem(AUTH_RETURN_STORAGE_KEY);
+  } catch {
+    // Ignore storage failures; auth should still land safely on home.
+  }
+}
+
+export function rememberAuthReturnPath(value: string | null | undefined): string {
+  const nextPath = safeNextPath(value);
+  if (typeof window === "undefined") return nextPath;
+
+  try {
+    window.localStorage.setItem(
+      AUTH_RETURN_STORAGE_KEY,
+      JSON.stringify({ nextPath, createdAt: Date.now() } satisfies AuthReturnRecord),
+    );
+  } catch {
+    // Ignore storage failures; the callback will fall back to home.
+  }
+
+  return nextPath;
+}
+
+export function consumeFreshAuthReturnPath(value: string | null | undefined): string {
+  const requestedNext = safeNextPath(value);
+  if (requestedNext === "/") {
+    clearAuthReturnRecord();
+    return "/";
+  }
+
+  const record = readAuthReturnRecord();
+  const isFresh = record ? Date.now() - record.createdAt <= AUTH_RETURN_MAX_AGE_MS : false;
+  const matchesRequest = record?.nextPath === requestedNext;
+
+  clearAuthReturnRecord();
+
+  return isFresh && matchesRequest ? requestedNext : "/";
 }

@@ -115,8 +115,8 @@ function HomeAuthBar() {
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const menuRef = useRef<HTMLDivElement>(null);
-  const forceShowLogin = process.env.NEXT_PUBLIC_FORCE_SHOW_LOGIN === "true";
 
   const loadProfile = useCallback(
     async (userId: string) => {
@@ -193,18 +193,9 @@ function HomeAuthBar() {
 
   useEffect(() => {
     let mounted = true;
-    void supabase.auth.getSession().then(({ data: { session: s } }) => {
-      if (!mounted) return;
-      setSession(s);
-      if (s?.user) {
-        void loadProfile(s.user.id);
-        void runDailyCheckIn(s.user.id);
-      }
-    });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, s) => {
+    const applySession = (s: Session | null) => {
+      if (!mounted) return;
       setSession(s);
       if (s?.user) {
         void loadProfile(s.user.id);
@@ -214,6 +205,25 @@ function HomeAuthBar() {
         setLevelLine(null);
         setProfileAvatarUrl(null);
       }
+    };
+
+    void (async () => {
+      const {
+        data: { session: currentSession },
+      } = await supabase.auth.getSession();
+      const fallbackSession = currentSession
+        ? currentSession
+        : (await supabase.auth.refreshSession().catch(() => null))?.data.session ?? null;
+
+      applySession(fallbackSession);
+      if (mounted) setCheckingSession(false);
+    })();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, s) => {
+      applySession(s);
+      setCheckingSession(false);
     });
 
     return () => {
@@ -241,7 +251,15 @@ function HomeAuthBar() {
   const user = session?.user ?? null;
   const avatarUrl = profileAvatarUrl ?? (user ? userAvatarUrl(user) : null);
 
-  if (forceShowLogin || !user) {
+  if (checkingSession) {
+    return (
+      <span className="inline-flex items-center gap-2 rounded-2xl border border-zinc-700 bg-zinc-950/70 px-4 py-2.5 text-sm font-semibold text-zinc-400 shadow-lg backdrop-blur">
+        {t("common_loading")}
+      </span>
+    );
+  }
+
+  if (!user) {
     return (
       <Link
         href="/auth"

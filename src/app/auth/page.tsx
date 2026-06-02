@@ -7,7 +7,7 @@ import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
-import { buildAuthCallbackUrl, buildAuthPageUrl, safeNextPath } from "@/lib/auth-urls";
+import { buildAuthCallbackUrl, buildAuthPageUrl, consumeFreshAuthReturnPath, rememberAuthReturnPath, safeNextPath } from "@/lib/auth-urls";
 
 function intentToNextPath(intent: string | null, lang: string | null): string {
   const langQuery = lang === "en" ? "?lang=en" : lang === "zh" ? "?lang=zh" : "";
@@ -65,8 +65,8 @@ function AuthPageInner() {
   const goHomeOnce = useCallback(() => {
     if (redirectingRef.current) return;
     redirectingRef.current = true;
-    router.replace(nextPath);
-  }, [router, nextPath]);
+    router.replace(consumeFreshAuthReturnPath(searchParams.get("next")));
+  }, [router, searchParams]);
 
   useEffect(() => {
     setLoginUrl(buildAuthPageUrl(nextPath));
@@ -116,7 +116,8 @@ function AuthPageInner() {
     setError(null);
     setNotice(null);
 
-    const redirectTo = buildAuthCallbackUrl(nextPath);
+    const returnPath = rememberAuthReturnPath(nextPath);
+    const redirectTo = buildAuthCallbackUrl(returnPath);
 
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider,
@@ -150,7 +151,7 @@ function AuthPageInner() {
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email: normalizedEmail,
       options: {
-        emailRedirectTo: buildAuthCallbackUrl(nextPath),
+        emailRedirectTo: buildAuthCallbackUrl(rememberAuthReturnPath(nextPath)),
         shouldCreateUser: true,
       },
     });

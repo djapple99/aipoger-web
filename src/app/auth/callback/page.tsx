@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { safeNextPath } from "@/lib/auth-urls";
+import { consumeFreshAuthReturnPath } from "@/lib/auth-urls";
 
 function AuthCallbackInner() {
   const router = useRouter();
@@ -24,7 +24,7 @@ function AuthCallbackInner() {
       searchParams.get("error_code") ??
       hashParams.get("error_code") ??
       "";
-    const nextPath = safeNextPath(searchParams.get("next"));
+    const nextPath = consumeFreshAuthReturnPath(searchParams.get("next"));
 
     const buildAuthErrorUrl = (message: string) =>
       `/auth?error=oauth&auth_message=${encodeURIComponent(message)}&next=${encodeURIComponent(nextPath)}`;
