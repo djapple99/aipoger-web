@@ -75,8 +75,9 @@ function AuthPageInner() {
   }, [nextPath]);
 
   useEffect(() => {
+    const authMessage = searchParams.get("auth_message");
     if (searchParams.get("error")) {
-      setError(t("auth_error"));
+      setError(authMessage ? `${t("auth_error")} ${authMessage}` : t("auth_error"));
     }
   }, [searchParams, t]);
 
@@ -119,12 +120,15 @@ function AuthPageInner() {
 
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo },
+      options: {
+        redirectTo,
+        queryParams: provider === "google" ? { prompt: "select_account" } : undefined,
+      },
     });
 
     if (oauthError) {
       console.error(oauthError);
-      setError(t("auth_error"));
+      setError(`${t("auth_error")} ${oauthError.message}`);
       setLoading(false);
     }
   };

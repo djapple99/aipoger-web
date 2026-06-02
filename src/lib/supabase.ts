@@ -11,10 +11,10 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     // Use implicit auth for the public browser client so Email Magic Links still
     // work when users open them from Gmail or another browser context.
-    // The callback page manually reads URL hash tokens and stores the session.
+    // Let the SDK detect URL hash tokens; the callback page keeps a manual fallback.
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: false,
+    detectSessionInUrl: true,
     flowType: "implicit",
   },
 });

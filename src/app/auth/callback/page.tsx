@@ -15,18 +15,25 @@ function AuthCallbackInner() {
     if (handledRef.current) return;
     handledRef.current = true;
 
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
     const code = searchParams.get("code");
-    const error = searchParams.get("error");
+    const error = searchParams.get("error") ?? hashParams.get("error");
     const errorDescription =
       searchParams.get("error_description") ??
+      hashParams.get("error_description") ??
       searchParams.get("error_code") ??
+      hashParams.get("error_code") ??
       "";
     const nextPath = safeNextPath(searchParams.get("next"));
 
+    const buildAuthErrorUrl = (message: string) =>
+      `/auth?error=oauth&auth_message=${encodeURIComponent(message)}&next=${encodeURIComponent(nextPath)}`;
+
     if (error) {
       console.error("[auth callback]", error, errorDescription);
-      setStatus("登入失敗，請重試");
-      setTimeout(() => router.replace(`/auth?error=oauth&next=${encodeURIComponent(nextPath)}`), 1500);
+      const message = errorDescription || error;
+      setStatus(`登入失敗：${message}`);
+      setTimeout(() => router.replace(buildAuthErrorUrl(message)), 3500);
       return;
     }
 
@@ -37,7 +44,7 @@ function AuthCallbackInner() {
 
     const fail = (message = "登入失敗，請重試") => {
       setStatus(message);
-      setTimeout(() => router.replace(`/auth?error=oauth&next=${encodeURIComponent(nextPath)}`), 1500);
+      setTimeout(() => router.replace(buildAuthErrorUrl(message)), 3500);
     };
 
     const handleCallback = async () => {
@@ -51,15 +58,14 @@ function AuthCallbackInner() {
         const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
         if (exchangeError) {
           console.error("[auth callback] code exchange failed", exchangeError);
-          fail();
+          fail(exchangeError.message);
           return;
         }
         finish();
         return;
       }
 
-      // 舊的 implicit OAuth redirect 會把 token 放在 hash；保留這段避免舊連結失效。
-      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      // Implicit OAuth and Email Magic Links put tokens in the URL hash.
       const accessToken = hashParams.get("access_token");
       const refreshToken = hashParams.get("refresh_token");
       if (accessToken && refreshToken) {
@@ -69,7 +75,7 @@ function AuthCallbackInner() {
         });
         if (sessionError) {
           console.error("[auth callback] hash session failed", sessionError);
-          fail();
+          fail(sessionError.message);
           return;
         }
         finish();
