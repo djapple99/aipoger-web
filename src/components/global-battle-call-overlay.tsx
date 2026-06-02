@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
+import { getFreshSession } from "@/lib/auth-session";
 import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
 import { cancelCurrentBattleIntent } from "@/lib/battle-pool-client";
@@ -189,9 +190,7 @@ export default function GlobalBattleCallOverlay() {
     let channel: ReturnType<typeof supabase.channel> | null = null;
 
     void (async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const session = await getFreshSession();
       const uid = session?.user?.id;
       if (!mounted || !uid) return;
       setAccessToken(session?.access_token ?? "");

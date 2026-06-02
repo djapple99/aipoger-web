@@ -1,7 +1,7 @@
 export const AIPOGER_PUBLIC_ORIGIN = "https://aipoger.com";
 
 const AIPOGER_HOSTS = new Set(["aipoger.com", "www.aipoger.com"]);
-const AUTH_RETURN_STORAGE_KEY = "aipoger:auth-return";
+export const AUTH_RETURN_STORAGE_KEY = "aipoger:auth-return";
 const AUTH_RETURN_MAX_AGE_MS = 5 * 60 * 1000;
 
 function normalizeOrigin(value: string | null | undefined): string | null {

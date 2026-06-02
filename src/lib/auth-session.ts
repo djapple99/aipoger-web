@@ -1,23 +1,40 @@
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
+let freshSessionPromise: Promise<Session | null> | null = null;
+
 export async function getFreshSession(timeoutMs = 2000): Promise<Session | null> {
-  const current = await supabase.auth.getSession();
-  if (current.data.session?.user) {
-    const { data } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
-    if (data.user) return current.data.session;
+  if (!freshSessionPromise) {
+    freshSessionPromise = resolveFreshSession(timeoutMs).finally(() => {
+      freshSessionPromise = null;
+    });
   }
 
-  const refreshed = await supabase.auth.refreshSession().catch(() => null);
-  if (refreshed?.data.session?.user) {
-    const { data } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
-    if (data.user) return refreshed.data.session;
+  return freshSessionPromise;
+}
+
+async function resolveFreshSession(timeoutMs: number): Promise<Session | null> {
+  const current = await supabase.auth.getSession().catch(() => null);
+  if (current?.data.session?.user) {
+    const { data, error } = await supabase.auth.getUser().catch(() => ({ data: { user: null }, error: null }));
+    if (data.user) return current.data.session;
+
+    const refreshed = await supabase.auth.refreshSession().catch(() => null);
+    if (refreshed?.data.session?.user) {
+      const verified = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
+      if (verified.data.user) return refreshed.data.session;
+    }
+
+    if (error && isProbablyUsableSession(current.data.session)) return current.data.session;
+    if (isProbablyUsableSession(current.data.session)) return current.data.session;
   }
 
   return waitForAuthSession(timeoutMs);
 }
 
 export function waitForAuthSession(timeoutMs = 2000): Promise<Session | null> {
+  if (typeof window === "undefined") return Promise.resolve(null);
+
   return new Promise((resolve) => {
     let done = false;
     let unsubscribe: (() => void) | null = null;
@@ -37,4 +54,10 @@ export function waitForAuthSession(timeoutMs = 2000): Promise<Session | null> {
     });
     unsubscribe = () => subscription.unsubscribe();
   });
+}
+
+function isProbablyUsableSession(session: Session): boolean {
+  if (!session.user || !session.access_token) return false;
+  if (!session.expires_at) return true;
+  return session.expires_at * 1000 > Date.now() + 30_000;
 }

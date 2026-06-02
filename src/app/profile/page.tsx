@@ -5,6 +5,7 @@ import { Suspense, useCallback, useEffect, useRef, useState, type ChangeEvent } 
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
+import { getFreshSession } from "@/lib/auth-session";
 import { useI18n } from "@/lib/i18n";
 import { AvatarCropUploadModal } from "@/components/avatar-crop-upload-modal";
 import SafetyNotice from "@/components/safety-notice";
@@ -42,9 +43,7 @@ function ProfileInner() {
       setFighterName(readFighterNameFromStorage() ?? "");
       return;
     }
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const session = await getFreshSession();
     if (!session?.user) {
       setUserId(null);
       return;
