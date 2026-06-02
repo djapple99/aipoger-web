@@ -506,10 +506,10 @@ export default function BattleSetupPage() {
   }, [lang, router]);
 
   useEffect(() => {
-    if (dailyBattleCount >= DAILY_BATTLE_ACTIVE_LIMIT && battleMode === 'daily') {
+    if (!challengeDailyEntryId && dailyBattleCount >= DAILY_BATTLE_ACTIVE_LIMIT && battleMode === 'daily') {
       setBattleMode('instant');
     }
-  }, [battleMode, dailyBattleCount]);
+  }, [battleMode, challengeDailyEntryId, dailyBattleCount]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1079,7 +1079,7 @@ export default function BattleSetupPage() {
   const displayAvatarUrl = avatarPreview ?? savedAvatarUrl ?? profileAvatarPreview;
   const displayCoverUrl = coverPreview ?? savedCoverUrl;
   const hookDurationLabel = draft?.hookDuration ? `${Number(draft.hookDuration).toFixed(1)}s` : '45s';
-  const dailyBattleLocked = dailyBattleCount >= DAILY_BATTLE_ACTIVE_LIMIT;
+  const dailyBattleLocked = !challengeDailyEntryId && dailyBattleCount >= DAILY_BATTLE_ACTIVE_LIMIT;
   const dailyModeDisabled = dailyBattleLocked || dailySchemaMissing;
   const battleModeSelector = (
     <section className="rounded-[1.75rem] border border-white/10 bg-black/58 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl">

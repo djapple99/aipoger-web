@@ -418,6 +418,7 @@ function HookCutContent() {
   const avatarUrl = searchParams.get('avatarUrl');
   const assetKey = searchParams.get('assetKey');
   const challengeTargetQueueId = searchParams.get('challengeEntryId');
+  const challengeDailyEntryId = searchParams.get('challengeDailyEntryId');
   const battleMode = searchParams.get('battleMode') === 'daily' ? 'daily' : 'instant';
   const instantPairing = searchParams.get('instantPairing') === 'invite' ? 'invite' : 'auto';
   const dailyPairing = searchParams.get('dailyPairing') === 'invite' ? 'invite' : 'auto';
@@ -426,6 +427,22 @@ function HookCutContent() {
   const lang = normalizeLang(searchParams.get('lang'));
 
   const t = getT(lang);
+
+  useEffect(() => {
+    if (battleMode !== 'daily') return;
+
+    const setupParams = new URLSearchParams({
+      battleMode: 'daily',
+      dailyPairing,
+      lang,
+    });
+    if (challengeDailyEntryId) setupParams.set('challengeDailyEntryId', challengeDailyEntryId);
+    if (fighterName.trim()) setupParams.set('fighterName', fighterName.trim());
+    if (songName.trim()) setupParams.set('songName', songName.trim());
+    if (genre.trim()) setupParams.set('genre', genre.trim());
+
+    router.replace(`/battle/setup?${setupParams.toString()}`);
+  }, [battleMode, challengeDailyEntryId, dailyPairing, fighterName, genre, lang, router, songName]);
 
   const [, setAudioFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);

@@ -30,6 +30,14 @@ const {
   dailyBattleActiveCountForUser,
 } = await import("../src/lib/daily-battle-rules.ts");
 
+const {
+  dailyChallengeSetupPath,
+  dailyChallengeSharePath,
+  dailyChallengeWaitingRoomPath,
+  shortBattleCodeToUuid,
+  uuidToShortBattleCode,
+} = await import("../src/lib/short-battle-links.ts");
+
 test("battle economy uses stake based rewards", () => {
   assert.equal(BATTLE_POINT_REWARDS.stageOneStake, 200);
   assert.equal(BATTLE_POINT_REWARDS.stageTwoStake, 300);
@@ -176,4 +184,18 @@ test("24H Full Song allows only one active entry per user", () => {
   assert.equal(dailyBattleActiveCountForUser(entries, "user-a"), 1);
   assert.equal(canSubmitDailyBattle(entries, "user-a"), false);
   assert.equal(canSubmitDailyBattle([{ userId: "user-a", status: "finished" }], "user-a"), true);
+});
+
+test("24H challenge share links stay short and route through waiting room", () => {
+  const entryId = "123e4567-e89b-42d3-a456-426614174000";
+  const code = uuidToShortBattleCode(entryId);
+
+  assert.equal(code?.length, 22);
+  assert.equal(shortBattleCodeToUuid(code), entryId);
+  assert.equal(dailyChallengeSharePath(entryId, "zh"), `/d/${code}?lang=zh`);
+  assert.equal(dailyChallengeWaitingRoomPath(entryId, "zh"), `/battle/daily/waiting-room/${entryId}?lang=zh`);
+  assert.equal(
+    dailyChallengeSetupPath(entryId, "zh"),
+    `/battle/setup?battleMode=daily&dailyPairing=invite&challengeDailyEntryId=${entryId}&lang=zh`,
+  );
 });

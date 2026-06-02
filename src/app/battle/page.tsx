@@ -11,6 +11,7 @@ import ShareButton from "@/components/share-button";
 import SafetyNotice from "@/components/safety-notice";
 import { rankLabelForLevel } from "@/lib/battle-pool-rules";
 import { cancelCurrentBattleIntent } from "@/lib/battle-pool-client";
+import { dailyChallengeSetupPath, dailyChallengeSharePath } from "@/lib/short-battle-links";
 
 const seedComments = [
   "A Side 節奏很穩，這段 drop 很強。",
@@ -640,7 +641,7 @@ function DailyBattleList() {
                       </p>
                       {row.status === "queued" && row.user_id !== currentUserId ? (
                         <Link
-                          href={`/battle/setup?battleMode=daily&dailyPairing=invite&challengeDailyEntryId=${row.id}&genre=${encodeURIComponent(row.genre || "")}&lang=${lang}`}
+                          href={dailyChallengeSetupPath(row.id, lang)}
                           className="mt-3 inline-flex rounded-full border border-cyan-200/40 bg-cyan-300/12 px-4 py-1.5 text-xs font-black text-cyan-100 transition hover:border-cyan-100 hover:bg-cyan-300 hover:text-black"
                         >
                           {isZh ? "接受 24H 整首挑戰" : "Accept 24H Challenge"}
@@ -676,7 +677,7 @@ function DailyBattleList() {
                           }
                           url={
                             row.status === "queued"
-                              ? `/battle/setup?battleMode=daily&dailyPairing=invite&challengeDailyEntryId=${row.id}&genre=${encodeURIComponent(row.genre || "")}&lang=${lang}`
+                              ? dailyChallengeSharePath(row.id, lang)
                               : `/battle?lang=${lang}`
                           }
                           label={isZh ? "約人鬥歌" : "Find challenger"}
