@@ -194,6 +194,7 @@ function HomeAuthBar() {
 
   useEffect(() => {
     let mounted = true;
+    let initialSessionResolved = false;
 
     const applySession = (s: Session | null) => {
       if (!mounted) return;
@@ -210,12 +211,16 @@ function HomeAuthBar() {
 
     void (async () => {
       applySession(await getFreshSession());
-      if (mounted) setCheckingSession(false);
+      if (mounted) {
+        initialSessionResolved = true;
+        setCheckingSession(false);
+      }
     })();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, s) => {
+    } = supabase.auth.onAuthStateChange((event, s) => {
+      if (!initialSessionResolved && !s?.user && event !== "SIGNED_OUT") return;
       applySession(s);
       setCheckingSession(false);
     });
