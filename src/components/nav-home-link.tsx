@@ -17,7 +17,7 @@ export default function NavHomeLink() {
   const seg = pathname?.match(/^\/battle\/([^/]+)$/)?.[1];
   const isBattleArena = Boolean(seg && !BATTLE_FIXED_ROUTES.includes(seg));
   const isHiddenPrefix = HIDDEN_PREFIXES.some((prefix) => pathname?.startsWith(prefix));
-  if (isHiddenPrefix || isBattleArena || SELF_NAV_ROUTES.includes(pathname ?? '')) return null;
+  if (pathname?.startsWith('/auth') || isHiddenPrefix || isBattleArena || SELF_NAV_ROUTES.includes(pathname ?? '')) return null;
 
   return (
     <Link
