@@ -130,14 +130,21 @@ export function rememberAuthReturnPath(value: string | null | undefined): string
 }
 
 export function consumeFreshAuthReturnPath(value: string | null | undefined): string {
+  const hasExplicitValue = typeof value === "string" && value.trim().length > 0;
   const requestedNext = safeNextPath(value);
+  const record = readAuthReturnRecord();
+  const isFresh = record ? Date.now() - record.createdAt <= AUTH_RETURN_MAX_AGE_MS : false;
+
+  if (!hasExplicitValue) {
+    clearAuthReturnRecord();
+    return record && isFresh ? record.nextPath : "/";
+  }
+
   if (requestedNext === "/") {
     clearAuthReturnRecord();
     return "/";
   }
 
-  const record = readAuthReturnRecord();
-  const isFresh = record ? Date.now() - record.createdAt <= AUTH_RETURN_MAX_AGE_MS : false;
   const matchesRequest = record?.nextPath === requestedNext;
 
   clearAuthReturnRecord();
