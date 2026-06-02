@@ -452,7 +452,7 @@ export default function HomePage() {
             <div className="h-px flex-1 bg-gradient-to-r from-orange-500/70 via-white/20 to-transparent" />
           </div>
 
-          <p className={`text-[clamp(8.35rem,14.15vw,16.7rem)] font-black uppercase leading-[0.78] tracking-[-0.066em] text-[#fffaf1] ${heroChromeShadow}`}>
+          <p className={`w-full max-w-full text-[4.25rem] font-black uppercase leading-[0.82] tracking-[-0.04em] text-[#fffaf1] min-[390px]:text-[4.55rem] sm:text-[6.25rem] md:text-[clamp(8.35rem,14.15vw,16.7rem)] md:leading-[0.78] md:tracking-[-0.066em] ${heroChromeShadow}`}>
             AIPOGER
           </p>
           <p

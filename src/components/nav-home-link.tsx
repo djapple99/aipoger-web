@@ -7,7 +7,7 @@ import { AIPOGER_BRAND_LOGO } from '@/lib/brand';
 import { useI18n } from '@/lib/i18n';
 
 const BATTLE_FIXED_ROUTES = ['setup', 'hook-cut', 'matchmaking'];
-const SELF_NAV_ROUTES = ['/listen-bar', '/music-analysis', '/about', '/partners', '/hook-guide', '/ai-music-bible', '/rank'];
+const SELF_NAV_ROUTES = ['/auth', '/listen-bar', '/music-analysis', '/about', '/partners', '/hook-guide', '/ai-music-bible', '/rank'];
 const HIDDEN_PREFIXES = ['/battle/waiting-room'];
 
 export default function NavHomeLink() {
