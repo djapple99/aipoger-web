@@ -1,4 +1,17 @@
 {
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.aipoger.com"
+        }
+      ],
+      "destination": "https://aipoger.com/:path*",
+      "permanent": true
+    }
+  ],
   "crons": [
     {
       "path": "/api/listen-bar/process-rotation",
