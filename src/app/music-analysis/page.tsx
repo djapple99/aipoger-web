@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import LangToggle from "@/components/lang-toggle";
 import { getFreshSession } from "@/lib/auth-session";
+import { rememberAuthReturnPath } from "@/lib/auth-urls";
 import { useI18n } from "@/lib/i18n";
 import { fontRighteous } from "@/lib/fonts";
 
@@ -138,6 +139,7 @@ export default function MusicAnalysisPage() {
             ) : !session ? (
               <Link
                 href={loginHref}
+                onClick={() => rememberAuthReturnPath(nextPath)}
                 className="inline-flex min-h-14 items-center justify-center rounded-2xl bg-orange-500 px-8 text-base font-black text-black shadow-[0_0_34px_rgba(255,106,0,0.28)] transition hover:bg-orange-300"
               >
                 {isZh ? "登入後分析歌曲" : "Sign In To Analyze"}

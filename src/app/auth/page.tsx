@@ -38,6 +38,17 @@ function isLikelyEmbeddedBrowser(userAgent: string): boolean {
   return hasExplicitInAppToken || isAndroidWebView;
 }
 
+function shouldAutoRememberReturnPath(path: string): boolean {
+  if (path === "/") return false;
+  if (path.startsWith("/music-analysis")) return true;
+  if (path.startsWith("/listen-bar")) return true;
+  if (path.startsWith("/rank")) return true;
+  if (path.startsWith("/profile")) return true;
+  if (path === "/battle" || path.startsWith("/battle?")) return true;
+  if (path === "/battle/setup" || path.startsWith("/battle/setup?")) return !path.includes("challenge");
+  return false;
+}
+
 function AuthLoadingFallback() {
   const { t } = useI18n();
   return (
@@ -71,9 +82,12 @@ function AuthPageInner() {
 
   useEffect(() => {
     setLoginUrl(buildAuthPageUrl(nextPath));
+    if (searchParams.get("next") && shouldAutoRememberReturnPath(nextPath)) {
+      rememberAuthReturnPath(nextPath);
+    }
     const ua = navigator.userAgent || "";
     setIsEmbeddedBrowser(isLikelyEmbeddedBrowser(ua));
-  }, [nextPath]);
+  }, [nextPath, searchParams]);
 
   useEffect(() => {
     const authMessage = searchParams.get("auth_message");
