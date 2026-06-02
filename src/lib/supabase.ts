@@ -10,13 +10,26 @@ if (!supabaseUrl || !supabaseKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
-    // Use implicit auth for the public browser client so Email Magic Links still
-    // work when users open them from Gmail or another browser context.
-    // The callback page is the single place that reads URL tokens and stores the session.
+    // OAuth providers return a PKCE code when this browser has a code verifier.
+    // The callback page exchanges that code and stores the resulting session.
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: false,
-    flowType: "implicit",
+    flowType: "pkce",
     storageKey: SUPABASE_AUTH_STORAGE_KEY,
   },
 });
+
+export function createSupabaseImplicitAuthClient() {
+  return createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      // Email magic links should remain usable when opened from Gmail or another
+      // browser context, so the email-only client requests hash-token links.
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: false,
+      flowType: "implicit",
+      storageKey: SUPABASE_AUTH_STORAGE_KEY,
+    },
+  });
+}

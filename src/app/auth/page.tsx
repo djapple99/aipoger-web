@@ -4,7 +4,7 @@
 import Image from "next/image";
 import { type FormEvent, useEffect, useState, Suspense, useRef, useCallback } from "react";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
-import { supabase } from "@/lib/supabase";
+import { createSupabaseImplicitAuthClient, supabase } from "@/lib/supabase";
 import { getFreshSession } from "@/lib/auth-session";
 import { useSearchParams } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
@@ -159,7 +159,7 @@ function AuthPageInner() {
     setNotice(null);
     setEmailSent(false);
 
-    const { error: otpError } = await supabase.auth.signInWithOtp({
+    const { error: otpError } = await createSupabaseImplicitAuthClient().auth.signInWithOtp({
       email: normalizedEmail,
       options: {
         emailRedirectTo: buildAuthCallbackUrl(rememberAuthReturnPath(nextPath)),
