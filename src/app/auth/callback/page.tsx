@@ -1,12 +1,11 @@
 "use client";
 
 import { Suspense, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { consumeFreshAuthReturnPath } from "@/lib/auth-urls";
 
 function AuthCallbackInner() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState("完成登入中…");
   const handledRef = useRef(false);
@@ -33,18 +32,18 @@ function AuthCallbackInner() {
       console.error("[auth callback]", error, errorDescription);
       const message = errorDescription || error;
       setStatus(`登入失敗：${message}`);
-      setTimeout(() => router.replace(buildAuthErrorUrl(message)), 3500);
+      setTimeout(() => window.location.replace(buildAuthErrorUrl(message)), 3500);
       return;
     }
 
     const finish = () => {
       setStatus("登入成功！");
-      setTimeout(() => router.replace(nextPath), 500);
+      setTimeout(() => window.location.replace(nextPath), 500);
     };
 
     const fail = (message = "登入失敗，請重試") => {
       setStatus(message);
-      setTimeout(() => router.replace(buildAuthErrorUrl(message)), 3500);
+      setTimeout(() => window.location.replace(buildAuthErrorUrl(message)), 3500);
     };
 
     const handleCallback = async () => {
@@ -86,7 +85,7 @@ function AuthCallbackInner() {
     };
 
     void handleCallback();
-  }, [router, searchParams]);
+  }, [searchParams]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-black text-white">

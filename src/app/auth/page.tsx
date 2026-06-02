@@ -6,7 +6,7 @@ import { type FormEvent, useEffect, useState, Suspense, useRef, useCallback } fr
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { supabase } from "@/lib/supabase";
 import { getFreshSession } from "@/lib/auth-session";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import { buildAuthCallbackUrl, buildAuthPageUrl, consumeFreshAuthReturnPath, rememberAuthReturnPath, safeNextPath } from "@/lib/auth-urls";
 
@@ -67,7 +67,6 @@ function AuthPageInner() {
   const [loginUrl, setLoginUrl] = useState("");
   const [email, setEmail] = useState("");
   const [emailSent, setEmailSent] = useState(false);
-  const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = searchParams.get("next")
     ? safeNextPath(searchParams.get("next"))
@@ -77,8 +76,8 @@ function AuthPageInner() {
   const goHomeOnce = useCallback(() => {
     if (redirectingRef.current) return;
     redirectingRef.current = true;
-    router.replace(consumeFreshAuthReturnPath(searchParams.get("next")));
-  }, [router, searchParams]);
+    window.location.replace(consumeFreshAuthReturnPath(searchParams.get("next")));
+  }, [searchParams]);
 
   useEffect(() => {
     setLoginUrl(buildAuthPageUrl(nextPath));

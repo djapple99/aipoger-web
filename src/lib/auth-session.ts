@@ -3,10 +3,16 @@ import { supabase } from "@/lib/supabase";
 
 export async function getFreshSession(timeoutMs = 2000): Promise<Session | null> {
   const current = await supabase.auth.getSession();
-  if (current.data.session?.user) return current.data.session;
+  if (current.data.session?.user) {
+    const { data } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
+    if (data.user) return current.data.session;
+  }
 
   const refreshed = await supabase.auth.refreshSession().catch(() => null);
-  if (refreshed?.data.session?.user) return refreshed.data.session;
+  if (refreshed?.data.session?.user) {
+    const { data } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
+    if (data.user) return refreshed.data.session;
+  }
 
   return waitForAuthSession(timeoutMs);
 }
