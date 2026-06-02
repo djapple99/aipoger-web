@@ -271,6 +271,13 @@ function authHrefForCurrentPage(): string {
   return `/auth?next=${encodeURIComponent(currentReturnPath())}`;
 }
 
+async function getFreshSession() {
+  const current = await supabase.auth.getSession();
+  if (current.data.session?.user) return current.data.session;
+  const refreshed = await supabase.auth.refreshSession().catch(() => null);
+  return refreshed?.data.session ?? null;
+}
+
 function toDatetimeLocalValue(date: Date) {
   const pad = (value: number) => String(value).padStart(2, '0');
   return [
@@ -426,7 +433,12 @@ export default function BattleSetupPage() {
           setDraftChecked(true);
           return;
         }
-        const { data: { session } } = await supabase.auth.getSession();
+        const session = await getFreshSession();
+        if ((urlChallengeEntryId || urlChallengeDailyEntryId) && !session?.user) {
+          router.replace(authHrefForCurrentPage());
+          setDraftChecked(true);
+          return;
+        }
         if (session?.user) {
         if (!urlName) {
           const fromProfile = await loadFighterNameFromProfile(session.user.id);
@@ -489,7 +501,7 @@ export default function BattleSetupPage() {
       }
       setDraftChecked(true);
     })();
-  }, []);
+  }, [lang, router]);
 
   useEffect(() => {
     if (dailyBattleCount >= DAILY_BATTLE_ACTIVE_LIMIT && battleMode === 'daily') {
@@ -640,9 +652,7 @@ export default function BattleSetupPage() {
     try {
       let userId = mockUserId;
       if (!isAuthBypassEnabled) {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+        const session = await getFreshSession();
         if (!session?.user) {
           alert(t('setup_need_login'));
           router.push(authHrefForCurrentPage());
@@ -785,9 +795,7 @@ export default function BattleSetupPage() {
       if (isAuthBypassEnabled) {
         userId = mockUserId;
       } else {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+        const session = await getFreshSession();
         if (!session?.user) {
           alert(t('setup_need_login'));
           router.push(authHrefForCurrentPage());

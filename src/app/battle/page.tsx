@@ -936,12 +936,7 @@ function BattlePoolList() {
             const inviteParams = new URLSearchParams({
               lang,
               type: "hook-card",
-              l: entry.fighter_name,
-              ls: entry.original_file_name,
-              g: entry.genre,
-              bt: "90s Drop Battle 等待卡",
             });
-            if (entry.ai_tool) inviteParams.set("ta", entry.ai_tool);
             const invitePath = `/battle/invite/${entry.id}?${inviteParams.toString()}`;
             const href = isGhost
               ? `/battle/${entry.match_group_id}`
@@ -955,8 +950,13 @@ function BattlePoolList() {
                 ? "邀請觀戰投票"
                 : "Invite voters"
               : isZh
-                ? "約人鬥歌"
-                : "Find challenger";
+                ? "分享戰帖 / 約戰"
+                : "Share / Challenge";
+            const hookStartText = entry.expires_at
+              ? isZh
+                ? `開戰時間：${formatBattleCardTime(entry.expires_at, true)}（台灣時間）。`
+                : `Starts: ${formatBattleCardTime(entry.expires_at, false)} Taiwan time.`
+              : "";
             const label = isMine
               ? isZh
                 ? "我的等待卡"
@@ -1073,8 +1073,8 @@ function BattlePoolList() {
                           ? `《${entry.original_file_name}》正在 AIPOGER 鬥歌場，進來觀戰投票。`
                           : `"${entry.original_file_name}" is in AIPOGER Battle. Come vote.`
                         : isZh
-                          ? `${entry.fighter_name} 的《${entry.original_file_name}》正在等人接戰，進來挑戰。`
-                          : `${entry.fighter_name}'s "${entry.original_file_name}" is waiting for a challenger.`
+                          ? `${entry.fighter_name} 的《${entry.original_file_name}》正在等人接戰。${hookStartText}進來約戰，或先聽 5 秒 teaser。`
+                          : `${entry.fighter_name}'s "${entry.original_file_name}" is waiting for a challenger. ${hookStartText}Challenge it, or hear the 5s teaser first.`
                     }
                     url={shareUrl}
                     label={shareLabel}

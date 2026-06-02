@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import LangToggle from "@/components/lang-toggle";
 import { useI18n } from "@/lib/i18n";
@@ -30,7 +30,8 @@ function formatClock(ms: number) {
 }
 
 function statusLabel(status: string | null | undefined, isZh: boolean) {
-  if (status === "expired" || status === "cancelled") return isZh ? "已取消" : "Cancelled";
+  if (status === "expired") return isZh ? "已過期" : "Expired";
+  if (status === "cancelled") return isZh ? "已取消" : "Cancelled";
   if (status === "matched") return isZh ? "已配對" : "Matched";
   if (status === "public_voting") return isZh ? "公開投票中" : "Public Voting";
   return isZh ? "等待挑戰中" : "Waiting";
@@ -42,7 +43,6 @@ function isUuidLike(value: string) {
 
 export default function WaitingRoomPage() {
   const params = useParams<{ id: string }>();
-  const searchParams = useSearchParams();
   const router = useRouter();
   const { lang } = useI18n();
   const isZh = lang === "zh";
@@ -55,8 +55,6 @@ export default function WaitingRoomPage() {
   const [now, setNow] = useState(Date.now());
   const [expireRequested, setExpireRequested] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  const query = searchParams.toString();
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
@@ -71,13 +69,10 @@ export default function WaitingRoomPage() {
       setError("");
 
       if (!isUuidLike(queueId)) {
-        router.replace(`/battle?lang=${lang}`);
+        setError(isZh ? "這個等待場連結格式不正確。" : "This waiting room link is invalid.");
+        setLoading(false);
         return;
       }
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
 
       const { data, error: queryError } = await supabase
         .from("battle_queue")
@@ -94,17 +89,8 @@ export default function WaitingRoomPage() {
       }
 
       if (!data) {
-        router.replace(`/battle/${encodeURIComponent(queueId)}${query ? `?${query}` : ""}`);
-        return;
-      }
-
-      if (data.user_id && !session?.user?.id) {
-        router.replace(`/battle/invite/${encodeURIComponent(queueId)}?type=hook-card&lang=${lang}`);
-        return;
-      }
-
-      if (data.user_id && session?.user?.id && data.user_id !== session.user.id) {
-        router.replace(`/battle/invite/${encodeURIComponent(queueId)}?type=hook-card&lang=${lang}`);
+        setError(isZh ? "這張戰帖已不存在或已被清除。" : "This battle card no longer exists.");
+        setLoading(false);
         return;
       }
 
@@ -144,7 +130,7 @@ export default function WaitingRoomPage() {
       }
       void supabase.removeChannel(channel);
     };
-  }, [lang, query, queueId, router]);
+  }, [isZh, lang, queueId, router]);
 
   const expiresMs = useMemo(() => {
     if (!row?.expires_at) return NaN;
@@ -152,6 +138,7 @@ export default function WaitingRoomPage() {
   }, [row?.expires_at]);
   const msLeft = Number.isFinite(expiresMs) ? expiresMs - now : 0;
   const isExpired = Boolean(row && (row.status === "expired" || row.status === "cancelled" || msLeft <= 0));
+  const effectiveStatus = isExpired && row?.status !== "cancelled" ? "expired" : row?.status;
 
   useEffect(() => {
     if (!row || expireRequested || row.status === "expired" || row.status === "cancelled" || msLeft > 0) return;
@@ -230,7 +217,7 @@ export default function WaitingRoomPage() {
             <div className="rounded-[1.5rem] border border-white/12 bg-white/[0.045] p-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-200/80">{statusLabel(row.status, isZh)}</p>
+                  <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-200/80">{statusLabel(effectiveStatus, isZh)}</p>
                   <h2 className="mt-3 truncate text-2xl font-black text-white">{row.original_file_name || "Drop Battle"}</h2>
                   <p className="mt-2 text-sm font-bold text-zinc-400">
                     {row.fighter_name || "AIPOGER"} · {row.genre || "AI Music"} · {row.ai_tool || "AI Tool"}
@@ -255,6 +242,23 @@ export default function WaitingRoomPage() {
                   {isZh ? "這裡只播放你自己的 Drop teaser；配到對手後，正式場會出現雙方 teaser。" : "This plays your teaser only. The battle room shows both teasers after matching."}
                 </p>
               </div>
+
+              {!isExpired ? (
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <Link
+                    href={`/battle/setup?battleMode=instant&challengeEntryId=${encodeURIComponent(row.id)}&genre=${encodeURIComponent(row.genre || "")}&lang=${lang}`}
+                    className="rounded-full bg-orange-500 px-5 py-3 text-center text-sm font-black text-black transition hover:bg-orange-300"
+                  >
+                    {isZh ? "我要挑戰" : "Challenge"}
+                  </Link>
+                  <Link
+                    href={`/battle/invite/${encodeURIComponent(row.id)}?type=hook-card&lang=${lang}`}
+                    className="rounded-full border border-white/15 bg-white/[0.05] px-5 py-3 text-center text-sm font-black text-zinc-200 transition hover:border-cyan-200/60"
+                  >
+                    {isZh ? "分享戰帖" : "Share Card"}
+                  </Link>
+                </div>
+              ) : null}
             </div>
           </div>
         ) : null}

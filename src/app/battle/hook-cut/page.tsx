@@ -149,6 +149,15 @@ function hookBattleAtToIso(value: string | null) {
   return date.toISOString();
 }
 
+function currentReturnPath(): string {
+  if (typeof window === 'undefined') return '/battle/hook-cut';
+  return `${window.location.pathname}${window.location.search}${window.location.hash}`;
+}
+
+function authHrefForCurrentPage(): string {
+  return `/auth?next=${encodeURIComponent(currentReturnPath())}`;
+}
+
 // ─── WAV 渲染工廠（OfflineAudioContext）─────────────────────
 async function renderAudioWithMastering(
   buffer: AudioBuffer,
@@ -462,6 +471,21 @@ function HookCutContent() {
   const playWindowRef = useRef<RegionTimes | null>(null);
   const playStartedAtRef = useRef<number>(0);
   const playOffsetRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (isAuthBypassEnabled || !challengeTargetQueueId) return;
+    let mounted = true;
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!mounted || data.session?.user) return;
+      const refreshed = await supabase.auth.refreshSession().catch(() => null);
+      if (!mounted || refreshed?.data.session?.user) return;
+      router.replace(authHrefForCurrentPage());
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [challengeTargetQueueId, router]);
 
   const formatTime = useMemo(() => {
     const two = (n: number) => String(Math.floor(n)).padStart(2, '0');
@@ -820,9 +844,12 @@ function HookCutContent() {
     try {
       const buffer = audioBufferRef.current;
 
-      const session = isAuthBypassEnabled ? null : (await supabase.auth.getSession()).data.session;
+      const session = isAuthBypassEnabled
+        ? null
+        : ((await supabase.auth.getSession()).data.session ?? (await supabase.auth.refreshSession().catch(() => null))?.data.session ?? null);
       if (!isAuthBypassEnabled && !session?.user) {
-        throw new Error("登入狀態已過期，請重新登入後再上傳 Drop。");
+        router.push(authHrefForCurrentPage());
+        throw new Error("登入狀態已過期，請重新登入後會回到這張接戰上傳頁。");
       }
       const userId = isAuthBypassEnabled ? mockUserId : session!.user.id;
 

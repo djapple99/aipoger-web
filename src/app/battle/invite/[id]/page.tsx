@@ -18,6 +18,20 @@ function cleanParam(value: string, fallback: string) {
   return value.trim() || fallback;
 }
 
+function formatTaiwanTime(value: string | null | undefined) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  return new Intl.DateTimeFormat("zh-TW", {
+    timeZone: "Asia/Taipei",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
 async function inviteData(id: string, searchParams: InviteSearchParams) {
   const battle = await getBattleOgData(id);
   const isHookCard = firstParam(searchParams, "type") === "hook-card";
@@ -34,6 +48,8 @@ async function inviteData(id: string, searchParams: InviteSearchParams) {
     leftTool: cleanParam(firstParam(searchParams, "ta") || firstParam(searchParams, "tool"), battle.ai_tool_a || "AI Music"),
     rightTool: cleanParam(firstParam(searchParams, "tb"), isHookCard ? "等待接戰工具" : battle.ai_tool_b || "AI Music"),
     battleType: cleanParam(firstParam(searchParams, "bt"), isHookCard ? "90s Drop Battle 等待卡" : "90s Drop Battle"),
+    queueStatus: battle.queue_status || null,
+    expiresAt: battle.expires_at || null,
   };
 }
 
@@ -59,6 +75,9 @@ function destinationHref(id: string, searchParams: InviteSearchParams) {
     if (tool) destination.set("aiTool", tool);
     if (leftCover) destination.set("coverUrl", leftCover);
     if (leftAvatar) destination.set("avatarUrl", leftAvatar);
+  }
+  if (toWaitingRoom) {
+    return `/battle/waiting-room/${encodeURIComponent(id)}?${destination.toString()}`;
   }
   const path = toResult
     ? `/battle/result`
@@ -128,13 +147,20 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
     data.rightName === "等待挑戰者" ||
     data.rightSong === "你的 45s Drop" || data.rightSong === "你的 45s Hook";
   const isResultInvite = firstParam(resolvedSearchParams, "to") === "result";
+  const startTimeLabel = formatTaiwanTime(data.expiresAt);
+  const isHookExpired =
+    isHookCard &&
+    (data.queueStatus === "expired" ||
+      data.queueStatus === "cancelled" ||
+      Boolean(data.expiresAt && Date.parse(data.expiresAt) <= Date.now()));
   const challengeParams = new URLSearchParams({
     battleMode: "instant",
     challengeEntryId: id,
     genre: data.genre,
     lang,
   });
-  const watchParams = new URLSearchParams({ lang, focusQueue: id });
+  const watchParams = new URLSearchParams({ lang });
+  const watchHref = `/battle/waiting-room/${encodeURIComponent(id)}?${watchParams.toString()}`;
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#050505] px-5 text-white">
@@ -153,6 +179,11 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
         <p className="mt-4 text-base font-bold leading-7 text-zinc-300">
           {data.leftSong} 對上 {data.rightSong}
         </p>
+        {isHookCard && startTimeLabel ? (
+          <p className="mx-auto mt-3 w-fit rounded-full border border-orange-200/35 bg-orange-400/10 px-4 py-2 text-sm font-black text-orange-50">
+            開戰時間：{startTimeLabel}（台灣時間）
+          </p>
+        ) : null}
         <div className="mx-auto mt-4 grid max-w-xl gap-2 text-left sm:grid-cols-2">
           <div className="rounded-2xl border border-orange-300/25 bg-orange-500/10 px-4 py-3">
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-orange-200/70">A SIDE AI TOOL</p>
@@ -167,7 +198,9 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
           {isResultInvite
             ? "這是一張 AIPOGER Drop Battle 戰果卡。進場查看完整結果與榮譽卡。"
             : isHookCard
-            ? "這是一張公開最強抓波Drop Battle 戰帖。你可以上傳自己的 45 秒 Drop 接戰，也可以先觀戰確認狀態。"
+            ? isHookExpired
+              ? "這張公開最強抓波Drop Battle 戰帖已過期。可以進等待頁確認狀態，或回鬥歌場找新的戰帖。"
+              : `這是一張公開最強抓波Drop Battle 戰帖。${startTimeLabel ? `開戰時間 ${startTimeLabel}（台灣時間）。` : ""}你可以上傳自己的 45 秒 Drop 接戰，也可以先進場聽 teaser。`
             : "這場 Battle 已經成立，進場後依照音樂感動投票。"}
         </p>
         <div className="mt-7 grid gap-3 sm:grid-cols-3">
@@ -188,14 +221,20 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
             </>
           ) : isHookCard ? (
             <>
+              {isHookExpired ? (
+                <span className="rounded-full border border-orange-300/25 bg-orange-500/10 px-6 py-3 text-sm font-black text-orange-100">
+                  戰帖已過期
+                </span>
+              ) : (
+                <Link
+                  href={`/battle/setup?${challengeParams.toString()}`}
+                  className="rounded-full bg-orange-500 px-6 py-3 text-sm font-black text-black shadow-[0_0_28px_rgba(255,106,0,0.28)] transition hover:bg-orange-300"
+                >
+                  我要挑戰
+                </Link>
+              )}
               <Link
-                href={`/battle/setup?${challengeParams.toString()}`}
-                className="rounded-full bg-orange-500 px-6 py-3 text-sm font-black text-black shadow-[0_0_28px_rgba(255,106,0,0.28)] transition hover:bg-orange-300"
-              >
-                我要挑戰
-              </Link>
-              <Link
-                href={`/battle?${watchParams.toString()}`}
+                href={watchHref}
                 className="rounded-full border border-cyan-200/35 bg-cyan-300/10 px-6 py-3 text-sm font-black text-cyan-50 transition hover:border-cyan-100"
               >
                 我要觀戰

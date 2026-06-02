@@ -13,6 +13,9 @@ export type BattleOgData = {
   fighter_b_avatar: string | null;
   ai_tool_a: string | null;
   ai_tool_b: string | null;
+  queue_status?: string | null;
+  expires_at?: string | null;
+  created_at?: string | null;
 };
 
 const BATTLE_OG_SELECT = [
@@ -50,7 +53,9 @@ const QUEUE_OG_SELECT = [
   "original_file_name",
   "genre",
   "ai_tool",
+  "status",
   "expires_at",
+  "created_at",
 ].join(",");
 
 export function siteOrigin() {
@@ -97,6 +102,9 @@ async function getQueueOgData(supabaseUrl: string, supabaseKey: string, id: stri
       original_file_name: string | null;
       genre: string | null;
       ai_tool: string | null;
+      status: string | null;
+      expires_at: string | null;
+      created_at: string | null;
     }>;
     const queue = rows[0];
     if (!queue?.id) return null;
@@ -116,6 +124,9 @@ async function getQueueOgData(supabaseUrl: string, supabaseKey: string, id: stri
       fighter_b_avatar: null,
       ai_tool_a: queue.ai_tool || null,
       ai_tool_b: null,
+      queue_status: queue.status || null,
+      expires_at: queue.expires_at || null,
+      created_at: queue.created_at || null,
     };
   } catch {
     return null;

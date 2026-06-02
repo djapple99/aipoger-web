@@ -17,6 +17,8 @@ export default function MusicAnalysisPage() {
   const isZh = lang === "zh";
   const [session, setSession] = useState<Session | null>(null);
   const [checking, setChecking] = useState(true);
+  const [analysisReady, setAnalysisReady] = useState(false);
+  const [analysisProbeCount, setAnalysisProbeCount] = useState(0);
   const configuredAnalysisUrl = process.env.NEXT_PUBLIC_MUSIC_ANALYSIS_URL?.trim() || "";
 
   const analysisUrl = useMemo(() => {
@@ -38,7 +40,42 @@ export default function MusicAnalysisPage() {
 
   const nextPath = `/music-analysis?lang=${lang}`;
   const loginHref = `/auth?next=${encodeURIComponent(nextPath)}`;
-  const embeddedAnalysisUrl = !checking && session && analysisUrl ? analysisUrl : null;
+  const shouldWakeAnalysis = !checking && Boolean(session && analysisUrl);
+  const embeddedAnalysisUrl = shouldWakeAnalysis && analysisReady && analysisUrl ? analysisUrl : null;
+
+  useEffect(() => {
+    if (!shouldWakeAnalysis) {
+      setAnalysisReady(false);
+      setAnalysisProbeCount(0);
+      return;
+    }
+
+    let mounted = true;
+    let timer: number | undefined;
+
+    const probe = async () => {
+      try {
+        const response = await fetch("/api/music-analysis/health", { cache: "no-store" });
+        const payload = (await response.json().catch(() => null)) as { ready?: boolean } | null;
+        if (!mounted) return;
+        setAnalysisProbeCount((count) => count + 1);
+        if (payload?.ready) {
+          setAnalysisReady(true);
+          return;
+        }
+      } catch {
+        if (!mounted) return;
+        setAnalysisProbeCount((count) => count + 1);
+      }
+      if (mounted) timer = window.setTimeout(probe, 3000);
+    };
+
+    void probe();
+    return () => {
+      mounted = false;
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [shouldWakeAnalysis]);
 
   if (embeddedAnalysisUrl) {
     return (
@@ -106,12 +143,20 @@ export default function MusicAnalysisPage() {
                 {isZh ? "登入後分析歌曲" : "Sign In To Analyze"}
               </Link>
             ) : analysisUrl ? (
-              <a
-                href={analysisUrl}
-                className="inline-flex min-h-14 items-center justify-center rounded-2xl bg-gradient-to-r from-orange-400 to-cyan-300 px-8 text-base font-black text-black shadow-[0_0_34px_rgba(117,225,231,0.22)] transition hover:brightness-110"
-              >
-                {isZh ? "前往 AI A&R 審核台" : "Open AI A&R Gate"}
-              </a>
+              <div className="mx-auto max-w-xl rounded-2xl border border-cyan-200/22 bg-cyan-300/[0.07] px-5 py-5">
+                <p className="text-base font-black text-cyan-50">
+                  {analysisReady ? (isZh ? "分析引擎已連線" : "Analysis engine is ready") : isZh ? "AIPOGER 正在喚醒分析引擎…" : "AIPOGER is waking the analysis engine..."}
+                </p>
+                <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">
+                  {isZh
+                    ? analysisProbeCount > 2
+                      ? "Render 服務冷啟動中，請留在這裡；主站會自動接入，不會顯示 Render 等待頁。"
+                      : "正在確認服務狀態，完成後會自動進入音樂分析台。"
+                    : analysisProbeCount > 2
+                      ? "The Render service is cold-starting. Stay here; the main site will connect automatically."
+                      : "Checking service status. The music analysis console opens automatically when ready."}
+                </p>
+              </div>
             ) : (
               <div className="rounded-2xl border border-orange-300/22 bg-orange-500/8 px-5 py-4 text-sm font-bold leading-6 text-orange-100">
                 {isZh
