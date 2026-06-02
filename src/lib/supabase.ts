@@ -9,11 +9,12 @@ if (!supabaseUrl || !supabaseKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
-    // OAuth 一律使用 PKCE，callback 頁會明確呼叫 exchangeCodeForSession。
-    // 關閉自動 URL 偵測可避免 callback 頁與 SDK 同時交換 code，造成偶發登入失敗。
+    // Use implicit auth for the public browser client so Email Magic Links still
+    // work when users open them from Gmail or another browser context.
+    // The callback page manually reads URL hash tokens and stores the session.
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: false,
-    flowType: "pkce",
+    flowType: "implicit",
   },
 });
