@@ -8,6 +8,7 @@ import { useI18n } from '@/lib/i18n';
 
 const BATTLE_FIXED_ROUTES = ['setup', 'hook-cut', 'matchmaking'];
 const SELF_NAV_ROUTES = ['/listen-bar', '/music-analysis', '/about', '/partners', '/hook-guide', '/ai-music-bible', '/rank'];
+const HIDDEN_PREFIXES = ['/battle/waiting-room'];
 
 export default function NavHomeLink() {
   const { t } = useI18n();
@@ -15,7 +16,8 @@ export default function NavHomeLink() {
   /** 僅擂台單場（/battle/:id）；排除列表與固定子路徑 */
   const seg = pathname?.match(/^\/battle\/([^/]+)$/)?.[1];
   const isBattleArena = Boolean(seg && !BATTLE_FIXED_ROUTES.includes(seg));
-  if (isBattleArena || SELF_NAV_ROUTES.includes(pathname ?? '')) return null;
+  const isHiddenPrefix = HIDDEN_PREFIXES.some((prefix) => pathname?.startsWith(prefix));
+  if (isHiddenPrefix || isBattleArena || SELF_NAV_ROUTES.includes(pathname ?? '')) return null;
 
   return (
     <Link
