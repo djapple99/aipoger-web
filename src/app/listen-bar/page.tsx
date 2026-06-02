@@ -8,6 +8,7 @@ import { fontRighteous } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n";
 import { parseAudioMetadata } from "@/lib/audio-metadata";
 import { sha256File } from "@/lib/file-hash";
+import { getFreshSession } from "@/lib/auth-session";
 import { supabase } from "@/lib/supabase";
 import { loadFighterNameFromProfile } from "@/lib/user-profile-fighter-name";
 import ShareButton from "@/components/share-button";
@@ -550,8 +551,8 @@ export default function ListenBarPage() {
 
   useEffect(() => {
     const loadUser = async () => {
-      const { data } = await supabase.auth.getSession();
-      const user = data.session?.user ?? null;
+      const session = await getFreshSession();
+      const user = session?.user ?? null;
       const fighterName = user?.id ? await loadFighterNameFromProfile(user.id) : null;
       const uploadName = fighterName?.trim() ?? "";
       setUserName(uploadName || userDisplayName(user));
@@ -559,7 +560,7 @@ export default function ListenBarPage() {
       setUserId(user?.id ?? null);
       setVisitorAvatarUrl(userAvatarUrl(user));
       if (user?.id) {
-        const token = data.session?.access_token ?? "";
+        const token = session?.access_token ?? "";
         const [myTracksResult, fighterAvatarResult, userAvatarResult] = await Promise.all([
           fetch("/api/listen-bar/my-tracks", {
             cache: "no-store",
@@ -1041,14 +1042,14 @@ export default function ListenBarPage() {
     });
 
     void (async () => {
-      const { data: sessionData } = await supabase.auth.getSession();
+      const session = await getFreshSession();
       const visitorId = getListenBarVisitorId();
       const response = await fetch("/api/listen-bar/reaction", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-AIPOGER-Visitor-Id": visitorId,
-          ...(sessionData.session?.access_token ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}),
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
         body: JSON.stringify({ trackId: nowTrack.id, reaction: next }),
       });
@@ -1087,12 +1088,12 @@ export default function ListenBarPage() {
     }
     setChatInput("");
     void (async () => {
-      const { data: sessionData } = await supabase.auth.getSession();
+      const session = await getFreshSession();
       const response = await fetch("/api/listen-bar/messages", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(sessionData.session?.access_token ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}),
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
         body: JSON.stringify({
           displayName: userName,
@@ -1128,12 +1129,12 @@ export default function ListenBarPage() {
     }
     setTrackCommentBusy(true);
     void (async () => {
-      const { data: sessionData } = await supabase.auth.getSession();
+      const session = await getFreshSession();
       const response = await fetch("/api/listen-bar/track-comments", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(sessionData.session?.access_token ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}),
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
         body: JSON.stringify({
           trackId: nowTrack.id,
@@ -1366,12 +1367,12 @@ export default function ListenBarPage() {
     setPublicUploadError("");
     setPublicUploadMessage("");
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
+      const session = await getFreshSession();
       const response = await fetch("/api/listen-bar/remove-track", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(sessionData.session?.access_token ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}),
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
         body: JSON.stringify({ trackId: track.id }),
       });
