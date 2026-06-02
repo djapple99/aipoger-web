@@ -48,23 +48,6 @@ function AuthCallbackInner() {
     };
 
     const handleCallback = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        finish();
-        return;
-      }
-
-      if (code) {
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-        if (exchangeError) {
-          console.error("[auth callback] code exchange failed", exchangeError);
-          fail(exchangeError.message);
-          return;
-        }
-        finish();
-        return;
-      }
-
       // Implicit OAuth and Email Magic Links put tokens in the URL hash.
       const accessToken = hashParams.get("access_token");
       const refreshToken = hashParams.get("refresh_token");
@@ -76,6 +59,23 @@ function AuthCallbackInner() {
         if (sessionError) {
           console.error("[auth callback] hash session failed", sessionError);
           fail(sessionError.message);
+          return;
+        }
+        finish();
+        return;
+      }
+
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        finish();
+        return;
+      }
+
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (exchangeError) {
+          console.error("[auth callback] code exchange failed", exchangeError);
+          fail(exchangeError.message);
           return;
         }
         finish();

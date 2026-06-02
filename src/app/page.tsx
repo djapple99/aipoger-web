@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
+import { getFreshSession } from "@/lib/auth-session";
 import { useI18n } from "@/lib/i18n";
 import { writeFighterNameToStorage } from "@/lib/fighter-name-storage";
 import { loadIsAdmin } from "@/lib/user-profile-admin";
@@ -208,14 +209,7 @@ function HomeAuthBar() {
     };
 
     void (async () => {
-      const {
-        data: { session: currentSession },
-      } = await supabase.auth.getSession();
-      const fallbackSession = currentSession
-        ? currentSession
-        : (await supabase.auth.refreshSession().catch(() => null))?.data.session ?? null;
-
-      applySession(fallbackSession);
+      applySession(await getFreshSession());
       if (mounted) setCheckingSession(false);
     })();
 

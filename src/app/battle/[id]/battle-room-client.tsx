@@ -12,6 +12,7 @@ import { isAuthBypassEnabled, mockUserId } from "@/lib/auth-bypass";
 import { useI18n } from "@/lib/i18n";
 import { fontGlowSansBattle } from "@/lib/fonts";
 import { supabase } from "@/lib/supabase";
+import { getFreshSession } from "@/lib/auth-session";
 import ShareButton from "@/components/share-button";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { rankLabelForLevel } from "@/lib/battle-pool-rules";
@@ -1008,9 +1009,7 @@ function BattleArenaContent() {
         setMyDisplayName(searchParams.get("fighterName")?.trim() || "我");
         return;
       }
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const session = await getFreshSession();
       if (!session) {
         router.replace("/auth?intent=battle");
         return;
@@ -1058,9 +1057,7 @@ function BattleArenaContent() {
         let fighterProfileCover: string | null = null;
         let oauthAv: string | null = null;
         if (!isAuthBypassEnabled) {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
+          const session = await getFreshSession();
           oauthAv = oauthProviderAvatar(session?.user);
           const uid = session?.user?.id;
           if (uid) {
@@ -1117,16 +1114,7 @@ function BattleArenaContent() {
         return;
       }
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      // 還原 session 可能略晚於首次 render，短重試避免 RLS 擋讀
-      let authed = session;
-      for (let i = 0; i < 6 && !authed?.user && !isAuthBypassEnabled; i++) {
-        await new Promise((r) => setTimeout(r, 80));
-        const { data: d2 } = await supabase.auth.getSession();
-        authed = d2.session;
-      }
+      const authed = await getFreshSession();
       if (!isAuthBypassEnabled && !authed?.user && !battleId.startsWith("mock-")) {
         if (mounted) setLoading(false);
         return;

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import WaveSurfer from 'wavesurfer.js';
 import Regions from 'wavesurfer.js/dist/plugins/regions.esm.js';
 import { supabase } from '@/lib/supabase';
+import { getFreshSession } from '@/lib/auth-session';
 import { isAuthBypassEnabled, mockUserId } from '@/lib/auth-bypass';
 import { readFighterNameFromStorage, writeFighterNameToStorage } from '@/lib/fighter-name-storage';
 import { buildHookStoragePath, isValidStorageObjectKey } from '@/lib/storage-path';
@@ -476,10 +477,8 @@ function HookCutContent() {
     if (isAuthBypassEnabled || !challengeTargetQueueId) return;
     let mounted = true;
     void (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!mounted || data.session?.user) return;
-      const refreshed = await supabase.auth.refreshSession().catch(() => null);
-      if (!mounted || refreshed?.data.session?.user) return;
+      const freshSession = await getFreshSession();
+      if (!mounted || freshSession?.user) return;
       router.replace(authHrefForCurrentPage());
     })();
     return () => {
@@ -846,7 +845,7 @@ function HookCutContent() {
 
       const session = isAuthBypassEnabled
         ? null
-        : ((await supabase.auth.getSession()).data.session ?? (await supabase.auth.refreshSession().catch(() => null))?.data.session ?? null);
+        : await getFreshSession();
       if (!isAuthBypassEnabled && !session?.user) {
         router.push(authHrefForCurrentPage());
         throw new Error("登入狀態已過期，請重新登入後會回到這張接戰上傳頁。");

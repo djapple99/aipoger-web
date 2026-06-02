@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import LangToggle from "@/components/lang-toggle";
-import { supabase } from "@/lib/supabase";
+import { getFreshSession } from "@/lib/auth-session";
 import { useI18n } from "@/lib/i18n";
 import { fontRighteous } from "@/lib/fonts";
 
@@ -28,9 +28,9 @@ export default function MusicAnalysisPage() {
 
   useEffect(() => {
     let mounted = true;
-    void supabase.auth.getSession().then(({ data }) => {
+    void getFreshSession().then((freshSession) => {
       if (!mounted) return;
-      setSession(data.session ?? null);
+      setSession(freshSession);
       setChecking(false);
     });
     return () => {

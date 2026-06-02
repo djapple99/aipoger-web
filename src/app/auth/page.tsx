@@ -5,6 +5,7 @@ import Image from "next/image";
 import { type FormEvent, useEffect, useState, Suspense, useRef, useCallback } from "react";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { supabase } from "@/lib/supabase";
+import { getFreshSession } from "@/lib/auth-session";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import { buildAuthCallbackUrl, buildAuthPageUrl, consumeFreshAuthReturnPath, rememberAuthReturnPath, safeNextPath } from "@/lib/auth-urls";
@@ -83,10 +84,7 @@ function AuthPageInner() {
 
   useEffect(() => {
     const checkUser = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session) {
+      if (await getFreshSession()) {
         goHomeOnce();
       }
     };

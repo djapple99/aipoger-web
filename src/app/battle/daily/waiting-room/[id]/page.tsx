@@ -7,6 +7,7 @@ import LangToggle from "@/components/lang-toggle";
 import ShareButton from "@/components/share-button";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
+import { getFreshSession } from "@/lib/auth-session";
 
 type DailyEntryRoomRow = {
   id: string;
@@ -70,9 +71,7 @@ export default function DailyWaitingRoomPage() {
         return;
       }
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const session = await getFreshSession();
       const { data, error: queryError } = await supabase
         .from("daily_battle_entries")
         .select("id,user_id,title,genre,ai_tool,audio_path,cover_url,status,matched_battle_id,created_at")
@@ -154,7 +153,7 @@ export default function DailyWaitingRoomPage() {
     setCancelBusy(true);
     setCancelError("");
     try {
-      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      const token = (await getFreshSession())?.access_token;
       if (!token) throw new Error(isZh ? "請先登入後再取消 24H Full Song。" : "Sign in to cancel.");
       const response = await fetch("/api/daily-battle/cancel-entry", {
         method: "POST",

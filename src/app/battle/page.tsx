@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
+import { getFreshSession } from "@/lib/auth-session";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
 import ShareButton from "@/components/share-button";
@@ -391,8 +392,8 @@ function DailyBattleList() {
   useEffect(() => {
     if (isAuthBypassEnabled) return;
     let mounted = true;
-    void supabase.auth.getSession().then(({ data }) => {
-      if (mounted) setCurrentUserId(data.session?.user.id ?? null);
+    void getFreshSession().then((freshSession) => {
+      if (mounted) setCurrentUserId(freshSession?.user.id ?? null);
     });
     return () => {
       mounted = false;
@@ -403,8 +404,7 @@ function DailyBattleList() {
     setDailyCancelError("");
     setDailyCancelId(entryId);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
+      const token = (await getFreshSession())?.access_token;
       if (!token) throw new Error(isZh ? "請先登入後再取消 Daily Battle。" : "Sign in to cancel this Daily Battle.");
       const response = await fetch("/api/daily-battle/cancel-entry", {
         method: "POST",
@@ -791,8 +791,8 @@ function BattlePoolList() {
   useEffect(() => {
     if (isAuthBypassEnabled) return;
     let mounted = true;
-    void supabase.auth.getSession().then(({ data }) => {
-      if (mounted) setCurrentUserId(data.session?.user.id ?? null);
+    void getFreshSession().then((freshSession) => {
+      if (mounted) setCurrentUserId(freshSession?.user.id ?? null);
     });
     return () => {
       mounted = false;
@@ -876,7 +876,7 @@ function BattlePoolList() {
     setCancelError(null);
     setCancelQueueId(entryId);
     try {
-      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      const token = (await getFreshSession())?.access_token;
       if (!token) throw new Error(isZh ? "請先登入後再取消挑戰。" : "Please sign in before cancelling.");
       await cancelCurrentBattleIntent({ accessToken: token });
       setRows((items) => items.filter((item) => item.id !== entryId));

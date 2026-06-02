@@ -4,6 +4,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { getFreshSession as getStableSession } from '@/lib/auth-session';
 import { isAuthBypassEnabled, mockUserId } from '@/lib/auth-bypass';
 import { useI18n } from '@/lib/i18n';
 import { readFighterNameFromStorage, writeFighterNameToStorage } from '@/lib/fighter-name-storage';
@@ -272,10 +273,7 @@ function authHrefForCurrentPage(): string {
 }
 
 async function getFreshSession() {
-  const current = await supabase.auth.getSession();
-  if (current.data.session?.user) return current.data.session;
-  const refreshed = await supabase.auth.refreshSession().catch(() => null);
-  return refreshed?.data.session ?? null;
+  return getStableSession();
 }
 
 function toDatetimeLocalValue(date: Date) {
@@ -350,9 +348,13 @@ export default function BattleSetupPage() {
   const [profileAvatarPreview, setProfileAvatarPreview] = useState<string | null>(null);
 
   useEffect(() => {
-    void supabase.auth.getSession().then(({ data }) => {
-      setUploadUserId(data.session?.user?.id ?? null);
+    let mounted = true;
+    void getFreshSession().then((freshSession) => {
+      if (mounted) setUploadUserId(freshSession?.user?.id ?? null);
     });
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
