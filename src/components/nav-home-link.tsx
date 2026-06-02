@@ -23,6 +23,10 @@ export default function NavHomeLink() {
     <Link
       href="/"
       aria-label={t('nav_home_aria')}
+      onClick={(event) => {
+        event.preventDefault();
+        window.location.assign('/');
+      }}
       className="fixed left-4 top-4 z-50 rounded-3xl bg-black/40 p-2 ring-1 ring-white/10 backdrop-blur hover:bg-black/55 transition"
     >
       <Image

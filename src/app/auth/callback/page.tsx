@@ -72,7 +72,7 @@ function AuthCallbackInner() {
         current = (await supabase.auth.getSession().catch(() => ({ data: { session: null } }))).data.session;
       }
 
-      const verified = current?.user ? current : await getFreshSession(3000);
+      const verified = current?.user ? current : await getFreshSession(6000);
       if (!verified?.user) {
         fail("登入資料沒有成功保存，請清除登入狀態後再試一次");
         return;

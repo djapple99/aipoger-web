@@ -210,7 +210,7 @@ function HomeAuthBar() {
     };
 
     void (async () => {
-      applySession(await getFreshSession());
+      applySession(await getFreshSession(8000));
       if (mounted) {
         initialSessionResolved = true;
         setCheckingSession(false);
@@ -223,7 +223,7 @@ function HomeAuthBar() {
       if (!initialSessionResolved && !s?.user && event !== "SIGNED_OUT") return;
       if (!s?.user) {
         void (async () => {
-          const freshSession = await getFreshSession(1200);
+          const freshSession = await getFreshSession(4000);
           if (freshSession?.user) {
             applySession(freshSession);
             setCheckingSession(false);
@@ -528,6 +528,10 @@ export default function HomePage() {
               </Link>
               <Link
                 href="/listen-bar"
+                onClick={(event) => {
+                  event.preventDefault();
+                  window.location.assign("/listen-bar");
+                }}
                 className="group flex min-h-24 flex-col justify-between rounded-2xl border border-orange-200/25 bg-white/[0.06] px-4 py-4 text-white transition hover:border-orange-200 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
               >
                 <ListenBarIcon />
@@ -607,6 +611,10 @@ export default function HomePage() {
 
                 <Link
                   href="/listen-bar"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    window.location.assign("/listen-bar");
+                  }}
                   className="group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] border border-white/14 bg-white/[0.055] px-5 text-white shadow-[0_12px_26px_rgba(0,0,0,0.2)] transition hover:border-cyan-200/45 hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
                 >
                   <ListenBarIcon />

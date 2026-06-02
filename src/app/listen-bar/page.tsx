@@ -1521,15 +1521,30 @@ export default function ListenBarPage() {
           </div>
 
           <nav className="relative mt-4 flex max-w-full flex-wrap items-center justify-center gap-2 rounded-[1.15rem] border border-white/10 bg-black/52 px-4 py-3 shadow-[0_16px_54px_rgba(0,0,0,0.24)] backdrop-blur">
-            {navLinks.map((item) => (
-              <Link
-                key={item.href}
-                href={`${item.href}${item.href === "/" ? "" : lang === "en" ? "?lang=en" : "?lang=zh"}`}
-                className="rounded-full border border-white/10 bg-white/[0.045] px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-orange-300/70 hover:bg-orange-500/10 hover:text-white"
-              >
-                {item.label}
-              </Link>
-            ))}
+            {navLinks.map((item) => {
+              const href = `${item.href}${item.href === "/" ? "" : lang === "en" ? "?lang=en" : "?lang=zh"}`;
+              const className = "rounded-full border border-white/10 bg-white/[0.045] px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-orange-300/70 hover:bg-orange-500/10 hover:text-white";
+              if (item.href === "/") {
+                return (
+                  <Link
+                    key={item.href}
+                    href={href}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      window.location.assign("/");
+                    }}
+                    className={className}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              }
+              return (
+                <Link key={item.href} href={href} className={className}>
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
         </header>
 
