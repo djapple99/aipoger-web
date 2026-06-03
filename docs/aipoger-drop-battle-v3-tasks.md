@@ -33,6 +33,7 @@ Task 2 (DB migration) ← 最先
     ↓
 Task 3 (setup UI) + Task 4 (arena 倒數) + Task 6 (cron)  ← 平行可做
     ↓
+🆕 Task 4.5 (queue → battles 搬 scheduled_start_at) ← 補進來
 Task 5 (砍 waiting-room) ← 依賴 Task 3
 Task 7 (founder 手動取消) ← 依賴 Task 3, 6
     ↓
@@ -157,6 +158,47 @@ founder 在 setup 頁能選「10 / 15 / 20 分鐘後」或「自訂 24H 內 date
 - 設 1 分鐘後開戰 → 戰場倒數從 `0:59` 開始遞減
 - 倒數歸 0 後正常進 RPS / battle phase
 - 設已過時間（防呆）→ 倒數直接顯示 `0:00` 進入 battle phase
+
+---
+
+## Task 4.5: 🆕 queue → battles 搬運 scheduled_start_at（補進來的依賴）
+
+### 為什麼需要這個 Task
+Codex 在跑完 Task 4 後指出來：Task 3 把 `scheduled_start_at` 寫進 `battle_queue`，Task 4 從 `battles.scheduled_start_at` 讀，但**中間沒有人把 queue 的時間搬進 battles 表**。當 queue 配對成功、battle 成立時，battles.scheduled_start_at 還是 null，arena 倒數會 fallback 到 `started_at`（可能壞掉）。
+
+這個依賴原本漏在 spec 裡，Codex 抓得很準。**Task 4.5 必須在 Task 6 自動取消 cron 之前做完**，否則 cron 查詢 `battles.scheduled_start_at` 會全部是 null。
+
+### 目標
+當 battle 從 queue 成立時，把 `scheduled_start_at` 跟 `cancellation_evaluation_at` 從 `battle_queue` 帶進 `battles` 表。
+
+### 影響檔案
+- `src/app/api/battle-pool/attempt-matchmaking/route.ts`（配對成功時 insert/update battles）
+- `src/app/api/battle-pool/process-fallbacks/route.ts`（fallback 配對也會 create battle）
+- `supabase/` 看是否有 trigger 或 RPC 也要更新
+
+### Context
+- 從之前 grep 知道的 route 位置
+- battle_queue 有 `scheduled_start_at` 跟 `cancellation_evaluation_at` 欄位（Task 2 加的）
+- battles 表也有相同欄位（Task 2 加的）
+- 既有配對成功時應該有 INSERT INTO battles ... 的邏輯
+
+### 實作
+1. 找 battle_pool 配對成功的 INSERT/UPSERT battles 邏輯（可能在 attempt-matchmaking 或 process-fallbacks 或其他 route）
+2. 在 INSERT/UPDATE 時，把對應 queue row 的 `scheduled_start_at` 跟 `cancellation_evaluation_at` 一起寫進 battles
+3. 如果用 SQL trigger / function 配對，也要更新那邊
+4. 如果是 client 端 insert，要確認 queue row 跟 battle row 的對應邏輯
+
+### 不做
+- 不改配對邏輯本身（只搬欄位）
+- 不刪除或修改 queue 表的欄位
+- 不改 RLS
+
+### 驗證
+- 跑 Task 2 的 migration 後
+- 設 10 分鐘後開戰
+- 等配對成功 → 進戰場看倒數是否正確（不是 fallback 到 0）
+- 進 Supabase 看 battles.scheduled_start_at 是否有值
+- 確認 Task 6 cron 跑下去查詢條件 `cancellation_evaluation_at < NOW()` 會 match 到（不是全部 null）
 
 ---
 
@@ -348,6 +390,7 @@ founder 在戰場頁面（自己發起的）可以「主動取消」挑戰。
 | 2 | `feat(db): 新增 battle scheduled_start_at 與 cancellation 欄位` |
 | 3 | `feat(setup): founder 設定開戰時間 UI（10/15/20 分鐘 + 自訂 24H）` |
 | 4 | `feat(arena): 戰場倒數讀 scheduled_start_at` |
+| 4.5 | `fix(battle): 配對成功時把 scheduled_start_at 從 queue 帶進 battles` |
 | 5 | `refactor(nav): 砍掉 waiting-room 中繼路由，setup/matchmaking/invite 直接跳戰場` |
 | 6 | `feat(cron): 自動取消開戰後 1 分鐘仍無對手的 battle（每分鐘 cron）` |
 | 7 | `feat(arena): founder 手動取消挑戰按鈕` |
