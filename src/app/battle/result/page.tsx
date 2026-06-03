@@ -415,18 +415,7 @@ function BattleResultContent() {
         ].join("\n");
   const resultShareUrl = (() => {
     if (!battleId || !isUuid(battleId)) return undefined;
-    const params = new URLSearchParams({
-      lang,
-      to: "result",
-      bt: lang === "zh" ? "90s Drop Battle 戰果卡" : "90s Drop Battle Result",
-      l: winnerName,
-      r: opponentName,
-      ls: winnerSong,
-      rs: opponentSong,
-      g: cleanParam(searchParams.get("genre")) || remoteArchive?.genre || "AI Music",
-    });
-    if (tool) params.set("ta", tool);
-    return `/battle/invite/${encodeURIComponent(battleId)}?${params.toString()}`;
+    return `/battle/result?battleId=${encodeURIComponent(battleId)}&lang=${lang}`;
   })();
 
   useEffect(() => {

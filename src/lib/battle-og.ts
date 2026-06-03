@@ -246,5 +246,5 @@ export function battleOgTitle(battle: BattleOgData) {
 }
 
 export function battleOgDescription(battle: BattleOgData) {
-  return `${battle.fighter_a_name}《${battle.song_a_name}》VS ${battle.fighter_b_name}《${battle.song_b_name}》｜開打前集結，先聽 5 秒 teaser，預測誰的 Drop 最炸。`;
+  return `${battle.fighter_a_name}《${battle.song_a_name}》VS ${battle.fighter_b_name}《${battle.song_b_name}》｜開打前集結，先聽 5 秒預播，預測誰的 Drop 最炸。`;
 }

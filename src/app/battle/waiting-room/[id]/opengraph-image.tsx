@@ -191,7 +191,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
                 VS
               </div>
               <div style={{ marginTop: 24, color: "#f4c59c", fontSize: 23, fontWeight: 900, textAlign: "center" }}>
-                Hear 5s teaser, then vote by instinct.
+                Hear 5s preview, then vote by instinct.
               </div>
             </div>
             {renderSide({

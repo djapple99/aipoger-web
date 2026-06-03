@@ -2484,10 +2484,10 @@ function BattleArenaContent() {
       ? lang === "zh"
         ? isQueueArena
           ? `${preStartSecondsLeft && preStartSecondsLeft > 0 ? `開戰倒數 ${preStartClock}` : "鬥場暖場中"} · 可離開再回來`
-          : `開戰倒數 ${preStartClock} · 先聽 5 秒 teaser`
+          : `開戰倒數 ${preStartClock} · 先聽 5 秒預播`
         : isQueueArena
           ? `${preStartSecondsLeft && preStartSecondsLeft > 0 ? `Starts in ${preStartClock}` : "Arena warmup"} · re-enter anytime`
-          : `Starts in ${preStartClock} · 5s teasers open`
+          : `Starts in ${preStartClock} · 5s previews open`
       : battlePhase === "rps"
       ? lang === "zh"
         ? rpsPressed.A || rpsPressed.B
@@ -2591,6 +2591,9 @@ function BattleArenaContent() {
     if (isQueueArena) {
       return `/battle/${encodeURIComponent(battleId)}?${params.toString()}`;
     }
+    if (!isMockBattle && !isAuthBypassEnabled) {
+      return `/battle/${encodeURIComponent(battleId)}?${params.toString()}`;
+    }
     params.set("l", battle.fighter_a_name);
     params.set("r", battle.fighter_b_name);
     params.set("ls", battle.song_a_name);
@@ -2612,14 +2615,14 @@ function BattleArenaContent() {
   const battleShareText =
     lang === "zh"
       ? isQueueArena
-        ? `${battle.fighter_a_name} 的 AIPOGER Drop Battle 戰場已開。進來聽 5 秒 teaser、聊天預測，也可以直接接戰！`
+        ? `${battle.fighter_a_name} 的 AIPOGER Drop Battle 戰場已開。進來聽 5 秒預播、聊天預測，也可以直接接戰！`
         : isPreBattle
-        ? `${battle.fighter_a_name} 對上 ${battle.fighter_b_name}，已進 AIPOGER 鬥歌場倒數。進來先聽 5 秒 teaser，時間到開打！`
+        ? `${battle.fighter_a_name} 對上 ${battle.fighter_b_name}，已進 AIPOGER 鬥歌場倒數。進來先聽 5 秒預播，時間到開打！`
         : `${battle.fighter_a_name} 對上 ${battle.fighter_b_name}，正在 AIPOGER 鬥歌場開打。進來聽 Drop、投票、丟彈幕！`
       : isQueueArena
-        ? `${battle.fighter_a_name}'s AIPOGER Drop Battle arena is open. Hear the 5s teaser, chat, predict, or answer the challenge.`
+        ? `${battle.fighter_a_name}'s AIPOGER Drop Battle arena is open. Hear the 5s preview, chat, predict, or answer the challenge.`
         : isPreBattle
-        ? `${battle.fighter_a_name} vs ${battle.fighter_b_name} is counting down on AIPOGER. Hear the 5s teasers before it starts.`
+        ? `${battle.fighter_a_name} vs ${battle.fighter_b_name} is counting down on AIPOGER. Hear the 5s previews before it starts.`
         : `${battle.fighter_a_name} vs ${battle.fighter_b_name} is live on AIPOGER. Listen, vote, and make some noise.`;
 
   return (
@@ -2881,30 +2884,46 @@ function BattleArenaContent() {
                         ? `${preStartTimeLabel ? `${preStartTimeLabel} 開戰。` : ""}你可以在時間內出去再進來；挑戰者進場後會自動切入正式猜拳開打。`
                         : `${preStartTimeLabel ? `${preStartTimeLabel} start. ` : ""}Leave and re-enter before the time. When a rival joins, this arena switches into the formal throw.`
                       : lang === "zh"
-                        ? `${preStartTimeLabel ? `${preStartTimeLabel} ` : ""}時間到自動開打。先分享戰帖，觀眾可進場聽雙方 5 秒 teaser。`
-                        : `${preStartTimeLabel ? `${preStartTimeLabel} ` : ""}Auto-starts on time. Share the card and let listeners hear both 5s teasers.`}
+                        ? `${preStartTimeLabel ? `${preStartTimeLabel} ` : ""}時間到自動開打。先分享戰帖，觀眾可進場聽雙方 5 秒預播。`
+                        : `${preStartTimeLabel ? `${preStartTimeLabel} ` : ""}Auto-starts on time. Share the card and let listeners hear both 5s previews.`}
                   </p>
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => playTeaser("A")}
                       disabled={!audioUrls.A}
-                      className="rounded-2xl border border-orange-300/30 bg-orange-500/12 px-3 py-3 text-left transition hover:border-orange-200/70 hover:bg-orange-500/20 disabled:cursor-not-allowed disabled:opacity-45"
+                      className="rounded-2xl border border-red-200/70 bg-red-600 px-3 py-3 text-left text-white shadow-[0_0_24px_rgba(220,38,38,0.22)] transition hover:border-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-45"
                     >
-                      <p className="truncate text-[11px] font-black text-orange-100">{battle.fighter_a_name}</p>
-                      <p className="mt-1 text-sm font-black text-white">
-                        {teaserDeck === "A" ? `TEASER ${teaserSecondsLeft}s` : "PLAY 5S"}
+                      <p className="truncate text-[11px] font-black text-white/82">{battle.fighter_a_name}</p>
+                      <p className="mt-1 text-sm font-black tracking-[0.06em] text-white">
+                        {teaserDeck === "A"
+                          ? lang === "zh"
+                            ? `預播中 ${teaserSecondsLeft}秒`
+                            : `PREVIEW ${teaserSecondsLeft}s`
+                          : lang === "zh"
+                            ? "預播 5 秒"
+                            : "PREVIEW 5S"}
                       </p>
                     </button>
                     <button
                       type="button"
                       onClick={() => playTeaser("B")}
                       disabled={!audioUrls.B || isQueueArena}
-                      className="rounded-2xl border border-cyan-200/30 bg-cyan-400/12 px-3 py-3 text-left transition hover:border-cyan-100/70 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-45"
+                      className="rounded-2xl border border-red-200/70 bg-red-600 px-3 py-3 text-left text-white shadow-[0_0_24px_rgba(220,38,38,0.22)] transition hover:border-white hover:bg-red-500 disabled:cursor-not-allowed disabled:border-cyan-200/25 disabled:bg-cyan-400/10 disabled:text-cyan-50 disabled:opacity-55"
                     >
-                      <p className="truncate text-[11px] font-black text-cyan-100">{battle.fighter_b_name}</p>
-                      <p className="mt-1 text-sm font-black text-white">
-                        {isQueueArena ? (lang === "zh" ? "等挑戰者" : "WAITING") : teaserDeck === "B" ? `TEASER ${teaserSecondsLeft}s` : "PLAY 5S"}
+                      <p className="truncate text-[11px] font-black text-white/82">{battle.fighter_b_name}</p>
+                      <p className="mt-1 text-sm font-black tracking-[0.06em] text-white">
+                        {isQueueArena
+                          ? lang === "zh"
+                            ? "等挑戰者"
+                            : "WAITING"
+                          : teaserDeck === "B"
+                            ? lang === "zh"
+                              ? `預播中 ${teaserSecondsLeft}秒`
+                              : `PREVIEW ${teaserSecondsLeft}s`
+                            : lang === "zh"
+                              ? "預播 5 秒"
+                              : "PREVIEW 5S"}
                       </p>
                     </button>
                   </div>

@@ -103,7 +103,7 @@ export async function generateMetadata({ params, searchParams }: BattleInvitePag
   const canonical = `${origin}/battle/invite/${encodeURIComponent(id)}`;
   const image = `${canonical}/opengraph-image?${query.toString()}`;
   const title = `AIPOGER 90S 最強抓波Drop Battle 戰帖｜${data.leftName} VS ${data.rightName}`;
-  const description = `${data.battleType}｜${data.leftName}《${data.leftSong}》(${data.leftTool}) VS ${data.rightName}《${data.rightSong}》(${data.rightTool})｜進戰場聽 teaser、聊天預測。`;
+  const description = `${data.battleType}｜${data.leftName}《${data.leftSong}》(${data.leftTool}) VS ${data.rightName}《${data.rightSong}》(${data.rightTool})｜進戰場聽 5 秒預播、聊天預測。`;
 
   return {
     title,
@@ -181,6 +181,11 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
             開戰時間：{startTimeLabel}（台灣時間）
           </p>
         ) : null}
+        {isHookCard && !isHookExpired ? (
+          <p className="mx-auto mt-3 w-fit rounded-full border border-red-200/80 bg-red-600 px-5 py-2 text-sm font-black tracking-[0.12em] text-white shadow-[0_0_28px_rgba(220,38,38,0.24)]">
+            5 秒預播
+          </p>
+        ) : null}
         <div className="mx-auto mt-4 grid max-w-xl gap-2 text-left sm:grid-cols-2">
           <div className="rounded-2xl border border-orange-300/25 bg-orange-500/10 px-4 py-3">
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-orange-200/70">A SIDE AI TOOL</p>
@@ -197,7 +202,7 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
             : isHookCard
             ? isHookExpired
               ? "這張公開最強抓波Drop Battle 戰帖已過期。可以回鬥歌場找新的戰帖。"
-              : `這是一張公開最強抓波Drop Battle 戰帖。${startTimeLabel ? `開戰時間 ${startTimeLabel}（台灣時間）。` : ""}進戰場可以聽 5 秒 teaser、聊天預測；想上場就直接接戰。`
+              : `這是一張公開最強抓波Drop Battle 戰帖。${startTimeLabel ? `開戰時間 ${startTimeLabel}（台灣時間）。` : ""}進戰場可以聽 5 秒預播、聊天預測；想上場就直接接戰。`
             : "這場 Battle 已經成立，進場後依照音樂感動投票。"}
         </p>
         <div className="mt-7 grid gap-3 sm:grid-cols-3">

@@ -1085,8 +1085,8 @@ function BattlePoolList() {
                           ? `《${entry.original_file_name}》正在 AIPOGER 鬥歌場，進來觀戰投票。`
                           : `"${entry.original_file_name}" is in AIPOGER Battle. Come vote.`
                         : isZh
-                          ? `${entry.fighter_name} 的《${entry.original_file_name}》正在等人接戰。${hookStartText}進來約戰，或先聽 5 秒 teaser。`
-                          : `${entry.fighter_name}'s "${entry.original_file_name}" is waiting for a challenger. ${hookStartText}Challenge it, or hear the 5s teaser first.`
+                          ? `${entry.fighter_name} 的《${entry.original_file_name}》正在等人接戰。${hookStartText}進來約戰，或先聽 5 秒預播。`
+                          : `${entry.fighter_name}'s "${entry.original_file_name}" is waiting for a challenger. ${hookStartText}Challenge it, or hear the 5s preview first.`
                     }
                     url={shareUrl}
                     label={shareLabel}
