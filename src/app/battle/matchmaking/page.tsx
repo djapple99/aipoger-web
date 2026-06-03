@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { resolveCoverUrlFromParam } from "@/lib/cover-url";
 import { useI18n } from "@/lib/i18n";
 import { INSTANT_MATCH_TIMEOUT_SECONDS } from "@/lib/battle-pool-rules";
-import { attemptMatchmakingWithoutApcGate, buildDropBattleSchedulePayload } from "@/lib/battle-pool-client";
+import { attemptMatchmakingWithoutApcGate, buildDropBattleSchedulePayload, resolveDropBattleScheduledStart } from "@/lib/battle-pool-client";
 
 const DROP_BATTLE_MIN_LEAD_MS = 30_000;
 
@@ -30,6 +30,8 @@ type QueueRow = {
   match_group_id: string | null;
   opponent_user_id: string | null;
   expires_at?: string | null;
+  scheduled_start_at?: string | null;
+  cancellation_evaluation_at?: string | null;
   fallback_kind?: string | null;
 };
 
@@ -250,11 +252,11 @@ function MatchmakingContent(props: MatchmakingContentProps) {
         scheduleError = fallback.error;
       }
       if (scheduleError) throw scheduleError;
-      const row = data as { expires_at?: string | null } | null;
-      setExpiresAt(scheduledStartIso ?? row?.expires_at ?? null);
+      const row = data as QueueRow | null;
+      setExpiresAt(scheduledStartIso ?? resolveDropBattleScheduledStart(row ?? {}));
       setPhase("waiting");
       setNotice(t("mq_hook_card_opened_notice"));
-      router.push(`/battle?lang=${lang}&focusQueue=${queueId}`);
+      router.push(`/battle/${encodeURIComponent(queueId)}?lang=${lang}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : t("mq_matchmaking_degraded_notice");
       console.warn("[matchmaking] open Drop Battle card failed", error);
@@ -311,7 +313,7 @@ function MatchmakingContent(props: MatchmakingContentProps) {
       if (row.status === "matched" && row.match_group_id) {
         goToArena(row.match_group_id);
       } else if (row.status === "waiting_challenge") {
-        setExpiresAt(row.expires_at);
+        setExpiresAt(resolveDropBattleScheduledStart(row));
         setPhase("waiting");
         setNotice(t("mq_hook_card_opened_notice"));
       } else if (row.status === "ghost_battle" && row.match_group_id) {
@@ -433,7 +435,7 @@ function MatchmakingContent(props: MatchmakingContentProps) {
 
         const { data: row, error: rowError } = await supabase
           .from("battle_queue")
-          .select("id, status, match_group_id, opponent_user_id")
+          .select("id, status, match_group_id, opponent_user_id, expires_at")
           .eq("id", queueId)
           .maybeSingle<QueueRow>();
 
@@ -450,7 +452,7 @@ function MatchmakingContent(props: MatchmakingContentProps) {
           goToArena(row.match_group_id);
         } else if (row.status === "waiting_challenge") {
           if (intervalId) clearInterval(intervalId);
-          setExpiresAt(row.expires_at ?? null);
+          setExpiresAt(resolveDropBattleScheduledStart(row));
           setPhase("waiting");
           setNotice(t("mq_hook_card_opened_notice"));
         } else if (row.status === "ghost_battle" && row.match_group_id) {
@@ -489,7 +491,7 @@ function MatchmakingContent(props: MatchmakingContentProps) {
               }
             } else if (nextStatus === "waiting_challenge") {
               if (intervalId) clearInterval(intervalId);
-              setExpiresAt((payload.new as QueueRow).expires_at ?? null);
+              setExpiresAt(resolveDropBattleScheduledStart(payload.new as QueueRow));
               setPhase("waiting");
               setNotice(t("mq_hook_card_opened_notice"));
             } else if (nextStatus === "ghost_battle") {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { shouldExpireOpenDropQueue } from "@/lib/battle-pool-client";
 import { battleSeedForId, pick90sBattleWinner } from "@/lib/battle-90s-system";
 
 type SupabaseAdmin = SupabaseClient;
@@ -48,7 +49,14 @@ type ExpiredHookQueueRow = {
   original_file_name?: string | null;
   status?: string | null;
   expires_at?: string | null;
+  scheduled_start_at?: string | null;
+  cancellation_evaluation_at?: string | null;
 };
+
+function isMissingScheduleColumn(error: { message?: string; details?: string; hint?: string; code?: string } | null) {
+  const msg = `${error?.message ?? ""} ${error?.details ?? ""} ${error?.hint ?? ""}`;
+  return /scheduled_start_at|cancellation_evaluation_at|schema cache|column.*does not exist/i.test(msg) || error?.code === "PGRST204";
+}
 
 export async function GET(request: NextRequest) {
   return processFallbacks(request);
@@ -110,12 +118,46 @@ async function processFallbacks(request: NextRequest) {
 
 async function expireStaleHookQueue(admin: SupabaseAdmin, warnings: string[]) {
   const now = new Date().toISOString();
-  const { data, error } = await admin
+  let usesLegacySchedule = false;
+  const scheduledRead = await admin
     .from("battle_queue")
-    .update({ status: "expired", updated_at: now })
+    .select("id,user_id,original_file_name,status,expires_at,scheduled_start_at,cancellation_evaluation_at")
     .in("status", ["searching", "waiting", "waiting_challenge", "public_voting", "ghost_battle"])
-    .lte("expires_at", now)
-    .select("id,user_id,original_file_name,status,expires_at");
+    .or(`expires_at.lte.${now},scheduled_start_at.lte.${now},cancellation_evaluation_at.lte.${now}`);
+  let candidates = scheduledRead.data as ExpiredHookQueueRow[] | null;
+  let readError = scheduledRead.error;
+
+  if (readError && isMissingScheduleColumn(readError)) {
+    usesLegacySchedule = true;
+    const legacyRead = await admin
+      .from("battle_queue")
+      .select("id,user_id,original_file_name,status,expires_at")
+      .in("status", ["searching", "waiting", "waiting_challenge", "public_voting", "ghost_battle"])
+      .lte("expires_at", now);
+    candidates = legacyRead.data as ExpiredHookQueueRow[] | null;
+    readError = legacyRead.error;
+  }
+
+  if (readError) {
+    warnings.push(`expire stale 90s queue: ${readError.message}`);
+    return 0;
+  }
+
+  const expiredIds = ((candidates ?? []) as ExpiredHookQueueRow[])
+    .filter((row) => shouldExpireOpenDropQueue(row, Date.parse(now)))
+    .map((row) => row.id);
+
+  const { data, error } = expiredIds.length > 0
+    ? await admin
+        .from("battle_queue")
+        .update({ status: "expired", updated_at: now })
+        .in("id", expiredIds)
+        .select(
+          usesLegacySchedule
+            ? "id,user_id,original_file_name,status,expires_at"
+            : "id,user_id,original_file_name,status,expires_at,scheduled_start_at,cancellation_evaluation_at",
+        )
+    : { data: [], error: null };
 
   if (error) {
     warnings.push(`expire stale 90s queue: ${error.message}`);
@@ -137,6 +179,7 @@ async function expireStaleHookQueue(admin: SupabaseAdmin, warnings: string[]) {
           expiredAt: now,
           sourceStatus: row.status ?? null,
           expiresAt: row.expires_at ?? null,
+          scheduledStartAt: row.scheduled_start_at ?? null,
         },
       })),
     );

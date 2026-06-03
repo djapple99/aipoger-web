@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
-import { cancelCurrentBattleIntent } from "@/lib/battle-pool-client";
+import { cancelCurrentBattleIntent, shouldExpireOpenDropQueue } from "@/lib/battle-pool-client";
 
 type BattleCall = {
   id: string;
@@ -203,11 +203,18 @@ export default function GlobalBattleCallOverlay() {
         .in("status", ACTIVE_NOTICE_QUEUE_STATUSES)
         .order("created_at", { ascending: false })
         .limit(1);
-      const activeQueue = activeQueueRows?.[0] as { id: string; status: string; match_group_id?: string | null; expires_at?: string | null; created_at?: string | null } | undefined;
-      const activeQueueExpired =
-        Boolean(activeQueue?.expires_at) &&
-        Number.isFinite(new Date(activeQueue?.expires_at ?? "").getTime()) &&
-        new Date(activeQueue?.expires_at ?? "").getTime() <= Date.now();
+      const activeQueue = activeQueueRows?.[0] as
+        | {
+            id: string;
+            status: string;
+            match_group_id?: string | null;
+            expires_at?: string | null;
+            scheduled_start_at?: string | null;
+            cancellation_evaluation_at?: string | null;
+            created_at?: string | null;
+          }
+        | undefined;
+      const activeQueueExpired = activeQueue ? shouldExpireOpenDropQueue(activeQueue) : false;
       if (mounted && activeQueue?.id && !activeQueueExpired) {
         setActiveNotice({
           kind: "queue",

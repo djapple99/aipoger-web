@@ -36,7 +36,10 @@ const {
   buildDropBattleSchedulePayload,
   buildDropBattleSchedulePayloadFromQueues,
   canFounderCancelDropBattle,
+  isDropChallengeAcceptable,
+  resolveDropBattleScheduledStart,
   shouldCancelStaleDropBattle,
+  shouldExpireOpenDropQueue,
   validateDropBattleScheduledStart,
 } = await import("../src/lib/battle-pool-client.ts");
 
@@ -238,6 +241,54 @@ test("drop battle auto cancellation only applies after evaluation time without c
   assert.equal(
     shouldCancelStaleDropBattle({ ...stalePendingBattle, cancellation_evaluation_at: new Date(now + 1).toISOString() }, now),
     false,
+  );
+});
+
+test("drop battle queue stays open until cancellation evaluation and cannot be accepted after expiry", () => {
+  const now = Date.UTC(2026, 5, 3, 12, 0, 0);
+  const scheduledStartAt = new Date(now - 60_000).toISOString();
+  const openQueue = {
+    status: "waiting_challenge",
+    expires_at: new Date(now + 24 * 60 * 60 * 1000).toISOString(),
+    scheduled_start_at: scheduledStartAt,
+    cancellation_evaluation_at: new Date(now + 1).toISOString(),
+  };
+  const expiredQueue = {
+    ...openQueue,
+    cancellation_evaluation_at: new Date(now - 1).toISOString(),
+  };
+
+  assert.equal(shouldExpireOpenDropQueue(openQueue, now), false);
+  assert.equal(isDropChallengeAcceptable(openQueue, now), true);
+  assert.equal(resolveDropBattleScheduledStart(openQueue), scheduledStartAt);
+  assert.equal(shouldExpireOpenDropQueue(expiredQueue, now), true);
+  assert.equal(isDropChallengeAcceptable(expiredQueue, now), false);
+  assert.equal(isDropChallengeAcceptable({ ...openQueue, status: "matched" }, now), false);
+  assert.equal(shouldExpireOpenDropQueue({ ...expiredQueue, status: "matched" }, now), false);
+});
+
+test("drop battle queue expiry falls back to expires_at when evaluation time is missing", () => {
+  const now = Date.UTC(2026, 5, 3, 12, 0, 0);
+  assert.equal(
+    shouldExpireOpenDropQueue({ status: "waiting_challenge", expires_at: new Date(now - 1).toISOString() }, now),
+    true,
+  );
+  assert.equal(
+    isDropChallengeAcceptable({ status: "waiting_challenge", expires_at: new Date(now + 1).toISOString() }, now),
+    true,
+  );
+});
+
+test("drop battle scheduled start can be inferred from cancellation evaluation before expires_at fallback", () => {
+  const now = Date.UTC(2026, 5, 3, 12, 0, 0);
+  const cancellationEvaluationAt = new Date(now + 11 * 60 * 1000).toISOString();
+  assert.equal(
+    resolveDropBattleScheduledStart({
+      status: "waiting_challenge",
+      expires_at: new Date(now + 24 * 60 * 60 * 1000).toISOString(),
+      cancellation_evaluation_at: cancellationEvaluationAt,
+    }),
+    new Date(now + 10 * 60 * 1000).toISOString(),
   );
 });
 

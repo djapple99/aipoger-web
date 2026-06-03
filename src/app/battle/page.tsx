@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 import ShareButton from "@/components/share-button";
 import SafetyNotice from "@/components/safety-notice";
 import { rankLabelForLevel } from "@/lib/battle-pool-rules";
-import { cancelCurrentBattleIntent } from "@/lib/battle-pool-client";
+import { cancelCurrentBattleIntent, resolveDropBattleScheduledStart, shouldExpireOpenDropQueue } from "@/lib/battle-pool-client";
 
 const seedComments = [
   "A Side 節奏很穩，這段 drop 很強。",
@@ -144,6 +144,8 @@ type PoolEntryRow = {
   status: "waiting_challenge" | "public_voting" | "ghost_battle";
   match_group_id: string | null;
   expires_at: string | null;
+  scheduled_start_at?: string | null;
+  cancellation_evaluation_at?: string | null;
   public_vote_score: number | null;
   created_at: string;
 };
@@ -369,11 +371,8 @@ function isExpiredDailyQueueEntry(row: Pick<DailyEntryQueueRow, "created_at" | "
   return Number.isFinite(createdAt) && createdAt + DAILY_BATTLE_QUEUE_MS <= Date.now();
 }
 
-function isExpiredOpenPoolEntry(row: Pick<PoolEntryRow, "status" | "expires_at">) {
-  if (!row.expires_at) return false;
-  const expiresAt = new Date(row.expires_at).getTime();
-  if (!Number.isFinite(expiresAt) || expiresAt > Date.now()) return false;
-  return row.status === "waiting_challenge" || row.status === "public_voting" || row.status === "ghost_battle";
+function isExpiredOpenPoolEntry(row: Pick<PoolEntryRow, "status" | "expires_at" | "scheduled_start_at" | "cancellation_evaluation_at">) {
+  return shouldExpireOpenDropQueue(row);
 }
 
 function DailyBattleList() {
@@ -811,12 +810,29 @@ function BattlePoolList() {
 
       await fetch("/api/battle-pool/expire-open-cards", { method: "POST" }).catch(() => null);
 
-      const { data, error } = await supabase
+      const scheduledRead = await supabase
         .from("battle_queue")
-        .select("id, user_id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, public_vote_score, created_at")
+        .select("id, user_id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, scheduled_start_at, cancellation_evaluation_at, public_vote_score, created_at")
         .in("status", ["waiting_challenge", "public_voting", "ghost_battle"])
         .order("created_at", { ascending: false })
         .limit(24);
+      let data = scheduledRead.data as PoolEntryRow[] | null;
+      let error = scheduledRead.error;
+
+      if (error) {
+        const msg = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`;
+        const missingScheduleColumn = /scheduled_start_at|cancellation_evaluation_at|schema cache|column.*does not exist|PGRST204/i.test(msg);
+        if (missingScheduleColumn) {
+          const legacyRead = await supabase
+            .from("battle_queue")
+            .select("id, user_id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, public_vote_score, created_at")
+            .in("status", ["waiting_challenge", "public_voting", "ghost_battle"])
+            .order("created_at", { ascending: false })
+            .limit(24);
+          data = legacyRead.data as PoolEntryRow[] | null;
+          error = legacyRead.error;
+        }
+      }
 
       if (!mounted) return;
       if (error) {
@@ -933,17 +949,13 @@ function BattlePoolList() {
             const isPublicVoting = entry.status === "public_voting";
             const isMine = Boolean(currentUserId && entry.user_id === currentUserId);
             const isFocused = focusQueueId === entry.id;
-            const inviteParams = new URLSearchParams({
-              lang,
-              type: "hook-card",
-            });
-            const invitePath = `/battle/invite/${entry.id}?${inviteParams.toString()}`;
+            const arenaPath = `/battle/${entry.id}?lang=${lang}`;
             const href = isGhost
               ? `/battle/${entry.match_group_id}`
-              : invitePath;
+              : arenaPath;
             const shareUrl = isGhost
               ? `/battle/${entry.match_group_id}?lang=${lang}`
-              : invitePath;
+              : arenaPath;
             const shareLabel = isGhost || isPublicVoting
               ? isZh
                 ? "邀請觀戰投票"
@@ -951,15 +963,16 @@ function BattlePoolList() {
               : isZh
                 ? "分享戰帖 / 約戰"
                 : "Share / Challenge";
-            const hookStartText = entry.expires_at
+            const hookStartAt = resolveDropBattleScheduledStart(entry);
+            const hookStartText = hookStartAt
               ? isZh
-                ? `開戰時間：${formatBattleCardTime(entry.expires_at, true)}（台灣時間）。`
-                : `Starts: ${formatBattleCardTime(entry.expires_at, false)} Taiwan time.`
+                ? `開戰時間：${formatBattleCardTime(hookStartAt, true)}（台灣時間）。`
+                : `Starts: ${formatBattleCardTime(hookStartAt, false)} Taiwan time.`
               : "";
             const label = isMine
               ? isZh
-                ? "我的等待卡"
-                : "My Waiting Card"
+                ? "我的戰場"
+                : "My Arena"
               : isGhost
                 ? t("pool_enter_ghost")
                 : isPublicVoting
@@ -1008,30 +1021,30 @@ function BattlePoolList() {
                         {formatBattleAge(entry.created_at, isZh)}
                       </span>
                     ) : null}
-                    {entry.expires_at ? (
+                    {hookStartAt ? (
                       <span className="inline-flex shrink-0 items-center rounded-full border border-orange-200/45 bg-orange-400/15 px-4 py-1 text-base text-orange-50 shadow-[0_0_18px_rgba(255,116,28,0.16)]">
-                        {isZh ? "開戰" : "Starts"} {formatBattleCardTime(entry.expires_at, isZh)}
+                        {isZh ? "開戰" : "Starts"} {formatBattleCardTime(hookStartAt, isZh)}
                       </span>
                     ) : null}
                   </div>
                   <p className="mt-1 text-xs text-zinc-500">
                     {isMine
                       ? isZh
-                        ? "你的 90s 最強抓波Drop Battle 正在等待挑戰。對手加入後會直接進鬥場。"
-                        : "Your 90s Drop Battle is open. You will enter the arena when a challenger joins."
+                        ? "你的 90s 最強抓波Drop Battle 戰場已開。時間內可離開再進來，對手加入後直接開打。"
+                        : "Your 90s Drop Battle arena is open. Re-enter anytime before start; it goes live when a rival joins."
                       : entry.status === "waiting_challenge"
                         ? isZh
-                          ? `${entry.ai_tool || "AI Tool"} · 點卡片可選擇挑戰或觀戰`
-                          : `${entry.ai_tool || "AI Tool"} · Open card to challenge or watch`
+                          ? `${entry.ai_tool || "AI Tool"} · 點卡片直接進戰場`
+                          : `${entry.ai_tool || "AI Tool"} · Open arena`
                         : `${entry.ai_tool || "AI Tool"} ${isPublicVoting && entry.public_vote_score ? `· +${entry.public_vote_score} APC` : ""}`}
                   </p>
                   {isMine ? (
                     <div className="mt-4 flex flex-wrap gap-2">
                       <Link
-                        href={invitePath}
+                        href={arenaPath}
                         className="rounded-full bg-cyan-300 px-4 py-2 text-sm font-black text-black transition hover:bg-cyan-100"
                       >
-                        {isZh ? "查看戰帖" : "View Battle Card"}
+                        {isZh ? "進入戰場" : "Enter Arena"}
                       </Link>
                       <button
                         type="button"

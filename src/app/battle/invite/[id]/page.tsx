@@ -46,8 +46,8 @@ async function inviteData(id: string, searchParams: InviteSearchParams) {
     leftAvatar: cleanParam(firstParam(searchParams, "la"), battle.fighter_a_avatar || ""),
     rightAvatar: cleanParam(firstParam(searchParams, "ra"), battle.fighter_b_avatar || ""),
     leftTool: cleanParam(firstParam(searchParams, "ta") || firstParam(searchParams, "tool"), battle.ai_tool_a || "AI Music"),
-    rightTool: cleanParam(firstParam(searchParams, "tb"), isHookCard ? "等待接戰工具" : battle.ai_tool_b || "AI Music"),
-    battleType: cleanParam(firstParam(searchParams, "bt"), isHookCard ? "90s Drop Battle 等待卡" : "90s Drop Battle"),
+    rightTool: cleanParam(firstParam(searchParams, "tb"), isHookCard ? "挑戰者進場後顯示" : battle.ai_tool_b || "AI Music"),
+    battleType: cleanParam(firstParam(searchParams, "bt"), isHookCard ? "90s Drop Battle 戰帖" : "90s Drop Battle"),
     queueStatus: battle.queue_status || null,
     expiresAt: battle.expires_at || null,
   };
@@ -103,7 +103,7 @@ export async function generateMetadata({ params, searchParams }: BattleInvitePag
   const canonical = `${origin}/battle/invite/${encodeURIComponent(id)}`;
   const image = `${canonical}/opengraph-image?${query.toString()}`;
   const title = `AIPOGER 90S 最強抓波Drop Battle 戰帖｜${data.leftName} VS ${data.rightName}`;
-  const description = `${data.battleType}｜${data.leftName}《${data.leftSong}》(${data.leftTool}) VS ${data.rightName}《${data.rightSong}》(${data.rightTool})｜開打前集結。`;
+  const description = `${data.battleType}｜${data.leftName}《${data.leftSong}》(${data.leftTool}) VS ${data.rightName}《${data.rightSong}》(${data.rightTool})｜進戰場聽 teaser、聊天預測。`;
 
   return {
     title,
@@ -165,7 +165,7 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
       <div className="pointer-events-none absolute inset-0 opacity-[0.12] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:52px_52px]" />
       <section className="relative z-10 w-full max-w-2xl rounded-[2rem] border border-orange-300/35 bg-[radial-gradient(circle_at_20%_10%,rgba(255,106,0,0.24),transparent_34%),linear-gradient(180deg,#100704,#030303)] p-7 text-center shadow-[0_0_80px_rgba(255,106,0,0.18)]">
         <p className="text-xs font-black uppercase tracking-[0.34em] text-orange-200/80">
-          {isResultInvite ? "AIPOGER DROP BATTLE RESULT CARD" : isHookCard ? "AIPOGER DROP BATTLE WAITING CARD" : "AIPOGER LIVE BATTLE"}
+          {isResultInvite ? "AIPOGER DROP BATTLE RESULT CARD" : isHookCard ? "AIPOGER DROP BATTLE ARENA CARD" : "AIPOGER LIVE BATTLE"}
         </p>
         <p className="mt-3 text-xs font-black uppercase tracking-[0.22em] text-cyan-100/75">
           {data.battleType} · {data.genre}
@@ -197,7 +197,7 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
             : isHookCard
             ? isHookExpired
               ? "這張公開最強抓波Drop Battle 戰帖已過期。可以回鬥歌場找新的戰帖。"
-              : `這是一張公開最強抓波Drop Battle 戰帖。${startTimeLabel ? `開戰時間 ${startTimeLabel}（台灣時間）。` : ""}你可以上傳自己的 45 秒 Drop 接戰，也可以先進場聽 teaser。`
+              : `這是一張公開最強抓波Drop Battle 戰帖。${startTimeLabel ? `開戰時間 ${startTimeLabel}（台灣時間）。` : ""}進戰場可以聽 5 秒 teaser、聊天預測；想上場就直接接戰。`
             : "這場 Battle 已經成立，進場後依照音樂感動投票。"}
         </p>
         <div className="mt-7 grid gap-3 sm:grid-cols-3">
@@ -234,7 +234,7 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
                 href={watchHref}
                 className="rounded-full border border-cyan-200/35 bg-cyan-300/10 px-6 py-3 text-sm font-black text-cyan-50 transition hover:border-cyan-100"
               >
-                我要觀戰
+                進入戰場
               </Link>
               <Link
                 href={`/listen-bar?lang=${lang}`}

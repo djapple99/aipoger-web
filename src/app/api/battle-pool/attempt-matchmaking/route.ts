@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { buildDropBattleSchedulePayloadFromQueues } from "@/lib/battle-pool-client";
+import { buildDropBattleSchedulePayloadFromQueues, isDropChallengeAcceptable } from "@/lib/battle-pool-client";
 
 type QueueRow = {
   id: string;
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
     .neq("id", meRow.id)
     .eq("genre", meRow.genre)
     .order("created_at", { ascending: true })
-    .limit(1);
+    .limit(targetQueueId ? 1 : 10);
 
   if (targetQueueId) {
     opponentQuery = opponentQuery.eq("id", targetQueueId);
@@ -151,7 +151,10 @@ export async function POST(request: NextRequest) {
   const { data: opponents, error: opponentError } = await opponentQuery.returns<QueueRow[]>();
   if (opponentError) return jsonError(opponentError.message, 500);
 
-  const opponentRow = opponents?.[0] ?? null;
+  const opponentRow = (opponents ?? []).find((row) => {
+    if (targetQueueId) return isDropChallengeAcceptable(row);
+    return row.status !== "waiting_challenge" || isDropChallengeAcceptable(row);
+  }) ?? null;
   if (!opponentRow) {
     if (targetQueueId) {
       await admin

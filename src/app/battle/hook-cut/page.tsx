@@ -1003,6 +1003,7 @@ function HookCutContent() {
         const optionalSchedule = schedulePayload
           ? { expires_at: schedulePayload.scheduled_start_at, ...schedulePayload }
           : {};
+        const legacySchedule = schedulePayload ? { expires_at: schedulePayload.scheduled_start_at } : {};
         const baseRowWithoutAudioHash = { ...baseRow };
         delete (baseRowWithoutAudioHash as Record<string, unknown>).audio_sha256;
 
@@ -1011,12 +1012,18 @@ function HookCutContent() {
           { ...baseRow, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null },
           { ...baseRow, ...optionalChallenge, ...optionalSchedule, lyrics: lyricsForSave || null },
           { ...baseRow, ...optionalChallenge, ...optionalSchedule },
-          baseRow,
+          { ...baseRow, ...optionalChallenge, ...legacySchedule, ai_tool: aiTool.trim() || null, lyrics: lyricsForSave || null },
+          { ...baseRow, ...optionalChallenge, ...legacySchedule, ai_tool: aiTool.trim() || null },
+          { ...baseRow, ...optionalChallenge, ...legacySchedule, lyrics: lyricsForSave || null },
+          { ...baseRow, ...optionalChallenge, ...legacySchedule },
           { ...baseRowWithoutAudioHash, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null, lyrics: lyricsForSave || null },
           { ...baseRowWithoutAudioHash, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null },
           { ...baseRowWithoutAudioHash, ...optionalChallenge, ...optionalSchedule, lyrics: lyricsForSave || null },
           { ...baseRowWithoutAudioHash, ...optionalChallenge, ...optionalSchedule },
-          baseRowWithoutAudioHash,
+          { ...baseRowWithoutAudioHash, ...optionalChallenge, ...legacySchedule, ai_tool: aiTool.trim() || null, lyrics: lyricsForSave || null },
+          { ...baseRowWithoutAudioHash, ...optionalChallenge, ...legacySchedule, ai_tool: aiTool.trim() || null },
+          { ...baseRowWithoutAudioHash, ...optionalChallenge, ...legacySchedule, lyrics: lyricsForSave || null },
+          { ...baseRowWithoutAudioHash, ...optionalChallenge, ...legacySchedule },
         ];
 
         for (const row of insertAttempts) {
@@ -1048,7 +1055,7 @@ function HookCutContent() {
         queueIdForNav = first.id;
 
         if (!challengeTargetQueueId && instantPairing === "invite") {
-          nextPath = `/battle?lang=${lang}&focusQueue=${queueIdForNav}`;
+          nextPath = `/battle/${queueIdForNav}?lang=${lang}`;
           setUploadPhase(t.success);
           window.setTimeout(() => {
             router.push(nextPath);

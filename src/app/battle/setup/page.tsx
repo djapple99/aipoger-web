@@ -15,6 +15,7 @@ import {
   DROP_BATTLE_SCHEDULE_MAX_LEAD_MS,
   DROP_BATTLE_SCHEDULE_MIN_LEAD_MS,
   DROP_BATTLE_SCHEDULE_PRESETS,
+  isDropChallengeAcceptable,
   type DropBattleSchedulePreset,
   type DropBattleScheduleValidationError,
   validateDropBattleScheduledStart,
@@ -972,11 +973,24 @@ export default function BattleSetupPage() {
         }
 
         if (challengeEntryId) {
-          const { data: targetEntry, error: targetError } = await supabase
+          let { data: targetEntry, error: targetError } = await supabase
             .from('battle_queue')
-            .select('id,user_id,status,genre')
+            .select('id,user_id,status,genre,expires_at,scheduled_start_at,cancellation_evaluation_at')
             .eq('id', challengeEntryId)
-            .maybeSingle<{ id: string; user_id: string; status: string; genre: string | null }>();
+            .maybeSingle<{ id: string; user_id: string; status: string; genre: string | null; expires_at: string | null; scheduled_start_at?: string | null; cancellation_evaluation_at?: string | null }>();
+          if (targetError) {
+            const msg = `${targetError.message ?? ''} ${targetError.details ?? ''} ${targetError.hint ?? ''}`;
+            const missingScheduleColumn = /scheduled_start_at|cancellation_evaluation_at|schema cache|column.*does not exist|PGRST204/i.test(msg);
+            if (missingScheduleColumn) {
+              const legacyRead = await supabase
+                .from('battle_queue')
+                .select('id,user_id,status,genre,expires_at')
+                .eq('id', challengeEntryId)
+                .maybeSingle<{ id: string; user_id: string; status: string; genre: string | null; expires_at: string | null }>();
+              targetEntry = legacyRead.data;
+              targetError = legacyRead.error;
+            }
+          }
           if (targetError) throw targetError;
           if (!targetEntry?.id) {
             throw new Error(lang === 'zh' ? '這張 Drop Battle 挑戰卡已不存在，請回公開挑戰池重新選一場。' : 'This Drop Battle card no longer exists. Choose another one from the pool.');
@@ -984,7 +998,7 @@ export default function BattleSetupPage() {
           if (targetEntry.user_id === userId) {
             throw new Error(lang === 'zh' ? '不能接受自己的 Drop Battle 挑戰卡。' : 'You cannot accept your own Drop Battle challenge.');
           }
-          if (targetEntry.status !== 'waiting_challenge') {
+          if (!isDropChallengeAcceptable(targetEntry)) {
             throw new Error(lang === 'zh' ? '這張 Drop Battle 挑戰卡已失效或已被接受，請回公開挑戰池重新選一場。' : 'This Drop Battle challenge is no longer open. Choose another one from the pool.');
           }
           if (targetEntry.genre?.trim()) {
@@ -1032,6 +1046,7 @@ export default function BattleSetupPage() {
         const optionalSchedule = schedulePayload
           ? { expires_at: schedulePayload.scheduled_start_at, ...schedulePayload }
           : {};
+        const legacySchedule = schedulePayload ? { expires_at: schedulePayload.scheduled_start_at } : {};
         const lyricsForSave = draft.lyrics.trim();
         const baseRowWithoutAudioHash = { ...baseRow };
         delete (baseRowWithoutAudioHash as Record<string, unknown>).audio_sha256;
@@ -1040,12 +1055,18 @@ export default function BattleSetupPage() {
           { ...baseRow, ...optionalChallenge, ...optionalSchedule, ai_tool: finalAiTool.trim() || null },
           { ...baseRow, ...optionalChallenge, ...optionalSchedule, lyrics: lyricsForSave || null },
           { ...baseRow, ...optionalChallenge, ...optionalSchedule },
-          baseRow,
+          { ...baseRow, ...optionalChallenge, ...legacySchedule, ai_tool: finalAiTool.trim() || null, lyrics: lyricsForSave || null },
+          { ...baseRow, ...optionalChallenge, ...legacySchedule, ai_tool: finalAiTool.trim() || null },
+          { ...baseRow, ...optionalChallenge, ...legacySchedule, lyrics: lyricsForSave || null },
+          { ...baseRow, ...optionalChallenge, ...legacySchedule },
           { ...baseRowWithoutAudioHash, ...optionalChallenge, ...optionalSchedule, ai_tool: finalAiTool.trim() || null, lyrics: lyricsForSave || null },
           { ...baseRowWithoutAudioHash, ...optionalChallenge, ...optionalSchedule, ai_tool: finalAiTool.trim() || null },
           { ...baseRowWithoutAudioHash, ...optionalChallenge, ...optionalSchedule, lyrics: lyricsForSave || null },
           { ...baseRowWithoutAudioHash, ...optionalChallenge, ...optionalSchedule },
-          baseRowWithoutAudioHash,
+          { ...baseRowWithoutAudioHash, ...optionalChallenge, ...legacySchedule, ai_tool: finalAiTool.trim() || null, lyrics: lyricsForSave || null },
+          { ...baseRowWithoutAudioHash, ...optionalChallenge, ...legacySchedule, ai_tool: finalAiTool.trim() || null },
+          { ...baseRowWithoutAudioHash, ...optionalChallenge, ...legacySchedule, lyrics: lyricsForSave || null },
+          { ...baseRowWithoutAudioHash, ...optionalChallenge, ...legacySchedule },
         ];
 
         let queueRows: { id: string }[] | null = null;
@@ -1066,8 +1087,8 @@ export default function BattleSetupPage() {
       }
 
       if (!challengeEntryId && instantPairingMode === 'invite') {
-        setUploadProgress(lang === 'zh' ? 'Drop Battle 戰帖卡已開啟…' : 'Drop Battle card is live...');
-        router.push(`/battle?lang=${lang}&focusQueue=${queueIdForNav}`);
+        setUploadProgress(lang === 'zh' ? 'Drop Battle 戰場已開啟…' : 'Drop Battle arena is live...');
+        router.push(`/battle/${queueIdForNav}?lang=${lang}`);
         return;
       }
 
@@ -1718,8 +1739,8 @@ export default function BattleSetupPage() {
                 ? '確定 24H Battle，進入配對 →'
                 : 'Confirm 24H Daily Battle →'
               : lang === 'zh'
-                ? '確定 Battle，等待配對 →'
-                : 'Confirm Battle → Matchmaking'}
+                ? '確定 Battle，進入戰場 →'
+                : 'Confirm Battle → Enter Arena'}
         </button>
       </div>
     </div>

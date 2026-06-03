@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { cancelCurrentBattleIntent } from "@/lib/battle-pool-client";
+import { cancelCurrentBattleIntent, resolveDropBattleScheduledStart } from "@/lib/battle-pool-client";
 import { supabase } from "@/lib/supabase";
 
 type ProfileBattleCountBadgeProps = {
@@ -49,6 +49,7 @@ type QueueRow = {
   created_at: string | null;
   expires_at: string | null;
   scheduled_start_at: string | null;
+  cancellation_evaluation_at: string | null;
   match_group_id: string | null;
   fighter_name: string | null;
   original_file_name: string | null;
@@ -160,7 +161,7 @@ export function ProfileBattleCountBadge({ userId, currentUserId = null, lang = "
       const battleQuery = supabase
         .from("battles")
         .select(
-          "id,status,created_at,scheduled_start_at,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,genre",
+          "id,status,created_at,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,genre",
         )
         .or(`fighter_a_user_id.eq.${userId},fighter_b_user_id.eq.${userId}`)
         .in("status", [...COUNTED_STATUSES])
@@ -171,7 +172,7 @@ export function ProfileBattleCountBadge({ userId, currentUserId = null, lang = "
         currentUserId === userId
           ? supabase
               .from("battle_queue")
-              .select("id,status,created_at,expires_at,scheduled_start_at,match_group_id,fighter_name,original_file_name,genre")
+              .select("id,status,created_at,expires_at,match_group_id,fighter_name,original_file_name,genre")
               .eq("user_id", userId)
               .in("status", [...ACTIVE_QUEUE_STATUSES])
               .order("created_at", { ascending: false })
@@ -306,7 +307,7 @@ export function ProfileBattleCountBadge({ userId, currentUserId = null, lang = "
   };
 
   const renderQueueRow = (row: QueueRow) => {
-    const scheduledAt = formatDateTime(row.scheduled_start_at ?? row.expires_at, lang);
+    const scheduledAt = formatDateTime(resolveDropBattleScheduledStart(row), lang);
     const createdAt = formatDateTime(row.created_at, lang);
     const isCancelling = cancellingId === "queue";
 
@@ -321,7 +322,7 @@ export function ProfileBattleCountBadge({ userId, currentUserId = null, lang = "
             </p>
           </div>
           <Link
-            href={`/battle?focusQueue=${row.id}&lang=${lang}`}
+            href={`/battle/${encodeURIComponent(row.id)}?lang=${lang}`}
             className="shrink-0 rounded-full border border-zinc-600/70 px-2.5 py-1 text-[11px] font-semibold text-zinc-300 transition hover:border-orange-300/70 hover:text-orange-100"
           >
             {copy.view}

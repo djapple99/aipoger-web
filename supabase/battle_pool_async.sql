@@ -746,14 +746,22 @@ declare
   bid uuid;
   processed integer := 0;
 begin
-  for entry in
-    select *
-    from public.battle_queue
-    where status = 'waiting_challenge'
-      and expires_at <= now()
-    order by expires_at asc
-    for update skip locked
-  loop
+	for entry in
+	  select *
+	  from public.battle_queue
+	  where status = 'waiting_challenge'
+	    and coalesce(
+	      cancellation_evaluation_at,
+	      scheduled_start_at + interval '1 minute',
+	      expires_at
+	    ) <= now()
+	  order by coalesce(
+	    cancellation_evaluation_at,
+	    scheduled_start_at + interval '1 minute',
+	    expires_at
+	  ) asc
+	  for update skip locked
+	loop
     select q.*
     into ghost
     from public.battle_queue q
@@ -809,15 +817,22 @@ begin
         true,
         nullif(trim(entry.ai_tool), ''),
         nullif(trim(ghost.ai_tool), ''),
-        nullif(trim(entry.lyrics), ''),
-        nullif(trim(ghost.lyrics), ''),
-        now(),
-        coalesce(entry.scheduled_start_at, entry.expires_at),
-        coalesce(
-          entry.cancellation_evaluation_at,
-          coalesce(entry.scheduled_start_at, entry.expires_at) + interval '1 minute'
-        )
-      )
+	        nullif(trim(entry.lyrics), ''),
+	        nullif(trim(ghost.lyrics), ''),
+	        now(),
+	        coalesce(
+	          entry.scheduled_start_at,
+	          entry.cancellation_evaluation_at - interval '1 minute',
+	          entry.expires_at
+	        ),
+	        coalesce(
+	          entry.cancellation_evaluation_at,
+	          coalesce(
+	            entry.scheduled_start_at,
+	            entry.expires_at
+	          ) + interval '1 minute'
+	        )
+	      )
       returning id into bid;
 
       update public.battle_queue
@@ -832,12 +847,12 @@ begin
       perform public.create_battle_notification(
         entry.user_id,
         entry.id,
-        bid,
-        'battle_fallback_ghost',
-        '已轉入 Ghost Battle',
-        '24 小時內無人挑戰，系統已將你的作品轉入 Ghost Battle',
-        jsonb_build_object('opponentName', ghost.fighter_name)
-      );
+	        bid,
+	        'battle_fallback_ghost',
+	        '已轉入 Ghost Battle',
+	        '等待時間結束仍無人挑戰，系統已將你的作品轉入 Ghost Battle',
+	        jsonb_build_object('opponentName', ghost.fighter_name)
+	      );
     else
       update public.battle_queue
       set
@@ -852,12 +867,12 @@ begin
       perform public.create_battle_notification(
         entry.user_id,
         entry.id,
-        null,
-        'battle_fallback_public_voting',
-        '已轉入 Public Voting',
-        '24 小時內無人挑戰，系統已將你的作品轉入 Public Voting',
-        '{}'::jsonb
-      );
+	        null,
+	        'battle_fallback_public_voting',
+	        '已轉入 Public Voting',
+	        '等待時間結束仍無人挑戰，系統已將你的作品轉入 Public Voting',
+	        '{}'::jsonb
+	      );
     end if;
 
     processed := processed + 1;

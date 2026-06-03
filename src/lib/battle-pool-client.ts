@@ -21,12 +21,32 @@ export type DropBattleScheduleQueueSnapshot = {
   cancellation_evaluation_at?: string | null;
 };
 
+export type DropBattleOpenQueueSnapshot = {
+  status?: string | null;
+  expires_at?: string | null;
+  scheduled_start_at?: string | null;
+  cancellation_evaluation_at?: string | null;
+};
+
 export type DropBattleCancellationSnapshot = {
   status?: string | null;
   fighter_a_user_id?: string | null;
   fighter_b_user_id?: string | null;
   cancellation_evaluation_at?: string | null;
 };
+
+export function resolveDropBattleScheduledStart(queue: DropBattleOpenQueueSnapshot) {
+  const scheduledMs = new Date(queue.scheduled_start_at ?? "").getTime();
+  if (Number.isFinite(scheduledMs)) return new Date(scheduledMs).toISOString();
+
+  const cancellationEvaluationMs = new Date(queue.cancellation_evaluation_at ?? "").getTime();
+  if (Number.isFinite(cancellationEvaluationMs)) {
+    return new Date(cancellationEvaluationMs - DROP_BATTLE_CANCELLATION_DELAY_MS).toISOString();
+  }
+
+  const expiresMs = new Date(queue.expires_at ?? "").getTime();
+  return Number.isFinite(expiresMs) ? new Date(expiresMs).toISOString() : null;
+}
 
 export function buildDropBattleSchedulePayload(scheduledStartIso: string | null) {
   if (!scheduledStartIso) return null;
@@ -85,6 +105,26 @@ export function shouldCancelStaleDropBattle(
   if (battle.fighter_b_user_id) return false;
   const cancellationEvaluationMs = new Date(battle.cancellation_evaluation_at ?? "").getTime();
   return Number.isFinite(cancellationEvaluationMs) && cancellationEvaluationMs <= nowMs;
+}
+
+export function isDropChallengeAcceptable(
+  queue: DropBattleOpenQueueSnapshot,
+  nowMs = Date.now(),
+) {
+  if (queue.status !== "waiting_challenge") return false;
+  const expiresMs = new Date(queue.cancellation_evaluation_at ?? queue.scheduled_start_at ?? queue.expires_at ?? "").getTime();
+  return !Number.isFinite(expiresMs) || expiresMs > nowMs;
+}
+
+export function shouldExpireOpenDropQueue(
+  queue: DropBattleOpenQueueSnapshot,
+  nowMs = Date.now(),
+) {
+  if (!["searching", "waiting", "waiting_challenge", "public_voting", "ghost_battle"].includes(queue.status ?? "")) {
+    return false;
+  }
+  const expiresMs = new Date(queue.cancellation_evaluation_at ?? queue.scheduled_start_at ?? queue.expires_at ?? "").getTime();
+  return Number.isFinite(expiresMs) && expiresMs <= nowMs;
 }
 
 export function canFounderCancelDropBattle(
