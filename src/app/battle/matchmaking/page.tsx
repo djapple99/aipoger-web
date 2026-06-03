@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { resolveCoverUrlFromParam } from "@/lib/cover-url";
 import { useI18n } from "@/lib/i18n";
 import { INSTANT_MATCH_TIMEOUT_SECONDS } from "@/lib/battle-pool-rules";
-import { attemptMatchmakingWithoutApcGate } from "@/lib/battle-pool-client";
+import { attemptMatchmakingWithoutApcGate, buildDropBattleSchedulePayload } from "@/lib/battle-pool-client";
 
 const DROP_BATTLE_MIN_LEAD_MS = 30_000;
 
@@ -234,10 +234,21 @@ function MatchmakingContent(props: MatchmakingContentProps) {
       if (!scheduledStartIso) return;
       const { data, error } = await supabase.rpc("move_entry_to_waiting_challenge", { p_queue_id: queueId });
       if (error) throw error;
-      const { error: scheduleError } = await supabase
+      const schedulePayload = buildDropBattleSchedulePayload(scheduledStartIso);
+      const scheduleUpdate = schedulePayload
+        ? { expires_at: schedulePayload.scheduled_start_at, ...schedulePayload }
+        : { expires_at: scheduledStartIso };
+      let { error: scheduleError } = await supabase
         .from("battle_queue")
-        .update({ expires_at: scheduledStartIso })
+        .update(scheduleUpdate)
         .eq("id", queueId);
+      if (scheduleError && /expires_at|scheduled_start_at|cancellation_evaluation_at|schema cache|column.*does not exist|PGRST204/i.test(`${scheduleError.message} ${scheduleError.details ?? ""}`)) {
+        const fallback = await supabase
+          .from("battle_queue")
+          .update({ expires_at: scheduledStartIso })
+          .eq("id", queueId);
+        scheduleError = fallback.error;
+      }
       if (scheduleError) throw scheduleError;
       const row = data as { expires_at?: string | null } | null;
       setExpiresAt(scheduledStartIso ?? row?.expires_at ?? null);

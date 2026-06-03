@@ -422,6 +422,8 @@ declare
   opponent_balance integer := 0;
   battle_stake integer := 0;
   battle_pot integer := 0;
+  battle_scheduled_start_at timestamptz;
+  battle_cancellation_evaluation_at timestamptz;
 begin
   if auth.uid() is null then
     raise exception 'Not authenticated';
@@ -483,6 +485,32 @@ begin
 
   battle_stake := 0;
   battle_pot := 0;
+  battle_scheduled_start_at := coalesce(
+    case
+      when p_target_queue_id is not null then opponent_row.scheduled_start_at
+      when me_row.status = 'waiting_challenge' then me_row.scheduled_start_at
+      when opponent_row.status = 'waiting_challenge' then opponent_row.scheduled_start_at
+      else null
+    end,
+    case
+      when p_target_queue_id is not null then opponent_row.expires_at
+      when me_row.status = 'waiting_challenge' then me_row.expires_at
+      when opponent_row.status = 'waiting_challenge' then opponent_row.expires_at
+      else null
+    end
+  );
+  battle_cancellation_evaluation_at := case
+    when battle_scheduled_start_at is null then null
+    else coalesce(
+      case
+        when p_target_queue_id is not null then opponent_row.cancellation_evaluation_at
+        when me_row.status = 'waiting_challenge' then me_row.cancellation_evaluation_at
+        when opponent_row.status = 'waiting_challenge' then opponent_row.cancellation_evaluation_at
+        else null
+      end,
+      battle_scheduled_start_at + interval '1 minute'
+    )
+  end;
 
   insert into public.battles (
     queue_a_id,
@@ -504,6 +532,8 @@ begin
     lyrics_a,
     lyrics_b,
     started_at,
+    scheduled_start_at,
+    cancellation_evaluation_at,
     stake_apc,
     pot_apc,
     vote_stake_apc
@@ -528,6 +558,8 @@ begin
     nullif(trim(me_row.lyrics), ''),
     nullif(trim(opponent_row.lyrics), ''),
     now(),
+    battle_scheduled_start_at,
+    battle_cancellation_evaluation_at,
     battle_stake,
     battle_pot,
     50
@@ -756,7 +788,9 @@ begin
         ai_tool_b,
         lyrics_a,
         lyrics_b,
-        started_at
+        started_at,
+        scheduled_start_at,
+        cancellation_evaluation_at
       )
       values (
         entry.id,
@@ -777,7 +811,12 @@ begin
         nullif(trim(ghost.ai_tool), ''),
         nullif(trim(entry.lyrics), ''),
         nullif(trim(ghost.lyrics), ''),
-        now()
+        now(),
+        coalesce(entry.scheduled_start_at, entry.expires_at),
+        coalesce(
+          entry.cancellation_evaluation_at,
+          coalesce(entry.scheduled_start_at, entry.expires_at) + interval '1 minute'
+        )
       )
       returning id into bid;
 

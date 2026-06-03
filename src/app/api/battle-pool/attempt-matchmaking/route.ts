@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { buildDropBattleSchedulePayloadFromQueues } from "@/lib/battle-pool-client";
 
 type QueueRow = {
   id: string;
@@ -14,6 +15,8 @@ type QueueRow = {
   match_group_id?: string | null;
   opponent_user_id?: string | null;
   expires_at?: string | null;
+  scheduled_start_at?: string | null;
+  cancellation_evaluation_at?: string | null;
 };
 
 const OPEN_QUEUE_STATUSES = ["searching", "waiting", "waiting_challenge"];
@@ -63,15 +66,8 @@ function firstText(...values: unknown[]) {
 }
 
 function battleStartFromRows(meRow: QueueRow, opponentRow: QueueRow, targetQueueId?: string | null) {
-  const scheduled =
-    targetQueueId
-      ? opponentRow.expires_at
-      : meRow.status === "waiting_challenge"
-        ? meRow.expires_at
-        : opponentRow.status === "waiting_challenge"
-          ? opponentRow.expires_at
-          : null;
-  const scheduledMs = scheduled ? new Date(scheduled).getTime() : NaN;
+  const schedulePayload = buildDropBattleSchedulePayloadFromQueues(meRow, opponentRow, targetQueueId);
+  const scheduledMs = schedulePayload?.scheduled_start_at ? new Date(schedulePayload.scheduled_start_at).getTime() : NaN;
   const startMs = Number.isFinite(scheduledMs) && scheduledMs > Date.now() ? scheduledMs : Date.now();
   const startedAt = new Date(startMs).toISOString();
   const waitingRoomStartedAt = new Date(Date.now()).toISOString();
@@ -217,7 +213,18 @@ export async function POST(request: NextRequest) {
     pot_apc: 0,
     vote_stake_apc: 0,
   };
+  const battleSchedule = buildDropBattleSchedulePayloadFromQueues(meRow, opponentRow, targetQueueId);
+  const battleInsertCoreWithSchedule = battleSchedule
+    ? { ...battleInsertCore, ...battleSchedule }
+    : battleInsertCore;
   const battleInsertFull = {
+    ...battleInsertCoreWithSchedule,
+    song_a_cover: firstText(fighterA?.song_cover_url),
+    song_b_cover: firstText(fighterB?.song_cover_url),
+    fighter_a_avatar: firstText(fighterA?.avatar_url, userA?.avatar_url),
+    fighter_b_avatar: firstText(fighterB?.avatar_url, userB?.avatar_url),
+  };
+  const battleInsertFullWithoutSchedule = {
     ...battleInsertCore,
     song_a_cover: firstText(fighterA?.song_cover_url),
     song_b_cover: firstText(fighterB?.song_cover_url),
@@ -230,6 +237,18 @@ export async function POST(request: NextRequest) {
     .insert(battleInsertFull)
     .select("id")
     .single<{ id: string }>();
+
+  if (battleError && /column|schema cache|PGRST204/i.test(`${battleError.message} ${battleError.details ?? ""}`)) {
+    const fallback = await admin.from("battles").insert(battleInsertFullWithoutSchedule).select("id").single<{ id: string }>();
+    battleRow = fallback.data;
+    battleError = fallback.error;
+  }
+
+  if (battleError && /column|schema cache|PGRST204/i.test(`${battleError.message} ${battleError.details ?? ""}`)) {
+    const fallback = await admin.from("battles").insert(battleInsertCoreWithSchedule).select("id").single<{ id: string }>();
+    battleRow = fallback.data;
+    battleError = fallback.error;
+  }
 
   if (battleError && /column|schema cache|PGRST204/i.test(`${battleError.message} ${battleError.details ?? ""}`)) {
     const fallback = await admin.from("battles").insert(battleInsertCore).select("id").single<{ id: string }>();

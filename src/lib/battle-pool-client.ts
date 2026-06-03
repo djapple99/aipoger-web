@@ -14,6 +14,12 @@ export const DROP_BATTLE_SCHEDULE_MAX_LEAD_MS = 24 * 60 * 60 * 1000;
 export const DROP_BATTLE_CANCELLATION_DELAY_MS = 60 * 1000;
 
 export type DropBattleScheduleValidationError = "invalid" | "past" | "too_late";
+export type DropBattleScheduleQueueSnapshot = {
+  status?: string | null;
+  expires_at?: string | null;
+  scheduled_start_at?: string | null;
+  cancellation_evaluation_at?: string | null;
+};
 
 export function buildDropBattleSchedulePayload(scheduledStartIso: string | null) {
   if (!scheduledStartIso) return null;
@@ -35,6 +41,33 @@ export function validateDropBattleScheduledStart(
   if (scheduledStartMs < nowMs + DROP_BATTLE_SCHEDULE_MIN_LEAD_MS) return "past";
   if (scheduledStartMs > nowMs + DROP_BATTLE_SCHEDULE_MAX_LEAD_MS) return "too_late";
   return null;
+}
+
+export function buildDropBattleSchedulePayloadFromQueues(
+  meRow: DropBattleScheduleQueueSnapshot,
+  opponentRow: DropBattleScheduleQueueSnapshot,
+  targetQueueId?: string | null,
+) {
+  const sourceRow =
+    targetQueueId
+      ? opponentRow
+      : meRow.status === "waiting_challenge"
+        ? meRow
+        : opponentRow.status === "waiting_challenge"
+          ? opponentRow
+          : null;
+  if (!sourceRow) return null;
+
+  const payload = buildDropBattleSchedulePayload(sourceRow.scheduled_start_at ?? sourceRow.expires_at ?? null);
+  if (!payload) return null;
+
+  const cancellationEvaluationMs = new Date(sourceRow.cancellation_evaluation_at ?? "").getTime();
+  return {
+    scheduled_start_at: payload.scheduled_start_at,
+    cancellation_evaluation_at: Number.isFinite(cancellationEvaluationMs)
+      ? new Date(cancellationEvaluationMs).toISOString()
+      : payload.cancellation_evaluation_at,
+  };
 }
 
 export async function attemptMatchmakingWithoutApcGate(args: {

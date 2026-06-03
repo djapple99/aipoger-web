@@ -34,6 +34,7 @@ const {
 
 const {
   buildDropBattleSchedulePayload,
+  buildDropBattleSchedulePayloadFromQueues,
   validateDropBattleScheduledStart,
 } = await import("../src/lib/battle-pool-client.ts");
 
@@ -207,4 +208,38 @@ test("drop battle scheduled start payload includes one-minute cancellation evalu
   assert.equal(validateDropBattleScheduledStart(scheduledStart, now), null);
   assert.equal(validateDropBattleScheduledStart(new Date(now + 30 * 1000).toISOString(), now), "past");
   assert.equal(validateDropBattleScheduledStart(new Date(now + 25 * 60 * 60 * 1000).toISOString(), now), "too_late");
+});
+
+test("matched battles inherit schedule from the challenge queue row", () => {
+  const now = Date.UTC(2026, 5, 3, 12, 0, 0);
+  const scheduledStart = new Date(now + 15 * 60 * 1000).toISOString();
+  const cancellationEvaluation = new Date(now + 16 * 60 * 1000).toISOString();
+
+  assert.deepEqual(
+    buildDropBattleSchedulePayloadFromQueues(
+      { status: "searching" },
+      {
+        status: "waiting_challenge",
+        scheduled_start_at: scheduledStart,
+        cancellation_evaluation_at: cancellationEvaluation,
+      },
+      "target-queue-id",
+    ),
+    {
+      scheduled_start_at: scheduledStart,
+      cancellation_evaluation_at: cancellationEvaluation,
+    },
+  );
+
+  assert.deepEqual(
+    buildDropBattleSchedulePayloadFromQueues(
+      { status: "waiting_challenge", expires_at: scheduledStart },
+      { status: "searching" },
+      null,
+    ),
+    {
+      scheduled_start_at: scheduledStart,
+      cancellation_evaluation_at: cancellationEvaluation,
+    },
+  );
 });

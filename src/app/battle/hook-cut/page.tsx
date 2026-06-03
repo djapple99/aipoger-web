@@ -10,7 +10,11 @@ import { isAuthBypassEnabled, mockUserId } from '@/lib/auth-bypass';
 import { readFighterNameFromStorage, writeFighterNameToStorage } from '@/lib/fighter-name-storage';
 import { buildHookStoragePath, isValidStorageObjectKey } from '@/lib/storage-path';
 import { saveFighterNameToProfile } from '@/lib/user-profile-fighter-name';
-import { attemptMatchmakingWithoutApcGate, cancelCurrentBattleIntent } from '@/lib/battle-pool-client';
+import {
+  attemptMatchmakingWithoutApcGate,
+  buildDropBattleSchedulePayload,
+  cancelCurrentBattleIntent,
+} from '@/lib/battle-pool-client';
 import SafetyNotice from '@/components/safety-notice';
 import { blobToDataUrl, parseAudioMetadata } from '@/lib/audio-metadata';
 import { sha256File } from '@/lib/file-hash';
@@ -995,7 +999,10 @@ function HookCutContent() {
           challengeTargetQueueId && /^[0-9a-f-]{36}$/i.test(challengeTargetQueueId)
             ? { challenge_target_queue_id: challengeTargetQueueId }
             : {};
-        const optionalSchedule = hookBattleStartIso ? { expires_at: hookBattleStartIso } : {};
+        const schedulePayload = buildDropBattleSchedulePayload(hookBattleStartIso);
+        const optionalSchedule = schedulePayload
+          ? { expires_at: schedulePayload.scheduled_start_at, ...schedulePayload }
+          : {};
         const baseRowWithoutAudioHash = { ...baseRow };
         delete (baseRowWithoutAudioHash as Record<string, unknown>).audio_sha256;
 
@@ -1020,7 +1027,7 @@ function HookCutContent() {
 
           const msg = `${queueError.message ?? ""} ${queueError.details ?? ""} ${queueError.hint ?? ""}`;
           const missingOptionalCol =
-            /ai_tool|lyrics|audio_sha256|column.*does not exist|schema cache/i.test(msg) || queueError.code === "PGRST204";
+            /ai_tool|lyrics|audio_sha256|expires_at|scheduled_start_at|cancellation_evaluation_at|column.*does not exist|schema cache/i.test(msg) || queueError.code === "PGRST204";
           if (!missingOptionalCol) break;
         }
 
