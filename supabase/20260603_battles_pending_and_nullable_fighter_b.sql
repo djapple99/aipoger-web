@@ -27,6 +27,11 @@ alter table public.battles
       'live',                    -- 開打中
       'finished',                -- 已結束
       'cancelled',               -- 既有 legacy
+      'active',                  -- 既有 90s / async 狀態
+      'completed',               -- 既有 90s / async 狀態
+      'expired',                 -- 既有 no contest / 過期狀態
+      'ghost_battle',            -- 既有 fallback 狀態
+      'public_voting',           -- 既有 fallback 狀態
       'cancelled_no_challenger', -- v3 自動取消（無人接戰）
       'cancelled_founder'        -- v3 founder 手動取消
     )
@@ -34,4 +39,4 @@ alter table public.battles
 
 -- 3. 註解（給未來看 schema 的人）
 comment on constraint battles_status_check on public.battles is
-  'Battle lifecycle: pending (v3, waiting challenger), live, finished, cancelled (legacy), cancelled_no_challenger (v3 auto), cancelled_founder (v3 manual).';
+  'Battle lifecycle: pending (v3, waiting challenger), live, finished, cancelled (legacy), active/completed/expired/ghost_battle/public_voting (legacy async), cancelled_no_challenger (v3 auto), cancelled_founder (v3 manual).';
