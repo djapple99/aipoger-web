@@ -132,6 +132,16 @@
 - 不要用過多 admin / PM 語氣。
 - 不要寫空洞的行銷口號。
 
+## AIPOGER Battle 帳號限制規則
+
+- 每個帳號**同時**可以擁有：
+  - **最多 1 場 24H Full Song battle**
+  - **最多 1 場 Drop battle（90 秒）**
+- 兩種類型可以**並行**（同時間各 1 場）
+- 同類型**不能並行**（譬如同時開 2 場 Drop battle 不行）
+- 「開新一場」的條件：同類型的現有 battle 必須是 `finished` / `cancelled` / `cancelled_no_challenger` / `cancelled_founder` 其中之一
+- 這個限制在 `src/lib/daily-battle-rules.ts` 跟 battle_pool 邏輯中實作
+
 ## AIPOGER Battle 結果判定記憶
 
 - 所有 AIPOGER 比賽規則一致：如果整場比賽沒有任何觀眾投票（0 票、0:0），一律判定為 no contest / 未分勝負。
