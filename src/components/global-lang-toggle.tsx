@@ -9,8 +9,16 @@ export default function GlobalLangToggle() {
   if (!pathname || pathname === '/') return null;
   const battleArenaMatch = pathname.match(/^\/battle\/([^/]+)$/);
   const battlePanelIds = ['setup', 'hook-cut', 'matchmaking'];
+  const routesWithLocalLangToggle = new Set([
+    '/admin/listen-bar',
+    '/battle/daily/waiting-room',
+    '/battle/waiting-room',
+    '/listen-bar',
+    '/music-analysis',
+  ]);
   const hideFixedLangOnArena =
     Boolean(battleArenaMatch && !battlePanelIds.includes(battleArenaMatch[1]));
-  if (hideFixedLangOnArena || pathname === '/listen-bar') return null;
+  const hasLocalLangToggle = [...routesWithLocalLangToggle].some((route) => pathname === route || pathname.startsWith(`${route}/`));
+  if (hideFixedLangOnArena || hasLocalLangToggle) return null;
   return <LangToggle variant="fixed" />;
 }
