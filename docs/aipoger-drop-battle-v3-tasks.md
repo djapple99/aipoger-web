@@ -67,6 +67,13 @@ Task 8 (測試) ← 最後
 - 加 helper `buildDropBattleSchedulePayloadFromQueues` 處理 3 種配對情境
 - Commit `0322eae`
 
+## Task 5: ✅ Done
+- 砍掉 setup/matchmaking/invite 對 `/battle/waiting-room/` 的 redirect
+- waiting-room 路由保留 + deprecation banner「本頁已棄用，請直接進戰場」
+- CTA 文案「進入等待場」→「查看戰帖」
+- daily battle 流程不動
+- Commit `33831ea`
+
 ---
 
 ## Task 2: DB migration
