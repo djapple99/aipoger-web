@@ -31,11 +31,12 @@
 ```
 Task 2 (DB migration) ← 最先
     ↓
+🆕 Task 6.5 (battles schema 修正) ← 補進來，Task 6 前必做
 Task 3 (setup UI) + Task 4 (arena 倒數) + Task 6 (cron)  ← 平行可做
     ↓
 🆕 Task 4.5 (queue → battles 搬 scheduled_start_at) ← 補進來
 Task 5 (砍 waiting-room) ← 依賴 Task 3
-Task 7 (founder 手動取消) ← 依賴 Task 3, 6
+Task 7 (founder 手動取消) ← 依賴 Task 3, 6, 6.5
     ↓
 Task 8 (測試) ← 最後
 ```
@@ -73,6 +74,49 @@ Task 8 (測試) ← 最後
 - CTA 文案「進入等待場」→「查看戰帖」
 - daily battle 流程不動
 - Commit `33831ea`
+
+## Task 6: ✅ Done（但需要先跑 Task 6.5 migration）
+- 新 API route `src/app/api/battle-pool/cancel-stale-challenges/route.ts`
+- vercel.json 加 cron（每分鐘 `* * * * *`）
+- CRON_SECRET 環境變數保護
+- 完整的 race condition 防護（UPDATE 帶 `.eq("status", "pending").is("fighter_b_user_id", null)`）
+- i18n metadata 存進通知
+- Commit `ebc04ce`
+- ⚠️ **Critical**：production 跑之前必須先跑 `supabase/20260603_battles_pending_and_nullable_fighter_b.sql`（見 Task 6.5）
+
+## 🆕 Task 6.5: battles schema 修正（補進來的）
+
+### 為什麼需要這個 Task
+Codex 跑完 Task 6 後指出：battles 表的 schema 不支援 v3 流程。Codex 守住了 Task 6 邊界沒動 schema，結果是 cron 在 production 跑會 100% 失敗：
+- `status` enum 沒有 `'pending'` 跟 `'cancelled_no_challenger'`，任何對這兩個值的寫入會被 SQL reject
+- `fighter_b_user_id` 是 `NOT NULL`，沒辦法表達「founder 開局但還沒人接」
+
+這個 schema 依賴原本漏在 spec 裡（spec 假設 schema 已經能表達 pending 跟取消，實際上不行）。
+
+### 目標
+擴充 `battles.status` enum + 把 `fighter_b_user_id` 改 nullable，支撐 v3 流程。
+
+### 影響檔案
+- 新檔案 `supabase/20260603_battles_pending_and_nullable_fighter_b.sql`（已寫好，見檔案）
+
+### 實作內容
+1. `ALTER TABLE battles ALTER COLUMN fighter_b_user_id DROP NOT NULL` — 允許 pending 狀態時 NULL
+2. `ALTER TABLE battles DROP CONSTRAINT battles_status_check; ADD CONSTRAINT ... CHECK (status IN ('pending', 'live', 'finished', 'cancelled', 'cancelled_no_challenger', 'cancelled_founder'))`
+3. 加註解說明每個狀態的用途
+
+### 不做
+- 不改 `battles_distinct_fighters` check constraint（NULL <> X 還是 NULL，不會失敗）
+- 不動其他表
+- 不改 RLS
+
+### 驗證
+- 跑 migration 後
+- 看 `battles.status` 接受 6 個值
+- 看 `battles.fighter_b_user_id` 可以是 NULL
+- 跑 Task 6 cron 一次，看是否真的能取消 stale battle
+
+### ⚠️ 跑這個 migration 的時機
+**必須在 Task 6 cron 第一次跑之前**。如果 production cron 已經在跑，會在每次 cron 觸發時撞 SQL error 並把錯誤寫進 Vercel logs。
 
 ---
 
@@ -419,6 +463,7 @@ founder 在戰場頁面（自己發起的）可以「主動取消」挑戰。
 | 4 | `feat(arena): 戰場倒數讀 scheduled_start_at` |
 | 4.5 | `fix(battle): 配對成功時把 scheduled_start_at 從 queue 帶進 battles` |
 | 5 | `refactor(nav): 砍掉 waiting-room 中繼路由，setup/matchmaking/invite 直接跳戰場` |
+| 6.5 | `feat(db): battles status enum 擴充 + fighter_b_user_id 改 nullable` |
 | 6 | `feat(cron): 自動取消開戰後 1 分鐘仍無對手的 battle（每分鐘 cron）` |
 | 7 | `feat(arena): founder 手動取消挑戰按鈕` |
 | 8 | `test: v3 scheduled_start_at 與取消規則` |
