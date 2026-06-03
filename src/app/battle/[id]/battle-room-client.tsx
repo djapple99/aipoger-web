@@ -109,6 +109,7 @@ const HOOK_BATTLE_SECONDS = 45;
 const PRE_BATTLE_TEASER_SECONDS = 5;
 const FINAL_PRESTART_HYPE_SECONDS = 5;
 const FINAL_PRESTART_HYPE_TEXT = "Ladies and gentlemen, fighters!";
+const FINAL_PRESTART_HYPE_SFX_SRC = "/sfx/drop-battle-announcer.wav";
 const MAX_PAUSE_MS = 1000;
 const SCRATCH_TRANSITION_SECONDS = 2;
 const SCRATCH_TRANSITION_MS = SCRATCH_TRANSITION_SECONDS * 1000;
@@ -950,24 +951,29 @@ function BattleArenaContent() {
   }, [stopWinnerRevealSfx]);
 
   const playFinalPreStartHype = useCallback(() => {
-    try {
-      if ("speechSynthesis" in window) {
-        const utterance = new SpeechSynthesisUtterance(FINAL_PRESTART_HYPE_TEXT);
-        utterance.lang = "en-US";
-        utterance.rate = 0.94;
-        utterance.pitch = 0.72;
-        utterance.volume = 1;
-        window.speechSynthesis.speak(utterance);
-        return;
+    const announcer = new Audio(FINAL_PRESTART_HYPE_SFX_SRC);
+    announcer.preload = "auto";
+    announcer.volume = 0.94;
+    void announcer.play().catch(() => {
+      try {
+        if ("speechSynthesis" in window) {
+          const utterance = new SpeechSynthesisUtterance(FINAL_PRESTART_HYPE_TEXT);
+          utterance.lang = "en-US";
+          utterance.rate = 0.94;
+          utterance.pitch = 0.72;
+          utterance.volume = 1;
+          window.speechSynthesis.speak(utterance);
+          return;
+        }
+      } catch {
+        // Fall through to the crowd sample when speech synthesis is unavailable.
       }
-    } catch {
-      // Fall through to the crowd sample when speech synthesis is unavailable.
-    }
 
-    const audio = new Audio(WINNER_REVEAL_SFX_SRC);
-    audio.preload = "auto";
-    audio.volume = 0.82;
-    void audio.play().catch(() => undefined);
+      const audio = new Audio(WINNER_REVEAL_SFX_SRC);
+      audio.preload = "auto";
+      audio.volume = 0.82;
+      void audio.play().catch(() => undefined);
+    });
   }, []);
 
   const closeBattleCardAfterResult = useCallback(
