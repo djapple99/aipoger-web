@@ -7,6 +7,10 @@
     {
       "path": "/api/battle-pool/process-fallbacks",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/battle-pool/cancel-stale-challenges",
+      "schedule": "* * * * *"
     }
   ],
   "functions": {
