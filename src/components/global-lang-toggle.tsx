@@ -11,8 +11,6 @@ export default function GlobalLangToggle() {
   const battlePanelIds = ['setup', 'hook-cut', 'matchmaking'];
   const routesWithLocalLangToggle = new Set([
     '/admin/listen-bar',
-    '/battle/daily/waiting-room',
-    '/battle/waiting-room',
     '/listen-bar',
     '/music-analysis',
   ]);

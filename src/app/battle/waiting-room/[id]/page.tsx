@@ -175,6 +175,10 @@ export default function WaitingRoomPage() {
         <LangToggle variant="inline" />
       </div>
 
+      <div className="relative z-10 mx-auto mt-6 w-full max-w-5xl rounded-2xl border border-orange-300/35 bg-orange-500/12 px-5 py-4 text-center text-sm font-black text-orange-50 shadow-[0_0_34px_rgba(255,106,0,0.16)]">
+        本頁已棄用，請直接進戰場
+      </div>
+
       <section className="relative z-10 mx-auto mt-10 w-full max-w-5xl rounded-[2rem] border border-cyan-200/22 bg-black/72 p-6 shadow-[0_0_80px_rgba(0,203,255,0.12)] backdrop-blur md:p-8">
         {loading ? (
           <div className="py-24 text-center">

@@ -431,7 +431,7 @@ export default function GlobalBattleCallOverlay() {
       ["searching", "waiting", "waiting_challenge", "public_voting"].includes(activeNotice.status) &&
       !activeNotice.battleId;
     const activeHref = isPoolWaitingNotice
-      ? `/battle/waiting-room/${encodeURIComponent(activeNotice.id)}?lang=${lang}`
+      ? `/battle?lang=${lang}&focusQueue=${encodeURIComponent(activeNotice.id)}`
       : isQueueNotice && activeNotice.battleId
         ? `/battle/${encodeURIComponent(activeNotice.battleId)}?lang=${lang}`
         : activeNotice.battleId
@@ -446,15 +446,15 @@ export default function GlobalBattleCallOverlay() {
         : "Unfinished Battle";
     const activeBody = isPoolWaitingNotice
       ? isZh
-        ? "目前還沒有配到對手。你可以進等待場看倒數、確認作品還在掛池，也可以取消後重新上傳。"
-        : "No opponent yet. Enter the waiting room for countdown, confirm your card is still listed, or cancel and upload again."
+        ? "目前還沒有配到對手。你可以回鬥歌場確認作品還在掛池，也可以取消後重新上傳。"
+        : "No opponent yet. Return to Battle to confirm your card is still listed, or cancel and upload again."
       : isZh
         ? "目前帳號一次只能保留一場 Battle。你可以回到場內，或直接取消後重新上傳。"
         : "One account can only hold one active Battle. Enter it or cancel to upload again.";
     const activeCta = isPoolWaitingNotice
       ? isZh
-        ? "進入等待場"
-        : "Enter Waiting Room"
+        ? "查看戰帖"
+        : "View Card"
       : isZh
         ? "回到場內"
         : "Enter";

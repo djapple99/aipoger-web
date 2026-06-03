@@ -76,9 +76,6 @@ function destinationHref(id: string, searchParams: InviteSearchParams) {
     if (leftCover) destination.set("coverUrl", leftCover);
     if (leftAvatar) destination.set("avatarUrl", leftAvatar);
   }
-  if (toWaitingRoom) {
-    return `/battle/waiting-room/${encodeURIComponent(id)}?${destination.toString()}`;
-  }
   const path = toResult
     ? `/battle/result`
     : `/battle/${encodeURIComponent(id)}`;
@@ -160,7 +157,7 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
     lang,
   });
   const watchParams = new URLSearchParams({ lang });
-  const watchHref = `/battle/waiting-room/${encodeURIComponent(id)}?${watchParams.toString()}`;
+  const watchHref = `/battle/${encodeURIComponent(id)}?${watchParams.toString()}`;
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#050505] px-5 text-white">
@@ -199,7 +196,7 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
             ? "這是一張 AIPOGER Drop Battle 戰果卡。進場查看完整結果與榮譽卡。"
             : isHookCard
             ? isHookExpired
-              ? "這張公開最強抓波Drop Battle 戰帖已過期。可以進等待頁確認狀態，或回鬥歌場找新的戰帖。"
+              ? "這張公開最強抓波Drop Battle 戰帖已過期。可以回鬥歌場找新的戰帖。"
               : `這是一張公開最強抓波Drop Battle 戰帖。${startTimeLabel ? `開戰時間 ${startTimeLabel}（台灣時間）。` : ""}你可以上傳自己的 45 秒 Drop 接戰，也可以先進場聽 teaser。`
             : "這場 Battle 已經成立，進場後依照音樂感動投票。"}
         </p>

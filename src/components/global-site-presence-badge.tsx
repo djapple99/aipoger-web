@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import { usePresenceCount } from "@/lib/use-presence-count";
 
-const HIDDEN_PREFIXES = ["/battle/waiting-room", "/battle/mock-"];
+const HIDDEN_PREFIXES = ["/battle/mock-"];
 const HIDDEN_EXACT = new Set(["/listen-bar", "/auth"]);
 const FIXED_BATTLE_ROUTES = new Set(["setup", "hook-cut", "matchmaking", "result"]);
 

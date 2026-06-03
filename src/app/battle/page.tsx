@@ -941,7 +941,6 @@ function BattlePoolList() {
             const href = isGhost
               ? `/battle/${entry.match_group_id}`
               : invitePath;
-            const waitingRoomPath = `/battle/waiting-room/${entry.id}?lang=${lang}`;
             const shareUrl = isGhost
               ? `/battle/${entry.match_group_id}?lang=${lang}`
               : invitePath;
@@ -1018,8 +1017,8 @@ function BattlePoolList() {
                   <p className="mt-1 text-xs text-zinc-500">
                     {isMine
                       ? isZh
-                        ? "你的 90s 最強抓波Drop Battle 正在等待挑戰。可先進等待場看倒數、聽 5 秒 teaser；對手加入後會直接進鬥場。"
-                        : "Your 90s Drop Battle is open. Enter the waiting room for countdown and a 5-second teaser."
+                        ? "你的 90s 最強抓波Drop Battle 正在等待挑戰。對手加入後會直接進鬥場。"
+                        : "Your 90s Drop Battle is open. You will enter the arena when a challenger joins."
                       : entry.status === "waiting_challenge"
                         ? isZh
                           ? `${entry.ai_tool || "AI Tool"} · 點卡片可選擇挑戰或觀戰`
@@ -1029,10 +1028,10 @@ function BattlePoolList() {
                   {isMine ? (
                     <div className="mt-4 flex flex-wrap gap-2">
                       <Link
-                        href={waitingRoomPath}
+                        href={invitePath}
                         className="rounded-full bg-cyan-300 px-4 py-2 text-sm font-black text-black transition hover:bg-cyan-100"
                       >
-                        {isZh ? "進入等待場" : "Enter Waiting Room"}
+                        {isZh ? "查看戰帖" : "View Battle Card"}
                       </Link>
                       <button
                         type="button"
