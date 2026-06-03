@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { Suspense, useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -152,11 +151,6 @@ function ProfileInner() {
   return (
     <div className="min-h-screen bg-[#050505] px-4 py-10 text-white">
       <div className="mx-auto w-full max-w-lg space-y-8">
-        <div className="flex items-center justify-between gap-4">
-          <Link href="/" className="text-sm text-zinc-500 transition hover:text-orange-400">
-            ← {t("battle_back")}
-          </Link>
-        </div>
         <div>
           <h1 className="text-3xl font-black tracking-tight text-orange-400">{t("profile_title")}</h1>
           <p className="mt-2 text-sm text-zinc-500">{t("profile_subtitle")}</p>

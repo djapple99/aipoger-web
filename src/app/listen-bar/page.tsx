@@ -1438,7 +1438,6 @@ export default function ListenBarPage() {
   }, [elapsed, lyricLines]);
   const nowAlbumLabel = albumDisplayLabel(nowTrack.mood);
   const navLinks = [
-    { href: "/", label: isZh ? "首頁" : "Home" },
     { href: "/battle", label: isZh ? "鬥歌場" : "Battles" },
     { href: "/rank", label: isZh ? "榮譽榜" : "Rank" },
     { href: "/battle/setup", label: isZh ? "挑戰最強抓波Drop Battle" : "Upload Drop Battle" },

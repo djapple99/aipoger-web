@@ -81,12 +81,7 @@ export default function MusicAnalysisPage() {
     return (
       <main className="flex min-h-screen flex-col bg-[#050505] text-white">
         <header className="flex min-h-16 items-center justify-between gap-3 border-b border-white/10 bg-black/82 px-4 backdrop-blur md:px-6">
-          <Link
-            href={`/?lang=${lang}`}
-            className="inline-flex min-h-10 items-center justify-center rounded-full border border-white/12 bg-white/[0.06] px-4 text-xs font-black text-zinc-200 transition hover:border-orange-300/60 hover:text-white"
-          >
-            {isZh ? "回主頁" : "Home"}
-          </Link>
+          <div className="h-10 w-14" aria-hidden="true" />
           <div className="min-w-0 text-center">
             <p className={`${fontRighteous.className} truncate text-xs uppercase tracking-[0.24em] text-cyan-200/80`}>
               AIPOGER A&R GATE
@@ -112,9 +107,7 @@ export default function MusicAnalysisPage() {
     <main className="relative min-h-screen overflow-hidden bg-[#050505] px-4 py-6 text-white md:px-8">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_22%_22%,rgba(255,106,0,0.28),transparent_34%),radial-gradient(circle_at_82%_28%,rgba(45,212,191,0.18),transparent_32%),linear-gradient(135deg,#050505_0%,#15100c_48%,#021213_100%)]" />
       <header className="relative z-10 mx-auto flex max-w-5xl items-center justify-between gap-3">
-        <Link href={`/?lang=${lang}`} className="rounded-full border border-white/12 bg-black/45 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-orange-300/60 hover:text-white">
-          {isZh ? "回主頁" : "Home"}
-        </Link>
+        <div className="h-10 w-14" aria-hidden="true" />
         <LangToggle variant="inline" />
       </header>
 

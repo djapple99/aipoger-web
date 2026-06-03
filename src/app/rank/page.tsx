@@ -489,20 +489,8 @@ export default function RankPage() {
 
       <div className="relative z-10 mx-auto w-full max-w-7xl">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-5">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.05] px-3 py-2 text-sm font-bold text-zinc-300 transition hover:border-orange-300/55 hover:text-white"
-          >
-            <Image
-              src={AIPOGER_BRAND_LOGO}
-              alt="AIPOGER"
-              width={28}
-              height={28}
-              className="h-7 w-7 rounded-full object-cover"
-            />
-            {isZh ? "返回首頁" : "Back Home"}
-          </Link>
-          <nav className="flex flex-wrap items-center gap-2">
+          <div className="h-11 w-16" aria-hidden="true" />
+          <nav className="flex flex-wrap items-center gap-2 sm:pr-20">
             {[
               { href: "/battle", label: isZh ? "鬥歌場" : "Battles" },
               { href: "/listen-bar", label: isZh ? "傷心酒吧" : "Bar Heartbreak" },

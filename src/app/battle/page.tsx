@@ -1166,7 +1166,7 @@ function LiveBattleList() {
               {t("watch_live_hint")}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 sm:pr-20">
             <ShareButton
               title={t("watch_share_title")}
               text={t("watch_share_text")}
@@ -1190,12 +1190,6 @@ function LiveBattleList() {
               className="w-fit rounded-full border border-yellow-300/30 bg-yellow-400/10 px-5 py-2.5 text-sm font-semibold tracking-[0.12em] text-yellow-100 transition hover:border-yellow-200 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300"
             >
               {t("watch_rank")}
-            </Link>
-            <Link
-              href="/"
-              className="w-fit rounded-full border border-white/15 bg-white/[0.06] px-5 py-2.5 text-sm font-semibold tracking-[0.12em] text-zinc-200 transition hover:border-orange-400/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff7a28]"
-            >
-              {t("battle_back_home")}
             </Link>
           </div>
         </header>
@@ -1454,12 +1448,6 @@ function BattleArena({ matchId }: { matchId: string }) {
               {t("battle_list_title")}
             </h1>
           </div>
-          <Link
-            href="/"
-            className="rounded-xl border border-[#5d6268] px-4 py-2 text-sm tracking-[0.12em] text-[#d8d3cf] transition hover:border-[#ff8d40] hover:text-[#ffd8bf] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff7a28]"
-          >
-            {t("battle_back_home")}
-          </Link>
         </header>
 
         <div className="mb-4 rounded-xl border border-[#4f5358] bg-[#25292d] px-4 py-3 text-sm tracking-[0.12em] text-[#f0e6df]">

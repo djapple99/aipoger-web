@@ -1,8 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { AIPOGER_BRAND_LOGO, AIPOGER_CONTACT_EMAIL, AIPOGER_SOCIAL_LINKS } from "@/lib/brand";
+import { AIPOGER_CONTACT_EMAIL, AIPOGER_SOCIAL_LINKS } from "@/lib/brand";
 import { fontRighteous } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n";
 
@@ -658,12 +657,9 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
 
       <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col gap-8">
         <header className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5">
-          <Link href="/" className="inline-flex items-center gap-3 rounded-full border border-white/12 bg-white/[0.04] px-3 py-2 text-sm font-bold text-zinc-200 transition hover:border-orange-300/60 hover:text-white">
-            <Image src={AIPOGER_BRAND_LOGO} alt="AIPOGER" width={34} height={34} className="h-8 w-8 rounded-full object-cover" />
-            <span>{isZh ? "返回首頁" : "Back Home"}</span>
-          </Link>
+          <div className="h-11 w-16" aria-hidden="true" />
 
-          <nav className="flex flex-wrap justify-end gap-2">
+          <nav className="flex flex-wrap justify-end gap-2 sm:pr-20">
             {pageLinks.map((item) => {
               const active = item.key === kind;
               return (
