@@ -32,6 +32,11 @@ const {
   dailyBattleActiveCountForUser,
 } = await import("../src/lib/daily-battle-rules.ts");
 
+const {
+  buildDropBattleSchedulePayload,
+  validateDropBattleScheduledStart,
+} = await import("../src/lib/battle-pool-client.ts");
+
 test("battle economy uses stake based rewards", () => {
   assert.equal(BATTLE_POINT_REWARDS.stageOneStake, 200);
   assert.equal(BATTLE_POINT_REWARDS.stageTwoStake, 300);
@@ -188,4 +193,18 @@ test("24H Full Song allows only one active entry per user", () => {
   assert.equal(dailyBattleActiveCountForUser(entries, "user-a"), 1);
   assert.equal(canSubmitDailyBattle(entries, "user-a"), false);
   assert.equal(canSubmitDailyBattle([{ userId: "user-a", status: "finished" }], "user-a"), true);
+});
+
+test("drop battle scheduled start payload includes one-minute cancellation evaluation", () => {
+  const now = Date.UTC(2026, 5, 3, 12, 0, 0);
+  const scheduledStart = new Date(now + 10 * 60 * 1000).toISOString();
+  const payload = buildDropBattleSchedulePayload(scheduledStart);
+
+  assert.deepEqual(payload, {
+    scheduled_start_at: scheduledStart,
+    cancellation_evaluation_at: new Date(now + 11 * 60 * 1000).toISOString(),
+  });
+  assert.equal(validateDropBattleScheduledStart(scheduledStart, now), null);
+  assert.equal(validateDropBattleScheduledStart(new Date(now + 30 * 1000).toISOString(), now), "past");
+  assert.equal(validateDropBattleScheduledStart(new Date(now + 25 * 60 * 60 * 1000).toISOString(), now), "too_late");
 });

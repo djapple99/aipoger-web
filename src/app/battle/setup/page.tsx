@@ -9,7 +9,16 @@ import { useI18n } from '@/lib/i18n';
 import { readFighterNameFromStorage, writeFighterNameToStorage } from '@/lib/fighter-name-storage';
 import { loadFighterNameFromProfile, saveFighterNameToProfile } from '@/lib/user-profile-fighter-name';
 import SafetyNotice from '@/components/safety-notice';
-import { cancelCurrentBattleIntent } from '@/lib/battle-pool-client';
+import {
+  buildDropBattleSchedulePayload,
+  cancelCurrentBattleIntent,
+  DROP_BATTLE_SCHEDULE_MAX_LEAD_MS,
+  DROP_BATTLE_SCHEDULE_MIN_LEAD_MS,
+  DROP_BATTLE_SCHEDULE_PRESETS,
+  type DropBattleSchedulePreset,
+  type DropBattleScheduleValidationError,
+  validateDropBattleScheduledStart,
+} from '@/lib/battle-pool-client';
 import { ACTIVE_DAILY_BATTLE_STATUSES, DAILY_BATTLE_ACTIVE_LIMIT } from '@/lib/daily-battle-rules';
 import { fileFromDataUrl, parseAudioMetadata } from '@/lib/audio-metadata';
 import { sha256File } from '@/lib/file-hash';
@@ -70,9 +79,8 @@ const AVATAR_ACCEPT = 'image/jpeg,image/png,image/webp';
 const DAILY_AUDIO_ACCEPT = 'audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/aiff,audio/x-aiff,audio/mp4,audio/aac,.mp3,.wav,.aif,.aiff,.m4a,.aac';
 const DAILY_LYRICS_ACCEPT = '.txt,.lrc,text/plain';
 const MAX_LYRICS_CHARS = 8000;
-const DROP_BATTLE_MIN_LEAD_MS = 30_000;
-const DROP_BATTLE_MAX_LEAD_MS = 24 * 60 * 60 * 1000;
 const PENDING_AUDIO_COVER_KEY = 'aipoger:pending-audio-cover';
+type BattleStartOption = DropBattleSchedulePreset | 'custom';
 
 function safeAudioFileName(name: string) {
   return name
@@ -294,7 +302,7 @@ function toDatetimeLocalValue(date: Date) {
 }
 
 function defaultHookBattleAtValue() {
-  const date = new Date(Date.now() + 30 * 60 * 1000);
+  const date = new Date(Date.now() + 10 * 60 * 1000);
   date.setSeconds(0, 0);
   return toDatetimeLocalValue(date);
 }
@@ -303,6 +311,28 @@ function datetimeLocalToIso(value: string) {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return null;
   return date.toISOString();
+}
+
+function hookBattleAtValueForPreset(minutes: DropBattleSchedulePreset) {
+  const date = new Date(Date.now() + minutes * 60 * 1000);
+  date.setSeconds(0, 0);
+  return toDatetimeLocalValue(date);
+}
+
+function scheduleErrorMessage(lang: string, error: DropBattleScheduleValidationError) {
+  if (error === 'too_late') {
+    return lang === 'zh'
+      ? '自訂開戰時間必須在 24 小時內。'
+      : 'Custom start time must be within 24 hours.';
+  }
+  if (error === 'past') {
+    return lang === 'zh'
+      ? '開戰時間不能是過去，至少要保留 1 分鐘。'
+      : 'Start time cannot be in the past. Leave at least 1 minute.';
+  }
+  return lang === 'zh'
+    ? '請設定有效的開戰時間。'
+    : 'Set a valid start time.';
 }
 
 export default function BattleSetupPage() {
@@ -329,6 +359,8 @@ export default function BattleSetupPage() {
   const [instantPairingMode, setInstantPairingMode] = useState<InstantPairingMode>('auto');
   const [dailyPairingMode, setDailyPairingMode] = useState<DailyPairingMode>('auto');
   const [hookBattleAt, setHookBattleAt] = useState(defaultHookBattleAtValue);
+  const [battleStartOption, setBattleStartOption] = useState<BattleStartOption>(10);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [dailyBattleCount, setDailyBattleCount] = useState(0);
   const [dailySchemaMissing, setDailySchemaMissing] = useState(false);
   const [dailyAudioFile, setDailyAudioFile] = useState<File | null>(null);
@@ -398,6 +430,7 @@ export default function BattleSetupPage() {
           const parsed = new Date(urlHookBattleAt);
           if (Number.isFinite(parsed.getTime())) setHookBattleAt(toDatetimeLocalValue(parsed));
           else setHookBattleAt(urlHookBattleAt);
+          setBattleStartOption('custom');
         }
         if (urlAudioPath) {
           setDraft({
@@ -738,6 +771,18 @@ export default function BattleSetupPage() {
   // ── 提交 ─────────────────────────────────────────────
   const handleSubmit = async () => {
     const finalAiTool = aiTool === '其他' ? otherTool.trim() : aiTool;
+    const shouldScheduleDropBattle = battleMode === 'instant' && !challengeEntryId;
+    const scheduledHookStartIso = shouldScheduleDropBattle ? datetimeLocalToIso(hookBattleAt) : null;
+    const scheduleValidation = shouldScheduleDropBattle
+      ? validateDropBattleScheduledStart(scheduledHookStartIso)
+      : null;
+
+    if (scheduleValidation) {
+      const message = scheduleErrorMessage(lang, scheduleValidation);
+      setScheduleError(message);
+      return;
+    }
+    setScheduleError(null);
 
     if (!draft?.audioPath) {
       if (battleMode === 'daily') {
@@ -764,25 +809,6 @@ export default function BattleSetupPage() {
     if (!fighterName.trim() || !songName.trim() || (!challengeEntryId && !genre) || (aiTool === '其他' && !finalAiTool)) {
       setFormError(t('setup_required_error'));
       return;
-    }
-
-    const scheduledHookStartIso =
-      battleMode === 'instant' && instantPairingMode === 'invite' && !challengeEntryId
-        ? datetimeLocalToIso(hookBattleAt)
-        : null;
-    if (battleMode === 'instant' && instantPairingMode === 'invite' && !challengeEntryId) {
-      if (!scheduledHookStartIso) {
-        setFormError(lang === 'zh' ? '請先設定最強抓波Drop Battle 戰帖開戰時間。' : 'Set a start time for this Drop Battle card.');
-        return;
-      }
-      if (Date.parse(scheduledHookStartIso) < Date.now() + DROP_BATTLE_MIN_LEAD_MS) {
-        setFormError(lang === 'zh' ? '開戰時間至少要留 30 秒，讓你分享戰帖並讓觀眾進鬥場。' : 'Start time must leave at least 30 seconds to share and let listeners enter the arena.');
-        return;
-      }
-      if (Date.parse(scheduledHookStartIso) > Date.now() + DROP_BATTLE_MAX_LEAD_MS) {
-        setFormError(lang === 'zh' ? 'Drop Battle 戰帖最多只能保留 24 小時內，請選一天內的開戰時間。' : 'Drop Battle cards can stay open for at most 24 hours. Pick a start time within one day.');
-        return;
-      }
     }
 
     setFormError(null);
@@ -1002,7 +1028,10 @@ export default function BattleSetupPage() {
           challengeEntryId && /^[0-9a-f-]{36}$/i.test(challengeEntryId)
             ? { challenge_target_queue_id: challengeEntryId }
             : {};
-        const optionalSchedule = scheduledHookStartIso ? { expires_at: scheduledHookStartIso } : {};
+        const schedulePayload = buildDropBattleSchedulePayload(scheduledHookStartIso);
+        const optionalSchedule = schedulePayload
+          ? { expires_at: schedulePayload.scheduled_start_at, ...schedulePayload }
+          : {};
         const lyricsForSave = draft.lyrics.trim();
         const baseRowWithoutAudioHash = { ...baseRow };
         delete (baseRowWithoutAudioHash as Record<string, unknown>).audio_sha256;
@@ -1027,7 +1056,7 @@ export default function BattleSetupPage() {
           queueRows = res.data;
           if (!queueError) break;
           const msg = `${queueError.message ?? ''} ${queueError.details ?? ''} ${queueError.hint ?? ''}`;
-          const missingOptionalCol = /ai_tool|lyrics|audio_sha256|column.*does not exist|schema cache/i.test(msg) || queueError.code === 'PGRST204';
+          const missingOptionalCol = /ai_tool|lyrics|audio_sha256|expires_at|scheduled_start_at|cancellation_evaluation_at|column.*does not exist|schema cache/i.test(msg) || queueError.code === 'PGRST204';
           if (!missingOptionalCol) break;
         }
         if (queueError) throw queueError;
@@ -1079,6 +1108,84 @@ export default function BattleSetupPage() {
   const hookDurationLabel = draft?.hookDuration ? `${Number(draft.hookDuration).toFixed(1)}s` : '45s';
   const dailyBattleLocked = dailyBattleCount >= DAILY_BATTLE_ACTIVE_LIMIT;
   const dailyModeDisabled = dailyBattleLocked || dailySchemaMissing;
+  const showDropBattleSchedule = battleMode === 'instant' && !challengeEntryId;
+  const customScheduleMin = toDatetimeLocalValue(new Date(Date.now() + DROP_BATTLE_SCHEDULE_MIN_LEAD_MS));
+  const customScheduleMax = toDatetimeLocalValue(new Date(Date.now() + DROP_BATTLE_SCHEDULE_MAX_LEAD_MS));
+  const dropBattleSchedulePicker = showDropBattleSchedule ? (
+    <div className="rounded-2xl border border-orange-300/20 bg-orange-500/[0.08] p-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <label className="block text-sm font-bold text-zinc-300">
+            {lang === 'zh' ? '開戰時間' : 'Start time'} <span className="font-black text-orange-400">*</span>
+          </label>
+          <p className="mt-1 text-xs leading-5 text-zinc-500">
+            {lang === 'zh'
+              ? '送出後會寫入 Battle Pool，開戰後 1 分鐘無人接戰即可取消。'
+              : 'Saved to Battle Pool. It can be cancelled 1 minute after start if no challenger joins.'}
+          </p>
+        </div>
+        <span className="rounded-full border border-orange-200/25 bg-black/40 px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-orange-100/80">
+          DROP BATTLE
+        </span>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+        {DROP_BATTLE_SCHEDULE_PRESETS.map((minutes) => {
+          const selected = battleStartOption === minutes;
+          return (
+            <button
+              key={minutes}
+              type="button"
+              onClick={() => {
+                setBattleStartOption(minutes);
+                setHookBattleAt(hookBattleAtValueForPreset(minutes));
+                setScheduleError(null);
+                setFormError(null);
+              }}
+              className={`min-h-12 rounded-2xl border px-3 py-3 text-sm font-black transition ${
+                selected
+                  ? 'border-orange-200/70 bg-orange-400/18 text-orange-50 shadow-[0_0_24px_rgba(255,106,0,0.14)]'
+                  : 'border-white/10 bg-black/35 text-zinc-300 hover:border-orange-200/35'
+              }`}
+            >
+              {lang === 'zh' ? `${minutes} 分鐘後` : `${minutes} min later`}
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => {
+            setBattleStartOption('custom');
+            setScheduleError(null);
+            setFormError(null);
+          }}
+          className={`min-h-12 rounded-2xl border px-3 py-3 text-sm font-black transition ${
+            battleStartOption === 'custom'
+              ? 'border-cyan-200/70 bg-cyan-300/14 text-cyan-50 shadow-[0_0_24px_rgba(0,203,255,0.12)]'
+              : 'border-white/10 bg-black/35 text-zinc-300 hover:border-cyan-200/35'
+          }`}
+        >
+          {lang === 'zh' ? '自訂時間' : 'Custom time'}
+        </button>
+      </div>
+      {battleStartOption === 'custom' ? (
+        <input
+          type="datetime-local"
+          value={hookBattleAt}
+          min={customScheduleMin}
+          max={customScheduleMax}
+          onChange={(event) => {
+            setHookBattleAt(event.target.value);
+            setScheduleError(null);
+            setFormError(null);
+          }}
+          className="mt-3 w-full rounded-2xl border border-white/10 bg-black/55 px-4 py-3 text-base font-black text-white outline-none transition focus:border-cyan-200/70"
+        />
+      ) : null}
+      {scheduleError ? (
+        <p className="mt-3 text-sm font-black text-red-300">{scheduleError}</p>
+      ) : null}
+    </div>
+  ) : null;
   const battleModeSelector = (
     <section className="rounded-[1.75rem] border border-white/10 bg-black/58 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -1187,25 +1294,7 @@ export default function BattleSetupPage() {
               </button>
             ))}
           </div>
-          {instantPairingMode === 'invite' && !challengeEntryId ? (
-            <div className="mt-4 rounded-2xl border border-orange-300/24 bg-orange-500/[0.08] p-4">
-              <label className="block text-[11px] font-black uppercase tracking-[0.26em] text-orange-200/75">
-                {lang === 'zh' ? 'Drop Battle 戰帖開戰時間' : 'Drop Battle Time'}
-              </label>
-              <input
-                type="datetime-local"
-                value={hookBattleAt}
-                min={toDatetimeLocalValue(new Date(Date.now() + DROP_BATTLE_MIN_LEAD_MS))}
-                onChange={(event) => setHookBattleAt(event.target.value)}
-                className="mt-3 w-full rounded-2xl border border-white/10 bg-black/55 px-4 py-3 text-base font-black text-white outline-none focus:border-orange-300/70"
-              />
-              <p className="mt-2 text-xs leading-5 text-zinc-400">
-                {lang === 'zh'
-                  ? '對手接戰後會直接進鬥場倒數；開打前可以分享戰帖，也能先聽雙方 5 秒 teaser。'
-                  : 'After a challenger joins, everyone enters the arena countdown directly, with sharing and both 5s teasers available before start.'}
-              </p>
-            </div>
-          ) : null}
+          {!draft?.audioPath && dropBattleSchedulePicker ? <div className="mt-4">{dropBattleSchedulePicker}</div> : null}
         </>
       )}
     </section>
@@ -1563,6 +1652,8 @@ export default function BattleSetupPage() {
               />
             )}
           </div>
+
+          {draft?.audioPath ? dropBattleSchedulePicker : null}
 
           {battleMode === 'daily' && draft ? (
             <div>
