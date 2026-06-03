@@ -7,6 +7,7 @@ export const APC_CORRECT_FINAL_VOTE_REWARD = 100;
 export const PREDICTION_STAKES = [APC_SUPPORT_MAX] as const;
 export type PredictionStake = (typeof PREDICTION_STAKES)[number];
 export type BattleSide = "fighter_a" | "fighter_b";
+export type BattleDeck = "A" | "B";
 
 export type PredictionCounts = {
   fighter_a: number;
@@ -34,6 +35,29 @@ export function predictionPercentages(counts: PredictionCounts): PredictionCount
   if (total <= 0) return { fighter_a: 50, fighter_b: 50 };
   const left = Math.round((counts.fighter_a / total) * 100);
   return { fighter_a: left, fighter_b: 100 - left };
+}
+
+export function battleSeedForId(value: string): number {
+  return [...(value || "aipoger")].reduce((sum, char, index) => sum + char.charCodeAt(0) * (index + 3), 0);
+}
+
+export function firstDeckForBattleId(battleId: string): BattleDeck {
+  return battleSeedForId(battleId) % 2 === 0 ? "A" : "B";
+}
+
+export function battleSideForDeck(deck: BattleDeck): BattleSide {
+  return deck === "B" ? "fighter_b" : "fighter_a";
+}
+
+export function pick90sBattleWinner(
+  counts: PredictionCounts,
+  battleId: string,
+  tieBreakerDeck?: BattleDeck | null,
+): BattleSide | null {
+  if (counts.fighter_a + counts.fighter_b <= 0) return null;
+  if (counts.fighter_a > counts.fighter_b) return "fighter_a";
+  if (counts.fighter_b > counts.fighter_a) return "fighter_b";
+  return battleSideForDeck(tieBreakerDeck ?? firstDeckForBattleId(battleId));
 }
 
 export function secondsUntilBattleStart(waitingStartedAtMs: number, nowMs: number): number {

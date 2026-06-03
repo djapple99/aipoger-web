@@ -21,6 +21,8 @@ const {
   secondsUntilBattleStart,
   viewerLevelForXp,
   eloDeltaForBattle,
+  firstDeckForBattleId,
+  pick90sBattleWinner,
 } = await import("../src/lib/battle-90s-system.ts");
 
 const {
@@ -145,6 +147,16 @@ test("legacy waiting room countdown is disabled for direct arena flow", () => {
 test("prediction percentages default evenly and split by support count", () => {
   assert.deepEqual(predictionPercentages({ fighter_a: 0, fighter_b: 0 }), { fighter_a: 50, fighter_b: 50 });
   assert.deepEqual(predictionPercentages({ fighter_a: 7, fighter_b: 3 }), { fighter_a: 70, fighter_b: 30 });
+});
+
+test("90s battle creates no contest without votes, but resolves tied audience votes", () => {
+  assert.equal(pick90sBattleWinner({ fighter_a: 3, fighter_b: 1 }, "battle-a"), "fighter_a");
+  assert.equal(pick90sBattleWinner({ fighter_a: 1, fighter_b: 4 }, "battle-b"), "fighter_b");
+  assert.equal(pick90sBattleWinner({ fighter_a: 0, fighter_b: 0 }, "battle-with-no-votes"), null);
+
+  const tieBreaker = firstDeckForBattleId("battle-with-tied-votes") === "B" ? "fighter_b" : "fighter_a";
+  assert.equal(pick90sBattleWinner({ fighter_a: 2, fighter_b: 2 }, "battle-with-tied-votes"), tieBreaker);
+  assert.equal(pick90sBattleWinner({ fighter_a: 1, fighter_b: 1 }, "battle-with-tied-votes", "B"), "fighter_b");
 });
 
 test("prediction rewards stay platform-points only", () => {

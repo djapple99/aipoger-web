@@ -15,6 +15,7 @@ import { supabase } from "@/lib/supabase";
 import ShareButton from "@/components/share-button";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { rankLabelForLevel } from "@/lib/battle-pool-rules";
+import { battleSeedForId, pick90sBattleWinner } from "@/lib/battle-90s-system";
 import type { User } from "@supabase/supabase-js";
 
 type SenderType = "audience" | "fighter_a" | "fighter_b";
@@ -153,12 +154,8 @@ function isHttpOrDataImageUrl(s: string): boolean {
   return /^https?:\/\//i.test(t) || /^data:image\//i.test(t) || /^blob:/i.test(t) || t.startsWith("/");
 }
 
-function battleSeed(value: string): number {
-  return [...value].reduce((sum, char, index) => sum + char.charCodeAt(0) * (index + 3), 0);
-}
-
 function rpsResultForBattle(battleId: string): { firstDeck: DeckKey; choiceA: string; choiceB: string } {
-  const seed = battleSeed(battleId || "aipoger");
+  const seed = battleSeedForId(battleId || "aipoger");
   const firstDeck: DeckKey = seed % 2 === 0 ? "A" : "B";
   const pair = rpsWinPairs[seed % rpsWinPairs.length];
   return firstDeck === "A"
@@ -775,6 +772,7 @@ function BattleArenaContent() {
   const [transitionSecondsLeft, setTransitionSecondsLeft] = useState(SCRATCH_TRANSITION_SECONDS);
   const [transitionEndsAtMs, setTransitionEndsAtMs] = useState<number | null>(null);
   const [winnerRevealOpen, setWinnerRevealOpen] = useState(false);
+  const [noContestOpen, setNoContestOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [myUserId, setMyUserId] = useState<string>("");
@@ -912,6 +910,7 @@ function BattleArenaContent() {
     setVoteOpen(true);
     setVoteCountdown(null);
     setWinnerRevealOpen(false);
+    setNoContestOpen(false);
     setActiveDeck(null);
     setRpsPressed({ A: true, B: true });
     setBattlePhase("ready");
@@ -933,11 +932,19 @@ function BattleArenaContent() {
       window.clearTimeout(resultRedirectTimerRef.current);
       resultRedirectTimerRef.current = null;
     }
-    setWinnerRevealOpen(true);
     setVoteOpen(false);
-    playWinnerRevealSfx();
 
     const href = hrefOverride || battleResultHrefRef.current;
+    if (!href) {
+      setWinnerRevealOpen(false);
+      setNoContestOpen(true);
+      return;
+    }
+
+    setWinnerRevealOpen(true);
+    setNoContestOpen(false);
+    playWinnerRevealSfx();
+
     if (broadcast && href) {
       void mockSyncChannelRef.current?.send({
         type: "broadcast",
@@ -1432,6 +1439,7 @@ function BattleArenaContent() {
     setVoteOpen(false);
     setVoteCountdown(null);
     setWinnerRevealOpen(false);
+    setNoContestOpen(false);
     setHasVoted(null);
     setActiveDeck(null);
     setFirstDeck(null);
@@ -1549,6 +1557,7 @@ function BattleArenaContent() {
     setRpsPressed({ A: true, B: true });
     setFirstDeck(sharedFirstDeck);
     resultRedirectArmedRef.current = false;
+    setNoContestOpen(false);
 
     if (elapsed < HOOK_BATTLE_SECONDS) {
       completedDecksRef.current = { A: false, B: false };
@@ -2248,7 +2257,9 @@ function BattleArenaContent() {
     }
     return t("arena_viewers", { n: viewerCount });
   })();
-  const winnerIsB = votes.fighter_b > votes.fighter_a;
+  const winnerRpcSide = pick90sBattleWinner(votes, battleId, firstDeck);
+  const hasResultWinner = Boolean(winnerRpcSide);
+  const winnerIsB = winnerRpcSide === "fighter_b";
   const winnerSide: DeckKey = winnerIsB ? "B" : "A";
   const winnerName = winnerIsB ? battle.fighter_b_name : battle.fighter_a_name;
   const winnerSong = winnerIsB ? battle.song_b_name : battle.song_a_name;
@@ -2261,6 +2272,7 @@ function BattleArenaContent() {
   const opponentCover = winnerIsB ? vinylCoverA : vinylCoverB;
   const opponentAvatar = winnerIsB ? vinylAvatarA : vinylAvatarB;
   const battleResultHref = (() => {
+    if (!winnerRpcSide) return "";
     const params = new URLSearchParams({
       winner: winnerName,
       song: winnerSong,
@@ -2279,7 +2291,7 @@ function BattleArenaContent() {
       feedbackA: JSON.stringify(feedbackCounts.A),
       feedbackB: JSON.stringify(feedbackCounts.B),
       battleId,
-      winnerSide: winnerSide === "B" ? "fighter_b" : "fighter_a",
+      winnerSide: winnerRpcSide,
     });
     if (winnerCover) params.set("coverUrl", winnerCover);
     if (winnerAvatar) params.set("avatarUrl", winnerAvatar);
@@ -2287,7 +2299,7 @@ function BattleArenaContent() {
     if (opponentAvatar) params.set("opponentAvatarUrl", opponentAvatar);
     return `/battle/result?${params.toString()}`;
   })();
-  battleResultHrefRef.current = battleResultHref;
+  battleResultHrefRef.current = battleResultHref || null;
 
   const battleShareUrl = (() => {
     const params = new URLSearchParams({ lang });
@@ -2385,6 +2397,27 @@ function BattleArenaContent() {
           </div>
         </div>
       )}
+      {noContestOpen && (
+        <div className="absolute inset-0 z-[98] flex items-center justify-center bg-black/76 px-5 text-center backdrop-blur-[2px]">
+          <div className="w-[min(92vw,560px)] rounded-[1.8rem] border border-white/12 bg-black/72 px-6 py-7 shadow-[0_0_80px_rgba(0,0,0,0.5)]">
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-zinc-400">NO CONTEST</p>
+            <h2 className="mt-3 text-3xl font-black text-white">
+              {lang === "zh" ? "本場沒有觀眾投票" : "No audience votes"}
+            </h2>
+            <p className="mt-3 text-sm font-bold leading-6 text-zinc-300">
+              {lang === "zh"
+                ? "0:0 不產生成果卡，也不進榮譽榜。請重新開戰帖或分享給觀眾進場投票。"
+                : "A 0:0 battle does not create a result card or enter the honor board. Open another card or share the arena with listeners."}
+            </p>
+            <Link
+              href={`/battle?lang=${lang}`}
+              className="mt-5 inline-flex rounded-full border border-orange-300/45 bg-orange-500 px-5 py-3 text-sm font-black text-black transition hover:bg-orange-300"
+            >
+              {lang === "zh" ? "回鬥歌場" : "Back to Battle"}
+            </Link>
+          </div>
+        </div>
+      )}
       <div className="pointer-events-none absolute inset-x-0 top-[4.8rem] z-[45] h-[54vh] overflow-hidden">
         {danmakuItems.map((item) => (
           <span
@@ -2419,9 +2452,7 @@ function BattleArenaContent() {
 
       {/* 頂部：歌擂台｜Drop Battle 招牌｜語言 */}
       <header className="sticky top-0 z-30 grid grid-cols-3 items-center border-b border-white/10 bg-black/70 px-4 py-2.5 backdrop-blur-xl">
-        <Link href="/" className="min-w-0 text-[clamp(14px,2.8vw,16px)] font-medium tracking-wide text-white hover:opacity-85">
-          {t("battle_arena_nav")}
-        </Link>
+        <div className="min-w-0" />
         <div className="flex justify-center">
           <NextImage
             src="/hook-warfare-sign.svg"
@@ -2660,7 +2691,7 @@ function BattleArenaContent() {
                   </button>
                 ))}
               </div>
-              {battlePlaybackComplete && !voteOpen && (
+              {battlePlaybackComplete && !voteOpen && hasResultWinner && battleResultHref && (
                 <Link
                   href={battleResultHref}
                   className="relative mt-3 inline-flex items-center justify-center rounded-full border border-orange-300/45 bg-orange-500 px-4 py-2 text-[12px] font-black tracking-[0.12em] text-black shadow-[0_0_24px_rgba(255,106,0,0.24)] transition hover:bg-orange-300"

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { battleSeedForId, pick90sBattleWinner } from "@/lib/battle-90s-system";
 
 type SupabaseAdmin = SupabaseClient;
 
@@ -220,7 +221,7 @@ async function settleStaleHookBattles(admin: SupabaseAdmin, warnings: string[]) 
     }
 
     const counts = countSides((votes ?? []) as VoteRow[]);
-    const winner = pickWinner(counts.fighter_a, counts.fighter_b);
+    const winner = pick90sBattleWinner(counts, battle.id);
     if (!winner) {
       await expireHookBattle(admin, battle, warnings, counts);
       settled += 1;
@@ -291,12 +292,6 @@ function countSides(votes: VoteRow[]) {
   );
 }
 
-function pickWinner(a: number, b: number): "fighter_a" | "fighter_b" | null {
-  if (a === b) return null;
-  if (a === 0 && b === 0) return null;
-  return a > b ? "fighter_a" : "fighter_b";
-}
-
 async function notifyHookBattleResult(
   admin: SupabaseAdmin,
   battle: HookBattleRow,
@@ -313,7 +308,7 @@ async function notifyHookBattleResult(
       type: noContest ? "battle_no_contest" : "battle_finished",
       title: noContest ? "Battle 已結束：未分勝負" : winner === "fighter_a" ? "Battle 勝利！" : "Battle 結束",
       body: noContest
-        ? "這場 90s Drop Battle 票數不足或平手，已結束並從場上移除。"
+        ? "這場 90s Drop Battle 沒有任何觀眾投票，已判定 no contest，不產生成果卡，也不進榮譽榜。"
         : winner === "fighter_a"
           ? `你擊敗了 ${battle.fighter_b_name}，成果已可查看。`
           : `${battle.fighter_b_name} 贏下這場，成果已可查看。`,
@@ -331,7 +326,7 @@ async function notifyHookBattleResult(
       type: noContest ? "battle_no_contest" : "battle_finished",
       title: noContest ? "Battle 已結束：未分勝負" : winner === "fighter_b" ? "Battle 勝利！" : "Battle 結束",
       body: noContest
-        ? "這場 90s Drop Battle 票數不足或平手，已結束並從場上移除。"
+        ? "這場 90s Drop Battle 沒有任何觀眾投票，已判定 no contest，不產生成果卡，也不進榮譽榜。"
         : winner === "fighter_b"
           ? `你擊敗了 ${battle.fighter_a_name}，成果已可查看。`
           : `${battle.fighter_a_name} 贏下這場，成果已可查看。`,
@@ -461,7 +456,7 @@ async function settleExpiredDailyBattles(admin: SupabaseAdmin, warnings: string[
 
     const votesA = (votes ?? []).filter((vote: { picked_entry_id?: string | null }) => vote.picked_entry_id === entryA.id).length;
     const votesB = (votes ?? []).filter((vote: { picked_entry_id?: string | null }) => vote.picked_entry_id === entryB.id).length;
-    const winnerEntryId = votesA === votesB ? null : votesA > votesB ? entryA.id : entryB.id;
+    const winnerEntryId = pickDailyWinnerEntryId(votesA, votesB, battle.id, entryA.id, entryB.id);
 
     const updated = await admin
       .from("daily_battles")
@@ -495,16 +490,16 @@ async function notifyDailyBattleResult(
 ) {
   const rows = [entryA, entryB].map((entry) => {
     const opponent = entry.id === entryA.id ? entryB : entryA;
+    const noContest = winnerEntryId === null;
     const won = winnerEntryId === entry.id;
-    const tied = winnerEntryId === null;
     return {
       user_id: entry.user_id,
       queue_id: null,
       battle_id: null,
       type: "daily_battle_finished",
-      title: tied ? "24H Battle 已結束：平手" : won ? "24H Battle 勝利！" : "24H Battle 已結束",
-      body: tied
-        ? `你和 ${opponent.title} 票數相同，這場 24H Battle 已留檔。`
+      title: noContest ? "24H Battle 已結束：No contest" : won ? "24H Battle 勝利！" : "24H Battle 已結束",
+      body: noContest
+        ? "這場 24H Battle 沒有任何觀眾投票，不產生成果，也不進榮譽榜。"
         : won
           ? `你的作品贏下 24H Battle，成果已留檔。`
           : `${opponent.title} 贏下這場 24H Battle，成果已留檔。`,
@@ -519,4 +514,11 @@ async function notifyDailyBattleResult(
 
   const result = await admin.from("battle_notifications").insert(rows);
   if (result.error) warnings.push(`notify daily ${dailyBattleId}: ${result.error.message}`);
+}
+
+function pickDailyWinnerEntryId(votesA: number, votesB: number, battleId: string, entryAId: string, entryBId: string) {
+  if (votesA + votesB <= 0) return null;
+  if (votesA > votesB) return entryAId;
+  if (votesB > votesA) return entryBId;
+  return battleSeedForId(battleId) % 2 === 0 ? entryAId : entryBId;
 }
