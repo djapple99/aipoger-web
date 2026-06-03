@@ -34,7 +34,7 @@ type ChatMessage = {
 type BattleData = {
   id: string;
   fighter_a_user_id: string;
-  fighter_b_user_id: string;
+  fighter_b_user_id: string | null;
   fighter_a_name: string;
   fighter_b_name: string;
   song_a_name: string;
@@ -55,7 +55,8 @@ type BattleData = {
   scheduled_start_at?: string | null;
   battle_started_at?: string | null;
   started_at?: string | null;
-  status: "live" | "finished" | "cancelled";
+  cancellation_reason?: "no_challenger" | "founder_manual" | null;
+  status: "pending" | "live" | "finished" | "cancelled" | "cancelled_no_challenger" | "cancelled_founder";
 };
 
 type VoteCount = { fighter_a: number; fighter_b: number };
@@ -780,6 +781,8 @@ function BattleArenaContent() {
   const [noContestOpen, setNoContestOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [founderCancelBusy, setFounderCancelBusy] = useState(false);
+  const [founderCancelError, setFounderCancelError] = useState<string | null>(null);
   const [myUserId, setMyUserId] = useState<string>("");
   const [myDisplayName, setMyDisplayName] = useState<string>("我");
   const [audioUrls, setAudioUrls] = useState<{ A: string | null; B: string | null }>({ A: null, B: null });
@@ -1167,9 +1170,13 @@ function BattleArenaContent() {
       // 同步載入兩邊的 fighter_profiles（頭像 + 封面；必須取 .data）
       const [{ data: rowA }, { data: rowB }, { data: profA }, { data: profB }] = await Promise.all([
         supabase.from("fighter_profiles").select("avatar_url, song_cover_url").eq("id", bdata.fighter_a_user_id).maybeSingle(),
-        supabase.from("fighter_profiles").select("avatar_url, song_cover_url").eq("id", bdata.fighter_b_user_id).maybeSingle(),
+        bdata.fighter_b_user_id
+          ? supabase.from("fighter_profiles").select("avatar_url, song_cover_url").eq("id", bdata.fighter_b_user_id).maybeSingle()
+          : Promise.resolve({ data: null }),
         supabase.from("user_profiles").select("avatar_url, level").eq("id", bdata.fighter_a_user_id).maybeSingle(),
-        supabase.from("user_profiles").select("avatar_url, level").eq("id", bdata.fighter_b_user_id).maybeSingle(),
+        bdata.fighter_b_user_id
+          ? supabase.from("user_profiles").select("avatar_url, level").eq("id", bdata.fighter_b_user_id).maybeSingle()
+          : Promise.resolve({ data: null }),
       ]);
       setBattle({
         ...(data as BattleData),
@@ -2114,6 +2121,61 @@ function BattleArenaContent() {
     setHasVoted(target);
   };
 
+  const handleFounderCancelChallenge = useCallback(async () => {
+    if (!battle || !battleId || founderCancelBusy) return;
+    setFounderCancelError(null);
+
+    if (battle.fighter_a_user_id !== myUserId) return;
+    if (battle.fighter_b_user_id) {
+      const msg = lang === "zh" ? "已有人接受挑戰，無法取消" : "A challenger has already accepted this battle.";
+      setFounderCancelError(msg);
+      return;
+    }
+    if (battle.status === "cancelled_founder") return;
+
+    const confirmed = window.confirm(lang === "zh" ? "確定要取消這場挑戰？取消後無法恢復。" : "Cancel this challenge? This cannot be undone.");
+    if (!confirmed) return;
+
+    setFounderCancelBusy(true);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        throw new Error(lang === "zh" ? "請先登入再取消挑戰。" : "Sign in before cancelling the challenge.");
+      }
+
+      const response = await fetch("/api/battle-pool/cancel-founder-challenge", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ battleId }),
+      });
+      const payload = (await response.json().catch(() => null)) as { error?: string; notificationError?: string | null } | null;
+      if (!response.ok) {
+        throw new Error(payload?.error || (lang === "zh" ? "取消挑戰失敗。" : "Failed to cancel the challenge."));
+      }
+
+      if (payload?.notificationError) {
+        console.warn("[battle founder cancel notification]", payload.notificationError);
+      }
+      setBattle((current) =>
+        current?.id === battleId
+          ? { ...current, status: "cancelled_founder", cancellation_reason: "founder_manual" }
+          : current,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : lang === "zh" ? "取消挑戰失敗。" : "Failed to cancel the challenge.";
+      setFounderCancelError(msg);
+      alert(msg);
+    } finally {
+      setFounderCancelBusy(false);
+    }
+  }, [battle, battleId, founderCancelBusy, lang, myUserId]);
+
   const totalVotes = votes.fighter_a + votes.fighter_b;
   const pctA = totalVotes > 0 ? Math.round((votes.fighter_a / totalVotes) * 100) : 50;
   const pctB = 100 - pctA;
@@ -2175,6 +2237,36 @@ function BattleArenaContent() {
   const lyricB = battle.lyrics_b?.trim() ?? "";
   const currentUserSide: DeckKey | null =
     myUserId === battle.fighter_a_user_id ? "A" : myUserId === battle.fighter_b_user_id ? "B" : null;
+  const isBattleFounder = Boolean(myUserId && myUserId === battle.fighter_a_user_id);
+  const hasChallengerAccepted = Boolean(battle.fighter_b_user_id);
+  const founderCancelDisabled =
+    founderCancelBusy ||
+    hasChallengerAccepted ||
+    battle.status === "cancelled_founder" ||
+    battle.status === "cancelled_no_challenger" ||
+    battle.status === "finished" ||
+    battle.status === "cancelled";
+  const founderCancelTitle = hasChallengerAccepted
+    ? lang === "zh"
+      ? "已有人接受挑戰，無法取消"
+      : "A challenger has already accepted this battle."
+    : battle.status === "cancelled_founder"
+      ? lang === "zh"
+        ? "已取消"
+        : "Cancelled"
+      : undefined;
+  const founderCancelLabel =
+    battle.status === "cancelled_founder"
+      ? lang === "zh"
+        ? "已取消"
+        : "Cancelled"
+      : founderCancelBusy
+        ? lang === "zh"
+          ? "取消中..."
+          : "Cancelling..."
+        : lang === "zh"
+          ? "取消挑戰"
+          : "Cancel challenge";
   const isMockBattle = battleId.startsWith("mock-");
   const canControlDeck = (deck: DeckKey) => isMockBattle || currentUserSide === deck;
   const currentFighterName = currentDeck === "A" ? battle.fighter_a_name : currentDeck === "B" ? battle.fighter_b_name : "";
@@ -2611,14 +2703,36 @@ function BattleArenaContent() {
                       </p>
                     </button>
                   </div>
-                  <ShareButton
-                    title={battleShareTitle}
-                    text={battleShareText}
-                    url={battleShareUrl}
-                    label={lang === "zh" ? "分享約人進場" : "Share Arena"}
-                    copiedLabel={lang === "zh" ? "鬥場連結已複製" : "Arena copied"}
-                    className="mt-3 w-full justify-center px-4 py-2.5 text-xs"
-                  />
+                  <div className={`mt-3 grid gap-2 ${isBattleFounder ? "sm:grid-cols-2" : ""}`}>
+                    <ShareButton
+                      title={battleShareTitle}
+                      text={battleShareText}
+                      url={battleShareUrl}
+                      label={lang === "zh" ? "分享約人進場" : "Share Arena"}
+                      copiedLabel={lang === "zh" ? "鬥場連結已複製" : "Arena copied"}
+                      className="w-full justify-center px-4 py-2.5 text-xs"
+                    />
+                    {isBattleFounder ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleFounderCancelChallenge()}
+                        disabled={founderCancelDisabled}
+                        title={founderCancelTitle}
+                        className={`rounded-full border px-4 py-2.5 text-xs font-black transition ${
+                          battle.status === "cancelled_founder"
+                            ? "cursor-not-allowed border-zinc-500/35 bg-zinc-600/10 text-zinc-400"
+                            : "border-red-300/55 bg-red-500/10 text-red-100 hover:border-red-200 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:border-zinc-600/40 disabled:bg-zinc-700/12 disabled:text-zinc-500"
+                        }`}
+                      >
+                        {founderCancelLabel}
+                      </button>
+                    ) : null}
+                  </div>
+                  {founderCancelError ? (
+                    <p className="mt-2 rounded-xl border border-red-300/25 bg-red-500/10 px-3 py-2 text-xs font-bold leading-5 text-red-100">
+                      {founderCancelError}
+                    </p>
+                  ) : null}
                 </div>
               ) : battlePhase === "rps" ? (
                 <div className="relative -mt-1 w-full rounded-[1.4rem] border border-orange-300/25 bg-black/58 px-4 py-4 text-center shadow-[0_0_44px_rgba(255,106,0,0.16)]">
