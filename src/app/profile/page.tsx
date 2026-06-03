@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 import { useI18n } from "@/lib/i18n";
 import { AvatarCropUploadModal } from "@/components/avatar-crop-upload-modal";
+import { ProfileBattleCountBadge } from "@/components/profile-battle-count-badge";
 import SafetyNotice from "@/components/safety-notice";
 import { readFighterNameFromStorage, writeFighterNameToStorage } from "@/lib/fighter-name-storage";
 import { loadFighterNameFromProfile, saveFighterNameToProfile } from "@/lib/user-profile-fighter-name";
@@ -21,7 +22,7 @@ function isAllowedAvatarMime(file: File): boolean {
 }
 
 function ProfileInner() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -161,24 +162,27 @@ function ProfileInner() {
           <p className="mt-1 text-xs text-zinc-600">JPEG / PNG / WebP · {t("avatar_max_2mb")}</p>
           <SafetyNotice kind="upload" compact className="mt-4" />
           <div className="mt-6 flex flex-col items-center gap-4">
-            <button type="button" onClick={openCropPicker} className="group relative">
-              {avatarPreview ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={avatarPreview}
-                  alt=""
-                  className="h-36 w-36 rounded-full border-4 border-zinc-700 object-cover transition group-hover:border-orange-500"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <div className="flex h-36 w-36 items-center justify-center rounded-full border-4 border-dashed border-zinc-700 text-4xl transition group-hover:border-orange-500">
-                  😎
-                </div>
-              )}
-              <span className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 text-xs shadow-lg">
-                ✏️
-              </span>
-            </button>
+            <div className="flex w-full flex-col items-center gap-4 sm:flex-row sm:items-start sm:justify-center">
+              <button type="button" onClick={openCropPicker} className="group relative shrink-0">
+                {avatarPreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={avatarPreview}
+                    alt=""
+                    className="h-36 w-36 rounded-full border-4 border-zinc-700 object-cover transition group-hover:border-orange-500"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="flex h-36 w-36 items-center justify-center rounded-full border-4 border-dashed border-zinc-700 text-4xl transition group-hover:border-orange-500">
+                    😎
+                  </div>
+                )}
+                <span className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 text-xs shadow-lg">
+                  ✏️
+                </span>
+              </button>
+              <ProfileBattleCountBadge userId={userId} currentUserId={userId} lang={lang} />
+            </div>
             <button
               type="button"
               onClick={openCropPicker}
