@@ -37,9 +37,9 @@ const AI_TOOLS = [
   'Suno', 'Udio', 'Lyria', 'Mureka', 'AceStudio', 'MiniMax', 'ElevenLabs', '其他',
 ];
 
-const ACTIVE_QUEUE_STATUSES = ["searching", "waiting", "waiting_challenge", "matched", "active", "ghost_battle", "public_voting"];
-const ACTIVE_BATTLE_STATUSES = ["live", "active", "ghost_battle", "public_voting"];
-const REPLACEABLE_QUEUE_STATUSES = new Set(["searching", "waiting", "waiting_challenge", "public_voting", "ghost_battle"]);
+const ACTIVE_QUEUE_STATUSES = ["pending", "searching", "waiting", "waiting_challenge"];
+const ACTIVE_BATTLE_STATUSES = ["pending", "live"];
+const REPLACEABLE_QUEUE_STATUSES = new Set(["pending", "searching", "waiting", "waiting_challenge"]);
 
 type BattleDraft = {
   audioPath: string;
@@ -162,14 +162,14 @@ function canReplaceActiveBattleLock(lock: ActiveBattleLock): boolean {
 
 function existingBattleMessage(lang: string): string {
   return lang === "zh"
-    ? "你目前已有一首最強抓波Drop Battle 正在等待挑戰。AIPOGER 一次只能保留一場 Battle。要挑戰這首歌，系統會先取消你原本等待中的 Drop。"
-    : "You already have one Drop Battle waiting for challenge. AIPOGER only allows one active Battle at a time. To challenge this track, your previous waiting Drop will be cancelled first.";
+    ? "你目前已有一張 Drop Battle 戰帖卡正在等待挑戰。要挑戰這首歌，系統會先取消你原本等待中的 Drop。"
+    : "You already have one Drop Battle challenge card waiting. To challenge this track, your previous waiting Drop will be cancelled first.";
 }
 
 function lockedBattleMessage(lang: string): string {
   return lang === "zh"
-    ? "你目前已有一場 Battle 進行中。請先完成或取消目前這場，再開始下一場。"
-    : "You already have an active Battle. Finish or cancel it before starting another one.";
+    ? "你目前已有一場 Drop Battle 進行中。請先完成或取消目前這場 Drop，再開始下一場 Drop。"
+    : "You already have an active Drop Battle. Finish or cancel this Drop before starting another one.";
 }
 
 function extractErrorMessage(err: unknown): string {

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { cancelCurrentBattleIntent } from "@/lib/battle-pool-client";
 import { supabase } from "@/lib/supabase";
 
 type ProfileBattleCountBadgeProps = {
@@ -23,6 +24,8 @@ const HISTORY_STATUSES = [
   "public_voting",
 ] as const;
 const COUNTED_STATUSES = [...ACTIVE_STATUSES, ...HISTORY_STATUSES] as const;
+const ACTIVE_QUEUE_STATUSES = ["pending", "searching", "waiting", "waiting_challenge"] as const;
+const UNCANCELLABLE_BATTLE_STATUSES = new Set(["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"]);
 
 type BattleStatus = (typeof ACTIVE_STATUSES)[number] | (typeof HISTORY_STATUSES)[number];
 
@@ -40,6 +43,18 @@ type BattleRow = {
   genre: string | null;
 };
 
+type QueueRow = {
+  id: string;
+  status: string | null;
+  created_at: string | null;
+  expires_at: string | null;
+  scheduled_start_at: string | null;
+  match_group_id: string | null;
+  fighter_name: string | null;
+  original_file_name: string | null;
+  genre: string | null;
+};
+
 const text = {
   zh: {
     active: "進行中",
@@ -49,10 +64,15 @@ const text = {
     noActive: "目前沒有進行中的決鬥",
     noHistory: "還沒有歷史決鬥",
     cancel: "取消挑戰",
+    cancelQueue: "取消戰帖",
     cancelling: "取消中",
     cancelConfirm: "確定要取消這場挑戰？取消後無法恢復。",
+    cancelQueueConfirm: "確定要取消目前這張 Drop Battle 戰帖卡？",
     cancelFailed: "取消挑戰失敗，請稍後再試。",
     needLogin: "請先登入再取消挑戰。",
+    enter: "進入",
+    view: "查看",
+    queueTitle: "尚未成局的 Drop Battle 戰帖卡",
     waiting: "等待挑戰者",
     unknown: "未知對手",
     withOpponent: (name: string) => `與 @${name} 的 90s Drop`,
@@ -68,10 +88,15 @@ const text = {
     noActive: "No active battles",
     noHistory: "No battle history yet",
     cancel: "Cancel challenge",
+    cancelQueue: "Cancel card",
     cancelling: "Cancelling",
     cancelConfirm: "Cancel this challenge? This cannot be undone.",
+    cancelQueueConfirm: "Cancel this Drop Battle challenge card?",
     cancelFailed: "Could not cancel this challenge. Please try again later.",
     needLogin: "Please sign in before cancelling a challenge.",
+    enter: "Enter",
+    view: "View",
+    queueTitle: "Open Drop Battle challenge card",
     waiting: "Waiting challenger",
     unknown: "Unknown opponent",
     withOpponent: (name: string) => `90s Drop with @${name}`,
@@ -117,6 +142,7 @@ export function ProfileBattleCountBadge({ userId, currentUserId = null, lang = "
   const copy = text[lang];
   const [open, setOpen] = useState(false);
   const [battles, setBattles] = useState<BattleRow[]>([]);
+  const [queueRows, setQueueRows] = useState<QueueRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
@@ -124,13 +150,14 @@ export function ProfileBattleCountBadge({ userId, currentUserId = null, lang = "
   const loadBattles = useCallback(async () => {
     if (!userId) {
       setBattles([]);
+      setQueueRows([]);
       return;
     }
 
     setLoading(true);
     setError(null);
     try {
-      const { data, error: queryError } = await supabase
+      const battleQuery = supabase
         .from("battles")
         .select(
           "id,status,created_at,scheduled_start_at,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,genre",
@@ -140,24 +167,39 @@ export function ProfileBattleCountBadge({ userId, currentUserId = null, lang = "
         .order("created_at", { ascending: false })
         .returns<BattleRow[]>();
 
+      const queueQuery =
+        currentUserId === userId
+          ? supabase
+              .from("battle_queue")
+              .select("id,status,created_at,expires_at,scheduled_start_at,match_group_id,fighter_name,original_file_name,genre")
+              .eq("user_id", userId)
+              .in("status", [...ACTIVE_QUEUE_STATUSES])
+              .order("created_at", { ascending: false })
+              .returns<QueueRow[]>()
+          : Promise.resolve({ data: [] as QueueRow[], error: null });
+
+      const [{ data, error: queryError }, { data: queues, error: queueError }] = await Promise.all([battleQuery, queueQuery]);
       if (queryError) throw queryError;
+      if (queueError) throw queueError;
       setBattles(data ?? []);
+      setQueueRows((queues ?? []).filter((row) => !row.match_group_id || !data?.some((battle) => battle.id === row.match_group_id)));
     } catch (loadError) {
       console.error(loadError);
       setError(copy.loadFailed);
     } finally {
       setLoading(false);
     }
-  }, [copy.loadFailed, userId]);
+  }, [copy.loadFailed, currentUserId, userId]);
 
   useEffect(() => {
     void loadBattles();
   }, [loadBattles]);
 
   const activeBattles = useMemo(() => battles.filter((battle) => isActiveStatus(battle.status)), [battles]);
+  const activeQueues = useMemo(() => queueRows.filter((row) => ACTIVE_QUEUE_STATUSES.includes(row.status as (typeof ACTIVE_QUEUE_STATUSES)[number])), [queueRows]);
   const historyBattles = useMemo(() => battles.filter((battle) => isHistoryStatus(battle.status)), [battles]);
-  const totalCount = battles.length;
-  const activeCount = activeBattles.length;
+  const totalCount = battles.length + activeQueues.length;
+  const activeCount = activeBattles.length + activeQueues.length;
 
   const cancelChallenge = async (battleId: string) => {
     if (!window.confirm(copy.cancelConfirm)) return;
@@ -198,23 +240,55 @@ export function ProfileBattleCountBadge({ userId, currentUserId = null, lang = "
     }
   };
 
+  const cancelQueue = async () => {
+    if (!window.confirm(copy.cancelQueueConfirm)) return;
+    setCancellingId("queue");
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        alert(copy.needLogin);
+        return;
+      }
+      await cancelCurrentBattleIntent({ accessToken: token });
+      setQueueRows([]);
+      void loadBattles();
+    } catch (cancelError) {
+      console.error(cancelError);
+      alert(cancelError instanceof Error ? cancelError.message : copy.cancelFailed);
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
   const renderBattleRow = (battle: BattleRow) => {
     const opponentName = userId ? getOpponentName(battle, userId, lang) : copy.unknown;
     const trackName = userId ? getTrackName(battle, userId) : null;
     const startsAt = formatDateTime(battle.scheduled_start_at, lang);
     const createdAt = formatDateTime(battle.created_at, lang);
-    const canCancel = currentUserId === battle.fighter_a_user_id && !battle.fighter_b_user_id && battle.status === "pending";
+    const canCancel =
+      currentUserId === battle.fighter_a_user_id &&
+      !battle.fighter_b_user_id &&
+      !UNCANCELLABLE_BATTLE_STATUSES.has(battle.status ?? "");
     const isCancelling = cancellingId === battle.id;
 
     return (
       <li key={battle.id} className="rounded-2xl border border-zinc-800/80 bg-black/25 px-3 py-2">
         <div className="flex items-start justify-between gap-3">
-          <Link href={`/battle/${battle.id}`} className="min-w-0 flex-1 text-left transition hover:text-orange-200">
+          <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-semibold text-zinc-100">{copy.withOpponent(opponentName)}</p>
             <p className="mt-1 truncate text-[11px] text-zinc-500">
               {trackName ? `${trackName} · ` : ""}
               {startsAt ? copy.startsAt(startsAt) : createdAt ? copy.createdAt(createdAt) : battle.status}
             </p>
+          </div>
+          <Link
+            href={`/battle/${battle.id}`}
+            className="shrink-0 rounded-full border border-zinc-600/70 px-2.5 py-1 text-[11px] font-semibold text-zinc-300 transition hover:border-orange-300/70 hover:text-orange-100"
+          >
+            {copy.enter}
           </Link>
           {canCancel ? (
             <button
@@ -226,6 +300,40 @@ export function ProfileBattleCountBadge({ userId, currentUserId = null, lang = "
               {isCancelling ? copy.cancelling : copy.cancel}
             </button>
           ) : null}
+        </div>
+      </li>
+    );
+  };
+
+  const renderQueueRow = (row: QueueRow) => {
+    const scheduledAt = formatDateTime(row.scheduled_start_at ?? row.expires_at, lang);
+    const createdAt = formatDateTime(row.created_at, lang);
+    const isCancelling = cancellingId === "queue";
+
+    return (
+      <li key={row.id} className="rounded-2xl border border-orange-300/25 bg-orange-500/10 px-3 py-2">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold text-orange-50">{copy.queueTitle}</p>
+            <p className="mt-1 truncate text-[11px] text-orange-100/65">
+              {row.original_file_name?.trim() ? `${row.original_file_name.trim()} · ` : ""}
+              {scheduledAt ? copy.startsAt(scheduledAt) : createdAt ? copy.createdAt(createdAt) : row.status}
+            </p>
+          </div>
+          <Link
+            href={`/battle?focusQueue=${row.id}&lang=${lang}`}
+            className="shrink-0 rounded-full border border-zinc-600/70 px-2.5 py-1 text-[11px] font-semibold text-zinc-300 transition hover:border-orange-300/70 hover:text-orange-100"
+          >
+            {copy.view}
+          </Link>
+          <button
+            type="button"
+            disabled={isCancelling}
+            onClick={() => void cancelQueue()}
+            className="shrink-0 rounded-full border border-red-400/60 px-2.5 py-1 text-[11px] font-semibold text-red-300 transition hover:border-red-300 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isCancelling ? copy.cancelling : copy.cancelQueue}
+          </button>
         </div>
       </li>
     );
@@ -263,8 +371,11 @@ export function ProfileBattleCountBadge({ userId, currentUserId = null, lang = "
                   </span>
                   <span className="h-px flex-1 bg-cyan-400/20" />
                 </div>
-                {activeBattles.length > 0 ? (
-                  <ul className="space-y-2">{activeBattles.map(renderBattleRow)}</ul>
+                {activeCount > 0 ? (
+                  <ul className="space-y-2">
+                    {activeQueues.map(renderQueueRow)}
+                    {activeBattles.map(renderBattleRow)}
+                  </ul>
                 ) : (
                   <p className="rounded-2xl border border-zinc-800/80 bg-black/20 px-3 py-3 text-center text-xs text-zinc-500">
                     {copy.noActive}

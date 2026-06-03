@@ -21,27 +21,14 @@ type QueueRow = {
 
 const OPEN_QUEUE_STATUSES = ["searching", "waiting", "waiting_challenge"];
 const ACTIVE_QUEUE_STATUSES = [
-  "queued",
   "pending",
   "searching",
   "waiting",
   "waiting_challenge",
-  "confirming",
-  "matched",
-  "active",
-  "ghost_battle",
-  "public_voting",
 ];
 const ACTIVE_BATTLE_STATUSES = [
-  "waiting",
-  "confirming",
-  "matched",
-  "countdown",
+  "pending",
   "live",
-  "active",
-  "ghost_battle",
-  "public_voting",
-  "settling",
 ];
 
 function jsonError(message: string, status = 400) {
@@ -132,7 +119,7 @@ export async function POST(request: NextRequest) {
 
   if (otherActiveQueueError) return jsonError(otherActiveQueueError.message, 500);
   if ((otherActiveQueues ?? []).length > 0) {
-    return jsonError("同一個帳號一次只能保留一場 Battle。請先完成或取消目前這場，再開始下一場。", 409);
+    return jsonError("同一個帳號一次只能保留一場 Drop Battle。請先完成或取消目前這場 Drop，再開始下一場。", 409);
   }
 
   const { data: activeBattles, error: activeBattleError } = await admin
@@ -144,7 +131,7 @@ export async function POST(request: NextRequest) {
 
   if (activeBattleError) return jsonError(activeBattleError.message, 500);
   if ((activeBattles ?? []).length > 0) {
-    return jsonError("你目前已有一場 Battle 進行中。請先完成或取消目前這場，再開始下一場。", 409);
+    return jsonError("你目前已有一場 Drop Battle 進行中。請先完成或取消目前這場 Drop，再開始下一場 Drop。", 409);
   }
 
   let opponentQuery = admin

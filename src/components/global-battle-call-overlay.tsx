@@ -449,8 +449,8 @@ export default function GlobalBattleCallOverlay() {
         ? "目前還沒有配到對手。你可以回鬥歌場確認作品還在掛池，也可以取消後重新上傳。"
         : "No opponent yet. Return to Battle to confirm your card is still listed, or cancel and upload again."
       : isZh
-        ? "目前帳號一次只能保留一場 Battle。你可以回到場內，或直接取消後重新上傳。"
-        : "One account can only hold one active Battle. Enter it or cancel to upload again.";
+        ? "目前帳號一次只能保留一場 Drop Battle。你可以回到場內，或直接取消後重新上傳 Drop。"
+        : "One account can only hold one active Drop Battle. Enter it or cancel to upload another Drop.";
     const activeCta = isPoolWaitingNotice
       ? isZh
         ? "查看戰帖"
