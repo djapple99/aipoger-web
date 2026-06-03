@@ -317,14 +317,6 @@ function HomeAuthBar() {
             >
               {t("home_profile_link")}
             </Link>
-            <Link
-              href="/battle/setup#avatar-upload"
-              role="menuitem"
-              className="block w-full px-3 py-2.5 text-left text-sm text-zinc-200 transition hover:bg-zinc-800 hover:text-white"
-              onClick={() => setMenuOpen(false)}
-            >
-              {t("home_avatar_upload_link")}
-            </Link>
             <button
               type="button"
               role="menuitem"
