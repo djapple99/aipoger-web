@@ -52,6 +52,7 @@ type BattleData = {
   lyrics_a: string | null;
   lyrics_b: string | null;
   genre: string;
+  scheduled_start_at?: string | null;
   battle_started_at?: string | null;
   started_at?: string | null;
   status: "live" | "finished" | "cancelled";
@@ -170,6 +171,10 @@ function timestampParamMs(value: string | null | undefined): number | null {
   if (Number.isFinite(asNumber) && asNumber > 0) return asNumber > 10_000_000_000 ? asNumber : asNumber * 1000;
   const asDate = Date.parse(raw);
   return Number.isFinite(asDate) ? asDate : null;
+}
+
+function scheduledStartMsForBattle(battle: Pick<BattleData, "scheduled_start_at" | "started_at">): number | null {
+  return timestampParamMs(battle.scheduled_start_at) ?? timestampParamMs(battle.started_at);
 }
 
 function deckParam(value: string | null | undefined): DeckKey | null {
@@ -1116,6 +1121,7 @@ function BattleArenaContent() {
           lyrics_a: qLyrics || null,
           lyrics_b: null,
           genre: qGenre || "AI Music",
+          scheduled_start_at: null,
           battle_started_at: qBattleStartedAt ? new Date(timestampParamMs(qBattleStartedAt) ?? Date.now()).toISOString() : null,
           started_at: null,
           status: "live",
@@ -1180,6 +1186,7 @@ function BattleArenaContent() {
         lyrics_a: typeof bdata.lyrics_a === "string" && bdata.lyrics_a.length > 0 ? bdata.lyrics_a : null,
         lyrics_b: typeof bdata.lyrics_b === "string" && bdata.lyrics_b.length > 0 ? bdata.lyrics_b : null,
         genre: typeof bdata.genre === "string" && bdata.genre.trim() ? bdata.genre : "AI Music",
+        scheduled_start_at: (bdata.scheduled_start_at as string | null | undefined) ?? null,
         battle_started_at: (bdata.battle_started_at as string | null | undefined) ?? null,
         started_at: (bdata.started_at as string | null | undefined) ?? null,
       });
@@ -1488,7 +1495,7 @@ function BattleArenaContent() {
   useEffect(() => {
     if (loading || !battle || !battleId) return undefined;
 
-    const scheduledStartMs = timestampParamMs(battle.started_at);
+    const scheduledStartMs = scheduledStartMsForBattle(battle);
     const alreadyStartedMs =
       timestampParamMs(searchParams.get("battleStartedAtMs")) ??
       timestampParamMs(searchParams.get("battleStartedAt")) ??
@@ -1501,13 +1508,13 @@ function BattleArenaContent() {
 
     const startKey = `${battleId}:${scheduledStartMs}`;
     const tick = () => {
-      const remaining = Math.ceil((scheduledStartMs - Date.now()) / 1000);
-      if (remaining > 0) {
-        setPreStartSecondsLeft(remaining);
+      const secondsUntilStart = Math.floor((scheduledStartMs - Date.now()) / 1000);
+      const remaining = Math.max(0, secondsUntilStart);
+      setPreStartSecondsLeft(remaining);
+      if (secondsUntilStart > 0) {
         return;
       }
 
-      setPreStartSecondsLeft(0);
       stopTeaser();
       if (preBattleStartedRef.current === startKey) return;
       preBattleStartedRef.current = startKey;
@@ -1537,7 +1544,7 @@ function BattleArenaContent() {
       timestampParamMs(searchParams.get("battleStartedAt")) ??
       timestampParamMs(battle.battle_started_at) ??
       (() => {
-        const scheduledStartMs = timestampParamMs(battle.started_at);
+        const scheduledStartMs = scheduledStartMsForBattle(battle);
         return scheduledStartMs && scheduledStartMs <= Date.now() ? scheduledStartMs : null;
       })();
     if (!sharedStartedAtMs) return;
@@ -2179,7 +2186,7 @@ function BattleArenaContent() {
     return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   })();
   const preStartTimeLabel = (() => {
-    const scheduledStartMs = timestampParamMs(battle.started_at);
+    const scheduledStartMs = scheduledStartMsForBattle(battle);
     if (!scheduledStartMs) return "";
     return new Intl.DateTimeFormat(lang === "zh" ? "zh-TW" : "en", {
       month: "2-digit",
