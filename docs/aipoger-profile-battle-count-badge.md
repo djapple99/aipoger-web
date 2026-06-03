@@ -13,7 +13,7 @@
 ## 顯示規則
 
 - **總決鬥數**：包含所有狀態（`live` + `pending` + `finished` + `cancelled` + `cancelled_no_challenger` + `cancelled_founder` + `active` + `completed` + `expired` + `ghost_battle` + `public_voting`）
-- **進行中數**：只包含 `live` + `pending`（不含任何 `cancelled*` 或 `finished`）
+- **進行中數**：只包含 `live` + `pending`（2 個 status，不含任何 `cancelled*` 或 `finished`）
 - 同類型不限制計入（總數可包含多場歷史 24H 或多場歷史 Drop）
 
 ---
