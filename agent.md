@@ -142,6 +142,20 @@
 - 「開新一場」的條件：同類型的現有 battle 必須是 `finished` / `cancelled` / `cancelled_no_challenger` / `cancelled_founder` 其中之一
 - 這個限制在 `src/lib/daily-battle-rules.ts` 跟 battle_pool 邏輯中實作
 
+## AIPOGER Drop Battle 流程記憶（2026-06-03）
+
+- 90s Drop Battle 不再使用獨立 waiting room / 預等區。使用者開戰帖或進戰帖後，應直接進 `/battle/[id]` 戰場，在戰場裡看倒數、聽 5 秒預播、聊天預測；時間到後直接猜拳開打。
+- 開戰時間可選 10 / 15 / 20 分鐘後。若正式 Supabase 尚未有 `scheduled_start_at` / `cancellation_evaluation_at` 欄位，程式必須用 `expires_at` fallback 保存與推算時間，不可再出現「選 10 分鐘後卻變明天」。
+- 在開戰時間內，發起者與觀眾都可以離開再回來；戰場狀態不應要求使用者留在預等頁。
+- 戰場的 5 秒 teaser 對外中文標示統一用「預播」，並用紅底白字呈現；不要再用不清楚的 `PLAY 5S`。戰鬥卡、邀請卡、分享預覽也要同步用「5 秒預播」。
+- 分享 Battle 的文案要包含發起對戰者名、歌名、開戰時間、類型 / 風格與 5 秒預播邀請；分享網址盡量短，優先用 `/battle/{id}?lang=zh`、成果卡用 `/battle/result?battleId={id}&lang=zh`。
+- 戰場中點雙方頭像觸發的 emoji 反應，必須全場 Realtime broadcast，讓雙方與所有觀眾都看得到，不可只留在本機畫面。
+- 投票 UI 不顯示假進度條或預設 50% 條。投票提示要明確寫「投票請按愛心」；最終揭票時可以顯示票數，但不要用沒有意義的進度條誤導觀眾。
+- 正式開打前最後 5 秒要有舞台感倒數與 announcer 音效 / 文案：`Ladies and gentlemen, fighters!`。這是 battle 氣氛的一部分，不是一般 countdown。
+- 使用者人在 battle arena 裡時，不應再跳出全域「是否接受挑戰 / 找到對手」提示框；這會打斷戰鬥。全域 Battle 提醒只應在非戰場頁協助回場或清理。
+- Battle 結束後必須清場：有有效觀眾票並產生成果卡時，`battles` 應進 `finished`，兩邊 `battle_queue` 應進 `completed`；0:0 no contest 則應走 `expired` / no contest 清場，不產生成果卡、不進榮譽榜。
+- 鬥歌池與右上角帳號提醒都不應殘留已完成 / 已過期 / 已取消的 Drop Battle。若看到 `matched` queue 殘影，要檢查 linked battle 是否已 `finished` / `expired`，並優先清 queue 狀態與未讀 `battle_matched` 通知。
+
 ## AIPOGER Battle 結果判定記憶
 
 - 所有 AIPOGER 比賽規則一致：如果整場比賽沒有任何觀眾投票（0 票、0:0），一律判定為 no contest / 未分勝負。
