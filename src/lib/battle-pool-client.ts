@@ -195,3 +195,36 @@ export async function cancelCurrentBattleIntent(args: {
     cancelledQueues: payload?.cancelledQueues ?? 0,
   };
 }
+
+export async function completeBattleCardIntent(args: {
+  accessToken: string;
+  battleId: string;
+  outcome?: "completed" | "expired";
+}): Promise<{ completedBattles: number; completedQueues: number }> {
+  const response = await fetch("/api/battle-pool/complete-battle-card", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${args.accessToken}`,
+    },
+    body: JSON.stringify({
+      battleId: args.battleId,
+      outcome: args.outcome ?? "completed",
+    }),
+  });
+
+  const payload = (await response.json().catch(() => null)) as {
+    completedBattles?: number;
+    completedQueues?: number;
+    error?: string;
+  } | null;
+
+  if (!response.ok) {
+    throw new Error(payload?.error ?? `Complete battle failed (${response.status})`);
+  }
+
+  return {
+    completedBattles: payload?.completedBattles ?? 0,
+    completedQueues: payload?.completedQueues ?? 0,
+  };
+}

@@ -56,7 +56,6 @@ const ACTIVE_NOTICE_QUEUE_STATUSES = [
   "waiting",
   "waiting_challenge",
   "confirming",
-  "matched",
   "active",
   "ghost_battle",
   "public_voting",
@@ -146,6 +145,7 @@ export default function GlobalBattleCallOverlay() {
 
   const showCall = useCallback(
     (next: BattleCall) => {
+      if (routeTone === "watching") return;
       if (pathname?.startsWith(`/battle/${next.battleId}`)) return;
       setExpiredNotice(null);
       setCall(next);
@@ -154,8 +154,15 @@ export default function GlobalBattleCallOverlay() {
       setSecondsLeft(15);
       setPulseKey((value) => value + 1);
     },
-    [pathname],
+    [pathname, routeTone],
   );
+
+  useEffect(() => {
+    if (routeTone !== "watching") return;
+    setCall(null);
+    setAccepted(false);
+    setCollapsed(false);
+  }, [routeTone]);
 
   useEffect(() => {
     setReady(true);

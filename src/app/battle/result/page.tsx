@@ -17,6 +17,7 @@ import {
   type BattleFeedbackCounts,
   type BattleFeedbackKey,
 } from "@/lib/battle-result-archive";
+import { completeBattleCardIntent } from "@/lib/battle-pool-client";
 import { supabase } from "@/lib/supabase";
 
 type SkillKey = BattleFeedbackKey;
@@ -137,7 +138,7 @@ function archivedResultFromRow(row: Record<string, unknown>): ArchivedBattleResu
   };
 }
 
-function isUuid(value: string | null) {
+function isUuid(value: string | null): value is string {
   return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
 }
 
@@ -471,14 +472,15 @@ function BattleResultContent() {
     });
 
     if (!isUuid(battleId)) return;
+    const settledBattleId = battleId;
     void (async () => {
       const settle90s = await supabase.rpc("settle_90s_battle", {
-        p_battle_id: battleId,
+        p_battle_id: settledBattleId,
         p_winner: winnerSide,
       });
       if (settle90s.error) {
         const fallback = await supabase.rpc("settle_battle", {
-          p_battle_id: battleId,
+          p_battle_id: settledBattleId,
           p_winner: winnerSide,
         });
         if (fallback.error && !/already settled|already closed|finished/i.test(fallback.error.message)) {
@@ -487,7 +489,7 @@ function BattleResultContent() {
       }
 
       const archive = await supabase.rpc("archive_battle_result", {
-        p_battle_id: battleId,
+        p_battle_id: settledBattleId,
         p_winner: winnerSide,
         p_final_vote_left: finalVoteLeft,
         p_final_vote_right: finalVoteRight,
@@ -507,6 +509,16 @@ function BattleResultContent() {
         },
       });
       if (archive.error) console.warn("[battle result archive]", archive.error.message);
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (accessToken) {
+        await completeBattleCardIntent({ accessToken, battleId: settledBattleId, outcome: "completed" }).catch((err) => {
+          console.warn("[battle result complete card]", err);
+        });
+      }
     })();
   }, [
     aiReview,
