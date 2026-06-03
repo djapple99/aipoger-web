@@ -35,6 +35,8 @@ const {
 const {
   buildDropBattleSchedulePayload,
   buildDropBattleSchedulePayloadFromQueues,
+  canFounderCancelDropBattle,
+  shouldCancelStaleDropBattle,
   validateDropBattleScheduledStart,
 } = await import("../src/lib/battle-pool-client.ts");
 
@@ -208,6 +210,51 @@ test("drop battle scheduled start payload includes one-minute cancellation evalu
   assert.equal(validateDropBattleScheduledStart(scheduledStart, now), null);
   assert.equal(validateDropBattleScheduledStart(new Date(now + 30 * 1000).toISOString(), now), "past");
   assert.equal(validateDropBattleScheduledStart(new Date(now + 25 * 60 * 60 * 1000).toISOString(), now), "too_late");
+});
+
+test("drop battle scheduled start validation rejects invalid timing and accepts 10/15/20 minutes", () => {
+  const now = Date.UTC(2026, 5, 3, 12, 0, 0);
+
+  assert.equal(validateDropBattleScheduledStart(new Date(now - 1).toISOString(), now), "past");
+  assert.equal(validateDropBattleScheduledStart(new Date(now + 24 * 60 * 60 * 1000 + 1).toISOString(), now), "too_late");
+  for (const minutes of [10, 15, 20]) {
+    assert.equal(validateDropBattleScheduledStart(new Date(now + minutes * 60 * 1000).toISOString(), now), null);
+  }
+});
+
+test("drop battle auto cancellation only applies after evaluation time without challenger", () => {
+  const now = Date.UTC(2026, 5, 3, 12, 0, 0);
+  const stalePendingBattle = {
+    status: "pending",
+    fighter_b_user_id: null,
+    cancellation_evaluation_at: new Date(now - 1).toISOString(),
+  };
+
+  assert.equal(shouldCancelStaleDropBattle(stalePendingBattle, now), true);
+  assert.equal(
+    shouldCancelStaleDropBattle({ ...stalePendingBattle, fighter_b_user_id: "challenger-user-id" }, now),
+    false,
+  );
+  assert.equal(
+    shouldCancelStaleDropBattle({ ...stalePendingBattle, cancellation_evaluation_at: new Date(now + 1).toISOString() }, now),
+    false,
+  );
+});
+
+test("drop battle founder manual cancellation requires an unaccepted founder battle", () => {
+  const founderBattle = {
+    status: "pending",
+    fighter_a_user_id: "founder-user-id",
+    fighter_b_user_id: null,
+  };
+
+  assert.equal(canFounderCancelDropBattle(founderBattle, "founder-user-id"), true);
+  assert.equal(
+    canFounderCancelDropBattle({ ...founderBattle, fighter_b_user_id: "challenger-user-id" }, "founder-user-id"),
+    false,
+  );
+  assert.equal(canFounderCancelDropBattle(founderBattle, "other-user-id"), false);
+  assert.equal(canFounderCancelDropBattle({ ...founderBattle, status: "finished" }, "founder-user-id"), false);
 });
 
 test("matched battles inherit schedule from the challenge queue row", () => {

@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { shouldCancelStaleDropBattle } from "@/lib/battle-pool-client";
 
 type SupabaseAdmin = SupabaseClient;
 
 type StaleBattleRow = {
   id: string;
   fighter_a_user_id: string | null;
+  fighter_b_user_id: string | null;
+  status: string | null;
   scheduled_start_at: string | null;
   cancellation_evaluation_at: string | null;
 };
@@ -53,7 +56,7 @@ async function cancelStalePendingBattles(admin: SupabaseAdmin) {
 
   const { data, error } = await admin
     .from("battles")
-    .select("id, fighter_a_user_id, scheduled_start_at, cancellation_evaluation_at")
+    .select("id, fighter_a_user_id, fighter_b_user_id, status, scheduled_start_at, cancellation_evaluation_at")
     .eq("status", "pending")
     .is("fighter_b_user_id", null)
     .lte("cancellation_evaluation_at", now);
@@ -66,6 +69,8 @@ async function cancelStalePendingBattles(admin: SupabaseAdmin) {
   let cancelled = 0;
 
   for (const battle of rows) {
+    if (!shouldCancelStaleDropBattle(battle, Date.parse(now))) continue;
+
     const update = await admin
       .from("battles")
       .update({

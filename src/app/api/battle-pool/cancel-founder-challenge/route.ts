@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { canFounderCancelDropBattle } from "@/lib/battle-pool-client";
 
 type FounderBattleRow = {
   id: string;
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
   if (battle.status === "cancelled_founder") {
     return NextResponse.json({ ok: true, alreadyCancelled: true });
   }
-  if (battle.status === "finished" || battle.status === "cancelled" || battle.status === "cancelled_no_challenger") {
+  if (!canFounderCancelDropBattle(battle, user.id)) {
     return jsonError("This battle can no longer be cancelled", 409);
   }
 

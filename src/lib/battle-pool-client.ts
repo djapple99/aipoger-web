@@ -21,6 +21,13 @@ export type DropBattleScheduleQueueSnapshot = {
   cancellation_evaluation_at?: string | null;
 };
 
+export type DropBattleCancellationSnapshot = {
+  status?: string | null;
+  fighter_a_user_id?: string | null;
+  fighter_b_user_id?: string | null;
+  cancellation_evaluation_at?: string | null;
+};
+
 export function buildDropBattleSchedulePayload(scheduledStartIso: string | null) {
   if (!scheduledStartIso) return null;
   const scheduledStartMs = new Date(scheduledStartIso).getTime();
@@ -68,6 +75,25 @@ export function buildDropBattleSchedulePayloadFromQueues(
       ? new Date(cancellationEvaluationMs).toISOString()
       : payload.cancellation_evaluation_at,
   };
+}
+
+export function shouldCancelStaleDropBattle(
+  battle: DropBattleCancellationSnapshot,
+  nowMs = Date.now(),
+) {
+  if (battle.status !== "pending") return false;
+  if (battle.fighter_b_user_id) return false;
+  const cancellationEvaluationMs = new Date(battle.cancellation_evaluation_at ?? "").getTime();
+  return Number.isFinite(cancellationEvaluationMs) && cancellationEvaluationMs <= nowMs;
+}
+
+export function canFounderCancelDropBattle(
+  battle: DropBattleCancellationSnapshot,
+  founderUserId: string | null | undefined,
+) {
+  if (!founderUserId || battle.fighter_a_user_id !== founderUserId) return false;
+  if (battle.fighter_b_user_id) return false;
+  return !["finished", "cancelled", "cancelled_no_challenger"].includes(battle.status ?? "");
 }
 
 export async function attemptMatchmakingWithoutApcGate(args: {
