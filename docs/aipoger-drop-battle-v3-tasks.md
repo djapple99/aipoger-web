@@ -47,6 +47,26 @@ Task 8 (測試) ← 最後
 - Commit `ac711d4`
 - 對應 test「legacy waiting room countdown is disabled for direct arena flow」現在通過
 
+## Task 2: ✅ Done
+- 新增 `scheduled_start_at` / `cancellation_evaluation_at` / `cancellation_reason` 欄位
+- 包含 CHECK CONSTRAINT 跟欄位 COMMENT
+- Commit `f3b121c`
+
+## Task 3: ✅ Done
+- Setup 頁加 10/15/20 + 自訂時間 UI
+- i18n 雙語、graceful fallback、加 unit test
+- Commit `e2be191`
+
+## Task 4: ✅ Done
+- 戰場倒數讀 `scheduled_start_at`（fallback 到 `started_at`）
+- Commit `444b88a`
+
+## Task 4.5: ✅ Done
+- 4 條 battle 建立路徑全部搬運（API route、hook-cut、matchmaking、SQL RPC）
+- 新增 SQL trigger `copy_queue_schedule_to_battle` 雙保險
+- 加 helper `buildDropBattleSchedulePayloadFromQueues` 處理 3 種配對情境
+- Commit `0322eae`
+
 ---
 
 ## Task 2: DB migration
