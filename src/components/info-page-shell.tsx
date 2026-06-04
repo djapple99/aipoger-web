@@ -443,8 +443,8 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
       navTitle: "AI Music Bible",
       title: "AI Music Training Bible And Learning Resources",
       lead:
-        "AIPOGER's learning map for creators: start with Aipoger's Chinese tutorials, then use official docs for tool details, and practice prompts, lyrics, audio references, Drops, and copyright discipline.",
-      youtubeLabel: "Aipoger Tutorial Playlist",
+        "AIPOGER's learning map for creators: start with AIPOGER's Chinese tutorials, then use official docs for tool details, and practice prompts, lyrics, audio references, Drops, and copyright discipline.",
+      youtubeLabel: "AIPOGER Tutorial Playlist",
       cards: [
         { label: "Start", value: "愛波哥cheers", detail: "AI tools and music learning playlist", href: aipogerTutorialPlaylist },
         { label: "Core", value: "Suno / Udio", detail: "Practice the two major text-to-song workflows" },
@@ -452,7 +452,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
       ],
       sections: [
         {
-          title: "Layer 1: Start With Aipoger's Tutorials",
+          title: "Layer 1: Start With AIPOGER's Tutorials",
           body:
             "Chinese-speaking creators should start with real workflow videos: prompting, listening, revising lyrics, and building Drops that feel intentional instead of random.",
           links: [
@@ -512,7 +512,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           items: ["Generate 3 versions from the same prompt and compare", "Reverse-engineer good results into prompt templates", "Format lyrics with [Verse] / [Chorus] / [Bridge]", "Only upload audio and lyrics you have the rights to use"],
         },
       ],
-      primaryCta: "Watch Aipoger Tutorials",
+      primaryCta: "Watch AIPOGER Tutorials",
       secondaryCta: "Start Battle",
     },
   },
