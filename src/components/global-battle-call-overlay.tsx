@@ -74,6 +74,13 @@ const ACTIVE_NOTICE_BATTLE_STATUSES = [
 const FIXED_BATTLE_ROUTES = new Set(["setup", "hook-cut", "matchmaking", "result"]);
 const DEMO_CALL_EVENT = "aipoger:battle-call-demo";
 const ACCOUNT_NOTICE_COLLAPSED_KEY = "aipoger:account-notice-collapsed";
+const EXPIRED_OR_FINISHED_NOTICE_TYPES = [
+  "battle_queue_expired",
+  "battle_finished",
+  "battle_no_contest",
+  "daily_battle_expired",
+  "daily_battle_finished",
+];
 
 function BellIcon() {
   return (
@@ -96,6 +103,15 @@ function SwordIcon() {
 function toBattleCall(row: BattleNotificationRow): BattleCall | null {
   if (row.type !== "battle_matched" || !row.battle_id) return null;
   return null;
+}
+
+function buildCompletedDropNotice(battleId: string): BattleNotificationRow {
+  return {
+    id: `synthetic-battle-finished-${battleId}`,
+    battle_id: battleId,
+    type: "battle_finished",
+    created_at: new Date().toISOString(),
+  };
 }
 
 export default function GlobalBattleCallOverlay() {
@@ -130,7 +146,7 @@ export default function GlobalBattleCallOverlay() {
   const arenaHref = call ? `/battle/${encodeURIComponent(call.battleId)}?lang=${lang}` : "/battle";
 
   const markRead = useCallback(async (id: string) => {
-    if (id.startsWith("demo-") || isAuthBypassEnabled) return;
+    if (id.startsWith("demo-") || id.startsWith("synthetic-") || isAuthBypassEnabled) return;
     await supabase.from("battle_notifications").update({ read_at: new Date().toISOString() }).eq("id", id);
   }, []);
 
@@ -238,7 +254,22 @@ export default function GlobalBattleCallOverlay() {
           }
         | undefined;
       const activeQueueExpired = activeQueue ? shouldExpireOpenDropQueue(activeQueue) : false;
-      if (mounted && activeQueue?.id && !activeQueueExpired) {
+      let linkedQueueBattleEnded = false;
+      if (activeQueue?.match_group_id) {
+        const { data: linkedBattle } = await supabase
+          .from("battles")
+          .select("id, status, created_at, scheduled_start_at, started_at, battle_started_at, battle_ended_at")
+          .eq("id", activeQueue.match_group_id)
+          .maybeSingle<{ id: string; status: string; created_at?: string | null; scheduled_start_at?: string | null; started_at?: string | null; battle_started_at?: string | null; battle_ended_at?: string | null }>();
+        linkedQueueBattleEnded = isDropBattleEndedOrPastExpectedEnd(linkedBattle);
+        if (mounted && linkedBattle?.id && linkedQueueBattleEnded) {
+          setCall(null);
+          setActiveNotice(null);
+          setExpiredNotice(buildCompletedDropNotice(linkedBattle.id));
+          setExpiredNoticeOpen(true);
+        }
+      }
+      if (mounted && activeQueue?.id && !activeQueueExpired && !linkedQueueBattleEnded) {
         setActiveNotice({
           kind: "queue",
           id: activeQueue.id,
@@ -253,13 +284,13 @@ export default function GlobalBattleCallOverlay() {
       } else {
         const { data: activeBattleRows } = await supabase
           .from("battles")
-          .select("id, status, created_at, started_at, battle_started_at, battle_ended_at")
+          .select("id, status, created_at, scheduled_start_at, started_at, battle_started_at, battle_ended_at")
           .or(`fighter_a_user_id.eq.${uid},fighter_b_user_id.eq.${uid}`)
           .in("status", ACTIVE_NOTICE_BATTLE_STATUSES)
           .is("battle_ended_at", null)
           .order("created_at", { ascending: false })
           .limit(1);
-        const activeBattle = activeBattleRows?.[0] as { id: string; status: string; created_at?: string | null; started_at?: string | null; battle_started_at?: string | null; battle_ended_at?: string | null } | undefined;
+        const activeBattle = activeBattleRows?.[0] as { id: string; status: string; created_at?: string | null; scheduled_start_at?: string | null; started_at?: string | null; battle_started_at?: string | null; battle_ended_at?: string | null } | undefined;
         if (mounted && activeBattle?.id && !isDropBattleEndedOrPastExpectedEnd(activeBattle)) {
           setActiveNotice({
             kind: "battle",
@@ -273,6 +304,12 @@ export default function GlobalBattleCallOverlay() {
             setAccountNoticeCollapsed(false);
           }
         }
+        if (mounted && activeBattle?.id && isDropBattleEndedOrPastExpectedEnd(activeBattle)) {
+          setCall(null);
+          setActiveNotice(null);
+          setExpiredNotice(buildCompletedDropNotice(activeBattle.id));
+          setExpiredNoticeOpen(true);
+        }
         if (mounted && (!activeBattle?.id || isDropBattleEndedOrPastExpectedEnd(activeBattle))) setActiveNotice(null);
       }
 
@@ -280,7 +317,7 @@ export default function GlobalBattleCallOverlay() {
         .from("battle_notifications")
         .select("id, queue_id, battle_id, type, title, body, metadata, read_at, created_at")
         .eq("user_id", uid)
-        .in("type", ["battle_matched", "battle_queue_expired", "daily_battle_expired", "daily_battle_finished"])
+        .in("type", ["battle_matched", ...EXPIRED_OR_FINISHED_NOTICE_TYPES])
         .is("read_at", null)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -289,7 +326,7 @@ export default function GlobalBattleCallOverlay() {
       const latestCall = latest ? toBattleCall(latest) : null;
       if (mounted && latestCall) showCall(latestCall);
       if (mounted && latest?.type === "battle_matched") void markRead(latest.id);
-      if (mounted && (latest?.type === "battle_queue_expired" || latest?.type === "daily_battle_expired" || latest?.type === "daily_battle_finished")) {
+      if (mounted && latest?.type && EXPIRED_OR_FINISHED_NOTICE_TYPES.includes(latest.type)) {
         setCall(null);
         setActiveNotice(null);
         setExpiredNotice(latest);
@@ -306,7 +343,7 @@ export default function GlobalBattleCallOverlay() {
             const next = toBattleCall(row);
             if (next) showCall(next);
             if (row.type === "battle_matched") void markRead(row.id);
-            if (row.type === "battle_queue_expired" || row.type === "daily_battle_expired" || row.type === "daily_battle_finished") {
+            if (row.type && EXPIRED_OR_FINISHED_NOTICE_TYPES.includes(row.type)) {
               setCall(null);
               setActiveNotice(null);
               setExpiredNotice(row);
@@ -378,50 +415,87 @@ export default function GlobalBattleCallOverlay() {
   if (!call && expiredNotice) {
     const isDailyFinishedNotice = expiredNotice.type === "daily_battle_finished";
     const isDailyExpiredNotice = expiredNotice.type === "daily_battle_expired";
+    const isDropFinishedNotice = expiredNotice.type === "battle_finished";
+    const isDropNoContestNotice = expiredNotice.type === "battle_no_contest";
+    const isSyntheticDropFinishedNotice = expiredNotice.id.startsWith("synthetic-battle-finished-");
     const title =
       expiredNotice.title ||
-      (isDailyFinishedNotice
+      (isDropFinishedNotice
         ? isZh
-          ? "24H Battle 已結束"
-          : "24H Battle finished"
-        : isDailyExpiredNotice
+          ? "你剛完成了一場戰鬥"
+          : "You just finished a battle"
+        : isDropNoContestNotice
           ? isZh
-            ? "24H Full Song 已過期"
-            : "24H Full Song expired"
-          : isZh
-            ? "Drop Battle 已取消"
-            : "Drop Battle cancelled");
+            ? "Battle 已結束"
+            : "Battle ended"
+          : isDailyFinishedNotice
+            ? isZh
+              ? "24H Battle 已結束"
+              : "24H Battle finished"
+            : isDailyExpiredNotice
+              ? isZh
+                ? "24H Full Song 已過期"
+                : "24H Full Song expired"
+              : isZh
+                ? "Drop Battle 已取消"
+                : "Drop Battle cancelled");
     const body =
       expiredNotice.body ||
-      (isDailyFinishedNotice
+      (isDropFinishedNotice
         ? isZh
-          ? "你的 24H Full Song 對決已結束，結果已可查看。"
-          : "Your 24H Full Song battle has finished. Results are ready."
-        : isDailyExpiredNotice
+          ? "你剛完成了一場 90s Drop Battle，可以查看戰鬥卡，也可以再開一場。"
+          : "Your 90s Drop Battle has finished. View the card or open a new one."
+        : isDropNoContestNotice
           ? isZh
-            ? "你剛有一場 24H Full Song 因 24 小時內沒有對手接受，已從公開挑戰池移除。"
-            : "One 24H Full Song card expired because no challenger joined within 24 hours."
-          : isZh
-            ? "你剛有一場 Drop Battle 因等待時間結束，已從公開挑戰池移除。可以重新上傳或開新戰帖。"
-            : "One Drop Battle waiting card ended and was removed from the public pool. You can open a new card.");
+            ? "這場 90s Drop Battle 已結束，但沒有觀眾投票，不產生成果卡。"
+            : "This 90s Drop Battle ended with no audience votes, so no result card was created."
+          : isDailyFinishedNotice
+            ? isZh
+              ? "你的 24H Full Song 對決已結束，結果已可查看。"
+              : "Your 24H Full Song battle has finished. Results are ready."
+            : isDailyExpiredNotice
+              ? isZh
+                ? "你剛有一場 24H Full Song 因 24 小時內沒有對手接受，已從公開挑戰池移除。"
+                : "One 24H Full Song card expired because no challenger joined within 24 hours."
+              : isZh
+                ? "你剛有一場 Drop Battle 因等待時間結束，已從公開挑戰池移除。可以重新上傳或開新戰帖。"
+                : "One Drop Battle waiting card ended and was removed from the public pool. You can open a new card.");
     const primaryHref =
-      isDailyFinishedNotice && expiredNotice.metadata?.dailyBattleId
-        ? `/battle/daily/${encodeURIComponent(expiredNotice.metadata.dailyBattleId)}?lang=${lang}`
-        : isDailyExpiredNotice
-          ? `/battle/setup?battleMode=daily&from=expired-card&lang=${lang}`
-          : `/battle/setup?battleMode=instant&from=expired-card&lang=${lang}`;
+      isSyntheticDropFinishedNotice && expiredNotice.battle_id
+        ? `/battle?lang=${lang}&focusBattle=${encodeURIComponent(expiredNotice.battle_id)}`
+        : isDropFinishedNotice && expiredNotice.battle_id
+        ? `/battle/result?battleId=${encodeURIComponent(expiredNotice.battle_id)}&lang=${lang}`
+        : isDropNoContestNotice && expiredNotice.battle_id
+          ? `/battle?lang=${lang}&focusBattle=${encodeURIComponent(expiredNotice.battle_id)}`
+          : isDailyFinishedNotice && expiredNotice.metadata?.dailyBattleId
+            ? `/battle/daily/${encodeURIComponent(expiredNotice.metadata.dailyBattleId)}?lang=${lang}`
+            : isDailyExpiredNotice
+              ? `/battle/setup?battleMode=daily&from=expired-card&lang=${lang}`
+              : `/battle/setup?battleMode=instant&from=expired-card&lang=${lang}`;
     const primaryLabel =
-      isDailyFinishedNotice
+      isSyntheticDropFinishedNotice
         ? isZh
-          ? "查看結果"
+          ? "查看戰鬥卡"
+          : "View Battle"
+        : isDropFinishedNotice
+        ? isZh
+          ? "查看戰果"
           : "View Result"
-        : isDailyExpiredNotice
-          ? isZh
-            ? "重新開 24H"
-            : "Open New 24H"
-          : isZh
-            ? "重新開 Drop"
-            : "Open New Drop";
+        : isDropNoContestNotice
+            ? isZh
+              ? "查看戰鬥卡"
+              : "View Battle"
+          : isDailyFinishedNotice
+            ? isZh
+              ? "查看結果"
+              : "View Result"
+            : isDailyExpiredNotice
+              ? isZh
+                ? "重新開 24H"
+                : "Open New 24H"
+              : isZh
+                ? "重新開 Drop"
+                : "Open New Drop";
     if (expiredNoticeCollapsed) {
       return (
         <button
@@ -454,7 +528,7 @@ export default function GlobalBattleCallOverlay() {
                 <span className="block truncate text-sm font-black">{title}</span>
               </span>
               <span className="rounded-full border border-zinc-200/20 bg-white/10 px-2 py-1 text-[10px] font-black text-zinc-200">
-                {isDailyFinishedNotice ? (isZh ? "已結束" : "Finished") : isDailyExpiredNotice ? (isZh ? "已過期" : "Expired") : (isZh ? "已取消" : "Cancelled")}
+                {isDropFinishedNotice || isDropNoContestNotice || isDailyFinishedNotice ? (isZh ? "已結束" : "Finished") : isDailyExpiredNotice ? (isZh ? "已過期" : "Expired") : (isZh ? "已取消" : "Cancelled")}
               </span>
             </button>
             <button

@@ -811,7 +811,7 @@ function BattleArenaContent() {
   const [preStartSecondsLeft, setPreStartSecondsLeft] = useState<number | null>(null);
   const [teaserDeck, setTeaserDeck] = useState<DeckKey | null>(null);
   const [teaserSecondsLeft, setTeaserSecondsLeft] = useState(PRE_BATTLE_TEASER_SECONDS);
-  const [adVideoMuted, setAdVideoMuted] = useState(true);
+  const [adVideoMuted, setAdVideoMuted] = useState(false);
   const [adVideoPosition, setAdVideoPosition] = useState<{ x: number; y: number } | null>(null);
   const [transitionDeck, setTransitionDeck] = useState<DeckKey | null>(null);
   const [transitionSecondsLeft, setTransitionSecondsLeft] = useState(SCRATCH_TRANSITION_SECONDS);
@@ -986,6 +986,13 @@ function BattleArenaContent() {
     };
     void startPlayback();
   }, [adVideoMuted, showPreBattleAd]);
+
+  const handleAdVideoEnded = useCallback(() => {
+    const video = adVideoRef.current;
+    if (!video || !showPreBattleAd) return;
+    video.currentTime = 0;
+    void video.play().catch(() => undefined);
+  }, [showPreBattleAd]);
 
   const clearScratchTransitionMedia = useCallback(() => {
     scratchAudioRef.current?.pause();
@@ -2270,7 +2277,7 @@ function BattleArenaContent() {
     const isCurrentUserFighter = Boolean(
       myUserId && battle && (myUserId === battle.fighter_a_user_id || myUserId === battle.fighter_b_user_id),
     );
-    const canTapFeedback = !isCurrentUserFighter && battlePhase === "playing" && activeDeck === deck;
+    const canTapFeedback = !isCurrentUserFighter && ["warmup", "rps", "playing", "transition", "vote", "ended"].includes(battlePhase);
     if (!canTapFeedback) return;
 
     const meta = feedbackButtons.find((item) => item.key === key);
@@ -2292,21 +2299,21 @@ function BattleArenaContent() {
         payload: { deck, key },
       });
     }
-  }, [activeDeck, battle, battlePhase, fireDanmaku, fireHypeReaction, lang, myUserId]);
+  }, [battle, battlePhase, fireDanmaku, fireHypeReaction, lang, myUserId]);
 
   function FeedbackBar({ deck, tone }: { deck: DeckKey; tone: "orange" | "blue" }) {
     const isCurrentUserFighter = Boolean(
       myUserId && battle && (myUserId === battle.fighter_a_user_id || myUserId === battle.fighter_b_user_id),
     );
-    const activeForFeedback = !isCurrentUserFighter && battlePhase === "playing" && activeDeck === deck;
+    const activeForFeedback = !isCurrentUserFighter && ["warmup", "rps", "playing", "transition", "vote", "ended"].includes(battlePhase);
     const disabledReason = isCurrentUserFighter
       ? lang === "zh"
         ? "鬥歌者只能投最終票，不能按反應鈕"
         : "Fighters can only vote, not tap feedback"
-      : activeDeck !== deck || battlePhase !== "playing"
+      : !activeForFeedback
         ? lang === "zh"
-          ? "只有這邊 Drop 正在播放時可按"
-          : "Available only while this Drop is playing"
+          ? "觀眾進場後就可以按反應鈕"
+          : "Audience feedback is available in the arena"
         : "";
     const toneClass =
       tone === "orange"
@@ -2864,10 +2871,12 @@ function BattleArenaContent() {
               <video
                 ref={adVideoRef}
                 src={PRE_BATTLE_AD_VIDEO_SRC}
+                autoPlay
                 playsInline
                 loop
                 preload="auto"
                 muted={adVideoMuted}
+                onEnded={handleAdVideoEnded}
                 className="h-full w-full object-contain opacity-[0.86]"
               />
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,transparent,rgba(0,0,0,0.28)_76%)]" />

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { shouldExpireOpenDropQueue } from "@/lib/battle-pool-client";
+import {
+  DROP_BATTLE_EXPECTED_END_BUFFER_MS,
+  isDropBattleEndedOrPastExpectedEnd,
+  shouldExpireOpenDropQueue,
+} from "@/lib/battle-pool-client";
 import { battleSeedForId, pick90sBattleWinner } from "@/lib/battle-90s-system";
 
 type SupabaseAdmin = SupabaseClient;
@@ -15,9 +19,12 @@ type HookBattleRow = {
   fighter_b_name: string;
   song_a_name: string;
   song_b_name: string;
+  status?: string | null;
   created_at: string;
+  scheduled_start_at?: string | null;
   started_at?: string | null;
   battle_started_at?: string | null;
+  battle_ended_at?: string | null;
   battle_number?: string | null;
 };
 
@@ -231,16 +238,32 @@ async function expireStaleDailyQueue(admin: SupabaseAdmin, warnings: string[]) {
 }
 
 async function settleStaleHookBattles(admin: SupabaseAdmin, warnings: string[]) {
-  const staleBefore = new Date(Date.now() - 20 * 60 * 1000).toISOString();
-  const { data, error } = await admin
+  const candidateCreatedBefore = new Date(Date.now() - DROP_BATTLE_EXPECTED_END_BUFFER_MS).toISOString();
+  let { data, error } = await admin
     .from("battles")
     .select(
-      "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,created_at,started_at,battle_started_at,battle_number",
+      "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,status,created_at,scheduled_start_at,started_at,battle_started_at,battle_ended_at,battle_number",
     )
     .in("status", ["live", "active", "ghost_battle", "public_voting"])
     .is("battle_ended_at", null)
-    .lt("created_at", staleBefore)
+    .lt("created_at", candidateCreatedBefore)
+    .order("created_at", { ascending: true })
     .limit(25);
+
+  if (error && isMissingScheduleColumn(error)) {
+    const legacyRead = await admin
+      .from("battles")
+      .select(
+        "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,status,created_at,started_at,battle_started_at,battle_ended_at,battle_number",
+      )
+      .in("status", ["live", "active", "ghost_battle", "public_voting"])
+      .is("battle_ended_at", null)
+      .lt("created_at", candidateCreatedBefore)
+      .order("created_at", { ascending: true })
+      .limit(25);
+    data = legacyRead.data as typeof data;
+    error = legacyRead.error;
+  }
 
   if (error) {
     warnings.push(`stale 90s query: ${error.message}`);
@@ -250,8 +273,7 @@ async function settleStaleHookBattles(admin: SupabaseAdmin, warnings: string[]) 
   const rows = (data ?? []) as HookBattleRow[];
   let settled = 0;
   for (const battle of rows) {
-    const referenceTime = battle.battle_started_at ?? battle.started_at ?? battle.created_at;
-    if (Date.parse(referenceTime) > Date.now() - 20 * 60 * 1000) continue;
+    if (!isDropBattleEndedOrPastExpectedEnd(battle)) continue;
 
     const { data: votes, error: voteError } = await admin
       .from("battle_votes")

@@ -14,6 +14,7 @@ import {
   DROP_BATTLE_EXPECTED_END_BUFFER_MS,
   cancelCurrentBattleIntent,
   isClosedDropBattleStatus,
+  isDropBattleEndedOrPastExpectedEnd,
   resolveDropBattleRuntimeStart,
   resolveDropBattleScheduledStart,
   shouldExpireOpenDropQueue,
@@ -1367,7 +1368,13 @@ function LiveBattleList() {
               focusedError = legacyRead.error;
             }
           }
-          if (focusedBattle?.id && !focusedBattle.battle_ended_at && ["active", "live"].includes(focusedBattle.status ?? "")) {
+          if (
+            focusedBattle?.id &&
+            (["active", "live"].includes(focusedBattle.status ?? "") ||
+              Boolean(focusedBattle.battle_ended_at) ||
+              isClosedBattleStatus(focusedBattle.status) ||
+              isDropBattleEndedOrPastExpectedEnd(focusedBattle))
+          ) {
             baseRows = [focusedBattle, ...baseRows];
           }
         }
@@ -1545,9 +1552,9 @@ function LiveBattleList() {
                         </div>
                         <p className="mt-2 text-xs font-bold text-orange-100/75">
                           {isBattleEnded
-                            ? (lang === "zh" ? "此戰鬥已經結束" : "This battle has ended")
+                            ? (lang === "zh" ? "已完成戰鬥" : "Battle completed")
                             : isEndedByClock
-                              ? (lang === "zh" ? "此戰鬥已經結束" : "This battle has ended")
+                              ? (lang === "zh" ? "已完成戰鬥" : "Battle completed")
                             : isFutureBattle
                               ? (lang === "zh" ? "已進場，等待開打" : "In arena, waiting to start")
                               : (lang === "zh" ? "開戰" : "Started")}{" "}
@@ -1558,7 +1565,7 @@ function LiveBattleList() {
                         {isBattleEnded
                           ? (lang === "zh" ? "查看戰果" : "View Result")
                           : isEndedByClock
-                            ? (lang === "zh" ? "已結束" : "Ended")
+                            ? (lang === "zh" ? "已完成戰鬥" : "Completed")
                             : isFutureBattle
                               ? (lang === "zh" ? "等待開打" : "Warmup")
                               : (lang === "zh" ? "可觀戰投票" : "Watch & Vote")}
@@ -1572,7 +1579,7 @@ function LiveBattleList() {
                         {isBattleEnded
                           ? (lang === "zh" ? "查看戰果" : "View Result")
                           : isEndedByClock
-                            ? (lang === "zh" ? "進入查看" : "Open Battle")
+                            ? (lang === "zh" ? "查看戰鬥卡" : "View Battle")
                             : (lang === "zh" ? "我要觀戰" : "Watch Battle")}
                       </Link>
                       <ShareButton
