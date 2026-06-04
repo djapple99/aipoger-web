@@ -47,6 +47,7 @@ const mockBattleData: BattleViewData = {
 
 const DAILY_BATTLE_QUEUE_MS = 24 * 60 * 60 * 1000;
 const SHOW_DAILY_BATTLE_SECTION = false;
+const DROP_BATTLE_EXPECTED_END_BUFFER_MS = (45 * 2 + 2 + 5 + 30) * 1000;
 
 function Turntable({
   label,
@@ -390,6 +391,16 @@ function isExpiredOpenPoolEntry(row: Pick<PoolEntryRow, "status" | "expires_at" 
 
 function isClosedBattleStatus(status: string | null | undefined) {
   return ["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"].includes(status ?? "");
+}
+
+function focusedQueueHref(queueId: string, lang: string) {
+  const params = new URLSearchParams({ lang, focusQueue: queueId });
+  return `/battle?${params.toString()}`;
+}
+
+function focusedBattleHref(battleId: string, lang: string) {
+  const params = new URLSearchParams({ lang, focusBattle: battleId });
+  return `/battle?${params.toString()}`;
 }
 
 function focusedPoolCardTitle(status: string | null | undefined, isZh: boolean) {
@@ -1084,26 +1095,20 @@ function BattlePoolList() {
       ) : (
         <ul className="grid gap-3 md:grid-cols-2">
           {rows.map((entry) => {
-            const isGhost = entry.status === "ghost_battle" && entry.match_group_id;
+            const ghostBattleId = entry.status === "ghost_battle" ? entry.match_group_id : null;
+            const isGhost = Boolean(ghostBattleId);
             const isPublicVoting = entry.status === "public_voting";
             const isMine = Boolean(currentUserId && entry.user_id === currentUserId);
             const isFocused = focusQueueId === entry.id;
             const arenaPath = `/battle/${entry.id}?lang=${lang}`;
             const acceptPath = `/battle/accept/${encodeURIComponent(entry.id)}?lang=${lang}`;
             const href = isGhost
-              ? `/battle/${entry.match_group_id}?lang=${lang}`
+              ? `/battle/${ghostBattleId}?lang=${lang}`
               : arenaPath;
             const shareUrl = isGhost
-              ? `/battle/${entry.match_group_id}?lang=${lang}`
+              ? focusedBattleHref(ghostBattleId || entry.id, lang)
               : (() => {
-                  const params = new URLSearchParams({ type: "hook-card", lang });
-                  if (entry.id.startsWith("mock-") || isAuthBypassEnabled) {
-                    params.set("g", entry.genre);
-                    params.set("l", entry.fighter_name);
-                    params.set("ls", entry.original_file_name);
-                    params.set("tool", entry.ai_tool || "AI Music");
-                  }
-                  return `/battle/invite/${encodeURIComponent(entry.id)}?${params.toString()}`;
+                  return focusedQueueHref(entry.id, lang);
                 })();
             const shareLabel = isGhost || isPublicVoting
               ? isZh
@@ -1273,8 +1278,10 @@ function LiveBattleList() {
   const { t, lang } = useI18n();
   const searchParams = useSearchParams();
   const focusQueueId = searchParams.get("focusQueue");
+  const focusBattleId = searchParams.get("focusBattle");
   const [rows, setRows] = useState<LiveBattleRow[]>([]);
   const [liveSongStats, setLiveSongStats] = useState<Record<string, SongBattleStats>>({});
+  const [archivedBattleIds, setArchivedBattleIds] = useState<Set<string>>(() => new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -1288,13 +1295,29 @@ function LiveBattleList() {
         return;
       }
 
-      const { data, error: qErr } = await supabase
+      let { data, error: qErr } = await supabase
         .from("battles")
-        .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, battle_ended_at")
+        .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, scheduled_start_at, battle_started_at, started_at, battle_ended_at")
         .in("status", ["active", "live"])
         .is("battle_ended_at", null)
         .order("created_at", { ascending: false })
         .limit(30);
+
+      if (qErr) {
+        const msg = `${qErr.message ?? ""} ${qErr.details ?? ""} ${qErr.hint ?? ""}`;
+        const missingRuntimeColumn = /scheduled_start_at|battle_started_at|started_at|schema cache|column.*does not exist|PGRST204/i.test(msg);
+        if (missingRuntimeColumn) {
+          const legacyRead = await supabase
+            .from("battles")
+            .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, battle_ended_at")
+            .in("status", ["active", "live"])
+            .is("battle_ended_at", null)
+            .order("created_at", { ascending: false })
+            .limit(30);
+          data = legacyRead.data as typeof data;
+          qErr = legacyRead.error;
+        }
+      }
 
       if (!mounted) return;
       if (qErr) {
@@ -1303,13 +1326,46 @@ function LiveBattleList() {
         setRows([]);
       } else {
         setError(null);
-        const baseRows = ((data as LiveBattleRow[]) ?? []).filter((row) => {
+        let baseRows = ((data as LiveBattleRow[]) ?? []).filter((row) => {
           if (row.battle_ended_at) return false;
           if (row.status === "active") return true;
           if (row.status !== "live") return false;
           const scheduledMs = Date.parse(row.scheduled_start_at ?? row.started_at ?? "");
           return !Number.isFinite(scheduledMs) || scheduledMs <= Date.now() || Boolean(row.battle_started_at);
         });
+        if (focusBattleId && !baseRows.some((row) => row.id === focusBattleId)) {
+          let { data: focusedBattle, error: focusedError } = await supabase
+            .from("battles")
+            .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, scheduled_start_at, battle_started_at, started_at, battle_ended_at")
+            .eq("id", focusBattleId)
+            .maybeSingle<LiveBattleRow>();
+          if (focusedError) {
+            const msg = `${focusedError.message ?? ""} ${focusedError.details ?? ""} ${focusedError.hint ?? ""}`;
+            const missingRuntimeColumn = /scheduled_start_at|battle_started_at|started_at|schema cache|column.*does not exist|PGRST204/i.test(msg);
+            if (missingRuntimeColumn) {
+              const legacyRead = await supabase
+                .from("battles")
+                .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, battle_ended_at")
+                .eq("id", focusBattleId)
+                .maybeSingle<LiveBattleRow>();
+              focusedBattle = legacyRead.data;
+              focusedError = legacyRead.error;
+            }
+          }
+          if (focusedBattle?.id && !focusedBattle.battle_ended_at && ["active", "live"].includes(focusedBattle.status ?? "")) {
+            baseRows = [focusedBattle, ...baseRows];
+          }
+        }
+        const battleIds = baseRows.map((row) => row.id).filter(Boolean);
+        if (battleIds.length > 0) {
+          const { data: archives } = await supabase
+            .from("battle_result_archives")
+            .select("battle_id")
+            .in("battle_id", battleIds);
+          setArchivedBattleIds(new Set(((archives as Array<{ battle_id?: string | null }> | null) ?? []).map((row) => row.battle_id).filter((id): id is string => Boolean(id))));
+        } else {
+          setArchivedBattleIds(new Set());
+        }
         setLiveSongStats(await fetchHookSongBattleStats(baseRows.flatMap((row) => [row.song_a_name, row.song_b_name])));
         const userIds = Array.from(new Set(baseRows.flatMap((row) => [row.fighter_a_user_id, row.fighter_b_user_id]).filter(Boolean)));
         const { data: profiles } =
@@ -1334,7 +1390,18 @@ function LiveBattleList() {
     return () => {
       mounted = false;
     };
-  }, [t]);
+  }, [focusBattleId, t]);
+
+  useEffect(() => {
+    if (!focusBattleId || loading || rows.length === 0) return;
+    const timer = window.setTimeout(() => {
+      document.getElementById(`battle-live-${focusBattleId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [focusBattleId, loading, rows.length]);
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#050505] text-[#ece9e6]">
@@ -1394,7 +1461,7 @@ function LiveBattleList() {
           </p>
         ) : error ? (
           <p className="mt-8 rounded-3xl border border-red-400/20 bg-red-500/10 px-5 py-8 text-center text-sm text-red-300">{error}</p>
-        ) : rows.length === 0 && !focusQueueId ? (
+        ) : rows.length === 0 && !focusQueueId && !focusBattleId ? (
           <div className="mt-8 rounded-[2rem] border border-white/10 bg-white/[0.04] px-6 py-10 text-center shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur">
             <p className="text-2xl font-black text-white">{t("watch_no_live_title")}</p>
             <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
@@ -1420,17 +1487,28 @@ function LiveBattleList() {
             {rows.map((b) => {
               const scheduledAt = b.scheduled_start_at || b.started_at || b.created_at;
               const scheduledMs = new Date(scheduledAt).getTime();
-              const isBattleEnded = Boolean(b.battle_ended_at) || isClosedBattleStatus(b.status);
-              const isFutureBattle = b.status === "active" || (Number.isFinite(scheduledMs) && scheduledMs > Date.now() && !b.battle_started_at);
+              const likelyEndedByClock =
+                Number.isFinite(scheduledMs) &&
+                scheduledMs + DROP_BATTLE_EXPECTED_END_BUFFER_MS <= Date.now();
+              const isBattleEnded = Boolean(b.battle_ended_at) || isClosedBattleStatus(b.status) || archivedBattleIds.has(b.id);
+              const isStaleSettling = !isBattleEnded && likelyEndedByClock;
+              const isFutureBattle =
+                !isBattleEnded &&
+                !isStaleSettling &&
+                (b.status === "active" || (Number.isFinite(scheduledMs) && scheduledMs > Date.now() && !b.battle_started_at));
               const primaryHref = isBattleEnded ? `/battle/result?battleId=${encodeURIComponent(b.id)}&lang=${lang}` : `/battle/${b.id}?lang=${lang}`;
+              const shareHref = isBattleEnded ? primaryHref : focusedBattleHref(b.id, lang);
+              const isFocusedBattle = focusBattleId === b.id;
               return (
-              <li key={b.id}>
-                <article className="group relative overflow-hidden rounded-[1.6rem] border border-white/10 bg-white/[0.045] px-5 py-5 transition hover:border-orange-400/50 hover:bg-white/[0.07] hover:shadow-[0_0_34px_rgba(255,106,0,0.16)]">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-orange-400 via-orange-600 to-cyan-400" />
-                  <Link
-                    href={primaryHref}
-                    className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff7a28]"
+                <li key={b.id} id={`battle-live-${b.id}`}>
+                  <article
+                    className={`group relative overflow-hidden rounded-[1.6rem] border px-5 py-5 transition hover:border-orange-400/50 hover:bg-white/[0.07] hover:shadow-[0_0_34px_rgba(255,106,0,0.16)] ${
+                      isFocusedBattle
+                        ? "border-orange-200/80 bg-orange-400/[0.11] shadow-[0_0_44px_rgba(255,106,0,0.22)]"
+                        : "border-white/10 bg-white/[0.045]"
+                    }`}
                   >
+                    <div className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-orange-400 via-orange-600 to-cyan-400" />
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">
@@ -1453,6 +1531,8 @@ function LiveBattleList() {
                         <p className="mt-2 text-xs font-bold text-orange-100/75">
                           {isBattleEnded
                             ? (lang === "zh" ? "此戰鬥已經結束" : "This battle has ended")
+                            : isStaleSettling
+                              ? (lang === "zh" ? "戰鬥已結束，等待結算更新" : "Battle ended, settling")
                             : isFutureBattle
                               ? (lang === "zh" ? "已進場，等待開打" : "In arena, waiting to start")
                               : (lang === "zh" ? "開戰" : "Started")}{" "}
@@ -1460,34 +1540,59 @@ function LiveBattleList() {
                         </p>
                       </div>
                       <span className="mt-2 shrink-0 rounded-full border border-orange-400/35 px-4 py-2 text-sm font-bold text-[#ffbf99] transition group-hover:bg-orange-500 group-hover:text-black sm:mt-0">
-                        {isBattleEnded ? (lang === "zh" ? "查看戰果" : "View Result") : `${t("watch_enter")} →`}
+                        {isBattleEnded
+                          ? (lang === "zh" ? "查看戰果" : "View Result")
+                          : isStaleSettling
+                            ? (lang === "zh" ? "待結算" : "Settling")
+                            : isFutureBattle
+                              ? (lang === "zh" ? "等待開打" : "Warmup")
+                              : (lang === "zh" ? "可觀戰投票" : "Watch & Vote")}
                       </span>
                     </div>
-                  </Link>
-                  <div className="mt-4 flex justify-end">
-                    <ShareButton
-                      title={lang === "zh" ? "AIPOGER 90s Drop Battle 觀戰邀請" : "AIPOGER 90s Drop Battle"}
-                      text={
-                        isBattleEnded
-                          ? lang === "zh"
-                            ? `《${b.song_a_name}》vs《${b.song_b_name}》此戰鬥已經結束，進來查看戰果。`
-                            : `"${b.song_a_name}" vs "${b.song_b_name}" has ended. View the result.`
+                    <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-white/10 pt-3">
+                      <Link
+                        href={primaryHref}
+                        className="rounded-full bg-orange-500 px-4 py-2 text-xs font-black text-black shadow-[0_0_20px_rgba(255,106,0,0.2)] transition hover:bg-orange-300"
+                      >
+                        {isBattleEnded
+                          ? (lang === "zh" ? "查看戰果" : "View Result")
+                          : isStaleSettling
+                            ? (lang === "zh" ? "更新戰果" : "Settle Result")
+                            : (lang === "zh" ? "我要觀戰" : "Watch Battle")}
+                      </Link>
+                      <ShareButton
+                        title={lang === "zh" ? "AIPOGER 90s Drop Battle 觀戰邀請" : "AIPOGER 90s Drop Battle"}
+                        text={
+                          isBattleEnded
+                            ? lang === "zh"
+                              ? `《${b.song_a_name}》vs《${b.song_b_name}》此戰鬥已經結束，進來查看戰果。`
+                              : `"${b.song_a_name}" vs "${b.song_b_name}" has ended. View the result.`
+                          : isStaleSettling
+                            ? lang === "zh"
+                              ? `《${b.song_a_name}》vs《${b.song_b_name}》已經打完，進來更新戰果或查看結算。`
+                              : `"${b.song_a_name}" vs "${b.song_b_name}" has ended. Open it to settle or view the result.`
                           : isFutureBattle
-                          ? lang === "zh"
-                            ? `《${b.song_a_name}》vs《${b.song_b_name}》已進場等待開打，先進來聽 5 秒預播。`
-                            : `"${b.song_a_name}" vs "${b.song_b_name}" is waiting to start. Hear the 5s previews.`
-                          : lang === "zh"
-                            ? `《${b.song_a_name}》vs《${b.song_b_name}》正在開打，進來觀戰投票。`
-                            : `"${b.song_a_name}" vs "${b.song_b_name}" is live. Come vote.`
-                      }
-                      url={primaryHref}
-                      label={isBattleEnded ? (lang === "zh" ? "分享戰果" : "Share Result") : isFutureBattle ? (lang === "zh" ? "分享約人進場" : "Share Arena") : (lang === "zh" ? "邀請觀戰投票" : "Invite voters")}
-                      copiedLabel={lang === "zh" ? "觀戰連結已複製" : "Invite copied"}
-                      className="px-3 py-1.5 text-xs"
-                    />
-                  </div>
-                </article>
-              </li>
+                              ? lang === "zh"
+                                ? `《${b.song_a_name}》vs《${b.song_b_name}》已進場等待開打，先進來聽 5 秒預播。`
+                                : `"${b.song_a_name}" vs "${b.song_b_name}" is waiting to start. Hear the 5s previews.`
+                              : lang === "zh"
+                                ? `《${b.song_a_name}》vs《${b.song_b_name}》正在開打，進來觀戰投票。`
+                                : `"${b.song_a_name}" vs "${b.song_b_name}" is live. Come vote.`
+                        }
+                        url={shareHref}
+                        label={isBattleEnded
+                          ? (lang === "zh" ? "分享戰果" : "Share Result")
+                          : isStaleSettling
+                            ? (lang === "zh" ? "分享結算入口" : "Share Settle Link")
+                            : isFutureBattle
+                              ? (lang === "zh" ? "分享到戰鬥池" : "Share Pool Card")
+                              : (lang === "zh" ? "邀請觀戰投票" : "Invite voters")}
+                        copiedLabel={lang === "zh" ? "觀戰連結已複製" : "Invite copied"}
+                        className="px-3 py-1.5 text-xs"
+                      />
+                    </div>
+                  </article>
+                </li>
               );
             })}
           </ul>

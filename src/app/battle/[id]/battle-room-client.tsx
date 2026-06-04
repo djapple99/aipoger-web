@@ -109,6 +109,7 @@ const DEMO_BATTLE_AUDIO_SRC = "/music/home-bgm.mp3";
 const HOOK_BATTLE_SECONDS = 45;
 const PRE_BATTLE_TEASER_SECONDS = 5;
 const FINAL_PRESTART_HYPE_SECONDS = 5;
+const PRE_BATTLE_AD_FADE_OUT_SECONDS = 6;
 const FINAL_PRESTART_HYPE_TEXT = "Ladies and gentlemen, fighters!";
 const FINAL_PRESTART_HYPE_SFX_SRC = "/sfx/drop-battle-announcer.wav";
 const PRE_BATTLE_AD_VIDEO_SRC = "/music/AIPOGER%20AD1.mp4";
@@ -810,7 +811,7 @@ function BattleArenaContent() {
   const [preStartSecondsLeft, setPreStartSecondsLeft] = useState<number | null>(null);
   const [teaserDeck, setTeaserDeck] = useState<DeckKey | null>(null);
   const [teaserSecondsLeft, setTeaserSecondsLeft] = useState(PRE_BATTLE_TEASER_SECONDS);
-  const [adVideoMuted, setAdVideoMuted] = useState(false);
+  const [adVideoMuted, setAdVideoMuted] = useState(true);
   const [adVideoPosition, setAdVideoPosition] = useState<{ x: number; y: number } | null>(null);
   const [transitionDeck, setTransitionDeck] = useState<DeckKey | null>(null);
   const [transitionSecondsLeft, setTransitionSecondsLeft] = useState(SCRATCH_TRANSITION_SECONDS);
@@ -877,7 +878,7 @@ function BattleArenaContent() {
     (preStartSecondsLeft ?? 0) > 0 &&
     (preStartSecondsLeft ?? 0) <= FINAL_PRESTART_HYPE_SECONDS;
   const renderPreBattleAd = isArenaWarmup && (isQueueArena || (preStartSecondsLeft ?? 0) > 0);
-  const showPreBattleAd = isArenaWarmup && (isQueueArena || (preStartSecondsLeft ?? 0) > 1);
+  const showPreBattleAd = isArenaWarmup && (isQueueArena || (preStartSecondsLeft ?? 0) > PRE_BATTLE_AD_FADE_OUT_SECONDS);
 
   const clampAdVideoPosition = useCallback((x: number, y: number) => {
     if (typeof window === "undefined") return { x, y };
@@ -1193,7 +1194,9 @@ function BattleArenaContent() {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) {
-        let nextPath = currentReturnPath();
+        let nextPath = isUuid(battleId)
+          ? `/battle?${new URLSearchParams({ lang, focusBattle: battleId }).toString()}`
+          : currentReturnPath();
         if (isUuid(battleId)) {
           const { data: queueRow } = await supabase
             .from("battle_queue")
@@ -2786,7 +2789,7 @@ function BattleArenaContent() {
       return `/battle/invite/${encodeURIComponent(battleId)}?${params.toString()}`;
     }
     if (!isMockBattle && !isAuthBypassEnabled) {
-      return `/battle/${encodeURIComponent(battleId)}?${params.toString()}`;
+      return `/battle?${new URLSearchParams({ lang, focusBattle: battleId }).toString()}`;
     }
     params.set("l", battle.fighter_a_name);
     params.set("r", battle.fighter_b_name);
@@ -2835,7 +2838,7 @@ function BattleArenaContent() {
       {renderPreBattleAd && adVideoPosition ? (
         <div className="pointer-events-none fixed inset-0 z-[44]">
           <div
-            className={`pointer-events-auto overflow-hidden rounded-[1.15rem] border border-orange-100/24 bg-black/54 shadow-[0_24px_74px_rgba(0,0,0,0.52),0_0_42px_rgba(255,106,0,0.2)] backdrop-blur-xl transition-opacity duration-700 ${
+            className={`pointer-events-auto overflow-hidden rounded-[1.15rem] border border-orange-100/24 bg-black/54 shadow-[0_24px_74px_rgba(0,0,0,0.52),0_0_42px_rgba(255,106,0,0.2)] backdrop-blur-xl transition-opacity duration-1000 ${
               showPreBattleAd ? "opacity-[0.82]" : "opacity-0"
             }`}
             style={{
