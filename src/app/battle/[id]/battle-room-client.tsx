@@ -5,7 +5,7 @@ import NextImage from "next/image";
 import LangToggle from "@/components/lang-toggle";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
-import type { CSSProperties } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { FormEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { isAuthBypassEnabled, mockUserId } from "@/lib/auth-bypass";
@@ -811,6 +811,7 @@ function BattleArenaContent() {
   const [teaserDeck, setTeaserDeck] = useState<DeckKey | null>(null);
   const [teaserSecondsLeft, setTeaserSecondsLeft] = useState(PRE_BATTLE_TEASER_SECONDS);
   const [adVideoMuted, setAdVideoMuted] = useState(false);
+  const [adVideoPosition, setAdVideoPosition] = useState<{ x: number; y: number } | null>(null);
   const [transitionDeck, setTransitionDeck] = useState<DeckKey | null>(null);
   const [transitionSecondsLeft, setTransitionSecondsLeft] = useState(SCRATCH_TRANSITION_SECONDS);
   const [transitionEndsAtMs, setTransitionEndsAtMs] = useState<number | null>(null);
@@ -847,6 +848,7 @@ function BattleArenaContent() {
   const scratchAudioRef = useRef<HTMLAudioElement | null>(null);
   const winnerRevealAudioRef = useRef<HTMLAudioElement | null>(null);
   const adVideoRef = useRef<HTMLVideoElement | null>(null);
+  const adVideoDragRef = useRef<{ pointerId: number; dx: number; dy: number } | null>(null);
   const scratchTransitionTimerRef = useRef<number | null>(null);
   const scratchTransitionTickTimerRef = useRef<number | null>(null);
   const preBattleStartedRef = useRef<string | null>(null);
@@ -874,7 +876,53 @@ function BattleArenaContent() {
     !isQueueArena &&
     (preStartSecondsLeft ?? 0) > 0 &&
     (preStartSecondsLeft ?? 0) <= FINAL_PRESTART_HYPE_SECONDS;
+  const renderPreBattleAd = isArenaWarmup && (isQueueArena || (preStartSecondsLeft ?? 0) > 0);
   const showPreBattleAd = isArenaWarmup && (isQueueArena || (preStartSecondsLeft ?? 0) > 1);
+
+  const clampAdVideoPosition = useCallback((x: number, y: number) => {
+    if (typeof window === "undefined") return { x, y };
+    const panelWidth = Math.min(window.innerWidth - 32, window.innerWidth < 640 ? 300 : window.innerWidth < 1280 ? 300 : 340);
+    const panelHeight = panelWidth * 0.5625 + 44;
+    const bottomReserve = window.innerWidth < 768 ? 124 : 86;
+    const maxX = Math.max(12, window.innerWidth - panelWidth - 12);
+    const maxY = Math.max(84, window.innerHeight - panelHeight - bottomReserve);
+    return {
+      x: Math.min(maxX, Math.max(12, x)),
+      y: Math.min(maxY, Math.max(84, y)),
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!renderPreBattleAd || adVideoPosition || typeof window === "undefined") return;
+    const panelWidth = Math.min(window.innerWidth - 32, window.innerWidth < 640 ? 300 : window.innerWidth < 1280 ? 300 : 340);
+    const defaultX = window.innerWidth < 900 ? (window.innerWidth - panelWidth) / 2 : window.innerWidth - panelWidth - 24;
+    const defaultY = window.innerWidth < 900 ? 104 : 116;
+    setAdVideoPosition(clampAdVideoPosition(defaultX, defaultY));
+  }, [adVideoPosition, clampAdVideoPosition, renderPreBattleAd]);
+
+  const handleAdVideoDragStart = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!adVideoPosition) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    adVideoDragRef.current = {
+      pointerId: event.pointerId,
+      dx: event.clientX - adVideoPosition.x,
+      dy: event.clientY - adVideoPosition.y,
+    };
+  }, [adVideoPosition]);
+
+  const handleAdVideoDragMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = adVideoDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    setAdVideoPosition(clampAdVideoPosition(event.clientX - drag.dx, event.clientY - drag.dy));
+  }, [clampAdVideoPosition]);
+
+  const handleAdVideoDragEnd = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (adVideoDragRef.current?.pointerId === event.pointerId) {
+      adVideoDragRef.current = null;
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }, []);
 
   const stopTeaser = useCallback(() => {
     teaserAudioRef.current?.pause();
@@ -2781,6 +2829,54 @@ function BattleArenaContent() {
           <div className="absolute inset-x-0 top-1/2 h-px bg-gradient-to-r from-transparent via-cyan-100/60 to-transparent shadow-[0_0_42px_rgba(103,232,249,0.48)]" />
         </div>
       )}
+      {renderPreBattleAd && adVideoPosition ? (
+        <div className="pointer-events-none fixed inset-0 z-[44]">
+          <div
+            className={`pointer-events-auto overflow-hidden rounded-[1.15rem] border border-orange-100/24 bg-black/54 shadow-[0_24px_74px_rgba(0,0,0,0.52),0_0_42px_rgba(255,106,0,0.2)] backdrop-blur-xl transition-opacity duration-700 ${
+              showPreBattleAd ? "opacity-[0.82]" : "opacity-0"
+            }`}
+            style={{
+              width: "min(calc(100vw - 2rem), 340px)",
+              transform: `translate3d(${adVideoPosition.x}px, ${adVideoPosition.y}px, 0)`,
+            }}
+            onPointerMove={handleAdVideoDragMove}
+            onPointerUp={handleAdVideoDragEnd}
+            onPointerCancel={handleAdVideoDragEnd}
+          >
+            <div
+              className="flex cursor-grab touch-none items-center justify-between gap-2 border-b border-white/10 bg-black/58 px-3 py-2 active:cursor-grabbing"
+              onPointerDown={handleAdVideoDragStart}
+            >
+              <span className="truncate text-[10px] font-black uppercase tracking-[0.18em] text-orange-100/84">
+                {lang === "zh" ? "AIPOGER 浮空暖場" : "AIPOGER Warmup"}
+              </span>
+              <span className="rounded-full border border-white/14 bg-white/[0.06] px-2 py-0.5 text-[10px] font-black text-zinc-200">
+                {lang === "zh" ? "拖動" : "Drag"}
+              </span>
+            </div>
+            <div className="relative aspect-video bg-black">
+              <video
+                ref={adVideoRef}
+                src={PRE_BATTLE_AD_VIDEO_SRC}
+                playsInline
+                loop
+                preload="auto"
+                muted={adVideoMuted}
+                className="h-full w-full object-contain opacity-[0.86]"
+              />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,transparent,rgba(0,0,0,0.28)_76%)]" />
+              <button
+                type="button"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={() => setAdVideoMuted((value) => !value)}
+                className="absolute bottom-2 right-2 rounded-full border border-white/16 bg-black/68 px-3 py-1 text-[10px] font-black text-white/86 backdrop-blur transition hover:border-orange-100 hover:text-white"
+              >
+                {adVideoMuted ? (lang === "zh" ? "開聲" : "Sound") : (lang === "zh" ? "靜音" : "Mute")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {battlePlaybackComplete && voteOpen && (
         <div className="pointer-events-none absolute inset-0 z-[95] flex items-center justify-center bg-black/28 backdrop-blur-[1px]">
           <div className="relative flex h-[min(54vw,430px)] w-[min(54vw,430px)] flex-col items-center justify-center rounded-full border border-yellow-200/40 bg-[radial-gradient(circle,rgba(255,191,74,0.18),rgba(0,0,0,0.72)_58%,rgba(0,0,0,0.08)_76%)] shadow-[0_0_90px_rgba(255,106,0,0.46),inset_0_0_80px_rgba(255,255,255,0.06)] [animation:aipogerVotePulse_1s_ease-in-out_infinite]">
@@ -3019,30 +3115,6 @@ function BattleArenaContent() {
                   <p className="mt-2 bg-gradient-to-b from-white via-orange-200 to-orange-500 bg-clip-text text-[clamp(3.2rem,9vw,5.4rem)] font-black leading-none text-transparent drop-shadow-[0_0_34px_rgba(255,106,0,0.55)]">
                     {preStartClock}
                   </p>
-                  <div
-                    className={`relative mx-auto mt-3 aspect-video w-full max-w-[16.5rem] overflow-hidden rounded-[1.2rem] border border-white/12 bg-black/36 shadow-[0_18px_54px_rgba(0,0,0,0.42),0_0_34px_rgba(255,106,0,0.16)] transition-all duration-700 ${
-                      showPreBattleAd ? "translate-y-0 opacity-75" : "translate-y-2 opacity-0"
-                    }`}
-                    aria-hidden={!showPreBattleAd}
-                  >
-                    <video
-                      ref={adVideoRef}
-                      src={PRE_BATTLE_AD_VIDEO_SRC}
-                      playsInline
-                      loop
-                      preload="auto"
-                      muted={adVideoMuted}
-                      className="h-full w-full object-cover opacity-80 mix-blend-screen"
-                    />
-                    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,transparent,rgba(0,0,0,0.46)_70%)]" />
-                    <button
-                      type="button"
-                      onClick={() => setAdVideoMuted((value) => !value)}
-                      className="absolute bottom-2 right-2 rounded-full border border-white/16 bg-black/62 px-3 py-1 text-[10px] font-black text-white/86 backdrop-blur transition hover:border-orange-100 hover:text-white"
-                    >
-                      {adVideoMuted ? (lang === "zh" ? "開聲" : "Sound") : (lang === "zh" ? "靜音" : "Mute")}
-                    </button>
-                  </div>
                   {isFinalPreStartCountdown ? (
                     <div className="mx-auto mt-3 max-w-[17rem] rounded-2xl border border-red-100/70 bg-red-600 px-3 py-2 text-white shadow-[0_0_28px_rgba(220,38,38,0.34)]">
                       <p className="text-[11px] font-black uppercase tracking-[0.18em] text-white/80">

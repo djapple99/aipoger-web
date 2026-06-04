@@ -924,7 +924,7 @@ function BattlePoolList() {
   }, [focusQueueId, isZh]);
 
   useEffect(() => {
-    if (!focusQueueId || loading || rows.length === 0) return;
+    if (!focusQueueId || loading || (rows.length === 0 && !focusedClosedCard)) return;
     const id = window.setTimeout(() => {
       document.getElementById(`battle-pool-${focusQueueId}`)?.scrollIntoView({
         behavior: "smooth",
@@ -932,7 +932,7 @@ function BattlePoolList() {
       });
     }, 120);
     return () => window.clearTimeout(id);
-  }, [focusQueueId, loading, rows.length]);
+  }, [focusedClosedCard, focusQueueId, loading, rows.length]);
 
   const cancelOwnHook = async (entryId: string) => {
     setCancelError(null);
@@ -1011,7 +1011,7 @@ function BattlePoolList() {
         </article>
       ) : null}
 
-      {rows.length === 0 ? (
+      {rows.length === 0 && !focusedClosedCard ? (
         <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-6 text-center">
           <p className="text-sm font-bold text-zinc-300">{t("pool_empty_title")}</p>
           <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-zinc-500">
@@ -1192,6 +1192,8 @@ function BattlePoolList() {
 
 function LiveBattleList() {
   const { t, lang } = useI18n();
+  const searchParams = useSearchParams();
+  const focusQueueId = searchParams.get("focusQueue");
   const [rows, setRows] = useState<LiveBattleRow[]>([]);
   const [liveSongStats, setLiveSongStats] = useState<Record<string, SongBattleStats>>({});
   const [loading, setLoading] = useState(true);
@@ -1305,14 +1307,16 @@ function LiveBattleList() {
           </p>
         )}
 
+        <BattlePoolList />
+
         {loading ? (
-          <p className="rounded-3xl border border-orange-400/20 bg-orange-500/10 px-5 py-8 text-center text-sm tracking-[0.2em] text-[#ff8d40]">
+          <p className="mt-8 rounded-3xl border border-orange-400/20 bg-orange-500/10 px-5 py-8 text-center text-sm tracking-[0.2em] text-[#ff8d40]">
             {t("common_loading")}
           </p>
         ) : error ? (
-          <p className="rounded-3xl border border-red-400/20 bg-red-500/10 px-5 py-8 text-center text-sm text-red-300">{error}</p>
-        ) : rows.length === 0 ? (
-          <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] px-6 py-10 text-center shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur">
+          <p className="mt-8 rounded-3xl border border-red-400/20 bg-red-500/10 px-5 py-8 text-center text-sm text-red-300">{error}</p>
+        ) : rows.length === 0 && !focusQueueId ? (
+          <div className="mt-8 rounded-[2rem] border border-white/10 bg-white/[0.04] px-6 py-10 text-center shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur">
             <p className="text-2xl font-black text-white">{t("watch_no_live_title")}</p>
             <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
               {t("watch_no_live_body")}
@@ -1333,7 +1337,7 @@ function LiveBattleList() {
             </div>
           </div>
         ) : (
-          <ul className="grid gap-4">
+          <ul className="mt-8 grid gap-4">
             {rows.map((b) => {
               const scheduledAt = b.scheduled_start_at || b.started_at || b.created_at;
               const scheduledMs = new Date(scheduledAt).getTime();
@@ -1411,7 +1415,6 @@ function LiveBattleList() {
         )}
 
         {SHOW_DAILY_BATTLE_SECTION ? <DailyBattleList /> : null}
-        <BattlePoolList />
       </div>
     </main>
   );
