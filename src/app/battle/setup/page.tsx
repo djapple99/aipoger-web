@@ -16,6 +16,7 @@ import {
   DROP_BATTLE_SCHEDULE_MIN_LEAD_MS,
   DROP_BATTLE_SCHEDULE_PRESETS,
   isDropChallengeAcceptable,
+  isDropBattleEndedOrPastExpectedEnd,
   type DropBattleSchedulePreset,
   type DropBattleScheduleValidationError,
   validateDropBattleScheduledStart,
@@ -150,11 +151,11 @@ async function findActiveBattleLock(userId: string): Promise<ActiveBattleLock | 
     if (activeQueue.match_group_id) {
       const { data: linkedBattle } = await supabase
         .from("battles")
-        .select("id, status, battle_ended_at")
+        .select("id, status, battle_ended_at, started_at, battle_started_at, created_at")
         .eq("id", activeQueue.match_group_id)
         .maybeSingle();
       const status = typeof linkedBattle?.status === "string" ? linkedBattle.status : "";
-      if (linkedBattle?.battle_ended_at || CLOSED_BATTLE_STATUSES.has(status)) {
+      if (linkedBattle?.battle_ended_at || CLOSED_BATTLE_STATUSES.has(status) || isDropBattleEndedOrPastExpectedEnd(linkedBattle)) {
         void supabase.from("battle_queue").update({ status: "completed" }).eq("id", activeQueue.id);
         return null;
       }
@@ -164,7 +165,7 @@ async function findActiveBattleLock(userId: string): Promise<ActiveBattleLock | 
 
   const { data: battleRows, error: battleError } = await supabase
     .from("battles")
-    .select("id, status, battle_ended_at, created_at")
+    .select("id, status, battle_ended_at, started_at, battle_started_at, created_at")
     .or(`fighter_a_user_id.eq.${userId},fighter_b_user_id.eq.${userId}`)
     .in("status", ACTIVE_BATTLE_STATUSES)
     .is("battle_ended_at", null)
@@ -172,7 +173,14 @@ async function findActiveBattleLock(userId: string): Promise<ActiveBattleLock | 
     .limit(1);
 
   if (battleError) throw battleError;
-  const activeBattle = battleRows?.[0] as { id: string; status: string } | undefined;
+  const activeBattle = battleRows?.[0] as { id: string; status: string; battle_ended_at?: string | null; started_at?: string | null; battle_started_at?: string | null; created_at?: string | null } | undefined;
+  if (activeBattle?.id && isDropBattleEndedOrPastExpectedEnd(activeBattle)) {
+    void supabase
+      .from("battles")
+      .update({ status: "finished", battle_ended_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq("id", activeBattle.id);
+    return null;
+  }
   return activeBattle?.id ? { kind: "battle", id: activeBattle.id, status: activeBattle.status } : null;
 }
 

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { buildDropBattleSchedulePayloadFromQueues, isDropChallengeAcceptable } from "@/lib/battle-pool-client";
+import {
+  buildDropBattleSchedulePayloadFromQueues,
+  isDropBattleEndedOrPastExpectedEnd,
+  isDropChallengeAcceptable,
+} from "@/lib/battle-pool-client";
 
 type QueueRow = {
   id: string;
@@ -134,12 +138,18 @@ export async function POST(request: NextRequest) {
     if (matchGroupId) {
       const { data: linkedBattle, error: linkedBattleError } = await admin
         .from("battles")
-        .select("id, status, battle_ended_at")
+        .select("id, status, battle_ended_at, started_at, battle_started_at, created_at")
         .eq("id", matchGroupId)
-        .maybeSingle<{ id: string; status?: string | null; battle_ended_at?: string | null }>();
+        .maybeSingle<{ id: string; status?: string | null; battle_ended_at?: string | null; started_at?: string | null; battle_started_at?: string | null; created_at?: string | null }>();
       if (linkedBattleError) return jsonError(linkedBattleError.message, 500);
-      if (linkedBattle?.battle_ended_at || CLOSED_BATTLE_STATUSES.includes(linkedBattle?.status ?? "")) {
+      if (linkedBattle?.battle_ended_at || CLOSED_BATTLE_STATUSES.includes(linkedBattle?.status ?? "") || isDropBattleEndedOrPastExpectedEnd(linkedBattle)) {
         await admin.from("battle_queue").update({ status: "completed", updated_at: new Date().toISOString() }).eq("id", queue.id);
+        if (linkedBattle?.id && isDropBattleEndedOrPastExpectedEnd(linkedBattle)) {
+          await admin
+            .from("battles")
+            .update({ status: "finished", battle_ended_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+            .eq("id", linkedBattle.id);
+        }
         continue;
       }
     }
@@ -151,14 +161,27 @@ export async function POST(request: NextRequest) {
 
   const { data: activeBattles, error: activeBattleError } = await admin
     .from("battles")
-    .select("id, status")
+    .select("id, queue_a_id, queue_b_id, status, battle_ended_at, started_at, battle_started_at, created_at")
     .or(`fighter_a_user_id.eq.${user.id},fighter_b_user_id.eq.${user.id}`)
     .in("status", ACTIVE_BATTLE_STATUSES)
     .is("battle_ended_at", null)
     .limit(1);
 
   if (activeBattleError) return jsonError(activeBattleError.message, 500);
-  if ((activeBattles ?? []).length > 0) {
+  const blockingActiveBattles = [];
+  for (const battle of activeBattles ?? []) {
+    if (isDropBattleEndedOrPastExpectedEnd(battle)) {
+      const now = new Date().toISOString();
+      await admin.from("battles").update({ status: "finished", battle_ended_at: now, updated_at: now }).eq("id", battle.id);
+      const queueIds = [battle.queue_a_id, battle.queue_b_id].filter((id): id is string => typeof id === "string" && id.length > 0);
+      if (queueIds.length > 0) {
+        await admin.from("battle_queue").update({ status: "completed", updated_at: now }).in("id", queueIds);
+      }
+      continue;
+    }
+    blockingActiveBattles.push(battle);
+  }
+  if (blockingActiveBattles.length > 0) {
     return jsonError("你目前已有一場 Drop Battle 進行中。請先完成或取消目前這場 Drop，再開始下一場 Drop。", 409);
   }
 

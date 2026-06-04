@@ -8,8 +8,16 @@ import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
 import ShareButton from "@/components/share-button";
 import SafetyNotice from "@/components/safety-notice";
+import { rememberAuthNextPath } from "@/lib/auth-urls";
 import { rankLabelForLevel } from "@/lib/battle-pool-rules";
-import { cancelCurrentBattleIntent, resolveDropBattleScheduledStart, shouldExpireOpenDropQueue } from "@/lib/battle-pool-client";
+import {
+  DROP_BATTLE_EXPECTED_END_BUFFER_MS,
+  cancelCurrentBattleIntent,
+  isClosedDropBattleStatus,
+  resolveDropBattleRuntimeStart,
+  resolveDropBattleScheduledStart,
+  shouldExpireOpenDropQueue,
+} from "@/lib/battle-pool-client";
 
 const seedComments = [
   "A Side 節奏很穩，這段 drop 很強。",
@@ -47,7 +55,6 @@ const mockBattleData: BattleViewData = {
 
 const DAILY_BATTLE_QUEUE_MS = 24 * 60 * 60 * 1000;
 const SHOW_DAILY_BATTLE_SECTION = false;
-const DROP_BATTLE_EXPECTED_END_BUFFER_MS = (45 * 2 + 2 + 5 + 30) * 1000;
 
 function Turntable({
   label,
@@ -359,7 +366,7 @@ function formatBattleTimeLeft(value: string | null | undefined, isZh: boolean) {
   const time = new Date(value).getTime();
   if (!Number.isFinite(time)) return isZh ? "時間未定" : "Time TBD";
   const ms = time - Date.now();
-  if (ms <= 0) return isZh ? "等待結算" : "Settling";
+  if (ms <= 0) return isZh ? "已結束" : "Ended";
   const hours = Math.floor(ms / 3_600_000);
   const minutes = Math.max(1, Math.ceil((ms % 3_600_000) / 60_000));
   if (hours <= 0) return isZh ? `${minutes} 分鐘` : `${minutes}m`;
@@ -390,7 +397,7 @@ function isExpiredOpenPoolEntry(row: Pick<PoolEntryRow, "status" | "expires_at" 
 }
 
 function isClosedBattleStatus(status: string | null | undefined) {
-  return ["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"].includes(status ?? "");
+  return isClosedDropBattleStatus(status);
 }
 
 function focusedQueueHref(queueId: string, lang: string) {
@@ -824,6 +831,10 @@ function BattlePoolList() {
   const [cancelQueueId, setCancelQueueId] = useState<string | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [focusedClosedCard, setFocusedClosedCard] = useState<FocusedPoolCardState | null>(null);
+
+  useEffect(() => {
+    if (focusQueueId) rememberAuthNextPath(focusedQueueHref(focusQueueId, lang));
+  }, [focusQueueId, lang]);
 
   useEffect(() => {
     if (isAuthBypassEnabled) return;
@@ -1286,6 +1297,10 @@ function LiveBattleList() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (focusBattleId) rememberAuthNextPath(focusedBattleHref(focusBattleId, lang));
+  }, [focusBattleId, lang]);
+
+  useEffect(() => {
     let mounted = true;
 
     const load = async () => {
@@ -1309,7 +1324,7 @@ function LiveBattleList() {
         if (missingRuntimeColumn) {
           const legacyRead = await supabase
             .from("battles")
-            .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, battle_ended_at")
+            .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, battle_started_at, started_at, battle_ended_at")
             .in("status", ["active", "live"])
             .is("battle_ended_at", null)
             .order("created_at", { ascending: false })
@@ -1345,7 +1360,7 @@ function LiveBattleList() {
             if (missingRuntimeColumn) {
               const legacyRead = await supabase
                 .from("battles")
-                .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, battle_ended_at")
+                .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, battle_started_at, started_at, battle_ended_at")
                 .eq("id", focusBattleId)
                 .maybeSingle<LiveBattleRow>();
               focusedBattle = legacyRead.data;
@@ -1485,16 +1500,16 @@ function LiveBattleList() {
         ) : (
           <ul className="mt-8 grid gap-4">
             {rows.map((b) => {
-              const scheduledAt = b.scheduled_start_at || b.started_at || b.created_at;
-              const scheduledMs = new Date(scheduledAt).getTime();
+              const scheduledAt = resolveDropBattleRuntimeStart(b);
+              const scheduledMs = new Date(scheduledAt ?? "").getTime();
               const likelyEndedByClock =
                 Number.isFinite(scheduledMs) &&
                 scheduledMs + DROP_BATTLE_EXPECTED_END_BUFFER_MS <= Date.now();
               const isBattleEnded = Boolean(b.battle_ended_at) || isClosedBattleStatus(b.status) || archivedBattleIds.has(b.id);
-              const isStaleSettling = !isBattleEnded && likelyEndedByClock;
+              const isEndedByClock = !isBattleEnded && likelyEndedByClock;
+              const showEndedState = isBattleEnded || isEndedByClock;
               const isFutureBattle =
-                !isBattleEnded &&
-                !isStaleSettling &&
+                !showEndedState &&
                 (b.status === "active" || (Number.isFinite(scheduledMs) && scheduledMs > Date.now() && !b.battle_started_at));
               const primaryHref = isBattleEnded ? `/battle/result?battleId=${encodeURIComponent(b.id)}&lang=${lang}` : `/battle/${b.id}?lang=${lang}`;
               const shareHref = isBattleEnded ? primaryHref : focusedBattleHref(b.id, lang);
@@ -1531,8 +1546,8 @@ function LiveBattleList() {
                         <p className="mt-2 text-xs font-bold text-orange-100/75">
                           {isBattleEnded
                             ? (lang === "zh" ? "此戰鬥已經結束" : "This battle has ended")
-                            : isStaleSettling
-                              ? (lang === "zh" ? "戰鬥已結束，等待結算更新" : "Battle ended, settling")
+                            : isEndedByClock
+                              ? (lang === "zh" ? "此戰鬥已經結束" : "This battle has ended")
                             : isFutureBattle
                               ? (lang === "zh" ? "已進場，等待開打" : "In arena, waiting to start")
                               : (lang === "zh" ? "開戰" : "Started")}{" "}
@@ -1542,8 +1557,8 @@ function LiveBattleList() {
                       <span className="mt-2 shrink-0 rounded-full border border-orange-400/35 px-4 py-2 text-sm font-bold text-[#ffbf99] transition group-hover:bg-orange-500 group-hover:text-black sm:mt-0">
                         {isBattleEnded
                           ? (lang === "zh" ? "查看戰果" : "View Result")
-                          : isStaleSettling
-                            ? (lang === "zh" ? "待結算" : "Settling")
+                          : isEndedByClock
+                            ? (lang === "zh" ? "已結束" : "Ended")
                             : isFutureBattle
                               ? (lang === "zh" ? "等待開打" : "Warmup")
                               : (lang === "zh" ? "可觀戰投票" : "Watch & Vote")}
@@ -1556,8 +1571,8 @@ function LiveBattleList() {
                       >
                         {isBattleEnded
                           ? (lang === "zh" ? "查看戰果" : "View Result")
-                          : isStaleSettling
-                            ? (lang === "zh" ? "更新戰果" : "Settle Result")
+                          : isEndedByClock
+                            ? (lang === "zh" ? "進入查看" : "Open Battle")
                             : (lang === "zh" ? "我要觀戰" : "Watch Battle")}
                       </Link>
                       <ShareButton
@@ -1567,10 +1582,10 @@ function LiveBattleList() {
                             ? lang === "zh"
                               ? `《${b.song_a_name}》vs《${b.song_b_name}》此戰鬥已經結束，進來查看戰果。`
                               : `"${b.song_a_name}" vs "${b.song_b_name}" has ended. View the result.`
-                          : isStaleSettling
+                          : isEndedByClock
                             ? lang === "zh"
-                              ? `《${b.song_a_name}》vs《${b.song_b_name}》已經打完，進來更新戰果或查看結算。`
-                              : `"${b.song_a_name}" vs "${b.song_b_name}" has ended. Open it to settle or view the result.`
+                              ? `《${b.song_a_name}》vs《${b.song_b_name}》此戰鬥已經結束，進來查看。`
+                              : `"${b.song_a_name}" vs "${b.song_b_name}" has ended. Open it to view.`
                           : isFutureBattle
                               ? lang === "zh"
                                 ? `《${b.song_a_name}》vs《${b.song_b_name}》已進場等待開打，先進來聽 5 秒預播。`
@@ -1582,8 +1597,8 @@ function LiveBattleList() {
                         url={shareHref}
                         label={isBattleEnded
                           ? (lang === "zh" ? "分享戰果" : "Share Result")
-                          : isStaleSettling
-                            ? (lang === "zh" ? "分享結算入口" : "Share Settle Link")
+                          : isEndedByClock
+                            ? (lang === "zh" ? "分享戰鬥" : "Share Battle")
                             : isFutureBattle
                               ? (lang === "zh" ? "分享到戰鬥池" : "Share Pool Card")
                               : (lang === "zh" ? "邀請觀戰投票" : "Invite voters")}

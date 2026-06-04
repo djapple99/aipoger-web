@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
-import { cancelCurrentBattleIntent, shouldExpireOpenDropQueue } from "@/lib/battle-pool-client";
+import { cancelCurrentBattleIntent, isDropBattleEndedOrPastExpectedEnd, shouldExpireOpenDropQueue } from "@/lib/battle-pool-client";
 
 type BattleCall = {
   id: string;
@@ -62,7 +62,10 @@ const ACTIVE_NOTICE_QUEUE_STATUSES = [
 const ACTIVE_NOTICE_BATTLE_STATUSES = [
   "waiting",
   "confirming",
+  "matched",
   "countdown",
+  "live",
+  "active",
   "ghost_battle",
   "public_voting",
   "settling",
@@ -201,7 +204,7 @@ export default function GlobalBattleCallOverlay() {
     window.addEventListener(DEMO_CALL_EVENT, triggerDemo);
     if (window.location.search.includes("battleCallDemo=1")) triggerDemo();
     return () => window.removeEventListener(DEMO_CALL_EVENT, triggerDemo);
-  }, [isZh, markRead, ready, showCall]);
+  }, [isZh, ready, showCall]);
 
   useEffect(() => {
     if (!ready || isAuthBypassEnabled) return undefined;
@@ -243,17 +246,21 @@ export default function GlobalBattleCallOverlay() {
           status: activeQueue.status,
           createdAt: activeQueue.created_at ?? null,
         });
+        if (routeTone !== "watching") {
+          setActiveNoticeOpen(true);
+          setAccountNoticeCollapsed(false);
+        }
       } else {
         const { data: activeBattleRows } = await supabase
           .from("battles")
-          .select("id, status, created_at, battle_ended_at")
+          .select("id, status, created_at, started_at, battle_started_at, battle_ended_at")
           .or(`fighter_a_user_id.eq.${uid},fighter_b_user_id.eq.${uid}`)
           .in("status", ACTIVE_NOTICE_BATTLE_STATUSES)
           .is("battle_ended_at", null)
           .order("created_at", { ascending: false })
           .limit(1);
-        const activeBattle = activeBattleRows?.[0] as { id: string; status: string; created_at?: string | null } | undefined;
-        if (mounted && activeBattle?.id) {
+        const activeBattle = activeBattleRows?.[0] as { id: string; status: string; created_at?: string | null; started_at?: string | null; battle_started_at?: string | null; battle_ended_at?: string | null } | undefined;
+        if (mounted && activeBattle?.id && !isDropBattleEndedOrPastExpectedEnd(activeBattle)) {
           setActiveNotice({
             kind: "battle",
             id: activeBattle.id,
@@ -261,8 +268,12 @@ export default function GlobalBattleCallOverlay() {
             status: activeBattle.status,
             createdAt: activeBattle.created_at ?? null,
           });
+          if (routeTone !== "watching") {
+            setActiveNoticeOpen(true);
+            setAccountNoticeCollapsed(false);
+          }
         }
-        if (mounted && !activeBattle?.id) setActiveNotice(null);
+        if (mounted && (!activeBattle?.id || isDropBattleEndedOrPastExpectedEnd(activeBattle))) setActiveNotice(null);
       }
 
       const { data: latest } = await supabase
@@ -310,7 +321,7 @@ export default function GlobalBattleCallOverlay() {
       mounted = false;
       if (channel) void supabase.removeChannel(channel);
     };
-  }, [isZh, markRead, ready, showCall]);
+  }, [isZh, markRead, ready, routeTone, setAccountNoticeCollapsed, showCall]);
 
   useEffect(() => {
     if (!call || accepted || collapsed) return undefined;

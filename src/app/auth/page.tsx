@@ -7,7 +7,14 @@ import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
-import { buildAuthCallbackUrl, buildAuthPageUrl, rememberAuthNextPath, safeNextPath } from "@/lib/auth-urls";
+import {
+  buildAuthCallbackUrl,
+  buildAuthPageUrl,
+  readRememberedAuthNextCookie,
+  readRememberedAuthNextPath,
+  rememberAuthNextPath,
+  safeNextPath,
+} from "@/lib/auth-urls";
 
 function intentToNextPath(intent: string | null, lang: string | null): string {
   const langQuery = lang === "en" ? "?lang=en" : lang === "zh" ? "?lang=zh" : "";
@@ -57,9 +64,15 @@ function AuthPageInner() {
   const [emailSent, setEmailSent] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextPath = searchParams.get("next")
-    ? safeNextPath(searchParams.get("next"))
-    : intentToNextPath(searchParams.get("intent"), searchParams.get("lang"));
+  const explicitNext = searchParams.get("next");
+  const rememberedNext = !explicitNext && !searchParams.get("intent")
+    ? readRememberedAuthNextPath() ?? readRememberedAuthNextCookie()
+    : null;
+  const nextPath = explicitNext
+    ? safeNextPath(explicitNext)
+    : rememberedNext
+      ? safeNextPath(rememberedNext)
+      : intentToNextPath(searchParams.get("intent"), searchParams.get("lang"));
   const redirectingRef = useRef(false);
 
   const goHomeOnce = useCallback(() => {

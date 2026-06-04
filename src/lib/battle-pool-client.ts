@@ -12,6 +12,16 @@ export const DROP_BATTLE_SCHEDULE_PRESETS: DropBattleSchedulePreset[] = [10, 15,
 export const DROP_BATTLE_SCHEDULE_MIN_LEAD_MS = 60 * 1000;
 export const DROP_BATTLE_SCHEDULE_MAX_LEAD_MS = 24 * 60 * 60 * 1000;
 export const DROP_BATTLE_CANCELLATION_DELAY_MS = 60 * 1000;
+export const DROP_BATTLE_EXPECTED_END_BUFFER_MS = (45 * 2 + 2 + 5 + 30) * 1000;
+
+const CLOSED_DROP_BATTLE_STATUSES = new Set([
+  "finished",
+  "cancelled",
+  "cancelled_no_challenger",
+  "cancelled_founder",
+  "completed",
+  "expired",
+]);
 
 export type DropBattleScheduleValidationError = "invalid" | "past" | "too_late";
 export type DropBattleScheduleQueueSnapshot = {
@@ -35,6 +45,15 @@ export type DropBattleCancellationSnapshot = {
   cancellation_evaluation_at?: string | null;
 };
 
+export type DropBattleRuntimeSnapshot = {
+  status?: string | null;
+  battle_ended_at?: string | null;
+  scheduled_start_at?: string | null;
+  battle_started_at?: string | null;
+  started_at?: string | null;
+  created_at?: string | null;
+};
+
 export function resolveDropBattleScheduledStart(queue: DropBattleOpenQueueSnapshot) {
   const scheduledMs = new Date(queue.scheduled_start_at ?? "").getTime();
   if (Number.isFinite(scheduledMs)) return new Date(scheduledMs).toISOString();
@@ -56,6 +75,24 @@ export function buildDropBattleSchedulePayload(scheduledStartIso: string | null)
     scheduled_start_at: new Date(scheduledStartMs).toISOString(),
     cancellation_evaluation_at: new Date(scheduledStartMs + DROP_BATTLE_CANCELLATION_DELAY_MS).toISOString(),
   };
+}
+
+export function isClosedDropBattleStatus(status: string | null | undefined): boolean {
+  return CLOSED_DROP_BATTLE_STATUSES.has(status ?? "");
+}
+
+export function resolveDropBattleRuntimeStart(battle: DropBattleRuntimeSnapshot): string | null {
+  return battle.scheduled_start_at ?? battle.battle_started_at ?? battle.started_at ?? battle.created_at ?? null;
+}
+
+export function isDropBattleEndedOrPastExpectedEnd(
+  battle: DropBattleRuntimeSnapshot | null | undefined,
+  nowMs = Date.now(),
+): boolean {
+  if (!battle) return false;
+  if (battle.battle_ended_at || isClosedDropBattleStatus(battle.status)) return true;
+  const startMs = new Date(resolveDropBattleRuntimeStart(battle) ?? "").getTime();
+  return Number.isFinite(startMs) && startMs + DROP_BATTLE_EXPECTED_END_BUFFER_MS <= nowMs;
 }
 
 export function validateDropBattleScheduledStart(
