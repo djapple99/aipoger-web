@@ -392,6 +392,15 @@ function isClosedBattleStatus(status: string | null | undefined) {
   return ["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"].includes(status ?? "");
 }
 
+function focusedPoolCardTitle(status: string | null | undefined, isZh: boolean) {
+  if (status === "accepted_unknown") return isZh ? "此戰鬥已經被挑戰" : "This battle has been accepted";
+  if (["cancelled", "cancelled_no_challenger", "cancelled_founder", "expired"].includes(status ?? "")) {
+    return isZh ? "這張戰帖已結束" : "This card has ended";
+  }
+  if (isClosedBattleStatus(status)) return isZh ? "此戰鬥已經結束" : "This battle has ended";
+  return isZh ? "此戰帖已有人接戰" : "This card has been accepted";
+}
+
 function DailyBattleList() {
   const { lang } = useI18n();
   const isZh = lang === "zh";
@@ -828,12 +837,27 @@ function BattlePoolList() {
 
       await fetch("/api/battle-pool/expire-open-cards", { method: "POST" }).catch(() => null);
 
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from("battle_queue")
-        .select("id, user_id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, public_vote_score, created_at")
+        .select("id, user_id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, scheduled_start_at, cancellation_evaluation_at, public_vote_score, created_at")
         .in("status", ["waiting_challenge", "public_voting", "ghost_battle"])
         .order("created_at", { ascending: false })
         .limit(24);
+
+      if (error) {
+        const msg = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`;
+        const missingScheduleColumn = /scheduled_start_at|cancellation_evaluation_at|schema cache|does not exist|PGRST204/i.test(msg);
+        if (missingScheduleColumn) {
+          const legacyRead = await supabase
+            .from("battle_queue")
+            .select("id, user_id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, public_vote_score, created_at")
+            .in("status", ["waiting_challenge", "public_voting", "ghost_battle"])
+            .order("created_at", { ascending: false })
+            .limit(24);
+          data = legacyRead.data as typeof data;
+          error = legacyRead.error;
+        }
+      }
 
       if (!mounted) return;
       if (error) {
@@ -859,9 +883,9 @@ function BattlePoolList() {
         }
         const visibleRows = baseRows.filter((row) => !isExpiredOpenPoolEntry(row) && (!row.match_group_id || !closedBattleIds.has(row.match_group_id)));
         if (focusQueueId && !visibleRows.some((row) => row.id === focusQueueId)) {
-          const { data: focusedRow } = await supabase
+          let { data: focusedRow, error: focusedError } = await supabase
             .from("battle_queue")
-            .select("id, fighter_name, original_file_name, status, match_group_id")
+            .select("id, fighter_name, original_file_name, status, match_group_id, expires_at, scheduled_start_at, cancellation_evaluation_at")
             .eq("id", focusQueueId)
             .maybeSingle<{
               id: string;
@@ -869,11 +893,42 @@ function BattlePoolList() {
               original_file_name?: string | null;
               status?: string | null;
               match_group_id?: string | null;
+              expires_at?: string | null;
+              scheduled_start_at?: string | null;
+              cancellation_evaluation_at?: string | null;
             }>();
+          if (focusedError) {
+            const msg = `${focusedError.message ?? ""} ${focusedError.details ?? ""} ${focusedError.hint ?? ""}`;
+            const missingScheduleColumn = /scheduled_start_at|cancellation_evaluation_at|schema cache|does not exist|PGRST204/i.test(msg);
+            if (missingScheduleColumn) {
+              const legacyRead = await supabase
+                .from("battle_queue")
+                .select("id, fighter_name, original_file_name, status, match_group_id, expires_at")
+                .eq("id", focusQueueId)
+                .maybeSingle<{
+                  id: string;
+                  fighter_name?: string | null;
+                  original_file_name?: string | null;
+                  status?: string | null;
+                  match_group_id?: string | null;
+                  expires_at?: string | null;
+                }>();
+              focusedRow = legacyRead.data as typeof focusedRow;
+              focusedError = legacyRead.error;
+            }
+          }
           if (focusedRow?.id) {
+            const focusedStatus = shouldExpireOpenDropQueue({
+              status: focusedRow.status,
+              expires_at: focusedRow.expires_at ?? null,
+              scheduled_start_at: focusedRow.scheduled_start_at ?? null,
+              cancellation_evaluation_at: focusedRow.cancellation_evaluation_at ?? null,
+            })
+              ? "expired"
+              : focusedRow.status ?? null;
             setFocusedClosedCard({
               id: focusedRow.id,
-              status: focusedRow.status ?? null,
+              status: focusedStatus,
               fighterName: focusedRow.fighter_name || (isZh ? "創作者" : "Creator"),
               songName: focusedRow.original_file_name || (isZh ? "這首 Drop" : "This Drop"),
               battleId: focusedRow.match_group_id ?? null,
@@ -881,10 +936,10 @@ function BattlePoolList() {
           } else {
             setFocusedClosedCard({
               id: focusQueueId,
-              status: "finished",
+              status: "accepted_unknown",
               fighterName: isZh ? "這張戰帖" : "This card",
-              songName: isZh ? "此戰鬥" : "This battle",
-              battleId: null,
+              songName: isZh ? "如果戰鬥仍在，請直接進入戰場觀戰；若已結束，系統會提示你查看戰果。" : "If the battle is still live, enter the arena to watch. If it has ended, the arena will point you to the result.",
+              battleId: focusQueueId,
             });
           }
         } else {
@@ -987,13 +1042,21 @@ function BattlePoolList() {
             {isZh ? "戰帖狀態" : "Card Status"}
           </p>
           <h3 className="mt-2 text-2xl font-black text-white">
-            {isClosedBattleStatus(focusedClosedCard.status) ? (isZh ? "此戰鬥已經結束" : "This battle has ended") : (isZh ? "此戰帖已有人接戰" : "This card has been accepted")}
+            {focusedPoolCardTitle(focusedClosedCard.status, isZh)}
           </h3>
           <p className="mt-2 text-sm font-bold leading-6 text-zinc-300">
             {focusedClosedCard.fighterName} · {focusedClosedCard.songName}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            {focusedClosedCard.battleId ? (
+            {focusedClosedCard.battleId && !isClosedBattleStatus(focusedClosedCard.status) ? (
+              <Link
+                href={`/battle/${encodeURIComponent(focusedClosedCard.battleId)}?lang=${lang}`}
+                className="rounded-full bg-yellow-300 px-5 py-2.5 text-sm font-black text-black transition hover:bg-yellow-100"
+              >
+                {isZh ? "我要觀戰" : "Watch Battle"}
+              </Link>
+            ) : null}
+            {focusedClosedCard.battleId && isClosedBattleStatus(focusedClosedCard.status) ? (
               <Link
                 href={`/battle/result?battleId=${encodeURIComponent(focusedClosedCard.battleId)}&lang=${lang}`}
                 className="rounded-full bg-yellow-300 px-5 py-2.5 text-sm font-black text-black transition hover:bg-yellow-100"
@@ -1032,14 +1095,13 @@ function BattlePoolList() {
             const shareUrl = isGhost
               ? `/battle/${entry.match_group_id}?lang=${lang}`
               : (() => {
-                  const params = new URLSearchParams({
-                    type: "hook-card",
-                    lang,
-                    g: entry.genre,
-                    l: entry.fighter_name,
-                    ls: entry.original_file_name,
-                    tool: entry.ai_tool || "AI Music",
-                  });
+                  const params = new URLSearchParams({ type: "hook-card", lang });
+                  if (entry.id.startsWith("mock-") || isAuthBypassEnabled) {
+                    params.set("g", entry.genre);
+                    params.set("l", entry.fighter_name);
+                    params.set("ls", entry.original_file_name);
+                    params.set("tool", entry.ai_tool || "AI Music");
+                  }
                   return `/battle/invite/${encodeURIComponent(entry.id)}?${params.toString()}`;
                 })();
             const shareLabel = isGhost || isPublicVoting

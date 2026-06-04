@@ -13,8 +13,11 @@ export type BattleOgData = {
   fighter_b_avatar: string | null;
   ai_tool_a: string | null;
   ai_tool_b: string | null;
+  match_group_id?: string | null;
   queue_status?: string | null;
   expires_at?: string | null;
+  scheduled_start_at?: string | null;
+  cancellation_evaluation_at?: string | null;
   created_at?: string | null;
 };
 
@@ -46,17 +49,45 @@ const BATTLE_OG_BASE_SELECT = [
   "genre",
 ].join(",");
 
-const QUEUE_OG_SELECT = [
-  "id",
-  "user_id",
-  "fighter_name",
-  "original_file_name",
-  "genre",
-  "ai_tool",
-  "status",
-  "expires_at",
-  "created_at",
-].join(",");
+const QUEUE_OG_SELECTS = [
+  [
+    "id",
+    "user_id",
+    "fighter_name",
+    "original_file_name",
+    "genre",
+    "ai_tool",
+    "status",
+    "match_group_id",
+    "expires_at",
+    "scheduled_start_at",
+    "cancellation_evaluation_at",
+    "created_at",
+  ],
+  [
+    "id",
+    "user_id",
+    "fighter_name",
+    "original_file_name",
+    "genre",
+    "ai_tool",
+    "status",
+    "match_group_id",
+    "expires_at",
+    "created_at",
+  ],
+  [
+    "id",
+    "user_id",
+    "fighter_name",
+    "original_file_name",
+    "genre",
+    "ai_tool",
+    "status",
+    "expires_at",
+    "created_at",
+  ],
+].map((columns) => columns.join(","));
 
 export function siteOrigin() {
   return (process.env.NEXT_PUBLIC_SITE_URL || "https://www.aipoger.com").replace(/\/$/, "");
@@ -83,19 +114,7 @@ export function fallbackBattleOgData(id: string): BattleOgData {
 
 async function getQueueOgData(supabaseUrl: string, supabaseKey: string, id: string): Promise<BattleOgData | null> {
   try {
-    const url = new URL("/rest/v1/battle_queue", supabaseUrl);
-    url.searchParams.set("id", `eq.${id}`);
-    url.searchParams.set("select", QUEUE_OG_SELECT);
-    url.searchParams.set("limit", "1");
-    const response = await fetch(url, {
-      headers: {
-        apikey: supabaseKey,
-        authorization: `Bearer ${supabaseKey}`,
-      },
-      cache: "no-store",
-    });
-    if (!response.ok) return null;
-    const rows = (await response.json()) as Array<{
+    let rows: Array<{
       id: string;
       user_id: string | null;
       fighter_name: string | null;
@@ -103,9 +122,32 @@ async function getQueueOgData(supabaseUrl: string, supabaseKey: string, id: stri
       genre: string | null;
       ai_tool: string | null;
       status: string | null;
+      match_group_id?: string | null;
       expires_at: string | null;
+      scheduled_start_at?: string | null;
+      cancellation_evaluation_at?: string | null;
       created_at: string | null;
-    }>;
+    }> | null = null;
+
+    for (const select of QUEUE_OG_SELECTS) {
+      const url = new URL("/rest/v1/battle_queue", supabaseUrl);
+      url.searchParams.set("id", `eq.${id}`);
+      url.searchParams.set("select", select);
+      url.searchParams.set("limit", "1");
+      const response = await fetch(url, {
+        headers: {
+          apikey: supabaseKey,
+          authorization: `Bearer ${supabaseKey}`,
+        },
+        cache: "no-store",
+      });
+      if (response.ok) {
+        rows = await response.json();
+        break;
+      }
+    }
+
+    if (!rows) return null;
     const queue = rows[0];
     if (!queue?.id) return null;
     const profile = await getProfileMedia(supabaseUrl, supabaseKey, queue.user_id);
@@ -124,8 +166,11 @@ async function getQueueOgData(supabaseUrl: string, supabaseKey: string, id: stri
       fighter_b_avatar: null,
       ai_tool_a: queue.ai_tool || null,
       ai_tool_b: null,
+      match_group_id: queue.match_group_id ?? null,
       queue_status: queue.status || null,
       expires_at: queue.expires_at || null,
+      scheduled_start_at: queue.scheduled_start_at ?? null,
+      cancellation_evaluation_at: queue.cancellation_evaluation_at ?? null,
       created_at: queue.created_at || null,
     };
   } catch {

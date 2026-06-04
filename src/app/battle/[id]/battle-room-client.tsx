@@ -2776,6 +2776,9 @@ function BattleArenaContent() {
     const params = new URLSearchParams({ lang });
     if (isQueueArena) {
       params.set("type", "hook-card");
+      if (!isMockBattle && !isAuthBypassEnabled) {
+        return `/battle/invite/${encodeURIComponent(battleId)}?${params.toString()}`;
+      }
       params.set("g", battle.genre);
       params.set("l", battle.fighter_a_name);
       params.set("ls", battle.song_a_name);

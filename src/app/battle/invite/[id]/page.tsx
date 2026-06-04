@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getBattleOgData, siteOrigin } from "@/lib/battle-og";
+import { isDropChallengeAcceptable } from "@/lib/battle-pool-client";
 
 type InviteSearchParams = Record<string, string | string[] | undefined>;
 
@@ -32,6 +33,27 @@ function formatTaiwanTime(value: string | null | undefined) {
   }).format(date);
 }
 
+const DROP_BATTLE_CANCELLATION_DELAY_MS = 60 * 1000;
+const ACCEPTED_HOOK_STATUSES = new Set(["matched", "active", "completed", "public_voting", "ghost_battle"]);
+const CLOSED_HOOK_STATUSES = new Set(["expired", "cancelled", "cancelled_no_challenger", "cancelled_founder"]);
+
+function resolveHookStartAt(data: {
+  scheduledStartAt?: string | null;
+  cancellationEvaluationAt?: string | null;
+  expiresAt?: string | null;
+}) {
+  const scheduledMs = new Date(data.scheduledStartAt ?? "").getTime();
+  if (Number.isFinite(scheduledMs)) return new Date(scheduledMs).toISOString();
+
+  const cancellationMs = new Date(data.cancellationEvaluationAt ?? "").getTime();
+  if (Number.isFinite(cancellationMs)) {
+    return new Date(cancellationMs - DROP_BATTLE_CANCELLATION_DELAY_MS).toISOString();
+  }
+
+  const expiresMs = new Date(data.expiresAt ?? "").getTime();
+  return Number.isFinite(expiresMs) ? new Date(expiresMs).toISOString() : null;
+}
+
 async function inviteData(id: string, searchParams: InviteSearchParams) {
   const battle = await getBattleOgData(id);
   const isHookCard = firstParam(searchParams, "type") === "hook-card";
@@ -48,8 +70,11 @@ async function inviteData(id: string, searchParams: InviteSearchParams) {
     leftTool: cleanParam(firstParam(searchParams, "ta") || firstParam(searchParams, "tool"), battle.ai_tool_a || "AI Music"),
     rightTool: cleanParam(firstParam(searchParams, "tb"), isHookCard ? "挑戰者進場後顯示" : battle.ai_tool_b || "AI Music"),
     battleType: cleanParam(firstParam(searchParams, "bt"), isHookCard ? "90s Drop Battle 戰帖" : "90s Drop Battle"),
+    matchGroupId: battle.match_group_id || null,
     queueStatus: battle.queue_status || null,
     expiresAt: battle.expires_at || null,
+    scheduledStartAt: battle.scheduled_start_at || null,
+    cancellationEvaluationAt: battle.cancellation_evaluation_at || null,
   };
 }
 
@@ -147,17 +172,48 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
     data.rightName === "等待挑戰者" ||
     data.rightSong === "你的 45s Drop" || data.rightSong === "你的 45s Hook";
   const isResultInvite = firstParam(resolvedSearchParams, "to") === "result";
-  const startTimeLabel = formatTaiwanTime(data.expiresAt);
+  const hookStartAt = resolveHookStartAt(data);
+  const startTimeLabel = formatTaiwanTime(hookStartAt);
+  const hookStatus = data.queueStatus || "";
   const isHookExpired =
     isHookCard &&
-    (data.queueStatus === "expired" ||
-      data.queueStatus === "cancelled" ||
-      Boolean(data.expiresAt && Date.parse(data.expiresAt) <= Date.now()));
-  const poolParams = new URLSearchParams({ lang, focusQueue: id });
-  const poolHref = `/battle?${poolParams.toString()}`;
+    (CLOSED_HOOK_STATUSES.has(hookStatus) ||
+      Boolean(
+        (data.queueStatus || data.cancellationEvaluationAt || data.scheduledStartAt || data.expiresAt) &&
+          !isDropChallengeAcceptable({
+            status: data.queueStatus,
+            expires_at: data.expiresAt,
+            scheduled_start_at: data.scheduledStartAt,
+            cancellation_evaluation_at: data.cancellationEvaluationAt,
+          }) &&
+          !ACCEPTED_HOOK_STATUSES.has(hookStatus) &&
+          !data.matchGroupId,
+      ));
+  const isHookAccepted = isHookCard && !isHookExpired && (Boolean(data.matchGroupId) || ACCEPTED_HOOK_STATUSES.has(hookStatus));
+  const isLegacyOpenHookCard = isHookCard && !data.queueStatus && !data.matchGroupId && !isHookExpired;
+  const canAcceptHook =
+    isHookCard &&
+    !isHookExpired &&
+    !isHookAccepted &&
+    (isLegacyOpenHookCard ||
+      isDropChallengeAcceptable({
+        status: data.queueStatus,
+        expires_at: data.expiresAt,
+        scheduled_start_at: data.scheduledStartAt,
+        cancellation_evaluation_at: data.cancellationEvaluationAt,
+      }));
+  const acceptParams = new URLSearchParams({
+    battleMode: "instant",
+    challengeEntryId: id,
+    genre: data.genre,
+    lang,
+  });
+  const acceptHref = `/battle/setup?${acceptParams.toString()}`;
+  const spectateId = data.matchGroupId || id;
+  const spectateHref = `/battle/${encodeURIComponent(spectateId)}?lang=${encodeURIComponent(lang)}`;
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#050505] px-5 text-white">
+    <main className="relative flex min-h-screen items-center justify-center overflow-x-hidden overflow-y-auto bg-[#050505] px-5 py-24 text-white sm:py-12">
       <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_20%_14%,rgba(255,106,0,0.24),transparent_34%),radial-gradient(circle_at_82%_20%,rgba(0,203,255,0.14),transparent_30%),linear-gradient(180deg,#050505,#0b0908)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.12] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:52px_52px]" />
       <section className="relative z-10 w-full max-w-2xl rounded-[2rem] border border-orange-300/35 bg-[radial-gradient(circle_at_20%_10%,rgba(255,106,0,0.24),transparent_34%),linear-gradient(180deg,#100704,#030303)] p-7 text-center shadow-[0_0_80px_rgba(255,106,0,0.18)]">
@@ -167,8 +223,9 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
         <p className="mt-3 text-xs font-black uppercase tracking-[0.22em] text-cyan-100/75">
           {data.battleType} · {data.genre}
         </p>
-        <h1 className="mt-4 text-4xl font-black leading-tight md:text-5xl">
-          {data.leftName} <span className="text-orange-300">VS</span> {data.rightName}
+        <h1 className="mt-4 text-3xl font-black leading-tight sm:text-4xl md:text-5xl">
+          <span className="whitespace-nowrap">{data.leftName}</span> <span className="text-orange-300">VS</span>{" "}
+          <span className="whitespace-nowrap">{data.rightName}</span>
         </h1>
         <p className="mt-4 text-base font-bold leading-7 text-zinc-300">
           {data.leftSong} 對上 {data.rightSong}
@@ -199,7 +256,18 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
             : isHookCard
             ? isHookExpired
               ? "這張公開最強抓波Drop Battle 戰帖已過期。可以回鬥歌場找新的戰帖。"
-              : `這是一張公開最強抓波Drop Battle 戰帖。${startTimeLabel ? `開戰時間 ${startTimeLabel}（台灣時間）。` : ""}進來聊天預測支持誰的歌最熱血最動人，或是你來挑戰？Show me what you got!!!`
+              : (
+                <>
+                  這是一張公開最強抓波Drop Battle 戰帖。
+                  {startTimeLabel ? (
+                    <>
+                      開戰時間 <span className="whitespace-nowrap">{startTimeLabel}（台灣時間）</span>。
+                    </>
+                  ) : null}
+                  進來聊天預測支持誰的歌最熱血最動人，<span className="whitespace-nowrap">或是你來挑戰？</span>{" "}
+                  <span className="whitespace-nowrap">Show me what you got!!!</span>
+                </>
+              )
             : "這場 Battle 已經成立，進場後依照音樂感動投票。"}
         </p>
         <div className="mt-7 grid gap-3 sm:grid-cols-3">
@@ -224,19 +292,23 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
                 <span className="rounded-full border border-orange-300/25 bg-orange-500/10 px-6 py-3 text-sm font-black text-orange-100">
                   戰帖已過期
                 </span>
+              ) : isHookAccepted || !canAcceptHook ? (
+                <span className="rounded-full border border-orange-300/25 bg-orange-500/10 px-6 py-3 text-sm font-black text-orange-100">
+                  已經被人挑戰了
+                </span>
               ) : (
                 <Link
-                  href={poolHref}
+                  href={acceptHref}
                   className="rounded-full bg-orange-500 px-6 py-3 text-sm font-black text-black shadow-[0_0_28px_rgba(255,106,0,0.28)] transition hover:bg-orange-300"
                 >
-                  查看戰帖
+                  我要接受挑戰
                 </Link>
               )}
               <Link
-                href={poolHref}
+                href={isHookExpired ? `/battle?lang=${lang}` : spectateHref}
                 className="rounded-full border border-cyan-200/35 bg-cyan-300/10 px-6 py-3 text-sm font-black text-cyan-50 transition hover:border-cyan-100"
               >
-                去戰鬥池
+                {isHookExpired ? "回鬥歌場" : "我要觀戰"}
               </Link>
               <Link
                 href={`/listen-bar?lang=${lang}`}
