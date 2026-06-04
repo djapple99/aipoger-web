@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { clearRememberedAuthNextPath, readRememberedAuthNextPath, safeNextPath } from "@/lib/auth-urls";
+import { clearRememberedAuthNextPath, readRememberedAuthNextCookie, readRememberedAuthNextPath, safeNextPath } from "@/lib/auth-urls";
 
 function AuthCallbackInner() {
   const router = useRouter();
@@ -21,7 +21,7 @@ function AuthCallbackInner() {
       searchParams.get("error_description") ??
       searchParams.get("error_code") ??
       "";
-    const nextPath = safeNextPath(searchParams.get("next") ?? readRememberedAuthNextPath());
+    const nextPath = safeNextPath(searchParams.get("next") ?? readRememberedAuthNextPath() ?? readRememberedAuthNextCookie());
 
     if (error) {
       console.error("[auth callback]", error, errorDescription);

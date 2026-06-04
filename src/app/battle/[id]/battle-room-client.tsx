@@ -3189,7 +3189,7 @@ function BattleArenaContent() {
                     />
                     {isQueueChallengeOpen && !isBattleFounder ? (
                       <Link
-                        href={`/battle/setup?battleMode=instant&challengeEntryId=${encodeURIComponent(battleId)}&genre=${encodeURIComponent(battle.genre)}&lang=${lang}`}
+                        href={`/battle/accept/${encodeURIComponent(battleId)}?lang=${lang}`}
                         className="rounded-full border border-orange-300/65 bg-orange-500 px-4 py-2.5 text-center text-xs font-black text-black shadow-[0_0_22px_rgba(255,106,0,0.22)] transition hover:bg-orange-300"
                       >
                         {lang === "zh" ? "我要接戰" : "Answer Battle"}

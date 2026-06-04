@@ -1,5 +1,6 @@
 export const AIPOGER_PUBLIC_ORIGIN = "https://aipoger.com";
 export const AUTH_NEXT_STORAGE_KEY = "aipoger:auth-next";
+export const AUTH_NEXT_COOKIE_KEY = "aipoger_auth_next";
 
 const AIPOGER_HOSTS = new Set(["aipoger.com", "www.aipoger.com"]);
 
@@ -82,10 +83,17 @@ export function buildAuthPageUrl(nextPath: string | null | undefined): string {
 
 export function rememberAuthNextPath(nextPath: string | null | undefined) {
   if (typeof window === "undefined") return;
+  const safeNext = safeNextPath(nextPath);
   try {
-    window.localStorage.setItem(AUTH_NEXT_STORAGE_KEY, safeNextPath(nextPath));
+    window.localStorage.setItem(AUTH_NEXT_STORAGE_KEY, safeNext);
   } catch {
     // localStorage may be unavailable in private or embedded browsers.
+  }
+  try {
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `${AUTH_NEXT_COOKIE_KEY}=${encodeURIComponent(safeNext)}; Path=/; Max-Age=1800; SameSite=Lax${secure}`;
+  } catch {
+    // Cookies may be unavailable in hardened embedded browsers.
   }
 }
 
@@ -99,11 +107,29 @@ export function readRememberedAuthNextPath(): string | null {
   }
 }
 
+export function readRememberedAuthNextCookie(): string | null {
+  if (typeof document === "undefined") return null;
+  try {
+    const item = document.cookie
+      .split("; ")
+      .find((part) => part.startsWith(`${AUTH_NEXT_COOKIE_KEY}=`));
+    if (!item) return null;
+    return safeNextPath(decodeURIComponent(item.slice(AUTH_NEXT_COOKIE_KEY.length + 1)));
+  } catch {
+    return null;
+  }
+}
+
 export function clearRememberedAuthNextPath() {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.removeItem(AUTH_NEXT_STORAGE_KEY);
   } catch {
     // Ignore storage cleanup failures.
+  }
+  try {
+    document.cookie = `${AUTH_NEXT_COOKIE_KEY}=; Path=/; Max-Age=0; SameSite=Lax`;
+  } catch {
+    // Ignore cookie cleanup failures.
   }
 }

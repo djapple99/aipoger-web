@@ -203,12 +203,9 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
         cancellation_evaluation_at: data.cancellationEvaluationAt,
       }));
   const acceptParams = new URLSearchParams({
-    battleMode: "instant",
-    challengeEntryId: id,
-    genre: data.genre,
     lang,
   });
-  const acceptHref = `/battle/setup?${acceptParams.toString()}`;
+  const acceptHref = `/battle/accept/${encodeURIComponent(id)}?${acceptParams.toString()}`;
   const spectateId = data.matchGroupId || id;
   const spectateHref = `/battle/${encodeURIComponent(spectateId)}?lang=${encodeURIComponent(lang)}`;
 

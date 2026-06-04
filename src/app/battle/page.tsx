@@ -1089,8 +1089,9 @@ function BattlePoolList() {
             const isMine = Boolean(currentUserId && entry.user_id === currentUserId);
             const isFocused = focusQueueId === entry.id;
             const arenaPath = `/battle/${entry.id}?lang=${lang}`;
+            const acceptPath = `/battle/accept/${encodeURIComponent(entry.id)}?lang=${lang}`;
             const href = isGhost
-              ? `/battle/${entry.match_group_id}`
+              ? `/battle/${entry.match_group_id}?lang=${lang}`
               : arenaPath;
             const shareUrl = isGhost
               ? `/battle/${entry.match_group_id}?lang=${lang}`
@@ -1126,8 +1127,8 @@ function BattlePoolList() {
                 : isPublicVoting
                   ? t("pool_public_vote")
                 : isZh
-                  ? "接受 90s Drop Battle 挑戰"
-                  : "Accept 90s Drop Battle";
+                  ? "開放接戰"
+                  : "Open Challenge";
             const cardClassName = `group block rounded-[1.4rem] border p-4 transition ${
               isFocused
                 ? "border-orange-200/80 bg-orange-400/[0.13] shadow-[0_0_38px_rgba(255,106,0,0.22)]"
@@ -1182,8 +1183,8 @@ function BattlePoolList() {
                         : "Your 90s Drop Battle arena is open. Re-enter anytime before start; it goes live when a rival joins."
                       : entry.status === "waiting_challenge"
                         ? isZh
-                          ? `${entry.ai_tool || "AI Tool"} · 點卡片直接進戰場`
-                          : `${entry.ai_tool || "AI Tool"} · Open arena`
+                          ? `${entry.ai_tool || "AI Tool"} · 接受挑戰先上傳 Drop；觀戰才進戰場`
+                          : `${entry.ai_tool || "AI Tool"} · Accept by uploading a Drop; watch enters the arena`
                         : `${entry.ai_tool || "AI Tool"} ${isPublicVoting && entry.public_vote_score ? `· +${entry.public_vote_score} APC` : ""}`}
                   </p>
                   {isMine ? (
@@ -1219,28 +1220,44 @@ function BattlePoolList() {
             return (
               <li key={entry.id} id={`battle-pool-${entry.id}`}>
                 <article className={cardClassName}>
-                  {isMine ? content : (
+                  {isMine || entry.status === "waiting_challenge" ? content : (
                     <Link href={href} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300">
                       {content}
                     </Link>
                   )}
-                  <div className="mt-4 flex justify-end border-t border-white/10 pt-3">
-                  <ShareButton
-                    title={isZh ? "AIPOGER 90s 最強抓波Drop Battle 戰帖" : "AIPOGER 90s Drop Battle Card"}
-                    text={
-                      isGhost || isPublicVoting
-                        ? isZh
-                          ? `《${entry.original_file_name}》正在 AIPOGER 鬥歌場，進來觀戰投票。`
-                          : `"${entry.original_file_name}" is in AIPOGER Battle. Come vote.`
-                        : isZh
-                          ? `${entry.fighter_name} 的《${entry.original_file_name}》正在等人接戰。${hookStartText}進來聊天預測支持誰的歌最熱血最動人，或是你來挑戰？Show me what you got!!!`
-                          : `${entry.fighter_name}'s "${entry.original_file_name}" is waiting for a challenger. ${hookStartText}Back the hottest, most moving Drop in chat, or step in and challenge. Show me what you got!!!`
-                    }
-                    url={shareUrl}
-                    label={shareLabel}
-                    copiedLabel={isZh ? "戰帖已複製" : "Battle card copied"}
-                    className="px-3 py-1.5 text-xs"
-                  />
+                  <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-white/10 pt-3">
+                    {!isMine && entry.status === "waiting_challenge" ? (
+                      <>
+                        <Link
+                          href={acceptPath}
+                          className="rounded-full bg-orange-500 px-4 py-2 text-xs font-black text-black shadow-[0_0_20px_rgba(255,106,0,0.2)] transition hover:bg-orange-300"
+                        >
+                          {isZh ? "我要接受挑戰" : "Accept Challenge"}
+                        </Link>
+                        <Link
+                          href={arenaPath}
+                          className="rounded-full border border-cyan-200/35 bg-cyan-300/10 px-4 py-2 text-xs font-black text-cyan-50 transition hover:border-cyan-100"
+                        >
+                          {isZh ? "我要觀戰" : "Watch"}
+                        </Link>
+                      </>
+                    ) : null}
+                    <ShareButton
+                      title={isZh ? "AIPOGER 90s 最強抓波Drop Battle 戰帖" : "AIPOGER 90s Drop Battle Card"}
+                      text={
+                        isGhost || isPublicVoting
+                          ? isZh
+                            ? `《${entry.original_file_name}》正在 AIPOGER 鬥歌場，進來觀戰投票。`
+                            : `"${entry.original_file_name}" is in AIPOGER Battle. Come vote.`
+                          : isZh
+                            ? `${entry.fighter_name} 的《${entry.original_file_name}》正在等人接戰。${hookStartText}進來聊天預測支持誰的歌最熱血最動人，或是你來挑戰？Show me what you got!!!`
+                            : `${entry.fighter_name}'s "${entry.original_file_name}" is waiting for a challenger. ${hookStartText}Back the hottest, most moving Drop in chat, or step in and challenge. Show me what you got!!!`
+                      }
+                      url={shareUrl}
+                      label={shareLabel}
+                      copiedLabel={isZh ? "戰帖已複製" : "Battle card copied"}
+                      className="px-3 py-1.5 text-xs"
+                    />
                   </div>
                 </article>
               </li>
