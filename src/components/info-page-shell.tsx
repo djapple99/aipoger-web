@@ -35,6 +35,7 @@ type InfoPageContent = {
 const mail = AIPOGER_CONTACT_EMAIL;
 const youtubeChannel = "https://www.youtube.com/@djapple2000";
 const aipogerTutorialPlaylist = "https://youtube.com/playlist?list=PLm4XZTsplHgQLZG-4sm-y3LZTrbnxSPHs&si=7W976U7M4lK0E7z3";
+const promptDropPptUrl = "https://drive.google.com/file/d/1w_2CEPfAxiOJ1-LTHRhghxf9oFf7EOCo/view?usp=drive_link";
 
 const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }> = {
   about: {
@@ -315,7 +316,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
       cards: [
         { label: "Start", value: "愛波哥cheers", detail: "ai 工具tool 學習心得分享播放列表", href: aipogerTutorialPlaylist },
         { label: "Core", value: "Suno / Udio", detail: "先練兩大主流文字生歌工具" },
-        { label: "Skill", value: "Prompt + Drop", detail: "把曲風、情緒、段落、聲音設計講清楚" },
+        { label: "Skill", value: "Prompt + Drop", detail: "把曲風、情緒、段落、聲音設計講清楚", href: promptDropPptUrl },
       ],
       sections: [
         {
@@ -447,7 +448,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
       cards: [
         { label: "Start", value: "愛波哥cheers", detail: "AI tools and music learning playlist", href: aipogerTutorialPlaylist },
         { label: "Core", value: "Suno / Udio", detail: "Practice the two major text-to-song workflows" },
-        { label: "Skill", value: "Prompt + Drop", detail: "Define style, emotion, sections, and sound design clearly" },
+        { label: "Skill", value: "Prompt + Drop", detail: "Define style, emotion, sections, and sound design clearly", href: promptDropPptUrl },
       ],
       sections: [
         {
