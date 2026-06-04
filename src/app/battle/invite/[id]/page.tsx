@@ -103,7 +103,10 @@ export async function generateMetadata({ params, searchParams }: BattleInvitePag
   const canonical = `${origin}/battle/invite/${encodeURIComponent(id)}`;
   const image = `${canonical}/opengraph-image?${query.toString()}`;
   const title = `AIPOGER 90S 最強抓波Drop Battle 戰帖｜${data.leftName} VS ${data.rightName}`;
-  const description = `${data.battleType}｜${data.leftName}《${data.leftSong}》(${data.leftTool}) VS ${data.rightName}《${data.rightSong}》(${data.rightTool})｜進戰場聽 5 秒預播、聊天預測。`;
+  const isHookCard = firstParam(resolvedSearchParams, "type") === "hook-card" || data.rightName === "等待挑戰者";
+  const description = isHookCard
+    ? `${data.battleType}｜${data.leftName}《${data.leftSong}》正在等人接戰。進來聊天預測支持誰的歌最熱血最動人，或是你來挑戰？Show me what you got!!!`
+    : `${data.battleType}｜${data.leftName}《${data.leftSong}》(${data.leftTool}) VS ${data.rightName}《${data.rightSong}》(${data.rightTool})｜進場聊天預測支持誰的歌最熱血最動人。`;
 
   return {
     title,
@@ -150,14 +153,8 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
     (data.queueStatus === "expired" ||
       data.queueStatus === "cancelled" ||
       Boolean(data.expiresAt && Date.parse(data.expiresAt) <= Date.now()));
-  const challengeParams = new URLSearchParams({
-    battleMode: "instant",
-    challengeEntryId: id,
-    genre: data.genre,
-    lang,
-  });
-  const watchParams = new URLSearchParams({ lang });
-  const watchHref = `/battle/${encodeURIComponent(id)}?${watchParams.toString()}`;
+  const poolParams = new URLSearchParams({ lang, focusQueue: id });
+  const poolHref = `/battle?${poolParams.toString()}`;
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#050505] px-5 text-white">
@@ -202,7 +199,7 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
             : isHookCard
             ? isHookExpired
               ? "這張公開最強抓波Drop Battle 戰帖已過期。可以回鬥歌場找新的戰帖。"
-              : `這是一張公開最強抓波Drop Battle 戰帖。${startTimeLabel ? `開戰時間 ${startTimeLabel}（台灣時間）。` : ""}進戰場可以聽 5 秒預播、聊天預測；想上場就直接接戰。`
+              : `這是一張公開最強抓波Drop Battle 戰帖。${startTimeLabel ? `開戰時間 ${startTimeLabel}（台灣時間）。` : ""}進來聊天預測支持誰的歌最熱血最動人，或是你來挑戰？Show me what you got!!!`
             : "這場 Battle 已經成立，進場後依照音樂感動投票。"}
         </p>
         <div className="mt-7 grid gap-3 sm:grid-cols-3">
@@ -229,17 +226,17 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
                 </span>
               ) : (
                 <Link
-                  href={`/battle/setup?${challengeParams.toString()}`}
+                  href={poolHref}
                   className="rounded-full bg-orange-500 px-6 py-3 text-sm font-black text-black shadow-[0_0_28px_rgba(255,106,0,0.28)] transition hover:bg-orange-300"
                 >
-                  我要挑戰
+                  查看戰帖
                 </Link>
               )}
               <Link
-                href={watchHref}
+                href={poolHref}
                 className="rounded-full border border-cyan-200/35 bg-cyan-300/10 px-6 py-3 text-sm font-black text-cyan-50 transition hover:border-cyan-100"
               >
-                進入戰場
+                去戰鬥池
               </Link>
               <Link
                 href={`/listen-bar?lang=${lang}`}

@@ -56,17 +56,13 @@ const ACTIVE_NOTICE_QUEUE_STATUSES = [
   "waiting",
   "waiting_challenge",
   "confirming",
-  "active",
   "ghost_battle",
   "public_voting",
 ];
 const ACTIVE_NOTICE_BATTLE_STATUSES = [
   "waiting",
   "confirming",
-  "matched",
   "countdown",
-  "live",
-  "active",
   "ghost_battle",
   "public_voting",
   "settling",
@@ -94,20 +90,9 @@ function SwordIcon() {
   );
 }
 
-function toBattleCall(row: BattleNotificationRow, fallbackOpponent: string): BattleCall | null {
+function toBattleCall(row: BattleNotificationRow): BattleCall | null {
   if (row.type !== "battle_matched" || !row.battle_id) return null;
-
-  return {
-    id: row.id,
-    battleId: row.battle_id,
-    queueId: row.queue_id,
-    opponentName: row.metadata?.opponentName || fallbackOpponent,
-    title: row.title || "找到對手了",
-    body: row.body || "請在期限內回來確認參戰。",
-    stakeApc: row.metadata?.stakeApc ?? null,
-    potApc: row.metadata?.potApc ?? null,
-    createdAt: row.created_at || new Date().toISOString(),
-  };
+  return null;
 }
 
 export default function GlobalBattleCallOverlay() {
@@ -216,7 +201,7 @@ export default function GlobalBattleCallOverlay() {
     window.addEventListener(DEMO_CALL_EVENT, triggerDemo);
     if (window.location.search.includes("battleCallDemo=1")) triggerDemo();
     return () => window.removeEventListener(DEMO_CALL_EVENT, triggerDemo);
-  }, [isZh, ready, showCall]);
+  }, [isZh, markRead, ready, showCall]);
 
   useEffect(() => {
     if (!ready || isAuthBypassEnabled) return undefined;
@@ -290,8 +275,9 @@ export default function GlobalBattleCallOverlay() {
         .limit(1)
         .maybeSingle<BattleNotificationRow>();
 
-      const latestCall = latest ? toBattleCall(latest, isZh ? "對手" : "Opponent") : null;
+      const latestCall = latest ? toBattleCall(latest) : null;
       if (mounted && latestCall) showCall(latestCall);
+      if (mounted && latest?.type === "battle_matched") void markRead(latest.id);
       if (mounted && (latest?.type === "battle_queue_expired" || latest?.type === "daily_battle_expired" || latest?.type === "daily_battle_finished")) {
         setCall(null);
         setActiveNotice(null);
@@ -306,8 +292,9 @@ export default function GlobalBattleCallOverlay() {
           { event: "INSERT", schema: "public", table: "battle_notifications", filter: `user_id=eq.${uid}` },
           (payload) => {
             const row = payload.new as BattleNotificationRow;
-            const next = toBattleCall(row, isZh ? "對手" : "Opponent");
+            const next = toBattleCall(row);
             if (next) showCall(next);
+            if (row.type === "battle_matched") void markRead(row.id);
             if (row.type === "battle_queue_expired" || row.type === "daily_battle_expired" || row.type === "daily_battle_finished") {
               setCall(null);
               setActiveNotice(null);
@@ -323,7 +310,7 @@ export default function GlobalBattleCallOverlay() {
       mounted = false;
       if (channel) void supabase.removeChannel(channel);
     };
-  }, [isZh, ready, showCall]);
+  }, [isZh, markRead, ready, showCall]);
 
   useEffect(() => {
     if (!call || accepted || collapsed) return undefined;

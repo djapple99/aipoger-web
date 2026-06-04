@@ -111,6 +111,7 @@ const PRE_BATTLE_TEASER_SECONDS = 5;
 const FINAL_PRESTART_HYPE_SECONDS = 5;
 const FINAL_PRESTART_HYPE_TEXT = "Ladies and gentlemen, fighters!";
 const FINAL_PRESTART_HYPE_SFX_SRC = "/sfx/drop-battle-announcer.wav";
+const PRE_BATTLE_AD_VIDEO_SRC = "/music/AIPOGER%20AD1.mp4";
 const MAX_PAUSE_MS = 1000;
 const SCRATCH_TRANSITION_SECONDS = 2;
 const SCRATCH_TRANSITION_MS = SCRATCH_TRANSITION_SECONDS * 1000;
@@ -809,6 +810,7 @@ function BattleArenaContent() {
   const [preStartSecondsLeft, setPreStartSecondsLeft] = useState<number | null>(null);
   const [teaserDeck, setTeaserDeck] = useState<DeckKey | null>(null);
   const [teaserSecondsLeft, setTeaserSecondsLeft] = useState(PRE_BATTLE_TEASER_SECONDS);
+  const [adVideoMuted, setAdVideoMuted] = useState(false);
   const [transitionDeck, setTransitionDeck] = useState<DeckKey | null>(null);
   const [transitionSecondsLeft, setTransitionSecondsLeft] = useState(SCRATCH_TRANSITION_SECONDS);
   const [transitionEndsAtMs, setTransitionEndsAtMs] = useState<number | null>(null);
@@ -844,6 +846,7 @@ function BattleArenaContent() {
   const teaserTickTimerRef = useRef<number | null>(null);
   const scratchAudioRef = useRef<HTMLAudioElement | null>(null);
   const winnerRevealAudioRef = useRef<HTMLAudioElement | null>(null);
+  const adVideoRef = useRef<HTMLVideoElement | null>(null);
   const scratchTransitionTimerRef = useRef<number | null>(null);
   const scratchTransitionTickTimerRef = useRef<number | null>(null);
   const preBattleStartedRef = useRef<string | null>(null);
@@ -856,6 +859,8 @@ function BattleArenaContent() {
   const resultRedirectTimerRef = useRef<number | null>(null);
   const battleResultHrefRef = useRef<string | null>(null);
   const mockSyncChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const shownDanmakuMessageIdsRef = useRef<Set<string>>(new Set());
+  const shownDanmakuFingerprintsRef = useRef<Map<string, number>>(new Map());
 
   const isPreBattle = (preStartSecondsLeft ?? 0) > 0;
   const isQueueArena = battle?.arena_kind === "queue";
@@ -869,6 +874,7 @@ function BattleArenaContent() {
     !isQueueArena &&
     (preStartSecondsLeft ?? 0) > 0 &&
     (preStartSecondsLeft ?? 0) <= FINAL_PRESTART_HYPE_SECONDS;
+  const showPreBattleAd = isArenaWarmup && (isQueueArena || (preStartSecondsLeft ?? 0) > 1);
 
   const stopTeaser = useCallback(() => {
     teaserAudioRef.current?.pause();
@@ -908,6 +914,29 @@ function BattleArenaContent() {
     },
     [audioUrls, isArenaWarmup, stopTeaser],
   );
+
+  useEffect(() => {
+    const video = adVideoRef.current;
+    if (!video) return;
+    if (!showPreBattleAd) {
+      video.pause();
+      return;
+    }
+
+    video.loop = true;
+    video.volume = 0.78;
+    video.muted = adVideoMuted;
+    const startPlayback = async () => {
+      try {
+        await video.play();
+      } catch {
+        video.muted = true;
+        setAdVideoMuted(true);
+        await video.play().catch(() => undefined);
+      }
+    };
+    void startPlayback();
+  }, [adVideoMuted, showPreBattleAd]);
 
   const clearScratchTransitionMedia = useCallback(() => {
     scratchAudioRef.current?.pause();
@@ -1116,7 +1145,18 @@ function BattleArenaContent() {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) {
-        const nextPath = currentReturnPath();
+        let nextPath = currentReturnPath();
+        if (isUuid(battleId)) {
+          const { data: queueRow } = await supabase
+            .from("battle_queue")
+            .select("id")
+            .eq("id", battleId)
+            .maybeSingle<{ id: string }>();
+          if (queueRow?.id) {
+            const nextParams = new URLSearchParams({ lang, focusQueue: battleId });
+            nextPath = `/battle?${nextParams.toString()}`;
+          }
+        }
         rememberAuthNextPath(nextPath);
         router.replace(`/auth?next=${encodeURIComponent(nextPath)}`);
         return;
@@ -1136,7 +1176,7 @@ function BattleArenaContent() {
       );
     };
     void getUser();
-  }, [battleId, router, searchParams]);
+  }, [battleId, lang, router, searchParams]);
 
   // ── 載入 Battle 資料（查詢前先 await getSession，避免 JWT 未就緒被 RLS 擋）────
   useEffect(() => {
@@ -1157,6 +1197,7 @@ function BattleArenaContent() {
         const qGenre = searchParams.get("genre")?.trim() ?? "";
         const qLyrics = searchParams.get("lyrics")?.trim() ?? "";
         const qBattleStartedAt = searchParams.get("battleStartedAtMs")?.trim() || searchParams.get("battleStartedAt")?.trim() || "";
+        const qScheduledStartAt = searchParams.get("scheduledStartAtMs")?.trim() || searchParams.get("scheduledStartAt")?.trim() || "";
         const testFlag = searchParams.get("test") === "1";
 
         let profileAvatar: string | null = null;
@@ -1215,7 +1256,7 @@ function BattleArenaContent() {
           lyrics_a: qLyrics || null,
           lyrics_b: null,
           genre: qGenre || "AI Music",
-          scheduled_start_at: null,
+          scheduled_start_at: qScheduledStartAt ? new Date(timestampParamMs(qScheduledStartAt) ?? Date.now()).toISOString() : null,
           battle_started_at: qBattleStartedAt ? new Date(timestampParamMs(qBattleStartedAt) ?? Date.now()).toISOString() : null,
           started_at: null,
           status: "live",
@@ -1540,6 +1581,24 @@ function BattleArenaContent() {
   }, [battleId, loading, myUserId]);
 
   const fireDanmaku = useCallback((message: ChatMessage | string) => {
+    if (typeof message !== "string") {
+      const stableMessageId = message.id?.trim();
+      if (stableMessageId) {
+        if (shownDanmakuMessageIdsRef.current.has(stableMessageId)) return;
+        shownDanmakuMessageIdsRef.current.add(stableMessageId);
+        if (shownDanmakuMessageIdsRef.current.size > 120) {
+          shownDanmakuMessageIdsRef.current = new Set(Array.from(shownDanmakuMessageIdsRef.current).slice(-80));
+        }
+      }
+      const fingerprint = `${message.user_id || ""}:${message.sender_type}:${message.content.trim()}`;
+      const now = Date.now();
+      const lastShownAt = shownDanmakuFingerprintsRef.current.get(fingerprint) ?? 0;
+      if (now - lastShownAt < 3500) return;
+      shownDanmakuFingerprintsRef.current.set(fingerprint, now);
+      if (shownDanmakuFingerprintsRef.current.size > 120) {
+        shownDanmakuFingerprintsRef.current = new Map(Array.from(shownDanmakuFingerprintsRef.current.entries()).slice(-80));
+      }
+    }
     const fallbackSender =
       typeof message === "string"
         ? ""
@@ -1676,6 +1735,8 @@ function BattleArenaContent() {
     finalCountdownActiveRef.current = false;
     resultRedirectArmedRef.current = false;
     battleResultHrefRef.current = null;
+    shownDanmakuMessageIdsRef.current.clear();
+    shownDanmakuFingerprintsRef.current.clear();
     if (resultRedirectTimerRef.current != null) {
       window.clearTimeout(resultRedirectTimerRef.current);
       resultRedirectTimerRef.current = null;
@@ -2666,7 +2727,12 @@ function BattleArenaContent() {
   const battleShareUrl = (() => {
     const params = new URLSearchParams({ lang });
     if (isQueueArena) {
-      return `/battle/${encodeURIComponent(battleId)}?${params.toString()}`;
+      params.set("type", "hook-card");
+      params.set("g", battle.genre);
+      params.set("l", battle.fighter_a_name);
+      params.set("ls", battle.song_a_name);
+      if (battle.ai_tool_a) params.set("tool", battle.ai_tool_a);
+      return `/battle/invite/${encodeURIComponent(battleId)}?${params.toString()}`;
     }
     if (!isMockBattle && !isAuthBypassEnabled) {
       return `/battle/${encodeURIComponent(battleId)}?${params.toString()}`;
@@ -2692,12 +2758,12 @@ function BattleArenaContent() {
   const battleShareText =
     lang === "zh"
       ? isQueueArena
-        ? `${battle.fighter_a_name} 的 AIPOGER Drop Battle 戰場已開。進來聽 5 秒預播、聊天預測，也可以直接接戰！`
+        ? `${battle.fighter_a_name} 的 AIPOGER Drop Battle 戰帖已開。進來聊天預測支持誰的歌最熱血最動人，或是你來挑戰？Show me what you got!!!`
         : isPreBattle
         ? `${battle.fighter_a_name} 對上 ${battle.fighter_b_name}，已進 AIPOGER 鬥歌場倒數。進來先聽 5 秒預播，時間到開打！`
         : `${battle.fighter_a_name} 對上 ${battle.fighter_b_name}，正在 AIPOGER 鬥歌場開打。進來聽 Drop、投票、丟彈幕！`
       : isQueueArena
-        ? `${battle.fighter_a_name}'s AIPOGER Drop Battle arena is open. Hear the 5s preview, chat, predict, or answer the challenge.`
+        ? `${battle.fighter_a_name}'s AIPOGER Drop Battle card is open. Back the hottest, most moving Drop in chat, or step in and challenge. Show me what you got!!!`
         : isPreBattle
         ? `${battle.fighter_a_name} vs ${battle.fighter_b_name} is counting down on AIPOGER. Hear the 5s previews before it starts.`
         : `${battle.fighter_a_name} vs ${battle.fighter_b_name} is live on AIPOGER. Listen, vote, and make some noise.`;
@@ -2953,6 +3019,30 @@ function BattleArenaContent() {
                   <p className="mt-2 bg-gradient-to-b from-white via-orange-200 to-orange-500 bg-clip-text text-[clamp(3.2rem,9vw,5.4rem)] font-black leading-none text-transparent drop-shadow-[0_0_34px_rgba(255,106,0,0.55)]">
                     {preStartClock}
                   </p>
+                  <div
+                    className={`relative mx-auto mt-3 aspect-video w-full max-w-[16.5rem] overflow-hidden rounded-[1.2rem] border border-white/12 bg-black/36 shadow-[0_18px_54px_rgba(0,0,0,0.42),0_0_34px_rgba(255,106,0,0.16)] transition-all duration-700 ${
+                      showPreBattleAd ? "translate-y-0 opacity-75" : "translate-y-2 opacity-0"
+                    }`}
+                    aria-hidden={!showPreBattleAd}
+                  >
+                    <video
+                      ref={adVideoRef}
+                      src={PRE_BATTLE_AD_VIDEO_SRC}
+                      playsInline
+                      loop
+                      preload="auto"
+                      muted={adVideoMuted}
+                      className="h-full w-full object-cover opacity-80 mix-blend-screen"
+                    />
+                    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,transparent,rgba(0,0,0,0.46)_70%)]" />
+                    <button
+                      type="button"
+                      onClick={() => setAdVideoMuted((value) => !value)}
+                      className="absolute bottom-2 right-2 rounded-full border border-white/16 bg-black/62 px-3 py-1 text-[10px] font-black text-white/86 backdrop-blur transition hover:border-orange-100 hover:text-white"
+                    >
+                      {adVideoMuted ? (lang === "zh" ? "開聲" : "Sound") : (lang === "zh" ? "靜音" : "Mute")}
+                    </button>
+                  </div>
                   {isFinalPreStartCountdown ? (
                     <div className="mx-auto mt-3 max-w-[17rem] rounded-2xl border border-red-100/70 bg-red-600 px-3 py-2 text-white shadow-[0_0_28px_rgba(220,38,38,0.34)]">
                       <p className="text-[11px] font-black uppercase tracking-[0.18em] text-white/80">

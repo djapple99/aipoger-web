@@ -155,6 +155,14 @@ type PoolEntryRow = {
   created_at: string;
 };
 
+type FocusedPoolCardState = {
+  id: string;
+  status: string | null;
+  fighterName: string;
+  songName: string;
+  battleId: string | null;
+};
+
 type DailyBattleListRow = {
   id: string;
   status: string | null;
@@ -378,6 +386,10 @@ function isExpiredDailyQueueEntry(row: Pick<DailyEntryQueueRow, "created_at" | "
 
 function isExpiredOpenPoolEntry(row: Pick<PoolEntryRow, "status" | "expires_at" | "scheduled_start_at" | "cancellation_evaluation_at">) {
   return shouldExpireOpenDropQueue(row);
+}
+
+function isClosedBattleStatus(status: string | null | undefined) {
+  return ["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"].includes(status ?? "");
 }
 
 function DailyBattleList() {
@@ -791,6 +803,7 @@ function BattlePoolList() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [cancelQueueId, setCancelQueueId] = useState<string | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [focusedClosedCard, setFocusedClosedCard] = useState<FocusedPoolCardState | null>(null);
 
   useEffect(() => {
     if (isAuthBypassEnabled) return;
@@ -845,6 +858,38 @@ function BattlePoolList() {
             .forEach((row) => closedBattleIds.add(row.id as string));
         }
         const visibleRows = baseRows.filter((row) => !isExpiredOpenPoolEntry(row) && (!row.match_group_id || !closedBattleIds.has(row.match_group_id)));
+        if (focusQueueId && !visibleRows.some((row) => row.id === focusQueueId)) {
+          const { data: focusedRow } = await supabase
+            .from("battle_queue")
+            .select("id, fighter_name, original_file_name, status, match_group_id")
+            .eq("id", focusQueueId)
+            .maybeSingle<{
+              id: string;
+              fighter_name?: string | null;
+              original_file_name?: string | null;
+              status?: string | null;
+              match_group_id?: string | null;
+            }>();
+          if (focusedRow?.id) {
+            setFocusedClosedCard({
+              id: focusedRow.id,
+              status: focusedRow.status ?? null,
+              fighterName: focusedRow.fighter_name || (isZh ? "創作者" : "Creator"),
+              songName: focusedRow.original_file_name || (isZh ? "這首 Drop" : "This Drop"),
+              battleId: focusedRow.match_group_id ?? null,
+            });
+          } else {
+            setFocusedClosedCard({
+              id: focusQueueId,
+              status: "finished",
+              fighterName: isZh ? "這張戰帖" : "This card",
+              songName: isZh ? "此戰鬥" : "This battle",
+              battleId: null,
+            });
+          }
+        } else {
+          setFocusedClosedCard(null);
+        }
         setHookSongStats(await fetchHookSongBattleStats(visibleRows.map((row) => row.original_file_name)));
         const userIds = Array.from(new Set(visibleRows.map((row) => row.user_id).filter(Boolean)));
         const { data: profiles } =
@@ -876,7 +921,7 @@ function BattlePoolList() {
       mounted = false;
       if (channel) void supabase.removeChannel(channel);
     };
-  }, []);
+  }, [focusQueueId, isZh]);
 
   useEffect(() => {
     if (!focusQueueId || loading || rows.length === 0) return;
@@ -936,6 +981,36 @@ function BattlePoolList() {
         </div>
       ) : null}
 
+      {focusedClosedCard ? (
+        <article id={`battle-pool-${focusedClosedCard.id}`} className="mb-4 rounded-[1.4rem] border border-yellow-200/30 bg-yellow-300/[0.08] p-5 shadow-[0_0_34px_rgba(250,204,21,0.12)]">
+          <p className="text-xs font-black uppercase tracking-[0.26em] text-yellow-100/75">
+            {isZh ? "戰帖狀態" : "Card Status"}
+          </p>
+          <h3 className="mt-2 text-2xl font-black text-white">
+            {isClosedBattleStatus(focusedClosedCard.status) ? (isZh ? "此戰鬥已經結束" : "This battle has ended") : (isZh ? "此戰帖已有人接戰" : "This card has been accepted")}
+          </h3>
+          <p className="mt-2 text-sm font-bold leading-6 text-zinc-300">
+            {focusedClosedCard.fighterName} · {focusedClosedCard.songName}
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {focusedClosedCard.battleId ? (
+              <Link
+                href={`/battle/result?battleId=${encodeURIComponent(focusedClosedCard.battleId)}&lang=${lang}`}
+                className="rounded-full bg-yellow-300 px-5 py-2.5 text-sm font-black text-black transition hover:bg-yellow-100"
+              >
+                {isZh ? "查看戰果" : "View Result"}
+              </Link>
+            ) : null}
+            <Link
+              href={`/battle?lang=${lang}`}
+              className="rounded-full border border-white/15 bg-white/[0.05] px-5 py-2.5 text-sm font-black text-zinc-200 transition hover:border-orange-200/60 hover:text-white"
+            >
+              {isZh ? "回戰鬥池" : "Back to Pool"}
+            </Link>
+          </div>
+        </article>
+      ) : null}
+
       {rows.length === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-6 text-center">
           <p className="text-sm font-bold text-zinc-300">{t("pool_empty_title")}</p>
@@ -956,7 +1031,17 @@ function BattlePoolList() {
               : arenaPath;
             const shareUrl = isGhost
               ? `/battle/${entry.match_group_id}?lang=${lang}`
-              : arenaPath;
+              : (() => {
+                  const params = new URLSearchParams({
+                    type: "hook-card",
+                    lang,
+                    g: entry.genre,
+                    l: entry.fighter_name,
+                    ls: entry.original_file_name,
+                    tool: entry.ai_tool || "AI Music",
+                  });
+                  return `/battle/invite/${encodeURIComponent(entry.id)}?${params.toString()}`;
+                })();
             const shareLabel = isGhost || isPublicVoting
               ? isZh
                 ? "邀請觀戰投票"
@@ -1086,8 +1171,8 @@ function BattlePoolList() {
                           ? `《${entry.original_file_name}》正在 AIPOGER 鬥歌場，進來觀戰投票。`
                           : `"${entry.original_file_name}" is in AIPOGER Battle. Come vote.`
                         : isZh
-                          ? `${entry.fighter_name} 的《${entry.original_file_name}》正在等人接戰。${hookStartText}進來約戰，或先聽 5 秒預播。`
-                          : `${entry.fighter_name}'s "${entry.original_file_name}" is waiting for a challenger. ${hookStartText}Challenge it, or hear the 5s preview first.`
+                          ? `${entry.fighter_name} 的《${entry.original_file_name}》正在等人接戰。${hookStartText}進來聊天預測支持誰的歌最熱血最動人，或是你來挑戰？Show me what you got!!!`
+                          : `${entry.fighter_name}'s "${entry.original_file_name}" is waiting for a challenger. ${hookStartText}Back the hottest, most moving Drop in chat, or step in and challenge. Show me what you got!!!`
                     }
                     url={shareUrl}
                     label={shareLabel}
@@ -1252,13 +1337,15 @@ function LiveBattleList() {
             {rows.map((b) => {
               const scheduledAt = b.scheduled_start_at || b.started_at || b.created_at;
               const scheduledMs = new Date(scheduledAt).getTime();
+              const isBattleEnded = Boolean(b.battle_ended_at) || isClosedBattleStatus(b.status);
               const isFutureBattle = b.status === "active" || (Number.isFinite(scheduledMs) && scheduledMs > Date.now() && !b.battle_started_at);
+              const primaryHref = isBattleEnded ? `/battle/result?battleId=${encodeURIComponent(b.id)}&lang=${lang}` : `/battle/${b.id}?lang=${lang}`;
               return (
               <li key={b.id}>
                 <article className="group relative overflow-hidden rounded-[1.6rem] border border-white/10 bg-white/[0.045] px-5 py-5 transition hover:border-orange-400/50 hover:bg-white/[0.07] hover:shadow-[0_0_34px_rgba(255,106,0,0.16)]">
                   <div className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-orange-400 via-orange-600 to-cyan-400" />
                   <Link
-                    href={`/battle/${b.id}?lang=${lang}`}
+                    href={primaryHref}
                     className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff7a28]"
                   >
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1281,12 +1368,16 @@ function LiveBattleList() {
                           <SongBattleStatsPill stats={liveSongStats[normalizeSongStatsKey(b.song_b_name)]} isZh={lang === "zh"} tone="cyan" />
                         </div>
                         <p className="mt-2 text-xs font-bold text-orange-100/75">
-                          {isFutureBattle ? (lang === "zh" ? "已進場，等待開打" : "In arena, waiting to start") : (lang === "zh" ? "開戰" : "Started")}{" "}
+                          {isBattleEnded
+                            ? (lang === "zh" ? "此戰鬥已經結束" : "This battle has ended")
+                            : isFutureBattle
+                              ? (lang === "zh" ? "已進場，等待開打" : "In arena, waiting to start")
+                              : (lang === "zh" ? "開戰" : "Started")}{" "}
                           {formatBattleCardTime(scheduledAt, lang === "zh")}
                         </p>
                       </div>
                       <span className="mt-2 shrink-0 rounded-full border border-orange-400/35 px-4 py-2 text-sm font-bold text-[#ffbf99] transition group-hover:bg-orange-500 group-hover:text-black sm:mt-0">
-                        {t("watch_enter")} →
+                        {isBattleEnded ? (lang === "zh" ? "查看戰果" : "View Result") : `${t("watch_enter")} →`}
                       </span>
                     </div>
                   </Link>
@@ -1294,7 +1385,11 @@ function LiveBattleList() {
                     <ShareButton
                       title={lang === "zh" ? "AIPOGER 90s Drop Battle 觀戰邀請" : "AIPOGER 90s Drop Battle"}
                       text={
-                        isFutureBattle
+                        isBattleEnded
+                          ? lang === "zh"
+                            ? `《${b.song_a_name}》vs《${b.song_b_name}》此戰鬥已經結束，進來查看戰果。`
+                            : `"${b.song_a_name}" vs "${b.song_b_name}" has ended. View the result.`
+                          : isFutureBattle
                           ? lang === "zh"
                             ? `《${b.song_a_name}》vs《${b.song_b_name}》已進場等待開打，先進來聽 5 秒預播。`
                             : `"${b.song_a_name}" vs "${b.song_b_name}" is waiting to start. Hear the 5s previews.`
@@ -1302,8 +1397,8 @@ function LiveBattleList() {
                             ? `《${b.song_a_name}》vs《${b.song_b_name}》正在開打，進來觀戰投票。`
                             : `"${b.song_a_name}" vs "${b.song_b_name}" is live. Come vote.`
                       }
-                      url={`/battle/${b.id}?lang=${lang}`}
-                      label={isFutureBattle ? (lang === "zh" ? "分享約人進場" : "Share Arena") : (lang === "zh" ? "邀請觀戰投票" : "Invite voters")}
+                      url={primaryHref}
+                      label={isBattleEnded ? (lang === "zh" ? "分享戰果" : "Share Result") : isFutureBattle ? (lang === "zh" ? "分享約人進場" : "Share Arena") : (lang === "zh" ? "邀請觀戰投票" : "Invite voters")}
                       copiedLabel={lang === "zh" ? "觀戰連結已複製" : "Invite copied"}
                       className="px-3 py-1.5 text-xs"
                     />
