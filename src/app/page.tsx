@@ -338,6 +338,13 @@ export default function HomePage() {
   const [phase, setPhase] = useState<SplashPhase>("fadeIn");
 
   useEffect(() => {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("code")) return;
+    url.pathname = "/auth/callback";
+    window.location.replace(url.toString());
+  }, []);
+
+  useEffect(() => {
     const fadeInTimer = window.setTimeout(() => setPhase("hold"), SPLASH_STEPS.fadeIn);
     const holdTimer = window.setTimeout(
       () => setPhase("fadeOut"),
