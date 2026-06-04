@@ -28,6 +28,7 @@ const ACTIVE_QUEUE_STATUSES = [
 ];
 const ACTIVE_BATTLE_STATUSES = [
   "pending",
+  "active",
   "live",
 ];
 
@@ -58,7 +59,8 @@ function battleStartFromRows(meRow: QueueRow, opponentRow: QueueRow, targetQueue
   const startMs = Number.isFinite(scheduledMs) && scheduledMs > Date.now() ? scheduledMs : Date.now();
   const startedAt = new Date(startMs).toISOString();
   const waitingRoomStartedAt = new Date(Date.now()).toISOString();
-  return { startedAt, waitingRoomStartedAt };
+  const status = startMs > Date.now() ? "active" : "live";
+  return { startedAt, waitingRoomStartedAt, status };
 }
 
 export async function POST(request: NextRequest) {
@@ -167,6 +169,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ row: meRow });
   }
 
+  const battleTiming = battleStartFromRows(meRow, opponentRow, targetQueueId);
   const battleInsertBase = {
     queue_a_id: meRow.id,
     queue_b_id: opponentRow.id,
@@ -179,9 +182,8 @@ export async function POST(request: NextRequest) {
     audio_a_path: meRow.audio_path,
     audio_b_path: opponentRow.audio_path,
     genre: meRow.genre,
-    status: "live",
+    status: battleTiming.status,
   };
-  const battleTiming = battleStartFromRows(meRow, opponentRow, targetQueueId);
   const [{ data: fighterA }, { data: fighterB }, { data: userA }, { data: userB }] = await Promise.all([
     admin.from("fighter_profiles").select("avatar_url, song_cover_url").eq("id", meRow.user_id).maybeSingle(),
     admin.from("fighter_profiles").select("avatar_url, song_cover_url").eq("id", opponentRow.user_id).maybeSingle(),

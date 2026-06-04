@@ -74,6 +74,7 @@ const ACTIVE_NOTICE_BATTLE_STATUSES = [
 
 const FIXED_BATTLE_ROUTES = new Set(["setup", "hook-cut", "matchmaking", "result"]);
 const DEMO_CALL_EVENT = "aipoger:battle-call-demo";
+const ACCOUNT_NOTICE_COLLAPSED_KEY = "aipoger:account-notice-collapsed";
 
 function BellIcon() {
   return (
@@ -122,10 +123,12 @@ export default function GlobalBattleCallOverlay() {
   const [accessToken, setAccessToken] = useState("");
   const [activeNotice, setActiveNotice] = useState<ActiveBattleNotice | null>(null);
   const [activeNoticeOpen, setActiveNoticeOpen] = useState(false);
+  const [activeNoticeCollapsed, setActiveNoticeCollapsed] = useState(false);
   const [activeNoticeBusy, setActiveNoticeBusy] = useState(false);
   const [activeNoticeError, setActiveNoticeError] = useState("");
   const [expiredNotice, setExpiredNotice] = useState<BattleNotificationRow | null>(null);
   const [expiredNoticeOpen, setExpiredNoticeOpen] = useState(true);
+  const [expiredNoticeCollapsed, setExpiredNoticeCollapsed] = useState(false);
 
   const routeTone = useMemo(() => {
     const seg = pathname?.match(/^\/battle\/([^/]+)$/)?.[1];
@@ -168,6 +171,31 @@ export default function GlobalBattleCallOverlay() {
     setReady(true);
   }, []);
 
+  const setAccountNoticeCollapsed = useCallback((next: boolean) => {
+    setActiveNoticeCollapsed(next);
+    setExpiredNoticeCollapsed(next);
+    try {
+      window.localStorage.setItem(ACCOUNT_NOTICE_COLLAPSED_KEY, next ? "1" : "0");
+    } catch {
+      // localStorage can be unavailable in private browsing.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    try {
+      const saved = window.localStorage.getItem(ACCOUNT_NOTICE_COLLAPSED_KEY);
+      if (saved === "1") setAccountNoticeCollapsed(true);
+    } catch {
+      // Ignore storage read errors.
+    }
+  }, [ready, setAccountNoticeCollapsed]);
+
+  useEffect(() => {
+    if (routeTone !== "watching") return;
+    setAccountNoticeCollapsed(true);
+  }, [routeTone, setAccountNoticeCollapsed]);
+
   useEffect(() => {
     if (!ready) return undefined;
 
@@ -205,7 +233,7 @@ export default function GlobalBattleCallOverlay() {
 
       const { data: activeQueueRows } = await supabase
         .from("battle_queue")
-        .select("id, status, match_group_id, expires_at, created_at")
+        .select("id, status, match_group_id, expires_at, scheduled_start_at, cancellation_evaluation_at, created_at")
         .eq("user_id", uid)
         .in("status", ACTIVE_NOTICE_QUEUE_STATUSES)
         .order("created_at", { ascending: false })
@@ -395,27 +423,49 @@ export default function GlobalBattleCallOverlay() {
           : isZh
             ? "重新開 Drop"
             : "Open New Drop";
+    if (expiredNoticeCollapsed) {
+      return (
+        <button
+          type="button"
+          onClick={() => setAccountNoticeCollapsed(false)}
+          className="fixed right-4 top-20 z-[92] flex h-12 w-12 items-center justify-center rounded-full border border-cyan-200/30 bg-black/82 text-cyan-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_24px_rgba(0,203,255,0.14)] backdrop-blur-xl transition hover:border-cyan-100 hover:text-white sm:right-5"
+          aria-label={isZh ? "展開帳號消息" : "Expand account notice"}
+          title={isZh ? "帳號消息" : "Account Notice"}
+        >
+          <BellIcon />
+        </button>
+      );
+    }
     return (
       <div className="fixed right-4 top-20 z-[92] w-[min(calc(100vw-2rem),340px)] sm:right-5">
         <div className="overflow-hidden rounded-2xl border border-cyan-200/25 bg-black/82 text-white shadow-[0_22px_76px_rgba(0,0,0,0.52),0_0_30px_rgba(0,203,255,0.12)] backdrop-blur-xl">
-          <button
-            type="button"
-            onClick={() => setExpiredNoticeOpen((value) => !value)}
-            className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-white/[0.04]"
-          >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cyan-300 text-black">
-              <BellIcon />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-cyan-100/80">
-                {isZh ? "帳號消息" : "Account Notice"}
+          <div className="flex items-center gap-2 pr-3">
+            <button
+              type="button"
+              onClick={() => setExpiredNoticeOpen((value) => !value)}
+              className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left transition hover:bg-white/[0.04]"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cyan-300 text-black">
+                <BellIcon />
               </span>
-              <span className="block truncate text-sm font-black">{title}</span>
-            </span>
-            <span className="rounded-full border border-zinc-200/20 bg-white/10 px-2 py-1 text-[10px] font-black text-zinc-200">
-              {isDailyFinishedNotice ? (isZh ? "已結束" : "Finished") : isDailyExpiredNotice ? (isZh ? "已過期" : "Expired") : (isZh ? "已取消" : "Cancelled")}
-            </span>
-          </button>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-cyan-100/80">
+                  {isZh ? "帳號消息" : "Account Notice"}
+                </span>
+                <span className="block truncate text-sm font-black">{title}</span>
+              </span>
+              <span className="rounded-full border border-zinc-200/20 bg-white/10 px-2 py-1 text-[10px] font-black text-zinc-200">
+                {isDailyFinishedNotice ? (isZh ? "已結束" : "Finished") : isDailyExpiredNotice ? (isZh ? "已過期" : "Expired") : (isZh ? "已取消" : "Cancelled")}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setAccountNoticeCollapsed(true)}
+              className="shrink-0 rounded-full border border-white/12 bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-black text-zinc-300 transition hover:border-cyan-100/60 hover:text-white"
+            >
+              {isZh ? "收合" : "Hide"}
+            </button>
+          </div>
           {expiredNoticeOpen ? (
             <div className="space-y-3 border-t border-white/10 px-4 py-4">
               <p className="text-sm font-bold leading-6 text-zinc-300">{body}</p>
@@ -472,29 +522,54 @@ export default function GlobalBattleCallOverlay() {
       : isZh
         ? "回到場內"
         : "Enter";
+    if (activeNoticeCollapsed) {
+      return (
+        <button
+          type="button"
+          onClick={() => {
+            setAccountNoticeCollapsed(false);
+            setActiveNoticeOpen(true);
+          }}
+          className="fixed right-4 top-20 z-[92] flex h-12 w-12 items-center justify-center rounded-full border border-cyan-200/30 bg-black/82 text-cyan-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_24px_rgba(0,203,255,0.14)] backdrop-blur-xl transition hover:border-cyan-100 hover:text-white sm:right-5"
+          aria-label={isZh ? "展開帳號消息" : "Expand account notice"}
+          title={isZh ? "帳號消息" : "Account Notice"}
+        >
+          <BellIcon />
+        </button>
+      );
+    }
     return (
       <div className="fixed right-4 top-20 z-[92] w-[min(calc(100vw-2rem),340px)] sm:right-5">
         <div className="overflow-hidden rounded-2xl border border-cyan-200/25 bg-black/82 text-white shadow-[0_22px_76px_rgba(0,0,0,0.52),0_0_30px_rgba(0,203,255,0.12)] backdrop-blur-xl">
-          <button
-            type="button"
-            onClick={() => setActiveNoticeOpen((value) => !value)}
-            className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-white/[0.04]"
-          >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cyan-300 text-black">
-              <BellIcon />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-cyan-100/80">
-                {isZh ? "帳號消息" : "Account Notice"}
+          <div className="flex items-center gap-2 pr-3">
+            <button
+              type="button"
+              onClick={() => setActiveNoticeOpen((value) => !value)}
+              className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left transition hover:bg-white/[0.04]"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cyan-300 text-black">
+                <BellIcon />
               </span>
-              <span className="block truncate text-sm font-black">
-                {activeTitle}
+              <span className="min-w-0 flex-1">
+                <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-cyan-100/80">
+                  {isZh ? "帳號消息" : "Account Notice"}
+                </span>
+                <span className="block truncate text-sm font-black">
+                  {activeTitle}
+                </span>
               </span>
-            </span>
-            <span className="rounded-full border border-yellow-200/25 bg-yellow-300/10 px-2 py-1 text-[10px] font-black text-yellow-100">
-              {activeNotice.status}
-            </span>
-          </button>
+              <span className="rounded-full border border-yellow-200/25 bg-yellow-300/10 px-2 py-1 text-[10px] font-black text-yellow-100">
+                {activeNotice.status}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setAccountNoticeCollapsed(true)}
+              className="shrink-0 rounded-full border border-white/12 bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-black text-zinc-300 transition hover:border-cyan-100/60 hover:text-white"
+            >
+              {isZh ? "收合" : "Hide"}
+            </button>
+          </div>
           {activeNoticeOpen ? (
             <div className="space-y-3 border-t border-white/10 px-4 py-4">
               <p className="text-sm font-bold leading-6 text-zinc-300">

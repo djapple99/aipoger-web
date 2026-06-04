@@ -61,7 +61,7 @@ type BattleData = {
   battle_started_at?: string | null;
   started_at?: string | null;
   cancellation_reason?: "no_challenger" | "founder_manual" | null;
-  status: "pending" | "matched" | "live" | "finished" | "expired" | "cancelled" | "cancelled_no_challenger" | "cancelled_founder";
+  status: "pending" | "matched" | "active" | "live" | "finished" | "expired" | "cancelled" | "cancelled_no_challenger" | "cancelled_founder";
 };
 
 type QueueArenaRow = {

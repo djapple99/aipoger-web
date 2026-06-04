@@ -11,13 +11,12 @@ type ProfileBattleCountBadgeProps = {
   lang?: "zh" | "en";
 };
 
-const ACTIVE_STATUSES = ["live", "pending"] as const;
+const ACTIVE_STATUSES = ["live", "pending", "active", "matched"] as const;
 const HISTORY_STATUSES = [
   "finished",
   "cancelled",
   "cancelled_no_challenger",
   "cancelled_founder",
-  "active",
   "completed",
   "expired",
   "ghost_battle",

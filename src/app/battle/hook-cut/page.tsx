@@ -24,7 +24,7 @@ const MIN_REGION_SECONDS = 0.25;
 const MAX_LYRICS_CHARS = 8000;
 const PENDING_AUDIO_COVER_KEY = 'aipoger:pending-audio-cover';
 const ACTIVE_QUEUE_STATUSES = ["searching", "waiting", "waiting_challenge", "matched", "active", "ghost_battle", "public_voting"];
-const ACTIVE_BATTLE_STATUSES = ["live", "active", "ghost_battle", "public_voting"];
+const ACTIVE_BATTLE_STATUSES = ["pending", "live", "active", "ghost_battle", "public_voting"];
 const REPLACEABLE_QUEUE_STATUSES = new Set(["searching", "waiting", "waiting_challenge", "public_voting", "ghost_battle"]);
 
 type RegionTimes = { start: number; end: number };

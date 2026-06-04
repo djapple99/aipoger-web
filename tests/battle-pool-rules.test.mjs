@@ -341,3 +341,21 @@ test("matched battles inherit schedule from the challenge queue row", () => {
     },
   );
 });
+
+test("auto matched drop battles respect the later creator schedule", () => {
+  const now = Date.UTC(2026, 5, 3, 12, 0, 0);
+  const earlierStart = new Date(now + 10 * 60 * 1000).toISOString();
+  const laterStart = new Date(now + 15 * 60 * 1000).toISOString();
+
+  assert.deepEqual(
+    buildDropBattleSchedulePayloadFromQueues(
+      { status: "searching", scheduled_start_at: earlierStart },
+      { status: "searching", scheduled_start_at: laterStart },
+      null,
+    ),
+    {
+      scheduled_start_at: laterStart,
+      cancellation_evaluation_at: new Date(now + 16 * 60 * 1000).toISOString(),
+    },
+  );
+});

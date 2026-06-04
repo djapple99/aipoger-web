@@ -39,7 +39,7 @@ const AI_TOOLS = [
 ];
 
 const ACTIVE_QUEUE_STATUSES = ["pending", "searching", "waiting", "waiting_challenge"];
-const ACTIVE_BATTLE_STATUSES = ["pending", "live"];
+const ACTIVE_BATTLE_STATUSES = ["pending", "active", "live"];
 const REPLACEABLE_QUEUE_STATUSES = new Set(["pending", "searching", "waiting", "waiting_challenge"]);
 
 type BattleDraft = {

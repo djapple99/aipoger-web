@@ -119,6 +119,7 @@ function VoteButton({ team }: { team: "A" | "B" }) {
 
 type LiveBattleRow = {
   id: string;
+  status?: string | null;
   fighter_a_user_id: string;
   fighter_b_user_id: string;
   fighter_a_name: string;
@@ -129,6 +130,9 @@ type LiveBattleRow = {
   song_b_name: string;
   genre: string;
   created_at: string;
+  scheduled_start_at?: string | null;
+  battle_started_at?: string | null;
+  battle_ended_at?: string | null;
   started_at?: string | null;
   waiting_room_started_at?: string | null;
 };
@@ -843,7 +847,20 @@ function BattlePoolList() {
         setRows([]);
       } else {
         const baseRows = ((data as PoolEntryRow[]) ?? []);
-        const visibleRows = baseRows.filter((row) => !isExpiredOpenPoolEntry(row));
+        const linkedBattleIds = Array.from(
+          new Set(baseRows.map((row) => row.match_group_id).filter((id): id is string => Boolean(id))),
+        );
+        const closedBattleIds = new Set<string>();
+        if (linkedBattleIds.length > 0) {
+          const { data: linkedBattles } = await supabase
+            .from("battles")
+            .select("id,status,battle_ended_at")
+            .in("id", linkedBattleIds);
+          ((linkedBattles as Array<{ id?: string | null; status?: string | null; battle_ended_at?: string | null }> | null) ?? [])
+            .filter((row) => row.id && (row.battle_ended_at || ["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"].includes(row.status ?? "")))
+            .forEach((row) => closedBattleIds.add(row.id as string));
+        }
+        const visibleRows = baseRows.filter((row) => !isExpiredOpenPoolEntry(row) && (!row.match_group_id || !closedBattleIds.has(row.match_group_id)));
         setHookSongStats(await fetchHookSongBattleStats(visibleRows.map((row) => row.original_file_name)));
         const userIds = Array.from(new Set(visibleRows.map((row) => row.user_id).filter(Boolean)));
         const { data: profiles } =
@@ -1123,8 +1140,9 @@ function LiveBattleList() {
 
       const { data, error: qErr } = await supabase
         .from("battles")
-        .select("id, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, started_at, waiting_room_started_at")
-        .eq("status", "live")
+        .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, scheduled_start_at, battle_started_at, battle_ended_at, started_at, waiting_room_started_at")
+        .in("status", ["active", "live"])
+        .is("battle_ended_at", null)
         .order("created_at", { ascending: false })
         .limit(30);
 
@@ -1135,7 +1153,13 @@ function LiveBattleList() {
         setRows([]);
       } else {
         setError(null);
-        const baseRows = ((data as LiveBattleRow[]) ?? []);
+        const baseRows = ((data as LiveBattleRow[]) ?? []).filter((row) => {
+          if (row.battle_ended_at) return false;
+          if (row.status === "active") return true;
+          if (row.status !== "live") return false;
+          const scheduledMs = Date.parse(row.scheduled_start_at ?? row.started_at ?? "");
+          return !Number.isFinite(scheduledMs) || scheduledMs <= Date.now() || Boolean(row.battle_started_at);
+        });
         setLiveSongStats(await fetchHookSongBattleStats(baseRows.flatMap((row) => [row.song_a_name, row.song_b_name])));
         const userIds = Array.from(new Set(baseRows.flatMap((row) => [row.fighter_a_user_id, row.fighter_b_user_id]).filter(Boolean)));
         const { data: profiles } =
@@ -1242,8 +1266,9 @@ function LiveBattleList() {
         ) : (
           <ul className="grid gap-4">
             {rows.map((b) => {
-              const scheduledMs = b.started_at ? new Date(b.started_at).getTime() : NaN;
-              const isFutureBattle = Number.isFinite(scheduledMs) && scheduledMs > Date.now();
+              const scheduledAt = b.scheduled_start_at || b.started_at || b.created_at;
+              const scheduledMs = new Date(scheduledAt).getTime();
+              const isFutureBattle = b.status === "active" || (Number.isFinite(scheduledMs) && scheduledMs > Date.now() && !b.battle_started_at);
               return (
               <li key={b.id}>
                 <article className="group relative overflow-hidden rounded-[1.6rem] border border-white/10 bg-white/[0.045] px-5 py-5 transition hover:border-orange-400/50 hover:bg-white/[0.07] hover:shadow-[0_0_34px_rgba(255,106,0,0.16)]">
@@ -1272,8 +1297,8 @@ function LiveBattleList() {
                           <SongBattleStatsPill stats={liveSongStats[normalizeSongStatsKey(b.song_b_name)]} isZh={lang === "zh"} tone="cyan" />
                         </div>
                         <p className="mt-2 text-xs font-bold text-orange-100/75">
-                          {isFutureBattle ? (lang === "zh" ? "預備戰鬥" : "Scheduled") : (lang === "zh" ? "開戰" : "Started")}{" "}
-                          {formatBattleCardTime(b.started_at || b.created_at, lang === "zh")}
+                          {isFutureBattle ? (lang === "zh" ? "已進場，等待開打" : "In arena, waiting to start") : (lang === "zh" ? "開戰" : "Started")}{" "}
+                          {formatBattleCardTime(scheduledAt, lang === "zh")}
                         </p>
                       </div>
                       <span className="mt-2 shrink-0 rounded-full border border-orange-400/35 px-4 py-2 text-sm font-bold text-[#ffbf99] transition group-hover:bg-orange-500 group-hover:text-black sm:mt-0">
@@ -1285,12 +1310,16 @@ function LiveBattleList() {
                     <ShareButton
                       title={lang === "zh" ? "AIPOGER 90s Drop Battle 觀戰邀請" : "AIPOGER 90s Drop Battle"}
                       text={
-                        lang === "zh"
-                          ? `《${b.song_a_name}》vs《${b.song_b_name}》正在開打，進來觀戰投票。`
-                          : `"${b.song_a_name}" vs "${b.song_b_name}" is live. Come vote.`
+                        isFutureBattle
+                          ? lang === "zh"
+                            ? `《${b.song_a_name}》vs《${b.song_b_name}》已進場等待開打，先進來聽 5 秒預播。`
+                            : `"${b.song_a_name}" vs "${b.song_b_name}" is waiting to start. Hear the 5s previews.`
+                          : lang === "zh"
+                            ? `《${b.song_a_name}》vs《${b.song_b_name}》正在開打，進來觀戰投票。`
+                            : `"${b.song_a_name}" vs "${b.song_b_name}" is live. Come vote.`
                       }
                       url={`/battle/${b.id}?lang=${lang}`}
-                      label={lang === "zh" ? "邀請觀戰投票" : "Invite voters"}
+                      label={isFutureBattle ? (lang === "zh" ? "分享約人進場" : "Share Arena") : (lang === "zh" ? "邀請觀戰投票" : "Invite voters")}
                       copiedLabel={lang === "zh" ? "觀戰連結已複製" : "Invite copied"}
                       className="px-3 py-1.5 text-xs"
                     />

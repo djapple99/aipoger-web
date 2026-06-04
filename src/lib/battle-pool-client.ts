@@ -75,7 +75,7 @@ export function buildDropBattleSchedulePayloadFromQueues(
   opponentRow: DropBattleScheduleQueueSnapshot,
   targetQueueId?: string | null,
 ) {
-  const sourceRow =
+  const directSourceRow =
     targetQueueId
       ? opponentRow
       : meRow.status === "waiting_challenge"
@@ -83,9 +83,20 @@ export function buildDropBattleSchedulePayloadFromQueues(
         : opponentRow.status === "waiting_challenge"
           ? opponentRow
           : null;
+  const sourceRow =
+    directSourceRow ??
+    [meRow, opponentRow]
+      .map((row) => {
+        const scheduledStart = resolveDropBattleScheduledStart(row);
+        const scheduledMs = new Date(scheduledStart ?? "").getTime();
+        return Number.isFinite(scheduledMs) ? { row, scheduledMs } : null;
+      })
+      .filter((item): item is { row: DropBattleScheduleQueueSnapshot; scheduledMs: number } => Boolean(item))
+      .sort((a, b) => b.scheduledMs - a.scheduledMs)[0]?.row ??
+    null;
   if (!sourceRow) return null;
 
-  const payload = buildDropBattleSchedulePayload(sourceRow.scheduled_start_at ?? sourceRow.expires_at ?? null);
+  const payload = buildDropBattleSchedulePayload(resolveDropBattleScheduledStart(sourceRow));
   if (!payload) return null;
 
   const cancellationEvaluationMs = new Date(sourceRow.cancellation_evaluation_at ?? "").getTime();
