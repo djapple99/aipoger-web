@@ -250,9 +250,9 @@ function BattleSideCard({
   const ringClass = tone === "orange" ? "ring-orange-300/55" : "ring-cyan-200/55";
 
   return (
-    <div className={`min-w-0 rounded-[1rem] border p-2.5 ${toneClasses}`}>
-      <div className="flex items-center gap-2">
-        <div className={`relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-black ring-2 ${ringClass}`}>
+    <div className={`min-w-0 rounded-[1rem] border p-2 min-[420px]:p-2.5 ${toneClasses}`}>
+      <div className="flex min-w-0 items-center gap-1.5 min-[420px]:gap-2">
+        <div className={`relative h-8 w-8 shrink-0 overflow-hidden rounded-full bg-black ring-2 min-[420px]:h-10 min-[420px]:w-10 ${ringClass}`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={avatarUrl}
@@ -265,11 +265,11 @@ function BattleSideCard({
           />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[0.54rem] font-black text-zinc-500">{role}</p>
-          <p className="truncate text-[0.78rem] font-black leading-tight text-white">{name}</p>
-          <p className="truncate text-[0.62rem] font-bold leading-tight text-zinc-500">{song}</p>
+          <p className="text-[0.5rem] font-black text-zinc-500 min-[420px]:text-[0.54rem]">{role}</p>
+          <p className="truncate text-[0.72rem] font-black leading-tight text-white min-[420px]:text-[0.78rem]">{name}</p>
+          <p className="truncate text-[0.58rem] font-bold leading-tight text-zinc-500 min-[420px]:text-[0.62rem]">{song}</p>
         </div>
-        <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black">
+        <div className="hidden h-8 w-8 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black min-[420px]:block min-[420px]:h-10 min-[420px]:w-10">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={coverUrl}
@@ -653,7 +653,7 @@ function BattleResultContent() {
                 <p className="mt-0.5 text-[0.58rem] font-bold text-orange-200">{displayRankText} / {displayTool}</p>
               </section>
 
-              <section className="relative mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 rounded-[1.05rem] border border-white/10 bg-black/45 px-2 py-2 shadow-[inset_0_0_32px_rgba(255,255,255,0.035)]">
+              <section className="relative mt-2 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 rounded-[1.05rem] border border-white/10 bg-black/45 px-1.5 py-2 shadow-[inset_0_0_32px_rgba(255,255,255,0.035)] min-[420px]:gap-1.5 min-[420px]:px-2">
                 <BattleSideCard role={lang === "zh" ? "鬥士" : "Fighter"} name={winnerName} song={winnerSong} avatarUrl={avatarUrl} coverUrl={coverUrl} tone="orange" />
                 <div className="z-10 flex flex-col items-center justify-center">
                   <div className="bg-gradient-to-b from-orange-100 via-orange-500 to-red-700 bg-clip-text text-[1.4rem] font-black leading-none text-transparent drop-shadow-[0_0_26px_rgba(255,106,0,0.8)]">
@@ -818,8 +818,8 @@ function BattleResultContent() {
             </h2>
             <p className="mt-2 text-sm leading-6 text-zinc-400">
               {lang === "zh"
-                ? "等待室支持只用來製造張力；真正決定勝負的是開戰後聽完音樂的最終投票。"
-                : "Waiting room support builds tension; the final vote after listening decides the battle."}
+                ? "戰前支持只用來製造張力；真正決定勝負的是開戰後聽完音樂的最終投票。"
+                : "Pre-battle support builds tension; the final vote after listening decides the battle."}
             </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               {[
