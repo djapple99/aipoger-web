@@ -26,6 +26,7 @@ const PENDING_AUDIO_COVER_KEY = 'aipoger:pending-audio-cover';
 const ACTIVE_QUEUE_STATUSES = ["searching", "waiting", "waiting_challenge", "matched", "active", "ghost_battle", "public_voting"];
 const ACTIVE_BATTLE_STATUSES = ["pending", "live", "active", "ghost_battle", "public_voting"];
 const REPLACEABLE_QUEUE_STATUSES = new Set(["searching", "waiting", "waiting_challenge", "public_voting", "ghost_battle"]);
+const CLOSED_BATTLE_STATUSES = new Set(["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"]);
 
 type RegionTimes = { start: number; end: number };
 type WaveRegion = RegionTimes & {
@@ -379,11 +380,11 @@ async function findActiveBattleLock(userId: string): Promise<ActiveBattleLock | 
     if (activeQueue.match_group_id) {
       const { data: linkedBattle } = await supabase
         .from("battles")
-        .select("id, status")
+        .select("id, status, battle_ended_at")
         .eq("id", activeQueue.match_group_id)
         .maybeSingle();
       const status = typeof linkedBattle?.status === "string" ? linkedBattle.status : "";
-      if (["finished", "cancelled", "completed", "expired"].includes(status)) {
+      if (linkedBattle?.battle_ended_at || CLOSED_BATTLE_STATUSES.has(status)) {
         void supabase.from("battle_queue").update({ status: "completed" }).eq("id", activeQueue.id);
         return null;
       }
@@ -393,9 +394,10 @@ async function findActiveBattleLock(userId: string): Promise<ActiveBattleLock | 
 
   const { data: battleRows, error: battleError } = await supabase
     .from("battles")
-    .select("id, status, created_at")
+    .select("id, status, battle_ended_at, created_at")
     .or(`fighter_a_user_id.eq.${userId},fighter_b_user_id.eq.${userId}`)
     .in("status", ACTIVE_BATTLE_STATUSES)
+    .is("battle_ended_at", null)
     .order("created_at", { ascending: false })
     .limit(1);
 

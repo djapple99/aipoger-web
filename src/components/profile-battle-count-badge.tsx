@@ -23,8 +23,9 @@ const HISTORY_STATUSES = [
   "public_voting",
 ] as const;
 const COUNTED_STATUSES = [...ACTIVE_STATUSES, ...HISTORY_STATUSES] as const;
-const ACTIVE_QUEUE_STATUSES = ["pending", "searching", "waiting", "waiting_challenge"] as const;
+const ACTIVE_QUEUE_STATUSES = ["pending", "searching", "waiting", "waiting_challenge", "matched", "active"] as const;
 const UNCANCELLABLE_BATTLE_STATUSES = new Set(["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"]);
+const CLOSED_BATTLE_STATUSES = new Set(["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"]);
 
 type BattleStatus = (typeof ACTIVE_STATUSES)[number] | (typeof HISTORY_STATUSES)[number];
 
@@ -32,6 +33,7 @@ type BattleRow = {
   id: string;
   status: BattleStatus | string | null;
   created_at: string | null;
+  battle_ended_at: string | null;
   scheduled_start_at: string | null;
   fighter_a_user_id: string | null;
   fighter_b_user_id: string | null;
@@ -114,6 +116,18 @@ function isHistoryStatus(status: string | null): boolean {
   return HISTORY_STATUSES.includes(status as (typeof HISTORY_STATUSES)[number]);
 }
 
+function isBattleClosed(battle: Pick<BattleRow, "status" | "battle_ended_at">): boolean {
+  return Boolean(battle.battle_ended_at) || CLOSED_BATTLE_STATUSES.has(battle.status ?? "");
+}
+
+function isActiveBattle(battle: BattleRow): boolean {
+  return isActiveStatus(battle.status) && !isBattleClosed(battle);
+}
+
+function isHistoryBattle(battle: BattleRow): boolean {
+  return isHistoryStatus(battle.status) || Boolean(battle.battle_ended_at);
+}
+
 function formatDateTime(value: string | null, lang: "zh" | "en"): string | null {
   if (!value) return null;
   const date = new Date(value);
@@ -160,7 +174,7 @@ export function ProfileBattleCountBadge({ userId, currentUserId = null, lang = "
       const battleQuery = supabase
         .from("battles")
         .select(
-          "id,status,created_at,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,genre",
+          "id,status,created_at,battle_ended_at,scheduled_start_at,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,genre",
         )
         .or(`fighter_a_user_id.eq.${userId},fighter_b_user_id.eq.${userId}`)
         .in("status", [...COUNTED_STATUSES])
@@ -171,7 +185,7 @@ export function ProfileBattleCountBadge({ userId, currentUserId = null, lang = "
         currentUserId === userId
           ? supabase
               .from("battle_queue")
-              .select("id,status,created_at,expires_at,match_group_id,fighter_name,original_file_name,genre")
+              .select("id,status,created_at,expires_at,scheduled_start_at,cancellation_evaluation_at,match_group_id,fighter_name,original_file_name,genre")
               .eq("user_id", userId)
               .in("status", [...ACTIVE_QUEUE_STATUSES])
               .order("created_at", { ascending: false })
@@ -181,8 +195,17 @@ export function ProfileBattleCountBadge({ userId, currentUserId = null, lang = "
       const [{ data, error: queryError }, { data: queues, error: queueError }] = await Promise.all([battleQuery, queueQuery]);
       if (queryError) throw queryError;
       if (queueError) throw queueError;
-      setBattles(data ?? []);
-      setQueueRows((queues ?? []).filter((row) => !row.match_group_id || !data?.some((battle) => battle.id === row.match_group_id)));
+      const battleRows = data ?? [];
+      setBattles(battleRows);
+      setQueueRows(
+        (queues ?? []).filter((row) => {
+          if (!ACTIVE_QUEUE_STATUSES.includes(row.status as (typeof ACTIVE_QUEUE_STATUSES)[number])) return false;
+          if (!row.match_group_id) return true;
+          const linkedBattle = battleRows.find((battle) => battle.id === row.match_group_id);
+          if (!linkedBattle) return true;
+          return !isBattleClosed(linkedBattle) && !isActiveBattle(linkedBattle);
+        }),
+      );
     } catch (loadError) {
       console.error(loadError);
       setError(copy.loadFailed);
@@ -195,9 +218,9 @@ export function ProfileBattleCountBadge({ userId, currentUserId = null, lang = "
     void loadBattles();
   }, [loadBattles]);
 
-  const activeBattles = useMemo(() => battles.filter((battle) => isActiveStatus(battle.status)), [battles]);
+  const activeBattles = useMemo(() => battles.filter(isActiveBattle), [battles]);
   const activeQueues = useMemo(() => queueRows.filter((row) => ACTIVE_QUEUE_STATUSES.includes(row.status as (typeof ACTIVE_QUEUE_STATUSES)[number])), [queueRows]);
-  const historyBattles = useMemo(() => battles.filter((battle) => isHistoryStatus(battle.status)), [battles]);
+  const historyBattles = useMemo(() => battles.filter(isHistoryBattle), [battles]);
   const totalCount = battles.length + activeQueues.length;
   const activeCount = activeBattles.length + activeQueues.length;
 

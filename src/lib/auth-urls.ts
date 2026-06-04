@@ -1,4 +1,5 @@
 export const AIPOGER_PUBLIC_ORIGIN = "https://aipoger.com";
+export const AUTH_NEXT_STORAGE_KEY = "aipoger:auth-next";
 
 const AIPOGER_HOSTS = new Set(["aipoger.com", "www.aipoger.com"]);
 
@@ -77,4 +78,32 @@ export function buildAuthCallbackUrl(nextPath: string | null | undefined): strin
 export function buildAuthPageUrl(nextPath: string | null | undefined): string {
   const safeNext = safeNextPath(nextPath);
   return `${getAuthSiteOrigin()}/auth?next=${encodeURIComponent(safeNext)}`;
+}
+
+export function rememberAuthNextPath(nextPath: string | null | undefined) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(AUTH_NEXT_STORAGE_KEY, safeNextPath(nextPath));
+  } catch {
+    // localStorage may be unavailable in private or embedded browsers.
+  }
+}
+
+export function readRememberedAuthNextPath(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const remembered = window.localStorage.getItem(AUTH_NEXT_STORAGE_KEY);
+    return remembered ? safeNextPath(remembered) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearRememberedAuthNextPath() {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(AUTH_NEXT_STORAGE_KEY);
+  } catch {
+    // Ignore storage cleanup failures.
+  }
 }

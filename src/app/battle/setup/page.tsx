@@ -38,9 +38,10 @@ const AI_TOOLS = [
   'Suno', 'Udio', 'Lyria', 'Mureka', 'AceStudio', 'MiniMax', 'ElevenLabs', '其他',
 ];
 
-const ACTIVE_QUEUE_STATUSES = ["pending", "searching", "waiting", "waiting_challenge"];
+const ACTIVE_QUEUE_STATUSES = ["pending", "searching", "waiting", "waiting_challenge", "matched", "active"];
 const ACTIVE_BATTLE_STATUSES = ["pending", "active", "live"];
 const REPLACEABLE_QUEUE_STATUSES = new Set(["pending", "searching", "waiting", "waiting_challenge"]);
+const CLOSED_BATTLE_STATUSES = new Set(["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"]);
 
 type BattleDraft = {
   audioPath: string;
@@ -142,13 +143,28 @@ async function findActiveBattleLock(userId: string): Promise<ActiveBattleLock | 
 
   if (queueError) throw queueError;
   const activeQueue = queueRows?.[0] as { id: string; status: string; match_group_id?: string | null } | undefined;
-  if (activeQueue?.id) return { kind: "queue", id: activeQueue.id, status: activeQueue.status, battleId: activeQueue.match_group_id ?? null };
+  if (activeQueue?.id) {
+    if (activeQueue.match_group_id) {
+      const { data: linkedBattle } = await supabase
+        .from("battles")
+        .select("id, status, battle_ended_at")
+        .eq("id", activeQueue.match_group_id)
+        .maybeSingle();
+      const status = typeof linkedBattle?.status === "string" ? linkedBattle.status : "";
+      if (linkedBattle?.battle_ended_at || CLOSED_BATTLE_STATUSES.has(status)) {
+        void supabase.from("battle_queue").update({ status: "completed" }).eq("id", activeQueue.id);
+        return null;
+      }
+    }
+    return { kind: "queue", id: activeQueue.id, status: activeQueue.status, battleId: activeQueue.match_group_id ?? null };
+  }
 
   const { data: battleRows, error: battleError } = await supabase
     .from("battles")
-    .select("id, status, created_at")
+    .select("id, status, battle_ended_at, created_at")
     .or(`fighter_a_user_id.eq.${userId},fighter_b_user_id.eq.${userId}`)
     .in("status", ACTIVE_BATTLE_STATUSES)
+    .is("battle_ended_at", null)
     .order("created_at", { ascending: false })
     .limit(1);
 
@@ -360,7 +376,7 @@ export default function BattleSetupPage() {
   const [instantPairingMode, setInstantPairingMode] = useState<InstantPairingMode>('auto');
   const [dailyPairingMode, setDailyPairingMode] = useState<DailyPairingMode>('auto');
   const [hookBattleAt, setHookBattleAt] = useState(defaultHookBattleAtValue);
-  const [battleStartOption, setBattleStartOption] = useState<BattleStartOption>(10);
+  const [battleStartOption, setBattleStartOption] = useState<BattleStartOption>('custom');
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [dailyBattleCount, setDailyBattleCount] = useState(0);
   const [dailySchemaMissing, setDailySchemaMissing] = useState(false);
@@ -772,7 +788,7 @@ export default function BattleSetupPage() {
   // ── 提交 ─────────────────────────────────────────────
   const handleSubmit = async () => {
     const finalAiTool = aiTool === '其他' ? otherTool.trim() : aiTool;
-    const shouldScheduleDropBattle = battleMode === 'instant' && !challengeEntryId;
+    const shouldScheduleDropBattle = battleMode === 'instant' && instantPairingMode === 'invite' && !challengeEntryId;
     const scheduledHookStartIso = shouldScheduleDropBattle ? datetimeLocalToIso(hookBattleAt) : null;
     const scheduleValidation = shouldScheduleDropBattle
       ? validateDropBattleScheduledStart(scheduledHookStartIso)
@@ -800,7 +816,7 @@ export default function BattleSetupPage() {
       if (challengeEntryId) params.set('challengeEntryId', challengeEntryId);
       if (challengeDailyEntryId) params.set('challengeDailyEntryId', challengeDailyEntryId);
       if (challengeEntryId && genre.trim()) params.set('genre', genre.trim());
-      if (battleMode === 'instant' && instantPairingMode === 'invite' && !challengeEntryId) {
+      if (shouldScheduleDropBattle) {
         params.set('hookBattleAt', hookBattleAt);
       }
       router.push(`/battle/hook-cut?${params.toString()}`);
@@ -1129,7 +1145,7 @@ export default function BattleSetupPage() {
   const hookDurationLabel = draft?.hookDuration ? `${Number(draft.hookDuration).toFixed(1)}s` : '45s';
   const dailyBattleLocked = dailyBattleCount >= DAILY_BATTLE_ACTIVE_LIMIT;
   const dailyModeDisabled = dailyBattleLocked || dailySchemaMissing;
-  const showDropBattleSchedule = battleMode === 'instant' && !challengeEntryId;
+  const showDropBattleSchedule = battleMode === 'instant' && instantPairingMode === 'invite' && !challengeEntryId;
   const customScheduleMin = toDatetimeLocalValue(new Date(Date.now() + DROP_BATTLE_SCHEDULE_MIN_LEAD_MS));
   const customScheduleMax = toDatetimeLocalValue(new Date(Date.now() + DROP_BATTLE_SCHEDULE_MAX_LEAD_MS));
   const dropBattleSchedulePicker = showDropBattleSchedule ? (
@@ -1150,6 +1166,21 @@ export default function BattleSetupPage() {
         </span>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+        <button
+          type="button"
+          onClick={() => {
+            setBattleStartOption('custom');
+            setScheduleError(null);
+            setFormError(null);
+          }}
+          className={`min-h-12 rounded-2xl border px-3 py-3 text-sm font-black transition ${
+            battleStartOption === 'custom'
+              ? 'border-cyan-200/70 bg-cyan-300/14 text-cyan-50 shadow-[0_0_24px_rgba(0,203,255,0.12)]'
+              : 'border-white/10 bg-black/35 text-zinc-300 hover:border-cyan-200/35'
+          }`}
+        >
+          {lang === 'zh' ? '自訂時間' : 'Custom time'}
+        </button>
         {DROP_BATTLE_SCHEDULE_PRESETS.map((minutes) => {
           const selected = battleStartOption === minutes;
           return (
@@ -1172,21 +1203,6 @@ export default function BattleSetupPage() {
             </button>
           );
         })}
-        <button
-          type="button"
-          onClick={() => {
-            setBattleStartOption('custom');
-            setScheduleError(null);
-            setFormError(null);
-          }}
-          className={`min-h-12 rounded-2xl border px-3 py-3 text-sm font-black transition ${
-            battleStartOption === 'custom'
-              ? 'border-cyan-200/70 bg-cyan-300/14 text-cyan-50 shadow-[0_0_24px_rgba(0,203,255,0.12)]'
-              : 'border-white/10 bg-black/35 text-zinc-300 hover:border-cyan-200/35'
-          }`}
-        >
-          {lang === 'zh' ? '自訂時間' : 'Custom time'}
-        </button>
       </div>
       {battleStartOption === 'custom' ? (
         <input
@@ -1288,8 +1304,8 @@ export default function BattleSetupPage() {
                 value: 'auto' as const,
                 title: lang === 'zh' ? '自動配對' : 'Auto match',
                 desc: lang === 'zh'
-                  ? '先找即時同類型 Drop；沒配到就停下來，由你決定開戰帖或去傷心酒吧找人。'
-                  : 'Find a live same-genre Drop first. If none appears, stop and choose a card or Bar Heartbreak.',
+                  ? '搜尋 1 分鐘同類型 Drop；可能配到即時對手，也可能接到已開好的戰帖卡。'
+                  : 'Search same-genre Drops for 1 minute. It may match live queues or open battle cards.',
               },
               {
                 value: 'invite' as const,

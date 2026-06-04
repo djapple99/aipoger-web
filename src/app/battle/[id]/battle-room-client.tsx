@@ -17,6 +17,7 @@ import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { rankLabelForLevel } from "@/lib/battle-pool-rules";
 import { cancelCurrentBattleIntent, completeBattleCardIntent, isDropChallengeAcceptable, resolveDropBattleScheduledStart } from "@/lib/battle-pool-client";
 import { battleSeedForId, pick90sBattleWinner } from "@/lib/battle-90s-system";
+import { rememberAuthNextPath } from "@/lib/auth-urls";
 import type { User } from "@supabase/supabase-js";
 
 type SenderType = "audience" | "fighter_a" | "fighter_b";
@@ -260,6 +261,11 @@ function authDisplayName(user: User | null | undefined): string | null {
     if (typeof value === "string" && value.trim()) return value.trim();
   }
   return null;
+}
+
+function currentReturnPath() {
+  if (typeof window === "undefined") return "/battle";
+  return `${window.location.pathname}${window.location.search}${window.location.hash}`;
 }
 
 async function resolveMediaUrl(raw: string | null | undefined): Promise<string | null> {
@@ -1110,7 +1116,9 @@ function BattleArenaContent() {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) {
-        router.replace("/auth?intent=battle");
+        const nextPath = currentReturnPath();
+        rememberAuthNextPath(nextPath);
+        router.replace(`/auth?next=${encodeURIComponent(nextPath)}`);
         return;
       }
       setMyUserId(session.user.id);

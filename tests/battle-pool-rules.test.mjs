@@ -77,10 +77,10 @@ test("battle stake follows rank stage", () => {
   assert.equal(battleStakeForLevel(10), 500);
 });
 
-test("instant matching falls back to waiting challenge after 30 seconds", () => {
+test("instant matching falls back to waiting challenge after 60 seconds", () => {
   const created = Date.UTC(2026, 4, 18, 12, 0, 0);
-  assert.equal(shouldMoveToWaitingChallenge(created, created + 29_000), false);
-  assert.equal(shouldMoveToWaitingChallenge(created, created + 30_000), true);
+  assert.equal(shouldMoveToWaitingChallenge(created, created + 59_000), false);
+  assert.equal(shouldMoveToWaitingChallenge(created, created + 60_000), true);
 });
 
 test("battle pool fallback runs after 24 hours", () => {

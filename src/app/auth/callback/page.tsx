@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { safeNextPath } from "@/lib/auth-urls";
+import { clearRememberedAuthNextPath, readRememberedAuthNextPath, safeNextPath } from "@/lib/auth-urls";
 
 function AuthCallbackInner() {
   const router = useRouter();
@@ -21,7 +21,7 @@ function AuthCallbackInner() {
       searchParams.get("error_description") ??
       searchParams.get("error_code") ??
       "";
-    const nextPath = safeNextPath(searchParams.get("next"));
+    const nextPath = safeNextPath(searchParams.get("next") ?? readRememberedAuthNextPath());
 
     if (error) {
       console.error("[auth callback]", error, errorDescription);
@@ -32,6 +32,7 @@ function AuthCallbackInner() {
 
     const finish = () => {
       setStatus("登入成功！");
+      clearRememberedAuthNextPath();
       setTimeout(() => router.replace(nextPath), 500);
     };
 

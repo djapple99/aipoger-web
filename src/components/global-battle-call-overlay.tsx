@@ -261,9 +261,10 @@ export default function GlobalBattleCallOverlay() {
       } else {
         const { data: activeBattleRows } = await supabase
           .from("battles")
-          .select("id, status, created_at")
+          .select("id, status, created_at, battle_ended_at")
           .or(`fighter_a_user_id.eq.${uid},fighter_b_user_id.eq.${uid}`)
           .in("status", ACTIVE_NOTICE_BATTLE_STATUSES)
+          .is("battle_ended_at", null)
           .order("created_at", { ascending: false })
           .limit(1);
         const activeBattle = activeBattleRows?.[0] as { id: string; status: string; created_at?: string | null } | undefined;

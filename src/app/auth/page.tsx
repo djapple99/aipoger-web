@@ -7,7 +7,7 @@ import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
-import { buildAuthCallbackUrl, buildAuthPageUrl, safeNextPath } from "@/lib/auth-urls";
+import { buildAuthCallbackUrl, buildAuthPageUrl, rememberAuthNextPath, safeNextPath } from "@/lib/auth-urls";
 
 function intentToNextPath(intent: string | null, lang: string | null): string {
   const langQuery = lang === "en" ? "?lang=en" : lang === "zh" ? "?lang=zh" : "";
@@ -69,6 +69,7 @@ function AuthPageInner() {
   }, [router, nextPath]);
 
   useEffect(() => {
+    rememberAuthNextPath(nextPath);
     setLoginUrl(buildAuthPageUrl(nextPath));
     const ua = navigator.userAgent || "";
     setIsEmbeddedBrowser(isLikelyEmbeddedBrowser(ua));

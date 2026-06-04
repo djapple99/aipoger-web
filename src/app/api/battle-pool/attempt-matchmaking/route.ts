@@ -25,12 +25,15 @@ const ACTIVE_QUEUE_STATUSES = [
   "searching",
   "waiting",
   "waiting_challenge",
+  "matched",
+  "active",
 ];
 const ACTIVE_BATTLE_STATUSES = [
   "pending",
   "active",
   "live",
 ];
+const CLOSED_BATTLE_STATUSES = ["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"];
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -51,6 +54,11 @@ function firstText(...values: unknown[]) {
     if (typeof value === "string" && value.trim()) return value.trim();
   }
   return null;
+}
+
+function pickRandomQueue(rows: QueueRow[]) {
+  if (rows.length <= 1) return rows[0] ?? null;
+  return rows[Math.floor(Math.random() * rows.length)] ?? null;
 }
 
 function battleStartFromRows(meRow: QueueRow, opponentRow: QueueRow, targetQueueId?: string | null) {
@@ -113,14 +121,31 @@ export async function POST(request: NextRequest) {
 
   const { data: otherActiveQueues, error: otherActiveQueueError } = await admin
     .from("battle_queue")
-    .select("id, status")
+    .select("id, status, match_group_id")
     .eq("user_id", user.id)
     .neq("id", meRow.id)
     .in("status", ACTIVE_QUEUE_STATUSES)
-    .limit(1);
+    .limit(8);
 
   if (otherActiveQueueError) return jsonError(otherActiveQueueError.message, 500);
-  if ((otherActiveQueues ?? []).length > 0) {
+  let blockingActiveQueueCount = 0;
+  for (const queue of otherActiveQueues ?? []) {
+    const matchGroupId = typeof queue.match_group_id === "string" ? queue.match_group_id : null;
+    if (matchGroupId) {
+      const { data: linkedBattle, error: linkedBattleError } = await admin
+        .from("battles")
+        .select("id, status, battle_ended_at")
+        .eq("id", matchGroupId)
+        .maybeSingle<{ id: string; status?: string | null; battle_ended_at?: string | null }>();
+      if (linkedBattleError) return jsonError(linkedBattleError.message, 500);
+      if (linkedBattle?.battle_ended_at || CLOSED_BATTLE_STATUSES.includes(linkedBattle?.status ?? "")) {
+        await admin.from("battle_queue").update({ status: "completed", updated_at: new Date().toISOString() }).eq("id", queue.id);
+        continue;
+      }
+    }
+    blockingActiveQueueCount += 1;
+  }
+  if (blockingActiveQueueCount > 0) {
     return jsonError("同一個帳號一次只能保留一場 Drop Battle。請先完成或取消目前這場 Drop，再開始下一場。", 409);
   }
 
@@ -129,6 +154,7 @@ export async function POST(request: NextRequest) {
     .select("id, status")
     .or(`fighter_a_user_id.eq.${user.id},fighter_b_user_id.eq.${user.id}`)
     .in("status", ACTIVE_BATTLE_STATUSES)
+    .is("battle_ended_at", null)
     .limit(1);
 
   if (activeBattleError) return jsonError(activeBattleError.message, 500);
@@ -144,7 +170,7 @@ export async function POST(request: NextRequest) {
     .neq("id", meRow.id)
     .eq("genre", meRow.genre)
     .order("created_at", { ascending: true })
-    .limit(targetQueueId ? 1 : 10);
+    .limit(targetQueueId ? 1 : 25);
 
   if (targetQueueId) {
     opponentQuery = opponentQuery.eq("id", targetQueueId);
@@ -153,10 +179,11 @@ export async function POST(request: NextRequest) {
   const { data: opponents, error: opponentError } = await opponentQuery.returns<QueueRow[]>();
   if (opponentError) return jsonError(opponentError.message, 500);
 
-  const opponentRow = (opponents ?? []).find((row) => {
+  const acceptableOpponents = (opponents ?? []).filter((row) => {
     if (targetQueueId) return isDropChallengeAcceptable(row);
     return row.status !== "waiting_challenge" || isDropChallengeAcceptable(row);
-  }) ?? null;
+  });
+  const opponentRow = targetQueueId ? (acceptableOpponents[0] ?? null) : pickRandomQueue(acceptableOpponents);
   if (!opponentRow) {
     if (targetQueueId) {
       await admin
