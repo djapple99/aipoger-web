@@ -2816,17 +2816,24 @@ function BattleArenaContent() {
   const battleShareTitle = isQueueArena
     ? `${battle.fighter_a_name} 的 AIPOGER Drop Battle 戰場`
     : `${battle.fighter_a_name} VS ${battle.fighter_b_name} | AIPOGER Drop Battle`;
+  const battleStartShareLine = preStartTimeLabel
+    ? lang === "zh"
+      ? `開戰時間：${preStartTimeLabel}（台灣時間）。請大家提前 1 分鐘進場。`
+      : `Starts: ${preStartTimeLabel} Taiwan time. Please enter 1 minute early.`
+    : lang === "zh"
+      ? "請大家提前 1 分鐘進場。"
+      : "Please enter 1 minute early.";
   const battleShareText =
     lang === "zh"
       ? isQueueArena
-        ? `${battle.fighter_a_name} 的 AIPOGER Drop Battle 戰帖已開。進來聊天預測支持誰的歌最熱血最動人，或是你來挑戰？Show me what you got!!!`
+        ? `${battle.fighter_a_name} 的 AIPOGER Drop Battle 戰帖已開。${battleStartShareLine}進來聊天預測支持誰的歌最熱血最動人，或是你來挑戰？Show me what you got!!!`
         : isPreBattle
-        ? `${battle.fighter_a_name} 對上 ${battle.fighter_b_name}，已進 AIPOGER 鬥歌場倒數。進來先聽 5 秒預播，時間到開打！`
+        ? `${battle.fighter_a_name} 對上 ${battle.fighter_b_name}，已進 AIPOGER 鬥歌場倒數。${battleStartShareLine}進來先聽 5 秒預播，時間到開打！`
         : `${battle.fighter_a_name} 對上 ${battle.fighter_b_name}，正在 AIPOGER 鬥歌場開打。進來聽 Drop、投票、丟彈幕！`
       : isQueueArena
-        ? `${battle.fighter_a_name}'s AIPOGER Drop Battle card is open. Back the hottest, most moving Drop in chat, or step in and challenge. Show me what you got!!!`
+        ? `${battle.fighter_a_name}'s AIPOGER Drop Battle card is open. ${battleStartShareLine} Back the hottest, most moving Drop in chat, or step in and challenge. Show me what you got!!!`
         : isPreBattle
-        ? `${battle.fighter_a_name} vs ${battle.fighter_b_name} is counting down on AIPOGER. Hear the 5s previews before it starts.`
+        ? `${battle.fighter_a_name} vs ${battle.fighter_b_name} is counting down on AIPOGER. ${battleStartShareLine} Hear the 5s previews before it starts.`
         : `${battle.fighter_a_name} vs ${battle.fighter_b_name} is live on AIPOGER. Listen, vote, and make some noise.`;
 
   return (

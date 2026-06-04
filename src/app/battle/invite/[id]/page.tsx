@@ -129,8 +129,13 @@ export async function generateMetadata({ params, searchParams }: BattleInvitePag
   const image = `${canonical}/opengraph-image?${query.toString()}`;
   const title = `AIPOGER 90S 最強抓波Drop Battle 戰帖｜${data.leftName} VS ${data.rightName}`;
   const isHookCard = firstParam(resolvedSearchParams, "type") === "hook-card" || data.rightName === "等待挑戰者";
+  const hookStartAt = resolveHookStartAt(data);
+  const startTimeLabel = formatTaiwanTime(hookStartAt);
+  const startReminder = startTimeLabel
+    ? `開戰時間：${startTimeLabel}（台灣時間）。請大家提前 1 分鐘進場。`
+    : "請大家提前 1 分鐘進場。";
   const description = isHookCard
-    ? `${data.battleType}｜${data.leftName}《${data.leftSong}》正在等人接戰。進來聊天預測支持誰的歌最熱血最動人，或是你來挑戰？Show me what you got!!!`
+    ? `${data.battleType}｜${data.leftName}《${data.leftSong}》正在等人接戰。${startReminder}進來聊天預測支持誰的歌最熱血最動人，或是你來挑戰？Show me what you got!!!`
     : `${data.battleType}｜${data.leftName}《${data.leftSong}》(${data.leftTool}) VS ${data.rightName}《${data.rightSong}》(${data.rightTool})｜進場聊天預測支持誰的歌最熱血最動人。`;
 
   return {
@@ -229,7 +234,7 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
         </p>
         {isHookCard && startTimeLabel ? (
           <p className="mx-auto mt-3 w-fit rounded-full border border-orange-200/35 bg-orange-400/10 px-4 py-2 text-sm font-black text-orange-50">
-            開戰時間：{startTimeLabel}（台灣時間）
+            開戰時間：{startTimeLabel}（台灣時間） · 請提前 1 分鐘進場
           </p>
         ) : null}
         {isHookCard && !isHookExpired ? (
@@ -258,7 +263,7 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
                   這是一張公開最強抓波Drop Battle 戰帖。
                   {startTimeLabel ? (
                     <>
-                      開戰時間 <span className="whitespace-nowrap">{startTimeLabel}（台灣時間）</span>。
+                      開戰時間 <span className="whitespace-nowrap">{startTimeLabel}（台灣時間）</span>，請大家提前 1 分鐘進場。
                     </>
                   ) : null}
                   進來聊天預測支持誰的歌最熱血最動人，<span className="whitespace-nowrap">或是你來挑戰？</span>{" "}

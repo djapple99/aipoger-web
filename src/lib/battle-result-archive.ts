@@ -28,6 +28,7 @@ export type ArchivedBattleResult = {
   feedbackA: BattleFeedbackCounts;
   feedbackB: BattleFeedbackCounts;
   resultHref: string;
+  audioUrl?: string;
   createdAt: string;
 };
 
@@ -117,6 +118,7 @@ function sanitizeArchiveEntry(value: unknown): ArchivedBattleResult | null {
     feedbackA: sanitizeBattleFeedbackCounts(row.feedbackA),
     feedbackB: sanitizeBattleFeedbackCounts(row.feedbackB),
     resultHref: String(row.resultHref || "").trim(),
+    audioUrl: typeof row.audioUrl === "string" ? row.audioUrl.trim() : undefined,
     createdAt: String(row.createdAt || new Date().toISOString()),
   };
 }

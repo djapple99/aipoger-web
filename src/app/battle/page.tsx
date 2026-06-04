@@ -1132,8 +1132,8 @@ function BattlePoolList() {
             const hookStartAt = resolveDropBattleScheduledStart(entry);
             const hookStartText = hookStartAt
               ? isZh
-                ? `開戰時間：${formatBattleCardTime(hookStartAt, true)}（台灣時間）。`
-                : `Starts: ${formatBattleCardTime(hookStartAt, false)} Taiwan time.`
+                ? `開戰時間：${formatBattleCardTime(hookStartAt, true)}（台灣時間）。請大家提前 1 分鐘進場。`
+                : `Starts: ${formatBattleCardTime(hookStartAt, false)} Taiwan time. Please enter 1 minute early.`
               : "";
             const label = isMine
               ? isZh
@@ -1509,6 +1509,11 @@ function LiveBattleList() {
             {rows.map((b) => {
               const scheduledAt = resolveDropBattleRuntimeStart(b);
               const scheduledMs = new Date(scheduledAt ?? "").getTime();
+              const battleStartShareText = scheduledAt
+                ? lang === "zh"
+                  ? `開戰時間：${formatBattleCardTime(scheduledAt, true)}（台灣時間）。請大家提前 1 分鐘進場。`
+                  : `Starts: ${formatBattleCardTime(scheduledAt, false)} Taiwan time. Please enter 1 minute early.`
+                : "";
               const likelyEndedByClock =
                 Number.isFinite(scheduledMs) &&
                 scheduledMs + DROP_BATTLE_EXPECTED_END_BUFFER_MS <= Date.now();
@@ -1595,8 +1600,8 @@ function LiveBattleList() {
                               : `"${b.song_a_name}" vs "${b.song_b_name}" has ended. Open it to view.`
                           : isFutureBattle
                               ? lang === "zh"
-                                ? `《${b.song_a_name}》vs《${b.song_b_name}》已進場等待開打，先進來聽 5 秒預播。`
-                                : `"${b.song_a_name}" vs "${b.song_b_name}" is waiting to start. Hear the 5s previews.`
+                                ? `《${b.song_a_name}》vs《${b.song_b_name}》已進場等待開打。${battleStartShareText}先進來聽 5 秒預播。`
+                                : `"${b.song_a_name}" vs "${b.song_b_name}" is waiting to start. ${battleStartShareText} Hear the 5s previews.`
                               : lang === "zh"
                                 ? `《${b.song_a_name}》vs《${b.song_b_name}》正在開打，進來觀戰投票。`
                                 : `"${b.song_a_name}" vs "${b.song_b_name}" is live. Come vote.`

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { User } from "@supabase/supabase-js";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
@@ -74,6 +75,7 @@ const ACTIVE_NOTICE_BATTLE_STATUSES = [
 const FIXED_BATTLE_ROUTES = new Set(["setup", "hook-cut", "matchmaking", "result"]);
 const DEMO_CALL_EVENT = "aipoger:battle-call-demo";
 const ACCOUNT_NOTICE_COLLAPSED_KEY = "aipoger:account-notice-collapsed";
+const ACCOUNT_NOTICE_DISMISSED_KEY = "aipoger:account-notice-dismissed";
 const EXPIRED_OR_FINISHED_NOTICE_TYPES = [
   "battle_queue_expired",
   "battle_finished",
@@ -114,6 +116,36 @@ function buildCompletedDropNotice(battleId: string): BattleNotificationRow {
   };
 }
 
+function authAvatarUrl(user: User | null | undefined) {
+  const metadata = user?.user_metadata as Record<string, unknown> | undefined;
+  const avatar = metadata?.avatar_url;
+  const picture = metadata?.picture;
+  if (typeof avatar === "string" && avatar.trim()) return avatar.trim();
+  if (typeof picture === "string" && picture.trim()) return picture.trim();
+  return null;
+}
+
+function isDismissedNotice(id: string) {
+  try {
+    const raw = window.localStorage.getItem(ACCOUNT_NOTICE_DISMISSED_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) && parsed.includes(id);
+  } catch {
+    return false;
+  }
+}
+
+function rememberDismissedNotice(id: string) {
+  try {
+    const raw = window.localStorage.getItem(ACCOUNT_NOTICE_DISMISSED_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    const next = [id, ...(Array.isArray(parsed) ? parsed : [])].slice(0, 36);
+    window.localStorage.setItem(ACCOUNT_NOTICE_DISMISSED_KEY, JSON.stringify(Array.from(new Set(next))));
+  } catch {
+    // Ignore localStorage write errors.
+  }
+}
+
 export default function GlobalBattleCallOverlay() {
   const pathname = usePathname();
   const { lang } = useI18n();
@@ -133,6 +165,8 @@ export default function GlobalBattleCallOverlay() {
   const [expiredNotice, setExpiredNotice] = useState<BattleNotificationRow | null>(null);
   const [expiredNoticeOpen, setExpiredNoticeOpen] = useState(true);
   const [expiredNoticeCollapsed, setExpiredNoticeCollapsed] = useState(false);
+  const [accountAvatarUrl, setAccountAvatarUrl] = useState<string | null>(null);
+  const [accountInitial, setAccountInitial] = useState("A");
 
   const routeTone = useMemo(() => {
     const seg = pathname?.match(/^\/battle\/([^/]+)$/)?.[1];
@@ -234,6 +268,20 @@ export default function GlobalBattleCallOverlay() {
       const uid = session?.user?.id;
       if (!mounted || !uid) return;
       setAccessToken(session?.access_token ?? "");
+      setAccountInitial((session?.user?.email ?? session?.user?.user_metadata?.full_name ?? "A").slice(0, 1).toUpperCase());
+
+      const [profileAvatar, fighterAvatar] = await Promise.all([
+        supabase.from("user_profiles").select("avatar_url").eq("id", uid).maybeSingle<{ avatar_url?: string | null }>(),
+        supabase.from("fighter_profiles").select("avatar_url").eq("id", uid).maybeSingle<{ avatar_url?: string | null }>(),
+      ]);
+      if (mounted) {
+        setAccountAvatarUrl(
+          (typeof fighterAvatar.data?.avatar_url === "string" && fighterAvatar.data.avatar_url.trim()) ||
+            (typeof profileAvatar.data?.avatar_url === "string" && profileAvatar.data.avatar_url.trim()) ||
+            authAvatarUrl(session?.user) ||
+            null,
+        );
+      }
 
       const { data: activeQueueRows } = await supabase
         .from("battle_queue")
@@ -262,11 +310,13 @@ export default function GlobalBattleCallOverlay() {
           .eq("id", activeQueue.match_group_id)
           .maybeSingle<{ id: string; status: string; created_at?: string | null; scheduled_start_at?: string | null; started_at?: string | null; battle_started_at?: string | null; battle_ended_at?: string | null }>();
         linkedQueueBattleEnded = isDropBattleEndedOrPastExpectedEnd(linkedBattle);
-        if (mounted && linkedBattle?.id && linkedQueueBattleEnded) {
+        const syntheticNotice = linkedBattle?.id ? buildCompletedDropNotice(linkedBattle.id) : null;
+        if (mounted && syntheticNotice && linkedQueueBattleEnded && !isDismissedNotice(syntheticNotice.id)) {
           setCall(null);
           setActiveNotice(null);
-          setExpiredNotice(buildCompletedDropNotice(linkedBattle.id));
+          setExpiredNotice(syntheticNotice);
           setExpiredNoticeOpen(true);
+          setAccountNoticeCollapsed(true);
         }
       }
       if (mounted && activeQueue?.id && !activeQueueExpired && !linkedQueueBattleEnded) {
@@ -279,7 +329,7 @@ export default function GlobalBattleCallOverlay() {
         });
         if (routeTone !== "watching") {
           setActiveNoticeOpen(true);
-          setAccountNoticeCollapsed(false);
+          setAccountNoticeCollapsed(true);
         }
       } else {
         const { data: activeBattleRows } = await supabase
@@ -301,14 +351,16 @@ export default function GlobalBattleCallOverlay() {
           });
           if (routeTone !== "watching") {
             setActiveNoticeOpen(true);
-            setAccountNoticeCollapsed(false);
+            setAccountNoticeCollapsed(true);
           }
         }
-        if (mounted && activeBattle?.id && isDropBattleEndedOrPastExpectedEnd(activeBattle)) {
+        const syntheticNotice = activeBattle?.id ? buildCompletedDropNotice(activeBattle.id) : null;
+        if (mounted && syntheticNotice && isDropBattleEndedOrPastExpectedEnd(activeBattle) && !isDismissedNotice(syntheticNotice.id)) {
           setCall(null);
           setActiveNotice(null);
-          setExpiredNotice(buildCompletedDropNotice(activeBattle.id));
+          setExpiredNotice(syntheticNotice);
           setExpiredNoticeOpen(true);
+          setAccountNoticeCollapsed(true);
         }
         if (mounted && (!activeBattle?.id || isDropBattleEndedOrPastExpectedEnd(activeBattle))) setActiveNotice(null);
       }
@@ -331,6 +383,7 @@ export default function GlobalBattleCallOverlay() {
         setActiveNotice(null);
         setExpiredNotice(latest);
         setExpiredNoticeOpen(true);
+        setAccountNoticeCollapsed(true);
       }
 
       channel = supabase
@@ -348,6 +401,7 @@ export default function GlobalBattleCallOverlay() {
               setActiveNotice(null);
               setExpiredNotice(row);
               setExpiredNoticeOpen(true);
+              setAccountNoticeCollapsed(true);
             }
           },
         )
@@ -388,7 +442,10 @@ export default function GlobalBattleCallOverlay() {
   };
 
   const dismissExpiredNotice = () => {
-    if (expiredNotice) void markRead(expiredNotice.id);
+    if (expiredNotice) {
+      rememberDismissedNotice(expiredNotice.id);
+      void markRead(expiredNotice.id);
+    }
     setExpiredNotice(null);
     setExpiredNoticeOpen(false);
   };
@@ -411,6 +468,42 @@ export default function GlobalBattleCallOverlay() {
   };
 
   if (!ready) return null;
+
+  const AccountNoticeDock = ({
+    hasNotice,
+    onBellClick,
+  }: {
+    hasNotice: boolean;
+    onBellClick?: () => void;
+  }) => (
+    <div className="fixed right-4 top-20 z-[92] flex items-center gap-2 sm:right-5">
+      <Link
+        href={`/profile?lang=${lang}`}
+        className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-cyan-200/30 bg-black/82 text-sm font-black text-cyan-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_24px_rgba(0,203,255,0.14)] backdrop-blur-xl transition hover:border-cyan-100 hover:text-white"
+        aria-label={isZh ? "個人資料" : "Profile"}
+        title={isZh ? "個人資料" : "Profile"}
+      >
+        {accountAvatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={accountAvatarUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+        ) : (
+          accountInitial
+        )}
+      </Link>
+      {hasNotice ? (
+        <button
+          type="button"
+          onClick={onBellClick}
+          className="relative flex h-12 w-12 items-center justify-center rounded-full border border-orange-200/45 bg-black/82 text-orange-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_28px_rgba(255,106,0,0.18)] backdrop-blur-xl transition hover:border-orange-100 hover:text-white"
+          aria-label={isZh ? "展開帳號消息" : "Expand account notice"}
+          title={isZh ? "帳號消息" : "Account Notice"}
+        >
+          <BellIcon />
+          <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-orange-400 shadow-[0_0_14px_rgba(255,106,0,0.9)]" />
+        </button>
+      ) : null}
+    </div>
+  );
 
   if (!call && expiredNotice) {
     const isDailyFinishedNotice = expiredNotice.type === "daily_battle_finished";
@@ -498,19 +591,11 @@ export default function GlobalBattleCallOverlay() {
                 : "Open New Drop";
     if (expiredNoticeCollapsed) {
       return (
-        <button
-          type="button"
-          onClick={() => setAccountNoticeCollapsed(false)}
-          className="fixed right-4 top-20 z-[92] flex h-12 w-12 items-center justify-center rounded-full border border-cyan-200/30 bg-black/82 text-cyan-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_24px_rgba(0,203,255,0.14)] backdrop-blur-xl transition hover:border-cyan-100 hover:text-white sm:right-5"
-          aria-label={isZh ? "展開帳號消息" : "Expand account notice"}
-          title={isZh ? "帳號消息" : "Account Notice"}
-        >
-          <BellIcon />
-        </button>
+        <AccountNoticeDock hasNotice onBellClick={() => setAccountNoticeCollapsed(false)} />
       );
     }
     return (
-      <div className="fixed right-4 top-20 z-[92] w-[min(calc(100vw-2rem),340px)] sm:right-5">
+      <div className="fixed right-4 top-24 z-[92] w-[min(calc(100vw-2rem),340px)] sm:right-5">
         <div className="overflow-hidden rounded-2xl border border-cyan-200/25 bg-black/82 text-white shadow-[0_22px_76px_rgba(0,0,0,0.52),0_0_30px_rgba(0,203,255,0.12)] backdrop-blur-xl">
           <div className="flex items-center gap-2 pr-3">
             <button
@@ -597,22 +682,17 @@ export default function GlobalBattleCallOverlay() {
         : "Enter";
     if (activeNoticeCollapsed) {
       return (
-        <button
-          type="button"
-          onClick={() => {
+        <AccountNoticeDock
+          hasNotice
+          onBellClick={() => {
             setAccountNoticeCollapsed(false);
             setActiveNoticeOpen(true);
           }}
-          className="fixed right-4 top-20 z-[92] flex h-12 w-12 items-center justify-center rounded-full border border-cyan-200/30 bg-black/82 text-cyan-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_24px_rgba(0,203,255,0.14)] backdrop-blur-xl transition hover:border-cyan-100 hover:text-white sm:right-5"
-          aria-label={isZh ? "展開帳號消息" : "Expand account notice"}
-          title={isZh ? "帳號消息" : "Account Notice"}
-        >
-          <BellIcon />
-        </button>
+        />
       );
     }
     return (
-      <div className="fixed right-4 top-20 z-[92] w-[min(calc(100vw-2rem),340px)] sm:right-5">
+      <div className="fixed right-4 top-24 z-[92] w-[min(calc(100vw-2rem),340px)] sm:right-5">
         <div className="overflow-hidden rounded-2xl border border-cyan-200/25 bg-black/82 text-white shadow-[0_22px_76px_rgba(0,0,0,0.52),0_0_30px_rgba(0,203,255,0.12)] backdrop-blur-xl">
           <div className="flex items-center gap-2 pr-3">
             <button

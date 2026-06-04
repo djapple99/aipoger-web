@@ -230,6 +230,7 @@ function rowFromArchive(entry: ArchivedBattleResult, index: number): RankRow {
     aiReview: stripCannedBattleReview(entry.aiReview),
     audienceReview: stripCannedBattleReview(entry.audienceReview),
     resultHref: entry.resultHref,
+    audioUrl: entry.audioUrl,
   };
 }
 
@@ -273,6 +274,50 @@ function hotBarRowsFromTracks(tracks: ListenBarTrackRow[]) {
       audioUrl: track.audioUrl,
       positiveReactions: Math.max(0, Math.round(track.positiveReactionCount || 0)),
     }));
+}
+
+function battleAudioPathToUrl(path: string | null | undefined) {
+  const clean = path?.trim();
+  if (!clean) return Promise.resolve<string | null>(null);
+  if (/^(https?:|blob:|data:)/i.test(clean)) return Promise.resolve(clean);
+  return supabase.storage
+    .from("battle-audio")
+    .createSignedUrl(clean, 60 * 60)
+    .then(({ data, error }) => {
+      if (error) {
+        console.warn("[rank battle audio]", error.message);
+        return null;
+      }
+      return data?.signedUrl ?? null;
+    });
+}
+
+async function attachBattleAudioUrls(rows: ArchivedBattleResult[]) {
+  const battleIds = Array.from(new Set(rows.map((row) => row.battleId).filter((id): id is string => Boolean(id))));
+  if (battleIds.length === 0) return rows;
+
+  const { data, error } = await supabase
+    .from("battles")
+    .select("id,winner,audio_a_path,audio_b_path")
+    .in("id", battleIds);
+  if (error) {
+    console.warn("[rank battle audio rows]", error.message);
+    return rows;
+  }
+
+  const audioByBattle = new Map<string, string | null>();
+  await Promise.all(
+    ((data ?? []) as Array<{ id?: string | null; winner?: string | null; audio_a_path?: string | null; audio_b_path?: string | null }>).map(async (battle) => {
+      if (!battle.id) return;
+      const winnerPath = battle.winner === "fighter_b" ? battle.audio_b_path : battle.audio_a_path;
+      audioByBattle.set(battle.id, await battleAudioPathToUrl(winnerPath));
+    }),
+  );
+
+  return rows.map((row) => ({
+    ...row,
+    audioUrl: row.audioUrl || (row.battleId ? audioByBattle.get(row.battleId) || undefined : undefined),
+  }));
 }
 
 export default function RankPage() {
@@ -372,12 +417,13 @@ export default function RankPage() {
                   ? (payload.feedbackB as ArchivedBattleResult["feedbackB"])
                   : { rhyme: 0, impact: 0, melody: 0, emotion: 0, structure: 0 },
               resultHref: String(payload.resultHref || "").trim(),
+              audioUrl: typeof payload.audioUrl === "string" ? payload.audioUrl.trim() : undefined,
               createdAt: String(row.archived_at || new Date().toISOString()),
             };
           })
         : [];
 
-      const merged = mergeArchives(mappedArchives);
+      const merged = await attachBattleAudioUrls(mergeArchives(mappedArchives));
       const hotRows = Array.isArray(hotData) ? hotBarRowsFromTracks(hotData as ListenBarTrackRow[]) : [];
 
       if (!cancelled) {
