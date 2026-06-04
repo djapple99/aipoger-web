@@ -27,7 +27,9 @@ import { sha256File } from '@/lib/file-hash';
 type GenreOption = { value: string; labelKey: string };
 
 const GENRES: GenreOption[] = [
-  { value: '流行舞曲', labelKey: 'genre_pop' },
+  { value: 'K-pop動感風', labelKey: 'genre_kpop_energy' },
+  { value: '說唱街頭風', labelKey: 'genre_rap_street' },
+  { value: '復古City-Pop', labelKey: 'genre_city_pop' },
   { value: '感人抒情', labelKey: 'genre_emotion' },
   { value: '熱血搖滾', labelKey: 'genre_rock' },
   { value: '動感電音', labelKey: 'genre_edm' },
@@ -42,6 +44,7 @@ const ACTIVE_QUEUE_STATUSES = ["pending", "searching", "waiting", "waiting_chall
 const ACTIVE_BATTLE_STATUSES = ["pending", "active", "live"];
 const REPLACEABLE_QUEUE_STATUSES = new Set(["pending", "searching", "waiting", "waiting_challenge"]);
 const CLOSED_BATTLE_STATUSES = new Set(["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"]);
+const DAILY_BATTLE_PUBLIC_ENTRY_ENABLED = false;
 
 type BattleDraft = {
   audioPath: string;
@@ -440,7 +443,7 @@ export default function BattleSetupPage() {
         if (urlGenre) setGenre(urlGenre);
         if (urlSongName) setSongName(urlSongName);
         if (urlAiTool) setAiTool(urlAiTool);
-        if (urlBattleMode === 'daily') setBattleMode('daily');
+        if (DAILY_BATTLE_PUBLIC_ENTRY_ENABLED && urlBattleMode === 'daily') setBattleMode('daily');
         if (urlInstantPairing === 'invite') setInstantPairingMode('invite');
         if (urlDailyPairing === 'invite') setDailyPairingMode('invite');
         if (urlHookBattleAt) {
@@ -463,7 +466,7 @@ export default function BattleSetupPage() {
           setChallengeEntryId(urlChallengeEntryId);
           setInstantPairingMode('auto');
         }
-        if (urlChallengeDailyEntryId && /^[0-9a-f-]{36}$/i.test(urlChallengeDailyEntryId)) {
+        if (DAILY_BATTLE_PUBLIC_ENTRY_ENABLED && urlChallengeDailyEntryId && /^[0-9a-f-]{36}$/i.test(urlChallengeDailyEntryId)) {
           setChallengeDailyEntryId(urlChallengeDailyEntryId);
           setBattleMode('daily');
           setDailyPairingMode('invite');
@@ -523,21 +526,18 @@ export default function BattleSetupPage() {
               : null;
           if (oauthAvatar) setProfileAvatarPreview(oauthAvatar);
         }
-        const { count: activeDailyCount, error: dailyCountError } = await supabase
-          .from('daily_battle_entries')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', session.user.id)
-          .in('status', ACTIVE_DAILY_BATTLE_STATUSES);
-        if (!dailyCountError) {
-          setDailyBattleCount(activeDailyCount ?? 0);
-        } else if (isDailySchemaMissingMessage(extractErrorMessage(dailyCountError))) {
-          setDailySchemaMissing(true);
-          setFormError(
-            lang === 'zh'
-              ? '24H Daily Battle 尚未啟用（資料表缺失）。請先執行 `supabase/daily_battle_system.sql`。'
-              : '24H Daily Battle is not enabled yet (missing tables). Run `supabase/daily_battle_system.sql` first.',
-          );
-          setBattleMode('instant');
+        if (DAILY_BATTLE_PUBLIC_ENTRY_ENABLED) {
+          const { count: activeDailyCount, error: dailyCountError } = await supabase
+            .from('daily_battle_entries')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', session.user.id)
+            .in('status', ACTIVE_DAILY_BATTLE_STATUSES);
+          if (!dailyCountError) {
+            setDailyBattleCount(activeDailyCount ?? 0);
+          } else if (isDailySchemaMissingMessage(extractErrorMessage(dailyCountError))) {
+            setDailySchemaMissing(true);
+            setBattleMode('instant');
+          }
         }
         setDraftChecked(true);
         return;
@@ -554,7 +554,7 @@ export default function BattleSetupPage() {
   }, [lang, router]);
 
   useEffect(() => {
-    if (dailyBattleCount >= DAILY_BATTLE_ACTIVE_LIMIT && battleMode === 'daily') {
+    if ((!DAILY_BATTLE_PUBLIC_ENTRY_ENABLED || dailyBattleCount >= DAILY_BATTLE_ACTIVE_LIMIT) && battleMode === 'daily') {
       setBattleMode('instant');
     }
   }, [battleMode, dailyBattleCount]);
@@ -1143,8 +1143,6 @@ export default function BattleSetupPage() {
   const displayAvatarUrl = avatarPreview ?? savedAvatarUrl ?? profileAvatarPreview;
   const displayCoverUrl = coverPreview ?? savedCoverUrl;
   const hookDurationLabel = draft?.hookDuration ? `${Number(draft.hookDuration).toFixed(1)}s` : '45s';
-  const dailyBattleLocked = dailyBattleCount >= DAILY_BATTLE_ACTIVE_LIMIT;
-  const dailyModeDisabled = dailyBattleLocked || dailySchemaMissing;
   const showDropBattleSchedule = battleMode === 'instant' && instantPairingMode === 'invite' && !challengeEntryId;
   const customScheduleMin = toDatetimeLocalValue(new Date(Date.now() + DROP_BATTLE_SCHEDULE_MIN_LEAD_MS));
   const customScheduleMax = toDatetimeLocalValue(new Date(Date.now() + DROP_BATTLE_SCHEDULE_MAX_LEAD_MS));
@@ -1230,15 +1228,15 @@ export default function BattleSetupPage() {
           <p className="text-[11px] font-black uppercase tracking-[0.28em] text-orange-200/75">BATTLE MODE</p>
           <h2 className="mt-2 text-2xl font-black text-white">{lang === 'zh' ? '選擇上場方式' : 'Choose Battle Mode'}</h2>
         </div>
-        <span className="rounded-full border border-cyan-200/20 bg-cyan-300/10 px-3 py-1.5 text-xs font-black text-cyan-100">
-          24H active {dailyBattleCount}/{DAILY_BATTLE_ACTIVE_LIMIT}
+        <span className="rounded-full border border-orange-200/25 bg-orange-500/10 px-3 py-1.5 text-xs font-black text-orange-100">
+          {lang === 'zh' ? 'Drop Battle 公測主軸' : 'Drop Battle public beta'}
         </span>
       </div>
-      <div className="mt-5 grid gap-3 md:grid-cols-2">
+      <div className="mt-5">
         <button
           type="button"
           onClick={() => setBattleMode('instant')}
-          className={`rounded-[1.25rem] border px-5 py-4 text-left transition ${
+          className={`w-full rounded-[1.25rem] border px-5 py-4 text-left transition ${
             battleMode === 'instant'
               ? 'border-orange-300/65 bg-orange-500/16 shadow-[0_0_30px_rgba(255,106,0,0.14)]'
               : 'border-white/10 bg-white/[0.035] hover:border-orange-300/35'
@@ -1247,31 +1245,6 @@ export default function BattleSetupPage() {
           <p className="text-lg font-black text-white">{lang === 'zh' ? '90s 最熱血的最強抓波Drop Battle' : '90s Hottest Drop Battle'}</p>
           <p className="mt-2 text-sm leading-6 text-zinc-400">
             {lang === 'zh' ? '拿出你最熱的 Drop，PK 最即時熱血的戰鬥。' : 'Bring your hottest Drop into the fastest live battle.'}
-          </p>
-        </button>
-        <button
-          type="button"
-          disabled={dailyModeDisabled}
-          onClick={() => setBattleMode('daily')}
-          className={`rounded-[1.25rem] border px-5 py-4 text-left transition ${
-            battleMode === 'daily'
-              ? 'border-cyan-200/65 bg-cyan-300/14 shadow-[0_0_30px_rgba(0,203,255,0.12)]'
-              : 'border-white/10 bg-white/[0.035] hover:border-cyan-200/35'
-          } ${dailyModeDisabled ? 'cursor-not-allowed opacity-45' : ''}`}
-        >
-          <p className="text-lg font-black text-white">24H Daily Battle</p>
-          <p className="mt-2 text-sm leading-6 text-zinc-400">
-            {dailySchemaMissing
-              ? lang === 'zh'
-                ? '24H Daily Battle 尚未啟用，請先初始化資料庫。'
-                : '24H Daily Battle is not enabled until database setup is complete.'
-              : dailyBattleLocked
-                ? lang === 'zh'
-                  ? '已有一場 24H 尚未結束。完成、取消或過期後可再開新局。'
-                  : 'One 24H battle is still active. Finish, cancel, or let it expire before starting another.'
-                : lang === 'zh'
-                  ? '是不是有料？你有自信接受任何人挑戰嗎？'
-                  : 'Do you have the goods? Confident enough to face any challenger?'}
           </p>
         </button>
       </div>

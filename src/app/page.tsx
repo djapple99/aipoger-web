@@ -387,20 +387,20 @@ export default function HomePage() {
   const musicAnalysisHref = `/music-analysis?lang=${lang}`;
   const statItems = isZh
     ? [
-        ["45s", t("home_stat_45_label")],
-        ["24H", t("home_stat_24_label")],
-        ["Survival", t("home_stat_survive_label")],
+        ["90s", "Drop Battle"],
+        ["1 min", "即時配對"],
+        ["Bar", "傷心酒吧"],
       ]
     : [
-        ["45s", t("home_stat_45_label")],
-        ["24H", t("home_stat_24_label")],
-        ["Survival", t("home_stat_survive_label")],
+        ["90s", "Drop Battle"],
+        ["1 min", "Instant Match"],
+        ["Bar", "Heartbreak"],
       ];
   const infoLinks = isZh
     ? [
         { href: "/hook-guide", title: "最強Drop Battle 對決抓波規則", desc: "最強抓波Drop Battle、點數、等級與比賽制度" },
         { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
-        { href: "/rank", title: "AIPOGER 榮譽榜", desc: "Drop 抓波勝利、24H Full Song 與傷心酒吧熱播" },
+        { href: "/rank", title: "AIPOGER 榮譽榜", desc: "Drop 抓波勝利與傷心酒吧熱播" },
         { href: "/ai-music-bible", title: "AI 音樂練功聖經", desc: "教學播放列表、官方指南與 prompt 練功路線" },
         { href: "/about", title: "關於愛播歌", desc: "平台理念、著作權原則與聯絡方式" },
         { href: "/partners", title: "廣告與合作", desc: "品牌投放、活動與內容合作" },
@@ -408,7 +408,7 @@ export default function HomePage() {
     : [
         { href: "/hook-guide", title: "Drop Battle Rules", desc: "Drop Battle format, points, levels, and battle rules" },
         { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
-        { href: "/rank", title: "AIPOGER Honor Board", desc: "Drop wins, 24H Full Song, and Bar Heartbreak hits" },
+        { href: "/rank", title: "AIPOGER Honor Board", desc: "Drop wins and Bar Heartbreak hits" },
         { href: "/ai-music-bible", title: "AI Music Bible", desc: "Tutorial playlist, official docs, and prompt practice map" },
         { href: "/about", title: "About AIPOGER", desc: "Platform principles, copyright policy, and contact" },
         { href: "/partners", title: "Partnerships", desc: "Ads, campaigns, and creator collaborations" },

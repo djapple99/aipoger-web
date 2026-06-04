@@ -46,6 +46,7 @@ const mockBattleData: BattleViewData = {
 };
 
 const DAILY_BATTLE_QUEUE_MS = 24 * 60 * 60 * 1000;
+const SHOW_DAILY_BATTLE_SECTION = false;
 
 function Turntable({
   label,
@@ -814,29 +815,12 @@ function BattlePoolList() {
 
       await fetch("/api/battle-pool/expire-open-cards", { method: "POST" }).catch(() => null);
 
-      const scheduledRead = await supabase
+      const { data, error } = await supabase
         .from("battle_queue")
-        .select("id, user_id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, scheduled_start_at, cancellation_evaluation_at, public_vote_score, created_at")
+        .select("id, user_id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, public_vote_score, created_at")
         .in("status", ["waiting_challenge", "public_voting", "ghost_battle"])
         .order("created_at", { ascending: false })
         .limit(24);
-      let data = scheduledRead.data as PoolEntryRow[] | null;
-      let error = scheduledRead.error;
-
-      if (error) {
-        const msg = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`;
-        const missingScheduleColumn = /scheduled_start_at|cancellation_evaluation_at|schema cache|column.*does not exist|PGRST204/i.test(msg);
-        if (missingScheduleColumn) {
-          const legacyRead = await supabase
-            .from("battle_queue")
-            .select("id, user_id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, public_vote_score, created_at")
-            .in("status", ["waiting_challenge", "public_voting", "ghost_battle"])
-            .order("created_at", { ascending: false })
-            .limit(24);
-          data = legacyRead.data as PoolEntryRow[] | null;
-          error = legacyRead.error;
-        }
-      }
 
       if (!mounted) return;
       if (error) {
@@ -1140,7 +1124,7 @@ function LiveBattleList() {
 
       const { data, error: qErr } = await supabase
         .from("battles")
-        .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, scheduled_start_at, battle_started_at, battle_ended_at, started_at, waiting_room_started_at")
+        .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, battle_ended_at")
         .in("status", ["active", "live"])
         .is("battle_ended_at", null)
         .order("created_at", { ascending: false })
@@ -1331,7 +1315,7 @@ function LiveBattleList() {
           </ul>
         )}
 
-        <DailyBattleList />
+        {SHOW_DAILY_BATTLE_SECTION ? <DailyBattleList /> : null}
         <BattlePoolList />
       </div>
     </main>

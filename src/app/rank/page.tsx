@@ -24,11 +24,11 @@ import { useI18n } from "@/lib/i18n";
 import { listenBarRowToTrack, type ListenBarTrackRow } from "@/lib/listen-bar";
 import { supabase } from "@/lib/supabase";
 
-type BoardKey = "drop" | "daily" | "bar";
+type BoardKey = "drop" | "bar";
 
 type RankRow = {
   id: string;
-  kind: "battle" | "daily" | "bar";
+  kind: "battle" | "bar";
   name: string;
   rank: string;
   title: string;
@@ -57,34 +57,12 @@ type BoardMeta = {
   en: string;
 };
 
-type DailyBattleEntryRow = {
-  id?: string | null;
-  title?: string | null;
-  genre?: string | null;
-  ai_tool?: string | null;
-  cover_url?: string | null;
-  avatar_url?: string | null;
-  audio_path?: string | null;
-};
-
-type DailyBattleBoardRow = {
-  id?: string | null;
-  entry_a_id?: string | null;
-  entry_b_id?: string | null;
-  winner_entry_id?: string | null;
-  ends_at?: string | null;
-  updated_at?: string | null;
-  entry_a?: DailyBattleEntryRow | DailyBattleEntryRow[] | null;
-  entry_b?: DailyBattleEntryRow | DailyBattleEntryRow[] | null;
-};
-
 const BOARD_META: Record<BoardKey, BoardMeta> = {
   drop: { zh: "熱血 Drop 抓波勝利榜", en: "Hot Drop Victory Board" },
-  daily: { zh: "24H Full Song 勝利榜", en: "24H Full Song Victory Board" },
   bar: { zh: "傷心酒吧熱播榜", en: "Bar Heartbreak Hot Board" },
 };
 
-const BOARD_KEYS: BoardKey[] = ["drop", "daily", "bar"];
+const BOARD_KEYS: BoardKey[] = ["drop", "bar"];
 const MOCK_PATTERN = /(qa-|mock|demo|test|ghost|sample)/i;
 
 const stageRows = [
@@ -135,11 +113,6 @@ function displayText(value: string, fallback: string) {
 
 function displaySongTitle(value: string, fallback: string) {
   return looksLikeOpaqueArchiveValue(value) ? fallback : displayText(value, fallback);
-}
-
-function firstRelation<T>(value: T | T[] | null | undefined): T | null {
-  if (Array.isArray(value)) return value[0] ?? null;
-  return value ?? null;
 }
 
 function accentFromIndex(index: number): RankRow["accent"] {
@@ -260,38 +233,6 @@ function rowFromArchive(entry: ArchivedBattleResult, index: number): RankRow {
   };
 }
 
-function dailyRowsFromBattles(rows: DailyBattleBoardRow[]) {
-  return rows
-    .filter((battle) => Boolean(battle.id && battle.winner_entry_id))
-    .map<RankRow | null>((battle, index) => {
-      const entryA = firstRelation(battle.entry_a);
-      const entryB = firstRelation(battle.entry_b);
-      const winner = battle.winner_entry_id === entryA?.id ? entryA : battle.winner_entry_id === entryB?.id ? entryB : null;
-      const opponent = winner?.id === entryA?.id ? entryB : entryA;
-      if (!winner?.id || !winner.title) return null;
-      return {
-        id: `daily-${battle.id}`,
-        kind: "daily",
-        name: winner.title,
-        rank: "24H 勝利作品",
-        title: "24H Full Song 勝利",
-        hook: winner.title,
-        note: winner.genre || "Full Song Battle",
-        accent: accentFromIndex(index),
-        avatarUrl: winner.avatar_url || winner.cover_url || AIPOGER_BRAND_LOGO,
-        coverUrl: winner.cover_url || AIPOGER_BRAND_LOGO,
-        aiTool: winner.ai_tool || "AI Music",
-        createdAt: battle.updated_at || battle.ends_at || new Date().toISOString(),
-        opponentName: opponent?.title || "24H 對手",
-        opponentSong: opponent?.title || "",
-        battleCode: battle.id || "",
-        resultHref: `/battle/daily/${battle.id}`,
-      };
-    })
-    .filter((row): row is RankRow => row !== null)
-    .slice(0, 10);
-}
-
 function mergeArchives(remoteRows: ArchivedBattleResult[]) {
   const unique = new Map<string, ArchivedBattleResult>();
   for (const row of remoteRows) {
@@ -339,7 +280,6 @@ export default function RankPage() {
   const isZh = lang === "zh";
   const [active, setActive] = useState<BoardKey>("drop");
   const [archivedResults, setArchivedResults] = useState<ArchivedBattleResult[]>([]);
-  const [dailyRows, setDailyRows] = useState<RankRow[]>([]);
   const [hotBarRows, setHotBarRows] = useState<RankRow[]>([]);
   const navSuffix = lang === "en" ? "?lang=en" : "?lang=zh";
   const boardTitle = isZh ? BOARD_META[active].zh : BOARD_META[active].en;
@@ -350,7 +290,6 @@ export default function RankPage() {
     const loadAll = async () => {
       const [
         { data: archiveData, error: archiveError },
-        { data: dailyData, error: dailyError },
         { data: hotData, error: hotError },
       ] = await Promise.all([
         supabase
@@ -360,15 +299,6 @@ export default function RankPage() {
           )
           .order("archived_at", { ascending: false })
           .limit(200),
-        supabase
-          .from("daily_battles")
-          .select(
-            "id,entry_a_id,entry_b_id,winner_entry_id,ends_at,updated_at,entry_a:daily_battle_entries!daily_battles_entry_a_id_fkey(id,title,genre,ai_tool,audio_path,cover_url,avatar_url),entry_b:daily_battle_entries!daily_battles_entry_b_id_fkey(id,title,genre,ai_tool,audio_path,cover_url,avatar_url)",
-          )
-          .eq("status", "finished")
-          .not("winner_entry_id", "is", null)
-          .order("updated_at", { ascending: false })
-          .limit(80),
         supabase
           .from("listen_bar_tracks")
           .select(
@@ -382,9 +312,6 @@ export default function RankPage() {
 
       if (archiveError) {
         console.warn("[rank archives]", archiveError.message);
-      }
-      if (dailyError && !/schema cache|does not exist|permission denied|Could not find/i.test(dailyError.message || "")) {
-        console.warn("[rank daily battles]", dailyError.message);
       }
       if (hotError && !/schema cache|does not exist|permission denied/i.test(hotError.message || "")) {
         console.warn("[rank hot tracks]", hotError.message);
@@ -451,12 +378,10 @@ export default function RankPage() {
         : [];
 
       const merged = mergeArchives(mappedArchives);
-      const dailyBattleRows = Array.isArray(dailyData) ? dailyRowsFromBattles(dailyData as DailyBattleBoardRow[]) : [];
       const hotRows = Array.isArray(hotData) ? hotBarRowsFromTracks(hotData as ListenBarTrackRow[]) : [];
 
       if (!cancelled) {
         setArchivedResults(merged);
-        setDailyRows(dailyBattleRows);
         setHotBarRows(hotRows);
       }
     };
@@ -473,12 +398,11 @@ export default function RankPage() {
 
   const displayRows = useMemo(() => {
     if (active === "bar") return hotBarRows;
-    if (active === "daily") return dailyRows;
     return dropRows;
-  }, [active, dailyRows, hotBarRows, dropRows]);
+  }, [active, hotBarRows, dropRows]);
 
   const topRow = displayRows[0] ?? null;
-  const activeBadge = active === "bar" ? "HOT" : active === "daily" ? "24H" : "WIN";
+  const activeBadge = active === "bar" ? "HOT" : "WIN";
 
   return (
     <main
@@ -525,8 +449,8 @@ export default function RankPage() {
                 title={isZh ? "AIPOGER 榮譽榜" : "AIPOGER Honor Board"}
                 text={
                   isZh
-                    ? "來看 AIPOGER 真實勝利、24H Full Song 與傷心酒吧熱播紀錄。"
-                    : "Check real AIPOGER victories, 24H Full Song records, and Bar Heartbreak hot tracks."
+                    ? "來看 AIPOGER 真實 Drop 勝利與傷心酒吧熱播紀錄。"
+                    : "Check real AIPOGER Drop victories and Bar Heartbreak hot tracks."
                 }
                 label={isZh ? "分享榮譽榜" : "Share Board"}
                 copiedLabel={isZh ? "榮譽榜連結已複製" : "Board link copied"}
@@ -589,27 +513,6 @@ export default function RankPage() {
                           url={resultHref(topRow, lang)}
                           label={isZh ? "分享成果卡" : "Share Result"}
                           copiedLabel={isZh ? "成果卡已複製" : "Result copied"}
-                          className="px-4 py-2 text-xs"
-                        />
-                      </div>
-                    ) : topRow.kind === "daily" ? (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Link
-                          href={resultHref(topRow, lang)}
-                          className="rounded-full border border-cyan-200/35 bg-cyan-300/12 px-4 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-100 hover:text-white"
-                        >
-                          {isZh ? "看 24H 戰場" : "View 24H Battle"}
-                        </Link>
-                        <ShareButton
-                          title={`${topRow.name} / ${displaySongTitle(topRow.hook, isZh ? "歌名未封存" : "Song not archived")}`}
-                          text={
-                            isZh
-                              ? `AIPOGER 24H Full Song 勝利：${topRow.name}`
-                              : `AIPOGER 24H Full Song victory: ${topRow.name}`
-                          }
-                          url={resultHref(topRow, lang)}
-                          label={isZh ? "分享 24H 勝利" : "Share 24H Victory"}
-                          copiedLabel={isZh ? "24H 勝利已複製" : "24H victory copied"}
                           className="px-4 py-2 text-xs"
                         />
                       </div>
@@ -754,15 +657,6 @@ export default function RankPage() {
                                 B SIDE：{displaySongTitle(row.opponentSong || "", isZh ? "尚未封存" : "Not archived")}
                               </p>
                             </>
-                          ) : row.kind === "daily" ? (
-                            <>
-                              <p className="mt-2 text-sm leading-6 text-zinc-300">
-                                24H Full Song：{displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song not archived")}
-                              </p>
-                              <p className="text-sm leading-6 text-zinc-300">
-                                VS：{displayText(row.opponentName || "", isZh ? "對手作品未封存" : "Opponent track missing")}
-                              </p>
-                            </>
                           ) : (
                             <p className="mt-2 text-sm leading-6 text-zinc-300">
                               {isZh ? "曲目" : "Track"}：{displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song not archived")}
@@ -799,18 +693,6 @@ export default function RankPage() {
                                 {isZh ? "決鬥編號" : "Battle"} {displayText(row.battleCode || "", "N/A")}
                               </p>
                             </div>
-                          ) : row.kind === "daily" ? (
-                            <div>
-                              <p className="text-sm font-black text-white">
-                                {displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song not archived")}
-                              </p>
-                              <p className="mt-1 text-xs font-bold text-zinc-400">
-                                {isZh ? "24H Full Song 勝利作品" : "24H Full Song winner"}
-                              </p>
-                              <p className="mt-2 text-xs font-black text-yellow-100">
-                                24H ID {displayText(row.battleCode || "", "N/A").slice(0, 8)}
-                              </p>
-                            </div>
                           ) : (
                             <div>
                               <p className="text-sm font-black text-white">{displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song not archived")}</p>
@@ -822,28 +704,20 @@ export default function RankPage() {
                             </div>
                           )}
                           <div className="flex flex-wrap gap-2">
-                            {row.kind === "battle" || row.kind === "daily" ? (
+                            {row.kind === "battle" ? (
                               <>
                                 <Link
                                   href={rowResultHref}
                                   className="inline-flex items-center justify-center rounded-full border border-cyan-200/30 bg-cyan-300/10 px-3 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-100 hover:text-white"
                                 >
-                                  {row.kind === "daily"
-                                    ? (isZh ? "24H 戰場" : "24H Battle")
-                                    : (isZh ? "成果卡" : "Result")}
+                                  {isZh ? "成果卡" : "Result"}
                                 </Link>
                                 <ShareButton
-                                  title={row.kind === "daily"
-                                    ? `${row.name} / 24H Full Song`
-                                    : `${row.name} VS ${displayText(row.opponentName || "", isZh ? "對手" : "Opponent")}`}
+                                  title={`${row.name} VS ${displayText(row.opponentName || "", isZh ? "對手" : "Opponent")}`}
                                   text={
-                                    row.kind === "daily"
-                                      ? (isZh
-                                          ? `AIPOGER 24H Full Song 勝利：${row.name}`
-                                          : `AIPOGER 24H Full Song victory: ${row.name}`)
-                                      : (isZh
-                                          ? `AIPOGER 戰績：${row.name} VS ${displayText(row.opponentName || "", "對手")}`
-                                          : `AIPOGER result: ${row.name} VS ${displayText(row.opponentName || "", "Opponent")}`)
+                                    isZh
+                                      ? `AIPOGER 戰績：${row.name} VS ${displayText(row.opponentName || "", "對手")}`
+                                      : `AIPOGER result: ${row.name} VS ${displayText(row.opponentName || "", "Opponent")}`
                                   }
                                   url={rowResultHref}
                                   label={isZh ? "分享" : "Share"}
