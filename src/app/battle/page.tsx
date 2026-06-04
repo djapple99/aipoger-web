@@ -1051,7 +1051,7 @@ function BattlePoolList() {
             {focusedClosedCard.battleId && !isClosedBattleStatus(focusedClosedCard.status) ? (
               <Link
                 href={`/battle/${encodeURIComponent(focusedClosedCard.battleId)}?lang=${lang}`}
-                className="rounded-full bg-yellow-300 px-5 py-2.5 text-sm font-black text-black transition hover:bg-yellow-100"
+                className="rounded-full bg-orange-500 px-5 py-2.5 text-sm font-black text-black shadow-[0_0_20px_rgba(255,106,0,0.2)] transition hover:bg-orange-300"
               >
                 {isZh ? "我要觀戰" : "Watch Battle"}
               </Link>
