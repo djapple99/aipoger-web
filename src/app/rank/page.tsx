@@ -282,7 +282,7 @@ function battleAudioPathToUrl(path: string | null | undefined) {
   if (/^(https?:|blob:|data:)/i.test(clean)) return Promise.resolve(clean);
   return supabase.storage
     .from("battle-audio")
-    .createSignedUrl(clean, 60 * 60)
+    .createSignedUrl(clean, 60 * 10)
     .then(({ data, error }) => {
       if (error) {
         console.warn("[rank battle audio]", error.message);
@@ -566,6 +566,8 @@ export default function RankPage() {
                       <audio
                         className="mt-3 w-full accent-orange-500"
                         controls
+                        controlsList="nodownload"
+                        onContextMenu={(event) => event.preventDefault()}
                         preload="metadata"
                         src={topRow.audioUrl}
                       >
@@ -774,7 +776,14 @@ export default function RankPage() {
                             ) : null}
                           </div>
                           {row.audioUrl ? (
-                            <audio className="w-full accent-orange-500" controls preload="metadata" src={row.audioUrl}>
+                            <audio
+                              className="w-full accent-orange-500"
+                              controls
+                              controlsList="nodownload"
+                              onContextMenu={(event) => event.preventDefault()}
+                              preload="metadata"
+                              src={row.audioUrl}
+                            >
                               {isZh ? "你的瀏覽器暫時不支援播放。" : "Your browser does not support audio playback."}
                             </audio>
                           ) : null}
