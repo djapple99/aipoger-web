@@ -27,7 +27,10 @@ export async function generateMetadata({ searchParams }: BattleResultPageProps):
   });
   if (shareData.battleId) resultQuery.set("battleId", shareData.battleId);
   const canonical = `/battle/result${resultQuery.toString() ? `?${resultQuery.toString()}` : ""}`;
-  const image = `/battle/result/opengraph-image?${buildResultOgQuery(shareData).toString()}`;
+  const imageQuery = shareData.battleId
+    ? new URLSearchParams({ battleId: shareData.battleId, v: "portrait-20260605a" })
+    : buildResultOgQuery(shareData);
+  const image = `/battle/result/opengraph-image?${imageQuery.toString()}`;
 
   return {
     title,
@@ -45,8 +48,9 @@ export async function generateMetadata({ searchParams }: BattleResultPageProps):
       images: [
         {
           url: image,
-          width: 1200,
-          height: 630,
+          width: 1080,
+          height: 1920,
+          type: "image/png",
           alt: `${winnerName} Drop Battle winner card`,
         },
       ],

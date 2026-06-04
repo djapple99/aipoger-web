@@ -6,7 +6,6 @@ import NavHomeLink from "@/components/nav-home-link";
 import GlobalBattleCallOverlay from "@/components/global-battle-call-overlay";
 import GlobalListenBarDock from "@/components/global-listen-bar-dock";
 import GlobalSitePresenceBadge from "@/components/global-site-presence-badge";
-import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 
 const configuredSiteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://aipoger.com").replace(/\/$/, "");
 const siteUrl = configuredSiteUrl === "https://www.aipoger.com" ? "https://aipoger.com" : configuredSiteUrl;
@@ -26,8 +25,14 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   icons: {
-    icon: AIPOGER_BRAND_LOGO,
-    apple: AIPOGER_BRAND_LOGO,
+    icon: [
+      { url: "/favicon.ico", sizes: "16x16 32x32 48x48" },
+      { url: "/favicon-48x48.png", sizes: "48x48", type: "image/png" },
+      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   openGraph: {
     title: "AIPOGER 愛播歌｜AI 音樂鬥歌場與傷心酒吧",

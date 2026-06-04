@@ -7,6 +7,14 @@ import {
 
 export const runtime = "edge";
 
+const size = {
+  width: 1080,
+  height: 1920,
+};
+
+const skillLabels = ["押韻", "爆點", "旋律", "情緒", "結構"];
+const skillValues = [96, 82, 90, 76, 88];
+
 function fitText(value: string, fallback: string, max = 44) {
   const clean = value.trim() || fallback;
   return clean.length > max ? `${clean.slice(0, max - 1)}…` : clean;
@@ -19,8 +27,157 @@ function imageUrl(value: string, origin: string) {
   return new URL(AIPOGER_BRAND_LOGO, origin).toString();
 }
 
-function initials(name: string) {
-  return name.trim().slice(0, 2).toUpperCase() || "AI";
+function points(values: number[], radius: number, cx = 250, cy = 250) {
+  return values
+    .map((value, index) => {
+      const angle = -Math.PI / 2 + (index * Math.PI * 2) / values.length;
+      const adjustedRadius = radius * (value / 100);
+      return `${cx + Math.cos(angle) * adjustedRadius},${cy + Math.sin(angle) * adjustedRadius}`;
+    })
+    .join(" ");
+}
+
+function ringPoints(radius: number, cx = 250, cy = 250) {
+  return points([100, 100, 100, 100, 100], radius, cx, cy);
+}
+
+function labelPoint(index: number, radius: number, cx = 250, cy = 250) {
+  const angle = -Math.PI / 2 + (index * Math.PI * 2) / skillLabels.length;
+  return {
+    x: cx + Math.cos(angle) * radius,
+    y: cy + Math.sin(angle) * radius,
+  };
+}
+
+function SideCard({
+  avatar,
+  color,
+  cover,
+  label,
+  name,
+  song,
+}: {
+  avatar: string;
+  color: string;
+  cover: string;
+  label: string;
+  name: string;
+  song: string;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 16,
+        width: 410,
+        height: 122,
+        border: `2px solid ${color}88`,
+        borderRadius: 28,
+        background: `${color}18`,
+        padding: "14px 16px",
+      }}
+    >
+      <img
+        src={avatar}
+        alt=""
+        style={{
+          height: 74,
+          width: 74,
+          border: `4px solid ${color}`,
+          borderRadius: 999,
+          objectFit: "cover",
+          background: "#000",
+        }}
+      />
+      <div style={{ display: "flex", flexDirection: "column", minWidth: 0, width: 190 }}>
+        <div style={{ color, fontSize: 22, fontWeight: 900 }}>{label}</div>
+        <div style={{ color: "#fff", fontSize: 30, fontWeight: 900, lineHeight: 1.05 }}>{name}</div>
+        <div style={{ color: "#c9c9c9", fontSize: 18, fontWeight: 800, lineHeight: 1.2 }}>{song}</div>
+      </div>
+      <img
+        src={cover}
+        alt=""
+        style={{
+          height: 74,
+          width: 74,
+          borderRadius: 16,
+          objectFit: "cover",
+          marginLeft: "auto",
+        }}
+      />
+    </div>
+  );
+}
+
+function Radar() {
+  const labelPositions = [
+    { left: 424, top: 16 },
+    { left: 660, top: 190 },
+    { left: 570, top: 396 },
+    { left: 278, top: 396 },
+    { left: 190, top: 190 },
+  ];
+
+  return (
+    <div
+      style={{
+        position: "relative",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        height: 490,
+        width: 940,
+        border: "2px solid rgba(255,255,255,0.12)",
+        borderRadius: 34,
+        background: "rgba(0,0,0,0.54)",
+        boxShadow: "inset 0 0 54px rgba(255,255,255,0.04)",
+      }}
+    >
+      {skillLabels.map((label, index) => (
+        <div
+          key={label}
+          style={{
+            position: "absolute",
+            left: labelPositions[index].left,
+            top: labelPositions[index].top,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 92,
+            color: "#fff",
+            fontSize: 30,
+            fontWeight: 900,
+            textShadow: "0 3px 10px rgba(0,0,0,0.92)",
+          }}
+        >
+          {label}
+        </div>
+      ))}
+      <svg width="520" height="470" viewBox="0 0 500 500">
+        <defs>
+          <radialGradient id="radarFill" cx="50%" cy="50%" r="54%">
+            <stop offset="0%" stopColor="#ff8a24" stopOpacity="0.72" />
+            <stop offset="62%" stopColor="#ff5a16" stopOpacity="0.26" />
+            <stop offset="100%" stopColor="#35dcff" stopOpacity="0.14" />
+          </radialGradient>
+          <linearGradient id="radarLine" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0%" stopColor="#ffb15c" />
+            <stop offset="58%" stopColor="#ff5a16" />
+            <stop offset="100%" stopColor="#9df4ff" />
+          </linearGradient>
+        </defs>
+        {[72, 128, 184].map((radius) => (
+          <polygon key={radius} points={ringPoints(radius)} fill="none" stroke="rgba(255,255,255,0.16)" strokeWidth="2" />
+        ))}
+        {skillLabels.map((_, index) => {
+          const end = labelPoint(index, 184);
+          return <line key={index} x1="250" y1="250" x2={end.x} y2={end.y} stroke="rgba(255,255,255,0.13)" strokeWidth="2" />;
+        })}
+        <polygon points={points(skillValues, 184)} fill="url(#radarFill)" stroke="url(#radarLine)" strokeWidth="8" strokeLinejoin="round" />
+      </svg>
+    </div>
+  );
 }
 
 export async function GET(request: Request) {
@@ -31,81 +188,16 @@ export async function GET(request: Request) {
   const avatarUrl = imageUrl(data.avatarUrl, url.origin);
   const opponentAvatarUrl = imageUrl(data.opponentAvatarUrl, url.origin);
   const opponentCoverUrl = imageUrl(data.opponentCoverUrl, url.origin);
-  const winnerName = fitText(data.winnerName, "AIPOGER Fighter", 26);
-  const winnerSong = fitText(data.winnerSong, "AI Drop", 32);
-  const opponentName = fitText(data.opponentName, "Drop Rival", 24);
-  const opponentSong = fitText(data.opponentSong, "Battle Drop", 26);
-  const rank = fitText(data.rank, "Lv.1 訊號啟動者", 24);
-  const tool = fitText(data.tool, "AI Music", 18);
+  const winnerName = fitText(data.winnerName, "AIPOGER Fighter", 20);
+  const winnerSong = fitText(data.winnerSong, "AI Drop", 26);
+  const opponentName = fitText(data.opponentName, "Drop Rival", 18);
+  const opponentSong = fitText(data.opponentSong, "Battle Drop", 20);
+  const rank = fitText(data.rank, "Lv.1 訊號啟動者", 20);
+  const tool = fitText(data.tool, "AI Music", 14);
   const battleCode = fitText(data.battleCode || data.battleId.slice(0, 8).toUpperCase(), "AIPO-DROP", 14);
-  const aiReview = fitText(data.aiReview, "尚無 AI 評價", 32);
-  const audienceReview = fitText(data.audienceReview, "尚無觀眾評價", 32);
-
-  const smallSide = ({
-    avatar,
-    color,
-    cover,
-    label,
-    name,
-    song,
-  }: {
-    avatar: string;
-    color: string;
-    cover: string;
-    label: string;
-    name: string;
-    song: string;
-  }) => (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        width: 210,
-        height: 82,
-        border: `2px solid ${color}88`,
-        borderRadius: 24,
-        background: `${color}18`,
-        padding: "10px 12px",
-      }}
-    >
-      <div
-        style={{
-          position: "relative",
-          display: "flex",
-          height: 54,
-          width: 54,
-          overflow: "hidden",
-          border: `3px solid ${color}`,
-          borderRadius: 999,
-          background: "#000",
-          color: "#fff",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: 22,
-          fontWeight: 900,
-        }}
-      >
-        {avatar ? <img src={avatar} alt="" style={{ height: "100%", width: "100%", objectFit: "cover" }} /> : initials(name)}
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-        <div style={{ color, fontSize: 15, fontWeight: 900 }}>{label}</div>
-        <div style={{ color: "#fff", fontSize: 20, fontWeight: 900, lineHeight: 1.05 }}>{name}</div>
-        <div style={{ color: "#bdbdbd", fontSize: 13, fontWeight: 800, lineHeight: 1.2 }}>{song}</div>
-      </div>
-      <img
-        src={cover}
-        alt=""
-        style={{
-          height: 48,
-          width: 48,
-          borderRadius: 12,
-          objectFit: "cover",
-          marginLeft: "auto",
-        }}
-      />
-    </div>
-  );
+  const aiReview = fitText(data.aiReview, "尚無 AI 評價", 28);
+  const audienceReview = fitText(data.audienceReview, "尚無觀眾評價", 28);
+  const votes = data.votesTotal > 0 ? `${data.votesTotal}票` : "0票";
 
   return new ImageResponse(
     (
@@ -116,10 +208,9 @@ export async function GET(request: Request) {
           height: "100%",
           width: "100%",
           overflow: "hidden",
-          background: "linear-gradient(135deg,#0b0300 0%,#050505 48%,#071b21 100%)",
+          background: "linear-gradient(180deg,#070201 0%,#120704 48%,#030303 100%)",
           color: "#fff",
           fontFamily: "Arial, Helvetica, sans-serif",
-          padding: 42,
         }}
       >
         <div
@@ -128,7 +219,7 @@ export async function GET(request: Request) {
             inset: 0,
             display: "flex",
             background:
-              "radial-gradient(circle at 28% 28%,rgba(255,106,0,0.42),transparent 31%),radial-gradient(circle at 82% 66%,rgba(42,225,255,0.22),transparent 30%)",
+              "radial-gradient(circle at 45% 16%,rgba(255,106,0,0.38),transparent 30%),radial-gradient(circle at 85% 56%,rgba(42,225,255,0.22),transparent 32%)",
           }}
         />
         <div
@@ -136,168 +227,171 @@ export async function GET(request: Request) {
             position: "absolute",
             inset: 0,
             display: "flex",
-            opacity: 0.18,
+            opacity: 0.15,
             backgroundImage:
-              "linear-gradient(rgba(255,255,255,0.13) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.13) 1px, transparent 1px)",
-            backgroundSize: "44px 44px",
+              "linear-gradient(rgba(255,255,255,0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.12) 1px, transparent 1px)",
+            backgroundSize: "46px 46px",
           }}
         />
         <div
           style={{
             position: "relative",
             display: "flex",
+            flexDirection: "column",
             height: "100%",
             width: "100%",
-            overflow: "hidden",
-            border: "2px solid rgba(255,178,83,0.42)",
-            borderRadius: 40,
-            background: "rgba(0,0,0,0.66)",
-            boxShadow: "0 0 80px rgba(255,106,0,0.2)",
-            padding: 34,
+            padding: "76px 70px 62px",
           }}
         >
-          <div style={{ display: "flex", flexDirection: "column", width: 530 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-              <img src={logoUrl} alt="" style={{ height: 70, width: 70, borderRadius: 999, objectFit: "contain", background: "#000" }} />
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <div style={{ color: "#ffbe74", fontSize: 26, fontWeight: 900, letterSpacing: 4 }}>AIPOGER RESULT CARD</div>
-                <div style={{ marginTop: 5, color: "#f8dfba", fontSize: 19, fontWeight: 900 }}>最強抓波 DROP BATTLE</div>
-              </div>
+          <header style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", width: "100%" }}>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <div style={{ color: "#ffe0b4", fontSize: 72, fontWeight: 900, lineHeight: 0.95 }}>最強抓波</div>
+              <div style={{ color: "#fff", fontSize: 78, fontWeight: 900, lineHeight: 0.92 }}>DROP BATTLE</div>
             </div>
-
-            <div style={{ marginTop: 34, display: "flex", flexDirection: "column" }}>
-              <div style={{ color: "#ffbe74", fontSize: 30, fontWeight: 900 }}>BATTLE WINNER</div>
-              <div style={{ marginTop: 4, color: "#fff", fontSize: 68, fontWeight: 900, lineHeight: 0.98 }}>{winnerName}</div>
-              <div style={{ marginTop: 13, color: "#f7f1e8", fontSize: 32, fontWeight: 900, lineHeight: 1.08 }}>{winnerSong}</div>
-              <div style={{ marginTop: 12, color: "#ffd99c", fontSize: 22, fontWeight: 900 }}>{`${rank} / ${tool}`}</div>
-            </div>
-
-            <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
-              <div
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+              <img
+                src={logoUrl}
+                alt=""
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  border: "2px solid rgba(255,178,83,0.24)",
-                  borderRadius: 18,
-                  background: "rgba(255,138,36,0.09)",
-                  padding: "10px 16px",
-                  color: "#fff",
-                  fontSize: 20,
-                  fontWeight: 900,
+                  height: 132,
+                  width: 132,
+                  border: "2px solid rgba(255,178,83,0.58)",
+                  borderRadius: 999,
+                  objectFit: "contain",
+                  background: "#000",
                 }}
-              >
-                {`AI 評價：“${aiReview}”`}
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  border: "2px solid rgba(91,232,255,0.24)",
-                  borderRadius: 18,
-                  background: "rgba(91,232,255,0.08)",
-                  padding: "10px 16px",
-                  color: "#fff",
-                  fontSize: 20,
-                  fontWeight: 900,
-                }}
-              >
-                {`觀眾：“${audienceReview}”`}
-              </div>
+              />
+              <div style={{ color: "#ffd2a1", fontSize: 25, fontWeight: 900 }}>{`決鬥編號 ${battleCode}`}</div>
             </div>
-          </div>
+          </header>
 
-          <div style={{ position: "relative", display: "flex", flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <section style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", height: 560, marginTop: 20 }}>
             <div
               style={{
                 position: "absolute",
                 display: "flex",
-                height: 420,
-                width: 420,
+                height: 560,
+                width: 560,
                 borderRadius: 999,
-                background: "#060606",
-                boxShadow: "inset 0 0 0 3px rgba(255,255,255,0.12), inset 0 0 90px rgba(255,255,255,0.08), 0 0 95px rgba(255,106,0,0.33)",
+                background: "#050505",
+                boxShadow: "inset 0 0 0 3px rgba(255,255,255,0.13), inset 0 0 110px rgba(255,255,255,0.08), 0 0 110px rgba(255,106,0,0.28)",
               }}
             />
             <div
               style={{
                 position: "absolute",
                 display: "flex",
-                height: 332,
-                width: 332,
-                border: "3px solid rgba(255,195,110,0.74)",
-                borderRadius: 999,
+                height: 398,
+                width: 398,
                 overflow: "hidden",
+                border: "6px solid rgba(255,227,184,0.95)",
+                borderRadius: 999,
                 background: "#000",
               }}
             >
               <img src={coverUrl} alt="" style={{ height: "100%", width: "100%", objectFit: "cover" }} />
             </div>
-            <div style={{ position: "absolute", display: "flex", height: 36, width: 36, borderRadius: 999, background: "#000", border: "2px solid rgba(255,255,255,0.48)" }} />
+            <div style={{ position: "absolute", display: "flex", height: 50, width: 50, borderRadius: 999, background: "#000", border: "3px solid rgba(255,255,255,0.5)" }} />
             <div
               style={{
                 position: "absolute",
-                bottom: 56,
+                bottom: 16,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                width: 355,
+                width: 690,
+                height: 106,
                 border: "2px solid rgba(255,202,109,0.58)",
                 borderRadius: 999,
-                background: "linear-gradient(180deg,rgba(60,31,4,0.88),rgba(0,0,0,0.84))",
-                padding: "14px 20px",
+                background: "linear-gradient(180deg,rgba(60,31,4,0.9),rgba(0,0,0,0.86))",
                 color: "#ffdb81",
-                fontSize: 42,
+                fontSize: 62,
                 fontWeight: 900,
-                letterSpacing: 3,
-                boxShadow: "0 0 45px rgba(255,128,26,0.36)",
+                letterSpacing: 5,
+                boxShadow: "0 0 58px rgba(255,128,26,0.36)",
               }}
             >
               WINNER
             </div>
+          </section>
+
+          <section style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: -8 }}>
+            <div style={{ color: "#fff", fontSize: 64, fontWeight: 900, lineHeight: 1.02 }}>{winnerName}</div>
+            <div style={{ marginTop: 8, height: 2, width: 360, background: "linear-gradient(90deg,transparent,#ffb76b,transparent)" }} />
+            <div style={{ marginTop: 10, color: "#fff7ea", fontSize: 39, fontWeight: 900, lineHeight: 1.1 }}>{winnerSong}</div>
+            <div style={{ marginTop: 10, color: "#ffd8a5", fontSize: 27, fontWeight: 900 }}>{`${rank} / ${tool}`}</div>
+          </section>
+
+          <section
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 20,
+              marginTop: 36,
+              border: "2px solid rgba(255,255,255,0.1)",
+              borderRadius: 34,
+              background: "rgba(0,0,0,0.48)",
+              padding: 22,
+              boxShadow: "inset 0 0 45px rgba(255,255,255,0.035)",
+            }}
+          >
+            <SideCard avatar={avatarUrl} color="#ff8a24" cover={coverUrl} label="鬥士" name={winnerName} song={winnerSong} />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", color: "#ff7a18", fontSize: 58, fontWeight: 900 }}>
+              <div>VS</div>
+              <div style={{ marginTop: -4, border: "2px solid rgba(250,204,21,0.34)", borderRadius: 999, padding: "4px 14px", color: "#fff0a5", fontSize: 20 }}>{votes}</div>
+            </div>
+            <SideCard avatar={opponentAvatarUrl} color="#5be8ff" cover={opponentCoverUrl} label="挑戰者" name={opponentName} song={opponentSong} />
+          </section>
+
+          <section style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 24 }}>
             <div
               style={{
-                position: "absolute",
-                right: 12,
-                top: 18,
                 display: "flex",
-                flexDirection: "column",
                 alignItems: "center",
-                gap: 8,
-                color: "#ffd19a",
-                fontSize: 18,
+                gap: 20,
+                border: "2px solid rgba(255,178,83,0.26)",
+                borderRadius: 24,
+                background: "rgba(255,138,36,0.1)",
+                padding: "18px 26px",
+                color: "#fff",
+                fontSize: 30,
                 fontWeight: 900,
               }}
             >
-              <img src={avatarUrl} alt="" style={{ height: 96, width: 96, borderRadius: 999, border: "4px solid #ff8a24", objectFit: "cover", background: "#000" }} />
-              <div>{battleCode}</div>
+              <span style={{ color: "#ffd2a1" }}>AI 評價</span>
+              <span>{`“${aiReview}”`}</span>
             </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 20,
+                border: "2px solid rgba(91,232,255,0.28)",
+                borderRadius: 24,
+                background: "rgba(91,232,255,0.09)",
+                padding: "18px 26px",
+                color: "#fff",
+                fontSize: 30,
+                fontWeight: 900,
+              }}
+            >
+              <span style={{ color: "#baf7ff" }}>觀眾</span>
+              <span>{`“${audienceReview}”`}</span>
+            </div>
+          </section>
 
-            <div style={{ position: "absolute", bottom: 2, left: 0, display: "flex", alignItems: "center", gap: 10 }}>
-              {smallSide({
-                avatar: avatarUrl,
-                color: "#ff8a24",
-                cover: coverUrl,
-                label: "鬥士",
-                name: winnerName,
-                song: winnerSong,
-              })}
-              <div style={{ color: "#ff7a18", fontSize: 42, fontWeight: 900 }}>VS</div>
-              {smallSide({
-                avatar: opponentAvatarUrl,
-                color: "#5be8ff",
-                cover: opponentCoverUrl,
-                label: "挑戰者",
-                name: opponentName,
-                song: opponentSong,
-              })}
-            </div>
-          </div>
+          <section style={{ display: "flex", justifyContent: "center", marginTop: 24 }}>
+            <Radar />
+          </section>
+
+          <footer style={{ display: "flex", justifyContent: "space-between", marginTop: "auto", color: "#777", fontSize: 24, fontWeight: 900 }}>
+            <span>aipoger.com</span>
+            <span>WHERE AI BEATS BATTLE</span>
+          </footer>
         </div>
       </div>
     ),
-    {
-      width: 1200,
-      height: 630,
-    },
+    size,
   );
 }
