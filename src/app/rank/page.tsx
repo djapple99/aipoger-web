@@ -18,6 +18,7 @@ import {
   AIPOGER_PERSONAL_RANK,
   isAipogerIdentity,
   rankLabelForLevel,
+  rankForLevel,
 } from "@/lib/battle-pool-rules";
 import { fontGlowSans, fontRighteous } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n";
@@ -59,8 +60,8 @@ type BoardMeta = {
 };
 
 const BOARD_META: Record<BoardKey, BoardMeta> = {
-  drop: { zh: "熱血 Drop 抓波勝利榜", en: "Hot Drop Victory Board" },
-  bar: { zh: "傷心酒吧熱播榜", en: "Bar Heartbreak Hot Board" },
+  drop: { zh: "熱血 Drop 抓波勝利榜", en: "Drop Victory Records" },
+  bar: { zh: "傷心酒吧熱播榜", en: "Bar Heartbreak Heat Records" },
 };
 
 const BOARD_KEYS: BoardKey[] = ["drop", "bar"];
@@ -71,7 +72,7 @@ const stageRows = [
     stageZh: "第一階",
     stageEn: "Stage 1",
     titleZh: "熱血音樂工匠",
-    titleEn: "Hot-Blooded Music Artisan",
+    titleEn: "Music Artisan",
     levels: "Lv.1 - Lv.3",
     baseZh: "公測免 APC 入場",
     baseEn: "Public beta: no APC entry stake",
@@ -80,7 +81,7 @@ const stageRows = [
     stageZh: "第二階",
     stageEn: "Stage 2",
     titleZh: "潮流音樂大師",
-    titleEn: "Trend Music Master",
+    titleEn: "Featured Creator",
     levels: "Lv.4 - Lv.7",
     baseZh: "公測免 APC 入場",
     baseEn: "Public beta: no APC entry stake",
@@ -89,7 +90,7 @@ const stageRows = [
     stageZh: "第三階",
     stageEn: "Stage 3",
     titleZh: "殿堂級音樂師尊",
-    titleEn: "Hall-Level Music Master",
+    titleEn: "Hall Master",
     levels: "Lv.8 - Lv.10",
     baseZh: "公測免 APC 入場",
     baseEn: "Public beta: no APC entry stake",
@@ -114,6 +115,21 @@ function displayText(value: string, fallback: string) {
 
 function displaySongTitle(value: string, fallback: string) {
   return looksLikeOpaqueArchiveValue(value) ? fallback : displayText(value, fallback);
+}
+
+function localizedRowTitle(row: Pick<RankRow, "kind" | "title">, isZh: boolean) {
+  if (isZh) return row.title;
+  return row.kind === "battle" ? "Drop victory record" : "Bar Heartbreak hot track";
+}
+
+function localizedRankLabel(rank: string, isZh: boolean) {
+  if (isZh) return rank;
+  const cleanRank = rank.trim();
+  if (cleanRank === AIPOGER_PERSONAL_RANK) return "LV.0 AIPOGER Founder";
+  const level = cleanRank.match(/Lv\.(\d+)/i)?.[1];
+  if (!level) return cleanRank || "Rank missing";
+  const rankMeta = rankForLevel(Number(level));
+  return `Lv.${rankMeta.level} ${rankMeta.nameEn}`;
 }
 
 function accentFromIndex(index: number): RankRow["accent"] {
@@ -144,7 +160,7 @@ function resultHref(row: RankRow, lang: "zh" | "en") {
   params.set("song", displaySongTitle(row.hook, ""));
   params.set("opponent", row.opponentName || "");
   params.set("opponentSong", displaySongTitle(row.opponentSong || "", ""));
-  params.set("rank", row.rank);
+  params.set("rank", localizedRankLabel(row.rank, lang === "zh"));
   params.set("tool", row.aiTool);
   params.set("battle", row.battleCode || "");
   params.set("votesTotal", String(row.votesTotal || 0));
@@ -547,7 +563,7 @@ export default function RankPage() {
             <p className="mt-5 max-w-2xl text-base leading-8 text-zinc-400">
               {isZh
                 ? "只顯示真實勝利、真實封存與傷心酒吧真實熱播。這裡記錄作品被看見的時刻，不用名次定義創作者。"
-                : "Only real victories, archived results, and Bar Heartbreak hot tracks are shown. This is an honor record, not a numbered chart."}
+                : "Only real victories, archived results, and Bar Heartbreak hot tracks are shown. This is a recognition record, not a numbered chart."}
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
               <ShareButton
@@ -592,7 +608,7 @@ export default function RankPage() {
                     </p>
                     <p className="mt-2 text-3xl font-black text-white">{topRow.name}</p>
                     <p className="mt-1 text-sm font-bold text-yellow-100">
-                      {topRow.rank} / {displayText(topRow.aiTool, isZh ? "工具未封存" : "Tool missing")}
+                      {localizedRankLabel(topRow.rank, isZh)} / {displayText(topRow.aiTool, isZh ? "工具未封存" : "Tool missing")}
                     </p>
                     <p className="mt-3 rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-sm leading-7 text-zinc-300">
                       {displaySongTitle(topRow.hook, isZh ? "歌名未封存" : "Song not archived")}
@@ -746,13 +762,13 @@ export default function RankPage() {
                           <div className="flex flex-wrap items-center gap-2">
                             <h3 className="text-2xl font-black text-white">{row.name}</h3>
                             <span className="rounded-full border border-white/15 bg-black/28 px-2.5 py-1 text-[11px] font-bold text-zinc-100">
-                              {row.rank}
+                              {localizedRankLabel(row.rank, isZh)}
                             </span>
                             <span className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-2.5 py-1 text-[11px] font-black text-cyan-100">
                               {isZh ? "AI 工具" : "AI Tool"} / {displayText(row.aiTool, isZh ? "未封存" : "Missing")}
                             </span>
                           </div>
-                          <p className="mt-1 text-sm font-bold text-current">{row.title}</p>
+                          <p className="mt-1 text-sm font-bold text-current">{localizedRowTitle(row, isZh)}</p>
                           {row.kind === "battle" ? (
                             <>
                               <p className="mt-2 text-sm leading-6 text-zinc-300">
@@ -773,11 +789,11 @@ export default function RankPage() {
                           {row.kind === "battle" ? (
                             <div className="mt-3 grid gap-2 sm:grid-cols-2">
                               <p className="rounded-2xl border border-orange-200/16 bg-black/26 px-3 py-2 text-xs font-bold leading-5 text-zinc-300">
-                                <span className="text-orange-100">{isZh ? "AI 評價" : "AI Review"}：</span>
+                                <span className="text-orange-100">{isZh ? "AI 評價" : "AI review"}：</span>
                                 {displayText(row.aiReview || "", isZh ? "無" : "None")}
                               </p>
                               <p className="rounded-2xl border border-cyan-200/16 bg-black/26 px-3 py-2 text-xs font-bold leading-5 text-zinc-300">
-                                <span className="text-cyan-100">{isZh ? "觀眾評價" : "Audience"}：</span>
+                                <span className="text-cyan-100">{isZh ? "觀眾評價" : "Listener signal"}：</span>
                                 {displayText(row.audienceReview || "", isZh ? "無" : "None")}
                               </p>
                             </div>

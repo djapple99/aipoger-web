@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     default: "AIPOGER 愛播歌｜AI音樂鬥歌場與傷心酒吧",
     template: "%s｜AIPOGER 愛播歌",
   },
-  description: "AIPOGER 愛播歌是 AI 音樂創作者的鬥歌場、傷心酒吧與榮譽榜。上傳你的 AI 音樂，參加 Drop Battle、24H Full Song 對決，讓聽眾投票聽見作品。",
+  description: "AIPOGER 愛播歌是 AI 音樂創作者一起成長、讓作品被認可的舞台。上傳 AI 音樂，參加 Drop Battle、24H Full Song 與傷心酒吧公播，讓勝出作品走向播放、策展與商業化。",
   applicationName: "AIPOGER 愛播歌",
   keywords: ["AIPOGER", "愛播歌", "AI 音樂", "AI Music", "鬥歌", "Drop Battle", "傷心酒吧", "AI 音樂創作"],
   alternates: {
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "AIPOGER 愛播歌｜AI音樂鬥歌場與傷心酒吧",
-    description: "上傳你的 AI 音樂，參加 Drop Battle、24H Full Song 對決，進入傷心酒吧公播池接受聽眾投票。",
+    description: "上傳 AI 音樂，參加 Drop Battle、24H Full Song 與傷心酒吧公播，讓作品被聽見、被投票認可，並累積播放與商業化機會。",
     url: siteUrl,
     siteName: "AIPOGER 愛播歌",
     locale: "zh_TW",
@@ -55,7 +55,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "AIPOGER 愛播歌｜AI音樂鬥歌場與傷心酒吧",
-    description: "AI 音樂創作者的 Drop Battle、24H Full Song、傷心酒吧公播池與榮譽榜。",
+    description: "AI 音樂創作者一起成長的 AIPOGER 舞台：Drop Battle、24H Full Song、傷心酒吧公播池與榮譽榜。",
     images: [ogImage],
   },
 };

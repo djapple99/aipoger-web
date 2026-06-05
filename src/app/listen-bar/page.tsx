@@ -215,18 +215,18 @@ function battleTickerMessage(row: BattleTickerRow, isZh: boolean) {
   if (row.status === "waiting_challenge") {
     return isZh
       ? `AI音樂鬥歌場快訊：${fighterName} 的《${songName}》正在等人接戰${timeText}，快來挑戰或觀戰。`
-      : `AI Music Battle Hall: ${fighterName}'s "${songName}" is waiting for a challenger${timeText}. Step in or watch.`;
+      : `AI Music Battle Hall: ${fighterName}'s "${songName}" is open for challenge${timeText}. Step in, watch, or back the Drop.`;
   }
 
   if (row.status === "public_voting") {
     return isZh
       ? `AI音樂鬥歌場快訊：《${songName}》正在公開投票${timeText}，進場支持你喜歡的 Drop。`
-      : `AI Music Battle Hall: "${songName}" is in public voting${timeText}. Enter and back your favorite Drop.`;
+      : `AI Music Battle Hall: "${songName}" is in public voting${timeText}. Help decide if this Drop earns recognition.`;
   }
 
   return isZh
     ? `AI音樂鬥歌場快訊：《${songName}》已進入 Ghost Battle${timeText}，進場聽歌投票。`
-    : `AI Music Battle Hall: "${songName}" is in Ghost Battle${timeText}. Enter, listen, and vote.`;
+    : `AI Music Battle Hall: "${songName}" is in Ghost Battle${timeText}. Listen, vote, and keep the record alive.`;
 }
 
 function storedBarMessageRowToChat(row: StoredBarMessageRow): ChatMessage | null {
@@ -412,15 +412,15 @@ function getListenBarVisitorId() {
   return next;
 }
 
-function albumDisplayLabel(value: string) {
+function albumDisplayLabel(value: string, isZh: boolean) {
   const cleanValue = value
     .replace(/^AI Music\s*\/\s*/i, "")
     .replace(/^官方公播\s*\/\s*/i, "")
     .replace(/^專輯名稱\s*\/\s*/i, "")
     .trim();
   if (!cleanValue || cleanValue === "官方輪播") return "";
-  if (cleanValue === "創作者投稿" || cleanValue === "Creator submission") return cleanValue;
-  return `專輯名稱 / ${cleanValue}`;
+  if (cleanValue === "創作者投稿" || cleanValue === "Creator submission") return isZh ? "創作者投稿" : "Creator submission";
+  return isZh ? `專輯名稱 / ${cleanValue}` : `Album / ${cleanValue}`;
 }
 
 function survivalDayFromDate(value: string | null | undefined) {
@@ -1192,6 +1192,7 @@ export default function ListenBarPage() {
       ? `Challenger · ${currentPositiveTotal}/${LISTEN_BAR_PUBLIC_REACTION_THRESHOLD} 顆心`
       : `Challenger · ${currentPositiveTotal}/${LISTEN_BAR_PUBLIC_REACTION_THRESHOLD} hearts`;
   }, [currentPositiveTotal, isZh, nowTrack.audioUrl, nowTrack.barPhase, nowTrack.source]);
+  const nowTrackTitle = !isZh && nowTrack.id === EMPTY_LISTEN_BAR_TRACK.id ? "Waiting for creator uploads" : nowTrack.title;
   const myCurrentReaction = myReactions[nowTrack.id] ?? null;
 
   const handleReaction = (key: ReactionKey) => {
@@ -1610,7 +1611,8 @@ export default function ListenBarPage() {
 
   const nowCoverUrl = nowTrack.coverUrl?.trim() || DEFAULT_LISTEN_BAR_COVER;
   const nowPresenterName = nowTrack.queuedBy?.trim() || nowTrack.artist;
-  const nowPresenterRank = nowTrack.queuedByRank?.trim() || "";
+  const rawPresenterRank = nowTrack.queuedByRank?.trim() || "";
+  const nowPresenterRank = !isZh && rawPresenterRank === "創作者投稿" ? "Creator submission" : rawPresenterRank;
   const nowSurvivalDay = nowTrack.source === "community" && nowTrack.barPhase === "public"
     ? survivalDayFromDate(nowTrack.promotedAt ?? nowTrack.createdAt)
     : 0;
@@ -1626,7 +1628,7 @@ export default function ListenBarPage() {
     });
     return index;
   }, [elapsed, lyricLines]);
-  const nowAlbumLabel = albumDisplayLabel(nowTrack.mood);
+  const nowAlbumLabel = albumDisplayLabel(nowTrack.mood, isZh);
   const navLinks = [
     { href: "/battle", label: isZh ? "AI音樂鬥歌場" : "AI Music Battle Hall" },
     { href: "/rank", label: isZh ? "榮譽榜" : "Rank" },
@@ -1729,7 +1731,7 @@ export default function ListenBarPage() {
               className={`mt-3 max-w-3xl bg-gradient-to-b from-[#f7e6a9] via-[#c98e34] to-[#80501d] bg-clip-text text-center text-sm font-bold leading-6 tracking-[0.08em] text-transparent drop-shadow-[0_0_14px_rgba(255,170,68,0.12)] md:text-base ${isZh ? "" : fontRighteous.className}`}
               style={{ fontFamily: isZh ? heartbreakTitleFont : undefined }}
             >
-              {isZh ? "在 Ai 與不 Ai 之間 只有最傷心的歌才能留下來" : "Between AI and not AI only the saddest songs stay"}
+              {isZh ? "在 AI 與不 AI 之間，只有真正被聽見的歌才能留下來" : "Only the songs that hit hard stay on air"}
             </p>
           </div>
 
@@ -1779,7 +1781,7 @@ export default function ListenBarPage() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={nowCoverUrl}
-                      alt={nowTrack.title}
+                      alt={nowTrackTitle}
                       className="h-full w-full object-cover"
                       onError={(event) => {
                         if (event.currentTarget.src.endsWith(DEFAULT_LISTEN_BAR_COVER)) return;
@@ -1831,10 +1833,10 @@ export default function ListenBarPage() {
                   <span>{nowTrack.tool}</span>
                 </div>
                 <p
-                  title={nowTrack.title}
+                  title={nowTrackTitle}
                   className="mt-4 line-clamp-2 max-w-[9.6em] break-words text-[clamp(2.2rem,4.1vw,4.4rem)] font-black leading-[0.92] text-white [overflow-wrap:anywhere]"
                 >
-                  {nowTrack.title}
+                  {nowTrackTitle}
                 </p>
                 <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-zinc-400 md:text-base">
                   <span className="font-semibold text-zinc-100">{nowTrack.artist}</span>
@@ -2014,7 +2016,7 @@ export default function ListenBarPage() {
               <div className="relative grid gap-0 md:grid-cols-2">
                 {upcomingHeartbreakerTracks.length === 0 ? (
                   <p className="px-4 py-6 text-sm font-bold text-zinc-500 md:col-span-2">
-                    {isZh ? "等待創作者投稿後，下一首會顯示在這裡。" : "The next track will appear here after a creator uploads."}
+                    {isZh ? "等待創作者投稿後，下一首會顯示在這裡。" : "The next creator track will appear here."}
                   </p>
                 ) : [0, 3].map((startIndex, groupIndex) => {
                   const tracks = upcomingHeartbreakerTracks.slice(startIndex, startIndex + 3);
@@ -2328,8 +2330,8 @@ export default function ListenBarPage() {
             </p>
             <p className="mt-2 break-words text-sm font-bold leading-6 text-zinc-300 [overflow-wrap:anywhere]">
               {isZh
-                ? `傷心酒吧不是排行榜，而是一場 AI 音樂生存戰。新投稿不打斷目前歌曲，會在這首播完後優先插播；每批從第一首投稿開始計 1 小時，最多 ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} 首，其餘排到下一小時。公播池超過 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首時，每 ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} 小時最多淘汰 ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} 首低反應歌曲；低於或等於 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首就停止淘汰。累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 個正向反應的歌曲，將取得榮譽榜入選資格。`
-                : `Bar Heartbreak is not a chart; it is an AI music survival room. New uploads do not interrupt the current song; they get priority after it finishes. Each 1-hour batch starts with the first upload and airs up to ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} tracks, pushing overflow to the next hour. When the public pool is above ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}, up to ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} low-reaction songs are removed every ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} hours; at or below ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}, elimination stops. Songs with ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} positive reactions become honor-roll eligible.`}
+                ? `傷心酒吧不是排行榜，而是一場 AI 音樂生存電台。新投稿不打斷目前歌曲，會在這首播完後優先插播；每批從第一首投稿開始計 1 小時，最多 ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} 首，其餘排到下一小時。公播池超過 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首時，每 ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} 小時最多淘汰 ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} 首低反應歌曲；累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 個正向反應，就取得榮譽榜入選資格。`
+                : `Bar Heartbreak is not a chart. It is AI music survival radio. New uploads do not interrupt the current song; they get priority after it ends. Each 1-hour batch airs up to ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} tracks. When the public pool is above ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}, up to ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} low-reaction tracks are removed every ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} hours. Tracks with ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} positive reactions become Honor Board eligible.`}
             </p>
           </div>
 
@@ -2405,8 +2407,8 @@ export default function ListenBarPage() {
                   ? `${communityRequestTracks.length} 首投稿歌正在公播；滿 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首後新歌進入 Challenger，超過 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首才啟動淘汰。`
                   : `${communityRequestTracks.length} 首投稿歌進入傷心酒吧；${publicPoolTracks.length} 首公播，${challengerTracks.length} 首 Challenger 正在拼人氣；超過 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首時每 ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} 小時最多淘汰 ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} 首。`
                 : openingPhaseActive
-                  ? `${communityRequestTracks.length} creator tracks are on air; new uploads enter Challenger after ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}, and elimination only starts above ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}.`
-                  : `${communityRequestTracks.length} creator tracks are in Bar Heartbreak; ${publicPoolTracks.length} public tracks and ${challengerTracks.length} challengers are active. Above ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}, up to ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} are removed every ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} hours.`}
+                  ? `${communityRequestTracks.length} creator tracks are on air. New uploads enter Challenger after ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}; elimination starts only above ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}.`
+                  : `${communityRequestTracks.length} creator tracks are in Bar Heartbreak. ${publicPoolTracks.length} are on air and ${challengerTracks.length} are fighting for reactions. Above ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}, up to ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} low-reaction tracks are removed every ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} hours.`}
             </p>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
               <div

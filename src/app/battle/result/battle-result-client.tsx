@@ -784,7 +784,7 @@ function BattleResultContent() {
                   DROP POWER RADAR
                 </p>
                 <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">
-                  {lang === "zh" ? "榮譽卡同款五角評分圖，直接看這首 Drop 的爆點分布。" : "Honor-card pentagon radar for this Drop.s strongest points."}
+                  {lang === "zh" ? "榮譽卡同款五角評分圖，直接看這首 Drop 的爆點分布。" : "Honor-card radar showing this Drop's strongest points."}
                 </p>
               </div>
               <div className="hidden items-center gap-2 rounded-full border border-orange-200/25 bg-black/42 px-2.5 py-1.5 shadow-[0_0_18px_rgba(255,106,0,0.16)] sm:inline-flex">

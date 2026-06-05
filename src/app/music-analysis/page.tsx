@@ -121,8 +121,8 @@ export default function MusicAnalysisPage() {
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-base font-bold leading-7 text-zinc-300 md:text-lg">
             {isZh
-              ? "登入後上傳歌曲，讓 AI 協助判斷市場定位、商業用處與適合挑戰的戰場。"
-              : "Sign in to upload a track for market positioning, commercial use, and battlefield routing."}
+              ? "登入後上傳歌曲，找出市場定位、最強 Drop、適合挑戰的戰場，以及未來播放與商業化的可能路線。"
+              : "Sign in to upload a track, find its market lane, strongest Drop, best battle fit, and possible path toward airplay or commercial use."}
           </p>
 
           <div className="mt-8">
@@ -133,7 +133,7 @@ export default function MusicAnalysisPage() {
                 href={loginHref}
                 className="inline-flex min-h-14 items-center justify-center rounded-2xl bg-orange-500 px-8 text-base font-black text-black shadow-[0_0_34px_rgba(255,106,0,0.28)] transition hover:bg-orange-300"
               >
-                {isZh ? "登入後分析歌曲" : "Sign In To Analyze"}
+                {isZh ? "登入後分析歌曲" : "Sign in and analyze"}
               </Link>
             ) : analysisUrl ? (
               <div className="mx-auto max-w-xl rounded-2xl border border-cyan-200/22 bg-cyan-300/[0.07] px-5 py-5">

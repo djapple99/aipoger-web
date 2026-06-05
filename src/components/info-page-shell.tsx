@@ -41,21 +41,22 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
   about: {
     zh: {
       navTitle: "關於愛播歌",
-      title: "愛播歌是一個以 AI 原創音樂交流為核心的平台。",
+      title: "AIPOGER 愛播歌是 AI 創作者一起成長、讓作品被認可的音樂舞台。",
       lead:
-        "AIPOGER 愛播歌提供 AI 音樂創作者挑戰最強抓波Drop Battle、參與鬥歌、交流播放與觀眾投票的服務。我們鼓勵原創、尊重授權，並以維護創作者、聽眾與權利人的權益為平台基本原則。",
+        "從 Drop Battle、傷心酒吧到榮譽榜，AIPOGER 讓 AI 音樂創作者上場、累積聽眾反應、被投票認可，並讓勝出的作品有機會進入播放、策展、發行、授權與商業合作。",
       contactLabel: "聯絡我們",
       cards: [
-        { label: "Platform", value: "AI Music", detail: "Drop Battle、傷心酒吧 Bar Heartbreak、創作者交流與觀眾投票" },
-        { label: "Policy", value: "Original Only", detail: "僅接受原創、已授權或具合法使用依據的音樂內容" },
+        { label: "Mission", value: "Creator Growth", detail: "陪 AI 創作者累積作品、戰績、聽眾反應與舞台紀錄" },
+        { label: "Recognition", value: "Honor Records", detail: "用 Drop Battle、傷心酒吧與榮譽榜封存被聽眾認可的作品" },
+        { label: "Rights", value: "Original Only", detail: "僅接受原創、已授權或具合法使用依據的音樂內容" },
         { label: "Contact", value: "Email", detail: mail, href: `mailto:${mail}` },
       ],
       sections: [
         {
           title: "平台定位",
           body:
-            "愛播歌不是音樂授權代理、唱片發行公司或法律審查機構，而是 AI 音樂創作者的交流與展示平台。使用者應自行確認上傳內容的來源、授權狀態與使用權限。",
-          items: ["AI 音樂 Drop 上傳與鬥歌", "觀眾投票與留言交流", "傷心酒吧 Bar Heartbreak 播放分享", "創作者作品曝光與活動延伸"],
+            "AIPOGER 不是普通播放器，也不是只做 battle 的網站。它是 AI 音樂創作者的認可系統：先讓作品接受聽眾與對手檢驗，再把勝出的紀錄變成播放、策展與商業化的起點。",
+          items: ["AI 音樂 Drop 上傳與鬥歌", "傷心酒吧 Bar Heartbreak 公播與聽眾反應", "榮譽榜封存勝利與熱播紀錄", "勝出作品播放、策展、發行、授權與商業合作"],
         },
         {
           title: "著作權與上傳原則",
@@ -102,30 +103,31 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
     },
     en: {
       navTitle: "About AIPOGER",
-      title: "AIPOGER is a platform for original AI music exchange.",
+      title: "AIPOGER is where AI creators grow and winning tracks earn recognition.",
       lead:
-        "AIPOGER provides Drop Battle uploads, battles, Bar Heartbreak sharing, and audience voting for AI music creators. The platform encourages originality, respects licensing, and protects creators, listeners, and rights holders.",
+        "From Drop Battles to Bar Heartbreak and the Honor Board, AIPOGER helps AI music creators get heard, collect crowd signals, earn records, and move winning tracks toward airplay, curation, licensing, and commercial opportunities.",
       contactLabel: "Contact",
       cards: [
-        { label: "Platform", value: "AI Music", detail: "Drop Battle, Bar Heartbreak, creator exchange, audience voting" },
-        { label: "Policy", value: "Original Only", detail: "Only original, licensed, or lawfully usable music content is allowed" },
+        { label: "Mission", value: "Creator Growth", detail: "Build tracks, battle records, listener signals, and stage presence" },
+        { label: "Recognition", value: "Honor Records", detail: "Drop Battles, Bar Heartbreak, and the Honor Board preserve what wins attention" },
+        { label: "Rights", value: "Original Only", detail: "Only original, licensed, or lawfully usable music content is allowed" },
         { label: "Contact", value: "Email", detail: mail, href: `mailto:${mail}` },
       ],
       sections: [
         {
-          title: "Platform Position",
+          title: "What AIPOGER is",
           body:
-            "AIPOGER is not a music licensing agency, record label, or legal review service. Users are responsible for confirming the source, license status, and usage rights of any uploaded content.",
-          items: ["AI music Drop Battle uploads and battles", "Audience voting and comments", "Bar Heartbreak sharing", "Creator exposure and activity extensions"],
+            "AIPOGER is not a generic player and not just a battle site. It is a recognition system for AI music: tracks face challengers and listeners first, then winning records can become the start of airplay, curation, licensing, and commercial paths.",
+          items: ["AI music Drop uploads and battles", "Bar Heartbreak airplay and listener reactions", "Honor Board records for wins and heat", "Airplay, curation, licensing, release, and brand collaboration paths"],
         },
         {
-          title: "Copyright And Upload Principles",
+          title: "Copyright and upload rules",
           body:
             "Music, lyrics, recordings, performances, and online uses may involve reproduction and public transmission rights. Users may not upload unauthorized commercial songs, covers, adaptations, samples, instrumentals, vocals, lyrics, or any content that may infringe third-party rights.",
           items: ["Uploaders must confirm their work is original, AI-generated, and lawfully usable", "No unauthorized vocals, melodies, lyrics, samples, or recordings", "Non-commercial use is not automatically exempt", "AIPOGER may request proof of authorization when needed"],
         },
         {
-          title: "Removal And Enforcement",
+          title: "Removal and enforcement",
           body:
             "If AIPOGER receives a rights-holder notice, reasonably suspects infringement, or identifies a policy violation, the platform may restrict public access, remove content, suspend account functions, preserve records, or cooperate with lawful procedures.",
           items: ["Potentially infringing music may be removed", "Repeat violations may lead to service restrictions", "Rights holders should provide content URLs and proof of rights", "Email is the primary contact channel"],
@@ -186,22 +188,22 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
       secondaryCta: "查看 Drop Battle 規則",
     },
     en: {
-      navTitle: "Ads & Partnership",
-      title: "AI Music Brand Partnerships And Advertising",
+      navTitle: "Partnerships",
+      title: "Partner with the AI music stage where creators grow.",
       lead:
-        "AIPOGER partnerships can live inside Drop Battles, Bar Heartbreak, creator education, and music-video campaigns instead of feeling like a flat banner.",
+        "AIPOGER partnerships should help AI creators make better work, get heard, and turn winning tracks into real cultural and commercial opportunities.",
       contactLabel: "Partnership",
       cards: [
-        { label: "Placement", value: "Stage Exposure", detail: "Home, battle arena, Bar Heartbreak, campaign pages" },
-        { label: "Content", value: "Education", detail: "AI tool tutorials, examples, and song concepts" },
-        { label: "Campaign", value: "Theme Battles", detail: "Sponsored prompts, style weeks, creator challenges" },
+        { label: "Placement", value: "Stage Exposure", detail: "Home, Battle Hall, Bar Heartbreak, Honor Board, campaign pages" },
+        { label: "Content", value: "Creator Growth", detail: "Tutorials, tool demos, song concepts, and workflow education" },
+        { label: "Campaign", value: "Theme Battles", detail: "Sponsored prompts, style weeks, creator challenges, and airplay campaigns" },
       ],
       sections: [
         {
-          title: "Best Fit",
+          title: "Best fit",
           body:
             "AI music tools, AI video tools, music hardware, courses, events, venues, music brands, and products that want to reach creators.",
-          items: ["AI music and video tool promotion", "Sponsored Drop Battle Challenges", "YouTube @djapple2000 tutorial integration", "Bar Heartbreak playlists or theme nights"],
+          items: ["AI music and video tool promotion", "Sponsored Drop Battle challenges", "YouTube @djapple2000 tutorial integration", "Bar Heartbreak airplay, theme nights, or creator missions"],
         },
         {
           title: "Formats",
@@ -211,7 +213,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
         {
           title: "Principle",
           body:
-            "The brand should support music creation. AIPOGER is built for contextual promotion inside real creator workflows and listening moments.",
+            "The brand should support music creation. AIPOGER works best when promotion lives inside real creator workflows, listener reactions, and tracks that are earning recognition.",
         },
       ],
       primaryCta: "Discuss Partnership",
@@ -264,13 +266,13 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
     },
     en: {
       navTitle: "Drop Battle Rules",
-      title: "What Drop Battle Is And How Battle Points Work",
+      title: "Drop Battle turns AI music into a live test.",
       lead:
-        "On AIPOGER, a Drop can be a chorus, intro, drop, melodic phrase, chant, rhythm idea, or any addictive sound design that grabs the listener fast.",
+        "On AIPOGER, a Drop is the part of a track that grabs the listener fast. Creators put their strongest moment into battle, collect votes, build records, and grow through real crowd reaction.",
       cards: [
-        { label: "Drop", value: "15-45s", detail: "Convince the ear fast" },
-        { label: "Vote", value: "One Vote", detail: "Switch before close" },
-        { label: "APC", value: "Beta Free Entry", detail: "Let battles move first" },
+        { label: "Drop", value: "15-45s", detail: "The strongest part of the track" },
+        { label: "Vote", value: "Crowd signal", detail: "Listeners decide what lands" },
+        { label: "Growth", value: "Honor path", detail: "Wins become creator records" },
       ],
       sections: [
         {
@@ -279,27 +281,27 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
             "A Drop is the memorable musical idea that catches the listener. In pop it often appears in the chorus, but in dance, hip-hop, electronic, and AI music, any replayable sound can be the Drop.",
         },
         {
-          title: "Battle Rules Draft",
+          title: "Battle flow",
           body:
-            "Creators upload a track, cut a Drop, and get matched only with the same song category. During public beta, APC entry stakes are disabled so creators can enter Battle directly.",
+            "Creators upload a track, cut the strongest Drop, and face a same-category challenger. During public beta, APC entry stakes are disabled so creators can enter Battle directly and build recognition first.",
           items: ["A / B battle format", "No APC entry stake during public beta", "Cross-stage matches still prioritize close level and music category", "One vote per listener; votes can be switched before close", "Correct final voters receive a 100 APC participation reward", "Only original or properly licensed AI music is allowed"],
         },
         {
-          title: "Points And Levels Draft",
+          title: "Points and levels",
           body:
-            "APC is the platform participation point. During public beta it does not block Battle entry; it is used for rewards, support, progression, and status.",
-          items: ["Stage 1 Hot-Blooded Music Artisan: Lv.1-Lv.3, level up every 10 wins", "Stage 2 Trend Music Master: Lv.4-Lv.7, level up every 20 wins, recommended songs and prompt selling access", "Stage 3 Hall-Level Music Master: Lv.8-Lv.10, level up every 50 wins, creator page space and prompt selling access", "No fighter entry stake is charged during public beta", "Correct final voters receive 100 APC", "Bar Heartbreak is the exposure and engagement path"],
+            "APC is the platform participation point. During public beta it does not block Battle entry; it is used for rewards, support, progression, and creator status.",
+          items: ["Stage 1 Music Artisan: Lv.1-Lv.3, level up every 10 wins", "Stage 2 Featured Creator: Lv.4-Lv.7, level up every 20 wins, unlock featured-song and prompt-selling paths", "Stage 3 Hall Master: Lv.8-Lv.10, level up every 50 wins, unlock creator page space and stronger promotion paths", "No fighter entry stake is charged during public beta", "Correct final voters receive 100 APC", "Bar Heartbreak is the airplay and engagement path"],
         },
         {
           title: "Rank Names",
           body:
-            "Rank titles turn wins into creator identity inside AIPOGER.",
+            "Rank titles turn wins into creator identity inside AIPOGER. They are growth markers, not empty labels.",
           items: ["Lv.1 Signal Starter", "Lv.2 Melody Crafter", "Lv.3 Lyric Ghost", "Lv.4 Pop Navigator", "Lv.5 Melody Monarch", "Lv.6 Rhythm Pilot", "Lv.7 Sonic Sculptor", "Lv.8 Top 100 Titan", "Lv.9 Spirit Pharaoh", "Lv.10 Symphony Pope"],
         },
         {
           title: "Judging Spirit",
           body:
-            "The platform rewards memorable Drops, clear emotion, personal taste, and creative use of AI tools, not just loudness or production polish.",
+            "The platform rewards memorable Drops, clear emotion, personal taste, and creative use of AI tools. Loudness alone does not earn recognition.",
         },
       ],
       primaryCta: "Start Battle",
@@ -528,7 +530,7 @@ const pageLinks = [
 const rankSkillStages = [
   {
     stageZh: "第一階 熱血音樂工匠",
-    stageEn: "Stage 1 Hot-Blooded Music Artisan",
+    stageEn: "Stage 1 Music Artisan",
     ruleZh: "每贏 10 場升級",
     ruleEn: "Level up every 10 wins",
     stake: "公測免 APC",
@@ -541,7 +543,7 @@ const rankSkillStages = [
   },
   {
     stageZh: "第二階 潮流音樂大師",
-    stageEn: "Stage 2 Trend Music Master",
+    stageEn: "Stage 2 Featured Creator",
     ruleZh: "每贏 20 場升級 解鎖推薦與 prompt 販售",
     ruleEn: "Level up every 20 wins Unlock featured songs and prompt selling",
     stake: "公測免 APC",
@@ -555,7 +557,7 @@ const rankSkillStages = [
   },
   {
     stageZh: "第三階 殿堂級音樂師尊",
-    stageEn: "Stage 3 Hall-Level Music Master",
+    stageEn: "Stage 3 Hall Master",
     ruleZh: "每贏 50 場升級 解鎖個人頁面空間",
     ruleEn: "Level up every 50 wins Unlock creator page space",
     stake: "公測免 APC",

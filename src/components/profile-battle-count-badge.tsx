@@ -99,7 +99,7 @@ const text = {
     enter: "Enter",
     view: "View",
     queueTitle: "Open Drop Battle challenge card",
-    waiting: "Waiting challenger",
+    waiting: "Waiting for challenger",
     unknown: "Unknown opponent",
     withOpponent: (name: string) => `90s Drop with @${name}`,
     startsAt: (value: string) => `Starts ${value}`,

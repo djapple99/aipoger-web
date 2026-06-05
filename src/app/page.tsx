@@ -405,20 +405,20 @@ export default function HomePage() {
       ];
   const infoLinks = isZh
     ? [
-        { href: "/hook-guide", title: "最強Drop Battle 對決抓波規則", desc: "最強抓波Drop Battle、點數、等級與比賽制度" },
+        { href: "/hook-guide", title: "最強Drop Battle 對決抓波規則", desc: "用 Drop 上場，累積戰績與創作者認可" },
         { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
-        { href: "/rank", title: "AIPOGER 榮譽榜", desc: "Drop 抓波勝利與傷心酒吧熱播" },
-        { href: "/ai-music-bible", title: "AI 音樂練功聖經", desc: "教學播放列表、官方指南與 prompt 練功路線" },
-        { href: "/about", title: "關於愛播歌", desc: "平台理念、著作權原則與聯絡方式" },
-        { href: "/partners", title: "廣告與合作", desc: "品牌投放、活動與內容合作" },
+        { href: "/rank", title: "AIPOGER 榮譽榜", desc: "被投票、被熱播、被封存的作品紀錄" },
+        { href: "/ai-music-bible", title: "AI 音樂練功聖經", desc: "陪創作者把作品做得更強、更能上場" },
+        { href: "/about", title: "關於愛播歌", desc: "AI 創作者一起成長與作品認可系統" },
+        { href: "/partners", title: "廣告與合作", desc: "讓勝出作品走向播放、策展與商業合作" },
       ]
     : [
-        { href: "/hook-guide", title: "Drop Battle Rules", desc: "Drop Battle format, points, levels, and battle rules" },
+        { href: "/hook-guide", title: "Drop Battle Rules", desc: "Put your strongest Drop on stage and build recognition" },
         { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
-        { href: "/rank", title: "AIPOGER Honor Board", desc: "Drop wins and Bar Heartbreak hits" },
-        { href: "/ai-music-bible", title: "AI Music Bible", desc: "Tutorial playlist, official docs, and prompt practice map" },
-        { href: "/about", title: "About AIPOGER", desc: "Platform principles, copyright policy, and contact" },
-        { href: "/partners", title: "Partnerships", desc: "Ads, campaigns, and creator collaborations" },
+        { href: "/rank", title: "AIPOGER Honor Board", desc: "Recognized wins, hot tracks, and archived creator records" },
+        { href: "/ai-music-bible", title: "AI Music Bible", desc: "Practice prompts, Drops, lyrics, and creator workflow" },
+        { href: "/about", title: "About AIPOGER", desc: "AI creator growth and music recognition system" },
+        { href: "/partners", title: "Partnerships", desc: "Move winning tracks toward airplay, curation, and commercial use" },
       ];
 
   return (
