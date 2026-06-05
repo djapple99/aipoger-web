@@ -409,7 +409,8 @@ function MatchmakingContent(props: MatchmakingContentProps) {
           });
         } catch (apiError) {
           const message = apiError instanceof Error ? apiError.message : "matchmaking api failed";
-          if (challengeTargetQueueId) {
+          const isRoleLockError = /戰帖卡|接了一張|challenge card|challenging another/i.test(message);
+          if (challengeTargetQueueId || isRoleLockError) {
             if (intervalId) clearInterval(intervalId);
             setNotice(message);
             setPhase("cancelled");

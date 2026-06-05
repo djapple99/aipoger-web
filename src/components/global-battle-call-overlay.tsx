@@ -7,7 +7,7 @@ import type { User } from "@supabase/supabase-js";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
-import { cancelCurrentBattleIntent, isDropBattleEndedOrPastExpectedEnd, shouldExpireOpenDropQueue } from "@/lib/battle-pool-client";
+import { cancelCurrentBattleIntent, isDropBattleEndedOrPastExpectedEnd, resolveDropBattleScheduledStart, shouldExpireOpenDropQueue } from "@/lib/battle-pool-client";
 
 type BattleCall = {
   id: string;
@@ -48,6 +48,7 @@ type ActiveBattleNotice = {
   battleId?: string | null;
   status: string;
   createdAt?: string | null;
+  scheduledStartAt?: string | null;
 };
 
 const ACTIVE_NOTICE_QUEUE_STATUSES = [
@@ -76,6 +77,8 @@ const FIXED_BATTLE_ROUTES = new Set(["setup", "hook-cut", "matchmaking", "result
 const DEMO_CALL_EVENT = "aipoger:battle-call-demo";
 const ACCOUNT_NOTICE_COLLAPSED_KEY = "aipoger:account-notice-collapsed";
 const ACCOUNT_NOTICE_DISMISSED_KEY = "aipoger:account-notice-dismissed";
+const ACCOUNT_NOTICE_URGENT_DISMISSED_KEY = "aipoger:account-notice-urgent-dismissed";
+const BATTLE_START_ALERT_LEAD_MS = 60 * 1000;
 const EXPIRED_OR_FINISHED_NOTICE_TYPES = [
   "battle_queue_expired",
   "battle_finished",
@@ -146,6 +149,38 @@ function rememberDismissedNotice(id: string) {
   }
 }
 
+function activeNoticeKey(notice: ActiveBattleNotice | null) {
+  if (!notice) return "";
+  return `${notice.kind}:${notice.id}:${notice.battleId ?? ""}`;
+}
+
+function isDismissedUrgentNotice(id: string) {
+  try {
+    const raw = window.localStorage.getItem(ACCOUNT_NOTICE_URGENT_DISMISSED_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) && parsed.includes(id);
+  } catch {
+    return false;
+  }
+}
+
+function rememberDismissedUrgentNotice(id: string) {
+  if (!id) return;
+  try {
+    const raw = window.localStorage.getItem(ACCOUNT_NOTICE_URGENT_DISMISSED_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    const next = [id, ...(Array.isArray(parsed) ? parsed : [])].slice(0, 48);
+    window.localStorage.setItem(ACCOUNT_NOTICE_URGENT_DISMISSED_KEY, JSON.stringify(Array.from(new Set(next))));
+  } catch {
+    // Ignore localStorage write errors.
+  }
+}
+
+function timestampMs(value: string | null | undefined) {
+  const ms = new Date(value ?? "").getTime();
+  return Number.isFinite(ms) ? ms : null;
+}
+
 export default function GlobalBattleCallOverlay() {
   const pathname = usePathname();
   const { lang } = useI18n();
@@ -162,6 +197,8 @@ export default function GlobalBattleCallOverlay() {
   const [activeNoticeCollapsed, setActiveNoticeCollapsed] = useState(false);
   const [activeNoticeBusy, setActiveNoticeBusy] = useState(false);
   const [activeNoticeError, setActiveNoticeError] = useState("");
+  const [activeNoticeUrgentDismissed, setActiveNoticeUrgentDismissed] = useState(false);
+  const [noticeClockMs, setNoticeClockMs] = useState(() => Date.now());
   const [expiredNotice, setExpiredNotice] = useState<BattleNotificationRow | null>(null);
   const [expiredNoticeOpen, setExpiredNoticeOpen] = useState(true);
   const [expiredNoticeCollapsed, setExpiredNoticeCollapsed] = useState(false);
@@ -178,6 +215,14 @@ export default function GlobalBattleCallOverlay() {
   }, [pathname]);
 
   const arenaHref = call ? `/battle/${encodeURIComponent(call.battleId)}?lang=${lang}` : "/battle";
+  const activeUrgentKey = activeNoticeKey(activeNotice);
+  const activeNoticeStartMs = timestampMs(activeNotice?.scheduledStartAt);
+  const activeNoticeUrgent = Boolean(
+    activeNotice &&
+      activeNoticeStartMs !== null &&
+      activeNoticeStartMs - noticeClockMs <= BATTLE_START_ALERT_LEAD_MS &&
+      !activeNoticeUrgentDismissed,
+  );
 
   const markRead = useCallback(async (id: string) => {
     if (id.startsWith("demo-") || id.startsWith("synthetic-") || isAuthBypassEnabled) return;
@@ -208,6 +253,19 @@ export default function GlobalBattleCallOverlay() {
   useEffect(() => {
     setReady(true);
   }, []);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNoticeClockMs(Date.now()), 5000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (!ready || !activeUrgentKey) {
+      setActiveNoticeUrgentDismissed(false);
+      return;
+    }
+    setActiveNoticeUrgentDismissed(isDismissedUrgentNotice(activeUrgentKey));
+  }, [activeUrgentKey, ready]);
 
   const setAccountNoticeCollapsed = useCallback((next: boolean) => {
     setActiveNoticeCollapsed(next);
@@ -303,6 +361,7 @@ export default function GlobalBattleCallOverlay() {
         | undefined;
       const activeQueueExpired = activeQueue ? shouldExpireOpenDropQueue(activeQueue) : false;
       let linkedQueueBattleEnded = false;
+      let linkedQueueBattleStartAt: string | null = null;
       if (activeQueue?.match_group_id) {
         const { data: linkedBattle } = await supabase
           .from("battles")
@@ -310,6 +369,7 @@ export default function GlobalBattleCallOverlay() {
           .eq("id", activeQueue.match_group_id)
           .maybeSingle<{ id: string; status: string; created_at?: string | null; scheduled_start_at?: string | null; started_at?: string | null; battle_started_at?: string | null; battle_ended_at?: string | null }>();
         linkedQueueBattleEnded = isDropBattleEndedOrPastExpectedEnd(linkedBattle);
+        linkedQueueBattleStartAt = linkedBattle?.scheduled_start_at ?? linkedBattle?.battle_started_at ?? linkedBattle?.started_at ?? null;
         const syntheticNotice = linkedBattle?.id ? buildCompletedDropNotice(linkedBattle.id) : null;
         if (mounted && syntheticNotice && linkedQueueBattleEnded && !isDismissedNotice(syntheticNotice.id)) {
           setCall(null);
@@ -326,6 +386,7 @@ export default function GlobalBattleCallOverlay() {
           battleId: activeQueue.match_group_id ?? null,
           status: activeQueue.status,
           createdAt: activeQueue.created_at ?? null,
+          scheduledStartAt: linkedQueueBattleStartAt ?? resolveDropBattleScheduledStart(activeQueue),
         });
         if (routeTone !== "watching") {
           setActiveNoticeOpen(true);
@@ -348,6 +409,7 @@ export default function GlobalBattleCallOverlay() {
             battleId: activeBattle.id,
             status: activeBattle.status,
             createdAt: activeBattle.created_at ?? null,
+            scheduledStartAt: activeBattle.scheduled_start_at ?? activeBattle.battle_started_at ?? activeBattle.started_at ?? null,
           });
           if (routeTone !== "watching") {
             setActiveNoticeOpen(true);
@@ -450,6 +512,12 @@ export default function GlobalBattleCallOverlay() {
     setExpiredNoticeOpen(false);
   };
 
+  const dismissActiveUrgentNotice = () => {
+    if (!activeNoticeUrgent || !activeUrgentKey) return;
+    rememberDismissedUrgentNotice(activeUrgentKey);
+    setActiveNoticeUrgentDismissed(true);
+  };
+
   const cancelActiveNotice = async () => {
     if (!activeNotice || !accessToken) return;
     const ok = window.confirm(isZh ? "要取消目前未完成的 Battle 嗎？取消後才可以重新上傳下一首最強抓波Drop Battle。" : "Cancel your unfinished Battle so you can upload another Drop Battle clip?");
@@ -457,7 +525,11 @@ export default function GlobalBattleCallOverlay() {
     setActiveNoticeError("");
     setActiveNoticeBusy(true);
     try {
-      await cancelCurrentBattleIntent({ accessToken, battleId: activeNotice.kind === "battle" ? activeNotice.id : activeNotice.battleId ?? undefined });
+      await cancelCurrentBattleIntent({
+        accessToken,
+        battleId: activeNotice.kind === "battle" ? activeNotice.id : activeNotice.battleId ?? undefined,
+        queueId: activeNotice.kind === "queue" && !activeNotice.battleId ? activeNotice.id : undefined,
+      });
       setActiveNotice(null);
       setActiveNoticeOpen(false);
     } catch (error) {
@@ -471,9 +543,11 @@ export default function GlobalBattleCallOverlay() {
 
   const AccountNoticeDock = ({
     hasNotice,
+    urgent,
     onBellClick,
   }: {
     hasNotice: boolean;
+    urgent?: boolean;
     onBellClick?: () => void;
   }) => (
     <div className="fixed right-4 top-20 z-[92] flex items-center gap-2 sm:right-5">
@@ -494,12 +568,20 @@ export default function GlobalBattleCallOverlay() {
         <button
           type="button"
           onClick={onBellClick}
-          className="relative flex h-12 w-12 items-center justify-center rounded-full border border-orange-200/45 bg-black/82 text-orange-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_28px_rgba(255,106,0,0.18)] backdrop-blur-xl transition hover:border-orange-100 hover:text-white"
+          className={`relative flex h-12 w-12 items-center justify-center rounded-full border bg-black/82 shadow-[0_18px_58px_rgba(0,0,0,0.45)] backdrop-blur-xl transition hover:text-white ${
+            urgent
+              ? "animate-pulse border-red-300/80 text-red-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_34px_rgba(248,113,113,0.62)] hover:border-red-100"
+              : "border-orange-200/45 text-orange-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_28px_rgba(255,106,0,0.18)] hover:border-orange-100"
+          }`}
           aria-label={isZh ? "展開帳號消息" : "Expand account notice"}
           title={isZh ? "帳號消息" : "Account Notice"}
         >
           <BellIcon />
-          <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-orange-400 shadow-[0_0_14px_rgba(255,106,0,0.9)]" />
+          <span
+            className={`absolute right-2 top-2 h-2.5 w-2.5 rounded-full ${
+              urgent ? "bg-red-400 shadow-[0_0_16px_rgba(248,113,113,1)]" : "bg-orange-400 shadow-[0_0_14px_rgba(255,106,0,0.9)]"
+            }`}
+          />
         </button>
       ) : null}
     </div>
@@ -659,20 +741,28 @@ export default function GlobalBattleCallOverlay() {
         : activeNotice.battleId
           ? `/battle/${encodeURIComponent(activeNotice.battleId)}?lang=${lang}`
           : `/battle?lang=${lang}&focusQueue=${encodeURIComponent(activeNotice.id)}`;
-    const activeTitle = isPoolWaitingNotice
+    const activeTitle = activeNoticeUrgent
       ? isZh
+        ? "你的 Battle 即將開打"
+        : "Your Battle starts soon"
+      : isPoolWaitingNotice
+        ? isZh
         ? "你的最強抓波Drop Battle 正在等待挑戰"
         : "Your Drop Battle is waiting"
       : isZh
         ? "有一場 Battle 尚未完成"
         : "Unfinished Battle";
-    const activeBody = isPoolWaitingNotice
+    const activeBody = activeNoticeUrgent
       ? isZh
+        ? "開打時間已進入最後一分鐘。你可以立刻回到場內；若不想再提醒，收合這則消息即可。"
+        : "Start time is within the final minute. Enter now, or hide this notice to stop the flashing bell."
+      : isPoolWaitingNotice
+        ? isZh
         ? "目前還沒有配到對手。你可以回鬥歌場確認作品還在掛池，也可以取消後重新上傳。"
         : "No opponent yet. Return to Battle to confirm your card is still listed, or cancel and upload again."
       : isZh
-        ? "目前帳號一次只能保留一場 Drop Battle。你可以回到場內，或直接取消後重新上傳 Drop。"
-        : "One account can only hold one active Drop Battle. Enter it or cancel to upload another Drop.";
+        ? "目前有一場 Drop Battle 尚未完成。你可以回到場內，或直接取消後重新上傳 Drop。"
+        : "You have one unfinished Drop Battle. Enter it or cancel to upload another Drop.";
     const activeCta = isPoolWaitingNotice
       ? isZh
         ? "查看戰帖"
@@ -684,6 +774,7 @@ export default function GlobalBattleCallOverlay() {
       return (
         <AccountNoticeDock
           hasNotice
+          urgent={activeNoticeUrgent}
           onBellClick={() => {
             setAccountNoticeCollapsed(false);
             setActiveNoticeOpen(true);
@@ -693,14 +784,20 @@ export default function GlobalBattleCallOverlay() {
     }
     return (
       <div className="fixed right-4 top-24 z-[92] w-[min(calc(100vw-2rem),340px)] sm:right-5">
-        <div className="overflow-hidden rounded-2xl border border-cyan-200/25 bg-black/82 text-white shadow-[0_22px_76px_rgba(0,0,0,0.52),0_0_30px_rgba(0,203,255,0.12)] backdrop-blur-xl">
+        <div
+          className={`overflow-hidden rounded-2xl border bg-black/82 text-white shadow-[0_22px_76px_rgba(0,0,0,0.52)] backdrop-blur-xl ${
+            activeNoticeUrgent
+              ? "border-red-300/45 shadow-[0_22px_76px_rgba(0,0,0,0.52),0_0_34px_rgba(248,113,113,0.22)]"
+              : "border-cyan-200/25 shadow-[0_22px_76px_rgba(0,0,0,0.52),0_0_30px_rgba(0,203,255,0.12)]"
+          }`}
+        >
           <div className="flex items-center gap-2 pr-3">
             <button
               type="button"
               onClick={() => setActiveNoticeOpen((value) => !value)}
               className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left transition hover:bg-white/[0.04]"
             >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cyan-300 text-black">
+              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${activeNoticeUrgent ? "animate-pulse bg-red-400 text-white" : "bg-cyan-300 text-black"}`}>
                 <BellIcon />
               </span>
               <span className="min-w-0 flex-1">
@@ -717,7 +814,10 @@ export default function GlobalBattleCallOverlay() {
             </button>
             <button
               type="button"
-              onClick={() => setAccountNoticeCollapsed(true)}
+              onClick={() => {
+                dismissActiveUrgentNotice();
+                setAccountNoticeCollapsed(true);
+              }}
               className="shrink-0 rounded-full border border-white/12 bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-black text-zinc-300 transition hover:border-cyan-100/60 hover:text-white"
             >
               {isZh ? "收合" : "Hide"}

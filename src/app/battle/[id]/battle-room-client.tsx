@@ -1282,22 +1282,8 @@ function BattleArenaContent() {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) {
-        let nextPath = isUuid(battleId)
-          ? `/battle?${new URLSearchParams({ lang, focusBattle: battleId }).toString()}`
-          : currentReturnPath();
-        if (isUuid(battleId)) {
-          const { data: queueRow } = await supabase
-            .from("battle_queue")
-            .select("id")
-            .eq("id", battleId)
-            .maybeSingle<{ id: string }>();
-          if (queueRow?.id) {
-            const nextParams = new URLSearchParams({ lang, focusQueue: battleId });
-            nextPath = `/battle?${nextParams.toString()}`;
-          }
-        }
-        rememberAuthNextPath(nextPath);
-        router.replace(`/auth?next=${encodeURIComponent(nextPath)}`);
+        setMyUserId("");
+        setMyDisplayName(searchParams.get("viewerName")?.trim() || searchParams.get("displayName")?.trim() || "AIPOGER 觀眾");
         return;
       }
       setMyUserId(session.user.id);
@@ -1413,10 +1399,6 @@ function BattleArenaContent() {
         await new Promise((r) => setTimeout(r, 80));
         const { data: d2 } = await supabase.auth.getSession();
         authed = d2.session;
-      }
-      if (!isAuthBypassEnabled && !authed?.user && !battleId.startsWith("mock-")) {
-        if (mounted) setLoading(false);
-        return;
       }
 
       const { data, error: battleError } = await supabase
@@ -2485,14 +2467,32 @@ function BattleArenaContent() {
     };
   }, [battleId, fireDanmaku, fireHypeReaction, handleFeedbackTap, pushResultForEveryone]);
 
+  const requireInteractionLogin = useCallback(async () => {
+    if (battleId.startsWith("mock-") || isAuthBypassEnabled) return { id: myUserId || "mock-audience" };
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session?.user?.id) {
+      if (!myUserId) setMyUserId(session.user.id);
+      return { id: session.user.id };
+    }
+    const nextPath = currentReturnPath();
+    rememberAuthNextPath(nextPath);
+    router.push(`/auth?next=${encodeURIComponent(nextPath)}`);
+    return null;
+  }, [battleId, myUserId, router]);
+
   const sendChatContent = useCallback(async (content: string) => {
     const trimmed = content.trim();
     if (!trimmed || !battleId) return;
+    const actor = await requireInteractionLogin();
+    if (!actor) return;
+    const actorUserId = actor.id;
 
     const senderType: SenderType =
-      myUserId === battle?.fighter_a_user_id
+      actorUserId === battle?.fighter_a_user_id
         ? "fighter_a"
-        : myUserId === battle?.fighter_b_user_id
+        : actorUserId === battle?.fighter_b_user_id
           ? "fighter_b"
           : "audience";
     const senderName =
@@ -2505,7 +2505,7 @@ function BattleArenaContent() {
     const localMessage: ChatMessage = {
       id: `local-${Date.now()}`,
       battle_id: battleId,
-      user_id: myUserId,
+      user_id: actorUserId,
       sender_type: senderType,
       content: trimmed,
       created_at: new Date().toISOString(),
@@ -2524,11 +2524,11 @@ function BattleArenaContent() {
 
     await supabase.from("chat_messages").insert({
       battle_id: battleId,
-      user_id: myUserId,
+      user_id: actorUserId,
       sender_type: senderType,
       content: trimmed,
     });
-  }, [battle, battleId, fireDanmaku, myDisplayName, myUserId]);
+  }, [battle, battleId, fireDanmaku, myDisplayName, requireInteractionLogin]);
 
   // ── 發送訊息 ──────────────────────────────────────────
   const handleSend = async (event: FormEvent<HTMLFormElement>) => {
@@ -2545,6 +2545,8 @@ function BattleArenaContent() {
     if (hasVoted === target) {
       return;
     }
+    const actor = await requireInteractionLogin();
+    if (!actor) return;
     const previousVote = hasVoted;
 
     if (battleId.startsWith("mock-") || isAuthBypassEnabled) {
@@ -2596,7 +2598,7 @@ function BattleArenaContent() {
       }
 
       if (battle.arena_kind === "queue") {
-        await cancelCurrentBattleIntent({ accessToken: token });
+        await cancelCurrentBattleIntent({ accessToken: token, queueId: battle.id });
         setBattle((current) =>
           current?.id === battleId
             ? { ...current, status: "cancelled_founder", queue_status: "cancelled", cancellation_reason: "founder_manual" }

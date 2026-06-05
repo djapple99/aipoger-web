@@ -3,7 +3,11 @@ import assert from "node:assert/strict";
 
 const {
   BATTLE_POINT_REWARDS,
+  dropBattleRoleForChallengeTarget,
+  dropBattleRoleLockMessage,
   canBattleEntriesMatch,
+  isActiveDropQueueStatus,
+  isSameDropBattleRole,
   battleStakeForLevel,
   publicVotingReward,
   rankForWins,
@@ -87,6 +91,30 @@ test("battle pool fallback runs after 24 hours", () => {
   const created = Date.UTC(2026, 4, 18, 12, 0, 0);
   assert.equal(shouldRunFallback(created, created + 23 * 60 * 60 * 1000), false);
   assert.equal(shouldRunFallback(created, created + 24 * 60 * 60 * 1000), true);
+});
+
+test("drop battle role locks allow one founder state plus one challenger state", () => {
+  assert.equal(dropBattleRoleForChallengeTarget(null), "founder");
+  assert.equal(dropBattleRoleForChallengeTarget("queue-founder"), "challenger");
+  assert.equal(isSameDropBattleRole(null, "queue-founder"), false);
+  assert.equal(isSameDropBattleRole("queue-a", null), false);
+  assert.equal(isSameDropBattleRole(null, null), true);
+  assert.equal(isSameDropBattleRole("queue-a", "queue-b"), true);
+});
+
+test("drop battle role locks only count active queue states", () => {
+  for (const status of ["pending", "searching", "waiting", "waiting_challenge", "matched", "active"]) {
+    assert.equal(isActiveDropQueueStatus(status), true);
+  }
+  for (const status of ["completed", "expired", "cancelled", "cancelled_founder", "finished", null]) {
+    assert.equal(isActiveDropQueueStatus(status), false);
+  }
+});
+
+test("drop battle role lock messages are role specific", () => {
+  assert.match(dropBattleRoleLockMessage("founder", "zh"), /戰帖卡/);
+  assert.match(dropBattleRoleLockMessage("challenger", "zh"), /接了一張/);
+  assert.match(dropBattleRoleLockMessage("founder", "en"), /challenge card/);
 });
 
 test("battle entries only match the same genre", () => {

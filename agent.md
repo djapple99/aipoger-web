@@ -136,10 +136,13 @@
 
 - 每個帳號**同時**可以擁有：
   - **最多 1 場 24H Full Song battle**
-  - **最多 1 場 Drop battle（90 秒）**
-- 兩種類型可以**並行**（同時間各 1 場）
-- 同類型**不能並行**（譬如同時開 2 場 Drop battle 不行）
-- 「開新一場」的條件：同類型的現有 battle 必須是 `finished` / `cancelled` / `cancelled_no_challenger` / `cancelled_founder` 其中之一
+- Drop battle（90 秒）拆成兩種可並存狀態：
+  - **最多 1 張自己開的 Drop 戰帖卡 / founder state**
+  - **最多 1 場正在挑戰別人的 Drop / challenger state**
+- 24H Full Song、Drop founder、Drop challenger 三種狀態可以**並行**。
+- 同一種狀態**不能並行**。例如已經開一張 Drop 戰帖卡，就不能再開第二張；已經接一張別人的 Drop 戰帖，就不能再接第二張。
+- 「開新一場 / 接新一場」的條件：同狀態的現有 battle 必須是 `finished` / `cancelled` / `cancelled_no_challenger` / `cancelled_founder` / `completed` / `expired` 其中之一。
+- 觀戰自由，不要求登入；留言、投票、互動、取消挑戰等會寫入資料或影響戰鬥狀態的操作必須登入。
 - 這個限制在 `src/lib/daily-battle-rules.ts` 跟 battle_pool 邏輯中實作
 
 ## AIPOGER Drop Battle 流程記憶（2026-06-03）

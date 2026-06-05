@@ -216,6 +216,7 @@ export async function attemptMatchmakingWithoutApcGate(args: {
 export async function cancelCurrentBattleIntent(args: {
   accessToken: string;
   battleId?: string | null;
+  queueId?: string | null;
 }): Promise<{ cancelledBattles: number; cancelledQueues: number }> {
   const response = await fetch("/api/battle-pool/cancel-current", {
     method: "POST",
@@ -225,6 +226,7 @@ export async function cancelCurrentBattleIntent(args: {
     },
     body: JSON.stringify({
       battleId: args.battleId ?? null,
+      queueId: args.queueId ?? null,
     }),
   });
 

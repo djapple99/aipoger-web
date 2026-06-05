@@ -50,8 +50,9 @@ export async function POST(request: NextRequest) {
   const token = tokenFromRequest(request);
   if (!token) return jsonError("Unauthorized", 401);
 
-  const body = (await request.json().catch(() => null)) as { battleId?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as { battleId?: unknown; queueId?: unknown } | null;
   const battleId = isUuid(body?.battleId) ? body.battleId : null;
+  const queueId = isUuid(body?.queueId) ? body.queueId : null;
   const admin = createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -62,16 +63,20 @@ export async function POST(request: NextRequest) {
   } = await admin.auth.getUser(token);
   if (userError || !user) return jsonError("Unauthorized", 401);
 
-  let battleQuery = admin
-    .from("battles")
-    .select("id, queue_a_id, queue_b_id, status")
-    .in("status", ACTIVE_BATTLE_STATUSES)
-    .or(`fighter_a_user_id.eq.${user.id},fighter_b_user_id.eq.${user.id}`);
+  let activeBattles: Array<{ id: string; queue_a_id?: string | null; queue_b_id?: string | null; status?: string | null }> = [];
+  if (!queueId || battleId) {
+    let battleQuery = admin
+      .from("battles")
+      .select("id, queue_a_id, queue_b_id, status")
+      .in("status", ACTIVE_BATTLE_STATUSES)
+      .or(`fighter_a_user_id.eq.${user.id},fighter_b_user_id.eq.${user.id}`);
 
-  if (battleId) battleQuery = battleQuery.eq("id", battleId);
+    if (battleId) battleQuery = battleQuery.eq("id", battleId);
 
-  const { data: activeBattles, error: battleReadError } = await battleQuery;
-  if (battleReadError) return jsonError(battleReadError.message, 500);
+    const { data, error: battleReadError } = await battleQuery;
+    if (battleReadError) return jsonError(battleReadError.message, 500);
+    activeBattles = data ?? [];
+  }
 
   const activeBattleIds = (activeBattles ?? []).map((row) => row.id).filter(Boolean);
   const linkedQueueIds = (activeBattles ?? [])
@@ -94,6 +99,7 @@ export async function POST(request: NextRequest) {
     .in("status", ACTIVE_QUEUE_STATUSES)
     .eq("user_id", user.id);
 
+  if (queueId) queueQuery = queueQuery.eq("id", queueId);
   if (battleId) queueQuery = queueQuery.eq("match_group_id", battleId);
   const { data: ownQueues, error: ownQueueReadError } = await queueQuery;
   if (ownQueueReadError) return jsonError(ownQueueReadError.message, 500);

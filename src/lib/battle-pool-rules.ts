@@ -65,6 +65,7 @@ export function battleStakeForLevel(level: number): 200 | 300 | 500 {
 }
 
 export type BattleEntryStatus =
+  | "pending"
   | "searching"
   | "waiting"
   | "waiting_challenge"
@@ -77,6 +78,48 @@ export type BattleEntryStatus =
   | "cancelled";
 
 export type BattleFallbackKind = "ghost_battle" | "public_voting";
+export type DropBattleUserRole = "founder" | "challenger";
+
+export const ACTIVE_DROP_QUEUE_STATUSES = [
+  "pending",
+  "searching",
+  "waiting",
+  "waiting_challenge",
+  "matched",
+  "active",
+] as const;
+
+export const ACTIVE_DROP_BATTLE_STATUSES = ["pending", "active", "live"] as const;
+
+export function dropBattleRoleForChallengeTarget(challengeTargetQueueId: string | null | undefined): DropBattleUserRole {
+  return challengeTargetQueueId ? "challenger" : "founder";
+}
+
+export function isActiveDropQueueStatus(status: string | null | undefined): boolean {
+  return ACTIVE_DROP_QUEUE_STATUSES.includes(status as (typeof ACTIVE_DROP_QUEUE_STATUSES)[number]);
+}
+
+export function isActiveDropBattleStatus(status: string | null | undefined): boolean {
+  return ACTIVE_DROP_BATTLE_STATUSES.includes(status as (typeof ACTIVE_DROP_BATTLE_STATUSES)[number]);
+}
+
+export function isSameDropBattleRole(
+  leftChallengeTargetQueueId: string | null | undefined,
+  rightChallengeTargetQueueId: string | null | undefined,
+): boolean {
+  return dropBattleRoleForChallengeTarget(leftChallengeTargetQueueId) === dropBattleRoleForChallengeTarget(rightChallengeTargetQueueId);
+}
+
+export function dropBattleRoleLockMessage(role: DropBattleUserRole, lang: "zh" | "en" | string = "zh"): string {
+  if (role === "founder") {
+    return lang === "en"
+      ? "You already have one Drop Battle challenge card open. Finish or cancel that card before opening another."
+      : "你目前已有一張 Drop Battle 戰帖卡正在等待或進行中。請先完成或取消那張卡，再開下一張。";
+  }
+  return lang === "en"
+    ? "You are already challenging another Drop Battle card. Finish or cancel that challenge before accepting another."
+    : "你目前已經接了一張 Drop Battle 戰帖。請先完成或取消那場挑戰，再接下一張。";
+}
 
 export function publicVotingReward(score: number): number {
   if (!Number.isFinite(score)) return BATTLE_POINT_REWARDS.publicVotingMin;

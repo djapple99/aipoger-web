@@ -11,7 +11,6 @@ import { loadFighterNameFromProfile, saveFighterNameToProfile } from '@/lib/user
 import SafetyNotice from '@/components/safety-notice';
 import {
   buildDropBattleSchedulePayload,
-  cancelCurrentBattleIntent,
   DROP_BATTLE_SCHEDULE_MAX_LEAD_MS,
   DROP_BATTLE_SCHEDULE_MIN_LEAD_MS,
   DROP_BATTLE_SCHEDULE_PRESETS,
@@ -22,6 +21,13 @@ import {
   validateDropBattleScheduledStart,
 } from '@/lib/battle-pool-client';
 import { ACTIVE_DAILY_BATTLE_STATUSES, DAILY_BATTLE_ACTIVE_LIMIT } from '@/lib/daily-battle-rules';
+import {
+  ACTIVE_DROP_BATTLE_STATUSES,
+  ACTIVE_DROP_QUEUE_STATUSES,
+  dropBattleRoleForChallengeTarget,
+  dropBattleRoleLockMessage,
+  type DropBattleUserRole,
+} from '@/lib/battle-pool-rules';
 import { fileFromDataUrl, parseAudioMetadata } from '@/lib/audio-metadata';
 import { sha256File } from '@/lib/file-hash';
 
@@ -41,9 +47,6 @@ const AI_TOOLS = [
   'Suno', 'Udio', 'Lyria', 'Mureka', 'AceStudio', 'MiniMax', 'ElevenLabs', '其他',
 ];
 
-const ACTIVE_QUEUE_STATUSES = ["pending", "searching", "waiting", "waiting_challenge", "matched", "active"];
-const ACTIVE_BATTLE_STATUSES = ["pending", "active", "live"];
-const REPLACEABLE_QUEUE_STATUSES = new Set(["pending", "searching", "waiting", "waiting_challenge"]);
 const CLOSED_BATTLE_STATUSES = new Set(["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"]);
 const DAILY_BATTLE_PUBLIC_ENTRY_ENABLED = false;
 
@@ -57,8 +60,8 @@ type BattleDraft = {
 };
 
 type ActiveBattleLock =
-  | { kind: "queue"; id: string; status: string; battleId?: string | null }
-  | { kind: "battle"; id: string; status: string };
+  | { kind: "queue"; id: string; status: string; role: DropBattleUserRole; battleId?: string | null }
+  | { kind: "battle"; id: string; status: string; role: DropBattleUserRole; queueId?: string | null };
 
 type BattleMode = 'instant' | 'daily';
 type InstantPairingMode = 'auto' | 'invite';
@@ -136,18 +139,23 @@ function setCompactParam(params: URLSearchParams, key: string, value: string | n
   params.set(key, trimmed);
 }
 
-async function findActiveBattleLock(userId: string): Promise<ActiveBattleLock | null> {
+async function findActiveBattleLock(userId: string, requestedRole: DropBattleUserRole): Promise<ActiveBattleLock | null> {
   const { data: queueRows, error: queueError } = await supabase
     .from("battle_queue")
-    .select("id, status, match_group_id, created_at")
+    .select("id, status, match_group_id, challenge_target_queue_id, created_at")
     .eq("user_id", userId)
-    .in("status", ACTIVE_QUEUE_STATUSES)
+    .in("status", [...ACTIVE_DROP_QUEUE_STATUSES])
     .order("created_at", { ascending: false })
-    .limit(1);
+    .limit(12);
 
   if (queueError) throw queueError;
-  const activeQueue = queueRows?.[0] as { id: string; status: string; match_group_id?: string | null } | undefined;
-  if (activeQueue?.id) {
+  const activeQueues = (queueRows ?? []) as Array<{
+    id: string;
+    status: string;
+    match_group_id?: string | null;
+    challenge_target_queue_id?: string | null;
+  }>;
+  for (const activeQueue of activeQueues) {
     if (activeQueue.match_group_id) {
       const { data: linkedBattle } = await supabase
         .from("battles")
@@ -157,47 +165,63 @@ async function findActiveBattleLock(userId: string): Promise<ActiveBattleLock | 
       const status = typeof linkedBattle?.status === "string" ? linkedBattle.status : "";
       if (linkedBattle?.battle_ended_at || CLOSED_BATTLE_STATUSES.has(status) || isDropBattleEndedOrPastExpectedEnd(linkedBattle)) {
         void supabase.from("battle_queue").update({ status: "completed" }).eq("id", activeQueue.id);
-        return null;
+        continue;
       }
     }
-    return { kind: "queue", id: activeQueue.id, status: activeQueue.status, battleId: activeQueue.match_group_id ?? null };
+    const role = dropBattleRoleForChallengeTarget(activeQueue.challenge_target_queue_id);
+    if (role === requestedRole) {
+      return { kind: "queue", id: activeQueue.id, status: activeQueue.status, role, battleId: activeQueue.match_group_id ?? null };
+    }
   }
 
   const { data: battleRows, error: battleError } = await supabase
     .from("battles")
-    .select("id, status, battle_ended_at, started_at, battle_started_at, created_at")
+    .select("id, queue_a_id, queue_b_id, fighter_a_user_id, fighter_b_user_id, status, battle_ended_at, started_at, battle_started_at, created_at")
     .or(`fighter_a_user_id.eq.${userId},fighter_b_user_id.eq.${userId}`)
-    .in("status", ACTIVE_BATTLE_STATUSES)
+    .in("status", [...ACTIVE_DROP_BATTLE_STATUSES])
     .is("battle_ended_at", null)
     .order("created_at", { ascending: false })
-    .limit(1);
+    .limit(8);
 
   if (battleError) throw battleError;
-  const activeBattle = battleRows?.[0] as { id: string; status: string; battle_ended_at?: string | null; started_at?: string | null; battle_started_at?: string | null; created_at?: string | null } | undefined;
-  if (activeBattle?.id && isDropBattleEndedOrPastExpectedEnd(activeBattle)) {
-    void supabase
-      .from("battles")
-      .update({ status: "finished", battle_ended_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-      .eq("id", activeBattle.id);
-    return null;
+  const activeBattles = (battleRows ?? []) as Array<{
+    id: string;
+    queue_a_id?: string | null;
+    queue_b_id?: string | null;
+    fighter_a_user_id?: string | null;
+    fighter_b_user_id?: string | null;
+    status: string;
+    battle_ended_at?: string | null;
+    started_at?: string | null;
+    battle_started_at?: string | null;
+    created_at?: string | null;
+  }>;
+  for (const activeBattle of activeBattles) {
+    if (isDropBattleEndedOrPastExpectedEnd(activeBattle)) {
+      void supabase
+        .from("battles")
+        .update({ status: "finished", battle_ended_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq("id", activeBattle.id);
+      continue;
+    }
+    const userQueueId =
+      activeBattle.fighter_a_user_id === userId
+        ? activeBattle.queue_a_id
+        : activeBattle.fighter_b_user_id === userId
+          ? activeBattle.queue_b_id
+          : null;
+    if (!userQueueId) continue;
+    const { data: queueRoleRow } = await supabase
+      .from("battle_queue")
+      .select("id, challenge_target_queue_id")
+      .eq("id", userQueueId)
+      .maybeSingle<{ id: string; challenge_target_queue_id?: string | null }>();
+    const challengeTargetQueueId = queueRoleRow?.challenge_target_queue_id ?? null;
+    if (dropBattleRoleForChallengeTarget(challengeTargetQueueId) === requestedRole) {
+      return { kind: "battle", id: activeBattle.id, status: activeBattle.status, role: requestedRole, queueId: userQueueId };
+    }
   }
-  return activeBattle?.id ? { kind: "battle", id: activeBattle.id, status: activeBattle.status } : null;
-}
-
-function canReplaceActiveBattleLock(lock: ActiveBattleLock): boolean {
-  return lock.kind === "queue" && !lock.battleId && REPLACEABLE_QUEUE_STATUSES.has(lock.status);
-}
-
-function existingBattleMessage(lang: string): string {
-  return lang === "zh"
-    ? "你目前已有一張 Drop Battle 戰帖卡正在等待挑戰。要挑戰這首歌，系統會先取消你原本等待中的 Drop。"
-    : "You already have one Drop Battle challenge card waiting. To challenge this track, your previous waiting Drop will be cancelled first.";
-}
-
-function lockedBattleMessage(lang: string): string {
-  return lang === "zh"
-    ? "你目前已有一場 Drop Battle 進行中。請先完成或取消目前這場 Drop，再開始下一場 Drop。"
-    : "You already have an active Drop Battle. Finish or cancel this Drop before starting another one.";
+  return null;
 }
 
 function extractErrorMessage(err: unknown): string {
@@ -979,21 +1003,12 @@ export default function BattleSetupPage() {
       if (isAuthBypassEnabled) {
         queueIdForNav = `mock-${Date.now()}`;
       } else {
-        const activeLock = await findActiveBattleLock(userId);
+        const requestedDropRole = dropBattleRoleForChallengeTarget(challengeEntryId);
+        const activeLock = await findActiveBattleLock(userId, requestedDropRole);
         if (activeLock) {
-          if (challengeEntryId && canReplaceActiveBattleLock(activeLock)) {
-            const ok = window.confirm(existingBattleMessage(lang));
-            if (!ok) {
-              setUploading(false);
-              return;
-            }
-            setUploadProgress(lang === "zh" ? "取消原本等待中的 Drop…" : "Cancelling previous waiting Drop…");
-            await cancelCurrentBattleIntent({ accessToken });
-          } else {
-            alert(lockedBattleMessage(lang));
-            setUploading(false);
-            return;
-          }
+          alert(dropBattleRoleLockMessage(requestedDropRole, lang));
+          setUploading(false);
+          return;
         }
 
         if (challengeEntryId) {
@@ -1038,7 +1053,7 @@ export default function BattleSetupPage() {
             .from('battle_queue')
             .select('id, original_file_name, status')
             .eq('audio_sha256', draft.audioSha256)
-            .in('status', ACTIVE_QUEUE_STATUSES)
+            .in('status', [...ACTIVE_DROP_QUEUE_STATUSES])
             .limit(1)
             .maybeSingle<{ id: string; original_file_name: string | null; status: string | null }>();
           if (duplicateCheck.error) {

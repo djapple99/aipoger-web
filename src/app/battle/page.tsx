@@ -1018,7 +1018,7 @@ function BattlePoolList() {
     try {
       const token = (await supabase.auth.getSession()).data.session?.access_token;
       if (!token) throw new Error(isZh ? "請先登入後再取消挑戰。" : "Please sign in before cancelling.");
-      await cancelCurrentBattleIntent({ accessToken: token });
+      await cancelCurrentBattleIntent({ accessToken: token, queueId: entryId });
       setRows((items) => items.filter((item) => item.id !== entryId));
     } catch (error) {
       setCancelError(error instanceof Error ? error.message : isZh ? "取消失敗，請稍後再試。" : "Cancel failed. Please try again.");

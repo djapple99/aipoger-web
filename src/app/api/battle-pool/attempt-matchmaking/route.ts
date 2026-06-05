@@ -5,6 +5,13 @@ import {
   isDropBattleEndedOrPastExpectedEnd,
   isDropChallengeAcceptable,
 } from "@/lib/battle-pool-client";
+import {
+  ACTIVE_DROP_BATTLE_STATUSES,
+  ACTIVE_DROP_QUEUE_STATUSES,
+  dropBattleRoleForChallengeTarget,
+  dropBattleRoleLockMessage,
+  isSameDropBattleRole,
+} from "@/lib/battle-pool-rules";
 
 type QueueRow = {
   id: string;
@@ -18,25 +25,13 @@ type QueueRow = {
   status: string;
   match_group_id?: string | null;
   opponent_user_id?: string | null;
+  challenge_target_queue_id?: string | null;
   expires_at?: string | null;
   scheduled_start_at?: string | null;
   cancellation_evaluation_at?: string | null;
 };
 
 const OPEN_QUEUE_STATUSES = ["searching", "waiting", "waiting_challenge"];
-const ACTIVE_QUEUE_STATUSES = [
-  "pending",
-  "searching",
-  "waiting",
-  "waiting_challenge",
-  "matched",
-  "active",
-];
-const ACTIVE_BATTLE_STATUSES = [
-  "pending",
-  "active",
-  "live",
-];
 const CLOSED_BATTLE_STATUSES = ["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"];
 
 function jsonError(message: string, status = 400) {
@@ -122,14 +117,15 @@ export async function POST(request: NextRequest) {
   if (meRow.status === "waiting_challenge" && !targetQueueId) {
     return NextResponse.json({ row: meRow });
   }
+  const requestedRole = dropBattleRoleForChallengeTarget(meRow.challenge_target_queue_id ?? targetQueueId ?? null);
 
   const { data: otherActiveQueues, error: otherActiveQueueError } = await admin
     .from("battle_queue")
-    .select("id, status, match_group_id")
+    .select("id, status, match_group_id, challenge_target_queue_id")
     .eq("user_id", user.id)
     .neq("id", meRow.id)
-    .in("status", ACTIVE_QUEUE_STATUSES)
-    .limit(8);
+    .in("status", [...ACTIVE_DROP_QUEUE_STATUSES])
+    .limit(12);
 
   if (otherActiveQueueError) return jsonError(otherActiveQueueError.message, 500);
   let blockingActiveQueueCount = 0;
@@ -153,19 +149,21 @@ export async function POST(request: NextRequest) {
         continue;
       }
     }
-    blockingActiveQueueCount += 1;
+    if (isSameDropBattleRole(meRow.challenge_target_queue_id ?? targetQueueId ?? null, queue.challenge_target_queue_id ?? null)) {
+      blockingActiveQueueCount += 1;
+    }
   }
   if (blockingActiveQueueCount > 0) {
-    return jsonError("同一個帳號一次只能保留一場 Drop Battle。請先完成或取消目前這場 Drop，再開始下一場。", 409);
+    return jsonError(dropBattleRoleLockMessage(requestedRole, "zh"), 409);
   }
 
   const { data: activeBattles, error: activeBattleError } = await admin
     .from("battles")
-    .select("id, queue_a_id, queue_b_id, status, battle_ended_at, started_at, battle_started_at, created_at")
+    .select("id, queue_a_id, queue_b_id, fighter_a_user_id, fighter_b_user_id, status, battle_ended_at, started_at, battle_started_at, created_at")
     .or(`fighter_a_user_id.eq.${user.id},fighter_b_user_id.eq.${user.id}`)
-    .in("status", ACTIVE_BATTLE_STATUSES)
+    .in("status", [...ACTIVE_DROP_BATTLE_STATUSES])
     .is("battle_ended_at", null)
-    .limit(1);
+    .limit(8);
 
   if (activeBattleError) return jsonError(activeBattleError.message, 500);
   const blockingActiveBattles = [];
@@ -179,10 +177,25 @@ export async function POST(request: NextRequest) {
       }
       continue;
     }
-    blockingActiveBattles.push(battle);
+    const userQueueId =
+      battle.fighter_a_user_id === user.id
+        ? battle.queue_a_id
+        : battle.fighter_b_user_id === user.id
+          ? battle.queue_b_id
+          : null;
+    if (!userQueueId) continue;
+    const { data: userBattleQueue, error: userBattleQueueError } = await admin
+      .from("battle_queue")
+      .select("id, challenge_target_queue_id")
+      .eq("id", userQueueId)
+      .maybeSingle<{ id: string; challenge_target_queue_id?: string | null }>();
+    if (userBattleQueueError) return jsonError(userBattleQueueError.message, 500);
+    if (dropBattleRoleForChallengeTarget(userBattleQueue?.challenge_target_queue_id ?? null) === requestedRole) {
+      blockingActiveBattles.push(battle);
+    }
   }
   if (blockingActiveBattles.length > 0) {
-    return jsonError("你目前已有一場 Drop Battle 進行中。請先完成或取消目前這場 Drop，再開始下一場 Drop。", 409);
+    return jsonError(dropBattleRoleLockMessage(requestedRole, "zh"), 409);
   }
 
   let opponentQuery = admin

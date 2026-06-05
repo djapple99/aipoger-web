@@ -13,9 +13,15 @@ import { saveFighterNameToProfile } from '@/lib/user-profile-fighter-name';
 import {
   attemptMatchmakingWithoutApcGate,
   buildDropBattleSchedulePayload,
-  cancelCurrentBattleIntent,
   isDropBattleEndedOrPastExpectedEnd,
 } from '@/lib/battle-pool-client';
+import {
+  ACTIVE_DROP_BATTLE_STATUSES,
+  ACTIVE_DROP_QUEUE_STATUSES,
+  dropBattleRoleForChallengeTarget,
+  dropBattleRoleLockMessage,
+  type DropBattleUserRole,
+} from '@/lib/battle-pool-rules';
 import SafetyNotice from '@/components/safety-notice';
 import { blobToDataUrl, parseAudioMetadata } from '@/lib/audio-metadata';
 import { sha256File } from '@/lib/file-hash';
@@ -24,9 +30,6 @@ const MAX_HOOK_SECONDS = 45;
 const MIN_REGION_SECONDS = 0.25;
 const MAX_LYRICS_CHARS = 8000;
 const PENDING_AUDIO_COVER_KEY = 'aipoger:pending-audio-cover';
-const ACTIVE_QUEUE_STATUSES = ["searching", "waiting", "waiting_challenge", "matched", "active", "ghost_battle", "public_voting"];
-const ACTIVE_BATTLE_STATUSES = ["pending", "live", "active", "ghost_battle", "public_voting"];
-const REPLACEABLE_QUEUE_STATUSES = new Set(["searching", "waiting", "waiting_challenge", "public_voting", "ghost_battle"]);
 const CLOSED_BATTLE_STATUSES = new Set(["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"]);
 
 type RegionTimes = { start: number; end: number };
@@ -125,16 +128,6 @@ function getT(lang: Lang) {
 
 function normalizeLang(value: string | null): Lang {
   return value === 'en' ? 'en' : 'zh';
-}
-
-function canReplaceActiveBattleLock(lock: ActiveBattleLock): boolean {
-  return lock.kind === "queue" && !lock.battleId && REPLACEABLE_QUEUE_STATUSES.has(lock.status);
-}
-
-function existingBattleMessage(lang: Lang): string {
-  return lang === "zh"
-    ? "你目前已有一首最強抓波Drop Battle 正在等待挑戰。AIPOGER 一次只能保留一場 Battle。要挑戰這首歌，系統會先取消你原本等待中的 Drop。"
-    : "You already have one Drop Battle waiting for challenge. AIPOGER only allows one active Battle at a time. To challenge this track, your previous waiting Drop will be cancelled first.";
 }
 
 function setCompactParam(params: URLSearchParams, key: string, value: string | null | undefined, maxLength = 1800) {
@@ -347,8 +340,8 @@ type RpcQueueRow = {
 };
 
 type ActiveBattleLock =
-  | { kind: "queue"; id: string; status: string; battleId?: string | null }
-  | { kind: "battle"; id: string; status: string };
+  | { kind: "queue"; id: string; status: string; role: DropBattleUserRole; battleId?: string | null }
+  | { kind: "battle"; id: string; status: string; role: DropBattleUserRole; queueId?: string | null };
 
 function describeSupabaseError(error: unknown): string {
   if (!error || typeof error !== "object") return String(error ?? "Unknown error");
@@ -366,18 +359,23 @@ function isDuplicateAudioHash(error: unknown): boolean {
   return /audio_sha256|duplicate key value|23505/i.test(describeSupabaseError(error));
 }
 
-async function findActiveBattleLock(userId: string): Promise<ActiveBattleLock | null> {
+async function findActiveBattleLock(userId: string, requestedRole: DropBattleUserRole): Promise<ActiveBattleLock | null> {
   const { data: queueRows, error: queueError } = await supabase
     .from("battle_queue")
-    .select("id, status, match_group_id, created_at")
+    .select("id, status, match_group_id, challenge_target_queue_id, created_at")
     .eq("user_id", userId)
-    .in("status", ACTIVE_QUEUE_STATUSES)
+    .in("status", [...ACTIVE_DROP_QUEUE_STATUSES])
     .order("created_at", { ascending: false })
-    .limit(1);
+    .limit(12);
 
   if (queueError) throw queueError;
-  const activeQueue = queueRows?.[0] as { id: string; status: string; match_group_id?: string | null } | undefined;
-  if (activeQueue?.id) {
+  const activeQueues = (queueRows ?? []) as Array<{
+    id: string;
+    status: string;
+    match_group_id?: string | null;
+    challenge_target_queue_id?: string | null;
+  }>;
+  for (const activeQueue of activeQueues) {
     if (activeQueue.match_group_id) {
       const { data: linkedBattle } = await supabase
         .from("battles")
@@ -387,31 +385,63 @@ async function findActiveBattleLock(userId: string): Promise<ActiveBattleLock | 
       const status = typeof linkedBattle?.status === "string" ? linkedBattle.status : "";
       if (linkedBattle?.battle_ended_at || CLOSED_BATTLE_STATUSES.has(status) || isDropBattleEndedOrPastExpectedEnd(linkedBattle)) {
         void supabase.from("battle_queue").update({ status: "completed" }).eq("id", activeQueue.id);
-        return null;
+        continue;
       }
     }
-    return { kind: "queue", id: activeQueue.id, status: activeQueue.status, battleId: activeQueue.match_group_id ?? null };
+    const role = dropBattleRoleForChallengeTarget(activeQueue.challenge_target_queue_id);
+    if (role === requestedRole) {
+      return { kind: "queue", id: activeQueue.id, status: activeQueue.status, role, battleId: activeQueue.match_group_id ?? null };
+    }
   }
 
   const { data: battleRows, error: battleError } = await supabase
     .from("battles")
-    .select("id, status, battle_ended_at, started_at, battle_started_at, created_at")
+    .select("id, queue_a_id, queue_b_id, fighter_a_user_id, fighter_b_user_id, status, battle_ended_at, started_at, battle_started_at, created_at")
     .or(`fighter_a_user_id.eq.${userId},fighter_b_user_id.eq.${userId}`)
-    .in("status", ACTIVE_BATTLE_STATUSES)
+    .in("status", [...ACTIVE_DROP_BATTLE_STATUSES])
     .is("battle_ended_at", null)
     .order("created_at", { ascending: false })
-    .limit(1);
+    .limit(8);
 
   if (battleError) throw battleError;
-  const activeBattle = battleRows?.[0] as { id: string; status: string; battle_ended_at?: string | null; started_at?: string | null; battle_started_at?: string | null; created_at?: string | null } | undefined;
-  if (activeBattle?.id && isDropBattleEndedOrPastExpectedEnd(activeBattle)) {
-    void supabase
-      .from("battles")
-      .update({ status: "finished", battle_ended_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-      .eq("id", activeBattle.id);
-    return null;
+  const activeBattles = (battleRows ?? []) as Array<{
+    id: string;
+    queue_a_id?: string | null;
+    queue_b_id?: string | null;
+    fighter_a_user_id?: string | null;
+    fighter_b_user_id?: string | null;
+    status: string;
+    battle_ended_at?: string | null;
+    started_at?: string | null;
+    battle_started_at?: string | null;
+    created_at?: string | null;
+  }>;
+  for (const activeBattle of activeBattles) {
+    if (isDropBattleEndedOrPastExpectedEnd(activeBattle)) {
+      void supabase
+        .from("battles")
+        .update({ status: "finished", battle_ended_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq("id", activeBattle.id);
+      continue;
+    }
+    const userQueueId =
+      activeBattle.fighter_a_user_id === userId
+        ? activeBattle.queue_a_id
+        : activeBattle.fighter_b_user_id === userId
+          ? activeBattle.queue_b_id
+          : null;
+    if (!userQueueId) continue;
+    const { data: queueRoleRow } = await supabase
+      .from("battle_queue")
+      .select("id, challenge_target_queue_id")
+      .eq("id", userQueueId)
+      .maybeSingle<{ id: string; challenge_target_queue_id?: string | null }>();
+    const challengeTargetQueueId = queueRoleRow?.challenge_target_queue_id ?? null;
+    if (dropBattleRoleForChallengeTarget(challengeTargetQueueId) === requestedRole) {
+      return { kind: "battle", id: activeBattle.id, status: activeBattle.status, role: requestedRole, queueId: userQueueId };
+    }
   }
-  return activeBattle?.id ? { kind: "battle", id: activeBattle.id, status: activeBattle.status } : null;
+  return null;
 }
 
 // ─── 主要內容（Suspense 內才能用 useSearchParams）───────────
@@ -868,18 +898,10 @@ function HookCutContent() {
       const userId = isAuthBypassEnabled ? mockUserId : session!.user.id;
 
       if (!isAuthBypassEnabled) {
-        const activeLock = await findActiveBattleLock(userId);
+        const requestedDropRole = dropBattleRoleForChallengeTarget(challengeTargetQueueId);
+        const activeLock = await findActiveBattleLock(userId, requestedDropRole);
         if (activeLock) {
-          if (challengeTargetQueueId && canReplaceActiveBattleLock(activeLock)) {
-            const ok = window.confirm(existingBattleMessage(lang));
-            if (!ok) {
-              setUploadPhase(null);
-              return;
-            }
-            setUploadPhase(lang === "zh" ? "取消原本等待中的 Drop…" : "Cancelling previous waiting Drop…");
-            await cancelCurrentBattleIntent({ accessToken: session!.access_token });
-          } else {
-          alert(t.activeBattleExists);
+          alert(dropBattleRoleLockMessage(requestedDropRole, lang));
           setUploadPhase(null);
           const resumeParams = new URLSearchParams({
             fighterName,
@@ -898,7 +920,6 @@ function HookCutContent() {
             router.push(`/battle/matchmaking?${resumeParams.toString()}`);
           }
           return;
-          }
         }
       }
 
@@ -915,7 +936,7 @@ function HookCutContent() {
           .from("battle_queue")
           .select("id, original_file_name, status")
           .eq("audio_sha256", audioSha256)
-          .in("status", ACTIVE_QUEUE_STATUSES)
+          .in("status", [...ACTIVE_DROP_QUEUE_STATUSES])
           .limit(1)
           .maybeSingle<{ id: string; original_file_name: string | null; status: string | null }>();
 
@@ -1089,7 +1110,11 @@ function HookCutContent() {
             accessToken: session?.access_token ?? "",
           });
         } catch (apiError) {
-          rpcErr = { message: apiError instanceof Error ? apiError.message : "matchmaking api failed" };
+          const message = apiError instanceof Error ? apiError.message : "matchmaking api failed";
+          if (challengeTargetQueueId || /戰帖卡|接了一張|challenge card|challenging another/i.test(message)) {
+            throw new Error(message);
+          }
+          rpcErr = { message };
           console.warn("[hook-cut] public beta matchmaking api unavailable; trying RPC fallback", apiError);
         }
         if (rpcErr) {

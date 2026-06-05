@@ -263,7 +263,7 @@ export function ProfileBattleCountBadge({ userId, currentUserId = null, lang = "
     }
   };
 
-  const cancelQueue = async () => {
+  const cancelQueue = async (queueId: string) => {
     if (!window.confirm(copy.cancelQueueConfirm)) return;
     setCancellingId("queue");
     try {
@@ -275,8 +275,8 @@ export function ProfileBattleCountBadge({ userId, currentUserId = null, lang = "
         alert(copy.needLogin);
         return;
       }
-      await cancelCurrentBattleIntent({ accessToken: token });
-      setQueueRows([]);
+      await cancelCurrentBattleIntent({ accessToken: token, queueId });
+      setQueueRows((current) => current.filter((row) => row.id !== queueId));
       void loadBattles();
     } catch (cancelError) {
       console.error(cancelError);
@@ -352,7 +352,7 @@ export function ProfileBattleCountBadge({ userId, currentUserId = null, lang = "
           <button
             type="button"
             disabled={isCancelling}
-            onClick={() => void cancelQueue()}
+            onClick={() => void cancelQueue(row.id)}
             className="shrink-0 rounded-full border border-red-400/60 px-2.5 py-1 text-[11px] font-semibold text-red-300 transition hover:border-red-300 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isCancelling ? copy.cancelling : copy.cancelQueue}
