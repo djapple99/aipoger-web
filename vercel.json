@@ -2,7 +2,11 @@
   "crons": [
     {
       "path": "/api/listen-bar/process-rotation",
-      "schedule": "0 */4 * * *"
+      "schedule": "0 */8 * * *"
+    },
+    {
+      "path": "/api/listen-bar/cleanup-messages",
+      "schedule": "0 */8 * * *"
     },
     {
       "path": "/api/battle-pool/process-fallbacks",

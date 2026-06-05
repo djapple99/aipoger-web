@@ -44,7 +44,8 @@ const DATA_BUCKET = "listen-bar-data";
 const MESSAGE_PATH = "bar-talk/messages.json";
 const MESSAGE_LIMIT = 80;
 const MESSAGE_MAX_LENGTH = 240;
-const WINDOW_MS = 24 * 60 * 60 * 1000;
+const MESSAGE_RETENTION_HOURS = 8;
+const WINDOW_MS = MESSAGE_RETENTION_HOURS * 60 * 60 * 1000;
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -123,11 +124,11 @@ async function writeStoredMessages(admin: AdminClient, messages: StoredBarMessag
 }
 
 async function readDatabaseMessages(admin: AdminClient) {
-  const since24h = new Date(Date.now() - WINDOW_MS).toISOString();
+  const retentionCutoff = new Date(Date.now() - WINDOW_MS).toISOString();
   const { data, error } = await admin
     .from("listen_bar_messages")
     .select("id, display_name, body, created_at")
-    .gte("created_at", since24h)
+    .gte("created_at", retentionCutoff)
     .order("created_at", { ascending: false })
     .limit(MESSAGE_LIMIT);
   if (error) throw error;
@@ -135,6 +136,15 @@ async function readDatabaseMessages(admin: AdminClient) {
     .map(normalizeMessage)
     .filter((message): message is StoredBarMessage => message !== null)
     .reverse();
+}
+
+async function deleteExpiredDatabaseMessages(admin: AdminClient) {
+  const retentionCutoff = new Date(Date.now() - WINDOW_MS).toISOString();
+  const { error } = await admin
+    .from("listen_bar_messages")
+    .delete()
+    .lt("created_at", retentionCutoff);
+  if (error) throw error;
 }
 
 async function insertDatabaseMessage(admin: AdminClient, message: StoredBarMessage, userId: string | null) {
@@ -155,6 +165,7 @@ export async function GET() {
   try {
     const admin = adminClient();
     try {
+      await deleteExpiredDatabaseMessages(admin);
       const messages = await readDatabaseMessages(admin);
       return NextResponse.json({ messages }, { headers: { "Cache-Control": "no-store" } });
     } catch {
@@ -193,6 +204,7 @@ export async function POST(request: NextRequest) {
     };
 
     try {
+      await deleteExpiredDatabaseMessages(admin);
       const message = await insertDatabaseMessage(admin, draft, user.id);
       return NextResponse.json({ message });
     } catch {

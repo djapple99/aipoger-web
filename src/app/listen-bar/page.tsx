@@ -11,17 +11,18 @@ import { sha256File } from "@/lib/file-hash";
 import { supabase } from "@/lib/supabase";
 import { loadFighterNameFromProfile } from "@/lib/user-profile-fighter-name";
 import ShareButton from "@/components/share-button";
+import { shouldExpireOpenDropQueue } from "@/lib/battle-pool-client";
 import {
   DEFAULT_LISTEN_BAR_COVER,
   LISTEN_BAR_AUDIO_BUCKET,
   LISTEN_BAR_CHALLENGER_HOURLY_LIMIT,
   LISTEN_BAR_CHALLENGER_SLOT_LIMIT,
   LISTEN_BAR_COVER_BUCKET,
-  LISTEN_BAR_FIRST_AIRPLAY_TARGET_MINUTES,
   LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD,
+  LISTEN_BAR_JUDGMENT_INTERVAL_HOURS,
+  LISTEN_BAR_PUBLIC_EVICTION_LIMIT,
   LISTEN_BAR_PUBLIC_REACTION_THRESHOLD,
   LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
-  LISTEN_BAR_PUBLIC_SURVIVAL_DAYS,
   LISTEN_BAR_TOTAL_ROTATION_LIMIT,
   fallbackOfficialPlaylist,
   listenBarRowToTrack,
@@ -87,6 +88,21 @@ type MyTracksPayload = {
   error?: string;
 };
 
+type BattleTickerRow = {
+  id: string;
+  fighter_name?: string | null;
+  original_file_name?: string | null;
+  genre?: string | null;
+  ai_tool?: string | null;
+  status?: string | null;
+  match_group_id?: string | null;
+  expires_at?: string | null;
+  scheduled_start_at?: string | null;
+  cancellation_evaluation_at?: string | null;
+  public_vote_score?: number | null;
+  created_at?: string | null;
+};
+
 type LyricLine = {
   time: number | null;
   text: string;
@@ -114,10 +130,11 @@ const emptyReactions: ReactionCounts = {
   happy: 0,
 };
 
-const FRESH_REQUEST_WINDOW_MINUTES = 60;
 const LISTEN_BAR_MESSAGE_LIMIT = 80;
 const AUDIO_UPLOAD_ACCEPT = "audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/aiff,audio/x-aiff,audio/mp4,audio/aac,.mp3,.wav,.aif,.aiff,.m4a,.aac";
 const LIVE_RADIO_EPOCH_MS = Date.UTC(2026, 0, 1);
+const PRIORITY_AIRPLAY_BATCH_MS = 60 * 60 * 1000;
+const STOP_HOME_BGM_EVENT = "aipoger:stop-home-bgm";
 const heartbreakTitleFont =
   '"GenYoMin TW", "GenYoMin JP", "Hiragino Mincho ProN", "Songti TC", "Noto Serif TC", "PMingLiU", "SoukouMincho", serif';
 
@@ -165,27 +182,6 @@ function isUuid(value: string | null | undefined): value is string {
   return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
-function buildSeedMessages(isZh: boolean): ChatMessage[] {
-  return [
-    {
-      id: "seed-1",
-      name: isZh ? "愛播歌吧台" : "Bar Heartbreak",
-      text: isZh
-        ? "歡迎來傷心酒吧 Bar Heartbreak，這裡像電台一樣持續播放。"
-        : "Welcome to Bar Heartbreak. The station keeps playing like late-night radio.",
-      time: "21:00",
-    },
-    {
-      id: "seed-2",
-      name: "AIPOGER",
-      text: isZh
-        ? "有人投稿時，下一首就優先讓創作者上場。"
-        : "When a creator submits a track, the next slot belongs to them.",
-      time: "21:01",
-    },
-  ];
-}
-
 function timeLabelFromDate(value: string | null | undefined) {
   const date = value ? new Date(value) : new Date();
   return new Intl.DateTimeFormat("zh-TW", {
@@ -193,6 +189,43 @@ function timeLabelFromDate(value: string | null | undefined) {
     minute: "2-digit",
     hour12: false,
   }).format(Number.isFinite(date.getTime()) ? date : new Date());
+}
+
+function battleTickerTimeLabel(value: string | null | undefined, isZh: boolean) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  return new Intl.DateTimeFormat(isZh ? "zh-TW" : "en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Taipei",
+  }).format(date);
+}
+
+function battleTickerMessage(row: BattleTickerRow, isZh: boolean) {
+  const fighterName = row.fighter_name?.trim() || (isZh ? "創作者" : "Creator");
+  const songName = row.original_file_name?.trim() || (isZh ? "這首 Drop" : "this Drop");
+  const scheduleLabel = battleTickerTimeLabel(row.scheduled_start_at ?? row.expires_at, isZh);
+  const timeText = scheduleLabel ? (isZh ? ` · 台灣時間 ${scheduleLabel}` : ` · Taiwan time ${scheduleLabel}`) : "";
+
+  if (row.status === "waiting_challenge") {
+    return isZh
+      ? `AI 音樂鬥歌場快訊：${fighterName} 的《${songName}》正在等人接戰${timeText}，快來挑戰或觀戰。`
+      : `AI Music Battle Hall: ${fighterName}'s "${songName}" is waiting for a challenger${timeText}. Step in or watch.`;
+  }
+
+  if (row.status === "public_voting") {
+    return isZh
+      ? `AI 音樂鬥歌場快訊：《${songName}》正在公開投票${timeText}，進場支持你喜歡的 Drop。`
+      : `AI Music Battle Hall: "${songName}" is in public voting${timeText}. Enter and back your favorite Drop.`;
+  }
+
+  return isZh
+    ? `AI 音樂鬥歌場快訊：《${songName}》已進入 Ghost Battle${timeText}，進場聽歌投票。`
+    : `AI Music Battle Hall: "${songName}" is in Ghost Battle${timeText}. Enter, listen, and vote.`;
 }
 
 function storedBarMessageRowToChat(row: StoredBarMessageRow): ChatMessage | null {
@@ -240,12 +273,7 @@ function listenBarRowToMyBroadcastStat(row: ListenBarTrackRow): MyBroadcastStat 
 }
 
 function localizeListenBarMessage(message: ChatMessage, isZh: boolean): ChatMessage {
-  if (/歡迎來傷心酒吧|Welcome to Bar Heartbreak/i.test(message.text)) {
-    return { ...message, ...buildSeedMessages(isZh)[0], id: message.id, time: message.time };
-  }
-  if (/有人投稿時|creator submits a track/i.test(message.text)) {
-    return { ...message, ...buildSeedMessages(isZh)[1], id: message.id, time: message.time };
-  }
+  void isZh;
   return message;
 }
 
@@ -330,6 +358,34 @@ function pickRandomTrack(tracks: ListenBarTrack[], avoidId?: string): ListenBarT
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
+function trackCreatedAtMs(track: ListenBarTrack): number {
+  const value = new Date(track.createdAt ?? 0).getTime();
+  return Number.isFinite(value) ? value : 0;
+}
+
+function getPriorityAirplayBatch(
+  tracks: ListenBarTrack[],
+  servedIds: Set<string>,
+  avoidId?: string,
+  nowMs = Date.now(),
+): ListenBarTrack[] {
+  const orderedTracks = tracks
+    .filter((track) => track.audioUrl && trackCreatedAtMs(track) > 0)
+    .sort((a, b) => trackCreatedAtMs(a) - trackCreatedAtMs(b));
+  if (orderedTracks.length === 0) return [];
+
+  const queueStartMs = trackCreatedAtMs(orderedTracks[0]);
+  const currentBatchIndex = Math.max(0, Math.floor((nowMs - queueStartMs) / PRIORITY_AIRPLAY_BATCH_MS));
+  const batchEnd = Math.min(
+    orderedTracks.length,
+    (currentBatchIndex + 1) * LISTEN_BAR_CHALLENGER_HOURLY_LIMIT,
+  );
+
+  return orderedTracks
+    .slice(0, batchEnd)
+    .filter((track) => track.id !== avoidId && !servedIds.has(track.id));
+}
+
 function getLiveRadioPosition(tracks: ListenBarTrack[], nowMs = Date.now()) {
   const playableTracks = tracks.filter((track) => track.audioUrl);
   if (playableTracks.length === 0) return null;
@@ -344,13 +400,6 @@ function getLiveRadioPosition(tracks: ListenBarTrack[], nowMs = Date.now()) {
   }
 
   return { track: playableTracks[0], offset: 0 };
-}
-
-function isWithinHours(dateValue: string | null | undefined, hours: number) {
-  if (!dateValue) return false;
-  const time = new Date(dateValue).getTime();
-  if (!Number.isFinite(time)) return false;
-  return Date.now() - time <= hours * 60 * 60 * 1000;
 }
 
 function getListenBarVisitorId() {
@@ -414,7 +463,8 @@ export default function ListenBarPage() {
   const isZh = lang === "zh";
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const chatInputRef = useRef<HTMLInputElement | null>(null);
-  const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const chatScrollRef = useRef<HTMLDivElement | null>(null);
+  const lyricScrollRef = useRef<HTMLDivElement | null>(null);
   const activeLyricRef = useRef<HTMLDivElement | null>(null);
   const listenBarSyncChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const servedCommunityIdsRef = useRef<Set<string>>(new Set());
@@ -430,6 +480,7 @@ export default function ListenBarPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [officialTracks, setOfficialTracks] = useState<ListenBarTrack[]>(fallbackOfficialPlaylist);
   const [playlistStatus, setPlaylistStatus] = useState<"loading" | "database" | "fallback">("loading");
+  const [priorityAirplayIds, setPriorityAirplayIds] = useState<Set<string>>(() => new Set());
   const [challengerSlotCount, setChallengerSlotCount] = useState(0);
   const [publicUploadForm, setPublicUploadForm] = useState<PublicUploadForm>(initialPublicUploadForm);
   const [publicAudioFile, setPublicAudioFile] = useState<File | null>(null);
@@ -443,18 +494,20 @@ export default function ListenBarPage() {
   const [nowTrack, setNowTrack] = useState<ListenBarTrack>(fallbackOfficialPlaylist[0]);
   const [, setHistory] = useState<ListenBarTrack[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackBlocked, setPlaybackBlocked] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [trackDuration, setTrackDuration] = useState(fallbackOfficialPlaylist[0].duration);
   const [volume, setVolume] = useState(0.72);
   const [reactionCounts, setReactionCounts] = useState<Record<string, ReactionCounts>>({});
   const [myReactions, setMyReactions] = useState<Record<string, ReactionKey | null>>({});
-  const [messages, setMessages] = useState<ChatMessage[]>(() => buildSeedMessages(isZh));
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatError, setChatError] = useState("");
   const [trackComments, setTrackComments] = useState<TrackComment[]>([]);
   const [trackCommentInput, setTrackCommentInput] = useState("");
   const [trackCommentError, setTrackCommentError] = useState("");
   const [trackCommentBusy, setTrackCommentBusy] = useState(false);
+  const [battleTickerMessages, setBattleTickerMessages] = useState<string[]>([]);
   const listenBarPresenceCount = usePresenceCount("presence-listen-bar", true, "listen-bar");
   const listenBarPresenceLabel =
     listenBarPresenceCount <= 1
@@ -464,6 +517,15 @@ export default function ListenBarPage() {
       : isZh
         ? `${listenBarPresenceCount} 人正在傷心酒吧`
         : `${listenBarPresenceCount} listeners`;
+  const markPriorityAirplayTrack = useCallback((trackId: string) => {
+    if (!trackId) return;
+    setPriorityAirplayIds((ids) => {
+      if (ids.has(trackId)) return ids;
+      const nextIds = new Set(ids);
+      nextIds.add(trackId);
+      return nextIds;
+    });
+  }, []);
   const rotationTracks = useMemo(() => {
     const seen = new Set<string>();
     return officialTracks.filter((track) => {
@@ -493,13 +555,15 @@ export default function ListenBarPage() {
     () => new Map(challengerQueueTracks.map((track, index) => [track.id, index + 1])),
     [challengerQueueTracks],
   );
-  const freshRequestTracks = useMemo(
-    () => challengerQueueTracks
-      .filter((track) => isWithinHours(track.createdAt, FRESH_REQUEST_WINDOW_MINUTES / 60))
-      .slice(0, LISTEN_BAR_CHALLENGER_HOURLY_LIMIT),
-    [challengerQueueTracks],
+  const priorityAirplaySourceTracks = useMemo(
+    () => communityRequestTracks.filter((track) => priorityAirplayIds.has(track.id)),
+    [communityRequestTracks, priorityAirplayIds],
   );
-  const nextCommunityTrack = freshRequestTracks.find((track) => !servedCommunityIdsRef.current.has(track.id)) ?? null;
+  const priorityAirplayTracks = useMemo(
+    () => getPriorityAirplayBatch(priorityAirplaySourceTracks, servedCommunityIdsRef.current, nowTrack.id),
+    [nowTrack.id, priorityAirplaySourceTracks],
+  );
+  const nextCommunityTrack = priorityAirplayTracks[0] ?? null;
   const nextRotationTrack = useMemo(() => {
     const playableTracks = rotationTracks.filter((track) => track.audioUrl && track.id !== nowTrack.id);
     if (playableTracks.length === 0) return null;
@@ -543,6 +607,57 @@ export default function ListenBarPage() {
     [myBroadcastStats],
   );
   const challengerSlotsFull = !openingPhaseActive && challengerSlotCount >= LISTEN_BAR_CHALLENGER_SLOT_LIMIT;
+
+  useEffect(() => {
+    window.dispatchEvent(new Event(STOP_HOME_BGM_EVENT));
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadBattleTicker = async () => {
+      const { data, error } = await supabase
+        .from("battle_queue")
+        .select("id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, public_vote_score, created_at")
+        .in("status", ["waiting_challenge", "public_voting", "ghost_battle"])
+        .order("created_at", { ascending: false })
+        .limit(8);
+
+      if (!mounted) return;
+      if (error) {
+        console.error("[listen bar battle ticker]", error);
+        setBattleTickerMessages([]);
+        return;
+      }
+
+      setBattleTickerMessages(
+        ((data as BattleTickerRow[]) ?? [])
+          .filter((row) => row.id && row.status)
+          .filter((row) => !shouldExpireOpenDropQueue({
+            status: row.status,
+            expires_at: row.expires_at ?? null,
+            scheduled_start_at: row.scheduled_start_at ?? null,
+            cancellation_evaluation_at: row.cancellation_evaluation_at ?? null,
+          }))
+          .map((row) => battleTickerMessage(row, isZh)),
+      );
+    };
+
+    void loadBattleTicker();
+    const interval = window.setInterval(loadBattleTicker, 60 * 1000);
+    const channel = supabase
+      .channel("listen-bar-battle-ticker")
+      .on("postgres_changes", { event: "*", schema: "public", table: "battle_queue" }, () => {
+        void loadBattleTicker();
+      })
+      .subscribe();
+
+    return () => {
+      mounted = false;
+      window.clearInterval(interval);
+      void supabase.removeChannel(channel);
+    };
+  }, [isZh]);
 
   useEffect(() => {
     rotationTracksRef.current = rotationTracks;
@@ -621,7 +736,7 @@ export default function ListenBarPage() {
         .map(storedBarMessageRowToChat)
         .filter((message): message is ChatMessage => message !== null)
         .map((message) => localizeListenBarMessage(message, isZh));
-      setMessages(rows.length > 0 ? rows : buildSeedMessages(isZh));
+      setMessages(rows);
     };
 
     const loadPlaylist = async () => {
@@ -689,7 +804,12 @@ export default function ListenBarPage() {
   }, [isZh]);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ block: "end" });
+    const container = chatScrollRef.current;
+    if (!container) return;
+    const frame = window.requestAnimationFrame(() => {
+      container.scrollTop = container.scrollHeight;
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [messages]);
 
   useEffect(() => {
@@ -791,17 +911,28 @@ export default function ListenBarPage() {
           return { ...allCounts, [data.trackId!]: counts };
         });
       })
+      .on("broadcast", { event: "track-uploaded" }, (payload) => {
+        const track = (payload.payload as { track?: ListenBarTrack }).track;
+        if (!track?.id || track.source !== "community" || !track.audioUrl) return;
+        servedCommunityIdsRef.current.delete(track.id);
+        markPriorityAirplayTrack(track.id);
+        setOfficialTracks((tracks) => {
+          if (tracks.some((item) => item.id === track.id)) return tracks;
+          return [...tracks, track];
+        });
+        setReactionCounts((counts) => counts[track.id] ? counts : { ...counts, [track.id]: { ...emptyReactions } });
+      })
       .subscribe();
     listenBarSyncChannelRef.current = channel;
     return () => {
       listenBarSyncChannelRef.current = null;
       void supabase.removeChannel(channel);
     };
-  }, [isZh]);
+  }, [isZh, markPriorityAirplayTrack]);
 
   const playNext = useCallback(() => {
     setHistory((items) => [nowTrack, ...items].slice(0, 8));
-    const queuedRequest = freshRequestTracks.find((track) => track.id !== nowTrack.id && !servedCommunityIdsRef.current.has(track.id));
+    const queuedRequest = getPriorityAirplayBatch(priorityAirplaySourceTracks, servedCommunityIdsRef.current, nowTrack.id)[0] ?? null;
     if (queuedRequest) {
       servedCommunityIdsRef.current.add(queuedRequest.id);
       startTrackAtZeroRef.current = true;
@@ -835,7 +966,7 @@ export default function ListenBarPage() {
     liveSeekRef.current = { trackId: nextTrack.id, offset: 0 };
     setElapsed(0);
     setNowTrack(nextTrack);
-  }, [freshRequestTracks, nowTrack, rotationTracks]);
+  }, [nowTrack, priorityAirplaySourceTracks, rotationTracks]);
 
   useEffect(() => {
     const forceStart = startTrackAtZeroRef.current;
@@ -872,20 +1003,19 @@ export default function ListenBarPage() {
     audio.muted = false;
     audio.volume = volumeRef.current;
     radioShouldResumeRef.current = true;
-    void audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+    void audio.play()
+      .then(() => {
+        setPlaybackBlocked(false);
+        setIsPlaying(true);
+      })
+      .catch(() => {
+        setPlaybackBlocked(true);
+        setIsPlaying(false);
+      });
     return () => {
       audio.removeEventListener("loadedmetadata", applyLiveSeek);
     };
   }, [nowTrack.audioUrl, nowTrack.duration, nowTrack.id, nowTrack.source]);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !nowTrack.audioUrl) return;
-    audio.muted = false;
-    audio.volume = volumeRef.current;
-    radioShouldResumeRef.current = true;
-    void audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
-  }, [nowTrack.audioUrl]);
 
   useEffect(() => {
     volumeRef.current = volume;
@@ -909,8 +1039,27 @@ export default function ListenBarPage() {
       audio.currentTime = Math.min(Math.max(0, offset), Math.max(0, safeDuration - 0.25));
       setElapsed(audio.currentTime);
     }
-    void audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+    void audio.play()
+      .then(() => {
+        setPlaybackBlocked(false);
+        setIsPlaying(true);
+      })
+      .catch(() => {
+        setPlaybackBlocked(true);
+        setIsPlaying(false);
+      });
   }, [nowTrack.audioUrl, nowTrack.duration, nowTrack.id, nowTrack.source, volume]);
+
+  useEffect(() => {
+    if (!playbackBlocked) return;
+    const resumeOnGesture = () => resumeRadioPlayback(true);
+    window.addEventListener("pointerdown", resumeOnGesture, { once: true });
+    window.addEventListener("keydown", resumeOnGesture, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", resumeOnGesture);
+      window.removeEventListener("keydown", resumeOnGesture);
+    };
+  }, [playbackBlocked, resumeRadioPlayback]);
 
   useEffect(() => {
     const rememberResumeState = () => {
@@ -1299,11 +1448,17 @@ export default function ListenBarPage() {
           ? { ...insertedTrack, barPhase: "public" as const, promotedAt: insertedTrack.promotedAt ?? insertedTrack.createdAt ?? new Date().toISOString() }
           : insertedTrack;
         servedCommunityIdsRef.current.delete(insertedTrack.id);
+        markPriorityAirplayTrack(normalizedTrack.id);
         setOfficialTracks((tracks) => {
           const withoutDuplicate = tracks.filter((track) => track.id !== normalizedTrack.id);
           return [...withoutDuplicate, normalizedTrack];
         });
         setReactionCounts((counts) => ({ ...counts, [insertedTrack.id]: { ...emptyReactions } }));
+        void listenBarSyncChannelRef.current?.send({
+          type: "broadcast",
+          event: "track-uploaded",
+          payload: { track: normalizedTrack },
+        });
         setMyBroadcastStats((tracks) => [
           {
             id: normalizedTrack.id,
@@ -1328,8 +1483,8 @@ export default function ListenBarPage() {
       setPublicUploadForm({ ...initialPublicUploadForm, artist: creatorDefaultName });
       setPublicUploadMessage(
         isZh
-          ? `上傳完成！沒人排隊時約 ${LISTEN_BAR_FIRST_AIRPLAY_TARGET_MINUTES} 分鐘內上場；有人排隊時依序挑戰。`
-          : `Upload complete. If the line is clear, it should air in about ${LISTEN_BAR_FIRST_AIRPLAY_TARGET_MINUTES} minutes; otherwise it joins the challenger line.`,
+          ? `上傳完成！目前這首播完後會優先插播新投稿；每批從第一首投稿開始計 1 小時，最多 8 首，其餘排到下一小時。`
+          : "Upload complete. New submissions get priority after the current song; each 1-hour batch starts with the first upload, airs up to 8 tracks, and pushes the rest to the next hour.",
       );
       setPlaylistStatus("database");
     } catch (submitError) {
@@ -1438,16 +1593,30 @@ export default function ListenBarPage() {
   }, [elapsed, lyricLines]);
   const nowAlbumLabel = albumDisplayLabel(nowTrack.mood);
   const navLinks = [
-    { href: "/battle", label: isZh ? "鬥歌場" : "Battles" },
+    { href: "/battle", label: isZh ? "AI 音樂鬥歌場" : "AI Music Battle Hall" },
     { href: "/rank", label: isZh ? "榮譽榜" : "Rank" },
     { href: "/battle/setup", label: isZh ? "挑戰最強抓波Drop Battle" : "Upload Drop Battle" },
-    { href: "/hook-guide", label: isZh ? "Drop Battle 規則" : "Rules" },
     { href: "/ai-music-bible", label: isZh ? "練功聖經" : "AI Bible" },
     { href: "/about", label: isZh ? "關於愛播歌" : "About" },
   ];
+  const battleTickerText = battleTickerMessages.length > 0
+    ? battleTickerMessages.join("   /   ")
+    : isZh
+      ? "歡迎去 AI 音樂鬥歌場鬥歌，開戰帖、接挑戰，讓你的 AI 音樂被聽見。"
+      : "Welcome to the AI Music Battle Hall. Open a card, accept a challenge, and let your AI music be heard.";
 
   useEffect(() => {
-    activeLyricRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+    const container = lyricScrollRef.current;
+    const activeLine = activeLyricRef.current;
+    if (!container || !activeLine || activeLyricIndex < 0) return;
+    const containerRect = container.getBoundingClientRect();
+    const activeRect = activeLine.getBoundingClientRect();
+    const top = container.scrollTop
+      + activeRect.top
+      - containerRect.top
+      - (container.clientHeight / 2)
+      + (activeLine.clientHeight / 2);
+    container.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
   }, [activeLyricIndex]);
 
   return (
@@ -1459,6 +1628,18 @@ export default function ListenBarPage() {
       <div className="relative z-10 mx-auto flex w-full max-w-[1880px] flex-col gap-4 overflow-x-hidden">
         <header className="relative overflow-hidden rounded-[1.7rem] border border-orange-200/14 bg-black/62 p-4 text-center text-white shadow-[0_24px_74px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur md:p-5">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(255,106,0,0.16),transparent_30%),radial-gradient(circle_at_84%_10%,rgba(0,202,255,0.09),transparent_28%)]" />
+          <style>{`
+            @keyframes listen-bar-battle-ticker {
+              0% { transform: translateX(0); }
+              100% { transform: translateX(-50%); }
+            }
+            @media (prefers-reduced-motion: reduce) {
+              .listen-bar-battle-ticker-motion {
+                animation: none !important;
+                transform: translateX(0) !important;
+              }
+            }
+          `}</style>
 
           <div className="relative mb-5 ml-auto flex max-w-full flex-wrap items-center justify-center gap-2 rounded-[1.15rem] border border-white/10 bg-black/55 px-3 py-2 shadow-[0_18px_54px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur md:w-fit md:justify-end">
             <a
@@ -1489,7 +1670,7 @@ export default function ListenBarPage() {
               href="/battle"
               className="rounded-full border border-cyan-300/35 bg-cyan-300/12 px-4 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-100 hover:bg-cyan-300/18"
             >
-              {isZh ? "去觀戰" : "Watch"}
+              {isZh ? "AI 音樂鬥歌場" : "Battle Hall"}
             </Link>
             <LangToggle variant="inline" />
           </div>
@@ -1518,17 +1699,38 @@ export default function ListenBarPage() {
             </p>
           </div>
 
-          <nav className="relative mt-4 flex max-w-full flex-wrap items-center justify-center gap-2 rounded-[1.15rem] border border-white/10 bg-black/52 px-4 py-3 shadow-[0_16px_54px_rgba(0,0,0,0.24)] backdrop-blur">
-            {navLinks.map((item) => (
-              <Link
-                key={item.href}
-                href={`${item.href}${item.href === "/" ? "" : lang === "en" ? "?lang=en" : "?lang=zh"}`}
-                className="rounded-full border border-white/10 bg-white/[0.045] px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-orange-300/70 hover:bg-orange-500/10 hover:text-white"
+          <div className="relative mt-4 grid max-w-full gap-2 rounded-[1.15rem] border border-white/10 bg-black/52 p-2 shadow-[0_16px_54px_rgba(0,0,0,0.24)] backdrop-blur lg:grid-cols-[minmax(0,max-content)_minmax(18rem,1fr)] lg:items-center">
+            <nav className="flex min-w-0 flex-wrap items-center justify-start gap-2">
+              {navLinks.map((item) => (
+                <Link
+                  key={item.href}
+                  href={`${item.href}${item.href === "/" ? "" : lang === "en" ? "?lang=en" : "?lang=zh"}`}
+                  className="rounded-full border border-white/10 bg-white/[0.045] px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-orange-300/70 hover:bg-orange-500/10 hover:text-white"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+            <Link
+              href={`/battle${lang === "en" ? "?lang=en" : "?lang=zh"}`}
+              className="group relative flex min-h-10 min-w-0 items-center overflow-hidden rounded-full border border-cyan-200/20 bg-[linear-gradient(90deg,rgba(4,10,12,0.86),rgba(0,28,34,0.42),rgba(4,10,12,0.86))] px-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
+              aria-label={battleTickerText}
+            >
+              <span className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-black via-black/80 to-transparent" />
+              <span className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-black via-black/80 to-transparent" />
+              <span
+                className={`listen-bar-battle-ticker-motion inline-flex w-max whitespace-nowrap text-left text-xs font-black leading-none tracking-[0.08em] transition-colors group-hover:text-white ${
+                  battleTickerMessages.length > 0 ? "text-red-300" : "text-cyan-100/78"
+                }`}
+                style={{
+                  animation: "listen-bar-battle-ticker 34s linear infinite",
+                }}
               >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+                <span className="pr-10">{battleTickerText}</span>
+                <span className="pr-10" aria-hidden="true">{battleTickerText}</span>
+              </span>
+            </Link>
+          </div>
         </header>
 
         <section className="grid min-w-0 gap-4 lg:grid-cols-[1.08fr_0.92fr]">
@@ -1558,7 +1760,7 @@ export default function ListenBarPage() {
                   <p className="text-xs font-black tracking-[0.18em] text-orange-300/75">
                     {isZh ? "傷心字幕" : "HEARTBREAK LYRICS"}
                   </p>
-                  <div className="mt-3 h-48 overflow-y-auto rounded-2xl border border-white/8 bg-black/46 px-4 py-4 text-center md:h-64">
+                  <div ref={lyricScrollRef} className="mt-3 h-48 overflow-y-auto rounded-2xl border border-white/8 bg-black/46 px-4 py-4 text-center md:h-64">
                     {lyricLines.length > 0 ? (
                       <div className="grid gap-3">
                         {lyricLines.map((line, lineIndex) => {
@@ -1640,6 +1842,17 @@ export default function ListenBarPage() {
                     <span>{formatDuration(trackDuration)}</span>
                   </div>
                 </div>
+
+                {playbackBlocked && (
+                  <button
+                    type="button"
+                    onPointerDown={() => resumeRadioPlayback(true)}
+                    onClick={() => resumeRadioPlayback(true)}
+                    className="mt-4 inline-flex items-center justify-center rounded-full border border-orange-300/35 bg-orange-500 px-4 py-2 text-xs font-black text-black shadow-[0_0_22px_rgba(255,106,0,0.18)] transition hover:bg-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+                  >
+                    {isZh ? "點一下恢復播放" : "Tap to resume playback"}
+                  </button>
+                )}
 
                 <div className="mt-5 grid gap-2 rounded-2xl border border-white/10 bg-black/35 px-4 py-3 sm:grid-cols-[auto_1fr_auto] sm:items-center">
                   <span className="text-xs font-bold text-zinc-500">
@@ -1824,7 +2037,10 @@ export default function ListenBarPage() {
               ref={audioRef}
               src={nowTrack.audioUrl}
               autoPlay
-              onPlay={() => setIsPlaying(true)}
+              onPlay={() => {
+                setPlaybackBlocked(false);
+                setIsPlaying(true);
+              }}
               onPause={() => setIsPlaying(false)}
               onTimeUpdate={(event) => setElapsed(event.currentTarget.currentTime)}
               onLoadedMetadata={(event) => {
@@ -1840,33 +2056,40 @@ export default function ListenBarPage() {
             <div className="flex min-h-[34rem] min-w-0 flex-col rounded-[1.6rem] border border-cyan-200/14 bg-black/68 p-4 shadow-[0_28px_90px_rgba(0,0,0,0.48),0_0_40px_rgba(0,202,255,0.06)] backdrop-blur md:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.28em] text-orange-300/70">BAR TALK</p>
-                  <h2 className="mt-1 text-3xl font-black text-white">{isZh ? "即時交流" : "Live Talk"}</h2>
+                  <p className="text-xs uppercase tracking-[0.28em] text-orange-300/70">
+                    {isZh ? "AI 音樂交流區" : "AI MUSIC TALK"}
+                  </p>
+                  <h2 className="mt-1 text-3xl font-black text-white">{isZh ? "AI音樂交流區" : "AI Music Talk"}</h2>
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-zinc-500">
                     {isZh ? `${localizedMessages.length} 則留言` : `${localizedMessages.length} messages`}
                   </p>
                   <p className="mt-1 text-xs font-black text-orange-200/80">{listenBarPresenceLabel}</p>
-                  <p className="mt-0.5 text-[11px] font-bold text-zinc-600">{isZh ? "即時交流保留 24H" : "Live talk keeps 24H"}</p>
+                  <p className="mt-0.5 text-[11px] font-bold text-zinc-600">{isZh ? "留言保留 8H" : "Messages keep 8H"}</p>
                 </div>
               </div>
               <SafetyNotice kind="chat" compact className="mb-3" />
 
-              <div className="min-h-0 max-h-[27rem] flex-1 overflow-y-auto rounded-2xl border border-white/8 bg-black/50 p-3 pr-2">
+              <div ref={chatScrollRef} className="min-h-0 max-h-[27rem] flex-1 overflow-y-auto rounded-2xl border border-white/8 bg-black/50 p-3 pr-2">
                 <div className="grid gap-2">
-                  {localizedMessages.map((msg) => (
-                    <div key={msg.id} className="rounded-xl border border-white/8 bg-white/[0.04] px-3 py-2.5 text-left">
-                      <div className="mb-1 flex min-w-0 items-center gap-2 text-[11px] font-black">
-                        <span className="shrink-0 tabular-nums text-zinc-600">{msg.time}</span>
-                        <span className="min-w-0 truncate text-orange-300">{msg.name}</span>
-                      </div>
-                      <p className="break-words text-sm leading-6 text-zinc-200 [overflow-wrap:anywhere]">
-                        {msg.text}
-                      </p>
+                  {localizedMessages.length === 0 ? (
+                    <div className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-8 text-center text-sm font-bold text-zinc-500">
+                      {isZh ? "還沒有人留言，快來聊聊 AI 音樂。" : "No messages yet. Start the AI music talk."}
                     </div>
-                  ))}
-                  <div ref={chatEndRef} />
+                  ) : (
+                    localizedMessages.map((msg) => (
+                      <div key={msg.id} className="rounded-xl border border-white/8 bg-white/[0.04] px-3 py-2.5 text-left">
+                        <div className="mb-1 flex min-w-0 items-center gap-2 text-[11px] font-black">
+                          <span className="shrink-0 tabular-nums text-zinc-600">{msg.time}</span>
+                          <span className="min-w-0 truncate text-orange-300">{msg.name}</span>
+                        </div>
+                        <p className="break-words text-sm leading-6 text-zinc-200 [overflow-wrap:anywhere]">
+                          {msg.text}
+                        </p>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -1897,7 +2120,9 @@ export default function ListenBarPage() {
                     {isZh ? "我要播歌！" : "Play My Song"}
                   </h2>
                   <p className="mt-2 max-w-xl text-xs leading-5 text-zinc-500">
-                    {isZh ? "上傳後下一首優先插播，之後進入 24H 公播輪播。" : "Upload to play next, then enter the 24H rotation."}
+                    {isZh
+                      ? "上傳後不打斷現在播放；這首播完優先插播新投稿。每 1 小時最多 8 首，其餘排到下一小時。"
+                      : "Uploads do not interrupt the current song; new submissions get priority next. Up to 8 air per 1-hour batch, with overflow pushed to the next hour."}
                   </p>
                 </div>
                 {visitorAvatarUrl && (
@@ -2028,7 +2253,7 @@ export default function ListenBarPage() {
                 {isZh ? `${challengerQueueTracks.length} 首正在挑戰` : `${challengerQueueTracks.length} challengers`}
               </span>
               <span className="rounded-full border border-cyan-200/18 bg-cyan-300/8 px-3 py-1 text-[11px] font-black text-cyan-100">
-                {isZh ? `每小時最多 ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} 首上場` : `${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT}/hour on air`}
+                {isZh ? `每批 1 小時最多 ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} 首上場` : `${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT}/1-hour batch`}
               </span>
             </div>
           </div>
@@ -2066,8 +2291,8 @@ export default function ListenBarPage() {
             </p>
             <p className="mt-2 break-words text-sm font-bold leading-6 text-zinc-300 [overflow-wrap:anywhere]">
               {isZh
-                ? `傷心酒吧不是排行榜，而是一場 AI 音樂生存戰。每首投稿歌曲都會進入公播池接受聽眾考驗；當歌池滿載後，新投稿會進入 Challenger，每位創作者同時最多 3 首 Challenger，已進公播池的作品不佔挑戰名額。累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 個正向反應的歌曲，將取得榮譽榜入選資格。`
-                : `Bar Heartbreak is not a chart; it is an AI music survival room. Once the public pool is full, new uploads enter Challenger, with up to ${LISTEN_BAR_CHALLENGER_SLOT_LIMIT} active challengers per creator. Songs with ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} positive reactions become honor-roll eligible.`}
+                ? `傷心酒吧不是排行榜，而是一場 AI 音樂生存戰。新投稿不打斷目前歌曲，會在這首播完後優先插播；每批從第一首投稿開始計 1 小時，最多 ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} 首，其餘排到下一小時。公播池超過 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首時，每 ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} 小時最多淘汰 ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} 首低反應歌曲；低於或等於 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首就停止淘汰。累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 個正向反應的歌曲，將取得榮譽榜入選資格。`
+                : `Bar Heartbreak is not a chart; it is an AI music survival room. New uploads do not interrupt the current song; they get priority after it finishes. Each 1-hour batch starts with the first upload and airs up to ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} tracks, pushing overflow to the next hour. When the public pool is above ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}, up to ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} low-reaction songs are removed every ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} hours; at or below ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}, elimination stops. Songs with ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} positive reactions become honor-roll eligible.`}
             </p>
           </div>
 
@@ -2087,7 +2312,7 @@ export default function ListenBarPage() {
               <div className="grid max-h-56 min-w-0 gap-2 overflow-y-auto overflow-x-hidden pr-1">
                 {[...myChallengerStats, ...myPublicStats].slice(0, 6).map((track) => {
                   const keepPercent = track.barPhase === "public"
-                    ? Math.min(100, (survivalDayFromDate(track.promotedAt ?? track.createdAt) / LISTEN_BAR_PUBLIC_SURVIVAL_DAYS) * 100)
+                    ? 100
                     : Math.min(100, (track.positives / LISTEN_BAR_PUBLIC_REACTION_THRESHOLD) * 100);
                   const challengerRank = challengerRankById.get(track.id);
                   const statusLabel = track.barPhase === "public"
@@ -2140,11 +2365,11 @@ export default function ListenBarPage() {
             <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">
               {isZh
                 ? openingPhaseActive
-                  ? `${communityRequestTracks.length} 首投稿歌正在公播；滿 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首後啟動生存挑戰。`
-                  : `${communityRequestTracks.length} 首投稿歌進入傷心酒吧；${publicPoolTracks.length} 首公播，${challengerTracks.length} 首 Challenger 正在拼人氣。`
+                  ? `${communityRequestTracks.length} 首投稿歌正在公播；滿 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首後新歌進入 Challenger，超過 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首才啟動淘汰。`
+                  : `${communityRequestTracks.length} 首投稿歌進入傷心酒吧；${publicPoolTracks.length} 首公播，${challengerTracks.length} 首 Challenger 正在拼人氣；超過 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首時每 ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} 小時最多淘汰 ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} 首。`
                 : openingPhaseActive
-                  ? `${communityRequestTracks.length} creator tracks are on air; survival challenges begin after ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}.`
-                  : `${communityRequestTracks.length} creator tracks are in Bar Heartbreak; ${publicPoolTracks.length} public tracks and ${challengerTracks.length} challengers are active.`}
+                  ? `${communityRequestTracks.length} creator tracks are on air; new uploads enter Challenger after ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}, and elimination only starts above ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}.`
+                  : `${communityRequestTracks.length} creator tracks are in Bar Heartbreak; ${publicPoolTracks.length} public tracks and ${challengerTracks.length} challengers are active. Above ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}, up to ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} are removed every ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} hours.`}
             </p>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
               <div

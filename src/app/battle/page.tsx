@@ -862,7 +862,7 @@ function BattlePoolList() {
 
       let { data, error } = await supabase
         .from("battle_queue")
-        .select("id, user_id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, scheduled_start_at, cancellation_evaluation_at, public_vote_score, created_at")
+        .select("id, user_id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, public_vote_score, created_at")
         .in("status", ["waiting_challenge", "public_voting", "ghost_battle"])
         .order("created_at", { ascending: false })
         .limit(24);
@@ -908,7 +908,7 @@ function BattlePoolList() {
         if (focusQueueId && !visibleRows.some((row) => row.id === focusQueueId)) {
           let { data: focusedRow, error: focusedError } = await supabase
             .from("battle_queue")
-            .select("id, fighter_name, original_file_name, status, match_group_id, expires_at, scheduled_start_at, cancellation_evaluation_at")
+            .select("id, fighter_name, original_file_name, status, match_group_id, expires_at")
             .eq("id", focusQueueId)
             .maybeSingle<{
               id: string;
@@ -1264,8 +1264,8 @@ function BattlePoolList() {
                       text={
                         isGhost || isPublicVoting
                           ? isZh
-                            ? `《${entry.original_file_name}》正在 AIPOGER 鬥歌場，進來觀戰投票。`
-                            : `"${entry.original_file_name}" is in AIPOGER Battle. Come vote.`
+                            ? `《${entry.original_file_name}》正在 AIPOGER AI 音樂鬥歌場，進來觀戰投票。`
+                            : `"${entry.original_file_name}" is in the AIPOGER AI Music Battle Hall. Come vote.`
                           : isZh
                             ? `${entry.fighter_name} 的《${entry.original_file_name}》正在等人接戰。${hookStartText}進來聊天預測支持誰的歌最熱血最動人，或是你來挑戰？Show me what you got!!!`
                             : `${entry.fighter_name}'s "${entry.original_file_name}" is waiting for a challenger. ${hookStartText}Back the hottest, most moving Drop in chat, or step in and challenge. Show me what you got!!!`
@@ -1288,6 +1288,7 @@ function BattlePoolList() {
 
 function LiveBattleList() {
   const { t, lang } = useI18n();
+  const isZh = lang === "zh";
   const searchParams = useSearchParams();
   const focusQueueId = searchParams.get("focusQueue");
   const focusBattleId = searchParams.get("focusBattle");
@@ -1313,7 +1314,7 @@ function LiveBattleList() {
 
       let { data, error: qErr } = await supabase
         .from("battles")
-        .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, scheduled_start_at, battle_started_at, started_at, battle_ended_at")
+        .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, battle_started_at, started_at, battle_ended_at")
         .in("status", ["active", "live"])
         .is("battle_ended_at", null)
         .order("created_at", { ascending: false })
@@ -1352,7 +1353,7 @@ function LiveBattleList() {
         if (focusBattleId && !baseRows.some((row) => row.id === focusBattleId)) {
           let { data: focusedBattle, error: focusedError } = await supabase
             .from("battles")
-            .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, scheduled_start_at, battle_started_at, started_at, battle_ended_at")
+            .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, battle_started_at, started_at, battle_ended_at")
             .eq("id", focusBattleId)
             .maybeSingle<LiveBattleRow>();
           if (focusedError) {
@@ -1465,6 +1466,12 @@ function LiveBattleList() {
               className="w-fit rounded-full border border-yellow-300/30 bg-yellow-400/10 px-5 py-2.5 text-sm font-semibold tracking-[0.12em] text-yellow-100 transition hover:border-yellow-200 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300"
             >
               {t("watch_rank")}
+            </Link>
+            <Link
+              href={`/hook-guide${lang === "en" ? "?lang=en" : "?lang=zh"}`}
+              className="w-fit rounded-full border border-white/15 bg-white/[0.045] px-5 py-2.5 text-sm font-semibold tracking-[0.12em] text-zinc-200 transition hover:border-orange-200/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
+            >
+              {isZh ? "Drop Battle 規則" : "Drop Battle Rules"}
             </Link>
           </div>
         </header>

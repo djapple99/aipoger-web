@@ -10,8 +10,8 @@
 -- 6. 公播池最多 88 首；Challenger + 公播池最多 100 首共同輪播。
 -- 7. 開荒期公播池未滿 88 首時，不做殘酷淘汰。
 -- 8. 累積 30 個正向反應的歌曲，取得榮譽榜入選資格。
--- 9. 每 4 小時結算一次；滿載後淘汰公播池中保護期已過且人氣較低的舊歌。
--- 10. 公播池最大生存期 30 天；期滿退場並保留紀錄給成績卡 / 月榜使用。
+-- 9. 每 8 小時結算一次；公播池超過 88 首時，最多淘汰 3 首人氣較低的舊歌。
+-- 10. 公播池低於或等於 88 首時停止淘汰，不再用 30 天期滿退場。
 -- 11. 聽歌不需登入；留言與投票必須登入。每個帳號對每首歌同時只保留 1 個反應，可更換或取消。
 
 alter table public.listen_bar_tracks
@@ -284,12 +284,10 @@ declare
   v_completed_count integer := 0;
   v_removed_public_count integer := 0;
   v_removed_over_total_count integer := 0;
-  v_active_count integer := 0;
   v_public_count integer := 0;
   v_opening_public_seats integer := 0;
   v_promotion_limit integer := 8;
   v_public_overflow integer := 0;
-  v_total_overflow integer := 0;
   v_now timestamptz := now();
 begin
   select count(*)
@@ -331,24 +329,6 @@ begin
 
   get diagnostics v_promoted_count = row_count;
 
-  with completed as (
-    select id
-    from public.listen_bar_tracks
-    where source = 'community'
-      and is_active = true
-      and bar_phase = 'public'
-      and coalesce(promoted_at, created_at) < v_now - interval '30 days'
-  )
-  update public.listen_bar_tracks t
-  set is_active = false,
-      review_status = 'completed',
-      removed_at = v_now,
-      updated_at = v_now
-  from completed c
-  where t.id = c.id;
-
-  get diagnostics v_completed_count = row_count;
-
   select count(*)
   into v_public_count
   from public.listen_bar_tracks
@@ -364,9 +344,8 @@ begin
     where source = 'community'
       and is_active = true
       and bar_phase = 'public'
-      and coalesce(promoted_at, created_at) < v_now - interval '24 hours'
     order by positive_reaction_count asc, created_at asc
-    limit v_public_overflow
+    limit least(v_public_overflow, 3)
   )
   update public.listen_bar_tracks t
   set is_active = false,
@@ -377,33 +356,6 @@ begin
   where t.id = l.id;
 
   get diagnostics v_removed_public_count = row_count;
-
-  select count(*)
-  into v_active_count
-  from public.listen_bar_tracks
-  where source = 'community'
-    and is_active = true;
-
-  v_total_overflow := greatest(v_active_count - 100, 0);
-
-  with challenger_overflow as (
-    select id
-    from public.listen_bar_tracks
-    where source = 'community'
-      and is_active = true
-      and bar_phase = 'challenger'
-    order by positive_reaction_count asc, created_at asc
-    limit v_total_overflow
-  )
-  update public.listen_bar_tracks t
-  set is_active = false,
-      review_status = 'removed',
-      removed_at = v_now,
-      updated_at = v_now
-  from challenger_overflow o
-  where t.id = o.id;
-
-  get diagnostics v_removed_over_total_count = row_count;
 
   return query select v_promoted_count, v_completed_count, v_removed_public_count, v_removed_over_total_count;
 end;

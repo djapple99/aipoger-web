@@ -103,10 +103,13 @@ Current rules:
 - Challenger observation period: 24 hours.
 - A Challenger needs at least 1 positive reaction to become eligible for public-pool promotion after the pool is full.
 - Own reaction can satisfy the V1 minimum support threshold.
-- Judgement interval: every 4 hours.
-- Public-pool maximum survival period: 30 days.
+- Judgement interval: every 8 hours.
+- Public-pool elimination only runs when there are more than 88 public songs.
+- Each elimination pass removes up to 3 low-performing public-pool songs.
+- If the public pool is at or below 88 songs, elimination stops.
 - Challenger + public pool shared rotation target: 100 songs.
 - A song with 30 positive reactions becomes Honor Board eligible.
+- New submissions get priority after the current song finishes; each priority batch starts when the first upload arrives, airs up to 8 new uploads within 1 hour, and pushes overflow to the next hour.
 
 Product language:
 

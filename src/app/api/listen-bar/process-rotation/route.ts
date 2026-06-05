@@ -3,10 +3,9 @@ import { createClient } from "@supabase/supabase-js";
 import {
   LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
   LISTEN_BAR_JUDGMENT_PROMOTION_LIMIT,
+  LISTEN_BAR_PUBLIC_EVICTION_LIMIT,
   LISTEN_BAR_PUBLIC_REACTION_THRESHOLD,
   LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
-  LISTEN_BAR_PUBLIC_SURVIVAL_DAYS,
-  LISTEN_BAR_TOTAL_ROTATION_LIMIT,
 } from "@/lib/listen-bar";
 
 type TrackForRotation = {
@@ -47,8 +46,6 @@ async function processRotation(request: NextRequest) {
 
   const now = new Date();
   const observationCutoff = new Date(now.getTime() - LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS * 60 * 60 * 1000).toISOString();
-  const protectedPublicCutoff = observationCutoff;
-  const survivalCutoff = new Date(now.getTime() - LISTEN_BAR_PUBLIC_SURVIVAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
   const { count: activeCount, error: countError } = await admin
     .from("listen_bar_tracks")
@@ -96,25 +93,6 @@ async function processRotation(request: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const { data: completedRows, error: completedRowsError } = await admin
-    .from("listen_bar_tracks")
-    .select("id, promoted_at, created_at")
-    .eq("source", "community")
-    .eq("is_active", true)
-    .eq("bar_phase", "public")
-    .or(`promoted_at.lt.${survivalCutoff},and(promoted_at.is.null,created_at.lt.${survivalCutoff})`);
-
-  if (completedRowsError) return NextResponse.json({ error: completedRowsError.message }, { status: 500 });
-
-  const completedIds = ((completedRows as TrackForRotation[] | null) ?? []).map((row) => row.id);
-  if (completedIds.length > 0) {
-    const { error } = await admin
-      .from("listen_bar_tracks")
-      .update({ is_active: false, review_status: "completed", removed_at: now.toISOString(), updated_at: now.toISOString() })
-      .in("id", completedIds);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
   const { data: publicRows, error: publicRowsError } = await admin
     .from("listen_bar_tracks")
     .select("id, positive_reaction_count, created_at, promoted_at, bar_phase")
@@ -128,8 +106,7 @@ async function processRotation(request: NextRequest) {
 
   const publicOverflow = Math.max(0, ((publicRows as TrackForRotation[] | null) ?? []).length - LISTEN_BAR_PUBLIC_ROTATION_LIMIT);
   const removedPublicIds = ((publicRows as TrackForRotation[] | null) ?? [])
-    .filter((row) => !row.promoted_at || row.promoted_at < protectedPublicCutoff)
-    .slice(0, publicOverflow)
+    .slice(0, Math.min(publicOverflow, LISTEN_BAR_PUBLIC_EVICTION_LIMIT))
     .map((row) => row.id);
 
   if (removedPublicIds.length > 0) {
@@ -140,41 +117,15 @@ async function processRotation(request: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const { data: activeRowsAfterPublicTrim, error: activeRowsAfterPublicTrimError } = await admin
-    .from("listen_bar_tracks")
-    .select("id, positive_reaction_count, created_at, promoted_at, bar_phase")
-    .eq("source", "community")
-    .eq("is_active", true)
-    .order("bar_phase", { ascending: true })
-    .order("positive_reaction_count", { ascending: true })
-    .order("created_at", { ascending: true });
-
-  if (activeRowsAfterPublicTrimError) return NextResponse.json({ error: activeRowsAfterPublicTrimError.message }, { status: 500 });
-
-  const activeRows = (activeRowsAfterPublicTrim as TrackForRotation[] | null) ?? [];
-  const totalOverflow = Math.max(0, activeRows.length - LISTEN_BAR_TOTAL_ROTATION_LIMIT);
-  const overLimitIds = activeRows
-    .filter((row) => row.bar_phase !== "public")
-    .slice(0, totalOverflow)
-    .map((row) => row.id);
-
-  if (overLimitIds.length > 0) {
-    const { error } = await admin
-      .from("listen_bar_tracks")
-      .update({ is_active: false, review_status: "removed", removed_at: now.toISOString(), updated_at: now.toISOString() })
-      .in("id", overLimitIds);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
   return NextResponse.json({
     activeCommunity: activeCount ?? 0,
     promotedToPublic: promotedIds.length,
-    completedMonthlySurvival: completedIds.length,
+    completedMonthlySurvival: 0,
     removedFromPublic: removedPublicIds.length,
-    removedOverTotalLimit: overLimitIds.length,
+    removedOverTotalLimit: 0,
+    publicEvictionLimit: LISTEN_BAR_PUBLIC_EVICTION_LIMIT,
     openingPublicSeats,
     openingGraceMode: openingPublicSeats > 0,
     publicLimit: LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
-    totalRotationLimit: LISTEN_BAR_TOTAL_ROTATION_LIMIT,
   });
 }

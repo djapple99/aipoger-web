@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 
 const BGM_SRC = "/music/home-bgm.mp3";
+const STOP_HOME_BGM_EVENT = "aipoger:stop-home-bgm";
 
 function SpeakerIcon({ playing }: { playing: boolean }) {
   return (
@@ -40,6 +41,16 @@ export default function HomeBgmPlayer() {
   const [playing, setPlaying] = useState(false);
   const autoplayBlockedRef = useRef(false);
   const userPausedRef = useRef(false);
+  const hardStop = useCallback(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    userPausedRef.current = true;
+    autoplayBlockedRef.current = false;
+    el.pause();
+    el.removeAttribute("src");
+    el.load();
+    setPlaying(false);
+  }, []);
 
   useEffect(() => {
     const el = audioRef.current;
@@ -64,8 +75,15 @@ export default function HomeBgmPlayer() {
 
     const onFirstPointer = (ev: PointerEvent) => {
       const target = ev.target;
+      const targetElement = target instanceof Element ? target : null;
+      const href = targetElement?.closest("a")?.getAttribute("href") ?? "";
+      const isListenBarNavigation = href === "/listen-bar" || href.startsWith("/listen-bar?");
+      if (isListenBarNavigation) {
+        hardStop();
+        return;
+      }
       const onSpeaker =
-        target instanceof Element && Boolean(target.closest("[data-home-bgm]"));
+        targetElement && Boolean(targetElement.closest("[data-home-bgm]"));
 
       if (
         !onSpeaker &&
@@ -80,21 +98,27 @@ export default function HomeBgmPlayer() {
       window.removeEventListener("pointerdown", onFirstPointer, true);
     };
 
+    window.addEventListener(STOP_HOME_BGM_EVENT, hardStop);
     window.addEventListener("pointerdown", onFirstPointer, { capture: true });
 
     return () => {
+      window.removeEventListener(STOP_HOME_BGM_EVENT, hardStop);
       window.removeEventListener("pointerdown", onFirstPointer, true);
-      el.pause();
+      hardStop();
       el.removeEventListener("play", onPlay);
       el.removeEventListener("pause", onPause);
     };
-  }, []);
+  }, [hardStop]);
 
   const toggle = useCallback(async () => {
     const el = audioRef.current;
     if (!el) return;
     if (el.paused) {
       userPausedRef.current = false;
+      if (!el.getAttribute("src")) {
+        el.src = BGM_SRC;
+        el.load();
+      }
       try {
         await el.play();
       } catch {
