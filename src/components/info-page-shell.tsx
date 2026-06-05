@@ -109,25 +109,25 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
       contactLabel: "Contact",
       cards: [
         { label: "Mission", value: "Creator Growth", detail: "Build tracks, battle records, listener signals, and stage presence" },
-        { label: "Recognition", value: "Honor Records", detail: "Drop Battles, Bar Heartbreak, and the Honor Board preserve what wins attention" },
+        { label: "Recognition", value: "Honor Records", detail: "Drop Battles, Bar Heartbreak, and the Honor Board preserve the moments that hit" },
         { label: "Rights", value: "Original Only", detail: "Only original, licensed, or lawfully usable music content is allowed" },
         { label: "Contact", value: "Email", detail: mail, href: `mailto:${mail}` },
       ],
       sections: [
         {
-          title: "What AIPOGER is",
+          title: "What AIPOGER Is",
           body:
             "AIPOGER is not a generic player and not just a battle site. It is a recognition system for AI music: tracks face challengers and listeners first, then winning records can become the start of airplay, curation, licensing, and commercial paths.",
-          items: ["AI music Drop uploads and battles", "Bar Heartbreak airplay and listener reactions", "Honor Board records for wins and heat", "Airplay, curation, licensing, release, and brand collaboration paths"],
+          items: ["AI Music Drop uploads and battles", "Bar Heartbreak airplay and listener reactions", "Honor Board records for wins and heat", "Airplay, curation, licensing, release, and brand collaboration paths"],
         },
         {
-          title: "Copyright and upload rules",
+          title: "Copyright and Upload Rules",
           body:
             "Music, lyrics, recordings, performances, and online uses may involve reproduction and public transmission rights. Users may not upload unauthorized commercial songs, covers, adaptations, samples, instrumentals, vocals, lyrics, or any content that may infringe third-party rights.",
           items: ["Uploaders must confirm their work is original, AI-generated, and lawfully usable", "No unauthorized vocals, melodies, lyrics, samples, or recordings", "Non-commercial use is not automatically exempt", "AIPOGER may request proof of authorization when needed"],
         },
         {
-          title: "Removal and enforcement",
+          title: "Removal and Enforcement",
           body:
             "If AIPOGER receives a rights-holder notice, reasonably suspects infringement, or identifies a policy violation, the platform may restrict public access, remove content, suspend account functions, preserve records, or cooperate with lawful procedures.",
           items: ["Potentially infringing music may be removed", "Repeat violations may lead to service restrictions", "Rights holders should provide content URLs and proof of rights", "Email is the primary contact channel"],
@@ -200,10 +200,10 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
       ],
       sections: [
         {
-          title: "Best fit",
+          title: "Best Fit",
           body:
             "AI music tools, AI video tools, music hardware, courses, events, venues, music brands, and products that want to reach creators.",
-          items: ["AI music and video tool promotion", "Sponsored Drop Battle challenges", "YouTube @djapple2000 tutorial integration", "Bar Heartbreak airplay, theme nights, or creator missions"],
+          items: ["AI Music and video tool promotion", "Sponsored Drop Battle challenges", "YouTube @djapple2000 tutorial integration", "Bar Heartbreak airplay, theme nights, or creator missions"],
         },
         {
           title: "Formats",
@@ -281,16 +281,16 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
             "A Drop is the memorable musical idea that catches the listener. In pop it often appears in the chorus, but in dance, hip-hop, electronic, and AI music, any replayable sound can be the Drop.",
         },
         {
-          title: "Battle flow",
+          title: "Battle Flow",
           body:
             "Creators upload a track, cut the strongest Drop, and face a same-category challenger. During public beta, APC entry stakes are disabled so creators can enter Battle directly and build recognition first.",
           items: ["A / B battle format", "No APC entry stake during public beta", "Cross-stage matches still prioritize close level and music category", "One vote per listener; votes can be switched before close", "Correct final voters receive a 100 APC participation reward", "Only original or properly licensed AI music is allowed"],
         },
         {
-          title: "Points and levels",
+          title: "Points and Levels",
           body:
             "APC is the platform participation point. During public beta it does not block Battle entry; it is used for rewards, support, progression, and creator status.",
-          items: ["Stage 1 Music Artisan: Lv.1-Lv.3, level up every 10 wins", "Stage 2 Featured Creator: Lv.4-Lv.7, level up every 20 wins, unlock featured-song and prompt-selling paths", "Stage 3 Hall Master: Lv.8-Lv.10, level up every 50 wins, unlock creator page space and stronger promotion paths", "No fighter entry stake is charged during public beta", "Correct final voters receive 100 APC", "Bar Heartbreak is the airplay and engagement path"],
+          items: ["Stage 1 Music Artisan: Lv.1-Lv.3, level up every 10 wins", "Stage 2 Featured Creator: Lv.4-Lv.7, level up every 20 wins and unlock featured-song and prompt-selling paths", "Stage 3 Hall Master: Lv.8-Lv.10, level up every 50 wins and unlock creator page space plus stronger promotion paths", "No fighter entry stake is charged during public beta", "Correct final voters receive 100 APC", "Bar Heartbreak is the airplay and engagement path"],
         },
         {
           title: "Rank Names",
@@ -443,7 +443,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
     },
     en: {
       navTitle: "AI Music Bible",
-      title: "AI Music Training Bible And Learning Resources",
+      title: "AI Music Training Bible and Learning Resources",
       lead:
         "AIPOGER's learning map for creators: start with AIPOGER's Chinese tutorials, then use official docs for tool details, and practice prompts, lyrics, audio references, Drops, and copyright discipline.",
       youtubeLabel: "AIPOGER Tutorial Playlist",
@@ -466,7 +466,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           ],
         },
         {
-          title: "Layer 2: Suno Basics To Advanced",
+          title: "Layer 2: Suno Basics to Advanced",
           body:
             "Suno is strong for fast full-song drafts. Start with Simple Mode, move into Custom lyrics, then practice creating from your own voice or audio ideas.",
           links: [
@@ -480,7 +480,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           body:
             "Start here: one official Suno beginner guide, one Suno audio workflow guide, one official Udio prompting guide, one Stable Audio settings guide, and one community resource hub.",
           links: [
-            { title: "Suno Official: Make a song in Simple Mode", href: "https://help.suno.com/en/articles/2462273", note: "Official Suno Help Center guide for basic text-to-song creation." },
+            { title: "Suno Official: Make a Song in Simple Mode", href: "https://help.suno.com/en/articles/2462273", note: "Official Suno Help Center guide for basic text-to-song creation." },
             { title: "Suno Official: Create Music with Audio", href: "https://help.suno.com/en/articles/3197313", note: "Use voice, melody ideas, or audio clips as starting material." },
             { title: "Udio Official: Prompt Like a Master", href: "https://help.udio.com/en/articles/10716541-prompt-like-a-master", note: "Prompt structure for theme, genre, mood, instruments, lyrics, and vocals." },
             { title: "Stable Audio Official: User Guide", href: "https://stableaudio.com/user-guide/interface", note: "Prompt strength, seed, input audio, and generation controls." },
@@ -488,7 +488,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           ],
         },
         {
-          title: "Layer 3: Udio And Audio Workflows",
+          title: "Layer 3: Udio and Audio Workflows",
           body:
             "Use Udio to practice prompts, lyrics, extensions, and audio references. For battles, test emotional and stylistic variants, then choose the Drop with the strongest memory.",
           links: [
@@ -498,7 +498,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           ],
         },
         {
-          title: "Layer 4: Prompting, Settings, And Reference Libraries",
+          title: "Layer 4: Prompting, Settings, and Reference Libraries",
           body:
             "Once you can generate songs, progress comes from sharper prompts and better listening judgment: concrete style, emotion, instrumentation, rhythm, and control settings.",
           links: [
@@ -545,7 +545,7 @@ const rankSkillStages = [
     stageZh: "第二階 潮流音樂大師",
     stageEn: "Stage 2 Featured Creator",
     ruleZh: "每贏 20 場升級 解鎖推薦與 prompt 販售",
-    ruleEn: "Level up every 20 wins Unlock featured songs and prompt selling",
+    ruleEn: "Level up every 20 wins. Unlock featured songs and prompt selling.",
     stake: "公測免 APC",
     accent: "cyan",
     nodes: [
@@ -559,7 +559,7 @@ const rankSkillStages = [
     stageZh: "第三階 殿堂級音樂師尊",
     stageEn: "Stage 3 Hall Master",
     ruleZh: "每贏 50 場升級 解鎖個人頁面空間",
-    ruleEn: "Level up every 50 wins Unlock creator page space",
+    ruleEn: "Level up every 50 wins. Unlock creator page space.",
     stake: "公測免 APC",
     accent: "white",
     nodes: [

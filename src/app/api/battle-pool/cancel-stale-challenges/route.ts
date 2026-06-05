@@ -105,7 +105,7 @@ async function cancelStalePendingBattles(admin: SupabaseAdmin) {
       title: "挑戰自動取消",
       body: "你發起的挑戰在開戰時間過後 1 分鐘仍無對手接受，已自動取消。",
       metadata: {
-        titleEn: "Battle auto-cancelled",
+        titleEn: "Battle Auto-Cancelled",
         scheduledStartAt: battle.scheduled_start_at,
         cancellationEvaluationAt: battle.cancellation_evaluation_at,
         cancelledAt: now,

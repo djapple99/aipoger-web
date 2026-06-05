@@ -119,7 +119,7 @@ function displaySongTitle(value: string, fallback: string) {
 
 function localizedRowTitle(row: Pick<RankRow, "kind" | "title">, isZh: boolean) {
   if (isZh) return row.title;
-  return row.kind === "battle" ? "Drop victory record" : "Bar Heartbreak hot track";
+  return row.kind === "battle" ? "Drop Victory Record" : "Bar Heartbreak Hot Track";
 }
 
 function localizedRankLabel(rank: string, isZh: boolean) {
@@ -127,7 +127,7 @@ function localizedRankLabel(rank: string, isZh: boolean) {
   const cleanRank = rank.trim();
   if (cleanRank === AIPOGER_PERSONAL_RANK) return "LV.0 AIPOGER Founder";
   const level = cleanRank.match(/Lv\.(\d+)/i)?.[1];
-  if (!level) return cleanRank || "Rank missing";
+  if (!level) return cleanRank || "Rank Missing";
   const rankMeta = rankForLevel(Number(level));
   return `Lv.${rankMeta.level} ${rankMeta.nameEn}`;
 }
@@ -539,7 +539,7 @@ export default function RankPage() {
             {[
               { href: "/battle", label: isZh ? "AI音樂鬥歌場" : "AI Music Battle Hall" },
               { href: "/listen-bar", label: isZh ? "傷心酒吧" : "Bar Heartbreak" },
-              { href: "/hook-guide", label: isZh ? "Drop Battle 規則" : "Rules" },
+              { href: "/hook-guide", label: isZh ? "Drop Battle 規則" : "Drop Battle Rules" },
             ].map((item) => (
               <Link
                 key={item.href}
@@ -574,7 +574,7 @@ export default function RankPage() {
                     : "Check real AIPOGER Drop victories and Bar Heartbreak hot tracks."
                 }
                 label={isZh ? "分享榮譽榜" : "Share Board"}
-                copiedLabel={isZh ? "榮譽榜連結已複製" : "Board link copied"}
+                copiedLabel={isZh ? "榮譽榜連結已複製" : "Board Link Copied"}
                 className="border-yellow-200/45 bg-yellow-300/12 px-5 py-2.5 text-yellow-100 hover:bg-yellow-300/18"
               />
               <Link
@@ -594,7 +594,7 @@ export default function RankPage() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={mediaSrc(topRow.coverUrl)}
-                      alt={displaySongTitle(topRow.hook, isZh ? "歌名未封存" : "Song not archived")}
+                      alt={displaySongTitle(topRow.hook, isZh ? "歌名未封存" : "Song Not Archived")}
                       className="h-full w-full object-cover"
                     />
                     <div className="absolute bottom-2 left-2 h-12 w-12 overflow-hidden rounded-full border-2 border-orange-300/80 bg-black shadow-[0_0_24px_rgba(255,106,0,0.35)]">
@@ -608,10 +608,10 @@ export default function RankPage() {
                     </p>
                     <p className="mt-2 text-3xl font-black text-white">{topRow.name}</p>
                     <p className="mt-1 text-sm font-bold text-yellow-100">
-                      {localizedRankLabel(topRow.rank, isZh)} / {displayText(topRow.aiTool, isZh ? "工具未封存" : "Tool missing")}
+                      {localizedRankLabel(topRow.rank, isZh)} / {displayText(topRow.aiTool, isZh ? "工具未封存" : "Tool Missing")}
                     </p>
                     <p className="mt-3 rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-sm leading-7 text-zinc-300">
-                      {displaySongTitle(topRow.hook, isZh ? "歌名未封存" : "Song not archived")}
+                      {displaySongTitle(topRow.hook, isZh ? "歌名未封存" : "Song Not Archived")}
                       {topRow.kind === "battle" && topRow.opponentName
                         ? ` / VS ${topRow.opponentName}`
                         : ""}
@@ -625,7 +625,7 @@ export default function RankPage() {
                           {isZh ? "看成果卡" : "Result Card"}
                         </Link>
                         <ShareButton
-                          title={`${topRow.name} / ${displaySongTitle(topRow.hook, isZh ? "歌名未封存" : "Song not archived")}`}
+                          title={`${topRow.name} / ${displaySongTitle(topRow.hook, isZh ? "歌名未封存" : "Song Not Archived")}`}
                           text={
                             isZh
                               ? `AIPOGER 榮譽榜焦點：${topRow.name} VS ${topRow.opponentName || "對手"}`
@@ -633,7 +633,7 @@ export default function RankPage() {
                           }
                           url={resultHref(topRow, lang)}
                           label={isZh ? "分享成果卡" : "Share Result"}
-                          copiedLabel={isZh ? "成果卡已複製" : "Result copied"}
+                          copiedLabel={isZh ? "成果卡已複製" : "Result Copied"}
                           className="px-4 py-2 text-xs"
                         />
                       </div>
@@ -662,7 +662,7 @@ export default function RankPage() {
                   className="mx-auto h-[4.5rem] w-[4.5rem] rounded-2xl object-cover"
                 />
                 <p className="mt-4 text-2xl font-black text-white">
-                  {isZh ? "目前沒有可封存紀錄" : "No archived records yet"}
+                  {isZh ? "目前沒有可封存紀錄" : "No Archived Records Yet"}
                 </p>
                 <p className="mx-auto mt-2 max-w-md text-sm leading-7 text-zinc-400">
                   {isZh
@@ -713,7 +713,7 @@ export default function RankPage() {
                     : `Check the AIPOGER ${boardTitle} with real records only.`
                 }
                 label={isZh ? "分享這個榮譽榜" : "Share This Board"}
-                copiedLabel={isZh ? "榮譽榜連結已複製" : "Board copied"}
+                copiedLabel={isZh ? "榮譽榜連結已複製" : "Board Copied"}
                 className="px-4 py-2"
               />
             </div>
@@ -722,7 +722,7 @@ export default function RankPage() {
               {displayRows.length === 0 ? (
                 <div className="rounded-[1.3rem] border border-white/10 bg-white/[0.035] px-5 py-8 text-center">
                   <p className="text-lg font-black text-white">
-                    {isZh ? "目前沒有完整封存的正式紀錄" : "No complete archived records yet"}
+                    {isZh ? "目前沒有完整封存的正式紀錄" : "No Complete Archived Records Yet"}
                   </p>
                   <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-zinc-500">
                     {isZh
@@ -747,7 +747,7 @@ export default function RankPage() {
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={mediaSrc(row.coverUrl)}
-                            alt={displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song not archived")}
+                            alt={displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}
                             className="h-full w-full object-cover"
                           />
                           <div className="absolute bottom-2 left-2 h-12 w-12 overflow-hidden rounded-full border-2 border-white/65 bg-black">
@@ -755,7 +755,7 @@ export default function RankPage() {
                             <img src={mediaSrc(row.avatarUrl)} alt={row.name} className="h-full w-full object-cover" />
                           </div>
                           <div className="absolute right-2 top-2 rounded-full border border-black/40 bg-white/90 px-2 py-1 text-[10px] font-black text-black">
-                            {displayText(row.aiTool, isZh ? "未封存工具" : "Tool missing")}
+                            {displayText(row.aiTool, isZh ? "未封存工具" : "Tool Missing")}
                           </div>
                         </div>
                         <div className="min-w-0">
@@ -772,28 +772,28 @@ export default function RankPage() {
                           {row.kind === "battle" ? (
                             <>
                               <p className="mt-2 text-sm leading-6 text-zinc-300">
-                                {isZh ? "決鬥" : "Battle"}：{row.name} VS {displayText(row.opponentName || "", isZh ? "對手未封存" : "Opponent missing")}
+                                {isZh ? "決鬥" : "Battle"}：{row.name} VS {displayText(row.opponentName || "", isZh ? "對手未封存" : "Opponent Missing")}
                               </p>
                               <p className="text-sm leading-6 text-zinc-300">
-                                A SIDE：{displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song not archived")}
+                                A SIDE：{displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}
                                 <span className="mx-2 text-zinc-600">/</span>
-                                B SIDE：{displaySongTitle(row.opponentSong || "", isZh ? "尚未封存" : "Not archived")}
+                                B SIDE：{displaySongTitle(row.opponentSong || "", isZh ? "尚未封存" : "Not Archived")}
                               </p>
                             </>
                           ) : (
                             <p className="mt-2 text-sm leading-6 text-zinc-300">
-                              {isZh ? "曲目" : "Track"}：{displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song not archived")}
+                              {isZh ? "曲目" : "Track"}：{displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}
                             </p>
                           )}
                           {row.note ? <p className="mt-2 text-sm leading-6 text-zinc-300">{row.note}</p> : null}
                           {row.kind === "battle" ? (
                             <div className="mt-3 grid gap-2 sm:grid-cols-2">
                               <p className="rounded-2xl border border-orange-200/16 bg-black/26 px-3 py-2 text-xs font-bold leading-5 text-zinc-300">
-                                <span className="text-orange-100">{isZh ? "AI 評價" : "AI review"}：</span>
+                                <span className="text-orange-100">{isZh ? "AI 評價" : "AI Review"}：</span>
                                 {displayText(row.aiReview || "", isZh ? "無" : "None")}
                               </p>
                               <p className="rounded-2xl border border-cyan-200/16 bg-black/26 px-3 py-2 text-xs font-bold leading-5 text-zinc-300">
-                                <span className="text-cyan-100">{isZh ? "觀眾評價" : "Listener signal"}：</span>
+                                <span className="text-cyan-100">{isZh ? "觀眾評價" : "Listener Signal"}：</span>
                                 {displayText(row.audienceReview || "", isZh ? "無" : "None")}
                               </p>
                             </div>
@@ -803,14 +803,14 @@ export default function RankPage() {
                           {row.kind === "battle" ? (
                             <div>
                               <p className="text-sm font-black text-white">
-                                {displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song not archived")}
+                                {displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}
                               </p>
                               <p className="mt-1 text-xs font-bold text-zinc-400">
                                 {row.votesTotal && row.votesTotal > 0
                                   ? `${row.votesTotal.toLocaleString()} ${isZh ? "票" : "votes"} / A SIDE ${row.aSideVotes || 0} ${isZh ? "票" : ""} B SIDE ${row.bSideVotes || 0} ${isZh ? "票" : ""}`
                                   : isZh
                                     ? "尚無投票"
-                                    : "No votes yet"}
+                                    : "No Votes Yet"}
                               </p>
                               <p className="mt-2 text-xs font-black text-yellow-100">
                                 {isZh ? "決鬥編號" : "Battle"} {displayText(row.battleCode || "", "N/A")}
@@ -818,7 +818,7 @@ export default function RankPage() {
                             </div>
                           ) : (
                             <div>
-                              <p className="text-sm font-black text-white">{displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song not archived")}</p>
+                              <p className="text-sm font-black text-white">{displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}</p>
                               <p className="mt-1 text-xs font-bold text-zinc-400">
                                 {isZh
                                   ? `正向反應 ${(row.positiveReactions || 0).toLocaleString()}`

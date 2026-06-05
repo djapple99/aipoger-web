@@ -190,7 +190,7 @@ export default function DailyWaitingRoomPage() {
         {loading ? (
           <div className="py-24 text-center">
             <p className="text-xs font-black uppercase tracking-[0.34em] text-cyan-100/70">24H FULL SONG WAITING ROOM</p>
-            <h1 className="mt-4 text-3xl font-black">{isZh ? "正在讀取 24H 等待房…" : "Loading 24H waiting room..."}</h1>
+            <h1 className="mt-4 text-3xl font-black">{isZh ? "正在讀取 24H 等待房…" : "Loading 24H Waiting Room..."}</h1>
           </div>
         ) : error ? (
           <div className="py-20 text-center">
@@ -204,7 +204,7 @@ export default function DailyWaitingRoomPage() {
             <div>
               <p className="text-xs font-black uppercase tracking-[0.34em] text-cyan-100/70">24H FULL SONG WAITING ROOM</p>
               <h1 className="mt-4 text-4xl font-black leading-tight md:text-6xl">
-                {isEnded ? (isZh ? "這張戰帖已結束" : "This card has ended") : isZh ? "等待整首歌挑戰者" : "Waiting for full-track challenger"}
+                {isEnded ? (isZh ? "這張戰帖已結束" : "This Card Has Ended") : isZh ? "等待整首歌挑戰者" : "Waiting for Full-Track Challenger"}
               </h1>
               <p className="mt-4 max-w-2xl text-base font-bold leading-8 text-zinc-300">
                 {isEnded
@@ -225,7 +225,7 @@ export default function DailyWaitingRoomPage() {
                   }
                   url={`/battle/setup?battleMode=daily&dailyPairing=invite&challengeDailyEntryId=${row.id}&genre=${encodeURIComponent(row.genre || "")}&lang=${lang}`}
                   label={isZh ? "分享戰帖" : "Share Card"}
-                  copiedLabel={isZh ? "戰帖已複製" : "Card copied"}
+                  copiedLabel={isZh ? "戰帖已複製" : "Card Copied"}
                   className="px-5 py-3 text-sm"
                 />
                 <Link href={`/battle?lang=${lang}`} className="rounded-full border border-cyan-200/35 bg-cyan-300/10 px-5 py-3 text-sm font-black text-cyan-50 transition hover:border-cyan-100">

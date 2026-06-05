@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     title: "挑戰已取消",
     body: "你已手動取消這場挑戰。",
     metadata: {
-      titleEn: "Challenge cancelled",
+      titleEn: "Challenge Cancelled",
       bodyEn: "You manually cancelled this challenge.",
       cancellationReason: "founder_manual",
       cancelledAt: now,

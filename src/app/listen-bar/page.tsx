@@ -419,7 +419,7 @@ function albumDisplayLabel(value: string, isZh: boolean) {
     .replace(/^專輯名稱\s*\/\s*/i, "")
     .trim();
   if (!cleanValue || cleanValue === "官方輪播") return "";
-  if (cleanValue === "創作者投稿" || cleanValue === "Creator submission") return isZh ? "創作者投稿" : "Creator submission";
+  if (cleanValue === "創作者投稿" || cleanValue === "Creator submission" || cleanValue === "Creator Submission") return isZh ? "創作者投稿" : "Creator Submission";
   return isZh ? `專輯名稱 / ${cleanValue}` : `Album / ${cleanValue}`;
 }
 
@@ -515,10 +515,10 @@ export default function ListenBarPage() {
     listenBarPresenceCount <= 1
       ? isZh
         ? "現場升溫中"
-        : "Warming up"
+        : "Warming Up"
       : isZh
         ? `${listenBarPresenceCount} 人正在傷心酒吧`
-        : `${listenBarPresenceCount} listeners`;
+        : `${listenBarPresenceCount} Listeners`;
   const markPriorityAirplayTrack = useCallback((trackId: string) => {
     if (!trackId) return;
     setPriorityAirplayIds((ids) => {
@@ -1154,15 +1154,15 @@ export default function ListenBarPage() {
 
   const progress = Math.min(100, (elapsed / Math.max(1, trackDuration)) * 100);
   const radioStatusLine = useMemo(() => {
-    if (playlistStatus === "loading") return isZh ? "電台正在接上訊號..." : "Tuning the station signal...";
+    if (playlistStatus === "loading") return isZh ? "電台正在接上訊號..." : "Tuning the Station Signal...";
     if (nextCommunityTrack) {
       return isZh
         ? "插播已排入，下一首上場。"
-        : "Creator request queued. It plays next.";
+        : "Creator Track Queued. Next up.";
     }
     return playlistStatus === "database"
-      ? (isZh ? "24H 公播中。" : "24H on-air.")
-      : (isZh ? "公播準備中。" : "Station warming up.");
+      ? (isZh ? "24H 公播中。" : "24H On Air.")
+      : (isZh ? "公播準備中。" : "Station Warming Up.");
   }, [isZh, nextCommunityTrack, playlistStatus]);
 
   const localizedMessages = useMemo(
@@ -1178,21 +1178,21 @@ export default function ListenBarPage() {
   const currentPositiveTotal = Object.values(currentReactions).reduce((sum, count) => sum + count, 0);
   const honorRollQualified = currentPositiveTotal >= LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD;
   const statusText = useMemo(() => {
-    if (!nowTrack.audioUrl) return isZh ? "等待投稿" : "Waiting for uploads";
-    if (nowTrack.source === "official") return isZh ? "AIPOGER 官方公播" : "AIPOGER official";
+    if (!nowTrack.audioUrl) return isZh ? "等待投稿" : "Waiting for Uploads";
+    if (nowTrack.source === "official") return isZh ? "AIPOGER 官方公播" : "AIPOGER Official";
     if (nowTrack.barPhase === "public") {
       if (currentPositiveTotal >= LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD) {
         return isZh
           ? `榮譽榜資格 · ${currentPositiveTotal} 顆心`
-          : `Honor eligible · ${currentPositiveTotal} hearts`;
+          : `Honor Eligible · ${currentPositiveTotal} hearts`;
       }
-      return isZh ? `公播池 · ${currentPositiveTotal} 顆心` : `Public pool · ${currentPositiveTotal} hearts`;
+      return isZh ? `公播池 · ${currentPositiveTotal} 顆心` : `Public Pool · ${currentPositiveTotal} hearts`;
     }
     return isZh
       ? `Challenger · ${currentPositiveTotal}/${LISTEN_BAR_PUBLIC_REACTION_THRESHOLD} 顆心`
       : `Challenger · ${currentPositiveTotal}/${LISTEN_BAR_PUBLIC_REACTION_THRESHOLD} hearts`;
   }, [currentPositiveTotal, isZh, nowTrack.audioUrl, nowTrack.barPhase, nowTrack.source]);
-  const nowTrackTitle = !isZh && nowTrack.id === EMPTY_LISTEN_BAR_TRACK.id ? "Waiting for creator uploads" : nowTrack.title;
+  const nowTrackTitle = !isZh && nowTrack.id === EMPTY_LISTEN_BAR_TRACK.id ? "Waiting for Creator Uploads" : nowTrack.title;
   const myCurrentReaction = myReactions[nowTrack.id] ?? null;
 
   const handleReaction = (key: ReactionKey) => {
@@ -1446,7 +1446,7 @@ export default function ListenBarPage() {
         artist: publicUploadForm.artist.trim() || creatorDefaultName || (isZh ? "創作者" : "Creator"),
         ai_tool: publicUploadForm.aiTool.trim() || "AI Music",
         genre: publicUploadForm.genre.trim() || "AI Music",
-        mood: publicUploadForm.album.trim() || (isZh ? "創作者投稿" : "Creator submission"),
+        mood: publicUploadForm.album.trim() || (isZh ? "創作者投稿" : "Creator Submission"),
         duration_seconds: duration > 0 ? duration : null,
         audio_path: audioPath,
         cover_path: coverPath,
@@ -1612,7 +1612,7 @@ export default function ListenBarPage() {
   const nowCoverUrl = nowTrack.coverUrl?.trim() || DEFAULT_LISTEN_BAR_COVER;
   const nowPresenterName = nowTrack.queuedBy?.trim() || nowTrack.artist;
   const rawPresenterRank = nowTrack.queuedByRank?.trim() || "";
-  const nowPresenterRank = !isZh && rawPresenterRank === "創作者投稿" ? "Creator submission" : rawPresenterRank;
+  const nowPresenterRank = !isZh && rawPresenterRank === "創作者投稿" ? "Creator Submission" : rawPresenterRank;
   const nowSurvivalDay = nowTrack.source === "community" && nowTrack.barPhase === "public"
     ? survivalDayFromDate(nowTrack.promotedAt ?? nowTrack.createdAt)
     : 0;
@@ -1631,8 +1631,8 @@ export default function ListenBarPage() {
   const nowAlbumLabel = albumDisplayLabel(nowTrack.mood, isZh);
   const navLinks = [
     { href: "/battle", label: isZh ? "AI音樂鬥歌場" : "AI Music Battle Hall" },
-    { href: "/rank", label: isZh ? "榮譽榜" : "Rank" },
-    { href: "/ai-music-bible", label: isZh ? "練功聖經" : "AI Bible" },
+    { href: "/rank", label: isZh ? "榮譽榜" : "Honor Board" },
+    { href: "/ai-music-bible", label: isZh ? "練功聖經" : "AI Music Bible" },
     { href: "/about", label: isZh ? "關於愛播歌" : "About" },
   ];
   const battleTickerText = battleTickerMessages.length > 0
@@ -1862,7 +1862,7 @@ export default function ListenBarPage() {
                   )}
                   {honorRollQualified && (
                     <span className="rounded-full border border-yellow-200/35 bg-yellow-300/10 px-2 py-0.5 font-bold text-yellow-100">
-                      {isZh ? "榮譽榜資格" : "Honor eligible"}
+                      {isZh ? "榮譽榜資格" : "Honor Eligible"}
                     </span>
                   )}
                 </div>
@@ -1886,7 +1886,7 @@ export default function ListenBarPage() {
                     onClick={() => resumeRadioPlayback(true)}
                     className="mt-4 inline-flex items-center justify-center rounded-full border border-orange-300/35 bg-orange-500 px-4 py-2 text-xs font-black text-black shadow-[0_0_22px_rgba(255,106,0,0.18)] transition hover:bg-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
                   >
-                    {isZh ? "點一下恢復播放" : "Tap to resume playback"}
+                    {isZh ? "點一下恢復播放" : "Tap to Resume Playback"}
                   </button>
                 )}
 
@@ -1903,7 +1903,7 @@ export default function ListenBarPage() {
                     onChange={(event) => {
                       setVolume(Number(event.target.value));
                     }}
-                    aria-label={isZh ? "公播音量" : "Bar volume"}
+                    aria-label={isZh ? "公播音量" : "Bar Volume"}
                     className="h-2 w-full accent-orange-500"
                   />
                   <span className="text-xs font-black tabular-nums text-orange-200">
@@ -1950,10 +1950,10 @@ export default function ListenBarPage() {
                   <form onSubmit={handleTrackCommentSubmit} className="mt-3 rounded-xl border border-orange-200/18 bg-orange-300/[0.055] p-3">
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-xs font-black text-orange-100">
-                        {isZh ? "這首歌的傷心評論" : "Track comments"}
+                        {isZh ? "這首歌的傷心評論" : "Track Comments"}
                       </p>
                       <span className="text-[11px] font-bold text-zinc-500">
-                        {isZh ? "永久保留" : "Always visible"}
+                        {isZh ? "永久保留" : "Always Visible"}
                       </span>
                     </div>
                     <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
@@ -1986,7 +1986,7 @@ export default function ListenBarPage() {
                         ))
                       ) : (
                         <p className="rounded-lg border border-white/8 bg-black/30 px-3 py-3 text-xs font-bold text-zinc-500">
-                          {isZh ? "還沒有人評論這首歌，第一句留給懂的人。" : "No track comments yet."}
+                          {isZh ? "還沒有人評論這首歌，第一句留給懂的人。" : "No Track Comments Yet."}
                         </p>
                       )}
                     </div>
@@ -2005,8 +2005,8 @@ export default function ListenBarPage() {
                   </p>
                   <h2 className="text-[clamp(1.55rem,8vw,2.9rem)] font-black leading-none text-white sm:whitespace-nowrap">
                     {upcomingHeartbreakerTracks.length > 0
-                      ? (isZh ? "接續的六首歌" : "Next six songs")
-                      : (isZh ? "等待接續歌曲" : "Waiting for songs")}
+                      ? (isZh ? "接續的六首歌" : "Next Six Songs")
+                      : (isZh ? "等待接續歌曲" : "Waiting for Songs")}
                   </h2>
                 </div>
                 <span className="rounded-full border border-orange-300/24 bg-orange-500/10 px-3 py-1 text-[11px] font-black text-orange-100">
@@ -2102,10 +2102,10 @@ export default function ListenBarPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-zinc-500">
-                    {isZh ? `${localizedMessages.length} 則留言` : `${localizedMessages.length} messages`}
+                    {isZh ? `${localizedMessages.length} 則留言` : `${localizedMessages.length} Messages`}
                   </p>
                   <p className="mt-1 text-xs font-black text-orange-200/80">{listenBarPresenceLabel}</p>
-                  <p className="mt-0.5 text-[11px] font-bold text-zinc-600">{isZh ? "留言保留 8H" : "Messages keep 8H"}</p>
+                  <p className="mt-0.5 text-[11px] font-bold text-zinc-600">{isZh ? "留言保留 8H" : "Messages Keep 8H"}</p>
                 </div>
               </div>
               <SafetyNotice kind="chat" compact className="mb-3" />
@@ -2114,7 +2114,7 @@ export default function ListenBarPage() {
                 <div className="grid gap-2">
                   {localizedMessages.length === 0 ? (
                     <div className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-8 text-center text-sm font-bold text-zinc-500">
-                      {isZh ? "還沒有人留言，快來聊聊 AI 音樂。" : "No messages yet. Start the AI music talk."}
+                      {isZh ? "還沒有人留言，快來聊聊 AI 音樂。" : "No Messages Yet. Start the AI Music Talk."}
                     </div>
                   ) : (
                     localizedMessages.map((msg) => (
@@ -2198,7 +2198,7 @@ export default function ListenBarPage() {
                         {publicAudioFile?.name ?? (isZh ? "音檔 MP3 / WAV / AIFF / M4A" : "MP3 / WAV / AIFF / M4A")}
                       </span>
                       <span className="mt-1 block text-xs text-zinc-400">
-                        {isZh ? "點一下選歌，自動偵測歌名" : "Tap to choose; title auto-detects"}
+                        {isZh ? "點一下選歌，自動偵測歌名" : "Tap to Choose; Title Auto-Detects"}
                       </span>
                     </span>
                     <span className={`shrink-0 rounded-full border px-3 py-1 text-xs font-black ${publicAudioFile ? "border-cyan-200/35 bg-cyan-300/10 text-cyan-100" : "border-orange-200/35 bg-black/30 text-orange-100"}`}>
@@ -2212,7 +2212,7 @@ export default function ListenBarPage() {
                   <input
                     value={publicUploadForm.title}
                     onChange={(event) => setPublicUploadForm((current) => ({ ...current, title: event.target.value }))}
-                    placeholder={isZh ? "歌曲名稱" : "Track title"}
+                    placeholder={isZh ? "歌曲名稱" : "Track Title"}
                     maxLength={80}
                     required
                     className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
@@ -2220,21 +2220,21 @@ export default function ListenBarPage() {
                   <input
                     value={publicUploadForm.artist}
                     onChange={(event) => setPublicUploadForm((current) => ({ ...current, artist: event.target.value }))}
-                    placeholder={isZh ? "創作者名稱" : "Creator name"}
+                    placeholder={isZh ? "創作者名稱" : "Creator Name"}
                     maxLength={60}
                     className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
                   />
                   <input
                     value={publicUploadForm.aiTool}
                     onChange={(event) => setPublicUploadForm((current) => ({ ...current, aiTool: event.target.value }))}
-                    placeholder={isZh ? "AI 工具" : "AI tool"}
+                    placeholder={isZh ? "AI 工具" : "AI Tool"}
                     maxLength={40}
                     className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
                   />
                   <input
                     value={publicUploadForm.album}
                     onChange={(event) => setPublicUploadForm((current) => ({ ...current, album: event.target.value }))}
-                    placeholder={isZh ? "專輯名稱（選填）" : "Album name (optional)"}
+                    placeholder={isZh ? "專輯名稱（選填）" : "Album Name (Optional)"}
                     maxLength={80}
                     className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
                   />
@@ -2242,7 +2242,7 @@ export default function ListenBarPage() {
 
                 <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
                   <label className="flex h-11 cursor-pointer items-center justify-center rounded-xl border border-cyan-200/18 bg-cyan-300/[0.055] px-3 text-xs font-black text-cyan-100 transition hover:border-cyan-100/50">
-                    {publicCoverFile?.name ?? (isZh ? "封面可選" : "Optional cover")}
+                    {publicCoverFile?.name ?? (isZh ? "封面可選" : "Optional Cover")}
                     <input
                       type="file"
                       accept="image/jpeg,image/png,image/webp"
@@ -2289,7 +2289,7 @@ export default function ListenBarPage() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full border border-orange-300/20 bg-orange-500/10 px-3 py-1 text-[11px] font-black text-orange-100">
-                {isZh ? `${challengerQueueTracks.length} 首正在挑戰` : `${challengerQueueTracks.length} challengers`}
+                {isZh ? `${challengerQueueTracks.length} 首正在挑戰` : `${challengerQueueTracks.length} Challengers`}
               </span>
               <span className="rounded-full border border-cyan-200/18 bg-cyan-300/8 px-3 py-1 text-[11px] font-black text-cyan-100">
                 {isZh ? `每批 1 小時最多 ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} 首上場` : `${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT}/1-hour batch`}
@@ -2317,7 +2317,7 @@ export default function ListenBarPage() {
             </div>
           ) : (
             <p className="rounded-xl border border-white/8 bg-black/35 px-4 py-5 text-sm font-bold text-zinc-500">
-              {isZh ? "目前沒有 Challenger，新投稿會優先排入挑戰池。" : "No challengers yet. New uploads enter this pool first."}
+              {isZh ? "目前沒有 Challenger，新投稿會優先排入挑戰池。" : "No Challengers yet. New uploads enter this pool first."}
             </p>
           )}
         </section>
@@ -2340,7 +2340,7 @@ export default function ListenBarPage() {
               <p className="text-xs uppercase tracking-[0.22em] text-cyan-100/70">{isZh ? "我的吧台歌曲" : "My Bar Tracks"}</p>
               <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
                 <span className="max-w-full rounded-full border border-orange-300/18 bg-orange-500/8 px-2 py-0.5 text-[11px] font-black text-orange-100">
-                  {isZh ? `Challenger ${challengerSlotCount}/${LISTEN_BAR_CHALLENGER_SLOT_LIMIT}` : `${challengerSlotCount}/${LISTEN_BAR_CHALLENGER_SLOT_LIMIT} challengers`}
+                  {isZh ? `Challenger ${challengerSlotCount}/${LISTEN_BAR_CHALLENGER_SLOT_LIMIT}` : `${challengerSlotCount}/${LISTEN_BAR_CHALLENGER_SLOT_LIMIT} Challengers`}
                 </span>
                 <span className="max-w-full rounded-full border border-white/10 px-2 py-0.5 text-[11px] font-bold text-zinc-400">
                   {isZh ? `${myPublicStats.length} 公播` : `${myPublicStats.length} public`}
@@ -2387,8 +2387,8 @@ export default function ListenBarPage() {
             ) : (
               <p className="rounded-xl border border-white/8 bg-black/32 px-3 py-4 text-sm text-zinc-500">
                 {userId
-                  ? (isZh ? "尚未有 Challenger 或公播池歌曲。" : "No Challenger or public-pool tracks yet.")
-                  : (isZh ? "登入後會顯示你的挑戰席與公播池歌曲。" : "Sign in to see your challenger seats and public tracks.")}
+                  ? (isZh ? "尚未有 Challenger 或公播池歌曲。" : "No Challenger or Public Pool tracks yet.")
+                  : (isZh ? "登入後會顯示你的挑戰席與公播池歌曲。" : "Sign in to see your Challenger seats and Public Pool tracks.")}
               </p>
             )}
           </div>
@@ -2407,8 +2407,8 @@ export default function ListenBarPage() {
                   ? `${communityRequestTracks.length} 首投稿歌正在公播；滿 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首後新歌進入 Challenger，超過 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首才啟動淘汰。`
                   : `${communityRequestTracks.length} 首投稿歌進入傷心酒吧；${publicPoolTracks.length} 首公播，${challengerTracks.length} 首 Challenger 正在拼人氣；超過 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首時每 ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} 小時最多淘汰 ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} 首。`
                 : openingPhaseActive
-                  ? `${communityRequestTracks.length} creator tracks are on air. New uploads enter Challenger after ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}; elimination starts only above ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}.`
-                  : `${communityRequestTracks.length} creator tracks are in Bar Heartbreak. ${publicPoolTracks.length} are on air and ${challengerTracks.length} are fighting for reactions. Above ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}, up to ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} low-reaction tracks are removed every ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} hours.`}
+                  ? `${communityRequestTracks.length} creator tracks are live on air. New uploads enter Challenger after ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}; elimination starts only above ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}.`
+                  : `${communityRequestTracks.length} creator tracks are in Bar Heartbreak. ${publicPoolTracks.length} are live on air and ${challengerTracks.length} are fighting for reactions. Above ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}, up to ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} low-reaction tracks are removed every ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} hours.`}
             </p>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
               <div

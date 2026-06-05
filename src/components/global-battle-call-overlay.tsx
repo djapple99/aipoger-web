@@ -313,7 +313,7 @@ export default function GlobalBattleCallOverlay() {
         battleId: "mock-call-waiting-room",
         queueId: "mock-call-queue",
         opponentName: isZh ? "測試對手" : "Test Rival",
-        title: isZh ? "找到對手了" : "Opponent found",
+        title: isZh ? "找到對手了" : "Opponent Found",
         body: isZh ? "測試對手正在等待確認。" : "Test Rival is waiting for confirmation.",
         stakeApc: 200,
         potApc: 400,
@@ -612,22 +612,22 @@ export default function GlobalBattleCallOverlay() {
       (isDropFinishedNotice
         ? isZh
           ? "你剛完成了一場戰鬥"
-          : "You just finished a battle"
+          : "You Just Finished a Battle"
         : isDropNoContestNotice
           ? isZh
             ? "Battle 已結束"
-            : "Battle ended"
+            : "Battle Ended"
           : isDailyFinishedNotice
             ? isZh
               ? "24H Battle 已結束"
-              : "24H Battle finished"
+              : "24H Battle Finished"
             : isDailyExpiredNotice
               ? isZh
                 ? "24H Full Song 已過期"
-                : "24H Full Song expired"
+                : "24H Full Song Expired"
               : isZh
                 ? "Drop Battle 已取消"
-                : "Drop Battle cancelled");
+                : "Drop Battle Cancelled");
     const body =
       expiredNotice.body ||
       (isDropFinishedNotice

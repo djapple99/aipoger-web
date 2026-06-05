@@ -412,12 +412,12 @@ function focusedBattleHref(battleId: string, lang: string) {
 }
 
 function focusedPoolCardTitle(status: string | null | undefined, isZh: boolean) {
-  if (status === "accepted_unknown") return isZh ? "此戰鬥已經被挑戰" : "This battle has been accepted";
+  if (status === "accepted_unknown") return isZh ? "此戰鬥已經被挑戰" : "This Battle Has Been Accepted";
   if (["cancelled", "cancelled_no_challenger", "cancelled_founder", "expired"].includes(status ?? "")) {
-    return isZh ? "這張戰帖已結束" : "This card has ended";
+    return isZh ? "這張戰帖已結束" : "This Card Has Ended";
   }
-  if (isClosedBattleStatus(status)) return isZh ? "此戰鬥已經結束" : "This battle has ended";
-  return isZh ? "此戰帖已有人接戰" : "This card has been accepted";
+  if (isClosedBattleStatus(status)) return isZh ? "此戰鬥已經結束" : "This Battle Has Ended";
+  return isZh ? "此戰帖已有人接戰" : "This Card Has Been Accepted";
 }
 
 function DailyBattleList() {
@@ -623,7 +623,7 @@ function DailyBattleList() {
         <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-6 text-center">
           <p className="text-sm font-bold text-zinc-300">{isZh ? "目前還沒有 24H Daily Battle。" : "No 24H Daily Battles yet."}</p>
           <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-zinc-500">
-            {isZh ? "先上傳一首完整作品，等待系統配對或朋友約戰。" : "Upload a full track and wait for auto match or open challenge."}
+            {isZh ? "先上傳一首完整作品，等待系統配對或朋友約戰。" : "Upload a full track and wait for Auto Match or an open challenge."}
           </p>
         </div>
       ) : (
@@ -680,7 +680,7 @@ function DailyBattleList() {
                           ? (isZh ? "24H 整首挑戰開放中，任何人都可上傳整首作品接受。" : "24H full-track challenge is open. Anyone can answer with a full track.")
                           : row.pairing_mode === "invite"
                             ? (isZh ? "已在公開挑戰池，等待對手接受。" : "Listed in public challenge pool, waiting for opponents.")
-                            : (isZh ? "系統自動配對中，稍後會開戰。" : "Auto matchmaking in progress. Battle will open soon.")}
+                            : (isZh ? "系統自動配對中，稍後會開戰。" : "Auto Match in progress. Battle will open soon.")}
                       </p>
                       {row.status === "queued" && row.user_id !== currentUserId ? (
                         <Link
@@ -723,8 +723,8 @@ function DailyBattleList() {
                               ? `/battle/setup?battleMode=daily&dailyPairing=invite&challengeDailyEntryId=${row.id}&genre=${encodeURIComponent(row.genre || "")}&lang=${lang}`
                               : `/battle?lang=${lang}`
                           }
-                          label={isZh ? "約人鬥歌" : "Find challenger"}
-                          copiedLabel={isZh ? "戰帖已複製" : "Challenge copied"}
+                          label={isZh ? "約人鬥歌" : "Find Challenger"}
+                          copiedLabel={isZh ? "戰帖已複製" : "Challenge Copied"}
                           className="px-3 py-1.5 text-xs"
                         />
                       </div>
@@ -761,7 +761,7 @@ function DailyBattleList() {
                               {isZh ? "戰鬥中" : "Battle Live"}
                             </p>
                             <span className="rounded-full border border-cyan-200/35 bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-100">
-                              {isZh ? `${voteCount} 人已投票` : `${voteCount} votes`}
+                              {isZh ? `${voteCount} 人已投票` : `${voteCount} Votes`}
                             </span>
                           </div>
                           <p className="mt-2 text-lg font-black text-white">
@@ -778,7 +778,7 @@ function DailyBattleList() {
                             {isZh ? "結束" : "Ends"} {formatBattleCardTime(row.ends_at, isZh)} · {formatBattleTimeLeft(row.ends_at, isZh)}
                           </p>
                           <span className="mt-4 inline-flex rounded-full border border-cyan-200/30 px-3 py-1 text-xs font-bold text-cyan-100 transition group-hover:bg-cyan-300 group-hover:text-black">
-                            {isZh ? "進場聽歌投票" : "Enter and vote"} →
+                            {isZh ? "進場聽歌投票" : "Enter and Vote"} →
                           </span>
                         </Link>
                         {mineEntryId ? (
@@ -802,8 +802,8 @@ function DailyBattleList() {
                                 : `"${a?.title || "A SIDE"}" vs "${b?.title || "B SIDE"}" is live. Listen and vote.`
                             }
                             url={`/battle/daily/${row.id}?lang=${lang}`}
-                            label={isZh ? "邀請觀戰投票" : "Invite voters"}
-                            copiedLabel={isZh ? "觀戰連結已複製" : "Invite copied"}
+                            label={isZh ? "邀請觀戰投票" : "Invite Voters"}
+                            copiedLabel={isZh ? "觀戰連結已複製" : "Invite Copied"}
                             className="px-3 py-1.5 text-xs"
                           />
                         </div>
@@ -1039,7 +1039,7 @@ function BattlePoolList() {
     <section className="mt-8 rounded-[2rem] border border-orange-300/18 bg-black/45 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.24)] backdrop-blur md:p-6">
       <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.38em] text-orange-300/80">90s Drop Battle Pool</p>
+          <p className="text-xs uppercase tracking-[0.38em] text-orange-300/80">90S DROP BATTLE POOL</p>
           <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "90s 最強抓波Drop Battle 公開挑戰池" : "90s Drop Battle Challenge Pool"}</h2>
         </div>
         <Link
@@ -1122,7 +1122,7 @@ function BattlePoolList() {
             const shareLabel = isGhost || isPublicVoting
               ? isZh
                 ? "邀請觀戰投票"
-                : "Invite voters"
+                : "Invite Voters"
               : isZh
                 ? "分享戰帖 / 約戰"
                 : "Share / Challenge";
@@ -1262,14 +1262,14 @@ function BattlePoolList() {
                         isGhost || isPublicVoting
                           ? isZh
                             ? `《${entry.original_file_name}》正在 AIPOGER AI音樂鬥歌場，進來觀戰投票。`
-                            : `"${entry.original_file_name}" is in the AIPOGER AI Music Battle Hall. Come vote.`
+                            : `"${entry.original_file_name}" is in the AIPOGER AI Music Battle Hall. Jump in and vote.`
                           : isZh
                             ? `${entry.fighter_name} 的《${entry.original_file_name}》正在等人接戰。${hookStartText}進來聊天預測支持誰的歌最熱血最動人，或是你來挑戰？Show me what you got!!!`
-                            : `${entry.fighter_name}'s "${entry.original_file_name}" is waiting for a challenger. ${hookStartText}Back the hottest, most moving Drop in chat, or step in and challenge. Show me what you got!!!`
+                            : `${entry.fighter_name}'s "${entry.original_file_name}" is open for challenge. ${hookStartText}Back the hottest Drop in chat, or step in and challenge. Show me what you got!!!`
                       }
                       url={shareUrl}
                       label={shareLabel}
-                      copiedLabel={isZh ? "戰帖已複製" : "Battle card copied"}
+                      copiedLabel={isZh ? "戰帖已複製" : "Battle Card Copied"}
                       className="px-3 py-1.5 text-xs"
                     />
                   </div>
@@ -1431,7 +1431,7 @@ function LiveBattleList() {
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 pb-10 pt-24 sm:px-6 md:px-10">
         <header className="mb-8 border-b border-white/10 pb-6">
           <div className="min-w-0">
-            <p className="text-xs tracking-[0.45em] text-orange-300/80">Aipoger Battle Pool</p>
+            <p className="text-xs tracking-[0.45em] text-orange-300/80">AIPOGER BATTLE POOL</p>
             <h1 className="mt-3 max-w-full whitespace-nowrap text-[2.55rem] font-black leading-none tracking-normal text-white sm:text-5xl md:text-6xl">
               {t("watch_page_title")}
             </h1>
@@ -1617,8 +1617,8 @@ function LiveBattleList() {
                             ? (lang === "zh" ? "分享戰鬥" : "Share Battle")
                             : isFutureBattle
                               ? (lang === "zh" ? "分享到戰鬥池" : "Share Pool Card")
-                              : (lang === "zh" ? "邀請觀戰投票" : "Invite voters")}
-                        copiedLabel={lang === "zh" ? "觀戰連結已複製" : "Invite copied"}
+                              : (lang === "zh" ? "邀請觀戰投票" : "Invite Voters")}
+                        copiedLabel={lang === "zh" ? "觀戰連結已複製" : "Invite Copied"}
                         className="px-3 py-1.5 text-xs"
                       />
                     </div>

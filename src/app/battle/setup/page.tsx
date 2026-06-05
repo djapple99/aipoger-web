@@ -979,14 +979,14 @@ export default function BattleSetupPage() {
           }
 
           if (dailyPayload?.battleId) {
-            setUploadProgress(lang === 'zh' ? '挑戰成立，進入 24H 戰場…' : 'Challenge created. Entering 24H room...');
+            setUploadProgress(lang === 'zh' ? '挑戰成立，進入 24H 戰場…' : 'Challenge Created. Entering the 24H Battle Room...');
             router.push(`/battle/daily/${dailyPayload.battleId}?lang=${lang}`);
             return;
           }
         }
 
         setDailyBattleCount((count) => count + 1);
-        setUploadProgress(lang === 'zh' ? '完成！進入 24H 等待房…' : 'Done. Entering 24H waiting room...');
+        setUploadProgress(lang === 'zh' ? '完成！進入 24H 等待房…' : 'Done. Entering the 24H Waiting Room...');
         if (dailyPayload?.entryId) {
           router.push(`/battle/daily/waiting-room/${dailyPayload.entryId}?lang=${lang}`);
         } else {
@@ -1200,7 +1200,7 @@ export default function BattleSetupPage() {
               : 'border-white/10 bg-black/35 text-zinc-300 hover:border-cyan-200/35'
           }`}
         >
-          {lang === 'zh' ? '自訂時間' : 'Custom time'}
+          {lang === 'zh' ? '自訂時間' : 'Custom Time'}
         </button>
         {DROP_BATTLE_SCHEDULE_PRESETS.map((minutes) => {
           const selected = battleStartOption === minutes;
@@ -1220,7 +1220,7 @@ export default function BattleSetupPage() {
                   : 'border-white/10 bg-black/35 text-zinc-300 hover:border-orange-200/35'
               }`}
             >
-              {lang === 'zh' ? `${minutes} 分鐘後` : `${minutes} min later`}
+              {lang === 'zh' ? `${minutes} 分鐘後` : `${minutes} Min Later`}
             </button>
           );
         })}
@@ -1252,7 +1252,7 @@ export default function BattleSetupPage() {
           <h2 className="mt-2 text-2xl font-black text-white">{lang === 'zh' ? '選擇上場方式' : 'Choose Battle Mode'}</h2>
         </div>
         <span className="rounded-full border border-orange-200/25 bg-orange-500/10 px-3 py-1.5 text-xs font-black text-orange-100">
-          {lang === 'zh' ? 'Drop Battle 公測主軸' : 'Drop Battle public beta'}
+          {lang === 'zh' ? 'Drop Battle 公測主軸' : 'Drop Battle Public Beta'}
         </span>
       </div>
       <div className="mt-5">
@@ -1274,8 +1274,8 @@ export default function BattleSetupPage() {
       {battleMode === 'daily' ? (
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           {[
-            { value: 'auto' as const, title: lang === 'zh' ? '自動配對' : 'Auto match', desc: lang === 'zh' ? '系統找相近類型與等級的整首作品。' : 'System pairs similar full tracks by style and level.' },
-            { value: 'invite' as const, title: lang === 'zh' ? '開放約戰' : 'Open challenge', desc: lang === 'zh' ? '先上架等待，讓對手或朋友帶整首歌進來挑戰。' : 'List it first so friends or rivals can challenge with a full track.' },
+            { value: 'auto' as const, title: lang === 'zh' ? '自動配對' : 'Auto Match', desc: lang === 'zh' ? '系統找相近類型與等級的整首作品。' : 'System pairs similar full tracks by style and level.' },
+            { value: 'invite' as const, title: lang === 'zh' ? '開放約戰' : 'Open Challenge', desc: lang === 'zh' ? '先上架等待，讓對手或朋友帶整首歌進來挑戰。' : 'List it first so friends or rivals can challenge with a full track.' },
           ].map((option) => (
             <button
               key={option.value}
@@ -1298,14 +1298,14 @@ export default function BattleSetupPage() {
             {[
               {
                 value: 'auto' as const,
-                title: lang === 'zh' ? '自動配對' : 'Auto match',
+                title: lang === 'zh' ? '自動配對' : 'Auto Match',
                 desc: lang === 'zh'
                   ? '搜尋 1 分鐘同類型 Drop；可能配到即時對手，也可能接到已開好的戰帖卡。'
                   : 'Search same-genre Drops for 1 minute. It may match live queues or open battle cards.',
               },
               {
                 value: 'invite' as const,
-                title: lang === 'zh' ? '開 Drop Battle 戰帖卡' : 'Open Drop Battle card',
+                title: lang === 'zh' ? '開 Drop Battle 戰帖卡' : 'Open Drop Battle Card',
                 desc: lang === 'zh'
                   ? '設定開戰時間，分享單獨戰帖卡邀人來接 Drop Battle。'
                   : 'Set a battle time and share a standalone 90s Drop Battle card.',
@@ -1379,16 +1379,16 @@ export default function BattleSetupPage() {
           <div className="grid gap-3 rounded-[1.7rem] border border-white/10 bg-black/58 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.38)] md:grid-cols-4 md:p-5">
             {(battleMode === 'daily'
               ? [
-                  lang === 'zh' ? '上傳整首歌' : 'Upload full track',
-                  lang === 'zh' ? '填資料與封面' : 'Info / cover',
-                  lang === 'zh' ? '24H 配對或約戰' : '24H match / challenge',
-                  lang === 'zh' ? '觀眾慢聽投票' : 'Listeners vote after listening',
+                  lang === 'zh' ? '上傳整首歌' : 'Upload Full Track',
+                  lang === 'zh' ? '填資料與封面' : 'Info / Cover',
+                  lang === 'zh' ? '24H 配對或約戰' : '24H Match / Challenge',
+                  lang === 'zh' ? '觀眾慢聽投票' : 'Listeners Vote After Listening',
                 ]
               : [
-                  lang === 'zh' ? '上傳歌曲' : 'Upload song',
-                  lang === 'zh' ? '裁切 Drop / 歌詞' : 'Cut Drop / lyrics',
-                  lang === 'zh' ? '填資料與頭像' : 'Info / avatar',
-                  lang === 'zh' ? '確認 Battle 配對' : 'Confirm matchmaking',
+                  lang === 'zh' ? '上傳歌曲' : 'Upload Song',
+                  lang === 'zh' ? '裁切 Drop / 歌詞' : 'Cut Drop / Lyrics',
+                  lang === 'zh' ? '填資料與頭像' : 'Info / Avatar',
+                  lang === 'zh' ? '確認 Battle 配對' : 'Confirm Matchmaking',
                 ]
             ).map((step, index) => (
               <div key={step} className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-4">
@@ -1407,7 +1407,7 @@ export default function BattleSetupPage() {
                 >
                   <span className="block text-[11px] font-black uppercase tracking-[0.28em] text-cyan-100/70">FULL TRACK</span>
                   <span className="mt-3 block text-2xl font-black text-white">
-                    {dailyAudioFile?.name ?? (lang === 'zh' ? '選擇完整歌曲' : 'Choose complete song')}
+                    {dailyAudioFile?.name ?? (lang === 'zh' ? '選擇完整歌曲' : 'Choose Complete Song')}
                   </span>
                   <span className="mt-2 block text-sm leading-6 text-zinc-400">
                     {lang === 'zh'
@@ -1426,7 +1426,7 @@ export default function BattleSetupPage() {
                     ? uploadProgress || (lang === 'zh' ? '上傳中…' : 'Uploading…')
                     : lang === 'zh'
                       ? '上傳整首歌 →'
-                      : 'Upload full track →'}
+                      : 'Upload Full Track →'}
                 </button>
               </div>
               {formError ? <p className="mt-3 text-sm font-black text-orange-300">{formError}</p> : null}
@@ -1437,7 +1437,7 @@ export default function BattleSetupPage() {
               onClick={() => router.push(`/battle/hook-cut?${startParams.toString()}`)}
               className="w-full rounded-[1.6rem] bg-gradient-to-r from-orange-500 via-orange-400 to-cyan-300 py-6 text-xl font-black text-black shadow-[0_0_44px_rgba(255,106,0,0.22)] transition-all hover:brightness-110"
             >
-              {lang === 'zh' ? '上傳歌曲，開始裁切 →' : 'Upload song and cut Drop →'}
+              {lang === 'zh' ? '上傳歌曲，開始裁切 →' : 'Upload Song and Cut Drop →'}
             </button>
           )}
         </div>
@@ -1495,7 +1495,7 @@ export default function BattleSetupPage() {
             <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
               <p className="text-xs text-zinc-500">{battleMode === 'daily' ? (lang === 'zh' ? '播放方式' : 'Playback') : 'Drop'}</p>
               <p className="mt-1 font-black text-orange-100">
-                {battleMode === 'daily' ? (lang === 'zh' ? '整首作品' : 'Full track') : hookDurationLabel}
+                {battleMode === 'daily' ? (lang === 'zh' ? '整首作品' : 'Full Track') : hookDurationLabel}
               </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
@@ -1504,7 +1504,7 @@ export default function BattleSetupPage() {
                 {battleMode === 'daily'
                   ? lang === 'zh'
                     ? '觀眾可慢聽投票'
-                    : 'Listen before voting'
+                    : 'Listen Before Voting'
                   : draft.lyrics.trim()
                     ? (lang === 'zh' ? '已加入' : 'Added')
                     : (lang === 'zh' ? '未填' : 'None')}
@@ -1638,7 +1638,7 @@ export default function BattleSetupPage() {
             {challengeEntryId ? (
               <div className="rounded-2xl border border-orange-300/30 bg-orange-500/10 px-6 py-4">
                 <p className="text-lg font-black text-orange-50">
-                  {GENRES.find((g) => g.value === genre)?.labelKey ? t(GENRES.find((g) => g.value === genre)!.labelKey) : genre || (lang === 'zh' ? '沿用挑戰卡曲風' : 'Challenge card genre')}
+                  {GENRES.find((g) => g.value === genre)?.labelKey ? t(GENRES.find((g) => g.value === genre)!.labelKey) : genre || (lang === 'zh' ? '沿用挑戰卡曲風' : 'Challenge Card Genre')}
                 </p>
                 <p className="mt-2 text-xs font-bold leading-5 text-zinc-400">
                   {lang === 'zh'

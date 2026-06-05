@@ -373,7 +373,7 @@ export default function DailyBattleRoomPage() {
                       {battle.status === "cancelled"
                         ? isZh
                           ? "這場已取消"
-                          : "Battle cancelled"
+                          : "Battle Cancelled"
                         : winnerSide
                           ? isZh
                             ? `${winnerSide} Side 勝出`
@@ -413,7 +413,7 @@ export default function DailyBattleRoomPage() {
                     <input
                       value={comment}
                       onChange={(event) => setComment(event.target.value)}
-                      placeholder={isZh ? "留下觀眾評價後投票，例如：副歌記憶點更強" : "Leave a listener comment before voting"}
+                      placeholder={isZh ? "留下觀眾評價後投票，例如：副歌記憶點更強" : "Leave a Listener Comment Before Voting"}
                       maxLength={240}
                       className="h-14 rounded-2xl border border-white/10 bg-black/58 px-5 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
                     />

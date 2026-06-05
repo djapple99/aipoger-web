@@ -2400,7 +2400,7 @@ function BattleArenaContent() {
       : !activeForFeedback
         ? lang === "zh"
           ? "觀眾進場後就可以按反應鈕"
-          : "Audience feedback is available in the arena"
+          : "Listener Signal Is Live in the Arena"
         : "";
     const toneClass =
       tone === "orange"
@@ -2751,7 +2751,7 @@ function BattleArenaContent() {
           : "Cancelling..."
         : lang === "zh"
           ? "取消挑戰"
-          : "Cancel challenge";
+          : "Cancel Challenge";
   const isMockBattle = battleId.startsWith("mock-");
   const canControlDeck = (deck: DeckKey) => isMockBattle || currentUserSide === deck;
   const currentFighterName = currentDeck === "A" ? battle.fighter_a_name : currentDeck === "B" ? battle.fighter_b_name : "";
@@ -2781,7 +2781,7 @@ function BattleArenaContent() {
       ? "投票截止"
       : lang === "zh"
         ? "投票尚未開放"
-        : "Voting not open";
+        : "Voting Not Open";
   const ritualStatusText =
     isArenaWarmup
       ? lang === "zh"
@@ -2789,7 +2789,7 @@ function BattleArenaContent() {
           ? `${preStartSecondsLeft && preStartSecondsLeft > 0 ? `開戰倒數 ${preStartClock}` : "鬥場暖場中"} · 可離開再回來`
           : `開戰倒數 ${preStartClock} · 先聽 5 秒預播`
         : isQueueArena
-          ? `${preStartSecondsLeft && preStartSecondsLeft > 0 ? `Starts in ${preStartClock}` : "Arena warmup"} · re-enter anytime`
+          ? `${preStartSecondsLeft && preStartSecondsLeft > 0 ? `Starts in ${preStartClock}` : "Arena Warmup"} · Re-Enter Anytime`
           : `Starts in ${preStartClock} · 5s previews open`
       : battlePhase === "rps"
       ? lang === "zh"
@@ -2797,8 +2797,8 @@ function BattleArenaContent() {
           ? "等待另一位參賽者按下猜拳"
           : "請兩位參賽者同時按下猜拳"
         : rpsPressed.A || rpsPressed.B
-          ? "Waiting for the other fighter"
-          : "Both fighters press to throw"
+          ? "Waiting for the Other Fighter"
+          : "Both Fighters Press to Throw"
       : battlePhase === "ready"
         ? lang === "zh"
           ? `${currentFighterName || firstFighterName} 先攻 · 請按 PLAY`
@@ -2829,7 +2829,7 @@ function BattleArenaContent() {
       return (
         <span className="inline-flex items-center justify-center gap-1.5">
           <span className="h-1.5 w-1.5 rounded-full bg-orange-300 shadow-[0_0_10px_rgba(251,146,60,0.72)]" />
-          {lang === "zh" ? "等待聽眾進場 · Bar 推播中" : "Waiting for listeners · Bar push active"}
+          {lang === "zh" ? "等待聽眾進場 · Bar 推播中" : "Waiting for Listeners · Bar Push Active"}
         </span>
       );
     }
@@ -2941,7 +2941,7 @@ function BattleArenaContent() {
         ? `${battle.fighter_a_name}'s AIPOGER Drop Battle card is open. ${battleStartShareLine} Back the hottest, most moving Drop in chat, or step in and challenge. Show me what you got!!!`
         : isPreBattle
         ? `${battle.fighter_a_name} vs ${battle.fighter_b_name} is counting down on AIPOGER. ${battleStartShareLine} Hear the 5s previews before it starts.`
-        : `${battle.fighter_a_name} vs ${battle.fighter_b_name} is live on AIPOGER. Listen, vote, and make some noise.`;
+        : `${battle.fighter_a_name} vs ${battle.fighter_b_name} is LIVE on AIPOGER. Listen, vote, and make some noise.`;
 
   return (
     <div
@@ -3057,7 +3057,7 @@ function BattleArenaContent() {
               {winnerName}
             </p>
             <p className="mt-3 rounded-full border border-white/14 bg-black/60 px-5 py-2 text-[clamp(0.92rem,2.5vw,1.12rem)] font-black text-white/86">
-              {lang === "zh" ? "成果卡產生中" : "Creating result card"}
+              {lang === "zh" ? "成果卡產生中" : "Creating Result Card"}
             </p>
           </div>
         </div>
@@ -3067,7 +3067,7 @@ function BattleArenaContent() {
           <div className="w-[min(92vw,560px)] rounded-[1.8rem] border border-white/12 bg-black/72 px-6 py-7 shadow-[0_0_80px_rgba(0,0,0,0.5)]">
             <p className="text-xs font-black uppercase tracking-[0.28em] text-zinc-400">NO CONTEST</p>
             <h2 className="mt-3 text-3xl font-black text-white">
-              {lang === "zh" ? "本場沒有觀眾投票" : "No audience votes"}
+              {lang === "zh" ? "本場沒有觀眾投票" : "No Audience Votes"}
             </h2>
             <p className="mt-3 text-sm font-bold leading-6 text-zinc-300">
               {lang === "zh"
@@ -3191,7 +3191,7 @@ function BattleArenaContent() {
                   ? t("battle_deck_vote_line", { n: votes.fighter_a })
                   : lang === "zh"
                     ? "投票請按愛心"
-                    : "Vote with the heart"}
+                    : "Vote With the Heart"}
               </p>
             </div>
           </div>
@@ -3310,7 +3310,7 @@ function BattleArenaContent() {
                       text={battleShareText}
                       url={battleShareUrl}
                       label={lang === "zh" ? "分享約人進場" : "Share Arena"}
-                      copiedLabel={lang === "zh" ? "鬥場連結已複製" : "Arena copied"}
+                      copiedLabel={lang === "zh" ? "鬥場連結已複製" : "Arena Copied"}
                       className="w-full justify-center px-4 py-2.5 text-xs"
                     />
                     {isQueueChallengeOpen && !isBattleFounder ? (
@@ -3477,7 +3477,7 @@ function BattleArenaContent() {
                   ? t("battle_deck_vote_line", { n: votes.fighter_b })
                   : lang === "zh"
                     ? "投票請按愛心"
-                    : "Vote with the heart"}
+                    : "Vote With the Heart"}
               </p>
             </div>
           </div>

@@ -66,7 +66,7 @@ function defaultHookCardTimeText() {
 
 function promptHookCardStartIso(lang: string) {
   const input = window.prompt(
-    lang === "zh" ? "設定 Drop Battle 戰帖開戰時間（YYYY-MM-DD HH:mm）" : "Set Drop Battle time (YYYY-MM-DD HH:mm)",
+    lang === "zh" ? "設定 Drop Battle 戰帖開戰時間（YYYY-MM-DD HH:mm）" : "Set Drop Battle Time (YYYY-MM-DD HH:mm)",
     defaultHookCardTimeText(),
   );
   if (input === null) return null;
@@ -705,7 +705,7 @@ function MatchmakingContent(props: MatchmakingContentProps) {
                   {expiresAt
                     ? lang === "zh"
                       ? "已公開，可分享邀人接戰"
-                      : "Published and ready to share"
+                      : "Published and Ready to Share"
                     : lang === "zh"
                       ? "開卡邀人接戰，或去傷心酒吧找對手"
                       : "Publish a challenge card, or find an opponent at Bar Heartbreak"}
@@ -777,7 +777,7 @@ function MatchmakingContent(props: MatchmakingContentProps) {
             <div className="flex items-center gap-4 rounded-2xl border border-green-500/30 bg-green-500/10 px-6 py-4">
               <div className="text-2xl">⏱</div>
               <div>
-                <p className="text-xs text-zinc-500">{lang === "zh" ? "進入鬥歌場倒數" : "Entering arena countdown"}</p>
+                <p className="text-xs text-zinc-500">{lang === "zh" ? "進入鬥歌場倒數" : "Entering Arena Countdown"}</p>
                 <p className="text-2xl font-black text-green-400">{countdown}s</p>
               </div>
             </div>

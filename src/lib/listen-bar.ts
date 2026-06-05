@@ -93,7 +93,7 @@ function displayAlbumOrMood(value: string | null | undefined) {
     ?.replace(/^官方公播\s*\/\s*/i, "")
     .replace(/^AIPOGER\s*官方公播\s*\/\s*/i, "")
     .trim();
-  if (!cleanValue || cleanValue === "創作者投稿" || cleanValue === "Creator submission") return cleanValue || "";
+  if (!cleanValue || cleanValue === "創作者投稿" || cleanValue === "Creator submission" || cleanValue === "Creator Submission") return cleanValue || "";
   return cleanValue ? `專輯名稱 / ${cleanValue}` : "";
 }
 

@@ -358,8 +358,8 @@ function BattleResultContent() {
   const [databaseWinnerSide, setDatabaseWinnerSide] = useState<BattleWinnerSide | null>(null);
   const [databaseWinnerChecked, setDatabaseWinnerChecked] = useState(false);
   const battleIdParam = cleanParam(searchParams.get("battleId")) || null;
-  const missingText = lang === "zh" ? "未封存" : "Not archived";
-  const missingSongText = lang === "zh" ? "尚未封存歌名" : "Song not archived";
+  const missingText = lang === "zh" ? "未封存" : "Not Archived";
+  const missingSongText = lang === "zh" ? "尚未封存歌名" : "Song Not Archived";
   const winnerNameRaw = cleanParam(searchParams.get("winner")) || remoteArchive?.winnerName || "";
   const winnerSongRaw = cleanSongParam(searchParams.get("song")) || remoteArchive?.winnerSong || "";
   const opponentNameRaw = cleanParam(searchParams.get("opponent")) || remoteArchive?.opponentName || "";
@@ -370,9 +370,9 @@ function BattleResultContent() {
   const opponentSong = opponentSongRaw || missingSongText;
   const rank = cleanParam(searchParams.get("rank")) || remoteArchive?.rank || "";
   const displayRank = winnerName === "愛波哥" ? "LV.0 掃地僧" : rank;
-  const displayRankText = displayRank || (lang === "zh" ? "尚無段位" : "Rank pending");
+  const displayRankText = displayRank || (lang === "zh" ? "尚無段位" : "Rank Pending");
   const tool = cleanParam(searchParams.get("tool")) || remoteArchive?.tool || "";
-  const displayTool = tool || (lang === "zh" ? "工具未填" : "Tool missing");
+  const displayTool = tool || (lang === "zh" ? "工具未填" : "Tool Missing");
   const coverUrlRaw = cleanParam(searchParams.get("coverUrl")) || remoteArchive?.coverUrl || "";
   const avatarUrlRaw = cleanParam(searchParams.get("avatarUrl")) || remoteArchive?.avatarUrl || "";
   const opponentCoverUrlRaw = cleanParam(searchParams.get("opponentCoverUrl")) || remoteArchive?.opponentCoverUrl || "";
@@ -383,7 +383,7 @@ function BattleResultContent() {
   const opponentAvatarUrl = opponentAvatarUrlRaw || fallbackAvatar;
   const battleCode = cleanParam(searchParams.get("battle")) || remoteArchive?.battleCode || "";
   const battleId = battleIdParam || remoteArchive?.battleId || null;
-  const displayBattleCode = battleCode || (lang === "zh" ? "未封存編號" : "No archived ID");
+  const displayBattleCode = battleCode || (lang === "zh" ? "未封存編號" : "No Archived ID");
   const explicitWinnerSide = winnerSideParam(searchParams.get("winnerSide"));
   const remoteWinnerSide = remoteArchive?.winnerSide ?? null;
   const winnerSide = databaseWinnerSide ?? explicitWinnerSide ?? remoteWinnerSide;
@@ -411,8 +411,8 @@ function BattleResultContent() {
   const winnerFeedback = finalVoteRight > finalVoteLeft ? feedbackB : feedbackA;
   const audienceReview = stripCannedBattleReview(searchParams.get("audienceReview") || remoteArchive?.audienceReview);
   const aiReview = stripCannedBattleReview(searchParams.get("aiReview") || remoteArchive?.aiReview);
-  const displayAudienceReview = audienceReview || (lang === "zh" ? "尚無觀眾評價" : "No audience review yet");
-  const displayAiReview = aiReview || (lang === "zh" ? "尚無 AI 評價" : "No AI review yet");
+  const displayAudienceReview = audienceReview || (lang === "zh" ? "尚無觀眾評價" : "No Listener Signal Yet");
+  const displayAiReview = aiReview || (lang === "zh" ? "尚無 AI 評價" : "No AI Review Yet");
   const hasCompleteResultData = Boolean(winnerNameRaw && winnerSongRaw && opponentNameRaw && opponentSongRaw && battleCode);
 
   const localizedSkills = useMemo<HookSkill[]>(() => skillsFromFeedback(winnerFeedback, lang), [lang, winnerFeedback]);
@@ -670,7 +670,7 @@ function BattleResultContent() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={aipogerLogo} alt="AIPOGER" className="h-full w-full object-cover" />
                   </div>
-                  <p className="text-orange-200/70">{lang === "zh" ? "決鬥編號" : "Battle ID"} {displayBattleCode}</p>
+                  <p className="text-orange-200/70">{lang === "zh" ? "決鬥編號" : "BATTLE ID"} {displayBattleCode}</p>
                 </div>
               </header>
 
@@ -727,7 +727,7 @@ function BattleResultContent() {
                   </div>
                   <div className="grid grid-cols-[3.5rem_1fr] items-center gap-2 rounded-xl border border-cyan-200/18 bg-cyan-300/[0.08] px-2.5 py-1.5">
                     <p className="rounded-full border border-cyan-200/22 bg-cyan-300/10 px-1.5 py-1 text-center text-[0.48rem] font-black uppercase tracking-[0.12em] text-cyan-100/85">
-                      {lang === "zh" ? "觀眾" : "Fans"}
+                      {lang === "zh" ? "觀眾" : "Crowd"}
                     </p>
                     <p className="line-clamp-1 min-w-0 text-[0.64rem] font-black leading-4 text-white">“{displayAudienceReview}”</p>
                   </div>
@@ -740,7 +740,7 @@ function BattleResultContent() {
 
               <footer className="mt-auto flex items-end justify-between pt-2 text-[0.62rem] font-black text-zinc-500">
                 <span>aipoger.com</span>
-                <span>WHERE AI BEATS BATTLE</span>
+                <span>WHERE AI MUSIC EARNS THE CROWD</span>
               </footer>
             </div>
           </div>
@@ -784,7 +784,7 @@ function BattleResultContent() {
                   DROP POWER RADAR
                 </p>
                 <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">
-                  {lang === "zh" ? "榮譽卡同款五角評分圖，直接看這首 Drop 的爆點分布。" : "Honor-card radar showing this Drop's strongest points."}
+                  {lang === "zh" ? "榮譽卡同款五角評分圖，直接看這首 Drop 的爆點分布。" : "Honor Card radar showing this Drop's strongest points."}
                 </p>
               </div>
               <div className="hidden items-center gap-2 rounded-full border border-orange-200/25 bg-black/42 px-2.5 py-1.5 shadow-[0_0_18px_rgba(255,106,0,0.16)] sm:inline-flex">
@@ -811,7 +811,7 @@ function BattleResultContent() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-200/70">
-                    {lang === "zh" ? "榮譽上榜鬥士" : "Honor Board Fighter"}
+                    {lang === "zh" ? "榮譽上榜鬥士" : "HONOR BOARD FIGHTER"}
                   </p>
                   <p className="truncate text-xl font-black leading-tight text-white">{winnerName}</p>
                   <p className="truncate text-sm font-bold leading-tight text-orange-100">{winnerSong}</p>
@@ -837,24 +837,24 @@ function BattleResultContent() {
                 </div>
                 <div className="rounded-2xl border border-yellow-200/25 bg-yellow-300/10 px-3 py-2 text-left sm:text-right">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-yellow-100/70">
-                    {lang === "zh" ? "最終投票" : "Final Votes"}
+                    {lang === "zh" ? "最終投票" : "FINAL VOTES"}
                   </p>
                   <p className="text-2xl font-black leading-none text-yellow-100">{displayVoteTotal.toLocaleString()}</p>
                   <p className="mt-1 text-[10px] font-bold text-zinc-400">
-                    {lang === "zh" ? "聽眾已投票" : "listeners voted"}
+                    {lang === "zh" ? "聽眾已投票" : "LISTENERS VOTED"}
                   </p>
                 </div>
               </div>
               <div className="grid gap-2 sm:col-span-2 sm:grid-cols-2">
                 <div className="rounded-2xl border border-orange-200/18 bg-orange-400/[0.08] px-3 py-2">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-100/75">
-                    {lang === "zh" ? "AI 評價" : "AI Review"}
+                    {lang === "zh" ? "AI 評價" : "AI REVIEW"}
                   </p>
                   <p className="mt-1 line-clamp-2 text-sm font-black leading-6 text-white">“{displayAiReview}”</p>
                 </div>
                 <div className="rounded-2xl border border-cyan-200/18 bg-cyan-300/[0.08] px-3 py-2">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-100/75">
-                    {lang === "zh" ? "觀眾評價" : "Audience Review"}
+                    {lang === "zh" ? "觀眾評價" : "LISTENER SIGNAL"}
                   </p>
                   <p className="mt-1 line-clamp-2 text-sm font-black leading-6 text-white">“{displayAudienceReview}”</p>
                 </div>
@@ -865,7 +865,7 @@ function BattleResultContent() {
 
           <section className="mt-8 rounded-[1.35rem] border border-white/10 bg-black/45 p-4 shadow-[0_18px_70px_rgba(0,0,0,0.28)]">
             <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-100/80">
-              {lang === "zh" ? "賽後揭曉" : "Post-Battle Reveal"}
+              {lang === "zh" ? "賽後揭曉" : "POST-BATTLE REVEAL"}
             </p>
             <h2 className="mt-2 text-2xl font-black text-white">
               {lang === "zh" ? "應援熱度 vs 最終音樂判斷" : "Support Hype vs Final Music Vote"}
@@ -873,7 +873,7 @@ function BattleResultContent() {
             <p className="mt-2 text-sm leading-6 text-zinc-400">
               {lang === "zh"
                 ? "戰前支持只用來製造張力；真正決定勝負的是開戰後聽完音樂的最終投票。"
-                : "Pre-battle support builds tension; the final vote after listening decides the battle."}
+                : "Pre-battle support builds tension. The final vote after listening decides the battle."}
             </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               {[

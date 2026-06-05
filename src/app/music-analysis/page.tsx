@@ -133,7 +133,7 @@ export default function MusicAnalysisPage() {
                 href={loginHref}
                 className="inline-flex min-h-14 items-center justify-center rounded-2xl bg-orange-500 px-8 text-base font-black text-black shadow-[0_0_34px_rgba(255,106,0,0.28)] transition hover:bg-orange-300"
               >
-                {isZh ? "登入後分析歌曲" : "Sign in and analyze"}
+                {isZh ? "登入後分析歌曲" : "Sign In and Analyze"}
               </Link>
             ) : analysisUrl ? (
               <div className="mx-auto max-w-xl rounded-2xl border border-cyan-200/22 bg-cyan-300/[0.07] px-5 py-5">

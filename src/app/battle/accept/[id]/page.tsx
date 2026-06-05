@@ -127,7 +127,7 @@ function BattleAcceptInner() {
         console.error("[battle accept] queue read failed", error);
         setState({
           kind: "error",
-          title: lang === "zh" ? "接戰入口暫時打不開" : "Accept link is unavailable",
+          title: lang === "zh" ? "接戰入口暫時打不開" : "Accept Link Is Unavailable",
           body: lang === "zh" ? "請回鬥歌場重新選一張戰帖。" : "Return to the Battle Pool and choose another card.",
         });
         return;
@@ -136,7 +136,7 @@ function BattleAcceptInner() {
       if (!data?.id) {
         setState({
           kind: "ended",
-          title: lang === "zh" ? "戰帖不存在或已失效" : "This card is unavailable",
+          title: lang === "zh" ? "戰帖不存在或已失效" : "This Card Is Unavailable",
           body: lang === "zh" ? "這張 Drop Battle 戰帖可能已取消、過期或被清理。" : "This Drop Battle card may have been cancelled, expired, or cleaned up.",
         });
         return;
@@ -156,7 +156,7 @@ function BattleAcceptInner() {
       if (CLOSED_QUEUE_STATUSES.has(data.status ?? "") || !isDropChallengeAcceptable(data)) {
         setState({
           kind: "ended",
-          title: lang === "zh" ? "戰帖已結束" : "This card has ended",
+          title: lang === "zh" ? "戰帖已結束" : "This Card Has Ended",
           body: lang === "zh" ? "這張 Drop Battle 戰帖已取消、過期或不再開放接戰。" : "This Drop Battle card is cancelled, expired, or no longer open.",
           watchId: data.match_group_id,
         });
@@ -173,15 +173,15 @@ function BattleAcceptInner() {
     state.kind === "loading"
       ? lang === "zh"
         ? "確認戰帖狀態中"
-        : "Checking battle card"
+        : "Checking Battle Card"
       : state.kind === "accepted"
         ? lang === "zh"
           ? "已經被人挑戰了"
-          : "Already accepted"
+          : "Already Accepted"
         : state.kind === "own-card"
           ? lang === "zh"
             ? "這是你的戰帖"
-            : "This is your card"
+            : "This Is Your Card"
           : state.title;
   const body =
     state.kind === "loading"
