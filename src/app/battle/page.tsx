@@ -1264,7 +1264,7 @@ function BattlePoolList() {
                       text={
                         isGhost || isPublicVoting
                           ? isZh
-                            ? `《${entry.original_file_name}》正在 AIPOGER AI 音樂鬥歌場，進來觀戰投票。`
+                            ? `《${entry.original_file_name}》正在 AIPOGER AI音樂鬥歌場，進來觀戰投票。`
                             : `"${entry.original_file_name}" is in the AIPOGER AI Music Battle Hall. Come vote.`
                           : isZh
                             ? `${entry.fighter_name} 的《${entry.original_file_name}》正在等人接戰。${hookStartText}進來聊天預測支持誰的歌最熱血最動人，或是你來挑戰？Show me what you got!!!`
@@ -1432,13 +1432,13 @@ function LiveBattleList() {
       <div className="pointer-events-none absolute inset-0 opacity-[0.12] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:48px_48px]" />
 
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 pb-10 pt-24 sm:px-6 md:px-10">
-        <header className="mb-8 flex flex-col gap-5 border-b border-white/10 pb-6 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.45em] text-orange-300/80">AIPOGER LIVE LOBBY</p>
-            <h1 className="mt-3 text-4xl font-black tracking-tight text-white md:text-6xl">
+        <header className="mb-8 flex flex-col gap-5 border-b border-white/10 pb-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs tracking-[0.45em] text-orange-300/80">Aipoger Battle Pool</p>
+            <h1 className="mt-3 max-w-full whitespace-nowrap text-[2.55rem] font-black leading-none tracking-normal text-white sm:text-5xl md:text-6xl">
               {t("watch_page_title")}
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400 md:text-base">
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-400 sm:whitespace-nowrap md:text-base">
               {t("watch_live_hint")}
             </p>
           </div>

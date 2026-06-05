@@ -213,18 +213,18 @@ function battleTickerMessage(row: BattleTickerRow, isZh: boolean) {
 
   if (row.status === "waiting_challenge") {
     return isZh
-      ? `AI 音樂鬥歌場快訊：${fighterName} 的《${songName}》正在等人接戰${timeText}，快來挑戰或觀戰。`
+      ? `AI音樂鬥歌場快訊：${fighterName} 的《${songName}》正在等人接戰${timeText}，快來挑戰或觀戰。`
       : `AI Music Battle Hall: ${fighterName}'s "${songName}" is waiting for a challenger${timeText}. Step in or watch.`;
   }
 
   if (row.status === "public_voting") {
     return isZh
-      ? `AI 音樂鬥歌場快訊：《${songName}》正在公開投票${timeText}，進場支持你喜歡的 Drop。`
+      ? `AI音樂鬥歌場快訊：《${songName}》正在公開投票${timeText}，進場支持你喜歡的 Drop。`
       : `AI Music Battle Hall: "${songName}" is in public voting${timeText}. Enter and back your favorite Drop.`;
   }
 
   return isZh
-    ? `AI 音樂鬥歌場快訊：《${songName}》已進入 Ghost Battle${timeText}，進場聽歌投票。`
+    ? `AI音樂鬥歌場快訊：《${songName}》已進入 Ghost Battle${timeText}，進場聽歌投票。`
     : `AI Music Battle Hall: "${songName}" is in Ghost Battle${timeText}. Enter, listen, and vote.`;
 }
 
@@ -1593,16 +1593,15 @@ export default function ListenBarPage() {
   }, [elapsed, lyricLines]);
   const nowAlbumLabel = albumDisplayLabel(nowTrack.mood);
   const navLinks = [
-    { href: "/battle", label: isZh ? "AI 音樂鬥歌場" : "AI Music Battle Hall" },
+    { href: "/battle", label: isZh ? "AI音樂鬥歌場" : "AI Music Battle Hall" },
     { href: "/rank", label: isZh ? "榮譽榜" : "Rank" },
-    { href: "/battle/setup", label: isZh ? "挑戰最強抓波Drop Battle" : "Upload Drop Battle" },
     { href: "/ai-music-bible", label: isZh ? "練功聖經" : "AI Bible" },
     { href: "/about", label: isZh ? "關於愛播歌" : "About" },
   ];
   const battleTickerText = battleTickerMessages.length > 0
     ? battleTickerMessages.join("   /   ")
     : isZh
-      ? "歡迎去 AI 音樂鬥歌場鬥歌，開戰帖、接挑戰，讓你的 AI 音樂被聽見。"
+      ? "歡迎去 AI音樂鬥歌場鬥歌，開戰帖、接挑戰，讓你的 AI 音樂被聽見。"
       : "Welcome to the AI Music Battle Hall. Open a card, accept a challenge, and let your AI music be heard.";
 
   useEffect(() => {
@@ -1668,9 +1667,9 @@ export default function ListenBarPage() {
             />
             <Link
               href="/battle"
-              className="rounded-full border border-cyan-300/35 bg-cyan-300/12 px-4 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-100 hover:bg-cyan-300/18"
+              className="whitespace-nowrap rounded-full border border-cyan-300/35 bg-cyan-300/12 px-4 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-100 hover:bg-cyan-300/18"
             >
-              {isZh ? "AI 音樂鬥歌場" : "Battle Hall"}
+              {isZh ? "AI音樂鬥歌場" : "Battle Hall"}
             </Link>
             <LangToggle variant="inline" />
           </div>
@@ -1705,7 +1704,7 @@ export default function ListenBarPage() {
                 <Link
                   key={item.href}
                   href={`${item.href}${item.href === "/" ? "" : lang === "en" ? "?lang=en" : "?lang=zh"}`}
-                  className="rounded-full border border-white/10 bg-white/[0.045] px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-orange-300/70 hover:bg-orange-500/10 hover:text-white"
+                  className="whitespace-nowrap rounded-full border border-white/10 bg-white/[0.045] px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-orange-300/70 hover:bg-orange-500/10 hover:text-white"
                 >
                   {item.label}
                 </Link>
