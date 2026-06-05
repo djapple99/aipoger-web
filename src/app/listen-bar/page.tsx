@@ -24,6 +24,7 @@ import {
   LISTEN_BAR_PUBLIC_REACTION_THRESHOLD,
   LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
   LISTEN_BAR_TOTAL_ROTATION_LIMIT,
+  EMPTY_LISTEN_BAR_TRACK,
   fallbackOfficialPlaylist,
   listenBarRowToTrack,
   type ListenBarTrack,
@@ -472,6 +473,7 @@ export default function ListenBarPage() {
   const startTrackAtZeroRef = useRef(false);
   const liveRadioSyncEnabledRef = useRef(true);
   const rotationTracksRef = useRef<ListenBarTrack[]>([]);
+  const nowTrackRef = useRef<ListenBarTrack>(EMPTY_LISTEN_BAR_TRACK);
   const radioShouldResumeRef = useRef(true);
   const volumeRef = useRef(0.72);
   const [userName, setUserName] = useState("吧友");
@@ -491,12 +493,12 @@ export default function ListenBarPage() {
   const [publicUploadMessage, setPublicUploadMessage] = useState("");
   const [publicUploadError, setPublicUploadError] = useState("");
   const [myBroadcastStats, setMyBroadcastStats] = useState<MyBroadcastStat[]>([]);
-  const [nowTrack, setNowTrack] = useState<ListenBarTrack>(fallbackOfficialPlaylist[0]);
+  const [nowTrack, setNowTrack] = useState<ListenBarTrack>(EMPTY_LISTEN_BAR_TRACK);
   const [, setHistory] = useState<ListenBarTrack[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackBlocked, setPlaybackBlocked] = useState(false);
   const [elapsed, setElapsed] = useState(0);
-  const [trackDuration, setTrackDuration] = useState(fallbackOfficialPlaylist[0].duration);
+  const [trackDuration, setTrackDuration] = useState(EMPTY_LISTEN_BAR_TRACK.duration);
   const [volume, setVolume] = useState(0.72);
   const [reactionCounts, setReactionCounts] = useState<Record<string, ReactionCounts>>({});
   const [myReactions, setMyReactions] = useState<Record<string, ReactionKey | null>>({});
@@ -664,6 +666,10 @@ export default function ListenBarPage() {
   }, [rotationTracks]);
 
   useEffect(() => {
+    nowTrackRef.current = nowTrack;
+  }, [nowTrack]);
+
+  useEffect(() => {
     const loadUser = async () => {
       const { data } = await supabase.auth.getSession();
       const user = data.session?.user ?? null;
@@ -749,7 +755,7 @@ export default function ListenBarPage() {
         const payload = await response.json().catch(() => null) as { error?: string } | null;
         console.warn("[listen-bar] playlist", payload?.error || "load failed");
         setOfficialTracks(fallbackOfficialPlaylist);
-        setNowTrack((current) => (current.id === fallbackOfficialPlaylist[0].id ? fallbackOfficialPlaylist[0] : current));
+        setNowTrack((current) => (current.audioUrl ? current : EMPTY_LISTEN_BAR_TRACK));
         setPlaylistStatus("fallback");
         return;
       }
@@ -781,7 +787,7 @@ export default function ListenBarPage() {
 
       if (tracks.length === 0) {
         setOfficialTracks(fallbackOfficialPlaylist);
-        setNowTrack((current) => (current.id === fallbackOfficialPlaylist[0].id ? fallbackOfficialPlaylist[0] : current));
+        setNowTrack(EMPTY_LISTEN_BAR_TRACK);
         setPlaylistStatus("fallback");
         return;
       }
@@ -915,7 +921,15 @@ export default function ListenBarPage() {
         const track = (payload.payload as { track?: ListenBarTrack }).track;
         if (!track?.id || track.source !== "community" || !track.audioUrl) return;
         servedCommunityIdsRef.current.delete(track.id);
-        markPriorityAirplayTrack(track.id);
+        if (nowTrackRef.current.audioUrl) {
+          markPriorityAirplayTrack(track.id);
+        } else {
+          startTrackAtZeroRef.current = true;
+          liveRadioSyncEnabledRef.current = false;
+          liveSeekRef.current = { trackId: track.id, offset: 0 };
+          setElapsed(0);
+          setNowTrack(track);
+        }
         setOfficialTracks((tracks) => {
           if (tracks.some((item) => item.id === track.id)) return tracks;
           return [...tracks, track];
@@ -983,6 +997,18 @@ export default function ListenBarPage() {
     setElapsed(liveOffset);
     setTrackDuration(nowTrack.duration);
   }, [nowTrack]);
+
+  useEffect(() => {
+    if (nowTrack.audioUrl) return;
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+    }
+    setPlaybackBlocked(false);
+    setIsPlaying(false);
+  }, [nowTrack.audioUrl]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -1152,6 +1178,7 @@ export default function ListenBarPage() {
   const currentPositiveTotal = Object.values(currentReactions).reduce((sum, count) => sum + count, 0);
   const honorRollQualified = currentPositiveTotal >= LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD;
   const statusText = useMemo(() => {
+    if (!nowTrack.audioUrl) return isZh ? "等待投稿" : "Waiting for uploads";
     if (nowTrack.source === "official") return isZh ? "AIPOGER 官方公播" : "AIPOGER official";
     if (nowTrack.barPhase === "public") {
       if (currentPositiveTotal >= LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD) {
@@ -1164,11 +1191,15 @@ export default function ListenBarPage() {
     return isZh
       ? `Challenger · ${currentPositiveTotal}/${LISTEN_BAR_PUBLIC_REACTION_THRESHOLD} 顆心`
       : `Challenger · ${currentPositiveTotal}/${LISTEN_BAR_PUBLIC_REACTION_THRESHOLD} hearts`;
-  }, [currentPositiveTotal, isZh, nowTrack.barPhase, nowTrack.source]);
+  }, [currentPositiveTotal, isZh, nowTrack.audioUrl, nowTrack.barPhase, nowTrack.source]);
   const myCurrentReaction = myReactions[nowTrack.id] ?? null;
 
   const handleReaction = (key: ReactionKey) => {
     tryStartRadio();
+    if (!nowTrack.audioUrl) {
+      setTrackCommentError(isZh ? "目前沒有播放中的歌曲。" : "No track is playing right now.");
+      return;
+    }
     if (!userId) {
       setTrackCommentError(isZh ? "請先登入再投票；聽歌不需要登入。" : "Sign in to vote; listening does not require an account.");
       return;
@@ -1271,6 +1302,10 @@ export default function ListenBarPage() {
     const text = trackCommentInput.trim();
     if (!text) return;
     setTrackCommentError("");
+    if (!nowTrack.audioUrl) {
+      setTrackCommentError(isZh ? "目前沒有播放中的歌曲。" : "No track is playing right now.");
+      return;
+    }
     if (!userId) {
       setTrackCommentError(isZh ? "請先登入再留下歌曲評論。" : "Sign in to comment on this song.");
       return;
@@ -1535,7 +1570,7 @@ export default function ListenBarPage() {
 
       setOfficialTracks((tracks) => tracks.filter((item) => item.id !== track.id));
       if (nowTrack.id === track.id) {
-        const replacement = rotationTracks.find((item) => item.id !== track.id && item.audioUrl) ?? fallbackOfficialPlaylist[0];
+        const replacement = rotationTracks.find((item) => item.id !== track.id && item.audioUrl) ?? EMPTY_LISTEN_BAR_TRACK;
         setNowTrack(replacement);
         setElapsed(0);
       }
@@ -1967,7 +2002,9 @@ export default function ListenBarPage() {
                     NEXT HEARTBREAKER
                   </p>
                   <h2 className="text-[clamp(1.55rem,8vw,2.9rem)] font-black leading-none text-white sm:whitespace-nowrap">
-                    {isZh ? "接續的六首歌" : "Next six songs"}
+                    {upcomingHeartbreakerTracks.length > 0
+                      ? (isZh ? "接續的六首歌" : "Next six songs")
+                      : (isZh ? "等待接續歌曲" : "Waiting for songs")}
                   </h2>
                 </div>
                 <span className="rounded-full border border-orange-300/24 bg-orange-500/10 px-3 py-1 text-[11px] font-black text-orange-100">
@@ -1975,7 +2012,11 @@ export default function ListenBarPage() {
                 </span>
               </div>
               <div className="relative grid gap-0 md:grid-cols-2">
-                {[0, 3].map((startIndex, groupIndex) => {
+                {upcomingHeartbreakerTracks.length === 0 ? (
+                  <p className="px-4 py-6 text-sm font-bold text-zinc-500 md:col-span-2">
+                    {isZh ? "等待創作者投稿後，下一首會顯示在這裡。" : "The next track will appear here after a creator uploads."}
+                  </p>
+                ) : [0, 3].map((startIndex, groupIndex) => {
                   const tracks = upcomingHeartbreakerTracks.slice(startIndex, startIndex + 3);
                   return (
                     <div
@@ -2020,11 +2061,7 @@ export default function ListenBarPage() {
                               )}
                             </div>
                           ))
-                        ) : (
-                          <p className="px-4 py-5 text-sm font-bold text-zinc-500">
-                            {isZh ? "目前由官方歌單延續氣氛。" : "Official rotation is keeping the room warm."}
-                          </p>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   );

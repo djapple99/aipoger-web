@@ -1044,7 +1044,7 @@ function BattlePoolList() {
         </div>
         <Link
           href="/battle/setup"
-          className="w-fit rounded-full border border-yellow-200/80 bg-yellow-300 px-5 py-2.5 text-sm font-black !text-black shadow-[0_0_26px_rgba(250,204,21,0.22)] transition hover:border-yellow-100 hover:bg-yellow-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-100"
+          className="w-fit rounded-full border border-orange-200/80 bg-gradient-to-r from-orange-500 via-amber-400 to-orange-300 px-5 py-2.5 text-sm font-black !text-black shadow-[0_0_26px_rgba(255,106,0,0.26)] transition hover:border-orange-100 hover:from-orange-400 hover:via-amber-300 hover:to-orange-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
         >
           {isZh ? "挑戰最強90s抓波" : "Challenge 90s Drop Battle"}
         </Link>

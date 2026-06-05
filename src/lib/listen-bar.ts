@@ -65,21 +65,21 @@ export type ListenBarTrackRow = {
   promoted_at?: string | null;
 };
 
-export const fallbackOfficialPlaylist: ListenBarTrack[] = [
-  {
-    id: "official-home-bgm",
-    title: "我整天都想起肖",
-    artist: "AIPOGER",
-    tool: "Suno",
-    mood: "官方輪播",
-    duration: 52,
-    audioUrl: "/music/home-bgm.mp3",
-    queuedBy: "AIPOGER",
-    queuedByRank: AIPOGER_CURATOR_RANK,
-    coverUrl: DEFAULT_LISTEN_BAR_COVER,
-    source: "official",
-  },
-];
+export const EMPTY_LISTEN_BAR_TRACK: ListenBarTrack = {
+  id: "listen-bar-empty",
+  title: "等待創作者投稿",
+  artist: "AIPOGER",
+  tool: "AI Music",
+  mood: "傷心酒吧待機中",
+  duration: 1,
+  queuedBy: "AIPOGER",
+  queuedByRank: AIPOGER_CURATOR_RANK,
+  coverUrl: DEFAULT_LISTEN_BAR_COVER,
+  source: "community",
+  barPhase: "public",
+};
+
+export const fallbackOfficialPlaylist: ListenBarTrack[] = [];
 
 function publicStorageUrl(bucket: string, path: string | null | undefined): string | undefined {
   const value = path?.trim();
