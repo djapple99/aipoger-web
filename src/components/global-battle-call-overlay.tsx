@@ -181,6 +181,18 @@ function timestampMs(value: string | null | undefined) {
   return Number.isFinite(ms) ? ms : null;
 }
 
+function pickActiveNoticeCandidate(candidates: ActiveBattleNotice[], nowMs = Date.now()) {
+  if (candidates.length === 0) return null;
+  const urgent = candidates
+    .filter((notice) => {
+      const startMs = timestampMs(notice.scheduledStartAt);
+      return startMs !== null && startMs - nowMs <= BATTLE_START_ALERT_LEAD_MS;
+    })
+    .sort((left, right) => (timestampMs(left.scheduledStartAt) ?? Infinity) - (timestampMs(right.scheduledStartAt) ?? Infinity));
+  if (urgent[0]) return urgent[0];
+  return [...candidates].sort((left, right) => (timestampMs(right.createdAt) ?? 0) - (timestampMs(left.createdAt) ?? 0))[0] ?? null;
+}
+
 export default function GlobalBattleCallOverlay() {
   const pathname = usePathname();
   const { lang } = useI18n();
@@ -347,84 +359,86 @@ export default function GlobalBattleCallOverlay() {
         .eq("user_id", uid)
         .in("status", ACTIVE_NOTICE_QUEUE_STATUSES)
         .order("created_at", { ascending: false })
-        .limit(1);
-      const activeQueue = activeQueueRows?.[0] as
-        | {
-            id: string;
-            status: string;
-            match_group_id?: string | null;
-            expires_at?: string | null;
-            scheduled_start_at?: string | null;
-            cancellation_evaluation_at?: string | null;
-            created_at?: string | null;
+        .limit(8);
+      const activeNoticeCandidates: ActiveBattleNotice[] = [];
+      for (const activeQueue of (activeQueueRows ?? []) as Array<{
+        id: string;
+        status: string;
+        match_group_id?: string | null;
+        expires_at?: string | null;
+        scheduled_start_at?: string | null;
+        cancellation_evaluation_at?: string | null;
+        created_at?: string | null;
+      }>) {
+        if (shouldExpireOpenDropQueue(activeQueue)) continue;
+        let linkedQueueBattleEnded = false;
+        let linkedQueueBattleStartAt: string | null = null;
+        if (activeQueue.match_group_id) {
+          const { data: linkedBattle } = await supabase
+            .from("battles")
+            .select("id, status, created_at, scheduled_start_at, started_at, battle_started_at, battle_ended_at")
+            .eq("id", activeQueue.match_group_id)
+            .maybeSingle<{ id: string; status: string; created_at?: string | null; scheduled_start_at?: string | null; started_at?: string | null; battle_started_at?: string | null; battle_ended_at?: string | null }>();
+          linkedQueueBattleEnded = isDropBattleEndedOrPastExpectedEnd(linkedBattle);
+          linkedQueueBattleStartAt = linkedBattle?.scheduled_start_at ?? linkedBattle?.battle_started_at ?? linkedBattle?.started_at ?? null;
+          const syntheticNotice = linkedBattle?.id ? buildCompletedDropNotice(linkedBattle.id) : null;
+          if (mounted && syntheticNotice && linkedQueueBattleEnded && !isDismissedNotice(syntheticNotice.id)) {
+            setCall(null);
+            setExpiredNotice(syntheticNotice);
+            setExpiredNoticeOpen(true);
+            setAccountNoticeCollapsed(true);
           }
-        | undefined;
-      const activeQueueExpired = activeQueue ? shouldExpireOpenDropQueue(activeQueue) : false;
-      let linkedQueueBattleEnded = false;
-      let linkedQueueBattleStartAt: string | null = null;
-      if (activeQueue?.match_group_id) {
-        const { data: linkedBattle } = await supabase
-          .from("battles")
-          .select("id, status, created_at, scheduled_start_at, started_at, battle_started_at, battle_ended_at")
-          .eq("id", activeQueue.match_group_id)
-          .maybeSingle<{ id: string; status: string; created_at?: string | null; scheduled_start_at?: string | null; started_at?: string | null; battle_started_at?: string | null; battle_ended_at?: string | null }>();
-        linkedQueueBattleEnded = isDropBattleEndedOrPastExpectedEnd(linkedBattle);
-        linkedQueueBattleStartAt = linkedBattle?.scheduled_start_at ?? linkedBattle?.battle_started_at ?? linkedBattle?.started_at ?? null;
-        const syntheticNotice = linkedBattle?.id ? buildCompletedDropNotice(linkedBattle.id) : null;
-        if (mounted && syntheticNotice && linkedQueueBattleEnded && !isDismissedNotice(syntheticNotice.id)) {
-          setCall(null);
-          setActiveNotice(null);
-          setExpiredNotice(syntheticNotice);
-          setExpiredNoticeOpen(true);
-          setAccountNoticeCollapsed(true);
+        }
+        if (!linkedQueueBattleEnded) {
+          activeNoticeCandidates.push({
+            kind: "queue",
+            id: activeQueue.id,
+            battleId: activeQueue.match_group_id ?? null,
+            status: activeQueue.status,
+            createdAt: activeQueue.created_at ?? null,
+            scheduledStartAt: linkedQueueBattleStartAt ?? resolveDropBattleScheduledStart(activeQueue),
+          });
         }
       }
-      if (mounted && activeQueue?.id && !activeQueueExpired && !linkedQueueBattleEnded) {
-        setActiveNotice({
-          kind: "queue",
-          id: activeQueue.id,
-          battleId: activeQueue.match_group_id ?? null,
-          status: activeQueue.status,
-          createdAt: activeQueue.created_at ?? null,
-          scheduledStartAt: linkedQueueBattleStartAt ?? resolveDropBattleScheduledStart(activeQueue),
+
+      const { data: activeBattleRows } = await supabase
+        .from("battles")
+        .select("id, status, created_at, scheduled_start_at, started_at, battle_started_at, battle_ended_at")
+        .or(`fighter_a_user_id.eq.${uid},fighter_b_user_id.eq.${uid}`)
+        .in("status", ACTIVE_NOTICE_BATTLE_STATUSES)
+        .is("battle_ended_at", null)
+        .order("created_at", { ascending: false })
+        .limit(8);
+      for (const activeBattle of (activeBattleRows ?? []) as Array<{ id: string; status: string; created_at?: string | null; scheduled_start_at?: string | null; started_at?: string | null; battle_started_at?: string | null; battle_ended_at?: string | null }>) {
+        const syntheticNotice = activeBattle.id ? buildCompletedDropNotice(activeBattle.id) : null;
+        if (isDropBattleEndedOrPastExpectedEnd(activeBattle)) {
+          if (mounted && syntheticNotice && !isDismissedNotice(syntheticNotice.id)) {
+            setCall(null);
+            setExpiredNotice(syntheticNotice);
+            setExpiredNoticeOpen(true);
+            setAccountNoticeCollapsed(true);
+          }
+          continue;
+        }
+        activeNoticeCandidates.push({
+          kind: "battle",
+          id: activeBattle.id,
+          battleId: activeBattle.id,
+          status: activeBattle.status,
+          createdAt: activeBattle.created_at ?? null,
+          scheduledStartAt: activeBattle.scheduled_start_at ?? activeBattle.battle_started_at ?? activeBattle.started_at ?? null,
         });
+      }
+
+      const pickedActiveNotice = pickActiveNoticeCandidate(activeNoticeCandidates);
+      if (mounted && pickedActiveNotice) {
+        setActiveNotice(pickedActiveNotice);
         if (routeTone !== "watching") {
           setActiveNoticeOpen(true);
           setAccountNoticeCollapsed(true);
         }
-      } else {
-        const { data: activeBattleRows } = await supabase
-          .from("battles")
-          .select("id, status, created_at, scheduled_start_at, started_at, battle_started_at, battle_ended_at")
-          .or(`fighter_a_user_id.eq.${uid},fighter_b_user_id.eq.${uid}`)
-          .in("status", ACTIVE_NOTICE_BATTLE_STATUSES)
-          .is("battle_ended_at", null)
-          .order("created_at", { ascending: false })
-          .limit(1);
-        const activeBattle = activeBattleRows?.[0] as { id: string; status: string; created_at?: string | null; scheduled_start_at?: string | null; started_at?: string | null; battle_started_at?: string | null; battle_ended_at?: string | null } | undefined;
-        if (mounted && activeBattle?.id && !isDropBattleEndedOrPastExpectedEnd(activeBattle)) {
-          setActiveNotice({
-            kind: "battle",
-            id: activeBattle.id,
-            battleId: activeBattle.id,
-            status: activeBattle.status,
-            createdAt: activeBattle.created_at ?? null,
-            scheduledStartAt: activeBattle.scheduled_start_at ?? activeBattle.battle_started_at ?? activeBattle.started_at ?? null,
-          });
-          if (routeTone !== "watching") {
-            setActiveNoticeOpen(true);
-            setAccountNoticeCollapsed(true);
-          }
-        }
-        const syntheticNotice = activeBattle?.id ? buildCompletedDropNotice(activeBattle.id) : null;
-        if (mounted && syntheticNotice && isDropBattleEndedOrPastExpectedEnd(activeBattle) && !isDismissedNotice(syntheticNotice.id)) {
-          setCall(null);
-          setActiveNotice(null);
-          setExpiredNotice(syntheticNotice);
-          setExpiredNoticeOpen(true);
-          setAccountNoticeCollapsed(true);
-        }
-        if (mounted && (!activeBattle?.id || isDropBattleEndedOrPastExpectedEnd(activeBattle))) setActiveNotice(null);
+      } else if (mounted) {
+        setActiveNotice(null);
       }
 
       const { data: latest } = await supabase
