@@ -25,6 +25,7 @@ import { listenBarRowToTrack, type ListenBarTrackRow } from "@/lib/listen-bar";
 import { supabase } from "@/lib/supabase";
 
 type BoardKey = "drop" | "bar";
+type BattleWinnerSide = "fighter_a" | "fighter_b";
 
 type RankRow = {
   id: string;
@@ -183,6 +184,10 @@ function normalizeVoteCount(value: unknown) {
   return Math.max(0, Math.round(count));
 }
 
+function normalizeWinnerSide(value: unknown): BattleWinnerSide | null {
+  return value === "fighter_a" || value === "fighter_b" ? value : null;
+}
+
 function computeVoteBreakdown(votesTotal: number, aRaw: number, bRaw: number) {
   if (votesTotal <= 0) return { votesTotal: 0, aVotes: 0, bVotes: 0 };
   if (aRaw >= 0 && bRaw >= 0 && aRaw + bRaw === 100) {
@@ -298,26 +303,79 @@ async function attachBattleAudioUrls(rows: ArchivedBattleResult[]) {
 
   const { data, error } = await supabase
     .from("battles")
-    .select("id,winner,audio_a_path,audio_b_path")
+    .select("id,winner,fighter_a_name,fighter_b_name,song_a_name,song_b_name,ai_tool_a,ai_tool_b,audio_a_path,audio_b_path")
     .in("id", battleIds);
   if (error) {
     console.warn("[rank battle audio rows]", error.message);
     return rows;
   }
 
-  const audioByBattle = new Map<string, string | null>();
+  const truthByBattle = new Map<
+    string,
+    {
+      winner: BattleWinnerSide | null;
+      fighterAName: string;
+      fighterBName: string;
+      songAName: string;
+      songBName: string;
+      aiToolA: string;
+      aiToolB: string;
+      audioUrl: string | null;
+    }
+  >();
   await Promise.all(
-    ((data ?? []) as Array<{ id?: string | null; winner?: string | null; audio_a_path?: string | null; audio_b_path?: string | null }>).map(async (battle) => {
+    ((data ?? []) as Array<{
+      id?: string | null;
+      winner?: string | null;
+      fighter_a_name?: string | null;
+      fighter_b_name?: string | null;
+      song_a_name?: string | null;
+      song_b_name?: string | null;
+      ai_tool_a?: string | null;
+      ai_tool_b?: string | null;
+      audio_a_path?: string | null;
+      audio_b_path?: string | null;
+    }>).map(async (battle) => {
       if (!battle.id) return;
-      const winnerPath = battle.winner === "fighter_b" ? battle.audio_b_path : battle.audio_a_path;
-      audioByBattle.set(battle.id, await battleAudioPathToUrl(winnerPath));
+      const winner = normalizeWinnerSide(battle.winner);
+      const winnerPath = winner === "fighter_b" ? battle.audio_b_path : battle.audio_a_path;
+      truthByBattle.set(battle.id, {
+        winner,
+        fighterAName: String(battle.fighter_a_name || "").trim(),
+        fighterBName: String(battle.fighter_b_name || "").trim(),
+        songAName: String(battle.song_a_name || "").trim(),
+        songBName: String(battle.song_b_name || "").trim(),
+        aiToolA: String(battle.ai_tool_a || "").trim(),
+        aiToolB: String(battle.ai_tool_b || "").trim(),
+        audioUrl: await battleAudioPathToUrl(winnerPath),
+      });
     }),
   );
 
-  return rows.map((row) => ({
-    ...row,
-    audioUrl: row.audioUrl || (row.battleId ? audioByBattle.get(row.battleId) || undefined : undefined),
-  }));
+  return rows.map((row) => {
+    const truth = row.battleId ? truthByBattle.get(row.battleId) : null;
+    const archivedSide = normalizeWinnerSide(row.winnerSide);
+    const reconciled =
+      truth?.winner && archivedSide && truth.winner !== archivedSide
+        ? {
+            ...row,
+            winnerSide: truth.winner,
+            winnerName: truth.winner === "fighter_b" ? truth.fighterBName || row.opponentName : truth.fighterAName || row.opponentName,
+            winnerSong: truth.winner === "fighter_b" ? truth.songBName || row.opponentSong : truth.songAName || row.opponentSong,
+            tool: truth.winner === "fighter_b" ? truth.aiToolB || row.tool : truth.aiToolA || row.tool,
+            opponentName: truth.winner === "fighter_b" ? truth.fighterAName || row.winnerName : truth.fighterBName || row.winnerName,
+            opponentSong: truth.winner === "fighter_b" ? truth.songAName || row.winnerSong : truth.songBName || row.winnerSong,
+            coverUrl: row.opponentCoverUrl || row.coverUrl,
+            avatarUrl: row.opponentAvatarUrl || row.avatarUrl,
+            opponentCoverUrl: row.coverUrl || row.opponentCoverUrl,
+            opponentAvatarUrl: row.avatarUrl || row.opponentAvatarUrl,
+          }
+        : row;
+    return {
+      ...reconciled,
+      audioUrl: reconciled.audioUrl || (row.battleId ? truth?.audioUrl || undefined : undefined),
+    };
+  });
 }
 
 export default function RankPage() {
@@ -340,7 +398,7 @@ export default function RankPage() {
         supabase
           .from("battle_result_archives")
           .select(
-            "battle_id,battle_code,winner_name,winner_song_name,winner_ai_tool,opponent_name,opponent_song_name,final_vote_left,final_vote_right,total_votes,audience_review,result_payload,archived_at",
+            "battle_id,battle_code,winner,winner_name,winner_song_name,winner_ai_tool,opponent_name,opponent_song_name,final_vote_left,final_vote_right,total_votes,audience_review,result_payload,archived_at",
           )
           .order("archived_at", { ascending: false })
           .limit(200),
@@ -383,6 +441,7 @@ export default function RankPage() {
               id: String(row.battle_id || row.battle_code || ""),
               battleId: row.battle_id ? String(row.battle_id) : null,
               battleCode: String(row.battle_code || ""),
+              winnerSide: normalizeWinnerSide(row.winner),
               winnerName: String(row.winner_name || "").trim(),
               winnerSong: String(row.winner_song_name || "").trim(),
               opponentName: String(row.opponent_name || "").trim(),

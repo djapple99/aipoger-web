@@ -21,6 +21,7 @@ import { completeBattleCardIntent } from "@/lib/battle-pool-client";
 import { supabase } from "@/lib/supabase";
 
 type SkillKey = BattleFeedbackKey;
+type BattleWinnerSide = "fighter_a" | "fighter_b";
 
 type HookSkill = {
   key: SkillKey;
@@ -92,6 +93,11 @@ function numberParam(value: string | null, fallback: number) {
   return Math.max(0, Math.round(parsed));
 }
 
+function winnerSideParam(value: string | null): BattleWinnerSide | null {
+  const clean = value?.trim();
+  return clean === "fighter_a" || clean === "fighter_b" ? clean : null;
+}
+
 function cleanParam(value: string | null) {
   return value?.trim() ?? "";
 }
@@ -115,6 +121,7 @@ function archivedResultFromRow(row: Record<string, unknown>): ArchivedBattleResu
     id: textFrom(row.battle_id) || textFrom(row.battle_code),
     battleId: textFrom(row.battle_id) || null,
     battleCode: textFrom(row.battle_code),
+    winnerSide: winnerSideParam(textFrom(row.winner)),
     winnerName: textFrom(row.winner_name),
     winnerSong: textFrom(row.winner_song_name),
     opponentName: textFrom(row.opponent_name),
@@ -348,6 +355,8 @@ function BattleResultContent() {
   const { lang, t } = useI18n();
   const searchParams = useSearchParams();
   const [remoteArchive, setRemoteArchive] = useState<ArchivedBattleResult | null>(null);
+  const [databaseWinnerSide, setDatabaseWinnerSide] = useState<BattleWinnerSide | null>(null);
+  const [databaseWinnerChecked, setDatabaseWinnerChecked] = useState(false);
   const battleIdParam = cleanParam(searchParams.get("battleId")) || null;
   const missingText = lang === "zh" ? "未封存" : "Not archived";
   const missingSongText = lang === "zh" ? "尚未封存歌名" : "Song not archived";
@@ -375,7 +384,14 @@ function BattleResultContent() {
   const battleCode = cleanParam(searchParams.get("battle")) || remoteArchive?.battleCode || "";
   const battleId = battleIdParam || remoteArchive?.battleId || null;
   const displayBattleCode = battleCode || (lang === "zh" ? "未封存編號" : "No archived ID");
-  const winnerSide = searchParams.get("winnerSide")?.trim() === "fighter_b" ? "fighter_b" : "fighter_a";
+  const explicitWinnerSide = winnerSideParam(searchParams.get("winnerSide"));
+  const remoteWinnerSide = remoteArchive?.winnerSide ?? null;
+  const winnerSide = databaseWinnerSide ?? explicitWinnerSide ?? remoteWinnerSide;
+  const winnerSideConflict = Boolean(
+    databaseWinnerSide &&
+      ((explicitWinnerSide && explicitWinnerSide !== databaseWinnerSide) ||
+        (remoteWinnerSide && remoteWinnerSide !== databaseWinnerSide)),
+  );
   const supportLeft = percentParam(searchParams.get("supportLeft"), 0);
   const supportRight = percentParam(searchParams.get("supportRight"), 100 - supportLeft);
   const finalVoteLeft = percentParam(searchParams.get("finalVoteLeft"), remoteArchive?.finalVoteLeft ?? 0);
@@ -425,7 +441,7 @@ function BattleResultContent() {
     void (async () => {
       const { data, error } = await supabase
         .from("battle_result_archives")
-        .select("battle_id,battle_code,winner_name,winner_song_name,winner_ai_tool,opponent_name,opponent_song_name,final_vote_left,final_vote_right,total_votes,audience_review,result_payload,archived_at")
+        .select("battle_id,battle_code,winner,winner_name,winner_song_name,winner_ai_tool,opponent_name,opponent_song_name,final_vote_left,final_vote_right,total_votes,audience_review,result_payload,archived_at")
         .eq("battle_id", battleIdParam)
         .maybeSingle();
       if (cancelled) return;
@@ -443,12 +459,48 @@ function BattleResultContent() {
   }, [battleIdParam, winnerNameRaw]);
 
   useEffect(() => {
+    if (!battleIdParam || !isUuid(battleIdParam)) {
+      setDatabaseWinnerSide(null);
+      setDatabaseWinnerChecked(true);
+      return;
+    }
+    let cancelled = false;
+    setDatabaseWinnerChecked(false);
+    void (async () => {
+      const { data, error } = await supabase
+        .from("battles")
+        .select("winner")
+        .eq("id", battleIdParam)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) {
+        console.warn("[battle result load battle winner]", error.message);
+        setDatabaseWinnerSide(null);
+        setDatabaseWinnerChecked(true);
+        return;
+      }
+      setDatabaseWinnerSide(winnerSideParam(typeof data?.winner === "string" ? data.winner : null));
+      setDatabaseWinnerChecked(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [battleIdParam]);
+
+  useEffect(() => {
     if (!hasCompleteResultData) return;
+    if (!winnerSide) return;
+    if (isUuid(battleId) && !databaseWinnerChecked) return;
+    if (winnerSideConflict) {
+      console.warn("[battle result archive skipped] winner side conflicts with database winner");
+      return;
+    }
     const resultHref = `${window.location.pathname}${window.location.search}`;
     upsertArchivedBattleResult({
       id: battleId || battleCode,
       battleId,
       battleCode,
+      winnerSide,
       winnerName,
       winnerSong,
       opponentName,
@@ -531,11 +583,13 @@ function BattleResultContent() {
     coverUrlRaw,
     displayRank,
     displayVoteTotal,
+    databaseWinnerChecked,
     feedbackA,
     feedbackB,
     finalVoteLeft,
     finalVoteRight,
     hasCompleteResultData,
+    winnerSideConflict,
     opponentAvatarUrl,
     opponentAvatarUrlRaw,
     opponentCoverUrl,

@@ -9,6 +9,7 @@ export type ArchivedBattleResult = {
   id: string;
   battleId?: string | null;
   battleCode: string;
+  winnerSide?: "fighter_a" | "fighter_b" | null;
   winnerName: string;
   winnerSong: string;
   opponentName: string;
@@ -99,6 +100,7 @@ function sanitizeArchiveEntry(value: unknown): ArchivedBattleResult | null {
     id,
     battleId: row.battleId ?? null,
     battleCode,
+    winnerSide: row.winnerSide === "fighter_a" || row.winnerSide === "fighter_b" ? row.winnerSide : null,
     winnerName,
     winnerSong,
     opponentName,
