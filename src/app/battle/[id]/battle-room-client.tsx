@@ -117,10 +117,13 @@ const MAX_PAUSE_MS = 1000;
 const SCRATCH_TRANSITION_SECONDS = 2;
 const SCRATCH_TRANSITION_MS = SCRATCH_TRANSITION_SECONDS * 1000;
 const SCRATCH_TRANSITION_SRC = "/sfx/scratch-sample-a.mp3";
+const WINNER_COUNTDOWN_SFX_SRC = "/sfx/you-win.wav";
 const WINNER_REVEAL_SFX_SRC = "/sfx/audience-shouts-1.mp3";
 const SECOND_DECK_START_SECONDS = HOOK_BATTLE_SECONDS + SCRATCH_TRANSITION_SECONDS;
 const BATTLE_PLAYBACK_SECONDS = HOOK_BATTLE_SECONDS * 2 + SCRATCH_TRANSITION_SECONDS;
+const FINAL_RESULT_CUE_DELAY_MS = 1000;
 const FINAL_VOTE_SECONDS = 5;
+const WINNER_COUNTDOWN_FALLBACK_MS = 8200;
 const WINNER_REVEAL_MS = 3000;
 const RPS_CYCLE_MS = 240;
 const ARENA_ECHO_LEAD_SECONDS = 1;
@@ -847,6 +850,10 @@ function BattleArenaContent() {
   const teaserStopTimerRef = useRef<number | null>(null);
   const teaserTickTimerRef = useRef<number | null>(null);
   const scratchAudioRef = useRef<HTMLAudioElement | null>(null);
+  const winnerCountdownAudioRef = useRef<HTMLAudioElement | null>(null);
+  const winnerCountdownPromiseRef = useRef<Promise<void> | null>(null);
+  const winnerCountdownResolveRef = useRef<(() => void) | null>(null);
+  const winnerCountdownTimerRef = useRef<number | null>(null);
   const winnerRevealAudioRef = useRef<HTMLAudioElement | null>(null);
   const adVideoRef = useRef<HTMLVideoElement | null>(null);
   const adVideoDragRef = useRef<{ pointerId: number; dx: number; dy: number } | null>(null);
@@ -860,6 +867,7 @@ function BattleArenaContent() {
   const finalPreStartHypeRef = useRef<string | null>(null);
   const resultRedirectArmedRef = useRef(false);
   const resultRedirectTimerRef = useRef<number | null>(null);
+  const resultSequenceRef = useRef(0);
   const battleResultHrefRef = useRef<string | null>(null);
   const mockSyncChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const shownDanmakuMessageIdsRef = useRef<Set<string>>(new Set());
@@ -1032,6 +1040,68 @@ function BattleArenaContent() {
     winnerRevealAudioRef.current = null;
   }, []);
 
+  const stopWinnerCountdownSfx = useCallback(() => {
+    if (winnerCountdownTimerRef.current != null) {
+      window.clearTimeout(winnerCountdownTimerRef.current);
+      winnerCountdownTimerRef.current = null;
+    }
+    winnerCountdownAudioRef.current?.pause();
+    winnerCountdownAudioRef.current = null;
+    const resolve = winnerCountdownResolveRef.current;
+    winnerCountdownResolveRef.current = null;
+    winnerCountdownPromiseRef.current = null;
+    resolve?.();
+  }, []);
+
+  const playWinnerCountdownSfx = useCallback(() => {
+    stopWinnerCountdownSfx();
+    const audio = new Audio(WINNER_COUNTDOWN_SFX_SRC);
+    audio.preload = "auto";
+    audio.volume = 0.94;
+    winnerCountdownAudioRef.current = audio;
+
+    let settle: () => void = () => undefined;
+    const promise = new Promise<void>((resolve) => {
+      let settled = false;
+      settle = () => {
+        if (settled) return;
+        settled = true;
+        audio.removeEventListener("ended", settle);
+        audio.removeEventListener("error", settle);
+        if (winnerCountdownTimerRef.current != null) {
+          window.clearTimeout(winnerCountdownTimerRef.current);
+          winnerCountdownTimerRef.current = null;
+        }
+        if (winnerCountdownAudioRef.current === audio) {
+          winnerCountdownAudioRef.current = null;
+        }
+        if (winnerCountdownResolveRef.current === settle) {
+          winnerCountdownResolveRef.current = null;
+        }
+        if (winnerCountdownPromiseRef.current === promise) {
+          winnerCountdownPromiseRef.current = null;
+        }
+        resolve();
+      };
+
+      winnerCountdownResolveRef.current = settle;
+      audio.addEventListener("ended", settle, { once: true });
+      audio.addEventListener("error", settle, { once: true });
+      winnerCountdownTimerRef.current = window.setTimeout(settle, WINNER_COUNTDOWN_FALLBACK_MS);
+    });
+
+    winnerCountdownPromiseRef.current = promise;
+    void audio.play().catch(() => {
+      settle();
+    });
+    return promise;
+  }, [stopWinnerCountdownSfx]);
+
+  const waitForWinnerCountdownSfx = useCallback(
+    () => winnerCountdownPromiseRef.current ?? Promise.resolve(),
+    [],
+  );
+
   const playWinnerRevealSfx = useCallback(() => {
     stopWinnerRevealSfx();
     const audio = new Audio(WINNER_REVEAL_SFX_SRC);
@@ -1082,6 +1152,8 @@ function BattleArenaContent() {
 
   const beginBattleWithFirstDeck = useCallback((deck: DeckKey, startedAtMs = Date.now(), delayMs = 0) => {
     resultRedirectArmedRef.current = false;
+    resultSequenceRef.current += 1;
+    stopWinnerCountdownSfx();
     stopWinnerRevealSfx();
     setBattleStartedAtMs(startedAtMs);
     setFirstDeck(deck);
@@ -1102,11 +1174,13 @@ function BattleArenaContent() {
         setBattlePhase("ready");
       }, delayMs);
     }
-  }, [stopWinnerRevealSfx]);
+  }, [stopWinnerCountdownSfx, stopWinnerRevealSfx]);
 
   const pushResultForEveryone = useCallback((delayMs = 0, broadcast = true, hrefOverride?: string) => {
     if (resultRedirectArmedRef.current) return;
     resultRedirectArmedRef.current = true;
+    const resultSequence = resultSequenceRef.current + 1;
+    resultSequenceRef.current = resultSequence;
     if (resultRedirectTimerRef.current != null) {
       window.clearTimeout(resultRedirectTimerRef.current);
       resultRedirectTimerRef.current = null;
@@ -1115,17 +1189,16 @@ function BattleArenaContent() {
 
     const href = hrefOverride || battleResultHrefRef.current;
     if (!href) {
-      void closeBattleCardAfterResult("expired").catch((err) => {
-        console.warn("[battle cleanup no contest]", err);
+      void waitForWinnerCountdownSfx().then(() => {
+        if (resultSequenceRef.current !== resultSequence) return;
+        void closeBattleCardAfterResult("expired").catch((err) => {
+          console.warn("[battle cleanup no contest]", err);
+        });
+        setWinnerRevealOpen(false);
+        setNoContestOpen(true);
       });
-      setWinnerRevealOpen(false);
-      setNoContestOpen(true);
       return;
     }
-
-    setWinnerRevealOpen(true);
-    setNoContestOpen(false);
-    playWinnerRevealSfx();
 
     if (broadcast && href) {
       void mockSyncChannelRef.current?.send({
@@ -1135,12 +1208,20 @@ function BattleArenaContent() {
       });
     }
 
-    resultRedirectTimerRef.current = window.setTimeout(() => {
-      resultRedirectTimerRef.current = null;
-      const targetHref = hrefOverride || battleResultHrefRef.current;
-      if (targetHref) router.push(targetHref);
-    }, Math.max(delayMs, WINNER_REVEAL_MS));
-  }, [closeBattleCardAfterResult, playWinnerRevealSfx, router]);
+    void waitForWinnerCountdownSfx().then(() => {
+      if (resultSequenceRef.current !== resultSequence) return;
+      setWinnerRevealOpen(true);
+      setNoContestOpen(false);
+      playWinnerRevealSfx();
+
+      resultRedirectTimerRef.current = window.setTimeout(() => {
+        resultRedirectTimerRef.current = null;
+        if (resultSequenceRef.current !== resultSequence) return;
+        const targetHref = hrefOverride || battleResultHrefRef.current;
+        if (targetHref) router.push(targetHref);
+      }, Math.max(delayMs, WINNER_REVEAL_MS));
+    });
+  }, [closeBattleCardAfterResult, playWinnerRevealSfx, router, waitForWinnerCountdownSfx]);
 
   const markDeckPlayed = useCallback((deck: "A" | "B") => {
     setPlayedDecks((prev) => (prev[deck] ? prev : { ...prev, [deck]: true }));
@@ -1792,6 +1873,7 @@ function BattleArenaContent() {
     finalCountdownSeedRef.current = FINAL_VOTE_SECONDS;
     finalCountdownActiveRef.current = false;
     resultRedirectArmedRef.current = false;
+    resultSequenceRef.current += 1;
     battleResultHrefRef.current = null;
     shownDanmakuMessageIdsRef.current.clear();
     shownDanmakuFingerprintsRef.current.clear();
@@ -1807,10 +1889,11 @@ function BattleArenaContent() {
     audioBRef.current?.pause();
     stopTeaser();
     stopScratchTransition();
+    stopWinnerCountdownSfx();
     stopWinnerRevealSfx();
     setPreStartSecondsLeft(null);
     preBattleStartedRef.current = null;
-  }, [battleId, clearArenaEcho, stopScratchTransition, stopTeaser, stopWinnerRevealSfx]);
+  }, [battleId, clearArenaEcho, stopScratchTransition, stopTeaser, stopWinnerCountdownSfx, stopWinnerRevealSfx]);
 
   useEffect(() => {
     if (loading || !battle || !battleId) return;
@@ -1954,15 +2037,24 @@ function BattleArenaContent() {
       return;
     }
 
+    const finalVoteStartsAtMs = BATTLE_PLAYBACK_SECONDS * 1000 + FINAL_RESULT_CUE_DELAY_MS;
     completedDecksRef.current = { A: true, B: true };
     setPlayedDecks({ A: true, B: true });
     setCurrentDeck(null);
     setActiveDeck(null);
     setBattlePhase("final");
 
+    if (elapsedMs < finalVoteStartsAtMs) {
+      finalCountdownSeedRef.current = FINAL_VOTE_SECONDS;
+      finalCountdownActiveRef.current = false;
+      setVoteOpen(false);
+      setVoteCountdown(null);
+      return;
+    }
+
     const remainingVoteSeconds = Math.max(
       0,
-      Math.ceil((BATTLE_PLAYBACK_SECONDS * 1000 + FINAL_VOTE_SECONDS * 1000 - elapsedMs) / 1000),
+      Math.ceil((finalVoteStartsAtMs + FINAL_VOTE_SECONDS * 1000 - elapsedMs) / 1000),
     );
     if (remainingVoteSeconds > 0) {
       finalCountdownSeedRef.current = remainingVoteSeconds;
@@ -2019,27 +2111,40 @@ function BattleArenaContent() {
     finalCountdownActiveRef.current = true;
     const initialSeconds = Math.max(1, Math.min(FINAL_VOTE_SECONDS, Math.ceil(finalCountdownSeedRef.current)));
     finalCountdownSeedRef.current = FINAL_VOTE_SECONDS;
-    setVoteOpen(true);
-    setVoteCountdown(initialSeconds);
     setBattlePhase("final");
     setCurrentDeck(null);
     setActiveDeck(null);
+    setVoteOpen(false);
+    setVoteCountdown(null);
 
-    const interval = window.setInterval(() => {
-      setVoteCountdown((prev) => {
-        if (prev === null) return null;
-        if (prev <= 1) {
-          window.clearInterval(interval);
-          setVoteOpen(false);
-          pushResultForEveryone(850);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    let interval: number | null = null;
+    const startCountdownTimer = window.setTimeout(() => {
+      playWinnerCountdownSfx();
+      setVoteOpen(true);
+      setVoteCountdown(initialSeconds);
 
-    return () => window.clearInterval(interval);
-  }, [playedDecks.A, playedDecks.B, pushResultForEveryone]);
+      interval = window.setInterval(() => {
+        setVoteCountdown((prev) => {
+          if (prev === null) return null;
+          if (prev <= 1) {
+            if (interval != null) {
+              window.clearInterval(interval);
+              interval = null;
+            }
+            setVoteOpen(false);
+            pushResultForEveryone(850);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }, FINAL_RESULT_CUE_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(startCountdownTimer);
+      if (interval != null) window.clearInterval(interval);
+    };
+  }, [playedDecks.A, playedDecks.B, playWinnerCountdownSfx, pushResultForEveryone]);
 
   // ── 播放控制 ──────────────────────────────────────────
   const playDeck = useCallback((deck: DeckKey, restart: boolean, startAtSeconds = 0) => {

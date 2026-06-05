@@ -1041,15 +1041,12 @@ function BattlePoolList() {
         <div>
           <p className="text-xs uppercase tracking-[0.38em] text-orange-300/80">90s Drop Battle Pool</p>
           <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "90s 最強抓波Drop Battle 公開挑戰池" : "90s Drop Battle Challenge Pool"}</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-7 text-zinc-400">
-            {t("pool_body")}
-          </p>
         </div>
         <Link
           href="/battle/setup"
-          className="w-fit rounded-full border border-white/15 px-5 py-2.5 text-sm font-bold text-zinc-200 transition hover:border-orange-300/60 hover:text-white"
+          className="w-fit rounded-full border border-yellow-200/80 bg-yellow-300 px-5 py-2.5 text-sm font-black !text-black shadow-[0_0_26px_rgba(250,204,21,0.22)] transition hover:border-yellow-100 hover:bg-yellow-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-100"
         >
-          {isZh ? "挑戰 90s 最強抓波Drop Battle" : "Challenge 90s Drop Battle"}
+          {isZh ? "挑戰最強90s抓波" : "Challenge 90s Drop Battle"}
         </Link>
       </div>
 
@@ -1100,7 +1097,7 @@ function BattlePoolList() {
       {rows.length === 0 && !focusedClosedCard ? (
         <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-6 text-center">
           <p className="text-sm font-bold text-zinc-300">{t("pool_empty_title")}</p>
-          <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-zinc-500">
+          <p className="mx-auto mt-2 max-w-xl whitespace-pre-line text-sm leading-7 text-zinc-500">
             {t("pool_empty_body")}
           </p>
         </div>
@@ -1432,7 +1429,7 @@ function LiveBattleList() {
       <div className="pointer-events-none absolute inset-0 opacity-[0.12] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:48px_48px]" />
 
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 pb-10 pt-24 sm:px-6 md:px-10">
-        <header className="mb-8 flex flex-col gap-5 border-b border-white/10 pb-6 lg:flex-row lg:items-end lg:justify-between">
+        <header className="mb-8 border-b border-white/10 pb-6">
           <div className="min-w-0">
             <p className="text-xs tracking-[0.45em] text-orange-300/80">Aipoger Battle Pool</p>
             <h1 className="mt-3 max-w-full whitespace-nowrap text-[2.55rem] font-black leading-none tracking-normal text-white sm:text-5xl md:text-6xl">
@@ -1442,7 +1439,7 @@ function LiveBattleList() {
               {t("watch_live_hint")}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2 sm:pr-20">
+          <div className="mt-5 flex flex-wrap items-center gap-2">
             <ShareButton
               title={t("watch_share_title")}
               text={t("watch_share_text")}
@@ -1493,7 +1490,7 @@ function LiveBattleList() {
         ) : rows.length === 0 && !focusQueueId && !focusBattleId ? (
           <div className="mt-8 rounded-[2rem] border border-white/10 bg-white/[0.04] px-6 py-10 text-center shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur">
             <p className="text-2xl font-black text-white">{t("watch_no_live_title")}</p>
-            <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
+            <p className="mx-auto mt-3 max-w-2xl whitespace-pre-line text-sm leading-7 text-zinc-400">
               {t("watch_no_live_body")}
             </p>
             <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
