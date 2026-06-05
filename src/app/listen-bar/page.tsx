@@ -2072,7 +2072,8 @@ export default function ListenBarPage() {
             <audio
               ref={audioRef}
               src={nowTrack.audioUrl}
-              autoPlay
+              preload="auto"
+              playsInline
               onPlay={() => {
                 setPlaybackBlocked(false);
                 setIsPlaying(true);
