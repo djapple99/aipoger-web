@@ -2009,7 +2009,7 @@ export default function ListenBarPage() {
               <div className="relative flex flex-wrap items-end justify-between gap-3 border-b border-white/8 px-4 py-3">
                 <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1">
                   <p className="text-[11px] font-black uppercase tracking-[0.28em] text-cyan-200/70">
-                    NEXT HEARTBREAKER
+                    SAD SONG QUEUE
                   </p>
                   <h2 className="text-[clamp(1.55rem,8vw,2.9rem)] font-black leading-none text-white sm:whitespace-nowrap">
                     {upcomingHeartbreakerTracks.length > 0

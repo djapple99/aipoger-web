@@ -78,24 +78,6 @@ function ListenBarIcon() {
   );
 }
 
-function AnalyzeMusicIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      className="h-8 w-8 text-current transition"
-      aria-hidden="true"
-    >
-      <path d="M4 17V7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M8 19V5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M12 15V9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M16 20V4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M20 16V8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M3.5 21h17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function userAvatarUrl(user: User): string | null {
   const m = user.user_metadata as Record<string, unknown> | undefined;
   if (!m) return null;
@@ -480,13 +462,6 @@ export default function HomePage() {
               <BattleIcon />
               <span className="text-xl font-black tracking-[0.08em]">{t("btn_battle")}</span>
             </Link>
-            <a
-              href={musicAnalysisHref}
-              className="group flex items-center justify-between rounded-2xl border border-cyan-200/55 bg-cyan-300/15 px-5 py-4 text-cyan-50 shadow-[0_0_34px_rgba(117,225,231,0.16)] transition hover:border-cyan-100 hover:bg-cyan-300/22 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
-            >
-              <AnalyzeMusicIcon />
-              <span className="text-xl font-black tracking-[0.08em]">{t("btn_analyze_music")}</span>
-            </a>
             <div className="grid grid-cols-2 gap-3">
               <Link
                 href="/battle"
@@ -553,16 +528,6 @@ export default function HomePage() {
                     {t("btn_battle")}
                   </span>
                 </Link>
-
-                <a
-                  href={musicAnalysisHref}
-                  className="group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] border border-cyan-200/20 bg-cyan-300/[0.075] px-5 text-white shadow-[0_12px_26px_rgba(0,0,0,0.2)] transition hover:border-cyan-200/55 hover:bg-cyan-300/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
-                >
-                  <AnalyzeMusicIcon />
-                  <span className={`text-lg tracking-[0.08em] ${isZh ? `${zhDisplayClass} font-black` : "font-black"}`}>
-                    {t("btn_analyze_music")}
-                  </span>
-                </a>
 
                 <Link
                   href="/battle"
