@@ -144,7 +144,7 @@ function accentClasses(accent: RankRow["accent"]) {
   return "border-orange-300/30 bg-orange-500/[0.08] text-orange-100";
 }
 
-function resultHref(row: RankRow, lang: "zh" | "en") {
+function resultHref(row: RankRow, lang: string) {
   const params = new URLSearchParams();
   if (row.resultHref) {
     const [path, rawQuery = ""] = row.resultHref.split("?");

@@ -149,9 +149,10 @@ function isUuid(value: string | null): value is string {
   return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
 }
 
-function skillsFromFeedback(counts: BattleFeedbackCounts, lang: "zh" | "en"): HookSkill[] {
+function skillsFromFeedback(counts: BattleFeedbackCounts, lang: string): HookSkill[] {
+  const labelLang = lang === "zh" ? "zh" : "en";
   const total = feedbackSkillOrder.reduce((sum, key) => sum + counts[key], 0);
-  if (total === 0) return feedbackSkillOrder.map((key) => ({ key, label: feedbackSkillLabels[lang][key], state: "", value: 0 }));
+  if (total === 0) return feedbackSkillOrder.map((key) => ({ key, label: feedbackSkillLabels[labelLang][key], state: "", value: 0 }));
 
   const max = Math.max(...feedbackSkillOrder.map((key) => counts[key]), 1);
   return feedbackSkillOrder.map((key, index) => {
@@ -159,7 +160,7 @@ function skillsFromFeedback(counts: BattleFeedbackCounts, lang: "zh" | "en"): Ho
     const score = value === 0 ? 42 + index * 3 : Math.min(98, 54 + Math.round((value / max) * 42));
     return {
       key,
-      label: feedbackSkillLabels[lang][key],
+      label: feedbackSkillLabels[labelLang][key],
       state: "",
       value: score,
     };

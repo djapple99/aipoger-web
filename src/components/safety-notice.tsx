@@ -31,7 +31,7 @@ const copy = {
 
 export default function SafetyNotice({ kind, compact = false, className = "" }: SafetyNoticeProps) {
   const { lang } = useI18n();
-  const text = copy[lang];
+  const text = lang === "zh" ? copy.zh : copy.en;
   const title = kind === "upload" ? text.uploadTitle : text.chatTitle;
   const body = kind === "upload" ? text.uploadBody : text.chatBody;
 

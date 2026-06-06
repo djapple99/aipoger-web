@@ -365,6 +365,7 @@ export default function HomePage() {
   }
 
   const isZh = lang === "zh";
+  const withLang = (href: string) => `${href}${href.includes("?") ? "&" : "?"}lang=${lang}`;
   const heroTitle = t("home_secondary_title");
   const heroLine = t("home_hero_line");
   const heroCopy = t("home_tagline");
@@ -380,6 +381,18 @@ export default function HomePage() {
         ["90s", "Drop Battle"],
         ["Bar", "傷心酒吧"],
       ]
+    : lang === "ja"
+      ? [
+          ["Weekly", "公式戦"],
+          ["90s", "Best Drop"],
+          ["Bar", "Heartbreak"],
+        ]
+      : lang === "ko"
+        ? [
+            ["Weekly", "공식전"],
+            ["90s", "Best Drop"],
+            ["Bar", "Heartbreak"],
+          ]
     : [
         ["Weekly", "Official Battle"],
         ["90s", "Best Drop"],
@@ -387,20 +400,38 @@ export default function HomePage() {
       ];
   const infoLinks = isZh
     ? [
-        { href: "/weekly-drop-battle", title: "Weekly Drop Battle", desc: "官方每週發起主題賽，創作者投稿 Drop 參戰" },
-        { href: "/hook-guide", title: "最強Drop Battle 對決抓波規則", desc: "用 Drop 上場，累積戰績與創作者認可" },
+        { href: withLang("/weekly-drop-battle"), title: "Weekly Drop Battle", desc: "官方每週發起主題賽，創作者投稿 Drop 參戰" },
+        { href: withLang("/hook-guide"), title: "最強Drop Battle 對決抓波規則", desc: "用 Drop 上場，累積戰績與創作者認可" },
         { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
-        { href: "/rank", title: "AIPOGER 榮譽榜", desc: "被投票、被熱播、被封存的作品紀錄" },
-        { href: "/about", title: "關於愛播歌", desc: "AI 創作者一起成長與作品認可系統" },
-        { href: "/partners", title: "廣告與合作", desc: "讓勝出作品走向播放、策展與商業合作" },
+        { href: withLang("/rank"), title: "AIPOGER 榮譽榜", desc: "被投票、被熱播、被封存的作品紀錄" },
+        { href: withLang("/about"), title: "關於愛播歌", desc: "AI 創作者一起成長與作品認可系統" },
+        { href: withLang("/partners"), title: "廣告與合作", desc: "讓勝出作品走向播放、策展與商業合作" },
       ]
+    : lang === "ja"
+      ? [
+          { href: withLang("/weekly-drop-battle"), title: "Weekly Drop Battle", desc: "AI音楽クリエイター向けの公式テーマ戦" },
+          { href: withLang("/hook-guide"), title: "Drop Battle Rules", desc: "最強のDropをステージに出し、認知を積み上げる" },
+          { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
+          { href: withLang("/rank"), title: "AIPOGER Honor Board", desc: "認められた勝利、熱播曲、記録されたクリエイター実績" },
+          { href: withLang("/about"), title: "About AIPOGER", desc: "AIクリエイターが成長し、作品が認められるシステム" },
+          { href: withLang("/partners"), title: "Partnerships", desc: "勝ち残った楽曲を放送、キュレーション、商業展開へ" },
+        ]
+      : lang === "ko"
+        ? [
+            { href: withLang("/weekly-drop-battle"), title: "Weekly Drop Battle", desc: "AI 음악 크리에이터를 위한 공식 테마 배틀" },
+            { href: withLang("/hook-guide"), title: "Drop Battle Rules", desc: "가장 강한 Drop으로 무대에 올라 인정을 쌓기" },
+            { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
+            { href: withLang("/rank"), title: "AIPOGER Honor Board", desc: "인정받은 승리, 인기 트랙, 기록된 크리에이터 성과" },
+            { href: withLang("/about"), title: "About AIPOGER", desc: "AI 크리에이터가 성장하고 작품이 인정받는 시스템" },
+            { href: withLang("/partners"), title: "Partnerships", desc: "우승곡을 방송, 큐레이션, 상업 협업으로 연결" },
+          ]
     : [
-        { href: "/weekly-drop-battle", title: "Weekly Drop Battle", desc: "Official theme battles for AI music creators" },
-        { href: "/hook-guide", title: "Drop Battle Rules", desc: "Put your strongest Drop on stage and build recognition" },
+        { href: withLang("/weekly-drop-battle"), title: "Weekly Drop Battle", desc: "Official theme battles for AI music creators" },
+        { href: withLang("/hook-guide"), title: "Drop Battle Rules", desc: "Put your strongest Drop on stage and build recognition" },
         { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
-        { href: "/rank", title: "AIPOGER Honor Board", desc: "Recognized wins, hot tracks, and archived creator records" },
-        { href: "/about", title: "About AIPOGER", desc: "AI creator growth and music recognition system" },
-        { href: "/partners", title: "Partnerships", desc: "Move winning tracks toward airplay, curation, and commercial use" },
+        { href: withLang("/rank"), title: "AIPOGER Honor Board", desc: "Recognized wins, hot tracks, and archived creator records" },
+        { href: withLang("/about"), title: "About AIPOGER", desc: "AI creator growth and music recognition system" },
+        { href: withLang("/partners"), title: "Partnerships", desc: "Move winning tracks toward airplay, curation, and commercial use" },
       ];
 
   return (
@@ -438,7 +469,7 @@ export default function HomePage() {
           </p>
           <p
             className={`mt-3 ${heroSingleLineClass} text-[clamp(1.45rem,2.05vw,2.38rem)] leading-[1.38] ${heroAccentClass} ${
-              isZh ? zhSerifClass : `${fontRighteous.className} font-black`
+              isZh ? zhSerifClass : `${fontGlowSans.className} font-black`
             }`}
           >
             {heroLine}
@@ -448,7 +479,9 @@ export default function HomePage() {
             className={`mt-3 max-w-[min(52rem,calc(100vw-2.5rem))] overflow-visible whitespace-nowrap pb-2 pt-0 text-[clamp(4.3rem,6vw,7.15rem)] leading-[1.03] text-[#fffaf1] ${heroChromeShadow} ${
               lang === "en"
                 ? `${fontRighteous.className} font-normal`
-                : "aipoger-brand-wordmark"
+                : isZh
+                  ? "aipoger-brand-wordmark"
+                  : `${fontGlowSans.className} font-black`
             }`}
           >
             {heroTitle}
@@ -456,7 +489,7 @@ export default function HomePage() {
 
           <div className="mt-6 grid gap-3 md:hidden">
             <Link
-              href="/weekly-drop-battle"
+              href={withLang("/weekly-drop-battle")}
               className="group flex items-center justify-between rounded-2xl border border-orange-300/60 bg-orange-500 px-5 py-4 text-black shadow-[0_0_34px_rgba(255,106,0,0.25)] transition hover:bg-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
             >
               <BattleIcon />
@@ -464,14 +497,14 @@ export default function HomePage() {
             </Link>
             <div className="grid grid-cols-2 gap-3">
               <Link
-                href="/battle"
+                href={withLang("/battle")}
                 className="group flex min-h-24 flex-col justify-between rounded-2xl border border-cyan-200/25 bg-white/[0.06] px-4 py-4 text-white transition hover:border-cyan-200 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
               >
                 <WatchIcon />
                 <span className="text-base font-black tracking-[0.08em]">{t("btn_watch")}</span>
               </Link>
               <Link
-                href="/listen-bar"
+                href={withLang("/listen-bar")}
                 className="group flex min-h-24 flex-col justify-between rounded-2xl border border-orange-200/25 bg-white/[0.06] px-4 py-4 text-white transition hover:border-orange-200 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
               >
                 <ListenBarIcon />
@@ -482,7 +515,7 @@ export default function HomePage() {
 
           <p
             className={`mt-3 ${heroSingleLineClass} text-[clamp(1.18rem,1.52vw,1.78rem)] leading-[1.42] ${heroAccentClass} ${
-              lang === "en" ? `${fontRighteous.className} font-black` : zhSerifClass
+              lang === "en" ? `${fontRighteous.className} font-black` : `${fontGlowSans.className} font-black`
             }`}
           >
             {heroCopy}
@@ -520,7 +553,7 @@ export default function HomePage() {
 
               <div className="grid gap-3.5">
                 <Link
-                  href="/weekly-drop-battle"
+                  href={withLang("/weekly-drop-battle")}
                   className="group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] bg-[#ff6a00] px-5 text-white shadow-[0_12px_30px_rgba(255,106,0,0.22)] transition hover:bg-[#ff8a2a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
                 >
                   <BattleIcon />
@@ -530,7 +563,7 @@ export default function HomePage() {
                 </Link>
 
                 <Link
-                  href="/battle"
+                  href={withLang("/battle")}
                   className="group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] border border-white/14 bg-white/[0.055] px-5 text-white shadow-[0_12px_26px_rgba(0,0,0,0.2)] transition hover:border-orange-300/45 hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
                 >
                   <WatchIcon />
@@ -540,7 +573,7 @@ export default function HomePage() {
                 </Link>
 
                 <Link
-                  href="/listen-bar"
+                  href={withLang("/listen-bar")}
                   className="group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] border border-white/14 bg-white/[0.055] px-5 text-white shadow-[0_12px_26px_rgba(0,0,0,0.2)] transition hover:border-cyan-200/45 hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
                 >
                   <ListenBarIcon />

@@ -181,7 +181,7 @@ function ProfileInner() {
                   ✏️
                 </span>
               </button>
-              <ProfileBattleCountBadge userId={userId} currentUserId={userId} lang={lang} />
+              <ProfileBattleCountBadge userId={userId} currentUserId={userId} lang={lang === "zh" ? "zh" : "en"} />
             </div>
             <button
               type="button"

@@ -462,6 +462,90 @@ function parseLyricLines(value: string): LyricLine[] {
 export default function ListenBarPage() {
   const { lang } = useI18n();
   const isZh = lang === "zh";
+  const langQuery = `?lang=${lang}`;
+  const listenCopy = isZh
+    ? {
+        playMySong: "我要播歌！",
+        shareTitle: "AIPOGER 傷心酒吧 Bar Heartbreak",
+        shareText: ["快來來傷心酒吧 Bar Heartbreak", "這麼好聽的歌以後聽不到了怎麼辦？", "只有被聽見留下傷心的歌，才有資格繼續播放"].join("\n"),
+        shareLabel: "分享吧台",
+        copied: "已複製",
+        battleHall: "AI音樂鬥歌場",
+        title: "傷心酒吧",
+        subtitle: "在 AI 與不 AI 之間，只有真正被聽見的歌才能留下來",
+        navBattle: "AI音樂鬥歌場",
+        navRank: "榮譽榜",
+        navBible: "練功聖經",
+        navAbout: "關於愛播歌",
+        ticker: "歡迎去 AI音樂鬥歌場鬥歌，開戰帖、接挑戰，讓你的 AI 音樂被聽見。",
+        queueTitle: "接續的六首歌",
+        queueWaiting: "等待接續歌曲",
+        queueEmpty: "等待創作者投稿後，下一首會顯示在這裡。",
+        warming: "現場升溫中",
+        listeners: (count: number) => `${count} 人正在傷心酒吧`,
+      }
+    : lang === "ja"
+      ? {
+          playMySong: "曲を流す",
+          shareTitle: "AIPOGER Bar Heartbreak",
+          shareText: ["AIPOGER Bar Heartbreakへ", "この曲を聴く前に消えたらどうする？", "聴かれ、記憶された曲だけがオンエアに残る。"].join("\n"),
+          shareLabel: "Share",
+          copied: "Copied",
+          battleHall: "Battle Hall",
+          title: "Bar Heartbreak",
+          subtitle: "深く刺さる曲だけがオンエアに残る",
+          navBattle: "AI音楽バトルホール",
+          navRank: "Honor Board",
+          navBible: "AI Music Bible",
+          navAbout: "About",
+          ticker: "AI音楽バトルホールへ。カードを開き、挑戦を受け、あなたのAI音楽を聴かせよう。",
+          queueTitle: "Upcoming Sad Songs",
+          queueWaiting: "Waiting for Songs",
+          queueEmpty: "次のクリエイタートラックはここに表示されます。",
+          warming: "Warming Up",
+          listeners: (count: number) => `${count} Listeners`,
+        }
+      : lang === "ko"
+        ? {
+            playMySong: "내 곡 틀기",
+            shareTitle: "AIPOGER Bar Heartbreak",
+            shareText: ["AIPOGER Bar Heartbreak로 오세요", "이 노래를 듣기 전에 사라지면 어떡하죠?", "들리고 기억된 곡만 온에어에 남습니다."].join("\n"),
+            shareLabel: "Share",
+            copied: "Copied",
+            battleHall: "Battle Hall",
+            title: "Bar Heartbreak",
+            subtitle: "강하게 꽂히는 곡만 온에어에 남는다",
+            navBattle: "AI 음악 배틀홀",
+            navRank: "Honor Board",
+            navBible: "AI Music Bible",
+            navAbout: "About",
+            ticker: "AI 음악 배틀홀로 오세요. 카드를 열고, 도전을 받고, 당신의 AI 음악을 들려주세요.",
+            queueTitle: "Upcoming Sad Songs",
+            queueWaiting: "Waiting for Songs",
+            queueEmpty: "다음 크리에이터 트랙이 여기에 표시됩니다.",
+            warming: "Warming Up",
+            listeners: (count: number) => `${count} Listeners`,
+          }
+        : {
+            playMySong: "Play My Song",
+            shareTitle: "AIPOGER Bar Heartbreak",
+            shareText: ["Come to AIPOGER Bar Heartbreak", "What if this song disappears before you hear it?", "Only the songs that get heard and remembered stay in rotation."].join("\n"),
+            shareLabel: "Share",
+            copied: "Copied",
+            battleHall: "Battle Hall",
+            title: "Bar Heartbreak",
+            subtitle: "Only the songs that hit hard stay on air",
+            navBattle: "AI Music Battle Hall",
+            navRank: "Honor Board",
+            navBible: "AI Music Bible",
+            navAbout: "About",
+            ticker: "Welcome to the AI Music Battle Hall. Open a card, accept a challenge, and let your AI music be heard.",
+            queueTitle: "Upcoming Sad Songs",
+            queueWaiting: "Waiting for Songs",
+            queueEmpty: "The next creator track will appear here.",
+            warming: "Warming Up",
+            listeners: (count: number) => `${count} Listeners`,
+          };
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const chatInputRef = useRef<HTMLInputElement | null>(null);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
@@ -513,12 +597,8 @@ export default function ListenBarPage() {
   const listenBarPresenceCount = usePresenceCount("presence-listen-bar", true, "listen-bar");
   const listenBarPresenceLabel =
     listenBarPresenceCount <= 1
-      ? isZh
-        ? "現場升溫中"
-        : "Warming Up"
-      : isZh
-        ? `${listenBarPresenceCount} 人正在傷心酒吧`
-        : `${listenBarPresenceCount} Listeners`;
+      ? listenCopy.warming
+      : listenCopy.listeners(listenBarPresenceCount);
   const markPriorityAirplayTrack = useCallback((trackId: string) => {
     if (!trackId) return;
     setPriorityAirplayIds((ids) => {
@@ -1630,16 +1710,14 @@ export default function ListenBarPage() {
   }, [elapsed, lyricLines]);
   const nowAlbumLabel = albumDisplayLabel(nowTrack.mood, isZh);
   const navLinks = [
-    { href: "/battle", label: isZh ? "AI音樂鬥歌場" : "AI Music Battle Hall" },
-    { href: "/rank", label: isZh ? "榮譽榜" : "Honor Board" },
-    { href: "/ai-music-bible", label: isZh ? "練功聖經" : "AI Music Bible" },
-    { href: "/about", label: isZh ? "關於愛播歌" : "About" },
+    { href: "/battle", label: listenCopy.navBattle },
+    { href: "/rank", label: listenCopy.navRank },
+    { href: "/ai-music-bible", label: listenCopy.navBible },
+    { href: "/about", label: listenCopy.navAbout },
   ];
   const battleTickerText = battleTickerMessages.length > 0
     ? battleTickerMessages.join("   /   ")
-    : isZh
-      ? "歡迎去 AI音樂鬥歌場鬥歌，開戰帖、接挑戰，讓你的 AI 音樂被聽見。"
-      : "Welcome to the AI Music Battle Hall. Open a card, accept a challenge, and let your AI music be heard.";
+    : listenCopy.ticker;
 
   useEffect(() => {
     const container = lyricScrollRef.current;
@@ -1690,31 +1768,19 @@ export default function ListenBarPage() {
               href="#play-request"
               className="inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-full border border-orange-300/40 bg-orange-500/14 px-3 py-2 text-xs font-black text-orange-100 transition hover:border-orange-100 hover:bg-orange-500/22 sm:px-4"
             >
-              {isZh ? "我要播歌！" : "Play My Song"}
+              {listenCopy.playMySong}
             </a>
             <ShareButton
-              title={isZh ? "AIPOGER 傷心酒吧 Bar Heartbreak" : "AIPOGER Bar Heartbreak"}
-              text={
-                isZh
-                  ? [
-                      "快來來傷心酒吧 Bar Heartbreak",
-                      "這麼好聽的歌以後聽不到了怎麼辦？",
-                      "只有被聽見留下傷心的歌，才有資格繼續播放",
-                    ].join("\n")
-                  : [
-                      "Come to AIPOGER Bar Heartbreak",
-                      "What if this song disappears before you hear it?",
-                      "Only the songs that get heard and remembered stay in rotation.",
-                    ].join("\n")
-              }
-              label={isZh ? "分享吧台" : "Share"}
-              copiedLabel={isZh ? "已複製" : "Copied"}
+              title={listenCopy.shareTitle}
+              text={listenCopy.shareText}
+              label={listenCopy.shareLabel}
+              copiedLabel={listenCopy.copied}
             />
             <Link
-              href="/battle"
+              href={`/battle${langQuery}`}
               className="inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-full border border-cyan-300/35 bg-cyan-300/12 px-3 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-100 hover:bg-cyan-300/18 sm:px-4"
             >
-              {isZh ? "AI音樂鬥歌場" : "Battle Hall"}
+              {listenCopy.battleHall}
             </Link>
             <LangToggle variant="inline" />
           </div>
@@ -1727,19 +1793,19 @@ export default function ListenBarPage() {
               </span>
             </div>
             <h1
-              className={`mt-3 max-w-full whitespace-nowrap bg-gradient-to-b from-[#fff9d8] via-[#d7a246] to-[#7a3f10] bg-clip-text text-center text-[clamp(2.15rem,13vw,5.35rem)] font-normal leading-none tracking-[0.04em] text-transparent drop-shadow-[0_0_22px_rgba(255,170,68,0.18)] ${isZh ? "" : fontRighteous.className}`}
+              className={`mt-3 max-w-full whitespace-nowrap bg-gradient-to-b from-[#fff9d8] via-[#d7a246] to-[#7a3f10] bg-clip-text text-center text-[clamp(2.15rem,13vw,5.35rem)] font-normal leading-none tracking-[0.04em] text-transparent drop-shadow-[0_0_22px_rgba(255,170,68,0.18)] ${lang === "en" ? fontRighteous.className : ""}`}
               style={{
                 fontFamily: isZh ? heartbreakTitleFont : undefined,
                 WebkitTextStroke: isZh ? "0.45px rgba(255,244,196,0.48)" : undefined,
               }}
             >
-              {isZh ? "傷心酒吧" : "Bar Heartbreak"}
+              {listenCopy.title}
             </h1>
             <p
-              className={`mt-3 max-w-3xl bg-gradient-to-b from-[#f7e6a9] via-[#c98e34] to-[#80501d] bg-clip-text text-center text-sm font-bold leading-6 tracking-[0.08em] text-transparent drop-shadow-[0_0_14px_rgba(255,170,68,0.12)] md:text-base ${isZh ? "" : fontRighteous.className}`}
+              className={`mt-3 max-w-3xl bg-gradient-to-b from-[#f7e6a9] via-[#c98e34] to-[#80501d] bg-clip-text text-center text-sm font-bold leading-6 tracking-[0.08em] text-transparent drop-shadow-[0_0_14px_rgba(255,170,68,0.12)] md:text-base ${lang === "en" ? fontRighteous.className : ""}`}
               style={{ fontFamily: isZh ? heartbreakTitleFont : undefined }}
             >
-              {isZh ? "在 AI 與不 AI 之間，只有真正被聽見的歌才能留下來" : "Only the songs that hit hard stay on air"}
+              {listenCopy.subtitle}
             </p>
           </div>
 
@@ -1748,7 +1814,7 @@ export default function ListenBarPage() {
               {navLinks.map((item) => (
                 <Link
                   key={item.href}
-                  href={`${item.href}${item.href === "/" ? "" : lang === "en" ? "?lang=en" : "?lang=zh"}`}
+                  href={`${item.href}${item.href === "/" ? "" : langQuery}`}
                   className="inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-full border border-white/10 bg-white/[0.045] px-3 py-2 text-xs font-black text-zinc-200 transition hover:border-orange-300/70 hover:bg-orange-500/10 hover:text-white sm:px-4"
                 >
                   {item.label}
@@ -1756,7 +1822,7 @@ export default function ListenBarPage() {
               ))}
             </nav>
             <Link
-              href={`/battle${lang === "en" ? "?lang=en" : "?lang=zh"}`}
+              href={`/battle${langQuery}`}
               className="group relative flex min-h-12 min-w-0 items-center overflow-hidden rounded-[1rem] border border-cyan-200/20 bg-[linear-gradient(90deg,rgba(4,10,12,0.86),rgba(0,28,34,0.42),rgba(4,10,12,0.86))] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 sm:min-h-10 sm:rounded-full sm:py-0"
               aria-label={battleTickerText}
             >
@@ -2013,8 +2079,8 @@ export default function ListenBarPage() {
                   </p>
                   <h2 className="text-[clamp(1.55rem,8vw,2.9rem)] font-black leading-none text-white sm:whitespace-nowrap">
                     {upcomingHeartbreakerTracks.length > 0
-                      ? (isZh ? "接續的六首歌" : "Upcoming Sad Songs")
-                      : (isZh ? "等待接續歌曲" : "Waiting for Songs")}
+                      ? listenCopy.queueTitle
+                      : listenCopy.queueWaiting}
                   </h2>
                 </div>
                 <span className="rounded-full border border-orange-300/24 bg-orange-500/10 px-3 py-1 text-[11px] font-black text-orange-100">
@@ -2024,7 +2090,7 @@ export default function ListenBarPage() {
               <div className="relative grid gap-0 md:grid-cols-2">
                 {upcomingHeartbreakerTracks.length === 0 ? (
                   <p className="px-4 py-6 text-sm font-bold text-zinc-500 md:col-span-2">
-                    {isZh ? "等待創作者投稿後，下一首會顯示在這裡。" : "The next creator track will appear here."}
+                    {listenCopy.queueEmpty}
                   </p>
                 ) : [0, 3].map((startIndex, groupIndex) => {
                   const tracks = upcomingHeartbreakerTracks.slice(startIndex, startIndex + 3);

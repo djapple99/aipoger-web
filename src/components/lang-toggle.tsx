@@ -9,6 +9,12 @@ type Props = {
 
 export default function LangToggle({ variant = 'fixed' }: Props) {
   const { lang, toggleLang } = useI18n();
+  const nextLabel = {
+    zh: 'EN',
+    en: 'JP',
+    ja: 'KR',
+    ko: '中',
+  }[lang];
 
   const className =
     variant === 'inline'
@@ -19,10 +25,11 @@ export default function LangToggle({ variant = 'fixed' }: Props) {
     <button
       type="button"
       onClick={toggleLang}
-      aria-label={lang === 'zh' ? 'Switch to English' : '切換到中文'}
+      aria-label="Switch language"
       className={className}
+      title="Switch language"
     >
-      {lang === 'zh' ? 'EN' : '中'}
+      {nextLabel}
     </button>
   );
 }

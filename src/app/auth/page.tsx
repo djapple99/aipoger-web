@@ -18,7 +18,7 @@ import {
 } from "@/lib/auth-urls";
 
 function intentToNextPath(intent: string | null, lang: string | null): string {
-  const langQuery = lang === "en" ? "?lang=en" : lang === "zh" ? "?lang=zh" : "";
+  const langQuery = lang && ["zh", "en", "ja", "ko"].includes(lang) ? `?lang=${lang}` : "";
   switch (intent) {
     case "battle":
       return `/battle${langQuery}`;
@@ -55,7 +55,7 @@ function AuthLoadingFallback() {
 }
 
 function AuthPageInner() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -75,6 +75,73 @@ function AuthPageInner() {
     : rememberedNext
       ? safeNextPath(rememberedNext)
       : intentToNextPath(searchParams.get("intent"), searchParams.get("lang"));
+  const embeddedCopy = lang === "zh"
+    ? {
+        title: "App 內建瀏覽器會限制社群登入",
+        body: "你目前可能在 Gmail、IG、LINE、Facebook、TikTok 或 Google App 的內建瀏覽器中。這類環境常會封鎖 Google / Facebook 登入，不是 AIPOGER 帳號壞掉。",
+        best: "最穩方式：直接輸入 Email 收登入連結；如果要用 Google / Facebook，請複製本頁網址，到 Chrome 貼上開啟後再登入。",
+        lineHint: "LINE 裡如果「用 Chrome 開啟」沒有反應，請按「複製網址去 Chrome 開啟」，再手動打開 Chrome 貼上網址。",
+        openChrome: "嘗試用 Chrome 開啟",
+        copyChrome: "複製網址去 Chrome 開啟",
+        openExternal: "嘗試開 Safari / Chrome",
+        mobileRecommended: "手機推薦",
+        socialHint: "手機目前建議使用 Email 登入。Google / Facebook 社群登入請改用 Safari 或 Chrome 開啟本頁。",
+        oauthNotice: "你目前在 App 內建瀏覽器中。Google / Facebook 登入容易被這類瀏覽器擋掉，請用 Email 登入連結，或改用 Safari / Chrome 開啟。",
+        copied: "已複製登入連結，請貼到 Safari 或 Chrome 開啟。",
+        copyFailed: "請複製目前網址，改用 Safari 或 Chrome 開啟後再登入。",
+        external: "如果仍停在 App 內，請點右上角選單或分享按鈕，選擇「在 Safari / Chrome 開啟」。",
+        chromeBlocked: "如果 Chrome 沒有被打開，代表 LINE / App 內建瀏覽器擋住了外部瀏覽器跳轉；請改用 Email 登入連結，或用右上角選單選「在瀏覽器開啟」。",
+      }
+    : lang === "ja"
+      ? {
+          title: "アプリ内ブラウザはSNSログインを制限することがあります",
+          body: "Gmail、Instagram、LINE、Facebook、TikTok、Google App内のブラウザでは、Google / Facebookログインが止まることがあります。AIPOGERアカウントの問題ではありません。",
+          best: "一番安定する方法はEmailログインリンクです。Google / Facebookを使う場合は、このページのURLをコピーしてChromeで開いてからログインしてください。",
+          lineHint: "LINEで「Chromeで開く」が反応しない場合は、「Chromeで開くURLをコピー」を押し、Chromeを手動で開いて貼り付けてください。",
+          openChrome: "Chromeで開く",
+          copyChrome: "Chrome用URLをコピー",
+          openExternal: "Safari / Chromeで開く",
+          mobileRecommended: "スマホ推奨",
+          socialHint: "スマホではEmailログイン推奨です。Google / FacebookログインはSafariまたはChromeでこのページを開いてください。",
+          oauthNotice: "アプリ内ブラウザではGoogle / Facebookログインが止まることがあります。Emailログインリンク、またはSafari / Chromeで開いてください。",
+          copied: "ログインURLをコピーしました。SafariまたはChromeに貼り付けて開いてください。",
+          copyFailed: "現在のURLをコピーし、SafariまたはChromeで開いてからログインしてください。",
+          external: "まだアプリ内にいる場合は、右上メニューまたは共有ボタンから「ブラウザで開く」を選んでください。",
+          chromeBlocked: "Chromeが開かない場合、LINE / アプリ内ブラウザが外部ブラウザ起動を止めています。Emailログインリンク、またはメニューからブラウザで開いてください。",
+        }
+      : lang === "ko"
+        ? {
+            title: "앱 내 브라우저는 소셜 로그인을 제한할 수 있습니다",
+            body: "Gmail, Instagram, LINE, Facebook, TikTok, Google App 안의 브라우저에서는 Google / Facebook 로그인이 막힐 수 있습니다. AIPOGER 계정 문제가 아닙니다.",
+            best: "가장 안정적인 방법은 Email 로그인 링크입니다. Google / Facebook을 쓰려면 이 페이지 URL을 복사해 Chrome에서 연 뒤 로그인하세요.",
+            lineHint: "LINE에서 Chrome 열기가 반응하지 않으면, 'Chrome용 URL 복사'를 누른 뒤 Chrome을 직접 열어 붙여넣으세요.",
+            openChrome: "Chrome으로 열기",
+            copyChrome: "Chrome용 URL 복사",
+            openExternal: "Safari / Chrome 열기",
+            mobileRecommended: "모바일 추천",
+            socialHint: "모바일에서는 Email 로그인을 권장합니다. Google / Facebook 로그인은 Safari 또는 Chrome에서 이 페이지를 열어 주세요.",
+            oauthNotice: "앱 내 브라우저에서는 Google / Facebook 로그인이 막힐 수 있습니다. Email 로그인 링크를 쓰거나 Safari / Chrome에서 열어 주세요.",
+            copied: "로그인 URL을 복사했습니다. Safari 또는 Chrome에 붙여넣어 열어 주세요.",
+            copyFailed: "현재 URL을 복사해 Safari 또는 Chrome에서 연 뒤 로그인해 주세요.",
+            external: "아직 앱 안에 머무르면 오른쪽 위 메뉴나 공유 버튼에서 '브라우저에서 열기'를 선택하세요.",
+            chromeBlocked: "Chrome이 열리지 않으면 LINE / 앱 내 브라우저가 외부 브라우저 이동을 막은 것입니다. Email 로그인 링크를 쓰거나 메뉴에서 브라우저로 열어 주세요.",
+          }
+        : {
+            title: "In-app browsers can block social login",
+            body: "You may be inside Gmail, Instagram, LINE, Facebook, TikTok, or Google App. These browsers often block Google / Facebook login. Your AIPOGER account is not broken.",
+            best: "Most reliable path: use Email login. If you want Google / Facebook, copy this page URL and open it in Chrome first.",
+            lineHint: "If LINE does not open Chrome, tap Copy URL for Chrome, then open Chrome manually and paste the link.",
+            openChrome: "Open in Chrome",
+            copyChrome: "Copy URL for Chrome",
+            openExternal: "Open Safari / Chrome",
+            mobileRecommended: "Recommended",
+            socialHint: "On mobile, Email login is recommended. For Google / Facebook, open this page in Safari or Chrome.",
+            oauthNotice: "You are inside an app browser. Google / Facebook login is often blocked here. Use Email login, or open Safari / Chrome.",
+            copied: "Login URL copied. Paste it into Safari or Chrome.",
+            copyFailed: "Copy the current URL and open it in Safari or Chrome before logging in.",
+            external: "If you are still inside the app, use the top-right menu or share button and choose Open in Browser.",
+            chromeBlocked: "If Chrome did not open, LINE / the app browser blocked the external-browser jump. Use Email login or open this page from the browser menu.",
+          };
   const redirectingRef = useRef(false);
 
   const goHomeOnce = useCallback(() => {
@@ -126,7 +193,7 @@ function AuthPageInner() {
 
   const handleOAuthLogin = async (provider: "google" | "facebook") => {
     if (isEmbeddedBrowser) {
-      setNotice("你目前在 App 內建瀏覽器中。Google / Facebook 登入容易被這類瀏覽器擋掉，請用 Email 登入連結，或改用 Safari / Chrome 開啟。");
+      setNotice(embeddedCopy.oauthNotice);
       return;
     }
     setLoading(true);
@@ -184,22 +251,22 @@ function AuthPageInner() {
   const copyLoginUrl = async () => {
     try {
       await navigator.clipboard.writeText(loginUrl || buildAuthPageUrl(nextPath));
-      setNotice("已複製登入連結，請貼到 Safari 或 Chrome 開啟。");
+      setNotice(embeddedCopy.copied);
     } catch {
-      setNotice("請複製目前網址，改用 Safari 或 Chrome 開啟後再登入。");
+      setNotice(embeddedCopy.copyFailed);
     }
   };
 
   const openExternalBrowser = () => {
     window.open(loginUrl || buildAuthPageUrl(nextPath), "_blank", "noopener,noreferrer");
-    setNotice("如果仍停在 App 內，請點右上角選單或分享按鈕，選擇「在 Safari / Chrome 開啟」。");
+    setNotice(embeddedCopy.external);
   };
 
   const openChrome = () => {
     if (!chromeOpenUrl) return;
     window.location.href = chromeOpenUrl;
     window.setTimeout(() => {
-      setNotice("如果 Chrome 沒有被打開，代表 LINE / App 內建瀏覽器擋住了外部瀏覽器跳轉；請改用 Email 登入連結，或用右上角選單選「在瀏覽器開啟」。");
+      setNotice(embeddedCopy.chromeBlocked);
     }, 900);
   };
 
@@ -239,15 +306,15 @@ function AuthPageInner() {
           <p className="text-center text-xs text-zinc-500">{t("login_methods")}</p>
           {isEmbeddedBrowser ? (
             <div className="rounded-3xl border border-orange-300/40 bg-orange-500/10 p-5 text-sm leading-7 text-orange-50">
-              <p className="text-base font-black text-orange-200">App 內建瀏覽器會限制社群登入</p>
+              <p className="text-base font-black text-orange-200">{embeddedCopy.title}</p>
               <p className="mt-2 text-zinc-200">
-                你目前可能在 Gmail、IG、LINE、Facebook、TikTok 或 Google App 的內建瀏覽器中。這類環境常會封鎖 Google / Facebook 登入，不是 AIPOGER 帳號壞掉。
+                {embeddedCopy.body}
               </p>
               <p className="mt-2 text-zinc-100">
-                最穩方式：直接輸入 Email 收登入連結；如果要用 Google / Facebook，請複製本頁網址，到 Chrome 貼上開啟後再登入。
+                {embeddedCopy.best}
               </p>
               <p className="mt-2 rounded-2xl border border-cyan-200/25 bg-black/35 px-3 py-2 text-cyan-100">
-                LINE 裡如果「用 Chrome 開啟」沒有反應，請按「複製網址去 Chrome 開啟」，再手動打開 Chrome 貼上網址。
+                {embeddedCopy.lineHint}
               </p>
               <div className="mt-4 grid gap-2 sm:grid-cols-3">
                 <button
@@ -255,21 +322,21 @@ function AuthPageInner() {
                   onClick={openChrome}
                   className="rounded-2xl bg-cyan-300 px-4 py-3 text-sm font-black text-black transition hover:bg-cyan-100"
                 >
-                  嘗試用 Chrome 開啟
+                  {embeddedCopy.openChrome}
                 </button>
                 <button
                   type="button"
                   onClick={() => void copyLoginUrl()}
                   className="rounded-2xl border border-orange-200/35 px-4 py-3 text-sm font-black text-orange-100 transition hover:border-orange-100 hover:bg-orange-200 hover:text-black"
                 >
-                  複製網址去 Chrome 開啟
+                  {embeddedCopy.copyChrome}
                 </button>
                 <button
                   type="button"
                   onClick={openExternalBrowser}
                   className="rounded-2xl bg-orange-500 px-4 py-3 text-sm font-black text-black transition hover:bg-orange-300"
                 >
-                  嘗試開 Safari / Chrome
+                  {embeddedCopy.openExternal}
                 </button>
               </div>
             </div>
@@ -281,7 +348,7 @@ function AuthPageInner() {
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-black uppercase tracking-[0.22em] text-cyan-200">{t("login_email_title")}</p>
               {isEmbeddedBrowser ? (
-                <span className="rounded-full border border-cyan-200/35 px-3 py-1 text-xs font-black text-cyan-100">手機推薦</span>
+                <span className="rounded-full border border-cyan-200/35 px-3 py-1 text-xs font-black text-cyan-100">{embeddedCopy.mobileRecommended}</span>
               ) : null}
             </div>
             <p className="mt-2 text-sm leading-relaxed text-zinc-300">{t("login_email_body")}</p>
@@ -314,7 +381,7 @@ function AuthPageInner() {
           </form>
           {isEmbeddedBrowser ? (
             <p className="rounded-2xl border border-zinc-700 bg-zinc-900/80 p-4 text-center text-sm leading-relaxed text-zinc-300">
-              手機目前建議使用 Email 登入。Google / Facebook 社群登入請改用 Safari 或 Chrome 開啟本頁。
+              {embeddedCopy.socialHint}
             </p>
           ) : (
             <>

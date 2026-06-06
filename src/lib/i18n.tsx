@@ -2,7 +2,19 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
-type Lang = 'zh' | 'en';
+const SUPPORTED_LANGS = ['zh', 'en', 'ja', 'ko'] as const;
+type Lang = (typeof SUPPORTED_LANGS)[number];
+
+const NEXT_LANG: Record<Lang, Lang> = {
+  zh: 'en',
+  en: 'ja',
+  ja: 'ko',
+  ko: 'zh',
+};
+
+function isSupportedLang(value: string | null): value is Lang {
+  return SUPPORTED_LANGS.includes(value as Lang);
+}
 
 interface I18nContextValue {
   lang: Lang;
@@ -14,7 +26,7 @@ interface I18nContextValue {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
-const dict: Record<Lang, Record<string, string>> = {
+const dict: Record<Lang, Partial<Record<string, string>>> = {
   zh: {
     home_title: 'AIPOGER 愛播歌',
     home_subtitle: 'Where AI Beats Bleed.',
@@ -477,6 +489,144 @@ const dict: Record<Lang, Record<string, string>> = {
     result_share_label: 'Share Result Card',
     result_reset_demo: 'Reset demo data',
   },
+  ja: {
+    home_secondary_title: 'AI音楽バトルアリーナ',
+    home_hero_line: 'いちばん強いDropを出せ。聴衆が決める。',
+    home_tagline: '公式Weekly Drop Battleへ。AIPOGERがマッチング、投票、露出、勝者記録まで引き受けます。',
+    home_stat_45_label: 'Drop対決',
+    home_stat_24_label: 'フル曲対決',
+    home_stat_survive_label: '音楽サバイバル',
+    home_logo_alt: 'AIPOGER',
+    home_coin_tooltip: 'AIPO Coin残高',
+    home_profile_level: 'ランク',
+    home_apc_balance: 'APC',
+    home_admin_badge: 'Admin',
+    home_account_menu_aria: 'アカウントメニュー',
+    nav_home_aria: 'ホームへ戻る',
+    common_loading: '読み込み中…',
+    auth_error: 'ログインエラーです。もう一度お試しください。',
+    btn_battle: 'Weekly Battleへ',
+    btn_analyze_music: 'A&R Check',
+    btn_watch: 'AI音楽バトルホール',
+    btn_listen_bar: 'Bar Heartbreak',
+    btn_weekly_battle: 'Weekly Drop Battle',
+    home_analyze_music_title: 'A&R Check',
+    home_analyze_music_desc: '楽曲の立ち位置、強いDrop、向いているバトル導線を確認',
+    login: 'ログイン',
+    logout: 'ログアウト',
+    login_title: 'ログイン',
+    login_subtitle: 'Where AI Beats Bleed.',
+    disclaimer_title: 'クリエイター規約（必ず確認）',
+    disclaimer_1: 'アップロードできるのは、あなたが権利を持つオリジナルのAI生成音楽のみです。著作権違反は削除やアカウント停止の対象になります。',
+    disclaimer_2: 'バトル、コメント、投票、投稿にはログインと同意が必要です。視聴と観戦は自由に入れます。',
+    disclaimer_3: 'Safari / ChromeではGoogle / Facebookログインが使えます。アプリ内ブラウザではEmailログインリンクを推奨します。',
+    disclaimer_4: '勝ち残った楽曲は、AIPOGERでの放送、キュレーション、プロモーション、商業コラボに招待される可能性があります。',
+    disclaimer_5: '著作権はクリエイターに残ります。AIPOGERは許可を得た範囲で再生、表示、コラボに使用します。',
+    disclaimer_6: '削除希望はいつでも連絡できます。速やかに対応します。',
+    disclaimer_7: 'AIPOGERは投稿時刻を記録し、オリジナル性の証明を支援します。',
+    login_methods: 'ログイン方法を選択',
+    login_fb: 'Facebookでログイン',
+    login_google: 'Googleでログイン',
+    login_email_title: 'スマホEmailログイン',
+    login_email_body: 'スマホのアプリ内ブラウザではEmailログインが最も安定します。メールアドレスを入力し、届いたリンクからAIPOGERへ入ってください。',
+    login_email_placeholder: 'Emailを入力',
+    login_email_send: 'ログインリンク送信',
+    login_email_sent: 'ログインリンクを送信しました。メールボックスからリンクを開いてください。',
+    login_email_invalid: '正しいEmailを入力してください。',
+    login_email_failed: 'Emailログインリンクの送信に失敗しました:',
+    login_agree: 'ログインすると、上記のクリエイター規約に同意したものとみなされます',
+    setup_title: '🎤 バトル情報',
+    fighter_name: 'ファイター名',
+    song_name: '曲名',
+    genre: 'ジャンル',
+    genre_placeholder: 'ジャンルを選択',
+    genre_ai_music: 'AI Music',
+    genre_pop: 'Pop Dance',
+    genre_kpop_energy: 'K-pop Energy',
+    genre_rap_street: 'Rap / Street',
+    genre_city_pop: 'Retro City-Pop',
+    genre_emotion: 'Emotional Ballad',
+    genre_rock: 'Rock / Metal',
+    genre_edm: 'EDM / Electronic',
+    genre_custom: 'Custom Style',
+    watch_page_title: 'AI音楽バトルホール',
+    watch_live_section: '開催中',
+    watch_rank: 'Honor Board',
+    watch_enter: 'アリーナへ',
+    pool_title: 'バトルプール',
+    pool_accept_challenge: '挑戦を受ける',
+    result_rank: 'Honor Boardを見る',
+    result_share_label: '結果カードを共有',
+  },
+  ko: {
+    home_secondary_title: 'AI 음악 배틀 아레나',
+    home_hero_line: '가장 강한 Drop을 올려라. 관객이 결정한다.',
+    home_tagline: '공식 Weekly Drop Battle에 참여하세요. AIPOGER가 매칭, 투표, 노출, 우승 기록까지 맡습니다.',
+    home_stat_45_label: 'Drop 대결',
+    home_stat_24_label: '풀송 대결',
+    home_stat_survive_label: '음악 서바이벌',
+    home_logo_alt: 'AIPOGER',
+    home_coin_tooltip: 'AIPO Coin 잔액',
+    home_profile_level: '랭크',
+    home_apc_balance: 'APC',
+    home_admin_badge: 'Admin',
+    home_account_menu_aria: '계정 메뉴',
+    nav_home_aria: '홈으로',
+    common_loading: '불러오는 중…',
+    auth_error: '로그인 오류입니다. 다시 시도해 주세요.',
+    btn_battle: 'Weekly Battle 참여',
+    btn_analyze_music: 'A&R Check',
+    btn_watch: 'AI 음악 배틀홀',
+    btn_listen_bar: 'Bar Heartbreak',
+    btn_weekly_battle: 'Weekly Drop Battle',
+    home_analyze_music_title: 'A&R Check',
+    home_analyze_music_desc: '곡의 포지션, 가장 강한 Drop, 맞는 배틀 루트를 확인',
+    login: '로그인',
+    logout: '로그아웃',
+    login_title: '로그인',
+    login_subtitle: 'Where AI Beats Bleed.',
+    disclaimer_title: '크리에이터 약관 (필독)',
+    disclaimer_1: '업로드 가능한 음악은 본인이 권리를 가진 오리지널 AI 생성 음악뿐입니다. 저작권 침해는 즉시 삭제 및 계정 제한으로 이어질 수 있습니다.',
+    disclaimer_2: '배틀, 댓글, 투표, 제출에는 로그인과 동의가 필요합니다. 듣기와 관전은 자유롭게 가능합니다.',
+    disclaimer_3: 'Safari / Chrome에서는 Google / Facebook 로그인을 사용할 수 있습니다. 앱 내 브라우저에서는 Email 로그인 링크를 추천합니다.',
+    disclaimer_4: '우승곡은 AIPOGER 방송, 큐레이션, 프로모션 또는 상업 협업 플로우에 초대될 수 있습니다.',
+    disclaimer_5: '저작권은 크리에이터에게 남습니다. AIPOGER는 허가된 범위에서 재생, 표시, 협업에 사용합니다.',
+    disclaimer_6: '삭제 요청은 언제든지 보낼 수 있으며 빠르게 처리합니다.',
+    disclaimer_7: 'AIPOGER는 업로드 시간을 기록해 오리지널 증명을 돕습니다.',
+    login_methods: '로그인 방법 선택',
+    login_fb: 'Facebook으로 로그인',
+    login_google: 'Google로 로그인',
+    login_email_title: '모바일 Email 로그인',
+    login_email_body: '모바일 앱 내 브라우저에서는 Email 로그인이 가장 안정적입니다. 이메일을 입력한 뒤 받은 링크로 AIPOGER에 들어오세요.',
+    login_email_placeholder: 'Email 입력',
+    login_email_send: '로그인 링크 보내기',
+    login_email_sent: '로그인 링크를 보냈습니다. 메일함에서 링크를 열어 주세요.',
+    login_email_invalid: '올바른 Email을 입력해 주세요.',
+    login_email_failed: 'Email 로그인 링크 전송 실패:',
+    login_agree: '로그인하면 위 크리에이터 약관에 동의한 것으로 간주됩니다',
+    setup_title: '🎤 배틀 정보',
+    fighter_name: '파이터 이름',
+    song_name: '곡명',
+    genre: '장르',
+    genre_placeholder: '장르 선택',
+    genre_ai_music: 'AI Music',
+    genre_pop: 'Pop Dance',
+    genre_kpop_energy: 'K-pop Energy',
+    genre_rap_street: 'Rap / Street',
+    genre_city_pop: 'Retro City-Pop',
+    genre_emotion: 'Emotional Ballad',
+    genre_rock: 'Rock / Metal',
+    genre_edm: 'EDM / Electronic',
+    genre_custom: 'Custom Style',
+    watch_page_title: 'AI 음악 배틀홀',
+    watch_live_section: '진행 중',
+    watch_rank: 'Honor Board',
+    watch_enter: '아레나 입장',
+    pool_title: '배틀 풀',
+    pool_accept_challenge: '도전 수락',
+    result_rank: 'Honor Board 보기',
+    result_share_label: '결과 카드 공유',
+  },
 };
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
@@ -494,21 +644,21 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const toggleLang = useCallback(() => {
-    setLang(lang === 'zh' ? 'en' : 'zh');
+    setLang(NEXT_LANG[lang]);
   }, [lang, setLang]);
 
   useEffect(() => {
     if (initialized) return;
     if (typeof window === 'undefined') return;
     const fromUrl = new URLSearchParams(window.location.search).get('lang');
-    if (fromUrl === 'en' || fromUrl === 'zh') {
+    if (isSupportedLang(fromUrl)) {
       setLangState(fromUrl);
       localStorage.setItem('aipoger_lang', fromUrl);
       setInitialized(true);
       return;
     }
     const stored = localStorage.getItem('aipoger_lang');
-    if (stored === 'en' || stored === 'zh') {
+    if (isSupportedLang(stored)) {
       setLangState(stored);
     }
     setInitialized(true);
@@ -516,7 +666,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
   const t = useCallback(
     (key: string, vars?: Record<string, string | number>): string => {
-      let s = dict[lang][key] ?? key;
+      let s = dict[lang]?.[key] ?? dict.en[key] ?? dict.zh[key] ?? key;
       if (vars) {
         for (const [k, v] of Object.entries(vars)) {
           s = s.replaceAll(`{{${k}}}`, String(v));
@@ -532,14 +682,20 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     if (typeof window === 'undefined') return;
     const url = new URL(window.location.href);
     const fromUrl = url.searchParams.get('lang');
-    if ((fromUrl === 'en' || fromUrl === 'zh') && fromUrl !== lang) return;
+    if (isSupportedLang(fromUrl) && fromUrl !== lang) return;
     url.searchParams.set('lang', lang);
     window.history.replaceState(null, '', url.toString());
   }, [lang]);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
-    document.documentElement.lang = lang === 'zh' ? 'zh-Hant' : 'en';
+    const htmlLang: Record<Lang, string> = {
+      zh: 'zh-Hant',
+      en: 'en',
+      ja: 'ja',
+      ko: 'ko',
+    };
+    document.documentElement.lang = htmlLang[lang];
   }, [lang]);
 
   return (

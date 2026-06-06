@@ -634,7 +634,8 @@ function ArrowIcon() {
 export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
   const { lang } = useI18n();
   const isZh = lang === "zh";
-  const data = content[kind][lang];
+  const contentLang = isZh ? "zh" : "en";
+  const data = content[kind][contentLang];
   const isPolicyPage = kind === "about";
 
   const primaryHref =
@@ -675,7 +676,7 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
                       : "border-white/12 bg-white/[0.04] text-zinc-300 hover:border-cyan-200/60 hover:text-white"
                   }`}
                 >
-                  {content[item.key][lang].navTitle}
+                  {content[item.key][contentLang].navTitle}
                 </Link>
               );
             })}
