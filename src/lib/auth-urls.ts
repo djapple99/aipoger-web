@@ -81,6 +81,19 @@ export function buildAuthPageUrl(nextPath: string | null | undefined): string {
   return `${getAuthSiteOrigin()}/auth?next=${encodeURIComponent(safeNext)}`;
 }
 
+export function buildChromeOpenUrl(publicUrl: string, userAgent: string | null | undefined): string {
+  const target = new URL(publicUrl, AIPOGER_PUBLIC_ORIGIN);
+  const ua = userAgent ?? "";
+
+  if (/Android/i.test(ua)) {
+    const path = `${target.host}${target.pathname}${target.search}${target.hash}`;
+    return `intent://${path}#Intent;scheme=${target.protocol.replace(":", "")};package=com.android.chrome;end`;
+  }
+
+  const chromeScheme = target.protocol === "https:" ? "googlechromes" : "googlechrome";
+  return `${chromeScheme}://${target.host}${target.pathname}${target.search}${target.hash}`;
+}
+
 export function rememberAuthNextPath(nextPath: string | null | undefined) {
   if (typeof window === "undefined") return;
   const safeNext = safeNextPath(nextPath);

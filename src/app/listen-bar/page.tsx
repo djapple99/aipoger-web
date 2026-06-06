@@ -1675,12 +1675,20 @@ export default function ListenBarPage() {
                 transform: translateX(0) !important;
               }
             }
+            @media (max-width: 639px) {
+              .listen-bar-battle-ticker-motion {
+                animation: none !important;
+                transform: translateX(0) !important;
+                white-space: normal !important;
+                line-height: 1.45 !important;
+              }
+            }
           `}</style>
 
-          <div className="relative mb-5 ml-auto flex max-w-full flex-wrap items-center justify-center gap-2 rounded-[1.15rem] border border-white/10 bg-black/55 px-3 py-2 shadow-[0_18px_54px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur md:w-fit md:justify-end">
+          <div className="relative mb-5 ml-auto grid max-w-full grid-cols-2 items-center justify-center gap-2 rounded-[1.15rem] border border-white/10 bg-black/55 px-3 py-2 pl-[4.85rem] shadow-[0_18px_54px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur min-[430px]:pl-3 sm:flex sm:flex-wrap md:w-fit md:justify-end">
             <a
               href="#play-request"
-              className="rounded-full border border-orange-300/40 bg-orange-500/14 px-4 py-2 text-xs font-black text-orange-100 transition hover:border-orange-100 hover:bg-orange-500/22"
+              className="inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-full border border-orange-300/40 bg-orange-500/14 px-3 py-2 text-xs font-black text-orange-100 transition hover:border-orange-100 hover:bg-orange-500/22 sm:px-4"
             >
               {isZh ? "我要播歌！" : "Play My Song"}
             </a>
@@ -1704,7 +1712,7 @@ export default function ListenBarPage() {
             />
             <Link
               href="/battle"
-              className="whitespace-nowrap rounded-full border border-cyan-300/35 bg-cyan-300/12 px-4 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-100 hover:bg-cyan-300/18"
+              className="inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-full border border-cyan-300/35 bg-cyan-300/12 px-3 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-100 hover:bg-cyan-300/18 sm:px-4"
             >
               {isZh ? "AI音樂鬥歌場" : "Battle Hall"}
             </Link>
@@ -1741,7 +1749,7 @@ export default function ListenBarPage() {
                 <Link
                   key={item.href}
                   href={`${item.href}${item.href === "/" ? "" : lang === "en" ? "?lang=en" : "?lang=zh"}`}
-                  className="whitespace-nowrap rounded-full border border-white/10 bg-white/[0.045] px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-orange-300/70 hover:bg-orange-500/10 hover:text-white"
+                  className="inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-full border border-white/10 bg-white/[0.045] px-3 py-2 text-xs font-black text-zinc-200 transition hover:border-orange-300/70 hover:bg-orange-500/10 hover:text-white sm:px-4"
                 >
                   {item.label}
                 </Link>
@@ -1749,13 +1757,13 @@ export default function ListenBarPage() {
             </nav>
             <Link
               href={`/battle${lang === "en" ? "?lang=en" : "?lang=zh"}`}
-              className="group relative flex min-h-10 min-w-0 items-center overflow-hidden rounded-full border border-cyan-200/20 bg-[linear-gradient(90deg,rgba(4,10,12,0.86),rgba(0,28,34,0.42),rgba(4,10,12,0.86))] px-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
+              className="group relative flex min-h-12 min-w-0 items-center overflow-hidden rounded-[1rem] border border-cyan-200/20 bg-[linear-gradient(90deg,rgba(4,10,12,0.86),rgba(0,28,34,0.42),rgba(4,10,12,0.86))] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 sm:min-h-10 sm:rounded-full sm:py-0"
               aria-label={battleTickerText}
             >
-              <span className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-black via-black/80 to-transparent" />
-              <span className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-black via-black/80 to-transparent" />
+              <span className="pointer-events-none absolute inset-y-0 left-0 z-10 hidden w-10 bg-gradient-to-r from-black via-black/80 to-transparent sm:block" />
+              <span className="pointer-events-none absolute inset-y-0 right-0 z-10 hidden w-10 bg-gradient-to-l from-black via-black/80 to-transparent sm:block" />
               <span
-                className={`listen-bar-battle-ticker-motion inline-flex w-max whitespace-nowrap text-left text-xs font-black leading-none tracking-[0.08em] transition-colors group-hover:text-white ${
+                className={`listen-bar-battle-ticker-motion inline-flex w-full text-left text-xs font-black leading-5 tracking-normal transition-colors group-hover:text-white sm:w-max sm:whitespace-nowrap sm:leading-none sm:tracking-[0.08em] ${
                   battleTickerMessages.length > 0 ? "text-red-300" : "text-cyan-100/78"
                 }`}
                 style={{
@@ -1763,7 +1771,7 @@ export default function ListenBarPage() {
                 }}
               >
                 <span className="pr-10">{battleTickerText}</span>
-                <span className="pr-10" aria-hidden="true">{battleTickerText}</span>
+                <span className="hidden pr-10 sm:inline" aria-hidden="true">{battleTickerText}</span>
               </span>
             </Link>
           </div>
@@ -2005,7 +2013,7 @@ export default function ListenBarPage() {
                   </p>
                   <h2 className="text-[clamp(1.55rem,8vw,2.9rem)] font-black leading-none text-white sm:whitespace-nowrap">
                     {upcomingHeartbreakerTracks.length > 0
-                      ? (isZh ? "接續的六首歌" : "Next Six Songs")
+                      ? (isZh ? "接續的六首歌" : "Upcoming Sad Songs")
                       : (isZh ? "等待接續歌曲" : "Waiting for Songs")}
                   </h2>
                 </div>
@@ -2039,23 +2047,23 @@ export default function ListenBarPage() {
                                 <p className="line-clamp-1 text-lg font-black leading-tight text-white" title={track.title}>
                                   {track.title}
                                 </p>
-                        <p className="mt-1 truncate text-sm font-bold text-zinc-500">
-                          <span className="text-orange-200">{track.artist}</span>
-                          <span className="mx-2 text-zinc-700">/</span>
-                          {track.tool}
-                          <span className="mx-2 text-zinc-700">/</span>
-                          {formatDuration(track.duration)}
-                        </p>
-                        {track.barPhase === "public" ? (
-                          <p className="mt-1 text-[11px] font-black text-orange-100/80">
-                            {isZh ? `公播 Day ${survivalDayFromDate(track.promotedAt ?? track.createdAt)}` : `Public Day ${survivalDayFromDate(track.promotedAt ?? track.createdAt)}`}
-                          </p>
-                        ) : (
-                          <p className="mt-1 text-[11px] font-black text-cyan-100/80">
-                            Challenger #{challengerRankById.get(track.id) ?? startIndex + index + 1}
-                          </p>
-                        )}
-                      </div>
+                                <p className="mt-1 truncate text-sm font-bold text-zinc-500">
+                                  <span className="text-orange-200">{track.artist}</span>
+                                  <span className="mx-2 text-zinc-700">/</span>
+                                  {track.tool}
+                                  <span className="mx-2 text-zinc-700">/</span>
+                                  {formatDuration(track.duration)}
+                                </p>
+                                {track.barPhase === "public" ? (
+                                  <p className="mt-1 text-[11px] font-black text-orange-100/80">
+                                    {isZh ? `公播 Day ${survivalDayFromDate(track.promotedAt ?? track.createdAt)}` : `Public Day ${survivalDayFromDate(track.promotedAt ?? track.createdAt)}`}
+                                  </p>
+                                ) : (
+                                  <p className="mt-1 text-[11px] font-black text-cyan-100/80">
+                                    Challenger #{challengerRankById.get(track.id) ?? startIndex + index + 1}
+                                  </p>
+                                )}
+                              </div>
                               {startIndex + index === 0 && (
                                 <span className="hidden rounded-full border border-cyan-200/25 bg-cyan-300/8 px-2.5 py-1 text-[10px] font-black text-cyan-100 sm:inline-flex">
                                   {isZh ? "即將插播" : "Next"}

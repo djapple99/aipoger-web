@@ -37,6 +37,10 @@ const {
 } = await import("../src/lib/daily-battle-rules.ts");
 
 const {
+  buildChromeOpenUrl,
+} = await import("../src/lib/auth-urls.ts");
+
+const {
   buildDropBattleSchedulePayload,
   buildDropBattleSchedulePayloadFromQueues,
   canFounderCancelDropBattle,
@@ -171,6 +175,17 @@ test("targeted challenge still requires the same genre", () => {
       "queue-b",
     ),
     false,
+  );
+});
+
+test("mobile auth can build Chrome open URLs for embedded browsers", () => {
+  assert.equal(
+    buildChromeOpenUrl("https://aipoger.com/auth?next=%2Fbattle", "Mozilla/5.0 (iPhone) Line/15.0"),
+    "googlechromes://aipoger.com/auth?next=%2Fbattle",
+  );
+  assert.equal(
+    buildChromeOpenUrl("https://aipoger.com/auth?next=%2Fbattle", "Mozilla/5.0 (Linux; Android 14) Line/15.0"),
+    "intent://aipoger.com/auth?next=%2Fbattle#Intent;scheme=https;package=com.android.chrome;end",
   );
 });
 

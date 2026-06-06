@@ -394,29 +394,29 @@ export default function HomePage() {
   const musicAnalysisHref = `/music-analysis?lang=${lang}`;
   const statItems = isZh
     ? [
+        ["Weekly", "官方賽"],
         ["90s", "Drop Battle"],
-        ["1 min", "即時配對"],
         ["Bar", "傷心酒吧"],
       ]
     : [
-        ["90s", "Drop Battle"],
-        ["1 min", "Instant Match"],
+        ["Weekly", "Official Battle"],
+        ["90s", "Best Drop"],
         ["Bar", "Heartbreak"],
       ];
   const infoLinks = isZh
     ? [
+        { href: "/weekly-drop-battle", title: "Weekly Drop Battle", desc: "官方每週發起主題賽，創作者投稿 Drop 參戰" },
         { href: "/hook-guide", title: "最強Drop Battle 對決抓波規則", desc: "用 Drop 上場，累積戰績與創作者認可" },
         { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
         { href: "/rank", title: "AIPOGER 榮譽榜", desc: "被投票、被熱播、被封存的作品紀錄" },
-        { href: "/ai-music-bible", title: "AI 音樂練功聖經", desc: "陪創作者把作品做得更強、更能上場" },
         { href: "/about", title: "關於愛播歌", desc: "AI 創作者一起成長與作品認可系統" },
         { href: "/partners", title: "廣告與合作", desc: "讓勝出作品走向播放、策展與商業合作" },
       ]
     : [
+        { href: "/weekly-drop-battle", title: "Weekly Drop Battle", desc: "Official theme battles for AI music creators" },
         { href: "/hook-guide", title: "Drop Battle Rules", desc: "Put your strongest Drop on stage and build recognition" },
         { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
         { href: "/rank", title: "AIPOGER Honor Board", desc: "Recognized wins, hot tracks, and archived creator records" },
-        { href: "/ai-music-bible", title: "AI Music Bible", desc: "Practice prompts, Drops, lyrics, and creator workflow" },
         { href: "/about", title: "About AIPOGER", desc: "AI creator growth and music recognition system" },
         { href: "/partners", title: "Partnerships", desc: "Move winning tracks toward airplay, curation, and commercial use" },
       ];
@@ -474,7 +474,7 @@ export default function HomePage() {
 
           <div className="mt-6 grid gap-3 md:hidden">
             <Link
-              href="/battle/setup"
+              href="/weekly-drop-battle"
               className="group flex items-center justify-between rounded-2xl border border-orange-300/60 bg-orange-500 px-5 py-4 text-black shadow-[0_0_34px_rgba(255,106,0,0.25)] transition hover:bg-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
             >
               <BattleIcon />
@@ -545,7 +545,7 @@ export default function HomePage() {
 
               <div className="grid gap-3.5">
                 <Link
-                  href="/battle/setup"
+                  href="/weekly-drop-battle"
                   className="group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] bg-[#ff6a00] px-5 text-white shadow-[0_12px_30px_rgba(255,106,0,0.22)] transition hover:bg-[#ff8a2a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
                 >
                   <BattleIcon />

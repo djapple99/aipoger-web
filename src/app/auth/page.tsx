@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import {
   buildAuthCallbackUrl,
+  buildChromeOpenUrl,
   buildAuthPageUrl,
   readRememberedAuthNextCookie,
   readRememberedAuthNextPath,
@@ -59,6 +60,7 @@ function AuthPageInner() {
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isEmbeddedBrowser, setIsEmbeddedBrowser] = useState(false);
+  const [chromeOpenUrl, setChromeOpenUrl] = useState("");
   const [loginUrl, setLoginUrl] = useState("");
   const [email, setEmail] = useState("");
   const [emailSent, setEmailSent] = useState(false);
@@ -83,9 +85,11 @@ function AuthPageInner() {
 
   useEffect(() => {
     rememberAuthNextPath(nextPath);
-    setLoginUrl(buildAuthPageUrl(nextPath));
+    const publicLoginUrl = buildAuthPageUrl(nextPath);
+    setLoginUrl(publicLoginUrl);
     const ua = navigator.userAgent || "";
     setIsEmbeddedBrowser(isLikelyEmbeddedBrowser(ua));
+    setChromeOpenUrl(buildChromeOpenUrl(publicLoginUrl, ua));
   }, [nextPath]);
 
   useEffect(() => {
@@ -191,6 +195,14 @@ function AuthPageInner() {
     setNotice("如果仍停在 App 內，請點右上角選單或分享按鈕，選擇「在 Safari / Chrome 開啟」。");
   };
 
+  const openChrome = () => {
+    if (!chromeOpenUrl) return;
+    window.location.href = chromeOpenUrl;
+    window.setTimeout(() => {
+      setNotice("如果 Chrome 沒有被打開，代表 LINE / App 內建瀏覽器擋住了外部瀏覽器跳轉；請改用 Email 登入連結，或用右上角選單選「在瀏覽器開啟」。");
+    }, 900);
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-black p-6 text-white">
       <div className="w-full max-w-md space-y-8">
@@ -232,15 +244,25 @@ function AuthPageInner() {
                 你目前可能在 Gmail、IG、LINE、Facebook、TikTok 或 Google App 的內建瀏覽器中。這類環境常會封鎖 Google / Facebook 登入，不是 AIPOGER 帳號壞掉。
               </p>
               <p className="mt-2 text-zinc-100">
-                最穩方式：直接輸入 Email 收登入連結；如果要用 Google / Facebook，請點右上角分享 / 選單，改用 Safari 或 Chrome 開啟後再登入。
+                最穩方式：直接輸入 Email 收登入連結；如果要用 Google / Facebook，請複製本頁網址，到 Chrome 貼上開啟後再登入。
               </p>
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <p className="mt-2 rounded-2xl border border-cyan-200/25 bg-black/35 px-3 py-2 text-cyan-100">
+                LINE 裡如果「用 Chrome 開啟」沒有反應，請按「複製網址去 Chrome 開啟」，再手動打開 Chrome 貼上網址。
+              </p>
+              <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                <button
+                  type="button"
+                  onClick={openChrome}
+                  className="rounded-2xl bg-cyan-300 px-4 py-3 text-sm font-black text-black transition hover:bg-cyan-100"
+                >
+                  嘗試用 Chrome 開啟
+                </button>
                 <button
                   type="button"
                   onClick={() => void copyLoginUrl()}
                   className="rounded-2xl border border-orange-200/35 px-4 py-3 text-sm font-black text-orange-100 transition hover:border-orange-100 hover:bg-orange-200 hover:text-black"
                 >
-                  複製網址到 Safari
+                  複製網址去 Chrome 開啟
                 </button>
                 <button
                   type="button"
