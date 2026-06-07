@@ -893,6 +893,9 @@ function BattleArenaContent() {
   const [teaserSecondsLeft, setTeaserSecondsLeft] = useState(PRE_BATTLE_TEASER_SECONDS);
   const [adVideoMuted, setAdVideoMuted] = useState(false);
   const [adVideoPosition, setAdVideoPosition] = useState<{ x: number; y: number } | null>(null);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const [audioUnlockBusy, setAudioUnlockBusy] = useState(false);
+  const [playbackBlockedDeck, setPlaybackBlockedDeck] = useState<DeckKey | null>(null);
   const [transitionDeck, setTransitionDeck] = useState<DeckKey | null>(null);
   const [transitionSecondsLeft, setTransitionSecondsLeft] = useState(SCRATCH_TRANSITION_SECONDS);
   const [transitionEndsAtMs, setTransitionEndsAtMs] = useState<number | null>(null);
@@ -961,6 +964,7 @@ function BattleArenaContent() {
   const shownDanmakuMessageIdsRef = useRef<Set<string>>(new Set());
   const shownDanmakuFingerprintsRef = useRef<Map<string, number>>(new Map());
 
+  const isMockBattle = battleId.startsWith("mock-");
   const isPreBattle = (preStartSecondsLeft ?? 0) > 0;
   const isQueueArena = battle?.arena_kind === "queue";
   const isQueueChallengeOpen = isQueueArena && isDropChallengeAcceptable({
@@ -1209,11 +1213,6 @@ function BattleArenaContent() {
     return promise;
   }, [stopWinnerCountdownSfx]);
 
-  const waitForWinnerCountdownSfx = useCallback(
-    () => winnerCountdownPromiseRef.current ?? Promise.resolve(),
-    [],
-  );
-
   const playWinnerRevealSfx = useCallback(() => {
     stopWinnerRevealSfx();
     const audio = new Audio(WINNER_REVEAL_SFX_SRC);
@@ -1309,15 +1308,14 @@ function BattleArenaContent() {
 
     const href = hrefOverride || battleResultHrefRef.current;
     if (!href) {
-      void waitForWinnerCountdownSfx().then(() => {
-        if (resultSequenceRef.current !== resultSequence) return;
-        void closeBattleCardAfterResult("expired").catch((err) => {
-          console.warn("[battle cleanup no contest]", err);
-        });
-        setWinnerRevealOpen(false);
-        setRematchPromptReady(false);
-        setNoContestOpen(true);
+      stopWinnerCountdownSfx();
+      if (resultSequenceRef.current !== resultSequence) return;
+      void closeBattleCardAfterResult("expired").catch((err) => {
+        console.warn("[battle cleanup no contest]", err);
       });
+      setWinnerRevealOpen(false);
+      setRematchPromptReady(false);
+      setNoContestOpen(true);
       return;
     }
 
@@ -1329,20 +1327,19 @@ function BattleArenaContent() {
       });
     }
 
-    void waitForWinnerCountdownSfx().then(() => {
-      if (resultSequenceRef.current !== resultSequence) return;
-      setWinnerRevealOpen(true);
-      setNoContestOpen(false);
-      playWinnerRevealSfx();
+    stopWinnerCountdownSfx();
+    if (resultSequenceRef.current !== resultSequence) return;
+    setWinnerRevealOpen(true);
+    setNoContestOpen(false);
+    playWinnerRevealSfx();
 
-      resultRedirectTimerRef.current = window.setTimeout(() => {
-        resultRedirectTimerRef.current = null;
-        if (resultSequenceRef.current !== resultSequence) return;
-        setWinnerRevealOpen(false);
-        setRematchPromptReady(true);
-      }, Math.max(delayMs, WINNER_REVEAL_MS));
-    });
-  }, [closeBattleCardAfterResult, playWinnerRevealSfx, waitForWinnerCountdownSfx]);
+    resultRedirectTimerRef.current = window.setTimeout(() => {
+      resultRedirectTimerRef.current = null;
+      if (resultSequenceRef.current !== resultSequence) return;
+      setWinnerRevealOpen(false);
+      setRematchPromptReady(true);
+    }, Math.max(delayMs, WINNER_REVEAL_MS));
+  }, [closeBattleCardAfterResult, playWinnerRevealSfx, stopWinnerCountdownSfx]);
 
   const markDeckPlayed = useCallback((deck: "A" | "B") => {
     setPlayedDecks((prev) => (prev[deck] ? prev : { ...prev, [deck]: true }));
@@ -2064,6 +2061,9 @@ function BattleArenaContent() {
     setRematchClaim(null);
     setRematchBusy(false);
     setRematchError(null);
+    setAudioUnlocked(false);
+    setAudioUnlockBusy(false);
+    setPlaybackBlockedDeck(null);
     setHasVoted(null);
     setActiveDeck(null);
     setFirstDeck(null);
@@ -2354,7 +2354,7 @@ function BattleArenaContent() {
   }, [playedDecks.A, playedDecks.B, playWinnerCountdownSfx, pushResultForEveryone]);
 
   // ── 播放控制 ──────────────────────────────────────────
-  const playDeck = useCallback((deck: DeckKey, restart: boolean, startAtSeconds = 0) => {
+  const playDeck = useCallback((deck: DeckKey, restart: boolean, startAtSeconds = 0, forceAudioUnlock = false) => {
     const target = deck === "A" ? audioARef.current : audioBRef.current;
     const other = deck === "A" ? audioBRef.current : audioARef.current;
     other?.pause();
@@ -2368,6 +2368,13 @@ function BattleArenaContent() {
       setActiveDeck(null);
       return;
     }
+    if (!forceAudioUnlock && !audioUnlocked && !isMockBattle) {
+      setCurrentDeck(deck);
+      setActiveDeck(null);
+      setBattlePhase("ready");
+      setPlaybackBlockedDeck(deck);
+      return;
+    }
     if (restart) {
       arenaEchoTriggeredRef.current[deck] = false;
       target.currentTime = Math.max(0, Math.min(HOOK_BATTLE_SECONDS - 0.25, startAtSeconds));
@@ -2378,13 +2385,56 @@ function BattleArenaContent() {
         setCurrentDeck(deck);
         setActiveDeck(deck);
         setBattlePhase("playing");
+        setAudioUnlocked(true);
+        setPlaybackBlockedDeck(null);
       })
       .catch(() => {
         setCurrentDeck(deck);
         setActiveDeck(null);
         setBattlePhase("ready");
+        setAudioUnlocked(false);
+        setPlaybackBlockedDeck(deck);
       });
-  }, [markDeckPlayed]);
+  }, [audioUnlocked, isMockBattle, markDeckPlayed]);
+
+  const unlockBattleAudio = useCallback(async () => {
+    if (audioUnlockBusy) return;
+    setAudioUnlockBusy(true);
+    setAudioUnlocked(true);
+    try {
+      const deckToResume =
+        playbackBlockedDeck ??
+        (currentDeck && (battlePhase === "ready" || battlePhase === "paused") ? currentDeck : null);
+
+      if (deckToResume && !completedDecksRef.current[deckToResume] && audioUrls[deckToResume]) {
+        const resume = resumeDeckOffsetRef.current?.deck === deckToResume ? resumeDeckOffsetRef.current.seconds : 0;
+        resumeDeckOffsetRef.current = null;
+        autoStartedDecksRef.current[deckToResume] = true;
+        playDeck(deckToResume, true, resume, true);
+        return;
+      }
+
+      const audios = [audioARef.current, audioBRef.current].filter((audio): audio is HTMLAudioElement => Boolean(audio?.src));
+      await Promise.all(
+        audios.map(async (audio) => {
+          const originalMuted = audio.muted;
+          try {
+            audio.muted = true;
+            await audio.play();
+            audio.pause();
+            audio.currentTime = 0;
+          } catch {
+            // The visible unlock action will still let the active deck retry when it is ready.
+          } finally {
+            audio.muted = originalMuted;
+          }
+        }),
+      );
+      setPlaybackBlockedDeck(null);
+    } finally {
+      setAudioUnlockBusy(false);
+    }
+  }, [audioUnlockBusy, audioUrls, battlePhase, currentDeck, playDeck, playbackBlockedDeck]);
 
   useEffect(() => {
     if (battlePhase !== "transition" || !transitionDeck || !transitionEndsAtMs) return;
@@ -2500,12 +2550,32 @@ function BattleArenaContent() {
   useEffect(() => {
     if (battlePhase !== "ready" || !currentDeck || completedDecksRef.current[currentDeck] || autoStartedDecksRef.current[currentDeck]) return;
     if (!audioUrls[currentDeck]) return;
+    if (!audioUnlocked && !isMockBattle) {
+      setPlaybackBlockedDeck(currentDeck);
+      return;
+    }
     autoStartedDecksRef.current[currentDeck] = true;
     const resume = resumeDeckOffsetRef.current?.deck === currentDeck ? resumeDeckOffsetRef.current.seconds : 0;
     resumeDeckOffsetRef.current = null;
     const timer = window.setTimeout(() => playDeck(currentDeck, true, resume), 220);
     return () => window.clearTimeout(timer);
-  }, [audioUrls, battlePhase, currentDeck, playDeck]);
+  }, [audioUnlocked, audioUrls, battlePhase, currentDeck, isMockBattle, playDeck]);
+
+  useEffect(() => {
+    if (!battleStartedAtMs || battle?.arena_kind === "queue" || (playedDecks.A && playedDecks.B) || battlePhase === "final") return;
+    const finalAtMs = battleStartedAtMs + BATTLE_PLAYBACK_SECONDS * 1000 + 180;
+    const timer = window.setTimeout(() => {
+      if (completedDecksRef.current.A && completedDecksRef.current.B) return;
+      audioARef.current?.pause();
+      audioBRef.current?.pause();
+      completedDecksRef.current = { A: true, B: true };
+      setPlayedDecks({ A: true, B: true });
+      setActiveDeck(null);
+      setCurrentDeck(null);
+      setBattlePhase("final");
+    }, Math.max(0, finalAtMs - Date.now()));
+    return () => window.clearTimeout(timer);
+  }, [battle?.arena_kind, battlePhase, battleStartedAtMs, playedDecks.A, playedDecks.B]);
 
   useEffect(() => {
     if (battlePhase !== "playing" || !activeDeck) {
@@ -3062,6 +3132,13 @@ function BattleArenaContent() {
   const pctB = 100 - pctA;
   const battlePlaybackComplete = playedDecks.A && playedDecks.B;
   const showFinalVoteStats = battlePlaybackComplete && !voteOpen && !winnerRevealOpen;
+  const showAudioUnlockOverlay =
+    !isQueueArena &&
+    !battlePlaybackComplete &&
+    !winnerRevealOpen &&
+    !noContestOpen &&
+    Boolean(audioUrls.A || audioUrls.B) &&
+    Boolean(!audioUnlocked || playbackBlockedDeck);
 
   const vinylCoverA = useMemo(() => {
     if (!battle) return null;
@@ -3172,7 +3249,6 @@ function BattleArenaContent() {
         : lang === "zh"
           ? "取消挑戰"
           : "Cancel Challenge";
-  const isMockBattle = battleId.startsWith("mock-");
   const canControlDeck = (deck: DeckKey) => isMockBattle || currentUserSide === deck;
   const currentFighterName = currentDeck === "A" ? battle.fighter_a_name : currentDeck === "B" ? battle.fighter_b_name : "";
   const firstFighterName = firstDeck === "A" ? battle.fighter_a_name : firstDeck === "B" ? battle.fighter_b_name : "";
@@ -3452,6 +3528,35 @@ function BattleArenaContent() {
           </div>
         </div>
       ) : null}
+      {showAudioUnlockOverlay ? (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/72 px-5 text-center backdrop-blur-[2px]">
+          <div className="w-[min(92vw,560px)] rounded-[2rem] border border-orange-200/42 bg-black/84 px-6 py-7 shadow-[0_0_90px_rgba(255,106,0,0.32),inset_0_0_80px_rgba(255,255,255,0.045)]">
+            <p className="text-[11px] font-black uppercase tracking-[0.32em] text-orange-200/78">AIPOGER DROP BATTLE</p>
+            <h2 className="mt-3 text-[clamp(2rem,8vw,4.4rem)] font-black leading-none text-white drop-shadow-[0_0_34px_rgba(255,106,0,0.4)]">
+              {lang === "zh" ? "開聲進場" : "Enter With Sound"}
+            </h2>
+            <p className="mx-auto mt-4 max-w-[28rem] text-sm font-bold leading-7 text-zinc-300">
+              {lang === "zh"
+                ? "點一下後，開戰倒數結束會由系統自動播放音樂。你只要聽歌、投票、丟彈幕。"
+                : "Tap once. After the countdown, AIPOGER will play the battle automatically."}
+            </p>
+            <button
+              type="button"
+              onClick={() => void unlockBattleAudio()}
+              disabled={audioUnlockBusy}
+              className="mt-6 min-h-14 w-full rounded-full border border-orange-100/70 bg-orange-500 px-6 py-4 text-base font-black text-black shadow-[0_0_34px_rgba(255,106,0,0.34)] transition hover:bg-orange-300 disabled:cursor-wait disabled:opacity-70 sm:w-auto sm:min-w-[16rem]"
+            >
+              {audioUnlockBusy
+                ? lang === "zh"
+                  ? "開聲中..."
+                  : "Unlocking..."
+                : lang === "zh"
+                  ? "點一下開聲"
+                  : "Tap to Enable Sound"}
+            </button>
+          </div>
+        </div>
+      ) : null}
       {battlePlaybackComplete && voteOpen && (
         <div className="pointer-events-none absolute inset-0 z-[95] flex items-center justify-center bg-black/28 backdrop-blur-[1px]">
           <div className="relative flex h-[min(54vw,430px)] w-[min(54vw,430px)] flex-col items-center justify-center rounded-full border border-yellow-200/40 bg-[radial-gradient(circle,rgba(255,191,74,0.18),rgba(0,0,0,0.72)_58%,rgba(0,0,0,0.08)_76%)] shadow-[0_0_90px_rgba(255,106,0,0.46),inset_0_0_80px_rgba(255,255,255,0.06)] [animation:aipogerVotePulse_1s_ease-in-out_infinite]">
@@ -3509,39 +3614,36 @@ function BattleArenaContent() {
         </div>
       )}
       {rematchClaim && battlePlaybackComplete && hasResultWinner && !winnerRevealOpen && !noContestOpen && (
-        <div className="absolute inset-x-0 bottom-36 z-[130] flex justify-center px-4 md:bottom-8">
-          <div className="w-[min(94vw,640px)] rounded-[1.4rem] border border-orange-200/28 bg-black/82 px-5 py-4 text-center shadow-[0_0_70px_rgba(255,106,0,0.22)] backdrop-blur-xl">
-            <div className="flex flex-col items-center gap-3 md:flex-row md:items-center md:justify-between md:text-left">
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-[0.26em] text-orange-200/75">
-                  {lang === "zh" ? "擂台熱鬥中" : "King of the Hill"}
-                </p>
-                <h2 className="mt-1 text-xl font-black text-white">{rematchStatusTitle}</h2>
-                <p className="mt-1 text-sm font-bold leading-6 text-zinc-300">{rematchStatusDesc}</p>
-                {rematchOpenForClaim && (
-                  <p className="mt-1 text-xs font-black text-yellow-100">
-                    {lang === "zh" ? `${rematchClaimSecondsLeft} 秒內搶挑戰席` : `${rematchClaimSecondsLeft}s to claim the slot`}
-                  </p>
-                )}
-                {rematchError && <p className="mt-1 text-xs font-bold text-red-300">{rematchError}</p>}
-              </div>
-              <div className="flex shrink-0 flex-wrap justify-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => void handleClaimRematch()}
-                  disabled={rematchClaimDisabled}
-                  className="rounded-full border border-orange-200/50 bg-orange-500 px-4 py-2 text-xs font-black text-black shadow-[0_0_24px_rgba(255,106,0,0.28)] transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:border-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-500"
-                >
-                  {rematchBusy
-                    ? lang === "zh"
-                      ? "搶席中"
-                      : "Claiming"
-                    : lang === "zh"
-                      ? "我要挑戰擂主"
-                      : "Challenge Defender"}
-                </button>
-              </div>
-            </div>
+        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/78 px-5 text-center backdrop-blur-[2px]">
+          <div className="relative w-[min(94vw,680px)] overflow-hidden rounded-[2rem] border border-orange-200/45 bg-black/88 px-6 py-7 shadow-[0_0_110px_rgba(255,106,0,0.36),inset_0_0_80px_rgba(255,255,255,0.045)]">
+            <div className="pointer-events-none absolute inset-x-[-18%] top-0 h-px bg-gradient-to-r from-transparent via-orange-200 to-transparent shadow-[0_0_48px_rgba(255,106,0,0.7)]" />
+            <p className="text-[11px] font-black uppercase tracking-[0.32em] text-orange-200/78">
+              {lang === "zh" ? "擂主挑戰時間" : "Challenge Window"}
+            </p>
+            <h2 className="mt-3 text-[clamp(2.1rem,8vw,4.8rem)] font-black leading-none text-white drop-shadow-[0_0_40px_rgba(255,106,0,0.42)]">
+              {rematchStatusTitle}
+            </h2>
+            {rematchOpenForClaim ? (
+              <p className="mx-auto mt-4 flex h-[clamp(8rem,32vw,13rem)] w-[clamp(8rem,32vw,13rem)] items-center justify-center rounded-full border border-yellow-100/50 bg-[radial-gradient(circle,rgba(255,214,120,0.28),rgba(255,106,0,0.18)_46%,rgba(0,0,0,0.7)_72%)] text-[clamp(5rem,20vw,9rem)] font-black leading-none text-yellow-100 shadow-[0_0_80px_rgba(255,106,0,0.44)] [animation:aipogerVotePulse_1s_ease-in-out_infinite]">
+                {rematchClaimSecondsLeft}
+              </p>
+            ) : null}
+            <p className="mx-auto mt-4 max-w-[34rem] text-sm font-bold leading-7 text-zinc-300">{rematchStatusDesc}</p>
+            {rematchError && <p className="mt-3 text-sm font-bold text-red-300">{rematchError}</p>}
+            <button
+              type="button"
+              onClick={() => void handleClaimRematch()}
+              disabled={rematchClaimDisabled}
+              className="mt-6 min-h-14 w-full rounded-full border border-orange-100/70 bg-orange-500 px-6 py-4 text-base font-black text-black shadow-[0_0_34px_rgba(255,106,0,0.34)] transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:border-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-500 sm:w-auto sm:min-w-[16rem]"
+            >
+              {rematchBusy
+                ? lang === "zh"
+                  ? "搶席中"
+                  : "Claiming"
+                : lang === "zh"
+                  ? "我要挑戰擂主"
+                  : "Challenge Defender"}
+            </button>
           </div>
         </div>
       )}

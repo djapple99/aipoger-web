@@ -176,7 +176,7 @@ type PoolEntryRow = {
   original_file_name: string;
   genre: string;
   ai_tool: string | null;
-  status: "waiting_challenge" | "public_voting" | "ghost_battle";
+  status: "waiting_challenge" | "matched" | "public_voting" | "ghost_battle";
   match_group_id: string | null;
   expires_at: string | null;
   scheduled_start_at?: string | null;
@@ -885,7 +885,7 @@ function BattlePoolList() {
       let { data, error } = await supabase
         .from("battle_queue")
         .select("id, user_id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, scheduled_start_at, cancellation_evaluation_at, public_vote_score, created_at")
-        .in("status", ["waiting_challenge", "public_voting", "ghost_battle"])
+        .in("status", ["waiting_challenge", "matched", "public_voting", "ghost_battle"])
         .order("created_at", { ascending: false })
         .limit(24);
 
@@ -896,7 +896,7 @@ function BattlePoolList() {
           const legacyRead = await supabase
             .from("battle_queue")
             .select("id, user_id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, public_vote_score, created_at")
-            .in("status", ["waiting_challenge", "public_voting", "ghost_battle"])
+            .in("status", ["waiting_challenge", "matched", "public_voting", "ghost_battle"])
             .order("created_at", { ascending: false })
             .limit(24);
           data = legacyRead.data as typeof data;
@@ -1127,21 +1127,26 @@ function BattlePoolList() {
         <ul className="grid gap-3 md:grid-cols-2">
           {rows.map((entry) => {
             const ghostBattleId = entry.status === "ghost_battle" ? entry.match_group_id : null;
+            const matchedBattleId = entry.status === "matched" ? entry.match_group_id : null;
             const isGhost = Boolean(ghostBattleId);
+            const isMatched = Boolean(matchedBattleId);
             const isPublicVoting = entry.status === "public_voting";
             const isMine = Boolean(currentUserId && entry.user_id === currentUserId);
             const isFocused = focusQueueId === entry.id;
             const arenaPath = `/battle/${entry.id}?lang=${lang}`;
+            const battlePath = matchedBattleId ? focusedBattleHref(matchedBattleId, lang) : arenaPath;
             const acceptPath = `/battle/accept/${encodeURIComponent(entry.id)}?lang=${lang}`;
             const href = isGhost
               ? `/battle/${ghostBattleId}?lang=${lang}`
-              : arenaPath;
+              : battlePath;
             const shareUrl = isGhost
               ? focusedBattleHref(ghostBattleId || entry.id, lang)
+              : isMatched && matchedBattleId
+                ? focusedBattleHref(matchedBattleId, lang)
               : (() => {
                   return focusedQueueHref(entry.id, lang);
                 })();
-            const shareLabel = isGhost || isPublicVoting
+            const shareLabel = isGhost || isMatched || isPublicVoting
               ? isZh
                 ? "邀請觀戰投票"
                 : "Invite Voters"
@@ -1160,6 +1165,10 @@ function BattlePoolList() {
                 : "My Arena"
               : isGhost
                 ? t("pool_enter_ghost")
+                : isMatched
+                  ? isZh
+                    ? "已有人挑戰"
+                    : "Accepted"
                 : isPublicVoting
                   ? t("pool_public_vote")
                 : isZh
@@ -1184,6 +1193,10 @@ function BattlePoolList() {
                         ? isZh
                           ? "等待挑戰"
                           : "Waiting Challenge"
+                        : entry.status === "matched"
+                          ? isZh
+                            ? "已有人挑戰"
+                            : "Challenge Accepted"
                         : entry.status === "ghost_battle"
                           ? "Ghost Battle"
                           : "Public Voting"}
@@ -1199,7 +1212,17 @@ function BattlePoolList() {
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px] font-black text-orange-100/85">
                     <span className="inline-flex shrink-0 items-center rounded-full border border-white/10 bg-white/[0.05] px-3 py-1">
-                      {isPublicVoting ? (isZh ? "投票開放" : "Voting") : isZh ? "上架" : "Listed"} {formatBattleCardTime(entry.created_at, isZh)}
+                      {isMatched
+                        ? isZh
+                          ? "已接戰"
+                          : "Accepted"
+                        : isPublicVoting
+                          ? isZh
+                            ? "投票開放"
+                            : "Voting"
+                          : isZh
+                            ? "上架"
+                            : "Listed"} {formatBattleCardTime(entry.created_at, isZh)}
                     </span>
                     {!isPublicVoting ? (
                       <span className="inline-flex shrink-0 items-center rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-zinc-300">
@@ -1217,6 +1240,10 @@ function BattlePoolList() {
                       ? isZh
                         ? "你的 90s 最強抓波Drop Battle 戰場已開。時間內可離開再進來，對手加入後直接開打。"
                         : "Your 90s Drop Battle arena is open. Re-enter anytime before start; it goes live when a rival joins."
+                      : isMatched
+                        ? isZh
+                          ? `${entry.ai_tool || "AI Tool"} · 已有人挑戰，進入戰場等待開打或觀戰投票`
+                          : `${entry.ai_tool || "AI Tool"} · A challenger accepted. Enter the arena to watch.`
                       : entry.status === "waiting_challenge"
                         ? isZh
                           ? `${entry.ai_tool || "AI Tool"} · 接受挑戰先上傳 Drop；觀戰才進戰場`
@@ -1226,19 +1253,21 @@ function BattlePoolList() {
                   {isMine ? (
                     <div className="mt-4 flex flex-wrap gap-2">
                       <Link
-                        href={arenaPath}
+                        href={battlePath}
                         className="rounded-full bg-cyan-300 px-4 py-2 text-sm font-black text-black transition hover:bg-cyan-100"
                       >
                         {isZh ? "進入戰場" : "Enter Arena"}
                       </Link>
-                      <button
-                        type="button"
-                        onClick={() => void cancelOwnHook(entry.id)}
-                        disabled={cancelQueueId === entry.id}
-                        className="rounded-full border border-red-300/30 bg-red-500/10 px-4 py-2 text-sm font-black text-red-100 transition hover:border-red-200/70 hover:bg-red-400/20 disabled:cursor-wait disabled:opacity-60"
-                      >
-                        {cancelQueueId === entry.id ? (isZh ? "取消中..." : "Cancelling...") : isZh ? "取消 / 離開" : "Cancel / Leave"}
-                      </button>
+                      {!isMatched ? (
+                        <button
+                          type="button"
+                          onClick={() => void cancelOwnHook(entry.id)}
+                          disabled={cancelQueueId === entry.id}
+                          className="rounded-full border border-red-300/30 bg-red-500/10 px-4 py-2 text-sm font-black text-red-100 transition hover:border-red-200/70 hover:bg-red-400/20 disabled:cursor-wait disabled:opacity-60"
+                        >
+                          {cancelQueueId === entry.id ? (isZh ? "取消中..." : "Cancelling...") : isZh ? "取消 / 離開" : "Cancel / Leave"}
+                        </button>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
@@ -1278,10 +1307,18 @@ function BattlePoolList() {
                         </Link>
                       </>
                     ) : null}
+                    {isMatched && matchedBattleId ? (
+                      <Link
+                        href={battlePath}
+                        className="rounded-full bg-orange-500 px-4 py-2 text-xs font-black text-black shadow-[0_0_20px_rgba(255,106,0,0.2)] transition hover:bg-orange-300"
+                      >
+                        {isZh ? "進入戰場" : "Enter Arena"}
+                      </Link>
+                    ) : null}
                     <ShareButton
                       title={isZh ? "AIPOGER 90s 最強抓波Drop Battle 戰帖" : "AIPOGER 90s Drop Battle Card"}
                       text={
-                        isGhost || isPublicVoting
+                        isGhost || isMatched || isPublicVoting
                           ? isZh
                             ? `《${entry.original_file_name}》正在 AIPOGER AI音樂鬥歌場，進來觀戰投票。`
                             : `"${entry.original_file_name}" is in the AIPOGER AI Music Battle Hall. Jump in and vote.`
