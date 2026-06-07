@@ -832,7 +832,7 @@ function BattleArenaContent() {
   const [preStartSecondsLeft, setPreStartSecondsLeft] = useState<number | null>(null);
   const [teaserDeck, setTeaserDeck] = useState<DeckKey | null>(null);
   const [teaserSecondsLeft, setTeaserSecondsLeft] = useState(PRE_BATTLE_TEASER_SECONDS);
-  const [adVideoMuted, setAdVideoMuted] = useState(false);
+  const [adVideoMuted, setAdVideoMuted] = useState(true);
   const [adVideoPosition, setAdVideoPosition] = useState<{ x: number; y: number } | null>(null);
   const [transitionDeck, setTransitionDeck] = useState<DeckKey | null>(null);
   const [transitionSecondsLeft, setTransitionSecondsLeft] = useState(SCRATCH_TRANSITION_SECONDS);
@@ -1022,7 +1022,7 @@ function BattleArenaContent() {
       }
     };
     void startPlayback();
-  }, [adVideoMuted, showPreBattleAd]);
+  }, [adVideoMuted, adVideoPosition, renderPreBattleAd, showPreBattleAd]);
 
   const handleAdVideoEnded = useCallback(() => {
     const video = adVideoRef.current;
@@ -1749,18 +1749,22 @@ function BattleArenaContent() {
 
   // ── 即時觀戰人數（Presence）────────────────────────────
   useEffect(() => {
-    if (!battleId || loading || isAuthBypassEnabled || !myUserId || battleId.startsWith("mock-")) return;
+    if (!battleId || loading || battleId.startsWith("mock-")) return;
+
+    const presenceKey = myUserId || battleGuestId;
+    if (!presenceKey) return;
 
     const channel = supabase.channel(`presence-battle-${battleId}`, {
-      config: { presence: { key: myUserId } },
+      config: { presence: { key: presenceKey } },
     });
 
     const countFromState = () => {
       const state = channel.presenceState();
       const users = new Set<string>();
       for (const presences of Object.values(state)) {
-        for (const p of presences as { user_id?: string }[]) {
-          if (p?.user_id) users.add(p.user_id);
+        for (const p of presences as { user_id?: string | null; guest_id?: string | null }[]) {
+          const id = p?.user_id || p?.guest_id;
+          if (id) users.add(id);
         }
       }
       setViewerCount(Math.max(1, users.size));
@@ -1770,7 +1774,11 @@ function BattleArenaContent() {
 
     void channel.subscribe(async (status) => {
       if (status === "SUBSCRIBED") {
-        await channel.track({ user_id: myUserId, at: Date.now() });
+        await channel.track({
+          user_id: myUserId || null,
+          guest_id: battleGuestId || null,
+          at: Date.now(),
+        });
         countFromState();
       }
     });
@@ -1778,7 +1786,7 @@ function BattleArenaContent() {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [battleId, loading, myUserId]);
+  }, [battleGuestId, battleId, loading, myUserId]);
 
   const fireDanmaku = useCallback((message: ChatMessage | string) => {
     if (typeof message !== "string") {
@@ -3192,7 +3200,7 @@ function BattleArenaContent() {
 
   return (
     <div
-      className={`${fontGlowSansBattle.className} relative flex h-screen min-h-screen flex-col overflow-hidden bg-black text-zinc-100 antialiased ${vinylDebugMode ? "pb-24" : ""}`}
+      className={`${fontGlowSansBattle.className} relative flex min-h-[100svh] flex-col overflow-x-hidden overflow-y-auto bg-black text-zinc-100 antialiased md:h-screen md:min-h-screen md:overflow-hidden ${vinylDebugMode ? "pb-24" : ""}`}
     >
       <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_18%_16%,rgba(255,106,0,0.18),transparent_32%),radial-gradient(circle_at_84%_18%,rgba(59,130,246,0.18),transparent_32%),linear-gradient(180deg,#020202_0%,#050505_44%,#0d0806_100%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.13] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:52px_52px]" />
@@ -3437,8 +3445,8 @@ function BattleArenaContent() {
       </header>
 
       {/* 擂台主體 */}
-      <main className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-2 md:px-7">
-        <section className="mx-auto grid w-full max-w-[1540px] shrink-0 items-start gap-y-3 lg:grid-cols-[1fr_auto_1fr] lg:gap-x-7 lg:gap-y-0">
+      <main className="relative z-10 flex min-h-0 flex-1 flex-col overflow-visible px-4 pb-28 pt-2 md:overflow-hidden md:px-7 md:pb-2">
+        <section className="mx-auto grid w-full max-w-[1540px] items-start gap-y-3 lg:grid-cols-[1fr_auto_1fr] lg:gap-x-7 lg:gap-y-0">
           {/* 左欄 */}
           <div className="order-2 flex flex-col self-start overflow-hidden rounded-[2rem] border border-orange-400/18 bg-black/45 px-4 pb-2 pt-3 shadow-[0_24px_90px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl md:px-6 lg:order-none">
             <div className="-mx-4 -mt-3 mb-2 h-1 bg-gradient-to-r from-orange-500 via-orange-300 to-transparent md:-mx-6" />
