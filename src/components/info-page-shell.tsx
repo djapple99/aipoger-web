@@ -159,7 +159,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
       navTitle: "廣告與合作",
       title: "AI 音樂品牌合作與廣告投放",
       lead:
-        "AIPOGER 的合作位置不是單純 banner，而是可以和 Drop Battle、傷心酒吧 Bar Heartbreak、教學內容、MV 企劃一起整合的音樂場景。",
+        "AIPOGER 的合作位置不是一般 banner，而是能和 Drop Battle、傷心酒吧 Bar Heartbreak、教學內容、MV 企劃一起整合的音樂場景。",
       contactLabel: "合作洽談",
       cards: [
         { label: "Placement", value: "舞台曝光", detail: "首頁、鬥歌場、傷心酒吧 Bar Heartbreak、活動頁" },
@@ -174,7 +174,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           items: ["AI 音樂與影像工具推廣", "活動或品牌指定 Drop Battle Challenge", "YouTube 頻道 @djapple2000 教學影片與社群曝光", "傷心酒吧 Bar Heartbreak 公播歌單或主題夜合作"],
         },
         {
-          title: "合作形式初稿",
+          title: "合作形式",
           body:
             "可從輕量曝光到完整企劃。初期建議先用月合作或單檔活動測試：包含網站曝光、社群內容、教學置入、主題 battle 與成效回報。",
         },
@@ -223,9 +223,9 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
   "hook-guide": {
     zh: {
       navTitle: "Drop Battle 規則",
-      title: "什麼是最強抓波Drop Battle 以及鬥歌點數規則",
+      title: "什麼是最強抓波 Drop Battle？鬥歌與點數規則",
       lead:
-        "在 AIPOGER，最強抓波Drop Battle 不只是副歌，也可以是前奏、drop、旋律句、節奏口號或一句讓人上癮的聲音設計。鬥歌比的是短時間內抓住聽眾的能力。",
+        "在 AIPOGER，最強抓波 Drop Battle 不只是副歌，也可以是前奏、Drop、旋律句、節奏口號或一句讓人上癮的聲音設計。鬥歌比的是短時間內抓住聽眾的能力。",
       cards: [
         { label: "Drop", value: "15-45 秒", detail: "用最短時間說服耳朵" },
         { label: "Vote", value: "一人一票", detail: "截止前可改投" },
@@ -238,13 +238,13 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
             "Drop 原本指音樂裡能勾住聽眾記憶的段落。流行歌裡常見於副歌，但在舞曲、嘻哈、電子與 AI 音樂裡，任何讓人想再聽一次的聲音都可以成為 Drop。",
         },
         {
-          title: "基本比賽規則初稿",
+          title: "基本比賽規則",
           body:
             "創作者上傳歌曲後裁切 Drop，系統只配對相同歌曲種類的對手。公測期先取消 APC 入場門檻，讓創作者可以直接進入 Battle；觀眾每場只能投一次票。",
           items: ["每場以 A / B 兩方對決", "公測期免 APC 參戰，正式經濟規則之後再開", "若跨階配對，仍以音樂類型與等級接近為優先", "觀眾一人一票，截止前可改投", "最後投票命中勝方獲得 100 APC 參與獎勵", "禁止上傳非本人授權或侵權歌曲"],
         },
         {
-          title: "點數與等級制度初稿",
+          title: "點數與等級制度",
           body:
             "APC 是平台內的參與點數。公測期 APC 不再阻擋 Battle，只用來呈現參與、獎勵、應援與榮譽感，讓核心鬥歌流程先跑順。",
           items: ["第一階熱血音樂工匠：Lv.1-Lv.3，每贏 10 場升一級", "第二階潮流音樂大師：Lv.4-Lv.7，每贏 20 場升一級，可取得推薦歌曲與 prompt 販售資格", "第三階殿堂級音樂師尊：Lv.8-Lv.10，每贏 50 場升一級，可取得個人頁面空間與 prompt 販售資格", "公測期不扣雙方參戰點數", "投票命中勝方獲得 100 APC 參與獎勵", "傷心酒吧 Bar Heartbreak 是累積曝光與互動點數入口"],
@@ -684,13 +684,13 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
         </header>
 
         <section className={`grid gap-8 py-6 lg:grid-cols-[1.02fr_0.98fr] lg:items-center ${isPolicyPage ? "min-h-[26rem]" : "min-h-[34rem]"}`}>
-          <div>
+          <div className="min-w-0">
             <p className={`${fontRighteous.className} text-sm uppercase tracking-[0.42em] text-orange-300/80`}>AIPOGER</p>
             <h1
-              className={`mt-5 max-w-4xl font-black text-white ${
+              className={`mt-5 max-w-4xl break-words font-black text-white [overflow-wrap:anywhere] ${
                 isPolicyPage
-                  ? "text-[clamp(2.15rem,4.4vw,4.2rem)] leading-[1.04]"
-                  : "text-[clamp(2.45rem,5.2vw,5rem)] leading-[1.12] tracking-normal"
+                  ? "text-[clamp(2.05rem,4.2vw,4.05rem)] leading-[1.06]"
+                  : "text-[clamp(2.18rem,5vw,4.65rem)] leading-[1.08] tracking-normal"
               }`}
             >
               {data.title}
@@ -738,9 +738,9 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
             {data.cards.map((card) => {
               const Wrapper = card.href ? "a" : "div";
               return (
-              <Wrapper key={card.label} href={card.href} target={card.href ? "_blank" : undefined} rel={card.href ? "noreferrer" : undefined} className={`group rounded-2xl border border-white/10 bg-black/48 p-5 backdrop-blur transition hover:border-orange-300/45 ${isPolicyPage ? "shadow-none" : "shadow-[0_20px_80px_rgba(0,0,0,0.38)]"}`}>
-                <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.34em] text-cyan-200/70`}>{card.label}</p>
-                <p className={`mt-3 font-black text-white ${isPolicyPage ? "text-2xl md:text-3xl" : "text-3xl md:text-4xl"}`}>{card.value}</p>
+              <Wrapper key={card.label} href={card.href} target={card.href ? "_blank" : undefined} rel={card.href ? "noreferrer" : undefined} className={`group min-w-0 rounded-2xl border border-white/10 bg-black/48 p-5 backdrop-blur transition hover:border-orange-300/45 ${isPolicyPage ? "shadow-none" : "shadow-[0_20px_80px_rgba(0,0,0,0.38)]"}`}>
+                <p className={`${fontRighteous.className} break-words text-xs uppercase tracking-[0.24em] text-cyan-200/70 [overflow-wrap:anywhere] sm:tracking-[0.34em]`}>{card.label}</p>
+                <p className={`mt-3 break-words font-black leading-tight text-white [overflow-wrap:anywhere] ${isPolicyPage ? "text-2xl md:text-3xl" : "text-[1.7rem] md:text-4xl"}`}>{card.value}</p>
                 <p className="mt-2 text-sm leading-6 text-zinc-400">{card.detail}</p>
               </Wrapper>
             )})}
@@ -756,7 +756,7 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
               }`}
             >
               <div className="mb-4 h-px w-full bg-gradient-to-r from-orange-500/70 via-white/12 to-transparent" />
-              <h2 className="text-2xl font-black text-white md:text-3xl">{section.title}</h2>
+              <h2 className="break-words text-2xl font-black leading-tight text-white [overflow-wrap:anywhere] md:text-3xl">{section.title}</h2>
               <p className="mt-4 text-base leading-8 text-zinc-300">{section.body}</p>
               {(section.title === "階級名稱" || section.title === "Rank Names") && (
                 <RankSkillTree isZh={isZh} />

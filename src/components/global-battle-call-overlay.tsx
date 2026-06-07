@@ -534,7 +534,7 @@ export default function GlobalBattleCallOverlay() {
 
   const cancelActiveNotice = async () => {
     if (!activeNotice || !accessToken) return;
-    const ok = window.confirm(isZh ? "要取消目前未完成的 Battle 嗎？取消後才可以重新上傳下一首最強抓波Drop Battle。" : "Cancel your unfinished Battle so you can upload another Drop Battle clip?");
+    const ok = window.confirm(isZh ? "要取消目前未完成的 Battle 嗎？取消後才可以重新上傳下一首最強抓波 Drop Battle。" : "Cancel your unfinished Battle so you can upload another Drop Battle clip?");
     if (!ok) return;
     setActiveNoticeError("");
     setActiveNoticeBusy(true);
@@ -761,7 +761,7 @@ export default function GlobalBattleCallOverlay() {
         : "Your Battle starts soon"
       : isPoolWaitingNotice
         ? isZh
-        ? "你的最強抓波Drop Battle 正在等待挑戰"
+        ? "你的最強抓波 Drop Battle 正在等待挑戰"
         : "Your Drop Battle is waiting"
       : isZh
         ? "有一場 Battle 尚未完成"

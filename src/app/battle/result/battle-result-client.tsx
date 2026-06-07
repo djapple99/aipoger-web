@@ -420,7 +420,7 @@ function BattleResultContent() {
   const shareText =
     lang === "zh"
       ? [
-          "AIPOGER 最強抓波Drop Battle 戰果出爐",
+          "AIPOGER 最強抓波 Drop Battle 戰果出爐",
           `${winnerName}《${winnerSong}》擊敗 ${opponentName}《${opponentSong}》`,
           "",
           "太屌了太精采了！這麼好聽的歌還不聽起來",

@@ -258,10 +258,10 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
             ? "這是一張 AIPOGER Drop Battle 戰果卡。進場查看完整結果與榮譽卡。"
             : isHookCard
             ? isHookExpired
-              ? "這張公開最強抓波Drop Battle 戰帖已過期。可以回鬥歌場找新的戰帖。"
+              ? "這張公開最強抓波 Drop Battle 戰帖已過期。可以回鬥歌場找新的戰帖。"
               : (
                 <>
-                  這是一張公開最強抓波Drop Battle 戰帖。
+                  這是一張公開最強抓波 Drop Battle 戰帖。
                   {startTimeLabel ? (
                     <>
                       開戰時間 <span className="whitespace-nowrap">{startTimeLabel}（台灣時間）</span>，請大家提前進場。

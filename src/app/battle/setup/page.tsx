@@ -1276,7 +1276,7 @@ export default function BattleSetupPage() {
               : 'border-white/10 bg-white/[0.035] hover:border-orange-300/35'
           }`}
         >
-          <p className="text-lg font-black text-white">{lang === 'zh' ? '90s 最熱血的最強抓波Drop Battle' : '90s Hottest Drop Battle'}</p>
+          <p className="text-lg font-black text-white">{lang === 'zh' ? '90s 最熱血的最強抓波 Drop Battle' : '90s Hottest Drop Battle'}</p>
           <p className="mt-2 text-sm leading-6 text-zinc-400">
             {lang === 'zh' ? '拿出你最熱的 Drop，PK 最即時熱血的戰鬥。' : 'Bring your hottest Drop into the fastest live battle.'}
           </p>
@@ -1479,7 +1479,7 @@ export default function BattleSetupPage() {
         </p>
         {challengeEntryId && (
           <p className="mx-auto mt-4 max-w-xl rounded-full border border-orange-400/30 bg-orange-500/10 px-4 py-2 text-xs font-bold text-orange-100">
-            你正在接受公開挑戰池的最強抓波Drop Battle，上傳後會優先與該作品配對
+            你正在接受公開挑戰池的最強抓波 Drop Battle，上傳後會優先與該作品配對
           </p>
         )}
         {challengeDailyEntryId && (

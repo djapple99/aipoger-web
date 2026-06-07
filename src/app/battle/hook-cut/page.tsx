@@ -46,7 +46,7 @@ type Lang = 'zh' | 'en';
 
 const T = {
   zh: {
-    title: '最強抓波Drop Battle 裁切',
+    title: '最強抓波 Drop Battle 裁切',
     subtitle: '最多 45 秒 · 系統會自動 Mastering 美化聲音',
     uploadPrompt: '上傳完整歌曲',
     uploadHint: '拖曳波形選擇 Drop',
@@ -72,7 +72,7 @@ const T = {
     uploadingAudio: '正在處理音檔…',
     uploading: '上傳中…',
     uploadingSaving: '寫入資料庫…',
-    success: '你的最強抓波Drop Battle 已進入 Battle Pool，正在等待對手。你現在可以離開，配對成功會通知你。',
+    success: '你的最強抓波 Drop Battle 已進入 Battle Pool，正在等待對手。你現在可以離開，配對成功會通知你。',
     cutSaved: 'Drop 已裁切完成，前往確認 Battle 資料。',
     uploadError: '上傳失敗，請稍後再試',
     noFile: '請先上傳音檔並選擇 Drop 區間',

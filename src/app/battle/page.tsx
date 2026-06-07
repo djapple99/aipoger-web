@@ -1117,7 +1117,7 @@ function BattlePoolList() {
       <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.38em] text-orange-300/80">90S DROP BATTLE POOL</p>
-          <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "90s 最強抓波Drop Battle 公開挑戰池" : "90s Drop Battle Challenge Pool"}</h2>
+          <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "90s 最強抓波 Drop Battle 公開挑戰池" : "90s Drop Battle Challenge Pool"}</h2>
         </div>
         <Link
           href="/battle/setup"
@@ -1336,7 +1336,7 @@ function BattlePoolList() {
                   <p className="mt-1 text-xs text-zinc-500">
                     {isMine
                       ? isZh
-                        ? "你的 90s 最強抓波Drop Battle 戰場已開。時間內可離開再進來，對手加入後直接開打。"
+                        ? "你的 90s 最強抓波 Drop Battle 戰場已開。時間內可離開再進來，對手加入後直接開打。"
                         : "Your 90s Drop Battle arena is open. Re-enter anytime before start; it goes live when a rival joins."
                       : isMatched
                         ? isZh
@@ -1414,11 +1414,11 @@ function BattlePoolList() {
                       </Link>
                     ) : null}
                     <ShareButton
-                      title={isZh ? "AIPOGER 90s 最強抓波Drop Battle 戰帖" : "AIPOGER 90s Drop Battle Card"}
+                      title={isZh ? "AIPOGER 90s 最強抓波 Drop Battle 戰帖" : "AIPOGER 90s Drop Battle Card"}
                       text={
                         isGhost || isMatched || isPublicVoting
                           ? isZh
-                            ? `《${entry.original_file_name}》正在 AIPOGER AI音樂鬥歌場，進來觀戰投票。`
+                            ? `《${entry.original_file_name}》正在 AIPOGER AI 音樂鬥歌場，進來觀戰投票。`
                             : `"${entry.original_file_name}" is in the AIPOGER AI Music Battle Hall. Jump in and vote.`
                           : isZh
                             ? `${entry.fighter_name}的《${entry.original_file_name}》AIPOGER Drop Battle 戰帖已開。${hookStartText || "請大家提前進場。"}進來聊天預測支持誰的歌最熱血最動人，或是你來挑戰？Show me what you got!!!`

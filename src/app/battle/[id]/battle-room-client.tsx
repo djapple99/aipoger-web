@@ -167,7 +167,7 @@ const DANMAKU_COLOR_CLASSES = [
   "border-fuchsia-200/30 bg-fuchsia-400/14 text-fuchsia-50 shadow-[0_0_22px_rgba(217,70,239,0.22)]",
   "border-white/16 bg-black/48 text-white shadow-[0_0_18px_rgba(0,0,0,0.45),0_0_20px_rgba(255,106,0,0.14)]",
 ] as const;
-const QUICK_DANMAKU_EMOJIS = ["💔", "🙌", "🚀", "😭"] as const;
+const QUICK_DANMAKU_PHRASES = ["好聽", "爆點", "再來", "太狠"] as const;
 const rpsCycle = ["✊", "✌️", "✋"] as const;
 const feedbackButtons: Array<{ key: FeedbackKey; zh: string; en: string }> = [
   { key: "rhyme", zh: "押韻", en: "Rhyme" },
@@ -3955,15 +3955,15 @@ function BattleArenaContent() {
                 {lang === "zh" ? "彈幕" : "Danmaku"}
               </span>
               <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:max-w-none">
-                {QUICK_DANMAKU_EMOJIS.map((emoji) => (
+                {QUICK_DANMAKU_PHRASES.map((phrase) => (
                   <button
-                    key={emoji}
+                    key={phrase}
                     type="button"
-                    onClick={() => void sendChatContent(emoji)}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.055] text-lg transition hover:border-yellow-200/70 hover:bg-yellow-300/15 md:h-9 md:w-9"
-                    aria-label={`${lang === "zh" ? "送出" : "Send"} ${emoji}`}
+                    onClick={() => void sendChatContent(phrase)}
+                    className="flex h-11 min-w-14 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.055] px-3 text-sm font-black text-white transition hover:border-yellow-200/70 hover:bg-yellow-300/15 md:h-9 md:min-w-12 md:text-xs"
+                    aria-label={`${lang === "zh" ? "送出" : "Send"} ${phrase}`}
                   >
-                    {emoji}
+                    {phrase}
                   </button>
                 ))}
               </div>

@@ -310,7 +310,7 @@ export function HookCropper({ file, onBack, onConfirm }: HookCropperProps) {
   return (
     <section className="rounded-3xl border border-[#4d5258] bg-[#1f2226]/90 p-6 md:p-8">
       <p className="text-xs tracking-[0.38em] text-[#8f847e]">AIPOGER</p>
-      <h2 className="mt-3 text-2xl font-semibold tracking-[0.16em] text-[#f4f0ed]">最強抓波Drop Battle 裁切工具</h2>
+      <h2 className="mt-3 text-2xl font-semibold tracking-[0.16em] text-[#f4f0ed]">最強抓波 Drop Battle 裁切工具</h2>
       <p className="mt-3 text-sm text-[#cfc7c2]">拖曳橘色區塊選取 Drop（最多 45 秒），先預聽再確認上傳。</p>
 
       <div className="mt-6 rounded-2xl border border-[#3f444b] bg-[#24282d] p-4">

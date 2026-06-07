@@ -215,18 +215,18 @@ function battleTickerMessage(row: BattleTickerRow, isZh: boolean) {
 
   if (row.status === "waiting_challenge") {
     return isZh
-      ? `AI音樂鬥歌場快訊：${fighterName} 的《${songName}》正在等人接戰${timeText}，快來挑戰或觀戰。`
+      ? `AI 音樂鬥歌場快訊：${fighterName} 的《${songName}》正在等人接戰${timeText}，快來挑戰或觀戰。`
       : `AI Music Battle Hall: ${fighterName}'s "${songName}" is open for challenge${timeText}. Step in, watch, or back the Drop.`;
   }
 
   if (row.status === "public_voting") {
     return isZh
-      ? `AI音樂鬥歌場快訊：《${songName}》正在公開投票${timeText}，進場支持你喜歡的 Drop。`
+      ? `AI 音樂鬥歌場快訊：《${songName}》正在公開投票${timeText}，進場支持你喜歡的 Drop。`
       : `AI Music Battle Hall: "${songName}" is in public voting${timeText}. Help decide if this Drop earns recognition.`;
   }
 
   return isZh
-    ? `AI音樂鬥歌場快訊：《${songName}》已進入 Ghost Battle${timeText}，進場聽歌投票。`
+    ? `AI 音樂鬥歌場快訊：《${songName}》已進入 Ghost Battle${timeText}，進場聽歌投票。`
     : `AI Music Battle Hall: "${songName}" is in Ghost Battle${timeText}. Listen, vote, and keep the record alive.`;
 }
 
@@ -471,14 +471,14 @@ export default function ListenBarPage() {
         shareText: ["快來來傷心酒吧 Bar Heartbreak", "這麼好聽的歌以後聽不到了怎麼辦？", "只有被聽見留下傷心的歌，才有資格繼續播放"].join("\n"),
         shareLabel: "分享吧台",
         copied: "已複製",
-        battleHall: "AI音樂鬥歌場",
+        battleHall: "AI 音樂鬥歌場",
         title: "傷心酒吧",
         subtitle: "在 AI 與不 AI 之間，只有真正被聽見的歌才能留下來",
-        navBattle: "AI音樂鬥歌場",
+        navBattle: "AI 音樂鬥歌場",
         navRank: "榮譽榜",
         navBible: "練功聖經",
         navAbout: "關於愛播歌",
-        ticker: "歡迎去 AI音樂鬥歌場鬥歌，開戰帖、接挑戰，讓你的 AI 音樂被聽見。",
+        ticker: "歡迎去 AI 音樂鬥歌場鬥歌，開戰帖、接挑戰，讓你的 AI 音樂被聽見。",
         queueTitle: "接續的六首歌",
         queueWaiting: "等待接續歌曲",
         queueEmpty: "等待創作者投稿後，下一首會顯示在這裡。",
@@ -2185,7 +2185,7 @@ export default function ListenBarPage() {
                   <p className="text-xs uppercase tracking-[0.28em] text-orange-300/70">
                     {isZh ? "AI 音樂交流區" : "AI MUSIC TALK"}
                   </p>
-                  <h2 className="mt-1 text-3xl font-black text-white">{isZh ? "AI音樂交流區" : "AI Music Talk"}</h2>
+                  <h2 className="mt-1 text-3xl font-black text-white">{isZh ? "AI 音樂交流區" : "AI Music Talk"}</h2>
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-zinc-500">

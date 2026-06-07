@@ -150,7 +150,7 @@ function MatchmakingContent(props: MatchmakingContentProps) {
     [router, buildArenaSearch, debugMode],
   );
 
-  /** 建立測試擂臺（RPC）或 fallback 至 mock 擂台（單人即可） */
+  /** 建立測試擂台（RPC）或 fallback 至 mock 擂台（單人即可） */
   const enterTestArena = async () => {
     const path = audioPath.trim();
     if (!path) {

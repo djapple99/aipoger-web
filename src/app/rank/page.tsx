@@ -538,7 +538,7 @@ export default function RankPage() {
           <div className="h-11 w-16" aria-hidden="true" />
           <nav className="flex flex-wrap items-center gap-2 sm:pr-20">
             {[
-              { href: "/battle", label: isZh ? "AI音樂鬥歌場" : "AI Music Battle Hall" },
+              { href: "/battle", label: isZh ? "AI 音樂鬥歌場" : "AI Music Battle Hall" },
               { href: "/listen-bar", label: isZh ? "傷心酒吧" : "Bar Heartbreak" },
               { href: "/hook-guide", label: isZh ? "Drop Battle 規則" : "Drop Battle Rules" },
             ].map((item) => (
