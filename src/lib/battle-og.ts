@@ -287,7 +287,7 @@ export async function getBattleOgData(id: string): Promise<BattleOgData> {
 }
 
 export function battleOgTitle(battle: BattleOgData) {
-  return `AIPOGER 90S 最強抓波Drop Battle 戰帖｜${battle.fighter_a_name} VS ${battle.fighter_b_name}`;
+  return `AIPOGER 90S 最強Drop Battle 抓波戰帖｜${battle.fighter_a_name} VS ${battle.fighter_b_name}`;
 }
 
 export function battleOgDescription(battle: BattleOgData) {

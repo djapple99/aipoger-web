@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: Pick<BattleLayoutProps, "para
   const origin = siteOrigin();
   const canonical = `${origin}/battle/${encodeURIComponent(id)}`;
   const image = `${canonical}/opengraph-image`;
-  const title = `AIPOGER 90S 最強抓波Drop Battle 戰帖｜${battle.fighter_a_name} VS ${battle.fighter_b_name}`;
+  const title = `AIPOGER 90S 最強Drop Battle 抓波戰帖｜${battle.fighter_a_name} VS ${battle.fighter_b_name}`;
   const description = `${battle.fighter_a_name}《${battle.song_a_name}》VS ${battle.fighter_b_name}《${battle.song_b_name}》｜開打前集結，先聽 5 秒預播，預測誰的 Drop 最炸。`;
 
   return {

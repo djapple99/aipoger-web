@@ -25,8 +25,8 @@ function formatTaiwanTime(value: string | null | undefined) {
   if (!Number.isFinite(date.getTime())) return "";
   return new Intl.DateTimeFormat("zh-TW", {
     timeZone: "Asia/Taipei",
-    month: "numeric",
-    day: "numeric",
+    month: "2-digit",
+    day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
@@ -127,15 +127,15 @@ export async function generateMetadata({ params, searchParams }: BattleInvitePag
   if (data.rightAvatar) query.set("ra", data.rightAvatar);
   const canonical = `${origin}/battle/invite/${encodeURIComponent(id)}`;
   const image = `${canonical}/opengraph-image?${query.toString()}`;
-  const title = `AIPOGER 90S 最強抓波Drop Battle 戰帖｜${data.leftName} VS ${data.rightName}`;
+  const title = `AIPOGER 90S 最強Drop Battle 抓波戰帖｜${data.leftName} VS ${data.rightName}`;
   const isHookCard = firstParam(resolvedSearchParams, "type") === "hook-card" || data.rightName === "等待挑戰者";
   const hookStartAt = resolveHookStartAt(data);
   const startTimeLabel = formatTaiwanTime(hookStartAt);
   const startReminder = startTimeLabel
-    ? `開戰時間：${startTimeLabel}（台灣時間）。請大家提前 1 分鐘進場。`
-    : "請大家提前 1 分鐘進場。";
+    ? `開戰時間: ${startTimeLabel}（台灣時間）。請大家提前進場。`
+    : "請大家提前進場。";
   const description = isHookCard
-    ? `${data.battleType}｜${data.leftName}《${data.leftSong}》正在等人接戰。${startReminder}進來聊天預測支持誰的歌最熱血最動人，或是你來挑戰？Show me what you got!!!`
+    ? `${data.leftName}的《${data.leftSong}》AIPOGER Drop Battle 戰帖已開。${startReminder}進來聊天預測支持誰的歌最熱血最動人，或是你來挑戰？Show me what you got!!!`
     : `${data.battleType}｜${data.leftName}《${data.leftSong}》(${data.leftTool}) VS ${data.rightName}《${data.rightSong}》(${data.rightTool})｜進場聊天預測支持誰的歌最熱血最動人。`;
 
   return {
@@ -215,26 +215,35 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
   const spectateHref = `/battle/${encodeURIComponent(spectateId)}?lang=${encodeURIComponent(lang)}`;
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-x-hidden overflow-y-auto bg-[#050505] px-5 py-24 text-white sm:py-12">
+    <main className="relative flex min-h-screen items-center justify-center overflow-x-hidden overflow-y-auto bg-[#050505] px-4 py-12 text-white sm:px-6">
       <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_20%_14%,rgba(255,106,0,0.24),transparent_34%),radial-gradient(circle_at_82%_20%,rgba(0,203,255,0.14),transparent_30%),linear-gradient(180deg,#050505,#0b0908)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.12] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:52px_52px]" />
-      <section className="relative z-10 w-full max-w-2xl rounded-[2rem] border border-orange-300/35 bg-[radial-gradient(circle_at_20%_10%,rgba(255,106,0,0.24),transparent_34%),linear-gradient(180deg,#100704,#030303)] p-7 text-center shadow-[0_0_80px_rgba(255,106,0,0.18)]">
+      <section className="relative z-10 w-full max-w-5xl rounded-[2rem] border border-orange-300/35 bg-[radial-gradient(circle_at_20%_10%,rgba(255,106,0,0.24),transparent_34%),linear-gradient(180deg,#100704,#030303)] px-5 py-7 text-center shadow-[0_0_80px_rgba(255,106,0,0.18)] sm:px-8 md:px-12">
         <p className="text-xs font-black uppercase tracking-[0.34em] text-orange-200/80">
           {isResultInvite ? "AIPOGER DROP BATTLE RESULT CARD" : isHookCard ? "AIPOGER DROP BATTLE ARENA CARD" : "AIPOGER LIVE BATTLE"}
         </p>
-        <p className="mt-3 text-xs font-black uppercase tracking-[0.22em] text-cyan-100/75">
-          {data.battleType} · {data.genre}
-        </p>
-        <h1 className="mt-4 text-3xl font-black leading-tight sm:text-4xl md:text-5xl">
-          <span className="whitespace-nowrap">{data.leftName}</span> <span className="text-orange-300">VS</span>{" "}
-          <span className="whitespace-nowrap">{data.rightName}</span>
+        <h1 className="mx-auto mt-5 max-w-4xl break-words text-[clamp(2.6rem,8vw,5.6rem)] font-black leading-[0.98] tracking-normal text-white">
+          <span>{data.leftName}</span> <span className="text-orange-300">VS</span>{" "}
+          <span>{data.rightName}</span>
         </h1>
-        <p className="mt-4 text-base font-bold leading-7 text-zinc-300">
-          {data.leftSong} 對上 {data.rightSong}
-        </p>
+        <div className="mx-auto mt-6 grid max-w-3xl gap-3 text-left md:grid-cols-[1fr_auto_1fr] md:items-center">
+          <div className="min-w-0 rounded-2xl border border-orange-300/20 bg-orange-500/8 px-4 py-3">
+            <p className="truncate text-lg font-black text-white">{data.leftSong}</p>
+            <p className="mt-1 w-fit max-w-full truncate rounded-full border border-orange-200/25 bg-black/28 px-2.5 py-1 text-[11px] font-black text-orange-100">
+              {data.leftTool}
+            </p>
+          </div>
+          <span className="text-center text-sm font-black text-orange-200/70">對上</span>
+          <div className="min-w-0 rounded-2xl border border-cyan-200/20 bg-cyan-300/8 px-4 py-3">
+            <p className="truncate text-lg font-black text-white">{data.rightSong}</p>
+            <p className="mt-1 w-fit max-w-full truncate rounded-full border border-cyan-200/25 bg-black/28 px-2.5 py-1 text-[11px] font-black text-cyan-100">
+              {data.rightTool}
+            </p>
+          </div>
+        </div>
         {isHookCard && startTimeLabel ? (
           <p className="mx-auto mt-3 w-fit rounded-full border border-orange-200/35 bg-orange-400/10 px-4 py-2 text-sm font-black text-orange-50">
-            開戰時間：{startTimeLabel}（台灣時間） · 請提前 1 分鐘進場
+            開戰時間: {startTimeLabel}（台灣時間） · 請提前進場
           </p>
         ) : null}
         {isHookCard && !isHookExpired ? (
@@ -242,16 +251,6 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
             5 秒預播
           </p>
         ) : null}
-        <div className="mx-auto mt-4 grid max-w-xl gap-2 text-left sm:grid-cols-2">
-          <div className="rounded-2xl border border-orange-300/25 bg-orange-500/10 px-4 py-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-orange-200/70">A SIDE AI TOOL</p>
-            <p className="mt-1 truncate text-sm font-black text-orange-50">{data.leftTool}</p>
-          </div>
-          <div className="rounded-2xl border border-cyan-200/25 bg-cyan-300/10 px-4 py-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-100/70">B SIDE AI TOOL</p>
-            <p className="mt-1 truncate text-sm font-black text-cyan-50">{data.rightTool}</p>
-          </div>
-        </div>
         <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-zinc-400">
           {isResultInvite
             ? "這是一張 AIPOGER Drop Battle 戰果卡。進場查看完整結果與榮譽卡。"
@@ -263,7 +262,7 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
                   這是一張公開最強抓波Drop Battle 戰帖。
                   {startTimeLabel ? (
                     <>
-                      開戰時間 <span className="whitespace-nowrap">{startTimeLabel}（台灣時間）</span>，請大家提前 1 分鐘進場。
+                      開戰時間 <span className="whitespace-nowrap">{startTimeLabel}（台灣時間）</span>，請大家提前進場。
                     </>
                   ) : null}
                   進來聊天預測支持誰的歌最熱血最動人，<span className="whitespace-nowrap">或是你來挑戰？</span>{" "}
@@ -272,7 +271,7 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
               )
             : "這場 Battle 已經成立，進場後依照音樂感動投票。"}
         </p>
-        <div className="mt-7 grid gap-3 sm:grid-cols-3">
+        <div className="mx-auto mt-7 grid max-w-4xl gap-3 sm:grid-cols-[1.15fr_1.15fr_0.78fr]">
           {isResultInvite ? (
             <>
               <Link
@@ -301,20 +300,20 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
               ) : (
                 <Link
                   href={acceptHref}
-                  className="rounded-full bg-orange-500 px-6 py-3 text-sm font-black text-black shadow-[0_0_28px_rgba(255,106,0,0.28)] transition hover:bg-orange-300"
+                  className="rounded-full bg-orange-500 px-6 py-5 text-xl font-black text-black shadow-[0_0_28px_rgba(255,106,0,0.28)] transition hover:bg-orange-300"
                 >
                   我要接受挑戰
                 </Link>
               )}
               <Link
                 href={isHookExpired ? `/battle?lang=${lang}` : spectateHref}
-                className="rounded-full border border-cyan-200/35 bg-cyan-300/10 px-6 py-3 text-sm font-black text-cyan-50 transition hover:border-cyan-100"
+                className="rounded-full border border-cyan-200/35 bg-cyan-300/10 px-6 py-5 text-xl font-black text-cyan-50 transition hover:border-cyan-100"
               >
                 {isHookExpired ? "回鬥歌場" : "我要觀戰"}
               </Link>
               <Link
                 href={`/listen-bar?lang=${lang}`}
-                className="rounded-full border border-white/15 bg-white/[0.05] px-6 py-3 text-sm font-black text-zinc-200 transition hover:border-orange-200/50"
+                className="self-center rounded-full border border-white/15 bg-white/[0.05] px-5 py-3 text-sm font-black text-zinc-200 transition hover:border-orange-200/50"
               >
                 離開
               </Link>

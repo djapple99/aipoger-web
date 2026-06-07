@@ -1129,7 +1129,7 @@ function BattlePoolList() {
             const hookStartAt = resolveDropBattleScheduledStart(entry);
             const hookStartText = hookStartAt
               ? isZh
-                ? `開戰時間：${formatBattleCardTime(hookStartAt, true)}（台灣時間）。請大家提前 1 分鐘進場。`
+                ? `開戰時間: ${formatBattleCardTime(hookStartAt, true)}（台灣時間）。請大家提前進場。`
                 : `Starts: ${formatBattleCardTime(hookStartAt, false)} Taiwan time. Please enter 1 minute early.`
               : "";
             const label = isMine
@@ -1264,7 +1264,7 @@ function BattlePoolList() {
                             ? `《${entry.original_file_name}》正在 AIPOGER AI音樂鬥歌場，進來觀戰投票。`
                             : `"${entry.original_file_name}" is in the AIPOGER AI Music Battle Hall. Jump in and vote.`
                           : isZh
-                            ? `${entry.fighter_name} 的《${entry.original_file_name}》正在等人接戰。${hookStartText}進來聊天預測支持誰的歌最熱血最動人，或是你來挑戰？Show me what you got!!!`
+                            ? `${entry.fighter_name}的《${entry.original_file_name}》AIPOGER Drop Battle 戰帖已開。${hookStartText || "請大家提前進場。"}進來聊天預測支持誰的歌最熱血最動人，或是你來挑戰？Show me what you got!!!`
                             : `${entry.fighter_name}'s "${entry.original_file_name}" is open for challenge. ${hookStartText}Back the hottest Drop in chat, or step in and challenge. Show me what you got!!!`
                       }
                       url={shareUrl}
@@ -1515,7 +1515,7 @@ function LiveBattleList() {
               const scheduledMs = new Date(scheduledAt ?? "").getTime();
               const battleStartShareText = scheduledAt
                 ? lang === "zh"
-                  ? `開戰時間：${formatBattleCardTime(scheduledAt, true)}（台灣時間）。請大家提前 1 分鐘進場。`
+                  ? `開戰時間: ${formatBattleCardTime(scheduledAt, true)}（台灣時間）。請大家提前進場。`
                   : `Starts: ${formatBattleCardTime(scheduledAt, false)} Taiwan time. Please enter 1 minute early.`
                 : "";
               const likelyEndedByClock =
