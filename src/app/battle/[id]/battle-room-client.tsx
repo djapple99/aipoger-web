@@ -13,6 +13,7 @@ import { useI18n } from "@/lib/i18n";
 import { fontGlowSansBattle } from "@/lib/fonts";
 import { supabase } from "@/lib/supabase";
 import ShareButton from "@/components/share-button";
+import ReportButton from "@/components/report-button";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { rankLabelForLevel } from "@/lib/battle-pool-rules";
 import { cancelCurrentBattleIntent, completeBattleCardIntent, isDropChallengeAcceptable, resolveDropBattleScheduledStart } from "@/lib/battle-pool-client";
@@ -3136,6 +3137,15 @@ function BattleArenaContent() {
               url={battleShareUrl}
               label="分享"
               copiedLabel="已複製"
+              className="hidden sm:inline-flex"
+            />
+            <ReportButton
+              targetType="battle"
+              targetId={battleId}
+              targetTitle={`${battle.fighter_a_name} VS ${battle.fighter_b_name}`}
+              targetUrl={battleShareUrl}
+              context={`Battle arena status=${battle.status}; phase=${battlePhase}; A=${battle.song_a_name}; B=${battle.song_b_name}`}
+              lang={lang}
               className="hidden sm:inline-flex"
             />
             <LangToggle variant="inline" />

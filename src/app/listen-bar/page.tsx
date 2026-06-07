@@ -11,6 +11,7 @@ import { sha256File } from "@/lib/file-hash";
 import { supabase } from "@/lib/supabase";
 import { loadFighterNameFromProfile } from "@/lib/user-profile-fighter-name";
 import ShareButton from "@/components/share-button";
+import ReportButton from "@/components/report-button";
 import { shouldExpireOpenDropQueue } from "@/lib/battle-pool-client";
 import {
   DEFAULT_LISTEN_BAR_COVER,
@@ -1940,6 +1941,18 @@ export default function ListenBarPage() {
                     </span>
                   )}
                 </div>
+                {nowTrack.source === "community" && nowTrack.id !== EMPTY_LISTEN_BAR_TRACK.id ? (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <ReportButton
+                      targetType="listen_bar_track"
+                      targetId={nowTrack.id}
+                      targetTitle={`${nowTrackTitle} / ${nowTrack.artist}`}
+                      targetUrl={`/listen-bar?track=${encodeURIComponent(nowTrack.id)}${langQuery ? `&${langQuery.slice(1)}` : ""}`}
+                      context={`Bar Heartbreak now playing. phase=${nowTrack.barPhase}; host=${nowPresenterName}`}
+                      lang={lang}
+                    />
+                  </div>
+                ) : null}
                 <div className="mt-7">
                   <div className="h-2 overflow-hidden rounded-full bg-white/10">
                     <div

@@ -282,16 +282,35 @@ export default function ListenBarAdminPage() {
     await loadTracks();
   };
 
-  const deleteTrack = async (track: ListenBarTrackRow) => {
-    if (!window.confirm(`確定刪除「${track.title}」？`)) return;
+  const hideTrack = async (track: ListenBarTrackRow) => {
+    if (!window.confirm(`確定先下架隱藏「${track.title}」？作品資料會保留，之後可以恢復或再做永久刪除。`)) return;
     setError("");
     setMessage("");
-    const { error: deleteError } = await supabase.from("listen_bar_tracks").delete().eq("id", track.id);
-    if (deleteError) {
-      setError(`刪除失敗：${deleteError.message}`);
+    const modernPayload = {
+      is_active: false,
+      review_status: "hidden",
+      hidden_at: new Date().toISOString(),
+      moderation_note: "Owner hidden from Bar Heartbreak console.",
+    };
+    const modernUpdate = await supabase.from("listen_bar_tracks").update(modernPayload).eq("id", track.id);
+    if (!modernUpdate.error) {
+      setMessage("已下架隱藏，作品資料仍保留。");
+      await loadTracks();
       return;
     }
-    setMessage("已刪除輪播項目。Storage 檔案可之後再做批次清理。");
+
+    const msg = modernUpdate.error.message.toLowerCase();
+    if (!msg.includes("review_status") && !msg.includes("schema cache") && !msg.includes("column")) {
+      setError(`下架失敗：${modernUpdate.error.message}`);
+      return;
+    }
+
+    const legacyUpdate = await supabase.from("listen_bar_tracks").update({ is_active: false }).eq("id", track.id);
+    if (legacyUpdate.error) {
+      setError(`下架失敗：${legacyUpdate.error.message}`);
+      return;
+    }
+    setMessage("已下架隱藏，作品資料仍保留。");
     await loadTracks();
   };
 
@@ -345,6 +364,9 @@ export default function ListenBarAdminPage() {
             </h1>
           </div>
           <div className="flex items-center gap-2">
+            <Link href="/admin/moderation" className="rounded-full border border-orange-300/30 bg-orange-500/10 px-4 py-2 text-sm font-bold text-orange-100">
+              檢舉管理
+            </Link>
             <Link href="/battle/setup?lang=zh" className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-4 py-2 text-sm font-bold text-cyan-100">
               Drop 上傳
             </Link>
@@ -491,8 +513,8 @@ export default function ListenBarAdminPage() {
                             <button type="button" onClick={() => void updateTrack(track, { sort_order: (track.sort_order ?? 100) + 10 })} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55">
                               往後
                             </button>
-                            <button type="button" onClick={() => void deleteTrack(track)} className="rounded-full border border-red-300/20 px-4 py-2 text-xs font-black text-red-100 transition hover:border-red-300/60">
-                              刪除
+                            <button type="button" onClick={() => void hideTrack(track)} className="rounded-full border border-red-300/20 px-4 py-2 text-xs font-black text-red-100 transition hover:border-red-300/60">
+                              隱藏
                             </button>
                           </div>
                         </div>

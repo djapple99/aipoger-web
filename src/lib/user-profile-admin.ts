@@ -19,21 +19,9 @@ export function isMissingIsAdminColumn(err: unknown): boolean {
 
 /** 是否為管理員 */
 export async function loadIsAdmin(userId: string): Promise<boolean> {
+  void userId;
   const {
     data: { session },
   } = await supabase.auth.getSession();
-  if (userIsAdminByEmail(session?.user)) return true;
-
-  const { data, error } = await supabase
-    .from("user_profiles")
-    .select("is_admin")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (error) {
-    if (isMissingIsAdminColumn(error)) return false;
-    console.warn("[is_admin] load", error);
-    return false;
-  }
-  return data?.is_admin === true;
+  return userIsAdminByEmail(session?.user);
 }

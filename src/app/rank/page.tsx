@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import ShareButton from "@/components/share-button";
+import ReportButton from "@/components/report-button";
 import {
   AIPOGER_BRAND_LOGO,
   AIPOGER_CONTACT_EMAIL,
@@ -636,10 +637,20 @@ export default function RankPage() {
                           copiedLabel={isZh ? "成果卡已複製" : "Result Copied"}
                           className="px-4 py-2 text-xs"
                         />
+                        <ReportButton
+                          targetType="battle_result"
+                          targetId={topRow.battleCode || topRow.id}
+                          targetTitle={`${topRow.name} VS ${topRow.opponentName || "Opponent"}`}
+                          targetUrl={resultHref(topRow, lang)}
+                          context="Honor board spotlight battle result"
+                          lang={lang}
+                          className="px-4 py-2"
+                        />
                       </div>
                     ) : topRow.audioUrl ? (
+                      <div className="mt-3 grid gap-2">
                       <audio
-                        className="mt-3 w-full accent-orange-500"
+                        className="w-full accent-orange-500"
                         controls
                         controlsList="nodownload"
                         onContextMenu={(event) => event.preventDefault()}
@@ -648,6 +659,16 @@ export default function RankPage() {
                       >
                         {isZh ? "你的瀏覽器暫時不支援播放。" : "Your browser does not support audio playback."}
                       </audio>
+                        <ReportButton
+                          targetType="listen_bar_track"
+                          targetId={topRow.id}
+                          targetTitle={`${topRow.name} / ${displaySongTitle(topRow.hook, isZh ? "歌名未封存" : "Song Not Archived")}`}
+                          targetUrl={`/rank?lang=${lang}`}
+                          context="Honor board spotlight Bar Heartbreak track"
+                          lang={lang}
+                          className="w-fit px-4 py-2"
+                        />
+                      </div>
                     ) : null}
                   </div>
                 </div>
@@ -849,6 +870,15 @@ export default function RankPage() {
                                 />
                               </>
                             ) : null}
+                            <ReportButton
+                              targetType={row.kind === "battle" ? "battle_result" : "listen_bar_track"}
+                              targetId={row.kind === "battle" ? row.battleCode || row.id : row.id}
+                              targetTitle={`${row.name} / ${displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}`}
+                              targetUrl={row.kind === "battle" ? rowResultHref : `/rank?lang=${lang}`}
+                              context={`Honor board row kind=${row.kind}`}
+                              lang={lang}
+                              className="px-3 py-2"
+                            />
                           </div>
                           {row.audioUrl ? (
                             <audio
