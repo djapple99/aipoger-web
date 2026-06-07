@@ -1867,7 +1867,10 @@ function BattleArenaContent() {
       setViewerCount(Math.max(1, users.size));
     };
 
-    channel.on("presence", { event: "sync" }, countFromState);
+    channel
+      .on("presence", { event: "sync" }, countFromState)
+      .on("presence", { event: "join" }, countFromState)
+      .on("presence", { event: "leave" }, countFromState);
 
     void channel.subscribe(async (status) => {
       if (status === "SUBSCRIBED") {
