@@ -2637,7 +2637,7 @@ function BattleArenaContent() {
           : "border-cyan-200/12 bg-cyan-400/[0.035] text-cyan-100/45";
     const countClass = tone === "orange" ? "text-orange-200" : "text-cyan-100";
     return (
-      <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5 sm:gap-1.5">
+      <div className="mt-2 grid grid-cols-3 gap-2.5 sm:grid-cols-5 sm:gap-1.5">
         {feedbackButtons.map((item) => (
           <button
             key={item.key}
@@ -2645,7 +2645,7 @@ function BattleArenaContent() {
             disabled={!activeForFeedback}
             onClick={() => handleFeedbackTap(deck, item.key)}
             aria-label={`${deck === "A" ? "A SIDE" : "B SIDE"} ${lang === "zh" ? item.zh : item.en}`}
-            className={`min-h-12 rounded-xl border px-2 py-2 text-center text-[12px] font-black leading-tight transition active:scale-[0.96] disabled:cursor-not-allowed sm:min-h-9 sm:px-1.5 sm:py-1.5 sm:text-[11px] ${toneClass}`}
+            className={`min-h-14 rounded-2xl border px-2.5 py-2.5 text-center text-[13px] font-black leading-tight transition active:scale-[0.96] disabled:cursor-not-allowed sm:min-h-10 sm:rounded-xl sm:px-1.5 sm:py-1.5 sm:text-[11px] ${toneClass}`}
             title={activeForFeedback ? (lang === "zh" ? `送出${item.zh}彈幕` : `Send ${item.en} feedback`) : disabledReason}
           >
             <span className="block truncate">{lang === "zh" ? item.zh : item.en}</span>
@@ -4005,7 +4005,7 @@ function BattleArenaContent() {
                     key={emoji}
                     type="button"
                     onClick={() => void sendChatContent(emoji)}
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.055] text-lg transition hover:border-yellow-200/70 hover:bg-yellow-300/15 md:h-9 md:w-9"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.055] text-lg transition hover:border-yellow-200/70 hover:bg-yellow-300/15 md:h-9 md:w-9"
                     aria-label={`${lang === "zh" ? "送出" : "Send"} ${emoji}`}
                   >
                     {emoji}
@@ -4019,12 +4019,12 @@ function BattleArenaContent() {
                 onChange={(e) => setChatInput(e.target.value)}
                 placeholder={t("chat_placeholder")}
                 maxLength={200}
-                className="min-w-0 flex-1 rounded-full border border-yellow-300/45 bg-black/72 px-4 py-3 text-sm font-bold text-zinc-100 placeholder:text-zinc-500 focus:border-yellow-200 focus:outline-none focus:ring-2 focus:ring-yellow-300/30"
+                className="min-h-12 min-w-0 flex-1 rounded-full border border-yellow-300/45 bg-black/72 px-4 py-3 text-sm font-bold text-zinc-100 placeholder:text-zinc-500 focus:border-yellow-200 focus:outline-none focus:ring-2 focus:ring-yellow-300/30"
               />
               <button
                 type="submit"
                 disabled={!chatInput.trim()}
-                className="min-w-[4.8rem] rounded-full bg-yellow-300 px-5 py-3 text-sm font-black text-black transition hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-40 sm:px-6"
+                className="min-h-12 min-w-[4.8rem] rounded-full bg-yellow-300 px-5 py-3 text-sm font-black text-black transition hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-40 sm:px-6"
               >
                 {t("chat_send")}
               </button>
