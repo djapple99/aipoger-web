@@ -158,7 +158,7 @@ const DANMAKU_COLOR_CLASSES = [
   "border-fuchsia-200/30 bg-fuchsia-400/14 text-fuchsia-50 shadow-[0_0_22px_rgba(217,70,239,0.22)]",
   "border-white/16 bg-black/48 text-white shadow-[0_0_18px_rgba(0,0,0,0.45),0_0_20px_rgba(255,106,0,0.14)]",
 ] as const;
-const QUICK_DANMAKU_EMOJIS = ["🔥", "💔", "⚡", "🙌", "💥", "👑", "🚀", "😭"] as const;
+const QUICK_DANMAKU_EMOJIS = ["🔥", "💔", "⚡", "🙌", "🚀", "😭"] as const;
 const rpsCycle = ["✊", "✌️", "✋"] as const;
 const hypeReactions = ["❤️", "👍"] as const;
 const feedbackButtons: Array<{ key: FeedbackKey; zh: string; en: string }> = [
@@ -894,6 +894,7 @@ function BattleArenaContent() {
   const battleResultHrefRef = useRef<string | null>(null);
   const rematchResultRedirectRef = useRef<string | null>(null);
   const rematchOpenedBattleRef = useRef<string | null>(null);
+  const rematchFallbackTimerRef = useRef<number | null>(null);
   const mockSyncChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const shownDanmakuMessageIdsRef = useRef<Set<string>>(new Set());
   const shownDanmakuFingerprintsRef = useRef<Map<string, number>>(new Map());
@@ -1213,6 +1214,10 @@ function BattleArenaContent() {
     if (resultRedirectTimerRef.current != null) {
       window.clearTimeout(resultRedirectTimerRef.current);
       resultRedirectTimerRef.current = null;
+    }
+    if (rematchFallbackTimerRef.current != null) {
+      window.clearTimeout(rematchFallbackTimerRef.current);
+      rematchFallbackTimerRef.current = null;
     }
     setVoteOpen(false);
 
@@ -2488,7 +2493,7 @@ function BattleArenaContent() {
     const isCurrentUserFighter = Boolean(
       myUserId && battle && (myUserId === battle.fighter_a_user_id || myUserId === battle.fighter_b_user_id),
     );
-    const canTapFeedback = !isCurrentUserFighter && ["warmup", "rps", "playing", "transition", "vote", "ended"].includes(battlePhase);
+    const canTapFeedback = !isCurrentUserFighter && ["warmup", "rps", "ready", "playing", "transition", "vote", "ended"].includes(battlePhase);
     if (!canTapFeedback) return;
 
     const meta = feedbackButtons.find((item) => item.key === key);
@@ -2516,7 +2521,7 @@ function BattleArenaContent() {
     const isCurrentUserFighter = Boolean(
       myUserId && battle && (myUserId === battle.fighter_a_user_id || myUserId === battle.fighter_b_user_id),
     );
-    const activeForFeedback = !isCurrentUserFighter && ["warmup", "rps", "playing", "transition", "vote", "ended"].includes(battlePhase);
+    const activeForFeedback = !isCurrentUserFighter && ["warmup", "rps", "ready", "playing", "transition", "vote", "ended"].includes(battlePhase);
     const disabledReason = isCurrentUserFighter
       ? lang === "zh"
         ? "鬥歌者只能投最終票，不能按反應鈕"
@@ -2536,7 +2541,7 @@ function BattleArenaContent() {
           : "border-cyan-200/12 bg-cyan-400/[0.035] text-cyan-100/45";
     const countClass = tone === "orange" ? "text-orange-200" : "text-cyan-100";
     return (
-      <div className="mt-1 grid grid-cols-5 gap-1.5">
+      <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5 sm:gap-1.5">
         {feedbackButtons.map((item) => (
           <button
             key={item.key}
@@ -2544,7 +2549,7 @@ function BattleArenaContent() {
             disabled={!activeForFeedback}
             onClick={() => handleFeedbackTap(deck, item.key)}
             aria-label={`${deck === "A" ? "A SIDE" : "B SIDE"} ${lang === "zh" ? item.zh : item.en}`}
-            className={`min-h-9 rounded-xl border px-1.5 py-1.5 text-center text-[11px] font-black leading-tight transition active:scale-[0.96] disabled:cursor-not-allowed ${toneClass}`}
+            className={`min-h-12 rounded-xl border px-2 py-2 text-center text-[12px] font-black leading-tight transition active:scale-[0.96] disabled:cursor-not-allowed sm:min-h-9 sm:px-1.5 sm:py-1.5 sm:text-[11px] ${toneClass}`}
             title={activeForFeedback ? (lang === "zh" ? `送出${item.zh}彈幕` : `Send ${item.en} feedback`) : disabledReason}
           >
             <span className="block truncate">{lang === "zh" ? item.zh : item.en}</span>
@@ -2797,6 +2802,20 @@ function BattleArenaContent() {
     router.push(href);
   }, [rematchClaim?.claimId, rematchClaim?.claimWindowEndsAt, rematchClaim?.status, rematchNowMs, router]);
 
+  const queueResultFallback = useCallback(
+    (delayMs = 1200) => {
+      const href = battleResultHrefRef.current;
+      if (!href) return;
+      if (rematchFallbackTimerRef.current != null) return;
+      rematchFallbackTimerRef.current = window.setTimeout(() => {
+        rematchFallbackTimerRef.current = null;
+        const latestHref = battleResultHrefRef.current;
+        if (latestHref) router.push(latestHref);
+      }, delayMs);
+    },
+    [router],
+  );
+
   useEffect(() => {
     if (loading || !battle || battle.arena_kind === "queue" || !playedDecks.A || !playedDecks.B || voteOpen) return;
     if (battleId.startsWith("mock-") || isAuthBypassEnabled) return;
@@ -2808,14 +2827,19 @@ function BattleArenaContent() {
     setRematchError(null);
     void openDropRematchWindowIntent({ battleId, winnerSide: winnerSideForWindow })
       .then((claim) => {
+        if (rematchFallbackTimerRef.current != null) {
+          window.clearTimeout(rematchFallbackTimerRef.current);
+          rematchFallbackTimerRef.current = null;
+        }
         setRematchClaim(claim);
         if (claim.nextBattleId) router.push(`/battle/${claim.nextBattleId}?lang=${lang}`);
       })
       .catch((err) => {
         const message = err instanceof Error ? err.message : String(err);
         if (!/No valid rematch window|not found/i.test(message)) setRematchError(message);
+        queueResultFallback(/No valid rematch window|not found/i.test(message) ? 700 : 1400);
       });
-  }, [battle, battleId, firstDeck, lang, loading, playedDecks.A, playedDecks.B, router, voteOpen, votes]);
+  }, [battle, battleId, firstDeck, lang, loading, playedDecks.A, playedDecks.B, queueResultFallback, router, voteOpen, votes]);
 
   useEffect(() => {
     if (!rematchClaim || !["open", "claimed"].includes(rematchClaim.status)) return;
@@ -3318,7 +3342,7 @@ function BattleArenaContent() {
         </div>
       )}
       {rematchClaim && battlePlaybackComplete && hasResultWinner && !winnerRevealOpen && !noContestOpen && (
-        <div className="absolute inset-x-0 bottom-20 z-[97] flex justify-center px-4 md:bottom-8">
+        <div className="absolute inset-x-0 bottom-36 z-[130] flex justify-center px-4 md:bottom-8">
           <div className="w-[min(94vw,640px)] rounded-[1.4rem] border border-orange-200/28 bg-black/82 px-5 py-4 text-center shadow-[0_0_70px_rgba(255,106,0,0.22)] backdrop-blur-xl">
             <div className="flex flex-col items-center gap-3 md:flex-row md:items-center md:justify-between md:text-left">
               <div>
@@ -3445,7 +3469,7 @@ function BattleArenaContent() {
       </header>
 
       {/* 擂台主體 */}
-      <main className="relative z-10 flex min-h-0 flex-1 flex-col overflow-visible px-4 pb-28 pt-2 md:overflow-hidden md:px-7 md:pb-2">
+      <main className="relative z-10 flex min-h-0 flex-1 flex-col overflow-visible px-4 pb-44 pt-2 md:overflow-hidden md:px-7 md:pb-2">
         <section className="mx-auto grid w-full max-w-[1540px] items-start gap-y-3 lg:grid-cols-[1fr_auto_1fr] lg:gap-x-7 lg:gap-y-0">
           {/* 左欄 */}
           <div className="order-2 flex flex-col self-start overflow-hidden rounded-[2rem] border border-orange-400/18 bg-black/45 px-4 pb-2 pt-3 shadow-[0_24px_90px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl md:px-6 lg:order-none">
@@ -3799,26 +3823,28 @@ function BattleArenaContent() {
         </section>
 
         {/* 彈幕輸入：留言送出後會橫向跑過整個 Battle 畫面 */}
-        <section className="fixed bottom-3 left-3 right-3 z-[120] mx-auto w-[calc(100%-1.5rem)] max-w-[1120px] rounded-full border-2 border-yellow-300/75 bg-black/84 px-2 py-2 shadow-[0_16px_64px_rgba(0,0,0,0.52),0_0_32px_rgba(250,204,21,0.2)] backdrop-blur-xl md:bottom-4">
-          <div className="flex items-center gap-2">
+        <section className="fixed bottom-2 left-3 right-3 z-[80] mx-auto w-[calc(100%-1.5rem)] max-w-[1120px] rounded-[1.4rem] border-2 border-yellow-300/75 bg-black/86 px-2 py-2 shadow-[0_16px_64px_rgba(0,0,0,0.52),0_0_32px_rgba(250,204,21,0.2)] backdrop-blur-xl md:bottom-4 md:rounded-full">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center">
             <span className="hidden shrink-0 pl-3 text-[10px] font-black tracking-[0.18em] text-yellow-200/80 sm:inline">
               {lang === "zh" ? "全場彈幕" : "Arena Danmaku"}
             </span>
-            <span className="rounded-full border border-yellow-200/30 bg-yellow-300/10 px-2 py-1 text-[10px] font-black text-yellow-100">
-              {lang === "zh" ? "彈幕開啟" : "Danmaku On"}
-            </span>
-            <div className="flex max-w-[9.6rem] shrink-0 items-center gap-1 overflow-x-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:max-w-none">
-              {QUICK_DANMAKU_EMOJIS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => void sendChatContent(emoji)}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.055] text-lg transition hover:border-yellow-200/70 hover:bg-yellow-300/15"
-                  aria-label={`${lang === "zh" ? "送出" : "Send"} ${emoji}`}
-                >
-                  {emoji}
-                </button>
-              ))}
+            <div className="flex min-w-0 items-center gap-2 md:shrink-0">
+              <span className="shrink-0 rounded-full border border-yellow-200/30 bg-yellow-300/10 px-2 py-1 text-[10px] font-black text-yellow-100">
+                {lang === "zh" ? "彈幕" : "Danmaku"}
+              </span>
+              <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:max-w-none">
+                {QUICK_DANMAKU_EMOJIS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => void sendChatContent(emoji)}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.055] text-lg transition hover:border-yellow-200/70 hover:bg-yellow-300/15 md:h-9 md:w-9"
+                    aria-label={`${lang === "zh" ? "送出" : "Send"} ${emoji}`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
             </div>
             <form className="flex min-w-0 flex-1 gap-2" onSubmit={handleSend}>
               <input
@@ -3831,7 +3857,7 @@ function BattleArenaContent() {
               <button
                 type="submit"
                 disabled={!chatInput.trim()}
-                className="rounded-full bg-yellow-300 px-5 py-3 text-sm font-black text-black transition hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-40 sm:px-6"
+                className="min-w-[4.8rem] rounded-full bg-yellow-300 px-5 py-3 text-sm font-black text-black transition hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-40 sm:px-6"
               >
                 {t("chat_send")}
               </button>
