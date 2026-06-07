@@ -121,14 +121,6 @@ type DeckKey = "A" | "B";
 type BattlePlaybackPhase = "rps" | "ready" | "playing" | "paused" | "transition" | "final";
 type FeedbackKey = "rhyme" | "impact" | "melody" | "emotion" | "structure";
 type FeedbackCounts = Record<DeckKey, Record<FeedbackKey, number>>;
-type ReactionBurst = {
-  id: string;
-  symbol: string;
-  x: number;
-  y: number;
-  size: number;
-};
-
 type DanmakuItem = {
   id: string;
   text: string;
@@ -176,7 +168,6 @@ const DANMAKU_COLOR_CLASSES = [
 ] as const;
 const QUICK_DANMAKU_EMOJIS = ["💔", "🙌", "🚀", "😭"] as const;
 const rpsCycle = ["✊", "✌️", "✋"] as const;
-const hypeReactions = ["❤️", "👍"] as const;
 const feedbackButtons: Array<{ key: FeedbackKey; zh: string; en: string }> = [
   { key: "rhyme", zh: "押韻", en: "Rhyme" },
   { key: "impact", zh: "爆點", en: "Impact" },
@@ -468,7 +459,6 @@ function VinylDisc({
   playDisabled,
   playLabel,
   turnLabel,
-  onAvatarReact,
   color,
   aiTool,
   accent,
@@ -485,7 +475,6 @@ function VinylDisc({
   playDisabled?: boolean;
   playLabel?: string;
   turnLabel?: string;
-  onAvatarReact?: () => void;
   color: string;
   aiTool: string | null;
   accent: "orange" | "blue";
@@ -588,10 +577,7 @@ function VinylDisc({
         {side === "left" && (
           <button
             type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onAvatarReact?.();
-            }}
+            onClick={(event) => event.stopPropagation()}
             className={`absolute z-30 transition hover:scale-105 ${avatarBubbleBase}`}
             style={{
               top: "var(--avatar-top)",
@@ -721,10 +707,7 @@ function VinylDisc({
         {side === "right" && (
           <button
             type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onAvatarReact?.();
-            }}
+            onClick={(event) => event.stopPropagation()}
             className={`absolute right-0 top-0 z-30 transition hover:scale-105 ${avatarBubbleBase}`}
             style={{
               width: "var(--avatar-size)",
@@ -838,7 +821,7 @@ function VoteHeartButton({
       title={t("battle_vote_heart_aria")}
       aria-label={t("battle_vote_heart_aria")}
       aria-pressed={selected}
-      className={`group flex min-h-16 w-full items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-left transition active:scale-[0.98] md:min-h-[4.5rem] ${
+      className={`group flex min-h-24 w-full touch-manipulation items-center justify-center gap-3 rounded-[1.6rem] border px-4 py-4 text-left transition active:scale-[0.98] md:min-h-[5.25rem] ${
         selected
           ? "border-red-300/85 bg-red-500/18 shadow-[0_0_28px_rgba(239,68,68,0.28)]"
           : voteLocked
@@ -846,7 +829,7 @@ function VoteHeartButton({
             : "border-white/18 bg-white/[0.065] shadow-[0_0_18px_rgba(255,255,255,0.08)] hover:border-red-200/70 hover:bg-red-500/12"
       }`}
     >
-      <svg viewBox="0 0 24 24" className="h-11 w-11 shrink-0 drop-shadow-[0_0_14px_rgba(255,255,255,0.22)] md:h-12 md:w-12">
+      <svg viewBox="0 0 24 24" className="h-16 w-16 shrink-0 drop-shadow-[0_0_14px_rgba(255,255,255,0.22)] md:h-14 md:w-14">
         <path
           fill={selected ? "#ef4444" : "none"}
           stroke={selected ? "#ef4444" : notChosenOther ? "#52525b" : "#e5e5e5"}
@@ -854,7 +837,7 @@ function VoteHeartButton({
           d="M12 21.35l-1.05-.96C6.96 17.06 4 13.92 4 10.94 4 8.73 5.71 7 8.02 7c1.53 0 3.04.93 4 2.43.96-1.5 2.47-2.43 4-2.43C18.29 7 20 8.73 20 10.94c0 3-2.97 6.17-7.94 11.43L12 21.35z"
         />
       </svg>
-      <span className="min-w-0 text-[12px] font-black leading-tight text-zinc-100 md:text-sm">{label}</span>
+      <span className="min-w-0 text-[13px] font-black leading-tight text-zinc-100 md:text-sm">{label}</span>
     </button>
   );
 }
@@ -883,7 +866,6 @@ function BattleArenaContent() {
   const [battlePhase, setBattlePhase] = useState<BattlePlaybackPhase>("rps");
   const [rpsChoices, setRpsChoices] = useState<{ A: string; B: string }>({ A: "✊", B: "✌️" });
   const [rpsPressed, setRpsPressed] = useState<{ A: boolean; B: boolean }>({ A: false, B: false });
-  const [reactionBursts, setReactionBursts] = useState<ReactionBurst[]>([]);
   const [feedbackCounts, setFeedbackCounts] = useState<FeedbackCounts>(() => emptyFeedbackCounts());
   const [danmakuItems, setDanmakuItems] = useState<DanmakuItem[]>([]);
   const [audioGlowLevel, setAudioGlowLevel] = useState(0);
@@ -926,6 +908,7 @@ function BattleArenaContent() {
   // Refs
   const audioARef = useRef<HTMLAudioElement>(null);
   const audioBRef = useRef<HTMLAudioElement>(null);
+  const audioUnlockedRef = useRef(false);
   const completedDecksRef = useRef<{ A: boolean; B: boolean }>({ A: false, B: false });
   const autoStartedDecksRef = useRef<{ A: boolean; B: boolean }>({ A: false, B: false });
   const pauseResumeTimerRef = useRef<number | null>(null);
@@ -2061,6 +2044,7 @@ function BattleArenaContent() {
     setRematchClaim(null);
     setRematchBusy(false);
     setRematchError(null);
+    audioUnlockedRef.current = false;
     setAudioUnlocked(false);
     setAudioUnlockBusy(false);
     setPlaybackBlockedDeck(null);
@@ -2072,7 +2056,6 @@ function BattleArenaContent() {
     setBattleStartedAtMs(null);
     setRpsChoices({ A: "✊", B: "✌️" });
     setRpsPressed({ A: false, B: false });
-    setReactionBursts([]);
     setFeedbackCounts(emptyFeedbackCounts());
     resumeDeckOffsetRef.current = null;
     sharedClockAppliedRef.current = null;
@@ -2092,8 +2075,13 @@ function BattleArenaContent() {
       window.clearTimeout(pauseResumeTimerRef.current);
       pauseResumeTimerRef.current = null;
     }
-    audioARef.current?.pause();
-    audioBRef.current?.pause();
+    [audioARef.current, audioBRef.current].forEach((audio) => {
+      if (!audio) return;
+      audio.pause();
+      audio.loop = false;
+      audio.volume = 1;
+      audio.muted = false;
+    });
     stopTeaser();
     stopScratchTransition();
     stopWinnerCountdownSfx();
@@ -2357,7 +2345,8 @@ function BattleArenaContent() {
   const playDeck = useCallback((deck: DeckKey, restart: boolean, startAtSeconds = 0, forceAudioUnlock = false) => {
     const target = deck === "A" ? audioARef.current : audioBRef.current;
     const other = deck === "A" ? audioBRef.current : audioARef.current;
-    other?.pause();
+    const otherIsSilentPrimed = Boolean(other && !other.paused && !other.muted && other.volume === 0);
+    if (!otherIsSilentPrimed) other?.pause();
     if (pauseResumeTimerRef.current != null) {
       window.clearTimeout(pauseResumeTimerRef.current);
       pauseResumeTimerRef.current = null;
@@ -2368,7 +2357,7 @@ function BattleArenaContent() {
       setActiveDeck(null);
       return;
     }
-    if (!forceAudioUnlock && !audioUnlocked && !isMockBattle) {
+    if (!forceAudioUnlock && !audioUnlockedRef.current && !isMockBattle) {
       setCurrentDeck(deck);
       setActiveDeck(null);
       setBattlePhase("ready");
@@ -2379,12 +2368,16 @@ function BattleArenaContent() {
       arenaEchoTriggeredRef.current[deck] = false;
       target.currentTime = Math.max(0, Math.min(HOOK_BATTLE_SECONDS - 0.25, startAtSeconds));
     }
+    target.loop = false;
+    target.muted = false;
+    target.volume = 1;
     void target
       .play()
       .then(() => {
         setCurrentDeck(deck);
         setActiveDeck(deck);
         setBattlePhase("playing");
+        audioUnlockedRef.current = true;
         setAudioUnlocked(true);
         setPlaybackBlockedDeck(null);
       })
@@ -2392,49 +2385,51 @@ function BattleArenaContent() {
         setCurrentDeck(deck);
         setActiveDeck(null);
         setBattlePhase("ready");
+        audioUnlockedRef.current = false;
         setAudioUnlocked(false);
         setPlaybackBlockedDeck(deck);
       });
-  }, [audioUnlocked, isMockBattle, markDeckPlayed]);
+  }, [isMockBattle, markDeckPlayed]);
 
   const unlockBattleAudio = useCallback(async () => {
     if (audioUnlockBusy) return;
     setAudioUnlockBusy(true);
-    setAudioUnlocked(true);
     try {
-      const deckToResume =
-        playbackBlockedDeck ??
-        (currentDeck && (battlePhase === "ready" || battlePhase === "paused") ? currentDeck : null);
-
-      if (deckToResume && !completedDecksRef.current[deckToResume] && audioUrls[deckToResume]) {
-        const resume = resumeDeckOffsetRef.current?.deck === deckToResume ? resumeDeckOffsetRef.current.seconds : 0;
-        resumeDeckOffsetRef.current = null;
-        autoStartedDecksRef.current[deckToResume] = true;
-        playDeck(deckToResume, true, resume, true);
-        return;
-      }
-
       const audios = [audioARef.current, audioBRef.current].filter((audio): audio is HTMLAudioElement => Boolean(audio?.src));
-      await Promise.all(
+      const primed = await Promise.all(
         audios.map(async (audio) => {
           const originalMuted = audio.muted;
+          const originalVolume = audio.volume;
+          const originalLoop = audio.loop;
+          let primed = false;
           try {
-            audio.muted = true;
-            await audio.play();
-            audio.pause();
+            audio.loop = true;
+            audio.muted = false;
+            audio.volume = 0;
             audio.currentTime = 0;
+            await audio.play();
+            primed = true;
+            return true;
           } catch {
-            // The visible unlock action will still let the active deck retry when it is ready.
+            // Keep the unlock prompt visible if the browser rejects the audio gesture.
+            return false;
           } finally {
-            audio.muted = originalMuted;
+            if (!primed) {
+              audio.loop = originalLoop;
+              audio.volume = originalVolume;
+              audio.muted = originalMuted;
+            }
           }
         }),
       );
-      setPlaybackBlockedDeck(null);
+      const unlockSucceeded = audios.length === 0 || primed.some(Boolean);
+      audioUnlockedRef.current = unlockSucceeded;
+      setAudioUnlocked(unlockSucceeded);
+      setPlaybackBlockedDeck(unlockSucceeded ? null : playbackBlockedDeck ?? currentDeck);
     } finally {
       setAudioUnlockBusy(false);
     }
-  }, [audioUnlockBusy, audioUrls, battlePhase, currentDeck, playDeck, playbackBlockedDeck]);
+  }, [audioUnlockBusy, currentDeck, playbackBlockedDeck]);
 
   useEffect(() => {
     if (battlePhase !== "transition" || !transitionDeck || !transitionEndsAtMs) return;
@@ -2533,7 +2528,7 @@ function BattleArenaContent() {
   const handleDeckTimeUpdate = useCallback(
     (deck: DeckKey) => {
       const current = deck === "A" ? audioARef.current : audioBRef.current;
-      if (!current || completedDecksRef.current[deck]) return;
+      if (!current || completedDecksRef.current[deck] || battlePhase !== "playing" || activeDeck !== deck) return;
       const naturalDuration = Number.isFinite(current.duration) && current.duration > 0 ? current.duration : HOOK_BATTLE_SECONDS;
       const deckEndAt = Math.min(HOOK_BATTLE_SECONDS, naturalDuration);
       if (current.currentTime >= Math.max(0, deckEndAt - ARENA_ECHO_LEAD_SECONDS)) {
@@ -2544,13 +2539,13 @@ function BattleArenaContent() {
         completeDeck(deck);
       }
     },
-    [completeDeck, triggerArenaEcho],
+    [activeDeck, battlePhase, completeDeck, triggerArenaEcho],
   );
 
   useEffect(() => {
     if (battlePhase !== "ready" || !currentDeck || completedDecksRef.current[currentDeck] || autoStartedDecksRef.current[currentDeck]) return;
     if (!audioUrls[currentDeck]) return;
-    if (!audioUnlocked && !isMockBattle) {
+    if (!audioUnlockedRef.current && !isMockBattle) {
       setPlaybackBlockedDeck(currentDeck);
       return;
     }
@@ -2559,7 +2554,7 @@ function BattleArenaContent() {
     resumeDeckOffsetRef.current = null;
     const timer = window.setTimeout(() => playDeck(currentDeck, true, resume), 220);
     return () => window.clearTimeout(timer);
-  }, [audioUnlocked, audioUrls, battlePhase, currentDeck, isMockBattle, playDeck]);
+  }, [audioUrls, battlePhase, currentDeck, isMockBattle, playDeck]);
 
   useEffect(() => {
     if (!battleStartedAtMs || battle?.arena_kind === "queue" || (playedDecks.A && playedDecks.B) || battlePhase === "final") return;
@@ -2614,31 +2609,6 @@ function BattleArenaContent() {
     setRpsPressed((prev) => ({ ...prev, [deck]: true }));
   }, [battlePhase]);
 
-  const fireHypeReaction = useCallback((symbol: string, anchor: "left" | "center" | "right" = "center", broadcast = true) => {
-    const id = `${symbol}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const baseX = anchor === "left" ? 24 : anchor === "right" ? 76 : 50;
-    setReactionBursts((prev) => [
-      ...prev.slice(-22),
-      {
-        id,
-        symbol,
-        x: Math.max(8, Math.min(92, baseX + Math.round((Math.random() - 0.5) * 18))),
-        y: 18 + Math.round(Math.random() * 36),
-        size: 26 + Math.round(Math.random() * 14),
-      },
-    ]);
-    window.setTimeout(() => {
-      setReactionBursts((prev) => prev.filter((reaction) => reaction.id !== id));
-    }, 1850);
-    if (broadcast) {
-      void mockSyncChannelRef.current?.send({
-        type: "broadcast",
-        event: "reaction",
-        payload: { symbol, anchor },
-      });
-    }
-  }, []);
-
   const handleFeedbackTap = useCallback((deck: DeckKey, key: FeedbackKey, broadcast = true) => {
     if (!broadcast) {
       const meta = feedbackButtons.find((item) => item.key === key);
@@ -2652,7 +2622,6 @@ function BattleArenaContent() {
         },
       }));
       fireDanmaku(label);
-      fireHypeReaction(deck === "A" ? "❤️" : "👍", deck === "A" ? "left" : "right", false);
       return;
     }
 
@@ -2673,7 +2642,6 @@ function BattleArenaContent() {
       },
     }));
     fireDanmaku(label);
-    fireHypeReaction(deck === "A" ? "❤️" : "👍", deck === "A" ? "left" : "right", false);
     if (broadcast) {
       void mockSyncChannelRef.current?.send({
         type: "broadcast",
@@ -2681,7 +2649,7 @@ function BattleArenaContent() {
         payload: { deck, key },
       });
     }
-  }, [battle, battlePhase, fireDanmaku, fireHypeReaction, lang, myUserId]);
+  }, [battle, battlePhase, fireDanmaku, lang, myUserId]);
 
   function FeedbackBar({ deck, tone }: { deck: DeckKey; tone: "orange" | "blue" }) {
     const isCurrentUserFighter = Boolean(
@@ -2751,11 +2719,6 @@ function BattleArenaContent() {
         if (!message?.id || !message.content) return;
         fireDanmaku(message);
       })
-      .on("broadcast", { event: "reaction" }, (payload) => {
-        const data = payload.payload as { symbol?: string; anchor?: "left" | "center" | "right" };
-        if (typeof data.symbol !== "string" || !hypeReactions.includes(data.symbol as (typeof hypeReactions)[number])) return;
-        fireHypeReaction(data.symbol, data.anchor ?? "center", false);
-      })
       .on("broadcast", { event: "feedback" }, (payload) => {
         const data = payload.payload as { deck?: DeckKey; key?: FeedbackKey };
         const feedbackKey = feedbackButtons.find((item) => item.key === data.key)?.key;
@@ -2784,7 +2747,7 @@ function BattleArenaContent() {
       mockSyncChannelRef.current = null;
       void supabase.removeChannel(channel);
     };
-  }, [applyRematchClaim, battleId, fireDanmaku, fireHypeReaction, handleFeedbackTap, pushResultForEveryone]);
+  }, [applyRematchClaim, battleId, fireDanmaku, handleFeedbackTap, pushResultForEveryone]);
 
   const readCurrentSessionUser = useCallback(async () => {
     if (battleId.startsWith("mock-") || isAuthBypassEnabled) return { id: myUserId || "mock-audience" };
@@ -3668,7 +3631,7 @@ function BattleArenaContent() {
           </div>
         </div>
       )}
-      <div className="pointer-events-none absolute inset-x-0 top-[4.8rem] z-[45] h-[54vh] overflow-hidden">
+      <div className="pointer-events-none fixed inset-x-0 bottom-[7.6rem] top-[4.6rem] z-[75] overflow-hidden md:bottom-[5.25rem]">
         {danmakuItems.map((item) => (
           <span
             key={item.id}
@@ -3680,22 +3643,6 @@ function BattleArenaContent() {
             }}
           >
             {item.text}
-          </span>
-        ))}
-      </div>
-      <div className="pointer-events-none absolute inset-0 z-40 overflow-hidden">
-        {reactionBursts.map((reaction) => (
-          <span
-            key={reaction.id}
-            className="absolute rounded-full border border-white/15 bg-black/68 px-3 py-2 shadow-[0_0_30px_rgba(255,106,0,0.32)]"
-            style={{
-              left: `${reaction.x}%`,
-              bottom: `${reaction.y}%`,
-              fontSize: `${reaction.size}px`,
-              animation: "aipogerArenaReaction 1.85s ease-out forwards",
-            }}
-          >
-            {reaction.symbol}
           </span>
         ))}
       </div>
@@ -3752,7 +3699,6 @@ function BattleArenaContent() {
               avatarUrl={vinylAvatarA}
               isPlaying={activeDeck === "A"}
               onToggle={() => handleToggleDeck("A")}
-              onAvatarReact={() => fireHypeReaction("❤️", "left")}
               playDisabled={
                 isArenaWarmup ||
                 !canControlDeck("A") ||
@@ -4016,19 +3962,6 @@ function BattleArenaContent() {
               <p className="relative mt-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-center text-[11px] text-zinc-300 shadow-[0_0_22px_rgba(255,106,0,0.08)]">
                 {viewerBadge}
               </p>
-              <div className="relative mt-2 flex items-center justify-center gap-2">
-                {hypeReactions.map((reaction) => (
-                  <button
-                    key={reaction}
-                    type="button"
-                    onClick={() => fireHypeReaction(reaction)}
-                    className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-xl shadow-[0_0_20px_rgba(255,255,255,0.05)] transition hover:border-orange-200/55 hover:bg-orange-400/15"
-                    aria-label={lang === "zh" ? `送出 ${reaction}` : `Send ${reaction}`}
-                  >
-                    {reaction}
-                  </button>
-                ))}
-              </div>
               {battlePlaybackComplete && !voteOpen && hasResultWinner && battleResultHref && (isMockBattle || isAuthBypassEnabled || rematchExpired) && (
                 <Link
                   href={battleResultHref}
@@ -4052,7 +3985,6 @@ function BattleArenaContent() {
               avatarUrl={vinylAvatarB}
               isPlaying={activeDeck === "B"}
               onToggle={() => handleToggleDeck("B")}
-              onAvatarReact={() => fireHypeReaction("👍", "right")}
               playDisabled={
                 isArenaWarmup ||
                 !canControlDeck("B") ||
@@ -4153,11 +4085,6 @@ function BattleArenaContent() {
         @keyframes aipogerDanmaku {
           0% { transform: translateX(104vw); }
           100% { transform: translateX(-120vw); }
-        }
-        @keyframes aipogerArenaReaction {
-          0% { opacity: 0; transform: translate3d(-50%, 22px, 0) scale(0.82); }
-          12% { opacity: 1; }
-          100% { opacity: 0; transform: translate3d(-50%, -170px, 0) scale(1.28); }
         }
         @keyframes aipogerDeckSwapSweep {
           0% { opacity: 0; transform: translateX(-80vw) skewX(-14deg); }

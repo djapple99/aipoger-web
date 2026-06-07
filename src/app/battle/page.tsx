@@ -1015,6 +1015,9 @@ function BattlePoolList() {
         .on("postgres_changes", { event: "*", schema: "public", table: "battle_queue" }, () => {
           void load();
         })
+        .on("postgres_changes", { event: "*", schema: "public", table: "battles" }, () => {
+          void load();
+        })
         .subscribe();
 
     return () => {
@@ -1385,7 +1388,7 @@ function LiveBattleList() {
       let { data, error: qErr } = await supabase
         .from("battles")
         .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, scheduled_start_at, battle_started_at, started_at, battle_ended_at")
-        .in("status", ["active", "live"])
+        .in("status", ["matched", "active", "live"])
         .is("battle_ended_at", null)
         .order("created_at", { ascending: false })
         .limit(30);
@@ -1397,7 +1400,7 @@ function LiveBattleList() {
           const legacyRead = await supabase
             .from("battles")
             .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, battle_started_at, started_at, battle_ended_at")
-            .in("status", ["active", "live"])
+            .in("status", ["matched", "active", "live"])
             .is("battle_ended_at", null)
             .order("created_at", { ascending: false })
             .limit(30);
@@ -1415,7 +1418,7 @@ function LiveBattleList() {
         setError(null);
         let baseRows = ((data as LiveBattleRow[]) ?? []).filter((row) => {
           if (row.battle_ended_at) return false;
-          if (row.status === "active") return true;
+          if (row.status === "matched" || row.status === "active") return true;
           if (row.status !== "live") return false;
           const scheduledMs = Date.parse(row.scheduled_start_at ?? row.started_at ?? "");
           return !Number.isFinite(scheduledMs) || scheduledMs <= Date.now() || Boolean(row.battle_started_at);
@@ -1441,7 +1444,7 @@ function LiveBattleList() {
           }
           if (
             focusedBattle?.id &&
-            (["active", "live"].includes(focusedBattle.status ?? "") ||
+            (["matched", "active", "live"].includes(focusedBattle.status ?? "") ||
               Boolean(focusedBattle.battle_ended_at) ||
               isClosedBattleStatus(focusedBattle.status) ||
               isDropBattleEndedOrPastExpectedEnd(focusedBattle))
@@ -1481,8 +1484,20 @@ function LiveBattleList() {
     };
 
     void load();
+    const channel =
+      !isAuthBypassEnabled &&
+      supabase
+        .channel("battle-live-open")
+        .on("postgres_changes", { event: "*", schema: "public", table: "battles" }, () => {
+          void load();
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "battle_queue" }, () => {
+          void load();
+        })
+        .subscribe();
     return () => {
       mounted = false;
+      if (channel) void supabase.removeChannel(channel);
     };
   }, [focusBattleId, t]);
 
@@ -1626,7 +1641,7 @@ function LiveBattleList() {
               const showEndedState = isBattleEnded || isEndedByClock;
               const isFutureBattle =
                 !showEndedState &&
-                (b.status === "active" || (Number.isFinite(scheduledMs) && scheduledMs > Date.now() && !b.battle_started_at));
+                (b.status === "matched" || b.status === "active" || (Number.isFinite(scheduledMs) && scheduledMs > Date.now() && !b.battle_started_at));
               const canCancelBattle =
                 !showEndedState &&
                 isFutureBattle &&
@@ -1669,7 +1684,7 @@ function LiveBattleList() {
                             : isEndedByClock
                               ? (lang === "zh" ? "已完成戰鬥" : "Battle completed")
                             : isFutureBattle
-                              ? (lang === "zh" ? "已進場，等待開打" : "In arena, waiting to start")
+                              ? (lang === "zh" ? "已有人挑戰，等待開打" : "Challenge accepted, waiting to start")
                               : (lang === "zh" ? "開戰" : "Started")}{" "}
                           {formatBattleCardTime(scheduledAt, lang === "zh")}
                         </p>
@@ -1680,7 +1695,7 @@ function LiveBattleList() {
                           : isEndedByClock
                             ? (lang === "zh" ? "已完成戰鬥" : "Completed")
                             : isFutureBattle
-                              ? (lang === "zh" ? "等待開打" : "Warmup")
+                              ? (lang === "zh" ? "已有人挑戰" : "Accepted")
                               : (lang === "zh" ? "可觀戰投票" : "Watch & Vote")}
                       </span>
                     </div>
