@@ -1446,6 +1446,10 @@ function BattleArenaContent() {
           return;
         }
       }
+      if (arenaEntryResponse?.status === 404) {
+        router.replace(`/listen-bar?lang=${lang}`);
+        return;
+      }
 
       const { data, error: battleError } = await supabase
         .from("battles")
@@ -1540,7 +1544,8 @@ function BattleArenaContent() {
 
         console.error("[battle load]", battleError ?? queueError);
         if (!data || battleError?.code === "PGRST116") {
-          setError("i18n:battle_not_found");
+          router.replace(`/listen-bar?lang=${lang}`);
+          return;
         } else {
           setError(battleError?.message ?? "i18n:battle_load_failed");
         }
