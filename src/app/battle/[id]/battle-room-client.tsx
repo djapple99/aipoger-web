@@ -174,7 +174,7 @@ const DANMAKU_COLOR_CLASSES = [
   "border-fuchsia-200/30 bg-fuchsia-400/14 text-fuchsia-50 shadow-[0_0_22px_rgba(217,70,239,0.22)]",
   "border-white/16 bg-black/48 text-white shadow-[0_0_18px_rgba(0,0,0,0.45),0_0_20px_rgba(255,106,0,0.14)]",
 ] as const;
-const QUICK_DANMAKU_EMOJIS = ["🔥", "💔", "⚡", "🙌", "🚀", "😭"] as const;
+const QUICK_DANMAKU_EMOJIS = ["💔", "🙌", "🚀", "😭"] as const;
 const rpsCycle = ["✊", "✌️", "✋"] as const;
 const hypeReactions = ["❤️", "👍"] as const;
 const feedbackButtons: Array<{ key: FeedbackKey; zh: string; en: string }> = [
