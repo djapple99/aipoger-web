@@ -96,6 +96,9 @@ type QueueArenaRow = {
 type BattleLinkResolutionPayload =
   | { action: "stay"; reason?: string }
   | { action: "redirect"; href: string; reason?: string };
+type BattleArenaEntryPayload =
+  | { action: "redirect"; href: string; reason?: string }
+  | { action: "battle"; battle: BattleData };
 
 type VoteCount = { fighter_a: number; fighter_b: number };
 type DeckKey = "A" | "B";
@@ -167,7 +170,7 @@ const feedbackButtons: Array<{ key: FeedbackKey; zh: string; en: string }> = [
 ];
 
 function isUuid(value: string | null | undefined) {
-  return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i.test(value));
+  return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
 }
 const emptyFeedbackCounts = (): FeedbackCounts => ({
   A: { rhyme: 0, impact: 0, melody: 0, emotion: 0, structure: 0 },
@@ -1426,6 +1429,24 @@ function BattleArenaContent() {
         authed = d2.session;
       }
 
+      const arenaEntryResponse = await fetch(
+        `/api/battle-pool/arena-entry?id=${encodeURIComponent(battleId)}&lang=${lang}`,
+        { cache: "no-store" },
+      ).catch(() => null);
+      if (!mounted) return;
+      if (arenaEntryResponse?.ok) {
+        const payload = (await arenaEntryResponse.json().catch(() => null)) as BattleArenaEntryPayload | null;
+        if (payload?.action === "redirect" && payload.href) {
+          router.replace(payload.href);
+          return;
+        }
+        if (payload?.action === "battle" && payload.battle?.id) {
+          setBattle(payload.battle);
+          setLoading(false);
+          return;
+        }
+      }
+
       const { data, error: battleError } = await supabase
         .from("battles")
         .select("*")
@@ -1698,6 +1719,10 @@ function BattleArenaContent() {
 
       for (const [deck, path] of paths) {
         if (!path || path.startsWith("mock-")) continue;
+        if (/^(https?:|data:|\/)/i.test(path)) {
+          next[deck] = path;
+          continue;
+        }
         const { data: signed, error: signErr } = await supabase.storage
           .from("battle-audio")
           .createSignedUrl(path, 60 * 60);
