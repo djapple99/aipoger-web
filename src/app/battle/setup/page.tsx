@@ -11,9 +11,11 @@ import { loadFighterNameFromProfile, saveFighterNameToProfile } from '@/lib/user
 import SafetyNotice from '@/components/safety-notice';
 import {
   buildDropBattleSchedulePayload,
+  buildDropBattleSchedulePayloadFromPreset,
   DROP_BATTLE_SCHEDULE_MAX_LEAD_MS,
   DROP_BATTLE_SCHEDULE_MIN_LEAD_MS,
   DROP_BATTLE_SCHEDULE_PRESETS,
+  dropBattleSchedulePresetFromValue,
   isDropChallengeAcceptable,
   isDropBattleEndedOrPastExpectedEnd,
   type DropBattleSchedulePreset,
@@ -365,12 +367,6 @@ function datetimeLocalToIso(value: string) {
   return date.toISOString();
 }
 
-function hookBattleAtValueForPreset(minutes: DropBattleSchedulePreset) {
-  const date = new Date(Date.now() + minutes * 60 * 1000);
-  date.setSeconds(0, 0);
-  return toDatetimeLocalValue(date);
-}
-
 function scheduleErrorMessage(lang: string, error: DropBattleScheduleValidationError) {
   if (error === 'too_late') {
     return lang === 'zh'
@@ -472,13 +468,16 @@ export default function BattleSetupPage() {
         const urlInstantPairing = params.get('instantPairing');
         const urlDailyPairing = params.get('dailyPairing');
         const urlHookBattleAt = params.get('hookBattleAt') || params.get('scheduledBattleAt');
+        const urlHookBattlePreset = dropBattleSchedulePresetFromValue(params.get('hookBattlePreset'));
         if (urlGenre) setGenre(urlGenre);
         if (urlSongName) setSongName(urlSongName);
         if (urlAiTool) setAiTool(urlAiTool);
         if (DAILY_BATTLE_PUBLIC_ENTRY_ENABLED && urlBattleMode === 'daily') setBattleMode('daily');
         if (urlInstantPairing === 'invite') setInstantPairingMode('invite');
         if (urlDailyPairing === 'invite') setDailyPairingMode('invite');
-        if (urlHookBattleAt) {
+        if (urlHookBattlePreset) {
+          setBattleStartOption(urlHookBattlePreset);
+        } else if (urlHookBattleAt) {
           const parsed = new Date(urlHookBattleAt);
           if (Number.isFinite(parsed.getTime())) setHookBattleAt(toDatetimeLocalValue(parsed));
           else setHookBattleAt(urlHookBattleAt);
@@ -821,8 +820,9 @@ export default function BattleSetupPage() {
   const handleSubmit = async () => {
     const finalAiTool = aiTool === '其他' ? otherTool.trim() : aiTool;
     const shouldScheduleDropBattle = battleMode === 'instant' && instantPairingMode === 'invite' && !challengeEntryId;
-    const scheduledHookStartIso = shouldScheduleDropBattle ? datetimeLocalToIso(hookBattleAt) : null;
-    const scheduleValidation = shouldScheduleDropBattle
+    const schedulePreset = shouldScheduleDropBattle && battleStartOption !== 'custom' ? battleStartOption : null;
+    const scheduledHookStartIso = shouldScheduleDropBattle && battleStartOption === 'custom' ? datetimeLocalToIso(hookBattleAt) : null;
+    const scheduleValidation = shouldScheduleDropBattle && battleStartOption === 'custom'
       ? validateDropBattleScheduledStart(scheduledHookStartIso)
       : null;
 
@@ -849,7 +849,8 @@ export default function BattleSetupPage() {
       if (challengeDailyEntryId) params.set('challengeDailyEntryId', challengeDailyEntryId);
       if (challengeEntryId && genre.trim()) params.set('genre', genre.trim());
       if (shouldScheduleDropBattle) {
-        params.set('hookBattleAt', hookBattleAt);
+        if (schedulePreset) params.set('hookBattlePreset', String(schedulePreset));
+        else params.set('hookBattleAt', hookBattleAt);
       }
       router.push(`/battle/hook-cut?${params.toString()}`);
       return;
@@ -1081,7 +1082,9 @@ export default function BattleSetupPage() {
           challengeEntryId && /^[0-9a-f-]{36}$/i.test(challengeEntryId)
             ? { challenge_target_queue_id: challengeEntryId }
             : {};
-        const schedulePayload = buildDropBattleSchedulePayload(scheduledHookStartIso);
+        const schedulePayload = schedulePreset
+          ? buildDropBattleSchedulePayloadFromPreset(schedulePreset)
+          : buildDropBattleSchedulePayload(scheduledHookStartIso);
         const optionalSchedule = schedulePayload
           ? { expires_at: schedulePayload.scheduled_start_at, ...schedulePayload }
           : {};
@@ -1178,8 +1181,8 @@ export default function BattleSetupPage() {
           </label>
           <p className="mt-1 text-xs leading-5 text-zinc-500">
             {lang === 'zh'
-              ? '送出後會寫入 Battle Pool，開戰後 1 分鐘無人接戰即可取消。'
-              : 'Saved to Battle Pool. It can be cancelled 1 minute after start if no challenger joins.'}
+              ? '快速時間從戰帖發布成功後開始倒數；自訂時間則照你指定的時間開打。'
+              : 'Quick times count from successful battle-card publishing; custom time starts at the exact time you choose.'}
           </p>
         </div>
         <span className="rounded-full border border-orange-200/25 bg-black/40 px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-orange-100/80">
@@ -1210,7 +1213,6 @@ export default function BattleSetupPage() {
               type="button"
               onClick={() => {
                 setBattleStartOption(minutes);
-                setHookBattleAt(hookBattleAtValueForPreset(minutes));
                 setScheduleError(null);
                 setFormError(null);
               }}
@@ -1220,7 +1222,7 @@ export default function BattleSetupPage() {
                   : 'border-white/10 bg-black/35 text-zinc-300 hover:border-orange-200/35'
               }`}
             >
-              {lang === 'zh' ? `${minutes} 分鐘後` : `${minutes} Min Later`}
+              {lang === 'zh' ? `發布後 ${minutes} 分鐘` : `${minutes} Min After Publish`}
             </button>
           );
         })}
@@ -1242,6 +1244,15 @@ export default function BattleSetupPage() {
       {scheduleError ? (
         <p className="mt-3 text-sm font-black text-red-300">{scheduleError}</p>
       ) : null}
+      <p className="mt-3 text-xs font-bold leading-5 text-zinc-500">
+        {battleStartOption === 'custom'
+          ? lang === 'zh'
+            ? '自訂時間是固定開打時間，不會因上傳流程延後。'
+            : 'Custom time is a fixed start time and does not move with the upload flow.'
+          : lang === 'zh'
+            ? '快速時間會等資料送出、戰帖發布成功後才開始倒數。'
+            : 'Quick time starts only after the battle card is published successfully.'}
+      </p>
     </div>
   ) : null;
   const battleModeSelector = (
@@ -1351,7 +1362,8 @@ export default function BattleSetupPage() {
     startParams.set('instantPairing', instantPairingMode);
     startParams.set('dailyPairing', dailyPairingMode);
     if (battleMode === 'instant' && instantPairingMode === 'invite' && !challengeEntryId) {
-      startParams.set('hookBattleAt', hookBattleAt);
+      if (battleStartOption === 'custom') startParams.set('hookBattleAt', hookBattleAt);
+      else startParams.set('hookBattlePreset', String(battleStartOption));
     }
 
     return (

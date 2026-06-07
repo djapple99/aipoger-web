@@ -41,15 +41,28 @@ const {
 } = await import("../src/lib/auth-urls.ts");
 
 const {
+  DROP_BATTLE_SCHEDULE_PRESETS,
   buildDropBattleSchedulePayload,
+  buildDropBattleSchedulePayloadFromPreset,
   buildDropBattleSchedulePayloadFromQueues,
   canFounderCancelDropBattle,
+  dropBattleSchedulePresetFromValue,
   isDropChallengeAcceptable,
   resolveDropBattleScheduledStart,
   shouldCancelStaleDropBattle,
   shouldExpireOpenDropQueue,
   validateDropBattleScheduledStart,
 } = await import("../src/lib/battle-pool-client.ts");
+
+const {
+  DROP_REMATCH_CLAIM_WINDOW_SECONDS,
+  DROP_REMATCH_UPLOAD_SECONDS,
+  canOpenDropRematchWindow,
+  dropRematchUploadUrl,
+  isDropRematchClaimOpen,
+  isDropRematchUploadActive,
+  rematchDeadlineSecondsLeft,
+} = await import("../src/lib/drop-battle-rematch.ts");
 
 test("battle economy uses stake based rewards", () => {
   assert.equal(BATTLE_POINT_REWARDS.stageOneStake, 200);
@@ -258,6 +271,20 @@ test("drop battle scheduled start payload includes one-minute cancellation evalu
   assert.equal(validateDropBattleScheduledStart(new Date(now + 25 * 60 * 60 * 1000).toISOString(), now), "too_late");
 });
 
+test("drop battle quick presets count from publish time", () => {
+  const publishMs = Date.UTC(2026, 5, 7, 12, 30, 0);
+
+  assert.deepEqual(DROP_BATTLE_SCHEDULE_PRESETS, [10, 15, 20]);
+  assert.equal(dropBattleSchedulePresetFromValue("10"), 10);
+  assert.equal(dropBattleSchedulePresetFromValue(15), 15);
+  assert.equal(dropBattleSchedulePresetFromValue("25"), null);
+
+  assert.deepEqual(buildDropBattleSchedulePayloadFromPreset(10, publishMs), {
+    scheduled_start_at: new Date(publishMs + 10 * 60 * 1000).toISOString(),
+    cancellation_evaluation_at: new Date(publishMs + 11 * 60 * 1000).toISOString(),
+  });
+});
+
 test("drop battle scheduled start validation rejects invalid timing and accepts 10/15/20 minutes", () => {
   const now = Date.UTC(2026, 5, 3, 12, 0, 0);
 
@@ -374,7 +401,7 @@ test("matched battles inherit schedule from the challenge queue row", () => {
 
   assert.deepEqual(
     buildDropBattleSchedulePayloadFromQueues(
-      { status: "waiting_challenge", expires_at: scheduledStart },
+      { status: "waiting_challenge", scheduled_start_at: scheduledStart },
       { status: "searching" },
       null,
     ),
@@ -385,7 +412,7 @@ test("matched battles inherit schedule from the challenge queue row", () => {
   );
 });
 
-test("auto matched drop battles respect the later creator schedule", () => {
+test("auto matched drop battles respect the later explicit creator schedule", () => {
   const now = Date.UTC(2026, 5, 3, 12, 0, 0);
   const earlierStart = new Date(now + 10 * 60 * 1000).toISOString();
   const laterStart = new Date(now + 15 * 60 * 1000).toISOString();
@@ -401,4 +428,79 @@ test("auto matched drop battles respect the later creator schedule", () => {
       cancellation_evaluation_at: new Date(now + 16 * 60 * 1000).toISOString(),
     },
   );
+});
+
+test("auto matched drop battles never promote queue expires_at into battle schedule", () => {
+  const now = Date.UTC(2026, 5, 3, 12, 0, 0);
+  const legacyExpiresAt = new Date(now + 24 * 60 * 60 * 1000).toISOString();
+
+  assert.equal(
+    buildDropBattleSchedulePayloadFromQueues(
+      { status: "searching", expires_at: legacyExpiresAt },
+      { status: "searching", expires_at: legacyExpiresAt },
+      null,
+    ),
+    null,
+  );
+
+  assert.equal(
+    buildDropBattleSchedulePayloadFromQueues(
+      { status: "searching" },
+      { status: "waiting_challenge", expires_at: legacyExpiresAt },
+      "target-queue-id",
+    ),
+    null,
+  );
+});
+
+test("drop rematch window opens only for formal battles with a voted winner", () => {
+  assert.equal(DROP_REMATCH_CLAIM_WINDOW_SECONDS, 5);
+  assert.equal(DROP_REMATCH_UPLOAD_SECONDS, 120);
+  assert.equal(canOpenDropRematchWindow({ winner: "fighter_a", totalVotes: 1, battleType: "formal" }), true);
+  assert.equal(canOpenDropRematchWindow({ winner: "fighter_b", totalVotes: 8, battleType: null }), true);
+  assert.equal(canOpenDropRematchWindow({ winner: null, totalVotes: 0, battleType: "formal" }), false);
+  assert.equal(canOpenDropRematchWindow({ winner: "fighter_a", totalVotes: 0, battleType: "formal" }), false);
+  assert.equal(canOpenDropRematchWindow({ winner: "fighter_a", totalVotes: 1, battleType: "public_voting" }), false);
+  assert.equal(canOpenDropRematchWindow({ winner: "fighter_a", totalVotes: 1, nextBattleId: "next-battle" }), false);
+});
+
+test("drop rematch claim and upload timers expire independently", () => {
+  const now = Date.UTC(2026, 5, 7, 12, 0, 0);
+  assert.equal(rematchDeadlineSecondsLeft(new Date(now + 10_000).toISOString(), now), 10);
+  assert.equal(rematchDeadlineSecondsLeft(new Date(now - 1).toISOString(), now), 0);
+  assert.equal(
+    isDropRematchClaimOpen({ status: "open", claim_window_ends_at: new Date(now + 1_000).toISOString() }, now),
+    true,
+  );
+  assert.equal(
+    isDropRematchClaimOpen({ status: "open", claim_window_ends_at: new Date(now - 1).toISOString() }, now),
+    false,
+  );
+  assert.equal(
+    isDropRematchUploadActive({ status: "claimed", upload_deadline_at: new Date(now + 120_000).toISOString() }, now),
+    true,
+  );
+  assert.equal(
+    isDropRematchUploadActive({ status: "claimed", upload_deadline_at: new Date(now - 1).toISOString() }, now),
+    false,
+  );
+});
+
+test("drop rematch upload URL preserves defender queue and previous genre", () => {
+  const url = dropRematchUploadUrl({
+    claimId: "claim-id",
+    sourceBattleId: "source-battle-id",
+    defenderQueueId: "defender-queue-id",
+    defenderUserId: "winner-user-id",
+    genre: "動感電音",
+    lang: "zh",
+  });
+  assert.match(url, /^\/battle\/hook-cut\?/);
+  const params = new URLSearchParams(url.split("?")[1]);
+  assert.equal(params.get("rematchClaimId"), "claim-id");
+  assert.equal(params.get("sourceBattleId"), "source-battle-id");
+  assert.equal(params.get("challengeEntryId"), "defender-queue-id");
+  assert.equal(params.get("defenderUserId"), "winner-user-id");
+  assert.equal(params.get("genre"), "動感電音");
+  assert.equal(params.get("instantPairing"), "auto");
 });

@@ -113,6 +113,7 @@ export async function POST(request: NextRequest) {
 
   if (meError) return jsonError(meError.message, 500);
   if (!meRow || meRow.user_id !== user.id) return jsonError("Queue row not found", 404);
+  if (meRow.match_group_id) return NextResponse.json({ row: meRow });
   if (!OPEN_QUEUE_STATUSES.includes(meRow.status)) return NextResponse.json({ row: meRow });
   if (meRow.status === "waiting_challenge" && !targetQueueId) {
     return NextResponse.json({ row: meRow });
@@ -134,9 +135,9 @@ export async function POST(request: NextRequest) {
     if (matchGroupId) {
       const { data: linkedBattle, error: linkedBattleError } = await admin
         .from("battles")
-        .select("id, status, battle_ended_at, started_at, battle_started_at, created_at")
+        .select("id, status, battle_ended_at, scheduled_start_at, started_at, battle_started_at, created_at")
         .eq("id", matchGroupId)
-        .maybeSingle<{ id: string; status?: string | null; battle_ended_at?: string | null; started_at?: string | null; battle_started_at?: string | null; created_at?: string | null }>();
+        .maybeSingle<{ id: string; status?: string | null; battle_ended_at?: string | null; scheduled_start_at?: string | null; started_at?: string | null; battle_started_at?: string | null; created_at?: string | null }>();
       if (linkedBattleError) return jsonError(linkedBattleError.message, 500);
       if (linkedBattle?.battle_ended_at || CLOSED_BATTLE_STATUSES.includes(linkedBattle?.status ?? "") || isDropBattleEndedOrPastExpectedEnd(linkedBattle)) {
         await admin.from("battle_queue").update({ status: "completed", updated_at: new Date().toISOString() }).eq("id", queue.id);
@@ -205,6 +206,7 @@ export async function POST(request: NextRequest) {
     .neq("user_id", meRow.user_id)
     .neq("id", meRow.id)
     .eq("genre", meRow.genre)
+    .is("match_group_id", null)
     .order("created_at", { ascending: true })
     .limit(targetQueueId ? 1 : 25);
 

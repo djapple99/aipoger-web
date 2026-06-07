@@ -13,6 +13,9 @@ import { saveFighterNameToProfile } from '@/lib/user-profile-fighter-name';
 import {
   attemptMatchmakingWithoutApcGate,
   buildDropBattleSchedulePayload,
+  buildDropBattleSchedulePayloadFromPreset,
+  completeDropRematchUploadIntent,
+  dropBattleSchedulePresetFromValue,
   isDropBattleEndedOrPastExpectedEnd,
 } from '@/lib/battle-pool-client';
 import {
@@ -80,6 +83,9 @@ const T = {
     song: '歌曲',
     detectedMeta: '已自動偵測：{value}',
     proTip: '專業模式：拖曳中即時硬限制 45 秒（超過會自動彈回）',
+    rematchTitle: '你正在挑戰擂主',
+    rematchDesc: '請在 120 秒內完成上傳，這場會沿用上一場 genre。',
+    rematchComplete: '守擂挑戰已接上，前往下一場 Battle。',
   },
   en: {
     title: 'Drop Battle Cut',
@@ -119,6 +125,9 @@ const T = {
     song: 'Song',
     detectedMeta: 'Detected: {value}',
     proTip: 'Professional: Real-time hard limit 45s (auto-corrects on drag)',
+    rematchTitle: 'You are challenging the defender',
+    rematchDesc: 'Finish uploading within 120 seconds. This battle keeps the previous genre.',
+    rematchComplete: 'Rematch connected. Entering the next Battle.',
   },
 } as const;
 
@@ -461,10 +470,14 @@ function HookCutContent() {
   const avatarUrl = searchParams.get('avatarUrl');
   const assetKey = searchParams.get('assetKey');
   const challengeTargetQueueId = searchParams.get('challengeEntryId');
+  const rematchClaimId = searchParams.get('rematchClaimId');
+  const sourceBattleId = searchParams.get('sourceBattleId');
+  const isRematchUpload = Boolean(rematchClaimId && sourceBattleId);
   const battleMode = searchParams.get('battleMode') === 'daily' ? 'daily' : 'instant';
   const instantPairing = searchParams.get('instantPairing') === 'invite' ? 'invite' : 'auto';
   const dailyPairing = searchParams.get('dailyPairing') === 'invite' ? 'invite' : 'auto';
   const hookBattleAt = searchParams.get('hookBattleAt') || searchParams.get('scheduledBattleAt');
+  const hookBattlePreset = dropBattleSchedulePresetFromValue(searchParams.get('hookBattlePreset'));
   const hookBattleStartIso = instantPairing === "invite" && !challengeTargetQueueId ? hookBattleAtToIso(hookBattleAt) : null;
   const lang = normalizeLang(searchParams.get('lang'));
 
@@ -984,7 +997,8 @@ function HookCutContent() {
           audioSha256,
         });
         if (challengeTargetQueueId) setupParams.set("challengeEntryId", challengeTargetQueueId);
-        if (hookBattleAt) setupParams.set("hookBattleAt", hookBattleAt);
+        if (hookBattlePreset) setupParams.set("hookBattlePreset", String(hookBattlePreset));
+        else if (hookBattleAt) setupParams.set("hookBattleAt", hookBattleAt);
         setCompactParam(setupParams, "lyrics", lyricsForSave);
 
         writeFighterNameToStorage(fighterName.trim() || "未命名鬥士");
@@ -1030,7 +1044,12 @@ function HookCutContent() {
           challengeTargetQueueId && /^[0-9a-f-]{36}$/i.test(challengeTargetQueueId)
             ? { challenge_target_queue_id: challengeTargetQueueId }
             : {};
-        const schedulePayload = buildDropBattleSchedulePayload(hookBattleStartIso);
+        const schedulePayload =
+          instantPairing === "invite" && !challengeTargetQueueId
+            ? hookBattlePreset
+              ? buildDropBattleSchedulePayloadFromPreset(hookBattlePreset)
+              : buildDropBattleSchedulePayload(hookBattleStartIso)
+            : null;
         const optionalSchedule = schedulePayload
           ? { expires_at: schedulePayload.scheduled_start_at, ...schedulePayload }
           : {};
@@ -1091,6 +1110,20 @@ function HookCutContent() {
           window.setTimeout(() => {
             router.push(nextPath);
           }, 450);
+          return;
+        }
+
+        if (isRematchUpload && rematchClaimId && session?.access_token) {
+          const rematch = await completeDropRematchUploadIntent({
+            accessToken: session.access_token,
+            claimId: rematchClaimId,
+            challengerQueueId: queueIdForNav,
+          });
+          nextPath = `/battle/${rematch.nextBattleId}?lang=${lang}`;
+          setUploadPhase(t.rematchComplete);
+          window.setTimeout(() => {
+            router.push(nextPath);
+          }, 650);
           return;
         }
 
@@ -1213,9 +1246,11 @@ function HookCutContent() {
         {/* 頂部列 */}
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-black text-orange-400">{t.title}</h1>
+            <h1 className="text-4xl font-black text-orange-400">{isRematchUpload ? t.rematchTitle : t.title}</h1>
             <p className="text-zinc-400 mt-1 text-sm">
-              {uploadFirstFlow
+              {isRematchUpload
+                ? t.rematchDesc
+                : uploadFirstFlow
                 ? lang === "zh"
                   ? "先上傳歌曲，系統會自動偵測歌名，再裁切 45 秒 Drop"
                   : "Upload first, auto-detect song info, then cut a 45s Drop"

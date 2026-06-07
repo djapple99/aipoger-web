@@ -651,11 +651,11 @@ export default function GlobalBattleCallOverlay() {
                 : "One Drop Battle waiting card ended and was removed from the public pool. You can open a new card.");
     const primaryHref =
       isSyntheticDropFinishedNotice && expiredNotice.battle_id
-        ? `/battle?lang=${lang}&focusBattle=${encodeURIComponent(expiredNotice.battle_id)}`
+        ? `/battle/${encodeURIComponent(expiredNotice.battle_id)}?lang=${lang}`
         : isDropFinishedNotice && expiredNotice.battle_id
         ? `/battle/result?battleId=${encodeURIComponent(expiredNotice.battle_id)}&lang=${lang}`
         : isDropNoContestNotice && expiredNotice.battle_id
-          ? `/battle?lang=${lang}&focusBattle=${encodeURIComponent(expiredNotice.battle_id)}`
+          ? `/battle/${encodeURIComponent(expiredNotice.battle_id)}?lang=${lang}`
           : isDailyFinishedNotice && expiredNotice.metadata?.dailyBattleId
             ? `/battle/daily/${encodeURIComponent(expiredNotice.metadata.dailyBattleId)}?lang=${lang}`
             : isDailyExpiredNotice
@@ -749,12 +749,12 @@ export default function GlobalBattleCallOverlay() {
       ["searching", "waiting", "waiting_challenge", "public_voting"].includes(activeNotice.status) &&
       !activeNotice.battleId;
     const activeHref = isPoolWaitingNotice
-      ? `/battle?lang=${lang}&focusQueue=${encodeURIComponent(activeNotice.id)}`
+      ? `/battle/${encodeURIComponent(activeNotice.id)}?lang=${lang}`
       : isQueueNotice && activeNotice.battleId
         ? `/battle/${encodeURIComponent(activeNotice.battleId)}?lang=${lang}`
         : activeNotice.battleId
           ? `/battle/${encodeURIComponent(activeNotice.battleId)}?lang=${lang}`
-          : `/battle?lang=${lang}&focusQueue=${encodeURIComponent(activeNotice.id)}`;
+          : `/battle/${encodeURIComponent(activeNotice.id)}?lang=${lang}`;
     const activeTitle = activeNoticeUrgent
       ? isZh
         ? "你的 Battle 即將開打"

@@ -16,8 +16,17 @@ import ShareButton from "@/components/share-button";
 import ReportButton from "@/components/report-button";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { rankLabelForLevel } from "@/lib/battle-pool-rules";
-import { cancelCurrentBattleIntent, completeBattleCardIntent, isDropChallengeAcceptable, resolveDropBattleScheduledStart } from "@/lib/battle-pool-client";
+import {
+  cancelCurrentBattleIntent,
+  claimDropRematchIntent,
+  completeBattleCardIntent,
+  isDropChallengeAcceptable,
+  openDropRematchWindowIntent,
+  resolveDropBattleScheduledStart,
+  type DropRematchClaimPayload,
+} from "@/lib/battle-pool-client";
 import { battleSeedForId, pick90sBattleWinner } from "@/lib/battle-90s-system";
+import { rematchDeadlineSecondsLeft } from "@/lib/drop-battle-rematch";
 import { rememberAuthNextPath } from "@/lib/auth-urls";
 import type { User } from "@supabase/supabase-js";
 
@@ -822,6 +831,10 @@ function BattleArenaContent() {
   const [transitionEndsAtMs, setTransitionEndsAtMs] = useState<number | null>(null);
   const [winnerRevealOpen, setWinnerRevealOpen] = useState(false);
   const [noContestOpen, setNoContestOpen] = useState(false);
+  const [rematchClaim, setRematchClaim] = useState<DropRematchClaimPayload | null>(null);
+  const [rematchBusy, setRematchBusy] = useState(false);
+  const [rematchError, setRematchError] = useState<string | null>(null);
+  const [rematchNowMs, setRematchNowMs] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [founderCancelBusy, setFounderCancelBusy] = useState(false);
@@ -870,6 +883,8 @@ function BattleArenaContent() {
   const resultRedirectTimerRef = useRef<number | null>(null);
   const resultSequenceRef = useRef(0);
   const battleResultHrefRef = useRef<string | null>(null);
+  const rematchResultRedirectRef = useRef<string | null>(null);
+  const rematchOpenedBattleRef = useRef<string | null>(null);
   const mockSyncChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const shownDanmakuMessageIdsRef = useRef<Set<string>>(new Set());
   const shownDanmakuFingerprintsRef = useRef<Map<string, number>>(new Map());
@@ -1218,11 +1233,10 @@ function BattleArenaContent() {
       resultRedirectTimerRef.current = window.setTimeout(() => {
         resultRedirectTimerRef.current = null;
         if (resultSequenceRef.current !== resultSequence) return;
-        const targetHref = hrefOverride || battleResultHrefRef.current;
-        if (targetHref) router.push(targetHref);
+        setWinnerRevealOpen(false);
       }, Math.max(delayMs, WINNER_REVEAL_MS));
     });
-  }, [closeBattleCardAfterResult, playWinnerRevealSfx, router, waitForWinnerCountdownSfx]);
+  }, [closeBattleCardAfterResult, playWinnerRevealSfx, waitForWinnerCountdownSfx]);
 
   const markDeckPlayed = useCallback((deck: "A" | "B") => {
     setPlayedDecks((prev) => (prev[deck] ? prev : { ...prev, [deck]: true }));
@@ -1841,6 +1855,9 @@ function BattleArenaContent() {
     setVoteCountdown(null);
     setWinnerRevealOpen(false);
     setNoContestOpen(false);
+    setRematchClaim(null);
+    setRematchBusy(false);
+    setRematchError(null);
     setHasVoted(null);
     setActiveDeck(null);
     setFirstDeck(null);
@@ -1858,6 +1875,7 @@ function BattleArenaContent() {
     resultRedirectArmedRef.current = false;
     resultSequenceRef.current += 1;
     battleResultHrefRef.current = null;
+    rematchOpenedBattleRef.current = null;
     shownDanmakuMessageIdsRef.current.clear();
     shownDanmakuFingerprintsRef.current.clear();
     if (resultRedirectTimerRef.current != null) {
@@ -2638,6 +2656,93 @@ function BattleArenaContent() {
     }
   }, [battle, battleId, founderCancelBusy, lang, myUserId]);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setRematchNowMs(Date.now()), 500);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const href = battleResultHrefRef.current;
+    const expiredClaim =
+      rematchClaim?.status === "expired" ||
+      (rematchClaim?.status === "open" &&
+        rematchDeadlineSecondsLeft(rematchClaim.claimWindowEndsAt, rematchNowMs) <= 0);
+    if (!href || !expiredClaim) return;
+    const redirectKey = `${rematchClaim.claimId}:${href}`;
+    if (rematchResultRedirectRef.current === redirectKey) return;
+    rematchResultRedirectRef.current = redirectKey;
+    router.push(href);
+  }, [rematchClaim?.claimId, rematchClaim?.claimWindowEndsAt, rematchClaim?.status, rematchNowMs, router]);
+
+  useEffect(() => {
+    if (loading || !battle || battle.arena_kind === "queue" || !playedDecks.A || !playedDecks.B || voteOpen) return;
+    if (battleId.startsWith("mock-") || isAuthBypassEnabled) return;
+    const winnerSideForWindow = pick90sBattleWinner(votes, battleId, firstDeck);
+    if (!winnerSideForWindow || votes.fighter_a + votes.fighter_b <= 0) return;
+    const key = `${battleId}:${winnerSideForWindow}`;
+    if (rematchOpenedBattleRef.current === key) return;
+    rematchOpenedBattleRef.current = key;
+    setRematchError(null);
+    void openDropRematchWindowIntent({ battleId, winnerSide: winnerSideForWindow })
+      .then((claim) => {
+        setRematchClaim(claim);
+        if (claim.nextBattleId) router.push(`/battle/${claim.nextBattleId}?lang=${lang}`);
+      })
+      .catch((err) => {
+        const message = err instanceof Error ? err.message : String(err);
+        if (!/No valid rematch window|not found/i.test(message)) setRematchError(message);
+      });
+  }, [battle, battleId, firstDeck, lang, loading, playedDecks.A, playedDecks.B, router, voteOpen, votes]);
+
+  useEffect(() => {
+    if (!rematchClaim || !["open", "claimed"].includes(rematchClaim.status)) return;
+    if (battleId.startsWith("mock-") || isAuthBypassEnabled) return;
+    const timer = window.setInterval(() => {
+      void openDropRematchWindowIntent({ battleId: rematchClaim.sourceBattleId, winnerSide: rematchClaim.winnerSide })
+        .then((claim) => {
+          setRematchClaim(claim);
+          if (claim.nextBattleId) router.push(`/battle/${claim.nextBattleId}?lang=${lang}`);
+        })
+        .catch((err) => {
+          const message = err instanceof Error ? err.message : String(err);
+          if (!/No valid rematch window|not found/i.test(message)) setRematchError(message);
+        });
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [battleId, lang, rematchClaim, router]);
+
+  const handleClaimRematch = useCallback(async () => {
+    if (!rematchClaim || rematchBusy) return;
+    if (rematchClaim.winnerUserId === myUserId) {
+      setRematchError(lang === "zh" ? "擂主不能挑戰自己。" : "The defender cannot challenge themself.");
+      return;
+    }
+    setRematchBusy(true);
+    setRematchError(null);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        rememberAuthNextPath(currentReturnPath());
+        router.push(`/auth?next=${encodeURIComponent(currentReturnPath())}`);
+        return;
+      }
+      const result = await claimDropRematchIntent({
+        accessToken,
+        sourceBattleId: rematchClaim.sourceBattleId,
+        lang,
+      });
+      setRematchClaim(result.claim);
+      router.push(result.uploadUrl);
+    } catch (err) {
+      setRematchError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setRematchBusy(false);
+    }
+  }, [lang, myUserId, rematchBusy, rematchClaim, router]);
+
   const totalVotes = votes.fighter_a + votes.fighter_b;
   const pctA = totalVotes > 0 ? Math.round((votes.fighter_a / totalVotes) * 100) : 50;
   const pctB = 100 - pctA;
@@ -2890,21 +2995,47 @@ function BattleArenaContent() {
   })();
   battleResultHrefRef.current = battleResultHref || null;
 
+  const rematchClaimSecondsLeft = rematchDeadlineSecondsLeft(rematchClaim?.claimWindowEndsAt, rematchNowMs);
+  const rematchUploadSecondsLeft = rematchDeadlineSecondsLeft(rematchClaim?.uploadDeadlineAt, rematchNowMs);
+  const rematchOpenForClaim = rematchClaim?.status === "open" && rematchClaimSecondsLeft > 0;
+  const rematchClaimed = rematchClaim?.status === "claimed" && rematchUploadSecondsLeft > 0;
+  const rematchExpired = rematchClaim?.status === "expired" || (rematchClaim?.status === "open" && rematchClaimSecondsLeft <= 0);
+  const rematchStatusTitle =
+    rematchClaimed
+      ? lang === "zh"
+        ? "挑戰者準備中"
+        : "Challenger Preparing"
+      : rematchExpired
+        ? lang === "zh"
+          ? "守擂挑戰已截止"
+          : "Rematch Closed"
+        : lang === "zh"
+          ? "有人要挑戰擂主嗎？"
+          : "Who Wants the Defender?";
+  const rematchStatusDesc =
+    rematchClaimed
+      ? lang === "zh"
+        ? `擂主守擂中，挑戰者還有 ${rematchUploadSecondsLeft} 秒上傳 Drop。`
+        : `The defender is holding the stage. Challenger has ${rematchUploadSecondsLeft}s to upload.`
+      : rematchExpired
+        ? lang === "zh"
+          ? "沒有人接戰，這場 Battle 已結束。"
+          : "No challenger claimed the slot. This Battle is complete."
+        : lang === "zh"
+          ? "第一個按下的人取得挑戰席，接著有 120 秒上傳 Drop。"
+          : "First tap gets the slot, then 120 seconds to upload a Drop.";
+  const rematchClaimDisabled =
+    rematchBusy ||
+    !rematchOpenForClaim ||
+    (Boolean(myUserId) && myUserId === rematchClaim?.winnerUserId);
+
   const battleShareUrl = (() => {
     const params = new URLSearchParams({ lang });
     if (isQueueArena) {
-      params.set("type", "hook-card");
-      if (!isMockBattle && !isAuthBypassEnabled) {
-        return `/battle/invite/${encodeURIComponent(battleId)}?${params.toString()}`;
-      }
-      params.set("g", battle.genre);
-      params.set("l", battle.fighter_a_name);
-      params.set("ls", battle.song_a_name);
-      if (battle.ai_tool_a) params.set("tool", battle.ai_tool_a);
-      return `/battle/invite/${encodeURIComponent(battleId)}?${params.toString()}`;
+      return `/battle/${encodeURIComponent(battleId)}?${params.toString()}`;
     }
     if (!isMockBattle && !isAuthBypassEnabled) {
-      return `/battle?${new URLSearchParams({ lang, focusBattle: battleId }).toString()}`;
+      return `/battle/${encodeURIComponent(battleId)}?lang=${encodeURIComponent(lang)}`;
     }
     params.set("l", battle.fighter_a_name);
     params.set("r", battle.fighter_b_name);
@@ -3060,6 +3191,43 @@ function BattleArenaContent() {
             <p className="mt-3 rounded-full border border-white/14 bg-black/60 px-5 py-2 text-[clamp(0.92rem,2.5vw,1.12rem)] font-black text-white/86">
               {lang === "zh" ? "成果卡產生中" : "Creating Result Card"}
             </p>
+          </div>
+        </div>
+      )}
+      {rematchClaim && battlePlaybackComplete && hasResultWinner && !winnerRevealOpen && !noContestOpen && (
+        <div className="absolute inset-x-0 bottom-20 z-[97] flex justify-center px-4 md:bottom-8">
+          <div className="w-[min(94vw,640px)] rounded-[1.4rem] border border-orange-200/28 bg-black/82 px-5 py-4 text-center shadow-[0_0_70px_rgba(255,106,0,0.22)] backdrop-blur-xl">
+            <div className="flex flex-col items-center gap-3 md:flex-row md:items-center md:justify-between md:text-left">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.26em] text-orange-200/75">
+                  {lang === "zh" ? "擂台熱鬥中" : "King of the Hill"}
+                </p>
+                <h2 className="mt-1 text-xl font-black text-white">{rematchStatusTitle}</h2>
+                <p className="mt-1 text-sm font-bold leading-6 text-zinc-300">{rematchStatusDesc}</p>
+                {rematchOpenForClaim && (
+                  <p className="mt-1 text-xs font-black text-yellow-100">
+                    {lang === "zh" ? `${rematchClaimSecondsLeft} 秒內搶挑戰席` : `${rematchClaimSecondsLeft}s to claim the slot`}
+                  </p>
+                )}
+                {rematchError && <p className="mt-1 text-xs font-bold text-red-300">{rematchError}</p>}
+              </div>
+              <div className="flex shrink-0 flex-wrap justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleClaimRematch()}
+                  disabled={rematchClaimDisabled}
+                  className="rounded-full border border-orange-200/50 bg-orange-500 px-4 py-2 text-xs font-black text-black shadow-[0_0_24px_rgba(255,106,0,0.28)] transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:border-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-500"
+                >
+                  {rematchBusy
+                    ? lang === "zh"
+                      ? "搶席中"
+                      : "Claiming"
+                    : lang === "zh"
+                      ? "我要挑戰擂主"
+                      : "Challenge Defender"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

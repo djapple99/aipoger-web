@@ -74,11 +74,6 @@ function battlePoolPath(lang: string) {
   return `/battle?lang=${encodeURIComponent(lang)}`;
 }
 
-function focusedQueuePath(id: string, lang: string) {
-  const params = new URLSearchParams({ lang, focusQueue: id });
-  return `/battle?${params.toString()}`;
-}
-
 function BattleAcceptInner() {
   const router = useRouter();
   const params = useParams<{ id?: string | string[] }>();
@@ -97,7 +92,7 @@ function BattleAcceptInner() {
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData.session?.user.id ?? null;
       if (!userId) {
-        const returnPath = focusedQueuePath(id, lang);
+        const returnPath = watchPath(id, lang);
         rememberAuthNextPath(returnPath);
         router.replace(`/auth?next=${encodeURIComponent(returnPath)}`);
         return;

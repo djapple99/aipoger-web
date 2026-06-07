@@ -57,12 +57,14 @@ function resolveHookStartAt(data: {
 async function inviteData(id: string, searchParams: InviteSearchParams) {
   const battle = await getBattleOgData(id);
   const isHookCard = firstParam(searchParams, "type") === "hook-card";
+  const hasRightFighter = Boolean(battle.fighter_b_user_id || (battle.fighter_b_name && battle.fighter_b_name !== "DROP RIVAL" && battle.fighter_b_name !== "等待挑戰者"));
+  const hasRightSong = Boolean(battle.song_b_name && battle.song_b_name !== "Battle Drop" && battle.song_b_name !== "你的 45s Drop" && battle.song_b_name !== "你的 45s Hook");
   return {
     genre: cleanParam(firstParam(searchParams, "g"), battle.genre || "AI Music Drop Battle"),
     leftName: cleanParam(firstParam(searchParams, "l"), battle.fighter_a_name),
-    rightName: cleanParam(firstParam(searchParams, "r"), isHookCard ? "等待挑戰者" : battle.fighter_b_name),
+    rightName: cleanParam(firstParam(searchParams, "r"), isHookCard && !hasRightFighter ? "等待挑戰者" : battle.fighter_b_name),
     leftSong: cleanParam(firstParam(searchParams, "ls"), battle.song_a_name),
-    rightSong: cleanParam(firstParam(searchParams, "rs"), isHookCard ? "你的 45s Drop" : battle.song_b_name),
+    rightSong: cleanParam(firstParam(searchParams, "rs"), isHookCard && !hasRightSong ? "挑戰者 Drop" : battle.song_b_name),
     leftCover: cleanParam(firstParam(searchParams, "lc"), battle.song_a_cover || ""),
     rightCover: cleanParam(firstParam(searchParams, "rc"), battle.song_b_cover || ""),
     leftAvatar: cleanParam(firstParam(searchParams, "la"), battle.fighter_a_avatar || ""),

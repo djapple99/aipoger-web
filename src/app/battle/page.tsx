@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 import { useI18n } from "@/lib/i18n";
@@ -146,6 +146,27 @@ type LiveBattleRow = {
   started_at?: string | null;
   waiting_room_started_at?: string | null;
 };
+
+function normalizedLiveBattlePairKey(row: LiveBattleRow) {
+  const users = [row.fighter_a_user_id, row.fighter_b_user_id].sort().join("|");
+  const songs = [normalizeSongStatsKey(row.song_a_name), normalizeSongStatsKey(row.song_b_name)].sort().join("|");
+  const startMs = new Date(resolveDropBattleRuntimeStart(row) ?? "").getTime();
+  const startBucket = Number.isFinite(startMs) ? Math.floor(startMs / 60_000) : "no-start";
+  return `${row.genre.trim().toLowerCase()}::${users}::${songs}::${startBucket}`;
+}
+
+function dedupeLiveBattleRows(rows: LiveBattleRow[]) {
+  const seenIds = new Set<string>();
+  const seenPairs = new Set<string>();
+  return rows.filter((row) => {
+    if (seenIds.has(row.id)) return false;
+    seenIds.add(row.id);
+    const pairKey = normalizedLiveBattlePairKey(row);
+    if (seenPairs.has(pairKey)) return false;
+    seenPairs.add(pairKey);
+    return true;
+  });
+}
 
 type PoolEntryRow = {
   id: string;
@@ -402,13 +423,11 @@ function isClosedBattleStatus(status: string | null | undefined) {
 }
 
 function focusedQueueHref(queueId: string, lang: string) {
-  const params = new URLSearchParams({ lang, focusQueue: queueId });
-  return `/battle?${params.toString()}`;
+  return `/battle/${encodeURIComponent(queueId)}?lang=${encodeURIComponent(lang)}`;
 }
 
 function focusedBattleHref(battleId: string, lang: string) {
-  const params = new URLSearchParams({ lang, focusBattle: battleId });
-  return `/battle?${params.toString()}`;
+  return `/battle/${encodeURIComponent(battleId)}?lang=${encodeURIComponent(lang)}`;
 }
 
 function focusedPoolCardTitle(status: string | null | undefined, isZh: boolean) {
@@ -858,11 +877,14 @@ function BattlePoolList() {
         return;
       }
 
-      await fetch("/api/battle-pool/expire-open-cards", { method: "POST" }).catch(() => null);
+      await Promise.all([
+        fetch("/api/battle-pool/expire-open-cards", { method: "POST" }).catch(() => null),
+        fetch("/api/battle-pool/process-fallbacks", { method: "POST" }).catch(() => null),
+      ]);
 
       let { data, error } = await supabase
         .from("battle_queue")
-        .select("id, user_id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, public_vote_score, created_at")
+        .select("id, user_id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, scheduled_start_at, cancellation_evaluation_at, public_vote_score, created_at")
         .in("status", ["waiting_challenge", "public_voting", "ghost_battle"])
         .order("created_at", { ascending: false })
         .limit(24);
@@ -908,7 +930,7 @@ function BattlePoolList() {
         if (focusQueueId && !visibleRows.some((row) => row.id === focusQueueId)) {
           let { data: focusedRow, error: focusedError } = await supabase
             .from("battle_queue")
-            .select("id, fighter_name, original_file_name, status, match_group_id, expires_at")
+            .select("id, fighter_name, original_file_name, status, match_group_id, expires_at, scheduled_start_at, cancellation_evaluation_at")
             .eq("id", focusQueueId)
             .maybeSingle<{
               id: string;
@@ -1292,12 +1314,26 @@ function LiveBattleList() {
   const [rows, setRows] = useState<LiveBattleRow[]>([]);
   const [liveSongStats, setLiveSongStats] = useState<Record<string, SongBattleStats>>({});
   const [archivedBattleIds, setArchivedBattleIds] = useState<Set<string>>(() => new Set());
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [cancelBattleId, setCancelBattleId] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (focusBattleId) rememberAuthNextPath(focusedBattleHref(focusBattleId, lang));
   }, [focusBattleId, lang]);
+
+  useEffect(() => {
+    if (isAuthBypassEnabled) return;
+    let mounted = true;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (mounted) setCurrentUserId(data.session?.user.id ?? null);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -1311,7 +1347,7 @@ function LiveBattleList() {
 
       let { data, error: qErr } = await supabase
         .from("battles")
-        .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, battle_started_at, started_at, battle_ended_at")
+        .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, scheduled_start_at, battle_started_at, started_at, battle_ended_at")
         .in("status", ["active", "live"])
         .is("battle_ended_at", null)
         .order("created_at", { ascending: false })
@@ -1350,7 +1386,7 @@ function LiveBattleList() {
         if (focusBattleId && !baseRows.some((row) => row.id === focusBattleId)) {
           let { data: focusedBattle, error: focusedError } = await supabase
             .from("battles")
-            .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, battle_started_at, started_at, battle_ended_at")
+            .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, scheduled_start_at, battle_started_at, started_at, battle_ended_at")
             .eq("id", focusBattleId)
             .maybeSingle<LiveBattleRow>();
           if (focusedError) {
@@ -1376,6 +1412,7 @@ function LiveBattleList() {
             baseRows = [focusedBattle, ...baseRows];
           }
         }
+        baseRows = dedupeLiveBattleRows(baseRows);
         const battleIds = baseRows.map((row) => row.id).filter(Boolean);
         if (battleIds.length > 0) {
           const { data: archives } = await supabase
@@ -1422,6 +1459,26 @@ function LiveBattleList() {
     }, 120);
     return () => window.clearTimeout(timer);
   }, [focusBattleId, loading, rows.length]);
+
+  const cancelLiveBattle = async (battleId: string) => {
+    setCancelError(null);
+    setCancelBattleId(battleId);
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) throw new Error(isZh ? "請先登入後再取消挑戰。" : "Please sign in before cancelling.");
+      await cancelCurrentBattleIntent({ accessToken: token, battleId });
+      setRows((items) => items.filter((item) => item.id !== battleId));
+      setArchivedBattleIds((current) => {
+        const next = new Set(current);
+        next.delete(battleId);
+        return next;
+      });
+    } catch (error) {
+      setCancelError(error instanceof Error ? error.message : isZh ? "取消失敗，請稍後再試。" : "Cancel failed. Please try again.");
+    } finally {
+      setCancelBattleId(null);
+    }
+  };
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#050505] text-[#ece9e6]">
@@ -1481,6 +1538,12 @@ function LiveBattleList() {
 
         <BattlePoolList />
 
+        {cancelError ? (
+          <div className="mt-6 rounded-2xl border border-red-400/35 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-100">
+            {cancelError}
+          </div>
+        ) : null}
+
         {loading ? (
           <p className="mt-8 rounded-3xl border border-orange-400/20 bg-orange-500/10 px-5 py-8 text-center text-sm tracking-[0.2em] text-[#ff8d40]">
             {t("common_loading")}
@@ -1527,6 +1590,10 @@ function LiveBattleList() {
               const isFutureBattle =
                 !showEndedState &&
                 (b.status === "active" || (Number.isFinite(scheduledMs) && scheduledMs > Date.now() && !b.battle_started_at));
+              const canCancelBattle =
+                !showEndedState &&
+                isFutureBattle &&
+                Boolean(currentUserId && (b.fighter_a_user_id === currentUserId || b.fighter_b_user_id === currentUserId));
               const primaryHref = isBattleEnded ? `/battle/result?battleId=${encodeURIComponent(b.id)}&lang=${lang}` : `/battle/${b.id}?lang=${lang}`;
               const shareHref = isBattleEnded ? primaryHref : focusedBattleHref(b.id, lang);
               const isFocusedBattle = focusBattleId === b.id;
@@ -1616,11 +1683,23 @@ function LiveBattleList() {
                           : isEndedByClock
                             ? (lang === "zh" ? "分享戰鬥" : "Share Battle")
                             : isFutureBattle
-                              ? (lang === "zh" ? "分享到戰鬥池" : "Share Pool Card")
+                              ? (lang === "zh" ? "分享鬥場" : "Share Arena")
                               : (lang === "zh" ? "邀請觀戰投票" : "Invite Voters")}
                         copiedLabel={lang === "zh" ? "觀戰連結已複製" : "Invite Copied"}
                         className="px-3 py-1.5 text-xs"
                       />
+                      {canCancelBattle ? (
+                        <button
+                          type="button"
+                          onClick={() => void cancelLiveBattle(b.id)}
+                          disabled={cancelBattleId === b.id}
+                          className="rounded-full border border-white/15 bg-white/[0.035] px-3 py-1.5 text-xs font-black text-zinc-300 transition hover:border-red-300/60 hover:bg-red-500/10 hover:text-red-100 disabled:cursor-wait disabled:opacity-60"
+                        >
+                          {cancelBattleId === b.id
+                            ? (lang === "zh" ? "取消中..." : "Cancelling...")
+                            : (lang === "zh" ? "取消挑戰" : "Cancel Battle")}
+                        </button>
+                      ) : null}
                     </div>
                   </article>
                 </li>
@@ -1869,8 +1948,18 @@ function BattleArena({ matchId }: { matchId: string }) {
 }
 
 function BattleContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const matchId = searchParams.get("matchId");
+  const focusQueueId = searchParams.get("focusQueue");
+  const focusBattleId = searchParams.get("focusBattle");
+  const lang = searchParams.get("lang") === "en" ? "en" : "zh";
+
+  useEffect(() => {
+    const deepLinkId = focusBattleId || focusQueueId;
+    if (!deepLinkId) return;
+    router.replace(focusedBattleHref(deepLinkId, lang));
+  }, [focusBattleId, focusQueueId, lang, router]);
 
   if (!matchId) {
     return <LiveBattleList />;

@@ -1,6 +1,6 @@
 # AIPOGER Release Checklist
 
-Last updated: 2026-05-29
+Last updated: 2026-06-07
 
 Use this checklist before and after deploying production changes.
 
@@ -58,7 +58,12 @@ Check:
 - Drop challenge cards older than 24 hours are cancelled by cleanup.
 - If no instant opponent exists, user can open a Drop Battle challenge card.
 - Public challenge cards render on the Battle page.
+- The same battle/match group renders only once in the public Battle Pool.
+- Share links from a Drop Battle card or live battle open `/battle/[id]` directly, not the Battle Pool.
+- Legacy `/battle?focusBattle=...` and `/battle?focusQueue=...` links redirect to `/battle/[id]`.
 - Accepting a challenge card respects genre and ownership rules.
+- Both participants can cancel an unfinished Drop Battle when the user is eligible.
+- Quick start labels and stored start times are based on successful publish time, not a stale `expires_at`.
 - Waiting room opens correctly.
 - Battle result can be archived.
 - Honor Board reads Drop winners as `熱血 Drop 抓波勝利榜`.

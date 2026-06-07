@@ -5,6 +5,7 @@ import {
   isDropBattleEndedOrPastExpectedEnd,
   shouldExpireOpenDropQueue,
 } from "@/lib/battle-pool-client";
+import { cancelStalePendingDropBattles, isMissingScheduleColumn } from "@/lib/battle-pool-maintenance";
 import { battleSeedForId, pick90sBattleWinner } from "@/lib/battle-90s-system";
 
 type SupabaseAdmin = SupabaseClient;
@@ -60,11 +61,6 @@ type ExpiredHookQueueRow = {
   cancellation_evaluation_at?: string | null;
 };
 
-function isMissingScheduleColumn(error: { message?: string; details?: string; hint?: string; code?: string } | null) {
-  const msg = `${error?.message ?? ""} ${error?.details ?? ""} ${error?.hint ?? ""}`;
-  return /scheduled_start_at|cancellation_evaluation_at|schema cache|column.*does not exist/i.test(msg) || error?.code === "PGRST204";
-}
-
 export async function GET(request: NextRequest) {
   return processFallbacks(request);
 }
@@ -111,16 +107,52 @@ async function processFallbacks(request: NextRequest) {
   const dailySettled = await settleExpiredDailyBattles(admin, warnings);
   const expiredHookQueue = await expireStaleHookQueue(admin, warnings);
   const expiredDailyQueue = await expireStaleDailyQueue(admin, warnings);
+  const expiredRematchClaims = await expireStaleRematchClaims(admin, warnings);
+  const stalePendingBattles = await cancelStalePendingDropBattles(admin);
+  warnings.push(...stalePendingBattles.errors);
 
   return NextResponse.json({
-    processed: poolProcessed + hookSettled + dailySettled + expiredHookQueue + expiredDailyQueue,
+    processed: poolProcessed + hookSettled + dailySettled + expiredHookQueue + expiredDailyQueue + expiredRematchClaims + stalePendingBattles.cancelled,
     poolProcessed,
     hookSettled,
     dailySettled,
     expiredHookQueue,
     expiredDailyQueue,
+    expiredRematchClaims,
+    stalePendingBattles: stalePendingBattles.cancelled,
     warnings,
   });
+}
+
+async function expireStaleRematchClaims(admin: SupabaseAdmin, warnings: string[]) {
+  const now = new Date().toISOString();
+  const { data: openExpired, error: openError } = await admin
+    .from("drop_battle_rematch_claims")
+    .update({ status: "expired", updated_at: now })
+    .eq("status", "open")
+    .lte("claim_window_ends_at", now)
+    .select("id");
+  if (openError) {
+    if (!/schema cache|does not exist|Could not find/i.test(openError.message)) {
+      warnings.push(`expire open rematch claims: ${openError.message}`);
+    }
+    return 0;
+  }
+
+  const { data: claimedExpired, error: claimedError } = await admin
+    .from("drop_battle_rematch_claims")
+    .update({ status: "expired", updated_at: now })
+    .eq("status", "claimed")
+    .lte("upload_deadline_at", now)
+    .select("id");
+  if (claimedError) {
+    if (!/schema cache|does not exist|Could not find/i.test(claimedError.message)) {
+      warnings.push(`expire claimed rematch claims: ${claimedError.message}`);
+    }
+    return openExpired?.length ?? 0;
+  }
+
+  return (openExpired?.length ?? 0) + (claimedExpired?.length ?? 0);
 }
 
 async function expireStaleHookQueue(admin: SupabaseAdmin, warnings: string[]) {

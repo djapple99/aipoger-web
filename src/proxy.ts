@@ -21,6 +21,17 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(url, 307);
   }
 
+  if (url.pathname === "/battle") {
+    const deepLinkId = url.searchParams.get("focusBattle") || url.searchParams.get("focusQueue");
+    if (deepLinkId && /^[0-9a-z-]+$/i.test(deepLinkId)) {
+      const lang = url.searchParams.get("lang") === "en" ? "en" : "zh";
+      url.pathname = `/battle/${deepLinkId}`;
+      url.search = "";
+      url.searchParams.set("lang", lang);
+      return NextResponse.redirect(url, 307);
+    }
+  }
+
   return NextResponse.next();
 }
 

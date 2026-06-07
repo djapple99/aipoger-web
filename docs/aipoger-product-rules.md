@@ -1,6 +1,6 @@
 # AIPOGER Product Rules
 
-Last updated: 2026-06-02
+Last updated: 2026-06-07
 
 This document is the product-rule source of truth for AIPOGER. Use it before changing Battle, Bar Heartbreak, Honor Board, auth, upload, or deployment behavior.
 
@@ -45,6 +45,17 @@ Current behavior target:
 Current behavior:
 
 - Drop Battle uses a short hook/drop cut rather than the full song.
+- Drop Battle quick start options are relative to successful battle-card publishing: `發布後 10 / 15 / 20 分鐘`. Custom start time is an absolute user-selected time and should not move with upload/cutting duration.
+- `battle_queue.expires_at` is only a cleanup/expiry deadline. It must never be used as a Battle start time; opening time must come from `scheduled_start_at` or `cancellation_evaluation_at`.
+- Fast start options must calculate the visible start time only after the queue/battle data has been successfully written. Do not pre-render a time label that ignores upload, cutting, or network duration.
+- Automatic pairing must not inherit an old or stale `expires_at` value as tomorrow's start time.
+- Shared Drop Battle links must enter the specific battle arena directly. If nobody has challenged yet, the arena must show the accept-challenge state; if a challenger already joined, the same link must enter the live/waiting arena.
+- The Battle Pool is an index, not the destination for a shared arena link. Legacy `focusBattle` / `focusQueue` URLs should redirect to `/battle/[id]`.
+- The same battle/match group should appear only once in the Battle Pool, even if both fighters have queue rows.
+- Both participants in an unfinished Drop Battle should be able to cancel from the arena or eligible Battle Pool card.
+- Finished 90s Drop Battles with a valid winner open a short king-of-the-hill rematch window: 5 seconds to claim the challenger slot, then 120 seconds for the challenger to upload their Drop.
+- If nobody claims the 5-second rematch slot, the battle should go directly to the result card and should not leave a lingering rematch card.
+- A 0:0 no contest never creates a defender/rematch window.
 - A user can have only one active Drop Battle intent at a time.
 - Drop Battle and 24H Full Song can coexist for the same account; their active limits are separate.
 - Drop Battle challenge cards expire automatically after at most 24 hours and are cancelled by cleanup.

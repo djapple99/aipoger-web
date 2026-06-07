@@ -10,6 +10,7 @@ export default function GlobalLangToggle() {
   const battleArenaMatch = pathname.match(/^\/battle\/([^/]+)$/);
   const battlePanelIds = ['setup', 'hook-cut', 'matchmaking'];
   const routesWithLocalLangToggle = new Set([
+    '/admin/battles',
     '/admin/listen-bar',
     '/listen-bar',
     '/music-analysis',

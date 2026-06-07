@@ -104,12 +104,11 @@ begin
         now(),
         coalesce(
           entry.scheduled_start_at,
-          entry.cancellation_evaluation_at - interval '1 minute',
-          entry.expires_at
+          entry.cancellation_evaluation_at - interval '1 minute'
         ),
         coalesce(
           entry.cancellation_evaluation_at,
-          coalesce(entry.scheduled_start_at, entry.expires_at) + interval '1 minute'
+          entry.scheduled_start_at + interval '1 minute'
         )
       )
       returning id into bid;

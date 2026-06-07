@@ -485,20 +485,12 @@ begin
 
   battle_stake := 0;
   battle_pot := 0;
-  battle_scheduled_start_at := coalesce(
-    case
-      when p_target_queue_id is not null then opponent_row.scheduled_start_at
-      when me_row.status = 'waiting_challenge' then me_row.scheduled_start_at
-      when opponent_row.status = 'waiting_challenge' then opponent_row.scheduled_start_at
-      else null
-    end,
-    case
-      when p_target_queue_id is not null then opponent_row.expires_at
-      when me_row.status = 'waiting_challenge' then me_row.expires_at
-      when opponent_row.status = 'waiting_challenge' then opponent_row.expires_at
-      else null
-    end
-  );
+  battle_scheduled_start_at := case
+    when p_target_queue_id is not null then opponent_row.scheduled_start_at
+    when me_row.status = 'waiting_challenge' then me_row.scheduled_start_at
+    when opponent_row.status = 'waiting_challenge' then opponent_row.scheduled_start_at
+    else greatest(me_row.scheduled_start_at, opponent_row.scheduled_start_at)
+  end;
   battle_cancellation_evaluation_at := case
     when battle_scheduled_start_at is null then null
     else coalesce(

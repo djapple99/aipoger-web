@@ -16,14 +16,14 @@ begin
 
   select
     q.scheduled_start_at,
-    q.cancellation_evaluation_at,
-    q.expires_at
+    q.cancellation_evaluation_at
   into source_row
   from public.battle_queue q
   where q.id in (new.queue_a_id, new.queue_b_id)
-    and (q.scheduled_start_at is not null or q.expires_at is not null)
+    and (q.scheduled_start_at is not null or q.cancellation_evaluation_at is not null)
   order by
     case when q.status = 'waiting_challenge' then 0 else 1 end,
+    q.scheduled_start_at desc nulls last,
     case when q.id = new.queue_a_id then 0 else 1 end
   limit 1;
 
@@ -34,7 +34,7 @@ begin
   new.scheduled_start_at := coalesce(
     new.scheduled_start_at,
     source_row.scheduled_start_at,
-    source_row.expires_at
+    source_row.cancellation_evaluation_at - interval '1 minute'
   );
 
   if new.scheduled_start_at is not null then

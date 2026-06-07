@@ -6,6 +6,23 @@ export type MatchmakingQueueRow = {
   expires_at?: string | null;
 };
 
+export type DropRematchClaimPayload = {
+  claimId: string;
+  sourceBattleId: string;
+  winnerUserId: string;
+  winnerSide: "fighter_a" | "fighter_b";
+  defenderQueueId: string;
+  claimerUserId: string | null;
+  status: string;
+  claimWindowStartedAt: string;
+  claimWindowEndsAt: string;
+  claimedAt: string | null;
+  uploadDeadlineAt: string | null;
+  nextBattleId: string | null;
+  nextQueueId: string | null;
+  genre: string;
+};
+
 export type DropBattleSchedulePreset = 10 | 15 | 20;
 
 export const DROP_BATTLE_SCHEDULE_PRESETS: DropBattleSchedulePreset[] = [10, 15, 20];
@@ -77,6 +94,33 @@ export function buildDropBattleSchedulePayload(scheduledStartIso: string | null)
   };
 }
 
+export function dropBattleSchedulePresetFromValue(value: unknown): DropBattleSchedulePreset | null {
+  const minutes = typeof value === "string" || typeof value === "number" ? Number(value) : NaN;
+  return DROP_BATTLE_SCHEDULE_PRESETS.includes(minutes as DropBattleSchedulePreset)
+    ? (minutes as DropBattleSchedulePreset)
+    : null;
+}
+
+export function buildDropBattleSchedulePayloadFromPreset(
+  presetMinutes: DropBattleSchedulePreset | null,
+  nowMs = Date.now(),
+) {
+  if (!presetMinutes) return null;
+  return buildDropBattleSchedulePayload(new Date(nowMs + presetMinutes * 60 * 1000).toISOString());
+}
+
+function resolveExplicitDropBattleScheduledStart(queue: DropBattleScheduleQueueSnapshot) {
+  const scheduledMs = new Date(queue.scheduled_start_at ?? "").getTime();
+  if (Number.isFinite(scheduledMs)) return new Date(scheduledMs).toISOString();
+
+  const cancellationEvaluationMs = new Date(queue.cancellation_evaluation_at ?? "").getTime();
+  if (Number.isFinite(cancellationEvaluationMs)) {
+    return new Date(cancellationEvaluationMs - DROP_BATTLE_CANCELLATION_DELAY_MS).toISOString();
+  }
+
+  return null;
+}
+
 export function isClosedDropBattleStatus(status: string | null | undefined): boolean {
   return CLOSED_DROP_BATTLE_STATUSES.has(status ?? "");
 }
@@ -124,7 +168,7 @@ export function buildDropBattleSchedulePayloadFromQueues(
     directSourceRow ??
     [meRow, opponentRow]
       .map((row) => {
-        const scheduledStart = resolveDropBattleScheduledStart(row);
+        const scheduledStart = resolveExplicitDropBattleScheduledStart(row);
         const scheduledMs = new Date(scheduledStart ?? "").getTime();
         return Number.isFinite(scheduledMs) ? { row, scheduledMs } : null;
       })
@@ -133,7 +177,7 @@ export function buildDropBattleSchedulePayloadFromQueues(
     null;
   if (!sourceRow) return null;
 
-  const payload = buildDropBattleSchedulePayload(resolveDropBattleScheduledStart(sourceRow));
+  const payload = buildDropBattleSchedulePayload(resolveExplicitDropBattleScheduledStart(sourceRow));
   if (!payload) return null;
 
   const cancellationEvaluationMs = new Date(sourceRow.cancellation_evaluation_at ?? "").getTime();
@@ -276,5 +320,92 @@ export async function completeBattleCardIntent(args: {
   return {
     completedBattles: payload?.completedBattles ?? 0,
     completedQueues: payload?.completedQueues ?? 0,
+  };
+}
+
+export async function openDropRematchWindowIntent(args: {
+  battleId: string;
+  winnerSide: "fighter_a" | "fighter_b";
+}): Promise<DropRematchClaimPayload> {
+  const response = await fetch("/api/battle-pool/open-rematch-window", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      battleId: args.battleId,
+      winnerSide: args.winnerSide,
+    }),
+  });
+
+  const payload = (await response.json().catch(() => null)) as {
+    claim?: DropRematchClaimPayload;
+    error?: string;
+  } | null;
+  if (!response.ok || !payload?.claim) {
+    throw new Error(payload?.error ?? `Open rematch window failed (${response.status})`);
+  }
+  return payload.claim;
+}
+
+export async function claimDropRematchIntent(args: {
+  accessToken: string;
+  sourceBattleId: string;
+  lang?: string;
+}): Promise<{ claim: DropRematchClaimPayload; uploadDeadlineAt: string; uploadUrl: string }> {
+  const response = await fetch("/api/battle-pool/claim-rematch", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${args.accessToken}`,
+    },
+    body: JSON.stringify({
+      sourceBattleId: args.sourceBattleId,
+      lang: args.lang ?? "zh",
+    }),
+  });
+
+  const payload = (await response.json().catch(() => null)) as {
+    claim?: DropRematchClaimPayload;
+    uploadDeadlineAt?: string;
+    uploadUrl?: string;
+    error?: string;
+  } | null;
+  if (!response.ok || !payload?.claim || !payload.uploadDeadlineAt || !payload.uploadUrl) {
+    throw new Error(payload?.error ?? `Claim rematch failed (${response.status})`);
+  }
+  return {
+    claim: payload.claim,
+    uploadDeadlineAt: payload.uploadDeadlineAt,
+    uploadUrl: payload.uploadUrl,
+  };
+}
+
+export async function completeDropRematchUploadIntent(args: {
+  accessToken: string;
+  claimId: string;
+  challengerQueueId: string;
+}): Promise<{ nextBattleId: string; nextQueueId: string }> {
+  const response = await fetch("/api/battle-pool/complete-rematch-upload", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${args.accessToken}`,
+    },
+    body: JSON.stringify({
+      claimId: args.claimId,
+      challengerQueueId: args.challengerQueueId,
+    }),
+  });
+
+  const payload = (await response.json().catch(() => null)) as {
+    nextBattleId?: string;
+    nextQueueId?: string;
+    error?: string;
+  } | null;
+  if (!response.ok || !payload?.nextBattleId || !payload.nextQueueId) {
+    throw new Error(payload?.error ?? `Complete rematch upload failed (${response.status})`);
+  }
+  return {
+    nextBattleId: payload.nextBattleId,
+    nextQueueId: payload.nextQueueId,
   };
 }
