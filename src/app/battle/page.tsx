@@ -845,6 +845,7 @@ function BattlePoolList() {
   const searchParams = useSearchParams();
   const focusQueueId = searchParams.get("focusQueue");
   const [rows, setRows] = useState<PoolEntryRow[]>([]);
+  const [acceptedBattleRows, setAcceptedBattleRows] = useState<LiveBattleRow[]>([]);
   const [hookSongStats, setHookSongStats] = useState<Record<string, SongBattleStats>>({});
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -873,6 +874,7 @@ function BattlePoolList() {
     const load = async () => {
       if (isAuthBypassEnabled) {
         setRows([]);
+        setAcceptedBattleRows([]);
         setLoading(false);
         return;
       }
@@ -911,6 +913,7 @@ function BattlePoolList() {
           console.error("[battle pool]", error);
         }
         setRows([]);
+        setAcceptedBattleRows([]);
       } else {
         const baseRows = ((data as PoolEntryRow[]) ?? []);
         const linkedBattleIds = Array.from(
@@ -927,6 +930,41 @@ function BattlePoolList() {
             .forEach((row) => closedBattleIds.add(row.id as string));
         }
         const visibleRows = baseRows.filter((row) => !isExpiredOpenPoolEntry(row) && (!row.match_group_id || !closedBattleIds.has(row.match_group_id)));
+        let { data: acceptedData, error: acceptedError } = await supabase
+          .from("battles")
+          .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, scheduled_start_at, battle_started_at, started_at, battle_ended_at")
+          .in("status", ["matched", "active", "live"])
+          .is("battle_ended_at", null)
+          .order("created_at", { ascending: false })
+          .limit(12);
+
+        if (acceptedError) {
+          const msg = `${acceptedError.message ?? ""} ${acceptedError.details ?? ""} ${acceptedError.hint ?? ""}`;
+          const missingRuntimeColumn = /scheduled_start_at|battle_started_at|started_at|schema cache|column.*does not exist|PGRST204/i.test(msg);
+          if (missingRuntimeColumn) {
+            const legacyRead = await supabase
+              .from("battles")
+              .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, battle_started_at, started_at, battle_ended_at")
+              .in("status", ["matched", "active", "live"])
+              .is("battle_ended_at", null)
+              .order("created_at", { ascending: false })
+              .limit(12);
+            acceptedData = legacyRead.data as typeof acceptedData;
+            acceptedError = legacyRead.error;
+          }
+        }
+
+        if (acceptedError) {
+          console.warn("[battle pool accepted]", acceptedError);
+        }
+        const visibleBattleIds = new Set(visibleRows.map((row) => row.match_group_id).filter((id): id is string => Boolean(id)));
+        const acceptedRows = dedupeLiveBattleRows(
+          ((acceptedData as LiveBattleRow[] | null) ?? []).filter((row) => {
+            if (!row.id || visibleBattleIds.has(row.id)) return false;
+            if (row.battle_ended_at || isClosedBattleStatus(row.status) || isDropBattleEndedOrPastExpectedEnd(row)) return false;
+            return ["matched", "active", "live"].includes(row.status ?? "");
+          }),
+        );
         if (focusQueueId && !visibleRows.some((row) => row.id === focusQueueId)) {
           let { data: focusedRow, error: focusedError } = await supabase
             .from("battle_queue")
@@ -991,7 +1029,14 @@ function BattlePoolList() {
           setFocusedClosedCard(null);
         }
         setHookSongStats(await fetchHookSongBattleStats(visibleRows.map((row) => row.original_file_name)));
-        const userIds = Array.from(new Set(visibleRows.map((row) => row.user_id).filter(Boolean)));
+        const userIds = Array.from(
+          new Set(
+            [
+              ...visibleRows.map((row) => row.user_id),
+              ...acceptedRows.flatMap((row) => [row.fighter_a_user_id, row.fighter_b_user_id]),
+            ].filter((id): id is string => typeof id === "string" && id.length > 0),
+          ),
+        );
         const { data: profiles } =
           userIds.length > 0
             ? await supabase.from("user_profiles").select("id, level").in("id", userIds)
@@ -1001,6 +1046,13 @@ function BattlePoolList() {
           visibleRows.map((row) => {
             return { ...row, fighter_rank: rankLabelForLevel(levelMap.get(row.user_id) ?? 1, row.fighter_name) };
           }),
+        );
+        setAcceptedBattleRows(
+          acceptedRows.map((row) => ({
+            ...row,
+            fighter_a_rank: rankLabelForLevel(levelMap.get(row.fighter_a_user_id) ?? 1, row.fighter_a_name),
+            fighter_b_rank: rankLabelForLevel(levelMap.get(row.fighter_b_user_id) ?? 1, row.fighter_b_name),
+          })),
         );
       }
       setLoading(false);
@@ -1119,14 +1171,57 @@ function BattlePoolList() {
         </article>
       ) : null}
 
-      {rows.length === 0 && !focusedClosedCard ? (
+      {acceptedBattleRows.length > 0 ? (
+        <div className="mb-4 grid gap-3">
+          {acceptedBattleRows.map((battleRow) => {
+            const scheduledAt = resolveDropBattleRuntimeStart(battleRow);
+            return (
+              <article
+                key={battleRow.id}
+                id={`battle-pool-accepted-${battleRow.id}`}
+                className="rounded-[1.4rem] border border-orange-200/42 bg-orange-400/[0.1] p-4 shadow-[0_0_34px_rgba(255,106,0,0.16)]"
+              >
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-100/75">
+                      {isZh ? "已有人挑戰" : "Challenge Accepted"}
+                    </p>
+                    <p className="mt-2 text-lg font-black text-white">
+                      <span>{battleRow.fighter_a_name}</span>
+                      {battleRow.fighter_a_rank && <span className="ml-2 align-middle text-xs font-bold text-orange-200">{battleRow.fighter_a_rank}</span>}
+                      <span className="mx-2 text-orange-300">vs</span>
+                      <span>{battleRow.fighter_b_name}</span>
+                      {battleRow.fighter_b_rank && <span className="ml-2 align-middle text-xs font-bold text-cyan-200">{battleRow.fighter_b_rank}</span>}
+                    </p>
+                    <p className="mt-1 truncate text-sm font-bold text-zinc-300">
+                      {battleRow.song_a_name} / {battleRow.song_b_name}
+                    </p>
+                    <p className="mt-2 text-xs font-bold text-orange-100/75">
+                      {isZh ? "已接戰，等待開打或進場觀戰投票" : "Accepted. Enter the arena to watch and vote."}
+                      {scheduledAt ? ` · ${formatBattleCardTime(scheduledAt, isZh)}` : ""}
+                    </p>
+                  </div>
+                  <Link
+                    href={focusedBattleHref(battleRow.id, lang)}
+                    className="inline-flex min-h-11 items-center justify-center rounded-full bg-orange-500 px-5 py-2.5 text-sm font-black text-black shadow-[0_0_22px_rgba(255,106,0,0.24)] transition hover:bg-orange-300"
+                  >
+                    {isZh ? "進入戰場" : "Enter Arena"}
+                  </Link>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {rows.length === 0 && !focusedClosedCard && acceptedBattleRows.length === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-6 text-center">
           <p className="text-sm font-bold text-zinc-300">{t("pool_empty_title")}</p>
           <p className="mx-auto mt-2 max-w-xl whitespace-pre-line text-sm leading-7 text-zinc-500">
             {t("pool_empty_body")}
           </p>
         </div>
-      ) : (
+      ) : rows.length > 0 ? (
         <ul className="grid gap-3 md:grid-cols-2">
           {rows.map((entry) => {
             const ghostBattleId = entry.status === "ghost_battle" ? entry.match_group_id : null;
@@ -1340,7 +1435,7 @@ function BattlePoolList() {
             );
           })}
         </ul>
-      )}
+      ) : null}
     </section>
   );
 }

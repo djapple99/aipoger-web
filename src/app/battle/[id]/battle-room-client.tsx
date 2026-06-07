@@ -148,9 +148,10 @@ const WINNER_REVEAL_SFX_SRC = "/sfx/audience-shouts-1.mp3";
 const SECOND_DECK_START_SECONDS = HOOK_BATTLE_SECONDS + SCRATCH_TRANSITION_SECONDS;
 const BATTLE_PLAYBACK_SECONDS = HOOK_BATTLE_SECONDS * 2 + SCRATCH_TRANSITION_SECONDS;
 const FINAL_RESULT_CUE_DELAY_MS = 1000;
-const FINAL_VOTE_SECONDS = 5;
-const WINNER_COUNTDOWN_FALLBACK_MS = 8200;
-const WINNER_REVEAL_MS = 3000;
+const FINAL_VOTE_SECONDS = 7;
+const WINNER_COUNTDOWN_FALLBACK_MS = 7600;
+const WINNER_REVEAL_MS = 5000;
+const REMATCH_CHALLENGE_ENABLED = false;
 const RPS_CYCLE_MS = 240;
 const ARENA_ECHO_LEAD_SECONDS = 1;
 const ARENA_ECHO_TAPS = [
@@ -875,9 +876,6 @@ function BattleArenaContent() {
   const [teaserSecondsLeft, setTeaserSecondsLeft] = useState(PRE_BATTLE_TEASER_SECONDS);
   const [adVideoMuted, setAdVideoMuted] = useState(false);
   const [adVideoPosition, setAdVideoPosition] = useState<{ x: number; y: number } | null>(null);
-  const [audioUnlocked, setAudioUnlocked] = useState(false);
-  const [audioUnlockBusy, setAudioUnlockBusy] = useState(false);
-  const [playbackBlockedDeck, setPlaybackBlockedDeck] = useState<DeckKey | null>(null);
   const [transitionDeck, setTransitionDeck] = useState<DeckKey | null>(null);
   const [transitionSecondsLeft, setTransitionSecondsLeft] = useState(SCRATCH_TRANSITION_SECONDS);
   const [transitionEndsAtMs, setTransitionEndsAtMs] = useState<number | null>(null);
@@ -908,7 +906,6 @@ function BattleArenaContent() {
   // Refs
   const audioARef = useRef<HTMLAudioElement>(null);
   const audioBRef = useRef<HTMLAudioElement>(null);
-  const audioUnlockedRef = useRef(false);
   const completedDecksRef = useRef<{ A: boolean; B: boolean }>({ A: false, B: false });
   const autoStartedDecksRef = useRef<{ A: boolean; B: boolean }>({ A: false, B: false });
   const pauseResumeTimerRef = useRef<number | null>(null);
@@ -1320,9 +1317,13 @@ function BattleArenaContent() {
       resultRedirectTimerRef.current = null;
       if (resultSequenceRef.current !== resultSequence) return;
       setWinnerRevealOpen(false);
-      setRematchPromptReady(true);
+      if (REMATCH_CHALLENGE_ENABLED) {
+        setRematchPromptReady(true);
+      } else {
+        router.push(href);
+      }
     }, Math.max(delayMs, WINNER_REVEAL_MS));
-  }, [closeBattleCardAfterResult, playWinnerRevealSfx, stopWinnerCountdownSfx]);
+  }, [closeBattleCardAfterResult, playWinnerRevealSfx, router, stopWinnerCountdownSfx]);
 
   const markDeckPlayed = useCallback((deck: "A" | "B") => {
     setPlayedDecks((prev) => (prev[deck] ? prev : { ...prev, [deck]: true }));
@@ -2044,10 +2045,6 @@ function BattleArenaContent() {
     setRematchClaim(null);
     setRematchBusy(false);
     setRematchError(null);
-    audioUnlockedRef.current = false;
-    setAudioUnlocked(false);
-    setAudioUnlockBusy(false);
-    setPlaybackBlockedDeck(null);
     setHasVoted(null);
     setActiveDeck(null);
     setFirstDeck(null);
@@ -2342,11 +2339,10 @@ function BattleArenaContent() {
   }, [playedDecks.A, playedDecks.B, playWinnerCountdownSfx, pushResultForEveryone]);
 
   // ── 播放控制 ──────────────────────────────────────────
-  const playDeck = useCallback((deck: DeckKey, restart: boolean, startAtSeconds = 0, forceAudioUnlock = false) => {
+  const playDeck = useCallback((deck: DeckKey, restart: boolean, startAtSeconds = 0) => {
     const target = deck === "A" ? audioARef.current : audioBRef.current;
     const other = deck === "A" ? audioBRef.current : audioARef.current;
-    const otherIsSilentPrimed = Boolean(other && !other.paused && !other.muted && other.volume === 0);
-    if (!otherIsSilentPrimed) other?.pause();
+    other?.pause();
     if (pauseResumeTimerRef.current != null) {
       window.clearTimeout(pauseResumeTimerRef.current);
       pauseResumeTimerRef.current = null;
@@ -2355,13 +2351,6 @@ function BattleArenaContent() {
       completedDecksRef.current[deck] = true;
       markDeckPlayed(deck);
       setActiveDeck(null);
-      return;
-    }
-    if (!forceAudioUnlock && !audioUnlockedRef.current && !isMockBattle) {
-      setCurrentDeck(deck);
-      setActiveDeck(null);
-      setBattlePhase("ready");
-      setPlaybackBlockedDeck(deck);
       return;
     }
     if (restart) {
@@ -2377,59 +2366,13 @@ function BattleArenaContent() {
         setCurrentDeck(deck);
         setActiveDeck(deck);
         setBattlePhase("playing");
-        audioUnlockedRef.current = true;
-        setAudioUnlocked(true);
-        setPlaybackBlockedDeck(null);
       })
       .catch(() => {
         setCurrentDeck(deck);
         setActiveDeck(null);
         setBattlePhase("ready");
-        audioUnlockedRef.current = false;
-        setAudioUnlocked(false);
-        setPlaybackBlockedDeck(deck);
       });
-  }, [isMockBattle, markDeckPlayed]);
-
-  const unlockBattleAudio = useCallback(async () => {
-    if (audioUnlockBusy) return;
-    setAudioUnlockBusy(true);
-    try {
-      const audios = [audioARef.current, audioBRef.current].filter((audio): audio is HTMLAudioElement => Boolean(audio?.src));
-      const primed = await Promise.all(
-        audios.map(async (audio) => {
-          const originalMuted = audio.muted;
-          const originalVolume = audio.volume;
-          const originalLoop = audio.loop;
-          let primed = false;
-          try {
-            audio.loop = true;
-            audio.muted = false;
-            audio.volume = 0;
-            audio.currentTime = 0;
-            await audio.play();
-            primed = true;
-            return true;
-          } catch {
-            // Keep the unlock prompt visible if the browser rejects the audio gesture.
-            return false;
-          } finally {
-            if (!primed) {
-              audio.loop = originalLoop;
-              audio.volume = originalVolume;
-              audio.muted = originalMuted;
-            }
-          }
-        }),
-      );
-      const unlockSucceeded = audios.length === 0 || primed.some(Boolean);
-      audioUnlockedRef.current = unlockSucceeded;
-      setAudioUnlocked(unlockSucceeded);
-      setPlaybackBlockedDeck(unlockSucceeded ? null : playbackBlockedDeck ?? currentDeck);
-    } finally {
-      setAudioUnlockBusy(false);
-    }
-  }, [audioUnlockBusy, currentDeck, playbackBlockedDeck]);
+  }, [markDeckPlayed]);
 
   useEffect(() => {
     if (battlePhase !== "transition" || !transitionDeck || !transitionEndsAtMs) return;
@@ -2545,16 +2488,12 @@ function BattleArenaContent() {
   useEffect(() => {
     if (battlePhase !== "ready" || !currentDeck || completedDecksRef.current[currentDeck] || autoStartedDecksRef.current[currentDeck]) return;
     if (!audioUrls[currentDeck]) return;
-    if (!audioUnlockedRef.current && !isMockBattle) {
-      setPlaybackBlockedDeck(currentDeck);
-      return;
-    }
     autoStartedDecksRef.current[currentDeck] = true;
     const resume = resumeDeckOffsetRef.current?.deck === currentDeck ? resumeDeckOffsetRef.current.seconds : 0;
     resumeDeckOffsetRef.current = null;
     const timer = window.setTimeout(() => playDeck(currentDeck, true, resume), 220);
     return () => window.clearTimeout(timer);
-  }, [audioUrls, battlePhase, currentDeck, isMockBattle, playDeck]);
+  }, [audioUrls, battlePhase, currentDeck, playDeck]);
 
   useEffect(() => {
     if (!battleStartedAtMs || battle?.arena_kind === "queue" || (playedDecks.A && playedDecks.B) || battlePhase === "final") return;
@@ -2967,6 +2906,7 @@ function BattleArenaContent() {
   }, []);
 
   useEffect(() => {
+    if (!REMATCH_CHALLENGE_ENABLED) return;
     const href = battleResultHrefRef.current;
     const expiredClaim =
       rematchClaim?.status === "expired" ||
@@ -2980,6 +2920,7 @@ function BattleArenaContent() {
   }, [rematchClaim?.claimId, rematchClaim?.claimWindowEndsAt, rematchClaim?.status, rematchNowMs, router]);
 
   useEffect(() => {
+    if (!REMATCH_CHALLENGE_ENABLED) return;
     if (!battleId || loading || battleId.startsWith("mock-") || isAuthBypassEnabled) return;
     const channel = supabase
       .channel(`drop-rematch-claims-${battleId}`)
@@ -3013,6 +2954,7 @@ function BattleArenaContent() {
   );
 
   useEffect(() => {
+    if (!REMATCH_CHALLENGE_ENABLED) return;
     if (loading || !battle || battle.arena_kind === "queue" || !playedDecks.A || !playedDecks.B || voteOpen || !rematchPromptReady || winnerRevealOpen) return;
     if (battleId.startsWith("mock-") || isAuthBypassEnabled) return;
     const winnerSideForWindow = pick90sBattleWinner(votes, battleId, firstDeck);
@@ -3038,6 +2980,7 @@ function BattleArenaContent() {
   }, [applyRematchClaim, battle, battleId, firstDeck, loading, playedDecks.A, playedDecks.B, queueResultFallback, rematchPromptReady, voteOpen, votes, winnerRevealOpen]);
 
   useEffect(() => {
+    if (!REMATCH_CHALLENGE_ENABLED) return;
     if (!rematchClaim || !["open", "claimed"].includes(rematchClaim.status)) return;
     if (battleId.startsWith("mock-") || isAuthBypassEnabled) return;
     const timer = window.setInterval(() => {
@@ -3095,13 +3038,6 @@ function BattleArenaContent() {
   const pctB = 100 - pctA;
   const battlePlaybackComplete = playedDecks.A && playedDecks.B;
   const showFinalVoteStats = battlePlaybackComplete && !voteOpen && !winnerRevealOpen;
-  const showAudioUnlockOverlay =
-    !isQueueArena &&
-    !battlePlaybackComplete &&
-    !winnerRevealOpen &&
-    !noContestOpen &&
-    Boolean(audioUrls.A || audioUrls.B) &&
-    Boolean(!audioUnlocked || playbackBlockedDeck);
 
   const vinylCoverA = useMemo(() => {
     if (!battle) return null;
@@ -3283,6 +3219,16 @@ function BattleArenaContent() {
     showFinalVoteStats && totalVotes > 0
       ? `${voteStatusText} · ${t("battle_vote_total", { count: totalVotes })}`
       : `${ritualStatusText} · ${lang === "zh" ? "請依照音樂感動去最終投票支持" : "Final support should follow the feeling of the music."}`;
+  const voteHeartLabelA = showFinalVoteStats
+    ? t("battle_deck_vote_line", { n: votes.fighter_a })
+    : lang === "zh"
+      ? "投 A"
+      : "Vote A";
+  const voteHeartLabelB = showFinalVoteStats
+    ? t("battle_deck_vote_line", { n: votes.fighter_b })
+    : lang === "zh"
+      ? "投 B"
+      : "Vote B";
   const viewerBadge = (() => {
     if (viewerCount <= 1) {
       return (
@@ -3491,42 +3437,13 @@ function BattleArenaContent() {
           </div>
         </div>
       ) : null}
-      {showAudioUnlockOverlay ? (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/72 px-5 text-center backdrop-blur-[2px]">
-          <div className="w-[min(92vw,560px)] rounded-[2rem] border border-orange-200/42 bg-black/84 px-6 py-7 shadow-[0_0_90px_rgba(255,106,0,0.32),inset_0_0_80px_rgba(255,255,255,0.045)]">
-            <p className="text-[11px] font-black uppercase tracking-[0.32em] text-orange-200/78">AIPOGER DROP BATTLE</p>
-            <h2 className="mt-3 text-[clamp(2rem,8vw,4.4rem)] font-black leading-none text-white drop-shadow-[0_0_34px_rgba(255,106,0,0.4)]">
-              {lang === "zh" ? "開聲進場" : "Enter With Sound"}
-            </h2>
-            <p className="mx-auto mt-4 max-w-[28rem] text-sm font-bold leading-7 text-zinc-300">
-              {lang === "zh"
-                ? "點一下後，開戰倒數結束會由系統自動播放音樂。你只要聽歌、投票、丟彈幕。"
-                : "Tap once. After the countdown, AIPOGER will play the battle automatically."}
-            </p>
-            <button
-              type="button"
-              onClick={() => void unlockBattleAudio()}
-              disabled={audioUnlockBusy}
-              className="mt-6 min-h-14 w-full rounded-full border border-orange-100/70 bg-orange-500 px-6 py-4 text-base font-black text-black shadow-[0_0_34px_rgba(255,106,0,0.34)] transition hover:bg-orange-300 disabled:cursor-wait disabled:opacity-70 sm:w-auto sm:min-w-[16rem]"
-            >
-              {audioUnlockBusy
-                ? lang === "zh"
-                  ? "開聲中..."
-                  : "Unlocking..."
-                : lang === "zh"
-                  ? "點一下開聲"
-                  : "Tap to Enable Sound"}
-            </button>
-          </div>
-        </div>
-      ) : null}
       {battlePlaybackComplete && voteOpen && (
         <div className="pointer-events-none absolute inset-0 z-[95] flex items-center justify-center bg-black/28 backdrop-blur-[1px]">
           <div className="relative flex h-[min(54vw,430px)] w-[min(54vw,430px)] flex-col items-center justify-center rounded-full border border-yellow-200/40 bg-[radial-gradient(circle,rgba(255,191,74,0.18),rgba(0,0,0,0.72)_58%,rgba(0,0,0,0.08)_76%)] shadow-[0_0_90px_rgba(255,106,0,0.46),inset_0_0_80px_rgba(255,255,255,0.06)] [animation:aipogerVotePulse_1s_ease-in-out_infinite]">
             <div className="absolute inset-5 rounded-full border border-orange-300/20" />
             <div className="absolute inset-12 rounded-full border border-cyan-200/14" />
             <p className="text-[clamp(1rem,2.6vw,1.5rem)] font-black tracking-[0.32em] text-yellow-100 drop-shadow-[0_0_24px_rgba(255,214,120,0.56)]">
-              {lang === "zh" ? "最後五秒鎖票" : "LAST 5 SECONDS"}
+              {lang === "zh" ? "最後七秒鎖票" : "LAST 7 SECONDS"}
             </p>
             <p className="mt-1 bg-gradient-to-b from-white via-yellow-200 to-orange-500 bg-clip-text text-[clamp(7rem,18vw,12rem)] font-black leading-[0.86] text-transparent drop-shadow-[0_0_44px_rgba(255,106,0,0.82)]">
               {voteCountdown ?? FINAL_VOTE_SECONDS}
@@ -3537,6 +3454,22 @@ function BattleArenaContent() {
           </div>
         </div>
       )}
+      {voteOpen && !winnerRevealOpen && !noContestOpen ? (
+        <div className="fixed inset-x-2 bottom-[7.25rem] z-[100] grid grid-cols-2 gap-2 sm:hidden">
+          <VoteHeartButton
+            selected={hasVoted === "fighter_a"}
+            voteLocked={!voteOpen}
+            onVote={() => handleVote("fighter_a")}
+            label={`${voteHeartLabelA} · ${battle.fighter_a_name}`}
+          />
+          <VoteHeartButton
+            selected={hasVoted === "fighter_b"}
+            voteLocked={!voteOpen}
+            onVote={() => handleVote("fighter_b")}
+            label={`${voteHeartLabelB} · ${battle.fighter_b_name}`}
+          />
+        </div>
+      ) : null}
       {winnerRevealOpen && (
         <div className="pointer-events-none absolute inset-0 z-[98] flex items-center justify-center overflow-hidden bg-black/72 backdrop-blur-[2px]">
           <div className="absolute h-[min(98vw,760px)] w-[min(98vw,760px)] rounded-full bg-[conic-gradient(from_0deg,transparent,rgba(255,214,120,0.34),transparent,rgba(103,232,249,0.22),transparent)] blur-sm [animation:aipogerWinnerRays_3s_linear_infinite]" />
@@ -3576,7 +3509,7 @@ function BattleArenaContent() {
           </div>
         </div>
       )}
-      {rematchClaim && battlePlaybackComplete && hasResultWinner && !winnerRevealOpen && !noContestOpen && (
+      {REMATCH_CHALLENGE_ENABLED && rematchClaim && battlePlaybackComplete && hasResultWinner && !winnerRevealOpen && !noContestOpen && (
         <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/78 px-5 text-center backdrop-blur-[2px]">
           <div className="relative w-[min(94vw,680px)] overflow-hidden rounded-[2rem] border border-orange-200/45 bg-black/88 px-6 py-7 shadow-[0_0_110px_rgba(255,106,0,0.36),inset_0_0_80px_rgba(255,255,255,0.045)]">
             <div className="pointer-events-none absolute inset-x-[-18%] top-0 h-px bg-gradient-to-r from-transparent via-orange-200 to-transparent shadow-[0_0_48px_rgba(255,106,0,0.7)]" />
@@ -3719,18 +3652,12 @@ function BattleArenaContent() {
               {lyricA || t("battle_lyrics_empty")}
             </div>
             <div className="mt-1 flex flex-col gap-1 pb-0.5 pt-0.5">
-              <div className="flex w-full justify-start">
+              <div className="hidden w-full justify-start sm:flex">
                 <VoteHeartButton
                   selected={hasVoted === "fighter_a"}
                   voteLocked={!voteOpen}
                   onVote={() => handleVote("fighter_a")}
-                  label={
-                    showFinalVoteStats
-                      ? t("battle_deck_vote_line", { n: votes.fighter_a })
-                      : lang === "zh"
-                        ? "投票請按愛心"
-                        : "Vote With the Heart"
-                  }
+                  label={voteHeartLabelA}
                 />
               </div>
             </div>
@@ -3962,7 +3889,7 @@ function BattleArenaContent() {
               <p className="relative mt-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-center text-[11px] text-zinc-300 shadow-[0_0_22px_rgba(255,106,0,0.08)]">
                 {viewerBadge}
               </p>
-              {battlePlaybackComplete && !voteOpen && hasResultWinner && battleResultHref && (isMockBattle || isAuthBypassEnabled || rematchExpired) && (
+              {battlePlaybackComplete && !voteOpen && hasResultWinner && battleResultHref && (isMockBattle || isAuthBypassEnabled || rematchExpired || !REMATCH_CHALLENGE_ENABLED) && (
                 <Link
                   href={battleResultHref}
                   className="relative mt-3 inline-flex items-center justify-center rounded-full border border-orange-300/45 bg-orange-500 px-4 py-2 text-[12px] font-black tracking-[0.12em] text-black shadow-[0_0_24px_rgba(255,106,0,0.24)] transition hover:bg-orange-300"
@@ -4005,18 +3932,12 @@ function BattleArenaContent() {
               {lyricB || t("battle_lyrics_empty")}
             </div>
             <div className="mt-1 flex flex-col gap-1 pb-0.5 pt-0.5">
-              <div className="flex w-full justify-end">
+              <div className="hidden w-full justify-end sm:flex">
                 <VoteHeartButton
                   selected={hasVoted === "fighter_b"}
                   voteLocked={!voteOpen}
                   onVote={() => handleVote("fighter_b")}
-                  label={
-                    showFinalVoteStats
-                      ? t("battle_deck_vote_line", { n: votes.fighter_b })
-                      : lang === "zh"
-                        ? "投票請按愛心"
-                        : "Vote With the Heart"
-                  }
+                  label={voteHeartLabelB}
                 />
               </div>
             </div>

@@ -29,7 +29,7 @@ export const DROP_BATTLE_SCHEDULE_PRESETS: DropBattleSchedulePreset[] = [10, 15,
 export const DROP_BATTLE_SCHEDULE_MIN_LEAD_MS = 60 * 1000;
 export const DROP_BATTLE_SCHEDULE_MAX_LEAD_MS = 24 * 60 * 60 * 1000;
 export const DROP_BATTLE_CANCELLATION_DELAY_MS = 60 * 1000;
-export const DROP_BATTLE_EXPECTED_END_BUFFER_MS = (45 * 2 + 2 + 5 + 30) * 1000;
+export const DROP_BATTLE_EXPECTED_END_BUFFER_MS = (45 * 2 + 2 + 1 + 7 + 5 + 30) * 1000;
 
 const CLOSED_DROP_BATTLE_STATUSES = new Set([
   "finished",
