@@ -100,6 +100,22 @@ type BattleArenaEntryPayload =
   | { action: "redirect"; href: string; reason?: string }
   | { action: "battle"; battle: BattleData };
 
+type DropRematchClaimRow = {
+  id: string;
+  source_battle_id: string;
+  winner_user_id: string;
+  winner_side: "fighter_a" | "fighter_b";
+  defender_queue_id: string;
+  claimer_user_id: string | null;
+  status: string;
+  claim_window_started_at: string;
+  claim_window_ends_at: string;
+  claimed_at: string | null;
+  upload_deadline_at: string | null;
+  next_battle_id: string | null;
+  next_queue_id: string | null;
+};
+
 type VoteCount = { fighter_a: number; fighter_b: number };
 type DeckKey = "A" | "B";
 type BattlePlaybackPhase = "rps" | "ready" | "playing" | "paused" | "transition" | "final";
@@ -172,6 +188,26 @@ const feedbackButtons: Array<{ key: FeedbackKey; zh: string; en: string }> = [
 function isUuid(value: string | null | undefined) {
   return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
 }
+
+function rematchClaimFromRow(row: DropRematchClaimRow, genre: string): DropRematchClaimPayload {
+  return {
+    claimId: row.id,
+    sourceBattleId: row.source_battle_id,
+    winnerUserId: row.winner_user_id,
+    winnerSide: row.winner_side,
+    defenderQueueId: row.defender_queue_id,
+    claimerUserId: row.claimer_user_id,
+    status: row.status,
+    claimWindowStartedAt: row.claim_window_started_at,
+    claimWindowEndsAt: row.claim_window_ends_at,
+    claimedAt: row.claimed_at,
+    uploadDeadlineAt: row.upload_deadline_at,
+    nextBattleId: row.next_battle_id,
+    nextQueueId: row.next_queue_id,
+    genre,
+  };
+}
+
 const emptyFeedbackCounts = (): FeedbackCounts => ({
   A: { rhyme: 0, impact: 0, melody: 0, emotion: 0, structure: 0 },
   B: { rhyme: 0, impact: 0, melody: 0, emotion: 0, structure: 0 },
@@ -600,6 +636,22 @@ function VinylDisc({
           aria-label={isPlaying ? t("deck_pause_aria") : t("deck_play_aria")}
         >
           <div
+            className={`pointer-events-none absolute inset-0 z-[5] rounded-full ${isPlaying ? "animate-spin" : ""}`}
+            style={{
+              animationDuration: isPlaying ? "2.8s" : undefined,
+              animationTimingFunction: "linear",
+            }}
+          >
+            <div
+              className="absolute inset-0 rounded-full opacity-80"
+              style={{
+                background:
+                  "conic-gradient(from 18deg, rgba(255,255,255,0.14), transparent 10deg, transparent 64deg, rgba(255,106,0,0.2) 76deg, transparent 92deg, transparent 170deg, rgba(103,232,249,0.14) 184deg, transparent 202deg, transparent 360deg)",
+              }}
+            />
+            <div className="absolute left-1/2 top-[7%] h-[12%] w-1 -translate-x-1/2 rounded-full bg-white/18 blur-[1px]" />
+          </div>
+          <div
             className="absolute inset-0 rounded-full"
             style={{
               background: hasCover
@@ -768,10 +820,12 @@ function VoteHeartButton({
   selected,
   voteLocked,
   onVote,
+  label,
 }: {
   selected: boolean;
   voteLocked: boolean;
   onVote: () => void;
+  label: string;
 }) {
   const { t } = useI18n();
   const notChosenOther = voteLocked && !selected;
@@ -784,11 +838,15 @@ function VoteHeartButton({
       title={t("battle_vote_heart_aria")}
       aria-label={t("battle_vote_heart_aria")}
       aria-pressed={selected}
-      className={`p-1 transition drop-shadow-[0_0_14px_rgba(255,255,255,0.22)] ${
-        voteLocked && !selected ? "opacity-40" : ""
+      className={`group flex min-h-16 w-full items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-left transition active:scale-[0.98] md:min-h-[4.5rem] ${
+        selected
+          ? "border-red-300/85 bg-red-500/18 shadow-[0_0_28px_rgba(239,68,68,0.28)]"
+          : voteLocked
+            ? "border-white/10 bg-white/[0.035] opacity-45"
+            : "border-white/18 bg-white/[0.065] shadow-[0_0_18px_rgba(255,255,255,0.08)] hover:border-red-200/70 hover:bg-red-500/12"
       }`}
     >
-      <svg viewBox="0 0 24 24" className="h-10 w-10 md:h-12 md:w-12">
+      <svg viewBox="0 0 24 24" className="h-11 w-11 shrink-0 drop-shadow-[0_0_14px_rgba(255,255,255,0.22)] md:h-12 md:w-12">
         <path
           fill={selected ? "#ef4444" : "none"}
           stroke={selected ? "#ef4444" : notChosenOther ? "#52525b" : "#e5e5e5"}
@@ -796,6 +854,7 @@ function VoteHeartButton({
           d="M12 21.35l-1.05-.96C6.96 17.06 4 13.92 4 10.94 4 8.73 5.71 7 8.02 7c1.53 0 3.04.93 4 2.43.96-1.5 2.47-2.43 4-2.43C18.29 7 20 8.73 20 10.94c0 3-2.97 6.17-7.94 11.43L12 21.35z"
         />
       </svg>
+      <span className="min-w-0 text-[12px] font-black leading-tight text-zinc-100 md:text-sm">{label}</span>
     </button>
   );
 }
@@ -832,13 +891,14 @@ function BattleArenaContent() {
   const [preStartSecondsLeft, setPreStartSecondsLeft] = useState<number | null>(null);
   const [teaserDeck, setTeaserDeck] = useState<DeckKey | null>(null);
   const [teaserSecondsLeft, setTeaserSecondsLeft] = useState(PRE_BATTLE_TEASER_SECONDS);
-  const [adVideoMuted, setAdVideoMuted] = useState(true);
+  const [adVideoMuted, setAdVideoMuted] = useState(false);
   const [adVideoPosition, setAdVideoPosition] = useState<{ x: number; y: number } | null>(null);
   const [transitionDeck, setTransitionDeck] = useState<DeckKey | null>(null);
   const [transitionSecondsLeft, setTransitionSecondsLeft] = useState(SCRATCH_TRANSITION_SECONDS);
   const [transitionEndsAtMs, setTransitionEndsAtMs] = useState<number | null>(null);
   const [winnerRevealOpen, setWinnerRevealOpen] = useState(false);
   const [noContestOpen, setNoContestOpen] = useState(false);
+  const [rematchPromptReady, setRematchPromptReady] = useState(false);
   const [rematchClaim, setRematchClaim] = useState<DropRematchClaimPayload | null>(null);
   const [rematchBusy, setRematchBusy] = useState(false);
   const [rematchError, setRematchError] = useState<string | null>(null);
@@ -880,6 +940,7 @@ function BattleArenaContent() {
   const winnerRevealAudioRef = useRef<HTMLAudioElement | null>(null);
   const adVideoRef = useRef<HTMLVideoElement | null>(null);
   const adVideoDragRef = useRef<{ pointerId: number; dx: number; dy: number } | null>(null);
+  const adVideoAutoUnmuteRetriedRef = useRef(false);
   const scratchTransitionTimerRef = useRef<number | null>(null);
   const scratchTransitionTickTimerRef = useRef<number | null>(null);
   const preBattleStartedRef = useRef<string | null>(null);
@@ -896,6 +957,7 @@ function BattleArenaContent() {
   const rematchOpenedBattleRef = useRef<string | null>(null);
   const rematchFallbackTimerRef = useRef<number | null>(null);
   const mockSyncChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const currentSessionUserIdRef = useRef<string>("");
   const shownDanmakuMessageIdsRef = useRef<Set<string>>(new Set());
   const shownDanmakuFingerprintsRef = useRef<Map<string, number>>(new Map());
 
@@ -1007,6 +1069,7 @@ function BattleArenaContent() {
     if (!video) return;
     if (!showPreBattleAd) {
       video.pause();
+      adVideoAutoUnmuteRetriedRef.current = false;
       return;
     }
 
@@ -1017,9 +1080,28 @@ function BattleArenaContent() {
       try {
         await video.play();
       } catch {
+        if (adVideoMuted || adVideoAutoUnmuteRetriedRef.current) {
+          video.muted = true;
+          setAdVideoMuted(true);
+          await video.play().catch(() => undefined);
+          return;
+        }
         video.muted = true;
         setAdVideoMuted(true);
         await video.play().catch(() => undefined);
+        adVideoAutoUnmuteRetriedRef.current = true;
+        window.setTimeout(() => {
+          if (!adVideoRef.current || !showPreBattleAd) return;
+          adVideoRef.current.muted = false;
+          adVideoRef.current.volume = 0.78;
+          setAdVideoMuted(false);
+          void adVideoRef.current.play().catch(() => {
+            if (!adVideoRef.current) return;
+            adVideoRef.current.muted = true;
+            setAdVideoMuted(true);
+            void adVideoRef.current.play().catch(() => undefined);
+          });
+        }, 240);
       }
     };
     void startPlayback();
@@ -1192,6 +1274,9 @@ function BattleArenaContent() {
     setVoteCountdown(null);
     setWinnerRevealOpen(false);
     setNoContestOpen(false);
+    setRematchPromptReady(false);
+    setRematchClaim(null);
+    setRematchError(null);
     setActiveDeck(null);
     setRpsPressed({ A: true, B: true });
     setBattlePhase("ready");
@@ -1220,6 +1305,7 @@ function BattleArenaContent() {
       rematchFallbackTimerRef.current = null;
     }
     setVoteOpen(false);
+    setRematchPromptReady(false);
 
     const href = hrefOverride || battleResultHrefRef.current;
     if (!href) {
@@ -1229,6 +1315,7 @@ function BattleArenaContent() {
           console.warn("[battle cleanup no contest]", err);
         });
         setWinnerRevealOpen(false);
+        setRematchPromptReady(false);
         setNoContestOpen(true);
       });
       return;
@@ -1252,6 +1339,7 @@ function BattleArenaContent() {
         resultRedirectTimerRef.current = null;
         if (resultSequenceRef.current !== resultSequence) return;
         setWinnerRevealOpen(false);
+        setRematchPromptReady(true);
       }, Math.max(delayMs, WINNER_REVEAL_MS));
     });
   }, [closeBattleCardAfterResult, playWinnerRevealSfx, waitForWinnerCountdownSfx]);
@@ -1302,11 +1390,13 @@ function BattleArenaContent() {
   useEffect(() => {
     const getUser = async () => {
       if (battleId.startsWith("mock-")) {
+        currentSessionUserIdRef.current = "mock-audience";
         setMyUserId("mock-audience");
         setMyDisplayName(searchParams.get("viewerName")?.trim() || searchParams.get("displayName")?.trim() || "AIPOGER 觀眾");
         return;
       }
       if (isAuthBypassEnabled) {
+        currentSessionUserIdRef.current = mockUserId;
         setMyUserId(mockUserId);
         setMyDisplayName(searchParams.get("fighterName")?.trim() || "我");
         return;
@@ -1315,10 +1405,12 @@ function BattleArenaContent() {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) {
+        currentSessionUserIdRef.current = "";
         setMyUserId("");
         setMyDisplayName(searchParams.get("viewerName")?.trim() || searchParams.get("displayName")?.trim() || "AIPOGER 觀眾");
         return;
       }
+      currentSessionUserIdRef.current = session.user.id;
       setMyUserId(session.user.id);
       const metadataName = authDisplayName(session.user);
       const [{ data: fighterProfile }, { data: userProfile }] = await Promise.all([
@@ -1964,6 +2056,7 @@ function BattleArenaContent() {
     setVoteOpen(false);
     setVoteCountdown(null);
     setWinnerRevealOpen(false);
+    setRematchPromptReady(false);
     setNoContestOpen(false);
     setRematchClaim(null);
     setRematchBusy(false);
@@ -2560,6 +2653,20 @@ function BattleArenaContent() {
     );
   }
 
+  const applyRematchClaim = useCallback(
+    (claim: DropRematchClaimPayload) => {
+      if (!claim?.claimId) return;
+      if (rematchFallbackTimerRef.current != null) {
+        window.clearTimeout(rematchFallbackTimerRef.current);
+        rematchFallbackTimerRef.current = null;
+      }
+      setRematchPromptReady(true);
+      setRematchClaim(claim);
+      if (claim.nextBattleId) router.push(`/battle/${claim.nextBattleId}?lang=${lang}`);
+    },
+    [lang, router],
+  );
+
   useEffect(() => {
     if (!battleId) return;
     const channel = supabase
@@ -2588,20 +2695,32 @@ function BattleArenaContent() {
         if (typeof href !== "string" || !href.startsWith("/battle/result")) return;
         pushResultForEveryone(120, false, href);
       })
+      .on("broadcast", { event: "rematch-open" }, (payload) => {
+        const claim = (payload.payload as { claim?: DropRematchClaimPayload }).claim;
+        if (!claim?.claimId) return;
+        applyRematchClaim(claim);
+      })
+      .on("broadcast", { event: "rematch-claim" }, (payload) => {
+        const claim = (payload.payload as { claim?: DropRematchClaimPayload }).claim;
+        if (!claim?.claimId) return;
+        applyRematchClaim(claim);
+      })
       .subscribe();
     mockSyncChannelRef.current = channel;
     return () => {
       mockSyncChannelRef.current = null;
       void supabase.removeChannel(channel);
     };
-  }, [battleId, fireDanmaku, fireHypeReaction, handleFeedbackTap, pushResultForEveryone]);
+  }, [applyRematchClaim, battleId, fireDanmaku, fireHypeReaction, handleFeedbackTap, pushResultForEveryone]);
 
   const readCurrentSessionUser = useCallback(async () => {
     if (battleId.startsWith("mock-") || isAuthBypassEnabled) return { id: myUserId || "mock-audience" };
+    if (currentSessionUserIdRef.current || myUserId) return { id: currentSessionUserIdRef.current || myUserId };
     const {
       data: { session },
     } = await supabase.auth.getSession();
     if (session?.user?.id) {
+      currentSessionUserIdRef.current = session.user.id;
       if (!myUserId) setMyUserId(session.user.id);
       return { id: session.user.id };
     }
@@ -2611,52 +2730,74 @@ function BattleArenaContent() {
   const sendChatContent = useCallback(async (content: string) => {
     const trimmed = content.trim();
     if (!trimmed || !battleId) return;
-    const actor = await readCurrentSessionUser();
-    const actorUserId = actor?.id ?? (battleGuestId || getBattleGuestId());
-    if (!battleGuestId && actorUserId.startsWith("guest-")) setBattleGuestId(actorUserId);
+    const optimisticUserId = currentSessionUserIdRef.current || myUserId || battleGuestId || getBattleGuestId();
+    if (!battleGuestId && optimisticUserId.startsWith("guest-")) setBattleGuestId(optimisticUserId);
 
-    const senderType: SenderType =
-      actorUserId === battle?.fighter_a_user_id
+    const optimisticSenderType: SenderType =
+      optimisticUserId === battle?.fighter_a_user_id
         ? "fighter_a"
-        : actorUserId === battle?.fighter_b_user_id
+        : optimisticUserId === battle?.fighter_b_user_id
           ? "fighter_b"
           : "audience";
-    const senderName =
-      senderType === "fighter_a"
+    const optimisticSenderName =
+      optimisticSenderType === "fighter_a"
         ? battle?.fighter_a_name || myDisplayName
-        : senderType === "fighter_b"
+        : optimisticSenderType === "fighter_b"
           ? battle?.fighter_b_name || myDisplayName
-          : actorUserId.startsWith("guest-")
-            ? battleGuestDisplayName(actorUserId)
+          : optimisticUserId.startsWith("guest-")
+            ? battleGuestDisplayName(optimisticUserId)
             : myDisplayName;
-
     const localMessage: ChatMessage = {
       id: `local-${Date.now()}`,
       battle_id: battleId,
-      user_id: actorUserId,
-      sender_type: senderType,
+      user_id: optimisticUserId,
+      sender_type: optimisticSenderType,
       content: trimmed,
       created_at: new Date().toISOString(),
-      display_name: senderName || "AIPOGER 觀眾",
+      display_name: optimisticSenderName || "AIPOGER 觀眾",
     };
     fireDanmaku(localMessage);
 
-    if (battleId.startsWith("mock-") || isAuthBypassEnabled || battle?.arena_kind === "queue" || actorUserId.startsWith("guest-")) {
+    void (async () => {
+      const actor = await readCurrentSessionUser();
+      const actorUserId = actor?.id ?? optimisticUserId;
+      if (!battleGuestId && actorUserId.startsWith("guest-")) setBattleGuestId(actorUserId);
+      const senderType: SenderType =
+        actorUserId === battle?.fighter_a_user_id
+          ? "fighter_a"
+          : actorUserId === battle?.fighter_b_user_id
+            ? "fighter_b"
+            : "audience";
+      const broadcastMessage: ChatMessage = {
+        ...localMessage,
+        user_id: actorUserId,
+        sender_type: senderType,
+      };
+
+      if (battleId.startsWith("mock-") || isAuthBypassEnabled || battle?.arena_kind === "queue" || actorUserId.startsWith("guest-")) {
+        void mockSyncChannelRef.current?.send({
+          type: "broadcast",
+          event: "chat",
+          payload: { message: broadcastMessage },
+        });
+        return;
+      }
+
+      await supabase.from("chat_messages").insert({
+        battle_id: battleId,
+        user_id: actorUserId,
+        sender_type: senderType,
+        content: trimmed,
+      });
+    })().catch((err) => {
+      console.warn("[battle chat send]", err);
       void mockSyncChannelRef.current?.send({
         type: "broadcast",
         event: "chat",
         payload: { message: localMessage },
       });
-      return;
-    }
-
-    await supabase.from("chat_messages").insert({
-      battle_id: battleId,
-      user_id: actorUserId,
-      sender_type: senderType,
-      content: trimmed,
     });
-  }, [battle, battleGuestId, battleId, fireDanmaku, myDisplayName, readCurrentSessionUser]);
+  }, [battle, battleGuestId, battleId, fireDanmaku, myDisplayName, myUserId, readCurrentSessionUser]);
 
   // ── 發送訊息 ──────────────────────────────────────────
   const handleSend = async (event: FormEvent<HTMLFormElement>) => {
@@ -2802,6 +2943,25 @@ function BattleArenaContent() {
     router.push(href);
   }, [rematchClaim?.claimId, rematchClaim?.claimWindowEndsAt, rematchClaim?.status, rematchNowMs, router]);
 
+  useEffect(() => {
+    if (!battleId || loading || battleId.startsWith("mock-") || isAuthBypassEnabled) return;
+    const channel = supabase
+      .channel(`drop-rematch-claims-${battleId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "drop_battle_rematch_claims", filter: `source_battle_id=eq.${battleId}` },
+        (payload) => {
+          const next = payload.new as Partial<DropRematchClaimRow> | null;
+          if (!next?.id || next.winner_side !== "fighter_a" && next.winner_side !== "fighter_b") return;
+          applyRematchClaim(rematchClaimFromRow(next as DropRematchClaimRow, battle?.genre || "AI Music"));
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [applyRematchClaim, battle?.genre, battleId, loading]);
+
   const queueResultFallback = useCallback(
     (delayMs = 1200) => {
       const href = battleResultHrefRef.current;
@@ -2817,7 +2977,7 @@ function BattleArenaContent() {
   );
 
   useEffect(() => {
-    if (loading || !battle || battle.arena_kind === "queue" || !playedDecks.A || !playedDecks.B || voteOpen) return;
+    if (loading || !battle || battle.arena_kind === "queue" || !playedDecks.A || !playedDecks.B || voteOpen || !rematchPromptReady || winnerRevealOpen) return;
     if (battleId.startsWith("mock-") || isAuthBypassEnabled) return;
     const winnerSideForWindow = pick90sBattleWinner(votes, battleId, firstDeck);
     if (!winnerSideForWindow || votes.fighter_a + votes.fighter_b <= 0) return;
@@ -2827,19 +2987,19 @@ function BattleArenaContent() {
     setRematchError(null);
     void openDropRematchWindowIntent({ battleId, winnerSide: winnerSideForWindow })
       .then((claim) => {
-        if (rematchFallbackTimerRef.current != null) {
-          window.clearTimeout(rematchFallbackTimerRef.current);
-          rematchFallbackTimerRef.current = null;
-        }
-        setRematchClaim(claim);
-        if (claim.nextBattleId) router.push(`/battle/${claim.nextBattleId}?lang=${lang}`);
+        applyRematchClaim(claim);
+        void mockSyncChannelRef.current?.send({
+          type: "broadcast",
+          event: "rematch-open",
+          payload: { claim },
+        });
       })
       .catch((err) => {
         const message = err instanceof Error ? err.message : String(err);
         if (!/No valid rematch window|not found/i.test(message)) setRematchError(message);
         queueResultFallback(/No valid rematch window|not found/i.test(message) ? 700 : 1400);
       });
-  }, [battle, battleId, firstDeck, lang, loading, playedDecks.A, playedDecks.B, queueResultFallback, router, voteOpen, votes]);
+  }, [applyRematchClaim, battle, battleId, firstDeck, loading, playedDecks.A, playedDecks.B, queueResultFallback, rematchPromptReady, voteOpen, votes, winnerRevealOpen]);
 
   useEffect(() => {
     if (!rematchClaim || !["open", "claimed"].includes(rematchClaim.status)) return;
@@ -2847,16 +3007,15 @@ function BattleArenaContent() {
     const timer = window.setInterval(() => {
       void openDropRematchWindowIntent({ battleId: rematchClaim.sourceBattleId, winnerSide: rematchClaim.winnerSide })
         .then((claim) => {
-          setRematchClaim(claim);
-          if (claim.nextBattleId) router.push(`/battle/${claim.nextBattleId}?lang=${lang}`);
+          applyRematchClaim(claim);
         })
         .catch((err) => {
           const message = err instanceof Error ? err.message : String(err);
           if (!/No valid rematch window|not found/i.test(message)) setRematchError(message);
         });
-    }, 2000);
+    }, 800);
     return () => window.clearInterval(timer);
-  }, [battleId, lang, rematchClaim, router]);
+  }, [applyRematchClaim, battleId, rematchClaim]);
 
   const handleClaimRematch = useCallback(async () => {
     if (!rematchClaim || rematchBusy) return;
@@ -2882,6 +3041,11 @@ function BattleArenaContent() {
         lang,
       });
       setRematchClaim(result.claim);
+      void mockSyncChannelRef.current?.send({
+        type: "broadcast",
+        event: "rematch-claim",
+        payload: { claim: result.claim },
+      });
       router.push(result.uploadUrl);
     } catch (err) {
       setRematchError(err instanceof Error ? err.message : String(err));
@@ -3504,20 +3668,20 @@ function BattleArenaContent() {
               {lyricA || t("battle_lyrics_empty")}
             </div>
             <div className="mt-1 flex flex-col gap-1 pb-0.5 pt-0.5">
-              <div className="flex w-full justify-start pr-8">
+              <div className="flex w-full justify-start">
                 <VoteHeartButton
                   selected={hasVoted === "fighter_a"}
                   voteLocked={!voteOpen}
                   onVote={() => handleVote("fighter_a")}
+                  label={
+                    showFinalVoteStats
+                      ? t("battle_deck_vote_line", { n: votes.fighter_a })
+                      : lang === "zh"
+                        ? "投票請按愛心"
+                        : "Vote With the Heart"
+                  }
                 />
               </div>
-              <p className="w-full text-[11px] font-black text-zinc-500">
-                {showFinalVoteStats
-                  ? t("battle_deck_vote_line", { n: votes.fighter_a })
-                  : lang === "zh"
-                    ? "投票請按愛心"
-                    : "Vote With the Heart"}
-              </p>
             </div>
           </div>
 
@@ -3760,7 +3924,7 @@ function BattleArenaContent() {
                   </button>
                 ))}
               </div>
-              {battlePlaybackComplete && !voteOpen && hasResultWinner && battleResultHref && (
+              {battlePlaybackComplete && !voteOpen && hasResultWinner && battleResultHref && (isMockBattle || isAuthBypassEnabled || rematchExpired) && (
                 <Link
                   href={battleResultHref}
                   className="relative mt-3 inline-flex items-center justify-center rounded-full border border-orange-300/45 bg-orange-500 px-4 py-2 text-[12px] font-black tracking-[0.12em] text-black shadow-[0_0_24px_rgba(255,106,0,0.24)] transition hover:bg-orange-300"
@@ -3804,20 +3968,20 @@ function BattleArenaContent() {
               {lyricB || t("battle_lyrics_empty")}
             </div>
             <div className="mt-1 flex flex-col gap-1 pb-0.5 pt-0.5">
-              <div className="flex w-full justify-end pl-8">
+              <div className="flex w-full justify-end">
                 <VoteHeartButton
                   selected={hasVoted === "fighter_b"}
                   voteLocked={!voteOpen}
                   onVote={() => handleVote("fighter_b")}
+                  label={
+                    showFinalVoteStats
+                      ? t("battle_deck_vote_line", { n: votes.fighter_b })
+                      : lang === "zh"
+                        ? "投票請按愛心"
+                        : "Vote With the Heart"
+                  }
                 />
               </div>
-              <p className="w-full text-right text-[11px] font-black text-zinc-500">
-                {showFinalVoteStats
-                  ? t("battle_deck_vote_line", { n: votes.fighter_b })
-                  : lang === "zh"
-                    ? "投票請按愛心"
-                    : "Vote With the Heart"}
-              </p>
             </div>
           </div>
         </section>
