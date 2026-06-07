@@ -27,9 +27,14 @@ type HookBattleRow = {
   battle_started_at?: string | null;
   battle_ended_at?: string | null;
   battle_number?: string | null;
+  result_archived_at?: string | null;
+  ai_tool_a?: string | null;
+  ai_tool_b?: string | null;
+  winner?: string | null;
 };
 
 type VoteRow = { voted_for: string | null };
+const missingGuestVoteTablePattern = /battle_guest_votes|schema cache|relation.*does not exist|Could not find the table|PGRST205/i;
 
 type DailyBattleRow = {
   id: string;
@@ -274,7 +279,7 @@ async function settleStaleHookBattles(admin: SupabaseAdmin, warnings: string[]) 
   let { data, error } = await admin
     .from("battles")
     .select(
-      "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,status,created_at,scheduled_start_at,started_at,battle_started_at,battle_ended_at,battle_number",
+      "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,status,created_at,scheduled_start_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner",
     )
     .in("status", ["live", "active", "ghost_battle", "public_voting"])
     .is("battle_ended_at", null)
@@ -286,7 +291,7 @@ async function settleStaleHookBattles(admin: SupabaseAdmin, warnings: string[]) 
     const legacyRead = await admin
       .from("battles")
       .select(
-        "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,status,created_at,started_at,battle_started_at,battle_ended_at,battle_number",
+        "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,status,created_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner",
       )
       .in("status", ["live", "active", "ghost_battle", "public_voting"])
       .is("battle_ended_at", null)
@@ -307,17 +312,13 @@ async function settleStaleHookBattles(admin: SupabaseAdmin, warnings: string[]) 
   for (const battle of rows) {
     if (!isDropBattleEndedOrPastExpectedEnd(battle)) continue;
 
-    const { data: votes, error: voteError } = await admin
-      .from("battle_votes")
-      .select("voted_for")
-      .eq("battle_id", battle.id);
-
-    if (voteError) {
-      warnings.push(`90s votes ${battle.id}: ${voteError.message}`);
+    const voteRead = await readCombined90sVotes(admin, battle.id);
+    if (voteRead.error) {
+      warnings.push(`90s votes ${battle.id}: ${voteRead.error}`);
       continue;
     }
 
-    const counts = countSides((votes ?? []) as VoteRow[]);
+    const counts = voteRead.counts;
     const winner = pick90sBattleWinner(counts, battle.id);
     if (!winner) {
       await expireHookBattle(admin, battle, warnings, counts);
@@ -387,6 +388,34 @@ function countSides(votes: VoteRow[]) {
     },
     { fighter_a: 0, fighter_b: 0 },
   );
+}
+
+async function readCombined90sVotes(admin: SupabaseAdmin, battleId: string) {
+  const { data: votes, error: voteError } = await admin
+    .from("battle_votes")
+    .select("voted_for")
+    .eq("battle_id", battleId);
+  if (voteError) return { counts: { fighter_a: 0, fighter_b: 0 }, error: voteError.message };
+
+  const counts = countSides((votes ?? []) as VoteRow[]);
+  const { data: guestVotes, error: guestVoteError } = await admin
+    .from("battle_guest_votes")
+    .select("voted_for")
+    .eq("battle_id", battleId);
+  if (guestVoteError) {
+    const msg = `${guestVoteError.message ?? ""} ${guestVoteError.details ?? ""}`;
+    if (!missingGuestVoteTablePattern.test(msg)) return { counts, error: guestVoteError.message };
+    return { counts, error: null };
+  }
+
+  const guestCounts = countSides((guestVotes ?? []) as VoteRow[]);
+  return {
+    counts: {
+      fighter_a: counts.fighter_a + guestCounts.fighter_a,
+      fighter_b: counts.fighter_b + guestCounts.fighter_b,
+    },
+    error: null,
+  };
 }
 
 async function notifyHookBattleResult(
@@ -463,9 +492,87 @@ async function archiveHookBattleResult(
       settledAt: new Date().toISOString(),
     },
   });
-  if (archive.error && !/schema cache|does not exist|function.*does not exist/i.test(archive.error.message)) {
-    warnings.push(`archive 90s ${battle.id}: ${archive.error.message}`);
+  if (!archive.error) return;
+
+  const direct = await archiveHookBattleResultDirect(admin, battle, winner, counts);
+  if (direct.error) {
+    warnings.push(`archive 90s ${battle.id}: ${archive.error.message}; direct archive: ${direct.error}`);
   }
+}
+
+async function archiveHookBattleResultDirect(
+  admin: SupabaseAdmin,
+  battle: HookBattleRow,
+  winner: "fighter_a" | "fighter_b",
+  counts: { fighter_a: number; fighter_b: number },
+) {
+  const fresh = await admin
+    .from("battles")
+    .select(
+      "id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,battle_number,ai_tool_a,ai_tool_b,winner",
+    )
+    .eq("id", battle.id)
+    .maybeSingle();
+
+  if (fresh.error && !/schema cache|does not exist|Could not find/i.test(fresh.error.message)) {
+    return { error: fresh.error.message };
+  }
+
+  const row = ((fresh.data as HookBattleRow | null) ?? battle) as HookBattleRow;
+  const battleNumber = Number(row.battle_number ?? battle.battle_number);
+  if (!Number.isFinite(battleNumber) || battleNumber <= 0) {
+    return { error: "missing battle_number for direct archive" };
+  }
+
+  const effectiveWinner = row.winner === "fighter_a" || row.winner === "fighter_b" ? row.winner : winner;
+  const winnerIsA = effectiveWinner === "fighter_a";
+  const now = new Date().toISOString();
+  const totalVotes = Math.max(0, counts.fighter_a) + Math.max(0, counts.fighter_b);
+  const audienceReview = winnerIsA
+    ? `${row.fighter_a_name} 以 ${counts.fighter_a}:${counts.fighter_b} 拿下這場 Drop Battle。`
+    : `${row.fighter_b_name} 以 ${counts.fighter_b}:${counts.fighter_a} 拿下這場 Drop Battle。`;
+
+  const upsert = await admin
+    .from("battle_result_archives")
+    .upsert(
+      {
+        battle_id: battle.id,
+        battle_number: battleNumber,
+        battle_code: `AIPO-${String(battleNumber).padStart(6, "0")}`,
+        winner: effectiveWinner,
+        winner_user_id: winnerIsA ? row.fighter_a_user_id : row.fighter_b_user_id,
+        winner_name: winnerIsA ? row.fighter_a_name : row.fighter_b_name,
+        winner_song_name: winnerIsA ? row.song_a_name : row.song_b_name,
+        winner_ai_tool: winnerIsA ? row.ai_tool_a ?? null : row.ai_tool_b ?? null,
+        opponent_user_id: winnerIsA ? row.fighter_b_user_id : row.fighter_a_user_id,
+        opponent_name: winnerIsA ? row.fighter_b_name : row.fighter_a_name,
+        opponent_song_name: winnerIsA ? row.song_b_name : row.song_a_name,
+        final_vote_left: Math.max(0, counts.fighter_a),
+        final_vote_right: Math.max(0, counts.fighter_b),
+        total_votes: totalVotes,
+        audience_review: audienceReview,
+        result_payload: {
+          source: "cron-direct-fallback",
+          votesA: counts.fighter_a,
+          votesB: counts.fighter_b,
+          settledAt: now,
+        },
+        archived_at: now,
+      },
+      { onConflict: "battle_id" },
+    );
+
+  if (upsert.error) return { error: upsert.error.message };
+
+  const marked = await admin
+    .from("battles")
+    .update({ result_archived_at: now, winner: effectiveWinner, status: "finished", updated_at: now })
+    .eq("id", battle.id);
+  if (marked.error && !/schema cache|does not exist|Could not find/i.test(marked.error.message)) {
+    return { error: marked.error.message };
+  }
+
+  return { error: null };
 }
 
 async function recordHookBattleHistory(

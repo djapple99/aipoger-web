@@ -9,6 +9,7 @@ import {
 
 type VoteRow = { voted_for: string | null };
 type SupabaseAdmin = SupabaseClient;
+const missingGuestVoteTablePattern = /battle_guest_votes|schema cache|relation.*does not exist|Could not find the table|PGRST205/i;
 
 type BattleRow = {
   id: string;
@@ -57,6 +58,34 @@ function countSides(votes: VoteRow[]) {
     },
     { fighter_a: 0, fighter_b: 0 },
   );
+}
+
+async function readCombined90sVotes(admin: SupabaseAdmin, battleId: string) {
+  const { data: votes, error: voteError } = await admin
+    .from("battle_votes")
+    .select("voted_for")
+    .eq("battle_id", battleId);
+  if (voteError) return { counts: { fighter_a: 0, fighter_b: 0 }, error: voteError.message };
+
+  const counts = countSides((votes ?? []) as VoteRow[]);
+  const { data: guestVotes, error: guestVoteError } = await admin
+    .from("battle_guest_votes")
+    .select("voted_for")
+    .eq("battle_id", battleId);
+  if (guestVoteError) {
+    const msg = `${guestVoteError.message ?? ""} ${guestVoteError.details ?? ""}`;
+    if (!missingGuestVoteTablePattern.test(msg)) return { counts, error: guestVoteError.message };
+    return { counts, error: null };
+  }
+
+  const guestCounts = countSides((guestVotes ?? []) as VoteRow[]);
+  return {
+    counts: {
+      fighter_a: counts.fighter_a + guestCounts.fighter_a,
+      fighter_b: counts.fighter_b + guestCounts.fighter_b,
+    },
+    error: null,
+  };
 }
 
 function serializeClaim(claim: RematchClaimRow, battle: BattleRow) {
@@ -123,13 +152,10 @@ export async function POST(request: NextRequest) {
     return jsonError("Battle is not a complete 90s Drop Battle", 409);
   }
 
-  const { data: votes, error: voteError } = await admin
-    .from("battle_votes")
-    .select("voted_for")
-    .eq("battle_id", battle.id);
-  if (voteError) return jsonError(voteError.message, 500);
+  const voteRead = await readCombined90sVotes(admin, battle.id);
+  if (voteRead.error) return jsonError(voteRead.error, 500);
 
-  const counts = countSides((votes ?? []) as VoteRow[]);
+  const counts = voteRead.counts;
   const totalVotes = counts.fighter_a + counts.fighter_b;
   const winner = pick90sBattleWinner(counts, battle.id);
   if (!canOpenDropRematchWindow({ winner, totalVotes, battleType: battle.battle_type })) {

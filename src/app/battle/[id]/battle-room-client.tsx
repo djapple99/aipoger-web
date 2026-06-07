@@ -28,6 +28,7 @@ import {
 import { battleSeedForId, pick90sBattleWinner } from "@/lib/battle-90s-system";
 import { rematchDeadlineSecondsLeft } from "@/lib/drop-battle-rematch";
 import { rememberAuthNextPath } from "@/lib/auth-urls";
+import { battleGuestDisplayName, getBattleGuestId } from "@/lib/battle-guest";
 import type { User } from "@supabase/supabase-js";
 
 type SenderType = "audience" | "fighter_a" | "fighter_b";
@@ -91,6 +92,10 @@ type QueueArenaRow = {
   cancellation_evaluation_at?: string | null;
   created_at: string | null;
 };
+
+type BattleLinkResolutionPayload =
+  | { action: "stay"; reason?: string }
+  | { action: "redirect"; href: string; reason?: string };
 
 type VoteCount = { fighter_a: number; fighter_b: number };
 type DeckKey = "A" | "B";
@@ -841,6 +846,7 @@ function BattleArenaContent() {
   const [founderCancelError, setFounderCancelError] = useState<string | null>(null);
   const [myUserId, setMyUserId] = useState<string>("");
   const [myDisplayName, setMyDisplayName] = useState<string>("我");
+  const [battleGuestId, setBattleGuestId] = useState("");
   const [audioUrls, setAudioUrls] = useState<{ A: string | null; B: string | null }>({ A: null, B: null });
   const [coverDisplayA, setCoverDisplayA] = useState<string | null>(null);
   const [coverDisplayB, setCoverDisplayB] = useState<string | null>(null);
@@ -903,6 +909,10 @@ function BattleArenaContent() {
     (preStartSecondsLeft ?? 0) <= FINAL_PRESTART_HYPE_SECONDS;
   const renderPreBattleAd = isArenaWarmup && (isQueueArena || (preStartSecondsLeft ?? 0) > 0);
   const showPreBattleAd = isArenaWarmup && (isQueueArena || (preStartSecondsLeft ?? 0) > PRE_BATTLE_AD_FADE_OUT_SECONDS);
+
+  useEffect(() => {
+    setBattleGuestId(getBattleGuestId());
+  }, []);
 
   const clampAdVideoPosition = useCallback((x: number, y: number) => {
     if (typeof window === "undefined") return { x, y };
@@ -1451,6 +1461,16 @@ function BattleArenaContent() {
         }
 
         if (queueRow?.id) {
+          if (!isDropChallengeAcceptable({
+            status: queueRow.status,
+            scheduled_start_at: queueRow.scheduled_start_at,
+            cancellation_evaluation_at: queueRow.cancellation_evaluation_at,
+            expires_at: queueRow.expires_at,
+          })) {
+            router.replace(`/listen-bar?lang=${lang}`);
+            return;
+          }
+
           const [{ data: fighterProfile }, { data: userProfile }] = queueRow.user_id
             ? await Promise.all([
                 supabase.from("fighter_profiles").select("avatar_url, song_cover_url").eq("id", queueRow.user_id).maybeSingle(),
@@ -1508,6 +1528,20 @@ function BattleArenaContent() {
       }
 
       const bdata = data as BattleData;
+      if (!battleId.startsWith("mock-") && !isAuthBypassEnabled) {
+        const resolutionResponse = await fetch(
+          `/api/battle-pool/resolve-battle-link?battleId=${encodeURIComponent(battleId)}&lang=${lang}`,
+          { cache: "no-store" },
+        ).catch(() => null);
+        if (resolutionResponse?.ok) {
+          const resolution = (await resolutionResponse.json().catch(() => null)) as BattleLinkResolutionPayload | null;
+          if (resolution?.action === "redirect" && resolution.href) {
+            router.replace(resolution.href);
+            return;
+          }
+        }
+      }
+
       // 同步載入兩邊的 fighter_profiles（頭像 + 封面；必須取 .data）
       const [{ data: rowA }, { data: rowB }, { data: profA }, { data: profB }] = await Promise.all([
         supabase.from("fighter_profiles").select("avatar_url, song_cover_url").eq("id", bdata.fighter_a_user_id).maybeSingle(),
@@ -1817,14 +1851,36 @@ function BattleArenaContent() {
         .select("voted_for, user_id")
         .eq("battle_id", battleId);
 
-      if (voteData) {
-        setVotes({
-          fighter_a: voteData.filter((v) => v.voted_for === "fighter_a").length,
-          fighter_b: voteData.filter((v) => v.voted_for === "fighter_b").length,
-        });
-        const myVote = voteData.find((v) => v.user_id === myUserId);
-        if (myVote) setHasVoted(myVote.voted_for as "fighter_a" | "fighter_b");
+      let guestCounts = { fighter_a: 0, fighter_b: 0 };
+      let guestVote: "fighter_a" | "fighter_b" | null = null;
+      if (battleGuestId) {
+        const guestState = await fetch(
+          `/api/battle-pool/guest-vote?battleId=${encodeURIComponent(battleId)}&guestId=${encodeURIComponent(battleGuestId)}`,
+          { cache: "no-store" },
+        )
+          .then((res) => (res.ok ? res.json() : null))
+          .catch(() => null) as
+          | { counts?: { fighter_a?: number; fighter_b?: number }; guestVote?: "fighter_a" | "fighter_b" | null }
+          | null;
+        guestCounts = {
+          fighter_a: Math.max(0, Number(guestState?.counts?.fighter_a) || 0),
+          fighter_b: Math.max(0, Number(guestState?.counts?.fighter_b) || 0),
+        };
+        guestVote = guestState?.guestVote ?? null;
       }
+
+      const signedRows = voteData ?? [];
+      const signedCounts = {
+        fighter_a: signedRows.filter((v) => v.voted_for === "fighter_a").length,
+        fighter_b: signedRows.filter((v) => v.voted_for === "fighter_b").length,
+      };
+      setVotes({
+        fighter_a: signedCounts.fighter_a + guestCounts.fighter_a,
+        fighter_b: signedCounts.fighter_b + guestCounts.fighter_b,
+      });
+      const myVote = signedRows.find((v) => v.user_id === myUserId);
+      if (myVote) setHasVoted(myVote.voted_for as "fighter_a" | "fighter_b");
+      else if (!myUserId && guestVote) setHasVoted(guestVote);
     };
 
     void loadVotes();
@@ -1839,11 +1895,22 @@ function BattleArenaContent() {
         },
       )
       .subscribe();
+    const guestChannel = supabase
+      .channel(`battle-guest-votes-${battleId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "battle_guest_votes", filter: `battle_id=eq.${battleId}` },
+        () => {
+          void loadVotes();
+        },
+      )
+      .subscribe();
 
     return () => {
       void supabase.removeChannel(channel);
+      void supabase.removeChannel(guestChannel);
     };
-  }, [battleId, loading, myUserId]);
+  }, [battleGuestId, battleId, loading, myUserId]);
 
   useEffect(() => {
     setPlayedDecks({ A: false, B: false });
@@ -2486,7 +2553,7 @@ function BattleArenaContent() {
     };
   }, [battleId, fireDanmaku, fireHypeReaction, handleFeedbackTap, pushResultForEveryone]);
 
-  const requireInteractionLogin = useCallback(async () => {
+  const readCurrentSessionUser = useCallback(async () => {
     if (battleId.startsWith("mock-") || isAuthBypassEnabled) return { id: myUserId || "mock-audience" };
     const {
       data: { session },
@@ -2495,18 +2562,15 @@ function BattleArenaContent() {
       if (!myUserId) setMyUserId(session.user.id);
       return { id: session.user.id };
     }
-    const nextPath = currentReturnPath();
-    rememberAuthNextPath(nextPath);
-    router.push(`/auth?next=${encodeURIComponent(nextPath)}`);
     return null;
-  }, [battleId, myUserId, router]);
+  }, [battleId, myUserId]);
 
   const sendChatContent = useCallback(async (content: string) => {
     const trimmed = content.trim();
     if (!trimmed || !battleId) return;
-    const actor = await requireInteractionLogin();
-    if (!actor) return;
-    const actorUserId = actor.id;
+    const actor = await readCurrentSessionUser();
+    const actorUserId = actor?.id ?? (battleGuestId || getBattleGuestId());
+    if (!battleGuestId && actorUserId.startsWith("guest-")) setBattleGuestId(actorUserId);
 
     const senderType: SenderType =
       actorUserId === battle?.fighter_a_user_id
@@ -2519,7 +2583,9 @@ function BattleArenaContent() {
         ? battle?.fighter_a_name || myDisplayName
         : senderType === "fighter_b"
           ? battle?.fighter_b_name || myDisplayName
-          : myDisplayName;
+          : actorUserId.startsWith("guest-")
+            ? battleGuestDisplayName(actorUserId)
+            : myDisplayName;
 
     const localMessage: ChatMessage = {
       id: `local-${Date.now()}`,
@@ -2532,7 +2598,7 @@ function BattleArenaContent() {
     };
     fireDanmaku(localMessage);
 
-    if (battleId.startsWith("mock-") || isAuthBypassEnabled || battle?.arena_kind === "queue") {
+    if (battleId.startsWith("mock-") || isAuthBypassEnabled || battle?.arena_kind === "queue" || actorUserId.startsWith("guest-")) {
       void mockSyncChannelRef.current?.send({
         type: "broadcast",
         event: "chat",
@@ -2547,7 +2613,7 @@ function BattleArenaContent() {
       sender_type: senderType,
       content: trimmed,
     });
-  }, [battle, battleId, fireDanmaku, myDisplayName, requireInteractionLogin]);
+  }, [battle, battleGuestId, battleId, fireDanmaku, myDisplayName, readCurrentSessionUser]);
 
   // ── 發送訊息 ──────────────────────────────────────────
   const handleSend = async (event: FormEvent<HTMLFormElement>) => {
@@ -2564,8 +2630,7 @@ function BattleArenaContent() {
     if (hasVoted === target) {
       return;
     }
-    const actor = await requireInteractionLogin();
-    if (!actor) return;
+    const actor = await readCurrentSessionUser();
     const previousVote = hasVoted;
 
     if (battleId.startsWith("mock-") || isAuthBypassEnabled) {
@@ -2575,6 +2640,26 @@ function BattleArenaContent() {
         next[target] += 1;
         return next;
       });
+      setHasVoted(target);
+      return;
+    }
+
+    if (!actor?.id) {
+      const guestId = battleGuestId || getBattleGuestId();
+      if (!battleGuestId) setBattleGuestId(guestId);
+      const response = await fetch("/api/battle-pool/guest-vote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ battleId, guestId, votedFor: target }),
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | { error?: string; counts?: { fighter_a: number; fighter_b: number } }
+        | null;
+      if (!response.ok) {
+        alert(payload?.error ?? (lang === "zh" ? "投票失敗，請稍後再試。" : "Vote failed. Try again."));
+        return;
+      }
+      if (payload?.counts) setVotes(payload.counts);
       setHasVoted(target);
       return;
     }
@@ -3462,16 +3547,30 @@ function BattleArenaContent() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => playTeaser("B")}
-                      disabled={!audioUrls.B || isQueueArena}
-                      className="rounded-2xl border border-red-200/70 bg-red-600 px-3 py-3 text-left text-white shadow-[0_0_24px_rgba(220,38,38,0.22)] transition hover:border-white hover:bg-red-500 disabled:cursor-not-allowed disabled:border-cyan-200/25 disabled:bg-cyan-400/10 disabled:text-cyan-50 disabled:opacity-55"
+                      onClick={() => {
+                        if (isQueueChallengeOpen && !isBattleFounder) {
+                          router.push(`/battle/accept/${encodeURIComponent(battleId)}?lang=${lang}`);
+                          return;
+                        }
+                        playTeaser("B");
+                      }}
+                      disabled={!isQueueChallengeOpen && !audioUrls.B}
+                      className={`rounded-2xl border px-3 py-3 text-left text-white transition ${
+                        isQueueChallengeOpen
+                          ? "border-cyan-100/85 bg-cyan-400/22 shadow-[0_0_34px_rgba(103,232,249,0.38)] hover:border-white hover:bg-cyan-300/28"
+                          : "border-red-200/70 bg-red-600 shadow-[0_0_24px_rgba(220,38,38,0.22)] hover:border-white hover:bg-red-500 disabled:cursor-not-allowed disabled:border-cyan-200/25 disabled:bg-cyan-400/10 disabled:text-cyan-50 disabled:opacity-55"
+                      }`}
                     >
                       <p className="truncate text-[11px] font-black text-white/82">{battle.fighter_b_name}</p>
                       <p className="mt-1 text-sm font-black tracking-[0.06em] text-white">
                         {isQueueArena
                           ? lang === "zh"
-                            ? "等挑戰者"
-                            : "WAITING"
+                            ? isQueueChallengeOpen && !isBattleFounder
+                              ? "點我挑戰"
+                              : "等待挑戰者"
+                            : isQueueChallengeOpen && !isBattleFounder
+                              ? "CHALLENGE"
+                              : "WAITING"
                           : teaserDeck === "B"
                             ? lang === "zh"
                               ? `預播中 ${teaserSecondsLeft}秒`

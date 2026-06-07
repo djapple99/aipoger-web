@@ -64,6 +64,10 @@ const {
   rematchDeadlineSecondsLeft,
 } = await import("../src/lib/drop-battle-rematch.ts");
 
+const {
+  resolveDropBattleLinkResolution,
+} = await import("../src/lib/drop-battle-link-resolution.ts");
+
 test("battle economy uses stake based rewards", () => {
   assert.equal(BATTLE_POINT_REWARDS.stageOneStake, 200);
   assert.equal(BATTLE_POINT_REWARDS.stageTwoStake, 300);
@@ -503,4 +507,61 @@ test("drop rematch upload URL preserves defender queue and previous genre", () =
   assert.equal(params.get("defenderUserId"), "winner-user-id");
   assert.equal(params.get("genre"), "動感電音");
   assert.equal(params.get("instantPairing"), "auto");
+});
+
+test("ended drop battle links redirect to listen bar unless rematch is still active", () => {
+  const now = Date.UTC(2026, 5, 7, 12, 0, 0);
+  const endedBattle = {
+    status: "finished",
+    battle_type: "formal",
+    battle_ended_at: new Date(now - 10_000).toISOString(),
+  };
+
+  assert.deepEqual(
+    resolveDropBattleLinkResolution({ battle: endedBattle, lang: "zh", nowMs: now }),
+    { action: "redirect", href: "/listen-bar?lang=zh", reason: "ended_to_listen_bar" },
+  );
+
+  assert.deepEqual(
+    resolveDropBattleLinkResolution({
+      battle: endedBattle,
+      claim: {
+        status: "open",
+        claim_window_ends_at: new Date(now + 5_000).toISOString(),
+      },
+      lang: "zh",
+      nowMs: now,
+    }),
+    { action: "stay", reason: "active_rematch" },
+  );
+
+  assert.deepEqual(
+    resolveDropBattleLinkResolution({
+      battle: endedBattle,
+      claim: {
+        status: "claimed",
+        upload_deadline_at: new Date(now + 60_000).toISOString(),
+      },
+      lang: "en",
+      nowMs: now,
+    }),
+    { action: "stay", reason: "active_rematch" },
+  );
+
+  assert.deepEqual(
+    resolveDropBattleLinkResolution({
+      battle: endedBattle,
+      claim: {
+        status: "uploaded",
+        next_battle_id: "11111111-1111-4111-8111-111111111111",
+      },
+      lang: "zh",
+      nowMs: now,
+    }),
+    {
+      action: "redirect",
+      href: "/battle/11111111-1111-4111-8111-111111111111?lang=zh",
+      reason: "next_rematch_battle",
+    },
+  );
 });

@@ -60,7 +60,12 @@ Check:
 - Public challenge cards render on the Battle page.
 - The same battle/match group renders only once in the public Battle Pool.
 - Share links from a Drop Battle card or live battle open `/battle/[id]` directly, not the Battle Pool.
+- Logged-out visitors can enter a Battle arena link, vote, send arena danmaku, and tap feedback/reaction buttons.
+- Logged-out visitors who try to accept/challenge a Battle card are sent to sign in before challenger upload.
+- Bar Heartbreak reactions/comments/uploads/removals still require sign-in.
 - Legacy `/battle?focusBattle=...` and `/battle?focusQueue=...` links redirect to `/battle/[id]`.
+- Ended `/battle/[id]` links with no active rematch redirect to `/listen-bar`.
+- Ended `/battle/[id]` links with active or uploaded rematch stay in the battle flow.
 - Accepting a challenge card respects genre and ownership rules.
 - Both participants can cancel an unfinished Drop Battle when the user is eligible.
 - Quick start labels and stored start times are based on successful publish time, not a stale `expires_at`.
