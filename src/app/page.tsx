@@ -372,7 +372,7 @@ export default function HomePage() {
   const zhDisplayClass = `${fontGlowSans.className} tracking-[-0.015em]`;
   const zhSerifClass = `${fontSourceSerifTC.className} font-black tracking-[0.012em]`;
   const heroAccentClass = "font-black text-[#f28a2f] drop-shadow-[0_0_15px_rgba(255,106,0,0.2)]";
-  const heroSingleLineClass = "max-w-[min(62rem,calc(100vw-2.5rem))] overflow-hidden text-ellipsis whitespace-nowrap";
+  const heroTextClass = "max-w-[min(62rem,calc(100vw-2.5rem))] whitespace-normal break-words md:overflow-hidden md:text-ellipsis md:whitespace-nowrap";
   const heroChromeShadow = "[text-shadow:0_2px_0_rgba(255,255,255,0.06),0_16px_32px_rgba(0,0,0,0.9),0_0_14px_rgba(255,106,0,0.08)]";
   const musicAnalysisHref = `/music-analysis?lang=${lang}`;
   const statItems = isZh
@@ -468,7 +468,7 @@ export default function HomePage() {
             AIPOGER
           </p>
           <p
-            className={`mt-3 ${heroSingleLineClass} text-[clamp(1.45rem,2.05vw,2.38rem)] leading-[1.38] ${heroAccentClass} ${
+            className={`mt-3 ${heroTextClass} text-[clamp(1.25rem,6vw,1.55rem)] leading-[1.26] md:text-[clamp(1.45rem,2.05vw,2.38rem)] md:leading-[1.38] ${heroAccentClass} ${
               isZh ? zhSerifClass : `${fontGlowSans.className} font-black`
             }`}
           >
@@ -476,7 +476,7 @@ export default function HomePage() {
           </p>
 
           <h1
-            className={`mt-3 max-w-[min(52rem,calc(100vw-2.5rem))] overflow-visible whitespace-nowrap pb-2 pt-0 text-[clamp(4.3rem,6vw,7.15rem)] leading-[1.03] text-[#fffaf1] ${heroChromeShadow} ${
+            className={`mt-3 max-w-[min(52rem,calc(100vw-2.5rem))] overflow-visible whitespace-normal break-words pb-2 pt-0 text-[clamp(3.05rem,15vw,4.35rem)] leading-[0.98] text-[#fffaf1] md:whitespace-nowrap md:text-[clamp(4.3rem,6vw,7.15rem)] md:leading-[1.03] ${heroChromeShadow} ${
               lang === "en"
                 ? `${fontRighteous.className} font-normal`
                 : isZh
@@ -514,7 +514,7 @@ export default function HomePage() {
           </div>
 
           <p
-            className={`mt-3 ${heroSingleLineClass} text-[clamp(1.18rem,1.52vw,1.78rem)] leading-[1.42] ${heroAccentClass} ${
+            className={`mt-3 ${heroTextClass} text-[clamp(1.05rem,5vw,1.32rem)] leading-[1.34] md:text-[clamp(1.18rem,1.52vw,1.78rem)] md:leading-[1.42] ${heroAccentClass} ${
               lang === "en" ? `${fontRighteous.className} font-black` : `${fontGlowSans.className} font-black`
             }`}
           >
