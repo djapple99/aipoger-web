@@ -1865,10 +1865,16 @@ export default function ListenBarPage() {
             <div className="pointer-events-none absolute inset-0 [background:linear-gradient(115deg,rgba(255,106,0,0.14),transparent_35%,rgba(0,202,255,0.08))]" />
             <div className="relative grid min-w-0 gap-6 md:grid-cols-[minmax(18rem,0.98fr)_1.02fr] md:items-start">
               <div className="flex min-w-0 flex-col justify-start gap-4 pt-1 md:pt-3">
-                <div className={`relative mx-auto flex aspect-square w-full max-w-[18.5rem] items-center justify-center rounded-full border border-white/10 bg-[#0a0a0a] shadow-[inset_0_0_70px_rgba(255,255,255,0.055),0_0_52px_rgba(255,106,0,0.16)] sm:max-w-[23rem] sm:shadow-[inset_0_0_70px_rgba(255,255,255,0.055),0_0_90px_rgba(255,106,0,0.18)] ${isPlaying ? "animate-[spin_10s_linear_infinite]" : ""}`}>
+                <div className="relative mx-auto flex aspect-square w-full max-w-[18.5rem] transform-gpu items-center justify-center rounded-full border border-white/10 bg-[#0a0a0a] shadow-[inset_0_0_70px_rgba(255,255,255,0.055),0_0_52px_rgba(255,106,0,0.16)] [backface-visibility:hidden] sm:max-w-[23rem] sm:shadow-[inset_0_0_70px_rgba(255,255,255,0.055),0_0_90px_rgba(255,106,0,0.18)]">
+                  <div
+                    className={`pointer-events-none absolute inset-[-1.5%] rounded-full bg-[conic-gradient(from_90deg,rgba(255,106,0,0),rgba(255,168,76,0.58),rgba(0,202,255,0.2),rgba(255,106,0,0))] opacity-0 blur-[1px] transition-opacity duration-500 ${
+                      isPlaying ? "opacity-60 motion-safe:animate-[spin_18s_linear_infinite]" : ""
+                    }`}
+                    aria-hidden="true"
+                  />
                   <div className="absolute inset-[7%] rounded-full border border-zinc-800" />
                   <div className="absolute inset-[18%] rounded-full border border-zinc-800" />
-                  <div className="absolute inset-[24%] overflow-hidden rounded-full border border-orange-400/34 bg-black/70 shadow-[0_0_42px_rgba(255,106,0,0.15)]">
+                  <div className="absolute inset-[24%] transform-gpu overflow-hidden rounded-full border border-orange-400/34 bg-black/70 shadow-[0_0_42px_rgba(255,106,0,0.15)] [backface-visibility:hidden]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={nowCoverUrl}
