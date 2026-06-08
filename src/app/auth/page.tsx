@@ -271,39 +271,30 @@ function AuthPageInner() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-black p-6 text-white">
-      <div className="w-full max-w-md space-y-8">
+    <div className="flex min-h-screen items-center justify-center bg-black p-5 text-white sm:p-6">
+      <div className="w-full max-w-lg space-y-5">
         <div className="text-center">
-          <div className="mx-auto flex max-w-[240px] justify-center sm:max-w-[280px]">
+          <div className="mx-auto flex max-w-[150px] justify-center sm:max-w-[190px]">
             <Image
               src={AIPOGER_BRAND_LOGO}
               alt={t("home_logo_alt")}
-              width={280}
-              height={280}
+              width={190}
+              height={190}
               priority
-              className="h-auto w-full max-h-[min(88vw,280px)] max-w-[min(88vw,280px)] object-contain sm:max-h-[280px] sm:max-w-[280px]"
+              className="h-auto w-full max-h-[min(42vw,190px)] max-w-[min(42vw,190px)] object-contain sm:max-h-[190px] sm:max-w-[190px]"
             />
           </div>
-          <p className="mt-5 text-xl text-zinc-400 sm:mt-6">{t("login_subtitle")}</p>
-        </div>
-
-        <div className="rounded-3xl border border-zinc-700 bg-zinc-900 p-8 text-sm leading-relaxed">
-          <h2 className="mb-5 text-lg font-semibold text-yellow-400">{t("disclaimer_title")}</h2>
-          <ul className="space-y-4 text-[15px] text-zinc-300">
-            <li className="rounded-2xl border border-red-500/40 bg-red-500/10 p-4 font-medium leading-relaxed text-red-300">
-              • {t("disclaimer_1")}
-            </li>
-            <li>• {t("disclaimer_2")}</li>
-            <li>• {t("disclaimer_3")}</li>
-            <li>• {t("disclaimer_4")}</li>
-            <li>• {t("disclaimer_5")}</li>
-            <li>• {t("disclaimer_6")}</li>
-            <li className="text-red-400">• {t("disclaimer_7")}</li>
-          </ul>
+          <h1 className="mt-3 text-3xl font-black tracking-[0.08em] text-white">{t("login_title")}</h1>
+          <p className="mt-2 text-base text-zinc-400">{t("login_subtitle")}</p>
         </div>
 
         <div className="space-y-3">
-          <p className="text-center text-xs text-zinc-500">{t("login_methods")}</p>
+          <div className="rounded-3xl border border-white/10 bg-zinc-950/80 p-4 shadow-[0_0_38px_rgba(103,232,249,0.07)] sm:p-5">
+            <p className="text-center text-xs font-black uppercase tracking-[0.22em] text-zinc-500">{t("login_methods")}</p>
+            <p className="mx-auto mt-3 max-w-md rounded-2xl border border-orange-300/24 bg-orange-500/10 px-4 py-3 text-sm font-bold leading-6 text-orange-100">
+              {t("login_creator_guard")}
+            </p>
+          </div>
           {isEmbeddedBrowser ? (
             <div className="rounded-3xl border border-orange-300/40 bg-orange-500/10 p-5 text-sm leading-7 text-orange-50">
               <p className="text-base font-black text-orange-200">{embeddedCopy.title}</p>
@@ -411,6 +402,21 @@ function AuthPageInner() {
             </>
           )}
         </div>
+
+        <details className="group rounded-3xl border border-zinc-800 bg-zinc-950/85 p-5 text-sm leading-relaxed text-zinc-300">
+          <summary className="cursor-pointer list-none text-base font-black text-yellow-300 transition group-open:text-yellow-200">
+            {t("disclaimer_title")}
+          </summary>
+          <ul className="mt-4 space-y-3 text-[14px] leading-6 text-zinc-400">
+            <li className="text-orange-100">• {t("disclaimer_1")}</li>
+            <li>• {t("disclaimer_2")}</li>
+            <li>• {t("disclaimer_3")}</li>
+            <li>• {t("disclaimer_4")}</li>
+            <li>• {t("disclaimer_5")}</li>
+            <li>• {t("disclaimer_6")}</li>
+            <li className="text-orange-200">• {t("disclaimer_7")}</li>
+          </ul>
+        </details>
 
         {notice && (
           <div className="rounded-2xl border border-cyan-300/35 bg-cyan-300/10 p-4 text-center text-sm leading-relaxed text-cyan-100">

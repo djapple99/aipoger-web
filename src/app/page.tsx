@@ -433,6 +433,13 @@ export default function HomePage() {
         { href: withLang("/about"), title: "About AIPOGER", desc: "AI creator growth and music recognition system" },
         { href: withLang("/partners"), title: "Partnerships", desc: "Move winning tracks toward airplay, curation, and commercial use" },
       ];
+  const mobileActionLabels = isZh
+    ? { arena: "鬥歌場", weekly: "本週賽", bar: "酒吧" }
+    : lang === "ja"
+      ? { arena: "バトル", weekly: "今週戦", bar: "Bar" }
+      : lang === "ko"
+        ? { arena: "배틀장", weekly: "주간전", bar: "Bar" }
+        : { arena: "Arena", weekly: "Weekly", bar: "Bar" };
 
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-[#050505] px-4 py-4 text-[#f5f5f5] md:px-7 md:py-4">
@@ -487,41 +494,48 @@ export default function HomePage() {
             {heroTitle}
           </h1>
 
-          <div className="mt-6 grid gap-3 md:hidden">
+          <div className="mt-5 grid grid-cols-3 gap-2 md:hidden">
+            <Link
+              href={withLang("/battle")}
+              aria-label={t("btn_watch")}
+              className="group flex min-w-0 flex-col items-center gap-2 text-center text-white focus-visible:outline-none"
+            >
+              <span className="flex h-[4.85rem] w-[4.85rem] items-center justify-center rounded-full border border-cyan-200/35 bg-cyan-300/12 shadow-[0_0_30px_rgba(103,232,249,0.12)] transition group-hover:border-cyan-100 group-hover:bg-cyan-300/18 group-focus-visible:ring-2 group-focus-visible:ring-cyan-100">
+                <WatchIcon />
+              </span>
+              <span className="text-[0.78rem] font-black leading-tight tracking-[0.04em]">{mobileActionLabels.arena}</span>
+            </Link>
             <Link
               href={withLang("/weekly-drop-battle")}
-              className="group flex items-center justify-between rounded-2xl border border-orange-300/60 bg-orange-500 px-5 py-4 text-black shadow-[0_0_34px_rgba(255,106,0,0.25)] transition hover:bg-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+              aria-label={t("btn_battle")}
+              className="group flex min-w-0 flex-col items-center gap-2 text-center text-white focus-visible:outline-none"
             >
-              <BattleIcon />
-              <span className="text-xl font-black tracking-[0.08em]">{t("btn_battle")}</span>
+              <span className="flex h-[4.85rem] w-[4.85rem] items-center justify-center rounded-full border border-orange-300/60 bg-orange-500 text-black shadow-[0_0_32px_rgba(255,106,0,0.24)] transition group-hover:bg-orange-300 group-focus-visible:ring-2 group-focus-visible:ring-orange-200">
+                <BattleIcon />
+              </span>
+              <span className="text-[0.78rem] font-black leading-tight tracking-[0.04em]">{mobileActionLabels.weekly}</span>
             </Link>
-            <div className="grid grid-cols-2 gap-3">
-              <Link
-                href={withLang("/battle")}
-                className="group flex min-h-24 flex-col justify-between rounded-2xl border border-cyan-200/25 bg-white/[0.06] px-4 py-4 text-white transition hover:border-cyan-200 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
-              >
-                <WatchIcon />
-                <span className="text-base font-black tracking-[0.08em]">{t("btn_watch")}</span>
-              </Link>
-              <Link
-                href={withLang("/listen-bar")}
-                className="group flex min-h-24 flex-col justify-between rounded-2xl border border-orange-200/25 bg-white/[0.06] px-4 py-4 text-white transition hover:border-orange-200 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
-              >
+            <Link
+              href={withLang("/listen-bar")}
+              aria-label={t("btn_listen_bar")}
+              className="group flex min-w-0 flex-col items-center gap-2 text-center text-white focus-visible:outline-none"
+            >
+              <span className="flex h-[4.85rem] w-[4.85rem] items-center justify-center rounded-full border border-cyan-200/24 bg-white/[0.055] shadow-[0_0_28px_rgba(255,255,255,0.05)] transition group-hover:border-cyan-200 group-hover:bg-white/[0.1] group-focus-visible:ring-2 group-focus-visible:ring-cyan-100">
                 <ListenBarIcon />
-                <span className="text-base font-black tracking-[0.08em]">{t("btn_listen_bar")}</span>
-              </Link>
-            </div>
+              </span>
+              <span className="text-[0.78rem] font-black leading-tight tracking-[0.04em]">{mobileActionLabels.bar}</span>
+            </Link>
           </div>
 
           <p
-            className={`mt-3 ${heroTextClass} text-[clamp(1.05rem,5vw,1.32rem)] leading-[1.34] md:text-[clamp(1.18rem,1.52vw,1.78rem)] md:leading-[1.42] ${heroAccentClass} ${
+            className={`mt-3 hidden ${heroTextClass} text-[clamp(1.05rem,5vw,1.32rem)] leading-[1.34] md:block md:text-[clamp(1.18rem,1.52vw,1.78rem)] md:leading-[1.42] ${heroAccentClass} ${
               lang === "en" ? `${fontRighteous.className} font-black` : `${fontGlowSans.className} font-black`
             }`}
           >
             {heroCopy}
           </p>
 
-          <div className="mt-4 grid max-w-[60rem] grid-cols-3 overflow-hidden rounded-[0.45rem] border border-white/14 bg-black/86 backdrop-blur">
+          <div className="mt-4 hidden max-w-[60rem] grid-cols-3 overflow-hidden rounded-[0.45rem] border border-white/14 bg-black/86 backdrop-blur md:grid">
             {statItems.map(([value, label]) => (
               <div key={value} className="border-r border-white/10 px-3 py-2 last:border-r-0 md:px-4 md:py-2.5">
                 <p className="text-2xl font-black leading-none text-white md:text-[1.65rem]">{value}</p>

@@ -140,6 +140,18 @@ const STOP_HOME_BGM_EVENT = "aipoger:stop-home-bgm";
 const heartbreakTitleFont =
   '"GenYoMin TW", "GenYoMin JP", "Hiragino Mincho ProN", "Songti TC", "Noto Serif TC", "PMingLiU", "SoukouMincho", serif';
 
+type GenreOption = { value: string; labelKey: string };
+
+const LISTEN_BAR_GENRES: GenreOption[] = [
+  { value: "K-pop動感風", labelKey: "genre_kpop_energy" },
+  { value: "說唱街頭風", labelKey: "genre_rap_street" },
+  { value: "復古City-Pop", labelKey: "genre_city_pop" },
+  { value: "感人抒情", labelKey: "genre_emotion" },
+  { value: "熱血搖滾", labelKey: "genre_rock" },
+  { value: "動感電音", labelKey: "genre_edm" },
+  { value: "自我風格", labelKey: "genre_custom" },
+];
+
 type PublicUploadForm = {
   title: string;
   artist: string;
@@ -152,7 +164,7 @@ const initialPublicUploadForm: PublicUploadForm = {
   title: "",
   artist: "",
   aiTool: "",
-  genre: "AI Music",
+  genre: "",
   album: "",
 };
 
@@ -461,7 +473,7 @@ function parseLyricLines(value: string): LyricLine[] {
 }
 
 export default function ListenBarPage() {
-  const { lang } = useI18n();
+  const { lang, t } = useI18n();
   const isZh = lang === "zh";
   const langQuery = `?lang=${lang}`;
   const listenCopy = isZh
@@ -1434,7 +1446,7 @@ export default function ListenBarPage() {
       ...current,
       title: current.title.trim() || metadata.title || metadata.fallbackTitle,
       artist: current.artist.trim() && current.artist !== userName ? current.artist : metadata.artist || current.artist,
-      genre: current.genre.trim() && current.genre !== initialPublicUploadForm.genre ? current.genre : metadata.genre || current.genre,
+      genre: current.genre.trim() ? current.genre : metadata.genre || current.genre,
       album: current.album.trim() || metadata.album || current.album,
     }));
 
@@ -1491,6 +1503,10 @@ export default function ListenBarPage() {
       setPublicUploadError(isZh ? "請輸入歌曲名稱。" : "Enter a track title.");
       return;
     }
+    if (!publicUploadForm.genre.trim()) {
+      setPublicUploadError(t("listen_bar_genre_required"));
+      return;
+    }
 
     setPublicUploadBusy(true);
     let audioPath: string | null = null;
@@ -1526,7 +1542,7 @@ export default function ListenBarPage() {
         title: publicUploadForm.title.trim(),
         artist: publicUploadForm.artist.trim() || creatorDefaultName || (isZh ? "創作者" : "Creator"),
         ai_tool: publicUploadForm.aiTool.trim() || "AI Music",
-        genre: publicUploadForm.genre.trim() || "AI Music",
+        genre: publicUploadForm.genre.trim(),
         mood: publicUploadForm.album.trim() || (isZh ? "創作者投稿" : "Creator Submission"),
         duration_seconds: duration > 0 ? duration : null,
         audio_path: audioPath,
@@ -2318,6 +2334,20 @@ export default function ListenBarPage() {
                     maxLength={40}
                     className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
                   />
+                  <select
+                    value={publicUploadForm.genre}
+                    onChange={(event) => setPublicUploadForm((current) => ({ ...current, genre: event.target.value }))}
+                    required
+                    aria-label={t("genre")}
+                    className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
+                  >
+                    <option value="">{t("genre_placeholder")}</option>
+                    {LISTEN_BAR_GENRES.map((genre) => (
+                      <option key={genre.value} value={genre.value}>
+                        {t(genre.labelKey)}
+                      </option>
+                    ))}
+                  </select>
                   <input
                     value={publicUploadForm.album}
                     onChange={(event) => setPublicUploadForm((current) => ({ ...current, album: event.target.value }))}

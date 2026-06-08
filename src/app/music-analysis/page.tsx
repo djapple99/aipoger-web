@@ -42,6 +42,34 @@ export default function MusicAnalysisPage() {
   const loginHref = `/auth?next=${encodeURIComponent(nextPath)}`;
   const shouldWakeAnalysis = !checking && Boolean(session && analysisUrl);
   const embeddedAnalysisUrl = shouldWakeAnalysis && analysisReady && analysisUrl ? analysisUrl : null;
+  const previewCards = useMemo(
+    () => isZh
+      ? [
+          ["市場定位", "判斷作品最適合短影音、劇情、廣告、情緒歌單或 AIPOGER 戰場。"],
+          ["最強 Drop", "找出最能被聽眾記住的段落，讓作品先用一段聲音被驗證。"],
+          ["投放建議", "給出 Drop Battle、傷心酒吧或 24H Full Song 的分流方向。"],
+        ]
+      : [
+          ["Market Lane", "Find whether the track fits shorts, drama, ads, mood playlists, or an AIPOGER arena."],
+          ["Strongest Drop", "Locate the section listeners are most likely to remember and vote on."],
+          ["Route Fit", "Recommend Drop Battle, Bar Heartbreak, or 24H Full Song as the next test."],
+        ],
+    [isZh],
+  );
+  const sampleRows = useMemo(
+    () => isZh
+      ? [
+          ["市場用途", "城市夜景 / 情緒短片 / AI MV"],
+          ["記憶點", "副歌前 12 秒最容易留下畫面"],
+          ["下一步", "先丟 Drop Battle 測投票，再進傷心酒吧聽感"],
+        ]
+      : [
+          ["Use Case", "City night / emotional shorts / AI MV"],
+          ["Memory Point", "The 12 seconds before the chorus carry the strongest image."],
+          ["Next Step", "Test as a Drop Battle first, then check listening retention in Bar Heartbreak."],
+        ],
+    [isZh],
+  );
 
   useEffect(() => {
     if (!shouldWakeAnalysis) {
@@ -112,20 +140,20 @@ export default function MusicAnalysisPage() {
       </header>
 
       <section className="relative z-10 mx-auto flex min-h-[calc(100vh-6rem)] max-w-5xl items-center justify-center py-10">
-        <div className="w-full max-w-3xl rounded-[1.7rem] border border-white/12 bg-black/62 px-6 py-9 text-center shadow-[0_30px_90px_rgba(0,0,0,0.62),0_0_48px_rgba(255,106,0,0.12)] backdrop-blur md:px-10 md:py-12">
+        <div className="w-full rounded-[1.7rem] border border-white/12 bg-black/62 px-5 py-7 shadow-[0_30px_90px_rgba(0,0,0,0.62),0_0_48px_rgba(255,106,0,0.12)] backdrop-blur md:px-8 md:py-10">
           <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.42em] text-cyan-200/80`}>
             AIPOGER A&R GATE
           </p>
-          <h1 className="mt-5 text-[clamp(2.7rem,8vw,5.5rem)] font-black leading-none text-[#fffaf1] [text-shadow:0_18px_38px_rgba(0,0,0,0.78)]">
+          <h1 className="mt-5 text-[clamp(2.45rem,8vw,5.5rem)] font-black leading-none text-[#fffaf1] [text-shadow:0_18px_38px_rgba(0,0,0,0.78)]">
             {isZh ? "分析你的音樂" : "Analyze Your Music"}
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-base font-bold leading-7 text-zinc-300 md:text-lg">
+          <p className="mt-5 max-w-2xl text-base font-bold leading-7 text-zinc-300 md:text-lg">
             {isZh
               ? "登入後上傳歌曲，找出市場定位、最強 Drop、適合挑戰的戰場，以及未來播放與商業化的可能路線。"
               : "Sign in to upload a track, find its market lane, strongest Drop, best battle fit, and possible path toward airplay or commercial use."}
           </p>
 
-          <div className="mt-8">
+          <div className="mt-7">
             {checking ? (
               <p className="text-sm font-black text-zinc-400">{isZh ? "檢查登入狀態中..." : "Checking session..."}</p>
             ) : !session ? (
@@ -136,7 +164,7 @@ export default function MusicAnalysisPage() {
                 {isZh ? "登入後分析歌曲" : "Sign In and Analyze"}
               </Link>
             ) : analysisUrl ? (
-              <div className="mx-auto max-w-xl rounded-2xl border border-cyan-200/22 bg-cyan-300/[0.07] px-5 py-5">
+              <div className="max-w-xl rounded-2xl border border-cyan-200/22 bg-cyan-300/[0.07] px-5 py-5">
                 <p className="text-base font-black text-cyan-50">
                   {analysisReady ? (isZh ? "分析引擎已連線" : "Analysis engine is ready") : isZh ? "AIPOGER 正在喚醒分析引擎…" : "AIPOGER is waking the analysis engine..."}
                 </p>
@@ -158,6 +186,30 @@ export default function MusicAnalysisPage() {
               </div>
             )}
           </div>
+
+          <div className="mt-7 grid gap-3 md:grid-cols-3">
+            {previewCards.map(([title, body]) => (
+              <div key={title} className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+                <p className="text-sm font-black text-orange-200">{title}</p>
+                <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">{body}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5 rounded-2xl border border-cyan-200/18 bg-cyan-300/[0.055] p-4 md:p-5">
+            <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.26em] text-cyan-200/80`}>
+              {isZh ? "分析結果會像這樣" : "Preview of the output"}
+            </p>
+            <div className="mt-4 grid gap-3">
+              {sampleRows.map(([label, value]) => (
+                <div key={label} className="grid gap-1 rounded-xl border border-white/8 bg-black/36 px-4 py-3 md:grid-cols-[8rem_minmax(0,1fr)] md:items-center">
+                  <span className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">{label}</span>
+                  <span className="text-sm font-black leading-6 text-cyan-50">{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
         </div>
       </section>
     </main>

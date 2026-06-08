@@ -805,14 +805,26 @@ function VoteHeartButton({
   voteLocked,
   onVote,
   label,
+  tone = "orange",
 }: {
   selected: boolean;
   voteLocked: boolean;
   onVote: () => void;
   label: string;
+  tone?: "orange" | "blue";
 }) {
   const { t } = useI18n();
   const notChosenOther = voteLocked && !selected;
+  const activeTone =
+    tone === "blue"
+      ? "border-cyan-200/90 bg-cyan-400/20 shadow-[0_0_30px_rgba(34,211,238,0.32)]"
+      : "border-orange-200/90 bg-orange-500/20 shadow-[0_0_30px_rgba(255,106,0,0.32)]";
+  const openTone =
+    tone === "blue"
+      ? "border-cyan-200/45 bg-cyan-400/[0.12] shadow-[0_0_18px_rgba(34,211,238,0.12)] hover:border-cyan-100 hover:bg-cyan-400/18"
+      : "border-orange-200/45 bg-orange-500/[0.12] shadow-[0_0_18px_rgba(255,106,0,0.12)] hover:border-orange-100 hover:bg-orange-500/18";
+  const strokeColor = selected ? (tone === "blue" ? "#67e8f9" : "#fb923c") : notChosenOther ? "#52525b" : "#f5f5f5";
+  const fillColor = selected ? (tone === "blue" ? "#0891b2" : "#ea580c") : "none";
 
   return (
     <button
@@ -824,16 +836,16 @@ function VoteHeartButton({
       aria-pressed={selected}
       className={`group flex min-h-24 w-full touch-manipulation items-center justify-center gap-3 rounded-[1.6rem] border px-4 py-4 text-left transition active:scale-[0.98] md:min-h-[5.25rem] ${
         selected
-          ? "border-red-300/85 bg-red-500/18 shadow-[0_0_28px_rgba(239,68,68,0.28)]"
+          ? activeTone
           : voteLocked
             ? "border-white/10 bg-white/[0.035] opacity-45"
-            : "border-white/18 bg-white/[0.065] shadow-[0_0_18px_rgba(255,255,255,0.08)] hover:border-red-200/70 hover:bg-red-500/12"
+            : openTone
       }`}
     >
       <svg viewBox="0 0 24 24" className="h-16 w-16 shrink-0 drop-shadow-[0_0_14px_rgba(255,255,255,0.22)] md:h-14 md:w-14">
         <path
-          fill={selected ? "#ef4444" : "none"}
-          stroke={selected ? "#ef4444" : notChosenOther ? "#52525b" : "#e5e5e5"}
+          fill={fillColor}
+          stroke={strokeColor}
           strokeWidth={1.5}
           d="M12 21.35l-1.05-.96C6.96 17.06 4 13.92 4 10.94 4 8.73 5.71 7 8.02 7c1.53 0 3.04.93 4 2.43.96-1.5 2.47-2.43 4-2.43C18.29 7 20 8.73 20 10.94c0 3-2.97 6.17-7.94 11.43L12 21.35z"
         />
@@ -3373,6 +3385,20 @@ function BattleArenaContent() {
         : isPreBattle
         ? `${battle.fighter_a_name} vs ${battle.fighter_b_name} is counting down on AIPOGER. ${battleStartShareLine} Hear the 5s previews before it starts.`
         : `${battle.fighter_a_name} vs ${battle.fighter_b_name} is LIVE on AIPOGER. Listen, vote, and make some noise.`;
+  const isOpenChallengeStage = isQueueArena && isQueueChallengeOpen;
+  const activeSidePanelClass = (side: DeckKey) => {
+    const active = battlePhase === "playing" && activeDeck === side;
+    const dimmed = battlePhase === "playing" && activeDeck && activeDeck !== side;
+    const tone =
+      side === "A"
+        ? active
+          ? "border-orange-200/60 bg-orange-500/[0.075] shadow-[0_30px_100px_rgba(255,106,0,0.28),inset_0_1px_0_rgba(255,255,255,0.08)]"
+          : "border-orange-400/18 bg-black/45 shadow-[0_24px_90px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.05)]"
+        : active
+          ? "border-cyan-100/60 bg-cyan-400/[0.07] shadow-[0_30px_100px_rgba(34,211,238,0.22),inset_0_1px_0_rgba(255,255,255,0.08)]"
+          : "border-blue-400/18 bg-black/45 shadow-[0_24px_90px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.05)]";
+    return `${tone} ${active ? "scale-[1.012]" : ""} ${dimmed ? "opacity-62 brightness-75" : ""}`;
+  };
 
   return (
     <div
@@ -3460,13 +3486,15 @@ function BattleArenaContent() {
             selected={hasVoted === "fighter_a"}
             voteLocked={!voteOpen}
             onVote={() => handleVote("fighter_a")}
-            label={`${voteHeartLabelA} · ${battle.fighter_a_name}`}
+            label={`A SIDE · ${battle.fighter_a_name}`}
+            tone="orange"
           />
           <VoteHeartButton
             selected={hasVoted === "fighter_b"}
             voteLocked={!voteOpen}
             onVote={() => handleVote("fighter_b")}
-            label={`${voteHeartLabelB} · ${battle.fighter_b_name}`}
+            label={`B SIDE · ${battle.fighter_b_name}`}
+            tone="blue"
           />
         </div>
       ) : null}
@@ -3564,7 +3592,7 @@ function BattleArenaContent() {
           </div>
         </div>
       )}
-      <div className="pointer-events-none fixed inset-x-0 bottom-[7.6rem] top-[4.6rem] z-[75] overflow-hidden md:bottom-[5.25rem]">
+      <div className={`pointer-events-none fixed inset-x-0 top-[4.6rem] z-[75] overflow-hidden ${voteOpen ? "bottom-[16.4rem] md:bottom-[5.25rem]" : "bottom-[7.6rem] md:bottom-[5.25rem]"}`}>
         {danmakuItems.map((item) => (
           <span
             key={item.id}
@@ -3621,7 +3649,7 @@ function BattleArenaContent() {
       <main className="relative z-10 flex min-h-0 flex-1 flex-col overflow-visible px-4 pb-44 pt-2 md:overflow-hidden md:px-7 md:pb-2">
         <section className="mx-auto grid w-full max-w-[1540px] items-start gap-y-3 lg:grid-cols-[1fr_auto_1fr] lg:gap-x-7 lg:gap-y-0">
           {/* 左欄 */}
-          <div className="order-2 flex flex-col self-start overflow-hidden rounded-[2rem] border border-orange-400/18 bg-black/45 px-4 pb-2 pt-3 shadow-[0_24px_90px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl md:px-6 lg:order-none">
+          <div className={`order-2 flex flex-col self-start overflow-hidden rounded-[2rem] border px-4 pb-2 pt-3 backdrop-blur-xl transition-[opacity,filter,transform,box-shadow,border-color,background-color] duration-300 md:px-6 lg:order-none ${activeSidePanelClass("A")}`}>
             <div className="-mx-4 -mt-3 mb-2 h-1 bg-gradient-to-r from-orange-500 via-orange-300 to-transparent md:-mx-6" />
             <VinylDisc
               side="left"
@@ -3658,6 +3686,7 @@ function BattleArenaContent() {
                   voteLocked={!voteOpen}
                   onVote={() => handleVote("fighter_a")}
                   label={voteHeartLabelA}
+                  tone="orange"
                 />
               </div>
             </div>
@@ -3901,56 +3930,99 @@ function BattleArenaContent() {
           </div>
 
           {/* 右欄 */}
-          <div className="order-3 flex flex-col self-start overflow-hidden rounded-[2rem] border border-blue-400/18 bg-black/45 px-4 pb-2 pt-3 shadow-[0_24px_90px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl md:px-6">
+          <div className={`order-3 flex flex-col self-start overflow-hidden rounded-[2rem] border px-4 pb-2 pt-3 backdrop-blur-xl transition-[opacity,filter,transform,box-shadow,border-color,background-color] duration-300 md:px-6 ${activeSidePanelClass("B")}`}>
             <div className="-mx-4 -mt-3 mb-2 h-1 bg-gradient-to-l from-blue-500 via-cyan-300 to-transparent md:-mx-6" />
-            <VinylDisc
-              side="right"
-              fighterName={battle.fighter_b_name}
-              rankLabel={battle.fighter_b_rank}
-              songName={battle.song_b_name}
-              coverUrl={vinylCoverB ?? VINYL_COVER_PLACEHOLDER}
-              avatarUrl={vinylAvatarB}
-              isPlaying={activeDeck === "B"}
-              onToggle={() => handleToggleDeck("B")}
-              playDisabled={
-                isArenaWarmup ||
-                !canControlDeck("B") ||
-                battlePhase === "rps" ||
-                battlePhase === "transition" ||
-                battlePhase === "final" ||
-                currentDeck !== "B" ||
-                playedDecks.B
-              }
-              playLabel={currentDeck === "B" && battlePhase === "paused" ? "RESUME" : currentDeck === "B" && firstDeck === "B" ? "START" : currentDeck === "B" ? "PLAY" : "WAIT"}
-              color="#3b82f6"
-              accent="blue"
-              aiTool={battle.ai_tool_b}
-              layoutNumbers={vinylLayout}
-            />
-            <FeedbackBar deck="B" tone="blue" />
-            <div className="lyric-pitch-scroll lyric-pitch-scroll-blue mt-1.5 flex min-h-[58px] max-h-[78px] items-start justify-center overflow-y-auto whitespace-pre-wrap rounded-[1.05rem] bg-black/25 px-4 py-2 text-center text-[clamp(0.66rem,0.82vw,0.78rem)] font-semibold leading-[1.08] text-white/80 shadow-[inset_0_0_44px_rgba(255,255,255,0.022)] md:min-h-[66px] md:max-h-[88px]">
-              {lyricB || t("battle_lyrics_empty")}
-            </div>
-            <div className="mt-1 flex flex-col gap-1 pb-0.5 pt-0.5">
-              <div className="hidden w-full justify-end sm:flex">
-                <VoteHeartButton
-                  selected={hasVoted === "fighter_b"}
-                  voteLocked={!voteOpen}
-                  onVote={() => handleVote("fighter_b")}
-                  label={voteHeartLabelB}
-                />
+            {isOpenChallengeStage ? (
+              <div className="flex min-h-[min(78vw,520px)] flex-col items-center justify-center rounded-[1.55rem] border border-cyan-200/20 bg-[radial-gradient(circle_at_50%_34%,rgba(34,211,238,0.14),transparent_42%),rgba(0,0,0,0.34)] px-5 py-7 text-center shadow-[inset_0_0_70px_rgba(34,211,238,0.035)]">
+                <div className="relative flex aspect-square w-[min(58vw,310px)] items-center justify-center rounded-full border border-dashed border-cyan-100/34 bg-black/44 shadow-[0_0_46px_rgba(34,211,238,0.13),inset_0_0_70px_rgba(255,255,255,0.035)]">
+                  <div className="absolute inset-[13%] rounded-full border border-cyan-100/16" />
+                  <div className="absolute inset-[27%] rounded-full border border-white/10" />
+                  <div className="relative z-10 rounded-full border border-cyan-100/34 bg-black/72 px-5 py-3 text-sm font-black tracking-[0.2em] text-cyan-100">
+                    B SIDE
+                  </div>
+                </div>
+                <p className="mt-5 text-xs font-black uppercase tracking-[0.32em] text-cyan-100/70">
+                  {lang === "zh" ? "空擂台席位" : "Open Arena Slot"}
+                </p>
+                <h2 className="mt-2 text-[clamp(1.65rem,5vw,2.7rem)] font-black leading-none text-white">
+                  {lang === "zh" ? "等待挑戰者" : "Waiting Challenger"}
+                </h2>
+                <p className="mx-auto mt-3 max-w-sm text-sm font-bold leading-6 text-zinc-400">
+                  {lang === "zh"
+                    ? "這裡不是海報，是已開場的鬥歌席位。接戰者上傳 Drop 後，右邊唱片會直接進場。"
+                    : "This is a live arena slot. Once a challenger uploads a Drop, the right deck enters here."}
+                </p>
+                {!isBattleFounder ? (
+                  <Link
+                    href={`/battle/accept/${encodeURIComponent(battleId)}?lang=${lang}`}
+                    className="mt-5 inline-flex min-h-12 items-center justify-center rounded-full border border-cyan-100/70 bg-cyan-300 px-6 py-3 text-sm font-black text-black shadow-[0_0_26px_rgba(34,211,238,0.26)] transition hover:bg-cyan-100"
+                  >
+                    {lang === "zh" ? "我要接戰" : "Answer Battle"}
+                  </Link>
+                ) : (
+                  <ShareButton
+                    title={battleShareTitle}
+                    text={battleShareText}
+                    url={battleShareUrl}
+                    label={lang === "zh" ? "分享找挑戰者" : "Find Challenger"}
+                    copiedLabel={lang === "zh" ? "鬥場連結已複製" : "Arena Copied"}
+                    className="mt-5 justify-center px-5 py-2.5 text-xs"
+                  />
+                )}
               </div>
-            </div>
+            ) : (
+              <>
+                <VinylDisc
+                  side="right"
+                  fighterName={battle.fighter_b_name}
+                  rankLabel={battle.fighter_b_rank}
+                  songName={battle.song_b_name}
+                  coverUrl={vinylCoverB ?? VINYL_COVER_PLACEHOLDER}
+                  avatarUrl={vinylAvatarB}
+                  isPlaying={activeDeck === "B"}
+                  onToggle={() => handleToggleDeck("B")}
+                  playDisabled={
+                    isArenaWarmup ||
+                    !canControlDeck("B") ||
+                    battlePhase === "rps" ||
+                    battlePhase === "transition" ||
+                    battlePhase === "final" ||
+                    currentDeck !== "B" ||
+                    playedDecks.B
+                  }
+                  playLabel={currentDeck === "B" && battlePhase === "paused" ? "RESUME" : currentDeck === "B" && firstDeck === "B" ? "START" : currentDeck === "B" ? "PLAY" : "WAIT"}
+                  color="#3b82f6"
+                  accent="blue"
+                  aiTool={battle.ai_tool_b}
+                  layoutNumbers={vinylLayout}
+                />
+                <FeedbackBar deck="B" tone="blue" />
+                <div className="lyric-pitch-scroll lyric-pitch-scroll-blue mt-1.5 flex min-h-[58px] max-h-[78px] items-start justify-center overflow-y-auto whitespace-pre-wrap rounded-[1.05rem] bg-black/25 px-4 py-2 text-center text-[clamp(0.66rem,0.82vw,0.78rem)] font-semibold leading-[1.08] text-white/80 shadow-[inset_0_0_44px_rgba(255,255,255,0.022)] md:min-h-[66px] md:max-h-[88px]">
+                  {lyricB || t("battle_lyrics_empty")}
+                </div>
+                <div className="mt-1 flex flex-col gap-1 pb-0.5 pt-0.5">
+                  <div className="hidden w-full justify-end sm:flex">
+                    <VoteHeartButton
+                      selected={hasVoted === "fighter_b"}
+                      voteLocked={!voteOpen}
+                      onVote={() => handleVote("fighter_b")}
+                      label={voteHeartLabelB}
+                      tone="blue"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </section>
 
         {/* 彈幕輸入：留言送出後會橫向跑過整個 Battle 畫面 */}
-        <section className="fixed bottom-2 left-3 right-3 z-[80] mx-auto w-[calc(100%-1.5rem)] max-w-[1120px] rounded-[1.4rem] border-2 border-yellow-300/75 bg-black/86 px-2 py-2 shadow-[0_16px_64px_rgba(0,0,0,0.52),0_0_32px_rgba(250,204,21,0.2)] backdrop-blur-xl md:bottom-4 md:rounded-full">
+        <section className={`fixed bottom-2 left-3 right-3 z-[80] mx-auto w-[calc(100%-1.5rem)] max-w-[1120px] rounded-[1.4rem] border-2 border-yellow-300/75 bg-black/86 px-2 py-2 shadow-[0_16px_64px_rgba(0,0,0,0.52),0_0_32px_rgba(250,204,21,0.2)] backdrop-blur-xl transition-opacity md:bottom-4 md:rounded-full ${voteOpen ? "opacity-[0.82]" : ""}`}>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
             <span className="hidden shrink-0 pl-3 text-[10px] font-black tracking-[0.18em] text-yellow-200/80 sm:inline">
               {lang === "zh" ? "全場彈幕" : "Arena Danmaku"}
             </span>
-            <div className="flex min-w-0 items-center gap-2 md:shrink-0">
+            <div className={`min-w-0 items-center gap-2 md:flex md:shrink-0 ${voteOpen ? "hidden" : "flex"}`}>
               <span className="shrink-0 rounded-full border border-yellow-200/30 bg-yellow-300/10 px-2 py-1 text-[10px] font-black text-yellow-100">
                 {lang === "zh" ? "彈幕" : "Danmaku"}
               </span>

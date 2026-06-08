@@ -56,6 +56,19 @@ const mockBattleData: BattleViewData = {
 
 const DAILY_BATTLE_QUEUE_MS = 24 * 60 * 60 * 1000;
 const SHOW_DAILY_BATTLE_SECTION = false;
+const DROP_BATTLE_GENRE_OPTIONS = [
+  { value: "K-pop動感風", labelKey: "genre_kpop_energy" },
+  { value: "說唱街頭風", labelKey: "genre_rap_street" },
+  { value: "復古City-Pop", labelKey: "genre_city_pop" },
+  { value: "感人抒情", labelKey: "genre_emotion" },
+  { value: "熱血搖滾", labelKey: "genre_rock" },
+  { value: "動感電音", labelKey: "genre_edm" },
+  { value: "自我風格", labelKey: "genre_custom" },
+];
+
+function normalizeGenreFilter(value: string | null | undefined) {
+  return String(value || "").trim().toLowerCase();
+}
 
 function Turntable({
   label,
@@ -307,6 +320,57 @@ function SongBattleStatsPill({
     <span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-black ${toneClass}`}>
       {formatSongBattleStats(stats, isZh)}
     </span>
+  );
+}
+
+function GenreFilterBar({
+  activeGenre,
+  onChange,
+  counts,
+  t,
+  isZh,
+}: {
+  activeGenre: string;
+  onChange: (value: string) => void;
+  counts: Record<string, number>;
+  t: (key: string) => string;
+  isZh: boolean;
+}) {
+  const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
+  return (
+    <div className="mb-5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex min-w-max gap-2">
+        <button
+          type="button"
+          onClick={() => onChange("all")}
+          className={`rounded-full border px-4 py-2 text-xs font-black transition ${
+            activeGenre === "all"
+              ? "border-orange-200 bg-orange-500 text-black shadow-[0_0_22px_rgba(255,106,0,0.22)]"
+              : "border-white/12 bg-white/[0.045] text-zinc-300 hover:border-orange-200/55 hover:text-white"
+          }`}
+        >
+          {isZh ? "全部風格" : "All Styles"} <span className="ml-1 opacity-75">{total}</span>
+        </button>
+        {DROP_BATTLE_GENRE_OPTIONS.map((genre) => {
+          const count = counts[normalizeGenreFilter(genre.value)] ?? 0;
+          const selected = activeGenre === genre.value;
+          return (
+            <button
+              key={genre.value}
+              type="button"
+              onClick={() => onChange(genre.value)}
+              className={`rounded-full border px-4 py-2 text-xs font-black transition ${
+                selected
+                  ? "border-cyan-100 bg-cyan-300 text-black shadow-[0_0_22px_rgba(34,211,238,0.2)]"
+                  : "border-white/12 bg-white/[0.045] text-zinc-300 hover:border-cyan-100/55 hover:text-white"
+              }`}
+            >
+              {t(genre.labelKey)} <span className="ml-1 opacity-75">{count}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -852,6 +916,7 @@ function BattlePoolList() {
   const [cancelQueueId, setCancelQueueId] = useState<string | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [focusedClosedCard, setFocusedClosedCard] = useState<FocusedPoolCardState | null>(null);
+  const [activeGenre, setActiveGenre] = useState("all");
 
   useEffect(() => {
     if (focusQueueId) rememberAuthNextPath(focusedQueueHref(focusQueueId, lang));
@@ -1103,6 +1168,25 @@ function BattlePoolList() {
       setCancelQueueId(null);
     }
   };
+  const poolGenreCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    [...rows.map((row) => row.genre), ...acceptedBattleRows.map((row) => row.genre)].forEach((genre) => {
+      const key = normalizeGenreFilter(genre);
+      if (!key) return;
+      counts[key] = (counts[key] ?? 0) + 1;
+    });
+    return counts;
+  }, [acceptedBattleRows, rows]);
+  const filteredRows = useMemo(() => {
+    if (activeGenre === "all") return rows;
+    const target = normalizeGenreFilter(activeGenre);
+    return rows.filter((row) => normalizeGenreFilter(row.genre) === target);
+  }, [activeGenre, rows]);
+  const filteredAcceptedBattleRows = useMemo(() => {
+    if (activeGenre === "all") return acceptedBattleRows;
+    const target = normalizeGenreFilter(activeGenre);
+    return acceptedBattleRows.filter((row) => normalizeGenreFilter(row.genre) === target);
+  }, [acceptedBattleRows, activeGenre]);
 
   if (loading) {
     return (
@@ -1132,6 +1216,8 @@ function BattlePoolList() {
           {cancelError}
         </div>
       ) : null}
+
+      <GenreFilterBar activeGenre={activeGenre} onChange={setActiveGenre} counts={poolGenreCounts} t={t} isZh={isZh} />
 
       {focusedClosedCard ? (
         <article id={`battle-pool-${focusedClosedCard.id}`} className="mb-4 rounded-[1.4rem] border border-yellow-200/30 bg-yellow-300/[0.08] p-5 shadow-[0_0_34px_rgba(250,204,21,0.12)]">
@@ -1171,9 +1257,9 @@ function BattlePoolList() {
         </article>
       ) : null}
 
-      {acceptedBattleRows.length > 0 ? (
+      {filteredAcceptedBattleRows.length > 0 ? (
         <div className="mb-4 grid gap-3">
-          {acceptedBattleRows.map((battleRow) => {
+          {filteredAcceptedBattleRows.map((battleRow) => {
             const scheduledAt = resolveDropBattleRuntimeStart(battleRow);
             return (
               <article
@@ -1214,16 +1300,18 @@ function BattlePoolList() {
         </div>
       ) : null}
 
-      {rows.length === 0 && !focusedClosedCard && acceptedBattleRows.length === 0 ? (
+      {filteredRows.length === 0 && !focusedClosedCard && filteredAcceptedBattleRows.length === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-6 text-center">
-          <p className="text-sm font-bold text-zinc-300">{t("pool_empty_title")}</p>
+          <p className="text-sm font-bold text-zinc-300">
+            {activeGenre === "all" ? t("pool_empty_title") : isZh ? "這個風格目前沒有等待挑戰的 Drop" : "No open Drops in this style right now"}
+          </p>
           <p className="mx-auto mt-2 max-w-xl whitespace-pre-line text-sm leading-7 text-zinc-500">
-            {t("pool_empty_body")}
+            {activeGenre === "all" ? t("pool_empty_body") : isZh ? "可以切換其他風格，或自己開一張 Drop 戰帖。" : "Switch styles or open a Drop Battle card yourself."}
           </p>
         </div>
-      ) : rows.length > 0 ? (
+      ) : filteredRows.length > 0 ? (
         <ul className="grid gap-3 md:grid-cols-2">
-          {rows.map((entry) => {
+          {filteredRows.map((entry) => {
             const ghostBattleId = entry.status === "ghost_battle" ? entry.match_group_id : null;
             const matchedBattleId = entry.status === "matched" ? entry.match_group_id : null;
             const isGhost = Boolean(ghostBattleId);
@@ -1454,6 +1542,7 @@ function LiveBattleList() {
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeGenre, setActiveGenre] = useState("all");
 
   useEffect(() => {
     if (focusBattleId) rememberAuthNextPath(focusedBattleHref(focusBattleId, lang));
@@ -1626,6 +1715,20 @@ function LiveBattleList() {
       setCancelBattleId(null);
     }
   };
+  const liveGenreCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    rows.forEach((row) => {
+      const key = normalizeGenreFilter(row.genre);
+      if (!key) return;
+      counts[key] = (counts[key] ?? 0) + 1;
+    });
+    return counts;
+  }, [rows]);
+  const filteredLiveRows = useMemo(() => {
+    if (activeGenre === "all") return rows;
+    const target = normalizeGenreFilter(activeGenre);
+    return rows.filter((row) => normalizeGenreFilter(row.genre) === target);
+  }, [activeGenre, rows]);
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#050505] text-[#ece9e6]">
@@ -1719,8 +1822,22 @@ function LiveBattleList() {
             </div>
           </div>
         ) : (
-          <ul className="mt-8 grid gap-4">
-            {rows.map((b) => {
+          <>
+            <div className="mt-8">
+              <GenreFilterBar activeGenre={activeGenre} onChange={setActiveGenre} counts={liveGenreCounts} t={t} isZh={isZh} />
+            </div>
+            {filteredLiveRows.length === 0 ? (
+              <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.035] px-5 py-6 text-center">
+                <p className="text-sm font-bold text-zinc-300">
+                  {isZh ? "這個風格目前沒有進行中的戰場" : "No live arena in this style right now"}
+                </p>
+                <p className="mt-2 text-sm text-zinc-500">
+                  {isZh ? "切換其他風格，或回挑戰池找等待中的 Drop。" : "Switch styles or check the challenge pool above."}
+                </p>
+              </div>
+            ) : (
+          <ul className="grid gap-4">
+            {filteredLiveRows.map((b) => {
               const scheduledAt = resolveDropBattleRuntimeStart(b);
               const scheduledMs = new Date(scheduledAt ?? "").getTime();
               const battleStartShareText = scheduledAt
@@ -1853,6 +1970,8 @@ function LiveBattleList() {
               );
             })}
           </ul>
+            )}
+          </>
         )}
 
         {SHOW_DAILY_BATTLE_SECTION ? <DailyBattleList /> : null}
