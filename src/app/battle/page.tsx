@@ -1201,13 +1201,13 @@ function BattlePoolList() {
       <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.38em] text-orange-300/80">90S DROP BATTLE POOL</p>
-          <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "90s 最強抓波 Drop Battle 公開挑戰池" : "90s Drop Battle Challenge Pool"}</h2>
+          <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "Drop Battle 公開挑戰池" : "Drop Battle Challenge Pool"}</h2>
         </div>
         <Link
           href="/battle/setup"
           className="w-fit rounded-full border border-orange-200/80 bg-gradient-to-r from-orange-500 via-amber-400 to-orange-300 px-5 py-2.5 text-sm font-black !text-black shadow-[0_0_26px_rgba(255,106,0,0.26)] transition hover:border-orange-100 hover:from-orange-400 hover:via-amber-300 hover:to-orange-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
         >
-          {isZh ? "挑戰最強90s抓波" : "Challenge 90s Drop Battle"}
+          {isZh ? "我要發起挑戰" : "Start a Challenge"}
         </Link>
       </div>
 
@@ -1303,10 +1303,10 @@ function BattlePoolList() {
       {filteredRows.length === 0 && !focusedClosedCard && filteredAcceptedBattleRows.length === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-6 text-center">
           <p className="text-sm font-bold text-zinc-300">
-            {activeGenre === "all" ? t("pool_empty_title") : isZh ? "這個風格目前沒有等待挑戰的 Drop" : "No open Drops in this style right now"}
+            {activeGenre === "all" ? t("pool_empty_title") : isZh ? "這個風格目前沒有公開挑戰" : "No open challenges in this style right now"}
           </p>
           <p className="mx-auto mt-2 max-w-xl whitespace-pre-line text-sm leading-7 text-zinc-500">
-            {activeGenre === "all" ? t("pool_empty_body") : isZh ? "可以切換其他風格，或自己開一張 Drop 戰帖。" : "Switch styles or open a Drop Battle card yourself."}
+            {activeGenre === "all" ? t("pool_empty_body") : isZh ? "可以切換其他風格，或自己發起挑戰。" : "Switch styles or start a challenge yourself."}
           </p>
         </div>
       ) : filteredRows.length > 0 ? (
