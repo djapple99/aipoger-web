@@ -3241,6 +3241,12 @@ function BattleArenaContent() {
     : lang === "zh"
       ? "投 B"
       : "Vote B";
+  const desktopVoteHeartLabelA = showFinalVoteStats
+    ? `A SIDE · ${voteHeartLabelA}`
+    : `A SIDE · ${battle.fighter_a_name}`;
+  const desktopVoteHeartLabelB = showFinalVoteStats
+    ? `B SIDE · ${voteHeartLabelB}`
+    : `B SIDE · ${battle.fighter_b_name}`;
   const viewerBadge = (() => {
     if (viewerCount <= 1) {
       return (
@@ -3647,7 +3653,25 @@ function BattleArenaContent() {
 
       {/* 擂台主體 */}
       <main className="relative z-10 flex min-h-0 flex-1 flex-col overflow-visible px-4 pb-44 pt-2 md:overflow-hidden md:px-7 md:pb-2">
-        <section className="mx-auto grid w-full max-w-[1540px] items-start gap-y-3 lg:grid-cols-[1fr_auto_1fr] lg:gap-x-7 lg:gap-y-0">
+        <section className="mx-auto mb-3 hidden w-full max-w-[1540px] grid-cols-[1fr_auto_1fr] items-center gap-4 rounded-[1.15rem] border border-white/10 bg-black/46 px-4 py-3 shadow-[0_18px_70px_rgba(0,0,0,0.26)] backdrop-blur-xl lg:grid">
+          <div className="min-w-0">
+            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-orange-200/75">A SIDE</p>
+            <p className="mt-1 truncate text-lg font-black text-white">{battle.fighter_a_name}</p>
+            <p className="truncate text-xs font-bold text-zinc-500">{battle.song_a_name}</p>
+          </div>
+          <div className="min-w-[19rem] rounded-full border border-orange-300/24 bg-black/56 px-5 py-2 text-center shadow-[0_0_28px_rgba(255,106,0,0.12)]">
+            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-zinc-500">
+              {battle.genre || "AI Music"} · {voteStatusText}
+            </p>
+            <p className="mt-1 text-sm font-black text-orange-100">{ritualStatusText}</p>
+          </div>
+          <div className="min-w-0 text-right">
+            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-100/75">B SIDE</p>
+            <p className="mt-1 truncate text-lg font-black text-white">{battle.fighter_b_name}</p>
+            <p className="truncate text-xs font-bold text-zinc-500">{battle.song_b_name}</p>
+          </div>
+        </section>
+        <section className="mx-auto grid w-full max-w-[1540px] items-start gap-y-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.72fr)_minmax(0,1fr)] lg:gap-x-6 lg:gap-y-0">
           {/* 左欄 */}
           <div className={`order-2 flex flex-col self-start overflow-hidden rounded-[2rem] border px-4 pb-2 pt-3 backdrop-blur-xl transition-[opacity,filter,transform,box-shadow,border-color,background-color] duration-300 md:px-6 lg:order-none ${activeSidePanelClass("A")}`}>
             <div className="-mx-4 -mt-3 mb-2 h-1 bg-gradient-to-r from-orange-500 via-orange-300 to-transparent md:-mx-6" />
@@ -3685,7 +3709,7 @@ function BattleArenaContent() {
                   selected={hasVoted === "fighter_a"}
                   voteLocked={!voteOpen}
                   onVote={() => handleVote("fighter_a")}
-                  label={voteHeartLabelA}
+                  label={desktopVoteHeartLabelA}
                   tone="orange"
                 />
               </div>
@@ -3693,7 +3717,7 @@ function BattleArenaContent() {
           </div>
 
           {/* 中：LOGO + VS */}
-          <div className="order-1 flex flex-col items-center justify-center gap-3 lg:order-none lg:w-[min(330px,23vw)]">
+          <div className="order-1 flex flex-col items-center justify-center gap-3 lg:order-none lg:w-full">
             <div className="relative flex min-h-[270px] w-full max-w-[320px] flex-col items-center justify-center overflow-visible px-4 py-4">
               <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_50%_28%,rgba(255,106,0,0.2),transparent_36%)]" />
               <div
@@ -4006,7 +4030,7 @@ function BattleArenaContent() {
                       selected={hasVoted === "fighter_b"}
                       voteLocked={!voteOpen}
                       onVote={() => handleVote("fighter_b")}
-                      label={voteHeartLabelB}
+                      label={desktopVoteHeartLabelB}
                       tone="blue"
                     />
                   </div>

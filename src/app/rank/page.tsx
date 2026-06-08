@@ -37,6 +37,7 @@ type RankRow = {
   title: string;
   hook: string;
   note: string;
+  genre: string;
   accent: "orange" | "cyan" | "gold";
   avatarUrl: string;
   coverUrl: string;
@@ -118,11 +119,6 @@ function displaySongTitle(value: string, fallback: string) {
   return looksLikeOpaqueArchiveValue(value) ? fallback : displayText(value, fallback);
 }
 
-function localizedRowTitle(row: Pick<RankRow, "kind" | "title">, isZh: boolean) {
-  if (isZh) return row.title;
-  return row.kind === "battle" ? "Drop Victory Record" : "Bar Heartbreak Hot Track";
-}
-
 function localizedRankLabel(rank: string, isZh: boolean) {
   if (isZh) return rank;
   const cleanRank = rank.trim();
@@ -143,6 +139,14 @@ function accentClasses(accent: RankRow["accent"]) {
   if (accent === "cyan") return "border-cyan-300/30 bg-cyan-300/[0.06] text-cyan-100";
   if (accent === "gold") return "border-yellow-300/35 bg-yellow-400/[0.08] text-yellow-100";
   return "border-orange-300/30 bg-orange-500/[0.08] text-orange-100";
+}
+
+function normalizeGenre(value: string | null | undefined) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function displayGenre(value: string | null | undefined, isZh: boolean) {
+  return String(value || "").trim() || (isZh ? "未分類風格" : "Unsorted Style");
 }
 
 function resultHref(row: RankRow, lang: string) {
@@ -238,6 +242,7 @@ function rowFromArchive(entry: ArchivedBattleResult, index: number): RankRow {
     title: "Drop 抓波勝利",
     hook: entry.winnerSong,
     note: displayText(entry.genre, "AI Music"),
+    genre: displayText(entry.genre, "AI Music"),
     accent: accentFromIndex(index),
     avatarUrl: entry.avatarUrl,
     coverUrl: entry.coverUrl,
@@ -271,23 +276,24 @@ function mergeArchives(remoteRows: ArchivedBattleResult[]) {
 
 function hotBarRowsFromTracks(tracks: ListenBarTrackRow[]) {
   return tracks
-    .map((row) => listenBarRowToTrack(row))
-    .filter((track): track is NonNullable<typeof track> => Boolean(track))
-    .filter((track) => track.source !== "official")
+    .map((row) => ({ row, track: listenBarRowToTrack(row) }))
+    .filter((item): item is { row: ListenBarTrackRow; track: NonNullable<ReturnType<typeof listenBarRowToTrack>> } => Boolean(item.track))
+    .filter(({ track }) => track.source !== "official")
     .sort((a, b) => {
-      const byReaction = (b.positiveReactionCount || 0) - (a.positiveReactionCount || 0);
+      const byReaction = (b.track.positiveReactionCount || 0) - (a.track.positiveReactionCount || 0);
       if (byReaction !== 0) return byReaction;
-      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      return new Date(b.track.createdAt || 0).getTime() - new Date(a.track.createdAt || 0).getTime();
     })
     .slice(0, 6)
-    .map<RankRow>((track, index) => ({
+    .map<RankRow>(({ row, track }, index) => ({
       id: `bar-${track.id}`,
       kind: "bar",
       name: track.artist,
       rank: track.queuedByRank || "創作者投稿",
       title: "傷心酒吧熱播",
       hook: track.title,
-      note: track.mood || "AI Music",
+      note: track.mood || row.genre?.trim() || "AI Music",
+      genre: row.genre?.trim() || track.mood || "AI Music",
       accent: accentFromIndex(index),
       avatarUrl: track.coverUrl || AIPOGER_BRAND_LOGO,
       coverUrl: track.coverUrl || AIPOGER_BRAND_LOGO,
@@ -399,6 +405,7 @@ export default function RankPage() {
   const { lang } = useI18n();
   const isZh = lang === "zh";
   const [active, setActive] = useState<BoardKey>("drop");
+  const [activeGenre, setActiveGenre] = useState("all");
   const [archivedResults, setArchivedResults] = useState<ArchivedBattleResult[]>([]);
   const [hotBarRows, setHotBarRows] = useState<RankRow[]>([]);
   const navSuffix = lang === "en" ? "?lang=en" : "?lang=zh";
@@ -523,7 +530,40 @@ export default function RankPage() {
     return dropRows;
   }, [active, hotBarRows, dropRows]);
 
-  const topRow = displayRows[0] ?? null;
+  useEffect(() => {
+    setActiveGenre("all");
+  }, [active]);
+
+  const genreCounts = useMemo(() => {
+    return displayRows.reduce<Record<string, { label: string; count: number }>>((acc, row) => {
+      const label = displayGenre(row.genre || row.note, isZh);
+      const key = normalizeGenre(label);
+      acc[key] = { label, count: (acc[key]?.count ?? 0) + 1 };
+      return acc;
+    }, {});
+  }, [displayRows, isZh]);
+
+  const genreOptions = useMemo(() => {
+    return Object.values(genreCounts).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+  }, [genreCounts]);
+
+  const filteredDisplayRows = useMemo(() => {
+    if (activeGenre === "all") return displayRows;
+    return displayRows.filter((row) => normalizeGenre(row.genre || row.note) === activeGenre);
+  }, [activeGenre, displayRows]);
+
+  const displayGroups = useMemo(() => {
+    const groups = new Map<string, RankRow[]>();
+    filteredDisplayRows.forEach((row) => {
+      const label = displayGenre(row.genre || row.note, isZh);
+      const existing = groups.get(label) ?? [];
+      existing.push(row);
+      groups.set(label, existing);
+    });
+    return Array.from(groups.entries()).sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+  }, [filteredDisplayRows, isZh]);
+
+  const topRow = filteredDisplayRows[0] ?? null;
   const activeBadge = active === "bar" ? "HOT" : "WIN";
 
   return (
@@ -553,15 +593,15 @@ export default function RankPage() {
           </nav>
         </header>
 
-        <section className="grid gap-7 py-10 lg:grid-cols-[1fr_0.95fr] lg:items-end">
+        <section className="grid gap-5 py-8 lg:grid-cols-[1fr_24rem] lg:items-stretch">
           <div>
             <p className={`${fontRighteous.className} text-sm uppercase text-orange-300/85`}>
               AIPOGER HONOR
             </p>
-            <h1 className="mt-4 text-4xl font-black leading-[1.08] text-white sm:text-5xl md:text-6xl">
+            <h1 className="mt-4 text-4xl font-black leading-[1.08] text-white sm:text-5xl">
               {isZh ? "AIPOGER 榮譽榜" : "AIPOGER Honor Board"}
             </h1>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-zinc-400">
+            <p className="mt-4 max-w-2xl text-base leading-8 text-zinc-400">
               {isZh
                 ? "只顯示真實勝利、真實封存與傷心酒吧真實熱播。這裡記錄作品被看見的時刻，不用名次定義創作者。"
                 : "Only real victories, archived results, and Bar Heartbreak hot tracks are shown. This is a recognition record, not a numbered chart."}
@@ -589,9 +629,9 @@ export default function RankPage() {
 
           <div className="grid gap-4">
             {topRow ? (
-              <div className="overflow-hidden rounded-[1.6rem] border border-yellow-300/25 bg-yellow-400/[0.06] p-4 shadow-[0_24px_90px_rgba(0,0,0,0.34)]">
-                <div className="grid gap-4 sm:grid-cols-[8.5rem_1fr] sm:items-center">
-                  <div className="relative aspect-square overflow-hidden rounded-[1.25rem] border border-yellow-200/35 bg-black shadow-[0_0_42px_rgba(250,204,21,0.14)]">
+              <div className="overflow-hidden rounded-[1.25rem] border border-yellow-300/25 bg-yellow-400/[0.06] p-4 shadow-[0_24px_90px_rgba(0,0,0,0.34)] lg:h-full">
+                <div className="grid gap-4 sm:grid-cols-[7rem_1fr] sm:items-center lg:grid-cols-1">
+                  <div className="relative aspect-square overflow-hidden rounded-[1rem] border border-yellow-200/35 bg-black shadow-[0_0_42px_rgba(250,204,21,0.14)] lg:mx-auto lg:w-full lg:max-w-[11rem]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={mediaSrc(topRow.coverUrl)}
@@ -607,7 +647,7 @@ export default function RankPage() {
                     <p className="text-xs font-black uppercase text-yellow-200/75">
                       {isZh ? "榮譽焦點" : "Spotlight"}
                     </p>
-                    <p className="mt-2 text-3xl font-black text-white">{topRow.name}</p>
+                    <p className="mt-2 text-2xl font-black text-white">{topRow.name}</p>
                     <p className="mt-1 text-sm font-bold text-yellow-100">
                       {localizedRankLabel(topRow.rank, isZh)} / {displayText(topRow.aiTool, isZh ? "工具未封存" : "Tool Missing")}
                     </p>
@@ -696,7 +736,7 @@ export default function RankPage() {
         </section>
 
         <section className="grid gap-4 lg:grid-cols-[17rem_1fr]">
-          <aside className="rounded-[1.4rem] border border-white/10 bg-black/52 p-3 backdrop-blur">
+          <aside className="rounded-[1.4rem] border border-white/10 bg-black/52 p-3 backdrop-blur lg:sticky lg:top-5 lg:self-start">
             <div className="grid gap-2">
               {BOARD_KEYS.map((key) => {
                 const selected = active === key;
@@ -715,6 +755,44 @@ export default function RankPage() {
                   </button>
                 );
               })}
+            </div>
+            <div className="mt-4 border-t border-white/10 pt-4">
+              <p className={`${fontRighteous.className} px-2 text-xs uppercase tracking-[0.16em] text-zinc-500`}>
+                {isZh ? "音樂風格" : "Music Style"}
+              </p>
+              <div className="mt-3 grid gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveGenre("all")}
+                  className={`flex items-center justify-between rounded-2xl border px-3 py-2 text-left text-xs font-black transition ${
+                    activeGenre === "all"
+                      ? "border-yellow-200/55 bg-yellow-300 text-black"
+                      : "border-white/10 bg-white/[0.035] text-zinc-300 hover:border-yellow-200/35 hover:text-white"
+                  }`}
+                >
+                  <span>{isZh ? "全部風格" : "All Styles"}</span>
+                  <span className="opacity-65">{displayRows.length}</span>
+                </button>
+                {genreOptions.map((genre) => {
+                  const key = normalizeGenre(genre.label);
+                  const selected = activeGenre === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setActiveGenre(key)}
+                      className={`flex items-center justify-between rounded-2xl border px-3 py-2 text-left text-xs font-black transition ${
+                        selected
+                          ? "border-cyan-100/70 bg-cyan-300 text-black"
+                          : "border-white/10 bg-white/[0.035] text-zinc-300 hover:border-cyan-100/35 hover:text-white"
+                      }`}
+                    >
+                      <span className="min-w-0 truncate">{genre.label}</span>
+                      <span className="ml-2 opacity-65">{genre.count}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </aside>
 
@@ -739,8 +817,8 @@ export default function RankPage() {
               />
             </div>
 
-            <div className="grid max-h-[980px] gap-3 overflow-y-auto pr-1">
-              {displayRows.length === 0 ? (
+            <div className="max-h-[980px] space-y-5 overflow-y-auto pr-1">
+              {filteredDisplayRows.length === 0 ? (
                 <div className="rounded-[1.3rem] border border-white/10 bg-white/[0.035] px-5 py-8 text-center">
                   <p className="text-lg font-black text-white">
                     {isZh ? "目前沒有完整封存的正式紀錄" : "No Complete Archived Records Yet"}
@@ -752,63 +830,76 @@ export default function RankPage() {
                   </p>
                 </div>
               ) : (
-                displayRows.map((row, index) => {
-                  const rowResultHref = resultHref(row, lang);
-                  return (
+                displayGroups.map(([genreLabel, rows]) => (
+                  <div key={`${active}-${genreLabel}`} className="space-y-2">
+                    <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-2">
+                      <div>
+                        <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.16em] text-cyan-100/55`}>
+                          {active === "bar" ? "BAR HEARTBREAK" : "DROP BATTLE"}
+                        </p>
+                        <h3 className="mt-1 text-xl font-black text-white">{genreLabel}</h3>
+                      </div>
+                      <span className="rounded-full border border-white/10 bg-white/[0.045] px-3 py-1 text-xs font-black text-zinc-300">
+                        {rows.length} {isZh ? "首" : "tracks"}
+                      </span>
+                    </div>
+                    <div className="grid gap-2">
+                      {rows.map((row, index) => {
+                        const rowResultHref = resultHref(row, lang);
+                        return (
                     <article
-                      key={`${active}-${row.id}-${index}`}
-                      className={`relative overflow-hidden rounded-[1.3rem] border px-4 py-4 ${accentClasses(row.accent)}`}
+                      key={`${active}-${genreLabel}-${row.id}-${index}`}
+                      className={`relative overflow-hidden rounded-[1.05rem] border px-3 py-3 ${accentClasses(row.accent)}`}
                     >
                       <div className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-current opacity-60" />
-                      <div className="grid gap-4 xl:grid-cols-[3.5rem_8rem_1fr_auto] xl:items-center">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/15 bg-black/45 text-sm font-black tracking-[0.16em] text-white">
+                      <div className="grid gap-3 lg:grid-cols-[2.8rem_4.75rem_minmax(0,1fr)_15rem] lg:items-center">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 bg-black/45 text-[11px] font-black tracking-[0.12em] text-white">
                           {activeBadge}
                         </div>
-                        <div className="relative h-28 w-full max-w-[12rem] overflow-hidden rounded-[1.15rem] border border-white/15 bg-black shadow-[0_18px_50px_rgba(0,0,0,0.28)]">
+                        <div className="relative h-24 w-full max-w-[7rem] overflow-hidden rounded-[0.95rem] border border-white/15 bg-black shadow-[0_18px_50px_rgba(0,0,0,0.28)] lg:h-[4.75rem] lg:w-[4.75rem]">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={mediaSrc(row.coverUrl)}
                             alt={displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}
                             className="h-full w-full object-cover"
                           />
-                          <div className="absolute bottom-2 left-2 h-12 w-12 overflow-hidden rounded-full border-2 border-white/65 bg-black">
+                          <div className="absolute bottom-1.5 left-1.5 h-9 w-9 overflow-hidden rounded-full border-2 border-white/65 bg-black">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={mediaSrc(row.avatarUrl)} alt={row.name} className="h-full w-full object-cover" />
-                          </div>
-                          <div className="absolute right-2 top-2 rounded-full border border-black/40 bg-white/90 px-2 py-1 text-[10px] font-black text-black">
-                            {displayText(row.aiTool, isZh ? "未封存工具" : "Tool Missing")}
                           </div>
                         </div>
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="text-2xl font-black text-white">{row.name}</h3>
+                            <h3 className="min-w-0 truncate text-xl font-black text-white lg:text-lg">
+                              {displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}
+                            </h3>
                             <span className="rounded-full border border-white/15 bg-black/28 px-2.5 py-1 text-[11px] font-bold text-zinc-100">
-                              {localizedRankLabel(row.rank, isZh)}
+                              {displayGenre(row.genre || row.note, isZh)}
                             </span>
                             <span className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-2.5 py-1 text-[11px] font-black text-cyan-100">
-                              {isZh ? "AI 工具" : "AI Tool"} / {displayText(row.aiTool, isZh ? "未封存" : "Missing")}
+                              {displayText(row.aiTool, isZh ? "未封存工具" : "Tool Missing")}
                             </span>
                           </div>
-                          <p className="mt-1 text-sm font-bold text-current">{localizedRowTitle(row, isZh)}</p>
+                          <p className="mt-1 truncate text-sm font-bold text-zinc-200">
+                            {row.name}
+                            <span className="mx-2 text-zinc-600">/</span>
+                            {localizedRankLabel(row.rank, isZh)}
+                          </p>
                           {row.kind === "battle" ? (
                             <>
-                              <p className="mt-2 text-sm leading-6 text-zinc-300">
-                                {isZh ? "決鬥" : "Battle"}：{row.name} VS {displayText(row.opponentName || "", isZh ? "對手未封存" : "Opponent Missing")}
-                              </p>
-                              <p className="text-sm leading-6 text-zinc-300">
-                                A SIDE：{displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}
-                                <span className="mx-2 text-zinc-600">/</span>
-                                B SIDE：{displaySongTitle(row.opponentSong || "", isZh ? "尚未封存" : "Not Archived")}
+                              <p className="mt-1 truncate text-sm leading-6 text-zinc-400">
+                                VS {displayText(row.opponentName || "", isZh ? "對手未封存" : "Opponent Missing")}
+                                <span className="mx-2 text-zinc-700">/</span>
+                                {isZh ? "決鬥編號" : "Battle"} {displayText(row.battleCode || "", "N/A")}
                               </p>
                             </>
                           ) : (
-                            <p className="mt-2 text-sm leading-6 text-zinc-300">
-                              {isZh ? "曲目" : "Track"}：{displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}
+                            <p className="mt-1 truncate text-sm leading-6 text-zinc-400">
+                              {row.note || (isZh ? "傷心酒吧熱播紀錄" : "Bar Heartbreak heat record")}
                             </p>
                           )}
-                          {row.note ? <p className="mt-2 text-sm leading-6 text-zinc-300">{row.note}</p> : null}
                           {row.kind === "battle" ? (
-                            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                            <div className="mt-2 grid gap-2 lg:hidden">
                               <p className="rounded-2xl border border-orange-200/16 bg-black/26 px-3 py-2 text-xs font-bold leading-5 text-zinc-300">
                                 <span className="text-orange-100">{isZh ? "AI 評價" : "AI Review"}：</span>
                                 {displayText(row.aiReview || "", isZh ? "無" : "None")}
@@ -820,7 +911,7 @@ export default function RankPage() {
                             </div>
                           ) : null}
                         </div>
-                        <div className="grid min-w-[13rem] gap-2 rounded-2xl border border-white/10 bg-black/34 px-4 py-3">
+                        <div className="grid gap-2 rounded-2xl border border-white/10 bg-black/34 px-3 py-2">
                           {row.kind === "battle" ? (
                             <div>
                               <p className="text-sm font-black text-white">
@@ -832,9 +923,6 @@ export default function RankPage() {
                                   : isZh
                                     ? "尚無投票"
                                     : "No Votes Yet"}
-                              </p>
-                              <p className="mt-2 text-xs font-black text-yellow-100">
-                                {isZh ? "決鬥編號" : "Battle"} {displayText(row.battleCode || "", "N/A")}
                               </p>
                             </div>
                           ) : (
@@ -895,8 +983,11 @@ export default function RankPage() {
                         </div>
                       </div>
                     </article>
-                  );
-                })
+                          );
+                        })}
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </section>
