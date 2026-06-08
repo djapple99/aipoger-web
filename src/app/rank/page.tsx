@@ -69,36 +69,6 @@ const BOARD_META: Record<BoardKey, BoardMeta> = {
 const BOARD_KEYS: BoardKey[] = ["drop", "bar"];
 const MOCK_PATTERN = /(qa-|mock|demo|test|ghost|sample)/i;
 
-const stageRows = [
-  {
-    stageZh: "第一階",
-    stageEn: "Stage 1",
-    titleZh: "熱血音樂工匠",
-    titleEn: "Music Artisan",
-    levels: "Lv.1 - Lv.3",
-    baseZh: "公測免 APC 入場",
-    baseEn: "Public beta: no APC entry stake",
-  },
-  {
-    stageZh: "第二階",
-    stageEn: "Stage 2",
-    titleZh: "潮流音樂大師",
-    titleEn: "Featured Creator",
-    levels: "Lv.4 - Lv.7",
-    baseZh: "公測免 APC 入場",
-    baseEn: "Public beta: no APC entry stake",
-  },
-  {
-    stageZh: "第三階",
-    stageEn: "Stage 3",
-    titleZh: "殿堂級音樂師尊",
-    titleEn: "Hall Master",
-    levels: "Lv.8 - Lv.10",
-    baseZh: "公測免 APC 入場",
-    baseEn: "Public beta: no APC entry stake",
-  },
-];
-
 function safeRankForFighter(name: string, rank?: string | null) {
   const cleanRank = rank?.trim() ?? "";
   if (cleanRank === AIPOGER_PERSONAL_RANK && !isAipogerIdentity(name)) {
@@ -991,20 +961,6 @@ export default function RankPage() {
               )}
             </div>
           </section>
-        </section>
-
-        <section className="mt-5 grid gap-3 md:grid-cols-3">
-          {stageRows.map((stage) => (
-            <div
-              key={stage.stageZh}
-              className="rounded-[1.25rem] border border-white/10 bg-white/[0.04] px-4 py-4"
-            >
-              <p className="text-sm font-black text-orange-200">{isZh ? stage.stageZh : stage.stageEn}</p>
-              <p className="mt-1 text-xl font-black text-white">{isZh ? stage.titleZh : stage.titleEn}</p>
-              <p className="mt-2 text-sm text-zinc-400">{stage.levels}</p>
-              <p className="mt-3 text-xs font-bold text-zinc-500">{isZh ? stage.baseZh : stage.baseEn}</p>
-            </div>
-          ))}
         </section>
 
         <footer className="mt-8 flex flex-col gap-4 border-t border-white/10 py-6 md:flex-row md:items-center md:justify-between">
