@@ -25,7 +25,7 @@ returns public.battle_result_archives
 language plpgsql
 security definer
 set search_path = public
-as $archive_battle_result$
+as $$
 declare
   battle_row public.battles%rowtype;
   archive_row public.battle_result_archives%rowtype;
@@ -203,7 +203,7 @@ begin
 
   return archive_row;
 end;
-$archive_battle_result$;
+$$;
 
 revoke all on function public.archive_battle_result(uuid, text, integer, integer, text, jsonb) from public;
 grant execute on function public.archive_battle_result(uuid, text, integer, integer, text, jsonb) to authenticated;
