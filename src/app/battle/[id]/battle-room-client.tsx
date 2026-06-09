@@ -148,7 +148,7 @@ const WINNER_REVEAL_SFX_SRC = "/sfx/audience-shouts-1.mp3";
 const SECOND_DECK_START_SECONDS = HOOK_BATTLE_SECONDS + SCRATCH_TRANSITION_SECONDS;
 const BATTLE_PLAYBACK_SECONDS = HOOK_BATTLE_SECONDS * 2 + SCRATCH_TRANSITION_SECONDS;
 const FINAL_RESULT_CUE_DELAY_MS = 1000;
-const FINAL_VOTE_SECONDS = 7;
+const FINAL_VOTE_SECONDS = 5;
 const WINNER_COUNTDOWN_FALLBACK_MS = 7600;
 const WINNER_REVEAL_MS = 5000;
 const REMATCH_CHALLENGE_ENABLED = false;
@@ -1214,7 +1214,31 @@ function BattleArenaContent() {
     void audio.play().catch(() => undefined);
   }, [stopWinnerRevealSfx]);
 
+  const primeBattleAudioForMobile = useCallback(() => {
+    [audioARef.current, audioBRef.current].forEach((audio) => {
+      if (!audio?.src) return;
+      if (!audio.paused) return;
+      const previousTime = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+      audio.muted = true;
+      audio.volume = 0;
+      audio.load();
+      void audio
+        .play()
+        .then(() => {
+          audio.pause();
+          audio.currentTime = previousTime;
+          audio.muted = false;
+          audio.volume = 1;
+        })
+        .catch(() => {
+          audio.muted = false;
+          audio.volume = 1;
+        });
+    });
+  }, []);
+
   const playFinalPreStartHype = useCallback(() => {
+    primeBattleAudioForMobile();
     const announcer = new Audio(FINAL_PRESTART_HYPE_SFX_SRC);
     announcer.preload = "auto";
     announcer.volume = 0.94;
@@ -1238,7 +1262,7 @@ function BattleArenaContent() {
       audio.volume = 0.82;
       void audio.play().catch(() => undefined);
     });
-  }, []);
+  }, [primeBattleAudioForMobile]);
 
   const closeBattleCardAfterResult = useCallback(
     async (outcome: "completed" | "expired" = "completed") => {
@@ -2351,7 +2375,7 @@ function BattleArenaContent() {
   }, [playedDecks.A, playedDecks.B, playWinnerCountdownSfx, pushResultForEveryone]);
 
   // ── 播放控制 ──────────────────────────────────────────
-  const playDeck = useCallback((deck: DeckKey, restart: boolean, startAtSeconds = 0) => {
+  const playDeck = useCallback((deck: DeckKey, restart: boolean, startAtSeconds = 0): Promise<boolean> => {
     const target = deck === "A" ? audioARef.current : audioBRef.current;
     const other = deck === "A" ? audioBRef.current : audioARef.current;
     other?.pause();
@@ -2363,7 +2387,7 @@ function BattleArenaContent() {
       completedDecksRef.current[deck] = true;
       markDeckPlayed(deck);
       setActiveDeck(null);
-      return;
+      return Promise.resolve(false);
     }
     if (restart) {
       arenaEchoTriggeredRef.current[deck] = false;
@@ -2372,17 +2396,19 @@ function BattleArenaContent() {
     target.loop = false;
     target.muted = false;
     target.volume = 1;
-    void target
+    return target
       .play()
       .then(() => {
         setCurrentDeck(deck);
         setActiveDeck(deck);
         setBattlePhase("playing");
+        return true;
       })
       .catch(() => {
         setCurrentDeck(deck);
         setActiveDeck(null);
         setBattlePhase("ready");
+        return false;
       });
   }, [markDeckPlayed]);
 
@@ -2415,9 +2441,8 @@ function BattleArenaContent() {
       setTransitionEndsAtMs(null);
       setTransitionSecondsLeft(SCRATCH_TRANSITION_SECONDS);
       setCurrentDeck(transitionDeck);
-      autoStartedDecksRef.current[transitionDeck] = true;
       setBattlePhase("ready");
-      playDeck(transitionDeck, true);
+      void playDeck(transitionDeck, true);
     }, remainingMs);
 
     void scratch.play().catch(() => undefined);
@@ -2503,8 +2528,29 @@ function BattleArenaContent() {
     autoStartedDecksRef.current[currentDeck] = true;
     const resume = resumeDeckOffsetRef.current?.deck === currentDeck ? resumeDeckOffsetRef.current.seconds : 0;
     resumeDeckOffsetRef.current = null;
-    const timer = window.setTimeout(() => playDeck(currentDeck, true, resume), 220);
-    return () => window.clearTimeout(timer);
+    let cancelled = false;
+    let retryTimer: number | null = null;
+    let attempts = 0;
+
+    const attemptPlay = () => {
+      attempts += 1;
+      void playDeck(currentDeck, true, resume).then((started) => {
+        if (cancelled) return;
+        if (started) return;
+        if (attempts < 4) {
+          retryTimer = window.setTimeout(attemptPlay, 420);
+          return;
+        }
+        autoStartedDecksRef.current[currentDeck] = false;
+      });
+    };
+
+    const timer = window.setTimeout(attemptPlay, 220);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      if (retryTimer != null) window.clearTimeout(retryTimer);
+    };
   }, [audioUrls, battlePhase, currentDeck, playDeck]);
 
   useEffect(() => {
@@ -4088,12 +4134,14 @@ function BattleArenaContent() {
       <audio
         ref={audioARef}
         src={audioUrls.A ?? undefined}
+        preload="auto"
         onTimeUpdate={() => handleDeckTimeUpdate("A")}
         onEnded={() => completeDeck("A")}
       />
       <audio
         ref={audioBRef}
         src={audioUrls.B ?? undefined}
+        preload="auto"
         onTimeUpdate={() => handleDeckTimeUpdate("B")}
         onEnded={() => completeDeck("B")}
       />
