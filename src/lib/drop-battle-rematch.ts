@@ -1,5 +1,6 @@
 export const DROP_REMATCH_CLAIM_WINDOW_SECONDS = 5;
 export const DROP_REMATCH_UPLOAD_SECONDS = 120;
+export const DROP_BATTLE_OFFICIAL_AUDIENCE_MIN = 3;
 
 export const DROP_REMATCH_STATUSES = ["open", "claimed", "uploaded", "expired", "cancelled"] as const;
 
@@ -15,6 +16,7 @@ export type DropRematchClaimSnapshot = {
 export type DropRematchBattleResultSnapshot = {
   winner?: "fighter_a" | "fighter_b" | null;
   totalVotes?: number | null;
+  audienceCount?: number | null;
   battleType?: string | null;
   nextBattleId?: string | null;
 };
@@ -37,11 +39,16 @@ export function isDropRematchUploadActive(claim: DropRematchClaimSnapshot, nowMs
   return claim.status === "claimed" && rematchDeadlineSecondsLeft(claim.upload_deadline_at, nowMs) > 0;
 }
 
+export function isOfficialDropBattleResult(result: { audienceCount?: number | null; totalVotes?: number | null }): boolean {
+  const audienceCount = Number(result.audienceCount ?? result.totalVotes ?? 0);
+  return Number.isFinite(audienceCount) && audienceCount >= DROP_BATTLE_OFFICIAL_AUDIENCE_MIN;
+}
+
 export function canOpenDropRematchWindow(result: DropRematchBattleResultSnapshot): boolean {
   if (result.battleType && result.battleType !== "formal") return false;
   if (result.nextBattleId) return false;
   if (result.winner !== "fighter_a" && result.winner !== "fighter_b") return false;
-  return (result.totalVotes ?? 0) > 0;
+  return isOfficialDropBattleResult(result);
 }
 
 export function dropRematchUploadUrl(args: {

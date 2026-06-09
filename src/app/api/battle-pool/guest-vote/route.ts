@@ -3,7 +3,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 type VoteTarget = "fighter_a" | "fighter_b";
 type VoteCounts = { fighter_a: number; fighter_b: number };
-type VoteRow = { voted_for: VoteTarget | null };
+type VoteRow = { voted_for: VoteTarget | null; user_id?: string | null; voter_role?: string | null };
 type GuestVoteRow = { voted_for: VoteTarget | null; guest_id?: string | null };
 
 const missingGuestVoteTablePattern = /battle_guest_votes|schema cache|relation.*does not exist|Could not find the table|PGRST205/i;
@@ -33,30 +33,42 @@ function countSides(rows: VoteRow[]): VoteCounts {
   );
 }
 
+function isAudienceVote(row: VoteRow) {
+  return !row.voter_role || row.voter_role === "audience";
+}
+
+function distinctTextCount(values: Array<string | null | undefined>) {
+  return new Set(values.map((value) => String(value || "").trim()).filter(Boolean)).size;
+}
+
 async function readVoteState(admin: SupabaseClient, battleId: string, guestId: string | null) {
   const [{ data: userVotes, error: userVoteError }, guestVotesResult] = await Promise.all([
-    admin.from("battle_votes").select("voted_for").eq("battle_id", battleId),
+    admin.from("battle_votes").select("voted_for,user_id,voter_role").eq("battle_id", battleId),
     admin.from("battle_guest_votes").select("voted_for,guest_id").eq("battle_id", battleId),
   ]);
   if (userVoteError) throw userVoteError;
 
-  const userCounts = countSides((userVotes ?? []) as VoteRow[]);
+  const userRows = ((userVotes ?? []) as VoteRow[]).filter(isAudienceVote);
+  const userCounts = countSides(userRows);
+  const signedAudienceCount = distinctTextCount(userRows.map((row) => row.user_id));
   const guestVoteError = guestVotesResult.error;
   if (guestVoteError) {
     if (!missingGuestVoteTablePattern.test(`${guestVoteError.message} ${guestVoteError.details ?? ""}`)) {
       throw guestVoteError;
     }
-    return { counts: userCounts, guestVote: null };
+    return { counts: userCounts, audienceCount: signedAudienceCount, guestVote: null };
   }
 
   const guestRows = (guestVotesResult.data ?? []) as GuestVoteRow[];
   const guestCounts = countSides(guestRows);
+  const guestAudienceCount = distinctTextCount(guestRows.map((row) => row.guest_id));
   const guestVote = guestId ? guestRows.find((row) => row.guest_id === guestId)?.voted_for ?? null : null;
   return {
     counts: {
       fighter_a: userCounts.fighter_a + guestCounts.fighter_a,
       fighter_b: userCounts.fighter_b + guestCounts.fighter_b,
     },
+    audienceCount: signedAudienceCount + guestAudienceCount,
     guestVote,
   };
 }

@@ -35,6 +35,8 @@ export type ArchivedBattleResult = {
   finalVoteLeft: number;
   finalVoteRight: number;
   votesTotal: number;
+  audienceCount?: number;
+  officialAudienceMin?: number;
   audienceReview: string;
   aiReview: string;
   feedbackA: BattleFeedbackCounts;
@@ -148,6 +150,8 @@ function sanitizeArchiveEntry(value: unknown): ArchivedBattleResult | null {
     finalVoteLeft: Math.max(0, Number(row.finalVoteLeft) || 0),
     finalVoteRight: Math.max(0, Number(row.finalVoteRight) || 0),
     votesTotal: Math.max(0, Number(row.votesTotal) || 0),
+    audienceCount: Math.max(0, Number(row.audienceCount) || 0),
+    officialAudienceMin: Math.max(0, Number(row.officialAudienceMin) || 0),
     audienceReview: stripCannedBattleReview(row.audienceReview),
     aiReview: stripCannedBattleReview(row.aiReview),
     feedbackA: sanitizeBattleFeedbackCounts(row.feedbackA),

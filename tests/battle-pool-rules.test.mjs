@@ -55,10 +55,12 @@ const {
 } = await import("../src/lib/battle-pool-client.ts");
 
 const {
+  DROP_BATTLE_OFFICIAL_AUDIENCE_MIN,
   DROP_REMATCH_CLAIM_WINDOW_SECONDS,
   DROP_REMATCH_UPLOAD_SECONDS,
   canOpenDropRematchWindow,
   dropRematchUploadUrl,
+  isOfficialDropBattleResult,
   isDropRematchClaimOpen,
   isDropRematchUploadActive,
   rematchDeadlineSecondsLeft,
@@ -457,15 +459,19 @@ test("auto matched drop battles never promote queue expires_at into battle sched
   );
 });
 
-test("drop rematch window opens only for formal battles with a voted winner", () => {
+test("drop rematch window opens only for official formal battles with a voted winner", () => {
+  assert.equal(DROP_BATTLE_OFFICIAL_AUDIENCE_MIN, 3);
   assert.equal(DROP_REMATCH_CLAIM_WINDOW_SECONDS, 5);
   assert.equal(DROP_REMATCH_UPLOAD_SECONDS, 120);
-  assert.equal(canOpenDropRematchWindow({ winner: "fighter_a", totalVotes: 1, battleType: "formal" }), true);
-  assert.equal(canOpenDropRematchWindow({ winner: "fighter_b", totalVotes: 8, battleType: null }), true);
+  assert.equal(isOfficialDropBattleResult({ audienceCount: 2, totalVotes: 8 }), false);
+  assert.equal(isOfficialDropBattleResult({ audienceCount: 3, totalVotes: 3 }), true);
+  assert.equal(canOpenDropRematchWindow({ winner: "fighter_a", totalVotes: 2, audienceCount: 2, battleType: "formal" }), false);
+  assert.equal(canOpenDropRematchWindow({ winner: "fighter_a", totalVotes: 3, audienceCount: 3, battleType: "formal" }), true);
+  assert.equal(canOpenDropRematchWindow({ winner: "fighter_b", totalVotes: 8, audienceCount: 4, battleType: null }), true);
   assert.equal(canOpenDropRematchWindow({ winner: null, totalVotes: 0, battleType: "formal" }), false);
   assert.equal(canOpenDropRematchWindow({ winner: "fighter_a", totalVotes: 0, battleType: "formal" }), false);
-  assert.equal(canOpenDropRematchWindow({ winner: "fighter_a", totalVotes: 1, battleType: "public_voting" }), false);
-  assert.equal(canOpenDropRematchWindow({ winner: "fighter_a", totalVotes: 1, nextBattleId: "next-battle" }), false);
+  assert.equal(canOpenDropRematchWindow({ winner: "fighter_a", totalVotes: 3, audienceCount: 3, battleType: "public_voting" }), false);
+  assert.equal(canOpenDropRematchWindow({ winner: "fighter_a", totalVotes: 3, audienceCount: 3, nextBattleId: "next-battle" }), false);
 });
 
 test("drop rematch claim and upload timers expire independently", () => {

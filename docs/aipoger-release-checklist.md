@@ -70,7 +70,9 @@ Check:
 - Both participants can cancel an unfinished Drop Battle when the user is eligible.
 - Quick start labels and stored start times are based on successful publish time, not a stale `expires_at`.
 - Waiting room opens correctly.
-- Battle result can be archived.
+- 0 audience voters becomes no contest and does not create a result card, Honor Board archive, or song battle stats.
+- 1-2 distinct audience voters can show an unofficial result but does not create a Honor Board archive, song battle stats, or rematch window.
+- 3+ distinct audience voters creates an official result that can be archived.
 - Honor Board reads Drop winners as `熱血 Drop 抓波勝利榜`.
 
 When the 10-card limit is implemented, also check:

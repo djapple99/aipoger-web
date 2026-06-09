@@ -26,7 +26,7 @@ import {
   type DropRematchClaimPayload,
 } from "@/lib/battle-pool-client";
 import { battleSeedForId, pick90sBattleWinner } from "@/lib/battle-90s-system";
-import { rematchDeadlineSecondsLeft } from "@/lib/drop-battle-rematch";
+import { DROP_BATTLE_OFFICIAL_AUDIENCE_MIN, rematchDeadlineSecondsLeft } from "@/lib/drop-battle-rematch";
 import { rememberAuthNextPath } from "@/lib/auth-urls";
 import { battleGuestDisplayName, getBattleGuestId } from "@/lib/battle-guest";
 import type { User } from "@supabase/supabase-js";
@@ -118,6 +118,7 @@ type DropRematchClaimRow = {
 
 type VoteSide = "fighter_a" | "fighter_b";
 type VoteCount = Record<VoteSide, number>;
+type BattleVoteRow = { voted_for: VoteSide | null; user_id?: string | null; voter_role?: string | null };
 type DeckKey = "A" | "B";
 type BattlePlaybackPhase = "rps" | "ready" | "playing" | "paused" | "echo" | "transition" | "final";
 type FeedbackKey = "rhyme" | "impact" | "melody" | "emotion" | "structure";
@@ -884,6 +885,7 @@ function BattleArenaContent() {
   const [battle, setBattle] = useState<BattleData | null>(null);
   const [chatInput, setChatInput] = useState("");
   const [votes, setVotes] = useState<VoteCount>({ fighter_a: 0, fighter_b: 0 });
+  const [audienceVoteCount, setAudienceVoteCount] = useState(0);
   const [hasVoted, setHasVoted] = useState<VoteSide | null>(null);
   const [activeDeck, setActiveDeck] = useState<"A" | "B" | null>(null);
   const [playedDecks, setPlayedDecks] = useState<{ A: boolean; B: boolean }>({ A: false, B: false });
@@ -2186,36 +2188,37 @@ function BattleArenaContent() {
     const loadVotes = async () => {
       const { data: voteData } = await supabase
         .from("battle_votes")
-        .select("voted_for, user_id")
+        .select("voted_for,user_id,voter_role")
         .eq("battle_id", battleId);
 
-      let guestCounts = { fighter_a: 0, fighter_b: 0 };
+      let combinedCounts: VoteCount | null = null;
+      let combinedAudienceCount: number | null = null;
       let guestVote: "fighter_a" | "fighter_b" | null = null;
-      if (battleGuestId) {
-        const guestState = await fetch(
-          `/api/battle-pool/guest-vote?battleId=${encodeURIComponent(battleId)}&guestId=${encodeURIComponent(battleGuestId)}`,
-          { cache: "no-store" },
-        )
-          .then((res) => (res.ok ? res.json() : null))
-          .catch(() => null) as
-          | { counts?: { fighter_a?: number; fighter_b?: number }; guestVote?: "fighter_a" | "fighter_b" | null }
-          | null;
-        guestCounts = {
+      const guestState = await fetch(
+        `/api/battle-pool/guest-vote?battleId=${encodeURIComponent(battleId)}&guestId=${encodeURIComponent(battleGuestId || getBattleGuestId())}`,
+        { cache: "no-store" },
+      )
+        .then((res) => (res.ok ? res.json() : null))
+        .catch(() => null) as
+        | { counts?: { fighter_a?: number; fighter_b?: number }; audienceCount?: number; guestVote?: "fighter_a" | "fighter_b" | null }
+        | null;
+      if (guestState?.counts) {
+        combinedCounts = {
           fighter_a: Math.max(0, Number(guestState?.counts?.fighter_a) || 0),
           fighter_b: Math.max(0, Number(guestState?.counts?.fighter_b) || 0),
         };
+        combinedAudienceCount = Math.max(0, Number(guestState.audienceCount) || 0);
         guestVote = guestState?.guestVote ?? null;
       }
 
-      const signedRows = voteData ?? [];
+      const signedRows = ((voteData ?? []) as BattleVoteRow[]).filter((row) => !row.voter_role || row.voter_role === "audience");
       const signedCounts = {
         fighter_a: signedRows.filter((v) => v.voted_for === "fighter_a").length,
         fighter_b: signedRows.filter((v) => v.voted_for === "fighter_b").length,
       };
-      setVotes({
-        fighter_a: signedCounts.fighter_a + guestCounts.fighter_a,
-        fighter_b: signedCounts.fighter_b + guestCounts.fighter_b,
-      });
+      const signedAudienceCount = new Set(signedRows.map((row) => String(row.user_id || "").trim()).filter(Boolean)).size;
+      setVotes(combinedCounts ?? signedCounts);
+      setAudienceVoteCount(combinedAudienceCount ?? signedAudienceCount);
       const myVote = signedRows.find((v) => v.user_id === myUserId);
       if (myVote) setHasVoted(myVote.voted_for as "fighter_a" | "fighter_b");
       else if (!myUserId && guestVote) setHasVoted(guestVote);
@@ -2258,6 +2261,7 @@ function BattleArenaContent() {
     clearArenaEcho();
     setVoteOpen(false);
     setVoteCountdown(null);
+    setAudienceVoteCount(0);
     setWinnerRevealOpen(false);
     setRematchPromptReady(false);
     setNoContestOpen(false);
@@ -3129,6 +3133,7 @@ function BattleArenaContent() {
     voteIntentInFlightRef.current = target;
     setHasVoted(target);
     setVotes((prev) => applyVoteDelta(prev, previousVote, target));
+    if (!previousVote) setAudienceVoteCount((prev) => prev + 1);
 
     const rollbackVote = () => {
       setHasVoted(previousVote);
@@ -3138,6 +3143,7 @@ function BattleArenaContent() {
         if (previousVote) next[previousVote] += 1;
         return next;
       });
+      if (!previousVote) setAudienceVoteCount((prev) => Math.max(0, prev - 1));
     };
 
     if (battleId.startsWith("mock-") || isAuthBypassEnabled) {
@@ -3157,7 +3163,7 @@ function BattleArenaContent() {
           body: JSON.stringify({ battleId, guestId, votedFor: target }),
         });
         const payload = (await response.json().catch(() => null)) as
-          | { error?: string; counts?: { fighter_a: number; fighter_b: number } }
+          | { error?: string; counts?: { fighter_a: number; fighter_b: number }; audienceCount?: number }
           | null;
         if (!response.ok) {
           rollbackVote();
@@ -3165,6 +3171,7 @@ function BattleArenaContent() {
           return;
         }
         if (payload?.counts) setVotes(payload.counts);
+        if (typeof payload?.audienceCount === "number") setAudienceVoteCount(Math.max(0, payload.audienceCount));
         return;
       }
 
@@ -3310,6 +3317,10 @@ function BattleArenaContent() {
     if (battleId.startsWith("mock-") || isAuthBypassEnabled) return;
     const winnerSideForWindow = pick90sBattleWinner(votes, battleId, firstDeck);
     if (!winnerSideForWindow || votes.fighter_a + votes.fighter_b <= 0) return;
+    if (audienceVoteCount < DROP_BATTLE_OFFICIAL_AUDIENCE_MIN) {
+      queueResultFallback(700);
+      return;
+    }
     const key = `${battleId}:${winnerSideForWindow}`;
     if (rematchOpenedBattleRef.current === key) return;
     rematchOpenedBattleRef.current = key;
@@ -3328,7 +3339,7 @@ function BattleArenaContent() {
         if (!/No valid rematch window|not found/i.test(message)) setRematchError(message);
         queueResultFallback(/No valid rematch window|not found/i.test(message) ? 700 : 1400);
       });
-  }, [applyRematchClaim, battle, battleId, firstDeck, loading, playedDecks.A, playedDecks.B, queueResultFallback, rematchPromptReady, voteOpen, votes, winnerRevealOpen]);
+  }, [applyRematchClaim, audienceVoteCount, battle, battleId, firstDeck, loading, playedDecks.A, playedDecks.B, queueResultFallback, rematchPromptReady, voteOpen, votes, winnerRevealOpen]);
 
   useEffect(() => {
     if (!REMATCH_CHALLENGE_ENABLED) return;
@@ -3641,6 +3652,7 @@ function BattleArenaContent() {
       finalVoteLeft: String(pctA),
       finalVoteRight: String(pctB),
       votesTotal: String(totalVotes),
+      audienceCount: String(audienceVoteCount),
       accuracy: String(Math.max(pctA, pctB)),
       feedbackA: JSON.stringify(feedbackCounts.A),
       feedbackB: JSON.stringify(feedbackCounts.B),

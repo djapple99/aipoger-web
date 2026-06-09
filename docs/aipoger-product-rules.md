@@ -1,6 +1,6 @@
 # AIPOGER Product Rules
 
-Last updated: 2026-06-07
+Last updated: 2026-06-10
 
 This document is the product-rule source of truth for AIPOGER. Use it before changing Battle, Bar Heartbreak, Honor Board, auth, upload, or deployment behavior.
 
@@ -58,9 +58,12 @@ Current behavior:
 - If the ended Drop Battle still has an open/claimed/uploaded rematch path, keep the visitor in the battle flow: stay on the source arena for open/claimed rematch, or redirect to the next battle when `next_battle_id` exists.
 - The same battle/match group should appear only once in the Battle Pool, even if both fighters have queue rows.
 - Both participants in an unfinished Drop Battle should be able to cancel from the arena or eligible Battle Pool card.
-- Finished 90s Drop Battles with a valid winner open a short king-of-the-hill rematch window: 5 seconds to claim the challenger slot, then 120 seconds for the challenger to upload their Drop.
+- Finished 90s Drop Battles open a short king-of-the-hill rematch window only after the result is official: at least 3 distinct audience voters, a valid winner, no existing next battle, and a formal Drop Battle type. The window is 5 seconds to claim the challenger slot, then 120 seconds for the challenger to upload their Drop.
 - If nobody claims the 5-second rematch slot, the battle should go directly to the result card and should not leave a lingering rematch card.
-- A 0:0 no contest never creates a defender/rematch window.
+- A 0:0 no contest never creates a result card, defender/rematch window, Honor Board record, or formal battle stats.
+- A battle with 1-2 distinct audience voters may show an unofficial battle result in the arena/result flow, but it must not create a Honor Board record, `battle_result_archives` row, song battle stats, or defender/rematch window.
+- A battle with at least 3 distinct audience voters is an official Drop Battle result and may create the result archive, feed the Honor Board, update per-song battle stats, and open the defender/rematch window.
+- The official-result audience threshold counts distinct listeners only: one signed-in `battle_votes.user_id` or one anonymous `battle_guest_votes.guest_id` per battle. Fighter participation does not count toward the 3-audience minimum.
 - A user can have only one active Drop Battle intent at a time.
 - Drop Battle and 24H Full Song can coexist for the same account; their active limits are separate.
 - Drop Battle challenge cards expire automatically after at most 24 hours and are cancelled by cleanup.

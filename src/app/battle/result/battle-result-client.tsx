@@ -18,6 +18,7 @@ import {
   type BattleFeedbackKey,
 } from "@/lib/battle-result-archive";
 import { completeBattleCardIntent } from "@/lib/battle-pool-client";
+import { DROP_BATTLE_OFFICIAL_AUDIENCE_MIN, isOfficialDropBattleResult } from "@/lib/drop-battle-rematch";
 import { supabase } from "@/lib/supabase";
 
 type SkillKey = BattleFeedbackKey;
@@ -136,6 +137,8 @@ function archivedResultFromRow(row: Record<string, unknown>): ArchivedBattleResu
     finalVoteLeft: numberParam(String(row.final_vote_left ?? ""), 0),
     finalVoteRight: numberParam(String(row.final_vote_right ?? ""), 0),
     votesTotal: numberParam(String(payload.votesTotal ?? row.total_votes ?? ""), 0),
+    audienceCount: numberParam(String(payload.audienceCount ?? row.total_votes ?? ""), 0),
+    officialAudienceMin: numberParam(String(payload.officialAudienceMin ?? DROP_BATTLE_OFFICIAL_AUDIENCE_MIN), DROP_BATTLE_OFFICIAL_AUDIENCE_MIN),
     audienceReview: textFrom(row.audience_review) || textFrom(payload.audienceReview),
     aiReview: textFrom(payload.aiReview),
     feedbackA: sanitizeBattleFeedbackCounts(payload.feedbackA),
@@ -401,6 +404,19 @@ function BattleResultContent() {
   const rawVoteTotal = numberParam(searchParams.get("votesTotal") ?? searchParams.get("votes") ?? searchParams.get("voteCount"), remoteArchive?.votesTotal ?? 0);
   const voteTotal = !isUuid(battleId) && rawVoteTotal === 128 ? 0 : rawVoteTotal;
   const displayVoteTotal = voteTotal;
+  const officialAudienceMin = remoteArchive?.officialAudienceMin || DROP_BATTLE_OFFICIAL_AUDIENCE_MIN;
+  const audienceCount = numberParam(searchParams.get("audienceCount"), remoteArchive?.audienceCount ?? displayVoteTotal);
+  const isOfficialBattleResult = Boolean(remoteArchive) || isOfficialDropBattleResult({ audienceCount, totalVotes: displayVoteTotal });
+  const resultHeadline = isOfficialBattleResult
+    ? t("result_headline", { winner: winnerName })
+    : lang === "zh"
+      ? `${winnerName} 拿下這場非正式 Drop Battle`
+      : `${winnerName} won this unofficial Drop Battle`;
+  const resultBody = isOfficialBattleResult
+    ? t("result_body", { song: winnerSong })
+    : lang === "zh"
+      ? `這首「${winnerSong}」已分出勝負，但本場只有 ${audienceCount}/${officialAudienceMin} 名觀眾投票，先不進榮譽榜，也不累計歌曲正式戰績。`
+      : `"${winnerSong}" won the room, but only ${audienceCount}/${officialAudienceMin} audience voters joined. This stays unofficial and does not enter the Honor Board or official song stats.`;
   const feedbackA = useMemo(
     () => searchParams.get("feedbackA") ? parseBattleFeedbackParam(searchParams.get("feedbackA")) : remoteArchive?.feedbackA ?? parseBattleFeedbackParam(null),
     [remoteArchive?.feedbackA, searchParams],
@@ -432,6 +448,7 @@ function BattleResultContent() {
           "This one hits hard. Listen before the arena cools down.",
         ].join("\n");
   const resultShareUrl = (() => {
+    if (!isOfficialBattleResult) return undefined;
     if (!battleId || !isUuid(battleId)) return undefined;
     return `/battle/result?battleId=${encodeURIComponent(battleId)}&lang=${lang}`;
   })();
@@ -497,32 +514,36 @@ function BattleResultContent() {
       return;
     }
     const resultHref = `${window.location.pathname}${window.location.search}`;
-    upsertArchivedBattleResult({
-      id: battleId || battleCode,
-      battleId,
-      battleCode,
-      winnerSide,
-      winnerName,
-      winnerSong,
-      opponentName,
-      opponentSong,
-      rank: displayRank,
-      tool,
-      genre: cleanParam(searchParams.get("genre")),
-      coverUrl: coverUrlRaw,
-      avatarUrl: avatarUrlRaw,
-      opponentCoverUrl: opponentCoverUrlRaw,
-      opponentAvatarUrl: opponentAvatarUrlRaw,
-      finalVoteLeft,
-      finalVoteRight,
-      votesTotal: displayVoteTotal,
-      audienceReview,
-      aiReview,
-      feedbackA: sanitizeBattleFeedbackCounts(feedbackA),
-      feedbackB: sanitizeBattleFeedbackCounts(feedbackB),
-      resultHref,
-      createdAt: new Date().toISOString(),
-    });
+    if (isOfficialBattleResult) {
+      upsertArchivedBattleResult({
+        id: battleId || battleCode,
+        battleId,
+        battleCode,
+        winnerSide,
+        winnerName,
+        winnerSong,
+        opponentName,
+        opponentSong,
+        rank: displayRank,
+        tool,
+        genre: cleanParam(searchParams.get("genre")),
+        coverUrl: coverUrlRaw,
+        avatarUrl: avatarUrlRaw,
+        opponentCoverUrl: opponentCoverUrlRaw,
+        opponentAvatarUrl: opponentAvatarUrlRaw,
+        finalVoteLeft,
+        finalVoteRight,
+        votesTotal: displayVoteTotal,
+        audienceCount,
+        officialAudienceMin,
+        audienceReview,
+        aiReview,
+        feedbackA: sanitizeBattleFeedbackCounts(feedbackA),
+        feedbackB: sanitizeBattleFeedbackCounts(feedbackB),
+        resultHref,
+        createdAt: new Date().toISOString(),
+      });
+    }
 
     if (!isUuid(battleId)) return;
     const settledBattleId = battleId;
@@ -541,27 +562,31 @@ function BattleResultContent() {
         }
       }
 
-      const archive = await supabase.rpc("archive_battle_result", {
-        p_battle_id: settledBattleId,
-        p_winner: winnerSide,
-        p_final_vote_left: finalVoteLeft,
-        p_final_vote_right: finalVoteRight,
-        p_audience_review: audienceReview,
-        p_result_payload: {
-          coverUrl: coverUrlRaw,
-          avatarUrl: avatarUrlRaw,
-          opponentCoverUrl: opponentCoverUrlRaw,
-          opponentAvatarUrl: opponentAvatarUrlRaw,
-          aiReview,
-          rank: displayRank,
-          genre: cleanParam(searchParams.get("genre")),
-          votesTotal: displayVoteTotal,
-          feedbackA,
-          feedbackB,
-          resultHref,
-        },
-      });
-      if (archive.error) console.warn("[battle result archive]", archive.error.message);
+      if (isOfficialBattleResult) {
+        const archive = await supabase.rpc("archive_battle_result", {
+          p_battle_id: settledBattleId,
+          p_winner: winnerSide,
+          p_final_vote_left: finalVoteLeft,
+          p_final_vote_right: finalVoteRight,
+          p_audience_review: audienceReview,
+          p_result_payload: {
+            coverUrl: coverUrlRaw,
+            avatarUrl: avatarUrlRaw,
+            opponentCoverUrl: opponentCoverUrlRaw,
+            opponentAvatarUrl: opponentAvatarUrlRaw,
+            aiReview,
+            rank: displayRank,
+            genre: cleanParam(searchParams.get("genre")),
+            votesTotal: displayVoteTotal,
+            audienceCount,
+            officialAudienceMin,
+            feedbackA,
+            feedbackB,
+            resultHref,
+          },
+        });
+        if (archive.error) console.warn("[battle result archive]", archive.error.message);
+      }
 
       const {
         data: { session },
@@ -584,12 +609,15 @@ function BattleResultContent() {
     coverUrlRaw,
     displayRank,
     displayVoteTotal,
+    audienceCount,
+    officialAudienceMin,
     databaseWinnerChecked,
     feedbackA,
     feedbackB,
     finalVoteLeft,
     finalVoteRight,
     hasCompleteResultData,
+    isOfficialBattleResult,
     winnerSideConflict,
     opponentAvatarUrl,
     opponentAvatarUrlRaw,
@@ -633,17 +661,17 @@ function BattleResultContent() {
           <div className="mb-3 rounded-[1.4rem] border border-orange-300/35 bg-black/72 p-3 shadow-[0_18px_70px_rgba(0,0,0,0.38),0_0_32px_rgba(255,106,0,0.16)] backdrop-blur-xl">
             <div className="mb-2 flex items-center justify-between gap-2">
               <p className="text-[0.68rem] font-black uppercase tracking-[0.24em] text-orange-200/80">
-                {lang === "zh" ? "成果卡分享連結" : "Share This Result Card"}
+                {isOfficialBattleResult ? (lang === "zh" ? "成果卡分享連結" : "Share This Result Card") : lang === "zh" ? "非正式戰果分享" : "Share Unofficial Result"}
               </p>
               <span className="shrink-0 rounded-full border border-yellow-200/35 bg-yellow-300/15 px-2.5 py-1 text-[0.68rem] font-black text-yellow-100 shadow-[0_0_18px_rgba(250,204,21,0.2)]">
-                {lang === "zh" ? "分享 +188 APC" : "Share +188 APC"}
+                {isOfficialBattleResult ? (lang === "zh" ? "分享 +188 APC" : "Share +188 APC") : lang === "zh" ? `${audienceCount}/${officialAudienceMin} 觀眾` : `${audienceCount}/${officialAudienceMin} voters`}
               </span>
             </div>
             <ShareButton
-              title={t("result_share_title")}
+              title={isOfficialBattleResult ? t("result_share_title") : lang === "zh" ? "AIPOGER 非正式 Drop Battle 戰果" : "AIPOGER Unofficial Drop Battle Result"}
               text={shareText}
               url={resultShareUrl}
-              label={lang === "zh" ? "分享成果卡 · +188 APC" : "Share Result Card · +188 APC"}
+              label={isOfficialBattleResult ? (lang === "zh" ? "分享成果卡 · +188 APC" : "Share Result Card · +188 APC") : lang === "zh" ? "分享非正式戰果" : "Share Unofficial Result"}
               copiedLabel={t("common_copied")}
               className="w-full border-orange-200/55 bg-orange-500 px-5 py-3 text-base font-black text-black shadow-[0_0_28px_rgba(255,106,0,0.24)] hover:bg-orange-300"
             />
@@ -771,12 +799,17 @@ function BattleResultContent() {
               AI DROP REVIEW
             </span>
             <span className="mt-4 block text-[clamp(1.85rem,3.8vw,3rem)] font-black leading-tight text-white drop-shadow-[0_0_22px_rgba(255,255,255,0.14)]">
-              {t("result_headline", { winner: winnerName })}
+              {resultHeadline}
             </span>
           </h1>
           <p className="mt-5 max-w-xl text-base leading-8 text-zinc-400">
-            {t("result_body", { song: winnerSong })}
+            {resultBody}
           </p>
+          {!isOfficialBattleResult ? (
+            <p className="mt-4 inline-flex rounded-full border border-yellow-200/30 bg-yellow-300/10 px-3 py-1.5 text-xs font-black text-yellow-100">
+              {lang === "zh" ? `正式榮譽榜門檻：${officialAudienceMin} 名不同觀眾` : `Official threshold: ${officialAudienceMin} distinct audience voters`}
+            </p>
+          ) : null}
 
           <section className="mt-8 overflow-hidden rounded-[1.75rem] border border-orange-300/22 bg-[radial-gradient(circle_at_50%_38%,rgba(255,106,0,0.28),rgba(0,202,255,0.1)_48%,rgba(255,255,255,0.04)_74%)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_22px_80px_rgba(0,0,0,0.38)] md:p-6">
             <div className="flex items-center justify-between gap-4">
@@ -785,7 +818,13 @@ function BattleResultContent() {
                   DROP POWER RADAR
                 </p>
                 <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">
-                  {lang === "zh" ? "榮譽卡同款五角評分圖，直接看這首 Drop 的爆點分布。" : "Honor Card radar showing this Drop's strongest points."}
+                  {isOfficialBattleResult
+                    ? lang === "zh"
+                      ? "榮譽卡同款五角評分圖，直接看這首 Drop 的爆點分布。"
+                      : "Honor Card radar showing this Drop's strongest points."
+                    : lang === "zh"
+                      ? "非正式戰果仍保留爆點分析，但不進榮譽榜。"
+                      : "Unofficial results keep the signal radar, but do not enter the Honor Board."}
                 </p>
               </div>
               <div className="hidden items-center gap-2 rounded-full border border-orange-200/25 bg-black/42 px-2.5 py-1.5 shadow-[0_0_18px_rgba(255,106,0,0.16)] sm:inline-flex">
@@ -812,7 +851,7 @@ function BattleResultContent() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-200/70">
-                    {lang === "zh" ? "榮譽上榜鬥士" : "HONOR BOARD FIGHTER"}
+                    {isOfficialBattleResult ? (lang === "zh" ? "榮譽上榜鬥士" : "HONOR BOARD FIGHTER") : lang === "zh" ? "非正式勝方" : "UNOFFICIAL WINNER"}
                   </p>
                   <p className="truncate text-xl font-black leading-tight text-white">{winnerName}</p>
                   <p className="truncate text-sm font-bold leading-tight text-orange-100">{winnerSong}</p>

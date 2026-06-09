@@ -7,6 +7,7 @@ import {
 } from "@/lib/battle-pool-client";
 import { cancelStalePendingDropBattles, isMissingScheduleColumn } from "@/lib/battle-pool-maintenance";
 import { battleSeedForId, pick90sBattleWinner } from "@/lib/battle-90s-system";
+import { DROP_BATTLE_OFFICIAL_AUDIENCE_MIN } from "@/lib/drop-battle-rematch";
 
 type SupabaseAdmin = SupabaseClient;
 
@@ -33,7 +34,8 @@ type HookBattleRow = {
   winner?: string | null;
 };
 
-type VoteRow = { voted_for: string | null };
+type VoteRow = { voted_for: string | null; user_id?: string | null; voter_role?: string | null };
+type GuestVoteRow = { voted_for: string | null; guest_id?: string | null };
 const missingGuestVoteTablePattern = /battle_guest_votes|schema cache|relation.*does not exist|Could not find the table|PGRST205/i;
 
 type DailyBattleRow = {
@@ -345,9 +347,14 @@ async function settleStaleHookBattles(admin: SupabaseAdmin, warnings: string[]) 
     }
 
     await completeQueues(admin, battle, "completed", warnings);
-    await archiveHookBattleResult(admin, battle, winner, counts, warnings);
-    await notifyHookBattleResult(admin, battle, winner, counts, warnings);
-    await recordHookBattleHistory(admin, battle, winner, counts, warnings);
+    const isOfficial = voteRead.audienceCount >= DROP_BATTLE_OFFICIAL_AUDIENCE_MIN;
+    if (isOfficial) {
+      await archiveHookBattleResult(admin, battle, winner, counts, voteRead.audienceCount, warnings);
+      await notifyHookBattleResult(admin, battle, winner, counts, warnings, true);
+      await recordHookBattleHistory(admin, battle, winner, counts, warnings);
+    } else {
+      await notifyHookBattleResult(admin, battle, winner, counts, warnings, false);
+    }
     settled += 1;
   }
   return settled;
@@ -390,30 +397,43 @@ function countSides(votes: VoteRow[]) {
   );
 }
 
+function isAudienceVote(row: VoteRow) {
+  return !row.voter_role || row.voter_role === "audience";
+}
+
+function distinctTextCount(values: Array<string | null | undefined>) {
+  return new Set(values.map((value) => String(value || "").trim()).filter(Boolean)).size;
+}
+
 async function readCombined90sVotes(admin: SupabaseAdmin, battleId: string) {
   const { data: votes, error: voteError } = await admin
     .from("battle_votes")
-    .select("voted_for")
+    .select("voted_for,user_id,voter_role")
     .eq("battle_id", battleId);
-  if (voteError) return { counts: { fighter_a: 0, fighter_b: 0 }, error: voteError.message };
+  if (voteError) return { counts: { fighter_a: 0, fighter_b: 0 }, audienceCount: 0, error: voteError.message };
 
-  const counts = countSides((votes ?? []) as VoteRow[]);
+  const signedRows = ((votes ?? []) as VoteRow[]).filter(isAudienceVote);
+  const counts = countSides(signedRows);
+  const signedAudienceCount = distinctTextCount(signedRows.map((row) => row.user_id));
   const { data: guestVotes, error: guestVoteError } = await admin
     .from("battle_guest_votes")
-    .select("voted_for")
+    .select("voted_for,guest_id")
     .eq("battle_id", battleId);
   if (guestVoteError) {
     const msg = `${guestVoteError.message ?? ""} ${guestVoteError.details ?? ""}`;
-    if (!missingGuestVoteTablePattern.test(msg)) return { counts, error: guestVoteError.message };
-    return { counts, error: null };
+    if (!missingGuestVoteTablePattern.test(msg)) return { counts, audienceCount: signedAudienceCount, error: guestVoteError.message };
+    return { counts, audienceCount: signedAudienceCount, error: null };
   }
 
-  const guestCounts = countSides((guestVotes ?? []) as VoteRow[]);
+  const guestRows = (guestVotes ?? []) as GuestVoteRow[];
+  const guestCounts = countSides(guestRows);
+  const guestAudienceCount = distinctTextCount(guestRows.map((row) => row.guest_id));
   return {
     counts: {
       fighter_a: counts.fighter_a + guestCounts.fighter_a,
       fighter_b: counts.fighter_b + guestCounts.fighter_b,
     },
+    audienceCount: signedAudienceCount + guestAudienceCount,
     error: null,
   };
 }
@@ -424,8 +444,11 @@ async function notifyHookBattleResult(
   winner: "fighter_a" | "fighter_b" | null,
   counts: { fighter_a: number; fighter_b: number },
   warnings: string[],
+  official = true,
 ) {
   const noContest = !winner;
+  const unofficialBody =
+    "這場 90s Drop Battle 已分出勝負，但未滿 3 名觀眾投票，先作為非正式戰果，不進榮譽榜，也不累計歌曲正式戰績。";
   const rows = [
     {
       user_id: battle.fighter_a_user_id,
@@ -435,6 +458,8 @@ async function notifyHookBattleResult(
       title: noContest ? "Battle 已結束：未分勝負" : winner === "fighter_a" ? "Battle 勝利！" : "Battle 結束",
       body: noContest
         ? "這場 90s Drop Battle 沒有任何觀眾投票，已判定 no contest，不產生成果卡，也不進榮譽榜。"
+        : !official
+          ? unofficialBody
         : winner === "fighter_a"
           ? `你擊敗了 ${battle.fighter_b_name}，成果已可查看。`
           : `${battle.fighter_b_name} 贏下這場，成果已可查看。`,
@@ -453,6 +478,8 @@ async function notifyHookBattleResult(
       title: noContest ? "Battle 已結束：未分勝負" : winner === "fighter_b" ? "Battle 勝利！" : "Battle 結束",
       body: noContest
         ? "這場 90s Drop Battle 沒有任何觀眾投票，已判定 no contest，不產生成果卡，也不進榮譽榜。"
+        : !official
+          ? unofficialBody
         : winner === "fighter_b"
           ? `你擊敗了 ${battle.fighter_a_name}，成果已可查看。`
           : `${battle.fighter_a_name} 贏下這場，成果已可查看。`,
@@ -474,6 +501,7 @@ async function archiveHookBattleResult(
   battle: HookBattleRow,
   winner: "fighter_a" | "fighter_b",
   counts: { fighter_a: number; fighter_b: number },
+  audienceCount: number,
   warnings: string[],
 ) {
   const archive = await admin.rpc("archive_battle_result", {
@@ -489,12 +517,14 @@ async function archiveHookBattleResult(
       source: "cron",
       votesA: counts.fighter_a,
       votesB: counts.fighter_b,
+      audienceCount,
+      officialAudienceMin: DROP_BATTLE_OFFICIAL_AUDIENCE_MIN,
       settledAt: new Date().toISOString(),
     },
   });
   if (!archive.error) return;
 
-  const direct = await archiveHookBattleResultDirect(admin, battle, winner, counts);
+  const direct = await archiveHookBattleResultDirect(admin, battle, winner, counts, audienceCount);
   if (direct.error) {
     warnings.push(`archive 90s ${battle.id}: ${archive.error.message}; direct archive: ${direct.error}`);
   }
@@ -505,6 +535,7 @@ async function archiveHookBattleResultDirect(
   battle: HookBattleRow,
   winner: "fighter_a" | "fighter_b",
   counts: { fighter_a: number; fighter_b: number },
+  audienceCount: number,
 ) {
   const fresh = await admin
     .from("battles")
@@ -555,6 +586,8 @@ async function archiveHookBattleResultDirect(
           source: "cron-direct-fallback",
           votesA: counts.fighter_a,
           votesB: counts.fighter_b,
+          audienceCount,
+          officialAudienceMin: DROP_BATTLE_OFFICIAL_AUDIENCE_MIN,
           settledAt: now,
         },
         archived_at: now,

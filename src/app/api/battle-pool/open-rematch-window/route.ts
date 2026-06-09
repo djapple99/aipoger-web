@@ -7,7 +7,8 @@ import {
   isDropRematchStatus,
 } from "@/lib/drop-battle-rematch";
 
-type VoteRow = { voted_for: string | null };
+type VoteRow = { voted_for: string | null; user_id?: string | null; voter_role?: string | null };
+type GuestVoteRow = { voted_for: string | null; guest_id?: string | null };
 type SupabaseAdmin = SupabaseClient;
 const missingGuestVoteTablePattern = /battle_guest_votes|schema cache|relation.*does not exist|Could not find the table|PGRST205/i;
 
@@ -60,30 +61,43 @@ function countSides(votes: VoteRow[]) {
   );
 }
 
+function isAudienceVote(row: VoteRow) {
+  return !row.voter_role || row.voter_role === "audience";
+}
+
+function distinctTextCount(values: Array<string | null | undefined>) {
+  return new Set(values.map((value) => String(value || "").trim()).filter(Boolean)).size;
+}
+
 async function readCombined90sVotes(admin: SupabaseAdmin, battleId: string) {
   const { data: votes, error: voteError } = await admin
     .from("battle_votes")
-    .select("voted_for")
+    .select("voted_for,user_id,voter_role")
     .eq("battle_id", battleId);
-  if (voteError) return { counts: { fighter_a: 0, fighter_b: 0 }, error: voteError.message };
+  if (voteError) return { counts: { fighter_a: 0, fighter_b: 0 }, audienceCount: 0, error: voteError.message };
 
-  const counts = countSides((votes ?? []) as VoteRow[]);
+  const signedRows = ((votes ?? []) as VoteRow[]).filter(isAudienceVote);
+  const counts = countSides(signedRows);
+  const signedAudienceCount = distinctTextCount(signedRows.map((row) => row.user_id));
   const { data: guestVotes, error: guestVoteError } = await admin
     .from("battle_guest_votes")
-    .select("voted_for")
+    .select("voted_for,guest_id")
     .eq("battle_id", battleId);
   if (guestVoteError) {
     const msg = `${guestVoteError.message ?? ""} ${guestVoteError.details ?? ""}`;
-    if (!missingGuestVoteTablePattern.test(msg)) return { counts, error: guestVoteError.message };
-    return { counts, error: null };
+    if (!missingGuestVoteTablePattern.test(msg)) return { counts, audienceCount: signedAudienceCount, error: guestVoteError.message };
+    return { counts, audienceCount: signedAudienceCount, error: null };
   }
 
-  const guestCounts = countSides((guestVotes ?? []) as VoteRow[]);
+  const guestRows = (guestVotes ?? []) as GuestVoteRow[];
+  const guestCounts = countSides(guestRows);
+  const guestAudienceCount = distinctTextCount(guestRows.map((row) => row.guest_id));
   return {
     counts: {
       fighter_a: counts.fighter_a + guestCounts.fighter_a,
       fighter_b: counts.fighter_b + guestCounts.fighter_b,
     },
+    audienceCount: signedAudienceCount + guestAudienceCount,
     error: null,
   };
 }
@@ -158,7 +172,7 @@ export async function POST(request: NextRequest) {
   const counts = voteRead.counts;
   const totalVotes = counts.fighter_a + counts.fighter_b;
   const winner = pick90sBattleWinner(counts, battle.id);
-  if (!canOpenDropRematchWindow({ winner, totalVotes, battleType: battle.battle_type })) {
+  if (!canOpenDropRematchWindow({ winner, totalVotes, audienceCount: voteRead.audienceCount, battleType: battle.battle_type })) {
     return jsonError("No valid rematch window for this battle", 409);
   }
   if (winner !== requestedWinnerSide) return jsonError("Winner side does not match server result", 409);
