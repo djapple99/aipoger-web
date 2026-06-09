@@ -78,6 +78,34 @@ function ListenBarIcon() {
   );
 }
 
+function HeroVinylVisual() {
+  return (
+    <div
+      className="pointer-events-none absolute left-[61%] top-[7.2rem] z-0 hidden h-[27rem] w-[27rem] -translate-x-1/2 md:block xl:left-[58%] xl:h-[31rem] xl:w-[31rem]"
+      aria-hidden="true"
+    >
+      <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(255,106,0,0.08),transparent_44%),repeating-radial-gradient(circle,rgba(255,255,255,0.16)_0_1px,transparent_1px_12px)] opacity-80" />
+      <div className="absolute inset-[9%] rounded-full border border-orange-300/22 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1)_0_2%,rgba(9,9,9,0.98)_2.5%_42%,rgba(255,255,255,0.09)_43%,rgba(3,3,3,0.98)_44%)] shadow-[inset_0_0_56px_rgba(255,255,255,0.075),0_0_54px_rgba(255,106,0,0.12)]" />
+      <div className="absolute inset-[36%] rounded-full border border-orange-300/28 bg-[radial-gradient(circle_at_50%_50%,#120805_0_10%,rgba(255,106,0,0.72)_11%_43%,rgba(255,175,93,0.34)_44%_58%,rgba(0,0,0,0.5)_59%)] shadow-[0_0_38px_rgba(255,106,0,0.24)]" />
+      <div className="absolute left-[44%] top-[46%] h-[2.1rem] w-[2.1rem] rounded-full bg-black ring-1 ring-orange-100/28" />
+      <div className="absolute left-[41.5%] top-[50.5%] h-[2.7rem] w-[8.5rem] -translate-y-1/2 bg-[linear-gradient(90deg,transparent,rgba(255,190,120,0.9),transparent)] opacity-65" />
+      <div className="absolute right-[4%] top-[20%] h-[18rem] w-[0.82rem] rotate-[32deg] rounded-full border border-white/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.72),rgba(255,255,255,0.12),rgba(255,106,0,0.18))] shadow-[0_0_18px_rgba(255,255,255,0.16)]" />
+      <div className="absolute right-[14%] top-[64%] h-[5.4rem] w-[1rem] rotate-[48deg] rounded-full border border-orange-100/32 bg-black/82" />
+      <div className="absolute bottom-[21%] left-[37%] h-[2.7rem] w-[7rem] overflow-hidden text-orange-200/80">
+        <div className="flex h-full items-end gap-[3px]">
+          {Array.from({ length: 18 }).map((_, index) => (
+            <span
+              key={index}
+              className="w-[3px] rounded-full bg-orange-300/75"
+              style={{ height: `${18 + ((index * 19) % 34)}%` }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function userAvatarUrl(user: User): string | null {
   const m = user.user_metadata as Record<string, unknown> | undefined;
   if (!m) return null;
@@ -458,7 +486,8 @@ export default function HomePage() {
       <HomeBgmPlayer />
 
       <section className="relative z-10 mx-auto grid w-full max-w-[116rem] gap-6 pb-1 pt-16 md:grid-cols-[minmax(0,1fr)_minmax(21rem,25.5rem)] md:items-center md:gap-[clamp(1.8rem,3.8vw,4.8rem)] md:pt-[clamp(4rem,7vh,5.4rem)]">
-        <div className="relative isolate min-w-0 overflow-visible md:min-h-[28.6rem] md:px-[clamp(1.8rem,3.5vw,4.8rem)] md:pb-3 md:pt-[clamp(1.65rem,3.6vh,2.8rem)] xl:pl-[clamp(2.5rem,4.8vw,5.5rem)] before:pointer-events-none before:absolute before:inset-[-4rem_-5rem_-3rem_-3.5rem] before:-z-10 before:bg-[radial-gradient(ellipse_at_22%_46%,rgba(255,106,0,0.078),rgba(66,25,8,0.038)_46%,transparent_76%)] before:blur-[2px] before:content-['']">
+        <HeroVinylVisual />
+        <div className="relative z-10 isolate min-w-0 overflow-visible md:min-h-[28.6rem] md:px-[clamp(1.8rem,3.5vw,4.8rem)] md:pb-3 md:pt-[clamp(1.65rem,3.6vh,2.8rem)] xl:pl-[clamp(2.5rem,4.8vw,5.5rem)] before:pointer-events-none before:absolute before:inset-[-4rem_-5rem_-3rem_-3.5rem] before:-z-10 before:bg-[radial-gradient(ellipse_at_22%_46%,rgba(255,106,0,0.078),rgba(66,25,8,0.038)_46%,transparent_76%)] before:blur-[2px] before:content-['']">
           <div className="mb-2 flex items-center gap-3">
             <Image
               src={AIPOGER_BRAND_LOGO}
@@ -546,14 +575,15 @@ export default function HomePage() {
 
         </div>
 
-        <div className="hidden justify-self-end md:block md:w-[min(23.4vw,25rem)] md:min-w-[21rem] md:self-center">
-          <div className="relative overflow-hidden rounded-[1.25rem] border border-white/10 bg-[linear-gradient(145deg,rgba(17,17,16,0.72),rgba(4,4,4,0.88)_58%,rgba(0,18,20,0.62))] p-[clamp(1.2rem,1.52vw,1.58rem)] shadow-[0_22px_76px_rgba(0,0,0,0.66),0_0_46px_rgba(255,106,0,0.075)] backdrop-blur-[2px]">
+        <div className="relative z-10 hidden justify-self-end md:block md:w-[min(23.4vw,25rem)] md:min-w-[21rem] md:self-center">
+          <div className="relative overflow-hidden rounded-[1.35rem] border border-orange-300/38 bg-[linear-gradient(145deg,rgba(17,17,16,0.74),rgba(4,4,4,0.92)_58%,rgba(0,18,20,0.68))] p-[clamp(1.2rem,1.52vw,1.58rem)] shadow-[0_22px_76px_rgba(0,0,0,0.66),0_0_46px_rgba(255,106,0,0.13),inset_0_0_0_1px_rgba(255,255,255,0.04)] backdrop-blur-[2px] before:pointer-events-none before:absolute before:inset-[0.55rem] before:rounded-[1.05rem] before:border before:border-orange-300/52 before:content-['']">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_25%,rgba(255,106,0,0.14),transparent_39%),radial-gradient(circle_at_86%_18%,rgba(117,225,231,0.1),transparent_36%),linear-gradient(180deg,rgba(255,255,255,0.035),transparent_28%)]" />
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-300/34 to-transparent" />
             <div className="relative flex min-h-[26.8rem] flex-col justify-between gap-5">
               <div className="flex flex-1 items-center justify-center pt-2">
                 <div className="relative flex h-[13.7rem] w-full max-w-[18.5rem] items-center justify-center">
-                  <div className="pointer-events-none absolute inset-[-2.3rem] rounded-full bg-[radial-gradient(circle_at_50%_48%,rgba(255,106,0,0.48),rgba(255,168,82,0.18)_27%,rgba(117,225,231,0.11)_49%,transparent_70%)] blur-2xl" />
+                  <div className="pointer-events-none absolute inset-[-2.3rem] rounded-full bg-[radial-gradient(circle_at_50%_48%,rgba(255,106,0,0.52),rgba(255,168,82,0.19)_27%,rgba(117,225,231,0.12)_49%,transparent_70%)] blur-2xl" />
+                  <div className="pointer-events-none absolute inset-[-0.8rem] rounded-full border border-orange-300/18 bg-[repeating-radial-gradient(circle,rgba(255,255,255,0.1)_0_1px,transparent_1px_11px)]" />
                   <div className="pointer-events-none absolute h-[11rem] w-[11rem] rounded-full bg-[radial-gradient(circle,rgba(255,244,226,0.13),rgba(255,106,0,0.09)_46%,transparent_70%)] blur-md" />
                   <Image
                     src={AIPOGER_BRAND_LOGO}
@@ -601,17 +631,18 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="relative z-10 mx-auto w-full max-w-[72rem] pb-5 pt-7 md:mt-6">
+      <section className="relative z-10 mx-auto w-full max-w-[96rem] pb-5 pt-7 md:mt-6">
         <div className="border-t border-white/10 pt-5">
           <div className="grid gap-2 md:grid-cols-6">
             {infoLinks.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="group rounded-xl border border-white/10 bg-black/46 px-3 py-2 backdrop-blur transition hover:border-orange-300/55 hover:bg-white/[0.06]"
+                className="group min-h-[5.9rem] rounded-[0.72rem] border border-orange-300/18 bg-black/62 px-4 py-3 shadow-[0_18px_46px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur transition hover:border-orange-300/62 hover:bg-orange-500/[0.075]"
               >
-                <p className="text-[0.8rem] font-black text-zinc-100 group-hover:text-orange-200">{item.title}</p>
-                <p className="mt-1 text-[10px] leading-3.5 text-zinc-500">{item.desc}</p>
+                <p className="text-[0.86rem] font-black text-zinc-100 group-hover:text-orange-200">{item.title}</p>
+                <p className="mt-1.5 text-[11px] leading-4 text-zinc-500">{item.desc}</p>
+                <div className="mt-2 h-[1.35rem] w-full opacity-55 [background:linear-gradient(90deg,transparent,rgba(255,106,0,0.55),transparent)] [mask-image:repeating-linear-gradient(90deg,black_0_2px,transparent_2px_7px)]" />
               </Link>
             ))}
           </div>
