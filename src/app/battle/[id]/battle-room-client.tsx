@@ -152,6 +152,7 @@ const FINAL_VOTE_SECONDS = 5;
 const WINNER_COUNTDOWN_FALLBACK_MS = 7600;
 const WINNER_REVEAL_MS = 5000;
 const REMATCH_CHALLENGE_ENABLED = false;
+const QUEUE_ARENA_REFRESH_MS = 2500;
 const RPS_CYCLE_MS = 240;
 const ARENA_ECHO_LEAD_SECONDS = 1;
 const ARENA_ECHO_TAPS = [
@@ -952,6 +953,7 @@ function BattleArenaContent() {
   const rematchOpenedBattleRef = useRef<string | null>(null);
   const rematchFallbackTimerRef = useRef<number | null>(null);
   const mockSyncChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const arenaEntryRefreshInFlightRef = useRef(false);
   const currentSessionUserIdRef = useRef<string>("");
   const shownDanmakuMessageIdsRef = useRef<Set<string>>(new Set());
   const shownDanmakuFingerprintsRef = useRef<Map<string, number>>(new Map());
@@ -1445,6 +1447,36 @@ function BattleArenaContent() {
     void getUser();
   }, [battleId, lang, router, searchParams]);
 
+  const refreshArenaEntry = useCallback(async () => {
+    if (!battleId || battleId.startsWith("mock-") || isAuthBypassEnabled) return "skip" as const;
+
+    const response = await fetch(
+      `/api/battle-pool/arena-entry?id=${encodeURIComponent(battleId)}&lang=${lang}`,
+      { cache: "no-store" },
+    ).catch(() => null);
+
+    if (response?.ok) {
+      const payload = (await response.json().catch(() => null)) as BattleArenaEntryPayload | null;
+      if (payload?.action === "redirect" && payload.href) {
+        router.replace(payload.href);
+        return "redirect" as const;
+      }
+      if (payload?.action === "battle" && payload.battle?.id) {
+        setBattle(payload.battle);
+        setError(null);
+        setLoading(false);
+        return "battle" as const;
+      }
+    }
+
+    if (response?.status === 404) {
+      router.replace(`/listen-bar?lang=${lang}`);
+      return "redirect" as const;
+    }
+
+    return "miss" as const;
+  }, [battleId, lang, router]);
+
   // ── 載入 Battle 資料（查詢前先 await getSession，避免 JWT 未就緒被 RLS 擋）────
   useEffect(() => {
     if (!battleId) return;
@@ -1543,25 +1575,9 @@ function BattleArenaContent() {
         authed = d2.session;
       }
 
-      const arenaEntryResponse = await fetch(
-        `/api/battle-pool/arena-entry?id=${encodeURIComponent(battleId)}&lang=${lang}`,
-        { cache: "no-store" },
-      ).catch(() => null);
+      const arenaEntryResult = await refreshArenaEntry();
       if (!mounted) return;
-      if (arenaEntryResponse?.ok) {
-        const payload = (await arenaEntryResponse.json().catch(() => null)) as BattleArenaEntryPayload | null;
-        if (payload?.action === "redirect" && payload.href) {
-          router.replace(payload.href);
-          return;
-        }
-        if (payload?.action === "battle" && payload.battle?.id) {
-          setBattle(payload.battle);
-          setLoading(false);
-          return;
-        }
-      }
-      if (arenaEntryResponse?.status === 404) {
-        router.replace(`/listen-bar?lang=${lang}`);
+      if (arenaEntryResult === "battle" || arenaEntryResult === "redirect") {
         return;
       }
 
@@ -1720,10 +1736,26 @@ function BattleArenaContent() {
     return () => {
       mounted = false;
     };
-  }, [battleId, lang, router, searchParams, t]);
+  }, [battleId, lang, refreshArenaEntry, router, searchParams, t]);
 
   useEffect(() => {
     if (!battleId || loading || battle?.arena_kind !== "queue") return;
+
+    let disposed = false;
+    const refreshFromResolver = async () => {
+      if (disposed || arenaEntryRefreshInFlightRef.current) return;
+      arenaEntryRefreshInFlightRef.current = true;
+      try {
+        await refreshArenaEntry();
+      } finally {
+        arenaEntryRefreshInFlightRef.current = false;
+      }
+    };
+    const redirectToBattle = (nextBattleId: unknown) => {
+      if (typeof nextBattleId !== "string" || !nextBattleId) return false;
+      router.replace(`/battle/${encodeURIComponent(nextBattleId)}?lang=${lang}`);
+      return true;
+    };
 
     const channel = supabase
       .channel(`battle-queue-arena-${battleId}`)
@@ -1732,8 +1764,7 @@ function BattleArenaContent() {
         { event: "*", schema: "public", table: "battle_queue", filter: `id=eq.${battleId}` },
         (payload) => {
           const next = payload.new as QueueArenaRow;
-          if (next?.match_group_id) {
-            router.replace(`/battle/${encodeURIComponent(next.match_group_id)}?lang=${lang}`);
+          if (redirectToBattle(next?.match_group_id)) {
             return;
           }
           if (next?.id) {
@@ -1754,14 +1785,42 @@ function BattleArenaContent() {
                 : current,
             );
           }
+          void refreshFromResolver();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "battles", filter: `queue_a_id=eq.${battleId}` },
+        (payload) => {
+          if (!redirectToBattle((payload.new as { id?: unknown })?.id)) void refreshFromResolver();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "battles", filter: `queue_b_id=eq.${battleId}` },
+        (payload) => {
+          if (!redirectToBattle((payload.new as { id?: unknown })?.id)) void refreshFromResolver();
         },
       )
       .subscribe();
 
+    const immediateTimer = window.setTimeout(refreshFromResolver, 450);
+    const interval = window.setInterval(refreshFromResolver, QUEUE_ARENA_REFRESH_MS);
+    const handleVisibilityRefresh = () => {
+      if (document.visibilityState === "visible") void refreshFromResolver();
+    };
+    window.addEventListener("focus", handleVisibilityRefresh);
+    document.addEventListener("visibilitychange", handleVisibilityRefresh);
+
     return () => {
+      disposed = true;
+      window.clearTimeout(immediateTimer);
+      window.clearInterval(interval);
+      window.removeEventListener("focus", handleVisibilityRefresh);
+      document.removeEventListener("visibilitychange", handleVisibilityRefresh);
       void supabase.removeChannel(channel);
     };
-  }, [battle?.arena_kind, battleId, lang, loading, router]);
+  }, [battle?.arena_kind, battleId, lang, loading, refreshArenaEntry, router]);
 
   // ── 封面（中心唱片貼紙）與頭像（左上角）分開解析 ────
   useEffect(() => {
