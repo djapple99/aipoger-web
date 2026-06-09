@@ -107,8 +107,8 @@ export default function MusicAnalysisPage() {
 
   if (embeddedAnalysisUrl) {
     return (
-      <main className="flex min-h-screen flex-col bg-[#050505] text-white">
-        <header className="flex min-h-16 items-center justify-between gap-3 border-b border-white/10 bg-black/82 px-4 backdrop-blur md:px-6">
+      <main className="aipo-stage-bg flex min-h-screen flex-col text-white">
+        <header className="aipo-control-panel relative z-10 m-3 flex min-h-16 items-center justify-between gap-3 rounded-[1.15rem] px-4 md:px-6">
           <div className="h-10 w-14" aria-hidden="true" />
           <div className="min-w-0 text-center">
             <p className={`${fontRighteous.className} truncate text-xs uppercase tracking-[0.24em] text-cyan-200/80`}>
@@ -132,7 +132,7 @@ export default function MusicAnalysisPage() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#050505] px-4 py-6 text-white md:px-8">
+    <main className="aipo-stage-bg relative min-h-screen overflow-hidden px-4 py-6 text-white md:px-8">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_22%_22%,rgba(255,106,0,0.28),transparent_34%),radial-gradient(circle_at_82%_28%,rgba(45,212,191,0.18),transparent_32%),linear-gradient(135deg,#050505_0%,#15100c_48%,#021213_100%)]" />
       <header className="relative z-10 mx-auto flex max-w-5xl items-center justify-between gap-3">
         <div className="h-10 w-14" aria-hidden="true" />
@@ -140,7 +140,7 @@ export default function MusicAnalysisPage() {
       </header>
 
       <section className="relative z-10 mx-auto flex min-h-[calc(100vh-6rem)] max-w-5xl items-center justify-center py-10">
-        <div className="w-full rounded-[1.7rem] border border-white/12 bg-black/62 px-5 py-7 shadow-[0_30px_90px_rgba(0,0,0,0.62),0_0_48px_rgba(255,106,0,0.12)] backdrop-blur md:px-8 md:py-10">
+        <div className="aipo-control-panel aipo-panel-line w-full rounded-[1.35rem] px-5 py-7 md:px-8 md:py-10">
           <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.42em] text-cyan-200/80`}>
             AIPOGER A&R GATE
           </p>
@@ -159,7 +159,7 @@ export default function MusicAnalysisPage() {
             ) : !session ? (
               <Link
                 href={loginHref}
-                className="inline-flex min-h-14 items-center justify-center rounded-2xl bg-orange-500 px-8 text-base font-black text-black shadow-[0_0_34px_rgba(255,106,0,0.28)] transition hover:bg-orange-300"
+                className="aipo-primary-button inline-flex min-h-14 items-center justify-center rounded-2xl px-8 text-base font-black transition"
               >
                 {isZh ? "登入後分析歌曲" : "Sign In and Analyze"}
               </Link>
@@ -189,14 +189,14 @@ export default function MusicAnalysisPage() {
 
           <div className="mt-7 grid gap-3 md:grid-cols-3">
             {previewCards.map(([title, body]) => (
-              <div key={title} className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+              <div key={title} className="aipo-control-panel rounded-2xl p-4">
                 <p className="text-sm font-black text-orange-200">{title}</p>
                 <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">{body}</p>
               </div>
             ))}
           </div>
 
-          <div className="mt-5 rounded-2xl border border-cyan-200/18 bg-cyan-300/[0.055] p-4 md:p-5">
+          <div className="aipo-control-panel mt-5 rounded-2xl p-4 md:p-5">
             <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.26em] text-cyan-200/80`}>
               {isZh ? "分析結果會像這樣" : "Preview of the output"}
             </p>

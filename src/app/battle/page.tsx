@@ -1190,22 +1190,22 @@ function BattlePoolList() {
 
   if (loading) {
     return (
-      <section className="mt-8 rounded-[2rem] border border-white/10 bg-white/[0.035] p-6 text-sm text-zinc-500">
+      <section className="aipo-control-panel mt-8 rounded-[1.35rem] p-6 text-sm text-zinc-500">
         {t("pool_loading")}
       </section>
     );
   }
 
   return (
-    <section className="mt-8 rounded-[2rem] border border-orange-300/18 bg-black/45 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.24)] backdrop-blur md:p-6">
+    <section className="aipo-control-panel aipo-panel-line mt-8 rounded-[1.35rem] p-5 md:p-6">
       <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.38em] text-orange-300/80">90S DROP BATTLE POOL</p>
+          <p className="aipo-section-kicker">90S DROP BATTLE POOL</p>
           <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "Drop Battle 公開挑戰池" : "Drop Battle Challenge Pool"}</h2>
         </div>
         <Link
           href="/battle/setup"
-          className="w-fit rounded-full border border-orange-200/80 bg-gradient-to-r from-orange-500 via-amber-400 to-orange-300 px-5 py-2.5 text-sm font-black !text-black shadow-[0_0_26px_rgba(255,106,0,0.26)] transition hover:border-orange-100 hover:from-orange-400 hover:via-amber-300 hover:to-orange-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+          className="aipo-primary-button w-fit rounded-full px-5 py-2.5 text-sm font-black !text-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
         >
           {isZh ? "我要發起挑戰" : "Start a Challenge"}
         </Link>
@@ -1365,7 +1365,7 @@ function BattlePoolList() {
                 ? "border-orange-200/80 bg-orange-400/[0.13] shadow-[0_0_38px_rgba(255,106,0,0.22)]"
                 : isMine
                   ? "border-cyan-200/35 bg-cyan-300/[0.07]"
-                  : "border-white/10 bg-white/[0.04] hover:border-orange-300/50 hover:bg-white/[0.065]"
+                  : "border-white/10 bg-black/38 hover:border-orange-300/50 hover:bg-white/[0.065]"
             }`;
             const content = (
               <div className="flex items-start justify-between gap-4">
@@ -1440,7 +1440,7 @@ function BattlePoolList() {
                     <div className="mt-4 flex flex-wrap gap-2">
                       <Link
                         href={battlePath}
-                        className="rounded-full bg-cyan-300 px-4 py-2 text-sm font-black text-black transition hover:bg-cyan-100"
+                        className="rounded-full border border-cyan-100/45 bg-cyan-300 px-4 py-2 text-sm font-black text-black transition hover:bg-cyan-100"
                       >
                         {isZh ? "進入戰場" : "Enter Arena"}
                       </Link>
@@ -1481,13 +1481,13 @@ function BattlePoolList() {
                       <>
                         <Link
                           href={acceptPath}
-                          className="rounded-full bg-orange-500 px-4 py-2 text-xs font-black text-black shadow-[0_0_20px_rgba(255,106,0,0.2)] transition hover:bg-orange-300"
+                          className="aipo-primary-button rounded-full px-4 py-2 text-xs font-black transition"
                         >
                           {isZh ? "我要接受挑戰" : "Accept Challenge"}
                         </Link>
                         <Link
                           href={arenaPath}
-                          className="rounded-full border border-cyan-200/35 bg-cyan-300/10 px-4 py-2 text-xs font-black text-cyan-50 transition hover:border-cyan-100"
+                          className="aipo-ghost-button rounded-full px-4 py-2 text-xs font-black text-cyan-50 transition hover:text-white"
                         >
                           {isZh ? "我要觀戰" : "Watch"}
                         </Link>
@@ -1496,7 +1496,7 @@ function BattlePoolList() {
                     {isMatched && matchedBattleId ? (
                       <Link
                         href={battlePath}
-                        className="rounded-full bg-orange-500 px-4 py-2 text-xs font-black text-black shadow-[0_0_20px_rgba(255,106,0,0.2)] transition hover:bg-orange-300"
+                        className="aipo-primary-button rounded-full px-4 py-2 text-xs font-black transition"
                       >
                         {isZh ? "進入戰場" : "Enter Arena"}
                       </Link>
@@ -1731,14 +1731,14 @@ function LiveBattleList() {
   }, [activeGenre, rows]);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#050505] text-[#ece9e6]">
+    <main className="aipo-stage-bg relative min-h-screen overflow-hidden text-[#ece9e6]">
       <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_18%_20%,rgba(255,106,0,0.2),transparent_32%),radial-gradient(circle_at_82%_8%,rgba(0,203,255,0.14),transparent_28%),linear-gradient(180deg,#050505,#0b0908)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.12] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:48px_48px]" />
 
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 pb-10 pt-24 sm:px-6 md:px-10">
-        <header className="mb-8 border-b border-white/10 pb-6">
+        <header className="aipo-control-panel aipo-panel-line mb-8 rounded-[1.35rem] px-5 py-6">
           <div className="min-w-0">
-            <p className="text-xs tracking-[0.45em] text-orange-300/80">AIPOGER BATTLE POOL</p>
+            <p className="aipo-section-kicker">AIPOGER BATTLE POOL</p>
             <h1 className="mt-3 max-w-full whitespace-nowrap text-[2.55rem] font-black leading-none tracking-normal text-white sm:text-5xl md:text-6xl">
               {t("watch_page_title")}
             </h1>
@@ -1755,25 +1755,25 @@ function LiveBattleList() {
             />
             <Link
               href="/listen-bar"
-              className="w-fit rounded-full border border-cyan-300/30 bg-cyan-300/10 px-5 py-2.5 text-sm font-semibold tracking-[0.12em] text-cyan-100 transition hover:border-cyan-200 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+              className="aipo-ghost-button w-fit rounded-full px-5 py-2.5 text-sm font-black tracking-[0.12em] text-cyan-100 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
             >
               {t("btn_listen_bar")}
             </Link>
             <Link
               href="/battle/result"
-              className="w-fit rounded-full border border-orange-300/30 bg-orange-500/10 px-5 py-2.5 text-sm font-semibold tracking-[0.12em] text-orange-100 transition hover:border-orange-200 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
+              className="aipo-ghost-button w-fit rounded-full px-5 py-2.5 text-sm font-black tracking-[0.12em] text-orange-100 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
             >
               {t("watch_result_card")}
             </Link>
             <Link
               href="/rank"
-              className="w-fit rounded-full border border-yellow-300/30 bg-yellow-400/10 px-5 py-2.5 text-sm font-semibold tracking-[0.12em] text-yellow-100 transition hover:border-yellow-200 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300"
+              className="aipo-ghost-button w-fit rounded-full px-5 py-2.5 text-sm font-black tracking-[0.12em] text-yellow-100 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300"
             >
               {t("watch_rank")}
             </Link>
             <Link
               href={`/hook-guide${lang === "en" ? "?lang=en" : "?lang=zh"}`}
-              className="w-fit rounded-full border border-white/15 bg-white/[0.045] px-5 py-2.5 text-sm font-semibold tracking-[0.12em] text-zinc-200 transition hover:border-orange-200/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
+              className="aipo-ghost-button w-fit rounded-full px-5 py-2.5 text-sm font-black tracking-[0.12em] text-zinc-200 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
             >
               {isZh ? "Drop Battle 規則" : "Drop Battle Rules"}
             </Link>
@@ -1801,7 +1801,7 @@ function LiveBattleList() {
         ) : error ? (
           <p className="mt-8 rounded-3xl border border-red-400/20 bg-red-500/10 px-5 py-8 text-center text-sm text-red-300">{error}</p>
         ) : rows.length === 0 && !focusQueueId && !focusBattleId ? (
-          <div className="mt-8 rounded-[2rem] border border-white/10 bg-white/[0.04] px-6 py-10 text-center shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur">
+          <div className="aipo-control-panel mt-8 rounded-[1.35rem] px-6 py-10 text-center">
             <p className="text-2xl font-black text-white">{t("watch_no_live_title")}</p>
             <p className="mx-auto mt-3 max-w-2xl whitespace-pre-line text-sm leading-7 text-zinc-400">
               {t("watch_no_live_body")}
@@ -1809,13 +1809,13 @@ function LiveBattleList() {
             <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
               <Link
                 href="/battle/setup"
-                className="inline-flex rounded-full bg-orange-500 px-6 py-3 text-sm font-black tracking-[0.12em] text-black transition hover:bg-orange-300"
+                className="aipo-primary-button inline-flex rounded-full px-6 py-3 text-sm font-black tracking-[0.12em] transition"
               >
                 {t("watch_upload_pool")}
               </Link>
               <Link
                 href="/listen-bar"
-                className="inline-flex rounded-full border border-cyan-300/35 bg-cyan-300/10 px-6 py-3 text-sm font-black tracking-[0.12em] text-cyan-100 transition hover:border-cyan-200 hover:text-white"
+                className="aipo-ghost-button inline-flex rounded-full px-6 py-3 text-sm font-black tracking-[0.12em] text-cyan-100 transition hover:text-white"
               >
                 {t("watch_listen_public")}
               </Link>
@@ -2122,23 +2122,23 @@ function BattleArena({ matchId }: { matchId: string }) {
   };
 
   return (
-    <main className="min-h-screen bg-[#1b1d20] text-[#ece9e6]">
-      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 pb-5 pt-6 sm:px-6 md:px-10 md:pb-8">
-        <header className="mb-5 flex items-center justify-between border-b border-[#4f5358] pb-4">
+    <main className="aipo-stage-bg min-h-screen text-[#ece9e6]">
+      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 pb-5 pt-6 sm:px-6 md:px-10 md:pb-8">
+        <header className="aipo-control-panel aipo-panel-line mb-5 flex items-center justify-between rounded-[1.35rem] px-5 py-4">
           <div>
-            <p className="text-xs tracking-[0.4em] text-[#8e847f]">AIPOGER</p>
+            <p className="aipo-section-kicker">AIPOGER</p>
             <h1 className="mt-2 text-2xl font-semibold tracking-[0.2em] text-[#f2efec] md:text-3xl">
               {t("battle_list_title")}
             </h1>
           </div>
         </header>
 
-        <div className="mb-4 rounded-xl border border-[#4f5358] bg-[#25292d] px-4 py-3 text-sm tracking-[0.12em] text-[#f0e6df]">
+        <div className="aipo-control-panel mb-4 rounded-xl px-4 py-3 text-sm tracking-[0.12em] text-[#f0e6df]">
           先攻判定：<span className="font-semibold text-[#ffbf99]">{firstAttack} 隊先攻</span>
         </div>
 
         <section className="grid flex-1 grid-rows-[auto_auto_1fr] gap-6 md:grid-cols-2 md:grid-rows-[auto_auto]">
-          <div className="rounded-3xl border border-[#4d5257] bg-[#24272b]/80 px-4 py-6 md:px-7">
+          <div className="aipo-control-panel rounded-[1.35rem] px-4 py-6 md:px-7">
             <Turntable
               label="SONG DECK A"
               deckKey="A"
@@ -2150,7 +2150,7 @@ function BattleArena({ matchId }: { matchId: string }) {
               onPlay={handlePlay}
             />
           </div>
-          <div className="rounded-3xl border border-[#4d5257] bg-[#24272b]/80 px-4 py-6 md:px-7">
+          <div className="aipo-control-panel rounded-[1.35rem] px-4 py-6 md:px-7">
             <Turntable
               label="SONG DECK B"
               deckKey="B"
@@ -2168,7 +2168,7 @@ function BattleArena({ matchId }: { matchId: string }) {
             <VoteButton team="B" />
           </div>
 
-          <section className="flex min-h-[230px] flex-col rounded-2xl border border-[#4d5257] bg-[#23262a] p-4 md:col-span-2 md:min-h-[260px] md:p-5">
+          <section className="aipo-control-panel flex min-h-[230px] flex-col rounded-[1.35rem] p-4 md:col-span-2 md:min-h-[260px] md:p-5">
             <h2 className="text-sm font-medium tracking-[0.2em] text-[#baa9a0]">彈幕牆</h2>
             <SafetyNotice kind="chat" compact className="mt-3" />
             <div className="mt-4 flex-1 space-y-2 overflow-y-auto rounded-xl border border-[#3f4348] bg-[#1c1f22] p-3">
@@ -2186,11 +2186,11 @@ function BattleArena({ matchId }: { matchId: string }) {
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
                 placeholder="輸入你的彈幕留言..."
-                className="h-11 flex-1 rounded-xl border border-[#5f646a] bg-[#2a2e33] px-4 text-sm text-[#f2efec] placeholder:text-[#9b938e] focus:outline-none focus:ring-2 focus:ring-[#ff7a28]"
+                className="aipo-input h-11 flex-1 rounded-xl px-4 text-sm placeholder:text-[#9b938e]"
               />
               <button
                 type="submit"
-                className="rounded-xl border border-[#767c82] bg-gradient-to-b from-[#646a70] to-[#4a4f55] px-4 text-sm font-medium tracking-[0.1em] text-[#f4efeb] transition hover:border-[#ff8d40] hover:shadow-[0_0_14px_rgba(255,121,40,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff7a28]"
+                className="aipo-primary-button rounded-xl px-4 text-sm font-black tracking-[0.1em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff7a28]"
               >
                 發送
               </button>
@@ -2237,7 +2237,7 @@ function BattleContent() {
 function BattleSuspenseFallback() {
   const { t } = useI18n();
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#1b1d20] text-sm tracking-[0.2em] text-[#ff8d40]">
+    <div className="aipo-stage-bg flex min-h-screen items-center justify-center text-sm tracking-[0.2em] text-[#ff8d40]">
       {t("common_loading")}
     </div>
   );

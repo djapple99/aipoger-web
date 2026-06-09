@@ -727,13 +727,13 @@ export default function RankPage() {
 
   return (
     <main
-      className={`${fontGlowSans.className} relative min-h-screen overflow-hidden bg-[#050505] px-4 py-5 text-white sm:px-6 lg:px-8`}
+      className={`${fontGlowSans.className} aipo-stage-bg relative min-h-screen overflow-hidden px-4 py-5 text-white sm:px-6 lg:px-8`}
     >
       <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_15%_0%,rgba(255,106,0,0.18),transparent_28%),radial-gradient(circle_at_92%_6%,rgba(0,202,255,0.12),transparent_26%),linear-gradient(180deg,#060606,#0a0806_48%,#050505)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:56px_56px]" />
 
       <div className="relative z-10 mx-auto w-full max-w-7xl">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
+        <header className="aipo-control-panel aipo-panel-line flex flex-wrap items-center justify-between gap-3 rounded-[1.35rem] px-4 py-3">
           <div className="h-11 w-16" aria-hidden="true" />
           <nav className="flex flex-wrap items-center gap-2 sm:pr-20">
             {[
@@ -744,7 +744,7 @@ export default function RankPage() {
               <Link
                 key={item.href}
                 href={`${item.href}${navSuffix}`}
-                className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-zinc-300 transition hover:border-orange-300/55 hover:text-white"
+                className="aipo-ghost-button rounded-full px-3 py-1.5 text-xs font-bold text-zinc-300 transition hover:text-white"
               >
                 {item.label}
               </Link>
@@ -781,7 +781,7 @@ export default function RankPage() {
               />
               <Link
                 href={`/battle/setup${navSuffix}`}
-                className="inline-flex items-center justify-center rounded-full bg-orange-500 px-4 py-2 text-xs font-black text-black transition hover:bg-orange-300"
+                className="aipo-primary-button inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-black transition"
               >
                 {isZh ? "我要參戰" : "Join Battle"}
               </Link>
@@ -815,8 +815,8 @@ export default function RankPage() {
                       onClick={() => setActive(key)}
                       className={`rounded-full border px-4 py-2 text-xs font-black transition ${
                         selected
-                          ? "border-orange-300/70 bg-orange-500 text-black"
-                          : "border-white/10 bg-white/[0.035] text-zinc-300 hover:border-orange-300/45 hover:text-white"
+                          ? "aipo-primary-button text-black"
+                          : "aipo-ghost-button text-zinc-300 hover:text-white"
                       }`}
                     >
                       {isZh ? BOARD_META[key].zh : BOARD_META[key].en}
@@ -840,7 +840,7 @@ export default function RankPage() {
               />
             </div>
 
-            <div className="mt-4 rounded-lg border border-cyan-200/20 bg-cyan-300/[0.055] p-2 shadow-[0_0_34px_rgba(34,211,238,0.08)]">
+            <div className="aipo-control-panel mt-4 rounded-[1.15rem] p-2">
               <label className="grid gap-2 sm:grid-cols-[5.25rem_1fr_auto] sm:items-center">
                 <span className={`${fontRighteous.className} text-xs uppercase tracking-[0.18em] text-cyan-100/70`}>
                   SEARCH
@@ -852,7 +852,7 @@ export default function RankPage() {
                     setActiveGenre("all");
                   }}
                   placeholder={isZh ? "搜尋歌手、歌名、對手、風格或 AI 工具" : "Search artist, song, opponent, style, or AI tool"}
-                  className="h-10 min-w-0 rounded-md border border-white/10 bg-black/54 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200/70 focus:bg-black/72"
+                  className="aipo-input h-10 min-w-0 rounded-md px-3 text-sm font-bold transition placeholder:text-zinc-600"
                 />
                 {searchTerm ? (
                   <button
@@ -861,7 +861,7 @@ export default function RankPage() {
                       setSearchTerm("");
                       setActiveGenre("all");
                     }}
-                    className="h-10 rounded-md border border-white/10 bg-white/[0.045] px-3 text-xs font-black text-zinc-300 transition hover:border-cyan-200/45 hover:text-white"
+                    className="aipo-ghost-button h-10 rounded-md px-3 text-xs font-black text-zinc-300 transition hover:text-white"
                   >
                     {isZh ? "清除" : "Clear"}
                   </button>
@@ -875,7 +875,7 @@ export default function RankPage() {
 
             <div className="space-y-8 pt-5">
               {filteredDisplayRows.length === 0 ? (
-                <div className="border border-white/10 bg-white/[0.035] px-5 py-10 text-center">
+                <div className="aipo-control-panel rounded-[1.15rem] px-5 py-10 text-center">
                   <Image
                     src={AIPOGER_BRAND_LOGO}
                     alt="AIPOGER"
@@ -915,7 +915,7 @@ export default function RankPage() {
                           return (
                             <article
                               key={`featured-${active}-${row.id}-${index}`}
-                              className="group overflow-hidden rounded-lg border border-white/10 bg-white/[0.035] transition hover:border-orange-300/45 hover:bg-white/[0.055]"
+                              className="aipo-control-panel group overflow-hidden rounded-lg transition hover:border-orange-300/45 hover:bg-white/[0.055]"
                             >
                               <div className="relative aspect-[16/9] overflow-hidden bg-black">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}

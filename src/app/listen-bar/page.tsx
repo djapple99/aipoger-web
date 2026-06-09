@@ -1751,13 +1751,13 @@ export default function ListenBarPage() {
   }, [activeLyricIndex]);
 
   return (
-    <main className="relative min-h-screen w-full overflow-x-hidden bg-[#050505] px-3 py-5 text-zinc-100 sm:px-5 lg:px-7">
+    <main className="aipo-stage-bg relative min-h-screen w-full overflow-x-hidden px-3 py-5 text-zinc-100 sm:px-5 lg:px-7">
       <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_18%_10%,rgba(255,106,0,0.3),transparent_30%),radial-gradient(circle_at_86%_18%,rgba(0,202,255,0.18),transparent_28%),linear-gradient(180deg,#080706_0%,#050505_46%,#090604_100%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.15] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:52px_52px]" />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_50%_0%,rgba(255,138,43,0.16),transparent_44%)]" />
 
       <div className="relative z-10 mx-auto flex w-full max-w-[1880px] flex-col gap-4 overflow-x-hidden">
-        <header className="relative overflow-hidden rounded-[1.7rem] border border-orange-200/14 bg-black/62 p-4 text-center text-white shadow-[0_24px_74px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur md:p-5">
+        <header className="aipo-control-panel aipo-panel-line relative overflow-hidden rounded-[1.35rem] p-4 text-center text-white md:p-5">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(255,106,0,0.16),transparent_30%),radial-gradient(circle_at_84%_10%,rgba(0,202,255,0.09),transparent_28%)]" />
           <style>{`
             @keyframes listen-bar-battle-ticker {
@@ -1861,7 +1861,7 @@ export default function ListenBarPage() {
         </header>
 
         <section className="grid min-w-0 gap-4 lg:grid-cols-[1.08fr_0.92fr]">
-          <div className="relative min-w-0 overflow-hidden rounded-[1.6rem] border border-orange-300/18 bg-black/68 p-4 shadow-[0_28px_90px_rgba(0,0,0,0.52),0_0_44px_rgba(255,106,0,0.08)] backdrop-blur md:p-5">
+          <div className="aipo-control-panel aipo-panel-line relative min-w-0 overflow-hidden rounded-[1.35rem] p-4 md:p-5">
             <div className="pointer-events-none absolute inset-0 [background:linear-gradient(115deg,rgba(255,106,0,0.14),transparent_35%,rgba(0,202,255,0.08))]" />
             <div className="relative grid min-w-0 gap-6 md:grid-cols-[minmax(18rem,0.98fr)_1.02fr] md:items-start">
               <div className="flex min-w-0 flex-col justify-start gap-4 pt-1 md:pt-3">

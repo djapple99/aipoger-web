@@ -5,6 +5,13 @@
   --fg: #f5f5f5;
   --muted: #a1a1aa;
   --accent: #ff6a00;
+  --aipo-orange: #ff6a00;
+  --aipo-orange-soft: #ff9a45;
+  --aipo-cyan: #67e8f9;
+  --aipo-gold: #f5c76a;
+  --aipo-ink: #050505;
+  --aipo-panel: rgba(0, 0, 0, 0.58);
+  --aipo-border: rgba(255, 226, 198, 0.14);
 }
 
 * {
@@ -39,4 +46,112 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+.aipo-stage-bg {
+  position: relative;
+  background:
+    radial-gradient(circle at 16% 10%, rgba(255, 106, 0, 0.24), transparent 32%),
+    radial-gradient(circle at 88% 12%, rgba(103, 232, 249, 0.13), transparent 28%),
+    linear-gradient(180deg, #070606 0%, #050505 52%, #080604 100%);
+}
+
+.aipo-stage-bg::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.075) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.075) 1px, transparent 1px);
+  background-size: 56px 56px;
+  opacity: 0.08;
+}
+
+.aipo-stage-bg::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 72% 28%, rgba(255, 106, 0, 0.08), transparent 20%),
+    repeating-radial-gradient(circle at 78% 22%, rgba(255, 236, 218, 0.08) 0 1px, transparent 1px 12px);
+  opacity: 0.34;
+  mask-image: radial-gradient(circle at 78% 22%, black 0 18rem, transparent 26rem);
+}
+
+.aipo-control-panel {
+  border: 1px solid var(--aipo-border);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.055), transparent 28%),
+    radial-gradient(circle at 14% 0%, rgba(255, 106, 0, 0.14), transparent 34%),
+    rgba(0, 0, 0, 0.6);
+  box-shadow:
+    0 24px 90px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 0 38px rgba(255, 106, 0, 0.08);
+  backdrop-filter: blur(14px);
+}
+
+.aipo-panel-line {
+  position: relative;
+}
+
+.aipo-panel-line::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 154, 69, 0.7), rgba(255, 255, 255, 0.18), transparent);
+}
+
+.aipo-primary-button {
+  border: 1px solid rgba(255, 190, 130, 0.58);
+  background: linear-gradient(180deg, #ff8a24 0%, #ff6a00 58%, #b73c00 100%);
+  color: #050505;
+  box-shadow:
+    0 12px 30px rgba(255, 106, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34);
+}
+
+.aipo-primary-button:hover {
+  background: linear-gradient(180deg, #ffb15f 0%, #ff7a17 58%, #c74600 100%);
+}
+
+.aipo-ghost-button {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.045);
+  color: #f5f5f5;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+.aipo-ghost-button:hover {
+  border-color: rgba(255, 154, 69, 0.55);
+  background: rgba(255, 106, 0, 0.1);
+}
+
+.aipo-input {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.58);
+  color: #fffaf1;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.aipo-input:focus {
+  border-color: rgba(255, 154, 69, 0.72);
+  outline: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 0 3px rgba(255, 106, 0, 0.16);
+}
+
+.aipo-section-kicker {
+  color: rgba(255, 186, 120, 0.82);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
 }

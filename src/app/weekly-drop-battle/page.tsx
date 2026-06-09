@@ -37,14 +37,14 @@ export default function WeeklyDropBattlePage() {
     : ["Cyber Pop", "Sad AI Ballad", "Future Club", "Anime Opening", "Dark R&B"];
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-[#050505] px-4 py-6 text-white sm:px-6 lg:px-8">
+    <main className="aipo-stage-bg relative min-h-screen overflow-x-hidden px-4 py-6 text-white sm:px-6 lg:px-8">
       <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_18%_12%,rgba(255,106,0,0.28),transparent_34%),radial-gradient(circle_at_84%_16%,rgba(0,202,255,0.16),transparent_30%),linear-gradient(180deg,#070605_0%,#050505_48%,#080604_100%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.13] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:50px_50px]" />
 
       <section className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-8 pt-20 md:pt-24">
         <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_18rem] md:items-end">
           <div className="min-w-0">
-            <p className="text-xs font-black uppercase tracking-[0.38em] text-orange-300/80">
+            <p className="aipo-section-kicker">
               AIPOGER Official Event
             </p>
             <h1 className="mt-4 text-[clamp(3rem,10vw,7rem)] font-black uppercase leading-[0.85] tracking-normal text-[#fff7e8] [text-shadow:0_18px_42px_rgba(0,0,0,0.8)]">
@@ -74,7 +74,7 @@ export default function WeeklyDropBattlePage() {
 
         <div className="grid gap-3 md:grid-cols-3">
           {steps.map(([num, title, body]) => (
-            <div key={num} className="rounded-[0.45rem] border border-white/10 bg-black/58 p-4 shadow-[0_18px_54px_rgba(0,0,0,0.32)] backdrop-blur">
+            <div key={num} className="aipo-control-panel rounded-[0.85rem] p-4">
               <p className="text-xs font-black text-cyan-200/80">{num}</p>
               <h2 className="mt-3 text-xl font-black text-white">{title}</h2>
               <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">{body}</p>
@@ -82,7 +82,7 @@ export default function WeeklyDropBattlePage() {
           ))}
         </div>
 
-        <div className="grid gap-4 rounded-[0.55rem] border border-orange-300/20 bg-black/66 p-4 shadow-[0_22px_70px_rgba(0,0,0,0.42),0_0_36px_rgba(255,106,0,0.08)] md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:p-5">
+        <div className="aipo-control-panel aipo-panel-line grid gap-4 rounded-[1.15rem] p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:p-5">
           <div className="min-w-0">
             <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-100/70">
               {isZh ? "本週可用主題" : lang === "ja" ? "今週のテーマレーン" : lang === "ko" ? "이번 주 테마 레인" : "Theme lanes"}
@@ -97,7 +97,7 @@ export default function WeeklyDropBattlePage() {
           </div>
           <Link
             href={`/battle/setup${langQuery}`}
-            className="inline-flex min-h-14 items-center justify-center rounded-full bg-orange-500 px-6 text-sm font-black uppercase tracking-[0.12em] text-black transition hover:bg-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+            className="aipo-primary-button inline-flex min-h-14 items-center justify-center rounded-full px-6 text-sm font-black uppercase tracking-[0.12em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
           >
             {isZh ? "投稿參賽" : lang === "ja" ? "Dropを投稿" : lang === "ko" ? "Drop 제출" : "Submit a Drop"}
           </Link>

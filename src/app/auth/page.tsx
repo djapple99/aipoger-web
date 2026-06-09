@@ -271,8 +271,8 @@ function AuthPageInner() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-black p-5 text-white sm:p-6">
-      <div className="w-full max-w-lg space-y-5">
+    <div className="aipo-stage-bg flex min-h-screen items-center justify-center p-5 text-white sm:p-6">
+      <div className="relative z-10 w-full max-w-lg space-y-5">
         <div className="text-center">
           <div className="mx-auto flex max-w-[150px] justify-center sm:max-w-[190px]">
             <Image
@@ -289,14 +289,14 @@ function AuthPageInner() {
         </div>
 
         <div className="space-y-3">
-          <div className="rounded-3xl border border-white/10 bg-zinc-950/80 p-4 shadow-[0_0_38px_rgba(103,232,249,0.07)] sm:p-5">
+          <div className="aipo-control-panel rounded-[1.35rem] p-4 sm:p-5">
             <p className="text-center text-xs font-black uppercase tracking-[0.22em] text-zinc-500">{t("login_methods")}</p>
             <p className="mx-auto mt-3 max-w-md rounded-2xl border border-orange-300/24 bg-orange-500/10 px-4 py-3 text-sm font-bold leading-6 text-orange-100">
               {t("login_creator_guard")}
             </p>
           </div>
           {isEmbeddedBrowser ? (
-            <div className="rounded-3xl border border-orange-300/40 bg-orange-500/10 p-5 text-sm leading-7 text-orange-50">
+            <div className="aipo-control-panel rounded-[1.35rem] p-5 text-sm leading-7 text-orange-50">
               <p className="text-base font-black text-orange-200">{embeddedCopy.title}</p>
               <p className="mt-2 text-zinc-200">
                 {embeddedCopy.body}
@@ -311,21 +311,21 @@ function AuthPageInner() {
                 <button
                   type="button"
                   onClick={openChrome}
-                  className="rounded-2xl bg-cyan-300 px-4 py-3 text-sm font-black text-black transition hover:bg-cyan-100"
+                  className="rounded-2xl border border-cyan-100/45 bg-cyan-300 px-4 py-3 text-sm font-black text-black transition hover:bg-cyan-100"
                 >
                   {embeddedCopy.openChrome}
                 </button>
                 <button
                   type="button"
                   onClick={() => void copyLoginUrl()}
-                  className="rounded-2xl border border-orange-200/35 px-4 py-3 text-sm font-black text-orange-100 transition hover:border-orange-100 hover:bg-orange-200 hover:text-black"
+                  className="aipo-ghost-button rounded-2xl px-4 py-3 text-sm font-black text-orange-100 transition hover:text-white"
                 >
                   {embeddedCopy.copyChrome}
                 </button>
                 <button
                   type="button"
                   onClick={openExternalBrowser}
-                  className="rounded-2xl bg-orange-500 px-4 py-3 text-sm font-black text-black transition hover:bg-orange-300"
+                  className="aipo-primary-button rounded-2xl px-4 py-3 text-sm font-black transition"
                 >
                   {embeddedCopy.openExternal}
                 </button>
@@ -334,7 +334,7 @@ function AuthPageInner() {
           ) : null}
           <form
             onSubmit={(event) => void handleEmailLogin(event)}
-            className="rounded-3xl border border-cyan-300/25 bg-cyan-300/10 p-5 shadow-[0_0_32px_rgba(103,232,249,0.08)]"
+            className="aipo-control-panel rounded-[1.35rem] p-5"
           >
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-black uppercase tracking-[0.22em] text-cyan-200">{t("login_email_title")}</p>
@@ -354,12 +354,12 @@ function AuthPageInner() {
                   setEmailSent(false);
                 }}
                 placeholder={t("login_email_placeholder")}
-                className="min-h-14 flex-1 rounded-2xl border border-white/10 bg-black px-4 text-base font-semibold text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200 focus:ring-2 focus:ring-cyan-300/30"
+                className="aipo-input min-h-14 flex-1 rounded-2xl px-4 text-base font-semibold transition placeholder:text-zinc-600"
               />
               <button
                 type="submit"
                 disabled={loading}
-                className="min-h-14 rounded-2xl bg-cyan-300 px-5 text-sm font-black text-black transition hover:bg-cyan-100 disabled:opacity-60"
+                className="min-h-14 rounded-2xl border border-cyan-100/45 bg-cyan-300 px-5 text-sm font-black text-black transition hover:bg-cyan-100 disabled:opacity-60"
               >
                 {t("login_email_send")}
               </button>
@@ -371,7 +371,7 @@ function AuthPageInner() {
             ) : null}
           </form>
           {isEmbeddedBrowser ? (
-            <p className="rounded-2xl border border-zinc-700 bg-zinc-900/80 p-4 text-center text-sm leading-relaxed text-zinc-300">
+            <p className="aipo-control-panel rounded-2xl p-4 text-center text-sm leading-relaxed text-zinc-300">
               {embeddedCopy.socialHint}
             </p>
           ) : (
@@ -380,7 +380,7 @@ function AuthPageInner() {
                 type="button"
                 onClick={() => void handleOAuthLogin("google")}
                 disabled={loading}
-                className="flex w-full items-center justify-center gap-3 rounded-2xl bg-white px-6 py-4 font-medium text-zinc-800 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-45"
+                className="flex w-full items-center justify-center gap-3 rounded-2xl border border-white/30 bg-white px-6 py-4 font-black text-zinc-900 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-45"
               >
                 <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -403,7 +403,7 @@ function AuthPageInner() {
           )}
         </div>
 
-        <details className="group rounded-3xl border border-zinc-800 bg-zinc-950/85 p-5 text-sm leading-relaxed text-zinc-300">
+        <details className="aipo-control-panel group rounded-[1.35rem] p-5 text-sm leading-relaxed text-zinc-300">
           <summary className="cursor-pointer list-none text-base font-black text-yellow-300 transition group-open:text-yellow-200">
             {t("disclaimer_title")}
           </summary>

@@ -643,7 +643,7 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
   const secondaryHref = kind === "partners" || kind === "about" ? "/hook-guide" : kind === "ai-music-bible" ? "/battle/setup" : "/listen-bar";
 
   return (
-    <main className={`relative min-h-screen overflow-hidden px-5 py-6 text-zinc-100 md:px-10 ${isPolicyPage ? "bg-[#070707]" : "bg-[#050505]"}`}>
+    <main className={`aipo-stage-bg relative min-h-screen overflow-hidden px-5 py-6 text-zinc-100 md:px-10 ${isPolicyPage ? "bg-[#070707]" : "bg-[#050505]"}`}>
       <div
         className={`pointer-events-none absolute inset-0 ${
           isPolicyPage
@@ -660,7 +660,7 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
       />
 
       <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col gap-8">
-        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5">
+        <header className="aipo-control-panel aipo-panel-line flex flex-wrap items-center justify-between gap-4 rounded-[1.35rem] px-4 py-3">
           <div className="h-11 w-16" aria-hidden="true" />
 
           <nav className="flex flex-wrap justify-end gap-2 sm:pr-20">
@@ -672,8 +672,8 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
                   href={item.href}
                   className={`rounded-full border px-4 py-2 text-xs font-bold tracking-[0.14em] transition ${
                     active
-                      ? "border-orange-300 bg-orange-500 text-black"
-                      : "border-white/12 bg-white/[0.04] text-zinc-300 hover:border-cyan-200/60 hover:text-white"
+                      ? "aipo-primary-button text-black"
+                      : "aipo-ghost-button text-zinc-300 hover:text-white"
                   }`}
                 >
                   {content[item.key][contentLang].navTitle}
@@ -724,11 +724,11 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
               ))}
             </div>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href={primaryHref} className="inline-flex h-12 items-center gap-2 rounded-full bg-orange-500 px-6 text-sm font-black tracking-[0.12em] text-black transition hover:bg-orange-300">
+              <Link href={primaryHref} className="aipo-primary-button inline-flex h-12 items-center gap-2 rounded-full px-6 text-sm font-black tracking-[0.12em] transition">
                 {data.primaryCta}
                 <ArrowIcon />
               </Link>
-              <Link href={secondaryHref} className="inline-flex h-12 items-center gap-2 rounded-full border border-white/15 bg-white/[0.05] px-6 text-sm font-bold text-zinc-100 transition hover:border-cyan-200/60 hover:bg-white/[0.08]">
+              <Link href={secondaryHref} className="aipo-ghost-button inline-flex h-12 items-center gap-2 rounded-full px-6 text-sm font-bold text-zinc-100 transition">
                 {data.secondaryCta}
               </Link>
             </div>
@@ -738,7 +738,7 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
             {data.cards.map((card) => {
               const Wrapper = card.href ? "a" : "div";
               return (
-              <Wrapper key={card.label} href={card.href} target={card.href ? "_blank" : undefined} rel={card.href ? "noreferrer" : undefined} className={`group min-w-0 rounded-2xl border border-white/10 bg-black/48 p-5 backdrop-blur transition hover:border-orange-300/45 ${isPolicyPage ? "shadow-none" : "shadow-[0_20px_80px_rgba(0,0,0,0.38)]"}`}>
+              <Wrapper key={card.label} href={card.href} target={card.href ? "_blank" : undefined} rel={card.href ? "noreferrer" : undefined} className={`aipo-control-panel group min-w-0 rounded-[1.15rem] p-5 transition hover:border-orange-300/45 ${isPolicyPage ? "shadow-none" : ""}`}>
                 <p className={`${fontRighteous.className} break-words text-xs uppercase tracking-[0.24em] text-cyan-200/70 [overflow-wrap:anywhere] sm:tracking-[0.34em]`}>{card.label}</p>
                 <p className={`mt-3 break-words font-black leading-tight text-white [overflow-wrap:anywhere] ${isPolicyPage ? "text-2xl md:text-3xl" : "text-[1.7rem] md:text-4xl"}`}>{card.value}</p>
                 <p className="mt-2 text-sm leading-6 text-zinc-400">{card.detail}</p>
@@ -751,7 +751,7 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
           {data.sections.map((section, index) => (
             <article
               key={section.title}
-              className={`rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur md:p-7 ${
+              className={`aipo-control-panel rounded-[1.15rem] p-5 md:p-7 ${
                 index === 0 ? "lg:col-span-2" : ""
               }`}
             >
@@ -764,7 +764,7 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
               {section.items && section.title !== "階級名稱" && section.title !== "Rank Names" && (
                 <ul className="mt-5 grid gap-3 sm:grid-cols-2">
                   {section.items.map((item) => (
-                    <li key={item} className="rounded-xl border border-white/10 bg-black/32 px-4 py-3 text-sm leading-6 text-zinc-200">
+                    <li key={item} className="rounded-xl border border-white/10 bg-black/42 px-4 py-3 text-sm leading-6 text-zinc-200">
                       {item}
                     </li>
                   ))}
@@ -778,7 +778,7 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
                       href={item.href}
                       target="_blank"
                       rel="noreferrer"
-                      className="group rounded-xl border border-white/10 bg-black/32 px-4 py-3 transition hover:border-orange-300/55 hover:bg-white/[0.055]"
+                      className="group rounded-xl border border-white/10 bg-black/42 px-4 py-3 transition hover:border-orange-300/55 hover:bg-white/[0.055]"
                     >
                       <p className="text-sm font-black text-white group-hover:text-orange-200">{item.title}</p>
                       <p className="mt-2 text-sm leading-6 text-zinc-400">{item.note}</p>
