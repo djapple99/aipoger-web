@@ -118,7 +118,7 @@ type DropRematchClaimRow = {
 
 type VoteCount = { fighter_a: number; fighter_b: number };
 type DeckKey = "A" | "B";
-type BattlePlaybackPhase = "rps" | "ready" | "playing" | "paused" | "transition" | "final";
+type BattlePlaybackPhase = "rps" | "ready" | "playing" | "paused" | "echo" | "transition" | "final";
 type FeedbackKey = "rhyme" | "impact" | "melody" | "emotion" | "structure";
 type FeedbackCounts = Record<DeckKey, Record<FeedbackKey, number>>;
 type DanmakuItem = {
@@ -140,14 +140,17 @@ const FINAL_PRESTART_HYPE_TEXT = "Ladies and gentlemen, fighters!";
 const FINAL_PRESTART_HYPE_SFX_SRC = "/sfx/drop-battle-announcer.wav";
 const PRE_BATTLE_AD_VIDEO_SRC = "/music/AIPOGER%20AD1.mp4";
 const MAX_PAUSE_MS = 1000;
+const ARENA_ECHO_HOLD_MS = 1000;
+const ARENA_ECHO_HOLD_SECONDS = ARENA_ECHO_HOLD_MS / 1000;
 const SCRATCH_TRANSITION_SECONDS = 2;
 const SCRATCH_TRANSITION_MS = SCRATCH_TRANSITION_SECONDS * 1000;
 const SCRATCH_TRANSITION_SRC = "/sfx/scratch-sample-a.mp3";
 const WINNER_COUNTDOWN_SFX_SRC = "/sfx/you-win.wav";
 const WINNER_REVEAL_SFX_SRC = "/sfx/audience-shouts-1.mp3";
-const SECOND_DECK_START_SECONDS = HOOK_BATTLE_SECONDS + SCRATCH_TRANSITION_SECONDS;
-const BATTLE_PLAYBACK_SECONDS = HOOK_BATTLE_SECONDS * 2 + SCRATCH_TRANSITION_SECONDS;
-const FINAL_RESULT_CUE_DELAY_MS = 1000;
+const SCRATCH_TRANSITION_START_SECONDS = HOOK_BATTLE_SECONDS + ARENA_ECHO_HOLD_SECONDS;
+const SECOND_DECK_START_SECONDS = SCRATCH_TRANSITION_START_SECONDS + SCRATCH_TRANSITION_SECONDS;
+const BATTLE_PLAYBACK_SECONDS = SECOND_DECK_START_SECONDS + HOOK_BATTLE_SECONDS;
+const FINAL_RESULT_CUE_DELAY_MS = ARENA_ECHO_HOLD_MS;
 const FINAL_VOTE_SECONDS = 5;
 const WINNER_COUNTDOWN_FALLBACK_MS = 7600;
 const WINNER_REVEAL_MS = 5000;
@@ -889,6 +892,8 @@ function BattleArenaContent() {
   const [teaserSecondsLeft, setTeaserSecondsLeft] = useState(PRE_BATTLE_TEASER_SECONDS);
   const [adVideoMuted, setAdVideoMuted] = useState(false);
   const [adVideoPosition, setAdVideoPosition] = useState<{ x: number; y: number } | null>(null);
+  const [echoDeck, setEchoDeck] = useState<DeckKey | null>(null);
+  const [echoSecondsLeft, setEchoSecondsLeft] = useState(ARENA_ECHO_HOLD_SECONDS);
   const [transitionDeck, setTransitionDeck] = useState<DeckKey | null>(null);
   const [transitionSecondsLeft, setTransitionSecondsLeft] = useState(SCRATCH_TRANSITION_SECONDS);
   const [transitionEndsAtMs, setTransitionEndsAtMs] = useState<number | null>(null);
@@ -937,6 +942,8 @@ function BattleArenaContent() {
   const adVideoRef = useRef<HTMLVideoElement | null>(null);
   const adVideoDragRef = useRef<{ pointerId: number; dx: number; dy: number } | null>(null);
   const adVideoAutoUnmuteRetriedRef = useRef(false);
+  const echoHoldTimerRef = useRef<number | null>(null);
+  const echoHoldTickTimerRef = useRef<number | null>(null);
   const scratchTransitionTimerRef = useRef<number | null>(null);
   const scratchTransitionTickTimerRef = useRef<number | null>(null);
   const preBattleStartedRef = useRef<string | null>(null);
@@ -1112,6 +1119,19 @@ function BattleArenaContent() {
     void video.play().catch(() => undefined);
   }, [showPreBattleAd]);
 
+  const clearDeckEchoHold = useCallback(() => {
+    if (echoHoldTimerRef.current != null) {
+      window.clearTimeout(echoHoldTimerRef.current);
+      echoHoldTimerRef.current = null;
+    }
+    if (echoHoldTickTimerRef.current != null) {
+      window.clearInterval(echoHoldTickTimerRef.current);
+      echoHoldTickTimerRef.current = null;
+    }
+    setEchoDeck(null);
+    setEchoSecondsLeft(ARENA_ECHO_HOLD_SECONDS);
+  }, []);
+
   const clearScratchTransitionMedia = useCallback(() => {
     scratchAudioRef.current?.pause();
     scratchAudioRef.current = null;
@@ -1134,6 +1154,7 @@ function BattleArenaContent() {
 
   const queueScratchTransition = useCallback(
     (nextDeck: DeckKey, remainingMs = SCRATCH_TRANSITION_MS) => {
+      clearDeckEchoHold();
       stopScratchTransition();
       setCurrentDeck(nextDeck);
       setActiveDeck(null);
@@ -1142,7 +1163,41 @@ function BattleArenaContent() {
       setTransitionEndsAtMs(Date.now() + remainingMs);
       setBattlePhase("transition");
     },
-    [stopScratchTransition],
+    [clearDeckEchoHold, stopScratchTransition],
+  );
+
+  const queueDeckEchoHold = useCallback(
+    (nextDeck: DeckKey, remainingMs = ARENA_ECHO_HOLD_MS) => {
+      clearDeckEchoHold();
+      stopScratchTransition();
+      const boundedRemainingMs = Math.max(0, remainingMs);
+      const echoEndsAtMs = Date.now() + boundedRemainingMs;
+
+      setCurrentDeck(nextDeck);
+      setActiveDeck(null);
+      setEchoDeck(nextDeck);
+      setEchoSecondsLeft(Math.max(0, Math.ceil(boundedRemainingMs / 1000)));
+      setBattlePhase("echo");
+
+      if (boundedRemainingMs <= 0) {
+        queueScratchTransition(nextDeck);
+        return;
+      }
+
+      const updateEchoCountdown = () => {
+        const remaining = Math.max(0, echoEndsAtMs - Date.now());
+        setEchoSecondsLeft(Math.max(0, Math.ceil(remaining / 1000)));
+      };
+
+      updateEchoCountdown();
+      echoHoldTickTimerRef.current = window.setInterval(updateEchoCountdown, 120);
+      echoHoldTimerRef.current = window.setTimeout(() => {
+        clearDeckEchoHold();
+        if (completedDecksRef.current[nextDeck]) return;
+        queueScratchTransition(nextDeck);
+      }, boundedRemainingMs);
+    },
+    [clearDeckEchoHold, queueScratchTransition, stopScratchTransition],
   );
 
   const stopWinnerRevealSfx = useCallback(() => {
@@ -1282,6 +1337,8 @@ function BattleArenaContent() {
   const beginBattleWithFirstDeck = useCallback((deck: DeckKey, startedAtMs = Date.now(), delayMs = 0) => {
     resultRedirectArmedRef.current = false;
     resultSequenceRef.current += 1;
+    clearDeckEchoHold();
+    stopScratchTransition();
     stopWinnerCountdownSfx();
     stopWinnerRevealSfx();
     setBattleStartedAtMs(startedAtMs);
@@ -1306,7 +1363,7 @@ function BattleArenaContent() {
         setBattlePhase("ready");
       }, delayMs);
     }
-  }, [stopWinnerCountdownSfx, stopWinnerRevealSfx]);
+  }, [clearDeckEchoHold, stopScratchTransition, stopWinnerCountdownSfx, stopWinnerRevealSfx]);
 
   const pushResultForEveryone = useCallback((delayMs = 0, broadcast = true, hrefOverride?: string) => {
     if (resultRedirectArmedRef.current) return;
@@ -2175,12 +2232,13 @@ function BattleArenaContent() {
       audio.muted = false;
     });
     stopTeaser();
+    clearDeckEchoHold();
     stopScratchTransition();
     stopWinnerCountdownSfx();
     stopWinnerRevealSfx();
     setPreStartSecondsLeft(null);
     preBattleStartedRef.current = null;
-  }, [battleId, clearArenaEcho, stopScratchTransition, stopTeaser, stopWinnerCountdownSfx, stopWinnerRevealSfx]);
+  }, [battleId, clearArenaEcho, clearDeckEchoHold, stopScratchTransition, stopTeaser, stopWinnerCountdownSfx, stopWinnerRevealSfx]);
 
   useEffect(() => {
     if (loading || !battle || !battleId) return;
@@ -2285,6 +2343,25 @@ function BattleArenaContent() {
       return;
     }
 
+    if (elapsed < SCRATCH_TRANSITION_START_SECONDS) {
+      completedDecksRef.current = {
+        A: sharedFirstDeck === "A",
+        B: sharedFirstDeck === "B",
+      };
+      setPlayedDecks({
+        A: sharedFirstDeck === "A",
+        B: sharedFirstDeck === "B",
+      });
+      setCurrentDeck(secondDeck);
+      setActiveDeck(null);
+      setVoteOpen(true);
+      setVoteCountdown(null);
+      queueDeckEchoHold(secondDeck, Math.max(0, SCRATCH_TRANSITION_START_SECONDS * 1000 - elapsedMs));
+      resumeDeckOffsetRef.current = null;
+      autoStartedDecksRef.current = { A: false, B: false };
+      return;
+    }
+
     if (elapsed < SECOND_DECK_START_SECONDS) {
       completedDecksRef.current = {
         A: sharedFirstDeck === "A",
@@ -2354,7 +2431,7 @@ function BattleArenaContent() {
       setVoteCountdown(0);
       pushResultForEveryone(950);
     }
-  }, [battle, battleId, loading, pushResultForEveryone, queueScratchTransition, searchParams]);
+  }, [battle, battleId, loading, pushResultForEveryone, queueDeckEchoHold, queueScratchTransition, searchParams]);
 
   useEffect(() => {
     if (loading || !battle || !battleId || battle.arena_kind === "queue" || battlePhase !== "rps" || (rpsPressed.A && rpsPressed.B)) return;
@@ -2405,8 +2482,21 @@ function BattleArenaContent() {
     setVoteCountdown(null);
 
     let interval: number | null = null;
+    let cancelled = false;
+    let visualCountdownSettled = false;
+    let resolveVisualCountdown: () => void = () => undefined;
+    const visualCountdownDone = new Promise<void>((resolve) => {
+      resolveVisualCountdown = resolve;
+    });
+    const settleVisualCountdown = () => {
+      if (visualCountdownSettled) return;
+      visualCountdownSettled = true;
+      setVoteOpen(false);
+      resolveVisualCountdown();
+    };
+
     const startCountdownTimer = window.setTimeout(() => {
-      playWinnerCountdownSfx();
+      const countdownAudioDone = playWinnerCountdownSfx();
       setVoteOpen(true);
       setVoteCountdown(initialSeconds);
 
@@ -2418,16 +2508,21 @@ function BattleArenaContent() {
               window.clearInterval(interval);
               interval = null;
             }
-            setVoteOpen(false);
-            pushResultForEveryone(850);
+            settleVisualCountdown();
             return 0;
           }
           return prev - 1;
         });
       }, 1000);
+
+      void Promise.all([visualCountdownDone, countdownAudioDone]).then(() => {
+        if (cancelled) return;
+        pushResultForEveryone(850);
+      });
     }, FINAL_RESULT_CUE_DELAY_MS);
 
     return () => {
+      cancelled = true;
       window.clearTimeout(startCountdownTimer);
       if (interval != null) window.clearInterval(interval);
     };
@@ -2521,19 +2616,20 @@ function BattleArenaContent() {
 
       const otherDeck: DeckKey = deck === "A" ? "B" : "A";
       if (!completedDecksRef.current[otherDeck]) {
-        queueScratchTransition(otherDeck);
+        queueDeckEchoHold(otherDeck);
       } else {
         setCurrentDeck(null);
         setBattlePhase("final");
       }
     },
-    [markDeckPlayed, queueScratchTransition, triggerArenaEcho],
+    [markDeckPlayed, queueDeckEchoHold, triggerArenaEcho],
   );
 
   const handleToggleDeck = useCallback(
     (deck: DeckKey) => {
       if (
         battlePhase === "rps" ||
+        battlePhase === "echo" ||
         battlePhase === "transition" ||
         battlePhase === "final" ||
         deck !== currentDeck ||
@@ -2684,7 +2780,7 @@ function BattleArenaContent() {
     const isCurrentUserFighter = Boolean(
       myUserId && battle && (myUserId === battle.fighter_a_user_id || myUserId === battle.fighter_b_user_id),
     );
-    const canTapFeedback = !isCurrentUserFighter && ["warmup", "rps", "ready", "playing", "transition", "vote", "ended"].includes(battlePhase);
+    const canTapFeedback = !isCurrentUserFighter && ["warmup", "rps", "ready", "playing", "echo", "transition", "vote", "ended"].includes(battlePhase);
     if (!canTapFeedback) return;
 
     const meta = feedbackButtons.find((item) => item.key === key);
@@ -2711,7 +2807,7 @@ function BattleArenaContent() {
     const isCurrentUserFighter = Boolean(
       myUserId && battle && (myUserId === battle.fighter_a_user_id || myUserId === battle.fighter_b_user_id),
     );
-    const activeForFeedback = !isCurrentUserFighter && ["warmup", "rps", "ready", "playing", "transition", "vote", "ended"].includes(battlePhase);
+    const activeForFeedback = !isCurrentUserFighter && ["warmup", "rps", "ready", "playing", "echo", "transition", "vote", "ended"].includes(battlePhase);
     const disabledReason = isCurrentUserFighter
       ? lang === "zh"
         ? "鬥歌者只能投最終票，不能按反應鈕"
@@ -2785,6 +2881,11 @@ function BattleArenaContent() {
       .on("broadcast", { event: "result-ready" }, (payload) => {
         const href = (payload.payload as { href?: unknown }).href;
         if (typeof href !== "string" || !href.startsWith("/battle/result")) return;
+        const countdownAudioDone = winnerCountdownPromiseRef.current;
+        if (countdownAudioDone) {
+          void countdownAudioDone.then(() => pushResultForEveryone(120, false, href));
+          return;
+        }
         pushResultForEveryone(120, false, href);
       })
       .on("broadcast", { event: "rematch-open" }, (payload) => {
@@ -3323,15 +3424,19 @@ function BattleArenaContent() {
             ? lang === "zh"
               ? "暫停最多 1 秒，馬上續播"
               : "Pause max 1s, resuming"
-            : battlePhase === "transition"
+            : battlePhase === "echo"
               ? lang === "zh"
-                ? `Scratch 過場 · ${transitionDeck === "A" ? battle.fighter_a_name : battle.fighter_b_name} 準備進場`
-                : `Scratch transition · ${transitionDeck === "A" ? battle.fighter_a_name : battle.fighter_b_name} entering`
-            : voteOpen
-              ? lang === "zh"
-                ? `剩最後 ${voteCountdown ?? FINAL_VOTE_SECONDS} 秒投票`
-                : `${voteCountdown ?? FINAL_VOTE_SECONDS}s left to vote`
-              : voteStatusText;
+                ? `尾韻延伸 · ${echoDeck === "A" ? battle.fighter_a_name : battle.fighter_b_name} Scratch 準備`
+                : `Echo tail · ${echoDeck === "A" ? battle.fighter_a_name : battle.fighter_b_name} scratch incoming`
+              : battlePhase === "transition"
+                ? lang === "zh"
+                  ? `Scratch 過場 · ${transitionDeck === "A" ? battle.fighter_a_name : battle.fighter_b_name} 準備進場`
+                  : `Scratch transition · ${transitionDeck === "A" ? battle.fighter_a_name : battle.fighter_b_name} entering`
+                : voteOpen
+                  ? lang === "zh"
+                    ? `剩最後 ${voteCountdown ?? FINAL_VOTE_SECONDS} 秒投票`
+                    : `${voteCountdown ?? FINAL_VOTE_SECONDS}s left to vote`
+                  : voteStatusText;
   const voteCenterText =
     showFinalVoteStats && totalVotes > 0
       ? `${voteStatusText} · ${t("battle_vote_total", { count: totalVotes })}`
@@ -3580,7 +3685,7 @@ function BattleArenaContent() {
             <div className="absolute inset-5 rounded-full border border-orange-300/20" />
             <div className="absolute inset-12 rounded-full border border-cyan-200/14" />
             <p className="text-[clamp(1rem,2.6vw,1.5rem)] font-black tracking-[0.32em] text-yellow-100 drop-shadow-[0_0_24px_rgba(255,214,120,0.56)]">
-              {lang === "zh" ? "最後七秒鎖票" : "LAST 7 SECONDS"}
+              {lang === "zh" ? "最後五秒鎖票" : "LAST 5 SECONDS"}
             </p>
             <p className="mt-1 bg-gradient-to-b from-white via-yellow-200 to-orange-500 bg-clip-text text-[clamp(7rem,18vw,12rem)] font-black leading-[0.86] text-transparent drop-shadow-[0_0_44px_rgba(255,106,0,0.82)]">
               {voteCountdown ?? FINAL_VOTE_SECONDS}
@@ -3793,6 +3898,7 @@ function BattleArenaContent() {
                 isArenaWarmup ||
                 !canControlDeck("A") ||
                 battlePhase === "rps" ||
+                battlePhase === "echo" ||
                 battlePhase === "transition" ||
                 battlePhase === "final" ||
                 currentDeck !== "A" ||
@@ -4018,6 +4124,22 @@ function BattleArenaContent() {
                     </button>
                   </div>
                 </div>
+              ) : battlePhase === "echo" ? (
+                <div className="relative -mt-1 flex w-full flex-col items-center rounded-[1.4rem] border border-orange-200/18 bg-black/60 px-4 py-4 text-center shadow-[0_0_42px_rgba(255,106,0,0.18),inset_0_0_40px_rgba(255,255,255,0.035)]">
+                  <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[1.4rem]">
+                    <div className="absolute inset-x-8 top-1/2 h-px -translate-y-1/2 bg-gradient-to-r from-transparent via-orange-200/70 to-transparent shadow-[0_0_28px_rgba(255,191,74,0.44)]" />
+                    <div className="absolute inset-x-14 top-[58%] h-px -translate-y-1/2 bg-gradient-to-r from-transparent via-cyan-100/40 to-transparent" />
+                  </div>
+                  <p className="relative text-[11px] font-black uppercase tracking-[0.28em] text-orange-100/80">ECHO TAIL</p>
+                  <p className="relative mt-2 bg-gradient-to-b from-white via-orange-100 to-orange-500 bg-clip-text text-[clamp(2.4rem,6vw,4rem)] font-black leading-none text-transparent drop-shadow-[0_0_28px_rgba(255,106,0,0.38)]">
+                    {echoSecondsLeft || 1}
+                  </p>
+                  <p className="relative mt-2 text-sm font-black text-white">
+                    {lang === "zh"
+                      ? `${echoDeck === "A" ? battle.fighter_a_name : battle.fighter_b_name} 準備 Scratch 進場`
+                      : `${echoDeck === "A" ? battle.fighter_a_name : battle.fighter_b_name} scratch incoming`}
+                  </p>
+                </div>
               ) : battlePhase === "transition" ? (
                 <div className="relative -mt-1 flex w-full flex-col items-center rounded-[1.4rem] border border-white/15 bg-black/64 px-4 py-4 text-center shadow-[0_0_48px_rgba(255,106,0,0.2),inset_0_0_44px_rgba(103,232,249,0.06)]">
                   <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[1.4rem]">
@@ -4114,6 +4236,7 @@ function BattleArenaContent() {
                     isArenaWarmup ||
                     !canControlDeck("B") ||
                     battlePhase === "rps" ||
+                    battlePhase === "echo" ||
                     battlePhase === "transition" ||
                     battlePhase === "final" ||
                     currentDeck !== "B" ||
