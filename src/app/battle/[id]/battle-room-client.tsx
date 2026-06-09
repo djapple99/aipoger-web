@@ -923,6 +923,7 @@ function BattleArenaContent() {
   const [myDisplayName, setMyDisplayName] = useState<string>("我");
   const [battleGuestId, setBattleGuestId] = useState("");
   const [audioUrls, setAudioUrls] = useState<{ A: string | null; B: string | null }>({ A: null, B: null });
+  const [mobileAudioBlocked, setMobileAudioBlocked] = useState(false);
   const [coverDisplayA, setCoverDisplayA] = useState<string | null>(null);
   const [coverDisplayB, setCoverDisplayB] = useState<string | null>(null);
   const [avatarDisplayA, setAvatarDisplayA] = useState<string | null>(null);
@@ -945,6 +946,10 @@ function BattleArenaContent() {
   const teaserStopTimerRef = useRef<number | null>(null);
   const teaserTickTimerRef = useRef<number | null>(null);
   const scratchAudioRef = useRef<HTMLAudioElement | null>(null);
+  const finalPreStartHypeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const scratchPrimeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const winnerCountdownPrimeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const winnerRevealPrimeAudioRef = useRef<HTMLAudioElement | null>(null);
   const winnerCountdownAudioRef = useRef<HTMLAudioElement | null>(null);
   const winnerCountdownPromiseRef = useRef<Promise<void> | null>(null);
   const winnerCountdownResolveRef = useRef<(() => void) | null>(null);
@@ -973,6 +978,9 @@ function BattleArenaContent() {
   const mockSyncChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const arenaEntryRefreshInFlightRef = useRef(false);
   const voteIntentInFlightRef = useRef<VoteSide | null>(null);
+  const mobileAudioUnlockedRef = useRef(false);
+  const mobileAudioPrimingRef = useRef<Promise<boolean> | null>(null);
+  const pendingDeckAutoResumeRef = useRef<{ deck: DeckKey; restart: boolean; startAtSeconds: number } | null>(null);
   const currentSessionUserIdRef = useRef<string>("");
   const shownDanmakuMessageIdsRef = useRef<Set<string>>(new Set());
   const shownDanmakuFingerprintsRef = useRef<Map<string, number>>(new Map());
@@ -1232,9 +1240,15 @@ function BattleArenaContent() {
 
   const playWinnerCountdownSfx = useCallback(() => {
     stopWinnerCountdownSfx();
-    const audio = new Audio(WINNER_COUNTDOWN_SFX_SRC);
+    const audio = winnerCountdownPrimeAudioRef.current ?? new Audio(WINNER_COUNTDOWN_SFX_SRC);
     audio.preload = "auto";
+    audio.muted = false;
     audio.volume = 0.94;
+    try {
+      audio.currentTime = 0;
+    } catch {
+      // Some browsers block seek until metadata is ready.
+    }
     winnerCountdownAudioRef.current = audio;
 
     let settle: () => void = () => undefined;
@@ -1269,6 +1283,7 @@ function BattleArenaContent() {
 
     winnerCountdownPromiseRef.current = promise;
     void audio.play().catch(() => {
+      setMobileAudioBlocked(true);
       settle();
     });
     return promise;
@@ -1276,42 +1291,82 @@ function BattleArenaContent() {
 
   const playWinnerRevealSfx = useCallback(() => {
     stopWinnerRevealSfx();
-    const audio = new Audio(WINNER_REVEAL_SFX_SRC);
+    const audio = winnerRevealPrimeAudioRef.current ?? new Audio(WINNER_REVEAL_SFX_SRC);
     audio.preload = "auto";
+    audio.muted = false;
     audio.volume = 0.88;
+    try {
+      audio.currentTime = 0;
+    } catch {
+      // Ignore rewind failures on not-yet-loaded media.
+    }
     winnerRevealAudioRef.current = audio;
-    void audio.play().catch(() => undefined);
+    void audio.play().catch(() => setMobileAudioBlocked(true));
   }, [stopWinnerRevealSfx]);
 
   const primeBattleAudioForMobile = useCallback(() => {
-    [audioARef.current, audioBRef.current].forEach((audio) => {
-      if (!audio?.src) return;
-      if (!audio.paused) return;
+    if (mobileAudioUnlockedRef.current && !mobileAudioBlocked) return Promise.resolve(true);
+    if (mobileAudioPrimingRef.current) return mobileAudioPrimingRef.current;
+
+    const primeAudio = async (audio: HTMLAudioElement | null) => {
+      if (!audio?.src) return null;
+      if (!audio.paused) return true;
       const previousTime = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+      const previousMuted = audio.muted;
+      const previousVolume = audio.volume;
       audio.muted = true;
       audio.volume = 0;
-      audio.load();
-      void audio
-        .play()
-        .then(() => {
-          audio.pause();
+      if (audio.readyState === 0) audio.load();
+      try {
+        await audio.play();
+        audio.pause();
+        try {
           audio.currentTime = previousTime;
-          audio.muted = false;
-          audio.volume = 1;
-        })
-        .catch(() => {
-          audio.muted = false;
-          audio.volume = 1;
-        });
+        } catch {
+          // Some mobile browsers reject seek before metadata is ready.
+        }
+        audio.muted = previousMuted;
+        audio.volume = previousVolume;
+        return true;
+      } catch {
+        audio.muted = previousMuted;
+        audio.volume = previousVolume;
+        return false;
+      }
+    };
+
+    mobileAudioPrimingRef.current = Promise.all([
+      primeAudio(audioARef.current),
+      primeAudio(audioBRef.current),
+      primeAudio(finalPreStartHypeAudioRef.current),
+      primeAudio(scratchPrimeAudioRef.current),
+      primeAudio(winnerCountdownPrimeAudioRef.current),
+      primeAudio(winnerRevealPrimeAudioRef.current),
+    ]).then((results) => {
+      const unlocked = results.some((result) => result === true);
+      mobileAudioUnlockedRef.current = unlocked;
+      if (unlocked) setMobileAudioBlocked(false);
+      return unlocked;
+    }).finally(() => {
+      mobileAudioPrimingRef.current = null;
     });
-  }, []);
+
+    return mobileAudioPrimingRef.current;
+  }, [mobileAudioBlocked]);
 
   const playFinalPreStartHype = useCallback(() => {
-    primeBattleAudioForMobile();
-    const announcer = new Audio(FINAL_PRESTART_HYPE_SFX_SRC);
+    void primeBattleAudioForMobile();
+    const announcer = finalPreStartHypeAudioRef.current ?? new Audio(FINAL_PRESTART_HYPE_SFX_SRC);
     announcer.preload = "auto";
+    announcer.muted = false;
     announcer.volume = 0.94;
+    try {
+      announcer.currentTime = 0;
+    } catch {
+      // Keep going; playback is more important than a perfect rewind.
+    }
     void announcer.play().catch(() => {
+      setMobileAudioBlocked(true);
       try {
         if ("speechSynthesis" in window) {
           const utterance = new SpeechSynthesisUtterance(FINAL_PRESTART_HYPE_TEXT);
@@ -2211,6 +2266,9 @@ function BattleArenaContent() {
     setRematchError(null);
     setHasVoted(null);
     voteIntentInFlightRef.current = null;
+    pendingDeckAutoResumeRef.current = null;
+    mobileAudioUnlockedRef.current = false;
+    setMobileAudioBlocked(false);
     setActiveDeck(null);
     setFirstDeck(null);
     setCurrentDeck(null);
@@ -2566,12 +2624,20 @@ function BattleArenaContent() {
     return target
       .play()
       .then(() => {
+        pendingDeckAutoResumeRef.current = null;
+        setMobileAudioBlocked(false);
         setCurrentDeck(deck);
         setActiveDeck(deck);
         setBattlePhase("playing");
         return true;
       })
       .catch(() => {
+        pendingDeckAutoResumeRef.current = {
+          deck,
+          restart: false,
+          startAtSeconds: Number.isFinite(target.currentTime) ? target.currentTime : startAtSeconds,
+        };
+        setMobileAudioBlocked(true);
         setCurrentDeck(deck);
         setActiveDeck(null);
         setBattlePhase("ready");
@@ -2584,8 +2650,9 @@ function BattleArenaContent() {
 
     clearScratchTransitionMedia();
     const remainingMs = Math.max(0, transitionEndsAtMs - Date.now());
-    const scratch = new Audio(SCRATCH_TRANSITION_SRC);
+    const scratch = scratchPrimeAudioRef.current ?? new Audio(SCRATCH_TRANSITION_SRC);
     scratch.preload = "auto";
+    scratch.muted = false;
     scratch.volume = 0.86;
     try {
       scratch.currentTime = Math.max(0, SCRATCH_TRANSITION_SECONDS - remainingMs / 1000);
@@ -2612,7 +2679,7 @@ function BattleArenaContent() {
       void playDeck(transitionDeck, true);
     }, remainingMs);
 
-    void scratch.play().catch(() => undefined);
+    void scratch.play().catch(() => setMobileAudioBlocked(true));
 
     return () => clearScratchTransitionMedia();
   }, [battlePhase, clearScratchTransitionMedia, playDeck, transitionDeck, transitionEndsAtMs]);
@@ -2720,6 +2787,41 @@ function BattleArenaContent() {
       if (retryTimer != null) window.clearTimeout(retryTimer);
     };
   }, [audioUrls, battlePhase, currentDeck, playDeck]);
+
+  const handleBattleAudioGesture = useCallback(() => {
+    void primeBattleAudioForMobile().then((unlocked) => {
+      if (!unlocked) {
+        setMobileAudioBlocked(true);
+        return;
+      }
+
+      const pending = pendingDeckAutoResumeRef.current;
+      if (pending && !completedDecksRef.current[pending.deck]) {
+        pendingDeckAutoResumeRef.current = null;
+        void playDeck(pending.deck, pending.restart, pending.startAtSeconds);
+        return;
+      }
+
+      if (isFinalPreStartCountdown) {
+        const announcer = finalPreStartHypeAudioRef.current;
+        if (announcer?.paused) {
+          announcer.muted = false;
+          announcer.volume = 0.94;
+          try {
+            announcer.currentTime = 0;
+          } catch {
+            // Keep the gesture path focused on playback.
+          }
+          void announcer.play().catch(() => setMobileAudioBlocked(true));
+        }
+      }
+
+      if (battlePhase !== "ready" || !currentDeck || completedDecksRef.current[currentDeck] || !audioUrls[currentDeck]) return;
+      const resume = resumeDeckOffsetRef.current?.deck === currentDeck ? resumeDeckOffsetRef.current.seconds : 0;
+      resumeDeckOffsetRef.current = null;
+      void playDeck(currentDeck, true, resume);
+    });
+  }, [audioUrls, battlePhase, currentDeck, isFinalPreStartCountdown, playDeck, primeBattleAudioForMobile]);
 
   useEffect(() => {
     if (!battleStartedAtMs || battle?.arena_kind === "queue" || (playedDecks.A && playedDecks.B) || battlePhase === "final") return;
@@ -3650,6 +3752,9 @@ function BattleArenaContent() {
   return (
     <div
       className={`${fontGlowSansBattle.className} aipoger-battle-touch relative flex min-h-[100svh] flex-col overflow-x-hidden overflow-y-auto bg-black text-zinc-100 antialiased md:h-screen md:min-h-screen md:overflow-hidden ${vinylDebugMode ? "pb-24" : ""}`}
+      onClickCapture={handleBattleAudioGesture}
+      onPointerDownCapture={handleBattleAudioGesture}
+      onTouchStartCapture={handleBattleAudioGesture}
     >
       <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_18%_16%,rgba(255,106,0,0.18),transparent_32%),radial-gradient(circle_at_84%_18%,rgba(59,130,246,0.18),transparent_32%),linear-gradient(180deg,#020202_0%,#050505_44%,#0d0806_100%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.13] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:52px_52px]" />
@@ -3660,6 +3765,19 @@ function BattleArenaContent() {
           <div className="absolute inset-x-0 top-1/2 h-px bg-gradient-to-r from-transparent via-cyan-100/60 to-transparent shadow-[0_0_42px_rgba(103,232,249,0.48)]" />
         </div>
       )}
+      {mobileAudioBlocked && !winnerRevealOpen && !noContestOpen ? (
+        <button
+          type="button"
+          onPointerDown={(event) => {
+            event.stopPropagation();
+            handleBattleAudioGesture();
+          }}
+          onClick={handleBattleAudioGesture}
+          className="fixed left-1/2 top-[4.25rem] z-[120] flex min-h-12 -translate-x-1/2 touch-manipulation select-none items-center justify-center rounded-full border border-yellow-200/70 bg-yellow-300 px-5 py-3 text-sm font-black tracking-[0.08em] text-black shadow-[0_0_34px_rgba(250,204,21,0.42)] transition active:scale-[0.97] md:top-5"
+        >
+          {lang === "zh" ? "點一下開聲續播" : "Tap to resume sound"}
+        </button>
+      ) : null}
       {renderPreBattleAd && adVideoPosition ? (
         <div className="pointer-events-none fixed inset-0 z-[44]">
           <div
@@ -4362,6 +4480,10 @@ function BattleArenaContent() {
         onTimeUpdate={() => handleDeckTimeUpdate("B")}
         onEnded={() => completeDeck("B")}
       />
+      <audio ref={finalPreStartHypeAudioRef} src={FINAL_PRESTART_HYPE_SFX_SRC} preload="auto" />
+      <audio ref={scratchPrimeAudioRef} src={SCRATCH_TRANSITION_SRC} preload="auto" />
+      <audio ref={winnerCountdownPrimeAudioRef} src={WINNER_COUNTDOWN_SFX_SRC} preload="auto" />
+      <audio ref={winnerRevealPrimeAudioRef} src={WINNER_REVEAL_SFX_SRC} preload="auto" />
 
       <style>{`
         .aipoger-battle-touch {
