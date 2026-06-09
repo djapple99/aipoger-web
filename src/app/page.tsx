@@ -78,31 +78,264 @@ function ListenBarIcon() {
   );
 }
 
-function HeroVinylVisual() {
+type HomeInfoLink = {
+  href: string;
+  title: string;
+  desc: string;
+};
+
+type HomeStatItem = [string, string];
+
+function DesktopVinylReference() {
   return (
-    <div
-      className="pointer-events-none absolute left-[61%] top-[7.2rem] z-0 hidden h-[27rem] w-[27rem] -translate-x-1/2 md:block xl:left-[58%] xl:h-[31rem] xl:w-[31rem]"
-      aria-hidden="true"
-    >
-      <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(255,106,0,0.08),transparent_44%),repeating-radial-gradient(circle,rgba(255,255,255,0.16)_0_1px,transparent_1px_12px)] opacity-80" />
-      <div className="absolute inset-[9%] rounded-full border border-orange-300/22 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1)_0_2%,rgba(9,9,9,0.98)_2.5%_42%,rgba(255,255,255,0.09)_43%,rgba(3,3,3,0.98)_44%)] shadow-[inset_0_0_56px_rgba(255,255,255,0.075),0_0_54px_rgba(255,106,0,0.12)]" />
-      <div className="absolute inset-[36%] rounded-full border border-orange-300/28 bg-[radial-gradient(circle_at_50%_50%,#120805_0_10%,rgba(255,106,0,0.72)_11%_43%,rgba(255,175,93,0.34)_44%_58%,rgba(0,0,0,0.5)_59%)] shadow-[0_0_38px_rgba(255,106,0,0.24)]" />
-      <div className="absolute left-[44%] top-[46%] h-[2.1rem] w-[2.1rem] rounded-full bg-black ring-1 ring-orange-100/28" />
-      <div className="absolute left-[41.5%] top-[50.5%] h-[2.7rem] w-[8.5rem] -translate-y-1/2 bg-[linear-gradient(90deg,transparent,rgba(255,190,120,0.9),transparent)] opacity-65" />
-      <div className="absolute right-[4%] top-[20%] h-[18rem] w-[0.82rem] rotate-[32deg] rounded-full border border-white/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.72),rgba(255,255,255,0.12),rgba(255,106,0,0.18))] shadow-[0_0_18px_rgba(255,255,255,0.16)]" />
-      <div className="absolute right-[14%] top-[64%] h-[5.4rem] w-[1rem] rotate-[48deg] rounded-full border border-orange-100/32 bg-black/82" />
-      <div className="absolute bottom-[21%] left-[37%] h-[2.7rem] w-[7rem] overflow-hidden text-orange-200/80">
-        <div className="flex h-full items-end gap-[3px]">
-          {Array.from({ length: 18 }).map((_, index) => (
+    <div className="pointer-events-none absolute left-[588px] top-[68px] h-[390px] w-[390px]" aria-hidden="true">
+      <div className="absolute inset-[-18px] rounded-full border border-orange-300/10 bg-[repeating-radial-gradient(circle,rgba(255,255,255,0.08)_0_1px,transparent_1px_13px)] opacity-70" />
+      <div className="absolute inset-0 rounded-full border border-orange-300/18 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.18)_0_1px,transparent_2px_8px,rgba(255,255,255,0.08)_9px_10px,transparent_11px_42px,rgba(255,255,255,0.13)_43px_44px,transparent_45px_100%),radial-gradient(circle_at_50%_50%,rgba(0,0,0,0.82)_0_28%,rgba(12,12,12,0.98)_29%_57%,rgba(255,255,255,0.08)_58%,rgba(0,0,0,0.96)_60%)] shadow-[inset_0_0_44px_rgba(255,255,255,0.06),0_0_52px_rgba(255,106,0,0.12)]" />
+      <div className="absolute inset-[138px] rounded-full border border-orange-200/26 bg-[radial-gradient(circle,#050505_0_10%,#ff6a00_11%_42%,rgba(255,170,82,0.52)_43%_60%,rgba(20,7,2,0.94)_61%)] shadow-[0_0_38px_rgba(255,106,0,0.25)]" />
+      <div className="absolute left-[180px] top-[184px] h-8 w-8 rounded-full bg-black ring-1 ring-orange-100/25" />
+      <div className="absolute left-[153px] top-[202px] h-10 w-[88px] overflow-hidden text-orange-200/80">
+        <div className="flex h-full items-end gap-[2px]">
+          {Array.from({ length: 19 }).map((_, index) => (
             <span
               key={index}
               className="w-[3px] rounded-full bg-orange-300/75"
-              style={{ height: `${18 + ((index * 19) % 34)}%` }}
+              style={{ height: `${18 + ((index * 23) % 58)}%` }}
             />
           ))}
         </div>
       </div>
+      <div className="absolute right-[6px] top-[94px] h-[244px] w-[11px] rotate-[32deg] rounded-full border border-white/22 bg-[linear-gradient(180deg,rgba(255,255,255,0.72),rgba(255,255,255,0.12),rgba(255,106,0,0.2))] shadow-[0_0_18px_rgba(255,255,255,0.12)]" />
+      <div className="absolute right-[56px] top-[314px] h-[74px] w-[16px] rotate-[48deg] rounded-full border border-orange-100/30 bg-black/85" />
+      <div className="absolute right-[27px] top-[83px] h-8 w-3 rotate-[32deg] rounded border border-white/20 bg-black/75" />
     </div>
+  );
+}
+
+function DesktopWaveLine({ className = "" }: { className?: string }) {
+  return (
+    <div className={`pointer-events-none absolute h-8 overflow-hidden ${className}`} aria-hidden="true">
+      <div className="flex h-full items-center gap-[3px]">
+        {Array.from({ length: 38 }).map((_, index) => (
+          <span
+            key={index}
+            className="w-[2px] rounded-full bg-current opacity-80"
+            style={{ height: `${7 + ((index * 17) % 26)}px` }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DesktopInfoIcon({ index }: { index: number }) {
+  const common = "absolute border border-orange-300/42";
+  if (index === 0) {
+    return (
+      <div className="relative h-12 w-24 text-orange-300/72" aria-hidden="true">
+        <div className={`${common} left-5 top-3 h-8 w-16 -skew-x-12 rounded-[6px]`} />
+        <div className="absolute left-12 top-5 h-3 w-3 rounded-full border border-orange-300/70" />
+        <div className="absolute left-3 top-8 h-px w-16 -rotate-12 bg-orange-300/48" />
+      </div>
+    );
+  }
+  if (index === 1) {
+    return (
+      <div className="flex h-12 w-24 items-end justify-center gap-[5px] text-orange-300/70" aria-hidden="true">
+        {Array.from({ length: 9 }).map((_, i) => (
+          <span key={i} className="w-[3px] rounded-t bg-current" style={{ height: `${10 + ((i * 11) % 28)}px` }} />
+        ))}
+      </div>
+    );
+  }
+  if (index === 2) {
+    return (
+      <div className="flex h-12 w-24 items-center justify-center gap-[3px] text-orange-300/76" aria-hidden="true">
+        {Array.from({ length: 18 }).map((_, i) => (
+          <span key={i} className="w-[2px] rounded-full bg-current" style={{ height: `${6 + ((i * 19) % 30)}px` }} />
+        ))}
+      </div>
+    );
+  }
+  if (index === 3) {
+    return (
+      <div className="relative h-12 w-24 text-orange-300/76" aria-hidden="true">
+        <div className="absolute left-8 top-7 h-3 w-10 border-b border-orange-300/60" />
+        <div className="absolute left-8 top-4 h-8 w-10 border-b border-l border-r border-orange-300/62 [clip-path:polygon(0_100%,18%_25%,43%_74%,50%_0,72%_75%,100%_25%,100%_100%)]" />
+        <span className="absolute left-[46px] top-1 h-2 w-2 rounded-full bg-orange-300/70" />
+        <span className="absolute left-7 top-3 h-2 w-2 rounded-full bg-orange-300/70" />
+        <span className="absolute right-7 top-3 h-2 w-2 rounded-full bg-orange-300/70" />
+      </div>
+    );
+  }
+  if (index === 4) {
+    return (
+      <div className="relative h-12 w-24 text-cyan-100/70" aria-hidden="true">
+        <div className="absolute left-9 top-3 h-7 w-10 rounded-t-full border border-cyan-100/58 border-b-0" />
+        <div className="absolute left-7 top-6 h-5 w-3 rounded border border-cyan-100/58" />
+        <div className="absolute right-7 top-6 h-5 w-3 rounded border border-cyan-100/58" />
+      </div>
+    );
+  }
+  return (
+    <div className="relative h-12 w-24 text-orange-300/72" aria-hidden="true">
+      <div className="absolute left-6 top-6 h-4 w-8 -rotate-[24deg] rounded border border-orange-300/58" />
+      <div className="absolute right-6 top-6 h-4 w-8 rotate-[24deg] rounded border border-orange-300/58" />
+      <div className="absolute left-[42px] top-[27px] h-3 w-8 rounded border border-orange-300/50" />
+    </div>
+  );
+}
+
+function DesktopReferenceHome({
+  t,
+  withLang,
+  heroTitle,
+  heroLine,
+  heroCopy,
+  statItems,
+  infoLinks,
+  isZh,
+  lang,
+  zhDisplayClass,
+  heroChromeShadow,
+}: {
+  t: (key: string) => string;
+  withLang: (href: string) => string;
+  heroTitle: string;
+  heroLine: string;
+  heroCopy: string;
+  statItems: HomeStatItem[];
+  infoLinks: HomeInfoLink[];
+  isZh: boolean;
+  lang: string;
+  zhDisplayClass: string;
+  heroChromeShadow: string;
+}) {
+  return (
+    <section className="relative z-10 hidden min-h-screen w-full justify-center overflow-hidden md:flex">
+      <div className="relative h-[720px] w-[1280px] shrink-0 origin-top overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 bg-[#050505]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_27%,rgba(95,34,10,0.42),transparent_34%),radial-gradient(circle_at_88%_30%,rgba(0,55,58,0.2),transparent_34%),linear-gradient(90deg,rgba(8,5,4,0.96),rgba(2,3,3,0.99)_58%,rgba(0,9,10,0.95))]" />
+        <div className="pointer-events-none absolute inset-0 opacity-[0.035] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:44px_44px]" />
+        <div className="pointer-events-none absolute left-[235px] top-0 h-[118px] w-[570px] border-b border-r border-orange-300/10" />
+        <div className="pointer-events-none absolute left-0 top-[118px] h-px w-[615px] bg-gradient-to-r from-transparent via-orange-300/58 to-transparent" />
+        <div className="pointer-events-none absolute left-[26px] top-[148px] h-[382px] w-px rounded-full bg-gradient-to-b from-transparent via-orange-300/60 to-transparent" />
+        <div className="pointer-events-none absolute left-[943px] top-[70px] h-[484px] w-[316px] rounded-[28px] border border-orange-300/20" />
+        <div className="pointer-events-none absolute right-[28px] top-[88px] h-[440px] w-px bg-gradient-to-b from-transparent via-orange-300/42 to-transparent" />
+        <Image
+          src={AIPOGER_BRAND_LOGO}
+          alt={t("home_logo_alt")}
+          width={70}
+          height={70}
+          priority
+          className="absolute left-[47px] top-[89px] h-[58px] w-[58px] rounded-full bg-black object-contain shadow-[0_0_22px_rgba(255,106,0,0.16)]"
+        />
+        <div className="pointer-events-none absolute left-[104px] top-[117px] h-px w-[383px] bg-gradient-to-r from-orange-300/62 via-white/18 to-transparent" />
+
+        <DesktopVinylReference />
+
+        <div className="absolute left-[55px] top-[135px] z-10 w-[760px]">
+          <p
+            className={`origin-left skew-x-[-8deg] text-[150px] font-black uppercase leading-[0.82] text-[#fff8ed] ${heroChromeShadow}`}
+          >
+            AIPOGER
+          </p>
+          <p
+            className={`mt-5 text-[28px] font-black leading-none text-[#f28a2f] drop-shadow-[0_0_12px_rgba(255,106,0,0.2)] ${
+              isZh ? "font-serif" : fontGlowSans.className
+            }`}
+          >
+            {heroLine}
+          </p>
+          <h1
+            className={`mt-6 text-[72px] font-black leading-[0.9] text-[#fff8ed] ${heroChromeShadow} ${
+              lang === "en" ? fontRighteous.className : fontGlowSans.className
+            }`}
+          >
+            {heroTitle}
+          </h1>
+          <p
+            className={`mt-5 text-[22px] font-black leading-none text-[#f28a2f] drop-shadow-[0_0_12px_rgba(255,106,0,0.18)] ${
+              lang === "en" ? fontRighteous.className : fontGlowSans.className
+            }`}
+          >
+            {heroCopy}
+          </p>
+
+          <div className="mt-6 grid h-[60px] w-[690px] grid-cols-3 overflow-hidden rounded-[12px] border border-orange-300/28 bg-black/72 shadow-[0_0_20px_rgba(255,106,0,0.08)]">
+            {statItems.map(([value, label], index) => (
+              <div key={value} className="relative border-r border-white/16 px-[27px] py-[10px] last:border-r-0">
+                <span className="absolute right-6 top-[26px] h-[7px] w-[7px] rounded-full bg-orange-300 shadow-[0_0_12px_rgba(255,166,74,0.85)]" />
+                <p className="text-[22px] font-black leading-none text-white">{value}</p>
+                <p className="mt-2 text-[11px] leading-none text-zinc-500">{label}</p>
+                {index > 0 && <span className="absolute left-0 top-[12px] h-9 w-px bg-white/28" />}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <DesktopWaveLine className="left-[87px] top-[532px] w-[150px] text-white/55" />
+        <DesktopWaveLine className="left-[367px] top-[537px] w-[190px] text-orange-300/62" />
+        <DesktopWaveLine className="left-[746px] top-[539px] w-[120px] text-orange-300/62" />
+        <div className="pointer-events-none absolute left-[26px] top-[555px] h-px w-[1205px] bg-gradient-to-r from-transparent via-orange-300/35 to-transparent" />
+
+        <div className="absolute right-[50px] top-[78px] z-20 h-[478px] w-[286px] rounded-[27px] border border-orange-300/42 bg-[linear-gradient(145deg,rgba(9,12,12,0.86),rgba(0,0,0,0.98)_55%,rgba(1,21,23,0.86))] p-[14px] shadow-[0_18px_56px_rgba(0,0,0,0.72),0_0_38px_rgba(255,106,0,0.15)]">
+          <div className="absolute inset-[14px] rounded-[22px] border border-orange-300/58" />
+          <div className="absolute inset-[23px] rounded-[18px] border border-orange-300/22" />
+          <div className="relative flex h-full flex-col px-[18px] pb-[19px] pt-[37px]">
+            <div className="relative flex h-[195px] items-center justify-center">
+              <div className="absolute h-[183px] w-[183px] rounded-full border border-orange-300/14 bg-[repeating-radial-gradient(circle,rgba(255,255,255,0.1)_0_1px,transparent_1px_10px)]" />
+              <div className="absolute h-[138px] w-[138px] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.12),rgba(255,106,0,0.1)_42%,transparent_70%)] blur-md" />
+              <Image
+                src={AIPOGER_BRAND_LOGO}
+                alt={t("home_logo_alt")}
+                width={188}
+                height={188}
+                className="relative h-[142px] w-[142px] object-contain [filter:drop-shadow(0_0_28px_rgba(255,255,255,0.25))]"
+              />
+            </div>
+            <div className="mt-[10px] grid gap-[12px]">
+              <Link
+                href={withLang("/weekly-drop-battle")}
+                className="group flex h-[52px] items-center justify-between rounded-[10px] border border-orange-200/18 bg-[#ff6a00] px-[18px] text-white shadow-[0_12px_26px_rgba(255,106,0,0.28),inset_0_1px_0_rgba(255,255,255,0.22)] transition hover:bg-[#ff8422] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+              >
+                <BattleIcon />
+                <span className={`text-[16px] font-black ${isZh ? zhDisplayClass : ""}`}>{t("btn_battle")}</span>
+              </Link>
+              <Link
+                href={withLang("/battle")}
+                className="group flex h-[49px] items-center justify-between rounded-[9px] border border-white/18 bg-white/[0.055] px-[18px] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-orange-300/52 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+              >
+                <WatchIcon />
+                <span className={`text-[16px] font-black ${isZh ? zhDisplayClass : ""}`}>{t("btn_watch")}</span>
+              </Link>
+              <Link
+                href={withLang("/listen-bar")}
+                className="group flex h-[49px] items-center justify-between rounded-[9px] border border-white/18 bg-white/[0.055] px-[18px] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-cyan-200/52 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
+              >
+                <ListenBarIcon />
+                <span className={`text-[16px] font-black ${isZh ? zhDisplayClass : ""}`}>{t("btn_listen_bar")}</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <div className="absolute left-[27px] top-[575px] z-10 grid h-[132px] w-[1205px] grid-cols-6 gap-[8px]">
+          {infoLinks.map((item, index) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="group relative overflow-hidden rounded-[10px] border border-orange-300/20 bg-black/68 px-[20px] py-[15px] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:border-orange-300/62 hover:bg-orange-500/[0.075] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
+            >
+              <p className="text-[14px] font-black leading-tight text-zinc-100 group-hover:text-orange-100">{item.title}</p>
+              <p className="mt-[8px] line-clamp-2 text-[10px] leading-[16px] text-zinc-500">{item.desc}</p>
+              <div className="absolute bottom-[10px] left-1/2 -translate-x-1/2 opacity-80">
+                <DesktopInfoIcon index={index} />
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -403,7 +636,7 @@ export default function HomePage() {
   const heroTextClass = "max-w-[min(62rem,calc(100vw-2.5rem))] whitespace-normal break-words md:overflow-hidden md:text-ellipsis md:whitespace-nowrap";
   const heroChromeShadow = "[text-shadow:0_2px_0_rgba(255,255,255,0.06),0_16px_32px_rgba(0,0,0,0.9),0_0_14px_rgba(255,106,0,0.08)]";
   const musicAnalysisHref = `/music-analysis?lang=${lang}`;
-  const statItems = isZh
+  const statItems: HomeStatItem[] = isZh
     ? [
         ["Weekly", "官方賽"],
         ["90s", "Drop Battle"],
@@ -470,7 +703,7 @@ export default function HomePage() {
         : { arena: "Arena", weekly: "Weekly", bar: "Bar" };
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-[#050505] px-4 py-4 text-[#f5f5f5] md:px-7 md:py-4">
+    <main className="relative min-h-screen overflow-x-hidden bg-[#050505] px-4 py-4 text-[#f5f5f5] md:px-0 md:py-0">
       <div className="pointer-events-none absolute inset-0 bg-[#050505]" />
       <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_20%_28%,rgba(112,43,12,0.42),transparent_38%),radial-gradient(circle_at_82%_26%,rgba(0,59,66,0.24),transparent_36%),linear-gradient(90deg,rgba(8,6,5,0.96)_0%,rgba(4,4,4,0.98)_54%,rgba(0,8,10,0.94)_100%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.026] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:46px_46px]" />
@@ -485,8 +718,21 @@ export default function HomePage() {
 
       <HomeBgmPlayer />
 
-      <section className="relative z-10 mx-auto grid w-full max-w-[116rem] gap-6 pb-1 pt-16 md:grid-cols-[minmax(0,1fr)_minmax(21rem,25.5rem)] md:items-center md:gap-[clamp(1.8rem,3.8vw,4.8rem)] md:pt-[clamp(4rem,7vh,5.4rem)]">
-        <HeroVinylVisual />
+      <DesktopReferenceHome
+        t={t}
+        withLang={withLang}
+        heroTitle={heroTitle}
+        heroLine={heroLine}
+        heroCopy={heroCopy}
+        statItems={statItems}
+        infoLinks={infoLinks}
+        isZh={isZh}
+        lang={lang}
+        zhDisplayClass={zhDisplayClass}
+        heroChromeShadow={heroChromeShadow}
+      />
+
+      <section className="relative z-10 mx-auto grid w-full max-w-[116rem] gap-6 pb-1 pt-16 md:hidden">
         <div className="relative z-10 isolate min-w-0 overflow-visible md:min-h-[28.6rem] md:px-[clamp(1.8rem,3.5vw,4.8rem)] md:pb-3 md:pt-[clamp(1.65rem,3.6vh,2.8rem)] xl:pl-[clamp(2.5rem,4.8vw,5.5rem)] before:pointer-events-none before:absolute before:inset-[-4rem_-5rem_-3rem_-3.5rem] before:-z-10 before:bg-[radial-gradient(ellipse_at_22%_46%,rgba(255,106,0,0.078),rgba(66,25,8,0.038)_46%,transparent_76%)] before:blur-[2px] before:content-['']">
           <div className="mb-2 flex items-center gap-3">
             <Image
@@ -631,7 +877,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="relative z-10 mx-auto w-full max-w-[96rem] pb-5 pt-7 md:mt-6">
+      <section className="relative z-10 mx-auto w-full max-w-[96rem] pb-5 pt-7 md:hidden">
         <div className="border-t border-white/10 pt-5">
           <div className="grid gap-2 md:grid-cols-6">
             {infoLinks.map((item) => (

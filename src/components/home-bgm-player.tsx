@@ -139,7 +139,7 @@ export default function HomeBgmPlayer() {
         onClick={toggle}
         title={t("home_bgm_tooltip")}
         aria-label={playing ? t("home_bgm_pause_aria") : t("home_bgm_play_aria")}
-        className={`pointer-events-auto fixed left-[4.75rem] top-4 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-zinc-600/80 bg-black/50 text-zinc-100 shadow-lg backdrop-blur transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 md:left-[5rem] ${
+        className={`pointer-events-auto fixed left-4 top-4 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-zinc-600/80 bg-black/50 text-zinc-100 shadow-lg backdrop-blur transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 md:left-[42px] md:top-5 md:h-14 md:w-14 ${
           playing
             ? "ring-2 ring-sky-400/90 shadow-[0_0_22px_rgba(56,189,248,0.55)]"
             : "ring-1 ring-white/15 hover:border-zinc-500 hover:bg-black/65"
