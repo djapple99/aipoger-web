@@ -86,15 +86,6 @@ type HomeInfoLink = {
 
 type HomeStatItem = [string, string];
 
-const homeCardIconSizes = [
-  "h-[46px] w-[92px]",
-  "h-[45px] w-[78px]",
-  "h-[42px] w-[88px]",
-  "h-[45px] w-[78px]",
-  "h-[46px] w-[78px]",
-  "h-[44px] w-[88px]",
-];
-
 function DesktopWaveLine({ className = "" }: { className?: string }) {
   return (
     <div className={`pointer-events-none absolute h-8 overflow-hidden ${className}`} aria-hidden="true">
@@ -108,6 +99,96 @@ function DesktopWaveLine({ className = "" }: { className?: string }) {
         ))}
       </div>
     </div>
+  );
+}
+
+function DesktopCardIcon({ index }: { index: number }) {
+  const iconClass =
+    "pointer-events-none absolute bottom-[12px] left-1/2 h-[38px] w-[82px] -translate-x-1/2 overflow-visible text-orange-300 opacity-90 drop-shadow-[0_0_10px_rgba(255,154,61,0.24)]";
+  const strokeProps = {
+    stroke: "currentColor",
+    strokeWidth: 2.4,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
+
+  if (index === 0) {
+    return (
+      <svg viewBox="0 0 128 72" fill="none" className={iconClass} aria-hidden="true">
+        <g {...strokeProps}>
+          <path d="M24 52 34 25h69l7 27-8 7H32l-8-7Z" />
+          <path d="M35 59h66" />
+          <circle cx="57" cy="40" r="16" />
+          <circle cx="57" cy="40" r="8" />
+          <circle cx="57" cy="40" r="2.8" fill="currentColor" />
+          <path d="M91 29c6 4 8 9 6 15" />
+          <path d="M96 45 82 52" />
+          <circle cx="92" cy="26" r="5" />
+        </g>
+      </svg>
+    );
+  }
+
+  if (index === 1) {
+    return (
+      <svg viewBox="0 0 128 72" fill="none" className={iconClass} aria-hidden="true">
+        <g {...strokeProps}>
+          <path d="M30 58h68" />
+          <path d="M35 48V58M47 36V58M59 24V58M71 15V58M83 32V58M95 45V58" />
+          <path d="M31 50h7M43 39h7M55 28h7M67 20h7M79 35h7M91 48h7" opacity=".65" />
+        </g>
+      </svg>
+    );
+  }
+
+  if (index === 2) {
+    return (
+      <svg viewBox="0 0 128 72" fill="none" className={iconClass} aria-hidden="true">
+        <path
+          d="M26 40h14l5-6 6 12 7-25 8 36 10-44 10 46 8-28 7 15 6-7h10"
+          {...strokeProps}
+        />
+      </svg>
+    );
+  }
+
+  if (index === 3) {
+    return (
+      <svg viewBox="0 0 128 72" fill="none" className={iconClass} aria-hidden="true">
+        <g {...strokeProps}>
+          <path d="M38 52h52" />
+          <path d="M43 49 38 27l18 14 8-22 8 22 18-14-5 22H43Z" />
+          <circle cx="38" cy="27" r="4" fill="currentColor" />
+          <circle cx="64" cy="19" r="4" fill="currentColor" />
+          <circle cx="90" cy="27" r="4" fill="currentColor" />
+        </g>
+      </svg>
+    );
+  }
+
+  if (index === 4) {
+    return (
+      <svg viewBox="0 0 128 72" fill="none" className={`${iconClass} text-cyan-100`} aria-hidden="true">
+        <g {...strokeProps}>
+          <path d="M37 42v-6c0-16 11-27 27-27s27 11 27 27v6" />
+          <path d="M37 43h-6c-3 0-5 2-5 5v10c0 3 2 5 5 5h6V43Z" />
+          <path d="M91 43h6c3 0 5 2 5 5v10c0 3-2 5-5 5h-6V43Z" />
+        </g>
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 128 72" fill="none" className={iconClass} aria-hidden="true">
+      <g {...strokeProps}>
+        <path d="M30 31 43 21l15 12-14 16-17-10 3-8Z" />
+        <path d="M98 31 85 21 70 33l14 16 17-10-3-8Z" />
+        <path d="M47 45 61 33h8l14 12" />
+        <path d="M53 48 67 58c3 2 6 1 8-1" />
+        <path d="M62 52 72 59c3 2 6 1 7-1" />
+        <path d="M45 45 55 55c2 2 5 2 7 0" />
+      </g>
+    </svg>
   );
 }
 
@@ -262,17 +343,8 @@ function DesktopReferenceHome({
               <p className="h-[34px] text-[14px] font-black leading-[17px] text-zinc-100 group-hover:text-orange-100">
                 {item.title}
               </p>
-              <p className="mt-[4px] h-[30px] overflow-hidden text-[10px] leading-[15px] text-zinc-500">{item.desc}</p>
-              <Image
-                src={`/home-art/card-icon-${index}.png`}
-                alt=""
-                width={128}
-                height={72}
-                className={`pointer-events-none absolute bottom-[7px] left-1/2 -translate-x-1/2 object-contain opacity-95 drop-shadow-[0_0_12px_rgba(255,154,61,0.22)] ${
-                  homeCardIconSizes[index] ?? "h-[44px] w-[84px]"
-                }`}
-                aria-hidden="true"
-              />
+              <p className="mt-[4px] h-[24px] overflow-hidden text-[10px] leading-[12px] text-zinc-500">{item.desc}</p>
+              <DesktopCardIcon index={index} />
             </Link>
           ))}
         </div>
