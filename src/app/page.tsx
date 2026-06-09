@@ -86,6 +86,15 @@ type HomeInfoLink = {
 
 type HomeStatItem = [string, string];
 
+const DESKTOP_CARD_ICON_ASSETS = [
+  "/home-art/card-turntable.webp",
+  "/home-art/card-eq-bolt.webp",
+  "/home-art/card-waveform.webp",
+  "/home-art/card-crown.webp",
+  "/home-art/card-headphones.webp",
+  "/home-art/card-handshake.webp",
+];
+
 function DesktopWaveLine({ className = "" }: { className?: string }) {
   return (
     <div className={`pointer-events-none absolute h-8 overflow-hidden ${className}`} aria-hidden="true">
@@ -103,115 +112,17 @@ function DesktopWaveLine({ className = "" }: { className?: string }) {
 }
 
 function DesktopCardIcon({ index }: { index: number }) {
-  const iconClass =
-    "pointer-events-none absolute bottom-[8px] left-1/2 h-[50px] w-[108px] -translate-x-1/2 overflow-visible text-orange-300 opacity-95 drop-shadow-[0_0_14px_rgba(255,154,61,0.34)]";
-  const strokeProps = {
-    stroke: "currentColor",
-    strokeWidth: 2,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-  };
-  const glowId = `desktopCardIconGlow-${index}`;
-  const glowDefs = (
-    <defs>
-      <filter id={glowId} x="-40%" y="-40%" width="180%" height="180%">
-        <feGaussianBlur stdDeviation="1.4" result="blur" />
-        <feMerge>
-          <feMergeNode in="blur" />
-          <feMergeNode in="SourceGraphic" />
-        </feMerge>
-      </filter>
-    </defs>
-  );
-
-  if (index === 0) {
-    return (
-      <svg viewBox="0 0 144 80" fill="none" className={iconClass} aria-hidden="true">
-        {glowDefs}
-        <g filter={`url(#${glowId})`}>
-          <path d="M23 58 32 30h75l9 28-9 8H32l-9-8Z" {...strokeProps} opacity=".92" />
-          <path d="M38 65h64" {...strokeProps} opacity=".42" />
-          <circle cx="63" cy="45" r="18" {...strokeProps} opacity=".9" />
-          <circle cx="63" cy="45" r="11" {...strokeProps} opacity=".52" />
-          <circle cx="63" cy="45" r="3.2" fill="currentColor" opacity=".9" />
-          <path d="M94 33c8 4 11 11 8 20" {...strokeProps} opacity=".78" />
-          <path d="M103 53 85 61" {...strokeProps} opacity=".78" />
-          <circle cx="96" cy="29" r="4.5" {...strokeProps} opacity=".85" />
-        </g>
-      </svg>
-    );
-  }
-
-  if (index === 1) {
-    return (
-      <svg viewBox="0 0 144 80" fill="none" className={iconClass} aria-hidden="true">
-        {glowDefs}
-        <g filter={`url(#${glowId})`}>
-          <path d="M36 64h78" {...strokeProps} opacity=".42" />
-          <path d="m35 51 13-29-3 23h11L42 71l3-20H35Z" fill="currentColor" opacity=".72" />
-          <path d="M67 57V43M78 57V31M89 57V24M100 57V37M111 57V47" {...strokeProps} />
-          <path d="M64 57h52" {...strokeProps} opacity=".55" />
-          <path d="M67 48h5M78 36h5M89 29h5M100 42h5M111 51h5" {...strokeProps} opacity=".48" />
-        </g>
-      </svg>
-    );
-  }
-
-  if (index === 2) {
-    return (
-      <svg viewBox="0 0 144 80" fill="none" className={iconClass} aria-hidden="true">
-        {glowDefs}
-        <g filter={`url(#${glowId})`}>
-          <path d="M25 45h17l5-6 6 12 7-27 9 39 11-49 10 51 8-31 8 17 7-7h12" {...strokeProps} />
-          <path d="M37 45h7M110 44h9" {...strokeProps} opacity=".48" />
-          <path d="M49 56c14 8 34 8 48 0" {...strokeProps} opacity=".22" />
-        </g>
-      </svg>
-    );
-  }
-
-  if (index === 3) {
-    return (
-      <svg viewBox="0 0 144 80" fill="none" className={iconClass} aria-hidden="true">
-        {glowDefs}
-        <g filter={`url(#${glowId})`}>
-          <path d="M39 60h66" {...strokeProps} opacity=".64" />
-          <path d="M45 55 39 28l22 18 11-29 11 29 22-18-6 27H45Z" {...strokeProps} />
-          <path d="M51 51h42" {...strokeProps} opacity=".36" />
-          <circle cx="39" cy="28" r="4.5" fill="currentColor" opacity=".9" />
-          <circle cx="72" cy="17" r="4.5" fill="currentColor" opacity=".9" />
-          <circle cx="105" cy="28" r="4.5" fill="currentColor" opacity=".9" />
-        </g>
-      </svg>
-    );
-  }
-
-  if (index === 4) {
-    return (
-      <svg viewBox="0 0 144 80" fill="none" className={`${iconClass} text-cyan-100`} aria-hidden="true">
-        {glowDefs}
-        <g filter={`url(#${glowId})`}>
-          <path d="M38 47v-8c0-19 14-32 34-32s34 13 34 32v8" {...strokeProps} opacity=".95" />
-          <path d="M38 48h-8c-4 0-7 3-7 7v10c0 4 3 7 7 7h8V48Z" {...strokeProps} />
-          <path d="M106 48h8c4 0 7 3 7 7v10c0 4-3 7-7 7h-8V48Z" {...strokeProps} />
-          <path d="M47 25c6-8 14-12 25-12s19 4 25 12" {...strokeProps} opacity=".24" />
-        </g>
-      </svg>
-    );
-  }
-
+  const src = DESKTOP_CARD_ICON_ASSETS[index] ?? DESKTOP_CARD_ICON_ASSETS[0];
   return (
-    <svg viewBox="0 0 144 80" fill="none" className={iconClass} aria-hidden="true">
-      {glowDefs}
-      <g filter={`url(#${glowId})`}>
-        <path d="M30 33 47 22l18 14-18 18-21-12 4-9Z" {...strokeProps} />
-        <path d="M114 33 97 22 79 36l18 18 21-12-4-9Z" {...strokeProps} />
-        <path d="M53 50 67 37h10l15 13" {...strokeProps} opacity=".95" />
-        <path d="M58 55 72 66c3 2 7 1 9-2" {...strokeProps} opacity=".82" />
-        <path d="M69 57 82 67c3 2 7 1 8-2" {...strokeProps} opacity=".82" />
-        <path d="M49 50 60 61c3 3 7 3 10 0" {...strokeProps} opacity=".82" />
-      </g>
-    </svg>
+    <Image
+      src={src}
+      alt=""
+      width={720}
+      height={400}
+      sizes="128px"
+      aria-hidden="true"
+      className="pointer-events-none absolute bottom-[2px] left-1/2 h-[62px] w-[132px] -translate-x-1/2 object-contain opacity-95 mix-blend-screen saturate-[1.08]"
+    />
   );
 }
 
