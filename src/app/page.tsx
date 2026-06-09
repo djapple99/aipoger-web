@@ -104,26 +104,39 @@ function DesktopWaveLine({ className = "" }: { className?: string }) {
 
 function DesktopCardIcon({ index }: { index: number }) {
   const iconClass =
-    "pointer-events-none absolute bottom-[12px] left-1/2 h-[38px] w-[82px] -translate-x-1/2 overflow-visible text-orange-300 opacity-90 drop-shadow-[0_0_10px_rgba(255,154,61,0.24)]";
+    "pointer-events-none absolute bottom-[8px] left-1/2 h-[50px] w-[108px] -translate-x-1/2 overflow-visible text-orange-300 opacity-95 drop-shadow-[0_0_14px_rgba(255,154,61,0.34)]";
   const strokeProps = {
     stroke: "currentColor",
-    strokeWidth: 2.4,
+    strokeWidth: 2,
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
   };
+  const glowId = `desktopCardIconGlow-${index}`;
+  const glowDefs = (
+    <defs>
+      <filter id={glowId} x="-40%" y="-40%" width="180%" height="180%">
+        <feGaussianBlur stdDeviation="1.4" result="blur" />
+        <feMerge>
+          <feMergeNode in="blur" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+    </defs>
+  );
 
   if (index === 0) {
     return (
-      <svg viewBox="0 0 128 72" fill="none" className={iconClass} aria-hidden="true">
-        <g {...strokeProps}>
-          <path d="M24 52 34 25h69l7 27-8 7H32l-8-7Z" />
-          <path d="M35 59h66" />
-          <circle cx="57" cy="40" r="16" />
-          <circle cx="57" cy="40" r="8" />
-          <circle cx="57" cy="40" r="2.8" fill="currentColor" />
-          <path d="M91 29c6 4 8 9 6 15" />
-          <path d="M96 45 82 52" />
-          <circle cx="92" cy="26" r="5" />
+      <svg viewBox="0 0 144 80" fill="none" className={iconClass} aria-hidden="true">
+        {glowDefs}
+        <g filter={`url(#${glowId})`}>
+          <path d="M23 58 32 30h75l9 28-9 8H32l-9-8Z" {...strokeProps} opacity=".92" />
+          <path d="M38 65h64" {...strokeProps} opacity=".42" />
+          <circle cx="63" cy="45" r="18" {...strokeProps} opacity=".9" />
+          <circle cx="63" cy="45" r="11" {...strokeProps} opacity=".52" />
+          <circle cx="63" cy="45" r="3.2" fill="currentColor" opacity=".9" />
+          <path d="M94 33c8 4 11 11 8 20" {...strokeProps} opacity=".78" />
+          <path d="M103 53 85 61" {...strokeProps} opacity=".78" />
+          <circle cx="96" cy="29" r="4.5" {...strokeProps} opacity=".85" />
         </g>
       </svg>
     );
@@ -131,11 +144,14 @@ function DesktopCardIcon({ index }: { index: number }) {
 
   if (index === 1) {
     return (
-      <svg viewBox="0 0 128 72" fill="none" className={iconClass} aria-hidden="true">
-        <g {...strokeProps}>
-          <path d="M30 58h68" />
-          <path d="M35 48V58M47 36V58M59 24V58M71 15V58M83 32V58M95 45V58" />
-          <path d="M31 50h7M43 39h7M55 28h7M67 20h7M79 35h7M91 48h7" opacity=".65" />
+      <svg viewBox="0 0 144 80" fill="none" className={iconClass} aria-hidden="true">
+        {glowDefs}
+        <g filter={`url(#${glowId})`}>
+          <path d="M36 64h78" {...strokeProps} opacity=".42" />
+          <path d="m35 51 13-29-3 23h11L42 71l3-20H35Z" fill="currentColor" opacity=".72" />
+          <path d="M67 57V43M78 57V31M89 57V24M100 57V37M111 57V47" {...strokeProps} />
+          <path d="M64 57h52" {...strokeProps} opacity=".55" />
+          <path d="M67 48h5M78 36h5M89 29h5M100 42h5M111 51h5" {...strokeProps} opacity=".48" />
         </g>
       </svg>
     );
@@ -143,24 +159,28 @@ function DesktopCardIcon({ index }: { index: number }) {
 
   if (index === 2) {
     return (
-      <svg viewBox="0 0 128 72" fill="none" className={iconClass} aria-hidden="true">
-        <path
-          d="M26 40h14l5-6 6 12 7-25 8 36 10-44 10 46 8-28 7 15 6-7h10"
-          {...strokeProps}
-        />
+      <svg viewBox="0 0 144 80" fill="none" className={iconClass} aria-hidden="true">
+        {glowDefs}
+        <g filter={`url(#${glowId})`}>
+          <path d="M25 45h17l5-6 6 12 7-27 9 39 11-49 10 51 8-31 8 17 7-7h12" {...strokeProps} />
+          <path d="M37 45h7M110 44h9" {...strokeProps} opacity=".48" />
+          <path d="M49 56c14 8 34 8 48 0" {...strokeProps} opacity=".22" />
+        </g>
       </svg>
     );
   }
 
   if (index === 3) {
     return (
-      <svg viewBox="0 0 128 72" fill="none" className={iconClass} aria-hidden="true">
-        <g {...strokeProps}>
-          <path d="M38 52h52" />
-          <path d="M43 49 38 27l18 14 8-22 8 22 18-14-5 22H43Z" />
-          <circle cx="38" cy="27" r="4" fill="currentColor" />
-          <circle cx="64" cy="19" r="4" fill="currentColor" />
-          <circle cx="90" cy="27" r="4" fill="currentColor" />
+      <svg viewBox="0 0 144 80" fill="none" className={iconClass} aria-hidden="true">
+        {glowDefs}
+        <g filter={`url(#${glowId})`}>
+          <path d="M39 60h66" {...strokeProps} opacity=".64" />
+          <path d="M45 55 39 28l22 18 11-29 11 29 22-18-6 27H45Z" {...strokeProps} />
+          <path d="M51 51h42" {...strokeProps} opacity=".36" />
+          <circle cx="39" cy="28" r="4.5" fill="currentColor" opacity=".9" />
+          <circle cx="72" cy="17" r="4.5" fill="currentColor" opacity=".9" />
+          <circle cx="105" cy="28" r="4.5" fill="currentColor" opacity=".9" />
         </g>
       </svg>
     );
@@ -168,25 +188,28 @@ function DesktopCardIcon({ index }: { index: number }) {
 
   if (index === 4) {
     return (
-      <svg viewBox="0 0 128 72" fill="none" className={`${iconClass} text-cyan-100`} aria-hidden="true">
-        <g {...strokeProps}>
-          <path d="M37 42v-6c0-16 11-27 27-27s27 11 27 27v6" />
-          <path d="M37 43h-6c-3 0-5 2-5 5v10c0 3 2 5 5 5h6V43Z" />
-          <path d="M91 43h6c3 0 5 2 5 5v10c0 3-2 5-5 5h-6V43Z" />
+      <svg viewBox="0 0 144 80" fill="none" className={`${iconClass} text-cyan-100`} aria-hidden="true">
+        {glowDefs}
+        <g filter={`url(#${glowId})`}>
+          <path d="M38 47v-8c0-19 14-32 34-32s34 13 34 32v8" {...strokeProps} opacity=".95" />
+          <path d="M38 48h-8c-4 0-7 3-7 7v10c0 4 3 7 7 7h8V48Z" {...strokeProps} />
+          <path d="M106 48h8c4 0 7 3 7 7v10c0 4-3 7-7 7h-8V48Z" {...strokeProps} />
+          <path d="M47 25c6-8 14-12 25-12s19 4 25 12" {...strokeProps} opacity=".24" />
         </g>
       </svg>
     );
   }
 
   return (
-    <svg viewBox="0 0 128 72" fill="none" className={iconClass} aria-hidden="true">
-      <g {...strokeProps}>
-        <path d="M30 31 43 21l15 12-14 16-17-10 3-8Z" />
-        <path d="M98 31 85 21 70 33l14 16 17-10-3-8Z" />
-        <path d="M47 45 61 33h8l14 12" />
-        <path d="M53 48 67 58c3 2 6 1 8-1" />
-        <path d="M62 52 72 59c3 2 6 1 7-1" />
-        <path d="M45 45 55 55c2 2 5 2 7 0" />
+    <svg viewBox="0 0 144 80" fill="none" className={iconClass} aria-hidden="true">
+      {glowDefs}
+      <g filter={`url(#${glowId})`}>
+        <path d="M30 33 47 22l18 14-18 18-21-12 4-9Z" {...strokeProps} />
+        <path d="M114 33 97 22 79 36l18 18 21-12-4-9Z" {...strokeProps} />
+        <path d="M53 50 67 37h10l15 13" {...strokeProps} opacity=".95" />
+        <path d="M58 55 72 66c3 2 7 1 9-2" {...strokeProps} opacity=".82" />
+        <path d="M69 57 82 67c3 2 7 1 8-2" {...strokeProps} opacity=".82" />
+        <path d="M49 50 60 61c3 3 7 3 10 0" {...strokeProps} opacity=".82" />
       </g>
     </svg>
   );
