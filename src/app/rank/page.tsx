@@ -12,8 +12,10 @@ import {
 } from "@/lib/brand";
 import {
   looksLikeOpaqueArchiveValue,
+  sanitizeSongBattleStatsSnapshot,
   stripCannedBattleReview,
   type ArchivedBattleResult,
+  type SongBattleStatsSnapshot,
 } from "@/lib/battle-result-archive";
 import {
   AIPOGER_PERSONAL_RANK,
@@ -57,6 +59,7 @@ type RankRow = {
   audienceReview?: string;
   resultHref?: string;
   audioUrl?: string;
+  songStats?: SongBattleStatsSnapshot | null;
   positiveReactions?: number;
 };
 
@@ -72,6 +75,9 @@ const BOARD_META: Record<BoardKey, BoardMeta> = {
 
 const BOARD_KEYS: BoardKey[] = ["drop", "bar"];
 const MOCK_PATTERN = /(qa-|mock|demo|test|ghost|sample)/i;
+const ARCHIVE_SELECT_BASE =
+  "battle_id,battle_code,winner,winner_name,winner_song_name,winner_ai_tool,opponent_name,opponent_song_name,final_vote_left,final_vote_right,total_votes,audience_review,result_payload,archived_at";
+const ARCHIVE_SELECT_WITH_SONG_STATS = `${ARCHIVE_SELECT_BASE},winner_song_stats_id,winner_song_battle_count,winner_song_wins,winner_song_losses,winner_song_no_contests,winner_song_total_votes_for,winner_song_total_votes_against,winner_song_honor_board_count`;
 
 function safeRankForFighter(name: string, rank?: string | null) {
   const cleanRank = rank?.trim() ?? "";
@@ -179,6 +185,103 @@ function normalizeVoteCount(value: unknown) {
   return Math.max(0, Math.round(count));
 }
 
+function normalizeSongStatsKey(...values: Array<string | null | undefined>) {
+  return values
+    .map((value) =>
+      String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/\.(mp3|wav|aiff|aif|m4a)$/i, "")
+        .replace(/\s+/g, " "),
+    )
+    .filter(Boolean)
+    .join("|");
+}
+
+function emptySongStats(): SongBattleStatsSnapshot {
+  return {
+    battleCount: 0,
+    wins: 0,
+    losses: 0,
+    noContests: 0,
+    totalVotesFor: 0,
+    totalVotesAgainst: 0,
+    honorBoardCount: 0,
+    winRate: 0,
+  };
+}
+
+function addSongStatsOutcome(
+  stats: SongBattleStatsSnapshot,
+  outcome: "win" | "loss",
+  votesFor: number,
+  votesAgainst: number,
+) {
+  stats.battleCount += 1;
+  if (outcome === "win") {
+    stats.wins += 1;
+    stats.honorBoardCount += 1;
+  } else {
+    stats.losses += 1;
+  }
+  stats.totalVotesFor += Math.max(0, votesFor);
+  stats.totalVotesAgainst += Math.max(0, votesAgainst);
+  stats.winRate = stats.battleCount > 0 ? Math.round((stats.wins / stats.battleCount) * 100) : 0;
+}
+
+function voteCountsForArchive(entry: ArchivedBattleResult) {
+  const totalVotes = normalizeVoteCount(entry.votesTotal);
+  const breakdown = computeVoteBreakdown(
+    totalVotes,
+    normalizeVoteCount(entry.finalVoteLeft),
+    normalizeVoteCount(entry.finalVoteRight),
+  );
+  const winnerIsB = entry.winnerSide === "fighter_b";
+  return {
+    winnerVotes: winnerIsB ? breakdown.bVotes : breakdown.aVotes,
+    opponentVotes: winnerIsB ? breakdown.aVotes : breakdown.bVotes,
+  };
+}
+
+function applyFallbackSongStats(rows: ArchivedBattleResult[]) {
+  const statsBySong = new Map<string, SongBattleStatsSnapshot>();
+  for (const row of rows) {
+    const winnerKey = normalizeSongStatsKey(row.winnerName, row.winnerSong);
+    const opponentKey = normalizeSongStatsKey(row.opponentName, row.opponentSong);
+    const { winnerVotes, opponentVotes } = voteCountsForArchive(row);
+    if (winnerKey) {
+      const stats = statsBySong.get(winnerKey) ?? emptySongStats();
+      addSongStatsOutcome(stats, "win", winnerVotes, opponentVotes);
+      statsBySong.set(winnerKey, stats);
+    }
+    if (opponentKey) {
+      const stats = statsBySong.get(opponentKey) ?? emptySongStats();
+      addSongStatsOutcome(stats, "loss", opponentVotes, winnerVotes);
+      statsBySong.set(opponentKey, stats);
+    }
+  }
+
+  return rows.map((row) => {
+    if (row.songStats && row.songStats.battleCount > 0) return row;
+    const fallback = statsBySong.get(normalizeSongStatsKey(row.winnerName, row.winnerSong));
+    return fallback ? { ...row, songStats: fallback } : row;
+  });
+}
+
+function formatSongStats(stats: SongBattleStatsSnapshot | null | undefined, isZh: boolean) {
+  if (!stats || stats.battleCount <= 0) return "";
+  const winRate = stats.winRate || Math.round((stats.wins / stats.battleCount) * 100);
+  const honor = stats.honorBoardCount > 0 ? ` · ${isZh ? "榮譽榜" : "Honor"} ${stats.honorBoardCount}` : "";
+  if (stats.noContests > 0) {
+    return isZh
+      ? `出戰 ${stats.battleCount} 次 · ${stats.wins} 勝 ${stats.losses} 敗 ${stats.noContests} 未分勝負 · 勝率 ${winRate}%${honor}`
+      : `${stats.battleCount} battles · ${stats.wins}W ${stats.losses}L ${stats.noContests} NC · ${winRate}%${honor}`;
+  }
+  return isZh
+    ? `出戰 ${stats.battleCount} 次 · ${stats.wins} 勝 ${stats.losses} 敗 · 勝率 ${winRate}%${honor}`
+    : `${stats.battleCount} battles · ${stats.wins}W ${stats.losses}L · ${winRate}%${honor}`;
+}
+
 function normalizeWinnerSide(value: unknown): BattleWinnerSide | null {
   return value === "fighter_a" || value === "fighter_b" ? value : null;
 }
@@ -232,6 +335,7 @@ function rowFromArchive(entry: ArchivedBattleResult, index: number): RankRow {
     audienceReview: stripCannedBattleReview(entry.audienceReview),
     resultHref: entry.resultHref,
     audioUrl: entry.audioUrl,
+    songStats: entry.songStats,
   };
 }
 
@@ -277,6 +381,27 @@ function hotBarRowsFromTracks(tracks: ListenBarTrackRow[]) {
       audioUrl: track.audioUrl,
       positiveReactions: Math.max(0, Math.round(track.positiveReactionCount || 0)),
     }));
+}
+
+async function fetchBattleArchivesForRank() {
+  const responseWithStats = await supabase
+    .from("battle_result_archives")
+    .select(ARCHIVE_SELECT_WITH_SONG_STATS)
+    .order("archived_at", { ascending: false })
+    .limit(200);
+
+  if (responseWithStats.error) {
+    const msg = `${responseWithStats.error.message ?? ""} ${responseWithStats.error.details ?? ""} ${responseWithStats.error.hint ?? ""}`;
+    if (/winner_song_|battle_song_stats|schema cache|does not exist|PGRST204/i.test(msg)) {
+      return supabase
+        .from("battle_result_archives")
+        .select(ARCHIVE_SELECT_BASE)
+        .order("archived_at", { ascending: false })
+        .limit(200);
+    }
+  }
+
+  return responseWithStats;
 }
 
 function battleAudioPathToUrl(path: string | null | undefined) {
@@ -395,13 +520,7 @@ export default function RankPage() {
         { data: archiveData, error: archiveError },
         { data: hotData, error: hotError },
       ] = await Promise.all([
-        supabase
-          .from("battle_result_archives")
-          .select(
-            "battle_id,battle_code,winner,winner_name,winner_song_name,winner_ai_tool,opponent_name,opponent_song_name,final_vote_left,final_vote_right,total_votes,audience_review,result_payload,archived_at",
-          )
-          .order("archived_at", { ascending: false })
-          .limit(200),
+        fetchBattleArchivesForRank(),
         supabase
           .from("listen_bar_tracks")
           .select(
@@ -421,7 +540,8 @@ export default function RankPage() {
       }
 
       const mappedArchives: ArchivedBattleResult[] = Array.isArray(archiveData)
-        ? archiveData.map((row) => {
+        ? archiveData.map((rawRow) => {
+            const row = rawRow as Record<string, unknown>;
             const payload =
               typeof row.result_payload === "object" && row.result_payload !== null
                 ? (row.result_payload as Record<string, unknown>)
@@ -437,6 +557,19 @@ export default function RankPage() {
               tableVoteTotal === 100 &&
               finalVoteLeft + finalVoteRight === 100 &&
               !hasPayloadVoteTotal;
+            const payloadSongStats =
+              typeof payload.songStats === "object" && payload.songStats !== null
+                ? (payload.songStats as Record<string, unknown>).winner
+                : null;
+            const tableSongStats = sanitizeSongBattleStatsSnapshot({
+              battleCount: row.winner_song_battle_count,
+              wins: row.winner_song_wins,
+              losses: row.winner_song_losses,
+              noContests: row.winner_song_no_contests,
+              totalVotesFor: row.winner_song_total_votes_for,
+              totalVotesAgainst: row.winner_song_total_votes_against,
+              honorBoardCount: row.winner_song_honor_board_count,
+            });
             return {
               id: String(row.battle_id || row.battle_code || ""),
               battleId: row.battle_id ? String(row.battle_id) : null,
@@ -477,12 +610,16 @@ export default function RankPage() {
                   : { rhyme: 0, impact: 0, melody: 0, emotion: 0, structure: 0 },
               resultHref: String(payload.resultHref || "").trim(),
               audioUrl: typeof payload.audioUrl === "string" ? payload.audioUrl.trim() : undefined,
+              songStats:
+                tableSongStats && tableSongStats.battleCount > 0
+                  ? tableSongStats
+                  : sanitizeSongBattleStatsSnapshot(payloadSongStats),
               createdAt: String(row.archived_at || new Date().toISOString()),
             };
           })
         : [];
 
-      const merged = await attachBattleAudioUrls(mergeArchives(mappedArchives));
+      const merged = await attachBattleAudioUrls(applyFallbackSongStats(mergeArchives(mappedArchives)));
       const hotRows = Array.isArray(hotData) ? hotBarRowsFromTracks(hotData as ListenBarTrackRow[]) : [];
 
       if (!cancelled) {
@@ -769,6 +906,11 @@ export default function RankPage() {
                                   {displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}
                                 </h3>
                                 <p className="mt-1 truncate text-xs font-bold text-zinc-400">{row.name}</p>
+                                {row.kind === "battle" && row.songStats?.battleCount ? (
+                                  <p className="mt-2 line-clamp-2 text-[11px] font-black leading-4 text-yellow-100/90">
+                                    {formatSongStats(row.songStats, isZh)}
+                                  </p>
+                                ) : null}
                                 {row.kind === "battle" ? (
                                   <div className="mt-3 flex flex-wrap items-center gap-1.5">
                                     <Link
@@ -862,6 +1004,11 @@ export default function RankPage() {
                                         ? `VS ${displayText(row.opponentName || "", isZh ? "對手未封存" : "Opponent Missing")}`
                                         : row.note || (isZh ? "傷心酒吧熱播紀錄" : "Bar Heartbreak heat record")}
                                     </p>
+                                    {row.kind === "battle" && row.songStats?.battleCount ? (
+                                      <p className="mt-2 line-clamp-2 text-[11px] font-black leading-4 text-yellow-100/90">
+                                        {formatSongStats(row.songStats, isZh)}
+                                      </p>
+                                    ) : null}
                                     <div className="mt-2 flex flex-wrap gap-1.5">
                                       <span className="rounded-full border border-white/12 bg-black/28 px-2 py-1 text-[10px] font-bold text-zinc-100">
                                         {displayGenre(row.genre || row.note, isZh)}

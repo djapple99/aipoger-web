@@ -5,6 +5,17 @@ import { AIPOGER_PERSONAL_RANK, isAipogerIdentity, rankLabelForLevel } from "@/l
 export type BattleFeedbackKey = "rhyme" | "impact" | "melody" | "emotion" | "structure";
 export type BattleFeedbackCounts = Record<BattleFeedbackKey, number>;
 
+export type SongBattleStatsSnapshot = {
+  battleCount: number;
+  wins: number;
+  losses: number;
+  noContests: number;
+  totalVotesFor: number;
+  totalVotesAgainst: number;
+  honorBoardCount: number;
+  winRate: number;
+};
+
 export type ArchivedBattleResult = {
   id: string;
   battleId?: string | null;
@@ -30,6 +41,7 @@ export type ArchivedBattleResult = {
   feedbackB: BattleFeedbackCounts;
   resultHref: string;
   audioUrl?: string;
+  songStats?: SongBattleStatsSnapshot | null;
   createdAt: string;
 };
 
@@ -58,6 +70,27 @@ export function sanitizeBattleFeedbackCounts(value: unknown): BattleFeedbackCoun
     acc[key] = Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : 0;
     return acc;
   }, emptyBattleFeedbackCounts());
+}
+
+export function sanitizeSongBattleStatsSnapshot(value: unknown): SongBattleStatsSnapshot | null {
+  if (typeof value !== "object" || value === null) return null;
+  const source = value as Partial<Record<keyof SongBattleStatsSnapshot, unknown>>;
+  const numberField = (key: keyof SongBattleStatsSnapshot) => {
+    const parsed = Number(source[key]);
+    return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : 0;
+  };
+  const battleCount = numberField("battleCount");
+  const wins = numberField("wins");
+  return {
+    battleCount,
+    wins,
+    losses: numberField("losses"),
+    noContests: numberField("noContests"),
+    totalVotesFor: numberField("totalVotesFor"),
+    totalVotesAgainst: numberField("totalVotesAgainst"),
+    honorBoardCount: numberField("honorBoardCount"),
+    winRate: battleCount > 0 ? numberField("winRate") || Math.round((wins / battleCount) * 100) : 0,
+  };
 }
 
 export function parseBattleFeedbackParam(raw: string | null): BattleFeedbackCounts {
@@ -121,6 +154,7 @@ function sanitizeArchiveEntry(value: unknown): ArchivedBattleResult | null {
     feedbackB: sanitizeBattleFeedbackCounts(row.feedbackB),
     resultHref: String(row.resultHref || "").trim(),
     audioUrl: typeof row.audioUrl === "string" ? row.audioUrl.trim() : undefined,
+    songStats: sanitizeSongBattleStatsSnapshot(row.songStats),
     createdAt: String(row.createdAt || new Date().toISOString()),
   };
 }

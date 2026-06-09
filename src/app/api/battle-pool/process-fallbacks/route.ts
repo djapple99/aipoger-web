@@ -564,6 +564,16 @@ async function archiveHookBattleResultDirect(
 
   if (upsert.error) return { error: upsert.error.message };
 
+  const stats = await admin.rpc("record_battle_song_stats_for_battle", {
+    p_battle_id: battle.id,
+    p_winner: effectiveWinner,
+    p_final_vote_left: counts.fighter_a,
+    p_final_vote_right: counts.fighter_b,
+  });
+  if (stats.error && !/schema cache|does not exist|Could not find|PGRST/i.test(stats.error.message)) {
+    return { error: stats.error.message };
+  }
+
   const marked = await admin
     .from("battles")
     .update({ result_archived_at: now, winner: effectiveWinner, status: "finished", updated_at: now })

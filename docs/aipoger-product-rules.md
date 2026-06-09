@@ -69,6 +69,7 @@ Current behavior:
 - Duplicate active Drop audio should be blocked by audio hash when the column exists.
 - Battle result archives feed the Honor Board as real winner records.
 - Battle history should focus on the song, not the fighter profile. Cards may show per-song challenge count, wins, losses, ties, and win rate.
+- V1 song battle stats do not open URL upload or a full creator song-library UI. They only group the same creator's repeated Drop Battle entries by normalized song title and show battle count, wins, losses, votes, win rate, and Honor Board count.
 - Waiting cards should provide a `約人鬥歌` share action.
 - Live or public-voting cards should provide an `邀請觀戰投票` share action.
 
