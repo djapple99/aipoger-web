@@ -68,6 +68,166 @@ const BOARD_META: Record<BoardKey, BoardMeta> = {
 
 const BOARD_KEYS: BoardKey[] = ["drop", "bar"];
 const MOCK_PATTERN = /(qa-|mock|demo|test|ghost|sample)/i;
+const ENABLE_LOCAL_PREVIEW_ROWS = process.env.NODE_ENV === "development";
+const PREVIEW_DROP_ROWS: RankRow[] = [
+  {
+    id: "preview-drop-1",
+    kind: "battle",
+    name: "愛波哥",
+    rank: "LV.0 掃地僧",
+    title: "Drop 抓波勝利",
+    hook: "桑巴舞女比妳真",
+    note: "動感電音",
+    genre: "動感電音",
+    accent: "gold",
+    avatarUrl: AIPOGER_BRAND_LOGO,
+    coverUrl: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80",
+    aiTool: "Suno",
+    createdAt: new Date().toISOString(),
+    opponentName: "Vincent Shih",
+    opponentSong: "冰凍霓虹",
+    battleCode: "AIPO-000045",
+    votesTotal: 21,
+    aSideVotes: 13,
+    bSideVotes: 8,
+    resultHref: "/battle/result?winner=愛波哥&song=桑巴舞女比妳真&opponent=Vincent%20Shih&battle=AIPO-000045",
+  },
+  {
+    id: "preview-drop-2",
+    kind: "battle",
+    name: "Mavis Loop",
+    rank: "Lv.3 熱血音樂工匠",
+    title: "Drop 抓波勝利",
+    hook: "凌晨三點的低頻",
+    note: "Bass House",
+    genre: "Bass House",
+    accent: "orange",
+    avatarUrl: AIPOGER_BRAND_LOGO,
+    coverUrl: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=900&q=80",
+    aiTool: "Udio",
+    createdAt: new Date().toISOString(),
+    opponentName: "Neon Kid",
+    opponentSong: "夜車終點",
+    battleCode: "AIPO-000046",
+    votesTotal: 18,
+    aSideVotes: 10,
+    bSideVotes: 8,
+  },
+  {
+    id: "preview-drop-3",
+    kind: "battle",
+    name: "DJ 雲端司機",
+    rank: "Lv.2 熱血音樂工匠",
+    title: "Drop 抓波勝利",
+    hook: "雨聲裡的城市霓虹",
+    note: "復古City-Pop",
+    genre: "復古City-Pop",
+    accent: "cyan",
+    avatarUrl: AIPOGER_BRAND_LOGO,
+    coverUrl: "https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=900&q=80",
+    aiTool: "Suno",
+    createdAt: new Date().toISOString(),
+    opponentName: "Echo Lai",
+    opponentSong: "濕掉的副歌",
+    battleCode: "AIPO-000047",
+    votesTotal: 12,
+    aSideVotes: 7,
+    bSideVotes: 5,
+  },
+  {
+    id: "preview-drop-4",
+    kind: "battle",
+    name: "電流海岸",
+    rank: "Lv.4 潮流音樂大師",
+    title: "Drop 抓波勝利",
+    hook: "夏夜最後一個拍點",
+    note: "說唱街頭風",
+    genre: "說唱街頭風",
+    accent: "orange",
+    avatarUrl: AIPOGER_BRAND_LOGO,
+    coverUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=900&q=80",
+    aiTool: "Suno",
+    createdAt: new Date().toISOString(),
+    opponentName: "Beat Farmer",
+    opponentSong: "街角延遲",
+    battleCode: "AIPO-000048",
+    votesTotal: 10,
+    aSideVotes: 6,
+    bSideVotes: 4,
+  },
+  {
+    id: "preview-drop-5",
+    kind: "battle",
+    name: "Rain Tape",
+    rank: "Lv.1 熱血音樂工匠",
+    title: "Drop 抓波勝利",
+    hook: "我把想念切成八拍",
+    note: "自我風格",
+    genre: "自我風格",
+    accent: "cyan",
+    avatarUrl: AIPOGER_BRAND_LOGO,
+    coverUrl: "https://images.unsplash.com/photo-1495567720989-cebdbdd97913?auto=format&fit=crop&w=900&q=80",
+    aiTool: "Suno",
+    createdAt: new Date().toISOString(),
+    opponentName: "Moon Error",
+    opponentSong: "沒有出口的Hook",
+    battleCode: "AIPO-000049",
+    votesTotal: 8,
+    aSideVotes: 5,
+    bSideVotes: 3,
+  },
+];
+
+const PREVIEW_BAR_ROWS: RankRow[] = [
+  {
+    id: "preview-bar-1",
+    kind: "bar",
+    name: "凌晨便利商店",
+    rank: "創作者投稿",
+    title: "傷心酒吧熱播",
+    hook: "把你留在副歌以前",
+    note: "傷心慢歌",
+    genre: "傷心慢歌",
+    accent: "gold",
+    avatarUrl: AIPOGER_BRAND_LOGO,
+    coverUrl: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=900&q=80",
+    aiTool: "Suno",
+    createdAt: new Date().toISOString(),
+    positiveReactions: 36,
+  },
+  {
+    id: "preview-bar-2",
+    kind: "bar",
+    name: "Blue Motel",
+    rank: "創作者投稿",
+    title: "傷心酒吧熱播",
+    hook: "最後一杯不要加冰",
+    note: "R&B",
+    genre: "R&B",
+    accent: "cyan",
+    avatarUrl: AIPOGER_BRAND_LOGO,
+    coverUrl: "https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=900&q=80",
+    aiTool: "Udio",
+    createdAt: new Date().toISOString(),
+    positiveReactions: 31,
+  },
+  {
+    id: "preview-bar-3",
+    kind: "bar",
+    name: "空拍情歌",
+    rank: "創作者投稿",
+    title: "傷心酒吧熱播",
+    hook: "你說海邊太吵",
+    note: "Indie Pop",
+    genre: "Indie Pop",
+    accent: "orange",
+    avatarUrl: AIPOGER_BRAND_LOGO,
+    coverUrl: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80",
+    aiTool: "Suno",
+    createdAt: new Date().toISOString(),
+    positiveReactions: 28,
+  },
+];
 
 function safeRankForFighter(name: string, rank?: string | null) {
   const cleanRank = rank?.trim() ?? "";
@@ -376,6 +536,7 @@ export default function RankPage() {
   const isZh = lang === "zh";
   const [active, setActive] = useState<BoardKey>("drop");
   const [activeGenre, setActiveGenre] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const [archivedResults, setArchivedResults] = useState<ArchivedBattleResult[]>([]);
   const [hotBarRows, setHotBarRows] = useState<RankRow[]>([]);
   const navSuffix = lang === "en" ? "?lang=en" : "?lang=zh";
@@ -495,32 +656,57 @@ export default function RankPage() {
     return archivedResults.slice(0, 10).map((entry, index) => rowFromArchive(entry, index));
   }, [archivedResults]);
 
+  const previewingDropRows = ENABLE_LOCAL_PREVIEW_ROWS && dropRows.length === 0;
+  const previewingBarRows = ENABLE_LOCAL_PREVIEW_ROWS && hotBarRows.length === 0;
+  const effectiveDropRows = previewingDropRows ? PREVIEW_DROP_ROWS : dropRows;
+  const effectiveHotBarRows = previewingBarRows ? PREVIEW_BAR_ROWS : hotBarRows;
+
   const displayRows = useMemo(() => {
-    if (active === "bar") return hotBarRows;
-    return dropRows;
-  }, [active, hotBarRows, dropRows]);
+    if (active === "bar") return effectiveHotBarRows;
+    return effectiveDropRows;
+  }, [active, effectiveHotBarRows, effectiveDropRows]);
 
   useEffect(() => {
     setActiveGenre("all");
   }, [active]);
 
+  const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+
+  const searchedDisplayRows = useMemo(() => {
+    if (!normalizedSearchTerm) return displayRows;
+    return displayRows.filter((row) =>
+      [
+        row.name,
+        row.hook,
+        row.opponentName,
+        row.opponentSong,
+        row.genre,
+        row.note,
+        row.aiTool,
+        row.battleCode,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(normalizedSearchTerm)),
+    );
+  }, [displayRows, normalizedSearchTerm]);
+
   const genreCounts = useMemo(() => {
-    return displayRows.reduce<Record<string, { label: string; count: number }>>((acc, row) => {
+    return searchedDisplayRows.reduce<Record<string, { label: string; count: number }>>((acc, row) => {
       const label = displayGenre(row.genre || row.note, isZh);
       const key = normalizeGenre(label);
       acc[key] = { label, count: (acc[key]?.count ?? 0) + 1 };
       return acc;
     }, {});
-  }, [displayRows, isZh]);
+  }, [searchedDisplayRows, isZh]);
 
   const genreOptions = useMemo(() => {
     return Object.values(genreCounts).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
   }, [genreCounts]);
 
   const filteredDisplayRows = useMemo(() => {
-    if (activeGenre === "all") return displayRows;
-    return displayRows.filter((row) => normalizeGenre(row.genre || row.note) === activeGenre);
-  }, [activeGenre, displayRows]);
+    if (activeGenre === "all") return searchedDisplayRows;
+    return searchedDisplayRows.filter((row) => normalizeGenre(row.genre || row.note) === activeGenre);
+  }, [activeGenre, searchedDisplayRows]);
 
   const displayGroups = useMemo(() => {
     const groups = new Map<string, RankRow[]>();
@@ -533,18 +719,21 @@ export default function RankPage() {
     return Array.from(groups.entries()).sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
   }, [filteredDisplayRows, isZh]);
 
-  const topRow = filteredDisplayRows[0] ?? null;
   const activeBadge = active === "bar" ? "HOT" : "WIN";
+  const featuredRows = filteredDisplayRows.slice(0, 4);
+  const boardCount = displayRows.length;
+  const genreCount = genreOptions.length;
+  const isPreviewingBoard = active === "bar" ? previewingBarRows : previewingDropRows;
 
   return (
     <main
-      className={`${fontGlowSans.className} relative min-h-screen overflow-hidden bg-[#050505] px-4 py-6 text-white sm:px-6 lg:px-8`}
+      className={`${fontGlowSans.className} relative min-h-screen overflow-hidden bg-[#050505] px-4 py-5 text-white sm:px-6 lg:px-8`}
     >
-      <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_18%_15%,rgba(255,106,0,0.22),transparent_30%),radial-gradient(circle_at_86%_18%,rgba(0,202,255,0.16),transparent_28%),linear-gradient(180deg,#050505,#0b0704_54%,#050505)]" />
-      <div className="pointer-events-none absolute inset-0 opacity-[0.13] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:54px_54px]" />
+      <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_15%_0%,rgba(255,106,0,0.18),transparent_28%),radial-gradient(circle_at_92%_6%,rgba(0,202,255,0.12),transparent_26%),linear-gradient(180deg,#060606,#0a0806_48%,#050505)]" />
+      <div className="pointer-events-none absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:56px_56px]" />
 
       <div className="relative z-10 mx-auto w-full max-w-7xl">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-5">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
           <div className="h-11 w-16" aria-hidden="true" />
           <nav className="flex flex-wrap items-center gap-2 sm:pr-20">
             {[
@@ -563,20 +752,22 @@ export default function RankPage() {
           </nav>
         </header>
 
-        <section className="grid gap-5 py-8 lg:grid-cols-[1fr_24rem] lg:items-stretch">
-          <div>
-            <p className={`${fontRighteous.className} text-sm uppercase text-orange-300/85`}>
-              AIPOGER HONOR
-            </p>
-            <h1 className="mt-4 text-4xl font-black leading-[1.08] text-white sm:text-5xl">
+        <section className="grid gap-5 py-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-end">
+          <div className="max-w-3xl">
+            <h1 className="text-3xl font-black leading-tight text-white sm:text-4xl">
               {isZh ? "AIPOGER 榮譽榜" : "AIPOGER Honor Board"}
             </h1>
-            <p className="mt-4 max-w-2xl text-base leading-8 text-zinc-400">
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base">
               {isZh
-                ? "只顯示真實勝利、真實封存與傷心酒吧真實熱播。這裡記錄作品被看見的時刻，不用名次定義創作者。"
-                : "Only real victories, archived results, and Bar Heartbreak hot tracks are shown. This is a recognition record, not a numbered chart."}
+                ? "這裡只收被聽眾票數打出來的 AI 音樂戰績。勝出的 Drop、熱播的歌，會在這裡被封存、被分享、被下一位創作者挑戰。"
+                : "This board archives AI music records earned by listener votes. Winning Drops and hot tracks are preserved, shared, and ready to be challenged again."}
             </p>
-            <div className="mt-5 flex flex-wrap gap-3">
+            {isPreviewingBoard ? (
+              <p className="mt-3 inline-flex rounded-full border border-cyan-200/30 bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-100">
+                {isZh ? "本機設計預覽資料" : "Local Design Preview Data"}
+              </p>
+            ) : null}
+            <div className="mt-4 flex flex-wrap gap-2">
               <ShareButton
                 title={isZh ? "AIPOGER 榮譽榜" : "AIPOGER Honor Board"}
                 text={
@@ -586,161 +777,373 @@ export default function RankPage() {
                 }
                 label={isZh ? "分享榮譽榜" : "Share Board"}
                 copiedLabel={isZh ? "榮譽榜連結已複製" : "Board Link Copied"}
-                className="border-yellow-200/45 bg-yellow-300/12 px-5 py-2.5 text-yellow-100 hover:bg-yellow-300/18"
+                className="!px-4 !py-2 !text-xs border-yellow-200/45 bg-yellow-300/12 text-yellow-100 hover:bg-yellow-300/18"
               />
               <Link
                 href={`/battle/setup${navSuffix}`}
-                className="inline-flex items-center justify-center rounded-full bg-orange-500 px-5 py-2.5 text-sm font-black text-black transition hover:bg-orange-300"
+                className="inline-flex items-center justify-center rounded-full bg-orange-500 px-4 py-2 text-xs font-black text-black transition hover:bg-orange-300"
               >
                 {isZh ? "我要參戰" : "Join Battle"}
               </Link>
             </div>
           </div>
 
-          <div className="grid gap-4">
-            {topRow ? (
-              <div className="overflow-hidden rounded-[1.25rem] border border-yellow-300/25 bg-yellow-400/[0.06] p-4 shadow-[0_24px_90px_rgba(0,0,0,0.34)] lg:h-full">
-                <div className="grid gap-4 sm:grid-cols-[7rem_1fr] sm:items-center lg:grid-cols-1">
-                  <div className="relative aspect-square overflow-hidden rounded-[1rem] border border-yellow-200/35 bg-black shadow-[0_0_42px_rgba(250,204,21,0.14)] lg:mx-auto lg:w-full lg:max-w-[11rem]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={mediaSrc(topRow.coverUrl)}
-                      alt={displaySongTitle(topRow.hook, isZh ? "歌名未封存" : "Song Not Archived")}
-                      className="h-full w-full object-cover"
-                    />
-                    <div className="absolute bottom-2 left-2 h-12 w-12 overflow-hidden rounded-full border-2 border-orange-300/80 bg-black shadow-[0_0_24px_rgba(255,106,0,0.35)]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={mediaSrc(topRow.avatarUrl)} alt={topRow.name} className="h-full w-full object-cover" />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs font-black uppercase text-yellow-200/75">
-                      {isZh ? "榮譽焦點" : "Spotlight"}
-                    </p>
-                    <p className="mt-2 text-2xl font-black text-white">{topRow.name}</p>
-                    <p className="mt-1 text-sm font-bold text-yellow-100">
-                      {localizedRankLabel(topRow.rank, isZh)} / {displayText(topRow.aiTool, isZh ? "工具未封存" : "Tool Missing")}
-                    </p>
-                    <p className="mt-3 rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-sm leading-7 text-zinc-300">
-                      {displaySongTitle(topRow.hook, isZh ? "歌名未封存" : "Song Not Archived")}
-                      {topRow.kind === "battle" && topRow.opponentName
-                        ? ` / VS ${topRow.opponentName}`
-                        : ""}
-                    </p>
-                    {topRow.kind === "battle" ? (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Link
-                          href={resultHref(topRow, lang)}
-                          className="rounded-full border border-orange-200/35 bg-orange-500/12 px-4 py-2 text-xs font-black text-orange-100 transition hover:border-orange-200 hover:text-white"
-                        >
-                          {isZh ? "看成果卡" : "Result Card"}
-                        </Link>
-                        <ShareButton
-                          title={`${topRow.name} / ${displaySongTitle(topRow.hook, isZh ? "歌名未封存" : "Song Not Archived")}`}
-                          text={
-                            isZh
-                              ? `AIPOGER 榮譽榜焦點：${topRow.name} VS ${topRow.opponentName || "對手"}`
-                              : `AIPOGER spotlight: ${topRow.name} VS ${topRow.opponentName || "Opponent"}`
-                          }
-                          url={resultHref(topRow, lang)}
-                          label={isZh ? "分享成果卡" : "Share Result"}
-                          copiedLabel={isZh ? "成果卡已複製" : "Result Copied"}
-                          className="px-4 py-2 text-xs"
-                        />
-                        <ReportButton
-                          targetType="battle_result"
-                          targetId={topRow.battleCode || topRow.id}
-                          targetTitle={`${topRow.name} VS ${topRow.opponentName || "Opponent"}`}
-                          targetUrl={resultHref(topRow, lang)}
-                          context="Honor board spotlight battle result"
-                          lang={lang}
-                          className="px-4 py-2"
-                        />
-                      </div>
-                    ) : topRow.audioUrl ? (
-                      <div className="mt-3 grid gap-2">
-                      <audio
-                        className="w-full accent-orange-500"
-                        controls
-                        controlsList="nodownload"
-                        onContextMenu={(event) => event.preventDefault()}
-                        preload="metadata"
-                        src={topRow.audioUrl}
-                      >
-                        {isZh ? "你的瀏覽器暫時不支援播放。" : "Your browser does not support audio playback."}
-                      </audio>
-                        <ReportButton
-                          targetType="listen_bar_track"
-                          targetId={topRow.id}
-                          targetTitle={`${topRow.name} / ${displaySongTitle(topRow.hook, isZh ? "歌名未封存" : "Song Not Archived")}`}
-                          targetUrl={`/rank?lang=${lang}`}
-                          context="Honor board spotlight Bar Heartbreak track"
-                          lang={lang}
-                          className="w-fit px-4 py-2"
-                        />
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
+          <div className="grid grid-cols-3 gap-2 border-y border-white/10 py-3 lg:border-y-0 lg:border-l lg:py-0 lg:pl-5">
+            {[
+              { label: isZh ? "作品" : "Records", value: boardCount },
+              { label: isZh ? "風格" : "Styles", value: genreCount },
+              { label: isZh ? "精選" : "Featured", value: featuredRows.length },
+            ].map((stat) => (
+              <div key={stat.label}>
+                <p className="text-2xl font-black text-white">{stat.value}</p>
+                <p className="mt-1 text-[11px] font-bold uppercase text-zinc-500">{stat.label}</p>
               </div>
-            ) : (
-              <div className="rounded-[1.6rem] border border-yellow-300/20 bg-yellow-400/[0.05] p-5 text-center shadow-[0_24px_90px_rgba(0,0,0,0.24)]">
-                <Image
-                  src={AIPOGER_BRAND_LOGO}
-                  alt="AIPOGER"
-                  width={72}
-                  height={72}
-                  className="mx-auto h-[4.5rem] w-[4.5rem] rounded-2xl object-cover"
-                />
-                <p className="mt-4 text-2xl font-black text-white">
-                  {isZh ? "目前沒有可封存紀錄" : "No Archived Records Yet"}
-                </p>
-                <p className="mx-auto mt-2 max-w-md text-sm leading-7 text-zinc-400">
-                  {isZh
-                    ? "榮譽榜只顯示真實資料，不再塞入模擬內容。"
-                    : "The honor board now shows real data only."}
-                </p>
-              </div>
-            )}
+            ))}
           </div>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-[17rem_1fr]">
-          <aside className="rounded-[1.4rem] border border-white/10 bg-black/52 p-3 backdrop-blur lg:sticky lg:top-5 lg:self-start">
-            <div className="grid gap-2">
-              {BOARD_KEYS.map((key) => {
-                const selected = active === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setActive(key)}
-                    className={`rounded-2xl px-4 py-3 text-left text-sm font-black transition ${
-                      selected
-                        ? "border border-orange-300/45 bg-orange-500 text-black shadow-[0_0_28px_rgba(255,106,0,0.22)]"
-                        : "border border-white/10 bg-white/[0.035] text-zinc-300 hover:border-orange-300/35 hover:text-white"
-                    }`}
-                  >
-                    {isZh ? BOARD_META[key].zh : BOARD_META[key].en}
-                  </button>
-                );
-              })}
+        <section className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_18rem]">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
+              <div className="flex flex-wrap gap-2">
+                {BOARD_KEYS.map((key) => {
+                  const selected = active === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setActive(key)}
+                      className={`rounded-full border px-4 py-2 text-xs font-black transition ${
+                        selected
+                          ? "border-orange-300/70 bg-orange-500 text-black"
+                          : "border-white/10 bg-white/[0.035] text-zinc-300 hover:border-orange-300/45 hover:text-white"
+                      }`}
+                    >
+                      {isZh ? BOARD_META[key].zh : BOARD_META[key].en}
+                      {((key === "drop" && previewingDropRows) || (key === "bar" && previewingBarRows)) ? (
+                        <span className="ml-2 opacity-70">{isZh ? "預覽" : "Preview"}</span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+              <ShareButton
+                title={isZh ? `${boardTitle} / AIPOGER 榮譽榜` : `${boardTitle} / AIPOGER Honor Board`}
+                text={
+                  isZh
+                    ? `來看 AIPOGER ${boardTitle}，只顯示真實紀錄。`
+                    : `Check the AIPOGER ${boardTitle} with real records only.`
+                }
+                label={isZh ? "分享這個榜" : "Share Board"}
+                copiedLabel={isZh ? "榮譽榜連結已複製" : "Board Copied"}
+                className="!px-3 !py-2 !text-xs"
+              />
             </div>
-            <div className="mt-4 border-t border-white/10 pt-4">
-              <p className={`${fontRighteous.className} px-2 text-xs uppercase tracking-[0.16em] text-zinc-500`}>
+
+            <div className="mt-4 rounded-lg border border-cyan-200/20 bg-cyan-300/[0.055] p-2 shadow-[0_0_34px_rgba(34,211,238,0.08)]">
+              <label className="grid gap-2 sm:grid-cols-[5.25rem_1fr_auto] sm:items-center">
+                <span className={`${fontRighteous.className} text-xs uppercase tracking-[0.18em] text-cyan-100/70`}>
+                  SEARCH
+                </span>
+                <input
+                  value={searchTerm}
+                  onChange={(event) => {
+                    setSearchTerm(event.target.value);
+                    setActiveGenre("all");
+                  }}
+                  placeholder={isZh ? "搜尋歌手、歌名、對手、風格或 AI 工具" : "Search artist, song, opponent, style, or AI tool"}
+                  className="h-10 min-w-0 rounded-md border border-white/10 bg-black/54 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200/70 focus:bg-black/72"
+                />
+                {searchTerm ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchTerm("");
+                      setActiveGenre("all");
+                    }}
+                    className="h-10 rounded-md border border-white/10 bg-white/[0.045] px-3 text-xs font-black text-zinc-300 transition hover:border-cyan-200/45 hover:text-white"
+                  >
+                    {isZh ? "清除" : "Clear"}
+                  </button>
+                ) : (
+                  <span className="hidden rounded-md border border-white/10 bg-black/35 px-3 py-2 text-xs font-black text-zinc-500 sm:inline-flex">
+                    {searchedDisplayRows.length}/{displayRows.length}
+                  </span>
+                )}
+              </label>
+            </div>
+
+            <div className="space-y-8 pt-5">
+              {filteredDisplayRows.length === 0 ? (
+                <div className="border border-white/10 bg-white/[0.035] px-5 py-10 text-center">
+                  <Image
+                    src={AIPOGER_BRAND_LOGO}
+                    alt="AIPOGER"
+                    width={72}
+                    height={72}
+                    className="mx-auto h-[4.5rem] w-[4.5rem] rounded-lg object-cover"
+                  />
+                  <p className="text-lg font-black text-white">
+                    {isZh ? "目前沒有完整封存的正式紀錄" : "No Complete Archived Records Yet"}
+                  </p>
+                  <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-zinc-500">
+                    {isZh
+                      ? "榮譽榜只顯示真實資料，等作品完成勝利或熱播紀錄後會出現在這裡。"
+                      : "Only real archived data is shown here."}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {featuredRows.length > 0 ? (
+                    <section>
+                      <div className="mb-3 flex items-end justify-between gap-3">
+                        <div>
+                          <p className={`${fontRighteous.className} text-xs uppercase text-orange-300/70`}>
+                            FEATURED
+                          </p>
+                          <h2 className="mt-1 text-xl font-black text-white">
+                            {isZh ? "榮譽精選" : "Featured Records"}
+                          </h2>
+                        </div>
+                        <p className="text-xs font-bold text-zinc-500">
+                          {isZh ? "小圖展示，重點回到作品" : "Compact shelf, music first"}
+                        </p>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                        {featuredRows.map((row, index) => {
+                          const rowResultHref = resultHref(row, lang);
+                          return (
+                            <article
+                              key={`featured-${active}-${row.id}-${index}`}
+                              className="group overflow-hidden rounded-lg border border-white/10 bg-white/[0.035] transition hover:border-orange-300/45 hover:bg-white/[0.055]"
+                            >
+                              <div className="relative aspect-[16/9] overflow-hidden bg-black">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={mediaSrc(row.coverUrl)}
+                                  alt={displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}
+                                  className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                                />
+                                <div className="absolute left-2 top-2 flex max-w-[calc(100%-1rem)] flex-wrap gap-1.5">
+                                  <span className="rounded-full border border-black/50 bg-black/76 px-2 py-1 text-[10px] font-black text-yellow-100">
+                                    {activeBadge}
+                                  </span>
+                                  <span className="max-w-[8rem] truncate rounded-full border border-cyan-100/25 bg-black/70 px-2 py-1 text-[10px] font-black text-cyan-100">
+                                    {displayGenre(row.genre || row.note, isZh)}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="p-3">
+                                <h3 className="truncate text-sm font-black text-white">
+                                  {displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}
+                                </h3>
+                                <p className="mt-1 truncate text-xs font-bold text-zinc-400">{row.name}</p>
+                                {row.kind === "battle" ? (
+                                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                                    <Link
+                                      href={rowResultHref}
+                                      className="inline-flex rounded-full border border-orange-200/30 px-3 py-1.5 text-[11px] font-black text-orange-100 transition hover:border-orange-100 hover:text-white"
+                                    >
+                                      {isZh ? "成果卡" : "Result"}
+                                    </Link>
+                                    <span className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-2.5 py-1.5 text-[11px] font-black text-cyan-100">
+                                      {displayText(row.aiTool, isZh ? "AI 工具未封存" : "AI Tool Missing")}
+                                    </span>
+                                  </div>
+                                ) : row.audioUrl ? (
+                                  <audio
+                                    className="mt-3 h-9 w-full accent-orange-500"
+                                    controls
+                                    controlsList="nodownload"
+                                    onContextMenu={(event) => event.preventDefault()}
+                                    preload="metadata"
+                                    src={row.audioUrl}
+                                  >
+                                    {isZh ? "你的瀏覽器暫時不支援播放。" : "Your browser does not support audio playback."}
+                                  </audio>
+                                ) : null}
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ) : null}
+
+                  <section>
+                    <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+                      <div>
+                        <p className={`${fontRighteous.className} text-xs uppercase text-cyan-100/55`}>
+                          {active === "bar" ? "BAR HEARTBREAK" : "DROP BATTLE"}
+                        </p>
+                        <h2 className="mt-1 text-2xl font-black text-white">{boardTitle}</h2>
+                      </div>
+                      <span className="text-xs font-bold text-zinc-500">
+                        {filteredDisplayRows.length} {isZh ? "筆紀錄" : "records"}
+                      </span>
+                    </div>
+
+                    <div className="space-y-7">
+                      {displayGroups.map(([genreLabel, rows]) => (
+                        <div key={`${active}-${genreLabel}`}>
+                          <div className="mb-3 flex items-center justify-between gap-3 border-b border-white/10 pb-2">
+                            <h3 className="text-lg font-black text-white">{genreLabel}</h3>
+                            <span className="text-xs font-black text-zinc-500">
+                              {rows.length} {isZh ? "首" : "tracks"}
+                            </span>
+                          </div>
+                          <div className="grid gap-x-5 gap-y-7 sm:grid-cols-2 xl:grid-cols-4">
+                            {rows.map((row, index) => {
+                              const rowResultHref = resultHref(row, lang);
+                              return (
+                                <article
+                                  key={`${active}-${genreLabel}-${row.id}-${index}`}
+                                  className={`group min-w-0 rounded-lg border p-2.5 transition hover:-translate-y-0.5 hover:bg-white/[0.055] ${accentClasses(row.accent)}`}
+                                >
+                                  <div className="relative aspect-square overflow-hidden rounded-md border border-white/10 bg-black">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={mediaSrc(row.coverUrl)}
+                                      alt={displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}
+                                      className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.025]"
+                                    />
+                                    <div className="absolute left-2 top-2 flex max-w-[calc(100%-1rem)] flex-wrap gap-1.5">
+                                      <span className="rounded-full border border-black/45 bg-black/76 px-2 py-1 text-[10px] font-black text-white">
+                                        {activeBadge}
+                                      </span>
+                                      <span className="max-w-[8rem] truncate rounded-full border border-cyan-100/25 bg-black/70 px-2 py-1 text-[10px] font-black text-cyan-100">
+                                        {displayGenre(row.genre || row.note, isZh)}
+                                      </span>
+                                    </div>
+                                    <div className="absolute bottom-3 left-3 h-14 w-14 overflow-hidden rounded-full border-[3px] border-white/80 bg-black shadow-[0_0_28px_rgba(255,255,255,0.18)]">
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img src={mediaSrc(row.avatarUrl)} alt={row.name} className="h-full w-full object-cover" />
+                                    </div>
+                                  </div>
+
+                                  <div className="min-h-[8.2rem] pt-3">
+                                    <h3 className="line-clamp-2 text-[15px] font-black leading-5 text-white">
+                                      {displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}
+                                    </h3>
+                                    <p className="mt-1 truncate text-sm font-bold text-zinc-300">{row.name}</p>
+                                    <p className="mt-1 truncate text-xs font-bold text-zinc-500">
+                                      {row.kind === "battle"
+                                        ? `VS ${displayText(row.opponentName || "", isZh ? "對手未封存" : "Opponent Missing")}`
+                                        : row.note || (isZh ? "傷心酒吧熱播紀錄" : "Bar Heartbreak heat record")}
+                                    </p>
+                                    <div className="mt-2 flex flex-wrap gap-1.5">
+                                      <span className="rounded-full border border-white/12 bg-black/28 px-2 py-1 text-[10px] font-bold text-zinc-100">
+                                        {displayGenre(row.genre || row.note, isZh)}
+                                      </span>
+                                      <span className="rounded-full border border-cyan-200/20 bg-cyan-300/10 px-2 py-1 text-[10px] font-black text-cyan-100">
+                                        {displayText(row.aiTool, isZh ? "未封存工具" : "Tool Missing")}
+                                      </span>
+                                    </div>
+                                    <p className="mt-2 truncate text-xs font-bold text-zinc-500">
+                                      {row.kind === "battle"
+                                        ? row.votesTotal && row.votesTotal > 0
+                                          ? `${row.votesTotal.toLocaleString()} ${isZh ? "票" : "votes"}`
+                                          : isZh
+                                            ? "封存勝利"
+                                            : "Archived win"
+                                        : isZh
+                                          ? `正向反應 ${(row.positiveReactions || 0).toLocaleString()}`
+                                          : `Positive ${(row.positiveReactions || 0).toLocaleString()}`}
+                                    </p>
+                                  </div>
+
+                                  <div className="flex flex-wrap gap-1.5 border-t border-white/10 pt-2">
+                                    {row.kind === "battle" ? (
+                                      <>
+                                        <Link
+                                          href={rowResultHref}
+                                          className="inline-flex items-center justify-center rounded-full border border-cyan-200/30 bg-cyan-300/10 px-2.5 py-1.5 text-[11px] font-black text-cyan-100 transition hover:border-cyan-100 hover:text-white"
+                                        >
+                                          {isZh ? "成果卡" : "Result"}
+                                        </Link>
+                                        <span className="inline-flex items-center justify-center rounded-full border border-cyan-200/25 bg-cyan-300/10 px-2.5 py-1.5 text-[11px] font-black text-cyan-100">
+                                          {displayText(row.aiTool, isZh ? "AI 工具未封存" : "AI Tool Missing")}
+                                        </span>
+                                        <ShareButton
+                                          title={`${row.name} VS ${displayText(row.opponentName || "", isZh ? "對手" : "Opponent")}`}
+                                          text={
+                                            isZh
+                                              ? `AIPOGER 戰績：${row.name} VS ${displayText(row.opponentName || "", "對手")}`
+                                              : `AIPOGER result: ${row.name} VS ${displayText(row.opponentName || "", "Opponent")}`
+                                          }
+                                          url={rowResultHref}
+                                          label={isZh ? "分享" : "Share"}
+                                          copiedLabel={isZh ? "已複製" : "Copied"}
+                                          className="!px-2.5 !py-1.5 !text-[11px]"
+                                        />
+                                      </>
+                                    ) : (
+                                      <ShareButton
+                                        title={`${row.name} / ${displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}`}
+                                        text={
+                                          isZh
+                                            ? `AIPOGER 傷心酒吧熱播：${displaySongTitle(row.hook, "歌名未封存")}`
+                                            : `AIPOGER Bar Heartbreak heat: ${displaySongTitle(row.hook, "Song Not Archived")}`
+                                        }
+                                        url={`/rank?lang=${lang}`}
+                                        label={isZh ? "分享" : "Share"}
+                                        copiedLabel={isZh ? "已複製" : "Copied"}
+                                        className="!px-2.5 !py-1.5 !text-[11px]"
+                                      />
+                                    )}
+                                    <ReportButton
+                                      targetType={row.kind === "battle" ? "battle_result" : "listen_bar_track"}
+                                      targetId={row.kind === "battle" ? row.battleCode || row.id : row.id}
+                                      targetTitle={`${row.name} / ${displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}`}
+                                      targetUrl={row.kind === "battle" ? rowResultHref : `/rank?lang=${lang}`}
+                                      context={`Honor board row kind=${row.kind}`}
+                                      lang={lang}
+                                      className="!px-2.5 !py-1.5 !text-[11px]"
+                                    />
+                                  </div>
+
+                                  {row.audioUrl ? (
+                                    <audio
+                                      className="mt-2 h-9 w-full accent-orange-500"
+                                      controls
+                                      controlsList="nodownload"
+                                      onContextMenu={(event) => event.preventDefault()}
+                                      preload="metadata"
+                                      src={row.audioUrl}
+                                    >
+                                      {isZh ? "你的瀏覽器暫時不支援播放。" : "Your browser does not support audio playback."}
+                                    </audio>
+                                  ) : null}
+                                </article>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                </>
+              )}
+            </div>
+
+          </div>
+
+          <aside className="lg:sticky lg:top-5 lg:self-start lg:border-l lg:border-white/10 lg:pl-6">
+            <div className="border-b border-white/10 pb-4">
+              <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.16em] text-zinc-500`}>
                 {isZh ? "音樂風格" : "Music Style"}
               </p>
               <div className="mt-3 grid gap-2">
                 <button
                   type="button"
                   onClick={() => setActiveGenre("all")}
-                  className={`flex items-center justify-between rounded-2xl border px-3 py-2 text-left text-xs font-black transition ${
+                  className={`flex items-center justify-between rounded-full border px-3 py-2 text-left text-xs font-black transition ${
                     activeGenre === "all"
                       ? "border-yellow-200/55 bg-yellow-300 text-black"
                       : "border-white/10 bg-white/[0.035] text-zinc-300 hover:border-yellow-200/35 hover:text-white"
                   }`}
                 >
-                  <span>{isZh ? "全部風格" : "All Styles"}</span>
+                  <span>{isZh ? "所有類型" : "All Styles"}</span>
                   <span className="opacity-65">{displayRows.length}</span>
                 </button>
                 {genreOptions.map((genre) => {
@@ -751,7 +1154,7 @@ export default function RankPage() {
                       key={key}
                       type="button"
                       onClick={() => setActiveGenre(key)}
-                      className={`flex items-center justify-between rounded-2xl border px-3 py-2 text-left text-xs font-black transition ${
+                      className={`flex items-center justify-between rounded-full border px-3 py-2 text-left text-xs font-black transition ${
                         selected
                           ? "border-cyan-100/70 bg-cyan-300 text-black"
                           : "border-white/10 bg-white/[0.035] text-zinc-300 hover:border-cyan-100/35 hover:text-white"
@@ -764,203 +1167,30 @@ export default function RankPage() {
                 })}
               </div>
             </div>
-          </aside>
 
-          <section className="rounded-[1.4rem] border border-white/10 bg-black/54 p-4 backdrop-blur md:p-5">
-            <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <p className={`${fontRighteous.className} text-xs uppercase text-orange-300/70`}>
-                  HONOR BOARD
-                </p>
-                <h2 className="mt-1 text-3xl font-black text-white">{boardTitle}</h2>
+            <div className="border-b border-white/10 py-4">
+              <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.16em] text-zinc-500`}>
+                {isZh ? "快速連結" : "Quick Links"}
+              </p>
+              <div className="mt-3 grid gap-2 text-sm font-bold">
+                <Link href={`/battle${navSuffix}`} className="text-zinc-300 transition hover:text-orange-100">
+                  {isZh ? "AI 音樂鬥歌場" : "AI Music Battle Hall"}
+                </Link>
+                <Link href={`/listen-bar${navSuffix}`} className="text-zinc-300 transition hover:text-orange-100">
+                  {isZh ? "傷心酒吧公播" : "Bar Heartbreak Radio"}
+                </Link>
+                <Link href={`/battle/setup${navSuffix}`} className="text-zinc-300 transition hover:text-orange-100">
+                  {isZh ? "我要發起挑戰" : "Start a Challenge"}
+                </Link>
               </div>
-              <ShareButton
-                title={isZh ? `${boardTitle} / AIPOGER 榮譽榜` : `${boardTitle} / AIPOGER Honor Board`}
-                text={
-                  isZh
-                    ? `來看 AIPOGER ${boardTitle}，只顯示真實紀錄。`
-                    : `Check the AIPOGER ${boardTitle} with real records only.`
-                }
-                label={isZh ? "分享這個榮譽榜" : "Share This Board"}
-                copiedLabel={isZh ? "榮譽榜連結已複製" : "Board Copied"}
-                className="px-4 py-2"
-              />
             </div>
 
-            <div className="max-h-[980px] space-y-5 overflow-y-auto pr-1">
-              {filteredDisplayRows.length === 0 ? (
-                <div className="rounded-[1.3rem] border border-white/10 bg-white/[0.035] px-5 py-8 text-center">
-                  <p className="text-lg font-black text-white">
-                    {isZh ? "目前沒有完整封存的正式紀錄" : "No Complete Archived Records Yet"}
-                  </p>
-                  <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-zinc-500">
-                    {isZh
-                      ? "榮譽榜只顯示真實資料，等作品完成勝利或熱播紀錄後會出現在這裡。"
-                      : "Only real archived data is shown here."}
-                  </p>
-                </div>
-              ) : (
-                displayGroups.map(([genreLabel, rows]) => (
-                  <div key={`${active}-${genreLabel}`} className="space-y-2">
-                    <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-2">
-                      <div>
-                        <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.16em] text-cyan-100/55`}>
-                          {active === "bar" ? "BAR HEARTBREAK" : "DROP BATTLE"}
-                        </p>
-                        <h3 className="mt-1 text-xl font-black text-white">{genreLabel}</h3>
-                      </div>
-                      <span className="rounded-full border border-white/10 bg-white/[0.045] px-3 py-1 text-xs font-black text-zinc-300">
-                        {rows.length} {isZh ? "首" : "tracks"}
-                      </span>
-                    </div>
-                    <div className="grid gap-2">
-                      {rows.map((row, index) => {
-                        const rowResultHref = resultHref(row, lang);
-                        return (
-                    <article
-                      key={`${active}-${genreLabel}-${row.id}-${index}`}
-                      className={`relative overflow-hidden rounded-[1.05rem] border px-3 py-3 ${accentClasses(row.accent)}`}
-                    >
-                      <div className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-current opacity-60" />
-                      <div className="grid gap-3 lg:grid-cols-[2.8rem_4.75rem_minmax(0,1fr)_15rem] lg:items-center">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 bg-black/45 text-[11px] font-black tracking-[0.12em] text-white">
-                          {activeBadge}
-                        </div>
-                        <div className="relative h-24 w-full max-w-[7rem] overflow-hidden rounded-[0.95rem] border border-white/15 bg-black shadow-[0_18px_50px_rgba(0,0,0,0.28)] lg:h-[4.75rem] lg:w-[4.75rem]">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={mediaSrc(row.coverUrl)}
-                            alt={displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}
-                            className="h-full w-full object-cover"
-                          />
-                          <div className="absolute bottom-1.5 left-1.5 h-9 w-9 overflow-hidden rounded-full border-2 border-white/65 bg-black">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={mediaSrc(row.avatarUrl)} alt={row.name} className="h-full w-full object-cover" />
-                          </div>
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="min-w-0 truncate text-xl font-black text-white lg:text-lg">
-                              {displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}
-                            </h3>
-                            <span className="rounded-full border border-white/15 bg-black/28 px-2.5 py-1 text-[11px] font-bold text-zinc-100">
-                              {displayGenre(row.genre || row.note, isZh)}
-                            </span>
-                            <span className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-2.5 py-1 text-[11px] font-black text-cyan-100">
-                              {displayText(row.aiTool, isZh ? "未封存工具" : "Tool Missing")}
-                            </span>
-                          </div>
-                          <p className="mt-1 truncate text-sm font-bold text-zinc-200">
-                            {row.name}
-                            <span className="mx-2 text-zinc-600">/</span>
-                            {localizedRankLabel(row.rank, isZh)}
-                          </p>
-                          {row.kind === "battle" ? (
-                            <>
-                              <p className="mt-1 truncate text-sm leading-6 text-zinc-400">
-                                VS {displayText(row.opponentName || "", isZh ? "對手未封存" : "Opponent Missing")}
-                                <span className="mx-2 text-zinc-700">/</span>
-                                {isZh ? "決鬥編號" : "Battle"} {displayText(row.battleCode || "", "N/A")}
-                              </p>
-                            </>
-                          ) : (
-                            <p className="mt-1 truncate text-sm leading-6 text-zinc-400">
-                              {row.note || (isZh ? "傷心酒吧熱播紀錄" : "Bar Heartbreak heat record")}
-                            </p>
-                          )}
-                          {row.kind === "battle" ? (
-                            <div className="mt-2 grid gap-2 lg:hidden">
-                              <p className="rounded-2xl border border-orange-200/16 bg-black/26 px-3 py-2 text-xs font-bold leading-5 text-zinc-300">
-                                <span className="text-orange-100">{isZh ? "AI 評價" : "AI Review"}：</span>
-                                {displayText(row.aiReview || "", isZh ? "無" : "None")}
-                              </p>
-                              <p className="rounded-2xl border border-cyan-200/16 bg-black/26 px-3 py-2 text-xs font-bold leading-5 text-zinc-300">
-                                <span className="text-cyan-100">{isZh ? "觀眾評價" : "Listener Signal"}：</span>
-                                {displayText(row.audienceReview || "", isZh ? "無" : "None")}
-                              </p>
-                            </div>
-                          ) : null}
-                        </div>
-                        <div className="grid gap-2 rounded-2xl border border-white/10 bg-black/34 px-3 py-2">
-                          {row.kind === "battle" ? (
-                            <div>
-                              <p className="text-sm font-black text-white">
-                                {displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}
-                              </p>
-                              <p className="mt-1 text-xs font-bold text-zinc-400">
-                                {row.votesTotal && row.votesTotal > 0
-                                  ? `${row.votesTotal.toLocaleString()} ${isZh ? "票" : "votes"} / A SIDE ${row.aSideVotes || 0} ${isZh ? "票" : ""} B SIDE ${row.bSideVotes || 0} ${isZh ? "票" : ""}`
-                                  : isZh
-                                    ? "尚無投票"
-                                    : "No Votes Yet"}
-                              </p>
-                            </div>
-                          ) : (
-                            <div>
-                              <p className="text-sm font-black text-white">{displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}</p>
-                              <p className="mt-1 text-xs font-bold text-zinc-400">
-                                {isZh
-                                  ? `正向反應 ${(row.positiveReactions || 0).toLocaleString()}`
-                                  : `Positive ${(row.positiveReactions || 0).toLocaleString()}`}
-                              </p>
-                            </div>
-                          )}
-                          <div className="flex flex-wrap gap-2">
-                            {row.kind === "battle" ? (
-                              <>
-                                <Link
-                                  href={rowResultHref}
-                                  className="inline-flex items-center justify-center rounded-full border border-cyan-200/30 bg-cyan-300/10 px-3 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-100 hover:text-white"
-                                >
-                                  {isZh ? "成果卡" : "Result"}
-                                </Link>
-                                <ShareButton
-                                  title={`${row.name} VS ${displayText(row.opponentName || "", isZh ? "對手" : "Opponent")}`}
-                                  text={
-                                    isZh
-                                      ? `AIPOGER 戰績：${row.name} VS ${displayText(row.opponentName || "", "對手")}`
-                                      : `AIPOGER result: ${row.name} VS ${displayText(row.opponentName || "", "Opponent")}`
-                                  }
-                                  url={rowResultHref}
-                                  label={isZh ? "分享" : "Share"}
-                                  copiedLabel={isZh ? "已複製" : "Copied"}
-                                  className="px-3 py-2 text-xs"
-                                />
-                              </>
-                            ) : null}
-                            <ReportButton
-                              targetType={row.kind === "battle" ? "battle_result" : "listen_bar_track"}
-                              targetId={row.kind === "battle" ? row.battleCode || row.id : row.id}
-                              targetTitle={`${row.name} / ${displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}`}
-                              targetUrl={row.kind === "battle" ? rowResultHref : `/rank?lang=${lang}`}
-                              context={`Honor board row kind=${row.kind}`}
-                              lang={lang}
-                              className="px-3 py-2"
-                            />
-                          </div>
-                          {row.audioUrl ? (
-                            <audio
-                              className="w-full accent-orange-500"
-                              controls
-                              controlsList="nodownload"
-                              onContextMenu={(event) => event.preventDefault()}
-                              preload="metadata"
-                              src={row.audioUrl}
-                            >
-                              {isZh ? "你的瀏覽器暫時不支援播放。" : "Your browser does not support audio playback."}
-                            </audio>
-                          ) : null}
-                        </div>
-                      </div>
-                    </article>
-                          );
-                        })}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
+            <p className="pt-4 text-xs font-bold leading-6 text-zinc-500">
+              {isZh
+                ? "榮譽榜只收真實完成的勝利與熱播紀錄，不用名次壓作品。"
+                : "Honor Board keeps real completed wins and heat records without forcing numbered placements."}
+            </p>
+          </aside>
         </section>
 
         <footer className="mt-8 flex flex-col gap-4 border-t border-white/10 py-6 md:flex-row md:items-center md:justify-between">
