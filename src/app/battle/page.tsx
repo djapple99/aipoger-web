@@ -1509,8 +1509,8 @@ function BattlePoolList() {
                             ? `《${entry.original_file_name}》正在 AIPOGER AI 音樂鬥歌場，進來觀戰投票。`
                             : `"${entry.original_file_name}" is in the AIPOGER AI Music Battle Hall. Jump in and vote.`
                           : isZh
-                            ? `${entry.fighter_name}的《${entry.original_file_name}》AIPOGER Drop Battle 戰帖已開。${hookStartText || "請大家提前進場。"}進來聊天預測支持誰的歌最熱血最動人，或是你來挑戰？Show me what you got!!!`
-                            : `${entry.fighter_name}'s "${entry.original_file_name}" is open for challenge. ${hookStartText}Back the hottest Drop in chat, or step in and challenge. Show me what you got!!!`
+                            ? `${entry.fighter_name}的《${entry.original_file_name}》AIPOGER Drop Battle 戰帖已開。${hookStartText || "請大家提前進場。"}進場聽 5 秒預播、聊天預測，或直接接戰。`
+                            : `${entry.fighter_name}'s "${entry.original_file_name}" is open for challenge. ${hookStartText}Enter for the 5-second teaser, chat, or step in as the challenger.`
                       }
                       url={shareUrl}
                       label={shareLabel}

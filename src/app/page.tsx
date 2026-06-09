@@ -609,7 +609,7 @@ export default function HomePage() {
       ];
   const infoLinks = isZh
     ? [
-        { href: withLang("/weekly-drop-battle"), title: "Weekly Drop Battle", desc: "官方主題賽，投稿 Drop 參戰" },
+        { href: withLang("/weekly-drop-battle"), title: "Drop Battle 官方戰場", desc: "投稿 Drop，讓聽眾投票認可" },
         { href: withLang("/hook-guide"), title: "最強Drop Battle 對決抓波規則", desc: "Drop 上場，累積戰績認可" },
         { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: "作品定位、Drop 與參戰路線" },
         { href: withLang("/rank"), title: "AIPOGER 榮譽榜", desc: "投票、熱播、封存作品紀錄" },
@@ -618,7 +618,7 @@ export default function HomePage() {
       ]
     : lang === "ja"
       ? [
-          { href: withLang("/weekly-drop-battle"), title: "Weekly Drop Battle", desc: "AI音楽クリエイター向けの公式テーマ戦" },
+          { href: withLang("/weekly-drop-battle"), title: "Drop Battle Official Arena", desc: "Dropを投稿し、聴衆の投票で認められる" },
           { href: withLang("/hook-guide"), title: "Drop Battle Rules", desc: "最強のDropをステージに出し、認知を積み上げる" },
           { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
           { href: withLang("/rank"), title: "AIPOGER Honor Board", desc: "認められた勝利、熱播曲、記録されたクリエイター実績" },
@@ -627,7 +627,7 @@ export default function HomePage() {
         ]
       : lang === "ko"
         ? [
-            { href: withLang("/weekly-drop-battle"), title: "Weekly Drop Battle", desc: "AI 음악 크리에이터를 위한 공식 테마 배틀" },
+            { href: withLang("/weekly-drop-battle"), title: "Drop Battle Official Arena", desc: "Drop을 제출하고 관객 투표로 인정받기" },
             { href: withLang("/hook-guide"), title: "Drop Battle Rules", desc: "가장 강한 Drop으로 무대에 올라 인정을 쌓기" },
             { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
             { href: withLang("/rank"), title: "AIPOGER Honor Board", desc: "인정받은 승리, 인기 트랙, 기록된 크리에이터 성과" },
@@ -635,7 +635,7 @@ export default function HomePage() {
             { href: withLang("/partners"), title: "Partnerships", desc: "우승곡을 방송, 큐레이션, 상업 협업으로 연결" },
           ]
     : [
-        { href: withLang("/weekly-drop-battle"), title: "Weekly Drop Battle", desc: "Official theme battles for AI music creators" },
+        { href: withLang("/weekly-drop-battle"), title: "Drop Battle Official Arena", desc: "Submit a Drop and earn recognition through listener votes" },
         { href: withLang("/hook-guide"), title: "Drop Battle Rules", desc: "Put your strongest Drop on stage and build recognition" },
         { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
         { href: withLang("/rank"), title: "AIPOGER Honor Board", desc: "Recognized wins, hot tracks, and archived creator records" },
@@ -643,12 +643,12 @@ export default function HomePage() {
         { href: withLang("/partners"), title: "Partnerships", desc: "Move winning tracks toward airplay, curation, and commercial use" },
       ];
   const mobileActionLabels = isZh
-    ? { arena: "鬥歌場", weekly: "本週賽", bar: "酒吧" }
+    ? { arena: "鬥歌場", weekly: "投稿", bar: "酒吧" }
     : lang === "ja"
-      ? { arena: "バトル", weekly: "今週戦", bar: "Bar" }
+      ? { arena: "バトル", weekly: "投稿", bar: "Bar" }
       : lang === "ko"
-        ? { arena: "배틀장", weekly: "주간전", bar: "Bar" }
-        : { arena: "Arena", weekly: "Weekly", bar: "Bar" };
+        ? { arena: "배틀장", weekly: "제출", bar: "Bar" }
+        : { arena: "Arena", weekly: "Submit", bar: "Bar" };
 
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-[#050505] px-4 py-4 text-[#f5f5f5] md:px-0 md:py-0">

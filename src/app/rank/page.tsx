@@ -23,7 +23,11 @@ import {
 } from "@/lib/battle-pool-rules";
 import { fontGlowSans, fontRighteous } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n";
-import { listenBarRowToTrack, type ListenBarTrackRow } from "@/lib/listen-bar";
+import {
+  LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD,
+  listenBarRowToTrack,
+  type ListenBarTrackRow,
+} from "@/lib/listen-bar";
 import { supabase } from "@/lib/supabase";
 
 type BoardKey = "drop" | "bar";
@@ -68,166 +72,6 @@ const BOARD_META: Record<BoardKey, BoardMeta> = {
 
 const BOARD_KEYS: BoardKey[] = ["drop", "bar"];
 const MOCK_PATTERN = /(qa-|mock|demo|test|ghost|sample)/i;
-const ENABLE_LOCAL_PREVIEW_ROWS = process.env.NODE_ENV === "development";
-const PREVIEW_DROP_ROWS: RankRow[] = [
-  {
-    id: "preview-drop-1",
-    kind: "battle",
-    name: "愛波哥",
-    rank: "LV.0 掃地僧",
-    title: "Drop 抓波勝利",
-    hook: "桑巴舞女比妳真",
-    note: "動感電音",
-    genre: "動感電音",
-    accent: "gold",
-    avatarUrl: AIPOGER_BRAND_LOGO,
-    coverUrl: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80",
-    aiTool: "Suno",
-    createdAt: new Date().toISOString(),
-    opponentName: "Vincent Shih",
-    opponentSong: "冰凍霓虹",
-    battleCode: "AIPO-000045",
-    votesTotal: 21,
-    aSideVotes: 13,
-    bSideVotes: 8,
-    resultHref: "/battle/result?winner=愛波哥&song=桑巴舞女比妳真&opponent=Vincent%20Shih&battle=AIPO-000045",
-  },
-  {
-    id: "preview-drop-2",
-    kind: "battle",
-    name: "Mavis Loop",
-    rank: "Lv.3 熱血音樂工匠",
-    title: "Drop 抓波勝利",
-    hook: "凌晨三點的低頻",
-    note: "Bass House",
-    genre: "Bass House",
-    accent: "orange",
-    avatarUrl: AIPOGER_BRAND_LOGO,
-    coverUrl: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=900&q=80",
-    aiTool: "Udio",
-    createdAt: new Date().toISOString(),
-    opponentName: "Neon Kid",
-    opponentSong: "夜車終點",
-    battleCode: "AIPO-000046",
-    votesTotal: 18,
-    aSideVotes: 10,
-    bSideVotes: 8,
-  },
-  {
-    id: "preview-drop-3",
-    kind: "battle",
-    name: "DJ 雲端司機",
-    rank: "Lv.2 熱血音樂工匠",
-    title: "Drop 抓波勝利",
-    hook: "雨聲裡的城市霓虹",
-    note: "復古City-Pop",
-    genre: "復古City-Pop",
-    accent: "cyan",
-    avatarUrl: AIPOGER_BRAND_LOGO,
-    coverUrl: "https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=900&q=80",
-    aiTool: "Suno",
-    createdAt: new Date().toISOString(),
-    opponentName: "Echo Lai",
-    opponentSong: "濕掉的副歌",
-    battleCode: "AIPO-000047",
-    votesTotal: 12,
-    aSideVotes: 7,
-    bSideVotes: 5,
-  },
-  {
-    id: "preview-drop-4",
-    kind: "battle",
-    name: "電流海岸",
-    rank: "Lv.4 潮流音樂大師",
-    title: "Drop 抓波勝利",
-    hook: "夏夜最後一個拍點",
-    note: "說唱街頭風",
-    genre: "說唱街頭風",
-    accent: "orange",
-    avatarUrl: AIPOGER_BRAND_LOGO,
-    coverUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=900&q=80",
-    aiTool: "Suno",
-    createdAt: new Date().toISOString(),
-    opponentName: "Beat Farmer",
-    opponentSong: "街角延遲",
-    battleCode: "AIPO-000048",
-    votesTotal: 10,
-    aSideVotes: 6,
-    bSideVotes: 4,
-  },
-  {
-    id: "preview-drop-5",
-    kind: "battle",
-    name: "Rain Tape",
-    rank: "Lv.1 熱血音樂工匠",
-    title: "Drop 抓波勝利",
-    hook: "我把想念切成八拍",
-    note: "自我風格",
-    genre: "自我風格",
-    accent: "cyan",
-    avatarUrl: AIPOGER_BRAND_LOGO,
-    coverUrl: "https://images.unsplash.com/photo-1495567720989-cebdbdd97913?auto=format&fit=crop&w=900&q=80",
-    aiTool: "Suno",
-    createdAt: new Date().toISOString(),
-    opponentName: "Moon Error",
-    opponentSong: "沒有出口的Hook",
-    battleCode: "AIPO-000049",
-    votesTotal: 8,
-    aSideVotes: 5,
-    bSideVotes: 3,
-  },
-];
-
-const PREVIEW_BAR_ROWS: RankRow[] = [
-  {
-    id: "preview-bar-1",
-    kind: "bar",
-    name: "凌晨便利商店",
-    rank: "創作者投稿",
-    title: "傷心酒吧熱播",
-    hook: "把你留在副歌以前",
-    note: "傷心慢歌",
-    genre: "傷心慢歌",
-    accent: "gold",
-    avatarUrl: AIPOGER_BRAND_LOGO,
-    coverUrl: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=900&q=80",
-    aiTool: "Suno",
-    createdAt: new Date().toISOString(),
-    positiveReactions: 36,
-  },
-  {
-    id: "preview-bar-2",
-    kind: "bar",
-    name: "Blue Motel",
-    rank: "創作者投稿",
-    title: "傷心酒吧熱播",
-    hook: "最後一杯不要加冰",
-    note: "R&B",
-    genre: "R&B",
-    accent: "cyan",
-    avatarUrl: AIPOGER_BRAND_LOGO,
-    coverUrl: "https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=900&q=80",
-    aiTool: "Udio",
-    createdAt: new Date().toISOString(),
-    positiveReactions: 31,
-  },
-  {
-    id: "preview-bar-3",
-    kind: "bar",
-    name: "空拍情歌",
-    rank: "創作者投稿",
-    title: "傷心酒吧熱播",
-    hook: "你說海邊太吵",
-    note: "Indie Pop",
-    genre: "Indie Pop",
-    accent: "orange",
-    avatarUrl: AIPOGER_BRAND_LOGO,
-    coverUrl: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80",
-    aiTool: "Suno",
-    createdAt: new Date().toISOString(),
-    positiveReactions: 28,
-  },
-];
 
 function safeRankForFighter(name: string, rank?: string | null) {
   const cleanRank = rank?.trim() ?? "";
@@ -409,6 +253,7 @@ function hotBarRowsFromTracks(tracks: ListenBarTrackRow[]) {
     .map((row) => ({ row, track: listenBarRowToTrack(row) }))
     .filter((item): item is { row: ListenBarTrackRow; track: NonNullable<ReturnType<typeof listenBarRowToTrack>> } => Boolean(item.track))
     .filter(({ track }) => track.source !== "official")
+    .filter(({ track }) => (track.positiveReactionCount || 0) >= LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD)
     .sort((a, b) => {
       const byReaction = (b.track.positiveReactionCount || 0) - (a.track.positiveReactionCount || 0);
       if (byReaction !== 0) return byReaction;
@@ -656,15 +501,10 @@ export default function RankPage() {
     return archivedResults.slice(0, 10).map((entry, index) => rowFromArchive(entry, index));
   }, [archivedResults]);
 
-  const previewingDropRows = ENABLE_LOCAL_PREVIEW_ROWS && dropRows.length === 0;
-  const previewingBarRows = ENABLE_LOCAL_PREVIEW_ROWS && hotBarRows.length === 0;
-  const effectiveDropRows = previewingDropRows ? PREVIEW_DROP_ROWS : dropRows;
-  const effectiveHotBarRows = previewingBarRows ? PREVIEW_BAR_ROWS : hotBarRows;
-
   const displayRows = useMemo(() => {
-    if (active === "bar") return effectiveHotBarRows;
-    return effectiveDropRows;
-  }, [active, effectiveHotBarRows, effectiveDropRows]);
+    if (active === "bar") return hotBarRows;
+    return dropRows;
+  }, [active, hotBarRows, dropRows]);
 
   useEffect(() => {
     setActiveGenre("all");
@@ -723,7 +563,6 @@ export default function RankPage() {
   const featuredRows = filteredDisplayRows.slice(0, 4);
   const boardCount = displayRows.length;
   const genreCount = genreOptions.length;
-  const isPreviewingBoard = active === "bar" ? previewingBarRows : previewingDropRows;
 
   return (
     <main
@@ -762,11 +601,6 @@ export default function RankPage() {
                 ? "這裡只收被聽眾票數打出來的 AI 音樂戰績。勝出的 Drop、熱播的歌，會在這裡被封存、被分享、被下一位創作者挑戰。"
                 : "This board archives AI music records earned by listener votes. Winning Drops and hot tracks are preserved, shared, and ready to be challenged again."}
             </p>
-            {isPreviewingBoard ? (
-              <p className="mt-3 inline-flex rounded-full border border-cyan-200/30 bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-100">
-                {isZh ? "本機設計預覽資料" : "Local Design Preview Data"}
-              </p>
-            ) : null}
             <div className="mt-4 flex flex-wrap gap-2">
               <ShareButton
                 title={isZh ? "AIPOGER 榮譽榜" : "AIPOGER Honor Board"}
@@ -820,9 +654,6 @@ export default function RankPage() {
                       }`}
                     >
                       {isZh ? BOARD_META[key].zh : BOARD_META[key].en}
-                      {((key === "drop" && previewingDropRows) || (key === "bar" && previewingBarRows)) ? (
-                        <span className="ml-2 opacity-70">{isZh ? "預覽" : "Preview"}</span>
-                      ) : null}
                     </button>
                   );
                 })}

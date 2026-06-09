@@ -137,7 +137,7 @@ export async function generateMetadata({ params, searchParams }: BattleInvitePag
     ? `開戰時間: ${startTimeLabel}（台灣時間）。請大家提前進場。`
     : "請大家提前進場。";
   const description = isHookCard
-    ? `${data.leftName}的《${data.leftSong}》AIPOGER Drop Battle 戰帖已開。${startReminder}進來聊天預測支持誰的歌最熱血最動人，或是你來挑戰？Show me what you got!!!`
+    ? `${data.leftName}的《${data.leftSong}》AIPOGER Drop Battle 戰帖已開。${startReminder}進場聽 5 秒預播、聊天預測，或直接接戰。`
     : `${data.battleType}｜${data.leftName}《${data.leftSong}》(${data.leftTool}) VS ${data.rightName}《${data.rightSong}》(${data.rightTool})｜進場聊天預測支持誰的歌最熱血最動人。`;
 
   return {
@@ -267,8 +267,7 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
                       開戰時間 <span className="whitespace-nowrap">{startTimeLabel}（台灣時間）</span>，請大家提前進場。
                     </>
                   ) : null}
-                  進來聊天預測支持誰的歌最熱血最動人，<span className="whitespace-nowrap">或是你來挑戰？</span>{" "}
-                  <span className="whitespace-nowrap">Show me what you got!!!</span>
+                  進場聽 5 秒預播、聊天預測，<span className="whitespace-nowrap">或直接接戰。</span>
                 </>
               )
             : "這場 Battle 已經成立，進場後依照音樂感動投票。"}

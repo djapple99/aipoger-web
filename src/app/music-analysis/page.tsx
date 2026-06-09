@@ -47,12 +47,12 @@ export default function MusicAnalysisPage() {
       ? [
           ["市場定位", "判斷作品最適合短影音、劇情、廣告、情緒歌單或 AIPOGER 戰場。"],
           ["最強 Drop", "找出最能被聽眾記住的段落，讓作品先用一段聲音被驗證。"],
-          ["投放建議", "給出 Drop Battle、傷心酒吧或 24H Full Song 的分流方向。"],
+          ["投放建議", "判斷作品適合先進 Drop Battle，還是放進傷心酒吧測聽眾反應。"],
         ]
       : [
           ["Market Lane", "Find whether the track fits shorts, drama, ads, mood playlists, or an AIPOGER arena."],
           ["Strongest Drop", "Locate the section listeners are most likely to remember and vote on."],
-          ["Route Fit", "Recommend Drop Battle, Bar Heartbreak, or 24H Full Song as the next test."],
+          ["Route Fit", "Recommend whether the track should test first in Drop Battle or Bar Heartbreak."],
         ],
     [isZh],
   );
