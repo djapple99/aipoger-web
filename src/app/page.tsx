@@ -86,6 +86,15 @@ type HomeInfoLink = {
 
 type HomeStatItem = [string, string];
 
+const homeCardIconSizes = [
+  "h-[46px] w-[92px]",
+  "h-[45px] w-[78px]",
+  "h-[42px] w-[88px]",
+  "h-[45px] w-[78px]",
+  "h-[46px] w-[78px]",
+  "h-[44px] w-[88px]",
+];
+
 function DesktopWaveLine({ className = "" }: { className?: string }) {
   return (
     <div className={`pointer-events-none absolute h-8 overflow-hidden ${className}`} aria-hidden="true">
@@ -248,16 +257,20 @@ function DesktopReferenceHome({
             <Link
               key={item.href}
               href={item.href}
-              className="group relative overflow-hidden rounded-[10px] border border-orange-300/20 bg-black/68 px-[20px] py-[15px] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:border-orange-300/62 hover:bg-orange-500/[0.075] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
+              className="group relative overflow-hidden rounded-[10px] border border-orange-300/20 bg-black/72 px-[20px] pb-[10px] pt-[14px] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:border-orange-300/62 hover:bg-orange-500/[0.075] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
             >
-              <p className="text-[14px] font-black leading-tight text-zinc-100 group-hover:text-orange-100">{item.title}</p>
-              <p className="mt-[8px] line-clamp-2 text-[10px] leading-[16px] text-zinc-500">{item.desc}</p>
+              <p className="h-[34px] text-[14px] font-black leading-[17px] text-zinc-100 group-hover:text-orange-100">
+                {item.title}
+              </p>
+              <p className="mt-[4px] h-[30px] overflow-hidden text-[10px] leading-[15px] text-zinc-500">{item.desc}</p>
               <Image
                 src={`/home-art/card-icon-${index}.png`}
                 alt=""
                 width={128}
                 height={72}
-                className="pointer-events-none absolute bottom-[8px] left-1/2 h-[50px] w-[90px] -translate-x-1/2 object-contain opacity-95 drop-shadow-[0_0_12px_rgba(255,154,61,0.22)]"
+                className={`pointer-events-none absolute bottom-[7px] left-1/2 -translate-x-1/2 object-contain opacity-95 drop-shadow-[0_0_12px_rgba(255,154,61,0.22)] ${
+                  homeCardIconSizes[index] ?? "h-[44px] w-[84px]"
+                }`}
                 aria-hidden="true"
               />
             </Link>
@@ -590,12 +603,12 @@ export default function HomePage() {
       ];
   const infoLinks = isZh
     ? [
-        { href: withLang("/weekly-drop-battle"), title: "Weekly Drop Battle", desc: "官方每週發起主題賽，創作者投稿 Drop 參戰" },
-        { href: withLang("/hook-guide"), title: "最強Drop Battle 對決抓波規則", desc: "用 Drop 上場，累積戰績與創作者認可" },
-        { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
-        { href: withLang("/rank"), title: "AIPOGER 榮譽榜", desc: "被投票、被熱播、被封存的作品紀錄" },
-        { href: withLang("/about"), title: "關於愛播歌", desc: "AI 創作者一起成長與作品認可系統" },
-        { href: withLang("/partners"), title: "廣告與合作", desc: "讓勝出作品走向播放、策展與商業合作" },
+        { href: withLang("/weekly-drop-battle"), title: "Weekly Drop Battle", desc: "官方主題賽，投稿 Drop 參戰" },
+        { href: withLang("/hook-guide"), title: "最強Drop Battle 對決抓波規則", desc: "Drop 上場，累積戰績認可" },
+        { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: "作品定位、Drop 與參戰路線" },
+        { href: withLang("/rank"), title: "AIPOGER 榮譽榜", desc: "投票、熱播、封存作品紀錄" },
+        { href: withLang("/about"), title: "關於愛播歌", desc: "AI 創作者作品認可系統" },
+        { href: withLang("/partners"), title: "廣告與合作", desc: "播放、策展與商業合作" },
       ]
     : lang === "ja"
       ? [
