@@ -116,7 +116,8 @@ type DropRematchClaimRow = {
   next_queue_id: string | null;
 };
 
-type VoteCount = { fighter_a: number; fighter_b: number };
+type VoteSide = "fighter_a" | "fighter_b";
+type VoteCount = Record<VoteSide, number>;
 type DeckKey = "A" | "B";
 type BattlePlaybackPhase = "rps" | "ready" | "playing" | "paused" | "echo" | "transition" | "final";
 type FeedbackKey = "rhyme" | "impact" | "melody" | "emotion" | "structure";
@@ -208,6 +209,15 @@ const emptyFeedbackCounts = (): FeedbackCounts => ({
   A: { rhyme: 0, impact: 0, melody: 0, emotion: 0, structure: 0 },
   B: { rhyme: 0, impact: 0, melody: 0, emotion: 0, structure: 0 },
 });
+
+function applyVoteDelta(votes: VoteCount, previousVote: VoteSide | null, nextVote: VoteSide): VoteCount {
+  const next = { ...votes };
+  if (previousVote && previousVote !== nextVote) {
+    next[previousVote] = Math.max(0, next[previousVote] - 1);
+  }
+  next[nextVote] += 1;
+  return next;
+}
 const rpsWinPairs = [
   { winner: "✊", loser: "✌️" },
   { winner: "✌️", loser: "✋" },
@@ -834,11 +844,12 @@ function VoteHeartButton({
     <button
       type="button"
       onClick={() => void onVote()}
+      onContextMenu={(event) => event.preventDefault()}
       disabled={voteLocked}
       title={t("battle_vote_heart_aria")}
       aria-label={t("battle_vote_heart_aria")}
       aria-pressed={selected}
-      className={`group flex min-h-24 w-full touch-manipulation items-center justify-center gap-3 rounded-[1.6rem] border px-4 py-4 text-left transition active:scale-[0.98] md:min-h-[5.25rem] ${
+      className={`group flex min-h-[7.4rem] w-full touch-manipulation select-none items-center justify-center gap-3 rounded-[1.75rem] border px-4 py-4 text-left transition active:scale-[0.97] [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] [-webkit-user-select:none] md:min-h-[5.25rem] md:rounded-[1.6rem] ${
         selected
           ? activeTone
           : voteLocked
@@ -846,7 +857,7 @@ function VoteHeartButton({
             : openTone
       }`}
     >
-      <svg viewBox="0 0 24 24" className="h-16 w-16 shrink-0 drop-shadow-[0_0_14px_rgba(255,255,255,0.22)] md:h-14 md:w-14">
+      <svg viewBox="0 0 24 24" className="pointer-events-none h-20 w-20 shrink-0 drop-shadow-[0_0_18px_rgba(255,255,255,0.28)] md:h-14 md:w-14">
         <path
           fill={fillColor}
           stroke={strokeColor}
@@ -854,7 +865,7 @@ function VoteHeartButton({
           d="M12 21.35l-1.05-.96C6.96 17.06 4 13.92 4 10.94 4 8.73 5.71 7 8.02 7c1.53 0 3.04.93 4 2.43.96-1.5 2.47-2.43 4-2.43C18.29 7 20 8.73 20 10.94c0 3-2.97 6.17-7.94 11.43L12 21.35z"
         />
       </svg>
-      <span className="min-w-0 text-[13px] font-black leading-tight text-zinc-100 md:text-sm">{label}</span>
+      <span className="pointer-events-none min-w-0 break-words text-[clamp(1rem,4.4vw,1.22rem)] font-black leading-tight text-zinc-100 md:text-sm">{label}</span>
     </button>
   );
 }
@@ -873,7 +884,7 @@ function BattleArenaContent() {
   const [battle, setBattle] = useState<BattleData | null>(null);
   const [chatInput, setChatInput] = useState("");
   const [votes, setVotes] = useState<VoteCount>({ fighter_a: 0, fighter_b: 0 });
-  const [hasVoted, setHasVoted] = useState<"fighter_a" | "fighter_b" | null>(null);
+  const [hasVoted, setHasVoted] = useState<VoteSide | null>(null);
   const [activeDeck, setActiveDeck] = useState<"A" | "B" | null>(null);
   const [playedDecks, setPlayedDecks] = useState<{ A: boolean; B: boolean }>({ A: false, B: false });
   const [voteOpen, setVoteOpen] = useState(false);
@@ -961,6 +972,7 @@ function BattleArenaContent() {
   const rematchFallbackTimerRef = useRef<number | null>(null);
   const mockSyncChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const arenaEntryRefreshInFlightRef = useRef(false);
+  const voteIntentInFlightRef = useRef<VoteSide | null>(null);
   const currentSessionUserIdRef = useRef<string>("");
   const shownDanmakuMessageIdsRef = useRef<Set<string>>(new Set());
   const shownDanmakuFingerprintsRef = useRef<Map<string, number>>(new Map());
@@ -2198,6 +2210,7 @@ function BattleArenaContent() {
     setRematchBusy(false);
     setRematchError(null);
     setHasVoted(null);
+    voteIntentInFlightRef.current = null;
     setActiveDeck(null);
     setFirstDeck(null);
     setCurrentDeck(null);
@@ -2827,19 +2840,20 @@ function BattleArenaContent() {
           : "border-cyan-200/12 bg-cyan-400/[0.035] text-cyan-100/45";
     const countClass = tone === "orange" ? "text-orange-200" : "text-cyan-100";
     return (
-      <div className="mt-2 grid grid-cols-3 gap-2.5 sm:grid-cols-5 sm:gap-1.5">
+      <div className="mt-2 grid touch-manipulation select-none grid-cols-3 gap-3 [-webkit-touch-callout:none] [-webkit-user-select:none] sm:grid-cols-5 sm:gap-1.5">
         {feedbackButtons.map((item) => (
           <button
             key={item.key}
             type="button"
             disabled={!activeForFeedback}
             onClick={() => handleFeedbackTap(deck, item.key)}
+            onContextMenu={(event) => event.preventDefault()}
             aria-label={`${deck === "A" ? "A SIDE" : "B SIDE"} ${lang === "zh" ? item.zh : item.en}`}
-            className={`min-h-14 rounded-2xl border px-2.5 py-2.5 text-center text-[13px] font-black leading-tight transition active:scale-[0.96] disabled:cursor-not-allowed sm:min-h-10 sm:rounded-xl sm:px-1.5 sm:py-1.5 sm:text-[11px] ${toneClass}`}
+            className={`min-h-16 touch-manipulation select-none rounded-2xl border px-3 py-3 text-center text-[15px] font-black leading-tight transition active:scale-[0.95] disabled:cursor-not-allowed [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] [-webkit-user-select:none] sm:min-h-10 sm:rounded-xl sm:px-1.5 sm:py-1.5 sm:text-[11px] ${toneClass}`}
             title={activeForFeedback ? (lang === "zh" ? `送出${item.zh}彈幕` : `Send ${item.en} feedback`) : disabledReason}
           >
-            <span className="block truncate">{lang === "zh" ? item.zh : item.en}</span>
-            <span className={`mt-0.5 block font-mono text-[10px] ${countClass}`}>{feedbackCounts[deck][item.key]}</span>
+            <span className="pointer-events-none block truncate">{lang === "zh" ? item.zh : item.en}</span>
+            <span className={`pointer-events-none mt-0.5 block font-mono text-[12px] sm:text-[10px] ${countClass}`}>{feedbackCounts[deck][item.key]}</span>
           </button>
         ))}
       </div>
@@ -2993,64 +3007,81 @@ function BattleArenaContent() {
   }, [battle, battleGuestId, battleId, fireDanmaku, myDisplayName, myUserId, readCurrentSessionUser]);
 
   // ── 發送訊息 ──────────────────────────────────────────
-  const handleSend = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSend = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmed = chatInput.trim();
     if (!trimmed) return;
     setChatInput("");
-    await sendChatContent(trimmed);
+    void sendChatContent(trimmed);
   };
 
   // ── 投票 ──────────────────────────────────────────────
-  const handleVote = async (target: "fighter_a" | "fighter_b") => {
+  const handleVote = async (target: VoteSide) => {
     if (!voteOpen || !battleId) return;
     if (hasVoted === target) {
       return;
     }
-    const actor = await readCurrentSessionUser();
-    const previousVote = hasVoted;
+    if (voteIntentInFlightRef.current) return;
 
-    if (battleId.startsWith("mock-") || isAuthBypassEnabled) {
+    const previousVote = hasVoted;
+    voteIntentInFlightRef.current = target;
+    setHasVoted(target);
+    setVotes((prev) => applyVoteDelta(prev, previousVote, target));
+
+    const rollbackVote = () => {
+      setHasVoted(previousVote);
       setVotes((prev) => {
         const next = { ...prev };
-        if (previousVote) next[previousVote] = Math.max(0, next[previousVote] - 1);
-        next[target] += 1;
+        next[target] = Math.max(0, next[target] - 1);
+        if (previousVote) next[previousVote] += 1;
         return next;
       });
-      setHasVoted(target);
+    };
+
+    if (battleId.startsWith("mock-") || isAuthBypassEnabled) {
+      voteIntentInFlightRef.current = null;
       return;
     }
 
-    if (!actor?.id) {
-      const guestId = battleGuestId || getBattleGuestId();
-      if (!battleGuestId) setBattleGuestId(guestId);
-      const response = await fetch("/api/battle-pool/guest-vote", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ battleId, guestId, votedFor: target }),
-      });
-      const payload = (await response.json().catch(() => null)) as
-        | { error?: string; counts?: { fighter_a: number; fighter_b: number } }
-        | null;
-      if (!response.ok) {
-        alert(payload?.error ?? (lang === "zh" ? "投票失敗，請稍後再試。" : "Vote failed. Try again."));
+    try {
+      const actor = await readCurrentSessionUser();
+
+      if (!actor?.id) {
+        const guestId = battleGuestId || getBattleGuestId();
+        if (!battleGuestId) setBattleGuestId(guestId);
+        const response = await fetch("/api/battle-pool/guest-vote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ battleId, guestId, votedFor: target }),
+        });
+        const payload = (await response.json().catch(() => null)) as
+          | { error?: string; counts?: { fighter_a: number; fighter_b: number } }
+          | null;
+        if (!response.ok) {
+          rollbackVote();
+          alert(payload?.error ?? (lang === "zh" ? "投票失敗，請稍後再試。" : "Vote failed. Try again."));
+          return;
+        }
+        if (payload?.counts) setVotes(payload.counts);
         return;
       }
-      if (payload?.counts) setVotes(payload.counts);
-      setHasVoted(target);
-      return;
-    }
 
-    const { error: voteError } = await supabase.rpc("cast_vote", {
-      p_battle_id: battleId,
-      p_voted_for: target,
-    });
+      const { error: voteError } = await supabase.rpc("cast_vote", {
+        p_battle_id: battleId,
+        p_voted_for: target,
+      });
 
-    if (voteError) {
-      alert(voteError.message.includes("Not authenticated") ? "請先登入再投票" : voteError.message);
-      return;
+      if (voteError) {
+        rollbackVote();
+        alert(voteError.message.includes("Not authenticated") ? "請先登入再投票" : voteError.message);
+      }
+    } catch (err) {
+      rollbackVote();
+      console.warn("[battle vote]", err);
+      alert(lang === "zh" ? "投票失敗，請稍後再試。" : "Vote failed. Try again.");
+    } finally {
+      if (voteIntentInFlightRef.current === target) voteIntentInFlightRef.current = null;
     }
-    setHasVoted(target);
   };
 
   const handleFounderCancelChallenge = useCallback(async () => {
@@ -3618,7 +3649,7 @@ function BattleArenaContent() {
 
   return (
     <div
-      className={`${fontGlowSansBattle.className} relative flex min-h-[100svh] flex-col overflow-x-hidden overflow-y-auto bg-black text-zinc-100 antialiased md:h-screen md:min-h-screen md:overflow-hidden ${vinylDebugMode ? "pb-24" : ""}`}
+      className={`${fontGlowSansBattle.className} aipoger-battle-touch relative flex min-h-[100svh] flex-col overflow-x-hidden overflow-y-auto bg-black text-zinc-100 antialiased md:h-screen md:min-h-screen md:overflow-hidden ${vinylDebugMode ? "pb-24" : ""}`}
     >
       <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_18%_16%,rgba(255,106,0,0.18),transparent_32%),radial-gradient(circle_at_84%_18%,rgba(59,130,246,0.18),transparent_32%),linear-gradient(180deg,#020202_0%,#050505_44%,#0d0806_100%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.13] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:52px_52px]" />
@@ -4269,7 +4300,7 @@ function BattleArenaContent() {
         </section>
 
         {/* 彈幕輸入：留言送出後會橫向跑過整個 Battle 畫面 */}
-        <section className={`fixed bottom-2 left-3 right-3 z-[80] mx-auto w-[calc(100%-1.5rem)] max-w-[1120px] rounded-[1.4rem] border-2 border-yellow-300/75 bg-black/86 px-2 py-2 shadow-[0_16px_64px_rgba(0,0,0,0.52),0_0_32px_rgba(250,204,21,0.2)] backdrop-blur-xl transition-opacity md:bottom-4 md:rounded-full ${voteOpen ? "opacity-[0.82]" : ""}`}>
+        <section className={`fixed bottom-2 left-3 right-3 z-[80] mx-auto w-[calc(100%-1.5rem)] max-w-[1120px] touch-manipulation select-none rounded-[1.55rem] border-2 border-yellow-300/75 bg-black/86 px-2.5 py-2.5 shadow-[0_16px_64px_rgba(0,0,0,0.52),0_0_32px_rgba(250,204,21,0.2)] backdrop-blur-xl transition-opacity [-webkit-touch-callout:none] [-webkit-user-select:none] md:bottom-4 md:rounded-full md:px-2 md:py-2 ${voteOpen ? "opacity-[0.82]" : ""}`}>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
             <span className="hidden shrink-0 pl-3 text-[10px] font-black tracking-[0.18em] text-yellow-200/80 sm:inline">
               {lang === "zh" ? "全場彈幕" : "Arena Danmaku"}
@@ -4284,7 +4315,8 @@ function BattleArenaContent() {
                     key={phrase}
                     type="button"
                     onClick={() => void sendChatContent(phrase)}
-                    className="flex h-11 min-w-14 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.055] px-3 text-sm font-black text-white transition hover:border-yellow-200/70 hover:bg-yellow-300/15 md:h-9 md:min-w-12 md:text-xs"
+                    onContextMenu={(event) => event.preventDefault()}
+                    className="flex h-12 min-w-16 shrink-0 touch-manipulation select-none items-center justify-center rounded-full border border-white/10 bg-white/[0.055] px-4 text-sm font-black text-white transition active:scale-[0.96] hover:border-yellow-200/70 hover:bg-yellow-300/15 [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] [-webkit-user-select:none] md:h-9 md:min-w-12 md:px-3 md:text-xs"
                     aria-label={`${lang === "zh" ? "送出" : "Send"} ${phrase}`}
                   >
                     {phrase}
@@ -4292,18 +4324,21 @@ function BattleArenaContent() {
                 ))}
               </div>
             </div>
-            <form className="flex min-w-0 flex-1 gap-2" onSubmit={handleSend}>
+            <form className="flex min-w-0 flex-1 gap-2.5 md:gap-2" onSubmit={handleSend}>
               <input
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 placeholder={t("chat_placeholder")}
                 maxLength={200}
-                className="min-h-12 min-w-0 flex-1 rounded-full border border-yellow-300/45 bg-black/72 px-4 py-3 text-sm font-bold text-zinc-100 placeholder:text-zinc-500 focus:border-yellow-200 focus:outline-none focus:ring-2 focus:ring-yellow-300/30"
+                enterKeyHint="send"
+                autoComplete="off"
+                className="min-h-14 min-w-0 flex-1 select-text rounded-full border border-yellow-300/45 bg-black/72 px-4 py-3 text-base font-bold text-zinc-100 placeholder:text-zinc-500 focus:border-yellow-200 focus:outline-none focus:ring-2 focus:ring-yellow-300/30 md:min-h-12 md:text-sm"
               />
               <button
                 type="submit"
                 disabled={!chatInput.trim()}
-                className="min-h-12 min-w-[4.8rem] rounded-full bg-yellow-300 px-5 py-3 text-sm font-black text-black transition hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-40 sm:px-6"
+                onContextMenu={(event) => event.preventDefault()}
+                className="min-h-14 min-w-[6.2rem] touch-manipulation select-none rounded-full bg-yellow-300 px-5 py-3 text-base font-black text-black transition active:scale-[0.97] hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-40 [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] [-webkit-user-select:none] sm:px-6 md:min-h-12 md:min-w-[4.8rem] md:text-sm"
               >
                 {t("chat_send")}
               </button>
@@ -4329,6 +4364,27 @@ function BattleArenaContent() {
       />
 
       <style>{`
+        .aipoger-battle-touch {
+          -webkit-tap-highlight-color: transparent;
+        }
+        .aipoger-battle-touch button,
+        .aipoger-battle-touch [role="button"] {
+          touch-action: manipulation;
+          -webkit-touch-callout: none;
+          -webkit-user-select: none;
+          user-select: none;
+        }
+        .aipoger-battle-touch button *,
+        .aipoger-battle-touch [role="button"] * {
+          -webkit-touch-callout: none;
+          -webkit-user-select: none;
+          user-select: none;
+        }
+        .aipoger-battle-touch input,
+        .aipoger-battle-touch textarea {
+          -webkit-user-select: text;
+          user-select: text;
+        }
         @keyframes aipogerDanmaku {
           0% { transform: translateX(104vw); }
           100% { transform: translateX(-120vw); }
