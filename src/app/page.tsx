@@ -86,31 +86,6 @@ type HomeInfoLink = {
 
 type HomeStatItem = [string, string];
 
-function DesktopVinylReference() {
-  return (
-    <div className="pointer-events-none absolute left-[588px] top-[68px] h-[390px] w-[390px]" aria-hidden="true">
-      <div className="absolute inset-[-18px] rounded-full border border-orange-300/10 bg-[repeating-radial-gradient(circle,rgba(255,255,255,0.08)_0_1px,transparent_1px_13px)] opacity-70" />
-      <div className="absolute inset-0 rounded-full border border-orange-300/18 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.18)_0_1px,transparent_2px_8px,rgba(255,255,255,0.08)_9px_10px,transparent_11px_42px,rgba(255,255,255,0.13)_43px_44px,transparent_45px_100%),radial-gradient(circle_at_50%_50%,rgba(0,0,0,0.82)_0_28%,rgba(12,12,12,0.98)_29%_57%,rgba(255,255,255,0.08)_58%,rgba(0,0,0,0.96)_60%)] shadow-[inset_0_0_44px_rgba(255,255,255,0.06),0_0_52px_rgba(255,106,0,0.12)]" />
-      <div className="absolute inset-[138px] rounded-full border border-orange-200/26 bg-[radial-gradient(circle,#050505_0_10%,#ff6a00_11%_42%,rgba(255,170,82,0.52)_43%_60%,rgba(20,7,2,0.94)_61%)] shadow-[0_0_38px_rgba(255,106,0,0.25)]" />
-      <div className="absolute left-[180px] top-[184px] h-8 w-8 rounded-full bg-black ring-1 ring-orange-100/25" />
-      <div className="absolute left-[153px] top-[202px] h-10 w-[88px] overflow-hidden text-orange-200/80">
-        <div className="flex h-full items-end gap-[2px]">
-          {Array.from({ length: 19 }).map((_, index) => (
-            <span
-              key={index}
-              className="w-[3px] rounded-full bg-orange-300/75"
-              style={{ height: `${18 + ((index * 23) % 58)}%` }}
-            />
-          ))}
-        </div>
-      </div>
-      <div className="absolute right-[6px] top-[94px] h-[244px] w-[11px] rotate-[32deg] rounded-full border border-white/22 bg-[linear-gradient(180deg,rgba(255,255,255,0.72),rgba(255,255,255,0.12),rgba(255,106,0,0.2))] shadow-[0_0_18px_rgba(255,255,255,0.12)]" />
-      <div className="absolute right-[56px] top-[314px] h-[74px] w-[16px] rotate-[48deg] rounded-full border border-orange-100/30 bg-black/85" />
-      <div className="absolute right-[27px] top-[83px] h-8 w-3 rotate-[32deg] rounded border border-white/20 bg-black/75" />
-    </div>
-  );
-}
-
 function DesktopWaveLine({ className = "" }: { className?: string }) {
   return (
     <div className={`pointer-events-none absolute h-8 overflow-hidden ${className}`} aria-hidden="true">
@@ -123,64 +98,6 @@ function DesktopWaveLine({ className = "" }: { className?: string }) {
           />
         ))}
       </div>
-    </div>
-  );
-}
-
-function DesktopInfoIcon({ index }: { index: number }) {
-  const common = "absolute border border-orange-300/42";
-  if (index === 0) {
-    return (
-      <div className="relative h-12 w-24 text-orange-300/72" aria-hidden="true">
-        <div className={`${common} left-5 top-3 h-8 w-16 -skew-x-12 rounded-[6px]`} />
-        <div className="absolute left-12 top-5 h-3 w-3 rounded-full border border-orange-300/70" />
-        <div className="absolute left-3 top-8 h-px w-16 -rotate-12 bg-orange-300/48" />
-      </div>
-    );
-  }
-  if (index === 1) {
-    return (
-      <div className="flex h-12 w-24 items-end justify-center gap-[5px] text-orange-300/70" aria-hidden="true">
-        {Array.from({ length: 9 }).map((_, i) => (
-          <span key={i} className="w-[3px] rounded-t bg-current" style={{ height: `${10 + ((i * 11) % 28)}px` }} />
-        ))}
-      </div>
-    );
-  }
-  if (index === 2) {
-    return (
-      <div className="flex h-12 w-24 items-center justify-center gap-[3px] text-orange-300/76" aria-hidden="true">
-        {Array.from({ length: 18 }).map((_, i) => (
-          <span key={i} className="w-[2px] rounded-full bg-current" style={{ height: `${6 + ((i * 19) % 30)}px` }} />
-        ))}
-      </div>
-    );
-  }
-  if (index === 3) {
-    return (
-      <div className="relative h-12 w-24 text-orange-300/76" aria-hidden="true">
-        <div className="absolute left-8 top-7 h-3 w-10 border-b border-orange-300/60" />
-        <div className="absolute left-8 top-4 h-8 w-10 border-b border-l border-r border-orange-300/62 [clip-path:polygon(0_100%,18%_25%,43%_74%,50%_0,72%_75%,100%_25%,100%_100%)]" />
-        <span className="absolute left-[46px] top-1 h-2 w-2 rounded-full bg-orange-300/70" />
-        <span className="absolute left-7 top-3 h-2 w-2 rounded-full bg-orange-300/70" />
-        <span className="absolute right-7 top-3 h-2 w-2 rounded-full bg-orange-300/70" />
-      </div>
-    );
-  }
-  if (index === 4) {
-    return (
-      <div className="relative h-12 w-24 text-cyan-100/70" aria-hidden="true">
-        <div className="absolute left-9 top-3 h-7 w-10 rounded-t-full border border-cyan-100/58 border-b-0" />
-        <div className="absolute left-7 top-6 h-5 w-3 rounded border border-cyan-100/58" />
-        <div className="absolute right-7 top-6 h-5 w-3 rounded border border-cyan-100/58" />
-      </div>
-    );
-  }
-  return (
-    <div className="relative h-12 w-24 text-orange-300/72" aria-hidden="true">
-      <div className="absolute left-6 top-6 h-4 w-8 -rotate-[24deg] rounded border border-orange-300/58" />
-      <div className="absolute right-6 top-6 h-4 w-8 rotate-[24deg] rounded border border-orange-300/58" />
-      <div className="absolute left-[42px] top-[27px] h-3 w-8 rounded border border-orange-300/50" />
     </div>
   );
 }
@@ -214,8 +131,17 @@ function DesktopReferenceHome({
     <section className="relative z-10 hidden min-h-screen w-full justify-center overflow-hidden md:flex">
       <div className="relative h-[720px] w-[1280px] shrink-0 origin-top overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-[#050505]" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_27%,rgba(95,34,10,0.42),transparent_34%),radial-gradient(circle_at_88%_30%,rgba(0,55,58,0.2),transparent_34%),linear-gradient(90deg,rgba(8,5,4,0.96),rgba(2,3,3,0.99)_58%,rgba(0,9,10,0.95))]" />
-        <div className="pointer-events-none absolute inset-0 opacity-[0.035] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:44px_44px]" />
+        <Image
+          src="/home-art/aipoger-hero-depth.png"
+          alt=""
+          fill
+          priority
+          sizes="1280px"
+          className="pointer-events-none absolute inset-0 object-cover opacity-[0.82]"
+        />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.1)_0%,rgba(0,0,0,0.12)_42%,rgba(0,0,0,0.2)_100%),radial-gradient(circle_at_20%_54%,rgba(0,0,0,0.08),rgba(0,0,0,0.55)_48%,transparent_76%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_27%,rgba(95,34,10,0.28),transparent_34%),radial-gradient(circle_at_88%_30%,rgba(0,55,58,0.14),transparent_34%)]" />
+        <div className="pointer-events-none absolute inset-0 opacity-[0.025] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:44px_44px]" />
         <div className="pointer-events-none absolute left-[235px] top-0 h-[118px] w-[570px] border-b border-r border-orange-300/10" />
         <div className="pointer-events-none absolute left-0 top-[118px] h-px w-[615px] bg-gradient-to-r from-transparent via-orange-300/58 to-transparent" />
         <div className="pointer-events-none absolute left-[26px] top-[148px] h-[382px] w-px rounded-full bg-gradient-to-b from-transparent via-orange-300/60 to-transparent" />
@@ -230,8 +156,6 @@ function DesktopReferenceHome({
           className="absolute left-[47px] top-[89px] h-[58px] w-[58px] rounded-full bg-black object-contain shadow-[0_0_22px_rgba(255,106,0,0.16)]"
         />
         <div className="pointer-events-none absolute left-[104px] top-[117px] h-px w-[383px] bg-gradient-to-r from-orange-300/62 via-white/18 to-transparent" />
-
-        <DesktopVinylReference />
 
         <div className="absolute left-[55px] top-[135px] z-10 w-[760px]">
           <p
@@ -328,9 +252,14 @@ function DesktopReferenceHome({
             >
               <p className="text-[14px] font-black leading-tight text-zinc-100 group-hover:text-orange-100">{item.title}</p>
               <p className="mt-[8px] line-clamp-2 text-[10px] leading-[16px] text-zinc-500">{item.desc}</p>
-              <div className="absolute bottom-[10px] left-1/2 -translate-x-1/2 opacity-80">
-                <DesktopInfoIcon index={index} />
-              </div>
+              <Image
+                src={`/home-art/card-icon-${index}.png`}
+                alt=""
+                width={128}
+                height={72}
+                className="pointer-events-none absolute bottom-[8px] left-1/2 h-[50px] w-[90px] -translate-x-1/2 object-contain opacity-95 drop-shadow-[0_0_12px_rgba(255,154,61,0.22)]"
+                aria-hidden="true"
+              />
             </Link>
           ))}
         </div>
