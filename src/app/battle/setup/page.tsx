@@ -1390,27 +1390,6 @@ export default function BattleSetupPage() {
           </div>
           <SafetyNotice kind="upload" />
           {battleModeSelector}
-          <div className="grid gap-3 rounded-[1.7rem] border border-white/10 bg-black/58 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.38)] md:grid-cols-4 md:p-5">
-            {(battleMode === 'daily'
-              ? [
-                  lang === 'zh' ? '上傳整首歌' : 'Upload Full Track',
-                  lang === 'zh' ? '填資料與封面' : 'Info / Cover',
-                  lang === 'zh' ? '24H 配對或約戰' : '24H Match / Challenge',
-                  lang === 'zh' ? '觀眾慢聽投票' : 'Listeners Vote After Listening',
-                ]
-              : [
-                  lang === 'zh' ? '上傳歌曲' : 'Upload Song',
-                  lang === 'zh' ? '裁切 Drop / 歌詞' : 'Cut Drop / Lyrics',
-                  lang === 'zh' ? '填資料與頭像' : 'Info / Avatar',
-                  lang === 'zh' ? '確認 Battle 配對' : 'Confirm Matchmaking',
-                ]
-            ).map((step, index) => (
-              <div key={step} className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-4">
-                <p className="text-[10px] font-black tracking-[0.22em] text-orange-300/70">STEP {index + 1}</p>
-                <p className="mt-2 text-lg font-black text-white">{step}</p>
-              </div>
-            ))}
-          </div>
           {battleMode === 'daily' ? (
             <section className="overflow-hidden rounded-[1.75rem] border border-cyan-200/18 bg-black/62 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.38),0_0_38px_rgba(0,203,255,0.08)]">
               <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
@@ -1454,6 +1433,27 @@ export default function BattleSetupPage() {
               {lang === 'zh' ? '上傳歌曲，開始裁切 →' : 'Upload Song and Cut Drop →'}
             </button>
           )}
+          <div className="grid gap-3 rounded-[1.7rem] border border-white/10 bg-black/58 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.38)] md:grid-cols-4 md:p-5">
+            {(battleMode === 'daily'
+              ? [
+                  lang === 'zh' ? '上傳整首歌' : 'Upload Full Track',
+                  lang === 'zh' ? '填資料與封面' : 'Info / Cover',
+                  lang === 'zh' ? '24H 配對或約戰' : '24H Match / Challenge',
+                  lang === 'zh' ? '觀眾慢聽投票' : 'Listeners Vote After Listening',
+                ]
+              : [
+                  lang === 'zh' ? '上傳歌曲' : 'Upload Song',
+                  lang === 'zh' ? '裁切 Drop / 歌詞' : 'Cut Drop / Lyrics',
+                  lang === 'zh' ? '填資料與頭像' : 'Info / Avatar',
+                  lang === 'zh' ? '確認 Battle 配對' : 'Confirm Matchmaking',
+                ]
+            ).map((step, index) => (
+              <div key={step} className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-4">
+                <p className="text-[10px] font-black tracking-[0.22em] text-orange-300/70">STEP {index + 1}</p>
+                <p className="mt-2 text-lg font-black text-white">{step}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
