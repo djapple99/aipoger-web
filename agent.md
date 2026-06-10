@@ -10,6 +10,7 @@
 相關延伸文件（按需搭配讀）：
 
 - `CURSOR_TODO.md` — 任務清單、待跑 SQL、修復細節。
+- `docs/aipoger-agent-brief.md` — 給新 AI agent 快速理解 AIPOGER 部署、規則、願景的簡介。
 - `docs/aipoger-ui-art-direction.md` — 視覺與文案規範（做 UI / 改文案前必讀）。
 - `docs/aipoger-product-rules.md` — 產品規則。
 
