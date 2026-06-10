@@ -31,6 +31,13 @@ body {
   font-family: "Inter", "Noto Sans TC", "PingFang TC", "Segoe UI", sans-serif;
 }
 
+.aipo-home-no-select {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
 .aipoger-brand-wordmark {
   font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "Noto Sans CJK TC", "Noto Sans TC", "PingFang TC", sans-serif;
   font-weight: 900;

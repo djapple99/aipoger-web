@@ -241,6 +241,63 @@ function HomeActionSignal({
   );
 }
 
+function HomeDesktopActionHud({
+  prompt,
+  activeAction,
+}: {
+  prompt: HomeActionPrompt;
+  activeAction: HomeActionKey;
+}) {
+  const isCyan = prompt.tone === "cyan";
+  const topClass =
+    activeAction === "battle"
+      ? "top-[58%]"
+      : activeAction === "bar"
+        ? "top-[70%]"
+        : "top-[82%]";
+
+  return (
+    <div
+      key={`desktop-hud-${activeAction}`}
+      className={`pointer-events-none absolute right-[calc(100%+0.85rem)] ${topClass} hidden w-[clamp(18rem,25vw,30rem)] -translate-y-1/2 select-none lg:block`}
+      aria-live="polite"
+    >
+      <div className="relative pr-[3.2rem] text-right">
+        <span
+          className={`absolute right-0 top-[0.9rem] h-px w-[3.05rem] animate-[aipoSignalSweep_760ms_ease-out] ${
+            isCyan
+              ? "bg-gradient-to-r from-transparent via-cyan-100 to-cyan-200 shadow-[0_0_16px_rgba(103,232,249,0.75)]"
+              : "bg-gradient-to-r from-transparent via-yellow-100 to-orange-300 shadow-[0_0_16px_rgba(255,154,69,0.82)]"
+          }`}
+        />
+        <span
+          className={`absolute right-[-0.25rem] top-[0.65rem] h-[0.56rem] w-[0.56rem] rounded-full border ${
+            isCyan
+              ? "border-cyan-100 bg-cyan-200 shadow-[0_0_18px_rgba(103,232,249,0.95)]"
+              : "border-orange-100 bg-orange-300 shadow-[0_0_18px_rgba(255,154,69,0.95)]"
+          }`}
+        />
+        <span
+          className={`mb-2 ml-auto block h-px w-[min(100%,22rem)] ${
+            isCyan
+              ? "bg-gradient-to-r from-transparent via-cyan-100/72 to-cyan-100"
+              : "bg-gradient-to-r from-transparent via-orange-100/72 to-orange-200"
+          }`}
+        />
+        <p className={`text-[0.66rem] font-black uppercase tracking-[0.34em] ${isCyan ? "text-cyan-100/88" : "text-orange-100/88"}`}>
+          {prompt.eyebrow}
+        </p>
+        <p className="mt-1 text-[clamp(1.2rem,1.45vw,1.65rem)] font-black leading-tight text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.12)]">
+          {prompt.title}
+        </p>
+        <p className="ml-auto mt-2 max-w-[29rem] text-[clamp(0.86rem,0.95vw,1.04rem)] font-bold leading-[1.55] text-zinc-200/92">
+          {prompt.body}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function pointerGlowStyle(color: string): CSSProperties {
   return { "--aipo-hover-color": color } as CSSProperties;
 }
@@ -400,20 +457,21 @@ function DesktopReferenceHome({
           </div>
 
           <div className="relative z-20 hidden justify-self-end lg:block">
+            <HomeDesktopActionHud prompt={actionPrompt} activeAction={activeAction} />
             <div className="relative w-[clamp(20rem,22vw,25.5rem)] overflow-hidden rounded-[1.65rem] border border-orange-300/36 bg-[linear-gradient(145deg,rgba(9,12,12,0.62),rgba(0,0,0,0.9)_58%,rgba(1,21,23,0.68))] p-[clamp(0.85rem,1vw,1rem)] shadow-[0_22px_70px_rgba(0,0,0,0.58),0_0_48px_rgba(255,106,0,0.13),inset_0_0_0_1px_rgba(255,255,255,0.04)] backdrop-blur-[3px]">
               <div className="pointer-events-none absolute inset-[0.75rem] rounded-[1.28rem] border border-orange-300/48" />
               <div className="pointer-events-none absolute inset-[1.35rem] rounded-[1rem] border border-cyan-100/12" />
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_21%,rgba(255,106,0,0.16),transparent_38%),radial-gradient(circle_at_88%_16%,rgba(103,232,249,0.11),transparent_36%)]" />
-              <div className="relative flex min-h-[clamp(28rem,48vh,34rem)] flex-col justify-between px-[clamp(1.1rem,1.3vw,1.55rem)] pb-[clamp(1.1rem,1.8vh,1.55rem)] pt-[clamp(2.1rem,4.2vh,3rem)]">
+              <div className="relative flex min-h-[clamp(30rem,52vh,36rem)] flex-col justify-between px-[clamp(1.1rem,1.3vw,1.55rem)] pb-[clamp(1.1rem,1.8vh,1.55rem)] pt-[clamp(2.1rem,4.2vh,3rem)]">
                 <div className="relative flex flex-1 items-center justify-center">
-                  <div className="absolute h-[clamp(13rem,15vw,17rem)] w-[clamp(13rem,15vw,17rem)] rounded-full border border-orange-300/14 bg-[repeating-radial-gradient(circle,rgba(255,255,255,0.1)_0_1px,transparent_1px_10px)]" />
-                  <div className="absolute h-[clamp(10rem,12vw,13rem)] w-[clamp(10rem,12vw,13rem)] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.12),rgba(255,106,0,0.1)_42%,transparent_70%)] blur-md" />
+                  <div className="absolute h-[clamp(12.5rem,14vw,16rem)] w-[clamp(12.5rem,14vw,16rem)] rounded-full border border-orange-300/14 bg-[repeating-radial-gradient(circle,rgba(255,255,255,0.1)_0_1px,transparent_1px_10px)]" />
+                  <div className="absolute h-[clamp(9.6rem,11.3vw,12.4rem)] w-[clamp(9.6rem,11.3vw,12.4rem)] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.12),rgba(255,106,0,0.1)_42%,transparent_70%)] blur-md" />
                   <Image
                     src={AIPOGER_BRAND_LOGO}
                     alt={t("home_logo_alt")}
                     width={188}
                     height={188}
-                    className="relative h-[clamp(9.5rem,11vw,13rem)] w-[clamp(9.5rem,11vw,13rem)] object-contain [filter:drop-shadow(0_0_30px_rgba(255,255,255,0.24))]"
+                    className="relative h-[clamp(9rem,10.3vw,12rem)] w-[clamp(9rem,10.3vw,12rem)] object-contain [filter:drop-shadow(0_0_30px_rgba(255,255,255,0.24))]"
                   />
                 </div>
                 <div className="grid gap-[clamp(0.75rem,1.4vh,1rem)]">
@@ -459,7 +517,6 @@ function DesktopReferenceHome({
                     <HonorIcon />
                     <span className={`text-[clamp(1rem,1.05vw,1.18rem)] font-black ${isZh ? zhDisplayClass : ""}`}>{t("watch_rank")}</span>
                   </Link>
-                  <HomeActionSignal key={activeAction} prompt={actionPrompt} />
                 </div>
               </div>
             </div>
@@ -853,7 +910,7 @@ export default function HomePage() {
         : { arena: "Arena", rank: "Honor", bar: "Bar" };
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-[#050505] px-4 py-4 text-[#f5f5f5] md:px-0 md:py-0">
+    <main className="aipo-home-no-select relative min-h-screen overflow-x-hidden bg-[#050505] px-4 py-4 text-[#f5f5f5] md:px-0 md:py-0">
       <div className="pointer-events-none absolute inset-0 bg-[#050505]" />
       <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_20%_28%,rgba(112,43,12,0.42),transparent_38%),radial-gradient(circle_at_82%_26%,rgba(0,59,66,0.24),transparent_36%),linear-gradient(90deg,rgba(8,6,5,0.96)_0%,rgba(4,4,4,0.98)_54%,rgba(0,8,10,0.94)_100%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.026] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:46px_46px]" />
