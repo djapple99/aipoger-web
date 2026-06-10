@@ -418,6 +418,20 @@ function getListenBarVisitorId() {
   return next;
 }
 
+function taipeiVoteDate(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  if (!year || !month || !day) return now.toISOString().slice(0, 10);
+  return `${year}-${month}-${day}`;
+}
+
 function albumDisplayLabel(value: string, isZh: boolean) {
   const cleanValue = value
     .replace(/^AI Music\s*\/\s*/i, "")
@@ -963,10 +977,12 @@ export default function ListenBarPage() {
     let mounted = true;
     const loadMyReactions = async () => {
       const trackIds = rotationTracks.map((track) => track.id).slice(0, LISTEN_BAR_TOTAL_ROTATION_LIMIT);
+      const voteDate = taipeiVoteDate();
       const { data, error } = await supabase
         .from("listen_bar_track_reactions")
-        .select("track_id, reaction")
+        .select("track_id, reaction, vote_date")
         .eq("user_id", userId)
+        .eq("vote_date", voteDate)
         .in("track_id", trackIds);
 
       if (!mounted) return;
@@ -975,9 +991,9 @@ export default function ListenBarPage() {
         return;
       }
 
-      const nextReactions = (data as Array<{ track_id?: string | null; reaction?: ReactionKey | null }> | null) ?? [];
+      const nextReactions = (data as Array<{ track_id?: string | null; reaction?: ReactionKey | null; vote_date?: string | null }> | null) ?? [];
       const reactions = nextReactions.reduce<Record<string, ReactionKey | null>>((acc, row) => {
-        if (row.track_id && row.reaction) acc[row.track_id] = row.reaction;
+        if (row.track_id && row.reaction && row.vote_date === voteDate) acc[row.track_id] = row.reaction;
         return acc;
       }, {});
       setMyReactions(reactions);
