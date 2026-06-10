@@ -84,6 +84,13 @@ type HomeInfoLink = {
 };
 
 type HomeStatItem = [string, string];
+type HomeActionKey = "battle" | "bar" | "rank";
+type HomeActionPrompt = {
+  eyebrow: string;
+  title: string;
+  body: string;
+  tone: "orange" | "cyan";
+};
 
 const DESKTOP_CARD_ICON_ASSETS = [
   "/home-art/card-turntable.webp",
@@ -99,6 +106,140 @@ const HOME_ACTION_GLOW = {
   bar: "rgba(255, 122, 28, 0.28)",
   rank: "rgba(103, 232, 249, 0.28)",
 } as const;
+
+function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt> {
+  if (lang === "ja") {
+    return {
+      battle: {
+        eyebrow: "DROP SIGNAL",
+        title: "AI Music Battle Arena",
+        body: "最強のDropを出し、挑戦を起こす。リスナーの投票で、どの曲がより刺さるかを試せる。",
+        tone: "orange",
+      },
+      bar: {
+        eyebrow: "SURVIVAL BAR",
+        title: "Bar Heartbreak",
+        body: "AI音楽を無料で途切れず聴ける。ここは楽曲の生存Bar、作品を出して愛心を集めよう。",
+        tone: "orange",
+      },
+      rank: {
+        eyebrow: "HONOR SIGNAL",
+        title: "Honor Board",
+        body: "リスナーに認められたAI音楽の記録。聴いて、自分の作品もここに立たせよう。",
+        tone: "cyan",
+      },
+    };
+  }
+
+  if (lang === "ko") {
+    return {
+      battle: {
+        eyebrow: "DROP SIGNAL",
+        title: "AI Music Battle Arena",
+        body: "가장 강한 Drop을 올리고 도전하세요. 청중 투표로 어떤 음악이 더 강하게 꽂히는지 확인할 수 있어요.",
+        tone: "orange",
+      },
+      bar: {
+        eyebrow: "SURVIVAL BAR",
+        title: "Bar Heartbreak",
+        body: "AI 음악을 무료로 끊김 없이 들을 수 있어요. 작품을 올리고 더 많은 하트를 모으는 생존 Bar입니다.",
+        tone: "orange",
+      },
+      rank: {
+        eyebrow: "HONOR SIGNAL",
+        title: "Honor Board",
+        body: "청중에게 인정받은 AI 음악 기록이 모이는 곳. 듣고, 당신의 작품도 이 무대에 올려보세요.",
+        tone: "cyan",
+      },
+    };
+  }
+
+  if (lang === "en") {
+    return {
+      battle: {
+        eyebrow: "DROP SIGNAL",
+        title: "AI Music Battle Arena",
+        body: "Upload your strongest Drop, start a challenge, and let listeners decide which track hits harder.",
+        tone: "orange",
+      },
+      bar: {
+        eyebrow: "SURVIVAL BAR",
+        title: "Bar Heartbreak",
+        body: "Listen to AI music nonstop for free. It is also a survival Bar where your song can earn more hearts.",
+        tone: "orange",
+      },
+      rank: {
+        eyebrow: "HONOR SIGNAL",
+        title: "Honor Board",
+        body: "Recognized AI music lives here. Listen in, and give your own work a shot at the board.",
+        tone: "cyan",
+      },
+    };
+  }
+
+  return {
+    battle: {
+      eyebrow: "DROP SIGNAL",
+      title: "AI 音樂鬥歌場",
+      body: "上傳你的最強 Drop，發起挑戰，讓聽眾投票決定誰更抓波。",
+      tone: "orange",
+    },
+    bar: {
+      eyebrow: "SURVIVAL BAR",
+      title: "傷心酒吧",
+      body: "免費不間斷聽 AI 音樂。這裡也是歌曲生存 Bar，上傳作品，收穫更多愛心。",
+      tone: "orange",
+    },
+    rank: {
+      eyebrow: "HONOR SIGNAL",
+      title: "榮譽榜",
+      body: "被聽眾認可的 AI 音樂都在這裡。來聽，也讓你的作品有機會站上來。",
+      tone: "cyan",
+    },
+  };
+}
+
+function HomeActionSignal({
+  prompt,
+  className = "",
+}: {
+  prompt: HomeActionPrompt;
+  className?: string;
+}) {
+  const isCyan = prompt.tone === "cyan";
+  return (
+    <div
+      className={`pointer-events-none relative overflow-hidden rounded-[0.8rem] border px-3.5 py-3 transition-colors duration-200 ${
+        isCyan
+          ? "border-cyan-200/30 bg-cyan-300/[0.045] shadow-[0_0_26px_rgba(103,232,249,0.1)]"
+          : "border-orange-300/34 bg-orange-500/[0.07] shadow-[0_0_30px_rgba(255,106,0,0.12)]"
+      } ${className}`}
+      aria-live="polite"
+    >
+      <span
+        className={`absolute left-0 top-0 h-px w-full origin-left animate-[aipoSignalSweep_900ms_ease-out] ${
+          isCyan
+            ? "bg-gradient-to-r from-cyan-200 via-white to-transparent shadow-[0_0_18px_rgba(103,232,249,0.8)]"
+            : "bg-gradient-to-r from-orange-300 via-yellow-100 to-transparent shadow-[0_0_18px_rgba(255,154,69,0.85)]"
+        }`}
+      />
+      <div className="flex items-start gap-3">
+        <span
+          className={`mt-1 h-2 w-2 shrink-0 rounded-full ${
+            isCyan ? "bg-cyan-200 shadow-[0_0_16px_rgba(103,232,249,0.9)]" : "bg-orange-300 shadow-[0_0_16px_rgba(255,154,69,0.9)]"
+          }`}
+        />
+        <div className="min-w-0">
+          <p className={`text-[0.58rem] font-black uppercase tracking-[0.22em] ${isCyan ? "text-cyan-100/78" : "text-orange-100/78"}`}>
+            {prompt.eyebrow}
+          </p>
+          <p className="mt-1 text-[0.92rem] font-black leading-tight text-white">{prompt.title}</p>
+          <p className="mt-1 text-[0.7rem] font-bold leading-[1.42] text-zinc-300">{prompt.body}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function pointerGlowStyle(color: string): CSSProperties {
   return { "--aipo-hover-color": color } as CSSProperties;
@@ -166,6 +307,20 @@ function DesktopReferenceHome({
   zhDisplayClass: string;
   heroChromeShadow: string;
 }) {
+  const [activeAction, setActiveAction] = useState<HomeActionKey>("battle");
+  const prompts = useMemo(() => homeActionPrompts(lang), [lang]);
+  const actionPrompt = prompts[activeAction];
+  const actionButtonClass = (key: HomeActionKey, base: string) =>
+    `${base} ${
+      activeAction === key
+        ? key === "battle"
+          ? "border-orange-100/80 shadow-[0_14px_30px_rgba(255,106,0,0.32),0_0_30px_rgba(255,106,0,0.22),inset_0_1px_0_rgba(255,255,255,0.24)]"
+          : key === "rank"
+          ? "border-cyan-100/70 bg-cyan-300/[0.12] shadow-[0_0_28px_rgba(103,232,249,0.2),inset_0_1px_0_rgba(255,255,255,0.12)]"
+          : "border-orange-200/70 bg-orange-500/[0.16] shadow-[0_0_30px_rgba(255,106,0,0.24),inset_0_1px_0_rgba(255,255,255,0.13)]"
+        : ""
+    }`;
+
   return (
     <section className="relative z-10 hidden min-h-screen w-full overflow-hidden md:flex">
       <div className="pointer-events-none absolute inset-0 bg-[#050505]" />
@@ -264,31 +419,47 @@ function DesktopReferenceHome({
                 <div className="grid gap-[clamp(0.75rem,1.4vh,1rem)]">
                   <Link
                     href={withLang("/battle")}
+                    onPointerEnter={() => setActiveAction("battle")}
+                    onFocus={() => setActiveAction("battle")}
                     onPointerMove={handlePointerGlowMove}
                     style={pointerGlowStyle(HOME_ACTION_GLOW.battle)}
-                    className="aipo-pointer-glow group flex min-h-[3.5rem] items-center justify-between rounded-[0.9rem] border border-orange-200/18 bg-[#ff6a00] px-[1.2rem] text-white shadow-[0_14px_30px_rgba(255,106,0,0.28),inset_0_1px_0_rgba(255,255,255,0.22)] transition hover:bg-[#ff8422] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+                    className={actionButtonClass(
+                      "battle",
+                      "aipo-pointer-glow group flex min-h-[3.5rem] items-center justify-between rounded-[0.9rem] border border-orange-200/18 bg-[#ff6a00] px-[1.2rem] text-white shadow-[0_14px_30px_rgba(255,106,0,0.28),inset_0_1px_0_rgba(255,255,255,0.22)] transition hover:bg-[#ff8422] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200",
+                    )}
                   >
                     <WatchIcon />
                     <span className={`text-[clamp(1rem,1.05vw,1.18rem)] font-black ${isZh ? zhDisplayClass : ""}`}>{t("btn_watch")}</span>
                   </Link>
                   <Link
                     href={withLang("/listen-bar")}
+                    onPointerEnter={() => setActiveAction("bar")}
+                    onFocus={() => setActiveAction("bar")}
                     onPointerMove={handlePointerGlowMove}
                     style={pointerGlowStyle(HOME_ACTION_GLOW.bar)}
-                    className="aipo-pointer-glow group flex min-h-[3.35rem] items-center justify-between rounded-[0.85rem] border border-white/16 bg-white/[0.055] px-[1.2rem] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-orange-300/52 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+                    className={actionButtonClass(
+                      "bar",
+                      "aipo-pointer-glow group flex min-h-[3.35rem] items-center justify-between rounded-[0.85rem] border border-white/16 bg-white/[0.055] px-[1.2rem] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-orange-300/52 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200",
+                    )}
                   >
                     <ListenBarIcon />
                     <span className={`text-[clamp(1rem,1.05vw,1.18rem)] font-black ${isZh ? zhDisplayClass : ""}`}>{t("btn_listen_bar")}</span>
                   </Link>
                   <Link
                     href={withLang("/rank")}
+                    onPointerEnter={() => setActiveAction("rank")}
+                    onFocus={() => setActiveAction("rank")}
                     onPointerMove={handlePointerGlowMove}
                     style={pointerGlowStyle(HOME_ACTION_GLOW.rank)}
-                    className="aipo-pointer-glow group flex min-h-[3.35rem] items-center justify-between rounded-[0.85rem] border border-white/16 bg-white/[0.055] px-[1.2rem] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-cyan-200/52 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
+                    className={actionButtonClass(
+                      "rank",
+                      "aipo-pointer-glow group flex min-h-[3.35rem] items-center justify-between rounded-[0.85rem] border border-white/16 bg-white/[0.055] px-[1.2rem] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-cyan-200/52 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100",
+                    )}
                   >
                     <HonorIcon />
                     <span className={`text-[clamp(1rem,1.05vw,1.18rem)] font-black ${isZh ? zhDisplayClass : ""}`}>{t("watch_rank")}</span>
                   </Link>
+                  <HomeActionSignal key={activeAction} prompt={actionPrompt} />
                 </div>
               </div>
             </div>
@@ -559,6 +730,8 @@ export default function HomePage() {
   const { t, lang } = useI18n();
   const [isSplashFinished, setIsSplashFinished] = useState(false);
   const [phase, setPhase] = useState<SplashPhase>("fadeIn");
+  const [activeMobileAction, setActiveMobileAction] = useState<HomeActionKey>("battle");
+  const homepageActionPrompts = useMemo(() => homeActionPrompts(lang), [lang]);
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -616,6 +789,7 @@ export default function HomePage() {
   const heroTextClass = "max-w-[min(62rem,calc(100vw-2.5rem))] whitespace-normal break-words md:overflow-hidden md:text-ellipsis md:whitespace-nowrap";
   const heroChromeShadow = "[text-shadow:0_2px_0_rgba(255,255,255,0.06),0_16px_32px_rgba(0,0,0,0.9),0_0_14px_rgba(255,106,0,0.08)]";
   const musicAnalysisHref = `/music-analysis?lang=${lang}`;
+  const mobileActionPrompt = homepageActionPrompts[activeMobileAction];
   const statItems: HomeStatItem[] = isZh
     ? [
         ["Open", "公開聽歌"],
@@ -749,9 +923,17 @@ export default function HomePage() {
             <Link
               href={withLang("/battle")}
               aria-label={t("btn_watch")}
+              onPointerEnter={() => setActiveMobileAction("battle")}
+              onFocus={() => setActiveMobileAction("battle")}
               className="group flex min-w-0 flex-col items-center gap-2 text-center text-white focus-visible:outline-none"
             >
-              <span className="flex h-[4.85rem] w-[4.85rem] items-center justify-center rounded-full border border-cyan-200/35 bg-cyan-300/12 shadow-[0_0_30px_rgba(103,232,249,0.12)] transition group-hover:border-cyan-100 group-hover:bg-cyan-300/18 group-focus-visible:ring-2 group-focus-visible:ring-cyan-100">
+              <span
+                className={`flex h-[4.85rem] w-[4.85rem] items-center justify-center rounded-full border shadow-[0_0_30px_rgba(103,232,249,0.12)] transition group-hover:border-cyan-100 group-hover:bg-cyan-300/18 group-focus-visible:ring-2 group-focus-visible:ring-cyan-100 ${
+                  activeMobileAction === "battle"
+                    ? "border-orange-200/80 bg-orange-500 text-black shadow-[0_0_34px_rgba(255,106,0,0.3)]"
+                    : "border-cyan-200/35 bg-cyan-300/12"
+                }`}
+              >
                 <WatchIcon />
               </span>
               <span className="text-[0.78rem] font-black leading-tight tracking-[0.04em]">{mobileActionLabels.arena}</span>
@@ -759,9 +941,17 @@ export default function HomePage() {
             <Link
               href={withLang("/rank")}
               aria-label={t("watch_rank")}
+              onPointerEnter={() => setActiveMobileAction("rank")}
+              onFocus={() => setActiveMobileAction("rank")}
               className="group flex min-w-0 flex-col items-center gap-2 text-center text-white focus-visible:outline-none"
             >
-              <span className="flex h-[4.85rem] w-[4.85rem] items-center justify-center rounded-full border border-orange-300/60 bg-orange-500 text-black shadow-[0_0_32px_rgba(255,106,0,0.24)] transition group-hover:bg-orange-300 group-focus-visible:ring-2 group-focus-visible:ring-orange-200">
+              <span
+                className={`flex h-[4.85rem] w-[4.85rem] items-center justify-center rounded-full border shadow-[0_0_32px_rgba(255,106,0,0.24)] transition group-hover:bg-orange-300 group-focus-visible:ring-2 group-focus-visible:ring-orange-200 ${
+                  activeMobileAction === "rank"
+                    ? "border-cyan-100/75 bg-cyan-300 text-black shadow-[0_0_34px_rgba(103,232,249,0.24)]"
+                    : "border-cyan-200/24 bg-white/[0.055] text-white"
+                }`}
+              >
                 <HonorIcon />
               </span>
               <span className="text-[0.78rem] font-black leading-tight tracking-[0.04em]">{mobileActionLabels.rank}</span>
@@ -769,14 +959,28 @@ export default function HomePage() {
             <Link
               href={withLang("/listen-bar")}
               aria-label={t("btn_listen_bar")}
+              onPointerEnter={() => setActiveMobileAction("bar")}
+              onFocus={() => setActiveMobileAction("bar")}
               className="group flex min-w-0 flex-col items-center gap-2 text-center text-white focus-visible:outline-none"
             >
-              <span className="flex h-[4.85rem] w-[4.85rem] items-center justify-center rounded-full border border-cyan-200/24 bg-white/[0.055] shadow-[0_0_28px_rgba(255,255,255,0.05)] transition group-hover:border-cyan-200 group-hover:bg-white/[0.1] group-focus-visible:ring-2 group-focus-visible:ring-cyan-100">
+              <span
+                className={`flex h-[4.85rem] w-[4.85rem] items-center justify-center rounded-full border shadow-[0_0_28px_rgba(255,255,255,0.05)] transition group-hover:border-cyan-200 group-hover:bg-white/[0.1] group-focus-visible:ring-2 group-focus-visible:ring-cyan-100 ${
+                  activeMobileAction === "bar"
+                    ? "border-orange-200/75 bg-orange-500/22 text-orange-50 shadow-[0_0_32px_rgba(255,106,0,0.22)]"
+                    : "border-cyan-200/24 bg-white/[0.055]"
+                }`}
+              >
                 <ListenBarIcon />
               </span>
               <span className="text-[0.78rem] font-black leading-tight tracking-[0.04em]">{mobileActionLabels.bar}</span>
             </Link>
           </div>
+
+          <HomeActionSignal
+            key={`mobile-${activeMobileAction}`}
+            prompt={mobileActionPrompt}
+            className="mt-4 md:hidden"
+          />
 
           <p
             className={`mt-3 hidden ${heroTextClass} text-[clamp(1.05rem,5vw,1.32rem)] leading-[1.34] md:block md:text-[clamp(1.18rem,1.52vw,1.78rem)] md:leading-[1.42] ${heroAccentClass} ${
