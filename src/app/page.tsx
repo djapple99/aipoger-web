@@ -167,141 +167,152 @@ function DesktopReferenceHome({
   heroChromeShadow: string;
 }) {
   return (
-    <section className="relative z-10 hidden min-h-screen w-full justify-center overflow-hidden md:flex">
-      <div className="relative h-[720px] w-[1280px] shrink-0 origin-top overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 bg-[#050505]" />
-        <Image
-          src="/home-art/aipoger-hero-depth.png"
-          alt=""
-          fill
-          priority
-          sizes="1280px"
-          className="pointer-events-none absolute inset-0 object-cover opacity-[0.82]"
-        />
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.1)_0%,rgba(0,0,0,0.12)_42%,rgba(0,0,0,0.2)_100%),radial-gradient(circle_at_20%_54%,rgba(0,0,0,0.08),rgba(0,0,0,0.55)_48%,transparent_76%)]" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_27%,rgba(95,34,10,0.28),transparent_34%),radial-gradient(circle_at_88%_30%,rgba(0,55,58,0.14),transparent_34%)]" />
-        <div className="pointer-events-none absolute inset-0 opacity-[0.025] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:44px_44px]" />
-        <div className="pointer-events-none absolute left-[235px] top-0 h-[118px] w-[570px] border-b border-r border-orange-300/10" />
-        <div className="pointer-events-none absolute left-0 top-[118px] h-px w-[615px] bg-gradient-to-r from-transparent via-orange-300/58 to-transparent" />
-        <div className="pointer-events-none absolute left-[26px] top-[148px] h-[382px] w-px rounded-full bg-gradient-to-b from-transparent via-orange-300/60 to-transparent" />
-        <div className="pointer-events-none absolute left-[943px] top-[70px] h-[484px] w-[316px] rounded-[28px] border border-orange-300/20" />
-        <div className="pointer-events-none absolute right-[28px] top-[88px] h-[440px] w-px bg-gradient-to-b from-transparent via-orange-300/42 to-transparent" />
-        <Image
-          src={AIPOGER_BRAND_LOGO}
-          alt={t("home_logo_alt")}
-          width={70}
-          height={70}
-          priority
-          className="absolute left-[47px] top-[89px] h-[58px] w-[58px] rounded-full bg-black object-contain shadow-[0_0_22px_rgba(255,106,0,0.16)]"
-        />
-        <div className="pointer-events-none absolute left-[104px] top-[117px] h-px w-[383px] bg-gradient-to-r from-orange-300/62 via-white/18 to-transparent" />
+    <section className="relative z-10 hidden min-h-screen w-full overflow-hidden md:flex">
+      <div className="pointer-events-none absolute inset-0 bg-[#050505]" />
+      <Image
+        src="/home-art/aipoger-hero-depth.png"
+        alt=""
+        fill
+        priority
+        sizes="(min-width: 768px) 100vw, 1px"
+        className="pointer-events-none absolute inset-0 scale-[1.04] object-cover object-center opacity-[0.74]"
+      />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.82)_0%,rgba(0,0,0,0.38)_23%,rgba(0,0,0,0.1)_54%,rgba(0,0,0,0.62)_100%),linear-gradient(180deg,rgba(0,0,0,0.45)_0%,rgba(0,0,0,0.02)_34%,rgba(0,0,0,0.72)_100%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_24%_36%,rgba(255,106,0,0.18),transparent_34%),radial-gradient(circle_at_78%_25%,rgba(76,217,230,0.12),transparent_32%),radial-gradient(ellipse_at_50%_102%,rgba(255,106,0,0.18),transparent_48%)]" />
+      <div className="pointer-events-none absolute inset-0 opacity-[0.028] [background-image:linear-gradient(rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.12)_1px,transparent_1px)] [background-size:48px_48px]" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[28vh] bg-gradient-to-t from-black via-black/70 to-transparent" />
 
-        <div className="absolute left-[55px] top-[135px] z-10 w-[760px]">
-          <p
-            className={`origin-left skew-x-[-8deg] text-[150px] font-black uppercase leading-[0.82] text-[#fff8ed] ${heroChromeShadow}`}
-          >
-            AIPOGER
-          </p>
-          <p
-            className={`mt-5 text-[28px] font-black leading-none text-[#f28a2f] drop-shadow-[0_0_12px_rgba(255,106,0,0.2)] ${
-              isZh ? "font-serif" : fontGlowSans.className
-            }`}
-          >
-            {heroLine}
-          </p>
-          <h1
-            className={`mt-6 text-[72px] font-black leading-[0.9] text-[#fff8ed] ${heroChromeShadow} ${
-              lang === "en" ? fontRighteous.className : fontGlowSans.className
-            }`}
-          >
-            {heroTitle}
-          </h1>
-          <p
-            className={`mt-5 text-[22px] font-black leading-none text-[#f28a2f] drop-shadow-[0_0_12px_rgba(255,106,0,0.18)] ${
-              lang === "en" ? fontRighteous.className : fontGlowSans.className
-            }`}
-          >
-            {heroCopy}
-          </p>
+      <div className="relative mx-auto flex min-h-screen w-full max-w-[1840px] flex-col px-[clamp(4.25rem,7.2vw,8.5rem)] pb-[clamp(2rem,4vh,3.35rem)] pt-[clamp(5.7rem,8.2vh,7.1rem)]">
+        <div className="pointer-events-none absolute left-[clamp(4.25rem,7.2vw,8.5rem)] right-[clamp(4.25rem,7.2vw,8.5rem)] top-[clamp(5.25rem,7.4vh,6.5rem)] h-px bg-gradient-to-r from-transparent via-orange-300/55 to-transparent" />
+        <div className="pointer-events-none absolute left-[clamp(4.25rem,7.2vw,8.5rem)] top-[clamp(7.1rem,11vh,9.2rem)] h-[47vh] w-px rounded-full bg-gradient-to-b from-transparent via-orange-300/42 to-transparent" />
+        <div className="pointer-events-none absolute right-[clamp(4.25rem,7.2vw,8.5rem)] top-[clamp(6.9rem,10vh,8.4rem)] h-[50vh] w-px rounded-full bg-gradient-to-b from-transparent via-cyan-200/28 to-transparent" />
 
-          <div className="mt-6 grid h-[60px] w-[690px] grid-cols-3 overflow-hidden rounded-[12px] border border-orange-300/28 bg-black/72 shadow-[0_0_20px_rgba(255,106,0,0.08)]">
-            {statItems.map(([value, label], index) => (
-              <div key={value} className="relative border-r border-white/16 px-[27px] py-[10px] last:border-r-0">
-                <span className="absolute right-6 top-[26px] h-[7px] w-[7px] rounded-full bg-orange-300 shadow-[0_0_12px_rgba(255,166,74,0.85)]" />
-                <p className="text-[22px] font-black leading-none text-white">{value}</p>
-                <p className="mt-2 text-[11px] leading-none text-zinc-500">{label}</p>
-                {index > 0 && <span className="absolute left-0 top-[12px] h-9 w-px bg-white/28" />}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <DesktopWaveLine className="left-[87px] top-[532px] w-[150px] text-white/55" />
-        <DesktopWaveLine className="left-[367px] top-[537px] w-[190px] text-orange-300/62" />
-        <DesktopWaveLine className="left-[746px] top-[539px] w-[120px] text-orange-300/62" />
-        <div className="pointer-events-none absolute left-[26px] top-[555px] h-px w-[1205px] bg-gradient-to-r from-transparent via-orange-300/35 to-transparent" />
-
-        <div className="absolute right-[50px] top-[78px] z-20 h-[478px] w-[286px] rounded-[27px] border border-orange-300/42 bg-[linear-gradient(145deg,rgba(9,12,12,0.86),rgba(0,0,0,0.98)_55%,rgba(1,21,23,0.86))] p-[14px] shadow-[0_18px_56px_rgba(0,0,0,0.72),0_0_38px_rgba(255,106,0,0.15)]">
-          <div className="absolute inset-[14px] rounded-[22px] border border-orange-300/58" />
-          <div className="absolute inset-[23px] rounded-[18px] border border-orange-300/22" />
-          <div className="relative flex h-full flex-col px-[18px] pb-[19px] pt-[37px]">
-            <div className="relative flex h-[195px] items-center justify-center">
-              <div className="absolute h-[183px] w-[183px] rounded-full border border-orange-300/14 bg-[repeating-radial-gradient(circle,rgba(255,255,255,0.1)_0_1px,transparent_1px_10px)]" />
-              <div className="absolute h-[138px] w-[138px] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.12),rgba(255,106,0,0.1)_42%,transparent_70%)] blur-md" />
+        <div className="grid flex-1 items-center gap-[clamp(2rem,4vw,5.5rem)] lg:grid-cols-[minmax(0,1fr)_minmax(20rem,25.5rem)]">
+          <div className="relative z-10 min-w-0 pt-[clamp(0.5rem,2vh,1.75rem)]">
+            <div className="mb-3 flex w-[min(42rem,62vw)] items-center gap-4">
               <Image
                 src={AIPOGER_BRAND_LOGO}
                 alt={t("home_logo_alt")}
-                width={188}
-                height={188}
-                className="relative h-[142px] w-[142px] object-contain [filter:drop-shadow(0_0_28px_rgba(255,255,255,0.25))]"
+                width={70}
+                height={70}
+                priority
+                className="h-[clamp(3rem,4.1vw,4.35rem)] w-[clamp(3rem,4.1vw,4.35rem)] shrink-0 rounded-full bg-black/78 object-contain shadow-[0_0_24px_rgba(255,106,0,0.18)]"
               />
+              <div className="h-px flex-1 bg-gradient-to-r from-orange-300/70 via-white/16 to-transparent" />
             </div>
-            <div className="mt-[10px] grid gap-[12px]">
-              <Link
-                href={withLang("/battle")}
-                onPointerMove={handlePointerGlowMove}
-                style={pointerGlowStyle(HOME_ACTION_GLOW.battle)}
-                className="aipo-pointer-glow group flex h-[52px] items-center justify-between rounded-[10px] border border-orange-200/18 bg-[#ff6a00] px-[18px] text-white shadow-[0_12px_26px_rgba(255,106,0,0.28),inset_0_1px_0_rgba(255,255,255,0.22)] transition hover:bg-[#ff8422] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
-              >
-                <WatchIcon />
-                <span className={`text-[16px] font-black ${isZh ? zhDisplayClass : ""}`}>{t("btn_watch")}</span>
-              </Link>
-              <Link
-                href={withLang("/listen-bar")}
-                onPointerMove={handlePointerGlowMove}
-                style={pointerGlowStyle(HOME_ACTION_GLOW.bar)}
-                className="aipo-pointer-glow group flex h-[49px] items-center justify-between rounded-[9px] border border-white/18 bg-white/[0.055] px-[18px] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-orange-300/52 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
-              >
-                <ListenBarIcon />
-                <span className={`text-[16px] font-black ${isZh ? zhDisplayClass : ""}`}>{t("btn_listen_bar")}</span>
-              </Link>
-              <Link
-                href={withLang("/rank")}
-                onPointerMove={handlePointerGlowMove}
-                style={pointerGlowStyle(HOME_ACTION_GLOW.rank)}
-                className="aipo-pointer-glow group flex h-[49px] items-center justify-between rounded-[9px] border border-white/18 bg-white/[0.055] px-[18px] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-cyan-200/52 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
-              >
-                <HonorIcon />
-                <span className={`text-[16px] font-black ${isZh ? zhDisplayClass : ""}`}>{t("watch_rank")}</span>
-              </Link>
+
+            <p
+              className={`origin-left skew-x-[-8deg] text-[clamp(7.2rem,9.15vw,11.35rem)] font-black uppercase leading-[0.78] text-[#fff8ed] ${heroChromeShadow}`}
+            >
+              AIPOGER
+            </p>
+            <p
+              className={`mt-[clamp(1rem,2vh,1.45rem)] text-[clamp(1.5rem,1.85vw,2.15rem)] font-black leading-tight text-[#f28a2f] drop-shadow-[0_0_13px_rgba(255,106,0,0.24)] ${
+                isZh ? "font-serif" : fontGlowSans.className
+              }`}
+            >
+              {heroLine}
+            </p>
+            <h1
+              className={`mt-[clamp(1rem,2.1vh,1.55rem)] text-[clamp(4rem,5.4vw,7rem)] font-black leading-[0.94] text-[#fff8ed] ${heroChromeShadow} ${
+                lang === "en" ? fontRighteous.className : fontGlowSans.className
+              }`}
+            >
+              {heroTitle}
+            </h1>
+            <p
+              className={`mt-[clamp(1rem,2vh,1.45rem)] max-w-[58rem] text-[clamp(1.25rem,1.45vw,1.75rem)] font-black leading-tight text-[#f28a2f] drop-shadow-[0_0_13px_rgba(255,106,0,0.22)] ${
+                lang === "en" ? fontRighteous.className : fontGlowSans.className
+              }`}
+            >
+              {heroCopy}
+            </p>
+
+            <div className="mt-[clamp(1.4rem,2.8vh,2rem)] grid w-[min(45rem,66vw)] grid-cols-3 overflow-hidden rounded-[14px] border border-orange-300/24 bg-black/56 shadow-[0_20px_68px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[2px]">
+              {statItems.map(([value, label], index) => (
+                <div key={value} className="relative border-r border-white/14 px-[clamp(1rem,1.65vw,1.75rem)] py-[clamp(0.72rem,1.25vh,1rem)] last:border-r-0">
+                  <span className="absolute right-[clamp(1rem,1.55vw,1.6rem)] top-1/2 h-[7px] w-[7px] -translate-y-1/2 rounded-full bg-orange-300 shadow-[0_0_14px_rgba(255,166,74,0.9)]" />
+                  <p className="text-[clamp(1.35rem,1.65vw,1.85rem)] font-black leading-none text-white">{value}</p>
+                  <p className="mt-2 text-[clamp(0.64rem,0.74vw,0.8rem)] leading-none text-zinc-500">{label}</p>
+                  {index > 0 && <span className="absolute left-0 top-[18%] h-[64%] w-px bg-white/24" />}
+                </div>
+              ))}
+            </div>
+
+            <DesktopWaveLine className="left-[2.5rem] top-[calc(100%+1.4rem)] w-[11rem] text-white/42" />
+            <DesktopWaveLine className="left-[24rem] top-[calc(100%+1.6rem)] w-[15rem] text-orange-300/52" />
+            <DesktopWaveLine className="left-[47rem] top-[calc(100%+1.5rem)] w-[10rem] text-cyan-100/42" />
+          </div>
+
+          <div className="relative z-20 hidden justify-self-end lg:block">
+            <div className="relative w-[clamp(20rem,22vw,25.5rem)] overflow-hidden rounded-[1.65rem] border border-orange-300/36 bg-[linear-gradient(145deg,rgba(9,12,12,0.62),rgba(0,0,0,0.9)_58%,rgba(1,21,23,0.68))] p-[clamp(0.85rem,1vw,1rem)] shadow-[0_22px_70px_rgba(0,0,0,0.58),0_0_48px_rgba(255,106,0,0.13),inset_0_0_0_1px_rgba(255,255,255,0.04)] backdrop-blur-[3px]">
+              <div className="pointer-events-none absolute inset-[0.75rem] rounded-[1.28rem] border border-orange-300/48" />
+              <div className="pointer-events-none absolute inset-[1.35rem] rounded-[1rem] border border-cyan-100/12" />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_21%,rgba(255,106,0,0.16),transparent_38%),radial-gradient(circle_at_88%_16%,rgba(103,232,249,0.11),transparent_36%)]" />
+              <div className="relative flex min-h-[clamp(28rem,48vh,34rem)] flex-col justify-between px-[clamp(1.1rem,1.3vw,1.55rem)] pb-[clamp(1.1rem,1.8vh,1.55rem)] pt-[clamp(2.1rem,4.2vh,3rem)]">
+                <div className="relative flex flex-1 items-center justify-center">
+                  <div className="absolute h-[clamp(13rem,15vw,17rem)] w-[clamp(13rem,15vw,17rem)] rounded-full border border-orange-300/14 bg-[repeating-radial-gradient(circle,rgba(255,255,255,0.1)_0_1px,transparent_1px_10px)]" />
+                  <div className="absolute h-[clamp(10rem,12vw,13rem)] w-[clamp(10rem,12vw,13rem)] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.12),rgba(255,106,0,0.1)_42%,transparent_70%)] blur-md" />
+                  <Image
+                    src={AIPOGER_BRAND_LOGO}
+                    alt={t("home_logo_alt")}
+                    width={188}
+                    height={188}
+                    className="relative h-[clamp(9.5rem,11vw,13rem)] w-[clamp(9.5rem,11vw,13rem)] object-contain [filter:drop-shadow(0_0_30px_rgba(255,255,255,0.24))]"
+                  />
+                </div>
+                <div className="grid gap-[clamp(0.75rem,1.4vh,1rem)]">
+                  <Link
+                    href={withLang("/battle")}
+                    onPointerMove={handlePointerGlowMove}
+                    style={pointerGlowStyle(HOME_ACTION_GLOW.battle)}
+                    className="aipo-pointer-glow group flex min-h-[3.5rem] items-center justify-between rounded-[0.9rem] border border-orange-200/18 bg-[#ff6a00] px-[1.2rem] text-white shadow-[0_14px_30px_rgba(255,106,0,0.28),inset_0_1px_0_rgba(255,255,255,0.22)] transition hover:bg-[#ff8422] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+                  >
+                    <WatchIcon />
+                    <span className={`text-[clamp(1rem,1.05vw,1.18rem)] font-black ${isZh ? zhDisplayClass : ""}`}>{t("btn_watch")}</span>
+                  </Link>
+                  <Link
+                    href={withLang("/listen-bar")}
+                    onPointerMove={handlePointerGlowMove}
+                    style={pointerGlowStyle(HOME_ACTION_GLOW.bar)}
+                    className="aipo-pointer-glow group flex min-h-[3.35rem] items-center justify-between rounded-[0.85rem] border border-white/16 bg-white/[0.055] px-[1.2rem] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-orange-300/52 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+                  >
+                    <ListenBarIcon />
+                    <span className={`text-[clamp(1rem,1.05vw,1.18rem)] font-black ${isZh ? zhDisplayClass : ""}`}>{t("btn_listen_bar")}</span>
+                  </Link>
+                  <Link
+                    href={withLang("/rank")}
+                    onPointerMove={handlePointerGlowMove}
+                    style={pointerGlowStyle(HOME_ACTION_GLOW.rank)}
+                    className="aipo-pointer-glow group flex min-h-[3.35rem] items-center justify-between rounded-[0.85rem] border border-white/16 bg-white/[0.055] px-[1.2rem] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-cyan-200/52 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
+                  >
+                    <HonorIcon />
+                    <span className={`text-[clamp(1rem,1.05vw,1.18rem)] font-black ${isZh ? zhDisplayClass : ""}`}>{t("watch_rank")}</span>
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="absolute left-[27px] top-[575px] z-10 grid h-[132px] w-[1205px] grid-cols-5 gap-[8px]">
-          {infoLinks.map((item, index) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="group relative overflow-hidden rounded-[10px] border border-orange-300/20 bg-black/72 px-[20px] pb-[10px] pt-[14px] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:border-orange-300/62 hover:bg-orange-500/[0.075] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
-            >
-              <p className="h-[34px] text-[14px] font-black leading-[17px] text-zinc-100 group-hover:text-orange-100">
-                {item.title}
-              </p>
-              <p className="mt-[4px] h-[24px] overflow-hidden text-[10px] leading-[12px] text-zinc-500">{item.desc}</p>
-              <DesktopCardIcon index={index} />
-            </Link>
-          ))}
+        <div className="relative z-10 mt-[clamp(1rem,2.4vh,1.8rem)] border-t border-orange-300/22 pt-[clamp(0.9rem,1.7vh,1.3rem)]">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-300/48 to-transparent" />
+          <div className="grid grid-cols-5 gap-[clamp(0.55rem,0.85vw,0.9rem)]">
+            {infoLinks.map((item, index) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="group relative min-h-[clamp(7rem,13vh,9.2rem)] overflow-hidden rounded-[0.95rem] border border-orange-300/18 bg-black/46 px-[clamp(1rem,1.15vw,1.35rem)] pb-[0.7rem] pt-[clamp(0.9rem,1.35vh,1.1rem)] shadow-[0_18px_58px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.045)] backdrop-blur-[2px] transition hover:border-orange-300/58 hover:bg-orange-500/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
+              >
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/16 to-transparent" />
+                <p className="relative z-10 min-h-[2.25rem] text-[clamp(0.88rem,0.93vw,1.05rem)] font-black leading-[1.18] text-zinc-100 group-hover:text-orange-100">
+                  {item.title}
+                </p>
+                <p className="relative z-10 mt-[0.35rem] line-clamp-2 text-[clamp(0.65rem,0.7vw,0.78rem)] leading-[1.25] text-zinc-500">{item.desc}</p>
+                <DesktopCardIcon index={index} />
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
     </section>
