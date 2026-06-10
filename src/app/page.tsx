@@ -187,7 +187,7 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
     bar: {
       eyebrow: "SURVIVAL BAR",
       title: "傷心酒吧",
-      body: ["免費不間斷聽 AI 音樂", "這裡也是歌曲生存 Bar", "上傳作品 收穫更多愛心"],
+      body: ["免費不間斷聽 AI 音樂", "歌曲生存 Bar 上傳作品 收穫更多愛心"],
       tone: "orange",
     },
     rank: {
@@ -275,10 +275,10 @@ function HomeDesktopActionHud({
   const isCyan = prompt.tone === "cyan";
   const topClass =
     activeAction === "battle"
-      ? "top-[58%]"
+      ? "top-[62%]"
       : activeAction === "bar"
-        ? "top-[70%]"
-        : "top-[82%]";
+        ? "top-[75%]"
+        : "top-[88%]";
 
   return (
     <div
@@ -286,21 +286,57 @@ function HomeDesktopActionHud({
       className={`pointer-events-none absolute right-[calc(100%+0.85rem)] ${topClass} hidden w-[clamp(18rem,25vw,30rem)] -translate-y-1/2 select-none lg:block`}
       aria-live="polite"
     >
-      <div className="relative pr-[3.2rem] text-right">
-        <span
-          className={`absolute right-0 top-[0.9rem] h-px w-[3.05rem] animate-[aipoSignalSweep_760ms_ease-out] ${
-            isCyan
-              ? "bg-gradient-to-r from-transparent via-cyan-100 to-cyan-200 shadow-[0_0_16px_rgba(103,232,249,0.75)]"
-              : "bg-gradient-to-r from-transparent via-yellow-100 to-orange-300 shadow-[0_0_16px_rgba(255,154,69,0.82)]"
-          }`}
-        />
-        <span
-          className={`absolute right-[-0.25rem] top-[0.65rem] h-[0.56rem] w-[0.56rem] rounded-full border ${
-            isCyan
-              ? "border-cyan-100 bg-cyan-200 shadow-[0_0_18px_rgba(103,232,249,0.95)]"
-              : "border-orange-100 bg-orange-300 shadow-[0_0_18px_rgba(255,154,69,0.95)]"
-          }`}
-        />
+      <div className="relative pr-[5.7rem] text-right">
+        <svg
+          viewBox="0 0 132 76"
+          aria-hidden="true"
+          className="absolute right-[-0.4rem] top-1/2 h-[4.75rem] w-[8.25rem] -translate-y-1/2 overflow-visible"
+        >
+          <defs>
+            <filter id={`homeHudGlow-${activeAction}`} x="-30%" y="-120%" width="160%" height="340%">
+              <feGaussianBlur stdDeviation="2.4" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          <polyline
+            points="4 14 60 14 84 38 126 38"
+            fill="none"
+            stroke={isCyan ? "rgba(165, 243, 252, 0.94)" : "rgba(255, 213, 128, 0.94)"}
+            strokeWidth="1.45"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            filter={`url(#homeHudGlow-${activeAction})`}
+            className="animate-[aipoSignalSweep_760ms_ease-out]"
+          />
+          <polyline
+            points="4 14 60 14 84 38 126 38"
+            fill="none"
+            stroke={isCyan ? "rgba(103, 232, 249, 0.18)" : "rgba(255, 106, 0, 0.18)"}
+            strokeWidth="7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <circle
+            cx="128"
+            cy="38"
+            r="5.2"
+            fill={isCyan ? "rgb(165, 243, 252)" : "rgb(255, 177, 94)"}
+            stroke={isCyan ? "rgba(236, 254, 255, 0.9)" : "rgba(255, 237, 213, 0.9)"}
+            strokeWidth="1.6"
+            filter={`url(#homeHudGlow-${activeAction})`}
+          />
+          <circle
+            cx="128"
+            cy="38"
+            r="9.2"
+            fill="none"
+            stroke={isCyan ? "rgba(103, 232, 249, 0.22)" : "rgba(255, 106, 0, 0.24)"}
+            strokeWidth="1"
+          />
+        </svg>
         <span
           className={`mb-2 ml-auto block h-px w-[min(100%,22rem)] ${
             isCyan
@@ -311,8 +347,8 @@ function HomeDesktopActionHud({
         <p
           className={`text-[0.66rem] font-black uppercase tracking-[0.34em] ${
             isCyan
-              ? "text-cyan-100/88 [text-shadow:0_0_10px_rgba(103,232,249,0.62),0_0_24px_rgba(103,232,249,0.22)]"
-              : "text-orange-100/88 [text-shadow:0_0_10px_rgba(255,154,69,0.62),0_0_24px_rgba(255,106,0,0.22)]"
+              ? "text-cyan-50 [text-shadow:0_0_7px_rgba(255,255,255,0.72),0_0_15px_rgba(103,232,249,0.72),0_0_34px_rgba(103,232,249,0.34)]"
+              : "text-orange-50 [text-shadow:0_0_7px_rgba(255,255,255,0.62),0_0_15px_rgba(255,177,94,0.72),0_0_34px_rgba(255,106,0,0.34)]"
           }`}
         >
           {prompt.eyebrow}
@@ -320,17 +356,17 @@ function HomeDesktopActionHud({
         <p
           className={`mt-1 text-[clamp(1.2rem,1.45vw,1.65rem)] font-black leading-tight text-white ${
             isCyan
-              ? "[text-shadow:0_0_14px_rgba(255,255,255,0.3),0_0_28px_rgba(103,232,249,0.34),0_2px_10px_rgba(0,0,0,0.82)]"
-              : "[text-shadow:0_0_14px_rgba(255,255,255,0.28),0_0_28px_rgba(255,106,0,0.34),0_2px_10px_rgba(0,0,0,0.82)]"
+              ? "[text-shadow:0_0_8px_rgba(255,255,255,0.66),0_0_22px_rgba(103,232,249,0.44),0_0_40px_rgba(103,232,249,0.22),0_2px_12px_rgba(0,0,0,0.9)]"
+              : "[text-shadow:0_0_8px_rgba(255,255,255,0.58),0_0_22px_rgba(255,154,69,0.46),0_0_40px_rgba(255,106,0,0.22),0_2px_12px_rgba(0,0,0,0.9)]"
           }`}
         >
           {prompt.title}
         </p>
         <p
-          className={`ml-auto mt-2 max-w-[29rem] text-[clamp(0.86rem,0.95vw,1.04rem)] font-bold leading-[1.55] text-zinc-200/92 ${
+          className={`ml-auto mt-2 max-w-[29rem] text-[clamp(0.86rem,0.95vw,1.04rem)] font-bold leading-[1.55] text-white/95 ${
             isCyan
-              ? "[text-shadow:0_0_10px_rgba(103,232,249,0.24),0_2px_8px_rgba(0,0,0,0.86)]"
-              : "[text-shadow:0_0_10px_rgba(255,154,69,0.22),0_2px_8px_rgba(0,0,0,0.86)]"
+              ? "[text-shadow:0_0_7px_rgba(255,255,255,0.5),0_0_18px_rgba(103,232,249,0.34),0_2px_9px_rgba(0,0,0,0.88)]"
+              : "[text-shadow:0_0_7px_rgba(255,255,255,0.44),0_0_18px_rgba(255,154,69,0.34),0_2px_9px_rgba(0,0,0,0.88)]"
           }`}
         >
           <HomePromptBody body={prompt.body} lineClassName="whitespace-nowrap" />
