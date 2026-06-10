@@ -284,13 +284,31 @@ function HomeDesktopActionHud({
               : "bg-gradient-to-r from-transparent via-orange-100/72 to-orange-200"
           }`}
         />
-        <p className={`text-[0.66rem] font-black uppercase tracking-[0.34em] ${isCyan ? "text-cyan-100/88" : "text-orange-100/88"}`}>
+        <p
+          className={`text-[0.66rem] font-black uppercase tracking-[0.34em] ${
+            isCyan
+              ? "text-cyan-100/88 [text-shadow:0_0_10px_rgba(103,232,249,0.62),0_0_24px_rgba(103,232,249,0.22)]"
+              : "text-orange-100/88 [text-shadow:0_0_10px_rgba(255,154,69,0.62),0_0_24px_rgba(255,106,0,0.22)]"
+          }`}
+        >
           {prompt.eyebrow}
         </p>
-        <p className="mt-1 text-[clamp(1.2rem,1.45vw,1.65rem)] font-black leading-tight text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.12)]">
+        <p
+          className={`mt-1 text-[clamp(1.2rem,1.45vw,1.65rem)] font-black leading-tight text-white ${
+            isCyan
+              ? "[text-shadow:0_0_14px_rgba(255,255,255,0.3),0_0_28px_rgba(103,232,249,0.34),0_2px_10px_rgba(0,0,0,0.82)]"
+              : "[text-shadow:0_0_14px_rgba(255,255,255,0.28),0_0_28px_rgba(255,106,0,0.34),0_2px_10px_rgba(0,0,0,0.82)]"
+          }`}
+        >
           {prompt.title}
         </p>
-        <p className="ml-auto mt-2 max-w-[29rem] text-[clamp(0.86rem,0.95vw,1.04rem)] font-bold leading-[1.55] text-zinc-200/92">
+        <p
+          className={`ml-auto mt-2 max-w-[29rem] text-[clamp(0.86rem,0.95vw,1.04rem)] font-bold leading-[1.55] text-zinc-200/92 ${
+            isCyan
+              ? "[text-shadow:0_0_10px_rgba(103,232,249,0.24),0_2px_8px_rgba(0,0,0,0.86)]"
+              : "[text-shadow:0_0_10px_rgba(255,154,69,0.22),0_2px_8px_rgba(0,0,0,0.86)]"
+          }`}
+        >
           {prompt.body}
         </p>
       </div>
@@ -1123,15 +1141,24 @@ export default function HomePage() {
       <section className="relative z-10 mx-auto w-full max-w-[96rem] pb-5 pt-7 md:hidden">
         <div className="border-t border-white/10 pt-5">
           <div className="grid gap-2 md:grid-cols-6">
-            {infoLinks.map((item) => (
+            {infoLinks.map((item, index) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="group min-h-[5.9rem] rounded-[0.72rem] border border-orange-300/18 bg-black/62 px-4 py-3 shadow-[0_18px_46px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur transition hover:border-orange-300/62 hover:bg-orange-500/[0.075]"
+                className="group relative min-h-[6.35rem] overflow-hidden rounded-[0.72rem] border border-orange-300/18 bg-black/62 px-4 py-3 pr-[6.3rem] shadow-[0_18px_46px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur transition hover:border-orange-300/62 hover:bg-orange-500/[0.075]"
               >
-                <p className="text-[0.86rem] font-black text-zinc-100 group-hover:text-orange-200">{item.title}</p>
-                <p className="mt-1.5 text-[11px] leading-4 text-zinc-500">{item.desc}</p>
-                <div className="mt-2 h-[1.35rem] w-full opacity-55 [background:linear-gradient(90deg,transparent,rgba(255,106,0,0.55),transparent)] [mask-image:repeating-linear-gradient(90deg,black_0_2px,transparent_2px_7px)]" />
+                <p className="relative z-10 text-[0.86rem] font-black text-zinc-100 group-hover:text-orange-200">{item.title}</p>
+                <p className="relative z-10 mt-1.5 text-[11px] leading-4 text-zinc-500">{item.desc}</p>
+                <div className="absolute bottom-2.5 left-4 right-4 h-[1.35rem] opacity-42 [background:linear-gradient(90deg,transparent,rgba(255,106,0,0.55),transparent)] [mask-image:repeating-linear-gradient(90deg,black_0_2px,transparent_2px_7px)]" />
+                <Image
+                  src={DESKTOP_CARD_ICON_ASSETS[index] ?? DESKTOP_CARD_ICON_ASSETS[0]}
+                  alt=""
+                  width={180}
+                  height={100}
+                  sizes="92px"
+                  aria-hidden="true"
+                  className="pointer-events-none absolute bottom-1.5 right-2.5 h-[3.75rem] w-[5.8rem] object-contain opacity-90 mix-blend-screen saturate-[1.1] transition duration-200 group-hover:scale-105 group-hover:opacity-100"
+                />
               </Link>
             ))}
           </div>
