@@ -404,7 +404,7 @@ export default function BattleSetupPage() {
   const [draft, setDraft] = useState<BattleDraft | null>(null);
   const [draftChecked, setDraftChecked] = useState(false);
   const [battleMode, setBattleMode] = useState<BattleMode>('instant');
-  const [instantPairingMode, setInstantPairingMode] = useState<InstantPairingMode>('auto');
+  const [instantPairingMode, setInstantPairingMode] = useState<InstantPairingMode>('invite');
   const [dailyPairingMode, setDailyPairingMode] = useState<DailyPairingMode>('auto');
   const [hookBattleAt, setHookBattleAt] = useState(defaultHookBattleAtValue);
   const [battleStartOption, setBattleStartOption] = useState<BattleStartOption>('custom');
@@ -473,7 +473,9 @@ export default function BattleSetupPage() {
         if (urlSongName) setSongName(urlSongName);
         if (urlAiTool) setAiTool(urlAiTool);
         if (DAILY_BATTLE_PUBLIC_ENTRY_ENABLED && urlBattleMode === 'daily') setBattleMode('daily');
-        if (urlInstantPairing === 'invite') setInstantPairingMode('invite');
+        if (urlInstantPairing === 'auto' || urlInstantPairing === 'invite') {
+          setInstantPairingMode(urlInstantPairing);
+        }
         if (urlDailyPairing === 'invite') setDailyPairingMode('invite');
         if (urlHookBattlePreset) {
           setBattleStartOption(urlHookBattlePreset);
@@ -1329,8 +1331,8 @@ export default function BattleSetupPage() {
                 onClick={() => setInstantPairingMode(option.value)}
                 className={`rounded-2xl border px-4 py-3 text-left transition ${
                   instantPairingMode === option.value
-                    ? 'border-orange-200/55 bg-orange-500/14 text-orange-50'
-                    : 'border-white/10 bg-black/30 text-zinc-300 hover:border-orange-200/30'
+                    ? 'border-red-300/85 bg-red-500/10 text-red-50 shadow-[0_0_0_1px_rgba(248,113,113,0.35),0_0_28px_rgba(239,68,68,0.32)]'
+                    : 'border-white/10 bg-black/30 text-zinc-300 hover:border-red-300/40 hover:bg-red-500/[0.04]'
                 } ${challengeEntryId ? 'cursor-not-allowed opacity-55' : ''}`}
               >
                 <p className="font-black">{option.title}</p>
