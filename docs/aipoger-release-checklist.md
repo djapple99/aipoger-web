@@ -1,6 +1,6 @@
 # AIPOGER Release Checklist
 
-Last updated: 2026-06-07
+Last updated: 2026-06-10
 
 Use this checklist before and after deploying production changes.
 
@@ -154,6 +154,9 @@ Check:
 - 24H cards use Full Song victory language.
 - Bar Heartbreak cards use hot/response language.
 - Empty state does not use mock/demo records.
+- Cards with lyrics show a `歌詞` / `LYRICS` action that opens a readable modal.
+- Cards without lyrics show `歌詞未提供` / `No Lyrics`.
+- Lyrics modal fits mobile viewport and does not create horizontal overflow.
 - Stage names are:
   - `熱血音樂工匠`
   - `潮流音樂大師`

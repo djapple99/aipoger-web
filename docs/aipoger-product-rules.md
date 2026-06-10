@@ -154,6 +154,10 @@ Display principles:
 - Use honor/record language: victory, archive, hot track, public response.
 - Card badges can say `WIN`, `24H`, or `HOT`.
 - Do not show mock records as real Honor Board content.
+- Honor Board cards may expose a `歌詞` / `LYRICS` action when the archived or source track has lyrics.
+- If lyrics exist, open them in a readable modal and preserve line breaks.
+- If lyrics are not provided, show `歌詞未提供` / `No Lyrics` instead of hiding the feature or implying an error.
+- Lyrics are a viewing feature for recognized songs; they are not a creator song-library feature and do not require URL upload support in V1.
 
 Creator stages:
 

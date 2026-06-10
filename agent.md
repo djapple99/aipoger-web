@@ -13,6 +13,19 @@
 - `docs/aipoger-ui-art-direction.md` — 視覺與文案規範（做 UI / 改文案前必讀）。
 - `docs/aipoger-product-rules.md` — 產品規則。
 
+## MD 文件精簡規則（2026-06-10）
+
+不要每次任務都讀完整 `docs/`。先按任務選核心文件：
+
+- 一般網站修改：先讀本檔 + `docs/aipoger-product-rules.md`。
+- UI / 文案 / 視覺：加讀 `docs/aipoger-ui-art-direction.md`。
+- 部署 / QA：加讀 `docs/aipoger-release-checklist.md`。
+- 傷心酒吧規則：加讀 `docs/heartbreak-bar-v1-survival-radio.md`。
+- Drop Battle 當前規則：以 `docs/aipoger-product-rules.md` 為準；舊 plan / task list 只當歷史參考。
+- 榮譽榜延伸、成就卡、profile badge 等草案文件，只有做對應功能時才讀。
+
+若文件內容衝突，優先順序為：使用者最新指令 > `docs/aipoger-product-rules.md` > 本檔 > release checklist > 舊 spec / plan / handoff。
+
 ## 使用者背景
 
 - 使用者稱呼與品牌核心：愛波哥。
