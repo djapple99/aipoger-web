@@ -1254,7 +1254,7 @@ export default function ListenBarPage() {
         : "Creator Track Queued. Next up.";
     }
     return playlistStatus === "database"
-      ? (isZh ? "24H 公播中。" : "24H On Air.")
+      ? ""
       : (isZh ? "公播準備中。" : "Station Warming Up.");
   }, [isZh, nextCommunityTrack, playlistStatus]);
 
@@ -1287,6 +1287,8 @@ export default function ListenBarPage() {
   }, [currentPositiveTotal, isZh, nowTrack.audioUrl, nowTrack.barPhase, nowTrack.source]);
   const nowTrackTitle = !isZh && nowTrack.id === EMPTY_LISTEN_BAR_TRACK.id ? "Waiting for Creator Uploads" : nowTrack.title;
   const myCurrentReaction = myReactions[nowTrack.id] ?? null;
+  const currentHeartTotal = Math.max(0, currentReactions.heart ?? 0);
+  const hasMyHeartReaction = myCurrentReaction === "heart";
 
   const handleReaction = (key: ReactionKey) => {
     tryStartRadio();
@@ -2029,24 +2031,24 @@ export default function ListenBarPage() {
                       {isZh ? "聽眾反應" : "REACTIONS"}
                     </span>
                     <span className="text-xs font-bold text-orange-100/70">
-                      {isZh ? "登入後每帳號每首歌 1 票，可更換或取消。" : "One vote per account per song; change or cancel anytime."}
+                      {isZh ? "登入後每帳號每天每首歌 1 票，可更換或取消。" : "One vote per account per song per day; change or cancel anytime."}
                     </span>
                   </div>
                   <div className="grid gap-3 rounded-2xl border border-orange-300/18 bg-orange-500/8 p-3 sm:grid-cols-[auto_1fr] sm:items-center">
                     <button
                       type="button"
                       onClick={() => handleReaction("heart")}
-                      aria-pressed={myCurrentReaction === "heart"}
+                      aria-pressed={hasMyHeartReaction}
                       aria-label={isZh ? "送出愛心支持" : "Send a heart"}
                       title={isZh ? "送出愛心支持" : "Send a heart"}
                       className={`flex h-24 min-w-32 items-center justify-center gap-3 rounded-2xl border px-5 text-3xl font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 ${
-                        myCurrentReaction === "heart"
+                        hasMyHeartReaction
                           ? "border-orange-300 bg-orange-500 text-black shadow-[0_0_26px_rgba(255,106,0,0.3)]"
                           : "border-white/10 bg-black/35 text-zinc-100 hover:border-orange-300/55 hover:text-white"
                       }`}
                     >
-                      <span className="text-5xl leading-none">♥</span>
-                      <span className="tabular-nums">{currentReactions.heart ?? 0}</span>
+                      <span className={`text-5xl leading-none ${hasMyHeartReaction ? "text-red-700 drop-shadow-[0_0_16px_rgba(220,38,38,0.45)]" : ""}`}>♥</span>
+                      <span className="tabular-nums">{currentHeartTotal}</span>
                     </button>
                     <div className="min-w-0">
                       <p className="text-sm font-black leading-6 text-orange-50">
@@ -2100,7 +2102,9 @@ export default function ListenBarPage() {
                     </div>
                   </form>
                 </div>
-                <p className="mt-3 text-xs font-bold text-orange-200/70">{radioStatusLine}</p>
+                {radioStatusLine ? (
+                  <p className="mt-3 text-xs font-bold text-orange-200/70">{radioStatusLine}</p>
+                ) : null}
               </div>
             </div>
 
