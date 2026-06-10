@@ -352,7 +352,7 @@ function DesktopCardIcon({ index }: { index: number }) {
       height={400}
       sizes="128px"
       aria-hidden="true"
-      className="pointer-events-none absolute bottom-[2px] left-1/2 h-[62px] w-[132px] -translate-x-1/2 object-contain opacity-95 mix-blend-screen saturate-[1.08]"
+      className="pointer-events-none relative z-10 h-[clamp(3.7rem,5.8vw,5rem)] w-full object-contain object-center opacity-88 mix-blend-screen saturate-[1.08] transition duration-200 group-hover:scale-[1.04] group-hover:opacity-100"
     />
   );
 }
@@ -548,13 +548,15 @@ function DesktopReferenceHome({
               <Link
                 key={item.href}
                 href={item.href}
-                className="group relative min-h-[clamp(7rem,13vh,9.2rem)] overflow-hidden rounded-[0.95rem] border border-orange-300/18 bg-black/46 px-[clamp(1rem,1.15vw,1.35rem)] pb-[0.7rem] pt-[clamp(0.9rem,1.35vh,1.1rem)] shadow-[0_18px_58px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.045)] backdrop-blur-[2px] transition hover:border-orange-300/58 hover:bg-orange-500/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
+                className="group relative grid min-h-[clamp(6.25rem,11.2vh,8rem)] grid-cols-[minmax(0,1fr)_clamp(4.8rem,5.8vw,6.8rem)] items-center gap-[clamp(0.7rem,0.95vw,1rem)] overflow-hidden rounded-[0.95rem] border border-orange-300/18 bg-black/46 px-[clamp(0.95rem,1.1vw,1.3rem)] py-[clamp(0.85rem,1.25vh,1.05rem)] shadow-[0_18px_58px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.045)] backdrop-blur-[2px] transition hover:border-orange-300/58 hover:bg-orange-500/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
               >
                 <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/16 to-transparent" />
-                <p className="relative z-10 min-h-[2.25rem] text-[clamp(0.88rem,0.93vw,1.05rem)] font-black leading-[1.18] text-zinc-100 group-hover:text-orange-100">
-                  {item.title}
-                </p>
-                <p className="relative z-10 mt-[0.35rem] line-clamp-2 text-[clamp(0.65rem,0.7vw,0.78rem)] leading-[1.25] text-zinc-500">{item.desc}</p>
+                <div className="relative z-10 min-w-0">
+                  <p className="text-[clamp(0.88rem,0.93vw,1.05rem)] font-black leading-[1.18] text-zinc-100 group-hover:text-orange-100">
+                    {item.title}
+                  </p>
+                  <p className="mt-[0.55rem] line-clamp-2 text-[clamp(0.65rem,0.7vw,0.78rem)] leading-[1.25] text-zinc-500">{item.desc}</p>
+                </div>
                 <DesktopCardIcon index={index} />
               </Link>
             ))}
