@@ -88,7 +88,7 @@ type HomeActionKey = "battle" | "bar" | "rank";
 type HomeActionPrompt = {
   eyebrow: string;
   title: string;
-  body: string;
+  body: string | string[];
   tone: "orange" | "cyan";
 };
 
@@ -181,22 +181,44 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
     battle: {
       eyebrow: "DROP SIGNAL",
       title: "AI 音樂鬥歌場",
-      body: "上傳你的最強 Drop，發起挑戰，讓聽眾投票決定誰更抓波。",
+      body: ["上傳你的最強 Drop 發起挑戰", "讓觀眾決定誰更抓波"],
       tone: "orange",
     },
     bar: {
       eyebrow: "SURVIVAL BAR",
       title: "傷心酒吧",
-      body: "免費不間斷聽 AI 音樂。這裡也是歌曲生存 Bar，上傳作品，收穫更多愛心。",
+      body: ["免費不間斷聽 AI 音樂", "這裡也是歌曲生存 Bar", "上傳作品 收穫更多愛心"],
       tone: "orange",
     },
     rank: {
       eyebrow: "HONOR SIGNAL",
       title: "榮譽榜",
-      body: "被聽眾認可的 AI 音樂都在這裡。來聽，也讓你的作品有機會站上來。",
+      body: ["被聽眾認可的 AI 音樂都在這裡", "來聽 也讓你的作品有機會站上來"],
       tone: "cyan",
     },
   };
+}
+
+function HomePromptBody({
+  body,
+  lineClassName = "",
+}: {
+  body: HomeActionPrompt["body"];
+  lineClassName?: string;
+}) {
+  if (Array.isArray(body)) {
+    return (
+      <>
+        {body.map((line) => (
+          <span key={line} className={lineClassName ? `block ${lineClassName}` : "block"}>
+            {line}
+          </span>
+        ))}
+      </>
+    );
+  }
+
+  return <>{body}</>;
 }
 
 function HomeActionSignal({
@@ -234,7 +256,9 @@ function HomeActionSignal({
             {prompt.eyebrow}
           </p>
           <p className="mt-1 text-[0.92rem] font-black leading-tight text-white">{prompt.title}</p>
-          <p className="mt-1 text-[0.7rem] font-bold leading-[1.42] text-zinc-300">{prompt.body}</p>
+          <p className="mt-1 text-[0.7rem] font-bold leading-[1.42] text-zinc-300">
+            <HomePromptBody body={prompt.body} />
+          </p>
         </div>
       </div>
     </div>
@@ -309,7 +333,7 @@ function HomeDesktopActionHud({
               : "[text-shadow:0_0_10px_rgba(255,154,69,0.22),0_2px_8px_rgba(0,0,0,0.86)]"
           }`}
         >
-          {prompt.body}
+          <HomePromptBody body={prompt.body} lineClassName="whitespace-nowrap" />
         </p>
       </div>
     </div>
