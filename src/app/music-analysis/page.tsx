@@ -45,28 +45,28 @@ export default function MusicAnalysisPage() {
   const previewCards = useMemo(
     () => isZh
       ? [
-          ["市場定位", "判斷作品最適合短影音、劇情、廣告、情緒歌單或 AIPOGER 戰場。"],
-          ["最強 Drop", "找出最能被聽眾記住的段落，讓作品先用一段聲音被驗證。"],
-          ["投放建議", "判斷作品適合先進 Drop Battle，還是放進傷心酒吧測聽眾反應。"],
+          ["聲音 DNA", "拆出節奏、編曲、製作質感與能量曲線，判斷作品真正的聲音賣點。"],
+          ["歌詞診斷", "找出記憶句、老梗風險與情緒深度，判斷觀眾能不能帶走一句話。"],
+          ["A&R 路線", "判斷作品該先進 Drop Battle、傷心酒吧、短影音測試，還是先回去修改。"],
         ]
       : [
-          ["Market Lane", "Find whether the track fits shorts, drama, ads, mood playlists, or an AIPOGER arena."],
-          ["Strongest Drop", "Locate the section listeners are most likely to remember and vote on."],
-          ["Route Fit", "Recommend whether the track should test first in Drop Battle or Bar Heartbreak."],
+          ["Sonic DNA", "Break down rhythm, arrangement, production texture, and energy arc to find the real sonic selling point."],
+          ["Lyric Diagnostic", "Catch memorable lines, cliche risk, and emotional depth so the audience has something to carry away."],
+          ["A&R Route", "Decide whether the track should test in Drop Battle, Bar Heartbreak, short video, or go back for revision."],
         ],
     [isZh],
   );
   const sampleRows = useMemo(
     () => isZh
       ? [
-          ["市場用途", "城市夜景 / 情緒短片 / AI MV"],
-          ["記憶點", "副歌前 12 秒最容易留下畫面"],
-          ["下一步", "先丟 Drop Battle 測投票，再進傷心酒吧聽感"],
+          ["一句真話", "聲音有畫面，但目前缺一句能被觀眾記住的歌詞。"],
+          ["市場用途", "城市夜景 / 情緒短片 / AI MV / 生活風格品牌"],
+          ["下一步", "裁 90 秒進 Drop Battle 測投票；若歌詞反應弱，再補副歌鉤子。"],
         ]
       : [
-          ["Use Case", "City night / emotional shorts / AI MV"],
-          ["Memory Point", "The 12 seconds before the chorus carry the strongest image."],
-          ["Next Step", "Test as a Drop Battle first, then check listening retention in Bar Heartbreak."],
+          ["Hard Truth", "The sound has a scene, but the lyric needs a line people can remember."],
+          ["Use Case", "City night / emotional shorts / AI MV / lifestyle brand"],
+          ["Next Step", "Cut 90 seconds for Drop Battle; if lyrics underperform, rewrite the chorus hook."],
         ],
     [isZh],
   );
@@ -149,8 +149,8 @@ export default function MusicAnalysisPage() {
           </h1>
           <p className="mt-5 max-w-2xl text-base font-bold leading-7 text-zinc-300 md:text-lg">
             {isZh
-              ? "登入後上傳歌曲，找出市場定位、最強 Drop、適合挑戰的戰場，以及未來播放與商業化的可能路線。"
-              : "Sign in to upload a track, find its market lane, strongest Drop, best battle fit, and possible path toward airplay or commercial use."}
+              ? "登入後上傳歌曲，AIPOGER 會用聲音 DNA、歌詞診斷與市場定位，判斷作品該去哪裡被聽見、被挑戰、被記住。"
+              : "Sign in to upload a track. AIPOGER checks its sonic DNA, lyric memory, market lane, and best path to be heard, challenged, and remembered."}
           </p>
 
           <div className="mt-7">

@@ -39,6 +39,12 @@ Current behavior target:
 - Signed-in users may continue to the configured analysis service when `NEXT_PUBLIC_MUSIC_ANALYSIS_URL` is set.
 - If no production analysis service URL is configured, the entry should fail closed with a clear internal connection state rather than sending users to `127.0.0.1`.
 - Analysis output is advisory. AI-assisted judgement should support creator decisions, not replace creator instinct.
+- AIPOGER's analysis product should feel like an AI music A&R Gate, not a generic audio metric report.
+- The analysis framework should combine sonic DNA, lyric diagnostic, market positioning, content-use fit, AIPOGER routing, and one or two actionable revision suggestions.
+- Sonic DNA may cover rhythm, harmony, instrumentation, production texture, genre fusion, and energy arc, but the user-facing output should translate those traits into market meaning.
+- Lyric diagnostic may cover cliche, hook clarity, emotional depth, register fit, singability, and structure. If lyrics are not provided, the report should clearly say the judgement is sound-led.
+- Do not claim deep audio feature extraction unless the analysis service actually extracted audio features. If the service only has upload metadata and user-provided lyrics, phrase output as A&R judgement based on submitted data.
+- User-facing analysis should not mention external Codex skills or implementation tools.
 
 ## Drop Battle
 
