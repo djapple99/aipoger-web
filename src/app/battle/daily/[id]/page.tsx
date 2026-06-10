@@ -7,6 +7,7 @@ import SafetyNotice from "@/components/safety-notice";
 import ShareButton from "@/components/share-button";
 import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
+import { dailyBattleShortPath } from "@/lib/share-short-links";
 
 type DailySide = "A" | "B";
 
@@ -323,10 +324,11 @@ export default function DailyBattleRoomPage() {
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full border border-yellow-200/25 bg-yellow-300/10 px-4 py-2 text-sm font-black text-yellow-100">{timeLeftLabel}</span>
               <ShareButton
-                title={isZh ? "AIPOGER 24H Daily Battle" : "AIPOGER 24H Daily Battle"}
+                title={isZh ? "AIPOGER 24H Full Song 對決" : "AIPOGER 24H Full Song Battle"}
                 text={isZh ? `${battle.A.title} vs ${battle.B.title}，進來慢慢聽再投票。` : `${battle.A.title} vs ${battle.B.title}. Listen slowly, then vote.`}
-                label={isZh ? "分享這場" : "Share"}
-                copiedLabel={isZh ? "已複製" : "Copied"}
+                url={dailyBattleShortPath(battle.id, lang)}
+                label={isZh ? "邀請觀戰投票" : "Invite Voters"}
+                copiedLabel={isZh ? "觀戰連結已複製" : "Invite Copied"}
               />
               <Link href="/battle" className="rounded-full border border-white/12 bg-white/[0.055] px-4 py-2 text-sm font-black text-zinc-200 transition hover:border-orange-300/50 hover:text-white">
                 {isZh ? "回鬥歌場" : "Back"}

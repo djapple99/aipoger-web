@@ -59,7 +59,8 @@ Check:
 - If no instant opponent exists, user can open a Drop Battle challenge card.
 - Public challenge cards render on the Battle page.
 - The same battle/match group renders only once in the public Battle Pool.
-- Share links from a Drop Battle card or live battle open `/battle/[id]` directly, not the Battle Pool.
+- Share links from a Drop Battle card or live battle use `/b/{shortId}` and open the specific arena, not the Battle Pool.
+- Drop Battle share thumbnails render as black background with the white AIPOGER logo.
 - Logged-out visitors can enter a Battle arena link, vote, send arena danmaku, and tap feedback/reaction buttons.
 - Logged-out visitors who try to accept/challenge a Battle card are sent to sign in before challenger upload.
 - Bar Heartbreak reactions/comments/uploads/removals still require sign-in.
@@ -91,8 +92,10 @@ Check:
 - A user with an active 24H Full Song challenge can still start one active Drop Battle.
 - Duplicate active 24H audio is blocked when audio hash exists.
 - Queued 24H challenge appears on Battle page.
+- Queued 24H share links use `/d/{shortId}`.
 - Another user can accept a queued 24H challenge.
 - Live 24H battle page loads.
+- Live 24H share links use `/h/{shortId}`.
 - Voting requires login.
 - Finished 24H battle records winner when not tied.
 - Honor Board reads 24H winners as `24H Full Song 勝利榜`.

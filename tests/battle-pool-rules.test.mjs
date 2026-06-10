@@ -41,6 +41,15 @@ const {
 } = await import("../src/lib/auth-urls.ts");
 
 const {
+  battleResultShortPath,
+  battleShortPath,
+  dailyBattleShortPath,
+  dailyEntryShortPath,
+  decodeBase64UrlToUuid,
+  encodeUuidToBase64Url,
+} = await import("../src/lib/share-short-links.ts");
+
+const {
   DROP_BATTLE_SCHEDULE_PRESETS,
   buildDropBattleSchedulePayload,
   buildDropBattleSchedulePayloadFromPreset,
@@ -206,6 +215,20 @@ test("mobile auth can build Chrome open URLs for embedded browsers", () => {
     buildChromeOpenUrl("https://aipoger.com/auth?next=%2Fbattle", "Mozilla/5.0 (Linux; Android 14) Line/15.0"),
     "intent://aipoger.com/auth?next=%2Fbattle#Intent;scheme=https;package=com.android.chrome;end",
   );
+});
+
+test("daily battle share links use compact reversible ids", () => {
+  const id = "123e4567-e89b-12d3-a456-426614174000";
+  const short = encodeUuidToBase64Url(id);
+  assert.equal(short.length, 22);
+  assert.equal(short, "Ej5FZ-ibEtOkVkJmFBdAAA");
+  assert.equal(decodeBase64UrlToUuid(short), id);
+  assert.equal(decodeBase64UrlToUuid(id), id);
+  assert.equal(decodeBase64UrlToUuid("not-a-valid-short-id"), null);
+  assert.equal(dailyEntryShortPath(id, "zh"), "/d/Ej5FZ-ibEtOkVkJmFBdAAA?lang=zh");
+  assert.equal(dailyBattleShortPath(id, "zh"), "/h/Ej5FZ-ibEtOkVkJmFBdAAA?lang=zh");
+  assert.equal(battleShortPath(id, "zh"), "/b/Ej5FZ-ibEtOkVkJmFBdAAA?lang=zh");
+  assert.equal(battleResultShortPath(id, "zh"), "/r/Ej5FZ-ibEtOkVkJmFBdAAA?lang=zh");
 });
 
 test("legacy waiting room countdown is disabled for direct arena flow", () => {

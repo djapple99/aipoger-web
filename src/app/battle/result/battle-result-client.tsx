@@ -19,6 +19,7 @@ import {
 } from "@/lib/battle-result-archive";
 import { completeBattleCardIntent } from "@/lib/battle-pool-client";
 import { DROP_BATTLE_OFFICIAL_AUDIENCE_MIN, isOfficialDropBattleResult } from "@/lib/drop-battle-rematch";
+import { battleResultShortPath } from "@/lib/share-short-links";
 import { supabase } from "@/lib/supabase";
 
 type SkillKey = BattleFeedbackKey;
@@ -450,7 +451,7 @@ function BattleResultContent() {
   const resultShareUrl = (() => {
     if (!isOfficialBattleResult) return undefined;
     if (!battleId || !isUuid(battleId)) return undefined;
-    return `/battle/result?battleId=${encodeURIComponent(battleId)}&lang=${lang}`;
+    return battleResultShortPath(battleId, lang);
   })();
 
   useEffect(() => {

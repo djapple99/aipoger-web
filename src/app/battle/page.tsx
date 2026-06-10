@@ -10,6 +10,7 @@ import ShareButton from "@/components/share-button";
 import SafetyNotice from "@/components/safety-notice";
 import { rememberAuthNextPath } from "@/lib/auth-urls";
 import { rankLabelForLevel } from "@/lib/battle-pool-rules";
+import { battleResultShortPath, battleShortPath, dailyBattleShortPath, dailyEntryShortPath } from "@/lib/share-short-links";
 import {
   DROP_BATTLE_EXPECTED_END_BUFFER_MS,
   cancelCurrentBattleIntent,
@@ -801,11 +802,7 @@ function DailyBattleList() {
                               ? `${row.fighter_name} 的《${row.title || "未命名作品"}》正在等人接戰，進來用整首歌挑戰。`
                               : `${row.fighter_name}'s "${row.title || "Untitled Track"}" is waiting for a full-track challenger.`
                           }
-                          url={
-                            row.status === "queued"
-                              ? `/battle/setup?battleMode=daily&dailyPairing=invite&challengeDailyEntryId=${row.id}&genre=${encodeURIComponent(row.genre || "")}&lang=${lang}`
-                              : `/battle?lang=${lang}`
-                          }
+                          url={row.status === "queued" ? dailyEntryShortPath(row.id, lang) : `/battle?lang=${lang}`}
                           label={isZh ? "約人鬥歌" : "Find Challenger"}
                           copiedLabel={isZh ? "戰帖已複製" : "Challenge Copied"}
                           className="px-3 py-1.5 text-xs"
@@ -884,7 +881,7 @@ function DailyBattleList() {
                                 ? `《${a?.title || "A SIDE"}》vs《${b?.title || "B SIDE"}》正在對決，進來聽完整作品再投票。`
                                 : `"${a?.title || "A SIDE"}" vs "${b?.title || "B SIDE"}" is live. Listen and vote.`
                             }
-                            url={`/battle/daily/${row.id}?lang=${lang}`}
+                            url={dailyBattleShortPath(row.id, lang)}
                             label={isZh ? "邀請觀戰投票" : "Invite Voters"}
                             copiedLabel={isZh ? "觀戰連結已複製" : "Invite Copied"}
                             className="px-3 py-1.5 text-xs"
@@ -1326,11 +1323,11 @@ function BattlePoolList() {
               ? `/battle/${ghostBattleId}?lang=${lang}`
               : battlePath;
             const shareUrl = isGhost
-              ? focusedBattleHref(ghostBattleId || entry.id, lang)
+              ? battleShortPath(ghostBattleId || entry.id, lang)
               : isMatched && matchedBattleId
-                ? focusedBattleHref(matchedBattleId, lang)
+                ? battleShortPath(matchedBattleId, lang)
               : (() => {
-                  return focusedQueueHref(entry.id, lang);
+                  return battleShortPath(entry.id, lang);
                 })();
             const shareLabel = isGhost || isMatched || isPublicVoting
               ? isZh
@@ -1859,7 +1856,7 @@ function LiveBattleList() {
                 isFutureBattle &&
                 Boolean(currentUserId && (b.fighter_a_user_id === currentUserId || b.fighter_b_user_id === currentUserId));
               const primaryHref = isBattleEnded ? `/battle/result?battleId=${encodeURIComponent(b.id)}&lang=${lang}` : `/battle/${b.id}?lang=${lang}`;
-              const shareHref = isBattleEnded ? primaryHref : focusedBattleHref(b.id, lang);
+              const shareHref = isBattleEnded ? battleResultShortPath(b.id, lang) : battleShortPath(b.id, lang);
               const isFocusedBattle = focusBattleId === b.id;
               return (
                 <li key={b.id} id={`battle-live-${b.id}`}>

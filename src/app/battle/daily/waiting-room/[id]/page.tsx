@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import LangToggle from "@/components/lang-toggle";
 import ShareButton from "@/components/share-button";
 import { useI18n } from "@/lib/i18n";
+import { dailyEntryShortPath } from "@/lib/share-short-links";
 import { supabase } from "@/lib/supabase";
 
 type DailyEntryRoomRow = {
@@ -223,7 +224,7 @@ export default function DailyWaitingRoomPage() {
                       ? `《${row.title || "未命名作品"}》正在等人接 24H 整首歌對決。`
                       : `"${row.title || "Untitled Track"}" is waiting for a 24H full-track challenger.`
                   }
-                  url={`/battle/setup?battleMode=daily&dailyPairing=invite&challengeDailyEntryId=${row.id}&genre=${encodeURIComponent(row.genre || "")}&lang=${lang}`}
+                  url={dailyEntryShortPath(row.id, lang)}
                   label={isZh ? "分享戰帖" : "Share Card"}
                   copiedLabel={isZh ? "戰帖已複製" : "Card Copied"}
                   className="px-5 py-3 text-sm"

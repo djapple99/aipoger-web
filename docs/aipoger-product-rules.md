@@ -50,6 +50,8 @@ Current behavior:
 - Fast start options must calculate the visible start time only after the queue/battle data has been successfully written. Do not pre-render a time label that ignores upload, cutting, or network duration.
 - Automatic pairing must not inherit an old or stale `expires_at` value as tomorrow's start time.
 - Shared Drop Battle links must enter the specific battle arena directly. If nobody has challenged yet, the arena must show the accept-challenge state; if a challenger already joined, the same link must enter the live/waiting arena.
+- Public share URLs should stay short: Drop arena uses `/b/{shortId}`, Drop result card uses `/r/{shortId}`, 24H queued card uses `/d/{shortId}`, and 24H live battle uses `/h/{shortId}`. These routes may redirect internally to the canonical full route.
+- Drop Battle share preview images should be black background with the white AIPOGER logo as the main visual.
 - Open Drop Battle arena links are publicly enterable. Anonymous visitors may vote, send arena danmaku, and tap feedback/reaction buttons inside the Battle arena only.
 - Accepting a challenge, uploading a challenger Drop, opening a new Battle card, cancelling a creator-owned Battle, and claiming a rematch slot still require sign-in.
 - Anonymous Battle arena access does not change Bar Heartbreak rules: Bar Heartbreak listening stays public, but reactions/comments/uploads/removals still require sign-in.
@@ -93,6 +95,7 @@ Current behavior:
 - 24H queued entries can be accepted by another creator.
 - Finished 24H battles with a winner feed the Honor Board as winner records.
 - Duplicate active 24H audio should be blocked by audio hash when the column exists.
+- 24H queued cards should share with `/d/{shortId}` and 24H live battles should share with `/h/{shortId}`.
 - Battle history should focus on the full song entry, not the creator profile. Cards may show per-song challenge count, wins, losses, ties, and win rate.
 - Queued cards should provide a `約人鬥歌` share action.
 - Live cards should provide an `邀請觀戰投票` share action.

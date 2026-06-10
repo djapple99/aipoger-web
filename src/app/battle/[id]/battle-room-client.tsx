@@ -29,6 +29,7 @@ import { battleSeedForId, pick90sBattleWinner } from "@/lib/battle-90s-system";
 import { DROP_BATTLE_OFFICIAL_AUDIENCE_MIN, rematchDeadlineSecondsLeft } from "@/lib/drop-battle-rematch";
 import { rememberAuthNextPath } from "@/lib/auth-urls";
 import { battleGuestDisplayName, getBattleGuestId } from "@/lib/battle-guest";
+import { battleShortPath } from "@/lib/share-short-links";
 import type { User } from "@supabase/supabase-js";
 
 type SenderType = "audience" | "fighter_a" | "fighter_b";
@@ -3704,10 +3705,10 @@ function BattleArenaContent() {
   const battleShareUrl = (() => {
     const params = new URLSearchParams({ lang });
     if (isQueueArena) {
-      return `/battle/${encodeURIComponent(battleId)}?${params.toString()}`;
+      return battleShortPath(battleId, lang);
     }
     if (!isMockBattle && !isAuthBypassEnabled) {
-      return `/battle/${encodeURIComponent(battleId)}?lang=${encodeURIComponent(lang)}`;
+      return battleShortPath(battleId, lang);
     }
     params.set("l", battle.fighter_a_name);
     params.set("r", battle.fighter_b_name);

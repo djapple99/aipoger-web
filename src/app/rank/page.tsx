@@ -30,6 +30,7 @@ import {
   listenBarRowToTrack,
   type ListenBarTrackRow,
 } from "@/lib/listen-bar";
+import { battleResultShortPath, isUuid } from "@/lib/share-short-links";
 import { supabase } from "@/lib/supabase";
 
 type BoardKey = "drop" | "bar";
@@ -141,6 +142,8 @@ function displayGenre(value: string | null | undefined, isZh: boolean) {
 }
 
 function resultHref(row: RankRow, lang: string) {
+  if (isUuid(row.id)) return battleResultShortPath(row.id, lang);
+
   const params = new URLSearchParams();
   if (row.resultHref) {
     const [path, rawQuery = ""] = row.resultHref.split("?");
