@@ -2085,11 +2085,7 @@ export default function ListenBarPage() {
                             <p className="mt-1 text-[10px] tabular-nums text-zinc-600">{comment.time}</p>
                           </div>
                         ))
-                      ) : (
-                        <p className="rounded-lg border border-white/8 bg-black/30 px-3 py-3 text-xs font-bold text-zinc-500">
-                          {isZh ? "給他一個大大的愛心表達你的支持，記得先登入喔。" : "Give this track a big heart to show support. Sign in first."}
-                        </p>
-                      )}
+                      ) : null}
                     </div>
                   </form>
                 </div>

@@ -59,6 +59,7 @@ type RankRow = {
   audienceReview?: string;
   resultHref?: string;
   audioUrl?: string;
+  lyrics?: string;
   songStats?: SongBattleStatsSnapshot | null;
   positiveReactions?: number;
 };
@@ -66,6 +67,12 @@ type RankRow = {
 type BoardMeta = {
   zh: string;
   en: string;
+};
+
+type LyricsModalState = {
+  title: string;
+  artist: string;
+  lyrics: string;
 };
 
 const BOARD_META: Record<BoardKey, BoardMeta> = {
@@ -97,6 +104,10 @@ function displayText(value: string, fallback: string) {
 
 function displaySongTitle(value: string, fallback: string) {
   return looksLikeOpaqueArchiveValue(value) ? fallback : displayText(value, fallback);
+}
+
+function cleanLyrics(value: string | null | undefined) {
+  return String(value || "").trim();
 }
 
 function localizedRankLabel(rank: string, isZh: boolean) {
@@ -335,6 +346,7 @@ function rowFromArchive(entry: ArchivedBattleResult, index: number): RankRow {
     audienceReview: stripCannedBattleReview(entry.audienceReview),
     resultHref: entry.resultHref,
     audioUrl: entry.audioUrl,
+    lyrics: cleanLyrics(entry.lyrics) || undefined,
     songStats: entry.songStats,
   };
 }
@@ -379,6 +391,7 @@ function hotBarRowsFromTracks(tracks: ListenBarTrackRow[]) {
       aiTool: track.tool || "AI Music",
       createdAt: track.createdAt || new Date().toISOString(),
       audioUrl: track.audioUrl,
+      lyrics: cleanLyrics(track.lyrics) || undefined,
       positiveReactions: Math.max(0, Math.round(track.positiveReactionCount || 0)),
     }));
 }
@@ -424,12 +437,27 @@ async function attachBattleAudioUrls(rows: ArchivedBattleResult[]) {
   const battleIds = Array.from(new Set(rows.map((row) => row.battleId).filter((id): id is string => Boolean(id))));
   if (battleIds.length === 0) return rows;
 
-  const { data, error } = await supabase
+  const battleRowsWithLyrics = await supabase
     .from("battles")
-    .select("id,winner,fighter_a_name,fighter_b_name,song_a_name,song_b_name,ai_tool_a,ai_tool_b,audio_a_path,audio_b_path")
+    .select("id,winner,fighter_a_name,fighter_b_name,song_a_name,song_b_name,ai_tool_a,ai_tool_b,audio_a_path,audio_b_path,lyrics_a,lyrics_b")
     .in("id", battleIds);
-  if (error) {
-    console.warn("[rank battle audio rows]", error.message);
+  let battleRowsData: unknown = battleRowsWithLyrics.data;
+  let battleRowsError = battleRowsWithLyrics.error;
+
+  if (battleRowsError) {
+    const msg = `${battleRowsError.message ?? ""} ${battleRowsError.details ?? ""} ${battleRowsError.hint ?? ""}`;
+    if (/lyrics_a|lyrics_b|schema cache|does not exist|PGRST204/i.test(msg)) {
+      const fallbackRows = await supabase
+        .from("battles")
+        .select("id,winner,fighter_a_name,fighter_b_name,song_a_name,song_b_name,ai_tool_a,ai_tool_b,audio_a_path,audio_b_path")
+        .in("id", battleIds);
+      battleRowsData = fallbackRows.data;
+      battleRowsError = fallbackRows.error;
+    }
+  }
+
+  if (battleRowsError) {
+    console.warn("[rank battle audio rows]", battleRowsError.message);
     return rows;
   }
 
@@ -444,10 +472,11 @@ async function attachBattleAudioUrls(rows: ArchivedBattleResult[]) {
       aiToolA: string;
       aiToolB: string;
       audioUrl: string | null;
+      winnerLyrics: string;
     }
   >();
   await Promise.all(
-    ((data ?? []) as Array<{
+    ((battleRowsData ?? []) as Array<{
       id?: string | null;
       winner?: string | null;
       fighter_a_name?: string | null;
@@ -458,10 +487,13 @@ async function attachBattleAudioUrls(rows: ArchivedBattleResult[]) {
       ai_tool_b?: string | null;
       audio_a_path?: string | null;
       audio_b_path?: string | null;
+      lyrics_a?: string | null;
+      lyrics_b?: string | null;
     }>).map(async (battle) => {
       if (!battle.id) return;
       const winner = normalizeWinnerSide(battle.winner);
       const winnerPath = winner === "fighter_b" ? battle.audio_b_path : battle.audio_a_path;
+      const winnerLyrics = cleanLyrics(winner === "fighter_b" ? battle.lyrics_b : battle.lyrics_a);
       truthByBattle.set(battle.id, {
         winner,
         fighterAName: String(battle.fighter_a_name || "").trim(),
@@ -471,6 +503,7 @@ async function attachBattleAudioUrls(rows: ArchivedBattleResult[]) {
         aiToolA: String(battle.ai_tool_a || "").trim(),
         aiToolB: String(battle.ai_tool_b || "").trim(),
         audioUrl: await battleAudioPathToUrl(winnerPath),
+        winnerLyrics,
       });
     }),
   );
@@ -497,8 +530,38 @@ async function attachBattleAudioUrls(rows: ArchivedBattleResult[]) {
     return {
       ...reconciled,
       audioUrl: reconciled.audioUrl || (row.battleId ? truth?.audioUrl || undefined : undefined),
+      lyrics: cleanLyrics(reconciled.lyrics) || (row.battleId ? truth?.winnerLyrics || undefined : undefined),
     };
   });
+}
+
+function LyricsAction({
+  row,
+  isZh,
+  onOpen,
+}: {
+  row: RankRow;
+  isZh: boolean;
+  onOpen: (row: RankRow) => void;
+}) {
+  const hasLyrics = Boolean(cleanLyrics(row.lyrics));
+  if (!hasLyrics) {
+    return (
+      <span className="inline-flex cursor-default items-center justify-center rounded-full border border-white/10 bg-black/20 px-2.5 py-1.5 text-[11px] font-black text-zinc-500">
+        {isZh ? "歌詞未提供" : "No Lyrics"}
+      </span>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(row)}
+      className="inline-flex items-center justify-center rounded-full border border-yellow-200/35 bg-yellow-300/10 px-2.5 py-1.5 text-[11px] font-black text-yellow-100 transition hover:border-yellow-100 hover:bg-yellow-300/16 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-200/70"
+    >
+      {isZh ? "歌詞" : "Lyrics"}
+    </button>
+  );
 }
 
 export default function RankPage() {
@@ -509,8 +572,19 @@ export default function RankPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [archivedResults, setArchivedResults] = useState<ArchivedBattleResult[]>([]);
   const [hotBarRows, setHotBarRows] = useState<RankRow[]>([]);
+  const [lyricsModal, setLyricsModal] = useState<LyricsModalState | null>(null);
   const navSuffix = lang === "en" ? "?lang=en" : "?lang=zh";
   const boardTitle = isZh ? BOARD_META[active].zh : BOARD_META[active].en;
+
+  const openLyricsModal = (row: RankRow) => {
+    const lyrics = cleanLyrics(row.lyrics);
+    if (!lyrics) return;
+    setLyricsModal({
+      title: displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived"),
+      artist: row.name,
+      lyrics,
+    });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -610,6 +684,7 @@ export default function RankPage() {
                   : { rhyme: 0, impact: 0, melody: 0, emotion: 0, structure: 0 },
               resultHref: String(payload.resultHref || "").trim(),
               audioUrl: typeof payload.audioUrl === "string" ? payload.audioUrl.trim() : undefined,
+              lyrics: typeof payload.lyrics === "string" ? payload.lyrics.trim() : undefined,
               songStats:
                 tableSongStats && tableSongStats.battleCount > 0
                   ? tableSongStats
@@ -646,6 +721,15 @@ export default function RankPage() {
   useEffect(() => {
     setActiveGenre("all");
   }, [active]);
+
+  useEffect(() => {
+    if (!lyricsModal) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setLyricsModal(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [lyricsModal]);
 
   const normalizedSearchTerm = searchTerm.trim().toLowerCase();
 
@@ -913,6 +997,7 @@ export default function RankPage() {
                                 ) : null}
                                 {row.kind === "battle" ? (
                                   <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                                    <LyricsAction row={row} isZh={isZh} onOpen={openLyricsModal} />
                                     <Link
                                       href={rowResultHref}
                                       className="inline-flex rounded-full border border-orange-200/30 px-3 py-1.5 text-[11px] font-black text-orange-100 transition hover:border-orange-100 hover:text-white"
@@ -924,16 +1009,21 @@ export default function RankPage() {
                                     </span>
                                   </div>
                                 ) : row.audioUrl ? (
-                                  <audio
-                                    className="mt-3 h-9 w-full accent-orange-500"
-                                    controls
-                                    controlsList="nodownload"
-                                    onContextMenu={(event) => event.preventDefault()}
-                                    preload="metadata"
-                                    src={row.audioUrl}
-                                  >
-                                    {isZh ? "你的瀏覽器暫時不支援播放。" : "Your browser does not support audio playback."}
-                                  </audio>
+                                  <>
+                                    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                                      <LyricsAction row={row} isZh={isZh} onOpen={openLyricsModal} />
+                                    </div>
+                                    <audio
+                                      className="mt-3 h-9 w-full accent-orange-500"
+                                      controls
+                                      controlsList="nodownload"
+                                      onContextMenu={(event) => event.preventDefault()}
+                                      preload="metadata"
+                                      src={row.audioUrl}
+                                    >
+                                      {isZh ? "你的瀏覽器暫時不支援播放。" : "Your browser does not support audio playback."}
+                                    </audio>
+                                  </>
                                 ) : null}
                               </div>
                             </article>
@@ -1031,6 +1121,7 @@ export default function RankPage() {
                                   </div>
 
                                   <div className="flex flex-wrap gap-1.5 border-t border-white/10 pt-2">
+                                    <LyricsAction row={row} isZh={isZh} onOpen={openLyricsModal} />
                                     {row.kind === "battle" ? (
                                       <>
                                         <Link
@@ -1170,6 +1261,45 @@ export default function RankPage() {
             </p>
           </aside>
         </section>
+
+        {lyricsModal ? (
+          <div
+            className="fixed inset-0 z-[220] flex items-end bg-black/76 px-3 py-4 backdrop-blur-sm sm:items-center sm:justify-center sm:px-6"
+            role="dialog"
+            aria-modal="true"
+            aria-label={isZh ? "歌詞" : "Lyrics"}
+            onClick={() => setLyricsModal(null)}
+          >
+            <div
+              className="aipo-control-panel max-h-[82vh] w-full max-w-2xl overflow-hidden rounded-[1.25rem] border border-yellow-200/25 bg-zinc-950 shadow-[0_24px_90px_rgba(0,0,0,0.72)]"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-4 border-b border-white/10 px-4 py-4 sm:px-5">
+                <div className="min-w-0">
+                  <p className={`${fontRighteous.className} text-[11px] uppercase tracking-[0.18em] text-yellow-100/65`}>
+                    {isZh ? "LYRICS / 歌詞" : "LYRICS"}
+                  </p>
+                  <h2 className="mt-1 break-words text-lg font-black leading-6 text-white sm:text-xl">
+                    {isZh ? `《${lyricsModal.title}》歌詞` : `${lyricsModal.title} Lyrics`}
+                  </h2>
+                  <p className="mt-1 truncate text-xs font-bold text-zinc-500">{lyricsModal.artist}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setLyricsModal(null)}
+                  className="shrink-0 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs font-black text-zinc-300 transition hover:border-yellow-100/55 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-200/70"
+                >
+                  {isZh ? "關閉" : "Close"}
+                </button>
+              </div>
+              <div className="max-h-[58vh] overflow-y-auto px-4 py-4 sm:px-5">
+                <p className="whitespace-pre-wrap break-words text-sm font-bold leading-7 text-zinc-200">
+                  {lyricsModal.lyrics}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <footer className="mt-8 flex flex-col gap-4 border-t border-white/10 py-6 md:flex-row md:items-center md:justify-between">
           <div>

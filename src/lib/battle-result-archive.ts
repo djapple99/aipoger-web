@@ -43,6 +43,7 @@ export type ArchivedBattleResult = {
   feedbackB: BattleFeedbackCounts;
   resultHref: string;
   audioUrl?: string;
+  lyrics?: string;
   songStats?: SongBattleStatsSnapshot | null;
   createdAt: string;
 };
@@ -158,6 +159,7 @@ function sanitizeArchiveEntry(value: unknown): ArchivedBattleResult | null {
     feedbackB: sanitizeBattleFeedbackCounts(row.feedbackB),
     resultHref: String(row.resultHref || "").trim(),
     audioUrl: typeof row.audioUrl === "string" ? row.audioUrl.trim() : undefined,
+    lyrics: typeof row.lyrics === "string" ? row.lyrics.trim() : undefined,
     songStats: sanitizeSongBattleStatsSnapshot(row.songStats),
     createdAt: String(row.createdAt || new Date().toISOString()),
   };
