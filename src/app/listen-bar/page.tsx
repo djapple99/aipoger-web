@@ -118,13 +118,6 @@ const LISTEN_BAR_STORAGE_KEYS = [
 ];
 const LISTEN_BAR_VISITOR_ID_KEY = "aipoger:listens:visitor-id";
 
-const reactionOptions: Array<{ key: ReactionKey; label: string; icon: string }> = [
-  { key: "heart", label: "愛心", icon: "♥" },
-  { key: "star", label: "星星", icon: "★" },
-  { key: "thumb", label: "大拇指", icon: "👍" },
-  { key: "happy", label: "開心", icon: "☺" },
-];
-
 const emptyReactions: ReactionCounts = {
   heart: 0,
   star: 0,
@@ -2028,33 +2021,32 @@ export default function ListenBarPage() {
                       {isZh ? "登入後每帳號每首歌 1 票，可更換或取消。" : "One vote per account per song; change or cancel anytime."}
                     </span>
                   </div>
-                  <p className="mb-3 rounded-xl border border-orange-300/18 bg-orange-500/8 px-3 py-2 text-xs font-bold leading-5 text-orange-50/85">
-                    {isZh
-                      ? `聽歌不需登入；留言與投票需登入。你的每一次支持都會影響歌曲命運，累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 個正向反應即可取得榮譽榜資格。`
-                      : `Listening is open; comments and votes require sign-in. Every vote affects a song's fate, and ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} positive reactions make it honor-roll eligible.`}
-                  </p>
-                  <div className="grid grid-cols-4 gap-2">
-                    {reactionOptions.map((reaction) => {
-                      const selected = myCurrentReaction === reaction.key;
-                      return (
-                        <button
-                          key={reaction.key}
-                          type="button"
-                          onClick={() => handleReaction(reaction.key)}
-                          aria-pressed={selected}
-                          aria-label={reaction.label}
-                          title={reaction.label}
-                          className={`flex h-11 items-center justify-center gap-1 rounded-xl border text-sm font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 ${
-                            selected
-                              ? "border-orange-300 bg-orange-500 text-black shadow-[0_0_22px_rgba(255,106,0,0.25)]"
-                              : "border-white/10 bg-white/[0.055] text-zinc-200 hover:border-orange-300/50 hover:text-white"
-                          }`}
-                        >
-                          <span className="text-base leading-none">{reaction.icon}</span>
-                          <span className="tabular-nums">{currentReactions[reaction.key] ?? 0}</span>
-                        </button>
-                      );
-                    })}
+                  <div className="grid gap-3 rounded-2xl border border-orange-300/18 bg-orange-500/8 p-3 sm:grid-cols-[auto_1fr] sm:items-center">
+                    <button
+                      type="button"
+                      onClick={() => handleReaction("heart")}
+                      aria-pressed={myCurrentReaction === "heart"}
+                      aria-label={isZh ? "送出愛心支持" : "Send a heart"}
+                      title={isZh ? "送出愛心支持" : "Send a heart"}
+                      className={`flex h-24 min-w-32 items-center justify-center gap-3 rounded-2xl border px-5 text-3xl font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 ${
+                        myCurrentReaction === "heart"
+                          ? "border-orange-300 bg-orange-500 text-black shadow-[0_0_26px_rgba(255,106,0,0.3)]"
+                          : "border-white/10 bg-black/35 text-zinc-100 hover:border-orange-300/55 hover:text-white"
+                      }`}
+                    >
+                      <span className="text-5xl leading-none">♥</span>
+                      <span className="tabular-nums">{currentReactions.heart ?? 0}</span>
+                    </button>
+                    <div className="min-w-0">
+                      <p className="text-sm font-black leading-6 text-orange-50">
+                        {isZh ? "給他一個大大的愛心表達你的支持" : "Give this track a big heart to show support"}
+                      </p>
+                      <p className="mt-1 text-xs font-bold leading-5 text-orange-100/70">
+                        {isZh
+                          ? `累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 顆心即可取得榮譽榜資格，記得先登入喔。`
+                          : `${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} hearts makes it Honor Board eligible. Sign in first.`}
+                      </p>
+                    </div>
                   </div>
                   <form onSubmit={handleTrackCommentSubmit} className="mt-3 rounded-xl border border-orange-200/18 bg-orange-300/[0.055] p-3">
                     <div className="flex items-center justify-between gap-3">
@@ -2095,7 +2087,7 @@ export default function ListenBarPage() {
                         ))
                       ) : (
                         <p className="rounded-lg border border-white/8 bg-black/30 px-3 py-3 text-xs font-bold text-zinc-500">
-                          {isZh ? "還沒有人評論這首歌，第一句留給懂的人。" : "No Track Comments Yet."}
+                          {isZh ? "給他一個大大的愛心表達你的支持，記得先登入喔。" : "Give this track a big heart to show support. Sign in first."}
                         </p>
                       )}
                     </div>
@@ -2453,8 +2445,8 @@ export default function ListenBarPage() {
             </p>
             <p className="mt-2 break-words text-sm font-bold leading-6 text-zinc-300 [overflow-wrap:anywhere]">
               {isZh
-                ? `傷心酒吧不是排行榜，而是一場 AI 音樂生存電台。新投稿不打斷目前歌曲，會在這首播完後優先插播；每批從第一首投稿開始計 1 小時，最多 ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} 首，其餘排到下一小時。公播池超過 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首時，每 ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} 小時最多淘汰 ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} 首低反應歌曲；累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 個正向反應，就取得榮譽榜入選資格。`
-                : `Bar Heartbreak is not a chart. It is AI music survival radio. New uploads do not interrupt the current song; they get priority after it ends. Each 1-hour batch airs up to ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} tracks. When the public pool is above ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}, up to ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} low-reaction tracks are removed every ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} hours. Tracks with ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} positive reactions become Honor Board eligible.`}
+                ? `傷心酒吧不是排行榜，而是一場 AI 音樂生存電台。聽歌不需登入；留言、投票與投稿需登入。新投稿不打斷目前歌曲，會在這首播完後優先插播；每批從第一首投稿開始計 1 小時，最多 ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} 首，其餘排到下一小時。公播池超過 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首時，每 ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} 小時最多淘汰 ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} 首低反應歌曲；累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 個正向反應，就取得榮譽榜入選資格。`
+                : `Bar Heartbreak is not a chart. It is AI music survival radio. Listening is open; comments, votes, and uploads require sign-in. New uploads do not interrupt the current song; they get priority after it ends. Each 1-hour batch airs up to ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} tracks. When the public pool is above ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}, up to ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} low-reaction tracks are removed every ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} hours. Tracks with ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} positive reactions become Honor Board eligible.`}
             </p>
           </div>
 

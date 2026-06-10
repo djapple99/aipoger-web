@@ -25,22 +25,6 @@ const TOTAL_SPLASH_MS =
 
 type SplashPhase = "fadeIn" | "hold" | "fadeOut";
 
-function BattleIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      className="h-8 w-8 text-current transition"
-      aria-hidden="true"
-    >
-      <rect x="9" y="3" width="6" height="11" rx="3" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M6 10.5a6 6 0 0 0 12 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M12 16v5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M8.5 21h7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function WatchIcon() {
   return (
     <svg
@@ -74,6 +58,21 @@ function ListenBarIcon() {
       <rect x="3.5" y="13" width="4.2" height="6.5" rx="1.8" stroke="currentColor" strokeWidth="1.8" />
       <rect x="16.3" y="13" width="4.2" height="6.5" rx="1.8" stroke="currentColor" strokeWidth="1.8" />
       <path d="M10 11.5v5M12 9.5v7M14 12.5v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function HonorIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className="h-8 w-8 text-current transition"
+      aria-hidden="true"
+    >
+      <path d="M7 4h10v3.5c0 3-2 5.2-5 5.2S7 10.5 7 7.5V4Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M7 6H4.8c0 3 1.4 4.8 3.4 5.5M17 6h2.2c0 3-1.4 4.8-3.4 5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M12 13v4.5M8.5 20h7M10 17.5h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
 }
@@ -243,31 +242,31 @@ function DesktopReferenceHome({
             </div>
             <div className="mt-[10px] grid gap-[12px]">
               <Link
-                href={withLang("/weekly-drop-battle")}
-                className="group flex h-[52px] items-center justify-between rounded-[10px] border border-orange-200/18 bg-[#ff6a00] px-[18px] text-white shadow-[0_12px_26px_rgba(255,106,0,0.28),inset_0_1px_0_rgba(255,255,255,0.22)] transition hover:bg-[#ff8422] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
-              >
-                <BattleIcon />
-                <span className={`text-[16px] font-black ${isZh ? zhDisplayClass : ""}`}>{t("btn_battle")}</span>
-              </Link>
-              <Link
                 href={withLang("/battle")}
-                className="group flex h-[49px] items-center justify-between rounded-[9px] border border-white/18 bg-white/[0.055] px-[18px] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-orange-300/52 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+                className="group flex h-[52px] items-center justify-between rounded-[10px] border border-orange-200/18 bg-[#ff6a00] px-[18px] text-white shadow-[0_12px_26px_rgba(255,106,0,0.28),inset_0_1px_0_rgba(255,255,255,0.22)] transition hover:bg-[#ff8422] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
               >
                 <WatchIcon />
                 <span className={`text-[16px] font-black ${isZh ? zhDisplayClass : ""}`}>{t("btn_watch")}</span>
               </Link>
               <Link
                 href={withLang("/listen-bar")}
-                className="group flex h-[49px] items-center justify-between rounded-[9px] border border-white/18 bg-white/[0.055] px-[18px] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-cyan-200/52 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
+                className="group flex h-[49px] items-center justify-between rounded-[9px] border border-white/18 bg-white/[0.055] px-[18px] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-orange-300/52 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
               >
                 <ListenBarIcon />
                 <span className={`text-[16px] font-black ${isZh ? zhDisplayClass : ""}`}>{t("btn_listen_bar")}</span>
+              </Link>
+              <Link
+                href={withLang("/rank")}
+                className="group flex h-[49px] items-center justify-between rounded-[9px] border border-white/18 bg-white/[0.055] px-[18px] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-cyan-200/52 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
+              >
+                <HonorIcon />
+                <span className={`text-[16px] font-black ${isZh ? zhDisplayClass : ""}`}>{t("watch_rank")}</span>
               </Link>
             </div>
           </div>
         </div>
 
-        <div className="absolute left-[27px] top-[575px] z-10 grid h-[132px] w-[1205px] grid-cols-6 gap-[8px]">
+        <div className="absolute left-[27px] top-[575px] z-10 grid h-[132px] w-[1205px] grid-cols-5 gap-[8px]">
           {infoLinks.map((item, index) => (
             <Link
               key={item.href}
@@ -586,30 +585,29 @@ export default function HomePage() {
   const musicAnalysisHref = `/music-analysis?lang=${lang}`;
   const statItems: HomeStatItem[] = isZh
     ? [
-        ["Weekly", "官方賽"],
+        ["Open", "公開聽歌"],
         ["90s", "Drop Battle"],
         ["Bar", "傷心酒吧"],
       ]
     : lang === "ja"
       ? [
-          ["Weekly", "公式戦"],
+          ["Open", "公開リスニング"],
           ["90s", "Best Drop"],
           ["Bar", "Heartbreak"],
         ]
       : lang === "ko"
         ? [
-            ["Weekly", "공식전"],
+            ["Open", "공개 감상"],
             ["90s", "Best Drop"],
             ["Bar", "Heartbreak"],
           ]
     : [
-        ["Weekly", "Official Battle"],
+        ["Open", "Open Listening"],
         ["90s", "Best Drop"],
         ["Bar", "Heartbreak"],
       ];
   const infoLinks = isZh
     ? [
-        { href: withLang("/weekly-drop-battle"), title: "Drop Battle 官方戰場", desc: "投稿 Drop，讓聽眾投票認可" },
         { href: withLang("/hook-guide"), title: "最強Drop Battle 對決抓波規則", desc: "Drop 上場，累積戰績認可" },
         { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: "作品定位、Drop 與參戰路線" },
         { href: withLang("/rank"), title: "AIPOGER 榮譽榜", desc: "投票、熱播、封存作品紀錄" },
@@ -618,7 +616,6 @@ export default function HomePage() {
       ]
     : lang === "ja"
       ? [
-          { href: withLang("/weekly-drop-battle"), title: "Drop Battle Official Arena", desc: "Dropを投稿し、聴衆の投票で認められる" },
           { href: withLang("/hook-guide"), title: "Drop Battle Rules", desc: "最強のDropをステージに出し、認知を積み上げる" },
           { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
           { href: withLang("/rank"), title: "AIPOGER Honor Board", desc: "認められた勝利、熱播曲、記録されたクリエイター実績" },
@@ -627,7 +624,6 @@ export default function HomePage() {
         ]
       : lang === "ko"
         ? [
-            { href: withLang("/weekly-drop-battle"), title: "Drop Battle Official Arena", desc: "Drop을 제출하고 관객 투표로 인정받기" },
             { href: withLang("/hook-guide"), title: "Drop Battle Rules", desc: "가장 강한 Drop으로 무대에 올라 인정을 쌓기" },
             { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
             { href: withLang("/rank"), title: "AIPOGER Honor Board", desc: "인정받은 승리, 인기 트랙, 기록된 크리에이터 성과" },
@@ -635,7 +631,6 @@ export default function HomePage() {
             { href: withLang("/partners"), title: "Partnerships", desc: "우승곡을 방송, 큐레이션, 상업 협업으로 연결" },
           ]
     : [
-        { href: withLang("/weekly-drop-battle"), title: "Drop Battle Official Arena", desc: "Submit a Drop and earn recognition through listener votes" },
         { href: withLang("/hook-guide"), title: "Drop Battle Rules", desc: "Put your strongest Drop on stage and build recognition" },
         { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
         { href: withLang("/rank"), title: "AIPOGER Honor Board", desc: "Recognized wins, hot tracks, and archived creator records" },
@@ -643,12 +638,12 @@ export default function HomePage() {
         { href: withLang("/partners"), title: "Partnerships", desc: "Move winning tracks toward airplay, curation, and commercial use" },
       ];
   const mobileActionLabels = isZh
-    ? { arena: "鬥歌場", weekly: "投稿", bar: "酒吧" }
+    ? { arena: "鬥歌場", rank: "榮譽", bar: "酒吧" }
     : lang === "ja"
-      ? { arena: "バトル", weekly: "投稿", bar: "Bar" }
+      ? { arena: "バトル", rank: "Honor", bar: "Bar" }
       : lang === "ko"
-        ? { arena: "배틀장", weekly: "제출", bar: "Bar" }
-        : { arena: "Arena", weekly: "Submit", bar: "Bar" };
+        ? { arena: "배틀장", rank: "Honor", bar: "Bar" }
+        : { arena: "Arena", rank: "Honor", bar: "Bar" };
 
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-[#050505] px-4 py-4 text-[#f5f5f5] md:px-0 md:py-0">
@@ -729,14 +724,14 @@ export default function HomePage() {
               <span className="text-[0.78rem] font-black leading-tight tracking-[0.04em]">{mobileActionLabels.arena}</span>
             </Link>
             <Link
-              href={withLang("/weekly-drop-battle")}
-              aria-label={t("btn_battle")}
+              href={withLang("/rank")}
+              aria-label={t("watch_rank")}
               className="group flex min-w-0 flex-col items-center gap-2 text-center text-white focus-visible:outline-none"
             >
               <span className="flex h-[4.85rem] w-[4.85rem] items-center justify-center rounded-full border border-orange-300/60 bg-orange-500 text-black shadow-[0_0_32px_rgba(255,106,0,0.24)] transition group-hover:bg-orange-300 group-focus-visible:ring-2 group-focus-visible:ring-orange-200">
-                <BattleIcon />
+                <HonorIcon />
               </span>
-              <span className="text-[0.78rem] font-black leading-tight tracking-[0.04em]">{mobileActionLabels.weekly}</span>
+              <span className="text-[0.78rem] font-black leading-tight tracking-[0.04em]">{mobileActionLabels.rank}</span>
             </Link>
             <Link
               href={withLang("/listen-bar")}
@@ -791,18 +786,8 @@ export default function HomePage() {
 
               <div className="grid gap-3.5">
                 <Link
-                  href={withLang("/weekly-drop-battle")}
-                  className="group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] bg-[#ff6a00] px-5 text-white shadow-[0_12px_30px_rgba(255,106,0,0.22)] transition hover:bg-[#ff8a2a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
-                >
-                  <BattleIcon />
-                  <span className={`text-lg tracking-[0.08em] ${isZh ? `${zhDisplayClass} font-black` : "font-black"}`}>
-                    {t("btn_battle")}
-                  </span>
-                </Link>
-
-                <Link
                   href={withLang("/battle")}
-                  className="group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] border border-white/14 bg-white/[0.055] px-5 text-white shadow-[0_12px_26px_rgba(0,0,0,0.2)] transition hover:border-orange-300/45 hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+                  className="group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] bg-[#ff6a00] px-5 text-white shadow-[0_12px_30px_rgba(255,106,0,0.22)] transition hover:bg-[#ff8a2a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
                 >
                   <WatchIcon />
                   <span className={`text-lg tracking-[0.08em] ${isZh ? `${zhDisplayClass} font-black` : "font-black"}`}>
@@ -812,11 +797,21 @@ export default function HomePage() {
 
                 <Link
                   href={withLang("/listen-bar")}
-                  className="group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] border border-white/14 bg-white/[0.055] px-5 text-white shadow-[0_12px_26px_rgba(0,0,0,0.2)] transition hover:border-cyan-200/45 hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
+                  className="group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] border border-white/14 bg-white/[0.055] px-5 text-white shadow-[0_12px_26px_rgba(0,0,0,0.2)] transition hover:border-orange-300/45 hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
                 >
                   <ListenBarIcon />
                   <span className={`text-lg tracking-[0.08em] ${isZh ? `${zhDisplayClass} font-black` : "font-black"}`}>
                     {t("btn_listen_bar")}
+                  </span>
+                </Link>
+
+                <Link
+                  href={withLang("/rank")}
+                  className="group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] border border-white/14 bg-white/[0.055] px-5 text-white shadow-[0_12px_26px_rgba(0,0,0,0.2)] transition hover:border-cyan-200/45 hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
+                >
+                  <HonorIcon />
+                  <span className={`text-lg tracking-[0.08em] ${isZh ? `${zhDisplayClass} font-black` : "font-black"}`}>
+                    {t("watch_rank")}
                   </span>
                 </Link>
               </div>
