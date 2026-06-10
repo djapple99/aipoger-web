@@ -566,6 +566,7 @@ export default function ListenBarPage() {
   const nowTrackRef = useRef<ListenBarTrack>(EMPTY_LISTEN_BAR_TRACK);
   const radioShouldResumeRef = useRef(true);
   const volumeRef = useRef(0.72);
+  const lastElapsedPaintRef = useRef(-1);
   const [userName, setUserName] = useState("吧友");
   const [visitorAvatarUrl, setVisitorAvatarUrl] = useState<string | null>(null);
   const [creatorDefaultName, setCreatorDefaultName] = useState("");
@@ -605,6 +606,12 @@ export default function ListenBarPage() {
     listenBarPresenceCount <= 1
       ? listenCopy.warming
       : listenCopy.listeners(listenBarPresenceCount);
+  const syncElapsedFromAudio = useCallback((audio: HTMLAudioElement, force = false) => {
+    const nextSecond = Math.floor(audio.currentTime);
+    if (!force && nextSecond === lastElapsedPaintRef.current) return;
+    lastElapsedPaintRef.current = nextSecond;
+    setElapsed(audio.currentTime);
+  }, []);
   const markPriorityAirplayTrack = useCallback((trackId: string) => {
     if (!trackId) return;
     setPriorityAirplayIds((ids) => {
@@ -1757,6 +1764,10 @@ export default function ListenBarPage() {
               0% { transform: translateX(0); }
               100% { transform: translateX(-50%); }
             }
+            @keyframes listenBarRecordGlow {
+              0%, 100% { opacity: 0.42; }
+              50% { opacity: 0.66; }
+            }
             @media (prefers-reduced-motion: reduce) {
               .listen-bar-battle-ticker-motion {
                 animation: none !important;
@@ -1861,7 +1872,7 @@ export default function ListenBarPage() {
                 <div className="relative mx-auto flex aspect-square w-full max-w-[18.5rem] transform-gpu items-center justify-center rounded-full border border-white/10 bg-[#0a0a0a] shadow-[inset_0_0_70px_rgba(255,255,255,0.055),0_0_52px_rgba(255,106,0,0.16)] [backface-visibility:hidden] sm:max-w-[23rem] sm:shadow-[inset_0_0_70px_rgba(255,255,255,0.055),0_0_90px_rgba(255,106,0,0.18)]">
                   <div
                     className={`pointer-events-none absolute inset-[-1.5%] rounded-full bg-[conic-gradient(from_90deg,rgba(255,106,0,0),rgba(255,168,76,0.58),rgba(0,202,255,0.2),rgba(255,106,0,0))] opacity-0 blur-[1px] transition-opacity duration-500 ${
-                      isPlaying ? "opacity-60 motion-safe:animate-[spin_18s_linear_infinite]" : ""
+                      isPlaying ? "opacity-55 motion-safe:animate-[listenBarRecordGlow_4.8s_ease-in-out_infinite]" : ""
                     }`}
                     aria-hidden="true"
                   />
@@ -2178,11 +2189,12 @@ export default function ListenBarPage() {
                 setIsPlaying(true);
               }}
               onPause={() => setIsPlaying(false)}
-              onTimeUpdate={(event) => setElapsed(event.currentTarget.currentTime)}
+              onTimeUpdate={(event) => syncElapsedFromAudio(event.currentTarget)}
               onLoadedMetadata={(event) => {
                 if (Number.isFinite(event.currentTarget.duration)) {
                   setTrackDuration(Math.max(1, Math.round(event.currentTarget.duration)));
                 }
+                syncElapsedFromAudio(event.currentTarget, true);
               }}
               onEnded={playNext}
             />

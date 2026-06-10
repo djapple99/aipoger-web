@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { type CSSProperties, type PointerEvent, useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
 import { writeFighterNameToStorage } from "@/lib/fighter-name-storage";
@@ -93,6 +93,22 @@ const DESKTOP_CARD_ICON_ASSETS = [
   "/home-art/card-headphones.webp",
   "/home-art/card-handshake.webp",
 ];
+
+const HOME_ACTION_GLOW = {
+  battle: "rgba(255, 122, 28, 0.42)",
+  bar: "rgba(255, 122, 28, 0.28)",
+  rank: "rgba(103, 232, 249, 0.28)",
+} as const;
+
+function pointerGlowStyle(color: string): CSSProperties {
+  return { "--aipo-hover-color": color } as CSSProperties;
+}
+
+function handlePointerGlowMove(event: PointerEvent<HTMLElement>) {
+  const rect = event.currentTarget.getBoundingClientRect();
+  event.currentTarget.style.setProperty("--aipo-hover-x", `${event.clientX - rect.left}px`);
+  event.currentTarget.style.setProperty("--aipo-hover-y", `${event.clientY - rect.top}px`);
+}
 
 function DesktopWaveLine({ className = "" }: { className?: string }) {
   return (
@@ -243,21 +259,27 @@ function DesktopReferenceHome({
             <div className="mt-[10px] grid gap-[12px]">
               <Link
                 href={withLang("/battle")}
-                className="group flex h-[52px] items-center justify-between rounded-[10px] border border-orange-200/18 bg-[#ff6a00] px-[18px] text-white shadow-[0_12px_26px_rgba(255,106,0,0.28),inset_0_1px_0_rgba(255,255,255,0.22)] transition hover:bg-[#ff8422] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+                onPointerMove={handlePointerGlowMove}
+                style={pointerGlowStyle(HOME_ACTION_GLOW.battle)}
+                className="aipo-pointer-glow group flex h-[52px] items-center justify-between rounded-[10px] border border-orange-200/18 bg-[#ff6a00] px-[18px] text-white shadow-[0_12px_26px_rgba(255,106,0,0.28),inset_0_1px_0_rgba(255,255,255,0.22)] transition hover:bg-[#ff8422] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
               >
                 <WatchIcon />
                 <span className={`text-[16px] font-black ${isZh ? zhDisplayClass : ""}`}>{t("btn_watch")}</span>
               </Link>
               <Link
                 href={withLang("/listen-bar")}
-                className="group flex h-[49px] items-center justify-between rounded-[9px] border border-white/18 bg-white/[0.055] px-[18px] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-orange-300/52 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+                onPointerMove={handlePointerGlowMove}
+                style={pointerGlowStyle(HOME_ACTION_GLOW.bar)}
+                className="aipo-pointer-glow group flex h-[49px] items-center justify-between rounded-[9px] border border-white/18 bg-white/[0.055] px-[18px] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-orange-300/52 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
               >
                 <ListenBarIcon />
                 <span className={`text-[16px] font-black ${isZh ? zhDisplayClass : ""}`}>{t("btn_listen_bar")}</span>
               </Link>
               <Link
                 href={withLang("/rank")}
-                className="group flex h-[49px] items-center justify-between rounded-[9px] border border-white/18 bg-white/[0.055] px-[18px] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-cyan-200/52 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
+                onPointerMove={handlePointerGlowMove}
+                style={pointerGlowStyle(HOME_ACTION_GLOW.rank)}
+                className="aipo-pointer-glow group flex h-[49px] items-center justify-between rounded-[9px] border border-white/18 bg-white/[0.055] px-[18px] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-cyan-200/52 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
               >
                 <HonorIcon />
                 <span className={`text-[16px] font-black ${isZh ? zhDisplayClass : ""}`}>{t("watch_rank")}</span>
@@ -787,7 +809,9 @@ export default function HomePage() {
               <div className="grid gap-3.5">
                 <Link
                   href={withLang("/battle")}
-                  className="group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] bg-[#ff6a00] px-5 text-white shadow-[0_12px_30px_rgba(255,106,0,0.22)] transition hover:bg-[#ff8a2a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+                  onPointerMove={handlePointerGlowMove}
+                  style={pointerGlowStyle(HOME_ACTION_GLOW.battle)}
+                  className="aipo-pointer-glow group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] bg-[#ff6a00] px-5 text-white shadow-[0_12px_30px_rgba(255,106,0,0.22)] transition hover:bg-[#ff8a2a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
                 >
                   <WatchIcon />
                   <span className={`text-lg tracking-[0.08em] ${isZh ? `${zhDisplayClass} font-black` : "font-black"}`}>
@@ -797,7 +821,9 @@ export default function HomePage() {
 
                 <Link
                   href={withLang("/listen-bar")}
-                  className="group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] border border-white/14 bg-white/[0.055] px-5 text-white shadow-[0_12px_26px_rgba(0,0,0,0.2)] transition hover:border-orange-300/45 hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+                  onPointerMove={handlePointerGlowMove}
+                  style={pointerGlowStyle(HOME_ACTION_GLOW.bar)}
+                  className="aipo-pointer-glow group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] border border-white/14 bg-white/[0.055] px-5 text-white shadow-[0_12px_26px_rgba(0,0,0,0.2)] transition hover:border-orange-300/45 hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
                 >
                   <ListenBarIcon />
                   <span className={`text-lg tracking-[0.08em] ${isZh ? `${zhDisplayClass} font-black` : "font-black"}`}>
@@ -807,7 +833,9 @@ export default function HomePage() {
 
                 <Link
                   href={withLang("/rank")}
-                  className="group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] border border-white/14 bg-white/[0.055] px-5 text-white shadow-[0_12px_26px_rgba(0,0,0,0.2)] transition hover:border-cyan-200/45 hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
+                  onPointerMove={handlePointerGlowMove}
+                  style={pointerGlowStyle(HOME_ACTION_GLOW.rank)}
+                  className="aipo-pointer-glow group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] border border-white/14 bg-white/[0.055] px-5 text-white shadow-[0_12px_26px_rgba(0,0,0,0.2)] transition hover:border-cyan-200/45 hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
                 >
                   <HonorIcon />
                   <span className={`text-lg tracking-[0.08em] ${isZh ? `${zhDisplayClass} font-black` : "font-black"}`}>

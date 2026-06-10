@@ -133,6 +133,42 @@ a {
   background: rgba(255, 106, 0, 0.1);
 }
 
+.aipo-pointer-glow {
+  --aipo-hover-x: 50%;
+  --aipo-hover-y: 50%;
+  --aipo-hover-color: rgba(255, 122, 28, 0.32);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.aipo-pointer-glow::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(
+      circle at var(--aipo-hover-x) var(--aipo-hover-y),
+      var(--aipo-hover-color) 0,
+      rgba(255, 255, 255, 0.08) 24%,
+      transparent 64%
+    );
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.aipo-pointer-glow > * {
+  position: relative;
+  z-index: 1;
+}
+
+.aipo-pointer-glow:hover::before,
+.aipo-pointer-glow:focus-visible::before {
+  opacity: 1;
+}
+
 .aipo-input {
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(0, 0, 0, 0.58);
