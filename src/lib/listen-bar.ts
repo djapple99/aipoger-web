@@ -22,6 +22,9 @@ export type ListenBarTrack = {
   title: string;
   artist: string;
   tool: string;
+  genre: string;
+  album?: string;
+  description?: string;
   mood: string;
   duration: number;
   audioUrl?: string;
@@ -43,6 +46,7 @@ export type ListenBarTrackRow = {
   ai_tool: string | null;
   genre: string | null;
   mood: string | null;
+  description?: string | null;
   bpm: number | null;
   duration_seconds: number | null;
   audio_path: string | null;
@@ -70,6 +74,8 @@ export const EMPTY_LISTEN_BAR_TRACK: ListenBarTrack = {
   title: "等待創作者投稿",
   artist: "AIPOGER",
   tool: "AI Music",
+  genre: "自我風格",
+  description: "等待下一首傷心故事進場",
   mood: "傷心酒吧待機中",
   duration: 1,
   queuedBy: "AIPOGER",
@@ -92,16 +98,20 @@ function displayAlbumOrMood(value: string | null | undefined) {
   const cleanValue = value
     ?.replace(/^官方公播\s*\/\s*/i, "")
     .replace(/^AIPOGER\s*官方公播\s*\/\s*/i, "")
+    .replace(/^專輯名稱\s*\/\s*/i, "")
+    .replace(/^Album\s*\/\s*/i, "")
     .trim();
   if (!cleanValue || cleanValue === "創作者投稿" || cleanValue === "Creator submission" || cleanValue === "Creator Submission") return cleanValue || "";
-  return cleanValue ? `專輯名稱 / ${cleanValue}` : "";
+  return cleanValue;
 }
 
 export function listenBarRowToTrack(row: ListenBarTrackRow): ListenBarTrack | null {
   const audioUrl = publicStorageUrl(LISTEN_BAR_AUDIO_BUCKET, row.audio_path);
   if (!audioUrl) return null;
 
-  const tags = [row.genre, displayAlbumOrMood(row.mood)].filter(Boolean);
+  const genre = row.genre?.trim() || "自我風格";
+  const album = displayAlbumOrMood(row.mood);
+  const tags = [genre, album].filter(Boolean);
   if (typeof row.bpm === "number" && row.bpm > 0) tags.push(`${row.bpm} BPM`);
   const source = row.is_featured_official || row.source === "official" ? "official" : "community";
   const queuedBy = row.artist?.trim() || (source === "official" ? "AIPOGER" : "創作者");
@@ -113,6 +123,9 @@ export function listenBarRowToTrack(row: ListenBarTrackRow): ListenBarTrack | nu
     title: row.title?.trim() || "AIPOGER Rotation",
     artist: row.artist?.trim() || "AIPOGER",
     tool: row.ai_tool?.trim() || "AI Music",
+    genre,
+    album: album || undefined,
+    description: row.description?.trim() || undefined,
     mood: tags.join(" / ") || "官方輪播",
     duration: Math.max(1, Math.round(row.duration_seconds ?? 45)),
     audioUrl,

@@ -73,6 +73,10 @@ type ReactionCounts = Record<ReactionKey, number>;
 type MyBroadcastStat = {
   id: string;
   title: string;
+  aiTool: string;
+  genre: string;
+  album: string;
+  description: string;
   duration: number;
   barPhase: "challenger" | "public";
   positives: number;
@@ -151,6 +155,7 @@ type PublicUploadForm = {
   aiTool: string;
   genre: string;
   album: string;
+  description: string;
 };
 
 const initialPublicUploadForm: PublicUploadForm = {
@@ -159,6 +164,7 @@ const initialPublicUploadForm: PublicUploadForm = {
   aiTool: "",
   genre: "",
   album: "",
+  description: "",
 };
 
 function isMissingListenBarSubmissionColumn(error: unknown): boolean {
@@ -170,7 +176,7 @@ function isMissingListenBarSubmissionColumn(error: unknown): boolean {
         (error as { code?: string }).code,
       ].filter(Boolean).join(" ")
     : String(error ?? "");
-  return /audio_sha256|bar_phase|promoted_at|removed_at|schema cache|column.*does not exist|PGRST204/i.test(text);
+  return /audio_sha256|bar_phase|promoted_at|removed_at|description|schema cache|column.*does not exist|PGRST204/i.test(text);
 }
 
 function isDuplicateAudioHashError(error: unknown): boolean {
@@ -267,6 +273,10 @@ function listenBarRowToMyBroadcastStat(row: ListenBarTrackRow): MyBroadcastStat 
   return {
     id: row.id,
     title: row.title?.trim() || "Untitled",
+    aiTool: row.ai_tool?.trim() || "AI Music",
+    genre: row.genre?.trim() || "自我風格",
+    album: row.mood?.trim() || "",
+    description: row.description?.trim() || "",
     duration: Math.max(1, Math.round(row.duration_seconds ?? 0)),
     barPhase: row.bar_phase === "public" ? "public" : "challenger",
     positives: Math.max(0, row.positive_reaction_count ?? 0),
@@ -437,10 +447,28 @@ function albumDisplayLabel(value: string, isZh: boolean) {
     .replace(/^AI Music\s*\/\s*/i, "")
     .replace(/^官方公播\s*\/\s*/i, "")
     .replace(/^專輯名稱\s*\/\s*/i, "")
+    .replace(/^Album\s*\/\s*/i, "")
     .trim();
   if (!cleanValue || cleanValue === "官方輪播") return "";
   if (cleanValue === "創作者投稿" || cleanValue === "Creator submission" || cleanValue === "Creator Submission") return isZh ? "創作者投稿" : "Creator Submission";
   return isZh ? `專輯名稱 / ${cleanValue}` : `Album / ${cleanValue}`;
+}
+
+function genreDisplayLabel(value: string | null | undefined, isZh: boolean) {
+  const cleanValue = value?.trim();
+  if (!cleanValue || cleanValue === "自我風格" || cleanValue === "Custom Style") return isZh ? "自我風格" : "Custom Style";
+  return cleanValue;
+}
+
+function descriptionDisplayLabel(value: string | null | undefined, isZh: boolean) {
+  const cleanValue = value?.trim();
+  if (cleanValue) return cleanValue;
+  return isZh ? "這首歌還在等創作者補上一句故事" : "This track is waiting for a one-line story";
+}
+
+function aiToolDisplayLabel(value: string | null | undefined, isZh: boolean) {
+  const cleanValue = value?.trim() || "AI Music";
+  return isZh ? `AI 工具 ${cleanValue}` : `AI Tool ${cleanValue}`;
 }
 
 function survivalDayFromDate(value: string | null | undefined) {
@@ -595,6 +623,14 @@ export default function ListenBarPage() {
   const [publicLyricsText, setPublicLyricsText] = useState("");
   const [publicUploadBusy, setPublicUploadBusy] = useState(false);
   const [removeTrackBusyId, setRemoveTrackBusyId] = useState<string | null>(null);
+  const [editTrackId, setEditTrackId] = useState<string | null>(null);
+  const [editTrackForm, setEditTrackForm] = useState<Pick<MyBroadcastStat, "aiTool" | "genre" | "album" | "description">>({
+    aiTool: "",
+    genre: "自我風格",
+    album: "",
+    description: "",
+  });
+  const [editTrackBusy, setEditTrackBusy] = useState(false);
   const [publicUploadMessage, setPublicUploadMessage] = useState("");
   const [publicUploadError, setPublicUploadError] = useState("");
   const [myBroadcastStats, setMyBroadcastStats] = useState<MyBroadcastStat[]>([]);
@@ -1286,21 +1322,6 @@ export default function ListenBarPage() {
   const currentReactions = reactionCounts[nowTrack.id] ?? emptyReactions;
   const currentPositiveTotal = Object.values(currentReactions).reduce((sum, count) => sum + count, 0);
   const honorRollQualified = currentPositiveTotal >= LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD;
-  const statusText = useMemo(() => {
-    if (!nowTrack.audioUrl) return isZh ? "等待投稿" : "Waiting for Uploads";
-    if (nowTrack.source === "official") return isZh ? "AIPOGER 官方公播" : "AIPOGER Official";
-    if (nowTrack.barPhase === "public") {
-      if (currentPositiveTotal >= LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD) {
-        return isZh
-          ? `榮譽榜資格 · ${currentPositiveTotal} 顆心`
-          : `Honor Eligible · ${currentPositiveTotal} hearts`;
-      }
-      return isZh ? `公播池 · ${currentPositiveTotal} 顆心` : `Public Pool · ${currentPositiveTotal} hearts`;
-    }
-    return isZh
-      ? `Challenger · ${currentPositiveTotal}/${LISTEN_BAR_PUBLIC_REACTION_THRESHOLD} 顆心`
-      : `Challenger · ${currentPositiveTotal}/${LISTEN_BAR_PUBLIC_REACTION_THRESHOLD} hearts`;
-  }, [currentPositiveTotal, isZh, nowTrack.audioUrl, nowTrack.barPhase, nowTrack.source]);
   const nowTrackTitle = !isZh && nowTrack.id === EMPTY_LISTEN_BAR_TRACK.id ? "Waiting for Creator Uploads" : nowTrack.title;
   const myCurrentReaction = myReactions[nowTrack.id] ?? null;
   const currentHeartTotal = Math.max(0, currentReactions.heart ?? 0);
@@ -1562,6 +1583,7 @@ export default function ListenBarPage() {
         ai_tool: publicUploadForm.aiTool.trim() || "AI Music",
         genre: publicUploadForm.genre.trim(),
         mood: publicUploadForm.album.trim() || (isZh ? "創作者投稿" : "Creator Submission"),
+        description: publicUploadForm.description.trim() || null,
         duration_seconds: duration > 0 ? duration : null,
         audio_path: audioPath,
         cover_path: coverPath,
@@ -1584,6 +1606,7 @@ export default function ListenBarPage() {
         const fallbackPayload = { ...insertPayload };
         delete (fallbackPayload as Partial<typeof insertPayload>).audio_sha256;
         delete (fallbackPayload as Partial<typeof insertPayload>).bar_phase;
+        delete (fallbackPayload as Partial<typeof insertPayload>).description;
         insertResult = await supabase
           .from("listen_bar_tracks")
           .insert(fallbackPayload)
@@ -1614,6 +1637,10 @@ export default function ListenBarPage() {
           {
             id: normalizedTrack.id,
             title: normalizedTrack.title,
+            aiTool: normalizedTrack.tool,
+            genre: normalizedTrack.genre,
+            album: normalizedTrack.album ?? "",
+            description: normalizedTrack.description ?? "",
             duration: normalizedTrack.duration,
             barPhase: normalizedTrack.barPhase ?? "challenger",
             positives: 0,
@@ -1657,6 +1684,80 @@ export default function ListenBarPage() {
     }
   };
 
+  const openEditTrackDetails = (track: MyBroadcastStat) => {
+    setEditTrackId((current) => current === track.id ? null : track.id);
+    setEditTrackForm({
+      aiTool: track.aiTool || "AI Music",
+      genre: track.genre || "自我風格",
+      album: track.album || "",
+      description: track.description || "",
+    });
+    setPublicUploadError("");
+    setPublicUploadMessage("");
+  };
+
+  const handleSaveTrackDetails = async (track: MyBroadcastStat) => {
+    if (!userId || editTrackBusy) return;
+    setEditTrackBusy(true);
+    setPublicUploadError("");
+    setPublicUploadMessage("");
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token ?? "";
+      const response = await fetch("/api/listen-bar/my-tracks", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          trackId: track.id,
+          aiTool: editTrackForm.aiTool,
+          genre: editTrackForm.genre,
+          album: editTrackForm.album,
+          description: editTrackForm.description,
+        }),
+      });
+      const payload = await response.json().catch(() => null) as { track?: ListenBarTrackRow; error?: string } | null;
+      if (!response.ok || !payload?.track) {
+        throw new Error(payload?.error || (isZh ? "歌曲資料更新失敗。" : "Track details update failed."));
+      }
+
+      const updatedTrack = listenBarRowToMyBroadcastStat(payload.track);
+      setMyBroadcastStats((tracks) => tracks.map((item) => item.id === updatedTrack.id ? updatedTrack : item));
+      setOfficialTracks((tracks) => tracks.map((item) => item.id === updatedTrack.id
+        ? {
+            ...item,
+            tool: updatedTrack.aiTool,
+            genre: updatedTrack.genre,
+            album: updatedTrack.album || undefined,
+            description: updatedTrack.description || undefined,
+            mood: [updatedTrack.genre, updatedTrack.album].filter(Boolean).join(" / ") || item.mood,
+          }
+        : item));
+      if (nowTrack.id === updatedTrack.id) {
+        setNowTrack((item) => ({
+          ...item,
+          tool: updatedTrack.aiTool,
+          genre: updatedTrack.genre,
+          album: updatedTrack.album || undefined,
+          description: updatedTrack.description || undefined,
+          mood: [updatedTrack.genre, updatedTrack.album].filter(Boolean).join(" / ") || item.mood,
+        }));
+      }
+      setEditTrackId(null);
+      setPublicUploadMessage(isZh ? "歌曲資料已更新。" : "Track details updated.");
+    } catch (error) {
+      setPublicUploadError(
+        isZh
+          ? `歌曲資料更新失敗：${String((error as { message?: string })?.message ?? error)}`
+          : `Track details update failed: ${String((error as { message?: string })?.message ?? error)}`,
+      );
+    } finally {
+      setEditTrackBusy(false);
+    }
+  };
+
   const handleRemoveMyTrack = async (track: MyBroadcastStat) => {
     if (!userId || removeTrackBusyId) return;
     const confirmMessage = track.barPhase === "public"
@@ -1691,6 +1792,7 @@ export default function ListenBarPage() {
         setElapsed(0);
       }
       setMyBroadcastStats((tracks) => tracks.filter((item) => item.id !== track.id));
+      if (editTrackId === track.id) setEditTrackId(null);
       setReactionCounts((counts) => {
         const next = { ...counts };
         delete next[track.id];
@@ -1743,7 +1845,10 @@ export default function ListenBarPage() {
     });
     return index;
   }, [elapsed, lyricLines]);
-  const nowAlbumLabel = albumDisplayLabel(nowTrack.mood, isZh);
+  const nowAlbumLabel = albumDisplayLabel(nowTrack.album ?? "", isZh);
+  const nowGenreLabel = genreDisplayLabel(nowTrack.genre, isZh);
+  const nowDescriptionLabel = descriptionDisplayLabel(nowTrack.description, isZh);
+  const nowAiToolLabel = aiToolDisplayLabel(nowTrack.tool, isZh);
   const navLinks = [
     { href: "/battle", label: listenCopy.navBattle },
     { href: "/rank", label: listenCopy.navRank },
@@ -1944,12 +2049,8 @@ export default function ListenBarPage() {
               </div>
 
               <div className="min-w-0 self-start pt-1 md:pt-3">
-                <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase text-orange-300/80">
-                  <span>
-                    AIPOGER SELECT
-                  </span>
-                  <span className="h-px w-12 bg-orange-400/40" />
-                  <span>{nowTrack.tool}</span>
+                <div className="max-w-2xl text-xs font-black leading-5 text-orange-200/82 sm:text-sm">
+                  {nowDescriptionLabel}
                 </div>
                 <p
                   title={nowTrackTitle}
@@ -1966,7 +2067,7 @@ export default function ListenBarPage() {
                       <span className="h-1 w-1 rounded-full bg-cyan-300" />
                     </>
                   )}
-                  <span>{statusText}</span>
+                  <span>{nowAiToolLabel}</span>
                 </div>
                 <div className="mt-4 inline-flex max-w-full flex-wrap items-center gap-2 rounded-full border border-orange-300/20 bg-black/36 px-3 py-2 text-xs text-zinc-300">
                   <span className="font-black text-orange-200">{isZh ? "播歌者" : "Host"}</span>
@@ -1985,8 +2086,11 @@ export default function ListenBarPage() {
                     </span>
                   )}
                 </div>
-                {nowTrack.source === "community" && nowTrack.id !== EMPTY_LISTEN_BAR_TRACK.id ? (
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                <div className="mt-3 -ml-1 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-100">
+                    {nowGenreLabel}
+                  </span>
+                  {nowTrack.source === "community" && nowTrack.id !== EMPTY_LISTEN_BAR_TRACK.id ? (
                     <ReportButton
                       targetType="listen_bar_track"
                       targetId={nowTrack.id}
@@ -1995,8 +2099,8 @@ export default function ListenBarPage() {
                       context={`Bar Heartbreak now playing. phase=${nowTrack.barPhase}; host=${nowPresenterName}`}
                       lang={lang}
                     />
-                  </div>
-                ) : null}
+                  ) : null}
+                </div>
                 <div className="mt-7">
                   <div className="h-2 overflow-hidden rounded-full bg-white/10">
                     <div
@@ -2381,6 +2485,13 @@ export default function ListenBarPage() {
                     maxLength={80}
                     className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
                   />
+                  <input
+                    value={publicUploadForm.description}
+                    onChange={(event) => setPublicUploadForm((current) => ({ ...current, description: event.target.value }))}
+                    placeholder={isZh ? "一句歌曲介紹（選填）" : "One-Line Description (Optional)"}
+                    maxLength={120}
+                    className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
+                  />
                 </div>
 
                 <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
@@ -2508,7 +2619,14 @@ export default function ListenBarPage() {
                     <div key={track.id} className="min-w-0 rounded-xl border border-white/8 bg-white/[0.035] px-3 py-2">
                       <div className="min-w-0 overflow-hidden">
                         <div className="flex min-w-0 items-center gap-2">
-                          <p className="min-w-0 max-w-[calc(100%-4.5rem)] truncate text-sm font-black text-white">{track.title}</p>
+                          <p className="min-w-0 flex-1 truncate text-sm font-black text-white">{track.title}</p>
+                          <button
+                            type="button"
+                            onClick={() => openEditTrackDetails(track)}
+                            className="shrink-0 whitespace-nowrap rounded-full border border-cyan-200/30 bg-cyan-300/10 px-2.5 py-0.5 text-[11px] font-black text-cyan-100 transition hover:border-cyan-100/70 hover:bg-cyan-300/16"
+                          >
+                            {editTrackId === track.id ? (isZh ? "收起" : "Close") : (isZh ? "補資料" : "Edit")}
+                          </button>
                           <button
                             type="button"
                             onClick={() => void handleRemoveMyTrack(track)}
@@ -2518,8 +2636,54 @@ export default function ListenBarPage() {
                             {removeTrackBusyId === track.id ? (isZh ? "撤下中" : "Removing") : (isZh ? "撤下" : "Remove")}
                           </button>
                         </div>
-                        <p className="mt-0.5 text-[11px] font-bold text-zinc-500">{statusLabel} · {formatDuration(track.duration)} · {track.positives} hearts</p>
+                        <p className="mt-0.5 text-[11px] font-bold text-zinc-500">{statusLabel} · {formatDuration(track.duration)} · {track.positives} hearts · {genreDisplayLabel(track.genre, isZh)}</p>
                       </div>
+                      {editTrackId === track.id && (
+                        <div className="mt-3 grid gap-2 rounded-xl border border-cyan-200/12 bg-black/35 p-3">
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            <input
+                              value={editTrackForm.aiTool}
+                              onChange={(event) => setEditTrackForm((current) => ({ ...current, aiTool: event.target.value }))}
+                              placeholder={isZh ? "AI 工具" : "AI Tool"}
+                              maxLength={40}
+                              className="h-10 rounded-xl border border-white/10 bg-black/58 px-3 text-xs font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200 focus:ring-2 focus:ring-cyan-200/15"
+                            />
+                            <select
+                              value={editTrackForm.genre}
+                              onChange={(event) => setEditTrackForm((current) => ({ ...current, genre: event.target.value }))}
+                              className="h-10 rounded-xl border border-white/10 bg-black/58 px-3 text-xs font-bold text-white outline-none transition focus:border-cyan-200 focus:ring-2 focus:ring-cyan-200/15"
+                            >
+                              {LISTEN_BAR_GENRES.map((genre) => (
+                                <option key={genre.value} value={genre.value}>
+                                  {t(genre.labelKey)}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              value={editTrackForm.album}
+                              onChange={(event) => setEditTrackForm((current) => ({ ...current, album: event.target.value }))}
+                              placeholder={isZh ? "專輯名稱（選填）" : "Album Name (Optional)"}
+                              maxLength={80}
+                              className="h-10 rounded-xl border border-white/10 bg-black/58 px-3 text-xs font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200 focus:ring-2 focus:ring-cyan-200/15"
+                            />
+                            <input
+                              value={editTrackForm.description}
+                              onChange={(event) => setEditTrackForm((current) => ({ ...current, description: event.target.value }))}
+                              placeholder={isZh ? "一句歌曲介紹（選填）" : "One-Line Description (Optional)"}
+                              maxLength={120}
+                              className="h-10 rounded-xl border border-white/10 bg-black/58 px-3 text-xs font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200 focus:ring-2 focus:ring-cyan-200/15"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => void handleSaveTrackDetails(track)}
+                            disabled={editTrackBusy}
+                            className="h-10 rounded-xl border border-cyan-200/25 bg-cyan-300/12 px-3 text-xs font-black text-cyan-50 transition hover:border-cyan-100 hover:bg-cyan-300/18 disabled:cursor-wait disabled:opacity-55"
+                          >
+                            {editTrackBusy ? (isZh ? "儲存中" : "Saving") : (isZh ? "儲存歌曲資料" : "Save Details")}
+                          </button>
+                        </div>
+                      )}
                       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
                         <div className="h-full rounded-full bg-gradient-to-r from-orange-500 to-cyan-300" style={{ width: `${keepPercent}%` }} />
                       </div>

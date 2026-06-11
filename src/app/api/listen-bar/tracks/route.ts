@@ -13,6 +13,7 @@ type ListenBarTrackRow = {
   ai_tool: string | null;
   genre: string | null;
   mood: string | null;
+  description?: string | null;
   bpm: number | null;
   duration_seconds: number | null;
   audio_path: string | null;
@@ -60,6 +61,7 @@ const MODERN_SELECT = [
   "ai_tool",
   "genre",
   "mood",
+  "description",
   "bpm",
   "duration_seconds",
   "audio_path",
@@ -124,7 +126,7 @@ function isMissingColumnError(error: unknown): boolean {
         (error as { code?: string }).code,
       ].filter(Boolean).join(" ")
     : String(error ?? "");
-  return /schema cache|column.*does not exist|PGRST204|bar_phase|promoted_at|audio_sha256/i.test(text);
+  return /schema cache|column.*does not exist|PGRST204|bar_phase|promoted_at|audio_sha256|description/i.test(text);
 }
 
 function applyLegacyOpeningGrace(rows: ListenBarTrackRow[]): ListenBarTrackRow[] {

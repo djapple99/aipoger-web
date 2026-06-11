@@ -21,6 +21,7 @@ create table if not exists public.listen_bar_tracks (
   ai_tool text,
   genre text,
   mood text,
+  description text,
   bpm integer check (bpm is null or (bpm > 0 and bpm < 400)),
   duration_seconds integer check (duration_seconds is null or (duration_seconds > 0 and duration_seconds <= 3600)),
   lyrics text,
