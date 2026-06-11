@@ -49,6 +49,7 @@ type ListenBarMyTracksDatabase = {
 type AdminClient = SupabaseClient<ListenBarMyTracksDatabase>;
 
 const MODERN_SELECT = "id,title,artist,ai_tool,genre,mood,description,lyrics,duration_seconds,created_by,source,bar_phase,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at,promoted_at";
+const LEGACY_WITH_DESCRIPTION_SELECT = "id,title,artist,ai_tool,genre,mood,description,lyrics,duration_seconds,created_by,source,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at";
 const LEGACY_SELECT = "id,title,artist,ai_tool,genre,mood,lyrics,duration_seconds,created_by,source,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at";
 
 function tokenFromRequest(request: NextRequest): string | null {
@@ -139,13 +140,25 @@ export async function GET(request: NextRequest) {
     if (error && isMissingColumnError(error)) {
       const legacyResult = await admin
         .from("listen_bar_tracks")
-        .select(LEGACY_SELECT)
+        .select(LEGACY_WITH_DESCRIPTION_SELECT)
         .eq("created_by", userData.user.id)
         .eq("source", "community")
         .eq("is_active", true)
         .order("created_at", { ascending: false });
       rows = (legacyResult.data as ListenBarTrackRow[] | null) ?? null;
       error = legacyResult.error;
+
+      if (error && isMissingColumnError(error)) {
+        const basicLegacyResult = await admin
+          .from("listen_bar_tracks")
+          .select(LEGACY_SELECT)
+          .eq("created_by", userData.user.id)
+          .eq("source", "community")
+          .eq("is_active", true)
+          .order("created_at", { ascending: false });
+        rows = (basicLegacyResult.data as ListenBarTrackRow[] | null) ?? null;
+        error = basicLegacyResult.error;
+      }
     }
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -189,17 +202,29 @@ export async function PATCH(request: NextRequest) {
       .maybeSingle();
 
     if (updateResult.error && isMissingColumnError(updateResult.error)) {
-      const fallbackPatch = { ...patch };
-      delete (fallbackPatch as Partial<typeof patch>).description;
       updateResult = await admin
         .from("listen_bar_tracks")
-        .update(fallbackPatch)
+        .update(patch)
         .eq("id", trackId)
         .eq("created_by", userData.user.id)
         .eq("source", "community")
         .eq("is_active", true)
-        .select(LEGACY_SELECT)
+        .select(LEGACY_WITH_DESCRIPTION_SELECT)
         .maybeSingle();
+
+      if (updateResult.error && isMissingColumnError(updateResult.error)) {
+        const fallbackPatch = { ...patch };
+        delete (fallbackPatch as Partial<typeof patch>).description;
+        updateResult = await admin
+          .from("listen_bar_tracks")
+          .update(fallbackPatch)
+          .eq("id", trackId)
+          .eq("created_by", userData.user.id)
+          .eq("source", "community")
+          .eq("is_active", true)
+          .select(LEGACY_SELECT)
+          .maybeSingle();
+      }
     }
 
     if (updateResult.error) return NextResponse.json({ error: updateResult.error.message }, { status: 500 });

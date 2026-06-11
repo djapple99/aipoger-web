@@ -83,6 +83,32 @@ const MODERN_SELECT = [
   "promoted_at",
 ].join(",");
 
+const LEGACY_WITH_DESCRIPTION_SELECT = [
+  "id",
+  "title",
+  "artist",
+  "ai_tool",
+  "genre",
+  "mood",
+  "description",
+  "bpm",
+  "duration_seconds",
+  "audio_path",
+  "cover_path",
+  "lyrics",
+  "sort_order",
+  "is_active",
+  "source",
+  "is_featured_official",
+  "positive_reaction_count",
+  "heart_count",
+  "star_count",
+  "thumb_count",
+  "happy_count",
+  "created_at",
+  "updated_at",
+].join(",");
+
 const LEGACY_SELECT = [
   "id",
   "title",
@@ -182,13 +208,25 @@ export async function GET() {
     if (error && isMissingColumnError(error)) {
       const legacyResult = await admin
         .from("listen_bar_tracks")
-        .select(LEGACY_SELECT)
+        .select(LEGACY_WITH_DESCRIPTION_SELECT)
         .eq("source", "community")
         .eq("is_active", true)
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: false });
       rows = (legacyResult.data as ListenBarTrackRow[] | null) ?? null;
       error = legacyResult.error;
+
+      if (error && isMissingColumnError(error)) {
+        const basicLegacyResult = await admin
+          .from("listen_bar_tracks")
+          .select(LEGACY_SELECT)
+          .eq("source", "community")
+          .eq("is_active", true)
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: false });
+        rows = (basicLegacyResult.data as ListenBarTrackRow[] | null) ?? null;
+        error = basicLegacyResult.error;
+      }
     }
 
     if (error) {

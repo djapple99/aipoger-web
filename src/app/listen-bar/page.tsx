@@ -1606,12 +1606,20 @@ export default function ListenBarPage() {
         const fallbackPayload = { ...insertPayload };
         delete (fallbackPayload as Partial<typeof insertPayload>).audio_sha256;
         delete (fallbackPayload as Partial<typeof insertPayload>).bar_phase;
-        delete (fallbackPayload as Partial<typeof insertPayload>).description;
         insertResult = await supabase
           .from("listen_bar_tracks")
           .insert(fallbackPayload)
           .select("*")
           .maybeSingle<ListenBarTrackRow>();
+
+        if (insertResult.error && isMissingListenBarSubmissionColumn(insertResult.error)) {
+          delete (fallbackPayload as Partial<typeof insertPayload>).description;
+          insertResult = await supabase
+            .from("listen_bar_tracks")
+            .insert(fallbackPayload)
+            .select("*")
+            .maybeSingle<ListenBarTrackRow>();
+        }
       }
       const { data: insertedTrackRow, error } = insertResult;
       if (error) throw error;
