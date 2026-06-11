@@ -208,6 +208,9 @@ export default function AdminModerationPage() {
             <Link href="/admin/listen-bar" className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-black text-zinc-200">
               酒吧後台
             </Link>
+            <Link href="/admin/quiz" className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-4 py-2 text-xs font-black text-cyan-100">
+              測驗後台
+            </Link>
             <Link href="/listen-bar" className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-4 py-2 text-xs font-black text-cyan-100">
               傷心酒吧
             </Link>

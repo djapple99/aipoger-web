@@ -214,6 +214,9 @@ export default function AdminBattlesPage() {
             <Link href="/admin/listen-bar" className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-4 py-2 text-xs font-black text-cyan-100">
               酒吧後台
             </Link>
+            <Link href="/admin/quiz" className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-4 py-2 text-xs font-black text-cyan-100">
+              測驗後台
+            </Link>
             <Link href="/battle?lang=zh" className="rounded-full border border-orange-200/25 bg-orange-500/10 px-4 py-2 text-xs font-black text-orange-100">
               鬥歌池
             </Link>
