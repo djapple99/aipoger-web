@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import LangToggle from "@/components/lang-toggle";
 import SafetyNotice from "@/components/safety-notice";
 import { fontRighteous } from "@/lib/fonts";
@@ -166,6 +166,43 @@ const initialPublicUploadForm: PublicUploadForm = {
   album: "",
   description: "",
 };
+
+type ListenBarRecordArtProps = {
+  coverUrl: string;
+  title: string;
+  isPlaying: boolean;
+};
+
+const ListenBarRecordArt = memo(function ListenBarRecordArt({ coverUrl, title, isPlaying }: ListenBarRecordArtProps) {
+  return (
+    <div className="relative isolate mx-auto flex aspect-square w-full max-w-[17rem] items-center justify-center rounded-full border border-white/10 bg-[#0a0a0a] shadow-[inset_0_0_70px_rgba(255,255,255,0.055),0_0_52px_rgba(255,106,0,0.16)] [contain:paint] min-[430px]:max-w-[18.5rem] sm:max-w-[23rem] sm:shadow-[inset_0_0_70px_rgba(255,255,255,0.055),0_0_74px_rgba(255,106,0,0.14)]">
+      <div
+        className={`pointer-events-none absolute inset-[4%] rounded-full border transition-[border-color,box-shadow,opacity] duration-500 ${
+          isPlaying
+            ? "border-orange-300/26 opacity-90 shadow-[0_0_28px_rgba(255,106,0,0.18)]"
+            : "border-white/8 opacity-55"
+        }`}
+        aria-hidden="true"
+      />
+      <div className="pointer-events-none absolute inset-[8%] rounded-full border border-zinc-800/90" aria-hidden="true" />
+      <div className="pointer-events-none absolute inset-[16%] rounded-full border border-zinc-800/76" aria-hidden="true" />
+      <div className="absolute inset-[15%] overflow-hidden rounded-full border-2 border-orange-300/36 bg-black/72 shadow-[0_0_34px_rgba(255,106,0,0.14)]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={coverUrl}
+          alt={title}
+          className="h-full w-full object-cover"
+          decoding="async"
+          loading="eager"
+          onError={(event) => {
+            if (event.currentTarget.src.endsWith(DEFAULT_LISTEN_BAR_COVER)) return;
+            event.currentTarget.src = DEFAULT_LISTEN_BAR_COVER;
+          }}
+        />
+      </div>
+    </div>
+  );
+});
 
 function isMissingListenBarSubmissionColumn(error: unknown): boolean {
   const text = error && typeof error === "object"
@@ -1890,31 +1927,6 @@ export default function ListenBarPage() {
       <div className="relative z-10 mx-auto flex w-full max-w-[1880px] flex-col gap-4 overflow-x-hidden">
         <header className="aipo-control-panel aipo-panel-line relative overflow-hidden rounded-[1.35rem] p-4 text-center text-white md:p-5">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(255,106,0,0.16),transparent_30%),radial-gradient(circle_at_84%_10%,rgba(0,202,255,0.09),transparent_28%)]" />
-          <style>{`
-            @keyframes listen-bar-battle-ticker {
-              0% { transform: translateX(0); }
-              100% { transform: translateX(-50%); }
-            }
-            @keyframes listenBarRecordGlow {
-              0%, 100% { opacity: 0.42; }
-              50% { opacity: 0.66; }
-            }
-            @media (prefers-reduced-motion: reduce) {
-              .listen-bar-battle-ticker-motion {
-                animation: none !important;
-                transform: translateX(0) !important;
-              }
-            }
-            @media (max-width: 639px) {
-              .listen-bar-battle-ticker-motion {
-                animation: none !important;
-                transform: translateX(0) !important;
-                white-space: normal !important;
-                line-height: 1.45 !important;
-              }
-            }
-          `}</style>
-
           <div className="relative mb-5 ml-auto grid max-w-full grid-cols-2 items-center justify-center gap-2 rounded-[1.15rem] border border-white/10 bg-black/55 px-3 py-2 pl-[4.85rem] shadow-[0_18px_54px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur min-[430px]:pl-3 sm:flex sm:flex-wrap md:w-fit md:justify-end">
             <a
               href="#play-request"
@@ -1981,15 +1993,11 @@ export default function ListenBarPage() {
               <span className="pointer-events-none absolute inset-y-0 left-0 z-10 hidden w-10 bg-gradient-to-r from-black via-black/80 to-transparent sm:block" />
               <span className="pointer-events-none absolute inset-y-0 right-0 z-10 hidden w-10 bg-gradient-to-l from-black via-black/80 to-transparent sm:block" />
               <span
-                className={`listen-bar-battle-ticker-motion inline-flex w-full text-left text-xs font-black leading-5 tracking-normal transition-colors group-hover:text-white sm:w-max sm:whitespace-nowrap sm:leading-none sm:tracking-[0.08em] ${
+                className={`block min-w-0 truncate text-left text-xs font-black leading-5 tracking-normal transition-colors group-hover:text-white sm:leading-none sm:tracking-[0.08em] ${
                   battleTickerMessages.length > 0 ? "text-red-300" : "text-cyan-100/78"
                 }`}
-                style={{
-                  animation: "listen-bar-battle-ticker 34s linear infinite",
-                }}
               >
-                <span className="pr-10">{battleTickerText}</span>
-                <span className="hidden pr-10 sm:inline" aria-hidden="true">{battleTickerText}</span>
+                {battleTickerText}
               </span>
             </Link>
           </div>
@@ -2000,29 +2008,7 @@ export default function ListenBarPage() {
             <div className="pointer-events-none absolute inset-0 [background:linear-gradient(115deg,rgba(255,106,0,0.14),transparent_35%,rgba(0,202,255,0.08))]" />
             <div className="relative grid min-w-0 gap-6 md:grid-cols-[minmax(18rem,0.98fr)_1.02fr] md:items-start">
               <div className="flex min-w-0 flex-col justify-start gap-4 pt-1 md:pt-3">
-                <div className="relative mx-auto flex aspect-square w-full max-w-[18.5rem] transform-gpu items-center justify-center rounded-full border border-white/10 bg-[#0a0a0a] shadow-[inset_0_0_70px_rgba(255,255,255,0.055),0_0_52px_rgba(255,106,0,0.16)] [backface-visibility:hidden] sm:max-w-[23rem] sm:shadow-[inset_0_0_70px_rgba(255,255,255,0.055),0_0_90px_rgba(255,106,0,0.18)]">
-                  <div
-                    className={`pointer-events-none absolute inset-[-1.5%] rounded-full bg-[conic-gradient(from_90deg,rgba(255,106,0,0),rgba(255,168,76,0.58),rgba(0,202,255,0.2),rgba(255,106,0,0))] opacity-0 blur-[1px] transition-opacity duration-500 ${
-                      isPlaying ? "opacity-55 motion-safe:animate-[listenBarRecordGlow_4.8s_ease-in-out_infinite]" : ""
-                    }`}
-                    aria-hidden="true"
-                  />
-                  <div className="absolute inset-[7%] rounded-full border border-zinc-800" />
-                  <div className="absolute inset-[18%] rounded-full border border-zinc-800" />
-                  <div className="absolute inset-[24%] transform-gpu overflow-hidden rounded-full border border-orange-400/34 bg-black/70 shadow-[0_0_42px_rgba(255,106,0,0.15)] [backface-visibility:hidden]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={nowCoverUrl}
-                      alt={nowTrackTitle}
-                      className="h-full w-full object-cover"
-                      onError={(event) => {
-                        if (event.currentTarget.src.endsWith(DEFAULT_LISTEN_BAR_COVER)) return;
-                        event.currentTarget.src = DEFAULT_LISTEN_BAR_COVER;
-                      }}
-                    />
-                    <div className="absolute inset-[46%] rounded-full bg-neutral-950 ring-1 ring-white/20" />
-                  </div>
-                </div>
+                <ListenBarRecordArt coverUrl={nowCoverUrl} title={nowTrackTitle} isPlaying={isPlaying} />
 
                 <div className="rounded-[1.35rem] border border-orange-300/14 bg-black/38 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                   <p className="text-xs font-black tracking-[0.18em] text-orange-300/75">
