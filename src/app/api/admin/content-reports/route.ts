@@ -195,16 +195,24 @@ export async function GET(request: NextRequest) {
         .limit(160),
       loadTracks(admin),
     ]);
+    const storedReports = await readStoredReports(admin).catch(() => []);
     if (reportResult.error) {
       if (!isMissingReportsTable(reportResult.error)) return NextResponse.json({ error: reportResult.error.message }, { status: 500 });
-      const storedReports = await readStoredReports(admin);
       return NextResponse.json({
         reports: storedReports.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 160),
         tracks,
         storageFallback: true,
       });
     }
-    return NextResponse.json({ reports: reportResult.data ?? [], tracks });
+    const mergedReports = [...(reportResult.data ?? []), ...storedReports]
+      .reduce<Array<StoredContentReport | Record<string, unknown>>>((items, report) => {
+        const id = typeof report.id === "string" ? report.id : "";
+        if (!id || items.some((item) => item.id === id)) return items;
+        return [...items, report];
+      }, [])
+      .sort((a, b) => new Date(String(b.created_at ?? "")).getTime() - new Date(String(a.created_at ?? "")).getTime())
+      .slice(0, 160);
+    return NextResponse.json({ reports: mergedReports, tracks, storageFallback: storedReports.length > 0 });
   } catch (error) {
     return NextResponse.json({ error: String((error as { message?: string })?.message ?? error) }, { status: 500 });
   }
