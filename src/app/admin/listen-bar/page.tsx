@@ -31,6 +31,15 @@ type TrackForm = {
   isActive: boolean;
 };
 
+type ContentReportSummary = {
+  status?: string | null;
+};
+
+type ModerationSummaryPayload = {
+  reports?: ContentReportSummary[];
+  storageFallback?: boolean;
+};
+
 const initialForm: TrackForm = {
   title: "",
   artist: "AIPOGER",
@@ -86,6 +95,13 @@ function rowPublicUrl(bucket: string, path: string | null | undefined) {
   return supabase.storage.from(bucket).getPublicUrl(value).data.publicUrl;
 }
 
+async function authHeader(): Promise<Record<string, string>> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+}
+
 export default function ListenBarAdminPage() {
   const [adminState, setAdminState] = useState<AdminState>("checking");
   const [userId, setUserId] = useState<string | null>(null);
@@ -97,6 +113,8 @@ export default function ListenBarAdminPage() {
   const [coverPreview, setCoverPreview] = useState(DEFAULT_LISTEN_BAR_COVER);
   const [audioPreview, setAudioPreview] = useState("");
   const [tableReady, setTableReady] = useState(true);
+  const [openReportCount, setOpenReportCount] = useState(0);
+  const [reportStorageFallback, setReportStorageFallback] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -122,6 +140,17 @@ export default function ListenBarAdminPage() {
     setTracks((data as ListenBarTrackRow[] | null) ?? []);
   }, []);
 
+  const loadReportSummary = useCallback(async () => {
+    const response = await fetch("/api/admin/content-reports", {
+      headers: await authHeader(),
+    });
+    if (!response.ok) return;
+    const payload = (await response.json().catch(() => null)) as ModerationSummaryPayload | null;
+    const reports = payload?.reports ?? [];
+    setOpenReportCount(reports.filter((report) => report.status === "open" || report.status === "reviewing").length);
+    setReportStorageFallback(Boolean(payload?.storageFallback));
+  }, []);
+
   useEffect(() => {
     void (async () => {
       const { data } = await supabase.auth.getSession();
@@ -139,9 +168,9 @@ export default function ListenBarAdminPage() {
       }
 
       setAdminState("ready");
-      await loadTracks();
+      await Promise.all([loadTracks(), loadReportSummary()]);
     })();
-  }, [loadTracks]);
+  }, [loadReportSummary, loadTracks]);
 
   useEffect(() => {
     return () => {
@@ -368,7 +397,7 @@ export default function ListenBarAdminPage() {
               Battle 管理
             </Link>
             <Link href="/admin/moderation" className="rounded-full border border-orange-300/30 bg-orange-500/10 px-4 py-2 text-sm font-bold text-orange-100">
-              檢舉管理
+              檢舉管理{openReportCount > 0 ? ` ${openReportCount}` : ""}{reportStorageFallback ? "（備援）" : ""}
             </Link>
             <Link href="/admin/quiz" className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-4 py-2 text-sm font-bold text-cyan-100">
               測驗後台

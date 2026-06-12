@@ -49,6 +49,17 @@ function cleanCurrentUrl() {
   return window.location.href;
 }
 
+function resolveReportUrl(value: string | undefined) {
+  if (typeof window === "undefined") return value || "";
+  const trimmed = value?.trim();
+  if (!trimmed) return cleanCurrentUrl();
+  try {
+    return new URL(trimmed, window.location.origin).toString();
+  } catch {
+    return cleanCurrentUrl();
+  }
+}
+
 export default function ReportButton({
   targetType,
   targetId,
@@ -67,7 +78,7 @@ export default function ReportButton({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const resolvedTargetUrl = targetUrl || (open ? cleanCurrentUrl() : "");
+  const resolvedTargetUrl = open ? resolveReportUrl(targetUrl) : "";
 
   async function submitReport(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

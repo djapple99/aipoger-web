@@ -49,6 +49,7 @@ type ModerationTrack = {
 type AdminPayload = {
   reports?: ContentReport[];
   tracks?: ModerationTrack[];
+  storageFallback?: boolean;
   error?: string;
 };
 
@@ -95,6 +96,7 @@ export default function AdminModerationPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [storageFallback, setStorageFallback] = useState(false);
 
   const stats = useMemo(() => {
     const openReports = reports.filter((report) => report.status === "open" || report.status === "reviewing").length;
@@ -115,6 +117,7 @@ export default function AdminModerationPage() {
     }
     setReports(payload?.reports ?? []);
     setTracks(payload?.tracks ?? []);
+    setStorageFallback(Boolean(payload?.storageFallback));
   }
 
   useEffect(() => {
@@ -262,6 +265,11 @@ export default function AdminModerationPage() {
 
         {error ? <p className="mt-4 rounded-xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-100">{error}</p> : null}
         {message ? <p className="mt-4 rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-100">{message}</p> : null}
+        {storageFallback ? (
+          <p className="mt-4 rounded-xl border border-orange-300/25 bg-orange-500/10 px-4 py-3 text-sm font-bold leading-6 text-orange-100">
+            目前 production 尚未建立 content_reports 資料表，檢舉案件暫存在 storage fallback。案件仍可審查，但請補跑 supabase/20260607_content_reports_and_moderation.sql。
+          </p>
+        ) : null}
 
         {activeTab === "reports" ? (
           <section className="mt-5 grid gap-3">
