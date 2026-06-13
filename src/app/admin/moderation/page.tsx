@@ -50,6 +50,7 @@ type AdminPayload = {
   reports?: ContentReport[];
   tracks?: ModerationTrack[];
   storageFallback?: boolean;
+  trackError?: string | null;
   error?: string;
 };
 
@@ -96,6 +97,7 @@ export default function AdminModerationPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [trackError, setTrackError] = useState("");
   const [storageFallback, setStorageFallback] = useState(false);
 
   const stats = useMemo(() => {
@@ -118,6 +120,7 @@ export default function AdminModerationPage() {
     setReports(payload?.reports ?? []);
     setTracks(payload?.tracks ?? []);
     setStorageFallback(Boolean(payload?.storageFallback));
+    setTrackError(payload?.trackError ?? "");
   }
 
   useEffect(() => {
@@ -268,6 +271,11 @@ export default function AdminModerationPage() {
         {storageFallback ? (
           <p className="mt-4 rounded-xl border border-orange-300/25 bg-orange-500/10 px-4 py-3 text-sm font-bold leading-6 text-orange-100">
             目前 production 尚未建立 content_reports 資料表，檢舉案件暫存在 storage fallback。案件仍可審查，但請補跑 supabase/20260607_content_reports_and_moderation.sql。
+          </p>
+        ) : null}
+        {trackError ? (
+          <p className="mt-4 rounded-xl border border-yellow-300/25 bg-yellow-500/10 px-4 py-3 text-sm font-bold leading-6 text-yellow-100">
+            投稿作品清單讀取不完整：{trackError}。檢舉案件仍會正常顯示。
           </p>
         ) : null}
 

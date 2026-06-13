@@ -138,6 +138,7 @@ async function requireOwnerAdmin(request: NextRequest) {
 async function loadTracks(admin: ReturnType<typeof adminClient>) {
   const modernSelect = "id,title,artist,source,bar_phase,is_active,review_status,moderation_note,created_by,created_at,promoted_at,hidden_at,removed_at,positive_reaction_count,audio_url";
   const legacySelect = "id,title,artist,source,bar_phase,is_active,created_by,created_at,promoted_at,positive_reaction_count,audio_url";
+  const baseSelect = "id,title,artist,source,is_active,created_by,created_at,positive_reaction_count";
   const modern = await admin
     .from("listen_bar_tracks")
     .select(modernSelect)
@@ -154,8 +155,17 @@ async function loadTracks(admin: ReturnType<typeof adminClient>) {
     .eq("source", "community")
     .order("created_at", { ascending: false })
     .limit(120);
-  if (legacy.error) throw legacy.error;
-  return legacy.data ?? [];
+  if (!legacy.error) return legacy.data ?? [];
+  if (!isMissingColumnError(legacy.error)) throw legacy.error;
+
+  const base = await admin
+    .from("listen_bar_tracks")
+    .select(baseSelect)
+    .eq("source", "community")
+    .order("created_at", { ascending: false })
+    .limit(120);
+  if (base.error) throw base.error;
+  return base.data ?? [];
 }
 
 async function updateListenBarTrack(
@@ -187,20 +197,24 @@ export async function GET(request: NextRequest) {
     if (guard.error) return guard.error;
     const { admin } = guard;
 
-    const [reportResult, tracks] = await Promise.all([
-      admin
-        .from("content_reports")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(160),
-      loadTracks(admin),
-    ]);
+    const reportResult = await admin
+      .from("content_reports")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(160);
     const storedReports = await readStoredReports(admin).catch(() => []);
+    const trackResult = await loadTracks(admin)
+      .then((tracks) => ({ tracks, error: null as string | null }))
+      .catch((error) => ({
+        tracks: [],
+        error: String((error as { message?: string })?.message ?? error),
+      }));
     if (reportResult.error) {
       if (!isMissingReportsTable(reportResult.error)) return NextResponse.json({ error: reportResult.error.message }, { status: 500 });
       return NextResponse.json({
         reports: storedReports.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 160),
-        tracks,
+        tracks: trackResult.tracks,
+        trackError: trackResult.error,
         storageFallback: true,
       });
     }
@@ -212,7 +226,12 @@ export async function GET(request: NextRequest) {
       }, [])
       .sort((a, b) => new Date(String(b.created_at ?? "")).getTime() - new Date(String(a.created_at ?? "")).getTime())
       .slice(0, 160);
-    return NextResponse.json({ reports: mergedReports, tracks, storageFallback: storedReports.length > 0 });
+    return NextResponse.json({
+      reports: mergedReports,
+      tracks: trackResult.tracks,
+      trackError: trackResult.error,
+      storageFallback: storedReports.length > 0,
+    });
   } catch (error) {
     return NextResponse.json({ error: String((error as { message?: string })?.message ?? error) }, { status: 500 });
   }
