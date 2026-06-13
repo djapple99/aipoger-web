@@ -54,6 +54,17 @@ type AdminPayload = {
   error?: string;
 };
 
+type ReportGroup = {
+  key: string;
+  reports: ContentReport[];
+  primary: ContentReport;
+  total: number;
+  openCount: number;
+  reasons: string[];
+  hiddenByAdmin: boolean;
+  createdAt: string;
+};
+
 const statusLabel: Record<ReportStatus, string> = {
   open: "待處理",
   reviewing: "審查中",
@@ -82,6 +93,18 @@ function formatTime(value?: string | null) {
   }).format(new Date(value));
 }
 
+function reportGroupKey(report: ContentReport) {
+  return `${report.target_type}:${report.target_id || report.target_title || report.id}`;
+}
+
+function chooseGroupStatus(group: ReportGroup): ReportStatus {
+  if (group.hiddenByAdmin) return "resolved";
+  if (group.reports.some((report) => report.status === "reviewing")) return "reviewing";
+  if (group.reports.some((report) => report.status === "open")) return "open";
+  if (group.reports.every((report) => report.status === "rejected")) return "rejected";
+  return "resolved";
+}
+
 async function authHeader(): Promise<Record<string, string>> {
   const {
     data: { session },
@@ -106,6 +129,32 @@ export default function AdminModerationPage() {
     const visibleTracks = tracks.filter((track) => track.is_active !== false && track.review_status !== "hidden" && track.review_status !== "removed").length;
     return { openReports, hiddenTracks, visibleTracks };
   }, [reports, tracks]);
+
+  const reportGroups = useMemo<ReportGroup[]>(() => {
+    const groups = reports.reduce<Map<string, ContentReport[]>>((items, report) => {
+      const key = reportGroupKey(report);
+      const current = items.get(key) ?? [];
+      items.set(key, [...current, report]);
+      return items;
+    }, new Map());
+
+    return Array.from(groups.entries())
+      .map(([key, groupReports]) => {
+        const sortedReports = [...groupReports].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        const primary = sortedReports[0];
+        return {
+          key,
+          reports: sortedReports,
+          primary,
+          total: sortedReports.length,
+          openCount: sortedReports.filter((report) => report.status === "open" || report.status === "reviewing").length,
+          reasons: Array.from(new Set(sortedReports.map((report) => report.reason))),
+          hiddenByAdmin: sortedReports.some((report) => report.action_taken === "hide_listen_bar_track"),
+          createdAt: primary.created_at,
+        };
+      })
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [reports]);
 
   async function loadData() {
     setError("");
@@ -148,11 +197,12 @@ export default function AdminModerationPage() {
   async function runAction(params: {
     action: "set_status" | "hide_listen_bar_track" | "restore_listen_bar_track";
     reportId?: string;
+    reportIds?: string[];
     targetId?: string;
     status?: ReportStatus;
     adminNote?: string;
   }) {
-    setBusyId(params.reportId || params.targetId || params.action);
+    setBusyId(params.reportIds?.[0] || params.reportId || params.targetId || params.action);
     setError("");
     setMessage("");
     const response = await fetch("/api/admin/content-reports", {
@@ -281,20 +331,35 @@ export default function AdminModerationPage() {
 
         {activeTab === "reports" ? (
           <section className="mt-5 grid gap-3">
-            {reports.length === 0 ? (
+            {reportGroups.length === 0 ? (
               <p className="rounded-[1.1rem] border border-white/10 bg-white/[0.035] px-5 py-8 text-center text-sm font-bold text-zinc-500">
                 目前沒有檢舉案件。
               </p>
-            ) : reports.map((report) => (
-              <article key={report.id} className="rounded-[1.1rem] border border-white/10 bg-black/56 p-4">
+            ) : reportGroups.map((group) => {
+              const report = group.primary;
+              const groupStatus = chooseGroupStatus(group);
+              const busy = busyId === group.reports[0]?.id;
+              return (
+              <article key={group.key} className={`rounded-[1.1rem] border p-4 ${
+                group.hiddenByAdmin
+                  ? "border-emerald-200/18 bg-emerald-950/18"
+                  : "border-white/10 bg-black/56"
+              }`}>
                 <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full border border-red-200/25 bg-red-500/10 px-2.5 py-1 text-[11px] font-black text-red-100">
-                        {reasonLabel[report.reason] || report.reason}
+                      <span className={`rounded-full border px-2.5 py-1 text-[11px] font-black ${
+                        group.hiddenByAdmin
+                          ? "border-emerald-200/25 bg-emerald-400/10 text-emerald-100"
+                          : "border-red-200/25 bg-red-500/10 text-red-100"
+                      }`}>
+                        {group.hiddenByAdmin ? "已隱藏作品" : group.reasons.map((reason) => reasonLabel[reason] || reason).join(" / ")}
                       </span>
                       <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[11px] font-black text-zinc-300">
-                        {statusLabel[report.status]}
+                        {statusLabel[groupStatus]}
+                      </span>
+                      <span className="rounded-full border border-orange-200/25 bg-orange-500/10 px-2.5 py-1 text-[11px] font-black text-orange-100">
+                        檢舉 {group.total} 筆{group.openCount > 0 ? ` / 待處理 ${group.openCount}` : ""}
                       </span>
                       <span className="text-[11px] font-bold tabular-nums text-zinc-500">{formatTime(report.created_at)}</span>
                     </div>
@@ -313,24 +378,24 @@ export default function AdminModerationPage() {
                   <div className="flex min-w-[13rem] flex-wrap items-start justify-end gap-2">
                     <button
                       type="button"
-                      disabled={busyId === report.id}
-                      onClick={() => void runAction({ action: "set_status", reportId: report.id, status: "reviewing" })}
+                      disabled={busy}
+                      onClick={() => void runAction({ action: "set_status", reportIds: group.reports.map((item) => item.id), status: "reviewing" })}
                       className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-3 py-2 text-xs font-black text-cyan-100 disabled:opacity-45"
                     >
                       審查中
                     </button>
                     <button
                       type="button"
-                      disabled={busyId === report.id}
-                      onClick={() => void runAction({ action: "set_status", reportId: report.id, status: "resolved" })}
+                      disabled={busy}
+                      onClick={() => void runAction({ action: "set_status", reportIds: group.reports.map((item) => item.id), status: "resolved" })}
                       className="rounded-full border border-emerald-200/25 bg-emerald-400/10 px-3 py-2 text-xs font-black text-emerald-100 disabled:opacity-45"
                     >
                       已處理
                     </button>
                     <button
                       type="button"
-                      disabled={busyId === report.id}
-                      onClick={() => void runAction({ action: "set_status", reportId: report.id, status: "rejected" })}
+                      disabled={busy}
+                      onClick={() => void runAction({ action: "set_status", reportIds: group.reports.map((item) => item.id), status: "rejected" })}
                       className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-black text-zinc-200 disabled:opacity-45"
                     >
                       駁回
@@ -338,22 +403,23 @@ export default function AdminModerationPage() {
                     {report.target_type === "listen_bar_track" ? (
                       <button
                         type="button"
-                        disabled={busyId === report.id}
+                        disabled={busy || group.hiddenByAdmin}
                         onClick={() => void runAction({
                           action: "hide_listen_bar_track",
-                          reportId: report.id,
+                          reportIds: group.reports.map((item) => item.id),
                           targetId: report.target_id,
-                          adminNote: `Report ${report.id}`,
+                          adminNote: `Reports ${group.reports.map((item) => item.id).join(", ")}`,
                         })}
                         className="rounded-full border border-red-200/35 bg-red-500/12 px-3 py-2 text-xs font-black text-red-100 disabled:opacity-45"
                       >
-                        隱藏作品
+                        {group.hiddenByAdmin ? "已隱藏" : "隱藏作品"}
                       </button>
                     ) : null}
                   </div>
                 </div>
               </article>
-            ))}
+            );
+            })}
           </section>
         ) : (
           <section className="mt-5 grid gap-3">

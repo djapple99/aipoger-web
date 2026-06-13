@@ -56,6 +56,13 @@ function cleanText(value: unknown, maxLength: number): string | null {
   return trimmed.slice(0, maxLength);
 }
 
+function cleanTextList(value: unknown, maxLength: number): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => cleanText(item, maxLength))
+    .filter((item): item is string => Boolean(item));
+}
+
 function isMissingColumnError(error: unknown): boolean {
   const text = error && typeof error === "object"
     ? [
@@ -249,6 +256,7 @@ export async function PATCH(request: NextRequest) {
     if (!action || !ACTIONS.has(action)) return NextResponse.json({ error: "未知後台動作。" }, { status: 400 });
 
     const reportId = cleanText(body.reportId, 160);
+    const reportIds = Array.from(new Set([...cleanTextList(body.reportIds, 160), ...(reportId ? [reportId] : [])]));
     const targetId = cleanText(body.targetId, 160);
     const adminNote = cleanText(body.adminNote, 1200);
     const status = cleanText(body.status, 80) as ReportStatus | null;
@@ -258,7 +266,7 @@ export async function PATCH(request: NextRequest) {
       await updateListenBarTrack(admin, targetId, action === "hide_listen_bar_track" ? "hide" : "restore", adminNote);
     }
 
-    if (reportId) {
+    if (reportIds.length > 0) {
       const nextStatus: ReportStatus | null = status && STATUSES.has(status)
         ? status
         : action === "set_status"
@@ -270,12 +278,15 @@ export async function PATCH(request: NextRequest) {
         ...(adminNote ? { admin_note: adminNote } : {}),
         action_taken: action,
       };
-      const { error } = await admin.from("content_reports").update(update).eq("id", reportId);
+      const updateQuery = admin.from("content_reports").update(update);
+      const { error } = reportIds.length === 1
+        ? await updateQuery.eq("id", reportIds[0])
+        : await updateQuery.in("id", reportIds);
       if (error) {
         if (!isMissingReportsTable(error)) return NextResponse.json({ error: error.message }, { status: 500 });
         const storedReports = await readStoredReports(admin);
         const now = new Date().toISOString();
-        const nextReports = storedReports.map((report) => report.id === reportId
+        const nextReports = storedReports.map((report) => reportIds.includes(report.id)
           ? {
               ...report,
               ...(nextStatus ? { status: nextStatus } : {}),
