@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import ShareButton from "@/components/share-button";
 import ReportButton from "@/components/report-button";
 import {
@@ -76,6 +76,29 @@ type LyricsModalState = {
   lyrics: string;
 };
 
+type HonorComment = {
+  id: string;
+  recordKey: string;
+  targetKind: "battle" | "bar";
+  targetId: string;
+  name: string;
+  text: string;
+  createdAt: string;
+};
+
+type HonorInteractionState = {
+  favoriteCount: number;
+  myFavorited: boolean;
+  comments: HonorComment[];
+};
+
+type HonorInteractionPayload = {
+  recordKey: string;
+  favoriteCount: number;
+  myFavorited: boolean;
+  comments: HonorComment[];
+};
+
 const BOARD_META: Record<BoardKey, BoardMeta> = {
   drop: { zh: "熱血 Drop 抓波勝利榜", en: "Drop Victory Records" },
   bar: { zh: "傷心酒吧熱播榜", en: "Bar Heartbreak Heat Records" },
@@ -109,6 +132,42 @@ function displaySongTitle(value: string, fallback: string) {
 
 function cleanLyrics(value: string | null | undefined) {
   return String(value || "").trim();
+}
+
+function cleanBarTrackId(value: string) {
+  return value.replace(/^bar-/, "");
+}
+
+function honorRecordKey(row: RankRow) {
+  const targetId = row.kind === "bar" ? cleanBarTrackId(row.id) : row.id;
+  return `${row.kind}:${targetId}`;
+}
+
+function honorTargetId(row: RankRow) {
+  return row.kind === "bar" ? cleanBarTrackId(row.id) : row.battleCode || row.id;
+}
+
+function emptyHonorInteraction(): HonorInteractionState {
+  return { favoriteCount: 0, myFavorited: false, comments: [] };
+}
+
+function normalizeHonorRecord(payload: HonorInteractionPayload): HonorInteractionState {
+  return {
+    favoriteCount: Math.max(0, Math.round(Number(payload.favoriteCount) || 0)),
+    myFavorited: Boolean(payload.myFavorited),
+    comments: Array.isArray(payload.comments) ? payload.comments : [],
+  };
+}
+
+function formatCommentTime(value: string, isZh: boolean) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat(isZh ? "zh-TW" : "en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }
 
 function localizedRankLabel(rank: string, isZh: boolean) {
@@ -567,6 +626,96 @@ function LyricsAction({
   );
 }
 
+function HonorCommentsPanel({
+  row,
+  isZh,
+  expanded,
+  interaction,
+  draft,
+  busy,
+  error,
+  onToggle,
+  onDraftChange,
+  onSubmit,
+}: {
+  row: RankRow;
+  isZh: boolean;
+  expanded: boolean;
+  interaction: HonorInteractionState;
+  draft: string;
+  busy: boolean;
+  error: string;
+  onToggle: () => void;
+  onDraftChange: (value: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  const comments = interaction.comments.slice().reverse();
+  return (
+    <div className="min-w-0 w-full sm:w-auto">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="inline-flex items-center justify-center gap-1.5 rounded-full border border-yellow-200/30 bg-yellow-300/10 px-2.5 py-1.5 text-[11px] font-black text-yellow-100 transition hover:border-yellow-100 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-200/70"
+        aria-expanded={expanded}
+      >
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+          <path d="M5.5 18.5v-12h13v8.2h-7.4l-5.6 3.8Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+        </svg>
+        <span>
+          {isZh ? "評論" : "Comments"}
+          {comments.length > 0 ? ` ${comments.length}` : ""}
+        </span>
+      </button>
+
+      {expanded ? (
+        <div className="mt-2 rounded-md border border-yellow-200/18 bg-black/26 p-2 sm:w-[min(22rem,calc(100vw-3rem))]">
+          {comments.length > 0 ? (
+            <div className="flex snap-x gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
+              {comments.map((comment) => (
+                <div
+                  key={comment.id}
+                  className="min-w-[calc(50%-0.25rem)] snap-start rounded-md border border-white/10 bg-white/[0.045] p-2 max-sm:min-w-[82%]"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-[11px] font-black text-yellow-100">{comment.name}</p>
+                    <p className="shrink-0 text-[10px] font-bold text-zinc-600">{formatCommentTime(comment.createdAt, isZh)}</p>
+                  </div>
+                  <p className="mt-1 line-clamp-2 break-words text-[11px] font-bold leading-4 text-zinc-300">
+                    {comment.text}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-md border border-white/10 bg-white/[0.035] px-2 py-2 text-[11px] font-bold text-zinc-500">
+              {isZh ? "還沒有評論，登入後可以留下第一句。" : "No comments yet. Sign in to leave the first one."}
+            </p>
+          )}
+
+          <form onSubmit={onSubmit} className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
+            <input
+              value={draft}
+              onChange={(event) => onDraftChange(event.target.value)}
+              maxLength={280}
+              placeholder={isZh ? "寫一句對這首歌的評論..." : "Write a quick comment..."}
+              className="min-w-0 rounded-md border border-white/10 bg-black/45 px-2.5 py-2 text-[12px] font-bold text-white outline-none placeholder:text-zinc-600 focus:border-yellow-100/60"
+              aria-label={isZh ? `評論 ${row.hook}` : `Comment on ${row.hook}`}
+            />
+            <button
+              type="submit"
+              disabled={busy || !draft.trim()}
+              className="rounded-md border border-yellow-200/30 bg-yellow-300/12 px-3 py-2 text-[11px] font-black text-yellow-100 transition hover:border-yellow-100 disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {busy ? (isZh ? "送出中" : "Sending") : isZh ? "送出" : "Post"}
+            </button>
+          </form>
+          {error ? <p className="mt-2 text-[11px] font-bold text-red-200">{error}</p> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function RankPage() {
   const { lang } = useI18n();
   const isZh = lang === "zh";
@@ -576,6 +725,12 @@ export default function RankPage() {
   const [archivedResults, setArchivedResults] = useState<ArchivedBattleResult[]>([]);
   const [hotBarRows, setHotBarRows] = useState<RankRow[]>([]);
   const [lyricsModal, setLyricsModal] = useState<LyricsModalState | null>(null);
+  const [honorInteractions, setHonorInteractions] = useState<Record<string, HonorInteractionState>>({});
+  const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const [interactionErrors, setInteractionErrors] = useState<Record<string, string>>({});
+  const [favoriteBusy, setFavoriteBusy] = useState<Record<string, boolean>>({});
+  const [commentBusy, setCommentBusy] = useState<Record<string, boolean>>({});
   const navSuffix = lang === "en" ? "?lang=en" : "?lang=zh";
   const boardTitle = isZh ? BOARD_META[active].zh : BOARD_META[active].en;
 
@@ -722,6 +877,38 @@ export default function RankPage() {
   }, [active, hotBarRows, dropRows]);
 
   useEffect(() => {
+    const keys = Array.from(new Set(displayRows.map(honorRecordKey)));
+    if (keys.length === 0) return;
+    let cancelled = false;
+
+    const loadInteractions = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const response = await fetch(`/api/honor-board/interactions?keys=${encodeURIComponent(keys.join(","))}`, {
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+        cache: "no-store",
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        records?: HonorInteractionPayload[];
+      } | null;
+      if (!response.ok || !Array.isArray(payload?.records) || cancelled) return;
+      setHonorInteractions((current) => {
+        const next = { ...current };
+        payload.records?.forEach((record) => {
+          next[record.recordKey] = normalizeHonorRecord(record);
+        });
+        return next;
+      });
+    };
+
+    void loadInteractions();
+    return () => {
+      cancelled = true;
+    };
+  }, [displayRows]);
+
+  useEffect(() => {
     setActiveGenre("all");
   }, [active]);
 
@@ -787,6 +974,101 @@ export default function RankPage() {
   const featuredRows = filteredDisplayRows.slice(0, 4);
   const boardCount = displayRows.length;
   const genreCount = genreOptions.length;
+
+  const toggleFavorite = async (row: RankRow) => {
+    const key = honorRecordKey(row);
+    setInteractionErrors((current) => ({ ...current, [key]: "" }));
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      setInteractionErrors((current) => ({
+        ...current,
+        [key]: isZh ? "請先登入，愛心會變成你的收藏。" : "Sign in to turn the heart into your favorite.",
+      }));
+      return;
+    }
+
+    setFavoriteBusy((current) => ({ ...current, [key]: true }));
+    const response = await fetch("/api/honor-board/interactions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        action: "favorite",
+        recordKey: key,
+        targetKind: row.kind,
+        targetId: honorTargetId(row),
+        targetTitle: `${row.name} / ${displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}`,
+      }),
+    });
+    const payload = (await response.json().catch(() => null)) as {
+      record?: HonorInteractionPayload;
+      error?: string;
+    } | null;
+    setFavoriteBusy((current) => ({ ...current, [key]: false }));
+    if (!response.ok || !payload?.record) {
+      setInteractionErrors((current) => ({
+        ...current,
+        [key]: payload?.error || (isZh ? "收藏失敗，請稍後再試。" : "Favorite failed. Try again later."),
+      }));
+      return;
+    }
+    const nextRecord = payload.record;
+    setHonorInteractions((current) => ({ ...current, [key]: normalizeHonorRecord(nextRecord) }));
+  };
+
+  const submitHonorComment = async (event: FormEvent<HTMLFormElement>, row: RankRow) => {
+    event.preventDefault();
+    const key = honorRecordKey(row);
+    const text = (commentDrafts[key] || "").trim();
+    if (!text) return;
+    setInteractionErrors((current) => ({ ...current, [key]: "" }));
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      setInteractionErrors((current) => ({
+        ...current,
+        [key]: isZh ? "請先登入再留下評論。" : "Sign in to comment on this record.",
+      }));
+      return;
+    }
+
+    setCommentBusy((current) => ({ ...current, [key]: true }));
+    const response = await fetch("/api/honor-board/interactions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        action: "comment",
+        recordKey: key,
+        targetKind: row.kind,
+        targetId: honorTargetId(row),
+        targetTitle: `${row.name} / ${displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}`,
+        text,
+      }),
+    });
+    const payload = (await response.json().catch(() => null)) as {
+      record?: HonorInteractionPayload;
+      error?: string;
+    } | null;
+    setCommentBusy((current) => ({ ...current, [key]: false }));
+    if (!response.ok || !payload?.record) {
+      setInteractionErrors((current) => ({
+        ...current,
+        [key]: payload?.error || (isZh ? "評論送出失敗，請稍後再試。" : "Comment failed. Try again later."),
+      }));
+      return;
+    }
+    setCommentDrafts((current) => ({ ...current, [key]: "" }));
+    const nextRecord = payload.record;
+    setHonorInteractions((current) => ({ ...current, [key]: normalizeHonorRecord(nextRecord) }));
+  };
 
   return (
     <main
@@ -967,6 +1249,8 @@ export default function RankPage() {
                       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         {featuredRows.map((row, index) => {
                           const rowResultHref = resultHref(row, lang);
+                          const recordKey = honorRecordKey(row);
+                          const interaction = honorInteractions[recordKey] ?? emptyHonorInteraction();
                           return (
                             <article
                               key={`featured-${active}-${row.id}-${index}`}
@@ -1000,6 +1284,9 @@ export default function RankPage() {
                                 ) : null}
                                 {row.kind === "battle" ? (
                                   <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                                    <span className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-2.5 py-1.5 text-[11px] font-black text-cyan-100">
+                                      {displayText(row.aiTool, isZh ? "AI 工具未封存" : "AI Tool Missing")}
+                                    </span>
                                     <LyricsAction row={row} isZh={isZh} onOpen={openLyricsModal} />
                                     <Link
                                       href={rowResultHref}
@@ -1007,14 +1294,44 @@ export default function RankPage() {
                                     >
                                       {isZh ? "成果卡" : "Result"}
                                     </Link>
-                                    <span className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-2.5 py-1.5 text-[11px] font-black text-cyan-100">
-                                      {displayText(row.aiTool, isZh ? "AI 工具未封存" : "AI Tool Missing")}
-                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => void toggleFavorite(row)}
+                                      disabled={favoriteBusy[recordKey]}
+                                      className={`inline-flex items-center justify-center gap-1 rounded-full border px-2.5 py-1.5 text-[11px] font-black transition ${
+                                        interaction.myFavorited
+                                          ? "border-red-200/70 bg-red-500/18 text-red-100"
+                                          : "border-white/12 bg-black/20 text-zinc-300 hover:border-red-200/55 hover:text-red-100"
+                                      }`}
+                                      aria-pressed={interaction.myFavorited}
+                                      title={isZh ? "愛心收藏" : "Favorite"}
+                                    >
+                                      <span aria-hidden="true">♥</span>
+                                      <span className="tabular-nums">{interaction.favoriteCount}</span>
+                                    </button>
                                   </div>
                                 ) : row.audioUrl ? (
                                   <>
                                     <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                                      <span className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-2.5 py-1.5 text-[11px] font-black text-cyan-100">
+                                        {displayText(row.aiTool, isZh ? "AI 工具未封存" : "AI Tool Missing")}
+                                      </span>
                                       <LyricsAction row={row} isZh={isZh} onOpen={openLyricsModal} />
+                                      <button
+                                        type="button"
+                                        onClick={() => void toggleFavorite(row)}
+                                        disabled={favoriteBusy[recordKey]}
+                                        className={`inline-flex items-center justify-center gap-1 rounded-full border px-2.5 py-1.5 text-[11px] font-black transition ${
+                                          interaction.myFavorited
+                                            ? "border-red-200/70 bg-red-500/18 text-red-100"
+                                            : "border-white/12 bg-black/20 text-zinc-300 hover:border-red-200/55 hover:text-red-100"
+                                        }`}
+                                        aria-pressed={interaction.myFavorited}
+                                        title={isZh ? "愛心收藏" : "Favorite"}
+                                      >
+                                        <span aria-hidden="true">♥</span>
+                                        <span className="tabular-nums">{interaction.favoriteCount}</span>
+                                      </button>
                                     </div>
                                     <audio
                                       className="mt-3 h-9 w-full accent-orange-500"
@@ -1061,6 +1378,8 @@ export default function RankPage() {
                           <div className="grid gap-x-5 gap-y-7 sm:grid-cols-2 xl:grid-cols-4">
                             {rows.map((row, index) => {
                               const rowResultHref = resultHref(row, lang);
+                              const recordKey = honorRecordKey(row);
+                              const interaction = honorInteractions[recordKey] ?? emptyHonorInteraction();
                               return (
                                 <article
                                   key={`${active}-${genreLabel}-${row.id}-${index}`}
@@ -1109,6 +1428,7 @@ export default function RankPage() {
                                       <span className="rounded-full border border-cyan-200/20 bg-cyan-300/10 px-2 py-1 text-[10px] font-black text-cyan-100">
                                         {displayText(row.aiTool, isZh ? "未封存工具" : "Tool Missing")}
                                       </span>
+                                      <LyricsAction row={row} isZh={isZh} onOpen={openLyricsModal} />
                                     </div>
                                     <p className="mt-2 truncate text-xs font-bold text-zinc-500">
                                       {row.kind === "battle"
@@ -1124,7 +1444,6 @@ export default function RankPage() {
                                   </div>
 
                                   <div className="flex flex-wrap gap-1.5 border-t border-white/10 pt-2">
-                                    <LyricsAction row={row} isZh={isZh} onOpen={openLyricsModal} />
                                     {row.kind === "battle" ? (
                                       <>
                                         <Link
@@ -1133,9 +1452,25 @@ export default function RankPage() {
                                         >
                                           {isZh ? "成果卡" : "Result"}
                                         </Link>
-                                        <span className="inline-flex items-center justify-center rounded-full border border-cyan-200/25 bg-cyan-300/10 px-2.5 py-1.5 text-[11px] font-black text-cyan-100">
-                                          {displayText(row.aiTool, isZh ? "AI 工具未封存" : "AI Tool Missing")}
-                                        </span>
+                                        <HonorCommentsPanel
+                                          row={row}
+                                          isZh={isZh}
+                                          expanded={Boolean(expandedComments[recordKey])}
+                                          interaction={interaction}
+                                          draft={commentDrafts[recordKey] || ""}
+                                          busy={Boolean(commentBusy[recordKey])}
+                                          error={interactionErrors[recordKey] || ""}
+                                          onToggle={() =>
+                                            setExpandedComments((current) => ({
+                                              ...current,
+                                              [recordKey]: !current[recordKey],
+                                            }))
+                                          }
+                                          onDraftChange={(value) =>
+                                            setCommentDrafts((current) => ({ ...current, [recordKey]: value }))
+                                          }
+                                          onSubmit={(event) => void submitHonorComment(event, row)}
+                                        />
                                         <ShareButton
                                           title={`${row.name} VS ${displayText(row.opponentName || "", isZh ? "對手" : "Opponent")}`}
                                           text={
@@ -1148,20 +1483,71 @@ export default function RankPage() {
                                           copiedLabel={isZh ? "已複製" : "Copied"}
                                           className="!px-2.5 !py-1.5 !text-[11px]"
                                         />
+                                        <button
+                                          type="button"
+                                          onClick={() => void toggleFavorite(row)}
+                                          disabled={favoriteBusy[recordKey]}
+                                          className={`inline-flex items-center justify-center gap-1 rounded-full border px-2.5 py-1.5 text-[11px] font-black transition ${
+                                            interaction.myFavorited
+                                              ? "border-red-200/70 bg-red-500/18 text-red-100"
+                                              : "border-white/12 bg-black/20 text-zinc-300 hover:border-red-200/55 hover:text-red-100"
+                                          }`}
+                                          aria-pressed={interaction.myFavorited}
+                                          title={isZh ? "愛心收藏" : "Favorite"}
+                                        >
+                                          <span className="text-sm leading-none" aria-hidden="true">♥</span>
+                                          <span className="tabular-nums">{interaction.favoriteCount}</span>
+                                        </button>
                                       </>
                                     ) : (
-                                      <ShareButton
-                                        title={`${row.name} / ${displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}`}
-                                        text={
-                                          isZh
-                                            ? `AIPOGER 傷心酒吧熱播：${displaySongTitle(row.hook, "歌名未封存")}`
-                                            : `AIPOGER Bar Heartbreak heat: ${displaySongTitle(row.hook, "Song Not Archived")}`
-                                        }
-                                        url={`/rank?lang=${lang}`}
-                                        label={isZh ? "分享" : "Share"}
-                                        copiedLabel={isZh ? "已複製" : "Copied"}
-                                        className="!px-2.5 !py-1.5 !text-[11px]"
-                                      />
+                                      <>
+                                        <HonorCommentsPanel
+                                          row={row}
+                                          isZh={isZh}
+                                          expanded={Boolean(expandedComments[recordKey])}
+                                          interaction={interaction}
+                                          draft={commentDrafts[recordKey] || ""}
+                                          busy={Boolean(commentBusy[recordKey])}
+                                          error={interactionErrors[recordKey] || ""}
+                                          onToggle={() =>
+                                            setExpandedComments((current) => ({
+                                              ...current,
+                                              [recordKey]: !current[recordKey],
+                                            }))
+                                          }
+                                          onDraftChange={(value) =>
+                                            setCommentDrafts((current) => ({ ...current, [recordKey]: value }))
+                                          }
+                                          onSubmit={(event) => void submitHonorComment(event, row)}
+                                        />
+                                        <ShareButton
+                                          title={`${row.name} / ${displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}`}
+                                          text={
+                                            isZh
+                                              ? `AIPOGER 傷心酒吧熱播：${displaySongTitle(row.hook, "歌名未封存")}`
+                                              : `AIPOGER Bar Heartbreak heat: ${displaySongTitle(row.hook, "Song Not Archived")}`
+                                          }
+                                          url={`/rank?lang=${lang}`}
+                                          label={isZh ? "分享" : "Share"}
+                                          copiedLabel={isZh ? "已複製" : "Copied"}
+                                          className="!px-2.5 !py-1.5 !text-[11px]"
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => void toggleFavorite(row)}
+                                          disabled={favoriteBusy[recordKey]}
+                                          className={`inline-flex items-center justify-center gap-1 rounded-full border px-2.5 py-1.5 text-[11px] font-black transition ${
+                                            interaction.myFavorited
+                                              ? "border-red-200/70 bg-red-500/18 text-red-100"
+                                              : "border-white/12 bg-black/20 text-zinc-300 hover:border-red-200/55 hover:text-red-100"
+                                          }`}
+                                          aria-pressed={interaction.myFavorited}
+                                          title={isZh ? "愛心收藏" : "Favorite"}
+                                        >
+                                          <span className="text-sm leading-none" aria-hidden="true">♥</span>
+                                          <span className="tabular-nums">{interaction.favoriteCount}</span>
+                                        </button>
+                                      </>
                                     )}
                                     <ReportButton
                                       targetType={row.kind === "battle" ? "battle_result" : "listen_bar_track"}
@@ -1173,6 +1559,11 @@ export default function RankPage() {
                                       className="!px-2.5 !py-1.5 !text-[11px]"
                                     />
                                   </div>
+                                  {interactionErrors[recordKey] && !expandedComments[recordKey] ? (
+                                    <p className="mt-2 rounded-md border border-red-200/20 bg-red-500/10 px-2 py-1.5 text-[11px] font-bold text-red-100">
+                                      {interactionErrors[recordKey]}
+                                    </p>
+                                  ) : null}
 
                                   {row.audioUrl ? (
                                     <audio
