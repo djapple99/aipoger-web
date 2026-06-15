@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { isStandardUuid, resolveAdminTargetIdFromRows } from "@/lib/admin-battle-ids";
 import { isAdminEmail } from "@/lib/admin-emails";
 import { cancelStalePendingDropBattles, isMissingScheduleColumn } from "@/lib/battle-pool-maintenance";
 
@@ -82,10 +83,6 @@ function adminClient() {
   return createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-}
-
-function isUuid(value: unknown): value is string {
-  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i.test(value);
 }
 
 function cleanText(value: unknown, maxLength: number) {
@@ -367,9 +364,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const battleId = isUuid(body.battleId) ? body.battleId : null;
-    const queueId = isUuid(body.queueId) ? body.queueId : null;
     const note = cleanText(body.note, 500);
+    const [activeBattles, activeQueues] = await Promise.all([
+      isStandardUuid(body.battleId) ? Promise.resolve([]) : loadBattles(admin),
+      isStandardUuid(body.queueId) ? Promise.resolve([]) : loadQueues(admin),
+    ]);
+    const battleId = resolveAdminTargetIdFromRows(body.battleId, activeBattles);
+    const queueId = resolveAdminTargetIdFromRows(body.queueId, activeQueues);
     if (!battleId && !queueId) return jsonError("缺少 battleId 或 queueId。");
 
     const result = battleId ? await cancelBattle(admin, battleId, note) : await cancelQueue(admin, queueId as string, note);

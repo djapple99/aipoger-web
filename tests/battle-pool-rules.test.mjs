@@ -41,6 +41,12 @@ const {
 } = await import("../src/lib/auth-urls.ts");
 
 const {
+  cleanAdminTargetId,
+  isStandardUuid,
+  resolveAdminTargetIdFromRows,
+} = await import("../src/lib/admin-battle-ids.ts");
+
+const {
   battleResultShortPath,
   battleShortPath,
   dailyBattleShortPath,
@@ -215,6 +221,21 @@ test("mobile auth can build Chrome open URLs for embedded browsers", () => {
     buildChromeOpenUrl("https://aipoger.com/auth?next=%2Fbattle", "Mozilla/5.0 (Linux; Android 14) Line/15.0"),
     "intent://aipoger.com/auth?next=%2Fbattle#Intent;scheme=https;package=com.android.chrome;end",
   );
+});
+
+test("admin battle cancel ids accept UUID variants and unique short prefixes", () => {
+  const queueRows = [
+    { id: "c2264bf9-1111-7111-8111-111111111111" },
+    { id: "d814690b-2222-4222-9222-222222222222" },
+  ];
+
+  assert.equal(isStandardUuid("c2264bf9-1111-7111-8111-111111111111"), true);
+  assert.equal(isStandardUuid("d814690b-2222-4222-9222-222222222222"), true);
+  assert.equal(cleanAdminTargetId("#c2264bf9"), "c2264bf9");
+  assert.equal(resolveAdminTargetIdFromRows("#c2264bf9", queueRows), "c2264bf9-1111-7111-8111-111111111111");
+  assert.equal(resolveAdminTargetIdFromRows("d814690b-2222-4222-9222-222222222222", []), "d814690b-2222-4222-9222-222222222222");
+  assert.equal(resolveAdminTargetIdFromRows("missing", queueRows), null);
+  assert.equal(resolveAdminTargetIdFromRows("c", [{ id: "c1111111-1111-4111-8111-111111111111" }, { id: "c2222222-2222-4222-9222-222222222222" }]), null);
 });
 
 test("daily battle share links use compact reversible ids", () => {
