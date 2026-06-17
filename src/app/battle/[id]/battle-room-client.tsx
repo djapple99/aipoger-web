@@ -2897,12 +2897,6 @@ function BattleArenaContent() {
       return;
     }
 
-    const isCurrentUserFighter = Boolean(
-      myUserId && battle && (myUserId === battle.fighter_a_user_id || myUserId === battle.fighter_b_user_id),
-    );
-    const canTapFeedback = !isCurrentUserFighter && ["warmup", "rps", "ready", "playing", "echo", "transition", "vote", "ended"].includes(battlePhase);
-    if (!canTapFeedback) return;
-
     const meta = feedbackButtons.find((item) => item.key === key);
     const label = lang === "zh" ? meta?.zh : meta?.en;
     if (!label) return;
@@ -2921,22 +2915,15 @@ function BattleArenaContent() {
         payload: { deck, key },
       });
     }
-  }, [battle, battlePhase, fireDanmaku, lang, myUserId]);
+  }, [fireDanmaku, lang]);
 
-  function FeedbackBar({ deck, tone }: { deck: DeckKey; tone: "orange" | "blue" }) {
-    const isCurrentUserFighter = Boolean(
-      myUserId && battle && (myUserId === battle.fighter_a_user_id || myUserId === battle.fighter_b_user_id),
-    );
-    const activeForFeedback = !isCurrentUserFighter && ["warmup", "rps", "ready", "playing", "echo", "transition", "vote", "ended"].includes(battlePhase);
-    const disabledReason = isCurrentUserFighter
+  const renderFeedbackBar = (deck: DeckKey, tone: "orange" | "blue") => {
+    const activeForFeedback = Boolean(battleId);
+    const disabledReason = !activeForFeedback
       ? lang === "zh"
-        ? "鬥歌者只能投最終票，不能按反應鈕"
-        : "Fighters can only vote, not tap feedback"
-      : !activeForFeedback
-        ? lang === "zh"
-          ? "觀眾進場後就可以按反應鈕"
-          : "Listener Signal Is Live in the Arena"
-        : "";
+        ? "觀眾進場後就可以按反應鈕"
+        : "Listener Signal Is Live in the Arena"
+      : "";
     const toneClass =
       tone === "orange"
         ? activeForFeedback
@@ -2965,7 +2952,7 @@ function BattleArenaContent() {
         ))}
       </div>
     );
-  }
+  };
 
   const applyRematchClaim = useCallback(
     (claim: DropRematchClaimPayload) => {
@@ -3605,23 +3592,26 @@ function BattleArenaContent() {
   const viewerBadge = (() => {
     if (viewerCount <= 1) {
       return (
-        <span className="inline-flex items-center justify-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-orange-300 shadow-[0_0_10px_rgba(251,146,60,0.72)]" />
-          {lang === "zh" ? "等待聽眾進場 · Bar 推播中" : "Waiting for Listeners · Bar Push Active"}
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-yellow-300 shadow-[0_0_14px_rgba(250,204,21,0.9)]" />
+          {lang === "zh" ? "等待聽眾" : "Waiting"}
         </span>
       );
     }
-    const parts = t("arena_viewers").split("{{n}}");
-    if (parts.length === 2) {
-      return (
-        <>
-          {parts[0]}
-          <span className="mx-0.5 font-semibold text-orange-300">{viewerCount}</span>
-          {parts[1]}
-        </>
-      );
-    }
-    return t("arena_viewers", { n: viewerCount });
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <span className="h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_14px_rgba(103,232,249,0.95)]" />
+        {lang === "zh" ? (
+          <>
+            觀戰 <span className="font-mono text-yellow-200">{viewerCount}</span> 人
+          </>
+        ) : (
+          <>
+            <span className="font-mono text-yellow-200">{viewerCount}</span> Live
+          </>
+        )}
+      </span>
+    );
   })();
   const winnerRpcSide = pick90sBattleWinner(votes, battleId, firstDeck);
   const hasResultWinner = Boolean(winnerRpcSide);
@@ -3764,7 +3754,7 @@ function BattleArenaContent() {
 
   return (
     <div
-      className={`${fontGlowSansBattle.className} aipoger-battle-touch relative flex min-h-[100svh] flex-col overflow-x-hidden overflow-y-auto bg-black text-zinc-100 antialiased md:h-screen md:min-h-screen md:overflow-hidden ${vinylDebugMode ? "pb-24" : ""}`}
+      className={`${fontGlowSansBattle.className} aipoger-battle-touch relative flex min-h-[100svh] flex-col overflow-x-hidden overflow-y-auto bg-black text-zinc-100 antialiased md:h-screen md:min-h-screen md:overflow-y-auto ${vinylDebugMode ? "pb-24" : ""}`}
       onClickCapture={handleBattleAudioGesture}
       onPointerDownCapture={handleBattleAudioGesture}
       onTouchStartCapture={handleBattleAudioGesture}
@@ -3987,8 +3977,16 @@ function BattleArenaContent() {
       </div>
 
       {/* 頂部：歌擂台｜Drop Battle 招牌｜語言 */}
-      <header className="sticky top-0 z-30 grid grid-cols-3 items-center border-b border-white/10 bg-black/70 px-4 py-2.5 backdrop-blur-xl">
-        <div className="min-w-0" />
+      <header className="sticky top-0 z-30 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-b border-white/10 bg-black/70 px-3 py-2.5 backdrop-blur-xl sm:px-4">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0 rounded-full border border-orange-300/35 bg-orange-500/10 px-2 py-1 text-[10px] font-black tracking-[0.14em] text-orange-100 shadow-[0_0_18px_rgba(255,106,0,0.18)] sm:px-3 sm:tracking-[0.18em]">
+            <span className="sm:hidden">AI</span>
+            <span className="hidden sm:inline">AIPOGER</span>
+          </span>
+          <span className="inline-flex min-h-8 min-w-0 max-w-[7rem] items-center justify-center rounded-full border border-yellow-200/65 bg-yellow-300/14 px-2 py-1 text-[10px] font-black text-yellow-50 shadow-[0_0_24px_rgba(250,204,21,0.24)] sm:max-w-none sm:px-3 sm:text-xs">
+            {viewerBadge}
+          </span>
+        </div>
         <div className="flex justify-center">
           <NextImage
             src="/hook-warfare-sign.svg"
@@ -4024,7 +4022,7 @@ function BattleArenaContent() {
       </header>
 
       {/* 擂台主體 */}
-      <main className="relative z-10 flex min-h-0 flex-1 flex-col overflow-visible px-4 pb-44 pt-2 md:overflow-hidden md:px-7 md:pb-2">
+      <main className="relative z-10 flex min-h-0 flex-1 flex-col overflow-visible px-4 pb-44 pt-2 md:overflow-visible md:px-7 md:pb-32">
         <section className="mx-auto mb-3 hidden w-full max-w-[1540px] grid-cols-[1fr_auto_1fr] items-center gap-4 rounded-[1.15rem] border border-white/10 bg-black/46 px-4 py-3 shadow-[0_18px_70px_rgba(0,0,0,0.26)] backdrop-blur-xl lg:grid">
           <div className="min-w-0">
             <p className="text-[11px] font-black uppercase tracking-[0.22em] text-orange-200/75">A SIDE</p>
@@ -4072,7 +4070,7 @@ function BattleArenaContent() {
               aiTool={battle.ai_tool_a}
               layoutNumbers={vinylLayout}
             />
-            <FeedbackBar deck="A" tone="orange" />
+            {renderFeedbackBar("A", "orange")}
             <div className="lyric-pitch-scroll lyric-pitch-scroll-orange mt-1.5 flex min-h-[58px] max-h-[78px] items-start justify-center overflow-y-auto whitespace-pre-wrap rounded-[1.05rem] bg-black/25 px-4 py-2 text-center text-[clamp(0.66rem,0.82vw,0.78rem)] font-semibold leading-[1.08] text-white/80 shadow-[inset_0_0_44px_rgba(255,255,255,0.022)] md:min-h-[66px] md:max-h-[88px]">
               {lyricA || t("battle_lyrics_empty")}
             </div>
@@ -4328,9 +4326,6 @@ function BattleArenaContent() {
               <p className="relative mt-2 rounded-full border border-orange-400/20 bg-black/40 px-3 py-1.5 text-[12px] text-orange-300">
                 {voteCenterText}
               </p>
-              <p className="relative mt-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-center text-[11px] text-zinc-300 shadow-[0_0_22px_rgba(255,106,0,0.08)]">
-                {viewerBadge}
-              </p>
               {battlePlaybackComplete && !voteOpen && hasResultWinner && battleResultHref && (isMockBattle || isAuthBypassEnabled || rematchExpired || !REMATCH_CHALLENGE_ENABLED) && (
                 <Link
                   href={battleResultHref}
@@ -4410,7 +4405,7 @@ function BattleArenaContent() {
                   aiTool={battle.ai_tool_b}
                   layoutNumbers={vinylLayout}
                 />
-                <FeedbackBar deck="B" tone="blue" />
+                {renderFeedbackBar("B", "blue")}
                 <div className="lyric-pitch-scroll lyric-pitch-scroll-blue mt-1.5 flex min-h-[58px] max-h-[78px] items-start justify-center overflow-y-auto whitespace-pre-wrap rounded-[1.05rem] bg-black/25 px-4 py-2 text-center text-[clamp(0.66rem,0.82vw,0.78rem)] font-semibold leading-[1.08] text-white/80 shadow-[inset_0_0_44px_rgba(255,255,255,0.022)] md:min-h-[66px] md:max-h-[88px]">
                   {lyricB || t("battle_lyrics_empty")}
                 </div>
@@ -4431,7 +4426,7 @@ function BattleArenaContent() {
         </section>
 
         {/* 彈幕輸入：留言送出後會橫向跑過整個 Battle 畫面 */}
-        <section className={`fixed bottom-2 left-3 right-3 z-[80] mx-auto w-[calc(100%-1.5rem)] max-w-[1120px] touch-manipulation select-none rounded-[1.55rem] border-2 border-yellow-300/75 bg-black/86 px-2.5 py-2.5 shadow-[0_16px_64px_rgba(0,0,0,0.52),0_0_32px_rgba(250,204,21,0.2)] backdrop-blur-xl transition-opacity [-webkit-touch-callout:none] [-webkit-user-select:none] md:bottom-4 md:rounded-full md:px-2 md:py-2 ${voteOpen ? "opacity-[0.82]" : ""}`}>
+        <section className={`pointer-events-none fixed bottom-2 left-3 right-3 z-[80] mx-auto w-[calc(100%-1.5rem)] max-w-[1120px] touch-manipulation select-none rounded-[1.55rem] border-2 border-yellow-300/75 bg-black/86 px-2.5 py-2.5 shadow-[0_16px_64px_rgba(0,0,0,0.52),0_0_32px_rgba(250,204,21,0.2)] backdrop-blur-xl transition-opacity [-webkit-touch-callout:none] [-webkit-user-select:none] md:bottom-4 md:rounded-full md:px-2 md:py-2 ${voteOpen ? "opacity-[0.82]" : ""}`}>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
             <span className="hidden shrink-0 pl-3 text-[10px] font-black tracking-[0.18em] text-yellow-200/80 sm:inline">
               {lang === "zh" ? "全場彈幕" : "Arena Danmaku"}
@@ -4447,7 +4442,7 @@ function BattleArenaContent() {
                     type="button"
                     onClick={() => void sendChatContent(phrase)}
                     onContextMenu={(event) => event.preventDefault()}
-                    className="flex h-12 min-w-16 shrink-0 touch-manipulation select-none items-center justify-center rounded-full border border-white/10 bg-white/[0.055] px-4 text-sm font-black text-white transition active:scale-[0.96] hover:border-yellow-200/70 hover:bg-yellow-300/15 [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] [-webkit-user-select:none] md:h-9 md:min-w-12 md:px-3 md:text-xs"
+                    className="pointer-events-auto flex h-12 min-w-16 shrink-0 touch-manipulation select-none items-center justify-center rounded-full border border-white/10 bg-white/[0.055] px-4 text-sm font-black text-white transition active:scale-[0.96] hover:border-yellow-200/70 hover:bg-yellow-300/15 [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] [-webkit-user-select:none] md:h-9 md:min-w-12 md:px-3 md:text-xs"
                     aria-label={`${lang === "zh" ? "送出" : "Send"} ${phrase}`}
                   >
                     {phrase}
@@ -4455,7 +4450,7 @@ function BattleArenaContent() {
                 ))}
               </div>
             </div>
-            <form className="flex min-w-0 flex-1 gap-2.5 md:gap-2" onSubmit={handleSend}>
+            <form className={`flex min-w-0 flex-1 gap-2.5 md:gap-2 ${isArenaWarmup ? "md:hidden" : ""}`} onSubmit={handleSend}>
               <input
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
@@ -4463,13 +4458,13 @@ function BattleArenaContent() {
                 maxLength={200}
                 enterKeyHint="send"
                 autoComplete="off"
-                className="min-h-14 min-w-0 flex-1 select-text rounded-full border border-yellow-300/45 bg-black/72 px-4 py-3 text-base font-bold text-zinc-100 placeholder:text-zinc-500 focus:border-yellow-200 focus:outline-none focus:ring-2 focus:ring-yellow-300/30 md:min-h-12 md:text-sm"
+                className="pointer-events-auto min-h-14 min-w-0 flex-1 select-text rounded-full border border-yellow-300/45 bg-black/72 px-4 py-3 text-base font-bold text-zinc-100 placeholder:text-zinc-500 focus:border-yellow-200 focus:outline-none focus:ring-2 focus:ring-yellow-300/30 md:min-h-12 md:text-sm"
               />
               <button
                 type="submit"
                 disabled={!chatInput.trim()}
                 onContextMenu={(event) => event.preventDefault()}
-                className="min-h-14 min-w-[6.2rem] touch-manipulation select-none rounded-full bg-yellow-300 px-5 py-3 text-base font-black text-black transition active:scale-[0.97] hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-40 [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] [-webkit-user-select:none] sm:px-6 md:min-h-12 md:min-w-[4.8rem] md:text-sm"
+                className="pointer-events-auto min-h-14 min-w-[6.2rem] touch-manipulation select-none rounded-full bg-yellow-300 px-5 py-3 text-base font-black text-black transition active:scale-[0.97] hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-40 [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] [-webkit-user-select:none] sm:px-6 md:min-h-12 md:min-w-[4.8rem] md:text-sm"
               >
                 {t("chat_send")}
               </button>
