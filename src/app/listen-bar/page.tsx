@@ -11,6 +11,16 @@ import { sha256File } from "@/lib/file-hash";
 import { supabase } from "@/lib/supabase";
 import { loadFighterNameFromProfile } from "@/lib/user-profile-fighter-name";
 import { IMAGE_UPLOAD_ACCEPT, imageContentType, isAllowedImageUploadFile } from "@/lib/image-upload-policy";
+import {
+  LISTEN_BAR_AUDIO_UPLOAD_ACCEPT,
+  LISTEN_BAR_AUDIO_UPLOAD_MAX_BYTES,
+  LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL,
+  isAllowedListenBarAudioFile,
+  isListenBarStorageSizeLimitError,
+  listenBarAudioContentType,
+  listenBarAudioSizeLabel,
+  uploadListenBarAudioFile,
+} from "@/lib/listen-bar-upload-policy";
 import ShareButton from "@/components/share-button";
 import ReportButton from "@/components/report-button";
 import { shouldExpireOpenDropQueue } from "@/lib/battle-pool-client";
@@ -131,7 +141,6 @@ const emptyReactions: ReactionCounts = {
 };
 
 const LISTEN_BAR_MESSAGE_LIMIT = 80;
-const AUDIO_UPLOAD_ACCEPT = "audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/aiff,audio/x-aiff,audio/mp4,audio/aac,.mp3,.wav,.aif,.aiff,.m4a,.aac";
 const LIVE_RADIO_EPOCH_MS = Date.UTC(2026, 0, 1);
 const PRIORITY_AIRPLAY_BATCH_MS = 60 * 60 * 1000;
 const STOP_HOME_BGM_EVENT = "aipoger:stop-home-bgm";
@@ -367,15 +376,6 @@ function safeFileName(name: string) {
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "")
     .toLowerCase() || `listen-${Date.now()}`;
-}
-
-function audioContentTypeFallback(file: File) {
-  const name = file.name.toLowerCase();
-  if (name.endsWith(".aif") || name.endsWith(".aiff")) return "audio/aiff";
-  if (name.endsWith(".wav")) return "audio/wav";
-  if (name.endsWith(".m4a")) return "audio/mp4";
-  if (name.endsWith(".aac")) return "audio/aac";
-  return "audio/mpeg";
 }
 
 function readAudioDuration(file: File): Promise<number> {
@@ -1514,9 +1514,23 @@ export default function ListenBarPage() {
 
   const handlePublicAudioChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
-    setPublicAudioFile(file);
     setPublicUploadError("");
     if (!file) return;
+    if (!isAllowedListenBarAudioFile(file)) {
+      setPublicAudioFile(null);
+      setPublicUploadError(isZh ? "請使用 MP3、WAV、AIFF、M4A、AAC 或 OGG 音檔。" : "Use MP3, WAV, AIFF, M4A, AAC, or OGG audio.");
+      return;
+    }
+    if (file.size > LISTEN_BAR_AUDIO_UPLOAD_MAX_BYTES) {
+      setPublicAudioFile(null);
+      setPublicUploadError(
+        isZh
+          ? `音檔太大：${listenBarAudioSizeLabel(file)}。傷心酒吧單檔上限是 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}，WAV 若超過請先轉 MP3 或壓縮。`
+          : `Audio file too large: ${listenBarAudioSizeLabel(file)}. Bar Heartbreak allows up to ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}; convert or compress large WAV files.`,
+      );
+      return;
+    }
+    setPublicAudioFile(file);
 
     const metadata = await parseAudioMetadata(file);
     setPublicUploadForm((current) => ({
@@ -1562,10 +1576,25 @@ export default function ListenBarPage() {
     if (!userId) throw new Error(isZh ? "請先登入再投稿。" : "Sign in before submitting.");
     const path = `${userId}/community/${Date.now()}-${crypto.randomUUID()}-${safeFileName(file.name)}`;
     const { error } = await supabase.storage.from(bucket).upload(path, file, {
-      contentType: file.type || contentTypeFallback,
+      contentType: contentTypeFallback,
       upsert: false,
     });
     if (error) throw error;
+    return path;
+  };
+
+  const uploadPublicAudioAsset = async (file: File) => {
+    if (!userId) throw new Error(isZh ? "請先登入再投稿。" : "Sign in before submitting.");
+    const path = `${userId}/community/${Date.now()}-${crypto.randomUUID()}-${safeFileName(file.name)}`;
+    await uploadListenBarAudioFile(
+      LISTEN_BAR_AUDIO_BUCKET,
+      path,
+      file,
+      listenBarAudioContentType(file),
+      (percent) => {
+        setPublicUploadMessage(isZh ? `音檔上傳中 ${percent}%` : `Uploading audio ${percent}%`);
+      },
+    );
     return path;
   };
 
@@ -1622,7 +1651,7 @@ export default function ListenBarPage() {
       }
 
       const duration = await readAudioDuration(publicAudioFile);
-      audioPath = await uploadPublicAsset(LISTEN_BAR_AUDIO_BUCKET, publicAudioFile, audioContentTypeFallback(publicAudioFile));
+      audioPath = await uploadPublicAudioAsset(publicAudioFile);
       coverPath = publicCoverFile
         ? await uploadPublicAsset(LISTEN_BAR_COVER_BUCKET, publicCoverFile, imageContentType(publicCoverFile))
         : null;
@@ -1733,6 +1762,10 @@ export default function ListenBarPage() {
           ? isZh
             ? "這個音檔已經上傳過了，請換另一首歌。"
             : "This exact audio file has already been uploaded. Please choose another track."
+          : isListenBarStorageSizeLimitError(submitError)
+            ? isZh
+              ? `音檔被雲端儲存限制擋下。請確認檔案低於 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}，若仍失敗請稍後再試。`
+              : `The audio was blocked by cloud storage limits. Keep it under ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL} and try again.`
           : isZh
             ? `投稿失敗：${String((submitError as { message?: string })?.message ?? submitError)}。請確認已套用傷心酒吧投稿 SQL。`
             : `Submission failed: ${String((submitError as { message?: string })?.message ?? submitError)}. Make sure the Bar Heartbreak submission SQL has been applied.`,
@@ -2435,7 +2468,7 @@ export default function ListenBarPage() {
                     <span className="min-w-0">
                       <span className="block text-[11px] font-black uppercase tracking-[0.22em] text-orange-200/75">AUDIO FILE</span>
                       <span className="mt-1 block truncate text-lg font-black leading-tight text-white">
-                        {publicAudioFile?.name ?? (isZh ? "音檔 MP3 / WAV / AIFF / M4A" : "MP3 / WAV / AIFF / M4A")}
+                        {publicAudioFile?.name ?? (isZh ? `音檔 MP3 / WAV / AIFF / M4A，上限 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}` : `MP3 / WAV / AIFF / M4A, max ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}`)}
                       </span>
                       <span className="mt-1 block text-xs text-zinc-400">
                         {isZh ? "點一下選歌，自動偵測歌名" : "Tap to Choose; Title Auto-Detects"}
@@ -2445,7 +2478,7 @@ export default function ListenBarPage() {
                       {publicAudioFile ? (isZh ? "已選取" : "Selected") : (isZh ? "必填" : "Required")}
                     </span>
                   </span>
-                  <input type="file" accept={AUDIO_UPLOAD_ACCEPT} onChange={handlePublicAudioChange} className="hidden" />
+                  <input type="file" accept={LISTEN_BAR_AUDIO_UPLOAD_ACCEPT} onChange={handlePublicAudioChange} className="hidden" />
                 </label>
 
                 <div className="grid gap-2 sm:grid-cols-2">

@@ -140,8 +140,8 @@ values
     'listen-bar-audio',
     'listen-bar-audio',
     true,
-    52428800,
-    array['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/aiff', 'audio/x-aiff', 'audio/mp4', 'audio/aac', 'audio/ogg']::text[]
+    104857600,
+    array['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave', 'audio/aiff', 'audio/x-aiff', 'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/ogg']::text[]
   ),
   (
     'listen-bar-covers',

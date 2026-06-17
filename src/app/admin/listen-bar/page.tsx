@@ -16,6 +16,16 @@ import { parseMp3Metadata, type ParsedMp3Metadata } from "@/lib/mp3-id3";
 import { supabase } from "@/lib/supabase";
 import { loadIsAdmin } from "@/lib/user-profile-admin";
 import { IMAGE_UPLOAD_ACCEPT, imageContentType, isAllowedImageUploadFile } from "@/lib/image-upload-policy";
+import {
+  LISTEN_BAR_AUDIO_UPLOAD_ACCEPT,
+  LISTEN_BAR_AUDIO_UPLOAD_MAX_BYTES,
+  LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL,
+  isAllowedListenBarAudioFile,
+  isListenBarStorageSizeLimitError,
+  listenBarAudioContentType,
+  listenBarAudioSizeLabel,
+  uploadListenBarAudioFile,
+} from "@/lib/listen-bar-upload-policy";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
 
@@ -190,8 +200,20 @@ export default function ListenBarAdminPage() {
     event.target.value = "";
     setError("");
     setMessage("");
-    setAudioFile(file);
     if (audioPreview) URL.revokeObjectURL(audioPreview);
+    if (file && !isAllowedListenBarAudioFile(file)) {
+      setAudioFile(null);
+      setAudioPreview("");
+      setError("請使用 MP3、WAV、AIFF、M4A、AAC 或 OGG 音檔。");
+      return;
+    }
+    if (file && file.size > LISTEN_BAR_AUDIO_UPLOAD_MAX_BYTES) {
+      setAudioFile(null);
+      setAudioPreview("");
+      setError(`音檔太大：${listenBarAudioSizeLabel(file)}。傷心酒吧單檔上限是 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}，WAV 若超過請先轉 MP3 或壓縮。`);
+      return;
+    }
+    setAudioFile(file);
     setAudioPreview(file ? URL.createObjectURL(file) : "");
     if (!file) return;
 
@@ -241,6 +263,19 @@ export default function ListenBarAdminPage() {
     return path;
   };
 
+  const uploadAudioAsset = async (file: File) => {
+    if (!userId) throw new Error("尚未登入。");
+    const path = `${userId}/${Date.now()}-${crypto.randomUUID()}-${safeFileName(file.name)}`;
+    await uploadListenBarAudioFile(
+      LISTEN_BAR_AUDIO_BUCKET,
+      path,
+      file,
+      listenBarAudioContentType(file),
+      (percent) => setMessage(`音檔上傳中 ${percent}%`),
+    );
+    return path;
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
@@ -256,12 +291,7 @@ export default function ListenBarAdminPage() {
 
     setSaving(true);
     try {
-      const audioPath = await uploadAsset(
-        LISTEN_BAR_AUDIO_BUCKET,
-        audioFile,
-        audioFile.name,
-        audioFile.type || "audio/mpeg",
-      );
+      const audioPath = await uploadAudioAsset(audioFile);
 
       const coverSource = coverFile ?? embeddedCover?.blob ?? null;
       const coverPath = coverSource
@@ -299,7 +329,11 @@ export default function ListenBarAdminPage() {
       setMessage("已加入傷心酒吧官方輪播。");
       await loadTracks();
     } catch (saveError) {
-      setError(`儲存失敗：${String((saveError as { message?: string })?.message ?? saveError)}。請確認已執行 SQL 且目前帳號是管理員。`);
+      if (isListenBarStorageSizeLimitError(saveError)) {
+        setError(`音檔被雲端儲存限制擋下。請確認檔案低於 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}，若仍失敗請檢查 Supabase global / bucket 上限。`);
+      } else {
+        setError(`儲存失敗：${String((saveError as { message?: string })?.message ?? saveError)}。請確認已執行 SQL 且目前帳號是管理員。`);
+      }
     } finally {
       setSaving(false);
     }
@@ -442,8 +476,8 @@ export default function ListenBarAdminPage() {
             <div className="grid gap-3">
               <label className="flex min-h-24 cursor-pointer flex-col justify-center rounded-2xl border border-orange-300/35 bg-orange-500/10 px-4 py-3 text-sm font-bold text-orange-100 transition hover:bg-orange-500/16">
                 <span>上傳音檔 MP3 / WAV / AIFF</span>
-                <span className="mt-1 text-xs font-medium text-orange-100/60">{audioFile?.name ?? "必填，建議 MP3 320kbps"}</span>
-                <input type="file" accept="audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/aiff,audio/x-aiff,audio/mp4,audio/aac,.mp3,.wav,.aif,.aiff,.m4a,.aac" onChange={handleAudioChange} className="hidden" />
+                <span className="mt-1 text-xs font-medium text-orange-100/60">{audioFile?.name ?? `必填，單檔上限 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}，建議 MP3 320kbps`}</span>
+                <input type="file" accept={LISTEN_BAR_AUDIO_UPLOAD_ACCEPT} onChange={handleAudioChange} className="hidden" />
               </label>
 
               {audioPreview && (
