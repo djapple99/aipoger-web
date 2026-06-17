@@ -8,18 +8,11 @@ import { useI18n } from "@/lib/i18n";
 import { AvatarCropUploadModal } from "@/components/avatar-crop-upload-modal";
 import { ProfileBattleCountBadge } from "@/components/profile-battle-count-badge";
 import SafetyNotice from "@/components/safety-notice";
+import { IMAGE_UPLOAD_ACCEPT, IMAGE_UPLOAD_FORMAT_LABEL, isAllowedImageUploadFile } from "@/lib/image-upload-policy";
 import { readFighterNameFromStorage, writeFighterNameToStorage } from "@/lib/fighter-name-storage";
 import { loadFighterNameFromProfile, saveFighterNameToProfile } from "@/lib/user-profile-fighter-name";
 
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
-const AVATAR_ACCEPT = "image/jpeg,image/png,image/webp";
-
-function isAllowedAvatarMime(file: File): boolean {
-  const allowed = ["image/jpeg", "image/png", "image/webp"];
-  if (allowed.includes(file.type)) return true;
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-  return ext === "jpg" || ext === "jpeg" || ext === "png" || ext === "webp";
-}
 
 function ProfileInner() {
   const { t, lang } = useI18n();
@@ -99,7 +92,7 @@ function ProfileInner() {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (!isAllowedAvatarMime(file)) {
+    if (!isAllowedImageUploadFile(file)) {
       alert(t("avatar_invalid_type"));
       return;
     }
@@ -160,7 +153,7 @@ function ProfileInner() {
 
         <div ref={avatarSectionRef} id="avatar-upload" className="aipo-control-panel rounded-[1.35rem] p-6">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">{t("upload_avatar")}</h2>
-          <p className="mt-1 text-xs text-zinc-600">JPEG / PNG / WebP · {t("avatar_max_2mb")}</p>
+          <p className="mt-1 text-xs text-zinc-600">{IMAGE_UPLOAD_FORMAT_LABEL} · {t("avatar_max_2mb")}</p>
           <SafetyNotice kind="upload" compact className="mt-4" />
           <div className="mt-6 flex flex-col items-center gap-4">
             <div className="flex w-full flex-col items-center gap-4 sm:flex-row sm:items-start sm:justify-center">
@@ -191,7 +184,7 @@ function ProfileInner() {
             >
               {t("setup_avatar_upload_btn")}
             </button>
-            <input ref={cropFileInputRef} type="file" accept={AVATAR_ACCEPT} className="hidden" onChange={onCropFileChange} />
+            <input ref={cropFileInputRef} type="file" accept={IMAGE_UPLOAD_ACCEPT} className="hidden" onChange={onCropFileChange} />
           </div>
         </div>
 

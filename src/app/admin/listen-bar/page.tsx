@@ -15,6 +15,7 @@ import {
 import { parseMp3Metadata, type ParsedMp3Metadata } from "@/lib/mp3-id3";
 import { supabase } from "@/lib/supabase";
 import { loadIsAdmin } from "@/lib/user-profile-admin";
+import { IMAGE_UPLOAD_ACCEPT, imageContentType, isAllowedImageUploadFile } from "@/lib/image-upload-policy";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
 
@@ -218,6 +219,11 @@ export default function ListenBarAdminPage() {
     const file = event.target.files?.[0] ?? null;
     event.target.value = "";
     setError("");
+    if (file && !isAllowedImageUploadFile(file)) {
+      setCoverFile(null);
+      setError("請使用 JPG、PNG、WebP 或 GIF 圖片。");
+      return;
+    }
     setCoverFile(file);
     if (!file) return;
     if (coverPreview.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
@@ -263,7 +269,7 @@ export default function ListenBarAdminPage() {
             LISTEN_BAR_COVER_BUCKET,
             coverSource,
             coverFile?.name ?? embeddedCover?.fileName ?? "cover.jpg",
-            coverFile?.type || embeddedCover?.mimeType || "image/jpeg",
+            coverFile ? imageContentType(coverFile) : embeddedCover?.mimeType || "image/jpeg",
           )
         : null;
 
@@ -452,7 +458,7 @@ export default function ListenBarAdminPage() {
                   <span className="absolute inset-x-2 bottom-2 rounded-full bg-black/70 px-2 py-1 text-center text-[11px] font-black text-white">
                     換封面
                   </span>
-                  <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleCoverChange} className="hidden" />
+                  <input type="file" accept={IMAGE_UPLOAD_ACCEPT} onChange={handleCoverChange} className="hidden" />
                 </label>
                 <div className="grid gap-3">
                   <input value={form.title} onChange={(event) => updateForm({ title: event.target.value })} placeholder="歌名" className="h-12 rounded-xl border border-white/12 bg-black/50 px-4 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-400" required />

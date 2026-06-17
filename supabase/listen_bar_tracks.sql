@@ -148,7 +148,7 @@ values
     'listen-bar-covers',
     true,
     10485760,
-    array['image/jpeg', 'image/png', 'image/webp']::text[]
+    array['image/jpeg', 'image/png', 'image/webp', 'image/gif']::text[]
   )
 on conflict (id) do update
 set

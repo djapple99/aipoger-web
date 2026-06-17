@@ -10,6 +10,7 @@ import { parseAudioMetadata } from "@/lib/audio-metadata";
 import { sha256File } from "@/lib/file-hash";
 import { supabase } from "@/lib/supabase";
 import { loadFighterNameFromProfile } from "@/lib/user-profile-fighter-name";
+import { IMAGE_UPLOAD_ACCEPT, imageContentType, isAllowedImageUploadFile } from "@/lib/image-upload-policy";
 import ShareButton from "@/components/share-button";
 import ReportButton from "@/components/report-button";
 import { shouldExpireOpenDropQueue } from "@/lib/battle-pool-client";
@@ -1545,6 +1546,18 @@ export default function ListenBarPage() {
     }
   };
 
+  const handlePublicCoverChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
+    setPublicUploadError("");
+    if (file && !isAllowedImageUploadFile(file)) {
+      setPublicCoverFile(null);
+      setPublicUploadError(t("avatar_invalid_type"));
+      return;
+    }
+    setPublicCoverFile(file);
+  };
+
   const uploadPublicAsset = async (bucket: string, file: File, contentTypeFallback: string) => {
     if (!userId) throw new Error(isZh ? "請先登入再投稿。" : "Sign in before submitting.");
     const path = `${userId}/community/${Date.now()}-${crypto.randomUUID()}-${safeFileName(file.name)}`;
@@ -1611,7 +1624,7 @@ export default function ListenBarPage() {
       const duration = await readAudioDuration(publicAudioFile);
       audioPath = await uploadPublicAsset(LISTEN_BAR_AUDIO_BUCKET, publicAudioFile, audioContentTypeFallback(publicAudioFile));
       coverPath = publicCoverFile
-        ? await uploadPublicAsset(LISTEN_BAR_COVER_BUCKET, publicCoverFile, "image/jpeg")
+        ? await uploadPublicAsset(LISTEN_BAR_COVER_BUCKET, publicCoverFile, imageContentType(publicCoverFile))
         : null;
 
       const insertPayload = {
@@ -2493,8 +2506,8 @@ export default function ListenBarPage() {
                     {publicCoverFile?.name ?? (isZh ? "封面可選" : "Optional Cover")}
                     <input
                       type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={(event) => setPublicCoverFile(event.target.files?.[0] ?? null)}
+                      accept={IMAGE_UPLOAD_ACCEPT}
+                      onChange={handlePublicCoverChange}
                       className="hidden"
                     />
                   </label>

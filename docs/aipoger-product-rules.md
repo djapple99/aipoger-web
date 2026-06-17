@@ -198,6 +198,14 @@ Operating guidance:
 - Keep duplicate-file checks active for Battle and 24H surfaces.
 - Consider cleanup policies for cancelled, expired, or orphaned uploaded files before public scale.
 
+## Image Upload Moderation
+
+Current behavior target:
+
+- Adult non-explicit swimwear, stage looks, and tasteful sexy fashion images are allowed on avatars and cover art.
+- Prohibited image content remains: explicit nudity, sex acts, porn/adult redirects, sexualized minors, graphic violence, self-harm, hate/discrimination, scams, gambling redirects, drugs/weapons, personal data exposure, impersonation, stolen brand assets, celebrity likeness misuse, and infringing content.
+- User-facing upload rules should clearly distinguish `non-explicit sexy styling is allowed` from `pornographic or exploitative content is banned`.
+
 ## Deployment Safety
 
 Before deploying changes that touch product rules:

@@ -32,6 +32,7 @@ import {
 } from '@/lib/battle-pool-rules';
 import { fileFromDataUrl, parseAudioMetadata } from '@/lib/audio-metadata';
 import { sha256File } from '@/lib/file-hash';
+import { IMAGE_UPLOAD_ACCEPT, imageContentType, isAllowedImageUploadFile } from '@/lib/image-upload-policy';
 
 type GenreOption = { value: string; labelKey: string };
 
@@ -69,24 +70,8 @@ type BattleMode = 'instant' | 'daily';
 type InstantPairingMode = 'auto' | 'invite';
 type DailyPairingMode = 'auto' | 'invite';
 
-function imageContentType(file: File): string {
-  if (file.type && file.type.startsWith('image/')) return file.type;
-  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
-  const map: Record<string, string> = {
-    jpg: 'image/jpeg',
-    jpeg: 'image/jpeg',
-    png: 'image/png',
-    webp: 'image/webp',
-    gif: 'image/gif',
-    heic: 'image/heic',
-    heif: 'image/heif',
-  };
-  return map[ext] ?? 'image/jpeg';
-}
-
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 const MAX_DAILY_AUDIO_BYTES = 200 * 1024 * 1024;
-const AVATAR_ACCEPT = 'image/jpeg,image/png,image/webp';
 const DAILY_AUDIO_ACCEPT = 'audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/aiff,audio/x-aiff,audio/mp4,audio/aac,.mp3,.wav,.aif,.aiff,.m4a,.aac';
 const DAILY_LYRICS_ACCEPT = '.txt,.lrc,text/plain';
 const MAX_LYRICS_CHARS = 8000;
@@ -115,13 +100,6 @@ function formatBytes(bytes: number): string {
   const mb = bytes / (1024 * 1024);
   if (mb >= 1024) return `${(mb / 1024).toFixed(2)} GB`;
   return `${mb.toFixed(1)} MB`;
-}
-
-function isAllowedAvatarFile(file: File): boolean {
-  const allowed = ['image/jpeg', 'image/png', 'image/webp'];
-  if (allowed.includes(file.type)) return true;
-  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
-  return ext === 'jpg' || ext === 'jpeg' || ext === 'png' || ext === 'webp';
 }
 
 function storeBattleAssetSession(avatarUrl: string | null, coverUrl: string | null): string | null {
@@ -606,7 +584,7 @@ export default function BattleSetupPage() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (!isAllowedAvatarFile(file)) {
+    if (!isAllowedImageUploadFile(file)) {
       alert(t('avatar_invalid_type'));
       return;
     }
@@ -639,6 +617,10 @@ export default function BattleSetupPage() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    if (!isAllowedImageUploadFile(file)) {
+      alert(t('avatar_invalid_type'));
+      return;
+    }
     if (file.size > 5 * 1024 * 1024) {
       alert('封面圖片不能超過 5MB');
       return;
@@ -1551,7 +1533,7 @@ export default function BattleSetupPage() {
                 )}
                 <div className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 text-lg font-black text-black shadow-lg">+</div>
               </div>
-              <input ref={avatarInputRef} type="file" accept={AVATAR_ACCEPT} className="hidden" onChange={handleAvatarUpload} />
+              <input ref={avatarInputRef} type="file" accept={IMAGE_UPLOAD_ACCEPT} className="hidden" onChange={handleAvatarUpload} />
             </label>
             <p className="mt-2 text-xs text-zinc-500">{t('upload_avatar')}</p>
             <button
@@ -1597,7 +1579,7 @@ export default function BattleSetupPage() {
                   </div>
                 )}
               </div>
-              <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
+              <input ref={coverInputRef} type="file" accept={IMAGE_UPLOAD_ACCEPT} className="hidden" onChange={handleCoverUpload} />
             </label>
             <p className="mt-2 text-xs text-zinc-500">{t('upload_cover')}</p>
             {(coverPreview || savedCoverUrl) && (
