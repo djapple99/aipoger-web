@@ -38,9 +38,23 @@ type AdminQueue = {
   cancellation_evaluation_at?: string | null;
 };
 
+type AdminOfficialDrop = {
+  id: string;
+  gateNumber: string;
+  title: string;
+  genre: string;
+  aiTool: string;
+  description: string | null;
+  audioPath: string | null;
+  active: boolean;
+  sortOrder: number;
+  updatedAt?: string | null;
+};
+
 type AdminPayload = {
   battles?: AdminBattle[];
   queues?: AdminQueue[];
+  officialDrops?: AdminOfficialDrop[];
   error?: string;
 };
 
@@ -77,6 +91,7 @@ export default function AdminBattlesPage() {
   const [adminState, setAdminState] = useState<AdminState>("checking");
   const [battles, setBattles] = useState<AdminBattle[]>([]);
   const [queues, setQueues] = useState<AdminQueue[]>([]);
+  const [officialDrops, setOfficialDrops] = useState<AdminOfficialDrop[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -84,8 +99,9 @@ export default function AdminBattlesPage() {
   const stats = useMemo(() => {
     const openQueues = queues.filter((queue) => !queue.match_group_id).length;
     const matchedQueues = queues.filter((queue) => queue.match_group_id).length;
-    return { activeBattles: battles.length, openQueues, matchedQueues };
-  }, [battles, queues]);
+    const activeOfficialDrops = officialDrops.filter((drop) => drop.active && drop.audioPath).length;
+    return { activeBattles: battles.length, openQueues, matchedQueues, activeOfficialDrops };
+  }, [battles, officialDrops, queues]);
 
   const loadData = useCallback(async () => {
     setError("");
@@ -99,6 +115,7 @@ export default function AdminBattlesPage() {
     }
     setBattles(payload?.battles ?? []);
     setQueues(payload?.queues ?? []);
+    setOfficialDrops(payload?.officialDrops ?? []);
   }, []);
 
   useEffect(() => {
@@ -175,6 +192,31 @@ export default function AdminBattlesPage() {
     await loadData();
   }
 
+  async function disableOfficialDrop(drop: AdminOfficialDrop) {
+    const ok = window.confirm(`確定停用 ${drop.gateNumber} ${drop.title}？這會把鬥歌池上的官方守門卡收掉，但保留音檔與設定。`);
+    if (!ok) return;
+
+    setBusyId(drop.id);
+    setError("");
+    setMessage("");
+    const response = await fetch("/api/admin/battles", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(await authHeader()),
+      },
+      body: JSON.stringify({ action: "disable_gatekeeper_drop", gatekeeperId: drop.id }),
+    });
+    const payload = (await response.json().catch(() => null)) as { error?: string; disabledOfficialDrops?: number } | null;
+    setBusyId(null);
+    if (!response.ok) {
+      setError(payload?.error || "停用官方守門 Drop 失敗。");
+      return;
+    }
+    setMessage(`已停用官方守門 Drop：${payload?.disabledOfficialDrops ?? 0}。`);
+    await loadData();
+  }
+
   if (adminState === "checking") {
     return (
       <main className="min-h-screen bg-[#050505] px-5 py-10 text-white">
@@ -231,7 +273,7 @@ export default function AdminBattlesPage() {
           {[
             ["進行中 Battle", stats.activeBattles],
             ["公開戰帖", stats.openQueues],
-            ["已配對 Queue", stats.matchedQueues],
+            ["官方守門卡", stats.activeOfficialDrops],
           ].map(([label, value]) => (
             <div key={String(label)} className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] px-4 py-4">
               <p className="text-xs font-black text-zinc-500">{label}</p>
@@ -260,6 +302,51 @@ export default function AdminBattlesPage() {
 
         {error ? <p className="mt-4 rounded-xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-100">{error}</p> : null}
         {message ? <p className="mt-4 rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-100">{message}</p> : null}
+
+        <section className="mt-5">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-black text-white">官方守門 Drop</h2>
+              <p className="mt-1 text-xs font-bold text-zinc-500">這些是常駐模板卡，不會出現在 battle_queue。要從鬥歌池收掉請停用。</p>
+            </div>
+            <Link href="/admin/gatekeeper-drops" className="rounded-full border border-red-200/25 bg-red-500/10 px-4 py-2 text-xs font-black text-red-100">
+              編輯守門 Drop
+            </Link>
+          </div>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            {officialDrops.length === 0 ? (
+              <p className="rounded-[1.1rem] border border-white/10 bg-white/[0.035] px-5 py-8 text-center text-sm font-bold text-zinc-500 md:col-span-2">
+                尚未建立官方守門 Drop 資料表或沒有模板卡。
+              </p>
+            ) : officialDrops.map((drop) => (
+              <article key={drop.id} className={`rounded-[1.1rem] border p-4 ${drop.active && drop.audioPath ? "border-red-200/25 bg-red-500/[0.07]" : "border-white/10 bg-black/56"}`}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`rounded-full border px-2.5 py-1 text-[11px] font-black ${drop.active && drop.audioPath ? "border-red-200/35 bg-red-500/12 text-red-100" : "border-white/10 bg-white/[0.04] text-zinc-400"}`}>
+                    {drop.active && drop.audioPath ? "鬥歌池顯示中" : "未開放"}
+                  </span>
+                  <span className="text-[11px] font-bold tabular-nums text-zinc-500">{drop.gateNumber}</span>
+                  <span className="text-[11px] font-bold text-zinc-500">{formatTime(drop.updatedAt)}</span>
+                </div>
+                <h3 className="mt-3 break-words text-xl font-black text-white">{drop.title || "官方守門 Drop"}</h3>
+                <p className="mt-2 break-words text-sm font-bold leading-6 text-zinc-300">{drop.genre} · {drop.aiTool}</p>
+                <p className="mt-1 text-xs font-bold text-zinc-500">{drop.audioPath ? `音檔 #${shortId(drop.audioPath.split("/").pop() || drop.audioPath)}` : "尚未上傳音檔"}</p>
+                <div className="mt-4 flex flex-wrap justify-end gap-2">
+                  <Link href="/battle?lang=zh" className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-black text-zinc-200">
+                    看鬥歌池
+                  </Link>
+                  <button
+                    type="button"
+                    disabled={busyId === drop.id || !drop.active}
+                    onClick={() => void disableOfficialDrop(drop)}
+                    className="rounded-full border border-red-200/35 bg-red-500/12 px-3 py-2 text-xs font-black text-red-100 disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    {busyId === drop.id ? "停用中" : "停用官方卡"}
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
 
         <section className="mt-5">
           <h2 className="text-lg font-black text-white">Battle</h2>

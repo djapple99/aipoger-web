@@ -3,6 +3,11 @@ import { createClient } from "@supabase/supabase-js";
 import { isStandardUuid, resolveAdminTargetIdFromRows } from "@/lib/admin-battle-ids";
 import { isAdminEmail } from "@/lib/admin-emails";
 import { cancelStalePendingDropBattles, isMissingScheduleColumn } from "@/lib/battle-pool-maintenance";
+import {
+  OFFICIAL_GATEKEEPER_DROP_IDS,
+  normalizeOfficialGatekeeperDrop,
+  type OfficialGatekeeperDrop,
+} from "@/lib/official-gatekeeper-drops";
 
 const ACTIVE_BATTLE_STATUSES = [
   "pending",
@@ -64,6 +69,19 @@ type QueueRow = {
   expires_at?: string | null;
   scheduled_start_at?: string | null;
   cancellation_evaluation_at?: string | null;
+};
+
+type OfficialGatekeeperDropRow = {
+  id: string;
+  gate_number?: string | null;
+  title?: string | null;
+  genre?: string | null;
+  ai_tool?: string | null;
+  description?: string | null;
+  audio_path?: string | null;
+  active?: boolean | null;
+  sort_order?: number | null;
+  updated_at?: string | null;
 };
 
 function jsonError(message: string, status = 400) {
@@ -179,6 +197,21 @@ async function loadQueues(admin: AdminClient) {
 
   if (error) throw error;
   return (data ?? []) as unknown as QueueRow[];
+}
+
+async function loadOfficialDrops(admin: AdminClient): Promise<OfficialGatekeeperDrop[]> {
+  const { data, error } = await admin
+    .from("official_gatekeeper_drops")
+    .select("id,gate_number,title,genre,ai_tool,description,audio_path,active,sort_order,updated_at")
+    .order("sort_order", { ascending: true });
+
+  if (error) {
+    const msg = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""} ${error.code ?? ""}`;
+    if (/official_gatekeeper_drops|relation.*does not exist|schema cache|PGRST204|42P01/i.test(msg)) return [];
+    throw error;
+  }
+
+  return ((data ?? []) as OfficialGatekeeperDropRow[]).map((row) => normalizeOfficialGatekeeperDrop(row as Record<string, unknown>));
 }
 
 async function updateBattleCancelled(admin: AdminClient, battleId: string, now: string) {
@@ -331,13 +364,30 @@ async function cancelQueue(admin: AdminClient, queueId: string, note: string | n
   };
 }
 
+async function disableOfficialGatekeeperDrop(admin: AdminClient, gatekeeperId: unknown, userId: string) {
+  const id = typeof gatekeeperId === "string" ? gatekeeperId.trim() : "";
+  if (!OFFICIAL_GATEKEEPER_DROP_IDS.includes(id as (typeof OFFICIAL_GATEKEEPER_DROP_IDS)[number])) {
+    throw new Error("無效的官方守門 Drop。");
+  }
+
+  const { data, error } = await admin
+    .from("official_gatekeeper_drops")
+    .update({ active: false, updated_by: userId, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+
+  if (error) throw error;
+  return { disabledOfficialDrops: data?.id ? 1 : 0 };
+}
+
 export async function GET(request: NextRequest) {
   try {
     const guard = await requireOwnerAdmin(request);
     if (guard.error) return guard.error;
     const { admin } = guard;
-    const [battles, queues] = await Promise.all([loadBattles(admin), loadQueues(admin)]);
-    return NextResponse.json({ battles, queues });
+    const [battles, queues, officialDrops] = await Promise.all([loadBattles(admin), loadQueues(admin), loadOfficialDrops(admin)]);
+    return NextResponse.json({ battles, queues, officialDrops });
   } catch (error) {
     return jsonError(String((error as { message?: string })?.message ?? error), 500);
   }
@@ -347,7 +397,7 @@ export async function POST(request: NextRequest) {
   try {
     const guard = await requireOwnerAdmin(request);
     if (guard.error) return guard.error;
-    const { admin } = guard;
+    const { admin, userId } = guard;
     const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
     if (!body) return jsonError("後台動作格式不正確。");
 
@@ -362,6 +412,11 @@ export async function POST(request: NextRequest) {
         cancelledQueues: 0,
         warnings: [rpc.error?.message, ...stalePending.errors].filter(Boolean),
       });
+    }
+
+    if (action === "disable_gatekeeper_drop") {
+      const result = await disableOfficialGatekeeperDrop(admin, body.gatekeeperId, userId);
+      return NextResponse.json({ ok: true, ...result });
     }
 
     const note = cleanText(body.note, 500);
