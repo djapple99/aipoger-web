@@ -1,6 +1,6 @@
 # AIPOGER Product Rules
 
-Last updated: 2026-06-10
+Last updated: 2026-06-18
 
 This document is the product-rule source of truth for AIPOGER. Use it before changing Battle, Bar Heartbreak, Honor Board, auth, upload, or deployment behavior.
 
@@ -69,8 +69,8 @@ Current behavior:
 - Finished 90s Drop Battles open a short king-of-the-hill rematch window only after the result is official: at least 3 distinct audience voters, a valid winner, no existing next battle, and a formal Drop Battle type. The window is 5 seconds to claim the challenger slot, then 120 seconds for the challenger to upload their Drop.
 - If nobody claims the 5-second rematch slot, the battle should go directly to the result card and should not leave a lingering rematch card.
 - A 0:0 no contest never creates a result card, defender/rematch window, Honor Board record, or formal battle stats.
-- A battle with 1-2 distinct audience voters may show an unofficial battle result in the arena/result flow, but it must not create a Honor Board record, `battle_result_archives` row, song battle stats, or defender/rematch window.
-- A battle with at least 3 distinct audience voters is an official Drop Battle result and may create the result archive, feed the Honor Board, update per-song battle stats, and open the defender/rematch window.
+- A battle with 1-2 distinct audience voters may create an unofficial result card and appear on the Result Wall / 成果牆, but it must not enter the Honor Board, update official song battle stats, or open the defender/rematch window.
+- A battle with at least 3 distinct audience voters is an official Drop Battle result and may feed the Honor Board, update per-song battle stats, and open the defender/rematch window.
 - The official-result audience threshold counts distinct listeners only: one signed-in `battle_votes.user_id` or one anonymous `battle_guest_votes.guest_id` per battle. Fighter participation does not count toward the 3-audience minimum.
 - A user can have only one active Drop Battle intent at a time.
 - Drop Battle and 24H Full Song can coexist for the same account; their active limits are separate.
@@ -78,7 +78,8 @@ Current behavior:
 - Open Drop states include `searching`, `waiting`, `waiting_challenge`, `public_voting`, and `ghost_battle`.
 - If no immediate same-genre opponent is available, the user may open a Drop Battle challenge card or go to Bar Heartbreak to find listeners/opponents.
 - Duplicate active Drop audio should be blocked by audio hash when the column exists.
-- Battle result archives feed the Honor Board as real winner records.
+- The Result Wall / 成果牆 is the monthly public result library. It may show both official and unofficial result cards, as long as there is at least 1 distinct audience voter and a valid winner.
+- The Honor Board only consumes official Drop Battle results with at least 3 distinct audience voters.
 - Battle history should focus on the song, not the fighter profile. Cards may show per-song challenge count, wins, losses, ties, and win rate.
 - V1 song battle stats do not open URL upload or a full creator song-library UI. They only group the same creator's repeated Drop Battle entries by normalized song title and show battle count, wins, losses, votes, win rate, and Honor Board count.
 - Waiting cards should provide a `約人鬥歌` share action.

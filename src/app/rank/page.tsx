@@ -30,6 +30,7 @@ import {
   listenBarRowToTrack,
   type ListenBarTrackRow,
 } from "@/lib/listen-bar";
+import { DROP_BATTLE_OFFICIAL_AUDIENCE_MIN } from "@/lib/drop-battle-rematch";
 import { battleResultShortPath, isUuid } from "@/lib/share-short-links";
 import { supabase } from "@/lib/supabase";
 
@@ -418,12 +419,18 @@ function mergeArchives(remoteRows: ArchivedBattleResult[]) {
   for (const row of remoteRows) {
     if (!hasArchivedCoreData(row)) continue;
     if (isProbablyMockArchive(row)) continue;
+    if (!isOfficialArchivedResult(row)) continue;
     const key = archiveSignature(row);
     if (!unique.has(key)) unique.set(key, row);
   }
   return [...unique.values()].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
+}
+
+function isOfficialArchivedResult(row: ArchivedBattleResult) {
+  const min = row.officialAudienceMin && row.officialAudienceMin > 0 ? row.officialAudienceMin : DROP_BATTLE_OFFICIAL_AUDIENCE_MIN;
+  return (row.audienceCount ?? row.votesTotal ?? 0) >= min;
 }
 
 function hotBarRowsFromTracks(tracks: ListenBarTrackRow[]) {
@@ -830,6 +837,8 @@ export default function RankPage() {
                 : tableLooksLikePercentTotal
                   ? 0
                   : tableVoteTotal,
+              audienceCount: normalizeVoteCount(payload.audienceCount ?? payload.audienceVoterCount ?? payload.audience),
+              officialAudienceMin: normalizeVoteCount(payload.officialAudienceMin) || DROP_BATTLE_OFFICIAL_AUDIENCE_MIN,
               audienceReview: String(row.audience_review || payload.audienceReview || "").trim(),
               aiReview: String(payload.aiReview || "").trim(),
               feedbackA:

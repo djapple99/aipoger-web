@@ -111,6 +111,7 @@ async function processFallbacks(request: NextRequest) {
   }
 
   const hookSettled = await settleStaleHookBattles(admin, warnings);
+  const hookArchived = await archiveFinishedUnarchivedHookBattles(admin, warnings);
   const dailySettled = await settleExpiredDailyBattles(admin, warnings);
   const expiredHookQueue = await expireStaleHookQueue(admin, warnings);
   const expiredDailyQueue = await expireStaleDailyQueue(admin, warnings);
@@ -119,9 +120,10 @@ async function processFallbacks(request: NextRequest) {
   warnings.push(...stalePendingBattles.errors);
 
   return NextResponse.json({
-    processed: poolProcessed + hookSettled + dailySettled + expiredHookQueue + expiredDailyQueue + expiredRematchClaims + stalePendingBattles.cancelled,
+    processed: poolProcessed + hookSettled + hookArchived + dailySettled + expiredHookQueue + expiredDailyQueue + expiredRematchClaims + stalePendingBattles.cancelled,
     poolProcessed,
     hookSettled,
+    hookArchived,
     dailySettled,
     expiredHookQueue,
     expiredDailyQueue,
@@ -348,8 +350,10 @@ async function settleStaleHookBattles(admin: SupabaseAdmin, warnings: string[]) 
 
     await completeQueues(admin, battle, "completed", warnings);
     const isOfficial = voteRead.audienceCount >= DROP_BATTLE_OFFICIAL_AUDIENCE_MIN;
+    if (voteRead.audienceCount > 0) {
+      await archiveHookBattleResult(admin, battle, winner, counts, voteRead.audienceCount, isOfficial, warnings);
+    }
     if (isOfficial) {
-      await archiveHookBattleResult(admin, battle, winner, counts, voteRead.audienceCount, warnings);
       await notifyHookBattleResult(admin, battle, winner, counts, warnings, true);
       await recordHookBattleHistory(admin, battle, winner, counts, warnings);
     } else {
@@ -358,6 +362,45 @@ async function settleStaleHookBattles(admin: SupabaseAdmin, warnings: string[]) 
     settled += 1;
   }
   return settled;
+}
+
+async function archiveFinishedUnarchivedHookBattles(admin: SupabaseAdmin, warnings: string[]) {
+  const { data, error } = await admin
+    .from("battles")
+    .select(
+      "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,status,created_at,scheduled_start_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner",
+    )
+    .eq("status", "finished")
+    .not("winner", "is", null)
+    .is("result_archived_at", null)
+    .order("battle_ended_at", { ascending: true, nullsFirst: false })
+    .limit(25);
+
+  if (error) {
+    if (!/schema cache|does not exist|Could not find/i.test(error.message)) {
+      warnings.push(`finished 90s archive query: ${error.message}`);
+    }
+    return 0;
+  }
+
+  let archived = 0;
+  for (const battle of (data ?? []) as HookBattleRow[]) {
+    const winner = battle.winner === "fighter_a" || battle.winner === "fighter_b" ? battle.winner : null;
+    if (!winner) continue;
+
+    const voteRead = await readCombined90sVotes(admin, battle.id);
+    if (voteRead.error) {
+      warnings.push(`finished 90s votes ${battle.id}: ${voteRead.error}`);
+      continue;
+    }
+    const counts = voteRead.counts;
+    if (counts.fighter_a + counts.fighter_b <= 0 || voteRead.audienceCount <= 0) continue;
+
+    const isOfficial = voteRead.audienceCount >= DROP_BATTLE_OFFICIAL_AUDIENCE_MIN;
+    await archiveHookBattleResult(admin, battle, winner, counts, voteRead.audienceCount, isOfficial, warnings);
+    archived += 1;
+  }
+  return archived;
 }
 
 async function expireHookBattle(
@@ -502,8 +545,15 @@ async function archiveHookBattleResult(
   winner: "fighter_a" | "fighter_b",
   counts: { fighter_a: number; fighter_b: number },
   audienceCount: number,
+  isOfficial: boolean,
   warnings: string[],
 ) {
+  if (!isOfficial) {
+    const direct = await archiveHookBattleResultDirect(admin, battle, winner, counts, audienceCount, false);
+    if (direct.error) warnings.push(`archive unofficial 90s ${battle.id}: ${direct.error}`);
+    return;
+  }
+
   const archive = await admin.rpc("archive_battle_result", {
     p_battle_id: battle.id,
     p_winner: winner,
@@ -524,7 +574,7 @@ async function archiveHookBattleResult(
   });
   if (!archive.error) return;
 
-  const direct = await archiveHookBattleResultDirect(admin, battle, winner, counts, audienceCount);
+  const direct = await archiveHookBattleResultDirect(admin, battle, winner, counts, audienceCount, true);
   if (direct.error) {
     warnings.push(`archive 90s ${battle.id}: ${archive.error.message}; direct archive: ${direct.error}`);
   }
@@ -536,6 +586,7 @@ async function archiveHookBattleResultDirect(
   winner: "fighter_a" | "fighter_b",
   counts: { fighter_a: number; fighter_b: number },
   audienceCount: number,
+  isOfficial: boolean,
 ) {
   const fresh = await admin
     .from("battles")
@@ -584,6 +635,8 @@ async function archiveHookBattleResultDirect(
         audience_review: audienceReview,
         result_payload: {
           source: "cron-direct-fallback",
+          archiveScope: isOfficial ? "official-result" : "result-wall",
+          isOfficial,
           votesA: counts.fighter_a,
           votesB: counts.fighter_b,
           audienceCount,
@@ -597,14 +650,16 @@ async function archiveHookBattleResultDirect(
 
   if (upsert.error) return { error: upsert.error.message };
 
-  const stats = await admin.rpc("record_battle_song_stats_for_battle", {
-    p_battle_id: battle.id,
-    p_winner: effectiveWinner,
-    p_final_vote_left: counts.fighter_a,
-    p_final_vote_right: counts.fighter_b,
-  });
-  if (stats.error && !/schema cache|does not exist|Could not find|PGRST/i.test(stats.error.message)) {
-    return { error: stats.error.message };
+  if (isOfficial) {
+    const stats = await admin.rpc("record_battle_song_stats_for_battle", {
+      p_battle_id: battle.id,
+      p_winner: effectiveWinner,
+      p_final_vote_left: counts.fighter_a,
+      p_final_vote_right: counts.fighter_b,
+    });
+    if (stats.error && !/schema cache|does not exist|Could not find|PGRST/i.test(stats.error.message)) {
+      return { error: stats.error.message };
+    }
   }
 
   const marked = await admin
