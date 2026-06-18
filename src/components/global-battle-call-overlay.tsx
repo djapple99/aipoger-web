@@ -225,6 +225,13 @@ export default function GlobalBattleCallOverlay() {
     if (isCreatorFlow) return "creator";
     return "default";
   }, [pathname]);
+  const isListenBarPage = pathname === "/listen-bar";
+  const accountDockClassName = isListenBarPage
+    ? "fixed right-4 top-44 z-[92] flex flex-col items-center gap-2 sm:right-5"
+    : "fixed right-4 top-20 z-[92] flex items-center gap-2 sm:right-5";
+  const accountNoticePanelClassName = isListenBarPage
+    ? "fixed right-4 top-44 z-[92] w-[min(calc(100vw-2rem),340px)] sm:right-5"
+    : "fixed right-4 top-24 z-[92] w-[min(calc(100vw-2rem),340px)] sm:right-5";
 
   const arenaHref = call ? `/battle/${encodeURIComponent(call.battleId)}?lang=${lang}` : "/battle";
   const activeUrgentKey = activeNoticeKey(activeNotice);
@@ -564,7 +571,7 @@ export default function GlobalBattleCallOverlay() {
     urgent?: boolean;
     onBellClick?: () => void;
   }) => (
-    <div className="fixed right-4 top-20 z-[92] flex items-center gap-2 sm:right-5">
+    <div className={accountDockClassName}>
       <Link
         href={`/profile?lang=${lang}`}
         className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-cyan-200/30 bg-black/82 text-sm font-black text-cyan-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_24px_rgba(0,203,255,0.14)] backdrop-blur-xl transition hover:border-cyan-100 hover:text-white"
@@ -700,7 +707,7 @@ export default function GlobalBattleCallOverlay() {
       );
     }
     return (
-      <div className="fixed right-4 top-24 z-[92] w-[min(calc(100vw-2rem),340px)] sm:right-5">
+      <div className={accountNoticePanelClassName}>
         <div className="overflow-hidden rounded-2xl border border-cyan-200/25 bg-black/82 text-white shadow-[0_22px_76px_rgba(0,0,0,0.52),0_0_30px_rgba(0,203,255,0.12)] backdrop-blur-xl">
           <div className="flex items-center gap-2 pr-3">
             <button
@@ -806,7 +813,7 @@ export default function GlobalBattleCallOverlay() {
       );
     }
     return (
-      <div className="fixed right-4 top-24 z-[92] w-[min(calc(100vw-2rem),340px)] sm:right-5">
+      <div className={accountNoticePanelClassName}>
         <div
           className={`overflow-hidden rounded-2xl border bg-black/82 text-white shadow-[0_22px_76px_rgba(0,0,0,0.52)] backdrop-blur-xl ${
             activeNoticeUrgent
