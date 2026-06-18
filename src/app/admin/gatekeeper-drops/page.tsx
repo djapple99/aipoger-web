@@ -27,6 +27,7 @@ type AdminState = "checking" | "login" | "denied" | "ready";
 
 type AdminDropsPayload = {
   schemaMissing?: boolean;
+  mediaSchemaMissing?: boolean;
   drops?: OfficialGatekeeperDrop[];
   error?: string;
 };
@@ -60,6 +61,7 @@ function formatBytes(bytes: number) {
 export default function AdminGatekeeperDropsPage() {
   const [adminState, setAdminState] = useState<AdminState>("checking");
   const [schemaMissing, setSchemaMissing] = useState(false);
+  const [mediaSchemaMissing, setMediaSchemaMissing] = useState(false);
   const [drops, setDrops] = useState<OfficialGatekeeperDrop[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [cropTarget, setCropTarget] = useState<{ drop: OfficialGatekeeperDrop; file: File } | null>(null);
@@ -77,6 +79,7 @@ export default function AdminGatekeeperDropsPage() {
       return;
     }
     setSchemaMissing(Boolean(payload?.schemaMissing));
+    setMediaSchemaMissing(Boolean(payload?.mediaSchemaMissing));
     setDrops(payload?.drops ?? []);
   }, []);
 
@@ -201,6 +204,10 @@ export default function AdminGatekeeperDropsPage() {
       setError("尚未建立 official_gatekeeper_drops 資料表。請先套用 SQL，才能保存官方守門 Drop 封面。");
       return;
     }
+    if (mediaSchemaMissing) {
+      setError("官方守門 Drop 尚未套用封面 / 歌詞欄位。請先套用 supabase/20260619_official_gatekeeper_media.sql。");
+      return;
+    }
     if (!isAllowedImageUploadFile(file)) {
       setError(`封面格式不支援。請使用 ${IMAGE_UPLOAD_FORMAT_LABEL}。`);
       return;
@@ -244,6 +251,10 @@ export default function AdminGatekeeperDropsPage() {
 
   async function importLyrics(drop: OfficialGatekeeperDrop, file: File | null) {
     if (!file) return;
+    if (mediaSchemaMissing) {
+      setError("官方守門 Drop 尚未套用封面 / 歌詞欄位。請先套用 supabase/20260619_official_gatekeeper_media.sql。");
+      return;
+    }
     const text = (await file.text()).trim().slice(0, 8000);
     updateLocal(drop.id, { lyrics: text });
     setMessage(`${drop.gateNumber} 已匯入歌詞，請按儲存設定。`);
@@ -329,6 +340,11 @@ export default function AdminGatekeeperDropsPage() {
             尚未建立資料表。請先套用 `supabase/20260618_official_gatekeeper_drops.sql`，再上傳與啟用官方守門 Drop。
           </p>
         ) : null}
+        {mediaSchemaMissing ? (
+          <p className="mt-4 rounded-xl border border-orange-300/35 bg-orange-500/10 px-4 py-3 text-sm font-bold text-orange-100">
+            尚未建立封面 / 歌詞欄位。音檔裁切與啟用仍可使用；封面與歌詞請先套用 `supabase/20260619_official_gatekeeper_media.sql`。
+          </p>
+        ) : null}
         {error ? <p className="mt-4 rounded-xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-100">{error}</p> : null}
         {message ? <p className="mt-4 rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-100">{message}</p> : null}
 
@@ -387,12 +403,12 @@ export default function AdminGatekeeperDropsPage() {
                       </div>
                     )}
                   </div>
-                  <label className={`mt-3 inline-flex rounded-full border px-3 py-2 text-xs font-black ${schemaMissing ? "cursor-not-allowed border-white/10 bg-white/[0.03] text-zinc-500" : "cursor-pointer border-red-200/25 bg-red-500/10 text-red-100"}`}>
+                  <label className={`mt-3 inline-flex rounded-full border px-3 py-2 text-xs font-black ${schemaMissing || mediaSchemaMissing ? "cursor-not-allowed border-white/10 bg-white/[0.03] text-zinc-500" : "cursor-pointer border-red-200/25 bg-red-500/10 text-red-100"}`}>
                     上傳封面
                     <input
                       type="file"
                       accept={IMAGE_UPLOAD_ACCEPT}
-                      disabled={schemaMissing || busyId === drop.id}
+                      disabled={schemaMissing || mediaSchemaMissing || busyId === drop.id}
                       className="hidden"
                       onChange={(event) => {
                         const file = event.target.files?.[0] ?? null;
@@ -471,8 +487,9 @@ export default function AdminGatekeeperDropsPage() {
                   value={drop.lyrics ?? ""}
                   maxLength={8000}
                   rows={6}
+                  disabled={mediaSchemaMissing}
                   onChange={(event) => updateLocal(drop.id, { lyrics: event.target.value })}
-                  className="mt-1 w-full resize-y rounded-xl border border-white/10 bg-white/[0.055] px-4 py-3 text-sm font-bold leading-6 text-white outline-none focus:border-orange-300/70"
+                  className="mt-1 w-full resize-y rounded-xl border border-white/10 bg-white/[0.055] px-4 py-3 text-sm font-bold leading-6 text-white outline-none focus:border-orange-300/70 disabled:cursor-not-allowed disabled:opacity-45"
                 />
               </label>
 
@@ -498,12 +515,12 @@ export default function AdminGatekeeperDropsPage() {
                     }}
                   />
                 </label>
-                <label className={`rounded-full border px-4 py-2 text-xs font-black ${schemaMissing ? "cursor-not-allowed border-white/10 bg-white/[0.03] text-zinc-500" : "cursor-pointer border-white/12 bg-white/[0.04] text-zinc-200"}`}>
+                <label className={`rounded-full border px-4 py-2 text-xs font-black ${schemaMissing || mediaSchemaMissing ? "cursor-not-allowed border-white/10 bg-white/[0.03] text-zinc-500" : "cursor-pointer border-white/12 bg-white/[0.04] text-zinc-200"}`}>
                   匯入歌詞檔
                   <input
                     type="file"
                     accept=".txt,.lrc,text/plain"
-                    disabled={schemaMissing || busyId === drop.id}
+                    disabled={schemaMissing || mediaSchemaMissing || busyId === drop.id}
                     className="hidden"
                     onChange={(event) => {
                       const file = event.target.files?.[0] ?? null;

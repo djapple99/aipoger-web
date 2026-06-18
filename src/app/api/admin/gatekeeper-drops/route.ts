@@ -65,16 +65,26 @@ export async function GET(request: NextRequest) {
   }
   if ("error" in auth) return auth.error;
 
-  const { data, error } = await auth.admin
+  let mediaSchemaMissing = false;
+  let { data, error } = await auth.admin
     .from("official_gatekeeper_drops")
-    .select("*")
+    .select("*,lyrics,cover_path")
     .order("sort_order", { ascending: true });
 
   if (error) {
     if (isMissingTable(error)) {
       return NextResponse.json({ schemaMissing: true, drops: OFFICIAL_GATEKEEPER_DROP_DEFAULTS });
     }
-    return jsonError(error.message, 500);
+    if (isMissingMediaColumns(error)) {
+      mediaSchemaMissing = true;
+      const legacy = await auth.admin
+        .from("official_gatekeeper_drops")
+        .select("*")
+        .order("sort_order", { ascending: true });
+      data = legacy.data;
+      error = legacy.error;
+    }
+    if (error) return jsonError(error.message, 500);
   }
 
   const dbDrops = new Map(
@@ -91,7 +101,7 @@ export async function GET(request: NextRequest) {
       return attachOfficialGatekeeperMediaUrls(auth.admin, drop);
     }),
   );
-  return NextResponse.json({ schemaMissing: false, drops });
+  return NextResponse.json({ schemaMissing: false, mediaSchemaMissing, drops });
 }
 
 export async function PATCH(request: NextRequest) {
