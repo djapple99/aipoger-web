@@ -597,7 +597,16 @@ export default function GlobalBattleCallOverlay() {
             }`}
           />
         </button>
-      ) : null}
+      ) : (
+        <Link
+          href={`/profile?lang=${lang}`}
+          className="relative flex h-12 w-12 items-center justify-center rounded-full border border-white/12 bg-black/72 text-zinc-400 shadow-[0_18px_58px_rgba(0,0,0,0.42)] backdrop-blur-xl transition hover:border-cyan-100/55 hover:text-cyan-50"
+          aria-label={isZh ? "查看帳號狀態" : "View account status"}
+          title={isZh ? "查看帳號狀態" : "View Account Status"}
+        >
+          <BellIcon />
+        </Link>
+      )}
     </div>
   );
 
@@ -867,7 +876,7 @@ export default function GlobalBattleCallOverlay() {
     );
   }
 
-  if (!call) return null;
+  if (!call) return <AccountNoticeDock hasNotice={false} />;
 
   const contextLine =
     routeTone === "watching"
