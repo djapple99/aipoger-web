@@ -157,8 +157,8 @@ async function getQueueOgData(supabaseUrl: string, supabaseKey: string, id: stri
       fighter_b_user_id: null,
       fighter_a_name: queue.fighter_name || "AIPOGER Fighter",
       fighter_b_name: "等待挑戰者",
-      song_a_name: queue.original_file_name || "45s Drop",
-      song_b_name: "你的 45s Drop",
+      song_a_name: queue.original_file_name || "60s Drop",
+      song_b_name: "你的 60s Drop",
       genre: queue.genre || "AI Music Drop Battle",
       song_a_cover: profile.song_cover_url || null,
       song_b_cover: null,
@@ -287,7 +287,7 @@ export async function getBattleOgData(id: string): Promise<BattleOgData> {
 }
 
 export function battleOgTitle(battle: BattleOgData) {
-  return `AIPOGER 90S 最強Drop Battle 抓波戰帖｜${battle.fighter_a_name} VS ${battle.fighter_b_name}`;
+  return `AIPOGER 60s 最強Drop Battle 抓波戰帖｜${battle.fighter_a_name} VS ${battle.fighter_b_name}`;
 }
 
 export function battleOgDescription(battle: BattleOgData) {

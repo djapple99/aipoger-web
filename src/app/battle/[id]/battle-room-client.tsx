@@ -1769,7 +1769,7 @@ function BattleArenaContent() {
             fighter_b_user_id: null,
             fighter_a_name: queueRow.fighter_name || "AIPOGER",
             fighter_b_name: lang === "zh" ? "等待挑戰者" : "Waiting Rival",
-            song_a_name: queueRow.original_file_name || "45s Drop",
+            song_a_name: queueRow.original_file_name || "60s Drop",
             song_b_name: lang === "zh" ? "挑戰者 Drop" : "Rival Drop",
             audio_a_path: queueRow.audio_path,
             audio_b_path: null,
@@ -3705,7 +3705,7 @@ function BattleArenaContent() {
     params.set("ls", battle.song_a_name);
     params.set("rs", battle.song_b_name);
     params.set("g", battle.genre);
-    params.set("bt", "90s Drop Battle");
+    params.set("bt", "60s Drop Battle");
     if (battle.ai_tool_a) params.set("ta", battle.ai_tool_a);
     if (battle.ai_tool_b) params.set("tb", battle.ai_tool_b);
     if (battleStartedAtMs) params.set("s", String(battleStartedAtMs));

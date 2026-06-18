@@ -61,7 +61,7 @@ export default function MusicAnalysisPage() {
       ? [
           ["一句真話", "聲音有畫面，但目前缺一句能被觀眾記住的歌詞。"],
           ["市場用途", "城市夜景 / 情緒短片 / AI MV / 生活風格品牌"],
-          ["下一步", "裁 90 秒進 Drop Battle 測投票；若歌詞反應弱，再補副歌鉤子。"],
+          ["下一步", "裁 60 秒內 Drop Battle 測投票；若歌詞反應弱，再補副歌鉤子。"],
         ]
       : [
           ["Hard Truth", "The sound has a scene, but the lyric needs a line people can remember."],

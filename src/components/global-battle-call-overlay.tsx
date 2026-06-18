@@ -648,12 +648,12 @@ export default function GlobalBattleCallOverlay() {
       expiredNotice.body ||
       (isDropFinishedNotice
         ? isZh
-          ? "你剛完成了一場 90s Drop Battle，可以查看戰鬥卡，也可以再開一場。"
-          : "Your 90s Drop Battle has finished. View the card or open a new one."
+          ? "你剛完成了一場 Drop Battle，可以查看戰鬥卡，也可以再開一場。"
+          : "Your Drop Battle has finished. View the card or open a new one."
         : isDropNoContestNotice
           ? isZh
-            ? "這場 90s Drop Battle 已結束，但沒有觀眾投票，不產生成果卡。"
-            : "This 90s Drop Battle ended with no audience votes, so no result card was created."
+            ? "這場 Drop Battle 已結束，但沒有觀眾投票，不產生成果卡。"
+            : "This Drop Battle ended with no audience votes, so no result card was created."
           : isDailyFinishedNotice
             ? isZh
               ? "你的 24H Full Song 對決已結束，結果已可查看。"

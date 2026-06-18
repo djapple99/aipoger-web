@@ -227,7 +227,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
       lead:
         "在 AIPOGER，最強抓波 Drop Battle 不只是副歌，也可以是前奏、Drop、旋律句、節奏口號或一句讓人上癮的聲音設計。鬥歌比的是短時間內抓住聽眾的能力。",
       cards: [
-        { label: "Drop", value: "15-45 秒", detail: "用最短時間說服耳朵" },
+        { label: "Drop", value: "30-60 秒", detail: "剪出完整爆點" },
         { label: "Vote", value: "一人一票", detail: "截止前可改投" },
         { label: "APC", value: "公測免入場", detail: "先讓大家鬥起來" },
       ],
@@ -270,7 +270,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
       lead:
         "On AIPOGER, a Drop is the part of a track that grabs the listener fast. Creators put their strongest moment into battle, collect votes, build records, and grow through real crowd reaction.",
       cards: [
-        { label: "Drop", value: "15-45s", detail: "The strongest part of the track" },
+        { label: "Drop", value: "30-60s", detail: "The strongest part of the track" },
         { label: "Vote", value: "Crowd signal", detail: "Listeners decide what lands" },
         { label: "Growth", value: "Honor path", detail: "Wins become creator records" },
       ],

@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
   if (sourceError) return jsonError(sourceError.message, 500);
   if (queueError) return jsonError(queueError.message, 500);
   if (!sourceBattle?.id) return jsonError("Source battle not found", 404);
-  if (sourceBattle.battle_type && sourceBattle.battle_type !== "formal") return jsonError("Only 90s Drop Battle supports rematch", 409);
+  if (sourceBattle.battle_type && sourceBattle.battle_type !== "formal") return jsonError("Only Drop Battle supports rematch", 409);
   if (!challengerQueue?.id || challengerQueue.user_id !== user.id) return jsonError("Challenger queue not found", 404);
   if (!["searching", "waiting", "waiting_challenge"].includes(challengerQueue.status)) {
     return jsonError("Challenger queue is not upload-ready", 409);

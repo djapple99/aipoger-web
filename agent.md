@@ -150,7 +150,7 @@
 
 - 每個帳號**同時**可以擁有：
   - **最多 1 場 24H Full Song battle**
-- Drop battle（90 秒）拆成兩種可並存狀態：
+- Drop battle（最多 60 秒）拆成兩種可並存狀態：
   - **最多 1 張自己開的 Drop 戰帖卡 / founder state**
   - **最多 1 場正在挑戰別人的 Drop / challenger state**
 - 24H Full Song、Drop founder、Drop challenger 三種狀態可以**並行**。
@@ -170,9 +170,10 @@
 - 官方 defender queue 不應佔用 owner 的個人 active Drop Battle 名額，也不應像 owner 親自參戰一樣通知 owner。
 - 官方守門 Drop 結果沿用一般 Drop Battle 門檻：0:0 no contest；1-2 位不同聽眾只進成果牆非正式結果；3+ 位不同聽眾才是正式結果 / 榮譽榜資格。
 
-## AIPOGER Drop Battle 流程記憶（2026-06-03）
+## AIPOGER Drop Battle 流程記憶（2026-06-03，2026-06-19 更新秒數）
 
-- 90s Drop Battle 不再使用獨立 waiting room / 預等區。使用者開戰帖或進戰帖後，應直接進 `/battle/[id]` 戰場，在戰場裡看倒數、聽 5 秒預播、聊天預測；時間到後直接猜拳開打。
+- Drop Battle 裁切上限為 60 秒；可剪短，不強制剪滿。對外建議範圍是 30-60 秒，讓作品有足夠時間到達爆點，但仍保持 battle 節奏。
+- Drop Battle 不再使用獨立 waiting room / 預等區。使用者開戰帖或進戰帖後，應直接進 `/battle/[id]` 戰場，在戰場裡看倒數、聽 5 秒預播、聊天預測；時間到後直接猜拳開打。
 - 開戰時間可選 10 / 15 / 20 分鐘後。若正式 Supabase 尚未有 `scheduled_start_at` / `cancellation_evaluation_at` 欄位，程式必須用 `expires_at` fallback 保存與推算時間，不可再出現「選 10 分鐘後卻變明天」。
 - 快速開戰時間是「戰帖發布成功後 + 10 / 15 / 20 分鐘」，不是使用者剛點快速選項的時間；自訂時間才是固定絕對開打時間。
 - 在開戰時間內，發起者與觀眾都可以離開再回來；戰場狀態不應要求使用者留在預等頁。

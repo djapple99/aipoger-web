@@ -29,7 +29,7 @@ import SafetyNotice from '@/components/safety-notice';
 import { blobToDataUrl, parseAudioMetadata } from '@/lib/audio-metadata';
 import { sha256File } from '@/lib/file-hash';
 
-const MAX_HOOK_SECONDS = 45;
+const MAX_HOOK_SECONDS = 60;
 const MIN_REGION_SECONDS = 0.25;
 const MAX_LYRICS_CHARS = 8000;
 const PENDING_AUDIO_COVER_KEY = 'aipoger:pending-audio-cover';
@@ -47,7 +47,7 @@ type Lang = 'zh' | 'en';
 const T = {
   zh: {
     title: '最強抓波 Drop Battle 裁切',
-    subtitle: '最多 45 秒 · 系統會自動 Mastering 美化聲音',
+    subtitle: '最多 60 秒 · 系統會自動 Mastering 美化聲音',
     uploadPrompt: '上傳完整歌曲',
     uploadHint: '拖曳波形選擇 Drop',
     uploadDropHint: '點擊或拖曳音檔到這裡',
@@ -55,7 +55,7 @@ const T = {
     uploadReady: '音檔已載入，可以開始裁切 Drop',
     selection: '選取',
     duration: '（{s}秒）',
-    dragHint: '拖左/右邊緣調整長度（最多 45 秒） · 拖中間移動 · 空白鍵預覽/暫停（從選取起點）',
+    dragHint: '拖左/右邊緣調整長度（最多 60 秒） · 拖中間移動 · 空白鍵預覽/暫停（從選取起點）',
     mastering: '啟用自動 Mastering',
     masteringDesc: '3-band EQ + Compressor + Limiter + Gain 提升清晰度與響度',
     preview: '▶️ 即時預覽選取區間',
@@ -82,14 +82,14 @@ const T = {
     fighter: '鬥士',
     song: '歌曲',
     detectedMeta: '已自動偵測：{value}',
-    proTip: '專業模式：拖曳中即時硬限制 45 秒（超過會自動彈回）',
+    proTip: '專業模式：拖曳中即時硬限制 60 秒（超過會自動彈回）',
     rematchTitle: '你正在挑戰擂主',
     rematchDesc: '請在 120 秒內完成上傳，這場會沿用上一場 genre。',
     rematchComplete: '守擂挑戰已接上，前往下一場 Battle。',
   },
   en: {
     title: 'Drop Battle Cut',
-    subtitle: 'Max 45 seconds · Auto Mastering to enhance sound',
+    subtitle: 'Max 60 seconds · Auto Mastering to enhance sound',
     uploadPrompt: 'Upload Full Song',
     uploadHint: 'Drag waveform to select Drop',
     uploadDropHint: 'Click or drag audio here',
@@ -97,7 +97,7 @@ const T = {
     uploadReady: 'Audio loaded. Cut your Drop now.',
     selection: 'Selection',
     duration: '({s}s)',
-    dragHint: 'Drag edges to adjust length (max 45s) · Drag middle to move · Spacebar to preview/pause',
+    dragHint: 'Drag edges to adjust length (max 60s) · Drag middle to move · Spacebar to preview/pause',
     mastering: 'Enable Auto Mastering',
     masteringDesc: '3-band EQ + Compressor + Limiter + Gain for clarity and loudness',
     preview: '▶️ Preview Selection',
@@ -124,7 +124,7 @@ const T = {
     fighter: 'Fighter',
     song: 'Song',
     detectedMeta: 'Detected: {value}',
-    proTip: 'Professional: Real-time hard limit 45s (auto-corrects on drag)',
+    proTip: 'Professional: Real-time hard limit 60s (auto-corrects on drag)',
     rematchTitle: 'You are challenging the defender',
     rematchDesc: 'Finish uploading within 120 seconds. This battle keeps the previous genre.',
     rematchComplete: 'Rematch connected. Entering the next Battle.',
@@ -1279,8 +1279,8 @@ function HookCutContent() {
                 ? t.rematchDesc
                 : uploadFirstFlow
                 ? lang === "zh"
-                  ? "先上傳歌曲，系統會自動偵測歌名，再裁切 45 秒 Drop"
-                  : "Upload first, auto-detect song info, then cut a 45s Drop"
+                  ? "先上傳歌曲，系統會自動偵測歌名，再裁切 60 秒內 Drop"
+                  : "Upload first, auto-detect song info, then cut a Drop up to 60s"
                 : t.subtitle}
             </p>
           </div>

@@ -1210,7 +1210,7 @@ function BattlePoolList() {
     <section className="aipo-control-panel aipo-panel-line mt-8 rounded-[1.35rem] p-5 md:p-6">
       <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="aipo-section-kicker">90S DROP BATTLE POOL</p>
+          <p className="aipo-section-kicker">60S DROP BATTLE POOL</p>
           <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "Drop Battle 公開挑戰池" : "Drop Battle Challenge Pool"}</h2>
         </div>
         <Link
@@ -1502,8 +1502,8 @@ function BattlePoolList() {
                   <p className="mt-1 text-xs text-zinc-500">
                     {isMine
                       ? isZh
-                        ? "你的 90s 最強抓波 Drop Battle 戰場已開。時間內可離開再進來，對手加入後直接開打。"
-                        : "Your 90s Drop Battle arena is open. Re-enter anytime before start; it goes live when a rival joins."
+                        ? "你的 60s 最強抓波 Drop Battle 戰場已開。時間內可離開再進來，對手加入後直接開打。"
+                        : "Your 60s Drop Battle arena is open. Re-enter anytime before start; it goes live when a rival joins."
                       : isMatched
                         ? isZh
                           ? `${entry.ai_tool || "AI Tool"} · 已有人挑戰，進入戰場等待開打或觀戰投票`
@@ -1580,7 +1580,7 @@ function BattlePoolList() {
                       </Link>
                     ) : null}
                     <ShareButton
-                      title={isZh ? "AIPOGER 90s 最強抓波 Drop Battle 戰帖" : "AIPOGER 90s Drop Battle Card"}
+                      title={isZh ? "AIPOGER 60s 最強抓波 Drop Battle 戰帖" : "AIPOGER 60s Drop Battle Card"}
                       text={
                         isGhost || isMatched || isPublicVoting
                           ? isZh
@@ -2001,7 +2001,7 @@ function LiveBattleList() {
                             : (lang === "zh" ? "我要觀戰" : "Watch Battle")}
                       </Link>
                       <ShareButton
-                        title={lang === "zh" ? "AIPOGER 90s Drop Battle 觀戰邀請" : "AIPOGER 90s Drop Battle"}
+                        title={lang === "zh" ? "AIPOGER 60s Drop Battle 觀戰邀請" : "AIPOGER 60s Drop Battle"}
                         text={
                           isBattleEnded
                             ? lang === "zh"

@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
   if (battleError) return jsonError(battleError.message, 500);
   if (!battle?.id) return jsonError("Battle not found", 404);
   if (!battle.queue_a_id || !battle.queue_b_id || !battle.fighter_a_user_id || !battle.fighter_b_user_id) {
-    return jsonError("Battle is not a complete 90s Drop Battle", 409);
+    return jsonError("Battle is not a complete Drop Battle", 409);
   }
 
   const voteRead = await readCombined90sVotes(admin, battle.id);

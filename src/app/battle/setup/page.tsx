@@ -1208,7 +1208,7 @@ export default function BattleSetupPage() {
 
   const displayAvatarUrl = avatarPreview ?? savedAvatarUrl ?? profileAvatarPreview;
   const displayCoverUrl = coverPreview ?? savedCoverUrl;
-  const hookDurationLabel = draft?.hookDuration ? `${Number(draft.hookDuration).toFixed(1)}s` : '45s';
+  const hookDurationLabel = draft?.hookDuration ? `${Number(draft.hookDuration).toFixed(1)}s` : '60s';
   const showDropBattleSchedule = battleMode === 'instant' && (instantPairingMode === 'invite' || instantPairingMode === 'gatekeeper') && !challengeEntryId;
   const customScheduleMin = toDatetimeLocalValue(new Date(Date.now() + DROP_BATTLE_SCHEDULE_MIN_LEAD_MS));
   const customScheduleMax = toDatetimeLocalValue(new Date(Date.now() + DROP_BATTLE_SCHEDULE_MAX_LEAD_MS));
@@ -1316,7 +1316,7 @@ export default function BattleSetupPage() {
               : 'border-white/10 bg-white/[0.035] hover:border-orange-300/35'
           }`}
         >
-          <p className="text-lg font-black text-white">{lang === 'zh' ? '90s 最熱血的最強抓波 Drop Battle' : '90s Hottest Drop Battle'}</p>
+          <p className="text-lg font-black text-white">{lang === 'zh' ? '60s 最強抓波 Drop Battle' : '60s Drop Battle'}</p>
           <p className="mt-2 text-sm leading-6 text-zinc-400">
             {lang === 'zh' ? '拿出你最熱的 Drop，PK 最即時熱血的戰鬥。' : 'Bring your hottest Drop into the fastest live battle.'}
           </p>
@@ -1359,7 +1359,7 @@ export default function BattleSetupPage() {
                 title: lang === 'zh' ? '開 Drop Battle 戰帖卡' : 'Open Drop Battle Card',
                 desc: lang === 'zh'
                   ? '設定開戰時間，分享單獨戰帖卡邀人來接 Drop Battle。'
-                  : 'Set a battle time and share a standalone 90s Drop Battle card.',
+                  : 'Set a battle time and share a standalone Drop Battle card.',
               },
             ].map((option) => (
               <button
@@ -1433,8 +1433,8 @@ export default function BattleSetupPage() {
                   ? '24H Daily Battle 不裁切 Drop，直接上傳整首作品。觀眾進房後可以自己控制 A Side / B Side 播放，慢慢聽完再投票。'
                   : '24H Daily Battle uses the full track. Listeners control either side, listen at their own pace, then vote.'
                 : lang === 'zh'
-                  ? '先丟音檔，系統會自動偵測歌名；裁出 45 秒 Drop 後，再補頭像、名稱、封面與 AI 工具。'
-                  : 'Upload audio first. We detect the song title, then you cut a 45s Drop and finish your battle card.'}
+                  ? '先丟音檔，系統會自動偵測歌名；裁出 60 秒內 Drop 後，再補頭像、名稱、封面與 AI 工具。'
+                  : 'Upload audio first. We detect the song title, then you cut a Drop up to 60s and finish your battle card.'}
             </p>
           </div>
           <SafetyNotice kind="upload" />
@@ -1453,8 +1453,8 @@ export default function BattleSetupPage() {
                   </span>
                   <span className="mt-2 block text-sm leading-6 text-zinc-400">
                     {lang === 'zh'
-                      ? `支援 MP3 / WAV / AIFF / M4A（上限 ${formatBytes(MAX_DAILY_AUDIO_BYTES)}）。這首歌會整首進入 24H Battle，不做 45 秒裁切。`
-                      : `MP3 / WAV / AIFF / M4A supported (max ${formatBytes(MAX_DAILY_AUDIO_BYTES)}). This full track enters the 24H Battle without 45s cutting.`}
+                      ? `支援 MP3 / WAV / AIFF / M4A（上限 ${formatBytes(MAX_DAILY_AUDIO_BYTES)}）。這首歌會整首進入 24H Battle，不做 Drop 裁切。`
+                      : `MP3 / WAV / AIFF / M4A supported (max ${formatBytes(MAX_DAILY_AUDIO_BYTES)}). This full track enters the 24H Battle without Drop cutting.`}
                   </span>
                   <input ref={dailyAudioInputRef} type="file" accept={DAILY_AUDIO_ACCEPT} className="hidden" onChange={handleDailyAudioChange} />
                 </button>

@@ -1,6 +1,6 @@
 # AIPOGER Product Rules
 
-Last updated: 2026-06-18
+Last updated: 2026-06-19
 
 This document is the product-rule source of truth for AIPOGER. Use it before changing Battle, Bar Heartbreak, Honor Board, auth, upload, or deployment behavior.
 
@@ -50,7 +50,8 @@ Current behavior target:
 
 Current behavior:
 
-- Drop Battle uses a short hook/drop cut rather than the full song.
+- Drop Battle uses a short drop cut rather than the full song.
+- Drop Battle clips have a hard maximum of 60 seconds. Creators may cut shorter clips; the recommended public range is about 30-60 seconds so the hook/drop has enough time to reach its payoff without turning the battle into full-song listening.
 - Drop Battle quick start options are relative to successful battle-card publishing: `發布後 10 / 15 / 20 分鐘`. Custom start time is an absolute user-selected time and should not move with upload/cutting duration.
 - `battle_queue.expires_at` is only a cleanup/expiry deadline. It must never be used as a Battle start time; opening time must come from `scheduled_start_at` or `cancellation_evaluation_at`.
 - Fast start options must calculate the visible start time only after the queue/battle data has been successfully written. Do not pre-render a time label that ignores upload, cutting, or network duration.
@@ -66,7 +67,7 @@ Current behavior:
 - If the ended Drop Battle still has an open/claimed/uploaded rematch path, keep the visitor in the battle flow: stay on the source arena for open/claimed rematch, or redirect to the next battle when `next_battle_id` exists.
 - The same battle/match group should appear only once in the Battle Pool, even if both fighters have queue rows.
 - Both participants in an unfinished Drop Battle should be able to cancel from the arena or eligible Battle Pool card.
-- Finished 90s Drop Battles open a short king-of-the-hill rematch window only after the result is official: at least 3 distinct audience voters, a valid winner, no existing next battle, and a formal Drop Battle type. The window is 5 seconds to claim the challenger slot, then 120 seconds for the challenger to upload their Drop.
+- Finished Drop Battles open a short king-of-the-hill rematch window only after the result is official: at least 3 distinct audience voters, a valid winner, no existing next battle, and a formal Drop Battle type. The window is 5 seconds to claim the challenger slot, then 120 seconds for the challenger to upload their Drop.
 - If nobody claims the 5-second rematch slot, the battle should go directly to the result card and should not leave a lingering rematch card.
 - A 0:0 no contest never creates a result card, defender/rematch window, Honor Board record, or formal battle stats.
 - A battle with 1-2 distinct audience voters may create an unofficial result card and appear on the Result Wall / 成果牆, but it must not enter the Honor Board, update official song battle stats, or open the defender/rematch window.

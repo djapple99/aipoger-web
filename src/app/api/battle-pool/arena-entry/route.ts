@@ -188,7 +188,7 @@ async function readQueue(admin: SupabaseClient, queueId: string, lang: Lang) {
       fighter_b_user_id: null,
       fighter_a_name: queue.fighter_name || "AIPOGER",
       fighter_b_name: lang === "zh" ? "等待挑戰者" : "Waiting Rival",
-      song_a_name: queue.original_file_name || "45s Drop",
+      song_a_name: queue.original_file_name || "60s Drop",
       song_b_name: lang === "zh" ? "挑戰者 Drop" : "Rival Drop",
       audio_a_path: audioA,
       audio_b_path: null,

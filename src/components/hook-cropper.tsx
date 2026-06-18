@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type WaveSurfer from "wavesurfer.js";
 
-const DEFAULT_MAX_HOOK_SECONDS = 45;
+const DEFAULT_MAX_HOOK_SECONDS = 60;
 
 type HookCropperProps = {
   file: File;

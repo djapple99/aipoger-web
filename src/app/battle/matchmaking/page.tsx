@@ -700,7 +700,7 @@ function MatchmakingContent(props: MatchmakingContentProps) {
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
                 <p className="text-xs uppercase tracking-[0.24em] text-zinc-500">{lang === "zh" ? "兩條路" : "Two Paths"}</p>
-                <p className="mt-2 font-black text-white">{lang === "zh" ? "90s Drop Battle 戰帖卡" : "90s Drop Battle Card"}</p>
+                <p className="mt-2 font-black text-white">{lang === "zh" ? "60s Drop Battle 戰帖卡" : "60s Drop Battle Card"}</p>
                 <p className="mt-1 text-zinc-400">
                   {expiresAt
                     ? lang === "zh"

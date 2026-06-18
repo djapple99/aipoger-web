@@ -58,7 +58,7 @@ async function inviteData(id: string, searchParams: InviteSearchParams) {
   const battle = await getBattleOgData(id);
   const isHookCard = firstParam(searchParams, "type") === "hook-card";
   const hasRightFighter = Boolean(battle.fighter_b_user_id || (battle.fighter_b_name && battle.fighter_b_name !== "DROP RIVAL" && battle.fighter_b_name !== "等待挑戰者"));
-  const hasRightSong = Boolean(battle.song_b_name && battle.song_b_name !== "Battle Drop" && battle.song_b_name !== "你的 45s Drop" && battle.song_b_name !== "你的 45s Hook");
+  const hasRightSong = Boolean(battle.song_b_name && battle.song_b_name !== "Battle Drop" && battle.song_b_name !== "你的 45s Drop" && battle.song_b_name !== "你的 45s Hook" && battle.song_b_name !== "你的 60s Drop");
   return {
     genre: cleanParam(firstParam(searchParams, "g"), battle.genre || "AI Music Drop Battle"),
     leftName: cleanParam(firstParam(searchParams, "l"), battle.fighter_a_name),
@@ -71,7 +71,7 @@ async function inviteData(id: string, searchParams: InviteSearchParams) {
     rightAvatar: cleanParam(firstParam(searchParams, "ra"), battle.fighter_b_avatar || ""),
     leftTool: cleanParam(firstParam(searchParams, "ta") || firstParam(searchParams, "tool"), battle.ai_tool_a || "AI Music"),
     rightTool: cleanParam(firstParam(searchParams, "tb"), isHookCard ? "挑戰者進場後顯示" : battle.ai_tool_b || "AI Music"),
-    battleType: cleanParam(firstParam(searchParams, "bt"), isHookCard ? "90s Drop Battle 戰帖" : "90s Drop Battle"),
+    battleType: cleanParam(firstParam(searchParams, "bt"), isHookCard ? "60s Drop Battle 戰帖" : "60s Drop Battle"),
     matchGroupId: battle.match_group_id || null,
     queueStatus: battle.queue_status || null,
     expiresAt: battle.expires_at || null,
@@ -116,7 +116,7 @@ export async function generateMetadata({ params, searchParams }: BattleInvitePag
   const origin = siteOrigin();
   const canonical = `${origin}/battle/invite/${encodeURIComponent(id)}`;
   const image = `${canonical}/opengraph-image`;
-  const title = `AIPOGER 90S 最強Drop Battle 抓波戰帖｜${data.leftName} VS ${data.rightName}`;
+  const title = `AIPOGER 60s 最強Drop Battle 抓波戰帖｜${data.leftName} VS ${data.rightName}`;
   const isHookCard = firstParam(resolvedSearchParams, "type") === "hook-card" || data.rightName === "等待挑戰者";
   const hookStartAt = resolveHookStartAt(data);
   const startTimeLabel = formatTaiwanTime(hookStartAt);
@@ -164,7 +164,7 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
   const isHookCard =
     firstParam(resolvedSearchParams, "type") === "hook-card" ||
     data.rightName === "等待挑戰者" ||
-    data.rightSong === "你的 45s Drop" || data.rightSong === "你的 45s Hook";
+    data.rightSong === "你的 45s Drop" || data.rightSong === "你的 45s Hook" || data.rightSong === "你的 60s Drop";
   const isResultInvite = firstParam(resolvedSearchParams, "to") === "result";
   const hookStartAt = resolveHookStartAt(data);
   const startTimeLabel = formatTaiwanTime(hookStartAt);
