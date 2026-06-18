@@ -6,6 +6,15 @@ import LangToggle from "@/components/lang-toggle";
 import { supabase } from "@/lib/supabase";
 import { loadIsAdmin } from "@/lib/user-profile-admin";
 import type { OfficialGatekeeperDrop } from "@/lib/official-gatekeeper-drops";
+import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
+import {
+  AUDIO_UPLOAD_MAX_BYTES_100MB,
+  AUDIO_UPLOAD_MAX_LABEL_100MB,
+  STANDARD_AUDIO_UPLOAD_ACCEPT,
+  audioSizeLabel,
+  isAllowedStandardAudioFile,
+  standardAudioContentType,
+} from "@/lib/audio-upload-policy";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
 
@@ -15,7 +24,7 @@ type AdminDropsPayload = {
   error?: string;
 };
 
-const AUDIO_ACCEPT = "audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/aiff,audio/x-aiff,audio/mp4,audio/aac,.mp3,.wav,.aif,.aiff,.m4a,.aac";
+const GATEKEEPER_AUDIO_ACCEPT = STANDARD_AUDIO_UPLOAD_ACCEPT;
 
 async function authHeader(): Promise<Record<string, string>> {
   const {
@@ -120,6 +129,18 @@ export default function AdminGatekeeperDropsPage() {
 
   async function uploadAudio(drop: OfficialGatekeeperDrop, file: File | null) {
     if (!file) return;
+    if (schemaMissing) {
+      setError("尚未建立 official_gatekeeper_drops 資料表。請先套用 supabase/20260618_official_gatekeeper_drops.sql，才能保存官方守門 Drop 音檔。");
+      return;
+    }
+    if (!isAllowedStandardAudioFile(file)) {
+      setError("音檔格式不支援。請使用 MP3 / WAV / AIFF / M4A / AAC / OGG。");
+      return;
+    }
+    if (file.size > AUDIO_UPLOAD_MAX_BYTES_100MB) {
+      setError(`音檔太大：${audioSizeLabel(file)}。官方守門 Drop 單檔上限是 ${AUDIO_UPLOAD_MAX_LABEL_100MB}。`);
+      return;
+    }
     setBusyId(drop.id);
     setError("");
     setMessage("");
@@ -130,7 +151,7 @@ export default function AdminGatekeeperDropsPage() {
           "Content-Type": "application/json",
           ...(await authHeader()),
         },
-        body: JSON.stringify({ id: drop.id, fileName: file.name }),
+        body: JSON.stringify({ id: drop.id, fileName: file.name, fileSize: file.size }),
       });
       const signed = (await signedResponse.json().catch(() => null)) as { token?: string; path?: string; error?: string } | null;
       if (!signedResponse.ok || !signed?.token || !signed.path) throw new Error(signed?.error || "無法建立上傳連結。");
@@ -138,7 +159,7 @@ export default function AdminGatekeeperDropsPage() {
       const { error: uploadError } = await supabase.storage
         .from("battle-audio")
         .uploadToSignedUrl(signed.path, signed.token, file, {
-          contentType: file.type || "audio/mpeg",
+          contentType: standardAudioContentType(file),
         });
       if (uploadError) throw uploadError;
 
@@ -273,12 +294,17 @@ export default function AdminGatekeeperDropsPage() {
                 </label>
                 <label className="block">
                   <span className="text-xs font-bold text-zinc-500">類型徽章</span>
-                  <input
+                  <select
                     value={drop.genre}
-                    maxLength={32}
                     onChange={(event) => updateLocal(drop.id, { genre: event.target.value })}
                     className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.055] px-4 py-3 text-sm font-bold text-white outline-none focus:border-orange-300/70"
-                  />
+                  >
+                    {MUSIC_GENRE_OPTIONS.map((genre) => (
+                      <option key={genre.value} value={genre.value} className="bg-zinc-950 text-white">
+                        {genre.value}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label className="block">
                   <span className="text-xs font-bold text-zinc-500">AI 工具</span>
@@ -310,11 +336,11 @@ export default function AdminGatekeeperDropsPage() {
               </label>
 
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
-                <label className={`rounded-full border border-cyan-200/25 bg-cyan-300/10 px-4 py-2 text-xs font-black text-cyan-100 ${schemaMissing ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}>
+                <label className={`rounded-full border px-4 py-2 text-xs font-black ${schemaMissing ? "cursor-not-allowed border-white/10 bg-white/[0.03] text-zinc-500" : "cursor-pointer border-cyan-200/25 bg-cyan-300/10 text-cyan-100"}`}>
                   上傳官方 Drop 音檔
                   <input
                     type="file"
-                    accept={AUDIO_ACCEPT}
+                    accept={GATEKEEPER_AUDIO_ACCEPT}
                     disabled={schemaMissing || busyId === drop.id}
                     className="hidden"
                     onChange={(event) => {
@@ -324,6 +350,11 @@ export default function AdminGatekeeperDropsPage() {
                     }}
                   />
                 </label>
+                {schemaMissing ? (
+                  <p className="text-xs font-bold text-orange-200/80">需先套用官方守門 Drop SQL，才能上傳保存。</p>
+                ) : (
+                  <p className="text-xs font-bold text-zinc-500">MP3 / WAV / AIFF / M4A，上限 {AUDIO_UPLOAD_MAX_LABEL_100MB}</p>
+                )}
                 <button
                   type="button"
                   disabled={busyId === drop.id || schemaMissing}

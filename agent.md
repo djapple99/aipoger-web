@@ -163,6 +163,8 @@
 
 - 官方守門 Drop 是最多四張 owner 管理的常駐模板卡，放在鬥歌池讓任何人挑戰。
 - owner 只在後台上傳守門歌、設定類型、啟用 / 停用；owner 不設定開戰時間。
+- 後台設定官方守門 Drop 的類型時，必須使用與 Battle 上傳一致的固定類型選單，不使用自由手打，避免鬥歌池 / 成果牆 / 榮譽榜分類不一致。
+- 官方守門 Drop 音檔上傳沿用標準音檔限制：MP3 / WAV / AIFF / M4A / AAC / OGG，單檔上限 100MB。正式站必須先套用 `supabase/20260618_official_gatekeeper_drops.sql`，否則後台只能看到預設卡，不能保存音檔路徑或啟用卡片。
 - 挑戰者點「挑戰這首 Drop」後，上傳自己的 Drop，並由挑戰者設定 10 / 15 / 20 分鐘或 24 小時內自訂開戰時間，方便自己約人投票。
 - 每次挑戰都會產生一場新的 Battle Room：系統複製官方 defender queue，再建立挑戰者 challenger queue。原本四張官方卡不能被消耗或消失。
 - 官方 defender queue 不應佔用 owner 的個人 active Drop Battle 名額，也不應像 owner 親自參戰一樣通知 owner。

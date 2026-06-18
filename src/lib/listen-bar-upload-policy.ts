@@ -1,55 +1,29 @@
 import { Upload } from "tus-js-client";
 import { supabase } from "@/lib/supabase";
+import {
+  AUDIO_UPLOAD_MAX_BYTES_100MB,
+  AUDIO_UPLOAD_MAX_LABEL_100MB,
+  STANDARD_AUDIO_UPLOAD_ACCEPT,
+  audioSizeLabel,
+  isAllowedStandardAudioFile,
+  standardAudioContentType,
+} from "@/lib/audio-upload-policy";
 
-export const LISTEN_BAR_AUDIO_UPLOAD_MAX_BYTES = 104857600;
-export const LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL = "100MB";
+export const LISTEN_BAR_AUDIO_UPLOAD_MAX_BYTES = AUDIO_UPLOAD_MAX_BYTES_100MB;
+export const LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL = AUDIO_UPLOAD_MAX_LABEL_100MB;
 
-export const LISTEN_BAR_AUDIO_UPLOAD_ACCEPT =
-  "audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/wave,audio/vnd.wave,audio/aiff,audio/x-aiff,audio/mp4,audio/x-m4a,audio/aac,audio/ogg,.mp3,.wav,.wave,.aif,.aiff,.m4a,.aac,.ogg";
-
-const ALLOWED_AUDIO_MIME_TYPES = new Set([
-  "audio/mpeg",
-  "audio/mp3",
-  "audio/wav",
-  "audio/x-wav",
-  "audio/wave",
-  "audio/vnd.wave",
-  "audio/aiff",
-  "audio/x-aiff",
-  "audio/mp4",
-  "audio/x-m4a",
-  "audio/aac",
-  "audio/ogg",
-]);
-
-const AUDIO_MIME_BY_EXTENSION: Record<string, string> = {
-  aac: "audio/aac",
-  aif: "audio/aiff",
-  aiff: "audio/aiff",
-  m4a: "audio/mp4",
-  mp3: "audio/mpeg",
-  ogg: "audio/ogg",
-  wav: "audio/wav",
-  wave: "audio/wav",
-};
+export const LISTEN_BAR_AUDIO_UPLOAD_ACCEPT = STANDARD_AUDIO_UPLOAD_ACCEPT;
 
 export function isAllowedListenBarAudioFile(file: File): boolean {
-  if (ALLOWED_AUDIO_MIME_TYPES.has(file.type)) return true;
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-  return ext in AUDIO_MIME_BY_EXTENSION;
+  return isAllowedStandardAudioFile(file);
 }
 
 export function listenBarAudioContentType(file: File): string {
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-  const extensionMimeType = AUDIO_MIME_BY_EXTENSION[ext];
-  if (extensionMimeType) return extensionMimeType;
-  if (ALLOWED_AUDIO_MIME_TYPES.has(file.type)) return file.type;
-  return "audio/mpeg";
+  return standardAudioContentType(file);
 }
 
 export function listenBarAudioSizeLabel(file: File): string {
-  const mb = file.size / 1024 / 1024;
-  return `${mb >= 10 ? Math.round(mb) : mb.toFixed(1)}MB`;
+  return audioSizeLabel(file);
 }
 
 export function isListenBarStorageSizeLimitError(error: unknown): boolean {

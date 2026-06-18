@@ -11,6 +11,7 @@ import SafetyNotice from "@/components/safety-notice";
 import { rememberAuthNextPath } from "@/lib/auth-urls";
 import { rankLabelForLevel } from "@/lib/battle-pool-rules";
 import { battleResultShortPath, battleShortPath, dailyBattleShortPath, dailyEntryShortPath } from "@/lib/share-short-links";
+import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import {
   DROP_BATTLE_EXPECTED_END_BUFFER_MS,
   cancelCurrentBattleIntent,
@@ -58,15 +59,7 @@ const mockBattleData: BattleViewData = {
 
 const DAILY_BATTLE_QUEUE_MS = 24 * 60 * 60 * 1000;
 const SHOW_DAILY_BATTLE_SECTION = false;
-const DROP_BATTLE_GENRE_OPTIONS = [
-  { value: "K-pop動感風", labelKey: "genre_kpop_energy" },
-  { value: "說唱街頭風", labelKey: "genre_rap_street" },
-  { value: "復古City-Pop", labelKey: "genre_city_pop" },
-  { value: "感人抒情", labelKey: "genre_emotion" },
-  { value: "熱血搖滾", labelKey: "genre_rock" },
-  { value: "動感電音", labelKey: "genre_edm" },
-  { value: "自我風格", labelKey: "genre_custom" },
-];
+const DROP_BATTLE_GENRE_OPTIONS = MUSIC_GENRE_OPTIONS;
 
 function normalizeGenreFilter(value: string | null | undefined) {
   return String(value || "").trim().toLowerCase();

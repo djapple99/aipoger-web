@@ -91,6 +91,8 @@ Official Gatekeeper Drops:
 - These official cards are templates, not normal `battle_queue` rows. They must not be consumed or disappear when someone challenges them.
 - Only owner/admin accounts can upload, update, enable, or disable official Gatekeeper Drop audio.
 - Owner/admin does not set a start time for official Gatekeeper Drops. The official song stays there as a standing gate.
+- Owner/admin must choose the official Gatekeeper Drop genre from the same standard genre menu used by Battle upload. Do not use free-text genre entry for these cards.
+- Official Gatekeeper Drop audio accepts standard AIPOGER audio formats with a 100MB single-file limit. Production must have `supabase/20260618_official_gatekeeper_drops.sql` applied before uploads can be saved or cards enabled.
 - Public cards should say `官方守門 Drop` / `歡迎任何人來挑戰`, show `GATE` number and genre/type badge, and avoid wording like `官方守門戰：傷心酒吧`.
 - A challenger can choose the start time using the normal Drop Battle schedule rules: quick 10 / 15 / 20 minutes after successful battle creation, or a custom time within 24 hours.
 - When a challenger submits, the system creates a per-challenge battle instance: one copied official defender queue plus one challenger queue.

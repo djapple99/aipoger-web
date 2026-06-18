@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isAdminEmail } from "@/lib/admin-emails";
 import { OFFICIAL_GATEKEEPER_DROP_IDS } from "@/lib/official-gatekeeper-drops";
+import {
+  AUDIO_UPLOAD_MAX_BYTES_100MB,
+  AUDIO_UPLOAD_MAX_LABEL_100MB,
+} from "@/lib/audio-upload-policy";
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -46,10 +50,13 @@ export async function POST(request: NextRequest) {
   if (userError || !data.user) return jsonError("登入狀態已過期。", 401);
   if (!isAdminEmail(data.user.email)) return jsonError("沒有後台權限。", 403);
 
-  const body = (await request.json().catch(() => null)) as { id?: string; fileName?: string } | null;
+  const body = (await request.json().catch(() => null)) as { id?: string; fileName?: string; fileSize?: number } | null;
   const id = body?.id?.trim();
   if (!id || !OFFICIAL_GATEKEEPER_DROP_IDS.includes(id as (typeof OFFICIAL_GATEKEEPER_DROP_IDS)[number])) {
     return jsonError("無效的官方守門 Drop。", 400);
+  }
+  if (typeof body?.fileSize === "number" && body.fileSize > AUDIO_UPLOAD_MAX_BYTES_100MB) {
+    return jsonError(`官方守門 Drop 單檔上限是 ${AUDIO_UPLOAD_MAX_LABEL_100MB}。`, 413);
   }
 
   const storagePath = `official-gatekeeper-drops/${id}/${Date.now()}-${safeAudioFileName(body?.fileName ?? "drop.mp3")}`;
