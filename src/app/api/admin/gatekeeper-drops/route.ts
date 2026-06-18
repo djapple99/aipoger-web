@@ -123,6 +123,8 @@ export async function PATCH(request: NextRequest) {
   const fallback = OFFICIAL_GATEKEEPER_DROP_DEFAULTS.find((drop) => drop.id === id)!;
   const audioPath = typeof body?.audioPath === "string" && body.audioPath.trim() ? body.audioPath.trim() : null;
   const coverPath = typeof body?.coverPath === "string" && body.coverPath.trim() ? body.coverPath.trim() : null;
+  const lyrics = typeof body?.lyrics === "string" && body.lyrics.trim() ? body.lyrics.trim().slice(0, 8000) : null;
+  const requestedMediaFields = Boolean(coverPath || lyrics);
   const row = {
     id,
     gate_number: fallback.gateNumber,
@@ -132,7 +134,7 @@ export async function PATCH(request: NextRequest) {
     description: typeof body?.description === "string" && body.description.trim() ? body.description.trim().slice(0, 120) : null,
     audio_path: audioPath,
     cover_path: coverPath,
-    lyrics: typeof body?.lyrics === "string" && body.lyrics.trim() ? body.lyrics.trim().slice(0, 8000) : null,
+    lyrics,
     active: Boolean(body?.active && audioPath),
     sort_order: fallback.sortOrder,
     created_by: auth.userId,
@@ -148,7 +150,31 @@ export async function PATCH(request: NextRequest) {
 
   if (error) {
     if (isMissingTable(error)) return jsonError("尚未建立 official_gatekeeper_drops，請先套用 supabase/20260618_official_gatekeeper_drops.sql。", 409);
-    if (isMissingMediaColumns(error)) return jsonError("官方守門 Drop 缺少封面 / 歌詞欄位。請先套用 supabase/20260619_official_gatekeeper_media.sql。", 409);
+    if (isMissingMediaColumns(error)) {
+      if (requestedMediaFields) return jsonError("官方守門 Drop 缺少封面 / 歌詞欄位。請先套用 supabase/20260619_official_gatekeeper_media.sql。", 409);
+      const legacyRow = {
+        id: row.id,
+        gate_number: row.gate_number,
+        title: row.title,
+        genre: row.genre,
+        ai_tool: row.ai_tool,
+        description: row.description,
+        audio_path: row.audio_path,
+        active: row.active,
+        sort_order: row.sort_order,
+        created_by: row.created_by,
+        updated_by: row.updated_by,
+        updated_at: row.updated_at,
+      };
+      const legacy = await auth.admin
+        .from("official_gatekeeper_drops")
+        .upsert(legacyRow, { onConflict: "id" })
+        .select("*")
+        .single();
+      if (legacy.error) return jsonError(legacy.error.message, 500);
+      const legacyDrop = normalizeOfficialGatekeeperDrop(legacy.data as Record<string, unknown>);
+      return NextResponse.json({ drop: await attachOfficialGatekeeperMediaUrls(auth.admin, legacyDrop), mediaSchemaMissing: true });
+    }
     return jsonError(error.message, 500);
   }
 
