@@ -29,6 +29,7 @@ type QueueRow = {
   expires_at?: string | null;
   scheduled_start_at?: string | null;
   cancellation_evaluation_at?: string | null;
+  official_gatekeeper_role?: string | null;
 };
 
 const OPEN_QUEUE_STATUSES = ["searching", "waiting", "waiting_challenge"];
@@ -46,6 +47,11 @@ function tokenFromRequest(request: NextRequest): string | null {
 
 function trimOrNull(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function isMissingOfficialGatekeeperColumn(error: { message?: string; details?: string | null; hint?: string | null; code?: string } | null) {
+  const msg = `${error?.message ?? ""} ${error?.details ?? ""} ${error?.hint ?? ""} ${error?.code ?? ""}`;
+  return /official_gatekeeper_role|schema cache|column.*does not exist|PGRST204/i.test(msg);
 }
 
 function firstText(...values: unknown[]) {
@@ -120,17 +126,30 @@ export async function POST(request: NextRequest) {
   }
   const requestedRole = dropBattleRoleForChallengeTarget(meRow.challenge_target_queue_id ?? targetQueueId ?? null);
 
-  const { data: otherActiveQueues, error: otherActiveQueueError } = await admin
+  let { data: otherActiveQueues, error: otherActiveQueueError } = await admin
     .from("battle_queue")
-    .select("id, status, match_group_id, challenge_target_queue_id")
+    .select("id, status, match_group_id, challenge_target_queue_id, official_gatekeeper_role")
     .eq("user_id", user.id)
     .neq("id", meRow.id)
     .in("status", [...ACTIVE_DROP_QUEUE_STATUSES])
     .limit(12);
 
+  if (otherActiveQueueError && isMissingOfficialGatekeeperColumn(otherActiveQueueError)) {
+    const legacy = await admin
+      .from("battle_queue")
+      .select("id, status, match_group_id, challenge_target_queue_id")
+      .eq("user_id", user.id)
+      .neq("id", meRow.id)
+      .in("status", [...ACTIVE_DROP_QUEUE_STATUSES])
+      .limit(12);
+    otherActiveQueues = legacy.data as typeof otherActiveQueues;
+    otherActiveQueueError = legacy.error;
+  }
+
   if (otherActiveQueueError) return jsonError(otherActiveQueueError.message, 500);
   let blockingActiveQueueCount = 0;
   for (const queue of otherActiveQueues ?? []) {
+    if (queue.official_gatekeeper_role === "defender") continue;
     const matchGroupId = typeof queue.match_group_id === "string" ? queue.match_group_id : null;
     if (matchGroupId) {
       const { data: linkedBattle, error: linkedBattleError } = await admin
@@ -185,12 +204,22 @@ export async function POST(request: NextRequest) {
           ? battle.queue_b_id
           : null;
     if (!userQueueId) continue;
-    const { data: userBattleQueue, error: userBattleQueueError } = await admin
+    let { data: userBattleQueue, error: userBattleQueueError } = await admin
       .from("battle_queue")
-      .select("id, challenge_target_queue_id")
+      .select("id, challenge_target_queue_id, official_gatekeeper_role")
       .eq("id", userQueueId)
-      .maybeSingle<{ id: string; challenge_target_queue_id?: string | null }>();
+      .maybeSingle<{ id: string; challenge_target_queue_id?: string | null; official_gatekeeper_role?: string | null }>();
+    if (userBattleQueueError && isMissingOfficialGatekeeperColumn(userBattleQueueError)) {
+      const legacy = await admin
+        .from("battle_queue")
+        .select("id, challenge_target_queue_id")
+        .eq("id", userQueueId)
+        .maybeSingle<{ id: string; challenge_target_queue_id?: string | null; official_gatekeeper_role?: string | null }>();
+      userBattleQueue = legacy.data;
+      userBattleQueueError = legacy.error;
+    }
     if (userBattleQueueError) return jsonError(userBattleQueueError.message, 500);
+    if (userBattleQueue?.official_gatekeeper_role === "defender") continue;
     if (dropBattleRoleForChallengeTarget(userBattleQueue?.challenge_target_queue_id ?? null) === requestedRole) {
       blockingActiveBattles.push(battle);
     }

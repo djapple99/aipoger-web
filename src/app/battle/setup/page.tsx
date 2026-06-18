@@ -67,7 +67,7 @@ type ActiveBattleLock =
   | { kind: "battle"; id: string; status: string; role: DropBattleUserRole; queueId?: string | null };
 
 type BattleMode = 'instant' | 'daily';
-type InstantPairingMode = 'auto' | 'invite';
+type InstantPairingMode = 'auto' | 'invite' | 'gatekeeper';
 type DailyPairingMode = 'auto' | 'invite';
 
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
@@ -120,13 +120,25 @@ function setCompactParam(params: URLSearchParams, key: string, value: string | n
 }
 
 async function findActiveBattleLock(userId: string, requestedRole: DropBattleUserRole): Promise<ActiveBattleLock | null> {
-  const { data: queueRows, error: queueError } = await supabase
+  let { data: queueRows, error: queueError } = await supabase
     .from("battle_queue")
-    .select("id, status, match_group_id, challenge_target_queue_id, created_at")
+    .select("id, status, match_group_id, challenge_target_queue_id, official_gatekeeper_role, created_at")
     .eq("user_id", userId)
     .in("status", [...ACTIVE_DROP_QUEUE_STATUSES])
     .order("created_at", { ascending: false })
     .limit(12);
+
+  if (queueError && /official_gatekeeper_role|schema cache|column.*does not exist|PGRST204/i.test(extractErrorMessage(queueError))) {
+    const legacy = await supabase
+      .from("battle_queue")
+      .select("id, status, match_group_id, challenge_target_queue_id, created_at")
+      .eq("user_id", userId)
+      .in("status", [...ACTIVE_DROP_QUEUE_STATUSES])
+      .order("created_at", { ascending: false })
+      .limit(12);
+    queueRows = legacy.data as typeof queueRows;
+    queueError = legacy.error;
+  }
 
   if (queueError) throw queueError;
   const activeQueues = (queueRows ?? []) as Array<{
@@ -134,8 +146,10 @@ async function findActiveBattleLock(userId: string, requestedRole: DropBattleUse
     status: string;
     match_group_id?: string | null;
     challenge_target_queue_id?: string | null;
+    official_gatekeeper_role?: string | null;
   }>;
   for (const activeQueue of activeQueues) {
+    if (activeQueue.official_gatekeeper_role === "defender") continue;
     if (activeQueue.match_group_id) {
       const { data: linkedBattle } = await supabase
         .from("battles")
@@ -191,11 +205,22 @@ async function findActiveBattleLock(userId: string, requestedRole: DropBattleUse
           ? activeBattle.queue_b_id
           : null;
     if (!userQueueId) continue;
-    const { data: queueRoleRow } = await supabase
+    let { data: queueRoleRow, error: queueRoleError } = await supabase
       .from("battle_queue")
-      .select("id, challenge_target_queue_id")
+      .select("id, challenge_target_queue_id, official_gatekeeper_role")
       .eq("id", userQueueId)
-      .maybeSingle<{ id: string; challenge_target_queue_id?: string | null }>();
+      .maybeSingle<{ id: string; challenge_target_queue_id?: string | null; official_gatekeeper_role?: string | null }>();
+    if (queueRoleError && /official_gatekeeper_role|schema cache|column.*does not exist|PGRST204/i.test(extractErrorMessage(queueRoleError))) {
+      const legacy = await supabase
+        .from("battle_queue")
+        .select("id, challenge_target_queue_id")
+        .eq("id", userQueueId)
+        .maybeSingle<{ id: string; challenge_target_queue_id?: string | null; official_gatekeeper_role?: string | null }>();
+      queueRoleRow = legacy.data;
+      queueRoleError = legacy.error;
+    }
+    if (queueRoleError) throw queueRoleError;
+    if (queueRoleRow?.official_gatekeeper_role === "defender") continue;
     const challengeTargetQueueId = queueRoleRow?.challenge_target_queue_id ?? null;
     if (dropBattleRoleForChallengeTarget(challengeTargetQueueId) === requestedRole) {
       return { kind: "battle", id: activeBattle.id, status: activeBattle.status, role: requestedRole, queueId: userQueueId };
@@ -379,6 +404,7 @@ export default function BattleSetupPage() {
   const [otherTool, setOtherTool] = useState('');
   const [challengeEntryId, setChallengeEntryId] = useState<string | null>(null);
   const [challengeDailyEntryId, setChallengeDailyEntryId] = useState<string | null>(null);
+  const [gatekeeperId, setGatekeeperId] = useState<string | null>(null);
   const [draft, setDraft] = useState<BattleDraft | null>(null);
   const [draftChecked, setDraftChecked] = useState(false);
   const [battleMode, setBattleMode] = useState<BattleMode>('instant');
@@ -440,6 +466,7 @@ export default function BattleSetupPage() {
         const urlAiTool = params.get('aiTool');
         const urlChallengeEntryId = params.get('challengeEntryId');
         const urlChallengeDailyEntryId = params.get('challengeDailyEntryId');
+        const urlGatekeeperId = params.get('gatekeeperId');
         const urlAudioPath = params.get('audioPath');
         const urlAudioSha256 = params.get('audioSha256');
         const urlBattleMode = params.get('battleMode');
@@ -451,7 +478,7 @@ export default function BattleSetupPage() {
         if (urlSongName) setSongName(urlSongName);
         if (urlAiTool) setAiTool(urlAiTool);
         if (DAILY_BATTLE_PUBLIC_ENTRY_ENABLED && urlBattleMode === 'daily') setBattleMode('daily');
-        if (urlInstantPairing === 'auto' || urlInstantPairing === 'invite') {
+        if (urlInstantPairing === 'auto' || urlInstantPairing === 'invite' || urlInstantPairing === 'gatekeeper') {
           setInstantPairingMode(urlInstantPairing);
         }
         if (urlDailyPairing === 'invite') setDailyPairingMode('invite');
@@ -477,6 +504,11 @@ export default function BattleSetupPage() {
           setChallengeEntryId(urlChallengeEntryId);
           setInstantPairingMode('auto');
         }
+        if (urlGatekeeperId && /^gate-\d{2}-[a-z0-9-]+$/i.test(urlGatekeeperId)) {
+          setGatekeeperId(urlGatekeeperId);
+          setInstantPairingMode('gatekeeper');
+          setBattleMode('instant');
+        }
         if (DAILY_BATTLE_PUBLIC_ENTRY_ENABLED && urlChallengeDailyEntryId && /^[0-9a-f-]{36}$/i.test(urlChallengeDailyEntryId)) {
           setChallengeDailyEntryId(urlChallengeDailyEntryId);
           setBattleMode('daily');
@@ -498,7 +530,7 @@ export default function BattleSetupPage() {
           return;
         }
         const session = await getFreshSession();
-        if ((urlChallengeEntryId || urlChallengeDailyEntryId) && !session?.user) {
+        if ((urlChallengeEntryId || urlChallengeDailyEntryId || urlGatekeeperId) && !session?.user) {
           router.replace(authHrefForCurrentPage());
           setDraftChecked(true);
           return;
@@ -803,7 +835,7 @@ export default function BattleSetupPage() {
   // ── 提交 ─────────────────────────────────────────────
   const handleSubmit = async () => {
     const finalAiTool = aiTool === '其他' ? otherTool.trim() : aiTool;
-    const shouldScheduleDropBattle = battleMode === 'instant' && instantPairingMode === 'invite' && !challengeEntryId;
+    const shouldScheduleDropBattle = battleMode === 'instant' && (instantPairingMode === 'invite' || instantPairingMode === 'gatekeeper') && !challengeEntryId;
     const schedulePreset = shouldScheduleDropBattle && battleStartOption !== 'custom' ? battleStartOption : null;
     const scheduledHookStartIso = shouldScheduleDropBattle && battleStartOption === 'custom' ? datetimeLocalToIso(hookBattleAt) : null;
     const scheduleValidation = shouldScheduleDropBattle && battleStartOption === 'custom'
@@ -831,7 +863,9 @@ export default function BattleSetupPage() {
       });
       if (challengeEntryId) params.set('challengeEntryId', challengeEntryId);
       if (challengeDailyEntryId) params.set('challengeDailyEntryId', challengeDailyEntryId);
+      if (gatekeeperId) params.set('gatekeeperId', gatekeeperId);
       if (challengeEntryId && genre.trim()) params.set('genre', genre.trim());
+      if (gatekeeperId && genre.trim()) params.set('genre', genre.trim());
       if (shouldScheduleDropBattle) {
         if (schedulePreset) params.set('hookBattlePreset', String(schedulePreset));
         else params.set('hookBattleAt', hookBattleAt);
@@ -840,7 +874,7 @@ export default function BattleSetupPage() {
       return;
     }
 
-    if (!fighterName.trim() || !songName.trim() || (!challengeEntryId && !genre) || (aiTool === '其他' && !finalAiTool)) {
+    if (!fighterName.trim() || !songName.trim() || (!challengeEntryId && !gatekeeperId && !genre) || (aiTool === '其他' && !finalAiTool)) {
       setFormError(t('setup_required_error'));
       return;
     }
@@ -988,7 +1022,7 @@ export default function BattleSetupPage() {
       if (isAuthBypassEnabled) {
         queueIdForNav = `mock-${Date.now()}`;
       } else {
-        const requestedDropRole = dropBattleRoleForChallengeTarget(challengeEntryId);
+        const requestedDropRole = gatekeeperId ? 'challenger' : dropBattleRoleForChallengeTarget(challengeEntryId);
         const activeLock = await findActiveBattleLock(userId, requestedDropRole);
         if (activeLock) {
           alert(dropBattleRoleLockMessage(requestedDropRole, lang));
@@ -1029,6 +1063,37 @@ export default function BattleSetupPage() {
             battleGenre = targetEntry.genre.trim();
             if (battleGenre !== genre.trim()) setGenre(battleGenre);
           }
+        }
+
+        if (gatekeeperId) {
+          setUploadProgress(lang === 'zh' ? '建立官方守門 Drop 挑戰…' : 'Creating Gatekeeper Drop Challenge...');
+          const response = await fetch('/api/battle-pool/challenge-gatekeeper', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+              gatekeeperId,
+              fighterName: fighterName.trim(),
+              songName: songName.trim(),
+              aiTool: finalAiTool.trim() || null,
+              audioPath: draft.audioPath,
+              audioSha256: draft.audioSha256 ?? null,
+              lyrics: draft.lyrics.trim() || null,
+              avatarUrl: avatarForBattle ?? finalAvatarUrl,
+              coverUrl: coverForBattle ?? finalCoverUrl,
+              schedulePreset,
+              scheduledStartIso: scheduledHookStartIso,
+            }),
+          });
+          const payload = (await response.json().catch(() => null)) as { battleId?: string; error?: string } | null;
+          if (!response.ok || !payload?.battleId) {
+            throw new Error(payload?.error || (lang === 'zh' ? '建立官方守門 Drop 挑戰失敗。' : 'Failed to create gatekeeper Drop challenge.'));
+          }
+          setUploadProgress(lang === 'zh' ? '挑戰成立，進入戰場…' : 'Challenge Created. Entering Arena...');
+          router.push(`/battle/${payload.battleId}?lang=${lang}`);
+          return;
         }
 
         const initialQueueStatus: "searching" | "waiting_challenge" =
@@ -1153,7 +1218,7 @@ export default function BattleSetupPage() {
   const displayAvatarUrl = avatarPreview ?? savedAvatarUrl ?? profileAvatarPreview;
   const displayCoverUrl = coverPreview ?? savedCoverUrl;
   const hookDurationLabel = draft?.hookDuration ? `${Number(draft.hookDuration).toFixed(1)}s` : '45s';
-  const showDropBattleSchedule = battleMode === 'instant' && instantPairingMode === 'invite' && !challengeEntryId;
+  const showDropBattleSchedule = battleMode === 'instant' && (instantPairingMode === 'invite' || instantPairingMode === 'gatekeeper') && !challengeEntryId;
   const customScheduleMin = toDatetimeLocalValue(new Date(Date.now() + DROP_BATTLE_SCHEDULE_MIN_LEAD_MS));
   const customScheduleMax = toDatetimeLocalValue(new Date(Date.now() + DROP_BATTLE_SCHEDULE_MAX_LEAD_MS));
   const dropBattleSchedulePicker = showDropBattleSchedule ? (
@@ -1309,19 +1374,29 @@ export default function BattleSetupPage() {
               <button
                 key={option.value}
                 type="button"
-                disabled={Boolean(challengeEntryId)}
+                disabled={Boolean(challengeEntryId || gatekeeperId)}
                 onClick={() => setInstantPairingMode(option.value)}
                 className={`rounded-2xl border px-4 py-3 text-left transition ${
                   instantPairingMode === option.value
                     ? 'border-red-300/85 bg-red-500/10 text-red-50 shadow-[0_0_0_1px_rgba(248,113,113,0.35),0_0_28px_rgba(239,68,68,0.32)]'
                     : 'border-white/10 bg-black/30 text-zinc-300 hover:border-red-300/40 hover:bg-red-500/[0.04]'
-                } ${challengeEntryId ? 'cursor-not-allowed opacity-55' : ''}`}
+                } ${challengeEntryId || gatekeeperId ? 'cursor-not-allowed opacity-55' : ''}`}
               >
                 <p className="font-black">{option.title}</p>
                 <p className="mt-1 text-xs leading-5 text-zinc-400">{option.desc}</p>
               </button>
             ))}
           </div>
+          {gatekeeperId ? (
+            <div className="mt-4 rounded-2xl border border-red-300/35 bg-red-500/10 px-4 py-3">
+              <p className="text-sm font-black text-red-50">{lang === 'zh' ? '官方守門 Drop 挑戰' : 'Official Gatekeeper Drop Challenge'}</p>
+              <p className="mt-1 text-xs font-bold leading-5 text-zinc-400">
+                {lang === 'zh'
+                  ? '這張卡會直接挑戰官方 Drop。你可以設定開戰時間，再分享戰場連結拉人投票。'
+                  : 'This card challenges an official Drop directly. Set a start time, then share the arena link for votes.'}
+              </p>
+            </div>
+          ) : null}
           {!draft?.audioPath && dropBattleSchedulePicker ? <div className="mt-4">{dropBattleSchedulePicker}</div> : null}
         </>
       )}
@@ -1340,12 +1415,13 @@ export default function BattleSetupPage() {
     const startParams = new URLSearchParams({ flow: 'upload-first', lang });
     if (challengeEntryId) startParams.set('challengeEntryId', challengeEntryId);
     if (challengeDailyEntryId) startParams.set('challengeDailyEntryId', challengeDailyEntryId);
+    if (gatekeeperId) startParams.set('gatekeeperId', gatekeeperId);
     if (fighterName.trim()) startParams.set('fighterName', fighterName.trim());
     if (genre.trim()) startParams.set('genre', genre.trim());
     startParams.set('battleMode', battleMode);
     startParams.set('instantPairing', instantPairingMode);
     startParams.set('dailyPairing', dailyPairingMode);
-    if (battleMode === 'instant' && instantPairingMode === 'invite' && !challengeEntryId) {
+    if (battleMode === 'instant' && (instantPairingMode === 'invite' || instantPairingMode === 'gatekeeper') && !challengeEntryId) {
       if (battleStartOption === 'custom') startParams.set('hookBattleAt', hookBattleAt);
       else startParams.set('hookBattlePreset', String(battleStartOption));
     }
@@ -1464,6 +1540,13 @@ export default function BattleSetupPage() {
         {challengeEntryId && (
           <p className="mx-auto mt-4 max-w-xl rounded-full border border-orange-400/30 bg-orange-500/10 px-4 py-2 text-xs font-bold text-orange-100">
             你正在接受公開挑戰池的最強抓波 Drop Battle，上傳後會優先與該作品配對
+          </p>
+        )}
+        {gatekeeperId && (
+          <p className="mx-auto mt-4 max-w-xl rounded-full border border-red-300/35 bg-red-500/10 px-4 py-2 text-xs font-bold text-red-50">
+            {lang === 'zh'
+              ? '你正在挑戰官方守門 Drop，上傳後會直接產生戰場。'
+              : 'You are challenging an official gatekeeper Drop. Uploading creates the arena directly.'}
           </p>
         )}
         {challengeDailyEntryId && (
@@ -1631,15 +1714,19 @@ export default function BattleSetupPage() {
             <label className="mb-2 block text-sm text-zinc-400">
               {t('genre')} <span className="font-black text-orange-400">*</span>
             </label>
-            {challengeEntryId ? (
+            {challengeEntryId || gatekeeperId ? (
               <div className="rounded-2xl border border-orange-300/30 bg-orange-500/10 px-6 py-4">
                 <p className="text-lg font-black text-orange-50">
                   {GENRES.find((g) => g.value === genre)?.labelKey ? t(GENRES.find((g) => g.value === genre)!.labelKey) : genre || (lang === 'zh' ? '沿用挑戰卡曲風' : 'Challenge Card Genre')}
                 </p>
                 <p className="mt-2 text-xs font-bold leading-5 text-zinc-400">
-                  {lang === 'zh'
-                    ? '接受挑戰時會自動沿用原戰帖卡的曲風，不需要也不能改類型。'
-                    : 'Challenge accepts automatically use the original card genre. No extra genre selection is needed.'}
+                  {gatekeeperId
+                    ? lang === 'zh'
+                      ? '官方守門 Drop 會鎖定卡片類型，挑戰者不需要也不能改類型。'
+                      : 'Official gatekeeper Drops lock the card genre. No extra genre selection is needed.'
+                    : lang === 'zh'
+                      ? '接受挑戰時會自動沿用原戰帖卡的曲風，不需要也不能改類型。'
+                      : 'Challenge accepts automatically use the original card genre. No extra genre selection is needed.'}
                 </p>
               </div>
             ) : (

@@ -85,12 +85,31 @@ Current behavior:
 - Waiting cards should provide a `約人鬥歌` share action.
 - Live or public-voting cards should provide an `邀請觀戰投票` share action.
 
+Official Gatekeeper Drops:
+
+- AIPOGER may keep up to four owner-managed official Drop challenge templates in the Battle Pool.
+- These official cards are templates, not normal `battle_queue` rows. They must not be consumed or disappear when someone challenges them.
+- Only owner/admin accounts can upload, update, enable, or disable official Gatekeeper Drop audio.
+- Owner/admin does not set a start time for official Gatekeeper Drops. The official song stays there as a standing gate.
+- Public cards should say `官方守門 Drop` / `歡迎任何人來挑戰`, show `GATE` number and genre/type badge, and avoid wording like `官方守門戰：傷心酒吧`.
+- A challenger can choose the start time using the normal Drop Battle schedule rules: quick 10 / 15 / 20 minutes after successful battle creation, or a custom time within 24 hours.
+- When a challenger submits, the system creates a per-challenge battle instance: one copied official defender queue plus one challenger queue.
+- The copied official defender queue must not count as the owner's personal active Drop Battle intent, must not notify the owner as if they personally entered a battle, and must not pollute owner-facing active battle limits.
+- The challenger side counts as an active challenger intent until that battle ends or is cancelled.
+- Official Gatekeeper Drop results follow the same audience threshold rules as normal Drop Battle: 0:0 no result, 1-2 distinct voters unofficial Result Wall only, 3+ distinct voters official/Honor Board eligible.
+
 Initial operating target:
 
 - Public Drop challenge cards should be limited to 10 open cards across the platform.
 - This is a product target and should be enforced before upload or before Battle queue insert, so storage and UI do not fill with stale challenges.
 
 ## 24H Full Song Battle
+
+Current visibility:
+
+- 24H Full Song Battle is currently hidden from the front-stage product.
+- Do not present 24H Battle as a primary gameplay mode in pitch decks, public onboarding, homepage copy, or new-user explanations unless the user explicitly reopens it.
+- Keep the implementation rules below as retained system behavior, not as current public positioning.
 
 Current behavior:
 

@@ -125,6 +125,12 @@ Rematch rules:
 
 24H Full Song is the slower full-track one-on-one battle format.
 
+Current visibility:
+
+- 24H Full Song Battle is currently hidden from the front-stage product.
+- Do not present 24H Battle as a primary gameplay mode in pitch decks, public onboarding, homepage copy, or new-user explanations unless the user explicitly reopens it.
+- Keep the rules below as retained system behavior only.
+
 Current rules:
 
 - Uses the complete uploaded song.

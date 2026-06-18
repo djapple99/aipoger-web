@@ -159,6 +159,15 @@
 - 觀戰自由，不要求登入；留言、投票、互動、取消挑戰等會寫入資料或影響戰鬥狀態的操作必須登入。
 - 這個限制在 `src/lib/daily-battle-rules.ts` 跟 battle_pool 邏輯中實作
 
+## AIPOGER 官方守門 Drop 規則（2026-06-19）
+
+- 官方守門 Drop 是最多四張 owner 管理的常駐模板卡，放在鬥歌池讓任何人挑戰。
+- owner 只在後台上傳守門歌、設定類型、啟用 / 停用；owner 不設定開戰時間。
+- 挑戰者點「挑戰這首 Drop」後，上傳自己的 Drop，並由挑戰者設定 10 / 15 / 20 分鐘或 24 小時內自訂開戰時間，方便自己約人投票。
+- 每次挑戰都會產生一場新的 Battle Room：系統複製官方 defender queue，再建立挑戰者 challenger queue。原本四張官方卡不能被消耗或消失。
+- 官方 defender queue 不應佔用 owner 的個人 active Drop Battle 名額，也不應像 owner 親自參戰一樣通知 owner。
+- 官方守門 Drop 結果沿用一般 Drop Battle 門檻：0:0 no contest；1-2 位不同聽眾只進成果牆非正式結果；3+ 位不同聽眾才是正式結果 / 榮譽榜資格。
+
 ## AIPOGER Drop Battle 流程記憶（2026-06-03）
 
 - 90s Drop Battle 不再使用獨立 waiting room / 預等區。使用者開戰帖或進戰帖後，應直接進 `/battle/[id]` 戰場，在戰場裡看倒數、聽 5 秒預播、聊天預測；時間到後直接猜拳開打。

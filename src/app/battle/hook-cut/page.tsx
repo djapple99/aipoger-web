@@ -369,13 +369,25 @@ function isDuplicateAudioHash(error: unknown): boolean {
 }
 
 async function findActiveBattleLock(userId: string, requestedRole: DropBattleUserRole): Promise<ActiveBattleLock | null> {
-  const { data: queueRows, error: queueError } = await supabase
+  let { data: queueRows, error: queueError } = await supabase
     .from("battle_queue")
-    .select("id, status, match_group_id, challenge_target_queue_id, created_at")
+    .select("id, status, match_group_id, challenge_target_queue_id, official_gatekeeper_role, created_at")
     .eq("user_id", userId)
     .in("status", [...ACTIVE_DROP_QUEUE_STATUSES])
     .order("created_at", { ascending: false })
     .limit(12);
+
+  if (queueError && /official_gatekeeper_role|schema cache|column.*does not exist|PGRST204/i.test(describeSupabaseError(queueError))) {
+    const legacy = await supabase
+      .from("battle_queue")
+      .select("id, status, match_group_id, challenge_target_queue_id, created_at")
+      .eq("user_id", userId)
+      .in("status", [...ACTIVE_DROP_QUEUE_STATUSES])
+      .order("created_at", { ascending: false })
+      .limit(12);
+    queueRows = legacy.data as typeof queueRows;
+    queueError = legacy.error;
+  }
 
   if (queueError) throw queueError;
   const activeQueues = (queueRows ?? []) as Array<{
@@ -383,8 +395,10 @@ async function findActiveBattleLock(userId: string, requestedRole: DropBattleUse
     status: string;
     match_group_id?: string | null;
     challenge_target_queue_id?: string | null;
+    official_gatekeeper_role?: string | null;
   }>;
   for (const activeQueue of activeQueues) {
+    if (activeQueue.official_gatekeeper_role === "defender") continue;
     if (activeQueue.match_group_id) {
       const { data: linkedBattle } = await supabase
         .from("battles")
@@ -440,11 +454,22 @@ async function findActiveBattleLock(userId: string, requestedRole: DropBattleUse
           ? activeBattle.queue_b_id
           : null;
     if (!userQueueId) continue;
-    const { data: queueRoleRow } = await supabase
+    let { data: queueRoleRow, error: queueRoleError } = await supabase
       .from("battle_queue")
-      .select("id, challenge_target_queue_id")
+      .select("id, challenge_target_queue_id, official_gatekeeper_role")
       .eq("id", userQueueId)
-      .maybeSingle<{ id: string; challenge_target_queue_id?: string | null }>();
+      .maybeSingle<{ id: string; challenge_target_queue_id?: string | null; official_gatekeeper_role?: string | null }>();
+    if (queueRoleError && /official_gatekeeper_role|schema cache|column.*does not exist|PGRST204/i.test(describeSupabaseError(queueRoleError))) {
+      const legacy = await supabase
+        .from("battle_queue")
+        .select("id, challenge_target_queue_id")
+        .eq("id", userQueueId)
+        .maybeSingle<{ id: string; challenge_target_queue_id?: string | null; official_gatekeeper_role?: string | null }>();
+      queueRoleRow = legacy.data;
+      queueRoleError = legacy.error;
+    }
+    if (queueRoleError) throw queueRoleError;
+    if (queueRoleRow?.official_gatekeeper_role === "defender") continue;
     const challengeTargetQueueId = queueRoleRow?.challenge_target_queue_id ?? null;
     if (dropBattleRoleForChallengeTarget(challengeTargetQueueId) === requestedRole) {
       return { kind: "battle", id: activeBattle.id, status: activeBattle.status, role: requestedRole, queueId: userQueueId };
@@ -470,15 +495,16 @@ function HookCutContent() {
   const avatarUrl = searchParams.get('avatarUrl');
   const assetKey = searchParams.get('assetKey');
   const challengeTargetQueueId = searchParams.get('challengeEntryId');
+  const gatekeeperId = searchParams.get('gatekeeperId');
   const rematchClaimId = searchParams.get('rematchClaimId');
   const sourceBattleId = searchParams.get('sourceBattleId');
   const isRematchUpload = Boolean(rematchClaimId && sourceBattleId);
   const battleMode = searchParams.get('battleMode') === 'daily' ? 'daily' : 'instant';
-  const instantPairing = searchParams.get('instantPairing') === 'invite' ? 'invite' : 'auto';
+  const instantPairing = searchParams.get('instantPairing') === 'gatekeeper' ? 'gatekeeper' : searchParams.get('instantPairing') === 'invite' ? 'invite' : 'auto';
   const dailyPairing = searchParams.get('dailyPairing') === 'invite' ? 'invite' : 'auto';
   const hookBattleAt = searchParams.get('hookBattleAt') || searchParams.get('scheduledBattleAt');
   const hookBattlePreset = dropBattleSchedulePresetFromValue(searchParams.get('hookBattlePreset'));
-  const hookBattleStartIso = instantPairing === "invite" && !challengeTargetQueueId ? hookBattleAtToIso(hookBattleAt) : null;
+  const hookBattleStartIso = (instantPairing === "invite" || instantPairing === "gatekeeper") && !challengeTargetQueueId ? hookBattleAtToIso(hookBattleAt) : null;
   const lang = normalizeLang(searchParams.get('lang'));
 
   const t = getT(lang);
@@ -997,6 +1023,7 @@ function HookCutContent() {
           audioSha256,
         });
         if (challengeTargetQueueId) setupParams.set("challengeEntryId", challengeTargetQueueId);
+        if (gatekeeperId) setupParams.set("gatekeeperId", gatekeeperId);
         if (hookBattlePreset) setupParams.set("hookBattlePreset", String(hookBattlePreset));
         else if (hookBattleAt) setupParams.set("hookBattleAt", hookBattleAt);
         setCompactParam(setupParams, "lyrics", lyricsForSave);
@@ -1045,7 +1072,7 @@ function HookCutContent() {
             ? { challenge_target_queue_id: challengeTargetQueueId }
             : {};
         const schedulePayload =
-          instantPairing === "invite" && !challengeTargetQueueId
+          (instantPairing === "invite" || instantPairing === "gatekeeper") && !challengeTargetQueueId
             ? hookBattlePreset
               ? buildDropBattleSchedulePayloadFromPreset(hookBattlePreset)
               : buildDropBattleSchedulePayload(hookBattleStartIso)

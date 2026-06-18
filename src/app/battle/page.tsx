@@ -20,6 +20,7 @@ import {
   resolveDropBattleScheduledStart,
   shouldExpireOpenDropQueue,
 } from "@/lib/battle-pool-client";
+import type { OfficialGatekeeperDrop } from "@/lib/official-gatekeeper-drops";
 
 const seedComments = [
   "A Side 節奏很穩，這段 drop 很強。",
@@ -195,6 +196,8 @@ type PoolEntryRow = {
   expires_at: string | null;
   scheduled_start_at?: string | null;
   cancellation_evaluation_at?: string | null;
+  official_gatekeeper_id?: string | null;
+  official_gatekeeper_role?: string | null;
   public_vote_score: number | null;
   created_at: string;
 };
@@ -906,6 +909,7 @@ function BattlePoolList() {
   const searchParams = useSearchParams();
   const focusQueueId = searchParams.get("focusQueue");
   const [rows, setRows] = useState<PoolEntryRow[]>([]);
+  const [officialDrops, setOfficialDrops] = useState<OfficialGatekeeperDrop[]>([]);
   const [acceptedBattleRows, setAcceptedBattleRows] = useState<LiveBattleRow[]>([]);
   const [hookSongStats, setHookSongStats] = useState<Record<string, SongBattleStats>>({});
   const [loading, setLoading] = useState(true);
@@ -936,6 +940,7 @@ function BattlePoolList() {
     const load = async () => {
       if (isAuthBypassEnabled) {
         setRows([]);
+        setOfficialDrops([]);
         setAcceptedBattleRows([]);
         setLoading(false);
         return;
@@ -946,16 +951,21 @@ function BattlePoolList() {
         fetch("/api/battle-pool/process-fallbacks", { method: "POST" }).catch(() => null),
       ]);
 
+      const officialDropsPromise = fetch("/api/official-gatekeeper-drops")
+        .then((response) => response.json())
+        .then((payload: { drops?: OfficialGatekeeperDrop[] }) => payload.drops ?? [])
+        .catch(() => [] as OfficialGatekeeperDrop[]);
+
       let { data, error } = await supabase
         .from("battle_queue")
-        .select("id, user_id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, scheduled_start_at, cancellation_evaluation_at, public_vote_score, created_at")
+        .select("id, user_id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, scheduled_start_at, cancellation_evaluation_at, official_gatekeeper_id, official_gatekeeper_role, public_vote_score, created_at")
         .in("status", ["waiting_challenge", "matched", "public_voting", "ghost_battle"])
         .order("created_at", { ascending: false })
         .limit(24);
 
       if (error) {
         const msg = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`;
-        const missingScheduleColumn = /scheduled_start_at|cancellation_evaluation_at|schema cache|does not exist|PGRST204/i.test(msg);
+        const missingScheduleColumn = /scheduled_start_at|cancellation_evaluation_at|official_gatekeeper|schema cache|does not exist|PGRST204/i.test(msg);
         if (missingScheduleColumn) {
           const legacyRead = await supabase
             .from("battle_queue")
@@ -991,7 +1001,7 @@ function BattlePoolList() {
             .filter((row) => row.id && (row.battle_ended_at || ["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"].includes(row.status ?? "")))
             .forEach((row) => closedBattleIds.add(row.id as string));
         }
-        const visibleRows = baseRows.filter((row) => !isExpiredOpenPoolEntry(row) && (!row.match_group_id || !closedBattleIds.has(row.match_group_id)));
+        const visibleRows = baseRows.filter((row) => !row.official_gatekeeper_id && !isExpiredOpenPoolEntry(row) && (!row.match_group_id || !closedBattleIds.has(row.match_group_id)));
         let { data: acceptedData, error: acceptedError } = await supabase
           .from("battles")
           .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, scheduled_start_at, battle_started_at, started_at, battle_ended_at")
@@ -1090,7 +1100,12 @@ function BattlePoolList() {
         } else {
           setFocusedClosedCard(null);
         }
-        setHookSongStats(await fetchHookSongBattleStats(visibleRows.map((row) => row.original_file_name)));
+        const [nextOfficialDrops, nextHookSongStats] = await Promise.all([
+          officialDropsPromise,
+          fetchHookSongBattleStats(visibleRows.map((row) => row.original_file_name)),
+        ]);
+        setOfficialDrops(nextOfficialDrops.filter((drop) => drop.active && drop.audioPath));
+        setHookSongStats(nextHookSongStats);
         const userIds = Array.from(
           new Set(
             [
@@ -1167,13 +1182,18 @@ function BattlePoolList() {
   };
   const poolGenreCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    [...rows.map((row) => row.genre), ...acceptedBattleRows.map((row) => row.genre)].forEach((genre) => {
+    [...officialDrops.map((drop) => drop.genre), ...rows.map((row) => row.genre), ...acceptedBattleRows.map((row) => row.genre)].forEach((genre) => {
       const key = normalizeGenreFilter(genre);
       if (!key) return;
       counts[key] = (counts[key] ?? 0) + 1;
     });
     return counts;
-  }, [acceptedBattleRows, rows]);
+  }, [acceptedBattleRows, officialDrops, rows]);
+  const filteredOfficialDrops = useMemo(() => {
+    if (activeGenre === "all") return officialDrops;
+    const target = normalizeGenreFilter(activeGenre);
+    return officialDrops.filter((drop) => normalizeGenreFilter(drop.genre) === target);
+  }, [activeGenre, officialDrops]);
   const filteredRows = useMemo(() => {
     if (activeGenre === "all") return rows;
     const target = normalizeGenreFilter(activeGenre);
@@ -1215,6 +1235,74 @@ function BattlePoolList() {
       ) : null}
 
       <GenreFilterBar activeGenre={activeGenre} onChange={setActiveGenre} counts={poolGenreCounts} t={t} isZh={isZh} />
+
+      {filteredOfficialDrops.length > 0 ? (
+        <div className="mb-5">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-red-300/75">{isZh ? "官方 Drop 挑戰" : "Official Drop Challenge"}</p>
+              <h3 className="mt-1 text-lg font-black text-white">{isZh ? "歡迎任何人來挑戰" : "Open to Anyone"}</h3>
+            </div>
+          </div>
+          <ul className="grid gap-3 md:grid-cols-2">
+            {filteredOfficialDrops.map((drop) => {
+              const setupParams = new URLSearchParams({
+                battleMode: "instant",
+                instantPairing: "gatekeeper",
+                gatekeeperId: drop.id,
+                genre: drop.genre,
+                hookBattlePreset: "10",
+                lang,
+              });
+              return (
+                <li key={drop.id}>
+                  <article className="rounded-[1.25rem] border border-red-300/25 bg-[radial-gradient(circle_at_18%_18%,rgba(239,68,68,0.14),transparent_34%),rgba(0,0,0,0.44)] p-4 shadow-[0_0_34px_rgba(239,68,68,0.08)]">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-black uppercase tracking-[0.22em] text-red-200/78">
+                          {isZh ? "歡迎任何人來挑戰" : "Open Challenge"}
+                        </p>
+                        <h4 className="mt-2 text-xl font-black text-white">{drop.title || (isZh ? "官方守門 Drop" : "Official Gatekeeper Drop")}</h4>
+                        <p className="mt-1 truncate text-sm font-bold text-zinc-400">
+                          AIPOGER · {isZh ? "守門者" : "Gatekeeper"} · {drop.gateNumber} · {drop.genre}
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <span className="rounded-full border border-red-200/35 bg-red-500/12 px-3 py-1 text-xs font-black text-red-50">
+                            Drop 挑戰開放
+                          </span>
+                          <span className="rounded-full border border-orange-200/25 bg-orange-500/10 px-3 py-1 text-xs font-black text-orange-100">
+                            {drop.genre}
+                          </span>
+                          <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-black text-zinc-300">
+                            {drop.gateNumber}
+                          </span>
+                        </div>
+                        <p className="mt-3 text-xs font-bold leading-5 text-zinc-500">
+                          {drop.description || (isZh ? "挑戰這首官方 Drop，設定開戰時間並分享拉人投票。" : "Challenge this official Drop, set a start time, then share for votes.")}
+                        </p>
+                      </div>
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-red-200/30 bg-black/70 text-[10px] font-black leading-4 text-red-100 shadow-[0_0_24px_rgba(239,68,68,0.16)]">
+                        AIPO<br />GATE
+                      </div>
+                    </div>
+                    {drop.audioUrl ? (
+                      <audio controls preload="none" src={drop.audioUrl} className="mt-4 h-10 w-full" />
+                    ) : null}
+                    <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-white/10 pt-3">
+                      <Link
+                        href={`/battle/setup?${setupParams.toString()}`}
+                        className="rounded-full bg-red-500 px-4 py-2 text-xs font-black text-white shadow-[0_0_20px_rgba(239,68,68,0.18)] transition hover:bg-red-400"
+                      >
+                        {isZh ? "挑戰這首 Drop" : "Challenge This Drop"}
+                      </Link>
+                    </div>
+                  </article>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
 
       {focusedClosedCard ? (
         <article id={`battle-pool-${focusedClosedCard.id}`} className="mb-4 rounded-[1.4rem] border border-yellow-200/30 bg-yellow-300/[0.08] p-5 shadow-[0_0_34px_rgba(250,204,21,0.12)]">
@@ -1297,7 +1385,7 @@ function BattlePoolList() {
         </div>
       ) : null}
 
-      {filteredRows.length === 0 && !focusedClosedCard && filteredAcceptedBattleRows.length === 0 ? (
+      {filteredOfficialDrops.length === 0 && filteredRows.length === 0 && !focusedClosedCard && filteredAcceptedBattleRows.length === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-6 text-center">
           <p className="text-sm font-bold text-zinc-300">
             {activeGenre === "all" ? t("pool_empty_title") : isZh ? "這個風格目前沒有公開挑戰" : "No open challenges in this style right now"}
