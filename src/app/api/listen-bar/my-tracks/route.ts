@@ -5,6 +5,11 @@ import {
   LISTEN_BAR_PUBLIC_REACTION_THRESHOLD,
   LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
 } from "@/lib/listen-bar";
+import {
+  LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS,
+  LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS,
+  cleanListenBarDisplayText,
+} from "@/lib/listen-bar-field-limits";
 
 type ListenBarTrackRow = {
   id: string;
@@ -83,6 +88,14 @@ function cleanText(value: unknown, maxLength: number): string | null {
   if (typeof value !== "string") return null;
   const clean = value.trim().slice(0, maxLength);
   return clean || null;
+}
+
+function cleanShortField(value: unknown) {
+  return cleanListenBarDisplayText(value, LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS);
+}
+
+function cleanDescriptionField(value: unknown) {
+  return cleanListenBarDisplayText(value, LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS);
 }
 
 function applyLegacyOpeningGrace(rows: ListenBarTrackRow[], openingGraceMode: boolean): ListenBarTrackRow[] {
@@ -185,10 +198,10 @@ export async function PATCH(request: NextRequest) {
     if (userError || !userData.user) return NextResponse.json({ error: "登入狀態已過期，請重新登入。" }, { status: 401 });
 
     const patch = {
-      ai_tool: cleanText(body?.aiTool, 40) ?? "AI Music",
+      ai_tool: cleanShortField(body?.aiTool) ?? "AI Music",
       genre: cleanText(body?.genre, 40) ?? "自我風格",
-      mood: cleanText(body?.album, 80),
-      description: cleanText(body?.description, 120),
+      mood: cleanShortField(body?.album),
+      description: cleanDescriptionField(body?.description),
     };
 
     let updateResult = await admin

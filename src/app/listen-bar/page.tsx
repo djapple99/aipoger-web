@@ -12,6 +12,11 @@ import { supabase } from "@/lib/supabase";
 import { loadFighterNameFromProfile } from "@/lib/user-profile-fighter-name";
 import { IMAGE_UPLOAD_ACCEPT, imageContentType, isAllowedImageUploadFile } from "@/lib/image-upload-policy";
 import {
+  LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS,
+  LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS,
+  limitListenBarDisplayText,
+} from "@/lib/listen-bar-field-limits";
+import {
   LISTEN_BAR_AUDIO_UPLOAD_ACCEPT,
   LISTEN_BAR_AUDIO_UPLOAD_MAX_BYTES,
   LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL,
@@ -502,6 +507,14 @@ function descriptionDisplayLabel(value: string | null | undefined, isZh: boolean
   const cleanValue = value?.trim();
   if (cleanValue) return cleanValue;
   return isZh ? "這首歌還在等創作者補上一句故事" : "This track is waiting for a one-line story";
+}
+
+function listenBarShortFieldHint(isZh: boolean) {
+  return isZh ? "中文 12 字內；英文約 24 字元" : "12 CJK chars; about 24 English characters";
+}
+
+function listenBarDescriptionHint(isZh: boolean) {
+  return isZh ? "中文 16 字內；英文約 32 字元" : "16 CJK chars; about 32 English characters";
 }
 
 function aiToolDisplayLabel(value: string | null | undefined, isZh: boolean) {
@@ -1038,7 +1051,10 @@ export default function ListenBarPage() {
 
   useEffect(() => {
     if (creatorDefaultName) {
-      setPublicUploadForm((current) => ({ ...current, artist: current.artist || creatorDefaultName }));
+      setPublicUploadForm((current) => ({
+        ...current,
+        artist: current.artist || limitListenBarDisplayText(creatorDefaultName, LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
+      }));
     }
   }, [creatorDefaultName]);
 
@@ -1536,9 +1552,12 @@ export default function ListenBarPage() {
     setPublicUploadForm((current) => ({
       ...current,
       title: current.title.trim() || metadata.title || metadata.fallbackTitle,
-      artist: current.artist.trim() && current.artist !== userName ? current.artist : metadata.artist || current.artist,
+      artist: limitListenBarDisplayText(
+        current.artist.trim() && current.artist !== userName ? current.artist : metadata.artist || current.artist,
+        LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS,
+      ),
       genre: current.genre.trim() ? current.genre : metadata.genre || current.genre,
-      album: current.album.trim() || metadata.album || current.album,
+      album: limitListenBarDisplayText(current.album.trim() || metadata.album || current.album, LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
     }));
 
     if (metadata.cover && !publicCoverFile) {
@@ -1658,11 +1677,17 @@ export default function ListenBarPage() {
 
       const insertPayload = {
         title: publicUploadForm.title.trim(),
-        artist: publicUploadForm.artist.trim() || creatorDefaultName || (isZh ? "創作者" : "Creator"),
-        ai_tool: publicUploadForm.aiTool.trim() || "AI Music",
+        artist: limitListenBarDisplayText(
+          publicUploadForm.artist.trim() || creatorDefaultName || (isZh ? "創作者" : "Creator"),
+          LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS,
+        ),
+        ai_tool: limitListenBarDisplayText(publicUploadForm.aiTool.trim() || "AI Music", LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
         genre: publicUploadForm.genre.trim(),
-        mood: publicUploadForm.album.trim() || (isZh ? "創作者投稿" : "Creator Submission"),
-        description: publicUploadForm.description.trim() || null,
+        mood: limitListenBarDisplayText(
+          publicUploadForm.album.trim() || (isZh ? "創作者投稿" : "Creator Submission"),
+          LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS,
+        ),
+        description: limitListenBarDisplayText(publicUploadForm.description.trim(), LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS) || null,
         duration_seconds: duration > 0 ? duration : null,
         audio_path: audioPath,
         cover_path: coverPath,
@@ -1745,7 +1770,10 @@ export default function ListenBarPage() {
       setPublicAudioFile(null);
       setPublicCoverFile(null);
       setPublicLyricsText("");
-      setPublicUploadForm({ ...initialPublicUploadForm, artist: creatorDefaultName });
+      setPublicUploadForm({
+        ...initialPublicUploadForm,
+        artist: limitListenBarDisplayText(creatorDefaultName, LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
+      });
       setPublicUploadMessage(
         isZh
           ? `上傳完成！目前這首播完後會優先插播新投稿；每批從第一首投稿開始計 1 小時，最多 8 首，其餘排到下一小時。`
@@ -1778,10 +1806,10 @@ export default function ListenBarPage() {
   const openEditTrackDetails = (track: MyBroadcastStat) => {
     setEditTrackId((current) => current === track.id ? null : track.id);
     setEditTrackForm({
-      aiTool: track.aiTool || "AI Music",
+      aiTool: limitListenBarDisplayText(track.aiTool || "AI Music", LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
       genre: track.genre || "自我風格",
-      album: track.album || "",
-      description: track.description || "",
+      album: limitListenBarDisplayText(track.album || "", LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
+      description: limitListenBarDisplayText(track.description || "", LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS),
     });
     setPublicUploadError("");
     setPublicUploadMessage("");
@@ -1803,10 +1831,10 @@ export default function ListenBarPage() {
         },
         body: JSON.stringify({
           trackId: track.id,
-          aiTool: editTrackForm.aiTool,
+          aiTool: limitListenBarDisplayText(editTrackForm.aiTool, LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
           genre: editTrackForm.genre,
-          album: editTrackForm.album,
-          description: editTrackForm.description,
+          album: limitListenBarDisplayText(editTrackForm.album, LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
+          description: limitListenBarDisplayText(editTrackForm.description, LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS),
         }),
       });
       const payload = await response.json().catch(() => null) as { track?: ListenBarTrackRow; error?: string } | null;
@@ -2492,16 +2520,24 @@ export default function ListenBarPage() {
                   />
                   <input
                     value={publicUploadForm.artist}
-                    onChange={(event) => setPublicUploadForm((current) => ({ ...current, artist: event.target.value }))}
-                    placeholder={isZh ? "創作者名稱" : "Creator Name"}
-                    maxLength={60}
+                    onChange={(event) => setPublicUploadForm((current) => ({
+                      ...current,
+                      artist: limitListenBarDisplayText(event.target.value, LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
+                    }))}
+                    placeholder={isZh ? "創作者名稱（12字內）" : "Creator Name (24 chars max)"}
+                    maxLength={LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS}
+                    title={listenBarShortFieldHint(isZh)}
                     className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
                   />
                   <input
                     value={publicUploadForm.aiTool}
-                    onChange={(event) => setPublicUploadForm((current) => ({ ...current, aiTool: event.target.value }))}
-                    placeholder={isZh ? "AI 工具" : "AI Tool"}
-                    maxLength={40}
+                    onChange={(event) => setPublicUploadForm((current) => ({
+                      ...current,
+                      aiTool: limitListenBarDisplayText(event.target.value, LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
+                    }))}
+                    placeholder={isZh ? "AI 工具（12字內）" : "AI Tool (24 chars max)"}
+                    maxLength={LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS}
+                    title={listenBarShortFieldHint(isZh)}
                     className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
                   />
                   <select
@@ -2520,16 +2556,24 @@ export default function ListenBarPage() {
                   </select>
                   <input
                     value={publicUploadForm.album}
-                    onChange={(event) => setPublicUploadForm((current) => ({ ...current, album: event.target.value }))}
-                    placeholder={isZh ? "專輯名稱（選填）" : "Album Name (Optional)"}
-                    maxLength={80}
+                    onChange={(event) => setPublicUploadForm((current) => ({
+                      ...current,
+                      album: limitListenBarDisplayText(event.target.value, LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
+                    }))}
+                    placeholder={isZh ? "專輯名稱（12字內，選填）" : "Album Name (24 chars max)"}
+                    maxLength={LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS}
+                    title={listenBarShortFieldHint(isZh)}
                     className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
                   />
                   <input
                     value={publicUploadForm.description}
-                    onChange={(event) => setPublicUploadForm((current) => ({ ...current, description: event.target.value }))}
-                    placeholder={isZh ? "一句歌曲介紹（選填）" : "One-Line Description (Optional)"}
-                    maxLength={120}
+                    onChange={(event) => setPublicUploadForm((current) => ({
+                      ...current,
+                      description: limitListenBarDisplayText(event.target.value, LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS),
+                    }))}
+                    placeholder={isZh ? "一句歌曲介紹（16字內，選填）" : "One-Line Description (32 chars max)"}
+                    maxLength={LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS}
+                    title={listenBarDescriptionHint(isZh)}
                     className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
                   />
                 </div>
@@ -2683,9 +2727,13 @@ export default function ListenBarPage() {
                           <div className="grid gap-2 sm:grid-cols-2">
                             <input
                               value={editTrackForm.aiTool}
-                              onChange={(event) => setEditTrackForm((current) => ({ ...current, aiTool: event.target.value }))}
-                              placeholder={isZh ? "AI 工具" : "AI Tool"}
-                              maxLength={40}
+                              onChange={(event) => setEditTrackForm((current) => ({
+                                ...current,
+                                aiTool: limitListenBarDisplayText(event.target.value, LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
+                              }))}
+                              placeholder={isZh ? "AI 工具（12字內）" : "AI Tool (24 chars max)"}
+                              maxLength={LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS}
+                              title={listenBarShortFieldHint(isZh)}
                               className="h-10 rounded-xl border border-white/10 bg-black/58 px-3 text-xs font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200 focus:ring-2 focus:ring-cyan-200/15"
                             />
                             <select
@@ -2701,16 +2749,24 @@ export default function ListenBarPage() {
                             </select>
                             <input
                               value={editTrackForm.album}
-                              onChange={(event) => setEditTrackForm((current) => ({ ...current, album: event.target.value }))}
-                              placeholder={isZh ? "專輯名稱（選填）" : "Album Name (Optional)"}
-                              maxLength={80}
+                              onChange={(event) => setEditTrackForm((current) => ({
+                                ...current,
+                                album: limitListenBarDisplayText(event.target.value, LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
+                              }))}
+                              placeholder={isZh ? "專輯名稱（12字內，選填）" : "Album Name (24 chars max)"}
+                              maxLength={LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS}
+                              title={listenBarShortFieldHint(isZh)}
                               className="h-10 rounded-xl border border-white/10 bg-black/58 px-3 text-xs font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200 focus:ring-2 focus:ring-cyan-200/15"
                             />
                             <input
                               value={editTrackForm.description}
-                              onChange={(event) => setEditTrackForm((current) => ({ ...current, description: event.target.value }))}
-                              placeholder={isZh ? "一句歌曲介紹（選填）" : "One-Line Description (Optional)"}
-                              maxLength={120}
+                              onChange={(event) => setEditTrackForm((current) => ({
+                                ...current,
+                                description: limitListenBarDisplayText(event.target.value, LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS),
+                              }))}
+                              placeholder={isZh ? "一句歌曲介紹（16字內，選填）" : "One-Line Description (32 chars max)"}
+                              maxLength={LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS}
+                              title={listenBarDescriptionHint(isZh)}
                               className="h-10 rounded-xl border border-white/10 bg-black/58 px-3 text-xs font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200 focus:ring-2 focus:ring-cyan-200/15"
                             />
                           </div>

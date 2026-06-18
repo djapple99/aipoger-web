@@ -140,6 +140,7 @@ Current rules:
 - Challenger + public pool shared rotation target: 100 songs.
 - A song with 30 positive reactions becomes Honor Board eligible.
 - New submissions get priority after the current song finishes; each priority batch starts when the first upload arrives, airs up to 8 new uploads within 1 hour, and pushes overflow to the next hour.
+- Bar Heartbreak upload metadata should stay compact: user-entered creator name, AI tool, and album/mood are limited to 12 CJK characters or about 24 English characters; one-line song description is limited to 16 CJK characters or about 32 English characters. Auto-detected song titles are not subject to this compact metadata limit.
 
 Product language:
 
