@@ -72,6 +72,9 @@ set gate_number = excluded.gate_number,
 
 alter table public.official_gatekeeper_drops enable row level security;
 
+grant select on table public.official_gatekeeper_drops to anon, authenticated;
+grant all on table public.official_gatekeeper_drops to service_role;
+
 drop policy if exists "public can read active official gatekeeper drops" on public.official_gatekeeper_drops;
 create policy "public can read active official gatekeeper drops"
 on public.official_gatekeeper_drops
