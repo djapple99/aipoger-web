@@ -193,22 +193,19 @@ async function attachAudio(records: ResultRecord[]) {
 function ResultAudio({ record, isZh }: { record: ResultRecord; isZh: boolean }) {
   if (!record.audioUrl) {
     return (
-      <p className="mt-3 rounded-full border border-white/10 bg-black/45 px-3 py-2 text-[11px] font-black text-zinc-500">
+      <p className="mt-2 rounded-lg border border-white/10 bg-black/45 px-2 py-1.5 text-[10px] font-black text-zinc-500">
         {isZh ? "音檔未封存" : "Audio Not Archived"}
       </p>
     );
   }
   return (
-    <div className="mt-3 rounded-2xl border border-yellow-200/22 bg-black/52 px-3 py-2 shadow-[inset_0_0_26px_rgba(255,255,255,0.035)]">
-      <p className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-yellow-100/70">
-        {isZh ? "播放勝出 Drop" : "Play Winning Drop"}
-      </p>
-      <audio controls preload="none" src={record.audioUrl} className="h-9 w-full" />
+    <div className="mt-2 rounded-xl border border-white/10 bg-black/50 px-2 py-1.5">
+      <audio controls preload="none" src={record.audioUrl} className="h-8 w-full" />
     </div>
   );
 }
 
-function ResultCard({ record, featured = false, isZh, lang }: { record: ResultRecord; featured?: boolean; isZh: boolean; lang: string }) {
+function ResultCard({ record, isZh, lang }: { record: ResultRecord; isZh: boolean; lang: string }) {
   const href = resultHref(record, lang);
   const finalVoteTotal = record.finalVoteLeft + record.finalVoteRight;
   const winnerPct = finalVoteTotal > 0
@@ -219,77 +216,55 @@ function ResultCard({ record, featured = false, isZh, lang }: { record: ResultRe
   const isOfficial = record.audienceCount >= DROP_BATTLE_OFFICIAL_AUDIENCE_MIN;
   return (
     <article
-      className={`group overflow-hidden rounded-[1.35rem] border bg-black/58 shadow-[0_22px_80px_rgba(0,0,0,0.34)] transition hover:border-yellow-100/55 hover:bg-white/[0.055] ${
-        featured
-          ? `${isOfficial ? "border-yellow-200/42" : "border-orange-200/24"} lg:grid lg:grid-cols-[minmax(0,0.92fr)_1fr]`
-          : isOfficial
-            ? "border-white/10"
-            : "border-orange-200/18"
+      className={`group min-w-0 rounded-xl border bg-black/42 p-2.5 transition hover:-translate-y-0.5 hover:bg-white/[0.055] ${
+        isOfficial ? "border-yellow-200/26 hover:border-yellow-100/55" : "border-white/10 hover:border-orange-100/42"
       }`}
     >
-      <div className={`relative overflow-hidden bg-black ${featured ? "min-h-[19rem]" : "aspect-[4/3]"}`}>
-        <div className="absolute inset-0 bg-cover bg-center opacity-78 transition duration-300 group-hover:scale-[1.035]" style={{ backgroundImage: `url(${record.coverUrl})` }} />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_25%,rgba(255,214,120,0.08),transparent_34%),linear-gradient(180deg,rgba(0,0,0,0.08),rgba(0,0,0,0.88))]" />
-        <div className="absolute left-3 top-3 flex flex-wrap gap-2">
-          <span className="rounded-full border border-yellow-200/36 bg-yellow-300/16 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-yellow-100">
-            {isOfficial ? (isZh ? "正式成果" : "Official") : (isZh ? "非正式戰果" : "Unofficial")}
-          </span>
-          <span className="rounded-full border border-cyan-100/24 bg-cyan-300/12 px-2.5 py-1 text-[10px] font-black text-cyan-100">
-            {record.genre}
+      <div className="relative aspect-square overflow-hidden rounded-lg bg-black shadow-[0_16px_38px_rgba(0,0,0,0.34)]">
+        <div className="absolute inset-0 bg-cover bg-center opacity-88 transition duration-300 group-hover:scale-[1.035]" style={{ backgroundImage: `url(${record.coverUrl})` }} />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.02),rgba(0,0,0,0.78))]" />
+        <div className="absolute left-2 top-2 flex flex-wrap gap-1.5">
+          <span className={`rounded-md border px-1.5 py-1 text-[9px] font-black ${
+            isOfficial ? "border-yellow-200/42 bg-yellow-300/20 text-yellow-50" : "border-orange-200/32 bg-orange-300/18 text-orange-50"
+          }`}>
+            {isOfficial ? (isZh ? "正式" : "Official") : (isZh ? "非正式" : "Unofficial")}
           </span>
         </div>
-        <div className="absolute inset-x-0 bottom-0 p-4">
-          <p className={`${fontRighteous.className} text-[2.6rem] leading-none text-white drop-shadow-[0_0_28px_rgba(255,191,74,0.38)]`}>
+        <div className="absolute inset-x-0 bottom-0 p-2.5">
+          <p className={`${fontRighteous.className} text-xl leading-none text-white drop-shadow-[0_0_18px_rgba(255,191,74,0.36)]`}>
             WINNER
           </p>
-          <p className="mt-1 text-xs font-black uppercase tracking-[0.2em] text-yellow-100/75">{record.battleCode}</p>
-          <p className="mt-1 text-[11px] font-black text-orange-100/70">{formatDate(record.archivedAt, isZh)}</p>
+          <p className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.16em] text-yellow-100/75">{record.battleCode}</p>
         </div>
       </div>
 
-      <div className="flex min-w-0 flex-col p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-200/70">{record.winnerName}</p>
-            <h3 className="mt-1 line-clamp-2 text-2xl font-black leading-tight text-white">{record.winnerSong}</h3>
-            <p className="mt-1 truncate text-sm font-bold text-zinc-400">
-              VS {record.opponentName} / {record.opponentSong}
-            </p>
+      <div className="min-w-0 pt-2.5">
+        <h3 className="line-clamp-2 min-h-[2.5rem] text-base font-black leading-tight text-white">{record.winnerSong}</h3>
+        <p className="mt-1 truncate text-sm font-bold text-zinc-400">{record.winnerName}</p>
+        <p className="mt-1 truncate text-xs font-bold text-zinc-600">
+          {formatDate(record.archivedAt, isZh)} · {record.tool}
+        </p>
+
+        <div className="mt-2 grid grid-cols-3 gap-1.5 text-center">
+          <div className="rounded-lg border border-white/10 bg-white/[0.04] px-1.5 py-1.5">
+            <p className="text-[9px] font-black text-zinc-500">{isZh ? "觀眾" : "Voters"}</p>
+            <p className="text-sm font-black text-yellow-100">{record.audienceCount}/{DROP_BATTLE_OFFICIAL_AUDIENCE_MIN}</p>
           </div>
-          <div className="shrink-0 rounded-2xl border border-yellow-200/25 bg-yellow-300/10 px-3 py-2 text-right">
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-yellow-100/70">{isZh ? "觀眾" : "Voters"}</p>
-            <p className="text-2xl font-black leading-none text-yellow-100">
-              {record.audienceCount}/{DROP_BATTLE_OFFICIAL_AUDIENCE_MIN}
-            </p>
+          <div className="rounded-lg border border-white/10 bg-white/[0.04] px-1.5 py-1.5">
+            <p className="text-[9px] font-black text-zinc-500">{isZh ? "票" : "Votes"}</p>
+            <p className="text-sm font-black text-white">{record.votesTotal}</p>
+          </div>
+          <div className="rounded-lg border border-orange-200/18 bg-orange-300/[0.08] px-1.5 py-1.5">
+            <p className="text-[9px] font-black text-orange-100/70">{isZh ? "勝率" : "Win"}</p>
+            <p className="text-sm font-black text-orange-100">{winnerPct}%</p>
           </div>
         </div>
-
-        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-2 py-2">
-            <p className="text-[10px] font-black text-zinc-500">{isZh ? "投票" : "Votes"}</p>
-            <p className="text-lg font-black text-white">{record.votesTotal}</p>
-          </div>
-          <div className="rounded-2xl border border-orange-200/18 bg-orange-300/[0.08] px-2 py-2">
-            <p className="text-[10px] font-black text-orange-100/70">{isZh ? "勝率" : "Win"}</p>
-            <p className="text-lg font-black text-orange-100">{winnerPct}%</p>
-          </div>
-          <div className="rounded-2xl border border-cyan-200/18 bg-cyan-300/[0.08] px-2 py-2">
-            <p className="text-[10px] font-black text-cyan-100/70">{isZh ? "工具" : "Tool"}</p>
-            <p className="truncate text-sm font-black text-cyan-50">{record.tool}</p>
-          </div>
-        </div>
-
-        {record.audienceReview ? (
-          <p className="mt-3 line-clamp-2 rounded-2xl border border-cyan-100/16 bg-cyan-300/[0.07] px-3 py-2 text-sm font-black leading-6 text-cyan-50">
-            &ldquo;{record.audienceReview}&rdquo;
-          </p>
-        ) : null}
 
         <ResultAudio record={record} isZh={isZh} />
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Link href={href} className="inline-flex rounded-full bg-orange-500 px-4 py-2 text-xs font-black text-black transition hover:bg-orange-300">
-            {isZh ? "打開成果卡" : "Open Card"}
+        <div className="mt-2 flex items-center gap-1.5">
+          <Link href={href} className="inline-flex flex-1 items-center justify-center rounded-lg bg-orange-500 px-2 py-1.5 text-[11px] font-black text-black transition hover:bg-orange-300">
+            {isZh ? "打開" : "Open"}
           </Link>
           <ShareButton
             title={`AIPOGER Drop Battle Winner｜${record.winnerSong}`}
@@ -297,7 +272,7 @@ function ResultCard({ record, featured = false, isZh, lang }: { record: ResultRe
             url={href}
             label={isZh ? "分享" : "Share"}
             copiedLabel={isZh ? "已複製" : "Copied"}
-            className="border-white/14 bg-white/[0.045] px-4 py-2 text-xs font-black text-zinc-200 hover:border-yellow-100/55 hover:text-white"
+            className="border-white/14 bg-white/[0.045] px-2 py-1.5 text-[11px] font-black text-zinc-200 hover:border-yellow-100/55 hover:text-white"
           />
         </div>
       </div>
@@ -351,76 +326,69 @@ export default function BattleResultsClient() {
     () => records.filter((record) => monthKey(record.archivedAt) === activeMonth),
     [activeMonth, records],
   );
-  const featured = monthRecords[0] ?? records[0] ?? null;
   const officialCount = monthRecords.filter((record) => record.audienceCount >= DROP_BATTLE_OFFICIAL_AUDIENCE_MIN).length;
   const totalVotes = monthRecords.reduce((sum, record) => sum + record.votesTotal, 0);
   const totalAudience = monthRecords.reduce((sum, record) => sum + record.audienceCount, 0);
-  const peakRecord = monthRecords.reduce<ResultRecord | null>((best, record) => {
-    if (!best) return record;
-    return record.audienceCount > best.audienceCount ? record : best;
-  }, null);
-  const highlightedRecord = peakRecord ?? featured;
-  const gridRecords = highlightedRecord
-    ? monthRecords.filter((record) => record.id !== highlightedRecord.id || record.battleCode !== highlightedRecord.battleCode)
-    : monthRecords;
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#030303] px-4 pb-12 pt-24 text-white sm:px-6 lg:px-8">
-      <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_17%_10%,rgba(255,106,0,0.24),transparent_30%),radial-gradient(circle_at_84%_20%,rgba(0,202,255,0.18),transparent_32%),linear-gradient(180deg,#030303_0%,#090706_50%,#020202_100%)]" />
-      <div className="pointer-events-none absolute inset-0 opacity-[0.11] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:54px_54px]" />
+    <main className="relative min-h-screen overflow-hidden bg-[#050505] px-4 pb-12 pt-20 text-white sm:px-6 lg:px-8">
+      <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_12%_0%,rgba(255,106,0,0.2),transparent_28%),radial-gradient(circle_at_90%_2%,rgba(0,202,255,0.14),transparent_32%),linear-gradient(180deg,#050505_0%,#080706_52%,#030303_100%)]" />
+      <div className="pointer-events-none absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:42px_42px]" />
 
-      <div className="relative z-10 mx-auto max-w-[1360px]">
-        <header className="grid gap-5 border-b border-white/10 pb-6 lg:grid-cols-[1fr_auto] lg:items-end">
+      <div className="relative z-10 mx-auto max-w-[1280px]">
+        <header className="grid gap-4 border-b border-white/10 pb-5 lg:grid-cols-[1fr_auto] lg:items-end">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.34em] text-orange-200/80">AIPOGER DROP ARCHIVE</p>
-            <h1 className={`${fontRighteous.className} mt-3 text-[clamp(3.2rem,8vw,7rem)] leading-[0.85] text-white drop-shadow-[0_0_36px_rgba(255,106,0,0.36)]`}>
+            <p className="text-[11px] font-black uppercase tracking-[0.28em] text-orange-200/80">AIPOGER DROP ARCHIVE</p>
+            <h1 className={`${fontRighteous.className} mt-2 text-[clamp(2.45rem,5vw,4.6rem)] leading-[0.9] text-white drop-shadow-[0_0_28px_rgba(255,106,0,0.3)]`}>
               {isZh ? "成果牆" : "Result Wall"}
             </h1>
-            <p className="mt-4 max-w-3xl text-sm font-bold leading-7 text-zinc-400 md:text-base">
+            <p className="mt-3 max-w-3xl text-sm font-bold leading-6 text-zinc-400">
               {isZh
                 ? "按月份封存每一張 Drop Battle 戰果，正式與非正式分層展示。這裡不是榮譽榜，是可以聽、可以分享、可以追溯的戰績展廳。"
                 : "A monthly hall for Drop Battle results, with official and unofficial records separated. Listen, share, and trace each win."}
             </p>
           </div>
           <div className="flex flex-wrap gap-2 lg:justify-end">
-            <Link href={`/battle?lang=${lang}`} className="rounded-full border border-cyan-200/28 bg-cyan-300/10 px-5 py-2.5 text-sm font-black text-cyan-50 transition hover:border-cyan-100">
+            <Link href={`/battle?lang=${lang}`} className="rounded-full border border-cyan-200/28 bg-cyan-300/10 px-4 py-2 text-sm font-black text-cyan-50 transition hover:border-cyan-100">
               {isZh ? "回鬥歌場" : "Battle Hall"}
             </Link>
-            <Link href={`/rank?lang=${lang}`} className="rounded-full border border-yellow-200/32 bg-yellow-300/12 px-5 py-2.5 text-sm font-black text-yellow-100 transition hover:border-yellow-100">
+            <Link href={`/rank?lang=${lang}`} className="rounded-full border border-yellow-200/32 bg-yellow-300/12 px-4 py-2 text-sm font-black text-yellow-100 transition hover:border-yellow-100">
               {isZh ? "榮譽榜" : "Honor Board"}
             </Link>
           </div>
         </header>
 
-        <section className="mt-5 flex gap-2 overflow-x-auto pb-2">
-          {months.map((key) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setActiveMonth(key)}
-              className={`shrink-0 rounded-full border px-4 py-2 text-sm font-black transition ${
-                activeMonth === key
-                  ? "border-yellow-100/70 bg-yellow-300/18 text-yellow-50 shadow-[0_0_26px_rgba(250,204,21,0.16)]"
-                  : "border-white/10 bg-white/[0.045] text-zinc-400 hover:border-orange-200/45 hover:text-white"
-              }`}
-            >
-              {monthLabel(key, isZh)}
-            </button>
-          ))}
-        </section>
+        <section className="mt-4 flex flex-col gap-3 border-b border-white/10 pb-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex gap-2 overflow-x-auto pb-1 xl:max-w-[46%]">
+            {months.map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setActiveMonth(key)}
+                className={`shrink-0 rounded-full border px-3 py-1.5 text-sm font-black transition ${
+                  activeMonth === key
+                    ? "border-yellow-100/70 bg-yellow-300/18 text-yellow-50 shadow-[0_0_22px_rgba(250,204,21,0.14)]"
+                    : "border-white/10 bg-white/[0.045] text-zinc-400 hover:border-orange-200/45 hover:text-white"
+                }`}
+              >
+                {monthLabel(key, isZh)}
+              </button>
+            ))}
+          </div>
 
-        <section className="mt-5 grid gap-3 md:grid-cols-4">
-          {[
-            { label: isZh ? "本月戰果" : "Monthly Results", value: monthRecords.length },
-            { label: isZh ? "正式達標" : "Official Wins", value: officialCount },
-            { label: isZh ? "本月總票數" : "Monthly Votes", value: totalVotes },
-            { label: isZh ? "觀眾參與" : "Audience Signals", value: totalAudience },
-          ].map((item) => (
-            <div key={item.label} className="rounded-[1.1rem] border border-white/10 bg-black/54 px-4 py-3 shadow-[inset_0_0_34px_rgba(255,255,255,0.025)]">
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">{item.label}</p>
-              <p className="mt-2 text-3xl font-black text-white">{item.value}</p>
-            </div>
-          ))}
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { label: isZh ? "戰果" : "Results", value: monthRecords.length },
+              { label: isZh ? "正式" : "Official", value: officialCount },
+              { label: isZh ? "票數" : "Votes", value: totalVotes },
+              { label: isZh ? "觀眾" : "Audience", value: totalAudience },
+            ].map((item) => (
+              <div key={item.label} className="rounded-xl border border-white/10 bg-black/45 px-3 py-2">
+                <p className="text-[9px] font-black uppercase tracking-[0.14em] text-zinc-500">{item.label}</p>
+                <p className="mt-1 text-xl font-black text-white">{item.value}</p>
+              </div>
+            ))}
+          </div>
         </section>
 
         {loading ? (
@@ -440,36 +408,17 @@ export default function BattleResultsClient() {
           </div>
         ) : (
           <>
-            {highlightedRecord ? (
-              <section className="mt-7">
-                <div className="mb-3 flex items-end justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-black uppercase tracking-[0.24em] text-yellow-100/75">{isZh ? "本月主打戰果" : "Featured Result"}</p>
-                    <h2 className="mt-1 text-2xl font-black text-white">{peakRecord?.winnerSong || featured.winnerSong}</h2>
-                  </div>
-                  <p className="hidden text-xs font-black text-zinc-500 sm:block">{monthLabel(activeMonth, isZh)}</p>
-                </div>
-                <ResultCard record={highlightedRecord} featured isZh={isZh} lang={lang} />
-              </section>
-            ) : null}
-
-            {gridRecords.length > 0 ? (
-              <section className="mt-8">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <h2 className="text-xl font-black text-white">{isZh ? "月度戰果" : "Monthly Results"}</h2>
-                  <p className="text-xs font-black text-zinc-500">{gridRecords.length} {isZh ? "張成果卡" : "cards"}</p>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {gridRecords.map((record) => (
-                    <ResultCard key={`${record.id}-${record.battleCode}`} record={record} isZh={isZh} lang={lang} />
-                  ))}
-                </div>
-              </section>
-            ) : (
-              <div className="mt-8 rounded-[1.25rem] border border-white/10 bg-black/36 p-5 text-sm font-black text-zinc-500">
-                {isZh ? "本月目前只有這一張成果卡。" : "This month currently has only this featured card."}
+            <section className="mt-5">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="text-xl font-black text-white">{isZh ? "最新戰果" : "Latest Results"}</h2>
+                <p className="text-xs font-black text-zinc-500">{monthRecords.length} {isZh ? "張成果卡" : "cards"}</p>
               </div>
-            )}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+                {monthRecords.map((record) => (
+                  <ResultCard key={`${record.id}-${record.battleCode}`} record={record} isZh={isZh} lang={lang} />
+                ))}
+              </div>
+            </section>
           </>
         )}
       </div>
