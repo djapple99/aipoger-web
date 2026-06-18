@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import ShareButton from "@/components/share-button";
-import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { fontRighteous } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n";
 import { DROP_BATTLE_OFFICIAL_AUDIENCE_MIN } from "@/lib/drop-battle-rematch";
@@ -36,6 +35,18 @@ type BattleAudioRow = {
   audio_b_path?: string | null;
   lyrics_a?: string | null;
   lyrics_b?: string | null;
+  song_a_cover?: string | null;
+  song_b_cover?: string | null;
+  queue_a_id?: string | null;
+  queue_b_id?: string | null;
+  fighter_a_user_id?: string | null;
+  fighter_b_user_id?: string | null;
+};
+
+type FighterProfileMediaRow = {
+  id?: string | null;
+  song_cover_url?: string | null;
+  avatar_url?: string | null;
 };
 
 type ResultRecord = {
@@ -106,7 +117,7 @@ function payloadFrom(row: ArchiveRow) {
   return typeof row.result_payload === "object" && row.result_payload !== null ? row.result_payload : {};
 }
 
-async function battleAudioPathToUrl(path: string | null | undefined) {
+async function battleAssetPathToUrl(path: string | null | undefined) {
   const clean = path?.trim();
   if (!clean) return null;
   if (/^(https?:|blob:|data:)/i.test(clean)) return clean;
@@ -116,6 +127,10 @@ async function battleAudioPathToUrl(path: string | null | undefined) {
     return null;
   }
   return data?.signedUrl ?? null;
+}
+
+function firstText(...values: Array<string | null | undefined>) {
+  return values.map((value) => value?.trim()).find((value): value is string => Boolean(value)) ?? "";
 }
 
 function resultHref(record: ResultRecord, lang: string) {
@@ -146,7 +161,7 @@ function resultFromArchive(row: ArchiveRow): ResultRecord {
     opponentSong: textField(row.opponent_song_name) || "Opponent Drop",
     tool: textField(row.winner_ai_tool || payload.tool) || "AI Music",
     genre: textField(payload.genre) || "AI Music",
-    coverUrl: textField(payload.coverUrl) || AIPOGER_BRAND_LOGO,
+    coverUrl: textField(payload.coverUrl),
     finalVoteLeft,
     finalVoteRight,
     votesTotal,
@@ -157,37 +172,100 @@ function resultFromArchive(row: ArchiveRow): ResultRecord {
   };
 }
 
-async function attachAudio(records: ResultRecord[]) {
+async function attachMedia(records: ResultRecord[]) {
   const ids = Array.from(new Set(records.map((record) => record.battleId).filter((id): id is string => Boolean(id))));
   if (ids.length === 0) return records;
 
-  const withLyrics = await supabase.from("battles").select("id,winner,audio_a_path,audio_b_path,lyrics_a,lyrics_b").in("id", ids);
-  let rows = withLyrics.data as BattleAudioRow[] | null;
-  let error = withLyrics.error;
-  if (error && /lyrics_a|lyrics_b|schema cache|does not exist|PGRST204/i.test(error.message || "")) {
-    const fallback = await supabase.from("battles").select("id,winner,audio_a_path,audio_b_path").in("id", ids);
-    rows = fallback.data as BattleAudioRow[] | null;
-    error = fallback.error;
+  const selectAttempts = [
+    "id,winner,audio_a_path,audio_b_path,lyrics_a,lyrics_b,song_a_cover,song_b_cover,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id",
+    "id,winner,audio_a_path,audio_b_path,song_a_cover,song_b_cover,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id",
+    "id,winner,audio_a_path,audio_b_path,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id",
+    "id,winner,audio_a_path,audio_b_path",
+  ];
+
+  let rows: BattleAudioRow[] | null = null;
+  let errorMessage = "";
+  for (const select of selectAttempts) {
+    const read = await supabase.from("battles").select(select).in("id", ids);
+    if (!read.error) {
+      rows = read.data as BattleAudioRow[] | null;
+      errorMessage = "";
+      break;
+    }
+    errorMessage = read.error.message;
+    if (!/lyrics_a|lyrics_b|song_a_cover|song_b_cover|queue_a_id|queue_b_id|fighter_a_user_id|fighter_b_user_id|schema cache|does not exist|PGRST204/i.test(errorMessage)) {
+      break;
+    }
   }
-  if (error) {
-    console.warn("[battle results audio rows]", error.message);
+  if (errorMessage) {
+    console.warn("[battle results media rows]", errorMessage);
     return records;
   }
 
-  const audioByBattle = new Map<string, string | null>();
+  const userIds = Array.from(
+    new Set((rows ?? []).flatMap((battle) => [battle.fighter_a_user_id, battle.fighter_b_user_id]).filter((id): id is string => Boolean(id))),
+  );
+
+  const profilesById = new Map<string, FighterProfileMediaRow>();
+  if (userIds.length > 0) {
+    const profileRead = await supabase.from("fighter_profiles").select("id,song_cover_url,avatar_url").in("id", userIds);
+    if (profileRead.error) {
+      console.warn("[battle results profile media]", profileRead.error.message);
+    } else {
+      for (const row of (profileRead.data ?? []) as FighterProfileMediaRow[]) {
+        if (row.id) profilesById.set(row.id, row);
+      }
+    }
+  }
+
+  const mediaByBattle = new Map<string, { audioUrl: string | null; coverUrl: string | null }>();
   await Promise.all(
     (rows ?? []).map(async (battle) => {
       if (!battle.id) return;
       const side = winnerSide(battle.winner);
-      const path = side === "fighter_b" ? battle.audio_b_path : battle.audio_a_path;
-      audioByBattle.set(battle.id, await battleAudioPathToUrl(path));
+      const winnerIsB = side === "fighter_b";
+      const path = winnerIsB ? battle.audio_b_path : battle.audio_a_path;
+      const profile = profilesById.get(winnerIsB ? battle.fighter_b_user_id ?? "" : battle.fighter_a_user_id ?? "");
+      const coverCandidate = firstText(
+        winnerIsB ? battle.song_b_cover : battle.song_a_cover,
+        profile?.song_cover_url,
+        profile?.avatar_url,
+      );
+      const [audioUrl, coverUrl] = await Promise.all([
+        battleAssetPathToUrl(path),
+        battleAssetPathToUrl(coverCandidate),
+      ]);
+      mediaByBattle.set(battle.id, { audioUrl, coverUrl });
     }),
   );
 
   return records.map((record) => ({
     ...record,
-    audioUrl: record.battleId ? audioByBattle.get(record.battleId) ?? null : null,
+    audioUrl: record.battleId ? mediaByBattle.get(record.battleId)?.audioUrl ?? null : null,
+    coverUrl: record.coverUrl || (record.battleId ? mediaByBattle.get(record.battleId)?.coverUrl ?? "" : ""),
   }));
+}
+
+function coverInitials(record: ResultRecord) {
+  const clean = (record.winnerSong || record.winnerName || "AI")
+    .replace(/[《》「」"'`]/g, "")
+    .trim();
+  if (!clean) return "AI";
+  const chars = Array.from(clean.replace(/\s+/g, ""));
+  return chars.slice(0, 2).join("").toUpperCase();
+}
+
+function coverPalette(record: ResultRecord) {
+  const seedText = `${record.battleCode}-${record.winnerSong}-${record.winnerName}`;
+  const seed = Array.from(seedText).reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const palettes = [
+    "radial-gradient(circle at 24% 18%, rgba(255,225,134,0.52), transparent 24%), linear-gradient(135deg,#2b1008 0%,#050505 46%,#083138 100%)",
+    "radial-gradient(circle at 72% 24%, rgba(77,220,255,0.38), transparent 26%), linear-gradient(135deg,#090909 0%,#1e152b 45%,#4a2207 100%)",
+    "radial-gradient(circle at 35% 18%, rgba(255,102,0,0.48), transparent 25%), linear-gradient(135deg,#060606 0%,#132520 44%,#3b1230 100%)",
+    "radial-gradient(circle at 68% 28%, rgba(250,204,21,0.42), transparent 22%), linear-gradient(135deg,#151107 0%,#071c2a 52%,#050505 100%)",
+    "radial-gradient(circle at 30% 22%, rgba(45,212,191,0.36), transparent 24%), linear-gradient(135deg,#050505 0%,#281717 50%,#18220a 100%)",
+  ];
+  return palettes[seed % palettes.length];
 }
 
 function ResultAudio({ record, isZh }: { record: ResultRecord; isZh: boolean }) {
@@ -207,6 +285,7 @@ function ResultAudio({ record, isZh }: { record: ResultRecord; isZh: boolean }) 
 
 function ResultCard({ record, isZh, lang }: { record: ResultRecord; isZh: boolean; lang: string }) {
   const href = resultHref(record, lang);
+  const coverUrl = record.coverUrl.trim();
   const finalVoteTotal = record.finalVoteLeft + record.finalVoteRight;
   const winnerPct = finalVoteTotal > 0
     ? Math.round((Math.max(record.finalVoteLeft, record.finalVoteRight) / finalVoteTotal) * 100)
@@ -221,7 +300,21 @@ function ResultCard({ record, isZh, lang }: { record: ResultRecord; isZh: boolea
       }`}
     >
       <div className="relative aspect-square overflow-hidden rounded-lg bg-black shadow-[0_16px_38px_rgba(0,0,0,0.34)]">
-        <div className="absolute inset-0 bg-cover bg-center opacity-88 transition duration-300 group-hover:scale-[1.035]" style={{ backgroundImage: `url(${record.coverUrl})` }} />
+        {coverUrl ? (
+          <div className="absolute inset-0 bg-cover bg-center opacity-88 transition duration-300 group-hover:scale-[1.035]" style={{ backgroundImage: `url("${coverUrl.replace(/"/g, '\\"')}")` }} />
+        ) : (
+          <div className="absolute inset-0 transition duration-300 group-hover:scale-[1.035]" style={{ background: coverPalette(record) }}>
+            <div className="absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,0.16)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.16)_1px,transparent_1px)] [background-size:28px_28px]" />
+            <div className="absolute inset-0 flex items-center justify-center px-4 text-center">
+              <div>
+                <p className={`${fontRighteous.className} text-5xl leading-none text-white drop-shadow-[0_0_24px_rgba(255,191,74,0.45)]`}>
+                  {coverInitials(record)}
+                </p>
+                <p className="mt-3 line-clamp-2 text-xs font-black leading-snug text-white/70">{record.winnerSong}</p>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.02),rgba(0,0,0,0.78))]" />
         <div className="absolute left-2 top-2 flex flex-wrap gap-1.5">
           <span className={`rounded-md border px-1.5 py-1 text-[9px] font-black ${
@@ -306,7 +399,7 @@ export default function BattleResultsClient() {
         return;
       }
       const mapped = (data ?? []).map((row) => resultFromArchive(row as ArchiveRow));
-      const withAudio = await attachAudio(mapped);
+      const withAudio = await attachMedia(mapped);
       if (cancelled) return;
       setRecords(withAudio);
       setActiveMonth((current) => current || monthKey(withAudio[0]?.archivedAt || new Date().toISOString()));

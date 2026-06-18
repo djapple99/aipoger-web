@@ -21,6 +21,8 @@ type HookBattleRow = {
   fighter_b_name: string;
   song_a_name: string;
   song_b_name: string;
+  song_a_cover?: string | null;
+  song_b_cover?: string | null;
   status?: string | null;
   created_at: string;
   scheduled_start_at?: string | null;
@@ -283,7 +285,7 @@ async function settleStaleHookBattles(admin: SupabaseAdmin, warnings: string[]) 
   let { data, error } = await admin
     .from("battles")
     .select(
-      "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,status,created_at,scheduled_start_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner",
+      "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,song_a_cover,song_b_cover,status,created_at,scheduled_start_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner",
     )
     .in("status", ["live", "active", "ghost_battle", "public_voting"])
     .is("battle_ended_at", null)
@@ -295,7 +297,7 @@ async function settleStaleHookBattles(admin: SupabaseAdmin, warnings: string[]) 
     const legacyRead = await admin
       .from("battles")
       .select(
-        "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,status,created_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner",
+        "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,song_a_cover,song_b_cover,status,created_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner",
       )
       .in("status", ["live", "active", "ghost_battle", "public_voting"])
       .is("battle_ended_at", null)
@@ -368,7 +370,7 @@ async function archiveFinishedUnarchivedHookBattles(admin: SupabaseAdmin, warnin
   const { data, error } = await admin
     .from("battles")
     .select(
-      "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,status,created_at,scheduled_start_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner",
+      "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,song_a_cover,song_b_cover,status,created_at,scheduled_start_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner",
     )
     .eq("status", "finished")
     .not("winner", "is", null)
@@ -591,7 +593,7 @@ async function archiveHookBattleResultDirect(
   const fresh = await admin
     .from("battles")
     .select(
-      "id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,battle_number,ai_tool_a,ai_tool_b,winner",
+      "id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,song_a_cover,song_b_cover,battle_number,ai_tool_a,ai_tool_b,winner",
     )
     .eq("id", battle.id)
     .maybeSingle();
@@ -610,6 +612,8 @@ async function archiveHookBattleResultDirect(
   const winnerIsA = effectiveWinner === "fighter_a";
   const now = new Date().toISOString();
   const totalVotes = Math.max(0, counts.fighter_a) + Math.max(0, counts.fighter_b);
+  const winnerCoverUrl = winnerIsA ? row.song_a_cover ?? null : row.song_b_cover ?? null;
+  const opponentCoverUrl = winnerIsA ? row.song_b_cover ?? null : row.song_a_cover ?? null;
   const audienceReview = winnerIsA
     ? `${row.fighter_a_name} 以 ${counts.fighter_a}:${counts.fighter_b} 拿下這場 Drop Battle。`
     : `${row.fighter_b_name} 以 ${counts.fighter_b}:${counts.fighter_a} 拿下這場 Drop Battle。`;
@@ -640,6 +644,8 @@ async function archiveHookBattleResultDirect(
           votesA: counts.fighter_a,
           votesB: counts.fighter_b,
           audienceCount,
+          coverUrl: winnerCoverUrl,
+          opponentCoverUrl,
           officialAudienceMin: DROP_BATTLE_OFFICIAL_AUDIENCE_MIN,
           settledAt: now,
         },
