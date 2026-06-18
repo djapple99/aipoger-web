@@ -25,6 +25,11 @@ import { supabase } from "@/lib/supabase";
 type SkillKey = BattleFeedbackKey;
 type BattleWinnerSide = "fighter_a" | "fighter_b";
 
+type ResultAudioState = {
+  winnerUrl: string | null;
+  opponentUrl: string | null;
+};
+
 type HookSkill = {
   key: SkillKey;
   label: string;
@@ -66,6 +71,93 @@ function pointsForSkills(skills: HookSkill[], cx: number, cy: number, maxRadius:
     .join(" ");
 }
 
+async function signedBattleAudioUrl(path: string | null | undefined) {
+  const clean = path?.trim();
+  if (!clean) return null;
+  if (/^(https?:|blob:|data:)/i.test(clean)) return clean;
+  const { data, error } = await supabase.storage.from("battle-audio").createSignedUrl(clean, 60 * 10);
+  if (error) {
+    console.warn("[battle result audio]", error.message);
+    return null;
+  }
+  return data?.signedUrl ?? null;
+}
+
+function ResultAudioPanel({
+  audio,
+  lang,
+  winnerSong,
+  opponentSong,
+}: {
+  audio: ResultAudioState;
+  lang: string;
+  winnerSong: string;
+  opponentSong: string;
+}) {
+  if (!audio.winnerUrl && !audio.opponentUrl) {
+    return (
+      <section className="mt-8 rounded-[1.35rem] border border-white/10 bg-black/45 p-4 shadow-[0_18px_70px_rgba(0,0,0,0.28)]">
+        <p className="text-xs font-black uppercase tracking-[0.22em] text-yellow-100/70">
+          {lang === "zh" ? "戰果音檔" : "RESULT AUDIO"}
+        </p>
+        <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">
+          {lang === "zh" ? "這張成果卡尚未連到可播放音檔。" : "This result card does not have playable audio attached yet."}
+        </p>
+      </section>
+    );
+  }
+
+  const rows = [
+    {
+      label: lang === "zh" ? "勝出 Drop" : "Winning Drop",
+      song: winnerSong,
+      url: audio.winnerUrl,
+      tone: "orange",
+    },
+    {
+      label: lang === "zh" ? "對手 Drop" : "Rival Drop",
+      song: opponentSong,
+      url: audio.opponentUrl,
+      tone: "cyan",
+    },
+  ];
+
+  return (
+    <section className="mt-8 rounded-[1.35rem] border border-yellow-200/20 bg-black/48 p-4 shadow-[0_18px_70px_rgba(0,0,0,0.28),inset_0_0_48px_rgba(255,191,74,0.035)]">
+      <p className="text-xs font-black uppercase tracking-[0.22em] text-yellow-100/78">
+        {lang === "zh" ? "可播放成果卡" : "PLAYABLE RESULT CARD"}
+      </p>
+      <h2 className="mt-2 text-2xl font-black text-white">
+        {lang === "zh" ? "先聽這首為什麼贏" : "Hear Why It Won"}
+      </h2>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        {rows.map((row) => (
+          <div
+            key={row.label}
+            className={`rounded-2xl border px-3 py-3 ${
+              row.tone === "cyan"
+                ? "border-cyan-200/18 bg-cyan-300/[0.07]"
+                : "border-orange-200/20 bg-orange-300/[0.08]"
+            }`}
+          >
+            <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${row.tone === "cyan" ? "text-cyan-100/70" : "text-orange-100/75"}`}>
+              {row.label}
+            </p>
+            <p className="mt-1 truncate text-sm font-black text-white">{row.song}</p>
+            {row.url ? (
+              <audio controls preload="none" src={row.url} className="mt-3 h-9 w-full" />
+            ) : (
+              <p className="mt-3 rounded-full border border-white/10 bg-black/38 px-3 py-2 text-xs font-black text-zinc-500">
+                {lang === "zh" ? "音檔未封存" : "Audio Not Archived"}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function gridPoints(count: number, cx: number, cy: number, radius: number) {
   return Array.from({ length: count })
     .map((_, index) => {
@@ -84,12 +176,14 @@ function labelPoint(index: number, count: number, cx: number, cy: number, radius
 }
 
 function percentParam(value: string | null, fallback: number) {
+  if (value === null || value.trim() === "") return fallback;
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.min(100, Math.max(0, Math.round(parsed)));
 }
 
 function numberParam(value: string | null, fallback: number) {
+  if (value === null || value.trim() === "") return fallback;
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.max(0, Math.round(parsed));
@@ -119,6 +213,13 @@ function textFrom(value: unknown) {
 
 function archivedResultFromRow(row: Record<string, unknown>): ArchivedBattleResult {
   const payload = archivePayload(row.result_payload);
+  const finalVoteLeft = numberParam(String(row.final_vote_left ?? ""), 0);
+  const finalVoteRight = numberParam(String(row.final_vote_right ?? ""), 0);
+  const tableVotes = numberParam(String(row.total_votes ?? ""), 0);
+  const payloadVotes = numberParam(String(payload.votesTotal ?? payload.votes ?? payload.voteCount ?? ""), 0);
+  const tableLooksLikePercent = tableVotes === 100 && finalVoteLeft + finalVoteRight === 100 && payloadVotes <= 0;
+  const votesTotal = payloadVotes > 0 ? payloadVotes : tableLooksLikePercent ? 0 : tableVotes;
+  const audienceCount = numberParam(String(payload.audienceCount ?? votesTotal), votesTotal);
   return {
     id: textFrom(row.battle_id) || textFrom(row.battle_code),
     battleId: textFrom(row.battle_id) || null,
@@ -135,10 +236,10 @@ function archivedResultFromRow(row: Record<string, unknown>): ArchivedBattleResu
     avatarUrl: textFrom(payload.avatarUrl),
     opponentCoverUrl: textFrom(payload.opponentCoverUrl) || null,
     opponentAvatarUrl: textFrom(payload.opponentAvatarUrl) || null,
-    finalVoteLeft: numberParam(String(row.final_vote_left ?? ""), 0),
-    finalVoteRight: numberParam(String(row.final_vote_right ?? ""), 0),
-    votesTotal: numberParam(String(payload.votesTotal ?? row.total_votes ?? ""), 0),
-    audienceCount: numberParam(String(payload.audienceCount ?? row.total_votes ?? ""), 0),
+    finalVoteLeft,
+    finalVoteRight,
+    votesTotal,
+    audienceCount,
     officialAudienceMin: numberParam(String(payload.officialAudienceMin ?? DROP_BATTLE_OFFICIAL_AUDIENCE_MIN), DROP_BATTLE_OFFICIAL_AUDIENCE_MIN),
     audienceReview: textFrom(row.audience_review) || textFrom(payload.audienceReview),
     aiReview: textFrom(payload.aiReview),
@@ -362,6 +463,7 @@ function BattleResultContent() {
   const [remoteArchive, setRemoteArchive] = useState<ArchivedBattleResult | null>(null);
   const [databaseWinnerSide, setDatabaseWinnerSide] = useState<BattleWinnerSide | null>(null);
   const [databaseWinnerChecked, setDatabaseWinnerChecked] = useState(false);
+  const [resultAudio, setResultAudio] = useState<ResultAudioState>({ winnerUrl: null, opponentUrl: null });
   const battleIdParam = cleanParam(searchParams.get("battleId")) || null;
   const missingText = lang === "zh" ? "未封存" : "Not Archived";
   const missingSongText = lang === "zh" ? "尚未封存歌名" : "Song Not Archived";
@@ -407,7 +509,7 @@ function BattleResultContent() {
   const displayVoteTotal = voteTotal;
   const officialAudienceMin = remoteArchive?.officialAudienceMin || DROP_BATTLE_OFFICIAL_AUDIENCE_MIN;
   const audienceCount = numberParam(searchParams.get("audienceCount"), remoteArchive?.audienceCount ?? displayVoteTotal);
-  const isOfficialBattleResult = Boolean(remoteArchive) || isOfficialDropBattleResult({ audienceCount, totalVotes: displayVoteTotal });
+  const isOfficialBattleResult = isOfficialDropBattleResult({ audienceCount, totalVotes: displayVoteTotal });
   const resultHeadline = isOfficialBattleResult
     ? t("result_headline", { winner: winnerName })
     : lang === "zh"
@@ -505,6 +607,42 @@ function BattleResultContent() {
       cancelled = true;
     };
   }, [battleIdParam]);
+
+  useEffect(() => {
+    if (!battleId || !isUuid(battleId)) {
+      setResultAudio({ winnerUrl: null, opponentUrl: null });
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const { data, error } = await supabase
+        .from("battles")
+        .select("winner,audio_a_path,audio_b_path")
+        .eq("id", battleId)
+        .maybeSingle<{
+          winner?: string | null;
+          audio_a_path?: string | null;
+          audio_b_path?: string | null;
+        }>();
+      if (cancelled) return;
+      if (error) {
+        console.warn("[battle result audio row]", error.message);
+        setResultAudio({ winnerUrl: null, opponentUrl: null });
+        return;
+      }
+      const side = winnerSideParam(data?.winner ?? null) ?? winnerSide;
+      const winnerPath = side === "fighter_b" ? data?.audio_b_path : data?.audio_a_path;
+      const opponentPath = side === "fighter_b" ? data?.audio_a_path : data?.audio_b_path;
+      const [winnerUrl, opponentUrl] = await Promise.all([
+        signedBattleAudioUrl(winnerPath),
+        signedBattleAudioUrl(opponentPath),
+      ]);
+      if (!cancelled) setResultAudio({ winnerUrl, opponentUrl });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [battleId, winnerSide]);
 
   useEffect(() => {
     if (!hasCompleteResultData) return;
@@ -636,6 +774,35 @@ function BattleResultContent() {
     winnerSong,
     winnerSongRaw,
   ]);
+
+  if (!battleIdParam && !winnerNameRaw && !remoteArchive) {
+    return (
+      <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#030303] px-5 text-white">
+        <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_18%_16%,rgba(255,106,0,0.24),transparent_31%),radial-gradient(circle_at_82%_18%,rgba(0,202,255,0.2),transparent_30%),linear-gradient(180deg,#030303_0%,#0b0704_48%,#030303_100%)]" />
+        <section className="relative z-10 w-full max-w-xl rounded-[1.6rem] border border-white/12 bg-black/72 p-7 text-center shadow-[0_24px_100px_rgba(0,0,0,0.5)]">
+          <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-200/75">
+            {lang === "zh" ? "沒有有效成果卡" : "No Valid Result Card"}
+          </p>
+          <h1 className="mt-3 text-3xl font-black text-white">
+            {lang === "zh" ? "這裡需要一場 Battle 戰果" : "This Page Needs a Battle Result"}
+          </h1>
+          <p className="mt-3 text-sm font-bold leading-7 text-zinc-400">
+            {lang === "zh"
+              ? "成果卡是單場 Battle 的公開證明。要看所有月份戰果，請進成果牆。"
+              : "A result card proves one battle. To browse monthly results, open the Result Wall."}
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            <Link href={`/battle/results?lang=${lang}`} className="rounded-full bg-orange-500 px-5 py-3 text-sm font-black text-black transition hover:bg-orange-300">
+              {lang === "zh" ? "進成果牆" : "Open Result Wall"}
+            </Link>
+            <Link href={`/battle?lang=${lang}`} className="rounded-full border border-cyan-200/35 bg-cyan-300/10 px-5 py-3 text-sm font-black text-cyan-50 transition hover:border-cyan-100">
+              {lang === "zh" ? "回鬥歌場" : "Back to Battle"}
+            </Link>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#030303] px-4 py-6 text-white sm:px-6 lg:px-8">
@@ -901,6 +1068,12 @@ function BattleResultContent() {
                 </div>
               </div>
             </div>
+            <ResultAudioPanel
+              audio={resultAudio}
+              lang={lang}
+              winnerSong={winnerSong}
+              opponentSong={opponentSong}
+            />
             <SkillRadar skills={localizedSkills} className="mt-1 max-w-[580px] md:max-w-[620px]" />
           </section>
 

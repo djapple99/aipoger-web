@@ -1757,7 +1757,7 @@ function LiveBattleList() {
               {t("btn_listen_bar")}
             </Link>
             <Link
-              href="/battle/result"
+              href="/battle/results"
               className="aipo-ghost-button w-fit rounded-full px-5 py-2.5 text-sm font-black tracking-[0.12em] text-orange-100 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
             >
               {t("watch_result_card")}
