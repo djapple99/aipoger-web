@@ -90,13 +90,15 @@ Official Gatekeeper Drops:
 
 - AIPOGER may keep up to four owner-managed official Drop challenge templates in the Battle Pool.
 - These official cards are templates, not normal `battle_queue` rows. They must not be consumed or disappear when someone challenges them.
-- Only owner/admin accounts can upload, update, enable, or disable official Gatekeeper Drop audio.
+- Only owner/admin accounts can upload, update, enable, or disable official Gatekeeper Drop audio, cover art, and lyrics.
 - Owner/admin does not set a start time for official Gatekeeper Drops. The official song stays there as a standing gate.
 - Owner/admin must choose the official Gatekeeper Drop genre from the same standard genre menu used by Battle upload. Do not use free-text genre entry for these cards.
-- Official Gatekeeper Drop audio accepts standard AIPOGER audio formats with a 100MB single-file limit. Production must have `supabase/20260618_official_gatekeeper_drops.sql` applied before uploads can be saved or cards enabled.
+- Official Gatekeeper Drop audio accepts standard AIPOGER audio formats with a 100MB single-file limit. The owner/admin upload flow must use the same 60-second Drop cropper used by normal Drop Battle.
+- Official Gatekeeper Drop cover art accepts the standard AIPOGER image formats with a 10MB single-file limit. Lyrics are optional and stored with the official template.
+- Production must have `supabase/20260618_official_gatekeeper_drops.sql` and `supabase/20260619_official_gatekeeper_media.sql` applied before audio, cover art, and lyrics can all be saved.
 - Public cards should say `官方守門 Drop` / `歡迎任何人來挑戰`, show `GATE` number and genre/type badge, and avoid wording like `官方守門戰：傷心酒吧`.
 - A challenger can choose the start time using the normal Drop Battle schedule rules: quick 10 / 15 / 20 minutes after successful battle creation, or a custom time within 24 hours.
-- When a challenger submits, the system creates a per-challenge battle instance: one copied official defender queue plus one challenger queue.
+- When a challenger submits, the system creates a per-challenge battle instance: one copied official defender queue plus one challenger queue. Official audio, lyrics, and cover art must be copied into the defender side so the created Battle Room behaves like a normal Battle Room for listening, lyrics, cover display, watching, and sharing.
 - The copied official defender queue must not count as the owner's personal active Drop Battle intent, must not notify the owner as if they personally entered a battle, and must not pollute owner-facing active battle limits.
 - The challenger side counts as an active challenger intent until that battle ends or is cancelled.
 - Official Gatekeeper Drop results follow the same audience threshold rules as normal Drop Battle: 0:0 no result, 1-2 distinct voters unofficial Result Wall only, 3+ distinct voters official/Honor Board eligible.

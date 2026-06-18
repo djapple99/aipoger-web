@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { OFFICIAL_GATEKEEPER_DROP_DEFAULTS, normalizeOfficialGatekeeperDrop } from "@/lib/official-gatekeeper-drops";
+import { attachOfficialGatekeeperMediaUrls } from "@/lib/official-gatekeeper-media";
 
 function adminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -36,16 +37,7 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const drops = await Promise.all(
-    (data ?? []).map(async (row) => {
-      const drop = normalizeOfficialGatekeeperDrop(row as Record<string, unknown>);
-      if (drop.audioPath) {
-        const { data: signed } = await admin.storage.from("battle-audio").createSignedUrl(drop.audioPath, 60 * 60);
-        drop.audioUrl = signed?.signedUrl ?? null;
-      }
-      return drop;
-    }),
-  );
+  const drops = await Promise.all((data ?? []).map((row) => attachOfficialGatekeeperMediaUrls(admin, normalizeOfficialGatekeeperDrop(row as Record<string, unknown>))));
 
   return NextResponse.json({ drops, defaults: OFFICIAL_GATEKEEPER_DROP_DEFAULTS.length });
 }

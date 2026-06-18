@@ -17,6 +17,7 @@ import {
   OFFICIAL_GATEKEEPER_DROP_IDS,
   normalizeOfficialGatekeeperDrop,
 } from "@/lib/official-gatekeeper-drops";
+import { signedBattleAudioUrl } from "@/lib/official-gatekeeper-media";
 
 type QueueRoleRow = {
   id: string;
@@ -221,6 +222,9 @@ export async function POST(request: NextRequest) {
   const challengerAiTool = trimOrNull(body.aiTool, 40);
   const lyrics = trimOrNull(body.lyrics);
   const audioSha256 = /^[a-f0-9]{64}$/i.test(body.audioSha256 ?? "") ? String(body.audioSha256).toLowerCase() : null;
+  const gatekeeperLyrics = trimOrNull(gatekeeper.lyrics);
+  const gatekeeperCover = gatekeeper.coverPath;
+  const gatekeeperCoverForBattle = gatekeeperCover ? await signedBattleAudioUrl(admin, gatekeeperCover, 60 * 60 * 24 * 365) : null;
 
   const [{ data: challengerFighter }, { data: challengerProfile }] = await Promise.all([
     admin.from("fighter_profiles").select("avatar_url,song_cover_url").eq("id", user.id).maybeSingle(),
@@ -235,7 +239,7 @@ export async function POST(request: NextRequest) {
     original_file_name: `${gatekeeper.gateNumber} ${gatekeeper.genre} 官方守門 Drop`,
     status: "matched",
     ai_tool: gatekeeper.aiTool,
-    lyrics: null,
+    lyrics: gatekeeperLyrics,
     expires_at: schedulePayload?.scheduled_start_at ?? null,
     ...schedulePayload,
     official_gatekeeper_id: gatekeeper.id,
@@ -299,14 +303,14 @@ export async function POST(request: NextRequest) {
     is_async_match: true,
     ai_tool_a: gatekeeper.aiTool,
     ai_tool_b: challengerAiTool,
-    lyrics_a: null,
+    lyrics_a: gatekeeperLyrics,
     lyrics_b: lyrics,
     started_at: startIso,
     waiting_room_started_at: now,
     stake_apc: 0,
     pot_apc: 0,
     vote_stake_apc: 0,
-    song_a_cover: null,
+    song_a_cover: gatekeeperCoverForBattle ?? gatekeeperCover,
     song_b_cover: firstText(body.coverUrl, challengerFighter?.song_cover_url),
     fighter_a_avatar: null,
     fighter_b_avatar: firstText(body.avatarUrl, challengerFighter?.avatar_url, challengerProfile?.avatar_url),

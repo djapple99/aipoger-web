@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
@@ -1274,10 +1275,22 @@ function BattlePoolList() {
                           {drop.description || (isZh ? "挑戰這首官方 Drop，設定開戰時間並分享拉人投票。" : "Challenge this official Drop, set a start time, then share for votes.")}
                         </p>
                       </div>
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-red-200/30 bg-black/70 text-[10px] font-black leading-4 text-red-100 shadow-[0_0_24px_rgba(239,68,68,0.16)]">
-                        AIPO<br />GATE
+                      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-red-200/30 bg-black/70 text-[10px] font-black leading-4 text-red-100 shadow-[0_0_24px_rgba(239,68,68,0.16)]">
+                        {drop.coverUrl ? (
+                          <Image src={drop.coverUrl} alt="" fill sizes="80px" className="object-cover" unoptimized />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center">
+                            AIPO<br />GATE
+                          </div>
+                        )}
                       </div>
                     </div>
+                    {drop.lyrics ? (
+                      <details className="mt-3 rounded-2xl border border-white/10 bg-white/[0.035] px-3 py-2">
+                        <summary className="cursor-pointer text-xs font-black text-zinc-300">{isZh ? "查看歌詞" : "Lyrics"}</summary>
+                        <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap text-xs font-bold leading-5 text-zinc-400">{drop.lyrics}</pre>
+                      </details>
+                    ) : null}
                     {drop.audioUrl ? (
                       <audio controls preload="none" src={drop.audioUrl} className="mt-4 h-10 w-full" />
                     ) : null}

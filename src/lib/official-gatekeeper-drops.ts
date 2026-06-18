@@ -7,6 +7,9 @@ export type OfficialGatekeeperDrop = {
   description: string | null;
   audioPath: string | null;
   audioUrl?: string | null;
+  coverPath: string | null;
+  coverUrl?: string | null;
+  lyrics: string | null;
   active: boolean;
   sortOrder: number;
   createdBy?: string | null;
@@ -30,6 +33,8 @@ export const OFFICIAL_GATEKEEPER_DROP_DEFAULTS: OfficialGatekeeperDrop[] = [
     aiTool: "Suno",
     description: "挑戰這首官方 Drop，設定開戰時間並分享拉人投票。",
     audioPath: null,
+    coverPath: null,
+    lyrics: null,
     active: false,
     sortOrder: 1,
   },
@@ -41,6 +46,8 @@ export const OFFICIAL_GATEKEEPER_DROP_DEFAULTS: OfficialGatekeeperDrop[] = [
     aiTool: "Suno",
     description: "挑戰這首官方 Drop，設定開戰時間並分享拉人投票。",
     audioPath: null,
+    coverPath: null,
+    lyrics: null,
     active: false,
     sortOrder: 2,
   },
@@ -52,6 +59,8 @@ export const OFFICIAL_GATEKEEPER_DROP_DEFAULTS: OfficialGatekeeperDrop[] = [
     aiTool: "Suno",
     description: "挑戰這首官方 Drop，設定開戰時間並分享拉人投票。",
     audioPath: null,
+    coverPath: null,
+    lyrics: null,
     active: false,
     sortOrder: 3,
   },
@@ -63,6 +72,8 @@ export const OFFICIAL_GATEKEEPER_DROP_DEFAULTS: OfficialGatekeeperDrop[] = [
     aiTool: "Suno",
     description: "挑戰這首官方 Drop，設定開戰時間並分享拉人投票。",
     audioPath: null,
+    coverPath: null,
+    lyrics: null,
     active: false,
     sortOrder: 4,
   },
@@ -78,6 +89,9 @@ export function normalizeOfficialGatekeeperDrop(row: Record<string, unknown>): O
     description: typeof row.description === "string" ? row.description : null,
     audioPath: typeof row.audio_path === "string" && row.audio_path.trim() ? row.audio_path.trim() : null,
     audioUrl: typeof row.audioUrl === "string" ? row.audioUrl : null,
+    coverPath: typeof row.cover_path === "string" && row.cover_path.trim() ? row.cover_path.trim() : null,
+    coverUrl: typeof row.coverUrl === "string" ? row.coverUrl : null,
+    lyrics: typeof row.lyrics === "string" && row.lyrics.trim() ? row.lyrics.trim() : null,
     active: Boolean(row.active),
     sortOrder: Number(row.sort_order ?? row.sortOrder ?? 999),
     createdBy: typeof row.created_by === "string" ? row.created_by : null,

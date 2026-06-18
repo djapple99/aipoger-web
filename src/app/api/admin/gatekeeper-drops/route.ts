@@ -6,6 +6,7 @@ import {
   OFFICIAL_GATEKEEPER_DROP_IDS,
   normalizeOfficialGatekeeperDrop,
 } from "@/lib/official-gatekeeper-drops";
+import { attachOfficialGatekeeperMediaUrls } from "@/lib/official-gatekeeper-media";
 
 type AdminClient = ReturnType<typeof adminClient>;
 
@@ -31,6 +32,11 @@ function adminClient() {
 function isMissingTable(error: { message?: string; details?: string; hint?: string; code?: string } | null) {
   const msg = `${error?.message ?? ""} ${error?.details ?? ""} ${error?.hint ?? ""} ${error?.code ?? ""}`;
   return /official_gatekeeper_drops|relation.*does not exist|schema cache|PGRST204|42P01/i.test(msg);
+}
+
+function isMissingMediaColumns(error: { message?: string; details?: string; hint?: string; code?: string } | null) {
+  const msg = `${error?.message ?? ""} ${error?.details ?? ""} ${error?.hint ?? ""} ${error?.code ?? ""}`;
+  return /lyrics|cover_path|schema cache|column.*does not exist|PGRST204/i.test(msg);
 }
 
 async function requireOwnerAdmin(request: NextRequest): Promise<{ admin: AdminClient; userId: string } | { error: NextResponse }> {
@@ -71,11 +77,20 @@ export async function GET(request: NextRequest) {
     return jsonError(error.message, 500);
   }
 
-  const dbDrops = new Map((data ?? []).map((row) => {
-    const drop = normalizeOfficialGatekeeperDrop(row as Record<string, unknown>);
-    return [drop.id, drop];
-  }));
-  const drops = OFFICIAL_GATEKEEPER_DROP_DEFAULTS.map((fallback) => dbDrops.get(fallback.id) ?? fallback);
+  const dbDrops = new Map(
+    await Promise.all(
+      (data ?? []).map(async (row) => {
+        const drop = normalizeOfficialGatekeeperDrop(row as Record<string, unknown>);
+        return [drop.id, await attachOfficialGatekeeperMediaUrls(auth.admin, drop)] as const;
+      }),
+    ),
+  );
+  const drops = await Promise.all(
+    OFFICIAL_GATEKEEPER_DROP_DEFAULTS.map((fallback) => {
+      const drop = dbDrops.get(fallback.id) ?? fallback;
+      return attachOfficialGatekeeperMediaUrls(auth.admin, drop);
+    }),
+  );
   return NextResponse.json({ schemaMissing: false, drops });
 }
 
@@ -95,6 +110,8 @@ export async function PATCH(request: NextRequest) {
     aiTool?: string;
     description?: string | null;
     audioPath?: string | null;
+    coverPath?: string | null;
+    lyrics?: string | null;
     active?: boolean;
   } | null;
 
@@ -105,6 +122,7 @@ export async function PATCH(request: NextRequest) {
 
   const fallback = OFFICIAL_GATEKEEPER_DROP_DEFAULTS.find((drop) => drop.id === id)!;
   const audioPath = typeof body?.audioPath === "string" && body.audioPath.trim() ? body.audioPath.trim() : null;
+  const coverPath = typeof body?.coverPath === "string" && body.coverPath.trim() ? body.coverPath.trim() : null;
   const row = {
     id,
     gate_number: fallback.gateNumber,
@@ -113,6 +131,8 @@ export async function PATCH(request: NextRequest) {
     ai_tool: cleanText(body?.aiTool, fallback.aiTool, 40),
     description: typeof body?.description === "string" && body.description.trim() ? body.description.trim().slice(0, 120) : null,
     audio_path: audioPath,
+    cover_path: coverPath,
+    lyrics: typeof body?.lyrics === "string" && body.lyrics.trim() ? body.lyrics.trim().slice(0, 8000) : null,
     active: Boolean(body?.active && audioPath),
     sort_order: fallback.sortOrder,
     created_by: auth.userId,
@@ -128,8 +148,10 @@ export async function PATCH(request: NextRequest) {
 
   if (error) {
     if (isMissingTable(error)) return jsonError("尚未建立 official_gatekeeper_drops，請先套用 supabase/20260618_official_gatekeeper_drops.sql。", 409);
+    if (isMissingMediaColumns(error)) return jsonError("官方守門 Drop 缺少封面 / 歌詞欄位。請先套用 supabase/20260619_official_gatekeeper_media.sql。", 409);
     return jsonError(error.message, 500);
   }
 
-  return NextResponse.json({ drop: normalizeOfficialGatekeeperDrop(data as Record<string, unknown>) });
+  const drop = normalizeOfficialGatekeeperDrop(data as Record<string, unknown>);
+  return NextResponse.json({ drop: await attachOfficialGatekeeperMediaUrls(auth.admin, drop) });
 }

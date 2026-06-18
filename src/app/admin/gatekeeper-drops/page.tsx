@@ -1,19 +1,26 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { HookCropper } from "@/components/hook-cropper";
 import LangToggle from "@/components/lang-toggle";
 import { supabase } from "@/lib/supabase";
 import { loadIsAdmin } from "@/lib/user-profile-admin";
 import type { OfficialGatekeeperDrop } from "@/lib/official-gatekeeper-drops";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import {
+  IMAGE_UPLOAD_ACCEPT,
+  IMAGE_UPLOAD_FORMAT_LABEL,
+  imageContentType,
+  isAllowedImageUploadFile,
+} from "@/lib/image-upload-policy";
+import {
   AUDIO_UPLOAD_MAX_BYTES_100MB,
   AUDIO_UPLOAD_MAX_LABEL_100MB,
   STANDARD_AUDIO_UPLOAD_ACCEPT,
   audioSizeLabel,
   isAllowedStandardAudioFile,
-  standardAudioContentType,
 } from "@/lib/audio-upload-policy";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
@@ -25,6 +32,8 @@ type AdminDropsPayload = {
 };
 
 const GATEKEEPER_AUDIO_ACCEPT = STANDARD_AUDIO_UPLOAD_ACCEPT;
+const GATEKEEPER_COVER_MAX_BYTES = 10 * 1024 * 1024;
+const GATEKEEPER_COVER_MAX_LABEL = "10MB";
 
 async function authHeader(): Promise<Record<string, string>> {
   const {
@@ -53,6 +62,7 @@ export default function AdminGatekeeperDropsPage() {
   const [schemaMissing, setSchemaMissing] = useState(false);
   const [drops, setDrops] = useState<OfficialGatekeeperDrop[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [cropTarget, setCropTarget] = useState<{ drop: OfficialGatekeeperDrop; file: File } | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -114,6 +124,8 @@ export default function AdminGatekeeperDropsPage() {
         aiTool: next.aiTool,
         description: next.description,
         audioPath: next.audioPath,
+        coverPath: next.coverPath,
+        lyrics: next.lyrics,
         active: next.active,
       }),
     });
@@ -121,13 +133,14 @@ export default function AdminGatekeeperDropsPage() {
     setBusyId(null);
     if (!response.ok) {
       setError(payload?.error || "儲存失敗。");
-      return;
+      return false;
     }
     if (payload?.drop) updateLocal(drop.id, payload.drop);
     setMessage(`${next.gateNumber} 已儲存。`);
+    return true;
   }
 
-  async function uploadAudio(drop: OfficialGatekeeperDrop, file: File | null) {
+  function startAudioCrop(drop: OfficialGatekeeperDrop, file: File | null) {
     if (!file) return;
     if (schemaMissing) {
       setError("尚未建立 official_gatekeeper_drops 資料表。請先套用 supabase/20260618_official_gatekeeper_drops.sql，才能保存官方守門 Drop 音檔。");
@@ -141,6 +154,61 @@ export default function AdminGatekeeperDropsPage() {
       setError(`音檔太大：${audioSizeLabel(file)}。官方守門 Drop 單檔上限是 ${AUDIO_UPLOAD_MAX_LABEL_100MB}。`);
       return;
     }
+    setError("");
+    setMessage("");
+    setCropTarget({ drop, file });
+  }
+
+  async function uploadCroppedAudio(drop: OfficialGatekeeperDrop, sourceFile: File, blob: Blob) {
+    setBusyId(drop.id);
+    setError("");
+    setMessage("");
+    try {
+      const baseName = sourceFile.name.replace(/\.[^.]+$/, "") || "official-drop";
+      const fileName = `${baseName}-60s.wav`;
+      const signedResponse = await fetch("/api/admin/gatekeeper-drops/upload-url", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(await authHeader()),
+        },
+        body: JSON.stringify({ id: drop.id, fileName, fileSize: blob.size, assetType: "audio" }),
+      });
+      const signed = (await signedResponse.json().catch(() => null)) as { token?: string; path?: string; error?: string } | null;
+      if (!signedResponse.ok || !signed?.token || !signed.path) throw new Error(signed?.error || "無法建立上傳連結。");
+
+      const { error: uploadError } = await supabase.storage
+        .from("battle-audio")
+        .uploadToSignedUrl(signed.path, signed.token, blob, {
+          contentType: "audio/wav",
+        });
+      if (uploadError) throw uploadError;
+
+      const saved = await saveDrop(drop, { audioPath: signed.path, active: true });
+      if (!saved) return;
+      setCropTarget(null);
+      setMessage(`${drop.gateNumber} 已裁切並上傳 ${fileName}（${formatBytes(blob.size)}）。`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "音檔上傳失敗。");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function uploadCover(drop: OfficialGatekeeperDrop, file: File | null) {
+    if (!file) return;
+    if (schemaMissing) {
+      setError("尚未建立 official_gatekeeper_drops 資料表。請先套用 SQL，才能保存官方守門 Drop 封面。");
+      return;
+    }
+    if (!isAllowedImageUploadFile(file)) {
+      setError(`封面格式不支援。請使用 ${IMAGE_UPLOAD_FORMAT_LABEL}。`);
+      return;
+    }
+    if (file.size > GATEKEEPER_COVER_MAX_BYTES) {
+      setError(`封面太大：${formatBytes(file.size)}。官方守門 Drop 封面上限是 ${GATEKEEPER_COVER_MAX_LABEL}。`);
+      return;
+    }
     setBusyId(drop.id);
     setError("");
     setMessage("");
@@ -151,25 +219,34 @@ export default function AdminGatekeeperDropsPage() {
           "Content-Type": "application/json",
           ...(await authHeader()),
         },
-        body: JSON.stringify({ id: drop.id, fileName: file.name, fileSize: file.size }),
+        body: JSON.stringify({ id: drop.id, fileName: file.name, fileSize: file.size, assetType: "cover" }),
       });
       const signed = (await signedResponse.json().catch(() => null)) as { token?: string; path?: string; error?: string } | null;
-      if (!signedResponse.ok || !signed?.token || !signed.path) throw new Error(signed?.error || "無法建立上傳連結。");
+      if (!signedResponse.ok || !signed?.token || !signed.path) throw new Error(signed?.error || "無法建立封面上傳連結。");
 
       const { error: uploadError } = await supabase.storage
         .from("battle-audio")
         .uploadToSignedUrl(signed.path, signed.token, file, {
-          contentType: standardAudioContentType(file),
+          contentType: imageContentType(file),
         });
       if (uploadError) throw uploadError;
 
-      await saveDrop(drop, { audioPath: signed.path, active: true });
-      setMessage(`${drop.gateNumber} 已上傳 ${file.name}（${formatBytes(file.size)}）。`);
+      const saved = await saveDrop(drop, { coverPath: signed.path });
+      if (!saved) return;
+      await loadData();
+      setMessage(`${drop.gateNumber} 已上傳封面 ${file.name}。`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "音檔上傳失敗。");
+      setError(err instanceof Error ? err.message : "封面上傳失敗。");
     } finally {
       setBusyId(null);
     }
+  }
+
+  async function importLyrics(drop: OfficialGatekeeperDrop, file: File | null) {
+    if (!file) return;
+    const text = (await file.text()).trim().slice(0, 8000);
+    updateLocal(drop.id, { lyrics: text });
+    setMessage(`${drop.gateNumber} 已匯入歌詞，請按儲存設定。`);
   }
 
   if (adminState === "checking") {
@@ -255,6 +332,22 @@ export default function AdminGatekeeperDropsPage() {
         {error ? <p className="mt-4 rounded-xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-100">{error}</p> : null}
         {message ? <p className="mt-4 rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-100">{message}</p> : null}
 
+        {cropTarget ? (
+          <div className="mt-5">
+            <HookCropper
+              file={cropTarget.file}
+              maxSeconds={60}
+              eyebrow={cropTarget.drop.gateNumber}
+              title="官方守門 Drop 裁切"
+              description="拖曳橘色區塊裁出 60 秒內的官方守門 Drop；確認後會上傳成 Battle 可播放音檔。"
+              backLabel="取消裁切"
+              confirmLabel="確認裁切並上傳"
+              onBack={() => setCropTarget(null)}
+              onConfirm={({ blob }) => uploadCroppedAudio(cropTarget.drop, cropTarget.file, blob)}
+            />
+          </div>
+        ) : null}
+
         <section className="mt-5 grid gap-4 lg:grid-cols-2">
           {drops.map((drop) => (
             <article key={drop.id} className="rounded-[1.2rem] border border-white/10 bg-black/55 p-5">
@@ -282,7 +375,35 @@ export default function AdminGatekeeperDropsPage() {
                 </button>
               </div>
 
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <div className="mt-4 grid gap-4 md:grid-cols-[160px_minmax(0,1fr)]">
+                <div>
+                  <span className="text-xs font-bold text-zinc-500">封面</span>
+                  <div className="relative mt-1 aspect-square overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035]">
+                    {drop.coverUrl ? (
+                      <Image src={drop.coverUrl} alt="" fill sizes="160px" className="object-cover" unoptimized />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_50%_35%,rgba(239,68,68,0.18),transparent_55%),#050505] text-center text-xs font-black leading-5 text-zinc-500">
+                        AIPO<br />GATE
+                      </div>
+                    )}
+                  </div>
+                  <label className={`mt-3 inline-flex rounded-full border px-3 py-2 text-xs font-black ${schemaMissing ? "cursor-not-allowed border-white/10 bg-white/[0.03] text-zinc-500" : "cursor-pointer border-red-200/25 bg-red-500/10 text-red-100"}`}>
+                    上傳封面
+                    <input
+                      type="file"
+                      accept={IMAGE_UPLOAD_ACCEPT}
+                      disabled={schemaMissing || busyId === drop.id}
+                      className="hidden"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0] ?? null;
+                        event.currentTarget.value = "";
+                        void uploadCover(drop, file);
+                      }}
+                    />
+                  </label>
+                  <p className="mt-2 text-[11px] font-bold leading-4 text-zinc-600">{IMAGE_UPLOAD_FORMAT_LABEL}，{GATEKEEPER_COVER_MAX_LABEL}</p>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
                 <label className="block">
                   <span className="text-xs font-bold text-zinc-500">卡片標題</span>
                   <input
@@ -323,6 +444,15 @@ export default function AdminGatekeeperDropsPage() {
                     className="mt-1 w-full truncate rounded-xl border border-white/10 bg-white/[0.025] px-4 py-3 text-sm font-bold text-zinc-400 outline-none"
                   />
                 </label>
+                <label className="block">
+                  <span className="text-xs font-bold text-zinc-500">封面路徑</span>
+                  <input
+                    value={drop.coverPath ?? ""}
+                    readOnly
+                    className="mt-1 w-full truncate rounded-xl border border-white/10 bg-white/[0.025] px-4 py-3 text-sm font-bold text-zinc-400 outline-none"
+                  />
+                </label>
+                </div>
               </div>
 
               <label className="mt-3 block">
@@ -335,9 +465,27 @@ export default function AdminGatekeeperDropsPage() {
                 />
               </label>
 
+              <label className="mt-3 block">
+                <span className="text-xs font-bold text-zinc-500">歌詞</span>
+                <textarea
+                  value={drop.lyrics ?? ""}
+                  maxLength={8000}
+                  rows={6}
+                  onChange={(event) => updateLocal(drop.id, { lyrics: event.target.value })}
+                  className="mt-1 w-full resize-y rounded-xl border border-white/10 bg-white/[0.055] px-4 py-3 text-sm font-bold leading-6 text-white outline-none focus:border-orange-300/70"
+                />
+              </label>
+
+              {drop.audioUrl ? (
+                <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+                  <p className="mb-2 text-xs font-black text-zinc-500">目前守門 Drop 試聽</p>
+                  <audio controls preload="none" src={drop.audioUrl} className="h-10 w-full" />
+                </div>
+              ) : null}
+
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
                 <label className={`rounded-full border px-4 py-2 text-xs font-black ${schemaMissing ? "cursor-not-allowed border-white/10 bg-white/[0.03] text-zinc-500" : "cursor-pointer border-cyan-200/25 bg-cyan-300/10 text-cyan-100"}`}>
-                  上傳官方 Drop 音檔
+                  上傳並裁切官方 Drop 音檔
                   <input
                     type="file"
                     accept={GATEKEEPER_AUDIO_ACCEPT}
@@ -346,7 +494,21 @@ export default function AdminGatekeeperDropsPage() {
                     onChange={(event) => {
                       const file = event.target.files?.[0] ?? null;
                       event.currentTarget.value = "";
-                      void uploadAudio(drop, file);
+                      startAudioCrop(drop, file);
+                    }}
+                  />
+                </label>
+                <label className={`rounded-full border px-4 py-2 text-xs font-black ${schemaMissing ? "cursor-not-allowed border-white/10 bg-white/[0.03] text-zinc-500" : "cursor-pointer border-white/12 bg-white/[0.04] text-zinc-200"}`}>
+                  匯入歌詞檔
+                  <input
+                    type="file"
+                    accept=".txt,.lrc,text/plain"
+                    disabled={schemaMissing || busyId === drop.id}
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0] ?? null;
+                      event.currentTarget.value = "";
+                      void importLyrics(drop, file);
                     }}
                   />
                 </label>
