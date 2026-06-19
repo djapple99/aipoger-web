@@ -10,10 +10,7 @@ import { loadIsAdmin } from "@/lib/user-profile-admin";
 import type { OfficialGatekeeperDrop } from "@/lib/official-gatekeeper-drops";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import {
-  IMAGE_UPLOAD_ACCEPT,
-  IMAGE_UPLOAD_FORMAT_LABEL,
   imageContentType,
-  isAllowedImageUploadFile,
 } from "@/lib/image-upload-policy";
 import {
   AUDIO_UPLOAD_MAX_BYTES_100MB,
@@ -35,6 +32,15 @@ type AdminDropsPayload = {
 const GATEKEEPER_AUDIO_ACCEPT = STANDARD_AUDIO_UPLOAD_ACCEPT;
 const GATEKEEPER_COVER_MAX_BYTES = 10 * 1024 * 1024;
 const GATEKEEPER_COVER_MAX_LABEL = "10MB";
+const GATEKEEPER_COVER_ACCEPT = "image/jpeg,image/png,image/gif,.jpg,.jpeg,.png,.gif";
+const GATEKEEPER_COVER_FORMAT_LABEL = "JPG / PNG / GIF";
+const GATEKEEPER_COVER_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif"]);
+
+function isAllowedGatekeeperCoverFile(file: File) {
+  if (file.type === "image/jpeg" || file.type === "image/png" || file.type === "image/gif") return true;
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return GATEKEEPER_COVER_EXTENSIONS.has(ext);
+}
 
 async function authHeader(): Promise<Record<string, string>> {
   const {
@@ -246,8 +252,8 @@ export default function AdminGatekeeperDropsPage() {
       setError("官方守門 Drop 尚未套用封面 / 歌詞欄位。請先套用 supabase/20260619_official_gatekeeper_media.sql。");
       return;
     }
-    if (!isAllowedImageUploadFile(file)) {
-      setError(`封面格式不支援。請使用 ${IMAGE_UPLOAD_FORMAT_LABEL}。`);
+    if (!isAllowedGatekeeperCoverFile(file)) {
+      setError(`封面格式不支援。請使用 ${GATEKEEPER_COVER_FORMAT_LABEL}。`);
       return;
     }
     if (file.size > GATEKEEPER_COVER_MAX_BYTES) {
@@ -277,7 +283,10 @@ export default function AdminGatekeeperDropsPage() {
       if (uploadError) throw uploadError;
 
       const saved = await saveDrop(drop, { coverPath: signed.path });
-      if (!saved) return;
+      if (!saved) {
+        void supabase.storage.from("battle-audio").remove([signed.path]);
+        return;
+      }
       await loadData();
       setMessage(`${drop.gateNumber} 已上傳封面 ${file.name}。`);
     } catch (err) {
@@ -445,7 +454,7 @@ export default function AdminGatekeeperDropsPage() {
                     上傳封面
                     <input
                       type="file"
-                      accept={IMAGE_UPLOAD_ACCEPT}
+                      accept={GATEKEEPER_COVER_ACCEPT}
                       disabled={schemaMissing || mediaSchemaMissing || busyId === drop.id}
                       className="hidden"
                       onChange={(event) => {
@@ -455,7 +464,7 @@ export default function AdminGatekeeperDropsPage() {
                       }}
                     />
                   </label>
-                  <p className="mt-2 text-[11px] font-bold leading-4 text-zinc-600">{IMAGE_UPLOAD_FORMAT_LABEL}，{GATEKEEPER_COVER_MAX_LABEL}</p>
+                  <p className="mt-2 text-[11px] font-bold leading-4 text-zinc-600">{GATEKEEPER_COVER_FORMAT_LABEL}，{GATEKEEPER_COVER_MAX_LABEL}</p>
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                 <label className="block">

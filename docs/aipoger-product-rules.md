@@ -94,7 +94,7 @@ Official Gatekeeper Drops:
 - Owner/admin does not set a start time for official Gatekeeper Drops. The official song stays there as a standing gate.
 - Owner/admin must choose the official Gatekeeper Drop genre from the same standard genre menu used by Battle upload. Do not use free-text genre entry for these cards.
 - Official Gatekeeper Drop audio accepts standard AIPOGER audio formats with a 100MB single-file limit. The owner/admin upload flow must use the same 60-second Drop cropper used by normal Drop Battle.
-- Official Gatekeeper Drop cover art accepts the standard AIPOGER image formats with a 10MB single-file limit. Lyrics are optional and stored with the official template.
+- Official Gatekeeper Drop cover art accepts JPG, PNG, and GIF with a 10MB single-file limit. Lyrics are optional and stored with the official template.
 - Production must have `supabase/20260618_official_gatekeeper_drops.sql` and `supabase/20260619_official_gatekeeper_media.sql` applied before audio, cover art, and lyrics can all be saved.
 - Public cards should say `官方守門 Drop` / `歡迎任何人來挑戰`, show `GATE` number and genre/type badge, and avoid wording like `官方守門戰：傷心酒吧`.
 - A challenger can choose the start time using the normal Drop Battle schedule rules: quick 10 / 15 / 20 minutes after successful battle creation, or a custom time within 24 hours.

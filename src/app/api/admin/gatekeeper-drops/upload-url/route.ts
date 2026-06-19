@@ -6,10 +6,11 @@ import {
   AUDIO_UPLOAD_MAX_BYTES_100MB,
   AUDIO_UPLOAD_MAX_LABEL_100MB,
 } from "@/lib/audio-upload-policy";
-import { isAllowedImageUploadFile } from "@/lib/image-upload-policy";
 
 const COVER_UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
 const COVER_UPLOAD_MAX_LABEL = "10MB";
+const COVER_UPLOAD_FORMAT_LABEL = "JPG / PNG / GIF";
+const COVER_UPLOAD_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif"]);
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -39,6 +40,11 @@ function safeStorageFileName(name: string, fallback: string) {
     .toLowerCase() || fallback;
 }
 
+function isAllowedCoverFileName(name: string) {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  return COVER_UPLOAD_EXTENSIONS.has(ext);
+}
+
 export async function POST(request: NextRequest) {
   let admin: ReturnType<typeof adminClient>;
   try {
@@ -66,8 +72,7 @@ export async function POST(request: NextRequest) {
     return jsonError(`官方守門 Drop 音檔上限是 ${AUDIO_UPLOAD_MAX_LABEL_100MB}。`, 413);
   }
   if (assetType === "cover") {
-    const mockFile = { name: fileName, type: "" } as File;
-    if (!isAllowedImageUploadFile(mockFile)) return jsonError("封面格式不支援。請使用 JPG / PNG / WebP / GIF。", 400);
+    if (!isAllowedCoverFileName(fileName)) return jsonError(`封面格式不支援。請使用 ${COVER_UPLOAD_FORMAT_LABEL}。`, 400);
     if (typeof body?.fileSize === "number" && body.fileSize > COVER_UPLOAD_MAX_BYTES) {
       return jsonError(`官方守門 Drop 封面上限是 ${COVER_UPLOAD_MAX_LABEL}。`, 413);
     }
