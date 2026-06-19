@@ -31,12 +31,12 @@ function adminClient() {
 
 function isMissingTable(error: { message?: string; details?: string; hint?: string; code?: string } | null) {
   const msg = `${error?.message ?? ""} ${error?.details ?? ""} ${error?.hint ?? ""} ${error?.code ?? ""}`;
-  return /official_gatekeeper_drops|relation.*does not exist|schema cache|PGRST204|42P01/i.test(msg);
+  return /relation.*official_gatekeeper_drops.*does not exist|official_gatekeeper_drops.*does not exist|42P01/i.test(msg);
 }
 
 function isMissingMediaColumns(error: { message?: string; details?: string; hint?: string; code?: string } | null) {
   const msg = `${error?.message ?? ""} ${error?.details ?? ""} ${error?.hint ?? ""} ${error?.code ?? ""}`;
-  return /lyrics|cover_path|schema cache|column.*does not exist|PGRST204/i.test(msg);
+  return /lyrics|cover_path|column.*does not exist|PGRST204/i.test(msg);
 }
 
 async function requireOwnerAdmin(request: NextRequest): Promise<{ admin: AdminClient; userId: string } | { error: NextResponse }> {
@@ -72,9 +72,6 @@ export async function GET(request: NextRequest) {
     .order("sort_order", { ascending: true });
 
   if (error) {
-    if (isMissingTable(error)) {
-      return NextResponse.json({ schemaMissing: true, drops: OFFICIAL_GATEKEEPER_DROP_DEFAULTS });
-    }
     if (isMissingMediaColumns(error)) {
       mediaSchemaMissing = true;
       const legacy = await auth.admin
@@ -83,6 +80,9 @@ export async function GET(request: NextRequest) {
         .order("sort_order", { ascending: true });
       data = legacy.data;
       error = legacy.error;
+    }
+    if (isMissingTable(error)) {
+      return NextResponse.json({ schemaMissing: true, drops: OFFICIAL_GATEKEEPER_DROP_DEFAULTS });
     }
     if (error) return jsonError(error.message, 500);
   }
@@ -159,7 +159,6 @@ export async function PATCH(request: NextRequest) {
     .single();
 
   if (error) {
-    if (isMissingTable(error)) return jsonError("尚未建立 official_gatekeeper_drops，請先套用 supabase/20260618_official_gatekeeper_drops.sql。", 409);
     if (isMissingMediaColumns(error)) {
       if (requestedMediaFields) return jsonError("官方守門 Drop 缺少封面 / 歌詞欄位。請先套用 supabase/20260619_official_gatekeeper_media.sql。", 409);
       const legacyRow = {
@@ -185,6 +184,7 @@ export async function PATCH(request: NextRequest) {
       const legacyDrop = normalizeOfficialGatekeeperDrop(legacy.data as Record<string, unknown>);
       return NextResponse.json({ drop: await attachOfficialGatekeeperMediaUrls(auth.admin, legacyDrop), mediaSchemaMissing: true });
     }
+    if (isMissingTable(error)) return jsonError("尚未建立 official_gatekeeper_drops，請先套用 supabase/20260618_official_gatekeeper_drops.sql。", 409);
     return jsonError(error.message, 500);
   }
 

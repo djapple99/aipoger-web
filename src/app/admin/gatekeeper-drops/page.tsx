@@ -342,7 +342,7 @@ export default function AdminGatekeeperDropsPage() {
         ) : null}
         {mediaSchemaMissing ? (
           <p className="mt-4 rounded-xl border border-orange-300/35 bg-orange-500/10 px-4 py-3 text-sm font-bold text-orange-100">
-            尚未建立封面 / 歌詞欄位。音檔裁切與啟用仍可使用；封面與歌詞請先套用 `supabase/20260619_official_gatekeeper_media.sql`。
+            目前 production 還沒套封面 / 歌詞欄位。音檔裁切與啟用可以先用；封面與歌詞要等 `supabase/20260619_official_gatekeeper_media.sql` 套用後才會開放。
           </p>
         ) : null}
         {error ? <p className="mt-4 rounded-xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-100">{error}</p> : null}
@@ -450,22 +450,6 @@ export default function AdminGatekeeperDropsPage() {
                     maxLength={40}
                     onChange={(event) => updateLocal(drop.id, { aiTool: event.target.value })}
                     className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.055] px-4 py-3 text-sm font-bold text-white outline-none focus:border-orange-300/70"
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-xs font-bold text-zinc-500">音檔路徑</span>
-                  <input
-                    value={drop.audioPath ?? ""}
-                    readOnly
-                    className="mt-1 w-full truncate rounded-xl border border-white/10 bg-white/[0.025] px-4 py-3 text-sm font-bold text-zinc-400 outline-none"
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-xs font-bold text-zinc-500">封面路徑</span>
-                  <input
-                    value={drop.coverPath ?? ""}
-                    readOnly
-                    className="mt-1 w-full truncate rounded-xl border border-white/10 bg-white/[0.025] px-4 py-3 text-sm font-bold text-zinc-400 outline-none"
                   />
                 </label>
                 </div>
