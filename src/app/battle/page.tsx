@@ -1292,7 +1292,14 @@ function BattlePoolList() {
                       </details>
                     ) : null}
                     {drop.audioUrl ? (
-                      <audio controls preload="none" src={drop.audioUrl} className="mt-4 h-10 w-full" />
+                      <audio
+                        controls
+                        controlsList="nodownload"
+                        preload="none"
+                        src={drop.audioUrl}
+                        className="mt-4 h-10 w-full"
+                        onContextMenu={(event) => event.preventDefault()}
+                      />
                     ) : null}
                     <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-white/10 pt-3">
                       <Link

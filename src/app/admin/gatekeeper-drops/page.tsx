@@ -198,6 +198,44 @@ export default function AdminGatekeeperDropsPage() {
     }
   }
 
+  async function clearAudio(drop: OfficialGatekeeperDrop) {
+    if (!drop.audioPath) return;
+    const confirmed = window.confirm(`${drop.gateNumber} 目前音檔會從後台與 Storage 清除，清除後可重新上傳。確定清除？`);
+    if (!confirmed) return;
+    setBusyId(drop.id);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch("/api/admin/gatekeeper-drops", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(await authHeader()),
+        },
+        body: JSON.stringify({
+          id: drop.id,
+          title: drop.title,
+          genre: drop.genre,
+          aiTool: drop.aiTool,
+          description: drop.description,
+          audioPath: null,
+          coverPath: drop.coverPath,
+          lyrics: drop.lyrics,
+          active: false,
+          clearAudio: true,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as { drop?: OfficialGatekeeperDrop; error?: string } | null;
+      if (!response.ok) throw new Error(payload?.error || "清除音檔失敗。");
+      if (payload?.drop) updateLocal(drop.id, payload.drop);
+      setMessage(`${drop.gateNumber} 目前音檔已清除，可以重新上傳。`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "清除音檔失敗。");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function uploadCover(drop: OfficialGatekeeperDrop, file: File | null) {
     if (!file) return;
     if (schemaMissing) {
@@ -480,7 +518,14 @@ export default function AdminGatekeeperDropsPage() {
               {drop.audioUrl ? (
                 <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.035] p-3">
                   <p className="mb-2 text-xs font-black text-zinc-500">目前守門 Drop 試聽</p>
-                  <audio controls preload="none" src={drop.audioUrl} className="h-10 w-full" />
+                  <audio
+                    controls
+                    controlsList="nodownload"
+                    preload="none"
+                    src={drop.audioUrl}
+                    className="h-10 w-full"
+                    onContextMenu={(event) => event.preventDefault()}
+                  />
                 </div>
               ) : null}
 
@@ -499,6 +544,16 @@ export default function AdminGatekeeperDropsPage() {
                     }}
                   />
                 </label>
+                {drop.audioPath ? (
+                  <button
+                    type="button"
+                    disabled={busyId === drop.id || schemaMissing}
+                    onClick={() => void clearAudio(drop)}
+                    className="rounded-full border border-red-200/30 bg-red-500/10 px-4 py-2 text-xs font-black text-red-100 transition hover:bg-red-500/18 disabled:cursor-wait disabled:opacity-50"
+                  >
+                    清除目前音檔
+                  </button>
+                ) : null}
                 <label className={`rounded-full border px-4 py-2 text-xs font-black ${schemaMissing || mediaSchemaMissing ? "cursor-not-allowed border-white/10 bg-white/[0.03] text-zinc-500" : "cursor-pointer border-white/12 bg-white/[0.04] text-zinc-200"}`}>
                   匯入歌詞檔
                   <input

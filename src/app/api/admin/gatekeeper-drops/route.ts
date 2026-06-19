@@ -123,6 +123,7 @@ export async function PATCH(request: NextRequest) {
     coverPath?: string | null;
     lyrics?: string | null;
     active?: boolean;
+    clearAudio?: boolean;
   } | null;
 
   const id = body?.id?.trim();
@@ -131,10 +132,20 @@ export async function PATCH(request: NextRequest) {
   }
 
   const fallback = OFFICIAL_GATEKEEPER_DROP_DEFAULTS.find((drop) => drop.id === id)!;
-  const audioPath = typeof body?.audioPath === "string" && body.audioPath.trim() ? body.audioPath.trim() : null;
+  const clearAudio = Boolean(body?.clearAudio);
+  const audioPath = clearAudio ? null : typeof body?.audioPath === "string" && body.audioPath.trim() ? body.audioPath.trim() : null;
   const coverPath = typeof body?.coverPath === "string" && body.coverPath.trim() ? body.coverPath.trim() : null;
   const lyrics = typeof body?.lyrics === "string" && body.lyrics.trim() ? body.lyrics.trim().slice(0, 8000) : null;
   const requestedMediaFields = Boolean(coverPath || lyrics);
+  let audioPathToRemove: string | null = null;
+  if (clearAudio) {
+    const { data: existing } = await auth.admin
+      .from("official_gatekeeper_drops")
+      .select("audio_path")
+      .eq("id", id)
+      .maybeSingle<{ audio_path?: string | null }>();
+    audioPathToRemove = typeof existing?.audio_path === "string" && existing.audio_path.trim() ? existing.audio_path.trim() : null;
+  }
   const row = {
     id,
     gate_number: fallback.gateNumber,
@@ -182,6 +193,9 @@ export async function PATCH(request: NextRequest) {
         .single();
       if (legacy.error) return jsonError(legacy.error.message, 500);
       const legacyDrop = normalizeOfficialGatekeeperDrop(legacy.data as Record<string, unknown>);
+      if (clearAudio && audioPathToRemove && !/^(https?:|data:|\/)/i.test(audioPathToRemove)) {
+        await auth.admin.storage.from("battle-audio").remove([audioPathToRemove]);
+      }
       return NextResponse.json({ drop: await attachOfficialGatekeeperMediaUrls(auth.admin, legacyDrop), mediaSchemaMissing: true });
     }
     if (isMissingTable(error)) return jsonError("尚未建立 official_gatekeeper_drops，請先套用 supabase/20260618_official_gatekeeper_drops.sql。", 409);
@@ -189,5 +203,8 @@ export async function PATCH(request: NextRequest) {
   }
 
   const drop = normalizeOfficialGatekeeperDrop(data as Record<string, unknown>);
+  if (clearAudio && audioPathToRemove && !/^(https?:|data:|\/)/i.test(audioPathToRemove)) {
+    await auth.admin.storage.from("battle-audio").remove([audioPathToRemove]);
+  }
   return NextResponse.json({ drop: await attachOfficialGatekeeperMediaUrls(auth.admin, drop) });
 }
