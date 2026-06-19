@@ -553,16 +553,18 @@ export default function AdminGatekeeperDropsPage() {
                     }}
                   />
                 </label>
-                {drop.audioPath ? (
-                  <button
-                    type="button"
-                    disabled={busyId === drop.id || schemaMissing}
-                    onClick={() => void clearAudio(drop)}
-                    className="rounded-full border border-red-200/30 bg-red-500/10 px-4 py-2 text-xs font-black text-red-100 transition hover:bg-red-500/18 disabled:cursor-wait disabled:opacity-50"
-                  >
-                    清除目前音檔
-                  </button>
-                ) : null}
+                <button
+                  type="button"
+                  disabled={busyId === drop.id || schemaMissing || !drop.audioPath}
+                  onClick={() => void clearAudio(drop)}
+                  className={`rounded-full border px-4 py-2 text-xs font-black transition disabled:cursor-not-allowed disabled:opacity-55 ${
+                    drop.audioPath
+                      ? "border-red-200/30 bg-red-500/10 text-red-100 hover:bg-red-500/18"
+                      : "border-white/10 bg-white/[0.03] text-zinc-500"
+                  }`}
+                >
+                  {drop.audioPath ? "清除目前音檔" : "尚無音檔"}
+                </button>
                 <label className={`rounded-full border px-4 py-2 text-xs font-black ${schemaMissing || mediaSchemaMissing ? "cursor-not-allowed border-white/10 bg-white/[0.03] text-zinc-500" : "cursor-pointer border-white/12 bg-white/[0.04] text-zinc-200"}`}>
                   匯入歌詞檔
                   <input
