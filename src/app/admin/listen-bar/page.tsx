@@ -58,6 +58,11 @@ type ModerationSummaryPayload = {
   storageFallback?: boolean;
 };
 
+type ListenBarTracksAdminPayload = {
+  tracks?: AdminListenBarTrackRow[];
+  error?: string;
+};
+
 const initialForm: TrackForm = {
   title: "",
   artist: "AIPOGER",
@@ -113,11 +118,6 @@ function rowPublicUrl(bucket: string, path: string | null | undefined) {
   if (!value) return "";
   if (/^https?:/i.test(value)) return value;
   return supabase.storage.from(bucket).getPublicUrl(value).data.publicUrl;
-}
-
-function isMissingColumnError(error: { message?: string } | null | undefined) {
-  const message = error?.message?.toLowerCase() ?? "";
-  return message.includes("schema cache") || message.includes("column") || message.includes("pgrst204");
 }
 
 function isHiddenTrack(track: AdminListenBarTrackRow) {
@@ -243,34 +243,20 @@ export default function ListenBarAdminPage() {
 
   const loadTracks = useCallback(async () => {
     setError("");
-    const modernSelect = "id, title, artist, ai_tool, genre, mood, bpm, duration_seconds, audio_path, cover_path, lyrics, sort_order, is_active, source, bar_phase, review_status, moderation_note, hidden_at, removed_at, promoted_at, positive_reaction_count, heart_count, star_count, thumb_count, happy_count, created_at, updated_at";
-    const legacySelect = "id, title, artist, ai_tool, genre, mood, bpm, duration_seconds, audio_path, cover_path, lyrics, sort_order, is_active, created_at, updated_at";
-    const modernQuery = await supabase
-      .from("listen_bar_tracks")
-      .select(modernSelect)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: false });
-    let data: unknown = modernQuery.data;
-    let queryError = modernQuery.error;
-    if (queryError && isMissingColumnError(queryError)) {
-      const legacyQuery = await supabase
-        .from("listen_bar_tracks")
-        .select(legacySelect)
-        .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: false });
-      data = legacyQuery.data;
-      queryError = legacyQuery.error;
-    }
-
-    if (queryError) {
+    const response = await fetch("/api/admin/listen-bar-tracks", {
+      cache: "no-store",
+      headers: await authHeader(),
+    });
+    const payload = (await response.json().catch(() => null)) as ListenBarTracksAdminPayload | null;
+    if (!response.ok) {
       setTracks([]);
       setTableReady(false);
-      setError("尚未建立 listen_bar_tracks。請先在 Supabase SQL Editor 執行 supabase/listen_bar_tracks.sql。");
+      setError(payload?.error || "無法讀取傷心酒吧後台歌曲。請確認登入狀態與管理員權限。");
       return;
     }
 
     setTableReady(true);
-    setTracks((data as AdminListenBarTrackRow[] | null) ?? []);
+    setTracks(payload?.tracks ?? []);
     setOptimisticTrackPatches({});
   }, []);
 
@@ -471,14 +457,24 @@ export default function ListenBarAdminPage() {
     setError("");
     setMessage("");
     setOperatingTrackId(track.id);
-    const { error: updateError } = await supabase.from("listen_bar_tracks").update(patch).eq("id", track.id);
-    if (updateError) {
-      setError(`更新失敗：${updateError.message}`);
+    const sortOrder = typeof patch.sort_order === "number" ? patch.sort_order : null;
+    const response = await fetch("/api/admin/listen-bar-tracks", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(await authHeader()),
+      },
+      body: JSON.stringify({ action: "sort", trackId: track.id, sortOrder }),
+    });
+    const payload = (await response.json().catch(() => null)) as ListenBarTracksAdminPayload | null;
+    if (!response.ok) {
+      setError(`更新失敗：${payload?.error || "後台 API 無法更新排序。"}`);
       setOperatingTrackId("");
       return;
     }
     setMessage(successMessage);
-    await loadTracks();
+    setTracks(payload?.tracks ?? []);
+    setOptimisticTrackPatches({});
     setOperatingTrackId("");
   };
 
@@ -495,35 +491,17 @@ export default function ListenBarAdminPage() {
         removed_at: null,
       },
     }));
-    const modernPayload = {
-      is_active: true,
-      review_status: "approved",
-      hidden_at: null,
-      removed_at: null,
-      moderation_note: null,
-    };
-    const modernUpdate = await supabase.from("listen_bar_tracks").update(modernPayload).eq("id", track.id);
-    if (!modernUpdate.error) {
-      setMessage(`「${track.title}」已恢復上架，狀態已改為公播候選。`);
-      await loadTracks();
-      setOperatingTrackId("");
-      return;
-    }
-
-    if (!isMissingColumnError(modernUpdate.error)) {
-      setError(`恢復失敗：${modernUpdate.error.message}`);
-      setOptimisticTrackPatches((current) => {
-        const next = { ...current };
-        delete next[track.id];
-        return next;
-      });
-      setOperatingTrackId("");
-      return;
-    }
-
-    const legacyUpdate = await supabase.from("listen_bar_tracks").update({ is_active: true }).eq("id", track.id);
-    if (legacyUpdate.error) {
-      setError(`恢復失敗：${legacyUpdate.error.message}`);
+    const response = await fetch("/api/admin/listen-bar-tracks", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(await authHeader()),
+      },
+      body: JSON.stringify({ action: "restore", trackId: track.id, note: "Owner restored from Bar Heartbreak console." }),
+    });
+    const payload = (await response.json().catch(() => null)) as ListenBarTracksAdminPayload | null;
+    if (!response.ok) {
+      setError(`恢復失敗：${payload?.error || "後台 API 無法恢復上架。"}`);
       setOptimisticTrackPatches((current) => {
         const next = { ...current };
         delete next[track.id];
@@ -533,7 +511,8 @@ export default function ListenBarAdminPage() {
       return;
     }
     setMessage(`「${track.title}」已恢復上架。`);
-    await loadTracks();
+    setTracks(payload?.tracks ?? []);
+    setOptimisticTrackPatches({});
     setOperatingTrackId("");
   };
 
@@ -551,34 +530,17 @@ export default function ListenBarAdminPage() {
         hidden_at: hiddenAt,
       },
     }));
-    const modernPayload = {
-      is_active: false,
-      review_status: "hidden",
-      hidden_at: hiddenAt,
-      moderation_note: "Owner hidden from Bar Heartbreak console.",
-    };
-    const modernUpdate = await supabase.from("listen_bar_tracks").update(modernPayload).eq("id", track.id);
-    if (!modernUpdate.error) {
-      setMessage(`「${track.title}」已下架，狀態已改為已下架。`);
-      await loadTracks();
-      setOperatingTrackId("");
-      return;
-    }
-
-    if (!isMissingColumnError(modernUpdate.error)) {
-      setError(`下架失敗：${modernUpdate.error.message}`);
-      setOptimisticTrackPatches((current) => {
-        const next = { ...current };
-        delete next[track.id];
-        return next;
-      });
-      setOperatingTrackId("");
-      return;
-    }
-
-    const legacyUpdate = await supabase.from("listen_bar_tracks").update({ is_active: false }).eq("id", track.id);
-    if (legacyUpdate.error) {
-      setError(`下架失敗：${legacyUpdate.error.message}`);
+    const response = await fetch("/api/admin/listen-bar-tracks", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(await authHeader()),
+      },
+      body: JSON.stringify({ action: "hide", trackId: track.id, note: "Owner hidden from Bar Heartbreak console." }),
+    });
+    const payload = (await response.json().catch(() => null)) as ListenBarTracksAdminPayload | null;
+    if (!response.ok) {
+      setError(`下架失敗：${payload?.error || "後台 API 無法下架歌曲。"}`);
       setOptimisticTrackPatches((current) => {
         const next = { ...current };
         delete next[track.id];
@@ -588,7 +550,8 @@ export default function ListenBarAdminPage() {
       return;
     }
     setMessage(`「${track.title}」已下架。`);
-    await loadTracks();
+    setTracks(payload?.tracks ?? []);
+    setOptimisticTrackPatches({});
     setOperatingTrackId("");
   };
 
@@ -805,7 +768,7 @@ export default function ListenBarAdminPage() {
                             </audio>
                           )}
                           <div className="mt-3 flex flex-wrap gap-2">
-                            <button type="button" disabled={operatingTrackId === track.id} onClick={() => void (hidden ? restoreTrack(track) : hideTrack(track))} className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300/70 disabled:cursor-not-allowed disabled:opacity-45 ${hidden ? "border-cyan-300/25 text-cyan-100 hover:border-cyan-200/65" : "border-red-300/22 text-red-100 hover:border-red-300/65"}`}>
+                            <button type="button" disabled={operatingTrackId === track.id} onClick={() => void (hidden ? restoreTrack(track) : hideTrack(track))} className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-45 ${hidden ? "border-cyan-300/25 text-cyan-100 hover:border-cyan-200/65 focus-visible:ring-cyan-200/55" : "border-white/12 text-zinc-200 hover:border-cyan-200/55 focus-visible:ring-cyan-200/55"}`}>
                               {operatingTrackId === track.id ? "處理中" : hidden ? "恢復上架" : "下架"}
                             </button>
                             <button type="button" disabled={operatingTrackId === track.id} onClick={() => void updateTrack(track, { sort_order: Math.max(0, (track.sort_order ?? 100) - 10) })} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45">
