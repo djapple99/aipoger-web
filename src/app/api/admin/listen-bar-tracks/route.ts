@@ -2,7 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isAdminEmail } from "@/lib/admin-emails";
 
-type TrackAction = "hide" | "restore" | "sort";
+type TrackAction = "hide" | "restore" | "sort" | "randomize";
+type AdminListenBarTrackRow = {
+  id: string;
+  is_active?: boolean | null;
+  review_status?: string | null;
+  hidden_at?: string | null;
+  removed_at?: string | null;
+  audio_path?: string | null;
+  created_at?: string | null;
+};
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -73,6 +82,27 @@ async function loadTracks(admin: ReturnType<typeof adminClient>) {
   return legacy.data ?? [];
 }
 
+function isPlayableForRandomSort(track: AdminListenBarTrackRow) {
+  const status = track.review_status?.toLowerCase();
+  return (
+    track.is_active !== false &&
+    status !== "hidden" &&
+    status !== "removed" &&
+    !track.hidden_at &&
+    !track.removed_at &&
+    Boolean(track.audio_path?.trim())
+  );
+}
+
+function shuffled<T>(items: T[]): T[] {
+  const next = [...items];
+  for (let index = next.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
+  }
+  return next;
+}
+
 async function updateTrack(admin: ReturnType<typeof adminClient>, trackId: string, action: TrackAction, sortOrder: number | null, note: string | null) {
   const now = new Date().toISOString();
   const modernPayload =
@@ -106,6 +136,19 @@ async function updateTrack(admin: ReturnType<typeof adminClient>, trackId: strin
   if (legacy.error) throw legacy.error;
 }
 
+async function randomizeActiveTracks(admin: ReturnType<typeof adminClient>) {
+  const tracks = (await loadTracks(admin)) as AdminListenBarTrackRow[];
+  const activeTracks = shuffled(tracks.filter(isPlayableForRandomSort));
+  for (let index = 0; index < activeTracks.length; index += 1) {
+    const { error } = await admin
+      .from("listen_bar_tracks")
+      .update({ sort_order: 1000 + index * 10 })
+      .eq("id", activeTracks[index].id);
+    if (error) throw error;
+  }
+  return activeTracks.length;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const guard = await requireOwnerAdmin(request);
@@ -126,15 +169,19 @@ export async function PATCH(request: NextRequest) {
 
     const trackId = cleanText(body.trackId, 160);
     const action = cleanText(body.action, 40) as TrackAction | null;
-    if (!trackId) return jsonError("缺少歌曲 ID。", 400);
-    if (action !== "hide" && action !== "restore" && action !== "sort") return jsonError("未知後台動作。", 400);
+    if (action !== "hide" && action !== "restore" && action !== "sort" && action !== "randomize") return jsonError("未知後台動作。", 400);
+    if (action !== "randomize" && !trackId) return jsonError("缺少歌曲 ID。", 400);
 
     const sortOrder = typeof body.sortOrder === "number" && Number.isFinite(body.sortOrder)
       ? Math.round(body.sortOrder)
       : null;
     if (action === "sort" && sortOrder === null) return jsonError("缺少排序數字。", 400);
 
-    await updateTrack(guard.admin, trackId, action, sortOrder, cleanText(body.note, 1200));
+    if (action === "randomize") {
+      await randomizeActiveTracks(guard.admin);
+    } else {
+      await updateTrack(guard.admin, trackId as string, action, sortOrder, cleanText(body.note, 1200));
+    }
     const tracks = await loadTracks(guard.admin);
     return NextResponse.json({ ok: true, tracks });
   } catch (error) {

@@ -230,6 +230,8 @@ export default function ListenBarAdminPage() {
   const [error, setError] = useState("");
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [operatingTrackId, setOperatingTrackId] = useState("");
+  const [playlistBusy, setPlaylistBusy] = useState(false);
+  const [hideDownedTracks, setHideDownedTracks] = useState(false);
   const [optimisticTrackPatches, setOptimisticTrackPatches] = useState<Record<string, Partial<AdminListenBarTrackRow>>>({});
 
   const displayTracks = useMemo(
@@ -237,6 +239,11 @@ export default function ListenBarAdminPage() {
     [optimisticTrackPatches, tracks],
   );
   const visiblePlayableTracks = useMemo(() => activePlayableTracks(displayTracks), [displayTracks]);
+  const renderedTracks = useMemo(
+    () => (hideDownedTracks ? displayTracks.filter((track) => !isHiddenTrack(track)) : displayTracks),
+    [displayTracks, hideDownedTracks],
+  );
+  const hiddenTrackCount = useMemo(() => displayTracks.filter(isHiddenTrack).length, [displayTracks]);
   const openingPhaseActive = visiblePlayableTracks.length <= LISTEN_BAR_PUBLIC_ROTATION_LIMIT;
   const currentlyPlayingId = useMemo(() => currentLiveTrackId(displayTracks, nowMs), [displayTracks, nowMs]);
   const totalActive = visiblePlayableTracks.length;
@@ -478,6 +485,31 @@ export default function ListenBarAdminPage() {
     setOperatingTrackId("");
   };
 
+  const randomizeTrackOrder = async () => {
+    if (!window.confirm("確定要隨機重排目前仍上架播放的歌曲順序？已下架歌曲不會被排入公播。")) return;
+    setError("");
+    setMessage("");
+    setPlaylistBusy(true);
+    const response = await fetch("/api/admin/listen-bar-tracks", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(await authHeader()),
+      },
+      body: JSON.stringify({ action: "randomize" }),
+    });
+    const payload = (await response.json().catch(() => null)) as ListenBarTracksAdminPayload | null;
+    if (!response.ok) {
+      setError(`隨機排列失敗：${payload?.error || "後台 API 無法重排歌曲。"}`);
+      setPlaylistBusy(false);
+      return;
+    }
+    setTracks(payload?.tracks ?? []);
+    setOptimisticTrackPatches({});
+    setMessage("已隨機重排目前上架歌曲。");
+    setPlaylistBusy(false);
+  };
+
   const restoreTrack = async (track: AdminListenBarTrackRow) => {
     setError("");
     setMessage("");
@@ -699,23 +731,31 @@ export default function ListenBarAdminPage() {
           </form>
 
           <section className="rounded-[1.4rem] border border-white/10 bg-white/[0.045] p-4 shadow-[0_20px_70px_rgba(0,0,0,0.4)] backdrop-blur md:p-5">
-            <div className="mb-4 flex items-end justify-between gap-3">
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/70">PLAYLIST</p>
                 <h2 className="mt-1 text-2xl font-black text-white">輪播資料庫</h2>
               </div>
-              <button type="button" onClick={() => void loadTracks()} className="rounded-full border border-cyan-200/25 px-4 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-200">
-                重新整理
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => setHideDownedTracks((current) => !current)} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55">
+                  {hideDownedTracks ? "顯示全部" : `隱藏已下架${hiddenTrackCount > 0 ? ` ${hiddenTrackCount}` : ""}`}
+                </button>
+                <button type="button" disabled={playlistBusy || visiblePlayableTracks.length < 2} onClick={() => void randomizeTrackOrder()} className="rounded-full border border-orange-300/30 bg-orange-500/10 px-4 py-2 text-xs font-black text-orange-100 transition hover:border-orange-200/65 disabled:cursor-not-allowed disabled:opacity-45">
+                  {playlistBusy ? "排列中" : "隨機排列"}
+                </button>
+                <button type="button" disabled={playlistBusy} onClick={() => void loadTracks()} className="rounded-full border border-cyan-200/25 px-4 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-200 disabled:cursor-not-allowed disabled:opacity-45">
+                  重新整理
+                </button>
+              </div>
             </div>
 
             <div className="grid max-h-[72rem] gap-3 overflow-y-auto pr-1">
-              {displayTracks.length === 0 ? (
+              {renderedTracks.length === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-black/40 px-4 py-10 text-center text-sm leading-7 text-zinc-500">
-                  尚無輪播資料。先上傳第一首官方歌曲。
+                  {displayTracks.length === 0 ? "尚無輪播資料。先上傳第一首官方歌曲。" : "目前已隱藏下架歌曲，沒有可顯示的上架歌曲。"}
                 </div>
               ) : (
-                displayTracks.map((track) => {
+                renderedTracks.map((track) => {
                   const coverUrl = rowPublicUrl(LISTEN_BAR_COVER_BUCKET, track.cover_path) || DEFAULT_LISTEN_BAR_COVER;
                   const audioUrl = rowPublicUrl(LISTEN_BAR_AUDIO_BUCKET, track.audio_path);
                   const hidden = isHiddenTrack(track);
