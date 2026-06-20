@@ -10,6 +10,7 @@ import {
   DEFAULT_LISTEN_BAR_COVER,
   LISTEN_BAR_AUDIO_BUCKET,
   LISTEN_BAR_COVER_BUCKET,
+  LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
   type ListenBarTrackRow,
 } from "@/lib/listen-bar";
 import { parseMp3Metadata, type ParsedMp3Metadata } from "@/lib/mp3-id3";
@@ -28,6 +29,12 @@ import {
 } from "@/lib/listen-bar-upload-policy";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
+type AdminListenBarTrackRow = ListenBarTrackRow & {
+  review_status?: "approved" | "pending" | "hidden" | "removed" | string | null;
+  moderation_note?: string | null;
+  hidden_at?: string | null;
+  removed_at?: string | null;
+};
 
 type TrackForm = {
   title: string;
@@ -63,6 +70,8 @@ const initialForm: TrackForm = {
   sortOrder: "100",
   isActive: true,
 };
+
+const LIVE_RADIO_EPOCH_MS = Date.UTC(2026, 0, 1);
 
 function safeFileName(name: string) {
   const cleaned = name
@@ -106,6 +115,82 @@ function rowPublicUrl(bucket: string, path: string | null | undefined) {
   return supabase.storage.from(bucket).getPublicUrl(value).data.publicUrl;
 }
 
+function isMissingColumnError(error: { message?: string } | null | undefined) {
+  const message = error?.message?.toLowerCase() ?? "";
+  return message.includes("schema cache") || message.includes("column") || message.includes("pgrst204");
+}
+
+function isHiddenTrack(track: AdminListenBarTrackRow) {
+  const status = track.review_status?.toLowerCase();
+  return track.is_active === false || status === "hidden" || status === "removed";
+}
+
+function activePlayableTracks(tracks: AdminListenBarTrackRow[]) {
+  return tracks
+    .filter((track) => track.is_active !== false && !isHiddenTrack(track) && Boolean(track.audio_path?.trim()))
+    .sort((a, b) => {
+      const phaseA = a.bar_phase === "public" ? 0 : a.bar_phase === "challenger" ? 1 : 0;
+      const phaseB = b.bar_phase === "public" ? 0 : b.bar_phase === "challenger" ? 1 : 0;
+      if (phaseA !== phaseB) return phaseA - phaseB;
+      return new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime();
+    });
+}
+
+function currentLiveTrackId(tracks: AdminListenBarTrackRow[], nowMs: number) {
+  const playableTracks = activePlayableTracks(tracks);
+  if (playableTracks.length === 0) return "";
+  const totalDuration = playableTracks.reduce((sum, track) => sum + Math.max(1, Math.round(track.duration_seconds ?? 1)), 0);
+  if (totalDuration <= 0) return playableTracks[0]?.id ?? "";
+
+  let cursor = Math.floor(Math.max(0, nowMs - LIVE_RADIO_EPOCH_MS) / 1000) % totalDuration;
+  for (const track of playableTracks) {
+    const duration = Math.max(1, Math.round(track.duration_seconds ?? 1));
+    if (cursor < duration) return track.id;
+    cursor -= duration;
+  }
+  return playableTracks[0]?.id ?? "";
+}
+
+function trackReactionTotal(track: AdminListenBarTrackRow) {
+  return Math.max(
+    0,
+    Math.round(
+      track.positive_reaction_count ??
+        (track.heart_count ?? 0) + (track.star_count ?? 0) + (track.thumb_count ?? 0) + (track.happy_count ?? 0),
+    ),
+  );
+}
+
+function trackStatusBadge(track: AdminListenBarTrackRow, currentlyPlayingId: string, openingPhaseActive: boolean) {
+  const status = track.review_status?.toLowerCase();
+  if (status === "removed") {
+    return { label: "已移除", className: "border-red-300/35 bg-red-500/12 text-red-100" };
+  }
+  if (status === "hidden") {
+    return { label: "已隱藏", className: "border-red-300/35 bg-red-500/12 text-red-100" };
+  }
+  if (track.is_active === false) {
+    return { label: "已下架", className: "border-zinc-700 bg-zinc-900 text-zinc-500" };
+  }
+  if (track.id === currentlyPlayingId) {
+    return { label: "正在播放中", className: "border-orange-200/55 bg-orange-400/18 text-orange-100 shadow-[0_0_18px_rgba(251,146,60,0.22)]" };
+  }
+  if (track.bar_phase === "public" || openingPhaseActive) {
+    return { label: "公播中", className: "border-cyan-200/35 bg-cyan-300/10 text-cyan-100" };
+  }
+  if (track.bar_phase === "challenger") {
+    return { label: "Challenger", className: "border-amber-200/35 bg-amber-300/10 text-amber-100" };
+  }
+  return { label: "上架中", className: "border-cyan-200/30 bg-cyan-300/10 text-cyan-100" };
+}
+
+function phaseLabel(track: AdminListenBarTrackRow, openingPhaseActive: boolean) {
+  if (isHiddenTrack(track)) return "不在前台";
+  if (track.bar_phase === "public" || openingPhaseActive) return "公播池";
+  if (track.bar_phase === "challenger") return "Challenger";
+  return "未分池";
+}
+
 async function authHeader(): Promise<Record<string, string>> {
   const {
     data: { session },
@@ -116,7 +201,7 @@ async function authHeader(): Promise<Record<string, string>> {
 export default function ListenBarAdminPage() {
   const [adminState, setAdminState] = useState<AdminState>("checking");
   const [userId, setUserId] = useState<string | null>(null);
-  const [tracks, setTracks] = useState<ListenBarTrackRow[]>([]);
+  const [tracks, setTracks] = useState<AdminListenBarTrackRow[]>([]);
   const [form, setForm] = useState<TrackForm>(initialForm);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -129,16 +214,33 @@ export default function ListenBarAdminPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
-  const totalActive = useMemo(() => tracks.filter((track) => track.is_active).length, [tracks]);
+  const visiblePlayableTracks = useMemo(() => activePlayableTracks(tracks), [tracks]);
+  const openingPhaseActive = visiblePlayableTracks.length <= LISTEN_BAR_PUBLIC_ROTATION_LIMIT;
+  const currentlyPlayingId = useMemo(() => currentLiveTrackId(tracks, nowMs), [nowMs, tracks]);
+  const totalActive = visiblePlayableTracks.length;
 
   const loadTracks = useCallback(async () => {
     setError("");
-    const { data, error: queryError } = await supabase
+    const modernSelect = "id, title, artist, ai_tool, genre, mood, bpm, duration_seconds, audio_path, cover_path, lyrics, sort_order, is_active, source, bar_phase, review_status, moderation_note, hidden_at, removed_at, promoted_at, positive_reaction_count, heart_count, star_count, thumb_count, happy_count, created_at, updated_at";
+    const legacySelect = "id, title, artist, ai_tool, genre, mood, bpm, duration_seconds, audio_path, cover_path, lyrics, sort_order, is_active, created_at, updated_at";
+    const modernQuery = await supabase
       .from("listen_bar_tracks")
-      .select("id, title, artist, ai_tool, genre, mood, bpm, duration_seconds, audio_path, cover_path, lyrics, sort_order, is_active, created_at, updated_at")
+      .select(modernSelect)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: false });
+    let data: unknown = modernQuery.data;
+    let queryError = modernQuery.error;
+    if (queryError && isMissingColumnError(queryError)) {
+      const legacyQuery = await supabase
+        .from("listen_bar_tracks")
+        .select(legacySelect)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: false });
+      data = legacyQuery.data;
+      queryError = legacyQuery.error;
+    }
 
     if (queryError) {
       setTracks([]);
@@ -148,7 +250,7 @@ export default function ListenBarAdminPage() {
     }
 
     setTableReady(true);
-    setTracks((data as ListenBarTrackRow[] | null) ?? []);
+    setTracks((data as AdminListenBarTrackRow[] | null) ?? []);
   }, []);
 
   const loadReportSummary = useCallback(async () => {
@@ -190,6 +292,11 @@ export default function ListenBarAdminPage() {
       if (embeddedCover?.previewUrl) URL.revokeObjectURL(embeddedCover.previewUrl);
     };
   }, [audioPreview, coverPreview, embeddedCover]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 15_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const updateForm = (patch: Partial<TrackForm>) => {
     setForm((current) => ({ ...current, ...patch }));
@@ -339,7 +446,7 @@ export default function ListenBarAdminPage() {
     }
   };
 
-  const updateTrack = async (track: ListenBarTrackRow, patch: Partial<ListenBarTrackRow>) => {
+  const updateTrack = async (track: AdminListenBarTrackRow, patch: Partial<AdminListenBarTrackRow>, successMessage = "輪播設定已更新。") => {
     setError("");
     setMessage("");
     const { error: updateError } = await supabase.from("listen_bar_tracks").update(patch).eq("id", track.id);
@@ -347,12 +454,43 @@ export default function ListenBarAdminPage() {
       setError(`更新失敗：${updateError.message}`);
       return;
     }
-    setMessage("輪播設定已更新。");
+    setMessage(successMessage);
     await loadTracks();
   };
 
-  const hideTrack = async (track: ListenBarTrackRow) => {
-    if (!window.confirm(`確定先下架隱藏「${track.title}」？作品資料會保留，之後可以恢復或再做永久刪除。`)) return;
+  const restoreTrack = async (track: AdminListenBarTrackRow) => {
+    setError("");
+    setMessage("");
+    const modernPayload = {
+      is_active: true,
+      review_status: "approved",
+      hidden_at: null,
+      removed_at: null,
+      moderation_note: null,
+    };
+    const modernUpdate = await supabase.from("listen_bar_tracks").update(modernPayload).eq("id", track.id);
+    if (!modernUpdate.error) {
+      setMessage(`「${track.title}」已恢復上架，狀態已改為公播候選。`);
+      await loadTracks();
+      return;
+    }
+
+    if (!isMissingColumnError(modernUpdate.error)) {
+      setError(`恢復失敗：${modernUpdate.error.message}`);
+      return;
+    }
+
+    const legacyUpdate = await supabase.from("listen_bar_tracks").update({ is_active: true }).eq("id", track.id);
+    if (legacyUpdate.error) {
+      setError(`恢復失敗：${legacyUpdate.error.message}`);
+      return;
+    }
+    setMessage(`「${track.title}」已恢復上架。`);
+    await loadTracks();
+  };
+
+  const hideTrack = async (track: AdminListenBarTrackRow) => {
+    if (!window.confirm(`確定先下架「${track.title}」？作品資料會保留，但前台不會再播放。`)) return;
     setError("");
     setMessage("");
     const modernPayload = {
@@ -363,13 +501,12 @@ export default function ListenBarAdminPage() {
     };
     const modernUpdate = await supabase.from("listen_bar_tracks").update(modernPayload).eq("id", track.id);
     if (!modernUpdate.error) {
-      setMessage("已下架隱藏，作品資料仍保留。");
+      setMessage(`「${track.title}」已下架，狀態已改為已隱藏。`);
       await loadTracks();
       return;
     }
 
-    const msg = modernUpdate.error.message.toLowerCase();
-    if (!msg.includes("review_status") && !msg.includes("schema cache") && !msg.includes("column")) {
+    if (!isMissingColumnError(modernUpdate.error)) {
       setError(`下架失敗：${modernUpdate.error.message}`);
       return;
     }
@@ -379,7 +516,7 @@ export default function ListenBarAdminPage() {
       setError(`下架失敗：${legacyUpdate.error.message}`);
       return;
     }
-    setMessage("已下架隱藏，作品資料仍保留。");
+    setMessage(`「${track.title}」已下架。`);
     await loadTracks();
   };
 
@@ -546,10 +683,13 @@ export default function ListenBarAdminPage() {
                 tracks.map((track) => {
                   const coverUrl = rowPublicUrl(LISTEN_BAR_COVER_BUCKET, track.cover_path) || DEFAULT_LISTEN_BAR_COVER;
                   const audioUrl = rowPublicUrl(LISTEN_BAR_AUDIO_BUCKET, track.audio_path);
+                  const hidden = isHiddenTrack(track);
+                  const status = trackStatusBadge(track, currentlyPlayingId, openingPhaseActive);
+                  const updatedAt = track.updated_at ? new Date(track.updated_at).toLocaleString("zh-TW", { hour12: false }) : "-";
                   return (
-                    <article key={track.id} className="rounded-2xl border border-white/10 bg-black/42 p-3">
+                    <article key={track.id} className={`rounded-2xl border p-3 ${track.id === currentlyPlayingId ? "border-orange-300/45 bg-orange-500/[0.055]" : hidden ? "border-red-300/20 bg-red-950/[0.08]" : "border-white/10 bg-black/42"}`}>
                       <div className="grid gap-3 sm:grid-cols-[5.5rem_1fr]">
-                        <img src={coverUrl} alt="" className="aspect-square w-full rounded-xl bg-black object-cover" />
+                        <img src={coverUrl} alt="" className={`aspect-square w-full rounded-xl bg-black object-cover ${hidden ? "opacity-45 grayscale" : ""}`} />
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-start justify-between gap-2">
                             <div className="min-w-0">
@@ -558,8 +698,22 @@ export default function ListenBarAdminPage() {
                                 {track.artist} / {track.ai_tool || "AI Music"} / {track.genre || "AI Music"}
                               </p>
                             </div>
-                            <span className={`rounded-full border px-3 py-1 text-xs font-black ${track.is_active ? "border-cyan-200/30 bg-cyan-300/10 text-cyan-100" : "border-zinc-700 bg-zinc-900 text-zinc-500"}`}>
-                              {track.is_active ? "上架中" : "已下架"}
+                            <span className={`rounded-full border px-3 py-1 text-xs font-black ${status.className}`}>
+                              {status.label}
+                            </span>
+                          </div>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-bold text-zinc-300">
+                              {phaseLabel(track, openingPhaseActive)}
+                            </span>
+                            <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-bold text-zinc-300">
+                              審核：{track.review_status || "approved"}
+                            </span>
+                            <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-bold text-zinc-300">
+                              反應：{trackReactionTotal(track)}
+                            </span>
+                            <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-bold text-zinc-300">
+                              更新：{updatedAt}
                             </span>
                           </div>
                           <div className="mt-3 grid gap-2 sm:grid-cols-3">
@@ -574,22 +728,19 @@ export default function ListenBarAdminPage() {
                             </div>
                           </div>
                           {audioUrl && (
-                            <audio className="mt-3 w-full accent-orange-500" controls preload="metadata" src={audioUrl}>
+                            <audio className="mt-3 w-full accent-orange-500" controls controlsList="nodownload noplaybackrate" preload="metadata" src={audioUrl}>
                               <track kind="captions" />
                             </audio>
                           )}
                           <div className="mt-3 flex flex-wrap gap-2">
-                            <button type="button" onClick={() => void updateTrack(track, { is_active: !track.is_active })} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-orange-300/55">
-                              {track.is_active ? "下架" : "上架"}
+                            <button type="button" onClick={() => void (hidden ? restoreTrack(track) : hideTrack(track))} className={`rounded-full border px-4 py-2 text-xs font-black transition ${hidden ? "border-cyan-300/25 text-cyan-100 hover:border-cyan-200/65" : "border-red-300/22 text-red-100 hover:border-red-300/65"}`}>
+                              {hidden ? "恢復上架" : "下架"}
                             </button>
                             <button type="button" onClick={() => void updateTrack(track, { sort_order: Math.max(0, (track.sort_order ?? 100) - 10) })} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55">
                               往前
                             </button>
                             <button type="button" onClick={() => void updateTrack(track, { sort_order: (track.sort_order ?? 100) + 10 })} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55">
                               往後
-                            </button>
-                            <button type="button" onClick={() => void hideTrack(track)} className="rounded-full border border-red-300/20 px-4 py-2 text-xs font-black text-red-100 transition hover:border-red-300/60">
-                              隱藏
                             </button>
                           </div>
                         </div>
