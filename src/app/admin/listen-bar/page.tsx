@@ -29,6 +29,7 @@ import {
 } from "@/lib/listen-bar-upload-policy";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
+type TrackSortMode = "manual" | "updated_desc" | "updated_asc" | "created_desc" | "created_asc" | "genre" | "status";
 type AdminListenBarTrackRow = ListenBarTrackRow & {
   review_status?: "approved" | "pending" | "hidden" | "removed" | string | null;
   moderation_note?: string | null;
@@ -205,6 +206,45 @@ function adminReviewLabel(track: AdminListenBarTrackRow) {
   return track.review_status || "approved";
 }
 
+function dateSortValue(value: string | null | undefined) {
+  const ms = new Date(value ?? 0).getTime();
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function trackSearchText(track: AdminListenBarTrackRow, openingPhaseActive: boolean) {
+  return [
+    track.title,
+    track.artist,
+    track.ai_tool,
+    track.genre,
+    track.mood,
+    phaseLabel(track, openingPhaseActive),
+    adminReviewLabel(track),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function sortTracksForAdmin(tracks: AdminListenBarTrackRow[], mode: TrackSortMode, openingPhaseActive: boolean) {
+  const next = [...tracks];
+  if (mode === "manual") return next;
+  return next.sort((a, b) => {
+    if (mode === "updated_desc") return dateSortValue(b.updated_at) - dateSortValue(a.updated_at);
+    if (mode === "updated_asc") return dateSortValue(a.updated_at) - dateSortValue(b.updated_at);
+    if (mode === "created_desc") return dateSortValue(b.created_at) - dateSortValue(a.created_at);
+    if (mode === "created_asc") return dateSortValue(a.created_at) - dateSortValue(b.created_at);
+    if (mode === "genre") {
+      const genreCompare = (a.genre || "").localeCompare(b.genre || "", "zh-Hant");
+      if (genreCompare !== 0) return genreCompare;
+      return (a.title || "").localeCompare(b.title || "", "zh-Hant");
+    }
+    const statusCompare = phaseLabel(a, openingPhaseActive).localeCompare(phaseLabel(b, openingPhaseActive), "zh-Hant");
+    if (statusCompare !== 0) return statusCompare;
+    return dateSortValue(b.updated_at) - dateSortValue(a.updated_at);
+  });
+}
+
 async function authHeader(): Promise<Record<string, string>> {
   const {
     data: { session },
@@ -232,6 +272,8 @@ export default function ListenBarAdminPage() {
   const [operatingTrackId, setOperatingTrackId] = useState("");
   const [playlistBusy, setPlaylistBusy] = useState(false);
   const [hideDownedTracks, setHideDownedTracks] = useState(false);
+  const [trackSearch, setTrackSearch] = useState("");
+  const [trackSortMode, setTrackSortMode] = useState<TrackSortMode>("manual");
   const [optimisticTrackPatches, setOptimisticTrackPatches] = useState<Record<string, Partial<AdminListenBarTrackRow>>>({});
 
   const displayTracks = useMemo(
@@ -239,12 +281,17 @@ export default function ListenBarAdminPage() {
     [optimisticTrackPatches, tracks],
   );
   const visiblePlayableTracks = useMemo(() => activePlayableTracks(displayTracks), [displayTracks]);
-  const renderedTracks = useMemo(
-    () => (hideDownedTracks ? displayTracks.filter((track) => !isHiddenTrack(track)) : displayTracks),
-    [displayTracks, hideDownedTracks],
-  );
-  const hiddenTrackCount = useMemo(() => displayTracks.filter(isHiddenTrack).length, [displayTracks]);
   const openingPhaseActive = visiblePlayableTracks.length <= LISTEN_BAR_PUBLIC_ROTATION_LIMIT;
+  const renderedTracks = useMemo(() => {
+    const query = trackSearch.trim().toLowerCase();
+    const filteredTracks = displayTracks.filter((track) => {
+      if (hideDownedTracks && isHiddenTrack(track)) return false;
+      if (!query) return true;
+      return trackSearchText(track, openingPhaseActive).includes(query);
+    });
+    return sortTracksForAdmin(filteredTracks, trackSortMode, openingPhaseActive);
+  }, [displayTracks, hideDownedTracks, openingPhaseActive, trackSearch, trackSortMode]);
+  const hiddenTrackCount = useMemo(() => displayTracks.filter(isHiddenTrack).length, [displayTracks]);
   const currentlyPlayingId = useMemo(() => currentLiveTrackId(displayTracks, nowMs), [displayTracks, nowMs]);
   const totalActive = visiblePlayableTracks.length;
 
@@ -506,6 +553,7 @@ export default function ListenBarAdminPage() {
     }
     setTracks(payload?.tracks ?? []);
     setOptimisticTrackPatches({});
+    setTrackSortMode("manual");
     setMessage("已隨機重排目前上架歌曲。");
     setPlaylistBusy(false);
   };
@@ -735,6 +783,9 @@ export default function ListenBarAdminPage() {
               <div>
                 <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/70">PLAYLIST</p>
                 <h2 className="mt-1 text-2xl font-black text-white">輪播資料庫</h2>
+                <p className="mt-1 text-xs font-bold text-zinc-500">
+                  顯示 {renderedTracks.length} / {displayTracks.length}
+                </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={() => setHideDownedTracks((current) => !current)} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55">
@@ -749,10 +800,60 @@ export default function ListenBarAdminPage() {
               </div>
             </div>
 
+            <div className="mb-4 grid gap-3 rounded-2xl border border-white/10 bg-black/32 p-3">
+              <input
+                value={trackSearch}
+                onChange={(event) => setTrackSearch(event.target.value)}
+                placeholder="搜尋歌名、創作者、AI 工具、類型、狀態"
+                className="h-11 w-full rounded-xl border border-white/12 bg-black/50 px-4 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200/70"
+              />
+              <div className="grid gap-2 sm:grid-cols-[auto_auto_minmax(10rem,1fr)]">
+                <button
+                  type="button"
+                  onClick={() => setTrackSortMode((current) => (current === "updated_desc" ? "updated_asc" : "updated_desc"))}
+                  className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 ${
+                    trackSortMode === "updated_desc" || trackSortMode === "updated_asc"
+                      ? "border-cyan-200/55 bg-cyan-300/10 text-cyan-100"
+                      : "border-white/12 text-zinc-200 hover:border-cyan-200/55"
+                  }`}
+                >
+                  {trackSortMode === "updated_asc" ? "時間：舊到新" : "時間：新到舊"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTrackSortMode((current) => (current === "genre" ? "manual" : "genre"))}
+                  className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 ${
+                    trackSortMode === "genre"
+                      ? "border-cyan-200/55 bg-cyan-300/10 text-cyan-100"
+                      : "border-white/12 text-zinc-200 hover:border-cyan-200/55"
+                  }`}
+                >
+                  種類排列
+                </button>
+                <select
+                  value={trackSortMode}
+                  onChange={(event) => setTrackSortMode(event.target.value as TrackSortMode)}
+                  className="h-10 rounded-full border border-white/12 bg-black/55 px-4 text-xs font-black text-zinc-200 outline-none transition focus:border-cyan-200/70"
+                >
+                  <option value="manual">管理順序</option>
+                  <option value="updated_desc">更新時間：新到舊</option>
+                  <option value="updated_asc">更新時間：舊到新</option>
+                  <option value="created_desc">上傳時間：新到舊</option>
+                  <option value="created_asc">上傳時間：舊到新</option>
+                  <option value="genre">種類</option>
+                  <option value="status">狀態</option>
+                </select>
+              </div>
+            </div>
+
             <div className="grid max-h-[72rem] gap-3 overflow-y-auto pr-1">
               {renderedTracks.length === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-black/40 px-4 py-10 text-center text-sm leading-7 text-zinc-500">
-                  {displayTracks.length === 0 ? "尚無輪播資料。先上傳第一首官方歌曲。" : "目前已隱藏下架歌曲，沒有可顯示的上架歌曲。"}
+                  {displayTracks.length === 0
+                    ? "尚無輪播資料。先上傳第一首官方歌曲。"
+                    : trackSearch.trim()
+                      ? "沒有符合搜尋條件的歌曲。"
+                      : "目前已隱藏下架歌曲，沒有可顯示的上架歌曲。"}
                 </div>
               ) : (
                 renderedTracks.map((track) => {
