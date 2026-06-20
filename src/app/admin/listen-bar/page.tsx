@@ -122,7 +122,15 @@ function isMissingColumnError(error: { message?: string } | null | undefined) {
 
 function isHiddenTrack(track: AdminListenBarTrackRow) {
   const status = track.review_status?.toLowerCase();
-  return track.is_active === false || status === "hidden" || status === "removed";
+  return track.is_active === false || status === "hidden" || status === "removed" || Boolean(track.hidden_at) || Boolean(track.removed_at);
+}
+
+function removedStatus(track: AdminListenBarTrackRow) {
+  return track.review_status?.toLowerCase() === "removed" || Boolean(track.removed_at);
+}
+
+function hiddenStatus(track: AdminListenBarTrackRow) {
+  return track.review_status?.toLowerCase() === "hidden" || Boolean(track.hidden_at);
 }
 
 function activePlayableTracks(tracks: AdminListenBarTrackRow[]) {
@@ -162,12 +170,11 @@ function trackReactionTotal(track: AdminListenBarTrackRow) {
 }
 
 function trackStatusBadge(track: AdminListenBarTrackRow, currentlyPlayingId: string, openingPhaseActive: boolean) {
-  const status = track.review_status?.toLowerCase();
-  if (status === "removed") {
+  if (removedStatus(track)) {
     return { label: "已移除", className: "border-red-300/35 bg-red-500/12 text-red-100" };
   }
-  if (status === "hidden") {
-    return { label: "已隱藏", className: "border-red-300/35 bg-red-500/12 text-red-100" };
+  if (hiddenStatus(track)) {
+    return { label: "已下架", className: "border-red-300/35 bg-red-500/12 text-red-100" };
   }
   if (track.is_active === false) {
     return { label: "已下架", className: "border-zinc-700 bg-zinc-900 text-zinc-500" };
@@ -185,10 +192,17 @@ function trackStatusBadge(track: AdminListenBarTrackRow, currentlyPlayingId: str
 }
 
 function phaseLabel(track: AdminListenBarTrackRow, openingPhaseActive: boolean) {
-  if (isHiddenTrack(track)) return "不在前台";
+  if (removedStatus(track)) return "已移除";
+  if (hiddenStatus(track) || track.is_active === false) return "已下架";
   if (track.bar_phase === "public" || openingPhaseActive) return "公播池";
   if (track.bar_phase === "challenger") return "Challenger";
   return "未分池";
+}
+
+function adminReviewLabel(track: AdminListenBarTrackRow) {
+  if (removedStatus(track)) return "removed";
+  if (hiddenStatus(track)) return "hidden";
+  return track.review_status || "approved";
 }
 
 async function authHeader(): Promise<Record<string, string>> {
@@ -215,6 +229,7 @@ export default function ListenBarAdminPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [operatingTrackId, setOperatingTrackId] = useState("");
 
   const visiblePlayableTracks = useMemo(() => activePlayableTracks(tracks), [tracks]);
   const openingPhaseActive = visiblePlayableTracks.length <= LISTEN_BAR_PUBLIC_ROTATION_LIMIT;
@@ -449,18 +464,22 @@ export default function ListenBarAdminPage() {
   const updateTrack = async (track: AdminListenBarTrackRow, patch: Partial<AdminListenBarTrackRow>, successMessage = "輪播設定已更新。") => {
     setError("");
     setMessage("");
+    setOperatingTrackId(track.id);
     const { error: updateError } = await supabase.from("listen_bar_tracks").update(patch).eq("id", track.id);
     if (updateError) {
       setError(`更新失敗：${updateError.message}`);
+      setOperatingTrackId("");
       return;
     }
     setMessage(successMessage);
     await loadTracks();
+    setOperatingTrackId("");
   };
 
   const restoreTrack = async (track: AdminListenBarTrackRow) => {
     setError("");
     setMessage("");
+    setOperatingTrackId(track.id);
     const modernPayload = {
       is_active: true,
       review_status: "approved",
@@ -472,27 +491,32 @@ export default function ListenBarAdminPage() {
     if (!modernUpdate.error) {
       setMessage(`「${track.title}」已恢復上架，狀態已改為公播候選。`);
       await loadTracks();
+      setOperatingTrackId("");
       return;
     }
 
     if (!isMissingColumnError(modernUpdate.error)) {
       setError(`恢復失敗：${modernUpdate.error.message}`);
+      setOperatingTrackId("");
       return;
     }
 
     const legacyUpdate = await supabase.from("listen_bar_tracks").update({ is_active: true }).eq("id", track.id);
     if (legacyUpdate.error) {
       setError(`恢復失敗：${legacyUpdate.error.message}`);
+      setOperatingTrackId("");
       return;
     }
     setMessage(`「${track.title}」已恢復上架。`);
     await loadTracks();
+    setOperatingTrackId("");
   };
 
   const hideTrack = async (track: AdminListenBarTrackRow) => {
     if (!window.confirm(`確定先下架「${track.title}」？作品資料會保留，但前台不會再播放。`)) return;
     setError("");
     setMessage("");
+    setOperatingTrackId(track.id);
     const modernPayload = {
       is_active: false,
       review_status: "hidden",
@@ -501,23 +525,27 @@ export default function ListenBarAdminPage() {
     };
     const modernUpdate = await supabase.from("listen_bar_tracks").update(modernPayload).eq("id", track.id);
     if (!modernUpdate.error) {
-      setMessage(`「${track.title}」已下架，狀態已改為已隱藏。`);
+      setMessage(`「${track.title}」已下架，狀態已改為已下架。`);
       await loadTracks();
+      setOperatingTrackId("");
       return;
     }
 
     if (!isMissingColumnError(modernUpdate.error)) {
       setError(`下架失敗：${modernUpdate.error.message}`);
+      setOperatingTrackId("");
       return;
     }
 
     const legacyUpdate = await supabase.from("listen_bar_tracks").update({ is_active: false }).eq("id", track.id);
     if (legacyUpdate.error) {
       setError(`下架失敗：${legacyUpdate.error.message}`);
+      setOperatingTrackId("");
       return;
     }
     setMessage(`「${track.title}」已下架。`);
     await loadTracks();
+    setOperatingTrackId("");
   };
 
   if (adminState === "checking") {
@@ -707,7 +735,7 @@ export default function ListenBarAdminPage() {
                               {phaseLabel(track, openingPhaseActive)}
                             </span>
                             <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-bold text-zinc-300">
-                              審核：{track.review_status || "approved"}
+                              審核：{adminReviewLabel(track)}
                             </span>
                             <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-bold text-zinc-300">
                               反應：{trackReactionTotal(track)}
@@ -733,13 +761,13 @@ export default function ListenBarAdminPage() {
                             </audio>
                           )}
                           <div className="mt-3 flex flex-wrap gap-2">
-                            <button type="button" onClick={() => void (hidden ? restoreTrack(track) : hideTrack(track))} className={`rounded-full border px-4 py-2 text-xs font-black transition ${hidden ? "border-cyan-300/25 text-cyan-100 hover:border-cyan-200/65" : "border-red-300/22 text-red-100 hover:border-red-300/65"}`}>
-                              {hidden ? "恢復上架" : "下架"}
+                            <button type="button" disabled={operatingTrackId === track.id} onClick={() => void (hidden ? restoreTrack(track) : hideTrack(track))} className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300/70 disabled:cursor-not-allowed disabled:opacity-45 ${hidden ? "border-cyan-300/25 text-cyan-100 hover:border-cyan-200/65" : "border-red-300/22 text-red-100 hover:border-red-300/65"}`}>
+                              {operatingTrackId === track.id ? "處理中" : hidden ? "恢復上架" : "下架"}
                             </button>
-                            <button type="button" onClick={() => void updateTrack(track, { sort_order: Math.max(0, (track.sort_order ?? 100) - 10) })} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55">
+                            <button type="button" disabled={operatingTrackId === track.id} onClick={() => void updateTrack(track, { sort_order: Math.max(0, (track.sort_order ?? 100) - 10) })} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45">
                               往前
                             </button>
-                            <button type="button" onClick={() => void updateTrack(track, { sort_order: (track.sort_order ?? 100) + 10 })} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55">
+                            <button type="button" disabled={operatingTrackId === track.id} onClick={() => void updateTrack(track, { sort_order: (track.sort_order ?? 100) + 10 })} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45">
                               往後
                             </button>
                           </div>
