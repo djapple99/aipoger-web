@@ -30,6 +30,7 @@ import {
 
 type AdminState = "checking" | "login" | "denied" | "ready";
 type TrackSortMode = "manual" | "updated_desc" | "updated_asc" | "created_desc" | "created_asc" | "genre" | "status";
+type TrackVisibilityFilter = "all" | "active" | "hidden";
 type AdminListenBarTrackRow = ListenBarTrackRow & {
   review_status?: "approved" | "pending" | "hidden" | "removed" | string | null;
   moderation_note?: string | null;
@@ -271,7 +272,7 @@ export default function ListenBarAdminPage() {
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [operatingTrackId, setOperatingTrackId] = useState("");
   const [playlistBusy, setPlaylistBusy] = useState(false);
-  const [hideDownedTracks, setHideDownedTracks] = useState(false);
+  const [trackVisibilityFilter, setTrackVisibilityFilter] = useState<TrackVisibilityFilter>("all");
   const [trackSearch, setTrackSearch] = useState("");
   const [trackSortMode, setTrackSortMode] = useState<TrackSortMode>("manual");
   const [optimisticTrackPatches, setOptimisticTrackPatches] = useState<Record<string, Partial<AdminListenBarTrackRow>>>({});
@@ -285,12 +286,14 @@ export default function ListenBarAdminPage() {
   const renderedTracks = useMemo(() => {
     const query = trackSearch.trim().toLowerCase();
     const filteredTracks = displayTracks.filter((track) => {
-      if (hideDownedTracks && isHiddenTrack(track)) return false;
+      const hidden = isHiddenTrack(track);
+      if (trackVisibilityFilter === "active" && hidden) return false;
+      if (trackVisibilityFilter === "hidden" && !hidden) return false;
       if (!query) return true;
       return trackSearchText(track, openingPhaseActive).includes(query);
     });
     return sortTracksForAdmin(filteredTracks, trackSortMode, openingPhaseActive);
-  }, [displayTracks, hideDownedTracks, openingPhaseActive, trackSearch, trackSortMode]);
+  }, [displayTracks, openingPhaseActive, trackSearch, trackSortMode, trackVisibilityFilter]);
   const hiddenTrackCount = useMemo(() => displayTracks.filter(isHiddenTrack).length, [displayTracks]);
   const currentlyPlayingId = useMemo(() => currentLiveTrackId(displayTracks, nowMs), [displayTracks, nowMs]);
   const totalActive = visiblePlayableTracks.length;
@@ -788,8 +791,38 @@ export default function ListenBarAdminPage() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => setHideDownedTracks((current) => !current)} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55">
-                  {hideDownedTracks ? "顯示全部" : `隱藏已下架${hiddenTrackCount > 0 ? ` ${hiddenTrackCount}` : ""}`}
+                <button
+                  type="button"
+                  onClick={() => setTrackVisibilityFilter("all")}
+                  className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 ${
+                    trackVisibilityFilter === "all"
+                      ? "border-cyan-200/55 bg-cyan-300/10 text-cyan-100"
+                      : "border-white/12 text-zinc-200 hover:border-cyan-200/55"
+                  }`}
+                >
+                  全部
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTrackVisibilityFilter("active")}
+                  className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 ${
+                    trackVisibilityFilter === "active"
+                      ? "border-cyan-200/55 bg-cyan-300/10 text-cyan-100"
+                      : "border-white/12 text-zinc-200 hover:border-cyan-200/55"
+                  }`}
+                >
+                  隱藏下架
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTrackVisibilityFilter("hidden")}
+                  className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 ${
+                    trackVisibilityFilter === "hidden"
+                      ? "border-red-300/45 bg-red-500/10 text-red-100"
+                      : "border-white/12 text-zinc-200 hover:border-red-300/45"
+                  }`}
+                >
+                  只看下架{hiddenTrackCount > 0 ? ` ${hiddenTrackCount}` : ""}
                 </button>
                 <button type="button" disabled={playlistBusy || visiblePlayableTracks.length < 2} onClick={() => void randomizeTrackOrder()} className="rounded-full border border-orange-300/30 bg-orange-500/10 px-4 py-2 text-xs font-black text-orange-100 transition hover:border-orange-200/65 disabled:cursor-not-allowed disabled:opacity-45">
                   {playlistBusy ? "排列中" : "隨機排列"}
@@ -853,7 +886,9 @@ export default function ListenBarAdminPage() {
                     ? "尚無輪播資料。先上傳第一首官方歌曲。"
                     : trackSearch.trim()
                       ? "沒有符合搜尋條件的歌曲。"
-                      : "目前已隱藏下架歌曲，沒有可顯示的上架歌曲。"}
+                      : trackVisibilityFilter === "hidden"
+                        ? "目前沒有下架歌曲。"
+                        : "目前已隱藏下架歌曲，沒有可顯示的上架歌曲。"}
                 </div>
               ) : (
                 renderedTracks.map((track) => {
