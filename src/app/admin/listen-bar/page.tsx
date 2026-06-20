@@ -230,10 +230,15 @@ export default function ListenBarAdminPage() {
   const [error, setError] = useState("");
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [operatingTrackId, setOperatingTrackId] = useState("");
+  const [optimisticTrackPatches, setOptimisticTrackPatches] = useState<Record<string, Partial<AdminListenBarTrackRow>>>({});
 
-  const visiblePlayableTracks = useMemo(() => activePlayableTracks(tracks), [tracks]);
+  const displayTracks = useMemo(
+    () => tracks.map((track) => ({ ...track, ...(optimisticTrackPatches[track.id] ?? {}) })),
+    [optimisticTrackPatches, tracks],
+  );
+  const visiblePlayableTracks = useMemo(() => activePlayableTracks(displayTracks), [displayTracks]);
   const openingPhaseActive = visiblePlayableTracks.length <= LISTEN_BAR_PUBLIC_ROTATION_LIMIT;
-  const currentlyPlayingId = useMemo(() => currentLiveTrackId(tracks, nowMs), [nowMs, tracks]);
+  const currentlyPlayingId = useMemo(() => currentLiveTrackId(displayTracks, nowMs), [displayTracks, nowMs]);
   const totalActive = visiblePlayableTracks.length;
 
   const loadTracks = useCallback(async () => {
@@ -266,6 +271,7 @@ export default function ListenBarAdminPage() {
 
     setTableReady(true);
     setTracks((data as AdminListenBarTrackRow[] | null) ?? []);
+    setOptimisticTrackPatches({});
   }, []);
 
   const loadReportSummary = useCallback(async () => {
@@ -480,6 +486,15 @@ export default function ListenBarAdminPage() {
     setError("");
     setMessage("");
     setOperatingTrackId(track.id);
+    setOptimisticTrackPatches((current) => ({
+      ...current,
+      [track.id]: {
+        is_active: true,
+        review_status: "approved",
+        hidden_at: null,
+        removed_at: null,
+      },
+    }));
     const modernPayload = {
       is_active: true,
       review_status: "approved",
@@ -497,6 +512,11 @@ export default function ListenBarAdminPage() {
 
     if (!isMissingColumnError(modernUpdate.error)) {
       setError(`恢復失敗：${modernUpdate.error.message}`);
+      setOptimisticTrackPatches((current) => {
+        const next = { ...current };
+        delete next[track.id];
+        return next;
+      });
       setOperatingTrackId("");
       return;
     }
@@ -504,6 +524,11 @@ export default function ListenBarAdminPage() {
     const legacyUpdate = await supabase.from("listen_bar_tracks").update({ is_active: true }).eq("id", track.id);
     if (legacyUpdate.error) {
       setError(`恢復失敗：${legacyUpdate.error.message}`);
+      setOptimisticTrackPatches((current) => {
+        const next = { ...current };
+        delete next[track.id];
+        return next;
+      });
       setOperatingTrackId("");
       return;
     }
@@ -517,10 +542,19 @@ export default function ListenBarAdminPage() {
     setError("");
     setMessage("");
     setOperatingTrackId(track.id);
+    const hiddenAt = new Date().toISOString();
+    setOptimisticTrackPatches((current) => ({
+      ...current,
+      [track.id]: {
+        is_active: false,
+        review_status: "hidden",
+        hidden_at: hiddenAt,
+      },
+    }));
     const modernPayload = {
       is_active: false,
       review_status: "hidden",
-      hidden_at: new Date().toISOString(),
+      hidden_at: hiddenAt,
       moderation_note: "Owner hidden from Bar Heartbreak console.",
     };
     const modernUpdate = await supabase.from("listen_bar_tracks").update(modernPayload).eq("id", track.id);
@@ -533,6 +567,11 @@ export default function ListenBarAdminPage() {
 
     if (!isMissingColumnError(modernUpdate.error)) {
       setError(`下架失敗：${modernUpdate.error.message}`);
+      setOptimisticTrackPatches((current) => {
+        const next = { ...current };
+        delete next[track.id];
+        return next;
+      });
       setOperatingTrackId("");
       return;
     }
@@ -540,6 +579,11 @@ export default function ListenBarAdminPage() {
     const legacyUpdate = await supabase.from("listen_bar_tracks").update({ is_active: false }).eq("id", track.id);
     if (legacyUpdate.error) {
       setError(`下架失敗：${legacyUpdate.error.message}`);
+      setOptimisticTrackPatches((current) => {
+        const next = { ...current };
+        delete next[track.id];
+        return next;
+      });
       setOperatingTrackId("");
       return;
     }
@@ -703,12 +747,12 @@ export default function ListenBarAdminPage() {
             </div>
 
             <div className="grid max-h-[72rem] gap-3 overflow-y-auto pr-1">
-              {tracks.length === 0 ? (
+              {displayTracks.length === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-black/40 px-4 py-10 text-center text-sm leading-7 text-zinc-500">
                   尚無輪播資料。先上傳第一首官方歌曲。
                 </div>
               ) : (
-                tracks.map((track) => {
+                displayTracks.map((track) => {
                   const coverUrl = rowPublicUrl(LISTEN_BAR_COVER_BUCKET, track.cover_path) || DEFAULT_LISTEN_BAR_COVER;
                   const audioUrl = rowPublicUrl(LISTEN_BAR_AUDIO_BUCKET, track.audio_path);
                   const hidden = isHiddenTrack(track);
