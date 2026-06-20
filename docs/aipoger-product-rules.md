@@ -1,6 +1,6 @@
 # AIPOGER Product Rules
 
-Last updated: 2026-06-19
+Last updated: 2026-06-20
 
 This document is the product-rule source of truth for AIPOGER. Use it before changing Battle, Bar Heartbreak, Honor Board, auth, upload, or deployment behavior.
 
@@ -73,7 +73,8 @@ Current behavior:
 - A battle with 1-2 distinct audience voters may create an unofficial result card and appear on the Result Wall / 成果牆, but it must not enter the Honor Board, update official song battle stats, or open the defender/rematch window.
 - A battle with at least 3 distinct audience voters is an official Drop Battle result and may feed the Honor Board, update per-song battle stats, and open the defender/rematch window.
 - The official-result audience threshold counts distinct listeners only: one signed-in `battle_votes.user_id` or one anonymous `battle_guest_votes.guest_id` per battle. Fighter participation does not count toward the 3-audience minimum.
-- A user can have only one active Drop Battle intent at a time.
+- A user may hold one active Drop founder/open-card intent and one active Drop challenger intent at the same time.
+- A creator may deliberately challenge their own open Drop Battle card when they want listeners to compare two same-genre songs from the same account. This is only allowed through a specific target card; automatic random pairing should not auto-match the creator against themself.
 - Drop Battle and 24H Full Song can coexist for the same account; their active limits are separate.
 - Drop Battle challenge cards expire automatically after at most 24 hours and are cancelled by cleanup.
 - Open Drop states include `searching`, `waiting`, `waiting_challenge`, `public_voting`, and `ghost_battle`.
@@ -96,11 +97,12 @@ Official Gatekeeper Drops:
 - Official Gatekeeper Drop audio accepts standard AIPOGER audio formats with a 100MB single-file limit. The owner/admin upload flow must use the same 60-second Drop cropper used by normal Drop Battle.
 - Official Gatekeeper Drop cover art accepts JPG, PNG, and GIF with a 10MB single-file limit. Lyrics are optional and stored with the official template.
 - Production must have `supabase/20260618_official_gatekeeper_drops.sql` and `supabase/20260619_official_gatekeeper_media.sql` applied before audio, cover art, and lyrics can all be saved.
-- Public cards should say `官方守門 Drop` / `歡迎任何人來挑戰`, show `GATE` number and genre/type badge, and avoid wording like `官方守門戰：傷心酒吧`.
+- Public cards should say `歡迎任何人來挑戰`, show the actual song name, `GATE` number, and genre/type badge, and avoid wording like `官方守門戰：傷心酒吧`.
+- Official Gatekeeper Drop lyrics do not need to expand on the Battle Pool card. Lyrics may remain stored on the template and copied into the created Battle Room, where listeners can view them in context.
 - A challenger can choose the start time using the normal Drop Battle schedule rules: quick 10 / 15 / 20 minutes after successful battle creation, or a custom time within 24 hours.
 - When a challenger submits, the system creates a per-challenge battle instance: one copied official defender queue plus one challenger queue. Official audio, lyrics, and cover art must be copied into the defender side so the created Battle Room behaves like a normal Battle Room for listening, lyrics, cover display, watching, and sharing.
 - The copied official defender queue must not count as the owner's personal active Drop Battle intent, must not notify the owner as if they personally entered a battle, and must not pollute owner-facing active battle limits.
-- The challenger side counts as an active challenger intent until that battle ends or is cancelled.
+- The challenger side counts as an active challenger intent until that battle ends or is cancelled. Owner/admin may also challenge their own official Gatekeeper Drop; the copied defender side still must not count as a personal active founder intent.
 - Official Gatekeeper Drop results follow the same audience threshold rules as normal Drop Battle: 0:0 no result, 1-2 distinct voters unofficial Result Wall only, 3+ distinct voters official/Honor Board eligible.
 
 Initial operating target:

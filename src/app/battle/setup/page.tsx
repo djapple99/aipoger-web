@@ -1044,9 +1044,6 @@ export default function BattleSetupPage() {
           if (!targetEntry?.id) {
             throw new Error(lang === 'zh' ? '這張 Drop Battle 挑戰卡已不存在，請回公開挑戰池重新選一場。' : 'This Drop Battle card no longer exists. Choose another one from the pool.');
           }
-          if (targetEntry.user_id === userId) {
-            throw new Error(lang === 'zh' ? '不能接受自己的 Drop Battle 挑戰卡。' : 'You cannot accept your own Drop Battle challenge.');
-          }
           if (!isDropChallengeAcceptable(targetEntry)) {
             throw new Error(lang === 'zh' ? '這張 Drop Battle 挑戰卡已失效或已被接受，請回公開挑戰池重新選一場。' : 'This Drop Battle challenge is no longer open. Choose another one from the pool.');
           }

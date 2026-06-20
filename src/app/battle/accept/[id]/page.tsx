@@ -23,7 +23,6 @@ type QueueRow = {
 type AcceptState =
   | { kind: "loading" }
   | { kind: "accepted"; row: QueueRow; watchId: string }
-  | { kind: "own-card"; row: QueueRow; watchId: string }
   | { kind: "ended"; title: string; body: string; watchId?: string | null }
   | { kind: "error"; title: string; body: string };
 
@@ -90,8 +89,7 @@ function BattleAcceptInner() {
 
     const load = async () => {
       const { data: sessionData } = await supabase.auth.getSession();
-      const userId = sessionData.session?.user.id ?? null;
-      if (!userId) {
+      if (!sessionData.session?.user.id) {
         const returnPath = watchPath(id, lang);
         rememberAuthNextPath(returnPath);
         router.replace(`/auth?next=${encodeURIComponent(returnPath)}`);
@@ -137,13 +135,8 @@ function BattleAcceptInner() {
         return;
       }
 
-      const watchId = data.match_group_id || data.id;
-      if (data.user_id === userId) {
-        setState({ kind: "own-card", row: data, watchId });
-        return;
-      }
-
       if (data.match_group_id || ACCEPTED_QUEUE_STATUSES.has(data.status ?? "")) {
+        const watchId = data.match_group_id || data.id;
         setState({ kind: "accepted", row: data, watchId });
         return;
       }
@@ -173,11 +166,7 @@ function BattleAcceptInner() {
         ? lang === "zh"
           ? "已經被人挑戰了"
           : "Already Accepted"
-        : state.kind === "own-card"
-          ? lang === "zh"
-            ? "這是你的戰帖"
-            : "This Is Your Card"
-          : state.title;
+        : state.title;
   const body =
     state.kind === "loading"
       ? lang === "zh"
@@ -187,13 +176,9 @@ function BattleAcceptInner() {
         ? lang === "zh"
           ? "這張戰帖已被其他創作者接走，不能再上傳接戰。你可以直接進戰場觀戰。"
           : "Another creator already answered this card. You can enter the arena to watch."
-        : state.kind === "own-card"
-          ? lang === "zh"
-            ? "不能接受自己的 Drop Battle 戰帖。你可以回到自己的戰場，或回挑戰池。"
-            : "You cannot accept your own Drop Battle card. Enter your arena or return to the pool."
-          : state.body;
+        : state.body;
   const watchId =
-    state.kind === "accepted" || state.kind === "own-card"
+    state.kind === "accepted"
       ? state.watchId
       : state.kind === "ended"
         ? state.watchId

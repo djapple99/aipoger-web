@@ -22,7 +22,7 @@ import {
   resolveDropBattleScheduledStart,
   shouldExpireOpenDropQueue,
 } from "@/lib/battle-pool-client";
-import type { OfficialGatekeeperDrop } from "@/lib/official-gatekeeper-drops";
+import { officialGatekeeperDisplayTitle, type OfficialGatekeeperDrop } from "@/lib/official-gatekeeper-drops";
 
 const seedComments = [
   "A Side 節奏很穩，這段 drop 很強。",
@@ -1240,6 +1240,7 @@ function BattlePoolList() {
           </div>
           <ul className="grid gap-3 md:grid-cols-2">
             {filteredOfficialDrops.map((drop) => {
+              const displayTitle = officialGatekeeperDisplayTitle(drop);
               const setupParams = new URLSearchParams({
                 battleMode: "instant",
                 instantPairing: "gatekeeper",
@@ -1256,7 +1257,7 @@ function BattlePoolList() {
                         <p className="text-[11px] font-black uppercase tracking-[0.22em] text-red-200/78">
                           {isZh ? "歡迎任何人來挑戰" : "Open Challenge"}
                         </p>
-                        <h4 className="mt-2 text-xl font-black text-white">{drop.title || (isZh ? "官方守門 Drop" : "Official Gatekeeper Drop")}</h4>
+                        <h4 className="mt-2 text-xl font-black text-white">{displayTitle}</h4>
                         <p className="mt-1 truncate text-sm font-bold text-zinc-400">
                           AIPOGER · {isZh ? "守門者" : "Gatekeeper"} · {drop.gateNumber} · {drop.genre}
                         </p>
@@ -1285,12 +1286,6 @@ function BattlePoolList() {
                         )}
                       </div>
                     </div>
-                    {drop.lyrics ? (
-                      <details className="mt-3 rounded-2xl border border-white/10 bg-white/[0.035] px-3 py-2">
-                        <summary className="cursor-pointer text-xs font-black text-zinc-300">{isZh ? "查看歌詞" : "Lyrics"}</summary>
-                        <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap text-xs font-bold leading-5 text-zinc-400">{drop.lyrics}</pre>
-                      </details>
-                    ) : null}
                     {drop.audioUrl ? (
                       <audio
                         controls

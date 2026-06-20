@@ -17,6 +17,8 @@ export type OfficialGatekeeperDrop = {
   updatedAt?: string | null;
 };
 
+export const OFFICIAL_GATEKEEPER_GENERIC_TITLE = "官方守門 Drop";
+
 export const OFFICIAL_GATEKEEPER_DROP_IDS = [
   "gate-01-heartbreak",
   "gate-02-city-pop",
@@ -28,7 +30,7 @@ export const OFFICIAL_GATEKEEPER_DROP_DEFAULTS: OfficialGatekeeperDrop[] = [
   {
     id: "gate-01-heartbreak",
     gateNumber: "GATE 01",
-    title: "官方守門 Drop",
+    title: OFFICIAL_GATEKEEPER_GENERIC_TITLE,
     genre: "感人抒情",
     aiTool: "Suno",
     description: "挑戰這首官方 Drop，設定開戰時間並分享拉人投票。",
@@ -41,7 +43,7 @@ export const OFFICIAL_GATEKEEPER_DROP_DEFAULTS: OfficialGatekeeperDrop[] = [
   {
     id: "gate-02-city-pop",
     gateNumber: "GATE 02",
-    title: "官方守門 Drop",
+    title: OFFICIAL_GATEKEEPER_GENERIC_TITLE,
     genre: "復古City-Pop",
     aiTool: "Suno",
     description: "挑戰這首官方 Drop，設定開戰時間並分享拉人投票。",
@@ -54,7 +56,7 @@ export const OFFICIAL_GATEKEEPER_DROP_DEFAULTS: OfficialGatekeeperDrop[] = [
   {
     id: "gate-03-club-edm",
     gateNumber: "GATE 03",
-    title: "官方守門 Drop",
+    title: OFFICIAL_GATEKEEPER_GENERIC_TITLE,
     genre: "動感電音",
     aiTool: "Suno",
     description: "挑戰這首官方 Drop，設定開戰時間並分享拉人投票。",
@@ -67,7 +69,7 @@ export const OFFICIAL_GATEKEEPER_DROP_DEFAULTS: OfficialGatekeeperDrop[] = [
   {
     id: "gate-04-rap-rnb",
     gateNumber: "GATE 04",
-    title: "官方守門 Drop",
+    title: OFFICIAL_GATEKEEPER_GENERIC_TITLE,
     genre: "說唱街頭風",
     aiTool: "Suno",
     description: "挑戰這首官方 Drop，設定開戰時間並分享拉人投票。",
@@ -83,7 +85,7 @@ export function normalizeOfficialGatekeeperDrop(row: Record<string, unknown>): O
   return {
     id: String(row.id ?? ""),
     gateNumber: String(row.gate_number ?? row.gateNumber ?? ""),
-    title: String(row.title ?? "官方守門 Drop"),
+    title: String(row.title ?? OFFICIAL_GATEKEEPER_GENERIC_TITLE),
     genre: String(row.genre ?? "AI Music"),
     aiTool: String(row.ai_tool ?? row.aiTool ?? "AI Music"),
     description: typeof row.description === "string" ? row.description : null,
@@ -98,4 +100,24 @@ export function normalizeOfficialGatekeeperDrop(row: Record<string, unknown>): O
     updatedBy: typeof row.updated_by === "string" ? row.updated_by : null,
     updatedAt: typeof row.updated_at === "string" ? row.updated_at : null,
   };
+}
+
+function readableTitleFromAudioPath(audioPath: string | null | undefined) {
+  if (!audioPath) return null;
+  const fileName = audioPath.split("/").pop()?.trim() ?? "";
+  if (!fileName) return null;
+  const withoutExt = fileName.replace(/\.[^.]+$/, "");
+  const withoutTimestamp = withoutExt.replace(/^\d{10,17}[-_]/, "");
+  const withoutDropSuffix = withoutTimestamp.replace(/[-_\s]*(?:60s|drop)$/i, "");
+  const readable = withoutDropSuffix
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return readable || null;
+}
+
+export function officialGatekeeperDisplayTitle(drop: Pick<OfficialGatekeeperDrop, "title" | "audioPath" | "gateNumber" | "genre">) {
+  const title = drop.title?.trim();
+  if (title && title !== OFFICIAL_GATEKEEPER_GENERIC_TITLE) return title;
+  return readableTitleFromAudioPath(drop.audioPath) ?? `${drop.gateNumber} ${drop.genre}`.trim() ?? OFFICIAL_GATEKEEPER_GENERIC_TITLE;
 }

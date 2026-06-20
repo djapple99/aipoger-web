@@ -232,7 +232,6 @@ export async function POST(request: NextRequest) {
     .from("battle_queue")
     .select("*")
     .in("status", OPEN_QUEUE_STATUSES)
-    .neq("user_id", meRow.user_id)
     .neq("id", meRow.id)
     .eq("genre", meRow.genre)
     .is("match_group_id", null)
@@ -241,6 +240,8 @@ export async function POST(request: NextRequest) {
 
   if (targetQueueId) {
     opponentQuery = opponentQuery.eq("id", targetQueueId);
+  } else {
+    opponentQuery = opponentQuery.neq("user_id", meRow.user_id);
   }
 
   const { data: opponents, error: opponentError } = await opponentQuery.returns<QueueRow[]>();

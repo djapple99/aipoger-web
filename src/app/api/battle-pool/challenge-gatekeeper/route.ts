@@ -16,6 +16,7 @@ import {
 import {
   OFFICIAL_GATEKEEPER_DROP_IDS,
   normalizeOfficialGatekeeperDrop,
+  officialGatekeeperDisplayTitle,
 } from "@/lib/official-gatekeeper-drops";
 import { signedBattleAudioUrl } from "@/lib/official-gatekeeper-media";
 
@@ -148,7 +149,6 @@ export async function POST(request: NextRequest) {
   const gatekeeper = normalizeOfficialGatekeeperDrop(gatekeeperRow as Record<string, unknown>);
   const defenderUserId = gatekeeper.updatedBy ?? gatekeeper.createdBy ?? null;
   if (!defenderUserId) return jsonError("這張官方守門 Drop 尚未由 owner 完成上傳設定。", 409);
-  if (defenderUserId === user.id) return jsonError("owner 不能挑戰自己上傳的官方守門 Drop。", 409);
 
   const { data: activeQueues, error: activeQueueError } = await admin
     .from("battle_queue")
@@ -225,6 +225,7 @@ export async function POST(request: NextRequest) {
   const gatekeeperLyrics = trimOrNull(gatekeeper.lyrics);
   const gatekeeperCover = gatekeeper.coverPath;
   const gatekeeperCoverForBattle = gatekeeperCover ? await signedBattleAudioUrl(admin, gatekeeperCover, 60 * 60 * 24 * 365) : null;
+  const gatekeeperSongName = officialGatekeeperDisplayTitle(gatekeeper);
 
   const [{ data: challengerFighter }, { data: challengerProfile }] = await Promise.all([
     admin.from("fighter_profiles").select("avatar_url,song_cover_url").eq("id", user.id).maybeSingle(),
@@ -236,7 +237,7 @@ export async function POST(request: NextRequest) {
     fighter_name: GATEKEEPER_FIGHTER_NAME,
     genre: gatekeeper.genre,
     audio_path: gatekeeper.audioPath,
-    original_file_name: `${gatekeeper.gateNumber} ${gatekeeper.genre} 官方守門 Drop`,
+    original_file_name: gatekeeperSongName,
     status: "matched",
     ai_tool: gatekeeper.aiTool,
     lyrics: gatekeeperLyrics,
@@ -293,7 +294,7 @@ export async function POST(request: NextRequest) {
     fighter_b_user_id: user.id,
     fighter_a_name: GATEKEEPER_FIGHTER_NAME,
     fighter_b_name: fighterName,
-    song_a_name: `${gatekeeper.gateNumber} ${gatekeeper.genre} 官方守門 Drop`,
+    song_a_name: gatekeeperSongName,
     song_b_name: songName,
     audio_a_path: gatekeeper.audioPath,
     audio_b_path: challengerAudioPath,

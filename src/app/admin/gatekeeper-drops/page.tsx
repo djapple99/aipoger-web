@@ -7,7 +7,8 @@ import { HookCropper } from "@/components/hook-cropper";
 import LangToggle from "@/components/lang-toggle";
 import { supabase } from "@/lib/supabase";
 import { loadIsAdmin } from "@/lib/user-profile-admin";
-import type { OfficialGatekeeperDrop } from "@/lib/official-gatekeeper-drops";
+import { titleFromAudioFileName } from "@/lib/audio-metadata";
+import { OFFICIAL_GATEKEEPER_GENERIC_TITLE, type OfficialGatekeeperDrop } from "@/lib/official-gatekeeper-drops";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import {
   imageContentType,
@@ -193,7 +194,13 @@ export default function AdminGatekeeperDropsPage() {
         });
       if (uploadError) throw uploadError;
 
-      const saved = await saveDrop(drop, { audioPath: signed.path, active: true });
+      const detectedTitle = titleFromAudioFileName(sourceFile.name).slice(0, 40);
+      const shouldUseDetectedTitle = !drop.title.trim() || drop.title.trim() === OFFICIAL_GATEKEEPER_GENERIC_TITLE;
+      const saved = await saveDrop(drop, {
+        audioPath: signed.path,
+        active: true,
+        ...(shouldUseDetectedTitle && detectedTitle ? { title: detectedTitle } : {}),
+      });
       if (!saved) return;
       setCropTarget(null);
       setMessage(`${drop.gateNumber} 已裁切並上傳 ${fileName}（${formatBytes(blob.size)}）。`);
@@ -468,10 +475,11 @@ export default function AdminGatekeeperDropsPage() {
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                 <label className="block">
-                  <span className="text-xs font-bold text-zinc-500">卡片標題</span>
+                  <span className="text-xs font-bold text-zinc-500">歌曲名稱</span>
                   <input
                     value={drop.title}
                     maxLength={40}
+                    placeholder="輸入守門歌曲名"
                     onChange={(event) => updateLocal(drop.id, { title: event.target.value })}
                     className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.055] px-4 py-3 text-sm font-bold text-white outline-none focus:border-orange-300/70"
                   />

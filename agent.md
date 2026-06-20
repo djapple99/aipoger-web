@@ -1,6 +1,6 @@
 # 愛波哥私人介紹文檔
 
-> 最後更新：2026-06-03
+> 最後更新：2026-06-20
 > 本文件由 Mavis 維護。修改前請確認沒有覆蓋使用者既有變更。
 
 ## 執行前必讀
@@ -155,6 +155,7 @@
   - **最多 1 場正在挑戰別人的 Drop / challenger state**
 - 24H Full Song、Drop founder、Drop challenger 三種狀態可以**並行**。
 - 同一種狀態**不能並行**。例如已經開一張 Drop 戰帖卡，就不能再開第二張；已經接一張別人的 Drop 戰帖，就不能再接第二張。
+- 一般 Drop Battle 允許創作者指定挑戰自己的公開戰帖卡，用兩首同類型歌曲請觀眾投票比較；但自動隨機配對不應主動把同一帳號配給自己。
 - 「開新一場 / 接新一場」的條件：同狀態的現有 battle 必須是 `finished` / `cancelled` / `cancelled_no_challenger` / `cancelled_founder` / `completed` / `expired` 其中之一。
 - 觀戰自由，不要求登入；留言、投票、互動、取消挑戰等會寫入資料或影響戰鬥狀態的操作必須登入。
 - 這個限制在 `src/lib/daily-battle-rules.ts` 跟 battle_pool 邏輯中實作
@@ -169,6 +170,8 @@
 - 挑戰者點「挑戰這首 Drop」後，上傳自己的 Drop，並由挑戰者設定 10 / 15 / 20 分鐘或 24 小時內自訂開戰時間，方便自己約人投票。
 - 每次挑戰都會產生一場新的 Battle Room：系統複製官方 defender queue，再建立挑戰者 challenger queue。官方守門音檔、歌詞、封面必須帶進 defender 端，讓開出來的卡可以像一般擂台一樣進場觀戰、播放、看歌詞與分享。原本四張官方卡不能被消耗或消失。
 - 官方 defender queue 不應佔用 owner 的個人 active Drop Battle 名額，也不應像 owner 親自參戰一樣通知 owner。
+- owner/admin 可以挑戰自己上傳的官方守門 Drop；這種情況下仍只把挑戰者側算入 personal challenger active intent。
+- 鬥歌池官方守門卡要顯示實際歌曲名稱、GATE 與類型徽章；歌詞可存於模板並帶進戰場，但不需要在鬥歌池卡片上展開。
 - 官方守門 Drop 結果沿用一般 Drop Battle 門檻：0:0 no contest；1-2 位不同聽眾只進成果牆非正式結果；3+ 位不同聽眾才是正式結果 / 榮譽榜資格。
 
 ## AIPOGER Drop Battle 流程記憶（2026-06-03，2026-06-19 更新秒數）
