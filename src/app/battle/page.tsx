@@ -61,6 +61,10 @@ const mockBattleData: BattleViewData = {
 const DAILY_BATTLE_QUEUE_MS = 24 * 60 * 60 * 1000;
 const SHOW_DAILY_BATTLE_SECTION = false;
 const DROP_BATTLE_GENRE_OPTIONS = MUSIC_GENRE_OPTIONS;
+const BATTLE_FEMALE_ASSET = "/images/battle/battle-fighter-citypop-female.png";
+const BATTLE_MALE_ASSET = "/images/battle/battle-fighter-gatekeeper-male.png";
+const BATTLE_STAR_ASSET_ZH = "/images/battle/battle-start-challenge-star-zh.png";
+const BATTLE_STAR_ASSET_EN = "/images/battle/battle-start-challenge-star-en.png";
 
 function normalizeGenreFilter(value: string | null | undefined) {
   return String(value || "").trim().toLowerCase();
@@ -175,6 +179,108 @@ function dedupeLiveBattleRows(rows: LiveBattleRow[]) {
     seenPairs.add(pairKey);
     return true;
   });
+}
+
+function BattleStageHero({
+  isZh,
+  lang,
+  t,
+}: {
+  isZh: boolean;
+  lang: ReturnType<typeof useI18n>["lang"];
+  t: ReturnType<typeof useI18n>["t"];
+}) {
+  const startLabel = isZh ? "發起挑戰！" : "Start a Challenge!";
+  const startHref = `/battle/setup?lang=${lang}`;
+  const starAsset = isZh ? BATTLE_STAR_ASSET_ZH : BATTLE_STAR_ASSET_EN;
+
+  return (
+    <header className="battle-stage-hero">
+      <div className="battle-stage-visual" aria-hidden="true">
+        <div className="battle-stage-deck" />
+        <div className="battle-stage-deck-arm" />
+        <div className="battle-stage-eq">
+          <i />
+          <i />
+          <i />
+          <i />
+          <i />
+          <i />
+        </div>
+        <Image
+          src={BATTLE_FEMALE_ASSET}
+          alt=""
+          width={851}
+          height={1148}
+          priority
+          className="battle-stage-fighter battle-stage-fighter-female"
+        />
+        <Image
+          src={BATTLE_MALE_ASSET}
+          alt=""
+          width={870}
+          height={1132}
+          priority
+          className="battle-stage-fighter battle-stage-fighter-male"
+        />
+        <div className="battle-stage-vs">VS</div>
+        <span className="battle-stage-spark battle-stage-spark-a" />
+        <span className="battle-stage-spark battle-stage-spark-b" />
+      </div>
+
+      <Link href={startHref} aria-label={startLabel} className="battle-stage-star-cta">
+        <Image src={starAsset} alt="" width={640} height={640} priority className="h-full w-full object-contain" />
+        <span className="sr-only">{startLabel}</span>
+      </Link>
+
+      <div className="battle-stage-copy">
+        <p className="battle-stage-kicker">AIPOGER BATTLE POOL</p>
+        <h1>{t("watch_page_title")}</h1>
+        <p className="battle-stage-subtitle">
+          {isZh ? "挑戰 AI、對決全場。用 60 秒 Drop 讓聽眾投票。" : "Challenge AI, face the room, and let listeners vote on a 60s Drop."}
+        </p>
+        <div className="battle-stage-audio-strip" aria-hidden="true">
+          <span className="battle-stage-play-dot">▶</span>
+          <span className="battle-stage-waveform" />
+          <span className="battle-stage-mix-meta">
+            DROP CUT
+            <br />
+            00:05 PREVIEW
+          </span>
+        </div>
+      </div>
+
+      <div className="battle-stage-actions" aria-label={isZh ? "Battle 快速入口" : "Battle Quick Links"}>
+        <ShareButton
+          title={t("watch_share_title")}
+          text={t("watch_share_text")}
+          label={isZh ? "分享鬥歌場" : "Share Battle Hall"}
+          copiedLabel={t("common_copied")}
+          className="battle-stage-action-card battle-stage-share-card"
+        />
+        <Link href="/listen-bar" className="battle-stage-action-card">
+          <span className="battle-stage-action-icon">♪</span>
+          <strong>{t("btn_listen_bar")}</strong>
+          <small>{isZh ? "公播你的情緒歌" : "Public survival radio"}</small>
+        </Link>
+        <Link href="/battle/results" className="battle-stage-action-card">
+          <span className="battle-stage-action-icon">▦</span>
+          <strong>{t("watch_result_card")}</strong>
+          <small>{isZh ? "看最近對戰紀錄" : "Recent battle records"}</small>
+        </Link>
+        <Link href="/rank" className="battle-stage-action-card">
+          <span className="battle-stage-action-icon">★</span>
+          <strong>{t("watch_rank")}</strong>
+          <small>{isZh ? "正式勝利封存" : "Official wins archive"}</small>
+        </Link>
+        <Link href={`/hook-guide${lang === "en" ? "?lang=en" : "?lang=zh"}`} className="battle-stage-action-card">
+          <span className="battle-stage-action-icon">≡</span>
+          <strong>{isZh ? "Drop 規則" : "Drop Rules"}</strong>
+          <small>{isZh ? "看懂挑戰門檻" : "Challenge basics"}</small>
+        </Link>
+      </div>
+    </header>
+  );
 }
 
 type PoolEntryRow = {
@@ -900,6 +1006,9 @@ function DailyBattleList() {
 function BattlePoolList() {
   const { t, lang } = useI18n();
   const isZh = lang === "zh";
+  const startChallengeLabel = isZh ? "發起挑戰！" : "Start a Challenge!";
+  const startChallengeHref = `/battle/setup?lang=${lang}`;
+  const starAsset = isZh ? BATTLE_STAR_ASSET_ZH : BATTLE_STAR_ASSET_EN;
   const searchParams = useSearchParams();
   const focusQueueId = searchParams.get("focusQueue");
   const [rows, setRows] = useState<PoolEntryRow[]>([]);
@@ -1234,17 +1343,19 @@ function BattlePoolList() {
   }
 
   return (
-    <section className="aipo-control-panel aipo-panel-line mt-8 rounded-[1.35rem] p-5 md:p-6">
-      <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+    <section className="battle-pool-shell aipo-panel-line mt-8 rounded-[1.35rem] p-5 md:p-6">
+      <div className="battle-pool-head mb-5">
         <div>
           <p className="aipo-section-kicker">60S DROP BATTLE POOL</p>
           <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "Drop Battle 公開挑戰池" : "Drop Battle Challenge Pool"}</h2>
         </div>
         <Link
-          href="/battle/setup"
-          className="aipo-primary-button w-fit rounded-full px-5 py-2.5 text-sm font-black !text-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+          href={startChallengeHref}
+          aria-label={startChallengeLabel}
+          className="battle-pool-star-cta"
         >
-          {isZh ? "我要發起挑戰" : "Start a Challenge"}
+          <Image src={starAsset} alt="" width={640} height={640} className="h-full w-full object-contain" />
+          <span className="sr-only">{startChallengeLabel}</span>
         </Link>
       </div>
 
@@ -1878,50 +1989,8 @@ function LiveBattleList() {
       <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_18%_20%,rgba(255,106,0,0.2),transparent_32%),radial-gradient(circle_at_82%_8%,rgba(0,203,255,0.14),transparent_28%),linear-gradient(180deg,#050505,#0b0908)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.12] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:48px_48px]" />
 
-      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 pb-10 pt-24 sm:px-6 md:px-10">
-        <header className="aipo-control-panel aipo-panel-line mb-8 rounded-[1.35rem] px-5 py-6">
-          <div className="min-w-0">
-            <p className="aipo-section-kicker">AIPOGER BATTLE POOL</p>
-            <h1 className="mt-3 max-w-full whitespace-nowrap text-[2.55rem] font-black leading-none tracking-normal text-white sm:text-5xl md:text-6xl">
-              {t("watch_page_title")}
-            </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-400 sm:whitespace-nowrap md:text-base">
-              {t("watch_live_hint")}
-            </p>
-          </div>
-          <div className="mt-5 flex flex-wrap items-center gap-2">
-            <ShareButton
-              title={t("watch_share_title")}
-              text={t("watch_share_text")}
-              label={t("watch_share_label")}
-              copiedLabel={t("common_copied")}
-            />
-            <Link
-              href="/listen-bar"
-              className="aipo-ghost-button w-fit rounded-full px-5 py-2.5 text-sm font-black tracking-[0.12em] text-cyan-100 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
-            >
-              {t("btn_listen_bar")}
-            </Link>
-            <Link
-              href="/battle/results"
-              className="aipo-ghost-button w-fit rounded-full px-5 py-2.5 text-sm font-black tracking-[0.12em] text-orange-100 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
-            >
-              {t("watch_result_card")}
-            </Link>
-            <Link
-              href="/rank"
-              className="aipo-ghost-button w-fit rounded-full px-5 py-2.5 text-sm font-black tracking-[0.12em] text-yellow-100 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300"
-            >
-              {t("watch_rank")}
-            </Link>
-            <Link
-              href={`/hook-guide${lang === "en" ? "?lang=en" : "?lang=zh"}`}
-              className="aipo-ghost-button w-fit rounded-full px-5 py-2.5 text-sm font-black tracking-[0.12em] text-zinc-200 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
-            >
-              {isZh ? "Drop Battle 規則" : "Drop Battle Rules"}
-            </Link>
-          </div>
-        </header>
+      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 pb-10 pt-24 sm:px-6 md:px-10">
+        <BattleStageHero isZh={isZh} lang={lang} t={t} />
 
         {isAuthBypassEnabled && (
           <p className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/90">

@@ -1,8 +1,10 @@
 # AIPOGER UI And Art Direction
 
-Last updated: 2026-05-29
+Last updated: 2026-06-22
 
 This document protects AIPOGER's visual identity. Use it before redesigning any page, adding major UI, or changing user-facing copy.
+
+For Battle Pool-specific hero, star CTA, character, and mobile layout rules, also read `docs/aipoger-battle-pool-art-direction.md`.
 
 ## Core Feeling
 
@@ -173,4 +175,3 @@ Direction:
 - Admin pages can be more functional than public pages.
 - Avoid oversized hero design in admin tools.
 - Keep image/audio review and moderation actions clear.
-
