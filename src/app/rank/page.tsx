@@ -136,7 +136,6 @@ const BOARD_KEYS: BoardKey[] = ["drop", "bar"];
 const MOCK_PATTERN = /(qa-|mock|demo|test|ghost|sample)/i;
 const ARCHIVE_SELECT_BASE =
   "battle_id,battle_code,winner,winner_name,winner_song_name,winner_ai_tool,opponent_name,opponent_song_name,final_vote_left,final_vote_right,total_votes,audience_review,result_payload,archived_at";
-const ARCHIVE_SELECT_WITH_SONG_STATS = `${ARCHIVE_SELECT_BASE},winner_song_stats_id,winner_song_battle_count,winner_song_wins,winner_song_losses,winner_song_no_contests,winner_song_total_votes_for,winner_song_total_votes_against,winner_song_honor_board_count`;
 
 function safeRankForFighter(name: string, rank?: string | null) {
   const cleanRank = rank?.trim() ?? "";
@@ -507,24 +506,11 @@ function hotBarRowsFromTracks(tracks: ListenBarTrackRow[]) {
 }
 
 async function fetchBattleArchivesForRank() {
-  const responseWithStats = await supabase
+  return supabase
     .from("battle_result_archives")
-    .select(ARCHIVE_SELECT_WITH_SONG_STATS)
+    .select(ARCHIVE_SELECT_BASE)
     .order("archived_at", { ascending: false })
     .limit(200);
-
-  if (responseWithStats.error) {
-    const msg = `${responseWithStats.error.message ?? ""} ${responseWithStats.error.details ?? ""} ${responseWithStats.error.hint ?? ""}`;
-    if (/winner_song_|battle_song_stats|schema cache|does not exist|PGRST204/i.test(msg)) {
-      return supabase
-        .from("battle_result_archives")
-        .select(ARCHIVE_SELECT_BASE)
-        .order("archived_at", { ascending: false })
-        .limit(200);
-    }
-  }
-
-  return responseWithStats;
 }
 
 function battleAudioPathToUrl(path: string | null | undefined) {
@@ -1244,7 +1230,7 @@ export default function RankPage() {
                 href={`/battle/setup${navSuffix}`}
                 className="aipo-primary-button inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-black transition"
               >
-                {isZh ? "我要參戰" : "Join Battle"}
+                {isZh ? "發起挑戰" : "Start a Challenge"}
               </Link>
             </div>
           </div>
@@ -1764,7 +1750,7 @@ export default function RankPage() {
                   {isZh ? "傷心酒吧公播" : "Bar Heartbreak Radio"}
                 </Link>
                 <Link href={`/battle/setup${navSuffix}`} className="text-zinc-300 transition hover:text-orange-100">
-                  {isZh ? "我要發起挑戰" : "Start a Challenge"}
+                  {isZh ? "發起挑戰" : "Start a Challenge"}
                 </Link>
               </div>
             </div>
