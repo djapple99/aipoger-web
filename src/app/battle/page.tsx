@@ -1375,7 +1375,7 @@ function BattlePoolList() {
               <h3 className="mt-1 text-lg font-black text-white">{isZh ? "歡迎任何人來挑戰" : "Open to Anyone"}</h3>
             </div>
           </div>
-          <ul className="grid gap-3 md:grid-cols-2">
+          <ul className="grid min-w-0 gap-3 md:grid-cols-2">
             {filteredOfficialDrops.map((drop) => {
               const displayTitle = officialGatekeeperDisplayTitle(drop);
               const setupParams = new URLSearchParams({
@@ -1387,9 +1387,9 @@ function BattlePoolList() {
                 lang,
               });
               return (
-                <li key={drop.id}>
-                  <article className="rounded-[1.25rem] border border-red-300/25 bg-[radial-gradient(circle_at_18%_18%,rgba(239,68,68,0.14),transparent_34%),rgba(0,0,0,0.44)] p-4 shadow-[0_0_34px_rgba(239,68,68,0.08)]">
-                    <div className="flex items-start justify-between gap-4">
+                <li key={drop.id} className="min-w-0">
+                  <article className="min-w-0 overflow-hidden rounded-[1.25rem] border border-red-300/25 bg-[radial-gradient(circle_at_18%_18%,rgba(239,68,68,0.14),transparent_34%),rgba(0,0,0,0.44)] p-4 shadow-[0_0_34px_rgba(239,68,68,0.08)]">
+                    <div className="flex min-w-0 items-start justify-between gap-3 sm:gap-4">
                       <div className="min-w-0">
                         <p className="text-[11px] font-black uppercase tracking-[0.22em] text-red-200/78">
                           {isZh ? "歡迎任何人來挑戰" : "Open Challenge"}
@@ -1457,7 +1457,7 @@ function BattlePoolList() {
                         />
                       </div>
                     ) : null}
-                    <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-white/10 pt-3">
+                    <div className="mt-4 flex min-w-0 flex-wrap justify-end gap-2 border-t border-white/10 pt-3">
                       <Link
                         href={`/battle/setup?${setupParams.toString()}`}
                         className="rounded-full bg-red-500 px-4 py-2 text-xs font-black text-white shadow-[0_0_20px_rgba(239,68,68,0.18)] transition hover:bg-red-400"
