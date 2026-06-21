@@ -123,6 +123,16 @@ function mediaSrc(value: string) {
   return value?.trim() || AIPOGER_BRAND_LOGO;
 }
 
+function isBrandLogoFallback(value: string) {
+  return mediaSrc(value) === AIPOGER_BRAND_LOGO;
+}
+
+function honorCoverImageClass(value: string, hoverScale = "group-hover:scale-[1.025]") {
+  return isBrandLogoFallback(value)
+    ? "h-full w-full bg-black object-contain p-10 transition duration-300 sm:p-12"
+    : `h-full w-full object-cover transition duration-300 ${hoverScale}`;
+}
+
 function displayText(value: string, fallback: string) {
   return value?.trim() || fallback;
 }
@@ -1270,7 +1280,7 @@ export default function RankPage() {
                                 <img
                                   src={mediaSrc(row.coverUrl)}
                                   alt={displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}
-                                  className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                                  className={honorCoverImageClass(row.coverUrl, "group-hover:scale-[1.03]")}
                                 />
                                 <div className="absolute left-2 top-2 flex max-w-[calc(100%-1rem)] flex-wrap gap-1.5">
                                   <span className="rounded-full border border-black/50 bg-black/76 px-2 py-1 text-[10px] font-black text-yellow-100">
@@ -1394,12 +1404,12 @@ export default function RankPage() {
                                   key={`${active}-${genreLabel}-${row.id}-${index}`}
                                   className={`group min-w-0 rounded-lg border p-2.5 transition hover:-translate-y-0.5 hover:bg-white/[0.055] ${accentClasses(row.accent)}`}
                                 >
-                                  <div className="relative aspect-square overflow-hidden rounded-md border border-white/10 bg-black">
+                                  <div className="relative aspect-[16/10] overflow-hidden rounded-md border border-white/10 bg-black sm:aspect-square">
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img
                                       src={mediaSrc(row.coverUrl)}
                                       alt={displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}
-                                      className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.025]"
+                                      className={honorCoverImageClass(row.coverUrl)}
                                     />
                                     <div className="absolute left-2 top-2 flex max-w-[calc(100%-1rem)] flex-wrap gap-1.5">
                                       <span className="rounded-full border border-black/45 bg-black/76 px-2 py-1 text-[10px] font-black text-white">
