@@ -190,7 +190,7 @@ function BattleStageHero({
   lang: ReturnType<typeof useI18n>["lang"];
   t: ReturnType<typeof useI18n>["t"];
 }) {
-  const startLabel = isZh ? "發起挑戰！" : "Start a Challenge!";
+  const startLabel = isZh ? "發起挑戰" : "Start a Challenge";
   const startHref = `/battle/setup?lang=${lang}`;
   const starAsset = isZh ? BATTLE_STAR_ASSET_ZH : BATTLE_STAR_ASSET_EN;
 
@@ -242,11 +242,6 @@ function BattleStageHero({
         <div className="battle-stage-audio-strip" aria-hidden="true">
           <span className="battle-stage-play-dot">▶</span>
           <span className="battle-stage-waveform" />
-          <span className="battle-stage-mix-meta">
-            DROP CUT
-            <br />
-            00:05 PREVIEW
-          </span>
         </div>
       </div>
 
@@ -1006,7 +1001,7 @@ function DailyBattleList() {
 function BattlePoolList() {
   const { t, lang } = useI18n();
   const isZh = lang === "zh";
-  const startChallengeLabel = isZh ? "發起挑戰！" : "Start a Challenge!";
+  const startChallengeLabel = isZh ? "發起挑戰" : "Start a Challenge";
   const startChallengeHref = `/battle/setup?lang=${lang}`;
   const starAsset = isZh ? BATTLE_STAR_ASSET_ZH : BATTLE_STAR_ASSET_EN;
   const searchParams = useSearchParams();

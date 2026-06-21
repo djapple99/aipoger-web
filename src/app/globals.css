@@ -329,9 +329,50 @@ a {
   width: 7.85rem;
   height: 7.85rem;
   transform: translate(-50%, -50%);
+  cursor: pointer;
+  isolation: isolate;
   filter:
     drop-shadow(0 14px 18px rgba(0, 0, 0, 0.5))
     drop-shadow(0 0 14px rgba(255, 146, 0, 0.32));
+}
+
+.battle-stage-star-cta::before,
+.battle-pool-star-cta::before {
+  content: "";
+  position: absolute;
+  inset: 17%;
+  z-index: -1;
+  border: 1px solid rgba(255, 226, 129, 0.48);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(255, 166, 0, 0.32), rgba(255, 56, 35, 0.15) 48%, rgba(0, 0, 0, 0.52) 72%);
+  box-shadow:
+    0 0 0 0.28rem rgba(255, 128, 0, 0.08),
+    0 0 34px rgba(255, 120, 0, 0.34),
+    inset 0 0 20px rgba(255, 255, 255, 0.08);
+}
+
+.battle-stage-star-cta::after,
+.battle-pool-star-cta::after {
+  content: "›";
+  position: absolute;
+  right: 15%;
+  bottom: 17%;
+  z-index: 2;
+  display: grid;
+  width: 1.65rem;
+  height: 1.65rem;
+  place-items: center;
+  border: 1px solid rgba(255, 232, 177, 0.74);
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff3d2e, #b80013);
+  color: white;
+  font-size: 1.35rem;
+  font-weight: 950;
+  line-height: 1;
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, 0.42),
+    0 0 18px rgba(255, 56, 35, 0.5);
 }
 
 .battle-stage-star-cta:focus-visible,
@@ -502,7 +543,7 @@ a {
     z-index: 5;
     display: grid;
     width: min(38rem, 52vw);
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: auto 1fr;
     align-items: center;
     gap: 0.85rem;
     margin-top: 1.45rem;
@@ -532,15 +573,6 @@ a {
       repeating-linear-gradient(90deg, rgba(255, 92, 61, 0.85) 0 3px, transparent 3px 12px);
     mask-image: linear-gradient(to top, black 40%, transparent 96%);
     opacity: 0.78;
-  }
-
-  .battle-stage-mix-meta {
-    text-align: right;
-    color: #ffddd6;
-    font-size: 0.74rem;
-    font-weight: 950;
-    letter-spacing: 0.08em;
-    line-height: 1.4;
   }
 
   .battle-stage-deck {
@@ -615,7 +647,7 @@ a {
 
   .battle-stage-vs {
     position: absolute;
-    left: 69%;
+    left: 72.5%;
     top: 39%;
     display: block;
     transform: translate(-50%, -50%) rotate(-4deg);
@@ -664,9 +696,15 @@ a {
     width: 14.4rem;
     height: 14.4rem;
     transform: translateY(-50%);
+    cursor: pointer;
+    isolation: isolate;
     filter:
       drop-shadow(0 18px 20px rgba(0, 0, 0, 0.48))
       drop-shadow(0 0 18px rgba(255, 171, 20, 0.28));
+  }
+
+  .battle-pool-star-cta:hover {
+    transform: translateY(-50%) scale(1.035);
   }
 }
 

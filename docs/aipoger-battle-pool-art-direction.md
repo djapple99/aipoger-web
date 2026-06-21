@@ -38,17 +38,19 @@ The star CTA is a real button, not just decoration.
 
 Chinese:
 
-- `發起挑戰！`
+- `發起挑戰`
 
 English:
 
-- `Start a Challenge!`
+- `Start a Challenge`
 
 Rules:
 
 - Do not use `我要挑戰` for this primary CTA.
 - Keep the button accessible: the actual button text and `aria-label` must match the locale.
 - The star graphic can carry the visible text, but the underlying button must still have real text for accessibility and future interaction.
+- Keep the star text visually horizontal and centered; do not rotate the text inside the star.
+- The star must look clickable, with a button-like glow, ring, hover state, or arrow indicator.
 - On click, it should begin the same Battle start flow as the normal `Start a Challenge` action.
 
 ## Star CTA Visual
@@ -61,6 +63,7 @@ Approved direction:
 - Dimensional bevels and a soft drop shadow.
 - Red dimensional Chinese lettering.
 - No white outline around the CTA text.
+- CTA text should not look crooked or misaligned.
 - The star should look upright on mobile.
 
 Desktop:
@@ -94,11 +97,13 @@ Desktop character direction:
 - Male gatekeeper / street fighter character on the right.
 - Characters should be large enough to create battle energy, but must not make the nav cards unreadable.
 - The `VS` can remain on desktop because there is enough space.
+- The `VS` mark should sit between the two character centers, not over one character or the title.
 
 Music elements:
 
 - Desktop may use waveform, DJ deck, EQ meter, BPM / key / Drop duration, or mini-player accents.
 - These elements should sit behind or beside the core UI, not over the CTA or card text.
+- Do not show redundant `DROP CUT 00:05 PREVIEW` text in the hero; previews already exist on the Drop cards below.
 
 ## Mobile Hero
 
@@ -180,8 +185,8 @@ Battle Pool copy should be clear first, stylish second.
 
 Use:
 
-- `發起挑戰！`
-- `Start a Challenge!`
+- `發起挑戰`
+- `Start a Challenge`
 - `Drop Battle 公開挑戰池`
 - `官方 DROP 挑戰`
 - `挑戰這首 Drop`
