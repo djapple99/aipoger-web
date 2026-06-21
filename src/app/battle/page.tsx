@@ -1070,10 +1070,7 @@ function BattlePoolList() {
         return;
       }
 
-      await Promise.all([
-        fetch("/api/battle-pool/expire-open-cards", { method: "POST" }).catch(() => null),
-        fetch("/api/battle-pool/process-fallbacks", { method: "POST" }).catch(() => null),
-      ]);
+      await fetch("/api/battle-pool/expire-open-cards", { method: "POST" }).catch(() => null);
 
       const officialDropsPromise = fetch("/api/official-gatekeeper-drops")
         .then((response) => response.json())
