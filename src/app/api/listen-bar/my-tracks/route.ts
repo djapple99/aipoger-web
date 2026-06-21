@@ -84,6 +84,15 @@ function isMissingColumnError(error: unknown): boolean {
   return /schema cache|column.*does not exist|PGRST204|bar_phase|promoted_at|description/i.test(text);
 }
 
+function missingDescriptionColumnResponse() {
+  return NextResponse.json(
+    {
+      error: "傷心酒吧資料庫還沒套用一句歌曲介紹欄位，請先執行 supabase/20260611_listen_bar_track_metadata.sql 後再補資料。",
+    },
+    { status: 500 },
+  );
+}
+
 function cleanText(value: unknown, maxLength: number): string | null {
   if (typeof value !== "string") return null;
   const clean = value.trim().slice(0, maxLength);
@@ -226,6 +235,7 @@ export async function PATCH(request: NextRequest) {
         .maybeSingle();
 
       if (updateResult.error && isMissingColumnError(updateResult.error)) {
+        if (patch.description) return missingDescriptionColumnResponse();
         const fallbackPatch = { ...patch };
         delete (fallbackPatch as Partial<typeof patch>).description;
         updateResult = await admin

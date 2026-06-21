@@ -171,7 +171,7 @@
 - 每次挑戰都會產生一場新的 Battle Room：系統複製官方 defender queue，再建立挑戰者 challenger queue。官方守門音檔、歌詞、封面必須帶進 defender 端，讓開出來的卡可以像一般擂台一樣進場觀戰、播放、看歌詞與分享。原本四張官方卡不能被消耗或消失。
 - 官方 defender queue 不應佔用 owner 的個人 active Drop Battle 名額，也不應像 owner 親自參戰一樣通知 owner。
 - owner/admin 可以挑戰自己上傳的官方守門 Drop；這種情況下仍只把挑戰者側算入 personal challenger active intent。
-- 鬥歌池官方守門卡要顯示實際歌曲名稱、GATE 與類型徽章；歌詞可存於模板並帶進戰場，但不需要在鬥歌池卡片上展開。
+- 鬥歌池官方守門卡要顯示實際歌曲名稱、GATE 與類型徽章，並只提供與一般 Battle 卡一致的 5 秒預播；不可在鬥歌池卡片上提供完整音檔播放器。歌詞可存於模板並帶進戰場，但不需要在鬥歌池卡片上展開。
 - 官方守門 Drop 結果沿用一般 Drop Battle 門檻：0:0 no contest；1-2 位不同聽眾只進成果牆非正式結果；3+ 位不同聽眾才是正式結果 / 榮譽榜資格。
 
 ## AIPOGER Drop Battle 流程記憶（2026-06-03，2026-06-19 更新秒數）

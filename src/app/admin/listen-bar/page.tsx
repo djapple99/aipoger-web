@@ -79,6 +79,7 @@ const initialForm: TrackForm = {
 };
 
 const LIVE_RADIO_EPOCH_MS = Date.UTC(2026, 0, 1);
+const UPCOMING_ROTATION_PREVIEW_COUNT = 6;
 
 function safeFileName(name: string) {
   const cleaned = name
@@ -135,30 +136,69 @@ function hiddenStatus(track: AdminListenBarTrackRow) {
   return track.review_status?.toLowerCase() === "hidden" || Boolean(track.hidden_at);
 }
 
+function sortOrderValue(track: AdminListenBarTrackRow) {
+  return typeof track.sort_order === "number" && Number.isFinite(track.sort_order) ? track.sort_order : 1000;
+}
+
+function publicRotationSort(a: AdminListenBarTrackRow, b: AdminListenBarTrackRow) {
+  const sortDiff = sortOrderValue(a) - sortOrderValue(b);
+  if (sortDiff !== 0) return sortDiff;
+  return dateSortValue(b.created_at) - dateSortValue(a.created_at);
+}
+
 function activePlayableTracks(tracks: AdminListenBarTrackRow[]) {
   return tracks
     .filter((track) => track.is_active !== false && !isHiddenTrack(track) && Boolean(track.audio_path?.trim()))
-    .sort((a, b) => {
-      const phaseA = a.bar_phase === "public" ? 0 : a.bar_phase === "challenger" ? 1 : 0;
-      const phaseB = b.bar_phase === "public" ? 0 : b.bar_phase === "challenger" ? 1 : 0;
-      if (phaseA !== phaseB) return phaseA - phaseB;
-      return new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime();
-    });
+    .sort(publicRotationSort);
 }
 
-function currentLiveTrackId(tracks: AdminListenBarTrackRow[], nowMs: number) {
+function liveRotationSnapshot(tracks: AdminListenBarTrackRow[], nowMs: number) {
   const playableTracks = activePlayableTracks(tracks);
-  if (playableTracks.length === 0) return "";
+  if (playableTracks.length === 0) {
+    return {
+      current: null as AdminListenBarTrackRow | null,
+      upcoming: [] as AdminListenBarTrackRow[],
+      elapsedSeconds: 0,
+      currentDuration: 0,
+      totalDuration: 0,
+    };
+  }
   const totalDuration = playableTracks.reduce((sum, track) => sum + Math.max(1, Math.round(track.duration_seconds ?? 1)), 0);
-  if (totalDuration <= 0) return playableTracks[0]?.id ?? "";
+  if (totalDuration <= 0) {
+    return {
+      current: playableTracks[0] ?? null,
+      upcoming: playableTracks.slice(1, UPCOMING_ROTATION_PREVIEW_COUNT + 1),
+      elapsedSeconds: 0,
+      currentDuration: Math.max(1, Math.round(playableTracks[0]?.duration_seconds ?? 1)),
+      totalDuration: 0,
+    };
+  }
 
   let cursor = Math.floor(Math.max(0, nowMs - LIVE_RADIO_EPOCH_MS) / 1000) % totalDuration;
-  for (const track of playableTracks) {
+  for (let index = 0; index < playableTracks.length; index += 1) {
+    const track = playableTracks[index];
     const duration = Math.max(1, Math.round(track.duration_seconds ?? 1));
-    if (cursor < duration) return track.id;
+    if (cursor < duration) {
+      const upcoming = Array.from({ length: Math.min(UPCOMING_ROTATION_PREVIEW_COUNT, Math.max(0, playableTracks.length - 1)) }, (_, offset) => (
+        playableTracks[(index + offset + 1) % playableTracks.length]
+      ));
+      return {
+        current: track,
+        upcoming,
+        elapsedSeconds: cursor,
+        currentDuration: duration,
+        totalDuration,
+      };
+    }
     cursor -= duration;
   }
-  return playableTracks[0]?.id ?? "";
+  return {
+    current: playableTracks[0] ?? null,
+    upcoming: playableTracks.slice(1, UPCOMING_ROTATION_PREVIEW_COUNT + 1),
+    elapsedSeconds: 0,
+    currentDuration: Math.max(1, Math.round(playableTracks[0]?.duration_seconds ?? 1)),
+    totalDuration,
+  };
 }
 
 function trackReactionTotal(track: AdminListenBarTrackRow) {
@@ -275,6 +315,7 @@ export default function ListenBarAdminPage() {
   const [trackVisibilityFilter, setTrackVisibilityFilter] = useState<TrackVisibilityFilter>("all");
   const [trackSearch, setTrackSearch] = useState("");
   const [trackSortMode, setTrackSortMode] = useState<TrackSortMode>("manual");
+  const [focusedTrackId, setFocusedTrackId] = useState("");
   const [optimisticTrackPatches, setOptimisticTrackPatches] = useState<Record<string, Partial<AdminListenBarTrackRow>>>({});
 
   const displayTracks = useMemo(
@@ -295,7 +336,8 @@ export default function ListenBarAdminPage() {
     return sortTracksForAdmin(filteredTracks, trackSortMode, openingPhaseActive);
   }, [displayTracks, openingPhaseActive, trackSearch, trackSortMode, trackVisibilityFilter]);
   const hiddenTrackCount = useMemo(() => displayTracks.filter(isHiddenTrack).length, [displayTracks]);
-  const currentlyPlayingId = useMemo(() => currentLiveTrackId(displayTracks, nowMs), [displayTracks, nowMs]);
+  const liveRotation = useMemo(() => liveRotationSnapshot(displayTracks, nowMs), [displayTracks, nowMs]);
+  const currentlyPlayingId = liveRotation.current?.id ?? "";
   const totalActive = visiblePlayableTracks.length;
 
   const loadTracks = useCallback(async () => {
@@ -365,6 +407,22 @@ export default function ListenBarAdminPage() {
   const updateForm = (patch: Partial<TrackForm>) => {
     setForm((current) => ({ ...current, ...patch }));
   };
+
+  const focusTrackInList = useCallback((trackId: string) => {
+    if (!trackId) return;
+    setTrackVisibilityFilter("all");
+    setTrackSearch("");
+    setTrackSortMode("manual");
+    setFocusedTrackId(trackId);
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        document.getElementById(`listen-bar-admin-track-${trackId}`)?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      });
+    });
+  }, []);
 
   const handleAudioChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
@@ -510,28 +568,29 @@ export default function ListenBarAdminPage() {
     }
   };
 
-  const updateTrack = async (track: AdminListenBarTrackRow, patch: Partial<AdminListenBarTrackRow>, successMessage = "輪播設定已更新。") => {
+  const moveTrack = async (track: AdminListenBarTrackRow, direction: "up" | "down") => {
     setError("");
     setMessage("");
     setOperatingTrackId(track.id);
-    const sortOrder = typeof patch.sort_order === "number" ? patch.sort_order : null;
     const response = await fetch("/api/admin/listen-bar-tracks", {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
         ...(await authHeader()),
       },
-      body: JSON.stringify({ action: "sort", trackId: track.id, sortOrder }),
+      body: JSON.stringify({ action: "move", trackId: track.id, direction }),
     });
     const payload = (await response.json().catch(() => null)) as ListenBarTracksAdminPayload | null;
     if (!response.ok) {
-      setError(`更新失敗：${payload?.error || "後台 API 無法更新排序。"}`);
+      setError(`調整順序失敗：${payload?.error || "後台 API 無法調整播放順序。"}`);
       setOperatingTrackId("");
       return;
     }
-    setMessage(successMessage);
     setTracks(payload?.tracks ?? []);
     setOptimisticTrackPatches({});
+    setTrackSortMode("manual");
+    setFocusedTrackId(track.id);
+    setMessage(`「${track.title}」已${direction === "up" ? "往前" : "往後"}移動，前台清單會依新順序播放。`);
     setOperatingTrackId("");
   };
 
@@ -558,6 +617,32 @@ export default function ListenBarAdminPage() {
     setOptimisticTrackPatches({});
     setTrackSortMode("manual");
     setMessage("已隨機重排目前上架歌曲。");
+    setPlaylistBusy(false);
+  };
+
+  const normalizeTrackOrder = async () => {
+    if (!window.confirm("確定要重編目前仍上架播放的歌曲排序？不會隨機洗牌，只會修正重複排序值。")) return;
+    setError("");
+    setMessage("");
+    setPlaylistBusy(true);
+    const response = await fetch("/api/admin/listen-bar-tracks", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(await authHeader()),
+      },
+      body: JSON.stringify({ action: "normalize" }),
+    });
+    const payload = (await response.json().catch(() => null)) as ListenBarTracksAdminPayload | null;
+    if (!response.ok) {
+      setError(`重編排序失敗：${payload?.error || "後台 API 無法修正播放排序。"}`);
+      setPlaylistBusy(false);
+      return;
+    }
+    setTracks(payload?.tracks ?? []);
+    setOptimisticTrackPatches({});
+    setTrackSortMode("manual");
+    setMessage("已重編目前上架歌曲排序。前台會依新順序播放。");
     setPlaylistBusy(false);
   };
 
@@ -704,6 +789,95 @@ export default function ListenBarAdminPage() {
           </div>
         </header>
 
+        <section className="rounded-[1.4rem] border border-cyan-200/14 bg-cyan-300/[0.045] p-4 shadow-[0_20px_70px_rgba(0,0,0,0.36)] backdrop-blur md:p-5">
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/70">LIVE ROTATION</p>
+              <h2 className="mt-1 text-2xl font-black text-white">傷心酒吧播放監控</h2>
+              <p className="mt-1 text-xs font-bold text-zinc-500">
+                只計算上架、未下架、未移除且有音檔的歌曲；點歌曲可跳到下方管理項目。
+              </p>
+            </div>
+            <span className="rounded-full border border-cyan-200/30 bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-100">
+              {visiblePlayableTracks.length} 首可播放
+            </span>
+          </div>
+
+          {liveRotation.current ? (
+            <div className="grid gap-4 lg:grid-cols-[0.88fr_1.12fr]">
+              <button
+                type="button"
+                onClick={() => focusTrackInList(liveRotation.current?.id ?? "")}
+                className="rounded-2xl border border-orange-300/25 bg-orange-500/[0.07] p-3 text-left transition hover:border-orange-200/60 hover:bg-orange-500/[0.11] focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-200/55"
+              >
+                <div className="grid gap-3 sm:grid-cols-[4.75rem_1fr]">
+                  <img
+                    src={rowPublicUrl(LISTEN_BAR_COVER_BUCKET, liveRotation.current.cover_path) || DEFAULT_LISTEN_BAR_COVER}
+                    alt=""
+                    className="aspect-square w-full rounded-xl bg-black object-cover"
+                  />
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full border border-orange-200/45 bg-orange-400/14 px-3 py-1 text-[11px] font-black text-orange-100">
+                        正在播放
+                      </span>
+                      <span className="text-[11px] font-black text-zinc-500">
+                        {formatDuration(liveRotation.elapsedSeconds)} / {formatDuration(liveRotation.currentDuration)}
+                      </span>
+                    </div>
+                    <p className="mt-2 truncate text-lg font-black text-white">{liveRotation.current.title}</p>
+                    <p className="mt-1 truncate text-sm font-bold text-zinc-400">
+                      {liveRotation.current.artist} / {liveRotation.current.ai_tool || "AI Music"} / {liveRotation.current.genre || "AI Music"}
+                    </p>
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className="h-full rounded-full bg-orange-300"
+                        style={{
+                          width: `${Math.min(100, Math.max(0, (liveRotation.elapsedSeconds / Math.max(1, liveRotation.currentDuration)) * 100))}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </button>
+
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                {liveRotation.upcoming.length === 0 ? (
+                  <div className="rounded-2xl border border-white/10 bg-black/35 px-4 py-6 text-sm font-bold text-zinc-500 sm:col-span-2 xl:col-span-3">
+                    目前沒有下一首。請先上架更多歌曲。
+                  </div>
+                ) : (
+                  liveRotation.upcoming.map((track, index) => (
+                    <button
+                      key={`${track.id}-${index}`}
+                      type="button"
+                      onClick={() => focusTrackInList(track.id)}
+                      className="grid grid-cols-[2rem_3.25rem_1fr] items-center gap-2 rounded-2xl border border-white/10 bg-black/34 p-2 text-left transition hover:border-cyan-200/45 hover:bg-cyan-300/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55"
+                    >
+                      <span className="text-center text-xs font-black text-cyan-100/70">{index + 1}</span>
+                      <img
+                        src={rowPublicUrl(LISTEN_BAR_COVER_BUCKET, track.cover_path) || DEFAULT_LISTEN_BAR_COVER}
+                        alt=""
+                        className="aspect-square w-full rounded-lg bg-black object-cover"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-black text-white">{track.title}</p>
+                        <p className="mt-1 truncate text-[11px] font-bold text-zinc-500">
+                          {track.artist} / {track.genre || "AI Music"}
+                        </p>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-white/10 bg-black/38 px-4 py-8 text-center text-sm font-bold text-zinc-500">
+              目前沒有可播放歌曲。上架歌曲後會顯示正在播放與接下來六首。
+            </div>
+          )}
+        </section>
+
         <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
           <form onSubmit={handleSubmit} className="rounded-[1.4rem] border border-orange-400/18 bg-black/62 p-4 shadow-[0_24px_90px_rgba(0,0,0,0.52)] backdrop-blur md:p-5">
             <div className="mb-5 flex items-start justify-between gap-3">
@@ -827,6 +1001,9 @@ export default function ListenBarAdminPage() {
                 <button type="button" disabled={playlistBusy || visiblePlayableTracks.length < 2} onClick={() => void randomizeTrackOrder()} className="rounded-full border border-orange-300/30 bg-orange-500/10 px-4 py-2 text-xs font-black text-orange-100 transition hover:border-orange-200/65 disabled:cursor-not-allowed disabled:opacity-45">
                   {playlistBusy ? "排列中" : "隨機排列"}
                 </button>
+                <button type="button" disabled={playlistBusy || visiblePlayableTracks.length < 2} onClick={() => void normalizeTrackOrder()} className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-4 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-200 disabled:cursor-not-allowed disabled:opacity-45">
+                  {playlistBusy ? "處理中" : "重編排序"}
+                </button>
                 <button type="button" disabled={playlistBusy} onClick={() => void loadTracks()} className="rounded-full border border-cyan-200/25 px-4 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-200 disabled:cursor-not-allowed disabled:opacity-45">
                   重新整理
                 </button>
@@ -897,8 +1074,21 @@ export default function ListenBarAdminPage() {
                   const hidden = isHiddenTrack(track);
                   const status = trackStatusBadge(track, currentlyPlayingId, openingPhaseActive);
                   const updatedAt = track.updated_at ? new Date(track.updated_at).toLocaleString("zh-TW", { hour12: false }) : "-";
+                  const focused = focusedTrackId === track.id;
                   return (
-                    <article key={track.id} className={`rounded-2xl border p-3 ${track.id === currentlyPlayingId ? "border-orange-300/45 bg-orange-500/[0.055]" : hidden ? "border-red-300/20 bg-red-950/[0.08]" : "border-white/10 bg-black/42"}`}>
+                    <article
+                      key={track.id}
+                      id={`listen-bar-admin-track-${track.id}`}
+                      className={`scroll-mt-8 rounded-2xl border p-3 transition ${
+                        focused
+                          ? "border-cyan-200/65 bg-cyan-300/[0.075] shadow-[0_0_0_2px_rgba(103,232,249,0.18),0_18px_60px_rgba(0,0,0,0.35)]"
+                          : track.id === currentlyPlayingId
+                            ? "border-orange-300/45 bg-orange-500/[0.055]"
+                            : hidden
+                              ? "border-red-300/20 bg-red-950/[0.08]"
+                              : "border-white/10 bg-black/42"
+                      }`}
+                    >
                       <div className="grid gap-3 sm:grid-cols-[5.5rem_1fr]">
                         <img src={coverUrl} alt="" className={`aspect-square w-full rounded-xl bg-black object-cover ${hidden ? "opacity-45 grayscale" : ""}`} />
                         <div className="min-w-0">
@@ -947,10 +1137,10 @@ export default function ListenBarAdminPage() {
                             <button type="button" disabled={operatingTrackId === track.id} onClick={() => void (hidden ? restoreTrack(track) : hideTrack(track))} className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-45 ${hidden ? "border-cyan-300/25 text-cyan-100 hover:border-cyan-200/65 focus-visible:ring-cyan-200/55" : "border-white/12 text-zinc-200 hover:border-cyan-200/55 focus-visible:ring-cyan-200/55"}`}>
                               {operatingTrackId === track.id ? "處理中" : hidden ? "恢復上架" : "下架"}
                             </button>
-                            <button type="button" disabled={operatingTrackId === track.id} onClick={() => void updateTrack(track, { sort_order: Math.max(0, (track.sort_order ?? 100) - 10) })} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45">
+                            <button type="button" disabled={hidden || operatingTrackId === track.id} onClick={() => void moveTrack(track, "up")} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45">
                               往前
                             </button>
-                            <button type="button" disabled={operatingTrackId === track.id} onClick={() => void updateTrack(track, { sort_order: (track.sort_order ?? 100) + 10 })} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45">
+                            <button type="button" disabled={hidden || operatingTrackId === track.id} onClick={() => void moveTrack(track, "down")} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45">
                               往後
                             </button>
                           </div>

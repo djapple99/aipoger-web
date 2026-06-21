@@ -55,6 +55,9 @@ export type ListenBarTrackRow = {
   lyrics: string | null;
   sort_order: number | null;
   is_active: boolean | null;
+  review_status?: string | null;
+  hidden_at?: string | null;
+  removed_at?: string | null;
   source?: "official" | "community" | null;
   is_featured_official?: boolean | null;
   bar_phase?: "challenger" | "public" | null;
@@ -106,6 +109,17 @@ function displayAlbumOrMood(value: string | null | undefined) {
 }
 
 export function listenBarRowToTrack(row: ListenBarTrackRow): ListenBarTrack | null {
+  const reviewStatus = row.review_status?.toLowerCase();
+  if (
+    row.is_active === false ||
+    reviewStatus === "hidden" ||
+    reviewStatus === "removed" ||
+    row.hidden_at ||
+    row.removed_at
+  ) {
+    return null;
+  }
+
   const audioUrl = publicStorageUrl(LISTEN_BAR_AUDIO_BUCKET, row.audio_path);
   if (!audioUrl) return null;
 

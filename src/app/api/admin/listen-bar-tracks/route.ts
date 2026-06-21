@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isAdminEmail } from "@/lib/admin-emails";
 
-type TrackAction = "hide" | "restore" | "sort" | "randomize";
+type TrackAction = "hide" | "restore" | "sort" | "randomize" | "move" | "normalize";
 type AdminListenBarTrackRow = {
   id: string;
   is_active?: boolean | null;
@@ -10,6 +10,7 @@ type AdminListenBarTrackRow = {
   hidden_at?: string | null;
   removed_at?: string | null;
   audio_path?: string | null;
+  sort_order?: number | null;
   created_at?: string | null;
 };
 
@@ -94,6 +95,21 @@ function isPlayableForRandomSort(track: AdminListenBarTrackRow) {
   );
 }
 
+function sortOrderValue(track: AdminListenBarTrackRow) {
+  return typeof track.sort_order === "number" && Number.isFinite(track.sort_order) ? track.sort_order : 1000;
+}
+
+function createdAtValue(track: AdminListenBarTrackRow) {
+  const value = new Date(track.created_at ?? 0).getTime();
+  return Number.isFinite(value) ? value : 0;
+}
+
+function publicRotationSort(a: AdminListenBarTrackRow, b: AdminListenBarTrackRow) {
+  const sortDiff = sortOrderValue(a) - sortOrderValue(b);
+  if (sortDiff !== 0) return sortDiff;
+  return createdAtValue(b) - createdAtValue(a);
+}
+
 function shuffled<T>(items: T[]): T[] {
   const next = [...items];
   for (let index = next.length - 1; index > 0; index -= 1) {
@@ -101,6 +117,16 @@ function shuffled<T>(items: T[]): T[] {
     [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
   }
   return next;
+}
+
+async function writeNormalizedPlayableOrder(admin: ReturnType<typeof adminClient>, tracks: AdminListenBarTrackRow[]) {
+  for (let index = 0; index < tracks.length; index += 1) {
+    const { error } = await admin
+      .from("listen_bar_tracks")
+      .update({ sort_order: 1000 + index * 10 })
+      .eq("id", tracks[index].id);
+    if (error) throw error;
+  }
 }
 
 async function updateTrack(admin: ReturnType<typeof adminClient>, trackId: string, action: TrackAction, sortOrder: number | null, note: string | null) {
@@ -139,14 +165,32 @@ async function updateTrack(admin: ReturnType<typeof adminClient>, trackId: strin
 async function randomizeActiveTracks(admin: ReturnType<typeof adminClient>) {
   const tracks = (await loadTracks(admin)) as AdminListenBarTrackRow[];
   const activeTracks = shuffled(tracks.filter(isPlayableForRandomSort));
-  for (let index = 0; index < activeTracks.length; index += 1) {
-    const { error } = await admin
-      .from("listen_bar_tracks")
-      .update({ sort_order: 1000 + index * 10 })
-      .eq("id", activeTracks[index].id);
-    if (error) throw error;
-  }
+  await writeNormalizedPlayableOrder(admin, activeTracks);
   return activeTracks.length;
+}
+
+async function moveTrack(admin: ReturnType<typeof adminClient>, trackId: string, direction: "up" | "down") {
+  const tracks = ((await loadTracks(admin)) as AdminListenBarTrackRow[])
+    .filter(isPlayableForRandomSort)
+    .sort(publicRotationSort);
+  const currentIndex = tracks.findIndex((track) => track.id === trackId);
+  if (currentIndex < 0) throw new Error("這首歌目前不在可播放輪播中，不能調整順序。");
+  const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+  if (targetIndex < 0 || targetIndex >= tracks.length) {
+    await writeNormalizedPlayableOrder(admin, tracks);
+    return tracks.length;
+  }
+  [tracks[currentIndex], tracks[targetIndex]] = [tracks[targetIndex], tracks[currentIndex]];
+  await writeNormalizedPlayableOrder(admin, tracks);
+  return tracks.length;
+}
+
+async function normalizeActiveTrackOrder(admin: ReturnType<typeof adminClient>) {
+  const tracks = ((await loadTracks(admin)) as AdminListenBarTrackRow[])
+    .filter(isPlayableForRandomSort)
+    .sort(publicRotationSort);
+  await writeNormalizedPlayableOrder(admin, tracks);
+  return tracks.length;
 }
 
 export async function GET(request: NextRequest) {
@@ -169,8 +213,8 @@ export async function PATCH(request: NextRequest) {
 
     const trackId = cleanText(body.trackId, 160);
     const action = cleanText(body.action, 40) as TrackAction | null;
-    if (action !== "hide" && action !== "restore" && action !== "sort" && action !== "randomize") return jsonError("未知後台動作。", 400);
-    if (action !== "randomize" && !trackId) return jsonError("缺少歌曲 ID。", 400);
+    if (action !== "hide" && action !== "restore" && action !== "sort" && action !== "randomize" && action !== "move" && action !== "normalize") return jsonError("未知後台動作。", 400);
+    if (action !== "randomize" && action !== "normalize" && !trackId) return jsonError("缺少歌曲 ID。", 400);
 
     const sortOrder = typeof body.sortOrder === "number" && Number.isFinite(body.sortOrder)
       ? Math.round(body.sortOrder)
@@ -179,6 +223,12 @@ export async function PATCH(request: NextRequest) {
 
     if (action === "randomize") {
       await randomizeActiveTracks(guard.admin);
+    } else if (action === "normalize") {
+      await normalizeActiveTrackOrder(guard.admin);
+    } else if (action === "move") {
+      const direction = body.direction === "up" ? "up" : body.direction === "down" ? "down" : null;
+      if (!direction) return jsonError("缺少移動方向。", 400);
+      await moveTrack(guard.admin, trackId as string, direction);
     } else {
       await updateTrack(guard.admin, trackId as string, action, sortOrder, cleanText(body.note, 1200));
     }

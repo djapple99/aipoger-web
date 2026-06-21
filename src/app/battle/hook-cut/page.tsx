@@ -55,7 +55,7 @@ const T = {
     uploadReady: '音檔已載入，可以開始裁切 Drop',
     selection: '選取',
     duration: '（{s}秒）',
-    dragHint: '拖左/右邊緣調整長度（最多 60 秒） · 拖中間移動 · 空白鍵預覽/暫停（從選取起點）',
+    dragHint: '拖左/右邊緣調整長度（最多 60 秒） · 點波形或拖播放位置挑聽 · 空白鍵預覽/暫停',
     mastering: '啟用自動 Mastering',
     masteringDesc: '3-band EQ + Compressor + Limiter + Gain 提升清晰度與響度',
     preview: '▶️ 即時預覽選取區間',
@@ -97,7 +97,7 @@ const T = {
     uploadReady: 'Audio loaded. Cut your Drop now.',
     selection: 'Selection',
     duration: '({s}s)',
-    dragHint: 'Drag edges to adjust length (max 60s) · Drag middle to move · Spacebar to preview/pause',
+    dragHint: 'Drag edges to resize (max 60s) · Click waveform or scrub playhead · Spacebar to preview/pause',
     mastering: 'Enable Auto Mastering',
     masteringDesc: '3-band EQ + Compressor + Limiter + Gain for clarity and loudness',
     preview: '▶️ Preview Selection',
@@ -522,6 +522,7 @@ function HookCutContent() {
   const [audioError, setAudioError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [detectedMetaLine, setDetectedMetaLine] = useState<string | null>(null);
+  const [cursorTime, setCursorTime] = useState(0);
 
   useEffect(() => {
     if (urlFighter) {
@@ -554,6 +555,11 @@ function HookCutContent() {
   const playWindowRef = useRef<RegionTimes | null>(null);
   const playStartedAtRef = useRef<number>(0);
   const playOffsetRef = useRef<number>(0);
+  const isPlayingRef = useRef(false);
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
 
   useEffect(() => {
     if (isAuthBypassEnabled || !challengeTargetQueueId) return;
@@ -622,16 +628,22 @@ function HookCutContent() {
     const current = playOffsetRef.current + played;
     const clamped = Math.min(windowTimes.end, Math.max(windowTimes.start, current));
     ws.setTime(clamped);
+    setCursorTime(clamped);
     rafRef.current = requestAnimationFrame(syncCursorWhilePlaying);
   };
 
-  const playFromRegion = async () => {
+  const playFromRegion = async (startOverride?: number) => {
     const buffer = audioBufferRef.current;
     const region = regionRef.current;
     if (!buffer || !region) return;
 
-    const start = Math.max(0, region.start);
     const end = Math.min(region.end, durationRef.current || buffer.duration);
+    const fallbackStart = Math.max(0, region.start);
+    const preferredStart = typeof startOverride === "number" && Number.isFinite(startOverride)
+      ? startOverride
+      : wavesurferRef.current?.getCurrentTime() ?? fallbackStart;
+    let start = Math.max(fallbackStart, Math.min(preferredStart, end - 0.01));
+    if (start >= end - 0.01) start = fallbackStart;
     const length = Math.max(0, end - start);
     if (length <= 0.01) return;
 
@@ -669,23 +681,46 @@ function HookCutContent() {
     playWindowRef.current = { start, end };
     playStartedAtRef.current = ctx.currentTime;
     playOffsetRef.current = start;
+    wavesurferRef.current?.setTime(start);
+    setCursorTime(start);
     setIsPlaying(true);
 
     src.onended = () => {
       stopPlayback();
       const ws = wavesurferRef.current;
       if (ws) ws.setTime(end);
+      setCursorTime(end);
     };
 
     src.start(0, start, Math.min(length, MAX_HOOK_SECONDS));
     stopTimerRef.current = window.setTimeout(() => {
       const ws = wavesurferRef.current;
       if (ws) ws.setTime(end);
+      setCursorTime(end);
       stopPlayback();
     }, Math.ceil(length * 1000));
 
     cancelRaf();
     rafRef.current = requestAnimationFrame(syncCursorWhilePlaying);
+  };
+
+  const seekPreviewCursor = (nextTime: number, continuePlayback = isPlayingRef.current) => {
+    const ws = wavesurferRef.current;
+    const duration = durationRef.current || audioBufferRef.current?.duration || 0;
+    if (!ws || duration <= 0) return;
+    const clamped = Math.max(0, Math.min(nextTime, duration));
+    ws.setTime(clamped);
+    setCursorTime(clamped);
+
+    const region = regionRef.current;
+    if (!continuePlayback || !region || !audioBufferRef.current) return;
+    if (clamped >= region.start && clamped < region.end) {
+      void playFromRegion(clamped);
+      return;
+    }
+    stopPlayback();
+    ws.setTime(clamped);
+    setCursorTime(clamped);
   };
 
   const processAudioFile = async (file: File) => {
@@ -697,6 +732,7 @@ function HookCutContent() {
     setIsReady(false);
     setAudioError(null);
     setRegionTimes({ start: 0, end: 0 });
+    setCursorTime(0);
     setIsDecoding(true);
     setDetectedMetaLine(null);
     const url = URL.createObjectURL(file);
@@ -786,6 +822,7 @@ function HookCutContent() {
       barRadius: 2,
       normalize: true,
       interact: true,
+      dragToSeek: true,
       autoScroll: true,
       hideScrollbar: true,
       cursorWidth: 2,
@@ -836,6 +873,8 @@ function HookCutContent() {
       regionRef.current = region;
       lastRegionRef.current = { start: region.start, end: region.end };
       setRegionTimes({ start: region.start, end: region.end });
+      ws.setTime(region.start);
+      setCursorTime(region.start);
       setIsReady(true);
 
       region.on('update', () => {
@@ -868,6 +907,13 @@ function HookCutContent() {
         if (end > duration) { const shift = end - duration; end = duration; start = Math.max(0, start - shift); }
 
         applyRegion(start, end);
+        if (!isPlayingRef.current) {
+          const current = wavesurferRef.current?.getCurrentTime() ?? start;
+          if (current < start || current > end) {
+            wavesurferRef.current?.setTime(start);
+            setCursorTime(start);
+          }
+        }
       });
 
       region.on('update-end', () => {
@@ -875,7 +921,25 @@ function HookCutContent() {
         region.setOptions({ start, end });
         setRegionTimes({ start, end });
         lastRegionRef.current = { start, end };
+        if (!isPlayingRef.current) {
+          const current = wavesurferRef.current?.getCurrentTime() ?? start;
+          const nextCursor = Math.min(end, Math.max(start, current));
+          wavesurferRef.current?.setTime(nextCursor);
+          setCursorTime(nextCursor);
+        }
       });
+    });
+
+    ws.on('interaction', (nextTime) => {
+      seekPreviewCursor(nextTime);
+    });
+
+    ws.on('drag', (relativeX) => {
+      seekPreviewCursor(relativeX * (durationRef.current || ws.getDuration() || 0));
+    });
+
+    ws.on('seeking', (nextTime) => {
+      setCursorTime(nextTime);
     });
 
     wavesurferRef.current = ws;
@@ -1265,6 +1329,7 @@ function HookCutContent() {
   };
 
   const selectedDuration = Math.max(0, regionTimes.end - regionTimes.start);
+  const audioDuration = durationRef.current || audioBufferRef.current?.duration || 0;
   const isUploading = uploadPhase !== null;
 
   return (
@@ -1367,6 +1432,26 @@ function HookCutContent() {
                   {isPlaying && <span className="ml-2 text-orange-400">{t.playing}</span>}
                   {isDecoding && <span className="ml-2 text-zinc-400">{t.decording}</span>}
                 </div>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-zinc-700/70 bg-black/35 px-4 py-3">
+                <div className="mb-2 flex items-center justify-between text-xs font-bold text-zinc-400">
+                  <span>播放位置</span>
+                  <span className="tabular-nums text-orange-200">
+                    {formatTime(cursorTime)} / {formatTime(audioDuration)}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={Math.max(0.01, audioDuration)}
+                  step={0.01}
+                  value={Math.min(cursorTime, Math.max(0, audioDuration))}
+                  disabled={!isReady || audioDuration <= 0}
+                  onChange={(event) => seekPreviewCursor(Number(event.currentTarget.value))}
+                  className="h-3 w-full cursor-pointer accent-orange-500 disabled:cursor-not-allowed disabled:opacity-45"
+                  aria-label="調整播放位置"
+                />
               </div>
 
               {/* Mastering 開關 */}

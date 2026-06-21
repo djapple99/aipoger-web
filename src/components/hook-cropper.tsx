@@ -219,6 +219,8 @@ export function HookCropper({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [regionStart, setRegionStart] = useState(0);
   const [regionEnd, setRegionEnd] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -241,6 +243,8 @@ export function HookCropper({
         cursorColor: "#f7ede7",
         height: 140,
         normalize: true,
+        interact: true,
+        dragToSeek: true,
         barWidth: 2,
         barGap: 1,
         barRadius: 2,
@@ -253,6 +257,7 @@ export function HookCropper({
         if (!mounted) return;
         const duration = wavesurfer.getDuration();
         const initialEnd = Math.min(duration, maxSeconds);
+        setAudioDuration(duration);
         regionRef.current = regions.addRegion({
           start: 0,
           end: initialEnd,
@@ -262,11 +267,15 @@ export function HookCropper({
         });
         setRegionStart(0);
         setRegionEnd(initialEnd);
+        setCurrentTime(0);
         setIsReady(true);
       });
 
       wavesurfer.on("play", () => setIsPlaying(true));
       wavesurfer.on("pause", () => setIsPlaying(false));
+      wavesurfer.on("timeupdate", (nextTime) => setCurrentTime(nextTime));
+      wavesurfer.on("interaction", (nextTime) => setCurrentTime(nextTime));
+      wavesurfer.on("seeking", (nextTime) => setCurrentTime(nextTime));
 
       regions.on("region-updated", (region: WaveRegion) => {
         const duration = wavesurfer.getDuration();
@@ -284,6 +293,10 @@ export function HookCropper({
 
         setRegionStart(start);
         setRegionEnd(end);
+        if (wavesurfer.getCurrentTime() < start || wavesurfer.getCurrentTime() > end) {
+          wavesurfer.setTime(start);
+          setCurrentTime(start);
+        }
       });
     };
 
@@ -307,7 +320,18 @@ export function HookCropper({
     const wavesurfer = wavesurferRef.current;
     const region = regionRef.current;
     if (!wavesurfer || !region) return;
-    wavesurfer.play(region.start, region.end);
+    const cursor = wavesurfer.getCurrentTime();
+    const start = cursor >= region.start && cursor < region.end ? cursor : region.start;
+    wavesurfer.play(start, region.end);
+  };
+
+  const seekTo = (nextTime: number) => {
+    const wavesurfer = wavesurferRef.current;
+    if (!wavesurfer) return;
+    const duration = wavesurfer.getDuration() || audioDuration || 0;
+    const clamped = Math.max(0, Math.min(nextTime, duration));
+    wavesurfer.setTime(clamped);
+    setCurrentTime(clamped);
   };
 
   const handleConfirm = async () => {
@@ -343,6 +367,26 @@ export function HookCropper({
         <p>開始：{regionStart.toFixed(2)}s</p>
         <p>結束：{regionEnd.toFixed(2)}s</p>
         <p>長度：{Math.max(0, regionEnd - regionStart).toFixed(2)}s / {maxSeconds}s</p>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-[#3f444b] bg-black/25 px-4 py-3">
+        <div className="mb-2 flex items-center justify-between text-xs font-bold text-[#aaa19a]">
+          <span>播放位置</span>
+          <span className="tabular-nums text-[#ffd6bd]">
+            {currentTime.toFixed(2)}s / {audioDuration.toFixed(2)}s
+          </span>
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={Math.max(0.01, audioDuration)}
+          step={0.01}
+          value={Math.min(currentTime, Math.max(0, audioDuration))}
+          disabled={!isReady || audioDuration <= 0}
+          onChange={(event) => seekTo(Number(event.currentTarget.value))}
+          className="h-3 w-full cursor-pointer accent-[#ff8d40] disabled:cursor-not-allowed disabled:opacity-45"
+          aria-label="調整播放位置"
+        />
       </div>
 
       {errorMessage && <p className="mt-4 text-sm text-[#ffba92]">{errorMessage}</p>}

@@ -22,6 +22,9 @@ type ListenBarTrackRow = {
   lyrics: string | null;
   sort_order: number | null;
   is_active: boolean | null;
+  review_status?: string | null;
+  hidden_at?: string | null;
+  removed_at?: string | null;
   source?: "official" | "community" | null;
   is_featured_official?: boolean | null;
   bar_phase?: "challenger" | "public" | null;
@@ -70,6 +73,9 @@ const MODERN_SELECT = [
   "lyrics",
   "sort_order",
   "is_active",
+  "review_status",
+  "hidden_at",
+  "removed_at",
   "source",
   "is_featured_official",
   "bar_phase",
@@ -98,6 +104,9 @@ const LEGACY_WITH_DESCRIPTION_SELECT = [
   "lyrics",
   "sort_order",
   "is_active",
+  "review_status",
+  "hidden_at",
+  "removed_at",
   "source",
   "is_featured_official",
   "positive_reaction_count",
@@ -192,6 +201,18 @@ function applyLegacyOpeningGrace(rows: ListenBarTrackRow[]): ListenBarTrackRow[]
   }));
 }
 
+function isPublicPlayableTrack(row: ListenBarTrackRow) {
+  const status = row.review_status?.toLowerCase();
+  return (
+    row.is_active !== false &&
+    status !== "hidden" &&
+    status !== "removed" &&
+    !row.hidden_at &&
+    !row.removed_at &&
+    Boolean(row.audio_path?.trim())
+  );
+}
+
 export async function GET() {
   try {
     const admin = adminClient();
@@ -233,7 +254,10 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ tracks: applyLegacyOpeningGrace(rows ?? []) });
+    return NextResponse.json(
+      { tracks: applyLegacyOpeningGrace((rows ?? []).filter(isPublicPlayableTrack)) },
+      { headers: { "Cache-Control": "no-store, max-age=0" } },
+    );
   } catch (error) {
     return NextResponse.json({ error: String((error as { message?: string })?.message ?? error) }, { status: 500 });
   }

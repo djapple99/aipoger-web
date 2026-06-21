@@ -231,6 +231,12 @@ function isMissingListenBarSubmissionColumn(error: unknown): boolean {
   return /audio_sha256|bar_phase|promoted_at|removed_at|description|schema cache|column.*does not exist|PGRST204/i.test(text);
 }
 
+function missingListenBarDescriptionColumnMessage(isZh: boolean) {
+  return isZh
+    ? "傷心酒吧資料庫還沒套用一句歌曲介紹欄位，請先執行 supabase/20260611_listen_bar_track_metadata.sql 後再補資料。"
+    : "Bar Heartbreak is missing the one-line description database field. Apply supabase/20260611_listen_bar_track_metadata.sql before saving this detail.";
+}
+
 function isDuplicateAudioHashError(error: unknown): boolean {
   const text = error && typeof error === "object"
     ? [
@@ -958,12 +964,6 @@ export default function ListenBarPage() {
       const rows = payload?.tracks ?? [];
       const community = rows
         .filter((row) => !row.is_featured_official && row.source !== "official")
-        .sort((a, b) => {
-          const phaseA = a.bar_phase === "public" ? 0 : 1;
-          const phaseB = b.bar_phase === "public" ? 0 : 1;
-          if (phaseA !== phaseB) return phaseA - phaseB;
-          return new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime();
-        })
         .slice(0, LISTEN_BAR_TOTAL_ROTATION_LIMIT)
         .map(listenBarRowToTrack)
         .filter((track): track is ListenBarTrack => track !== null);
@@ -998,8 +998,12 @@ export default function ListenBarPage() {
 
     void loadMessages();
     void loadPlaylist();
+    const playlistRefreshTimer = window.setInterval(() => {
+      void loadPlaylist();
+    }, 15_000);
     return () => {
       mounted = false;
+      window.clearInterval(playlistRefreshTimer);
     };
   }, [isZh]);
 
@@ -1156,6 +1160,14 @@ export default function ListenBarPage() {
       return;
     }
 
+    const livePosition = liveRadioSyncEnabledRef.current ? getLiveRadioPosition(rotationTracks) : null;
+    if (livePosition?.track?.audioUrl && livePosition.track.id !== nowTrack.id) {
+      liveSeekRef.current = { trackId: livePosition.track.id, offset: livePosition.offset };
+      setElapsed(livePosition.offset);
+      setNowTrack(livePosition.track);
+      return;
+    }
+
     const playableTracks = rotationTracks.filter((track) => track.audioUrl && track.id !== nowTrack.id);
     if (playableTracks.length === 0) {
       setElapsed(0);
@@ -1183,7 +1195,7 @@ export default function ListenBarPage() {
 
   useEffect(() => {
     const forceStart = startTrackAtZeroRef.current;
-    const livePosition = forceStart || nowTrack.source === "community" || !liveRadioSyncEnabledRef.current ? null : getLiveRadioPosition(rotationTracksRef.current);
+    const livePosition = forceStart || !liveRadioSyncEnabledRef.current ? null : getLiveRadioPosition(rotationTracksRef.current);
     const liveOffset = forceStart
       ? 0
       : livePosition?.track.id === nowTrack.id
@@ -1213,7 +1225,7 @@ export default function ListenBarPage() {
     const audio = audioRef.current;
     if (!audio || !nowTrack.audioUrl) return;
     const applyLiveSeek = () => {
-      const livePosition = nowTrack.source === "community" || !liveRadioSyncEnabledRef.current ? null : getLiveRadioPosition(rotationTracksRef.current);
+      const livePosition = !liveRadioSyncEnabledRef.current ? null : getLiveRadioPosition(rotationTracksRef.current);
       const offset = livePosition?.track.id === nowTrack.id
         ? livePosition.offset
         : liveSeekRef.current?.trackId === nowTrack.id
@@ -1240,7 +1252,7 @@ export default function ListenBarPage() {
     return () => {
       audio.removeEventListener("loadedmetadata", applyLiveSeek);
     };
-  }, [nowTrack.audioUrl, nowTrack.duration, nowTrack.id, nowTrack.source]);
+  }, [nowTrack.audioUrl, nowTrack.duration, nowTrack.id]);
 
   useEffect(() => {
     volumeRef.current = volume;
@@ -1254,7 +1266,7 @@ export default function ListenBarPage() {
     audio.muted = false;
     audio.volume = volumeOverride ?? volume;
     if (syncLivePosition && audio.readyState >= 1) {
-      const livePosition = nowTrack.source === "community" || !liveRadioSyncEnabledRef.current ? null : getLiveRadioPosition(rotationTracksRef.current);
+      const livePosition = !liveRadioSyncEnabledRef.current ? null : getLiveRadioPosition(rotationTracksRef.current);
       const offset = livePosition?.track.id === nowTrack.id
         ? livePosition.offset
         : liveSeekRef.current?.trackId === nowTrack.id
@@ -1273,7 +1285,7 @@ export default function ListenBarPage() {
         setPlaybackBlocked(true);
         setIsPlaying(false);
       });
-  }, [nowTrack.audioUrl, nowTrack.duration, nowTrack.id, nowTrack.source, volume]);
+  }, [nowTrack.audioUrl, nowTrack.duration, nowTrack.id, volume]);
 
   useEffect(() => {
     if (!playbackBlocked) return;
@@ -1316,7 +1328,6 @@ export default function ListenBarPage() {
   useEffect(() => {
     if (!nowTrack.audioUrl || rotationTracks.length === 0) return;
     if (!liveRadioSyncEnabledRef.current) return;
-    if (nowTrack.source === "community") return;
     const timer = window.setInterval(() => {
       const audio = audioRef.current;
       if (!audio || audio.paused) return;
@@ -1717,6 +1728,9 @@ export default function ListenBarPage() {
           .maybeSingle<ListenBarTrackRow>();
 
         if (insertResult.error && isMissingListenBarSubmissionColumn(insertResult.error)) {
+          if (insertPayload.description) {
+            throw new Error(missingListenBarDescriptionColumnMessage(isZh));
+          }
           delete (fallbackPayload as Partial<typeof insertPayload>).description;
           insertResult = await supabase
             .from("listen_bar_tracks")

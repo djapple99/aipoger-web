@@ -912,6 +912,8 @@ function BattlePoolList() {
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [focusedClosedCard, setFocusedClosedCard] = useState<FocusedPoolCardState | null>(null);
   const [activeGenre, setActiveGenre] = useState("all");
+  const [playingOfficialPreviewId, setPlayingOfficialPreviewId] = useState<string | null>(null);
+  const officialPreviewRefs = useRef<Record<string, HTMLAudioElement | null>>({});
 
   useEffect(() => {
     if (focusQueueId) rememberAuthNextPath(focusedQueueHref(focusQueueId, lang));
@@ -927,6 +929,30 @@ function BattlePoolList() {
       mounted = false;
     };
   }, []);
+
+  const stopOfficialPreview = (dropId: string) => {
+    const audio = officialPreviewRefs.current[dropId];
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+    setPlayingOfficialPreviewId((current) => (current === dropId ? null : current));
+  };
+
+  const playOfficialPreview = (dropId: string) => {
+    const audio = officialPreviewRefs.current[dropId];
+    if (!audio) return;
+    Object.entries(officialPreviewRefs.current).forEach(([id, item]) => {
+      if (id === dropId || !item) return;
+      item.pause();
+      item.currentTime = 0;
+    });
+    audio.currentTime = 0;
+    audio.volume = 1;
+    void audio.play()
+      .then(() => setPlayingOfficialPreviewId(dropId))
+      .catch(() => setPlayingOfficialPreviewId(null));
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -1287,14 +1313,38 @@ function BattlePoolList() {
                       </div>
                     </div>
                     {drop.audioUrl ? (
-                      <audio
-                        controls
-                        controlsList="nodownload"
-                        preload="none"
-                        src={drop.audioUrl}
-                        className="mt-4 h-10 w-full"
-                        onContextMenu={(event) => event.preventDefault()}
-                      />
+                      <div className="mt-4">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (playingOfficialPreviewId === drop.id) {
+                              stopOfficialPreview(drop.id);
+                            } else {
+                              playOfficialPreview(drop.id);
+                            }
+                          }}
+                          className="inline-flex items-center gap-2 rounded-full border border-red-200/35 bg-black/45 px-4 py-2 text-xs font-black text-red-50 transition hover:border-red-200/65 hover:bg-red-500/12 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-200/55"
+                        >
+                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white">
+                            {playingOfficialPreviewId === drop.id ? "■" : "▶"}
+                          </span>
+                          {playingOfficialPreviewId === drop.id
+                            ? isZh ? "預播中 5 秒" : "Previewing 5s"
+                            : isZh ? "5 秒預播" : "5s Preview"}
+                        </button>
+                        <audio
+                          ref={(node) => {
+                            officialPreviewRefs.current[drop.id] = node;
+                          }}
+                          preload="none"
+                          src={drop.audioUrl}
+                          onTimeUpdate={(event) => {
+                            if (event.currentTarget.currentTime >= 5) stopOfficialPreview(drop.id);
+                          }}
+                          onEnded={() => setPlayingOfficialPreviewId((current) => (current === drop.id ? null : current))}
+                          onContextMenu={(event) => event.preventDefault()}
+                        />
+                      </div>
                     ) : null}
                     <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-white/10 pt-3">
                       <Link
