@@ -100,6 +100,33 @@ type HonorInteractionPayload = {
   comments: HonorComment[];
 };
 
+type RankBattleMediaRow = {
+  id?: string | null;
+  winner?: string | null;
+  fighter_a_user_id?: string | null;
+  fighter_b_user_id?: string | null;
+  fighter_a_name?: string | null;
+  fighter_b_name?: string | null;
+  song_a_name?: string | null;
+  song_b_name?: string | null;
+  ai_tool_a?: string | null;
+  ai_tool_b?: string | null;
+  audio_a_path?: string | null;
+  audio_b_path?: string | null;
+  lyrics_a?: string | null;
+  lyrics_b?: string | null;
+  song_a_cover?: string | null;
+  song_b_cover?: string | null;
+  fighter_a_avatar?: string | null;
+  fighter_b_avatar?: string | null;
+};
+
+type FighterProfileMediaRow = {
+  id?: string | null;
+  song_cover_url?: string | null;
+  avatar_url?: string | null;
+};
+
 const BOARD_META: Record<BoardKey, BoardMeta> = {
   drop: { zh: "熱血 Drop 抓波勝利榜", en: "Drop Victory Records" },
   bar: { zh: "傷心酒吧熱播榜", en: "Bar Heartbreak Heat Records" },
@@ -143,6 +170,10 @@ function displaySongTitle(value: string, fallback: string) {
 
 function cleanLyrics(value: string | null | undefined) {
   return String(value || "").trim();
+}
+
+function firstText(...values: Array<string | null | undefined>) {
+  return values.map((value) => value?.trim()).find((value): value is string => Boolean(value)) ?? "";
 }
 
 function cleanBarTrackId(value: string) {
@@ -512,32 +543,72 @@ function battleAudioPathToUrl(path: string | null | undefined) {
     });
 }
 
+async function battleMediaPathToUrl(path: string | null | undefined) {
+  const clean = path?.trim();
+  if (!clean) return null;
+  if (/^(https?:|blob:|data:)/i.test(clean)) return clean;
+
+  for (const bucket of ["battle-audio", "avatars"] as const) {
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(clean, 60 * 10);
+    if (!error && data?.signedUrl) return data.signedUrl;
+  }
+
+  console.warn("[rank battle media] signed url failed", clean);
+  return null;
+}
+
 async function attachBattleAudioUrls(rows: ArchivedBattleResult[]) {
   const battleIds = Array.from(new Set(rows.map((row) => row.battleId).filter((id): id is string => Boolean(id))));
   if (battleIds.length === 0) return rows;
 
-  const battleRowsWithLyrics = await supabase
-    .from("battles")
-    .select("id,winner,fighter_a_name,fighter_b_name,song_a_name,song_b_name,ai_tool_a,ai_tool_b,audio_a_path,audio_b_path,lyrics_a,lyrics_b")
-    .in("id", battleIds);
-  let battleRowsData: unknown = battleRowsWithLyrics.data;
-  let battleRowsError = battleRowsWithLyrics.error;
+  const selectAttempts = [
+    "id,winner,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,ai_tool_a,ai_tool_b,audio_a_path,audio_b_path,lyrics_a,lyrics_b,song_a_cover,song_b_cover,fighter_a_avatar,fighter_b_avatar",
+    "id,winner,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,ai_tool_a,ai_tool_b,audio_a_path,audio_b_path,song_a_cover,song_b_cover,fighter_a_avatar,fighter_b_avatar",
+    "id,winner,fighter_a_name,fighter_b_name,song_a_name,song_b_name,ai_tool_a,ai_tool_b,audio_a_path,audio_b_path,song_a_cover,song_b_cover",
+    "id,winner,fighter_a_name,fighter_b_name,song_a_name,song_b_name,ai_tool_a,ai_tool_b,audio_a_path,audio_b_path",
+  ];
 
-  if (battleRowsError) {
-    const msg = `${battleRowsError.message ?? ""} ${battleRowsError.details ?? ""} ${battleRowsError.hint ?? ""}`;
-    if (/lyrics_a|lyrics_b|schema cache|does not exist|PGRST204/i.test(msg)) {
-      const fallbackRows = await supabase
-        .from("battles")
-        .select("id,winner,fighter_a_name,fighter_b_name,song_a_name,song_b_name,ai_tool_a,ai_tool_b,audio_a_path,audio_b_path")
-        .in("id", battleIds);
-      battleRowsData = fallbackRows.data;
-      battleRowsError = fallbackRows.error;
+  let battleRowsData: RankBattleMediaRow[] = [];
+  let battleRowsError = "";
+  for (const select of selectAttempts) {
+    const read = await supabase.from("battles").select(select).in("id", battleIds);
+    if (!read.error) {
+      battleRowsData = (read.data ?? []) as RankBattleMediaRow[];
+      battleRowsError = "";
+      break;
+    }
+    battleRowsError = read.error.message;
+    if (
+      !/fighter_a_user_id|fighter_b_user_id|lyrics_a|lyrics_b|song_a_cover|song_b_cover|fighter_a_avatar|fighter_b_avatar|schema cache|does not exist|PGRST204/i.test(
+        battleRowsError,
+      )
+    ) {
+      break;
     }
   }
 
   if (battleRowsError) {
-    console.warn("[rank battle audio rows]", battleRowsError.message);
+    console.warn("[rank battle media rows]", battleRowsError);
     return rows;
+  }
+
+  const userIds = Array.from(
+    new Set(
+      battleRowsData
+        .flatMap((battle) => [battle.fighter_a_user_id, battle.fighter_b_user_id])
+        .filter((id): id is string => Boolean(id)),
+    ),
+  );
+  const profilesById = new Map<string, FighterProfileMediaRow>();
+  if (userIds.length > 0) {
+    const profileRead = await supabase.from("fighter_profiles").select("id,song_cover_url,avatar_url").in("id", userIds);
+    if (profileRead.error) {
+      console.warn("[rank battle profile media]", profileRead.error.message);
+    } else {
+      for (const profile of (profileRead.data ?? []) as FighterProfileMediaRow[]) {
+        if (profile.id) profilesById.set(profile.id, profile);
+      }
+    }
   }
 
   const truthByBattle = new Map<
@@ -552,27 +623,50 @@ async function attachBattleAudioUrls(rows: ArchivedBattleResult[]) {
       aiToolB: string;
       audioUrl: string | null;
       winnerLyrics: string;
+      coverUrl: string | null;
+      avatarUrl: string | null;
+      opponentCoverUrl: string | null;
+      opponentAvatarUrl: string | null;
     }
   >();
   await Promise.all(
-    ((battleRowsData ?? []) as Array<{
-      id?: string | null;
-      winner?: string | null;
-      fighter_a_name?: string | null;
-      fighter_b_name?: string | null;
-      song_a_name?: string | null;
-      song_b_name?: string | null;
-      ai_tool_a?: string | null;
-      ai_tool_b?: string | null;
-      audio_a_path?: string | null;
-      audio_b_path?: string | null;
-      lyrics_a?: string | null;
-      lyrics_b?: string | null;
-    }>).map(async (battle) => {
+    battleRowsData.map(async (battle) => {
       if (!battle.id) return;
       const winner = normalizeWinnerSide(battle.winner);
-      const winnerPath = winner === "fighter_b" ? battle.audio_b_path : battle.audio_a_path;
-      const winnerLyrics = cleanLyrics(winner === "fighter_b" ? battle.lyrics_b : battle.lyrics_a);
+      const winnerIsB = winner === "fighter_b";
+      const winnerPath = winnerIsB ? battle.audio_b_path : battle.audio_a_path;
+      const winnerLyrics = cleanLyrics(winnerIsB ? battle.lyrics_b : battle.lyrics_a);
+      const winnerProfile = profilesById.get(winnerIsB ? battle.fighter_b_user_id ?? "" : battle.fighter_a_user_id ?? "");
+      const opponentProfile = profilesById.get(winnerIsB ? battle.fighter_a_user_id ?? "" : battle.fighter_b_user_id ?? "");
+      const winnerCover = firstText(
+        winnerIsB ? battle.song_b_cover : battle.song_a_cover,
+        winnerProfile?.song_cover_url,
+        winnerIsB ? battle.fighter_b_avatar : battle.fighter_a_avatar,
+        winnerProfile?.avatar_url,
+      );
+      const winnerAvatar = firstText(
+        winnerIsB ? battle.fighter_b_avatar : battle.fighter_a_avatar,
+        winnerProfile?.avatar_url,
+        winnerCover,
+      );
+      const opponentCover = firstText(
+        winnerIsB ? battle.song_a_cover : battle.song_b_cover,
+        opponentProfile?.song_cover_url,
+        winnerIsB ? battle.fighter_a_avatar : battle.fighter_b_avatar,
+        opponentProfile?.avatar_url,
+      );
+      const opponentAvatar = firstText(
+        winnerIsB ? battle.fighter_a_avatar : battle.fighter_b_avatar,
+        opponentProfile?.avatar_url,
+        opponentCover,
+      );
+      const [audioUrl, coverUrl, avatarUrl, opponentCoverUrl, opponentAvatarUrl] = await Promise.all([
+        battleAudioPathToUrl(winnerPath),
+        battleMediaPathToUrl(winnerCover),
+        battleMediaPathToUrl(winnerAvatar),
+        battleMediaPathToUrl(opponentCover),
+        battleMediaPathToUrl(opponentAvatar),
+      ]);
       truthByBattle.set(battle.id, {
         winner,
         fighterAName: String(battle.fighter_a_name || "").trim(),
@@ -581,8 +675,12 @@ async function attachBattleAudioUrls(rows: ArchivedBattleResult[]) {
         songBName: String(battle.song_b_name || "").trim(),
         aiToolA: String(battle.ai_tool_a || "").trim(),
         aiToolB: String(battle.ai_tool_b || "").trim(),
-        audioUrl: await battleAudioPathToUrl(winnerPath),
+        audioUrl,
         winnerLyrics,
+        coverUrl,
+        avatarUrl,
+        opponentCoverUrl,
+        opponentAvatarUrl,
       });
     }),
   );
@@ -600,16 +698,20 @@ async function attachBattleAudioUrls(rows: ArchivedBattleResult[]) {
             tool: truth.winner === "fighter_b" ? truth.aiToolB || row.tool : truth.aiToolA || row.tool,
             opponentName: truth.winner === "fighter_b" ? truth.fighterAName || row.winnerName : truth.fighterBName || row.winnerName,
             opponentSong: truth.winner === "fighter_b" ? truth.songAName || row.winnerSong : truth.songBName || row.winnerSong,
-            coverUrl: row.opponentCoverUrl || row.coverUrl,
-            avatarUrl: row.opponentAvatarUrl || row.avatarUrl,
-            opponentCoverUrl: row.coverUrl || row.opponentCoverUrl,
-            opponentAvatarUrl: row.avatarUrl || row.opponentAvatarUrl,
+            coverUrl: truth.coverUrl || row.opponentCoverUrl || row.coverUrl,
+            avatarUrl: truth.avatarUrl || row.opponentAvatarUrl || row.avatarUrl,
+            opponentCoverUrl: truth.opponentCoverUrl || row.coverUrl || row.opponentCoverUrl,
+            opponentAvatarUrl: truth.opponentAvatarUrl || row.avatarUrl || row.opponentAvatarUrl,
           }
         : row;
     return {
       ...reconciled,
       audioUrl: reconciled.audioUrl || (row.battleId ? truth?.audioUrl || undefined : undefined),
       lyrics: cleanLyrics(reconciled.lyrics) || (row.battleId ? truth?.winnerLyrics || undefined : undefined),
+      coverUrl: reconciled.coverUrl || (row.battleId ? truth?.coverUrl || "" : ""),
+      avatarUrl: reconciled.avatarUrl || (row.battleId ? truth?.avatarUrl || "" : ""),
+      opponentCoverUrl: reconciled.opponentCoverUrl || (row.battleId ? truth?.opponentCoverUrl || null : null),
+      opponentAvatarUrl: reconciled.opponentAvatarUrl || (row.battleId ? truth?.opponentAvatarUrl || null : null),
     };
   });
 }
