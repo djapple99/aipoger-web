@@ -2268,9 +2268,6 @@ export default function ListenBarPage() {
                       <p className="text-xs font-black text-orange-100">
                         {isZh ? "這首歌的傷心評論" : "Track Comments"}
                       </p>
-                      <span className="text-[11px] font-bold text-zinc-500">
-                        {isZh ? "永久保留" : "Always Visible"}
-                      </span>
                     </div>
                     <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
                       <input
@@ -2285,7 +2282,7 @@ export default function ListenBarPage() {
                         disabled={trackCommentBusy || !trackCommentInput.trim()}
                         className="h-11 rounded-full bg-orange-500 px-5 text-xs font-black text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:bg-white/[0.08] disabled:text-zinc-500"
                       >
-                        {trackCommentBusy ? (isZh ? "送出中" : "Sending") : (isZh ? "留下評論" : "Comment")}
+                        {trackCommentBusy ? (isZh ? "送出中" : "Sending") : (isZh ? "送出" : "Send")}
                       </button>
                     </div>
                     {trackCommentError && <p className="mt-2 text-xs font-bold text-red-200">{trackCommentError}</p>}
