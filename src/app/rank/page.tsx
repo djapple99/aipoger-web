@@ -1349,67 +1349,70 @@ export default function RankPage() {
           </div>
         </section>
 
-        <section className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <section className="grid gap-5">
           <div className="min-w-0">
             <div className="aipo-control-panel rounded-[1.15rem] border-yellow-100/18 p-2">
-              <div className="grid gap-2 sm:grid-cols-[5.25rem_1fr] sm:items-center">
-                <span className={`${fontRighteous.className} text-xs uppercase tracking-[0.18em] text-yellow-100/65`}>
-                  {isZh ? "月份" : "Month"}
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveMonth("all");
+              <div className="grid gap-2 md:grid-cols-[minmax(9rem,0.8fr)_minmax(9rem,0.8fr)_minmax(0,2fr)_auto] md:items-end">
+                <label className="grid gap-1.5">
+                  <span className={`${fontRighteous.className} text-[11px] uppercase tracking-[0.16em] text-yellow-100/65`}>
+                    {isZh ? "月份" : "Month"}
+                  </span>
+                  <select
+                    value={activeMonth}
+                    onChange={(event) => {
+                      setActiveMonth(event.target.value);
                       setActiveGenre("all");
                     }}
-                    className={`rounded-full border px-3 py-2 text-xs font-black transition active:bg-yellow-300 active:text-black ${
-                      activeMonth === "all"
-                        ? "border-yellow-100/55 bg-white/[0.055] text-white"
-                        : "border-yellow-100/25 bg-white/[0.035] text-zinc-300 hover:border-yellow-100/45 hover:text-white"
-                    }`}
+                    className="h-10 min-w-0 rounded-md border border-yellow-100/25 bg-black/45 px-3 text-xs font-black text-zinc-100 outline-none transition hover:border-yellow-100/45 focus:border-yellow-100/60"
                   >
-                    {isZh ? "全部月份" : "All Months"}
-                  </button>
-                  {monthOptions.map((month) => (
-                    <button
-                      key={month.key}
-                      type="button"
-                      onClick={() => {
-                        setActiveMonth(month.key);
-                        setActiveGenre("all");
-                      }}
-                      className={`rounded-full border px-3 py-2 text-xs font-black transition active:bg-yellow-300 active:text-black ${
-                        activeMonth === month.key
-                          ? "border-yellow-100/55 bg-white/[0.055] text-white"
-                          : "border-yellow-100/25 bg-white/[0.035] text-zinc-300 hover:border-yellow-100/45 hover:text-white"
-                      }`}
-                    >
-                      {month.label}
-                      <span className="ml-2 rounded-full border border-white/10 bg-black/25 px-1.5 py-0.5 text-[10px] leading-none text-zinc-500">
-                        {month.count}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
+                    <option value="all">
+                      {isZh ? `全部月份 (${searchedDisplayRows.length})` : `All Months (${searchedDisplayRows.length})`}
+                    </option>
+                    {monthOptions.map((month) => (
+                      <option key={month.key} value={month.key}>
+                        {month.label} ({month.count})
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-            <div className="aipo-control-panel mt-4 rounded-[1.15rem] p-2">
-              <label className="grid gap-2 sm:grid-cols-[5.25rem_1fr_auto] sm:items-center">
-                <span className={`${fontRighteous.className} text-xs uppercase tracking-[0.18em] text-cyan-100/70`}>
-                  SEARCH
-                </span>
-                <input
-                  value={searchTerm}
-                  onChange={(event) => {
-                    setSearchTerm(event.target.value);
-                    setActiveGenre("all");
-                  }}
-                  placeholder={isZh ? "搜尋歌手、歌名、對手、風格或 AI 工具" : "Search artist, song, opponent, style, or AI tool"}
-                  className="aipo-input h-10 min-w-0 rounded-md px-3 text-sm font-bold transition placeholder:text-zinc-600"
-                />
-                {searchTerm ? (
+                <label className="grid gap-1.5">
+                  <span className={`${fontRighteous.className} text-[11px] uppercase tracking-[0.16em] text-yellow-100/65`}>
+                    {isZh ? "類型" : "Style"}
+                  </span>
+                  <select
+                    value={activeGenre}
+                    onChange={(event) => setActiveGenre(event.target.value)}
+                    className="h-10 min-w-0 rounded-md border border-yellow-100/25 bg-black/45 px-3 text-xs font-black text-zinc-100 outline-none transition hover:border-yellow-100/45 focus:border-yellow-100/60"
+                  >
+                    <option value="all">
+                      {isZh ? `所有類型 (${monthFilteredRows.length})` : `All Styles (${monthFilteredRows.length})`}
+                    </option>
+                    {genreOptions.map((genre) => (
+                      <option key={normalizeGenre(genre.label)} value={normalizeGenre(genre.label)}>
+                        {genre.label} ({genre.count})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="grid gap-1.5">
+                  <span className={`${fontRighteous.className} text-[11px] uppercase tracking-[0.16em] text-cyan-100/70`}>
+                    SEARCH
+                  </span>
+                  <input
+                    value={searchTerm}
+                    onChange={(event) => {
+                      setSearchTerm(event.target.value);
+                      setActiveGenre("all");
+                    }}
+                    placeholder={isZh ? "搜尋歌手、歌名、對手、風格或 AI 工具" : "Search artist, song, opponent, style, or AI tool"}
+                    className="aipo-input h-10 min-w-0 rounded-md px-3 text-sm font-bold transition placeholder:text-zinc-600"
+                  />
+                </label>
+
+                <div className="flex items-center gap-2">
+                  {searchTerm ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -1421,11 +1424,12 @@ export default function RankPage() {
                     {isZh ? "清除" : "Clear"}
                   </button>
                 ) : (
-                  <span className="hidden rounded-md border border-white/10 bg-black/35 px-3 py-2 text-xs font-black text-zinc-500 sm:inline-flex">
-                    {searchedDisplayRows.length}/{displayRows.length}
-                  </span>
+                    <span className="inline-flex h-10 items-center rounded-md border border-white/10 bg-black/35 px-3 text-xs font-black text-zinc-500">
+                      {filteredDisplayRows.length}/{displayRows.length}
+                    </span>
                 )}
-              </label>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-8 pt-5">
@@ -1460,9 +1464,6 @@ export default function RankPage() {
                             {isZh ? "榮譽精選" : "Featured Records"}
                           </h2>
                         </div>
-                        <p className="text-xs font-bold text-zinc-500">
-                          {isZh ? "小圖展示，重點回到作品" : "Compact shelf, music first"}
-                        </p>
                       </div>
                       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         {featuredRows.map((row, index) => {
@@ -1806,75 +1807,7 @@ export default function RankPage() {
                 </>
               )}
             </div>
-
           </div>
-
-          <aside className="space-y-3 lg:sticky lg:top-5 lg:self-start">
-            <div className="aipo-control-panel rounded-lg p-4">
-              <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.16em] text-zinc-500`}>
-                {isZh ? "音樂風格" : "Music Style"}
-              </p>
-              <div className="mt-3 grid gap-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveGenre("all")}
-                  className={`flex items-center justify-between rounded-full border px-3 py-2 text-left text-xs font-black transition active:bg-yellow-300 active:text-black ${
-                    activeGenre === "all"
-                      ? "border-yellow-100/55 bg-white/[0.055] text-white shadow-[inset_0_0_0_1px_rgba(253,224,71,0.1)]"
-                      : "border-yellow-100/25 bg-white/[0.035] text-zinc-300 hover:border-yellow-100/45 hover:text-white"
-                  }`}
-                >
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className={`h-1.5 w-1.5 rounded-full ${activeGenre === "all" ? "bg-yellow-200" : "bg-zinc-600"}`} />
-                    <span className="truncate">{isZh ? "所有類型" : "All Styles"}</span>
-                  </span>
-                  <span className="opacity-65">{displayRows.length}</span>
-                </button>
-                {genreOptions.map((genre) => {
-                  const key = normalizeGenre(genre.label);
-                  const selected = activeGenre === key;
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setActiveGenre(key)}
-                      className={`flex items-center justify-between rounded-full border px-3 py-2 text-left text-xs font-black transition active:bg-yellow-300 active:text-black ${
-                        selected
-                          ? "border-yellow-100/55 bg-white/[0.055] text-white shadow-[inset_0_0_0_1px_rgba(253,224,71,0.1)]"
-                          : "border-yellow-100/25 bg-white/[0.035] text-zinc-300 hover:border-yellow-100/45 hover:text-white"
-                      }`}
-                    >
-                      <span className="flex min-w-0 items-center gap-2">
-                        <span className={`h-1.5 w-1.5 rounded-full ${selected ? "bg-yellow-200" : "bg-zinc-600"}`} />
-                        <span className="truncate">{genre.label}</span>
-                      </span>
-                      <span className="ml-2 opacity-65">{genre.count}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="aipo-control-panel rounded-lg p-4">
-              <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.16em] text-zinc-500`}>
-                {isZh ? "快速連結" : "Quick Links"}
-              </p>
-              <div className="mt-3 grid gap-2 text-sm font-bold">
-                <Link href={`/battle${navSuffix}`} className="flex items-center justify-between rounded-md border border-yellow-100/25 bg-white/[0.035] px-3 py-2 text-zinc-200 transition hover:border-yellow-100/45 hover:text-white active:bg-yellow-300 active:text-black">
-                  <span>{isZh ? "AI 音樂鬥歌場" : "AI Music Battle Hall"}</span>
-                  <span className="text-yellow-100/70">→</span>
-                </Link>
-                <Link href={`/listen-bar${navSuffix}`} className="flex items-center justify-between rounded-md border border-yellow-100/25 bg-white/[0.035] px-3 py-2 text-zinc-200 transition hover:border-yellow-100/45 hover:text-white active:bg-yellow-300 active:text-black">
-                  <span>{isZh ? "傷心酒吧公播" : "Bar Heartbreak Radio"}</span>
-                  <span className="text-yellow-100/70">→</span>
-                </Link>
-                <Link href={`/battle/setup${navSuffix}`} className="flex items-center justify-between rounded-md border border-yellow-100/25 bg-white/[0.035] px-3 py-2 text-zinc-200 transition hover:border-yellow-100/45 hover:text-white active:bg-yellow-300 active:text-black">
-                  <span>{isZh ? "發起挑戰" : "Start a Challenge"}</span>
-                  <span>→</span>
-                </Link>
-              </div>
-            </div>
-          </aside>
         </section>
 
         {lyricsModal ? (
