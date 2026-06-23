@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { isAdminEmail } from "@/lib/admin-emails";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 
-type TrackAction = "hide" | "restore" | "sort" | "randomize" | "move" | "normalize" | "metadata";
+type TrackAction = "hide" | "restore" | "remove" | "sort" | "randomize" | "move" | "normalize" | "metadata" | "bulkMetadata";
 type AdminListenBarTrackRow = {
   id: string;
   is_active?: boolean | null;
@@ -146,7 +146,9 @@ async function updateTrack(admin: ReturnType<typeof adminClient>, trackId: strin
       ? { is_active: false, review_status: "hidden", hidden_at: now, moderation_note: note }
       : action === "restore"
         ? { is_active: true, review_status: "approved", hidden_at: null, removed_at: null, moderation_note: note }
-        : { sort_order: sortOrder };
+        : action === "remove"
+          ? { is_active: false, review_status: "removed", hidden_at: now, removed_at: now, moderation_note: note }
+          : { sort_order: sortOrder };
 
   const modern = await admin
     .from("listen_bar_tracks")
@@ -158,7 +160,7 @@ async function updateTrack(admin: ReturnType<typeof adminClient>, trackId: strin
   if (!isMissingColumnError(modern.error)) throw modern.error;
 
   const legacyPayload =
-    action === "hide"
+    action === "hide" || action === "remove"
       ? { is_active: false }
       : action === "restore"
         ? { is_active: true }
@@ -221,6 +223,41 @@ async function updateTrackMetadata(admin: ReturnType<typeof adminClient>, trackI
   if (legacy.error) throw legacy.error;
 }
 
+async function updateBulkTrackMetadata(admin: ReturnType<typeof adminClient>, trackIds: string[], body: Record<string, unknown>) {
+  const genre = cleanText(body.genre, 80);
+  const aiTool = cleanText(body.aiTool, 80);
+  const mood = cleanText(body.mood, 80);
+  if (genre && !allowedGenreValues.has(genre)) throw new Error("請從固定類型選單選擇歌曲類型。");
+
+  const payload: Record<string, string | null> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (genre) payload.genre = genre;
+  if (aiTool) payload.ai_tool = aiTool;
+  if (typeof body.mood === "string") payload.mood = mood;
+
+  if (!payload.genre && !payload.ai_tool && !("mood" in payload)) {
+    throw new Error("請至少填一個要批次更新的欄位。");
+  }
+
+  const modern = await admin
+    .from("listen_bar_tracks")
+    .update(payload)
+    .in("id", trackIds)
+    .select("id");
+  if (!modern.error) return;
+  if (!isMissingColumnError(modern.error)) throw modern.error;
+
+  const legacyPayload = { ...payload };
+  delete legacyPayload.updated_at;
+  const legacy = await admin
+    .from("listen_bar_tracks")
+    .update(legacyPayload)
+    .in("id", trackIds)
+    .select("id");
+  if (legacy.error) throw legacy.error;
+}
+
 async function randomizeActiveTracks(admin: ReturnType<typeof adminClient>) {
   const tracks = (await loadTracks(admin)) as AdminListenBarTrackRow[];
   const activeTracks = shuffled(tracks.filter(isPlayableForRandomSort));
@@ -271,9 +308,14 @@ export async function PATCH(request: NextRequest) {
     if (!body) return jsonError("後台動作格式不正確。", 400);
 
     const trackId = cleanText(body.trackId, 160);
+    const trackIds = Array.isArray(body.trackIds)
+      ? body.trackIds.map((id) => cleanText(id, 160)).filter((id): id is string => Boolean(id))
+      : [];
     const action = cleanText(body.action, 40) as TrackAction | null;
-    if (action !== "hide" && action !== "restore" && action !== "sort" && action !== "randomize" && action !== "move" && action !== "normalize" && action !== "metadata") return jsonError("未知後台動作。", 400);
-    if (action !== "randomize" && action !== "normalize" && !trackId) return jsonError("缺少歌曲 ID。", 400);
+    if (action !== "hide" && action !== "restore" && action !== "remove" && action !== "sort" && action !== "randomize" && action !== "move" && action !== "normalize" && action !== "metadata" && action !== "bulkMetadata") return jsonError("未知後台動作。", 400);
+    const targetTrackIds = trackIds.length > 0 ? trackIds : trackId ? [trackId] : [];
+    if (action !== "randomize" && action !== "normalize" && targetTrackIds.length === 0) return jsonError("缺少歌曲 ID。", 400);
+    if ((action === "metadata" || action === "move" || action === "sort") && !trackId) return jsonError("這個動作需要單一歌曲 ID。", 400);
 
     const sortOrder = typeof body.sortOrder === "number" && Number.isFinite(body.sortOrder)
       ? Math.round(body.sortOrder)
@@ -290,8 +332,10 @@ export async function PATCH(request: NextRequest) {
       await moveTrack(guard.admin, trackId as string, direction);
     } else if (action === "metadata") {
       await updateTrackMetadata(guard.admin, trackId as string, body);
+    } else if (action === "bulkMetadata") {
+      await updateBulkTrackMetadata(guard.admin, targetTrackIds, body);
     } else {
-      await updateTrack(guard.admin, trackId as string, action, sortOrder, cleanText(body.note, 1200));
+      await Promise.all(targetTrackIds.map((id) => updateTrack(guard.admin, id, action, sortOrder, cleanText(body.note, 1200))));
     }
     const tracks = await loadTracks(guard.admin);
     return NextResponse.json({ ok: true, tracks });

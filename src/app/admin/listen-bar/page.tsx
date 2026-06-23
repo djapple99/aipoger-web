@@ -30,7 +30,7 @@ import {
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
-type TrackSortMode = "manual" | "updated_desc" | "updated_asc" | "created_desc" | "created_asc" | "genre" | "status";
+type TrackSortMode = "manual" | "updated_desc" | "updated_asc" | "created_desc" | "created_asc" | "genre";
 type TrackVisibilityFilter = "all" | "active" | "hidden" | "uncategorized";
 type AdminListenBarTrackRow = ListenBarTrackRow & {
   review_status?: "approved" | "pending" | "hidden" | "removed" | string | null;
@@ -64,6 +64,12 @@ type TrackMetadataForm = {
   sortOrder: string;
 };
 
+type BulkMetadataForm = {
+  genre: string;
+  aiTool: string;
+  mood: string;
+};
+
 type ContentReportSummary = {
   status?: string | null;
 };
@@ -89,6 +95,12 @@ const initialForm: TrackForm = {
   lyrics: "",
   sortOrder: "100",
   isActive: true,
+};
+
+const initialBulkMetadataForm: BulkMetadataForm = {
+  genre: "",
+  aiTool: "",
+  mood: "",
 };
 
 const LIVE_RADIO_EPOCH_MS = Date.UTC(2026, 0, 1);
@@ -268,6 +280,18 @@ function dateSortValue(value: string | null | undefined) {
   return Number.isFinite(ms) ? ms : 0;
 }
 
+function trackMonthKey(track: AdminListenBarTrackRow) {
+  const date = new Date(track.created_at ?? track.updated_at ?? 0);
+  if (!Number.isFinite(date.getTime()) || date.getTime() <= 0) return "unknown";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function trackMonthLabel(monthKey: string) {
+  if (monthKey === "unknown") return "未標示月份";
+  const [year, month] = monthKey.split("-");
+  return `${year} 年 ${Number(month)} 月`;
+}
+
 function trackSearchText(track: AdminListenBarTrackRow, openingPhaseActive: boolean) {
   return [
     track.title,
@@ -310,7 +334,7 @@ function metadataFormFromTrack(track: AdminListenBarTrackRow): TrackMetadataForm
   };
 }
 
-function sortTracksForAdmin(tracks: AdminListenBarTrackRow[], mode: TrackSortMode, openingPhaseActive: boolean) {
+function sortTracksForAdmin(tracks: AdminListenBarTrackRow[], mode: TrackSortMode) {
   const next = [...tracks];
   if (mode === "manual") return next;
   return next.sort((a, b) => {
@@ -323,9 +347,7 @@ function sortTracksForAdmin(tracks: AdminListenBarTrackRow[], mode: TrackSortMod
       if (genreCompare !== 0) return genreCompare;
       return (a.title || "").localeCompare(b.title || "", "zh-Hant");
     }
-    const statusCompare = phaseLabel(a, openingPhaseActive).localeCompare(phaseLabel(b, openingPhaseActive), "zh-Hant");
-    if (statusCompare !== 0) return statusCompare;
-    return dateSortValue(b.updated_at) - dateSortValue(a.updated_at);
+    return publicRotationSort(a, b);
   });
 }
 
@@ -356,8 +378,11 @@ export default function ListenBarAdminPage() {
   const [operatingTrackId, setOperatingTrackId] = useState("");
   const [playlistBusy, setPlaylistBusy] = useState(false);
   const [trackVisibilityFilter, setTrackVisibilityFilter] = useState<TrackVisibilityFilter>("all");
+  const [trackMonthFilter, setTrackMonthFilter] = useState("all");
   const [trackSearch, setTrackSearch] = useState("");
   const [trackSortMode, setTrackSortMode] = useState<TrackSortMode>("manual");
+  const [selectedTrackIds, setSelectedTrackIds] = useState<string[]>([]);
+  const [bulkMetadataForm, setBulkMetadataForm] = useState<BulkMetadataForm>(initialBulkMetadataForm);
   const [focusedTrackId, setFocusedTrackId] = useState("");
   const [editingTrackId, setEditingTrackId] = useState("");
   const [metadataForm, setMetadataForm] = useState<TrackMetadataForm | null>(null);
@@ -368,6 +393,14 @@ export default function ListenBarAdminPage() {
     () => tracks.map((track) => ({ ...track, ...(optimisticTrackPatches[track.id] ?? {}) })),
     [optimisticTrackPatches, tracks],
   );
+  const monthOptions = useMemo(() => {
+    const months = Array.from(new Set(displayTracks.map(trackMonthKey)));
+    return months.sort((a, b) => {
+      if (a === "unknown") return 1;
+      if (b === "unknown") return -1;
+      return b.localeCompare(a);
+    });
+  }, [displayTracks]);
   const visiblePlayableTracks = useMemo(() => activePlayableTracks(displayTracks), [displayTracks]);
   const openingPhaseActive = visiblePlayableTracks.length <= LISTEN_BAR_PUBLIC_ROTATION_LIMIT;
   const renderedTracks = useMemo(() => {
@@ -377,11 +410,18 @@ export default function ListenBarAdminPage() {
       if (trackVisibilityFilter === "active" && hidden) return false;
       if (trackVisibilityFilter === "hidden" && !hidden) return false;
       if (trackVisibilityFilter === "uncategorized" && !isUncategorizedTrack(track)) return false;
+      if (trackMonthFilter !== "all" && trackMonthKey(track) !== trackMonthFilter) return false;
       if (!query) return true;
       return trackSearchText(track, openingPhaseActive).includes(query);
     });
-    return sortTracksForAdmin(filteredTracks, trackSortMode, openingPhaseActive);
-  }, [displayTracks, openingPhaseActive, trackSearch, trackSortMode, trackVisibilityFilter]);
+    return sortTracksForAdmin(filteredTracks, trackSortMode);
+  }, [displayTracks, openingPhaseActive, trackMonthFilter, trackSearch, trackSortMode, trackVisibilityFilter]);
+  const selectedTrackIdSet = useMemo(() => new Set(selectedTrackIds), [selectedTrackIds]);
+  const selectedTracks = useMemo(
+    () => displayTracks.filter((track) => selectedTrackIdSet.has(track.id)),
+    [displayTracks, selectedTrackIdSet],
+  );
+  const allRenderedSelected = renderedTracks.length > 0 && renderedTracks.every((track) => selectedTrackIdSet.has(track.id));
   const hiddenTrackCount = useMemo(() => displayTracks.filter(isHiddenTrack).length, [displayTracks]);
   const uncategorizedTrackCount = useMemo(() => displayTracks.filter(isUncategorizedTrack).length, [displayTracks]);
   const liveRotation = useMemo(() => liveRotationSnapshot(displayTracks, nowMs), [displayTracks, nowMs]);
@@ -405,6 +445,7 @@ export default function ListenBarAdminPage() {
     setTableReady(true);
     setTracks(payload?.tracks ?? []);
     setOptimisticTrackPatches({});
+    setSelectedTrackIds([]);
   }, []);
 
   const loadReportSummary = useCallback(async () => {
@@ -463,6 +504,7 @@ export default function ListenBarAdminPage() {
   const focusTrackInList = useCallback((trackId: string) => {
     if (!trackId) return;
     setTrackVisibilityFilter("all");
+    setTrackMonthFilter("all");
     setTrackSearch("");
     setTrackSortMode("manual");
     setFocusedTrackId(trackId);
@@ -789,6 +831,135 @@ export default function ListenBarAdminPage() {
     setOperatingTrackId("");
   };
 
+  const removeTrack = async (track: AdminListenBarTrackRow) => {
+    if (!window.confirm(`確定刪除「${track.title}」？歌曲會從前台播放清單移除，後台仍可在下架資料中追查與恢復。`)) return;
+    setError("");
+    setMessage("");
+    setOperatingTrackId(track.id);
+    const removedAt = new Date().toISOString();
+    setOptimisticTrackPatches((current) => ({
+      ...current,
+      [track.id]: {
+        is_active: false,
+        review_status: "removed",
+        hidden_at: removedAt,
+        removed_at: removedAt,
+      },
+    }));
+    const response = await fetch("/api/admin/listen-bar-tracks", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(await authHeader()),
+      },
+      body: JSON.stringify({ action: "remove", trackId: track.id, note: "Owner removed from Bar Heartbreak console." }),
+    });
+    const payload = (await response.json().catch(() => null)) as ListenBarTracksAdminPayload | null;
+    if (!response.ok) {
+      setError(`刪除失敗：${payload?.error || "後台 API 無法刪除歌曲。"}`);
+      setOptimisticTrackPatches((current) => {
+        const next = { ...current };
+        delete next[track.id];
+        return next;
+      });
+      setOperatingTrackId("");
+      return;
+    }
+    setMessage(`「${track.title}」已刪除，不會再進入前台播放。`);
+    setTracks(payload?.tracks ?? []);
+    setSelectedTrackIds((current) => current.filter((id) => id !== track.id));
+    setOptimisticTrackPatches({});
+    setOperatingTrackId("");
+  };
+
+  const toggleTrackSelection = (trackId: string) => {
+    setSelectedTrackIds((current) => (
+      current.includes(trackId) ? current.filter((id) => id !== trackId) : [...current, trackId]
+    ));
+  };
+
+  const toggleRenderedSelection = () => {
+    if (allRenderedSelected) {
+      const renderedIds = new Set(renderedTracks.map((track) => track.id));
+      setSelectedTrackIds((current) => current.filter((id) => !renderedIds.has(id)));
+      return;
+    }
+    setSelectedTrackIds((current) => Array.from(new Set([...current, ...renderedTracks.map((track) => track.id)])));
+  };
+
+  const bulkTrackAction = async (action: "hide" | "restore" | "remove") => {
+    if (selectedTrackIds.length === 0) return;
+    const actionLabel = action === "hide" ? "下架" : action === "restore" ? "恢復上架" : "刪除";
+    if (!window.confirm(`確定要${actionLabel}已選取的 ${selectedTrackIds.length} 首歌曲？`)) return;
+    setError("");
+    setMessage("");
+    setPlaylistBusy(true);
+    const response = await fetch("/api/admin/listen-bar-tracks", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(await authHeader()),
+      },
+      body: JSON.stringify({
+        action,
+        trackIds: selectedTrackIds,
+        note: `Owner bulk ${action} from Bar Heartbreak console.`,
+      }),
+    });
+    const payload = (await response.json().catch(() => null)) as ListenBarTracksAdminPayload | null;
+    if (!response.ok) {
+      setError(`${actionLabel}失敗：${payload?.error || "後台 API 無法批次處理歌曲。"}`);
+      setPlaylistBusy(false);
+      return;
+    }
+    setTracks(payload?.tracks ?? []);
+    setOptimisticTrackPatches({});
+    setSelectedTrackIds([]);
+    setMessage(`已${actionLabel} ${selectedTrackIds.length} 首歌曲。`);
+    setPlaylistBusy(false);
+  };
+
+  const bulkUpdateMetadata = async () => {
+    if (selectedTrackIds.length === 0) return;
+    const genre = bulkMetadataForm.genre.trim();
+    const aiTool = bulkMetadataForm.aiTool.trim();
+    const mood = bulkMetadataForm.mood.trim();
+    if (!genre && !aiTool && !mood) {
+      setError("請先填要批次更新的類型、AI 工具或情緒標籤。");
+      return;
+    }
+    setError("");
+    setMessage("");
+    setPlaylistBusy(true);
+    const response = await fetch("/api/admin/listen-bar-tracks", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(await authHeader()),
+      },
+      body: JSON.stringify({
+        action: "bulkMetadata",
+        trackIds: selectedTrackIds,
+        genre,
+        aiTool,
+        mood,
+      }),
+    });
+    const payload = (await response.json().catch(() => null)) as ListenBarTracksAdminPayload | null;
+    if (!response.ok) {
+      setError(`批次更新失敗：${payload?.error || "後台 API 無法批次更新歌曲資料。"}`);
+      setPlaylistBusy(false);
+      return;
+    }
+    setTracks(payload?.tracks ?? []);
+    setBulkMetadataForm(initialBulkMetadataForm);
+    setOptimisticTrackPatches({});
+    setSelectedTrackIds([]);
+    setTrackSortMode("updated_desc");
+    setMessage(`已更新 ${selectedTrackIds.length} 首歌曲資料。`);
+    setPlaylistBusy(false);
+  };
+
   const saveTrackMetadata = async (track: AdminListenBarTrackRow) => {
     if (!metadataForm || editingTrackId !== track.id) return;
     const title = metadataForm.title.trim();
@@ -1003,10 +1174,10 @@ export default function ListenBarAdminPage() {
           <form onSubmit={handleSubmit} className="rounded-[1.4rem] border border-orange-400/18 bg-black/62 p-4 shadow-[0_24px_90px_rgba(0,0,0,0.52)] backdrop-blur md:p-5">
             <div className="mb-5 flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.28em] text-orange-300/70">UPLOAD</p>
+                <p className="text-xs uppercase tracking-[0.28em] text-orange-300/70">ADD TRACK</p>
                 <h2 className="mt-1 text-2xl font-black text-white">新增輪播歌曲</h2>
                 <p className={`mt-2 text-sm leading-6 text-zinc-500 ${fontGlowSans.className}`} style={fontGlowSans.style}>
-                  MP3 會自動嘗試讀取 ID3 歌名、歌者、曲風、BPM 與內嵌封面。
+                  上傳是新增一首歌；更新既有歌曲請到右側清單整理資料。
                 </p>
               </div>
               <span className="rounded-full border border-orange-300/25 px-3 py-1 text-xs font-bold text-orange-100">
@@ -1089,10 +1260,10 @@ export default function ListenBarAdminPage() {
           <section className="rounded-[1.4rem] border border-white/10 bg-white/[0.045] p-4 shadow-[0_20px_70px_rgba(0,0,0,0.4)] backdrop-blur md:p-5">
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/70">PLAYLIST</p>
-                <h2 className="mt-1 text-2xl font-black text-white">輪播資料庫</h2>
+                <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/70">MANAGE TRACKS</p>
+                <h2 className="mt-1 text-2xl font-black text-white">歌曲上架整理</h2>
                 <p className="mt-1 text-xs font-bold text-zinc-500">
-                  顯示 {renderedTracks.length} / {displayTracks.length}
+                  顯示 {renderedTracks.length} / {displayTracks.length}{selectedTrackIds.length > 0 ? `，已選 ${selectedTrackIds.length}` : ""}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -1159,7 +1330,15 @@ export default function ListenBarAdminPage() {
                 placeholder="搜尋歌名、創作者、AI 工具、類型、狀態"
                 className="h-11 w-full rounded-xl border border-white/12 bg-black/50 px-4 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200/70"
               />
-              <div className="grid gap-2 sm:grid-cols-[auto_auto_minmax(10rem,1fr)]">
+              <div className="grid gap-2 sm:grid-cols-[auto_auto_minmax(9rem,1fr)_minmax(10rem,1fr)]">
+                <button
+                  type="button"
+                  onClick={toggleRenderedSelection}
+                  disabled={renderedTracks.length === 0}
+                  className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  {allRenderedSelected ? "取消本頁選取" : "選取本頁"}
+                </button>
                 <button
                   type="button"
                   onClick={() => setTrackSortMode((current) => (current === "updated_desc" ? "updated_asc" : "updated_desc"))}
@@ -1183,6 +1362,18 @@ export default function ListenBarAdminPage() {
                   種類排列
                 </button>
                 <select
+                  value={trackMonthFilter}
+                  onChange={(event) => setTrackMonthFilter(event.target.value)}
+                  className="h-10 rounded-full border border-white/12 bg-black/55 px-4 text-xs font-black text-zinc-200 outline-none transition focus:border-cyan-200/70"
+                >
+                  <option value="all">全部月份</option>
+                  {monthOptions.map((month) => (
+                    <option key={month} value={month}>
+                      {trackMonthLabel(month)}
+                    </option>
+                  ))}
+                </select>
+                <select
                   value={trackSortMode}
                   onChange={(event) => setTrackSortMode(event.target.value as TrackSortMode)}
                   className="h-10 rounded-full border border-white/12 bg-black/55 px-4 text-xs font-black text-zinc-200 outline-none transition focus:border-cyan-200/70"
@@ -1193,10 +1384,71 @@ export default function ListenBarAdminPage() {
                   <option value="created_desc">上傳時間：新到舊</option>
                   <option value="created_asc">上傳時間：舊到新</option>
                   <option value="genre">種類</option>
-                  <option value="status">狀態</option>
                 </select>
               </div>
             </div>
+
+            {selectedTracks.length > 0 && (
+              <div className="mb-4 rounded-2xl border border-cyan-200/20 bg-cyan-300/[0.055] p-3">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-100">
+                    已選 {selectedTracks.length} 首
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTrackIds([])}
+                    className="rounded-full border border-white/12 px-3 py-1 text-[11px] font-black text-zinc-300 transition hover:border-white/30"
+                  >
+                    清除選取
+                  </button>
+                </div>
+                <div className="grid gap-2 xl:grid-cols-[minmax(10rem,1fr)_minmax(9rem,0.8fr)_minmax(9rem,0.8fr)_auto]">
+                  <select
+                    value={bulkMetadataForm.genre}
+                    onChange={(event) => setBulkMetadataForm((current) => ({ ...current, genre: event.target.value }))}
+                    className="h-10 rounded-xl border border-white/12 bg-black/50 px-3 text-xs font-black text-white outline-none transition focus:border-cyan-200/70"
+                  >
+                    <option value="">不改類型</option>
+                    {LISTEN_BAR_ADMIN_GENRE_OPTIONS.map((genre) => (
+                      <option key={genre.value} value={genre.value} className="bg-zinc-950 text-white">
+                        {genre.value}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    value={bulkMetadataForm.aiTool}
+                    onChange={(event) => setBulkMetadataForm((current) => ({ ...current, aiTool: event.target.value }))}
+                    placeholder="批次 AI 工具"
+                    className="h-10 rounded-xl border border-white/12 bg-black/50 px-3 text-xs font-black text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200/70"
+                  />
+                  <input
+                    value={bulkMetadataForm.mood}
+                    onChange={(event) => setBulkMetadataForm((current) => ({ ...current, mood: event.target.value }))}
+                    placeholder="批次情緒標籤"
+                    className="h-10 rounded-xl border border-white/12 bg-black/50 px-3 text-xs font-black text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200/70"
+                  />
+                  <button
+                    type="button"
+                    disabled={playlistBusy}
+                    onClick={() => void bulkUpdateMetadata()}
+                    className="rounded-xl border border-cyan-200/35 bg-cyan-300/10 px-4 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-200 disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    批次更新
+                  </button>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button type="button" disabled={playlistBusy} onClick={() => void bulkTrackAction("hide")} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45">
+                    批次下架
+                  </button>
+                  <button type="button" disabled={playlistBusy} onClick={() => void bulkTrackAction("restore")} className="rounded-full border border-cyan-200/25 px-4 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-200 disabled:cursor-not-allowed disabled:opacity-45">
+                    批次恢復
+                  </button>
+                  <button type="button" disabled={playlistBusy} onClick={() => void bulkTrackAction("remove")} className="rounded-full border border-red-300/30 bg-red-500/10 px-4 py-2 text-xs font-black text-red-100 transition hover:border-red-200 disabled:cursor-not-allowed disabled:opacity-45">
+                    批次刪除
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="grid max-h-[72rem] gap-3 overflow-y-auto pr-1">
               {renderedTracks.length === 0 ? (
@@ -1221,21 +1473,33 @@ export default function ListenBarAdminPage() {
 	                  const focused = focusedTrackId === track.id;
 	                  const editing = editingTrackId === track.id && metadataForm;
 	                  const needsGenreReview = isUncategorizedTrack(track);
+                    const selected = selectedTrackIdSet.has(track.id);
 	                  return (
                     <article
                       key={track.id}
                       id={`listen-bar-admin-track-${track.id}`}
                       className={`scroll-mt-8 rounded-2xl border p-3 transition ${
-                        focused
+                        selected
+                          ? "border-cyan-200/70 bg-cyan-300/[0.08] shadow-[0_0_0_2px_rgba(103,232,249,0.14)]"
+                          : focused
                           ? "border-cyan-200/65 bg-cyan-300/[0.075] shadow-[0_0_0_2px_rgba(103,232,249,0.18),0_18px_60px_rgba(0,0,0,0.35)]"
                           : track.id === currentlyPlayingId
                             ? "border-orange-300/45 bg-orange-500/[0.055]"
                             : hidden
                               ? "border-red-300/20 bg-red-950/[0.08]"
-                              : "border-white/10 bg-black/42"
+                          : "border-white/10 bg-black/42"
                       }`}
                     >
-                      <div className="grid gap-3 sm:grid-cols-[5.5rem_1fr]">
+                      <div className="grid gap-3 sm:grid-cols-[2.4rem_5.5rem_1fr]">
+                        <label className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-white/12 bg-black/45 transition hover:border-cyan-200/55">
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={() => toggleTrackSelection(track.id)}
+                            className="h-4 w-4 accent-cyan-300"
+                            aria-label={`選取 ${track.title}`}
+                          />
+                        </label>
                         <img src={coverUrl} alt="" className={`aspect-square w-full rounded-xl bg-black object-cover ${hidden ? "opacity-45 grayscale" : ""}`} />
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-start justify-between gap-2">
@@ -1291,6 +1555,9 @@ export default function ListenBarAdminPage() {
 	                            <button type="button" disabled={operatingTrackId === track.id} onClick={() => void (hidden ? restoreTrack(track) : hideTrack(track))} className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-45 ${hidden ? "border-cyan-300/25 text-cyan-100 hover:border-cyan-200/65 focus-visible:ring-cyan-200/55" : "border-white/12 text-zinc-200 hover:border-cyan-200/55 focus-visible:ring-cyan-200/55"}`}>
 	                              {operatingTrackId === track.id ? "處理中" : hidden ? "恢復上架" : "下架"}
 	                            </button>
+                            <button type="button" disabled={operatingTrackId === track.id || removedStatus(track)} onClick={() => void removeTrack(track)} className="rounded-full border border-red-300/30 bg-red-500/10 px-4 py-2 text-xs font-black text-red-100 transition hover:border-red-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-200/55 disabled:cursor-not-allowed disabled:opacity-45">
+                              刪除
+                            </button>
                             <button type="button" disabled={hidden || operatingTrackId === track.id} onClick={() => void moveTrack(track, "up")} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45">
                               往前
                             </button>
