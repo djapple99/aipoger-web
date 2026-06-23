@@ -1235,15 +1235,15 @@ export default function RankPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 border-y border-white/10 py-3 lg:border-y-0 lg:border-l lg:py-0 lg:pl-5">
+          <div className="aipo-control-panel grid grid-cols-3 gap-2 rounded-lg border-white/10 p-3">
             {[
               { label: isZh ? "作品" : "Records", value: boardCount },
               { label: isZh ? "風格" : "Styles", value: genreCount },
               { label: isZh ? "精選" : "Featured", value: featuredRows.length },
             ].map((stat) => (
-              <div key={stat.label}>
-                <p className="text-2xl font-black text-white">{stat.value}</p>
-                <p className="mt-1 text-[11px] font-bold uppercase text-zinc-500">{stat.label}</p>
+              <div key={stat.label} className="rounded-md border border-white/8 bg-black/24 px-3 py-2">
+                <p className="text-xl font-black leading-none text-white">{stat.value}</p>
+                <p className="mt-1 text-[10px] font-bold uppercase text-zinc-500">{stat.label}</p>
               </div>
             ))}
           </div>
@@ -1698,8 +1698,8 @@ export default function RankPage() {
 
           </div>
 
-          <aside className="lg:sticky lg:top-5 lg:self-start lg:border-l lg:border-white/10 lg:pl-6">
-            <div className="border-b border-white/10 pb-4">
+          <aside className="space-y-3 lg:sticky lg:top-5 lg:self-start">
+            <div className="aipo-control-panel rounded-lg p-4">
               <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.16em] text-zinc-500`}>
                 {isZh ? "音樂風格" : "Music Style"}
               </p>
@@ -1709,11 +1709,14 @@ export default function RankPage() {
                   onClick={() => setActiveGenre("all")}
                   className={`flex items-center justify-between rounded-full border px-3 py-2 text-left text-xs font-black transition ${
                     activeGenre === "all"
-                      ? "border-yellow-200/55 bg-yellow-300 text-black"
-                      : "border-white/10 bg-white/[0.035] text-zinc-300 hover:border-yellow-200/35 hover:text-white"
+                      ? "border-orange-200/60 bg-orange-500/12 text-orange-50 shadow-[inset_0_0_0_1px_rgba(251,146,60,0.12)]"
+                      : "border-white/10 bg-white/[0.035] text-zinc-300 hover:border-orange-200/35 hover:text-white"
                   }`}
                 >
-                  <span>{isZh ? "所有類型" : "All Styles"}</span>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className={`h-1.5 w-1.5 rounded-full ${activeGenre === "all" ? "bg-orange-300" : "bg-zinc-600"}`} />
+                    <span className="truncate">{isZh ? "所有類型" : "All Styles"}</span>
+                  </span>
                   <span className="opacity-65">{displayRows.length}</span>
                 </button>
                 {genreOptions.map((genre) => {
@@ -1726,11 +1729,14 @@ export default function RankPage() {
                       onClick={() => setActiveGenre(key)}
                       className={`flex items-center justify-between rounded-full border px-3 py-2 text-left text-xs font-black transition ${
                         selected
-                          ? "border-cyan-100/70 bg-cyan-300 text-black"
+                          ? "border-cyan-100/65 bg-cyan-300/12 text-cyan-50 shadow-[inset_0_0_0_1px_rgba(103,232,249,0.1)]"
                           : "border-white/10 bg-white/[0.035] text-zinc-300 hover:border-cyan-100/35 hover:text-white"
                       }`}
                     >
-                      <span className="min-w-0 truncate">{genre.label}</span>
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className={`h-1.5 w-1.5 rounded-full ${selected ? "bg-cyan-200" : "bg-zinc-600"}`} />
+                        <span className="truncate">{genre.label}</span>
+                      </span>
                       <span className="ml-2 opacity-65">{genre.count}</span>
                     </button>
                   );
@@ -1738,29 +1744,86 @@ export default function RankPage() {
               </div>
             </div>
 
-            <div className="border-b border-white/10 py-4">
+            <div className="aipo-control-panel rounded-lg p-4">
               <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.16em] text-zinc-500`}>
                 {isZh ? "快速連結" : "Quick Links"}
               </p>
               <div className="mt-3 grid gap-2 text-sm font-bold">
-                <Link href={`/battle${navSuffix}`} className="text-zinc-300 transition hover:text-orange-100">
-                  {isZh ? "AI 音樂鬥歌場" : "AI Music Battle Hall"}
+                <Link href={`/battle${navSuffix}`} className="flex items-center justify-between rounded-md border border-white/10 bg-white/[0.035] px-3 py-2 text-zinc-200 transition hover:border-orange-200/35 hover:text-orange-100">
+                  <span>{isZh ? "AI 音樂鬥歌場" : "AI Music Battle Hall"}</span>
+                  <span className="text-orange-200/70">→</span>
                 </Link>
-                <Link href={`/listen-bar${navSuffix}`} className="text-zinc-300 transition hover:text-orange-100">
-                  {isZh ? "傷心酒吧公播" : "Bar Heartbreak Radio"}
+                <Link href={`/listen-bar${navSuffix}`} className="flex items-center justify-between rounded-md border border-white/10 bg-white/[0.035] px-3 py-2 text-zinc-200 transition hover:border-cyan-200/35 hover:text-cyan-100">
+                  <span>{isZh ? "傷心酒吧公播" : "Bar Heartbreak Radio"}</span>
+                  <span className="text-cyan-100/70">→</span>
                 </Link>
-                <Link href={`/battle/setup${navSuffix}`} className="text-zinc-300 transition hover:text-orange-100">
-                  {isZh ? "發起挑戰" : "Start a Challenge"}
+                <Link href={`/battle/setup${navSuffix}`} className="flex items-center justify-between rounded-md border border-orange-200/25 bg-orange-500/10 px-3 py-2 text-orange-100 transition hover:border-orange-100/55 hover:bg-orange-500/16">
+                  <span>{isZh ? "發起挑戰" : "Start a Challenge"}</span>
+                  <span>→</span>
                 </Link>
               </div>
             </div>
 
-            <p className="pt-4 text-xs font-bold leading-6 text-zinc-500">
-              {isZh
-                ? "榮譽榜只收真實完成的勝利與熱播紀錄，不用名次壓作品。"
-                : "Honor Board keeps real completed wins and heat records without forcing numbered placements."}
-            </p>
+            <div className="aipo-control-panel rounded-lg border-cyan-100/20 bg-cyan-300/[0.035] p-4">
+              <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.16em] text-zinc-500`}>
+                {isZh ? "加入社群" : "Join Community"}
+              </p>
+              <p className="mt-2 text-sm font-black leading-6 text-white">
+                {isZh
+                  ? "把榮譽榜作品推給更多聽眾。"
+                  : "Bring more listeners into these records."}
+              </p>
+              <div className="mt-3 grid gap-2">
+                {AIPOGER_SOCIAL_LINKS.map((social) => (
+                  <a
+                    key={`side-${social.label}`}
+                    href={social.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-between rounded-md border border-white/10 bg-black/24 px-3 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-100/50 hover:text-cyan-50"
+                  >
+                    <span>{social.label}</span>
+                    <span className="text-cyan-100/70">→</span>
+                  </a>
+                ))}
+              </div>
+            </div>
           </aside>
+        </section>
+
+        <section className="aipo-control-panel mt-7 overflow-hidden rounded-[1.25rem] border-orange-200/25 bg-[radial-gradient(circle_at_18%_20%,rgba(255,106,0,0.18),transparent_34%),radial-gradient(circle_at_82%_18%,rgba(34,211,238,0.12),transparent_30%),rgba(0,0,0,0.54)] p-5 sm:p-6">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+            <div className="min-w-0">
+              <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.2em] text-orange-200/80`}>
+                {isZh ? "AIPOGER COMMUNITY" : "AIPOGER COMMUNITY"}
+              </p>
+              <h2 className="mt-2 text-2xl font-black leading-tight text-white sm:text-3xl">
+                {isZh ? "分享你的戰績，讓更多人聽見這些歌" : "Share the records and bring more ears in"}
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm font-bold leading-7 text-zinc-400">
+                {isZh
+                  ? "榮譽榜不是放在角落的名單。把作品分享到社群，邀請朋友進場聽歌、投票、挑戰，讓 AIPOGER 的 AI 音樂舞台真的熱起來。"
+                  : "The Honor Board is not a buried list. Share records, invite listeners, and bring more challenges into the AIPOGER stage."}
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
+              {AIPOGER_SOCIAL_LINKS.map((social) => (
+                <a
+                  key={social.label}
+                  href={social.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group flex min-w-[13rem] items-center justify-between rounded-lg border border-white/12 bg-white/[0.055] px-4 py-3 text-left transition hover:border-cyan-100/50 hover:bg-cyan-300/10"
+                >
+                  <span>
+                    <span className="block text-sm font-black text-white">{social.label}</span>
+                    <span className="mt-0.5 block text-xs font-bold text-zinc-500">{social.handle}</span>
+                  </span>
+                  <span className="text-lg font-black text-cyan-100 transition group-hover:translate-x-0.5">→</span>
+                </a>
+              ))}
+            </div>
+          </div>
         </section>
 
         {lyricsModal ? (
