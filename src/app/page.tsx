@@ -855,7 +855,13 @@ export default function HomePage() {
   const withLang = (href: string) => `${href}${href.includes("?") ? "&" : "?"}lang=${lang}`;
   const heroTitle = t("home_secondary_title");
   const heroLine = t("home_hero_line");
-  const mobileHeroLine = isZh ? ["上傳你的最強 Drop", "讓聽眾決定誰最好聽"] : [heroLine];
+  const mobileHeroLine = isZh
+    ? ["上傳你的最強 Drop", "讓聽眾決定誰最好聽"]
+    : lang === "ja"
+      ? ["いちばん強いDropを出せ", "聴衆が決める"]
+      : lang === "ko"
+        ? ["가장 강한 Drop을 올려라", "관객이 결정한다"]
+        : ["Upload your best Drop", "Let the crowd decide"];
   const heroCopy = t("home_tagline");
   const zhDisplayClass = `${fontGlowSans.className} tracking-[-0.015em]`;
   const zhSerifClass = `${fontSourceSerifTC.className} font-black tracking-[0.012em]`;
@@ -921,9 +927,9 @@ export default function HomePage() {
   const mobileActionLabels = isZh
     ? { arena: "鬥歌場", rank: "榮譽", bar: "酒吧" }
     : lang === "ja"
-      ? { arena: "バトル", rank: "Honor", bar: "Bar" }
+      ? { arena: "バトル", rank: "栄誉", bar: "酒場" }
       : lang === "ko"
-        ? { arena: "배틀장", rank: "Honor", bar: "Bar" }
+        ? { arena: "배틀장", rank: "명예", bar: "바" }
         : { arena: "Arena", rank: "Honor", bar: "Bar" };
 
   return (
@@ -974,12 +980,12 @@ export default function HomePage() {
             AIPOGER
           </p>
           <p
-            className={`mx-auto mt-3 w-full max-w-[22rem] text-center text-[clamp(1.22rem,5.65vw,1.48rem)] leading-[1.34] md:max-w-none md:text-left md:text-[clamp(1.45rem,2.05vw,2.38rem)] md:leading-[1.38] ${heroAccentClass} ${
+            className={`mx-auto mt-3 w-full max-w-[22rem] text-center text-[clamp(1.12rem,5.15vw,1.48rem)] leading-[1.34] md:max-w-none md:text-left md:text-[clamp(1.45rem,2.05vw,2.38rem)] md:leading-[1.38] ${heroAccentClass} ${
               isZh ? zhSerifClass : `${fontGlowSans.className} font-black`
             }`}
           >
             {mobileHeroLine.map((line) => (
-              <span key={line} className="block whitespace-nowrap">
+              <span key={line} className="block whitespace-normal text-balance">
                 {line}
               </span>
             ))}

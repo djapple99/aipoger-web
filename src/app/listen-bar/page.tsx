@@ -568,6 +568,9 @@ export default function ListenBarPage() {
   const { lang, t } = useI18n();
   const isZh = lang === "zh";
   const langQuery = `?lang=${lang}`;
+  const titleSizeClass = isZh
+    ? "text-[clamp(2.15rem,13vw,5.35rem)]"
+    : "text-[clamp(1.92rem,10vw,5.05rem)]";
   const listenCopy = isZh
     ? {
         playMySong: "我要播歌！",
@@ -2045,7 +2048,7 @@ export default function ListenBarPage() {
               </span>
             </div>
             <h1
-              className={`mt-3 max-w-full whitespace-nowrap bg-gradient-to-b from-[#fff9d8] via-[#d7a246] to-[#7a3f10] bg-clip-text text-center text-[clamp(2.15rem,13vw,5.35rem)] font-normal leading-none tracking-[0.04em] text-transparent drop-shadow-[0_0_22px_rgba(255,170,68,0.18)] ${lang === "en" ? fontRighteous.className : ""}`}
+              className={`mt-3 max-w-full whitespace-nowrap bg-gradient-to-b from-[#fff9d8] via-[#d7a246] to-[#7a3f10] bg-clip-text text-center ${titleSizeClass} font-normal leading-none tracking-[0.04em] text-transparent drop-shadow-[0_0_22px_rgba(255,170,68,0.18)] ${lang === "en" ? fontRighteous.className : ""}`}
               style={{
                 fontFamily: isZh ? heartbreakTitleFont : undefined,
                 WebkitTextStroke: isZh ? "0.45px rgba(255,244,196,0.48)" : undefined,
