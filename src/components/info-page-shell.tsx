@@ -223,13 +223,13 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
   "hook-guide": {
     zh: {
       navTitle: "Drop Battle 規則",
-      title: "什麼是最強抓波 Drop Battle？鬥歌與點數規則",
+      title: "什麼是 Drop Battle？",
       lead:
-        "在 AIPOGER，最強抓波 Drop Battle 不只是副歌，也可以是前奏、Drop、旋律句、節奏口號或一句讓人上癮的聲音設計。鬥歌比的是短時間內抓住聽眾的能力。",
+        "把一首歌最抓耳的 30-60 秒剪出來，讓聽眾直接比較、投票，看看哪一段最能讓人停下來聽。",
       cards: [
-        { label: "Drop", value: "30-60 秒", detail: "剪出完整爆點" },
-        { label: "Vote", value: "一人一票", detail: "截止前可改投" },
-        { label: "APC", value: "公測免入場", detail: "先讓大家鬥起來" },
+        { label: "Drop", value: "30-60 秒", detail: "剪出最抓耳的爆點" },
+        { label: "Battle", value: "開戰 / 接戰", detail: "讓作品直接被比較" },
+        { label: "Vote", value: "聽眾投票", detail: "有票才形成戰果" },
       ],
       sections: [
         {
@@ -240,20 +240,20 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
         {
           title: "基本比賽規則",
           body:
-            "創作者上傳歌曲後裁切 Drop，系統只配對相同歌曲種類的對手。公測期先取消 APC 入場門檻，讓創作者可以直接進入 Battle；觀眾每場只能投一次票。",
-          items: ["每場以 A / B 兩方對決", "公測期免 APC 參戰，正式經濟規則之後再開", "若跨階配對，仍以音樂類型與等級接近為優先", "觀眾一人一票，截止前可改投", "最後投票命中勝方獲得 100 APC 參與獎勵", "禁止上傳非本人授權或侵權歌曲"],
+            "創作者上傳歌曲後裁切 Drop，開出戰帖或接受挑戰。系統會優先讓同歌曲種類的作品對決，觀眾進場聽 A / B 兩方，再用投票留下聽眾反應。",
+          items: ["每場以 A / B 兩方對決", "Drop 最長 60 秒，可剪短", "優先配對相同歌曲種類", "觀眾一人一票，截止前可改投", "有聽眾投票才形成戰果紀錄", "禁止上傳非本人授權或侵權歌曲"],
         },
         {
-          title: "點數與等級制度",
+          title: "創作者小技巧",
           body:
-            "APC 是平台內的參與點數。公測期 APC 不再阻擋 Battle，只用來呈現參與、獎勵、應援與榮譽感，讓核心鬥歌流程先跑順。",
-          items: ["第一階熱血音樂工匠：Lv.1-Lv.3，每贏 10 場升一級", "第二階潮流音樂大師：Lv.4-Lv.7，每贏 20 場升一級，可取得推薦歌曲與 prompt 販售資格", "第三階殿堂級音樂師尊：Lv.8-Lv.10，每贏 50 場升一級，可取得個人頁面空間與 prompt 販售資格", "公測期不扣雙方參戰點數", "投票命中勝方獲得 100 APC 參與獎勵", "傷心酒吧 Bar Heartbreak 是累積曝光與互動點數入口"],
+            "如果你有兩首同風格作品，但自己選不出哪一首更抓耳，可以開一場 Drop Battle，讓聽眾用投票幫你判斷哪一段更有記憶點。",
+          items: ["兩首歌都喜歡時，可以自己挑戰自己", "適合比較兩個版本、兩種編曲或兩段副歌", "只能由創作者主動指定；系統不會自動把你配給自己", "結果可作為選歌、修歌與發布前的聽眾測試"],
         },
         {
-          title: "階級名稱",
+          title: "戰果與紀錄",
           body:
-            "等級名稱會出現在個人狀態與規則頁，讓勝場不只是數字，而是創作者在 AIPOGER 的身份標記。",
-          items: ["Lv.1 訊號啟動者 Signal Starter", "Lv.2 旋律達人 Melody Crafter", "Lv.3 詞曲鬼匠 Lyric Ghost", "Lv.4 流行領航員 Pop Navigator", "Lv.5 優美旋律之王 Melody Monarch", "Lv.6 超狂動感領航員 Rhythm Pilot", "Lv.7 魔幻聲空雕塑家 Sonic Sculptor", "Lv.8 百大 DJ 泰坦 Top 100 Titan", "Lv.9 靈性薩滿法老王 Spirit Pharaoh", "Lv.10 交響樂之教皇 Symphony Pope"],
+            "Drop Battle 的重點不是空喊誰比較強，而是讓作品留下公開聽眾反應。只要有聽眾投票，這場對決就能成為創作者判斷作品方向的參考。",
+          items: ["0 票不產生戰果", "1-2 位聽眾投票可形成非正式戰果", "3 位以上不同聽眾投票才有機會進入正式紀錄", "優秀作品可往成果牆與榮譽榜累積"],
         },
         {
           title: "評分精神",
@@ -266,13 +266,13 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
     },
     en: {
       navTitle: "Drop Battle Rules",
-      title: "Drop Battle turns AI music into a live test.",
+      title: "What Is Drop Battle?",
       lead:
-        "On AIPOGER, a Drop is the part of a track that grabs the listener fast. Creators put their strongest moment into battle, collect votes, build records, and grow through real crowd reaction.",
+        "Cut the most addictive 30-60 seconds from a song, put it head-to-head, and let listeners vote on which moment makes them stop and listen.",
       cards: [
-        { label: "Drop", value: "30-60s", detail: "The strongest part of the track" },
-        { label: "Vote", value: "Crowd signal", detail: "Listeners decide what lands" },
-        { label: "Growth", value: "Honor path", detail: "Wins become creator records" },
+        { label: "Drop", value: "30-60s", detail: "Cut the strongest moment" },
+        { label: "Battle", value: "Open / Accept", detail: "Put two tracks side by side" },
+        { label: "Vote", value: "Listener Vote", detail: "Votes create the result" },
       ],
       sections: [
         {
@@ -283,20 +283,20 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
         {
           title: "Battle Flow",
           body:
-            "Creators upload a track, cut the strongest Drop, and face a same-category challenger. During public beta, APC entry stakes are disabled so creators can enter Battle directly and build recognition first.",
-          items: ["A / B battle format", "No APC entry stake during public beta", "Cross-stage matches still prioritize close level and music category", "One vote per listener; votes can be switched before close", "Correct final voters receive a 100 APC participation reward", "Only original or properly licensed AI music is allowed"],
+            "Creators upload a track, cut a Drop, then open a challenge card or accept another creator's card. Listeners enter the room, compare A / B, and vote for the moment that lands harder.",
+          items: ["A / B battle format", "Drops can be up to 60 seconds", "Same music category is prioritized", "One vote per listener; votes can be switched before close", "A result requires listener votes", "Only original or properly licensed AI music is allowed"],
         },
         {
-          title: "Points and Levels",
+          title: "Creator Tip",
           body:
-            "APC is the platform participation point. During public beta it does not block Battle entry; it is used for rewards, support, progression, and creator status.",
-          items: ["Stage 1 Music Artisan: Lv.1-Lv.3, level up every 10 wins", "Stage 2 Featured Creator: Lv.4-Lv.7, level up every 20 wins and unlock featured-song and prompt-selling paths", "Stage 3 Hall Master: Lv.8-Lv.10, level up every 50 wins and unlock creator page space plus stronger promotion paths", "No fighter entry stake is charged during public beta", "Correct final voters receive 100 APC", "Bar Heartbreak is the airplay and engagement path"],
+            "If you have two tracks in the same style and cannot choose which one hits harder, you can deliberately battle yourself and let listeners help you decide.",
+          items: ["Use it to compare two tracks you both like", "Test alternate versions, arrangements, or chorus ideas", "Self-battles must be deliberately chosen by the creator", "The system does not auto-match you against yourself"],
         },
         {
-          title: "Rank Names",
+          title: "Results and Records",
           body:
-            "Rank titles turn wins into creator identity inside AIPOGER. They are growth markers, not empty labels.",
-          items: ["Lv.1 Signal Starter", "Lv.2 Melody Crafter", "Lv.3 Lyric Ghost", "Lv.4 Pop Navigator", "Lv.5 Melody Monarch", "Lv.6 Rhythm Pilot", "Lv.7 Sonic Sculptor", "Lv.8 Top 100 Titan", "Lv.9 Spirit Pharaoh", "Lv.10 Symphony Pope"],
+            "Drop Battle is not just about claiming a track is stronger. It creates a public listener signal that helps creators decide what to refine, share, and bring back to the stage.",
+          items: ["0 votes means no result", "1-2 listener votes can create an unofficial result", "3+ distinct listener votes can become an official record", "Strong records can feed the Result Wall and Honor Board"],
         },
         {
           title: "Judging Spirit",
@@ -527,102 +527,6 @@ const pageLinks = [
   { href: "/ai-music-bible", key: "ai-music-bible" as const },
 ];
 
-const rankSkillStages = [
-  {
-    stageZh: "第一階 熱血音樂工匠",
-    stageEn: "Stage 1 Music Artisan",
-    ruleZh: "每贏 10 場升級",
-    ruleEn: "Level up every 10 wins",
-    stake: "公測免 APC",
-    accent: "orange",
-    nodes: [
-      { level: 1, zh: "訊號啟動者", en: "Signal Starter" },
-      { level: 2, zh: "旋律達人", en: "Melody Crafter" },
-      { level: 3, zh: "詞曲鬼匠", en: "Lyric Ghost" },
-    ],
-  },
-  {
-    stageZh: "第二階 潮流音樂大師",
-    stageEn: "Stage 2 Featured Creator",
-    ruleZh: "每贏 20 場升級 解鎖推薦與 prompt 販售",
-    ruleEn: "Level up every 20 wins. Unlock featured songs and prompt selling.",
-    stake: "公測免 APC",
-    accent: "cyan",
-    nodes: [
-      { level: 4, zh: "流行領航員", en: "Pop Navigator" },
-      { level: 5, zh: "優美旋律之王", en: "Melody Monarch" },
-      { level: 6, zh: "超狂動感領航員", en: "Rhythm Pilot" },
-      { level: 7, zh: "魔幻聲空雕塑家", en: "Sonic Sculptor" },
-    ],
-  },
-  {
-    stageZh: "第三階 殿堂級音樂師尊",
-    stageEn: "Stage 3 Hall Master",
-    ruleZh: "每贏 50 場升級 解鎖個人頁面空間",
-    ruleEn: "Level up every 50 wins. Unlock creator page space.",
-    stake: "公測免 APC",
-    accent: "white",
-    nodes: [
-      { level: 8, zh: "百大 DJ 泰坦", en: "Top 100 Titan" },
-      { level: 9, zh: "靈性薩滿法老王", en: "Spirit Pharaoh" },
-      { level: 10, zh: "交響樂之教皇", en: "Symphony Pope" },
-    ],
-  },
-] as const;
-
-function RankSkillTree({ isZh }: { isZh: boolean }) {
-  return (
-    <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4">
-      <div className="grid gap-4 lg:grid-cols-3">
-        {rankSkillStages.map((stage, stageIndex) => {
-          const color =
-            stage.accent === "orange"
-              ? "border-orange-300/35 bg-orange-500/10 text-orange-100"
-              : stage.accent === "cyan"
-                ? "border-cyan-200/35 bg-cyan-300/10 text-cyan-100"
-                : "border-white/25 bg-white/[0.07] text-white";
-          const line =
-            stage.accent === "orange"
-              ? "from-orange-500/80 to-orange-200/30"
-              : stage.accent === "cyan"
-                ? "from-cyan-400/80 to-cyan-100/30"
-                : "from-white/80 to-white/25";
-
-          return (
-            <div key={stage.stageZh} className="relative rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-              {stageIndex > 0 && (
-                <div className="pointer-events-none absolute -left-4 top-1/2 hidden h-px w-4 bg-gradient-to-r from-white/8 to-white/35 lg:block" />
-              )}
-              <div className={`rounded-xl border px-4 py-3 ${color}`}>
-                <p className={`${fontRighteous.className} text-[11px] uppercase tracking-[0.28em] opacity-75`}>
-                  {stage.stake}
-                </p>
-                <h3 className="mt-2 text-lg font-black">{isZh ? stage.stageZh : stage.stageEn}</h3>
-                <p className="mt-1 text-xs leading-5 opacity-70">{isZh ? stage.ruleZh : stage.ruleEn}</p>
-              </div>
-              <div className="relative mt-4 grid gap-3 pl-4">
-                <div className={`absolute bottom-6 left-[1.38rem] top-4 w-px bg-gradient-to-b ${line}`} />
-                {stage.nodes.map((node) => (
-                  <div key={node.level} className="relative flex items-center gap-3">
-                    <div className={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm font-black ${color}`}>
-                      {node.level}
-                    </div>
-                    <div className="min-w-0 rounded-xl border border-white/10 bg-black/38 px-3 py-2">
-                      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-orange-200/80">Lv.{node.level}</p>
-                      <p className="mt-1 text-sm font-black leading-5 text-white">{isZh ? node.zh : node.en}</p>
-                      <p className="mt-0.5 text-xs leading-5 text-zinc-500">{isZh ? node.en : node.zh}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 function ArrowIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
@@ -758,10 +662,7 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
               <div className="mb-4 h-px w-full bg-gradient-to-r from-orange-500/70 via-white/12 to-transparent" />
               <h2 className="break-words text-2xl font-black leading-tight text-white [overflow-wrap:anywhere] md:text-3xl">{section.title}</h2>
               <p className="mt-4 text-base leading-8 text-zinc-300">{section.body}</p>
-              {(section.title === "階級名稱" || section.title === "Rank Names") && (
-                <RankSkillTree isZh={isZh} />
-              )}
-              {section.items && section.title !== "階級名稱" && section.title !== "Rank Names" && (
+              {section.items && (
                 <ul className="mt-5 grid gap-3 sm:grid-cols-2">
                   {section.items.map((item) => (
                     <li key={item} className="rounded-xl border border-white/10 bg-black/42 px-4 py-3 text-sm leading-6 text-zinc-200">
