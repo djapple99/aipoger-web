@@ -111,7 +111,7 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
     return {
       battle: {
         eyebrow: "DROP SIGNAL",
-        title: "AI Music Battle Arena",
+        title: "AI音楽バトルホール",
         body: "最強のDropを出し、挑戦を起こす。リスナーの投票で、どの曲がより刺さるかを試せる。",
         tone: "orange",
       },
@@ -123,7 +123,7 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
       },
       rank: {
         eyebrow: "HONOR SIGNAL",
-        title: "Honor Board",
+        title: "AIPOGER栄誉榜",
         body: "リスナーに認められたAI音楽の記録。聴いて、自分の作品もここに立たせよう。",
         tone: "cyan",
       },
@@ -134,7 +134,7 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
     return {
       battle: {
         eyebrow: "DROP SIGNAL",
-        title: "AI Music Battle Arena",
+        title: "AI 음악 배틀홀",
         body: "가장 강한 Drop을 올리고 도전하세요. 청중 투표로 어떤 음악이 더 강하게 꽂히는지 확인할 수 있어요.",
         tone: "orange",
       },
@@ -146,7 +146,7 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
       },
       rank: {
         eyebrow: "HONOR SIGNAL",
-        title: "Honor Board",
+        title: "AIPOGER 명예보드",
         body: "청중에게 인정받은 AI 음악 기록이 모이는 곳. 듣고, 당신의 작품도 이 무대에 올려보세요.",
         tone: "cyan",
       },
@@ -903,19 +903,19 @@ export default function HomePage() {
       ]
     : lang === "ja"
       ? [
-          { href: withLang("/hook-guide"), title: "Drop Battle Rules", desc: "最強のDropをステージに出し、認知を積み上げる" },
+          { href: withLang("/hook-guide"), title: "Drop Battle ルール", desc: "最強のDropをステージに出し、認知を積み上げる" },
           { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
-          { href: withLang("/rank"), title: "AIPOGER Honor Board", desc: "認められた勝利、熱播曲、記録されたクリエイター実績" },
-          { href: withLang("/about"), title: "About AIPOGER", desc: "AIクリエイターが成長し、作品が認められるシステム" },
-          { href: withLang("/partners"), title: "Partnerships", desc: "勝ち残った楽曲を放送、キュレーション、商業展開へ" },
+          { href: withLang("/rank"), title: "AIPOGER 栄誉榜", desc: "認められた勝利、熱播曲、記録されたクリエイター実績" },
+          { href: withLang("/about"), title: "AIPOGERについて", desc: "AIクリエイターが成長し、作品が認められるシステム" },
+          { href: withLang("/partners"), title: "広告・コラボ", desc: "勝ち残った楽曲を放送、キュレーション、商業展開へ" },
         ]
       : lang === "ko"
         ? [
-            { href: withLang("/hook-guide"), title: "Drop Battle Rules", desc: "가장 강한 Drop으로 무대에 올라 인정을 쌓기" },
+            { href: withLang("/hook-guide"), title: "Drop Battle 규칙", desc: "가장 강한 Drop으로 무대에 올라 인정을 쌓기" },
             { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
-            { href: withLang("/rank"), title: "AIPOGER Honor Board", desc: "인정받은 승리, 인기 트랙, 기록된 크리에이터 성과" },
-            { href: withLang("/about"), title: "About AIPOGER", desc: "AI 크리에이터가 성장하고 작품이 인정받는 시스템" },
-            { href: withLang("/partners"), title: "Partnerships", desc: "우승곡을 방송, 큐레이션, 상업 협업으로 연결" },
+            { href: withLang("/rank"), title: "AIPOGER 명예보드", desc: "인정받은 승리, 인기 트랙, 기록된 크리에이터 성과" },
+            { href: withLang("/about"), title: "AIPOGER 소개", desc: "AI 크리에이터가 성장하고 작품이 인정받는 시스템" },
+            { href: withLang("/partners"), title: "광고와 협업", desc: "우승곡을 방송, 큐레이션, 상업 협업으로 연결" },
           ]
     : [
         { href: withLang("/hook-guide"), title: "Drop Battle Rules", desc: "Put your strongest Drop on stage and build recognition" },
