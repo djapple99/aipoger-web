@@ -58,12 +58,15 @@ type BattleArchiveRow = {
 
 type CreatorItem = {
   id: string;
+  category: CreatorFilter;
   kind: string;
   title: string;
   meta: string;
   href: string;
   date?: string | null;
 };
+
+type CreatorFilter = "all" | "listenBar" | "battle" | "records" | "wins";
 
 function authAvatarUrl(user: { user_metadata?: Record<string, unknown> } | null | undefined): string | null {
   const meta = user?.user_metadata;
@@ -121,6 +124,7 @@ function ProfileInner() {
   const [battleQueues, setBattleQueues] = useState<BattleQueueRow[]>([]);
   const [battles, setBattles] = useState<BattleRow[]>([]);
   const [wins, setWins] = useState<BattleArchiveRow[]>([]);
+  const [creatorFilter, setCreatorFilter] = useState<CreatorFilter>("all");
   const cropFileInputRef = useRef<HTMLInputElement>(null);
   const avatarSectionRef = useRef<HTMLDivElement>(null);
 
@@ -130,7 +134,7 @@ function ProfileInner() {
         ? {
             kicker: "AIPOGER CREATOR",
             title: "創作者中心",
-            subtitle: "管理你的舞台身份、頭像與已上傳作品。點數與階級先不顯示，重點回到創作紀錄。",
+            subtitle: "管理你的舞台身份、頭像與已上傳作品。",
             identity: "舞台身份",
             avatarHelp: `${IMAGE_UPLOAD_FORMAT_LABEL}，單檔最大 2MB。請使用可公開展示的本人或品牌頭像。`,
             changeAvatar: "更換頭像",
@@ -139,8 +143,10 @@ function ProfileInner() {
             adminEntry: "後台入口",
             adminHelp: "管理員可快速進入營運與內容後台。",
             creations: "我的創作資料",
-            creationsHelp: "整理你上傳到傷心酒吧與 Drop Battle 的作品，不顯示點數或階級。",
+            creationsHelp: "整理你上傳到傷心酒吧與 Drop Battle 的作品。",
+            all: "全部資料",
             recent: "最近上傳",
+            manage: "整理資料",
             empty: "目前還沒有讀到上傳紀錄。",
             error: "部分創作資料暫時讀不到，頁面先顯示可取得的內容。",
             battle: "Drop Battle",
@@ -154,7 +160,7 @@ function ProfileInner() {
         : {
             kicker: "AIPOGER CREATOR",
             title: "Creator Center",
-            subtitle: "Manage your stage identity, avatar, and uploaded work. Points and ranks are hidden for now.",
+            subtitle: "Manage your stage identity, avatar, and uploaded work.",
             identity: "Stage Identity",
             avatarHelp: `${IMAGE_UPLOAD_FORMAT_LABEL}, max 2MB. Use an avatar you can show publicly.`,
             changeAvatar: "Change Avatar",
@@ -163,8 +169,10 @@ function ProfileInner() {
             adminEntry: "Admin Entry",
             adminHelp: "Quick access for operations and content management.",
             creations: "My Creator Data",
-            creationsHelp: "Your Listen Bar and Drop Battle uploads, without points or ranks.",
+            creationsHelp: "Your Listen Bar and Drop Battle uploads.",
+            all: "All Data",
             recent: "Recent Uploads",
+            manage: "Manage",
             empty: "No uploads found yet.",
             error: "Some creator data could not be loaded, so this page is showing what is available.",
             battle: "Drop Battle",
@@ -384,6 +392,7 @@ function ProfileInner() {
   const creatorItems = useMemo<CreatorItem[]>(() => {
     const tracks = barTracks.map((track) => ({
       id: `bar-${track.id}`,
+      category: "listenBar" as const,
       kind: copy.listenBar,
       title: track.title?.trim() || (isZh ? "未命名歌曲" : "Untitled Song"),
       meta: [
@@ -400,6 +409,7 @@ function ProfileInner() {
 
     const queues = battleQueues.map((queue) => ({
       id: `queue-${queue.id}`,
+      category: "battle" as const,
       kind: copy.battle,
       title: queue.original_file_name?.trim() || queue.genre?.trim() || copy.battle,
       meta: [compactStatus(queue.status, lang), queue.genre?.trim()].filter(Boolean).join(" / "),
@@ -407,8 +417,19 @@ function ProfileInner() {
       date: queue.created_at ?? queue.scheduled_start_at,
     }));
 
+    const battleRecords = battles.map((battle) => ({
+      id: `battle-${battle.id}`,
+      category: "records" as const,
+      kind: copy.records,
+      title: [battle.song_a_name?.trim(), battle.song_b_name?.trim()].filter(Boolean).join(" vs ") || copy.records,
+      meta: [compactStatus(battle.status, lang), battle.genre?.trim()].filter(Boolean).join(" / "),
+      href: `/battle/${battle.id}`,
+      date: battle.battle_ended_at ?? battle.created_at,
+    }));
+
     const archivedWins = wins.map((win) => ({
       id: `win-${win.id}`,
+      category: "wins" as const,
       kind: copy.wins,
       title: win.winner_song?.trim() || win.winner_name?.trim() || copy.wins,
       meta: win.genre?.trim() || copy.battle,
@@ -416,17 +437,25 @@ function ProfileInner() {
       date: win.created_at,
     }));
 
-    return [...tracks, ...queues, ...archivedWins]
+    return [...tracks, ...queues, ...battleRecords, ...archivedWins]
       .sort((a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime())
-      .slice(0, 10);
-  }, [barTracks, battleQueues, copy.battle, copy.listenBar, copy.wins, isZh, lang, wins]);
+      .slice(0, 16);
+  }, [barTracks, battleQueues, battles, copy.battle, copy.listenBar, copy.records, copy.wins, isZh, lang, wins]);
 
   const stats = [
-    { label: copy.listenBar, value: barTracks.length, sub: `${barTracks.filter((track) => track.is_active).length} ${copy.active}` },
-    { label: copy.battle, value: battleQueues.length, sub: isZh ? "上傳卡片" : "uploads" },
-    { label: copy.records, value: battles.length, sub: isZh ? "曾進入對戰" : "battle records" },
-    { label: copy.wins, value: wins.length, sub: isZh ? "勝利作品" : "winning tracks" },
+    { key: "listenBar" as const, label: copy.listenBar, value: barTracks.length, sub: `${barTracks.filter((track) => track.is_active).length} ${copy.active}` },
+    { key: "battle" as const, label: copy.battle, value: battleQueues.length, sub: isZh ? "上傳卡片" : "uploads" },
+    { key: "records" as const, label: copy.records, value: battles.length, sub: isZh ? "曾進入對戰" : "battle records" },
+    { key: "wins" as const, label: copy.wins, value: wins.length, sub: isZh ? "勝利作品" : "winning tracks" },
   ];
+
+  const filteredCreatorItems = creatorFilter === "all"
+    ? creatorItems
+    : creatorItems.filter((item) => item.category === creatorFilter);
+
+  const creatorListTitle = creatorFilter === "all"
+    ? copy.recent
+    : `${stats.find((stat) => stat.key === creatorFilter)?.label ?? copy.recent} / ${copy.manage}`;
 
   return (
     <div className="aipo-stage-bg min-h-screen px-4 py-10 text-white">
@@ -551,23 +580,49 @@ function ProfileInner() {
 
             {creatorError && <p className="mt-4 rounded-2xl border border-orange-300/20 bg-orange-300/10 px-4 py-3 text-xs text-orange-100">{creatorError}</p>}
 
-            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="mt-5 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setCreatorFilter("all")}
+                className={`rounded-full border px-4 py-2 text-xs font-black transition ${
+                  creatorFilter === "all"
+                    ? "border-orange-300 bg-orange-400/18 text-orange-100 shadow-[0_0_20px_rgba(255,106,0,0.16)]"
+                    : "border-white/10 bg-black/25 text-zinc-400 hover:border-orange-300/45 hover:text-orange-100"
+                }`}
+              >
+                {copy.all}
+              </button>
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {stats.map((stat) => (
-                <div key={stat.label} className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                <button
+                  key={stat.label}
+                  type="button"
+                  onClick={() => setCreatorFilter(stat.key)}
+                  className={`group rounded-2xl border p-4 text-left transition ${
+                    creatorFilter === stat.key
+                      ? "border-orange-300/65 bg-orange-400/[0.12] shadow-[0_0_30px_rgba(255,106,0,0.12)]"
+                      : "border-white/10 bg-black/30 hover:border-orange-300/45 hover:bg-orange-300/[0.06]"
+                  }`}
+                >
                   <p className="text-3xl font-black tabular-nums text-orange-100">{stat.value}</p>
                   <p className="mt-1 text-sm font-black text-zinc-100">{stat.label}</p>
                   <p className="mt-1 text-xs text-zinc-500">{stat.sub}</p>
-                </div>
+                  <p className="mt-3 text-[11px] font-black uppercase tracking-[0.18em] text-cyan-100/70 group-hover:text-cyan-100">
+                    {copy.manage}
+                  </p>
+                </button>
               ))}
             </div>
 
             <div className="mt-6">
               <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-lg font-black text-zinc-50">{copy.recent}</h3>
+                <h3 className="text-lg font-black text-zinc-50">{creatorListTitle}</h3>
               </div>
-              {creatorItems.length > 0 ? (
+              {filteredCreatorItems.length > 0 ? (
                 <div className="space-y-2">
-                  {creatorItems.map((item) => (
+                  {filteredCreatorItems.map((item) => (
                     <Link
                       key={item.id}
                       href={item.href}
