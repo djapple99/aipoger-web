@@ -182,8 +182,11 @@ Current rules:
 - Own reaction can satisfy the V1 minimum support threshold.
 - Judgement interval: every 8 hours.
 - Public-pool elimination only runs when there are more than 88 public songs.
-- Each elimination pass removes up to 3 low-performing public-pool songs.
-- If the public pool is at or below 88 songs, elimination stops.
+- Elimination must never bring the active public pool below 88 songs.
+- Each elimination pass removes at most the overflow above 88, capped at 3 low-performing public-pool songs.
+- If songs have the same positive reaction count, remove the older song first.
+- If the public pool is at or below 88 songs, elimination stops and no refill action is needed.
+- The legacy 30-day `completed` removal rule is retired and must not remove songs.
 - Challenger + public pool shared rotation target: 100 songs.
 - A song with 30 positive reactions becomes Honor Board eligible.
 - New submissions get priority after the current song finishes; each priority batch starts when the first upload arrives, airs up to 8 new uploads within 1 hour, and pushes overflow to the next hour.
