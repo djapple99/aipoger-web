@@ -25,6 +25,7 @@ import {
 } from "@/lib/battle-pool-rules";
 import { fontGlowSans, fontRighteous } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n";
+import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import {
   LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD,
   listenBarRowToTrack,
@@ -871,7 +872,7 @@ function HonorCommentsPanel({
 }
 
 export default function RankPage() {
-  const { lang } = useI18n();
+  const { lang, t } = useI18n();
   const isZh = lang === "zh";
   const [active, setActive] = useState<BoardKey>("drop");
   const [activeGenre, setActiveGenre] = useState("all");
@@ -1128,8 +1129,21 @@ export default function RankPage() {
   }, [monthFilteredRows, isZh]);
 
   const genreOptions = useMemo(() => {
-    return Object.values(genreCounts).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
-  }, [genreCounts]);
+    const fixedKeys = new Set(MUSIC_GENRE_OPTIONS.map((genre) => normalizeGenre(genre.value)));
+    const fixedOptions = MUSIC_GENRE_OPTIONS.map((genre) => {
+      const key = normalizeGenre(genre.value);
+      return {
+        key,
+        label: t(genre.labelKey),
+        count: genreCounts[key]?.count ?? 0,
+      };
+    });
+    const legacyOptions = Object.entries(genreCounts)
+      .filter(([key]) => !fixedKeys.has(key))
+      .map(([key, value]) => ({ key, ...value }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+    return [...fixedOptions, ...legacyOptions];
+  }, [genreCounts, t]);
 
   const filteredDisplayRows = useMemo(() => {
     if (activeGenre === "all") return monthFilteredRows;
@@ -1389,7 +1403,7 @@ export default function RankPage() {
                       {isZh ? `所有類型 (${monthFilteredRows.length})` : `All Styles (${monthFilteredRows.length})`}
                     </option>
                     {genreOptions.map((genre) => (
-                      <option key={normalizeGenre(genre.label)} value={normalizeGenre(genre.label)}>
+                      <option key={genre.key} value={genre.key}>
                         {genre.label} ({genre.count})
                       </option>
                     ))}
