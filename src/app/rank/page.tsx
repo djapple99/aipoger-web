@@ -136,6 +136,8 @@ const BOARD_KEYS: BoardKey[] = ["drop", "bar"];
 const MOCK_PATTERN = /(qa-|mock|demo|test|ghost|sample)/i;
 const ARCHIVE_SELECT_BASE =
   "battle_id,battle_code,winner,winner_name,winner_song_name,winner_ai_tool,opponent_name,opponent_song_name,final_vote_left,final_vote_right,total_votes,audience_review,result_payload,archived_at";
+const HONOR_ACTION_CLASS =
+  "!border-yellow-100/25 !bg-white/[0.035] !text-zinc-200 hover:!border-yellow-100/45 hover:!bg-white/[0.055] hover:!text-white active:!bg-yellow-300 active:!text-black";
 
 function safeRankForFighter(name: string, rank?: string | null) {
   const cleanRank = rank?.trim() ?? "";
@@ -239,6 +241,53 @@ function normalizeGenre(value: string | null | undefined) {
 
 function displayGenre(value: string | null | undefined, isZh: boolean) {
   return String(value || "").trim() || (isZh ? "未分類風格" : "Unsorted Style");
+}
+
+function monthKey(value: string | null | undefined) {
+  const date = new Date(value || "");
+  if (Number.isNaN(date.getTime())) return "unknown";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function displayMonth(value: string, isZh: boolean) {
+  if (value === "unknown") return isZh ? "未標月份" : "Unknown Month";
+  const [year, month] = value.split("-");
+  if (!year || !month) return isZh ? "未標月份" : "Unknown Month";
+  return isZh ? `${year} 年 ${Number(month)} 月` : `${new Date(`${value}-01T00:00:00`).toLocaleDateString("en-US", { month: "short", year: "numeric" })}`;
+}
+
+function SocialIcon({ label }: { label: string }) {
+  const normalized = label.toLowerCase();
+  if (normalized.includes("instagram")) {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
+        <rect x="5" y="5" width="14" height="14" rx="4" fill="none" stroke="currentColor" strokeWidth="2" />
+        <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" strokeWidth="2" />
+        <circle cx="16.5" cy="7.5" r="1.2" fill="currentColor" />
+      </svg>
+    );
+  }
+  if (normalized.includes("discord")) {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
+        <path
+          d="M7.8 8.2c2.6-1 5.8-1 8.4 0l1 5.8c-1.5 1.2-3 1.8-4.6 2l-.6-1.1c-.7.1-1.3.1-2 0L9.4 16c-1.6-.2-3.1-.8-4.6-2l1-5.8Z"
+          fill="none"
+          stroke="currentColor"
+          strokeLinejoin="round"
+          strokeWidth="1.8"
+        />
+        <circle cx="9.4" cy="12" r="1" fill="currentColor" />
+        <circle cx="14.6" cy="12" r="1" fill="currentColor" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
+      <path d="M13 4v10.2a4.2 4.2 0 1 1-2-3.6V4h2Z" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+      <path d="M13 6.5c1.3 2 3 3.2 5 3.4" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+    </svg>
+  );
 }
 
 function resultHref(row: RankRow, lang: string) {
@@ -724,7 +773,7 @@ function LyricsAction({
     <button
       type="button"
       onClick={() => onOpen(row)}
-      className="inline-flex items-center justify-center rounded-full border border-yellow-200/35 bg-yellow-300/10 px-2.5 py-1.5 text-[11px] font-black text-yellow-100 transition hover:border-yellow-100 hover:bg-yellow-300/16 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-200/70"
+      className={`inline-flex items-center justify-center rounded-full border px-2.5 py-1.5 text-[11px] font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-200/70 ${HONOR_ACTION_CLASS}`}
     >
       {isZh ? "歌詞" : "Lyrics"}
     </button>
@@ -760,7 +809,7 @@ function HonorCommentsPanel({
       <button
         type="button"
         onClick={onToggle}
-        className="inline-flex items-center justify-center gap-1.5 rounded-full border border-yellow-200/30 bg-yellow-300/10 px-2.5 py-1.5 text-[11px] font-black text-yellow-100 transition hover:border-yellow-100 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-200/70"
+        className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[11px] font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-200/70 ${HONOR_ACTION_CLASS}`}
         aria-expanded={expanded}
       >
         <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
@@ -809,7 +858,7 @@ function HonorCommentsPanel({
             <button
               type="submit"
               disabled={busy || !draft.trim()}
-              className="rounded-md border border-yellow-200/30 bg-yellow-300/12 px-3 py-2 text-[11px] font-black text-yellow-100 transition hover:border-yellow-100 disabled:cursor-not-allowed disabled:opacity-45"
+              className={`rounded-md border px-3 py-2 text-[11px] font-black transition disabled:cursor-not-allowed disabled:opacity-45 ${HONOR_ACTION_CLASS}`}
             >
               {busy ? (isZh ? "送出中" : "Sending") : isZh ? "送出" : "Post"}
             </button>
@@ -826,6 +875,7 @@ export default function RankPage() {
   const isZh = lang === "zh";
   const [active, setActive] = useState<BoardKey>("drop");
   const [activeGenre, setActiveGenre] = useState("all");
+  const [activeMonth, setActiveMonth] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [archivedResults, setArchivedResults] = useState<ArchivedBattleResult[]>([]);
   const [hotBarRows, setHotBarRows] = useState<RankRow[]>([]);
@@ -1017,6 +1067,7 @@ export default function RankPage() {
 
   useEffect(() => {
     setActiveGenre("all");
+    setActiveMonth("all");
   }, [active]);
 
   useEffect(() => {
@@ -1048,23 +1099,42 @@ export default function RankPage() {
     );
   }, [displayRows, normalizedSearchTerm]);
 
-  const genreCounts = useMemo(() => {
+  const monthCounts = useMemo(() => {
     return searchedDisplayRows.reduce<Record<string, { label: string; count: number }>>((acc, row) => {
+      const key = monthKey(row.createdAt);
+      acc[key] = { label: displayMonth(key, isZh), count: (acc[key]?.count ?? 0) + 1 };
+      return acc;
+    }, {});
+  }, [searchedDisplayRows, isZh]);
+
+  const monthOptions = useMemo(() => {
+    return Object.entries(monthCounts)
+      .map(([key, value]) => ({ key, ...value }))
+      .sort((a, b) => b.key.localeCompare(a.key));
+  }, [monthCounts]);
+
+  const monthFilteredRows = useMemo(() => {
+    if (activeMonth === "all") return searchedDisplayRows;
+    return searchedDisplayRows.filter((row) => monthKey(row.createdAt) === activeMonth);
+  }, [activeMonth, searchedDisplayRows]);
+
+  const genreCounts = useMemo(() => {
+    return monthFilteredRows.reduce<Record<string, { label: string; count: number }>>((acc, row) => {
       const label = displayGenre(row.genre || row.note, isZh);
       const key = normalizeGenre(label);
       acc[key] = { label, count: (acc[key]?.count ?? 0) + 1 };
       return acc;
     }, {});
-  }, [searchedDisplayRows, isZh]);
+  }, [monthFilteredRows, isZh]);
 
   const genreOptions = useMemo(() => {
     return Object.values(genreCounts).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
   }, [genreCounts]);
 
   const filteredDisplayRows = useMemo(() => {
-    if (activeGenre === "all") return searchedDisplayRows;
-    return searchedDisplayRows.filter((row) => normalizeGenre(row.genre || row.note) === activeGenre);
-  }, [activeGenre, searchedDisplayRows]);
+    if (activeGenre === "all") return monthFilteredRows;
+    return monthFilteredRows.filter((row) => normalizeGenre(row.genre || row.note) === activeGenre);
+  }, [activeGenre, monthFilteredRows]);
 
   const displayGroups = useMemo(() => {
     const groups = new Map<string, RankRow[]>();
@@ -1079,9 +1149,6 @@ export default function RankPage() {
 
   const activeBadge = active === "bar" ? "HOT" : "WIN";
   const featuredRows = filteredDisplayRows.slice(0, 4);
-  const boardCount = displayRows.length;
-  const genreCount = genreOptions.length;
-
   const toggleFavorite = async (row: RankRow) => {
     const key = honorRecordKey(row);
     setInteractionErrors((current) => ({ ...current, [key]: "" }));
@@ -1204,17 +1271,20 @@ export default function RankPage() {
           </nav>
         </header>
 
-        <section className="grid gap-5 py-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-end">
-          <div className="max-w-3xl">
+        <section className="py-5">
+          <div className="max-w-5xl">
             <h1 className="text-3xl font-black leading-tight text-white sm:text-4xl">
               {isZh ? "AIPOGER 榮譽榜" : "AIPOGER Honor Board"}
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base">
+            <p className="mt-3 max-w-3xl whitespace-pre-line text-sm leading-7 text-zinc-400 sm:text-base">
               {isZh
-                ? "這裡只收被聽眾票數打出來的 AI 音樂戰績。勝出的 Drop、熱播的歌，會在這裡被封存、被分享、被下一位創作者挑戰。"
-                : "This board archives AI music records earned by listener votes. Winning Drops and hot tracks are preserved, shared, and ready to be challenged again."}
+                ? "分享你的戰績，讓更多人聽見這些歌；榮譽榜不是放在角落的名單。\n把作品分享到社群，邀請朋友進場聽歌、投票、挑戰，讓 AIPOGER 的 AI 音樂舞台真的熱起來。"
+                : "Share your records and bring more ears to these songs; the Honor Board is not a buried list.\nPost the work, invite friends to listen, vote, and challenge, and make the AIPOGER AI music stage feel alive."}
             </p>
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div
+              className="mt-4 flex max-w-full items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              aria-label={isZh ? "榮譽榜操作" : "Honor Board Actions"}
+            >
               <ShareButton
                 title={isZh ? "AIPOGER 榮譽榜" : "AIPOGER Honor Board"}
                 text={
@@ -1224,53 +1294,31 @@ export default function RankPage() {
                 }
                 label={isZh ? "分享榮譽榜" : "Share Board"}
                 copiedLabel={isZh ? "榮譽榜連結已複製" : "Board Link Copied"}
-                className="!px-4 !py-2 !text-xs border-yellow-200/45 bg-yellow-300/12 text-yellow-100 hover:bg-yellow-300/18"
+                className="shrink-0 whitespace-nowrap !px-4 !py-2 !text-xs border-yellow-100/30 bg-white/[0.045] text-zinc-100 hover:border-yellow-100/55 active:bg-yellow-300 active:text-black"
               />
               <Link
                 href={`/battle/setup${navSuffix}`}
-                className="aipo-primary-button inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-black transition"
+                className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-yellow-100/30 bg-white/[0.045] px-4 py-2 text-xs font-black text-zinc-100 transition hover:border-yellow-100/55 active:bg-yellow-300 active:text-black"
               >
                 {isZh ? "發起挑戰" : "Start a Challenge"}
               </Link>
-            </div>
-          </div>
-
-          <div className="aipo-control-panel grid grid-cols-3 gap-2 rounded-lg border-white/10 p-3">
-            {[
-              { label: isZh ? "作品" : "Records", value: boardCount },
-              { label: isZh ? "風格" : "Styles", value: genreCount },
-              { label: isZh ? "精選" : "Featured", value: featuredRows.length },
-            ].map((stat) => (
-              <div key={stat.label} className="rounded-md border border-white/8 bg-black/24 px-3 py-2">
-                <p className="text-xl font-black leading-none text-white">{stat.value}</p>
-                <p className="mt-1 text-[10px] font-bold uppercase text-zinc-500">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_18rem]">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
-              <div className="flex flex-wrap gap-2">
-                {BOARD_KEYS.map((key) => {
-                  const selected = active === key;
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setActive(key)}
-                      className={`rounded-full border px-4 py-2 text-xs font-black transition ${
-                        selected
-                          ? "aipo-primary-button text-black"
-                          : "aipo-ghost-button text-zinc-300 hover:text-white"
-                      }`}
-                    >
-                      {isZh ? BOARD_META[key].zh : BOARD_META[key].en}
-                    </button>
-                  );
-                })}
-              </div>
+              {BOARD_KEYS.map((key) => {
+                const selected = active === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setActive(key)}
+                    className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-xs font-black transition active:bg-yellow-300 active:text-black ${
+                      selected
+                        ? "border-yellow-100/55 bg-white/[0.055] text-white shadow-[inset_0_0_0_1px_rgba(253,224,71,0.1)]"
+                        : "border-yellow-100/25 bg-white/[0.035] text-zinc-300 hover:border-yellow-100/45 hover:text-white"
+                    }`}
+                  >
+                    {isZh ? BOARD_META[key].zh : BOARD_META[key].en}
+                  </button>
+                );
+              })}
               <ShareButton
                 title={isZh ? `${boardTitle} / AIPOGER 榮譽榜` : `${boardTitle} / AIPOGER Honor Board`}
                 text={
@@ -1278,10 +1326,73 @@ export default function RankPage() {
                     ? `來看 AIPOGER ${boardTitle}，只顯示真實紀錄。`
                     : `Check the AIPOGER ${boardTitle} with real records only.`
                 }
-                label={isZh ? "分享這個榜" : "Share Board"}
+                label={isZh ? "分享這個榜" : "Share This Board"}
                 copiedLabel={isZh ? "榮譽榜連結已複製" : "Board Copied"}
-                className="!px-3 !py-2 !text-xs"
+                className="shrink-0 whitespace-nowrap !px-4 !py-2 !text-xs border-yellow-100/30 bg-white/[0.045] text-zinc-100 hover:border-yellow-100/55 active:bg-yellow-300 active:text-black"
               />
+              <div className="flex shrink-0 items-center gap-1.5" aria-label={isZh ? "AIPOGER 社群" : "AIPOGER Social"}>
+                {AIPOGER_SOCIAL_LINKS.map((social) => (
+                  <a
+                    key={`top-${social.label}`}
+                    href={social.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={`${social.label} ${social.handle}`}
+                    aria-label={`${social.label} ${social.handle}`}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-yellow-100/25 bg-white/[0.045] text-zinc-100 transition hover:border-yellow-100/50 hover:text-yellow-50 active:bg-yellow-300 active:text-black"
+                  >
+                    <SocialIcon label={social.label} />
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_18rem]">
+          <div className="min-w-0">
+            <div className="aipo-control-panel rounded-[1.15rem] border-yellow-100/18 p-2">
+              <div className="grid gap-2 sm:grid-cols-[5.25rem_1fr] sm:items-center">
+                <span className={`${fontRighteous.className} text-xs uppercase tracking-[0.18em] text-yellow-100/65`}>
+                  {isZh ? "月份" : "Month"}
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveMonth("all");
+                      setActiveGenre("all");
+                    }}
+                    className={`rounded-full border px-3 py-2 text-xs font-black transition active:bg-yellow-300 active:text-black ${
+                      activeMonth === "all"
+                        ? "border-yellow-100/55 bg-white/[0.055] text-white"
+                        : "border-yellow-100/25 bg-white/[0.035] text-zinc-300 hover:border-yellow-100/45 hover:text-white"
+                    }`}
+                  >
+                    {isZh ? "全部月份" : "All Months"}
+                  </button>
+                  {monthOptions.map((month) => (
+                    <button
+                      key={month.key}
+                      type="button"
+                      onClick={() => {
+                        setActiveMonth(month.key);
+                        setActiveGenre("all");
+                      }}
+                      className={`rounded-full border px-3 py-2 text-xs font-black transition active:bg-yellow-300 active:text-black ${
+                        activeMonth === month.key
+                          ? "border-yellow-100/55 bg-white/[0.055] text-white"
+                          : "border-yellow-100/25 bg-white/[0.035] text-zinc-300 hover:border-yellow-100/45 hover:text-white"
+                      }`}
+                    >
+                      {month.label}
+                      <span className="ml-2 rounded-full border border-white/10 bg-black/25 px-1.5 py-0.5 text-[10px] leading-none text-zinc-500">
+                        {month.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div className="aipo-control-panel mt-4 rounded-[1.15rem] p-2">
@@ -1397,7 +1508,7 @@ export default function RankPage() {
                                     <LyricsAction row={row} isZh={isZh} onOpen={openLyricsModal} />
                                     <Link
                                       href={rowResultHref}
-                                      className="inline-flex rounded-full border border-orange-200/30 px-3 py-1.5 text-[11px] font-black text-orange-100 transition hover:border-orange-100 hover:text-white"
+                                      className={`inline-flex rounded-full border px-3 py-1.5 text-[11px] font-black transition ${HONOR_ACTION_CLASS}`}
                                     >
                                       {isZh ? "成果卡" : "Result"}
                                     </Link>
@@ -1555,7 +1666,7 @@ export default function RankPage() {
                                       <>
                                         <Link
                                           href={rowResultHref}
-                                          className="inline-flex items-center justify-center rounded-full border border-cyan-200/30 bg-cyan-300/10 px-2.5 py-1.5 text-[11px] font-black text-cyan-100 transition hover:border-cyan-100 hover:text-white"
+                                          className={`inline-flex items-center justify-center rounded-full border px-2.5 py-1.5 text-[11px] font-black transition ${HONOR_ACTION_CLASS}`}
                                         >
                                           {isZh ? "成果卡" : "Result"}
                                         </Link>
@@ -1588,7 +1699,7 @@ export default function RankPage() {
                                           url={rowResultHref}
                                           label={isZh ? "分享" : "Share"}
                                           copiedLabel={isZh ? "已複製" : "Copied"}
-                                          className="!px-2.5 !py-1.5 !text-[11px]"
+                                          className={`!px-2.5 !py-1.5 !text-[11px] ${HONOR_ACTION_CLASS}`}
                                         />
                                         <button
                                           type="button"
@@ -1637,7 +1748,7 @@ export default function RankPage() {
                                           url={`/rank?lang=${lang}`}
                                           label={isZh ? "分享" : "Share"}
                                           copiedLabel={isZh ? "已複製" : "Copied"}
-                                          className="!px-2.5 !py-1.5 !text-[11px]"
+                                          className={`!px-2.5 !py-1.5 !text-[11px] ${HONOR_ACTION_CLASS}`}
                                         />
                                         <button
                                           type="button"
@@ -1663,7 +1774,7 @@ export default function RankPage() {
                                       targetUrl={row.kind === "battle" ? rowResultHref : `/rank?lang=${lang}`}
                                       context={`Honor board row kind=${row.kind}`}
                                       lang={lang}
-                                      className="!px-2.5 !py-1.5 !text-[11px]"
+                                      className={`!px-2.5 !py-1.5 !text-[11px] ${HONOR_ACTION_CLASS}`}
                                     />
                                   </div>
                                   {interactionErrors[recordKey] && !expandedComments[recordKey] ? (
@@ -1707,14 +1818,14 @@ export default function RankPage() {
                 <button
                   type="button"
                   onClick={() => setActiveGenre("all")}
-                  className={`flex items-center justify-between rounded-full border px-3 py-2 text-left text-xs font-black transition ${
+                  className={`flex items-center justify-between rounded-full border px-3 py-2 text-left text-xs font-black transition active:bg-yellow-300 active:text-black ${
                     activeGenre === "all"
-                      ? "border-orange-200/60 bg-orange-500/12 text-orange-50 shadow-[inset_0_0_0_1px_rgba(251,146,60,0.12)]"
-                      : "border-white/10 bg-white/[0.035] text-zinc-300 hover:border-orange-200/35 hover:text-white"
+                      ? "border-yellow-100/55 bg-white/[0.055] text-white shadow-[inset_0_0_0_1px_rgba(253,224,71,0.1)]"
+                      : "border-yellow-100/25 bg-white/[0.035] text-zinc-300 hover:border-yellow-100/45 hover:text-white"
                   }`}
                 >
                   <span className="flex min-w-0 items-center gap-2">
-                    <span className={`h-1.5 w-1.5 rounded-full ${activeGenre === "all" ? "bg-orange-300" : "bg-zinc-600"}`} />
+                    <span className={`h-1.5 w-1.5 rounded-full ${activeGenre === "all" ? "bg-yellow-200" : "bg-zinc-600"}`} />
                     <span className="truncate">{isZh ? "所有類型" : "All Styles"}</span>
                   </span>
                   <span className="opacity-65">{displayRows.length}</span>
@@ -1727,14 +1838,14 @@ export default function RankPage() {
                       key={key}
                       type="button"
                       onClick={() => setActiveGenre(key)}
-                      className={`flex items-center justify-between rounded-full border px-3 py-2 text-left text-xs font-black transition ${
+                      className={`flex items-center justify-between rounded-full border px-3 py-2 text-left text-xs font-black transition active:bg-yellow-300 active:text-black ${
                         selected
-                          ? "border-cyan-100/65 bg-cyan-300/12 text-cyan-50 shadow-[inset_0_0_0_1px_rgba(103,232,249,0.1)]"
-                          : "border-white/10 bg-white/[0.035] text-zinc-300 hover:border-cyan-100/35 hover:text-white"
+                          ? "border-yellow-100/55 bg-white/[0.055] text-white shadow-[inset_0_0_0_1px_rgba(253,224,71,0.1)]"
+                          : "border-yellow-100/25 bg-white/[0.035] text-zinc-300 hover:border-yellow-100/45 hover:text-white"
                       }`}
                     >
                       <span className="flex min-w-0 items-center gap-2">
-                        <span className={`h-1.5 w-1.5 rounded-full ${selected ? "bg-cyan-200" : "bg-zinc-600"}`} />
+                        <span className={`h-1.5 w-1.5 rounded-full ${selected ? "bg-yellow-200" : "bg-zinc-600"}`} />
                         <span className="truncate">{genre.label}</span>
                       </span>
                       <span className="ml-2 opacity-65">{genre.count}</span>
@@ -1749,81 +1860,21 @@ export default function RankPage() {
                 {isZh ? "快速連結" : "Quick Links"}
               </p>
               <div className="mt-3 grid gap-2 text-sm font-bold">
-                <Link href={`/battle${navSuffix}`} className="flex items-center justify-between rounded-md border border-white/10 bg-white/[0.035] px-3 py-2 text-zinc-200 transition hover:border-orange-200/35 hover:text-orange-100">
+                <Link href={`/battle${navSuffix}`} className="flex items-center justify-between rounded-md border border-yellow-100/25 bg-white/[0.035] px-3 py-2 text-zinc-200 transition hover:border-yellow-100/45 hover:text-white active:bg-yellow-300 active:text-black">
                   <span>{isZh ? "AI 音樂鬥歌場" : "AI Music Battle Hall"}</span>
-                  <span className="text-orange-200/70">→</span>
+                  <span className="text-yellow-100/70">→</span>
                 </Link>
-                <Link href={`/listen-bar${navSuffix}`} className="flex items-center justify-between rounded-md border border-white/10 bg-white/[0.035] px-3 py-2 text-zinc-200 transition hover:border-cyan-200/35 hover:text-cyan-100">
+                <Link href={`/listen-bar${navSuffix}`} className="flex items-center justify-between rounded-md border border-yellow-100/25 bg-white/[0.035] px-3 py-2 text-zinc-200 transition hover:border-yellow-100/45 hover:text-white active:bg-yellow-300 active:text-black">
                   <span>{isZh ? "傷心酒吧公播" : "Bar Heartbreak Radio"}</span>
-                  <span className="text-cyan-100/70">→</span>
+                  <span className="text-yellow-100/70">→</span>
                 </Link>
-                <Link href={`/battle/setup${navSuffix}`} className="flex items-center justify-between rounded-md border border-orange-200/25 bg-orange-500/10 px-3 py-2 text-orange-100 transition hover:border-orange-100/55 hover:bg-orange-500/16">
+                <Link href={`/battle/setup${navSuffix}`} className="flex items-center justify-between rounded-md border border-yellow-100/25 bg-white/[0.035] px-3 py-2 text-zinc-200 transition hover:border-yellow-100/45 hover:text-white active:bg-yellow-300 active:text-black">
                   <span>{isZh ? "發起挑戰" : "Start a Challenge"}</span>
                   <span>→</span>
                 </Link>
               </div>
             </div>
-
-            <div className="aipo-control-panel rounded-lg border-cyan-100/20 bg-cyan-300/[0.035] p-4">
-              <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.16em] text-zinc-500`}>
-                {isZh ? "加入社群" : "Join Community"}
-              </p>
-              <p className="mt-2 text-sm font-black leading-6 text-white">
-                {isZh
-                  ? "把榮譽榜作品推給更多聽眾。"
-                  : "Bring more listeners into these records."}
-              </p>
-              <div className="mt-3 grid gap-2">
-                {AIPOGER_SOCIAL_LINKS.map((social) => (
-                  <a
-                    key={`side-${social.label}`}
-                    href={social.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center justify-between rounded-md border border-white/10 bg-black/24 px-3 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-100/50 hover:text-cyan-50"
-                  >
-                    <span>{social.label}</span>
-                    <span className="text-cyan-100/70">→</span>
-                  </a>
-                ))}
-              </div>
-            </div>
           </aside>
-        </section>
-
-        <section className="aipo-control-panel mt-7 overflow-hidden rounded-[1.25rem] border-orange-200/25 bg-[radial-gradient(circle_at_18%_20%,rgba(255,106,0,0.18),transparent_34%),radial-gradient(circle_at_82%_18%,rgba(34,211,238,0.12),transparent_30%),rgba(0,0,0,0.54)] p-5 sm:p-6">
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-            <div className="min-w-0">
-              <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.2em] text-orange-200/80`}>
-                {isZh ? "AIPOGER COMMUNITY" : "AIPOGER COMMUNITY"}
-              </p>
-              <h2 className="mt-2 text-2xl font-black leading-tight text-white sm:text-3xl">
-                {isZh ? "分享你的戰績，讓更多人聽見這些歌" : "Share the records and bring more ears in"}
-              </h2>
-              <p className="mt-3 max-w-2xl text-sm font-bold leading-7 text-zinc-400">
-                {isZh
-                  ? "榮譽榜不是放在角落的名單。把作品分享到社群，邀請朋友進場聽歌、投票、挑戰，讓 AIPOGER 的 AI 音樂舞台真的熱起來。"
-                  : "The Honor Board is not a buried list. Share records, invite listeners, and bring more challenges into the AIPOGER stage."}
-              </p>
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
-              {AIPOGER_SOCIAL_LINKS.map((social) => (
-                <a
-                  key={social.label}
-                  href={social.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group flex min-w-[13rem] items-center justify-between rounded-lg border border-white/12 bg-white/[0.055] px-4 py-3 text-left transition hover:border-cyan-100/50 hover:bg-cyan-300/10"
-                >
-                  <span>
-                    <span className="block text-sm font-black text-white">{social.label}</span>
-                    <span className="mt-0.5 block text-xs font-bold text-zinc-500">{social.handle}</span>
-                  </span>
-                  <span className="text-lg font-black text-cyan-100 transition group-hover:translate-x-0.5">→</span>
-                </a>
-              ))}
-            </div>
-          </div>
         </section>
 
         {lyricsModal ? (
@@ -1865,7 +1916,7 @@ export default function RankPage() {
           </div>
         ) : null}
 
-        <footer className="mt-8 flex flex-col gap-4 border-t border-white/10 py-6 md:flex-row md:items-center md:justify-between">
+        <footer className="mt-8 border-t border-white/10 py-6">
           <div>
             <p className={`${fontRighteous.className} text-sm uppercase text-zinc-200`}>AIPOGER.AI</p>
             <a
@@ -1874,19 +1925,6 @@ export default function RankPage() {
             >
               {AIPOGER_CONTACT_EMAIL}
             </a>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {AIPOGER_SOCIAL_LINKS.map((social) => (
-              <a
-                key={social.label}
-                href={social.href}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-black text-zinc-300 transition hover:border-cyan-200/60 hover:text-white"
-              >
-                {social.label} <span className="text-zinc-500">{social.handle}</span>
-              </a>
-            ))}
           </div>
         </footer>
       </div>
