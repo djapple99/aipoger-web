@@ -6,12 +6,11 @@ import { type CSSProperties, type PointerEvent, useEffect, useMemo, useState, us
 import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
 import { writeFighterNameToStorage } from "@/lib/fighter-name-storage";
-import { loadIsAdmin } from "@/lib/user-profile-admin";
 import LangToggle from "@/components/lang-toggle";
 import HomeBgmPlayer from "@/components/home-bgm-player";
+import { SocialIconCluster } from "@/components/social-icons";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { fontGlowSans, fontRighteous, fontSourceSerifTC } from "@/lib/fonts";
-import { AIPOGER_PERSONAL_RANK, rankLabelForLevel } from "@/lib/battle-pool-rules";
 import type { Session, User } from "@supabase/supabase-js";
 
 const SPLASH_STEPS = {
@@ -181,7 +180,7 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
     battle: {
       eyebrow: "DROP SIGNAL",
       title: "AI 音樂鬥歌場",
-      body: ["上傳你的最強 Drop 發起挑戰", "讓觀眾決定誰更抓波"],
+      body: "上傳你的最強 Drop，讓聽眾決定誰最好聽",
       tone: "orange",
     },
     bar: {
@@ -477,8 +476,8 @@ function DesktopReferenceHome({
         <div className="pointer-events-none absolute left-[clamp(4.25rem,7.2vw,8.5rem)] top-[clamp(7.1rem,11vh,9.2rem)] h-[47vh] w-px rounded-full bg-gradient-to-b from-transparent via-orange-300/42 to-transparent" />
         <div className="pointer-events-none absolute right-[clamp(4.25rem,7.2vw,8.5rem)] top-[clamp(6.9rem,10vh,8.4rem)] h-[50vh] w-px rounded-full bg-gradient-to-b from-transparent via-cyan-200/28 to-transparent" />
 
-        <div className="grid flex-1 items-center gap-[clamp(2rem,4vw,5.5rem)] lg:grid-cols-[minmax(0,1fr)_minmax(20rem,25.5rem)]">
-          <div className="relative z-10 min-w-0 pt-[clamp(0.5rem,2vh,1.75rem)]">
+        <div className="grid items-start gap-[clamp(2rem,4vw,5.5rem)] lg:grid-cols-[minmax(0,1fr)_minmax(20rem,25.5rem)]">
+          <div className="relative z-10 min-w-0 pt-0">
             <div className="mb-3 flex w-[min(42rem,62vw)] items-center gap-4">
               <Image
                 src={AIPOGER_BRAND_LOGO}
@@ -505,7 +504,11 @@ function DesktopReferenceHome({
             </p>
             <h1
               className={`mt-[clamp(1rem,2.1vh,1.55rem)] text-[clamp(4rem,5.4vw,7rem)] font-black leading-[0.94] text-[#fff8ed] ${heroChromeShadow} ${
-                lang === "en" ? fontRighteous.className : fontGlowSans.className
+                lang === "en"
+                  ? fontRighteous.className
+                  : isZh
+                    ? "aipoger-brand-wordmark"
+                    : fontGlowSans.className
               }`}
             >
               {heroTitle}
@@ -529,9 +532,11 @@ function DesktopReferenceHome({
               ))}
             </div>
 
-            <DesktopWaveLine className="left-[2.5rem] top-[calc(100%+1.4rem)] w-[11rem] text-white/42" />
+            <SocialIconCluster
+              className="absolute left-[2.5rem] top-[calc(100%+1.05rem)] z-20 justify-start"
+              iconClassName="h-11 w-11"
+            />
             <DesktopWaveLine className="left-[24rem] top-[calc(100%+1.6rem)] w-[15rem] text-orange-300/52" />
-            <DesktopWaveLine className="left-[47rem] top-[calc(100%+1.5rem)] w-[10rem] text-cyan-100/42" />
           </div>
 
           <div className="relative z-20 hidden justify-self-end lg:block">
@@ -541,15 +546,15 @@ function DesktopReferenceHome({
               <div className="pointer-events-none absolute inset-[1.35rem] rounded-[1rem] border border-cyan-100/12" />
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_21%,rgba(255,106,0,0.16),transparent_38%),radial-gradient(circle_at_88%_16%,rgba(103,232,249,0.11),transparent_36%)]" />
               <div className="relative flex min-h-[clamp(30rem,52vh,36rem)] flex-col justify-between px-[clamp(1.1rem,1.3vw,1.55rem)] pb-[clamp(1.1rem,1.8vh,1.55rem)] pt-[clamp(2.1rem,4.2vh,3rem)]">
-                <div className="relative flex flex-1 items-center justify-center">
-                  <div className="absolute h-[clamp(12.5rem,14vw,16rem)] w-[clamp(12.5rem,14vw,16rem)] rounded-full border border-orange-300/14 bg-[repeating-radial-gradient(circle,rgba(255,255,255,0.1)_0_1px,transparent_1px_10px)]" />
-                  <div className="absolute h-[clamp(9.6rem,11.3vw,12.4rem)] w-[clamp(9.6rem,11.3vw,12.4rem)] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.12),rgba(255,106,0,0.1)_42%,transparent_70%)] blur-md" />
+                <div className="relative flex min-h-[clamp(17rem,30vh,21rem)] flex-none items-center justify-center">
+                  <div className="absolute h-[clamp(15rem,17vw,17.3rem)] w-[clamp(15rem,17vw,17.3rem)] rounded-full border border-orange-300/16 bg-[repeating-radial-gradient(circle,rgba(255,255,255,0.12)_0_1px,transparent_1px_10px)]" />
+                  <div className="absolute h-[clamp(11.8rem,13.5vw,14rem)] w-[clamp(11.8rem,13.5vw,14rem)] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.14),rgba(255,106,0,0.12)_42%,transparent_70%)] blur-md" />
                   <Image
                     src={AIPOGER_BRAND_LOGO}
                     alt={t("home_logo_alt")}
-                    width={188}
-                    height={188}
-                    className="relative h-[clamp(9rem,10.3vw,12rem)] w-[clamp(9rem,10.3vw,12rem)] object-contain [filter:drop-shadow(0_0_30px_rgba(255,255,255,0.24))]"
+                    width={236}
+                    height={236}
+                    className="relative h-[clamp(11.4rem,13vw,13.9rem)] w-[clamp(11.4rem,13vw,13.9rem)] object-contain [filter:drop-shadow(0_0_34px_rgba(255,255,255,0.28))]"
                   />
                 </div>
                 <div className="grid gap-[clamp(0.75rem,1.4vh,1rem)]">
@@ -640,97 +645,64 @@ function userAvatarUrl(user: User): string | null {
 function HomeAuthBar() {
   const { t } = useI18n();
   const [session, setSession] = useState<Session | null>(null);
-  const [aipoCoins, setAipoCoins] = useState<number | null>(null);
-  const [levelLine, setLevelLine] = useState<string | null>(null);
-  const [profileLoading, setProfileLoading] = useState(false);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const forceShowLogin = process.env.NEXT_PUBLIC_FORCE_SHOW_LOGIN === "true";
 
   const loadProfile = useCallback(
     async (userId: string) => {
-      setProfileLoading(true);
       try {
         type UserProfileRow = {
-          level?: number | null;
-          total_wins?: number | null;
+          avatar_url?: string | null;
         };
         type FighterProfileRow = {
           display_name?: string | null;
           avatar_url?: string | null;
         };
 
-        const { data, error } = await supabase
-          .from("user_profiles")
-          .select("level, total_wins")
-          .eq("id", userId)
-          .maybeSingle<UserProfileRow>();
+        const [userProfile, fighterProfile] = await Promise.all([
+          supabase
+            .from("user_profiles")
+            .select("avatar_url")
+            .eq("id", userId)
+            .maybeSingle<UserProfileRow>(),
+          supabase
+            .from("fighter_profiles")
+            .select("display_name, avatar_url")
+            .eq("id", userId)
+            .maybeSingle<FighterProfileRow>(),
+        ]);
 
-        if (error) {
-          console.error(error);
-          setAipoCoins(0);
-          setLevelLine(null);
-          setProfileAvatarUrl(null);
-          setIsAdmin(false);
-          return;
+        if (userProfile.error) {
+          console.error(userProfile.error);
         }
-
-        const admin = await loadIsAdmin(userId);
-        setIsAdmin(admin);
-        setAipoCoins(0);
-
-        const { data: fighterProfile } = await supabase
-          .from("fighter_profiles")
-          .select("display_name, avatar_url")
-          .eq("id", userId)
-          .maybeSingle<FighterProfileRow>();
+        if (fighterProfile.error) {
+          console.error(fighterProfile.error);
+        }
 
         setProfileAvatarUrl(
-          typeof fighterProfile?.avatar_url === "string" && fighterProfile.avatar_url.length > 0
-            ? fighterProfile.avatar_url
-            : null,
+          (typeof fighterProfile.data?.avatar_url === "string" && fighterProfile.data.avatar_url.trim()) ||
+            (typeof userProfile.data?.avatar_url === "string" && userProfile.data.avatar_url.trim()) ||
+            null,
         );
 
-        const fn = typeof fighterProfile?.display_name === "string" ? fighterProfile.display_name.trim() : "";
-        if (typeof data?.level === "number") {
-          setLevelLine(admin ? AIPOGER_PERSONAL_RANK : rankLabelForLevel(data.level, fn));
-        } else {
-          setLevelLine(admin ? AIPOGER_PERSONAL_RANK : null);
-        }
+        const fn = typeof fighterProfile.data?.display_name === "string" ? fighterProfile.data.display_name.trim() : "";
         if (fn) writeFighterNameToStorage(fn);
-      } finally {
-        setProfileLoading(false);
+      } catch (error) {
+        console.error("[home profile]", error);
+        setProfileAvatarUrl(null);
       }
     },
     [],
   );
-
-  const runDailyCheckIn = useCallback(async (userId: string) => {
-    if (process.env.NEXT_PUBLIC_AUTH_BYPASS === "true") return;
-    try {
-      if (await loadIsAdmin(userId)) return;
-      const { data: gained, error } = await supabase.rpc("award_daily_login_points");
-      if (error) {
-        console.warn("[daily login]", error);
-        return;
-      }
-      if (typeof gained === "number" && gained > 0) void loadProfile(userId);
-    } catch (e) {
-      console.warn("[daily login]", e);
-    }
-  }, [loadProfile]);
 
   useEffect(() => {
     let mounted = true;
     void supabase.auth.getSession().then(({ data: { session: s } }) => {
       if (!mounted) return;
       setSession(s);
-      if (s?.user) {
-        void loadProfile(s.user.id);
-        void runDailyCheckIn(s.user.id);
-      }
+      if (s?.user) void loadProfile(s.user.id);
     });
 
     const {
@@ -739,10 +711,7 @@ function HomeAuthBar() {
       setSession(s);
       if (s?.user) {
         void loadProfile(s.user.id);
-        void runDailyCheckIn(s.user.id);
       } else {
-        setAipoCoins(null);
-        setLevelLine(null);
         setProfileAvatarUrl(null);
       }
     });
@@ -751,7 +720,7 @@ function HomeAuthBar() {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [loadProfile, runDailyCheckIn]);
+  }, [loadProfile]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -784,81 +753,48 @@ function HomeAuthBar() {
   }
 
   return (
-    <div className="flex items-center gap-3">
-      <div
-        className="hidden min-w-0 sm:block rounded-2xl border border-zinc-700/80 bg-zinc-950/80 px-3 py-2 text-right shadow-lg backdrop-blur"
-        title={t("home_coin_tooltip")}
+    <div className="relative" ref={menuRef}>
+      <button
+        type="button"
+        onClick={() => setMenuOpen((v) => !v)}
+        className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border-2 border-zinc-600 bg-zinc-900 shadow-lg transition hover:border-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00]"
+        aria-expanded={menuOpen}
+        aria-haspopup="menu"
+        aria-label={t("home_account_menu_aria")}
       >
-        <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">{t("aipo_coin")}</p>
-        <p className="truncate text-sm font-bold tabular-nums text-[#ff6a00]">
-          {profileLoading ? "…" : (aipoCoins ?? 0).toLocaleString()}
-        </p>
-        {isAdmin && (
-          <p className="mt-1 text-[10px] font-semibold text-amber-400">{t("home_admin_badge")} · Battle 管理</p>
+        {avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={avatarUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+        ) : (
+          <span className="text-lg font-bold text-zinc-400">
+            {(user.email ?? user.user_metadata?.full_name ?? "?").slice(0, 1).toUpperCase()}
+          </span>
         )}
-        {levelLine && (
-          <p className="mt-1 truncate text-[10px] leading-tight text-zinc-400">
-            <span className="text-zinc-500">{t("home_profile_level")} </span>
-            <span className="font-semibold text-zinc-200">{levelLine}</span>
-          </p>
-        )}
-      </div>
+      </button>
 
-      <div className="relative" ref={menuRef}>
-        <button
-          type="button"
-          onClick={() => setMenuOpen((v) => !v)}
-          className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border-2 border-zinc-600 bg-zinc-900 shadow-lg transition hover:border-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00]"
-          aria-expanded={menuOpen}
-          aria-haspopup="menu"
-          aria-label={t("home_account_menu_aria")}
+      {menuOpen && (
+        <div
+          role="menu"
+          className="absolute right-0 mt-2 w-44 overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-950 py-1 shadow-xl ring-1 ring-black/40"
         >
-          {avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatarUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
-          ) : (
-            <span className="text-lg font-bold text-zinc-400">
-              {(user.email ?? user.user_metadata?.full_name ?? "?").slice(0, 1).toUpperCase()}
-            </span>
-          )}
-        </button>
-
-        {menuOpen && (
-          <div
-            role="menu"
-            className="absolute right-0 mt-2 w-44 overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-950 py-1 shadow-xl ring-1 ring-black/40"
+          <Link
+            href="/profile"
+            role="menuitem"
+            className="block w-full px-3 py-2.5 text-left text-sm text-zinc-200 transition hover:bg-zinc-800 hover:text-white"
+            onClick={() => setMenuOpen(false)}
           >
-            <div className="border-b border-zinc-800 px-3 py-2 sm:hidden">
-              <p className="text-[10px] uppercase tracking-wider text-zinc-500">{t("aipo_coin")}</p>
-              <p className="font-bold tabular-nums text-[#ff6a00]">
-                {profileLoading ? "…" : (aipoCoins ?? 0).toLocaleString()}
-              </p>
-              {levelLine && (
-                <p className="mt-1 text-[10px] leading-tight text-zinc-400">
-                  <span className="text-zinc-500">{t("home_profile_level")} </span>
-                  <span className="font-semibold text-zinc-200">{levelLine}</span>
-                </p>
-              )}
-            </div>
-            <Link
-              href="/profile"
-              role="menuitem"
-              className="block w-full px-3 py-2.5 text-left text-sm text-zinc-200 transition hover:bg-zinc-800 hover:text-white"
-              onClick={() => setMenuOpen(false)}
-            >
-              {t("home_profile_link")}
-            </Link>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => void handleSignOut()}
-              className="w-full px-3 py-2.5 text-left text-sm text-zinc-200 transition hover:bg-zinc-800 hover:text-white"
-            >
-              {t("logout")}
-            </button>
-          </div>
-        )}
-      </div>
+            {t("home_profile_link")}
+          </Link>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => void handleSignOut()}
+            className="w-full px-3 py-2.5 text-left text-sm text-zinc-200 transition hover:bg-zinc-800 hover:text-white"
+          >
+            {t("logout")}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -919,6 +855,7 @@ export default function HomePage() {
   const withLang = (href: string) => `${href}${href.includes("?") ? "&" : "?"}lang=${lang}`;
   const heroTitle = t("home_secondary_title");
   const heroLine = t("home_hero_line");
+  const mobileHeroLine = isZh ? ["上傳你的最強 Drop", "讓聽眾決定誰最好聽"] : [heroLine];
   const heroCopy = t("home_tagline");
   const zhDisplayClass = `${fontGlowSans.className} tracking-[-0.015em]`;
   const zhSerifClass = `${fontSourceSerifTC.className} font-black tracking-[0.012em]`;
@@ -1033,28 +970,22 @@ export default function HomePage() {
             <div className="h-px flex-1 bg-gradient-to-r from-orange-500/70 via-white/20 to-transparent" />
           </div>
 
-          <p className={`w-full max-w-full text-[4.25rem] font-black uppercase leading-[0.82] tracking-[-0.04em] text-[#fffaf1] min-[390px]:text-[4.55rem] sm:text-[6.25rem] md:text-[clamp(8.35rem,14.15vw,16.7rem)] md:leading-[0.78] md:tracking-[-0.066em] ${heroChromeShadow}`}>
+          <p className={`mx-auto w-full max-w-full overflow-visible whitespace-nowrap text-center text-[4.25rem] font-black uppercase leading-[0.82] tracking-[-0.04em] text-[#fffaf1] min-[390px]:text-[4.55rem] sm:text-[6.25rem] md:text-[clamp(8.35rem,14.15vw,16.7rem)] md:leading-[0.78] md:tracking-[-0.066em] ${heroChromeShadow}`}>
             AIPOGER
           </p>
           <p
-            className={`mt-3 ${heroTextClass} text-[clamp(1.25rem,6vw,1.55rem)] leading-[1.26] md:text-[clamp(1.45rem,2.05vw,2.38rem)] md:leading-[1.38] ${heroAccentClass} ${
+            className={`mx-auto mt-3 w-full max-w-[22rem] text-center text-[clamp(1.22rem,5.65vw,1.48rem)] leading-[1.34] md:max-w-none md:text-left md:text-[clamp(1.45rem,2.05vw,2.38rem)] md:leading-[1.38] ${heroAccentClass} ${
               isZh ? zhSerifClass : `${fontGlowSans.className} font-black`
             }`}
           >
-            {heroLine}
+            {mobileHeroLine.map((line) => (
+              <span key={line} className="block whitespace-nowrap">
+                {line}
+              </span>
+            ))}
           </p>
 
-          <h1
-            className={`mt-3 max-w-[min(52rem,calc(100vw-2.5rem))] overflow-visible whitespace-normal break-words pb-2 pt-0 text-[clamp(3.05rem,15vw,4.35rem)] leading-[0.98] text-[#fffaf1] md:whitespace-nowrap md:text-[clamp(4.3rem,6vw,7.15rem)] md:leading-[1.03] ${heroChromeShadow} ${
-              lang === "en"
-                ? `${fontRighteous.className} font-normal`
-                : isZh
-                  ? "aipoger-brand-wordmark"
-                  : `${fontGlowSans.className} font-black`
-            }`}
-          >
-            {heroTitle}
-          </h1>
+          <h1 className="sr-only">{heroTitle}</h1>
 
           <div className="mt-5 grid grid-cols-3 gap-2 md:hidden">
             <Link
@@ -1117,6 +1048,11 @@ export default function HomePage() {
             key={`mobile-${activeMobileAction}`}
             prompt={mobileActionPrompt}
             className="mt-4 md:hidden"
+          />
+
+          <SocialIconCluster
+            className="mt-4 justify-center md:hidden"
+            iconClassName="h-11 w-11"
           />
 
           <p
@@ -1197,6 +1133,10 @@ export default function HomePage() {
               </div>
             </div>
           </div>
+          <SocialIconCluster
+            className="mt-3 justify-center"
+            iconClassName="h-11 w-11"
+          />
         </div>
       </section>
 

@@ -570,52 +570,57 @@ export default function GlobalBattleCallOverlay() {
     hasNotice: boolean;
     urgent?: boolean;
     onBellClick?: () => void;
-  }) => (
-    <div className={accountDockClassName}>
-      <Link
-        href={`/profile?lang=${lang}`}
-        className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-cyan-200/30 bg-black/82 text-sm font-black text-cyan-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_24px_rgba(0,203,255,0.14)] backdrop-blur-xl transition hover:border-cyan-100 hover:text-white"
-        aria-label={isZh ? "個人資料" : "Profile"}
-        title={isZh ? "個人資料" : "Profile"}
-      >
+  }) => {
+    const avatarClassName = `relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border bg-black/82 text-sm font-black shadow-[0_18px_58px_rgba(0,0,0,0.45)] backdrop-blur-xl transition ${
+      hasNotice
+        ? urgent
+          ? "animate-pulse border-red-300/80 text-red-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_34px_rgba(248,113,113,0.62)] hover:border-red-100"
+          : "border-orange-200/55 text-orange-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_28px_rgba(255,106,0,0.2)] hover:border-orange-100"
+        : "border-cyan-200/30 text-cyan-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_24px_rgba(0,203,255,0.14)] hover:border-cyan-100 hover:text-white"
+    }`;
+    const avatarContent = (
+      <>
         {accountAvatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={accountAvatarUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
         ) : (
           accountInitial
         )}
-      </Link>
-      {hasNotice ? (
-        <button
-          type="button"
-          onClick={onBellClick}
-          className={`relative flex h-12 w-12 items-center justify-center rounded-full border bg-black/82 shadow-[0_18px_58px_rgba(0,0,0,0.45)] backdrop-blur-xl transition hover:text-white ${
-            urgent
-              ? "animate-pulse border-red-300/80 text-red-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_34px_rgba(248,113,113,0.62)] hover:border-red-100"
-              : "border-orange-200/45 text-orange-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_28px_rgba(255,106,0,0.18)] hover:border-orange-100"
-          }`}
-          aria-label={isZh ? "展開帳號消息" : "Expand account notice"}
-          title={isZh ? "帳號消息" : "Account Notice"}
-        >
-          <BellIcon />
+        {hasNotice && (
           <span
-            className={`absolute right-2 top-2 h-2.5 w-2.5 rounded-full ${
+            className={`absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full ${
               urgent ? "bg-red-400 shadow-[0_0_16px_rgba(248,113,113,1)]" : "bg-orange-400 shadow-[0_0_14px_rgba(255,106,0,0.9)]"
             }`}
           />
-        </button>
-      ) : (
-        <Link
-          href={`/profile?lang=${lang}`}
-          className="relative flex h-12 w-12 items-center justify-center rounded-full border border-white/12 bg-black/72 text-zinc-400 shadow-[0_18px_58px_rgba(0,0,0,0.42)] backdrop-blur-xl transition hover:border-cyan-100/55 hover:text-cyan-50"
-          aria-label={isZh ? "查看帳號狀態" : "View account status"}
-          title={isZh ? "查看帳號狀態" : "View Account Status"}
-        >
-          <BellIcon />
-        </Link>
-      )}
-    </div>
-  );
+        )}
+      </>
+    );
+
+    return (
+      <div className={accountDockClassName}>
+        {hasNotice ? (
+          <button
+            type="button"
+            onClick={onBellClick}
+            className={avatarClassName}
+            aria-label={isZh ? "展開帳號消息" : "Expand account notice"}
+            title={isZh ? "帳號消息" : "Account Notice"}
+          >
+            {avatarContent}
+          </button>
+        ) : (
+          <Link
+            href={`/profile?lang=${lang}`}
+            className={avatarClassName}
+            aria-label={isZh ? "個人資料" : "Profile"}
+            title={isZh ? "個人資料" : "Profile"}
+          >
+            {avatarContent}
+          </Link>
+        )}
+      </div>
+    );
+  };
 
   if (!call && expiredNotice) {
     const isDailyFinishedNotice = expiredNotice.type === "daily_battle_finished";

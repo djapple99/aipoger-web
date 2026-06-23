@@ -1,0 +1,87 @@
+import { AIPOGER_SOCIAL_LINKS } from "@/lib/brand";
+
+type SocialIconProps = {
+  label: string;
+  className?: string;
+};
+
+export function SocialIcon({ label, className = "h-11 w-11" }: SocialIconProps) {
+  const normalized = label.toLowerCase();
+
+  if (normalized.includes("instagram")) {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
+        <rect x="3.2" y="3.2" width="17.6" height="17.6" rx="5.4" fill="#ff8a18" />
+        <circle cx="16.4" cy="7.3" r="4.2" fill="#6f58ff" opacity="0.92" />
+        <circle cx="8" cy="16.2" r="4.4" fill="#ff2a81" opacity="0.9" />
+        <circle cx="7.1" cy="7.1" r="3.6" fill="#ffe66b" opacity="0.64" />
+        <path d="M5.8 5.15h7.7" stroke="white" strokeLinecap="round" strokeOpacity="0.46" strokeWidth="1.35" />
+        <circle cx="12" cy="12" r="4.05" fill="none" stroke="white" strokeWidth="2" />
+        <circle cx="17.1" cy="6.9" r="1.35" fill="white" />
+      </svg>
+    );
+  }
+
+  if (normalized.includes("discord")) {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
+        <path
+          d="M5.35 8.15c3.75-2.35 9.55-2.35 13.3 0l1.25 7.7c-1.62 1.38-3.22 2.12-4.8 2.32l-.88-1.35c-.72.12-1.48.18-2.22.18s-1.5-.06-2.22-.18l-.88 1.35c-1.58-.2-3.18-.94-4.8-2.32l1.25-7.7Z"
+          fill="#7284ff"
+        />
+        <path d="M7.15 8.45c2.9-1.1 6.8-1.1 9.7 0" fill="none" stroke="white" strokeLinecap="round" strokeOpacity="0.46" strokeWidth="1.25" />
+        <circle cx="9.4" cy="12.3" r="1.18" fill="white" />
+        <circle cx="14.6" cy="12.3" r="1.18" fill="white" />
+        <path d="M9.55 15.1c1.62.72 3.28.72 4.9 0" fill="none" stroke="white" strokeLinecap="round" strokeWidth="1.25" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
+      <circle cx="12" cy="12" r="9.6" fill="#1877f2" />
+      <circle cx="9" cy="7.2" r="5" fill="#70b9ff" opacity="0.45" />
+      <path d="M7.8 6.1c2.55-1.75 6.35-2.02 9.08-.4" fill="none" stroke="white" strokeLinecap="round" strokeOpacity="0.42" strokeWidth="1.2" />
+      <path
+        d="M13.65 20.7v-7.35h2.42l.46-3.04h-2.88V8.33c0-.83.4-1.64 1.7-1.64h1.32V4.1c-.78-.12-1.58-.2-2.38-.2-2.44 0-4.04 1.48-4.04 4.16v2.25H7.52v3.04h2.73v7.35h3.4Z"
+        fill="white"
+      />
+    </svg>
+  );
+}
+
+export function SocialIconCluster({
+  label,
+  className = "",
+  iconClassName = "h-11 w-11",
+}: {
+  label?: string;
+  className?: string;
+  iconClassName?: string;
+}) {
+  return (
+    <div className={`flex flex-wrap items-center gap-2.5 ${className}`} aria-label={label ?? "AIPOGER social links"}>
+      {label && <span className="text-[0.68rem] font-black uppercase tracking-[0.22em] text-zinc-500">{label}</span>}
+      <div className="flex items-center gap-5">
+        {AIPOGER_SOCIAL_LINKS.map((social) => (
+          <a
+            key={social.label}
+            href={social.href}
+            target="_blank"
+            rel="noreferrer"
+            title={`${social.label} ${social.handle}`}
+            aria-label={`${social.label} ${social.handle}`}
+            className="group relative inline-flex h-12 w-12 items-center justify-center transition hover:-translate-y-0.5 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+          >
+            <span className="absolute inset-1 rounded-full bg-white/22 opacity-75 blur-lg transition group-hover:opacity-100" aria-hidden="true" />
+            <span className="absolute bottom-0 h-2 w-9 rounded-full bg-black/58 blur-md" aria-hidden="true" />
+            <SocialIcon
+              label={social.label}
+              className={`${iconClassName} relative drop-shadow-[0_9px_12px_rgba(0,0,0,0.62)] [filter:brightness(1.28)_saturate(1.42)_contrast(1.08)]`}
+            />
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}

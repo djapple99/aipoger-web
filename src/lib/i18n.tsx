@@ -30,8 +30,8 @@ const dict: Record<Lang, Partial<Record<string, string>>> = {
   zh: {
     home_title: 'AIPOGER 愛播歌',
     home_subtitle: 'Where AI Beats Bleed.',
-    home_secondary_title: 'AI 音樂播台',
-    home_hero_line: '上傳你的最強 Drop，讓聽眾決定誰被認可',
+    home_secondary_title: 'AI 音樂擂台',
+    home_hero_line: '上傳你的最強 Drop，讓聽眾決定誰最好聽',
     home_tagline: '上傳 Drop、發起挑戰，讓聽眾投票，把作品打進榮譽榜',
     home_stat_45_label: 'Drop 對決',
     home_stat_24_label: '整首對決',

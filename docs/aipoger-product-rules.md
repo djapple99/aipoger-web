@@ -1,6 +1,6 @@
 # AIPOGER Product Rules
 
-Last updated: 2026-06-20
+Last updated: 2026-06-24
 
 This document is the product-rule source of truth for AIPOGER. Use it before changing Battle, Bar Heartbreak, Honor Board, auth, upload, or deployment behavior.
 
@@ -15,6 +15,26 @@ The product should favor:
 - Clear public rules over hidden platform behavior.
 - Early-stage limits that keep the room lively and manageable.
 - Music-first language, not generic SaaS language.
+
+## Social Publishing
+
+Current behavior target:
+
+- `/admin/social` is a semi-automated social publishing console, not a fully autonomous posting bot.
+- Every generated post must remain a draft or review item until an admin explicitly approves it.
+- Supported first-version sources are Battle result/report drafts and manually created scheduled drafts.
+- Social post states should include `draft`, `needs_review`, `scheduled`, `published`, and `failed`.
+- Use `60s Drop Battle`, `30-60 秒抓波`, and `drop / 抓波` in social copy. Do not return to `45 秒` as the current public spec.
+- Battle report copy should use winner, vote count, genre, battle/result link, and clear CTA.
+- A 0:0 no contest must not generate a Winner Circle post.
+- Winner posts that become image/video/Reels content should use the winning creator's music as the background track when rights and platform workflow allow it.
+- Instagram image and video posting must preserve the original crop/aspect setting whenever the platform UI offers it.
+- Discord may publish directly through official webhooks when configured.
+- X may publish text/link posts through the official API when developer credentials are configured.
+- Instagram, TikTok, and YouTube should start as draft/script/caption generators until their media and API workflows are fully verified.
+- Facebook Groups must not be auto-posted through unstable browser automation or password-based login. For the AIPOGER group, provide copy, assets, and the group link for manual posting: `https://www.facebook.com/groups/aipoger`.
+- Do not store social platform passwords. Tokens, webhooks, and API keys belong in environment variables or encrypted storage, never in repo, docs, or logs.
+- If a platform token/webhook is not configured, show a disconnected/pending state and do not attempt publishing.
 
 ## Auth Rules
 

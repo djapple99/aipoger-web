@@ -42,23 +42,24 @@ export function AvatarCropUploadModal({ open, imageDataUrl, userId, onClose, onU
         return;
       }
       const { data: pub } = supabase.storage.from("avatars").getPublicUrl(storagePath);
-      const publicUrl = pub.publicUrl;
+      const publicUrl = `${pub.publicUrl}?v=${Date.now()}`;
 
-      const { data: row } = await supabase.from("user_profiles").select("id").eq("id", userId).maybeSingle();
-      if (row) {
-        const { error: uErr } = await supabase.from("user_profiles").update({ avatar_url: publicUrl }).eq("id", userId);
-        if (uErr) {
-          console.error("[user_profiles update]", uErr);
-          alert(t("avatar_crop_fail"));
-          return;
-        }
-      } else {
-        const { error: iErr } = await supabase.from("user_profiles").insert({ id: userId, avatar_url: publicUrl });
-        if (iErr) {
-          console.error("[user_profiles insert]", iErr);
-          alert(t("avatar_crop_fail"));
-          return;
-        }
+      const { error: userProfileErr } = await supabase
+        .from("user_profiles")
+        .upsert({ id: userId, avatar_url: publicUrl }, { onConflict: "id" });
+      if (userProfileErr) {
+        console.error("[user_profiles avatar upsert]", userProfileErr);
+        alert(t("avatar_crop_fail"));
+        return;
+      }
+
+      const { error: fighterProfileErr } = await supabase
+        .from("fighter_profiles")
+        .upsert({ id: userId, avatar_url: publicUrl }, { onConflict: "id" });
+      if (fighterProfileErr) {
+        console.error("[fighter_profiles avatar upsert]", fighterProfileErr);
+        alert(t("avatar_crop_fail"));
+        return;
       }
 
       onUploaded(publicUrl);

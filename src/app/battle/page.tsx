@@ -1335,7 +1335,7 @@ function BattlePoolList() {
   }
 
   return (
-    <section className="battle-pool-shell aipo-panel-line mt-8 rounded-[1.35rem] p-5 md:p-6">
+    <section id="drop-battle-pool" className="battle-pool-shell aipo-panel-line mt-8 scroll-mt-24 rounded-[1.35rem] p-5 md:p-6">
       <div className="battle-pool-head mb-5">
         <div>
           <p className="aipo-section-kicker">60S DROP BATTLE POOL</p>

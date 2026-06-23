@@ -14,8 +14,8 @@ export const AIPOGER_SOCIAL_LINKS = [
     href: "https://discord.gg/aipoger",
   },
   {
-    label: "TikTok",
-    handle: "Aipoger.ai",
-    href: "https://www.tiktok.com/@aipoger.ai",
+    label: "Facebook",
+    handle: "AIPOGER 社團",
+    href: "https://www.facebook.com/groups/aipoger",
   },
 ] as const;

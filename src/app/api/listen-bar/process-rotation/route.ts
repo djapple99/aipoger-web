@@ -25,6 +25,13 @@ export async function POST(request: NextRequest) {
 }
 
 async function processRotation(request: NextRequest) {
+  if (process.env.LISTEN_BAR_ROTATION_ENABLED !== "true") {
+    return NextResponse.json({
+      disabled: true,
+      message: "Listen bar rotation is disabled. Set LISTEN_BAR_ROTATION_ENABLED=true to run it.",
+    });
+  }
+
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret) {
     const auth = request.headers.get("authorization") ?? "";

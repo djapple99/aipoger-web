@@ -3,12 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { SocialIconCluster } from "@/components/social-icons";
 import ShareButton from "@/components/share-button";
 import ReportButton from "@/components/report-button";
 import {
   AIPOGER_BRAND_LOGO,
   AIPOGER_CONTACT_EMAIL,
-  AIPOGER_SOCIAL_LINKS,
 } from "@/lib/brand";
 import {
   looksLikeOpaqueArchiveValue,
@@ -255,40 +255,6 @@ function displayMonth(value: string, isZh: boolean) {
   const [year, month] = value.split("-");
   if (!year || !month) return isZh ? "未標月份" : "Unknown Month";
   return isZh ? `${year} 年 ${Number(month)} 月` : `${new Date(`${value}-01T00:00:00`).toLocaleDateString("en-US", { month: "short", year: "numeric" })}`;
-}
-
-function SocialIcon({ label }: { label: string }) {
-  const normalized = label.toLowerCase();
-  if (normalized.includes("instagram")) {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
-        <rect x="5" y="5" width="14" height="14" rx="4" fill="none" stroke="currentColor" strokeWidth="2" />
-        <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" strokeWidth="2" />
-        <circle cx="16.5" cy="7.5" r="1.2" fill="currentColor" />
-      </svg>
-    );
-  }
-  if (normalized.includes("discord")) {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
-        <path
-          d="M7.8 8.2c2.6-1 5.8-1 8.4 0l1 5.8c-1.5 1.2-3 1.8-4.6 2l-.6-1.1c-.7.1-1.3.1-2 0L9.4 16c-1.6-.2-3.1-.8-4.6-2l1-5.8Z"
-          fill="none"
-          stroke="currentColor"
-          strokeLinejoin="round"
-          strokeWidth="1.8"
-        />
-        <circle cx="9.4" cy="12" r="1" fill="currentColor" />
-        <circle cx="14.6" cy="12" r="1" fill="currentColor" />
-      </svg>
-    );
-  }
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
-      <path d="M13 4v10.2a4.2 4.2 0 1 1-2-3.6V4h2Z" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-      <path d="M13 6.5c1.3 2 3 3.2 5 3.4" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
-    </svg>
-  );
 }
 
 function resultHref(row: RankRow, lang: string) {
@@ -1344,21 +1310,7 @@ export default function RankPage() {
                 copiedLabel={isZh ? "榮譽榜連結已複製" : "Board Copied"}
                 className="shrink-0 whitespace-nowrap !px-4 !py-2 !text-xs border-yellow-100/30 bg-white/[0.045] text-zinc-100 hover:border-yellow-100/55 active:bg-yellow-300 active:text-black"
               />
-              <div className="flex shrink-0 items-center gap-1.5" aria-label={isZh ? "AIPOGER 社群" : "AIPOGER Social"}>
-                {AIPOGER_SOCIAL_LINKS.map((social) => (
-                  <a
-                    key={`top-${social.label}`}
-                    href={social.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    title={`${social.label} ${social.handle}`}
-                    aria-label={`${social.label} ${social.handle}`}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-yellow-100/25 bg-white/[0.045] text-zinc-100 transition hover:border-yellow-100/50 hover:text-yellow-50 active:bg-yellow-300 active:text-black"
-                  >
-                    <SocialIcon label={social.label} />
-                  </a>
-                ))}
-              </div>
+              <SocialIconCluster className="shrink-0" />
             </div>
           </div>
         </section>

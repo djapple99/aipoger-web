@@ -1,10 +1,6 @@
 {
   "crons": [
     {
-      "path": "/api/listen-bar/process-rotation",
-      "schedule": "0 */8 * * *"
-    },
-    {
       "path": "/api/listen-bar/cleanup-messages",
       "schedule": "0 */8 * * *"
     },
