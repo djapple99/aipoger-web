@@ -149,9 +149,9 @@ function ProfileInner() {
             manage: "整理資料",
             empty: "目前還沒有讀到上傳紀錄。",
             error: "部分創作資料暫時讀不到，頁面先顯示可取得的內容。",
-            battle: "Drop Battle",
+            battle: "Drop 戰帖",
             listenBar: "傷心酒吧",
-            records: "戰鬥紀錄",
+            records: "對戰場次",
             wins: "勝出封存",
             active: "公開中",
             openBattle: "發起挑戰",
@@ -175,9 +175,9 @@ function ProfileInner() {
             manage: "Manage",
             empty: "No uploads found yet.",
             error: "Some creator data could not be loaded, so this page is showing what is available.",
-            battle: "Drop Battle",
+            battle: "Drop Cards",
             listenBar: "Listen Bar",
-            records: "Battle Records",
+            records: "Battle Matches",
             wins: "Archived Wins",
             active: "Live",
             openBattle: "Start Battle",
@@ -438,20 +438,21 @@ function ProfileInner() {
     }));
 
     return [...tracks, ...queues, ...battleRecords, ...archivedWins]
-      .sort((a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime())
-      .slice(0, 16);
+      .sort((a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime());
   }, [barTracks, battleQueues, battles, copy.battle, copy.listenBar, copy.records, copy.wins, isZh, lang, wins]);
 
   const stats = [
     { key: "listenBar" as const, label: copy.listenBar, value: barTracks.length, sub: `${barTracks.filter((track) => track.is_active).length} ${copy.active}` },
-    { key: "battle" as const, label: copy.battle, value: battleQueues.length, sub: isZh ? "上傳卡片" : "uploads" },
-    { key: "records" as const, label: copy.records, value: battles.length, sub: isZh ? "曾進入對戰" : "battle records" },
+    { key: "battle" as const, label: copy.battle, value: battleQueues.length, sub: isZh ? "已上傳戰帖" : "uploaded cards" },
+    { key: "records" as const, label: copy.records, value: battles.length, sub: isZh ? "已進場對戰" : "entered matches" },
     { key: "wins" as const, label: copy.wins, value: wins.length, sub: isZh ? "勝利作品" : "winning tracks" },
   ];
 
-  const filteredCreatorItems = creatorFilter === "all"
-    ? creatorItems
-    : creatorItems.filter((item) => item.category === creatorFilter);
+  const filteredCreatorItems = (
+    creatorFilter === "all"
+      ? creatorItems
+      : creatorItems.filter((item) => item.category === creatorFilter)
+  ).slice(0, 16);
 
   const creatorListTitle = creatorFilter === "all"
     ? copy.recent
