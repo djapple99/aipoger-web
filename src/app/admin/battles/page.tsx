@@ -250,6 +250,9 @@ export default function AdminBattlesPage() {
             <p className="mt-2 text-sm font-bold text-zinc-400">取消排錯場、清公開戰帖、檢查仍在佔用名額的 Drop Battle。</p>
           </div>
           <nav className="flex flex-wrap items-center gap-2">
+            <Link href="/admin/social" className="rounded-full border border-emerald-200/25 bg-emerald-300/10 px-4 py-2 text-xs font-black text-emerald-100">
+              發文後台
+            </Link>
             <Link href="/admin/moderation" className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-black text-zinc-200">
               檢舉管理
             </Link>

@@ -772,7 +772,10 @@ export default function ListenBarAdminPage() {
               Bar Heartbreak Console
             </h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Link href="/admin/social" className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-4 py-2 text-sm font-bold text-emerald-100">
+              發文後台
+            </Link>
             <Link href="/admin/battles" className="rounded-full border border-orange-300/30 bg-orange-500/10 px-4 py-2 text-sm font-bold text-orange-100">
               Battle 管理
             </Link>

@@ -298,6 +298,9 @@ export default function AdminModerationPage() {
             <p className="mt-1 text-sm font-bold text-zinc-500">快速審檢舉、看投稿狀態、隱藏或恢復傷心酒吧作品。</p>
           </div>
           <nav className="flex flex-wrap gap-2">
+            <Link href="/admin/social" className="rounded-full border border-emerald-200/25 bg-emerald-300/10 px-3 py-2 text-xs font-black text-emerald-100">
+              發文後台
+            </Link>
             <Link href="/admin/battles" className="rounded-full border border-orange-200/25 bg-orange-500/10 px-3 py-2 text-xs font-black text-orange-100">
               Battle 管理
             </Link>
