@@ -27,10 +27,11 @@ import {
   listenBarAudioSizeLabel,
   uploadListenBarAudioFile,
 } from "@/lib/listen-bar-upload-policy";
+import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
 type TrackSortMode = "manual" | "updated_desc" | "updated_asc" | "created_desc" | "created_asc" | "genre" | "status";
-type TrackVisibilityFilter = "all" | "active" | "hidden";
+type TrackVisibilityFilter = "all" | "active" | "hidden" | "uncategorized";
 type AdminListenBarTrackRow = ListenBarTrackRow & {
   review_status?: "approved" | "pending" | "hidden" | "removed" | string | null;
   moderation_note?: string | null;
@@ -51,6 +52,18 @@ type TrackForm = {
   isActive: boolean;
 };
 
+type TrackMetadataForm = {
+  title: string;
+  artist: string;
+  aiTool: string;
+  genre: string;
+  mood: string;
+  bpm: string;
+  durationSeconds: string;
+  lyrics: string;
+  sortOrder: string;
+};
+
 type ContentReportSummary = {
   status?: string | null;
 };
@@ -69,7 +82,7 @@ const initialForm: TrackForm = {
   title: "",
   artist: "AIPOGER",
   aiTool: "Suno",
-  genre: "AI Music",
+  genre: "自我風格",
   mood: "官方輪播",
   bpm: "",
   durationSeconds: "",
@@ -80,6 +93,9 @@ const initialForm: TrackForm = {
 
 const LIVE_RADIO_EPOCH_MS = Date.UTC(2026, 0, 1);
 const UPCOMING_ROTATION_PREVIEW_COUNT = 6;
+const LISTEN_BAR_ADMIN_GENRE_OPTIONS = MUSIC_GENRE_OPTIONS;
+const GENRE_VALUES = new Set(LISTEN_BAR_ADMIN_GENRE_OPTIONS.map((genre) => genre.value));
+const NEEDS_GENRE_REVIEW = new Set(["", "AI Music", "ai music", "Genre", "genre", "自我風格", "未標示風格"]);
 
 function safeFileName(name: string) {
   const cleaned = name
@@ -267,6 +283,33 @@ function trackSearchText(track: AdminListenBarTrackRow, openingPhaseActive: bool
     .toLowerCase();
 }
 
+function isUncategorizedTrack(track: AdminListenBarTrackRow) {
+  const genre = track.genre?.trim() ?? "";
+  return !GENRE_VALUES.has(genre) || NEEDS_GENRE_REVIEW.has(genre);
+}
+
+function normalizedGenreForSelect(value: string | null | undefined) {
+  const genre = value?.trim() ?? "";
+  return GENRE_VALUES.has(genre) ? genre : "自我風格";
+}
+
+function metadataFormFromTrack(track: AdminListenBarTrackRow): TrackMetadataForm {
+  return {
+    title: track.title?.trim() || "",
+    artist: track.artist?.trim() || "",
+    aiTool: track.ai_tool?.trim() || "AI Music",
+    genre: normalizedGenreForSelect(track.genre),
+    mood: track.mood?.trim() || "",
+    bpm: typeof track.bpm === "number" && Number.isFinite(track.bpm) ? String(track.bpm) : "",
+    durationSeconds:
+      typeof track.duration_seconds === "number" && Number.isFinite(track.duration_seconds)
+        ? String(track.duration_seconds)
+        : "",
+    lyrics: track.lyrics ?? "",
+    sortOrder: typeof track.sort_order === "number" && Number.isFinite(track.sort_order) ? String(track.sort_order) : "1000",
+  };
+}
+
 function sortTracksForAdmin(tracks: AdminListenBarTrackRow[], mode: TrackSortMode, openingPhaseActive: boolean) {
   const next = [...tracks];
   if (mode === "manual") return next;
@@ -316,6 +359,9 @@ export default function ListenBarAdminPage() {
   const [trackSearch, setTrackSearch] = useState("");
   const [trackSortMode, setTrackSortMode] = useState<TrackSortMode>("manual");
   const [focusedTrackId, setFocusedTrackId] = useState("");
+  const [editingTrackId, setEditingTrackId] = useState("");
+  const [metadataForm, setMetadataForm] = useState<TrackMetadataForm | null>(null);
+  const [metadataSavingId, setMetadataSavingId] = useState("");
   const [optimisticTrackPatches, setOptimisticTrackPatches] = useState<Record<string, Partial<AdminListenBarTrackRow>>>({});
 
   const displayTracks = useMemo(
@@ -330,12 +376,14 @@ export default function ListenBarAdminPage() {
       const hidden = isHiddenTrack(track);
       if (trackVisibilityFilter === "active" && hidden) return false;
       if (trackVisibilityFilter === "hidden" && !hidden) return false;
+      if (trackVisibilityFilter === "uncategorized" && !isUncategorizedTrack(track)) return false;
       if (!query) return true;
       return trackSearchText(track, openingPhaseActive).includes(query);
     });
     return sortTracksForAdmin(filteredTracks, trackSortMode, openingPhaseActive);
   }, [displayTracks, openingPhaseActive, trackSearch, trackSortMode, trackVisibilityFilter]);
   const hiddenTrackCount = useMemo(() => displayTracks.filter(isHiddenTrack).length, [displayTracks]);
+  const uncategorizedTrackCount = useMemo(() => displayTracks.filter(isUncategorizedTrack).length, [displayTracks]);
   const liveRotation = useMemo(() => liveRotationSnapshot(displayTracks, nowMs), [displayTracks, nowMs]);
   const currentlyPlayingId = liveRotation.current?.id ?? "";
   const totalActive = visiblePlayableTracks.length;
@@ -408,6 +456,10 @@ export default function ListenBarAdminPage() {
     setForm((current) => ({ ...current, ...patch }));
   };
 
+  const updateMetadataForm = (patch: Partial<TrackMetadataForm>) => {
+    setMetadataForm((current) => (current ? { ...current, ...patch } : current));
+  };
+
   const focusTrackInList = useCallback((trackId: string) => {
     if (!trackId) return;
     setTrackVisibilityFilter("all");
@@ -423,6 +475,17 @@ export default function ListenBarAdminPage() {
       });
     });
   }, []);
+
+  const beginEditTrack = (track: AdminListenBarTrackRow) => {
+    setEditingTrackId(track.id);
+    setMetadataForm(metadataFormFromTrack(track));
+    setFocusedTrackId(track.id);
+  };
+
+  const cancelEditTrack = () => {
+    setEditingTrackId("");
+    setMetadataForm(null);
+  };
 
   const handleAudioChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
@@ -453,7 +516,10 @@ export default function ListenBarAdminPage() {
     updateForm({
       title: form.title.trim() || metadata.title || fallbackTitle,
       artist: form.artist.trim() && form.artist !== initialForm.artist ? form.artist : metadata.artist || form.artist,
-      genre: form.genre.trim() && form.genre !== initialForm.genre ? form.genre : metadata.genre || form.genre,
+      genre:
+        form.genre.trim() && form.genre !== initialForm.genre
+          ? normalizedGenreForSelect(form.genre)
+          : normalizedGenreForSelect(metadata.genre || form.genre),
       bpm: form.bpm.trim() || (metadata.bpm ? String(metadata.bpm) : ""),
       durationSeconds: duration > 0 ? String(duration) : form.durationSeconds,
     });
@@ -723,6 +789,58 @@ export default function ListenBarAdminPage() {
     setOperatingTrackId("");
   };
 
+  const saveTrackMetadata = async (track: AdminListenBarTrackRow) => {
+    if (!metadataForm || editingTrackId !== track.id) return;
+    const title = metadataForm.title.trim();
+    const artist = metadataForm.artist.trim();
+    if (!title || !artist) {
+      setError("歌名與創作者必填。");
+      return;
+    }
+    if (!GENRE_VALUES.has(metadataForm.genre)) {
+      setError("請從固定類型選單選擇類型。");
+      return;
+    }
+
+    setError("");
+    setMessage("");
+    setMetadataSavingId(track.id);
+    const response = await fetch("/api/admin/listen-bar-tracks", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(await authHeader()),
+      },
+      body: JSON.stringify({
+        action: "metadata",
+        trackId: track.id,
+        title,
+        artist,
+        aiTool: metadataForm.aiTool.trim(),
+        genre: metadataForm.genre,
+        mood: metadataForm.mood.trim(),
+        bpm: metadataForm.bpm.trim(),
+        durationSeconds: metadataForm.durationSeconds.trim(),
+        lyrics: metadataForm.lyrics,
+        sortOrder: metadataForm.sortOrder.trim(),
+      }),
+    });
+    const payload = (await response.json().catch(() => null)) as ListenBarTracksAdminPayload | null;
+    if (!response.ok) {
+      setError(`更新資料失敗：${payload?.error || "後台 API 無法更新歌曲資料。"}`);
+      setMetadataSavingId("");
+      return;
+    }
+    setTracks(payload?.tracks ?? []);
+    setOptimisticTrackPatches({});
+    setTrackSortMode("updated_desc");
+    setFocusedTrackId(track.id);
+    setEditingTrackId("");
+    setMetadataForm(null);
+    setMessage(`「${title}」資料已更新。`);
+    setMetadataSavingId("");
+  };
+
   if (adminState === "checking") {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#050505] px-6 text-zinc-100">
@@ -934,7 +1052,17 @@ export default function ListenBarAdminPage() {
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <input value={form.aiTool} onChange={(event) => updateForm({ aiTool: event.target.value })} placeholder="AI 工具，例如 Suno / Udio" className="h-12 rounded-xl border border-white/12 bg-black/50 px-4 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-400" />
-                <input value={form.genre} onChange={(event) => updateForm({ genre: event.target.value })} placeholder="曲風" className="h-12 rounded-xl border border-white/12 bg-black/50 px-4 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-400" />
+                <select
+                  value={form.genre}
+                  onChange={(event) => updateForm({ genre: event.target.value })}
+                  className="h-12 rounded-xl border border-white/12 bg-black/50 px-4 text-sm font-bold text-white outline-none transition focus:border-orange-400"
+                >
+                  {LISTEN_BAR_ADMIN_GENRE_OPTIONS.map((genre) => (
+                    <option key={genre.value} value={genre.value} className="bg-zinc-950 text-white">
+                      {genre.value}
+                    </option>
+                  ))}
+                </select>
                 <input value={form.mood} onChange={(event) => updateForm({ mood: event.target.value })} placeholder="情緒 / 分類" className="h-12 rounded-xl border border-white/12 bg-black/50 px-4 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-400" />
                 <div className="grid grid-cols-2 gap-3">
                   <input value={form.bpm} onChange={(event) => updateForm({ bpm: event.target.value.replace(/[^\d]/g, "") })} placeholder="BPM" inputMode="numeric" className="h-12 rounded-xl border border-white/12 bg-black/50 px-4 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-400" />
@@ -1001,6 +1129,17 @@ export default function ListenBarAdminPage() {
                 >
                   只看下架{hiddenTrackCount > 0 ? ` ${hiddenTrackCount}` : ""}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setTrackVisibilityFilter("uncategorized")}
+                  className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-200/55 ${
+                    trackVisibilityFilter === "uncategorized"
+                      ? "border-orange-200/65 bg-orange-500/14 text-orange-100"
+                      : "border-white/12 text-zinc-200 hover:border-orange-200/55"
+                  }`}
+                >
+                  待補類型{uncategorizedTrackCount > 0 ? ` ${uncategorizedTrackCount}` : ""}
+                </button>
                 <button type="button" disabled={playlistBusy || visiblePlayableTracks.length < 2} onClick={() => void randomizeTrackOrder()} className="rounded-full border border-orange-300/30 bg-orange-500/10 px-4 py-2 text-xs font-black text-orange-100 transition hover:border-orange-200/65 disabled:cursor-not-allowed disabled:opacity-45">
                   {playlistBusy ? "排列中" : "隨機排列"}
                 </button>
@@ -1061,24 +1200,28 @@ export default function ListenBarAdminPage() {
 
             <div className="grid max-h-[72rem] gap-3 overflow-y-auto pr-1">
               {renderedTracks.length === 0 ? (
-                <div className="rounded-2xl border border-white/10 bg-black/40 px-4 py-10 text-center text-sm leading-7 text-zinc-500">
-                  {displayTracks.length === 0
-                    ? "尚無輪播資料。先上傳第一首官方歌曲。"
-                    : trackSearch.trim()
-                      ? "沒有符合搜尋條件的歌曲。"
-                      : trackVisibilityFilter === "hidden"
-                        ? "目前沒有下架歌曲。"
-                        : "目前已隱藏下架歌曲，沒有可顯示的上架歌曲。"}
-                </div>
+	                <div className="rounded-2xl border border-white/10 bg-black/40 px-4 py-10 text-center text-sm leading-7 text-zinc-500">
+	                  {displayTracks.length === 0
+	                    ? "尚無輪播資料。先上傳第一首官方歌曲。"
+	                    : trackSearch.trim()
+	                      ? "沒有符合搜尋條件的歌曲。"
+	                      : trackVisibilityFilter === "hidden"
+	                        ? "目前沒有下架歌曲。"
+	                        : trackVisibilityFilter === "uncategorized"
+	                          ? "目前沒有待補類型的歌曲。"
+	                          : "目前已隱藏下架歌曲，沒有可顯示的上架歌曲。"}
+	                </div>
               ) : (
                 renderedTracks.map((track) => {
                   const coverUrl = rowPublicUrl(LISTEN_BAR_COVER_BUCKET, track.cover_path) || DEFAULT_LISTEN_BAR_COVER;
                   const audioUrl = rowPublicUrl(LISTEN_BAR_AUDIO_BUCKET, track.audio_path);
-                  const hidden = isHiddenTrack(track);
-                  const status = trackStatusBadge(track, currentlyPlayingId, openingPhaseActive);
-                  const updatedAt = track.updated_at ? new Date(track.updated_at).toLocaleString("zh-TW", { hour12: false }) : "-";
-                  const focused = focusedTrackId === track.id;
-                  return (
+	                  const hidden = isHiddenTrack(track);
+	                  const status = trackStatusBadge(track, currentlyPlayingId, openingPhaseActive);
+	                  const updatedAt = track.updated_at ? new Date(track.updated_at).toLocaleString("zh-TW", { hour12: false }) : "-";
+	                  const focused = focusedTrackId === track.id;
+	                  const editing = editingTrackId === track.id && metadataForm;
+	                  const needsGenreReview = isUncategorizedTrack(track);
+	                  return (
                     <article
                       key={track.id}
                       id={`listen-bar-admin-track-${track.id}`}
@@ -1104,8 +1247,13 @@ export default function ListenBarAdminPage() {
                             </div>
                             <span className={`rounded-full border px-3 py-1 text-xs font-black ${status.className}`}>
                               {status.label}
-                            </span>
-                          </div>
+	                            </span>
+	                            {needsGenreReview && (
+	                              <span className="rounded-full border border-orange-200/40 bg-orange-500/12 px-3 py-1 text-xs font-black text-orange-100">
+	                                待補類型
+	                              </span>
+	                            )}
+	                          </div>
                           <div className="mt-3 flex flex-wrap gap-2">
                             <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-bold text-zinc-300">
                               {phaseLabel(track, openingPhaseActive)}
@@ -1136,20 +1284,125 @@ export default function ListenBarAdminPage() {
                               <track kind="captions" />
                             </audio>
                           )}
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <button type="button" disabled={operatingTrackId === track.id} onClick={() => void (hidden ? restoreTrack(track) : hideTrack(track))} className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-45 ${hidden ? "border-cyan-300/25 text-cyan-100 hover:border-cyan-200/65 focus-visible:ring-cyan-200/55" : "border-white/12 text-zinc-200 hover:border-cyan-200/55 focus-visible:ring-cyan-200/55"}`}>
-                              {operatingTrackId === track.id ? "處理中" : hidden ? "恢復上架" : "下架"}
-                            </button>
+	                          <div className="mt-3 flex flex-wrap gap-2">
+	                            <button type="button" disabled={metadataSavingId === track.id} onClick={() => (editing ? cancelEditTrack() : beginEditTrack(track))} className="rounded-full border border-orange-200/25 bg-orange-500/10 px-4 py-2 text-xs font-black text-orange-100 transition hover:border-orange-200/65 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-200/55 disabled:cursor-not-allowed disabled:opacity-45">
+	                              {editing ? "收起編輯" : "編輯資料"}
+	                            </button>
+	                            <button type="button" disabled={operatingTrackId === track.id} onClick={() => void (hidden ? restoreTrack(track) : hideTrack(track))} className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-45 ${hidden ? "border-cyan-300/25 text-cyan-100 hover:border-cyan-200/65 focus-visible:ring-cyan-200/55" : "border-white/12 text-zinc-200 hover:border-cyan-200/55 focus-visible:ring-cyan-200/55"}`}>
+	                              {operatingTrackId === track.id ? "處理中" : hidden ? "恢復上架" : "下架"}
+	                            </button>
                             <button type="button" disabled={hidden || operatingTrackId === track.id} onClick={() => void moveTrack(track, "up")} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45">
                               往前
                             </button>
                             <button type="button" disabled={hidden || operatingTrackId === track.id} onClick={() => void moveTrack(track, "down")} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45">
                               往後
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </article>
+	                            </button>
+	                          </div>
+	                          {editing && metadataForm && (
+	                            <div className="mt-4 rounded-2xl border border-orange-200/16 bg-orange-500/[0.045] p-4">
+	                              <div className="grid gap-3 md:grid-cols-2">
+	                                <label className="block">
+	                                  <span className="text-xs font-bold text-zinc-500">歌名</span>
+	                                  <input
+	                                    value={metadataForm.title}
+	                                    onChange={(event) => updateMetadataForm({ title: event.target.value })}
+	                                    maxLength={120}
+	                                    className="mt-1 h-11 w-full rounded-xl border border-white/12 bg-black/50 px-4 text-sm font-bold text-white outline-none transition focus:border-orange-300/70"
+	                                  />
+	                                </label>
+	                                <label className="block">
+	                                  <span className="text-xs font-bold text-zinc-500">創作者 / 歌手</span>
+	                                  <input
+	                                    value={metadataForm.artist}
+	                                    onChange={(event) => updateMetadataForm({ artist: event.target.value })}
+	                                    maxLength={120}
+	                                    className="mt-1 h-11 w-full rounded-xl border border-white/12 bg-black/50 px-4 text-sm font-bold text-white outline-none transition focus:border-orange-300/70"
+	                                  />
+	                                </label>
+	                                <label className="block">
+	                                  <span className="text-xs font-bold text-zinc-500">AI 工具</span>
+	                                  <input
+	                                    value={metadataForm.aiTool}
+	                                    onChange={(event) => updateMetadataForm({ aiTool: event.target.value })}
+	                                    maxLength={80}
+	                                    className="mt-1 h-11 w-full rounded-xl border border-white/12 bg-black/50 px-4 text-sm font-bold text-white outline-none transition focus:border-orange-300/70"
+	                                  />
+	                                </label>
+	                                <label className="block">
+	                                  <span className="text-xs font-bold text-zinc-500">類型</span>
+	                                  <select
+	                                    value={metadataForm.genre}
+	                                    onChange={(event) => updateMetadataForm({ genre: event.target.value })}
+	                                    className="mt-1 h-11 w-full rounded-xl border border-white/12 bg-black/50 px-4 text-sm font-bold text-white outline-none transition focus:border-orange-300/70"
+	                                  >
+	                                    {LISTEN_BAR_ADMIN_GENRE_OPTIONS.map((genre) => (
+	                                      <option key={genre.value} value={genre.value} className="bg-zinc-950 text-white">
+	                                        {genre.value}
+	                                      </option>
+	                                    ))}
+	                                  </select>
+	                                </label>
+	                                <label className="block">
+	                                  <span className="text-xs font-bold text-zinc-500">情緒 / 標籤</span>
+	                                  <input
+	                                    value={metadataForm.mood}
+	                                    onChange={(event) => updateMetadataForm({ mood: event.target.value })}
+	                                    maxLength={80}
+	                                    className="mt-1 h-11 w-full rounded-xl border border-white/12 bg-black/50 px-4 text-sm font-bold text-white outline-none transition focus:border-orange-300/70"
+	                                  />
+	                                </label>
+	                                <div className="grid gap-3 sm:grid-cols-3">
+	                                  <label className="block">
+	                                    <span className="text-xs font-bold text-zinc-500">BPM</span>
+	                                    <input
+	                                      value={metadataForm.bpm}
+	                                      onChange={(event) => updateMetadataForm({ bpm: event.target.value.replace(/[^\d]/g, "") })}
+	                                      inputMode="numeric"
+	                                      className="mt-1 h-11 w-full rounded-xl border border-white/12 bg-black/50 px-4 text-sm font-bold text-white outline-none transition focus:border-orange-300/70"
+	                                    />
+	                                  </label>
+	                                  <label className="block">
+	                                    <span className="text-xs font-bold text-zinc-500">秒數</span>
+	                                    <input
+	                                      value={metadataForm.durationSeconds}
+	                                      onChange={(event) => updateMetadataForm({ durationSeconds: event.target.value.replace(/[^\d]/g, "") })}
+	                                      inputMode="numeric"
+	                                      className="mt-1 h-11 w-full rounded-xl border border-white/12 bg-black/50 px-4 text-sm font-bold text-white outline-none transition focus:border-orange-300/70"
+	                                    />
+	                                  </label>
+	                                  <label className="block">
+	                                    <span className="text-xs font-bold text-zinc-500">排序</span>
+	                                    <input
+	                                      value={metadataForm.sortOrder}
+	                                      onChange={(event) => updateMetadataForm({ sortOrder: event.target.value.replace(/[^\d-]/g, "") })}
+	                                      inputMode="numeric"
+	                                      className="mt-1 h-11 w-full rounded-xl border border-white/12 bg-black/50 px-4 text-sm font-bold text-white outline-none transition focus:border-orange-300/70"
+	                                    />
+	                                  </label>
+	                                </div>
+	                              </div>
+	                              <label className="mt-3 block">
+	                                <span className="text-xs font-bold text-zinc-500">歌詞</span>
+	                                <textarea
+	                                  value={metadataForm.lyrics}
+	                                  onChange={(event) => updateMetadataForm({ lyrics: event.target.value.slice(0, 12000) })}
+	                                  rows={4}
+	                                  className="mt-1 w-full resize-y rounded-xl border border-white/12 bg-black/50 px-4 py-3 text-sm leading-6 text-white outline-none transition focus:border-orange-300/70"
+	                                />
+	                              </label>
+	                              <div className="mt-4 flex flex-wrap justify-end gap-2">
+	                                <button type="button" onClick={cancelEditTrack} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-300 transition hover:border-white/30">
+	                                  取消
+	                                </button>
+	                                <button type="button" disabled={metadataSavingId === track.id} onClick={() => void saveTrackMetadata(track)} className="rounded-full border border-orange-200/40 bg-orange-500 px-5 py-2 text-xs font-black text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-55">
+	                                  {metadataSavingId === track.id ? "儲存中" : "儲存資料"}
+	                                </button>
+	                              </div>
+	                            </div>
+	                          )}
+	                        </div>
+	                      </div>
+	                    </article>
                   );
                 })
               )}

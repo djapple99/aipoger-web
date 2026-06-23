@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isAdminEmail } from "@/lib/admin-emails";
+import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 
-type TrackAction = "hide" | "restore" | "sort" | "randomize" | "move" | "normalize";
+type TrackAction = "hide" | "restore" | "sort" | "randomize" | "move" | "normalize" | "metadata";
 type AdminListenBarTrackRow = {
   id: string;
   is_active?: boolean | null;
@@ -49,6 +50,15 @@ function isMissingColumnError(error: unknown): boolean {
       ].filter(Boolean).join(" ")
     : String(error ?? "");
   return /schema cache|column.*does not exist|PGRST204|review_status|moderation_note|hidden_at|removed_at|source|bar_phase|positive_reaction_count|heart_count|star_count|thumb_count|happy_count|promoted_at/i.test(text);
+}
+
+const allowedGenreValues = new Set(MUSIC_GENRE_OPTIONS.map((genre) => genre.value));
+
+function cleanNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const numberValue = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(numberValue)) return null;
+  return Math.max(0, Math.round(numberValue));
 }
 
 async function requireOwnerAdmin(request: NextRequest) {
@@ -162,6 +172,55 @@ async function updateTrack(admin: ReturnType<typeof adminClient>, trackId: strin
   if (legacy.error) throw legacy.error;
 }
 
+async function updateTrackMetadata(admin: ReturnType<typeof adminClient>, trackId: string, body: Record<string, unknown>) {
+  const title = cleanText(body.title, 120);
+  const artist = cleanText(body.artist, 120);
+  const genre = cleanText(body.genre, 80);
+  if (!title) throw new Error("歌名必填。");
+  if (!artist) throw new Error("創作者必填。");
+  if (!genre || !allowedGenreValues.has(genre)) throw new Error("請從固定類型選單選擇歌曲類型。");
+
+  const payload = {
+    title,
+    artist,
+    ai_tool: cleanText(body.aiTool, 80) ?? "AI Music",
+    genre,
+    mood: cleanText(body.mood, 80),
+    bpm: cleanNumber(body.bpm),
+    duration_seconds: cleanNumber(body.durationSeconds),
+    lyrics: cleanText(body.lyrics, 12000),
+    sort_order: cleanNumber(body.sortOrder) ?? 1000,
+    updated_at: new Date().toISOString(),
+  };
+
+  const modern = await admin
+    .from("listen_bar_tracks")
+    .update(payload)
+    .eq("id", trackId)
+    .select("id")
+    .maybeSingle();
+  if (!modern.error) return;
+  if (!isMissingColumnError(modern.error)) throw modern.error;
+
+  const legacy = await admin
+    .from("listen_bar_tracks")
+    .update({
+      title: payload.title,
+      artist: payload.artist,
+      ai_tool: payload.ai_tool,
+      genre: payload.genre,
+      mood: payload.mood,
+      bpm: payload.bpm,
+      duration_seconds: payload.duration_seconds,
+      lyrics: payload.lyrics,
+      sort_order: payload.sort_order,
+    })
+    .eq("id", trackId)
+    .select("id")
+    .maybeSingle();
+  if (legacy.error) throw legacy.error;
+}
+
 async function randomizeActiveTracks(admin: ReturnType<typeof adminClient>) {
   const tracks = (await loadTracks(admin)) as AdminListenBarTrackRow[];
   const activeTracks = shuffled(tracks.filter(isPlayableForRandomSort));
@@ -213,7 +272,7 @@ export async function PATCH(request: NextRequest) {
 
     const trackId = cleanText(body.trackId, 160);
     const action = cleanText(body.action, 40) as TrackAction | null;
-    if (action !== "hide" && action !== "restore" && action !== "sort" && action !== "randomize" && action !== "move" && action !== "normalize") return jsonError("未知後台動作。", 400);
+    if (action !== "hide" && action !== "restore" && action !== "sort" && action !== "randomize" && action !== "move" && action !== "normalize" && action !== "metadata") return jsonError("未知後台動作。", 400);
     if (action !== "randomize" && action !== "normalize" && !trackId) return jsonError("缺少歌曲 ID。", 400);
 
     const sortOrder = typeof body.sortOrder === "number" && Number.isFinite(body.sortOrder)
@@ -229,6 +288,8 @@ export async function PATCH(request: NextRequest) {
       const direction = body.direction === "up" ? "up" : body.direction === "down" ? "down" : null;
       if (!direction) return jsonError("缺少移動方向。", 400);
       await moveTrack(guard.admin, trackId as string, direction);
+    } else if (action === "metadata") {
+      await updateTrackMetadata(guard.admin, trackId as string, body);
     } else {
       await updateTrack(guard.admin, trackId as string, action, sortOrder, cleanText(body.note, 1200));
     }
