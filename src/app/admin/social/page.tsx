@@ -55,10 +55,19 @@ type RecentBattleResult = {
   archived_at: string | null;
 };
 
+type SocialAccountStatus = {
+  platform: SocialPlatform;
+  displayName: string;
+  connectionStatus: "connected" | "not_connected" | "manual" | "draft_only";
+  publishMode: SocialPublishMode;
+  envKeys: string[];
+  note: string;
+};
+
 type AdminPayload = {
   posts?: SocialPost[];
   recentBattleResults?: RecentBattleResult[];
-  accounts?: unknown[];
+  accountStatuses?: SocialAccountStatus[];
   error?: string;
 };
 
@@ -105,6 +114,20 @@ function sortedTargets(post: SocialPost) {
   return [...(post.social_post_targets ?? [])].sort((a, b) => order.indexOf(a.platform) - order.indexOf(b.platform));
 }
 
+function connectionLabel(status: SocialAccountStatus["connectionStatus"]) {
+  if (status === "connected") return "可直發";
+  if (status === "manual") return "手動";
+  if (status === "draft_only") return "產草稿";
+  return "待設定";
+}
+
+function connectionClass(status: SocialAccountStatus["connectionStatus"]) {
+  if (status === "connected") return "border-emerald-300/30 bg-emerald-300/10 text-emerald-100";
+  if (status === "manual") return "border-cyan-300/30 bg-cyan-300/10 text-cyan-100";
+  if (status === "draft_only") return "border-white/10 bg-white/[0.04] text-zinc-300";
+  return "border-orange-300/30 bg-orange-500/10 text-orange-100";
+}
+
 type RunAction = (action: string, body: Record<string, unknown>, busyKey: string, success: string) => Promise<boolean>;
 
 function SocialTargetPanel({
@@ -113,12 +136,14 @@ function SocialTargetPanel({
   busyId,
   runAction,
   copyText,
+  accountStatus,
 }: {
   post: SocialPost;
   target: SocialTarget;
   busyId: string | null;
   runAction: RunAction;
   copyText: (text: string) => Promise<void>;
+  accountStatus?: SocialAccountStatus;
 }) {
   const [title, setTitle] = useState(target.title);
   const [content, setContent] = useState(target.content_text);
@@ -219,11 +244,11 @@ function SocialTargetPanel({
         {target.publish_mode === "api" ? (
           <button
             type="button"
-            disabled={busyId === target.id || post.status === "needs_review"}
+            disabled={busyId === target.id || post.status === "needs_review" || accountStatus?.connectionStatus !== "connected"}
             onClick={() => runAction("publish_target", { targetId: target.id }, target.id, `${platformLabel[target.platform]} 發布完成。`)}
             className="rounded-lg bg-white px-3 py-2 text-xs font-black text-black disabled:cursor-not-allowed disabled:opacity-50"
           >
-            發布
+            {accountStatus?.connectionStatus === "connected" ? "發布" : "待連線"}
           </button>
         ) : (
           <button
@@ -244,6 +269,7 @@ export default function AdminSocialPage() {
   const [adminState, setAdminState] = useState<AdminState>("checking");
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [recentBattleResults, setRecentBattleResults] = useState<RecentBattleResult[]>([]);
+  const [accountStatuses, setAccountStatuses] = useState<SocialAccountStatus[]>([]);
   const [selectedBattleId, setSelectedBattleId] = useState("");
   const [manualTopic, setManualTopic] = useState("Creator Wanted");
   const [manualBody, setManualBody] = useState("徵求第一批 AI 音樂創作者。帶你的作品進 AIPOGER，讓 30-60 秒抓波上場被聽見。");
@@ -277,8 +303,13 @@ export default function AdminSocialPage() {
     }
     setPosts(payload?.posts ?? []);
     setRecentBattleResults(payload?.recentBattleResults ?? []);
+    setAccountStatuses(payload?.accountStatuses ?? []);
     setSelectedBattleId((current) => current || payload?.recentBattleResults?.[0]?.battle_id || "");
   }, []);
+
+  const accountStatusByPlatform = useMemo(() => {
+    return new Map(accountStatuses.map((account) => [account.platform, account]));
+  }, [accountStatuses]);
 
   useEffect(() => {
     let mounted = true;
@@ -447,6 +478,36 @@ export default function AdminSocialPage() {
           </div>
         </section>
 
+        <section className="mt-6 rounded-lg border border-white/10 bg-black/45 p-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-200/80">發布設定</p>
+              <h2 className="mt-2 text-xl font-black">平台連線狀態</h2>
+            </div>
+            <p className="max-w-2xl text-xs font-bold leading-6 text-zinc-500">
+              不在 repo 保存密碼或 token。Discord/X 需要 Vercel env；IG/TikTok/YT 先產草稿；FB 社團採手動發布。
+            </p>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {accountStatuses.map((account) => (
+              <div key={account.platform} className="rounded-lg border border-white/10 bg-white/[0.035] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-black text-white">{account.displayName}</p>
+                  <span className={`rounded-md border px-2 py-1 text-[0.65rem] font-black ${connectionClass(account.connectionStatus)}`}>
+                    {connectionLabel(account.connectionStatus)}
+                  </span>
+                </div>
+                <p className="mt-3 text-xs font-bold leading-6 text-zinc-400">{account.note}</p>
+                {account.envKeys.length > 0 && (
+                  <p className="mt-2 break-all text-[0.65rem] font-bold leading-5 text-zinc-600">
+                    Env：{account.envKeys.join(" / ")}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+
         <div className="mt-6 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
           <section className="rounded-lg border border-orange-300/20 bg-orange-500/[0.06] p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -565,6 +626,7 @@ export default function AdminSocialPage() {
                       busyId={busyId}
                       runAction={runAction}
                       copyText={copyText}
+                      accountStatus={accountStatusByPlatform.get(target.platform)}
                     />
                   ))}
                 </div>

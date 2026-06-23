@@ -79,6 +79,15 @@ type BattleRow = {
   audio_b_path: string | null;
 };
 
+type SocialAccountStatus = {
+  platform: SocialPlatform;
+  displayName: string;
+  connectionStatus: "connected" | "not_connected" | "manual" | "draft_only";
+  publishMode: SocialPublishMode;
+  envKeys: string[];
+  note: string;
+};
+
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
 }
@@ -177,6 +186,65 @@ async function loadAccounts(admin: AdminClient) {
     .order("platform", { ascending: true });
   if (error) throw error;
   return data ?? [];
+}
+
+function envHasAny(keys: string[]) {
+  return keys.some((key) => Boolean(process.env[key]));
+}
+
+function runtimeAccountStatuses(): SocialAccountStatus[] {
+  const discordKeys = ["SOCIAL_DISCORD_WEBHOOK_URL", "DISCORD_SOCIAL_WEBHOOK_URL", "DISCORD_WEBHOOK_URL"];
+  const xKeys = ["X_API_BEARER_TOKEN", "SOCIAL_X_BEARER_TOKEN"];
+  return [
+    {
+      platform: "discord",
+      displayName: "Discord",
+      connectionStatus: envHasAny(discordKeys) ? "connected" : "not_connected",
+      publishMode: "api",
+      envKeys: discordKeys,
+      note: "設定 Discord webhook 後可從後台直發到指定頻道。",
+    },
+    {
+      platform: "x",
+      displayName: "X",
+      connectionStatus: envHasAny(xKeys) ? "connected" : "not_connected",
+      publishMode: "api",
+      envKeys: xKeys,
+      note: "設定 X API token 後可從後台直發文字與連結。",
+    },
+    {
+      platform: "instagram",
+      displayName: "Instagram",
+      connectionStatus: "draft_only",
+      publishMode: "draft_only",
+      envKeys: [],
+      note: "第一版先產 IG 圖文/Reels 草稿與背景配樂提示。",
+    },
+    {
+      platform: "tiktok",
+      displayName: "TikTok",
+      connectionStatus: "draft_only",
+      publishMode: "draft_only",
+      envKeys: [],
+      note: "第一版先產短影音腳本與 caption，不直發。",
+    },
+    {
+      platform: "youtube",
+      displayName: "YouTube",
+      connectionStatus: "draft_only",
+      publishMode: "draft_only",
+      envKeys: [],
+      note: "YouTube 先不設定；第一版只產 Shorts 標題與 description。",
+    },
+    {
+      platform: "facebook_group",
+      displayName: "Facebook 社團",
+      connectionStatus: "manual",
+      publishMode: "manual",
+      envKeys: [],
+      note: "FB 社團使用半自動：複製文案後手動貼到 AIPOGER 社團。",
+    },
+  ];
 }
 
 async function insertDraftBundle(
@@ -394,7 +462,7 @@ export async function GET(request: NextRequest) {
         throw error;
       }),
     ]);
-    return NextResponse.json({ posts, recentBattleResults, accounts });
+    return NextResponse.json({ posts, recentBattleResults, accounts, accountStatuses: runtimeAccountStatuses() });
   } catch (error) {
     if (isMissingSocialSchema(error as { message?: string })) {
       return jsonError("社群發文資料表尚未建立，請先套用 supabase/20260623_social_posting.sql。", 503);
