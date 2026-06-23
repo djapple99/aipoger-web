@@ -24,6 +24,18 @@ function adminClient() {
   });
 }
 
+function isMissingColumnError(error: unknown, column: string): boolean {
+  const text = error && typeof error === "object"
+    ? [
+        (error as { message?: string }).message,
+        (error as { details?: string }).details,
+        (error as { hint?: string }).hint,
+        (error as { code?: string }).code,
+      ].filter(Boolean).join(" ")
+    : String(error ?? "");
+  return new RegExp(`schema cache|column.*${column}|${column}.*schema cache|PGRST204`, "i").test(text);
+}
+
 async function ensureAvatarBucket(admin: ReturnType<typeof adminClient>) {
   const { data: buckets, error } = await admin.storage.listBuckets();
   if (error) throw error;
@@ -74,13 +86,25 @@ export async function POST(request: NextRequest) {
     const { data: pub } = admin.storage.from(AVATAR_BUCKET).getPublicUrl(storagePath);
     const publicUrl = `${pub.publicUrl}?v=${Date.now()}`;
 
-    const [userProfile, fighterProfile] = await Promise.all([
-      admin.from("user_profiles").upsert({ id: userData.user.id, avatar_url: publicUrl }, { onConflict: "id" }),
-      admin.from("fighter_profiles").upsert({ id: userData.user.id, avatar_url: publicUrl }, { onConflict: "id" }),
-    ]);
-
-    if (userProfile.error) return jsonError(`頭像資料更新失敗：${userProfile.error.message}`, 500);
+    const fighterProfile = await admin
+      .from("fighter_profiles")
+      .upsert({ id: userData.user.id, avatar_url: publicUrl }, { onConflict: "id" });
     if (fighterProfile.error) return jsonError(`鬥士頭像更新失敗：${fighterProfile.error.message}`, 500);
+
+    const userProfile = await admin
+      .from("user_profiles")
+      .upsert({ id: userData.user.id, avatar_url: publicUrl }, { onConflict: "id" });
+    if (userProfile.error && !isMissingColumnError(userProfile.error, "avatar_url")) {
+      return jsonError(`頭像資料更新失敗：${userProfile.error.message}`, 500);
+    }
+
+    await admin.auth.admin.updateUserById(userData.user.id, {
+      user_metadata: {
+        ...(userData.user.user_metadata ?? {}),
+        avatar_url: publicUrl,
+        picture: publicUrl,
+      },
+    });
 
     return NextResponse.json({ ok: true, avatarUrl: publicUrl });
   } catch (error) {
