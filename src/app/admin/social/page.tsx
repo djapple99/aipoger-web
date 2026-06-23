@@ -355,6 +355,12 @@ export default function AdminSocialPage() {
     setMessage("文案已複製。");
   }
 
+  async function deletePost(post: SocialPost) {
+    const ok = window.confirm(`確定刪除「${post.title}」這筆社群草稿？刪除後各平台文案也會一起移除。`);
+    if (!ok) return;
+    await runAction("delete_post", { postId: post.id }, `delete-${post.id}`, "社群草稿已刪除。");
+  }
+
   if (adminState === "checking") {
     return (
       <main className="min-h-screen bg-[#050505] px-5 py-10 text-white">
@@ -422,6 +428,24 @@ export default function AdminSocialPage() {
             {error || message}
           </div>
         )}
+
+        <section className="mt-6 rounded-lg border border-white/10 bg-white/[0.04] p-5">
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-200/80">怎麼使用</p>
+          <div className="mt-3 grid gap-3 text-sm font-bold leading-7 text-zinc-300 lg:grid-cols-3">
+            <p>
+              <span className="text-white">1. 生文案：</span>
+              Battle 有勝出戰報時，左邊可自動產各平台文案；沒有戰報時，用右邊人工公告先產草稿。
+            </p>
+            <p>
+              <span className="text-white">2. 圖與影片：</span>
+              第一版還不是自動出圖/剪影片。IG、TikTok、YouTube、FB 社團會給文案、腳本、連結與背景配樂提示。
+            </p>
+            <p>
+              <span className="text-white">3. 發布：</span>
+              先按批准；Discord/X 有 API 設定才可直發。FB 社團點「開啟發布頁」，複製文案後手動貼上。
+            </p>
+          </div>
+        </section>
 
         <div className="mt-6 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
           <section className="rounded-lg border border-orange-300/20 bg-orange-500/[0.06] p-5">
@@ -512,14 +536,24 @@ export default function AdminSocialPage() {
                     <h2 className="mt-3 text-2xl font-black text-white">{post.title}</h2>
                     {post.approved_at && <p className="mt-2 text-xs font-bold text-emerald-200/80">已批准：{formatTime(post.approved_at)}</p>}
                   </div>
-                  <button
-                    type="button"
-                    disabled={busyId === post.id || post.status === "published"}
-                    onClick={() => runAction("approve_post", { postId: post.id }, post.id, "已批准社群草稿，可開始發布或手動處理。")}
-                    className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-4 py-3 text-sm font-black text-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    批准
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={busyId === post.id || post.status === "published"}
+                      onClick={() => runAction("approve_post", { postId: post.id }, post.id, "已批准社群草稿，可開始發布或手動處理。")}
+                      className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-4 py-3 text-sm font-black text-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      批准
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busyId === `delete-${post.id}` || post.status === "published"}
+                      onClick={() => deletePost(post)}
+                      className="rounded-lg border border-red-300/30 bg-red-500/10 px-4 py-3 text-sm font-black text-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      刪除草稿
+                    </button>
+                  </div>
                 </div>
 
                 <div className="mt-5 grid gap-4 xl:grid-cols-2">

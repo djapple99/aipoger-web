@@ -463,6 +463,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
+    if (action === "delete_post") {
+      const postId = clean(body?.postId, 80);
+      if (!isUuid(postId)) return jsonError("Missing postId");
+      const { data: post, error: loadError } = await admin
+        .from("social_posts")
+        .select("id,title,status")
+        .eq("id", postId)
+        .maybeSingle<{ id: string; title: string; status: SocialPostStatus }>();
+      if (loadError) throw loadError;
+      if (!post) return jsonError("找不到這筆草稿。", 404);
+      if (post.status === "published") return jsonError("已發布的社群紀錄不允許直接刪除，請保留發布紀錄。", 409);
+      const { error } = await admin.from("social_posts").delete().eq("id", postId);
+      if (error) throw error;
+      return NextResponse.json({ ok: true, deletedPost: post });
+    }
+
     if (action === "publish_target") {
       const targetId = clean(body?.targetId, 80);
       if (!isUuid(targetId)) return jsonError("Missing targetId");
