@@ -113,8 +113,8 @@ Mobile layout:
 
 Social icons:
 
-- Use colored Instagram, Discord, and Facebook icons.
-- TikTok is currently removed from the public homepage icon cluster.
+- Use colored Instagram, TikTok, and Facebook icons for the public homepage cluster.
+- Do not show Discord in the public social cluster until a valid permanent invite URL exists; `discord.gg/aipoger` is not a valid invite.
 - Facebook should link to the AIPOGER group when using the public social cluster.
 
 ## Drop Battle

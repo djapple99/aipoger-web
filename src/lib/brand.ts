@@ -9,9 +9,9 @@ export const AIPOGER_SOCIAL_LINKS = [
     href: "https://www.instagram.com/aipoger.ai/",
   },
   {
-    label: "Discord",
+    label: "TikTok",
     handle: "aipoger",
-    href: "https://discord.gg/aipoger",
+    href: "https://www.tiktok.com/@aipoger",
   },
   {
     label: "Facebook",
