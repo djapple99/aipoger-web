@@ -1012,6 +1012,7 @@ function HookCutContent() {
     const region = regionRef.current;
     const { start, end } = region;
     const lyricsForSave = lyricsText.trim().slice(0, MAX_LYRICS_CHARS);
+    let uploadedFullAudioPath: string | null = null;
 
     setUploadPhase(t.uploadingPrepare);
 
@@ -1101,6 +1102,7 @@ function HookCutContent() {
       if (fullAudioStorage && audioFile) {
         await uploadFullSongFile(fullAudioStorage.storagePath, audioFile);
         fullAudioPath = fullAudioStorage.storagePath;
+        uploadedFullAudioPath = fullAudioPath;
       }
 
       // 上傳到 Supabase Storage（路徑僅 ASCII；WAV MIME 與 bucket 白名單一致）
@@ -1380,6 +1382,9 @@ function HookCutContent() {
       }, 1200);
     } catch (err) {
       console.error("Upload failed:", err);
+      if (uploadedFullAudioPath) {
+        void supabase.storage.from("battle-audio").remove([uploadedFullAudioPath]);
+      }
       const msg =
         typeof err === "object" && err !== null && "message" in err
           ? String((err as { message: unknown }).message)
