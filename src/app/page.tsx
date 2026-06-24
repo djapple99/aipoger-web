@@ -123,7 +123,7 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
       },
       rank: {
         eyebrow: "HONOR SIGNAL",
-        title: "AIPOGER栄誉榜",
+        title: "Top Drops",
         body: "リスナーに認められたAI音楽の記録。聴いて、自分の作品もここに立たせよう。",
         tone: "cyan",
       },
@@ -146,7 +146,7 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
       },
       rank: {
         eyebrow: "HONOR SIGNAL",
-        title: "AIPOGER 명예보드",
+        title: "Top Drops",
         body: "청중에게 인정받은 AI 음악 기록이 모이는 곳. 듣고, 당신의 작품도 이 무대에 올려보세요.",
         tone: "cyan",
       },
@@ -169,7 +169,7 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
       },
       rank: {
         eyebrow: "HONOR SIGNAL",
-        title: "Honor Board",
+        title: "Top Drops",
         body: "Recognized AI music lives here. Listen in, and give your own work a shot at the board.",
         tone: "cyan",
       },
@@ -191,7 +191,7 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
     },
     rank: {
       eyebrow: "HONOR SIGNAL",
-      title: "榮譽榜",
+      title: "Top Drops",
       body: ["被聽眾認可的 AI 音樂都在這裡", "來聽 也讓你的作品有機會站上來"],
       tone: "cyan",
     },
@@ -925,12 +925,12 @@ export default function HomePage() {
         { href: withLang("/partners"), title: "Partnerships", desc: "Move winning tracks toward airplay, curation, and commercial use" },
       ];
   const mobileActionLabels = isZh
-    ? { arena: "鬥歌場", rank: "榮譽", bar: "酒吧" }
+    ? { arena: "鬥歌場", rank: "Top Drops", bar: "酒吧" }
     : lang === "ja"
-      ? { arena: "バトル", rank: "栄誉", bar: "酒場" }
+      ? { arena: "バトル", rank: "Top Drops", bar: "酒場" }
       : lang === "ko"
-        ? { arena: "배틀장", rank: "명예", bar: "바" }
-        : { arena: "Arena", rank: "Honor", bar: "Bar" };
+        ? { arena: "배틀장", rank: "Top Drops", bar: "바" }
+        : { arena: "Arena", rank: "Top Drops", bar: "Bar" };
 
   return (
     <main className="aipo-home-no-select relative min-h-screen overflow-x-hidden bg-[#050505] px-4 py-4 text-[#f5f5f5] md:px-0 md:py-0">
