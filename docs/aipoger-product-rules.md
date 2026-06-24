@@ -1,6 +1,6 @@
 # AIPOGER Product Rules
 
-Last updated: 2026-06-24
+Last updated: 2026-06-25
 
 This document is the product-rule source of truth for AIPOGER. Use it before changing Battle, Bar Heartbreak, Honor Board, auth, upload, or deployment behavior.
 
@@ -72,6 +72,8 @@ Current behavior:
 
 - Drop Battle uses a short drop cut rather than the full song.
 - Drop Battle clips have a hard maximum of 60 seconds. Creators may cut shorter clips; the recommended public range is about 30-60 seconds so the hook/drop has enough time to reach its payoff without turning the battle into full-song listening.
+- Drop Battle creators may opt in to publish the complete song only if the Drop reaches the Honor Board. If they do not opt in, the Honor Board must only expose the Drop clip. The complete song must not be publicly playable by default.
+- When complete-song publishing is enabled, the Battle Room still uses only the Drop clip; `Full Song` is an Honor Board extension state, not a battle playback rule.
 - Drop Battle quick start options are relative to successful battle-card publishing: `發布後 10 / 15 / 20 分鐘`. Custom start time is an absolute user-selected time and should not move with upload/cutting duration.
 - `battle_queue.expires_at` is only a cleanup/expiry deadline. It must never be used as a Battle start time; opening time must come from `scheduled_start_at` or `cancellation_evaluation_at`.
 - Fast start options must calculate the visible start time only after the queue/battle data has been successfully written. Do not pre-render a time label that ignores upload, cutting, or network duration.
@@ -216,6 +218,7 @@ Display principles:
 - Card badges can say `WIN`, `24H`, or `HOT`.
 - Do not show mock records as real Honor Board content.
 - Honor Board cards may expose a `歌詞` / `LYRICS` action when the archived or source track has lyrics.
+- Drop Battle Honor Board cards may expose `Full Song` only when the winning creator explicitly enabled complete-song public playback. Otherwise they should show or play only the archived Drop clip.
 - If lyrics exist, open them in a readable modal and preserve line breaks.
 - If lyrics are not provided, show `歌詞未提供` / `No Lyrics` instead of hiding the feature or implying an error.
 - Lyrics are a viewing feature for recognized songs; they are not a creator song-library feature and do not require URL upload support in V1.

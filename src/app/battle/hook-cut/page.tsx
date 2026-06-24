@@ -8,7 +8,7 @@ import Regions from 'wavesurfer.js/dist/plugins/regions.esm.js';
 import { supabase } from '@/lib/supabase';
 import { isAuthBypassEnabled, mockUserId } from '@/lib/auth-bypass';
 import { readFighterNameFromStorage, writeFighterNameToStorage } from '@/lib/fighter-name-storage';
-import { buildHookStoragePath, isValidStorageObjectKey } from '@/lib/storage-path';
+import { buildFullSongStoragePath, buildHookStoragePath, isValidStorageObjectKey } from '@/lib/storage-path';
 import { saveFighterNameToProfile } from '@/lib/user-profile-fighter-name';
 import {
   attemptMatchmakingWithoutApcGate,
@@ -86,6 +86,8 @@ const T = {
     rematchTitle: '你正在挑戰擂主',
     rematchDesc: '請在 120 秒內完成上傳，這場會沿用上一場 genre。',
     rematchComplete: '守擂挑戰已接上，前往下一場 Battle。',
+    fullSongTitle: '如果進榮譽榜，公開完整版',
+    fullSongDesc: 'Battle 仍只播放你的 Drop。開啟後，只有作品進榮譽榜時聽眾才會看到 Full Song；關閉則只顯示 Drop。',
   },
   en: {
     title: 'Drop Battle Cut',
@@ -128,6 +130,8 @@ const T = {
     rematchTitle: 'You are challenging the defender',
     rematchDesc: 'Finish uploading within 120 seconds. This battle keeps the previous genre.',
     rematchComplete: 'Rematch connected. Entering the next Battle.',
+    fullSongTitle: 'Publish Full Song if it reaches Honor Board',
+    fullSongDesc: 'The battle still uses your Drop. When enabled, listeners see Full Song only after the work reaches Honor Board; otherwise only the Drop is shown.',
   },
 } as const;
 
@@ -268,6 +272,17 @@ function isLikelyStorageMimeRejection(err: unknown): boolean {
   );
 }
 
+function originalAudioContentType(file: File) {
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.flac')) return 'audio/flac';
+  if (name.endsWith('.aif') || name.endsWith('.aiff')) return 'audio/aiff';
+  if (name.endsWith('.wav')) return 'audio/wav';
+  if (name.endsWith('.m4a')) return 'audio/mp4';
+  if (name.endsWith('.aac')) return 'audio/aac';
+  if (name.endsWith('.ogg')) return 'audio/ogg';
+  return file.type || 'audio/mpeg';
+}
+
 async function uploadHookWav(
   storagePath: string,
   wavBlob: Blob,
@@ -307,6 +322,17 @@ async function uploadHookWav(
     : '請確認已登入，並已在 Supabase 套用 supabase/storage_battle_audio.sql 與 storage_rls_fix.sql。';
 
   throw new Error(`${detail}\n\n${hint}`);
+}
+
+async function uploadFullSongFile(storagePath: string, file: File): Promise<void> {
+  if (!isValidStorageObjectKey(storagePath)) {
+    throw new Error(`Invalid full-song storage path (ASCII only): ${storagePath}`);
+  }
+  const { error } = await supabase.storage.from('battle-audio').upload(storagePath, file, {
+    contentType: originalAudioContentType(file),
+    upsert: true,
+  });
+  if (error) throw error;
 }
 
 async function uploadHookWavWithSignedUrl(
@@ -509,7 +535,7 @@ function HookCutContent() {
 
   const t = getT(lang);
 
-  const [, setAudioFile] = useState<File | null>(null);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isDecoding, setIsDecoding] = useState(false);
@@ -523,6 +549,7 @@ function HookCutContent() {
   const [dragActive, setDragActive] = useState(false);
   const [detectedMetaLine, setDetectedMetaLine] = useState<string | null>(null);
   const [cursorTime, setCursorTime] = useState(0);
+  const [publishFullSongOnHonorBoard, setPublishFullSongOnHonorBoard] = useState(false);
 
   useEffect(() => {
     if (urlFighter) {
@@ -1033,6 +1060,22 @@ function HookCutContent() {
       const { storagePath, fileName } = buildHookStoragePath(userId, fighterName, songName);
       const hookFile = new File([wavBlob], fileName, { type: "audio/wav" });
       const audioSha256 = await sha256File(hookFile);
+      let fullAudioPath: string | null = null;
+      let fullAudioSha256: string | null = null;
+      let fullAudioOriginalName: string | null = null;
+      const fullAudioDurationSeconds = Number.isFinite(buffer.duration) ? Number(buffer.duration.toFixed(2)) : null;
+      const fullAudioStorage = publishFullSongOnHonorBoard && audioFile
+        ? buildFullSongStoragePath(userId, fighterName, songName || fileName.replace(/\.wav$/i, ""), audioFile.name)
+        : null;
+
+      if (publishFullSongOnHonorBoard) {
+        if (!audioFile) throw new Error(lang === "zh" ? "找不到完整歌曲原檔，請重新選擇音檔。" : "Full song file is missing. Choose the audio file again.");
+        if (isAuthBypassEnabled) {
+          throw new Error(lang === "zh" ? "開發模式不公開完整版，請登入正式帳號後再上傳。" : "Full-song publishing is disabled in auth-bypass mode.");
+        }
+        fullAudioSha256 = await sha256File(audioFile);
+        fullAudioOriginalName = audioFile.name.slice(0, 500);
+      }
 
       if (!isAuthBypassEnabled) {
         const duplicateCheck = await supabase
@@ -1054,6 +1097,11 @@ function HookCutContent() {
       setUploadPhase(t.uploading);
 
       let audioPathForNav = storagePath;
+
+      if (fullAudioStorage && audioFile) {
+        await uploadFullSongFile(fullAudioStorage.storagePath, audioFile);
+        fullAudioPath = fullAudioStorage.storagePath;
+      }
 
       // 上傳到 Supabase Storage（路徑僅 ASCII；WAV MIME 與 bucket 白名單一致）
       if (isAuthBypassEnabled) {
@@ -1086,6 +1134,13 @@ function HookCutContent() {
           dailyPairing,
           audioSha256,
         });
+        if (fullAudioPath) {
+          setupParams.set("fullAudioPublic", "1");
+          setupParams.set("fullAudioPath", fullAudioPath);
+          if (fullAudioSha256) setupParams.set("fullAudioSha256", fullAudioSha256);
+          if (fullAudioOriginalName) setupParams.set("fullAudioName", fullAudioOriginalName);
+          if (fullAudioDurationSeconds !== null) setupParams.set("fullAudioDuration", String(fullAudioDurationSeconds));
+        }
         if (challengeTargetQueueId) setupParams.set("challengeEntryId", challengeTargetQueueId);
         if (gatekeeperId) setupParams.set("gatekeeperId", gatekeeperId);
         if (hookBattlePreset) setupParams.set("hookBattlePreset", String(hookBattlePreset));
@@ -1127,6 +1182,15 @@ function HookCutContent() {
           audio_sha256: audioSha256,
           original_file_name: (songName.trim() || fileName).slice(0, 500),
           status: initialQueueStatus,
+          ...(fullAudioPath
+            ? {
+                full_audio_path: fullAudioPath,
+                full_audio_public: true,
+                full_audio_sha256: fullAudioSha256,
+                full_audio_original_name: fullAudioOriginalName,
+                full_audio_duration_seconds: fullAudioDurationSeconds,
+              }
+            : {}),
         };
 
         let queueRows: { id: string }[] | null = null;
@@ -1174,6 +1238,7 @@ function HookCutContent() {
           if (!queueError) break;
 
           const msg = `${queueError.message ?? ""} ${queueError.details ?? ""} ${queueError.hint ?? ""}`;
+          if (fullAudioPath && /full_audio_|column.*does not exist|schema cache|PGRST204/i.test(msg)) break;
           const missingOptionalCol =
             /ai_tool|lyrics|audio_sha256|expires_at|scheduled_start_at|cancellation_evaluation_at|column.*does not exist|schema cache/i.test(msg) || queueError.code === "PGRST204";
           if (!missingOptionalCol) break;
@@ -1182,6 +1247,7 @@ function HookCutContent() {
         if (queueError) {
           if (isDuplicateAudioHash(queueError)) {
             void supabase.storage.from("battle-audio").remove([storagePath]);
+            if (fullAudioPath) void supabase.storage.from("battle-audio").remove([fullAudioPath]);
             throw new Error("這個 Drop 音檔已經上傳過了，請換另一段 Drop。");
           }
           console.error("[hook-cut] battle_queue insert", queueError);
@@ -1522,6 +1588,35 @@ function HookCutContent() {
                 placeholder={t.lyricsPlaceholder}
                 className="mt-4 min-h-40 w-full resize-y rounded-2xl border border-zinc-800 bg-black/55 px-4 py-3 text-sm leading-7 text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-400/70"
               />
+            </div>
+
+            <div className="rounded-3xl border border-yellow-200/18 bg-yellow-300/[0.06] p-5 shadow-[0_16px_54px_rgba(0,0,0,0.24)]">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-sm font-black text-yellow-100">{t.fullSongTitle}</div>
+                  <div className="mt-1 text-xs font-bold leading-5 text-zinc-400">{t.fullSongDesc}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPublishFullSongOnHonorBoard((value) => !value)}
+                  className={[
+                    'relative inline-flex h-9 w-16 shrink-0 items-center rounded-full transition',
+                    publishFullSongOnHonorBoard ? 'bg-yellow-300' : 'bg-zinc-700',
+                    'ring-1 ring-white/10',
+                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-200/70',
+                  ].join(' ')}
+                  aria-pressed={publishFullSongOnHonorBoard}
+                  aria-label={t.fullSongTitle}
+                >
+                  <span
+                    className={[
+                      'inline-block h-7 w-7 transform rounded-full bg-black shadow transition',
+                      publishFullSongOnHonorBoard ? 'translate-x-8' : 'translate-x-1',
+                      'ring-1 ring-white/10',
+                    ].join(' ')}
+                  />
+                </button>
+              </div>
             </div>
 
             {/* 按鈕 */}

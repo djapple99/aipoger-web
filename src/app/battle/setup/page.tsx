@@ -47,6 +47,11 @@ const DAILY_BATTLE_PUBLIC_ENTRY_ENABLED = false;
 type BattleDraft = {
   audioPath: string;
   audioSha256?: string;
+  fullAudioPath?: string;
+  fullAudioSha256?: string;
+  fullAudioPublic?: boolean;
+  fullAudioOriginalName?: string;
+  fullAudioDurationSeconds?: number;
   hookStart: string;
   hookEnd: string;
   hookDuration: string;
@@ -460,6 +465,11 @@ export default function BattleSetupPage() {
         const urlGatekeeperId = params.get('gatekeeperId');
         const urlAudioPath = params.get('audioPath');
         const urlAudioSha256 = params.get('audioSha256');
+        const urlFullAudioPath = params.get('fullAudioPath');
+        const urlFullAudioSha256 = params.get('fullAudioSha256');
+        const urlFullAudioPublic = params.get('fullAudioPublic') === '1';
+        const urlFullAudioName = params.get('fullAudioName');
+        const urlFullAudioDuration = Number(params.get('fullAudioDuration'));
         const urlBattleMode = params.get('battleMode');
         const urlInstantPairing = params.get('instantPairing');
         const urlDailyPairing = params.get('dailyPairing');
@@ -489,6 +499,11 @@ export default function BattleSetupPage() {
             hookDuration: params.get('hookDuration') ?? '',
             lyrics: params.get('lyrics') ?? '',
             audioSha256: /^[a-f0-9]{64}$/i.test(urlAudioSha256 ?? '') ? urlAudioSha256!.toLowerCase() : undefined,
+            fullAudioPath: urlFullAudioPublic && urlFullAudioPath?.trim() ? urlFullAudioPath.trim() : undefined,
+            fullAudioSha256: urlFullAudioPublic && /^[a-f0-9]{64}$/i.test(urlFullAudioSha256 ?? '') ? urlFullAudioSha256!.toLowerCase() : undefined,
+            fullAudioPublic: urlFullAudioPublic && Boolean(urlFullAudioPath?.trim()),
+            fullAudioOriginalName: urlFullAudioPublic && urlFullAudioName?.trim() ? urlFullAudioName.trim().slice(0, 500) : undefined,
+            fullAudioDurationSeconds: urlFullAudioPublic && Number.isFinite(urlFullAudioDuration) ? Math.max(0, urlFullAudioDuration) : undefined,
           });
         }
         if (urlChallengeEntryId && /^[0-9a-f-]{36}$/i.test(urlChallengeEntryId)) {
@@ -1068,6 +1083,11 @@ export default function BattleSetupPage() {
               aiTool: finalAiTool.trim() || null,
               audioPath: draft.audioPath,
               audioSha256: draft.audioSha256 ?? null,
+              fullAudioPath: draft.fullAudioPublic ? draft.fullAudioPath ?? null : null,
+              fullAudioSha256: draft.fullAudioPublic ? draft.fullAudioSha256 ?? null : null,
+              fullAudioOriginalName: draft.fullAudioPublic ? draft.fullAudioOriginalName ?? null : null,
+              fullAudioDurationSeconds: draft.fullAudioPublic ? draft.fullAudioDurationSeconds ?? null : null,
+              fullAudioPublic: Boolean(draft.fullAudioPublic && draft.fullAudioPath),
               lyrics: draft.lyrics.trim() || null,
               avatarUrl: avatarForBattle ?? finalAvatarUrl,
               coverUrl: coverForBattle ?? finalCoverUrl,
@@ -1114,6 +1134,15 @@ export default function BattleSetupPage() {
           audio_sha256: draft.audioSha256 ?? null,
           original_file_name: songName.trim().slice(0, 500),
           status: initialQueueStatus,
+          ...(draft.fullAudioPublic && draft.fullAudioPath
+            ? {
+                full_audio_path: draft.fullAudioPath,
+                full_audio_public: true,
+                full_audio_sha256: draft.fullAudioSha256 ?? null,
+                full_audio_original_name: draft.fullAudioOriginalName ?? null,
+                full_audio_duration_seconds: draft.fullAudioDurationSeconds ?? null,
+              }
+            : {}),
         };
         const optionalChallenge =
           challengeEntryId && /^[0-9a-f-]{36}$/i.test(challengeEntryId)
@@ -1156,6 +1185,7 @@ export default function BattleSetupPage() {
           queueRows = res.data;
           if (!queueError) break;
           const msg = `${queueError.message ?? ''} ${queueError.details ?? ''} ${queueError.hint ?? ''}`;
+          if (draft.fullAudioPublic && draft.fullAudioPath && /full_audio_|column.*does not exist|schema cache|PGRST204/i.test(msg)) break;
           const missingOptionalCol = /ai_tool|lyrics|audio_sha256|expires_at|scheduled_start_at|cancellation_evaluation_at|column.*does not exist|schema cache/i.test(msg) || queueError.code === 'PGRST204';
           if (!missingOptionalCol) break;
         }
@@ -1530,6 +1560,13 @@ export default function BattleSetupPage() {
             你正在接受公開挑戰池的最強抓波 Drop Battle，上傳後會優先與該作品配對
           </p>
         )}
+        {battleMode === 'instant' && draft?.fullAudioPublic && (
+          <p className="mx-auto mt-4 max-w-xl rounded-full border border-yellow-200/30 bg-yellow-300/10 px-4 py-2 text-xs font-bold text-yellow-100">
+            {lang === 'zh'
+              ? '你已開啟完整版公開：作品進入 Drop 榮譽榜後，聽眾可以收聽 Full Song。'
+              : 'Full Song is enabled: if this Drop reaches Honor Board, listeners can play the complete track.'}
+          </p>
+        )}
         {gatekeeperId && (
           <p className="mx-auto mt-4 max-w-xl rounded-full border border-red-300/35 bg-red-500/10 px-4 py-2 text-xs font-bold text-red-50">
             {lang === 'zh'
@@ -1566,12 +1603,14 @@ export default function BattleSetupPage() {
               </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
-              <p className="text-xs text-zinc-500">{lang === 'zh' ? '歌詞' : 'Lyrics'}</p>
+              <p className="text-xs text-zinc-500">{battleMode === 'instant' ? (lang === 'zh' ? '完整版' : 'Full Song') : (lang === 'zh' ? '歌詞' : 'Lyrics')}</p>
               <p className="mt-1 font-black text-cyan-100">
                 {battleMode === 'daily'
                   ? lang === 'zh'
                     ? '觀眾可慢聽投票'
                     : 'Listen Before Voting'
+                  : draft.fullAudioPublic
+                    ? (lang === 'zh' ? '榮譽榜公開' : 'Honor Board Enabled')
                   : draft.lyrics.trim()
                     ? (lang === 'zh' ? '已加入' : 'Added')
                     : (lang === 'zh' ? '未填' : 'None')}

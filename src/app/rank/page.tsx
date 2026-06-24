@@ -62,6 +62,9 @@ type RankRow = {
   audienceReview?: string;
   resultHref?: string;
   audioUrl?: string;
+  fullSongUrl?: string;
+  fullSongLabel?: string;
+  fullSongDurationSeconds?: number;
   lyrics?: string;
   songStats?: SongBattleStatsSnapshot | null;
   positiveReactions?: number;
@@ -120,6 +123,15 @@ type RankBattleMediaRow = {
   song_b_cover?: string | null;
   fighter_a_avatar?: string | null;
   fighter_b_avatar?: string | null;
+};
+
+type DropFullSongPayload = {
+  items?: Array<{
+    battleId?: string;
+    audioUrl?: string;
+    label?: string;
+    durationSeconds?: number;
+  }>;
 };
 
 type FighterProfileMediaRow = {
@@ -412,6 +424,43 @@ function formatSongStats(stats: SongBattleStatsSnapshot | null | undefined, isZh
     : `${stats.battleCount} battles · ${stats.wins}W ${stats.losses}L · ${winRate}%${honor}`;
 }
 
+function formatDurationLabel(seconds: number | null | undefined) {
+  const safe = Math.max(0, Math.round(Number(seconds) || 0));
+  if (safe <= 0) return "";
+  const minutes = Math.floor(safe / 60);
+  const rest = safe % 60;
+  return `${minutes}:${String(rest).padStart(2, "0")}`;
+}
+
+async function fetchDropFullSongMap(battleIds: string[]) {
+  if (battleIds.length === 0) return new Map<string, { audioUrl: string; label: string; durationSeconds: number }>();
+  try {
+    const response = await fetch("/api/honor-board/drop-full-songs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ battleIds }),
+    });
+    if (!response.ok) return new Map<string, { audioUrl: string; label: string; durationSeconds: number }>();
+    const payload = (await response.json().catch(() => null)) as DropFullSongPayload | null;
+    const items = Array.isArray(payload?.items) ? payload.items : [];
+    return new Map(
+      items
+        .filter((item) => item.battleId && item.audioUrl)
+        .map((item) => [
+          item.battleId!,
+          {
+            audioUrl: item.audioUrl!,
+            label: item.label?.trim() || "Full Song",
+            durationSeconds: Math.max(0, Number(item.durationSeconds) || 0),
+          },
+        ]),
+    );
+  } catch (error) {
+    console.warn("[rank full song]", error);
+    return new Map<string, { audioUrl: string; label: string; durationSeconds: number }>();
+  }
+}
+
 function normalizeWinnerSide(value: unknown): BattleWinnerSide | null {
   return value === "fighter_a" || value === "fighter_b" ? value : null;
 }
@@ -465,6 +514,9 @@ function rowFromArchive(entry: ArchivedBattleResult, index: number): RankRow {
     audienceReview: stripCannedBattleReview(entry.audienceReview),
     resultHref: entry.resultHref,
     audioUrl: entry.audioUrl,
+    fullSongUrl: entry.fullSongUrl,
+    fullSongLabel: entry.fullSongLabel,
+    fullSongDurationSeconds: entry.fullSongDurationSeconds,
     lyrics: cleanLyrics(entry.lyrics) || undefined,
     songStats: entry.songStats,
   };
@@ -631,6 +683,7 @@ async function attachBattleAudioUrls(rows: ArchivedBattleResult[]) {
       opponentAvatarUrl: string | null;
     }
   >();
+  const fullSongByBattle = await fetchDropFullSongMap(battleIds);
   await Promise.all(
     battleRowsData.map(async (battle) => {
       if (!battle.id) return;
@@ -689,6 +742,7 @@ async function attachBattleAudioUrls(rows: ArchivedBattleResult[]) {
 
   return rows.map((row) => {
     const truth = row.battleId ? truthByBattle.get(row.battleId) : null;
+    const fullSong = row.battleId ? fullSongByBattle.get(row.battleId) : null;
     const archivedSide = normalizeWinnerSide(row.winnerSide);
     const reconciled =
       truth?.winner && archivedSide && truth.winner !== archivedSide
@@ -709,6 +763,9 @@ async function attachBattleAudioUrls(rows: ArchivedBattleResult[]) {
     return {
       ...reconciled,
       audioUrl: reconciled.audioUrl || (row.battleId ? truth?.audioUrl || undefined : undefined),
+      fullSongUrl: fullSong?.audioUrl || reconciled.fullSongUrl,
+      fullSongLabel: fullSong?.label || reconciled.fullSongLabel,
+      fullSongDurationSeconds: fullSong?.durationSeconds || reconciled.fullSongDurationSeconds,
       lyrics: cleanLyrics(reconciled.lyrics) || (row.battleId ? truth?.winnerLyrics || undefined : undefined),
       coverUrl: reconciled.coverUrl || (row.battleId ? truth?.coverUrl || "" : ""),
       avatarUrl: reconciled.avatarUrl || (row.battleId ? truth?.avatarUrl || "" : ""),
@@ -744,6 +801,42 @@ function LyricsAction({
     >
       {isZh ? "歌詞" : "Lyrics"}
     </button>
+  );
+}
+
+function BattleAudioPlayer({ row, isZh, compact = false }: { row: RankRow; isZh: boolean; compact?: boolean }) {
+  const src = row.fullSongUrl || row.audioUrl;
+  if (!src) return null;
+  const duration = row.fullSongUrl ? formatDurationLabel(row.fullSongDurationSeconds) : "";
+  return (
+    <div className={compact ? "mt-3" : "mt-2"}>
+      <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+        <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black ${
+          row.fullSongUrl
+            ? "border-yellow-200/45 bg-yellow-300/14 text-yellow-100"
+            : "border-orange-200/25 bg-orange-400/10 text-orange-100"
+        }`}
+        >
+          {row.fullSongUrl ? (isZh ? "Full Song / 完整版" : "Full Song") : isZh ? "Play Drop" : "Play Drop"}
+        </span>
+        {duration ? <span className="text-[10px] font-black text-zinc-500">{duration}</span> : null}
+        {!row.fullSongUrl ? (
+          <span className="text-[10px] font-bold text-zinc-600">
+            {isZh ? "創作者未公開完整版" : "Full song not public"}
+          </span>
+        ) : null}
+      </div>
+      <audio
+        className="h-9 w-full accent-orange-500"
+        controls
+        controlsList="nodownload"
+        onContextMenu={(event) => event.preventDefault()}
+        preload="metadata"
+        src={src}
+      >
+        {isZh ? "你的瀏覽器暫時不支援播放。" : "Your browser does not support audio playback."}
+      </audio>
+    </div>
   );
 }
 
@@ -966,6 +1059,9 @@ export default function RankPage() {
                   : { rhyme: 0, impact: 0, melody: 0, emotion: 0, structure: 0 },
               resultHref: String(payload.resultHref || "").trim(),
               audioUrl: typeof payload.audioUrl === "string" ? payload.audioUrl.trim() : undefined,
+              fullSongUrl: typeof payload.fullSongUrl === "string" ? payload.fullSongUrl.trim() : undefined,
+              fullSongLabel: typeof payload.fullSongLabel === "string" ? payload.fullSongLabel.trim() : undefined,
+              fullSongDurationSeconds: normalizeVoteCount(payload.fullSongDurationSeconds),
               lyrics: typeof payload.lyrics === "string" ? payload.lyrics.trim() : undefined,
               songStats:
                 tableSongStats && tableSongStats.battleCount > 0
@@ -1472,33 +1568,36 @@ export default function RankPage() {
                                   </p>
                                 ) : null}
                                 {row.kind === "battle" ? (
-                                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                                    <span className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-2.5 py-1.5 text-[11px] font-black text-cyan-100">
-                                      {displayText(row.aiTool, isZh ? "AI 工具未封存" : "AI Tool Missing")}
-                                    </span>
-                                    <LyricsAction row={row} isZh={isZh} onOpen={openLyricsModal} />
-                                    <Link
-                                      href={rowResultHref}
-                                      className={`inline-flex rounded-full border px-3 py-1.5 text-[11px] font-black transition ${HONOR_ACTION_CLASS}`}
-                                    >
-                                      {isZh ? "成果卡" : "Result"}
-                                    </Link>
-                                    <button
-                                      type="button"
-                                      onClick={() => void toggleFavorite(row)}
-                                      disabled={favoriteBusy[recordKey]}
-                                      className={`inline-flex items-center justify-center gap-1 rounded-full border px-2.5 py-1.5 text-[11px] font-black transition ${
-                                        interaction.myFavorited
-                                          ? "border-red-200/70 bg-red-500/18 text-red-100"
-                                          : "border-white/12 bg-black/20 text-zinc-300 hover:border-red-200/55 hover:text-red-100"
-                                      }`}
-                                      aria-pressed={interaction.myFavorited}
-                                      title={isZh ? "愛心收藏" : "Favorite"}
-                                    >
-                                      <span aria-hidden="true">♥</span>
-                                      <span className="tabular-nums">{interaction.favoriteCount}</span>
-                                    </button>
-                                  </div>
+                                  <>
+                                    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                                      <span className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-2.5 py-1.5 text-[11px] font-black text-cyan-100">
+                                        {displayText(row.aiTool, isZh ? "AI 工具未封存" : "AI Tool Missing")}
+                                      </span>
+                                      <LyricsAction row={row} isZh={isZh} onOpen={openLyricsModal} />
+                                      <Link
+                                        href={rowResultHref}
+                                        className={`inline-flex rounded-full border px-3 py-1.5 text-[11px] font-black transition ${HONOR_ACTION_CLASS}`}
+                                      >
+                                        {isZh ? "成果卡" : "Result"}
+                                      </Link>
+                                      <button
+                                        type="button"
+                                        onClick={() => void toggleFavorite(row)}
+                                        disabled={favoriteBusy[recordKey]}
+                                        className={`inline-flex items-center justify-center gap-1 rounded-full border px-2.5 py-1.5 text-[11px] font-black transition ${
+                                          interaction.myFavorited
+                                            ? "border-red-200/70 bg-red-500/18 text-red-100"
+                                            : "border-white/12 bg-black/20 text-zinc-300 hover:border-red-200/55 hover:text-red-100"
+                                        }`}
+                                        aria-pressed={interaction.myFavorited}
+                                        title={isZh ? "愛心收藏" : "Favorite"}
+                                      >
+                                        <span aria-hidden="true">♥</span>
+                                        <span className="tabular-nums">{interaction.favoriteCount}</span>
+                                      </button>
+                                    </div>
+                                    <BattleAudioPlayer row={row} isZh={isZh} compact />
+                                  </>
                                 ) : row.audioUrl ? (
                                   <>
                                     <div className="mt-3 flex flex-wrap items-center gap-1.5">
@@ -1754,7 +1853,9 @@ export default function RankPage() {
                                     </p>
                                   ) : null}
 
-                                  {row.audioUrl ? (
+                                  {row.kind === "battle" ? (
+                                    <BattleAudioPlayer row={row} isZh={isZh} />
+                                  ) : row.audioUrl ? (
                                     <audio
                                       className="mt-2 h-9 w-full accent-orange-500"
                                       controls

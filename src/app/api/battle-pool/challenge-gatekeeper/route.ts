@@ -52,7 +52,7 @@ function adminClient() {
 
 function isSchemaMissing(error: { message?: string; details?: string; hint?: string; code?: string } | null) {
   const msg = `${error?.message ?? ""} ${error?.details ?? ""} ${error?.hint ?? ""} ${error?.code ?? ""}`;
-  return /official_gatekeeper|official_gatekeeper_drops|schema cache|column.*does not exist|relation.*does not exist|PGRST204|42P01/i.test(msg);
+  return /official_gatekeeper|official_gatekeeper_drops|full_audio_|schema cache|column.*does not exist|relation.*does not exist|PGRST204|42P01/i.test(msg);
 }
 
 function cleanText(value: unknown, fallback: string, maxLength: number) {
@@ -115,6 +115,11 @@ export async function POST(request: NextRequest) {
     aiTool?: string | null;
     audioPath?: string;
     audioSha256?: string | null;
+    fullAudioPath?: string | null;
+    fullAudioSha256?: string | null;
+    fullAudioOriginalName?: string | null;
+    fullAudioDurationSeconds?: number | null;
+    fullAudioPublic?: boolean | null;
     lyrics?: string | null;
     avatarUrl?: string | null;
     coverUrl?: string | null;
@@ -222,6 +227,16 @@ export async function POST(request: NextRequest) {
   const challengerAiTool = trimOrNull(body.aiTool, 40);
   const lyrics = trimOrNull(body.lyrics);
   const audioSha256 = /^[a-f0-9]{64}$/i.test(body.audioSha256 ?? "") ? String(body.audioSha256).toLowerCase() : null;
+  const fullAudioPath = body.fullAudioPublic && typeof body.fullAudioPath === "string" && body.fullAudioPath.trim()
+    ? body.fullAudioPath.trim()
+    : null;
+  const fullAudioSha256 = fullAudioPath && /^[a-f0-9]{64}$/i.test(body.fullAudioSha256 ?? "")
+    ? String(body.fullAudioSha256).toLowerCase()
+    : null;
+  const fullAudioOriginalName = fullAudioPath ? trimOrNull(body.fullAudioOriginalName, 500) : null;
+  const fullAudioDurationSeconds = fullAudioPath && Number.isFinite(Number(body.fullAudioDurationSeconds))
+    ? Math.max(0, Number(body.fullAudioDurationSeconds))
+    : null;
   const gatekeeperLyrics = trimOrNull(gatekeeper.lyrics);
   const gatekeeperCover = gatekeeper.coverPath;
   const gatekeeperCoverForBattle = gatekeeperCover ? await signedBattleAudioUrl(admin, gatekeeperCover, 60 * 60 * 24 * 365) : null;
@@ -267,6 +282,15 @@ export async function POST(request: NextRequest) {
     status: "matched",
     ai_tool: challengerAiTool,
     lyrics,
+    ...(fullAudioPath
+      ? {
+          full_audio_path: fullAudioPath,
+          full_audio_public: true,
+          full_audio_sha256: fullAudioSha256,
+          full_audio_original_name: fullAudioOriginalName,
+          full_audio_duration_seconds: fullAudioDurationSeconds,
+        }
+      : {}),
     challenge_target_queue_id: defenderQueue.id,
     expires_at: schedulePayload?.scheduled_start_at ?? null,
     ...schedulePayload,
@@ -281,6 +305,7 @@ export async function POST(request: NextRequest) {
     .single<{ id: string }>();
   if (challengerError || !challengerQueue?.id) {
     await admin.from("battle_queue").update({ status: "cancelled", updated_at: now }).eq("id", defenderQueue.id);
+    if (fullAudioPath && isSchemaMissing(challengerError)) return jsonError("尚未套用 Drop Battle 完整版欄位，請先執行 supabase/20260625_drop_battle_full_song_honor.sql。", 409);
     if (isSchemaMissing(challengerError)) return jsonError("尚未套用官方守門 Drop SQL 欄位。", 409);
     return jsonError(challengerError?.message ?? "建立挑戰者 queue 失敗。", 500);
   }
