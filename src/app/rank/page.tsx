@@ -1156,6 +1156,8 @@ export default function RankPage() {
         targetKind: row.kind,
         targetId: honorTargetId(row),
         targetTitle: `${row.name} / ${displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}`,
+        targetArtist: row.name,
+        targetGenre: row.genre || row.note,
       }),
     });
     const payload = (await response.json().catch(() => null)) as {
@@ -1204,6 +1206,8 @@ export default function RankPage() {
         targetKind: row.kind,
         targetId: honorTargetId(row),
         targetTitle: `${row.name} / ${displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}`,
+        targetArtist: row.name,
+        targetGenre: row.genre || row.note,
         text,
       }),
     });

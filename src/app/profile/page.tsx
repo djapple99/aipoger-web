@@ -56,6 +56,18 @@ type BattleArchiveRow = {
   created_at?: string | null;
 };
 
+type HonorFavoriteRecord = {
+  recordKey: string;
+  targetKind?: "battle" | "bar" | null;
+  targetId?: string | null;
+  targetTitle?: string | null;
+  targetArtist?: string | null;
+  targetGenre?: string | null;
+  favoriteCount?: number | null;
+  myFavorited?: boolean | null;
+  updatedAt?: string | null;
+};
+
 type CreatorItem = {
   id: string;
   category: CreatorFilter;
@@ -66,7 +78,7 @@ type CreatorItem = {
   date?: string | null;
 };
 
-type CreatorFilter = "all" | "listenBar" | "battle" | "records" | "wins";
+type CreatorFilter = "all" | "listenBar" | "battle" | "records" | "wins" | "favorites";
 
 function authAvatarUrl(user: { user_metadata?: Record<string, unknown> } | null | undefined): string | null {
   const meta = user?.user_metadata;
@@ -124,6 +136,7 @@ function ProfileInner() {
   const [battleQueues, setBattleQueues] = useState<BattleQueueRow[]>([]);
   const [battles, setBattles] = useState<BattleRow[]>([]);
   const [wins, setWins] = useState<BattleArchiveRow[]>([]);
+  const [honorFavorites, setHonorFavorites] = useState<HonorFavoriteRecord[]>([]);
   const [creatorFilter, setCreatorFilter] = useState<CreatorFilter>("all");
   const cropFileInputRef = useRef<HTMLInputElement>(null);
   const avatarSectionRef = useRef<HTMLDivElement>(null);
@@ -143,16 +156,20 @@ function ProfileInner() {
             adminEntry: "後台入口",
             adminHelp: "管理員可快速進入營運與內容後台。",
             creations: "我的創作資料",
-            creationsHelp: "整理你上傳到傷心酒吧與 Drop Battle 的作品。",
+            creationsHelp: "整理你上傳與收藏的 AI 音樂作品。",
             all: "全部資料",
-            recent: "最近上傳",
+            recent: "最近資料",
             manage: "整理資料",
             empty: "目前還沒有讀到上傳紀錄。",
+            favoriteEmpty: "目前還沒有收藏歌曲。到 Top Drops 點愛心後，作品會收進這裡。",
             error: "部分創作資料暫時讀不到，頁面先顯示可取得的內容。",
             battle: "Drop 戰帖",
             listenBar: "傷心酒吧",
             records: "對戰場次",
             wins: "勝出封存",
+            favorites: "收藏歌曲",
+            favorited: "已點讚收藏",
+            honorFavorite: "Top Drops 收藏",
             active: "公開中",
             openBattle: "發起挑戰",
             openBar: "去傷心酒吧",
@@ -169,16 +186,20 @@ function ProfileInner() {
             adminEntry: "Admin Entry",
             adminHelp: "Quick access for operations and content management.",
             creations: "My Creator Data",
-            creationsHelp: "Your Listen Bar and Drop Battle uploads.",
+            creationsHelp: "Your uploaded and saved AI music records.",
             all: "All Data",
-            recent: "Recent Uploads",
+            recent: "Recent Data",
             manage: "Manage",
             empty: "No uploads found yet.",
+            favoriteEmpty: "No saved songs yet. Heart tracks on Top Drops to collect them here.",
             error: "Some creator data could not be loaded, so this page is showing what is available.",
             battle: "Drop Cards",
             listenBar: "Listen Bar",
             records: "Battle Matches",
             wins: "Archived Wins",
+            favorites: "Saved Songs",
+            favorited: "saved from hearts",
+            honorFavorite: "Top Drops Save",
             active: "Live",
             openBattle: "Start Battle",
             openBar: "Open Listen Bar",
@@ -219,11 +240,20 @@ function ProfileInner() {
           .order("created_at", { ascending: false })
           .limit(12);
 
-        const [tracksResult, queuesResult, battlesResult, winsResult] = await Promise.allSettled([
+        const favoritesPromise = fetch("/api/honor-board/interactions?favorites=me", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          cache: "no-store",
+        }).then(async (response) => {
+          if (!response.ok) throw new Error(`honor-favorites ${response.status}`);
+          return (await response.json()) as { records?: HonorFavoriteRecord[] };
+        });
+
+        const [tracksResult, queuesResult, battlesResult, winsResult, favoritesResult] = await Promise.allSettled([
           tracksPromise,
           queuesPromise,
           battlesPromise,
           winsPromise,
+          favoritesPromise,
         ]);
 
         if (tracksResult.status === "fulfilled") {
@@ -246,6 +276,16 @@ function ProfileInner() {
 
         if (winsResult.status === "fulfilled" && !winsResult.value.error) {
           setWins((winsResult.value.data ?? []) as BattleArchiveRow[]);
+        }
+
+        if (favoritesResult.status === "fulfilled") {
+          setHonorFavorites(
+            Array.isArray(favoritesResult.value.records)
+              ? favoritesResult.value.records.filter((record) => record.myFavorited)
+              : [],
+          );
+        } else {
+          setCreatorError(copy.error);
         }
       } catch (error) {
         console.error("[profile creator data]", error);
@@ -437,15 +477,55 @@ function ProfileInner() {
       date: win.created_at,
     }));
 
-    return [...tracks, ...queues, ...battleRecords, ...archivedWins]
+    const favorites = honorFavorites.map((record) => {
+      const kind =
+        record.targetKind === "bar"
+          ? isZh
+            ? "傷心酒吧熱播"
+            : "Bar Heartbreak"
+          : isZh
+            ? "Drop 勝利作品"
+            : "Drop Winner";
+      return {
+        id: `favorite-${record.recordKey}`,
+        category: "favorites" as const,
+        kind: copy.honorFavorite,
+        title: record.targetTitle?.trim() || (isZh ? "收藏的 Top Drops 作品" : "Saved Top Drops Track"),
+        meta: [
+          kind,
+          record.targetGenre?.trim(),
+          `${Math.max(0, Math.round(Number(record.favoriteCount) || 0))} ${isZh ? "收藏" : "saves"}`,
+        ]
+          .filter(Boolean)
+          .join(" / "),
+        href: lang === "en" ? "/rank?lang=en" : "/rank?lang=zh",
+        date: record.updatedAt,
+      };
+    });
+
+    return [...tracks, ...queues, ...battleRecords, ...archivedWins, ...favorites]
       .sort((a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime());
-  }, [barTracks, battleQueues, battles, copy.battle, copy.listenBar, copy.records, copy.wins, isZh, lang, wins]);
+  }, [
+    barTracks,
+    battleQueues,
+    battles,
+    copy.battle,
+    copy.honorFavorite,
+    copy.listenBar,
+    copy.records,
+    copy.wins,
+    honorFavorites,
+    isZh,
+    lang,
+    wins,
+  ]);
 
   const stats = [
     { key: "listenBar" as const, label: copy.listenBar, value: barTracks.length, sub: `${barTracks.filter((track) => track.is_active).length} ${copy.active}` },
     { key: "battle" as const, label: copy.battle, value: battleQueues.length, sub: isZh ? "已上傳戰帖" : "uploaded cards" },
     { key: "records" as const, label: copy.records, value: battles.length, sub: isZh ? "已進場對戰" : "entered matches" },
     { key: "wins" as const, label: copy.wins, value: wins.length, sub: isZh ? "勝利作品" : "winning tracks" },
+    { key: "favorites" as const, label: copy.favorites, value: honorFavorites.length, sub: copy.favorited },
   ];
 
   const filteredCreatorItems = (
@@ -457,6 +537,7 @@ function ProfileInner() {
   const creatorListTitle = creatorFilter === "all"
     ? copy.recent
     : `${stats.find((stat) => stat.key === creatorFilter)?.label ?? copy.recent} / ${copy.manage}`;
+  const creatorEmptyText = creatorFilter === "favorites" ? copy.favoriteEmpty : copy.empty;
 
   return (
     <div className="aipo-stage-bg min-h-screen px-4 py-10 text-white">
@@ -595,7 +676,7 @@ function ProfileInner() {
               </button>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
               {stats.map((stat) => (
                 <button
                   key={stat.label}
@@ -640,7 +721,7 @@ function ProfileInner() {
                 </div>
               ) : (
                 <div className="rounded-2xl border border-dashed border-white/12 bg-black/20 p-6 text-sm text-zinc-500">
-                  {creatorLoading ? t("common_loading") : copy.empty}
+                  {creatorLoading ? t("common_loading") : creatorEmptyText}
                 </div>
               )}
             </div>
