@@ -16,8 +16,11 @@ type TrackForRotation = {
   bar_phase?: "challenger" | "public" | null;
 };
 
-export async function GET(request: NextRequest) {
-  return processRotation(request);
+export async function GET() {
+  return NextResponse.json({
+    disabled: true,
+    message: "Listen bar rotation is POST-only. Vercel cron is not configured for this route.",
+  });
 }
 
 export async function POST(request: NextRequest) {
