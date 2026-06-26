@@ -36,13 +36,15 @@ import {
   LISTEN_BAR_CHALLENGER_SLOT_LIMIT,
   LISTEN_BAR_COVER_BUCKET,
   LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD,
+  LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS,
   LISTEN_BAR_JUDGMENT_INTERVAL_HOURS,
   LISTEN_BAR_PUBLIC_EVICTION_LIMIT,
-  LISTEN_BAR_PUBLIC_REACTION_THRESHOLD,
   LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
   LISTEN_BAR_TOTAL_ROTATION_LIMIT,
   EMPTY_LISTEN_BAR_TRACK,
   fallbackOfficialPlaylist,
+  listenBarIsHonorEligible,
+  listenBarPublicDisplayDay,
   listenBarRowToTrack,
   type ListenBarTrack,
   type ListenBarTrackRow,
@@ -528,11 +530,10 @@ function aiToolDisplayLabel(value: string | null | undefined, isZh: boolean) {
   return isZh ? `AI 工具 ${cleanValue}` : `AI Tool ${cleanValue}`;
 }
 
-function survivalDayFromDate(value: string | null | undefined) {
-  if (!value) return 0;
-  const time = new Date(value).getTime();
+function challengerProtectionPercent(value: string | null | undefined) {
+  const time = new Date(value ?? "").getTime();
   if (!Number.isFinite(time)) return 0;
-  return Math.max(1, Math.ceil((Date.now() - time) / (24 * 60 * 60 * 1000)));
+  return Math.max(0, Math.min(100, ((Date.now() - time) / (24 * 60 * 60 * 1000)) * 100));
 }
 
 function parseLyricLines(value: string): LyricLine[] {
@@ -751,7 +752,6 @@ export default function ListenBarPage() {
     () => communityRequestTracks.filter((track) => track.barPhase !== "public"),
     [communityRequestTracks],
   );
-  const openingPhaseActive = publicPoolTracks.length < LISTEN_BAR_PUBLIC_ROTATION_LIMIT;
   const challengerQueueTracks = useMemo(
     () => [...challengerTracks].sort((a, b) => new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime()),
     [challengerTracks],
@@ -811,7 +811,7 @@ export default function ListenBarPage() {
     () => myBroadcastStats.filter((track) => track.barPhase === "public"),
     [myBroadcastStats],
   );
-  const challengerSlotsFull = !openingPhaseActive && challengerSlotCount >= LISTEN_BAR_CHALLENGER_SLOT_LIMIT;
+  const challengerSlotsFull = challengerSlotCount >= LISTEN_BAR_CHALLENGER_SLOT_LIMIT;
 
   useEffect(() => {
     window.dispatchEvent(new Event(STOP_HOME_BGM_EVENT));
@@ -1389,7 +1389,11 @@ export default function ListenBarPage() {
 
   const currentReactions = reactionCounts[nowTrack.id] ?? emptyReactions;
   const currentPositiveTotal = Object.values(currentReactions).reduce((sum, count) => sum + count, 0);
-  const honorRollQualified = currentPositiveTotal >= LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD;
+  const honorRollQualified = listenBarIsHonorEligible({
+    positiveReactionCount: currentPositiveTotal,
+    promotedAt: nowTrack.promotedAt,
+    createdAt: nowTrack.createdAt,
+  });
   const nowTrackTitle = !isZh && nowTrack.id === EMPTY_LISTEN_BAR_TRACK.id ? "Waiting for Creator Uploads" : nowTrack.title;
   const myCurrentReaction = myReactions[nowTrack.id] ?? null;
   const currentHeartTotal = Math.max(0, currentReactions.heart ?? 0);
@@ -1747,9 +1751,7 @@ export default function ListenBarPage() {
 
       const insertedTrack = insertedTrackRow ? listenBarRowToTrack(insertedTrackRow) : null;
       if (insertedTrack) {
-        const normalizedTrack = openingPhaseActive
-          ? { ...insertedTrack, barPhase: "public" as const, promotedAt: insertedTrack.promotedAt ?? insertedTrack.createdAt ?? new Date().toISOString() }
-          : insertedTrack;
+        const normalizedTrack = { ...insertedTrack, barPhase: insertedTrack.barPhase ?? "challenger" as const };
         servedCommunityIdsRef.current.delete(insertedTrack.id);
         markPriorityAirplayTrack(normalizedTrack.id);
         setOfficialTracks((tracks) => {
@@ -1783,7 +1785,7 @@ export default function ListenBarPage() {
           ...tracks.filter((track) => track.id !== normalizedTrack.id),
         ]);
       }
-      if (!openingPhaseActive) setChallengerSlotCount((count) => count + 1);
+      setChallengerSlotCount((count) => count + 1);
       setPublicAudioFile(null);
       setPublicCoverFile(null);
       setPublicLyricsText("");
@@ -1967,7 +1969,7 @@ export default function ListenBarPage() {
   const rawPresenterRank = nowTrack.queuedByRank?.trim() || "";
   const nowPresenterRank = !isZh && rawPresenterRank === "創作者投稿" ? "Creator Submission" : rawPresenterRank;
   const nowSurvivalDay = nowTrack.source === "community" && nowTrack.barPhase === "public"
-    ? survivalDayFromDate(nowTrack.promotedAt ?? nowTrack.createdAt)
+    ? listenBarPublicDisplayDay(nowTrack.promotedAt, nowTrack.createdAt)
     : 0;
   const nowLyrics = nowTrack.lyrics?.trim() ?? "";
   const lyricLines = useMemo(() => parseLyricLines(nowLyrics), [nowLyrics]);
@@ -2261,8 +2263,8 @@ export default function ListenBarPage() {
                       </p>
                       <p className="mt-1 text-xs font-bold leading-5 text-orange-100/70">
                         {isZh
-                          ? `累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 顆心即可取得榮譽榜資格，記得先登入喔。`
-                          : `${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} hearts makes it Honor Board eligible. Sign in first.`}
+                          ? `累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 顆心，或公播存活 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天，即可取得榮譽榜資格。`
+                          : `${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} hearts or ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} public days makes it Honor Board eligible.`}
                       </p>
                     </div>
                   </div>
@@ -2362,7 +2364,7 @@ export default function ListenBarPage() {
                                 </p>
                                 {track.barPhase === "public" ? (
                                   <p className="mt-1 text-[11px] font-black text-orange-100/80">
-                                    {isZh ? `公播 Day ${survivalDayFromDate(track.promotedAt ?? track.createdAt)}` : `Public Day ${survivalDayFromDate(track.promotedAt ?? track.createdAt)}`}
+                                    {isZh ? `公播 Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt)}` : `Public Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt)}`}
                                   </p>
                                 ) : (
                                   <p className="mt-1 text-[11px] font-black text-cyan-100/80">
@@ -2632,7 +2634,6 @@ export default function ListenBarPage() {
           </div>
         </section>
 
-        {!openingPhaseActive && (
         <section className="rounded-[1.55rem] border border-cyan-200/16 bg-black/62 px-4 py-4 shadow-[0_22px_64px_rgba(0,0,0,0.4),0_0_34px_rgba(0,202,255,0.055)] backdrop-blur">
           <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
             <div>
@@ -2673,7 +2674,6 @@ export default function ListenBarPage() {
             </p>
           )}
         </section>
-        )}
 
         <section className="grid min-w-0 gap-4 lg:grid-cols-[1.08fr_1.1fr_0.82fr]">
           <div className="min-w-0 rounded-[1.45rem] border border-orange-300/18 bg-black/58 px-4 py-4 shadow-[0_20px_58px_rgba(0,0,0,0.38)] backdrop-blur">
@@ -2682,8 +2682,8 @@ export default function ListenBarPage() {
             </p>
             <p className="mt-2 break-words text-sm font-bold leading-6 text-zinc-300 [overflow-wrap:anywhere]">
               {isZh
-                ? `傷心酒吧不是排行榜，而是一場 AI 音樂生存電台。聽歌不需登入；留言、投票與投稿需登入。新投稿不打斷目前歌曲，會在這首播完後優先插播；每批從第一首投稿開始計 1 小時，最多 ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} 首，其餘排到下一小時。公播池超過 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首時，每 ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} 小時最多淘汰 ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} 首低反應歌曲；累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 個正向反應，就取得榮譽榜入選資格。`
-                : `Bar Heartbreak is not a chart. It is AI music survival radio. Listening is open; comments, votes, and uploads require sign-in. New uploads do not interrupt the current song; they get priority after it ends. Each 1-hour batch airs up to ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} tracks. When the public pool is above ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}, up to ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} low-reaction tracks are removed every ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} hours. Tracks with ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} positive reactions become Honor Board eligible.`}
+                ? `傷心酒吧不是排行榜，而是一場 AI 音樂生存電台。聽歌不需登入；留言、投票與投稿需登入。新投稿不打斷目前歌曲，會在這首播完後優先插播；每批從第一首投稿開始計 1 小時，最多 ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} 首，其餘排到下一小時。新歌進入挑戰池會有 24H 保護期，之後自動進入公播池。公播池超過 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首時，每 ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} 小時最多淘汰 ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} 首低反應歌曲；累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 個正向反應，或公播存活 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天，就取得榮譽榜入選資格。`
+                : `Bar Heartbreak is not a chart. It is AI music survival radio. Listening is open; comments, votes, and uploads require sign-in. New uploads do not interrupt the current song; they get priority after it ends. Each 1-hour batch airs up to ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} tracks. New Challenger tracks get 24H protection, then move into the public pool. When the public pool is above ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}, up to ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} low-reaction tracks are removed every ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} hours. ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} positive reactions or ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} public days makes a track Honor Board eligible.`}
             </p>
           </div>
 
@@ -2704,12 +2704,12 @@ export default function ListenBarPage() {
                 {[...myChallengerStats, ...myPublicStats].slice(0, 6).map((track) => {
                   const keepPercent = track.barPhase === "public"
                     ? 100
-                    : Math.min(100, (track.positives / LISTEN_BAR_PUBLIC_REACTION_THRESHOLD) * 100);
+                    : challengerProtectionPercent(track.createdAt);
                   const challengerRank = challengerRankById.get(track.id);
                   const statusLabel = track.barPhase === "public"
                     ? isZh
-                      ? `公播 Day ${survivalDayFromDate(track.promotedAt ?? track.createdAt)}`
-                      : `Public Day ${survivalDayFromDate(track.promotedAt ?? track.createdAt)}`
+                      ? `公播 Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt)}`
+                      : `Public Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt)}`
                     : challengerRank
                       ? `Challenger #${challengerRank}`
                       : "Challenger";
@@ -2820,12 +2820,8 @@ export default function ListenBarPage() {
             </div>
             <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">
               {isZh
-                ? openingPhaseActive
-                  ? `${communityRequestTracks.length} 首投稿歌正在公播；滿 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首後新歌進入 Challenger，超過 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首才啟動淘汰。`
-                  : `${communityRequestTracks.length} 首投稿歌進入傷心酒吧；${publicPoolTracks.length} 首公播，${challengerTracks.length} 首 Challenger 正在拼人氣；超過 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首時每 ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} 小時最多淘汰 ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} 首。`
-                : openingPhaseActive
-                  ? `${communityRequestTracks.length} creator tracks are live on air. New uploads enter Challenger after ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}; elimination starts only above ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}.`
-                  : `${communityRequestTracks.length} creator tracks are in Bar Heartbreak. ${publicPoolTracks.length} are live on air and ${challengerTracks.length} are fighting for reactions. Above ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}, up to ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} low-reaction tracks are removed every ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} hours.`}
+                ? `${communityRequestTracks.length} 首投稿歌進入傷心酒吧；${publicPoolTracks.length} 首公播，${challengerTracks.length} 首 Challenger 享有 24H 保護。超過 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首時每 ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} 小時最多淘汰 ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} 首。`
+                : `${communityRequestTracks.length} creator tracks are in Bar Heartbreak. ${publicPoolTracks.length} are live on air and ${challengerTracks.length} Challengers have 24H protection. Above ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}, up to ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} low-reaction tracks are removed every ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} hours.`}
             </p>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
               <div

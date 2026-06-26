@@ -27,7 +27,7 @@ import { fontGlowSans, fontRighteous } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import {
-  LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD,
+  listenBarIsHonorEligible,
   listenBarRowToTrack,
   type ListenBarTrackRow,
 } from "@/lib/listen-bar";
@@ -546,7 +546,11 @@ function hotBarRowsFromTracks(tracks: ListenBarTrackRow[]) {
     .map((row) => ({ row, track: listenBarRowToTrack(row) }))
     .filter((item): item is { row: ListenBarTrackRow; track: NonNullable<ReturnType<typeof listenBarRowToTrack>> } => Boolean(item.track))
     .filter(({ track }) => track.source !== "official")
-    .filter(({ track }) => (track.positiveReactionCount || 0) >= LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD)
+    .filter(({ row, track }) => listenBarIsHonorEligible({
+      positiveReactionCount: track.positiveReactionCount,
+      promotedAt: row.promoted_at ?? track.promotedAt,
+      createdAt: track.createdAt,
+    }))
     .sort((a, b) => {
       const byReaction = (b.track.positiveReactionCount || 0) - (a.track.positiveReactionCount || 0);
       if (byReaction !== 0) return byReaction;
@@ -971,7 +975,7 @@ export default function RankPage() {
         supabase
           .from("listen_bar_tracks")
           .select(
-            "id,title,artist,ai_tool,genre,mood,bpm,duration_seconds,audio_path,cover_path,lyrics,is_active,source,is_featured_official,positive_reaction_count,heart_count,star_count,thumb_count,happy_count,created_at",
+            "id,title,artist,ai_tool,genre,mood,bpm,duration_seconds,audio_path,cover_path,lyrics,is_active,source,is_featured_official,positive_reaction_count,heart_count,star_count,thumb_count,happy_count,created_at,promoted_at",
           )
           .eq("is_active", true)
           .order("positive_reaction_count", { ascending: false })

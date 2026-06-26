@@ -1,0 +1,38 @@
+export const LISTEN_BAR_CHALLENGER_SLOT_LIMIT = 3;
+export const LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD = 30;
+export const LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS = 7;
+export const LISTEN_BAR_PUBLIC_ROTATION_LIMIT = 88;
+export const LISTEN_BAR_TOTAL_ROTATION_LIMIT = 100;
+export const LISTEN_BAR_CHALLENGER_HOURLY_LIMIT = 8;
+export const LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS = 24;
+export const LISTEN_BAR_JUDGMENT_INTERVAL_HOURS = 8;
+export const LISTEN_BAR_PUBLIC_EVICTION_LIMIT = 3;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function timestampMs(value: string | null | undefined): number | null {
+  const ms = new Date(value ?? "").getTime();
+  return Number.isFinite(ms) ? ms : null;
+}
+
+export function listenBarPublicSurvivalDays(promotedAt: string | null | undefined, createdAt: string | null | undefined, nowMs = Date.now()) {
+  const startMs = timestampMs(promotedAt) ?? timestampMs(createdAt);
+  if (!startMs || startMs > nowMs) return 0;
+  return Math.floor((nowMs - startMs) / DAY_MS);
+}
+
+export function listenBarPublicDisplayDay(promotedAt: string | null | undefined, createdAt: string | null | undefined, nowMs = Date.now()) {
+  const startMs = timestampMs(promotedAt) ?? timestampMs(createdAt);
+  if (!startMs || startMs > nowMs) return 0;
+  return Math.max(1, Math.ceil((nowMs - startMs) / DAY_MS));
+}
+
+export function listenBarIsHonorEligible(
+  track: { positiveReactionCount?: number | null; promotedAt?: string | null; createdAt?: string | null },
+  nowMs = Date.now(),
+) {
+  return (
+    Math.max(0, Math.round(track.positiveReactionCount ?? 0)) >= LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD ||
+    listenBarPublicSurvivalDays(track.promotedAt, track.createdAt, nowMs) >= LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS
+  );
+}

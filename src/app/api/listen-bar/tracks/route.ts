@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
-  LISTEN_BAR_PUBLIC_REACTION_THRESHOLD,
   LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
 } from "@/lib/listen-bar";
 
@@ -165,14 +164,6 @@ function isMissingColumnError(error: unknown): boolean {
 }
 
 function applyLegacyOpeningGrace(rows: ListenBarTrackRow[]): ListenBarTrackRow[] {
-  if (rows.length <= LISTEN_BAR_PUBLIC_ROTATION_LIMIT) {
-    return rows.map((row) => ({
-      ...row,
-      bar_phase: "public",
-      promoted_at: row.promoted_at ?? row.created_at,
-    }));
-  }
-
   const hasPersistedPhase = rows.some((row) => Object.prototype.hasOwnProperty.call(row, "bar_phase"));
   if (hasPersistedPhase) return rows;
 
@@ -182,12 +173,9 @@ function applyLegacyOpeningGrace(rows: ListenBarTrackRow[]): ListenBarTrackRow[]
       .filter((row) => {
         const createdAtMs = new Date(row.created_at ?? 0).getTime();
         return Number.isFinite(createdAtMs)
-          && createdAtMs < observationCutoffMs
-          && (row.positive_reaction_count ?? 0) >= LISTEN_BAR_PUBLIC_REACTION_THRESHOLD;
+          && createdAtMs < observationCutoffMs;
       })
       .sort((a, b) => {
-        const positiveDiff = (b.positive_reaction_count ?? 0) - (a.positive_reaction_count ?? 0);
-        if (positiveDiff !== 0) return positiveDiff;
         return new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime();
       })
       .slice(0, LISTEN_BAR_PUBLIC_ROTATION_LIMIT)

@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import {
   LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
-  LISTEN_BAR_JUDGMENT_PROMOTION_LIMIT,
   LISTEN_BAR_PUBLIC_EVICTION_LIMIT,
-  LISTEN_BAR_PUBLIC_REACTION_THRESHOLD,
   LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
 } from "@/lib/listen-bar";
 
@@ -74,21 +72,15 @@ async function processRotation(request: NextRequest) {
 
   if (publicCountBeforePromotionError) return NextResponse.json({ error: publicCountBeforePromotionError.message }, { status: 500 });
 
-  const publicPoolAtLimit = (publicCountBeforePromotion ?? 0) >= LISTEN_BAR_PUBLIC_ROTATION_LIMIT;
   const eligibleQuery = admin
     .from("listen_bar_tracks")
     .select("id, positive_reaction_count, created_at, bar_phase")
     .eq("source", "community")
     .eq("is_active", true)
     .eq("bar_phase", "challenger");
-  const { data: eligibleChallengers, error: eligibleError } = publicPoolAtLimit
-    ? await eligibleQuery
-      .lt("created_at", observationCutoff)
-      .gte("positive_reaction_count", LISTEN_BAR_PUBLIC_REACTION_THRESHOLD)
-      .order("positive_reaction_count", { ascending: false })
-      .order("created_at", { ascending: true })
-      .limit(LISTEN_BAR_JUDGMENT_PROMOTION_LIMIT)
-    : { data: [], error: null };
+  const { data: eligibleChallengers, error: eligibleError } = await eligibleQuery
+    .lt("created_at", observationCutoff)
+    .order("created_at", { ascending: true });
 
   if (eligibleError) return NextResponse.json({ error: eligibleError.message }, { status: 500 });
 
@@ -132,8 +124,7 @@ async function processRotation(request: NextRequest) {
     removedFromPublic: removedPublicIds.length,
     removedOverTotalLimit: 0,
     publicEvictionLimit: LISTEN_BAR_PUBLIC_EVICTION_LIMIT,
-    publicPoolAtLimit,
-    openingGraceMode: (publicCountBeforePromotion ?? 0) < LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
+    publicPoolAtLimit: (publicCountBeforePromotion ?? 0) >= LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
     publicLimit: LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
   });
 }

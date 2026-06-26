@@ -1,20 +1,24 @@
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { AIPOGER_PERSONAL_RANK, isAipogerIdentity } from "@/lib/battle-pool-rules";
 import { supabase } from "@/lib/supabase";
+export {
+  LISTEN_BAR_CHALLENGER_HOURLY_LIMIT,
+  LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
+  LISTEN_BAR_CHALLENGER_SLOT_LIMIT,
+  LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD,
+  LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS,
+  LISTEN_BAR_JUDGMENT_INTERVAL_HOURS,
+  LISTEN_BAR_PUBLIC_EVICTION_LIMIT,
+  LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
+  LISTEN_BAR_TOTAL_ROTATION_LIMIT,
+  listenBarIsHonorEligible,
+  listenBarPublicDisplayDay,
+  listenBarPublicSurvivalDays,
+} from "@/lib/listen-bar-rules";
 
 export const LISTEN_BAR_AUDIO_BUCKET = "listen-bar-audio";
 export const LISTEN_BAR_COVER_BUCKET = "listen-bar-covers";
 export const AIPOGER_CURATOR_RANK = "";
-export const LISTEN_BAR_CHALLENGER_SLOT_LIMIT = 3;
-export const LISTEN_BAR_PUBLIC_REACTION_THRESHOLD = 1;
-export const LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD = 30;
-export const LISTEN_BAR_PUBLIC_ROTATION_LIMIT = 88;
-export const LISTEN_BAR_TOTAL_ROTATION_LIMIT = 100;
-export const LISTEN_BAR_CHALLENGER_HOURLY_LIMIT = 8;
-export const LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS = 24;
-export const LISTEN_BAR_JUDGMENT_INTERVAL_HOURS = 8;
-export const LISTEN_BAR_JUDGMENT_PROMOTION_LIMIT = 8;
-export const LISTEN_BAR_PUBLIC_EVICTION_LIMIT = 3;
 export const DEFAULT_LISTEN_BAR_COVER = AIPOGER_BRAND_LOGO;
 
 export type ListenBarTrack = {

@@ -10,7 +10,6 @@ import {
   DEFAULT_LISTEN_BAR_COVER,
   LISTEN_BAR_AUDIO_BUCKET,
   LISTEN_BAR_COVER_BUCKET,
-  LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
   type ListenBarTrackRow,
 } from "@/lib/listen-bar";
 import { parseMp3Metadata, type ParsedMp3Metadata } from "@/lib/mp3-id3";
@@ -239,7 +238,7 @@ function trackReactionTotal(track: AdminListenBarTrackRow) {
   );
 }
 
-function trackStatusBadge(track: AdminListenBarTrackRow, currentlyPlayingId: string, openingPhaseActive: boolean) {
+function trackStatusBadge(track: AdminListenBarTrackRow, currentlyPlayingId: string) {
   if (removedStatus(track)) {
     return { label: "已移除", className: "border-red-300/35 bg-red-500/12 text-red-100" };
   }
@@ -252,7 +251,7 @@ function trackStatusBadge(track: AdminListenBarTrackRow, currentlyPlayingId: str
   if (track.id === currentlyPlayingId) {
     return { label: "正在播放中", className: "border-orange-200/55 bg-orange-400/18 text-orange-100 shadow-[0_0_18px_rgba(251,146,60,0.22)]" };
   }
-  if (track.bar_phase === "public" || openingPhaseActive) {
+  if (track.bar_phase === "public") {
     return { label: "公播中", className: "border-cyan-200/35 bg-cyan-300/10 text-cyan-100" };
   }
   if (track.bar_phase === "challenger") {
@@ -261,10 +260,10 @@ function trackStatusBadge(track: AdminListenBarTrackRow, currentlyPlayingId: str
   return { label: "上架中", className: "border-cyan-200/30 bg-cyan-300/10 text-cyan-100" };
 }
 
-function phaseLabel(track: AdminListenBarTrackRow, openingPhaseActive: boolean) {
+function phaseLabel(track: AdminListenBarTrackRow) {
   if (removedStatus(track)) return "已移除";
   if (hiddenStatus(track) || track.is_active === false) return "已下架";
-  if (track.bar_phase === "public" || openingPhaseActive) return "公播池";
+  if (track.bar_phase === "public") return "公播池";
   if (track.bar_phase === "challenger") return "Challenger";
   return "未分池";
 }
@@ -292,14 +291,14 @@ function trackMonthLabel(monthKey: string) {
   return `${year} 年 ${Number(month)} 月`;
 }
 
-function trackSearchText(track: AdminListenBarTrackRow, openingPhaseActive: boolean) {
+function trackSearchText(track: AdminListenBarTrackRow) {
   return [
     track.title,
     track.artist,
     track.ai_tool,
     track.genre,
     track.mood,
-    phaseLabel(track, openingPhaseActive),
+    phaseLabel(track),
     adminReviewLabel(track),
   ]
     .filter(Boolean)
@@ -402,7 +401,6 @@ export default function ListenBarAdminPage() {
     });
   }, [displayTracks]);
   const visiblePlayableTracks = useMemo(() => activePlayableTracks(displayTracks), [displayTracks]);
-  const openingPhaseActive = visiblePlayableTracks.length <= LISTEN_BAR_PUBLIC_ROTATION_LIMIT;
   const renderedTracks = useMemo(() => {
     const query = trackSearch.trim().toLowerCase();
     const filteredTracks = displayTracks.filter((track) => {
@@ -412,10 +410,10 @@ export default function ListenBarAdminPage() {
       if (trackVisibilityFilter === "uncategorized" && !isUncategorizedTrack(track)) return false;
       if (trackMonthFilter !== "all" && trackMonthKey(track) !== trackMonthFilter) return false;
       if (!query) return true;
-      return trackSearchText(track, openingPhaseActive).includes(query);
+      return trackSearchText(track).includes(query);
     });
     return sortTracksForAdmin(filteredTracks, trackSortMode);
-  }, [displayTracks, openingPhaseActive, trackMonthFilter, trackSearch, trackSortMode, trackVisibilityFilter]);
+  }, [displayTracks, trackMonthFilter, trackSearch, trackSortMode, trackVisibilityFilter]);
   const selectedTrackIdSet = useMemo(() => new Set(selectedTrackIds), [selectedTrackIds]);
   const selectedTracks = useMemo(
     () => displayTracks.filter((track) => selectedTrackIdSet.has(track.id)),
@@ -1468,7 +1466,7 @@ export default function ListenBarAdminPage() {
                   const coverUrl = rowPublicUrl(LISTEN_BAR_COVER_BUCKET, track.cover_path) || DEFAULT_LISTEN_BAR_COVER;
                   const audioUrl = rowPublicUrl(LISTEN_BAR_AUDIO_BUCKET, track.audio_path);
 	                  const hidden = isHiddenTrack(track);
-	                  const status = trackStatusBadge(track, currentlyPlayingId, openingPhaseActive);
+	                  const status = trackStatusBadge(track, currentlyPlayingId);
 	                  const updatedAt = track.updated_at ? new Date(track.updated_at).toLocaleString("zh-TW", { hour12: false }) : "-";
 	                  const focused = focusedTrackId === track.id;
 	                  const editing = editingTrackId === track.id && metadataForm;
@@ -1520,7 +1518,7 @@ export default function ListenBarAdminPage() {
 	                          </div>
                           <div className="mt-3 flex flex-wrap gap-2">
                             <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-bold text-zinc-300">
-                              {phaseLabel(track, openingPhaseActive)}
+                              {phaseLabel(track)}
                             </span>
                             <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-bold text-zinc-300">
                               審核：{adminReviewLabel(track)}

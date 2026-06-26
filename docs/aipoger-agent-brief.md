@@ -162,10 +162,10 @@ Current rules:
 - After 88 public songs, new submissions enter Challenger.
 - Each creator can have up to 3 active Challenger songs.
 - Challenger observation period is 24 hours.
-- Challenger needs at least 1 positive reaction to become eligible for public-pool promotion after the pool is full.
+- Challenger has a 24-hour protection period, then automatically moves into the public pool. The old 1-positive-reaction promotion gate is retired.
 - Public-pool elimination runs only when there are more than 88 public songs.
 - Each elimination pass removes up to 3 low-performing public-pool songs.
-- A song with 30 positive reactions becomes Honor Board eligible.
+- A song with 30 positive reactions or 7 public survival days becomes Honor Board eligible.
 - New uploads get priority play after the current song finishes; up to 8 new uploads can air within a 1-hour priority batch.
 
 ## Honor Board Rules

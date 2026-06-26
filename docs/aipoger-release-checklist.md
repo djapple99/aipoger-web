@@ -129,18 +129,14 @@ Check:
 - Creator can remove own Challenger.
 - Creator can remove own public-pool song.
 
-Opening phase:
+Challenger and public pool:
 
-- If public pool has fewer than 88 community songs, Challenger section is hidden.
-- New submissions enter public pool.
-- Public pool progress shows current count over 88.
-
-After public pool reaches 88:
-
-- Challenger section becomes visible automatically.
 - New submissions enter Challenger.
+- Challenger songs have 24H protection before public-pool promotion.
 - Creator Challenger count is capped at 3.
 - Public-pool songs do not count toward the 3 Challenger limit.
+- Public pool progress shows current count over 88.
+- Public-pool elimination starts only above 88 and removes at most 3 per pass.
 
 ## Honor Board Checklist
 

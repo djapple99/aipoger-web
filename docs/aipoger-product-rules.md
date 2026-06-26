@@ -173,15 +173,15 @@ Current rules:
 - Official AIPOGER songs do not count as active public-pool songs.
 - If there are no community submissions, hidden fallback store music may prevent a silent station; it must not count toward survival results.
 - Public pool target: 88 community songs.
-- Before 88 public songs, new submissions go directly into the public pool and the Challenger section remains hidden.
-- Once the public pool reaches 88, new submissions enter Challenger.
+- New submissions enter Challenger first and receive 24H protection before public-pool promotion.
 - Each creator can have up to 3 active Challenger songs.
 - Public-pool songs do not count toward the 3 Challenger limit.
 - A creator may remove their own Challenger songs.
 - A creator may remove their own public-pool songs.
-- Challenger observation period: 24 hours.
-- A Challenger needs at least 1 positive reaction to become eligible for public-pool promotion after the pool is full.
-- Own reaction can satisfy the V1 minimum support threshold.
+- Challenger protection period: 24 hours.
+- A Challenger can be played, reacted to, and commented on during protection, but it is not evicted.
+- After 24 hours, a Challenger automatically moves into the public pool. The old 1-positive-reaction promotion gate is retired.
+- Own reaction remains allowed in V2, but it is only public support and does not guarantee survival.
 - Judgement interval: every 8 hours.
 - Public-pool elimination only runs when there are more than 88 public songs.
 - Elimination must never bring the active public pool below 88 songs.
@@ -190,7 +190,7 @@ Current rules:
 - If the public pool is at or below 88 songs, elimination stops and no refill action is needed.
 - The legacy 30-day `completed` removal rule is retired and must not remove songs.
 - Challenger + public pool shared rotation target: 100 songs.
-- A song with 30 positive reactions becomes Honor Board eligible.
+- A song with 30 positive reactions or 7 public survival days becomes Honor Board eligible.
 - New submissions get priority after the current song finishes; each priority batch starts when the first upload arrives, airs up to 8 new uploads within 1 hour, and pushes overflow to the next hour.
 - Bar Heartbreak upload metadata should stay compact: user-entered creator name, AI tool, and album/mood are limited to 12 CJK characters or about 24 English characters; one-line song description is limited to 16 CJK characters or about 32 English characters. Auto-detected song titles are not subject to this compact metadata limit.
 

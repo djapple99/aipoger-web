@@ -160,8 +160,8 @@ Must preserve:
 - Reaction copy near buttons should encourage active voting.
 - The record visual is central and should feel like a public broadcast.
 - Lyrics area should be substantial enough to read, visually aligned with the comments area where practical.
-- Challenger is hidden before the public pool reaches 88.
-- Challenger becomes visible automatically after the public pool reaches 88.
+- Challenger is always the entry point for new submissions.
+- Challenger tracks show their 24H protection state before public-pool promotion.
 
 Copy direction:
 

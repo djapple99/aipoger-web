@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import {
-  LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
-  LISTEN_BAR_PUBLIC_REACTION_THRESHOLD,
-  LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
-} from "@/lib/listen-bar";
+import { LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS } from "@/lib/listen-bar";
 import {
   LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS,
   LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS,
@@ -107,15 +103,7 @@ function cleanDescriptionField(value: unknown) {
   return cleanListenBarDisplayText(value, LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS);
 }
 
-function applyLegacyOpeningGrace(rows: ListenBarTrackRow[], openingGraceMode: boolean): ListenBarTrackRow[] {
-  if (openingGraceMode) {
-    return rows.map((row) => ({
-      ...row,
-      bar_phase: "public",
-      promoted_at: row.promoted_at ?? row.created_at,
-    }));
-  }
-
+function applyLegacyOpeningGrace(rows: ListenBarTrackRow[]): ListenBarTrackRow[] {
   const hasPersistedPhase = rows.some((row) => Object.prototype.hasOwnProperty.call(row, "bar_phase"));
   if (hasPersistedPhase) return rows;
 
@@ -123,8 +111,7 @@ function applyLegacyOpeningGrace(rows: ListenBarTrackRow[], openingGraceMode: bo
   return rows.map((row) => {
     const createdAtMs = new Date(row.created_at ?? 0).getTime();
     const shouldBePublic = Number.isFinite(createdAtMs)
-      && createdAtMs < observationCutoffMs
-      && (row.positive_reaction_count ?? 0) >= LISTEN_BAR_PUBLIC_REACTION_THRESHOLD;
+      && createdAtMs < observationCutoffMs;
     return {
       ...row,
       bar_phase: shouldBePublic ? "public" : "challenger",
@@ -141,13 +128,6 @@ export async function GET(request: NextRequest) {
     const admin = adminClient();
     const { data: userData, error: userError } = await admin.auth.getUser(token);
     if (userError || !userData.user) return NextResponse.json({ error: "登入狀態已過期，請重新登入。" }, { status: 401 });
-
-    const { count: activeCommunityCount, error: activeCommunityError } = await admin
-      .from("listen_bar_tracks")
-      .select("id", { count: "exact", head: true })
-      .eq("source", "community")
-      .eq("is_active", true);
-    if (activeCommunityError) return NextResponse.json({ error: activeCommunityError.message }, { status: 500 });
 
     const modernResult = await admin
       .from("listen_bar_tracks")
@@ -185,7 +165,7 @@ export async function GET(request: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    const tracks = applyLegacyOpeningGrace(rows ?? [], (activeCommunityCount ?? 0) <= LISTEN_BAR_PUBLIC_ROTATION_LIMIT);
+    const tracks = applyLegacyOpeningGrace(rows ?? []);
     const challengerCount = tracks.filter((track) => track.bar_phase !== "public").length;
     return NextResponse.json({ activeTrackCount: tracks.length, challengerCount, tracks });
   } catch (error) {
