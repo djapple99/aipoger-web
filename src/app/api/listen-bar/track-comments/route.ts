@@ -13,8 +13,40 @@ type TrackCommentDatabase = {
   public: {
     Tables: {
       listen_bar_tracks: {
-        Row: { id: string };
+        Row: { id: string; title?: string | null; created_by?: string | null };
         Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      listen_bar_track_comments: {
+        Row: {
+          id: string;
+          track_id: string;
+          user_id: string | null;
+          display_name: string;
+          body: string;
+          created_at: string;
+        };
+        Insert: {
+          track_id: string;
+          user_id: string;
+          display_name: string;
+          body: string;
+        };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      battle_notifications: {
+        Row: Record<string, never>;
+        Insert: {
+          user_id: string;
+          queue_id?: null;
+          battle_id?: null;
+          type: string;
+          title: string;
+          body: string;
+          metadata?: Record<string, unknown>;
+        };
         Update: Record<string, never>;
         Relationships: [];
       };
@@ -30,6 +62,7 @@ type AdminClient = SupabaseClient<TrackCommentDatabase>;
 
 const DATA_BUCKET = "listen-bar-data";
 const COMMENT_LIMIT_PER_TRACK = 500;
+const COMMENT_NOTIFICATION_TYPE = "listen_bar_track_comment";
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -43,6 +76,18 @@ function tokenFromRequest(request: NextRequest): string | null {
   const auth = request.headers.get("authorization") ?? "";
   if (!auth.startsWith("Bearer ")) return null;
   return auth.slice("Bearer ".length).trim() || null;
+}
+
+function isMissingTrackCommentsTable(error: unknown): boolean {
+  const text = error && typeof error === "object"
+    ? [
+        (error as { message?: string }).message,
+        (error as { details?: string }).details,
+        (error as { hint?: string }).hint,
+        (error as { code?: string }).code,
+      ].filter(Boolean).join(" ")
+    : String(error ?? "");
+  return /listen_bar_track_comments|schema cache|relation.*does not exist|Could not find the table|PGRST205/i.test(text);
 }
 
 function storagePath(trackId: string) {
@@ -80,6 +125,40 @@ async function readComments(admin: AdminClient, trackId: string): Promise<Stored
   ));
 }
 
+async function readDatabaseComments(admin: AdminClient, trackId: string): Promise<StoredTrackComment[] | null> {
+  const { data, error } = await admin
+    .from("listen_bar_track_comments")
+    .select("id, track_id, display_name, body, created_at")
+    .eq("track_id", trackId)
+    .order("created_at", { ascending: true })
+    .limit(COMMENT_LIMIT_PER_TRACK);
+
+  if (error) {
+    if (isMissingTrackCommentsTable(error)) return null;
+    throw error;
+  }
+
+  return ((data as TrackCommentDatabase["public"]["Tables"]["listen_bar_track_comments"]["Row"][] | null) ?? []).map((row) => ({
+    id: row.id,
+    trackId: row.track_id,
+    name: row.display_name,
+    text: row.body,
+    createdAt: row.created_at,
+  }));
+}
+
+function mergeComments(databaseComments: StoredTrackComment[] | null, storageComments: StoredTrackComment[]) {
+  const seen = new Set<string>();
+  return [...(databaseComments ?? []), ...storageComments]
+    .filter((comment) => {
+      if (seen.has(comment.id)) return false;
+      seen.add(comment.id);
+      return true;
+    })
+    .sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime())
+    .slice(-COMMENT_LIMIT_PER_TRACK);
+}
+
 async function writeComments(admin: AdminClient, trackId: string, comments: StoredTrackComment[]) {
   await ensureDataBucket(admin);
   const { error } = await admin.storage.from(DATA_BUCKET).upload(
@@ -105,8 +184,11 @@ export async function GET(request: NextRequest) {
 
   try {
     const admin = adminClient();
-    const comments = await readComments(admin, trackId);
-    return NextResponse.json({ comments }, { headers: { "Cache-Control": "no-store" } });
+    const [databaseComments, storageComments] = await Promise.all([
+      readDatabaseComments(admin, trackId),
+      readComments(admin, trackId),
+    ]);
+    return NextResponse.json({ comments: mergeComments(databaseComments, storageComments) }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return jsonError(String((error as { message?: string })?.message ?? error), 500);
   }
@@ -135,21 +217,68 @@ export async function POST(request: NextRequest) {
 
     const { data: trackExists, error: trackError } = await admin
       .from("listen_bar_tracks")
-      .select("id")
+      .select("id,title,created_by")
       .eq("id", body.trackId)
-      .maybeSingle();
+      .maybeSingle<TrackCommentDatabase["public"]["Tables"]["listen_bar_tracks"]["Row"]>();
     if (trackError) return jsonError(trackError.message, 500);
     if (!trackExists) return jsonError("Track not found.", 404);
 
-    const comments = await readComments(admin, body.trackId);
-    const comment: StoredTrackComment = {
-      id: crypto.randomUUID(),
-      trackId: body.trackId,
-      name: displayName,
-      text,
-      createdAt: new Date().toISOString(),
-    };
-    await writeComments(admin, body.trackId, [...comments, comment].slice(-COMMENT_LIMIT_PER_TRACK));
+    let comment: StoredTrackComment | null = null;
+    const inserted = await admin
+      .from("listen_bar_track_comments")
+      .insert({
+        track_id: body.trackId,
+        user_id: userData.user.id,
+        display_name: displayName,
+        body: text,
+      })
+      .select("id, track_id, display_name, body, created_at")
+      .maybeSingle<TrackCommentDatabase["public"]["Tables"]["listen_bar_track_comments"]["Row"]>();
+
+    if (inserted.error && isMissingTrackCommentsTable(inserted.error)) {
+      const comments = await readComments(admin, body.trackId);
+      comment = {
+        id: crypto.randomUUID(),
+        trackId: body.trackId,
+        name: displayName,
+        text,
+        createdAt: new Date().toISOString(),
+      };
+      await writeComments(admin, body.trackId, [...comments, comment].slice(-COMMENT_LIMIT_PER_TRACK));
+    } else if (inserted.error) {
+      return jsonError(inserted.error.message, 500);
+    } else if (inserted.data) {
+      comment = {
+        id: inserted.data.id,
+        trackId: inserted.data.track_id,
+        name: inserted.data.display_name,
+        text: inserted.data.body,
+        createdAt: inserted.data.created_at,
+      };
+    }
+
+    if (!comment) return jsonError("Comment was not saved.", 500);
+
+    if (trackExists.created_by && trackExists.created_by !== userData.user.id) {
+      const trackTitle = trackExists.title?.trim() || "你的歌曲";
+      const notificationResult = await admin.from("battle_notifications").insert({
+        user_id: trackExists.created_by,
+        type: COMMENT_NOTIFICATION_TYPE,
+        title: `你的歌曲〈${trackTitle}〉收到新留言`,
+        body: `${displayName} 留言：${text}`,
+        metadata: {
+          trackId: body.trackId,
+          trackTitle,
+          commentId: comment.id,
+          commenterName: displayName,
+          href: "/listen-bar",
+        },
+      });
+      if (notificationResult.error) {
+        console.warn("[listen-bar track comment notification]", notificationResult.error.message);
+      }
+    }
+
     return NextResponse.json({ comment });
   } catch (error) {
     return jsonError(String((error as { message?: string })?.message ?? error), 500);

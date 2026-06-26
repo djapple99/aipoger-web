@@ -37,6 +37,10 @@ type BattleNotificationRow = {
     dailyBattleId?: string | null;
     dailyEntryId?: string | null;
     winnerEntryId?: string | null;
+    trackId?: string | null;
+    trackTitle?: string | null;
+    commenterName?: string | null;
+    href?: string | null;
   } | null;
   read_at?: string | null;
   created_at?: string | null;
@@ -86,6 +90,7 @@ const EXPIRED_OR_FINISHED_NOTICE_TYPES = [
   "daily_battle_expired",
   "daily_battle_finished",
 ];
+const LISTEN_BAR_COMMENT_NOTICE_TYPE = "listen_bar_track_comment";
 
 function BellIcon() {
   return (
@@ -452,7 +457,7 @@ export default function GlobalBattleCallOverlay() {
         .from("battle_notifications")
         .select("id, queue_id, battle_id, type, title, body, metadata, read_at, created_at")
         .eq("user_id", uid)
-        .in("type", ["battle_matched", ...EXPIRED_OR_FINISHED_NOTICE_TYPES])
+        .in("type", ["battle_matched", ...EXPIRED_OR_FINISHED_NOTICE_TYPES, LISTEN_BAR_COMMENT_NOTICE_TYPE])
         .is("read_at", null)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -627,10 +632,15 @@ export default function GlobalBattleCallOverlay() {
     const isDailyExpiredNotice = expiredNotice.type === "daily_battle_expired";
     const isDropFinishedNotice = expiredNotice.type === "battle_finished";
     const isDropNoContestNotice = expiredNotice.type === "battle_no_contest";
+    const isListenBarCommentNotice = expiredNotice.type === LISTEN_BAR_COMMENT_NOTICE_TYPE;
     const isSyntheticDropFinishedNotice = expiredNotice.id.startsWith("synthetic-battle-finished-");
     const title =
       expiredNotice.title ||
-      (isDropFinishedNotice
+      (isListenBarCommentNotice
+        ? isZh
+          ? "你的歌曲收到新留言"
+          : "New Comment on Your Song"
+        : isDropFinishedNotice
         ? isZh
           ? "你剛完成了一場戰鬥"
           : "You Just Finished a Battle"
@@ -651,7 +661,11 @@ export default function GlobalBattleCallOverlay() {
                 : "Drop Battle Cancelled");
     const body =
       expiredNotice.body ||
-      (isDropFinishedNotice
+      (isListenBarCommentNotice
+        ? isZh
+          ? "有人在你投稿到傷心酒吧的歌曲下面留下了評論。"
+          : "Someone commented on your Bar Heartbreak track."
+        : isDropFinishedNotice
         ? isZh
           ? "你剛完成了一場 Drop Battle，可以查看戰鬥卡，也可以再開一場。"
           : "Your Drop Battle has finished. View the card or open a new one."
@@ -671,7 +685,9 @@ export default function GlobalBattleCallOverlay() {
                 ? "你剛有一場 Drop Battle 因等待時間結束，已從公開挑戰池移除。可以重新上傳或開新戰帖。"
                 : "One Drop Battle waiting card ended and was removed from the public pool. You can open a new card.");
     const primaryHref =
-      isSyntheticDropFinishedNotice && expiredNotice.battle_id
+      isListenBarCommentNotice
+        ? `/listen-bar?lang=${lang}`
+        : isSyntheticDropFinishedNotice && expiredNotice.battle_id
         ? `/battle/${encodeURIComponent(expiredNotice.battle_id)}?lang=${lang}`
         : isDropFinishedNotice && expiredNotice.battle_id
         ? `/battle/result?battleId=${encodeURIComponent(expiredNotice.battle_id)}&lang=${lang}`
@@ -683,7 +699,11 @@ export default function GlobalBattleCallOverlay() {
               ? `/battle/setup?battleMode=daily&from=expired-card&lang=${lang}`
               : `/battle/setup?battleMode=instant&from=expired-card&lang=${lang}`;
     const primaryLabel =
-      isSyntheticDropFinishedNotice
+      isListenBarCommentNotice
+        ? isZh
+          ? "去聽這首歌"
+          : "Open Bar"
+        : isSyntheticDropFinishedNotice
         ? isZh
           ? "查看戰鬥卡"
           : "View Battle"
@@ -730,7 +750,13 @@ export default function GlobalBattleCallOverlay() {
                 <span className="block truncate text-sm font-black">{title}</span>
               </span>
               <span className="rounded-full border border-zinc-200/20 bg-white/10 px-2 py-1 text-[10px] font-black text-zinc-200">
-                {isDropFinishedNotice || isDropNoContestNotice || isDailyFinishedNotice ? (isZh ? "已結束" : "Finished") : isDailyExpiredNotice ? (isZh ? "已過期" : "Expired") : (isZh ? "已取消" : "Cancelled")}
+                {isListenBarCommentNotice
+                  ? (isZh ? "新留言" : "Comment")
+                  : isDropFinishedNotice || isDropNoContestNotice || isDailyFinishedNotice
+                    ? (isZh ? "已結束" : "Finished")
+                    : isDailyExpiredNotice
+                      ? (isZh ? "已過期" : "Expired")
+                      : (isZh ? "已取消" : "Cancelled")}
               </span>
             </button>
             <button

@@ -180,9 +180,11 @@ Current rules:
 - A creator may remove their own public-pool songs.
 - Challenger protection period: 24 hours.
 - A Challenger can be played, reacted to, and commented on during protection, but it is not evicted.
+- Per-track comments are persistent. When someone comments on a creator's Bar Heartbreak track, the creator receives an account notification unless they commented on their own song.
 - After 24 hours, a Challenger automatically moves into the public pool. The old 1-positive-reaction promotion gate is retired.
 - Own reaction remains allowed in V2, but it is only public support and does not guarantee survival.
 - Judgement interval: every 8 hours.
+- The scheduled `GET /api/listen-bar/process-rotation` route is a dry-run preview heartbeat. Real promotion/removal requires the protected `POST` route with `LISTEN_BAR_ROTATION_ENABLED=true`.
 - Public-pool elimination only runs when there are more than 88 public songs.
 - Elimination must never bring the active public pool below 88 songs.
 - Each elimination pass removes at most the overflow above 88, capped at 3 low-performing public-pool songs.

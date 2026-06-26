@@ -123,6 +123,7 @@ Check:
 - Clicking another reaction changes the reaction.
 - Clicking the same reaction cancels the reaction.
 - Track comments persist.
+- Track comments notify the song creator through account notifications, except self-comments.
 - Upload requires sign-in.
 - Upload policy copy is visible.
 - My Bar Tracks shows creator's Challenger/public tracks after sign-in.
@@ -137,6 +138,7 @@ Challenger and public pool:
 - Public-pool songs do not count toward the 3 Challenger limit.
 - Public pool progress shows current count over 88.
 - Public-pool elimination starts only above 88 and removes at most 3 per pass.
+- `/api/listen-bar/process-rotation` GET is dry-run preview; mutation requires protected POST and `LISTEN_BAR_ROTATION_ENABLED=true`.
 
 ## Honor Board Checklist
 
