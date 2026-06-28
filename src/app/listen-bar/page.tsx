@@ -1641,11 +1641,29 @@ export default function ListenBarPage() {
   };
 
   const cleanupPublicUploadAssets = async (paths: { audioPath: string | null; coverPath: string | null }) => {
+    if (!paths.audioPath && !paths.coverPath) return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        const response = await fetch("/api/listen-bar/cleanup-upload", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify(paths),
+        });
+        if (response.ok) return;
+        console.warn("[listen-bar] server upload cleanup failed", await response.text().catch(() => response.statusText));
+      }
+    } catch (error) {
+      console.warn("[listen-bar] server upload cleanup failed", error);
+    }
+
     const cleanupTasks: Promise<unknown>[] = [];
     if (paths.audioPath) cleanupTasks.push(supabase.storage.from(LISTEN_BAR_AUDIO_BUCKET).remove([paths.audioPath]));
     if (paths.coverPath) cleanupTasks.push(supabase.storage.from(LISTEN_BAR_COVER_BUCKET).remove([paths.coverPath]));
-    if (cleanupTasks.length === 0) return;
-
     const results = await Promise.allSettled(cleanupTasks);
     results.forEach((result) => {
       if (result.status === "rejected") {
