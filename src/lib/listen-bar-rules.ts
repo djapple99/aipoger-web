@@ -10,6 +10,13 @@ export const LISTEN_BAR_PUBLIC_EVICTION_LIMIT = 3;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+export function listenBarChallengerSlotLimitForPublicCount(publicTrackCount: number): number {
+  const count = Math.max(0, Math.floor(Number.isFinite(publicTrackCount) ? publicTrackCount : 0));
+  if (count >= 6) return 1;
+  if (count >= 3) return 2;
+  return LISTEN_BAR_CHALLENGER_SLOT_LIMIT;
+}
+
 type ListenBarHonorTrack = {
   barPhase?: "challenger" | "public" | null;
   positiveReactionCount?: number | null;

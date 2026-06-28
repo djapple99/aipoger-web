@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS } from "@/lib/listen-bar";
+import {
+  LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
+  listenBarChallengerSlotLimitForPublicCount,
+} from "@/lib/listen-bar";
 import {
   LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS,
   LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS,
@@ -167,7 +170,9 @@ export async function GET(request: NextRequest) {
 
     const tracks = applyLegacyOpeningGrace(rows ?? []);
     const challengerCount = tracks.filter((track) => track.bar_phase !== "public").length;
-    return NextResponse.json({ activeTrackCount: tracks.length, challengerCount, tracks });
+    const publicCount = tracks.filter((track) => track.bar_phase === "public").length;
+    const challengerLimit = listenBarChallengerSlotLimitForPublicCount(publicCount);
+    return NextResponse.json({ activeTrackCount: tracks.length, challengerCount, publicCount, challengerLimit, tracks });
   } catch (error) {
     return NextResponse.json({ error: String((error as { message?: string })?.message ?? error) }, { status: 500 });
   }

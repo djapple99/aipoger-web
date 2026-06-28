@@ -4,6 +4,7 @@ import {
   LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD,
   LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS,
   LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
+  listenBarChallengerSlotLimitForPublicCount,
   listenBarIsHonorEligible,
   listenBarPublicDisplayDay,
   listenBarPublicSurvivalDays,
@@ -13,6 +14,15 @@ import { buildListenBarRotationPreview } from "../src/lib/listen-bar-rotation.ts
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const NOW = Date.UTC(2026, 5, 26, 0, 0, 0);
+
+test("listen bar challenger slot limit follows public pool 3/2/1 tiers", () => {
+  assert.equal(listenBarChallengerSlotLimitForPublicCount(0), 3);
+  assert.equal(listenBarChallengerSlotLimitForPublicCount(2), 3);
+  assert.equal(listenBarChallengerSlotLimitForPublicCount(3), 2);
+  assert.equal(listenBarChallengerSlotLimitForPublicCount(5), 2);
+  assert.equal(listenBarChallengerSlotLimitForPublicCount(6), 1);
+  assert.equal(listenBarChallengerSlotLimitForPublicCount(Number.NaN), 3);
+});
 
 test("listen bar honor eligibility allows 30 positive reactions", () => {
   const survivalStartedAt = new Date(NOW - DAY_MS).toISOString();

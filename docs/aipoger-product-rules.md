@@ -174,8 +174,8 @@ Current rules:
 - If there are no community submissions, hidden fallback store music may prevent a silent station; it must not count toward survival results.
 - Public pool target: 88 community songs.
 - New submissions enter Challenger first and receive 24H protection before public-pool promotion.
-- Each creator can have up to 3 active Challenger songs.
-- Public-pool songs do not count toward the 3 Challenger limit.
+- Creator Challenger slots use a 3/2/1 ladder based on that creator's active public-pool songs: 0-2 public songs allows up to 3 active Challengers, 3-5 public songs allows up to 2 active Challengers, and 6+ public songs allows up to 1 active Challenger.
+- Public-pool songs do not occupy Challenger slots and are not removed by this limit; they only reduce the creator's new Challenger concurrency.
 - A creator may remove their own Challenger songs.
 - A creator may remove their own public-pool songs.
 - Challenger protection period: 24 hours.

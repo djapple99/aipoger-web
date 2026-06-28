@@ -11,6 +11,7 @@ export {
   LISTEN_BAR_PUBLIC_EVICTION_LIMIT,
   LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
   LISTEN_BAR_TOTAL_ROTATION_LIMIT,
+  listenBarChallengerSlotLimitForPublicCount,
   listenBarIsHonorEligible,
   listenBarPublicDisplayDay,
   listenBarPublicSurvivalDays,
