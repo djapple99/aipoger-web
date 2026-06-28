@@ -186,13 +186,14 @@ Current rules:
 - Judgement interval: every 8 hours.
 - The scheduled `GET /api/listen-bar/process-rotation` route is a dry-run preview heartbeat. Real promotion/removal requires the protected `POST` route with `LISTEN_BAR_ROTATION_ENABLED=true`.
 - Public-pool elimination only runs when there are more than 88 public songs.
+- Bar Heartbreak survival and Honor Board eligibility start only after the public pool has reached 88 community songs. Existing public-pool time before the 88-song activation point must not be counted toward the 7-public-day Honor Board rule.
 - Elimination must never bring the active public pool below 88 songs.
 - Each elimination pass removes at most the overflow above 88, capped at 3 low-performing public-pool songs.
 - If songs have the same positive reaction count, remove the older song first.
 - If the public pool is at or below 88 songs, elimination stops and no refill action is needed.
 - The legacy 30-day `completed` removal rule is retired and must not remove songs.
 - Challenger + public pool shared rotation target: 100 songs.
-- A song with 30 positive reactions or 7 public survival days becomes Honor Board eligible.
+- After the 88-song activation point, a song with 30 positive reactions or 7 public survival days becomes Honor Board eligible.
 - New submissions get priority after the current song finishes; each priority batch starts when the first upload arrives, airs up to 8 new uploads within 1 hour, and pushes overflow to the next hour.
 - Bar Heartbreak upload metadata should stay compact: user-entered creator name, AI tool, and album/mood are limited to 12 CJK characters or about 24 English characters; one-line song description is limited to 16 CJK characters or about 32 English characters. Auto-detected song titles are not subject to this compact metadata limit.
 

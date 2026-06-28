@@ -29,6 +29,7 @@ import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import {
   listenBarIsHonorEligible,
   listenBarRowToTrack,
+  listenBarSurvivalStartedAt,
   type ListenBarTrackRow,
 } from "@/lib/listen-bar";
 import { DROP_BATTLE_OFFICIAL_AUDIENCE_MIN } from "@/lib/drop-battle-rematch";
@@ -542,15 +543,22 @@ function isOfficialArchivedResult(row: ArchivedBattleResult) {
 }
 
 function hotBarRowsFromTracks(tracks: ListenBarTrackRow[]) {
-  return tracks
+  const communityTracks = tracks
     .map((row) => ({ row, track: listenBarRowToTrack(row) }))
     .filter((item): item is { row: ListenBarTrackRow; track: NonNullable<ReturnType<typeof listenBarRowToTrack>> } => Boolean(item.track))
-    .filter(({ track }) => track.source !== "official")
+    .filter(({ track }) => track.source !== "official");
+  const survivalStartedAt = listenBarSurvivalStartedAt(communityTracks.map(({ row, track }) => ({
+    barPhase: track.barPhase,
+    promotedAt: row.promoted_at ?? track.promotedAt,
+    createdAt: track.createdAt,
+  })));
+
+  return communityTracks
     .filter(({ row, track }) => listenBarIsHonorEligible({
       positiveReactionCount: track.positiveReactionCount,
       promotedAt: row.promoted_at ?? track.promotedAt,
       createdAt: track.createdAt,
-    }))
+    }, Date.now(), survivalStartedAt))
     .sort((a, b) => {
       const byReaction = (b.track.positiveReactionCount || 0) - (a.track.positiveReactionCount || 0);
       if (byReaction !== 0) return byReaction;

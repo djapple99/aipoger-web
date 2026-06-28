@@ -3,9 +3,11 @@ import test from "node:test";
 import {
   LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD,
   LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS,
+  LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
   listenBarIsHonorEligible,
   listenBarPublicDisplayDay,
   listenBarPublicSurvivalDays,
+  listenBarSurvivalStartedAt,
 } from "../src/lib/listen-bar-rules.ts";
 import { buildListenBarRotationPreview } from "../src/lib/listen-bar-rotation.ts";
 
@@ -13,39 +15,87 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const NOW = Date.UTC(2026, 5, 26, 0, 0, 0);
 
 test("listen bar honor eligibility allows 30 positive reactions", () => {
+  const survivalStartedAt = new Date(NOW - DAY_MS).toISOString();
   assert.equal(
     listenBarIsHonorEligible({
       positiveReactionCount: LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD,
       promotedAt: new Date(NOW - DAY_MS).toISOString(),
       createdAt: new Date(NOW - DAY_MS).toISOString(),
-    }, NOW),
+    }, NOW, survivalStartedAt),
     true,
   );
 });
 
 test("listen bar honor eligibility allows seven public survival days", () => {
   const promotedAt = new Date(NOW - LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS * DAY_MS).toISOString();
-  assert.equal(listenBarPublicSurvivalDays(promotedAt, null, NOW), 7);
+  const survivalStartedAt = promotedAt;
+  assert.equal(listenBarPublicSurvivalDays(promotedAt, null, NOW, survivalStartedAt), 7);
   assert.equal(
     listenBarIsHonorEligible({
       positiveReactionCount: 0,
       promotedAt,
       createdAt: promotedAt,
-    }, NOW),
+    }, NOW, survivalStartedAt),
     true,
   );
 });
 
 test("listen bar honor eligibility rejects under-threshold tracks before seven public days", () => {
   const promotedAt = new Date(NOW - (LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS * DAY_MS - 1)).toISOString();
-  assert.equal(listenBarPublicSurvivalDays(promotedAt, null, NOW), 6);
-  assert.equal(listenBarPublicDisplayDay(promotedAt, null, NOW), 7);
+  const survivalStartedAt = promotedAt;
+  assert.equal(listenBarPublicSurvivalDays(promotedAt, null, NOW, survivalStartedAt), 6);
+  assert.equal(listenBarPublicDisplayDay(promotedAt, null, NOW, survivalStartedAt), 7);
   assert.equal(
     listenBarIsHonorEligible({
       positiveReactionCount: LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD - 1,
       promotedAt,
       createdAt: promotedAt,
-    }, NOW),
+    }, NOW, survivalStartedAt),
+    false,
+  );
+});
+
+test("listen bar honor eligibility stays inactive before the public pool reaches 88 songs", () => {
+  const publicRows = Array.from({ length: LISTEN_BAR_PUBLIC_ROTATION_LIMIT - 1 }, (_, index) => ({
+    id: `public-${index}`,
+    barPhase: "public",
+    promotedAt: new Date(NOW - (20 + index) * DAY_MS).toISOString(),
+    createdAt: new Date(NOW - (20 + index) * DAY_MS).toISOString(),
+  }));
+
+  const survivalStartedAt = listenBarSurvivalStartedAt(publicRows);
+  assert.equal(survivalStartedAt, null);
+  assert.equal(
+    listenBarIsHonorEligible({
+      positiveReactionCount: LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD,
+      promotedAt: new Date(NOW - 20 * DAY_MS).toISOString(),
+      createdAt: new Date(NOW - 20 * DAY_MS).toISOString(),
+    }, NOW, survivalStartedAt),
+    false,
+  );
+});
+
+test("listen bar honor survival starts when the 88th public song enters the pool", () => {
+  const publicRows = Array.from({ length: LISTEN_BAR_PUBLIC_ROTATION_LIMIT }, (_, index) => ({
+    id: `public-${index}`,
+    barPhase: "public",
+    promotedAt: new Date(NOW - (LISTEN_BAR_PUBLIC_ROTATION_LIMIT - index) * 60_000).toISOString(),
+    createdAt: new Date(NOW - (LISTEN_BAR_PUBLIC_ROTATION_LIMIT - index) * 60_000).toISOString(),
+  }));
+  const survivalStartedAt = listenBarSurvivalStartedAt(publicRows);
+  const expectedStartedAt = publicRows[LISTEN_BAR_PUBLIC_ROTATION_LIMIT - 1].promotedAt;
+
+  assert.equal(survivalStartedAt, expectedStartedAt);
+  assert.equal(
+    listenBarPublicSurvivalDays(new Date(NOW - 20 * DAY_MS).toISOString(), null, NOW, survivalStartedAt),
+    0,
+  );
+  assert.equal(
+    listenBarIsHonorEligible({
+      positiveReactionCount: 0,
+      promotedAt: new Date(NOW - 20 * DAY_MS).toISOString(),
+      createdAt: new Date(NOW - 20 * DAY_MS).toISOString(),
+    }, NOW, survivalStartedAt),
     false,
   );
 });

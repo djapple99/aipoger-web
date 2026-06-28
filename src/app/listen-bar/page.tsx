@@ -46,6 +46,7 @@ import {
   listenBarIsHonorEligible,
   listenBarPublicDisplayDay,
   listenBarRowToTrack,
+  listenBarSurvivalStartedAt,
   type ListenBarTrack,
   type ListenBarTrackRow,
 } from "@/lib/listen-bar";
@@ -748,6 +749,10 @@ export default function ListenBarPage() {
     () => communityRequestTracks.filter((track) => track.barPhase === "public"),
     [communityRequestTracks],
   );
+  const survivalStartedAt = useMemo(
+    () => listenBarSurvivalStartedAt(communityRequestTracks),
+    [communityRequestTracks],
+  );
   const challengerTracks = useMemo(
     () => communityRequestTracks.filter((track) => track.barPhase !== "public"),
     [communityRequestTracks],
@@ -1393,7 +1398,7 @@ export default function ListenBarPage() {
     positiveReactionCount: currentPositiveTotal,
     promotedAt: nowTrack.promotedAt,
     createdAt: nowTrack.createdAt,
-  });
+  }, Date.now(), survivalStartedAt);
   const nowTrackTitle = !isZh && nowTrack.id === EMPTY_LISTEN_BAR_TRACK.id ? "Waiting for Creator Uploads" : nowTrack.title;
   const myCurrentReaction = myReactions[nowTrack.id] ?? null;
   const currentHeartTotal = Math.max(0, currentReactions.heart ?? 0);
@@ -1969,7 +1974,7 @@ export default function ListenBarPage() {
   const rawPresenterRank = nowTrack.queuedByRank?.trim() || "";
   const nowPresenterRank = !isZh && rawPresenterRank === "創作者投稿" ? "Creator Submission" : rawPresenterRank;
   const nowSurvivalDay = nowTrack.source === "community" && nowTrack.barPhase === "public"
-    ? listenBarPublicDisplayDay(nowTrack.promotedAt, nowTrack.createdAt)
+    ? listenBarPublicDisplayDay(nowTrack.promotedAt, nowTrack.createdAt, Date.now(), survivalStartedAt)
     : 0;
   const nowLyrics = nowTrack.lyrics?.trim() ?? "";
   const lyricLines = useMemo(() => parseLyricLines(nowLyrics), [nowLyrics]);
@@ -2364,7 +2369,7 @@ export default function ListenBarPage() {
                                 </p>
                                 {track.barPhase === "public" ? (
                                   <p className="mt-1 text-[11px] font-black text-orange-100/80">
-                                    {isZh ? `公播 Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt)}` : `Public Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt)}`}
+                                    {isZh ? `公播 Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAt)}` : `Public Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAt)}`}
                                   </p>
                                 ) : (
                                   <p className="mt-1 text-[11px] font-black text-cyan-100/80">
@@ -2708,8 +2713,8 @@ export default function ListenBarPage() {
                   const challengerRank = challengerRankById.get(track.id);
                   const statusLabel = track.barPhase === "public"
                     ? isZh
-                      ? `公播 Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt)}`
-                      : `Public Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt)}`
+                      ? `公播 Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAt)}`
+                      : `Public Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAt)}`
                     : challengerRank
                       ? `Challenger #${challengerRank}`
                       : "Challenger";

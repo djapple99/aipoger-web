@@ -14,6 +14,7 @@ export {
   listenBarIsHonorEligible,
   listenBarPublicDisplayDay,
   listenBarPublicSurvivalDays,
+  listenBarSurvivalStartedAt,
 } from "@/lib/listen-bar-rules";
 
 export const LISTEN_BAR_AUDIO_BUCKET = "listen-bar-audio";
