@@ -1640,6 +1640,23 @@ export default function ListenBarPage() {
     return path;
   };
 
+  const cleanupPublicUploadAssets = async (paths: { audioPath: string | null; coverPath: string | null }) => {
+    const cleanupTasks: Promise<unknown>[] = [];
+    if (paths.audioPath) cleanupTasks.push(supabase.storage.from(LISTEN_BAR_AUDIO_BUCKET).remove([paths.audioPath]));
+    if (paths.coverPath) cleanupTasks.push(supabase.storage.from(LISTEN_BAR_COVER_BUCKET).remove([paths.coverPath]));
+    if (cleanupTasks.length === 0) return;
+
+    const results = await Promise.allSettled(cleanupTasks);
+    results.forEach((result) => {
+      if (result.status === "rejected") {
+        console.warn("[listen-bar] upload cleanup failed", result.reason);
+      } else {
+        const error = (result.value as { error?: unknown } | null)?.error;
+        if (error) console.warn("[listen-bar] upload cleanup failed", error);
+      }
+    });
+  };
+
   const handlePublicUploadSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setPublicUploadError("");
@@ -1805,10 +1822,7 @@ export default function ListenBarPage() {
       );
       setPlaylistStatus("database");
     } catch (submitError) {
-      if (isDuplicateAudioHashError(submitError)) {
-        if (audioPath) void supabase.storage.from(LISTEN_BAR_AUDIO_BUCKET).remove([audioPath]);
-        if (coverPath) void supabase.storage.from(LISTEN_BAR_COVER_BUCKET).remove([coverPath]);
-      }
+      void cleanupPublicUploadAssets({ audioPath, coverPath });
       setPublicUploadError(
         isDuplicateAudioHashError(submitError)
           ? isZh
