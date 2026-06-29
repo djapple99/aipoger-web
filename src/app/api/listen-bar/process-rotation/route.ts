@@ -4,8 +4,12 @@ import {
   LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
   LISTEN_BAR_PUBLIC_EVICTION_LIMIT,
   LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
+  LISTEN_BAR_PROMOTION_PROTECTION_UNTIL,
+  listenBarPromotionProtectionActive,
 } from "@/lib/listen-bar";
 import { buildListenBarRotationPreview, type ListenBarRotationTrack } from "@/lib/listen-bar-rotation";
+
+const CAPACITY_EVICTION_NOTE = "88-song public pool capacity rotation eviction.";
 
 type TrackForRotation = {
   id: string;
@@ -55,6 +59,7 @@ async function processRotation(request: NextRequest) {
   });
 
   const now = new Date();
+  const promotionProtectionActive = listenBarPromotionProtectionActive(now.getTime());
   const observationCutoff = new Date(now.getTime() - LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS * 60 * 60 * 1000).toISOString();
 
   const { count: activeCount, error: countError } = await admin
@@ -74,15 +79,16 @@ async function processRotation(request: NextRequest) {
 
   if (publicCountBeforePromotionError) return NextResponse.json({ error: publicCountBeforePromotionError.message }, { status: 500 });
 
-  const eligibleQuery = admin
+  let eligibleQuery = admin
     .from("listen_bar_tracks")
     .select("id, positive_reaction_count, created_at, bar_phase")
     .eq("source", "community")
     .eq("is_active", true)
     .eq("bar_phase", "challenger");
-  const { data: eligibleChallengers, error: eligibleError } = await eligibleQuery
-    .lt("created_at", observationCutoff)
-    .order("created_at", { ascending: true });
+  if (!promotionProtectionActive) {
+    eligibleQuery = eligibleQuery.lt("created_at", observationCutoff);
+  }
+  const { data: eligibleChallengers, error: eligibleError } = await eligibleQuery.order("created_at", { ascending: true });
 
   if (eligibleError) return NextResponse.json({ error: eligibleError.message }, { status: 500 });
 
@@ -107,14 +113,22 @@ async function processRotation(request: NextRequest) {
   if (publicRowsError) return NextResponse.json({ error: publicRowsError.message }, { status: 500 });
 
   const publicOverflow = Math.max(0, ((publicRows as TrackForRotation[] | null) ?? []).length - LISTEN_BAR_PUBLIC_ROTATION_LIMIT);
-  const removedPublicIds = ((publicRows as TrackForRotation[] | null) ?? [])
-    .slice(0, Math.min(publicOverflow, LISTEN_BAR_PUBLIC_EVICTION_LIMIT))
-    .map((row) => row.id);
+  const removedPublicIds = promotionProtectionActive
+    ? []
+    : ((publicRows as TrackForRotation[] | null) ?? [])
+      .slice(0, Math.min(publicOverflow, LISTEN_BAR_PUBLIC_EVICTION_LIMIT))
+      .map((row) => row.id);
 
   if (removedPublicIds.length > 0) {
     const { error } = await admin
       .from("listen_bar_tracks")
-      .update({ is_active: false, review_status: "removed", removed_at: now.toISOString(), updated_at: now.toISOString() })
+      .update({
+        is_active: false,
+        review_status: "removed",
+        removed_at: now.toISOString(),
+        moderation_note: CAPACITY_EVICTION_NOTE,
+        updated_at: now.toISOString(),
+      })
       .in("id", removedPublicIds);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -126,6 +140,8 @@ async function processRotation(request: NextRequest) {
     removedFromPublic: removedPublicIds.length,
     removedOverTotalLimit: 0,
     publicEvictionLimit: LISTEN_BAR_PUBLIC_EVICTION_LIMIT,
+    promotionProtectionActive,
+    evictionPausedUntil: LISTEN_BAR_PROMOTION_PROTECTION_UNTIL,
     publicPoolAtLimit: (publicCountBeforePromotion ?? 0) >= LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
     publicLimit: LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
   });
@@ -203,11 +219,15 @@ async function processRotationPreview(request: NextRequest) {
         projectedPublicCount: preview.projectedPublicCount,
         publicOverflow: preview.publicOverflow,
         publicEvictionLimit: preview.evictionLimit,
+        promotionProtectionActive: preview.evictionPaused,
+        evictionPausedUntil: preview.evictionPausedUntil,
         wouldPromoteCount: preview.wouldPromote.length,
         wouldRemoveCount: preview.wouldRemove.length,
         wouldPromote: redactPreviewTracks(preview.wouldPromote, detailed),
         wouldRemove: redactPreviewTracks(preview.wouldRemove, detailed),
-        message: "Dry-run only. POST mutates only when LISTEN_BAR_ROTATION_ENABLED=true.",
+        message: preview.evictionPaused
+          ? "Dry-run only. Bar Heartbreak promotion protection is active: challengers move public, 88-song eviction is paused."
+          : "Dry-run only. POST mutates only when LISTEN_BAR_ROTATION_ENABLED=true.",
       },
       { headers: { "Cache-Control": "no-store" } },
     );

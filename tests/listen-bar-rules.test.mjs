@@ -134,6 +134,31 @@ test("listen bar rotation preview promotes protected challengers before calculat
   assert.deepEqual(preview.wouldRemove.map((track) => track.id), ["public-0"]);
 });
 
+test("listen bar promotion protection promotes challengers and pauses 88-song removal", () => {
+  const protectionNow = Date.UTC(2026, 5, 29, 12, 0, 0);
+  const publicRows = Array.from({ length: 88 }, (_, index) => ({
+    id: `public-${index}`,
+    barPhase: "public",
+    positiveReactionCount: 0,
+    createdAt: new Date(protectionNow - (10 + index) * DAY_MS).toISOString(),
+  }));
+  const challenger = {
+    id: "challenger-new",
+    barPhase: "challenger",
+    positiveReactionCount: 0,
+    createdAt: new Date(protectionNow - 60 * 60 * 1000).toISOString(),
+  };
+
+  const preview = buildListenBarRotationPreview([...publicRows, challenger], protectionNow);
+
+  assert.equal(preview.evictionPaused, true);
+  assert.equal(preview.eligibleChallengerCount, 1);
+  assert.equal(preview.projectedPublicCount, 89);
+  assert.equal(preview.publicOverflow, 1);
+  assert.deepEqual(preview.wouldPromote.map((track) => track.id), ["challenger-new"]);
+  assert.deepEqual(preview.wouldRemove, []);
+});
+
 test("listen bar rotation preview keeps protected challengers out of removal candidates", () => {
   const preview = buildListenBarRotationPreview([
     {

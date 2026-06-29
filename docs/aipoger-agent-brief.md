@@ -157,14 +157,14 @@ Current rules:
 - Voting/reactions and comments require sign-in.
 - Creator submissions form the public rotation.
 - Official AIPOGER fallback songs must not count as active public-pool songs.
-- Public pool target is 88 community songs.
-- Before 88 public songs, new submissions enter public pool and Challenger stays hidden.
-- After 88 public songs, new submissions enter Challenger.
+- Public pool target after promotion protection is 88 community songs.
+- From 2026-06-29 through 2026-07-05 Taiwan time, Bar Heartbreak is in promotion protection: Challenger songs join public airplay, public pool may exceed 88, and 88-song eviction is paused.
+- After promotion protection, new submissions enter Challenger.
 - Each creator can have up to 3 active Challenger songs.
 - Challenger observation period is 24 hours.
-- Challenger has a 24-hour protection period, then automatically moves into the public pool. The old 1-positive-reaction promotion gate is retired.
-- Public-pool elimination runs only when there are more than 88 public songs.
-- Each elimination pass removes up to 3 low-performing public-pool songs.
+- During promotion protection, Challengers move into public airplay immediately. After promotion protection, Challenger has a 24-hour protection period, then automatically moves into the public pool. The old 1-positive-reaction promotion gate is retired.
+- Public-pool elimination is paused during promotion protection. After promotion protection, it runs only when there are more than 88 public songs.
+- Each post-protection elimination pass removes up to 3 low-performing public-pool songs.
 - A song with 30 positive reactions or 7 public survival days becomes Honor Board eligible.
 - New uploads get priority play after the current song finishes; up to 8 new uploads can air within a 1-hour priority batch.
 

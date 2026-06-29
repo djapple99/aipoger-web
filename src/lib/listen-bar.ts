@@ -8,11 +8,14 @@ export {
   LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD,
   LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS,
   LISTEN_BAR_JUDGMENT_INTERVAL_HOURS,
+  LISTEN_BAR_PROMOTION_PROTECTION_STARTED_AT,
+  LISTEN_BAR_PROMOTION_PROTECTION_UNTIL,
   LISTEN_BAR_PUBLIC_EVICTION_LIMIT,
   LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
   LISTEN_BAR_TOTAL_ROTATION_LIMIT,
   listenBarChallengerSlotLimitForPublicCount,
   listenBarIsHonorEligible,
+  listenBarPromotionProtectionActive,
   listenBarPublicDisplayDay,
   listenBarPublicSurvivalDays,
   listenBarSurvivalStartedAt,
@@ -62,6 +65,7 @@ export type ListenBarTrackRow = {
   sort_order: number | null;
   is_active: boolean | null;
   review_status?: string | null;
+  moderation_note?: string | null;
   hidden_at?: string | null;
   removed_at?: string | null;
   source?: "official" | "community" | null;

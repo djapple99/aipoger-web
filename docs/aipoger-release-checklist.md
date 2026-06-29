@@ -132,12 +132,14 @@ Check:
 
 Challenger and public pool:
 
-- New submissions enter Challenger.
-- Challenger songs have 24H protection before public-pool promotion.
+- During 2026-06-29 to 2026-07-05 Taiwan-time promotion protection, new submissions enter public airplay and Challenger songs are promoted into public airplay.
+- During promotion protection, the public pool may exceed 88 and 88-song eviction must stay paused.
+- After promotion protection, new submissions enter Challenger.
+- After promotion protection, Challenger songs have 24H protection before public-pool promotion.
 - Creator Challenger count is capped at 3.
 - Public-pool songs do not count toward the 3 Challenger limit.
 - Public pool progress shows current count over 88.
-- Public-pool elimination starts only above 88 and removes at most 3 per pass.
+- After promotion protection, public-pool elimination starts only above 88 and removes at most 3 per pass.
 - `/api/listen-bar/process-rotation` GET is dry-run preview; mutation requires protected POST and `LISTEN_BAR_ROTATION_ENABLED=true`.
 
 ## Honor Board Checklist

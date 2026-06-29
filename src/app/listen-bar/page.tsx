@@ -33,18 +33,17 @@ import {
   DEFAULT_LISTEN_BAR_COVER,
   LISTEN_BAR_AUDIO_BUCKET,
   LISTEN_BAR_CHALLENGER_HOURLY_LIMIT,
-  LISTEN_BAR_CHALLENGER_SLOT_LIMIT,
   LISTEN_BAR_COVER_BUCKET,
   LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD,
   LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS,
-  LISTEN_BAR_JUDGMENT_INTERVAL_HOURS,
-  LISTEN_BAR_PUBLIC_EVICTION_LIMIT,
+  LISTEN_BAR_PROMOTION_PROTECTION_UNTIL,
   LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
   LISTEN_BAR_TOTAL_ROTATION_LIMIT,
   EMPTY_LISTEN_BAR_TRACK,
   fallbackOfficialPlaylist,
   listenBarChallengerSlotLimitForPublicCount,
   listenBarIsHonorEligible,
+  listenBarPromotionProtectionActive,
   listenBarPublicDisplayDay,
   listenBarRowToTrack,
   listenBarSurvivalStartedAt,
@@ -823,7 +822,8 @@ export default function ListenBarPage() {
     () => listenBarChallengerSlotLimitForPublicCount(myPublicStats.length),
     [myPublicStats.length],
   );
-  const challengerSlotsFull = challengerSlotCount >= challengerSlotLimit;
+  const promotionProtectionActive = listenBarPromotionProtectionActive();
+  const challengerSlotsFull = !promotionProtectionActive && challengerSlotCount >= challengerSlotLimit;
   const challengerSlotsFullMessage = isZh
     ? `你的公播池已有 ${myPublicStats.length} 首，現在 Challenger 上限是 ${challengerSlotLimit} 首。要再上傳，請先撤下一首 Challenger，或等公播池歌曲被撤下/淘汰後釋出節奏。`
     : `You have ${myPublicStats.length} public tracks, so your Challenger limit is ${challengerSlotLimit}. Remove one Challenger, or wait until a public track is removed before uploading again.`;
@@ -1761,7 +1761,7 @@ export default function ListenBarPage() {
         is_active: true,
         source: "community",
         is_featured_official: false,
-        bar_phase: "challenger",
+        bar_phase: promotionProtectionActive ? "public" : "challenger",
         created_by: userId,
       };
 
@@ -1797,7 +1797,8 @@ export default function ListenBarPage() {
 
       const insertedTrack = insertedTrackRow ? listenBarRowToTrack(insertedTrackRow) : null;
       if (insertedTrack) {
-        const normalizedTrack = { ...insertedTrack, barPhase: insertedTrack.barPhase ?? "challenger" as const };
+        const fallbackBarPhase: "public" | "challenger" = promotionProtectionActive ? "public" : "challenger";
+        const normalizedTrack = { ...insertedTrack, barPhase: insertedTrack.barPhase ?? fallbackBarPhase };
         servedCommunityIdsRef.current.delete(insertedTrack.id);
         markPriorityAirplayTrack(normalizedTrack.id);
         setOfficialTracks((tracks) => {
@@ -1819,7 +1820,7 @@ export default function ListenBarPage() {
             album: normalizedTrack.album ?? "",
             description: normalizedTrack.description ?? "",
             duration: normalizedTrack.duration,
-            barPhase: normalizedTrack.barPhase ?? "challenger",
+            barPhase: normalizedTrack.barPhase ?? (promotionProtectionActive ? "public" : "challenger"),
             positives: 0,
             heart: 0,
             star: 0,
@@ -1831,7 +1832,9 @@ export default function ListenBarPage() {
           ...tracks.filter((track) => track.id !== normalizedTrack.id),
         ]);
       }
-      setChallengerSlotCount((count) => count + 1);
+      if (!promotionProtectionActive) {
+        setChallengerSlotCount((count) => count + 1);
+      }
       setPublicAudioFile(null);
       setPublicCoverFile(null);
       setPublicLyricsText("");
@@ -1841,8 +1844,8 @@ export default function ListenBarPage() {
       });
       setPublicUploadMessage(
         isZh
-          ? `上傳完成！目前這首播完後會優先插播新投稿；每批從第一首投稿開始計 1 小時，最多 8 首，其餘排到下一小時。`
-          : "Upload complete. New submissions get priority after the current song; each 1-hour batch starts with the first upload, airs up to 8 tracks, and pushes the rest to the next hour.",
+          ? `上傳完成！宣傳保護期內會直接一起進公播；目前這首播完後優先插播新投稿。`
+          : "Upload complete. During promotion protection, new submissions go public and get priority after the current song.",
       );
       setPlaylistStatus("database");
     } catch (submitError) {
@@ -2725,8 +2728,8 @@ export default function ListenBarPage() {
             </p>
             <p className="mt-2 break-words text-sm font-bold leading-6 text-zinc-300 [overflow-wrap:anywhere]">
               {isZh
-                ? `傷心酒吧不是排行榜，而是一場 AI 音樂生存電台。聽歌不需登入；留言、投票與投稿需登入。新投稿不打斷目前歌曲，會在這首播完後優先插播；每批從第一首投稿開始計 1 小時，最多 ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} 首，其餘排到下一小時。新歌進入挑戰池會有 24H 保護期，之後自動進入公播池。創作者公播池 0-2 首時最多 ${LISTEN_BAR_CHALLENGER_SLOT_LIMIT} 個 Challenger，3-5 首時最多 2 個，6 首以上最多 1 個。公播池超過 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首時，每 ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} 小時最多淘汰 ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} 首低反應歌曲；累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 個正向反應，或公播存活 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天，就取得榮譽榜入選資格。`
-                : `Bar Heartbreak is not a chart. It is AI music survival radio. Listening is open; comments, votes, and uploads require sign-in. New uploads do not interrupt the current song; they get priority after it ends. Each 1-hour batch airs up to ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} tracks. New Challenger tracks get 24H protection, then move into the public pool. Creators get up to ${LISTEN_BAR_CHALLENGER_SLOT_LIMIT} Challenger slots with 0-2 public tracks, 2 slots with 3-5 public tracks, and 1 slot with 6+ public tracks. When the public pool is above ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}, up to ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} low-reaction tracks are removed every ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} hours. ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} positive reactions or ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} public days makes a track Honor Board eligible.`}
+                ? `傷心酒吧不是排行榜，而是一場 AI 音樂生存電台。聽歌不需登入；留言、投票與投稿需登入。現在進入宣傳保護期，新投稿不打斷目前歌曲，這首播完後優先插播；每批從第一首投稿開始計 1 小時，最多 ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} 首，其餘排到下一小時。宣傳保護期到 ${new Date(LISTEN_BAR_PROMOTION_PROTECTION_UNTIL).toLocaleDateString("zh-TW")} 前，Challenger 直接一起上公播池，暫停 88 首淘汰。累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 個正向反應，或公播存活 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天，就取得榮譽榜入選資格。`
+                : `Bar Heartbreak is not a chart. It is AI music survival radio. Listening is open; comments, votes, and uploads require sign-in. Promotion protection is active: new submissions get priority after the current song, Challengers join public airplay, and 88-song eviction is paused until ${new Date(LISTEN_BAR_PROMOTION_PROTECTION_UNTIL).toLocaleDateString("en-US")}. ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} positive reactions or ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} public days makes a track Honor Board eligible.`}
             </p>
           </div>
 
@@ -2735,7 +2738,9 @@ export default function ListenBarPage() {
               <p className="text-xs uppercase tracking-[0.22em] text-cyan-100/70">{isZh ? "我的吧台歌曲" : "My Bar Tracks"}</p>
               <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
                 <span className="max-w-full rounded-full border border-orange-300/18 bg-orange-500/8 px-2 py-0.5 text-[11px] font-black text-orange-100">
-                  {isZh ? `Challenger ${challengerSlotCount}/${challengerSlotLimit}` : `${challengerSlotCount}/${challengerSlotLimit} Challengers`}
+                  {promotionProtectionActive
+                    ? (isZh ? "宣傳保護期" : "Protection")
+                    : (isZh ? `Challenger ${challengerSlotCount}/${challengerSlotLimit}` : `${challengerSlotCount}/${challengerSlotLimit} Challengers`)}
                 </span>
                 <span className="max-w-full rounded-full border border-white/10 px-2 py-0.5 text-[11px] font-bold text-zinc-400">
                   {isZh ? `${myPublicStats.length} 公播` : `${myPublicStats.length} public`}
@@ -2859,12 +2864,14 @@ export default function ListenBarPage() {
             </p>
             <div className="mt-3 flex items-end gap-2">
               <span className="text-5xl font-black tabular-nums text-white">{publicPoolTracks.length}</span>
-              <span className="pb-1 text-sm font-black text-zinc-500">/ {LISTEN_BAR_PUBLIC_ROTATION_LIMIT}</span>
+              <span className="pb-1 text-sm font-black text-zinc-500">
+                {promotionProtectionActive ? (isZh ? "/ 保護期" : "/ protected") : `/ ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}`}
+              </span>
             </div>
             <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">
               {isZh
-                ? `${communityRequestTracks.length} 首投稿歌進入傷心酒吧；${publicPoolTracks.length} 首公播，${challengerTracks.length} 首 Challenger 享有 24H 保護。超過 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首時每 ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} 小時最多淘汰 ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} 首。`
-                : `${communityRequestTracks.length} creator tracks are in Bar Heartbreak. ${publicPoolTracks.length} are live on air and ${challengerTracks.length} Challengers have 24H protection. Above ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}, up to ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} low-reaction tracks are removed every ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} hours.`}
+                ? `${communityRequestTracks.length} 首投稿歌進入傷心酒吧；${publicPoolTracks.length} 首正在公播。宣傳保護期內取消 88 首上限，先讓歌被聽見。`
+                : `${communityRequestTracks.length} creator tracks are in Bar Heartbreak; ${publicPoolTracks.length} are on public airplay. During promotion protection, the 88-song cap is paused so songs can be heard.`}
             </p>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
               <div
