@@ -181,7 +181,7 @@ Current rules:
 - A creator may remove their own public-pool songs.
 - Challenger protection period after promotion protection: 24 hours.
 - A Challenger can be played, reacted to, and commented on during protection, but it is not evicted.
-- Per-track comments are persistent. When someone comments on a creator's Bar Heartbreak track, the creator receives an account notification unless they commented on their own song.
+- Per-track comments are persistent. A signed-in listener can edit their own Bar Heartbreak track comments. When someone comments on a creator's Bar Heartbreak track, the creator receives an account notification unless they commented on their own song.
 - During promotion protection, active Challengers move into public airplay immediately. After promotion protection ends, a Challenger automatically moves into the public pool after 24 hours. The old 1-positive-reaction promotion gate is retired.
 - Own reaction remains allowed in V2, but it is only public support and does not guarantee survival.
 - Judgement interval: every 8 hours.

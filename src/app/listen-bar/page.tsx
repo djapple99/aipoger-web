@@ -75,6 +75,8 @@ type TrackComment = {
   text: string;
   time: string;
   createdAt?: string | null;
+  updatedAt?: string | null;
+  canEdit?: boolean;
 };
 
 type StoredTrackCommentRow = {
@@ -83,6 +85,8 @@ type StoredTrackCommentRow = {
   name: string;
   text: string;
   createdAt: string;
+  updatedAt?: string | null;
+  canEdit?: boolean;
 };
 
 type ReactionKey = "heart" | "star" | "thumb" | "happy";
@@ -329,6 +333,8 @@ function storedTrackCommentRowToComment(row: StoredTrackCommentRow): TrackCommen
     text,
     time: timeLabelFromDate(row.createdAt),
     createdAt: row.createdAt,
+    updatedAt: row.updatedAt ?? row.createdAt,
+    canEdit: Boolean(row.canEdit),
   };
 }
 
@@ -712,6 +718,9 @@ export default function ListenBarPage() {
   const [chatError, setChatError] = useState("");
   const [trackComments, setTrackComments] = useState<TrackComment[]>([]);
   const [trackCommentInput, setTrackCommentInput] = useState("");
+  const [editingTrackCommentId, setEditingTrackCommentId] = useState<string | null>(null);
+  const [editingTrackCommentText, setEditingTrackCommentText] = useState("");
+  const [editingTrackCommentBusyId, setEditingTrackCommentBusyId] = useState<string | null>(null);
   const [trackCommentError, setTrackCommentError] = useState("");
   const [trackCommentBusy, setTrackCommentBusy] = useState(false);
   const [battleTickerMessages, setBattleTickerMessages] = useState<string[]>([]);
@@ -1038,6 +1047,8 @@ export default function ListenBarPage() {
     let mounted = true;
     setTrackCommentError("");
     setTrackComments([]);
+    setEditingTrackCommentId(null);
+    setEditingTrackCommentText("");
 
     const loadTrackComments = async () => {
       if (!isUuid(nowTrack.id)) {
@@ -1045,7 +1056,9 @@ export default function ListenBarPage() {
         return;
       }
 
+      const { data: sessionData } = await supabase.auth.getSession();
       const response = await fetch(`/api/listen-bar/track-comments?trackId=${encodeURIComponent(nowTrack.id)}`, {
+        headers: sessionData.session?.access_token ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {},
         cache: "no-store",
       }).catch((error) => ({ ok: false, json: async () => ({ error: String(error) }) }) as Response);
 
@@ -1558,6 +1571,52 @@ export default function ListenBarPage() {
       }
 
       setTrackCommentError(payload?.error || (isZh ? "歌曲評論送出失敗，請稍後再試。" : "Track comment was not saved."));
+    })();
+  };
+
+  const startEditingTrackComment = (comment: TrackComment) => {
+    setTrackCommentError("");
+    setEditingTrackCommentId(comment.id);
+    setEditingTrackCommentText(comment.text);
+  };
+
+  const handleTrackCommentEditSave = (comment: TrackComment) => {
+    const text = editingTrackCommentText.trim();
+    if (!text || !comment.canEdit || editingTrackCommentBusyId) return;
+    if (!userId) {
+      setTrackCommentError(isZh ? "請先登入再修改自己的評論。" : "Sign in to edit your comment.");
+      return;
+    }
+    setTrackCommentError("");
+    setEditingTrackCommentBusyId(comment.id);
+    void (async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const response = await fetch("/api/listen-bar/track-comments", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(sessionData.session?.access_token ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}),
+        },
+        body: JSON.stringify({
+          trackId: comment.trackId,
+          commentId: comment.id,
+          text: text.slice(0, 280),
+        }),
+      });
+      const payload = await response.json().catch(() => null) as { comment?: StoredTrackCommentRow; error?: string } | null;
+      setEditingTrackCommentBusyId(null);
+
+      if (response.ok) {
+        const updatedComment = payload?.comment ? storedTrackCommentRowToComment(payload.comment) : null;
+        if (updatedComment) {
+          setTrackComments((items) => items.map((item) => item.id === updatedComment.id ? updatedComment : item));
+        }
+        setEditingTrackCommentId(null);
+        setEditingTrackCommentText("");
+        return;
+      }
+
+      setTrackCommentError(payload?.error || (isZh ? "評論修改失敗，請稍後再試。" : "Comment edit failed."));
     })();
   };
 
@@ -2339,15 +2398,62 @@ export default function ListenBarPage() {
                     {trackCommentError && <p className="mt-2 text-xs font-bold text-red-200">{trackCommentError}</p>}
                     <div className="mt-3 grid max-h-28 gap-2 overflow-y-auto pr-1">
                       {trackComments.length > 0 ? (
-                        trackComments.slice(-6).map((comment) => (
-                          <div key={comment.id} className="rounded-lg border border-white/8 bg-black/40 px-3 py-2">
-                            <p className="text-xs leading-5 text-zinc-200">
-                              <span className="mr-2 font-black text-orange-300">{comment.name}</span>
-                              {comment.text}
-                            </p>
-                            <p className="mt-1 text-[10px] tabular-nums text-zinc-600">{comment.time}</p>
-                          </div>
-                        ))
+                        trackComments.slice(-6).map((comment) => {
+                          const editingThisComment = editingTrackCommentId === comment.id;
+                          return (
+                            <div key={comment.id} className="rounded-lg border border-white/8 bg-black/40 px-3 py-2">
+                              {editingThisComment ? (
+                                <div className="grid gap-2">
+                                  <input
+                                    value={editingTrackCommentText}
+                                    onChange={(event) => setEditingTrackCommentText(event.target.value.slice(0, 280))}
+                                    maxLength={280}
+                                    className="h-9 rounded-full border border-orange-300/28 bg-black/70 px-3 text-xs font-bold text-white outline-none transition focus:border-orange-200 focus:ring-2 focus:ring-orange-300/18"
+                                  />
+                                  <div className="flex items-center justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingTrackCommentId(null);
+                                        setEditingTrackCommentText("");
+                                      }}
+                                      className="rounded-full border border-white/10 px-3 py-1 text-[10px] font-black text-zinc-400 transition hover:border-white/30 hover:text-zinc-100"
+                                    >
+                                      {isZh ? "取消" : "Cancel"}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleTrackCommentEditSave(comment)}
+                                      disabled={editingTrackCommentBusyId === comment.id || !editingTrackCommentText.trim()}
+                                      className="rounded-full bg-orange-500 px-3 py-1 text-[10px] font-black text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:bg-white/[0.08] disabled:text-zinc-500"
+                                    >
+                                      {editingTrackCommentBusyId === comment.id ? (isZh ? "儲存中" : "Saving") : (isZh ? "儲存" : "Save")}
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  <p className="text-xs leading-5 text-zinc-200">
+                                    <span className="mr-2 font-black text-orange-300">{comment.name}</span>
+                                    {comment.text}
+                                  </p>
+                                  <div className="mt-1 flex items-center justify-between gap-2">
+                                    <p className="text-[10px] tabular-nums text-zinc-600">{comment.time}</p>
+                                    {comment.canEdit ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => startEditingTrackComment(comment)}
+                                        className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-black text-zinc-400 transition hover:border-orange-300/50 hover:text-orange-100"
+                                      >
+                                        {isZh ? "編輯" : "Edit"}
+                                      </button>
+                                    ) : null}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })
                       ) : null}
                     </div>
                   </form>

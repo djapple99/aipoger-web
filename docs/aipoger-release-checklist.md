@@ -123,6 +123,8 @@ Check:
 - Clicking another reaction changes the reaction.
 - Clicking the same reaction cancels the reaction.
 - Track comments persist.
+- Logged-in users can edit their own track comments.
+- Logged-in users cannot edit other users' track comments.
 - Track comments notify the song creator through account notifications, except self-comments.
 - Upload requires sign-in.
 - Upload policy copy is visible.

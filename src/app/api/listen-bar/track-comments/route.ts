@@ -7,6 +7,8 @@ type StoredTrackComment = {
   name: string;
   text: string;
   createdAt: string;
+  updatedAt?: string;
+  canEdit?: boolean;
 };
 
 type TrackCommentDatabase = {
@@ -26,6 +28,7 @@ type TrackCommentDatabase = {
           display_name: string;
           body: string;
           created_at: string;
+          updated_at?: string | null;
         };
         Insert: {
           track_id: string;
@@ -33,7 +36,10 @@ type TrackCommentDatabase = {
           display_name: string;
           body: string;
         };
-        Update: Record<string, never>;
+        Update: {
+          body?: string;
+          updated_at?: string;
+        };
         Relationships: [];
       };
       battle_notifications: {
@@ -125,10 +131,10 @@ async function readComments(admin: AdminClient, trackId: string): Promise<Stored
   ));
 }
 
-async function readDatabaseComments(admin: AdminClient, trackId: string): Promise<StoredTrackComment[] | null> {
+async function readDatabaseComments(admin: AdminClient, trackId: string, viewerUserId?: string | null): Promise<StoredTrackComment[] | null> {
   const { data, error } = await admin
     .from("listen_bar_track_comments")
-    .select("id, track_id, display_name, body, created_at")
+    .select("id, track_id, user_id, display_name, body, created_at, updated_at")
     .eq("track_id", trackId)
     .order("created_at", { ascending: true })
     .limit(COMMENT_LIMIT_PER_TRACK);
@@ -144,6 +150,8 @@ async function readDatabaseComments(admin: AdminClient, trackId: string): Promis
     name: row.display_name,
     text: row.body,
     createdAt: row.created_at,
+    updatedAt: row.updated_at ?? row.created_at,
+    canEdit: Boolean(viewerUserId && row.user_id === viewerUserId),
   }));
 }
 
@@ -184,8 +192,12 @@ export async function GET(request: NextRequest) {
 
   try {
     const admin = adminClient();
+    const token = tokenFromRequest(request);
+    const viewerUserId = token
+      ? (await admin.auth.getUser(token)).data.user?.id ?? null
+      : null;
     const [databaseComments, storageComments] = await Promise.all([
-      readDatabaseComments(admin, trackId),
+      readDatabaseComments(admin, trackId, viewerUserId),
       readComments(admin, trackId),
     ]);
     return NextResponse.json({ comments: mergeComments(databaseComments, storageComments) }, { headers: { "Cache-Control": "no-store" } });
@@ -232,7 +244,7 @@ export async function POST(request: NextRequest) {
         display_name: displayName,
         body: text,
       })
-      .select("id, track_id, display_name, body, created_at")
+      .select("id, track_id, user_id, display_name, body, created_at, updated_at")
       .maybeSingle<TrackCommentDatabase["public"]["Tables"]["listen_bar_track_comments"]["Row"]>();
 
     if (inserted.error && isMissingTrackCommentsTable(inserted.error)) {
@@ -254,6 +266,8 @@ export async function POST(request: NextRequest) {
         name: inserted.data.display_name,
         text: inserted.data.body,
         createdAt: inserted.data.created_at,
+        updatedAt: inserted.data.updated_at ?? inserted.data.created_at,
+        canEdit: true,
       };
     }
 
@@ -280,6 +294,56 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ comment });
+  } catch (error) {
+    return jsonError(String((error as { message?: string })?.message ?? error), 500);
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  const token = tokenFromRequest(request);
+  if (!token) return jsonError("請先登入再修改自己的評論。", 401);
+
+  const body = (await request.json().catch(() => null)) as {
+    trackId?: unknown;
+    commentId?: unknown;
+    text?: unknown;
+  } | null;
+  if (!isUuid(body?.trackId)) return jsonError("Invalid track id.");
+  if (!isUuid(body?.commentId)) return jsonError("Invalid comment id.");
+  const text = typeof body?.text === "string" ? body.text.trim().slice(0, 280) : "";
+  if (!text) return jsonError("Empty comment.");
+
+  try {
+    const admin = adminClient();
+    const { data: userData, error: userError } = await admin.auth.getUser(token);
+    if (userError || !userData.user) return jsonError("登入狀態已過期，請重新登入。", 401);
+
+    const updated = await admin
+      .from("listen_bar_track_comments")
+      .update({ body: text, updated_at: new Date().toISOString() })
+      .eq("id", body.commentId)
+      .eq("track_id", body.trackId)
+      .eq("user_id", userData.user.id)
+      .select("id, track_id, user_id, display_name, body, created_at, updated_at")
+      .maybeSingle<TrackCommentDatabase["public"]["Tables"]["listen_bar_track_comments"]["Row"]>();
+
+    if (updated.error) {
+      if (isMissingTrackCommentsTable(updated.error)) return jsonError("這則舊留言目前不能修改。", 409);
+      return jsonError(updated.error.message, 500);
+    }
+    if (!updated.data) return jsonError("找不到可修改的自己的評論。", 404);
+
+    return NextResponse.json({
+      comment: {
+        id: updated.data.id,
+        trackId: updated.data.track_id,
+        name: updated.data.display_name,
+        text: updated.data.body,
+        createdAt: updated.data.created_at,
+        updatedAt: updated.data.updated_at ?? updated.data.created_at,
+        canEdit: true,
+      } satisfies StoredTrackComment,
+    });
   } catch (error) {
     return jsonError(String((error as { message?: string })?.message ?? error), 500);
   }
