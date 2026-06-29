@@ -634,6 +634,9 @@ function ProfileInner() {
                   </div>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-2">
+                  <Link className="rounded-xl border border-yellow-300/20 bg-yellow-300/[0.08] px-3 py-2 text-sm font-bold text-yellow-100 transition hover:border-yellow-300/50" href="/admin/analytics">
+                    Analytics
+                  </Link>
                   <Link className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm font-bold text-zinc-100 transition hover:border-orange-300/50" href="/admin/listen-bar">
                     傷心酒吧
                   </Link>

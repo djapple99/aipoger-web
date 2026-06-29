@@ -51,6 +51,7 @@ import {
   type ListenBarTrackRow,
 } from "@/lib/listen-bar";
 import { usePresenceCount } from "@/lib/use-presence-count";
+import { logAnalyticsEvent } from "@/lib/analytics-client";
 import type { User } from "@supabase/supabase-js";
 
 type ChatMessage = {
@@ -672,6 +673,7 @@ export default function ListenBarPage() {
   const listenBarSyncChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const servedCommunityIdsRef = useRef<Set<string>>(new Set());
   const liveSeekRef = useRef<{ trackId: string; offset: number } | null>(null);
+  const playbackSegmentRef = useRef<{ trackId: string; startedAtMs: number; startedAtSecond: number } | null>(null);
   const startTrackAtZeroRef = useRef(false);
   const liveRadioSyncEnabledRef = useRef(true);
   const rotationTracksRef = useRef<ListenBarTrack[]>([]);
@@ -729,6 +731,42 @@ export default function ListenBarPage() {
     listenBarPresenceCount <= 1
       ? listenCopy.warming
       : listenCopy.listeners(listenBarPresenceCount);
+  const logSongPlaybackEvent = useCallback((
+    eventType: "song_play" | "song_finish" | "song_skip" | "song_pause" | "song_resume",
+    track: ListenBarTrack,
+    metadata: Record<string, unknown> = {},
+  ) => {
+    if (!track.audioUrl || !isUuid(track.id)) return;
+    void logAnalyticsEvent({
+      eventType,
+      songId: track.id,
+      pagePath: "/listen-bar",
+      source: "bar_heartbreak",
+      metadata: {
+        title: track.title,
+        artist: track.artist,
+        genre: track.genre,
+        trackSource: track.source,
+        barPhase: track.barPhase,
+        durationSeconds: track.duration,
+        ...metadata,
+      },
+    });
+  }, []);
+  const closePlaybackSegment = useCallback((eventType: "song_pause" | "song_finish" | "song_skip", audio?: HTMLAudioElement | null) => {
+    const segment = playbackSegmentRef.current;
+    const track = nowTrackRef.current;
+    if (!segment || segment.trackId !== track.id) return;
+    const wallClockSeconds = Math.max(0, Math.round((Date.now() - segment.startedAtMs) / 1000));
+    const mediaSeconds = audio ? Math.max(0, Math.round(audio.currentTime - segment.startedAtSecond)) : wallClockSeconds;
+    const playedSeconds = Math.max(0, Math.min(Math.max(wallClockSeconds, mediaSeconds), Math.max(1, track.duration || wallClockSeconds || 1)));
+    playbackSegmentRef.current = null;
+    logSongPlaybackEvent(eventType, track, {
+      playedSeconds,
+      currentTime: audio ? Math.round(audio.currentTime) : null,
+      progressPercent: Math.round((playedSeconds / Math.max(1, track.duration || playedSeconds || 1)) * 100),
+    });
+  }, [logSongPlaybackEvent]);
   const syncElapsedFromAudio = useCallback((audio: HTMLAudioElement, force = false) => {
     const nextSecond = Math.floor(audio.currentTime);
     if (!force && nextSecond === lastElapsedPaintRef.current) return;
@@ -839,6 +877,11 @@ export default function ListenBarPage() {
 
   useEffect(() => {
     window.dispatchEvent(new Event(STOP_HOME_BGM_EVENT));
+    void logAnalyticsEvent({
+      eventType: "open_heartbreak_bar",
+      pagePath: "/listen-bar",
+      source: "bar_heartbreak",
+    });
   }, []);
 
   useEffect(() => {
@@ -1225,6 +1268,11 @@ export default function ListenBarPage() {
   }, [nowTrack, priorityAirplaySourceTracks, rotationTracks]);
 
   useEffect(() => {
+    const audio = audioRef.current;
+    return () => closePlaybackSegment("song_skip", audio);
+  }, [closePlaybackSegment]);
+
+  useEffect(() => {
     const forceStart = startTrackAtZeroRef.current;
     const livePosition = forceStart || !liveRadioSyncEnabledRef.current ? null : getLiveRadioPosition(rotationTracksRef.current);
     const liveOffset = forceStart
@@ -1471,6 +1519,18 @@ export default function ListenBarPage() {
         error?: string;
       } | null;
       if (!response.ok || !payload?.counts) throw new Error(payload?.error || "Reaction failed.");
+      void logAnalyticsEvent({
+        eventType: next === "heart" ? "like" : "reaction",
+        songId: isUuid(nowTrack.id) ? nowTrack.id : null,
+        pagePath: "/listen-bar",
+        source: "bar_heartbreak",
+        metadata: {
+          reaction: next,
+          previousReaction: previous,
+          title: nowTrack.title,
+          artist: nowTrack.artist,
+        },
+      });
       setReactionCounts((allCounts) => ({ ...allCounts, [nowTrack.id]: payload.counts! }));
       setOfficialTracks((tracks) => tracks.map((track) => (
         track.id === nowTrack.id
@@ -1566,6 +1626,17 @@ export default function ListenBarPage() {
         const savedComment = payload?.comment ? storedTrackCommentRowToComment(payload.comment) : null;
         if (savedComment) {
           setTrackComments((items) => (items.some((item) => item.id === savedComment.id) ? items : [...items, savedComment].slice(-24)));
+          void logAnalyticsEvent({
+            eventType: "comment",
+            songId: isUuid(nowTrack.id) ? nowTrack.id : null,
+            pagePath: "/listen-bar",
+            source: "bar_heartbreak",
+            metadata: {
+              commentType: "track",
+              title: nowTrack.title,
+              artist: nowTrack.artist,
+            },
+          });
         }
         return;
       }
@@ -1858,6 +1929,18 @@ export default function ListenBarPage() {
       if (insertedTrack) {
         const fallbackBarPhase: "public" | "challenger" = promotionProtectionActive ? "public" : "challenger";
         const normalizedTrack = { ...insertedTrack, barPhase: insertedTrack.barPhase ?? fallbackBarPhase };
+        void logAnalyticsEvent({
+          eventType: "upload_song",
+          songId: isUuid(normalizedTrack.id) ? normalizedTrack.id : null,
+          pagePath: "/listen-bar",
+          source: "bar_heartbreak",
+          metadata: {
+            title: normalizedTrack.title,
+            artist: normalizedTrack.artist,
+            genre: normalizedTrack.genre,
+            durationSeconds: normalizedTrack.duration,
+          },
+        });
         servedCommunityIdsRef.current.delete(insertedTrack.id);
         markPriorityAirplayTrack(normalizedTrack.id);
         setOfficialTracks((tracks) => {
@@ -2027,6 +2110,16 @@ export default function ListenBarPage() {
       });
       const payload = await response.json().catch(() => null) as { error?: string } | null;
       if (!response.ok) throw new Error(payload?.error || "Remove failed.");
+      void logAnalyticsEvent({
+        eventType: "delete_song",
+        songId: isUuid(track.id) ? track.id : null,
+        pagePath: "/listen-bar",
+        source: "bar_heartbreak",
+        metadata: {
+          title: track.title,
+          barPhase: track.barPhase,
+        },
+      });
 
       setOfficialTracks((tracks) => tracks.filter((item) => item.id !== track.id));
       if (nowTrack.id === track.id) {
@@ -2547,8 +2640,22 @@ export default function ListenBarPage() {
               onPlay={() => {
                 setPlaybackBlocked(false);
                 setIsPlaying(true);
+                const currentSecond = Math.max(0, Math.floor(audioRef.current?.currentTime ?? 0));
+                if (!playbackSegmentRef.current || playbackSegmentRef.current.trackId !== nowTrack.id) {
+                  playbackSegmentRef.current = {
+                    trackId: nowTrack.id,
+                    startedAtMs: Date.now(),
+                    startedAtSecond: currentSecond,
+                  };
+                  logSongPlaybackEvent("song_play", nowTrack, { startSecond: currentSecond });
+                } else {
+                  logSongPlaybackEvent("song_resume", nowTrack, { startSecond: currentSecond });
+                }
               }}
-              onPause={() => setIsPlaying(false)}
+              onPause={(event) => {
+                setIsPlaying(false);
+                if (!event.currentTarget.ended) closePlaybackSegment("song_pause", event.currentTarget);
+              }}
               onTimeUpdate={(event) => syncElapsedFromAudio(event.currentTarget)}
               onLoadedMetadata={(event) => {
                 if (Number.isFinite(event.currentTarget.duration)) {
@@ -2556,7 +2663,10 @@ export default function ListenBarPage() {
                 }
                 syncElapsedFromAudio(event.currentTarget, true);
               }}
-              onEnded={playNext}
+              onEnded={(event) => {
+                closePlaybackSegment("song_finish", event.currentTarget);
+                playNext();
+              }}
             />
           </div>
 

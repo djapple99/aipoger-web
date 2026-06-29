@@ -6,6 +6,7 @@ import NavHomeLink from "@/components/nav-home-link";
 import GlobalBattleCallOverlay from "@/components/global-battle-call-overlay";
 import GlobalListenBarDock from "@/components/global-listen-bar-dock";
 import GlobalSitePresenceBadge from "@/components/global-site-presence-badge";
+import AnalyticsEvents from "@/components/analytics-events";
 
 const configuredSiteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://aipoger.com").replace(/\/$/, "");
 const siteUrl = configuredSiteUrl === "https://www.aipoger.com" ? "https://aipoger.com" : configuredSiteUrl;
@@ -69,6 +70,7 @@ export default function RootLayout({
     <html lang="zh-Hant">
       <body>
         <I18nProvider>
+          <AnalyticsEvents />
           <NavHomeLink />
           <GlobalSitePresenceBadge />
 
