@@ -82,6 +82,11 @@ type ListenBarTracksAdminPayload = {
   tracks?: AdminListenBarTrackRow[];
   error?: string;
 };
+type TrackDownloadPayload = {
+  url?: string;
+  fileName?: string;
+  error?: string;
+};
 
 const initialForm: TrackForm = {
   title: "",
@@ -386,6 +391,7 @@ export default function ListenBarAdminPage() {
   const [editingTrackId, setEditingTrackId] = useState("");
   const [metadataForm, setMetadataForm] = useState<TrackMetadataForm | null>(null);
   const [metadataSavingId, setMetadataSavingId] = useState("");
+  const [downloadingTrackId, setDownloadingTrackId] = useState("");
   const [optimisticTrackPatches, setOptimisticTrackPatches] = useState<Record<string, Partial<AdminListenBarTrackRow>>>({});
 
   const displayTracks = useMemo(
@@ -1010,6 +1016,37 @@ export default function ListenBarAdminPage() {
     setMetadataSavingId("");
   };
 
+  const downloadOriginalTrack = async (track: AdminListenBarTrackRow) => {
+    if (!track.audio_path?.trim()) {
+      setError("這首歌沒有可下載的原始音檔。");
+      return;
+    }
+    setError("");
+    setMessage("");
+    setDownloadingTrackId(track.id);
+    const params = new URLSearchParams({ trackId: track.id });
+    const response = await fetch(`/api/admin/listen-bar-track-download?${params.toString()}`, {
+      cache: "no-store",
+      headers: await authHeader(),
+    });
+    const payload = (await response.json().catch(() => null)) as TrackDownloadPayload | null;
+    setDownloadingTrackId("");
+    if (!response.ok || !payload?.url) {
+      setError(`原檔下載失敗：${payload?.error || "後台無法建立下載連結。"}`);
+      return;
+    }
+
+    const anchor = document.createElement("a");
+    anchor.href = payload.url;
+    anchor.target = "_blank";
+    anchor.rel = "noopener noreferrer";
+    if (payload.fileName) anchor.download = payload.fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    setMessage(`已建立「${track.title || "未命名作品"}」原檔下載連結。`);
+  };
+
   if (adminState === "checking") {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#050505] px-6 text-zinc-100">
@@ -1547,6 +1584,14 @@ export default function ListenBarAdminPage() {
                             </audio>
                           )}
 	                          <div className="mt-3 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              disabled={!track.audio_path?.trim() || downloadingTrackId === track.id}
+                              onClick={() => void downloadOriginalTrack(track)}
+                              className="rounded-full border border-yellow-200/35 bg-yellow-300/10 px-4 py-2 text-xs font-black text-yellow-100 transition hover:border-yellow-200/75 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-200/55 disabled:cursor-not-allowed disabled:opacity-45"
+                            >
+                              {downloadingTrackId === track.id ? "建立連結中" : "下載原檔"}
+                            </button>
 	                            <button type="button" disabled={metadataSavingId === track.id} onClick={() => (editing ? cancelEditTrack() : beginEditTrack(track))} className="rounded-full border border-orange-200/25 bg-orange-500/10 px-4 py-2 text-xs font-black text-orange-100 transition hover:border-orange-200/65 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-200/55 disabled:cursor-not-allowed disabled:opacity-45">
 	                              {editing ? "收起編輯" : "編輯資料"}
 	                            </button>
