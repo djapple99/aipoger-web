@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ChangeEvent, FormEvent, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { ChangeEvent, FormEvent, Suspense, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import LangToggle from "@/components/lang-toggle";
 import SafetyNotice from "@/components/safety-notice";
 import { fontRighteous } from "@/lib/fonts";
@@ -117,6 +118,23 @@ type MyTracksPayload = {
   challengerLimit?: number;
   publicCount?: number;
   tracks?: ListenBarTrackRow[];
+  error?: string;
+};
+
+type ListenBarDailySpotlight = {
+  id: string;
+  spotlight_date: string;
+  track_id: string;
+  title: string;
+  intro: string | null;
+  short_caption: string | null;
+  status: "draft" | "active" | "archived";
+};
+
+type ListenBarDailySpotlightPayload = {
+  spotlight?: ListenBarDailySpotlight | null;
+  track?: ListenBarTrackRow | null;
+  date?: string;
   error?: string;
 };
 
@@ -575,10 +593,13 @@ function parseLyricLines(value: string): LyricLine[] {
   });
 }
 
-export default function ListenBarPage() {
+function ListenBarPageContent() {
   const { lang, t } = useI18n();
   const isZh = lang === "zh";
   const langQuery = `?lang=${lang}`;
+  const searchParams = useSearchParams();
+  const spotlightParam = searchParams.get("spotlight")?.trim() ?? "";
+  const targetTrackParam = searchParams.get("track")?.trim() ?? "";
   const titleSizeClass = isZh
     ? "text-[clamp(2.15rem,13vw,5.35rem)]"
     : "text-[clamp(1.92rem,10vw,5.05rem)]";
@@ -676,6 +697,10 @@ export default function ListenBarPage() {
   const playbackSegmentRef = useRef<{ trackId: string; startedAtMs: number; startedAtSecond: number } | null>(null);
   const startTrackAtZeroRef = useRef(false);
   const liveRadioSyncEnabledRef = useRef(true);
+  const spotlightAppliedKeyRef = useRef("");
+  const listenContextRef = useRef<{ source: "bar_heartbreak" | "listen_bar_spotlight"; spotlightDate?: string | null; spotlightId?: string | null }>({
+    source: "bar_heartbreak",
+  });
   const rotationTracksRef = useRef<ListenBarTrack[]>([]);
   const nowTrackRef = useRef<ListenBarTrack>(EMPTY_LISTEN_BAR_TRACK);
   const radioShouldResumeRef = useRef(true);
@@ -725,6 +750,8 @@ export default function ListenBarPage() {
   const [editingTrackCommentBusyId, setEditingTrackCommentBusyId] = useState<string | null>(null);
   const [trackCommentError, setTrackCommentError] = useState("");
   const [trackCommentBusy, setTrackCommentBusy] = useState(false);
+  const [dailySpotlight, setDailySpotlight] = useState<ListenBarDailySpotlight | null>(null);
+  const [dailySpotlightError, setDailySpotlightError] = useState("");
   const [battleTickerMessages, setBattleTickerMessages] = useState<string[]>([]);
   const listenBarPresenceCount = usePresenceCount("presence-listen-bar", true, "listen-bar");
   const listenBarPresenceLabel =
@@ -737,11 +764,12 @@ export default function ListenBarPage() {
     metadata: Record<string, unknown> = {},
   ) => {
     if (!track.audioUrl || !isUuid(track.id)) return;
+    const listenContext = listenContextRef.current;
     void logAnalyticsEvent({
       eventType,
       songId: track.id,
       pagePath: "/listen-bar",
-      source: "bar_heartbreak",
+      source: listenContext.source,
       metadata: {
         title: track.title,
         artist: track.artist,
@@ -749,6 +777,8 @@ export default function ListenBarPage() {
         trackSource: track.source,
         barPhase: track.barPhase,
         durationSeconds: track.duration,
+        spotlightDate: listenContext.spotlightDate ?? null,
+        spotlightId: listenContext.spotlightId ?? null,
         ...metadata,
       },
     });
@@ -880,9 +910,13 @@ export default function ListenBarPage() {
     void logAnalyticsEvent({
       eventType: "open_heartbreak_bar",
       pagePath: "/listen-bar",
-      source: "bar_heartbreak",
+      source: spotlightParam || targetTrackParam ? "listen_bar_spotlight" : "bar_heartbreak",
+      metadata: {
+        spotlightDate: spotlightParam || null,
+        targetTrackId: targetTrackParam || null,
+      },
     });
-  }, []);
+  }, [spotlightParam, targetTrackParam]);
 
   useEffect(() => {
     let mounted = true;
@@ -938,6 +972,18 @@ export default function ListenBarPage() {
   useEffect(() => {
     nowTrackRef.current = nowTrack;
   }, [nowTrack]);
+
+  useEffect(() => {
+    const matchesDailySpotlight = Boolean(dailySpotlight?.track_id && nowTrack.id === dailySpotlight.track_id);
+    const matchesTrackLink = Boolean(!dailySpotlight && targetTrackParam && nowTrack.id === targetTrackParam && spotlightAppliedKeyRef.current === `track:${targetTrackParam}`);
+    listenContextRef.current = matchesDailySpotlight || matchesTrackLink
+      ? {
+          source: "listen_bar_spotlight",
+          spotlightDate: dailySpotlight?.spotlight_date ?? null,
+          spotlightId: dailySpotlight?.id ?? null,
+        }
+      : { source: "bar_heartbreak" };
+  }, [dailySpotlight, nowTrack.id, targetTrackParam]);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -1016,6 +1062,27 @@ export default function ListenBarPage() {
     };
 
     const loadPlaylist = async () => {
+      let spotlightPayload: ListenBarDailySpotlightPayload | null = null;
+      if (spotlightParam) {
+        const spotlightResponse = await fetch(`/api/listen-bar/daily-spotlight?date=${encodeURIComponent(spotlightParam)}`, {
+          cache: "no-store",
+        }).catch((error) => ({ ok: false, json: async () => ({ error: String(error) }) }) as Response);
+        if (spotlightResponse.ok) {
+          spotlightPayload = await spotlightResponse.json().catch(() => null) as ListenBarDailySpotlightPayload | null;
+          setDailySpotlight(spotlightPayload?.spotlight ?? null);
+          setDailySpotlightError(spotlightPayload?.spotlight && !spotlightPayload.track
+            ? (isZh ? "今日推薦歌暫時不能播放。" : "Today's spotlight is not playable right now.")
+            : "");
+        } else {
+          const payload = await spotlightResponse.json().catch(() => null) as { error?: string } | null;
+          setDailySpotlight(null);
+          setDailySpotlightError(payload?.error || (isZh ? "今日推薦歌讀取失敗。" : "Could not load today's spotlight."));
+        }
+      } else {
+        setDailySpotlight(null);
+        setDailySpotlightError("");
+      }
+
       const response = await fetch("/api/listen-bar/tracks", {
         cache: "no-store",
       }).catch((error) => ({ ok: false, json: async () => ({ error: String(error) }) }) as Response);
@@ -1037,7 +1104,10 @@ export default function ListenBarPage() {
         .slice(0, LISTEN_BAR_TOTAL_ROTATION_LIMIT)
         .map(listenBarRowToTrack)
         .filter((track): track is ListenBarTrack => track !== null);
-      const tracks = community;
+      const spotlightTrack = spotlightPayload?.track ? listenBarRowToTrack(spotlightPayload.track) : null;
+      const tracks = spotlightTrack && !community.some((track) => track.id === spotlightTrack.id)
+        ? [spotlightTrack, ...community]
+        : community;
       const persistedCounts = rows.reduce<Record<string, ReactionCounts>>((acc, row) => {
         acc[row.id] = {
           heart: Math.max(0, row.heart_count ?? 0),
@@ -1056,13 +1126,34 @@ export default function ListenBarPage() {
         return;
       }
 
-        setOfficialTracks(tracks);
+      setOfficialTracks(tracks);
+      const queryTargetId = spotlightPayload?.spotlight?.track_id || (isUuid(targetTrackParam) ? targetTrackParam : "");
+      const queryKey = spotlightPayload?.spotlight
+        ? `spotlight:${spotlightPayload.spotlight.spotlight_date}:${spotlightPayload.spotlight.track_id}`
+        : queryTargetId
+          ? `track:${queryTargetId}`
+          : "";
+      const queryTrack = queryTargetId ? tracks.find((track) => track.id === queryTargetId) ?? null : null;
+      if (queryTrack && queryKey && spotlightAppliedKeyRef.current !== queryKey) {
+        liveRadioSyncEnabledRef.current = false;
+        startTrackAtZeroRef.current = true;
+        liveSeekRef.current = { trackId: queryTrack.id, offset: 0 };
+        spotlightAppliedKeyRef.current = queryKey;
+        listenContextRef.current = {
+          source: "listen_bar_spotlight",
+          spotlightDate: spotlightPayload?.spotlight?.spotlight_date ?? null,
+          spotlightId: spotlightPayload?.spotlight?.id ?? null,
+        };
+        setNowTrack(queryTrack);
+      } else {
         const livePosition = liveRadioSyncEnabledRef.current ? getLiveRadioPosition(tracks) : null;
         if (livePosition) liveSeekRef.current = { trackId: livePosition.track.id, offset: livePosition.offset };
         setNowTrack((current) => {
           if (!liveRadioSyncEnabledRef.current && tracks.some((track) => track.id === current.id)) return current;
-        return livePosition?.track ?? pickRandomTrack(tracks) ?? tracks[0];
+          listenContextRef.current = { source: "bar_heartbreak" };
+          return livePosition?.track ?? pickRandomTrack(tracks) ?? tracks[0];
         });
+      }
       setPlaylistStatus("database");
     };
 
@@ -1075,7 +1166,7 @@ export default function ListenBarPage() {
       mounted = false;
       window.clearInterval(playlistRefreshTimer);
     };
-  }, [isZh]);
+  }, [isZh, spotlightParam, targetTrackParam]);
 
   useEffect(() => {
     const container = chatScrollRef.current;
@@ -1463,6 +1554,23 @@ export default function ListenBarPage() {
     resumeRadioPlayback(false);
   };
 
+  const returnToLiveRadio = () => {
+    const tracks = rotationTracksRef.current.filter((track) => track.audioUrl);
+    liveRadioSyncEnabledRef.current = true;
+    spotlightAppliedKeyRef.current = "";
+    listenContextRef.current = { source: "bar_heartbreak" };
+    setDailySpotlight(null);
+    setDailySpotlightError("");
+    const livePosition = getLiveRadioPosition(tracks);
+    if (livePosition?.track) {
+      liveSeekRef.current = { trackId: livePosition.track.id, offset: livePosition.offset };
+      setElapsed(livePosition.offset);
+      setNowTrack(livePosition.track);
+    }
+    const nextUrl = `${window.location.pathname}${langQuery}`;
+    window.history.replaceState(null, "", nextUrl);
+  };
+
   const currentReactions = reactionCounts[nowTrack.id] ?? emptyReactions;
   const currentPositiveTotal = Object.values(currentReactions).reduce((sum, count) => sum + count, 0);
   const honorRollQualified = listenBarIsHonorEligible({
@@ -1474,6 +1582,10 @@ export default function ListenBarPage() {
   const myCurrentReaction = myReactions[nowTrack.id] ?? null;
   const currentHeartTotal = Math.max(0, currentReactions.heart ?? 0);
   const hasMyHeartReaction = myCurrentReaction === "heart";
+  const activeDailySpotlight = dailySpotlight?.track_id === nowTrack.id ? dailySpotlight : null;
+  const activeSpotlightLink = activeDailySpotlight
+    ? `/listen-bar?spotlight=${encodeURIComponent(activeDailySpotlight.spotlight_date)}${langQuery ? `&${langQuery.slice(1)}` : ""}`
+    : "";
 
   const handleReaction = (key: ReactionKey) => {
     tryStartRadio();
@@ -1519,16 +1631,19 @@ export default function ListenBarPage() {
         error?: string;
       } | null;
       if (!response.ok || !payload?.counts) throw new Error(payload?.error || "Reaction failed.");
+      const listenContext = listenContextRef.current;
       void logAnalyticsEvent({
         eventType: next === "heart" ? "like" : "reaction",
         songId: isUuid(nowTrack.id) ? nowTrack.id : null,
         pagePath: "/listen-bar",
-        source: "bar_heartbreak",
+        source: listenContext.source,
         metadata: {
           reaction: next,
           previousReaction: previous,
           title: nowTrack.title,
           artist: nowTrack.artist,
+          spotlightDate: listenContext.spotlightDate ?? null,
+          spotlightId: listenContext.spotlightId ?? null,
         },
       });
       setReactionCounts((allCounts) => ({ ...allCounts, [nowTrack.id]: payload.counts! }));
@@ -1626,15 +1741,18 @@ export default function ListenBarPage() {
         const savedComment = payload?.comment ? storedTrackCommentRowToComment(payload.comment) : null;
         if (savedComment) {
           setTrackComments((items) => (items.some((item) => item.id === savedComment.id) ? items : [...items, savedComment].slice(-24)));
+          const listenContext = listenContextRef.current;
           void logAnalyticsEvent({
             eventType: "comment",
             songId: isUuid(nowTrack.id) ? nowTrack.id : null,
             pagePath: "/listen-bar",
-            source: "bar_heartbreak",
+            source: listenContext.source,
             metadata: {
               commentType: "track",
               title: nowTrack.title,
               artist: nowTrack.artist,
+              spotlightDate: listenContext.spotlightDate ?? null,
+              spotlightId: listenContext.spotlightId ?? null,
             },
           });
         }
@@ -2386,6 +2504,53 @@ export default function ListenBarPage() {
                     />
                   ) : null}
                 </div>
+                {(activeDailySpotlight || dailySpotlightError) && (
+                  <div className="mt-5 rounded-2xl border border-yellow-200/25 bg-yellow-300/[0.08] px-4 py-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="text-xs font-black uppercase tracking-[0.18em] text-yellow-100/75">
+                          {isZh ? "愛波哥今日推薦" : "AIPOGER Daily Spotlight"}
+                        </p>
+                        {activeDailySpotlight ? (
+                          <>
+                            <h2 className="mt-2 text-lg font-black leading-snug text-white">
+                              {activeDailySpotlight.title}
+                            </h2>
+                            {activeDailySpotlight.intro && (
+                              <p className="mt-2 text-sm font-bold leading-6 text-yellow-50/82">
+                                {activeDailySpotlight.intro}
+                              </p>
+                            )}
+                            <p className="mt-2 text-xs font-bold leading-5 text-yellow-100/70">
+                              {isZh ? "從 Shorts 進來會先聽這首；按愛心與留言都會算回同一首傷心酒吧作品。" : "Shorts visitors hear this track first; hearts and comments count on the same Bar Heartbreak song."}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="mt-2 text-sm font-bold leading-6 text-yellow-50/82">{dailySpotlightError}</p>
+                        )}
+                      </div>
+                      <div className="flex shrink-0 flex-wrap gap-2">
+                        {activeSpotlightLink && (
+                          <ShareButton
+                            title={activeDailySpotlight?.title ?? listenCopy.shareTitle}
+                            text={activeDailySpotlight?.short_caption ?? listenCopy.shareText}
+                            url={activeSpotlightLink}
+                            label={isZh ? "分享推薦連結" : "Share Spotlight"}
+                            copiedLabel={listenCopy.copied}
+                            className="rounded-full border border-yellow-200/30 bg-yellow-300 px-3 py-2 text-xs font-black text-black transition hover:bg-yellow-200"
+                          />
+                        )}
+                        <button
+                          type="button"
+                          onClick={returnToLiveRadio}
+                          className="rounded-full border border-white/10 bg-black/45 px-3 py-2 text-xs font-black text-zinc-100 transition hover:border-white/30"
+                        >
+                          {isZh ? "回到公播" : "Back to Radio"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <div className="mt-7">
                   <div className="h-2 overflow-hidden rounded-full bg-white/10">
                     <div
@@ -3099,5 +3264,13 @@ export default function ListenBarPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+export default function ListenBarPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen bg-[#050505] text-white" />}>
+      <ListenBarPageContent />
+    </Suspense>
   );
 }

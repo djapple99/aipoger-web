@@ -30,7 +30,7 @@ type SocialTarget = {
 
 type SocialPost = {
   id: string;
-  source_type: "manual" | "battle_result";
+  source_type: "manual" | "battle_result" | "listen_bar_daily_spotlight";
   source_id: string | null;
   title: string;
   status: SocialPostStatus;
@@ -55,6 +55,18 @@ type RecentBattleResult = {
   archived_at: string | null;
 };
 
+type RecentListenBarTrack = {
+  id: string;
+  title: string | null;
+  artist: string | null;
+  ai_tool: string | null;
+  genre: string | null;
+  duration_seconds: number | null;
+  positive_reaction_count: number | null;
+  heart_count: number | null;
+  created_at: string | null;
+};
+
 type SocialAccountStatus = {
   platform: SocialPlatform;
   displayName: string;
@@ -67,6 +79,7 @@ type SocialAccountStatus = {
 type AdminPayload = {
   posts?: SocialPost[];
   recentBattleResults?: RecentBattleResult[];
+  recentListenBarTracks?: RecentListenBarTrack[];
   accountStatuses?: SocialAccountStatus[];
   error?: string;
 };
@@ -107,6 +120,25 @@ function formatTime(value?: string | null) {
 
 function shortId(value: string) {
   return value.slice(0, 8);
+}
+
+function todayTaipeiDate() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  return year && month && day ? `${year}-${month}-${day}` : new Date().toISOString().slice(0, 10);
+}
+
+function sourceTypeLabel(value: SocialPost["source_type"]) {
+  if (value === "battle_result") return "Battle 戰報";
+  if (value === "listen_bar_daily_spotlight") return "每日推薦歌";
+  return "人工公告";
 }
 
 function sortedTargets(post: SocialPost) {
@@ -269,8 +301,13 @@ export default function AdminSocialPage() {
   const [adminState, setAdminState] = useState<AdminState>("checking");
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [recentBattleResults, setRecentBattleResults] = useState<RecentBattleResult[]>([]);
+  const [recentListenBarTracks, setRecentListenBarTracks] = useState<RecentListenBarTrack[]>([]);
   const [accountStatuses, setAccountStatuses] = useState<SocialAccountStatus[]>([]);
   const [selectedBattleId, setSelectedBattleId] = useState("");
+  const [spotlightDate, setSpotlightDate] = useState(todayTaipeiDate());
+  const [selectedSpotlightTrackId, setSelectedSpotlightTrackId] = useState("");
+  const [spotlightIntro, setSpotlightIntro] = useState("今天推薦 Tank Lu《橘貓。女巫。月》。動感電音裡帶一點奇幻感，像夜裡有貓走過合成器。");
+  const [spotlightCaption, setSpotlightCaption] = useState("今天的傷心酒吧推薦：Tank Lu《橘貓。女巫。月》。進來聽完整版，喜歡就按愛心，這顆心會直接算進歌曲成績。");
   const [manualTopic, setManualTopic] = useState("Creator Wanted");
   const [manualBody, setManualBody] = useState("徵求第一批 AI 音樂創作者。帶你的作品進 AIPOGER，讓 30-60 秒抓波上場被聽見。");
   const [manualCta, setManualCta] = useState("加入 AIPOGER，帶你的 30-60 秒抓波進場 battle。");
@@ -303,8 +340,14 @@ export default function AdminSocialPage() {
     }
     setPosts(payload?.posts ?? []);
     setRecentBattleResults(payload?.recentBattleResults ?? []);
+    const listenTracks = payload?.recentListenBarTracks ?? [];
+    setRecentListenBarTracks(listenTracks);
     setAccountStatuses(payload?.accountStatuses ?? []);
     setSelectedBattleId((current) => current || payload?.recentBattleResults?.[0]?.battle_id || "");
+    setSelectedSpotlightTrackId((current) => {
+      if (current) return current;
+      return listenTracks.find((track) => /橘貓|女巫/i.test(`${track.title ?? ""} ${track.artist ?? ""}`))?.id || listenTracks[0]?.id || "";
+    });
   }, []);
 
   const accountStatusByPlatform = useMemo(() => {
@@ -362,6 +405,24 @@ export default function AdminSocialPage() {
       return;
     }
     await runAction("create_battle_draft", { battleId: selectedBattleId }, "create-battle", "已產生 Battle 戰報草稿。");
+  }
+
+  async function createSpotlightDraft() {
+    if (!selectedSpotlightTrackId) {
+      setError("請先選擇一首傷心酒吧歌曲。");
+      return;
+    }
+    await runAction(
+      "create_listen_bar_spotlight_draft",
+      {
+        trackId: selectedSpotlightTrackId,
+        spotlightDate,
+        intro: spotlightIntro,
+        shortCaption: spotlightCaption,
+      },
+      "create-spotlight",
+      "已產生每日推薦歌社群草稿。",
+    );
   }
 
   async function createManualDraft(event: FormEvent<HTMLFormElement>) {
@@ -423,7 +484,7 @@ export default function AdminSocialPage() {
             <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-200/80">AIPOGER SOCIAL DESK</p>
             <h1 className="mt-3 text-3xl font-black tracking-tight text-white sm:text-5xl">社群發文中控台</h1>
             <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-zinc-400">
-              Battle 戰報與人工公告都先進審核。IG / TikTok / YouTube / FB 社團第一版產草稿與素材提示；背景配樂以勝出作品為準。
+              Battle 戰報、每日推薦歌與人工公告都先進審核。IG / TikTok / YouTube / FB 社團第一版產草稿與素材提示；背景配樂以作品原音為準。
             </p>
           </div>
           <div className="flex flex-col gap-3">
@@ -465,7 +526,7 @@ export default function AdminSocialPage() {
           <div className="mt-3 grid gap-3 text-sm font-bold leading-7 text-zinc-300 lg:grid-cols-3">
             <p>
               <span className="text-white">1. 生文案：</span>
-              Battle 有勝出戰報時，左邊可自動產各平台文案；沒有戰報時，用右邊人工公告先產草稿。
+              Battle 有勝出戰報時可產戰報；每日推薦歌可從傷心酒吧選歌；沒有固定來源時用人工公告先產草稿。
             </p>
             <p>
               <span className="text-white">2. 圖與影片：</span>
@@ -544,6 +605,73 @@ export default function AdminSocialPage() {
             </p>
           </section>
 
+          <section className="rounded-lg border border-yellow-200/20 bg-yellow-300/[0.06] p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-yellow-100/80">每日推薦歌草稿</p>
+                <h2 className="mt-2 text-xl font-black">從傷心酒吧選歌產 Shorts 文案</h2>
+              </div>
+              <button
+                type="button"
+                disabled={busyId === "create-spotlight" || !selectedSpotlightTrackId}
+                onClick={createSpotlightDraft}
+                className="rounded-lg bg-yellow-300 px-4 py-3 text-sm font-black text-black disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                產生推薦草稿
+              </button>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <label className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                日期
+                <input
+                  type="date"
+                  value={spotlightDate}
+                  onChange={(event) => setSpotlightDate(event.target.value)}
+                  className="mt-2 w-full rounded-lg border border-white/10 bg-black px-3 py-3 text-sm font-bold normal-case tracking-normal text-white outline-none"
+                />
+              </label>
+              <label className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                推薦歌曲
+                <select
+                  value={selectedSpotlightTrackId}
+                  onChange={(event) => setSelectedSpotlightTrackId(event.target.value)}
+                  className="mt-2 w-full rounded-lg border border-white/10 bg-black px-3 py-3 text-sm font-bold normal-case tracking-normal text-white outline-none"
+                >
+                  {recentListenBarTracks.length === 0 ? (
+                    <option value="">尚無可用酒吧歌曲</option>
+                  ) : (
+                    recentListenBarTracks.map((track) => (
+                      <option key={track.id} value={track.id}>
+                        {track.artist || "創作者"}《{track.title || "未命名"}》｜{track.genre || "AI Music"}｜♥ {track.heart_count ?? track.positive_reaction_count ?? 0}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </label>
+              <label className="sm:col-span-2 text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                推薦文
+                <textarea
+                  value={spotlightIntro}
+                  onChange={(event) => setSpotlightIntro(event.target.value)}
+                  rows={3}
+                  className="mt-2 w-full rounded-lg border border-white/10 bg-black px-3 py-3 text-sm font-bold normal-case tracking-normal text-white outline-none"
+                />
+              </label>
+              <label className="sm:col-span-2 text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                Shorts Caption
+                <textarea
+                  value={spotlightCaption}
+                  onChange={(event) => setSpotlightCaption(event.target.value)}
+                  rows={3}
+                  className="mt-2 w-full rounded-lg border border-white/10 bg-black px-3 py-3 text-sm font-bold normal-case tracking-normal text-white outline-none"
+                />
+              </label>
+            </div>
+            <p className="mt-3 text-xs font-bold leading-6 text-yellow-100/70">
+              產生後會建立每日推薦紀錄與社群草稿；Spotlight 連結只影響進站聽眾本地播放，不打斷一般輪播。
+            </p>
+          </section>
+
           <form onSubmit={createManualDraft} className="rounded-lg border border-white/10 bg-white/[0.04] p-5">
             <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-200/80">人工排程草稿</p>
             <h2 className="mt-2 text-xl font-black">手動建立跨平台公告</h2>
@@ -582,7 +710,7 @@ export default function AdminSocialPage() {
         <section className="mt-6 space-y-5">
           {posts.length === 0 ? (
             <div className="rounded-lg border border-white/10 bg-white/[0.04] p-8 text-sm font-bold text-zinc-400">
-              尚未建立社群草稿。先從 battle 戰報或人工公告產生第一批內容。
+              尚未建立社群草稿。先從 battle 戰報、每日推薦歌或人工公告產生第一批內容。
             </div>
           ) : (
             posts.map((post) => (
@@ -590,7 +718,7 @@ export default function AdminSocialPage() {
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-md bg-white/10 px-2 py-1 text-[0.65rem] font-black uppercase tracking-[0.18em] text-zinc-300">{post.source_type === "battle_result" ? "Battle 戰報" : "人工公告"}</span>
+                      <span className="rounded-md bg-white/10 px-2 py-1 text-[0.65rem] font-black uppercase tracking-[0.18em] text-zinc-300">{sourceTypeLabel(post.source_type)}</span>
                       <span className="rounded-md bg-orange-400/15 px-2 py-1 text-[0.65rem] font-black text-orange-100">{statusLabel[post.status]}</span>
                       <span className="text-xs font-bold text-zinc-500">{formatTime(post.created_at)}</span>
                     </div>

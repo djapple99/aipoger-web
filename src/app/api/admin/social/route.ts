@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isAdminEmail } from "@/lib/admin-emails";
-import { battleResultShortPath, battleShortPath, isUuid } from "@/lib/share-short-links";
+import { battleResultShortPath, battleShortPath, isUuid, listenBarDailySpotlightPath } from "@/lib/share-short-links";
 import {
   SOCIAL_PLATFORMS,
   buildBattleSocialDraft,
+  buildListenBarDailySpotlightDraft,
   buildManualSocialDraft,
   type BattleSocialDraftInput,
+  type ListenBarDailySpotlightDraftInput,
   type SocialPlatform,
   type SocialPostStatus,
   type SocialPublishMode,
   type SocialTargetDraft,
 } from "@/lib/social-posting";
+import { LISTEN_BAR_AUDIO_BUCKET } from "@/lib/listen-bar";
 
 type AdminClient = ReturnType<typeof adminClient>;
 
@@ -38,7 +41,7 @@ type SocialTargetRow = {
 
 type SocialPostRow = {
   id: string;
-  source_type: "manual" | "battle_result";
+  source_type: "manual" | "battle_result" | "listen_bar_daily_spotlight";
   source_id: string | null;
   language: string;
   title: string;
@@ -52,6 +55,29 @@ type SocialPostRow = {
   created_at: string;
   updated_at: string;
   social_post_targets?: SocialTargetRow[];
+};
+
+type ListenBarTrackOptionRow = {
+  id: string;
+  title: string | null;
+  artist: string | null;
+  ai_tool: string | null;
+  genre: string | null;
+  audio_path: string | null;
+  duration_seconds: number | null;
+  positive_reaction_count: number | null;
+  heart_count: number | null;
+  created_at: string | null;
+};
+
+type ListenBarDailySpotlightRow = {
+  id: string;
+  spotlight_date: string;
+  track_id: string;
+  title: string;
+  intro: string | null;
+  short_caption: string | null;
+  status: "draft" | "active" | "archived";
 };
 
 type BattleArchiveRow = {
@@ -139,6 +165,13 @@ function absoluteUrl(pathOrUrl: string | null | undefined) {
   return `${siteOrigin()}${value.startsWith("/") ? value : `/${value}`}`;
 }
 
+function listenBarAudioPublicUrl(admin: AdminClient, path: string | null | undefined) {
+  const value = clean(path, 1000);
+  if (!value) return "";
+  if (/^https?:\/\//i.test(value)) return value;
+  return admin.storage.from(LISTEN_BAR_AUDIO_BUCKET).getPublicUrl(value).data.publicUrl ?? "";
+}
+
 async function signedBattleAudioUrl(admin: AdminClient, path: string | null | undefined) {
   const value = clean(path, 1000);
   if (!value) return "";
@@ -177,6 +210,26 @@ async function loadRecentBattleResults(admin: AdminClient) {
     throw error;
   }
   return (data ?? []) as unknown as BattleArchiveRow[];
+}
+
+async function loadRecentListenBarTracks(admin: AdminClient) {
+  const { data, error } = await admin
+    .from("listen_bar_tracks")
+    .select("id,title,artist,ai_tool,genre,audio_path,duration_seconds,positive_reaction_count,heart_count,created_at")
+    .eq("source", "community")
+    .eq("is_active", true)
+    .is("removed_at", null)
+    .is("hidden_at", null)
+    .or("review_status.is.null,review_status.neq.removed")
+    .order("created_at", { ascending: false })
+    .limit(80);
+
+  if (error) {
+    const msg = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""} ${error.code ?? ""}`;
+    if (/listen_bar_tracks|relation.*does not exist|schema cache|PGRST20|42P01/i.test(msg)) return [];
+    throw error;
+  }
+  return (data ?? []) as unknown as ListenBarTrackOptionRow[];
 }
 
 async function loadAccounts(admin: AdminClient) {
@@ -252,7 +305,7 @@ async function insertDraftBundle(
   userId: string,
   params: {
     title: string;
-    sourceType: "manual" | "battle_result";
+    sourceType: "manual" | "battle_result" | "listen_bar_daily_spotlight";
     sourceId: string | null;
     body?: string | null;
     cta?: string | null;
@@ -299,6 +352,84 @@ async function insertDraftBundle(
   const { error: targetError } = await admin.from("social_post_targets").insert(rows);
   if (targetError) throw targetError;
   return post.id;
+}
+
+async function upsertListenBarDailySpotlight(
+  admin: AdminClient,
+  userId: string,
+  input: {
+    spotlightDate: string;
+    trackId: string;
+    title: string;
+    intro?: string | null;
+    shortCaption?: string | null;
+  },
+) {
+  const now = new Date().toISOString();
+  const { data, error } = await admin
+    .from("listen_bar_daily_spotlights")
+    .upsert({
+      spotlight_date: input.spotlightDate,
+      track_id: input.trackId,
+      title: input.title,
+      intro: input.intro ?? null,
+      short_caption: input.shortCaption ?? null,
+      status: "active",
+      created_by: userId,
+      updated_at: now,
+    }, { onConflict: "spotlight_date" })
+    .select("id,spotlight_date,track_id,title,intro,short_caption,status")
+    .single<ListenBarDailySpotlightRow>();
+  if (error) throw error;
+  return data;
+}
+
+async function loadListenBarSpotlightDraftInput(
+  admin: AdminClient,
+  userId: string,
+  params: {
+    spotlightDate: string;
+    trackId: string;
+    intro?: string | null;
+    shortCaption?: string | null;
+  },
+): Promise<{ spotlight: ListenBarDailySpotlightRow; draft: ListenBarDailySpotlightDraftInput } | null> {
+  const { data: track, error } = await admin
+    .from("listen_bar_tracks")
+    .select("id,title,artist,ai_tool,genre,audio_path,duration_seconds,positive_reaction_count,heart_count,created_at")
+    .eq("id", params.trackId)
+    .maybeSingle<ListenBarTrackOptionRow>();
+  if (error) throw error;
+  if (!track?.id) return null;
+
+  const title = clean(track.title, 180) || "AIPOGER 每日推薦歌";
+  const artist = clean(track.artist, 120) || "AIPOGER Creator";
+  const intro = clean(params.intro, 1000) || `今天推薦 ${artist}《${title}》。這首歌在傷心酒吧上架中，喜歡就進來按愛心，反應會直接算進作品成績。`;
+  const shortCaption = clean(params.shortCaption, 1200) || `${intro}\n\n進來聽完整歌曲，喜歡就按愛心，這顆心會直接算進傷心酒吧成績。`;
+  const spotlightTitle = `每日推薦歌｜${title}`;
+  const spotlight = await upsertListenBarDailySpotlight(admin, userId, {
+    spotlightDate: params.spotlightDate,
+    trackId: track.id,
+    title: spotlightTitle,
+    intro,
+    shortCaption,
+  });
+
+  return {
+    spotlight,
+    draft: {
+      spotlightDate: params.spotlightDate,
+      trackId: track.id,
+      title,
+      artist,
+      genre: track.genre,
+      aiTool: track.ai_tool,
+      intro,
+      shortCaption,
+      spotlightUrl: absoluteUrl(listenBarDailySpotlightPath(params.spotlightDate, "zh")),
+      backgroundAudioUrl: listenBarAudioPublicUrl(admin, track.audio_path),
+    },
+  };
 }
 
 async function loadBattleDraftInput(admin: AdminClient, battleId: string): Promise<BattleSocialDraftInput | null> {
@@ -462,7 +593,8 @@ export async function GET(request: NextRequest) {
         throw error;
       }),
     ]);
-    return NextResponse.json({ posts, recentBattleResults, accounts, accountStatuses: runtimeAccountStatuses() });
+    const recentListenBarTracks = await loadRecentListenBarTracks(auth.admin);
+    return NextResponse.json({ posts, recentBattleResults, recentListenBarTracks, accounts, accountStatuses: runtimeAccountStatuses() });
   } catch (error) {
     if (isMissingSocialSchema(error as { message?: string })) {
       return jsonError("社群發文資料表尚未建立，請先套用 supabase/20260623_social_posting.sql。", 503);
@@ -517,6 +649,32 @@ export async function POST(request: NextRequest) {
         targets: bundle.targets,
       });
       return NextResponse.json({ ok: true, postId });
+    }
+
+    if (action === "create_listen_bar_spotlight_draft") {
+      const trackId = clean(body?.trackId, 80);
+      const spotlightDate = clean(body?.spotlightDate, 20);
+      if (!isUuid(trackId)) return jsonError("請選擇有效的傷心酒吧歌曲。");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(spotlightDate)) return jsonError("請輸入有效日期。");
+      const result = await loadListenBarSpotlightDraftInput(admin, auth.userId, {
+        spotlightDate,
+        trackId,
+        intro: clean(body?.intro, 1000),
+        shortCaption: clean(body?.shortCaption, 1200),
+      });
+      if (!result) return jsonError("找不到這首傷心酒吧歌曲。", 404);
+      const bundle = buildListenBarDailySpotlightDraft(result.draft);
+      const postId = await insertDraftBundle(admin, auth.userId, {
+        title: bundle.title,
+        sourceType: "listen_bar_daily_spotlight",
+        sourceId: result.spotlight.id,
+        body: result.draft.intro,
+        cta: result.draft.shortCaption,
+        linkUrl: result.draft.spotlightUrl,
+        scheduledAt: clean(body?.scheduledAt, 80) || null,
+        targets: bundle.targets,
+      });
+      return NextResponse.json({ ok: true, postId, spotlightId: result.spotlight.id });
     }
 
     if (action === "approve_post") {

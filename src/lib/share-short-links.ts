@@ -68,3 +68,8 @@ export function dailyBattleShortPath(battleId: string, lang = "zh") {
   const params = new URLSearchParams({ lang });
   return `/h/${encodeUuidToBase64Url(battleId)}?${params.toString()}`;
 }
+
+export function listenBarDailySpotlightPath(spotlightDate: string, lang = "zh") {
+  const params = new URLSearchParams({ spotlight: spotlightDate, lang });
+  return `/listen-bar?${params.toString()}`;
+}
