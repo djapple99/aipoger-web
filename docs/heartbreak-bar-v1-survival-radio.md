@@ -53,7 +53,8 @@
 ## 生存審判
 
 - 每 8 小時結算一次；宣傳保護期內只觀察與升格，不做淘汰。
-- 目前排程先跑 dry-run preview；真正升格 / 淘汰必須透過受保護的 POST 並開啟 `LISTEN_BAR_ROTATION_ENABLED=true`。
+- 宣傳保護期內不得由 Vercel Cron 自動呼叫 `process-rotation`；`GET /api/listen-bar/process-rotation` 只保留給人工或監控讀取 dry-run preview。
+- 真正升格 / 淘汰必須等宣傳保護期結束後，透過受保護的 POST 並開啟 `LISTEN_BAR_ROTATION_ENABLED=true`。Production DB 也要保留保護期 guard，擋掉容量淘汰型 removed 更新。
 - 宣傳保護期內，Challenger 直接升格為公播池歌曲。
 - 宣傳保護期後，Challenger 保護期滿 24 小時後，依投稿時間升格為公播池歌曲。
 - 宣傳保護期後，公播池超過 88 首時才會淘汰；淘汰數量只能等於超過 88 的數量，上限 3 首。

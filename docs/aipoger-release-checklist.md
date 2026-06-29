@@ -142,7 +142,8 @@ Challenger and public pool:
 - Public-pool songs do not count toward the 3 Challenger limit.
 - Public pool progress shows current count over 88.
 - After promotion protection, public-pool elimination starts only above 88 and removes at most 3 per pass.
-- `/api/listen-bar/process-rotation` GET is dry-run preview; mutation requires protected POST and `LISTEN_BAR_ROTATION_ENABLED=true`.
+- During promotion protection, Vercel Cron must not schedule `/api/listen-bar/process-rotation`; GET is manual/monitoring dry-run preview only.
+- Mutation requires protected POST and `LISTEN_BAR_ROTATION_ENABLED=true`, and production DB must still block capacity eviction while promotion protection is active.
 
 ## Honor Board Checklist
 

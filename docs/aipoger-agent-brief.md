@@ -160,10 +160,10 @@ Current rules:
 - Public pool target after promotion protection is 88 community songs.
 - From 2026-06-29 through 2026-07-05 Taiwan time, Bar Heartbreak is in promotion protection: Challenger songs join public airplay, public pool may exceed 88, and 88-song eviction is paused.
 - After promotion protection, new submissions enter Challenger.
-- Each creator can have up to 3 active Challenger songs.
+- Creator Challenger slots use the current 3/2/1 ladder: 0-2 active public songs allows 3 active Challengers, 3-5 allows 2, and 6+ allows 1. Public-pool songs do not get removed by this slot limit.
 - Challenger observation period is 24 hours.
-- During promotion protection, Challengers move into public airplay immediately. After promotion protection, Challenger has a 24-hour protection period, then automatically moves into the public pool. The old 1-positive-reaction promotion gate is retired.
-- Public-pool elimination is paused during promotion protection. After promotion protection, it runs only when there are more than 88 public songs.
+- During promotion protection, Challengers move into public airplay immediately and the public pool may exceed 88. After promotion protection, Challenger has a 24-hour protection period, then automatically moves into the public pool. The old 1-positive-reaction promotion gate is retired.
+- Public-pool elimination is paused during promotion protection, and Vercel Cron must not schedule `process-rotation` during that window. After promotion protection, elimination runs only when there are more than 88 public songs and removes at most 3 low-reaction older songs per pass.
 - Each post-protection elimination pass removes up to 3 low-performing public-pool songs.
 - A song with 30 positive reactions or 7 public survival days becomes Honor Board eligible.
 - New uploads get priority play after the current song finishes; up to 8 new uploads can air within a 1-hour priority batch.

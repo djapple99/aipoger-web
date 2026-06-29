@@ -5,10 +5,6 @@
       "schedule": "0 */8 * * *"
     },
     {
-      "path": "/api/listen-bar/process-rotation",
-      "schedule": "0 */8 * * *"
-    },
-    {
       "path": "/api/battle-pool/process-fallbacks",
       "schedule": "*/5 * * * *"
     },

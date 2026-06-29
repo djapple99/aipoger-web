@@ -159,6 +159,23 @@ test("listen bar promotion protection promotes challengers and pauses 88-song re
   assert.deepEqual(preview.wouldRemove, []);
 });
 
+test("listen bar promotion protection allows public pool overflow without removals", () => {
+  const protectionNow = Date.UTC(2026, 5, 29, 16, 0, 0);
+  const publicRows = Array.from({ length: 96 }, (_, index) => ({
+    id: `public-${index}`,
+    barPhase: "public",
+    positiveReactionCount: index % 2,
+    createdAt: new Date(protectionNow - (20 + index) * 60_000).toISOString(),
+  }));
+
+  const preview = buildListenBarRotationPreview(publicRows, protectionNow);
+
+  assert.equal(preview.evictionPaused, true);
+  assert.equal(preview.activePublic, 96);
+  assert.equal(preview.publicOverflow, 8);
+  assert.deepEqual(preview.wouldRemove, []);
+});
+
 test("listen bar rotation preview keeps protected challengers out of removal candidates", () => {
   const preview = buildListenBarRotationPreview([
     {

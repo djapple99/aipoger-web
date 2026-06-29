@@ -185,7 +185,8 @@ Current rules:
 - During promotion protection, active Challengers move into public airplay immediately. After promotion protection ends, a Challenger automatically moves into the public pool after 24 hours. The old 1-positive-reaction promotion gate is retired.
 - Own reaction remains allowed in V2, but it is only public support and does not guarantee survival.
 - Judgement interval: every 8 hours.
-- The scheduled `GET /api/listen-bar/process-rotation` route is a dry-run preview heartbeat. Real promotion/removal requires the protected `POST` route with `LISTEN_BAR_ROTATION_ENABLED=true`.
+- `GET /api/listen-bar/process-rotation` is a manual/monitoring dry-run preview only. During promotion protection it must not be scheduled by Vercel Cron, because no automatic path may trim the public pool back to 88.
+- Real post-protection promotion/removal requires the protected `POST` route with `LISTEN_BAR_ROTATION_ENABLED=true`, plus the production DB guard that blocks capacity eviction during promotion protection.
 - Public-pool elimination is paused during promotion protection. After promotion protection ends, it only runs when there are more than 88 public songs.
 - Bar Heartbreak survival and Honor Board eligibility start only after the public pool has reached 88 community songs. Existing public-pool time before the 88-song activation point must not be counted toward the 7-public-day Honor Board rule.
 - Elimination must never bring the active public pool below 88 songs.
