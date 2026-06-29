@@ -327,6 +327,10 @@ export default function AdminSocialPage() {
       failedTargets: targets.filter((target) => target.status === "failed").length,
     };
   }, [posts]);
+  const spotlightPosts = useMemo(
+    () => posts.filter((post) => post.source_type === "listen_bar_daily_spotlight"),
+    [posts],
+  );
 
   const loadData = useCallback(async () => {
     setError("");
@@ -520,6 +524,66 @@ export default function AdminSocialPage() {
             {error || message}
           </div>
         )}
+
+        <section className="mt-6 rounded-lg border border-yellow-200/25 bg-yellow-300/[0.07] p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-yellow-100/80">每日推薦歌草稿</p>
+              <h2 className="mt-2 text-xl font-black">最新 Spotlight 社群內容</h2>
+            </div>
+            <span className="rounded-md border border-yellow-200/25 bg-black/35 px-3 py-2 text-xs font-black text-yellow-100">
+              {spotlightPosts.length} 筆
+            </span>
+          </div>
+          {spotlightPosts.length === 0 ? (
+            <p className="mt-4 rounded-lg border border-white/10 bg-black/35 px-4 py-4 text-sm font-bold leading-6 text-zinc-400">
+              目前沒有每日推薦歌草稿。下方選一首傷心酒吧歌曲後，按「產生推薦草稿」。
+            </p>
+          ) : (
+            <div className="mt-4 grid gap-3">
+              {spotlightPosts.slice(0, 3).map((post) => {
+                const firstTarget = sortedTargets(post)[0] ?? null;
+                return (
+                  <article key={post.id} className="rounded-lg border border-yellow-200/18 bg-black/45 p-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-md bg-yellow-300/15 px-2 py-1 text-[0.65rem] font-black text-yellow-100">每日推薦歌</span>
+                          <span className="rounded-md bg-white/10 px-2 py-1 text-[0.65rem] font-black text-zinc-300">{statusLabel[post.status]}</span>
+                          <span className="text-xs font-bold text-zinc-500">{formatTime(post.created_at)}</span>
+                        </div>
+                        <h3 className="mt-2 text-lg font-black leading-snug text-white">{post.title}</h3>
+                        <p className="mt-1 text-xs font-bold text-zinc-500">
+                          平台草稿：{post.social_post_targets?.length ?? 0} 個
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {firstTarget?.target_url && (
+                          <a href={firstTarget.target_url} target="_blank" rel="noreferrer" className="rounded-lg border border-yellow-200/30 px-3 py-2 text-xs font-black text-yellow-100 hover:border-yellow-100">
+                            開啟 Spotlight
+                          </a>
+                        )}
+                        {firstTarget?.content_text && (
+                          <button type="button" onClick={() => copyText(firstTarget.content_text)} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-black text-white hover:border-white/30">
+                            複製第一版文案
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          disabled={busyId === post.id || post.status === "published"}
+                          onClick={() => runAction("approve_post", { postId: post.id }, post.id, "已批准每日推薦歌草稿。")}
+                          className="rounded-lg bg-yellow-300 px-3 py-2 text-xs font-black text-black disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          批准
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         <section className="mt-6 rounded-lg border border-white/10 bg-white/[0.04] p-5">
           <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-200/80">怎麼使用</p>
