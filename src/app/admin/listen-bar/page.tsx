@@ -235,19 +235,23 @@ function sortedSocialTargets(post: SocialPost) {
   return [...(post.social_post_targets ?? [])].sort((a, b) => SOCIAL_PLATFORM_ORDER.indexOf(a.platform) - SOCIAL_PLATFORM_ORDER.indexOf(b.platform));
 }
 
+function songCredit(artist: string, title: string) {
+  return /^《.+》$/.test(title) ? `${artist}${title}` : `${artist}《${title}》`;
+}
+
 function defaultSpotlightIntro(track: AdminListenBarTrackRow | null) {
   if (!track) return "今天主推一首正在傷心酒吧公播的 AI 音樂。聽完整版走 aipoger.com/today，喜歡就按愛心，這顆心會直接算進歌曲成績。";
   const artist = track.artist?.trim() || "AIPOGER Creator";
   const title = track.title?.trim() || "未命名作品";
   const genre = track.genre?.trim() || "AI Music";
-  return `今天主推 ${artist}《${title}》。這首 ${genre} 正在傷心酒吧公播，聽完整版走 aipoger.com/today；喜歡就按愛心，這顆心會直接算進歌曲成績。`;
+  return `今天主推 ${songCredit(artist, title)}。這首 ${genre} 正在傷心酒吧公播，聽完整版走 aipoger.com/today；喜歡就按愛心，這顆心會直接算進歌曲成績。`;
 }
 
 function defaultSpotlightCaption(track: AdminListenBarTrackRow | null) {
   if (!track) return "今天的傷心酒吧推薦。掃 QR 或輸入 aipoger.com/today，進來聽完整版，喜歡就按愛心。";
   const artist = track.artist?.trim() || "AIPOGER Creator";
   const title = track.title?.trim() || "未命名作品";
-  return `今天的傷心酒吧推薦：${artist}《${title}》。掃 QR 或輸入 aipoger.com/today，進來聽完整版，喜歡就按愛心。`;
+  return `今天的傷心酒吧推薦：${songCredit(artist, title)}。掃 QR 或輸入 aipoger.com/today，進來聽完整版，喜歡就按愛心。`;
 }
 
 function isAllowedSocialMediaFile(file: File) {

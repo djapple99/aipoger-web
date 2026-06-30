@@ -97,6 +97,10 @@ function appendLink(content: string, url: string) {
   return cleanUrl ? `${content}\n\n${cleanUrl}` : content;
 }
 
+function songCredit(artist: string, title: string) {
+  return /^《.+》$/.test(title) ? `${artist}${title}` : `${artist}《${title}》`;
+}
+
 function noFortyFiveSeconds(text: string) {
   return text.replace(/45\s*[- ]?sec(?:ond)?s?/gi, "60s").replace(/45\s*秒/g, "30-60 秒");
 }
@@ -238,7 +242,7 @@ export function buildListenBarDailySpotlightDraft(input: ListenBarDailySpotlight
   const todayUrl = cleanText(input.todayUrl, spotlightUrl);
   const audioUrl = cleanText(input.backgroundAudioUrl);
   const mediaUrl = cleanText(input.mediaUrl);
-  const songLabel = `${artist}《${title}》`;
+  const songLabel = songCredit(artist, title);
   const intro = cleanText(
     input.intro,
     `今天推薦 ${songLabel}。這首歌在傷心酒吧上架中，喜歡就進來按愛心，反應會直接算進作品成績。`,
