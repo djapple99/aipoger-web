@@ -55,6 +55,7 @@ export type ListenBarDailySpotlightDraftInput = {
   intro?: string | null;
   shortCaption?: string | null;
   spotlightUrl: string;
+  todayUrl?: string | null;
   backgroundAudioUrl?: string | null;
   mediaUrl?: string | null;
 };
@@ -234,6 +235,7 @@ export function buildListenBarDailySpotlightDraft(input: ListenBarDailySpotlight
   const genre = cleanText(input.genre, "AI Music");
   const aiTool = cleanText(input.aiTool, "AI Music");
   const spotlightUrl = cleanText(input.spotlightUrl);
+  const todayUrl = cleanText(input.todayUrl, spotlightUrl);
   const audioUrl = cleanText(input.backgroundAudioUrl);
   const mediaUrl = cleanText(input.mediaUrl);
   const songLabel = `${artist}《${title}》`;
@@ -245,7 +247,7 @@ export function buildListenBarDailySpotlightDraft(input: ListenBarDailySpotlight
   const shortCaption = cleanText(input.shortCaption, `${intro}\n\n${cta}`);
   const bundleTitle = `每日推薦歌｜${songLabel}`;
   const base = `AIPOGER 每日推薦歌\n\n${songLabel}\n類型：${genre}\n工具：${aiTool}\n\n${intro}\n\n${cta}`;
-  const videoScript = `Shorts 腳本：\n1. 開場：今天推薦 ${songLabel}。\n2. 中段：截取最有記憶點的一段，畫面放歌曲名、創作者、類型 ${genre}。\n3. 結尾 CTA：進 AIPOGER 傷心酒吧聽完整版，喜歡就按愛心。`;
+  const videoScript = `Shorts 腳本：\n1. 開場：今天推薦 ${songLabel}。\n2. 中段：截取最有記憶點的一段，畫面放歌曲名、創作者、類型 ${genre}。\n3. 結尾 CTA：畫面放 QR code 或 aipoger.com/today，進 AIPOGER 傷心酒吧聽完整版，喜歡就按愛心。`;
 
   return {
     title: bundleTitle,
@@ -265,26 +267,26 @@ export function buildListenBarDailySpotlightDraft(input: ListenBarDailySpotlight
         backgroundAudioLabel: title,
         notes: "X 第一版發文字與 Spotlight 連結；音檔保留作素材提示。",
       }),
-      target("instagram", bundleTitle, `${shortCaption}\n\n${socialTags("#每日推薦歌 #傷心酒吧")}`, "draft_only", {
+      target("instagram", bundleTitle, `${shortCaption}\n\n入口：${todayUrl}\n${socialTags("#每日推薦歌 #傷心酒吧")}`, "draft_only", {
         mediaUrl: mediaUrl || null,
-        targetUrl: spotlightUrl,
+        targetUrl: todayUrl,
         backgroundAudioUrl: audioUrl || null,
         backgroundAudioLabel: title,
-        notes: "IG Reels/圖文草稿；發布時使用推薦歌曲片段當背景配樂。",
+        notes: "IG Reels/圖文草稿；發布時使用推薦歌曲片段當背景配樂，畫面可放 /today QR code。",
       }),
       target("tiktok", bundleTitle, `${videoScript}\n\nCaption:\n${shortCaption}\n${socialTags("#每日推薦歌 #傷心酒吧")}`, "draft_only", {
         mediaUrl: mediaUrl || null,
-        targetUrl: spotlightUrl,
+        targetUrl: todayUrl,
         backgroundAudioUrl: audioUrl || null,
         backgroundAudioLabel: title,
-        notes: "TikTok 先產 Shorts 腳本與 caption；發布時使用推薦歌曲片段。",
+        notes: "TikTok 先產短影音腳本與 caption；發布時使用推薦歌曲片段，畫面可放 /today QR code。",
       }),
-      target("youtube", bundleTitle, `Shorts 標題：今天推薦 ${songLabel}\n\nDescription:\n${shortCaption}\n\n聽完整版：${spotlightUrl}\n${socialTags("#每日推薦歌 #傷心酒吧")}`, "draft_only", {
+      target("youtube", bundleTitle, `Shorts 標題：今天推薦 ${songLabel}\n\nDescription:\n${shortCaption}\n\nShorts 入口：掃畫面 QR code 或輸入 ${todayUrl}\n今日完整頁：${spotlightUrl}\n${socialTags("#每日推薦歌 #傷心酒吧")}`, "draft_only", {
         mediaUrl: mediaUrl || null,
-        targetUrl: spotlightUrl,
+        targetUrl: todayUrl,
         backgroundAudioUrl: audioUrl || null,
         backgroundAudioLabel: title,
-        notes: "YouTube Shorts 標題與 description；發布時使用推薦歌曲片段。",
+        notes: "YouTube Shorts 描述/留言連結通常不可點；發布時請把 /today QR code 或 aipoger.com/today 放進畫面。",
       }),
       target("facebook_group", bundleTitle, appendLink(`${base}\n\n${socialTags("#每日推薦歌 #傷心酒吧")}`, spotlightUrl), "manual", {
         mediaUrl: mediaUrl || null,

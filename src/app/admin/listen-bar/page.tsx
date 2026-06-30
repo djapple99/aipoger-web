@@ -221,6 +221,16 @@ function listenBarSpotlightUrl(spotlightDate: string) {
   return `/listen-bar?spotlight=${encodeURIComponent(date)}&lang=zh`;
 }
 
+const TODAY_SPOTLIGHT_URL = "https://aipoger.com/today";
+
+function todaySpotlightQrUrl(size = 420) {
+  const params = new URLSearchParams({
+    size: `${size}x${size}`,
+    data: TODAY_SPOTLIGHT_URL,
+  });
+  return `https://api.qrserver.com/v1/create-qr-code/?${params.toString()}`;
+}
+
 function sortedSocialTargets(post: SocialPost) {
   return [...(post.social_post_targets ?? [])].sort((a, b) => SOCIAL_PLATFORM_ORDER.indexOf(a.platform) - SOCIAL_PLATFORM_ORDER.indexOf(b.platform));
 }
@@ -1325,6 +1335,11 @@ export default function ListenBarAdminPage() {
     setMessage("Spotlight 連結已複製。");
   };
 
+  const copyTodaySpotlightLink = async () => {
+    await navigator.clipboard.writeText(TODAY_SPOTLIGHT_URL);
+    setMessage("每日推薦固定入口已複製。");
+  };
+
   if (adminState === "checking") {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#050505] px-6 text-zinc-100">
@@ -1400,13 +1415,16 @@ export default function ListenBarAdminPage() {
               <p className="text-xs uppercase tracking-[0.28em] text-yellow-100/75">DAILY SPOTLIGHT</p>
               <h2 className="mt-1 text-2xl font-black text-white">每日推薦歌後台</h2>
               <p className="mt-1 max-w-3xl text-xs font-bold leading-6 text-zinc-500">
-                從傷心酒吧選一首歌做今天推薦；Spotlight 連結會帶聽眾先聽這首，愛心仍算回原本歌曲，不打斷公播輪播。
+                從傷心酒吧選一首歌做今天推薦；/today 與 Spotlight 會帶聽眾先聽這首，愛心仍算回原本歌曲，不打斷公播輪播。
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Link href="/admin/social" className="rounded-full border border-yellow-200/30 bg-black/25 px-4 py-2 text-xs font-black text-yellow-100">
                 查看全部草稿
               </Link>
+              <a href={TODAY_SPOTLIGHT_URL} target="_blank" rel="noreferrer" className="rounded-full border border-yellow-200/30 bg-yellow-300/10 px-4 py-2 text-xs font-black text-yellow-100">
+                開啟 /today
+              </a>
               <a href={listenBarSpotlightUrl(spotlightDate)} target="_blank" rel="noreferrer" className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-xs font-black text-zinc-100">
                 開啟 Spotlight
               </a>
@@ -1575,6 +1593,13 @@ export default function ListenBarAdminPage() {
                 </p>
                 <button
                   type="button"
+                  onClick={copyTodaySpotlightLink}
+                  className="rounded-xl border border-yellow-200/30 bg-yellow-300/10 px-4 py-3 text-sm font-black text-yellow-100 transition hover:border-yellow-100"
+                >
+                  複製 /today 連結
+                </button>
+                <button
+                  type="button"
                   onClick={copySpotlightLink}
                   className="rounded-xl border border-yellow-200/30 bg-black/30 px-4 py-3 text-sm font-black text-yellow-100 transition hover:border-yellow-100"
                 >
@@ -1583,7 +1608,39 @@ export default function ListenBarAdminPage() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-black/34 p-4">
+            <div className="grid gap-4">
+              <div className="rounded-2xl border border-yellow-200/20 bg-yellow-300/[0.045] p-4">
+                <div className="grid gap-4 sm:grid-cols-[8.5rem_1fr]">
+                  <div className="rounded-xl border border-white/12 bg-white p-2">
+                    <img src={todaySpotlightQrUrl()} alt="AIPOGER 今日推薦歌 QR Code" className="aspect-square w-full rounded-lg bg-white object-contain" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-yellow-100/70">SHORTS ENTRY</p>
+                    <h3 className="mt-1 text-lg font-black text-white">每日推薦固定入口 QR</h3>
+                    <p className="mt-2 break-all text-sm font-black text-yellow-100">{TODAY_SPOTLIGHT_URL}</p>
+                    <p className="mt-2 text-xs font-bold leading-6 text-zinc-500">
+                      給 YouTube Shorts / Reels 畫面使用。Shorts 描述與留言連結通常不能直接點，畫面放 QR code 或短網址最穩。
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={copyTodaySpotlightLink}
+                        className="rounded-lg border border-yellow-200/30 px-3 py-2 text-xs font-black text-yellow-100 hover:border-yellow-100"
+                      >
+                        複製連結
+                      </button>
+                      <a href={TODAY_SPOTLIGHT_URL} target="_blank" rel="noreferrer" className="rounded-lg border border-white/10 px-3 py-2 text-xs font-black text-white hover:border-white/30">
+                        開啟 /today
+                      </a>
+                      <a href={todaySpotlightQrUrl(900)} target="_blank" rel="noreferrer" download="aipoger-today-qr.png" className="rounded-lg border border-white/10 px-3 py-2 text-xs font-black text-white hover:border-white/30">
+                        下載 QR
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-black/34 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.2em] text-yellow-100/70">LATEST DRAFTS</p>
@@ -1643,6 +1700,7 @@ export default function ListenBarAdminPage() {
                   ))}
                 </div>
               ) : null}
+              </div>
             </div>
           </div>
         </section>

@@ -430,6 +430,7 @@ async function loadListenBarSpotlightDraftInput(
       intro,
       shortCaption,
       spotlightUrl: absoluteUrl(listenBarDailySpotlightPath(params.spotlightDate, "zh")),
+      todayUrl: absoluteUrl("/today"),
       backgroundAudioUrl: listenBarAudioPublicUrl(admin, track.audio_path),
       mediaUrl: clean(params.mediaUrl, 1000) || null,
     },
