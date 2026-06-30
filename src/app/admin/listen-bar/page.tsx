@@ -123,6 +123,14 @@ type AdminSocialPayload = {
   posts?: SocialPost[];
   error?: string;
 };
+type SocialMediaUploadPayload = {
+  bucket?: string;
+  path?: string;
+  token?: string;
+  publicUrl?: string;
+  contentType?: string;
+  error?: string;
+};
 
 const initialForm: TrackForm = {
   title: "",
@@ -164,6 +172,9 @@ const socialStatusLabel: Record<SocialPostStatus, string> = {
   published: "已發布",
   failed: "失敗",
 };
+const SOCIAL_MEDIA_UPLOAD_ACCEPT = "image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm";
+const SOCIAL_MEDIA_UPLOAD_MAX_BYTES = 300 * 1024 * 1024;
+const SOCIAL_MEDIA_UPLOAD_MAX_LABEL = "300MB";
 
 function safeFileName(name: string) {
   const cleaned = name
@@ -227,6 +238,28 @@ function defaultSpotlightCaption(track: AdminListenBarTrackRow | null) {
   const artist = track.artist?.trim() || "AIPOGER Creator";
   const title = track.title?.trim() || "未命名作品";
   return `今天的傷心酒吧推薦：${artist}《${title}》。進來聽完整版，喜歡就按愛心。`;
+}
+
+function isAllowedSocialMediaFile(file: File) {
+  const allowed = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "video/mp4", "video/quicktime", "video/webm"]);
+  if (allowed.has(file.type)) return true;
+  return /\.(jpe?g|png|webp|gif|mp4|mov|webm)$/i.test(file.name);
+}
+
+function socialMediaContentType(file: File) {
+  if (file.type) return file.type;
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  if (ext === "gif") return "image/gif";
+  if (ext === "mov") return "video/quicktime";
+  if (ext === "webm") return "video/webm";
+  return "video/mp4";
+}
+
+function mediaKindFromUrl(url: string) {
+  return /\.(mp4|mov|webm)(?:[?#].*)?$/i.test(url) ? "video" : "image";
 }
 
 function readAudioDuration(file: File): Promise<number> {
@@ -497,6 +530,9 @@ export default function ListenBarAdminPage() {
   const [selectedSpotlightTrackId, setSelectedSpotlightTrackId] = useState("");
   const [spotlightIntro, setSpotlightIntro] = useState("");
   const [spotlightCaption, setSpotlightCaption] = useState("");
+  const [spotlightMediaFile, setSpotlightMediaFile] = useState<File | null>(null);
+  const [spotlightMediaPreview, setSpotlightMediaPreview] = useState("");
+  const [spotlightMediaUrl, setSpotlightMediaUrl] = useState("");
   const [spotlightBusy, setSpotlightBusy] = useState(false);
 
   const displayTracks = useMemo(
@@ -618,8 +654,9 @@ export default function ListenBarAdminPage() {
       if (audioPreview) URL.revokeObjectURL(audioPreview);
       if (coverPreview.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
       if (embeddedCover?.previewUrl) URL.revokeObjectURL(embeddedCover.previewUrl);
+      if (spotlightMediaPreview) URL.revokeObjectURL(spotlightMediaPreview);
     };
-  }, [audioPreview, coverPreview, embeddedCover]);
+  }, [audioPreview, coverPreview, embeddedCover, spotlightMediaPreview]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowMs(Date.now()), 15_000);
@@ -734,6 +771,28 @@ export default function ListenBarAdminPage() {
     setCoverPreview(URL.createObjectURL(file));
   };
 
+  const handleSpotlightMediaChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
+    setError("");
+    setMessage("");
+    if (spotlightMediaPreview) URL.revokeObjectURL(spotlightMediaPreview);
+    setSpotlightMediaPreview("");
+    setSpotlightMediaFile(null);
+    setSpotlightMediaUrl("");
+    if (!file) return;
+    if (!isAllowedSocialMediaFile(file)) {
+      setError("推薦素材格式不支援。請使用 JPG、PNG、WebP、GIF、MP4、MOV 或 WebM。");
+      return;
+    }
+    if (file.size > SOCIAL_MEDIA_UPLOAD_MAX_BYTES) {
+      setError(`推薦素材太大。單檔上限是 ${SOCIAL_MEDIA_UPLOAD_MAX_LABEL}。`);
+      return;
+    }
+    setSpotlightMediaFile(file);
+    setSpotlightMediaPreview(URL.createObjectURL(file));
+  };
+
   const uploadAsset = async (bucket: string, file: File | Blob, fileName: string, contentType: string) => {
     if (!userId) throw new Error("尚未登入。");
     const path = `${userId}/${Date.now()}-${crypto.randomUUID()}-${safeFileName(fileName)}`;
@@ -756,6 +815,35 @@ export default function ListenBarAdminPage() {
       (percent) => setMessage(`音檔上傳中 ${percent}%`),
     );
     return path;
+  };
+
+  const uploadSpotlightMediaAsset = async () => {
+    if (!spotlightMediaFile) return spotlightMediaUrl.trim();
+    const response = await fetch("/api/admin/social-media-upload", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(await authHeader()),
+      },
+      body: JSON.stringify({
+        fileName: spotlightMediaFile.name,
+        fileSize: spotlightMediaFile.size,
+        contentType: socialMediaContentType(spotlightMediaFile),
+      }),
+    });
+    const payload = (await response.json().catch(() => null)) as SocialMediaUploadPayload | null;
+    if (!response.ok || !payload?.bucket || !payload.path || !payload.token || !payload.publicUrl) {
+      throw new Error(payload?.error || "推薦素材上傳連結建立失敗。");
+    }
+    const { error: uploadError } = await supabase.storage
+      .from(payload.bucket)
+      .uploadToSignedUrl(payload.path, payload.token, spotlightMediaFile, {
+        contentType: payload.contentType || socialMediaContentType(spotlightMediaFile),
+      });
+    if (uploadError) throw uploadError;
+    setSpotlightMediaUrl(payload.publicUrl);
+    setSpotlightMediaFile(null);
+    return payload.publicUrl;
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -1196,28 +1284,35 @@ export default function ListenBarAdminPage() {
     setError("");
     setMessage("");
     setSpotlightBusy(true);
-    const response = await fetch("/api/admin/social", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(await authHeader()),
-      },
-      body: JSON.stringify({
-        action: "create_listen_bar_spotlight_draft",
-        trackId: selectedSpotlightTrack.id,
-        spotlightDate,
-        intro: spotlightIntro.trim() || defaultSpotlightIntro(selectedSpotlightTrack),
-        shortCaption: spotlightCaption.trim() || defaultSpotlightCaption(selectedSpotlightTrack),
-      }),
-    });
-    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-    setSpotlightBusy(false);
-    if (!response.ok) {
-      setError(payload?.error || "每日推薦歌草稿建立失敗。");
-      return;
+    try {
+      const mediaUrl = await uploadSpotlightMediaAsset();
+      const response = await fetch("/api/admin/social", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(await authHeader()),
+        },
+        body: JSON.stringify({
+          action: "create_listen_bar_spotlight_draft",
+          trackId: selectedSpotlightTrack.id,
+          spotlightDate,
+          intro: spotlightIntro.trim() || defaultSpotlightIntro(selectedSpotlightTrack),
+          shortCaption: spotlightCaption.trim() || defaultSpotlightCaption(selectedSpotlightTrack),
+          mediaUrl: mediaUrl || null,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok) {
+        setError(payload?.error || "每日推薦歌草稿建立失敗。");
+        return;
+      }
+      setMessage(`已建立每日推薦歌：${selectedSpotlightTrack.artist || "創作者"}《${selectedSpotlightTrack.title || "未命名作品"}》。`);
+      await loadSocialSpotlights();
+    } catch (uploadError) {
+      setError(`每日推薦歌建立失敗：${String((uploadError as { message?: string })?.message ?? uploadError)}`);
+    } finally {
+      setSpotlightBusy(false);
     }
-    setMessage(`已建立每日推薦歌：${selectedSpotlightTrack.artist || "創作者"}《${selectedSpotlightTrack.title || "未命名作品"}》。`);
-    await loadSocialSpotlights();
   };
 
   const copySpotlightLink = async () => {
@@ -1394,6 +1489,60 @@ export default function ListenBarAdminPage() {
                   className="mt-2 w-full resize-y rounded-xl border border-white/12 bg-black/60 px-4 py-3 text-sm font-bold normal-case leading-6 tracking-normal text-white outline-none transition focus:border-yellow-200/70"
                 />
               </label>
+              <div className="rounded-2xl border border-white/10 bg-black/35 p-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">推薦影像素材</p>
+                    <p className="mt-1 text-xs font-bold leading-6 text-zinc-500">
+                      支援 JPG / PNG / WebP / GIF / MP4 / MOV / WebM，會跟文案一起進平台草稿。
+                    </p>
+                  </div>
+                  <label className="inline-flex cursor-pointer rounded-xl border border-yellow-200/30 bg-yellow-300/10 px-4 py-3 text-sm font-black text-yellow-100 transition hover:border-yellow-100">
+                    選擇影像
+                    <input type="file" accept={SOCIAL_MEDIA_UPLOAD_ACCEPT} onChange={handleSpotlightMediaChange} className="hidden" />
+                  </label>
+                </div>
+                {(spotlightMediaPreview || spotlightMediaUrl) ? (
+                  <div className="mt-3 grid gap-3 sm:grid-cols-[9rem_1fr]">
+                    <div className="overflow-hidden rounded-xl border border-white/10 bg-black">
+                      {mediaKindFromUrl(spotlightMediaPreview || spotlightMediaUrl) === "video" ? (
+                        <video src={spotlightMediaPreview || spotlightMediaUrl} className="aspect-[9/16] w-full bg-black object-cover" controls muted playsInline />
+                      ) : (
+                        <img src={spotlightMediaPreview || spotlightMediaUrl} alt="" className="aspect-[9/16] w-full bg-black object-cover" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-black text-white">
+                        {spotlightMediaFile?.name || "已上傳素材"}
+                      </p>
+                      <p className="mt-2 break-all text-xs font-bold leading-6 text-zinc-500">
+                        {spotlightMediaFile
+                          ? `待上傳，大小 ${(spotlightMediaFile.size / 1024 / 1024).toFixed(1)}MB`
+                          : spotlightMediaUrl}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {spotlightMediaUrl ? (
+                          <a href={spotlightMediaUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-yellow-200/30 px-3 py-2 text-xs font-black text-yellow-100 hover:border-yellow-100">
+                            開啟素材
+                          </a>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (spotlightMediaPreview) URL.revokeObjectURL(spotlightMediaPreview);
+                            setSpotlightMediaFile(null);
+                            setSpotlightMediaPreview("");
+                            setSpotlightMediaUrl("");
+                          }}
+                          className="rounded-lg border border-red-300/30 px-3 py-2 text-xs font-black text-red-100 hover:border-red-200"
+                        >
+                          移除素材
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -1401,7 +1550,7 @@ export default function ListenBarAdminPage() {
                   onClick={createSpotlightDraft}
                   className="rounded-xl bg-yellow-300 px-4 py-3 text-sm font-black text-black transition hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {spotlightBusy ? "建立中..." : "儲存每日推薦歌並產草稿"}
+                  {spotlightBusy ? "上傳/建立中..." : "儲存每日推薦歌並產草稿"}
                 </button>
                 <button
                   type="button"
@@ -1437,10 +1586,20 @@ export default function ListenBarAdminPage() {
                     平台草稿：{latestSpotlightPost.social_post_targets?.length ?? 0} 個
                     {latestSpotlightTarget ? ` / 第一個：${socialPlatformLabel[latestSpotlightTarget.platform]}` : ""}
                   </p>
+                  {latestSpotlightTarget?.media_url ? (
+                    <p className="mt-2 break-all text-xs font-bold leading-6 text-yellow-100/80">
+                      素材：{latestSpotlightTarget.media_url}
+                    </p>
+                  ) : null}
                   <div className="mt-3 flex flex-wrap gap-2">
                     {latestSpotlightTarget?.target_url ? (
                       <a href={latestSpotlightTarget.target_url} target="_blank" rel="noreferrer" className="rounded-lg border border-yellow-200/30 px-3 py-2 text-xs font-black text-yellow-100 hover:border-yellow-100">
                         開啟最新 Spotlight
+                      </a>
+                    ) : null}
+                    {latestSpotlightTarget?.media_url ? (
+                      <a href={latestSpotlightTarget.media_url} target="_blank" rel="noreferrer" className="rounded-lg border border-yellow-200/30 px-3 py-2 text-xs font-black text-yellow-100 hover:border-yellow-100">
+                        開啟素材
                       </a>
                     ) : null}
                     <Link href="/admin/social" className="rounded-lg border border-white/10 px-3 py-2 text-xs font-black text-white hover:border-white/30">

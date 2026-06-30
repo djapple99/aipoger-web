@@ -344,6 +344,7 @@ async function insertDraftBundle(
     content_text: item.content,
     target_url: item.targetUrl,
     manual_publish_url: item.manualPublishUrl,
+    media_url: item.mediaUrl,
     background_audio_url: item.backgroundAudioUrl,
     background_audio_label: item.backgroundAudioLabel,
     notes: item.notes,
@@ -363,6 +364,7 @@ async function upsertListenBarDailySpotlight(
     title: string;
     intro?: string | null;
     shortCaption?: string | null;
+    mediaUrl?: string | null;
   },
 ) {
   const now = new Date().toISOString();
@@ -392,6 +394,7 @@ async function loadListenBarSpotlightDraftInput(
     trackId: string;
     intro?: string | null;
     shortCaption?: string | null;
+    mediaUrl?: string | null;
   },
 ): Promise<{ spotlight: ListenBarDailySpotlightRow; draft: ListenBarDailySpotlightDraftInput } | null> {
   const { data: track, error } = await admin
@@ -428,6 +431,7 @@ async function loadListenBarSpotlightDraftInput(
       shortCaption,
       spotlightUrl: absoluteUrl(listenBarDailySpotlightPath(params.spotlightDate, "zh")),
       backgroundAudioUrl: listenBarAudioPublicUrl(admin, track.audio_path),
+      mediaUrl: clean(params.mediaUrl, 1000) || null,
     },
   };
 }
@@ -487,15 +491,25 @@ async function markPostAggregateStatus(admin: AdminClient, postId: string) {
     .eq("id", postId);
 }
 
-async function publishDiscord(content: string) {
+function contentWithMediaUrl(content: string, mediaUrl: string | null | undefined) {
+  const cleanMediaUrl = clean(mediaUrl, 1000);
+  if (!cleanMediaUrl) return content;
+  return `${content}\n\n素材：${cleanMediaUrl}`;
+}
+
+async function publishDiscord(content: string, mediaUrl?: string | null) {
   const webhookUrl = process.env.SOCIAL_DISCORD_WEBHOOK_URL ?? process.env.DISCORD_SOCIAL_WEBHOOK_URL ?? process.env.DISCORD_WEBHOOK_URL;
   if (!webhookUrl) throw new Error("Discord webhook 尚未設定。請設定 SOCIAL_DISCORD_WEBHOOK_URL。");
+  const cleanMediaUrl = clean(mediaUrl, 1000);
   const response = await fetch(webhookUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       username: "AIPOGER Social Desk",
-      content: content.slice(0, 1900),
+      content: contentWithMediaUrl(content, cleanMediaUrl).slice(0, 1900),
+      embeds: cleanMediaUrl && /\.(jpe?g|png|webp|gif)$/i.test(cleanMediaUrl)
+        ? [{ image: { url: cleanMediaUrl } }]
+        : undefined,
       allowed_mentions: { parse: [] },
     }),
   });
@@ -503,7 +517,7 @@ async function publishDiscord(content: string) {
   return { externalPostId: null };
 }
 
-async function publishX(content: string) {
+async function publishX(content: string, mediaUrl?: string | null) {
   const token = process.env.X_API_BEARER_TOKEN ?? process.env.SOCIAL_X_BEARER_TOKEN;
   if (!token) throw new Error("X token 尚未設定。請設定 X_API_BEARER_TOKEN。");
   const response = await fetch("https://api.x.com/2/tweets", {
@@ -512,7 +526,7 @@ async function publishX(content: string) {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ text: content.slice(0, 280) }),
+    body: JSON.stringify({ text: contentWithMediaUrl(content, mediaUrl).slice(0, 280) }),
   });
   const payload = (await response.json().catch(() => null)) as { data?: { id?: string }; detail?: string; title?: string } | null;
   if (!response.ok) throw new Error(payload?.detail || payload?.title || `X 發布失敗：HTTP ${response.status}`);
@@ -533,9 +547,9 @@ async function publishTarget(admin: AdminClient, userId: string, targetId: strin
   try {
     const result =
       targetRow.platform === "discord"
-        ? await publishDiscord(targetRow.content_text)
+        ? await publishDiscord(targetRow.content_text, targetRow.media_url)
         : targetRow.platform === "x"
-          ? await publishX(targetRow.content_text)
+          ? await publishX(targetRow.content_text, targetRow.media_url)
           : null;
     if (!result) throw new Error("這個平台尚未支援 API 直發。");
 
@@ -661,6 +675,7 @@ export async function POST(request: NextRequest) {
         trackId,
         intro: clean(body?.intro, 1000),
         shortCaption: clean(body?.shortCaption, 1200),
+        mediaUrl: clean(body?.mediaUrl, 1000),
       });
       if (!result) return jsonError("找不到這首傷心酒吧歌曲。", 404);
       const bundle = buildListenBarDailySpotlightDraft(result.draft);
@@ -748,6 +763,7 @@ export async function POST(request: NextRequest) {
         title: clean(body?.title, 200),
         content_text: clean(body?.content, 6000),
         target_url: clean(body?.targetUrl, 1000) || null,
+        media_url: clean(body?.mediaUrl, 1000) || null,
         background_audio_url: clean(body?.backgroundAudioUrl, 1000) || null,
         background_audio_label: clean(body?.backgroundAudioLabel, 160) || null,
         updated_at: new Date().toISOString(),

@@ -180,6 +180,7 @@ function SocialTargetPanel({
   const [title, setTitle] = useState(target.title);
   const [content, setContent] = useState(target.content_text);
   const [targetUrl, setTargetUrl] = useState(target.target_url ?? "");
+  const [mediaUrl, setMediaUrl] = useState(target.media_url ?? "");
   const [backgroundAudioUrl, setBackgroundAudioUrl] = useState(target.background_audio_url ?? "");
   const [backgroundAudioLabel, setBackgroundAudioLabel] = useState(target.background_audio_label ?? "");
 
@@ -187,6 +188,7 @@ function SocialTargetPanel({
     setTitle(target.title);
     setContent(target.content_text);
     setTargetUrl(target.target_url ?? "");
+    setMediaUrl(target.media_url ?? "");
     setBackgroundAudioUrl(target.background_audio_url ?? "");
     setBackgroundAudioLabel(target.background_audio_label ?? "");
   }, [target]);
@@ -199,6 +201,7 @@ function SocialTargetPanel({
         title,
         content,
         targetUrl,
+        mediaUrl,
         backgroundAudioUrl,
         backgroundAudioLabel,
       },
@@ -240,6 +243,10 @@ function SocialTargetPanel({
           <input value={backgroundAudioLabel} onChange={(event) => setBackgroundAudioLabel(event.target.value)} className="mt-2 w-full rounded-lg border border-white/10 bg-[#050505] px-3 py-2 text-xs font-bold normal-case tracking-normal text-white outline-none" />
         </label>
         <label className="sm:col-span-2 text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+          影像素材 URL
+          <input value={mediaUrl} onChange={(event) => setMediaUrl(event.target.value)} className="mt-2 w-full rounded-lg border border-white/10 bg-[#050505] px-3 py-2 text-xs font-bold normal-case tracking-normal text-white outline-none" />
+        </label>
+        <label className="sm:col-span-2 text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
           背景配樂 URL
           <input value={backgroundAudioUrl} onChange={(event) => setBackgroundAudioUrl(event.target.value)} className="mt-2 w-full rounded-lg border border-white/10 bg-[#050505] px-3 py-2 text-xs font-bold normal-case tracking-normal text-white outline-none" />
         </label>
@@ -247,6 +254,11 @@ function SocialTargetPanel({
 
       <div className="mt-3 space-y-2 text-xs font-bold leading-6 text-zinc-400">
         <p>模式：{target.publish_mode === "api" ? "API 可發布" : target.publish_mode === "manual" ? "手動發布" : "草稿素材"}</p>
+        {mediaUrl ? (
+          <p className="break-all text-yellow-100">影像素材：{mediaUrl}</p>
+        ) : (
+          <p className="text-zinc-500">影像素材：尚未指定。</p>
+        )}
         {backgroundAudioUrl ? (
           <p className="break-all text-orange-100">背景配樂：{backgroundAudioLabel || "勝出音樂"}｜{backgroundAudioUrl}</p>
         ) : (
@@ -266,6 +278,11 @@ function SocialTargetPanel({
         {backgroundAudioUrl && (
           <a href={backgroundAudioUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-orange-300/30 px-3 py-2 text-xs font-black text-orange-100 hover:border-orange-200">
             開啟配樂
+          </a>
+        )}
+        {mediaUrl && (
+          <a href={mediaUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-yellow-200/30 px-3 py-2 text-xs font-black text-yellow-100 hover:border-yellow-100">
+            開啟素材
           </a>
         )}
         {target.manual_publish_url && (
@@ -594,7 +611,7 @@ export default function AdminSocialPage() {
             </p>
             <p>
               <span className="text-white">2. 圖與影片：</span>
-              第一版還不是自動出圖/剪影片。IG、TikTok、YouTube、FB 社團會給文案、腳本、連結與背景配樂提示。
+              每日推薦可在傷心酒吧後台先上傳影像素材；IG、TikTok、YouTube、FB 社團會保留文案、素材、連結與背景配樂提示。
             </p>
             <p>
               <span className="text-white">3. 發布：</span>

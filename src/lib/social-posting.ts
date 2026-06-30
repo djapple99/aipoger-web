@@ -11,6 +11,7 @@ export type SocialTargetDraft = {
   content: string;
   publishMode: SocialPublishMode;
   status: SocialPostStatus;
+  mediaUrl: string | null;
   manualPublishUrl: string | null;
   targetUrl: string | null;
   backgroundAudioUrl: string | null;
@@ -55,6 +56,7 @@ export type ListenBarDailySpotlightDraftInput = {
   shortCaption?: string | null;
   spotlightUrl: string;
   backgroundAudioUrl?: string | null;
+  mediaUrl?: string | null;
 };
 
 export type SocialDraftBundle = {
@@ -110,6 +112,7 @@ function target(
   content: string,
   publishMode: SocialPublishMode,
   options: {
+    mediaUrl?: string | null;
     targetUrl?: string | null;
     manualPublishUrl?: string | null;
     backgroundAudioUrl?: string | null;
@@ -123,6 +126,7 @@ function target(
     content: noFortyFiveSeconds(withBackgroundAudioNote(content, options.backgroundAudioLabel ?? null, platform)),
     publishMode,
     status: "needs_review",
+    mediaUrl: options.mediaUrl ?? null,
     targetUrl: options.targetUrl ?? null,
     manualPublishUrl: options.manualPublishUrl ?? null,
     backgroundAudioUrl: options.backgroundAudioUrl ?? null,
@@ -231,6 +235,7 @@ export function buildListenBarDailySpotlightDraft(input: ListenBarDailySpotlight
   const aiTool = cleanText(input.aiTool, "AI Music");
   const spotlightUrl = cleanText(input.spotlightUrl);
   const audioUrl = cleanText(input.backgroundAudioUrl);
+  const mediaUrl = cleanText(input.mediaUrl);
   const songLabel = `${artist}《${title}》`;
   const intro = cleanText(
     input.intro,
@@ -247,36 +252,42 @@ export function buildListenBarDailySpotlightDraft(input: ListenBarDailySpotlight
     sourceType: "listen_bar_daily_spotlight",
     targets: [
       target("discord", bundleTitle, appendLink(base, spotlightUrl), "api", {
+        mediaUrl: mediaUrl || null,
         targetUrl: spotlightUrl,
         backgroundAudioUrl: audioUrl || null,
         backgroundAudioLabel: title,
         notes: "每日推薦歌可直發 Discord；連結會帶聽眾直接進 Spotlight，不打斷一般輪播。",
       }),
       target("x", bundleTitle, appendLink(`今天的 AIPOGER 每日推薦歌：${songLabel}\n\n${genre} / ${aiTool}\n\n${cta}`, spotlightUrl), "api", {
+        mediaUrl: mediaUrl || null,
         targetUrl: spotlightUrl,
         backgroundAudioUrl: audioUrl || null,
         backgroundAudioLabel: title,
         notes: "X 第一版發文字與 Spotlight 連結；音檔保留作素材提示。",
       }),
       target("instagram", bundleTitle, `${shortCaption}\n\n${socialTags("#每日推薦歌 #傷心酒吧")}`, "draft_only", {
+        mediaUrl: mediaUrl || null,
         targetUrl: spotlightUrl,
         backgroundAudioUrl: audioUrl || null,
         backgroundAudioLabel: title,
         notes: "IG Reels/圖文草稿；發布時使用推薦歌曲片段當背景配樂。",
       }),
       target("tiktok", bundleTitle, `${videoScript}\n\nCaption:\n${shortCaption}\n${socialTags("#每日推薦歌 #傷心酒吧")}`, "draft_only", {
+        mediaUrl: mediaUrl || null,
         targetUrl: spotlightUrl,
         backgroundAudioUrl: audioUrl || null,
         backgroundAudioLabel: title,
         notes: "TikTok 先產 Shorts 腳本與 caption；發布時使用推薦歌曲片段。",
       }),
       target("youtube", bundleTitle, `Shorts 標題：今天推薦 ${songLabel}\n\nDescription:\n${shortCaption}\n\n聽完整版：${spotlightUrl}\n${socialTags("#每日推薦歌 #傷心酒吧")}`, "draft_only", {
+        mediaUrl: mediaUrl || null,
         targetUrl: spotlightUrl,
         backgroundAudioUrl: audioUrl || null,
         backgroundAudioLabel: title,
         notes: "YouTube Shorts 標題與 description；發布時使用推薦歌曲片段。",
       }),
       target("facebook_group", bundleTitle, appendLink(`${base}\n\n${socialTags("#每日推薦歌 #傷心酒吧")}`, spotlightUrl), "manual", {
+        mediaUrl: mediaUrl || null,
         targetUrl: spotlightUrl,
         manualPublishUrl: FB_GROUP_URL,
         backgroundAudioUrl: audioUrl || null,
