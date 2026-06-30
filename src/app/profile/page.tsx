@@ -76,6 +76,7 @@ type CreatorItem = {
   meta: string;
   href: string;
   date?: string | null;
+  favoriteRecord?: HonorFavoriteRecord;
 };
 
 type CreatorFilter = "all" | "listenBar" | "battle" | "records" | "wins" | "favorites";
@@ -137,6 +138,7 @@ function ProfileInner() {
   const [battles, setBattles] = useState<BattleRow[]>([]);
   const [wins, setWins] = useState<BattleArchiveRow[]>([]);
   const [honorFavorites, setHonorFavorites] = useState<HonorFavoriteRecord[]>([]);
+  const [favoriteRemoveBusy, setFavoriteRemoveBusy] = useState<Record<string, boolean>>({});
   const [creatorFilter, setCreatorFilter] = useState<CreatorFilter>("all");
   const cropFileInputRef = useRef<HTMLInputElement>(null);
   const avatarSectionRef = useRef<HTMLDivElement>(null);
@@ -170,6 +172,9 @@ function ProfileInner() {
             favorites: "收藏歌曲",
             favorited: "已點讚收藏",
             honorFavorite: "Top Drops 收藏",
+            removeFavorite: "取消收藏",
+            removingFavorite: "取消中",
+            removeFavoriteFailed: "取消收藏失敗，請稍後再試。",
             active: "公開中",
             openBattle: "發起挑戰",
             openBar: "去傷心酒吧",
@@ -200,6 +205,9 @@ function ProfileInner() {
             favorites: "Saved Songs",
             favorited: "saved from hearts",
             honorFavorite: "Top Drops Save",
+            removeFavorite: "Unsave",
+            removingFavorite: "Removing",
+            removeFavoriteFailed: "Could not remove this save. Try again later.",
             active: "Live",
             openBattle: "Start Battle",
             openBar: "Open Listen Bar",
@@ -429,6 +437,73 @@ function ProfileInner() {
     }
   };
 
+  const removeFavorite = useCallback(
+    async (record: HonorFavoriteRecord) => {
+      const recordKey = record.recordKey.trim();
+      const targetKind = record.targetKind;
+      const targetId = record.targetId?.trim();
+      if (!recordKey || !targetKind || !targetId) {
+        setCreatorError(copy.removeFavoriteFailed);
+        return;
+      }
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        alert(t("profile_need_login"));
+        router.push("/auth");
+        return;
+      }
+
+      setCreatorError("");
+      setFavoriteRemoveBusy((current) => ({ ...current, [recordKey]: true }));
+      try {
+        const response = await fetch("/api/honor-board/interactions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            action: "favorite",
+            recordKey,
+            targetKind,
+            targetId,
+            targetTitle: record.targetTitle,
+            targetArtist: record.targetArtist,
+            targetGenre: record.targetGenre,
+          }),
+        });
+        const payload = (await response.json().catch(() => null)) as {
+          record?: HonorFavoriteRecord;
+          error?: string;
+        } | null;
+        if (!response.ok || !payload?.record) {
+          setCreatorError(payload?.error || copy.removeFavoriteFailed);
+          return;
+        }
+
+        setHonorFavorites((current) => {
+          if (!payload.record?.myFavorited) {
+            return current.filter((item) => item.recordKey !== recordKey);
+          }
+          return current.map((item) => (item.recordKey === recordKey ? payload.record as HonorFavoriteRecord : item));
+        });
+      } catch (error) {
+        console.error("[profile remove favorite]", error);
+        setCreatorError(copy.removeFavoriteFailed);
+      } finally {
+        setFavoriteRemoveBusy((current) => {
+          const next = { ...current };
+          delete next[recordKey];
+          return next;
+        });
+      }
+    },
+    [copy.removeFavoriteFailed, router, t],
+  );
+
   const creatorItems = useMemo<CreatorItem[]>(() => {
     const tracks = barTracks.map((track) => ({
       id: `bar-${track.id}`,
@@ -500,6 +575,7 @@ function ProfileInner() {
           .join(" / "),
         href: lang === "en" ? "/rank?lang=en" : "/rank?lang=zh",
         date: record.updatedAt,
+        favoriteRecord: record,
       };
     });
 
@@ -707,20 +783,54 @@ function ProfileInner() {
               </div>
               {filteredCreatorItems.length > 0 ? (
                 <div className="space-y-2">
-                  {filteredCreatorItems.map((item) => (
-                    <Link
-                      key={item.id}
-                      href={item.href}
-                      className="grid gap-2 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 transition hover:border-orange-300/45 hover:bg-orange-300/[0.06] sm:grid-cols-[8rem_1fr_auto] sm:items-center"
-                    >
-                      <span className="text-xs font-black uppercase tracking-[0.18em] text-cyan-100/80">{item.kind}</span>
-                      <span className="min-w-0">
-                        <span className="block truncate text-base font-black text-zinc-50">{item.title}</span>
-                        <span className="block truncate text-xs text-zinc-500">{item.meta}</span>
-                      </span>
-                      <span className="text-xs text-zinc-500">{formatDate(item.date, lang)}</span>
-                    </Link>
-                  ))}
+                  {filteredCreatorItems.map((item) => {
+                    if (item.category === "favorites" && item.favoriteRecord) {
+                      const removeBusy = Boolean(favoriteRemoveBusy[item.favoriteRecord.recordKey]);
+                      return (
+                        <div
+                          key={item.id}
+                          className="grid gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 transition hover:border-orange-300/45 hover:bg-orange-300/[0.06] sm:grid-cols-[1fr_auto] sm:items-center"
+                        >
+                          <Link
+                            href={item.href}
+                            className="grid min-w-0 gap-2 sm:grid-cols-[8rem_1fr_auto] sm:items-center"
+                          >
+                            <span className="text-xs font-black uppercase tracking-[0.18em] text-cyan-100/80">{item.kind}</span>
+                            <span className="min-w-0">
+                              <span className="block truncate text-base font-black text-zinc-50">{item.title}</span>
+                              <span className="block truncate text-xs text-zinc-500">{item.meta}</span>
+                            </span>
+                            <span className="text-xs text-zinc-500">{formatDate(item.date, lang)}</span>
+                          </Link>
+                          <button
+                            type="button"
+                            disabled={removeBusy}
+                            onClick={() => void removeFavorite(item.favoriteRecord as HonorFavoriteRecord)}
+                            className="justify-self-start rounded-full border border-red-200/25 bg-red-500/10 px-3 py-2 text-xs font-black text-red-100 transition hover:border-red-200/55 hover:bg-red-500/18 disabled:cursor-wait disabled:opacity-55 sm:justify-self-end"
+                            aria-label={`${copy.removeFavorite} ${item.title}`}
+                            title={copy.removeFavorite}
+                          >
+                            {removeBusy ? copy.removingFavorite : copy.removeFavorite}
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <Link
+                        key={item.id}
+                        href={item.href}
+                        className="grid gap-2 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 transition hover:border-orange-300/45 hover:bg-orange-300/[0.06] sm:grid-cols-[8rem_1fr_auto] sm:items-center"
+                      >
+                        <span className="text-xs font-black uppercase tracking-[0.18em] text-cyan-100/80">{item.kind}</span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-base font-black text-zinc-50">{item.title}</span>
+                          <span className="block truncate text-xs text-zinc-500">{item.meta}</span>
+                        </span>
+                        <span className="text-xs text-zinc-500">{formatDate(item.date, lang)}</span>
+                      </Link>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="rounded-2xl border border-dashed border-white/12 bg-black/20 p-6 text-sm text-zinc-500">
