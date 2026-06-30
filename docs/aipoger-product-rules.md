@@ -1,6 +1,6 @@
 # AIPOGER Product Rules
 
-Last updated: 2026-06-29
+Last updated: 2026-07-01
 
 This document is the product-rule source of truth for AIPOGER. Use it before changing Battle, Bar Heartbreak, Honor Board, auth, upload, or deployment behavior.
 
@@ -35,6 +35,23 @@ Current behavior target:
 - Facebook Groups must not be auto-posted through unstable browser automation or password-based login. For the AIPOGER group, provide copy, assets, and the group link for manual posting: `https://www.facebook.com/groups/aipoger`.
 - Do not store social platform passwords. Tokens, webhooks, and API keys belong in environment variables or encrypted storage, never in repo, docs, or logs.
 - If a platform token/webhook is not configured, show a disconnected/pending state and do not attempt publishing.
+
+## Daily Spotlight / 每日推薦歌
+
+Current behavior target:
+
+- Daily Spotlight is the bridge between Bar Heartbreak and short-form promotion. It promotes one selected Bar Heartbreak track without interrupting the radio rotation.
+- The fixed public entry is `https://aipoger.com/today`. It redirects by Taiwan date to the current day's spotlight page, such as `/listen-bar?spotlight=YYYY-MM-DD&lang=zh`.
+- Shorts, Reels, Discord posts, Facebook group copy, QR codes, and on-screen video text should use `https://aipoger.com/today` instead of a dated `spotlight=` URL, so old videos keep pointing to the current daily recommendation entry.
+- The spotlight page or highlighted Bar Heartbreak track should still use the normal Bar Heartbreak reaction system. Listeners who like the recommendation can press heart; those reactions count toward the same track record.
+- Daily Spotlight must not force the selected song to play next in the main Bar Heartbreak rotation. Visitors coming from `/today` can open the spotlight track directly while the shared radio rotation keeps running normally.
+- `/admin/listen-bar` is the working admin surface for choosing the daily recommended track, generating intro/caption copy, uploading the recommendation media asset, and creating social drafts.
+- Recommendation media may be image or short video. Supported upload formats should include JPG, PNG, WebP, GIF, MP4, MOV, and WebM when storage/browser support allows.
+- Saving a Daily Spotlight creates or updates social post drafts; it must not automatically publish to external platforms.
+- `/admin/social` remains the publishing control room. A draft must be approved by an admin, and platform publishing still requires the appropriate platform action. Approval alone does not mean the post was sent.
+- Discord may be directly published through the configured webhook after approval. Going forward, successful Discord sends should store the returned message id/channel response when Discord provides it, so missing-post debugging can distinguish "not sent" from "sent to another channel."
+- Facebook group, Instagram, TikTok, and YouTube flows remain manual or draft-assisted unless their official publishing workflows are explicitly verified.
+- QR code generation belongs to the Daily Spotlight workflow and should point to `https://aipoger.com/today`.
 
 ## Auth Rules
 
@@ -198,6 +215,7 @@ Current rules:
 - After the 88-song activation point, a song with 30 positive reactions or 7 public survival days becomes Honor Board eligible.
 - New submissions get priority after the current song finishes; each priority batch starts when the first upload arrives, airs up to 8 new uploads within 1 hour, and pushes overflow to the next hour.
 - Bar Heartbreak upload metadata should stay compact: user-entered creator name, AI tool, and album/mood are limited to 12 CJK characters or about 24 English characters; one-line song description is limited to 16 CJK characters or about 32 English characters. Auto-detected song titles are not subject to this compact metadata limit.
+- Daily Spotlight can feature a Bar Heartbreak track for promotion through `/today`, QR code, and social drafts. It is a curated spotlight layer, not a replacement for the shared radio rotation and not a separate reaction pool.
 
 Product language:
 

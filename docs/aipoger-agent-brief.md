@@ -164,9 +164,12 @@ Current rules:
 - Challenger observation period is 24 hours.
 - During promotion protection, Challengers move into public airplay immediately and the public pool may exceed 88. After promotion protection, Challenger has a 24-hour protection period, then automatically moves into the public pool. The old 1-positive-reaction promotion gate is retired.
 - Public-pool elimination is paused during promotion protection, and Vercel Cron must not schedule `process-rotation` during that window. After promotion protection, elimination runs only when there are more than 88 public songs and removes at most 3 low-reaction older songs per pass.
-- Each post-protection elimination pass removes up to 3 low-performing public-pool songs.
+- Each post-protection elimination pass removes only the overflow above 88, capped at 3 low-performing public-pool songs.
 - A song with 30 positive reactions or 7 public survival days becomes Honor Board eligible.
 - New uploads get priority play after the current song finishes; up to 8 new uploads can air within a 1-hour priority batch.
+- Daily Spotlight is a curated promotion layer for one Bar Heartbreak track. It uses `/today`, QR code, and social drafts to send listeners to the featured song without interrupting the shared radio rotation.
+- Spotlight hearts/comments must write to the same Bar Heartbreak track record, so promotion activity helps the song's normal survival and honor signals.
+- Saving a Daily Spotlight creates drafts; external publishing still requires admin approval and a platform-specific publish action. Discord can publish through webhook when configured, but approval alone is not a send.
 
 ## Honor Board Rules
 
