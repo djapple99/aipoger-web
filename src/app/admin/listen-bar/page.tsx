@@ -262,6 +262,13 @@ function mediaKindFromUrl(url: string) {
   return /\.(mp4|mov|webm)(?:[?#].*)?$/i.test(url) ? "video" : "image";
 }
 
+function mediaKindForPreview(file: File | null, url: string) {
+  if (file?.type.startsWith("video/")) return "video";
+  if (file?.type.startsWith("image/")) return "image";
+  if (file && /\.(mp4|mov|webm)$/i.test(file.name)) return "video";
+  return mediaKindFromUrl(url);
+}
+
 function readAudioDuration(file: File): Promise<number> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
@@ -1494,7 +1501,7 @@ export default function ListenBarAdminPage() {
                   <div>
                     <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">推薦影像素材</p>
                     <p className="mt-1 text-xs font-bold leading-6 text-zinc-500">
-                      支援 JPG / PNG / WebP / GIF / MP4 / MOV / WebM，會跟文案一起進平台草稿。
+                      支援 JPG / PNG / WebP / GIF / MP4 / MOV / WebM。選檔後按下方儲存才會上傳；只產草稿，不會自動發平台。
                     </p>
                   </div>
                   <label className="inline-flex cursor-pointer rounded-xl border border-yellow-200/30 bg-yellow-300/10 px-4 py-3 text-sm font-black text-yellow-100 transition hover:border-yellow-100">
@@ -1505,7 +1512,7 @@ export default function ListenBarAdminPage() {
                 {(spotlightMediaPreview || spotlightMediaUrl) ? (
                   <div className="mt-3 grid gap-3 sm:grid-cols-[9rem_1fr]">
                     <div className="overflow-hidden rounded-xl border border-white/10 bg-black">
-                      {mediaKindFromUrl(spotlightMediaPreview || spotlightMediaUrl) === "video" ? (
+                      {mediaKindForPreview(spotlightMediaFile, spotlightMediaPreview || spotlightMediaUrl) === "video" ? (
                         <video src={spotlightMediaPreview || spotlightMediaUrl} className="aspect-[9/16] w-full bg-black object-cover" controls muted playsInline />
                       ) : (
                         <img src={spotlightMediaPreview || spotlightMediaUrl} alt="" className="aspect-[9/16] w-full bg-black object-cover" />
@@ -1517,7 +1524,7 @@ export default function ListenBarAdminPage() {
                       </p>
                       <p className="mt-2 break-all text-xs font-bold leading-6 text-zinc-500">
                         {spotlightMediaFile
-                          ? `待上傳，大小 ${(spotlightMediaFile.size / 1024 / 1024).toFixed(1)}MB`
+                          ? `已選取，尚未上傳。按「儲存每日推薦歌並產草稿」後才會上傳，大小 ${(spotlightMediaFile.size / 1024 / 1024).toFixed(1)}MB`
                           : spotlightMediaUrl}
                       </p>
                       <div className="mt-3 flex flex-wrap gap-2">
@@ -1552,6 +1559,9 @@ export default function ListenBarAdminPage() {
                 >
                   {spotlightBusy ? "上傳/建立中..." : "儲存每日推薦歌並產草稿"}
                 </button>
+                <p className="basis-full text-xs font-bold leading-6 text-zinc-500">
+                  儲存後會建立社群草稿；要發送平台，請到社群後台批准後再發布或手動貼文。
+                </p>
                 <button
                   type="button"
                   onClick={copySpotlightLink}
