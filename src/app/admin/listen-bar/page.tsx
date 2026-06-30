@@ -16,6 +16,7 @@ import { parseMp3Metadata, type ParsedMp3Metadata } from "@/lib/mp3-id3";
 import { supabase } from "@/lib/supabase";
 import { loadIsAdmin } from "@/lib/user-profile-admin";
 import { IMAGE_UPLOAD_ACCEPT, imageContentType, isAllowedImageUploadFile } from "@/lib/image-upload-policy";
+import type { SocialPlatform, SocialPostStatus, SocialPublishMode } from "@/lib/social-posting";
 import {
   LISTEN_BAR_AUDIO_UPLOAD_ACCEPT,
   LISTEN_BAR_AUDIO_UPLOAD_MAX_BYTES,
@@ -87,6 +88,41 @@ type TrackDownloadPayload = {
   fileName?: string;
   error?: string;
 };
+type SocialTarget = {
+  id: string;
+  post_id: string;
+  platform: SocialPlatform;
+  publish_mode: SocialPublishMode;
+  status: SocialPostStatus;
+  title: string;
+  content_text: string;
+  target_url: string | null;
+  manual_publish_url: string | null;
+  media_url: string | null;
+  background_audio_url: string | null;
+  background_audio_label: string | null;
+  notes: string | null;
+  external_post_id: string | null;
+  error_message: string | null;
+  last_attempt_at: string | null;
+  published_at: string | null;
+};
+type SocialPost = {
+  id: string;
+  source_type: "manual" | "battle_result" | "listen_bar_daily_spotlight";
+  source_id: string | null;
+  title: string;
+  status: SocialPostStatus;
+  scheduled_at: string | null;
+  approved_at: string | null;
+  published_at: string | null;
+  created_at: string;
+  social_post_targets?: SocialTarget[];
+};
+type AdminSocialPayload = {
+  posts?: SocialPost[];
+  error?: string;
+};
 
 const initialForm: TrackForm = {
   title: "",
@@ -112,6 +148,22 @@ const UPCOMING_ROTATION_PREVIEW_COUNT = 6;
 const LISTEN_BAR_ADMIN_GENRE_OPTIONS = MUSIC_GENRE_OPTIONS;
 const GENRE_VALUES = new Set(LISTEN_BAR_ADMIN_GENRE_OPTIONS.map((genre) => genre.value));
 const NEEDS_GENRE_REVIEW = new Set(["", "AI Music", "ai music", "Genre", "genre", "自我風格", "未標示風格"]);
+const SOCIAL_PLATFORM_ORDER: SocialPlatform[] = ["discord", "x", "instagram", "tiktok", "youtube", "facebook_group"];
+const socialPlatformLabel: Record<SocialPlatform, string> = {
+  discord: "Discord",
+  x: "X",
+  instagram: "Instagram",
+  tiktok: "TikTok",
+  youtube: "YouTube",
+  facebook_group: "Facebook 社團",
+};
+const socialStatusLabel: Record<SocialPostStatus, string> = {
+  draft: "草稿",
+  needs_review: "待審核",
+  scheduled: "已批准",
+  published: "已發布",
+  failed: "失敗",
+};
 
 function safeFileName(name: string) {
   const cleaned = name
@@ -128,6 +180,53 @@ function formatDuration(seconds: number | null | undefined) {
   const m = Math.floor(value / 60);
   const s = value % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function formatTime(value?: string | null) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("zh-TW", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function todayTaipeiDate() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  return year && month && day ? `${year}-${month}-${day}` : new Date().toISOString().slice(0, 10);
+}
+
+function listenBarSpotlightUrl(spotlightDate: string) {
+  const date = spotlightDate.trim() || todayTaipeiDate();
+  return `/listen-bar?spotlight=${encodeURIComponent(date)}&lang=zh`;
+}
+
+function sortedSocialTargets(post: SocialPost) {
+  return [...(post.social_post_targets ?? [])].sort((a, b) => SOCIAL_PLATFORM_ORDER.indexOf(a.platform) - SOCIAL_PLATFORM_ORDER.indexOf(b.platform));
+}
+
+function defaultSpotlightIntro(track: AdminListenBarTrackRow | null) {
+  if (!track) return "今天推薦一首正在傷心酒吧公播的 AI 音樂。進來聽完整版，喜歡就按愛心，這顆心會直接算進歌曲成績。";
+  const artist = track.artist?.trim() || "AIPOGER Creator";
+  const title = track.title?.trim() || "未命名作品";
+  const genre = track.genre?.trim() || "AI Music";
+  return `今天推薦 ${artist}《${title}》。這首 ${genre} 正在傷心酒吧公播，進來聽完整版，喜歡就按愛心，這顆心會直接算進歌曲成績。`;
+}
+
+function defaultSpotlightCaption(track: AdminListenBarTrackRow | null) {
+  if (!track) return "今天的傷心酒吧推薦。進來聽完整版，喜歡就按愛心。";
+  const artist = track.artist?.trim() || "AIPOGER Creator";
+  const title = track.title?.trim() || "未命名作品";
+  return `今天的傷心酒吧推薦：${artist}《${title}》。進來聽完整版，喜歡就按愛心。`;
 }
 
 function readAudioDuration(file: File): Promise<number> {
@@ -393,6 +492,12 @@ export default function ListenBarAdminPage() {
   const [metadataSavingId, setMetadataSavingId] = useState("");
   const [downloadingTrackId, setDownloadingTrackId] = useState("");
   const [optimisticTrackPatches, setOptimisticTrackPatches] = useState<Record<string, Partial<AdminListenBarTrackRow>>>({});
+  const [socialPosts, setSocialPosts] = useState<SocialPost[]>([]);
+  const [spotlightDate, setSpotlightDate] = useState(todayTaipeiDate());
+  const [selectedSpotlightTrackId, setSelectedSpotlightTrackId] = useState("");
+  const [spotlightIntro, setSpotlightIntro] = useState("");
+  const [spotlightCaption, setSpotlightCaption] = useState("");
+  const [spotlightBusy, setSpotlightBusy] = useState(false);
 
   const displayTracks = useMemo(
     () => tracks.map((track) => ({ ...track, ...(optimisticTrackPatches[track.id] ?? {}) })),
@@ -431,6 +536,17 @@ export default function ListenBarAdminPage() {
   const liveRotation = useMemo(() => liveRotationSnapshot(displayTracks, nowMs), [displayTracks, nowMs]);
   const currentlyPlayingId = liveRotation.current?.id ?? "";
   const totalActive = visiblePlayableTracks.length;
+  const spotlightTrackOptions = visiblePlayableTracks;
+  const selectedSpotlightTrack = useMemo(
+    () => spotlightTrackOptions.find((track) => track.id === selectedSpotlightTrackId) ?? spotlightTrackOptions[0] ?? null,
+    [selectedSpotlightTrackId, spotlightTrackOptions],
+  );
+  const spotlightPosts = useMemo(
+    () => socialPosts.filter((post) => post.source_type === "listen_bar_daily_spotlight"),
+    [socialPosts],
+  );
+  const latestSpotlightPost = spotlightPosts[0] ?? null;
+  const latestSpotlightTarget = latestSpotlightPost ? sortedSocialTargets(latestSpotlightPost)[0] ?? null : null;
 
   const loadTracks = useCallback(async () => {
     setError("");
@@ -463,6 +579,19 @@ export default function ListenBarAdminPage() {
     setReportStorageFallback(Boolean(payload?.storageFallback));
   }, []);
 
+  const loadSocialSpotlights = useCallback(async () => {
+    const response = await fetch("/api/admin/social", {
+      cache: "no-store",
+      headers: await authHeader(),
+    });
+    const payload = (await response.json().catch(() => null)) as AdminSocialPayload | null;
+    if (!response.ok) {
+      setSocialPosts([]);
+      return;
+    }
+    setSocialPosts(payload?.posts ?? []);
+  }, []);
+
   useEffect(() => {
     void (async () => {
       const { data } = await supabase.auth.getSession();
@@ -480,9 +609,9 @@ export default function ListenBarAdminPage() {
       }
 
       setAdminState("ready");
-      await Promise.all([loadTracks(), loadReportSummary()]);
+      await Promise.all([loadTracks(), loadReportSummary(), loadSocialSpotlights()]);
     })();
-  }, [loadReportSummary, loadTracks]);
+  }, [loadReportSummary, loadSocialSpotlights, loadTracks]);
 
   useEffect(() => {
     return () => {
@@ -496,6 +625,18 @@ export default function ListenBarAdminPage() {
     const timer = window.setInterval(() => setNowMs(Date.now()), 15_000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (selectedSpotlightTrackId || spotlightTrackOptions.length === 0) return;
+    const preferredTrack = spotlightTrackOptions.find((track) => /橘貓|女巫/i.test(`${track.title ?? ""} ${track.artist ?? ""}`));
+    setSelectedSpotlightTrackId(preferredTrack?.id ?? spotlightTrackOptions[0]?.id ?? "");
+  }, [selectedSpotlightTrackId, spotlightTrackOptions]);
+
+  useEffect(() => {
+    if (!selectedSpotlightTrack) return;
+    setSpotlightIntro((current) => current || defaultSpotlightIntro(selectedSpotlightTrack));
+    setSpotlightCaption((current) => current || defaultSpotlightCaption(selectedSpotlightTrack));
+  }, [selectedSpotlightTrack]);
 
   const updateForm = (patch: Partial<TrackForm>) => {
     setForm((current) => ({ ...current, ...patch }));
@@ -1047,6 +1188,44 @@ export default function ListenBarAdminPage() {
     setMessage(`已建立「${track.title || "未命名作品"}」原檔下載連結。`);
   };
 
+  const createSpotlightDraft = async () => {
+    if (!selectedSpotlightTrack) {
+      setError("請先選擇一首可播放的傷心酒吧歌曲。");
+      return;
+    }
+    setError("");
+    setMessage("");
+    setSpotlightBusy(true);
+    const response = await fetch("/api/admin/social", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(await authHeader()),
+      },
+      body: JSON.stringify({
+        action: "create_listen_bar_spotlight_draft",
+        trackId: selectedSpotlightTrack.id,
+        spotlightDate,
+        intro: spotlightIntro.trim() || defaultSpotlightIntro(selectedSpotlightTrack),
+        shortCaption: spotlightCaption.trim() || defaultSpotlightCaption(selectedSpotlightTrack),
+      }),
+    });
+    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+    setSpotlightBusy(false);
+    if (!response.ok) {
+      setError(payload?.error || "每日推薦歌草稿建立失敗。");
+      return;
+    }
+    setMessage(`已建立每日推薦歌：${selectedSpotlightTrack.artist || "創作者"}《${selectedSpotlightTrack.title || "未命名作品"}》。`);
+    await loadSocialSpotlights();
+  };
+
+  const copySpotlightLink = async () => {
+    const url = new URL(listenBarSpotlightUrl(spotlightDate), window.location.origin).toString();
+    await navigator.clipboard.writeText(url);
+    setMessage("Spotlight 連結已複製。");
+  };
+
   if (adminState === "checking") {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#050505] px-6 text-zinc-100">
@@ -1115,6 +1294,178 @@ export default function ListenBarAdminPage() {
             <LangToggle variant="inline" />
           </div>
         </header>
+
+        <section className="rounded-[1.4rem] border border-yellow-200/20 bg-yellow-300/[0.055] p-4 shadow-[0_20px_70px_rgba(0,0,0,0.36)] backdrop-blur md:p-5">
+          <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-yellow-100/75">DAILY SPOTLIGHT</p>
+              <h2 className="mt-1 text-2xl font-black text-white">每日推薦歌後台</h2>
+              <p className="mt-1 max-w-3xl text-xs font-bold leading-6 text-zinc-500">
+                從傷心酒吧選一首歌做今天推薦；Spotlight 連結會帶聽眾先聽這首，愛心仍算回原本歌曲，不打斷公播輪播。
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/admin/social" className="rounded-full border border-yellow-200/30 bg-black/25 px-4 py-2 text-xs font-black text-yellow-100">
+                查看全部草稿
+              </Link>
+              <a href={listenBarSpotlightUrl(spotlightDate)} target="_blank" rel="noreferrer" className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-xs font-black text-zinc-100">
+                開啟 Spotlight
+              </a>
+            </div>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-[1fr_0.82fr]">
+            <div className="grid gap-3 rounded-2xl border border-white/10 bg-black/38 p-4">
+              <div className="grid gap-3 sm:grid-cols-[8.5rem_1fr]">
+                <label className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                  日期
+                  <input
+                    type="date"
+                    value={spotlightDate}
+                    onChange={(event) => setSpotlightDate(event.target.value)}
+                    className="mt-2 h-12 w-full rounded-xl border border-white/12 bg-black/60 px-3 text-sm font-bold normal-case tracking-normal text-white outline-none transition focus:border-yellow-200/70"
+                  />
+                </label>
+                <label className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                  推薦歌曲
+                  <select
+                    value={selectedSpotlightTrackId}
+                    onChange={(event) => {
+                      const nextId = event.target.value;
+                      const nextTrack = spotlightTrackOptions.find((track) => track.id === nextId) ?? null;
+                      setSelectedSpotlightTrackId(nextId);
+                      setSpotlightIntro(defaultSpotlightIntro(nextTrack));
+                      setSpotlightCaption(defaultSpotlightCaption(nextTrack));
+                    }}
+                    className="mt-2 h-12 w-full rounded-xl border border-white/12 bg-black/60 px-3 text-sm font-bold normal-case tracking-normal text-white outline-none transition focus:border-yellow-200/70"
+                  >
+                    {spotlightTrackOptions.length === 0 ? (
+                      <option value="">尚無可推薦歌曲</option>
+                    ) : (
+                      spotlightTrackOptions.map((track) => (
+                        <option key={track.id} value={track.id}>
+                          {track.artist || "創作者"}《{track.title || "未命名"}》｜{track.genre || "AI Music"}｜♥ {track.heart_count ?? trackReactionTotal(track)}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </label>
+              </div>
+
+              {selectedSpotlightTrack ? (
+                <div className="grid gap-3 rounded-2xl border border-yellow-200/18 bg-yellow-300/[0.045] p-3 sm:grid-cols-[5.25rem_1fr]">
+                  <img
+                    src={rowPublicUrl(LISTEN_BAR_COVER_BUCKET, selectedSpotlightTrack.cover_path) || DEFAULT_LISTEN_BAR_COVER}
+                    alt=""
+                    className="aspect-square w-full rounded-xl bg-black object-cover"
+                  />
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full border border-yellow-200/35 bg-yellow-300/12 px-3 py-1 text-[11px] font-black text-yellow-100">
+                        今日推薦候選
+                      </span>
+                      <span className="text-[11px] font-black text-zinc-500">
+                        {formatDuration(selectedSpotlightTrack.duration_seconds)} / ♥ {selectedSpotlightTrack.heart_count ?? trackReactionTotal(selectedSpotlightTrack)}
+                      </span>
+                    </div>
+                    <p className="mt-2 truncate text-lg font-black text-white">{selectedSpotlightTrack.title || "未命名作品"}</p>
+                    <p className="mt-1 truncate text-sm font-bold text-zinc-400">
+                      {selectedSpotlightTrack.artist || "創作者"} / {selectedSpotlightTrack.ai_tool || "AI Music"} / {selectedSpotlightTrack.genre || "AI Music"}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
+              <label className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                推薦文
+                <textarea
+                  value={spotlightIntro}
+                  onChange={(event) => setSpotlightIntro(event.target.value)}
+                  rows={3}
+                  className="mt-2 w-full resize-y rounded-xl border border-white/12 bg-black/60 px-4 py-3 text-sm font-bold normal-case leading-6 tracking-normal text-white outline-none transition focus:border-yellow-200/70"
+                />
+              </label>
+              <label className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                Shorts / 社群 Caption
+                <textarea
+                  value={spotlightCaption}
+                  onChange={(event) => setSpotlightCaption(event.target.value)}
+                  rows={3}
+                  className="mt-2 w-full resize-y rounded-xl border border-white/12 bg-black/60 px-4 py-3 text-sm font-bold normal-case leading-6 tracking-normal text-white outline-none transition focus:border-yellow-200/70"
+                />
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={spotlightBusy || !selectedSpotlightTrack}
+                  onClick={createSpotlightDraft}
+                  className="rounded-xl bg-yellow-300 px-4 py-3 text-sm font-black text-black transition hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {spotlightBusy ? "建立中..." : "儲存每日推薦歌並產草稿"}
+                </button>
+                <button
+                  type="button"
+                  onClick={copySpotlightLink}
+                  className="rounded-xl border border-yellow-200/30 bg-black/30 px-4 py-3 text-sm font-black text-yellow-100 transition hover:border-yellow-100"
+                >
+                  複製 Spotlight 連結
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-black/34 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-yellow-100/70">LATEST DRAFTS</p>
+                  <h3 className="mt-1 text-lg font-black text-white">每日推薦草稿</h3>
+                </div>
+                <span className="rounded-full border border-yellow-200/30 bg-yellow-300/10 px-3 py-1 text-xs font-black text-yellow-100">
+                  {spotlightPosts.length} 筆
+                </span>
+              </div>
+
+              {latestSpotlightPost ? (
+                <article className="mt-4 rounded-2xl border border-yellow-200/18 bg-yellow-300/[0.04] p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-md bg-yellow-300/15 px-2 py-1 text-[0.65rem] font-black text-yellow-100">
+                      {socialStatusLabel[latestSpotlightPost.status]}
+                    </span>
+                    <span className="text-xs font-bold text-zinc-500">{formatTime(latestSpotlightPost.created_at)}</span>
+                  </div>
+                  <h4 className="mt-2 text-base font-black leading-snug text-white">{latestSpotlightPost.title}</h4>
+                  <p className="mt-2 text-xs font-bold leading-6 text-zinc-500">
+                    平台草稿：{latestSpotlightPost.social_post_targets?.length ?? 0} 個
+                    {latestSpotlightTarget ? ` / 第一個：${socialPlatformLabel[latestSpotlightTarget.platform]}` : ""}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {latestSpotlightTarget?.target_url ? (
+                      <a href={latestSpotlightTarget.target_url} target="_blank" rel="noreferrer" className="rounded-lg border border-yellow-200/30 px-3 py-2 text-xs font-black text-yellow-100 hover:border-yellow-100">
+                        開啟最新 Spotlight
+                      </a>
+                    ) : null}
+                    <Link href="/admin/social" className="rounded-lg border border-white/10 px-3 py-2 text-xs font-black text-white hover:border-white/30">
+                      進社群後台審核
+                    </Link>
+                  </div>
+                </article>
+              ) : (
+                <p className="mt-4 rounded-2xl border border-white/10 bg-black/35 px-4 py-6 text-sm font-bold leading-7 text-zinc-500">
+                  目前沒有每日推薦歌草稿。選一首酒吧歌曲後，按左邊按鈕建立第一筆。
+                </p>
+              )}
+
+              {spotlightPosts.length > 1 ? (
+                <div className="mt-3 grid gap-2">
+                  {spotlightPosts.slice(1, 4).map((post) => (
+                    <Link key={post.id} href="/admin/social" className="rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2 text-xs font-bold text-zinc-300 transition hover:border-yellow-200/40 hover:text-white">
+                      {formatTime(post.created_at)}｜{post.title}｜{socialStatusLabel[post.status]}
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </section>
 
         <section className="rounded-[1.4rem] border border-cyan-200/14 bg-cyan-300/[0.045] p-4 shadow-[0_20px_70px_rgba(0,0,0,0.36)] backdrop-blur md:p-5">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
