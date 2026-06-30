@@ -7,6 +7,7 @@ import { loadIsAdmin } from "@/lib/user-profile-admin";
 import type { SocialPlatform, SocialPostStatus, SocialPublishMode } from "@/lib/social-posting";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
+type SocialPostFilter = "todo" | "needs_review" | "scheduled" | "manual" | "failed" | "published" | "all";
 
 type SocialTarget = {
   id: string;
@@ -55,18 +56,6 @@ type RecentBattleResult = {
   archived_at: string | null;
 };
 
-type RecentListenBarTrack = {
-  id: string;
-  title: string | null;
-  artist: string | null;
-  ai_tool: string | null;
-  genre: string | null;
-  duration_seconds: number | null;
-  positive_reaction_count: number | null;
-  heart_count: number | null;
-  created_at: string | null;
-};
-
 type SocialAccountStatus = {
   platform: SocialPlatform;
   displayName: string;
@@ -79,7 +68,6 @@ type SocialAccountStatus = {
 type AdminPayload = {
   posts?: SocialPost[];
   recentBattleResults?: RecentBattleResult[];
-  recentListenBarTracks?: RecentListenBarTrack[];
   accountStatuses?: SocialAccountStatus[];
   error?: string;
 };
@@ -122,47 +110,50 @@ function shortId(value: string) {
   return value.slice(0, 8);
 }
 
-function todayTaipeiDate() {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Taipei",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date());
-  const year = parts.find((part) => part.type === "year")?.value;
-  const month = parts.find((part) => part.type === "month")?.value;
-  const day = parts.find((part) => part.type === "day")?.value;
-  return year && month && day ? `${year}-${month}-${day}` : new Date().toISOString().slice(0, 10);
-}
-
-function songCredit(artist: string, title: string) {
-  return /^《.+》$/.test(title) ? `${artist}${title}` : `${artist}《${title}》`;
-}
-
-function defaultSpotlightIntro(track: RecentListenBarTrack | null) {
-  if (!track) return "今天主推一首正在傷心酒吧公播的 AI 音樂。聽完整版走 aipoger.com/today，喜歡就按愛心，這顆心會直接算進歌曲成績。";
-  const artist = track.artist?.trim() || "AIPOGER Creator";
-  const title = track.title?.trim() || "未命名作品";
-  const genre = track.genre?.trim() || "AI Music";
-  return `今天主推 ${songCredit(artist, title)}。這首 ${genre} 正在傷心酒吧公播，聽完整版走 aipoger.com/today；喜歡就按愛心，這顆心會直接算進歌曲成績。`;
-}
-
-function defaultSpotlightCaption(track: RecentListenBarTrack | null) {
-  if (!track) return "今天的傷心酒吧推薦。掃 QR 或輸入 aipoger.com/today，進來聽完整版，喜歡就按愛心。";
-  const artist = track.artist?.trim() || "AIPOGER Creator";
-  const title = track.title?.trim() || "未命名作品";
-  return `今天的傷心酒吧推薦：${songCredit(artist, title)}。掃 QR 或輸入 aipoger.com/today，進來聽完整版，喜歡就按愛心。`;
-}
-
 function sourceTypeLabel(value: SocialPost["source_type"]) {
   if (value === "battle_result") return "Battle 戰報";
   if (value === "listen_bar_daily_spotlight") return "每日推薦歌";
   return "人工公告";
 }
 
+function sourceAccentClass(value: SocialPost["source_type"]) {
+  if (value === "listen_bar_daily_spotlight") return "border-yellow-200/25 bg-yellow-300/10 text-yellow-100";
+  if (value === "battle_result") return "border-orange-200/25 bg-orange-500/10 text-orange-100";
+  return "border-cyan-200/25 bg-cyan-300/10 text-cyan-100";
+}
+
+function statusAccentClass(status: SocialPostStatus) {
+  if (status === "published") return "border-emerald-300/25 bg-emerald-300/10 text-emerald-100";
+  if (status === "failed") return "border-red-300/30 bg-red-500/10 text-red-100";
+  if (status === "scheduled") return "border-yellow-200/25 bg-yellow-300/10 text-yellow-100";
+  return "border-white/10 bg-white/[0.06] text-zinc-300";
+}
+
 function sortedTargets(post: SocialPost) {
   const order: SocialPlatform[] = ["discord", "x", "instagram", "tiktok", "youtube", "facebook_group"];
   return [...(post.social_post_targets ?? [])].sort((a, b) => order.indexOf(a.platform) - order.indexOf(b.platform));
+}
+
+function postTargetSummary(post: SocialPost) {
+  const targets = post.social_post_targets ?? [];
+  const pendingTargets = targets.filter((target) => target.status !== "published").length;
+  const publishedTargets = targets.filter((target) => target.status === "published").length;
+  const failedTargets = targets.filter((target) => target.status === "failed").length;
+  const manualTargets = targets.filter((target) => target.publish_mode !== "api" && target.status !== "published").length;
+  const apiTargets = targets.filter((target) => target.publish_mode === "api" && target.status !== "published").length;
+  return { totalTargets: targets.length, pendingTargets, publishedTargets, failedTargets, manualTargets, apiTargets };
+}
+
+function postHasManualPending(post: SocialPost) {
+  if (post.status === "needs_review" || post.status === "published") return false;
+  return (post.social_post_targets ?? []).some((target) => target.publish_mode !== "api" && target.status !== "published");
+}
+
+function postMatchesFilter(post: SocialPost, filter: SocialPostFilter) {
+  if (filter === "all") return true;
+  if (filter === "todo") return post.status !== "published";
+  if (filter === "manual") return postHasManualPending(post);
+  return post.status === filter;
 }
 
 function connectionLabel(status: SocialAccountStatus["connectionStatus"]) {
@@ -340,19 +331,16 @@ export default function AdminSocialPage() {
   const [adminState, setAdminState] = useState<AdminState>("checking");
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [recentBattleResults, setRecentBattleResults] = useState<RecentBattleResult[]>([]);
-  const [recentListenBarTracks, setRecentListenBarTracks] = useState<RecentListenBarTrack[]>([]);
   const [accountStatuses, setAccountStatuses] = useState<SocialAccountStatus[]>([]);
   const [selectedBattleId, setSelectedBattleId] = useState("");
-  const [spotlightDate, setSpotlightDate] = useState(todayTaipeiDate());
-  const [selectedSpotlightTrackId, setSelectedSpotlightTrackId] = useState("");
-  const [spotlightIntro, setSpotlightIntro] = useState("");
-  const [spotlightCaption, setSpotlightCaption] = useState("");
   const [manualTopic, setManualTopic] = useState("Creator Wanted");
   const [manualBody, setManualBody] = useState("徵求第一批 AI 音樂創作者。帶你的作品進 AIPOGER，讓 30-60 秒抓波上場被聽見。");
   const [manualCta, setManualCta] = useState("加入 AIPOGER，帶你的 30-60 秒抓波進場 battle。");
   const [manualLinkUrl, setManualLinkUrl] = useState("https://aipoger.com/battle?lang=zh");
   const [manualAudioUrl, setManualAudioUrl] = useState("");
   const [manualAudioLabel, setManualAudioLabel] = useState("");
+  const [postFilter, setPostFilter] = useState<SocialPostFilter>("todo");
+  const [expandedPostId, setExpandedPostId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -361,8 +349,11 @@ export default function AdminSocialPage() {
     const targets = posts.flatMap((post) => post.social_post_targets ?? []);
     return {
       posts: posts.length,
+      needsReview: posts.filter((post) => post.status === "needs_review").length,
       ready: posts.filter((post) => post.status === "scheduled").length,
+      manualPending: posts.filter(postHasManualPending).length,
       publishedTargets: targets.filter((target) => target.status === "published").length,
+      failedPosts: posts.filter((post) => post.status === "failed").length,
       failedTargets: targets.filter((target) => target.status === "failed").length,
     };
   }, [posts]);
@@ -370,6 +361,11 @@ export default function AdminSocialPage() {
     () => posts.filter((post) => post.source_type === "listen_bar_daily_spotlight"),
     [posts],
   );
+  const visiblePosts = useMemo(
+    () => posts.filter((post) => postMatchesFilter(post, postFilter)),
+    [postFilter, posts],
+  );
+  const latestSpotlightPost = spotlightPosts[0] ?? null;
 
   const loadData = useCallback(async () => {
     setError("");
@@ -383,14 +379,8 @@ export default function AdminSocialPage() {
     }
     setPosts(payload?.posts ?? []);
     setRecentBattleResults(payload?.recentBattleResults ?? []);
-    const listenTracks = payload?.recentListenBarTracks ?? [];
-    setRecentListenBarTracks(listenTracks);
     setAccountStatuses(payload?.accountStatuses ?? []);
     setSelectedBattleId((current) => current || payload?.recentBattleResults?.[0]?.battle_id || "");
-    const nextTrack = listenTracks.find((track) => /橘貓|女巫/i.test(`${track.title ?? ""} ${track.artist ?? ""}`)) ?? listenTracks[0] ?? null;
-    setSelectedSpotlightTrackId((current) => current || nextTrack?.id || "");
-    setSpotlightIntro((current) => current || defaultSpotlightIntro(nextTrack));
-    setSpotlightCaption((current) => current || defaultSpotlightCaption(nextTrack));
   }, []);
 
   const accountStatusByPlatform = useMemo(() => {
@@ -448,24 +438,6 @@ export default function AdminSocialPage() {
       return;
     }
     await runAction("create_battle_draft", { battleId: selectedBattleId }, "create-battle", "已產生 Battle 戰報草稿。");
-  }
-
-  async function createSpotlightDraft() {
-    if (!selectedSpotlightTrackId) {
-      setError("請先選擇一首傷心酒吧歌曲。");
-      return;
-    }
-    await runAction(
-      "create_listen_bar_spotlight_draft",
-      {
-        trackId: selectedSpotlightTrackId,
-        spotlightDate,
-        intro: spotlightIntro,
-        shortCaption: spotlightCaption,
-      },
-      "create-spotlight",
-      "已產生每日推薦歌社群草稿。",
-    );
   }
 
   async function createManualDraft(event: FormEvent<HTMLFormElement>) {
@@ -527,7 +499,7 @@ export default function AdminSocialPage() {
             <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-200/80">AIPOGER SOCIAL DESK</p>
             <h1 className="mt-3 text-3xl font-black tracking-tight text-white sm:text-5xl">社群發文中控台</h1>
             <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-zinc-400">
-              Battle 戰報、每日推薦歌與人工公告都先進審核。IG / TikTok / YouTube / FB 社團第一版產草稿與素材提示；背景配樂以作品原音為準。
+              這裡只做審核、發布、複製與追蹤。每日推薦歌在酒吧後台建立；Battle 戰報與人工公告可以在下方建立第一版草稿。
             </p>
           </div>
           <div className="flex flex-col gap-3">
@@ -544,10 +516,10 @@ export default function AdminSocialPage() {
             </nav>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {[
-                ["草稿", stats.posts],
+                ["待審核", stats.needsReview],
                 ["已批准", stats.ready],
-                ["平台已發", stats.publishedTargets],
-                ["失敗", stats.failedTargets],
+                ["手動待處理", stats.manualPending],
+                ["失敗", stats.failedPosts + stats.failedTargets],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-lg border border-white/10 bg-white/[0.04] px-4 py-3">
                   <p className="text-[0.65rem] font-black uppercase tracking-[0.2em] text-zinc-500">{label}</p>
@@ -564,90 +536,64 @@ export default function AdminSocialPage() {
           </div>
         )}
 
-        <section className="mt-6 rounded-lg border border-yellow-200/25 bg-yellow-300/[0.07] p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <section className="mt-6 rounded-lg border border-yellow-200/25 bg-yellow-300/[0.06] p-5">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-yellow-100/80">每日推薦歌草稿</p>
-              <h2 className="mt-2 text-xl font-black">最新 Spotlight 社群內容</h2>
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-yellow-100/80">今日待辦</p>
+              <h2 className="mt-2 text-xl font-black">先處理會真的發出去的事</h2>
+              <p className="mt-2 max-w-3xl text-sm font-bold leading-7 text-zinc-400">
+                批准只是解鎖發布；Discord / X 還要按平台發布，IG / TikTok / YouTube / Facebook 仍以複製文案和手動處理為主。
+              </p>
             </div>
-            <span className="rounded-md border border-yellow-200/25 bg-black/35 px-3 py-2 text-xs font-black text-yellow-100">
-              {spotlightPosts.length} 筆
-            </span>
+            <Link href="/admin/listen-bar" className="rounded-lg border border-yellow-200/30 bg-black/25 px-4 py-3 text-sm font-black text-yellow-100 hover:border-yellow-100">
+              建立每日推薦歌
+            </Link>
           </div>
-          {spotlightPosts.length === 0 ? (
-            <p className="mt-4 rounded-lg border border-white/10 bg-black/35 px-4 py-4 text-sm font-bold leading-6 text-zinc-400">
-              目前沒有每日推薦歌草稿。下方選一首傷心酒吧歌曲後，按「產生推薦草稿」。
-            </p>
-          ) : (
-            <div className="mt-4 grid gap-3">
-              {spotlightPosts.slice(0, 3).map((post) => {
-                const firstTarget = sortedTargets(post)[0] ?? null;
-                return (
-                  <article key={post.id} className="rounded-lg border border-yellow-200/18 bg-black/45 p-4">
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-md bg-yellow-300/15 px-2 py-1 text-[0.65rem] font-black text-yellow-100">每日推薦歌</span>
-                          <span className="rounded-md bg-white/10 px-2 py-1 text-[0.65rem] font-black text-zinc-300">{statusLabel[post.status]}</span>
-                          <span className="text-xs font-bold text-zinc-500">{formatTime(post.created_at)}</span>
-                        </div>
-                        <h3 className="mt-2 text-lg font-black leading-snug text-white">{post.title}</h3>
-                        <p className="mt-1 text-xs font-bold text-zinc-500">
-                          平台草稿：{post.social_post_targets?.length ?? 0} 個
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {firstTarget?.target_url && (
-                          <a href={firstTarget.target_url} target="_blank" rel="noreferrer" className="rounded-lg border border-yellow-200/30 px-3 py-2 text-xs font-black text-yellow-100 hover:border-yellow-100">
-                            開啟 Spotlight
-                          </a>
-                        )}
-                        {firstTarget?.content_text && (
-                          <button type="button" onClick={() => copyText(firstTarget.content_text)} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-black text-white hover:border-white/30">
-                            複製第一版文案
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          disabled={busyId === post.id || post.status === "published"}
-                          onClick={() => runAction("approve_post", { postId: post.id }, post.id, "已批准每日推薦歌草稿。")}
-                          className="rounded-lg bg-yellow-300 px-3 py-2 text-xs font-black text-black disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          批准
-                        </button>
-                        <button
-                          type="button"
-                          disabled={busyId === `delete-${post.id}` || post.status === "published"}
-                          onClick={() => deletePost(post)}
-                          className="rounded-lg border border-red-300/30 bg-red-500/10 px-3 py-2 text-xs font-black text-red-100 hover:border-red-200 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          取消草稿
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </section>
 
-        <section className="mt-6 rounded-lg border border-white/10 bg-white/[0.04] p-5">
-          <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-200/80">怎麼使用</p>
-          <div className="mt-3 grid gap-3 text-sm font-bold leading-7 text-zinc-300 lg:grid-cols-3">
-            <p>
-              <span className="text-white">1. 生文案：</span>
-              Battle 有勝出戰報時可產戰報；每日推薦歌可從傷心酒吧選歌；沒有固定來源時用人工公告先產草稿。
-            </p>
-            <p>
-              <span className="text-white">2. 圖與影片：</span>
-              每日推薦可在傷心酒吧後台先上傳影像素材；IG、TikTok、YouTube、FB 社團會保留文案、素材、連結與背景配樂提示。
-            </p>
-            <p>
-              <span className="text-white">3. 發布：</span>
-              先按批准；Discord/X 有 API 設定才可直發。FB 社團點「開啟發布頁」，複製文案後手動貼上。
-            </p>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <button type="button" onClick={() => setPostFilter("needs_review")} className="rounded-lg border border-white/10 bg-black/35 p-4 text-left hover:border-yellow-200/45">
+              <p className="text-[0.65rem] font-black uppercase tracking-[0.2em] text-zinc-500">REVIEW</p>
+              <p className="mt-2 text-3xl font-black text-white">{stats.needsReview}</p>
+              <p className="mt-1 text-xs font-bold text-zinc-400">待審核草稿</p>
+            </button>
+            <button type="button" onClick={() => setPostFilter("scheduled")} className="rounded-lg border border-white/10 bg-black/35 p-4 text-left hover:border-yellow-200/45">
+              <p className="text-[0.65rem] font-black uppercase tracking-[0.2em] text-zinc-500">READY</p>
+              <p className="mt-2 text-3xl font-black text-white">{stats.ready}</p>
+              <p className="mt-1 text-xs font-bold text-zinc-400">已批准，待平台發布</p>
+            </button>
+            <button type="button" onClick={() => setPostFilter("manual")} className="rounded-lg border border-white/10 bg-black/35 p-4 text-left hover:border-yellow-200/45">
+              <p className="text-[0.65rem] font-black uppercase tracking-[0.2em] text-zinc-500">MANUAL</p>
+              <p className="mt-2 text-3xl font-black text-white">{stats.manualPending}</p>
+              <p className="mt-1 text-xs font-bold text-zinc-400">需要複製 / 手動貼文</p>
+            </button>
+            <button type="button" onClick={() => setPostFilter("failed")} className="rounded-lg border border-red-300/20 bg-red-500/[0.07] p-4 text-left hover:border-red-200/55">
+              <p className="text-[0.65rem] font-black uppercase tracking-[0.2em] text-red-100/70">FAILED</p>
+              <p className="mt-2 text-3xl font-black text-white">{stats.failedPosts + stats.failedTargets}</p>
+              <p className="mt-1 text-xs font-bold text-red-100/70">需要回頭修正</p>
+            </button>
           </div>
+
+          {latestSpotlightPost ? (
+            <div className="mt-4 rounded-lg border border-yellow-200/18 bg-black/35 p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0">
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-yellow-100/70">LATEST DAILY SPOTLIGHT</p>
+                  <h3 className="mt-2 truncate text-lg font-black text-white">{latestSpotlightPost.title}</h3>
+                  <p className="mt-1 text-xs font-bold text-zinc-500">
+                    {statusLabel[latestSpotlightPost.status]} / {formatTime(latestSpotlightPost.created_at)} / 平台草稿 {latestSpotlightPost.social_post_targets?.length ?? 0} 個
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => { setPostFilter("all"); setExpandedPostId(latestSpotlightPost.id); }} className="rounded-lg border border-yellow-200/30 px-3 py-2 text-xs font-black text-yellow-100 hover:border-yellow-100">
+                    打開草稿
+                  </button>
+                  <Link href="/admin/listen-bar" className="rounded-lg border border-white/10 px-3 py-2 text-xs font-black text-white hover:border-white/30">
+                    回酒吧後台
+                  </Link>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </section>
 
         <section className="mt-6 rounded-lg border border-white/10 bg-black/45 p-5">
@@ -680,12 +626,42 @@ export default function AdminSocialPage() {
           </div>
         </section>
 
-        <div className="mt-6 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+        <section className="mt-6 rounded-lg border border-white/10 bg-white/[0.04] p-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-zinc-500">建立來源草稿</p>
+              <h2 className="mt-2 text-xl font-black">來源後台先產內容，這裡只接手發布</h2>
+            </div>
+            <p className="max-w-2xl text-xs font-bold leading-6 text-zinc-500">
+              每日推薦歌回酒吧後台選歌與上傳素材；Battle 戰報可先在這裡從已結算結果產生；臨時公告用人工草稿。
+            </p>
+          </div>
+        </section>
+
+        <div className="mt-4 grid gap-5 xl:grid-cols-3">
+          <section className="rounded-lg border border-yellow-200/20 bg-yellow-300/[0.06] p-5">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-yellow-100/80">每日推薦歌</p>
+              <h2 className="mt-2 text-xl font-black">到酒吧後台建立</h2>
+              <p className="mt-3 text-xs font-bold leading-6 text-yellow-100/70">
+                選歌、推薦文、Shorts caption、素材上傳與 /today QR 都在酒吧後台完成；建立後會回到這裡審核與發布。
+              </p>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link href="/admin/listen-bar" className="rounded-lg bg-yellow-300 px-4 py-3 text-sm font-black text-black">
+                去建立每日推薦
+              </Link>
+              <a href="https://aipoger.com/today" target="_blank" rel="noreferrer" className="rounded-lg border border-yellow-200/30 px-4 py-3 text-sm font-black text-yellow-100 hover:border-yellow-100">
+                開啟 /today
+              </a>
+            </div>
+          </section>
+
           <section className="rounded-lg border border-orange-300/20 bg-orange-500/[0.06] p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-200/80">Battle 戰報草稿</p>
-                <h2 className="mt-2 text-xl font-black">從勝出 battle 產生各平台文案</h2>
+                <h2 className="mt-2 text-xl font-black">從勝出 battle 產戰報</h2>
               </div>
               <button
                 type="button"
@@ -713,92 +689,6 @@ export default function AdminSocialPage() {
             </select>
             <p className="mt-3 text-xs font-bold leading-6 text-orange-100/70">
               只列出有觀眾票的 battle result；0:0 no contest 不會生成 Winner Circle 社群戰報。
-            </p>
-          </section>
-
-          <section className="rounded-lg border border-yellow-200/20 bg-yellow-300/[0.06] p-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.22em] text-yellow-100/80">每日推薦歌草稿</p>
-                <h2 className="mt-2 text-xl font-black">從傷心酒吧選歌產 Shorts 文案</h2>
-              </div>
-              <button
-                type="button"
-                disabled={busyId === "create-spotlight" || !selectedSpotlightTrackId}
-                onClick={createSpotlightDraft}
-                className="rounded-lg bg-yellow-300 px-4 py-3 text-sm font-black text-black disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                產生推薦草稿
-              </button>
-            </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <label className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
-                日期
-                <input
-                  type="date"
-                  value={spotlightDate}
-                  onChange={(event) => setSpotlightDate(event.target.value)}
-                  className="mt-2 w-full rounded-lg border border-white/10 bg-black px-3 py-3 text-sm font-bold normal-case tracking-normal text-white outline-none"
-                />
-              </label>
-              <label className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
-                推薦歌曲
-                <select
-                  value={selectedSpotlightTrackId}
-                  onChange={(event) => {
-                    const nextId = event.target.value;
-                    const nextTrack = recentListenBarTracks.find((track) => track.id === nextId) ?? null;
-                    setSelectedSpotlightTrackId(nextId);
-                    setSpotlightIntro(defaultSpotlightIntro(nextTrack));
-                    setSpotlightCaption(defaultSpotlightCaption(nextTrack));
-                  }}
-                  className="mt-2 w-full rounded-lg border border-white/10 bg-black px-3 py-3 text-sm font-bold normal-case tracking-normal text-white outline-none"
-                >
-                  {recentListenBarTracks.length === 0 ? (
-                    <option value="">尚無可用酒吧歌曲</option>
-                  ) : (
-                    recentListenBarTracks.map((track) => (
-                      <option key={track.id} value={track.id}>
-                        {track.artist || "創作者"}《{track.title || "未命名"}》｜{track.genre || "AI Music"}｜♥ {track.heart_count ?? track.positive_reaction_count ?? 0}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </label>
-              <div className="sm:col-span-2 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const track = recentListenBarTracks.find((item) => item.id === selectedSpotlightTrackId) ?? null;
-                    setSpotlightIntro(defaultSpotlightIntro(track));
-                    setSpotlightCaption(defaultSpotlightCaption(track));
-                  }}
-                  className="rounded-lg border border-yellow-200/30 bg-yellow-300/10 px-3 py-2 text-xs font-black text-yellow-100 hover:border-yellow-100"
-                >
-                  重新套用這首歌文案
-                </button>
-              </div>
-              <label className="sm:col-span-2 text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
-                推薦文
-                <textarea
-                  value={spotlightIntro}
-                  onChange={(event) => setSpotlightIntro(event.target.value)}
-                  rows={3}
-                  className="mt-2 w-full rounded-lg border border-white/10 bg-black px-3 py-3 text-sm font-bold normal-case tracking-normal text-white outline-none"
-                />
-              </label>
-              <label className="sm:col-span-2 text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
-                Shorts Caption
-                <textarea
-                  value={spotlightCaption}
-                  onChange={(event) => setSpotlightCaption(event.target.value)}
-                  rows={3}
-                  className="mt-2 w-full rounded-lg border border-white/10 bg-black px-3 py-3 text-sm font-bold normal-case tracking-normal text-white outline-none"
-                />
-              </label>
-            </div>
-            <p className="mt-3 text-xs font-bold leading-6 text-yellow-100/70">
-              產生後會建立每日推薦紀錄與社群草稿；Spotlight 連結只影響進站聽眾本地播放，不打斷一般輪播。
             </p>
           </section>
 
@@ -837,59 +727,144 @@ export default function AdminSocialPage() {
           </form>
         </div>
 
-        <section className="mt-6 space-y-5">
+        <section className="mt-6">
+          <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-zinc-500">草稿箱 / 發布台</p>
+              <h2 className="mt-2 text-2xl font-black text-white">一篇內容一張卡，點開才處理平台</h2>
+              <p className="mt-2 text-sm font-bold leading-7 text-zinc-500">
+                預設只顯示待辦。已發布紀錄留在「已發布」，避免跟今天要處理的草稿混在一起。
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void loadData()}
+              className="rounded-lg border border-white/10 px-4 py-3 text-sm font-black text-zinc-200 hover:border-white/30"
+            >
+              重新整理
+            </button>
+          </div>
+
+          <div className="mb-4 flex flex-wrap gap-2">
+            {[
+              ["todo", `待辦 ${posts.filter((post) => post.status !== "published").length}`],
+              ["needs_review", `待審核 ${stats.needsReview}`],
+              ["scheduled", `已批准 ${stats.ready}`],
+              ["manual", `手動待處理 ${stats.manualPending}`],
+              ["failed", `失敗 ${stats.failedPosts + stats.failedTargets}`],
+              ["published", `已發布 ${posts.filter((post) => post.status === "published").length}`],
+              ["all", `全部 ${posts.length}`],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setPostFilter(key as SocialPostFilter)}
+                className={`rounded-full border px-4 py-2 text-xs font-black transition ${
+                  postFilter === key
+                    ? "border-yellow-200/60 bg-yellow-300/12 text-yellow-100"
+                    : "border-white/10 bg-black/25 text-zinc-300 hover:border-white/30"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           {posts.length === 0 ? (
             <div className="rounded-lg border border-white/10 bg-white/[0.04] p-8 text-sm font-bold text-zinc-400">
-              尚未建立社群草稿。先從 battle 戰報、每日推薦歌或人工公告產生第一批內容。
+              尚未建立社群草稿。先從 Battle 戰報、每日推薦歌或人工公告產生第一批內容。
+            </div>
+          ) : visiblePosts.length === 0 ? (
+            <div className="rounded-lg border border-white/10 bg-white/[0.04] p-8 text-sm font-bold text-zinc-400">
+              這個分類目前沒有內容。
             </div>
           ) : (
-            posts.map((post) => (
-              <article key={post.id} className="rounded-lg border border-white/10 bg-[#0b0b0b] p-5">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-md bg-white/10 px-2 py-1 text-[0.65rem] font-black uppercase tracking-[0.18em] text-zinc-300">{sourceTypeLabel(post.source_type)}</span>
-                      <span className="rounded-md bg-orange-400/15 px-2 py-1 text-[0.65rem] font-black text-orange-100">{statusLabel[post.status]}</span>
-                      <span className="text-xs font-bold text-zinc-500">{formatTime(post.created_at)}</span>
+            <div className="space-y-3">
+              {visiblePosts.map((post) => {
+                const targets = sortedTargets(post);
+                const firstTarget = targets[0] ?? null;
+                const summary = postTargetSummary(post);
+                const expanded = expandedPostId === post.id;
+                return (
+                  <article key={post.id} className="rounded-lg border border-white/10 bg-[#0b0b0b] p-5">
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`rounded-md border px-2 py-1 text-[0.65rem] font-black ${sourceAccentClass(post.source_type)}`}>
+                            {sourceTypeLabel(post.source_type)}
+                          </span>
+                          <span className={`rounded-md border px-2 py-1 text-[0.65rem] font-black ${statusAccentClass(post.status)}`}>
+                            {statusLabel[post.status]}
+                          </span>
+                          <span className="text-xs font-bold text-zinc-500">{formatTime(post.created_at)}</span>
+                        </div>
+                        <h3 className="mt-3 text-xl font-black leading-tight text-white">{post.title}</h3>
+                        <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-bold text-zinc-400">
+                          <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1">平台 {summary.totalTargets}</span>
+                          <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1">待處理 {summary.pendingTargets}</span>
+                          <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1">已發 {summary.publishedTargets}</span>
+                          {summary.manualTargets > 0 && <span className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-3 py-1 text-cyan-100">手動 {summary.manualTargets}</span>}
+                          {summary.apiTargets > 0 && <span className="rounded-full border border-yellow-200/25 bg-yellow-300/10 px-3 py-1 text-yellow-100">API {summary.apiTargets}</span>}
+                          {summary.failedTargets > 0 && <span className="rounded-full border border-red-300/25 bg-red-500/10 px-3 py-1 text-red-100">失敗 {summary.failedTargets}</span>}
+                        </div>
+                        {firstTarget?.target_url && (
+                          <p className="mt-3 break-all text-xs font-bold leading-6 text-zinc-500">
+                            主連結：{firstTarget.target_url}
+                          </p>
+                        )}
+                        {post.approved_at && <p className="mt-2 text-xs font-bold text-emerald-200/80">已批准：{formatTime(post.approved_at)}</p>}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {firstTarget?.target_url && (
+                          <a href={firstTarget.target_url} target="_blank" rel="noreferrer" className="rounded-lg border border-white/10 px-3 py-2 text-xs font-black text-white hover:border-white/30">
+                            開啟連結
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setExpandedPostId((current) => (current === post.id ? null : post.id))}
+                          className="rounded-lg border border-yellow-200/30 bg-yellow-300/10 px-3 py-2 text-xs font-black text-yellow-100 hover:border-yellow-100"
+                        >
+                          {expanded ? "收起平台" : "預覽 / 發布"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busyId === post.id || post.status === "published" || post.status === "scheduled"}
+                          onClick={() => runAction("approve_post", { postId: post.id }, post.id, "已批准社群草稿，可開始發布或手動處理。")}
+                          className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-xs font-black text-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          批准
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busyId === `delete-${post.id}` || post.status === "published"}
+                          onClick={() => deletePost(post)}
+                          className="rounded-lg border border-red-300/30 bg-red-500/10 px-3 py-2 text-xs font-black text-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          取消草稿
+                        </button>
+                      </div>
                     </div>
-                    <h2 className="mt-3 text-2xl font-black text-white">{post.title}</h2>
-                    {post.approved_at && <p className="mt-2 text-xs font-bold text-emerald-200/80">已批准：{formatTime(post.approved_at)}</p>}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      disabled={busyId === post.id || post.status === "published"}
-                      onClick={() => runAction("approve_post", { postId: post.id }, post.id, "已批准社群草稿，可開始發布或手動處理。")}
-                      className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-4 py-3 text-sm font-black text-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      批准草稿
-                    </button>
-                    <button
-                      type="button"
-                      disabled={busyId === `delete-${post.id}` || post.status === "published"}
-                      onClick={() => deletePost(post)}
-                      className="rounded-lg border border-red-300/30 bg-red-500/10 px-4 py-3 text-sm font-black text-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      取消草稿
-                    </button>
-                  </div>
-                </div>
 
-                <div className="mt-5 grid gap-4 xl:grid-cols-2">
-                  {sortedTargets(post).map((target) => (
-                    <SocialTargetPanel
-                      key={target.id}
-                      post={post}
-                      target={target}
-                      busyId={busyId}
-                      runAction={runAction}
-                      copyText={copyText}
-                      accountStatus={accountStatusByPlatform.get(target.platform)}
-                    />
-                  ))}
-                </div>
-              </article>
-            ))
+                    {expanded ? (
+                      <div className="mt-5 grid gap-4 xl:grid-cols-2">
+                        {targets.map((target) => (
+                          <SocialTargetPanel
+                            key={target.id}
+                            post={post}
+                            target={target}
+                            busyId={busyId}
+                            runAction={runAction}
+                            copyText={copyText}
+                            accountStatus={accountStatusByPlatform.get(target.platform)}
+                          />
+                        ))}
+                      </div>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
           )}
         </section>
       </section>
