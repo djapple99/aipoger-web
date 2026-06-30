@@ -31,7 +31,7 @@ import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
 type TrackSortMode = "manual" | "updated_desc" | "updated_asc" | "created_desc" | "created_asc" | "genre";
-type TrackVisibilityFilter = "all" | "active" | "hidden" | "uncategorized";
+type TrackVisibilityFilter = "all" | "active" | "hidden" | "removed" | "uncategorized";
 type AdminListenBarTrackRow = ListenBarTrackRow & {
   review_status?: "approved" | "pending" | "hidden" | "removed" | string | null;
   moderation_note?: string | null;
@@ -305,8 +305,9 @@ function rowPublicUrl(bucket: string, path: string | null | undefined) {
 }
 
 function isHiddenTrack(track: AdminListenBarTrackRow) {
+  if (removedStatus(track)) return false;
   const status = track.review_status?.toLowerCase();
-  return track.is_active === false || status === "hidden" || status === "removed" || Boolean(track.hidden_at) || Boolean(track.removed_at);
+  return track.is_active === false || status === "hidden" || Boolean(track.hidden_at);
 }
 
 function removedStatus(track: AdminListenBarTrackRow) {
@@ -568,6 +569,12 @@ export default function ListenBarAdminPage() {
   const renderedTracks = useMemo(() => {
     const query = trackSearch.trim().toLowerCase();
     const filteredTracks = displayTracks.filter((track) => {
+      const removed = removedStatus(track);
+      if (trackVisibilityFilter === "removed") {
+        if (!removed) return false;
+      } else if (removed) {
+        return false;
+      }
       const hidden = isHiddenTrack(track);
       if (trackVisibilityFilter === "active" && hidden) return false;
       if (trackVisibilityFilter === "hidden" && !hidden) return false;
@@ -585,7 +592,10 @@ export default function ListenBarAdminPage() {
   );
   const allRenderedSelected = renderedTracks.length > 0 && renderedTracks.every((track) => selectedTrackIdSet.has(track.id));
   const hiddenTrackCount = useMemo(() => displayTracks.filter(isHiddenTrack).length, [displayTracks]);
-  const uncategorizedTrackCount = useMemo(() => displayTracks.filter(isUncategorizedTrack).length, [displayTracks]);
+  const removedTrackCount = useMemo(() => displayTracks.filter(removedStatus).length, [displayTracks]);
+  const manageableTrackCount = Math.max(0, displayTracks.length - removedTrackCount);
+  const renderedTrackTotal = trackVisibilityFilter === "removed" ? removedTrackCount : manageableTrackCount;
+  const uncategorizedTrackCount = useMemo(() => displayTracks.filter((track) => !removedStatus(track) && isUncategorizedTrack(track)).length, [displayTracks]);
   const liveRotation = useMemo(() => liveRotationSnapshot(displayTracks, nowMs), [displayTracks, nowMs]);
   const currentlyPlayingId = liveRotation.current?.id ?? "";
   const totalActive = visiblePlayableTracks.length;
@@ -1887,7 +1897,7 @@ export default function ListenBarAdminPage() {
                 <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/70">MANAGE TRACKS</p>
                 <h2 className="mt-1 text-2xl font-black text-white">歌曲上架整理</h2>
                 <p className="mt-1 text-xs font-bold text-zinc-500">
-                  顯示 {renderedTracks.length} / {displayTracks.length}{selectedTrackIds.length > 0 ? `，已選 ${selectedTrackIds.length}` : ""}
+                  顯示 {renderedTracks.length} / {renderedTrackTotal}{removedTrackCount > 0 ? `，已刪除 ${removedTrackCount}` : ""}{selectedTrackIds.length > 0 ? `，已選 ${selectedTrackIds.length}` : ""}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -1923,6 +1933,17 @@ export default function ListenBarAdminPage() {
                   }`}
                 >
                   只看下架{hiddenTrackCount > 0 ? ` ${hiddenTrackCount}` : ""}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTrackVisibilityFilter("removed")}
+                  className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-200/55 ${
+                    trackVisibilityFilter === "removed"
+                      ? "border-red-300/55 bg-red-500/14 text-red-100"
+                      : "border-white/12 text-zinc-200 hover:border-red-300/45"
+                  }`}
+                >
+                  已經刪除{removedTrackCount > 0 ? ` ${removedTrackCount}` : ""}
                 </button>
                 <button
                   type="button"
@@ -2083,6 +2104,8 @@ export default function ListenBarAdminPage() {
 	                      ? "沒有符合搜尋條件的歌曲。"
 	                      : trackVisibilityFilter === "hidden"
 	                        ? "目前沒有下架歌曲。"
+	                        : trackVisibilityFilter === "removed"
+	                          ? "目前沒有已刪除歌曲。"
 	                        : trackVisibilityFilter === "uncategorized"
 	                          ? "目前沒有待補類型的歌曲。"
 	                          : "目前已隱藏下架歌曲，沒有可顯示的上架歌曲。"}
@@ -2091,7 +2114,9 @@ export default function ListenBarAdminPage() {
                 renderedTracks.map((track) => {
                   const coverUrl = rowPublicUrl(LISTEN_BAR_COVER_BUCKET, track.cover_path) || DEFAULT_LISTEN_BAR_COVER;
                   const audioUrl = rowPublicUrl(LISTEN_BAR_AUDIO_BUCKET, track.audio_path);
+                    const removed = removedStatus(track);
 	                  const hidden = isHiddenTrack(track);
+                    const unavailable = hidden || removed;
 	                  const status = trackStatusBadge(track, currentlyPlayingId);
 	                  const updatedAt = track.updated_at ? new Date(track.updated_at).toLocaleString("zh-TW", { hour12: false }) : "-";
 	                  const focused = focusedTrackId === track.id;
@@ -2109,7 +2134,9 @@ export default function ListenBarAdminPage() {
                           ? "border-cyan-200/65 bg-cyan-300/[0.075] shadow-[0_0_0_2px_rgba(103,232,249,0.18),0_18px_60px_rgba(0,0,0,0.35)]"
                           : track.id === currentlyPlayingId
                             ? "border-orange-300/45 bg-orange-500/[0.055]"
-                            : hidden
+                            : removed
+                              ? "border-red-300/28 bg-red-950/[0.12]"
+                              : hidden
                               ? "border-red-300/20 bg-red-950/[0.08]"
                           : "border-white/10 bg-black/42"
                       }`}
@@ -2124,7 +2151,7 @@ export default function ListenBarAdminPage() {
                             aria-label={`選取 ${track.title}`}
                           />
                         </label>
-                        <img src={coverUrl} alt="" className={`aspect-square w-full rounded-xl bg-black object-cover ${hidden ? "opacity-45 grayscale" : ""}`} />
+                        <img src={coverUrl} alt="" className={`aspect-square w-full rounded-xl bg-black object-cover ${unavailable ? "opacity-45 grayscale" : ""}`} />
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-start justify-between gap-2">
                             <div className="min-w-0">
@@ -2184,16 +2211,16 @@ export default function ListenBarAdminPage() {
 	                            <button type="button" disabled={metadataSavingId === track.id} onClick={() => (editing ? cancelEditTrack() : beginEditTrack(track))} className="rounded-full border border-orange-200/25 bg-orange-500/10 px-4 py-2 text-xs font-black text-orange-100 transition hover:border-orange-200/65 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-200/55 disabled:cursor-not-allowed disabled:opacity-45">
 	                              {editing ? "收起編輯" : "編輯資料"}
 	                            </button>
-	                            <button type="button" disabled={operatingTrackId === track.id} onClick={() => void (hidden ? restoreTrack(track) : hideTrack(track))} className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-45 ${hidden ? "border-cyan-300/25 text-cyan-100 hover:border-cyan-200/65 focus-visible:ring-cyan-200/55" : "border-white/12 text-zinc-200 hover:border-cyan-200/55 focus-visible:ring-cyan-200/55"}`}>
-	                              {operatingTrackId === track.id ? "處理中" : hidden ? "恢復上架" : "下架"}
+	                            <button type="button" disabled={operatingTrackId === track.id} onClick={() => void (unavailable ? restoreTrack(track) : hideTrack(track))} className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-45 ${unavailable ? "border-cyan-300/25 text-cyan-100 hover:border-cyan-200/65 focus-visible:ring-cyan-200/55" : "border-white/12 text-zinc-200 hover:border-cyan-200/55 focus-visible:ring-cyan-200/55"}`}>
+	                              {operatingTrackId === track.id ? "處理中" : unavailable ? "恢復上架" : "下架"}
 	                            </button>
                             <button type="button" disabled={operatingTrackId === track.id || removedStatus(track)} onClick={() => void removeTrack(track)} className="rounded-full border border-red-300/30 bg-red-500/10 px-4 py-2 text-xs font-black text-red-100 transition hover:border-red-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-200/55 disabled:cursor-not-allowed disabled:opacity-45">
                               刪除
                             </button>
-                            <button type="button" disabled={hidden || operatingTrackId === track.id} onClick={() => void moveTrack(track, "up")} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45">
+                            <button type="button" disabled={unavailable || operatingTrackId === track.id} onClick={() => void moveTrack(track, "up")} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45">
                               往前
                             </button>
-                            <button type="button" disabled={hidden || operatingTrackId === track.id} onClick={() => void moveTrack(track, "down")} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45">
+                            <button type="button" disabled={unavailable || operatingTrackId === track.id} onClick={() => void moveTrack(track, "down")} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45">
                               往後
 	                            </button>
 	                          </div>
