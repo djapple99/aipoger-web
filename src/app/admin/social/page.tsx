@@ -491,9 +491,9 @@ export default function AdminSocialPage() {
   }
 
   async function deletePost(post: SocialPost) {
-    const ok = window.confirm(`確定刪除「${post.title}」這筆社群草稿？刪除後各平台文案也會一起移除。`);
+    const ok = window.confirm(`確定取消「${post.title}」這筆社群草稿？取消後各平台文案也會一起移除。`);
     if (!ok) return;
-    await runAction("delete_post", { postId: post.id }, `delete-${post.id}`, "社群草稿已刪除。");
+    await runAction("delete_post", { postId: post.id }, `delete-${post.id}`, "社群草稿已取消。");
   }
 
   if (adminState === "checking") {
@@ -614,6 +614,14 @@ export default function AdminSocialPage() {
                           className="rounded-lg bg-yellow-300 px-3 py-2 text-xs font-black text-black disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           批准
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busyId === `delete-${post.id}` || post.status === "published"}
+                          onClick={() => deletePost(post)}
+                          className="rounded-lg border border-red-300/30 bg-red-500/10 px-3 py-2 text-xs font-black text-red-100 hover:border-red-200 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          取消草稿
                         </button>
                       </div>
                     </div>
@@ -862,7 +870,7 @@ export default function AdminSocialPage() {
                       onClick={() => deletePost(post)}
                       className="rounded-lg border border-red-300/30 bg-red-500/10 px-4 py-3 text-sm font-black text-red-100 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      刪除草稿
+                      取消草稿
                     </button>
                   </div>
                 </div>

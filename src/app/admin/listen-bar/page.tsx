@@ -1343,6 +1343,29 @@ export default function ListenBarAdminPage() {
     }
   };
 
+  const cancelSpotlightDraft = async (post: SocialPost) => {
+    if (!window.confirm(`確定取消「${post.title}」這筆每日推薦歌草稿？取消後各平台文案也會一起移除。`)) return;
+    setError("");
+    setMessage("");
+    setSpotlightBusy(true);
+    const response = await fetch("/api/admin/social", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(await authHeader()),
+      },
+      body: JSON.stringify({ action: "delete_post", postId: post.id }),
+    });
+    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+    setSpotlightBusy(false);
+    if (!response.ok) {
+      setError(payload?.error || "每日推薦歌草稿取消失敗。");
+      return;
+    }
+    setMessage("每日推薦歌草稿已取消。");
+    await loadSocialSpotlights();
+  };
+
   const copySpotlightLink = async () => {
     const url = new URL(listenBarSpotlightUrl(spotlightDate), window.location.origin).toString();
     await navigator.clipboard.writeText(url);
@@ -1697,6 +1720,14 @@ export default function ListenBarAdminPage() {
                     <Link href="/admin/social" className="rounded-lg border border-white/10 px-3 py-2 text-xs font-black text-white hover:border-white/30">
                       進社群後台審核
                     </Link>
+                    <button
+                      type="button"
+                      disabled={spotlightBusy || latestSpotlightPost.status === "published"}
+                      onClick={() => void cancelSpotlightDraft(latestSpotlightPost)}
+                      className="rounded-lg border border-red-300/30 bg-red-500/10 px-3 py-2 text-xs font-black text-red-100 transition hover:border-red-200 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      取消草稿
+                    </button>
                   </div>
                 </article>
               ) : (
