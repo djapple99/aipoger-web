@@ -243,7 +243,7 @@ export function buildListenBarDailySpotlightDraft(input: ListenBarDailySpotlight
     input.intro,
     `今天推薦 ${songLabel}。這首歌在傷心酒吧上架中，喜歡就進來按愛心，反應會直接算進作品成績。`,
   );
-  const cta = "進來聽完整歌曲，喜歡就按愛心，這顆心會直接算進傷心酒吧成績。";
+  const cta = `入口：${todayUrl}\n進來聽完整歌曲，喜歡就按愛心，這顆心會直接算進傷心酒吧成績。`;
   const shortCaption = cleanText(input.shortCaption, `${intro}\n\n${cta}`);
   const bundleTitle = `每日推薦歌｜${songLabel}`;
   const base = `AIPOGER 每日推薦歌\n\n${songLabel}\n類型：${genre}\n工具：${aiTool}\n\n${intro}\n\n${cta}`;
@@ -253,21 +253,21 @@ export function buildListenBarDailySpotlightDraft(input: ListenBarDailySpotlight
     title: bundleTitle,
     sourceType: "listen_bar_daily_spotlight",
     targets: [
-      target("discord", bundleTitle, appendLink(base, spotlightUrl), "api", {
+      target("discord", bundleTitle, base, "api", {
         mediaUrl: mediaUrl || null,
-        targetUrl: spotlightUrl,
+        targetUrl: todayUrl,
         backgroundAudioUrl: audioUrl || null,
         backgroundAudioLabel: title,
-        notes: "每日推薦歌可直發 Discord；連結會帶聽眾直接進 Spotlight，不打斷一般輪播。",
+        notes: "每日推薦歌可直發 Discord；/today 會帶聽眾進今日推薦，不打斷一般輪播。",
       }),
-      target("x", bundleTitle, appendLink(`今天的 AIPOGER 每日推薦歌：${songLabel}\n\n${genre} / ${aiTool}\n\n${cta}`, spotlightUrl), "api", {
+      target("x", bundleTitle, `今天的 AIPOGER 每日推薦歌：${songLabel}\n\n${genre} / ${aiTool}\n\n${cta}`, "api", {
         mediaUrl: mediaUrl || null,
-        targetUrl: spotlightUrl,
+        targetUrl: todayUrl,
         backgroundAudioUrl: audioUrl || null,
         backgroundAudioLabel: title,
-        notes: "X 第一版發文字與 Spotlight 連結；音檔保留作素材提示。",
+        notes: "X 第一版發文字與 /today 入口；音檔保留作素材提示。",
       }),
-      target("instagram", bundleTitle, `${shortCaption}\n\n入口：${todayUrl}\n${socialTags("#每日推薦歌 #傷心酒吧")}`, "draft_only", {
+      target("instagram", bundleTitle, `${shortCaption}\n\n${socialTags("#每日推薦歌 #傷心酒吧")}`, "draft_only", {
         mediaUrl: mediaUrl || null,
         targetUrl: todayUrl,
         backgroundAudioUrl: audioUrl || null,
@@ -281,16 +281,16 @@ export function buildListenBarDailySpotlightDraft(input: ListenBarDailySpotlight
         backgroundAudioLabel: title,
         notes: "TikTok 先產短影音腳本與 caption；發布時使用推薦歌曲片段，畫面可放 /today QR code。",
       }),
-      target("youtube", bundleTitle, `Shorts 標題：今天推薦 ${songLabel}\n\nDescription:\n${shortCaption}\n\nShorts 入口：掃畫面 QR code 或輸入 ${todayUrl}\n今日完整頁：${spotlightUrl}\n${socialTags("#每日推薦歌 #傷心酒吧")}`, "draft_only", {
+      target("youtube", bundleTitle, `Shorts 標題：今天推薦 ${songLabel}\n\nDescription:\n${shortCaption}\n\nShorts 入口：掃畫面 QR code 或輸入 ${todayUrl}\n${socialTags("#每日推薦歌 #傷心酒吧")}`, "draft_only", {
         mediaUrl: mediaUrl || null,
         targetUrl: todayUrl,
         backgroundAudioUrl: audioUrl || null,
         backgroundAudioLabel: title,
         notes: "YouTube Shorts 描述/留言連結通常不可點；發布時請把 /today QR code 或 aipoger.com/today 放進畫面。",
       }),
-      target("facebook_group", bundleTitle, appendLink(`${base}\n\n${socialTags("#每日推薦歌 #傷心酒吧")}`, spotlightUrl), "manual", {
+      target("facebook_group", bundleTitle, `${base}\n\n${socialTags("#每日推薦歌 #傷心酒吧")}`, "manual", {
         mediaUrl: mediaUrl || null,
-        targetUrl: spotlightUrl,
+        targetUrl: todayUrl,
         manualPublishUrl: FB_GROUP_URL,
         backgroundAudioUrl: audioUrl || null,
         backgroundAudioLabel: title,

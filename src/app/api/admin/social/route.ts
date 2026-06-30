@@ -498,11 +498,17 @@ function contentWithMediaUrl(content: string, mediaUrl: string | null | undefine
   return `${content}\n\n素材：${cleanMediaUrl}`;
 }
 
+function discordWebhookWaitUrl(webhookUrl: string) {
+  const url = new URL(webhookUrl);
+  url.searchParams.set("wait", "true");
+  return url.toString();
+}
+
 async function publishDiscord(content: string, mediaUrl?: string | null) {
   const webhookUrl = process.env.SOCIAL_DISCORD_WEBHOOK_URL ?? process.env.DISCORD_SOCIAL_WEBHOOK_URL ?? process.env.DISCORD_WEBHOOK_URL;
   if (!webhookUrl) throw new Error("Discord webhook 尚未設定。請設定 SOCIAL_DISCORD_WEBHOOK_URL。");
   const cleanMediaUrl = clean(mediaUrl, 1000);
-  const response = await fetch(webhookUrl, {
+  const response = await fetch(discordWebhookWaitUrl(webhookUrl), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -514,8 +520,9 @@ async function publishDiscord(content: string, mediaUrl?: string | null) {
       allowed_mentions: { parse: [] },
     }),
   });
-  if (!response.ok) throw new Error(`Discord 發布失敗：HTTP ${response.status}`);
-  return { externalPostId: null };
+  const payload = (await response.json().catch(() => null)) as { id?: string; channel_id?: string; message?: string } | null;
+  if (!response.ok) throw new Error(payload?.message || `Discord 發布失敗：HTTP ${response.status}`);
+  return { externalPostId: payload?.id ?? null, channelId: payload?.channel_id ?? null };
 }
 
 async function publishX(content: string, mediaUrl?: string | null) {
@@ -686,7 +693,7 @@ export async function POST(request: NextRequest) {
         sourceId: result.spotlight.id,
         body: result.draft.intro,
         cta: result.draft.shortCaption,
-        linkUrl: result.draft.spotlightUrl,
+        linkUrl: result.draft.todayUrl || result.draft.spotlightUrl,
         scheduledAt: clean(body?.scheduledAt, 80) || null,
         targets: bundle.targets,
       });

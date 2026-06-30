@@ -136,18 +136,18 @@ function todayTaipeiDate() {
 }
 
 function defaultSpotlightIntro(track: RecentListenBarTrack | null) {
-  if (!track) return "今天推薦一首正在傷心酒吧公播的 AI 音樂。進來聽完整版，喜歡就按愛心，這顆心會直接算進歌曲成績。";
+  if (!track) return "今天主推一首正在傷心酒吧公播的 AI 音樂。聽完整版走 aipoger.com/today，喜歡就按愛心，這顆心會直接算進歌曲成績。";
   const artist = track.artist?.trim() || "AIPOGER Creator";
   const title = track.title?.trim() || "未命名作品";
   const genre = track.genre?.trim() || "AI Music";
-  return `今天推薦 ${artist}《${title}》。這首 ${genre} 正在傷心酒吧公播，進來聽完整版，喜歡就按愛心，這顆心會直接算進歌曲成績。`;
+  return `今天主推 ${artist}《${title}》。這首 ${genre} 正在傷心酒吧公播，聽完整版走 aipoger.com/today；喜歡就按愛心，這顆心會直接算進歌曲成績。`;
 }
 
 function defaultSpotlightCaption(track: RecentListenBarTrack | null) {
-  if (!track) return "今天的傷心酒吧推薦。進來聽完整版，喜歡就按愛心。";
+  if (!track) return "今天的傷心酒吧推薦。掃 QR 或輸入 aipoger.com/today，進來聽完整版，喜歡就按愛心。";
   const artist = track.artist?.trim() || "AIPOGER Creator";
   const title = track.title?.trim() || "未命名作品";
-  return `今天的傷心酒吧推薦：${artist}《${title}》。進來聽完整版，喜歡就按愛心。`;
+  return `今天的傷心酒吧推薦：${artist}《${title}》。掃 QR 或輸入 aipoger.com/today，進來聽完整版，喜歡就按愛心。`;
 }
 
 function sourceTypeLabel(value: SocialPost["source_type"]) {
@@ -269,6 +269,9 @@ function SocialTargetPanel({
 
       <div className="mt-3 space-y-2 text-xs font-bold leading-6 text-zinc-400">
         <p>模式：{target.publish_mode === "api" ? "API 可發布" : target.publish_mode === "manual" ? "手動發布" : "草稿素材"}</p>
+        {post.status === "needs_review" ? (
+          <p className="text-yellow-100">這篇還沒批准。先按上方「批准草稿」後，才會開放平台發布；批准本身不會自動送出。</p>
+        ) : null}
         {mediaUrl ? (
           <p className="break-all text-yellow-100">影像素材：{mediaUrl}</p>
         ) : (
@@ -312,7 +315,7 @@ function SocialTargetPanel({
             onClick={() => runAction("publish_target", { targetId: target.id }, target.id, `${platformLabel[target.platform]} 發布完成。`)}
             className="rounded-lg bg-white px-3 py-2 text-xs font-black text-black disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {accountStatus?.connectionStatus === "connected" ? "發布" : "待連線"}
+            {accountStatus?.connectionStatus === "connected" ? `發布到 ${platformLabel[target.platform]}` : "待連線"}
           </button>
         ) : (
           <button
@@ -847,7 +850,7 @@ export default function AdminSocialPage() {
                       onClick={() => runAction("approve_post", { postId: post.id }, post.id, "已批准社群草稿，可開始發布或手動處理。")}
                       className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-4 py-3 text-sm font-black text-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      批准
+                      批准草稿
                     </button>
                     <button
                       type="button"
