@@ -1567,7 +1567,7 @@ export default function ListenBarAdminPage() {
                   <div>
                     <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">推薦影像素材</p>
                     <p className="mt-1 text-xs font-bold leading-6 text-zinc-500">
-                      支援 JPG / PNG / WebP / GIF / MP4 / MOV / WebM。選檔後按下方儲存才會上傳；只產草稿，不會自動發平台。
+                      可貼公開影像連結，或上傳 JPG / PNG / WebP / GIF / MP4 / MOV / WebM。Discord 檔案太大時建議貼外部連結；只產草稿，不會自動發平台。
                     </p>
                   </div>
                   <label className="inline-flex cursor-pointer rounded-xl border border-yellow-200/30 bg-yellow-300/10 px-4 py-3 text-sm font-black text-yellow-100 transition hover:border-yellow-100">
@@ -1575,6 +1575,20 @@ export default function ListenBarAdminPage() {
                     <input type="file" accept={SOCIAL_MEDIA_UPLOAD_ACCEPT} onChange={handleSpotlightMediaChange} className="hidden" />
                   </label>
                 </div>
+                <label className="mt-3 block text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                  影像素材連結
+                  <input
+                    value={spotlightMediaUrl}
+                    onChange={(event) => {
+                      if (spotlightMediaPreview) URL.revokeObjectURL(spotlightMediaPreview);
+                      setSpotlightMediaFile(null);
+                      setSpotlightMediaPreview("");
+                      setSpotlightMediaUrl(event.target.value);
+                    }}
+                    placeholder="https://... 公開圖片或影片連結"
+                    className="mt-2 h-12 w-full rounded-xl border border-white/12 bg-black/60 px-4 text-sm font-bold normal-case tracking-normal text-white outline-none transition placeholder:text-zinc-600 focus:border-yellow-200/70"
+                  />
+                </label>
                 {(spotlightMediaPreview || spotlightMediaUrl) ? (
                   <div className="mt-3 grid gap-3 sm:grid-cols-[9rem_1fr]">
                     <div className="overflow-hidden rounded-xl border border-white/10 bg-black">
@@ -1627,6 +1641,9 @@ export default function ListenBarAdminPage() {
                 </button>
                 <p className="basis-full text-xs font-bold leading-6 text-zinc-500">
                   儲存後會建立社群草稿；要發送平台，請到社群後台批准後再發布或手動貼文。
+                </p>
+                <p className="basis-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs font-bold leading-6 text-zinc-500">
+                  /today 是固定入口，永遠導向台灣日期的今日推薦；Spotlight 連結是這一天的指定推薦頁，適合後台查核或單次分享。
                 </p>
                 <button
                   type="button"
