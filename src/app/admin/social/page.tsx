@@ -135,6 +135,21 @@ function todayTaipeiDate() {
   return year && month && day ? `${year}-${month}-${day}` : new Date().toISOString().slice(0, 10);
 }
 
+function defaultSpotlightIntro(track: RecentListenBarTrack | null) {
+  if (!track) return "今天推薦一首正在傷心酒吧公播的 AI 音樂。進來聽完整版，喜歡就按愛心，這顆心會直接算進歌曲成績。";
+  const artist = track.artist?.trim() || "AIPOGER Creator";
+  const title = track.title?.trim() || "未命名作品";
+  const genre = track.genre?.trim() || "AI Music";
+  return `今天推薦 ${artist}《${title}》。這首 ${genre} 正在傷心酒吧公播，進來聽完整版，喜歡就按愛心，這顆心會直接算進歌曲成績。`;
+}
+
+function defaultSpotlightCaption(track: RecentListenBarTrack | null) {
+  if (!track) return "今天的傷心酒吧推薦。進來聽完整版，喜歡就按愛心。";
+  const artist = track.artist?.trim() || "AIPOGER Creator";
+  const title = track.title?.trim() || "未命名作品";
+  return `今天的傷心酒吧推薦：${artist}《${title}》。進來聽完整版，喜歡就按愛心。`;
+}
+
 function sourceTypeLabel(value: SocialPost["source_type"]) {
   if (value === "battle_result") return "Battle 戰報";
   if (value === "listen_bar_daily_spotlight") return "每日推薦歌";
@@ -323,8 +338,8 @@ export default function AdminSocialPage() {
   const [selectedBattleId, setSelectedBattleId] = useState("");
   const [spotlightDate, setSpotlightDate] = useState(todayTaipeiDate());
   const [selectedSpotlightTrackId, setSelectedSpotlightTrackId] = useState("");
-  const [spotlightIntro, setSpotlightIntro] = useState("今天推薦 Tank Lu《橘貓。女巫。月》。動感電音裡帶一點奇幻感，像夜裡有貓走過合成器。");
-  const [spotlightCaption, setSpotlightCaption] = useState("今天的傷心酒吧推薦：Tank Lu《橘貓。女巫。月》。進來聽完整版，喜歡就按愛心，這顆心會直接算進歌曲成績。");
+  const [spotlightIntro, setSpotlightIntro] = useState("");
+  const [spotlightCaption, setSpotlightCaption] = useState("");
   const [manualTopic, setManualTopic] = useState("Creator Wanted");
   const [manualBody, setManualBody] = useState("徵求第一批 AI 音樂創作者。帶你的作品進 AIPOGER，讓 30-60 秒抓波上場被聽見。");
   const [manualCta, setManualCta] = useState("加入 AIPOGER，帶你的 30-60 秒抓波進場 battle。");
@@ -365,10 +380,10 @@ export default function AdminSocialPage() {
     setRecentListenBarTracks(listenTracks);
     setAccountStatuses(payload?.accountStatuses ?? []);
     setSelectedBattleId((current) => current || payload?.recentBattleResults?.[0]?.battle_id || "");
-    setSelectedSpotlightTrackId((current) => {
-      if (current) return current;
-      return listenTracks.find((track) => /橘貓|女巫/i.test(`${track.title ?? ""} ${track.artist ?? ""}`))?.id || listenTracks[0]?.id || "";
-    });
+    const nextTrack = listenTracks.find((track) => /橘貓|女巫/i.test(`${track.title ?? ""} ${track.artist ?? ""}`)) ?? listenTracks[0] ?? null;
+    setSelectedSpotlightTrackId((current) => current || nextTrack?.id || "");
+    setSpotlightIntro((current) => current || defaultSpotlightIntro(nextTrack));
+    setSpotlightCaption((current) => current || defaultSpotlightCaption(nextTrack));
   }, []);
 
   const accountStatusByPlatform = useMemo(() => {
@@ -715,7 +730,13 @@ export default function AdminSocialPage() {
                 推薦歌曲
                 <select
                   value={selectedSpotlightTrackId}
-                  onChange={(event) => setSelectedSpotlightTrackId(event.target.value)}
+                  onChange={(event) => {
+                    const nextId = event.target.value;
+                    const nextTrack = recentListenBarTracks.find((track) => track.id === nextId) ?? null;
+                    setSelectedSpotlightTrackId(nextId);
+                    setSpotlightIntro(defaultSpotlightIntro(nextTrack));
+                    setSpotlightCaption(defaultSpotlightCaption(nextTrack));
+                  }}
                   className="mt-2 w-full rounded-lg border border-white/10 bg-black px-3 py-3 text-sm font-bold normal-case tracking-normal text-white outline-none"
                 >
                   {recentListenBarTracks.length === 0 ? (
@@ -729,6 +750,19 @@ export default function AdminSocialPage() {
                   )}
                 </select>
               </label>
+              <div className="sm:col-span-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const track = recentListenBarTracks.find((item) => item.id === selectedSpotlightTrackId) ?? null;
+                    setSpotlightIntro(defaultSpotlightIntro(track));
+                    setSpotlightCaption(defaultSpotlightCaption(track));
+                  }}
+                  className="rounded-lg border border-yellow-200/30 bg-yellow-300/10 px-3 py-2 text-xs font-black text-yellow-100 hover:border-yellow-100"
+                >
+                  重新套用這首歌文案
+                </button>
+              </div>
               <label className="sm:col-span-2 text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
                 推薦文
                 <textarea

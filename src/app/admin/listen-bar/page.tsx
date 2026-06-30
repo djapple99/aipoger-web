@@ -673,14 +673,11 @@ export default function ListenBarAdminPage() {
   useEffect(() => {
     if (selectedSpotlightTrackId || spotlightTrackOptions.length === 0) return;
     const preferredTrack = spotlightTrackOptions.find((track) => /橘貓|女巫/i.test(`${track.title ?? ""} ${track.artist ?? ""}`));
-    setSelectedSpotlightTrackId(preferredTrack?.id ?? spotlightTrackOptions[0]?.id ?? "");
+    const nextTrack = preferredTrack ?? spotlightTrackOptions[0] ?? null;
+    setSelectedSpotlightTrackId(nextTrack?.id ?? "");
+    setSpotlightIntro(defaultSpotlightIntro(nextTrack));
+    setSpotlightCaption(defaultSpotlightCaption(nextTrack));
   }, [selectedSpotlightTrackId, spotlightTrackOptions]);
-
-  useEffect(() => {
-    if (!selectedSpotlightTrack) return;
-    setSpotlightIntro((current) => current || defaultSpotlightIntro(selectedSpotlightTrack));
-    setSpotlightCaption((current) => current || defaultSpotlightCaption(selectedSpotlightTrack));
-  }, [selectedSpotlightTrack]);
 
   const updateForm = (patch: Partial<TrackForm>) => {
     setForm((current) => ({ ...current, ...patch }));
@@ -1477,6 +1474,20 @@ export default function ListenBarAdminPage() {
                   </div>
                 </div>
               ) : null}
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  disabled={!selectedSpotlightTrack}
+                  onClick={() => {
+                    setSpotlightIntro(defaultSpotlightIntro(selectedSpotlightTrack));
+                    setSpotlightCaption(defaultSpotlightCaption(selectedSpotlightTrack));
+                  }}
+                  className="rounded-lg border border-yellow-200/30 bg-yellow-300/10 px-3 py-2 text-xs font-black text-yellow-100 transition hover:border-yellow-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  重新套用這首歌文案
+                </button>
+              </div>
 
               <label className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
                 推薦文
