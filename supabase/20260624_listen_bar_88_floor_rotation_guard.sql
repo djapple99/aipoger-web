@@ -1,15 +1,18 @@
--- AIPOGER Bar Heartbreak 88-song floor guard.
+-- LEGACY AIPOGER Bar Heartbreak global-floor guard.
+-- Superseded by the 2026-07-01/2026-07-02 genre-pool rules.
+-- Current rule: 11 fixed genres, 36 public tracks per genre, 396 total public
+-- target, and no system capacity eviction before 2026-07-06 00:00 +08.
 --
 -- Final V1 rule:
 -- - no legacy 30-day completion removal
 -- - no legacy 66-song / 24H-4-reaction removal
 -- - rotation may remove songs only when active public community tracks exceed 88
--- - one pass removes at most the overflow above 88, capped at 3
+-- - historical one-pass overflow trimming was capped at 3
 -- - ties by positive reaction count remove older songs first
 -- - rotation does not refill the public pool when it is below 88
 
 comment on table public.listen_bar_tracks is
-'AIPOGER Bar Heartbreak V1 rotation. Public community pool has an 88-song floor: no 30-day expiry, no 66-song / 24H-4-reaction survival removal, no rotation refill below 88, and public removal only trims active public community tracks above 88. Ties remove older songs first.';
+'LEGACY AIPOGER Bar Heartbreak V1 global-floor rotation. Superseded by the 2026-07-01/2026-07-02 genre-pool rules: 11 fixed genres, 36 public tracks per genre, 396 total public target, no system capacity eviction before 2026-07-06 00:00 +08.';
 
 create or replace function public.process_listen_bar_rotation_limits()
 returns table(

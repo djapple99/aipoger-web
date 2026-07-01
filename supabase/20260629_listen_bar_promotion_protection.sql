@@ -1,8 +1,8 @@
--- AIPOGER Bar Heartbreak: 7-day promotion protection.
--- 2026-06-29 through 2026-07-05 Taiwan time:
--- - active Challengers join public airplay
--- - 88-song public-pool eviction is paused
--- - only prior 88-capacity evictions are restored; owner/manual removals stay removed
+-- LEGACY AIPOGER Bar Heartbreak migration.
+-- This 2026-06-29 file is kept for historical repair context only and is
+-- superseded by the 2026-07-01/2026-07-02 genre-pool migrations.
+-- Current rule: 11 fixed genres, 36 public tracks per genre, 396 total public
+-- target, and no system capacity eviction before 2026-07-06 00:00 +08.
 
 alter table public.listen_bar_tracks
   add column if not exists moderation_note text;
@@ -102,7 +102,7 @@ revoke execute on function public.process_listen_bar_rotation_limits() from auth
 grant execute on function public.process_listen_bar_rotation_limits() to service_role;
 
 comment on function public.process_listen_bar_rotation_limits() is
-'AIPOGER Bar Heartbreak rotation. Promotion protection is active until 2026-07-06 00:00 +08: Challengers can join public airplay, 88-song eviction is paused, and post-protection eviction removes at most 3 low-reaction oldest public songs above 88.';
+'LEGACY AIPOGER Bar Heartbreak rotation function superseded by the 2026-07-01/2026-07-02 genre-pool rules. Current rule: 11 fixed genres, 36 public tracks per genre, 396 total public target, and no system capacity eviction before 2026-07-06 00:00 +08.';
 
 update public.listen_bar_tracks
 set is_active = true,
