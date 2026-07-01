@@ -83,15 +83,13 @@ async function processRotation(request: NextRequest) {
 
   if (publicCountBeforePromotionError) return NextResponse.json({ error: publicCountBeforePromotionError.message }, { status: 500 });
 
-  let eligibleQuery = admin
+  const eligibleQuery = admin
     .from("listen_bar_tracks")
     .select("id, positive_reaction_count, created_at, bar_phase")
     .eq("source", "community")
     .eq("is_active", true)
-    .eq("bar_phase", "challenger");
-  if (!promotionProtectionActive) {
-    eligibleQuery = eligibleQuery.lt("created_at", observationCutoff);
-  }
+    .eq("bar_phase", "challenger")
+    .lt("created_at", observationCutoff);
   const { data: eligibleChallengers, error: eligibleError } = await eligibleQuery.order("created_at", { ascending: true });
 
   if (eligibleError) return NextResponse.json({ error: eligibleError.message }, { status: 500 });

@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import {
-  LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
-  listenBarPromotionProtectionActive,
-} from "@/lib/listen-bar";
+import { LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS } from "@/lib/listen-bar";
 
 type ListenBarTrackRow = {
   id: string;
@@ -166,14 +163,6 @@ function isMissingColumnError(error: unknown): boolean {
 function applyLegacyOpeningGrace(rows: ListenBarTrackRow[]): ListenBarTrackRow[] {
   const hasPersistedPhase = rows.some((row) => Object.prototype.hasOwnProperty.call(row, "bar_phase"));
   if (hasPersistedPhase) return rows;
-
-  if (listenBarPromotionProtectionActive()) {
-    return rows.map((row) => ({
-      ...row,
-      bar_phase: "public",
-      promoted_at: row.promoted_at ?? row.created_at,
-    }));
-  }
 
   const observationCutoffMs = Date.now() - LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS * 60 * 60 * 1000;
   const eligiblePublicIds = new Set(

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
-  listenBarPromotionProtectionActive,
   listenBarChallengerSlotLimitForPublicCount,
 } from "@/lib/listen-bar";
 import {
@@ -113,14 +112,6 @@ function applyLegacyOpeningGrace(rows: ListenBarTrackRow[]): ListenBarTrackRow[]
   const hasPersistedPhase = rows.some((row) => Object.prototype.hasOwnProperty.call(row, "bar_phase"));
   if (hasPersistedPhase) return rows;
 
-  if (listenBarPromotionProtectionActive()) {
-    return rows.map((row) => ({
-      ...row,
-      bar_phase: "public",
-      promoted_at: row.promoted_at ?? row.created_at,
-    }));
-  }
-
   const observationCutoffMs = Date.now() - LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS * 60 * 60 * 1000;
   return rows.map((row) => {
     const createdAtMs = new Date(row.created_at ?? 0).getTime();
@@ -180,10 +171,18 @@ export async function GET(request: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     const tracks = applyLegacyOpeningGrace(rows ?? []);
+    const genreStats = tracks.reduce<Record<string, { challengerCount: number; publicCount: number; challengerLimit: number }>>((acc, track) => {
+      const key = track.genre?.trim() || "Original 自我風格";
+      const item = acc[key] ?? { challengerCount: 0, publicCount: 0, challengerLimit: 3 };
+      if (track.bar_phase === "public") item.publicCount += 1;
+      else item.challengerCount += 1;
+      item.challengerLimit = listenBarChallengerSlotLimitForPublicCount(item.publicCount);
+      acc[key] = item;
+      return acc;
+    }, {});
     const challengerCount = tracks.filter((track) => track.bar_phase !== "public").length;
     const publicCount = tracks.filter((track) => track.bar_phase === "public").length;
-    const challengerLimit = listenBarChallengerSlotLimitForPublicCount(publicCount);
-    return NextResponse.json({ activeTrackCount: tracks.length, challengerCount, publicCount, challengerLimit, tracks });
+    return NextResponse.json({ activeTrackCount: tracks.length, challengerCount, publicCount, genreStats, tracks });
   } catch (error) {
     return NextResponse.json({ error: String((error as { message?: string })?.message ?? error) }, { status: 500 });
   }

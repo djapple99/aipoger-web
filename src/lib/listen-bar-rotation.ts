@@ -81,7 +81,6 @@ export function buildListenBarRotationPreview(
   const observationCutoffMs = nowMs - LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS * 60 * 60 * 1000;
   const wouldPromote = activeChallengerTracks
     .filter((track) => {
-      if (evictionPaused) return true;
       const createdAtMs = timestampMs(track.createdAt);
       return createdAtMs !== null && createdAtMs < observationCutoffMs;
     })

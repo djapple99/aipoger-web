@@ -189,12 +189,12 @@ Current rules:
 - Bar Heartbreak main rotation contains creator submissions only.
 - Official AIPOGER songs do not count as active public-pool songs.
 - If there are no community submissions, hidden fallback store music may prevent a silent station; it must not count toward survival results.
-- Public listening supports 11 playback choices: all public airplay plus the 10 fixed music genres.
-- Each fixed music genre has its own 36-track public pool. With the current 10 genres, the full public-pool capacity is 360 community songs.
+- Public listening supports 12 playback choices: all public airplay plus the 11 fixed music genres.
+- Each fixed music genre has its own 36-track public pool. With the current 11 genres, the full public-pool capacity is 396 community songs.
 - New submissions must include a fixed music genre. Do not silently default missing genre values to `Original 自我風格`.
 - New submissions enter Challenger first and receive 24H protection before public-pool promotion.
-- Creator Challenger slots use a 3/2/1 ladder based on that creator's active public-pool songs: 0-2 public songs allows up to 3 active Challengers, 3-5 public songs allows up to 2 active Challengers, and 6+ public songs allows up to 1 active Challenger.
-- Public-pool songs do not occupy Challenger slots and are not removed by this limit; they only reduce the creator's new Challenger concurrency.
+- Creator Challenger slots use a 3/2/1 ladder per creator + genre: 0-2 same-genre public songs allows up to 3 same-genre active Challengers, 3-5 allows up to 2, and 6+ allows up to 1.
+- Public-pool songs do not occupy Challenger slots and are not removed by this limit; they only reduce the creator's new same-genre Challenger concurrency.
 - A creator may remove their own Challenger songs.
 - A creator may remove their own public-pool songs.
 - Challenger protection period: 24 hours.
@@ -212,7 +212,7 @@ Current rules:
 - If songs have the same positive reaction count, remove the older song first.
 - If a genre public pool is at or below 36 songs, elimination stops for that genre and no refill action is needed.
 - The legacy 30-day `completed` removal rule is retired and must not remove songs.
-- Public pool target: 36 songs per genre, currently 360 songs across 10 genres. Challenger priority airplay can still surface protected new submissions.
+- Public pool target: 36 songs per genre, currently 396 songs across 11 genres. Challenger priority airplay can still surface protected new submissions.
 - After that song's genre activation point, a song with 30 hearts/positive reactions or 7 public survival days becomes Honor Board eligible.
 - A listener must sign in to react or comment. Pressing Heart on a Bar Heartbreak track also saves that track to the listener's favorites. Removing it later from favorites does not remove the historical heart reaction; pressing Heart again after unsaving saves it again without duplicate favorites.
 - New submissions get priority after the current song finishes; each priority batch starts when the first upload arrives, airs up to 8 new uploads within 1 hour, and pushes overflow to the next hour.

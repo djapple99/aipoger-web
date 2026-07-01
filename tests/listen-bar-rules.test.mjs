@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  LISTEN_BAR_ACTIVE_GENRE_COUNT,
+  LISTEN_BAR_TOTAL_ROTATION_LIMIT,
   LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD,
   LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS,
   LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
@@ -11,9 +13,19 @@ import {
   listenBarSurvivalStartedAt,
 } from "../src/lib/listen-bar-rules.ts";
 import { buildListenBarRotationPreview } from "../src/lib/listen-bar-rotation.ts";
+import { MUSIC_GENRE_OPTIONS } from "../src/lib/music-genres.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const NOW = Date.UTC(2026, 5, 26, 0, 0, 0);
+
+test("listen bar fixed genre capacity uses 11 genres", () => {
+  assert.equal(LISTEN_BAR_ACTIVE_GENRE_COUNT, 11);
+  assert.equal(MUSIC_GENRE_OPTIONS.length, 11);
+  assert.equal(MUSIC_GENRE_OPTIONS.at(-1)?.value, "Original 自我風格");
+  assert.equal(MUSIC_GENRE_OPTIONS.some((genre) => genre.value === "台語熊 High"), true);
+  assert.equal(LISTEN_BAR_TOTAL_ROTATION_LIMIT, LISTEN_BAR_PUBLIC_ROTATION_LIMIT * 11);
+  assert.equal(LISTEN_BAR_TOTAL_ROTATION_LIMIT, 396);
+});
 
 test("listen bar challenger slot limit follows public pool 3/2/1 tiers", () => {
   assert.equal(listenBarChallengerSlotLimitForPublicCount(0), 3);
@@ -138,8 +150,24 @@ test("listen bar rotation preview protects honor-eligible public songs before ov
   assert.deepEqual(preview.wouldRemove.map((track) => track.id), ["challenger-ready"]);
 });
 
-test("listen bar capacity pause is no longer active after new genre-pool rules launch", () => {
+test("listen bar capacity eviction stays paused until July 6 but does not skip 24H Challenger protection", () => {
   const protectionNow = Date.UTC(2026, 6, 1, 12, 0, 0);
+  const preview = buildListenBarRotationPreview([
+    {
+      id: "challenger-new",
+      genre: "R&B 深情瞬間",
+      barPhase: "challenger",
+      createdAt: new Date(protectionNow - 2 * 60 * 60 * 1000).toISOString(),
+    },
+  ], protectionNow);
+  assert.equal(preview.evictionPaused, true);
+  assert.equal(preview.eligibleChallengerCount, 0);
+  assert.deepEqual(preview.wouldPromote, []);
+  assert.deepEqual(preview.wouldRemove, []);
+});
+
+test("listen bar capacity pause is no longer active after the July 6 cleanup grace period", () => {
+  const protectionNow = Date.UTC(2026, 6, 6, 0, 1, 0);
   const preview = buildListenBarRotationPreview([], protectionNow);
   assert.equal(preview.evictionPaused, false);
 });

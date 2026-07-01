@@ -43,7 +43,6 @@ import {
   fallbackOfficialPlaylist,
   listenBarChallengerSlotLimitForPublicCount,
   listenBarIsHonorEligible,
-  listenBarPromotionProtectionActive,
   listenBarPublicDisplayDay,
   listenBarRowToTrack,
   listenBarSurvivalStartedAt,
@@ -115,7 +114,7 @@ type MyBroadcastStat = {
 
 type MyTracksPayload = {
   challengerCount?: number;
-  challengerLimit?: number;
+  genreStats?: Record<string, { challengerCount: number; publicCount: number; challengerLimit: number }>;
   publicCount?: number;
   tracks?: ListenBarTrackRow[];
   error?: string;
@@ -709,7 +708,6 @@ function ListenBarPageContent() {
   const [selectedPlaybackGenre, setSelectedPlaybackGenre] = useState<GenrePlaybackSelection>("all");
   const [playlistStatus, setPlaylistStatus] = useState<"loading" | "database" | "fallback">("loading");
   const [priorityAirplayIds, setPriorityAirplayIds] = useState<Set<string>>(() => new Set());
-  const [challengerSlotCount, setChallengerSlotCount] = useState(0);
   const [publicUploadForm, setPublicUploadForm] = useState<PublicUploadForm>(initialPublicUploadForm);
   const [publicAudioFile, setPublicAudioFile] = useState<File | null>(null);
   const [publicCoverFile, setPublicCoverFile] = useState<File | null>(null);
@@ -924,15 +922,24 @@ function ListenBarPageContent() {
     () => myBroadcastStats.filter((track) => track.barPhase === "public"),
     [myBroadcastStats],
   );
-  const challengerSlotLimit = useMemo(
-    () => listenBarChallengerSlotLimitForPublicCount(myPublicStats.length),
-    [myPublicStats.length],
+  const uploadGenreForSlot = publicUploadForm.genre.trim();
+  const myChallengerStatsForUploadGenre = useMemo(
+    () => uploadGenreForSlot ? myChallengerStats.filter((track) => track.genre === uploadGenreForSlot) : [],
+    [myChallengerStats, uploadGenreForSlot],
   );
-  const promotionProtectionActive = listenBarPromotionProtectionActive();
-  const challengerSlotsFull = !promotionProtectionActive && challengerSlotCount >= challengerSlotLimit;
+  const myPublicStatsForUploadGenre = useMemo(
+    () => uploadGenreForSlot ? myPublicStats.filter((track) => track.genre === uploadGenreForSlot) : [],
+    [myPublicStats, uploadGenreForSlot],
+  );
+  const challengerSlotCount = uploadGenreForSlot ? myChallengerStatsForUploadGenre.length : 0;
+  const challengerSlotLimit = useMemo(
+    () => listenBarChallengerSlotLimitForPublicCount(myPublicStatsForUploadGenre.length),
+    [myPublicStatsForUploadGenre.length],
+  );
+  const challengerSlotsFull = Boolean(uploadGenreForSlot) && challengerSlotCount >= challengerSlotLimit;
   const challengerSlotsFullMessage = isZh
-    ? `你的公播池已有 ${myPublicStats.length} 首，現在 Challenger 上限是 ${challengerSlotLimit} 首。要再上傳，請先撤下一首 Challenger，或等公播池歌曲被撤下/淘汰後釋出節奏。`
-    : `You have ${myPublicStats.length} public tracks, so your Challenger limit is ${challengerSlotLimit}. Remove one Challenger, or wait until a public track is removed before uploading again.`;
+    ? `你在「${genreDisplayLabel(uploadGenreForSlot, isZh)}」已有 ${myPublicStatsForUploadGenre.length} 首公播，這個類型 Challenger 上限是 ${challengerSlotLimit} 首。要再上傳同類型，請先撤下一首同類型 Challenger，或等同類型公播歌曲被撤下/淘汰後釋出節奏。`
+    : `In ${genreDisplayLabel(uploadGenreForSlot, isZh)}, you have ${myPublicStatsForUploadGenre.length} public tracks, so this genre's Challenger limit is ${challengerSlotLimit}. Remove one same-genre Challenger, or wait until a same-genre public track is removed before uploading again.`;
 
   useEffect(() => {
     window.dispatchEvent(new Event(STOP_HOME_BGM_EVENT));
@@ -1065,16 +1072,13 @@ function ListenBarPageContent() {
         setVisitorAvatarUrl(fighterAvatar || profileAvatar || userAvatarUrl(user));
         if (myTracksResult.ok) {
           const rows = myTracksResult.payload?.tracks ?? [];
-          setChallengerSlotCount(myTracksResult.payload?.challengerCount ?? rows.filter((row) => row.bar_phase !== "public").length);
           setMyBroadcastStats(rows.map(listenBarRowToMyBroadcastStat));
         } else {
           console.warn("[listen-bar] my tracks", myTracksResult.payload?.error || "load failed");
           setMyBroadcastStats([]);
-          setChallengerSlotCount(0);
         }
       } else {
         setMyBroadcastStats([]);
-        setChallengerSlotCount(0);
       }
     };
     void loadUser();
@@ -2031,7 +2035,7 @@ function ListenBarPageContent() {
         is_active: true,
         source: "community",
         is_featured_official: false,
-        bar_phase: promotionProtectionActive ? "public" : "challenger",
+        bar_phase: "challenger",
         created_by: userId,
       };
 
@@ -2067,7 +2071,7 @@ function ListenBarPageContent() {
 
       const insertedTrack = insertedTrackRow ? listenBarRowToTrack(insertedTrackRow) : null;
       if (insertedTrack) {
-        const fallbackBarPhase: "public" | "challenger" = promotionProtectionActive ? "public" : "challenger";
+        const fallbackBarPhase: "public" | "challenger" = "challenger";
         const normalizedTrack = {
           ...insertedTrack,
           barPhase: insertedTrack.barPhase ?? fallbackBarPhase,
@@ -2105,7 +2109,7 @@ function ListenBarPageContent() {
             album: normalizedTrack.album ?? "",
             description: normalizedTrack.description ?? "",
             duration: normalizedTrack.duration,
-            barPhase: normalizedTrack.barPhase ?? (promotionProtectionActive ? "public" : "challenger"),
+            barPhase: normalizedTrack.barPhase ?? "challenger",
             positives: 0,
             heart: 0,
             star: 0,
@@ -2116,9 +2120,6 @@ function ListenBarPageContent() {
           },
           ...tracks.filter((track) => track.id !== normalizedTrack.id),
         ]);
-      }
-      if (!promotionProtectionActive) {
-        setChallengerSlotCount((count) => count + 1);
       }
       setPublicAudioFile(null);
       setPublicCoverFile(null);
@@ -2282,9 +2283,6 @@ function ListenBarPageContent() {
         delete next[track.id];
         return next;
       });
-      if (track.barPhase === "challenger") {
-        setChallengerSlotCount((count) => Math.max(0, count - 1));
-      }
       setPublicUploadMessage(
         track.barPhase === "public"
           ? isZh
@@ -3184,8 +3182,8 @@ function ListenBarPageContent() {
             </p>
             <p className="mt-2 break-words text-sm font-bold leading-6 text-zinc-300 [overflow-wrap:anywhere]">
               {isZh
-                ? `傷心酒吧不是排行榜，而是一場 AI 音樂生存電台。聽歌不需登入；留言、投票與投稿需登入。來訪者可選公播或指定類型播放；目前 10 種類型每類滿池 ${LISTEN_BAR_GENRE_POOL_LIMIT} 首，總公播池上限 ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} 首。每一類滿池後才啟動該類淘汰與 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天榮譽計時；累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 顆心，或滿池啟動後公播存活 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天，就取得榮譽榜入選資格。`
-                : `Bar Heartbreak is not a chart. It is AI music survival radio. Listening is open; comments, votes, and uploads require sign-in. Visitors can play all songs or pick a genre. Each of the 10 genres has a ${LISTEN_BAR_GENRE_POOL_LIMIT}-track public pool, for ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} public slots total. Survival and the ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS}-day Honor timer start per genre only after that genre pool is full. ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} hearts or ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} public days after activation makes a track Honor Board eligible.`}
+                ? `傷心酒吧不是排行榜，而是一場 AI 音樂生存電台。聽歌不需登入；留言、投票與投稿需登入。來訪者可選公播或指定類型播放；目前 11 種類型每類滿池 ${LISTEN_BAR_GENRE_POOL_LIMIT} 首，總公播池上限 ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} 首。每一類滿池後才啟動該類淘汰與 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天榮譽計時；累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 顆心，或滿池啟動後公播存活 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天，就取得榮譽榜入選資格。`
+                : `Bar Heartbreak is not a chart. It is AI music survival radio. Listening is open; comments, votes, and uploads require sign-in. Visitors can play all songs or pick a genre. Each of the 11 genres has a ${LISTEN_BAR_GENRE_POOL_LIMIT}-track public pool, for ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} public slots total. Survival and the ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS}-day Honor timer start per genre only after that genre pool is full. ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} hearts or ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} public days after activation makes a track Honor Board eligible.`}
             </p>
           </div>
 
@@ -3194,7 +3192,9 @@ function ListenBarPageContent() {
               <p className="text-xs uppercase tracking-[0.22em] text-cyan-100/70">{isZh ? "我的吧台歌曲" : "My Bar Tracks"}</p>
               <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
                 <span className="max-w-full rounded-full border border-orange-300/18 bg-orange-500/8 px-2 py-0.5 text-[11px] font-black text-orange-100">
-                  {isZh ? `Challenger ${challengerSlotCount}/${challengerSlotLimit}` : `${challengerSlotCount}/${challengerSlotLimit} Challengers`}
+                  {isZh
+                    ? `Challenger ${uploadGenreForSlot ? genreDisplayLabel(uploadGenreForSlot, isZh) : "依類型"} ${challengerSlotCount}/${challengerSlotLimit}`
+                    : `${uploadGenreForSlot ? genreDisplayLabel(uploadGenreForSlot, isZh) : "By genre"} ${challengerSlotCount}/${challengerSlotLimit} Challengers`}
                 </span>
                 <span className="max-w-full rounded-full border border-white/10 px-2 py-0.5 text-[11px] font-bold text-zinc-400">
                   {isZh ? `${myPublicStats.length} 公播` : `${myPublicStats.length} public`}
@@ -3324,7 +3324,7 @@ function ListenBarPageContent() {
             </div>
             <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">
               {isZh
-                ? `${totalCommunityTrackCount} 首投稿歌進入傷心酒吧；${publicPoolTracks.length} 首正在公播。10 種類型各自滿池 ${LISTEN_BAR_GENRE_POOL_LIMIT} 首，先同類比較，再進榮譽。`
+                ? `${totalCommunityTrackCount} 首投稿歌進入傷心酒吧；${publicPoolTracks.length} 首正在公播。11 種類型各自滿池 ${LISTEN_BAR_GENRE_POOL_LIMIT} 首，先同類比較，再進榮譽。`
                 : `${totalCommunityTrackCount} creator tracks are in Bar Heartbreak; ${publicPoolTracks.length} are on public airplay. Each genre fills its own ${LISTEN_BAR_GENRE_POOL_LIMIT}-track pool before survival starts.`}
             </p>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">

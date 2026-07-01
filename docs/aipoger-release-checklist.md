@@ -132,13 +132,13 @@ Check:
 
 Challenger and public pool:
 
-- Visitors can switch Bar Heartbreak playback between all public airplay and the 10 fixed music genres.
+- Visitors can switch Bar Heartbreak playback between all public airplay and the 11 fixed music genres.
 - Genre filter UI shows current track counts, with each genre using a 36-track public-pool target.
 - New submissions enter Challenger and have 24H protection before public-pool promotion.
 - Creator upload flows require a fixed genre and must not silently default missing genres.
-- Creator Challenger slots use the 3/2/1 ladder: 0-2 active public songs allows 3 active Challengers, 3-5 allows 2, and 6+ allows 1.
+- Creator Challenger slots use the per-creator + per-genre 3/2/1 ladder: 0-2 same-genre active public songs allows 3 same-genre active Challengers, 3-5 allows 2, and 6+ allows 1.
 - Public-pool songs do not occupy Challenger slots and must not be removed by this slot limit.
-- Public pool progress shows current total over 360 and per-genre counts over 36.
+- Public pool progress shows current total over 396 and per-genre counts over 36.
 - Public-pool elimination starts only when a genre has more than 36 public songs and removes at most 3 per pass from overfull genre pools.
 - `GET /api/listen-bar/process-rotation` is manual/monitoring dry-run preview only.
 - Mutation requires protected POST and `LISTEN_BAR_ROTATION_ENABLED=true`.
