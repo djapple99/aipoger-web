@@ -70,12 +70,6 @@ function normalizeGenreFilter(value: string | null | undefined) {
   return String(value || "").trim().toLowerCase();
 }
 
-function firstGenreWithCount(counts: Record<string, number>) {
-  return DROP_BATTLE_GENRE_OPTIONS.find((genre) => (counts[normalizeGenreFilter(genre.value)] ?? 0) > 0)?.value
-    ?? DROP_BATTLE_GENRE_OPTIONS[0]?.value
-    ?? "";
-}
-
 function Turntable({
   label,
   deckKey,
@@ -449,7 +443,7 @@ function GenreFilterBar({
             <button
               key={genre.value}
               type="button"
-              onClick={() => onChange(genre.value)}
+              onClick={() => onChange(selected ? "" : genre.value)}
               className={`min-w-max rounded-full border px-4 py-2 text-xs font-black transition ${
                 selected
                   ? "border-cyan-100 bg-cyan-300 text-black shadow-[0_0_22px_rgba(34,211,238,0.2)]"
@@ -1302,19 +1296,21 @@ function BattlePoolList() {
     });
     return counts;
   }, [acceptedBattleRows, officialDrops, rows]);
-  const selectedPoolGenre = activeGenre || firstGenreWithCount(poolGenreCounts);
   const filteredOfficialDrops = useMemo(() => {
-    const target = normalizeGenreFilter(selectedPoolGenre);
+    const target = normalizeGenreFilter(activeGenre);
+    if (!target) return officialDrops;
     return officialDrops.filter((drop) => normalizeGenreFilter(drop.genre) === target);
-  }, [officialDrops, selectedPoolGenre]);
+  }, [activeGenre, officialDrops]);
   const filteredRows = useMemo(() => {
-    const target = normalizeGenreFilter(selectedPoolGenre);
+    const target = normalizeGenreFilter(activeGenre);
+    if (!target) return rows;
     return rows.filter((row) => normalizeGenreFilter(row.genre) === target);
-  }, [rows, selectedPoolGenre]);
+  }, [activeGenre, rows]);
   const filteredAcceptedBattleRows = useMemo(() => {
-    const target = normalizeGenreFilter(selectedPoolGenre);
+    const target = normalizeGenreFilter(activeGenre);
+    if (!target) return acceptedBattleRows;
     return acceptedBattleRows.filter((row) => normalizeGenreFilter(row.genre) === target);
-  }, [acceptedBattleRows, selectedPoolGenre]);
+  }, [acceptedBattleRows, activeGenre]);
 
   if (loading) {
     return (
@@ -1347,7 +1343,7 @@ function BattlePoolList() {
         </div>
       ) : null}
 
-      <GenreFilterBar activeGenre={selectedPoolGenre} onChange={setActiveGenre} counts={poolGenreCounts} t={t} />
+      <GenreFilterBar activeGenre={activeGenre} onChange={setActiveGenre} counts={poolGenreCounts} t={t} />
 
       {filteredOfficialDrops.length > 0 ? (
         <div className="mb-5">
@@ -1957,11 +1953,11 @@ function LiveBattleList() {
     });
     return counts;
   }, [rows]);
-  const selectedLiveGenre = activeGenre || firstGenreWithCount(liveGenreCounts);
   const filteredLiveRows = useMemo(() => {
-    const target = normalizeGenreFilter(selectedLiveGenre);
+    const target = normalizeGenreFilter(activeGenre);
+    if (!target) return rows;
     return rows.filter((row) => normalizeGenreFilter(row.genre) === target);
-  }, [rows, selectedLiveGenre]);
+  }, [activeGenre, rows]);
 
   return (
     <main className="aipo-stage-bg relative min-h-screen overflow-hidden text-[#ece9e6]">
@@ -2015,7 +2011,7 @@ function LiveBattleList() {
         ) : (
           <>
             <div className="mt-8">
-              <GenreFilterBar activeGenre={selectedLiveGenre} onChange={setActiveGenre} counts={liveGenreCounts} t={t} />
+              <GenreFilterBar activeGenre={activeGenre} onChange={setActiveGenre} counts={liveGenreCounts} t={t} />
             </div>
             {filteredLiveRows.length === 0 ? (
               <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.035] px-5 py-6 text-center">

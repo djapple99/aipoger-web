@@ -101,7 +101,7 @@ Current rules:
 - Short share route: `/b/{shortId}`.
 - Battle result share route: `/r/{shortId}`.
 - Drop Battle share preview image should be black background with white AIPOGER logo.
-- Drop Battle genre filters should show only fixed genre choices, wrapping into two rows when needed. Do not add an `All` filter; all-public playback belongs to Bar Heartbreak.
+- Drop Battle genre filters should show only fixed genre choices, wrapping into two rows when needed. Do not add an `All` filter; all-public playback belongs to Bar Heartbreak. Default Battle Pool state has no selected genre and shows all official Gatekeeper cards; clicking the selected genre again clears the selection.
 - Waiting cards should use `約人鬥歌`.
 - Live or public-voting cards should use `邀請觀戰投票`.
 - Public Drop challenge cards should be capped at 10 active cards when the operating limit is enforced.
