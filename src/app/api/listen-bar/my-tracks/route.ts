@@ -202,7 +202,7 @@ export async function PATCH(request: NextRequest) {
 
     const patch = {
       ai_tool: cleanShortField(body?.aiTool) ?? "AI Music",
-      genre: cleanText(body?.genre, 40) ?? "自我風格",
+      genre: cleanText(body?.genre, 80) ?? "Original 自我風格",
       mood: cleanShortField(body?.album),
       description: cleanDescriptionField(body?.description),
     };

@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
 
   const body = (await request.json().catch(() => null)) as CreateDailyEntryBody | null;
   const title = trim(body?.title);
-  const genre = trim(body?.genre) || "自我風格";
+  const genre = trim(body?.genre) || "Original 自我風格";
   const aiTool = trimOrNull(body?.aiTool);
   const audioPath = trim(body?.audioPath);
   const audioSha256 = isSha256Hash(body?.audioSha256) ? trim(body?.audioSha256).toLowerCase() : null;

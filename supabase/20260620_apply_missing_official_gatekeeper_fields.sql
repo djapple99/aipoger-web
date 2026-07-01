@@ -63,10 +63,10 @@ on public.battles (official_gatekeeper_id, status, created_at desc);
 
 insert into public.official_gatekeeper_drops (id, gate_number, title, genre, ai_tool, description, active, sort_order)
 values
-  ('gate-01-heartbreak', 'GATE 01', '官方守門 Drop', '感人抒情', 'Suno', '歡迎挑戰這首官方 Drop，設定開戰時間並分享拉人投票。', false, 1),
-  ('gate-02-city-pop', 'GATE 02', '官方守門 Drop', '復古City-Pop', 'Suno', '歡迎挑戰這首官方 Drop，設定開戰時間並分享拉人投票。', false, 2),
-  ('gate-03-club-edm', 'GATE 03', '官方守門 Drop', '動感電音', 'Suno', '歡迎挑戰這首官方 Drop，設定開戰時間並分享拉人投票。', false, 3),
-  ('gate-04-rap-rnb', 'GATE 04', '官方守門 Drop', '說唱街頭風', 'Suno', '歡迎挑戰這首官方 Drop，設定開戰時間並分享拉人投票。', false, 4)
+  ('gate-01-heartbreak', 'GATE 01', '官方守門 Drop', 'R&B 深情瞬間', 'Suno', '歡迎挑戰這首官方 Drop，設定開戰時間並分享拉人投票。', false, 1),
+  ('gate-02-city-pop', 'GATE 02', '官方守門 Drop', 'Disco / Funk / City-Pop', 'Suno', '歡迎挑戰這首官方 Drop，設定開戰時間並分享拉人投票。', false, 2),
+  ('gate-03-club-edm', 'GATE 03', '官方守門 Drop', 'EDM 百大電音', 'Suno', '歡迎挑戰這首官方 Drop，設定開戰時間並分享拉人投票。', false, 3),
+  ('gate-04-rap-rnb', 'GATE 04', '官方守門 Drop', 'Rap 街頭說唱', 'Suno', '歡迎挑戰這首官方 Drop，設定開戰時間並分享拉人投票。', false, 4)
 on conflict (id) do nothing;
 
 alter table public.official_gatekeeper_drops enable row level security;

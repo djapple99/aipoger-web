@@ -52,6 +52,7 @@ import {
   type ListenBarTrackRow,
 } from "@/lib/listen-bar";
 import { usePresenceCount } from "@/lib/use-presence-count";
+import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import { logAnalyticsEvent } from "@/lib/analytics-client";
 import type { User } from "@supabase/supabase-js";
 
@@ -180,17 +181,7 @@ const STOP_HOME_BGM_EVENT = "aipoger:stop-home-bgm";
 const heartbreakTitleFont =
   '"GenYoMin TW", "GenYoMin JP", "Hiragino Mincho ProN", "Songti TC", "Noto Serif TC", "PMingLiU", "SoukouMincho", serif';
 
-type GenreOption = { value: string; labelKey: string };
-
-const LISTEN_BAR_GENRES: GenreOption[] = [
-  { value: "K-pop動感風", labelKey: "genre_kpop_energy" },
-  { value: "說唱街頭風", labelKey: "genre_rap_street" },
-  { value: "復古City-Pop", labelKey: "genre_city_pop" },
-  { value: "感人抒情", labelKey: "genre_emotion" },
-  { value: "熱血搖滾", labelKey: "genre_rock" },
-  { value: "動感電音", labelKey: "genre_edm" },
-  { value: "自我風格", labelKey: "genre_custom" },
-];
+const LISTEN_BAR_GENRES = MUSIC_GENRE_OPTIONS;
 
 type PublicUploadForm = {
   title: string;
@@ -362,7 +353,7 @@ function listenBarRowToMyBroadcastStat(row: ListenBarTrackRow): MyBroadcastStat 
     id: row.id,
     title: row.title?.trim() || "Untitled",
     aiTool: row.ai_tool?.trim() || "AI Music",
-    genre: row.genre?.trim() || "自我風格",
+    genre: row.genre?.trim() || "Original 自我風格",
     album: row.mood?.trim() || "",
     description: row.description?.trim() || "",
     duration: Math.max(1, Math.round(row.duration_seconds ?? 0)),
@@ -535,7 +526,9 @@ function albumDisplayLabel(value: string, isZh: boolean) {
 
 function genreDisplayLabel(value: string | null | undefined, isZh: boolean) {
   const cleanValue = value?.trim();
-  if (!cleanValue || cleanValue === "自我風格" || cleanValue === "Custom Style") return isZh ? "自我風格" : "Custom Style";
+  if (!cleanValue || cleanValue === "自我風格" || cleanValue === "Original 自我風格" || cleanValue === "Custom Style" || cleanValue === "Original Style") {
+    return isZh ? "Original 自我風格" : "Original Style";
+  }
   return cleanValue;
 }
 
@@ -697,6 +690,7 @@ function ListenBarPageContent() {
   const playbackSegmentRef = useRef<{ trackId: string; startedAtMs: number; startedAtSecond: number } | null>(null);
   const startTrackAtZeroRef = useRef(false);
   const liveRadioSyncEnabledRef = useRef(true);
+  const localOverrideTrackIdRef = useRef<string | null>(null);
   const spotlightAppliedKeyRef = useRef("");
   const listenContextRef = useRef<{ source: "bar_heartbreak" | "listen_bar_spotlight"; spotlightDate?: string | null; spotlightId?: string | null }>({
     source: "bar_heartbreak",
@@ -723,7 +717,7 @@ function ListenBarPageContent() {
   const [editTrackId, setEditTrackId] = useState<string | null>(null);
   const [editTrackForm, setEditTrackForm] = useState<Pick<MyBroadcastStat, "aiTool" | "genre" | "album" | "description">>({
     aiTool: "",
-    genre: "自我風格",
+    genre: "Original 自我風格",
     album: "",
     description: "",
   });
@@ -900,6 +894,7 @@ function ListenBarPageContent() {
     [myPublicStats.length],
   );
   const promotionProtectionActive = listenBarPromotionProtectionActive();
+  const activeRotationLimit = promotionProtectionActive ? Number.POSITIVE_INFINITY : LISTEN_BAR_TOTAL_ROTATION_LIMIT;
   const challengerSlotsFull = !promotionProtectionActive && challengerSlotCount >= challengerSlotLimit;
   const challengerSlotsFullMessage = isZh
     ? `你的公播池已有 ${myPublicStats.length} 首，現在 Challenger 上限是 ${challengerSlotLimit} 首。要再上傳，請先撤下一首 Challenger，或等公播池歌曲被撤下/淘汰後釋出節奏。`
@@ -1101,7 +1096,7 @@ function ListenBarPageContent() {
       const rows = payload?.tracks ?? [];
       const community = rows
         .filter((row) => !row.is_featured_official && row.source !== "official")
-        .slice(0, LISTEN_BAR_TOTAL_ROTATION_LIMIT)
+        .slice(0, activeRotationLimit)
         .map(listenBarRowToTrack)
         .filter((track): track is ListenBarTrack => track !== null);
       const spotlightTrack = spotlightPayload?.track ? listenBarRowToTrack(spotlightPayload.track) : null;
@@ -1166,7 +1161,7 @@ function ListenBarPageContent() {
       mounted = false;
       window.clearInterval(playlistRefreshTimer);
     };
-  }, [isZh, spotlightParam, targetTrackParam]);
+  }, [activeRotationLimit, isZh, spotlightParam, targetTrackParam]);
 
   useEffect(() => {
     const container = chatScrollRef.current;
@@ -1235,7 +1230,7 @@ function ListenBarPageContent() {
 
     let mounted = true;
     const loadMyReactions = async () => {
-      const trackIds = rotationTracks.map((track) => track.id).slice(0, LISTEN_BAR_TOTAL_ROTATION_LIMIT);
+      const trackIds = rotationTracks.map((track) => track.id).slice(0, activeRotationLimit);
       const voteDate = taipeiVoteDate();
       const { data, error } = await supabase
         .from("listen_bar_track_reactions")
@@ -1262,7 +1257,7 @@ function ListenBarPageContent() {
     return () => {
       mounted = false;
     };
-  }, [rotationTracks, userId]);
+  }, [activeRotationLimit, rotationTracks, userId]);
 
   useEffect(() => {
     const channel = supabase
@@ -1294,6 +1289,7 @@ function ListenBarPageContent() {
         } else {
           startTrackAtZeroRef.current = true;
           liveRadioSyncEnabledRef.current = false;
+          localOverrideTrackIdRef.current = track.id;
           liveSeekRef.current = { trackId: track.id, offset: 0 };
           setElapsed(0);
           setNowTrack(track);
@@ -1314,11 +1310,17 @@ function ListenBarPageContent() {
 
   const playNext = useCallback(() => {
     setHistory((items) => [nowTrack, ...items].slice(0, 8));
+    if (localOverrideTrackIdRef.current === nowTrack.id) {
+      localOverrideTrackIdRef.current = null;
+      liveRadioSyncEnabledRef.current = true;
+    }
+
     const queuedRequest = getPriorityAirplayBatch(priorityAirplaySourceTracks, servedCommunityIdsRef.current, nowTrack.id)[0] ?? null;
     if (queuedRequest) {
       servedCommunityIdsRef.current.add(queuedRequest.id);
       startTrackAtZeroRef.current = true;
       liveRadioSyncEnabledRef.current = false;
+      localOverrideTrackIdRef.current = queuedRequest.id;
       liveSeekRef.current = { trackId: queuedRequest.id, offset: 0 };
       setElapsed(0);
       setNowTrack(queuedRequest);
@@ -1353,6 +1355,7 @@ function ListenBarPageContent() {
 
     startTrackAtZeroRef.current = true;
     liveRadioSyncEnabledRef.current = false;
+    localOverrideTrackIdRef.current = nextTrack.id;
     liveSeekRef.current = { trackId: nextTrack.id, offset: 0 };
     setElapsed(0);
     setNowTrack(nextTrack);
@@ -2132,7 +2135,7 @@ function ListenBarPageContent() {
     setEditTrackId((current) => current === track.id ? null : track.id);
     setEditTrackForm({
       aiTool: limitListenBarDisplayText(track.aiTool || "AI Music", LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
-      genre: track.genre || "自我風格",
+      genre: track.genre || "Original 自我風格",
       album: limitListenBarDisplayText(track.album || "", LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
       description: limitListenBarDisplayText(track.description || "", LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS),
     });

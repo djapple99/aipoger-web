@@ -136,7 +136,7 @@ const initialForm: TrackForm = {
   title: "",
   artist: "AIPOGER",
   aiTool: "Suno",
-  genre: "自我風格",
+  genre: "Original 自我風格",
   mood: "官方輪播",
   bpm: "",
   durationSeconds: "",
@@ -334,7 +334,7 @@ function publicRotationSort(a: AdminListenBarTrackRow, b: AdminListenBarTrackRow
 
 function activePlayableTracks(tracks: AdminListenBarTrackRow[]) {
   return tracks
-    .filter((track) => track.is_active !== false && !isHiddenTrack(track) && Boolean(track.audio_path?.trim()))
+    .filter((track) => track.source === "community" && track.is_active !== false && !isHiddenTrack(track) && Boolean(track.audio_path?.trim()))
     .sort(publicRotationSort);
 }
 
@@ -472,7 +472,7 @@ function isUncategorizedTrack(track: AdminListenBarTrackRow) {
 
 function normalizedGenreForSelect(value: string | null | undefined) {
   const genre = value?.trim() ?? "";
-  return GENRE_VALUES.has(genre) ? genre : "自我風格";
+  return GENRE_VALUES.has(genre) ? genre : "Original 自我風格";
 }
 
 function metadataFormFromTrack(track: AdminListenBarTrackRow): TrackMetadataForm {

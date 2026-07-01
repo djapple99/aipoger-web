@@ -172,10 +172,10 @@ Use examples:
 
 - `全部風格`
 - `K-pop 動感風`
-- `說唱街頭風`
+- `Rap 街頭說唱`
 - `復古 City-Pop`
-- `感人抒情`
-- `熱血搖滾`
+- `R&B 深情瞬間`
+- `Band Rock 熱血搖滾`
 
 The genre source is the creator-selected upload genre. Do not treat it as a challenge type or platform category.
 

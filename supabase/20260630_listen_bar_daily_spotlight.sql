@@ -64,7 +64,7 @@ with spotlight as (
     date '2026-06-30',
     'bf7e7d32-01c1-4ec8-837c-3cb4cefcdca2',
     '每日推薦歌｜橘貓。女巫。月',
-    '今晚推薦 Tank Lu《橘貓。女巫。月》：動感電音裡帶一點奇幻感，像夜裡有貓走過合成器。',
+    '今晚推薦 Tank Lu《橘貓。女巫。月》：EDM 百大電音裡帶一點奇幻感，像夜裡有貓走過合成器。',
     '今天的傷心酒吧推薦：Tank Lu《橘貓。女巫。月》。進來聽完整版，喜歡就按愛心，這顆心會直接算進歌曲成績。',
     'active',
     now()
@@ -126,10 +126,10 @@ draft_targets(platform, publish_mode, title, content_text, target_url, manual_pu
       'AIPOGER 每日推薦歌
 
 Tank Lu《橘貓。女巫。月》
-類型：動感電音
+類型：EDM 百大電音
 工具：Suno
 
-今晚推薦 Tank Lu《橘貓。女巫。月》：動感電音裡帶一點奇幻感，像夜裡有貓走過合成器。
+今晚推薦 Tank Lu《橘貓。女巫。月》：EDM 百大電音裡帶一點奇幻感，像夜裡有貓走過合成器。
 
 進來聽完整歌曲，喜歡就按愛心，這顆心會直接算進傷心酒吧成績。
 
@@ -146,7 +146,7 @@ https://aipoger.com/listen-bar?spotlight=2026-06-30&lang=zh',
       '每日推薦歌｜Tank Lu《橘貓。女巫。月》',
       '今天的 AIPOGER 每日推薦歌：Tank Lu《橘貓。女巫。月》
 
-動感電音 / Suno
+EDM 百大電音 / Suno
 
 進來聽完整歌曲，喜歡就按愛心，這顆心會直接算進傷心酒吧成績。
 
@@ -176,7 +176,7 @@ https://aipoger.com/listen-bar?spotlight=2026-06-30&lang=zh',
       '每日推薦歌｜Tank Lu《橘貓。女巫。月》',
       'Shorts 腳本：
 1. 開場：今天推薦 Tank Lu《橘貓。女巫。月》。
-2. 中段：截取最有記憶點的一段，畫面放歌曲名、創作者、類型 動感電音。
+2. 中段：截取最有記憶點的一段，畫面放歌曲名、創作者、類型 EDM 百大電音。
 3. 結尾 CTA：進 AIPOGER 傷心酒吧聽完整版，喜歡就按愛心。
 
 Caption:
@@ -212,10 +212,10 @@ Description:
       'AIPOGER 每日推薦歌
 
 Tank Lu《橘貓。女巫。月》
-類型：動感電音
+類型：EDM 百大電音
 工具：Suno
 
-今晚推薦 Tank Lu《橘貓。女巫。月》：動感電音裡帶一點奇幻感，像夜裡有貓走過合成器。
+今晚推薦 Tank Lu《橘貓。女巫。月》：EDM 百大電音裡帶一點奇幻感，像夜裡有貓走過合成器。
 
 進來聽完整歌曲，喜歡就按愛心，這顆心會直接算進傷心酒吧成績。
 

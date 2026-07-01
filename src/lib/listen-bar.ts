@@ -87,7 +87,7 @@ export const EMPTY_LISTEN_BAR_TRACK: ListenBarTrack = {
   title: "等待創作者投稿",
   artist: "AIPOGER",
   tool: "AI Music",
-  genre: "自我風格",
+  genre: "Original 自我風格",
   description: "等待下一首傷心故事進場",
   mood: "傷心酒吧待機中",
   duration: 1,
@@ -133,7 +133,7 @@ export function listenBarRowToTrack(row: ListenBarTrackRow): ListenBarTrack | nu
   const audioUrl = publicStorageUrl(LISTEN_BAR_AUDIO_BUCKET, row.audio_path);
   if (!audioUrl) return null;
 
-  const genre = row.genre?.trim() || "自我風格";
+  const genre = row.genre?.trim() || "Original 自我風格";
   const album = displayAlbumOrMood(row.mood);
   const tags = [genre, album].filter(Boolean);
   if (typeof row.bpm === "number" && row.bpm > 0) tags.push(`${row.bpm} BPM`);
