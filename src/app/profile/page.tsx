@@ -180,7 +180,6 @@ function ProfileInner() {
             wins: "勝出封存",
             favorites: "收藏歌曲",
             favorited: "已點讚收藏",
-            honorFavorite: "Top Drops 收藏",
             removeFavorite: "取消收藏",
             removingFavorite: "取消中",
             removeFavoriteFailed: "取消收藏失敗，請稍後再試。",
@@ -223,7 +222,6 @@ function ProfileInner() {
             wins: "Archived Wins",
             favorites: "Saved Songs",
             favorited: "saved from hearts",
-            honorFavorite: "Top Drops Save",
             removeFavorite: "Unsave",
             removingFavorite: "Removing",
             removeFavoriteFailed: "Could not remove this save. Try again later.",
@@ -720,7 +718,7 @@ function ProfileInner() {
       return {
         id: `favorite-${record.recordKey}`,
         category: "favorites" as const,
-        kind: copy.honorFavorite,
+        kind,
         title: record.targetTitle?.trim() || (isZh ? "收藏的 Top Drops 作品" : "Saved Top Drops Track"),
         meta: [
           kind,
@@ -754,7 +752,6 @@ function ProfileInner() {
     battleQueues,
     battles,
     copy.battle,
-    copy.honorFavorite,
     copy.listenBar,
     copy.records,
     copy.wins,
@@ -1006,10 +1003,19 @@ function ProfileInner() {
                       const favoriteIndex = honorFavorites.findIndex((record) => record.recordKey === item.favoriteRecord?.recordKey);
                       const isPlaying = playingFavoriteKey === item.favoriteRecord.recordKey;
                       const hasAudio = Boolean(item.favoriteRecord.targetAudioUrl?.trim());
+                      const favoriteSource =
+                        item.favoriteRecord.targetKind === "bar"
+                          ? isZh
+                            ? "酒吧"
+                            : "Bar"
+                          : "Drop";
+                      const favoriteArtist = item.favoriteRecord.targetArtist?.trim();
+                      const favoriteGenre = item.favoriteRecord.targetGenre?.trim();
+                      const favoriteDate = formatDate(item.date, lang);
                       return (
                         <div
                           key={item.id}
-                          className={`grid gap-3 rounded-2xl border px-4 py-3 transition sm:grid-cols-[1fr_auto] sm:items-center ${
+                          className={`grid gap-3 rounded-2xl border px-4 py-3 transition md:grid-cols-[minmax(0,1fr)_auto] md:items-center ${
                             isPlaying
                               ? "border-cyan-200/55 bg-cyan-300/[0.08]"
                               : "border-white/10 bg-black/25 hover:border-orange-300/45 hover:bg-orange-300/[0.06]"
@@ -1017,16 +1023,22 @@ function ProfileInner() {
                         >
                           <Link
                             href={item.href}
-                            className="grid min-w-0 gap-2 sm:grid-cols-[8rem_1fr_auto] sm:items-center"
+                            className="min-w-0"
                           >
-                            <span className="text-xs font-black uppercase tracking-[0.18em] text-cyan-100/80">{item.kind}</span>
-                            <span className="min-w-0">
-                              <span className="block truncate text-base font-black text-zinc-50">{item.title}</span>
-                              <span className="block truncate text-xs text-zinc-500">{item.meta}</span>
+                            <span className="flex min-w-0 flex-wrap items-center gap-2">
+                              <span className="rounded-full border border-cyan-200/20 bg-cyan-300/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-100/80">
+                                {favoriteSource}
+                              </span>
+                              {favoriteDate ? <span className="text-xs text-zinc-500">{favoriteDate}</span> : null}
                             </span>
-                            <span className="text-xs text-zinc-500">{formatDate(item.date, lang)}</span>
+                            <span className="mt-1 block min-w-0 truncate text-lg font-black leading-tight text-zinc-50">
+                              {item.title}
+                            </span>
+                            <span className="mt-1 block min-w-0 truncate text-xs text-zinc-500">
+                              {[favoriteArtist, favoriteGenre].filter(Boolean).join(" / ") || item.meta}
+                            </span>
                           </Link>
-                          <div className="flex flex-wrap gap-2 sm:justify-end">
+                          <div className="flex flex-wrap items-center gap-2 md:justify-end">
                             <button
                               type="button"
                               disabled={!hasAudio}
@@ -1041,31 +1053,31 @@ function ProfileInner() {
                               type="button"
                               disabled={favoriteOrderBusy || favoriteIndex <= 0}
                               onClick={() => void moveFavorite(item.favoriteRecord?.recordKey ?? "", -1)}
-                              className="rounded-full border border-white/12 bg-black/25 px-3 py-2 text-xs font-black text-zinc-200 transition hover:border-orange-200/55 disabled:cursor-not-allowed disabled:opacity-45"
+                              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-black/25 text-base font-black text-zinc-200 transition hover:border-orange-200/55 disabled:cursor-not-allowed disabled:opacity-35"
                               aria-label={`${copy.moveFavoriteUp} ${item.title}`}
                               title={copy.moveFavoriteUp}
                             >
-                              {copy.moveFavoriteUp}
+                              ↑
                             </button>
                             <button
                               type="button"
                               disabled={favoriteOrderBusy || favoriteIndex < 0 || favoriteIndex >= honorFavorites.length - 1}
                               onClick={() => void moveFavorite(item.favoriteRecord?.recordKey ?? "", 1)}
-                              className="rounded-full border border-white/12 bg-black/25 px-3 py-2 text-xs font-black text-zinc-200 transition hover:border-orange-200/55 disabled:cursor-not-allowed disabled:opacity-45"
+                              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-black/25 text-base font-black text-zinc-200 transition hover:border-orange-200/55 disabled:cursor-not-allowed disabled:opacity-35"
                               aria-label={`${copy.moveFavoriteDown} ${item.title}`}
                               title={copy.moveFavoriteDown}
                             >
-                              {copy.moveFavoriteDown}
+                              ↓
                             </button>
                             <button
                               type="button"
                               disabled={removeBusy}
                               onClick={() => void removeFavorite(item.favoriteRecord as HonorFavoriteRecord)}
-                              className="rounded-full border border-red-200/25 bg-red-500/10 px-3 py-2 text-xs font-black text-red-100 transition hover:border-red-200/55 hover:bg-red-500/18 disabled:cursor-wait disabled:opacity-55"
+                              className="flex h-10 w-10 items-center justify-center rounded-full border border-red-200/25 bg-red-500/10 text-2xl font-black leading-none text-red-100 transition hover:border-red-200/55 hover:bg-red-500/18 disabled:cursor-wait disabled:opacity-55"
                               aria-label={`${copy.removeFavorite} ${item.title}`}
                               title={copy.removeFavorite}
                             >
-                              {removeBusy ? copy.removingFavorite : copy.removeFavorite}
+                              {removeBusy ? "…" : "×"}
                             </button>
                           </div>
                         </div>
