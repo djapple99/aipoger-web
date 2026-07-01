@@ -1004,9 +1004,13 @@ function ListenBarPageContent() {
       return;
     }
     if (rotationTracks.some((track) => track.id === nowTrack.id)) return;
-    const livePosition = liveRadioSyncEnabledRef.current ? getLiveRadioPosition(rotationTracks) : null;
-    if (livePosition) liveSeekRef.current = { trackId: livePosition.track.id, offset: livePosition.offset };
-    setNowTrack(livePosition?.track ?? rotationTracks[0]);
+    const nextTrack = rotationTracks.find((track) => track.audioUrl) ?? rotationTracks[0];
+    startTrackAtZeroRef.current = true;
+    liveRadioSyncEnabledRef.current = false;
+    localOverrideTrackIdRef.current = nextTrack.id;
+    liveSeekRef.current = { trackId: nextTrack.id, offset: 0 };
+    setElapsed(0);
+    setNowTrack(nextTrack);
   }, [nowTrack.id, rotationTracks]);
 
   useEffect(() => {
@@ -1186,10 +1190,10 @@ function ListenBarPageContent() {
         };
         setNowTrack(queryTrack);
       } else {
-        const livePosition = liveRadioSyncEnabledRef.current ? getLiveRadioPosition(tracks) : null;
-        if (livePosition) liveSeekRef.current = { trackId: livePosition.track.id, offset: livePosition.offset };
         setNowTrack((current) => {
-          if (!liveRadioSyncEnabledRef.current && tracks.some((track) => track.id === current.id)) return current;
+          if (current.audioUrl && tracks.some((track) => track.id === current.id)) return current;
+          const livePosition = liveRadioSyncEnabledRef.current ? getLiveRadioPosition(tracks) : null;
+          if (livePosition) liveSeekRef.current = { trackId: livePosition.track.id, offset: livePosition.offset };
           listenContextRef.current = { source: "bar_heartbreak" };
           return livePosition?.track ?? pickRandomTrack(tracks) ?? tracks[0];
         });
@@ -1499,7 +1503,7 @@ function ListenBarPageContent() {
 
   useEffect(() => {
     if (!playbackBlocked) return;
-    const resumeOnGesture = () => resumeRadioPlayback(true);
+    const resumeOnGesture = () => resumeRadioPlayback(false);
     window.addEventListener("pointerdown", resumeOnGesture, { once: true });
     window.addEventListener("keydown", resumeOnGesture, { once: true });
     return () => {
@@ -2588,8 +2592,8 @@ function ListenBarPageContent() {
                 {playbackBlocked && (
                   <button
                     type="button"
-                    onPointerDown={() => resumeRadioPlayback(true)}
-                    onClick={() => resumeRadioPlayback(true)}
+                    onPointerDown={() => resumeRadioPlayback(false)}
+                    onClick={() => resumeRadioPlayback(false)}
                     className="mt-4 inline-flex items-center justify-center rounded-full border border-orange-300/35 bg-orange-500 px-4 py-2 text-xs font-black text-black shadow-[0_0_22px_rgba(255,106,0,0.18)] transition hover:bg-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
                   >
                     {isZh ? "點一下恢復播放" : "Tap to Resume Playback"}
