@@ -61,6 +61,8 @@ Check:
 - The same battle/match group renders only once in the public Battle Pool.
 - Share links from a Drop Battle card or live battle use `/b/{shortId}` and open the specific arena, not the Battle Pool.
 - Drop Battle share thumbnails render as black background with the white AIPOGER logo.
+- Drop Battle genre filters show only fixed genre choices, wrap cleanly into two rows, and do not include an `All` option.
+- Official Gatekeeper cards use the current AIPOGER official-gate copy, yellow-highlighted body text, and align `挑戰這首 Drop` with `5 秒預播`.
 - Logged-out visitors can enter a Battle arena link, vote, send arena danmaku, and tap feedback/reaction buttons.
 - Logged-out visitors who try to accept/challenge a Battle card are sent to sign in before challenger upload.
 - Bar Heartbreak reactions/comments/uploads/removals still require sign-in.
@@ -125,7 +127,7 @@ Check:
 - Track comments persist.
 - Track comments notify the song creator through account notifications, except self-comments.
 - Creator profile/library shows other listeners' comments on the creator's own Bar Heartbreak songs.
-- Profile song rows, including favorites, show compact heart-count badges without hiding the song title.
+- Profile song rows, including favorites, show compact total-heart-count badges without hiding the song title.
 - Upload requires sign-in.
 - Upload policy copy is visible.
 - My Bar Tracks shows creator's Challenger/public tracks after sign-in.

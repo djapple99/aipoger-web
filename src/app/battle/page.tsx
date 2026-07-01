@@ -70,6 +70,12 @@ function normalizeGenreFilter(value: string | null | undefined) {
   return String(value || "").trim().toLowerCase();
 }
 
+function firstGenreWithCount(counts: Record<string, number>) {
+  return DROP_BATTLE_GENRE_OPTIONS.find((genre) => (counts[normalizeGenreFilter(genre.value)] ?? 0) > 0)?.value
+    ?? DROP_BATTLE_GENRE_OPTIONS[0]?.value
+    ?? "";
+}
+
 function Turntable({
   label,
   deckKey,
@@ -427,29 +433,15 @@ function GenreFilterBar({
   onChange,
   counts,
   t,
-  isZh,
 }: {
   activeGenre: string;
   onChange: (value: string) => void;
   counts: Record<string, number>;
   t: (key: string) => string;
-  isZh: boolean;
 }) {
-  const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
   return (
-    <div className="mb-5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <div className="flex min-w-max gap-2">
-        <button
-          type="button"
-          onClick={() => onChange("all")}
-          className={`rounded-full border px-4 py-2 text-xs font-black transition ${
-            activeGenre === "all"
-              ? "border-orange-200 bg-orange-500 text-black shadow-[0_0_22px_rgba(255,106,0,0.22)]"
-              : "border-white/12 bg-white/[0.045] text-zinc-300 hover:border-orange-200/55 hover:text-white"
-          }`}
-        >
-          {isZh ? "全部風格" : "All Styles"} <span className="ml-1 opacity-75">{total}</span>
-        </button>
+    <div className="mb-5">
+      <div className="grid grid-flow-col grid-rows-2 justify-start gap-2 overflow-x-auto pb-1 [scrollbar-width:none] md:flex md:flex-wrap md:overflow-visible [&::-webkit-scrollbar]:hidden">
         {DROP_BATTLE_GENRE_OPTIONS.map((genre) => {
           const count = counts[normalizeGenreFilter(genre.value)] ?? 0;
           const selected = activeGenre === genre.value;
@@ -458,7 +450,7 @@ function GenreFilterBar({
               key={genre.value}
               type="button"
               onClick={() => onChange(genre.value)}
-              className={`rounded-full border px-4 py-2 text-xs font-black transition ${
+              className={`min-w-max rounded-full border px-4 py-2 text-xs font-black transition ${
                 selected
                   ? "border-cyan-100 bg-cyan-300 text-black shadow-[0_0_22px_rgba(34,211,238,0.2)]"
                   : "border-white/12 bg-white/[0.045] text-zinc-300 hover:border-cyan-100/55 hover:text-white"
@@ -1015,7 +1007,7 @@ function BattlePoolList() {
   const [cancelQueueId, setCancelQueueId] = useState<string | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [focusedClosedCard, setFocusedClosedCard] = useState<FocusedPoolCardState | null>(null);
-  const [activeGenre, setActiveGenre] = useState("all");
+  const [activeGenre, setActiveGenre] = useState("");
   const [playingOfficialPreviewId, setPlayingOfficialPreviewId] = useState<string | null>(null);
   const officialPreviewRefs = useRef<Record<string, HTMLAudioElement | null>>({});
 
@@ -1310,21 +1302,19 @@ function BattlePoolList() {
     });
     return counts;
   }, [acceptedBattleRows, officialDrops, rows]);
+  const selectedPoolGenre = activeGenre || firstGenreWithCount(poolGenreCounts);
   const filteredOfficialDrops = useMemo(() => {
-    if (activeGenre === "all") return officialDrops;
-    const target = normalizeGenreFilter(activeGenre);
+    const target = normalizeGenreFilter(selectedPoolGenre);
     return officialDrops.filter((drop) => normalizeGenreFilter(drop.genre) === target);
-  }, [activeGenre, officialDrops]);
+  }, [officialDrops, selectedPoolGenre]);
   const filteredRows = useMemo(() => {
-    if (activeGenre === "all") return rows;
-    const target = normalizeGenreFilter(activeGenre);
+    const target = normalizeGenreFilter(selectedPoolGenre);
     return rows.filter((row) => normalizeGenreFilter(row.genre) === target);
-  }, [activeGenre, rows]);
+  }, [rows, selectedPoolGenre]);
   const filteredAcceptedBattleRows = useMemo(() => {
-    if (activeGenre === "all") return acceptedBattleRows;
-    const target = normalizeGenreFilter(activeGenre);
+    const target = normalizeGenreFilter(selectedPoolGenre);
     return acceptedBattleRows.filter((row) => normalizeGenreFilter(row.genre) === target);
-  }, [acceptedBattleRows, activeGenre]);
+  }, [acceptedBattleRows, selectedPoolGenre]);
 
   if (loading) {
     return (
@@ -1357,19 +1347,16 @@ function BattlePoolList() {
         </div>
       ) : null}
 
-      <GenreFilterBar activeGenre={activeGenre} onChange={setActiveGenre} counts={poolGenreCounts} t={t} isZh={isZh} />
+      <GenreFilterBar activeGenre={selectedPoolGenre} onChange={setActiveGenre} counts={poolGenreCounts} t={t} />
 
       {filteredOfficialDrops.length > 0 ? (
         <div className="mb-5">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.24em] text-red-300/75">{isZh ? "官方 Drop 挑戰" : "Official Drop Challenge"}</p>
-              <h3 className="mt-1 text-lg font-black text-white">{isZh ? "歡迎任何人來挑戰" : "Open to Anyone"}</h3>
-            </div>
-          </div>
           <ul className="grid min-w-0 gap-3 md:grid-cols-2">
             {filteredOfficialDrops.map((drop) => {
               const displayTitle = officialGatekeeperDisplayTitle(drop);
+              const challengeCopy = isZh
+                ? "歡迎挑戰這首官方 Drop，設定開戰時間並分享拉人投票。看看你的歌能不能打"
+                : "Challenge this official Drop, set the start time, then bring people in to vote. Let your song prove it can fight.";
               const setupParams = new URLSearchParams({
                 battleMode: "instant",
                 instantPairing: "gatekeeper",
@@ -1384,7 +1371,7 @@ function BattlePoolList() {
                     <div className="flex min-w-0 items-start justify-between gap-3 sm:gap-4">
                       <div className="min-w-0">
                         <p className="text-[11px] font-black uppercase tracking-[0.22em] text-red-200/78">
-                          {isZh ? "歡迎任何人來挑戰" : "Open Challenge"}
+                          {isZh ? "歡迎任何人來挑戰 AIPOGER 官方關卡" : "Open AIPOGER Official Gate"}
                         </p>
                         <h4 className="mt-2 text-xl font-black text-white">{displayTitle}</h4>
                         <p className="mt-1 truncate text-sm font-bold text-zinc-400">
@@ -1401,8 +1388,8 @@ function BattlePoolList() {
                             {drop.gateNumber}
                           </span>
                         </div>
-                        <p className="mt-3 text-xs font-bold leading-5 text-zinc-500">
-                          {drop.description || (isZh ? "挑戰這首官方 Drop，設定開戰時間並分享拉人投票。" : "Challenge this official Drop, set a start time, then share for votes.")}
+                        <p className="mt-3 max-w-2xl text-xs font-black leading-5 text-yellow-200 drop-shadow-[0_0_10px_rgba(250,204,21,0.2)]">
+                          {challengeCopy}
                         </p>
                       </div>
                       <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-red-200/30 bg-black/70 text-[10px] font-black leading-4 text-red-100 shadow-[0_0_24px_rgba(239,68,68,0.16)]">
@@ -1415,44 +1402,44 @@ function BattlePoolList() {
                         )}
                       </div>
                     </div>
-                    {drop.audioUrl ? (
-                      <div className="mt-4">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (playingOfficialPreviewId === drop.id) {
-                              stopOfficialPreview(drop.id);
-                            } else {
-                              playOfficialPreview(drop.id);
-                            }
-                          }}
-                          className="inline-flex items-center gap-2 rounded-full border border-red-200/35 bg-black/45 px-4 py-2 text-xs font-black text-red-50 transition hover:border-red-200/65 hover:bg-red-500/12 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-200/55"
-                        >
-                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white">
-                            {playingOfficialPreviewId === drop.id ? "■" : "▶"}
-                          </span>
-                          {playingOfficialPreviewId === drop.id
-                            ? isZh ? "預播中 5 秒" : "Previewing 5s"
-                            : isZh ? "5 秒預播" : "5s Preview"}
-                        </button>
-                        <audio
-                          ref={(node) => {
-                            officialPreviewRefs.current[drop.id] = node;
-                          }}
-                          preload="none"
-                          src={drop.audioUrl}
-                          onTimeUpdate={(event) => {
-                            if (event.currentTarget.currentTime >= 5) stopOfficialPreview(drop.id);
-                          }}
-                          onEnded={() => setPlayingOfficialPreviewId((current) => (current === drop.id ? null : current))}
-                          onContextMenu={(event) => event.preventDefault()}
-                        />
-                      </div>
-                    ) : null}
-                    <div className="mt-4 flex min-w-0 flex-wrap justify-end gap-2 border-t border-white/10 pt-3">
+                    <div className="mt-4 flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3">
+                      {drop.audioUrl ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (playingOfficialPreviewId === drop.id) {
+                                stopOfficialPreview(drop.id);
+                              } else {
+                                playOfficialPreview(drop.id);
+                              }
+                            }}
+                            className="inline-flex items-center gap-2 rounded-full border border-red-200/35 bg-black/45 px-4 py-2 text-xs font-black text-red-50 transition hover:border-red-200/65 hover:bg-red-500/12 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-200/55"
+                          >
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white">
+                              {playingOfficialPreviewId === drop.id ? "■" : "▶"}
+                            </span>
+                            {playingOfficialPreviewId === drop.id
+                              ? isZh ? "預播中 5 秒" : "Previewing 5s"
+                              : isZh ? "5 秒預播" : "5s Preview"}
+                          </button>
+                          <audio
+                            ref={(node) => {
+                              officialPreviewRefs.current[drop.id] = node;
+                            }}
+                            preload="none"
+                            src={drop.audioUrl}
+                            onTimeUpdate={(event) => {
+                              if (event.currentTarget.currentTime >= 5) stopOfficialPreview(drop.id);
+                            }}
+                            onEnded={() => setPlayingOfficialPreviewId((current) => (current === drop.id ? null : current))}
+                            onContextMenu={(event) => event.preventDefault()}
+                          />
+                        </>
+                      ) : <span />}
                       <Link
                         href={`/battle/setup?${setupParams.toString()}`}
-                        className="rounded-full bg-red-500 px-4 py-2 text-xs font-black text-white shadow-[0_0_20px_rgba(239,68,68,0.18)] transition hover:bg-red-400"
+                        className="inline-flex min-h-11 items-center justify-center rounded-full bg-red-500 px-5 py-2.5 text-sm font-black text-white shadow-[0_0_20px_rgba(239,68,68,0.18)] transition hover:bg-red-400"
                       >
                         {isZh ? "挑戰這首 Drop" : "Challenge This Drop"}
                       </Link>
@@ -1549,10 +1536,10 @@ function BattlePoolList() {
       {filteredOfficialDrops.length === 0 && filteredRows.length === 0 && !focusedClosedCard && filteredAcceptedBattleRows.length === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-6 text-center">
           <p className="text-sm font-bold text-zinc-300">
-            {activeGenre === "all" ? t("pool_empty_title") : isZh ? "這個風格目前沒有公開挑戰" : "No open challenges in this style right now"}
+            {isZh ? "這個風格目前沒有公開挑戰" : "No open challenges in this style right now"}
           </p>
           <p className="mx-auto mt-2 max-w-xl whitespace-pre-line text-sm leading-7 text-zinc-500">
-            {activeGenre === "all" ? t("pool_empty_body") : isZh ? "可以切換其他風格，或自己發起挑戰。" : "Switch styles or start a challenge yourself."}
+            {isZh ? "可以切換其他風格，或自己發起挑戰。" : "Switch styles or start a challenge yourself."}
           </p>
         </div>
       ) : filteredRows.length > 0 ? (
@@ -1788,7 +1775,7 @@ function LiveBattleList() {
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeGenre, setActiveGenre] = useState("all");
+  const [activeGenre, setActiveGenre] = useState("");
 
   useEffect(() => {
     if (focusBattleId) rememberAuthNextPath(focusedBattleHref(focusBattleId, lang));
@@ -1970,11 +1957,11 @@ function LiveBattleList() {
     });
     return counts;
   }, [rows]);
+  const selectedLiveGenre = activeGenre || firstGenreWithCount(liveGenreCounts);
   const filteredLiveRows = useMemo(() => {
-    if (activeGenre === "all") return rows;
-    const target = normalizeGenreFilter(activeGenre);
+    const target = normalizeGenreFilter(selectedLiveGenre);
     return rows.filter((row) => normalizeGenreFilter(row.genre) === target);
-  }, [activeGenre, rows]);
+  }, [rows, selectedLiveGenre]);
 
   return (
     <main className="aipo-stage-bg relative min-h-screen overflow-hidden text-[#ece9e6]">
@@ -2028,7 +2015,7 @@ function LiveBattleList() {
         ) : (
           <>
             <div className="mt-8">
-              <GenreFilterBar activeGenre={activeGenre} onChange={setActiveGenre} counts={liveGenreCounts} t={t} isZh={isZh} />
+              <GenreFilterBar activeGenre={selectedLiveGenre} onChange={setActiveGenre} counts={liveGenreCounts} t={t} />
             </div>
             {filteredLiveRows.length === 0 ? (
               <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.035] px-5 py-6 text-center">

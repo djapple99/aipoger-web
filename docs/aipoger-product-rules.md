@@ -98,6 +98,7 @@ Current behavior:
 - Shared Drop Battle links must enter the specific battle arena directly. If nobody has challenged yet, the arena must show the accept-challenge state; if a challenger already joined, the same link must enter the live/waiting arena.
 - Public share URLs should stay short: Drop arena uses `/b/{shortId}`, Drop result card uses `/r/{shortId}`, 24H queued card uses `/d/{shortId}`, and 24H live battle uses `/h/{shortId}`. These routes may redirect internally to the canonical full route.
 - Drop Battle share preview images should be black background with the white AIPOGER logo as the main visual.
+- Drop Battle genre filters show fixed music genres only. Do not include an `All` / `全部` filter in Battle; all-public playback belongs to Bar Heartbreak.
 - Open Drop Battle arena links are publicly enterable. Anonymous visitors may vote, send arena danmaku, and tap feedback/reaction buttons inside the Battle arena only.
 - Accepting a challenge, uploading a challenger Drop, opening a new Battle card, cancelling a creator-owned Battle, and claiming a rematch slot still require sign-in.
 - Anonymous Battle arena access does not change Bar Heartbreak rules: Bar Heartbreak listening stays public, but reactions/comments/uploads/removals still require sign-in.
@@ -136,7 +137,9 @@ Official Gatekeeper Drops:
 - Official Gatekeeper Drop audio accepts standard AIPOGER audio formats with a 100MB single-file limit. The owner/admin upload flow must use the same 60-second Drop cropper used by normal Drop Battle.
 - Official Gatekeeper Drop cover art accepts JPG, PNG, and GIF with a 10MB single-file limit. Lyrics are optional and stored with the official template.
 - Production must have `supabase/20260618_official_gatekeeper_drops.sql` and `supabase/20260619_official_gatekeeper_media.sql` applied before audio, cover art, and lyrics can all be saved.
-- Public cards should say `歡迎任何人來挑戰`, show the actual song name, `GATE` number, and genre/type badge, and avoid wording like `官方守門戰：傷心酒吧`.
+- Public cards should say `歡迎任何人來挑戰 AIPOGER 官方關卡`, show the actual song name, `GATE` number, and genre/type badge, and avoid wording like `官方守門戰：傷心酒吧`.
+- Official Gatekeeper card body copy should use a bright yellow highlight for: `歡迎挑戰這首官方 Drop，設定開戰時間並分享拉人投票。看看你的歌能不能打`.
+- On official Gatekeeper cards, the `挑戰這首 Drop` CTA should sit on the same action row as `5 秒預播`, not far below it.
 - Public official Gatekeeper cards should only expose the same 5-second teaser behavior as normal Battle cards. Do not show full audio controls or let visitors play the whole stored Drop from the Battle Pool card.
 - Official Gatekeeper Drop lyrics do not need to expand on the Battle Pool card. Lyrics may remain stored on the template and copied into the created Battle Room, where listeners can view them in context.
 - A challenger can choose the start time using the normal Drop Battle schedule rules: quick 10 / 15 / 20 minutes after successful battle creation, or a custom time within 24 hours.
@@ -217,7 +220,7 @@ Current rules:
 - A listener must sign in to react or comment. Pressing Heart on a Bar Heartbreak track also saves that track to the listener's favorites. Removing it later from favorites does not remove the historical heart reaction; pressing Heart again after unsaving saves it again without duplicate favorites.
 - Profile favorites are the V1 base for personal curation: saved songs should be playable, mutually exclusive in playback, and sortable on the user's own profile. The saved order affects only that listener's playlist view; it must not change heart counts, ranking, Honor Board state, creator records, or original track metadata.
 - In the profile favorites list, the song title and creator/genre must be the primary visible information. Source labels such as Top Drops or Bar Heartbreak should stay as compact badges only when useful; they must not take the main title column. Removing a favorite should be a compact `×` control with an accessible label, not a large `取消收藏` / `Unsave` pill that crowds the song name.
-- Profile creator-library rows, including saved/favorite songs, must show the song's current heart/save signal as a compact heart-count badge without crowding the title.
+- Profile creator-library rows, including saved/favorite songs, must show the song's accumulated total heart count as a compact heart-count badge without crowding the title. This is the song's total heart signal, not the viewer's own heart/save state.
 - The next layer can turn an ordered favorites list into a monthly picks / DJ Choice public share page. That share page must preserve each song's original creator, source page, genre, and Battle / Honor Board / Bar Heartbreak provenance instead of becoming a generic music-player product.
 - New submissions get priority after the current song finishes; each priority batch starts when the first upload arrives, airs up to 8 new uploads within 1 hour, and pushes overflow to the next hour.
 - Bar Heartbreak upload metadata should stay compact: user-entered creator name, AI tool, and album/mood are limited to 12 CJK characters or about 24 English characters; one-line song description is limited to 16 CJK characters or about 32 English characters. Auto-detected song titles are not subject to this compact metadata limit.

@@ -151,12 +151,14 @@ Official Drop cards should feel like challenge gates.
 Use:
 
 - `官方 DROP 挑戰`
-- `歡迎任何人來挑戰`
+- `歡迎任何人來挑戰 AIPOGER 官方關卡`
 - Actual song title.
 - `GATE 01`, `GATE 02`, etc.
 - Genre badge from the normal Battle genre menu.
 - Small music metadata such as BPM, key, and Drop duration when available.
 - Red pill action such as `挑戰這首 Drop`.
+- Body copy in bright yellow highlight: `歡迎挑戰這首官方 Drop，設定開戰時間並分享拉人投票。看看你的歌能不能打`.
+- Align `挑戰這首 Drop` with the `5 秒預播` control on the same action row.
 
 Do not:
 
@@ -166,11 +168,10 @@ Do not:
 
 ## Filters
 
-Genre filters should be compact and direct.
+Genre filters should be compact, direct, and allowed to wrap into two rows on desktop.
 
 Use examples:
 
-- `全部風格`
 - `K-pop 動感風`
 - `Rap 街頭說唱`
 - `復古 City-Pop`
@@ -178,6 +179,7 @@ Use examples:
 - `Band Rock 熱血搖滾`
 
 The genre source is the creator-selected upload genre. Do not treat it as a challenge type or platform category.
+Drop Battle filters do not have an `全部` / all-play option; that all-public playback logic belongs to Bar Heartbreak only.
 
 ## Copy Rules
 

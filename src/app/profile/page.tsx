@@ -66,6 +66,7 @@ type HonorFavoriteRecord = {
   targetAudioUrl?: string | null;
   targetCoverUrl?: string | null;
   targetDurationSeconds?: number | null;
+  reactionCount?: number | null;
   favoriteCount?: number | null;
   myFavorited?: boolean | null;
   playlistOrder?: number | null;
@@ -780,7 +781,7 @@ function ProfileInner() {
           .join(" / "),
         href: lang === "en" ? "/rank?lang=en" : "/rank?lang=zh",
         date: record.updatedAt,
-        heartCount: compactCount(record.favoriteCount),
+        heartCount: compactCount(record.reactionCount ?? record.favoriteCount),
         audioUrl: record.targetAudioUrl,
         favoriteRecord: record,
       };

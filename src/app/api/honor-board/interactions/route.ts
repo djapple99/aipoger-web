@@ -23,6 +23,7 @@ type StoredHonorRecord = {
   targetAudioUrl?: string;
   targetCoverUrl?: string;
   targetDurationSeconds?: number;
+  targetReactionCount?: number;
   favoriteUserIds: string[];
   favoriteOrderByUserId?: Record<string, number>;
   comments: StoredHonorComment[];
@@ -37,6 +38,7 @@ type HonorTargetMeta = {
   audioUrl?: string;
   coverUrl?: string;
   durationSeconds?: number | null;
+  reactionCount?: number | null;
 };
 
 type StoredHonorData = {
@@ -80,6 +82,8 @@ type HonorInteractionDatabase = {
           audio_path: string | null;
           cover_path: string | null;
           duration_seconds: number | null;
+          heart_count?: number | null;
+          positive_reaction_count?: number | null;
           created_at: string | null;
         };
         Insert: Record<string, never>;
@@ -254,6 +258,7 @@ function publicRecord(record: StoredHonorRecord, userId: string | null) {
     targetAudioUrl: record.targetAudioUrl ?? null,
     targetCoverUrl: record.targetCoverUrl ?? null,
     targetDurationSeconds: record.targetDurationSeconds ?? null,
+    reactionCount: record.targetReactionCount ?? record.favoriteUserIds.length,
     updatedAt: record.updatedAt,
     favoriteCount: record.favoriteUserIds.length,
     myFavorited: userId ? record.favoriteUserIds.includes(userId) : false,
@@ -372,7 +377,7 @@ async function fetchTargetMetadata(admin: AdminClient, records: StoredHonorRecor
   if (uuidBarTargets.length > 0) {
     const readBars = await admin
       .from("listen_bar_tracks")
-      .select("id,title,artist,genre,mood,audio_path,cover_path,duration_seconds,created_at")
+      .select("id,title,artist,genre,mood,audio_path,cover_path,duration_seconds,heart_count,positive_reaction_count,created_at")
       .in("id", uuidBarTargets);
     if (!readBars.error) {
       for (const row of readBars.data ?? []) {
@@ -384,6 +389,7 @@ async function fetchTargetMetadata(admin: AdminClient, records: StoredHonorRecor
           audioUrl: publicStorageUrl(admin, LISTEN_BAR_AUDIO_BUCKET, row.audio_path),
           coverUrl: publicStorageUrl(admin, LISTEN_BAR_COVER_BUCKET, row.cover_path),
           durationSeconds: cleanNumber(row.duration_seconds),
+          reactionCount: cleanNumber(row.heart_count) ?? cleanNumber(row.positive_reaction_count),
         });
       }
     }
@@ -405,6 +411,7 @@ function withTargetMetadata(record: StoredHonorRecord, metadata: Map<string, Hon
     targetAudioUrl: record.targetAudioUrl || meta.audioUrl || undefined,
     targetCoverUrl: record.targetCoverUrl || meta.coverUrl || undefined,
     targetDurationSeconds: record.targetDurationSeconds ?? meta.durationSeconds ?? undefined,
+    targetReactionCount: meta.reactionCount ?? record.targetReactionCount,
     updatedAt: record.updatedAt || meta.createdAt || new Date().toISOString(),
   };
 }
