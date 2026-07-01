@@ -267,7 +267,7 @@ const dict: Record<Lang, Partial<Record<string, string>>> = {
   en: {
     home_title: 'AIPOGER',
     home_subtitle: 'Where AI Beats Bleed.',
-    home_secondary_title: 'AI Music Station',
+    home_secondary_title: 'AI Music Arena',
     home_hero_line: 'Upload your best drop. Let the crowd decide.',
     home_tagline: 'Upload a Drop, start a challenge, let listeners vote, and build a record on Top Drops.',
     home_stat_45_label: 'Drop Duel',
@@ -502,7 +502,7 @@ const dict: Record<Lang, Partial<Record<string, string>>> = {
     result_reset_demo: 'Reset demo data',
   },
   ja: {
-    home_secondary_title: 'AI音楽ステーション',
+    home_secondary_title: 'AI音楽バトルアリーナ',
     home_hero_line: 'いちばん強いDropを出せ。聴衆が決める。',
     home_tagline: 'Dropを投稿し、挑戦を始め、聴衆の投票でTop Dropsへの記録を作る。',
     home_stat_45_label: 'Drop対決',
@@ -577,7 +577,7 @@ const dict: Record<Lang, Partial<Record<string, string>>> = {
     result_share_label: '結果カードを共有',
   },
   ko: {
-    home_secondary_title: 'AI 음악 스테이션',
+    home_secondary_title: 'AI 음악 배틀 아레나',
     home_hero_line: '가장 강한 Drop을 올려라. 관객이 결정한다.',
     home_tagline: 'Drop을 올리고 도전을 시작하세요. 관객 투표로 Top Drops 기록을 만듭니다.',
     home_stat_45_label: 'Drop 대결',
