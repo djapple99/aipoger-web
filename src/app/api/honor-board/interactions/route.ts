@@ -20,7 +20,11 @@ type StoredHonorRecord = {
   targetTitle?: string;
   targetArtist?: string;
   targetGenre?: string;
+  targetAudioUrl?: string;
+  targetCoverUrl?: string;
+  targetDurationSeconds?: number;
   favoriteUserIds: string[];
+  favoriteOrderByUserId?: Record<string, number>;
   comments: StoredHonorComment[];
   updatedAt: string;
 };
@@ -30,6 +34,9 @@ type HonorTargetMeta = {
   artist: string;
   genre: string;
   createdAt: string | null;
+  audioUrl?: string;
+  coverUrl?: string;
+  durationSeconds?: number | null;
 };
 
 type StoredHonorData = {
@@ -52,6 +59,17 @@ type HonorInteractionDatabase = {
         Update: Record<string, never>;
         Relationships: [];
       };
+      battles: {
+        Row: {
+          id: string;
+          winner: string | null;
+          audio_a_path: string | null;
+          audio_b_path: string | null;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
       listen_bar_tracks: {
         Row: {
           id: string;
@@ -59,6 +77,9 @@ type HonorInteractionDatabase = {
           artist: string | null;
           genre: string | null;
           mood: string | null;
+          audio_path: string | null;
+          cover_path: string | null;
+          duration_seconds: number | null;
           created_at: string | null;
         };
         Insert: Record<string, never>;
@@ -77,6 +98,9 @@ type AdminClient = SupabaseClient<HonorInteractionDatabase>;
 
 const DATA_BUCKET = "listen-bar-data";
 const DATA_PATH = "honor-board/interactions.json";
+const BATTLE_AUDIO_BUCKET = "battle-audio";
+const LISTEN_BAR_AUDIO_BUCKET = "listen-bar-audio";
+const LISTEN_BAR_COVER_BUCKET = "listen-bar-covers";
 const COMMENT_LIMIT_PER_RECORD = 120;
 const PUBLIC_COMMENT_LIMIT = 24;
 
@@ -110,6 +134,11 @@ function cleanTargetKind(value: unknown): HonorTargetKind | null {
 
 function cleanText(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+}
+
+function cleanNumber(value: unknown) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
 function isUuidLike(value: string) {
@@ -149,6 +178,30 @@ function isStoredHonorRecord(value: unknown): value is StoredHonorRecord {
   );
 }
 
+function cleanFavoriteOrderByUserId(value: unknown): Record<string, number> | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
+  const entries = Object.entries(value as Record<string, unknown>)
+    .map(([userId, order]) => [userId.trim(), cleanNumber(order)] as const)
+    .filter((entry): entry is readonly [string, number] => Boolean(entry[0]) && entry[1] !== null);
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+}
+
+function publicStorageUrl(admin: AdminClient, bucket: string, path: string | null | undefined) {
+  const clean = path?.trim();
+  if (!clean) return undefined;
+  if (/^(https?:|blob:|data:)/i.test(clean)) return clean;
+  return admin.storage.from(bucket).getPublicUrl(clean).data.publicUrl || undefined;
+}
+
+async function signedStorageUrl(admin: AdminClient, bucket: string, path: string | null | undefined) {
+  const clean = path?.trim();
+  if (!clean) return undefined;
+  if (/^(https?:|blob:|data:)/i.test(clean)) return clean;
+  const { data, error } = await admin.storage.from(bucket).createSignedUrl(clean, 60 * 10);
+  if (error) return undefined;
+  return data?.signedUrl || undefined;
+}
+
 async function ensureDataBucket(admin: AdminClient) {
   const { data } = await admin.storage.getBucket(DATA_BUCKET);
   if (data) return;
@@ -174,6 +227,7 @@ async function readStore(admin: AdminClient): Promise<StoredHonorData> {
     records: records.map((record) => ({
       ...record,
       favoriteUserIds: record.favoriteUserIds.filter((id) => typeof id === "string" && id.trim()),
+      favoriteOrderByUserId: cleanFavoriteOrderByUserId(record.favoriteOrderByUserId),
       comments: record.comments.filter(isStoredHonorComment).slice(-COMMENT_LIMIT_PER_RECORD),
     })),
   };
@@ -197,11 +251,37 @@ function publicRecord(record: StoredHonorRecord, userId: string | null) {
     targetTitle: record.targetTitle ?? null,
     targetArtist: record.targetArtist ?? null,
     targetGenre: record.targetGenre ?? null,
+    targetAudioUrl: record.targetAudioUrl ?? null,
+    targetCoverUrl: record.targetCoverUrl ?? null,
+    targetDurationSeconds: record.targetDurationSeconds ?? null,
     updatedAt: record.updatedAt,
     favoriteCount: record.favoriteUserIds.length,
     myFavorited: userId ? record.favoriteUserIds.includes(userId) : false,
+    playlistOrder: userId ? (record.favoriteOrderByUserId?.[userId] ?? null) : null,
     comments: record.comments.slice(-PUBLIC_COMMENT_LIMIT),
   };
+}
+
+function favoriteOrder(record: StoredHonorRecord, userId: string) {
+  const order = record.favoriteOrderByUserId?.[userId];
+  return Number.isFinite(order) ? Number(order) : Number.POSITIVE_INFINITY;
+}
+
+function sortFavoritesForUser(records: StoredHonorRecord[], userId: string) {
+  return records.slice().sort((a, b) => {
+    const orderA = favoriteOrder(a, userId);
+    const orderB = favoriteOrder(b, userId);
+    if (orderA !== orderB) return orderA - orderB;
+    return new Date(b.updatedAt ?? 0).getTime() - new Date(a.updatedAt ?? 0).getTime();
+  });
+}
+
+function maxFavoriteOrder(records: StoredHonorRecord[], userId: string) {
+  return records.reduce((max, record) => {
+    if (!record.favoriteUserIds.includes(userId)) return max;
+    const order = record.favoriteOrderByUserId?.[userId];
+    return Number.isFinite(order) ? Math.max(max, Number(order)) : max;
+  }, -1);
 }
 
 async function fetchTargetMetadata(admin: AdminClient, records: StoredHonorRecord[]) {
@@ -253,17 +333,46 @@ async function fetchTargetMetadata(admin: AdminClient, records: StoredHonorRecor
       artist,
       genre,
       createdAt: row.archived_at ?? null,
+      audioUrl: cleanText(payload.audioUrl, 2000) || undefined,
+      coverUrl: cleanText(payload.coverUrl, 2000) || undefined,
     };
     [row.battle_id, row.battle_code]
       .filter((value): value is string => Boolean(value))
       .forEach((value) => metadata.set(`battle:${value}`, meta));
   }
 
+  const battleIds = Array.from(new Set(archiveRows.map((row) => row.battle_id).filter((id): id is string => Boolean(id))));
+  if (battleIds.length > 0) {
+    const readBattleMedia = await admin
+      .from("battles")
+      .select("id,winner,audio_a_path,audio_b_path")
+      .in("id", battleIds);
+    if (!readBattleMedia.error) {
+      await Promise.all(
+        (readBattleMedia.data ?? []).map(async (battle) => {
+          const winnerPath = battle.winner === "fighter_b" ? battle.audio_b_path : battle.audio_a_path;
+          const audioUrl = await signedStorageUrl(admin, BATTLE_AUDIO_BUCKET, winnerPath);
+          if (!audioUrl) return;
+          const key = `battle:${battle.id}`;
+          const current = metadata.get(key);
+          metadata.set(key, {
+            title: current?.title ?? "",
+            artist: current?.artist ?? "",
+            genre: current?.genre ?? "",
+            createdAt: current?.createdAt ?? null,
+            audioUrl,
+            coverUrl: current?.coverUrl,
+          });
+        }),
+      );
+    }
+  }
+
   const uuidBarTargets = barTargets.filter(isUuidLike);
   if (uuidBarTargets.length > 0) {
     const readBars = await admin
       .from("listen_bar_tracks")
-      .select("id,title,artist,genre,mood,created_at")
+      .select("id,title,artist,genre,mood,audio_path,cover_path,duration_seconds,created_at")
       .in("id", uuidBarTargets);
     if (!readBars.error) {
       for (const row of readBars.data ?? []) {
@@ -272,6 +381,9 @@ async function fetchTargetMetadata(admin: AdminClient, records: StoredHonorRecor
           artist: cleanText(row.artist, 80),
           genre: cleanText(row.genre, 80) || cleanText(row.mood, 80),
           createdAt: row.created_at ?? null,
+          audioUrl: publicStorageUrl(admin, LISTEN_BAR_AUDIO_BUCKET, row.audio_path),
+          coverUrl: publicStorageUrl(admin, LISTEN_BAR_COVER_BUCKET, row.cover_path),
+          durationSeconds: cleanNumber(row.duration_seconds),
         });
       }
     }
@@ -290,6 +402,9 @@ function withTargetMetadata(record: StoredHonorRecord, metadata: Map<string, Hon
     targetTitle: record.targetTitle || [meta.artist, meta.title].filter(Boolean).join(" / ") || undefined,
     targetArtist: record.targetArtist || meta.artist || undefined,
     targetGenre: record.targetGenre || meta.genre || undefined,
+    targetAudioUrl: record.targetAudioUrl || meta.audioUrl || undefined,
+    targetCoverUrl: record.targetCoverUrl || meta.coverUrl || undefined,
+    targetDurationSeconds: record.targetDurationSeconds ?? meta.durationSeconds ?? undefined,
     updatedAt: record.updatedAt || meta.createdAt || new Date().toISOString(),
   };
 }
@@ -313,6 +428,7 @@ export async function GET(request: NextRequest) {
       : store.records;
     if (favoritesOnly && userId) {
       records = records.filter((record) => record.favoriteUserIds.includes(userId));
+      records = sortFavoritesForUser(records, userId);
     }
     const metadata = favoritesOnly ? await fetchTargetMetadata(admin, records) : new Map<string, HonorTargetMeta>();
     return NextResponse.json(
@@ -336,14 +452,18 @@ export async function POST(request: NextRequest) {
     targetTitle?: unknown;
     targetArtist?: unknown;
     targetGenre?: unknown;
+    recordKeys?: unknown;
     displayName?: unknown;
     text?: unknown;
   } | null;
-  const action = body?.action === "favorite" || body?.action === "comment" ? body.action : null;
+  const action =
+    body?.action === "favorite" || body?.action === "comment" || body?.action === "favorite_order"
+      ? body.action
+      : null;
   const recordKey = cleanRecordKey(body?.recordKey);
   const targetKind = cleanTargetKind(body?.targetKind);
   const targetId = cleanText(body?.targetId, 120);
-  if (!action || !recordKey || !targetKind || !targetId) return jsonError("Invalid honor board interaction.");
+  if (!action) return jsonError("Invalid honor board interaction.");
 
   try {
     const admin = adminClient();
@@ -353,6 +473,39 @@ export async function POST(request: NextRequest) {
     const userId = userData.user.id;
     const store = await readStore(admin);
     const now = new Date().toISOString();
+
+    if (action === "favorite_order") {
+      const recordKeys = Array.isArray(body?.recordKeys)
+        ? body.recordKeys.map((key) => cleanRecordKey(key)).filter(Boolean).slice(0, 200)
+        : [];
+      if (recordKeys.length === 0) return jsonError("Invalid favorite order.");
+
+      const orderByKey = new Map(recordKeys.map((key, index) => [key, index]));
+      let changed = false;
+      for (const storedRecord of store.records) {
+        if (!storedRecord.favoriteUserIds.includes(userId)) continue;
+        const nextOrder = orderByKey.get(storedRecord.recordKey);
+        if (nextOrder === undefined) continue;
+        storedRecord.favoriteOrderByUserId = storedRecord.favoriteOrderByUserId ?? {};
+        if (storedRecord.favoriteOrderByUserId[userId] !== nextOrder) {
+          storedRecord.favoriteOrderByUserId[userId] = nextOrder;
+          changed = true;
+        }
+      }
+
+      if (changed) await writeStore(admin, store);
+      const records = sortFavoritesForUser(
+        store.records.filter((storedRecord) => storedRecord.favoriteUserIds.includes(userId)),
+        userId,
+      );
+      const metadata = await fetchTargetMetadata(admin, records);
+      return NextResponse.json({
+        records: records.map((storedRecord) => publicRecord(withTargetMetadata(storedRecord, metadata), userId)),
+      });
+    }
+
+    if (!recordKey || !targetKind || !targetId) return jsonError("Invalid honor board interaction.");
+
     let record = store.records.find((item) => item.recordKey === recordKey);
     if (!record) {
       record = {
@@ -376,9 +529,16 @@ export async function POST(request: NextRequest) {
     record.updatedAt = now;
 
     if (action === "favorite") {
-      record.favoriteUserIds = record.favoriteUserIds.includes(userId)
+      const wasFavorited = record.favoriteUserIds.includes(userId);
+      record.favoriteUserIds = wasFavorited
         ? record.favoriteUserIds.filter((id) => id !== userId)
         : [...record.favoriteUserIds, userId];
+      record.favoriteOrderByUserId = record.favoriteOrderByUserId ?? {};
+      if (wasFavorited) {
+        delete record.favoriteOrderByUserId[userId];
+      } else {
+        record.favoriteOrderByUserId[userId] = maxFavoriteOrder(store.records, userId) + 1;
+      }
     } else {
       const text = cleanText(body?.text, 280);
       if (!text) return jsonError("請輸入評論內容。");

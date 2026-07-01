@@ -167,6 +167,8 @@ Current rules:
 - Each elimination pass removes only overflow inside overfull genre pools.
 - A song with 30 hearts/positive reactions or 7 public survival days after its genre pool is full becomes Honor Board eligible.
 - Pressing Heart on a Bar Heartbreak track also saves it to the listener's favorites. Removing it from favorites does not remove the historical heart reaction.
+- Profile favorites are the first personal curation playlist: saved songs should be playable, mutually exclusive, and sortable for that user only. Sorting favorites must not affect global reaction counts, ranking, Honor Board state, or creator records.
+- Future monthly picks / DJ Choice share pages should be generated from ordered favorites while preserving original creator and source provenance.
 - New uploads get priority play after the current song finishes; up to 8 new uploads can air within a 1-hour priority batch.
 - Daily Spotlight is a curated promotion layer for one Bar Heartbreak track. It uses `/today`, QR code, and social drafts to send listeners to the featured song without interrupting the shared radio rotation.
 - Spotlight hearts/comments must write to the same Bar Heartbreak track record, so promotion activity helps the song's normal survival and honor signals.

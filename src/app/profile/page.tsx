@@ -63,8 +63,12 @@ type HonorFavoriteRecord = {
   targetTitle?: string | null;
   targetArtist?: string | null;
   targetGenre?: string | null;
+  targetAudioUrl?: string | null;
+  targetCoverUrl?: string | null;
+  targetDurationSeconds?: number | null;
   favoriteCount?: number | null;
   myFavorited?: boolean | null;
+  playlistOrder?: number | null;
   updatedAt?: string | null;
 };
 
@@ -76,6 +80,7 @@ type CreatorItem = {
   meta: string;
   href: string;
   date?: string | null;
+  audioUrl?: string | null;
   favoriteRecord?: HonorFavoriteRecord;
 };
 
@@ -139,7 +144,11 @@ function ProfileInner() {
   const [wins, setWins] = useState<BattleArchiveRow[]>([]);
   const [honorFavorites, setHonorFavorites] = useState<HonorFavoriteRecord[]>([]);
   const [favoriteRemoveBusy, setFavoriteRemoveBusy] = useState<Record<string, boolean>>({});
+  const [favoriteOrderBusy, setFavoriteOrderBusy] = useState(false);
+  const [playingFavoriteKey, setPlayingFavoriteKey] = useState<string | null>(null);
+  const [favoritePlaybackError, setFavoritePlaybackError] = useState("");
   const [creatorFilter, setCreatorFilter] = useState<CreatorFilter>("all");
+  const favoriteAudioRef = useRef<HTMLAudioElement>(null);
   const cropFileInputRef = useRef<HTMLInputElement>(null);
   const avatarSectionRef = useRef<HTMLDivElement>(null);
 
@@ -175,6 +184,16 @@ function ProfileInner() {
             removeFavorite: "取消收藏",
             removingFavorite: "取消中",
             removeFavoriteFailed: "取消收藏失敗，請稍後再試。",
+            playlistHelp: "收藏歌曲可以當成自己的小播放列表；排序只影響你的個人資料頁。",
+            playFavorite: "播放",
+            pauseFavorite: "暫停",
+            previousFavorite: "上一首",
+            nextFavorite: "下一首",
+            moveFavoriteUp: "上移",
+            moveFavoriteDown: "下移",
+            noFavoriteAudio: "暫無音檔",
+            favoriteOrderFailed: "排序保存失敗，請稍後再試。",
+            favoritePlaybackFailed: "這首歌暫時無法播放。",
             active: "公開中",
             openBattle: "發起挑戰",
             openBar: "去傷心酒吧",
@@ -208,6 +227,16 @@ function ProfileInner() {
             removeFavorite: "Unsave",
             removingFavorite: "Removing",
             removeFavoriteFailed: "Could not remove this save. Try again later.",
+            playlistHelp: "Saved songs work like your small playlist. Order only changes your profile view.",
+            playFavorite: "Play",
+            pauseFavorite: "Pause",
+            previousFavorite: "Previous",
+            nextFavorite: "Next",
+            moveFavoriteUp: "Move Up",
+            moveFavoriteDown: "Move Down",
+            noFavoriteAudio: "No Audio",
+            favoriteOrderFailed: "Could not save the order. Try again later.",
+            favoritePlaybackFailed: "This song cannot be played right now.",
             active: "Live",
             openBattle: "Start Battle",
             openBar: "Open Listen Bar",
@@ -504,6 +533,133 @@ function ProfileInner() {
     [copy.removeFavoriteFailed, router, t],
   );
 
+  const persistFavoriteOrder = useCallback(
+    async (records: HonorFavoriteRecord[]) => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        alert(t("profile_need_login"));
+        router.push("/auth");
+        return false;
+      }
+
+      setCreatorError("");
+      setFavoriteOrderBusy(true);
+      try {
+        const response = await fetch("/api/honor-board/interactions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            action: "favorite_order",
+            recordKeys: records.map((record) => record.recordKey),
+          }),
+        });
+        const payload = (await response.json().catch(() => null)) as {
+          records?: HonorFavoriteRecord[];
+          error?: string;
+        } | null;
+        if (!response.ok || !Array.isArray(payload?.records)) {
+          setCreatorError(payload?.error || copy.favoriteOrderFailed);
+          return false;
+        }
+        setHonorFavorites(payload.records.filter((record) => record.myFavorited));
+        return true;
+      } catch (error) {
+        console.error("[profile favorite order]", error);
+        setCreatorError(copy.favoriteOrderFailed);
+        return false;
+      } finally {
+        setFavoriteOrderBusy(false);
+      }
+    },
+    [copy.favoriteOrderFailed, router, t],
+  );
+
+  const moveFavorite = useCallback(
+    async (recordKey: string, direction: -1 | 1) => {
+      if (favoriteOrderBusy) return;
+      const currentIndex = honorFavorites.findIndex((record) => record.recordKey === recordKey);
+      const nextIndex = currentIndex + direction;
+      if (currentIndex < 0 || nextIndex < 0 || nextIndex >= honorFavorites.length) return;
+
+      const nextRecords = honorFavorites.slice();
+      const [moved] = nextRecords.splice(currentIndex, 1);
+      nextRecords.splice(nextIndex, 0, moved);
+      const rankedRecords = nextRecords.map((record, index) => ({ ...record, playlistOrder: index }));
+      setHonorFavorites(rankedRecords);
+      await persistFavoriteOrder(rankedRecords);
+    },
+    [favoriteOrderBusy, honorFavorites, persistFavoriteOrder],
+  );
+
+  const playFavoriteRecord = useCallback(
+    async (record: HonorFavoriteRecord) => {
+      const src = record.targetAudioUrl?.trim();
+      if (!src) {
+        setFavoritePlaybackError(copy.favoritePlaybackFailed);
+        return;
+      }
+
+      const audio = favoriteAudioRef.current;
+      if (!audio) return;
+      setFavoritePlaybackError("");
+
+      if (playingFavoriteKey === record.recordKey && !audio.paused) {
+        audio.pause();
+        setPlayingFavoriteKey(null);
+        return;
+      }
+
+      if (audio.src !== src) {
+        audio.pause();
+        audio.src = src;
+        audio.load();
+      }
+
+      try {
+        await audio.play();
+        setPlayingFavoriteKey(record.recordKey);
+      } catch (error) {
+        console.error("[profile favorite playback]", error);
+        setPlayingFavoriteKey(null);
+        setFavoritePlaybackError(copy.favoritePlaybackFailed);
+      }
+    },
+    [copy.favoritePlaybackFailed, playingFavoriteKey],
+  );
+
+  const playNeighborFavorite = useCallback(
+    (direction: -1 | 1) => {
+      const currentIndex = honorFavorites.findIndex((record) => record.recordKey === playingFavoriteKey);
+      const fallbackIndex = direction > 0 ? 0 : honorFavorites.length - 1;
+      const nextIndex = currentIndex >= 0 ? currentIndex + direction : fallbackIndex;
+      if (nextIndex < 0 || nextIndex >= honorFavorites.length) return;
+      void playFavoriteRecord(honorFavorites[nextIndex]);
+    },
+    [honorFavorites, playFavoriteRecord, playingFavoriteKey],
+  );
+
+  const onFavoriteEnded = useCallback(() => {
+    const currentIndex = honorFavorites.findIndex((record) => record.recordKey === playingFavoriteKey);
+    const nextRecord = currentIndex >= 0 ? honorFavorites[currentIndex + 1] : null;
+    if (nextRecord) {
+      void playFavoriteRecord(nextRecord);
+      return;
+    }
+    setPlayingFavoriteKey(null);
+  }, [honorFavorites, playFavoriteRecord, playingFavoriteKey]);
+
+  useEffect(() => {
+    const audio = favoriteAudioRef.current;
+    return () => {
+      audio?.pause();
+    };
+  }, []);
+
   const creatorItems = useMemo<CreatorItem[]>(() => {
     const tracks = barTracks.map((track) => ({
       id: `bar-${track.id}`,
@@ -575,12 +731,24 @@ function ProfileInner() {
           .join(" / "),
         href: lang === "en" ? "/rank?lang=en" : "/rank?lang=zh",
         date: record.updatedAt,
+        audioUrl: record.targetAudioUrl,
         favoriteRecord: record,
       };
     });
 
     return [...tracks, ...queues, ...battleRecords, ...archivedWins, ...favorites]
-      .sort((a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime());
+      .sort((a, b) => {
+        if (a.category === "favorites" && b.category === "favorites") {
+          const orderA = Number.isFinite(a.favoriteRecord?.playlistOrder)
+            ? Number(a.favoriteRecord?.playlistOrder)
+            : Number.POSITIVE_INFINITY;
+          const orderB = Number.isFinite(b.favoriteRecord?.playlistOrder)
+            ? Number(b.favoriteRecord?.playlistOrder)
+            : Number.POSITIVE_INFINITY;
+          if (orderA !== orderB) return orderA - orderB;
+        }
+        return new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime();
+      });
   }, [
     barTracks,
     battleQueues,
@@ -614,6 +782,9 @@ function ProfileInner() {
     ? copy.recent
     : `${stats.find((stat) => stat.key === creatorFilter)?.label ?? copy.recent} / ${copy.manage}`;
   const creatorEmptyText = creatorFilter === "favorites" ? copy.favoriteEmpty : copy.empty;
+  const activeFavorite = playingFavoriteKey
+    ? honorFavorites.find((record) => record.recordKey === playingFavoriteKey)
+    : null;
 
   return (
     <div className="aipo-stage-bg min-h-screen px-4 py-10 text-white">
@@ -740,6 +911,16 @@ function ProfileInner() {
             </div>
 
             {creatorError && <p className="mt-4 rounded-2xl border border-orange-300/20 bg-orange-300/10 px-4 py-3 text-xs text-orange-100">{creatorError}</p>}
+            <audio
+              ref={favoriteAudioRef}
+              className="hidden"
+              preload="metadata"
+              onEnded={onFavoriteEnded}
+              onPause={() => {
+                if (favoriteAudioRef.current?.ended) return;
+                setPlayingFavoriteKey(null);
+              }}
+            />
 
             <div className="mt-5 flex flex-wrap gap-2">
               <button
@@ -781,15 +962,58 @@ function ProfileInner() {
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-lg font-black text-zinc-50">{creatorListTitle}</h3>
               </div>
+              {creatorFilter === "favorites" && honorFavorites.length > 0 ? (
+                <div className="mb-3 rounded-2xl border border-cyan-200/15 bg-cyan-300/[0.06] p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-100/70">
+                        {isZh ? "個人播放列表" : "Personal Playlist"}
+                      </p>
+                      <p className="mt-1 truncate text-sm font-black text-zinc-100">
+                        {activeFavorite?.targetTitle?.trim() || (isZh ? "選一首收藏歌曲播放" : "Choose a saved song")}
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-zinc-500">{copy.playlistHelp}</p>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => playNeighborFavorite(-1)}
+                        disabled={!playingFavoriteKey || honorFavorites.length < 2}
+                        className="rounded-full border border-white/12 bg-black/25 px-3 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45"
+                      >
+                        {copy.previousFavorite}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => playNeighborFavorite(1)}
+                        disabled={!playingFavoriteKey || honorFavorites.length < 2}
+                        className="rounded-full border border-white/12 bg-black/25 px-3 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45"
+                      >
+                        {copy.nextFavorite}
+                      </button>
+                    </div>
+                  </div>
+                  {favoritePlaybackError ? (
+                    <p className="mt-3 rounded-xl border border-red-300/20 bg-red-500/10 px-3 py-2 text-xs text-red-100">{favoritePlaybackError}</p>
+                  ) : null}
+                </div>
+              ) : null}
               {filteredCreatorItems.length > 0 ? (
                 <div className="space-y-2">
                   {filteredCreatorItems.map((item) => {
                     if (item.category === "favorites" && item.favoriteRecord) {
                       const removeBusy = Boolean(favoriteRemoveBusy[item.favoriteRecord.recordKey]);
+                      const favoriteIndex = honorFavorites.findIndex((record) => record.recordKey === item.favoriteRecord?.recordKey);
+                      const isPlaying = playingFavoriteKey === item.favoriteRecord.recordKey;
+                      const hasAudio = Boolean(item.favoriteRecord.targetAudioUrl?.trim());
                       return (
                         <div
                           key={item.id}
-                          className="grid gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 transition hover:border-orange-300/45 hover:bg-orange-300/[0.06] sm:grid-cols-[1fr_auto] sm:items-center"
+                          className={`grid gap-3 rounded-2xl border px-4 py-3 transition sm:grid-cols-[1fr_auto] sm:items-center ${
+                            isPlaying
+                              ? "border-cyan-200/55 bg-cyan-300/[0.08]"
+                              : "border-white/10 bg-black/25 hover:border-orange-300/45 hover:bg-orange-300/[0.06]"
+                          }`}
                         >
                           <Link
                             href={item.href}
@@ -802,16 +1026,48 @@ function ProfileInner() {
                             </span>
                             <span className="text-xs text-zinc-500">{formatDate(item.date, lang)}</span>
                           </Link>
-                          <button
-                            type="button"
-                            disabled={removeBusy}
-                            onClick={() => void removeFavorite(item.favoriteRecord as HonorFavoriteRecord)}
-                            className="justify-self-start rounded-full border border-red-200/25 bg-red-500/10 px-3 py-2 text-xs font-black text-red-100 transition hover:border-red-200/55 hover:bg-red-500/18 disabled:cursor-wait disabled:opacity-55 sm:justify-self-end"
-                            aria-label={`${copy.removeFavorite} ${item.title}`}
-                            title={copy.removeFavorite}
-                          >
-                            {removeBusy ? copy.removingFavorite : copy.removeFavorite}
-                          </button>
+                          <div className="flex flex-wrap gap-2 sm:justify-end">
+                            <button
+                              type="button"
+                              disabled={!hasAudio}
+                              onClick={() => void playFavoriteRecord(item.favoriteRecord as HonorFavoriteRecord)}
+                              className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-3 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-200/60 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-black/20 disabled:text-zinc-500"
+                              aria-label={`${isPlaying ? copy.pauseFavorite : copy.playFavorite} ${item.title}`}
+                              title={hasAudio ? (isPlaying ? copy.pauseFavorite : copy.playFavorite) : copy.noFavoriteAudio}
+                            >
+                              {hasAudio ? (isPlaying ? copy.pauseFavorite : copy.playFavorite) : copy.noFavoriteAudio}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={favoriteOrderBusy || favoriteIndex <= 0}
+                              onClick={() => void moveFavorite(item.favoriteRecord?.recordKey ?? "", -1)}
+                              className="rounded-full border border-white/12 bg-black/25 px-3 py-2 text-xs font-black text-zinc-200 transition hover:border-orange-200/55 disabled:cursor-not-allowed disabled:opacity-45"
+                              aria-label={`${copy.moveFavoriteUp} ${item.title}`}
+                              title={copy.moveFavoriteUp}
+                            >
+                              {copy.moveFavoriteUp}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={favoriteOrderBusy || favoriteIndex < 0 || favoriteIndex >= honorFavorites.length - 1}
+                              onClick={() => void moveFavorite(item.favoriteRecord?.recordKey ?? "", 1)}
+                              className="rounded-full border border-white/12 bg-black/25 px-3 py-2 text-xs font-black text-zinc-200 transition hover:border-orange-200/55 disabled:cursor-not-allowed disabled:opacity-45"
+                              aria-label={`${copy.moveFavoriteDown} ${item.title}`}
+                              title={copy.moveFavoriteDown}
+                            >
+                              {copy.moveFavoriteDown}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={removeBusy}
+                              onClick={() => void removeFavorite(item.favoriteRecord as HonorFavoriteRecord)}
+                              className="rounded-full border border-red-200/25 bg-red-500/10 px-3 py-2 text-xs font-black text-red-100 transition hover:border-red-200/55 hover:bg-red-500/18 disabled:cursor-wait disabled:opacity-55"
+                              aria-label={`${copy.removeFavorite} ${item.title}`}
+                              title={copy.removeFavorite}
+                            >
+                              {removeBusy ? copy.removingFavorite : copy.removeFavorite}
+                            </button>
+                          </div>
                         </div>
                       );
                     }
