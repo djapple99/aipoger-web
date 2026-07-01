@@ -160,8 +160,9 @@ Must preserve:
 - Reaction copy near buttons should encourage active voting.
 - The record visual is central and should feel like a public broadcast.
 - Lyrics area should be substantial enough to read, visually aligned with the comments area where practical.
-- Challenger is the post-protection entry point for new submissions. During the 2026-06-29 to 2026-07-05 promotion protection window, new submissions go straight into public airplay and the public pool may exceed 88.
-- Challenger tracks show their 24H protection state before public-pool promotion.
+- Challenger is the entry point for new submissions before public-pool promotion.
+- Visitors can play all public songs or choose one of the 10 fixed genres.
+- Each genre has a 36-song public pool. Survival and Honor timing start only after that genre reaches 36 public songs.
 
 Copy direction:
 

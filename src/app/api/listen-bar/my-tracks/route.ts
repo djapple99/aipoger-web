@@ -10,6 +10,7 @@ import {
   LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS,
   cleanListenBarDisplayText,
 } from "@/lib/listen-bar-field-limits";
+import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 
 type ListenBarTrackRow = {
   id: string;
@@ -56,6 +57,7 @@ type AdminClient = SupabaseClient<ListenBarMyTracksDatabase>;
 const MODERN_SELECT = "id,title,artist,ai_tool,genre,mood,description,lyrics,duration_seconds,created_by,source,bar_phase,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at,promoted_at";
 const LEGACY_WITH_DESCRIPTION_SELECT = "id,title,artist,ai_tool,genre,mood,description,lyrics,duration_seconds,created_by,source,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at";
 const LEGACY_SELECT = "id,title,artist,ai_tool,genre,mood,lyrics,duration_seconds,created_by,source,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at";
+const allowedGenreValues = new Set(MUSIC_GENRE_OPTIONS.map((genre) => genre.value));
 
 function tokenFromRequest(request: NextRequest): string | null {
   const auth = request.headers.get("authorization") ?? "";
@@ -202,10 +204,13 @@ export async function PATCH(request: NextRequest) {
 
     const patch = {
       ai_tool: cleanShortField(body?.aiTool) ?? "AI Music",
-      genre: cleanText(body?.genre, 80) ?? "Original 自我風格",
+      genre: cleanText(body?.genre, 80),
       mood: cleanShortField(body?.album),
       description: cleanDescriptionField(body?.description),
     };
+    if (!patch.genre || !allowedGenreValues.has(patch.genre)) {
+      return NextResponse.json({ error: "請從固定類型選單選擇歌曲類型。" }, { status: 400 });
+    }
 
     let updateResult = await admin
       .from("listen_bar_tracks")

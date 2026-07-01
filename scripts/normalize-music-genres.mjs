@@ -52,7 +52,13 @@ const genreMap = new Map([
   ["中式古風新派", "Chinese Fusion 新派古風"],
   ["自我風格", "Original 自我風格"],
   ["自我獨有風格", "Original 自我風格"],
-  ["Custom Style", "Original Style"],
+  ["Custom Style", "Original 自我風格"],
+  ["AI Music", "Original 自我風格"],
+  ["Pop", "Original 自我風格"],
+  [
+    "Electronic;Pop;Non-Music;Brit Pop;Disco;Downtempo;Eurodance;House;Trip Hop;Chillout;Easy Listening;Pop Rock;Soft Rock;Spoken Word;Singer-Songwriter",
+    "EDM 百大電音",
+  ],
 ]);
 
 const structuredTables = [

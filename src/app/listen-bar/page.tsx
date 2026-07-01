@@ -35,10 +35,9 @@ import {
   LISTEN_BAR_AUDIO_BUCKET,
   LISTEN_BAR_CHALLENGER_HOURLY_LIMIT,
   LISTEN_BAR_COVER_BUCKET,
+  LISTEN_BAR_GENRE_POOL_LIMIT,
   LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD,
   LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS,
-  LISTEN_BAR_PROMOTION_PROTECTION_UNTIL,
-  LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
   LISTEN_BAR_TOTAL_ROTATION_LIMIT,
   EMPTY_LISTEN_BAR_TRACK,
   fallbackOfficialPlaylist,
@@ -52,8 +51,8 @@ import {
   type ListenBarTrackRow,
 } from "@/lib/listen-bar";
 import { usePresenceCount } from "@/lib/use-presence-count";
-import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import { logAnalyticsEvent } from "@/lib/analytics-client";
+import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import type { User } from "@supabase/supabase-js";
 
 type ChatMessage = {
@@ -191,6 +190,8 @@ type PublicUploadForm = {
   album: string;
   description: string;
 };
+
+type GenrePlaybackSelection = "all" | string;
 
 const initialPublicUploadForm: PublicUploadForm = {
   title: "",
@@ -705,6 +706,7 @@ function ListenBarPageContent() {
   const [creatorDefaultName, setCreatorDefaultName] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [officialTracks, setOfficialTracks] = useState<ListenBarTrack[]>(fallbackOfficialPlaylist);
+  const [selectedPlaybackGenre, setSelectedPlaybackGenre] = useState<GenrePlaybackSelection>("all");
   const [playlistStatus, setPlaylistStatus] = useState<"loading" | "database" | "fallback">("loading");
   const [priorityAirplayIds, setPriorityAirplayIds] = useState<Set<string>>(() => new Set());
   const [challengerSlotCount, setChallengerSlotCount] = useState(0);
@@ -806,7 +808,7 @@ function ListenBarPageContent() {
       return nextIds;
     });
   }, []);
-  const rotationTracks = useMemo(() => {
+  const allRotationTracks = useMemo(() => {
     const seen = new Set<string>();
     return officialTracks.filter((track) => {
       if (seen.has(track.id)) return false;
@@ -814,17 +816,50 @@ function ListenBarPageContent() {
       return true;
     });
   }, [officialTracks]);
+  const allCommunityTracks = useMemo(
+    () => allRotationTracks.filter((track) => track.source === "community"),
+    [allRotationTracks],
+  );
+  const genrePoolStats = useMemo(() => {
+    const stats = new Map<string, { total: number; public: number }>();
+    for (const genre of LISTEN_BAR_GENRES) stats.set(genre.value, { total: 0, public: 0 });
+    for (const track of allCommunityTracks) {
+      const key = track.genre?.trim() || "Original 自我風格";
+      const item = stats.get(key) ?? { total: 0, public: 0 };
+      item.total += 1;
+      if (track.barPhase === "public") item.public += 1;
+      stats.set(key, item);
+    }
+    return stats;
+  }, [allCommunityTracks]);
+  const selectedGenreLabel = selectedPlaybackGenre === "all"
+    ? (isZh ? "公播" : "All")
+    : genreDisplayLabel(selectedPlaybackGenre, isZh);
+  const rotationTracks = useMemo(
+    () => selectedPlaybackGenre === "all"
+      ? allRotationTracks
+      : allRotationTracks.filter((track) => track.genre?.trim() === selectedPlaybackGenre),
+    [allRotationTracks, selectedPlaybackGenre],
+  );
   const communityRequestTracks = useMemo(
     () => rotationTracks.filter((track) => track.source === "community"),
     [rotationTracks],
   );
+  const totalCommunityTrackCount = allCommunityTracks.length;
   const publicPoolTracks = useMemo(
-    () => communityRequestTracks.filter((track) => track.barPhase === "public"),
-    [communityRequestTracks],
+    () => allCommunityTracks.filter((track) => track.barPhase === "public"),
+    [allCommunityTracks],
   );
+  const survivalStartedAtByGenre = useMemo(() => {
+    const map = new Map<string, string | null>();
+    for (const genre of LISTEN_BAR_GENRES) {
+      map.set(genre.value, listenBarSurvivalStartedAt(allCommunityTracks, LISTEN_BAR_GENRE_POOL_LIMIT, genre.value));
+    }
+    return map;
+  }, [allCommunityTracks]);
   const survivalStartedAt = useMemo(
-    () => listenBarSurvivalStartedAt(communityRequestTracks),
-    [communityRequestTracks],
+    () => nowTrack.genre ? (survivalStartedAtByGenre.get(nowTrack.genre) ?? null) : null,
+    [nowTrack.genre, survivalStartedAtByGenre],
   );
   const challengerTracks = useMemo(
     () => communityRequestTracks.filter((track) => track.barPhase !== "public"),
@@ -894,7 +929,6 @@ function ListenBarPageContent() {
     [myPublicStats.length],
   );
   const promotionProtectionActive = listenBarPromotionProtectionActive();
-  const activeRotationLimit = promotionProtectionActive ? Number.POSITIVE_INFINITY : LISTEN_BAR_TOTAL_ROTATION_LIMIT;
   const challengerSlotsFull = !promotionProtectionActive && challengerSlotCount >= challengerSlotLimit;
   const challengerSlotsFullMessage = isZh
     ? `你的公播池已有 ${myPublicStats.length} 首，現在 Challenger 上限是 ${challengerSlotLimit} 首。要再上傳，請先撤下一首 Challenger，或等公播池歌曲被撤下/淘汰後釋出節奏。`
@@ -963,6 +997,17 @@ function ListenBarPageContent() {
   useEffect(() => {
     rotationTracksRef.current = rotationTracks;
   }, [rotationTracks]);
+
+  useEffect(() => {
+    if (rotationTracks.length === 0) {
+      setNowTrack(EMPTY_LISTEN_BAR_TRACK);
+      return;
+    }
+    if (rotationTracks.some((track) => track.id === nowTrack.id)) return;
+    const livePosition = liveRadioSyncEnabledRef.current ? getLiveRadioPosition(rotationTracks) : null;
+    if (livePosition) liveSeekRef.current = { trackId: livePosition.track.id, offset: livePosition.offset };
+    setNowTrack(livePosition?.track ?? rotationTracks[0]);
+  }, [nowTrack.id, rotationTracks]);
 
   useEffect(() => {
     nowTrackRef.current = nowTrack;
@@ -1096,7 +1141,7 @@ function ListenBarPageContent() {
       const rows = payload?.tracks ?? [];
       const community = rows
         .filter((row) => !row.is_featured_official && row.source !== "official")
-        .slice(0, activeRotationLimit)
+        .slice(0, LISTEN_BAR_TOTAL_ROTATION_LIMIT)
         .map(listenBarRowToTrack)
         .filter((track): track is ListenBarTrack => track !== null);
       const spotlightTrack = spotlightPayload?.track ? listenBarRowToTrack(spotlightPayload.track) : null;
@@ -1161,7 +1206,7 @@ function ListenBarPageContent() {
       mounted = false;
       window.clearInterval(playlistRefreshTimer);
     };
-  }, [activeRotationLimit, isZh, spotlightParam, targetTrackParam]);
+  }, [isZh, spotlightParam, targetTrackParam]);
 
   useEffect(() => {
     const container = chatScrollRef.current;
@@ -1223,14 +1268,14 @@ function ListenBarPageContent() {
   }, [creatorDefaultName]);
 
   useEffect(() => {
-    if (!userId || rotationTracks.length === 0) {
+    if (!userId || allRotationTracks.length === 0) {
       setMyReactions({});
       return;
     }
 
     let mounted = true;
     const loadMyReactions = async () => {
-      const trackIds = rotationTracks.map((track) => track.id).slice(0, activeRotationLimit);
+      const trackIds = allRotationTracks.map((track) => track.id).slice(0, LISTEN_BAR_TOTAL_ROTATION_LIMIT);
       const voteDate = taipeiVoteDate();
       const { data, error } = await supabase
         .from("listen_bar_track_reactions")
@@ -1257,7 +1302,7 @@ function ListenBarPageContent() {
     return () => {
       mounted = false;
     };
-  }, [activeRotationLimit, rotationTracks, userId]);
+  }, [allRotationTracks, userId]);
 
   useEffect(() => {
     const channel = supabase
@@ -2049,7 +2094,10 @@ function ListenBarPageContent() {
       const insertedTrack = insertedTrackRow ? listenBarRowToTrack(insertedTrackRow) : null;
       if (insertedTrack) {
         const fallbackBarPhase: "public" | "challenger" = promotionProtectionActive ? "public" : "challenger";
-        const normalizedTrack = { ...insertedTrack, barPhase: insertedTrack.barPhase ?? fallbackBarPhase };
+        const normalizedTrack = {
+          ...insertedTrack,
+          barPhase: insertedTrack.barPhase ?? fallbackBarPhase,
+        };
         void logAnalyticsEvent({
           eventType: "upload_song",
           songId: isUuid(normalizedTrack.id) ? normalizedTrack.id : null,
@@ -2107,8 +2155,8 @@ function ListenBarPageContent() {
       });
       setPublicUploadMessage(
         isZh
-          ? `上傳完成！宣傳保護期內會直接一起進公播；目前這首播完後優先插播新投稿。`
-          : "Upload complete. During promotion protection, new submissions go public and get priority after the current song.",
+          ? `上傳完成！已進入 ${publicUploadForm.genre} Challenger；目前這首播完後會優先插播新投稿。`
+          : `Upload complete. Your track entered the ${publicUploadForm.genre} Challenger lane and gets priority after the current song.`,
       );
       setPlaylistStatus("database");
     } catch (submitError) {
@@ -2738,9 +2786,57 @@ function ListenBarPageContent() {
                       : listenCopy.queueWaiting}
                   </h2>
                 </div>
-                <span className="rounded-full border border-orange-300/24 bg-orange-500/10 px-3 py-1 text-[11px] font-black text-orange-100">
-                  {upcomingHeartbreakerTracks.length}/6
-                </span>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <span className="rounded-full border border-cyan-200/20 bg-cyan-300/8 px-3 py-1 text-[11px] font-black text-cyan-100">
+                    {selectedGenreLabel}
+                  </span>
+                  <span className="rounded-full border border-orange-300/24 bg-orange-500/10 px-3 py-1 text-[11px] font-black text-orange-100">
+                    {upcomingHeartbreakerTracks.length}/6
+                  </span>
+                </div>
+              </div>
+              <div className="relative border-b border-white/8 px-4 py-3">
+                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-6">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPlaybackGenre("all")}
+                    className={`min-w-0 rounded-xl border px-2.5 py-2 text-left transition ${
+                      selectedPlaybackGenre === "all"
+                        ? "border-orange-200/70 bg-orange-400/16 text-orange-50 shadow-[0_0_20px_rgba(255,106,0,0.12)]"
+                        : "border-white/10 bg-white/[0.035] text-zinc-400 hover:border-cyan-200/30 hover:bg-cyan-300/8 hover:text-cyan-50"
+                    }`}
+                  >
+                    <span className="block truncate text-[10px] font-black uppercase tracking-[0.16em]">
+                      {isZh ? "公播" : "All"}
+                    </span>
+                    <span className="mt-0.5 block text-xs font-black tabular-nums">
+                      {totalCommunityTrackCount}/{LISTEN_BAR_TOTAL_ROTATION_LIMIT}
+                    </span>
+                  </button>
+                  {LISTEN_BAR_GENRES.map((genre) => {
+                    const stats = genrePoolStats.get(genre.value) ?? { total: 0, public: 0 };
+                    const active = selectedPlaybackGenre === genre.value;
+                    return (
+                      <button
+                        key={genre.value}
+                        type="button"
+                        onClick={() => setSelectedPlaybackGenre(genre.value)}
+                        className={`min-w-0 rounded-xl border px-2.5 py-2 text-left transition ${
+                          active
+                            ? "border-orange-200/70 bg-orange-400/16 text-orange-50 shadow-[0_0_20px_rgba(255,106,0,0.12)]"
+                            : "border-white/10 bg-white/[0.035] text-zinc-400 hover:border-cyan-200/30 hover:bg-cyan-300/8 hover:text-cyan-50"
+                        }`}
+                      >
+                        <span className="block truncate text-[10px] font-black uppercase tracking-[0.08em]">
+                          {t(genre.labelKey)}
+                        </span>
+                        <span className="mt-0.5 block text-xs font-black tabular-nums">
+                          {stats.total}/{LISTEN_BAR_GENRE_POOL_LIMIT}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <div className="relative grid gap-0 md:grid-cols-2">
                 {upcomingHeartbreakerTracks.length === 0 ? (
@@ -2777,7 +2873,9 @@ function ListenBarPageContent() {
                                 </p>
                                 {track.barPhase === "public" ? (
                                   <p className="mt-1 text-[11px] font-black text-orange-100/80">
-                                    {isZh ? `公播 Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAt)}` : `Public Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAt)}`}
+                                    {isZh
+                                      ? `公播 Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null)}`
+                                      : `Public Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null)}`}
                                   </p>
                                 ) : (
                                   <p className="mt-1 text-[11px] font-black text-cyan-100/80">
@@ -3112,8 +3210,8 @@ function ListenBarPageContent() {
             </p>
             <p className="mt-2 break-words text-sm font-bold leading-6 text-zinc-300 [overflow-wrap:anywhere]">
               {isZh
-                ? `傷心酒吧不是排行榜，而是一場 AI 音樂生存電台。聽歌不需登入；留言、投票與投稿需登入。現在進入宣傳保護期，新投稿不打斷目前歌曲，這首播完後優先插播；每批從第一首投稿開始計 1 小時，最多 ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} 首，其餘排到下一小時。宣傳保護期到 ${new Date(LISTEN_BAR_PROMOTION_PROTECTION_UNTIL).toLocaleDateString("zh-TW")} 前，Challenger 直接一起上公播池，暫停 88 首淘汰。累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 個正向反應，或公播存活 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天，就取得榮譽榜入選資格。`
-                : `Bar Heartbreak is not a chart. It is AI music survival radio. Listening is open; comments, votes, and uploads require sign-in. Promotion protection is active: new submissions get priority after the current song, Challengers join public airplay, and 88-song eviction is paused until ${new Date(LISTEN_BAR_PROMOTION_PROTECTION_UNTIL).toLocaleDateString("en-US")}. ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} positive reactions or ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} public days makes a track Honor Board eligible.`}
+                ? `傷心酒吧不是排行榜，而是一場 AI 音樂生存電台。聽歌不需登入；留言、投票與投稿需登入。來訪者可選公播或指定類型播放；目前 10 種類型每類滿池 ${LISTEN_BAR_GENRE_POOL_LIMIT} 首，總公播池上限 ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} 首。每一類滿池後才啟動該類淘汰與 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天榮譽計時；累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 顆心，或滿池啟動後公播存活 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天，就取得榮譽榜入選資格。`
+                : `Bar Heartbreak is not a chart. It is AI music survival radio. Listening is open; comments, votes, and uploads require sign-in. Visitors can play all songs or pick a genre. Each of the 10 genres has a ${LISTEN_BAR_GENRE_POOL_LIMIT}-track public pool, for ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} public slots total. Survival and the ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS}-day Honor timer start per genre only after that genre pool is full. ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} hearts or ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} public days after activation makes a track Honor Board eligible.`}
             </p>
           </div>
 
@@ -3122,9 +3220,7 @@ function ListenBarPageContent() {
               <p className="text-xs uppercase tracking-[0.22em] text-cyan-100/70">{isZh ? "我的吧台歌曲" : "My Bar Tracks"}</p>
               <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
                 <span className="max-w-full rounded-full border border-orange-300/18 bg-orange-500/8 px-2 py-0.5 text-[11px] font-black text-orange-100">
-                  {promotionProtectionActive
-                    ? (isZh ? "宣傳保護期" : "Protection")
-                    : (isZh ? `Challenger ${challengerSlotCount}/${challengerSlotLimit}` : `${challengerSlotCount}/${challengerSlotLimit} Challengers`)}
+                  {isZh ? `Challenger ${challengerSlotCount}/${challengerSlotLimit}` : `${challengerSlotCount}/${challengerSlotLimit} Challengers`}
                 </span>
                 <span className="max-w-full rounded-full border border-white/10 px-2 py-0.5 text-[11px] font-bold text-zinc-400">
                   {isZh ? `${myPublicStats.length} 公播` : `${myPublicStats.length} public`}
@@ -3140,8 +3236,8 @@ function ListenBarPageContent() {
                   const challengerRank = challengerRankById.get(track.id);
                   const statusLabel = track.barPhase === "public"
                     ? isZh
-                      ? `公播 Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAt)}`
-                      : `Public Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAt)}`
+                      ? `公播 Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null)}`
+                      : `Public Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null)}`
                     : challengerRank
                       ? `Challenger #${challengerRank}`
                       : "Challenger";
@@ -3249,18 +3345,18 @@ function ListenBarPageContent() {
             <div className="mt-3 flex items-end gap-2">
               <span className="text-5xl font-black tabular-nums text-white">{publicPoolTracks.length}</span>
               <span className="pb-1 text-sm font-black text-zinc-500">
-                {promotionProtectionActive ? (isZh ? "/ 保護期" : "/ protected") : `/ ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}`}
+                / {LISTEN_BAR_TOTAL_ROTATION_LIMIT}
               </span>
             </div>
             <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">
               {isZh
-                ? `${communityRequestTracks.length} 首投稿歌進入傷心酒吧；${publicPoolTracks.length} 首正在公播。宣傳保護期內取消 88 首上限，先讓歌被聽見。`
-                : `${communityRequestTracks.length} creator tracks are in Bar Heartbreak; ${publicPoolTracks.length} are on public airplay. During promotion protection, the 88-song cap is paused so songs can be heard.`}
+                ? `${totalCommunityTrackCount} 首投稿歌進入傷心酒吧；${publicPoolTracks.length} 首正在公播。10 種類型各自滿池 ${LISTEN_BAR_GENRE_POOL_LIMIT} 首，先同類比較，再進榮譽。`
+                : `${totalCommunityTrackCount} creator tracks are in Bar Heartbreak; ${publicPoolTracks.length} are on public airplay. Each genre fills its own ${LISTEN_BAR_GENRE_POOL_LIMIT}-track pool before survival starts.`}
             </p>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-orange-500 via-orange-300 to-cyan-300"
-                style={{ width: `${Math.min(100, (publicPoolTracks.length / LISTEN_BAR_PUBLIC_ROTATION_LIMIT) * 100)}%` }}
+                style={{ width: `${Math.min(100, (publicPoolTracks.length / LISTEN_BAR_TOTAL_ROTATION_LIMIT) * 100)}%` }}
               />
             </div>
           </div>

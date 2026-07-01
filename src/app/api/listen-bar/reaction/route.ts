@@ -15,7 +15,7 @@ type ReactionDatabase = {
         Relationships: [];
       };
       listen_bar_tracks: {
-        Row: { id: string };
+        Row: { id: string; title: string | null; artist: string | null; genre: string | null };
         Insert: Record<string, never>;
         Update: {
           heart_count?: number;
@@ -38,6 +38,24 @@ type ReactionDatabase = {
 type AdminClient = SupabaseClient<ReactionDatabase>;
 
 const reactionKeys = new Set<ReactionKey>(["heart", "star", "thumb", "happy"]);
+const FAVORITES_BUCKET = "listen-bar-data";
+const FAVORITES_PATH = "honor-board/interactions.json";
+
+type StoredFavoriteRecord = {
+  recordKey: string;
+  targetKind: "battle" | "bar";
+  targetId: string;
+  targetTitle?: string;
+  targetArtist?: string;
+  targetGenre?: string;
+  favoriteUserIds: string[];
+  comments: unknown[];
+  updatedAt: string;
+};
+
+type StoredFavoriteData = {
+  records?: StoredFavoriteRecord[];
+};
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -59,6 +77,91 @@ function countReactions(reactions: ReactionKey[]): ReactionCounts {
     if (reactionKeys.has(key)) counts[key] += 1;
   }
   return counts;
+}
+
+function isStoredFavoriteRecord(value: unknown): value is StoredFavoriteRecord {
+  const item = value as StoredFavoriteRecord;
+  return (
+    typeof item === "object" &&
+    item !== null &&
+    typeof item.recordKey === "string" &&
+    (item.targetKind === "battle" || item.targetKind === "bar") &&
+    typeof item.targetId === "string" &&
+    Array.isArray(item.favoriteUserIds) &&
+    Array.isArray(item.comments) &&
+    typeof item.updatedAt === "string"
+  );
+}
+
+async function ensureFavoritesBucket(admin: AdminClient) {
+  const { data } = await admin.storage.getBucket(FAVORITES_BUCKET);
+  if (data) return;
+  await admin.storage.createBucket(FAVORITES_BUCKET, {
+    public: false,
+    fileSizeLimit: 1024 * 1024,
+    allowedMimeTypes: ["application/json"],
+  });
+}
+
+async function readFavoritesStore(admin: AdminClient): Promise<{ records: StoredFavoriteRecord[] }> {
+  await ensureFavoritesBucket(admin);
+  const { data, error } = await admin.storage.from(FAVORITES_BUCKET).download(FAVORITES_PATH);
+  if (error) {
+    if (/not found|not exist|404/i.test(error.message)) return { records: [] };
+    throw error;
+  }
+  const parsed = JSON.parse(await data.text()) as StoredFavoriteData;
+  return {
+    records: Array.isArray(parsed.records)
+      ? parsed.records.filter(isStoredFavoriteRecord)
+      : [],
+  };
+}
+
+async function writeFavoritesStore(admin: AdminClient, data: { records: StoredFavoriteRecord[] }) {
+  await ensureFavoritesBucket(admin);
+  const { error } = await admin.storage.from(FAVORITES_BUCKET).upload(
+    FAVORITES_PATH,
+    new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
+    { contentType: "application/json", upsert: true },
+  );
+  if (error) throw error;
+}
+
+async function ensureListenBarFavorite(admin: AdminClient, userId: string, trackId: string) {
+  const { data: track } = await admin
+    .from("listen_bar_tracks")
+    .select("id,title,artist,genre")
+    .eq("id", trackId)
+    .maybeSingle();
+
+  const recordKey = `bar:${trackId}`;
+  const store = await readFavoritesStore(admin);
+  const now = new Date().toISOString();
+  let record = store.records.find((item) => item.recordKey === recordKey);
+  if (!record) {
+    record = {
+      recordKey,
+      targetKind: "bar",
+      targetId: trackId,
+      favoriteUserIds: [],
+      comments: [],
+      updatedAt: now,
+    };
+    store.records.push(record);
+  }
+
+  record.targetKind = "bar";
+  record.targetId = trackId;
+  record.targetTitle = [track?.artist?.trim(), track?.title?.trim()].filter(Boolean).join(" / ") || record.targetTitle;
+  record.targetArtist = track?.artist?.trim() || record.targetArtist;
+  record.targetGenre = track?.genre?.trim() || record.targetGenre;
+  record.updatedAt = now;
+  if (!record.favoriteUserIds.includes(userId)) {
+    record.favoriteUserIds = [...record.favoriteUserIds, userId];
+  }
+
+  await writeFavoritesStore(admin, store);
 }
 
 function taipeiVoteDate(now = new Date()): string {
@@ -144,5 +247,15 @@ export async function POST(request: NextRequest) {
     .eq("id", body.trackId);
   if (updateError) return jsonError(updateError.message, 500);
 
-  return NextResponse.json({ ok: true, reaction, voteDate, counts, positiveReactionCount: total });
+  let favoriteSynced = false;
+  if (reaction === "heart") {
+    try {
+      await ensureListenBarFavorite(admin, user.id, body.trackId);
+      favoriteSynced = true;
+    } catch (error) {
+      console.warn("[listen-bar reaction favorite sync]", error);
+    }
+  }
+
+  return NextResponse.json({ ok: true, reaction, voteDate, counts, positiveReactionCount: total, favoriteSynced });
 }

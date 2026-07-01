@@ -123,8 +123,6 @@ Check:
 - Clicking another reaction changes the reaction.
 - Clicking the same reaction cancels the reaction.
 - Track comments persist.
-- Logged-in users can edit their own track comments.
-- Logged-in users cannot edit other users' track comments.
 - Track comments notify the song creator through account notifications, except self-comments.
 - Upload requires sign-in.
 - Upload policy copy is visible.
@@ -134,16 +132,16 @@ Check:
 
 Challenger and public pool:
 
-- During 2026-06-29 to 2026-07-05 Taiwan-time promotion protection, new submissions enter public airplay and Challenger songs are promoted into public airplay.
-- During promotion protection, the public pool may exceed 88 and 88-song eviction must stay paused.
-- After promotion protection, new submissions enter Challenger.
-- After promotion protection, Challenger songs have 24H protection before public-pool promotion.
+- Visitors can switch Bar Heartbreak playback between all public airplay and the 10 fixed music genres.
+- Genre filter UI shows current track counts, with each genre using a 36-track public-pool target.
+- New submissions enter Challenger and have 24H protection before public-pool promotion.
+- Creator upload flows require a fixed genre and must not silently default missing genres.
 - Creator Challenger slots use the 3/2/1 ladder: 0-2 active public songs allows 3 active Challengers, 3-5 allows 2, and 6+ allows 1.
 - Public-pool songs do not occupy Challenger slots and must not be removed by this slot limit.
-- Public pool progress shows current count over 88.
-- After promotion protection, public-pool elimination starts only above 88 and removes at most 3 per pass.
-- During promotion protection, Vercel Cron must not schedule `/api/listen-bar/process-rotation`; GET is manual/monitoring dry-run preview only.
-- Mutation requires protected POST and `LISTEN_BAR_ROTATION_ENABLED=true`, and production DB must still block capacity eviction while promotion protection is active.
+- Public pool progress shows current total over 360 and per-genre counts over 36.
+- Public-pool elimination starts only when a genre has more than 36 public songs and removes at most 3 per pass from overfull genre pools.
+- `GET /api/listen-bar/process-rotation` is manual/monitoring dry-run preview only.
+- Mutation requires protected POST and `LISTEN_BAR_ROTATION_ENABLED=true`.
 
 Daily Spotlight:
 

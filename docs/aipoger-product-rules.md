@@ -189,30 +189,32 @@ Current rules:
 - Bar Heartbreak main rotation contains creator submissions only.
 - Official AIPOGER songs do not count as active public-pool songs.
 - If there are no community submissions, hidden fallback store music may prevent a silent station; it must not count toward survival results.
-- Public pool target after promotion protection: 88 community songs.
-- From 2026-06-29 through 2026-07-05 Taiwan time, Bar Heartbreak is in promotion protection: Challenger songs are promoted into public airplay, the public pool may exceed 88 songs, and 88-song eviction is paused.
-- New submissions enter public airplay during promotion protection. After promotion protection ends, new submissions enter Challenger first and receive 24H protection before public-pool promotion.
+- Public listening supports 11 playback choices: all public airplay plus the 10 fixed music genres.
+- Each fixed music genre has its own 36-track public pool. With the current 10 genres, the full public-pool capacity is 360 community songs.
+- New submissions must include a fixed music genre. Do not silently default missing genre values to `Original 自我風格`.
+- New submissions enter Challenger first and receive 24H protection before public-pool promotion.
 - Creator Challenger slots use a 3/2/1 ladder based on that creator's active public-pool songs: 0-2 public songs allows up to 3 active Challengers, 3-5 public songs allows up to 2 active Challengers, and 6+ public songs allows up to 1 active Challenger.
 - Public-pool songs do not occupy Challenger slots and are not removed by this limit; they only reduce the creator's new Challenger concurrency.
 - A creator may remove their own Challenger songs.
 - A creator may remove their own public-pool songs.
-- Challenger protection period after promotion protection: 24 hours.
+- Challenger protection period: 24 hours.
 - A Challenger can be played, reacted to, and commented on during protection, but it is not evicted.
 - Per-track comments are persistent. A signed-in listener can edit their own Bar Heartbreak track comments. When someone comments on a creator's Bar Heartbreak track, the creator receives an account notification unless they commented on their own song.
-- During promotion protection, active Challengers move into public airplay immediately. After promotion protection ends, a Challenger automatically moves into the public pool after 24 hours. The old 1-positive-reaction promotion gate is retired.
+- A Challenger automatically moves into the public pool after 24 hours. The old 1-positive-reaction promotion gate is retired.
 - Own reaction remains allowed in V2, but it is only public support and does not guarantee survival.
 - Judgement interval: every 8 hours.
-- `GET /api/listen-bar/process-rotation` is a manual/monitoring dry-run preview only. During promotion protection it must not be scheduled by Vercel Cron, because no automatic path may trim the public pool back to 88.
-- Real post-protection promotion/removal requires the protected `POST` route with `LISTEN_BAR_ROTATION_ENABLED=true`, plus the production DB guard that blocks capacity eviction during promotion protection.
-- Public-pool elimination is paused during promotion protection. After promotion protection ends, it only runs when there are more than 88 public songs.
-- Bar Heartbreak survival and Honor Board eligibility start only after the public pool has reached 88 community songs. Existing public-pool time before the 88-song activation point must not be counted toward the 7-public-day Honor Board rule.
-- Elimination must never bring the active public pool below 88 songs.
-- Each post-protection elimination pass removes at most the overflow above 88, capped at 3 low-performing public-pool songs.
+- `GET /api/listen-bar/process-rotation` is a manual/monitoring dry-run preview only.
+- Real promotion/removal requires the protected `POST` route with `LISTEN_BAR_ROTATION_ENABLED=true`.
+- Public-pool elimination runs per genre only when that genre has more than 36 public songs.
+- Bar Heartbreak survival and Honor Board eligibility start per genre only after that genre has reached 36 public songs. Existing public-pool time before that genre activation point must not be counted toward the 7-public-day Honor Board rule.
+- Elimination must never bring an active genre public pool below 36 songs.
+- Each elimination pass removes at most the overflow above 36 inside overfull genre pools, capped at 3 low-performing public-pool songs.
 - If songs have the same positive reaction count, remove the older song first.
-- If the public pool is at or below 88 songs, elimination stops and no refill action is needed.
+- If a genre public pool is at or below 36 songs, elimination stops for that genre and no refill action is needed.
 - The legacy 30-day `completed` removal rule is retired and must not remove songs.
-- Challenger + public pool shared rotation target: 100 songs.
-- After the 88-song activation point, a song with 30 positive reactions or 7 public survival days becomes Honor Board eligible.
+- Public pool target: 36 songs per genre, currently 360 songs across 10 genres. Challenger priority airplay can still surface protected new submissions.
+- After that song's genre activation point, a song with 30 hearts/positive reactions or 7 public survival days becomes Honor Board eligible.
+- A listener must sign in to react or comment. Pressing Heart on a Bar Heartbreak track also saves that track to the listener's favorites. Removing it later from favorites does not remove the historical heart reaction; pressing Heart again after unsaving saves it again without duplicate favorites.
 - New submissions get priority after the current song finishes; each priority batch starts when the first upload arrives, airs up to 8 new uploads within 1 hour, and pushes overflow to the next hour.
 - Bar Heartbreak upload metadata should stay compact: user-entered creator name, AI tool, and album/mood are limited to 12 CJK characters or about 24 English characters; one-line song description is limited to 16 CJK characters or about 32 English characters. Auto-detected song titles are not subject to this compact metadata limit.
 - Daily Spotlight can feature a Bar Heartbreak track for promotion through `/today`, QR code, and social drafts. It is a curated spotlight layer, not a replacement for the shared radio rotation and not a separate reaction pool.
