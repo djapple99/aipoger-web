@@ -31,7 +31,7 @@ import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
 type TrackSortMode = "manual" | "updated_desc" | "updated_asc" | "created_desc" | "created_asc" | "genre";
-type TrackVisibilityFilter = "all" | "active" | "hidden" | "removed" | "uncategorized";
+type TrackVisibilityFilter = "all" | "active" | "hidden" | "removed";
 type AdminListenBarTrackRow = ListenBarTrackRow & {
   review_status?: "approved" | "pending" | "hidden" | "removed" | string | null;
   moderation_note?: string | null;
@@ -155,7 +155,6 @@ const LIVE_RADIO_EPOCH_MS = Date.UTC(2026, 0, 1);
 const UPCOMING_ROTATION_PREVIEW_COUNT = 6;
 const LISTEN_BAR_ADMIN_GENRE_OPTIONS = MUSIC_GENRE_OPTIONS;
 const GENRE_VALUES = new Set(LISTEN_BAR_ADMIN_GENRE_OPTIONS.map((genre) => genre.value));
-const NEEDS_GENRE_REVIEW = new Set(["", "AI Music", "ai music", "Genre", "genre", "自我風格", "未標示風格"]);
 const SOCIAL_PLATFORM_ORDER: SocialPlatform[] = ["discord", "x", "instagram", "tiktok", "youtube", "facebook_group"];
 const socialPlatformLabel: Record<SocialPlatform, string> = {
   discord: "Discord",
@@ -465,11 +464,6 @@ function trackSearchText(track: AdminListenBarTrackRow) {
     .toLowerCase();
 }
 
-function isUncategorizedTrack(track: AdminListenBarTrackRow) {
-  const genre = track.genre?.trim() ?? "";
-  return !GENRE_VALUES.has(genre) || NEEDS_GENRE_REVIEW.has(genre);
-}
-
 function normalizedGenreForSelect(value: string | null | undefined) {
   const genre = value?.trim() ?? "";
   return GENRE_VALUES.has(genre) ? genre : "Original 自我風格";
@@ -536,6 +530,7 @@ export default function ListenBarAdminPage() {
   const [operatingTrackId, setOperatingTrackId] = useState("");
   const [playlistBusy, setPlaylistBusy] = useState(false);
   const [trackVisibilityFilter, setTrackVisibilityFilter] = useState<TrackVisibilityFilter>("all");
+  const [trackGenreFilter, setTrackGenreFilter] = useState("all");
   const [trackMonthFilter, setTrackMonthFilter] = useState("all");
   const [trackSearch, setTrackSearch] = useState("");
   const [trackSortMode, setTrackSortMode] = useState<TrackSortMode>("manual");
@@ -570,6 +565,11 @@ export default function ListenBarAdminPage() {
     });
   }, [displayTracks]);
   const visiblePlayableTracks = useMemo(() => activePlayableTracks(displayTracks), [displayTracks]);
+  const pauseOtherAdminAudio = useCallback((currentAudio: HTMLAudioElement) => {
+    document.querySelectorAll<HTMLAudioElement>("[data-listen-bar-admin-audio]").forEach((audio) => {
+      if (audio !== currentAudio && !audio.paused) audio.pause();
+    });
+  }, []);
   const renderedTracks = useMemo(() => {
     const query = trackSearch.trim().toLowerCase();
     const filteredTracks = displayTracks.filter((track) => {
@@ -582,13 +582,13 @@ export default function ListenBarAdminPage() {
       const hidden = isHiddenTrack(track);
       if (trackVisibilityFilter === "active" && hidden) return false;
       if (trackVisibilityFilter === "hidden" && !hidden) return false;
-      if (trackVisibilityFilter === "uncategorized" && !isUncategorizedTrack(track)) return false;
+      if (trackGenreFilter !== "all" && normalizedGenreForSelect(track.genre) !== trackGenreFilter) return false;
       if (trackMonthFilter !== "all" && trackMonthKey(track) !== trackMonthFilter) return false;
       if (!query) return true;
       return trackSearchText(track).includes(query);
     });
     return sortTracksForAdmin(filteredTracks, trackSortMode);
-  }, [displayTracks, trackMonthFilter, trackSearch, trackSortMode, trackVisibilityFilter]);
+  }, [displayTracks, trackGenreFilter, trackMonthFilter, trackSearch, trackSortMode, trackVisibilityFilter]);
   const selectedTrackIdSet = useMemo(() => new Set(selectedTrackIds), [selectedTrackIds]);
   const selectedTracks = useMemo(
     () => displayTracks.filter((track) => selectedTrackIdSet.has(track.id)),
@@ -599,7 +599,6 @@ export default function ListenBarAdminPage() {
   const removedTrackCount = useMemo(() => displayTracks.filter(removedStatus).length, [displayTracks]);
   const manageableTrackCount = Math.max(0, displayTracks.length - removedTrackCount);
   const renderedTrackTotal = trackVisibilityFilter === "removed" ? removedTrackCount : manageableTrackCount;
-  const uncategorizedTrackCount = useMemo(() => displayTracks.filter((track) => !removedStatus(track) && isUncategorizedTrack(track)).length, [displayTracks]);
   const liveRotation = useMemo(() => liveRotationSnapshot(displayTracks, nowMs), [displayTracks, nowMs]);
   const currentlyPlayingId = liveRotation.current?.id ?? "";
   const totalActive = visiblePlayableTracks.length;
@@ -714,6 +713,7 @@ export default function ListenBarAdminPage() {
   const focusTrackInList = useCallback((trackId: string) => {
     if (!trackId) return;
     setTrackVisibilityFilter("all");
+    setTrackGenreFilter("all");
     setTrackMonthFilter("all");
     setTrackSearch("");
     setTrackSortMode("manual");
@@ -1888,7 +1888,14 @@ export default function ListenBarAdminPage() {
               </label>
 
               {audioPreview && (
-                <audio className="w-full accent-orange-500" controls preload="metadata" src={audioPreview}>
+                <audio
+                  className="w-full accent-orange-500"
+                  controls
+                  data-listen-bar-admin-audio
+                  preload="metadata"
+                  src={audioPreview}
+                  onPlay={(event) => pauseOtherAdminAudio(event.currentTarget)}
+                >
                   <track kind="captions" />
                 </audio>
               )}
@@ -1997,17 +2004,6 @@ export default function ListenBarAdminPage() {
                 >
                   已經刪除{removedTrackCount > 0 ? ` ${removedTrackCount}` : ""}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setTrackVisibilityFilter("uncategorized")}
-                  className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-200/55 ${
-                    trackVisibilityFilter === "uncategorized"
-                      ? "border-orange-200/65 bg-orange-500/14 text-orange-100"
-                      : "border-white/12 text-zinc-200 hover:border-orange-200/55"
-                  }`}
-                >
-                  待補類型{uncategorizedTrackCount > 0 ? ` ${uncategorizedTrackCount}` : ""}
-                </button>
                 <button type="button" disabled={playlistBusy || visiblePlayableTracks.length < 2} onClick={() => void randomizeTrackOrder()} className="rounded-full border border-orange-300/30 bg-orange-500/10 px-4 py-2 text-xs font-black text-orange-100 transition hover:border-orange-200/65 disabled:cursor-not-allowed disabled:opacity-45">
                   {playlistBusy ? "排列中" : "隨機排列"}
                 </button>
@@ -2027,7 +2023,7 @@ export default function ListenBarAdminPage() {
                 placeholder="搜尋歌名、創作者、AI 工具、類型、狀態"
                 className="h-11 w-full rounded-xl border border-white/12 bg-black/50 px-4 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200/70"
               />
-              <div className="grid gap-2 sm:grid-cols-[auto_auto_minmax(9rem,1fr)_minmax(10rem,1fr)]">
+              <div className="grid gap-2 sm:grid-cols-[auto_auto_minmax(9rem,1fr)_minmax(9rem,1fr)_minmax(10rem,1fr)]">
                 <button
                   type="button"
                   onClick={toggleRenderedSelection}
@@ -2067,6 +2063,18 @@ export default function ListenBarAdminPage() {
                   {monthOptions.map((month) => (
                     <option key={month} value={month}>
                       {trackMonthLabel(month)}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={trackGenreFilter}
+                  onChange={(event) => setTrackGenreFilter(event.target.value)}
+                  className="h-10 rounded-full border border-white/12 bg-black/55 px-4 text-xs font-black text-zinc-200 outline-none transition focus:border-cyan-200/70"
+                >
+                  <option value="all">全部類型</option>
+                  {LISTEN_BAR_ADMIN_GENRE_OPTIONS.map((genre) => (
+                    <option key={genre.value} value={genre.value}>
+                      {genre.value}
                     </option>
                   ))}
                 </select>
@@ -2149,33 +2157,32 @@ export default function ListenBarAdminPage() {
 
             <div className="grid max-h-[72rem] gap-3 overflow-y-auto pr-1">
               {renderedTracks.length === 0 ? (
-	                <div className="rounded-2xl border border-white/10 bg-black/40 px-4 py-10 text-center text-sm leading-7 text-zinc-500">
-	                  {displayTracks.length === 0
-	                    ? "尚無輪播資料。先上傳第一首官方歌曲。"
-	                    : trackSearch.trim()
-	                      ? "沒有符合搜尋條件的歌曲。"
-	                      : trackVisibilityFilter === "hidden"
-	                        ? "目前沒有下架歌曲。"
-	                        : trackVisibilityFilter === "removed"
-	                          ? "目前沒有已刪除歌曲。"
-	                        : trackVisibilityFilter === "uncategorized"
-	                          ? "目前沒有待補類型的歌曲。"
-	                          : "目前已隱藏下架歌曲，沒有可顯示的上架歌曲。"}
-	                </div>
+                <div className="rounded-2xl border border-white/10 bg-black/40 px-4 py-10 text-center text-sm leading-7 text-zinc-500">
+                  {displayTracks.length === 0
+                    ? "尚無輪播資料。先上傳第一首官方歌曲。"
+                    : trackSearch.trim()
+                      ? "沒有符合搜尋條件的歌曲。"
+                      : trackVisibilityFilter === "hidden"
+                        ? "目前沒有下架歌曲。"
+                        : trackVisibilityFilter === "removed"
+                          ? "目前沒有已刪除歌曲。"
+                          : trackGenreFilter !== "all"
+                            ? "目前這個類型沒有符合條件的歌曲。"
+                            : "目前已隱藏下架歌曲，沒有可顯示的上架歌曲。"}
+                </div>
               ) : (
                 renderedTracks.map((track) => {
                   const coverUrl = rowPublicUrl(LISTEN_BAR_COVER_BUCKET, track.cover_path) || DEFAULT_LISTEN_BAR_COVER;
                   const audioUrl = rowPublicUrl(LISTEN_BAR_AUDIO_BUCKET, track.audio_path);
-                    const removed = removedStatus(track);
-	                  const hidden = isHiddenTrack(track);
-                    const unavailable = hidden || removed;
-	                  const status = trackStatusBadge(track, currentlyPlayingId);
-	                  const updatedAt = track.updated_at ? new Date(track.updated_at).toLocaleString("zh-TW", { hour12: false }) : "-";
-	                  const focused = focusedTrackId === track.id;
-	                  const editing = editingTrackId === track.id && metadataForm;
-	                  const needsGenreReview = isUncategorizedTrack(track);
-                    const selected = selectedTrackIdSet.has(track.id);
-	                  return (
+                  const removed = removedStatus(track);
+                  const hidden = isHiddenTrack(track);
+                  const unavailable = hidden || removed;
+                  const status = trackStatusBadge(track, currentlyPlayingId);
+                  const updatedAt = track.updated_at ? new Date(track.updated_at).toLocaleString("zh-TW", { hour12: false }) : "-";
+                  const focused = focusedTrackId === track.id;
+                  const editing = editingTrackId === track.id && metadataForm;
+                  const selected = selectedTrackIdSet.has(track.id);
+                  return (
                     <article
                       key={track.id}
                       id={`listen-bar-admin-track-${track.id}`}
@@ -2214,13 +2221,8 @@ export default function ListenBarAdminPage() {
                             </div>
                             <span className={`rounded-full border px-3 py-1 text-xs font-black ${status.className}`}>
                               {status.label}
-	                            </span>
-	                            {needsGenreReview && (
-	                              <span className="rounded-full border border-orange-200/40 bg-orange-500/12 px-3 py-1 text-xs font-black text-orange-100">
-	                                待補類型
-	                              </span>
-	                            )}
-	                          </div>
+                            </span>
+                          </div>
                           <div className="mt-3 flex flex-wrap gap-2">
                             <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-bold text-zinc-300">
                               {phaseLabel(track)}
@@ -2247,7 +2249,15 @@ export default function ListenBarAdminPage() {
                             </div>
                           </div>
                           {audioUrl && (
-                            <audio className="mt-3 w-full accent-orange-500" controls controlsList="nodownload noplaybackrate" preload="metadata" src={audioUrl}>
+                            <audio
+                              className="mt-3 w-full accent-orange-500"
+                              controls
+                              controlsList="nodownload noplaybackrate"
+                              data-listen-bar-admin-audio
+                              preload="metadata"
+                              src={audioUrl}
+                              onPlay={(event) => pauseOtherAdminAudio(event.currentTarget)}
+                            >
                               <track kind="captions" />
                             </audio>
                           )}
