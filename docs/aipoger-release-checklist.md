@@ -124,6 +124,8 @@ Check:
 - Clicking the same reaction cancels the reaction.
 - Track comments persist.
 - Track comments notify the song creator through account notifications, except self-comments.
+- Creator profile/library shows other listeners' comments on the creator's own Bar Heartbreak songs.
+- Profile song rows, including favorites, show compact heart-count badges without hiding the song title.
 - Upload requires sign-in.
 - Upload policy copy is visible.
 - My Bar Tracks shows creator's Challenger/public tracks after sign-in.

@@ -199,7 +199,7 @@ Current rules:
 - A creator may remove their own public-pool songs.
 - Challenger protection period: 24 hours.
 - A Challenger can be played, reacted to, and commented on during protection, but it is not evicted.
-- Per-track comments are persistent. A signed-in listener can edit their own Bar Heartbreak track comments. When someone comments on a creator's Bar Heartbreak track, the creator receives an account notification unless they commented on their own song.
+- Per-track comments are persistent. A signed-in listener can edit their own Bar Heartbreak track comments. When someone comments on a creator's Bar Heartbreak track, the creator receives an account notification unless they commented on their own song. The creator profile/library must also expose other listeners' comments on the creator's own Bar Heartbreak songs; notification alone is not enough.
 - A Challenger automatically moves into the public pool after 24 hours. The old 1-positive-reaction promotion gate is retired.
 - Own reaction remains allowed in V2, but it is only public support and does not guarantee survival.
 - Judgement interval: every 8 hours.
@@ -217,6 +217,7 @@ Current rules:
 - A listener must sign in to react or comment. Pressing Heart on a Bar Heartbreak track also saves that track to the listener's favorites. Removing it later from favorites does not remove the historical heart reaction; pressing Heart again after unsaving saves it again without duplicate favorites.
 - Profile favorites are the V1 base for personal curation: saved songs should be playable, mutually exclusive in playback, and sortable on the user's own profile. The saved order affects only that listener's playlist view; it must not change heart counts, ranking, Honor Board state, creator records, or original track metadata.
 - In the profile favorites list, the song title and creator/genre must be the primary visible information. Source labels such as Top Drops or Bar Heartbreak should stay as compact badges only when useful; they must not take the main title column. Removing a favorite should be a compact `×` control with an accessible label, not a large `取消收藏` / `Unsave` pill that crowds the song name.
+- Profile creator-library rows, including saved/favorite songs, must show the song's current heart/save signal as a compact heart-count badge without crowding the title.
 - The next layer can turn an ordered favorites list into a monthly picks / DJ Choice public share page. That share page must preserve each song's original creator, source page, genre, and Battle / Honor Board / Bar Heartbreak provenance instead of becoming a generic music-player product.
 - New submissions get priority after the current song finishes; each priority batch starts when the first upload arrives, airs up to 8 new uploads within 1 hour, and pushes overflow to the next hour.
 - Bar Heartbreak upload metadata should stay compact: user-entered creator name, AI tool, and album/mood are limited to 12 CJK characters or about 24 English characters; one-line song description is limited to 16 CJK characters or about 32 English characters. Auto-detected song titles are not subject to this compact metadata limit.

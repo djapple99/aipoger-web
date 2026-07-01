@@ -72,6 +72,19 @@ type HonorFavoriteRecord = {
   updatedAt?: string | null;
 };
 
+type CreatorTrackComment = {
+  id: string;
+  name: string;
+  text: string;
+  createdAt: string;
+  updatedAt?: string | null;
+};
+
+type CreatorTrackCommentSummary = {
+  count: number;
+  latestComments: CreatorTrackComment[];
+};
+
 type CreatorItem = {
   id: string;
   category: CreatorFilter;
@@ -80,6 +93,8 @@ type CreatorItem = {
   meta: string;
   href: string;
   date?: string | null;
+  heartCount?: number;
+  commentSummary?: CreatorTrackCommentSummary;
   audioUrl?: string | null;
   favoriteRecord?: HonorFavoriteRecord;
 };
@@ -120,6 +135,24 @@ function compactStatus(status: string | null | undefined, lang: string): string 
   return lang === "zh" ? (zh[status] ?? status) : status.replaceAll("_", " ");
 }
 
+function compactCount(value: number | null | undefined): number {
+  const count = Number(value);
+  return Number.isFinite(count) ? Math.max(0, Math.round(count)) : 0;
+}
+
+function HeartCountBadge({ count, label }: { count: number; label: string }) {
+  return (
+    <span
+      className="inline-flex h-9 min-w-9 shrink-0 items-center justify-center rounded-full border border-rose-200/30 bg-rose-500/12 px-2 text-xs font-black leading-none text-rose-100 shadow-[0_0_18px_rgba(244,63,94,0.12)]"
+      aria-label={label}
+      title={label}
+    >
+      <span className="mr-1 text-[13px] leading-none text-rose-200">♥</span>
+      {count}
+    </span>
+  );
+}
+
 function ProfileInner() {
   const { t, lang } = useI18n();
   const isZh = lang === "zh";
@@ -143,6 +176,7 @@ function ProfileInner() {
   const [battles, setBattles] = useState<BattleRow[]>([]);
   const [wins, setWins] = useState<BattleArchiveRow[]>([]);
   const [honorFavorites, setHonorFavorites] = useState<HonorFavoriteRecord[]>([]);
+  const [trackCommentSummaries, setTrackCommentSummaries] = useState<Record<string, CreatorTrackCommentSummary>>({});
   const [favoriteRemoveBusy, setFavoriteRemoveBusy] = useState<Record<string, boolean>>({});
   const [favoriteOrderBusy, setFavoriteOrderBusy] = useState(false);
   const [playingFavoriteKey, setPlayingFavoriteKey] = useState<string | null>(null);
@@ -193,6 +227,8 @@ function ProfileInner() {
             noFavoriteAudio: "暫無音檔",
             favoriteOrderFailed: "排序保存失敗，請稍後再試。",
             favoritePlaybackFailed: "這首歌暫時無法播放。",
+            hearts: "顆愛心",
+            creatorComments: "聽眾留言",
             active: "公開中",
             openBattle: "發起挑戰",
             openBar: "去傷心酒吧",
@@ -235,6 +271,8 @@ function ProfileInner() {
             noFavoriteAudio: "No Audio",
             favoriteOrderFailed: "Could not save the order. Try again later.",
             favoritePlaybackFailed: "This song cannot be played right now.",
+            hearts: "hearts",
+            creatorComments: "listener comments",
             active: "Live",
             openBattle: "Start Battle",
             openBar: "Open Listen Bar",
@@ -283,12 +321,21 @@ function ProfileInner() {
           return (await response.json()) as { records?: HonorFavoriteRecord[] };
         });
 
-        const [tracksResult, queuesResult, battlesResult, winsResult, favoritesResult] = await Promise.allSettled([
+        const commentsPromise = fetch("/api/listen-bar/my-track-comments", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          cache: "no-store",
+        }).then(async (response) => {
+          if (!response.ok) throw new Error(`my-track-comments ${response.status}`);
+          return (await response.json()) as { commentsByTrackId?: Record<string, CreatorTrackCommentSummary> };
+        });
+
+        const [tracksResult, queuesResult, battlesResult, winsResult, favoritesResult, commentsResult] = await Promise.allSettled([
           tracksPromise,
           queuesPromise,
           battlesPromise,
           winsPromise,
           favoritesPromise,
+          commentsPromise,
         ]);
 
         if (tracksResult.status === "fulfilled") {
@@ -322,9 +369,16 @@ function ProfileInner() {
         } else {
           setCreatorError(copy.error);
         }
+
+        if (commentsResult.status === "fulfilled") {
+          setTrackCommentSummaries(commentsResult.value.commentsByTrackId ?? {});
+        } else {
+          setTrackCommentSummaries({});
+        }
       } catch (error) {
         console.error("[profile creator data]", error);
         setCreatorError(copy.error);
+        setTrackCommentSummaries({});
       } finally {
         setCreatorLoading(false);
       }
@@ -668,12 +722,13 @@ function ProfileInner() {
         track.artist?.trim(),
         track.ai_tool?.trim(),
         track.genre?.trim(),
-        `${track.heart_count ?? track.positive_reaction_count ?? 0} ${isZh ? "反應" : "reactions"}`,
       ]
         .filter(Boolean)
         .join(" / "),
       href: "/listen-bar",
       date: track.created_at,
+      heartCount: compactCount(track.heart_count ?? track.positive_reaction_count),
+      commentSummary: trackCommentSummaries[track.id],
     }));
 
     const queues = battleQueues.map((queue) => ({
@@ -720,15 +775,12 @@ function ProfileInner() {
         category: "favorites" as const,
         kind,
         title: record.targetTitle?.trim() || (isZh ? "收藏的 Top Drops 作品" : "Saved Top Drops Track"),
-        meta: [
-          kind,
-          record.targetGenre?.trim(),
-          `${Math.max(0, Math.round(Number(record.favoriteCount) || 0))} ${isZh ? "收藏" : "saves"}`,
-        ]
+        meta: [kind, record.targetGenre?.trim()]
           .filter(Boolean)
           .join(" / "),
         href: lang === "en" ? "/rank?lang=en" : "/rank?lang=zh",
         date: record.updatedAt,
+        heartCount: compactCount(record.favoriteCount),
         audioUrl: record.targetAudioUrl,
         favoriteRecord: record,
       };
@@ -758,6 +810,7 @@ function ProfileInner() {
     honorFavorites,
     isZh,
     lang,
+    trackCommentSummaries,
     wins,
   ]);
 
@@ -1012,6 +1065,7 @@ function ProfileInner() {
                       const favoriteArtist = item.favoriteRecord.targetArtist?.trim();
                       const favoriteGenre = item.favoriteRecord.targetGenre?.trim();
                       const favoriteDate = formatDate(item.date, lang);
+                      const heartCount = compactCount(item.heartCount);
                       return (
                         <div
                           key={item.id}
@@ -1021,21 +1075,23 @@ function ProfileInner() {
                               : "border-white/10 bg-black/25 hover:border-orange-300/45 hover:bg-orange-300/[0.06]"
                           }`}
                         >
-                          <Link
-                            href={item.href}
-                            className="min-w-0"
-                          >
-                            <span className="flex min-w-0 flex-wrap items-center gap-2">
-                              <span className="rounded-full border border-cyan-200/20 bg-cyan-300/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-100/80">
-                                {favoriteSource}
+                          <Link href={item.href} className="min-w-0">
+                            <span className="flex min-w-0 items-start gap-3">
+                              <span className="min-w-0 flex-1">
+                                <span className="flex min-w-0 flex-wrap items-center gap-2">
+                                  <span className="rounded-full border border-cyan-200/20 bg-cyan-300/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-100/80">
+                                    {favoriteSource}
+                                  </span>
+                                  {favoriteDate ? <span className="text-xs text-zinc-500">{favoriteDate}</span> : null}
+                                </span>
+                                <span className="mt-1 block min-w-0 truncate text-lg font-black leading-tight text-zinc-50">
+                                  {item.title}
+                                </span>
+                                <span className="mt-1 block min-w-0 truncate text-xs text-zinc-500">
+                                  {[favoriteArtist, favoriteGenre].filter(Boolean).join(" / ") || item.meta}
+                                </span>
                               </span>
-                              {favoriteDate ? <span className="text-xs text-zinc-500">{favoriteDate}</span> : null}
-                            </span>
-                            <span className="mt-1 block min-w-0 truncate text-lg font-black leading-tight text-zinc-50">
-                              {item.title}
-                            </span>
-                            <span className="mt-1 block min-w-0 truncate text-xs text-zinc-500">
-                              {[favoriteArtist, favoriteGenre].filter(Boolean).join(" / ") || item.meta}
+                              <HeartCountBadge count={heartCount} label={`${heartCount} ${copy.hearts}`} />
                             </span>
                           </Link>
                           <div className="flex flex-wrap items-center gap-2 md:justify-end">
@@ -1084,17 +1140,25 @@ function ProfileInner() {
                       );
                     }
 
+                    const heartCount = compactCount(item.heartCount);
+                    const commentSummary = item.commentSummary;
                     return (
                       <Link
                         key={item.id}
                         href={item.href}
-                        className="grid gap-2 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 transition hover:border-orange-300/45 hover:bg-orange-300/[0.06] sm:grid-cols-[8rem_1fr_auto] sm:items-center"
+                        className="grid gap-2 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 transition hover:border-orange-300/45 hover:bg-orange-300/[0.06] sm:grid-cols-[8rem_minmax(0,1fr)_auto_auto] sm:items-center"
                       >
                         <span className="text-xs font-black uppercase tracking-[0.18em] text-cyan-100/80">{item.kind}</span>
                         <span className="min-w-0">
                           <span className="block truncate text-base font-black text-zinc-50">{item.title}</span>
                           <span className="block truncate text-xs text-zinc-500">{item.meta}</span>
+                          {commentSummary?.count ? (
+                            <span className="mt-2 block min-w-0 truncate text-xs font-bold text-zinc-400">
+                              {copy.creatorComments} {commentSummary.count} · {commentSummary.latestComments[0]?.name}: {commentSummary.latestComments[0]?.text}
+                            </span>
+                          ) : null}
                         </span>
+                        <HeartCountBadge count={heartCount} label={`${heartCount} ${copy.hearts}`} />
                         <span className="text-xs text-zinc-500">{formatDate(item.date, lang)}</span>
                       </Link>
                     );
