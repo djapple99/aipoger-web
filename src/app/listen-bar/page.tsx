@@ -3324,8 +3324,8 @@ function ListenBarPageContent() {
             </div>
             <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">
               {isZh
-                ? `${totalCommunityTrackCount} 首投稿歌進入傷心酒吧；${publicPoolTracks.length} 首正在公播。11 種類型各自滿池 ${LISTEN_BAR_GENRE_POOL_LIMIT} 首，先同類比較，再進榮譽。`
-                : `${totalCommunityTrackCount} creator tracks are in Bar Heartbreak; ${publicPoolTracks.length} are on public airplay. Each genre fills its own ${LISTEN_BAR_GENRE_POOL_LIMIT}-track pool before survival starts.`}
+                ? `目前公播進度 ${publicPoolTracks.length}/${LISTEN_BAR_TOTAL_ROTATION_LIMIT}。11 種類型各自滿池 ${LISTEN_BAR_GENRE_POOL_LIMIT} 首；滿池後先同類比較，再進榮譽。`
+                : `Current public airplay progress: ${publicPoolTracks.length}/${LISTEN_BAR_TOTAL_ROTATION_LIMIT}. Each of the 11 genres fills its own ${LISTEN_BAR_GENRE_POOL_LIMIT}-track pool before same-genre survival begins.`}
             </p>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
               <div
