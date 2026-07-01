@@ -1,21 +1,31 @@
 import { Upload } from "tus-js-client";
 import { supabase } from "@/lib/supabase";
 import {
-  AUDIO_UPLOAD_MAX_BYTES_100MB,
-  AUDIO_UPLOAD_MAX_LABEL_100MB,
-  STANDARD_AUDIO_UPLOAD_ACCEPT,
   audioSizeLabel,
-  isAllowedStandardAudioFile,
   standardAudioContentType,
 } from "@/lib/audio-upload-policy";
 
-export const LISTEN_BAR_AUDIO_UPLOAD_MAX_BYTES = AUDIO_UPLOAD_MAX_BYTES_100MB;
-export const LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL = AUDIO_UPLOAD_MAX_LABEL_100MB;
+export const LISTEN_BAR_AUDIO_UPLOAD_MAX_BYTES = 30 * 1024 * 1024;
+export const LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL = "30MB";
 
-export const LISTEN_BAR_AUDIO_UPLOAD_ACCEPT = STANDARD_AUDIO_UPLOAD_ACCEPT;
+export const LISTEN_BAR_AUDIO_UPLOAD_ACCEPT =
+  "audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/aac,audio/ogg,.mp3,.m4a,.aac,.ogg";
+
+const LISTEN_BAR_ALLOWED_AUDIO_MIME_TYPES = new Set([
+  "audio/mpeg",
+  "audio/mp3",
+  "audio/mp4",
+  "audio/x-m4a",
+  "audio/aac",
+  "audio/ogg",
+]);
+
+const LISTEN_BAR_ALLOWED_AUDIO_EXTENSIONS = new Set(["mp3", "m4a", "aac", "ogg"]);
 
 export function isAllowedListenBarAudioFile(file: File): boolean {
-  return isAllowedStandardAudioFile(file);
+  if (LISTEN_BAR_ALLOWED_AUDIO_MIME_TYPES.has(file.type)) return true;
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return LISTEN_BAR_ALLOWED_AUDIO_EXTENSIONS.has(ext);
 }
 
 export function listenBarAudioContentType(file: File): string {

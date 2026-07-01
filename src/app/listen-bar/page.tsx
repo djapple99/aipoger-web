@@ -1372,14 +1372,6 @@ function ListenBarPageContent() {
       return;
     }
 
-    const livePosition = liveRadioSyncEnabledRef.current ? getLiveRadioPosition(rotationTracks) : null;
-    if (livePosition?.track?.audioUrl && livePosition.track.id !== nowTrack.id) {
-      liveSeekRef.current = { trackId: livePosition.track.id, offset: livePosition.offset };
-      setElapsed(livePosition.offset);
-      setNowTrack(livePosition.track);
-      return;
-    }
-
     const playableTracks = rotationTracks.filter((track) => track.audioUrl && track.id !== nowTrack.id);
     if (playableTracks.length === 0) {
       setElapsed(0);
@@ -1542,28 +1534,6 @@ function ListenBarPageContent() {
       window.removeEventListener("pagehide", onPageHide);
     };
   }, [isPlaying, resumeRadioPlayback]);
-
-  useEffect(() => {
-    if (!nowTrack.audioUrl || rotationTracks.length === 0) return;
-    if (!liveRadioSyncEnabledRef.current) return;
-    const timer = window.setInterval(() => {
-      const audio = audioRef.current;
-      if (!audio || audio.paused) return;
-      const livePosition = getLiveRadioPosition(rotationTracks);
-      if (!livePosition) return;
-      if (livePosition.track.id !== nowTrack.id) {
-        liveSeekRef.current = { trackId: livePosition.track.id, offset: livePosition.offset };
-        setNowTrack(livePosition.track);
-        return;
-      }
-      if (Math.abs(audio.currentTime - livePosition.offset) > 3) {
-        const safeDuration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : livePosition.track.duration;
-        audio.currentTime = Math.min(livePosition.offset, Math.max(0, safeDuration - 0.25));
-        setElapsed(audio.currentTime);
-      }
-    }, 15000);
-    return () => window.clearInterval(timer);
-  }, [nowTrack, rotationTracks]);
 
   useEffect(() => {
     if (!isPlaying || nowTrack.audioUrl) return;
@@ -1863,15 +1833,15 @@ function ListenBarPageContent() {
     if (!file) return;
     if (!isAllowedListenBarAudioFile(file)) {
       setPublicAudioFile(null);
-      setPublicUploadError(isZh ? "請使用 MP3、WAV、AIFF、M4A、AAC 或 OGG 音檔。" : "Use MP3, WAV, AIFF, M4A, AAC, or OGG audio.");
+      setPublicUploadError(isZh ? "請使用 MP3、M4A、AAC 或 OGG 壓縮音檔，避免公播時卡頓。" : "Use compressed MP3, M4A, AAC, or OGG audio for stable playback.");
       return;
     }
     if (file.size > LISTEN_BAR_AUDIO_UPLOAD_MAX_BYTES) {
       setPublicAudioFile(null);
       setPublicUploadError(
         isZh
-          ? `音檔太大：${listenBarAudioSizeLabel(file)}。傷心酒吧單檔上限是 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}，WAV 若超過請先轉 MP3 或壓縮。`
-          : `Audio file too large: ${listenBarAudioSizeLabel(file)}. Bar Heartbreak allows up to ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}; convert or compress large WAV files.`,
+          ? `音檔太大：${listenBarAudioSizeLabel(file)}。傷心酒吧單檔上限是 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}，請先轉成 MP3/M4A 或壓縮。`
+          : `Audio file too large: ${listenBarAudioSizeLabel(file)}. Bar Heartbreak allows up to ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}; convert to MP3/M4A or compress it.`,
       );
       return;
     }
@@ -3040,7 +3010,7 @@ function ListenBarPageContent() {
                     <span className="min-w-0">
                       <span className="block text-[11px] font-black uppercase tracking-[0.22em] text-orange-200/75">AUDIO FILE</span>
                       <span className="mt-1 block truncate text-lg font-black leading-tight text-white">
-                        {publicAudioFile?.name ?? (isZh ? `音檔 MP3 / WAV / AIFF / M4A，上限 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}` : `MP3 / WAV / AIFF / M4A, max ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}`)}
+                        {publicAudioFile?.name ?? (isZh ? `音檔 MP3 / M4A / AAC / OGG，上限 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}` : `MP3 / M4A / AAC / OGG, max ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}`)}
                       </span>
                       <span className="mt-1 block text-xs text-zinc-400">
                         {isZh ? "點一下選歌，自動偵測歌名" : "Tap to Choose; Title Auto-Detects"}
