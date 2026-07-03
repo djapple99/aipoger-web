@@ -590,8 +590,8 @@ export default function ListenBarPage() {
   const isZh = lang === "zh";
   const langQuery = `?lang=${lang}`;
   const signTitleClass = isZh
-    ? "text-[clamp(3.45rem,12.5vw,8.4rem)]"
-    : "text-[clamp(2.45rem,7.2vw,5.9rem)]";
+    ? "text-[clamp(3.45rem,12.5vw,8.4rem)] md:text-[clamp(3.05rem,7.8vw,5.6rem)]"
+    : "text-[clamp(2.45rem,7.2vw,5.9rem)] md:text-[clamp(2rem,4.8vw,3.9rem)]";
   const listenCopy = isZh
     ? {
         playMySong: "我要播歌！",
@@ -2315,8 +2315,8 @@ export default function ListenBarPage() {
             <LangToggle variant="inline" />
           </div>
 
-          <div className="relative -mt-1 mx-auto flex w-full max-w-[1080px] flex-col items-center md:max-w-[1260px]">
-            <div className="heartbreak-sign relative w-full max-w-[min(92vw,1080px)] overflow-hidden px-5 py-5 text-center md:max-w-[1260px] md:px-10 md:py-8">
+          <div className="relative -mt-1 mx-auto flex w-full max-w-[1080px] flex-col items-center md:max-w-[840px]">
+            <div className="heartbreak-sign relative w-full max-w-[min(92vw,1080px)] overflow-hidden px-5 py-5 text-center md:max-w-[840px] md:px-7 md:py-5">
               <div className="relative z-10 flex flex-wrap items-center justify-center gap-3 md:gap-8">
                 <span className="heartbreak-sign-kicker">AIPOGER RADIO</span>
                 <span className="heartbreak-sign-chip">BAR HEARTBREAK</span>
@@ -2324,7 +2324,7 @@ export default function ListenBarPage() {
               <h1 className={`heartbreak-sign-title relative z-10 mt-3 ${signTitleClass}`}>
                 {listenCopy.title}
               </h1>
-              <p className="heartbreak-sign-subtitle relative z-10 mt-2 whitespace-nowrap text-[clamp(0.54rem,1.75vw,0.68rem)] sm:whitespace-normal sm:text-[clamp(0.72rem,2.3vw,1.35rem)]">
+              <p className="heartbreak-sign-subtitle relative z-10 mt-2 whitespace-nowrap text-[clamp(0.54rem,1.75vw,0.68rem)] sm:whitespace-normal sm:text-[clamp(0.66rem,1.35vw,0.92rem)]">
                 {listenCopy.subtitle}
               </p>
             </div>

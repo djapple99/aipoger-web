@@ -363,6 +363,21 @@ a {
   }
 }
 
+@media (min-width: 768px) {
+  .heartbreak-sign-kicker,
+  .heartbreak-sign-chip {
+    font-size: clamp(0.62rem, 1.05vw, 0.9rem);
+  }
+
+  .heartbreak-sign-chip {
+    padding: 0.32rem 0.82rem;
+  }
+
+  .heartbreak-sign-title {
+    -webkit-text-stroke-width: 0.86px;
+  }
+}
+
 .aipo-input {
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(0, 0, 0, 0.58);

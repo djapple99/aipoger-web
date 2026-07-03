@@ -169,6 +169,7 @@ Must preserve:
 - The queue header should expose a selected-genre share action so listeners can share the exact Bar Heartbreak category they are hearing.
 - The Bar Heartbreak hero sign must remain text-driven and localizable. Do not replace the sign title/subtitle with a bitmap containing Chinese text, because language switching must keep working.
 - The sign may visually reference the dark gold sci-fi plaque style, but the title, `AIPOGER RADIO`, `BAR HEARTBREAK`, and subtitle must be live text. The subtitle should use a muted rose-brown fill with a thin dark stroke plus a low warm-gold glow so it separates from the plaque background without becoming bright yellow.
+- On desktop, keep the Bar Heartbreak sign compact rather than full-width. The plaque should sit around two-thirds of the previous oversized desktop treatment so it reads as a sign, not a giant banner that pushes the radio content down.
 - On mobile, the lower hero action strip should place `我要播歌`, `分享吧台`, and `榮譽榜` on the first row, with `AI 音樂鬥歌場` centered on the second row.
 
 Copy direction:
