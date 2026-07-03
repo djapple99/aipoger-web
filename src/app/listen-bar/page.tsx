@@ -537,6 +537,27 @@ function descriptionDisplayLabel(value: string | null | undefined, isZh: boolean
   return isZh ? "這首歌還在等創作者補上一句故事" : "This track is waiting for a one-line story";
 }
 
+function titleDisplayUnits(value: string) {
+  return Array.from(value.trim()).reduce((sum, char) => {
+    if (/\s/.test(char)) return sum + 0.45;
+    if (/[\u3400-\u9fff\u3040-\u30ff\uac00-\ud7af]/u.test(char)) return sum + 2;
+    if (/[A-Z]/.test(char)) return sum + 1.15;
+    return sum + 1;
+  }, 0);
+}
+
+function nowPlayingTitleClass(title: string) {
+  const units = titleDisplayUnits(title);
+  const base = "mt-4 line-clamp-2 break-words font-black text-white [overflow-wrap:anywhere]";
+  if (units >= 24) {
+    return `${base} max-w-[min(100%,15.5em)] text-[clamp(1.55rem,2.8vw,2.85rem)] leading-[1.03]`;
+  }
+  if (units >= 16) {
+    return `${base} max-w-[min(100%,13.2em)] text-[clamp(1.95rem,3.45vw,3.65rem)] leading-[0.98]`;
+  }
+  return `${base} max-w-[9.8em] text-[clamp(2.25rem,4.1vw,4.4rem)] leading-[0.92]`;
+}
+
 function listenBarShortFieldHint(isZh: boolean) {
   return isZh ? "中文 12 字內；英文約 24 字元" : "12 CJK chars; about 24 English characters";
 }
@@ -1610,6 +1631,7 @@ export default function ListenBarPage() {
     createdAt: nowTrack.createdAt,
   }, Date.now(), survivalStartedAt);
   const nowTrackTitle = !isZh && nowTrack.id === EMPTY_LISTEN_BAR_TRACK.id ? "Waiting for Creator Uploads" : nowTrack.title;
+  const nowTrackTitleClass = nowPlayingTitleClass(nowTrackTitle);
   const myCurrentReaction = myReactions[nowTrack.id] ?? null;
   const currentHeartTotal = Math.max(0, currentReactions.heart ?? 0);
   const hasMyHeartReaction = myCurrentReaction === "heart";
@@ -2456,7 +2478,7 @@ export default function ListenBarPage() {
                 </div>
                 <p
                   title={nowTrackTitle}
-                  className="mt-4 line-clamp-2 max-w-[9.6em] break-words text-[clamp(2.2rem,4.1vw,4.4rem)] font-black leading-[0.92] text-white [overflow-wrap:anywhere]"
+                  className={nowTrackTitleClass}
                 >
                   {nowTrackTitle}
                 </p>

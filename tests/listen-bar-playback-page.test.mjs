@@ -52,3 +52,11 @@ test("listen bar category share uses short links and restores the selected genre
   assert.ok(listenBarPageSource.includes('params.get("genre")'));
   assert.ok(listenBarShortRouteSource.includes('target.searchParams.set("genre"'));
 });
+
+test("listen bar now playing title uses dynamic sizing for long names", () => {
+  assert.ok(listenBarPageSource.includes("function nowPlayingTitleClass"));
+  assert.ok(listenBarPageSource.includes("titleDisplayUnits"));
+  assert.ok(listenBarPageSource.includes("nowTrackTitleClass"));
+  assert.ok(listenBarPageSource.includes("max-w-[min(100%,15.5em)]"));
+  assert.equal(listenBarPageSource.includes('className="mt-4 line-clamp-2 max-w-[9.6em]'), false);
+});
