@@ -326,19 +326,32 @@ a {
 }
 
 .heartbreak-sign-subtitle {
-  color: #5A4146;
-  font-weight: 900;
+  background:
+    linear-gradient(
+      180deg,
+      #fff7c8 0%,
+      #ffd86f 16%,
+      #c67418 39%,
+      #fff0a8 51%,
+      #b46612 65%,
+      #f6c65f 82%,
+      #7b3b07 100%
+    );
+  background-clip: text;
+  color: transparent;
+  font-weight: 950;
   line-height: 1.65;
   text-shadow:
-    0 1px 0 rgba(255, 225, 142, 0.24),
-    0 0 1px rgba(18, 10, 8, 0.9),
-    1px 0 0 rgba(18, 10, 8, 0.52),
-    -1px 0 0 rgba(18, 10, 8, 0.52),
-    0 2px 2px rgba(0, 0, 0, 0.66),
-    0 7px 13px rgba(255, 188, 58, 0.34),
-    0 13px 28px rgba(255, 132, 16, 0.24);
-  -webkit-text-stroke: 0.42px rgba(22, 12, 10, 0.68);
-  filter: drop-shadow(0 8px 11px rgba(255, 177, 45, 0.2));
+    0 1px 0 rgba(255, 247, 200, 0.72),
+    0 2px 0 rgba(94, 42, 3, 0.78),
+    0 4px 0 rgba(34, 12, 1, 0.82),
+    0 8px 14px rgba(0, 0, 0, 0.72),
+    0 0 14px rgba(255, 201, 78, 0.44),
+    0 0 32px rgba(255, 119, 0, 0.2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 0.48px rgba(255, 236, 162, 0.5);
+  filter: drop-shadow(0 0 5px rgba(255, 184, 62, 0.18));
 }
 
 @media (max-width: 640px) {
