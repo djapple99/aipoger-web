@@ -65,6 +65,8 @@ test("listen bar upload and share actions keep visible glow highlights", () => {
   assert.ok(listenBarPageSource.includes("shadow-[0_0_42px_rgba(255,49,80,0.3)"));
   assert.ok(listenBarPageSource.includes("shadow-[0_0_28px_rgba(255,49,80,0.22)"));
   assert.ok(listenBarPageSource.includes("shadow-[0_0_24px_rgba(255,49,80,0.24)"));
+  assert.ok(listenBarPageSource.includes("bg-rose-500/[0.16]"));
+  assert.ok(listenBarPageSource.includes("bg-rose-500/18"));
   assert.ok(listenBarPageSource.includes("ring-rose-100/14"));
   assert.ok(listenBarPageSource.includes("ring-rose-100/12"));
 });
