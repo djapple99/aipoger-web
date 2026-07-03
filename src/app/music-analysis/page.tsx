@@ -66,7 +66,7 @@ export default function MusicAnalysisPage() {
       : [
           ["Hard Truth", "The sound has a scene, but the lyric needs a line people can remember."],
           ["Use Case", "City night / emotional shorts / AI MV / lifestyle brand"],
-          ["Next Step", "Cut 90 seconds for Drop Battle; if lyrics underperform, rewrite the chorus hook."],
+          ["Next Step", "Cut a Drop up to 60 seconds for Drop Battle; if lyrics underperform, rewrite the chorus hook."],
         ],
     [isZh],
   );

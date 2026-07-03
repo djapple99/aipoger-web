@@ -44,7 +44,7 @@
 網站主要目標：
 
 - 推廣 AI 音樂。
-- 讓喜歡音樂的人可以使用 hook 進行 battle。
+- 讓喜歡音樂的人可以使用 drop / 抓波進行 battle。
 - 透過 battle 賺取點數。
 - 讓 AI 音樂創作變得更好玩、更有參與感、更有社群感。
 
@@ -145,6 +145,7 @@
 - 不要把 Challenger 講成等待室。
 - 不要用過多 admin / PM 語氣。
 - 不要寫空洞的行銷口號。
+- 傷心酒吧新投稿音檔只接受 MP3 / M4A / AAC / OGG，單檔上限 30MB；不要把它接回官方守門 Drop 的 100MB / WAV / AIFF 標準音檔政策。
 - 傷心酒吧首屏右上角不要堆主要 CTA；`我要播歌`、`分享吧台`、`AI 音樂鬥歌場`、`榮譽榜` 放在下方 action strip，`練功聖經` / `關於愛波哥` 不放在該區。傷心酒吧分享要用 `/l/all` 或 `/l/{genreIndex}` 短網址，分類分享必須回到同一播放類型。
 - 傷心酒吧首屏招牌不可改成含中文字的圖片字，因為語言切換會失效；主標、副標與 `AIPOGER RADIO` / `BAR HEARTBREAK` 必須用 live text。手機版 action strip 第一排放 `我要播歌`、`分享吧台`、`榮譽榜`，第二排 `AI 音樂鬥歌場` 置中。
 
@@ -184,7 +185,7 @@
 - 快速開戰時間是「戰帖發布成功後 + 10 / 15 / 20 分鐘」，不是使用者剛點快速選項的時間；自訂時間才是固定絕對開打時間。
 - 在開戰時間內，發起者與觀眾都可以離開再回來；戰場狀態不應要求使用者留在預等頁。
 - 戰場的 5 秒 teaser 對外中文標示統一用「預播」，並用紅底白字呈現；不要再用不清楚的 `PLAY 5S`。戰鬥卡、邀請卡、分享預覽也要同步用「5 秒預播」。
-- 分享 Battle 的文案要包含發起對戰者名、歌名、開戰時間、類型 / 風格與 5 秒預播邀請；分享網址盡量短，優先用 `/battle/{id}?lang=zh`、成果卡用 `/battle/result?battleId={id}&lang=zh`。
+- 分享 Battle 的文案要包含發起對戰者名、歌名、開戰時間、類型 / 風格與 5 秒預播邀請；分享網址必須盡量短，Drop arena 優先用 `/b/{shortId}`，Drop 成果卡用 `/r/{shortId}`，24H queued card 用 `/d/{shortId}`，24H live battle 用 `/h/{shortId}`。
 - 戰場中點雙方頭像觸發的 emoji 反應，必須全場 Realtime broadcast，讓雙方與所有觀眾都看得到，不可只留在本機畫面。
 - 投票 UI 不顯示假進度條或預設 50% 條。投票提示要明確寫「投票請按愛心」；最終揭票時可以顯示票數，但不要用沒有意義的進度條誤導觀眾。
 - 正式開打前最後 5 秒要有舞台感倒數與 announcer 音效 / 文案：`Ladies and gentlemen, fighters!`。正式音檔使用 `/public/sfx/drop-battle-announcer.wav`，這是 battle 氣氛的一部分，不是一般 countdown。

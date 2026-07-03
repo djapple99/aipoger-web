@@ -740,13 +740,13 @@ export default function ListenBarAdminPage() {
     if (file && !isAllowedListenBarAudioFile(file)) {
       setAudioFile(null);
       setAudioPreview("");
-      setError("請使用 MP3、WAV、AIFF、M4A、AAC 或 OGG 音檔。");
+      setError("請使用 MP3、M4A、AAC 或 OGG 音檔。");
       return;
     }
     if (file && file.size > LISTEN_BAR_AUDIO_UPLOAD_MAX_BYTES) {
       setAudioFile(null);
       setAudioPreview("");
-      setError(`音檔太大：${listenBarAudioSizeLabel(file)}。傷心酒吧單檔上限是 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}，WAV 若超過請先轉 MP3 或壓縮。`);
+      setError(`音檔太大：${listenBarAudioSizeLabel(file)}。傷心酒吧新投稿上限是 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}，請改用 MP3 / M4A / AAC / OGG 壓縮格式。`);
       return;
     }
     setAudioFile(file);
@@ -820,7 +820,7 @@ export default function ListenBarAdminPage() {
     setError("");
     setMessage("");
     if (!audioFile) {
-      setError("請先選擇 MP3 / WAV 音檔。");
+      setError("請先選擇 MP3 / M4A / AAC / OGG 音檔。");
       return;
     }
     if (!form.title.trim() || !form.artist.trim()) {
@@ -1548,7 +1548,7 @@ export default function ListenBarAdminPage() {
 
             <div className="grid gap-3">
               <label className="flex min-h-24 cursor-pointer flex-col justify-center rounded-2xl border border-orange-300/35 bg-orange-500/10 px-4 py-3 text-sm font-bold text-orange-100 transition hover:bg-orange-500/16">
-                <span>上傳音檔 MP3 / WAV / AIFF</span>
+                <span>上傳音檔 MP3 / M4A / AAC / OGG</span>
                 <span className="mt-1 text-xs font-medium text-orange-100/60">{audioFile?.name ?? `必填，單檔上限 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}，建議 MP3 320kbps`}</span>
                 <input type="file" accept={LISTEN_BAR_AUDIO_UPLOAD_ACCEPT} onChange={handleAudioChange} className="hidden" />
               </label>

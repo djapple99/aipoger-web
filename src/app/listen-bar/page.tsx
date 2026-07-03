@@ -1790,15 +1790,15 @@ export default function ListenBarPage() {
     if (!file) return;
     if (!isAllowedListenBarAudioFile(file)) {
       setPublicAudioFile(null);
-      setPublicUploadError(isZh ? "請使用 MP3、WAV、AIFF、M4A、AAC 或 OGG 音檔。" : "Use MP3, WAV, AIFF, M4A, AAC, or OGG audio.");
+      setPublicUploadError(isZh ? "請使用 MP3、M4A、AAC 或 OGG 音檔。" : "Use MP3, M4A, AAC, or OGG audio.");
       return;
     }
     if (file.size > LISTEN_BAR_AUDIO_UPLOAD_MAX_BYTES) {
       setPublicAudioFile(null);
       setPublicUploadError(
         isZh
-          ? `音檔太大：${listenBarAudioSizeLabel(file)}。傷心酒吧單檔上限是 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}，WAV 若超過請先轉 MP3 或壓縮。`
-          : `Audio file too large: ${listenBarAudioSizeLabel(file)}. Bar Heartbreak allows up to ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}; convert or compress large WAV files.`,
+          ? `音檔太大：${listenBarAudioSizeLabel(file)}。傷心酒吧新投稿上限是 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}，請改用 MP3 / M4A / AAC / OGG 壓縮格式。`
+          : `Audio file too large: ${listenBarAudioSizeLabel(file)}. New Bar Heartbreak submissions are capped at ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}; use MP3, M4A, AAC, or OGG.`,
       );
       return;
     }
@@ -2902,7 +2902,7 @@ export default function ListenBarPage() {
                     <span className="min-w-0">
                       <span className="block text-[11px] font-black uppercase tracking-[0.22em] text-orange-200/75">AUDIO FILE</span>
                       <span className="mt-1 block truncate text-lg font-black leading-tight text-white">
-                        {publicAudioFile?.name ?? (isZh ? `音檔 MP3 / WAV / AIFF / M4A，上限 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}` : `MP3 / WAV / AIFF / M4A, max ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}`)}
+                        {publicAudioFile?.name ?? (isZh ? `音檔 MP3 / M4A / AAC / OGG，上限 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}` : `MP3 / M4A / AAC / OGG, max ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}`)}
                       </span>
                       <span className="mt-1 block text-xs text-zinc-400">
                         {isZh ? "點一下選歌，自動偵測歌名" : "Tap to Choose; Title Auto-Detects"}

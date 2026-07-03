@@ -1,30 +1,13 @@
 import { Upload } from "tus-js-client";
 import { supabase } from "@/lib/supabase";
-import {
-  AUDIO_UPLOAD_MAX_BYTES_100MB,
-  AUDIO_UPLOAD_MAX_LABEL_100MB,
-  STANDARD_AUDIO_UPLOAD_ACCEPT,
-  audioSizeLabel,
-  isAllowedStandardAudioFile,
-  standardAudioContentType,
-} from "@/lib/audio-upload-policy";
-
-export const LISTEN_BAR_AUDIO_UPLOAD_MAX_BYTES = AUDIO_UPLOAD_MAX_BYTES_100MB;
-export const LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL = AUDIO_UPLOAD_MAX_LABEL_100MB;
-
-export const LISTEN_BAR_AUDIO_UPLOAD_ACCEPT = STANDARD_AUDIO_UPLOAD_ACCEPT;
-
-export function isAllowedListenBarAudioFile(file: File): boolean {
-  return isAllowedStandardAudioFile(file);
-}
-
-export function listenBarAudioContentType(file: File): string {
-  return standardAudioContentType(file);
-}
-
-export function listenBarAudioSizeLabel(file: File): string {
-  return audioSizeLabel(file);
-}
+export {
+  LISTEN_BAR_AUDIO_UPLOAD_ACCEPT,
+  LISTEN_BAR_AUDIO_UPLOAD_MAX_BYTES,
+  LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL,
+  isAllowedListenBarAudioFile,
+  listenBarAudioContentType,
+  listenBarAudioSizeLabel,
+} from "./listen-bar-audio-policy";
 
 export function isListenBarStorageSizeLimitError(error: unknown): boolean {
   const message = String((error as { message?: string })?.message ?? error).toLowerCase();

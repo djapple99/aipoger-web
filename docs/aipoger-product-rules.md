@@ -206,6 +206,7 @@ Current rules:
 - Public listening supports 12 playback choices: all public airplay plus the 11 fixed music genres.
 - Each fixed music genre has its own 36-track public pool. With the current 11 genres, the full public-pool capacity is 396 community songs.
 - New submissions must include a fixed music genre. Do not silently default missing genre values to `Original 自我風格`.
+- New Bar Heartbreak audio submissions accept MP3, M4A, AAC, or OGG only, with a 30MB single-file limit. Do not accept new WAV or AIFF submissions in the public or admin Bar Heartbreak upload surfaces.
 - The upload form must preview the selected genre outcome before submit: direct public airplay while the genre is under 36 active public songs, or same-genre Challenger once the genre is full.
 - New submissions enter the selected genre's public pool immediately while that genre has fewer than 36 active public songs.
 - Once the selected genre already has 36 active public songs, new submissions enter same-genre Challenger and receive 24H protection before public-pool promotion.
