@@ -2367,7 +2367,7 @@ export default function ListenBarPage() {
                 label={listenCopy.shareLabel}
                 copiedLabel={listenCopy.copied}
                 wrapperClassName="order-2"
-                className="min-h-11 border-rose-200/40 bg-rose-500/[0.16] px-3 text-sm text-rose-50 shadow-[0_0_28px_rgba(255,49,80,0.22),inset_0_1px_0_rgba(255,255,255,0.06)] ring-1 ring-rose-100/12 hover:border-rose-100/70 hover:bg-rose-500/24 hover:shadow-[0_0_38px_rgba(255,49,80,0.32),inset_0_1px_0_rgba(255,255,255,0.09)] sm:px-4"
+                className="min-h-11 border-rose-200/55 bg-rose-600/34 px-3 text-sm text-rose-50 shadow-[0_0_30px_rgba(255,49,80,0.26),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-rose-100/16 hover:border-rose-100/80 hover:bg-rose-600/45 hover:shadow-[0_0_40px_rgba(255,49,80,0.36),inset_0_1px_0_rgba(255,255,255,0.11)] sm:px-4"
               />
               <Link
                 href={`/rank${langQuery}`}
@@ -2669,7 +2669,7 @@ export default function ListenBarPage() {
                     url={selectedGenreShareUrl}
                     label={selectedPlaybackGenre === "all" ? (isZh ? "分享公播" : "Share All") : (isZh ? "分享此類" : "Share Genre")}
                     copiedLabel={listenCopy.copied}
-                    className="min-h-10 border-rose-200/44 bg-rose-500/18 px-3 py-1 text-[11px] text-rose-50 shadow-[0_0_24px_rgba(255,49,80,0.24),inset_0_1px_0_rgba(255,255,255,0.055)] ring-1 ring-rose-100/12 hover:border-rose-100/75 hover:bg-rose-500/28 hover:shadow-[0_0_34px_rgba(255,49,80,0.34),inset_0_1px_0_rgba(255,255,255,0.08)]"
+                    className="min-h-10 border-rose-200/58 bg-rose-600/36 px-3 py-1 text-[11px] text-rose-50 shadow-[0_0_26px_rgba(255,49,80,0.28),inset_0_1px_0_rgba(255,255,255,0.075)] ring-1 ring-rose-100/16 hover:border-rose-100/85 hover:bg-rose-600/48 hover:shadow-[0_0_36px_rgba(255,49,80,0.38),inset_0_1px_0_rgba(255,255,255,0.1)]"
                   />
                   <span className="rounded-full border border-cyan-200/20 bg-cyan-300/8 px-3 py-1 text-[11px] font-black text-cyan-100">
                     {selectedGenreLabel}
