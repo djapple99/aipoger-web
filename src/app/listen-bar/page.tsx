@@ -2367,7 +2367,7 @@ export default function ListenBarPage() {
                 label={listenCopy.shareLabel}
                 copiedLabel={listenCopy.copied}
                 wrapperClassName="order-2"
-                className="min-h-11 border-rose-200/55 bg-rose-600/34 px-3 text-sm text-rose-50 shadow-[0_0_30px_rgba(255,49,80,0.26),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-rose-100/16 hover:border-rose-100/80 hover:bg-rose-600/45 hover:shadow-[0_0_40px_rgba(255,49,80,0.36),inset_0_1px_0_rgba(255,255,255,0.11)] sm:px-4"
+                className="min-h-11 !border-rose-200/70 !bg-[linear-gradient(180deg,rgba(164,24,42,0.78)_0%,rgba(116,21,34,0.72)_100%)] px-3 text-sm !text-white !shadow-[0_0_34px_rgba(255,49,80,0.34),inset_0_1px_0_rgba(255,255,255,0.12)] ring-1 ring-rose-100/20 hover:!border-rose-100/90 hover:!bg-[linear-gradient(180deg,rgba(194,30,54,0.88)_0%,rgba(130,22,38,0.8)_100%)] hover:!shadow-[0_0_46px_rgba(255,49,80,0.46),inset_0_1px_0_rgba(255,255,255,0.16)] sm:px-4"
               />
               <Link
                 href={`/rank${langQuery}`}
@@ -2669,7 +2669,7 @@ export default function ListenBarPage() {
                     url={selectedGenreShareUrl}
                     label={selectedPlaybackGenre === "all" ? (isZh ? "分享公播" : "Share All") : (isZh ? "分享此類" : "Share Genre")}
                     copiedLabel={listenCopy.copied}
-                    className="min-h-10 border-rose-200/58 bg-rose-600/36 px-3 py-1 text-[11px] text-rose-50 shadow-[0_0_26px_rgba(255,49,80,0.28),inset_0_1px_0_rgba(255,255,255,0.075)] ring-1 ring-rose-100/16 hover:border-rose-100/85 hover:bg-rose-600/48 hover:shadow-[0_0_36px_rgba(255,49,80,0.38),inset_0_1px_0_rgba(255,255,255,0.1)]"
+                    className="min-h-10 !border-rose-200/72 !bg-[linear-gradient(180deg,rgba(164,24,42,0.8)_0%,rgba(96,18,30,0.76)_100%)] px-3 py-1 text-[11px] !text-white !shadow-[0_0_30px_rgba(255,49,80,0.36),inset_0_1px_0_rgba(255,255,255,0.11)] ring-1 ring-rose-100/20 hover:!border-rose-100/90 hover:!bg-[linear-gradient(180deg,rgba(202,32,58,0.9)_0%,rgba(122,20,36,0.84)_100%)] hover:!shadow-[0_0_42px_rgba(255,49,80,0.48),inset_0_1px_0_rgba(255,255,255,0.15)]"
                   />
                   <span className="rounded-full border border-cyan-200/20 bg-cyan-300/8 px-3 py-1 text-[11px] font-black text-cyan-100">
                     {selectedGenreLabel}

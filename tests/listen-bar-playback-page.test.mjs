@@ -63,10 +63,10 @@ test("listen bar now playing title uses dynamic sizing for long names", () => {
 
 test("listen bar upload and share actions keep visible glow highlights", () => {
   assert.ok(listenBarPageSource.includes("shadow-[0_0_42px_rgba(255,49,80,0.3)"));
-  assert.ok(listenBarPageSource.includes("shadow-[0_0_30px_rgba(255,49,80,0.26)"));
-  assert.ok(listenBarPageSource.includes("shadow-[0_0_26px_rgba(255,49,80,0.28)"));
-  assert.ok(listenBarPageSource.includes("bg-rose-600/34"));
-  assert.ok(listenBarPageSource.includes("bg-rose-600/36"));
+  assert.ok(listenBarPageSource.includes("!shadow-[0_0_34px_rgba(255,49,80,0.34)"));
+  assert.ok(listenBarPageSource.includes("!shadow-[0_0_30px_rgba(255,49,80,0.36)"));
+  assert.ok(listenBarPageSource.includes("!bg-[linear-gradient(180deg,rgba(164,24,42,0.78)_0%,rgba(116,21,34,0.72)_100%)]"));
+  assert.ok(listenBarPageSource.includes("!bg-[linear-gradient(180deg,rgba(164,24,42,0.8)_0%,rgba(96,18,30,0.76)_100%)]"));
   assert.ok(listenBarPageSource.includes("ring-rose-100/14"));
-  assert.ok(listenBarPageSource.includes("ring-rose-100/16"));
+  assert.ok(listenBarPageSource.includes("ring-rose-100/20"));
 });
