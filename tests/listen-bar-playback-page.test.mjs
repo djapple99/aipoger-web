@@ -60,3 +60,11 @@ test("listen bar now playing title uses dynamic sizing for long names", () => {
   assert.ok(listenBarPageSource.includes("max-w-[min(100%,15.5em)]"));
   assert.equal(listenBarPageSource.includes('className="mt-4 line-clamp-2 max-w-[9.6em]'), false);
 });
+
+test("listen bar upload and share actions keep visible glow highlights", () => {
+  assert.ok(listenBarPageSource.includes("shadow-[0_0_34px_rgba(255,138,43,0.16)"));
+  assert.ok(listenBarPageSource.includes("shadow-[0_0_22px_rgba(34,211,238,0.12)"));
+  assert.ok(listenBarPageSource.includes("shadow-[0_0_18px_rgba(34,211,238,0.14)"));
+  assert.ok(listenBarPageSource.includes("ring-orange-100/10"));
+  assert.ok(listenBarPageSource.includes("ring-cyan-100/10"));
+});
