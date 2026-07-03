@@ -541,6 +541,9 @@ export default function AdminQuizPage() {
             </h1>
           </div>
           <nav className="flex flex-wrap items-center justify-end gap-2">
+            <Link href="/admin/analytics" className="rounded-full border border-yellow-300/30 bg-yellow-300/10 px-4 py-2 text-sm font-bold text-yellow-100">
+              數據後台
+            </Link>
             <Link href="/admin/social" className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-4 py-2 text-sm font-bold text-emerald-100">
               發文後台
             </Link>

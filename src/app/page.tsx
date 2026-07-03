@@ -112,7 +112,7 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
       battle: {
         eyebrow: "DROP SIGNAL",
         title: "AI音楽バトルホール",
-        body: "最強のDropを出し、挑戦を起こす。リスナーの投票で、どの曲がより刺さるかを試せる。",
+        body: "30-60秒のDropを出し、挑戦を起こす。リスナーの投票で、どの曲がより刺さるかを試せる。",
         tone: "orange",
       },
       bar: {
@@ -135,7 +135,7 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
       battle: {
         eyebrow: "DROP SIGNAL",
         title: "AI 음악 배틀홀",
-        body: "가장 강한 Drop을 올리고 도전하세요. 청중 투표로 어떤 음악이 더 강하게 꽂히는지 확인할 수 있어요.",
+        body: "30-60초 Drop을 올리고 도전하세요. 청중 투표로 어떤 음악이 더 강하게 꽂히는지 확인할 수 있어요.",
         tone: "orange",
       },
       bar: {
@@ -158,7 +158,7 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
       battle: {
         eyebrow: "DROP SIGNAL",
         title: "AI Music Battle Arena",
-        body: "Upload your strongest Drop, start a challenge, and let listeners decide which track hits harder.",
+        body: "Upload a 30-60s Drop, start a challenge, and let listeners decide which track hits harder.",
         tone: "orange",
       },
       bar: {
@@ -180,7 +180,7 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
     battle: {
       eyebrow: "DROP SIGNAL",
       title: "AI 音樂鬥歌場",
-      body: "上傳你的最強 Drop，讓聽眾決定誰最好聽",
+      body: "上傳 30-60 秒 Drop，讓聽眾決定誰最好聽",
       tone: "orange",
     },
     bar: {
@@ -856,12 +856,12 @@ export default function HomePage() {
   const heroTitle = t("home_secondary_title");
   const heroLine = t("home_hero_line");
   const mobileHeroLine = isZh
-    ? ["上傳你的最強 Drop", "讓聽眾決定誰最好聽"]
+    ? ["上傳 60s Drop", "讓聽眾決定誰最好聽"]
     : lang === "ja"
-      ? ["いちばん強いDropを出せ", "聴衆が決める"]
+      ? ["60s Dropを出せ", "聴衆が決める"]
       : lang === "ko"
-        ? ["가장 강한 Drop을 올려라", "관객이 결정한다"]
-        : ["Upload your best Drop", "Let the crowd decide"];
+        ? ["60s Drop을 올려라", "관객이 결정한다"]
+        : ["Upload a 60s Drop", "Let the crowd decide"];
   const heroCopy = t("home_tagline");
   const zhDisplayClass = `${fontGlowSans.className} tracking-[-0.015em]`;
   const zhSerifClass = `${fontSourceSerifTC.className} font-black tracking-[0.012em]`;
@@ -872,30 +872,30 @@ export default function HomePage() {
   const mobileActionPrompt = homepageActionPrompts[activeMobileAction];
   const statItems: HomeStatItem[] = isZh
     ? [
-        ["Open", "公開聽歌"],
-        ["90s", "Drop Battle"],
-        ["Bar", "傷心酒吧"],
+        ["公播", "公開聽歌"],
+        ["60s", "Drop Battle"],
+        ["酒吧", "傷心酒吧"],
       ]
     : lang === "ja"
       ? [
-          ["Open", "公開リスニング"],
-          ["90s", "Best Drop"],
+          ["Listen", "公開リスニング"],
+          ["60s", "Drop Battle"],
           ["Bar", "Heartbreak"],
         ]
       : lang === "ko"
         ? [
-            ["Open", "공개 감상"],
-            ["90s", "Best Drop"],
+            ["Listen", "공개 감상"],
+            ["60s", "Drop Battle"],
             ["Bar", "Heartbreak"],
           ]
     : [
-        ["Open", "Open Listening"],
-        ["90s", "Best Drop"],
+        ["Listen", "Open Airplay"],
+        ["60s", "Drop Battle"],
         ["Bar", "Heartbreak"],
       ];
   const infoLinks = isZh
     ? [
-        { href: withLang("/hook-guide"), title: "最強Drop Battle 對決抓波規則", desc: "Drop 上場，累積戰績認可" },
+        { href: withLang("/hook-guide"), title: "60s Drop Battle 規則", desc: "30-60 秒抓波，上場累積認可" },
         { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: "作品定位、Drop 與參戰路線" },
         { href: withLang("/rank"), title: "AIPOGER 榮譽榜", desc: "投票、熱播、封存作品紀錄" },
         { href: withLang("/about"), title: "關於愛播歌", desc: "AI 創作者作品認可系統" },
@@ -903,7 +903,7 @@ export default function HomePage() {
       ]
     : lang === "ja"
       ? [
-          { href: withLang("/hook-guide"), title: "Drop Battle ルール", desc: "最強のDropをステージに出し、認知を積み上げる" },
+          { href: withLang("/hook-guide"), title: "60s Drop Battle ルール", desc: "30-60秒のDropで認知を積み上げる" },
           { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
           { href: withLang("/rank"), title: "AIPOGER 栄誉榜", desc: "認められた勝利、熱播曲、記録されたクリエイター実績" },
           { href: withLang("/about"), title: "AIPOGERについて", desc: "AIクリエイターが成長し、作品が認められるシステム" },
@@ -911,14 +911,14 @@ export default function HomePage() {
         ]
       : lang === "ko"
         ? [
-            { href: withLang("/hook-guide"), title: "Drop Battle 규칙", desc: "가장 강한 Drop으로 무대에 올라 인정을 쌓기" },
+            { href: withLang("/hook-guide"), title: "60s Drop Battle 규칙", desc: "30-60초 Drop으로 인정을 쌓기" },
             { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
             { href: withLang("/rank"), title: "AIPOGER 명예보드", desc: "인정받은 승리, 인기 트랙, 기록된 크리에이터 성과" },
             { href: withLang("/about"), title: "AIPOGER 소개", desc: "AI 크리에이터가 성장하고 작품이 인정받는 시스템" },
             { href: withLang("/partners"), title: "광고와 협업", desc: "우승곡을 방송, 큐레이션, 상업 협업으로 연결" },
           ]
     : [
-        { href: withLang("/hook-guide"), title: "Drop Battle Rules", desc: "Put your strongest Drop on stage and build recognition" },
+        { href: withLang("/hook-guide"), title: "60s Drop Battle Rules", desc: "Cut a 30-60s Drop and build recognition" },
         { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
         { href: withLang("/rank"), title: "AIPOGER Honor Board", desc: "Recognized wins, hot tracks, and archived creator records" },
         { href: withLang("/about"), title: "About AIPOGER", desc: "AI creator growth and music recognition system" },

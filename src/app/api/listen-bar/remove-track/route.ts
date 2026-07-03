@@ -18,6 +18,7 @@ type ListenBarRemoveTrackDatabase = {
           is_active?: boolean;
           review_status?: "removed";
           removed_at?: string;
+          moderation_note?: string;
           updated_at?: string;
         };
         Relationships: [];
@@ -55,7 +56,7 @@ function isMissingColumnError(error: unknown): boolean {
         (error as { code?: string }).code,
       ].filter(Boolean).join(" ")
     : String(error ?? "");
-  return /schema cache|column.*does not exist|PGRST204|bar_phase|review_status|removed_at/i.test(text);
+  return /schema cache|column.*does not exist|PGRST204|bar_phase|review_status|removed_at|moderation_note/i.test(text);
 }
 
 function adminClient(): AdminClient {
@@ -105,6 +106,7 @@ export async function POST(request: NextRequest) {
         is_active: false,
         review_status: "removed",
         removed_at: now,
+        moderation_note: "Creator removed own Bar Heartbreak track.",
         updated_at: now,
       })
       .eq("id", track.id);

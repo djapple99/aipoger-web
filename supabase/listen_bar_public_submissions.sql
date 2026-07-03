@@ -1,18 +1,13 @@
 -- AIPOGER 傷心酒吧 Bar Heartbreak：前台投稿制度
 -- 在 Supabase SQL Editor 執行。可重複執行。
 --
--- 規則：
--- 1. 傷心酒吧主輪播只收投稿者歌曲；AIPOGER 自己的歌也要透過投稿進場。
--- 2. 原本官方 28 首 soft remove，不佔公播池、不計分；完全無投稿時由前端隱藏店歌備援。
--- 3. 開荒期未滿 88 首時，投稿作品優先進公播池，不開啟 Challenger。
--- 4. 滿 88 首後，投稿作品先進 Challenger；每人同時最多 3 首 Challenger，公播池作品不佔名額。
--- 5. Challenger 在 24H 觀察期內至少 1 顆 heart/thumb/happy/star，才有資格升格公播池。
--- 6. 公播池最多 88 首；Challenger + 公播池最多 100 首共同輪播。
--- 7. 開荒期公播池未滿 88 首時，不做殘酷淘汰。
--- 8. 累積 30 個正向反應的歌曲，取得榮譽榜入選資格。
--- 9. 每 8 小時結算一次；公播池超過 88 首時，最多淘汰 3 首人氣較低的舊歌。
--- 10. 公播池低於或等於 88 首時停止淘汰，不再用 30 天期滿退場。
--- 11. 聽歌不需登入；留言與投票必須登入。每個帳號對每首歌同時只保留 1 個反應，可更換或取消。
+-- LEGACY NOTE:
+-- This original submission migration used the retired global-pool model.
+-- Do not use this header as the current product rule. Current Bar Heartbreak
+-- rule is defined by the 2026-07-01/2026-07-02 genre-pool migrations:
+-- 11 fixed genres, 36 public tracks per genre, 396 total public target,
+-- Challenger promotion after 24H, and no system capacity eviction before
+-- 2026-07-06 00:00 +08.
 
 alter table public.listen_bar_tracks
   add column if not exists source text not null default 'official',

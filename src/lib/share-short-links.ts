@@ -68,3 +68,9 @@ export function dailyBattleShortPath(battleId: string, lang = "zh") {
   const params = new URLSearchParams({ lang });
   return `/h/${encodeUuidToBase64Url(battleId)}?${params.toString()}`;
 }
+
+export function listenBarShortPath(genreSlug = "all", lang = "zh") {
+  const safeSlug = /^[a-z0-9-]+$/i.test(genreSlug) ? genreSlug : "all";
+  const params = new URLSearchParams({ lang });
+  return `/l/${safeSlug}?${params.toString()}`;
+}

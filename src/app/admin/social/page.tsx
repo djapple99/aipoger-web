@@ -428,6 +428,9 @@ export default function AdminSocialPage() {
           </div>
           <div className="flex flex-col gap-3">
             <nav className="flex flex-wrap justify-start gap-2 lg:justify-end">
+              <Link href="/admin/analytics" className="rounded-full border border-yellow-200/25 bg-yellow-300/10 px-4 py-2 text-xs font-black text-yellow-100">
+                數據後台
+              </Link>
               <Link href="/admin/quiz" className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-4 py-2 text-xs font-black text-cyan-100">
                 測驗後台
               </Link>

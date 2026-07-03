@@ -1,15 +1,18 @@
 -- AIPOGER Bar Heartbreak V2 survival radio.
+-- Superseded by the 2026-07-01/2026-07-02 genre-pool rules.
+-- Current rule: 11 fixed genres, 36 public tracks per genre, 396 total public
+-- target, and no system capacity eviction before 2026-07-06 00:00 +08.
 --
 -- Rule changes:
 -- - Bar Heartbreak is a survival radio, not a ranking chart.
 -- - New community submissions enter Challenger with 24H protection.
 -- - Challenger tracks have 24H protection, then move into the public pool automatically.
 -- - The old "1 positive reaction to promote" gate is retired.
--- - Public-pool eviction only trims active public community tracks above 88, capped at 3 per pass.
+-- - Historical public-pool eviction only trimmed active public community overflow, capped at 3 per pass.
 -- - Honor Board eligibility is product-side: 30 positive reactions or 7 public survival days.
 
 comment on table public.listen_bar_tracks is
-'AIPOGER Bar Heartbreak V2 survival radio. Public community pool target is 88. New Challenger tracks receive 24H protection, then enter the public pool automatically. No 30-day expiry and no 1-reaction promotion gate. Public removal only trims active public community tracks above 88, capped at 3 per pass. Honor eligibility is 30 positive reactions or 7 public survival days.';
+'LEGACY AIPOGER Bar Heartbreak V2 survival radio. Superseded by the 2026-07-01/2026-07-02 genre-pool rules: 11 fixed genres, 36 public tracks per genre, 396 total public target, no system capacity eviction before 2026-07-06 00:00 +08.';
 
 create index if not exists listen_bar_tracks_public_survival_idx
   on public.listen_bar_tracks (source, is_active, bar_phase, promoted_at, created_at)

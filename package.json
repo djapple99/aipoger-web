@@ -8,6 +8,7 @@
     "start": "next start",
     "test": "node --test --experimental-strip-types tests/*.test.mjs",
     "lint": "eslint .",
+    "migrate:music-genres": "node scripts/migrate-music-genres.mjs",
     "subset:glow-sans": "node scripts/subset-glow-sans.mjs",
     "subset:glow-sans:battle": "node scripts/subset-glow-sans-battle.mjs"
   },

@@ -43,7 +43,7 @@ type LoadedBattle = {
 const demoEntryA: DailyEntry = {
   id: "demo-a",
   title: "Neon Dust",
-  genre: "流行舞曲",
+  genre: "K-Pop 韓式動感",
   ai_tool: "Suno",
   audio_path: "/music/home-bgm.mp3",
   cover_url: "/aipoger-brand-logo-transparent-20260522.png",
@@ -52,7 +52,7 @@ const demoEntryA: DailyEntry = {
 const demoEntryB: DailyEntry = {
   id: "demo-b",
   title: "Cold Pulse",
-  genre: "動感電音",
+  genre: "EDM 百大電音",
   ai_tool: "Udio",
   audio_path: "/music/home-bgm.mp3",
   cover_url: "/aipoger-brand-logo-transparent-20260522.png",

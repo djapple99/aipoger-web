@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
+  listenBarPromotionProtectionActive,
   listenBarChallengerSlotLimitForPublicCount,
 } from "@/lib/listen-bar";
 import {
@@ -9,6 +10,7 @@ import {
   LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS,
   cleanListenBarDisplayText,
 } from "@/lib/listen-bar-field-limits";
+import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 
 type ListenBarTrackRow = {
   id: string;
@@ -55,6 +57,7 @@ type AdminClient = SupabaseClient<ListenBarMyTracksDatabase>;
 const MODERN_SELECT = "id,title,artist,ai_tool,genre,mood,description,lyrics,duration_seconds,created_by,source,bar_phase,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at,promoted_at";
 const LEGACY_WITH_DESCRIPTION_SELECT = "id,title,artist,ai_tool,genre,mood,description,lyrics,duration_seconds,created_by,source,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at";
 const LEGACY_SELECT = "id,title,artist,ai_tool,genre,mood,lyrics,duration_seconds,created_by,source,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at";
+const allowedGenreValues = new Set(MUSIC_GENRE_OPTIONS.map((genre) => genre.value));
 
 function tokenFromRequest(request: NextRequest): string | null {
   const auth = request.headers.get("authorization") ?? "";
@@ -109,6 +112,14 @@ function cleanDescriptionField(value: unknown) {
 function applyLegacyOpeningGrace(rows: ListenBarTrackRow[]): ListenBarTrackRow[] {
   const hasPersistedPhase = rows.some((row) => Object.prototype.hasOwnProperty.call(row, "bar_phase"));
   if (hasPersistedPhase) return rows;
+
+  if (listenBarPromotionProtectionActive()) {
+    return rows.map((row) => ({
+      ...row,
+      bar_phase: "public",
+      promoted_at: row.promoted_at ?? row.created_at,
+    }));
+  }
 
   const observationCutoffMs = Date.now() - LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS * 60 * 60 * 1000;
   return rows.map((row) => {
@@ -193,10 +204,13 @@ export async function PATCH(request: NextRequest) {
 
     const patch = {
       ai_tool: cleanShortField(body?.aiTool) ?? "AI Music",
-      genre: cleanText(body?.genre, 40) ?? "自我風格",
+      genre: cleanText(body?.genre, 80),
       mood: cleanShortField(body?.album),
       description: cleanDescriptionField(body?.description),
     };
+    if (!patch.genre || !allowedGenreValues.has(patch.genre)) {
+      return NextResponse.json({ error: "請從固定類型選單選擇歌曲類型。" }, { status: 400 });
+    }
 
     let updateResult = await admin
       .from("listen_bar_tracks")

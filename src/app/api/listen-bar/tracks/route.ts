@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
-  LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
+  listenBarPromotionProtectionActive,
 } from "@/lib/listen-bar";
 
 type ListenBarTrackRow = {
@@ -167,6 +167,14 @@ function applyLegacyOpeningGrace(rows: ListenBarTrackRow[]): ListenBarTrackRow[]
   const hasPersistedPhase = rows.some((row) => Object.prototype.hasOwnProperty.call(row, "bar_phase"));
   if (hasPersistedPhase) return rows;
 
+  if (listenBarPromotionProtectionActive()) {
+    return rows.map((row) => ({
+      ...row,
+      bar_phase: "public",
+      promoted_at: row.promoted_at ?? row.created_at,
+    }));
+  }
+
   const observationCutoffMs = Date.now() - LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS * 60 * 60 * 1000;
   const eligiblePublicIds = new Set(
     rows
@@ -178,7 +186,6 @@ function applyLegacyOpeningGrace(rows: ListenBarTrackRow[]): ListenBarTrackRow[]
       .sort((a, b) => {
         return new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime();
       })
-      .slice(0, LISTEN_BAR_PUBLIC_ROTATION_LIMIT)
       .map((row) => row.id),
   );
 

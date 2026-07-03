@@ -5,16 +5,22 @@ export {
   LISTEN_BAR_CHALLENGER_HOURLY_LIMIT,
   LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
   LISTEN_BAR_CHALLENGER_SLOT_LIMIT,
+  LISTEN_BAR_ACTIVE_GENRE_COUNT,
+  LISTEN_BAR_GENRE_POOL_LIMIT,
   LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD,
   LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS,
   LISTEN_BAR_JUDGMENT_INTERVAL_HOURS,
+  LISTEN_BAR_PROMOTION_PROTECTION_STARTED_AT,
+  LISTEN_BAR_PROMOTION_PROTECTION_UNTIL,
   LISTEN_BAR_PUBLIC_EVICTION_LIMIT,
   LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
   LISTEN_BAR_TOTAL_ROTATION_LIMIT,
   listenBarChallengerSlotLimitForPublicCount,
   listenBarIsHonorEligible,
+  listenBarPromotionProtectionActive,
   listenBarPublicDisplayDay,
   listenBarPublicSurvivalDays,
+  listenBarSubmissionPhaseForGenrePublicCount,
   listenBarSurvivalStartedAt,
 } from "@/lib/listen-bar-rules";
 
@@ -62,6 +68,7 @@ export type ListenBarTrackRow = {
   sort_order: number | null;
   is_active: boolean | null;
   review_status?: string | null;
+  moderation_note?: string | null;
   hidden_at?: string | null;
   removed_at?: string | null;
   source?: "official" | "community" | null;
@@ -83,7 +90,7 @@ export const EMPTY_LISTEN_BAR_TRACK: ListenBarTrack = {
   title: "等待創作者投稿",
   artist: "AIPOGER",
   tool: "AI Music",
-  genre: "自我風格",
+  genre: "Original 自我風格",
   description: "等待下一首傷心故事進場",
   mood: "傷心酒吧待機中",
   duration: 1,
@@ -129,7 +136,7 @@ export function listenBarRowToTrack(row: ListenBarTrackRow): ListenBarTrack | nu
   const audioUrl = publicStorageUrl(LISTEN_BAR_AUDIO_BUCKET, row.audio_path);
   if (!audioUrl) return null;
 
-  const genre = row.genre?.trim() || "自我風格";
+  const genre = row.genre?.trim() || "Original 自我風格";
   const album = displayAlbumOrMood(row.mood);
   const tags = [genre, album].filter(Boolean);
   if (typeof row.bpm === "number" && row.bpm > 0) tags.push(`${row.bpm} BPM`);

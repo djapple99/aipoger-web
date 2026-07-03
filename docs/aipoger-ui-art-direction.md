@@ -1,6 +1,6 @@
 # AIPOGER UI And Art Direction
 
-Last updated: 2026-06-24
+Last updated: 2026-07-04
 
 This document protects AIPOGER's visual identity. Use it before redesigning any page, adding major UI, or changing user-facing copy.
 
@@ -90,9 +90,10 @@ Copy:
 - Do not use `AI 音樂播台` as the large title; it feels off-brand and has been rejected.
 - Mobile hero should not visually show the large Chinese `AI 音樂擂台` title. Keep it as screen-reader-only if semantic heading structure is needed.
 - Mobile hero copy should read as two centered lines:
-  - `上傳你的最強 Drop`
+  - `上傳 60s Drop`
   - `讓聽眾決定誰最好聽`
-- The mobile Drop Signal card body can use one compact line: `上傳你的最強 Drop，讓聽眾決定誰最好聽`.
+- The mobile Drop Signal card body can use one compact line: `上傳 30-60 秒 Drop，讓聽眾決定誰最好聽`.
+- The desktop stat row should use `公播 / 60s / 酒吧`; do not show the retired `90s` Drop Battle label.
 
 Desktop layout:
 
@@ -160,8 +161,15 @@ Must preserve:
 - Reaction copy near buttons should encourage active voting.
 - The record visual is central and should feel like a public broadcast.
 - Lyrics area should be substantial enough to read, visually aligned with the comments area where practical.
-- Challenger is always the entry point for new submissions.
-- Challenger tracks show their 24H protection state before public-pool promotion.
+- Underfilled genres send new submissions straight into the same-genre public pool.
+- Challenger is shown only when that genre is already full and the new track is in 24H protection before public-pool promotion.
+- The hero's top-right cluster should stay light; do not crowd it with the main action buttons. Put `我要播歌`, bar sharing, `AI 音樂鬥歌場`, and `榮譽榜` together in the lower hero action strip.
+- Do not show `練功聖經` or `關於愛波哥` inside the Bar Heartbreak hero action strip unless a later explicit redesign restores them.
+- The hero action strip ticker is a moving Battle marquee, not a static truncated label.
+- The queue header should expose a selected-genre share action so listeners can share the exact Bar Heartbreak category they are hearing.
+- The Bar Heartbreak hero sign must remain text-driven and localizable. Do not replace the sign title/subtitle with a bitmap containing Chinese text, because language switching must keep working.
+- The sign may visually reference the dark gold sci-fi plaque style, but the title, `AIPOGER RADIO`, `BAR HEARTBREAK`, and subtitle must be live text. The subtitle should use a muted rose-brown fill with a thin dark stroke plus a low warm-gold glow so it separates from the plaque background without becoming bright yellow.
+- On mobile, the lower hero action strip should place `我要播歌`, `分享吧台`, and `榮譽榜` on the first row, with `AI 音樂鬥歌場` centered on the second row.
 
 Copy direction:
 

@@ -53,6 +53,7 @@ const {
   dailyEntryShortPath,
   decodeBase64UrlToUuid,
   encodeUuidToBase64Url,
+  listenBarShortPath,
 } = await import("../src/lib/share-short-links.ts");
 
 const {
@@ -179,7 +180,7 @@ test("battle entries only match the same genre", () => {
     canBattleEntriesMatch(challenger, {
       userId: "user-c",
       queueId: "queue-c",
-      genre: "熱血搖滾",
+      genre: "Band Rock 熱血搖滾",
       status: "waiting_challenge",
       level: 3,
     }),
@@ -191,7 +192,7 @@ test("targeted challenge still requires the same genre", () => {
   const challenger = {
     userId: "user-a",
     queueId: "queue-a",
-    genre: "動感電音",
+    genre: "EDM 百大電音",
     status: "searching",
     level: 2,
   };
@@ -202,7 +203,7 @@ test("targeted challenge still requires the same genre", () => {
       {
         userId: "user-b",
         queueId: "queue-b",
-        genre: "感人抒情",
+        genre: "R&B 深情瞬間",
         status: "waiting_challenge",
         level: 2,
       },
@@ -250,6 +251,9 @@ test("daily battle share links use compact reversible ids", () => {
   assert.equal(dailyBattleShortPath(id, "zh"), "/h/Ej5FZ-ibEtOkVkJmFBdAAA?lang=zh");
   assert.equal(battleShortPath(id, "zh"), "/b/Ej5FZ-ibEtOkVkJmFBdAAA?lang=zh");
   assert.equal(battleResultShortPath(id, "zh"), "/r/Ej5FZ-ibEtOkVkJmFBdAAA?lang=zh");
+  assert.equal(listenBarShortPath("all", "zh"), "/l/all?lang=zh");
+  assert.equal(listenBarShortPath("8", "zh"), "/l/8?lang=zh");
+  assert.equal(listenBarShortPath("../listen-bar", "zh"), "/l/all?lang=zh");
 });
 
 test("legacy waiting room countdown is disabled for direct arena flow", () => {
@@ -546,7 +550,7 @@ test("drop rematch upload URL preserves defender queue and previous genre", () =
     sourceBattleId: "source-battle-id",
     defenderQueueId: "defender-queue-id",
     defenderUserId: "winner-user-id",
-    genre: "動感電音",
+    genre: "EDM 百大電音",
     lang: "zh",
   });
   assert.match(url, /^\/battle\/hook-cut\?/);
@@ -555,7 +559,7 @@ test("drop rematch upload URL preserves defender queue and previous genre", () =
   assert.equal(params.get("sourceBattleId"), "source-battle-id");
   assert.equal(params.get("challengeEntryId"), "defender-queue-id");
   assert.equal(params.get("defenderUserId"), "winner-user-id");
-  assert.equal(params.get("genre"), "動感電音");
+  assert.equal(params.get("genre"), "EDM 百大電音");
   assert.equal(params.get("instantPairing"), "auto");
 });
 

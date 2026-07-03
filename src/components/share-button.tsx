@@ -9,6 +9,7 @@ type ShareButtonProps = {
   label?: string;
   copiedLabel?: string;
   className?: string;
+  wrapperClassName?: string;
 };
 
 export default function ShareButton({
@@ -18,6 +19,7 @@ export default function ShareButton({
   label = "分享",
   copiedLabel = "已複製",
   className = "",
+  wrapperClassName = "",
 }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
   const [shareUnavailable, setShareUnavailable] = useState(false);
@@ -94,7 +96,7 @@ export default function ShareButton({
   };
 
   return (
-    <span className="relative inline-flex">
+    <span className={`relative inline-flex ${wrapperClassName}`}>
       <button
         type="button"
         onClick={handleShare}

@@ -1,6 +1,6 @@
 # AIPOGER Product Rules
 
-Last updated: 2026-06-25
+Last updated: 2026-07-03
 
 This document is the product-rule source of truth for AIPOGER. Use it before changing Battle, Bar Heartbreak, Honor Board, auth, upload, or deployment behavior.
 
@@ -35,6 +35,32 @@ Current behavior target:
 - Facebook Groups must not be auto-posted through unstable browser automation or password-based login. For the AIPOGER group, provide copy, assets, and the group link for manual posting: `https://www.facebook.com/groups/aipoger`.
 - Do not store social platform passwords. Tokens, webhooks, and API keys belong in environment variables or encrypted storage, never in repo, docs, or logs.
 - If a platform token/webhook is not configured, show a disconnected/pending state and do not attempt publishing.
+
+## Daily Spotlight / 每日推薦歌
+
+Current behavior target:
+
+- Daily Spotlight is the bridge between Bar Heartbreak and short-form promotion. It promotes one selected Bar Heartbreak track without interrupting the radio rotation.
+- The fixed public entry is `https://aipoger.com/today`. It redirects by Taiwan date to the current day's spotlight page, such as `/listen-bar?spotlight=YYYY-MM-DD&lang=zh`.
+- Daily Spotlight is a Taiwan calendar-date setting, not a "24 hours after publish" countdown. Passing midnight in Taiwan moves `/today` to the new date; it must not delete or expire the older dated spotlight record.
+- Dated spotlight URLs may remain accessible for audits or old shares, but public QR codes, short videos, and social captions should still use the fixed `/today` entry.
+- Shorts, Reels, Discord posts, Facebook group copy, QR codes, and on-screen video text should use `https://aipoger.com/today` instead of a dated `spotlight=` URL, so old videos keep pointing to the current daily recommendation entry.
+- The spotlight page or highlighted Bar Heartbreak track should still use the normal Bar Heartbreak reaction system. Listeners who like the recommendation can press heart; those reactions count toward the same track record.
+- Daily Spotlight must not force the selected song to play next in the main Bar Heartbreak rotation. Visitors coming from `/today` can open the spotlight track directly while the shared radio rotation keeps running normally.
+- `/admin/listen-bar` is the working admin surface for choosing the daily recommended track, generating intro/caption copy, uploading the recommendation media asset, and creating social drafts.
+- Recommendation media may be image or short video. Supported upload formats should include JPG, PNG, WebP, GIF, MP4, MOV, and WebM when storage/browser support allows.
+- Saving a Daily Spotlight creates or updates social post drafts; it must not automatically publish to external platforms.
+- `/admin/social` remains the publishing control room. A draft must be approved by an admin, and platform publishing still requires the appropriate platform action. Approval alone does not mean the post was sent.
+- Discord may be directly published through the configured webhook after approval. Going forward, successful Discord sends should store the returned message id/channel response when Discord provides it, so missing-post debugging can distinguish "not sent" from "sent to another channel."
+- Facebook group, Instagram, TikTok, and YouTube flows remain manual or draft-assisted unless their official publishing workflows are explicitly verified.
+- QR code generation belongs to the Daily Spotlight workflow and should point to `https://aipoger.com/today`.
+
+Discord operating note, 2026-07-02:
+
+- The live AIPOGER Discord server was updated with 2026/07 rule notices in `#規則-rules`, `#如何玩-aipoger`, `#傷心酒吧公告`, and `#今日推薦-today`.
+- Discord is a community amplifier, not the source of truth for product state. Product rules remain in this file and the website implementation.
+- The Discord notices must keep routing official listening, voting, heart reactions, comments, and submissions back to AIPOGER website routes.
+- `#今日推薦-today` should keep using `https://aipoger.com/today`, not dated spotlight links, and should say that Daily Spotlight does not interrupt the main Bar Heartbreak rotation.
 
 ## Auth Rules
 
@@ -102,6 +128,8 @@ Current behavior:
 - Open Drop states include `searching`, `waiting`, `waiting_challenge`, `public_voting`, and `ghost_battle`.
 - If no immediate same-genre opponent is available, the user may open a Drop Battle challenge card or go to Bar Heartbreak to find listeners/opponents.
 - Duplicate active Drop audio should be blocked by audio hash when the column exists.
+- The Battle Pool genre filter shows only the fixed music genres. It must not show `全部風格` / `All Styles`; the default unselected state still displays all official Gatekeeper Drops and open Battle cards.
+- Clicking an already selected Battle Pool genre clears the selection and returns to the unselected all-content view.
 - The Result Wall / 成果牆 is the monthly public result library. It may show both official and unofficial result cards, as long as there is at least 1 distinct audience voter and a valid winner.
 - The Honor Board only consumes official Drop Battle results with at least 3 distinct audience voters.
 - Battle history should focus on the song, not the fighter profile. Cards may show per-song challenge count, wins, losses, ties, and win rate.
@@ -119,7 +147,10 @@ Official Gatekeeper Drops:
 - Official Gatekeeper Drop audio accepts standard AIPOGER audio formats with a 100MB single-file limit. The owner/admin upload flow must use the same 60-second Drop cropper used by normal Drop Battle.
 - Official Gatekeeper Drop cover art accepts JPG, PNG, and GIF with a 10MB single-file limit. Lyrics are optional and stored with the official template.
 - Production must have `supabase/20260618_official_gatekeeper_drops.sql` and `supabase/20260619_official_gatekeeper_media.sql` applied before audio, cover art, and lyrics can all be saved.
-- Public cards should say `歡迎任何人來挑戰`, show the actual song name, `GATE` number, and genre/type badge, and avoid wording like `官方守門戰：傷心酒吧`.
+- Public cards should say `歡迎任何人來挑戰 AIPOGER 官方關卡`, show the actual song name, `GATE` number, and genre/type badge, and avoid wording like `官方守門戰：傷心酒吧`.
+- The official Gatekeeper Drop card section must not repeat a separate heading/subheading such as `官方 DROP 挑戰` / `歡迎任何人來挑戰`; the card itself carries the gatekeeper context.
+- The card guidance copy should highlight `歡迎挑戰這首官方 Drop，設定開戰時間並分享拉人投票。看看你的歌能不能打`.
+- The `挑戰這首 Drop` action should sit in the same action row as `5 秒預播`.
 - Public official Gatekeeper cards should only expose the same 5-second teaser behavior as normal Battle cards. Do not show full audio controls or let visitors play the whole stored Drop from the Battle Pool card.
 - Official Gatekeeper Drop lyrics do not need to expand on the Battle Pool card. Lyrics may remain stored on the template and copied into the created Battle Room, where listeners can view them in context.
 - A challenger can choose the start time using the normal Drop Battle schedule rules: quick 10 / 15 / 20 minutes after successful battle creation, or a custom time within 24 hours.
@@ -172,30 +203,48 @@ Current rules:
 - Bar Heartbreak main rotation contains creator submissions only.
 - Official AIPOGER songs do not count as active public-pool songs.
 - If there are no community submissions, hidden fallback store music may prevent a silent station; it must not count toward survival results.
-- Public pool target: 88 community songs.
-- New submissions enter Challenger first and receive 24H protection before public-pool promotion.
-- Creator Challenger slots use a 3/2/1 ladder based on that creator's active public-pool songs: 0-2 public songs allows up to 3 active Challengers, 3-5 public songs allows up to 2 active Challengers, and 6+ public songs allows up to 1 active Challenger.
+- Public listening supports 12 playback choices: all public airplay plus the 11 fixed music genres.
+- Each fixed music genre has its own 36-track public pool. With the current 11 genres, the full public-pool capacity is 396 community songs.
+- New submissions must include a fixed music genre. Do not silently default missing genre values to `Original 自我風格`.
+- The upload form must preview the selected genre outcome before submit: direct public airplay while the genre is under 36 active public songs, or same-genre Challenger once the genre is full.
+- New submissions enter the selected genre's public pool immediately while that genre has fewer than 36 active public songs.
+- Once the selected genre already has 36 active public songs, new submissions enter same-genre Challenger and receive 24H protection before public-pool promotion.
+- Creator Challenger slots use a per-creator, per-genre 3/2/1 ladder based on that creator's active public-pool songs in the same genre: 0-2 public songs allows up to 3 active Challengers, 3-5 public songs allows up to 2 active Challengers, and 6+ public songs allows up to 1 active Challenger.
 - Public-pool songs do not occupy Challenger slots and are not removed by this limit; they only reduce the creator's new Challenger concurrency.
 - A creator may remove their own Challenger songs.
 - A creator may remove their own public-pool songs.
 - Challenger protection period: 24 hours.
 - A Challenger can be played, reacted to, and commented on during protection, but it is not evicted.
-- Per-track comments are persistent. When someone comments on a creator's Bar Heartbreak track, the creator receives an account notification unless they commented on their own song.
-- After 24 hours, a Challenger automatically moves into the public pool. The old 1-positive-reaction promotion gate is retired.
+- Per-track comments are persistent. A signed-in listener can edit their own Bar Heartbreak track comments. When someone comments on a creator's Bar Heartbreak track, the creator receives an account notification unless they commented on their own song.
+- A Challenger becomes eligible to move into the same-genre public pool after 24 hours. The old 1-positive-reaction promotion gate is retired.
 - Own reaction remains allowed in V2, but it is only public support and does not guarantee survival.
 - Judgement interval: every 8 hours.
-- The scheduled `GET /api/listen-bar/process-rotation` route is a dry-run preview heartbeat. Real promotion/removal requires the protected `POST` route with `LISTEN_BAR_ROTATION_ENABLED=true`.
-- Public-pool elimination only runs when there are more than 88 public songs.
-- Bar Heartbreak survival and Honor Board eligibility start only after the public pool has reached 88 community songs. Existing public-pool time before the 88-song activation point must not be counted toward the 7-public-day Honor Board rule.
-- Elimination must never bring the active public pool below 88 songs.
-- Each elimination pass removes at most the overflow above 88, capped at 3 low-performing public-pool songs.
+- `GET /api/listen-bar/process-rotation` is a manual/monitoring dry-run preview only.
+- Real promotion/removal requires the protected `POST` route with `LISTEN_BAR_ROTATION_ENABLED=true`.
+- Public-pool elimination runs per genre only when that genre has more than 36 public songs.
+- Bar Heartbreak survival and Honor Board eligibility start per genre only after that genre has reached 36 public songs. Existing public-pool time before that genre activation point must not be counted toward the 7-public-day Honor Board rule.
+- Elimination must never bring an active genre public pool below 36 songs.
+- Each elimination pass removes at most the overflow above 36 inside overfull genre pools, capped at 3 low-performing public-pool songs.
 - If songs have the same positive reaction count, remove the older song first.
-- If the public pool is at or below 88 songs, elimination stops and no refill action is needed.
+- If a genre public pool is at or below 36 songs, elimination stops for that genre and no refill action is needed.
 - The legacy 30-day `completed` removal rule is retired and must not remove songs.
-- Challenger + public pool shared rotation target: 100 songs.
-- After the 88-song activation point, a song with 30 positive reactions or 7 public survival days becomes Honor Board eligible.
+- Public pool target: 36 songs per genre, currently 396 songs across 11 genres. Challenger priority airplay can still surface protected new submissions.
+- After that song's genre activation point, a song with 30 hearts/positive reactions or 7 public survival days becomes Honor Board eligible.
+- A listener must sign in to react or comment. Pressing Heart on a Bar Heartbreak track also saves that track to the listener's favorites. Removing it later from favorites does not remove the historical heart reaction; pressing Heart again after unsaving saves it again without duplicate favorites.
 - New submissions get priority after the current song finishes; each priority batch starts when the first upload arrives, airs up to 8 new uploads within 1 hour, and pushes overflow to the next hour.
 - Bar Heartbreak upload metadata should stay compact: user-entered creator name, AI tool, and album/mood are limited to 12 CJK characters or about 24 English characters; one-line song description is limited to 16 CJK characters or about 32 English characters. Auto-detected song titles are not subject to this compact metadata limit.
+- Daily Spotlight can feature a Bar Heartbreak track for promotion through `/today`, QR code, and social drafts. It is a curated spotlight layer, not a replacement for the shared radio rotation and not a separate reaction pool.
+- Bar Heartbreak top-right hero controls should stay minimal; primary actions belong in the lower hero action strip. The strip should group `我要播歌`, bar sharing, `AI 音樂鬥歌場`, and `榮譽榜`; do not put `練功聖經` or `關於愛波哥` in this hero action strip.
+- Bar Heartbreak hero signage must be localizable live text, not a bitmap containing fixed Chinese copy. The title/subtitle can use a dark gold plaque treatment, but language switching must keep working. On mobile, the hero action strip first row is `我要播歌` / `分享吧台` / `榮譽榜`; `AI 音樂鬥歌場` sits centered on the second row.
+- Bar Heartbreak share URLs must use short routes. The whole bar uses `/l/all?lang=...`; selected genre sharing uses `/l/{genreIndex}?lang=...` and must reopen `/listen-bar` with that genre selected.
+- The Bar Heartbreak Battle ticker in the hero action strip is an actual moving marquee. Do not regress it to a static truncated line.
+
+Monitoring and automation baseline:
+
+- Any recurring AIPOGER Bar Heartbreak monitoring task must use the 2026-07-01 / 2026-07-02 genre-pool rules as the active rule set.
+- Do not use a global 88-song pool as the current monitoring target. Historical references to 88-song capacity eviction may remain only as legacy moderation-note keys or repair context.
+- Production monitoring should treat `GET /api/listen-bar/process-rotation` as dry-run preview unless a separate, explicit release task enables protected mutation.
+- Before 2026-07-06 00:00 Taiwan time, any system capacity removal is a rule violation unless it is an explicit creator/admin removal rather than automated capacity eviction.
 
 Product language:
 

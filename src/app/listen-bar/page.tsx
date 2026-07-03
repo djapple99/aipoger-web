@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ChangeEvent, FormEvent, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import LangToggle from "@/components/lang-toggle";
 import SafetyNotice from "@/components/safety-notice";
-import { fontRighteous } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n";
 import { parseAudioMetadata } from "@/lib/audio-metadata";
 import { sha256File } from "@/lib/file-hash";
@@ -33,13 +32,10 @@ import {
   DEFAULT_LISTEN_BAR_COVER,
   LISTEN_BAR_AUDIO_BUCKET,
   LISTEN_BAR_CHALLENGER_HOURLY_LIMIT,
-  LISTEN_BAR_CHALLENGER_SLOT_LIMIT,
   LISTEN_BAR_COVER_BUCKET,
+  LISTEN_BAR_GENRE_POOL_LIMIT,
   LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD,
   LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS,
-  LISTEN_BAR_JUDGMENT_INTERVAL_HOURS,
-  LISTEN_BAR_PUBLIC_EVICTION_LIMIT,
-  LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
   LISTEN_BAR_TOTAL_ROTATION_LIMIT,
   EMPTY_LISTEN_BAR_TRACK,
   fallbackOfficialPlaylist,
@@ -47,11 +43,16 @@ import {
   listenBarIsHonorEligible,
   listenBarPublicDisplayDay,
   listenBarRowToTrack,
+  listenBarSubmissionPhaseForGenrePublicCount,
   listenBarSurvivalStartedAt,
   type ListenBarTrack,
   type ListenBarTrackRow,
 } from "@/lib/listen-bar";
 import { usePresenceCount } from "@/lib/use-presence-count";
+import { logAnalyticsEvent } from "@/lib/analytics-client";
+import { normalizeSpotlightDate } from "@/lib/daily-spotlight";
+import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
+import { listenBarShortPath } from "@/lib/share-short-links";
 import type { User } from "@supabase/supabase-js";
 
 type ChatMessage = {
@@ -116,6 +117,28 @@ type MyTracksPayload = {
   error?: string;
 };
 
+type DailySpotlightView = {
+  date: string;
+  headline: string;
+  intro: string;
+  caption: string;
+  trackId: string;
+};
+
+type DailySpotlightPayload = {
+  date?: string;
+  missingTable?: boolean;
+  spotlight?: {
+    spotlight_date: string;
+    track_id: string;
+    headline: string | null;
+    intro: string | null;
+    caption: string | null;
+  } | null;
+  track?: ListenBarTrackRow | null;
+  error?: string;
+};
+
 type BattleTickerRow = {
   id: string;
   fighter_name?: string | null;
@@ -155,20 +178,9 @@ const LISTEN_BAR_MESSAGE_LIMIT = 80;
 const LIVE_RADIO_EPOCH_MS = Date.UTC(2026, 0, 1);
 const PRIORITY_AIRPLAY_BATCH_MS = 60 * 60 * 1000;
 const STOP_HOME_BGM_EVENT = "aipoger:stop-home-bgm";
-const heartbreakTitleFont =
-  '"GenYoMin TW", "GenYoMin JP", "Hiragino Mincho ProN", "Songti TC", "Noto Serif TC", "PMingLiU", "SoukouMincho", serif';
 
-type GenreOption = { value: string; labelKey: string };
-
-const LISTEN_BAR_GENRES: GenreOption[] = [
-  { value: "K-pop動感風", labelKey: "genre_kpop_energy" },
-  { value: "說唱街頭風", labelKey: "genre_rap_street" },
-  { value: "復古City-Pop", labelKey: "genre_city_pop" },
-  { value: "感人抒情", labelKey: "genre_emotion" },
-  { value: "熱血搖滾", labelKey: "genre_rock" },
-  { value: "動感電音", labelKey: "genre_edm" },
-  { value: "自我風格", labelKey: "genre_custom" },
-];
+const LISTEN_BAR_GENRES = MUSIC_GENRE_OPTIONS;
+const LISTEN_BAR_GENRE_SLUGS = new Map<string, string>(LISTEN_BAR_GENRES.map((genre, index) => [genre.value, String(index + 1)]));
 
 type PublicUploadForm = {
   title: string;
@@ -178,6 +190,8 @@ type PublicUploadForm = {
   album: string;
   description: string;
 };
+
+type GenrePlaybackSelection = "all" | string;
 
 const initialPublicUploadForm: PublicUploadForm = {
   title: "",
@@ -338,7 +352,7 @@ function listenBarRowToMyBroadcastStat(row: ListenBarTrackRow): MyBroadcastStat 
     id: row.id,
     title: row.title?.trim() || "Untitled",
     aiTool: row.ai_tool?.trim() || "AI Music",
-    genre: row.genre?.trim() || "自我風格",
+    genre: row.genre?.trim() || "Original 自我風格",
     album: row.mood?.trim() || "",
     description: row.description?.trim() || "",
     duration: Math.max(1, Math.round(row.duration_seconds ?? 0)),
@@ -511,7 +525,9 @@ function albumDisplayLabel(value: string, isZh: boolean) {
 
 function genreDisplayLabel(value: string | null | undefined, isZh: boolean) {
   const cleanValue = value?.trim();
-  if (!cleanValue || cleanValue === "自我風格" || cleanValue === "Custom Style") return isZh ? "自我風格" : "Custom Style";
+  if (!cleanValue || cleanValue === "自我風格" || cleanValue === "Original 自我風格" || cleanValue === "Custom Style" || cleanValue === "Original Style") {
+    return isZh ? "Original 自我風格" : "Original Style";
+  }
   return cleanValue;
 }
 
@@ -573,9 +589,9 @@ export default function ListenBarPage() {
   const { lang, t } = useI18n();
   const isZh = lang === "zh";
   const langQuery = `?lang=${lang}`;
-  const titleSizeClass = isZh
-    ? "text-[clamp(2.15rem,13vw,5.35rem)]"
-    : "text-[clamp(1.92rem,10vw,5.05rem)]";
+  const signTitleClass = isZh
+    ? "text-[clamp(3.45rem,12.5vw,8.4rem)]"
+    : "text-[clamp(2.45rem,7.2vw,5.9rem)]";
   const listenCopy = isZh
     ? {
         playMySong: "我要播歌！",
@@ -585,11 +601,9 @@ export default function ListenBarPage() {
         copied: "已複製",
         battleHall: "AI 音樂鬥歌場",
         title: "傷心酒吧",
-        subtitle: "在 AI 與不 AI 之間，只有真正被聽見的歌才能留下來",
+        subtitle: "在 AI 與不 AI 之間只有真正被聽見的歌才能留下來",
         navBattle: "AI 音樂鬥歌場",
         navRank: "榮譽榜",
-        navBible: "練功聖經",
-        navAbout: "關於愛播歌",
         ticker: "歡迎去 AI 音樂鬥歌場鬥歌，開戰帖、接挑戰，讓你的 AI 音樂被聽見。",
         queueTitle: "接續的六首歌",
         queueWaiting: "等待接續歌曲",
@@ -609,8 +623,6 @@ export default function ListenBarPage() {
           subtitle: "深く刺さる曲だけがオンエアに残る",
           navBattle: "AI音楽バトルホール",
           navRank: "Honor Board",
-          navBible: "AI Music Bible",
-          navAbout: "About",
           ticker: "AI音楽バトルホールへ。カードを開き、挑戦を受け、あなたのAI音楽を聴かせよう。",
           queueTitle: "Upcoming Sad Songs",
           queueWaiting: "Waiting for Songs",
@@ -630,8 +642,6 @@ export default function ListenBarPage() {
             subtitle: "강하게 꽂히는 곡만 온에어에 남는다",
             navBattle: "AI 음악 배틀홀",
             navRank: "Honor Board",
-            navBible: "AI Music Bible",
-            navAbout: "About",
             ticker: "AI 음악 배틀홀로 오세요. 카드를 열고, 도전을 받고, 당신의 AI 음악을 들려주세요.",
             queueTitle: "Upcoming Sad Songs",
             queueWaiting: "Waiting for Songs",
@@ -650,8 +660,6 @@ export default function ListenBarPage() {
             subtitle: "Only the songs that hit hard stay on air",
             navBattle: "AI Music Battle Hall",
             navRank: "Honor Board",
-            navBible: "AI Music Bible",
-            navAbout: "About",
             ticker: "Welcome to the AI Music Battle Hall. Open a card, accept a challenge, and let your AI music be heard.",
             queueTitle: "Upcoming Sad Songs",
             queueWaiting: "Waiting for Songs",
@@ -667,8 +675,10 @@ export default function ListenBarPage() {
   const listenBarSyncChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const servedCommunityIdsRef = useRef<Set<string>>(new Set());
   const liveSeekRef = useRef<{ trackId: string; offset: number } | null>(null);
+  const playbackSegmentRef = useRef<{ trackId: string; startedAtMs: number; startedAtSecond: number } | null>(null);
   const startTrackAtZeroRef = useRef(false);
   const liveRadioSyncEnabledRef = useRef(true);
+  const localOverrideTrackIdRef = useRef<string | null>(null);
   const rotationTracksRef = useRef<ListenBarTrack[]>([]);
   const nowTrackRef = useRef<ListenBarTrack>(EMPTY_LISTEN_BAR_TRACK);
   const radioShouldResumeRef = useRef(true);
@@ -679,6 +689,7 @@ export default function ListenBarPage() {
   const [creatorDefaultName, setCreatorDefaultName] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [officialTracks, setOfficialTracks] = useState<ListenBarTrack[]>(fallbackOfficialPlaylist);
+  const [selectedPlaybackGenre, setSelectedPlaybackGenre] = useState<GenrePlaybackSelection>("all");
   const [playlistStatus, setPlaylistStatus] = useState<"loading" | "database" | "fallback">("loading");
   const [priorityAirplayIds, setPriorityAirplayIds] = useState<Set<string>>(() => new Set());
   const [challengerSlotCount, setChallengerSlotCount] = useState(0);
@@ -691,7 +702,7 @@ export default function ListenBarPage() {
   const [editTrackId, setEditTrackId] = useState<string | null>(null);
   const [editTrackForm, setEditTrackForm] = useState<Pick<MyBroadcastStat, "aiTool" | "genre" | "album" | "description">>({
     aiTool: "",
-    genre: "自我風格",
+    genre: "Original 自我風格",
     album: "",
     description: "",
   });
@@ -700,6 +711,8 @@ export default function ListenBarPage() {
   const [publicUploadError, setPublicUploadError] = useState("");
   const [myBroadcastStats, setMyBroadcastStats] = useState<MyBroadcastStat[]>([]);
   const [nowTrack, setNowTrack] = useState<ListenBarTrack>(EMPTY_LISTEN_BAR_TRACK);
+  const [dailySpotlight, setDailySpotlight] = useState<DailySpotlightView | null>(null);
+  const [spotlightDate, setSpotlightDate] = useState("");
   const [, setHistory] = useState<ListenBarTrack[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackBlocked, setPlaybackBlocked] = useState(false);
@@ -721,6 +734,42 @@ export default function ListenBarPage() {
     listenBarPresenceCount <= 1
       ? listenCopy.warming
       : listenCopy.listeners(listenBarPresenceCount);
+  const logSongPlaybackEvent = useCallback((
+    eventType: "song_play" | "song_finish" | "song_skip" | "song_pause" | "song_resume",
+    track: ListenBarTrack,
+    metadata: Record<string, unknown> = {},
+  ) => {
+    if (!track.audioUrl || !isUuid(track.id)) return;
+    void logAnalyticsEvent({
+      eventType,
+      songId: track.id,
+      pagePath: "/listen-bar",
+      source: "bar_heartbreak",
+      metadata: {
+        title: track.title,
+        artist: track.artist,
+        genre: track.genre,
+        trackSource: track.source,
+        barPhase: track.barPhase,
+        durationSeconds: track.duration,
+        ...metadata,
+      },
+    });
+  }, []);
+  const closePlaybackSegment = useCallback((eventType: "song_pause" | "song_finish" | "song_skip", audio?: HTMLAudioElement | null) => {
+    const segment = playbackSegmentRef.current;
+    const track = nowTrackRef.current;
+    if (!segment || segment.trackId !== track.id) return;
+    const wallClockSeconds = Math.max(0, Math.round((Date.now() - segment.startedAtMs) / 1000));
+    const mediaSeconds = audio ? Math.max(0, Math.round(audio.currentTime - segment.startedAtSecond)) : wallClockSeconds;
+    const playedSeconds = Math.max(0, Math.min(Math.max(wallClockSeconds, mediaSeconds), Math.max(1, track.duration || wallClockSeconds || 1)));
+    playbackSegmentRef.current = null;
+    logSongPlaybackEvent(eventType, track, {
+      playedSeconds,
+      currentTime: audio ? Math.round(audio.currentTime) : null,
+      progressPercent: Math.round((playedSeconds / Math.max(1, track.duration || playedSeconds || 1)) * 100),
+    });
+  }, [logSongPlaybackEvent]);
   const syncElapsedFromAudio = useCallback((audio: HTMLAudioElement, force = false) => {
     const nextSecond = Math.floor(audio.currentTime);
     if (!force && nextSecond === lastElapsedPaintRef.current) return;
@@ -736,7 +785,7 @@ export default function ListenBarPage() {
       return nextIds;
     });
   }, []);
-  const rotationTracks = useMemo(() => {
+  const allRotationTracks = useMemo(() => {
     const seen = new Set<string>();
     return officialTracks.filter((track) => {
       if (seen.has(track.id)) return false;
@@ -744,17 +793,61 @@ export default function ListenBarPage() {
       return true;
     });
   }, [officialTracks]);
+  const allCommunityTracks = useMemo(
+    () => allRotationTracks.filter((track) => track.source === "community"),
+    [allRotationTracks],
+  );
+  const genrePoolStats = useMemo(() => {
+    const stats = new Map<string, { total: number; public: number }>();
+    for (const genre of LISTEN_BAR_GENRES) stats.set(genre.value, { total: 0, public: 0 });
+    for (const track of allCommunityTracks) {
+      const key = track.genre?.trim() || "Original 自我風格";
+      const item = stats.get(key) ?? { total: 0, public: 0 };
+      item.total += 1;
+      if (track.barPhase === "public") item.public += 1;
+      stats.set(key, item);
+    }
+    return stats;
+  }, [allCommunityTracks]);
+  const selectedGenreLabel = selectedPlaybackGenre === "all"
+    ? (isZh ? "公播" : "All")
+    : genreDisplayLabel(selectedPlaybackGenre, isZh);
+  const selectedGenreSlug = selectedPlaybackGenre === "all" ? "all" : (LISTEN_BAR_GENRE_SLUGS.get(selectedPlaybackGenre) ?? "all");
+  const selectedGenreShareUrl = listenBarShortPath(selectedGenreSlug, lang);
+  const barShareUrl = listenBarShortPath("all", lang);
+  const selectedGenreShareTitle = selectedPlaybackGenre === "all"
+    ? listenCopy.shareTitle
+    : `${listenCopy.shareTitle} / ${selectedGenreLabel}`;
+  const selectedGenreShareText = selectedPlaybackGenre === "all"
+    ? listenCopy.shareText
+    : isZh
+      ? `我正在 AIPOGER 傷心酒吧聽 ${selectedGenreLabel} 類型。進來聽這一類 AI 音樂公播。`
+      : `I am listening to ${selectedGenreLabel} on AIPOGER Bar Heartbreak. Open this genre radio.`;
+  const rotationTracks = useMemo(
+    () => selectedPlaybackGenre === "all"
+      ? allRotationTracks
+      : allRotationTracks.filter((track) => track.genre?.trim() === selectedPlaybackGenre),
+    [allRotationTracks, selectedPlaybackGenre],
+  );
   const communityRequestTracks = useMemo(
     () => rotationTracks.filter((track) => track.source === "community"),
     [rotationTracks],
   );
+  const totalCommunityTrackCount = allCommunityTracks.length;
   const publicPoolTracks = useMemo(
-    () => communityRequestTracks.filter((track) => track.barPhase === "public"),
-    [communityRequestTracks],
+    () => allCommunityTracks.filter((track) => track.barPhase === "public"),
+    [allCommunityTracks],
   );
+  const survivalStartedAtByGenre = useMemo(() => {
+    const map = new Map<string, string | null>();
+    for (const genre of LISTEN_BAR_GENRES) {
+      map.set(genre.value, listenBarSurvivalStartedAt(allCommunityTracks, LISTEN_BAR_GENRE_POOL_LIMIT, genre.value));
+    }
+    return map;
+  }, [allCommunityTracks]);
   const survivalStartedAt = useMemo(
-    () => listenBarSurvivalStartedAt(communityRequestTracks),
-    [communityRequestTracks],
+    () => nowTrack.genre ? (survivalStartedAtByGenre.get(nowTrack.genre) ?? null) : null,
+    [nowTrack.genre, survivalStartedAtByGenre],
   );
   const challengerTracks = useMemo(
     () => communityRequestTracks.filter((track) => track.barPhase !== "public"),
@@ -819,17 +912,72 @@ export default function ListenBarPage() {
     () => myBroadcastStats.filter((track) => track.barPhase === "public"),
     [myBroadcastStats],
   );
-  const challengerSlotLimit = useMemo(
-    () => listenBarChallengerSlotLimitForPublicCount(myPublicStats.length),
-    [myPublicStats.length],
+  const uploadGenre = publicUploadForm.genre.trim();
+  const uploadGenreStats = uploadGenre ? (genrePoolStats.get(uploadGenre) ?? { total: 0, public: 0 }) : { total: 0, public: 0 };
+  const uploadSubmissionPhase = listenBarSubmissionPhaseForGenrePublicCount(uploadGenreStats.public);
+  const uploadWillEnterChallenger = Boolean(uploadGenre) && uploadSubmissionPhase === "challenger";
+  const myPublicStatsForUploadGenre = useMemo(
+    () => uploadGenre ? myBroadcastStats.filter((track) => track.barPhase === "public" && track.genre === uploadGenre) : [],
+    [myBroadcastStats, uploadGenre],
   );
-  const challengerSlotsFull = challengerSlotCount >= challengerSlotLimit;
+  const myChallengerStatsForUploadGenre = useMemo(
+    () => uploadGenre ? myBroadcastStats.filter((track) => track.barPhase === "challenger" && track.genre === uploadGenre) : [],
+    [myBroadcastStats, uploadGenre],
+  );
+  const challengerSlotLimit = useMemo(
+    () => listenBarChallengerSlotLimitForPublicCount(myPublicStatsForUploadGenre.length),
+    [myPublicStatsForUploadGenre.length],
+  );
+  const challengerSlotsFull = uploadWillEnterChallenger && myChallengerStatsForUploadGenre.length >= challengerSlotLimit;
+  const displayedChallengerSlotCount = uploadGenre ? myChallengerStatsForUploadGenre.length : challengerSlotCount;
+  const uploadGenreRemainingPublicSlots = Math.max(0, LISTEN_BAR_GENRE_POOL_LIMIT - uploadGenreStats.public);
+  const uploadGenreDisplayName = uploadGenre ? genreDisplayLabel(uploadGenre, isZh) : "";
+  const uploadPhaseNoticeTitle = !uploadGenre
+    ? (isZh ? "先選音樂類型" : "Pick a Genre")
+    : uploadWillEnterChallenger
+      ? challengerSlotsFull
+        ? (isZh ? "此類 Challenger 席位已滿" : "Challenger Seats Full")
+        : (isZh ? "送出後進 Challenger" : "Uploads to Challenger")
+      : (isZh ? "送出後直接進公播" : "Uploads Straight to Public");
+  const uploadPhaseNoticeBody = !uploadGenre
+    ? (isZh
+      ? "選好類型後，這裡會先告訴你歌曲會進公播池還是 Challenger。"
+      : "After you pick a genre, this will show whether the song goes public or enters Challenger.")
+    : uploadWillEnterChallenger
+      ? (isZh
+        ? `${uploadGenreDisplayName} 已滿 ${uploadGenreStats.public}/${LISTEN_BAR_GENRE_POOL_LIMIT}。這首會先進同類 Challenger；你的同類 Challenger ${myChallengerStatsForUploadGenre.length}/${challengerSlotLimit}。`
+        : `${uploadGenreDisplayName} is full at ${uploadGenreStats.public}/${LISTEN_BAR_GENRE_POOL_LIMIT}. This song enters same-genre Challenger first; your same-genre Challenger seats are ${myChallengerStatsForUploadGenre.length}/${challengerSlotLimit}.`)
+      : (isZh
+        ? `${uploadGenreDisplayName} 目前 ${uploadGenreStats.public}/${LISTEN_BAR_GENRE_POOL_LIMIT}，還有 ${uploadGenreRemainingPublicSlots} 個公播位。這首會加入該類輪播。`
+        : `${uploadGenreDisplayName} is at ${uploadGenreStats.public}/${LISTEN_BAR_GENRE_POOL_LIMIT}, with ${uploadGenreRemainingPublicSlots} public slots left. This song joins that genre rotation.`);
   const challengerSlotsFullMessage = isZh
-    ? `你的公播池已有 ${myPublicStats.length} 首，現在 Challenger 上限是 ${challengerSlotLimit} 首。要再上傳，請先撤下一首 Challenger，或等公播池歌曲被撤下/淘汰後釋出節奏。`
-    : `You have ${myPublicStats.length} public tracks, so your Challenger limit is ${challengerSlotLimit}. Remove one Challenger, or wait until a public track is removed before uploading again.`;
+    ? `你的 ${uploadGenre || "此類型"} 公播池已有 ${myPublicStatsForUploadGenre.length} 首，現在 Challenger 上限是 ${challengerSlotLimit} 首。要再上傳，請先撤下一首同類 Challenger，或等同類公播池釋出空間。`
+    : `You have ${myPublicStatsForUploadGenre.length} public tracks in ${uploadGenre || "this genre"}, so your Challenger limit is ${challengerSlotLimit}. Remove one same-genre Challenger, or wait for room in that genre.`;
 
   useEffect(() => {
     window.dispatchEvent(new Event(STOP_HOME_BGM_EVENT));
+    void logAnalyticsEvent({
+      eventType: "open_heartbreak_bar",
+      pagePath: "/listen-bar",
+      source: "bar_heartbreak",
+    });
+  }, []);
+
+  useEffect(() => {
+    const syncListenBarUrlState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const requestedDate = params.get("spotlight");
+      const requestedGenre = params.get("genre")?.trim() ?? "";
+      setSpotlightDate(requestedDate ? normalizeSpotlightDate(requestedDate) : "");
+      if (requestedGenre === "all") {
+        setSelectedPlaybackGenre("all");
+      } else if (LISTEN_BAR_GENRES.some((genre) => genre.value === requestedGenre)) {
+        setSelectedPlaybackGenre(requestedGenre);
+      }
+    };
+    syncListenBarUrlState();
+    window.addEventListener("popstate", syncListenBarUrlState);
+    return () => window.removeEventListener("popstate", syncListenBarUrlState);
   }, []);
 
   useEffect(() => {
@@ -882,6 +1030,21 @@ export default function ListenBarPage() {
   useEffect(() => {
     rotationTracksRef.current = rotationTracks;
   }, [rotationTracks]);
+
+  useEffect(() => {
+    if (rotationTracks.length === 0) {
+      setNowTrack(EMPTY_LISTEN_BAR_TRACK);
+      return;
+    }
+    if (rotationTracks.some((track) => track.id === nowTrack.id)) return;
+    const nextTrack = rotationTracks.find((track) => track.audioUrl) ?? rotationTracks[0];
+    startTrackAtZeroRef.current = true;
+    liveRadioSyncEnabledRef.current = false;
+    localOverrideTrackIdRef.current = nextTrack.id;
+    liveSeekRef.current = { trackId: nextTrack.id, offset: 0 };
+    setElapsed(0);
+    setNowTrack(nextTrack);
+  }, [nowTrack.id, rotationTracks]);
 
   useEffect(() => {
     nowTrackRef.current = nowTrack;
@@ -985,7 +1148,35 @@ export default function ListenBarPage() {
         .slice(0, LISTEN_BAR_TOTAL_ROTATION_LIMIT)
         .map(listenBarRowToTrack)
         .filter((track): track is ListenBarTrack => track !== null);
-      const tracks = community;
+      let spotlightTrack: ListenBarTrack | null = null;
+      if (spotlightDate) {
+        const spotlightResponse = await fetch(`/api/listen-bar/daily-spotlight?date=${encodeURIComponent(spotlightDate)}`, {
+          cache: "no-store",
+        }).catch((error) => ({ ok: false, json: async () => ({ error: String(error) }) }) as Response);
+        if (mounted && spotlightResponse.ok) {
+          const spotlightPayload = await spotlightResponse.json().catch(() => null) as DailySpotlightPayload | null;
+          const rowTrack = spotlightPayload?.track ? listenBarRowToTrack(spotlightPayload.track) : null;
+          spotlightTrack = rowTrack;
+          if (spotlightPayload?.spotlight && rowTrack) {
+            setDailySpotlight({
+              date: spotlightPayload.date ?? spotlightPayload.spotlight.spotlight_date,
+              headline: spotlightPayload.spotlight.headline?.trim() || rowTrack.title,
+              intro: spotlightPayload.spotlight.intro?.trim() || rowTrack.description || rowTrack.mood,
+              caption: spotlightPayload.spotlight.caption?.trim() || "",
+              trackId: rowTrack.id,
+            });
+          } else {
+            setDailySpotlight(null);
+          }
+        } else if (mounted) {
+          setDailySpotlight(null);
+        }
+      } else {
+        setDailySpotlight(null);
+      }
+      const tracks = spotlightTrack && !community.some((track) => track.id === spotlightTrack?.id)
+        ? [spotlightTrack, ...community].slice(0, LISTEN_BAR_TOTAL_ROTATION_LIMIT)
+        : community;
       const persistedCounts = rows.reduce<Record<string, ReactionCounts>>((acc, row) => {
         acc[row.id] = {
           heart: Math.max(0, row.heart_count ?? 0),
@@ -1004,13 +1195,22 @@ export default function ListenBarPage() {
         return;
       }
 
-        setOfficialTracks(tracks);
+      setOfficialTracks(tracks);
+      setNowTrack((current) => {
+        if (spotlightTrack) {
+          if (current.id === spotlightTrack.id) return current;
+          startTrackAtZeroRef.current = true;
+          liveRadioSyncEnabledRef.current = false;
+          localOverrideTrackIdRef.current = spotlightTrack.id;
+          liveSeekRef.current = { trackId: spotlightTrack.id, offset: 0 };
+          setElapsed(0);
+          return spotlightTrack;
+        }
+        if (current.audioUrl && tracks.some((track) => track.id === current.id)) return current;
         const livePosition = liveRadioSyncEnabledRef.current ? getLiveRadioPosition(tracks) : null;
         if (livePosition) liveSeekRef.current = { trackId: livePosition.track.id, offset: livePosition.offset };
-        setNowTrack((current) => {
-          if (!liveRadioSyncEnabledRef.current && tracks.some((track) => track.id === current.id)) return current;
         return livePosition?.track ?? pickRandomTrack(tracks) ?? tracks[0];
-        });
+      });
       setPlaylistStatus("database");
     };
 
@@ -1023,7 +1223,7 @@ export default function ListenBarPage() {
       mounted = false;
       window.clearInterval(playlistRefreshTimer);
     };
-  }, [isZh]);
+  }, [isZh, spotlightDate]);
 
   useEffect(() => {
     const container = chatScrollRef.current;
@@ -1081,14 +1281,14 @@ export default function ListenBarPage() {
   }, [creatorDefaultName]);
 
   useEffect(() => {
-    if (!userId || rotationTracks.length === 0) {
+    if (!userId || allRotationTracks.length === 0) {
       setMyReactions({});
       return;
     }
 
     let mounted = true;
     const loadMyReactions = async () => {
-      const trackIds = rotationTracks.map((track) => track.id).slice(0, LISTEN_BAR_TOTAL_ROTATION_LIMIT);
+      const trackIds = allRotationTracks.map((track) => track.id).slice(0, LISTEN_BAR_TOTAL_ROTATION_LIMIT);
       const voteDate = taipeiVoteDate();
       const { data, error } = await supabase
         .from("listen_bar_track_reactions")
@@ -1115,7 +1315,7 @@ export default function ListenBarPage() {
     return () => {
       mounted = false;
     };
-  }, [rotationTracks, userId]);
+  }, [allRotationTracks, userId]);
 
   useEffect(() => {
     const channel = supabase
@@ -1147,6 +1347,7 @@ export default function ListenBarPage() {
         } else {
           startTrackAtZeroRef.current = true;
           liveRadioSyncEnabledRef.current = false;
+          localOverrideTrackIdRef.current = track.id;
           liveSeekRef.current = { trackId: track.id, offset: 0 };
           setElapsed(0);
           setNowTrack(track);
@@ -1167,26 +1368,24 @@ export default function ListenBarPage() {
 
   const playNext = useCallback(() => {
     setHistory((items) => [nowTrack, ...items].slice(0, 8));
+    if (localOverrideTrackIdRef.current === nowTrack.id) {
+      localOverrideTrackIdRef.current = null;
+      liveRadioSyncEnabledRef.current = true;
+    }
+
     const queuedRequest = getPriorityAirplayBatch(priorityAirplaySourceTracks, servedCommunityIdsRef.current, nowTrack.id)[0] ?? null;
     if (queuedRequest) {
       servedCommunityIdsRef.current.add(queuedRequest.id);
       startTrackAtZeroRef.current = true;
       liveRadioSyncEnabledRef.current = false;
+      localOverrideTrackIdRef.current = queuedRequest.id;
       liveSeekRef.current = { trackId: queuedRequest.id, offset: 0 };
       setElapsed(0);
       setNowTrack(queuedRequest);
       return;
     }
 
-    const livePosition = liveRadioSyncEnabledRef.current ? getLiveRadioPosition(rotationTracks) : null;
-    if (livePosition?.track?.audioUrl && livePosition.track.id !== nowTrack.id) {
-      liveSeekRef.current = { trackId: livePosition.track.id, offset: livePosition.offset };
-      setElapsed(livePosition.offset);
-      setNowTrack(livePosition.track);
-      return;
-    }
-
-    const playableTracks = rotationTracks.filter((track) => track.audioUrl && track.id !== nowTrack.id);
+    const playableTracks = rotationTracks.filter((track) => track.audioUrl);
     if (playableTracks.length === 0) {
       setElapsed(0);
       return;
@@ -1196,7 +1395,7 @@ export default function ListenBarPage() {
     const nextTrack =
       currentIndex >= 0
         ? Array.from({ length: rotationTracks.length }, (_, index) => rotationTracks[(currentIndex + index + 1) % rotationTracks.length])
-            .find((track) => track?.audioUrl && track.id !== nowTrack.id)
+            .find((track) => track?.audioUrl)
         : playableTracks[0];
 
     if (!nextTrack) {
@@ -1206,10 +1405,33 @@ export default function ListenBarPage() {
 
     startTrackAtZeroRef.current = true;
     liveRadioSyncEnabledRef.current = false;
+    localOverrideTrackIdRef.current = nextTrack.id;
     liveSeekRef.current = { trackId: nextTrack.id, offset: 0 };
     setElapsed(0);
+    if (nextTrack.id === nowTrack.id) {
+      const audio = audioRef.current;
+      if (!audio) return;
+      audio.currentTime = 0;
+      audio.muted = false;
+      audio.volume = volumeRef.current;
+      void audio.play()
+        .then(() => {
+          setPlaybackBlocked(false);
+          setIsPlaying(true);
+        })
+        .catch(() => {
+          setPlaybackBlocked(true);
+          setIsPlaying(false);
+        });
+      return;
+    }
     setNowTrack(nextTrack);
   }, [nowTrack, priorityAirplaySourceTracks, rotationTracks]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    return () => closePlaybackSegment("song_skip", audio);
+  }, [closePlaybackSegment]);
 
   useEffect(() => {
     const forceStart = startTrackAtZeroRef.current;
@@ -1307,7 +1529,7 @@ export default function ListenBarPage() {
 
   useEffect(() => {
     if (!playbackBlocked) return;
-    const resumeOnGesture = () => resumeRadioPlayback(true);
+    const resumeOnGesture = () => resumeRadioPlayback(false);
     window.addEventListener("pointerdown", resumeOnGesture, { once: true });
     window.addEventListener("keydown", resumeOnGesture, { once: true });
     return () => {
@@ -1342,28 +1564,6 @@ export default function ListenBarPage() {
       window.removeEventListener("pagehide", onPageHide);
     };
   }, [isPlaying, resumeRadioPlayback]);
-
-  useEffect(() => {
-    if (!nowTrack.audioUrl || rotationTracks.length === 0) return;
-    if (!liveRadioSyncEnabledRef.current) return;
-    const timer = window.setInterval(() => {
-      const audio = audioRef.current;
-      if (!audio || audio.paused) return;
-      const livePosition = getLiveRadioPosition(rotationTracks);
-      if (!livePosition) return;
-      if (livePosition.track.id !== nowTrack.id) {
-        liveSeekRef.current = { trackId: livePosition.track.id, offset: livePosition.offset };
-        setNowTrack(livePosition.track);
-        return;
-      }
-      if (Math.abs(audio.currentTime - livePosition.offset) > 3) {
-        const safeDuration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : livePosition.track.duration;
-        audio.currentTime = Math.min(livePosition.offset, Math.max(0, safeDuration - 0.25));
-        setElapsed(audio.currentTime);
-      }
-    }, 15000);
-    return () => window.clearInterval(timer);
-  }, [nowTrack, rotationTracks]);
 
   useEffect(() => {
     if (!isPlaying || nowTrack.audioUrl) return;
@@ -1458,6 +1658,18 @@ export default function ListenBarPage() {
         error?: string;
       } | null;
       if (!response.ok || !payload?.counts) throw new Error(payload?.error || "Reaction failed.");
+      void logAnalyticsEvent({
+        eventType: next === "heart" ? "like" : "reaction",
+        songId: isUuid(nowTrack.id) ? nowTrack.id : null,
+        pagePath: "/listen-bar",
+        source: "bar_heartbreak",
+        metadata: {
+          reaction: next,
+          previousReaction: previous,
+          title: nowTrack.title,
+          artist: nowTrack.artist,
+        },
+      });
       setReactionCounts((allCounts) => ({ ...allCounts, [nowTrack.id]: payload.counts! }));
       setOfficialTracks((tracks) => tracks.map((track) => (
         track.id === nowTrack.id
@@ -1553,6 +1765,17 @@ export default function ListenBarPage() {
         const savedComment = payload?.comment ? storedTrackCommentRowToComment(payload.comment) : null;
         if (savedComment) {
           setTrackComments((items) => (items.some((item) => item.id === savedComment.id) ? items : [...items, savedComment].slice(-24)));
+          void logAnalyticsEvent({
+            eventType: "comment",
+            songId: isUuid(nowTrack.id) ? nowTrack.id : null,
+            pagePath: "/listen-bar",
+            source: "bar_heartbreak",
+            metadata: {
+              commentType: "track",
+              title: nowTrack.title,
+              artist: nowTrack.artist,
+            },
+          });
         }
         return;
       }
@@ -1761,7 +1984,7 @@ export default function ListenBarPage() {
         is_active: true,
         source: "community",
         is_featured_official: false,
-        bar_phase: "challenger",
+        bar_phase: uploadSubmissionPhase,
         created_by: userId,
       };
 
@@ -1797,7 +2020,22 @@ export default function ListenBarPage() {
 
       const insertedTrack = insertedTrackRow ? listenBarRowToTrack(insertedTrackRow) : null;
       if (insertedTrack) {
-        const normalizedTrack = { ...insertedTrack, barPhase: insertedTrack.barPhase ?? "challenger" as const };
+        const normalizedTrack = {
+          ...insertedTrack,
+          barPhase: insertedTrack.barPhase ?? uploadSubmissionPhase,
+        };
+        void logAnalyticsEvent({
+          eventType: "upload_song",
+          songId: isUuid(normalizedTrack.id) ? normalizedTrack.id : null,
+          pagePath: "/listen-bar",
+          source: "bar_heartbreak",
+          metadata: {
+            title: normalizedTrack.title,
+            artist: normalizedTrack.artist,
+            genre: normalizedTrack.genre,
+            durationSeconds: normalizedTrack.duration,
+          },
+        });
         servedCommunityIdsRef.current.delete(insertedTrack.id);
         markPriorityAirplayTrack(normalizedTrack.id);
         setOfficialTracks((tracks) => {
@@ -1819,7 +2057,7 @@ export default function ListenBarPage() {
             album: normalizedTrack.album ?? "",
             description: normalizedTrack.description ?? "",
             duration: normalizedTrack.duration,
-            barPhase: normalizedTrack.barPhase ?? "challenger",
+            barPhase: normalizedTrack.barPhase ?? uploadSubmissionPhase,
             positives: 0,
             heart: 0,
             star: 0,
@@ -1831,7 +2069,9 @@ export default function ListenBarPage() {
           ...tracks.filter((track) => track.id !== normalizedTrack.id),
         ]);
       }
-      setChallengerSlotCount((count) => count + 1);
+      if (insertedTrack?.barPhase === "challenger") {
+        setChallengerSlotCount((count) => count + 1);
+      }
       setPublicAudioFile(null);
       setPublicCoverFile(null);
       setPublicLyricsText("");
@@ -1840,9 +2080,13 @@ export default function ListenBarPage() {
         artist: limitListenBarDisplayText(creatorDefaultName, LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
       });
       setPublicUploadMessage(
-        isZh
-          ? `上傳完成！目前這首播完後會優先插播新投稿；每批從第一首投稿開始計 1 小時，最多 8 首，其餘排到下一小時。`
-          : "Upload complete. New submissions get priority after the current song; each 1-hour batch starts with the first upload, airs up to 8 tracks, and pushes the rest to the next hour.",
+        (insertedTrack?.barPhase ?? uploadSubmissionPhase) === "public"
+          ? isZh
+            ? `上傳完成！已加入 ${publicUploadForm.genre} 公播池，會在這個類型裡輪播。`
+            : `Upload complete. Your track joined the ${publicUploadForm.genre} public pool and will keep rotating in that genre.`
+          : isZh
+            ? `上傳完成！已進入 ${publicUploadForm.genre} Challenger；目前這首播完後會優先插播新投稿。`
+            : `Upload complete. Your track entered the ${publicUploadForm.genre} Challenger lane and gets priority after the current song.`,
       );
       setPlaylistStatus("database");
     } catch (submitError) {
@@ -1869,7 +2113,7 @@ export default function ListenBarPage() {
     setEditTrackId((current) => current === track.id ? null : track.id);
     setEditTrackForm({
       aiTool: limitListenBarDisplayText(track.aiTool || "AI Music", LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
-      genre: track.genre || "自我風格",
+      genre: track.genre || "Original 自我風格",
       album: limitListenBarDisplayText(track.album || "", LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
       description: limitListenBarDisplayText(track.description || "", LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS),
     });
@@ -1965,6 +2209,16 @@ export default function ListenBarPage() {
       });
       const payload = await response.json().catch(() => null) as { error?: string } | null;
       if (!response.ok) throw new Error(payload?.error || "Remove failed.");
+      void logAnalyticsEvent({
+        eventType: "delete_song",
+        songId: isUuid(track.id) ? track.id : null,
+        pagePath: "/listen-bar",
+        source: "bar_heartbreak",
+        metadata: {
+          title: track.title,
+          barPhase: track.barPhase,
+        },
+      });
 
       setOfficialTracks((tracks) => tracks.filter((item) => item.id !== track.id));
       if (nowTrack.id === track.id) {
@@ -2030,12 +2284,6 @@ export default function ListenBarPage() {
   const nowGenreLabel = genreDisplayLabel(nowTrack.genre, isZh);
   const nowDescriptionLabel = descriptionDisplayLabel(nowTrack.description, isZh);
   const nowAiToolLabel = aiToolDisplayLabel(nowTrack.tool, isZh);
-  const navLinks = [
-    { href: "/battle", label: listenCopy.navBattle },
-    { href: "/rank", label: listenCopy.navRank },
-    { href: "/ai-music-bible", label: listenCopy.navBible },
-    { href: "/about", label: listenCopy.navAbout },
-  ];
   const battleTickerText = battleTickerMessages.length > 0
     ? battleTickerMessages.join("   /   ")
     : listenCopy.ticker;
@@ -2061,83 +2309,107 @@ export default function ListenBarPage() {
       <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_50%_0%,rgba(255,138,43,0.16),transparent_44%)]" />
 
       <div className="relative z-10 mx-auto flex w-full max-w-[1880px] flex-col gap-4 overflow-x-hidden">
-        <header className="aipo-control-panel aipo-panel-line relative overflow-hidden rounded-[1.35rem] p-4 text-center text-white md:p-5">
+        <header className="aipo-control-panel aipo-panel-line relative overflow-hidden rounded-[1.35rem] p-4 text-center text-white">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(255,106,0,0.16),transparent_30%),radial-gradient(circle_at_84%_10%,rgba(0,202,255,0.09),transparent_28%)]" />
-          <div className="relative mb-5 ml-auto grid max-w-full grid-cols-2 items-center justify-center gap-2 rounded-[1.15rem] border border-white/10 bg-black/55 px-3 py-2 pl-[4.85rem] shadow-[0_18px_54px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur min-[430px]:pl-3 sm:flex sm:flex-wrap md:w-fit md:justify-end">
-            <a
-              href="#play-request"
-              className="inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-full border border-orange-300/40 bg-orange-500/14 px-3 py-2 text-xs font-black text-orange-100 transition hover:border-orange-100 hover:bg-orange-500/22 sm:px-4"
-            >
-              {listenCopy.playMySong}
-            </a>
-            <ShareButton
-              title={listenCopy.shareTitle}
-              text={listenCopy.shareText}
-              label={listenCopy.shareLabel}
-              copiedLabel={listenCopy.copied}
-            />
-            <Link
-              href={`/battle${langQuery}`}
-              className="inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-full border border-cyan-300/35 bg-cyan-300/12 px-3 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-100 hover:bg-cyan-300/18 sm:px-4"
-            >
-              {listenCopy.battleHall}
-            </Link>
+          <div className="relative z-20 mb-1 flex justify-end">
             <LangToggle variant="inline" />
           </div>
 
-          <div className="relative mx-auto flex max-w-5xl flex-col items-center">
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <span className="text-[11px] font-black uppercase tracking-[0.36em] text-orange-300/80">AIPOGER RADIO</span>
-              <span className="rounded-full border border-cyan-200/20 bg-cyan-300/8 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-cyan-100">
-                Bar Heartbreak
-              </span>
+          <div className="relative -mt-1 mx-auto flex w-full max-w-[1080px] flex-col items-center md:max-w-[1260px]">
+            <div className="heartbreak-sign relative w-full max-w-[min(92vw,1080px)] overflow-hidden px-5 py-5 text-center md:max-w-[1260px] md:px-10 md:py-8">
+              <div className="relative z-10 flex flex-wrap items-center justify-center gap-3 md:gap-8">
+                <span className="heartbreak-sign-kicker">AIPOGER RADIO</span>
+                <span className="heartbreak-sign-chip">BAR HEARTBREAK</span>
+              </div>
+              <h1 className={`heartbreak-sign-title relative z-10 mt-3 ${signTitleClass}`}>
+                {listenCopy.title}
+              </h1>
+              <p className="heartbreak-sign-subtitle relative z-10 mt-2 whitespace-nowrap text-[clamp(0.54rem,1.75vw,0.68rem)] sm:whitespace-normal sm:text-[clamp(0.72rem,2.3vw,1.35rem)]">
+                {listenCopy.subtitle}
+              </p>
             </div>
-            <h1
-              className={`mt-3 max-w-full whitespace-nowrap bg-gradient-to-b from-[#fff9d8] via-[#d7a246] to-[#7a3f10] bg-clip-text text-center ${titleSizeClass} font-normal leading-none tracking-[0.04em] text-transparent drop-shadow-[0_0_22px_rgba(255,170,68,0.18)] ${lang === "en" ? fontRighteous.className : ""}`}
-              style={{
-                fontFamily: isZh ? heartbreakTitleFont : undefined,
-                WebkitTextStroke: isZh ? "0.45px rgba(255,244,196,0.48)" : undefined,
-              }}
-            >
-              {listenCopy.title}
-            </h1>
-            <p
-              className={`mt-3 max-w-3xl bg-gradient-to-b from-[#f7e6a9] via-[#c98e34] to-[#80501d] bg-clip-text text-center text-sm font-bold leading-6 tracking-[0.08em] text-transparent drop-shadow-[0_0_14px_rgba(255,170,68,0.12)] md:text-base ${lang === "en" ? fontRighteous.className : ""}`}
-              style={{ fontFamily: isZh ? heartbreakTitleFont : undefined }}
-            >
-              {listenCopy.subtitle}
-            </p>
           </div>
 
-          <div className="relative mt-4 grid max-w-full gap-2 rounded-[1.15rem] border border-white/10 bg-black/52 p-2 shadow-[0_16px_54px_rgba(0,0,0,0.24)] backdrop-blur lg:grid-cols-[minmax(0,max-content)_minmax(18rem,1fr)] lg:items-center">
-            <nav className="flex min-w-0 flex-wrap items-center justify-start gap-2">
-              {navLinks.map((item) => (
+          <div className="relative mt-3 grid max-w-full gap-2 rounded-[1.15rem] border border-white/10 bg-black/52 p-2 shadow-[0_16px_54px_rgba(0,0,0,0.24)] backdrop-blur lg:grid-cols-[minmax(0,max-content)_minmax(18rem,1fr)] lg:items-center">
+            <nav className="flex min-w-0 flex-wrap items-center justify-center gap-2 sm:justify-start">
+              <a
+                href="#play-request"
+                className="order-1 inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full border border-orange-300/45 bg-orange-500/16 px-3 py-2 text-sm font-black text-orange-100 transition hover:border-orange-100 hover:bg-orange-500/24 sm:px-4"
+              >
+                {listenCopy.playMySong}
+              </a>
+              <ShareButton
+                title={listenCopy.shareTitle}
+                text={listenCopy.shareText}
+                url={barShareUrl}
+                label={listenCopy.shareLabel}
+                copiedLabel={listenCopy.copied}
+                wrapperClassName="order-2"
+                className="min-h-11 border-white/12 bg-white/[0.045] px-3 text-sm text-zinc-100 hover:border-cyan-200/35 hover:bg-cyan-300/10 sm:px-4"
+              />
+              <Link
+                href={`/rank${langQuery}`}
+                className="order-3 inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full border border-white/10 bg-white/[0.045] px-3 py-2 text-sm font-black text-zinc-200 transition hover:border-orange-300/70 hover:bg-orange-500/10 hover:text-white sm:px-4 md:order-4"
+              >
+                {listenCopy.navRank}
+              </Link>
+              <span className="order-4 flex basis-full justify-center md:order-3 md:basis-auto">
                 <Link
-                  key={item.href}
-                  href={`${item.href}${item.href === "/" ? "" : langQuery}`}
-                  className="inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-full border border-white/10 bg-white/[0.045] px-3 py-2 text-xs font-black text-zinc-200 transition hover:border-orange-300/70 hover:bg-orange-500/10 hover:text-white sm:px-4"
+                  href={`/battle${langQuery}`}
+                  className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full border border-white/10 bg-white/[0.045] px-4 py-2 text-sm font-black text-zinc-200 transition hover:border-orange-300/70 hover:bg-orange-500/10 hover:text-white"
                 >
-                  {item.label}
+                  {listenCopy.navBattle}
                 </Link>
-              ))}
+              </span>
             </nav>
             <Link
               href={`/battle${langQuery}`}
-              className="group relative flex min-h-12 min-w-0 items-center overflow-hidden rounded-[1rem] border border-cyan-200/20 bg-[linear-gradient(90deg,rgba(4,10,12,0.86),rgba(0,28,34,0.42),rgba(4,10,12,0.86))] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 sm:min-h-10 sm:rounded-full sm:py-0"
+              className="group aipo-marquee relative flex min-h-12 min-w-0 items-center overflow-hidden rounded-[1rem] border border-cyan-200/20 bg-[linear-gradient(90deg,rgba(4,10,12,0.86),rgba(0,28,34,0.42),rgba(4,10,12,0.86))] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 sm:rounded-full"
               aria-label={battleTickerText}
             >
               <span className="pointer-events-none absolute inset-y-0 left-0 z-10 hidden w-10 bg-gradient-to-r from-black via-black/80 to-transparent sm:block" />
               <span className="pointer-events-none absolute inset-y-0 right-0 z-10 hidden w-10 bg-gradient-to-l from-black via-black/80 to-transparent sm:block" />
               <span
-                className={`block min-w-0 truncate text-left text-xs font-black leading-5 tracking-normal transition-colors group-hover:text-white sm:leading-none sm:tracking-[0.08em] ${
+                className={`aipo-marquee-track text-left text-sm font-black leading-6 tracking-[0.08em] transition-colors group-hover:text-white ${
                   battleTickerMessages.length > 0 ? "text-red-300" : "text-cyan-100/78"
                 }`}
               >
-                {battleTickerText}
+                <span className="pr-12">{battleTickerText}</span>
+                <span className="pr-12" aria-hidden="true">{battleTickerText}</span>
               </span>
             </Link>
           </div>
         </header>
+
+        {dailySpotlight && nowTrack.id === dailySpotlight.trackId ? (
+          <section className="aipo-control-panel aipo-panel-line relative overflow-hidden rounded-[1.35rem] p-4">
+            <div className="pointer-events-none absolute inset-0 [background:linear-gradient(110deg,rgba(255,106,0,0.18),rgba(0,202,255,0.07),transparent)]" />
+            <div className="relative flex flex-wrap items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-300/80">
+                  {isZh ? "今日推薦歌" : "Today Spotlight"}
+                </p>
+                <h2 className="mt-1 break-words text-2xl font-black text-white">
+                  {dailySpotlight.headline}
+                </h2>
+                <p className="mt-2 max-w-4xl text-sm font-bold leading-6 text-zinc-300">
+                  {dailySpotlight.intro}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-orange-200/30 bg-orange-500/12 px-3 py-1 text-xs font-black text-orange-100">
+                  {dailySpotlight.date}
+                </span>
+                <Link
+                  href={`/today?lang=${encodeURIComponent(lang)}`}
+                  className="rounded-full border border-cyan-200/30 bg-cyan-300/10 px-4 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-100"
+                >
+                  /today
+                </Link>
+              </div>
+            </div>
+          </section>
+        ) : null}
 
         <section className="grid min-w-0 gap-4 lg:grid-cols-[1.08fr_0.92fr]">
           <div className="aipo-control-panel aipo-panel-line relative min-w-0 overflow-hidden rounded-[1.35rem] p-4 md:p-5">
@@ -2247,8 +2519,8 @@ export default function ListenBarPage() {
                 {playbackBlocked && (
                   <button
                     type="button"
-                    onPointerDown={() => resumeRadioPlayback(true)}
-                    onClick={() => resumeRadioPlayback(true)}
+                    onPointerDown={() => resumeRadioPlayback(false)}
+                    onClick={() => resumeRadioPlayback(false)}
                     className="mt-4 inline-flex items-center justify-center rounded-full border border-orange-300/35 bg-orange-500 px-4 py-2 text-xs font-black text-black shadow-[0_0_22px_rgba(255,106,0,0.18)] transition hover:bg-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
                   >
                     {isZh ? "點一下恢復播放" : "Tap to Resume Playback"}
@@ -2368,9 +2640,65 @@ export default function ListenBarPage() {
                       : listenCopy.queueWaiting}
                   </h2>
                 </div>
-                <span className="rounded-full border border-orange-300/24 bg-orange-500/10 px-3 py-1 text-[11px] font-black text-orange-100">
-                  {upcomingHeartbreakerTracks.length}/6
-                </span>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <ShareButton
+                    title={selectedGenreShareTitle}
+                    text={selectedGenreShareText}
+                    url={selectedGenreShareUrl}
+                    label={selectedPlaybackGenre === "all" ? (isZh ? "分享公播" : "Share All") : (isZh ? "分享此類" : "Share Genre")}
+                    copiedLabel={listenCopy.copied}
+                    className="min-h-10 border-cyan-200/20 bg-cyan-300/8 px-3 py-1 text-[11px] text-cyan-100 hover:border-cyan-100/55 hover:bg-cyan-300/14"
+                  />
+                  <span className="rounded-full border border-cyan-200/20 bg-cyan-300/8 px-3 py-1 text-[11px] font-black text-cyan-100">
+                    {selectedGenreLabel}
+                  </span>
+                  <span className="rounded-full border border-orange-300/24 bg-orange-500/10 px-3 py-1 text-[11px] font-black text-orange-100">
+                    {upcomingHeartbreakerTracks.length}/6
+                  </span>
+                </div>
+              </div>
+              <div className="relative border-b border-white/8 px-4 py-3">
+                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-6">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPlaybackGenre("all")}
+                    className={`min-w-0 rounded-xl border px-2.5 py-2 text-left transition ${
+                      selectedPlaybackGenre === "all"
+                        ? "border-orange-200/70 bg-orange-400/16 text-orange-50 shadow-[0_0_20px_rgba(255,106,0,0.12)]"
+                        : "border-white/10 bg-white/[0.035] text-zinc-400 hover:border-cyan-200/30 hover:bg-cyan-300/8 hover:text-cyan-50"
+                    }`}
+                  >
+                    <span className="block truncate text-[10px] font-black uppercase tracking-[0.16em]">
+                      {isZh ? "公播" : "All"}
+                    </span>
+                    <span className="mt-0.5 block text-xs font-black tabular-nums">
+                      {publicPoolTracks.length}/{LISTEN_BAR_TOTAL_ROTATION_LIMIT}
+                    </span>
+                  </button>
+                  {LISTEN_BAR_GENRES.map((genre) => {
+                    const stats = genrePoolStats.get(genre.value) ?? { total: 0, public: 0 };
+                    const active = selectedPlaybackGenre === genre.value;
+                    return (
+                      <button
+                        key={genre.value}
+                        type="button"
+                        onClick={() => setSelectedPlaybackGenre(genre.value)}
+                        className={`min-w-0 rounded-xl border px-2.5 py-2 text-left transition ${
+                          active
+                            ? "border-orange-200/70 bg-orange-400/16 text-orange-50 shadow-[0_0_20px_rgba(255,106,0,0.12)]"
+                            : "border-white/10 bg-white/[0.035] text-zinc-400 hover:border-cyan-200/30 hover:bg-cyan-300/8 hover:text-cyan-50"
+                        }`}
+                      >
+                        <span className="block truncate text-[10px] font-black uppercase tracking-[0.08em]">
+                          {t(genre.labelKey)}
+                        </span>
+                        <span className="mt-0.5 block text-xs font-black tabular-nums">
+                          {stats.public}/{LISTEN_BAR_GENRE_POOL_LIMIT}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <div className="relative grid gap-0 md:grid-cols-2">
                 {upcomingHeartbreakerTracks.length === 0 ? (
@@ -2407,7 +2735,9 @@ export default function ListenBarPage() {
                                 </p>
                                 {track.barPhase === "public" ? (
                                   <p className="mt-1 text-[11px] font-black text-orange-100/80">
-                                    {isZh ? `公播 Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAt)}` : `Public Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAt)}`}
+                                    {isZh
+                                      ? `公播 Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null)}`
+                                      : `Public Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null)}`}
                                   </p>
                                 ) : (
                                   <p className="mt-1 text-[11px] font-black text-cyan-100/80">
@@ -2438,8 +2768,22 @@ export default function ListenBarPage() {
               onPlay={() => {
                 setPlaybackBlocked(false);
                 setIsPlaying(true);
+                const currentSecond = Math.max(0, Math.floor(audioRef.current?.currentTime ?? 0));
+                if (!playbackSegmentRef.current || playbackSegmentRef.current.trackId !== nowTrack.id) {
+                  playbackSegmentRef.current = {
+                    trackId: nowTrack.id,
+                    startedAtMs: Date.now(),
+                    startedAtSecond: currentSecond,
+                  };
+                  logSongPlaybackEvent("song_play", nowTrack, { startSecond: currentSecond });
+                } else {
+                  logSongPlaybackEvent("song_resume", nowTrack, { startSecond: currentSecond });
+                }
               }}
-              onPause={() => setIsPlaying(false)}
+              onPause={(event) => {
+                setIsPlaying(false);
+                if (!event.currentTarget.ended) closePlaybackSegment("song_pause", event.currentTarget);
+              }}
               onTimeUpdate={(event) => syncElapsedFromAudio(event.currentTarget)}
               onLoadedMetadata={(event) => {
                 if (Number.isFinite(event.currentTarget.duration)) {
@@ -2447,7 +2791,10 @@ export default function ListenBarPage() {
                 }
                 syncElapsedFromAudio(event.currentTarget, true);
               }}
-              onEnded={playNext}
+              onEnded={(event) => {
+                closePlaybackSegment("song_finish", event.currentTarget);
+                playNext();
+              }}
             />
           </div>
 
@@ -2637,6 +2984,42 @@ export default function ListenBarPage() {
                   />
                 </div>
 
+                <div
+                  className={`rounded-xl border px-3 py-3 ${
+                    !uploadGenre
+                      ? "border-white/10 bg-white/[0.035]"
+                      : uploadWillEnterChallenger
+                        ? challengerSlotsFull
+                          ? "border-red-300/30 bg-red-500/10"
+                          : "border-orange-300/28 bg-orange-500/10"
+                        : "border-cyan-200/24 bg-cyan-300/[0.075]"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p
+                      className={`text-xs font-black ${
+                        !uploadGenre
+                          ? "text-zinc-300"
+                          : uploadWillEnterChallenger
+                            ? challengerSlotsFull
+                              ? "text-red-100"
+                              : "text-orange-100"
+                            : "text-cyan-50"
+                      }`}
+                    >
+                      {uploadPhaseNoticeTitle}
+                    </p>
+                    {uploadGenre && (
+                      <span className="rounded-full border border-white/10 bg-black/28 px-2.5 py-1 text-[11px] font-black text-white/82">
+                        {uploadGenreStats.public}/{LISTEN_BAR_GENRE_POOL_LIMIT}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs font-bold leading-5 text-zinc-400">
+                    {uploadPhaseNoticeBody}
+                  </p>
+                </div>
+
                 <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
                   <label className="flex h-11 cursor-pointer items-center justify-center rounded-xl border border-cyan-200/18 bg-cyan-300/[0.055] px-3 text-xs font-black text-cyan-100 transition hover:border-cyan-100/50">
                     {publicCoverFile?.name ?? (isZh ? "封面可選" : "Optional Cover")}
@@ -2725,8 +3108,8 @@ export default function ListenBarPage() {
             </p>
             <p className="mt-2 break-words text-sm font-bold leading-6 text-zinc-300 [overflow-wrap:anywhere]">
               {isZh
-                ? `傷心酒吧不是排行榜，而是一場 AI 音樂生存電台。聽歌不需登入；留言、投票與投稿需登入。新投稿不打斷目前歌曲，會在這首播完後優先插播；每批從第一首投稿開始計 1 小時，最多 ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} 首，其餘排到下一小時。新歌進入挑戰池會有 24H 保護期，之後自動進入公播池。創作者公播池 0-2 首時最多 ${LISTEN_BAR_CHALLENGER_SLOT_LIMIT} 個 Challenger，3-5 首時最多 2 個，6 首以上最多 1 個。公播池超過 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首時，每 ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} 小時最多淘汰 ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} 首低反應歌曲；累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 個正向反應，或公播存活 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天，就取得榮譽榜入選資格。`
-                : `Bar Heartbreak is not a chart. It is AI music survival radio. Listening is open; comments, votes, and uploads require sign-in. New uploads do not interrupt the current song; they get priority after it ends. Each 1-hour batch airs up to ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} tracks. New Challenger tracks get 24H protection, then move into the public pool. Creators get up to ${LISTEN_BAR_CHALLENGER_SLOT_LIMIT} Challenger slots with 0-2 public tracks, 2 slots with 3-5 public tracks, and 1 slot with 6+ public tracks. When the public pool is above ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}, up to ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} low-reaction tracks are removed every ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} hours. ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} positive reactions or ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} public days makes a track Honor Board eligible.`}
+                ? `傷心酒吧不是排行榜，而是一場 AI 音樂生存電台。聽歌不需登入；留言、投票與投稿需登入。來訪者可選公播或指定類型播放；目前 ${LISTEN_BAR_GENRES.length} 種類型每類滿池 ${LISTEN_BAR_GENRE_POOL_LIMIT} 首，總公播池上限 ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} 首。未滿池的新投稿直接進同類公播池；滿池後才進 Challenger。每一類滿池後才啟動該類淘汰與 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天榮譽計時；累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 顆心，或滿池啟動後公播存活 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天，就取得榮譽榜入選資格。`
+                : `Bar Heartbreak is not a chart. It is AI music survival radio. Listening is open; comments, votes, and uploads require sign-in. Visitors can play all songs or pick a genre. Each of the ${LISTEN_BAR_GENRES.length} genres has a ${LISTEN_BAR_GENRE_POOL_LIMIT}-track public pool, for ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} public slots total. New submissions enter the same-genre public pool until that genre is full; after that they enter Challenger. Survival and the ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS}-day Honor timer start per genre only after that genre pool is full. ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} hearts or ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} public days after activation makes a track Honor Board eligible.`}
             </p>
           </div>
 
@@ -2735,7 +3118,7 @@ export default function ListenBarPage() {
               <p className="text-xs uppercase tracking-[0.22em] text-cyan-100/70">{isZh ? "我的吧台歌曲" : "My Bar Tracks"}</p>
               <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
                 <span className="max-w-full rounded-full border border-orange-300/18 bg-orange-500/8 px-2 py-0.5 text-[11px] font-black text-orange-100">
-                  {isZh ? `Challenger ${challengerSlotCount}/${challengerSlotLimit}` : `${challengerSlotCount}/${challengerSlotLimit} Challengers`}
+                  {isZh ? `Challenger ${displayedChallengerSlotCount}/${challengerSlotLimit}` : `${displayedChallengerSlotCount}/${challengerSlotLimit} Challengers`}
                 </span>
                 <span className="max-w-full rounded-full border border-white/10 px-2 py-0.5 text-[11px] font-bold text-zinc-400">
                   {isZh ? `${myPublicStats.length} 公播` : `${myPublicStats.length} public`}
@@ -2751,8 +3134,8 @@ export default function ListenBarPage() {
                   const challengerRank = challengerRankById.get(track.id);
                   const statusLabel = track.barPhase === "public"
                     ? isZh
-                      ? `公播 Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAt)}`
-                      : `Public Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAt)}`
+                      ? `公播 Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null)}`
+                      : `Public Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null)}`
                     : challengerRank
                       ? `Challenger #${challengerRank}`
                       : "Challenger";
@@ -2859,17 +3242,19 @@ export default function ListenBarPage() {
             </p>
             <div className="mt-3 flex items-end gap-2">
               <span className="text-5xl font-black tabular-nums text-white">{publicPoolTracks.length}</span>
-              <span className="pb-1 text-sm font-black text-zinc-500">/ {LISTEN_BAR_PUBLIC_ROTATION_LIMIT}</span>
+              <span className="pb-1 text-sm font-black text-zinc-500">
+                / {LISTEN_BAR_TOTAL_ROTATION_LIMIT}
+              </span>
             </div>
             <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">
               {isZh
-                ? `${communityRequestTracks.length} 首投稿歌進入傷心酒吧；${publicPoolTracks.length} 首公播，${challengerTracks.length} 首 Challenger 享有 24H 保護。超過 ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT} 首時每 ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} 小時最多淘汰 ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} 首。`
-                : `${communityRequestTracks.length} creator tracks are in Bar Heartbreak. ${publicPoolTracks.length} are live on air and ${challengerTracks.length} Challengers have 24H protection. Above ${LISTEN_BAR_PUBLIC_ROTATION_LIMIT}, up to ${LISTEN_BAR_PUBLIC_EVICTION_LIMIT} low-reaction tracks are removed every ${LISTEN_BAR_JUDGMENT_INTERVAL_HOURS} hours.`}
+                ? `${totalCommunityTrackCount} 首投稿歌進入傷心酒吧；${publicPoolTracks.length} 首正在公播。${LISTEN_BAR_GENRES.length} 種類型各自滿池 ${LISTEN_BAR_GENRE_POOL_LIMIT} 首，先同類比較，再進榮譽。`
+                : `${totalCommunityTrackCount} creator tracks are in Bar Heartbreak; ${publicPoolTracks.length} are on public airplay. Each genre fills its own ${LISTEN_BAR_GENRE_POOL_LIMIT}-track pool before survival starts.`}
             </p>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-orange-500 via-orange-300 to-cyan-300"
-                style={{ width: `${Math.min(100, (publicPoolTracks.length / LISTEN_BAR_PUBLIC_ROTATION_LIMIT) * 100)}%` }}
+                style={{ width: `${Math.min(100, (publicPoolTracks.length / LISTEN_BAR_TOTAL_ROTATION_LIMIT) * 100)}%` }}
               />
             </div>
           </div>

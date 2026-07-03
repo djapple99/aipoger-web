@@ -132,13 +132,26 @@ Check:
 
 Challenger and public pool:
 
-- New submissions enter Challenger.
-- Challenger songs have 24H protection before public-pool promotion.
-- Creator Challenger count is capped at 3.
-- Public-pool songs do not count toward the 3 Challenger limit.
-- Public pool progress shows current count over 88.
-- Public-pool elimination starts only above 88 and removes at most 3 per pass.
-- `/api/listen-bar/process-rotation` GET is dry-run preview; mutation requires protected POST and `LISTEN_BAR_ROTATION_ENABLED=true`.
+- Visitors can switch Bar Heartbreak playback between all public airplay and the 11 fixed music genres.
+- Genre filter UI shows current track counts, with each genre using a 36-track public-pool target.
+- New submissions enter the selected genre's public pool while that genre has fewer than 36 active public songs; full genres send new submissions into same-genre Challenger with 24H protection.
+- Creator upload flows require a fixed genre and must not silently default missing genres.
+- Creator Challenger slots use the per-creator, per-genre 3/2/1 ladder: 0-2 same-genre active public songs allows 3 active Challengers, 3-5 allows 2, and 6+ allows 1.
+- Public-pool songs do not occupy Challenger slots and must not be removed by this slot limit.
+- Public pool progress shows current total over 396 and per-genre counts over 36.
+- Public-pool elimination starts only when a genre has more than 36 public songs and removes at most 3 per pass from overfull genre pools.
+- `GET /api/listen-bar/process-rotation` is manual/monitoring dry-run preview only.
+- Mutation requires protected POST and `LISTEN_BAR_ROTATION_ENABLED=true`.
+
+Daily Spotlight:
+
+- `/admin/listen-bar` shows the Daily Spotlight admin surface inside Bar Heartbreak admin.
+- Admin can select the date and a Bar Heartbreak track, then generate recommendation copy and social caption.
+- The public short entry is `https://aipoger.com/today`; QR codes and short-form captions should use this fixed URL, not a dated `spotlight=` URL.
+- `/today` redirects by Taiwan date to the current spotlight route.
+- Spotlight reactions and comments apply to the same Bar Heartbreak track, not a separate duplicate record.
+- Saving the spotlight creates or updates social drafts only. It must not automatically publish to Discord, Facebook, Instagram, TikTok, or YouTube.
+- Discord publishing requires an approved draft plus the explicit Discord publish action, and should store message/channel response when Discord returns it.
 
 ## Honor Board Checklist
 

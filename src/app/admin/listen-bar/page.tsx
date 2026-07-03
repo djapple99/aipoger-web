@@ -30,7 +30,7 @@ import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
 type TrackSortMode = "manual" | "updated_desc" | "updated_asc" | "created_desc" | "created_asc" | "genre";
-type TrackVisibilityFilter = "all" | "active" | "hidden" | "uncategorized";
+type TrackVisibilityFilter = "all" | "active" | "hidden" | "capacity_eliminated" | "uncategorized";
 type AdminListenBarTrackRow = ListenBarTrackRow & {
   review_status?: "approved" | "pending" | "hidden" | "removed" | string | null;
   moderation_note?: string | null;
@@ -83,11 +83,42 @@ type ListenBarTracksAdminPayload = {
   error?: string;
 };
 
+type DailySpotlightRow = {
+  id: string;
+  spotlight_date: string;
+  track_id: string;
+  headline: string | null;
+  intro: string | null;
+  caption: string | null;
+  media_path: string | null;
+  media_type: string | null;
+  is_active: boolean | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type DailySpotlightPayload = {
+  ok?: boolean;
+  date?: string;
+  missingTable?: boolean;
+  spotlight?: DailySpotlightRow | null;
+  track?: AdminListenBarTrackRow | null;
+  error?: string;
+};
+
+type DailySpotlightForm = {
+  date: string;
+  trackId: string;
+  headline: string;
+  intro: string;
+  caption: string;
+};
+
 const initialForm: TrackForm = {
   title: "",
   artist: "AIPOGER",
   aiTool: "Suno",
-  genre: "自我風格",
+  genre: "Original 自我風格",
   mood: "官方輪播",
   bpm: "",
   durationSeconds: "",
@@ -107,6 +138,28 @@ const UPCOMING_ROTATION_PREVIEW_COUNT = 6;
 const LISTEN_BAR_ADMIN_GENRE_OPTIONS = MUSIC_GENRE_OPTIONS;
 const GENRE_VALUES = new Set(LISTEN_BAR_ADMIN_GENRE_OPTIONS.map((genre) => genre.value));
 const NEEDS_GENRE_REVIEW = new Set(["", "AI Music", "ai music", "Genre", "genre", "自我風格", "未標示風格"]);
+
+function taipeiDateInputValue(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  if (!year || !month || !day) return now.toISOString().slice(0, 10);
+  return `${year}-${month}-${day}`;
+}
+
+const initialDailySpotlightForm: DailySpotlightForm = {
+  date: taipeiDateInputValue(),
+  trackId: "",
+  headline: "",
+  intro: "",
+  caption: "",
+};
 
 function safeFileName(name: string) {
   const cleaned = name
@@ -163,6 +216,22 @@ function hiddenStatus(track: AdminListenBarTrackRow) {
   return track.review_status?.toLowerCase() === "hidden" || Boolean(track.hidden_at);
 }
 
+function capacityEliminatedStatus(track: AdminListenBarTrackRow) {
+  const note = track.moderation_note?.toLowerCase() ?? "";
+  const hasCapacityNote = note.includes("capacity") || note.includes("genre") || note.includes("public pool") || note.includes("rotation");
+  const legacyCapacityCandidate = !note && track.source === "community" && track.bar_phase === "public" && !track.hidden_at;
+  return (
+    removedStatus(track) &&
+    track.bar_phase === "public" &&
+    (hasCapacityNote || legacyCapacityCandidate)
+  );
+}
+
+function trackRemovedAtLabel(track: AdminListenBarTrackRow) {
+  if (!track.removed_at) return "";
+  return new Date(track.removed_at).toLocaleString("zh-TW", { hour12: false });
+}
+
 function sortOrderValue(track: AdminListenBarTrackRow) {
   return typeof track.sort_order === "number" && Number.isFinite(track.sort_order) ? track.sort_order : 1000;
 }
@@ -175,7 +244,7 @@ function publicRotationSort(a: AdminListenBarTrackRow, b: AdminListenBarTrackRow
 
 function activePlayableTracks(tracks: AdminListenBarTrackRow[]) {
   return tracks
-    .filter((track) => track.is_active !== false && !isHiddenTrack(track) && Boolean(track.audio_path?.trim()))
+    .filter((track) => track.source === "community" && track.is_active !== false && !isHiddenTrack(track) && Boolean(track.audio_path?.trim()))
     .sort(publicRotationSort);
 }
 
@@ -239,6 +308,9 @@ function trackReactionTotal(track: AdminListenBarTrackRow) {
 }
 
 function trackStatusBadge(track: AdminListenBarTrackRow, currentlyPlayingId: string) {
+  if (capacityEliminatedStatus(track)) {
+    return { label: "類型池淘汰", className: "border-fuchsia-200/40 bg-fuchsia-500/12 text-fuchsia-100" };
+  }
   if (removedStatus(track)) {
     return { label: "已移除", className: "border-red-300/35 bg-red-500/12 text-red-100" };
   }
@@ -261,6 +333,7 @@ function trackStatusBadge(track: AdminListenBarTrackRow, currentlyPlayingId: str
 }
 
 function phaseLabel(track: AdminListenBarTrackRow) {
+  if (capacityEliminatedStatus(track)) return "類型池淘汰";
   if (removedStatus(track)) return "已移除";
   if (hiddenStatus(track) || track.is_active === false) return "已下架";
   if (track.bar_phase === "public") return "公播池";
@@ -269,6 +342,7 @@ function phaseLabel(track: AdminListenBarTrackRow) {
 }
 
 function adminReviewLabel(track: AdminListenBarTrackRow) {
+  if (capacityEliminatedStatus(track)) return "genre-capacity-eliminated";
   if (removedStatus(track)) return "removed";
   if (hiddenStatus(track)) return "hidden";
   return track.review_status || "approved";
@@ -298,6 +372,7 @@ function trackSearchText(track: AdminListenBarTrackRow) {
     track.ai_tool,
     track.genre,
     track.mood,
+    track.moderation_note,
     phaseLabel(track),
     adminReviewLabel(track),
   ]
@@ -313,7 +388,7 @@ function isUncategorizedTrack(track: AdminListenBarTrackRow) {
 
 function normalizedGenreForSelect(value: string | null | undefined) {
   const genre = value?.trim() ?? "";
-  return GENRE_VALUES.has(genre) ? genre : "自我風格";
+  return GENRE_VALUES.has(genre) ? genre : "Original 自我風格";
 }
 
 function metadataFormFromTrack(track: AdminListenBarTrackRow): TrackMetadataForm {
@@ -330,6 +405,24 @@ function metadataFormFromTrack(track: AdminListenBarTrackRow): TrackMetadataForm
         : "",
     lyrics: track.lyrics ?? "",
     sortOrder: typeof track.sort_order === "number" && Number.isFinite(track.sort_order) ? String(track.sort_order) : "1000",
+  };
+}
+
+function dailySpotlightCopy(track: AdminListenBarTrackRow, date: string) {
+  const title = track.title?.trim() || "今日推薦歌";
+  const artist = track.artist?.trim() || "AIPOGER 創作者";
+  const genre = track.genre?.trim() || "AI Music";
+  const dayLabel = date.replaceAll("-", ".");
+  return {
+    headline: `${title} / ${artist}`,
+    intro: `${dayLabel} 今日推薦：${title}。${genre} 風格，適合現在進傷心酒吧聽完整首。`,
+    caption: [
+      `今日推薦歌：${title}`,
+      `創作者：${artist}`,
+      `類型：${genre}`,
+      "",
+      "進 AIPOGER /today 聽今日推薦，愛心與留言會累積在原歌曲上。",
+    ].join("\n"),
   };
 }
 
@@ -387,6 +480,13 @@ export default function ListenBarAdminPage() {
   const [metadataForm, setMetadataForm] = useState<TrackMetadataForm | null>(null);
   const [metadataSavingId, setMetadataSavingId] = useState("");
   const [optimisticTrackPatches, setOptimisticTrackPatches] = useState<Record<string, Partial<AdminListenBarTrackRow>>>({});
+  const [spotlightForm, setSpotlightForm] = useState<DailySpotlightForm>(initialDailySpotlightForm);
+  const [spotlightLoading, setSpotlightLoading] = useState(false);
+  const [spotlightSaving, setSpotlightSaving] = useState(false);
+  const [spotlightMessage, setSpotlightMessage] = useState("");
+  const [spotlightError, setSpotlightError] = useState("");
+  const [dailySpotlight, setDailySpotlight] = useState<DailySpotlightRow | null>(null);
+  const [dailySpotlightTrack, setDailySpotlightTrack] = useState<AdminListenBarTrackRow | null>(null);
 
   const displayTracks = useMemo(
     () => tracks.map((track) => ({ ...track, ...(optimisticTrackPatches[track.id] ?? {}) })),
@@ -401,12 +501,21 @@ export default function ListenBarAdminPage() {
     });
   }, [displayTracks]);
   const visiblePlayableTracks = useMemo(() => activePlayableTracks(displayTracks), [displayTracks]);
+  const spotlightTrackOptions = useMemo(
+    () => activePlayableTracks(displayTracks).filter((track) => track.source === "community" && !track.is_featured_official),
+    [displayTracks],
+  );
+  const selectedSpotlightTrack = useMemo(
+    () => spotlightTrackOptions.find((track) => track.id === spotlightForm.trackId) ?? dailySpotlightTrack,
+    [dailySpotlightTrack, spotlightForm.trackId, spotlightTrackOptions],
+  );
   const renderedTracks = useMemo(() => {
     const query = trackSearch.trim().toLowerCase();
     const filteredTracks = displayTracks.filter((track) => {
       const hidden = isHiddenTrack(track);
       if (trackVisibilityFilter === "active" && hidden) return false;
       if (trackVisibilityFilter === "hidden" && !hidden) return false;
+      if (trackVisibilityFilter === "capacity_eliminated" && !capacityEliminatedStatus(track)) return false;
       if (trackVisibilityFilter === "uncategorized" && !isUncategorizedTrack(track)) return false;
       if (trackMonthFilter !== "all" && trackMonthKey(track) !== trackMonthFilter) return false;
       if (!query) return true;
@@ -421,6 +530,7 @@ export default function ListenBarAdminPage() {
   );
   const allRenderedSelected = renderedTracks.length > 0 && renderedTracks.every((track) => selectedTrackIdSet.has(track.id));
   const hiddenTrackCount = useMemo(() => displayTracks.filter(isHiddenTrack).length, [displayTracks]);
+  const capacityEliminatedTrackCount = useMemo(() => displayTracks.filter(capacityEliminatedStatus).length, [displayTracks]);
   const uncategorizedTrackCount = useMemo(() => displayTracks.filter(isUncategorizedTrack).length, [displayTracks]);
   const liveRotation = useMemo(() => liveRotationSnapshot(displayTracks, nowMs), [displayTracks, nowMs]);
   const currentlyPlayingId = liveRotation.current?.id ?? "";
@@ -456,6 +566,50 @@ export default function ListenBarAdminPage() {
     setOpenReportCount(reports.filter((report) => report.status === "open" || report.status === "reviewing").length);
     setReportStorageFallback(Boolean(payload?.storageFallback));
   }, []);
+
+  const loadDailySpotlight = useCallback(async (date: string) => {
+    setSpotlightLoading(true);
+    setSpotlightError("");
+    setSpotlightMessage("");
+    const response = await fetch(`/api/listen-bar/daily-spotlight?date=${encodeURIComponent(date)}`, {
+      cache: "no-store",
+    });
+    const payload = (await response.json().catch(() => null)) as DailySpotlightPayload | null;
+    if (!response.ok) {
+      setDailySpotlight(null);
+      setDailySpotlightTrack(null);
+      setSpotlightError(payload?.error || "無法讀取每日推薦歌設定。");
+      setSpotlightLoading(false);
+      return;
+    }
+
+    if (payload?.missingTable) {
+      setDailySpotlight(null);
+      setDailySpotlightTrack(null);
+      setSpotlightForm((current) => ({ ...current, date, trackId: "", headline: "", intro: "", caption: "" }));
+      setSpotlightError("尚未建立每日推薦歌資料表。請先套用 supabase/20260702_listen_bar_daily_spotlight.sql。");
+      setSpotlightLoading(false);
+      return;
+    }
+
+    const spotlight = payload?.spotlight ?? null;
+    const track = payload?.track ?? null;
+    setDailySpotlight(spotlight);
+    setDailySpotlightTrack(track);
+    setSpotlightForm({
+      date,
+      trackId: spotlight?.track_id ?? "",
+      headline: spotlight?.headline ?? "",
+      intro: spotlight?.intro ?? "",
+      caption: spotlight?.caption ?? "",
+    });
+    setSpotlightLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (adminState !== "ready") return;
+    void loadDailySpotlight(spotlightForm.date);
+  }, [adminState, loadDailySpotlight, spotlightForm.date]);
 
   useEffect(() => {
     void (async () => {
@@ -497,6 +651,56 @@ export default function ListenBarAdminPage() {
 
   const updateMetadataForm = (patch: Partial<TrackMetadataForm>) => {
     setMetadataForm((current) => (current ? { ...current, ...patch } : current));
+  };
+
+  const updateSpotlightForm = (patch: Partial<DailySpotlightForm>) => {
+    setSpotlightForm((current) => ({ ...current, ...patch }));
+  };
+
+  const generateSpotlightDraft = () => {
+    if (!selectedSpotlightTrack) {
+      setSpotlightError("請先選擇每日推薦歌曲。");
+      return;
+    }
+    const draft = dailySpotlightCopy(selectedSpotlightTrack, spotlightForm.date);
+    setSpotlightForm((current) => ({ ...current, ...draft }));
+    setSpotlightError("");
+    setSpotlightMessage("已產生推薦文草稿，儲存後才會成為 /today 推薦。");
+  };
+
+  const saveDailySpotlight = async () => {
+    setSpotlightError("");
+    setSpotlightMessage("");
+    if (!spotlightForm.trackId) {
+      setSpotlightError("請先選擇每日推薦歌曲。");
+      return;
+    }
+    setSpotlightSaving(true);
+    const response = await fetch("/api/listen-bar/daily-spotlight", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...(await authHeader()),
+      },
+      body: JSON.stringify({
+        date: spotlightForm.date,
+        trackId: spotlightForm.trackId,
+        headline: spotlightForm.headline,
+        intro: spotlightForm.intro,
+        caption: spotlightForm.caption,
+        isActive: true,
+      }),
+    });
+    const payload = (await response.json().catch(() => null)) as DailySpotlightPayload | null;
+    if (!response.ok) {
+      setSpotlightError(payload?.error || "每日推薦歌儲存失敗。");
+      setSpotlightSaving(false);
+      return;
+    }
+    setDailySpotlight(payload?.spotlight ?? null);
+    setDailySpotlightTrack(payload?.track ?? null);
+    setSpotlightMessage("已儲存每日推薦。/today 會依台灣日期導向今天設定，不是 24H 倒數刪除。");
+    setSpotlightSaving(false);
   };
 
   const focusTrackInList = useCallback((trackId: string) => {
@@ -1060,6 +1264,9 @@ export default function ListenBarAdminPage() {
             </h1>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
+            <Link href="/admin/analytics" className="rounded-full border border-yellow-300/30 bg-yellow-300/10 px-4 py-2 text-sm font-bold text-yellow-100">
+              數據後台
+            </Link>
             <Link href="/admin/social" className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-4 py-2 text-sm font-bold text-emerald-100">
               發文後台
             </Link>
@@ -1166,6 +1373,153 @@ export default function ListenBarAdminPage() {
               目前沒有可播放歌曲。上架歌曲後會顯示正在播放與接下來六首。
             </div>
           )}
+        </section>
+
+        <section className="rounded-[1.4rem] border border-orange-300/18 bg-orange-500/[0.055] p-4 shadow-[0_20px_70px_rgba(0,0,0,0.36)] backdrop-blur md:p-5">
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-orange-300/70">TODAY SPOTLIGHT</p>
+              <h2 className="mt-1 text-2xl font-black text-white">每日推薦歌</h2>
+              <p className="mt-1 text-xs font-bold leading-5 text-zinc-500">
+                依台灣日期切換；不是 24H 倒數。/today 永遠導向今天，舊日期設定不會刪除。
+              </p>
+            </div>
+            <Link
+              href="/today"
+              className="rounded-full border border-orange-200/35 bg-orange-500/12 px-4 py-2 text-xs font-black text-orange-100 transition hover:border-orange-100"
+            >
+              開啟 /today
+            </Link>
+          </div>
+
+          {spotlightMessage && <p className="mb-4 rounded-2xl border border-cyan-300/25 bg-cyan-300/10 px-4 py-3 text-sm font-bold text-cyan-100">{spotlightMessage}</p>}
+          {spotlightError && <p className="mb-4 rounded-2xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-100">{spotlightError}</p>}
+
+          <div className="grid gap-4 xl:grid-cols-[0.82fr_1.18fr]">
+            <div className="grid gap-3">
+              <div className="grid gap-3 sm:grid-cols-[12rem_1fr]">
+                <label className="grid gap-1 text-xs font-black uppercase tracking-[0.12em] text-zinc-500">
+                  日期
+                  <input
+                    type="date"
+                    value={spotlightForm.date}
+                    onChange={(event) => updateSpotlightForm({ date: event.target.value || taipeiDateInputValue() })}
+                    className="h-12 rounded-xl border border-white/12 bg-black/55 px-4 text-sm font-bold tracking-normal text-white outline-none transition focus:border-orange-400"
+                  />
+                </label>
+                <label className="grid gap-1 text-xs font-black uppercase tracking-[0.12em] text-zinc-500">
+                  推薦歌曲
+                  <select
+                    value={spotlightForm.trackId}
+                    onChange={(event) => updateSpotlightForm({ trackId: event.target.value })}
+                    className="h-12 min-w-0 rounded-xl border border-white/12 bg-black/55 px-4 text-sm font-bold tracking-normal text-white outline-none transition focus:border-orange-400"
+                  >
+                    <option value="" className="bg-zinc-950 text-white">選擇可公開播放歌曲</option>
+                    {spotlightTrackOptions.map((track) => (
+                      <option key={track.id} value={track.id} className="bg-zinc-950 text-white">
+                        {track.title} / {track.artist} / {track.genre || "AI Music"}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <input
+                value={spotlightForm.headline}
+                onChange={(event) => updateSpotlightForm({ headline: event.target.value.slice(0, 120) })}
+                placeholder="推薦標題，例如 歌名 / 創作者"
+                className="h-12 rounded-xl border border-white/12 bg-black/55 px-4 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-400"
+              />
+              <textarea
+                value={spotlightForm.intro}
+                onChange={(event) => updateSpotlightForm({ intro: event.target.value.slice(0, 500) })}
+                placeholder="站內推薦介紹"
+                rows={3}
+                className="resize-y rounded-xl border border-white/12 bg-black/55 px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-400"
+              />
+              <textarea
+                value={spotlightForm.caption}
+                onChange={(event) => updateSpotlightForm({ caption: event.target.value.slice(0, 1200) })}
+                placeholder="社群發文草稿（目前只儲存，不自動發布）"
+                rows={5}
+                className="resize-y rounded-xl border border-white/12 bg-black/55 px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-400"
+              />
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => void loadDailySpotlight(spotlightForm.date)}
+                  disabled={spotlightLoading}
+                  className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-orange-200/55 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {spotlightLoading ? "讀取中" : "讀取日期"}
+                </button>
+                <button
+                  type="button"
+                  onClick={generateSpotlightDraft}
+                  disabled={!selectedSpotlightTrack}
+                  className="rounded-full border border-cyan-200/35 bg-cyan-300/10 px-4 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  產生推薦文
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void saveDailySpotlight()}
+                  disabled={spotlightSaving || !spotlightForm.trackId}
+                  className="rounded-full border border-orange-200/40 bg-orange-500 px-5 py-2 text-xs font-black text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-55"
+                >
+                  {spotlightSaving ? "儲存中" : "儲存每日推薦"}
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-black/42 p-4">
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-300/70">Preview</p>
+              {selectedSpotlightTrack ? (
+                <div className="mt-3 grid gap-4 sm:grid-cols-[7rem_1fr]">
+                  <img
+                    src={rowPublicUrl(LISTEN_BAR_COVER_BUCKET, selectedSpotlightTrack.cover_path) || DEFAULT_LISTEN_BAR_COVER}
+                    alt=""
+                    className="aspect-square w-full rounded-2xl bg-black object-cover"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-xl font-black text-white">{spotlightForm.headline || selectedSpotlightTrack.title}</p>
+                    <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">
+                      {spotlightForm.intro || `${selectedSpotlightTrack.artist} / ${selectedSpotlightTrack.genre || "AI Music"}`}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <span className="rounded-full border border-orange-200/25 bg-orange-500/10 px-3 py-1 text-xs font-black text-orange-100">
+                        {spotlightForm.date}
+                      </span>
+                      <span className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-100">
+                        {phaseLabel(selectedSpotlightTrack)}
+                      </span>
+                      <span className="rounded-full border border-white/12 px-3 py-1 text-xs font-black text-zinc-300">
+                        {trackReactionTotal(selectedSpotlightTrack)} reactions
+                      </span>
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => focusTrackInList(selectedSpotlightTrack.id)}
+                        className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55"
+                      >
+                        跳到歌曲管理
+                      </button>
+                      {dailySpotlight?.track_id === selectedSpotlightTrack.id && (
+                        <span className="rounded-full border border-orange-200/35 bg-orange-500/10 px-4 py-2 text-xs font-black text-orange-100">
+                          此日期已設定
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-3 rounded-2xl border border-white/10 bg-black/35 px-4 py-8 text-sm font-bold text-zinc-500">
+                  選一首已上架、有音檔、未下架的社群歌曲作為每日推薦。
+                </div>
+              )}
+            </div>
+          </div>
         </section>
 
         <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
@@ -1297,6 +1651,17 @@ export default function ListenBarAdminPage() {
                   }`}
                 >
                   只看下架{hiddenTrackCount > 0 ? ` ${hiddenTrackCount}` : ""}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTrackVisibilityFilter("capacity_eliminated")}
+                  className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-200/55 ${
+                    trackVisibilityFilter === "capacity_eliminated"
+                      ? "border-fuchsia-200/60 bg-fuchsia-500/14 text-fuchsia-100"
+                      : "border-white/12 text-zinc-200 hover:border-fuchsia-200/55"
+                  }`}
+                >
+                  類型池淘汰{capacityEliminatedTrackCount > 0 ? ` ${capacityEliminatedTrackCount}` : ""}
                 </button>
                 <button
                   type="button"
@@ -1455,10 +1820,12 @@ export default function ListenBarAdminPage() {
 	                    ? "尚無輪播資料。先上傳第一首官方歌曲。"
 	                    : trackSearch.trim()
 	                      ? "沒有符合搜尋條件的歌曲。"
-	                      : trackVisibilityFilter === "hidden"
-	                        ? "目前沒有下架歌曲。"
-	                        : trackVisibilityFilter === "uncategorized"
-	                          ? "目前沒有待補類型的歌曲。"
+                      : trackVisibilityFilter === "hidden"
+                        ? "目前沒有下架歌曲。"
+                        : trackVisibilityFilter === "capacity_eliminated"
+                          ? "目前沒有因類型池容量規則被淘汰的歌曲。"
+                        : trackVisibilityFilter === "uncategorized"
+                          ? "目前沒有待補類型的歌曲。"
 	                          : "目前已隱藏下架歌曲，沒有可顯示的上架歌曲。"}
 	                </div>
               ) : (
@@ -1526,10 +1893,20 @@ export default function ListenBarAdminPage() {
                             <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-bold text-zinc-300">
                               反應：{trackReactionTotal(track)}
                             </span>
-                            <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-bold text-zinc-300">
-                              更新：{updatedAt}
-                            </span>
-                          </div>
+	                            <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-bold text-zinc-300">
+	                              更新：{updatedAt}
+	                            </span>
+                              {track.removed_at && (
+                                <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-bold text-zinc-300">
+                                  淘汰/移除：{trackRemovedAtLabel(track)}
+                                </span>
+                              )}
+                              {track.moderation_note && (
+                                <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-bold text-zinc-300">
+                                  原因：{track.moderation_note}
+                                </span>
+                              )}
+	                          </div>
                           <div className="mt-3 grid gap-2 sm:grid-cols-3">
                             <div className="rounded-xl border border-white/8 bg-white/[0.035] px-3 py-2 text-xs text-zinc-400">
                               秒數 <span className="font-black text-white">{formatDuration(track.duration_seconds)}</span>

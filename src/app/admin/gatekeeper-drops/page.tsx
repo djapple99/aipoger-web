@@ -347,6 +347,9 @@ export default function AdminGatekeeperDropsPage() {
             <p className="mt-2 text-sm font-bold text-zinc-400">四張常駐 Drop 挑戰卡。owner 只上傳守門歌與啟用；開戰時間由挑戰者建立戰場時設定。</p>
           </div>
           <nav className="flex flex-wrap items-center gap-2">
+            <Link href="/admin/analytics" className="rounded-full border border-yellow-200/25 bg-yellow-300/10 px-4 py-2 text-xs font-black text-yellow-100">
+              數據後台
+            </Link>
             <Link href="/admin/social" className="rounded-full border border-emerald-200/25 bg-emerald-300/10 px-4 py-2 text-xs font-black text-emerald-100">
               發文後台
             </Link>

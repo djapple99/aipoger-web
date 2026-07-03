@@ -27,6 +27,7 @@ import { fontGlowSans, fontRighteous } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import {
+  LISTEN_BAR_GENRE_POOL_LIMIT,
   listenBarIsHonorEligible,
   listenBarRowToTrack,
   listenBarSurvivalStartedAt,
@@ -547,24 +548,29 @@ function hotBarRowsFromTracks(tracks: ListenBarTrackRow[]) {
     .map((row) => ({ row, track: listenBarRowToTrack(row) }))
     .filter((item): item is { row: ListenBarTrackRow; track: NonNullable<ReturnType<typeof listenBarRowToTrack>> } => Boolean(item.track))
     .filter(({ track }) => track.source !== "official");
-  const survivalStartedAt = listenBarSurvivalStartedAt(communityTracks.map(({ row, track }) => ({
-    barPhase: track.barPhase,
-    promotedAt: row.promoted_at ?? track.promotedAt,
-    createdAt: track.createdAt,
-  })));
+  const survivalStartedAtByGenre = new Map(
+    MUSIC_GENRE_OPTIONS.map((genre) => [
+      genre.value,
+      listenBarSurvivalStartedAt(communityTracks.map(({ row, track }) => ({
+        barPhase: track.barPhase,
+        genre: track.genre,
+        promotedAt: row.promoted_at ?? track.promotedAt,
+        createdAt: track.createdAt,
+      })), LISTEN_BAR_GENRE_POOL_LIMIT, genre.value),
+    ]),
+  );
 
   return communityTracks
     .filter(({ row, track }) => listenBarIsHonorEligible({
       positiveReactionCount: track.positiveReactionCount,
       promotedAt: row.promoted_at ?? track.promotedAt,
       createdAt: track.createdAt,
-    }, Date.now(), survivalStartedAt))
+    }, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null))
     .sort((a, b) => {
       const byReaction = (b.track.positiveReactionCount || 0) - (a.track.positiveReactionCount || 0);
       if (byReaction !== 0) return byReaction;
       return new Date(b.track.createdAt || 0).getTime() - new Date(a.track.createdAt || 0).getTime();
     })
-    .slice(0, 6)
     .map<RankRow>(({ row, track }, index) => ({
       id: `bar-${track.id}`,
       kind: "bar",
@@ -983,7 +989,7 @@ export default function RankPage() {
         supabase
           .from("listen_bar_tracks")
           .select(
-            "id,title,artist,ai_tool,genre,mood,bpm,duration_seconds,audio_path,cover_path,lyrics,is_active,source,is_featured_official,positive_reaction_count,heart_count,star_count,thumb_count,happy_count,created_at,promoted_at",
+            "id,title,artist,ai_tool,genre,mood,bpm,duration_seconds,audio_path,cover_path,lyrics,is_active,review_status,hidden_at,removed_at,source,is_featured_official,bar_phase,positive_reaction_count,heart_count,star_count,thumb_count,happy_count,created_at,promoted_at",
           )
           .eq("is_active", true)
           .order("positive_reaction_count", { ascending: false })

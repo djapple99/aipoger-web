@@ -12,7 +12,7 @@ test("official gatekeeper normalizer keeps media fields", () => {
     id: "gate-01-heartbreak",
     gate_number: "GATE 01",
     title: "官方守門 Drop",
-    genre: "感人抒情",
+    genre: "R&B 深情瞬間",
     ai_tool: "Suno",
     description: "歡迎任何人來挑戰",
     audio_path: "official-gatekeeper-drops/gate-01/audio/drop.wav",
@@ -33,7 +33,7 @@ test("official gatekeeper display title prefers song name", () => {
     title: "我心掉",
     audioPath: "official-gatekeeper-drops/gate-01/audio/1781864377138-demo-60s.wav",
     gateNumber: "GATE 01",
-    genre: "復古City-Pop",
+    genre: "City Pop / Disco / Funk 城市律動",
   });
 
   assert.equal(title, "我心掉");
@@ -44,7 +44,7 @@ test("official gatekeeper display title falls back to audio filename before gene
     title: OFFICIAL_GATEKEEPER_GENERIC_TITLE,
     audioPath: "official-gatekeeper-drops/gate-01/audio/1781864377138-heartbreak-demo-60s.wav",
     gateNumber: "GATE 01",
-    genre: "復古City-Pop",
+    genre: "City Pop / Disco / Funk 城市律動",
   });
 
   assert.equal(title, "heartbreak demo");

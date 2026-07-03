@@ -157,16 +157,20 @@ Current rules:
 - Voting/reactions and comments require sign-in.
 - Creator submissions form the public rotation.
 - Official AIPOGER fallback songs must not count as active public-pool songs.
-- Public pool target is 88 community songs.
-- Before 88 public songs, new submissions enter public pool and Challenger stays hidden.
-- After 88 public songs, new submissions enter Challenger.
-- Each creator can have up to 3 active Challenger songs.
+- Public playback supports all-airplay plus the 11 fixed music genres.
+- Each genre has a 36-track public pool; with the current 11 genres, the public-pool target totals 396 community songs.
+- New submissions must include a fixed genre. If that genre has fewer than 36 active public songs, the submission enters the same-genre public pool immediately; full genres send new submissions into same-genre Challenger.
+- Creator Challenger slots use the current per-creator, per-genre 3/2/1 ladder: 0-2 same-genre active public songs allows 3 active Challengers, 3-5 allows 2, and 6+ allows 1. Public-pool songs do not get removed by this slot limit.
 - Challenger observation period is 24 hours.
-- Challenger has a 24-hour protection period, then automatically moves into the public pool. The old 1-positive-reaction promotion gate is retired.
-- Public-pool elimination runs only when there are more than 88 public songs.
-- Each elimination pass removes up to 3 low-performing public-pool songs.
-- A song with 30 positive reactions or 7 public survival days becomes Honor Board eligible.
+- Challenger has a 24-hour protection period, then becomes eligible to move into the same-genre public pool. The old 1-positive-reaction promotion gate is retired.
+- Public-pool elimination runs per genre only when that genre has more than 36 public songs and removes at most 3 low-reaction older songs per pass.
+- Each elimination pass removes only overflow inside overfull genre pools.
+- A song with 30 hearts/positive reactions or 7 public survival days after its genre pool is full becomes Honor Board eligible.
+- Pressing Heart on a Bar Heartbreak track also saves it to the listener's favorites. Removing it from favorites does not remove the historical heart reaction.
 - New uploads get priority play after the current song finishes; up to 8 new uploads can air within a 1-hour priority batch.
+- Daily Spotlight is a curated promotion layer for one Bar Heartbreak track. It uses `/today`, QR code, and social drafts to send listeners to the featured song without interrupting the shared radio rotation.
+- Spotlight hearts/comments must write to the same Bar Heartbreak track record, so promotion activity helps the song's normal survival and honor signals.
+- Saving a Daily Spotlight creates drafts; external publishing still requires admin approval and a platform-specific publish action. Discord can publish through webhook when configured, but approval alone is not a send.
 
 ## Honor Board Rules
 

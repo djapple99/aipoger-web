@@ -1,5 +1,10 @@
 # AIPOGER Public Beta Plan - 2026-05-29
 
+> Archived historical snapshot. Current Bar Heartbreak rules are the
+> 2026-07-01/2026-07-02 genre-pool rules: 11 fixed genres, 36 public tracks per
+> genre, 396 total public target, and no system capacity eviction before
+> 2026-07-06 00:00 +08.
+
 本文件記錄 2026-05-29 晚間 8:30-9:00 小公測的檢查結果、社群操作節奏與發文稿。
 
 ## 公測定位
@@ -38,7 +43,7 @@ Production 頁面：
 Production 行為：
 
 - 傷心酒吧目前公播池 30 首。
-- 挑戰池目前 0 首，尚未滿 88 首前不顯示。
+- 當時挑戰池目前 0 首，尚未達到當時舊版滿池門檻前不顯示；現行規則見本檔檔頭封存註記。
 - 未登入投票會回覆：`請先登入再投票；聽歌不需要登入。`
 - 未登入留言會回覆：`請先登入再留言。`
 - 未登入歌曲評論會回覆：`請先登入再留下歌曲評論。`
