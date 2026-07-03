@@ -2367,7 +2367,7 @@ export default function ListenBarPage() {
                 label={listenCopy.shareLabel}
                 copiedLabel={listenCopy.copied}
                 wrapperClassName="order-2"
-                className="min-h-11 border-cyan-200/28 bg-cyan-300/[0.07] px-3 text-sm text-cyan-50 shadow-[0_0_22px_rgba(34,211,238,0.12),inset_0_1px_0_rgba(255,255,255,0.06)] ring-1 ring-cyan-100/8 hover:border-cyan-100/60 hover:bg-cyan-300/13 hover:shadow-[0_0_30px_rgba(34,211,238,0.2),inset_0_1px_0_rgba(255,255,255,0.09)] sm:px-4"
+                className="min-h-11 border-rose-200/40 bg-rose-500/[0.08] px-3 text-sm text-rose-50 shadow-[0_0_28px_rgba(255,49,80,0.22),inset_0_1px_0_rgba(255,255,255,0.06)] ring-1 ring-rose-100/12 hover:border-rose-100/70 hover:bg-rose-500/14 hover:shadow-[0_0_38px_rgba(255,49,80,0.32),inset_0_1px_0_rgba(255,255,255,0.09)] sm:px-4"
               />
               <Link
                 href={`/rank${langQuery}`}
@@ -2669,7 +2669,7 @@ export default function ListenBarPage() {
                     url={selectedGenreShareUrl}
                     label={selectedPlaybackGenre === "all" ? (isZh ? "分享公播" : "Share All") : (isZh ? "分享此類" : "Share Genre")}
                     copiedLabel={listenCopy.copied}
-                    className="min-h-10 border-cyan-200/36 bg-cyan-300/10 px-3 py-1 text-[11px] text-cyan-50 shadow-[0_0_18px_rgba(34,211,238,0.14),inset_0_1px_0_rgba(255,255,255,0.055)] ring-1 ring-cyan-100/10 hover:border-cyan-100/70 hover:bg-cyan-300/16 hover:shadow-[0_0_26px_rgba(34,211,238,0.22),inset_0_1px_0_rgba(255,255,255,0.08)]"
+                    className="min-h-10 border-rose-200/44 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-50 shadow-[0_0_24px_rgba(255,49,80,0.24),inset_0_1px_0_rgba(255,255,255,0.055)] ring-1 ring-rose-100/12 hover:border-rose-100/75 hover:bg-rose-500/16 hover:shadow-[0_0_34px_rgba(255,49,80,0.34),inset_0_1px_0_rgba(255,255,255,0.08)]"
                   />
                   <span className="rounded-full border border-cyan-200/20 bg-cyan-300/8 px-3 py-1 text-[11px] font-black text-cyan-100">
                     {selectedGenreLabel}
@@ -2915,8 +2915,8 @@ export default function ListenBarPage() {
                 <label
                   className={`group relative flex min-h-[5.9rem] cursor-pointer overflow-hidden rounded-2xl border px-4 py-3 text-sm font-bold transition ${
                     publicAudioFile
-                      ? "border-cyan-200/60 bg-cyan-300/[0.09] shadow-[0_0_32px_rgba(34,211,238,0.16),inset_0_0_24px_rgba(34,211,238,0.045)] ring-1 ring-cyan-100/10 hover:border-cyan-100/80 hover:shadow-[0_0_40px_rgba(34,211,238,0.24),inset_0_0_26px_rgba(34,211,238,0.06)]"
-                      : "border-orange-200/58 bg-[radial-gradient(circle_at_20%_12%,rgba(255,143,43,0.34),transparent_42%),rgba(255,106,0,0.09)] shadow-[0_0_34px_rgba(255,138,43,0.16),inset_0_0_24px_rgba(255,196,92,0.045)] ring-1 ring-orange-100/10 hover:border-orange-100/85 hover:shadow-[0_0_42px_rgba(255,138,43,0.25),inset_0_0_26px_rgba(255,196,92,0.065)]"
+                      ? "border-rose-200/68 bg-rose-500/[0.1] shadow-[0_0_42px_rgba(255,49,80,0.3),inset_0_0_26px_rgba(255,49,80,0.06)] ring-1 ring-rose-100/14 hover:border-rose-100/85 hover:shadow-[0_0_54px_rgba(255,49,80,0.42),inset_0_0_28px_rgba(255,49,80,0.08)]"
+                      : "border-rose-200/68 bg-[radial-gradient(circle_at_20%_12%,rgba(255,49,80,0.38),transparent_42%),rgba(255,60,84,0.1)] shadow-[0_0_42px_rgba(255,49,80,0.3),inset_0_0_26px_rgba(255,196,92,0.055)] ring-1 ring-rose-100/14 hover:border-rose-100/90 hover:shadow-[0_0_56px_rgba(255,49,80,0.44),inset_0_0_30px_rgba(255,196,92,0.075)]"
                   }`}
                 >
                   <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.07),transparent_36%,rgba(255,255,255,0.025))]" />
