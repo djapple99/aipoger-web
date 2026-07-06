@@ -4,7 +4,6 @@ import {
   LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
   LISTEN_BAR_GENRE_POOL_LIMIT,
   LISTEN_BAR_PUBLIC_EVICTION_LIMIT,
-  LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
   LISTEN_BAR_PROMOTION_PROTECTION_UNTIL,
   listenBarIsHonorEligible,
   listenBarPromotionProtectionActive,
@@ -74,15 +73,6 @@ async function processRotation(request: NextRequest) {
 
   if (countError) return NextResponse.json({ error: countError.message }, { status: 500 });
 
-  const { count: publicCountBeforePromotion, error: publicCountBeforePromotionError } = await admin
-    .from("listen_bar_tracks")
-    .select("id", { count: "exact", head: true })
-    .eq("source", "community")
-    .eq("is_active", true)
-    .eq("bar_phase", "public");
-
-  if (publicCountBeforePromotionError) return NextResponse.json({ error: publicCountBeforePromotionError.message }, { status: 500 });
-
   let eligibleQuery = admin
     .from("listen_bar_tracks")
     .select("id, positive_reaction_count, created_at, bar_phase")
@@ -147,8 +137,8 @@ async function processRotation(request: NextRequest) {
     publicEvictionLimit: LISTEN_BAR_PUBLIC_EVICTION_LIMIT,
     promotionProtectionActive,
     evictionPausedUntil: LISTEN_BAR_PROMOTION_PROTECTION_UNTIL,
-    publicPoolAtLimit: publicOverflow > 0 || (publicCountBeforePromotion ?? 0) >= LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
-    publicLimit: LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
+    publicPoolAtLimit: publicOverflow > 0,
+    publicLimit: LISTEN_BAR_GENRE_POOL_LIMIT,
     genrePoolLimit: LISTEN_BAR_GENRE_POOL_LIMIT,
   });
 }
