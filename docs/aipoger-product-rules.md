@@ -244,8 +244,9 @@ Monitoring and automation baseline:
 
 - Any recurring AIPOGER Bar Heartbreak monitoring task must use the 2026-07-01 / 2026-07-02 genre-pool rules as the active rule set.
 - Do not use a global 88-song pool as the current monitoring target. Historical references to 88-song capacity eviction may remain only as legacy moderation-note keys or repair context.
+- As of 2026-07-06, production has an explicit DB guard that blocks legacy/global 88-song public-pool removals and unmarked public-pool removals. Capacity eviction may only use the `36-song genre public pool capacity rotation eviction.` note, and only when that same genre has more than 36 active public tracks. Creator/admin/moderation removals must carry explicit creator/admin/moderation notes.
 - Production monitoring should treat `GET /api/listen-bar/process-rotation` as dry-run preview unless a separate, explicit release task enables protected mutation.
-- Before 2026-07-06 00:00 Taiwan time, any system capacity removal is a rule violation unless it is an explicit creator/admin removal rather than automated capacity eviction.
+- Any system capacity removal from a genre at or below 36 active public tracks is a rule violation unless it is an explicit creator/admin/moderation removal rather than automated capacity eviction.
 
 Product language:
 

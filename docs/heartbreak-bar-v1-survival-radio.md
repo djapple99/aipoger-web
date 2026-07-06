@@ -8,6 +8,8 @@
 
 2026-07-02 補充：所有監控、社群公告、後台文案與 Discord 新規都必須以 2026-07-01 / 2026-07-02 新規為準。舊的全站 88 首規則不再是現行規則；只能作為追查舊錯誤淘汰與 legacy `moderation_note` 的歷史上下文。
 
+2026-07-06 補充：production 已套 `20260706_listen_bar_retire_legacy_88_rotation.sql`，DB 層封鎖舊全站 88 首淘汰與未標記的 public-pool soft delete。容量淘汰只能使用 `36-song genre public pool capacity rotation eviction.`，且只能在同一類型 active public 超過 36 首時發生。創作者自刪、owner/admin 下架、moderation 下架必須帶明確人工註記。
+
 ## 類型播放與同類競爭
 
 - 傷心酒吧保留「全部播放」，但必須支援依音樂類型播放，讓聽眾可以重複聆聽自己想待的情境。
@@ -104,7 +106,7 @@
 - 監控任務只讀不修改；不得執行 POST、不得套 SQL、不得直接改資料。
 - 每次先讀 production `GET /api/listen-bar/process-rotation` dry-run JSON，並檢查 `dryRun=true`、`enabledForMutation=false`、`promotionProtectionActive=true`、`wouldRemoveCount=0`、`activeChallenger=0`、`eligibleChallengerCount=0` 是否仍成立。
 - 若可查 Supabase，只做只讀交叉檢查：active public / challenger、各類型公播數、最近 `removed_at`、RPC execute 權限。
-- 2026-07-06 00:00 台灣時間前，若出現系統容量淘汰、非人工 `removed_at`、`wouldRemoveCount > 0`、`dryRun=false`、`enabledForMutation=true`、`promotionProtectionActive=false`，要明確告警。
+- 2026-07-06 起，若出現舊 88 首淘汰、未標記 public-pool soft delete、同類型未超過 36 首卻被系統容量淘汰、非人工 `removed_at`、`wouldRemoveCount > 0`、`dryRun=false`、`enabledForMutation=true`，要明確告警。
 - `publicOverflow` 若只是舊全站容量概念，不可單獨當作告警；現行判斷核心是每個固定類型是否超過 36 首，以及淘汰是否只在同類型內、每 8 小時最多 3 首、不能刪到低於 36 首。
 
 ## 2026-07-02 Discord 公告同步
