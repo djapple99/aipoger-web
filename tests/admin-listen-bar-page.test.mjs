@@ -19,3 +19,12 @@ test("listen bar admin no longer exposes pending genre review as a primary filte
   assert.ok(productRulesSource.includes("dropdown filter for the fixed 11 music genres"));
   assert.ok(productRulesSource.includes("Do not bring back a primary `待補類型` filter"));
 });
+
+test("listen bar admin audio previews are mutually exclusive", () => {
+  assert.ok(adminListenBarSource.includes("handleAdminAudioPlay"));
+  assert.ok(adminListenBarSource.includes('querySelectorAll<HTMLAudioElement>("[data-admin-listen-bar-audio]")'));
+  assert.ok(adminListenBarSource.includes("if (audio !== currentAudio) audio.pause();"));
+  assert.ok(adminListenBarSource.includes('data-admin-listen-bar-audio="true"'));
+  assert.ok(adminListenBarSource.includes("onPlay={handleAdminAudioPlay}"));
+  assert.ok(productRulesSource.includes("track-card audio controls must be mutually exclusive"));
+});

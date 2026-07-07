@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, SyntheticEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import LangToggle from "@/components/lang-toggle";
 import SafetyNotice from "@/components/safety-notice";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
@@ -454,6 +454,7 @@ export default function ListenBarAdminPage() {
   const [embeddedCover, setEmbeddedCover] = useState<ParsedMp3Metadata["cover"] | null>(null);
   const [coverPreview, setCoverPreview] = useState(DEFAULT_LISTEN_BAR_COVER);
   const [audioPreview, setAudioPreview] = useState("");
+  const activeAdminAudioRef = useRef<HTMLAudioElement | null>(null);
   const [tableReady, setTableReady] = useState(true);
   const [openReportCount, setOpenReportCount] = useState(0);
   const [reportStorageFallback, setReportStorageFallback] = useState(false);
@@ -647,6 +648,13 @@ export default function ListenBarAdminPage() {
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      activeAdminAudioRef.current?.pause();
+      activeAdminAudioRef.current = null;
+    };
+  }, []);
+
   const updateForm = (patch: Partial<TrackForm>) => {
     setForm((current) => ({ ...current, ...patch }));
   };
@@ -657,6 +665,14 @@ export default function ListenBarAdminPage() {
 
   const updateSpotlightForm = (patch: Partial<DailySpotlightForm>) => {
     setSpotlightForm((current) => ({ ...current, ...patch }));
+  };
+
+  const handleAdminAudioPlay = (event: SyntheticEvent<HTMLAudioElement>) => {
+    const currentAudio = event.currentTarget;
+    document.querySelectorAll<HTMLAudioElement>("[data-admin-listen-bar-audio]").forEach((audio) => {
+      if (audio !== currentAudio) audio.pause();
+    });
+    activeAdminAudioRef.current = currentAudio;
   };
 
   const generateSpotlightDraft = () => {
@@ -1557,7 +1573,14 @@ export default function ListenBarAdminPage() {
               </label>
 
               {audioPreview && (
-                <audio className="w-full accent-orange-500" controls preload="metadata" src={audioPreview}>
+                <audio
+                  className="w-full accent-orange-500"
+                  controls
+                  data-admin-listen-bar-audio="true"
+                  onPlay={handleAdminAudioPlay}
+                  preload="metadata"
+                  src={audioPreview}
+                >
                   <track kind="captions" />
                 </audio>
               )}
@@ -1918,7 +1941,15 @@ export default function ListenBarAdminPage() {
                             </div>
                           </div>
                           {audioUrl && (
-                            <audio className="mt-3 w-full accent-orange-500" controls controlsList="nodownload noplaybackrate" preload="metadata" src={audioUrl}>
+                            <audio
+                              className="mt-3 w-full accent-orange-500"
+                              controls
+                              controlsList="nodownload noplaybackrate"
+                              data-admin-listen-bar-audio="true"
+                              onPlay={handleAdminAudioPlay}
+                              preload="metadata"
+                              src={audioUrl}
+                            >
                               <track kind="captions" />
                             </audio>
                           )}
