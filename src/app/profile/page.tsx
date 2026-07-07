@@ -11,8 +11,11 @@ import { IMAGE_UPLOAD_ACCEPT, IMAGE_UPLOAD_FORMAT_LABEL, isAllowedImageUploadFil
 import { readFighterNameFromStorage, writeFighterNameToStorage } from "@/lib/fighter-name-storage";
 import { loadFighterNameFromProfile, saveFighterNameToProfile } from "@/lib/user-profile-fighter-name";
 import { loadIsAdmin } from "@/lib/user-profile-admin";
+import { LISTEN_BAR_AUDIO_BUCKET } from "@/lib/listen-bar";
 
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+const BATTLE_AUDIO_BUCKET = "battle-audio";
+const PROFILE_CHALLENGE_AUDIO_KEY = "aipoger:profile-challenge-audio";
 
 type ListenBarTrack = {
   id: string;
@@ -22,6 +25,7 @@ type ListenBarTrack = {
   genre?: string | null;
   bar_phase?: string | null;
   is_active?: boolean | null;
+  audio_path?: string | null;
   heart_count?: number | null;
   positive_reaction_count?: number | null;
   created_at?: string | null;
@@ -34,6 +38,9 @@ type BattleQueueRow = {
   scheduled_start_at?: string | null;
   original_file_name?: string | null;
   genre?: string | null;
+  ai_tool?: string | null;
+  audio_path?: string | null;
+  previewAudioUrl?: string | null;
   match_group_id?: string | null;
 };
 
@@ -76,6 +83,9 @@ type CreatorItem = {
   meta: string;
   href: string;
   date?: string | null;
+  genre?: string | null;
+  aiTool?: string | null;
+  audioUrl?: string | null;
 };
 
 type CreatorFilter = "all" | "listenBar" | "battle" | "records" | "wins" | "favorites";
@@ -98,7 +108,27 @@ function formatDate(value: string | null | undefined, lang: string): string {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   }).format(date);
+}
+
+function storagePublicUrl(bucket: string, path: string | null | undefined): string | null {
+  const value = path?.trim();
+  if (!value) return null;
+  if (/^(https?:|blob:|data:)/i.test(value)) return value;
+  return supabase.storage.from(bucket).getPublicUrl(value).data.publicUrl;
+}
+
+async function signedBattleAudioUrl(path: string | null | undefined): Promise<string | null> {
+  const value = path?.trim();
+  if (!value) return null;
+  if (/^(https?:|blob:|data:)/i.test(value)) return value;
+  const { data, error } = await supabase.storage.from(BATTLE_AUDIO_BUCKET).createSignedUrl(value, 60 * 60);
+  if (error) {
+    console.warn("[profile] battle audio signed url failed", error);
+    return null;
+  }
+  return data?.signedUrl ?? null;
 }
 
 function compactStatus(status: string | null | undefined, lang: string): string {
@@ -138,8 +168,10 @@ function ProfileInner() {
   const [wins, setWins] = useState<BattleArchiveRow[]>([]);
   const [honorFavorites, setHonorFavorites] = useState<HonorFavoriteRecord[]>([]);
   const [creatorFilter, setCreatorFilter] = useState<CreatorFilter>("all");
+  const [previewingItemId, setPreviewingItemId] = useState<string | null>(null);
   const cropFileInputRef = useRef<HTMLInputElement>(null);
   const avatarSectionRef = useRef<HTMLDivElement>(null);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const copy = useMemo(
     () =>
@@ -221,7 +253,7 @@ function ProfileInner() {
 
         const queuesPromise = supabase
           .from("battle_queue")
-          .select("id,status,created_at,scheduled_start_at,original_file_name,genre,match_group_id")
+          .select("id,status,created_at,scheduled_start_at,original_file_name,genre,ai_tool,audio_path,match_group_id")
           .eq("user_id", uid)
           .order("created_at", { ascending: false })
           .limit(12);
@@ -263,7 +295,14 @@ function ProfileInner() {
         }
 
         if (queuesResult.status === "fulfilled" && !queuesResult.value.error) {
-          setBattleQueues((queuesResult.value.data ?? []) as BattleQueueRow[]);
+          const queueRows = ((queuesResult.value.data ?? []) as BattleQueueRow[]);
+          const queuesWithAudio = await Promise.all(
+            queueRows.map(async (queue) => ({
+              ...queue,
+              previewAudioUrl: await signedBattleAudioUrl(queue.audio_path),
+            })),
+          );
+          setBattleQueues(queuesWithAudio);
         } else {
           setCreatorError(copy.error);
         }
@@ -349,6 +388,22 @@ function ProfileInner() {
     void loadProfile();
   }, [loadProfile]);
 
+  const stopPreview = useCallback(() => {
+    const audio = previewAudioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.src = "";
+      previewAudioRef.current = null;
+    }
+    setPreviewingItemId(null);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      stopPreview();
+    };
+  }, [stopPreview]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (window.location.hash !== "#avatar-upload") return;
@@ -429,6 +484,63 @@ function ProfileInner() {
     }
   };
 
+  const togglePreview = useCallback((item: CreatorItem) => {
+    const audioUrl = item.audioUrl?.trim();
+    if (!audioUrl) return;
+
+    const current = previewAudioRef.current;
+    if (previewingItemId === item.id && current && !current.paused) {
+      stopPreview();
+      return;
+    }
+
+    stopPreview();
+    const audio = new Audio(audioUrl);
+    audio.preload = "auto";
+    audio.onended = () => setPreviewingItemId(null);
+    audio.onerror = () => {
+      setPreviewingItemId(null);
+      alert(isZh ? "這首歌暫時無法預覽，請稍後再試。" : "This track cannot be previewed right now.");
+    };
+    previewAudioRef.current = audio;
+    setPreviewingItemId(item.id);
+    void audio.play().catch((error) => {
+      console.warn("[profile] preview play blocked", error);
+      setPreviewingItemId(null);
+    });
+  }, [isZh, previewingItemId, stopPreview]);
+
+  const openChallengeCut = useCallback((item: CreatorItem) => {
+    stopPreview();
+    const params = new URLSearchParams({
+      flow: "upload-first",
+      lang,
+    });
+    const title = item.title.trim();
+    const genre = item.genre?.trim();
+    const aiTool = item.aiTool?.trim();
+    if (title) params.set("songName", title);
+    if (genre) params.set("genre", genre);
+    if (aiTool) params.set("aiTool", aiTool);
+
+    const audioUrl = item.audioUrl?.trim();
+    if (typeof window !== "undefined" && audioUrl) {
+      window.sessionStorage.setItem(
+        PROFILE_CHALLENGE_AUDIO_KEY,
+        JSON.stringify({
+          audioUrl,
+          title,
+          genre: genre ?? "",
+          aiTool: aiTool ?? "",
+          fileName: `${title || "aipoger-track"}.mp3`,
+        }),
+      );
+      params.set("profileAudio", "1");
+    }
+
+    router.push(`/battle/hook-cut?${params.toString()}`);
+  }, [lang, router, stopPreview]);
+
   const creatorItems = useMemo<CreatorItem[]>(() => {
     const tracks = barTracks.map((track) => ({
       id: `bar-${track.id}`,
@@ -445,6 +557,9 @@ function ProfileInner() {
         .join(" / "),
       href: "/listen-bar",
       date: track.created_at,
+      genre: track.genre,
+      aiTool: track.ai_tool,
+      audioUrl: storagePublicUrl(LISTEN_BAR_AUDIO_BUCKET, track.audio_path),
     }));
 
     const queues = battleQueues.map((queue) => ({
@@ -452,9 +567,12 @@ function ProfileInner() {
       category: "battle" as const,
       kind: copy.battle,
       title: queue.original_file_name?.trim() || queue.genre?.trim() || copy.battle,
-      meta: [compactStatus(queue.status, lang), queue.genre?.trim()].filter(Boolean).join(" / "),
+      meta: [compactStatus(queue.status, lang), queue.ai_tool?.trim(), queue.genre?.trim()].filter(Boolean).join(" / "),
       href: queue.match_group_id ? `/battle/${queue.match_group_id}` : "/battle/setup",
       date: queue.created_at ?? queue.scheduled_start_at,
+      genre: queue.genre,
+      aiTool: queue.ai_tool,
+      audioUrl: queue.previewAudioUrl,
     }));
 
     const battleRecords = battles.map((battle) => ({
@@ -708,18 +826,40 @@ function ProfileInner() {
               {filteredCreatorItems.length > 0 ? (
                 <div className="space-y-2">
                   {filteredCreatorItems.map((item) => (
-                    <Link
+                    <article
                       key={item.id}
-                      href={item.href}
-                      className="grid gap-2 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 transition hover:border-orange-300/45 hover:bg-orange-300/[0.06] sm:grid-cols-[8rem_1fr_auto] sm:items-center"
+                      className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 transition hover:border-orange-300/45 hover:bg-orange-300/[0.06] sm:grid-cols-[2.5rem_7rem_minmax(0,1fr)_auto] sm:items-center"
                     >
-                      <span className="text-xs font-black uppercase tracking-[0.18em] text-cyan-100/80">{item.kind}</span>
-                      <span className="min-w-0">
+                      {item.audioUrl ? (
+                        <button
+                          type="button"
+                          onClick={() => togglePreview(item)}
+                          className="flex h-10 w-10 items-center justify-center rounded-full border border-cyan-200/30 bg-cyan-300/[0.08] text-sm font-black text-cyan-100 transition hover:border-cyan-100 hover:bg-cyan-300/15"
+                          aria-label={previewingItemId === item.id ? (isZh ? "暫停預覽" : "Pause preview") : (isZh ? "預覽歌曲" : "Preview track")}
+                        >
+                          {previewingItemId === item.id ? "Ⅱ" : "▶"}
+                        </button>
+                      ) : (
+                        <span className="h-10 w-10" aria-hidden="true" />
+                      )}
+                      <span className="hidden text-xs font-black uppercase tracking-[0.18em] text-cyan-100/80 sm:block">{item.kind}</span>
+                      <Link href={item.href} className="min-w-0 rounded-xl outline-none transition focus-visible:ring-2 focus-visible:ring-orange-300/70">
                         <span className="block truncate text-base font-black text-zinc-50">{item.title}</span>
                         <span className="block truncate text-xs text-zinc-500">{item.meta}</span>
+                      </Link>
+                      <span className="col-span-2 flex items-center justify-between gap-3 sm:col-span-1 sm:justify-end">
+                        <span className="whitespace-nowrap text-xs tabular-nums text-zinc-500">{formatDate(item.date, lang)}</span>
+                        {item.audioUrl ? (
+                          <button
+                            type="button"
+                            onClick={() => openChallengeCut(item)}
+                            className="rounded-full border border-orange-300/35 bg-orange-400/10 px-3 py-1.5 text-xs font-black text-orange-100 transition hover:border-orange-200 hover:bg-orange-400/18"
+                          >
+                            {isZh ? "挑戰" : "Challenge"}
+                          </button>
+                        ) : null}
                       </span>
-                      <span className="text-xs text-zinc-500">{formatDate(item.date, lang)}</span>
-                    </Link>
+                    </article>
                   ))}
                 </div>
               ) : (

@@ -33,12 +33,21 @@ const MAX_HOOK_SECONDS = 60;
 const MIN_REGION_SECONDS = 0.25;
 const MAX_LYRICS_CHARS = 8000;
 const PENDING_AUDIO_COVER_KEY = 'aipoger:pending-audio-cover';
+const PROFILE_CHALLENGE_AUDIO_KEY = 'aipoger:profile-challenge-audio';
 const CLOSED_BATTLE_STATUSES = new Set(["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"]);
 
 type RegionTimes = { start: number; end: number };
 type WaveRegion = RegionTimes & {
   setOptions: (options: Partial<RegionTimes>) => void;
   on: (event: 'update', handler: () => void) => void;
+};
+
+type ProfileChallengeAudioPayload = {
+  audioUrl?: string;
+  title?: string;
+  genre?: string;
+  aiTool?: string;
+  fileName?: string;
 };
 
 // ─── i18n ───────────────────────────────────────────────
@@ -281,6 +290,19 @@ function originalAudioContentType(file: File) {
   if (name.endsWith('.aac')) return 'audio/aac';
   if (name.endsWith('.ogg')) return 'audio/ogg';
   return file.type || 'audio/mpeg';
+}
+
+function profileAudioFileName(payload: ProfileChallengeAudioPayload, contentType: string) {
+  const fallbackExt =
+    contentType.includes("mp4") || contentType.includes("m4a")
+      ? "m4a"
+      : contentType.includes("ogg")
+        ? "ogg"
+        : contentType.includes("wav")
+          ? "wav"
+          : "mp3";
+  const base = payload.fileName?.trim() || payload.title?.trim() || "aipoger-track";
+  return /\.[a-z0-9]{2,5}$/i.test(base) ? base : `${base}.${fallbackExt}`;
 }
 
 async function uploadHookWav(
@@ -583,6 +605,8 @@ function HookCutContent() {
   const playStartedAtRef = useRef<number>(0);
   const playOffsetRef = useRef<number>(0);
   const isPlayingRef = useRef(false);
+  const profileAudioLoadedRef = useRef(false);
+  const processAudioFileRef = useRef<((file: File) => Promise<void>) | null>(null);
 
   useEffect(() => {
     isPlayingRef.current = isPlaying;
@@ -800,6 +824,7 @@ function HookCutContent() {
       setIsDecoding(false);
     }
   };
+  processAudioFileRef.current = processAudioFile;
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -819,6 +844,50 @@ function HookCutContent() {
     }
     await processAudioFile(file);
   };
+
+  useEffect(() => {
+    if (profileAudioLoadedRef.current) return;
+    if (searchParams.get("profileAudio") !== "1") return;
+    if (typeof window === "undefined") return;
+    profileAudioLoadedRef.current = true;
+
+    const raw = window.sessionStorage.getItem(PROFILE_CHALLENGE_AUDIO_KEY);
+    if (!raw) return;
+    window.sessionStorage.removeItem(PROFILE_CHALLENGE_AUDIO_KEY);
+
+    let payload: ProfileChallengeAudioPayload | null = null;
+    try {
+      payload = JSON.parse(raw) as ProfileChallengeAudioPayload;
+    } catch {
+      payload = null;
+    }
+
+    const sourceUrl = payload?.audioUrl?.trim();
+    if (!sourceUrl) return;
+    if (payload?.title?.trim() && !songName.trim()) setSongName(payload.title.trim());
+    if (payload?.genre?.trim() && !genre.trim()) setGenre(payload.genre.trim());
+
+    void (async () => {
+      setAudioError(null);
+      setIsDecoding(true);
+      try {
+        const response = await fetch(sourceUrl, { cache: "no-store" });
+        if (!response.ok) throw new Error(`profile audio ${response.status}`);
+        const blob = await response.blob();
+        const file = new File([blob], profileAudioFileName(payload ?? {}, blob.type || "audio/mpeg"), {
+          type: blob.type || "audio/mpeg",
+        });
+        const process = processAudioFileRef.current;
+        if (!process) throw new Error("profile audio processor unavailable");
+        await process(file);
+      } catch (error) {
+        console.error("[hook-cut] profile audio load failed", error);
+        setAudioError(t.uploadDecodeError);
+      } finally {
+        setIsDecoding(false);
+      }
+    })();
+  }, [genre, searchParams, songName, t.uploadDecodeError]);
 
   const handleLyricsUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

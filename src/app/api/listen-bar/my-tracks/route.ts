@@ -24,6 +24,7 @@ type ListenBarTrackRow = {
   youtube_url?: string | null;
   lyrics?: string | null;
   duration_seconds?: number | null;
+  audio_path?: string | null;
   created_by: string | null;
   source?: "official" | "community" | null;
   bar_phase?: "challenger" | "public" | null;
@@ -56,9 +57,9 @@ type ListenBarMyTracksDatabase = {
 
 type AdminClient = SupabaseClient<ListenBarMyTracksDatabase>;
 
-const MODERN_SELECT = "id,title,artist,ai_tool,genre,mood,description,youtube_url,lyrics,duration_seconds,created_by,source,bar_phase,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at,promoted_at";
-const LEGACY_WITH_DESCRIPTION_SELECT = "id,title,artist,ai_tool,genre,mood,description,lyrics,duration_seconds,created_by,source,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at";
-const LEGACY_SELECT = "id,title,artist,ai_tool,genre,mood,lyrics,duration_seconds,created_by,source,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at";
+const MODERN_SELECT = "id,title,artist,ai_tool,genre,mood,description,youtube_url,lyrics,duration_seconds,audio_path,created_by,source,bar_phase,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at,promoted_at";
+const LEGACY_WITH_DESCRIPTION_SELECT = "id,title,artist,ai_tool,genre,mood,description,lyrics,duration_seconds,audio_path,created_by,source,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at";
+const LEGACY_SELECT = "id,title,artist,ai_tool,genre,mood,lyrics,duration_seconds,audio_path,created_by,source,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at";
 const allowedGenreValues = new Set(MUSIC_GENRE_OPTIONS.map((genre) => genre.value));
 
 function tokenFromRequest(request: NextRequest): string | null {
