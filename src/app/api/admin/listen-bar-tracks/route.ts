@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isAdminEmail } from "@/lib/admin-emails";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
+import { normalizeYouTubeUrl } from "@/lib/youtube-url";
 
 type TrackAction = "hide" | "restore" | "remove" | "sort" | "randomize" | "move" | "normalize" | "metadata" | "bulkMetadata";
 type AdminListenBarTrackRow = {
@@ -59,24 +60,6 @@ function cleanNumber(value: unknown): number | null {
   const numberValue = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(numberValue)) return null;
   return Math.max(0, Math.round(numberValue));
-}
-
-function cleanYouTubeUrl(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  if (trimmed.length > 300) throw new Error("YouTube MV 連結太長。");
-  let url: URL;
-  try {
-    url = new URL(trimmed);
-  } catch {
-    throw new Error("請貼上有效的 YouTube MV 連結。");
-  }
-  const host = url.hostname.toLowerCase().replace(/^www\./, "").replace(/^m\./, "");
-  if ((url.protocol !== "https:" && url.protocol !== "http:") || (host !== "youtube.com" && host !== "youtu.be")) {
-    throw new Error("目前只接受 YouTube MV 連結。");
-  }
-  return url.toString();
 }
 
 async function requireOwnerAdmin(request: NextRequest) {
@@ -206,7 +189,7 @@ async function updateTrackMetadata(admin: ReturnType<typeof adminClient>, trackI
     ai_tool: cleanText(body.aiTool, 80) ?? "AI Music",
     genre,
     mood: cleanText(body.mood, 80),
-    youtube_url: cleanYouTubeUrl(body.youtubeUrl),
+    youtube_url: normalizeYouTubeUrl(body.youtubeUrl),
     bpm: cleanNumber(body.bpm),
     duration_seconds: cleanNumber(body.durationSeconds),
     lyrics: cleanText(body.lyrics, 12000),

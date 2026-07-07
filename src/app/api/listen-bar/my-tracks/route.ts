@@ -11,6 +11,7 @@ import {
   cleanListenBarDisplayText,
 } from "@/lib/listen-bar-field-limits";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
+import { normalizeYouTubeUrl } from "@/lib/youtube-url";
 
 type ListenBarTrackRow = {
   id: string;
@@ -108,27 +109,6 @@ function cleanShortField(value: unknown) {
 
 function cleanDescriptionField(value: unknown) {
   return cleanListenBarDisplayText(value, LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS);
-}
-
-function cleanYouTubeUrl(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  if (trimmed.length > 300) throw new Error("YouTube MV 連結太長。");
-  let url: URL;
-  try {
-    url = new URL(trimmed);
-  } catch {
-    throw new Error("請貼上有效的 YouTube MV 連結。");
-  }
-  const host = url.hostname.toLowerCase().replace(/^www\./, "").replace(/^m\./, "");
-  if (url.protocol !== "https:" && url.protocol !== "http:") {
-    throw new Error("YouTube MV 連結必須是 http 或 https。");
-  }
-  if (host !== "youtube.com" && host !== "youtu.be") {
-    throw new Error("目前只接受 YouTube MV 連結。");
-  }
-  return url.toString();
 }
 
 function applyLegacyOpeningGrace(rows: ListenBarTrackRow[]): ListenBarTrackRow[] {
@@ -229,7 +209,7 @@ export async function PATCH(request: NextRequest) {
       genre: cleanText(body?.genre, 80),
       mood: cleanShortField(body?.album),
       description: cleanDescriptionField(body?.description),
-      youtube_url: cleanYouTubeUrl(body?.youtubeUrl),
+      youtube_url: normalizeYouTubeUrl(body?.youtubeUrl),
     };
     if (!patch.genre || !allowedGenreValues.has(patch.genre)) {
       return NextResponse.json({ error: "請從固定類型選單選擇歌曲類型。" }, { status: 400 });

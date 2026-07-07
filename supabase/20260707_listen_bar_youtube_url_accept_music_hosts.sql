@@ -1,7 +1,4 @@
--- Add optional YouTube MV link metadata for Bar Heartbreak tracks.
-
-alter table public.listen_bar_tracks
-  add column if not exists youtube_url text;
+-- Keep Bar Heartbreak MV URL validation aligned with the app normalizer.
 
 alter table public.listen_bar_tracks
   drop constraint if exists listen_bar_tracks_youtube_url_check;
@@ -15,6 +12,3 @@ alter table public.listen_bar_tracks
       and youtube_url ~* '^https?://((www|m|music)\\.)?(youtube\\.com|youtu\\.be)/'
     )
   );
-
-comment on column public.listen_bar_tracks.youtube_url is
-  'Optional creator-supplied YouTube MV URL shown as a simple Watch MV action in Bar Heartbreak.';

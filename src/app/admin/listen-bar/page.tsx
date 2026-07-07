@@ -27,6 +27,7 @@ import {
   uploadListenBarAudioFile,
 } from "@/lib/listen-bar-upload-policy";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
+import { normalizeYouTubeUrl } from "@/lib/youtube-url";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
 type TrackSortMode = "manual" | "updated_desc" | "updated_asc" | "created_desc" | "created_asc" | "genre";
@@ -851,6 +852,14 @@ export default function ListenBarAdminPage() {
       return;
     }
 
+    let normalizedYouTubeUrl: string | null = null;
+    try {
+      normalizedYouTubeUrl = normalizeYouTubeUrl(form.youtubeUrl);
+    } catch (urlError) {
+      setError(String((urlError as { message?: string })?.message ?? urlError));
+      return;
+    }
+
     setSaving(true);
     try {
       const audioPath = await uploadAudioAsset(audioFile);
@@ -871,7 +880,7 @@ export default function ListenBarAdminPage() {
         ai_tool: form.aiTool.trim() || "AI Music",
         genre: form.genre.trim() || null,
         mood: form.mood.trim() || null,
-        youtube_url: form.youtubeUrl.trim() || null,
+        youtube_url: normalizedYouTubeUrl,
         bpm: form.bpm.trim() ? Number(form.bpm) : null,
         duration_seconds: form.durationSeconds.trim() ? Number(form.durationSeconds) : null,
         lyrics: form.lyrics.trim() || null,

@@ -60,6 +60,7 @@ import { logAnalyticsEvent } from "@/lib/analytics-client";
 import { normalizeSpotlightDate } from "@/lib/daily-spotlight";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import { listenBarShortPath } from "@/lib/share-short-links";
+import { normalizeYouTubeUrl } from "@/lib/youtube-url";
 import type { User } from "@supabase/supabase-js";
 
 type ChatMessage = {
@@ -282,23 +283,6 @@ function missingListenBarDescriptionColumnMessage(isZh: boolean) {
   return isZh
     ? "傷心酒吧資料庫還沒套用一句歌曲介紹欄位，請先執行 supabase/20260611_listen_bar_track_metadata.sql 後再補資料。"
     : "Bar Heartbreak is missing the one-line description database field. Apply supabase/20260611_listen_bar_track_metadata.sql before saving this detail.";
-}
-
-function normalizeYouTubeUrl(value: string): string | null {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  if (trimmed.length > 300) throw new Error("YouTube MV 連結太長。");
-  let url: URL;
-  try {
-    url = new URL(trimmed);
-  } catch {
-    throw new Error("請貼上有效的 YouTube MV 連結。");
-  }
-  const host = url.hostname.toLowerCase().replace(/^www\./, "").replace(/^m\./, "");
-  if ((url.protocol !== "https:" && url.protocol !== "http:") || (host !== "youtube.com" && host !== "youtu.be")) {
-    throw new Error("目前只接受 YouTube MV 連結。");
-  }
-  return url.toString();
 }
 
 function isDuplicateAudioHashError(error: unknown): boolean {
