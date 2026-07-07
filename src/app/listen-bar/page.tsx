@@ -105,6 +105,7 @@ type MyBroadcastStat = {
   genre: string;
   album: string;
   description: string;
+  youtubeUrl: string;
   duration: number;
   barPhase: "challenger" | "public";
   positives: number;
@@ -213,6 +214,7 @@ type PublicUploadForm = {
   genre: string;
   album: string;
   description: string;
+  youtubeUrl: string;
 };
 
 type GenrePlaybackSelection = "all" | string;
@@ -224,6 +226,7 @@ const initialPublicUploadForm: PublicUploadForm = {
   genre: "",
   album: "",
   description: "",
+  youtubeUrl: "",
 };
 
 type ListenBarRecordArtProps = {
@@ -272,13 +275,30 @@ function isMissingListenBarSubmissionColumn(error: unknown): boolean {
         (error as { code?: string }).code,
       ].filter(Boolean).join(" ")
     : String(error ?? "");
-  return /audio_sha256|bar_phase|promoted_at|removed_at|description|schema cache|column.*does not exist|PGRST204/i.test(text);
+  return /audio_sha256|bar_phase|promoted_at|removed_at|description|youtube_url|schema cache|column.*does not exist|PGRST204/i.test(text);
 }
 
 function missingListenBarDescriptionColumnMessage(isZh: boolean) {
   return isZh
     ? "傷心酒吧資料庫還沒套用一句歌曲介紹欄位，請先執行 supabase/20260611_listen_bar_track_metadata.sql 後再補資料。"
     : "Bar Heartbreak is missing the one-line description database field. Apply supabase/20260611_listen_bar_track_metadata.sql before saving this detail.";
+}
+
+function normalizeYouTubeUrl(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (trimmed.length > 300) throw new Error("YouTube MV 連結太長。");
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    throw new Error("請貼上有效的 YouTube MV 連結。");
+  }
+  const host = url.hostname.toLowerCase().replace(/^www\./, "").replace(/^m\./, "");
+  if ((url.protocol !== "https:" && url.protocol !== "http:") || (host !== "youtube.com" && host !== "youtu.be")) {
+    throw new Error("目前只接受 YouTube MV 連結。");
+  }
+  return url.toString();
 }
 
 function isDuplicateAudioHashError(error: unknown): boolean {
@@ -379,6 +399,7 @@ function listenBarRowToMyBroadcastStat(row: ListenBarTrackRow): MyBroadcastStat 
     genre: row.genre?.trim() || "Original 自我風格",
     album: row.mood?.trim() || "",
     description: row.description?.trim() || "",
+    youtubeUrl: row.youtube_url?.trim() || "",
     duration: Math.max(1, Math.round(row.duration_seconds ?? 0)),
     barPhase: row.bar_phase === "public" ? "public" : "challenger",
     positives: Math.max(0, row.positive_reaction_count ?? 0),
@@ -745,11 +766,12 @@ export default function ListenBarPage() {
   const [publicUploadBusy, setPublicUploadBusy] = useState(false);
   const [removeTrackBusyId, setRemoveTrackBusyId] = useState<string | null>(null);
   const [editTrackId, setEditTrackId] = useState<string | null>(null);
-  const [editTrackForm, setEditTrackForm] = useState<Pick<MyBroadcastStat, "aiTool" | "genre" | "album" | "description">>({
+  const [editTrackForm, setEditTrackForm] = useState<Pick<MyBroadcastStat, "aiTool" | "genre" | "album" | "description" | "youtubeUrl">>({
     aiTool: "",
     genre: "Original 自我風格",
     album: "",
     description: "",
+    youtubeUrl: "",
   });
   const [editTrackBusy, setEditTrackBusy] = useState(false);
   const [publicUploadMessage, setPublicUploadMessage] = useState("");
@@ -990,9 +1012,7 @@ export default function ListenBarPage() {
   const displayedChallengerSlotCount = uploadGenre ? myChallengerStatsForUploadGenre.length : challengerSlotCount;
   const uploadGenreRemainingPublicSlots = Math.max(0, LISTEN_BAR_GENRE_POOL_LIMIT - uploadGenreStats.public);
   const uploadGenreDisplayName = uploadGenre ? genreDisplayLabel(uploadGenre, isZh) : "";
-  const uploadPhaseNoticeTitle = !uploadGenre
-    ? (isZh ? "先選音樂類型" : "Pick a Genre")
-    : creatorGenrePublicLimitFull
+  const uploadPhaseNoticeTitle = creatorGenrePublicLimitFull
       ? (isZh ? "此類公播已嚴重超標" : "Genre Public Limit Exceeded")
       : creatorDailyUploadLimitFull
         ? (isZh ? "今日上傳額度已滿" : "Daily Upload Limit Reached")
@@ -1001,11 +1021,7 @@ export default function ListenBarPage() {
         ? (isZh ? "此類 Challenger 席位已滿" : "Challenger Seats Full")
         : (isZh ? "送出後進 Challenger" : "Uploads to Challenger")
       : (isZh ? "送出後直接進公播" : "Uploads Straight to Public");
-  const uploadPhaseNoticeBody = !uploadGenre
-    ? (isZh
-      ? "選好類型後，這裡會先告訴你歌曲會進公播池還是 Challenger。"
-      : "After you pick a genre, this will show whether the song goes public or enters Challenger.")
-    : creatorGenrePublicLimitFull
+  const uploadPhaseNoticeBody = creatorGenrePublicLimitFull
       ? (isZh
         ? `你在 ${uploadGenreDisplayName} 公播池已有 ${myPublicStatsForUploadGenre.length}/${LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT} 首，已超過同類公播上限。這個種類必須先降到 4 首公播以下，才可以再傳第 5 首。`
         : `You already have ${myPublicStatsForUploadGenre.length}/${LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT} public tracks in ${uploadGenreDisplayName}. This genre must be reduced to 4 public tracks before you can upload the 5th again.`)
@@ -2016,6 +2032,14 @@ export default function ListenBarPage() {
       return;
     }
 
+    let normalizedYouTubeUrl: string | null = null;
+    try {
+      normalizedYouTubeUrl = normalizeYouTubeUrl(publicUploadForm.youtubeUrl);
+    } catch (urlError) {
+      setPublicUploadError(String((urlError as { message?: string })?.message ?? urlError));
+      return;
+    }
+
     setPublicUploadBusy(true);
     let audioPath: string | null = null;
     let coverPath: string | null = null;
@@ -2059,6 +2083,7 @@ export default function ListenBarPage() {
           LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS,
         ),
         description: limitListenBarDisplayText(publicUploadForm.description.trim(), LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS) || null,
+        youtube_url: normalizedYouTubeUrl,
         duration_seconds: duration > 0 ? duration : null,
         audio_path: audioPath,
         cover_path: coverPath,
@@ -2081,6 +2106,7 @@ export default function ListenBarPage() {
         const fallbackPayload = { ...insertPayload };
         delete (fallbackPayload as Partial<typeof insertPayload>).audio_sha256;
         delete (fallbackPayload as Partial<typeof insertPayload>).bar_phase;
+        delete (fallbackPayload as Partial<typeof insertPayload>).youtube_url;
         insertResult = await supabase
           .from("listen_bar_tracks")
           .insert(fallbackPayload)
@@ -2140,6 +2166,7 @@ export default function ListenBarPage() {
             genre: normalizedTrack.genre,
             album: normalizedTrack.album ?? "",
             description: normalizedTrack.description ?? "",
+            youtubeUrl: normalizedTrack.youtubeUrl ?? "",
             duration: normalizedTrack.duration,
             barPhase: normalizedTrack.barPhase ?? uploadSubmissionPhase,
             positives: 0,
@@ -2200,6 +2227,7 @@ export default function ListenBarPage() {
       genre: track.genre || "Original 自我風格",
       album: limitListenBarDisplayText(track.album || "", LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
       description: limitListenBarDisplayText(track.description || "", LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS),
+      youtubeUrl: track.youtubeUrl || "",
     });
     setPublicUploadError("");
     setPublicUploadMessage("");
@@ -2213,6 +2241,7 @@ export default function ListenBarPage() {
     try {
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token ?? "";
+      const normalizedYouTubeUrl = normalizeYouTubeUrl(editTrackForm.youtubeUrl);
       const response = await fetch("/api/listen-bar/my-tracks", {
         method: "PATCH",
         headers: {
@@ -2225,6 +2254,7 @@ export default function ListenBarPage() {
           genre: editTrackForm.genre,
           album: limitListenBarDisplayText(editTrackForm.album, LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
           description: limitListenBarDisplayText(editTrackForm.description, LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS),
+          youtubeUrl: normalizedYouTubeUrl,
         }),
       });
       const payload = await response.json().catch(() => null) as { track?: ListenBarTrackRow; error?: string } | null;
@@ -2241,6 +2271,7 @@ export default function ListenBarPage() {
             genre: updatedTrack.genre,
             album: updatedTrack.album || undefined,
             description: updatedTrack.description || undefined,
+            youtubeUrl: updatedTrack.youtubeUrl || undefined,
             mood: [updatedTrack.genre, updatedTrack.album].filter(Boolean).join(" / ") || item.mood,
           }
         : item));
@@ -2251,6 +2282,7 @@ export default function ListenBarPage() {
           genre: updatedTrack.genre,
           album: updatedTrack.album || undefined,
           description: updatedTrack.description || undefined,
+          youtubeUrl: updatedTrack.youtubeUrl || undefined,
           mood: [updatedTrack.genre, updatedTrack.album].filter(Boolean).join(" / ") || item.mood,
         }));
       }
@@ -2368,6 +2400,7 @@ export default function ListenBarPage() {
   const nowGenreLabel = genreDisplayLabel(nowTrack.genre, isZh);
   const nowDescriptionLabel = descriptionDisplayLabel(nowTrack.description, isZh);
   const nowAiToolLabel = aiToolDisplayLabel(nowTrack.tool, isZh);
+  const nowYouTubeUrl = nowTrack.youtubeUrl?.trim() || "";
   const battleTickerText = battleTickerMessages.length > 0
     ? battleTickerMessages.join("   /   ")
     : listenCopy.ticker;
@@ -2560,6 +2593,16 @@ export default function ListenBarPage() {
                   <span className="font-bold text-white">{nowPresenterName}</span>
                   {nowPresenterRank && (
                     <span className="rounded-full border border-cyan-200/25 bg-cyan-300/8 px-2 py-0.5 font-bold text-cyan-100">{nowPresenterRank}</span>
+                  )}
+                  {nowYouTubeUrl && (
+                    <a
+                      href={nowYouTubeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-full border border-red-300/35 bg-red-500/12 px-2 py-0.5 font-bold text-red-100 transition hover:border-red-200 hover:bg-red-500/20"
+                    >
+                      {isZh ? "看 MV" : "Watch MV"}
+                    </a>
                   )}
                   {nowSurvivalDay > 0 && (
                     <span className="rounded-full border border-orange-300/25 bg-orange-500/8 px-2 py-0.5 font-bold text-orange-100">
@@ -3066,43 +3109,47 @@ export default function ListenBarPage() {
                     title={listenBarDescriptionHint(isZh)}
                     className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
                   />
+                  <input
+                    type="url"
+                    value={publicUploadForm.youtubeUrl}
+                    onChange={(event) => setPublicUploadForm((current) => ({ ...current, youtubeUrl: event.target.value.slice(0, 300) }))}
+                    placeholder={isZh ? "YouTube MV 連結（選填）" : "YouTube MV Link (optional)"}
+                    maxLength={300}
+                    className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18 sm:col-span-2"
+                  />
                 </div>
 
-                <div
-                  className={`rounded-xl border px-3 py-3 ${
-                    !uploadGenre
-                      ? "border-white/10 bg-white/[0.035]"
-                      : publicUploadBlocked
+                {uploadGenre && (
+                  <div
+                    className={`rounded-xl border px-3 py-3 ${
+                      publicUploadBlocked
                         ? "border-red-300/30 bg-red-500/10"
-                      : uploadWillEnterChallenger
-                        ? "border-orange-300/28 bg-orange-500/10"
-                        : "border-cyan-200/24 bg-cyan-300/[0.075]"
-                  }`}
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p
-                      className={`text-xs font-black ${
-                        !uploadGenre
-                          ? "text-zinc-300"
-                          : publicUploadBlocked
+                        : uploadWillEnterChallenger
+                          ? "border-orange-300/28 bg-orange-500/10"
+                          : "border-cyan-200/24 bg-cyan-300/[0.075]"
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p
+                        className={`text-xs font-black ${
+                          publicUploadBlocked
                             ? "text-red-100"
-                          : uploadWillEnterChallenger
-                            ? "text-orange-100"
-                            : "text-cyan-50"
-                      }`}
-                    >
-                      {uploadPhaseNoticeTitle}
-                    </p>
-                    {uploadGenre && (
+                            : uploadWillEnterChallenger
+                              ? "text-orange-100"
+                              : "text-cyan-50"
+                        }`}
+                      >
+                        {uploadPhaseNoticeTitle}
+                      </p>
                       <span className="rounded-full border border-white/10 bg-black/28 px-2.5 py-1 text-[11px] font-black text-white/82">
                         {uploadGenreStats.public}/{LISTEN_BAR_GENRE_POOL_LIMIT}
                       </span>
-                    )}
+                    </div>
+                    <p className="mt-1 text-xs font-bold leading-5 text-zinc-400">
+                      {uploadPhaseNoticeBody}
+                    </p>
                   </div>
-                  <p className="mt-1 text-xs font-bold leading-5 text-zinc-400">
-                    {uploadPhaseNoticeBody}
-                  </p>
-                </div>
+                )}
 
                 <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
                   <label className="flex h-11 cursor-pointer items-center justify-center rounded-xl border border-cyan-200/18 bg-cyan-300/[0.055] px-3 text-xs font-black text-cyan-100 transition hover:border-cyan-100/50">
@@ -3248,7 +3295,22 @@ export default function ListenBarPage() {
                             {removeTrackBusyId === track.id ? (isZh ? "撤下中" : "Removing") : (isZh ? "撤下" : "Remove")}
                           </button>
                         </div>
-                        <p className="mt-0.5 text-[11px] font-bold text-zinc-500">{statusLabel} · {formatDuration(track.duration)} · {track.positives} hearts · {genreDisplayLabel(track.genre, isZh)}</p>
+                        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-bold text-zinc-500">
+                          {track.youtubeUrl && (
+                            <a
+                              href={track.youtubeUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded-full border border-red-300/25 bg-red-500/10 px-2 py-0.5 font-black text-red-100 transition hover:border-red-200"
+                            >
+                              {isZh ? "看 MV" : "Watch MV"}
+                            </a>
+                          )}
+                          <span>{statusLabel}</span>
+                          <span>{formatDuration(track.duration)}</span>
+                          <span>{track.positives} hearts</span>
+                          <span>{genreDisplayLabel(track.genre, isZh)}</span>
+                        </p>
                       </div>
                       {editTrackId === track.id && (
                         <div className="mt-3 grid gap-2 rounded-xl border border-cyan-200/12 bg-black/35 p-3">
@@ -3296,6 +3358,14 @@ export default function ListenBarPage() {
                               maxLength={LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS}
                               title={listenBarDescriptionHint(isZh)}
                               className="h-10 rounded-xl border border-white/10 bg-black/58 px-3 text-xs font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200 focus:ring-2 focus:ring-cyan-200/15"
+                            />
+                            <input
+                              type="url"
+                              value={editTrackForm.youtubeUrl}
+                              onChange={(event) => setEditTrackForm((current) => ({ ...current, youtubeUrl: event.target.value.slice(0, 300) }))}
+                              placeholder={isZh ? "YouTube MV 連結（選填）" : "YouTube MV Link (optional)"}
+                              maxLength={300}
+                              className="h-10 rounded-xl border border-white/10 bg-black/58 px-3 text-xs font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200 focus:ring-2 focus:ring-cyan-200/15 sm:col-span-2"
                             />
                           </div>
                           <button

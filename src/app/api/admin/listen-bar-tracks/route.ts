@@ -49,7 +49,7 @@ function isMissingColumnError(error: unknown): boolean {
         (error as { code?: string }).code,
       ].filter(Boolean).join(" ")
     : String(error ?? "");
-  return /schema cache|column.*does not exist|PGRST204|review_status|moderation_note|hidden_at|removed_at|source|bar_phase|positive_reaction_count|heart_count|star_count|thumb_count|happy_count|promoted_at/i.test(text);
+  return /schema cache|column.*does not exist|PGRST204|review_status|moderation_note|hidden_at|removed_at|source|bar_phase|positive_reaction_count|heart_count|star_count|thumb_count|happy_count|promoted_at|youtube_url/i.test(text);
 }
 
 const allowedGenreValues = new Set(MUSIC_GENRE_OPTIONS.map((genre) => genre.value));
@@ -59,6 +59,24 @@ function cleanNumber(value: unknown): number | null {
   const numberValue = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(numberValue)) return null;
   return Math.max(0, Math.round(numberValue));
+}
+
+function cleanYouTubeUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (trimmed.length > 300) throw new Error("YouTube MV 連結太長。");
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    throw new Error("請貼上有效的 YouTube MV 連結。");
+  }
+  const host = url.hostname.toLowerCase().replace(/^www\./, "").replace(/^m\./, "");
+  if ((url.protocol !== "https:" && url.protocol !== "http:") || (host !== "youtube.com" && host !== "youtu.be")) {
+    throw new Error("目前只接受 YouTube MV 連結。");
+  }
+  return url.toString();
 }
 
 async function requireOwnerAdmin(request: NextRequest) {
@@ -73,7 +91,7 @@ async function requireOwnerAdmin(request: NextRequest) {
 }
 
 async function loadTracks(admin: ReturnType<typeof adminClient>) {
-  const modernSelect = "id, title, artist, ai_tool, genre, mood, bpm, duration_seconds, audio_path, cover_path, lyrics, sort_order, is_active, source, bar_phase, review_status, moderation_note, hidden_at, removed_at, promoted_at, positive_reaction_count, heart_count, star_count, thumb_count, happy_count, created_at, updated_at";
+  const modernSelect = "id, title, artist, ai_tool, genre, mood, youtube_url, bpm, duration_seconds, audio_path, cover_path, lyrics, sort_order, is_active, source, bar_phase, review_status, moderation_note, hidden_at, removed_at, promoted_at, positive_reaction_count, heart_count, star_count, thumb_count, happy_count, created_at, updated_at";
   const legacySelect = "id, title, artist, ai_tool, genre, mood, bpm, duration_seconds, audio_path, cover_path, lyrics, sort_order, is_active, created_at, updated_at";
 
   const modern = await admin
@@ -188,6 +206,7 @@ async function updateTrackMetadata(admin: ReturnType<typeof adminClient>, trackI
     ai_tool: cleanText(body.aiTool, 80) ?? "AI Music",
     genre,
     mood: cleanText(body.mood, 80),
+    youtube_url: cleanYouTubeUrl(body.youtubeUrl),
     bpm: cleanNumber(body.bpm),
     duration_seconds: cleanNumber(body.durationSeconds),
     lyrics: cleanText(body.lyrics, 12000),

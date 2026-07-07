@@ -20,6 +20,7 @@ type ListenBarTrackRow = {
   genre?: string | null;
   mood?: string | null;
   description?: string | null;
+  youtube_url?: string | null;
   lyrics?: string | null;
   duration_seconds?: number | null;
   created_by: string | null;
@@ -54,7 +55,7 @@ type ListenBarMyTracksDatabase = {
 
 type AdminClient = SupabaseClient<ListenBarMyTracksDatabase>;
 
-const MODERN_SELECT = "id,title,artist,ai_tool,genre,mood,description,lyrics,duration_seconds,created_by,source,bar_phase,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at,promoted_at";
+const MODERN_SELECT = "id,title,artist,ai_tool,genre,mood,description,youtube_url,lyrics,duration_seconds,created_by,source,bar_phase,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at,promoted_at";
 const LEGACY_WITH_DESCRIPTION_SELECT = "id,title,artist,ai_tool,genre,mood,description,lyrics,duration_seconds,created_by,source,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at";
 const LEGACY_SELECT = "id,title,artist,ai_tool,genre,mood,lyrics,duration_seconds,created_by,source,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at";
 const allowedGenreValues = new Set(MUSIC_GENRE_OPTIONS.map((genre) => genre.value));
@@ -83,7 +84,7 @@ function isMissingColumnError(error: unknown): boolean {
         (error as { code?: string }).code,
       ].filter(Boolean).join(" ")
     : String(error ?? "");
-  return /schema cache|column.*does not exist|PGRST204|bar_phase|promoted_at|description/i.test(text);
+  return /schema cache|column.*does not exist|PGRST204|bar_phase|promoted_at|description|youtube_url/i.test(text);
 }
 
 function missingDescriptionColumnResponse() {
@@ -107,6 +108,27 @@ function cleanShortField(value: unknown) {
 
 function cleanDescriptionField(value: unknown) {
   return cleanListenBarDisplayText(value, LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS);
+}
+
+function cleanYouTubeUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (trimmed.length > 300) throw new Error("YouTube MV 連結太長。");
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    throw new Error("請貼上有效的 YouTube MV 連結。");
+  }
+  const host = url.hostname.toLowerCase().replace(/^www\./, "").replace(/^m\./, "");
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    throw new Error("YouTube MV 連結必須是 http 或 https。");
+  }
+  if (host !== "youtube.com" && host !== "youtu.be") {
+    throw new Error("目前只接受 YouTube MV 連結。");
+  }
+  return url.toString();
 }
 
 function applyLegacyOpeningGrace(rows: ListenBarTrackRow[]): ListenBarTrackRow[] {
@@ -207,6 +229,7 @@ export async function PATCH(request: NextRequest) {
       genre: cleanText(body?.genre, 80),
       mood: cleanShortField(body?.album),
       description: cleanDescriptionField(body?.description),
+      youtube_url: cleanYouTubeUrl(body?.youtubeUrl),
     };
     if (!patch.genre || !allowedGenreValues.has(patch.genre)) {
       return NextResponse.json({ error: "請從固定類型選單選擇歌曲類型。" }, { status: 400 });
@@ -223,9 +246,11 @@ export async function PATCH(request: NextRequest) {
       .maybeSingle();
 
     if (updateResult.error && isMissingColumnError(updateResult.error)) {
+      const fallbackWithDescriptionPatch = { ...patch };
+      delete (fallbackWithDescriptionPatch as Partial<typeof patch>).youtube_url;
       updateResult = await admin
         .from("listen_bar_tracks")
-        .update(patch)
+        .update(fallbackWithDescriptionPatch)
         .eq("id", trackId)
         .eq("created_by", userData.user.id)
         .eq("source", "community")
@@ -237,6 +262,7 @@ export async function PATCH(request: NextRequest) {
         if (patch.description) return missingDescriptionColumnResponse();
         const fallbackPatch = { ...patch };
         delete (fallbackPatch as Partial<typeof patch>).description;
+        delete (fallbackPatch as Partial<typeof patch>).youtube_url;
         updateResult = await admin
           .from("listen_bar_tracks")
           .update(fallbackPatch)

@@ -44,6 +44,7 @@ type TrackForm = {
   aiTool: string;
   genre: string;
   mood: string;
+  youtubeUrl: string;
   bpm: string;
   durationSeconds: string;
   lyrics: string;
@@ -57,6 +58,7 @@ type TrackMetadataForm = {
   aiTool: string;
   genre: string;
   mood: string;
+  youtubeUrl: string;
   bpm: string;
   durationSeconds: string;
   lyrics: string;
@@ -120,6 +122,7 @@ const initialForm: TrackForm = {
   aiTool: "Suno",
   genre: "Original 自我風格",
   mood: "官方輪播",
+  youtubeUrl: "",
   bpm: "",
   durationSeconds: "",
   lyrics: "",
@@ -392,6 +395,7 @@ function metadataFormFromTrack(track: AdminListenBarTrackRow): TrackMetadataForm
     aiTool: track.ai_tool?.trim() || "AI Music",
     genre: normalizedGenreForSelect(track.genre),
     mood: track.mood?.trim() || "",
+    youtubeUrl: track.youtube_url?.trim() || "",
     bpm: typeof track.bpm === "number" && Number.isFinite(track.bpm) ? String(track.bpm) : "",
     durationSeconds:
       typeof track.duration_seconds === "number" && Number.isFinite(track.duration_seconds)
@@ -861,12 +865,13 @@ export default function ListenBarAdminPage() {
           )
         : null;
 
-      const { error: insertError } = await supabase.from("listen_bar_tracks").insert({
+      const insertPayload = {
         title: form.title.trim(),
         artist: form.artist.trim(),
         ai_tool: form.aiTool.trim() || "AI Music",
         genre: form.genre.trim() || null,
         mood: form.mood.trim() || null,
+        youtube_url: form.youtubeUrl.trim() || null,
         bpm: form.bpm.trim() ? Number(form.bpm) : null,
         duration_seconds: form.durationSeconds.trim() ? Number(form.durationSeconds) : null,
         lyrics: form.lyrics.trim() || null,
@@ -875,7 +880,14 @@ export default function ListenBarAdminPage() {
         sort_order: form.sortOrder.trim() ? Number(form.sortOrder) : 100,
         is_active: form.isActive,
         created_by: userId,
-      });
+      };
+      let { error: insertError } = await supabase.from("listen_bar_tracks").insert(insertPayload);
+      if (insertError && /schema cache|column.*does not exist|PGRST204|youtube_url/i.test(String(insertError.message ?? insertError))) {
+        const fallbackPayload = { ...insertPayload };
+        delete (fallbackPayload as Partial<typeof insertPayload>).youtube_url;
+        const fallbackInsert = await supabase.from("listen_bar_tracks").insert(fallbackPayload);
+        insertError = fallbackInsert.error;
+      }
       if (insertError) throw insertError;
 
       setForm(initialForm);
@@ -1211,6 +1223,7 @@ export default function ListenBarAdminPage() {
         aiTool: metadataForm.aiTool.trim(),
         genre: metadataForm.genre,
         mood: metadataForm.mood.trim(),
+        youtubeUrl: metadataForm.youtubeUrl.trim(),
         bpm: metadataForm.bpm.trim(),
         durationSeconds: metadataForm.durationSeconds.trim(),
         lyrics: metadataForm.lyrics,
@@ -1613,6 +1626,7 @@ export default function ListenBarAdminPage() {
                   ))}
                 </select>
                 <input value={form.mood} onChange={(event) => updateForm({ mood: event.target.value })} placeholder="情緒 / 分類" className="h-12 rounded-xl border border-white/12 bg-black/50 px-4 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-400" />
+                <input value={form.youtubeUrl} onChange={(event) => updateForm({ youtubeUrl: event.target.value.slice(0, 300) })} placeholder="YouTube MV 連結（選填）" className="h-12 rounded-xl border border-white/12 bg-black/50 px-4 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-400" />
                 <div className="grid grid-cols-2 gap-3">
                   <input value={form.bpm} onChange={(event) => updateForm({ bpm: event.target.value.replace(/[^\d]/g, "") })} placeholder="BPM" inputMode="numeric" className="h-12 rounded-xl border border-white/12 bg-black/50 px-4 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-400" />
                   <input value={form.durationSeconds} onChange={(event) => updateForm({ durationSeconds: event.target.value.replace(/[^\d]/g, "") })} placeholder="秒數" inputMode="numeric" className="h-12 rounded-xl border border-white/12 bg-black/50 px-4 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-400" />
@@ -2014,16 +2028,26 @@ export default function ListenBarAdminPage() {
 	                                    ))}
 	                                  </select>
 	                                </label>
-	                                <label className="block">
-	                                  <span className="text-xs font-bold text-zinc-500">情緒 / 標籤</span>
-	                                  <input
-	                                    value={metadataForm.mood}
-	                                    onChange={(event) => updateMetadataForm({ mood: event.target.value })}
-	                                    maxLength={80}
-	                                    className="mt-1 h-11 w-full rounded-xl border border-white/12 bg-black/50 px-4 text-sm font-bold text-white outline-none transition focus:border-orange-300/70"
-	                                  />
-	                                </label>
-	                                <div className="grid gap-3 sm:grid-cols-3">
+                                <label className="block">
+                                  <span className="text-xs font-bold text-zinc-500">情緒 / 標籤</span>
+                                  <input
+                                    value={metadataForm.mood}
+                                    onChange={(event) => updateMetadataForm({ mood: event.target.value })}
+                                    maxLength={80}
+                                    className="mt-1 h-11 w-full rounded-xl border border-white/12 bg-black/50 px-4 text-sm font-bold text-white outline-none transition focus:border-orange-300/70"
+                                  />
+                                </label>
+                                <label className="block">
+                                  <span className="text-xs font-bold text-zinc-500">YouTube MV</span>
+                                  <input
+                                    value={metadataForm.youtubeUrl}
+                                    onChange={(event) => updateMetadataForm({ youtubeUrl: event.target.value.slice(0, 300) })}
+                                    maxLength={300}
+                                    className="mt-1 h-11 w-full rounded-xl border border-white/12 bg-black/50 px-4 text-sm font-bold text-white outline-none transition focus:border-orange-300/70"
+                                    placeholder="https://youtu.be/..."
+                                  />
+                                </label>
+                                <div className="grid gap-3 sm:grid-cols-3">
 	                                  <label className="block">
 	                                    <span className="text-xs font-bold text-zinc-500">BPM</span>
 	                                    <input

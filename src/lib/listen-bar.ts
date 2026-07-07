@@ -44,6 +44,7 @@ export type ListenBarTrack = {
   genre: string;
   album?: string;
   description?: string;
+  youtubeUrl?: string;
   mood: string;
   duration: number;
   audioUrl?: string;
@@ -66,6 +67,7 @@ export type ListenBarTrackRow = {
   genre: string | null;
   mood: string | null;
   description?: string | null;
+  youtube_url?: string | null;
   bpm: number | null;
   duration_seconds: number | null;
   audio_path: string | null;
@@ -160,6 +162,7 @@ export function listenBarRowToTrack(row: ListenBarTrackRow): ListenBarTrack | nu
     genre,
     album: album || undefined,
     description: row.description?.trim() || undefined,
+    youtubeUrl: row.youtube_url?.trim() || undefined,
     mood: tags.join(" / ") || "官方輪播",
     duration: Math.max(1, Math.round(row.duration_seconds ?? 45)),
     audioUrl,
