@@ -88,6 +88,7 @@ type CreatorItem = {
   genre?: string | null;
   aiTool?: string | null;
   audioUrl?: string | null;
+  favoriteRecord?: HonorFavoriteRecord | null;
 };
 
 type CreatorFilter = "all" | "listenBar" | "battle" | "records" | "wins" | "favorites";
@@ -181,9 +182,13 @@ function ProfileInner() {
   const [previewingItemId, setPreviewingItemId] = useState<string | null>(null);
   const [favoriteOrder, setFavoriteOrder] = useState<string[]>([]);
   const [favoriteOrderReadyKey, setFavoriteOrderReadyKey] = useState<string | null>(null);
+  const [favoriteRemoveBusy, setFavoriteRemoveBusy] = useState<Record<string, boolean>>({});
   const cropFileInputRef = useRef<HTMLInputElement>(null);
   const avatarSectionRef = useRef<HTMLDivElement>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const playlistItemsRef = useRef<CreatorItem[]>([]);
+  const previewTokenRef = useRef(0);
+  const playPreviewItemRef = useRef<((item: CreatorItem) => void) | null>(null);
 
   const copy = useMemo(
     () =>
@@ -203,7 +208,6 @@ function ProfileInner() {
             creationsHelp: "整理你上傳與收藏的 AI 音樂作品。",
             all: "全部資料",
             recent: "最近資料",
-            manage: "整理資料",
             empty: "目前還沒有讀到上傳紀錄。",
             favoriteEmpty: "目前還沒有收藏歌曲。到 Top Drops 點愛心後，作品會收進這裡。",
             error: "部分創作資料暫時讀不到，頁面先顯示可取得的內容。",
@@ -216,6 +220,8 @@ function ProfileInner() {
             honorFavorite: "Top Drops",
             moveUp: "上移",
             moveDown: "下移",
+            removeFavorite: "刪除",
+            removingFavorite: "刪除中",
             active: "公開中",
             openBattle: "發起挑戰",
             openBar: "去傷心酒吧",
@@ -235,7 +241,6 @@ function ProfileInner() {
             creationsHelp: "Your uploaded and saved AI music records.",
             all: "All Data",
             recent: "Recent Data",
-            manage: "Manage",
             empty: "No uploads found yet.",
             favoriteEmpty: "No saved songs yet. Heart tracks on Top Drops to collect them here.",
             error: "Some creator data could not be loaded, so this page is showing what is available.",
@@ -248,6 +253,8 @@ function ProfileInner() {
             honorFavorite: "Top Drops",
             moveUp: "Move Up",
             moveDown: "Move Down",
+            removeFavorite: "Remove",
+            removingFavorite: "Removing",
             active: "Live",
             openBattle: "Start Battle",
             openBar: "Open Listen Bar",
@@ -431,8 +438,11 @@ function ProfileInner() {
   }, [favoriteOrder, favoriteOrderReadyKey, userId]);
 
   const stopPreview = useCallback(() => {
+    previewTokenRef.current += 1;
     const audio = previewAudioRef.current;
     if (audio) {
+      audio.onended = null;
+      audio.onerror = null;
       audio.pause();
       audio.src = "";
       previewAudioRef.current = null;
@@ -526,31 +536,48 @@ function ProfileInner() {
     }
   };
 
-  const togglePreview = useCallback((item: CreatorItem) => {
+  const playPreviewItem = useCallback((item: CreatorItem) => {
     const audioUrl = item.audioUrl?.trim();
     if (!audioUrl) return;
 
-    const current = previewAudioRef.current;
-    if (previewingItemId === item.id && current && !current.paused) {
-      stopPreview();
-      return;
-    }
-
     stopPreview();
+    const token = previewTokenRef.current + 1;
+    previewTokenRef.current = token;
     const audio = new Audio(audioUrl);
     audio.preload = "auto";
-    audio.onended = () => setPreviewingItemId(null);
-    audio.onerror = () => {
+    audio.onended = () => {
+      if (previewTokenRef.current !== token) return;
+      const playlist = playlistItemsRef.current.filter((candidate) => candidate.audioUrl?.trim());
+      const index = playlist.findIndex((candidate) => candidate.id === item.id);
+      const next = index >= 0 ? playlist[index + 1] : null;
+      if (item.category === "favorites" && next) {
+        playPreviewItemRef.current?.(next);
+        return;
+      }
       setPreviewingItemId(null);
-      alert(isZh ? "這首歌暫時無法預覽，請稍後再試。" : "This track cannot be previewed right now.");
+    };
+    audio.onerror = () => {
+      if (previewTokenRef.current !== token) return;
+      console.warn("[profile] preview audio failed", item.id);
+      setPreviewingItemId(null);
     };
     previewAudioRef.current = audio;
     setPreviewingItemId(item.id);
     void audio.play().catch((error) => {
       console.warn("[profile] preview play blocked", error);
-      setPreviewingItemId(null);
+      if (previewTokenRef.current === token) setPreviewingItemId(null);
     });
-  }, [isZh, previewingItemId, stopPreview]);
+  }, [stopPreview]);
+  playPreviewItemRef.current = playPreviewItem;
+
+  const togglePreview = useCallback((item: CreatorItem) => {
+    const current = previewAudioRef.current;
+    if (previewingItemId === item.id && current && !current.paused) {
+      stopPreview();
+      return;
+    }
+    playPreviewItem(item);
+  }, [playPreviewItem, previewingItemId, stopPreview]);
 
   const openChallengeCut = useCallback((item: CreatorItem) => {
     stopPreview();
@@ -598,6 +625,51 @@ function ProfileInner() {
       return next;
     });
   }, [honorFavorites]);
+
+  const removeFavoriteItem = useCallback(async (item: CreatorItem) => {
+    const record = item.favoriteRecord;
+    if (!record?.recordKey || !record.targetKind || !record.targetId) return;
+    setFavoriteRemoveBusy((current) => ({ ...current, [item.id]: true }));
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        router.push("/auth");
+        return;
+      }
+      const response = await fetch("/api/honor-board/interactions", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          action: "favorite",
+          recordKey: record.recordKey,
+          targetKind: record.targetKind,
+          targetId: record.targetId,
+          targetTitle: record.targetTitle,
+          targetArtist: record.targetArtist,
+          targetGenre: record.targetGenre,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as { record?: HonorFavoriteRecord; error?: string } | null;
+      if (!response.ok) throw new Error(payload?.error ?? "remove favorite failed");
+      if (previewingItemId === item.id) stopPreview();
+      setHonorFavorites((current) => current.filter((favorite) => favorite.recordKey !== record.recordKey));
+      setFavoriteOrder((current) => current.filter((id) => id !== item.id));
+    } catch (error) {
+      console.warn("[profile] remove favorite failed", error);
+    } finally {
+      setFavoriteRemoveBusy((current) => {
+        const next = { ...current };
+        delete next[item.id];
+        return next;
+      });
+    }
+  }, [previewingItemId, router, stopPreview]);
 
   const creatorItems = useMemo<CreatorItem[]>(() => {
     const tracks = barTracks.map((track) => ({
@@ -678,6 +750,7 @@ function ProfileInner() {
         date: record.updatedAt,
         genre: record.targetGenre,
         audioUrl: record.audioUrl,
+        favoriteRecord: record,
       };
     });
 
@@ -728,9 +801,13 @@ function ProfileInner() {
         : creatorItems.filter((item) => item.category === creatorFilter)
   ).slice(0, 16);
 
+  useEffect(() => {
+    playlistItemsRef.current = filteredCreatorItems;
+  }, [filteredCreatorItems]);
+
   const creatorListTitle = creatorFilter === "all"
     ? copy.recent
-    : `${stats.find((stat) => stat.key === creatorFilter)?.label ?? copy.recent} / ${copy.manage}`;
+    : stats.find((stat) => stat.key === creatorFilter)?.label ?? copy.recent;
   const creatorEmptyText = creatorFilter === "favorites" ? copy.favoriteEmpty : copy.empty;
 
   return (
@@ -888,9 +965,6 @@ function ProfileInner() {
                   <p className="text-3xl font-black tabular-nums text-orange-100">{stat.value}</p>
                   <p className="mt-1 text-sm font-black text-zinc-100">{stat.label}</p>
                   <p className="mt-1 text-xs text-zinc-500">{stat.sub}</p>
-                  <p className="mt-3 text-[11px] font-black uppercase tracking-[0.18em] text-cyan-100/70 group-hover:text-cyan-100">
-                    {copy.manage}
-                  </p>
                 </button>
               ))}
             </div>
@@ -907,7 +981,7 @@ function ProfileInner() {
                     return (
                       <article
                         key={item.id}
-                        className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 transition hover:border-orange-300/45 hover:bg-orange-300/[0.06] sm:grid-cols-[2.5rem_5.5rem_minmax(0,1fr)_auto] sm:items-center"
+                        className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 transition hover:border-orange-300/45 hover:bg-orange-300/[0.06] sm:grid-cols-[2.5rem_4.5rem_minmax(0,1fr)_auto] sm:items-center"
                       >
                         {item.audioUrl ? (
                           <button
@@ -961,6 +1035,16 @@ function ProfileInner() {
                                 title={copy.moveDown}
                               >
                                 ↓
+                              </button>
+                              <button
+                                type="button"
+                                disabled={favoriteRemoveBusy[item.id]}
+                                onClick={() => void removeFavoriteItem(item)}
+                                className="flex h-8 w-8 items-center justify-center rounded-full border border-red-300/20 bg-red-500/10 text-sm font-black text-red-100 transition hover:border-red-200 disabled:cursor-not-allowed disabled:opacity-40"
+                                aria-label={favoriteRemoveBusy[item.id] ? copy.removingFavorite : copy.removeFavorite}
+                                title={favoriteRemoveBusy[item.id] ? copy.removingFavorite : copy.removeFavorite}
+                              >
+                                ×
                               </button>
                             </span>
                           ) : item.audioUrl && item.category !== "favorites" ? (
