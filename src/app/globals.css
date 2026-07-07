@@ -212,8 +212,34 @@ a {
   animation-play-state: paused;
 }
 
+.aipo-profile-marquee-track {
+  display: flex;
+  min-width: max-content;
+  white-space: nowrap;
+}
+
+.aipo-profile-marquee-ghost {
+  display: none;
+}
+
+.aipo-profile-row:hover .aipo-profile-marquee-ghost,
+.aipo-profile-row:focus-within .aipo-profile-marquee-ghost,
+.aipo-profile-marquee-active .aipo-profile-marquee-ghost {
+  display: inline;
+}
+
+.aipo-profile-row:hover .aipo-profile-marquee-track,
+.aipo-profile-row:focus-within .aipo-profile-marquee-track,
+.aipo-profile-marquee-active .aipo-profile-marquee-track {
+  animation: aipoMarquee 18s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .aipo-marquee-track {
+    animation: none;
+  }
+
+  .aipo-profile-marquee-track {
     animation: none;
   }
 }

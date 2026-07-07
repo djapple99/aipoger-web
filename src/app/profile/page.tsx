@@ -182,6 +182,7 @@ function ProfileInner() {
   const [honorFavorites, setHonorFavorites] = useState<HonorFavoriteRecord[]>([]);
   const [creatorFilter, setCreatorFilter] = useState<CreatorFilter>("all");
   const [previewingItemId, setPreviewingItemId] = useState<string | null>(null);
+  const [selectedMarqueeItemId, setSelectedMarqueeItemId] = useState<string | null>(null);
   const [favoriteOrder, setFavoriteOrder] = useState<string[]>([]);
   const [favoriteOrderReadyKey, setFavoriteOrderReadyKey] = useState<string | null>(null);
   const [favoriteRemoveBusy, setFavoriteRemoveBusy] = useState<Record<string, boolean>>({});
@@ -985,18 +986,19 @@ function ProfileInner() {
                   {filteredCreatorItems.map((item, index) => {
                     const dateParts = formatDateParts(item.date, lang);
                     const showFavoriteControls = creatorFilter === "favorites" && item.category === "favorites";
+                    const isMarqueeSelected = selectedMarqueeItemId === item.id;
                     const titleContent = (
                       <>
-                        <span className="aipo-marquee block overflow-hidden text-base font-black text-zinc-50">
-                          <span className="aipo-marquee-track">
+                        <span className="aipo-profile-marquee block overflow-hidden text-base font-black text-zinc-50">
+                          <span className="aipo-profile-marquee-track">
                             <span className="pr-8">{item.title}</span>
-                            <span className="pr-8" aria-hidden="true">{item.title}</span>
+                            <span className="aipo-profile-marquee-ghost pr-8" aria-hidden="true">{item.title}</span>
                           </span>
                         </span>
-                        <span className="aipo-marquee block overflow-hidden text-xs text-zinc-500">
-                          <span className="aipo-marquee-track">
+                        <span className="aipo-profile-marquee block overflow-hidden text-xs text-zinc-500">
+                          <span className="aipo-profile-marquee-track">
                             <span className="pr-8">{item.meta}</span>
-                            <span className="pr-8" aria-hidden="true">{item.meta}</span>
+                            <span className="aipo-profile-marquee-ghost pr-8" aria-hidden="true">{item.meta}</span>
                           </span>
                         </span>
                       </>
@@ -1004,7 +1006,13 @@ function ProfileInner() {
                     return (
                       <article
                         key={item.id}
-                        className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 transition hover:border-orange-300/45 hover:bg-orange-300/[0.06] sm:grid-cols-[2.5rem_4.5rem_minmax(0,1fr)_auto] sm:items-center"
+                        onClick={() => setSelectedMarqueeItemId(item.id)}
+                        onFocusCapture={() => setSelectedMarqueeItemId(item.id)}
+                        onMouseEnter={() => setSelectedMarqueeItemId(item.id)}
+                        onMouseLeave={() => setSelectedMarqueeItemId((current) => (current === item.id ? null : current))}
+                        className={`aipo-profile-row grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 transition hover:border-orange-300/45 hover:bg-orange-300/[0.06] sm:grid-cols-[2.5rem_4.5rem_minmax(0,1fr)_auto] sm:items-center ${
+                          isMarqueeSelected ? "aipo-profile-marquee-active" : ""
+                        }`}
                       >
                         {item.audioUrl ? (
                           <button
