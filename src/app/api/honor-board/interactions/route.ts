@@ -31,6 +31,7 @@ type HonorTargetMeta = {
   genre: string;
   createdAt: string | null;
   audioUrl?: string | null;
+  ownerId?: string | null;
 };
 
 type StoredHonorData = {
@@ -61,6 +62,7 @@ type HonorInteractionDatabase = {
           genre: string | null;
           mood: string | null;
           audio_path: string | null;
+          created_by: string | null;
           created_at: string | null;
         };
         Insert: Record<string, never>;
@@ -213,6 +215,7 @@ function publicRecord(record: StoredHonorRecord, userId: string | null) {
     targetArtist: record.targetArtist ?? null,
     targetGenre: record.targetGenre ?? null,
     audioUrl: (record as StoredHonorRecord & { audioUrl?: string | null }).audioUrl ?? null,
+    targetOwnerId: (record as StoredHonorRecord & { targetOwnerId?: string | null }).targetOwnerId ?? null,
     updatedAt: record.updatedAt,
     favoriteCount: record.favoriteUserIds.length,
     myFavorited: userId ? record.favoriteUserIds.includes(userId) : false,
@@ -318,7 +321,7 @@ async function fetchTargetMetadata(admin: AdminClient, records: StoredHonorRecor
   if (uuidBarTargets.length > 0) {
     const readBars = await admin
       .from("listen_bar_tracks")
-      .select("id,title,artist,genre,mood,audio_path,created_at")
+      .select("id,title,artist,genre,mood,audio_path,created_by,created_at")
       .in("id", uuidBarTargets);
     if (!readBars.error) {
       for (const row of readBars.data ?? []) {
@@ -327,6 +330,7 @@ async function fetchTargetMetadata(admin: AdminClient, records: StoredHonorRecor
           artist: cleanText(row.artist, 80),
           genre: cleanText(row.genre, 80) || cleanText(row.mood, 80),
           audioUrl: publicStorageUrl(admin, LISTEN_BAR_AUDIO_BUCKET, row.audio_path),
+          ownerId: row.created_by ?? null,
           createdAt: row.created_at ?? null,
         });
       }
@@ -347,6 +351,7 @@ function withTargetMetadata(record: StoredHonorRecord, metadata: Map<string, Hon
     targetArtist: record.targetArtist || meta.artist || undefined,
     targetGenre: record.targetGenre || meta.genre || undefined,
     audioUrl: meta.audioUrl ?? undefined,
+    targetOwnerId: meta.ownerId ?? undefined,
     updatedAt: record.updatedAt || meta.createdAt || new Date().toISOString(),
   };
 }

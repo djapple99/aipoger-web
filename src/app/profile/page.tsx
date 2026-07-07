@@ -71,6 +71,7 @@ type HonorFavoriteRecord = {
   targetTitle?: string | null;
   targetArtist?: string | null;
   targetGenre?: string | null;
+  targetOwnerId?: string | null;
   audioUrl?: string | null;
   favoriteCount?: number | null;
   myFavorited?: boolean | null;
@@ -84,6 +85,7 @@ type CreatorItem = {
   title: string;
   meta: string;
   href: string;
+  canNavigate?: boolean;
   date?: string | null;
   genre?: string | null;
   aiTool?: string | null;
@@ -734,6 +736,9 @@ function ProfileInner() {
           : isZh
             ? "Drop 勝利作品"
             : "Drop Winner";
+      const isOwnBarTrack = record.targetKind === "bar" && Boolean(userId && record.targetOwnerId === userId);
+      const isHonorBoardFavorite = record.targetKind === "battle";
+      const href = isOwnBarTrack ? "/listen-bar" : isHonorBoardFavorite ? (lang === "en" ? "/rank?lang=en" : "/rank?lang=zh") : "";
       return {
         id: `favorite-${record.recordKey}`,
         category: "favorites" as const,
@@ -746,7 +751,8 @@ function ProfileInner() {
         ]
           .filter(Boolean)
           .join(" / "),
-        href: lang === "en" ? "/rank?lang=en" : "/rank?lang=zh",
+        href,
+        canNavigate: Boolean(href),
         date: record.updatedAt,
         genre: record.targetGenre,
         audioUrl: record.audioUrl,
@@ -776,6 +782,7 @@ function ProfileInner() {
     honorFavorites,
     isZh,
     lang,
+    userId,
     wins,
   ]);
 
@@ -978,6 +985,22 @@ function ProfileInner() {
                   {filteredCreatorItems.map((item, index) => {
                     const dateParts = formatDateParts(item.date, lang);
                     const showFavoriteControls = creatorFilter === "favorites" && item.category === "favorites";
+                    const titleContent = (
+                      <>
+                        <span className="aipo-marquee block overflow-hidden text-base font-black text-zinc-50">
+                          <span className="aipo-marquee-track">
+                            <span className="pr-8">{item.title}</span>
+                            <span className="pr-8" aria-hidden="true">{item.title}</span>
+                          </span>
+                        </span>
+                        <span className="aipo-marquee block overflow-hidden text-xs text-zinc-500">
+                          <span className="aipo-marquee-track">
+                            <span className="pr-8">{item.meta}</span>
+                            <span className="pr-8" aria-hidden="true">{item.meta}</span>
+                          </span>
+                        </span>
+                      </>
+                    );
                     return (
                       <article
                         key={item.id}
@@ -1005,10 +1028,13 @@ function ProfileInner() {
                             item.kind
                           )}
                         </span>
-                        <Link href={item.href} className="min-w-0 rounded-xl outline-none transition focus-visible:ring-2 focus-visible:ring-orange-300/70">
-                          <span className="block truncate text-base font-black text-zinc-50">{item.title}</span>
-                          <span className="block truncate text-xs text-zinc-500">{item.meta}</span>
-                        </Link>
+                        {item.canNavigate === false || !item.href ? (
+                          <span className="min-w-0 rounded-xl">{titleContent}</span>
+                        ) : (
+                          <Link href={item.href} className="min-w-0 rounded-xl outline-none transition focus-visible:ring-2 focus-visible:ring-orange-300/70">
+                            {titleContent}
+                          </Link>
+                        )}
                         <span className="col-span-2 flex items-center justify-between gap-3 sm:col-span-1 sm:justify-end">
                           <span className="min-w-12 text-right text-xs leading-4 tabular-nums text-zinc-500">
                             <span className="block">{dateParts.date}</span>
