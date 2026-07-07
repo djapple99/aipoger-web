@@ -33,6 +33,12 @@ test("listen bar upload form previews the selected genre destination", () => {
   assert.ok(listenBarPageSource.includes("uploadPhaseNoticeBody"));
 });
 
+test("listen bar upload form blocks creator genre public over-cap uploads", () => {
+  assert.ok(listenBarPageSource.includes("此類公播已嚴重超標"));
+  assert.ok(listenBarPageSource.includes("必須先降到 4 首公播以下"));
+  assert.ok(listenBarPageSource.includes("此類須降到4首"));
+});
+
 test("listen bar hero actions stay in the lower action strip", () => {
   assert.equal(listenBarPageSource.includes("navBible"), false);
   assert.equal(listenBarPageSource.includes("navAbout"), false);

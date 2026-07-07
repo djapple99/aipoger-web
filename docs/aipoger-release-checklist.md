@@ -135,6 +135,8 @@ Challenger and public pool:
 - Visitors can switch Bar Heartbreak playback between all public airplay and the 11 fixed music genres.
 - Genre filter UI shows current track counts, with each genre using a 36-track public-pool target.
 - New submissions enter the selected genre's public pool while that genre has fewer than 36 active public songs; full genres send new submissions into same-genre Challenger with 24H protection.
+- New submissions are blocked when the creator already has 5 or more active public-pool songs in the selected genre; the creator must reduce that genre to 4 public songs before uploading that genre again.
+- Creators with 30 or more active public-pool songs across all genres can successfully upload at most 1 active song per Taiwan day.
 - Creator upload flows require a fixed genre and must not silently default missing genres.
 - Creator Challenger slots use the per-creator, per-genre 3/2/1 ladder: 0-2 same-genre active public songs allows 3 active Challengers, 3-5 allows 2, and 6+ allows 1.
 - Public-pool songs do not occupy Challenger slots and must not be removed by this slot limit.

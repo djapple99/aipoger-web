@@ -11,6 +11,10 @@ export const LISTEN_BAR_CHALLENGER_HOURLY_LIMIT = 8;
 export const LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS = 24;
 export const LISTEN_BAR_JUDGMENT_INTERVAL_HOURS = 8;
 export const LISTEN_BAR_PUBLIC_EVICTION_LIMIT = 3;
+export const LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT = 5;
+export const LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD = 30;
+export const LISTEN_BAR_CREATOR_DAILY_UPLOAD_LIMIT_AFTER_TOTAL_PUBLIC = 1;
+export const LISTEN_BAR_CREATOR_PUBLIC_UPLOAD_LIMIT_STARTED_AT = "2026-07-07T14:00:00+08:00";
 export const LISTEN_BAR_PROMOTION_PROTECTION_STARTED_AT = "2026-06-29T00:00:00+08:00";
 export const LISTEN_BAR_PROMOTION_PROTECTION_UNTIL = "2026-07-06T00:00:00+08:00";
 
@@ -26,6 +30,22 @@ export function listenBarChallengerSlotLimitForPublicCount(publicTrackCount: num
 export function listenBarSubmissionPhaseForGenrePublicCount(publicTrackCount: number): "public" | "challenger" {
   const count = Math.max(0, Math.floor(Number.isFinite(publicTrackCount) ? publicTrackCount : 0));
   return count < LISTEN_BAR_GENRE_POOL_LIMIT ? "public" : "challenger";
+}
+
+export function listenBarCreatorGenrePublicLimitReached(publicTrackCount: number): boolean {
+  const count = Math.max(0, Math.floor(Number.isFinite(publicTrackCount) ? publicTrackCount : 0));
+  return count >= LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT;
+}
+
+export function listenBarCreatorDailyUploadLimitActive(publicTrackCount: number): boolean {
+  const count = Math.max(0, Math.floor(Number.isFinite(publicTrackCount) ? publicTrackCount : 0));
+  return count >= LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD;
+}
+
+export function listenBarCreatorDailyUploadLimitReached(publicTrackCount: number, uploadCountToday: number): boolean {
+  if (!listenBarCreatorDailyUploadLimitActive(publicTrackCount)) return false;
+  const count = Math.max(0, Math.floor(Number.isFinite(uploadCountToday) ? uploadCountToday : 0));
+  return count >= LISTEN_BAR_CREATOR_DAILY_UPLOAD_LIMIT_AFTER_TOTAL_PUBLIC;
 }
 
 type ListenBarHonorTrack = {

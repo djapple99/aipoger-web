@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import {
   LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
+  LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT,
   LISTEN_BAR_GENRE_POOL_LIMIT,
   LISTEN_BAR_PUBLIC_EVICTION_LIMIT,
   LISTEN_BAR_PROMOTION_PROTECTION_UNTIL,
@@ -17,6 +18,7 @@ type TrackForRotation = {
   id: string;
   title?: string | null;
   genre?: string | null;
+  created_by?: string | null;
   positive_reaction_count: number | null;
   created_at: string | null;
   promoted_at?: string | null;
@@ -75,7 +77,7 @@ async function processRotation(request: NextRequest) {
 
   let eligibleQuery = admin
     .from("listen_bar_tracks")
-    .select("id, positive_reaction_count, created_at, bar_phase")
+    .select("id, genre, created_by, positive_reaction_count, created_at, bar_phase")
     .eq("source", "community")
     .eq("is_active", true)
     .eq("bar_phase", "challenger");
@@ -86,7 +88,21 @@ async function processRotation(request: NextRequest) {
 
   if (eligibleError) return NextResponse.json({ error: eligibleError.message }, { status: 500 });
 
-  const promotedIds = ((eligibleChallengers as TrackForRotation[] | null) ?? []).map((row) => row.id);
+  const { data: publicRowsBeforePromotion, error: publicRowsBeforePromotionError } = await admin
+    .from("listen_bar_tracks")
+    .select("id, genre, created_by, positive_reaction_count, created_at, promoted_at, bar_phase")
+    .eq("source", "community")
+    .eq("is_active", true)
+    .eq("bar_phase", "public")
+    .order("positive_reaction_count", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (publicRowsBeforePromotionError) return NextResponse.json({ error: publicRowsBeforePromotionError.message }, { status: 500 });
+
+  const promotedIds = promotionCandidatesWithinCreatorGenreLimit(
+    (eligibleChallengers as TrackForRotation[] | null) ?? [],
+    (publicRowsBeforePromotion as TrackForRotation[] | null) ?? [],
+  ).map((row) => row.id);
   if (promotedIds.length > 0) {
     const { error } = await admin
       .from("listen_bar_tracks")
@@ -97,7 +113,7 @@ async function processRotation(request: NextRequest) {
 
   const { data: publicRows, error: publicRowsError } = await admin
     .from("listen_bar_tracks")
-    .select("id, genre, positive_reaction_count, created_at, promoted_at, bar_phase")
+    .select("id, genre, created_by, positive_reaction_count, created_at, promoted_at, bar_phase")
     .eq("source", "community")
     .eq("is_active", true)
     .eq("bar_phase", "public")
@@ -179,6 +195,7 @@ function toRotationTrack(row: TrackForRotation): ListenBarRotationTrack {
     id: row.id,
     title: row.title,
     genre: row.genre,
+    createdBy: row.created_by,
     barPhase: row.bar_phase === "public" ? "public" : "challenger",
     positiveReactionCount: row.positive_reaction_count,
     createdAt: row.created_at,
@@ -188,6 +205,29 @@ function toRotationTrack(row: TrackForRotation): ListenBarRotationTrack {
 
 function genreKey(row: TrackForRotation) {
   return row.genre?.trim() || "Original 自我風格";
+}
+
+function creatorGenreKey(row: TrackForRotation) {
+  const creator = row.created_by?.trim();
+  if (!creator) return null;
+  return `${creator}\u001f${genreKey(row)}`;
+}
+
+function promotionCandidatesWithinCreatorGenreLimit(challengers: TrackForRotation[], publicRows: TrackForRotation[]) {
+  const publicCounts = new Map<string, number>();
+  publicRows.forEach((row) => {
+    const key = creatorGenreKey(row);
+    if (key) publicCounts.set(key, (publicCounts.get(key) ?? 0) + 1);
+  });
+
+  return challengers.filter((row) => {
+    const key = creatorGenreKey(row);
+    if (!key) return true;
+    const count = publicCounts.get(key) ?? 0;
+    if (count >= LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT) return false;
+    publicCounts.set(key, count + 1);
+    return true;
+  });
 }
 
 function reactionCount(row: TrackForRotation) {
@@ -241,7 +281,7 @@ async function processRotationPreview(request: NextRequest) {
     const detailed = requestHasCronSecret(request);
     const { data, error } = await admin
       .from("listen_bar_tracks")
-      .select("id,title,genre,positive_reaction_count,created_at,promoted_at,bar_phase,review_status,hidden_at,removed_at")
+      .select("id,title,genre,created_by,positive_reaction_count,created_at,promoted_at,bar_phase,review_status,hidden_at,removed_at")
       .eq("source", "community")
       .eq("is_active", true);
 

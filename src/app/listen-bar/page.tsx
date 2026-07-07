@@ -33,6 +33,10 @@ import {
   LISTEN_BAR_AUDIO_BUCKET,
   LISTEN_BAR_CHALLENGER_HOURLY_LIMIT,
   LISTEN_BAR_COVER_BUCKET,
+  LISTEN_BAR_CREATOR_DAILY_UPLOAD_LIMIT_AFTER_TOTAL_PUBLIC,
+  LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT,
+  LISTEN_BAR_CREATOR_PUBLIC_UPLOAD_LIMIT_STARTED_AT,
+  LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD,
   LISTEN_BAR_GENRE_POOL_LIMIT,
   LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD,
   LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS,
@@ -40,6 +44,8 @@ import {
   EMPTY_LISTEN_BAR_TRACK,
   fallbackOfficialPlaylist,
   listenBarChallengerSlotLimitForPublicCount,
+  listenBarCreatorDailyUploadLimitReached,
+  listenBarCreatorGenrePublicLimitReached,
   listenBarIsHonorEligible,
   listenBarPublicDisplayDay,
   listenBarRowToTrack,
@@ -181,6 +187,23 @@ const STOP_HOME_BGM_EVENT = "aipoger:stop-home-bgm";
 
 const LISTEN_BAR_GENRES = MUSIC_GENRE_OPTIONS;
 const LISTEN_BAR_GENRE_SLUGS = new Map<string, string>(LISTEN_BAR_GENRES.map((genre, index) => [genre.value, String(index + 1)]));
+const listenBarUploadLimitStartedAtMs = new Date(LISTEN_BAR_CREATOR_PUBLIC_UPLOAD_LIMIT_STARTED_AT).getTime();
+const taipeiDayFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Asia/Taipei",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+function taipeiDayKey(value: string | number | Date | null | undefined) {
+  const date = value instanceof Date ? value : new Date(value ?? "");
+  const ms = date.getTime();
+  if (!Number.isFinite(ms)) return "";
+  return taipeiDayFormatter.formatToParts(date)
+    .filter((part) => part.type !== "literal")
+    .map((part) => part.value)
+    .join("-");
+}
 
 type PublicUploadForm = {
   title: string;
@@ -950,11 +973,28 @@ export default function ListenBarPage() {
     [myPublicStatsForUploadGenre.length],
   );
   const challengerSlotsFull = uploadWillEnterChallenger && myChallengerStatsForUploadGenre.length >= challengerSlotLimit;
+  const creatorGenrePublicLimitFull = Boolean(uploadGenre)
+    && listenBarCreatorGenrePublicLimitReached(myPublicStatsForUploadGenre.length);
+  const todayTaipeiKey = taipeiDayKey(Date.now());
+  const myUploadsTodayAfterLimitStart = useMemo(
+    () => myBroadcastStats.filter((track) => {
+      const createdAtMs = new Date(track.createdAt ?? "").getTime();
+      if (!Number.isFinite(createdAtMs) || createdAtMs < listenBarUploadLimitStartedAtMs) return false;
+      return taipeiDayKey(createdAtMs) === todayTaipeiKey;
+    }).length,
+    [myBroadcastStats, todayTaipeiKey],
+  );
+  const creatorDailyUploadLimitFull = listenBarCreatorDailyUploadLimitReached(myPublicStats.length, myUploadsTodayAfterLimitStart);
+  const publicUploadBlocked = creatorGenrePublicLimitFull || creatorDailyUploadLimitFull || challengerSlotsFull;
   const displayedChallengerSlotCount = uploadGenre ? myChallengerStatsForUploadGenre.length : challengerSlotCount;
   const uploadGenreRemainingPublicSlots = Math.max(0, LISTEN_BAR_GENRE_POOL_LIMIT - uploadGenreStats.public);
   const uploadGenreDisplayName = uploadGenre ? genreDisplayLabel(uploadGenre, isZh) : "";
   const uploadPhaseNoticeTitle = !uploadGenre
     ? (isZh ? "先選音樂類型" : "Pick a Genre")
+    : creatorGenrePublicLimitFull
+      ? (isZh ? "此類公播已嚴重超標" : "Genre Public Limit Exceeded")
+      : creatorDailyUploadLimitFull
+        ? (isZh ? "今日上傳額度已滿" : "Daily Upload Limit Reached")
     : uploadWillEnterChallenger
       ? challengerSlotsFull
         ? (isZh ? "此類 Challenger 席位已滿" : "Challenger Seats Full")
@@ -964,6 +1004,14 @@ export default function ListenBarPage() {
     ? (isZh
       ? "選好類型後，這裡會先告訴你歌曲會進公播池還是 Challenger。"
       : "After you pick a genre, this will show whether the song goes public or enters Challenger.")
+    : creatorGenrePublicLimitFull
+      ? (isZh
+        ? `你在 ${uploadGenreDisplayName} 公播池已有 ${myPublicStatsForUploadGenre.length}/${LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT} 首，已超過同類公播上限。這個種類必須先降到 4 首公播以下，才可以再傳第 5 首。`
+        : `You already have ${myPublicStatsForUploadGenre.length}/${LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT} public tracks in ${uploadGenreDisplayName}. This genre must be reduced to 4 public tracks before you can upload the 5th again.`)
+      : creatorDailyUploadLimitFull
+        ? (isZh
+          ? `你的公播歌曲已達 ${myPublicStats.length}/${LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD} 首；新規生效後每天最多成功上傳 ${LISTEN_BAR_CREATOR_DAILY_UPLOAD_LIMIT_AFTER_TOTAL_PUBLIC} 首。今天已用完，明天再傳，或先撤下一首公播歌曲讓總數低於 ${LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD}。`
+          : `You have ${myPublicStats.length}/${LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD} public tracks. After the new rule, creators at this level can upload ${LISTEN_BAR_CREATOR_DAILY_UPLOAD_LIMIT_AFTER_TOTAL_PUBLIC} track per day. Try tomorrow, or remove one public track to go below ${LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD}.`)
     : uploadWillEnterChallenger
       ? (isZh
         ? `${uploadGenreDisplayName} 已滿 ${uploadGenreStats.public}/${LISTEN_BAR_GENRE_POOL_LIMIT}。這首會先進同類 Challenger；你的同類 Challenger ${myChallengerStatsForUploadGenre.length}/${challengerSlotLimit}。`
@@ -974,6 +1022,19 @@ export default function ListenBarPage() {
   const challengerSlotsFullMessage = isZh
     ? `你的 ${uploadGenre || "此類型"} 公播池已有 ${myPublicStatsForUploadGenre.length} 首，現在 Challenger 上限是 ${challengerSlotLimit} 首。要再上傳，請先撤下一首同類 Challenger，或等同類公播池釋出空間。`
     : `You have ${myPublicStatsForUploadGenre.length} public tracks in ${uploadGenre || "this genre"}, so your Challenger limit is ${challengerSlotLimit}. Remove one same-genre Challenger, or wait for room in that genre.`;
+  const creatorGenrePublicLimitMessage = isZh
+    ? `你在 ${uploadGenre || "此類型"} 公播池已有 ${myPublicStatsForUploadGenre.length}/${LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT} 首，已超過同類公播上限。這個種類必須先降到 4 首公播以下，才可以再傳第 5 首。`
+    : `You already have ${myPublicStatsForUploadGenre.length}/${LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT} public tracks in ${uploadGenre || "this genre"}. This genre must be reduced to 4 public tracks before you can upload the 5th again.`;
+  const creatorDailyUploadLimitMessage = isZh
+    ? `你的公播歌曲已達 ${myPublicStats.length}/${LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD} 首，新規生效後每天最多成功上傳 ${LISTEN_BAR_CREATOR_DAILY_UPLOAD_LIMIT_AFTER_TOTAL_PUBLIC} 首。今天已用完，明天再傳，或先撤下一首公播歌曲。`
+    : `You have ${myPublicStats.length}/${LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD} public tracks. After the new rule, creators at this level can upload ${LISTEN_BAR_CREATOR_DAILY_UPLOAD_LIMIT_AFTER_TOTAL_PUBLIC} track per day. Try tomorrow, or remove one public track.`;
+  const publicUploadBlockedMessage = creatorGenrePublicLimitFull
+    ? creatorGenrePublicLimitMessage
+    : creatorDailyUploadLimitFull
+      ? creatorDailyUploadLimitMessage
+      : challengerSlotsFull
+        ? challengerSlotsFullMessage
+        : "";
 
   useEffect(() => {
     window.dispatchEvent(new Event(STOP_HOME_BGM_EVENT));
@@ -1938,10 +1999,6 @@ export default function ListenBarPage() {
       setPublicUploadError(isZh ? "請先登入後再投稿傷心酒吧 Bar Heartbreak。" : "Please sign in before submitting to Bar Heartbreak.");
       return;
     }
-    if (challengerSlotsFull) {
-      setPublicUploadError(challengerSlotsFullMessage);
-      return;
-    }
     if (!publicAudioFile) {
       return;
     }
@@ -1951,6 +2008,10 @@ export default function ListenBarPage() {
     }
     if (!publicUploadForm.genre.trim()) {
       setPublicUploadError(t("listen_bar_genre_required"));
+      return;
+    }
+    if (publicUploadBlocked) {
+      setPublicUploadError(publicUploadBlockedMessage);
       return;
     }
 
@@ -3010,10 +3071,10 @@ export default function ListenBarPage() {
                   className={`rounded-xl border px-3 py-3 ${
                     !uploadGenre
                       ? "border-white/10 bg-white/[0.035]"
+                      : publicUploadBlocked
+                        ? "border-red-300/30 bg-red-500/10"
                       : uploadWillEnterChallenger
-                        ? challengerSlotsFull
-                          ? "border-red-300/30 bg-red-500/10"
-                          : "border-orange-300/28 bg-orange-500/10"
+                        ? "border-orange-300/28 bg-orange-500/10"
                         : "border-cyan-200/24 bg-cyan-300/[0.075]"
                   }`}
                 >
@@ -3022,10 +3083,10 @@ export default function ListenBarPage() {
                       className={`text-xs font-black ${
                         !uploadGenre
                           ? "text-zinc-300"
+                          : publicUploadBlocked
+                            ? "text-red-100"
                           : uploadWillEnterChallenger
-                            ? challengerSlotsFull
-                              ? "text-red-100"
-                              : "text-orange-100"
+                            ? "text-orange-100"
                             : "text-cyan-50"
                       }`}
                     >
@@ -3068,13 +3129,17 @@ export default function ListenBarPage() {
 
                 <button
                   type="submit"
-                  disabled={publicUploadBusy || challengerSlotsFull || !publicAudioFile}
+                  disabled={publicUploadBusy || publicUploadBlocked || !publicAudioFile}
                   className="h-12 rounded-xl bg-orange-500 px-5 text-sm font-black tracking-[0.12em] text-black shadow-[0_0_28px_rgba(255,106,0,0.24)] transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:border disabled:border-white/10 disabled:bg-white/[0.045] disabled:text-zinc-500 disabled:shadow-none"
                 >
                   {publicUploadBusy
                     ? (isZh ? "上傳中..." : "Uploading...")
-                    : challengerSlotsFull
-                      ? (isZh ? "挑戰席已滿" : "Seats Full")
+                    : creatorGenrePublicLimitFull
+                      ? (isZh ? "此類須降到4首" : "Reduce Genre to 4")
+                      : creatorDailyUploadLimitFull
+                        ? (isZh ? "今日額度已滿" : "Daily Limit Used")
+                        : challengerSlotsFull
+                          ? (isZh ? "挑戰席已滿" : "Seats Full")
                       : (isZh ? "我要播歌！" : "Play My Song")}
                 </button>
               </form>

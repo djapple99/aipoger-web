@@ -1,5 +1,6 @@
 import {
   LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
+  LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT,
   LISTEN_BAR_GENRE_POOL_LIMIT,
   LISTEN_BAR_PUBLIC_EVICTION_LIMIT,
   LISTEN_BAR_PROMOTION_PROTECTION_UNTIL,
@@ -12,6 +13,7 @@ export type ListenBarRotationTrack = {
   id: string;
   title?: string | null;
   genre?: string | null;
+  createdBy?: string | null;
   barPhase?: "challenger" | "public" | null;
   positiveReactionCount?: number | null;
   createdAt?: string | null;
@@ -49,6 +51,12 @@ function genreKey(track: ListenBarRotationTrack) {
   return track.genre?.trim() || "Original 自我風格";
 }
 
+function creatorGenreKey(track: ListenBarRotationTrack) {
+  const creator = track.createdBy?.trim();
+  if (!creator) return null;
+  return `${creator}\u001f${genreKey(track)}`;
+}
+
 function overflowRemovalCandidatesByGenre(tracks: ListenBarRotationTrack[], nowMs: number) {
   const groups = new Map<string, ListenBarRotationTrack[]>();
   for (const track of tracks) {
@@ -79,13 +87,26 @@ export function buildListenBarRotationPreview(
   const activePublicTracks = tracks.filter((track) => track.barPhase === "public");
   const activeChallengerTracks = tracks.filter((track) => track.barPhase !== "public");
   const observationCutoffMs = nowMs - LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS * 60 * 60 * 1000;
+  const creatorGenrePublicCounts = new Map<string, number>();
+  activePublicTracks.forEach((track) => {
+    const key = creatorGenreKey(track);
+    if (key) creatorGenrePublicCounts.set(key, (creatorGenrePublicCounts.get(key) ?? 0) + 1);
+  });
   const wouldPromote = activeChallengerTracks
     .filter((track) => {
       if (evictionPaused) return true;
       const createdAtMs = timestampMs(track.createdAt);
       return createdAtMs !== null && createdAtMs < observationCutoffMs;
     })
-    .sort((left, right) => createdAtSortValue(left) - createdAtSortValue(right));
+    .sort((left, right) => createdAtSortValue(left) - createdAtSortValue(right))
+    .filter((track) => {
+      const key = creatorGenreKey(track);
+      if (!key) return true;
+      const count = creatorGenrePublicCounts.get(key) ?? 0;
+      if (count >= LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT) return false;
+      creatorGenrePublicCounts.set(key, count + 1);
+      return true;
+    });
 
   const projectedPublicTracks = [...activePublicTracks, ...wouldPromote];
   const removalCandidates = overflowRemovalCandidatesByGenre(projectedPublicTracks, nowMs);

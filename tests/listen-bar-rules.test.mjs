@@ -1,10 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  LISTEN_BAR_CREATOR_DAILY_UPLOAD_LIMIT_AFTER_TOTAL_PUBLIC,
+  LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT,
+  LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD,
   LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD,
   LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS,
   LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
   listenBarChallengerSlotLimitForPublicCount,
+  listenBarCreatorDailyUploadLimitActive,
+  listenBarCreatorDailyUploadLimitReached,
+  listenBarCreatorGenrePublicLimitReached,
   listenBarIsHonorEligible,
   listenBarPublicDisplayDay,
   listenBarPublicSurvivalDays,
@@ -30,6 +36,22 @@ test("listen bar submissions enter public until the selected genre pool is full"
   assert.equal(listenBarSubmissionPhaseForGenrePublicCount(LISTEN_BAR_PUBLIC_ROTATION_LIMIT - 1), "public");
   assert.equal(listenBarSubmissionPhaseForGenrePublicCount(LISTEN_BAR_PUBLIC_ROTATION_LIMIT), "challenger");
   assert.equal(listenBarSubmissionPhaseForGenrePublicCount(Number.NaN), "public");
+});
+
+test("listen bar creator genre public cap requires reducing to four before uploading again", () => {
+  assert.equal(LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT, 5);
+  assert.equal(listenBarCreatorGenrePublicLimitReached(4), false);
+  assert.equal(listenBarCreatorGenrePublicLimitReached(5), true);
+  assert.equal(listenBarCreatorGenrePublicLimitReached(26), true);
+});
+
+test("listen bar creator daily upload limit starts at thirty active public songs", () => {
+  assert.equal(LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD, 30);
+  assert.equal(LISTEN_BAR_CREATOR_DAILY_UPLOAD_LIMIT_AFTER_TOTAL_PUBLIC, 1);
+  assert.equal(listenBarCreatorDailyUploadLimitActive(29), false);
+  assert.equal(listenBarCreatorDailyUploadLimitActive(30), true);
+  assert.equal(listenBarCreatorDailyUploadLimitReached(30, 0), false);
+  assert.equal(listenBarCreatorDailyUploadLimitReached(30, 1), true);
 });
 
 test("listen bar honor eligibility allows 30 positive reactions", () => {
@@ -144,6 +166,30 @@ test("listen bar rotation preview protects honor-eligible public songs before ov
   assert.equal(preview.publicOverflow, 1);
   assert.deepEqual(preview.wouldPromote.map((track) => track.id), ["challenger-ready"]);
   assert.deepEqual(preview.wouldRemove.map((track) => track.id), ["challenger-ready"]);
+});
+
+test("listen bar rotation preview does not promote challengers over the creator genre public cap", () => {
+  const publicRows = Array.from({ length: LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT }, (_, index) => ({
+    id: `wind-edm-public-${index}`,
+    createdBy: "wind-curator",
+    genre: "EDM 百大電音",
+    barPhase: "public",
+    positiveReactionCount: 3,
+    createdAt: new Date(NOW - (10 + index) * DAY_MS).toISOString(),
+  }));
+  const challenger = {
+    id: "wind-edm-challenger",
+    createdBy: "wind-curator",
+    genre: "EDM 百大電音",
+    barPhase: "challenger",
+    positiveReactionCount: 0,
+    createdAt: new Date(NOW - 2 * DAY_MS).toISOString(),
+  };
+
+  const preview = buildListenBarRotationPreview([...publicRows, challenger], NOW);
+
+  assert.equal(preview.eligibleChallengerCount, 0);
+  assert.deepEqual(preview.wouldPromote, []);
 });
 
 test("listen bar capacity pause remains active until the July 6 cleanup window", () => {
