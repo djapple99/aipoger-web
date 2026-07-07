@@ -16,6 +16,7 @@ import { LISTEN_BAR_AUDIO_BUCKET } from "@/lib/listen-bar";
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 const BATTLE_AUDIO_BUCKET = "battle-audio";
 const PROFILE_CHALLENGE_AUDIO_KEY = "aipoger:profile-challenge-audio";
+const FAVORITE_ORDER_STORAGE_PREFIX = "aipoger:profile-favorite-order";
 
 type ListenBarTrack = {
   id: string;
@@ -70,6 +71,7 @@ type HonorFavoriteRecord = {
   targetTitle?: string | null;
   targetArtist?: string | null;
   targetGenre?: string | null;
+  audioUrl?: string | null;
   favoriteCount?: number | null;
   myFavorited?: boolean | null;
   updatedAt?: string | null;
@@ -99,17 +101,25 @@ function authAvatarUrl(user: { user_metadata?: Record<string, unknown> } | null 
   return null;
 }
 
-function formatDate(value: string | null | undefined, lang: string): string {
-  if (!value) return "";
+function formatDateParts(value: string | null | undefined, lang: string): { date: string; time: string } {
+  if (!value) return { date: "", time: "" };
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat(lang === "zh" ? "zh-TW" : "en-US", {
-    month: "2-digit",
-    day: "2-digit",
+  if (Number.isNaN(date.getTime())) return { date: "", time: "" };
+  const locale = lang === "zh" ? "zh-TW" : "en-US";
+  const datePart = new Intl.DateTimeFormat(locale, {
+    month: "numeric",
+    day: "numeric",
+  }).format(date);
+  const timePart = new Intl.DateTimeFormat(locale, {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
   }).format(date);
+  return { date: datePart, time: timePart };
+}
+
+function favoriteOrderStorageKey(userId: string | null) {
+  return `${FAVORITE_ORDER_STORAGE_PREFIX}:${userId ?? "anonymous"}`;
 }
 
 function storagePublicUrl(bucket: string, path: string | null | undefined): string | null {
@@ -169,6 +179,8 @@ function ProfileInner() {
   const [honorFavorites, setHonorFavorites] = useState<HonorFavoriteRecord[]>([]);
   const [creatorFilter, setCreatorFilter] = useState<CreatorFilter>("all");
   const [previewingItemId, setPreviewingItemId] = useState<string | null>(null);
+  const [favoriteOrder, setFavoriteOrder] = useState<string[]>([]);
+  const [favoriteOrderReadyKey, setFavoriteOrderReadyKey] = useState<string | null>(null);
   const cropFileInputRef = useRef<HTMLInputElement>(null);
   const avatarSectionRef = useRef<HTMLDivElement>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -201,7 +213,9 @@ function ProfileInner() {
             wins: "勝出封存",
             favorites: "收藏歌曲",
             favorited: "已點讚收藏",
-            honorFavorite: "Top Drops 收藏",
+            honorFavorite: "Top Drops",
+            moveUp: "上移",
+            moveDown: "下移",
             active: "公開中",
             openBattle: "發起挑戰",
             openBar: "去傷心酒吧",
@@ -231,7 +245,9 @@ function ProfileInner() {
             wins: "Archived Wins",
             favorites: "Saved Songs",
             favorited: "saved from hearts",
-            honorFavorite: "Top Drops Save",
+            honorFavorite: "Top Drops",
+            moveUp: "Move Up",
+            moveDown: "Move Down",
             active: "Live",
             openBattle: "Start Battle",
             openBar: "Open Listen Bar",
@@ -388,6 +404,32 @@ function ProfileInner() {
     void loadProfile();
   }, [loadProfile]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const key = favoriteOrderStorageKey(userId);
+    setFavoriteOrderReadyKey(null);
+    const raw = window.localStorage.getItem(key);
+    if (!raw) {
+      setFavoriteOrder([]);
+      setFavoriteOrderReadyKey(key);
+      return;
+    }
+    try {
+      const parsed = JSON.parse(raw);
+      setFavoriteOrder(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : []);
+    } catch {
+      setFavoriteOrder([]);
+    }
+    setFavoriteOrderReadyKey(key);
+  }, [userId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const key = favoriteOrderStorageKey(userId);
+    if (favoriteOrderReadyKey !== key) return;
+    window.localStorage.setItem(key, JSON.stringify(favoriteOrder));
+  }, [favoriteOrder, favoriteOrderReadyKey, userId]);
+
   const stopPreview = useCallback(() => {
     const audio = previewAudioRef.current;
     if (audio) {
@@ -541,6 +583,22 @@ function ProfileInner() {
     router.push(`/battle/hook-cut?${params.toString()}`);
   }, [lang, router, stopPreview]);
 
+  const moveFavoriteItem = useCallback((itemId: string, direction: -1 | 1) => {
+    setFavoriteOrder((current) => {
+      const favoriteIds = honorFavorites.map((record) => `favorite-${record.recordKey}`);
+      const ordered = [
+        ...current.filter((id) => favoriteIds.includes(id)),
+        ...favoriteIds.filter((id) => !current.includes(id)),
+      ];
+      const index = ordered.indexOf(itemId);
+      const nextIndex = index + direction;
+      if (index < 0 || nextIndex < 0 || nextIndex >= ordered.length) return ordered;
+      const next = [...ordered];
+      [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+      return next;
+    });
+  }, [honorFavorites]);
+
   const creatorItems = useMemo<CreatorItem[]>(() => {
     const tracks = barTracks.map((track) => ({
       id: `bar-${track.id}`,
@@ -612,16 +670,25 @@ function ProfileInner() {
         meta: [
           kind,
           record.targetGenre?.trim(),
-          `${Math.max(0, Math.round(Number(record.favoriteCount) || 0))} ${isZh ? "收藏" : "saves"}`,
+          `${Math.max(0, Math.round(Number(record.favoriteCount) || 0))} ${isZh ? "愛心" : "hearts"}`,
         ]
           .filter(Boolean)
           .join(" / "),
         href: lang === "en" ? "/rank?lang=en" : "/rank?lang=zh",
         date: record.updatedAt,
+        genre: record.targetGenre,
+        audioUrl: record.audioUrl,
       };
     });
 
-    return [...tracks, ...queues, ...battleRecords, ...archivedWins, ...favorites]
+    const orderedFavoriteIds = [
+      ...favoriteOrder.filter((id) => favorites.some((favorite) => favorite.id === id)),
+      ...favorites.map((favorite) => favorite.id).filter((id) => !favoriteOrder.includes(id)),
+    ];
+    const favoriteRank = new Map(orderedFavoriteIds.map((id, index) => [id, index]));
+    const orderedFavorites = [...favorites].sort((a, b) => (favoriteRank.get(a.id) ?? 9999) - (favoriteRank.get(b.id) ?? 9999));
+
+    return [...tracks, ...queues, ...battleRecords, ...archivedWins, ...orderedFavorites]
       .sort((a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime());
   }, [
     barTracks,
@@ -632,6 +699,7 @@ function ProfileInner() {
     copy.listenBar,
     copy.records,
     copy.wins,
+    favoriteOrder,
     honorFavorites,
     isZh,
     lang,
@@ -647,9 +715,17 @@ function ProfileInner() {
   ];
 
   const filteredCreatorItems = (
-    creatorFilter === "all"
-      ? creatorItems
-      : creatorItems.filter((item) => item.category === creatorFilter)
+    creatorFilter === "favorites"
+      ? [...creatorItems]
+          .filter((item) => item.category === "favorites")
+          .sort((a, b) => {
+            const aIndex = favoriteOrder.indexOf(a.id);
+            const bIndex = favoriteOrder.indexOf(b.id);
+            return (aIndex < 0 ? 9999 : aIndex) - (bIndex < 0 ? 9999 : bIndex);
+          })
+      : creatorFilter === "all"
+        ? creatorItems
+        : creatorItems.filter((item) => item.category === creatorFilter)
   ).slice(0, 16);
 
   const creatorListTitle = creatorFilter === "all"
@@ -825,42 +901,81 @@ function ProfileInner() {
               </div>
               {filteredCreatorItems.length > 0 ? (
                 <div className="space-y-2">
-                  {filteredCreatorItems.map((item) => (
-                    <article
-                      key={item.id}
-                      className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 transition hover:border-orange-300/45 hover:bg-orange-300/[0.06] sm:grid-cols-[2.5rem_7rem_minmax(0,1fr)_auto] sm:items-center"
-                    >
-                      {item.audioUrl ? (
-                        <button
-                          type="button"
-                          onClick={() => togglePreview(item)}
-                          className="flex h-10 w-10 items-center justify-center rounded-full border border-cyan-200/30 bg-cyan-300/[0.08] text-sm font-black text-cyan-100 transition hover:border-cyan-100 hover:bg-cyan-300/15"
-                          aria-label={previewingItemId === item.id ? (isZh ? "暫停預覽" : "Pause preview") : (isZh ? "預覽歌曲" : "Preview track")}
-                        >
-                          {previewingItemId === item.id ? "Ⅱ" : "▶"}
-                        </button>
-                      ) : (
-                        <span className="h-10 w-10" aria-hidden="true" />
-                      )}
-                      <span className="hidden text-xs font-black uppercase tracking-[0.18em] text-cyan-100/80 sm:block">{item.kind}</span>
-                      <Link href={item.href} className="min-w-0 rounded-xl outline-none transition focus-visible:ring-2 focus-visible:ring-orange-300/70">
-                        <span className="block truncate text-base font-black text-zinc-50">{item.title}</span>
-                        <span className="block truncate text-xs text-zinc-500">{item.meta}</span>
-                      </Link>
-                      <span className="col-span-2 flex items-center justify-between gap-3 sm:col-span-1 sm:justify-end">
-                        <span className="whitespace-nowrap text-xs tabular-nums text-zinc-500">{formatDate(item.date, lang)}</span>
+                  {filteredCreatorItems.map((item, index) => {
+                    const dateParts = formatDateParts(item.date, lang);
+                    const showFavoriteControls = creatorFilter === "favorites" && item.category === "favorites";
+                    return (
+                      <article
+                        key={item.id}
+                        className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 transition hover:border-orange-300/45 hover:bg-orange-300/[0.06] sm:grid-cols-[2.5rem_5.5rem_minmax(0,1fr)_auto] sm:items-center"
+                      >
                         {item.audioUrl ? (
                           <button
                             type="button"
-                            onClick={() => openChallengeCut(item)}
-                            className="rounded-full border border-orange-300/35 bg-orange-400/10 px-3 py-1.5 text-xs font-black text-orange-100 transition hover:border-orange-200 hover:bg-orange-400/18"
+                            onClick={() => togglePreview(item)}
+                            className="flex h-10 w-10 items-center justify-center rounded-full border border-cyan-200/30 bg-cyan-300/[0.08] text-sm font-black text-cyan-100 transition hover:border-cyan-100 hover:bg-cyan-300/15"
+                            aria-label={previewingItemId === item.id ? (isZh ? "暫停預覽" : "Pause preview") : (isZh ? "預覽歌曲" : "Preview track")}
                           >
-                            {isZh ? "挑戰" : "Challenge"}
+                            {previewingItemId === item.id ? "Ⅱ" : "▶"}
                           </button>
-                        ) : null}
-                      </span>
-                    </article>
-                  ))}
+                        ) : (
+                          <span className="h-10 w-10" aria-hidden="true" />
+                        )}
+                        <span className="hidden text-[11px] font-black uppercase leading-4 tracking-[0.2em] text-cyan-100/80 sm:block">
+                          {item.kind === copy.honorFavorite ? (
+                            <>
+                              <span className="block">TOP</span>
+                              <span className="block">DROPS</span>
+                            </>
+                          ) : (
+                            item.kind
+                          )}
+                        </span>
+                        <Link href={item.href} className="min-w-0 rounded-xl outline-none transition focus-visible:ring-2 focus-visible:ring-orange-300/70">
+                          <span className="block truncate text-base font-black text-zinc-50">{item.title}</span>
+                          <span className="block truncate text-xs text-zinc-500">{item.meta}</span>
+                        </Link>
+                        <span className="col-span-2 flex items-center justify-between gap-3 sm:col-span-1 sm:justify-end">
+                          <span className="min-w-12 text-right text-xs leading-4 tabular-nums text-zinc-500">
+                            <span className="block">{dateParts.date}</span>
+                            <span className="block">{dateParts.time}</span>
+                          </span>
+                          {showFavoriteControls ? (
+                            <span className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                disabled={index === 0}
+                                onClick={() => moveFavoriteItem(item.id, -1)}
+                                className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/25 text-sm font-black text-cyan-100 transition hover:border-cyan-200 disabled:cursor-not-allowed disabled:opacity-30"
+                                aria-label={copy.moveUp}
+                                title={copy.moveUp}
+                              >
+                                ↑
+                              </button>
+                              <button
+                                type="button"
+                                disabled={index === filteredCreatorItems.length - 1}
+                                onClick={() => moveFavoriteItem(item.id, 1)}
+                                className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/25 text-sm font-black text-cyan-100 transition hover:border-cyan-200 disabled:cursor-not-allowed disabled:opacity-30"
+                                aria-label={copy.moveDown}
+                                title={copy.moveDown}
+                              >
+                                ↓
+                              </button>
+                            </span>
+                          ) : item.audioUrl && item.category !== "favorites" ? (
+                            <button
+                              type="button"
+                              onClick={() => openChallengeCut(item)}
+                              className="rounded-full border border-orange-300/35 bg-orange-400/10 px-3 py-1.5 text-xs font-black text-orange-100 transition hover:border-orange-200 hover:bg-orange-400/18"
+                            >
+                              {isZh ? "挑戰" : "Challenge"}
+                            </button>
+                          ) : null}
+                        </span>
+                      </article>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="rounded-2xl border border-dashed border-white/12 bg-black/20 p-6 text-sm text-zinc-500">

@@ -30,6 +30,7 @@ type HonorTargetMeta = {
   artist: string;
   genre: string;
   createdAt: string | null;
+  audioUrl?: string | null;
 };
 
 type StoredHonorData = {
@@ -59,7 +60,19 @@ type HonorInteractionDatabase = {
           artist: string | null;
           genre: string | null;
           mood: string | null;
+          audio_path: string | null;
           created_at: string | null;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      battles: {
+        Row: {
+          id: string;
+          winner: string | null;
+          audio_a_path: string | null;
+          audio_b_path: string | null;
         };
         Insert: Record<string, never>;
         Update: Record<string, never>;
@@ -77,6 +90,8 @@ type AdminClient = SupabaseClient<HonorInteractionDatabase>;
 
 const DATA_BUCKET = "listen-bar-data";
 const DATA_PATH = "honor-board/interactions.json";
+const BATTLE_AUDIO_BUCKET = "battle-audio";
+const LISTEN_BAR_AUDIO_BUCKET = "listen-bar-audio";
 const COMMENT_LIMIT_PER_RECORD = 120;
 const PUBLIC_COMMENT_LIMIT = 24;
 
@@ -197,11 +212,31 @@ function publicRecord(record: StoredHonorRecord, userId: string | null) {
     targetTitle: record.targetTitle ?? null,
     targetArtist: record.targetArtist ?? null,
     targetGenre: record.targetGenre ?? null,
+    audioUrl: (record as StoredHonorRecord & { audioUrl?: string | null }).audioUrl ?? null,
     updatedAt: record.updatedAt,
     favoriteCount: record.favoriteUserIds.length,
     myFavorited: userId ? record.favoriteUserIds.includes(userId) : false,
     comments: record.comments.slice(-PUBLIC_COMMENT_LIMIT),
   };
+}
+
+function publicStorageUrl(admin: AdminClient, bucket: string, path: string | null | undefined) {
+  const value = path?.trim();
+  if (!value) return null;
+  if (/^(https?:|blob:|data:)/i.test(value)) return value;
+  return admin.storage.from(bucket).getPublicUrl(value).data.publicUrl;
+}
+
+async function signedBattleAudioUrl(admin: AdminClient, path: string | null | undefined) {
+  const value = path?.trim();
+  if (!value) return null;
+  if (/^(https?:|blob:|data:)/i.test(value)) return value;
+  const { data, error } = await admin.storage.from(BATTLE_AUDIO_BUCKET).createSignedUrl(value, 60 * 10);
+  if (error) {
+    console.warn("[honor interactions battle audio]", error.message);
+    return null;
+  }
+  return data?.signedUrl ?? null;
 }
 
 async function fetchTargetMetadata(admin: AdminClient, records: StoredHonorRecord[]) {
@@ -259,11 +294,31 @@ async function fetchTargetMetadata(admin: AdminClient, records: StoredHonorRecor
       .forEach((value) => metadata.set(`battle:${value}`, meta));
   }
 
+  const battleIds = Array.from(
+    new Set(archiveRows.map((row) => row.battle_id).filter((value): value is string => Boolean(value && isUuidLike(value)))),
+  );
+  if (battleIds.length > 0) {
+    const battleMedia = await admin
+      .from("battles")
+      .select("id,winner,audio_a_path,audio_b_path")
+      .in("id", battleIds);
+    if (!battleMedia.error) {
+      await Promise.all(
+        ((battleMedia.data ?? []) as HonorInteractionDatabase["public"]["Tables"]["battles"]["Row"][]).map(async (battle) => {
+          const winnerPath = battle.winner === "fighter_b" ? battle.audio_b_path : battle.audio_a_path;
+          const audioUrl = await signedBattleAudioUrl(admin, winnerPath);
+          const meta = metadata.get(`battle:${battle.id}`);
+          if (meta) meta.audioUrl = audioUrl;
+        }),
+      );
+    }
+  }
+
   const uuidBarTargets = barTargets.filter(isUuidLike);
   if (uuidBarTargets.length > 0) {
     const readBars = await admin
       .from("listen_bar_tracks")
-      .select("id,title,artist,genre,mood,created_at")
+      .select("id,title,artist,genre,mood,audio_path,created_at")
       .in("id", uuidBarTargets);
     if (!readBars.error) {
       for (const row of readBars.data ?? []) {
@@ -271,6 +326,7 @@ async function fetchTargetMetadata(admin: AdminClient, records: StoredHonorRecor
           title: cleanText(row.title, 160),
           artist: cleanText(row.artist, 80),
           genre: cleanText(row.genre, 80) || cleanText(row.mood, 80),
+          audioUrl: publicStorageUrl(admin, LISTEN_BAR_AUDIO_BUCKET, row.audio_path),
           createdAt: row.created_at ?? null,
         });
       }
@@ -290,6 +346,7 @@ function withTargetMetadata(record: StoredHonorRecord, metadata: Map<string, Hon
     targetTitle: record.targetTitle || [meta.artist, meta.title].filter(Boolean).join(" / ") || undefined,
     targetArtist: record.targetArtist || meta.artist || undefined,
     targetGenre: record.targetGenre || meta.genre || undefined,
+    audioUrl: meta.audioUrl ?? undefined,
     updatedAt: record.updatedAt || meta.createdAt || new Date().toISOString(),
   };
 }
