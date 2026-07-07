@@ -32,6 +32,7 @@ import {
   DEFAULT_LISTEN_BAR_COVER,
   LISTEN_BAR_AUDIO_BUCKET,
   LISTEN_BAR_CHALLENGER_HOURLY_LIMIT,
+  LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
   LISTEN_BAR_COVER_BUCKET,
   LISTEN_BAR_CREATOR_DAILY_UPLOAD_LIMIT_AFTER_TOTAL_PUBLIC,
   LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT,
@@ -3158,7 +3159,7 @@ export default function ListenBarPage() {
                 {isZh ? `${challengerQueueTracks.length} 首正在挑戰` : `${challengerQueueTracks.length} Challengers`}
               </span>
               <span className="rounded-full border border-cyan-200/18 bg-cyan-300/8 px-3 py-1 text-[11px] font-black text-cyan-100">
-                {isZh ? `每批 1 小時最多 ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} 首上場` : `${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT}/1-hour batch`}
+                {isZh ? `每批 1 小時最多 ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} 首新歌上公播` : `${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} new songs per 1-hour airplay batch`}
               </span>
             </div>
           </div>
@@ -3183,7 +3184,7 @@ export default function ListenBarPage() {
             </div>
           ) : (
             <p className="rounded-xl border border-white/8 bg-black/35 px-4 py-5 text-sm font-bold text-zinc-500">
-              {isZh ? "目前沒有 Challenger，新投稿會優先排入挑戰池。" : "No Challengers yet. New uploads enter this pool first."}
+              {isZh ? `目前沒有 Challenger，新投稿會優先排入挑戰池保護 ${LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS}H。` : `No Challengers yet. New uploads enter Challenger protection for ${LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS}H first.`}
             </p>
           )}
         </section>
