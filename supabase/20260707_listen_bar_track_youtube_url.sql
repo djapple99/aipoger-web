@@ -12,7 +12,7 @@ alter table public.listen_bar_tracks
     youtube_url is null
     or (
       length(youtube_url) <= 300
-      and youtube_url ~* '^https?://((www|m|music)\\.)?(youtube\\.com|youtu\\.be)/'
+      and youtube_url ~* '^https?://((www|m|music)[.])?(youtube[.]com|youtu[.]be)/'
     )
   );
 

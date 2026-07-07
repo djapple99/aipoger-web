@@ -42,15 +42,15 @@ function cleanText(value: unknown, maxLength: number): string | null {
 }
 
 function isMissingColumnError(error: unknown): boolean {
+  const code = error && typeof error === "object" ? (error as { code?: string }).code : "";
   const text = error && typeof error === "object"
     ? [
         (error as { message?: string }).message,
         (error as { details?: string }).details,
         (error as { hint?: string }).hint,
-        (error as { code?: string }).code,
       ].filter(Boolean).join(" ")
     : String(error ?? "");
-  return /schema cache|column.*does not exist|PGRST204|review_status|moderation_note|hidden_at|removed_at|source|bar_phase|positive_reaction_count|heart_count|star_count|thumb_count|happy_count|promoted_at|youtube_url/i.test(text);
+  return code === "PGRST204" || /schema cache|column .* does not exist|could not find .* column/i.test(text);
 }
 
 const allowedGenreValues = new Set(MUSIC_GENRE_OPTIONS.map((genre) => genre.value));

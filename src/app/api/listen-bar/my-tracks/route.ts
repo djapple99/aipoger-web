@@ -77,15 +77,15 @@ function adminClient(): AdminClient {
 }
 
 function isMissingColumnError(error: unknown): boolean {
+  const code = error && typeof error === "object" ? (error as { code?: string }).code : "";
   const text = error && typeof error === "object"
     ? [
         (error as { message?: string }).message,
         (error as { details?: string }).details,
         (error as { hint?: string }).hint,
-        (error as { code?: string }).code,
       ].filter(Boolean).join(" ")
     : String(error ?? "");
-  return /schema cache|column.*does not exist|PGRST204|bar_phase|promoted_at|description|youtube_url/i.test(text);
+  return code === "PGRST204" || /schema cache|column .* does not exist|could not find .* column/i.test(text);
 }
 
 function missingDescriptionColumnResponse() {
@@ -255,7 +255,13 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    if (updateResult.error) return NextResponse.json({ error: updateResult.error.message }, { status: 500 });
+    if (updateResult.error) {
+      const status = updateResult.error.code === "23514" ? 400 : 500;
+      const errorMessage = updateResult.error.code === "23514"
+        ? "資料庫的 YouTube MV 連結規則尚未更新，請先套用 supabase/20260707_listen_bar_youtube_url_accept_music_hosts.sql。"
+        : updateResult.error.message;
+      return NextResponse.json({ error: errorMessage }, { status });
+    }
     if (!updateResult.data) return NextResponse.json({ error: "找不到可修改的歌曲。" }, { status: 404 });
 
     return NextResponse.json({ track: updateResult.data });

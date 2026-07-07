@@ -268,15 +268,15 @@ const ListenBarRecordArt = memo(function ListenBarRecordArt({ coverUrl, title, i
 });
 
 function isMissingListenBarSubmissionColumn(error: unknown): boolean {
+  const code = error && typeof error === "object" ? (error as { code?: string }).code : "";
   const text = error && typeof error === "object"
     ? [
         (error as { message?: string }).message,
         (error as { details?: string }).details,
         (error as { hint?: string }).hint,
-        (error as { code?: string }).code,
       ].filter(Boolean).join(" ")
     : String(error ?? "");
-  return /audio_sha256|bar_phase|promoted_at|removed_at|description|youtube_url|schema cache|column.*does not exist|PGRST204/i.test(text);
+  return code === "PGRST204" || /schema cache|column .* does not exist|could not find .* column/i.test(text);
 }
 
 function missingListenBarDescriptionColumnMessage(isZh: boolean) {
