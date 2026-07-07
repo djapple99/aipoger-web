@@ -4,6 +4,7 @@ import {
   LISTEN_BAR_CREATOR_DAILY_UPLOAD_LIMIT_AFTER_TOTAL_PUBLIC,
   LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT,
   LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD,
+  LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
   LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD,
   LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS,
   LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
@@ -36,6 +37,10 @@ test("listen bar submissions enter public until the selected genre pool is full"
   assert.equal(listenBarSubmissionPhaseForGenrePublicCount(LISTEN_BAR_PUBLIC_ROTATION_LIMIT - 1), "public");
   assert.equal(listenBarSubmissionPhaseForGenrePublicCount(LISTEN_BAR_PUBLIC_ROTATION_LIMIT), "challenger");
   assert.equal(listenBarSubmissionPhaseForGenrePublicCount(Number.NaN), "public");
+});
+
+test("listen bar challenger protection period is thirty six hours", () => {
+  assert.equal(LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS, 36);
 });
 
 test("listen bar creator genre public cap requires reducing to four before uploading again", () => {

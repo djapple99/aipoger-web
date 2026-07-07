@@ -161,8 +161,8 @@ Current rules:
 - Each genre has a 36-track public pool; with the current 11 genres, the public-pool target totals 396 community songs.
 - New submissions must include a fixed genre. If that genre has fewer than 36 active public songs, the submission enters the same-genre public pool immediately; full genres send new submissions into same-genre Challenger.
 - Creator Challenger slots use the current per-creator, per-genre 3/2/1 ladder: 0-2 same-genre active public songs allows 3 active Challengers, 3-5 allows 2, and 6+ allows 1. Public-pool songs do not get removed by this slot limit.
-- Challenger observation period is 24 hours.
-- Challenger has a 24-hour protection period, then becomes eligible to move into the same-genre public pool. The old 1-positive-reaction promotion gate is retired.
+- Challenger observation period is 36 hours.
+- Challenger has a 36-hour protection period, then becomes eligible to move into the same-genre public pool. The old 1-positive-reaction promotion gate is retired.
 - Public-pool elimination runs per genre only when that genre has more than 36 public songs and removes at most 3 low-reaction older songs per pass.
 - Each elimination pass removes only overflow inside overfull genre pools.
 - A song with 30 hearts/positive reactions or 7 public survival days after its genre pool is full becomes Honor Board eligible.

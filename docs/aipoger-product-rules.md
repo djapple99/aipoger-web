@@ -211,16 +211,16 @@ Current rules:
 - New submissions enter the selected genre's public pool immediately while that genre has fewer than 36 active public songs.
 - From 2026-07-07 onward, existing songs are not retroactively removed, but a creator cannot upload a genre again while that creator already has 5 or more active public-pool songs in that same genre. The genre must be reduced to 4 active public songs before the creator can upload the 5th again.
 - From 2026-07-07 onward, when a creator has 30 or more active public-pool songs across all Bar Heartbreak genres, that creator can successfully upload at most 1 active song per Taiwan day. Removed, hidden, rejected, inactive, and non-public songs do not count toward the 30 public-song threshold.
-- Once the selected genre already has 36 active public songs, new submissions enter same-genre Challenger and receive 24H protection before public-pool promotion.
+- Once the selected genre already has 36 active public songs, new submissions enter same-genre Challenger and receive 36-hour protection before public-pool promotion.
 - Challenger promotion must also respect the per-creator, per-genre 5-public-song cap; a Challenger cannot move into public airplay if it would keep that creator at or above the same-genre public cap.
 - Creator Challenger slots use a per-creator, per-genre 3/2/1 ladder based on that creator's active public-pool songs in the same genre: 0-2 public songs allows up to 3 active Challengers, 3-5 public songs allows up to 2 active Challengers, and 6+ public songs allows up to 1 active Challenger.
 - Public-pool songs do not occupy Challenger slots and are not removed by this limit; they only reduce the creator's new Challenger concurrency.
 - A creator may remove their own Challenger songs.
 - A creator may remove their own public-pool songs.
-- Challenger protection period: 24 hours.
+- Challenger protection period: 36 hours.
 - A Challenger can be played, reacted to, and commented on during protection, but it is not evicted.
 - Per-track comments are persistent. A signed-in listener can edit their own Bar Heartbreak track comments. When someone comments on a creator's Bar Heartbreak track, the creator receives an account notification unless they commented on their own song.
-- A Challenger becomes eligible to move into the same-genre public pool after 24 hours. The old 1-positive-reaction promotion gate is retired.
+- A Challenger becomes eligible to move into the same-genre public pool after 36 hours. The old 1-positive-reaction promotion gate is retired.
 - Own reaction remains allowed in V2, but it is only public support and does not guarantee survival.
 - Judgement interval: every 8 hours.
 - `GET /api/listen-bar/process-rotation` is a manual/monitoring dry-run preview only.

@@ -162,7 +162,7 @@ Must preserve:
 - The record visual is central and should feel like a public broadcast.
 - Lyrics area should be substantial enough to read, visually aligned with the comments area where practical.
 - Underfilled genres send new submissions straight into the same-genre public pool.
-- Challenger is shown only when that genre is already full and the new track is in 24H protection before public-pool promotion.
+- Challenger is shown only when that genre is already full and the new track is in 36-hour protection before public-pool promotion.
 - The hero's top-right cluster should stay light; do not crowd it with the main action buttons. Put `我要播歌`, bar sharing, `AI 音樂鬥歌場`, and `榮譽榜` together in the lower hero action strip.
 - Do not show `練功聖經` or `關於愛波哥` inside the Bar Heartbreak hero action strip unless a later explicit redesign restores them.
 - The hero action strip ticker is a moving Battle marquee, not a static truncated label.
