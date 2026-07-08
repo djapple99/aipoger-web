@@ -132,7 +132,7 @@ Check:
 
 Challenger and public pool:
 
-- Visitors can switch Bar Heartbreak playback between all public airplay and the 11 fixed music genres.
+- Visitors can switch Bar Heartbreak playback between all public airplay and the 10 fixed music genres.
 - Genre filter UI shows current track counts, with each genre using a 36-track public-pool target.
 - New submissions enter the selected genre's public pool while that genre has fewer than 36 active public songs; full genres send new submissions into same-genre Challenger with 36-hour protection.
 - New submissions are blocked when the creator already has 5 or more active public-pool songs in the selected genre; the creator must reduce that genre to 4 public songs before uploading that genre again.
@@ -140,7 +140,7 @@ Challenger and public pool:
 - Creator upload flows require a fixed genre and must not silently default missing genres.
 - Creator Challenger slots use the per-creator, per-genre 3/2/1 ladder: 0-2 same-genre active public songs allows 3 active Challengers, 3-5 allows 2, and 6+ allows 1.
 - Public-pool songs do not occupy Challenger slots and must not be removed by this slot limit.
-- Public pool progress shows current total over 396 and per-genre counts over 36.
+- Public pool progress shows current total over 360 and per-genre counts over 36.
 - Public-pool elimination starts only when a genre has more than 36 public songs and removes at most 3 per pass from overfull genre pools.
 - `GET /api/listen-bar/process-rotation` is manual/monitoring dry-run preview only.
 - Mutation requires protected POST and `LISTEN_BAR_ROTATION_ENABLED=true`.
@@ -154,6 +154,20 @@ Daily Spotlight:
 - Spotlight reactions and comments apply to the same Bar Heartbreak track, not a separate duplicate record.
 - Saving the spotlight creates or updates social drafts only. It must not automatically publish to Discord, Facebook, Instagram, TikTok, or YouTube.
 - Discord publishing requires an approved draft plus the explicit Discord publish action, and should store message/channel response when Discord returns it.
+
+## AI Music Works Checklist
+
+Check:
+
+- Homepage first-layer primary action says `探索 AI 音樂` and links to `/ai-music?lang=zh`.
+- `/ai-music?lang=zh` returns 200 and uses the main title `AI 音樂作品`.
+- The page groups works by the current 10 fixed music genres and shows at most 6 cards per genre before `看更多`.
+- Cards show song title, creator, AI tool, heart count, and challenge count.
+- Desktop hover exposes the Battle Record HUD.
+- Mobile exposes an equivalent expanded HUD via the info action.
+- Card play opens the bottom mini player and does not expand per-card audio controls.
+- `Drop Battle`, `Showtime`, `傷心酒吧`, and `Choice` are internal options on `/ai-music`.
+- Old genre labels are not shown as current category headings.
 
 ## AIPOGER Showtime Checklist
 

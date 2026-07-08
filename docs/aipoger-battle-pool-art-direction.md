@@ -175,7 +175,7 @@ Use examples:
 
 - `K-Pop 韓式動感`
 - `Rap 街頭說唱`
-- `City Pop / Disco / Funk 城市律動`
+- `Disco / Funk / City-Pop`
 - `R&B 深情瞬間`
 - `Band Rock 熱血搖滾`
 

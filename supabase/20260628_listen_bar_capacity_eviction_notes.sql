@@ -1,7 +1,8 @@
 -- LEGACY AIPOGER Bar Heartbreak migration: make old global-pool capacity
 -- evictions visible in admin.
 -- Superseded by the 2026-07-01/2026-07-02 genre-pool rules.
--- Current rule: 11 fixed genres, 36 public tracks per genre, 396 total public
+-- Historical migration note: this file used the retired 11-genre / 396-track target.
+-- Current rules live in docs/aipoger-product-rules.md and use 10 genres / 360 public tracks.
 -- target, and no system capacity eviction before 2026-07-06 00:00 +08.
 -- Idempotent. Uses moderation_note so admin can distinguish rotation evictions
 -- from owner moderation and creator self-removal.

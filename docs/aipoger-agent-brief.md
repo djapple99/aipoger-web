@@ -157,8 +157,8 @@ Current rules:
 - Voting/reactions and comments require sign-in.
 - Creator submissions form the public rotation.
 - Official AIPOGER fallback songs must not count as active public-pool songs.
-- Public playback supports all-airplay plus the 11 fixed music genres.
-- Each genre has a 36-track public pool; with the current 11 genres, the public-pool target totals 396 community songs.
+- Public playback supports all-airplay plus the 10 fixed music genres.
+- Each genre has a 36-track public pool; with the current 10 genres, the public-pool target totals 360 community songs.
 - New submissions must include a fixed genre. If that genre has fewer than 36 active public songs, the submission enters the same-genre public pool immediately; full genres send new submissions into same-genre Challenger.
 - Creator Challenger slots use the current per-creator, per-genre 3/2/1 ladder: 0-2 same-genre active public songs allows 3 active Challengers, 3-5 allows 2, and 6+ allows 1. Public-pool songs do not get removed by this slot limit.
 - Challenger observation period is 36 hours.

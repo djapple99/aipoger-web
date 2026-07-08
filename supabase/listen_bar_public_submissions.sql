@@ -4,8 +4,8 @@
 -- LEGACY NOTE:
 -- This original submission migration used the retired global-pool model.
 -- Do not use this header as the current product rule. Current Bar Heartbreak
--- rule is defined by the 2026-07-01/2026-07-02 genre-pool migrations:
--- 11 fixed genres, 36 public tracks per genre, 396 total public target,
+-- rule is defined by the current product rules:
+-- 10 fixed genres, 36 public tracks per genre, 360 total public target,
 -- Challenger promotion after 24H, and no system capacity eviction before
 -- 2026-07-06 00:00 +08.
 

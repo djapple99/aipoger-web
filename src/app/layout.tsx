@@ -16,10 +16,10 @@ const ogImage = "/aipoger-og-card-20260522.png";
 export const metadata: Metadata = {
   metadataBase,
   title: {
-    default: "AIPOGER 愛播歌｜AI 音樂鬥歌場與傷心酒吧",
+    default: "AIPOGER 愛播歌｜探索 AI 音樂、Drop Battle 與傷心酒吧",
     template: "%s｜AIPOGER 愛播歌",
   },
-  description: "AIPOGER 愛播歌是 AI 音樂創作者一起成長、讓作品被認可的舞台。上傳 AI 音樂，參加 Drop Battle 與傷心酒吧公播，讓勝出作品走向播放、策展與商業化。",
+  description: "AIPOGER 愛播歌是 AI 音樂創作者一起成長、讓作品被認可的舞台。先探索 AI 音樂作品，再從喜歡的歌曲延伸到 Drop Battle、傷心酒吧公播、Showtime 與策展。",
   applicationName: "AIPOGER 愛播歌",
   keywords: ["AIPOGER", "愛播歌", "AI 音樂", "AI Music", "鬥歌", "Drop Battle", "傷心酒吧", "AI 音樂創作"],
   alternates: {
@@ -38,8 +38,8 @@ export const metadata: Metadata = {
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   openGraph: {
-    title: "AIPOGER 愛播歌｜AI 音樂鬥歌場與傷心酒吧",
-    description: "上傳 AI 音樂，參加 Drop Battle 與傷心酒吧公播，讓作品被聽見、被投票認可，並累積播放與商業化機會。",
+    title: "AIPOGER 愛播歌｜探索 AI 音樂、Drop Battle 與傷心酒吧",
+    description: "探索正在被聽見、收藏與挑戰的 AI 音樂作品，從喜歡的歌曲延伸到 Drop Battle、傷心酒吧與 Showtime。",
     url: siteUrl,
     siteName: "AIPOGER 愛播歌",
     locale: "zh_TW",
@@ -55,8 +55,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "AIPOGER 愛播歌｜AI 音樂鬥歌場與傷心酒吧",
-    description: "AI 音樂創作者一起成長的 AIPOGER 舞台：Drop Battle、傷心酒吧公播池與 Showtime。",
+    title: "AIPOGER 愛播歌｜探索 AI 音樂、Drop Battle 與傷心酒吧",
+    description: "AI 音樂創作者一起成長的 AIPOGER 舞台：AI 音樂作品、Drop Battle、傷心酒吧公播池與 Showtime。",
     images: [ogImage],
   },
 };

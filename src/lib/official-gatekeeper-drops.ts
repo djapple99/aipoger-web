@@ -44,7 +44,7 @@ export const OFFICIAL_GATEKEEPER_DROP_DEFAULTS: OfficialGatekeeperDrop[] = [
     id: "gate-02-city-pop",
     gateNumber: "GATE 02",
     title: OFFICIAL_GATEKEEPER_GENERIC_TITLE,
-    genre: "City Pop / Disco / Funk 城市律動",
+    genre: "Disco / Funk / City-Pop",
     aiTool: "Suno",
     description: "挑戰這首官方 Drop，設定開戰時間並分享拉人投票。",
     audioPath: null,

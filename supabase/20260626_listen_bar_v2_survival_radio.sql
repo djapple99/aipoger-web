@@ -1,6 +1,7 @@
 -- AIPOGER Bar Heartbreak V2 survival radio.
 -- Superseded by the 2026-07-01/2026-07-02 genre-pool rules.
--- Current rule: 11 fixed genres, 36 public tracks per genre, 396 total public
+-- Historical migration note: this file used the retired 11-genre / 396-track target.
+-- Current rules live in docs/aipoger-product-rules.md and use 10 genres / 360 public tracks.
 -- target, and no system capacity eviction before 2026-07-06 00:00 +08.
 --
 -- Rule changes:
@@ -12,7 +13,7 @@
 -- - Honor Board eligibility is product-side: 30 positive reactions or 7 public survival days.
 
 comment on table public.listen_bar_tracks is
-'LEGACY AIPOGER Bar Heartbreak V2 survival radio. Superseded by the 2026-07-01/2026-07-02 genre-pool rules: 11 fixed genres, 36 public tracks per genre, 396 total public target, no system capacity eviction before 2026-07-06 00:00 +08.';
+'LEGACY AIPOGER Bar Heartbreak V2 survival radio. Superseded by current product rules: 10 fixed genres, 36 public tracks per genre, 360 total public target, no system capacity eviction before 2026-07-06 00:00 +08.';
 
 create index if not exists listen_bar_tracks_public_survival_idx
   on public.listen_bar_tracks (source, is_active, bar_phase, promoted_at, created_at)

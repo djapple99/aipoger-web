@@ -1,7 +1,8 @@
 -- LEGACY AIPOGER Bar Heartbreak migration.
 -- This 2026-06-29 file is kept for historical repair context only and is
 -- superseded by the 2026-07-01/2026-07-02 genre-pool migrations.
--- Current rule: 11 fixed genres, 36 public tracks per genre, 396 total public
+-- Historical migration note: this file used the retired 11-genre / 396-track target.
+-- Current rules live in docs/aipoger-product-rules.md and use 10 genres / 360 public tracks.
 -- target, and no system capacity eviction before 2026-07-06 00:00 +08.
 
 alter table public.listen_bar_tracks
@@ -102,7 +103,7 @@ revoke execute on function public.process_listen_bar_rotation_limits() from auth
 grant execute on function public.process_listen_bar_rotation_limits() to service_role;
 
 comment on function public.process_listen_bar_rotation_limits() is
-'LEGACY AIPOGER Bar Heartbreak rotation function superseded by the 2026-07-01/2026-07-02 genre-pool rules. Current rule: 11 fixed genres, 36 public tracks per genre, 396 total public target, and no system capacity eviction before 2026-07-06 00:00 +08.';
+'LEGACY AIPOGER Bar Heartbreak rotation function superseded by current product rules. Current rule: 10 fixed genres, 36 public tracks per genre, 360 total public target, and no system capacity eviction before 2026-07-06 00:00 +08.';
 
 update public.listen_bar_tracks
 set is_active = true,

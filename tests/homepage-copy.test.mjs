@@ -5,12 +5,16 @@ import test from "node:test";
 const homePageSource = readFileSync(new URL("../src/app/page.tsx", import.meta.url), "utf8");
 const homeI18nSource = readFileSync(new URL("../src/lib/i18n.tsx", import.meta.url), "utf8");
 
-test("homepage uses current 60s Drop Battle language", () => {
+test("homepage uses current Explore AI Music first-layer entry", () => {
+  assert.ok(homePageSource.includes("withLang(\"/ai-music\")"));
+  assert.ok(homePageSource.includes("AI 音樂作品"));
+  assert.ok(homePageSource.includes("探索 AI 音樂"));
+  assert.ok(homeI18nSource.includes("btn_explore_music"));
+  assert.ok(homeI18nSource.includes("先探索 AI 音樂"));
+});
+
+test("homepage keeps 60s Drop Battle as a secondary product signal", () => {
   assert.ok(homePageSource.includes("[\"60s\", \"Drop Battle\"]"));
-  assert.ok(homePageSource.includes("60s Drop Battle 規則"));
-  assert.ok(homePageSource.includes("30-60 秒 Drop"));
-  assert.ok(homeI18nSource.includes("上傳 60s Drop"));
-  assert.ok(homeI18nSource.includes("30-60 秒 Drop"));
 });
 
 test("homepage no longer advertises retired 90s Drop Battle labels", () => {

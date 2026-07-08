@@ -71,14 +71,21 @@ Avoid:
 Role:
 
 - First-viewport brand stage.
-- Give users clear routes into Battle, Bar Heartbreak, rules, and AIPOGER Showtime.
+- Give users clear routes into AI music discovery, Bar Heartbreak, AIPOGER Showtime, and Battle as a next action.
 
 Must preserve:
 
 - AIPOGER as the first signal.
 - Music/stage energy.
-- Primary action to Battle.
+- Primary action to `探索 AI 音樂`.
 - Secondary paths to public listening and rules.
+
+### Homepage 2026-07-09 Explore Entry
+
+- Homepage first-layer main entry uses `探索 AI 音樂`, not `AI 音樂鬥歌場`.
+- Link the primary action to `/ai-music`.
+- Use the supporting idea `先探索 AI 音樂，再從喜歡的作品發起挑戰`.
+- The AI music works page then contains `Drop Battle` / `AI 音樂鬥歌場` as internal options.
 
 ### Homepage 2026-06-24 Baseline
 
@@ -90,9 +97,9 @@ Copy:
 - Do not use `AI 音樂播台` as the large title; it feels off-brand and has been rejected.
 - Mobile hero should not visually show the large Chinese `AI 音樂擂台` title. Keep it as screen-reader-only if semantic heading structure is needed.
 - Mobile hero copy should read as two centered lines:
-  - `上傳 60s Drop`
-  - `讓聽眾決定誰最好聽`
-- The mobile Drop Signal card body can use one compact line: `上傳 30-60 秒 Drop，讓聽眾決定誰最好聽`.
+  - `探索 AI 音樂`
+  - `喜歡再發起挑戰`
+- The mobile first action label should be `探索`, and the signal body should describe browsing AI music works before challenging.
 - The desktop stat row should use `公播 / 60s / 酒吧`; do not show the retired `90s` Drop Battle label.
 
 Desktop layout:
@@ -163,14 +170,14 @@ Must preserve:
 - Lyrics area should be substantial enough to read, visually aligned with the comments area where practical.
 - Underfilled genres send new submissions straight into the same-genre public pool.
 - Challenger is shown only when that genre is already full and the new track is in 36-hour protection before public-pool promotion.
-- The hero's top-right cluster should stay light; do not crowd it with the main action buttons. Put `我要播歌`, bar sharing, `AI 音樂鬥歌場`, and `Showtime` together in the lower hero action strip.
+- The hero's top-right cluster should stay light; do not crowd it with the main action buttons. Put `我要播歌`, bar sharing, `探索 AI 音樂`, and `Showtime` together in the lower hero action strip.
 - Do not show `練功聖經` or `關於愛波哥` inside the Bar Heartbreak hero action strip unless a later explicit redesign restores them.
 - The hero action strip ticker is a moving Battle marquee, not a static truncated label.
 - The queue header should expose a selected-genre share action so listeners can share the exact Bar Heartbreak category they are hearing.
 - The Bar Heartbreak hero sign must remain text-driven and localizable. Do not replace the sign title/subtitle with a bitmap containing Chinese text, because language switching must keep working.
 - The sign may visually reference the dark gold sci-fi plaque style, but the title, `AIPOGER RADIO`, `BAR HEARTBREAK`, and subtitle must be live text. The subtitle should use the same gold dimensional text family as the main title, scaled down for hierarchy.
 - On desktop, keep the Bar Heartbreak sign compact rather than full-width. The plaque should sit around two-thirds of the previous oversized desktop treatment so it reads as a sign, not a giant banner that pushes the radio content down.
-- On mobile, the lower hero action strip should place `我要播歌`, `分享吧台`, and `Showtime` on the first row, with `AI 音樂鬥歌場` centered on the second row.
+- On mobile, the lower hero action strip should place `我要播歌`, `分享吧台`, and `Showtime` on the first row, with `探索 AI 音樂` centered on the second row.
 - The now-playing song title should keep short names dramatic, but long mixed Chinese/English titles must auto-size down and allow two lines before truncation. Do not lock every title to the largest fixed display size.
 
 Copy direction:

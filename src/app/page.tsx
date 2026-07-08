@@ -83,7 +83,7 @@ type HomeInfoLink = {
 };
 
 type HomeStatItem = [string, string];
-type HomeActionKey = "battle" | "bar" | "rank";
+type HomeActionKey = "explore" | "bar" | "rank";
 type HomeActionPrompt = {
   eyebrow: string;
   title: string;
@@ -101,7 +101,7 @@ const DESKTOP_CARD_ICON_ASSETS = [
 ];
 
 const HOME_ACTION_GLOW = {
-  battle: "rgba(255, 122, 28, 0.42)",
+  explore: "rgba(255, 122, 28, 0.42)",
   bar: "rgba(255, 122, 28, 0.28)",
   rank: "rgba(103, 232, 249, 0.28)",
 } as const;
@@ -109,10 +109,10 @@ const HOME_ACTION_GLOW = {
 function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt> {
   if (lang === "ja") {
     return {
-      battle: {
-        eyebrow: "DROP SIGNAL",
-        title: "AI音楽バトルホール",
-        body: "30-60秒のDropを出し、挑戦を起こす。リスナーの投票で、どの曲がより刺さるかを試せる。",
+      explore: {
+        eyebrow: "EXPLORE",
+        title: "AI音楽を探す",
+        body: "聴かれ、保存され、挑戦につながるAI音楽をジャンル別にブラウズ。",
         tone: "orange",
       },
       bar: {
@@ -132,10 +132,10 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
 
   if (lang === "ko") {
     return {
-      battle: {
-        eyebrow: "DROP SIGNAL",
-        title: "AI 음악 배틀홀",
-        body: "30-60초 Drop을 올리고 도전하세요. 청중 투표로 어떤 음악이 더 강하게 꽂히는지 확인할 수 있어요.",
+      explore: {
+        eyebrow: "EXPLORE",
+        title: "AI 음악 탐색",
+        body: "듣고, 저장하고, 도전으로 이어지는 AI 음악을 장르별로 둘러보세요.",
         tone: "orange",
       },
       bar: {
@@ -155,10 +155,10 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
 
   if (lang === "en") {
     return {
-      battle: {
-        eyebrow: "DROP SIGNAL",
-        title: "AI Music Battle Arena",
-        body: "Upload a 30-60s Drop, start a challenge, and let listeners decide which track hits harder.",
+      explore: {
+        eyebrow: "EXPLORE",
+        title: "Explore AI Music",
+        body: "Browse AI music that is being heard, saved, and challenged across AIPOGER.",
         tone: "orange",
       },
       bar: {
@@ -177,10 +177,10 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
   }
 
   return {
-    battle: {
-      eyebrow: "DROP SIGNAL",
-      title: "AI 音樂鬥歌場",
-      body: "上傳 30-60 秒 Drop，讓聽眾決定誰最好聽",
+    explore: {
+      eyebrow: "EXPLORE",
+      title: "探索 AI 音樂",
+      body: "瀏覽正在被聽見、收藏與挑戰的 AI 音樂作品",
       tone: "orange",
     },
     bar: {
@@ -273,7 +273,7 @@ function HomeDesktopActionHud({
 }) {
   const isCyan = prompt.tone === "cyan";
   const topClass =
-    activeAction === "battle"
+    activeAction === "explore"
       ? "top-[62%]"
       : activeAction === "bar"
         ? "top-[75%]"
@@ -441,13 +441,13 @@ function DesktopReferenceHome({
   zhDisplayClass: string;
   heroChromeShadow: string;
 }) {
-  const [activeAction, setActiveAction] = useState<HomeActionKey>("battle");
+  const [activeAction, setActiveAction] = useState<HomeActionKey>("explore");
   const prompts = useMemo(() => homeActionPrompts(lang), [lang]);
   const actionPrompt = prompts[activeAction];
   const actionButtonClass = (key: HomeActionKey, base: string) =>
     `${base} ${
       activeAction === key
-        ? key === "battle"
+        ? key === "explore"
           ? "border-orange-100/80 shadow-[0_14px_30px_rgba(255,106,0,0.32),0_0_30px_rgba(255,106,0,0.22),inset_0_1px_0_rgba(255,255,255,0.24)]"
           : key === "rank"
           ? "border-cyan-100/70 bg-cyan-300/[0.12] shadow-[0_0_28px_rgba(103,232,249,0.2),inset_0_1px_0_rgba(255,255,255,0.12)]"
@@ -559,18 +559,18 @@ function DesktopReferenceHome({
                 </div>
                 <div className="grid gap-[clamp(0.75rem,1.4vh,1rem)]">
                   <Link
-                    href={withLang("/battle")}
-                    onPointerEnter={() => setActiveAction("battle")}
-                    onFocus={() => setActiveAction("battle")}
+                    href={withLang("/ai-music")}
+                    onPointerEnter={() => setActiveAction("explore")}
+                    onFocus={() => setActiveAction("explore")}
                     onPointerMove={handlePointerGlowMove}
-                    style={pointerGlowStyle(HOME_ACTION_GLOW.battle)}
+                    style={pointerGlowStyle(HOME_ACTION_GLOW.explore)}
                     className={actionButtonClass(
-                      "battle",
+                      "explore",
                       "aipo-pointer-glow group flex min-h-[3.5rem] items-center justify-between rounded-[0.9rem] border border-orange-200/18 bg-[#ff6a00] px-[1.2rem] text-white shadow-[0_14px_30px_rgba(255,106,0,0.28),inset_0_1px_0_rgba(255,255,255,0.22)] transition hover:bg-[#ff8422] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200",
                     )}
                   >
                     <WatchIcon />
-                    <span className={`text-[clamp(1rem,1.05vw,1.18rem)] font-black ${isZh ? zhDisplayClass : ""}`}>{t("btn_watch")}</span>
+                    <span className={`text-[clamp(1rem,1.05vw,1.18rem)] font-black ${isZh ? zhDisplayClass : ""}`}>{t("btn_explore_music")}</span>
                   </Link>
                   <Link
                     href={withLang("/listen-bar")}
@@ -803,7 +803,7 @@ export default function HomePage() {
   const { t, lang } = useI18n();
   const [isSplashFinished, setIsSplashFinished] = useState(false);
   const [phase, setPhase] = useState<SplashPhase>("fadeIn");
-  const [activeMobileAction, setActiveMobileAction] = useState<HomeActionKey>("battle");
+  const [activeMobileAction, setActiveMobileAction] = useState<HomeActionKey>("explore");
   const homepageActionPrompts = useMemo(() => homeActionPrompts(lang), [lang]);
 
   useEffect(() => {
@@ -856,12 +856,12 @@ export default function HomePage() {
   const heroTitle = t("home_secondary_title");
   const heroLine = t("home_hero_line");
   const mobileHeroLine = isZh
-    ? ["上傳 60s Drop", "讓聽眾決定誰最好聽"]
+    ? ["探索 AI 音樂", "喜歡再發起挑戰"]
     : lang === "ja"
-      ? ["60s Dropを出せ", "聴衆が決める"]
+      ? ["AI音楽を探す", "好きな曲から挑戦"]
       : lang === "ko"
-        ? ["60s Drop을 올려라", "관객이 결정한다"]
-        : ["Upload a 60s Drop", "Let the crowd decide"];
+        ? ["AI 음악 탐색", "마음에 들면 도전"]
+        : ["Explore AI Music", "Challenge what you like"];
   const heroCopy = t("home_tagline");
   const zhDisplayClass = `${fontGlowSans.className} tracking-[-0.015em]`;
   const zhSerifClass = `${fontSourceSerifTC.className} font-black tracking-[0.012em]`;
@@ -896,7 +896,7 @@ export default function HomePage() {
       ];
   const infoLinks = isZh
     ? [
-        { href: withLang("/hook-guide"), title: "60s Drop Battle 規則", desc: "30-60 秒抓波，上場累積認可" },
+        { href: withLang("/ai-music"), title: "AI 音樂作品", desc: "先聽歌、收藏，再發起挑戰" },
         { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: "作品定位、Drop 與參戰路線" },
         { href: withLang("/rank"), title: "AIPOGER Showtime", desc: "被認可作品的音樂舞台" },
         { href: choiceWeeklyHref, title: "AIPOGER Choice Weekly", desc: "每週策展與 DJ 選歌方向" },
@@ -904,7 +904,7 @@ export default function HomePage() {
       ]
     : lang === "ja"
       ? [
-          { href: withLang("/hook-guide"), title: "60s Drop Battle ルール", desc: "30-60秒のDropで認知を積み上げる" },
+          { href: withLang("/ai-music"), title: "AI音楽作品", desc: "聴いて、保存して、挑戦へ" },
           { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
           { href: withLang("/rank"), title: "AIPOGER Showtime", desc: "認められたAI音楽のステージ" },
           { href: choiceWeeklyHref, title: "AIPOGER Choice Weekly", desc: "週次キュレーションとDJ選曲の方向" },
@@ -912,26 +912,26 @@ export default function HomePage() {
         ]
       : lang === "ko"
         ? [
-            { href: withLang("/hook-guide"), title: "60s Drop Battle 규칙", desc: "30-60초 Drop으로 인정을 쌓기" },
+            { href: withLang("/ai-music"), title: "AI 음악 작품", desc: "듣고, 저장하고, 도전으로" },
             { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
             { href: withLang("/rank"), title: "AIPOGER Showtime", desc: "인정받은 AI 음악이 서는 무대" },
             { href: choiceWeeklyHref, title: "AIPOGER Choice Weekly", desc: "주간 큐레이션과 DJ 선택 방향" },
             { href: withLang("/about"), title: "AIPOGER 소개", desc: "AI 크리에이터가 성장하고 작품이 인정받는 시스템" },
           ]
     : [
-        { href: withLang("/hook-guide"), title: "60s Drop Battle Rules", desc: "Cut a 30-60s Drop and build recognition" },
+        { href: withLang("/ai-music"), title: "AI Music Works", desc: "Listen, save, then challenge" },
         { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
         { href: withLang("/rank"), title: "AIPOGER Showtime", desc: "The stage for recognized AI music" },
         { href: choiceWeeklyHref, title: "AIPOGER Choice Weekly", desc: "Weekly curation and DJ choice direction" },
         { href: withLang("/about"), title: "About AIPOGER", desc: "AI creator growth and music recognition system" },
       ];
   const mobileActionLabels = isZh
-    ? { arena: "鬥歌場", rank: "Showtime", bar: "酒吧" }
+    ? { explore: "探索", rank: "Showtime", bar: "酒吧" }
     : lang === "ja"
-      ? { arena: "バトル", rank: "Showtime", bar: "酒場" }
+      ? { explore: "探す", rank: "Showtime", bar: "酒場" }
       : lang === "ko"
-        ? { arena: "배틀장", rank: "Showtime", bar: "바" }
-        : { arena: "Arena", rank: "Showtime", bar: "Bar" };
+        ? { explore: "탐색", rank: "Showtime", bar: "바" }
+        : { explore: "Explore", rank: "Showtime", bar: "Bar" };
 
   return (
     <main className="aipo-home-no-select relative min-h-screen overflow-x-hidden bg-[#050505] px-4 py-4 text-[#f5f5f5] md:px-0 md:py-0">
@@ -996,22 +996,22 @@ export default function HomePage() {
 
           <div className="mt-5 grid grid-cols-3 gap-2 md:hidden">
             <Link
-              href={withLang("/battle")}
-              aria-label={t("btn_watch")}
-              onPointerEnter={() => setActiveMobileAction("battle")}
-              onFocus={() => setActiveMobileAction("battle")}
+              href={withLang("/ai-music")}
+              aria-label={t("btn_explore_music")}
+              onPointerEnter={() => setActiveMobileAction("explore")}
+              onFocus={() => setActiveMobileAction("explore")}
               className="group flex min-w-0 flex-col items-center gap-2 text-center text-white focus-visible:outline-none"
             >
               <span
                 className={`flex h-[4.85rem] w-[4.85rem] items-center justify-center rounded-full border shadow-[0_0_30px_rgba(103,232,249,0.12)] transition group-hover:border-cyan-100 group-hover:bg-cyan-300/18 group-focus-visible:ring-2 group-focus-visible:ring-cyan-100 ${
-                  activeMobileAction === "battle"
+                  activeMobileAction === "explore"
                     ? "border-orange-200/80 bg-orange-500 text-black shadow-[0_0_34px_rgba(255,106,0,0.3)]"
                     : "border-cyan-200/35 bg-cyan-300/12"
                 }`}
               >
                 <WatchIcon />
               </span>
-              <span className="text-[0.78rem] font-black leading-tight tracking-[0.04em]">{mobileActionLabels.arena}</span>
+              <span className="text-[0.78rem] font-black leading-tight tracking-[0.04em]">{mobileActionLabels.explore}</span>
             </Link>
             <Link
               href={withLang("/rank")}
@@ -1103,14 +1103,14 @@ export default function HomePage() {
 
               <div className="grid gap-3.5">
                 <Link
-                  href={withLang("/battle")}
+                  href={withLang("/ai-music")}
                   onPointerMove={handlePointerGlowMove}
-                  style={pointerGlowStyle(HOME_ACTION_GLOW.battle)}
+                  style={pointerGlowStyle(HOME_ACTION_GLOW.explore)}
                   className="aipo-pointer-glow group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] bg-[#ff6a00] px-5 text-white shadow-[0_12px_30px_rgba(255,106,0,0.22)] transition hover:bg-[#ff8a2a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
                 >
                   <WatchIcon />
                   <span className={`text-lg tracking-[0.08em] ${isZh ? `${zhDisplayClass} font-black` : "font-black"}`}>
-                    {t("btn_watch")}
+                    {t("btn_explore_music")}
                   </span>
                 </Link>
 

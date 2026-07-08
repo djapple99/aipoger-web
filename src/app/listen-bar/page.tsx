@@ -649,12 +649,12 @@ export default function ListenBarPage() {
         shareText: ["快來來傷心酒吧 Bar Heartbreak", "這麼好聽的歌以後聽不到了怎麼辦？", "只有被聽見留下傷心的歌，才有資格繼續播放"].join("\n"),
         shareLabel: "分享吧台",
         copied: "已複製",
-        battleHall: "AI 音樂鬥歌場",
+        battleHall: "探索 AI 音樂",
         title: "傷心酒吧",
         subtitle: "在 AI 與不 AI 之間只有真正被聽見的歌才能留下來",
-        navBattle: "AI 音樂鬥歌場",
+        navBattle: "探索 AI 音樂",
         navRank: "Showtime",
-        ticker: "歡迎去 AI 音樂鬥歌場鬥歌，開戰帖、接挑戰，讓你的 AI 音樂被聽見。",
+        ticker: "先探索 AI 音樂，再從喜歡的作品發起挑戰。",
         queueTitle: "接續的六首歌",
         queueWaiting: "等待接續歌曲",
         queueEmpty: "等待創作者投稿後，下一首會顯示在這裡。",
@@ -668,12 +668,12 @@ export default function ListenBarPage() {
           shareText: ["AIPOGER Bar Heartbreakへ", "この曲を聴く前に消えたらどうする？", "聴かれ、記憶された曲だけがオンエアに残る。"].join("\n"),
           shareLabel: "Share",
           copied: "Copied",
-          battleHall: "Battle Hall",
+          battleHall: "Explore AI Music",
           title: "Bar Heartbreak",
           subtitle: "深く刺さる曲だけがオンエアに残る",
-          navBattle: "AI音楽バトルホール",
+          navBattle: "AI音楽を探す",
           navRank: "Showtime",
-          ticker: "AI音楽バトルホールへ。カードを開き、挑戦を受け、あなたのAI音楽を聴かせよう。",
+          ticker: "AI音楽を探して、好きな曲から挑戦へ。",
           queueTitle: "Upcoming Sad Songs",
           queueWaiting: "Waiting for Songs",
           queueEmpty: "次のクリエイタートラックはここに表示されます。",
@@ -687,12 +687,12 @@ export default function ListenBarPage() {
             shareText: ["AIPOGER Bar Heartbreak로 오세요", "이 노래를 듣기 전에 사라지면 어떡하죠?", "들리고 기억된 곡만 온에어에 남습니다."].join("\n"),
             shareLabel: "Share",
             copied: "Copied",
-            battleHall: "Battle Hall",
+            battleHall: "Explore AI Music",
             title: "Bar Heartbreak",
             subtitle: "강하게 꽂히는 곡만 온에어에 남는다",
-            navBattle: "AI 음악 배틀홀",
+            navBattle: "AI 음악 탐색",
             navRank: "Showtime",
-            ticker: "AI 음악 배틀홀로 오세요. 카드를 열고, 도전을 받고, 당신의 AI 음악을 들려주세요.",
+            ticker: "AI 음악을 먼저 탐색하고, 마음에 드는 곡에서 도전하세요.",
             queueTitle: "Upcoming Sad Songs",
             queueWaiting: "Waiting for Songs",
             queueEmpty: "다음 크리에이터 트랙이 여기에 표시됩니다.",
@@ -705,12 +705,12 @@ export default function ListenBarPage() {
             shareText: ["Come to AIPOGER Bar Heartbreak", "What if this song disappears before you hear it?", "Only the songs that get heard and remembered stay in rotation."].join("\n"),
             shareLabel: "Share",
             copied: "Copied",
-            battleHall: "Battle Hall",
+            battleHall: "Explore AI Music",
             title: "Bar Heartbreak",
             subtitle: "Only the songs that hit hard stay on air",
-            navBattle: "AI Music Battle Hall",
+            navBattle: "Explore AI Music",
             navRank: "Showtime",
-            ticker: "Welcome to the AI Music Battle Hall. Open a card, accept a challenge, and let your AI music be heard.",
+            ticker: "Explore AI music first, then challenge from tracks you like.",
             queueTitle: "Upcoming Sad Songs",
             queueWaiting: "Waiting for Songs",
             queueEmpty: "The next creator track will appear here.",
@@ -2388,6 +2388,7 @@ export default function ListenBarPage() {
   const battleTickerText = battleTickerMessages.length > 0
     ? battleTickerMessages.join("   /   ")
     : listenCopy.ticker;
+  const battleTickerHref = battleTickerMessages.length > 0 ? `/battle${langQuery}` : `/ai-music${langQuery}`;
 
   useEffect(() => {
     const container = lyricScrollRef.current;
@@ -2456,7 +2457,7 @@ export default function ListenBarPage() {
               </Link>
               <span className="order-4 flex basis-full justify-center md:order-3 md:basis-auto">
                 <Link
-                  href={`/battle${langQuery}`}
+                  href={`/ai-music${langQuery}`}
                   className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full border border-white/10 bg-white/[0.045] px-4 py-2 text-sm font-black text-zinc-200 transition hover:border-orange-300/70 hover:bg-orange-500/10 hover:text-white"
                 >
                   {listenCopy.navBattle}
@@ -2464,7 +2465,7 @@ export default function ListenBarPage() {
               </span>
             </nav>
             <Link
-              href={`/battle${langQuery}`}
+              href={battleTickerHref}
               className="group aipo-marquee relative flex min-h-12 min-w-0 items-center overflow-hidden rounded-[1rem] border border-cyan-200/20 bg-[linear-gradient(90deg,rgba(4,10,12,0.86),rgba(0,28,34,0.42),rgba(4,10,12,0.86))] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 sm:rounded-full"
               aria-label={battleTickerText}
             >
