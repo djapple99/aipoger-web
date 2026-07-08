@@ -3232,8 +3232,8 @@ export default function ListenBarPage() {
             </p>
           </div>
 
-          <div className="min-w-0 rounded-[1.45rem] border border-cyan-200/14 bg-black/58 px-4 py-4 shadow-[0_20px_58px_rgba(0,0,0,0.38)] backdrop-blur">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0 rounded-[1.45rem] border border-cyan-200/14 bg-black/58 px-3 py-3 shadow-[0_20px_58px_rgba(0,0,0,0.38)] backdrop-blur sm:px-4 sm:py-4">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 sm:mb-3 sm:gap-3">
               <p className="text-xs uppercase tracking-[0.22em] text-cyan-100/70">{isZh ? "我的吧台歌曲" : "My Bar Tracks"}</p>
               <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
                 <span className="max-w-full rounded-full border border-orange-300/18 bg-orange-500/8 px-2 py-0.5 text-[11px] font-black text-orange-100">
@@ -3245,7 +3245,7 @@ export default function ListenBarPage() {
               </div>
             </div>
             {myBroadcastStats.length > 0 ? (
-              <div className="grid max-h-56 min-w-0 gap-2 overflow-y-auto overflow-x-hidden pr-1">
+              <div className="grid max-h-72 min-w-0 gap-1.5 overflow-y-auto overflow-x-hidden pr-1 sm:max-h-56 sm:gap-2">
                 {[...myChallengerStats, ...myPublicStats].slice(0, 6).map((track) => {
                   const keepPercent = track.barPhase === "public"
                     ? 100
@@ -3259,14 +3259,20 @@ export default function ListenBarPage() {
                       ? `Challenger #${challengerRank}`
                       : "Challenger";
                   return (
-                    <div key={track.id} className="min-w-0 rounded-xl border border-white/8 bg-white/[0.035] px-3 py-2">
+                    <div key={track.id} className="min-w-0 rounded-xl border border-white/8 bg-white/[0.035] px-2.5 py-2 sm:px-3">
                       <div className="min-w-0 overflow-hidden">
-                        <div className="flex min-w-0 items-center gap-2">
-                          <p className="min-w-0 flex-1 truncate text-sm font-black text-white">{track.title}</p>
+                        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
+                          <div className="min-w-0">
+                            <p className="min-w-0 truncate text-sm font-black text-white">{track.title}</p>
+                            <p className="mt-0.5 truncate text-[11px] font-bold text-zinc-500">
+                              {statusLabel} · {formatDuration(track.duration)} · {track.positives} hearts
+                            </p>
+                          </div>
+                          <div className="grid shrink-0 grid-cols-2 gap-1">
                           <button
                             type="button"
                             onClick={() => openEditTrackDetails(track)}
-                            className="shrink-0 whitespace-nowrap rounded-full border border-cyan-200/30 bg-cyan-300/10 px-2.5 py-0.5 text-[11px] font-black text-cyan-100 transition hover:border-cyan-100/70 hover:bg-cyan-300/16"
+                            className="h-7 whitespace-nowrap rounded-full border border-cyan-200/30 bg-cyan-300/10 px-2 text-[10px] font-black text-cyan-100 transition hover:border-cyan-100/70 hover:bg-cyan-300/16 sm:px-2.5 sm:text-[11px]"
                           >
                             {editTrackId === track.id ? (isZh ? "收起" : "Close") : (isZh ? "補資料" : "Edit")}
                           </button>
@@ -3274,31 +3280,30 @@ export default function ListenBarPage() {
                             type="button"
                             onClick={() => void handleRemoveMyTrack(track)}
                             disabled={removeTrackBusyId === track.id}
-                            className="shrink-0 whitespace-nowrap rounded-full border border-red-300/30 bg-red-500/12 px-2.5 py-0.5 text-[11px] font-black text-red-100 transition hover:border-red-200/70 hover:bg-red-500/18 disabled:cursor-wait disabled:opacity-50"
+                            className="h-7 whitespace-nowrap rounded-full border border-red-300/30 bg-red-500/12 px-2 text-[10px] font-black text-red-100 transition hover:border-red-200/70 hover:bg-red-500/18 disabled:cursor-wait disabled:opacity-50 sm:px-2.5 sm:text-[11px]"
                           >
                             {removeTrackBusyId === track.id ? (isZh ? "撤下中" : "Removing") : (isZh ? "撤下" : "Remove")}
                           </button>
+                          </div>
                         </div>
-                        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-bold text-zinc-500">
+                        <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px] font-bold text-zinc-500 sm:gap-x-2 sm:text-[11px]">
                           {track.youtubeUrl && (
                             <a
                               href={track.youtubeUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="rounded-full border border-red-300/25 bg-red-500/10 px-2 py-0.5 font-black text-red-100 transition hover:border-red-200"
+                              className="rounded-full border border-red-300/25 bg-red-500/10 px-1.5 py-0.5 font-black text-red-100 transition hover:border-red-200 sm:px-2"
                             >
                               {isZh ? "看 MV" : "Watch MV"}
                             </a>
                           )}
-                          <span>{statusLabel}</span>
-                          <span>{formatDuration(track.duration)}</span>
-                          <span>{track.positives} hearts</span>
                           <span>{genreDisplayLabel(track.genre, isZh)}</span>
+                          <span>{track.aiTool || "AI Music"}</span>
                         </p>
                       </div>
                       {editTrackId === track.id && (
-                        <div className="mt-3 grid gap-2 rounded-xl border border-cyan-200/12 bg-black/35 p-3">
-                          <div className="grid gap-2 sm:grid-cols-2">
+                        <div className="mt-2 grid gap-2 rounded-xl border border-cyan-200/12 bg-black/35 p-2.5 sm:mt-3 sm:p-3">
+                          <div className="grid gap-1.5 sm:grid-cols-2 sm:gap-2">
                             <input
                               value={editTrackForm.aiTool}
                               onChange={(event) => setEditTrackForm((current) => ({
@@ -3308,12 +3313,12 @@ export default function ListenBarPage() {
                               placeholder={isZh ? "AI 工具（12字內）" : "AI Tool (24 chars max)"}
                               maxLength={LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS}
                               title={listenBarShortFieldHint(isZh)}
-                              className="h-10 rounded-xl border border-white/10 bg-black/58 px-3 text-xs font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200 focus:ring-2 focus:ring-cyan-200/15"
+                              className="h-9 rounded-xl border border-white/10 bg-black/58 px-3 text-xs font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200 focus:ring-2 focus:ring-cyan-200/15 sm:h-10"
                             />
                             <select
                               value={editTrackForm.genre}
                               onChange={(event) => setEditTrackForm((current) => ({ ...current, genre: event.target.value }))}
-                              className="h-10 rounded-xl border border-white/10 bg-black/58 px-3 text-xs font-bold text-white outline-none transition focus:border-cyan-200 focus:ring-2 focus:ring-cyan-200/15"
+                              className="h-9 rounded-xl border border-white/10 bg-black/58 px-3 text-xs font-bold text-white outline-none transition focus:border-cyan-200 focus:ring-2 focus:ring-cyan-200/15 sm:h-10"
                             >
                               {LISTEN_BAR_GENRES.map((genre) => (
                                 <option key={genre.value} value={genre.value}>
@@ -3330,7 +3335,7 @@ export default function ListenBarPage() {
                               placeholder={isZh ? "專輯名稱（12字內，選填）" : "Album Name (24 chars max)"}
                               maxLength={LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS}
                               title={listenBarShortFieldHint(isZh)}
-                              className="h-10 rounded-xl border border-white/10 bg-black/58 px-3 text-xs font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200 focus:ring-2 focus:ring-cyan-200/15"
+                              className="h-9 rounded-xl border border-white/10 bg-black/58 px-3 text-xs font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200 focus:ring-2 focus:ring-cyan-200/15 sm:h-10"
                             />
                             <input
                               value={editTrackForm.description}
@@ -3341,7 +3346,7 @@ export default function ListenBarPage() {
                               placeholder={isZh ? "一句歌曲介紹（16字內，選填）" : "One-Line Description (32 chars max)"}
                               maxLength={LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS}
                               title={listenBarDescriptionHint(isZh)}
-                              className="h-10 rounded-xl border border-white/10 bg-black/58 px-3 text-xs font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200 focus:ring-2 focus:ring-cyan-200/15"
+                              className="h-9 rounded-xl border border-white/10 bg-black/58 px-3 text-xs font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200 focus:ring-2 focus:ring-cyan-200/15 sm:h-10"
                             />
                             <input
                               type="url"
@@ -3349,14 +3354,14 @@ export default function ListenBarPage() {
                               onChange={(event) => setEditTrackForm((current) => ({ ...current, youtubeUrl: event.target.value.slice(0, 300) }))}
                               placeholder={isZh ? "YouTube MV 連結（選填）" : "YouTube MV Link (optional)"}
                               maxLength={300}
-                              className="h-10 rounded-xl border border-white/10 bg-black/58 px-3 text-xs font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200 focus:ring-2 focus:ring-cyan-200/15 sm:col-span-2"
+                              className="h-9 rounded-xl border border-white/10 bg-black/58 px-3 text-xs font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200 focus:ring-2 focus:ring-cyan-200/15 sm:col-span-2 sm:h-10"
                             />
                           </div>
                           <button
                             type="button"
                             onClick={() => void handleSaveTrackDetails(track)}
                             disabled={editTrackBusy}
-                            className="h-10 rounded-xl border border-cyan-200/25 bg-cyan-300/12 px-3 text-xs font-black text-cyan-50 transition hover:border-cyan-100 hover:bg-cyan-300/18 disabled:cursor-wait disabled:opacity-55"
+                            className="h-9 rounded-xl border border-cyan-200/25 bg-cyan-300/12 px-3 text-xs font-black text-cyan-50 transition hover:border-cyan-100 hover:bg-cyan-300/18 disabled:cursor-wait disabled:opacity-55 sm:h-10"
                           >
                             {editTrackBusy ? (isZh ? "儲存中" : "Saving") : (isZh ? "儲存歌曲資料" : "Save Details")}
                           </button>

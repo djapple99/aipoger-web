@@ -1893,7 +1893,7 @@ export default function ListenBarAdminPage() {
                     <article
                       key={track.id}
                       id={`listen-bar-admin-track-${track.id}`}
-                      className={`scroll-mt-8 rounded-2xl border p-3 transition ${
+                      className={`scroll-mt-8 rounded-xl border p-2.5 transition sm:rounded-2xl sm:p-3 ${
                         selected
                           ? "border-cyan-200/70 bg-cyan-300/[0.08] shadow-[0_0_0_2px_rgba(103,232,249,0.14)]"
                           : focused
@@ -1905,67 +1905,67 @@ export default function ListenBarAdminPage() {
                           : "border-white/10 bg-black/42"
                       }`}
                     >
-                      <div className="grid gap-3 sm:grid-cols-[2.4rem_5.5rem_1fr]">
-                        <label className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-white/12 bg-black/45 transition hover:border-cyan-200/55">
+                      <div className="grid grid-cols-[2rem_3.25rem_minmax(0,1fr)] items-start gap-2 sm:grid-cols-[2.4rem_5.5rem_1fr] sm:gap-3">
+                        <label className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-white/12 bg-black/45 transition hover:border-cyan-200/55 sm:h-10 sm:w-10 sm:rounded-xl">
                           <input
                             type="checkbox"
                             checked={selected}
                             onChange={() => toggleTrackSelection(track.id)}
-                            className="h-4 w-4 accent-cyan-300"
+                            className="h-3.5 w-3.5 accent-cyan-300 sm:h-4 sm:w-4"
                             aria-label={`選取 ${track.title}`}
                           />
                         </label>
-                        <img src={coverUrl} alt="" className={`aspect-square w-full rounded-xl bg-black object-cover ${hidden ? "opacity-45 grayscale" : ""}`} />
+                        <img src={coverUrl} alt="" className={`aspect-square w-full rounded-lg bg-black object-cover sm:rounded-xl ${hidden ? "opacity-45 grayscale" : ""}`} />
                         <div className="min-w-0">
-                          <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="flex flex-wrap items-start justify-between gap-1.5 sm:gap-2">
                             <div className="min-w-0">
-                              <p className="truncate text-lg font-black text-white">{track.title}</p>
-                              <p className="mt-1 truncate text-sm text-zinc-400">
+                              <p className="truncate text-sm font-black text-white sm:text-lg">{track.title}</p>
+                              <p className="mt-0.5 truncate text-[11px] text-zinc-400 sm:mt-1 sm:text-sm">
                                 {track.artist} / {track.ai_tool || "AI Music"} / {track.genre || "AI Music"}
                               </p>
                             </div>
-                            <span className={`rounded-full border px-3 py-1 text-xs font-black ${status.className}`}>
+                            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black sm:px-3 sm:py-1 sm:text-xs ${status.className}`}>
                               {status.label}
                             </span>
                           </div>
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-bold text-zinc-300">
+                          <div className="mt-2 flex flex-wrap gap-1 sm:mt-3 sm:gap-2">
+                            <span className="rounded-full border border-white/10 bg-white/[0.035] px-2 py-0.5 text-[10px] font-bold text-zinc-300 sm:px-3 sm:py-1 sm:text-[11px]">
                               {phaseLabel(track)}
                             </span>
-                            <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-bold text-zinc-300">
+                            <span className="rounded-full border border-white/10 bg-white/[0.035] px-2 py-0.5 text-[10px] font-bold text-zinc-300 sm:px-3 sm:py-1 sm:text-[11px]">
                               審核：{adminReviewLabel(track)}
                             </span>
-                            <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-bold text-zinc-300">
+                            <span className="rounded-full border border-white/10 bg-white/[0.035] px-2 py-0.5 text-[10px] font-bold text-zinc-300 sm:px-3 sm:py-1 sm:text-[11px]">
                               反應：{trackReactionTotal(track)}
                             </span>
-	                            <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-bold text-zinc-300">
+	                            <span className="rounded-full border border-white/10 bg-white/[0.035] px-2 py-0.5 text-[10px] font-bold text-zinc-300 sm:px-3 sm:py-1 sm:text-[11px]">
 	                              更新：{updatedAt}
 	                            </span>
                               {track.removed_at && (
-                                <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-bold text-zinc-300">
+                                <span className="rounded-full border border-white/10 bg-white/[0.035] px-2 py-0.5 text-[10px] font-bold text-zinc-300 sm:px-3 sm:py-1 sm:text-[11px]">
                                   淘汰/移除：{trackRemovedAtLabel(track)}
                                 </span>
                               )}
                               {track.moderation_note && (
-                                <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-bold text-zinc-300">
+                                <span className="rounded-full border border-white/10 bg-white/[0.035] px-2 py-0.5 text-[10px] font-bold text-zinc-300 sm:px-3 sm:py-1 sm:text-[11px]">
                                   原因：{track.moderation_note}
                                 </span>
                               )}
 	                          </div>
-                          <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                            <div className="rounded-xl border border-white/8 bg-white/[0.035] px-3 py-2 text-xs text-zinc-400">
+                          <div className="mt-2 grid grid-cols-3 gap-1 sm:mt-3 sm:gap-2">
+                            <div className="rounded-lg border border-white/8 bg-white/[0.035] px-2 py-1.5 text-[11px] text-zinc-400 sm:rounded-xl sm:px-3 sm:py-2 sm:text-xs">
                               秒數 <span className="font-black text-white">{formatDuration(track.duration_seconds)}</span>
                             </div>
-                            <div className="rounded-xl border border-white/8 bg-white/[0.035] px-3 py-2 text-xs text-zinc-400">
+                            <div className="rounded-lg border border-white/8 bg-white/[0.035] px-2 py-1.5 text-[11px] text-zinc-400 sm:rounded-xl sm:px-3 sm:py-2 sm:text-xs">
                               BPM <span className="font-black text-white">{track.bpm || "-"}</span>
                             </div>
-                            <div className="rounded-xl border border-white/8 bg-white/[0.035] px-3 py-2 text-xs text-zinc-400">
+                            <div className="rounded-lg border border-white/8 bg-white/[0.035] px-2 py-1.5 text-[11px] text-zinc-400 sm:rounded-xl sm:px-3 sm:py-2 sm:text-xs">
                               排序 <span className="font-black text-white">{track.sort_order ?? 100}</span>
                             </div>
                           </div>
                           {audioUrl && (
                             <audio
-                              className="mt-3 w-full accent-orange-500"
+                              className="mt-2 h-8 w-full accent-orange-500 sm:mt-3 sm:h-auto"
                               controls
                               controlsList="nodownload noplaybackrate"
                               data-admin-listen-bar-audio="true"
@@ -1976,25 +1976,25 @@ export default function ListenBarAdminPage() {
                               <track kind="captions" />
                             </audio>
                           )}
-	                          <div className="mt-3 flex flex-wrap gap-2">
-	                            <button type="button" disabled={metadataSavingId === track.id} onClick={() => (editing ? cancelEditTrack() : beginEditTrack(track))} className="rounded-full border border-orange-200/25 bg-orange-500/10 px-4 py-2 text-xs font-black text-orange-100 transition hover:border-orange-200/65 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-200/55 disabled:cursor-not-allowed disabled:opacity-45">
+	                          <div className="mt-2 grid grid-cols-3 gap-1.5 sm:mt-3 sm:flex sm:flex-wrap sm:gap-2">
+	                            <button type="button" disabled={metadataSavingId === track.id} onClick={() => (editing ? cancelEditTrack() : beginEditTrack(track))} className="min-h-8 rounded-full border border-orange-200/25 bg-orange-500/10 px-2 py-1 text-[11px] font-black text-orange-100 transition hover:border-orange-200/65 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-200/55 disabled:cursor-not-allowed disabled:opacity-45 sm:px-4 sm:py-2 sm:text-xs">
 	                              {editing ? "收起編輯" : "編輯資料"}
 	                            </button>
-	                            <button type="button" disabled={operatingTrackId === track.id} onClick={() => void (hidden ? restoreTrack(track) : hideTrack(track))} className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-45 ${hidden ? "border-cyan-300/25 text-cyan-100 hover:border-cyan-200/65 focus-visible:ring-cyan-200/55" : "border-white/12 text-zinc-200 hover:border-cyan-200/55 focus-visible:ring-cyan-200/55"}`}>
+	                            <button type="button" disabled={operatingTrackId === track.id} onClick={() => void (hidden ? restoreTrack(track) : hideTrack(track))} className={`min-h-8 rounded-full border px-2 py-1 text-[11px] font-black transition focus:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-45 sm:px-4 sm:py-2 sm:text-xs ${hidden ? "border-cyan-300/25 text-cyan-100 hover:border-cyan-200/65 focus-visible:ring-cyan-200/55" : "border-white/12 text-zinc-200 hover:border-cyan-200/55 focus-visible:ring-cyan-200/55"}`}>
 	                              {operatingTrackId === track.id ? "處理中" : hidden ? "恢復上架" : "下架"}
 	                            </button>
-                            <button type="button" disabled={operatingTrackId === track.id || removedStatus(track)} onClick={() => void removeTrack(track)} className="rounded-full border border-red-300/30 bg-red-500/10 px-4 py-2 text-xs font-black text-red-100 transition hover:border-red-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-200/55 disabled:cursor-not-allowed disabled:opacity-45">
+                            <button type="button" disabled={operatingTrackId === track.id || removedStatus(track)} onClick={() => void removeTrack(track)} className="min-h-8 rounded-full border border-red-300/30 bg-red-500/10 px-2 py-1 text-[11px] font-black text-red-100 transition hover:border-red-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-200/55 disabled:cursor-not-allowed disabled:opacity-45 sm:px-4 sm:py-2 sm:text-xs">
                               刪除
                             </button>
-                            <button type="button" disabled={hidden || operatingTrackId === track.id} onClick={() => void moveTrack(track, "up")} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45">
+                            <button type="button" disabled={hidden || operatingTrackId === track.id} onClick={() => void moveTrack(track, "up")} className="min-h-8 rounded-full border border-white/12 px-2 py-1 text-[11px] font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45 sm:px-4 sm:py-2 sm:text-xs">
                               往前
                             </button>
-                            <button type="button" disabled={hidden || operatingTrackId === track.id} onClick={() => void moveTrack(track, "down")} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45">
+                            <button type="button" disabled={hidden || operatingTrackId === track.id} onClick={() => void moveTrack(track, "down")} className="min-h-8 rounded-full border border-white/12 px-2 py-1 text-[11px] font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45 sm:px-4 sm:py-2 sm:text-xs">
                               往後
 	                            </button>
 	                          </div>
 	                          {editing && metadataForm && (
-	                            <div className="mt-4 rounded-2xl border border-orange-200/16 bg-orange-500/[0.045] p-4">
+	                            <div className="mt-3 rounded-xl border border-orange-200/16 bg-orange-500/[0.045] p-3 sm:mt-4 sm:rounded-2xl sm:p-4">
 	                              <div className="grid gap-3 md:grid-cols-2">
 	                                <label className="block">
 	                                  <span className="text-xs font-bold text-zinc-500">歌名</span>
