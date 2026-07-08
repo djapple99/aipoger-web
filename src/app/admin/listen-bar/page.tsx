@@ -1965,7 +1965,7 @@ export default function ListenBarAdminPage() {
                           </div>
                           {audioUrl && (
                             <audio
-                              className="mt-2 h-8 w-full accent-orange-500 sm:mt-3 sm:h-auto"
+                              className="mt-3 w-full accent-orange-500"
                               controls
                               controlsList="nodownload noplaybackrate"
                               data-admin-listen-bar-audio="true"
