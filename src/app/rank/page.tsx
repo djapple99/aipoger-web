@@ -415,7 +415,7 @@ function applyFallbackSongStats(rows: ArchivedBattleResult[]) {
 function formatSongStats(stats: SongBattleStatsSnapshot | null | undefined, isZh: boolean) {
   if (!stats || stats.battleCount <= 0) return "";
   const winRate = stats.winRate || Math.round((stats.wins / stats.battleCount) * 100);
-  const honor = stats.honorBoardCount > 0 ? ` · ${isZh ? "榮譽榜" : "Honor"} ${stats.honorBoardCount}` : "";
+  const honor = stats.honorBoardCount > 0 ? ` · Showtime ${stats.honorBoardCount}` : "";
   if (stats.noContests > 0) {
     return isZh
       ? `出戰 ${stats.battleCount} 次 · ${stats.wins} 勝 ${stats.losses} 敗 ${stats.noContests} 未分勝負 · 勝率 ${winRate}%${honor}`
@@ -1372,26 +1372,26 @@ export default function RankPage() {
         <section className="py-5">
           <div className="max-w-5xl">
             <h1 className="text-3xl font-black leading-tight text-white sm:text-4xl">
-              {isZh ? "AIPOGER 榮譽榜" : "AIPOGER Honor Board"}
+              AIPOGER Showtime
             </h1>
             <p className="mt-3 max-w-3xl whitespace-pre-line text-sm leading-7 text-zinc-400 sm:text-base">
               {isZh
-                ? "分享你的戰績，讓更多人聽見這些歌；榮譽榜不是放在角落的名單。\n把作品分享到社群，邀請朋友進場聽歌、投票、挑戰，讓 AIPOGER 的 AI 音樂舞台真的熱起來。"
-                : "Share your records and bring more ears to these songs; the Honor Board is not a buried list.\nPost the work, invite friends to listen, vote, and challenge, and make the AIPOGER AI music stage feel alive."}
+                ? "這裡是 AIPOGER 被聽眾認可作品的前台舞台，不是冷冰冰的名次表。\n把勝利、熱播與聽眾反應留下來，讓作品被回聽、被分享，也成為 AIPOGER Choice Weekly 的策展候選。"
+                : "This is the front-stage home for AI music recognized by AIPOGER listeners, not a cold ranking table.\nWins, heat, and listener response stay playable and shareable here, and they can become candidates for AIPOGER Choice Weekly."}
             </p>
             <div
               className="mt-4 flex max-w-full items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              aria-label={isZh ? "榮譽榜操作" : "Honor Board Actions"}
+              aria-label={isZh ? "Showtime 操作" : "Showtime Actions"}
             >
               <ShareButton
-                title={isZh ? "AIPOGER 榮譽榜" : "AIPOGER Honor Board"}
+                title="AIPOGER Showtime"
                 text={
                   isZh
-                    ? "來看 AIPOGER 真實 Drop 勝利與傷心酒吧熱播紀錄。"
-                    : "Check real AIPOGER Drop victories and Bar Heartbreak hot tracks."
+                    ? "來看 AIPOGER 真實 Drop 勝利、傷心酒吧熱播與每週策展候選。"
+                    : "Check real AIPOGER Drop victories, Bar Heartbreak heat, and weekly curation candidates."
                 }
-                label={isZh ? "分享榮譽榜" : "Share Board"}
-                copiedLabel={isZh ? "榮譽榜連結已複製" : "Board Link Copied"}
+                label={isZh ? "分享 Showtime" : "Share Showtime"}
+                copiedLabel={isZh ? "Showtime 連結已複製" : "Showtime Link Copied"}
                 className="shrink-0 whitespace-nowrap !px-4 !py-2 !text-xs border-yellow-100/30 bg-white/[0.045] text-zinc-100 hover:border-yellow-100/55 active:bg-yellow-300 active:text-black"
               />
               <Link
@@ -1418,17 +1418,49 @@ export default function RankPage() {
                 );
               })}
               <ShareButton
-                title={isZh ? `${boardTitle} / AIPOGER 榮譽榜` : `${boardTitle} / AIPOGER Honor Board`}
+                title={`${boardTitle} / AIPOGER Showtime`}
                 text={
                   isZh
-                    ? `來看 AIPOGER ${boardTitle}，只顯示真實紀錄。`
-                    : `Check the AIPOGER ${boardTitle} with real records only.`
+                    ? `來看 AIPOGER Showtime 的 ${boardTitle}，只顯示真實紀錄。`
+                    : `Check ${boardTitle} on AIPOGER Showtime with real records only.`
                 }
                 label={isZh ? "分享這個榜" : "Share This Board"}
-                copiedLabel={isZh ? "榮譽榜連結已複製" : "Board Copied"}
+                copiedLabel={isZh ? "Showtime 連結已複製" : "Showtime Copied"}
                 className="shrink-0 whitespace-nowrap !px-4 !py-2 !text-xs border-yellow-100/30 bg-white/[0.045] text-zinc-100 hover:border-yellow-100/55 active:bg-yellow-300 active:text-black"
               />
               <SocialIconCluster className="shrink-0" />
+            </div>
+          </div>
+        </section>
+
+        <section id="choice-weekly" className="scroll-mt-24 pb-5">
+          <div className="aipo-control-panel aipo-panel-line grid gap-4 rounded-[1.15rem] border-cyan-100/20 bg-cyan-300/[0.035] p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:p-5">
+            <div className="min-w-0">
+              <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.22em] text-cyan-100/70`}>
+                AIPOGER Choice Weekly
+              </p>
+              <h2 className="mt-2 text-2xl font-black text-white">
+                {isZh ? "每週從 Showtime 挑出值得被 DJ 與聽眾再推一次的作品" : "A weekly pick lane growing from Showtime records"}
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm font-bold leading-7 text-zinc-400">
+                {isZh
+                  ? "Choice Weekly 不是另一個排行榜。它會以 Drop 勝利、傷心酒吧熱播、收藏與留言反應作為策展訊號，未來整理成每週推薦、社群貼文與 DJ 選歌方向。"
+                  : "Choice Weekly is not another chart. It uses Drop wins, Bar Heartbreak heat, favorites, and comments as curation signals for future weekly picks, social posts, and DJ selection."}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 md:justify-end">
+              <Link
+                href={`/listen-bar${navSuffix}`}
+                className="inline-flex min-h-10 items-center justify-center rounded-full border border-cyan-100/30 bg-cyan-300/10 px-4 text-xs font-black text-cyan-50 transition hover:border-cyan-100/55 hover:bg-cyan-300/18"
+              >
+                {isZh ? "去傷心酒吧找熱播歌" : "Find Heat in Bar Heartbreak"}
+              </Link>
+              <Link
+                href={`/battle${navSuffix}`}
+                className="inline-flex min-h-10 items-center justify-center rounded-full border border-orange-200/35 bg-orange-500/12 px-4 text-xs font-black text-orange-50 transition hover:border-orange-200/60 hover:bg-orange-500/18"
+              >
+                {isZh ? "去鬥歌場累積紀錄" : "Build Records in Battle"}
+              </Link>
             </div>
           </div>
         </section>
@@ -1531,8 +1563,8 @@ export default function RankPage() {
                   </p>
                   <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-zinc-500">
                     {isZh
-                      ? "榮譽榜只顯示真實資料，等作品完成勝利或熱播紀錄後會出現在這裡。"
-                      : "Only real archived data is shown here."}
+                      ? "Showtime 只顯示真實資料，等作品完成勝利或熱播紀錄後會出現在這裡。"
+                      : "Only real archived data appears on Showtime."}
                   </p>
                 </div>
               ) : (
@@ -1545,7 +1577,7 @@ export default function RankPage() {
                             FEATURED
                           </p>
                           <h2 className="mt-1 text-xl font-black text-white">
-                            {isZh ? "榮譽精選" : "Featured Records"}
+                            {isZh ? "Showtime 精選" : "Featured Records"}
                           </h2>
                         </div>
                       </div>

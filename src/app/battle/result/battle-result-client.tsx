@@ -518,8 +518,8 @@ function BattleResultContent() {
   const resultBody = isOfficialBattleResult
     ? t("result_body", { song: winnerSong })
     : lang === "zh"
-      ? `這首「${winnerSong}」已分出勝負，但本場只有 ${audienceCount}/${officialAudienceMin} 名觀眾投票，先不進榮譽榜，也不累計歌曲正式戰績。`
-      : `"${winnerSong}" won the room, but only ${audienceCount}/${officialAudienceMin} audience voters joined. This stays unofficial and does not enter the Honor Board or official song stats.`;
+      ? `這首「${winnerSong}」已分出勝負，但本場只有 ${audienceCount}/${officialAudienceMin} 名觀眾投票，先不進 Showtime，也不累計歌曲正式戰績。`
+      : `"${winnerSong}" won the room, but only ${audienceCount}/${officialAudienceMin} audience voters joined. This stays unofficial and does not enter Showtime or official song stats.`;
   const feedbackA = useMemo(
     () => searchParams.get("feedbackA") ? parseBattleFeedbackParam(searchParams.get("feedbackA")) : remoteArchive?.feedbackA ?? parseBattleFeedbackParam(null),
     [remoteArchive?.feedbackA, searchParams],
@@ -975,7 +975,7 @@ function BattleResultContent() {
           </p>
           {!isOfficialBattleResult ? (
             <p className="mt-4 inline-flex rounded-full border border-yellow-200/30 bg-yellow-300/10 px-3 py-1.5 text-xs font-black text-yellow-100">
-              {lang === "zh" ? `正式榮譽榜門檻：${officialAudienceMin} 名不同觀眾` : `Official threshold: ${officialAudienceMin} distinct audience voters`}
+              {lang === "zh" ? `正式 Showtime 門檻：${officialAudienceMin} 名不同觀眾` : `Official Showtime threshold: ${officialAudienceMin} distinct audience voters`}
             </p>
           ) : null}
 
@@ -988,11 +988,11 @@ function BattleResultContent() {
                 <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">
                   {isOfficialBattleResult
                     ? lang === "zh"
-                      ? "榮譽卡同款五角評分圖，直接看這首 Drop 的爆點分布。"
-                      : "Honor Card radar showing this Drop's strongest points."
+                      ? "Showtime 同款五角評分圖，直接看這首 Drop 的爆點分布。"
+                      : "Showtime radar showing this Drop's strongest points."
                     : lang === "zh"
-                      ? "非正式戰果仍保留爆點分析，但不進榮譽榜。"
-                      : "Unofficial results keep the signal radar, but do not enter the Honor Board."}
+                      ? "非正式戰果仍保留爆點分析，但不進 Showtime。"
+                      : "Unofficial results keep the signal radar, but do not enter Showtime."}
                 </p>
               </div>
               <div className="hidden items-center gap-2 rounded-full border border-orange-200/25 bg-black/42 px-2.5 py-1.5 shadow-[0_0_18px_rgba(255,106,0,0.16)] sm:inline-flex">
@@ -1019,7 +1019,7 @@ function BattleResultContent() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-200/70">
-                    {isOfficialBattleResult ? (lang === "zh" ? "榮譽上榜鬥士" : "HONOR BOARD FIGHTER") : lang === "zh" ? "非正式勝方" : "UNOFFICIAL WINNER"}
+                    {isOfficialBattleResult ? (lang === "zh" ? "Showtime 上榜鬥士" : "SHOWTIME FIGHTER") : lang === "zh" ? "非正式勝方" : "UNOFFICIAL WINNER"}
                   </p>
                   <p className="truncate text-xl font-black leading-tight text-white">{winnerName}</p>
                   <p className="truncate text-sm font-bold leading-tight text-orange-100">{winnerSong}</p>

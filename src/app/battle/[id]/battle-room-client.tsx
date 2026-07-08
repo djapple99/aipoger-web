@@ -3948,7 +3948,7 @@ function BattleArenaContent() {
             </h2>
             <p className="mt-3 text-sm font-bold leading-6 text-zinc-300">
               {lang === "zh"
-                ? "0:0 不產生成果卡，也不進榮譽榜。請重新開戰帖或分享給觀眾進場投票。"
+                ? "0:0 不產生成果卡，也不進 Showtime。請重新開戰帖或分享給觀眾進場投票。"
                 : "A 0:0 battle does not create a result card or enter the honor board. Open another card or share the arena with listeners."}
             </p>
             <Link

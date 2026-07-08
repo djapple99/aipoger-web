@@ -1563,8 +1563,8 @@ export default function BattleSetupPage() {
         {battleMode === 'instant' && draft?.fullAudioPublic && (
           <p className="mx-auto mt-4 max-w-xl rounded-full border border-yellow-200/30 bg-yellow-300/10 px-4 py-2 text-xs font-bold text-yellow-100">
             {lang === 'zh'
-              ? '你已開啟完整版公開：作品進入 Drop 榮譽榜後，聽眾可以收聽 Full Song。'
-              : 'Full Song is enabled: if this Drop reaches Honor Board, listeners can play the complete track.'}
+              ? '你已開啟完整版公開：作品進入 Showtime 後，聽眾可以收聽 Full Song。'
+              : 'Full Song is enabled: if this Drop reaches Showtime, listeners can play the complete track.'}
           </p>
         )}
         {gatekeeperId && (
@@ -1610,7 +1610,7 @@ export default function BattleSetupPage() {
                     ? '觀眾可慢聽投票'
                     : 'Listen Before Voting'
                   : draft.fullAudioPublic
-                    ? (lang === 'zh' ? '榮譽榜公開' : 'Honor Board Enabled')
+                    ? (lang === 'zh' ? 'Showtime 公開' : 'Showtime Enabled')
                   : draft.lyrics.trim()
                     ? (lang === 'zh' ? '已加入' : 'Added')
                     : (lang === 'zh' ? '未填' : 'None')}

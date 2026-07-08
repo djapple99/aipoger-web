@@ -122,9 +122,9 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
         tone: "orange",
       },
       rank: {
-        eyebrow: "HONOR SIGNAL",
-        title: "Top Drops",
-        body: "リスナーに認められたAI音楽の記録。聴いて、自分の作品もここに立たせよう。",
+        eyebrow: "SHOWTIME",
+        title: "AIPOGER Showtime",
+        body: "リスナーに認められたAI音楽のステージ。Weekly Choiceの候補もここから見えてくる。",
         tone: "cyan",
       },
     };
@@ -145,9 +145,9 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
         tone: "orange",
       },
       rank: {
-        eyebrow: "HONOR SIGNAL",
-        title: "Top Drops",
-        body: "청중에게 인정받은 AI 음악 기록이 모이는 곳. 듣고, 당신의 작품도 이 무대에 올려보세요.",
+        eyebrow: "SHOWTIME",
+        title: "AIPOGER Showtime",
+        body: "청중에게 인정받은 AI 음악이 서는 무대. Weekly Choice 후보도 여기서 이어집니다.",
         tone: "cyan",
       },
     };
@@ -168,9 +168,9 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
         tone: "orange",
       },
       rank: {
-        eyebrow: "HONOR SIGNAL",
-        title: "Top Drops",
-        body: "Recognized AI music lives here. Listen in, and give your own work a shot at the board.",
+        eyebrow: "SHOWTIME",
+        title: "AIPOGER Showtime",
+        body: "Recognized AI music takes the stage here. AIPOGER Choice Weekly will grow from these records.",
         tone: "cyan",
       },
     };
@@ -190,9 +190,9 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
       tone: "orange",
     },
     rank: {
-      eyebrow: "HONOR SIGNAL",
-      title: "Top Drops",
-      body: ["被聽眾認可的 AI 音樂都在這裡", "來聽 也讓你的作品有機會站上來"],
+      eyebrow: "SHOWTIME",
+      title: "AIPOGER Showtime",
+      body: ["被聽眾認可的 AI 音樂在這裡上台", "AIPOGER Choice Weekly 也會從這裡長出來"],
       tone: "cyan",
     },
   };
@@ -869,6 +869,7 @@ export default function HomePage() {
   const heroTextClass = "max-w-[min(62rem,calc(100vw-2.5rem))] whitespace-normal break-words md:overflow-hidden md:text-ellipsis md:whitespace-nowrap";
   const heroChromeShadow = "[text-shadow:0_2px_0_rgba(255,255,255,0.06),0_16px_32px_rgba(0,0,0,0.9),0_0_14px_rgba(255,106,0,0.08)]";
   const musicAnalysisHref = `/music-analysis?lang=${lang}`;
+  const choiceWeeklyHref = `/rank?lang=${lang}#choice-weekly`;
   const mobileActionPrompt = homepageActionPrompts[activeMobileAction];
   const statItems: HomeStatItem[] = isZh
     ? [
@@ -897,40 +898,40 @@ export default function HomePage() {
     ? [
         { href: withLang("/hook-guide"), title: "60s Drop Battle 規則", desc: "30-60 秒抓波，上場累積認可" },
         { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: "作品定位、Drop 與參戰路線" },
-        { href: withLang("/rank"), title: "AIPOGER 榮譽榜", desc: "投票、熱播、封存作品紀錄" },
+        { href: withLang("/rank"), title: "AIPOGER Showtime", desc: "被認可作品的音樂舞台" },
+        { href: choiceWeeklyHref, title: "AIPOGER Choice Weekly", desc: "每週策展與 DJ 選歌方向" },
         { href: withLang("/about"), title: "關於愛播歌", desc: "AI 創作者作品認可系統" },
-        { href: withLang("/partners"), title: "廣告與合作", desc: "播放、策展與商業合作" },
       ]
     : lang === "ja"
       ? [
           { href: withLang("/hook-guide"), title: "60s Drop Battle ルール", desc: "30-60秒のDropで認知を積み上げる" },
           { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
-          { href: withLang("/rank"), title: "AIPOGER 栄誉榜", desc: "認められた勝利、熱播曲、記録されたクリエイター実績" },
+          { href: withLang("/rank"), title: "AIPOGER Showtime", desc: "認められたAI音楽のステージ" },
+          { href: choiceWeeklyHref, title: "AIPOGER Choice Weekly", desc: "週次キュレーションとDJ選曲の方向" },
           { href: withLang("/about"), title: "AIPOGERについて", desc: "AIクリエイターが成長し、作品が認められるシステム" },
-          { href: withLang("/partners"), title: "広告・コラボ", desc: "勝ち残った楽曲を放送、キュレーション、商業展開へ" },
         ]
       : lang === "ko"
         ? [
             { href: withLang("/hook-guide"), title: "60s Drop Battle 규칙", desc: "30-60초 Drop으로 인정을 쌓기" },
             { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
-            { href: withLang("/rank"), title: "AIPOGER 명예보드", desc: "인정받은 승리, 인기 트랙, 기록된 크리에이터 성과" },
+            { href: withLang("/rank"), title: "AIPOGER Showtime", desc: "인정받은 AI 음악이 서는 무대" },
+            { href: choiceWeeklyHref, title: "AIPOGER Choice Weekly", desc: "주간 큐레이션과 DJ 선택 방향" },
             { href: withLang("/about"), title: "AIPOGER 소개", desc: "AI 크리에이터가 성장하고 작품이 인정받는 시스템" },
-            { href: withLang("/partners"), title: "광고와 협업", desc: "우승곡을 방송, 큐레이션, 상업 협업으로 연결" },
           ]
     : [
         { href: withLang("/hook-guide"), title: "60s Drop Battle Rules", desc: "Cut a 30-60s Drop and build recognition" },
         { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
-        { href: withLang("/rank"), title: "AIPOGER Honor Board", desc: "Recognized wins, hot tracks, and archived creator records" },
+        { href: withLang("/rank"), title: "AIPOGER Showtime", desc: "The stage for recognized AI music" },
+        { href: choiceWeeklyHref, title: "AIPOGER Choice Weekly", desc: "Weekly curation and DJ choice direction" },
         { href: withLang("/about"), title: "About AIPOGER", desc: "AI creator growth and music recognition system" },
-        { href: withLang("/partners"), title: "Partnerships", desc: "Move winning tracks toward airplay, curation, and commercial use" },
       ];
   const mobileActionLabels = isZh
-    ? { arena: "鬥歌場", rank: "Top Drops", bar: "酒吧" }
+    ? { arena: "鬥歌場", rank: "Showtime", bar: "酒吧" }
     : lang === "ja"
-      ? { arena: "バトル", rank: "Top Drops", bar: "酒場" }
+      ? { arena: "バトル", rank: "Showtime", bar: "酒場" }
       : lang === "ko"
-        ? { arena: "배틀장", rank: "Top Drops", bar: "바" }
-        : { arena: "Arena", rank: "Top Drops", bar: "Bar" };
+        ? { arena: "배틀장", rank: "Showtime", bar: "바" }
+        : { arena: "Arena", rank: "Showtime", bar: "Bar" };
 
   return (
     <main className="aipo-home-no-select relative min-h-screen overflow-x-hidden bg-[#050505] px-4 py-4 text-[#f5f5f5] md:px-0 md:py-0">

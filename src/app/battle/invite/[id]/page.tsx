@@ -242,7 +242,7 @@ export default async function BattleInvitePage({ params, searchParams }: BattleI
         ) : null}
         <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-zinc-400">
           {isResultInvite
-            ? "這是一張 AIPOGER Drop Battle 戰果卡。進場查看完整結果與榮譽卡。"
+            ? "這是一張 AIPOGER Drop Battle 戰果卡。進場查看完整結果與 Showtime 紀錄。"
             : isHookCard
             ? isHookExpired
               ? "這張公開最強抓波 Drop Battle 戰帖已過期。可以回鬥歌場找新的戰帖。"

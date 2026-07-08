@@ -56,7 +56,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "AIPOGER 愛播歌｜AI 音樂鬥歌場與傷心酒吧",
-    description: "AI 音樂創作者一起成長的 AIPOGER 舞台：Drop Battle、傷心酒吧公播池與 Top Drops。",
+    description: "AI 音樂創作者一起成長的 AIPOGER 舞台：Drop Battle、傷心酒吧公播池與 Showtime。",
     images: [ogImage],
   },
 };

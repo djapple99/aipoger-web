@@ -13,24 +13,24 @@ export default function WeeklyDropBattlePage() {
     ? [
         ["01", "投稿你的最強 Drop", "上傳 30 到 60 秒最能抓住聽眾的 AI 音樂片段。"],
         ["02", "AIPOGER 官方配對", "你不用自己發起 battle，官方週賽會負責主題、配對與曝光。"],
-        ["03", "聽眾投票決定", "作品被公開聽見，勝出者進入 Honor Board 與 AIPOGER Select 候選。"],
+        ["03", "聽眾投票決定", "作品被公開聽見，勝出者進入 AIPOGER Showtime，並成為 AIPOGER Choice Weekly 候選。"],
       ]
     : lang === "ja"
       ? [
           ["01", "最強のDropを投稿", "聴衆を一瞬でつかむ30〜60秒のAI音楽パートをアップロード。"],
           ["02", "AIPOGERが公式マッチング", "自分で場を作らなくていい。週次イベントがテーマ、対戦、露出を担います。"],
-          ["03", "聴衆が決める", "楽曲は公開で聴かれ、勝者はHonor BoardとAIPOGER Select候補へ進みます。"],
+          ["03", "聴衆が決める", "楽曲は公開で聴かれ、勝者はAIPOGER ShowtimeとAIPOGER Choice Weekly候補へ進みます。"],
         ]
       : lang === "ko"
         ? [
             ["01", "가장 강한 Drop 제출", "관객을 바로 붙잡는 30~60초 AI 음악 구간을 업로드하세요."],
             ["02", "AIPOGER 공식 매칭", "직접 배틀을 열 필요 없습니다. 주간 이벤트가 테마, 매칭, 노출을 맡습니다."],
-            ["03", "관객이 결정", "트랙은 공개적으로 들리고, 우승곡은 Honor Board와 AIPOGER Select 후보로 이동합니다."],
+            ["03", "관객이 결정", "트랙은 공개적으로 들리고, 우승곡은 AIPOGER Showtime과 AIPOGER Choice Weekly 후보로 이동합니다."],
           ]
     : [
         ["01", "Submit your best Drop", "Upload the 30 to 60 seconds of AI music that hits hardest."],
         ["02", "AIPOGER matches the battle", "You do not need to host it yourself. The weekly event handles the theme, match, and exposure."],
-        ["03", "Listeners decide", "Tracks get heard in public. Winners move toward the Honor Board and AIPOGER Select."],
+        ["03", "Listeners decide", "Tracks get heard in public. Winners move toward AIPOGER Showtime and AIPOGER Choice Weekly."],
       ];
   const themes = isZh
     ? ["Cyber Pop", "Sad AI Ballad", "Future Club", "Anime Opening", "Dark R&B"]

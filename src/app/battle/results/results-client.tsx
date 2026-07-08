@@ -437,7 +437,7 @@ export default function BattleResultsClient() {
             </h1>
             <p className="mt-3 max-w-3xl text-sm font-bold leading-6 text-zinc-400">
               {isZh
-                ? "按月份封存每一張 Drop Battle 戰果，正式與非正式分層展示。這裡不是榮譽榜，是可以聽、可以分享、可以追溯的戰績展廳。"
+                ? "按月份封存每一張 Drop Battle 戰果，正式與非正式分層展示。這裡不是 Showtime，是可以聽、可以分享、可以追溯的戰績展廳。"
                 : "A monthly hall for Drop Battle results, with official and unofficial records separated. Listen, share, and trace each win."}
             </p>
           </div>
@@ -446,7 +446,7 @@ export default function BattleResultsClient() {
               {isZh ? "回鬥歌場" : "Battle Hall"}
             </Link>
             <Link href={`/rank?lang=${lang}`} className="rounded-full border border-yellow-200/32 bg-yellow-300/12 px-4 py-2 text-sm font-black text-yellow-100 transition hover:border-yellow-100">
-              {isZh ? "榮譽榜" : "Honor Board"}
+              {isZh ? "Showtime" : "Showtime"}
             </Link>
           </div>
         </header>

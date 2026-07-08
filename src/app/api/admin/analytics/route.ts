@@ -494,7 +494,7 @@ export async function GET(request: NextRequest) {
       kpi("reactionRate", "正向反應率", "percent", (snapshot) => snapshot.reactionRate, snapshots),
       kpi("returningRate", "回訪率", "percent", (snapshot) => snapshot.returningRate, snapshots),
       kpi("uploads", "今日新投稿", "number", (snapshot) => snapshot.uploads, snapshots),
-      kpi("honors", "今日新增榮譽榜作品", "number", (snapshot) => snapshot.honors, snapshots),
+      kpi("honors", "今日新增 Showtime 作品", "number", (snapshot) => snapshot.honors, snapshots),
       kpi("healthScore", "Music Health Score", "score", (snapshot) => snapshot.healthScore, snapshots),
     ],
     platform: {

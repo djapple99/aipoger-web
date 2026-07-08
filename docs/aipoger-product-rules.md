@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-03
 
-This document is the product-rule source of truth for AIPOGER. Use it before changing Battle, Bar Heartbreak, Honor Board, auth, upload, or deployment behavior.
+This document is the product-rule source of truth for AIPOGER. Use it before changing Battle, Bar Heartbreak, AIPOGER Showtime, auth, upload, or deployment behavior.
 
 ## Product Principle
 
@@ -98,8 +98,8 @@ Current behavior:
 
 - Drop Battle uses a short drop cut rather than the full song.
 - Drop Battle clips have a hard maximum of 60 seconds. Creators may cut shorter clips; the recommended public range is about 30-60 seconds so the hook/drop has enough time to reach its payoff without turning the battle into full-song listening.
-- Drop Battle creators may opt in to publish the complete song only if the Drop reaches the Honor Board. If they do not opt in, the Honor Board must only expose the Drop clip. The complete song must not be publicly playable by default.
-- When complete-song publishing is enabled, the Battle Room still uses only the Drop clip; `Full Song` is an Honor Board extension state, not a battle playback rule.
+- Drop Battle creators may opt in to publish the complete song only if the Drop reaches AIPOGER Showtime. If they do not opt in, Showtime must only expose the Drop clip. The complete song must not be publicly playable by default.
+- When complete-song publishing is enabled, the Battle Room still uses only the Drop clip; `Full Song` is a Showtime extension state, not a battle playback rule.
 - Drop Battle quick start options are relative to successful battle-card publishing: `發布後 10 / 15 / 20 分鐘`. Custom start time is an absolute user-selected time and should not move with upload/cutting duration.
 - `battle_queue.expires_at` is only a cleanup/expiry deadline. It must never be used as a Battle start time; opening time must come from `scheduled_start_at` or `cancellation_evaluation_at`.
 - Fast start options must calculate the visible start time only after the queue/battle data has been successfully written. Do not pre-render a time label that ignores upload, cutting, or network duration.
@@ -117,9 +117,9 @@ Current behavior:
 - Both participants in an unfinished Drop Battle should be able to cancel from the arena or eligible Battle Pool card.
 - Finished Drop Battles open a short king-of-the-hill rematch window only after the result is official: at least 3 distinct audience voters, a valid winner, no existing next battle, and a formal Drop Battle type. The window is 5 seconds to claim the challenger slot, then 120 seconds for the challenger to upload their Drop.
 - If nobody claims the 5-second rematch slot, the battle should go directly to the result card and should not leave a lingering rematch card.
-- A 0:0 no contest never creates a result card, defender/rematch window, Honor Board record, or formal battle stats.
-- A battle with 1-2 distinct audience voters may create an unofficial result card and appear on the Result Wall / 成果牆, but it must not enter the Honor Board, update official song battle stats, or open the defender/rematch window.
-- A battle with at least 3 distinct audience voters is an official Drop Battle result and may feed the Honor Board, update per-song battle stats, and open the defender/rematch window.
+- A 0:0 no contest never creates a result card, defender/rematch window, Showtime record, or formal battle stats.
+- A battle with 1-2 distinct audience voters may create an unofficial result card and appear on the Result Wall / 成果牆, but it must not enter Showtime, update official song battle stats, or open the defender/rematch window.
+- A battle with at least 3 distinct audience voters is an official Drop Battle result and may feed Showtime, update per-song battle stats, and open the defender/rematch window.
 - The official-result audience threshold counts distinct listeners only: one signed-in `battle_votes.user_id` or one anonymous `battle_guest_votes.guest_id` per battle. Fighter participation does not count toward the 3-audience minimum.
 - A user may hold one active Drop founder/open-card intent and one active Drop challenger intent at the same time.
 - A creator may deliberately challenge their own open Drop Battle card when they want listeners to compare two same-genre songs from the same account. This is only allowed through a specific target card; automatic random pairing should not auto-match the creator against themself.
@@ -131,9 +131,9 @@ Current behavior:
 - The Battle Pool genre filter shows only the fixed music genres. It must not show `全部風格` / `All Styles`; the default unselected state still displays all official Gatekeeper Drops and open Battle cards.
 - Clicking an already selected Battle Pool genre clears the selection and returns to the unselected all-content view.
 - The Result Wall / 成果牆 is the monthly public result library. It may show both official and unofficial result cards, as long as there is at least 1 distinct audience voter and a valid winner.
-- The Honor Board only consumes official Drop Battle results with at least 3 distinct audience voters.
+- AIPOGER Showtime only consumes official Drop Battle results with at least 3 distinct audience voters.
 - Battle history should focus on the song, not the fighter profile. Cards may show per-song challenge count, wins, losses, ties, and win rate.
-- V1 song battle stats do not open URL upload or a full creator song-library UI. They only group the same creator's repeated Drop Battle entries by normalized song title and show battle count, wins, losses, votes, win rate, and Honor Board count.
+- V1 song battle stats do not open URL upload or a full creator song-library UI. They only group the same creator's repeated Drop Battle entries by normalized song title and show battle count, wins, losses, votes, win rate, and Showtime count.
 - Waiting cards should provide a `約人鬥歌` share action.
 - Live or public-voting cards should provide an `邀請觀戰投票` share action.
 
@@ -157,7 +157,7 @@ Official Gatekeeper Drops:
 - When a challenger submits, the system creates a per-challenge battle instance: one copied official defender queue plus one challenger queue. Official audio, lyrics, and cover art must be copied into the defender side so the created Battle Room behaves like a normal Battle Room for listening, lyrics, cover display, watching, and sharing.
 - The copied official defender queue must not count as the owner's personal active Drop Battle intent, must not notify the owner as if they personally entered a battle, and must not pollute owner-facing active battle limits.
 - The challenger side counts as an active challenger intent until that battle ends or is cancelled. Owner/admin may also challenge their own official Gatekeeper Drop; the copied defender side still must not count as a personal active founder intent.
-- Official Gatekeeper Drop results follow the same audience threshold rules as normal Drop Battle: 0:0 no result, 1-2 distinct voters unofficial Result Wall only, 3+ distinct voters official/Honor Board eligible.
+- Official Gatekeeper Drop results follow the same audience threshold rules as normal Drop Battle: 0:0 no result, 1-2 distinct voters unofficial Result Wall only, 3+ distinct voters official/Showtime eligible.
 
 Initial operating target:
 
@@ -180,7 +180,7 @@ Current behavior:
 - `finished`, `cancelled`, and `expired` 24H entries release the account to start another 24H entry.
 - 24H Full Song is not limited to one per calendar day.
 - 24H queued entries can be accepted by another creator.
-- Finished 24H battles with a winner feed the Honor Board as winner records.
+- Finished 24H battles with a winner feed Showtime as winner records.
 - Duplicate active 24H audio should be blocked by audio hash when the column exists.
 - 24H queued cards should share with `/d/{shortId}` and 24H live battles should share with `/h/{shortId}`.
 - Battle history should focus on the full song entry, not the creator profile. Cards may show per-song challenge count, wins, losses, ties, and win rate.
@@ -226,22 +226,22 @@ Current rules:
 - `GET /api/listen-bar/process-rotation` is a manual/monitoring dry-run preview only.
 - Real promotion/removal requires the protected `POST` route with `LISTEN_BAR_ROTATION_ENABLED=true`.
 - Public-pool elimination runs per genre only when that genre has more than 36 public songs.
-- Bar Heartbreak survival and Honor Board eligibility start per genre only after that genre has reached 36 public songs. Existing public-pool time before that genre activation point must not be counted toward the 7-public-day Honor Board rule.
+- Bar Heartbreak survival and Showtime eligibility start per genre only after that genre has reached 36 public songs. Existing public-pool time before that genre activation point must not be counted toward the 7-public-day Showtime rule.
 - Elimination must never bring an active genre public pool below 36 songs.
 - Each elimination pass removes at most the overflow above 36 inside overfull genre pools, capped at 3 low-performing public-pool songs.
 - If songs have the same positive reaction count, remove the older song first.
 - If a genre public pool is at or below 36 songs, elimination stops for that genre and no refill action is needed.
 - The legacy 30-day `completed` removal rule is retired and must not remove songs.
 - Public pool target: 36 songs per genre, currently 396 songs across 11 genres. Challenger priority airplay can still surface protected new submissions.
-- After that song's genre activation point, a song with 30 hearts/positive reactions or 7 public survival days becomes Honor Board eligible.
+- After that song's genre activation point, a song with 30 hearts/positive reactions or 7 public survival days becomes Showtime eligible.
 - A listener must sign in to react or comment. Pressing Heart on a Bar Heartbreak track also saves that track to the listener's favorites. Removing it later from favorites does not remove the historical heart reaction; pressing Heart again after unsaving saves it again without duplicate favorites.
 - New submissions get priority after the current song finishes; each priority batch starts when the first upload arrives, airs up to 8 new uploads within 1 hour, and pushes overflow to the next hour.
 - Bar Heartbreak upload metadata should stay compact: user-entered creator name, AI tool, and album/mood are limited to 12 CJK characters or about 24 English characters; one-line song description is limited to 16 CJK characters or about 32 English characters. Auto-detected song titles are not subject to this compact metadata limit.
 - Bar Heartbreak submissions may include one optional YouTube MV URL. The public now-playing metadata row shows it only as a compact `看 MV` / `Watch MV` action; it must not replace audio playback or interrupt the radio. Creators can add or edit this URL from their own track detail form, and admins can edit it from `/admin/listen-bar`.
 - `/admin/listen-bar` track management must use a dropdown filter for the fixed 11 music genres. Do not bring back a primary `待補類型` filter, badge, or empty state for normal admin management. Admin upload previews and track-card audio controls must be mutually exclusive: starting one preview pauses the previously playing preview.
 - Daily Spotlight can feature a Bar Heartbreak track for promotion through `/today`, QR code, and social drafts. It is a curated spotlight layer, not a replacement for the shared radio rotation and not a separate reaction pool.
-- Bar Heartbreak top-right hero controls should stay minimal; primary actions belong in the lower hero action strip. The strip should group `我要播歌`, bar sharing, `AI 音樂鬥歌場`, and `榮譽榜`; do not put `練功聖經` or `關於愛波哥` in this hero action strip.
-- Bar Heartbreak hero signage must be localizable live text, not a bitmap containing fixed Chinese copy. The title/subtitle can use a dark gold plaque treatment, but language switching must keep working. On mobile, the hero action strip first row is `我要播歌` / `分享吧台` / `榮譽榜`; `AI 音樂鬥歌場` sits centered on the second row.
+- Bar Heartbreak top-right hero controls should stay minimal; primary actions belong in the lower hero action strip. The strip should group `我要播歌`, bar sharing, `AI 音樂鬥歌場`, and `Showtime`; do not put `練功聖經` or `關於愛波哥` in this hero action strip.
+- Bar Heartbreak hero signage must be localizable live text, not a bitmap containing fixed Chinese copy. The title/subtitle can use a dark gold plaque treatment, but language switching must keep working. On mobile, the hero action strip first row is `我要播歌` / `分享吧台` / `Showtime`; `AI 音樂鬥歌場` sits centered on the second row.
 - Bar Heartbreak share URLs must use short routes. The whole bar uses `/l/all?lang=...`; selected genre sharing uses `/l/{genreIndex}?lang=...` and must reopen `/listen-bar` with that genre selected.
 - The Bar Heartbreak Battle ticker in the hero action strip is an actual moving marquee. Do not regress it to a static truncated line.
 
@@ -260,9 +260,13 @@ Product language:
 - Avoid implying Bar Heartbreak is a ranking chart.
 - Bar Heartbreak is an AI music survival radio, not a leaderboard.
 
-## Honor Board
+## AIPOGER Showtime
 
-The Honor Board is not a numbered ranking.
+AIPOGER Showtime is the front-stage name for the old Honor Board surface at `/rank`.
+
+Legacy code, database tables, API routes, or historical docs may still use `honor_board` / Honor Board as internal terminology. Public-facing navigation, page title, share copy, and creator-facing eligibility copy should use `AIPOGER Showtime` or `Showtime`.
+
+Showtime is not a numbered ranking.
 
 Current board sections:
 
@@ -275,12 +279,19 @@ Display principles:
 - Do not present these boards as first/second/third-place rankings.
 - Use honor/record language: victory, archive, hot track, public response.
 - Card badges can say `WIN`, `24H`, or `HOT`.
-- Do not show mock records as real Honor Board content.
-- Honor Board cards may expose a `歌詞` / `LYRICS` action when the archived or source track has lyrics.
-- Drop Battle Honor Board cards may expose `Full Song` only when the winning creator explicitly enabled complete-song public playback. Otherwise they should show or play only the archived Drop clip.
+- Do not show mock records as real Showtime content.
+- Showtime cards may expose a `歌詞` / `LYRICS` action when the archived or source track has lyrics.
+- Drop Battle Showtime cards may expose `Full Song` only when the winning creator explicitly enabled complete-song public playback. Otherwise they should show or play only the archived Drop clip.
 - If lyrics exist, open them in a readable modal and preserve line breaks.
 - If lyrics are not provided, show `歌詞未提供` / `No Lyrics` instead of hiding the feature or implying an error.
 - Lyrics are a viewing feature for recognized songs; they are not a creator song-library feature and do not require URL upload support in V1.
+
+AIPOGER Choice Weekly:
+
+- AIPOGER Choice Weekly is a weekly curation direction that grows from Showtime records, Bar Heartbreak heat, favorites, and comments.
+- It is not a separate ranking chart and should not be presented as a fully automated weekly winner until the data workflow exists.
+- The current front-stage implementation may provide a homepage entry that jumps to the `#choice-weekly` direction block on `/rank`.
+- Choice Weekly can later feed social drafts, DJ selection, and weekly recommendation copy.
 
 Creator stages:
 
@@ -324,7 +335,7 @@ Current behavior target:
 
 Before deploying changes that touch product rules:
 
-- Confirm whether the change affects auth, upload, Battle queueing, Bar Heartbreak rotation, Honor Board display, or storage.
+- Confirm whether the change affects auth, upload, Battle queueing, Bar Heartbreak rotation, AIPOGER Showtime display, or storage.
 - Update this document if a rule changes.
 - Update `docs/aipoger-release-checklist.md` if a new verification step is needed.
 - Update `docs/aipoger-ui-art-direction.md` if visual language or page identity changes.

@@ -43,11 +43,11 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
       navTitle: "關於愛播歌",
       title: "AIPOGER 愛播歌是 AI 創作者一起成長、讓作品被認可的音樂舞台。",
       lead:
-        "從 Drop Battle、傷心酒吧到榮譽榜，AIPOGER 讓 AI 音樂創作者上場、累積聽眾反應、被投票認可，並讓勝出的作品有機會進入播放、策展、發行、授權與商業合作。",
+        "從 Drop Battle、傷心酒吧到 AIPOGER Showtime，AIPOGER 讓 AI 音樂創作者上場、累積聽眾反應、被投票認可，並讓勝出的作品有機會進入播放、策展、發行、授權與商業合作。",
       contactLabel: "聯絡我們",
       cards: [
         { label: "Mission", value: "Creator Growth", detail: "陪 AI 創作者累積作品、戰績、聽眾反應與舞台紀錄" },
-        { label: "Recognition", value: "Honor Records", detail: "用 Drop Battle、傷心酒吧與榮譽榜封存被聽眾認可的作品" },
+        { label: "Recognition", value: "Showtime", detail: "用 Drop Battle、傷心酒吧與 Showtime 封存被聽眾認可的作品" },
         { label: "Rights", value: "Original Only", detail: "僅接受原創、已授權或具合法使用依據的音樂內容" },
         { label: "Contact", value: "Email", detail: mail, href: `mailto:${mail}` },
       ],
@@ -56,7 +56,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           title: "平台定位",
           body:
             "AIPOGER 不是普通播放器，也不是只做 battle 的網站。它是 AI 音樂創作者的認可系統：先讓作品接受聽眾與對手檢驗，再把勝出的紀錄變成播放、策展與商業化的起點。",
-          items: ["AI 音樂 Drop 上傳與鬥歌", "傷心酒吧 Bar Heartbreak 公播與聽眾反應", "榮譽榜封存勝利與熱播紀錄", "勝出作品播放、策展、發行、授權與商業合作"],
+          items: ["AI 音樂 Drop 上傳與鬥歌", "傷心酒吧 Bar Heartbreak 公播與聽眾反應", "Showtime 封存勝利與熱播紀錄", "勝出作品播放、策展、發行、授權與商業合作"],
         },
         {
           title: "著作權與上傳原則",
@@ -105,11 +105,11 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
       navTitle: "About AIPOGER",
       title: "AIPOGER is where AI creators grow and winning tracks earn recognition.",
       lead:
-        "From Drop Battles to Bar Heartbreak and the Honor Board, AIPOGER helps AI music creators get heard, collect crowd signals, earn records, and move winning tracks toward airplay, curation, licensing, and commercial opportunities.",
+        "From Drop Battles to Bar Heartbreak and AIPOGER Showtime, AIPOGER helps AI music creators get heard, collect crowd signals, earn records, and move winning tracks toward airplay, curation, licensing, and commercial opportunities.",
       contactLabel: "Contact",
       cards: [
         { label: "Mission", value: "Creator Growth", detail: "Build tracks, battle records, listener signals, and stage presence" },
-        { label: "Recognition", value: "Honor Records", detail: "Drop Battles, Bar Heartbreak, and the Honor Board preserve the moments that hit" },
+        { label: "Recognition", value: "Showtime", detail: "Drop Battles, Bar Heartbreak, and Showtime preserve the moments that hit" },
         { label: "Rights", value: "Original Only", detail: "Only original, licensed, or lawfully usable music content is allowed" },
         { label: "Contact", value: "Email", detail: mail, href: `mailto:${mail}` },
       ],
@@ -118,7 +118,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           title: "What AIPOGER Is",
           body:
             "AIPOGER is not a generic player and not just a battle site. It is a recognition system for AI music: tracks face challengers and listeners first, then winning records can become the start of airplay, curation, licensing, and commercial paths.",
-          items: ["AI Music Drop uploads and battles", "Bar Heartbreak airplay and listener reactions", "Honor Board records for wins and heat", "Airplay, curation, licensing, release, and brand collaboration paths"],
+          items: ["AI Music Drop uploads and battles", "Bar Heartbreak airplay and listener reactions", "Showtime records for wins and heat", "Airplay, curation, licensing, release, and brand collaboration paths"],
         },
         {
           title: "Copyright and Upload Rules",
@@ -194,7 +194,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
         "AIPOGER partnerships should help AI creators make better work, get heard, and turn winning tracks into real cultural and commercial opportunities.",
       contactLabel: "Partnership",
       cards: [
-        { label: "Placement", value: "Stage Exposure", detail: "Home, Battle Hall, Bar Heartbreak, Honor Board, campaign pages" },
+        { label: "Placement", value: "Stage Exposure", detail: "Home, Battle Hall, Bar Heartbreak, Showtime, campaign pages" },
         { label: "Content", value: "Creator Growth", detail: "Tutorials, tool demos, song concepts, and workflow education" },
         { label: "Campaign", value: "Theme Battles", detail: "Sponsored prompts, style weeks, creator challenges, and airplay campaigns" },
       ],
@@ -253,7 +253,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           title: "戰果與紀錄",
           body:
             "Drop Battle 的重點不是空喊誰比較強，而是讓作品留下公開聽眾反應。只要有聽眾投票，這場對決就能成為創作者判斷作品方向的參考。",
-          items: ["0 票不產生戰果", "1-2 位聽眾投票可形成非正式戰果", "3 位以上不同聽眾投票才有機會進入正式紀錄", "優秀作品可往成果牆與榮譽榜累積"],
+          items: ["0 票不產生戰果", "1-2 位聽眾投票可形成非正式戰果", "3 位以上不同聽眾投票才有機會進入正式紀錄", "優秀作品可往成果牆與 Showtime 累積"],
         },
         {
           title: "評分精神",
@@ -296,7 +296,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           title: "Results and Records",
           body:
             "Drop Battle is not just about claiming a track is stronger. It creates a public listener signal that helps creators decide what to refine, share, and bring back to the stage.",
-          items: ["0 votes means no result", "1-2 listener votes can create an unofficial result", "3+ distinct listener votes can become an official record", "Strong records can feed the Result Wall and Honor Board"],
+          items: ["0 votes means no result", "1-2 listener votes can create an unofficial result", "3+ distinct listener votes can become an official record", "Strong records can feed the Result Wall and Showtime"],
         },
         {
           title: "Judging Spirit",

@@ -493,7 +493,7 @@ async function notifyHookBattleResult(
 ) {
   const noContest = !winner;
   const unofficialBody =
-    "這場 Drop Battle 已分出勝負，但未滿 3 名觀眾投票，先作為非正式戰果，不進榮譽榜，也不累計歌曲正式戰績。";
+    "這場 Drop Battle 已分出勝負，但未滿 3 名觀眾投票，先作為非正式戰果，不進 Showtime，也不累計歌曲正式戰績。";
   const rows = [
     {
       user_id: battle.fighter_a_user_id,
@@ -502,7 +502,7 @@ async function notifyHookBattleResult(
       type: noContest ? "battle_no_contest" : "battle_finished",
       title: noContest ? "Battle 已結束：未分勝負" : winner === "fighter_a" ? "Battle 勝利！" : "Battle 結束",
       body: noContest
-        ? "這場 Drop Battle 沒有任何觀眾投票，已判定 no contest，不產生成果卡，也不進榮譽榜。"
+        ? "這場 Drop Battle 沒有任何觀眾投票，已判定 no contest，不產生成果卡，也不進 Showtime。"
         : !official
           ? unofficialBody
         : winner === "fighter_a"
@@ -522,7 +522,7 @@ async function notifyHookBattleResult(
       type: noContest ? "battle_no_contest" : "battle_finished",
       title: noContest ? "Battle 已結束：未分勝負" : winner === "fighter_b" ? "Battle 勝利！" : "Battle 結束",
       body: noContest
-        ? "這場 Drop Battle 沒有任何觀眾投票，已判定 no contest，不產生成果卡，也不進榮譽榜。"
+        ? "這場 Drop Battle 沒有任何觀眾投票，已判定 no contest，不產生成果卡，也不進 Showtime。"
         : !official
           ? unofficialBody
         : winner === "fighter_b"
@@ -807,7 +807,7 @@ async function notifyDailyBattleResult(
       type: "daily_battle_finished",
       title: noContest ? "24H Battle 已結束：No contest" : won ? "24H Battle 勝利！" : "24H Battle 已結束",
       body: noContest
-        ? "這場 24H Battle 沒有任何觀眾投票，不產生成果，也不進榮譽榜。"
+        ? "這場 24H Battle 沒有任何觀眾投票，不產生成果，也不進 Showtime。"
         : won
           ? `你的作品贏下 24H Battle，成果已留檔。`
           : `${opponent.title} 贏下這場 24H Battle，成果已留檔。`,

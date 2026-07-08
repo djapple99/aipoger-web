@@ -505,7 +505,7 @@ export default function AdminAnalyticsPage() {
 
           <div className="grid gap-5 xl:grid-cols-[1fr_0.85fr]">
             <div className="rounded-[1.2rem] border border-yellow-200/15 bg-black/58 p-5">
-              <h2 className="text-2xl font-black text-white">Honor Board Analytics</h2>
+              <h2 className="text-2xl font-black text-white">Showtime Analytics</h2>
               <div className="mt-4"><StatGrid rows={honorRows} /></div>
               <h3 className="mt-5 text-sm font-black uppercase tracking-[0.18em] text-yellow-100">Top Honor Songs</h3>
               <div className="mt-3 grid gap-2">

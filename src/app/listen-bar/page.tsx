@@ -653,7 +653,7 @@ export default function ListenBarPage() {
         title: "傷心酒吧",
         subtitle: "在 AI 與不 AI 之間只有真正被聽見的歌才能留下來",
         navBattle: "AI 音樂鬥歌場",
-        navRank: "榮譽榜",
+        navRank: "Showtime",
         ticker: "歡迎去 AI 音樂鬥歌場鬥歌，開戰帖、接挑戰，讓你的 AI 音樂被聽見。",
         queueTitle: "接續的六首歌",
         queueWaiting: "等待接續歌曲",
@@ -672,7 +672,7 @@ export default function ListenBarPage() {
           title: "Bar Heartbreak",
           subtitle: "深く刺さる曲だけがオンエアに残る",
           navBattle: "AI音楽バトルホール",
-          navRank: "Honor Board",
+          navRank: "Showtime",
           ticker: "AI音楽バトルホールへ。カードを開き、挑戦を受け、あなたのAI音楽を聴かせよう。",
           queueTitle: "Upcoming Sad Songs",
           queueWaiting: "Waiting for Songs",
@@ -691,7 +691,7 @@ export default function ListenBarPage() {
             title: "Bar Heartbreak",
             subtitle: "강하게 꽂히는 곡만 온에어에 남는다",
             navBattle: "AI 음악 배틀홀",
-            navRank: "Honor Board",
+            navRank: "Showtime",
             ticker: "AI 음악 배틀홀로 오세요. 카드를 열고, 도전을 받고, 당신의 AI 음악을 들려주세요.",
             queueTitle: "Upcoming Sad Songs",
             queueWaiting: "Waiting for Songs",
@@ -709,7 +709,7 @@ export default function ListenBarPage() {
             title: "Bar Heartbreak",
             subtitle: "Only the songs that hit hard stay on air",
             navBattle: "AI Music Battle Hall",
-            navRank: "Honor Board",
+            navRank: "Showtime",
             ticker: "Welcome to the AI Music Battle Hall. Open a card, accept a challenge, and let your AI music be heard.",
             queueTitle: "Upcoming Sad Songs",
             queueWaiting: "Waiting for Songs",
@@ -2595,7 +2595,7 @@ export default function ListenBarPage() {
                   )}
                   {honorRollQualified && (
                     <span className="rounded-full border border-yellow-200/35 bg-yellow-300/10 px-2 py-0.5 font-bold text-yellow-100">
-                      {isZh ? "榮譽榜資格" : "Honor Eligible"}
+                      {isZh ? "Showtime 入選資格" : "Showtime Eligible"}
                     </span>
                   )}
                 </div>
@@ -2689,8 +2689,8 @@ export default function ListenBarPage() {
                       </p>
                       <p className="mt-1 text-xs font-bold leading-5 text-orange-100/70">
                         {isZh
-                          ? `累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 顆心，或公播存活 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天，即可取得榮譽榜資格。`
-                          : `${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} hearts or ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} public days makes it Honor Board eligible.`}
+                          ? `累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 顆心，或公播存活 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天，即可取得 Showtime 入選資格。`
+                          : `${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} hearts or ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} public days makes it Showtime eligible.`}
                       </p>
                     </div>
                   </div>
@@ -3227,8 +3227,8 @@ export default function ListenBarPage() {
             </p>
             <p className="mt-2 break-words text-sm font-bold leading-6 text-zinc-300 [overflow-wrap:anywhere]">
               {isZh
-                ? `傷心酒吧不是排行榜，而是一場 AI 音樂生存電台。聽歌不需登入；留言、投票與投稿需登入。來訪者可選公播或指定類型播放；目前 ${LISTEN_BAR_GENRES.length} 種類型每類滿池 ${LISTEN_BAR_GENRE_POOL_LIMIT} 首，總公播池上限 ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} 首。未滿池的新投稿直接進同類公播池；滿池後才進 Challenger。每一類滿池後才啟動該類淘汰與 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天榮譽計時；累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 顆心，或滿池啟動後公播存活 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天，就取得榮譽榜入選資格。`
-                : `Bar Heartbreak is not a chart. It is AI music survival radio. Listening is open; comments, votes, and uploads require sign-in. Visitors can play all songs or pick a genre. Each of the ${LISTEN_BAR_GENRES.length} genres has a ${LISTEN_BAR_GENRE_POOL_LIMIT}-track public pool, for ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} public slots total. New submissions enter the same-genre public pool until that genre is full; after that they enter Challenger. Survival and the ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS}-day Honor timer start per genre only after that genre pool is full. ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} hearts or ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} public days after activation makes a track Honor Board eligible.`}
+                ? `傷心酒吧不是排行榜，而是一場 AI 音樂生存電台。聽歌不需登入；留言、投票與投稿需登入。來訪者可選公播或指定類型播放；目前 ${LISTEN_BAR_GENRES.length} 種類型每類滿池 ${LISTEN_BAR_GENRE_POOL_LIMIT} 首，總公播池上限 ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} 首。未滿池的新投稿直接進同類公播池；滿池後才進 Challenger。每一類滿池後才啟動該類淘汰與 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天 Showtime 計時；累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 顆心，或滿池啟動後公播存活 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天，就取得 Showtime 入選資格。`
+                : `Bar Heartbreak is not a chart. It is AI music survival radio. Listening is open; comments, votes, and uploads require sign-in. Visitors can play all songs or pick a genre. Each of the ${LISTEN_BAR_GENRES.length} genres has a ${LISTEN_BAR_GENRE_POOL_LIMIT}-track public pool, for ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} public slots total. New submissions enter the same-genre public pool until that genre is full; after that they enter Challenger. Survival and the ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS}-day Honor timer start per genre only after that genre pool is full. ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} hearts or ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} public days after activation makes a track Showtime eligible.`}
             </p>
           </div>
 
@@ -3390,7 +3390,7 @@ export default function ListenBarPage() {
             </div>
             <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">
               {isZh
-                ? `${totalCommunityTrackCount} 首投稿歌進入傷心酒吧；${publicPoolTracks.length} 首正在公播。${LISTEN_BAR_GENRES.length} 種類型各自滿池 ${LISTEN_BAR_GENRE_POOL_LIMIT} 首，先同類比較，再進榮譽。`
+                ? `${totalCommunityTrackCount} 首投稿歌進入傷心酒吧；${publicPoolTracks.length} 首正在公播。${LISTEN_BAR_GENRES.length} 種類型各自滿池 ${LISTEN_BAR_GENRE_POOL_LIMIT} 首，先同類比較，再進 Showtime。`
                 : `${totalCommunityTrackCount} creator tracks are in Bar Heartbreak; ${publicPoolTracks.length} are on public airplay. Each genre fills its own ${LISTEN_BAR_GENRE_POOL_LIMIT}-track pool before survival starts.`}
             </p>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">

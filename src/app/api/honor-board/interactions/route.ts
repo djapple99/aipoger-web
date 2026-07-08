@@ -388,7 +388,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const token = tokenFromRequest(request);
-  if (!token) return jsonError("請先登入，才能收藏或評論榮譽榜作品。", 401);
+  if (!token) return jsonError("請先登入，才能收藏或評論 Showtime 作品。", 401);
 
   const body = (await request.json().catch(() => null)) as {
     action?: unknown;

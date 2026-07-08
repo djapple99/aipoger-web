@@ -40,7 +40,7 @@ After deploy:
 
 Check:
 
-- Logged-out visitors can open home, Battle list, Bar Heartbreak, Honor Board, rules pages.
+- Logged-out visitors can open home, Battle list, Bar Heartbreak, AIPOGER Showtime, rules pages.
 - Logged-out visitors can listen to public Bar Heartbreak tracks.
 - Logged-out visitors cannot vote or comment in Bar Heartbreak.
 - Logged-out visitors are asked to sign in before upload/Battle actions.
@@ -71,10 +71,10 @@ Check:
 - Both participants can cancel an unfinished Drop Battle when the user is eligible.
 - Quick start labels and stored start times are based on successful publish time, not a stale `expires_at`.
 - Waiting room opens correctly.
-- 0 audience voters becomes no contest and does not create a result card, Honor Board archive, or song battle stats.
-- 1-2 distinct audience voters can show an unofficial result but does not create a Honor Board archive, song battle stats, or rematch window.
+- 0 audience voters becomes no contest and does not create a result card, Showtime archive, or song battle stats.
+- 1-2 distinct audience voters can show an unofficial result but does not create a Showtime archive, song battle stats, or rematch window.
 - 3+ distinct audience voters creates an official result that can be archived.
-- Honor Board reads Drop winners as `熱血 Drop 抓波勝利榜`.
+- AIPOGER Showtime reads Drop winners as `熱血 Drop 抓波勝利榜`.
 
 When the 10-card limit is implemented, also check:
 
@@ -98,7 +98,7 @@ Check:
 - Live 24H share links use `/h/{shortId}`.
 - Voting requires login.
 - Finished 24H battle records winner when not tied.
-- Honor Board reads 24H winners as `24H Full Song 勝利榜`.
+- AIPOGER Showtime reads 24H winners as `24H Full Song 勝利榜`.
 
 When the 10 active limit is implemented, also check:
 
@@ -155,12 +155,14 @@ Daily Spotlight:
 - Saving the spotlight creates or updates social drafts only. It must not automatically publish to Discord, Facebook, Instagram, TikTok, or YouTube.
 - Discord publishing requires an approved draft plus the explicit Discord publish action, and should store message/channel response when Discord returns it.
 
-## Honor Board Checklist
+## AIPOGER Showtime Checklist
 
 Check:
 
 - Page loads at `/rank?lang=zh`.
-- Main title says `AIPOGER 榮譽榜`.
+- Main title says `AIPOGER Showtime`.
+- Homepage exposes an `AIPOGER Choice Weekly` entry that lands on `/rank?lang=zh#choice-weekly`.
+- Showtime includes a Choice Weekly direction block without claiming a complete weekly automation workflow.
 - Sections are:
   - `熱血 Drop 抓波勝利榜`
   - `24H Full Song 勝利榜`
@@ -208,7 +210,7 @@ Check at least one mobile viewport after UI changes:
 - Battle setup.
 - Bar Heartbreak now-playing area.
 - Bar Heartbreak upload form.
-- Honor Board.
+- AIPOGER Showtime.
 
 Look for:
 
