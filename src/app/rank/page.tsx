@@ -1354,9 +1354,9 @@ export default function RankPage() {
           <div className="h-11 w-16" aria-hidden="true" />
           <nav className="flex flex-wrap items-center gap-2 sm:pr-20">
             {[
-              { href: "/battle", label: isZh ? "AI 音樂鬥歌場" : "AI Music Battle Hall" },
+              { href: "/ai-music", label: isZh ? "探索 AI 音樂" : "Explore AI Music" },
               { href: "/listen-bar", label: isZh ? "傷心酒吧" : "Bar Heartbreak" },
-              { href: "/hook-guide", label: isZh ? "Drop Battle 規則" : "Drop Battle Rules" },
+              { href: "/battle", label: "Drop Battle" },
             ].map((item) => (
               <Link
                 key={item.href}
@@ -1376,8 +1376,8 @@ export default function RankPage() {
             </h1>
             <p className="mt-3 max-w-3xl whitespace-pre-line text-sm leading-7 text-zinc-400 sm:text-base">
               {isZh
-                ? "這裡是 AIPOGER 被聽眾認可作品的前台舞台，不是冷冰冰的名次表。\n把勝利、熱播與聽眾反應留下來，讓作品被回聽、被分享，也成為 AIPOGER Choice Weekly 的策展候選。"
-                : "This is the front-stage home for AI music recognized by AIPOGER listeners, not a cold ranking table.\nWins, heat, and listener response stay playable and shareable here, and they can become candidates for AIPOGER Choice Weekly."}
+                ? "Showtime 是 AIPOGER 的認證作品庫，不是繼續被攻擂的戰場。\n這裡收錄已獲得反應、正式戰績或策展認可的作品；入選後不再接受挑戰，只保留為可回聽、收藏、分享與策展的認證紀錄。"
+                : "Showtime is AIPOGER's certified works archive, not an active challenge surface.\nIt keeps works recognized through response, official battle records, or curation. Once certified, a work no longer accepts challenges; it stays playable, saved, shared, and curated."}
             </p>
             <div
               className="mt-4 flex max-w-full items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -1395,10 +1395,10 @@ export default function RankPage() {
                 className="shrink-0 whitespace-nowrap !px-4 !py-2 !text-xs border-yellow-100/30 bg-white/[0.045] text-zinc-100 hover:border-yellow-100/55 active:bg-yellow-300 active:text-black"
               />
               <Link
-                href={`/battle/setup${navSuffix}`}
+                href={`/ai-music${navSuffix}`}
                 className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-yellow-100/30 bg-white/[0.045] px-4 py-2 text-xs font-black text-zinc-100 transition hover:border-yellow-100/55 active:bg-yellow-300 active:text-black"
               >
-                {isZh ? "發起挑戰" : "Start a Challenge"}
+                {isZh ? "去探索作品" : "Explore Works"}
               </Link>
               {BOARD_KEYS.map((key) => {
                 const selected = active === key;

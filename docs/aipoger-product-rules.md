@@ -265,11 +265,18 @@ Product language:
 
 The homepage first-layer low-pressure entry is `探索 AI 音樂`, linking to `/ai-music`.
 
+Surface positioning:
+
+- Bar Heartbreak is the AI music public airplay pool and submission entry. Creators submit there first; eligible public submissions rotate by genre and also appear on Explore AI Music.
+- Explore AI Music is the public uploaded-works wall. It is catalog mode for public uploads that meet display conditions, not a certification surface.
+- Showtime is the certified works archive. Once a work enters Showtime, it may be played, saved, shared, and curated, but it must not accept new challenges.
+
 This page is the AI music works browser. It should:
 
 - Use the main title `AI 音樂作品`.
 - Highlight the subtitle `依照風格快速瀏覽作品，聽歌、送愛心，或向你喜歡的作品發起挑戰。` in bright yellow so it reads as the page's quick action promise.
 - Include a compact upload prompt: `上傳音樂讓大家看到你的作品，請從傷心酒吧投稿。`, linking to the Bar Heartbreak submission area.
+- Include a `這裡怎麼玩？` explanation: public uploads appear here after entering Bar Heartbreak/public airplay; Heart also saves the track; saved tracks are managed from the top-right avatar/Profile; challengeable tracks must be non-Showtime works with challenge enabled and a prepared defender 60s Drop.
 - Keep the top summary items compact, like small info chips, not wide dashboard cards.
 - Do not show internal verification wording such as `真實資料，不含 mock` or `Real records only` in the public page UI.
 - Group real works by the current 11 fixed music genres.
@@ -295,6 +302,7 @@ Explore direct challenge loop:
 - If the defender rejects, the challenge ends without result, stats, or win/loss history. If the defender accepts, the battle starts according to the scheduled time.
 - A challenger may send at most 6 Explore attack invites per Taiwan day.
 - Explore direct-challenge official records require at least 3 distinct non-participant audience voters. Ties go to the defender (`fighter_a`). Under 3 voters displays audience-insufficient/no result.
+- A non-Showtime Explore work retires from the public uploaded-works wall and stops accepting challenges after 8 official losses. Only losses from battles with at least 3 distinct non-participant voters count; rejected, expired, under-threshold, or unstarted invites do not count.
 - The original Drop Battle Pool remains for temporary/open-card matchmaking and quick Drop Battle entry that does not start from Explore AI Music.
 
 ## AIPOGER Showtime
@@ -304,6 +312,12 @@ AIPOGER Showtime is the front-stage name for the old Honor Board surface at `/ra
 Legacy code, database tables, API routes, or historical docs may still use `honor_board` / Honor Board as internal terminology. Public-facing navigation, page title, share copy, and creator-facing eligibility copy should use `AIPOGER Showtime` or `Showtime`.
 
 Showtime is not a numbered ranking.
+
+Showtime is the certified archive, not a challenge surface:
+
+- Works in Showtime no longer accept Explore direct challenges.
+- Showtime records are not removed by later battle losses.
+- Showtime works do not follow the 8-official-loss Explore retirement rule.
 
 Current board sections:
 

@@ -178,6 +178,8 @@ Check:
 - `/ai-music?lang=zh` returns 200 and uses the main title `AI 音樂作品`.
 - The `/ai-music` header subtitle is bright yellow, the top summary items are compact chips, and the public UI does not show `真實資料，不含 mock` / `Real records only`.
 - The `/ai-music` header includes the upload prompt `上傳音樂讓大家看到你的作品，請從傷心酒吧投稿。` and links it to Bar Heartbreak submission.
+- The `/ai-music` internal navigation order is `作品瀏覽` -> `傷心酒吧` -> `Drop Battle` -> `Showtime` -> `Choice`.
+- The `/ai-music` page includes `這裡怎麼玩？`, explaining that Hearts also save tracks, saved tracks are managed from the top-right avatar/Profile, and challengeable works need a prepared defender 60s Drop.
 - The page groups works by the current 11 fixed music genres and shows at most 6 cards per genre before `看更多`.
 - Cards show song title, creator, AI tool, heart count, and challenge count.
 - Signed-in users who already sent a Heart in the current 24-hour cooldown see the Heart button lit on `/ai-music` cards and the bottom mini player, while the card still shows only total Heart count publicly.
@@ -186,6 +188,7 @@ Check:
 - Card play opens the bottom mini player and does not expand per-card audio controls.
 - `Drop Battle`, `Showtime`, `傷心酒吧`, and `Choice` are internal options on `/ai-music`.
 - Old genre labels are not shown as current category headings.
+- `/api/ai-music/tracks` filters non-Showtime works that have 8 official Explore losses, and `/api/ai-music/challenges` blocks attacks against Showtime-certified or retired works.
 
 ## AIPOGER Showtime Checklist
 
@@ -193,6 +196,7 @@ Check:
 
 - Page loads at `/rank?lang=zh`.
 - Main title says `AIPOGER Showtime`.
+- Header copy says Showtime is a certified works archive and that certified works no longer accept challenges.
 - Homepage exposes an `AIPOGER Choice Weekly` entry that lands on `/rank?lang=zh#choice-weekly`.
 - Showtime includes a Choice Weekly direction block without claiming a complete weekly automation workflow.
 - Sections are:

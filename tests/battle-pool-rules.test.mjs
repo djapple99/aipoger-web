@@ -85,10 +85,13 @@ const {
 const {
   AI_MUSIC_CHALLENGE_BATTLE_TYPE,
   AI_MUSIC_CHALLENGE_DAILY_INVITE_LIMIT,
+  AI_MUSIC_EXPLORE_FORMAL_LOSS_RETIREMENT_LIMIT,
   hasPreparedAiMusicDefenderDrop,
+  isAiMusicTrackChallengeableOnExplore,
   isAiMusicChallengeReady,
   normalizeAiMusicChallengeStatus,
   pickDropBattleWinnerForRules,
+  shouldRetireAiMusicTrackFromExplore,
 } = await import("../src/lib/ai-music-challenge-rules.ts");
 
 const {
@@ -291,6 +294,7 @@ test("90s battle creates no contest without votes, but resolves tied audience vo
 
 test("Explore AI Music challenges keep defender tie advantage and a six invite daily cap", () => {
   assert.equal(AI_MUSIC_CHALLENGE_DAILY_INVITE_LIMIT, 6);
+  assert.equal(AI_MUSIC_EXPLORE_FORMAL_LOSS_RETIREMENT_LIMIT, 8);
   assert.equal(normalizeAiMusicChallengeStatus("open"), "open");
   assert.equal(normalizeAiMusicChallengeStatus("legacy-open"), "showcase");
   assert.equal(hasPreparedAiMusicDefenderDrop("battle-audio/defender.wav"), true);
@@ -305,6 +309,21 @@ test("Explore AI Music challenges keep defender tie advantage and a six invite d
   assert.equal(
     pickDropBattleWinnerForRules({ fighter_a: 1, fighter_b: 1 }, "battle-with-tied-votes", "B", "formal"),
     "fighter_b",
+  );
+  assert.equal(shouldRetireAiMusicTrackFromExplore({ officialLosses: 7, isShowtimeCertified: false }), false);
+  assert.equal(shouldRetireAiMusicTrackFromExplore({ officialLosses: 8, isShowtimeCertified: false }), true);
+  assert.equal(shouldRetireAiMusicTrackFromExplore({ officialLosses: 12, isShowtimeCertified: true }), false);
+  assert.equal(
+    isAiMusicTrackChallengeableOnExplore("open", "battle-audio/defender.wav", { officialLosses: 0, isShowtimeCertified: false }),
+    true,
+  );
+  assert.equal(
+    isAiMusicTrackChallengeableOnExplore("open", "battle-audio/defender.wav", { officialLosses: 8, isShowtimeCertified: false }),
+    false,
+  );
+  assert.equal(
+    isAiMusicTrackChallengeableOnExplore("open", "battle-audio/defender.wav", { officialLosses: 0, isShowtimeCertified: true }),
+    false,
   );
 });
 

@@ -3,15 +3,17 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const aiMusicSource = readFileSync(new URL("../src/app/ai-music/ai-music-client.tsx", import.meta.url), "utf8");
+const aiMusicTracksRouteSource = readFileSync(new URL("../src/app/api/ai-music/tracks/route.ts", import.meta.url), "utf8");
 const listenBarSource = readFileSync(new URL("../src/app/listen-bar/page.tsx", import.meta.url), "utf8");
 const reactionRouteSource = readFileSync(new URL("../src/app/api/listen-bar/reaction/route.ts", import.meta.url), "utf8");
 const productRulesSource = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
 
 test("Explore AI Music hearts use total public heart count instead of personal favorite state", () => {
+  assert.ok(aiMusicSource.includes('fetch(`/api/ai-music/tracks?lang=${encodeURIComponent(lang)}`'));
   assert.ok(aiMusicSource.includes('fetch("/api/listen-bar/reaction"'));
   assert.ok(aiMusicSource.includes('reaction: "heart"'));
   assert.ok(aiMusicSource.includes("trackId: track.sourceId"));
-  assert.ok(aiMusicSource.includes('.from("listen_bar_tracks")'));
+  assert.ok(aiMusicTracksRouteSource.includes('.from("listen_bar_tracks")'));
   assert.ok(aiMusicSource.includes("row.heart_count ?? track.positiveReactionCount"));
   assert.equal(aiMusicSource.includes("battle_result_archives"), false);
   assert.equal(aiMusicSource.includes("battle_song_stats"), false);

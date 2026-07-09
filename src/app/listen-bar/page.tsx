@@ -639,6 +639,7 @@ export default function ListenBarPage() {
         battleHall: "探索 AI 音樂",
         title: "傷心酒吧",
         subtitle: "在 AI 與不 AI 之間只有真正被聽見的歌才能留下來",
+        surfaceHint: "AI 音樂公播池與投稿入口：上傳後進入分類輪播，也會出現在探索 AI 音樂。",
         navBattle: "探索 AI 音樂",
         navRank: "Showtime",
         ticker: "先探索 AI 音樂，再從喜歡的作品發起挑戰。",
@@ -658,6 +659,7 @@ export default function ListenBarPage() {
           battleHall: "Explore AI Music",
           title: "Bar Heartbreak",
           subtitle: "深く刺さる曲だけがオンエアに残る",
+          surfaceHint: "AI music airplay pool and submission entry. Uploaded tracks rotate here and appear in Explore AI Music.",
           navBattle: "AI音楽を探す",
           navRank: "Showtime",
           ticker: "AI音楽を探して、好きな曲から挑戦へ。",
@@ -677,6 +679,7 @@ export default function ListenBarPage() {
             battleHall: "Explore AI Music",
             title: "Bar Heartbreak",
             subtitle: "강하게 꽂히는 곡만 온에어에 남는다",
+            surfaceHint: "AI music airplay pool and submission entry. Uploaded tracks rotate here and appear in Explore AI Music.",
             navBattle: "AI 음악 탐색",
             navRank: "Showtime",
             ticker: "AI 음악을 먼저 탐색하고, 마음에 드는 곡에서 도전하세요.",
@@ -695,6 +698,7 @@ export default function ListenBarPage() {
             battleHall: "Explore AI Music",
             title: "Bar Heartbreak",
             subtitle: "Only the songs that hit hard stay on air",
+            surfaceHint: "AI music airplay pool and submission entry. Uploaded tracks rotate here and appear in Explore AI Music.",
             navBattle: "Explore AI Music",
             navRank: "Showtime",
             ticker: "Explore AI music first, then challenge from tracks you like.",
@@ -2424,6 +2428,9 @@ export default function ListenBarPage() {
               <p className="heartbreak-sign-subtitle relative z-10 mt-2 whitespace-nowrap text-[clamp(0.54rem,1.75vw,0.68rem)] sm:whitespace-normal sm:text-[clamp(0.66rem,1.35vw,0.92rem)]">
                 {listenCopy.subtitle}
               </p>
+              <p className="relative z-10 mx-auto mt-2 max-w-3xl text-xs font-black leading-5 text-yellow-100/88 sm:text-sm">
+                {listenCopy.surfaceHint}
+              </p>
             </div>
           </div>
 
@@ -3222,8 +3229,8 @@ export default function ListenBarPage() {
             </p>
             <p className="mt-2 break-words text-sm font-bold leading-6 text-zinc-300 [overflow-wrap:anywhere]">
               {isZh
-                ? `傷心酒吧不是排行榜，而是一場 AI 音樂生存電台。聽歌不需登入；留言、投票與投稿需登入。來訪者可選公播或指定類型播放；目前 ${LISTEN_BAR_GENRES.length} 種類型每類滿池 ${LISTEN_BAR_GENRE_POOL_LIMIT} 首，總公播池上限 ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} 首。未滿池的新投稿直接進同類公播池；滿池後才進 Challenger。每一類滿池後才啟動該類淘汰與 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天 Showtime 計時；累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 顆心，或滿池啟動後公播存活 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天，就取得 Showtime 入選資格。`
-                : `Bar Heartbreak is not a chart. It is AI music survival radio. Listening is open; comments, votes, and uploads require sign-in. Visitors can play all songs or pick a genre. Each of the ${LISTEN_BAR_GENRES.length} genres has a ${LISTEN_BAR_GENRE_POOL_LIMIT}-track public pool, for ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} public slots total. New submissions enter the same-genre public pool until that genre is full; after that they enter Challenger. Survival and the ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS}-day Honor timer start per genre only after that genre pool is full. ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} hearts or ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} public days after activation makes a track Showtime eligible.`}
+                ? `傷心酒吧不是排行榜，而是 AIPOGER 的 AI 音樂公播池與投稿入口。聽歌不需登入；留言、投票與投稿需登入。上傳後歌曲會進入分類輪播，也會出現在探索 AI 音樂。來訪者可選公播或指定類型播放；目前 ${LISTEN_BAR_GENRES.length} 種類型每類滿池 ${LISTEN_BAR_GENRE_POOL_LIMIT} 首，總公播池上限 ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} 首。未滿池的新投稿直接進同類公播池；滿池後才進 Challenger。每一類滿池後才啟動該類淘汰與 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天 Showtime 計時；累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 顆心，或滿池啟動後公播存活 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天，就取得 Showtime 入選資格。`
+                : `Bar Heartbreak is not a chart. It is AIPOGER's AI music airplay pool and submission entry. Listening is open; comments, votes, and uploads require sign-in. Uploaded tracks rotate by genre and also appear in Explore AI Music. Each of the ${LISTEN_BAR_GENRES.length} genres has a ${LISTEN_BAR_GENRE_POOL_LIMIT}-track public pool, for ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} public slots total. New submissions enter the same-genre public pool until that genre is full; after that they enter Challenger. Survival and the ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS}-day Honor timer start per genre only after that genre pool is full. ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} hearts or ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} public days after activation makes a track Showtime eligible.`}
             </p>
           </div>
 

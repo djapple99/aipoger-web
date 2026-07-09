@@ -2,6 +2,7 @@ import { battleSideForDeck, firstDeckForBattleId, type BattleDeck, type BattleSi
 
 export const AI_MUSIC_CHALLENGE_BATTLE_TYPE = "ai_music_challenge";
 export const AI_MUSIC_CHALLENGE_DAILY_INVITE_LIMIT = 6;
+export const AI_MUSIC_EXPLORE_FORMAL_LOSS_RETIREMENT_LIMIT = 8;
 
 export const AI_MUSIC_CHALLENGE_STATUSES = ["showcase", "open", "custom"] as const;
 export type AiMusicChallengeStatus = (typeof AI_MUSIC_CHALLENGE_STATUSES)[number];
@@ -20,6 +21,24 @@ export function hasPreparedAiMusicDefenderDrop(value: unknown): boolean {
 
 export function isAiMusicChallengeReady(status: unknown, defenderDropAudioPath: unknown): boolean {
   return normalizeAiMusicChallengeStatus(status) === "open" && hasPreparedAiMusicDefenderDrop(defenderDropAudioPath);
+}
+
+export function shouldRetireAiMusicTrackFromExplore(stats: {
+  officialLosses?: number | null;
+  isShowtimeCertified?: boolean | null;
+}): boolean {
+  const losses = Math.max(0, Math.floor(Number(stats.officialLosses ?? 0)));
+  return !stats.isShowtimeCertified && losses >= AI_MUSIC_EXPLORE_FORMAL_LOSS_RETIREMENT_LIMIT;
+}
+
+export function isAiMusicTrackChallengeableOnExplore(
+  status: unknown,
+  defenderDropAudioPath: unknown,
+  lifecycle: { officialLosses?: number | null; isShowtimeCertified?: boolean | null } = {},
+): boolean {
+  return isAiMusicChallengeReady(status, defenderDropAudioPath)
+    && !lifecycle.isShowtimeCertified
+    && !shouldRetireAiMusicTrackFromExplore(lifecycle);
 }
 
 export function isAiMusicChallengeBattleType(value: unknown): boolean {

@@ -19,6 +19,8 @@ import {
   hasPreparedAiMusicDefenderDrop,
   isAiMusicChallengeStatus,
 } from "@/lib/ai-music-challenge-rules";
+import { buildAiMusicSurfaceLifecycleMap } from "@/lib/ai-music-surface-lifecycle";
+import type { ListenBarTrackRow as LifecycleListenBarTrackRow } from "@/lib/listen-bar";
 
 type AdminClient = SupabaseClient;
 type QueueRoleRow = {
@@ -34,7 +36,10 @@ type ListenBarTrackRow = {
   artist: string | null;
   ai_tool: string | null;
   genre: string | null;
+  mood?: string | null;
   lyrics?: string | null;
+  bpm?: number | null;
+  duration_seconds?: number | null;
   audio_path: string | null;
   cover_path?: string | null;
   created_by: string | null;
@@ -42,6 +47,16 @@ type ListenBarTrackRow = {
   bar_phase?: string | null;
   is_active?: boolean | null;
   review_status?: string | null;
+  hidden_at?: string | null;
+  removed_at?: string | null;
+  is_featured_official?: boolean | null;
+  positive_reaction_count?: number | null;
+  heart_count?: number | null;
+  star_count?: number | null;
+  thumb_count?: number | null;
+  happy_count?: number | null;
+  created_at?: string | null;
+  promoted_at?: string | null;
   ai_music_challenge_status?: string | null;
   ai_music_defender_drop_audio_path?: string | null;
   ai_music_defender_drop_audio_sha256?: string | null;
@@ -78,6 +93,7 @@ type DefenderDropPayload = {
 };
 
 const CLOSED_BATTLE_STATUSES = ["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"];
+const LIFECYCLE_TRACK_SELECT = "id,title,artist,ai_tool,genre,mood,bpm,duration_seconds,audio_path,cover_path,lyrics,is_active,review_status,hidden_at,removed_at,source,is_featured_official,bar_phase,positive_reaction_count,heart_count,star_count,thumb_count,happy_count,created_at,promoted_at";
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -342,6 +358,26 @@ export async function POST(request: NextRequest) {
   if (track.created_by === auth.user.id) return jsonError("不能從探索頁攻擂自己的作品。", 409);
   if (track.source !== "community" || track.is_active === false || track.review_status === "removed" || track.review_status === "rejected") {
     return jsonError("這首作品目前不在 AI 音樂公播池。", 409);
+  }
+  const { data: lifecycleRows, error: lifecycleRowsError } = await admin
+    .from("listen_bar_tracks")
+    .select(LIFECYCLE_TRACK_SELECT)
+    .eq("source", "community")
+    .eq("is_active", true)
+    .limit(500);
+  if (lifecycleRowsError) return jsonError(lifecycleRowsError.message, isSchemaMissing(lifecycleRowsError) ? 409 : 500);
+  let lifecycleByTrackId: Awaited<ReturnType<typeof buildAiMusicSurfaceLifecycleMap>>;
+  try {
+    lifecycleByTrackId = await buildAiMusicSurfaceLifecycleMap(admin, (lifecycleRows ?? []) as LifecycleListenBarTrackRow[]);
+  } catch (error) {
+    return jsonError(String((error as { message?: string })?.message ?? error), 500);
+  }
+  const lifecycle = lifecycleByTrackId.get(track.id);
+  if (lifecycle?.isShowtimeCertified) {
+    return jsonError("這首作品已進入 Showtime，入選後不再接受挑戰。", 409);
+  }
+  if (lifecycle?.retiredFromExplore) {
+    return jsonError("這首作品已累積 8 場正式敗績，已從探索公開牆退場並停止接戰。", 409);
   }
   if (track.ai_music_challenge_status !== "open") return jsonError("這首作品目前暫不接戰。", 409);
   if (!hasPreparedAiMusicDefenderDrop(track.ai_music_defender_drop_audio_path)) {

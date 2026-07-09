@@ -16,8 +16,9 @@ import { listenBarRowToTrack, type ListenBarTrackRow } from "@/lib/listen-bar";
 import {
   aiMusicChallengeStatusLabel,
   hasPreparedAiMusicDefenderDrop,
-  isAiMusicChallengeReady,
+  isAiMusicTrackChallengeableOnExplore,
   normalizeAiMusicChallengeStatus,
+  shouldRetireAiMusicTrackFromExplore,
   type AiMusicChallengeStatus,
 } from "@/lib/ai-music-challenge-rules";
 
@@ -44,6 +45,8 @@ type AiMusicTrack = {
   winRate: number;
   openForChallenge: boolean;
   hasDefenderDrop: boolean;
+  isShowtimeCertified: boolean;
+  retiredFromExplore: boolean;
   challengeStatus: AiMusicChallengeStatus;
   statusLabel: string;
   href: string;
@@ -63,6 +66,14 @@ type ListenBarReactionPayload = {
 
 type LoadState = "loading" | "ready" | "error";
 type HeartCooldownState = Record<string, string>;
+type AiMusicApiTrackRow = ListenBarTrackRow & {
+  ai_music_showtime_certified?: boolean | null;
+  ai_music_explore_retired?: boolean | null;
+  ai_music_official_challenge_count?: number | null;
+  ai_music_official_wins?: number | null;
+  ai_music_official_losses?: number | null;
+  ai_music_official_audience_votes?: number | null;
+};
 
 const HEART_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
@@ -135,36 +146,49 @@ function storagePublicUrl(bucket: string, path: string | null | undefined) {
 }
 
 async function tracksFromListenBar(lang: string) {
-  const { data, error } = await supabase
-    .from("listen_bar_tracks")
-    .select(
-      "id,title,artist,ai_tool,genre,mood,description,youtube_url,bpm,duration_seconds,audio_path,cover_path,lyrics,is_active,review_status,hidden_at,removed_at,source,is_featured_official,bar_phase,positive_reaction_count,heart_count,star_count,thumb_count,happy_count,created_at,promoted_at,created_by,ai_music_challenge_status,ai_music_defender_drop_audio_path,ai_music_defender_drop_prepared_at",
-    )
-    .eq("is_active", true)
-    .order("positive_reaction_count", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(240);
-  if (error) {
-    console.warn("[ai-music listen bar]", error.message);
-    return [];
+  const response = await fetch(`/api/ai-music/tracks?lang=${encodeURIComponent(lang)}`, {
+    cache: "no-store",
+  });
+  const payload = (await response.json().catch(() => null)) as { tracks?: AiMusicApiTrackRow[]; error?: string } | null;
+  if (!response.ok || !payload?.tracks) {
+    throw new Error(payload?.error || "Could not load AI music tracks.");
   }
 
-  return ((data ?? []) as ListenBarTrackRow[])
+  return payload.tracks
     .map((row) => ({ row, track: listenBarRowToTrack(row) }))
     .filter((item): item is { row: ListenBarTrackRow; track: NonNullable<ReturnType<typeof listenBarRowToTrack>> } => {
       return Boolean(item.track && item.track.source !== "official");
     })
     .map<AiMusicTrack>(({ row, track }) => {
+      const lifecycleRow = row as AiMusicApiTrackRow;
       const genre = canonicalGenreBucket(row.genre ?? track.genre);
       const challengeStatus = normalizeAiMusicChallengeStatus((row as ListenBarTrackRow & { ai_music_challenge_status?: string | null }).ai_music_challenge_status);
       const defenderDropAudioPath = (row as ListenBarTrackRow & { ai_music_defender_drop_audio_path?: string | null }).ai_music_defender_drop_audio_path;
       const hasDefenderDrop = hasPreparedAiMusicDefenderDrop(defenderDropAudioPath);
-      const openForChallenge = isAiMusicChallengeReady(challengeStatus, defenderDropAudioPath);
-      const statusLabel = challengeStatus === "open" && !hasDefenderDrop
-        ? lang === "zh"
-          ? "尚未準備守擂 Drop"
-          : "Defender Drop missing"
-        : aiMusicChallengeStatusLabel(challengeStatus, lang);
+      const officialChallengeCount = numberValue(lifecycleRow.ai_music_official_challenge_count);
+      const officialWins = numberValue(lifecycleRow.ai_music_official_wins);
+      const officialLosses = numberValue(lifecycleRow.ai_music_official_losses);
+      const officialAudienceVotes = numberValue(lifecycleRow.ai_music_official_audience_votes);
+      const isShowtimeCertified = Boolean(lifecycleRow.ai_music_showtime_certified);
+      const retiredFromExplore = Boolean(lifecycleRow.ai_music_explore_retired) || shouldRetireAiMusicTrackFromExplore({
+        officialLosses,
+        isShowtimeCertified,
+      });
+      const openForChallenge = isAiMusicTrackChallengeableOnExplore(challengeStatus, defenderDropAudioPath, {
+        officialLosses,
+        isShowtimeCertified,
+      });
+      let statusLabel = aiMusicChallengeStatusLabel(challengeStatus, lang);
+      if (challengeStatus === "open" && !hasDefenderDrop) {
+        statusLabel = lang === "zh" ? "尚未準備守擂 Drop" : "Defender Drop missing";
+      }
+      if (retiredFromExplore) {
+        statusLabel = lang === "zh" ? "8 場正式敗績退場" : "Retired after 8 official losses";
+      }
+      if (isShowtimeCertified) {
+        statusLabel = lang === "zh" ? "Showtime 認證" : "Showtime certified";
+      }
+      const winRate = officialChallengeCount > 0 ? Math.round((officialWins / officialChallengeCount) * 100) : 0;
       return {
         id: `bar-${track.id}`,
         source: "bar",
@@ -179,18 +203,21 @@ async function tracksFromListenBar(lang: string) {
         lyrics: row.lyrics?.trim() || track.lyrics?.trim() || null,
         createdAt: safeDate(track.createdAt),
         heartCount: numberValue(row.heart_count ?? track.positiveReactionCount),
-        challengeCount: 0,
-        wins: 0,
-        losses: 0,
-        audienceVotes: 0,
-        winRate: 0,
+        challengeCount: officialChallengeCount,
+        wins: officialWins,
+        losses: officialLosses,
+        audienceVotes: officialAudienceVotes,
+        winRate,
         openForChallenge,
         hasDefenderDrop,
+        isShowtimeCertified,
+        retiredFromExplore,
         challengeStatus,
         statusLabel,
         href: listenBarHref(track.id, lang),
       };
-    });
+    })
+    .filter((track) => !track.retiredFromExplore);
 }
 
 function mergeDuplicateTracks(rows: AiMusicTrack[]) {
@@ -932,11 +959,11 @@ export default function AiMusicClient() {
                 ? "依照風格快速瀏覽作品，聽歌、送愛心，或向你喜歡的作品發起挑戰。"
                 : "Browse tracks by style, listen, send hearts, or start a challenge from music you like."}
             </p>
-            <p className="mt-2 max-w-3xl text-xs font-bold leading-6 text-zinc-300 sm:text-sm">
+            <p className="mt-2 max-w-3xl text-xs font-black leading-6 text-yellow-200 sm:text-sm">
               {isZh ? "上傳音樂讓大家看到你的作品，請從 " : "Upload your music so listeners can find it here. Submit through "}
               <Link
                 href={`${withLang("/listen-bar")}#play-request`}
-                className="font-black text-yellow-100 underline decoration-yellow-200/35 underline-offset-4 transition hover:text-white hover:decoration-yellow-100"
+                className="font-black text-yellow-50 underline decoration-yellow-200/45 underline-offset-4 transition hover:text-white hover:decoration-yellow-100"
               >
                 {isZh ? "傷心酒吧投稿" : "Bar Heartbreak"}
               </Link>
@@ -946,9 +973,9 @@ export default function AiMusicClient() {
           <div className="flex flex-wrap gap-2 md:justify-end">
             {[
               { href: "#works", label: isZh ? "作品瀏覽" : "Works" },
-              { href: withLang("/rank"), label: "Showtime" },
-              { href: withLang("/battle"), label: "Drop Battle" },
               { href: withLang("/listen-bar"), label: isZh ? "傷心酒吧" : "Bar Heartbreak" },
+              { href: withLang("/battle"), label: "Drop Battle" },
+              { href: withLang("/rank"), label: "Showtime" },
               { href: `/rank?lang=${lang}#choice-weekly`, label: "Choice" },
             ].map((item) => (
               <Link
@@ -988,6 +1015,29 @@ export default function AiMusicClient() {
               <p className="mt-0.5 text-[10px] font-bold text-zinc-500 sm:text-[11px]">{item.note}</p>
             </div>
           ))}
+        </section>
+
+        <section className="mb-7 rounded-md border border-yellow-200/18 bg-yellow-300/[0.055] px-4 py-4 shadow-[0_16px_42px_rgba(0,0,0,0.2)]">
+          <p className={`${fontRighteous.className} text-[11px] uppercase tracking-[0.2em] text-yellow-100/82`}>
+            {isZh ? "這裡怎麼玩？" : "How This Works"}
+          </p>
+          <div className="mt-3 grid gap-3 text-xs font-bold leading-6 text-zinc-300 md:grid-cols-3">
+            <p>
+              {isZh
+                ? "這裡是公開上傳作品牆。作品先從傷心酒吧的 AI 音樂公播池投稿，符合展示條件後就會出現在探索頁。"
+                : "This is the public uploaded-works wall. Tracks enter through Bar Heartbreak's AI music airplay pool, then appear here when display-ready."}
+            </p>
+            <p>
+              {isZh
+                ? "看到喜歡的歌就點愛心；愛心會同步收藏。自己的收藏請從右上角頭像進入 Profile 管理。"
+                : "Tap Heart on tracks you like. Hearts also save the track, and your saved music is managed from the top-right avatar/Profile."}
+            </p>
+            <p>
+              {isZh
+                ? "只有尚未進 Showtime、已開放接戰、且已準備守擂 60s Drop 的作品才能被攻擂。未進 Showtime 的作品若累積 8 場正式敗績，會從這面公開牆退場並停止接戰。"
+                : "Only non-Showtime tracks with challenge enabled and a prepared defender 60s Drop can be attacked. Non-Showtime works retire from this wall after 8 official losses."}
+            </p>
+          </div>
         </section>
 
         <section id="works" className="grid gap-7 scroll-mt-24">
