@@ -34,6 +34,7 @@ type AiMusicTrack = {
   genre: string;
   coverUrl: string;
   audioUrl: string | null;
+  lyrics: string | null;
   createdAt: string;
   heartCount: number;
   challengeCount: number;
@@ -82,6 +83,13 @@ function canonicalGenreBucket(value: string | null | undefined) {
 function safeDate(value: string | null | undefined) {
   const parsed = new Date(value || "");
   return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : new Date().toISOString();
+}
+
+function formatPlayerTime(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return "0:00";
+  const minutes = Math.floor(value / 60);
+  const seconds = Math.floor(value % 60).toString().padStart(2, "0");
+  return `${minutes}:${seconds}`;
 }
 
 function aiMusicChallengeHref(track: AiMusicTrack, lang: string) {
@@ -150,6 +158,7 @@ async function tracksFromListenBar(lang: string) {
         genre,
         coverUrl: track.coverUrl || storagePublicUrl("listen-bar-covers", row.cover_path) || AIPOGER_BRAND_LOGO,
         audioUrl: track.audioUrl || storagePublicUrl("listen-bar-audio", row.audio_path),
+        lyrics: row.lyrics?.trim() || track.lyrics?.trim() || null,
         createdAt: safeDate(track.createdAt),
         heartCount: numberValue(row.heart_count ?? track.positiveReactionCount),
         challengeCount: 0,
@@ -228,6 +237,15 @@ function ShareIcon() {
       <circle cx="6.5" cy="12" r="2.7" stroke="currentColor" strokeWidth="1.9" />
       <circle cx="17.5" cy="5.8" r="2.7" stroke="currentColor" strokeWidth="1.9" />
       <circle cx="17.5" cy="18.2" r="2.7" stroke="currentColor" strokeWidth="1.9" />
+    </svg>
+  );
+}
+
+function LyricsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+      <path d="M7 5.5h10M7 10h8M7 14.5h10M7 19h7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M4.8 4.8v14.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" opacity="0.55" />
     </svg>
   );
 }
@@ -421,64 +439,197 @@ function MiniPlayer({
   onPause: () => void;
   onPlay: () => void;
 }) {
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [lyricsOpen, setLyricsOpen] = useState(false);
+  const [lyricsScrollPercent, setLyricsScrollPercent] = useState(0);
+  const lyricsPanelRef = useRef<HTMLDivElement | null>(null);
+  const lyrics = track?.lyrics?.trim() ?? "";
+  const lyricsLines = useMemo(() => (lyrics ? lyrics.split(/\r?\n/) : []), [lyrics]);
+  const progressValue = duration > 0 ? Math.min(currentTime, duration) : 0;
+  const progressPercent = duration > 0 ? Math.min(100, Math.max(0, (progressValue / duration) * 100)) : 0;
+
+  useEffect(() => {
+    setCurrentTime(0);
+    setDuration(0);
+    setLyricsOpen(false);
+    setLyricsScrollPercent(0);
+  }, [track?.id]);
+
+  const syncLyricsScroll = () => {
+    const panel = lyricsPanelRef.current;
+    if (!panel) return;
+    const maxScroll = panel.scrollHeight - panel.clientHeight;
+    setLyricsScrollPercent(maxScroll > 0 ? Math.round((panel.scrollTop / maxScroll) * 100) : 0);
+  };
+
+  const handleLyricsSlider = (value: number) => {
+    const next = Math.min(100, Math.max(0, value));
+    setLyricsScrollPercent(next);
+    const panel = lyricsPanelRef.current;
+    if (!panel) return;
+    const maxScroll = panel.scrollHeight - panel.clientHeight;
+    panel.scrollTop = maxScroll > 0 ? (maxScroll * next) / 100 : 0;
+  };
+
+  const handleSeek = (value: number) => {
+    const next = Math.min(duration || 0, Math.max(0, value));
+    setCurrentTime(next);
+    if (audioRef.current && Number.isFinite(next)) {
+      audioRef.current.currentTime = next;
+    }
+  };
+
   if (!track) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-orange-200/20 bg-black/92 px-3 py-2 text-white shadow-[0_-22px_70px_rgba(0,0,0,0.66)] backdrop-blur">
-      <div className="mx-auto grid max-w-7xl grid-cols-[3.6rem_minmax(0,1fr)_auto] items-center gap-3">
-        <TrackCover track={track} className="h-14 w-14 rounded-md border border-white/10" />
-        <div className="min-w-0">
-          <p className="truncate text-sm font-black text-white">{track.title}</p>
-          <p className="truncate text-[11px] font-bold text-zinc-400">
-            {track.creator} · {track.aiTool}
-          </p>
-          <audio
-            ref={audioRef}
-            src={track.audioUrl ?? undefined}
-            preload="metadata"
-            onEnded={onEnded}
-            onPause={onPause}
-            onPlay={onPlay}
-          />
-        </div>
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={onTogglePlay}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-black transition hover:bg-orange-300"
-            aria-label={isPlaying ? (isZh ? "暫停" : "Pause") : isZh ? "播放" : "Play"}
-          >
-            <PlayIcon playing={isPlaying} />
-          </button>
-          <button
-            type="button"
-            onClick={() => onHeart(track)}
-            disabled={heartBusy}
-            className="hidden h-10 items-center justify-center gap-1.5 rounded-full border border-white/12 bg-white/[0.045] px-3 text-xs font-black text-zinc-300 transition hover:border-rose-200/42 hover:text-rose-100 disabled:cursor-wait disabled:opacity-55 sm:inline-flex"
-            aria-label={isZh ? "送出愛心支持" : "Send a heart"}
-          >
-            <HeartIcon />
-            <span className="tabular-nums">{Math.max(0, track.heartCount)}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onShare(track)}
-            className="hidden h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-white/[0.045] text-zinc-300 transition hover:border-cyan-100/42 hover:text-white sm:inline-flex"
-            aria-label={isZh ? "分享" : "Share"}
-          >
-            <ShareIcon />
-          </button>
-          {track.openForChallenge ? (
-            <Link
-              href={aiMusicChallengeHref(track, lang)}
-              className="hidden min-h-10 items-center justify-center rounded-full border border-orange-200/38 bg-orange-500/15 px-3 text-xs font-black text-orange-50 transition hover:border-orange-100/65 hover:bg-orange-500/22 md:inline-flex"
+    <>
+      {lyricsOpen ? (
+        <div className="fixed inset-x-3 bottom-[7.1rem] z-[55] mx-auto max-w-2xl rounded-md border border-orange-200/24 bg-black/94 p-4 text-white shadow-[0_24px_80px_rgba(0,0,0,0.72)] backdrop-blur-xl sm:bottom-[6.35rem] sm:max-w-lg sm:p-3.5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className={`${fontRighteous.className} text-[10px] uppercase tracking-[0.18em] text-orange-100/72`}>
+                Lyrics HUD
+              </p>
+              <h2 className="mt-1 truncate text-base font-black text-white sm:text-sm">{track.title}</h2>
+              <p className="truncate text-[11px] font-bold text-zinc-500">{track.creator}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setLyricsOpen(false)}
+              className="inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-white/12 bg-white/[0.045] px-3 text-xs font-black text-zinc-300 transition hover:border-orange-100/45 hover:text-white"
             >
-              {isZh ? "攻擂這首" : "Challenge"}
-            </Link>
-          ) : null}
+              {isZh ? "關閉" : "Close"}
+            </button>
+          </div>
+          <div className="mt-4 grid grid-cols-[minmax(0,1fr)_1.45rem] gap-3">
+            <div
+              ref={lyricsPanelRef}
+              onScroll={syncLyricsScroll}
+              className="max-h-[min(58vh,26rem)] overflow-y-auto rounded-md border border-white/10 bg-white/[0.035] px-4 py-3 text-sm font-bold leading-7 text-zinc-200 [scrollbar-width:thin] sm:max-h-[min(48vh,20rem)] sm:px-3.5 sm:py-2.5 sm:text-[13px] sm:leading-6"
+            >
+              {lyricsLines.length > 0 ? (
+                lyricsLines.map((line, index) => (
+                  <p key={`${index}-${line}`} className="min-h-4 whitespace-pre-wrap">
+                    {line || " "}
+                  </p>
+                ))
+              ) : (
+                <p className="text-zinc-500">{isZh ? "歌詞未提供。" : "Lyrics not provided."}</p>
+              )}
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              value={lyricsScrollPercent}
+              onChange={(event) => handleLyricsSlider(Number(event.currentTarget.value))}
+              disabled={lyricsLines.length === 0}
+              className="h-full min-h-52 w-5 cursor-pointer accent-orange-400 disabled:cursor-not-allowed disabled:opacity-35"
+              style={{ writingMode: "vertical-lr", direction: "rtl" }}
+              aria-label={isZh ? "拖曳瀏覽歌詞" : "Scroll lyrics"}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-orange-200/20 bg-black/92 px-3 pb-[calc(0.6rem+env(safe-area-inset-bottom))] pt-2 text-white shadow-[0_-22px_70px_rgba(0,0,0,0.66)] backdrop-blur sm:pb-[calc(0.45rem+env(safe-area-inset-bottom))] sm:pt-1.5">
+        <div className="mx-auto grid max-w-7xl gap-2">
+          <div className="grid grid-cols-[3.4rem_minmax(0,1fr)_auto] items-center gap-3">
+            <TrackCover track={track} className="h-14 w-14 rounded-md border border-white/10 sm:h-12 sm:w-12" />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-black text-white sm:text-[13px]">{track.title}</p>
+              <p className="truncate text-[11px] font-bold text-zinc-400">
+                {track.creator} · {track.aiTool}
+              </p>
+              <div className="mt-2 grid grid-cols-[2.6rem_minmax(0,1fr)_2.6rem] items-center gap-2 sm:mt-1.5">
+                <span className="text-[10px] font-black tabular-nums text-zinc-500">{formatPlayerTime(progressValue)}</span>
+                <input
+                  type="range"
+                  min="0"
+                  max={duration > 0 ? duration : 0}
+                  step="0.1"
+                  value={progressValue}
+                  onChange={(event) => handleSeek(Number(event.currentTarget.value))}
+                  disabled={!track.audioUrl || duration <= 0}
+                  className="h-2 w-full cursor-pointer accent-orange-400 disabled:cursor-not-allowed disabled:opacity-40"
+                  style={{ background: `linear-gradient(to right, rgba(255,106,0,0.92) 0%, rgba(255,106,0,0.92) ${progressPercent}%, rgba(255,255,255,0.16) ${progressPercent}%, rgba(255,255,255,0.16) 100%)` }}
+                  aria-label={isZh ? "拖曳播放進度" : "Seek playback"}
+                />
+                <span className="text-right text-[10px] font-black tabular-nums text-zinc-500">{formatPlayerTime(duration)}</span>
+              </div>
+              <audio
+                ref={audioRef}
+                src={track.audioUrl ?? undefined}
+                preload="metadata"
+                onLoadedMetadata={(event) => {
+                  setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0);
+                  setCurrentTime(event.currentTarget.currentTime || 0);
+                }}
+                onDurationChange={(event) => setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0)}
+                onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime || 0)}
+                onEnded={() => {
+                  setCurrentTime(0);
+                  onEnded();
+                }}
+                onPause={onPause}
+                onPlay={onPlay}
+              />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={onTogglePlay}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-black transition hover:bg-orange-300 sm:h-9 sm:w-9"
+                aria-label={isPlaying ? (isZh ? "暫停" : "Pause") : isZh ? "播放" : "Play"}
+              >
+                <PlayIcon playing={isPlaying} />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLyricsOpen((current) => !current);
+                  window.requestAnimationFrame(syncLyricsScroll);
+                }}
+                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full border border-white/12 bg-white/[0.045] px-3 text-xs font-black text-zinc-300 transition hover:border-orange-100/42 hover:text-white sm:h-9 sm:px-2.5"
+                aria-expanded={lyricsOpen}
+                aria-label={isZh ? "看歌詞" : "View lyrics"}
+              >
+                <LyricsIcon />
+                <span>{isZh ? "歌詞" : "Lyrics"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onHeart(track)}
+                disabled={heartBusy}
+                className="hidden h-10 items-center justify-center gap-1.5 rounded-full border border-white/12 bg-white/[0.045] px-3 text-xs font-black text-zinc-300 transition hover:border-rose-200/42 hover:text-rose-100 disabled:cursor-wait disabled:opacity-55 sm:inline-flex sm:h-9 sm:px-2.5"
+                aria-label={isZh ? "送出愛心支持" : "Send a heart"}
+              >
+                <HeartIcon />
+                <span className="tabular-nums">{Math.max(0, track.heartCount)}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onShare(track)}
+                className="hidden h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-white/[0.045] text-zinc-300 transition hover:border-cyan-100/42 hover:text-white sm:inline-flex sm:h-9 sm:w-9"
+                aria-label={isZh ? "分享" : "Share"}
+              >
+                <ShareIcon />
+              </button>
+              {track.openForChallenge ? (
+                <Link
+                  href={aiMusicChallengeHref(track, lang)}
+                  className="hidden min-h-10 items-center justify-center rounded-full border border-orange-200/38 bg-orange-500/15 px-3 text-xs font-black text-orange-50 transition hover:border-orange-100/65 hover:bg-orange-500/22 md:inline-flex sm:min-h-9 sm:px-2.5"
+                >
+                  {isZh ? "攻擂這首" : "Challenge"}
+                </Link>
+              ) : null}
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 

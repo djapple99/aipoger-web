@@ -273,6 +273,7 @@ This page is the AI music works browser. It should:
 - Keep cards music-platform-like: cover, song title, creator, AI tool, heart count, and challenge count.
 - Show battle HUD details on desktop hover and provide an equivalent mobile expand action.
 - Open playback through the fixed bottom mini player instead of expanding a player inside each card.
+- The fixed bottom mini player must include a draggable playback progress bar with time labels, plus a lyrics action that opens lyrics as a HUD-style popup above the player. The lyrics HUD should scroll independently and include a side slider for scrubbing through the lyrics; missing lyrics should show a compact `歌詞未提供` state.
 - Keep `Drop Battle` / `AI 音樂鬥歌場` as internal options from this page, not the homepage first-layer primary entry.
 - `台語熊high` is a current fixed music genre. Treat old spaced labels such as `台語熊 High` only as aliases into `台語熊high`; do not display `City Pop / Disco / Funk 城市律動` or `心靈 Ambient 宇宙` as current category names.
 
