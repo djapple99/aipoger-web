@@ -14,6 +14,14 @@ export function normalizeAiMusicChallengeStatus(value: unknown): AiMusicChalleng
   return isAiMusicChallengeStatus(value) ? value : "showcase";
 }
 
+export function hasPreparedAiMusicDefenderDrop(value: unknown): boolean {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+export function isAiMusicChallengeReady(status: unknown, defenderDropAudioPath: unknown): boolean {
+  return normalizeAiMusicChallengeStatus(status) === "open" && hasPreparedAiMusicDefenderDrop(defenderDropAudioPath);
+}
+
 export function isAiMusicChallengeBattleType(value: unknown): boolean {
   return value === AI_MUSIC_CHALLENGE_BATTLE_TYPE;
 }

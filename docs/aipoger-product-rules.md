@@ -1,6 +1,6 @@
 # AIPOGER Product Rules
 
-Last updated: 2026-07-03
+Last updated: 2026-07-09
 
 This document is the product-rule source of truth for AIPOGER. Use it before changing Battle, Bar Heartbreak, AIPOGER Showtime, auth, upload, or deployment behavior.
 
@@ -280,7 +280,9 @@ Explore direct challenge loop:
 
 - Explore AI Music works that can be challenged come from the AI music public airplay / Bar Heartbreak `listen_bar_tracks` data flow, not from the old standalone Drop challenge pool.
 - Creators manage each public-pool track's challenge state from Profile: `僅展示` / showcase, `等人挑戰` / open, or `自定開戰` / custom.
+- `等人挑戰` requires the creator to prepare or select a defender 60s Drop first. If a track has `open` status but no prepared defender Drop, `/ai-music` must not light the challenge button and Profile should show `尚未準備守擂 Drop`.
 - Open Explore challenges always use the 60s Drop Battle cropper. The challenger selects or uploads their own Drop, sets the start time, and sends an invite to the defender.
+- When the challenger sends the invite, the system locks the defender's current prepared Drop by copying that Drop into the battle/queue rows. If the track has a pending attack invite, the defender cannot replace the prepared defender Drop.
 - The created battle starts in a pending defender-acceptance state. While pending, the battle room allows both sides' 5-second previews and arena sharing, but voting is closed.
 - If the defender rejects, the challenge ends without result, stats, or win/loss history. If the defender accepts, the battle starts according to the scheduled time.
 - A challenger may send at most 6 Explore attack invites per Taiwan day.

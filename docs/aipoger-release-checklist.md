@@ -1,6 +1,6 @@
 # AIPOGER Release Checklist
 
-Last updated: 2026-06-10
+Last updated: 2026-07-09
 
 Use this checklist before and after deploying production changes.
 
@@ -79,9 +79,11 @@ Check:
 
 Check:
 
-- `/ai-music` loads real Bar Heartbreak/public-airplay works and only lights the challenge button when the track status is `等人挑戰`.
+- `/ai-music` loads real Bar Heartbreak/public-airplay works and only lights the challenge button when the track status is `等人挑戰` and a defender 60s Drop is prepared.
 - Profile creator data lets the owner switch each public track among `僅展示`, `等人挑戰`, and `自定開戰`.
+- Profile shows `尚未準備守擂 Drop` before a defender Drop exists, routes the owner to the 60s Drop cropper, and blocks replacing the defender Drop while an attack invite is pending.
 - Challenging from Explore opens the 60s Drop cropper/setup flow, carries the defender track ID through upload, and requires a start time.
+- Submitted Explore challenges copy the defender's prepared Drop at invite creation; they must not use the full public-airplay song as the defender battle audio.
 - Submitted Explore challenges create a pending battle/invite; the battle room allows both 5-second previews but voting remains closed.
 - Defender accept moves the battle to active/live according to the scheduled time; reject closes the invite without stats.
 - A challenger is blocked after 6 outgoing Explore attack invites in the Taiwan day.

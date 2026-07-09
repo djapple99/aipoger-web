@@ -94,6 +94,12 @@ export type ListenBarTrackRow = {
   promoted_at?: string | null;
   ai_music_challenge_status?: string | null;
   ai_music_challenge_updated_at?: string | null;
+  ai_music_defender_drop_audio_path?: string | null;
+  ai_music_defender_drop_audio_sha256?: string | null;
+  ai_music_defender_drop_original_name?: string | null;
+  ai_music_defender_drop_duration_seconds?: number | null;
+  ai_music_defender_drop_lyrics?: string | null;
+  ai_music_defender_drop_prepared_at?: string | null;
 };
 
 export const EMPTY_LISTEN_BAR_TRACK: ListenBarTrack = {

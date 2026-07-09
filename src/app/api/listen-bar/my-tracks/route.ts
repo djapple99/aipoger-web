@@ -38,6 +38,12 @@ type ListenBarTrackRow = {
   promoted_at?: string | null;
   ai_music_challenge_status?: string | null;
   ai_music_challenge_updated_at?: string | null;
+  ai_music_defender_drop_audio_path?: string | null;
+  ai_music_defender_drop_audio_sha256?: string | null;
+  ai_music_defender_drop_original_name?: string | null;
+  ai_music_defender_drop_duration_seconds?: number | null;
+  ai_music_defender_drop_lyrics?: string | null;
+  ai_music_defender_drop_prepared_at?: string | null;
 };
 
 type ListenBarMyTracksDatabase = {
@@ -59,7 +65,7 @@ type ListenBarMyTracksDatabase = {
 
 type AdminClient = SupabaseClient<ListenBarMyTracksDatabase>;
 
-const MODERN_SELECT = "id,title,artist,ai_tool,genre,mood,description,youtube_url,lyrics,duration_seconds,audio_path,created_by,source,bar_phase,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at,promoted_at,ai_music_challenge_status,ai_music_challenge_updated_at";
+const MODERN_SELECT = "id,title,artist,ai_tool,genre,mood,description,youtube_url,lyrics,duration_seconds,audio_path,created_by,source,bar_phase,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at,promoted_at,ai_music_challenge_status,ai_music_challenge_updated_at,ai_music_defender_drop_audio_path,ai_music_defender_drop_audio_sha256,ai_music_defender_drop_original_name,ai_music_defender_drop_duration_seconds,ai_music_defender_drop_lyrics,ai_music_defender_drop_prepared_at";
 const LEGACY_WITH_DESCRIPTION_SELECT = "id,title,artist,ai_tool,genre,mood,description,lyrics,duration_seconds,audio_path,created_by,source,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at";
 const LEGACY_SELECT = "id,title,artist,ai_tool,genre,mood,lyrics,duration_seconds,audio_path,created_by,source,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at";
 const allowedGenreValues = new Set(MUSIC_GENRE_OPTIONS.map((genre) => genre.value));

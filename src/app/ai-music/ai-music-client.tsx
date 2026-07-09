@@ -13,7 +13,13 @@ import {
 } from "@/lib/music-genres";
 import { supabase } from "@/lib/supabase";
 import { listenBarRowToTrack, type ListenBarTrackRow } from "@/lib/listen-bar";
-import { aiMusicChallengeStatusLabel, normalizeAiMusicChallengeStatus, type AiMusicChallengeStatus } from "@/lib/ai-music-challenge-rules";
+import {
+  aiMusicChallengeStatusLabel,
+  hasPreparedAiMusicDefenderDrop,
+  isAiMusicChallengeReady,
+  normalizeAiMusicChallengeStatus,
+  type AiMusicChallengeStatus,
+} from "@/lib/ai-music-challenge-rules";
 
 type TrackSource = "battle" | "bar";
 type BattleWinnerSide = "fighter_a" | "fighter_b";
@@ -39,6 +45,7 @@ type AiMusicTrack = {
   audienceVotes: number;
   winRate: number;
   openForChallenge: boolean;
+  hasDefenderDrop: boolean;
   challengeStatus: AiMusicChallengeStatus;
   statusLabel: string;
   href: string;
@@ -363,6 +370,7 @@ async function tracksFromBattleArchives(lang: string) {
       audienceVotes: stats.totalVotes || audienceVotes,
       winRate: stats.winRate,
       openForChallenge: false,
+      hasDefenderDrop: false,
       challengeStatus: "showcase",
       statusLabel: lang === "zh" ? "Showtime 展示" : "Showtime showcase",
       href: resultPathForBattle(sourceId, lang),
@@ -374,7 +382,7 @@ async function tracksFromListenBar(songStats: ReturnType<typeof buildSongStatsLo
   const { data, error } = await supabase
     .from("listen_bar_tracks")
     .select(
-      "id,title,artist,ai_tool,genre,mood,description,youtube_url,bpm,duration_seconds,audio_path,cover_path,lyrics,is_active,review_status,hidden_at,removed_at,source,is_featured_official,bar_phase,positive_reaction_count,heart_count,star_count,thumb_count,happy_count,created_at,promoted_at,created_by,ai_music_challenge_status",
+      "id,title,artist,ai_tool,genre,mood,description,youtube_url,bpm,duration_seconds,audio_path,cover_path,lyrics,is_active,review_status,hidden_at,removed_at,source,is_featured_official,bar_phase,positive_reaction_count,heart_count,star_count,thumb_count,happy_count,created_at,promoted_at,created_by,ai_music_challenge_status,ai_music_defender_drop_audio_path,ai_music_defender_drop_prepared_at",
     )
     .eq("is_active", true)
     .order("positive_reaction_count", { ascending: false })
@@ -403,6 +411,14 @@ async function tracksFromListenBar(songStats: ReturnType<typeof buildSongStatsLo
       const votesAgainst = numberValue(stats?.total_votes_against);
       const genre = canonicalGenreBucket(row.genre ?? track.genre);
       const challengeStatus = normalizeAiMusicChallengeStatus((row as ListenBarTrackRow & { ai_music_challenge_status?: string | null }).ai_music_challenge_status);
+      const defenderDropAudioPath = (row as ListenBarTrackRow & { ai_music_defender_drop_audio_path?: string | null }).ai_music_defender_drop_audio_path;
+      const hasDefenderDrop = hasPreparedAiMusicDefenderDrop(defenderDropAudioPath);
+      const openForChallenge = isAiMusicChallengeReady(challengeStatus, defenderDropAudioPath);
+      const statusLabel = challengeStatus === "open" && !hasDefenderDrop
+        ? lang === "zh"
+          ? "尚未準備守擂 Drop"
+          : "Defender Drop missing"
+        : aiMusicChallengeStatusLabel(challengeStatus, lang);
       return {
         id: `bar-${track.id}`,
         source: "bar",
@@ -423,9 +439,10 @@ async function tracksFromListenBar(songStats: ReturnType<typeof buildSongStatsLo
         losses,
         audienceVotes: votesFor + votesAgainst,
         winRate: battleCount > 0 ? Math.round((wins / battleCount) * 100) : 0,
-        openForChallenge: challengeStatus === "open",
+        openForChallenge,
+        hasDefenderDrop,
         challengeStatus,
-        statusLabel: aiMusicChallengeStatusLabel(challengeStatus, lang),
+        statusLabel,
         href: listenBarHref(track.id, lang),
       };
     });
@@ -651,7 +668,13 @@ function TrackCard({
             </Link>
           ) : (
             <span className="inline-flex min-h-9 items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-2 text-[11px] font-black text-zinc-600">
-              {isZh ? "展示" : "View"}
+              {track.challengeStatus === "open" && !track.hasDefenderDrop
+                ? isZh
+                  ? "未備 Drop"
+                  : "No Drop"
+                : isZh
+                  ? "暫不接戰"
+                  : "Closed"}
             </span>
           )}
         </div>

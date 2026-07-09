@@ -12,7 +12,12 @@ import { readFighterNameFromStorage, writeFighterNameToStorage } from "@/lib/fig
 import { loadFighterNameFromProfile, saveFighterNameToProfile } from "@/lib/user-profile-fighter-name";
 import { loadIsAdmin } from "@/lib/user-profile-admin";
 import { LISTEN_BAR_AUDIO_BUCKET } from "@/lib/listen-bar";
-import { aiMusicChallengeStatusLabel, normalizeAiMusicChallengeStatus, type AiMusicChallengeStatus } from "@/lib/ai-music-challenge-rules";
+import {
+  aiMusicChallengeStatusLabel,
+  hasPreparedAiMusicDefenderDrop,
+  normalizeAiMusicChallengeStatus,
+  type AiMusicChallengeStatus,
+} from "@/lib/ai-music-challenge-rules";
 
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 const BATTLE_AUDIO_BUCKET = "battle-audio";
@@ -33,6 +38,12 @@ type ListenBarTrack = {
   created_at?: string | null;
   ai_music_challenge_status?: string | null;
   ai_music_challenge_updated_at?: string | null;
+  ai_music_defender_drop_audio_path?: string | null;
+  ai_music_defender_drop_audio_sha256?: string | null;
+  ai_music_defender_drop_original_name?: string | null;
+  ai_music_defender_drop_duration_seconds?: number | null;
+  ai_music_defender_drop_lyrics?: string | null;
+  ai_music_defender_drop_prepared_at?: string | null;
 };
 
 type BattleQueueRow = {
@@ -113,6 +124,7 @@ type CreatorItem = {
   favoriteRecord?: HonorFavoriteRecord | null;
   trackId?: string | null;
   challengeStatus?: AiMusicChallengeStatus;
+  hasDefenderDrop?: boolean;
   pendingChallengeInvite?: AiMusicChallengeInvite | null;
 };
 
@@ -253,6 +265,12 @@ function ProfileInner() {
             active: "公開中",
             openBattle: "發起挑戰",
             openBar: "去傷心酒吧",
+            defenderDropReady: "守擂 Drop 已準備",
+            defenderDropMissing: "尚未準備守擂 Drop",
+            prepareDefenderDrop: "指定守擂 Drop",
+            replaceDefenderDrop: "更換守擂 Drop",
+            defenderDropLocked: "待回覆邀請中",
+            openNeedsDefenderDrop: "請先指定守擂 60s Drop，才能開放等人挑戰。",
           }
         : {
             kicker: "AIPOGER CREATOR",
@@ -286,6 +304,12 @@ function ProfileInner() {
             active: "Live",
             openBattle: "Start Battle",
             openBar: "Open Listen Bar",
+            defenderDropReady: "Defender Drop ready",
+            defenderDropMissing: "Defender Drop missing",
+            prepareDefenderDrop: "Set Defender Drop",
+            replaceDefenderDrop: "Replace Defender Drop",
+            defenderDropLocked: "Invite pending",
+            openNeedsDefenderDrop: "Set a defender 60s Drop before opening challenges.",
           },
     [isZh],
   );
@@ -620,7 +644,7 @@ function ProfileInner() {
     playPreviewItem(item);
   }, [playPreviewItem, previewingItemId, stopPreview]);
 
-  const openChallengeCut = useCallback((item: CreatorItem) => {
+  const openChallengeCut = useCallback((item: CreatorItem, mode: "custom" | "defender" = "custom") => {
     stopPreview();
     const params = new URLSearchParams({
       flow: "upload-first",
@@ -632,6 +656,10 @@ function ProfileInner() {
     if (title) params.set("songName", title);
     if (genre) params.set("genre", genre);
     if (aiTool) params.set("aiTool", aiTool);
+    if (mode === "defender" && item.trackId) {
+      params.set("aiMusicDefenderTrackId", item.trackId);
+      params.set("defenderTrackTitle", title);
+    }
 
     const audioUrl = item.audioUrl?.trim();
     if (typeof window !== "undefined" && audioUrl) {
@@ -731,12 +759,24 @@ function ProfileInner() {
         },
         body: JSON.stringify({ trackId, status }),
       });
-      const payload = (await response.json().catch(() => null)) as { track?: { ai_music_challenge_status?: string | null }; error?: string } | null;
+      const payload = (await response.json().catch(() => null)) as {
+        track?: {
+          ai_music_challenge_status?: string | null;
+          ai_music_defender_drop_audio_path?: string | null;
+          ai_music_defender_drop_prepared_at?: string | null;
+        };
+        error?: string;
+      } | null;
       if (!response.ok) throw new Error(payload?.error ?? "update challenge status failed");
       setBarTracks((current) =>
         current.map((track) =>
           track.id === trackId
-            ? { ...track, ai_music_challenge_status: normalizeAiMusicChallengeStatus(payload?.track?.ai_music_challenge_status ?? status) }
+            ? {
+                ...track,
+                ai_music_challenge_status: normalizeAiMusicChallengeStatus(payload?.track?.ai_music_challenge_status ?? status),
+                ai_music_defender_drop_audio_path: payload?.track?.ai_music_defender_drop_audio_path ?? track.ai_music_defender_drop_audio_path,
+                ai_music_defender_drop_prepared_at: payload?.track?.ai_music_defender_drop_prepared_at ?? track.ai_music_defender_drop_prepared_at,
+              }
             : track,
         ),
       );
@@ -793,29 +833,35 @@ function ProfileInner() {
         .filter((invite) => invite.status === "pending")
         .map((invite) => [invite.defender_track_id, invite]),
     );
-    const tracks = barTracks.map((track) => ({
-      id: `bar-${track.id}`,
-      category: "listenBar" as const,
-      kind: copy.listenBar,
-      title: track.title?.trim() || (isZh ? "未命名歌曲" : "Untitled Song"),
-      meta: [
-        track.artist?.trim(),
-        track.ai_tool?.trim(),
-        track.genre?.trim(),
-        aiMusicChallengeStatusLabel(normalizeAiMusicChallengeStatus(track.ai_music_challenge_status), lang),
-        `${track.heart_count ?? track.positive_reaction_count ?? 0} ${isZh ? "反應" : "reactions"}`,
-      ]
-        .filter(Boolean)
-        .join(" / "),
-      href: "/listen-bar",
-      date: track.created_at,
-      genre: track.genre,
-      aiTool: track.ai_tool,
-      audioUrl: storagePublicUrl(LISTEN_BAR_AUDIO_BUCKET, track.audio_path),
-      trackId: track.id,
-      challengeStatus: normalizeAiMusicChallengeStatus(track.ai_music_challenge_status),
-      pendingChallengeInvite: pendingInviteByTrackId.get(track.id) ?? null,
-    }));
+    const tracks = barTracks.map((track) => {
+      const challengeStatus = normalizeAiMusicChallengeStatus(track.ai_music_challenge_status);
+      const hasDefenderDrop = hasPreparedAiMusicDefenderDrop(track.ai_music_defender_drop_audio_path);
+      return {
+        id: `bar-${track.id}`,
+        category: "listenBar" as const,
+        kind: copy.listenBar,
+        title: track.title?.trim() || (isZh ? "未命名歌曲" : "Untitled Song"),
+        meta: [
+          track.artist?.trim(),
+          track.ai_tool?.trim(),
+          track.genre?.trim(),
+          aiMusicChallengeStatusLabel(challengeStatus, lang),
+          hasDefenderDrop ? copy.defenderDropReady : copy.defenderDropMissing,
+          `${track.heart_count ?? track.positive_reaction_count ?? 0} ${isZh ? "反應" : "reactions"}`,
+        ]
+          .filter(Boolean)
+          .join(" / "),
+        href: "/listen-bar",
+        date: track.created_at,
+        genre: track.genre,
+        aiTool: track.ai_tool,
+        audioUrl: storagePublicUrl(LISTEN_BAR_AUDIO_BUCKET, track.audio_path),
+        trackId: track.id,
+        challengeStatus,
+        hasDefenderDrop,
+        pendingChallengeInvite: pendingInviteByTrackId.get(track.id) ?? null,
+      };
+    });
 
     const queues = battleQueues.map((queue) => ({
       id: `queue-${queue.id}`,
@@ -898,6 +944,8 @@ function ProfileInner() {
     battleQueues,
     battles,
     copy.battle,
+    copy.defenderDropMissing,
+    copy.defenderDropReady,
     copy.honorFavorite,
     copy.listenBar,
     copy.records,
@@ -1112,7 +1160,9 @@ function ProfileInner() {
                     const isMarqueeSelected = selectedMarqueeItemId === item.id;
                     const showAiMusicChallengeControls = item.category === "listenBar" && Boolean(item.trackId);
                     const challengeStatus = item.challengeStatus ?? "showcase";
+                    const hasDefenderDrop = Boolean(item.hasDefenderDrop);
                     const pendingChallengeInvite = item.pendingChallengeInvite ?? null;
+                    const defenderDropLocked = Boolean(pendingChallengeInvite);
                     const titleContent = (
                       <>
                         <span className="aipo-profile-marquee block overflow-hidden text-base font-black text-zinc-50">
@@ -1178,15 +1228,22 @@ function ProfileInner() {
                             <span className="flex max-w-full flex-wrap justify-start gap-1.5 sm:justify-end">
                               {(["showcase", "open", "custom"] as const).map((status) => {
                                 const selected = challengeStatus === status;
+                                const openNeedsDefenderDrop = status === "open" && !hasDefenderDrop;
                                 return (
                                   <button
                                     key={status}
                                     type="button"
                                     disabled={Boolean(challengeBusy[`track:${item.trackId}`])}
+                                    title={openNeedsDefenderDrop ? copy.openNeedsDefenderDrop : undefined}
                                     onClick={(event) => {
                                       event.preventDefault();
                                       event.stopPropagation();
                                       if (!item.trackId) return;
+                                      if (openNeedsDefenderDrop) {
+                                        alert(copy.openNeedsDefenderDrop);
+                                        if (item.audioUrl) openChallengeCut(item, "defender");
+                                        return;
+                                      }
                                       void updateTrackChallengeStatus(item.trackId, status);
                                     }}
                                     className={`rounded-full border px-2.5 py-1 text-[11px] font-black transition disabled:cursor-wait disabled:opacity-45 ${
@@ -1199,6 +1256,27 @@ function ProfileInner() {
                                   </button>
                                 );
                               })}
+                            </span>
+                          ) : null}
+                          {showAiMusicChallengeControls && item.audioUrl ? (
+                            <span className="flex justify-start sm:justify-end">
+                              <button
+                                type="button"
+                                disabled={defenderDropLocked}
+                                title={defenderDropLocked ? (isZh ? "有待回覆攻擂邀請時不能修改守擂 Drop。" : "You cannot change the defender Drop while an invite is pending.") : undefined}
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  openChallengeCut(item, "defender");
+                                }}
+                                className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-3 py-1.5 text-xs font-black text-cyan-100 transition hover:border-cyan-100/50 hover:bg-cyan-300/16 disabled:cursor-not-allowed disabled:opacity-45"
+                              >
+                                {defenderDropLocked
+                                  ? copy.defenderDropLocked
+                                  : hasDefenderDrop
+                                    ? copy.replaceDefenderDrop
+                                    : copy.prepareDefenderDrop}
+                              </button>
                             </span>
                           ) : null}
                           {pendingChallengeInvite ? (

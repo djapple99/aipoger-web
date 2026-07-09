@@ -545,6 +545,7 @@ function HookCutContent() {
   const challengeTargetQueueId = searchParams.get('challengeEntryId');
   const gatekeeperId = searchParams.get('gatekeeperId');
   const aiMusicChallengeTrackId = searchParams.get('aiMusicChallengeTrackId');
+  const aiMusicDefenderTrackId = searchParams.get('aiMusicDefenderTrackId');
   const defenderTrackTitle = searchParams.get('defenderTrackTitle');
   const rematchClaimId = searchParams.get('rematchClaimId');
   const sourceBattleId = searchParams.get('sourceBattleId');
@@ -555,6 +556,7 @@ function HookCutContent() {
   const hookBattleAt = searchParams.get('hookBattleAt') || searchParams.get('scheduledBattleAt');
   const hookBattlePreset = dropBattleSchedulePresetFromValue(searchParams.get('hookBattlePreset'));
   const hookBattleStartIso = (instantPairing === "invite" || instantPairing === "gatekeeper" || aiMusicChallengeTrackId) && !challengeTargetQueueId ? hookBattleAtToIso(hookBattleAt) : null;
+  const isAiMusicDefenderDropSetup = Boolean(aiMusicDefenderTrackId);
   const lang = normalizeLang(searchParams.get('lang'));
 
   const t = getT(lang);
@@ -615,7 +617,7 @@ function HookCutContent() {
   }, [isPlaying]);
 
   useEffect(() => {
-    if (isAuthBypassEnabled || !challengeTargetQueueId) return;
+    if (isAuthBypassEnabled || (!challengeTargetQueueId && !aiMusicDefenderTrackId)) return;
     let mounted = true;
     void (async () => {
       const { data } = await supabase.auth.getSession();
@@ -627,7 +629,7 @@ function HookCutContent() {
     return () => {
       mounted = false;
     };
-  }, [challengeTargetQueueId, router]);
+  }, [aiMusicDefenderTrackId, challengeTargetQueueId, router]);
 
   const formatTime = useMemo(() => {
     const two = (n: number) => String(Math.floor(n)).padStart(2, '0');
@@ -1099,7 +1101,7 @@ function HookCutContent() {
       }
       const userId = isAuthBypassEnabled ? mockUserId : session!.user.id;
 
-      if (!isAuthBypassEnabled) {
+      if (!isAuthBypassEnabled && !isAiMusicDefenderDropSetup) {
         const requestedDropRole: DropBattleUserRole = aiMusicChallengeTrackId || gatekeeperId ? "challenger" : dropBattleRoleForChallengeTarget(challengeTargetQueueId);
         const activeLock = await findActiveBattleLock(userId, requestedDropRole);
         if (activeLock) {
@@ -1136,11 +1138,11 @@ function HookCutContent() {
       let fullAudioSha256: string | null = null;
       let fullAudioOriginalName: string | null = null;
       const fullAudioDurationSeconds = Number.isFinite(buffer.duration) ? Number(buffer.duration.toFixed(2)) : null;
-      const fullAudioStorage = publishFullSongOnHonorBoard && audioFile
+      const fullAudioStorage = publishFullSongOnHonorBoard && !isAiMusicDefenderDropSetup && audioFile
         ? buildFullSongStoragePath(userId, fighterName, songName || fileName.replace(/\.wav$/i, ""), audioFile.name)
         : null;
 
-      if (publishFullSongOnHonorBoard) {
+      if (publishFullSongOnHonorBoard && !isAiMusicDefenderDropSetup) {
         if (!audioFile) throw new Error(lang === "zh" ? "找不到完整歌曲原檔，請重新選擇音檔。" : "Full song file is missing. Choose the audio file again.");
         if (isAuthBypassEnabled) {
           throw new Error(lang === "zh" ? "開發模式不公開完整版，請登入正式帳號後再上傳。" : "Full-song publishing is disabled in auth-bypass mode.");
@@ -1149,7 +1151,7 @@ function HookCutContent() {
         fullAudioOriginalName = audioFile.name.slice(0, 500);
       }
 
-      if (!isAuthBypassEnabled) {
+      if (!isAuthBypassEnabled && !isAiMusicDefenderDropSetup) {
         const duplicateCheck = await supabase
           .from("battle_queue")
           .select("id, original_file_name, status")
@@ -1191,6 +1193,38 @@ function HookCutContent() {
       }
 
       if (uploadFirstFlow) {
+        if (isAiMusicDefenderDropSetup) {
+          if (isAuthBypassEnabled || !session?.access_token) {
+            throw new Error(lang === "zh" ? "請先登入後再指定守擂 Drop。" : "Sign in before setting a defender Drop.");
+          }
+          const response = await fetch("/api/ai-music/challenges", {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              trackId: aiMusicDefenderTrackId,
+              defenderDrop: {
+                audioPath: audioPathForNav,
+                audioSha256,
+                originalName: songName.trim() || defenderTrackTitle?.trim() || fileName.replace(/\.wav$/i, ""),
+                durationSeconds: Number((end - start).toFixed(2)),
+                lyrics: lyricsForSave || null,
+              },
+            }),
+          });
+          const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+          if (!response.ok) throw new Error(payload?.error || (lang === "zh" ? "指定守擂 Drop 失敗。" : "Failed to set defender Drop."));
+
+          writeFighterNameToStorage(fighterName.trim() || "未命名鬥士");
+          setUploadPhase(lang === "zh" ? "守擂 Drop 已指定，返回創作者中心…" : "Defender Drop set. Returning to profile...");
+          window.setTimeout(() => {
+            router.push(`/profile?lang=${lang}`);
+          }, 650);
+          return;
+        }
+
         const setupParams = new URLSearchParams({
           lang,
           flow: "finalize-battle",
@@ -1668,34 +1702,36 @@ function HookCutContent() {
               />
             </div>
 
-            <div className="rounded-3xl border border-yellow-200/18 bg-yellow-300/[0.06] p-5 shadow-[0_16px_54px_rgba(0,0,0,0.24)]">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <div className="text-sm font-black text-yellow-100">{t.fullSongTitle}</div>
-                  <div className="mt-1 text-xs font-bold leading-5 text-zinc-400">{t.fullSongDesc}</div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setPublishFullSongOnHonorBoard((value) => !value)}
-                  className={[
-                    'relative inline-flex h-9 w-16 shrink-0 items-center rounded-full transition',
-                    publishFullSongOnHonorBoard ? 'bg-yellow-300' : 'bg-zinc-700',
-                    'ring-1 ring-white/10',
-                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-200/70',
-                  ].join(' ')}
-                  aria-pressed={publishFullSongOnHonorBoard}
-                  aria-label={t.fullSongTitle}
-                >
-                  <span
+            {!isAiMusicDefenderDropSetup ? (
+              <div className="rounded-3xl border border-yellow-200/18 bg-yellow-300/[0.06] p-5 shadow-[0_16px_54px_rgba(0,0,0,0.24)]">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-sm font-black text-yellow-100">{t.fullSongTitle}</div>
+                    <div className="mt-1 text-xs font-bold leading-5 text-zinc-400">{t.fullSongDesc}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPublishFullSongOnHonorBoard((value) => !value)}
                     className={[
-                      'inline-block h-7 w-7 transform rounded-full bg-black shadow transition',
-                      publishFullSongOnHonorBoard ? 'translate-x-8' : 'translate-x-1',
+                      'relative inline-flex h-9 w-16 shrink-0 items-center rounded-full transition',
+                      publishFullSongOnHonorBoard ? 'bg-yellow-300' : 'bg-zinc-700',
                       'ring-1 ring-white/10',
+                      'focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-200/70',
                     ].join(' ')}
-                  />
-                </button>
+                    aria-pressed={publishFullSongOnHonorBoard}
+                    aria-label={t.fullSongTitle}
+                  >
+                    <span
+                      className={[
+                        'inline-block h-7 w-7 transform rounded-full bg-black shadow transition',
+                        publishFullSongOnHonorBoard ? 'translate-x-8' : 'translate-x-1',
+                        'ring-1 ring-white/10',
+                      ].join(' ')}
+                    />
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : null}
 
             {/* 按鈕 */}
             <div className="flex gap-4">

@@ -16,6 +16,7 @@ import {
 import {
   AI_MUSIC_CHALLENGE_BATTLE_TYPE,
   AI_MUSIC_CHALLENGE_DAILY_INVITE_LIMIT,
+  hasPreparedAiMusicDefenderDrop,
   isAiMusicChallengeStatus,
 } from "@/lib/ai-music-challenge-rules";
 
@@ -42,6 +43,12 @@ type ListenBarTrackRow = {
   is_active?: boolean | null;
   review_status?: string | null;
   ai_music_challenge_status?: string | null;
+  ai_music_defender_drop_audio_path?: string | null;
+  ai_music_defender_drop_audio_sha256?: string | null;
+  ai_music_defender_drop_original_name?: string | null;
+  ai_music_defender_drop_duration_seconds?: number | null;
+  ai_music_defender_drop_lyrics?: string | null;
+  ai_music_defender_drop_prepared_at?: string | null;
 };
 type InviteRow = {
   id: string;
@@ -61,6 +68,13 @@ type InviteRow = {
     genre?: string | null;
     ai_tool?: string | null;
   } | null;
+};
+type DefenderDropPayload = {
+  audioPath?: unknown;
+  audioSha256?: unknown;
+  originalName?: unknown;
+  durationSeconds?: unknown;
+  lyrics?: unknown;
 };
 
 const CLOSED_BATTLE_STATUSES = ["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"];
@@ -99,6 +113,12 @@ function trimOrNull(value: unknown, maxLength = 8000) {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed ? trimmed.slice(0, maxLength) : null;
+}
+
+function cleanDurationSeconds(value: unknown) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  return Math.max(0, Math.min(60, Number(number.toFixed(2))));
 }
 
 function firstText(...values: unknown[]) {
@@ -313,7 +333,7 @@ export async function POST(request: NextRequest) {
 
   const { data: track, error: trackError } = await admin
     .from("listen_bar_tracks")
-    .select("id,title,artist,ai_tool,genre,lyrics,audio_path,cover_path,created_by,source,bar_phase,is_active,review_status,ai_music_challenge_status")
+    .select("id,title,artist,ai_tool,genre,lyrics,audio_path,cover_path,created_by,source,bar_phase,is_active,review_status,ai_music_challenge_status,ai_music_defender_drop_audio_path,ai_music_defender_drop_audio_sha256,ai_music_defender_drop_original_name,ai_music_defender_drop_duration_seconds,ai_music_defender_drop_lyrics,ai_music_defender_drop_prepared_at")
     .eq("id", defenderTrackId)
     .maybeSingle<ListenBarTrackRow>();
   if (trackError) return jsonError(trackError.message, isSchemaMissing(trackError) ? 409 : 500);
@@ -324,6 +344,9 @@ export async function POST(request: NextRequest) {
     return jsonError("這首作品目前不在 AI 音樂公播池。", 409);
   }
   if (track.ai_music_challenge_status !== "open") return jsonError("這首作品目前暫不接戰。", 409);
+  if (!hasPreparedAiMusicDefenderDrop(track.ai_music_defender_drop_audio_path)) {
+    return jsonError("這首作品尚未準備守擂 60s Drop。", 409);
+  }
 
   if (await hasActiveChallengerLock(admin, auth.user.id)) {
     return jsonError(dropBattleRoleLockMessage("challenger", "zh"), 409);
@@ -336,11 +359,16 @@ export async function POST(request: NextRequest) {
   const challengerAiTool = trimOrNull(body.aiTool, 40);
   const lyrics = trimOrNull(body.lyrics);
   const audioSha256 = /^[a-f0-9]{64}$/i.test(String(body.audioSha256 ?? "")) ? String(body.audioSha256).toLowerCase() : null;
-  const defenderAudioUrl = publicStorageUrl(admin, "listen-bar-audio", track.audio_path);
-  if (!defenderAudioUrl) return jsonError("這首作品沒有可預播音檔。", 409);
+  const defenderDropAudioPath = track.ai_music_defender_drop_audio_path?.trim() ?? "";
+  if (!defenderDropAudioPath) return jsonError("這首作品尚未準備守擂 60s Drop。", 409);
+  const defenderAudioSha256 = /^[a-f0-9]{64}$/i.test(String(track.ai_music_defender_drop_audio_sha256 ?? ""))
+    ? String(track.ai_music_defender_drop_audio_sha256).toLowerCase()
+    : null;
   const defenderCoverUrl = publicStorageUrl(admin, "listen-bar-covers", track.cover_path);
   const defenderName = cleanText(track.artist, "AIPOGER Creator", 80);
   const defenderSong = cleanText(track.title, "AI Music Work", 500);
+  const defenderDropName = cleanText(track.ai_music_defender_drop_original_name, defenderSong, 500);
+  const defenderLyrics = trimOrNull(track.ai_music_defender_drop_lyrics) ?? trimOrNull(track.lyrics);
   const defenderTool = trimOrNull(track.ai_tool, 40);
   const genre = cleanText(track.genre, "Original 自我風格", 80);
 
@@ -348,11 +376,12 @@ export async function POST(request: NextRequest) {
     user_id: track.created_by,
     fighter_name: defenderName,
     genre,
-    audio_path: defenderAudioUrl,
-    original_file_name: defenderSong,
+    audio_path: defenderDropAudioPath,
+    audio_sha256: defenderAudioSha256,
+    original_file_name: defenderDropName,
     status: "matched",
     ai_tool: defenderTool,
-    lyrics: trimOrNull(track.lyrics),
+    lyrics: defenderLyrics,
     expires_at: schedulePayload?.scheduled_start_at ?? null,
     ...schedulePayload,
   };
@@ -400,7 +429,7 @@ export async function POST(request: NextRequest) {
     fighter_b_name: fighterName,
     song_a_name: defenderSong,
     song_b_name: songName,
-    audio_a_path: defenderAudioUrl,
+    audio_a_path: defenderDropAudioPath,
     audio_b_path: challengerAudioPath,
     genre,
     status: "pending",
@@ -408,7 +437,7 @@ export async function POST(request: NextRequest) {
     is_async_match: true,
     ai_tool_a: defenderTool,
     ai_tool_b: challengerAiTool,
-    lyrics_a: trimOrNull(track.lyrics),
+    lyrics_a: defenderLyrics,
     lyrics_b: lyrics,
     started_at: scheduledStartAt,
     scheduled_start_at: scheduledStartAt,
@@ -509,12 +538,72 @@ export async function PATCH(request: NextRequest) {
   const body = (await request.json().catch(() => null)) as {
     trackId?: unknown;
     status?: unknown;
+    defenderDrop?: DefenderDropPayload;
     inviteId?: unknown;
     decision?: unknown;
   } | null;
 
   if (isUuid(body?.trackId)) {
+    if (body?.defenderDrop && typeof body.defenderDrop === "object") {
+      const defenderDrop = body.defenderDrop;
+      const audioPath = trimOrNull(defenderDrop.audioPath, 1600);
+      if (!audioPath) return jsonError("請先切好或指定守擂 60s Drop。");
+
+      const { count: pendingCount, error: pendingError } = await admin
+        .from("ai_music_challenge_invites")
+        .select("id", { count: "exact", head: true })
+        .eq("defender_track_id", body.trackId)
+        .eq("status", "pending");
+      if (pendingError) return jsonError(pendingError.message, isSchemaMissing(pendingError) ? 409 : 500);
+      if ((pendingCount ?? 0) > 0) return jsonError("有待回覆攻擂邀請時不能修改守擂 Drop。", 409);
+
+      const audioSha256 = /^[a-f0-9]{64}$/i.test(String(defenderDrop.audioSha256 ?? ""))
+        ? String(defenderDrop.audioSha256).toLowerCase()
+        : null;
+      const nowIso = new Date().toISOString();
+      const { data, error } = await admin
+        .from("listen_bar_tracks")
+        .update({
+          ai_music_defender_drop_audio_path: audioPath,
+          ai_music_defender_drop_audio_sha256: audioSha256,
+          ai_music_defender_drop_original_name: cleanText(defenderDrop.originalName, "守擂 60s Drop", 500),
+          ai_music_defender_drop_duration_seconds: cleanDurationSeconds(defenderDrop.durationSeconds),
+          ai_music_defender_drop_lyrics: trimOrNull(defenderDrop.lyrics),
+          ai_music_defender_drop_prepared_at: nowIso,
+          ai_music_challenge_updated_at: nowIso,
+        })
+        .eq("id", body.trackId)
+        .eq("created_by", auth.user.id)
+        .eq("source", "community")
+        .eq("is_active", true)
+        .select("id,ai_music_challenge_status,ai_music_defender_drop_audio_path,ai_music_defender_drop_prepared_at")
+        .maybeSingle<{
+          id: string;
+          ai_music_challenge_status: string;
+          ai_music_defender_drop_audio_path: string | null;
+          ai_music_defender_drop_prepared_at: string | null;
+        }>();
+      if (error) return jsonError(error.message, isSchemaMissing(error) ? 409 : 500);
+      if (!data?.id) return jsonError("找不到可修改的歌曲。", 404);
+      return NextResponse.json({ track: data });
+    }
+
     if (!isAiMusicChallengeStatus(body?.status)) return jsonError("無效的接戰狀態。");
+    if (body.status === "open") {
+      const { data: track, error: trackError } = await admin
+        .from("listen_bar_tracks")
+        .select("id,ai_music_defender_drop_audio_path")
+        .eq("id", body.trackId)
+        .eq("created_by", auth.user.id)
+        .eq("source", "community")
+        .eq("is_active", true)
+        .maybeSingle<{ id: string; ai_music_defender_drop_audio_path: string | null }>();
+      if (trackError) return jsonError(trackError.message, isSchemaMissing(trackError) ? 409 : 500);
+      if (!track?.id) return jsonError("找不到可修改的歌曲。", 404);
+      if (!hasPreparedAiMusicDefenderDrop(track.ai_music_defender_drop_audio_path)) {
+        return jsonError("請先指定守擂 60s Drop，才能開放等人挑戰。", 409);
+      }
+    }
     const { data, error } = await admin
       .from("listen_bar_tracks")
       .update({
@@ -525,8 +614,13 @@ export async function PATCH(request: NextRequest) {
       .eq("created_by", auth.user.id)
       .eq("source", "community")
       .eq("is_active", true)
-      .select("id,ai_music_challenge_status")
-      .maybeSingle<{ id: string; ai_music_challenge_status: string }>();
+      .select("id,ai_music_challenge_status,ai_music_defender_drop_audio_path,ai_music_defender_drop_prepared_at")
+      .maybeSingle<{
+        id: string;
+        ai_music_challenge_status: string;
+        ai_music_defender_drop_audio_path: string | null;
+        ai_music_defender_drop_prepared_at: string | null;
+      }>();
     if (error) return jsonError(error.message, isSchemaMissing(error) ? 409 : 500);
     if (!data?.id) return jsonError("找不到可修改的歌曲。", 404);
     return NextResponse.json({ track: data });

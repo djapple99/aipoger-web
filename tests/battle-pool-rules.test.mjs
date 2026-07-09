@@ -85,6 +85,8 @@ const {
 const {
   AI_MUSIC_CHALLENGE_BATTLE_TYPE,
   AI_MUSIC_CHALLENGE_DAILY_INVITE_LIMIT,
+  hasPreparedAiMusicDefenderDrop,
+  isAiMusicChallengeReady,
   normalizeAiMusicChallengeStatus,
   pickDropBattleWinnerForRules,
 } = await import("../src/lib/ai-music-challenge-rules.ts");
@@ -291,6 +293,11 @@ test("Explore AI Music challenges keep defender tie advantage and a six invite d
   assert.equal(AI_MUSIC_CHALLENGE_DAILY_INVITE_LIMIT, 6);
   assert.equal(normalizeAiMusicChallengeStatus("open"), "open");
   assert.equal(normalizeAiMusicChallengeStatus("legacy-open"), "showcase");
+  assert.equal(hasPreparedAiMusicDefenderDrop("battle-audio/defender.wav"), true);
+  assert.equal(hasPreparedAiMusicDefenderDrop("  "), false);
+  assert.equal(isAiMusicChallengeReady("open", "battle-audio/defender.wav"), true);
+  assert.equal(isAiMusicChallengeReady("open", null), false);
+  assert.equal(isAiMusicChallengeReady("showcase", "battle-audio/defender.wav"), false);
   assert.equal(
     pickDropBattleWinnerForRules({ fighter_a: 2, fighter_b: 2 }, "battle-with-tied-votes", "B", AI_MUSIC_CHALLENGE_BATTLE_TYPE),
     "fighter_a",
