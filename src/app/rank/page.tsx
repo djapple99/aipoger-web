@@ -72,6 +72,12 @@ type RankRow = {
   positiveReactions?: number;
 };
 
+type RankAiMusicTrackRow = ListenBarTrackRow & {
+  ai_music_showtime_certified?: boolean | null;
+  ai_music_official_defense_successes?: number | null;
+  ai_music_showtime_defense_target?: number | null;
+};
+
 type BoardMeta = {
   zh: string;
   en: string;
@@ -543,10 +549,10 @@ function isOfficialArchivedResult(row: ArchivedBattleResult) {
   return (row.audienceCount ?? row.votesTotal ?? 0) >= min;
 }
 
-function hotBarRowsFromTracks(tracks: ListenBarTrackRow[]) {
+function hotBarRowsFromTracks(tracks: RankAiMusicTrackRow[]) {
   const communityTracks = tracks
     .map((row) => ({ row, track: listenBarRowToTrack(row) }))
-    .filter((item): item is { row: ListenBarTrackRow; track: NonNullable<ReturnType<typeof listenBarRowToTrack>> } => Boolean(item.track))
+    .filter((item): item is { row: RankAiMusicTrackRow; track: NonNullable<ReturnType<typeof listenBarRowToTrack>> } => Boolean(item.track))
     .filter(({ track }) => track.source !== "official");
   const survivalStartedAtByGenre = new Map(
     MUSIC_GENRE_OPTIONS.map((genre) => [
@@ -561,34 +567,44 @@ function hotBarRowsFromTracks(tracks: ListenBarTrackRow[]) {
   );
 
   return communityTracks
-    .filter(({ row, track }) => listenBarIsHonorEligible({
-      positiveReactionCount: track.positiveReactionCount,
-      promotedAt: row.promoted_at ?? track.promotedAt,
-      createdAt: track.createdAt,
-    }, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null))
+    .filter(({ row, track }) => {
+      const showtimeCertified = Boolean((row as RankAiMusicTrackRow).ai_music_showtime_certified);
+      return showtimeCertified || listenBarIsHonorEligible({
+        positiveReactionCount: track.positiveReactionCount,
+        promotedAt: row.promoted_at ?? track.promotedAt,
+        createdAt: track.createdAt,
+      }, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null);
+    })
     .sort((a, b) => {
       const byReaction = (b.track.positiveReactionCount || 0) - (a.track.positiveReactionCount || 0);
       if (byReaction !== 0) return byReaction;
       return new Date(b.track.createdAt || 0).getTime() - new Date(a.track.createdAt || 0).getTime();
     })
-    .map<RankRow>(({ row, track }, index) => ({
-      id: `bar-${track.id}`,
-      kind: "bar",
-      name: track.artist,
-      rank: track.queuedByRank || "創作者投稿",
-      title: "傷心酒吧熱播",
-      hook: track.title,
-      note: track.mood || row.genre?.trim() || "AI Music",
-      genre: row.genre?.trim() || track.mood || "AI Music",
-      accent: accentFromIndex(index),
-      avatarUrl: track.coverUrl || AIPOGER_BRAND_LOGO,
-      coverUrl: track.coverUrl || AIPOGER_BRAND_LOGO,
-      aiTool: track.tool || "AI Music",
-      createdAt: track.createdAt || new Date().toISOString(),
-      audioUrl: track.audioUrl,
-      lyrics: cleanLyrics(track.lyrics) || undefined,
-      positiveReactions: Math.max(0, Math.round(track.positiveReactionCount || 0)),
-    }));
+    .map<RankRow>(({ row, track }, index) => {
+      const aiMusicRow = row as RankAiMusicTrackRow;
+      const showtimeCertified = Boolean(aiMusicRow.ai_music_showtime_certified);
+      const defenseSuccesses = Math.max(0, Math.round(Number(aiMusicRow.ai_music_official_defense_successes ?? 0)));
+      const defenseTarget = Math.max(1, Math.round(Number(aiMusicRow.ai_music_showtime_defense_target ?? 6)));
+      const certifiedByDefense = showtimeCertified && defenseSuccesses >= defenseTarget;
+      return {
+        id: `bar-${track.id}`,
+        kind: "bar",
+        name: track.artist,
+        rank: track.queuedByRank || "創作者投稿",
+        title: showtimeCertified ? "Showtime 認證" : "傷心酒吧熱播",
+        hook: track.title,
+        note: certifiedByDefense ? `守擂 ${defenseSuccesses}/${defenseTarget}` : track.mood || row.genre?.trim() || "AI Music",
+        genre: row.genre?.trim() || track.mood || "AI Music",
+        accent: accentFromIndex(index),
+        avatarUrl: track.coverUrl || AIPOGER_BRAND_LOGO,
+        coverUrl: track.coverUrl || AIPOGER_BRAND_LOGO,
+        aiTool: track.tool || "AI Music",
+        createdAt: track.createdAt || new Date().toISOString(),
+        audioUrl: track.audioUrl,
+        lyrics: cleanLyrics(track.lyrics) || undefined,
+        positiveReactions: Math.max(0, Math.round(track.positiveReactionCount || 0)),
+      };
+    });
 }
 
 async function fetchBattleArchivesForRank() {
@@ -597,6 +613,21 @@ async function fetchBattleArchivesForRank() {
     .select(ARCHIVE_SELECT_BASE)
     .order("archived_at", { ascending: false })
     .limit(200);
+}
+
+async function fetchAiMusicTracksForRank(lang: string): Promise<{ data: RankAiMusicTrackRow[]; error: Error | null }> {
+  try {
+    const response = await fetch(`/api/ai-music/tracks?lang=${encodeURIComponent(lang)}`, {
+      cache: "no-store",
+    });
+    const payload = (await response.json().catch(() => null)) as { tracks?: RankAiMusicTrackRow[]; error?: string } | null;
+    if (!response.ok || !Array.isArray(payload?.tracks)) {
+      return { data: [], error: new Error(payload?.error || "Could not load AI music Showtime tracks.") };
+    }
+    return { data: payload.tracks, error: null };
+  } catch (error) {
+    return { data: [], error: error instanceof Error ? error : new Error(String(error)) };
+  }
 }
 
 function battleAudioPathToUrl(path: string | null | undefined) {
@@ -986,15 +1017,7 @@ export default function RankPage() {
         { data: hotData, error: hotError },
       ] = await Promise.all([
         fetchBattleArchivesForRank(),
-        supabase
-          .from("listen_bar_tracks")
-          .select(
-            "id,title,artist,ai_tool,genre,mood,bpm,duration_seconds,audio_path,cover_path,lyrics,is_active,review_status,hidden_at,removed_at,source,is_featured_official,bar_phase,positive_reaction_count,heart_count,star_count,thumb_count,happy_count,created_at,promoted_at",
-          )
-          .eq("is_active", true)
-          .order("positive_reaction_count", { ascending: false })
-          .order("created_at", { ascending: false })
-          .limit(120),
+        fetchAiMusicTracksForRank(lang),
       ]);
 
       if (archiveError) {
@@ -1091,7 +1114,7 @@ export default function RankPage() {
         : [];
 
       const merged = await attachBattleAudioUrls(applyFallbackSongStats(mergeArchives(mappedArchives)));
-      const hotRows = Array.isArray(hotData) ? hotBarRowsFromTracks(hotData as ListenBarTrackRow[]) : [];
+      const hotRows = Array.isArray(hotData) ? hotBarRowsFromTracks(hotData) : [];
 
       if (!cancelled) {
         setArchivedResults(merged);
@@ -1103,7 +1126,7 @@ export default function RankPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [lang]);
 
   const dropRows = useMemo(() => {
     return archivedResults.slice(0, 10).map((entry, index) => rowFromArchive(entry, index));

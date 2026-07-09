@@ -86,11 +86,13 @@ const {
   AI_MUSIC_CHALLENGE_BATTLE_TYPE,
   AI_MUSIC_CHALLENGE_DAILY_INVITE_LIMIT,
   AI_MUSIC_EXPLORE_FORMAL_LOSS_RETIREMENT_LIMIT,
+  AI_MUSIC_SHOWTIME_DEFENSE_SUCCESS_TARGET,
   hasPreparedAiMusicDefenderDrop,
   isAiMusicTrackChallengeableOnExplore,
   isAiMusicChallengeReady,
   normalizeAiMusicChallengeStatus,
   pickDropBattleWinnerForRules,
+  shouldCertifyAiMusicTrackForShowtimeByDefense,
   shouldRetireAiMusicTrackFromExplore,
 } = await import("../src/lib/ai-music-challenge-rules.ts");
 
@@ -295,6 +297,7 @@ test("90s battle creates no contest without votes, but resolves tied audience vo
 test("Explore AI Music challenges keep defender tie advantage and a six invite daily cap", () => {
   assert.equal(AI_MUSIC_CHALLENGE_DAILY_INVITE_LIMIT, 6);
   assert.equal(AI_MUSIC_EXPLORE_FORMAL_LOSS_RETIREMENT_LIMIT, 8);
+  assert.equal(AI_MUSIC_SHOWTIME_DEFENSE_SUCCESS_TARGET, 6);
   assert.equal(normalizeAiMusicChallengeStatus("open"), "open");
   assert.equal(normalizeAiMusicChallengeStatus("legacy-open"), "showcase");
   assert.equal(hasPreparedAiMusicDefenderDrop("battle-audio/defender.wav"), true);
@@ -313,6 +316,9 @@ test("Explore AI Music challenges keep defender tie advantage and a six invite d
   assert.equal(shouldRetireAiMusicTrackFromExplore({ officialLosses: 7, isShowtimeCertified: false }), false);
   assert.equal(shouldRetireAiMusicTrackFromExplore({ officialLosses: 8, isShowtimeCertified: false }), true);
   assert.equal(shouldRetireAiMusicTrackFromExplore({ officialLosses: 12, isShowtimeCertified: true }), false);
+  assert.equal(shouldCertifyAiMusicTrackForShowtimeByDefense({ officialDefenseSuccesses: 5, isShowtimeCertified: false }), false);
+  assert.equal(shouldCertifyAiMusicTrackForShowtimeByDefense({ officialDefenseSuccesses: 6, isShowtimeCertified: false }), true);
+  assert.equal(shouldCertifyAiMusicTrackForShowtimeByDefense({ officialDefenseSuccesses: 9, isShowtimeCertified: true }), false);
   assert.equal(
     isAiMusicTrackChallengeableOnExplore("open", "battle-audio/defender.wav", { officialLosses: 0, isShowtimeCertified: false }),
     true,

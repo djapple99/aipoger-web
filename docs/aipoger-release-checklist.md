@@ -185,10 +185,12 @@ Check:
 - Signed-in users who already sent a Heart in the current 24-hour cooldown see the Heart button lit on `/ai-music` cards and the bottom mini player, while the card still shows only total Heart count publicly.
 - Desktop hover exposes the Battle Record HUD.
 - Mobile exposes an equivalent expanded HUD via the info action.
+- Cards and the Battle Record HUD show the Showtime defense progress, for example `守擂進度 4 / 6，再守下 2 場正式挑戰，進入 Showtime`.
 - Card play opens the bottom mini player and does not expand per-card audio controls.
 - `Drop Battle`, `Showtime`, `傷心酒吧`, and `Choice` are internal options on `/ai-music`.
 - Old genre labels are not shown as current category headings.
-- `/api/ai-music/tracks` filters non-Showtime works that have 8 official Explore losses, and `/api/ai-music/challenges` blocks attacks against Showtime-certified or retired works.
+- `/api/ai-music/tracks` returns official Explore defense success progress toward the 6-defense Showtime threshold, filters non-Showtime works that have 8 official Explore losses, and `/api/ai-music/challenges` blocks attacks against Showtime-certified or retired works.
+- `/rank?lang=zh` consumes the same AI Music lifecycle API so 6-defense-certified Explore works appear in Showtime.
 
 ## AIPOGER Showtime Checklist
 

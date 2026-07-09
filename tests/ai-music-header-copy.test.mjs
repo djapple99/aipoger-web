@@ -19,6 +19,8 @@ test("Explore AI Music header uses compact public copy and current navigation or
   assert.ok(aiMusicSource.includes("愛心會同步收藏"));
   assert.ok(aiMusicSource.includes("Profile 管理"));
   assert.ok(aiMusicSource.includes("守擂 60s Drop"));
+  assert.ok(aiMusicSource.includes("守擂進度"));
+  assert.ok(aiMusicSource.includes("守下 6 場正式探索攻擂會進入 Showtime"));
   assert.ok(aiMusicSource.includes("8 場正式敗績"));
   const worksIndex = aiMusicSource.indexOf('label: isZh ? "作品瀏覽" : "Works"');
   const barIndex = aiMusicSource.indexOf('label: isZh ? "傷心酒吧" : "Bar Heartbreak"');
@@ -39,6 +41,8 @@ test("Bar Heartbreak and Showtime pages state their current surface positioning"
   assert.ok(listenBarSource.includes("也會出現在探索 AI 音樂"));
   assert.ok(showtimeSource.includes("Showtime 是 AIPOGER 的認證作品庫"));
   assert.ok(showtimeSource.includes("入選後不再接受挑戰"));
+  assert.ok(showtimeSource.includes("/api/ai-music/tracks"));
+  assert.ok(showtimeSource.includes("ai_music_showtime_certified"));
   assert.ok(showtimeSource.includes('href={`/ai-music${navSuffix}`}'));
   assert.equal(showtimeSource.includes("href={`/battle/setup${navSuffix}`}"), false);
 });

@@ -14,6 +14,8 @@ import {
 import { supabase } from "@/lib/supabase";
 import { listenBarRowToTrack, type ListenBarTrackRow } from "@/lib/listen-bar";
 import {
+  AI_MUSIC_SHOWTIME_DEFENSE_SUCCESS_TARGET,
+  aiMusicShowtimeDefenseRemaining,
   aiMusicChallengeStatusLabel,
   hasPreparedAiMusicDefenderDrop,
   isAiMusicTrackChallengeableOnExplore,
@@ -39,6 +41,9 @@ type AiMusicTrack = {
   createdAt: string;
   heartCount: number;
   challengeCount: number;
+  defenseSuccesses: number;
+  defenseTarget: number;
+  defenseRemaining: number;
   wins: number;
   losses: number;
   audienceVotes: number;
@@ -70,6 +75,9 @@ type AiMusicApiTrackRow = ListenBarTrackRow & {
   ai_music_showtime_certified?: boolean | null;
   ai_music_explore_retired?: boolean | null;
   ai_music_official_challenge_count?: number | null;
+  ai_music_official_defense_successes?: number | null;
+  ai_music_showtime_defense_target?: number | null;
+  ai_music_showtime_defense_remaining?: number | null;
   ai_music_official_wins?: number | null;
   ai_music_official_losses?: number | null;
   ai_music_official_audience_votes?: number | null;
@@ -166,6 +174,12 @@ async function tracksFromListenBar(lang: string) {
       const defenderDropAudioPath = (row as ListenBarTrackRow & { ai_music_defender_drop_audio_path?: string | null }).ai_music_defender_drop_audio_path;
       const hasDefenderDrop = hasPreparedAiMusicDefenderDrop(defenderDropAudioPath);
       const officialChallengeCount = numberValue(lifecycleRow.ai_music_official_challenge_count);
+      const officialDefenseSuccesses = numberValue(lifecycleRow.ai_music_official_defense_successes);
+      const defenseTarget = numberValue(lifecycleRow.ai_music_showtime_defense_target) || AI_MUSIC_SHOWTIME_DEFENSE_SUCCESS_TARGET;
+      const defenseRemaining = Math.max(
+        0,
+        numberValue(lifecycleRow.ai_music_showtime_defense_remaining ?? aiMusicShowtimeDefenseRemaining(officialDefenseSuccesses)),
+      );
       const officialWins = numberValue(lifecycleRow.ai_music_official_wins);
       const officialLosses = numberValue(lifecycleRow.ai_music_official_losses);
       const officialAudienceVotes = numberValue(lifecycleRow.ai_music_official_audience_votes);
@@ -204,6 +218,9 @@ async function tracksFromListenBar(lang: string) {
         createdAt: safeDate(track.createdAt),
         heartCount: numberValue(row.heart_count ?? track.positiveReactionCount),
         challengeCount: officialChallengeCount,
+        defenseSuccesses: officialDefenseSuccesses,
+        defenseTarget,
+        defenseRemaining,
         wins: officialWins,
         losses: officialLosses,
         audienceVotes: officialAudienceVotes,
@@ -236,6 +253,21 @@ function mergeDuplicateTracks(rows: AiMusicTrack[]) {
         ...row,
         heartCount: Math.max(row.heartCount, current.heartCount),
         challengeCount: Math.max(row.challengeCount, current.challengeCount),
+        defenseSuccesses: Math.max(row.defenseSuccesses, current.defenseSuccesses),
+        defenseTarget: Math.max(row.defenseTarget, current.defenseTarget),
+        defenseRemaining: Math.max(0, Math.max(row.defenseTarget, current.defenseTarget) - Math.max(row.defenseSuccesses, current.defenseSuccesses)),
+        wins: Math.max(row.wins, current.wins),
+        losses: Math.max(row.losses, current.losses),
+        audienceVotes: Math.max(row.audienceVotes, current.audienceVotes),
+      });
+    } else {
+      bySignature.set(signature, {
+        ...current,
+        heartCount: Math.max(row.heartCount, current.heartCount),
+        challengeCount: Math.max(row.challengeCount, current.challengeCount),
+        defenseSuccesses: Math.max(row.defenseSuccesses, current.defenseSuccesses),
+        defenseTarget: Math.max(row.defenseTarget, current.defenseTarget),
+        defenseRemaining: Math.max(0, Math.max(row.defenseTarget, current.defenseTarget) - Math.max(row.defenseSuccesses, current.defenseSuccesses)),
         wins: Math.max(row.wins, current.wins),
         losses: Math.max(row.losses, current.losses),
         audienceVotes: Math.max(row.audienceVotes, current.audienceVotes),
@@ -319,6 +351,31 @@ function formatRecord(track: AiMusicTrack, isZh: boolean) {
     : `${track.wins}W / ${track.losses}L · ${track.winRate}%`;
 }
 
+function defenseProgressValues(track: AiMusicTrack) {
+  const target = Math.max(1, track.defenseTarget || AI_MUSIC_SHOWTIME_DEFENSE_SUCCESS_TARGET);
+  const successes = Math.min(target, Math.max(0, track.defenseSuccesses));
+  const remaining = Math.max(0, target - successes);
+  return { successes, target, remaining };
+}
+
+function defenseProgressText(track: AiMusicTrack, isZh: boolean) {
+  if (track.isShowtimeCertified) {
+    return isZh ? "已進入 Showtime，不再接受挑戰。" : "Certified in Showtime. Challenges are closed.";
+  }
+  const { successes, target, remaining } = defenseProgressValues(track);
+  return isZh
+    ? `守擂進度 ${successes} / ${target}，再守下 ${remaining} 場正式挑戰，進入 Showtime`
+    : `Defense progress ${successes} / ${target}. ${remaining} official defense wins to enter Showtime.`;
+}
+
+function defenseProgressShortText(track: AiMusicTrack, isZh: boolean) {
+  if (track.isShowtimeCertified) return isZh ? "Showtime 認證 · 不再接戰" : "Showtime certified · Closed";
+  const { successes, target, remaining } = defenseProgressValues(track);
+  return isZh
+    ? `守擂 ${successes}/${target} · 再 ${remaining} 場進 Showtime`
+    : `Defense ${successes}/${target} · ${remaining} to Showtime`;
+}
+
 function TrackHud({ track, isZh }: { track: AiMusicTrack; isZh: boolean }) {
   const hasOfficialRecord = track.challengeCount > 0;
   return (
@@ -335,6 +392,9 @@ function TrackHud({ track, isZh }: { track: AiMusicTrack; isZh: boolean }) {
         <span>{isZh ? "同類型勝率" : "Style win rate"} {track.winRate}%</span>
         <span>{track.statusLabel}</span>
       </div>
+      <p className="rounded-sm border border-yellow-200/18 bg-yellow-300/[0.08] px-2.5 py-2 text-[11px] font-black leading-5 text-yellow-100">
+        {defenseProgressText(track, isZh)}
+      </p>
       {!hasOfficialRecord ? (
         <p className="text-[11px] font-bold leading-5 text-zinc-500">
           {isZh ? "正式戰績需要至少 3 位非參賽者投票。" : "Official records need at least 3 non-fighter votes."}
@@ -419,6 +479,13 @@ function TrackCard({
           </span>
           <span className="text-orange-100">⚔ {track.challengeCount}</span>
         </div>
+        <p className={`rounded-sm border px-2 py-1.5 text-[10px] font-black leading-4 ${
+          track.isShowtimeCertified
+            ? "border-cyan-100/28 bg-cyan-300/[0.08] text-cyan-50"
+            : "border-yellow-200/18 bg-yellow-300/[0.08] text-yellow-100"
+        }`}>
+          {defenseProgressShortText(track, isZh)}
+        </p>
         {isExpanded ? (
           <div className="md:hidden">
             <TrackHud track={track} isZh={isZh} />
@@ -1082,8 +1149,8 @@ export default function AiMusicClient() {
             <p className="border-l border-yellow-200/28 bg-black/42 px-3 py-3">
               <span className={`${fontRighteous.className} mb-1 block text-[10px] uppercase text-yellow-100/72`}>03 60s Drop</span>
               {isZh
-                ? "只有尚未進 Showtime、已開放接戰、且已準備守擂 60s Drop 的作品才能被攻擂。未進 Showtime 的作品若累積 8 場正式敗績，會從這面公開牆退場並停止接戰。"
-                : "Only non-Showtime tracks with challenge enabled and a prepared defender 60s Drop can be attacked. Non-Showtime works retire from this wall after 8 official losses."}
+                ? "只有尚未進 Showtime、已開放接戰、且已準備守擂 60s Drop 的作品才能被攻擂。守下 6 場正式探索攻擂會進入 Showtime；累積 8 場正式敗績則退場。"
+                : "Only non-Showtime tracks with challenge enabled and a prepared defender 60s Drop can be attacked. 6 official Explore defense wins enter Showtime; 8 official losses retire the work."}
             </p>
           </div>
         </section>

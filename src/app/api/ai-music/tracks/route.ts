@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import {
+  AI_MUSIC_SHOWTIME_DEFENSE_SUCCESS_TARGET,
+  aiMusicShowtimeDefenseRemaining,
+} from "@/lib/ai-music-challenge-rules";
 import { buildAiMusicSurfaceLifecycleMap, isAiMusicLifecycleSchemaMissing } from "@/lib/ai-music-surface-lifecycle";
 import {
   LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
@@ -177,6 +181,9 @@ export async function GET() {
           ai_music_showtime_certified: lifecycle?.isShowtimeCertified ?? false,
           ai_music_explore_retired: lifecycle?.retiredFromExplore ?? false,
           ai_music_official_challenge_count: lifecycle?.officialChallengeCount ?? 0,
+          ai_music_official_defense_successes: lifecycle?.officialDefenseSuccesses ?? 0,
+          ai_music_showtime_defense_target: AI_MUSIC_SHOWTIME_DEFENSE_SUCCESS_TARGET,
+          ai_music_showtime_defense_remaining: aiMusicShowtimeDefenseRemaining(lifecycle?.officialDefenseSuccesses ?? 0),
           ai_music_official_wins: lifecycle?.officialWins ?? 0,
           ai_music_official_losses: lifecycle?.officialLosses ?? 0,
           ai_music_official_audience_votes: lifecycle?.officialAudienceVotes ?? 0,

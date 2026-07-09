@@ -302,6 +302,8 @@ Explore direct challenge loop:
 - If the defender rejects, the challenge ends without result, stats, or win/loss history. If the defender accepts, the battle starts according to the scheduled time.
 - A challenger may send at most 6 Explore attack invites per Taiwan day.
 - Explore direct-challenge official records require at least 3 distinct non-participant audience voters. Ties go to the defender (`fighter_a`). Under 3 voters displays audience-insufficient/no result.
+- A non-Showtime Explore work that is open to defense enters Showtime after 6 official defense successes from Explore-origin attacks. Only accepted, started, official battles with at least 3 distinct non-participant voters count; defender rejects, timeouts, audience-insufficient/no-contest results, unstarted battles, creator self-start/custom battles, and unestablished battles do not count. Ties that meet the audience threshold count as defender wins. The same challenger may contribute at most 1 defense success toward the same track.
+- `/ai-music` must show each non-Showtime work's defense progress, for example `守擂進度 4 / 6，再守下 2 場正式挑戰，進入 Showtime`.
 - A non-Showtime Explore work retires from the public uploaded-works wall and stops accepting challenges after 8 official losses. Only losses from battles with at least 3 distinct non-participant voters count; rejected, expired, under-threshold, or unstarted invites do not count.
 - The original Drop Battle Pool remains for temporary/open-card matchmaking and quick Drop Battle entry that does not start from Explore AI Music.
 

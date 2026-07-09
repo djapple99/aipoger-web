@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   AI_MUSIC_CHALLENGE_BATTLE_TYPE,
+  shouldCertifyAiMusicTrackForShowtimeByDefense,
   shouldRetireAiMusicTrackFromExplore,
 } from "@/lib/ai-music-challenge-rules";
 import { isOfficialDropBattleResult } from "@/lib/drop-battle-rematch";
@@ -17,6 +18,9 @@ type AdminClient = SupabaseClient;
 type InviteBattleRow = {
   defender_track_id?: string | null;
   battle_id?: string | null;
+  challenger_user_id?: string | null;
+  defender_user_id?: string | null;
+  status?: string | null;
 };
 
 type BattleRow = {
@@ -35,6 +39,7 @@ type ArchiveRow = {
 
 export type AiMusicSurfaceLifecycleStats = {
   officialChallengeCount: number;
+  officialDefenseSuccesses: number;
   officialWins: number;
   officialLosses: number;
   officialAudienceVotes: number;
@@ -44,6 +49,7 @@ export type AiMusicSurfaceLifecycleStats = {
 
 const EMPTY_STATS: AiMusicSurfaceLifecycleStats = {
   officialChallengeCount: 0,
+  officialDefenseSuccesses: 0,
   officialWins: 0,
   officialLosses: 0,
   officialAudienceVotes: 0,
@@ -111,7 +117,7 @@ export async function readAiMusicOfficialChallengeStats(admin: AdminClient, trac
 
   const { data: invites, error: inviteError } = await admin
     .from("ai_music_challenge_invites")
-    .select("defender_track_id,battle_id")
+    .select("defender_track_id,battle_id,challenger_user_id,defender_user_id,status")
     .in("defender_track_id", ids)
     .not("battle_id", "is", null);
   if (inviteError) {
@@ -119,8 +125,21 @@ export async function readAiMusicOfficialChallengeStats(admin: AdminClient, trac
     throw inviteError;
   }
 
-  const inviteRows = ((invites ?? []) as InviteBattleRow[]).filter((row): row is { defender_track_id: string; battle_id: string } => {
-    return Boolean(row.defender_track_id && row.battle_id);
+  const inviteRows = ((invites ?? []) as InviteBattleRow[]).filter((row): row is {
+    defender_track_id: string;
+    battle_id: string;
+    challenger_user_id: string;
+    defender_user_id: string;
+    status: string;
+  } => {
+    return Boolean(
+      row.defender_track_id
+      && row.battle_id
+      && row.challenger_user_id
+      && row.defender_user_id
+      && row.challenger_user_id !== row.defender_user_id
+      && row.status === "accepted",
+    );
   });
   const battleIds = Array.from(new Set(inviteRows.map((row) => row.battle_id)));
   if (battleIds.length === 0) return statsByTrackId;
@@ -149,13 +168,15 @@ export async function readAiMusicOfficialChallengeStats(admin: AdminClient, trac
       .filter((battle) => battle.id && battle.battle_type === AI_MUSIC_CHALLENGE_BATTLE_TYPE)
       .map((battle) => [battle.id as string, battle]),
   );
-  const defenderTrackByBattleId = new Map(inviteRows.map((row) => [row.battle_id, row.defender_track_id]));
+  const inviteByBattleId = new Map(inviteRows.map((row) => [row.battle_id, row]));
+  const defenseSuccessChallengerIdsByTrackId = new Map<string, Set<string>>();
 
   for (const archive of (archiveResult.data ?? []) as ArchiveRow[]) {
     const battleId = archive.battle_id ?? "";
     const battle = battleById.get(battleId);
-    const defenderTrackId = defenderTrackByBattleId.get(battleId);
-    if (!battle || !defenderTrackId) continue;
+    const invite = inviteByBattleId.get(battleId);
+    const defenderTrackId = invite?.defender_track_id;
+    if (!battle || !invite || !defenderTrackId) continue;
     const audienceCount = audienceCountFromArchive(archive);
     if (!isOfficialDropBattleResult({ audienceCount, totalVotes: archive.total_votes ?? audienceCount })) continue;
     const winner = archive.winner || battle.winner;
@@ -164,7 +185,13 @@ export async function readAiMusicOfficialChallengeStats(admin: AdminClient, trac
     const stats = statsByTrackId.get(defenderTrackId) ?? cloneEmptyStats();
     stats.officialChallengeCount += 1;
     stats.officialAudienceVotes += audienceCount;
-    if (winner === "fighter_a") stats.officialWins += 1;
+    if (winner === "fighter_a") {
+      stats.officialWins += 1;
+      const challengerIds = defenseSuccessChallengerIdsByTrackId.get(defenderTrackId) ?? new Set<string>();
+      challengerIds.add(invite.challenger_user_id);
+      defenseSuccessChallengerIdsByTrackId.set(defenderTrackId, challengerIds);
+      stats.officialDefenseSuccesses = challengerIds.size;
+    }
     if (winner === "fighter_b") stats.officialLosses += 1;
     statsByTrackId.set(defenderTrackId, stats);
   }
@@ -180,7 +207,11 @@ export async function buildAiMusicSurfaceLifecycleMap(admin: AdminClient, rows: 
   const lifecycleByTrackId = new Map<string, AiMusicSurfaceLifecycleStats>();
   for (const row of rows) {
     const stats = challengeStats.get(row.id) ?? cloneEmptyStats();
-    stats.isShowtimeCertified = showtimeIds.has(row.id) || stats.officialWins > 0;
+    const isShowtimeCertifiedByPublicPool = showtimeIds.has(row.id);
+    stats.isShowtimeCertified = isShowtimeCertifiedByPublicPool || shouldCertifyAiMusicTrackForShowtimeByDefense({
+      officialDefenseSuccesses: stats.officialDefenseSuccesses,
+      isShowtimeCertified: isShowtimeCertifiedByPublicPool,
+    });
     stats.retiredFromExplore = shouldRetireAiMusicTrackFromExplore({
       officialLosses: stats.officialLosses,
       isShowtimeCertified: stats.isShowtimeCertified,

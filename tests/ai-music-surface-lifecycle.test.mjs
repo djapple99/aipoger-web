@@ -13,12 +13,18 @@ test("Explore AI Music lifecycle reads official challenge results before display
   assert.ok(lifecycleSource.includes('battle_result_archives'));
   assert.ok(lifecycleSource.includes('isOfficialDropBattleResult'));
   assert.ok(lifecycleSource.includes('stats.officialLosses += 1'));
-  assert.ok(lifecycleSource.includes('stats.isShowtimeCertified = showtimeIds.has(row.id) || stats.officialWins > 0'));
+  assert.ok(lifecycleSource.includes('status === "accepted"'));
+  assert.ok(lifecycleSource.includes('defenseSuccessChallengerIdsByTrackId'));
+  assert.ok(lifecycleSource.includes('stats.officialDefenseSuccesses = challengerIds.size'));
+  assert.ok(lifecycleSource.includes('shouldCertifyAiMusicTrackForShowtimeByDefense'));
   assert.ok(lifecycleSource.includes('shouldRetireAiMusicTrackFromExplore'));
 });
 
 test("Explore AI Music API filters retired works and challenge API blocks retired or certified works", () => {
   assert.ok(aiMusicTracksRouteSource.includes('buildAiMusicSurfaceLifecycleMap'));
+  assert.ok(aiMusicTracksRouteSource.includes('ai_music_official_defense_successes'));
+  assert.ok(aiMusicTracksRouteSource.includes('ai_music_showtime_defense_target'));
+  assert.ok(aiMusicTracksRouteSource.includes('AI_MUSIC_SHOWTIME_DEFENSE_SUCCESS_TARGET'));
   assert.ok(aiMusicTracksRouteSource.includes('.filter((row) => !row.ai_music_explore_retired)'));
   assert.ok(aiMusicChallengeRouteSource.includes('buildAiMusicSurfaceLifecycleMap'));
   assert.ok(aiMusicChallengeRouteSource.includes('已進入 Showtime，入選後不再接受挑戰'));
@@ -29,5 +35,7 @@ test("product rules document current surface lifecycle", () => {
   assert.ok(productRulesSource.includes("Bar Heartbreak is the AI music public airplay pool and submission entry"));
   assert.ok(productRulesSource.includes("Explore AI Music is the public uploaded-works wall"));
   assert.ok(productRulesSource.includes("Showtime is the certified works archive"));
+  assert.ok(productRulesSource.includes("6 official defense successes"));
+  assert.ok(productRulesSource.includes("The same challenger may contribute at most 1 defense success"));
   assert.ok(productRulesSource.includes("8 official losses"));
 });
