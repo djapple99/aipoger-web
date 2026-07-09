@@ -1033,7 +1033,7 @@ export default function AiMusicClient() {
             {
               label: isZh ? "風格" : "Styles",
               value: MUSIC_GENRE_OPTIONS.length,
-              note: isZh ? "現行十種類型" : "Current genre set",
+              note: isZh ? "現行十一種類型" : "Current genre set",
             },
             {
               label: "Drop Battle",

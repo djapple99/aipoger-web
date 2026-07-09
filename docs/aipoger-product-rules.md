@@ -202,8 +202,8 @@ Current rules:
 - Bar Heartbreak main rotation contains creator submissions only.
 - Official AIPOGER songs do not count as active public-pool songs.
 - If there are no community submissions, hidden fallback store music may prevent a silent station; it must not count toward survival results.
-- Public listening supports 11 playback choices: all public airplay plus the 10 fixed music genres.
-- Each fixed music genre has its own 36-track public pool. With the current 10 genres, the full public-pool capacity is 360 community songs.
+- Public listening supports 12 playback choices: all public airplay plus the 11 fixed music genres.
+- Each fixed music genre has its own 36-track public pool. With the current 11 genres, the full public-pool capacity is 396 community songs.
 - New submissions must include a fixed music genre. Do not silently default missing genre values to `Original 自我風格`.
 - New Bar Heartbreak audio submissions accept MP3, M4A, AAC, or OGG only, with a 30MB single-file limit. Do not accept new WAV or AIFF submissions in the public or admin Bar Heartbreak upload surfaces.
 - The upload form must preview the selected genre outcome before submit: direct public airplay while the genre is under 36 active public songs, or same-genre Challenger once the genre is full.
@@ -231,13 +231,13 @@ Current rules:
 - If songs have the same positive reaction count, remove the older song first.
 - If a genre public pool is at or below 36 songs, elimination stops for that genre and no refill action is needed.
 - The legacy 30-day `completed` removal rule is retired and must not remove songs.
-- Public pool target: 36 songs per genre, currently 360 songs across 10 genres. Challenger priority airplay can still surface protected new submissions.
+- Public pool target: 36 songs per genre, currently 396 songs across 11 genres. Challenger priority airplay can still surface protected new submissions.
 - After that song's genre activation point, a song with 30 hearts/positive reactions or 7 public survival days becomes Showtime eligible.
 - A listener must sign in to react or comment. Pressing Heart on a Bar Heartbreak track also saves that track to the listener's favorites. Removing it later from favorites does not remove the historical heart reaction; pressing Heart again after unsaving saves it again without duplicate favorites.
 - New submissions get priority after the current song finishes; each priority batch starts when the first upload arrives, airs up to 8 new uploads within 1 hour, and pushes overflow to the next hour.
 - Bar Heartbreak upload metadata should stay compact: user-entered creator name, AI tool, and album/mood are limited to 12 CJK characters or about 24 English characters; one-line song description is limited to 16 CJK characters or about 32 English characters. Auto-detected song titles are not subject to this compact metadata limit.
 - Bar Heartbreak submissions may include one optional YouTube MV URL. The public now-playing metadata row shows it only as a compact `看 MV` / `Watch MV` action; it must not replace audio playback or interrupt the radio. Creators can add or edit this URL from their own track detail form, and admins can edit it from `/admin/listen-bar`.
-- `/admin/listen-bar` track management must use a dropdown filter for the fixed 10 music genres. Do not bring back a primary `待補類型` filter, badge, or empty state for normal admin management. Admin upload previews and track-card audio controls must be mutually exclusive: starting one preview pauses the previously playing preview.
+- `/admin/listen-bar` track management must use a dropdown filter for the fixed 11 music genres. Do not bring back a primary `待補類型` filter, badge, or empty state for normal admin management. Admin upload previews and track-card audio controls must be mutually exclusive: starting one preview pauses the previously playing preview.
 - Daily Spotlight can feature a Bar Heartbreak track for promotion through `/today`, QR code, and social drafts. It is a curated spotlight layer, not a replacement for the shared radio rotation and not a separate reaction pool.
 - Bar Heartbreak top-right hero controls should stay minimal; primary actions belong in the lower hero action strip. The strip should group `我要播歌`, bar sharing, `探索 AI 音樂`, and `Showtime`; do not put `練功聖經` or `關於愛波哥` in this hero action strip.
 - Bar Heartbreak hero signage must be localizable live text, not a bitmap containing fixed Chinese copy. The title/subtitle can use a dark gold plaque treatment, but language switching must keep working. On mobile, the hero action strip first row is `我要播歌` / `分享吧台` / `Showtime`; `探索 AI 音樂` sits centered on the second row.
@@ -266,13 +266,13 @@ The homepage first-layer low-pressure entry is `探索 AI 音樂`, linking to `/
 This page is the AI music works browser. It should:
 
 - Use the main title `AI 音樂作品`.
-- Group real works by the current 10 fixed music genres.
+- Group real works by the current 11 fixed music genres.
 - Show at most 6 works per genre before `看更多`.
 - Keep cards music-platform-like: cover, song title, creator, AI tool, heart count, and challenge count.
 - Show battle HUD details on desktop hover and provide an equivalent mobile expand action.
 - Open playback through the fixed bottom mini player instead of expanding a player inside each card.
 - Keep `Drop Battle` / `AI 音樂鬥歌場` as internal options from this page, not the homepage first-layer primary entry.
-- Treat old genre labels only as aliases into the current 10 genres; do not display `台語熊 High`, `City Pop / Disco / Funk 城市律動`, or `心靈 Ambient 宇宙` as current category names.
+- `台語熊high` is a current fixed music genre. Treat old spaced labels such as `台語熊 High` only as aliases into `台語熊high`; do not display `City Pop / Disco / Funk 城市律動` or `心靈 Ambient 宇宙` as current category names.
 
 If a source track does not explicitly allow direct challenge, it may be played, saved, and shared, but it must not be presented as directly challengeable.
 

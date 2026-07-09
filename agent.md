@@ -146,6 +146,7 @@
 - 不要用過多 admin / PM 語氣。
 - 不要寫空洞的行銷口號。
 - 傷心酒吧新投稿音檔只接受 MP3 / M4A / AAC / OGG，單檔上限 30MB；不要把它接回官方守門 Drop 的 100MB / WAV / AIFF 標準音檔政策。
+- 現行正式音樂類型是 11 類；`台語熊high` 是正式類型，不是舊 alias。探索 AI 音樂、傷心酒吧、Drop Battle、Showtime、後台統計與 genre normalize 必須共用同一套類型。
 - 傷心酒吧首屏右上角不要堆主要 CTA；`我要播歌`、`分享吧台`、`AI 音樂鬥歌場`、`榮譽榜` 放在下方 action strip，`練功聖經` / `關於愛波哥` 不放在該區。傷心酒吧分享要用 `/l/all` 或 `/l/{genreIndex}` 短網址，分類分享必須回到同一播放類型。
 - 傷心酒吧首屏招牌不可改成含中文字的圖片字，因為語言切換會失效；主標、副標與 `AIPOGER RADIO` / `BAR HEARTBREAK` 必須用 live text。手機版 action strip 第一排放 `我要播歌`、`分享吧台`、`榮譽榜`，第二排 `AI 音樂鬥歌場` 置中。
 

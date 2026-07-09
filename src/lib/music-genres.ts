@@ -13,6 +13,7 @@ export const MUSIC_GENRE_OPTIONS: MusicGenreOption[] = [
   { value: "Jazz / Bossa 微醺時刻", labelKey: "genre_jazz_bossa" },
   { value: "Spiritual / Ambient 放鬆宇宙", labelKey: "genre_spiritual_ambient" },
   { value: "Chinese Fusion 新派古風", labelKey: "genre_chinese_fusion" },
+  { value: "台語熊high", labelKey: "genre_taiwanese_bear_high" },
   { value: "Original 自我風格", labelKey: "genre_custom" },
 ];
 
@@ -36,7 +37,9 @@ const LEGACY_MUSIC_GENRE_ALIASES = new Map<string, string>([
   ["動感電音", "EDM 百大電音"],
   ["心靈 ambient 宇宙", "Spiritual / Ambient 放鬆宇宙"],
   ["spiritual ambient universe", "Spiritual / Ambient 放鬆宇宙"],
-  ["台語熊 high", "Original 自我風格"],
+  ["台語熊 high", "台語熊high"],
+  ["台語熊high", "台語熊high"],
+  ["taiwanese bear high", "台語熊high"],
   ["自我風格", "Original 自我風格"],
   ["custom style", "Original 自我風格"],
   ["ai music", "Original 自我風格"],

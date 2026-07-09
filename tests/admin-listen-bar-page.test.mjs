@@ -16,7 +16,7 @@ test("listen bar admin can filter tracks by fixed music genre", () => {
 test("listen bar admin no longer exposes pending genre review as a primary filter", () => {
   assert.equal(adminListenBarSource.includes("待補類型"), false);
   assert.equal(adminListenBarSource.includes("uncategorized"), false);
-  assert.ok(productRulesSource.includes("dropdown filter for the fixed 10 music genres"));
+  assert.ok(productRulesSource.includes("dropdown filter for the fixed 11 music genres"));
   assert.ok(productRulesSource.includes("Do not bring back a primary `待補類型` filter"));
 });
 
