@@ -544,6 +544,8 @@ function HookCutContent() {
   const assetKey = searchParams.get('assetKey');
   const challengeTargetQueueId = searchParams.get('challengeEntryId');
   const gatekeeperId = searchParams.get('gatekeeperId');
+  const aiMusicChallengeTrackId = searchParams.get('aiMusicChallengeTrackId');
+  const defenderTrackTitle = searchParams.get('defenderTrackTitle');
   const rematchClaimId = searchParams.get('rematchClaimId');
   const sourceBattleId = searchParams.get('sourceBattleId');
   const isRematchUpload = Boolean(rematchClaimId && sourceBattleId);
@@ -552,7 +554,7 @@ function HookCutContent() {
   const dailyPairing = searchParams.get('dailyPairing') === 'invite' ? 'invite' : 'auto';
   const hookBattleAt = searchParams.get('hookBattleAt') || searchParams.get('scheduledBattleAt');
   const hookBattlePreset = dropBattleSchedulePresetFromValue(searchParams.get('hookBattlePreset'));
-  const hookBattleStartIso = (instantPairing === "invite" || instantPairing === "gatekeeper") && !challengeTargetQueueId ? hookBattleAtToIso(hookBattleAt) : null;
+  const hookBattleStartIso = (instantPairing === "invite" || instantPairing === "gatekeeper" || aiMusicChallengeTrackId) && !challengeTargetQueueId ? hookBattleAtToIso(hookBattleAt) : null;
   const lang = normalizeLang(searchParams.get('lang'));
 
   const t = getT(lang);
@@ -1098,7 +1100,7 @@ function HookCutContent() {
       const userId = isAuthBypassEnabled ? mockUserId : session!.user.id;
 
       if (!isAuthBypassEnabled) {
-        const requestedDropRole = dropBattleRoleForChallengeTarget(challengeTargetQueueId);
+        const requestedDropRole: DropBattleUserRole = aiMusicChallengeTrackId || gatekeeperId ? "challenger" : dropBattleRoleForChallengeTarget(challengeTargetQueueId);
         const activeLock = await findActiveBattleLock(userId, requestedDropRole);
         if (activeLock) {
           alert(dropBattleRoleLockMessage(requestedDropRole, lang));
@@ -1214,6 +1216,8 @@ function HookCutContent() {
         }
         if (challengeTargetQueueId) setupParams.set("challengeEntryId", challengeTargetQueueId);
         if (gatekeeperId) setupParams.set("gatekeeperId", gatekeeperId);
+        if (aiMusicChallengeTrackId) setupParams.set("aiMusicChallengeTrackId", aiMusicChallengeTrackId);
+        if (defenderTrackTitle) setupParams.set("defenderTrackTitle", defenderTrackTitle);
         if (hookBattlePreset) setupParams.set("hookBattlePreset", String(hookBattlePreset));
         else if (hookBattleAt) setupParams.set("hookBattleAt", hookBattleAt);
         setCompactParam(setupParams, "lyrics", lyricsForSave);
@@ -1271,7 +1275,7 @@ function HookCutContent() {
             ? { challenge_target_queue_id: challengeTargetQueueId }
             : {};
         const schedulePayload =
-          (instantPairing === "invite" || instantPairing === "gatekeeper") && !challengeTargetQueueId
+          (instantPairing === "invite" || instantPairing === "gatekeeper" || aiMusicChallengeTrackId) && !challengeTargetQueueId
             ? hookBattlePreset
               ? buildDropBattleSchedulePayloadFromPreset(hookBattlePreset)
               : buildDropBattleSchedulePayload(hookBattleStartIso)

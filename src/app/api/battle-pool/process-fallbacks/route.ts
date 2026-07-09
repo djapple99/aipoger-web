@@ -6,8 +6,9 @@ import {
   shouldExpireOpenDropQueue,
 } from "@/lib/battle-pool-client";
 import { cancelStalePendingDropBattles, isMissingScheduleColumn } from "@/lib/battle-pool-maintenance";
-import { battleSeedForId, pick90sBattleWinner } from "@/lib/battle-90s-system";
+import { battleSeedForId } from "@/lib/battle-90s-system";
 import { DROP_BATTLE_OFFICIAL_AUDIENCE_MIN } from "@/lib/drop-battle-rematch";
+import { pickDropBattleWinnerForRules } from "@/lib/ai-music-challenge-rules";
 
 type SupabaseAdmin = SupabaseClient;
 
@@ -34,6 +35,7 @@ type HookBattleRow = {
   ai_tool_a?: string | null;
   ai_tool_b?: string | null;
   winner?: string | null;
+  battle_type?: string | null;
 };
 
 type VoteRow = { voted_for: string | null; user_id?: string | null; voter_role?: string | null };
@@ -285,7 +287,7 @@ async function settleStaleHookBattles(admin: SupabaseAdmin, warnings: string[]) 
   let { data, error } = await admin
     .from("battles")
     .select(
-      "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,song_a_cover,song_b_cover,status,created_at,scheduled_start_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner",
+      "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,song_a_cover,song_b_cover,status,created_at,scheduled_start_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner,battle_type",
     )
     .in("status", ["live", "active", "ghost_battle", "public_voting"])
     .is("battle_ended_at", null)
@@ -297,7 +299,7 @@ async function settleStaleHookBattles(admin: SupabaseAdmin, warnings: string[]) 
     const legacyRead = await admin
       .from("battles")
       .select(
-        "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,song_a_cover,song_b_cover,status,created_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner",
+        "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,song_a_cover,song_b_cover,status,created_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner,battle_type",
       )
       .in("status", ["live", "active", "ghost_battle", "public_voting"])
       .is("battle_ended_at", null)
@@ -325,9 +327,15 @@ async function settleStaleHookBattles(admin: SupabaseAdmin, warnings: string[]) 
     }
 
     const counts = voteRead.counts;
-    const winner = pick90sBattleWinner(counts, battle.id);
+    if (voteRead.audienceCount < DROP_BATTLE_OFFICIAL_AUDIENCE_MIN) {
+      await expireHookBattle(admin, battle, warnings, counts, voteRead.audienceCount);
+      settled += 1;
+      continue;
+    }
+
+    const winner = pickDropBattleWinnerForRules(counts, battle.id, null, battle.battle_type);
     if (!winner) {
-      await expireHookBattle(admin, battle, warnings, counts);
+      await expireHookBattle(admin, battle, warnings, counts, voteRead.audienceCount);
       settled += 1;
       continue;
     }
@@ -351,16 +359,9 @@ async function settleStaleHookBattles(admin: SupabaseAdmin, warnings: string[]) 
     }
 
     await completeQueues(admin, battle, "completed", warnings);
-    const isOfficial = voteRead.audienceCount >= DROP_BATTLE_OFFICIAL_AUDIENCE_MIN;
-    if (voteRead.audienceCount > 0) {
-      await archiveHookBattleResult(admin, battle, winner, counts, voteRead.audienceCount, isOfficial, warnings);
-    }
-    if (isOfficial) {
-      await notifyHookBattleResult(admin, battle, winner, counts, warnings, true);
-      await recordHookBattleHistory(admin, battle, winner, counts, warnings);
-    } else {
-      await notifyHookBattleResult(admin, battle, winner, counts, warnings, false);
-    }
+    await archiveHookBattleResult(admin, battle, winner, counts, voteRead.audienceCount, true, warnings);
+    await notifyHookBattleResult(admin, battle, winner, counts, warnings, voteRead.audienceCount, true);
+    await recordHookBattleHistory(admin, battle, winner, counts, warnings);
     settled += 1;
   }
   return settled;
@@ -370,7 +371,7 @@ async function archiveFinishedUnarchivedHookBattles(admin: SupabaseAdmin, warnin
   const { data, error } = await admin
     .from("battles")
     .select(
-      "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,song_a_cover,song_b_cover,status,created_at,scheduled_start_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner",
+      "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,song_a_cover,song_b_cover,status,created_at,scheduled_start_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner,battle_type",
     )
     .eq("status", "finished")
     .not("winner", "is", null)
@@ -396,10 +397,9 @@ async function archiveFinishedUnarchivedHookBattles(admin: SupabaseAdmin, warnin
       continue;
     }
     const counts = voteRead.counts;
-    if (counts.fighter_a + counts.fighter_b <= 0 || voteRead.audienceCount <= 0) continue;
+    if (voteRead.audienceCount < DROP_BATTLE_OFFICIAL_AUDIENCE_MIN) continue;
 
-    const isOfficial = voteRead.audienceCount >= DROP_BATTLE_OFFICIAL_AUDIENCE_MIN;
-    await archiveHookBattleResult(admin, battle, winner, counts, voteRead.audienceCount, isOfficial, warnings);
+    await archiveHookBattleResult(admin, battle, winner, counts, voteRead.audienceCount, true, warnings);
     archived += 1;
   }
   return archived;
@@ -410,6 +410,7 @@ async function expireHookBattle(
   battle: HookBattleRow,
   warnings: string[],
   counts: { fighter_a: number; fighter_b: number },
+  audienceCount = 0,
 ) {
   const result = await admin
     .from("battles")
@@ -420,8 +421,7 @@ async function expireHookBattle(
     return;
   }
   await completeQueues(admin, battle, "expired", warnings);
-  await notifyHookBattleResult(admin, battle, null, counts, warnings);
-  await recordHookBattleHistory(admin, battle, null, counts, warnings);
+  await notifyHookBattleResult(admin, battle, null, counts, warnings, audienceCount, false);
 }
 
 async function completeQueues(admin: SupabaseAdmin, battle: HookBattleRow, status: "completed" | "expired", warnings: string[]) {
@@ -489,22 +489,23 @@ async function notifyHookBattleResult(
   winner: "fighter_a" | "fighter_b" | null,
   counts: { fighter_a: number; fighter_b: number },
   warnings: string[],
+  audienceCount = 0,
   official = true,
 ) {
   const noContest = !winner;
-  const unofficialBody =
-    "這場 Drop Battle 已分出勝負，但未滿 3 名觀眾投票，先作為非正式戰果，不進 Showtime，也不累計歌曲正式戰績。";
+  const audienceInsufficientBody =
+    `這場 Drop Battle 需要至少 ${DROP_BATTLE_OFFICIAL_AUDIENCE_MIN} 位非參賽者投票才成立；本場只有 ${audienceCount}/${DROP_BATTLE_OFFICIAL_AUDIENCE_MIN} 位，不產生成果卡、不進 Showtime、不算勝敗。`;
   const rows = [
     {
       user_id: battle.fighter_a_user_id,
       queue_id: battle.queue_a_id,
       battle_id: battle.id,
-      type: noContest ? "battle_no_contest" : "battle_finished",
-      title: noContest ? "Battle 已結束：未分勝負" : winner === "fighter_a" ? "Battle 勝利！" : "Battle 結束",
+      type: noContest || !official ? "battle_no_contest" : "battle_finished",
+      title: noContest || !official ? "Battle 已結束：觀眾不足" : winner === "fighter_a" ? "Battle 勝利！" : "Battle 結束",
       body: noContest
-        ? "這場 Drop Battle 沒有任何觀眾投票，已判定 no contest，不產生成果卡，也不進 Showtime。"
+        ? audienceInsufficientBody
         : !official
-          ? unofficialBody
+          ? audienceInsufficientBody
         : winner === "fighter_a"
           ? `你擊敗了 ${battle.fighter_b_name}，成果已可查看。`
           : `${battle.fighter_b_name} 贏下這場，成果已可查看。`,
@@ -512,6 +513,8 @@ async function notifyHookBattleResult(
         battleNumber: battle.battle_number,
         votesA: counts.fighter_a,
         votesB: counts.fighter_b,
+        audienceCount,
+        officialAudienceMin: DROP_BATTLE_OFFICIAL_AUDIENCE_MIN,
         winner,
       },
     },
@@ -519,12 +522,12 @@ async function notifyHookBattleResult(
       user_id: battle.fighter_b_user_id,
       queue_id: battle.queue_b_id,
       battle_id: battle.id,
-      type: noContest ? "battle_no_contest" : "battle_finished",
-      title: noContest ? "Battle 已結束：未分勝負" : winner === "fighter_b" ? "Battle 勝利！" : "Battle 結束",
+      type: noContest || !official ? "battle_no_contest" : "battle_finished",
+      title: noContest || !official ? "Battle 已結束：觀眾不足" : winner === "fighter_b" ? "Battle 勝利！" : "Battle 結束",
       body: noContest
-        ? "這場 Drop Battle 沒有任何觀眾投票，已判定 no contest，不產生成果卡，也不進 Showtime。"
+        ? audienceInsufficientBody
         : !official
-          ? unofficialBody
+          ? audienceInsufficientBody
         : winner === "fighter_b"
           ? `你擊敗了 ${battle.fighter_a_name}，成果已可查看。`
           : `${battle.fighter_a_name} 贏下這場，成果已可查看。`,
@@ -532,6 +535,8 @@ async function notifyHookBattleResult(
         battleNumber: battle.battle_number,
         votesA: counts.fighter_a,
         votesB: counts.fighter_b,
+        audienceCount,
+        officialAudienceMin: DROP_BATTLE_OFFICIAL_AUDIENCE_MIN,
         winner,
       },
     },
@@ -551,8 +556,6 @@ async function archiveHookBattleResult(
   warnings: string[],
 ) {
   if (!isOfficial) {
-    const direct = await archiveHookBattleResultDirect(admin, battle, winner, counts, audienceCount, false);
-    if (direct.error) warnings.push(`archive unofficial 90s ${battle.id}: ${direct.error}`);
     return;
   }
 
@@ -639,8 +642,8 @@ async function archiveHookBattleResultDirect(
         audience_review: audienceReview,
         result_payload: {
           source: "cron-direct-fallback",
-          archiveScope: isOfficial ? "official-result" : "result-wall",
-          isOfficial,
+          archiveScope: "official-result",
+          isOfficial: true,
           votesA: counts.fighter_a,
           votesB: counts.fighter_b,
           audienceCount,

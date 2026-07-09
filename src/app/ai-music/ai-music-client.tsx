@@ -13,6 +13,7 @@ import {
 } from "@/lib/music-genres";
 import { supabase } from "@/lib/supabase";
 import { listenBarRowToTrack, type ListenBarTrackRow } from "@/lib/listen-bar";
+import { aiMusicChallengeStatusLabel, normalizeAiMusicChallengeStatus, type AiMusicChallengeStatus } from "@/lib/ai-music-challenge-rules";
 
 type TrackSource = "battle" | "bar";
 type BattleWinnerSide = "fighter_a" | "fighter_b";
@@ -38,6 +39,7 @@ type AiMusicTrack = {
   audienceVotes: number;
   winRate: number;
   openForChallenge: boolean;
+  challengeStatus: AiMusicChallengeStatus;
   statusLabel: string;
   href: string;
 };
@@ -132,12 +134,14 @@ function resultPathForBattle(id: string, lang: string) {
   return `/battle/result?battleId=${encodeURIComponent(id)}&${params.toString()}`;
 }
 
-function battleSetupHref(genre: string, lang: string) {
+function aiMusicChallengeHref(track: AiMusicTrack, lang: string) {
   const params = new URLSearchParams({
     lang,
     battleMode: "instant",
-    instantPairing: "auto",
-    genre,
+    instantPairing: "invite",
+    aiMusicChallengeTrackId: track.sourceId,
+    defenderTrackTitle: track.title,
+    genre: track.genre,
   });
   return `/battle/setup?${params.toString()}`;
 }
@@ -358,8 +362,9 @@ async function tracksFromBattleArchives(lang: string) {
       losses: stats.losses,
       audienceVotes: stats.totalVotes || audienceVotes,
       winRate: stats.winRate,
-      openForChallenge: true,
-      statusLabel: lang === "zh" ? "開放同類型挑戰" : "Open to same-style challenge",
+      openForChallenge: false,
+      challengeStatus: "showcase",
+      statusLabel: lang === "zh" ? "Showtime 展示" : "Showtime showcase",
       href: resultPathForBattle(sourceId, lang),
     };
   });
@@ -369,7 +374,7 @@ async function tracksFromListenBar(songStats: ReturnType<typeof buildSongStatsLo
   const { data, error } = await supabase
     .from("listen_bar_tracks")
     .select(
-      "id,title,artist,ai_tool,genre,mood,description,youtube_url,bpm,duration_seconds,audio_path,cover_path,lyrics,is_active,review_status,hidden_at,removed_at,source,is_featured_official,bar_phase,positive_reaction_count,heart_count,star_count,thumb_count,happy_count,created_at,promoted_at,created_by",
+      "id,title,artist,ai_tool,genre,mood,description,youtube_url,bpm,duration_seconds,audio_path,cover_path,lyrics,is_active,review_status,hidden_at,removed_at,source,is_featured_official,bar_phase,positive_reaction_count,heart_count,star_count,thumb_count,happy_count,created_at,promoted_at,created_by,ai_music_challenge_status",
     )
     .eq("is_active", true)
     .order("positive_reaction_count", { ascending: false })
@@ -397,6 +402,7 @@ async function tracksFromListenBar(songStats: ReturnType<typeof buildSongStatsLo
       const votesFor = numberValue(stats?.total_votes_for);
       const votesAgainst = numberValue(stats?.total_votes_against);
       const genre = canonicalGenreBucket(row.genre ?? track.genre);
+      const challengeStatus = normalizeAiMusicChallengeStatus((row as ListenBarTrackRow & { ai_music_challenge_status?: string | null }).ai_music_challenge_status);
       return {
         id: `bar-${track.id}`,
         source: "bar",
@@ -417,8 +423,9 @@ async function tracksFromListenBar(songStats: ReturnType<typeof buildSongStatsLo
         losses,
         audienceVotes: votesFor + votesAgainst,
         winRate: battleCount > 0 ? Math.round((wins / battleCount) * 100) : 0,
-        openForChallenge: false,
-        statusLabel: lang === "zh" ? "暫不接戰" : "Not open for challenge",
+        openForChallenge: challengeStatus === "open",
+        challengeStatus,
+        statusLabel: aiMusicChallengeStatusLabel(challengeStatus, lang),
         href: listenBarHref(track.id, lang),
       };
     });
@@ -637,10 +644,10 @@ function TrackCard({
           </button>
           {track.openForChallenge ? (
             <Link
-              href={battleSetupHref(track.genre, lang)}
+              href={aiMusicChallengeHref(track, lang)}
               className="inline-flex min-h-9 items-center justify-center rounded-md border border-orange-200/38 bg-orange-500/15 px-2 text-[11px] font-black text-orange-50 transition hover:border-orange-100/65 hover:bg-orange-500/22"
             >
-              {isZh ? "挑戰" : "Battle"}
+              {isZh ? "攻擂" : "Challenge"}
             </Link>
           ) : (
             <span className="inline-flex min-h-9 items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-2 text-[11px] font-black text-zinc-600">
@@ -735,10 +742,10 @@ function MiniPlayer({
           </button>
           {track.openForChallenge ? (
             <Link
-              href={battleSetupHref(track.genre, lang)}
+              href={aiMusicChallengeHref(track, lang)}
               className="hidden min-h-10 items-center justify-center rounded-full border border-orange-200/38 bg-orange-500/15 px-3 text-xs font-black text-orange-50 transition hover:border-orange-100/65 hover:bg-orange-500/22 md:inline-flex"
             >
-              {isZh ? "挑戰這首" : "Challenge"}
+              {isZh ? "攻擂這首" : "Challenge"}
             </Link>
           ) : null}
         </div>

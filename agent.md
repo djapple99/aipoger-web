@@ -175,7 +175,7 @@
 - 官方 defender queue 不應佔用 owner 的個人 active Drop Battle 名額，也不應像 owner 親自參戰一樣通知 owner。
 - owner/admin 可以挑戰自己上傳的官方守門 Drop；這種情況下仍只把挑戰者側算入 personal challenger active intent。
 - 鬥歌池官方守門卡要顯示實際歌曲名稱、GATE 與類型徽章，並只提供與一般 Battle 卡一致的 5 秒預播；不可在鬥歌池卡片上提供完整音檔播放器。歌詞可存於模板並帶進戰場，但不需要在鬥歌池卡片上展開。
-- 官方守門 Drop 結果沿用一般 Drop Battle 門檻：0:0 no contest；1-2 位不同聽眾只進成果牆非正式結果；3+ 位不同聽眾才是正式結果 / 榮譽榜資格。
+- 官方守門 Drop 與一般 Drop Battle 門檻一致：0-2 位不同非參賽聽眾皆為觀眾不足 / no contest，不產生成果卡、不進 Showtime、不寫勝敗；3+ 位不同非參賽聽眾才是正式結果 / Showtime 資格。
 
 ## AIPOGER Drop Battle 流程記憶（2026-06-03，2026-06-19 更新秒數）
 
@@ -190,7 +190,7 @@
 - 投票 UI 不顯示假進度條或預設 50% 條。投票提示要明確寫「投票請按愛心」；最終揭票時可以顯示票數，但不要用沒有意義的進度條誤導觀眾。
 - 正式開打前最後 5 秒要有舞台感倒數與 announcer 音效 / 文案：`Ladies and gentlemen, fighters!`。正式音檔使用 `/public/sfx/drop-battle-announcer.wav`，這是 battle 氣氛的一部分，不是一般 countdown。
 - 使用者人在 battle arena 裡時，不應再跳出全域「是否接受挑戰 / 找到對手」提示框；這會打斷戰鬥。全域 Battle 提醒只應在非戰場頁協助回場或清理。
-- Battle 結束後必須清場：有有效觀眾票並產生成果卡時，`battles` 應進 `finished`，兩邊 `battle_queue` 應進 `completed`；0:0 no contest 則應走 `expired` / no contest 清場，不產生成果卡、不進榮譽榜。
+- Battle 結束後必須清場：達到 3 位不同非參賽聽眾並產生成果卡時，`battles` 應進 `finished`，兩邊 `battle_queue` 應進 `completed`；0-2 位觀眾不足 / no contest 則應走 `expired` / no contest 清場，不產生成果卡、不進 Showtime、不寫勝敗。
 - 鬥歌池與右上角帳號提醒都不應殘留已完成 / 已過期 / 已取消的 Drop Battle。若看到 `matched` queue 殘影，要檢查 linked battle 是否已 `finished` / `expired`，並優先清 queue 狀態與未讀 `battle_matched` 通知。
 
 ## AIPOGER Drop Battle 連戰挑戰記憶（2026-06-07）
@@ -207,8 +207,8 @@
 ## AIPOGER Battle 結果判定記憶
 
 - 所有 AIPOGER 比賽規則一致：如果整場比賽沒有任何觀眾投票（0 票、0:0），一律判定為 no contest / 未分勝負。
-- 0 觀眾票的 no contest 場次不產生成果卡、不寫入榮譽榜、不應被視為勝場或可展示成果。
-- 只要有至少 1 張觀眾票，比賽就可以產生成果；若雙方同票，才可使用穩定決勝規則產生 winner，讓成果卡與榮譽榜資料完整。
+- 0-2 位不同非參賽聽眾的 no contest / 觀眾不足場次不產生成果卡、不寫入 Showtime、不應被視為勝場或可展示成果。
+- 只有至少 3 位不同非參賽聽眾投票，比賽才可以產生成果。一般 Drop 同票可使用穩定決勝規則；探索 AI 音樂攻擂同票時關主（fighter_a）勝。
 - 不要把「有觀眾的同票」和「完全沒觀眾票」混為一談。前者可成立 battle 結果，後者沒有市場驗證，不應進入 AIPOGER 認可紀錄。
 
 ## 待辦事項

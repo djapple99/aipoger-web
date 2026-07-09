@@ -25,7 +25,8 @@ import {
   resolveDropBattleScheduledStart,
   type DropRematchClaimPayload,
 } from "@/lib/battle-pool-client";
-import { battleSeedForId, pick90sBattleWinner } from "@/lib/battle-90s-system";
+import { battleSeedForId } from "@/lib/battle-90s-system";
+import { AI_MUSIC_CHALLENGE_BATTLE_TYPE, pickDropBattleWinnerForRules } from "@/lib/ai-music-challenge-rules";
 import { DROP_BATTLE_OFFICIAL_AUDIENCE_MIN, rematchDeadlineSecondsLeft } from "@/lib/drop-battle-rematch";
 import { rememberAuthNextPath } from "@/lib/auth-urls";
 import { battleGuestDisplayName, getBattleGuestId } from "@/lib/battle-guest";
@@ -69,6 +70,7 @@ type BattleData = {
   lyrics_a: string | null;
   lyrics_b: string | null;
   genre: string;
+  battle_type?: string | null;
   scheduled_start_at?: string | null;
   cancellation_evaluation_at?: string | null;
   battle_started_at?: string | null;
@@ -991,12 +993,14 @@ function BattleArenaContent() {
   const isMockBattle = battleId.startsWith("mock-");
   const isPreBattle = (preStartSecondsLeft ?? 0) > 0;
   const isQueueArena = battle?.arena_kind === "queue";
+  const isAiMusicChallenge = battle?.battle_type === AI_MUSIC_CHALLENGE_BATTLE_TYPE;
+  const isAiMusicAwaitingDefender = !isQueueArena && isAiMusicChallenge && battle?.status === "pending";
   const isQueueChallengeOpen = isQueueArena && isDropChallengeAcceptable({
     status: battle?.queue_status,
     scheduled_start_at: battle?.scheduled_start_at,
     cancellation_evaluation_at: battle?.cancellation_evaluation_at,
   });
-  const isArenaWarmup = isPreBattle || isQueueChallengeOpen;
+  const isArenaWarmup = isPreBattle || isQueueChallengeOpen || isAiMusicAwaitingDefender;
   const isFinalPreStartCountdown =
     !isQueueArena &&
     (preStartSecondsLeft ?? 0) > 0 &&
@@ -2330,6 +2334,10 @@ function BattleArenaContent() {
 
   useEffect(() => {
     if (loading || !battle || !battleId) return undefined;
+    if (isAiMusicAwaitingDefender) {
+      setPreStartSecondsLeft(null);
+      return undefined;
+    }
 
     const scheduledStartMs = scheduledStartMsForBattle(battle);
     const alreadyStartedMs =
@@ -2370,7 +2378,7 @@ function BattleArenaContent() {
     tick();
     const timer = window.setInterval(tick, 1000);
     return () => window.clearInterval(timer);
-  }, [battle, battleId, beginBattleWithFirstDeck, loading, searchParams, stopTeaser]);
+  }, [battle, battleId, beginBattleWithFirstDeck, isAiMusicAwaitingDefender, loading, searchParams, stopTeaser]);
 
   useEffect(() => {
     return () => clearArenaEcho();
@@ -2378,6 +2386,7 @@ function BattleArenaContent() {
 
   useEffect(() => {
     if (loading || !battle || !battleId || battle.arena_kind === "queue") return;
+    if (isAiMusicAwaitingDefender) return;
 
     const sharedStartedAtMs =
       timestampParamMs(searchParams.get("battleStartedAtMs")) ??
@@ -2507,10 +2516,11 @@ function BattleArenaContent() {
       setVoteCountdown(0);
       pushResultForEveryone(950);
     }
-  }, [battle, battleId, loading, pushResultForEveryone, queueDeckEchoHold, queueScratchTransition, searchParams]);
+  }, [battle, battleId, isAiMusicAwaitingDefender, loading, pushResultForEveryone, queueDeckEchoHold, queueScratchTransition, searchParams]);
 
   useEffect(() => {
     if (loading || !battle || !battleId || battle.arena_kind === "queue" || battlePhase !== "rps" || (rpsPressed.A && rpsPressed.B)) return;
+    if (isAiMusicAwaitingDefender) return;
     const cycle = window.setInterval(() => {
       setRpsChoices((prev) => ({
         A: rpsCycle[(rpsCycle.indexOf(prev.A as (typeof rpsCycle)[number]) + 1) % rpsCycle.length],
@@ -2518,20 +2528,22 @@ function BattleArenaContent() {
       }));
     }, RPS_CYCLE_MS);
     return () => window.clearInterval(cycle);
-  }, [battle, battleId, battlePhase, loading, rpsPressed.A, rpsPressed.B]);
+  }, [battle, battleId, battlePhase, isAiMusicAwaitingDefender, loading, rpsPressed.A, rpsPressed.B]);
 
   useEffect(() => {
     if (loading || !battle || !battleId || battle.arena_kind === "queue" || battlePhase !== "rps" || !rpsPressed.A || !rpsPressed.B) return;
+    if (isAiMusicAwaitingDefender) return;
     const result = rpsResultForBattle(battleId);
     setRpsChoices({ A: result.choiceA, B: result.choiceB });
     const reveal = window.setTimeout(() => {
       beginBattleWithFirstDeck(result.firstDeck);
     }, 520);
     return () => window.clearTimeout(reveal);
-  }, [battle, battleId, battlePhase, beginBattleWithFirstDeck, loading, rpsPressed.A, rpsPressed.B]);
+  }, [battle, battleId, battlePhase, beginBattleWithFirstDeck, isAiMusicAwaitingDefender, loading, rpsPressed.A, rpsPressed.B]);
 
   useEffect(() => {
     if (loading || !battle || !battleId || battle.arena_kind === "queue" || battlePhase !== "rps") return;
+    if (isAiMusicAwaitingDefender) return;
     if (rpsPressed.A === rpsPressed.B) return;
     const fallbackFirstDeck: DeckKey = rpsPressed.A ? "B" : "A";
     const timeout = window.setTimeout(() => {
@@ -2542,7 +2554,7 @@ function BattleArenaContent() {
       beginBattleWithFirstDeck(fallbackFirstDeck);
     }, 5000);
     return () => window.clearTimeout(timeout);
-  }, [battle, battleId, battlePhase, beginBattleWithFirstDeck, loading, rpsPressed.A, rpsPressed.B]);
+  }, [battle, battleId, battlePhase, beginBattleWithFirstDeck, isAiMusicAwaitingDefender, loading, rpsPressed.A, rpsPressed.B]);
 
   useEffect(() => {
     if (!playedDecks.A || !playedDecks.B) return;
@@ -3112,6 +3124,10 @@ function BattleArenaContent() {
   // ── 投票 ──────────────────────────────────────────────
   const handleVote = async (target: VoteSide) => {
     if (!voteOpen || !battleId) return;
+    if (isAiMusicAwaitingDefender) {
+      alert(lang === "zh" ? "等待關主接戰中，現在只能聽 5 秒預覽，不能投票。" : "Waiting for defender acceptance. Only 5s previews are open.");
+      return;
+    }
     if (hasVoted === target) {
       return;
     }
@@ -3303,7 +3319,7 @@ function BattleArenaContent() {
     if (!REMATCH_CHALLENGE_ENABLED) return;
     if (loading || !battle || battle.arena_kind === "queue" || !playedDecks.A || !playedDecks.B || voteOpen || !rematchPromptReady || winnerRevealOpen) return;
     if (battleId.startsWith("mock-") || isAuthBypassEnabled) return;
-    const winnerSideForWindow = pick90sBattleWinner(votes, battleId, firstDeck);
+    const winnerSideForWindow = pickDropBattleWinnerForRules(votes, battleId, firstDeck, battle.battle_type);
     if (!winnerSideForWindow || votes.fighter_a + votes.fighter_b <= 0) return;
     if (audienceVoteCount < DROP_BATTLE_OFFICIAL_AUDIENCE_MIN) {
       queueResultFallback(700);
@@ -3518,7 +3534,11 @@ function BattleArenaContent() {
       hour12: false,
     }).format(new Date(scheduledStartMs));
   })();
-  const voteStatusText = voteOpen
+  const voteStatusText = isAiMusicAwaitingDefender
+    ? lang === "zh"
+      ? "等待關主接戰"
+      : "Waiting Defender"
+    : voteOpen
     ? battlePlaybackComplete
       ? `截止倒數 ${voteCountdown ?? FINAL_VOTE_SECONDS}`
       : "投票開放"
@@ -3528,7 +3548,11 @@ function BattleArenaContent() {
         ? "投票尚未開放"
         : "Voting Not Open";
   const ritualStatusText =
-    isArenaWarmup
+    isAiMusicAwaitingDefender
+      ? lang === "zh"
+        ? "等待關主接戰 · 可聽 5 秒預播 · 投票未開放"
+        : "Waiting for defender · 5s previews open · Voting closed"
+      : isArenaWarmup
       ? lang === "zh"
         ? isQueueArena
           ? `${preStartSecondsLeft && preStartSecondsLeft > 0 ? `開戰倒數 ${preStartClock}` : "鬥場暖場中"} · 可離開再回來`
@@ -3613,7 +3637,8 @@ function BattleArenaContent() {
       </span>
     );
   })();
-  const winnerRpcSide = pick90sBattleWinner(votes, battleId, firstDeck);
+  const resultEligible = audienceVoteCount >= DROP_BATTLE_OFFICIAL_AUDIENCE_MIN;
+  const winnerRpcSide = resultEligible ? pickDropBattleWinnerForRules(votes, battleId, firstDeck, battle.battle_type) : null;
   const hasResultWinner = Boolean(winnerRpcSide);
   const winnerIsB = winnerRpcSide === "fighter_b";
   const winnerSide: DeckKey = winnerIsB ? "B" : "A";
@@ -3944,12 +3969,12 @@ function BattleArenaContent() {
           <div className="w-[min(92vw,560px)] rounded-[1.8rem] border border-white/12 bg-black/72 px-6 py-7 shadow-[0_0_80px_rgba(0,0,0,0.5)]">
             <p className="text-xs font-black uppercase tracking-[0.28em] text-zinc-400">NO CONTEST</p>
             <h2 className="mt-3 text-3xl font-black text-white">
-              {lang === "zh" ? "本場沒有觀眾投票" : "No Audience Votes"}
+              {lang === "zh" ? "觀眾不足，戰績未成立" : "Audience Too Small"}
             </h2>
             <p className="mt-3 text-sm font-bold leading-6 text-zinc-300">
               {lang === "zh"
-                ? "0:0 不產生成果卡，也不進 Showtime。請重新開戰帖或分享給觀眾進場投票。"
-                : "A 0:0 battle does not create a result card or enter the honor board. Open another card or share the arena with listeners."}
+                ? `正式戰績需要至少 ${DROP_BATTLE_OFFICIAL_AUDIENCE_MIN} 位非參賽者投票；目前 ${audienceVoteCount}/${DROP_BATTLE_OFFICIAL_AUDIENCE_MIN}，不產生成果卡、不進 Showtime、不算勝敗。`
+                : `Official records need at least ${DROP_BATTLE_OFFICIAL_AUDIENCE_MIN} non-fighter votes. Current audience voters: ${audienceVoteCount}/${DROP_BATTLE_OFFICIAL_AUDIENCE_MIN}. No result card, no Showtime entry, no win/loss.`}
             </p>
             <Link
               href={`/battle?lang=${lang}`}
@@ -4124,7 +4149,11 @@ function BattleArenaContent() {
               {isArenaWarmup ? (
                 <div className="relative -mt-1 w-full rounded-[1.4rem] border border-orange-300/30 bg-black/62 px-4 py-4 text-center shadow-[0_0_44px_rgba(255,106,0,0.18)]">
                   <p className="text-[11px] font-black uppercase tracking-[0.22em] text-orange-200/80">
-                    {isQueueArena
+                    {isAiMusicAwaitingDefender
+                      ? lang === "zh"
+                        ? "等待關主接戰"
+                        : "Waiting Defender"
+                      : isQueueArena
                       ? lang === "zh"
                         ? "鬥場已開 · 可離開再回來"
                         : "Arena Open · Re-enter Anytime"
@@ -4133,7 +4162,7 @@ function BattleArenaContent() {
                         : "Arena Open · Battle Starts Soon"}
                   </p>
                   <p className="mt-2 bg-gradient-to-b from-white via-orange-200 to-orange-500 bg-clip-text text-[clamp(3.2rem,9vw,5.4rem)] font-black leading-none text-transparent drop-shadow-[0_0_34px_rgba(255,106,0,0.55)]">
-                    {preStartClock}
+                    {isAiMusicAwaitingDefender ? "PENDING" : preStartClock}
                   </p>
                   {isFinalPreStartCountdown ? (
                     <div className="mx-auto mt-3 max-w-[17rem] rounded-2xl border border-red-100/70 bg-red-600 px-3 py-2 text-white shadow-[0_0_28px_rgba(220,38,38,0.34)]">
@@ -4147,7 +4176,11 @@ function BattleArenaContent() {
                     </div>
                   ) : null}
                   <p className="mt-2 text-xs font-bold leading-5 text-zinc-300">
-                    {isQueueArena
+                    {isAiMusicAwaitingDefender
+                      ? lang === "zh"
+                        ? "攻擂邀請已送出；關主接受後才會依預定時間開打。等待期間雙方可聽 5 秒預播，但不能投票。"
+                        : "The challenge invite is sent. The battle starts at the scheduled time only after defender acceptance. 5s previews are open; voting is closed."
+                      : isQueueArena
                       ? lang === "zh"
                         ? `${preStartTimeLabel ? `${preStartTimeLabel} 開戰。` : ""}你可以在時間內出去再進來；挑戰者進場後會自動切入正式猜拳開打。`
                         : `${preStartTimeLabel ? `${preStartTimeLabel} start. ` : ""}Leave and re-enter before the time. When a rival joins, this arena switches into the formal throw.`

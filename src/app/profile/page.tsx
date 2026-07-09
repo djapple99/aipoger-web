@@ -12,6 +12,7 @@ import { readFighterNameFromStorage, writeFighterNameToStorage } from "@/lib/fig
 import { loadFighterNameFromProfile, saveFighterNameToProfile } from "@/lib/user-profile-fighter-name";
 import { loadIsAdmin } from "@/lib/user-profile-admin";
 import { LISTEN_BAR_AUDIO_BUCKET } from "@/lib/listen-bar";
+import { aiMusicChallengeStatusLabel, normalizeAiMusicChallengeStatus, type AiMusicChallengeStatus } from "@/lib/ai-music-challenge-rules";
 
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 const BATTLE_AUDIO_BUCKET = "battle-audio";
@@ -30,6 +31,8 @@ type ListenBarTrack = {
   heart_count?: number | null;
   positive_reaction_count?: number | null;
   created_at?: string | null;
+  ai_music_challenge_status?: string | null;
+  ai_music_challenge_updated_at?: string | null;
 };
 
 type BattleQueueRow = {
@@ -78,6 +81,23 @@ type HonorFavoriteRecord = {
   updatedAt?: string | null;
 };
 
+type AiMusicChallengeInvite = {
+  id: string;
+  defender_track_id: string;
+  defender_user_id: string;
+  challenger_user_id: string;
+  battle_id?: string | null;
+  status: string;
+  scheduled_start_at?: string | null;
+  created_at?: string | null;
+  listen_bar_tracks?: {
+    title?: string | null;
+    artist?: string | null;
+    genre?: string | null;
+    ai_tool?: string | null;
+  } | null;
+};
+
 type CreatorItem = {
   id: string;
   category: CreatorFilter;
@@ -91,6 +111,9 @@ type CreatorItem = {
   aiTool?: string | null;
   audioUrl?: string | null;
   favoriteRecord?: HonorFavoriteRecord | null;
+  trackId?: string | null;
+  challengeStatus?: AiMusicChallengeStatus;
+  pendingChallengeInvite?: AiMusicChallengeInvite | null;
 };
 
 type CreatorFilter = "all" | "listenBar" | "battle" | "records" | "wins" | "favorites";
@@ -180,12 +203,14 @@ function ProfileInner() {
   const [battles, setBattles] = useState<BattleRow[]>([]);
   const [wins, setWins] = useState<BattleArchiveRow[]>([]);
   const [honorFavorites, setHonorFavorites] = useState<HonorFavoriteRecord[]>([]);
+  const [aiMusicInvites, setAiMusicInvites] = useState<AiMusicChallengeInvite[]>([]);
   const [creatorFilter, setCreatorFilter] = useState<CreatorFilter>("all");
   const [previewingItemId, setPreviewingItemId] = useState<string | null>(null);
   const [selectedMarqueeItemId, setSelectedMarqueeItemId] = useState<string | null>(null);
   const [favoriteOrder, setFavoriteOrder] = useState<string[]>([]);
   const [favoriteOrderReadyKey, setFavoriteOrderReadyKey] = useState<string | null>(null);
   const [favoriteRemoveBusy, setFavoriteRemoveBusy] = useState<Record<string, boolean>>({});
+  const [challengeBusy, setChallengeBusy] = useState<Record<string, boolean>>({});
   const cropFileInputRef = useRef<HTMLInputElement>(null);
   const avatarSectionRef = useRef<HTMLDivElement>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -306,12 +331,21 @@ function ProfileInner() {
           return (await response.json()) as { records?: HonorFavoriteRecord[] };
         });
 
-        const [tracksResult, queuesResult, battlesResult, winsResult, favoritesResult] = await Promise.allSettled([
+        const challengeInvitesPromise = fetch("/api/ai-music/challenges", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          cache: "no-store",
+        }).then(async (response) => {
+          if (!response.ok) throw new Error(`ai-music-challenges ${response.status}`);
+          return (await response.json()) as { incoming?: AiMusicChallengeInvite[]; outgoing?: AiMusicChallengeInvite[] };
+        });
+
+        const [tracksResult, queuesResult, battlesResult, winsResult, favoritesResult, challengeInvitesResult] = await Promise.allSettled([
           tracksPromise,
           queuesPromise,
           battlesPromise,
           winsPromise,
           favoritesPromise,
+          challengeInvitesPromise,
         ]);
 
         if (tracksResult.status === "fulfilled") {
@@ -351,6 +385,10 @@ function ProfileInner() {
           );
         } else {
           setCreatorError(copy.error);
+        }
+
+        if (challengeInvitesResult.status === "fulfilled") {
+          setAiMusicInvites(Array.isArray(challengeInvitesResult.value.incoming) ? challengeInvitesResult.value.incoming : []);
         }
       } catch (error) {
         console.error("[profile creator data]", error);
@@ -674,7 +712,87 @@ function ProfileInner() {
     }
   }, [previewingItemId, router, stopPreview]);
 
+  const updateTrackChallengeStatus = useCallback(async (trackId: string, status: AiMusicChallengeStatus) => {
+    setChallengeBusy((current) => ({ ...current, [`track:${trackId}`]: true }));
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        router.push("/auth");
+        return;
+      }
+      const response = await fetch("/api/ai-music/challenges", {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ trackId, status }),
+      });
+      const payload = (await response.json().catch(() => null)) as { track?: { ai_music_challenge_status?: string | null }; error?: string } | null;
+      if (!response.ok) throw new Error(payload?.error ?? "update challenge status failed");
+      setBarTracks((current) =>
+        current.map((track) =>
+          track.id === trackId
+            ? { ...track, ai_music_challenge_status: normalizeAiMusicChallengeStatus(payload?.track?.ai_music_challenge_status ?? status) }
+            : track,
+        ),
+      );
+    } catch (error) {
+      console.warn("[profile] update challenge status failed", error);
+      alert(error instanceof Error ? error.message : String(error));
+    } finally {
+      setChallengeBusy((current) => {
+        const next = { ...current };
+        delete next[`track:${trackId}`];
+        return next;
+      });
+    }
+  }, [router]);
+
+  const respondAiMusicInvite = useCallback(async (invite: AiMusicChallengeInvite, decision: "accept" | "reject") => {
+    setChallengeBusy((current) => ({ ...current, [`invite:${invite.id}`]: true }));
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        router.push("/auth");
+        return;
+      }
+      const response = await fetch("/api/ai-music/challenges", {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ inviteId: invite.id, decision }),
+      });
+      const payload = (await response.json().catch(() => null)) as { battleId?: string | null; status?: string; error?: string } | null;
+      if (!response.ok) throw new Error(payload?.error ?? "respond invite failed");
+      setAiMusicInvites((current) => current.map((row) => (row.id === invite.id ? { ...row, status: payload?.status ?? decision } : row)));
+      if (decision === "accept" && payload?.battleId) router.push(`/battle/${payload.battleId}?lang=${lang}`);
+    } catch (error) {
+      console.warn("[profile] respond ai music invite failed", error);
+      alert(error instanceof Error ? error.message : String(error));
+    } finally {
+      setChallengeBusy((current) => {
+        const next = { ...current };
+        delete next[`invite:${invite.id}`];
+        return next;
+      });
+    }
+  }, [lang, router]);
+
   const creatorItems = useMemo<CreatorItem[]>(() => {
+    const pendingInviteByTrackId = new Map(
+      aiMusicInvites
+        .filter((invite) => invite.status === "pending")
+        .map((invite) => [invite.defender_track_id, invite]),
+    );
     const tracks = barTracks.map((track) => ({
       id: `bar-${track.id}`,
       category: "listenBar" as const,
@@ -684,6 +802,7 @@ function ProfileInner() {
         track.artist?.trim(),
         track.ai_tool?.trim(),
         track.genre?.trim(),
+        aiMusicChallengeStatusLabel(normalizeAiMusicChallengeStatus(track.ai_music_challenge_status), lang),
         `${track.heart_count ?? track.positive_reaction_count ?? 0} ${isZh ? "反應" : "reactions"}`,
       ]
         .filter(Boolean)
@@ -693,6 +812,9 @@ function ProfileInner() {
       genre: track.genre,
       aiTool: track.ai_tool,
       audioUrl: storagePublicUrl(LISTEN_BAR_AUDIO_BUCKET, track.audio_path),
+      trackId: track.id,
+      challengeStatus: normalizeAiMusicChallengeStatus(track.ai_music_challenge_status),
+      pendingChallengeInvite: pendingInviteByTrackId.get(track.id) ?? null,
     }));
 
     const queues = battleQueues.map((queue) => ({
@@ -772,6 +894,7 @@ function ProfileInner() {
       .sort((a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime());
   }, [
     barTracks,
+    aiMusicInvites,
     battleQueues,
     battles,
     copy.battle,
@@ -987,6 +1110,9 @@ function ProfileInner() {
                     const dateParts = formatDateParts(item.date, lang);
                     const showFavoriteControls = creatorFilter === "favorites" && item.category === "favorites";
                     const isMarqueeSelected = selectedMarqueeItemId === item.id;
+                    const showAiMusicChallengeControls = item.category === "listenBar" && Boolean(item.trackId);
+                    const challengeStatus = item.challengeStatus ?? "showcase";
+                    const pendingChallengeInvite = item.pendingChallengeInvite ?? null;
                     const titleContent = (
                       <>
                         <span className="aipo-profile-marquee block overflow-hidden text-base font-black text-zinc-50">
@@ -1043,11 +1169,72 @@ function ProfileInner() {
                             {titleContent}
                           </Link>
                         )}
-                        <span className="col-span-2 flex items-center justify-between gap-3 sm:col-span-1 sm:justify-end">
-                          <span className="min-w-12 text-right text-xs leading-4 tabular-nums text-zinc-500">
+                        <span className="col-span-2 flex flex-col gap-2 sm:col-span-1 sm:items-end">
+                          <span className="min-w-12 text-left text-xs leading-4 tabular-nums text-zinc-500 sm:text-right">
                             <span className="block">{dateParts.date}</span>
                             <span className="block">{dateParts.time}</span>
                           </span>
+                          {showAiMusicChallengeControls ? (
+                            <span className="flex max-w-full flex-wrap justify-start gap-1.5 sm:justify-end">
+                              {(["showcase", "open", "custom"] as const).map((status) => {
+                                const selected = challengeStatus === status;
+                                return (
+                                  <button
+                                    key={status}
+                                    type="button"
+                                    disabled={Boolean(challengeBusy[`track:${item.trackId}`])}
+                                    onClick={(event) => {
+                                      event.preventDefault();
+                                      event.stopPropagation();
+                                      if (!item.trackId) return;
+                                      void updateTrackChallengeStatus(item.trackId, status);
+                                    }}
+                                    className={`rounded-full border px-2.5 py-1 text-[11px] font-black transition disabled:cursor-wait disabled:opacity-45 ${
+                                      selected
+                                        ? "border-orange-200/65 bg-orange-400/18 text-orange-50"
+                                        : "border-white/10 bg-black/25 text-zinc-400 hover:border-orange-200/40 hover:text-white"
+                                    }`}
+                                  >
+                                    {aiMusicChallengeStatusLabel(status, lang)}
+                                  </button>
+                                );
+                              })}
+                            </span>
+                          ) : null}
+                          {pendingChallengeInvite ? (
+                            <span className="flex flex-wrap justify-start gap-1.5 sm:justify-end">
+                              <Link
+                                href={pendingChallengeInvite.battle_id ? `/battle/${pendingChallengeInvite.battle_id}?lang=${lang}` : "#"}
+                                className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-2.5 py-1 text-[11px] font-black text-cyan-100 transition hover:border-cyan-100/50"
+                              >
+                                {isZh ? "等待接戰" : "Pending"}
+                              </Link>
+                              <button
+                                type="button"
+                                disabled={Boolean(challengeBusy[`invite:${pendingChallengeInvite.id}`])}
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  void respondAiMusicInvite(pendingChallengeInvite, "accept");
+                                }}
+                                className="rounded-full border border-green-200/35 bg-green-400/10 px-2.5 py-1 text-[11px] font-black text-green-100 transition hover:border-green-100/60 disabled:cursor-wait disabled:opacity-45"
+                              >
+                                {isZh ? "接受" : "Accept"}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={Boolean(challengeBusy[`invite:${pendingChallengeInvite.id}`])}
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  void respondAiMusicInvite(pendingChallengeInvite, "reject");
+                                }}
+                                className="rounded-full border border-red-200/30 bg-red-500/10 px-2.5 py-1 text-[11px] font-black text-red-100 transition hover:border-red-100/55 disabled:cursor-wait disabled:opacity-45"
+                              >
+                                {isZh ? "拒絕" : "Reject"}
+                              </button>
+                            </span>
+                          ) : null}
                           {showFavoriteControls ? (
                             <span className="flex items-center gap-1">
                               <button
@@ -1081,13 +1268,13 @@ function ProfileInner() {
                                 ×
                               </button>
                             </span>
-                          ) : item.audioUrl && item.category !== "favorites" ? (
+                          ) : item.audioUrl && item.category !== "favorites" && (item.category !== "listenBar" || challengeStatus === "custom") ? (
                             <button
                               type="button"
                               onClick={() => openChallengeCut(item)}
                               className="rounded-full border border-orange-300/35 bg-orange-400/10 px-3 py-1.5 text-xs font-black text-orange-100 transition hover:border-orange-200 hover:bg-orange-400/18"
                             >
-                              {isZh ? "挑戰" : "Challenge"}
+                              {item.category === "listenBar" ? (isZh ? "自定開戰" : "Custom Battle") : isZh ? "挑戰" : "Challenge"}
                             </button>
                           ) : null}
                         </span>

@@ -401,6 +401,8 @@ export default function BattleSetupPage() {
   const [challengeEntryId, setChallengeEntryId] = useState<string | null>(null);
   const [challengeDailyEntryId, setChallengeDailyEntryId] = useState<string | null>(null);
   const [gatekeeperId, setGatekeeperId] = useState<string | null>(null);
+  const [aiMusicChallengeTrackId, setAiMusicChallengeTrackId] = useState<string | null>(null);
+  const [defenderTrackTitle, setDefenderTrackTitle] = useState<string | null>(null);
   const [draft, setDraft] = useState<BattleDraft | null>(null);
   const [draftChecked, setDraftChecked] = useState(false);
   const [battleMode, setBattleMode] = useState<BattleMode>('instant');
@@ -463,6 +465,8 @@ export default function BattleSetupPage() {
         const urlChallengeEntryId = params.get('challengeEntryId');
         const urlChallengeDailyEntryId = params.get('challengeDailyEntryId');
         const urlGatekeeperId = params.get('gatekeeperId');
+        const urlAiMusicChallengeTrackId = params.get('aiMusicChallengeTrackId');
+        const urlDefenderTrackTitle = params.get('defenderTrackTitle');
         const urlAudioPath = params.get('audioPath');
         const urlAudioSha256 = params.get('audioSha256');
         const urlFullAudioPath = params.get('fullAudioPath');
@@ -515,6 +519,12 @@ export default function BattleSetupPage() {
           setInstantPairingMode('gatekeeper');
           setBattleMode('instant');
         }
+        if (urlAiMusicChallengeTrackId && /^[0-9a-f-]{36}$/i.test(urlAiMusicChallengeTrackId)) {
+          setAiMusicChallengeTrackId(urlAiMusicChallengeTrackId);
+          setDefenderTrackTitle(urlDefenderTrackTitle?.trim() || null);
+          setInstantPairingMode('invite');
+          setBattleMode('instant');
+        }
         if (DAILY_BATTLE_PUBLIC_ENTRY_ENABLED && urlChallengeDailyEntryId && /^[0-9a-f-]{36}$/i.test(urlChallengeDailyEntryId)) {
           setChallengeDailyEntryId(urlChallengeDailyEntryId);
           setBattleMode('daily');
@@ -536,7 +546,7 @@ export default function BattleSetupPage() {
           return;
         }
         const session = await getFreshSession();
-        if ((urlChallengeEntryId || urlChallengeDailyEntryId || urlGatekeeperId) && !session?.user) {
+        if ((urlChallengeEntryId || urlChallengeDailyEntryId || urlGatekeeperId || urlAiMusicChallengeTrackId) && !session?.user) {
           router.replace(authHrefForCurrentPage());
           setDraftChecked(true);
           return;
@@ -841,7 +851,8 @@ export default function BattleSetupPage() {
   // ── 提交 ─────────────────────────────────────────────
   const handleSubmit = async () => {
     const finalAiTool = aiTool === '其他' ? otherTool.trim() : aiTool;
-    const shouldScheduleDropBattle = battleMode === 'instant' && (instantPairingMode === 'invite' || instantPairingMode === 'gatekeeper') && !challengeEntryId;
+    const isAiMusicChallengeFlow = Boolean(aiMusicChallengeTrackId);
+    const shouldScheduleDropBattle = battleMode === 'instant' && (instantPairingMode === 'invite' || instantPairingMode === 'gatekeeper' || isAiMusicChallengeFlow) && !challengeEntryId;
     const schedulePreset = shouldScheduleDropBattle && battleStartOption !== 'custom' ? battleStartOption : null;
     const scheduledHookStartIso = shouldScheduleDropBattle && battleStartOption === 'custom' ? datetimeLocalToIso(hookBattleAt) : null;
     const scheduleValidation = shouldScheduleDropBattle && battleStartOption === 'custom'
@@ -870,8 +881,11 @@ export default function BattleSetupPage() {
       if (challengeEntryId) params.set('challengeEntryId', challengeEntryId);
       if (challengeDailyEntryId) params.set('challengeDailyEntryId', challengeDailyEntryId);
       if (gatekeeperId) params.set('gatekeeperId', gatekeeperId);
+      if (aiMusicChallengeTrackId) params.set('aiMusicChallengeTrackId', aiMusicChallengeTrackId);
+      if (defenderTrackTitle) params.set('defenderTrackTitle', defenderTrackTitle);
       if (challengeEntryId && genre.trim()) params.set('genre', genre.trim());
       if (gatekeeperId && genre.trim()) params.set('genre', genre.trim());
+      if (aiMusicChallengeTrackId && genre.trim()) params.set('genre', genre.trim());
       if (shouldScheduleDropBattle) {
         if (schedulePreset) params.set('hookBattlePreset', String(schedulePreset));
         else params.set('hookBattleAt', hookBattleAt);
@@ -880,7 +894,7 @@ export default function BattleSetupPage() {
       return;
     }
 
-    if (!fighterName.trim() || !songName.trim() || (!challengeEntryId && !gatekeeperId && !genre) || (aiTool === '其他' && !finalAiTool)) {
+    if (!fighterName.trim() || !songName.trim() || (!challengeEntryId && !gatekeeperId && !aiMusicChallengeTrackId && !genre) || (aiTool === '其他' && !finalAiTool)) {
       setFormError(t('setup_required_error'));
       return;
     }
@@ -1028,7 +1042,7 @@ export default function BattleSetupPage() {
       if (isAuthBypassEnabled) {
         queueIdForNav = `mock-${Date.now()}`;
       } else {
-        const requestedDropRole = gatekeeperId ? 'challenger' : dropBattleRoleForChallengeTarget(challengeEntryId);
+        const requestedDropRole = gatekeeperId || aiMusicChallengeTrackId ? 'challenger' : dropBattleRoleForChallengeTarget(challengeEntryId);
         const activeLock = await findActiveBattleLock(userId, requestedDropRole);
         if (activeLock) {
           alert(dropBattleRoleLockMessage(requestedDropRole, lang));
@@ -1100,6 +1114,37 @@ export default function BattleSetupPage() {
             throw new Error(payload?.error || (lang === 'zh' ? '建立官方守門 Drop 挑戰失敗。' : 'Failed to create gatekeeper Drop challenge.'));
           }
           setUploadProgress(lang === 'zh' ? '挑戰成立，進入戰場…' : 'Challenge Created. Entering Arena...');
+          router.push(`/battle/${payload.battleId}?lang=${lang}`);
+          return;
+        }
+
+        if (aiMusicChallengeTrackId) {
+          setUploadProgress(lang === 'zh' ? '送出探索作品攻擂邀請…' : 'Sending Explore challenge invite...');
+          const response = await fetch('/api/ai-music/challenges', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+              defenderTrackId: aiMusicChallengeTrackId,
+              fighterName: fighterName.trim(),
+              songName: songName.trim(),
+              aiTool: finalAiTool.trim() || null,
+              audioPath: draft.audioPath,
+              audioSha256: draft.audioSha256 ?? null,
+              lyrics: draft.lyrics.trim() || null,
+              avatarUrl: avatarForBattle ?? finalAvatarUrl,
+              coverUrl: coverForBattle ?? finalCoverUrl,
+              schedulePreset,
+              scheduledStartIso: scheduledHookStartIso,
+            }),
+          });
+          const payload = (await response.json().catch(() => null)) as { battleId?: string; error?: string } | null;
+          if (!response.ok || !payload?.battleId) {
+            throw new Error(payload?.error || (lang === 'zh' ? '送出探索作品攻擂邀請失敗。' : 'Failed to send Explore challenge invite.'));
+          }
+          setUploadProgress(lang === 'zh' ? '攻擂邀請已送出，等待關主接戰…' : 'Invite sent. Waiting for defender...');
           router.push(`/battle/${payload.battleId}?lang=${lang}`);
           return;
         }
@@ -1236,7 +1281,7 @@ export default function BattleSetupPage() {
   const displayAvatarUrl = avatarPreview ?? savedAvatarUrl ?? profileAvatarPreview;
   const displayCoverUrl = coverPreview ?? savedCoverUrl;
   const hookDurationLabel = draft?.hookDuration ? `${Number(draft.hookDuration).toFixed(1)}s` : '60s';
-  const showDropBattleSchedule = battleMode === 'instant' && (instantPairingMode === 'invite' || instantPairingMode === 'gatekeeper') && !challengeEntryId;
+  const showDropBattleSchedule = battleMode === 'instant' && (instantPairingMode === 'invite' || instantPairingMode === 'gatekeeper' || Boolean(aiMusicChallengeTrackId)) && !challengeEntryId;
   const customScheduleMin = toDatetimeLocalValue(new Date(Date.now() + DROP_BATTLE_SCHEDULE_MIN_LEAD_MS));
   const customScheduleMax = toDatetimeLocalValue(new Date(Date.now() + DROP_BATTLE_SCHEDULE_MAX_LEAD_MS));
   const dropBattleSchedulePicker = showDropBattleSchedule ? (
@@ -1392,13 +1437,13 @@ export default function BattleSetupPage() {
               <button
                 key={option.value}
                 type="button"
-                disabled={Boolean(challengeEntryId || gatekeeperId)}
+                disabled={Boolean(challengeEntryId || gatekeeperId || aiMusicChallengeTrackId)}
                 onClick={() => setInstantPairingMode(option.value)}
                 className={`rounded-2xl border px-4 py-3 text-left transition ${
                   instantPairingMode === option.value
                     ? 'border-red-300/85 bg-red-500/10 text-red-50 shadow-[0_0_0_1px_rgba(248,113,113,0.35),0_0_28px_rgba(239,68,68,0.32)]'
                     : 'border-white/10 bg-black/30 text-zinc-300 hover:border-red-300/40 hover:bg-red-500/[0.04]'
-                } ${challengeEntryId || gatekeeperId ? 'cursor-not-allowed opacity-55' : ''}`}
+                } ${challengeEntryId || gatekeeperId || aiMusicChallengeTrackId ? 'cursor-not-allowed opacity-55' : ''}`}
               >
                 <p className="font-black">{option.title}</p>
                 <p className="mt-1 text-xs leading-5 text-zinc-400">{option.desc}</p>
@@ -1412,6 +1457,16 @@ export default function BattleSetupPage() {
                 {lang === 'zh'
                   ? '這張卡會直接挑戰官方 Drop。你可以設定開戰時間，再分享戰場連結拉人投票。'
                   : 'This card challenges an official Drop directly. Set a start time, then share the arena link for votes.'}
+              </p>
+            </div>
+          ) : null}
+          {aiMusicChallengeTrackId ? (
+            <div className="mt-4 rounded-2xl border border-cyan-300/30 bg-cyan-300/10 px-4 py-3">
+              <p className="text-sm font-black text-cyan-50">{lang === 'zh' ? '探索 AI 音樂攻擂' : 'Explore AI Music Challenge'}</p>
+              <p className="mt-1 text-xs font-bold leading-5 text-zinc-400">
+                {lang === 'zh'
+                  ? '這場使用 60s Drop 接戰；送出後會先等待關主接受，等待期間只能聽 5 秒預覽，不能投票。'
+                  : 'This uses a 60s Drop. After submit, it waits for defender acceptance; previews are limited to 5s and voting stays closed.'}
               </p>
             </div>
           ) : null}
@@ -1434,12 +1489,14 @@ export default function BattleSetupPage() {
     if (challengeEntryId) startParams.set('challengeEntryId', challengeEntryId);
     if (challengeDailyEntryId) startParams.set('challengeDailyEntryId', challengeDailyEntryId);
     if (gatekeeperId) startParams.set('gatekeeperId', gatekeeperId);
+    if (aiMusicChallengeTrackId) startParams.set('aiMusicChallengeTrackId', aiMusicChallengeTrackId);
+    if (defenderTrackTitle) startParams.set('defenderTrackTitle', defenderTrackTitle);
     if (fighterName.trim()) startParams.set('fighterName', fighterName.trim());
     if (genre.trim()) startParams.set('genre', genre.trim());
     startParams.set('battleMode', battleMode);
     startParams.set('instantPairing', instantPairingMode);
     startParams.set('dailyPairing', dailyPairingMode);
-    if (battleMode === 'instant' && (instantPairingMode === 'invite' || instantPairingMode === 'gatekeeper') && !challengeEntryId) {
+    if (battleMode === 'instant' && (instantPairingMode === 'invite' || instantPairingMode === 'gatekeeper' || aiMusicChallengeTrackId) && !challengeEntryId) {
       if (battleStartOption === 'custom') startParams.set('hookBattleAt', hookBattleAt);
       else startParams.set('hookBattlePreset', String(battleStartOption));
     }
@@ -1572,6 +1629,13 @@ export default function BattleSetupPage() {
             {lang === 'zh'
               ? '你正在挑戰官方守門 Drop，上傳後會直接產生戰場。'
               : 'You are challenging an official gatekeeper Drop. Uploading creates the arena directly.'}
+          </p>
+        )}
+        {aiMusicChallengeTrackId && (
+          <p className="mx-auto mt-4 max-w-xl rounded-full border border-cyan-300/30 bg-cyan-300/10 px-4 py-2 text-xs font-bold text-cyan-100">
+            {lang === 'zh'
+              ? `你正在從探索頁攻擂${defenderTrackTitle ? `《${defenderTrackTitle}》` : '這首作品'}；關主接受前只能預聽，不能投票。`
+              : `You are challenging ${defenderTrackTitle ? `"${defenderTrackTitle}"` : 'this Explore track'}; voting stays closed until the defender accepts.`}
           </p>
         )}
         {challengeDailyEntryId && (
@@ -1741,16 +1805,20 @@ export default function BattleSetupPage() {
             <label className="mb-2 block text-sm text-zinc-400">
               {t('genre')} <span className="font-black text-orange-400">*</span>
             </label>
-            {challengeEntryId || gatekeeperId ? (
+            {challengeEntryId || gatekeeperId || aiMusicChallengeTrackId ? (
               <div className="rounded-2xl border border-orange-300/30 bg-orange-500/10 px-6 py-4">
                 <p className="text-lg font-black text-orange-50">
-                  {GENRES.find((g) => g.value === genre)?.labelKey ? t(GENRES.find((g) => g.value === genre)!.labelKey) : genre || (lang === 'zh' ? '沿用挑戰卡曲風' : 'Challenge Card Genre')}
+                  {GENRES.find((g) => g.value === genre)?.labelKey ? t(GENRES.find((g) => g.value === genre)!.labelKey) : genre || (lang === 'zh' ? '沿用挑戰作品曲風' : 'Challenge Track Genre')}
                 </p>
                 <p className="mt-2 text-xs font-bold leading-5 text-zinc-400">
                   {gatekeeperId
                     ? lang === 'zh'
                       ? '官方守門 Drop 會鎖定卡片類型，挑戰者不需要也不能改類型。'
                       : 'Official gatekeeper Drops lock the card genre. No extra genre selection is needed.'
+                    : aiMusicChallengeTrackId
+                      ? lang === 'zh'
+                        ? '探索攻擂會沿用被挑戰作品的曲風，不需要也不能改類型。'
+                        : 'Explore challenges use the challenged track genre. No extra genre selection is needed.'
                     : lang === 'zh'
                       ? '接受挑戰時會自動沿用原戰帖卡的曲風，不需要也不能改類型。'
                       : 'Challenge accepts automatically use the original card genre. No extra genre selection is needed.'}

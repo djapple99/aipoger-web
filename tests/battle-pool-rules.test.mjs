@@ -83,6 +83,13 @@ const {
 } = await import("../src/lib/drop-battle-rematch.ts");
 
 const {
+  AI_MUSIC_CHALLENGE_BATTLE_TYPE,
+  AI_MUSIC_CHALLENGE_DAILY_INVITE_LIMIT,
+  normalizeAiMusicChallengeStatus,
+  pickDropBattleWinnerForRules,
+} = await import("../src/lib/ai-music-challenge-rules.ts");
+
+const {
   resolveDropBattleLinkResolution,
 } = await import("../src/lib/drop-battle-link-resolution.ts");
 
@@ -278,6 +285,20 @@ test("90s battle creates no contest without votes, but resolves tied audience vo
   const tieBreaker = firstDeckForBattleId("battle-with-tied-votes") === "B" ? "fighter_b" : "fighter_a";
   assert.equal(pick90sBattleWinner({ fighter_a: 2, fighter_b: 2 }, "battle-with-tied-votes"), tieBreaker);
   assert.equal(pick90sBattleWinner({ fighter_a: 1, fighter_b: 1 }, "battle-with-tied-votes", "B"), "fighter_b");
+});
+
+test("Explore AI Music challenges keep defender tie advantage and a six invite daily cap", () => {
+  assert.equal(AI_MUSIC_CHALLENGE_DAILY_INVITE_LIMIT, 6);
+  assert.equal(normalizeAiMusicChallengeStatus("open"), "open");
+  assert.equal(normalizeAiMusicChallengeStatus("legacy-open"), "showcase");
+  assert.equal(
+    pickDropBattleWinnerForRules({ fighter_a: 2, fighter_b: 2 }, "battle-with-tied-votes", "B", AI_MUSIC_CHALLENGE_BATTLE_TYPE),
+    "fighter_a",
+  );
+  assert.equal(
+    pickDropBattleWinnerForRules({ fighter_a: 1, fighter_b: 1 }, "battle-with-tied-votes", "B", "formal"),
+    "fighter_b",
+  );
 });
 
 test("prediction rewards stay platform-points only", () => {

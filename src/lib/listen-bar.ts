@@ -92,6 +92,8 @@ export type ListenBarTrackRow = {
   updated_at?: string | null;
   created_by?: string | null;
   promoted_at?: string | null;
+  ai_music_challenge_status?: string | null;
+  ai_music_challenge_updated_at?: string | null;
 };
 
 export const EMPTY_LISTEN_BAR_TRACK: ListenBarTrack = {

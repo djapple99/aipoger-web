@@ -117,8 +117,7 @@ Current behavior:
 - Both participants in an unfinished Drop Battle should be able to cancel from the arena or eligible Battle Pool card.
 - Finished Drop Battles open a short king-of-the-hill rematch window only after the result is official: at least 3 distinct audience voters, a valid winner, no existing next battle, and a formal Drop Battle type. The window is 5 seconds to claim the challenger slot, then 120 seconds for the challenger to upload their Drop.
 - If nobody claims the 5-second rematch slot, the battle should go directly to the result card and should not leave a lingering rematch card.
-- A 0:0 no contest never creates a result card, defender/rematch window, Showtime record, or formal battle stats.
-- A battle with 1-2 distinct audience voters may create an unofficial result card and appear on the Result Wall / 成果牆, but it must not enter Showtime, update official song battle stats, or open the defender/rematch window.
+- A battle with fewer than 3 distinct audience voters (0-2) is audience-insufficient / no contest: it must not create a result card, enter Showtime, update official song battle stats, write win/loss history, or open the defender/rematch window.
 - A battle with at least 3 distinct audience voters is an official Drop Battle result and may feed Showtime, update per-song battle stats, and open the defender/rematch window.
 - The official-result audience threshold counts distinct listeners only: one signed-in `battle_votes.user_id` or one anonymous `battle_guest_votes.guest_id` per battle. Fighter participation does not count toward the 3-audience minimum.
 - A user may hold one active Drop founder/open-card intent and one active Drop challenger intent at the same time.
@@ -130,7 +129,7 @@ Current behavior:
 - Duplicate active Drop audio should be blocked by audio hash when the column exists.
 - The Battle Pool genre filter shows only the fixed music genres. It must not show `全部風格` / `All Styles`; the default unselected state still displays all official Gatekeeper Drops and open Battle cards.
 - Clicking an already selected Battle Pool genre clears the selection and returns to the unselected all-content view.
-- The Result Wall / 成果牆 is the monthly public result library. It may show both official and unofficial result cards, as long as there is at least 1 distinct audience voter and a valid winner.
+- The Result Wall / 成果牆 must not be used to preserve under-threshold battle outcomes. Public result cards require the official 3-distinct-audience threshold.
 - AIPOGER Showtime only consumes official Drop Battle results with at least 3 distinct audience voters.
 - Battle history should focus on the song, not the fighter profile. Cards may show per-song challenge count, wins, losses, ties, and win rate.
 - V1 song battle stats do not open URL upload or a full creator song-library UI. They only group the same creator's repeated Drop Battle entries by normalized song title and show battle count, wins, losses, votes, win rate, and Showtime count.
@@ -157,7 +156,7 @@ Official Gatekeeper Drops:
 - When a challenger submits, the system creates a per-challenge battle instance: one copied official defender queue plus one challenger queue. Official audio, lyrics, and cover art must be copied into the defender side so the created Battle Room behaves like a normal Battle Room for listening, lyrics, cover display, watching, and sharing.
 - The copied official defender queue must not count as the owner's personal active Drop Battle intent, must not notify the owner as if they personally entered a battle, and must not pollute owner-facing active battle limits.
 - The challenger side counts as an active challenger intent until that battle ends or is cancelled. Owner/admin may also challenge their own official Gatekeeper Drop; the copied defender side still must not count as a personal active founder intent.
-- Official Gatekeeper Drop results follow the same audience threshold rules as normal Drop Battle: 0:0 no result, 1-2 distinct voters unofficial Result Wall only, 3+ distinct voters official/Showtime eligible.
+- Official Gatekeeper Drop results follow the same audience threshold rules as normal Drop Battle: 0-2 distinct voters audience-insufficient/no result, 3+ distinct voters official/Showtime eligible.
 
 Initial operating target:
 
@@ -276,6 +275,17 @@ This page is the AI music works browser. It should:
 - Treat old genre labels only as aliases into the current 10 genres; do not display `台語熊 High`, `City Pop / Disco / Funk 城市律動`, or `心靈 Ambient 宇宙` as current category names.
 
 If a source track does not explicitly allow direct challenge, it may be played, saved, and shared, but it must not be presented as directly challengeable.
+
+Explore direct challenge loop:
+
+- Explore AI Music works that can be challenged come from the AI music public airplay / Bar Heartbreak `listen_bar_tracks` data flow, not from the old standalone Drop challenge pool.
+- Creators manage each public-pool track's challenge state from Profile: `僅展示` / showcase, `等人挑戰` / open, or `自定開戰` / custom.
+- Open Explore challenges always use the 60s Drop Battle cropper. The challenger selects or uploads their own Drop, sets the start time, and sends an invite to the defender.
+- The created battle starts in a pending defender-acceptance state. While pending, the battle room allows both sides' 5-second previews and arena sharing, but voting is closed.
+- If the defender rejects, the challenge ends without result, stats, or win/loss history. If the defender accepts, the battle starts according to the scheduled time.
+- A challenger may send at most 6 Explore attack invites per Taiwan day.
+- Explore direct-challenge official records require at least 3 distinct non-participant audience voters. Ties go to the defender (`fighter_a`). Under 3 voters displays audience-insufficient/no result.
+- The original Drop Battle Pool remains for temporary/open-card matchmaking and quick Drop Battle entry that does not start from Explore AI Music.
 
 ## AIPOGER Showtime
 

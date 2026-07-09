@@ -111,12 +111,25 @@ export async function POST(request: NextRequest) {
 
   const { data: battle, error: battleError } = await admin
     .from("battles")
-    .select("id,status,winner,battle_ended_at")
+    .select("id,status,winner,battle_ended_at,scheduled_start_at,started_at,battle_started_at")
     .eq("id", battleId)
-    .maybeSingle<{ id: string; status: string | null; winner: string | null; battle_ended_at: string | null }>();
+    .maybeSingle<{
+      id: string;
+      status: string | null;
+      winner: string | null;
+      battle_ended_at: string | null;
+      scheduled_start_at?: string | null;
+      started_at?: string | null;
+      battle_started_at?: string | null;
+    }>();
   if (battleError) return jsonError(battleError.message, 500);
   if (!battle?.id) return jsonError("Battle not found", 404);
   if (battle.winner || battle.status === "finished" || battle.battle_ended_at) return jsonError("Battle already settled", 409);
+  if (battle.status === "pending") return jsonError("Voting is not open while waiting for defender acceptance", 409);
+  const startMs = new Date(battle.battle_started_at ?? battle.started_at ?? battle.scheduled_start_at ?? "").getTime();
+  if (battle.status === "active" && Number.isFinite(startMs) && startMs > Date.now()) {
+    return jsonError("Voting is not open yet", 409);
+  }
 
   const { error: upsertError } = await admin.from("battle_guest_votes").upsert(
     {

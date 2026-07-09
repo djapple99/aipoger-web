@@ -71,10 +71,21 @@ Check:
 - Both participants can cancel an unfinished Drop Battle when the user is eligible.
 - Quick start labels and stored start times are based on successful publish time, not a stale `expires_at`.
 - Waiting room opens correctly.
-- 0 audience voters becomes no contest and does not create a result card, Showtime archive, or song battle stats.
-- 1-2 distinct audience voters can show an unofficial result but does not create a Showtime archive, song battle stats, or rematch window.
+- 0-2 distinct audience voters becomes audience-insufficient / no contest and does not create a result card, Showtime archive, song battle stats, battle history, or rematch window.
 - 3+ distinct audience voters creates an official result that can be archived.
 - AIPOGER Showtime reads Drop winners as `熱血 Drop 抓波勝利榜`.
+
+## Explore AI Music Challenge Checklist
+
+Check:
+
+- `/ai-music` loads real Bar Heartbreak/public-airplay works and only lights the challenge button when the track status is `等人挑戰`.
+- Profile creator data lets the owner switch each public track among `僅展示`, `等人挑戰`, and `自定開戰`.
+- Challenging from Explore opens the 60s Drop cropper/setup flow, carries the defender track ID through upload, and requires a start time.
+- Submitted Explore challenges create a pending battle/invite; the battle room allows both 5-second previews but voting remains closed.
+- Defender accept moves the battle to active/live according to the scheduled time; reject closes the invite without stats.
+- A challenger is blocked after 6 outgoing Explore attack invites in the Taiwan day.
+- Explore challenge results need 3 distinct non-participant voters; tied official results award the defender; under-3 shows audience-insufficient/no result.
 
 When the 10-card limit is implemented, also check:
 
