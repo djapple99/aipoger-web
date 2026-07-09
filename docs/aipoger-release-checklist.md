@@ -45,6 +45,7 @@ Check:
 - Logged-out visitors cannot vote or comment in Bar Heartbreak.
 - Logged-out visitors are asked to sign in before upload/Battle actions.
 - Logged-in users can see profile/fighter identity where expected.
+- Profile `收藏歌曲` supports batch selection and batch removal, and removing saved favorites does not delete historical Heart reactions.
 
 ## Drop Battle Checklist
 

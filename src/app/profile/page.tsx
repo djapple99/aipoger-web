@@ -246,6 +246,9 @@ function ProfileInner() {
   const [favoriteOrder, setFavoriteOrder] = useState<string[]>([]);
   const [favoriteOrderReadyKey, setFavoriteOrderReadyKey] = useState<string | null>(null);
   const [favoriteRemoveBusy, setFavoriteRemoveBusy] = useState<Record<string, boolean>>({});
+  const [favoriteSelectionMode, setFavoriteSelectionMode] = useState(false);
+  const [selectedFavoriteIds, setSelectedFavoriteIds] = useState<string[]>([]);
+  const [bulkFavoriteBusy, setBulkFavoriteBusy] = useState(false);
   const [challengeBusy, setChallengeBusy] = useState<Record<string, boolean>>({});
   const cropFileInputRef = useRef<HTMLInputElement>(null);
   const avatarSectionRef = useRef<HTMLDivElement>(null);
@@ -285,6 +288,17 @@ function ProfileInner() {
             honorFavorite: "Showtime",
             moveUp: "上移",
             moveDown: "下移",
+            manageFavorites: "批次管理",
+            finishManageFavorites: "完成",
+            selectVisibleFavorites: "全選顯示",
+            clearFavoriteSelection: "取消選取",
+            removeSelectedFavorites: "刪除選取",
+            selectedFavoritesPrefix: "已選",
+            selectedFavoritesSuffix: "首",
+            favoriteBatchHelp: "選取多首後可一次刪除收藏。",
+            favoriteBatchRemoveFailed: "部分收藏刪除失敗，請稍後再試。",
+            favoriteSelected: "已選取",
+            favoriteTapToSelect: "點擊選取",
             removeFavorite: "刪除",
             removingFavorite: "刪除中",
             active: "公開中",
@@ -335,6 +349,17 @@ function ProfileInner() {
             honorFavorite: "Showtime",
             moveUp: "Move Up",
             moveDown: "Move Down",
+            manageFavorites: "Manage",
+            finishManageFavorites: "Done",
+            selectVisibleFavorites: "Select Visible",
+            clearFavoriteSelection: "Clear",
+            removeSelectedFavorites: "Remove Selected",
+            selectedFavoritesPrefix: "Selected",
+            selectedFavoritesSuffix: "songs",
+            favoriteBatchHelp: "Select multiple saved songs and remove them at once.",
+            favoriteBatchRemoveFailed: "Some saved songs could not be removed. Please try again.",
+            favoriteSelected: "Selected",
+            favoriteTapToSelect: "Tap to select",
             removeFavorite: "Remove",
             removingFavorite: "Removing",
             active: "Live",
@@ -566,6 +591,16 @@ function ProfileInner() {
     window.localStorage.setItem(key, JSON.stringify(favoriteOrder));
   }, [favoriteOrder, favoriteOrderReadyKey, userId]);
 
+  useEffect(() => {
+    if (creatorFilter !== "favorites") {
+      setFavoriteSelectionMode(false);
+      setSelectedFavoriteIds([]);
+      return;
+    }
+    const currentFavoriteIds = new Set(honorFavorites.map((record) => `favorite-${record.recordKey}`));
+    setSelectedFavoriteIds((current) => current.filter((id) => currentFavoriteIds.has(id)));
+  }, [creatorFilter, honorFavorites]);
+
   const stopPreview = useCallback(() => {
     previewTokenRef.current += 1;
     if (fiveSecondPreviewTimerRef.current) {
@@ -792,10 +827,28 @@ function ProfileInner() {
     });
   }, [honorFavorites]);
 
-  const removeFavoriteItem = useCallback(async (item: CreatorItem) => {
-    const record = item.favoriteRecord;
-    if (!record?.recordKey || !record.targetKind || !record.targetId) return;
-    setFavoriteRemoveBusy((current) => ({ ...current, [item.id]: true }));
+  const toggleFavoriteSelection = useCallback((itemId: string) => {
+    setSelectedFavoriteIds((current) => (
+      current.includes(itemId) ? current.filter((id) => id !== itemId) : [...current, itemId]
+    ));
+  }, []);
+
+  const removeFavoriteItems = useCallback(async (items: CreatorItem[]) => {
+    const favoriteItems = items.filter((item) => {
+      const record = item.favoriteRecord;
+      return item.category === "favorites" && Boolean(record?.recordKey && record.targetKind && record.targetId);
+    });
+    if (favoriteItems.length === 0) return;
+    if (favoriteItems.length > 1) setBulkFavoriteBusy(true);
+    setFavoriteRemoveBusy((current) => {
+      const next = { ...current };
+      favoriteItems.forEach((item) => {
+        next[item.id] = true;
+      });
+      return next;
+    });
+    const removedItemIds: string[] = [];
+    const removedRecordKeys: string[] = [];
     try {
       const {
         data: { session },
@@ -805,37 +858,57 @@ function ProfileInner() {
         router.push("/auth");
         return;
       }
-      const response = await fetch("/api/honor-board/interactions", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          action: "favorite",
-          recordKey: record.recordKey,
-          targetKind: record.targetKind,
-          targetId: record.targetId,
-          targetTitle: record.targetTitle,
-          targetArtist: record.targetArtist,
-          targetGenre: record.targetGenre,
-        }),
-      });
-      const payload = (await response.json().catch(() => null)) as { record?: HonorFavoriteRecord; error?: string } | null;
-      if (!response.ok) throw new Error(payload?.error ?? "remove favorite failed");
-      if (previewingItemId === item.id) stopPreview();
-      setHonorFavorites((current) => current.filter((favorite) => favorite.recordKey !== record.recordKey));
-      setFavoriteOrder((current) => current.filter((id) => id !== item.id));
+
+      for (const item of favoriteItems) {
+        const record = item.favoriteRecord;
+        if (!record?.recordKey || !record.targetKind || !record.targetId) continue;
+        const response = await fetch("/api/honor-board/interactions", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            action: "favorite",
+            recordKey: record.recordKey,
+            targetKind: record.targetKind,
+            targetId: record.targetId,
+            targetTitle: record.targetTitle,
+            targetArtist: record.targetArtist,
+            targetGenre: record.targetGenre,
+          }),
+        });
+        const payload = (await response.json().catch(() => null)) as { record?: HonorFavoriteRecord; error?: string } | null;
+        if (!response.ok) throw new Error(payload?.error ?? "remove favorite failed");
+        removedItemIds.push(item.id);
+        removedRecordKeys.push(record.recordKey);
+      }
+
+      if (removedItemIds.length > 0) {
+        if (previewingItemId && removedItemIds.includes(previewingItemId)) stopPreview();
+        setHonorFavorites((current) => current.filter((favorite) => !removedRecordKeys.includes(favorite.recordKey)));
+        setFavoriteOrder((current) => current.filter((id) => !removedItemIds.includes(id)));
+        setSelectedFavoriteIds((current) => current.filter((id) => !removedItemIds.includes(id)));
+        if (favoriteItems.length > 1) setFavoriteSelectionMode(false);
+      }
     } catch (error) {
       console.warn("[profile] remove favorite failed", error);
+      if (favoriteItems.length > 1) alert(copy.favoriteBatchRemoveFailed);
     } finally {
       setFavoriteRemoveBusy((current) => {
         const next = { ...current };
-        delete next[item.id];
+        favoriteItems.forEach((item) => {
+          delete next[item.id];
+        });
         return next;
       });
+      setBulkFavoriteBusy(false);
     }
-  }, [previewingItemId, router, stopPreview]);
+  }, [copy.favoriteBatchRemoveFailed, previewingItemId, router, stopPreview]);
+
+  const removeFavoriteItem = useCallback(async (item: CreatorItem) => {
+    await removeFavoriteItems([item]);
+  }, [removeFavoriteItems]);
 
   const updateTrackChallengeStatus = useCallback(async (trackId: string, status: AiMusicChallengeStatus) => {
     setChallengeBusy((current) => ({ ...current, [`track:${trackId}`]: true }));
@@ -1068,7 +1141,7 @@ function ProfileInner() {
     { key: "favorites" as const, label: copy.favorites, value: honorFavorites.length, sub: copy.favorited },
   ];
 
-  const filteredCreatorItems = (
+  const filteredCreatorItemsBase = (
     creatorFilter === "favorites"
       ? [...creatorItems]
           .filter((item) => item.category === "favorites")
@@ -1080,7 +1153,15 @@ function ProfileInner() {
       : creatorFilter === "all"
         ? creatorItems
         : creatorItems.filter((item) => item.category === creatorFilter)
-  ).slice(0, 16);
+  );
+  const filteredCreatorItems = creatorFilter === "favorites" ? filteredCreatorItemsBase : filteredCreatorItemsBase.slice(0, 16);
+  const selectedFavoriteIdSet = useMemo(() => new Set(selectedFavoriteIds), [selectedFavoriteIds]);
+  const visibleFavoriteIds = filteredCreatorItems
+    .filter((item) => item.category === "favorites")
+    .map((item) => item.id);
+  const selectedVisibleFavoriteIds = visibleFavoriteIds.filter((id) => selectedFavoriteIdSet.has(id));
+  const selectedFavoriteItems = filteredCreatorItems.filter((item) => item.category === "favorites" && selectedFavoriteIdSet.has(item.id));
+  const allVisibleFavoritesSelected = visibleFavoriteIds.length > 0 && selectedVisibleFavoriteIds.length === visibleFavoriteIds.length;
 
   useEffect(() => {
     playlistItemsRef.current = filteredCreatorItems;
@@ -1342,14 +1423,74 @@ function ProfileInner() {
             </div>
 
             <div className="mt-6">
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="text-lg font-black text-zinc-50">{creatorListTitle}</h3>
+                {creatorFilter === "favorites" && filteredCreatorItems.length > 0 ? (
+                  <div className="flex flex-col gap-2 sm:items-end">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {favoriteSelectionMode ? (
+                        <>
+                          <span className="rounded-full border border-cyan-200/20 bg-cyan-300/[0.07] px-3 py-1.5 text-xs font-black text-cyan-100">
+                            {copy.selectedFavoritesPrefix} {selectedFavoriteIds.length} {copy.selectedFavoritesSuffix}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={bulkFavoriteBusy || allVisibleFavoritesSelected}
+                            onClick={() => {
+                              setSelectedFavoriteIds((current) => Array.from(new Set([...current, ...visibleFavoriteIds])));
+                            }}
+                            className="rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-xs font-black text-zinc-200 transition hover:border-cyan-200/50 hover:text-cyan-100 disabled:cursor-wait disabled:opacity-45"
+                          >
+                            {copy.selectVisibleFavorites}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={bulkFavoriteBusy || selectedFavoriteIds.length === 0}
+                            onClick={() => setSelectedFavoriteIds([])}
+                            className="rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-xs font-black text-zinc-400 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-45"
+                          >
+                            {copy.clearFavoriteSelection}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={bulkFavoriteBusy || selectedFavoriteItems.length === 0}
+                            onClick={() => void removeFavoriteItems(selectedFavoriteItems)}
+                            className="rounded-full border border-red-300/30 bg-red-500/12 px-3 py-1.5 text-xs font-black text-red-100 transition hover:border-red-200/70 hover:bg-red-500/18 disabled:cursor-not-allowed disabled:opacity-45"
+                          >
+                            {bulkFavoriteBusy ? copy.removingFavorite : copy.removeSelectedFavorites}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={bulkFavoriteBusy}
+                            onClick={() => {
+                              setFavoriteSelectionMode(false);
+                              setSelectedFavoriteIds([]);
+                            }}
+                            className="rounded-full border border-orange-200/25 bg-orange-400/10 px-3 py-1.5 text-xs font-black text-orange-100 transition hover:border-orange-100/55 disabled:cursor-wait disabled:opacity-45"
+                          >
+                            {copy.finishManageFavorites}
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setFavoriteSelectionMode(true)}
+                          className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-3 py-1.5 text-xs font-black text-cyan-100 transition hover:border-cyan-100/55"
+                        >
+                          {copy.manageFavorites}
+                        </button>
+                      )}
+                    </div>
+                    {favoriteSelectionMode ? <p className="text-xs font-bold text-zinc-500">{copy.favoriteBatchHelp}</p> : null}
+                  </div>
+                ) : null}
               </div>
               {filteredCreatorItems.length > 0 ? (
                 <div className="space-y-2">
                   {filteredCreatorItems.map((item, index) => {
                     const dateParts = formatDateParts(item.date, lang);
                     const showFavoriteControls = creatorFilter === "favorites" && item.category === "favorites";
+                    const isFavoriteSelected = selectedFavoriteIdSet.has(item.id);
                     const isMarqueeSelected = selectedMarqueeItemId === item.id;
                     const showAiMusicChallengeControls = item.category === "listenBar" && Boolean(item.trackId);
                     const challengeStatus = item.challengeStatus ?? "showcase";
@@ -1375,15 +1516,43 @@ function ProfileInner() {
                     return (
                       <article
                         key={item.id}
-                        onClick={() => setSelectedMarqueeItemId(item.id)}
+                        onClick={() => {
+                          setSelectedMarqueeItemId(item.id);
+                          if (favoriteSelectionMode && showFavoriteControls) toggleFavoriteSelection(item.id);
+                        }}
                         onFocusCapture={() => setSelectedMarqueeItemId(item.id)}
                         onMouseEnter={() => setSelectedMarqueeItemId(item.id)}
                         onMouseLeave={() => setSelectedMarqueeItemId((current) => (current === item.id ? null : current))}
-                        className={`aipo-profile-row grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 transition hover:border-orange-300/45 hover:bg-orange-300/[0.06] sm:grid-cols-[2.5rem_4.5rem_minmax(0,1fr)_auto] sm:items-center ${
+                        className={`aipo-profile-row grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 rounded-2xl border px-4 py-3 transition sm:grid-cols-[2.5rem_4.5rem_minmax(0,1fr)_auto] sm:items-center ${
+                          favoriteSelectionMode && showFavoriteControls
+                            ? isFavoriteSelected
+                              ? "border-cyan-200/55 bg-cyan-300/[0.075] shadow-[0_0_28px_rgba(103,232,249,0.1)]"
+                              : "border-white/10 bg-black/25 hover:border-cyan-200/45 hover:bg-cyan-300/[0.045]"
+                            : "border-white/10 bg-black/25 hover:border-orange-300/45 hover:bg-orange-300/[0.06]"
+                        } ${
                           isMarqueeSelected ? "aipo-profile-marquee-active" : ""
                         }`}
                       >
-                        {item.audioUrl ? (
+                        {favoriteSelectionMode && showFavoriteControls ? (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              toggleFavoriteSelection(item.id);
+                            }}
+                            className={`flex h-10 w-10 items-center justify-center rounded-xl border text-sm font-black transition ${
+                              isFavoriteSelected
+                                ? "border-cyan-100 bg-cyan-300 text-black shadow-[0_0_18px_rgba(103,232,249,0.35)]"
+                                : "border-cyan-200/25 bg-cyan-300/[0.08] text-cyan-100 hover:border-cyan-100/70"
+                            }`}
+                            aria-pressed={isFavoriteSelected}
+                            aria-label={isFavoriteSelected ? copy.favoriteSelected : copy.favoriteTapToSelect}
+                            title={isFavoriteSelected ? copy.favoriteSelected : copy.favoriteTapToSelect}
+                          >
+                            {isFavoriteSelected ? "✓" : ""}
+                          </button>
+                        ) : item.audioUrl ? (
                           <button
                             type="button"
                             onClick={() => togglePreview(item)}
@@ -1405,7 +1574,9 @@ function ProfileInner() {
                             item.kind
                           )}
                         </span>
-                        {item.canNavigate === false || !item.href ? (
+                        {favoriteSelectionMode && showFavoriteControls ? (
+                          <span className="min-w-0 rounded-xl">{titleContent}</span>
+                        ) : item.canNavigate === false || !item.href ? (
                           <span className="min-w-0 rounded-xl">{titleContent}</span>
                         ) : (
                           <Link href={item.href} className="min-w-0 rounded-xl outline-none transition focus-visible:ring-2 focus-visible:ring-orange-300/70">
@@ -1507,6 +1678,15 @@ function ProfileInner() {
                             </span>
                           ) : null}
                           {showFavoriteControls ? (
+                            favoriteSelectionMode ? (
+                              <span className={`rounded-full border px-3 py-1.5 text-xs font-black ${
+                                isFavoriteSelected
+                                  ? "border-cyan-200/45 bg-cyan-300/10 text-cyan-100"
+                                  : "border-white/10 bg-black/25 text-zinc-500"
+                              }`}>
+                                {isFavoriteSelected ? copy.favoriteSelected : copy.favoriteTapToSelect}
+                              </span>
+                            ) : (
                             <span className="flex items-center gap-1">
                               <button
                                 type="button"
@@ -1539,6 +1719,7 @@ function ProfileInner() {
                                 ×
                               </button>
                             </span>
+                            )
                           ) : item.audioUrl && item.category !== "favorites" && (item.category !== "listenBar" || challengeStatus === "custom") ? (
                             <button
                               type="button"
