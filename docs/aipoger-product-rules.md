@@ -268,6 +268,10 @@ The homepage first-layer low-pressure entry is `探索 AI 音樂`, linking to `/
 This page is the AI music works browser. It should:
 
 - Use the main title `AI 音樂作品`.
+- Highlight the subtitle `依照風格快速瀏覽作品，聽歌、送愛心，或向你喜歡的作品發起挑戰。` in bright yellow so it reads as the page's quick action promise.
+- Include a compact upload prompt: `上傳音樂讓大家看到你的作品，請從傷心酒吧投稿。`, linking to the Bar Heartbreak submission area.
+- Keep the top summary items compact, like small info chips, not wide dashboard cards.
+- Do not show internal verification wording such as `真實資料，不含 mock` or `Real records only` in the public page UI.
 - Group real works by the current 11 fixed music genres.
 - Show at most 6 works per genre before `看更多`.
 - Keep cards music-platform-like: cover, song title, creator, AI tool, heart count, and challenge count.

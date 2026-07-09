@@ -176,6 +176,8 @@ Check:
 
 - Homepage first-layer primary action says `探索 AI 音樂` and links to `/ai-music?lang=zh`.
 - `/ai-music?lang=zh` returns 200 and uses the main title `AI 音樂作品`.
+- The `/ai-music` header subtitle is bright yellow, the top summary items are compact chips, and the public UI does not show `真實資料，不含 mock` / `Real records only`.
+- The `/ai-music` header includes the upload prompt `上傳音樂讓大家看到你的作品，請從傷心酒吧投稿。` and links it to Bar Heartbreak submission.
 - The page groups works by the current 11 fixed music genres and shows at most 6 cards per genre before `看更多`.
 - Cards show song title, creator, AI tool, heart count, and challenge count.
 - Desktop hover exposes the Battle Record HUD.

@@ -804,10 +804,20 @@ export default function AiMusicClient() {
             <h1 className="mt-3 text-4xl font-black leading-tight text-white sm:text-5xl">
               {isZh ? "AI 音樂作品" : "AI Music Works"}
             </h1>
-            <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-zinc-400 sm:text-base">
+            <p className="mt-3 max-w-3xl text-sm font-black leading-7 text-yellow-200 sm:text-base">
               {isZh
                 ? "依照風格快速瀏覽作品，聽歌、送愛心，或向你喜歡的作品發起挑戰。"
                 : "Browse tracks by style, listen, send hearts, or start a challenge from music you like."}
+            </p>
+            <p className="mt-2 max-w-3xl text-xs font-bold leading-6 text-zinc-300 sm:text-sm">
+              {isZh ? "上傳音樂讓大家看到你的作品，請從 " : "Upload your music so listeners can find it here. Submit through "}
+              <Link
+                href={`${withLang("/listen-bar")}#play-request`}
+                className="font-black text-yellow-100 underline decoration-yellow-200/35 underline-offset-4 transition hover:text-white hover:decoration-yellow-100"
+              >
+                {isZh ? "傷心酒吧投稿" : "Bar Heartbreak"}
+              </Link>
+              {isZh ? "。" : "."}
             </p>
           </div>
           <div className="flex flex-wrap gap-2 md:justify-end">
@@ -829,12 +839,12 @@ export default function AiMusicClient() {
           </div>
         </header>
 
-        <section className="grid gap-3 pb-7 sm:grid-cols-3">
+        <section className="flex flex-wrap gap-2 pb-7">
           {[
             {
               label: isZh ? "作品數" : "Tracks",
               value: totalVisibleTracks,
-              note: isZh ? "真實資料，不含 mock" : "Real records only",
+              note: isZh ? "公播作品" : "Public works",
             },
             {
               label: isZh ? "風格" : "Styles",
@@ -847,12 +857,12 @@ export default function AiMusicClient() {
               note: isZh ? "先探索，再挑戰" : "Explore first, battle next",
             },
           ].map((item) => (
-            <div key={item.label} className="rounded-md border border-white/10 bg-black/46 px-4 py-3 shadow-[0_18px_48px_rgba(0,0,0,0.28)]">
+            <div key={item.label} className="min-w-[8.4rem] rounded-md border border-white/10 bg-black/48 px-3 py-2 shadow-[0_12px_30px_rgba(0,0,0,0.26)] sm:min-w-[9.2rem]">
               <p className={`${fontRighteous.className} text-[10px] uppercase tracking-[0.18em] text-cyan-100/62`}>
                 {item.label}
               </p>
-              <p className="mt-1 text-2xl font-black text-white">{item.value}</p>
-              <p className="mt-1 text-[11px] font-bold text-zinc-500">{item.note}</p>
+              <p className="mt-0.5 text-lg font-black leading-tight text-white sm:text-xl">{item.value}</p>
+              <p className="mt-0.5 text-[10px] font-bold text-zinc-500 sm:text-[11px]">{item.note}</p>
             </div>
           ))}
         </section>
