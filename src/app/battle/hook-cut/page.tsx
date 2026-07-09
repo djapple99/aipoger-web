@@ -28,6 +28,7 @@ import {
 import SafetyNotice from '@/components/safety-notice';
 import { blobToDataUrl, parseAudioMetadata } from '@/lib/audio-metadata';
 import { sha256File } from '@/lib/file-hash';
+import { shouldHandleDropCutSpaceShortcut } from '@/lib/drop-cut-keyboard';
 
 const MAX_HOOK_SECONDS = 60;
 const MIN_REGION_SECONDS = 0.25;
@@ -1053,7 +1054,7 @@ function HookCutContent() {
   // Spacebar preview
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== ' ') return;
+      if (!shouldHandleDropCutSpaceShortcut(e)) return;
       if (!isReady || !audioBufferRef.current) return;
       e.preventDefault();
       if (isPlaying) stopPlayback();

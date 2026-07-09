@@ -221,6 +221,7 @@ export default function GlobalBattleCallOverlay() {
   const [expiredNoticeCollapsed, setExpiredNoticeCollapsed] = useState(false);
   const [accountAvatarUrl, setAccountAvatarUrl] = useState<string | null>(null);
   const [accountInitial, setAccountInitial] = useState("A");
+  const [unreadAccountNoticeCount, setUnreadAccountNoticeCount] = useState(0);
 
   const routeTone = useMemo(() => {
     const seg = pathname?.match(/^\/battle\/([^/]+)$/)?.[1];
@@ -239,6 +240,7 @@ export default function GlobalBattleCallOverlay() {
     : "fixed right-4 top-24 z-[92] w-[min(calc(100vw-2rem),340px)] sm:right-5";
 
   const arenaHref = call ? `/battle/${encodeURIComponent(call.battleId)}?lang=${lang}` : "/battle";
+  const profileNoticeHref = `/profile?lang=${lang}#pending-ai-music-challenges`;
   const activeUrgentKey = activeNoticeKey(activeNotice);
   const activeNoticeStartMs = timestampMs(activeNotice?.scheduledStartAt);
   const activeNoticeUrgent = Boolean(
@@ -251,6 +253,7 @@ export default function GlobalBattleCallOverlay() {
   const markRead = useCallback(async (id: string) => {
     if (id.startsWith("demo-") || id.startsWith("synthetic-") || isAuthBypassEnabled) return;
     await supabase.from("battle_notifications").update({ read_at: new Date().toISOString() }).eq("id", id);
+    setUnreadAccountNoticeCount((count) => Math.max(0, count - 1));
   }, []);
 
   const showCall = useCallback(
@@ -281,6 +284,12 @@ export default function GlobalBattleCallOverlay() {
   useEffect(() => {
     const id = window.setInterval(() => setNoticeClockMs(Date.now()), 5000);
     return () => window.clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const handleAccountNoticesRead = () => setUnreadAccountNoticeCount(0);
+    window.addEventListener("aipoger:account-notices-read", handleAccountNoticesRead);
+    return () => window.removeEventListener("aipoger:account-notices-read", handleAccountNoticesRead);
   }, []);
 
   useEffect(() => {
@@ -364,6 +373,13 @@ export default function GlobalBattleCallOverlay() {
             null,
         );
       }
+
+      const { count: unreadCount } = await supabase
+        .from("battle_notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", uid)
+        .is("read_at", null);
+      if (mounted) setUnreadAccountNoticeCount(unreadCount ?? 0);
 
       const { data: activeQueueRows } = await supabase
         .from("battle_queue")
@@ -481,6 +497,7 @@ export default function GlobalBattleCallOverlay() {
           { event: "INSERT", schema: "public", table: "battle_notifications", filter: `user_id=eq.${uid}` },
           (payload) => {
             const row = payload.new as BattleNotificationRow;
+            setUnreadAccountNoticeCount((count) => Math.min(99, count + 1));
             const next = toBattleCall(row);
             if (next) showCall(next);
             if (row.type === "battle_matched") void markRead(row.id);
@@ -570,13 +587,15 @@ export default function GlobalBattleCallOverlay() {
   const AccountNoticeDock = ({
     hasNotice,
     urgent,
+    unreadCount = 0,
     onBellClick,
   }: {
     hasNotice: boolean;
     urgent?: boolean;
+    unreadCount?: number;
     onBellClick?: () => void;
   }) => {
-    const avatarClassName = `relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border bg-black/82 text-sm font-black shadow-[0_18px_58px_rgba(0,0,0,0.45)] backdrop-blur-xl transition ${
+    const avatarClassName = `relative flex h-12 w-12 items-center justify-center overflow-visible rounded-full border bg-black/82 text-sm font-black shadow-[0_18px_58px_rgba(0,0,0,0.45)] backdrop-blur-xl transition ${
       hasNotice
         ? urgent
           ? "animate-pulse border-red-300/80 text-red-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_34px_rgba(248,113,113,0.62)] hover:border-red-100"
@@ -587,23 +606,36 @@ export default function GlobalBattleCallOverlay() {
       <>
         {accountAvatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={accountAvatarUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+          <img src={accountAvatarUrl} alt="" className="h-full w-full rounded-full object-cover" referrerPolicy="no-referrer" />
         ) : (
           accountInitial
         )}
         {hasNotice && (
-          <span
-            className={`absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full ${
-              urgent ? "bg-red-400 shadow-[0_0_16px_rgba(248,113,113,1)]" : "bg-orange-400 shadow-[0_0_14px_rgba(255,106,0,0.9)]"
-            }`}
-          />
+          unreadCount > 0 ? (
+            <span
+              className={`absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-black ${
+                urgent ? "bg-red-500 text-white shadow-[0_0_16px_rgba(248,113,113,1)]" : "bg-red-500 text-white shadow-[0_0_14px_rgba(248,113,113,0.9)]"
+              }`}
+            >
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          ) : (
+            <span
+              className={`absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full ${
+                urgent ? "bg-red-400 shadow-[0_0_16px_rgba(248,113,113,1)]" : "bg-orange-400 shadow-[0_0_14px_rgba(255,106,0,0.9)]"
+              }`}
+            />
+          )
         )}
+        <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-black bg-black/88 text-orange-100 shadow-[0_0_18px_rgba(255,106,0,0.24)]">
+          <BellIcon />
+        </span>
       </>
     );
 
     return (
       <div className={accountDockClassName}>
-        {hasNotice ? (
+        {hasNotice && onBellClick ? (
           <button
             type="button"
             onClick={onBellClick}
@@ -613,6 +645,15 @@ export default function GlobalBattleCallOverlay() {
           >
             {avatarContent}
           </button>
+        ) : hasNotice ? (
+          <Link
+            href={profileNoticeHref}
+            className={avatarClassName}
+            aria-label={isZh ? "查看帳號消息" : "Open account notices"}
+            title={isZh ? "帳號消息" : "Account Notice"}
+          >
+            {avatarContent}
+          </Link>
         ) : (
           <Link
             href={`/profile?lang=${lang}`}
@@ -728,7 +769,7 @@ export default function GlobalBattleCallOverlay() {
                 : "Open New Drop";
     if (expiredNoticeCollapsed) {
       return (
-        <AccountNoticeDock hasNotice onBellClick={() => setAccountNoticeCollapsed(false)} />
+        <AccountNoticeDock hasNotice unreadCount={unreadAccountNoticeCount} onBellClick={() => setAccountNoticeCollapsed(false)} />
       );
     }
     return (
@@ -836,6 +877,7 @@ export default function GlobalBattleCallOverlay() {
         <AccountNoticeDock
           hasNotice
           urgent={activeNoticeUrgent}
+          unreadCount={unreadAccountNoticeCount}
           onBellClick={() => {
             setAccountNoticeCollapsed(false);
             setActiveNoticeOpen(true);
@@ -912,6 +954,10 @@ export default function GlobalBattleCallOverlay() {
         </div>
       </div>
     );
+  }
+
+  if (!call && unreadAccountNoticeCount > 0) {
+    return <AccountNoticeDock hasNotice unreadCount={unreadAccountNoticeCount} />;
   }
 
   if (!call) return <AccountNoticeDock hasNotice={false} />;

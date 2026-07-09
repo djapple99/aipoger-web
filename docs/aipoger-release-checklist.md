@@ -86,9 +86,18 @@ Check:
 - Challenging from Explore opens the 60s Drop cropper/setup flow, carries the defender track ID through upload, and requires a start time.
 - Submitted Explore challenges copy the defender's prepared Drop at invite creation; they must not use the full public-airplay song as the defender battle audio.
 - Submitted Explore challenges create a pending battle/invite; the battle room allows both 5-second previews but voting remains closed.
+- Submitted Explore challenges write a defender-side in-app notification. The right-top notification dock shows a red dot or unread number and opens Profile's `待接戰` section.
+- Profile / 我的作品 shows `待接戰` cards with song title, challenger, genre, scheduled start time, defender 5-second preview, challenger 5-second preview, Accept, and Reject.
+- The individual track row shows `待回覆` / locked defender Drop state while a pending invite exists; replacing the defender Drop is blocked until the invite is accepted, rejected, or expired.
 - Defender accept moves the battle to active/live according to the scheduled time; reject closes the invite without stats.
+- Defender timeout expires the invite and linked battle/queues without stats, Showtime progress, or either-side win/loss. The same challenger cannot keep multiple pending invites against the same track.
 - A challenger is blocked after 6 outgoing Explore attack invites in the Taiwan day.
 - Explore challenge results need 3 distinct non-participant voters; tied official results award the defender; under-3 shows audience-insufficient/no result.
+
+Drop cropper keyboard check:
+
+- In `/battle/hook-cut`, Space toggles preview only when focus is not inside textarea/input/select/contenteditable/`role="textbox"`, no meta/ctrl/alt is pressed, and IME composition is not active.
+- Lyrics textarea, song title input, creator input, AI tool fields, genre select, notes/description, and other text-editing targets can enter Chinese and English spaces normally without `preventDefault`.
 
 When the 10-card limit is implemented, also check:
 

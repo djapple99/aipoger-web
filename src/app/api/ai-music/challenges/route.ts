@@ -77,12 +77,26 @@ type InviteRow = {
   scheduled_start_at: string | null;
   expires_at: string | null;
   created_at: string;
+  defender_name?: string | null;
+  defender_song_name?: string | null;
+  defender_audio_path?: string | null;
+  challenger_name?: string | null;
+  challenger_song_name?: string | null;
+  challenger_audio_path?: string | null;
   listen_bar_tracks?: {
     title?: string | null;
     artist?: string | null;
     genre?: string | null;
     ai_tool?: string | null;
   } | null;
+};
+type QueuePreviewRow = {
+  id: string;
+  fighter_name?: string | null;
+  original_file_name?: string | null;
+  genre?: string | null;
+  ai_tool?: string | null;
+  audio_path?: string | null;
 };
 type DefenderDropPayload = {
   audioPath?: unknown;
@@ -94,6 +108,8 @@ type DefenderDropPayload = {
 
 const CLOSED_BATTLE_STATUSES = ["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"];
 const LIFECYCLE_TRACK_SELECT = "id,title,artist,ai_tool,genre,mood,bpm,duration_seconds,audio_path,cover_path,lyrics,is_active,review_status,hidden_at,removed_at,source,is_featured_official,bar_phase,positive_reaction_count,heart_count,star_count,thumb_count,happy_count,created_at,promoted_at";
+const AI_MUSIC_INVITE_SELECT = "id,defender_track_id,defender_user_id,challenger_user_id,defender_queue_id,challenger_queue_id,battle_id,status,scheduled_start_at,expires_at,created_at,listen_bar_tracks(title,artist,genre,ai_tool)";
+const AI_MUSIC_INVITE_RESPONSE_WINDOW_MS = 5 * 60 * 1000;
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -269,6 +285,114 @@ async function notify(admin: AdminClient, rows: Array<Record<string, unknown>>) 
   }
 }
 
+function uniqueStrings(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.filter((value): value is string => Boolean(value))));
+}
+
+async function enrichInviteRows(admin: AdminClient, rows: InviteRow[]): Promise<InviteRow[]> {
+  const queueIds = uniqueStrings(rows.flatMap((row) => [row.defender_queue_id, row.challenger_queue_id]));
+  if (queueIds.length === 0) return rows;
+
+  const { data, error } = await admin
+    .from("battle_queue")
+    .select("id,fighter_name,original_file_name,genre,ai_tool,audio_path")
+    .in("id", queueIds);
+  if (error) {
+    if (!/schema cache|does not exist|Could not find/i.test(error.message)) {
+      console.warn("[ai-music challenge invite queues]", error.message);
+    }
+    return rows;
+  }
+
+  const queueById = new Map(((data ?? []) as QueuePreviewRow[]).map((queue) => [queue.id, queue]));
+  return rows.map((row) => {
+    const defenderQueue = row.defender_queue_id ? queueById.get(row.defender_queue_id) : null;
+    const challengerQueue = row.challenger_queue_id ? queueById.get(row.challenger_queue_id) : null;
+    return {
+      ...row,
+      defender_name: defenderQueue?.fighter_name ?? row.listen_bar_tracks?.artist ?? null,
+      defender_song_name: defenderQueue?.original_file_name ?? row.listen_bar_tracks?.title ?? null,
+      defender_audio_path: defenderQueue?.audio_path ?? null,
+      challenger_name: challengerQueue?.fighter_name ?? null,
+      challenger_song_name: challengerQueue?.original_file_name ?? null,
+      challenger_audio_path: challengerQueue?.audio_path ?? null,
+    };
+  });
+}
+
+async function expirePendingInviteRows(admin: AdminClient, rows: InviteRow[]) {
+  const nowIso = new Date().toISOString();
+  const expiredRows = rows.filter((row) => {
+    if (row.status !== "pending") return false;
+    const expiresMs = new Date(row.expires_at ?? "").getTime();
+    return Number.isFinite(expiresMs) && expiresMs <= Date.now();
+  });
+  if (expiredRows.length === 0) return 0;
+
+  const ids = expiredRows.map((row) => row.id);
+  const { error } = await admin
+    .from("ai_music_challenge_invites")
+    .update({ status: "expired", responded_at: nowIso, updated_at: nowIso })
+    .in("id", ids)
+    .eq("status", "pending");
+  if (error) throw error;
+
+  const battleIds = uniqueStrings(expiredRows.map((row) => row.battle_id));
+  if (battleIds.length > 0) {
+    await admin.from("battles").update({ status: "expired", battle_ended_at: nowIso, updated_at: nowIso }).in("id", battleIds);
+  }
+
+  const queueIds = uniqueStrings(expiredRows.flatMap((row) => [row.defender_queue_id, row.challenger_queue_id]));
+  if (queueIds.length > 0) {
+    await admin.from("battle_queue").update({ status: "expired", updated_at: nowIso }).in("id", queueIds);
+  }
+
+  await notify(admin, expiredRows.flatMap((row) => ([
+    {
+      user_id: row.defender_user_id,
+      queue_id: row.defender_queue_id,
+      battle_id: row.battle_id,
+      type: "ai_music_challenge_expired",
+      title: "攻擂邀請已失效",
+      body: "未在預定開打前回覆，這場不算戰績、不進 Showtime，也不算任何一方勝敗。",
+      metadata: { inviteId: row.id, defenderTrackId: row.defender_track_id, expiredAt: nowIso, href: "/profile#pending-ai-music-challenges" },
+    },
+    {
+      user_id: row.challenger_user_id,
+      queue_id: row.challenger_queue_id,
+      battle_id: row.battle_id,
+      type: "ai_music_challenge_expired",
+      title: "攻擂邀請已失效",
+      body: "關主未在期限內回覆，這場不算戰績、不進 Showtime，也不算任何一方勝敗。",
+      metadata: { inviteId: row.id, defenderTrackId: row.defender_track_id, expiredAt: nowIso },
+    },
+  ])));
+
+  return expiredRows.length;
+}
+
+async function expireExpiredInvitesForUser(admin: AdminClient, userId: string) {
+  const { data, error } = await admin
+    .from("ai_music_challenge_invites")
+    .select(AI_MUSIC_INVITE_SELECT)
+    .eq("status", "pending")
+    .lte("expires_at", new Date().toISOString())
+    .or(`defender_user_id.eq.${userId},challenger_user_id.eq.${userId}`);
+  if (error) throw error;
+  return expirePendingInviteRows(admin, (data ?? []) as InviteRow[]);
+}
+
+async function expireExpiredInvitesForTrack(admin: AdminClient, trackId: string) {
+  const { data, error } = await admin
+    .from("ai_music_challenge_invites")
+    .select(AI_MUSIC_INVITE_SELECT)
+    .eq("defender_track_id", trackId)
+    .eq("status", "pending")
+    .lte("expires_at", new Date().toISOString());
+  if (error) throw error;
+  return expirePendingInviteRows(admin, (data ?? []) as InviteRow[]);
+}
+
 export async function GET(request: NextRequest) {
   let admin: AdminClient;
   try {
@@ -280,17 +404,23 @@ export async function GET(request: NextRequest) {
   const auth = await getUserFromRequest(admin, request);
   if (auth.error || !auth.user) return auth.error;
 
-  const select = "id,defender_track_id,defender_user_id,challenger_user_id,defender_queue_id,challenger_queue_id,battle_id,status,scheduled_start_at,expires_at,created_at,listen_bar_tracks(title,artist,genre,ai_tool)";
+  try {
+    await expireExpiredInvitesForUser(admin, auth.user.id);
+  } catch (error) {
+    if (isSchemaMissing(error as { message?: string })) return jsonError(String((error as { message?: string })?.message ?? error), 409);
+    return jsonError(String((error as { message?: string })?.message ?? error), 500);
+  }
+
   const [incoming, outgoing] = await Promise.all([
     admin
       .from("ai_music_challenge_invites")
-      .select(select)
+      .select(AI_MUSIC_INVITE_SELECT)
       .eq("defender_user_id", auth.user.id)
       .order("created_at", { ascending: false })
       .limit(40),
     admin
       .from("ai_music_challenge_invites")
-      .select(select)
+      .select(AI_MUSIC_INVITE_SELECT)
       .eq("challenger_user_id", auth.user.id)
       .order("created_at", { ascending: false })
       .limit(40),
@@ -300,8 +430,8 @@ export async function GET(request: NextRequest) {
   if (outgoing.error) return jsonError(outgoing.error.message, isSchemaMissing(outgoing.error) ? 409 : 500);
 
   return NextResponse.json({
-    incoming: (incoming.data ?? []) as InviteRow[],
-    outgoing: (outgoing.data ?? []) as InviteRow[],
+    incoming: await enrichInviteRows(admin, (incoming.data ?? []) as InviteRow[]),
+    outgoing: await enrichInviteRows(admin, (outgoing.data ?? []) as InviteRow[]),
   }, { headers: { "Cache-Control": "no-store" } });
 }
 
@@ -336,6 +466,18 @@ export async function POST(request: NextRequest) {
   const scheduleResult = scheduleFromBody(body ?? {});
   if (scheduleResult && "error" in scheduleResult) return jsonError(scheduleErrorMessage(scheduleResult.error), 400);
   const schedulePayload = scheduleResult ?? buildDropBattleSchedulePayloadFromPreset(10);
+  const scheduledMs = new Date(schedulePayload?.scheduled_start_at ?? "").getTime();
+  const scheduledStartAt = Number.isFinite(scheduledMs) ? new Date(scheduledMs).toISOString() : new Date(Date.now() + 10 * 60 * 1000).toISOString();
+  if (new Date(scheduledStartAt).getTime() - Date.now() < AI_MUSIC_INVITE_RESPONSE_WINDOW_MS) {
+    return jsonError("攻擂開打時間至少要留 5 分鐘給關主回覆。", 400);
+  }
+
+  try {
+    await expireExpiredInvitesForUser(admin, auth.user.id);
+    await expireExpiredInvitesForTrack(admin, defenderTrackId);
+  } catch (error) {
+    return jsonError(String((error as { message?: string })?.message ?? error), isSchemaMissing(error as { message?: string }) ? 409 : 500);
+  }
 
   const { count: todayInviteCount, error: countError } = await admin
     .from("ai_music_challenge_invites")
@@ -382,6 +524,17 @@ export async function POST(request: NextRequest) {
   if (track.ai_music_challenge_status !== "open") return jsonError("這首作品目前暫不接戰。", 409);
   if (!hasPreparedAiMusicDefenderDrop(track.ai_music_defender_drop_audio_path)) {
     return jsonError("這首作品尚未準備守擂 60s Drop。", 409);
+  }
+
+  const { count: duplicatePendingCount, error: duplicatePendingError } = await admin
+    .from("ai_music_challenge_invites")
+    .select("id", { count: "exact", head: true })
+    .eq("defender_track_id", track.id)
+    .eq("challenger_user_id", auth.user.id)
+    .eq("status", "pending");
+  if (duplicatePendingError) return jsonError(duplicatePendingError.message, isSchemaMissing(duplicatePendingError) ? 409 : 500);
+  if ((duplicatePendingCount ?? 0) > 0) {
+    return jsonError("你已對這首歌送出待回覆攻擂邀請，請等關主回覆。", 409);
   }
 
   if (await hasActiveChallengerLock(admin, auth.user.id)) {
@@ -454,8 +607,6 @@ export async function POST(request: NextRequest) {
     return jsonError(challengerError?.message ?? "建立挑戰者 queue 失敗。", isSchemaMissing(challengerError) ? 409 : 500);
   }
 
-  const scheduledMs = new Date(schedulePayload?.scheduled_start_at ?? "").getTime();
-  const scheduledStartAt = Number.isFinite(scheduledMs) ? new Date(scheduledMs).toISOString() : new Date(Date.now() + 10 * 60 * 1000).toISOString();
   const battleInsert = {
     queue_a_id: defenderQueue.id,
     queue_b_id: challengerQueue.id,
@@ -520,7 +671,7 @@ export async function POST(request: NextRequest) {
       battle_id: battleId,
       status: "pending",
       scheduled_start_at: scheduledStartAt,
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      expires_at: scheduledStartAt,
     })
     .select("id")
     .single<{ id: string }>();
@@ -538,7 +689,7 @@ export async function POST(request: NextRequest) {
       type: "ai_music_challenge_invite",
       title: "有人向你的作品攻擂",
       body: `${fighterName} 想用《${songName}》挑戰你的《${defenderSong}》。請到創作者中心接受或拒絕。`,
-      metadata: { inviteId: invite.id, defenderTrackId: track.id, scheduledStartAt },
+      metadata: { inviteId: invite.id, defenderTrackId: track.id, scheduledStartAt, href: "/profile#pending-ai-music-challenges" },
     },
     {
       user_id: auth.user.id,
@@ -584,6 +735,12 @@ export async function PATCH(request: NextRequest) {
       const defenderDrop = body.defenderDrop;
       const audioPath = trimOrNull(defenderDrop.audioPath, 1600);
       if (!audioPath) return jsonError("請先切好或指定守擂 60s Drop。");
+
+      try {
+        await expireExpiredInvitesForTrack(admin, body.trackId);
+      } catch (error) {
+        return jsonError(String((error as { message?: string })?.message ?? error), isSchemaMissing(error as { message?: string }) ? 409 : 500);
+      }
 
       const { count: pendingCount, error: pendingError } = await admin
         .from("ai_music_challenge_invites")
@@ -668,7 +825,7 @@ export async function PATCH(request: NextRequest) {
 
   const { data: invite, error: inviteError } = await admin
     .from("ai_music_challenge_invites")
-    .select("id,defender_track_id,defender_user_id,challenger_user_id,defender_queue_id,challenger_queue_id,battle_id,status,scheduled_start_at,expires_at,created_at,listen_bar_tracks(title,artist,genre,ai_tool)")
+    .select(AI_MUSIC_INVITE_SELECT)
     .eq("id", inviteId)
     .maybeSingle<InviteRow>();
   if (inviteError) return jsonError(inviteError.message, isSchemaMissing(inviteError) ? 409 : 500);
@@ -687,6 +844,26 @@ export async function PATCH(request: NextRequest) {
     if (invite.battle_id) await admin.from("battles").update({ status: "expired", battle_ended_at: nowIso, updated_at: nowIso }).eq("id", invite.battle_id);
     const queueIds = [invite.defender_queue_id, invite.challenger_queue_id].filter((id): id is string => Boolean(id));
     if (queueIds.length > 0) await admin.from("battle_queue").update({ status: "expired", updated_at: nowIso }).in("id", queueIds);
+    await notify(admin, [
+      {
+        user_id: invite.defender_user_id,
+        queue_id: invite.defender_queue_id,
+        battle_id: invite.battle_id,
+        type: "ai_music_challenge_expired",
+        title: "攻擂邀請已失效",
+        body: "未在預定開打前回覆，這場不算戰績、不進 Showtime，也不算任何一方勝敗。",
+        metadata: { inviteId: invite.id, defenderTrackId: invite.defender_track_id, expiredAt: nowIso, href: "/profile#pending-ai-music-challenges" },
+      },
+      {
+        user_id: invite.challenger_user_id,
+        queue_id: invite.challenger_queue_id,
+        battle_id: invite.battle_id,
+        type: "ai_music_challenge_expired",
+        title: "攻擂邀請已失效",
+        body: "關主未在期限內回覆，這場不算戰績、不進 Showtime，也不算任何一方勝敗。",
+        metadata: { inviteId: invite.id, defenderTrackId: invite.defender_track_id, expiredAt: nowIso },
+      },
+    ]);
     return jsonError("這個攻擂邀請已逾時失效。", 409);
   }
 

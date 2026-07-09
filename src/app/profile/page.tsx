@@ -97,10 +97,21 @@ type AiMusicChallengeInvite = {
   defender_track_id: string;
   defender_user_id: string;
   challenger_user_id: string;
+  defender_queue_id?: string | null;
+  challenger_queue_id?: string | null;
   battle_id?: string | null;
   status: string;
   scheduled_start_at?: string | null;
+  expires_at?: string | null;
   created_at?: string | null;
+  defender_name?: string | null;
+  defender_song_name?: string | null;
+  defender_audio_path?: string | null;
+  defenderPreviewUrl?: string | null;
+  challenger_name?: string | null;
+  challenger_song_name?: string | null;
+  challenger_audio_path?: string | null;
+  challengerPreviewUrl?: string | null;
   listen_bar_tracks?: {
     title?: string | null;
     artist?: string | null;
@@ -154,6 +165,19 @@ function formatDateParts(value: string | null | undefined, lang: string): { date
     hour12: false,
   }).format(date);
   return { date: datePart, time: timePart };
+}
+
+function formatDateTime(value: string | null | undefined, lang: string): string {
+  if (!value) return lang === "zh" ? "尚未設定" : "Not set";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return lang === "zh" ? "尚未設定" : "Not set";
+  return new Intl.DateTimeFormat(lang === "zh" ? "zh-TW" : "en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
 }
 
 function favoriteOrderStorageKey(userId: string | null) {
@@ -226,6 +250,7 @@ function ProfileInner() {
   const cropFileInputRef = useRef<HTMLInputElement>(null);
   const avatarSectionRef = useRef<HTMLDivElement>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const fiveSecondPreviewTimerRef = useRef<number | null>(null);
   const playlistItemsRef = useRef<CreatorItem[]>([]);
   const previewTokenRef = useRef(0);
   const playPreviewItemRef = useRef<((item: CreatorItem) => void) | null>(null);
@@ -271,6 +296,17 @@ function ProfileInner() {
             replaceDefenderDrop: "更換守擂 Drop",
             defenderDropLocked: "待回覆邀請中",
             openNeedsDefenderDrop: "請先指定守擂 60s Drop，才能開放等人挑戰。",
+            pendingChallenges: "待接戰",
+            pendingChallengesHelp: "有人攻擂你的作品時會出現在這裡。回覆前守擂 Drop 已鎖定，不能更換。",
+            pendingChallengesEmpty: "目前沒有待回覆攻擂邀請。",
+            pendingChallengeKicker: "有人挑戰",
+            challenger: "挑戰者",
+            genreLabel: "類型",
+            scheduledStart: "預定開打",
+            defenderPreview: "聽守擂 5 秒",
+            challengerPreview: "聽挑戰 5 秒",
+            previewingFiveSeconds: "預播中",
+            openBattleRoom: "進 Battle 場",
           }
         : {
             kicker: "AIPOGER CREATOR",
@@ -310,6 +346,17 @@ function ProfileInner() {
             replaceDefenderDrop: "Replace Defender Drop",
             defenderDropLocked: "Invite pending",
             openNeedsDefenderDrop: "Set a defender 60s Drop before opening challenges.",
+            pendingChallenges: "Pending Challenges",
+            pendingChallengesHelp: "Incoming attacks appear here. The defender Drop is locked until you respond.",
+            pendingChallengesEmpty: "No pending challenge invites.",
+            pendingChallengeKicker: "Incoming Attack",
+            challenger: "Challenger",
+            genreLabel: "Genre",
+            scheduledStart: "Scheduled Start",
+            defenderPreview: "Defender 5s",
+            challengerPreview: "Challenger 5s",
+            previewingFiveSeconds: "Previewing",
+            openBattleRoom: "Open Arena",
           },
     [isZh],
   );
@@ -412,7 +459,24 @@ function ProfileInner() {
         }
 
         if (challengeInvitesResult.status === "fulfilled") {
-          setAiMusicInvites(Array.isArray(challengeInvitesResult.value.incoming) ? challengeInvitesResult.value.incoming : []);
+          const incomingInvites = Array.isArray(challengeInvitesResult.value.incoming) ? challengeInvitesResult.value.incoming : [];
+          const invitesWithPreviewUrls = await Promise.all(
+            incomingInvites.map(async (invite) => ({
+              ...invite,
+              defenderPreviewUrl: await signedBattleAudioUrl(invite.defender_audio_path),
+              challengerPreviewUrl: await signedBattleAudioUrl(invite.challenger_audio_path),
+            })),
+          );
+          setAiMusicInvites(invitesWithPreviewUrls);
+          void supabase
+            .from("battle_notifications")
+            .update({ read_at: new Date().toISOString() })
+            .eq("user_id", uid)
+            .eq("type", "ai_music_challenge_invite")
+            .is("read_at", null)
+            .then(() => {
+              window.dispatchEvent(new CustomEvent("aipoger:account-notices-read"));
+            });
         }
       } catch (error) {
         console.error("[profile creator data]", error);
@@ -504,6 +568,10 @@ function ProfileInner() {
 
   const stopPreview = useCallback(() => {
     previewTokenRef.current += 1;
+    if (fiveSecondPreviewTimerRef.current) {
+      window.clearTimeout(fiveSecondPreviewTimerRef.current);
+      fiveSecondPreviewTimerRef.current = null;
+    }
     const audio = previewAudioRef.current;
     if (audio) {
       audio.onended = null;
@@ -643,6 +711,35 @@ function ProfileInner() {
     }
     playPreviewItem(item);
   }, [playPreviewItem, previewingItemId, stopPreview]);
+
+  const playFiveSecondPreview = useCallback((audioUrl: string | null | undefined, previewKey: string) => {
+    const cleanUrl = audioUrl?.trim();
+    if (!cleanUrl) return;
+
+    stopPreview();
+    const token = previewTokenRef.current + 1;
+    previewTokenRef.current = token;
+    const audio = new Audio(cleanUrl);
+    audio.preload = "auto";
+    audio.onended = () => {
+      if (previewTokenRef.current !== token) return;
+      setPreviewingItemId(null);
+    };
+    audio.onerror = () => {
+      if (previewTokenRef.current !== token) return;
+      console.warn("[profile] ai music invite preview failed", previewKey);
+      setPreviewingItemId(null);
+    };
+    previewAudioRef.current = audio;
+    setPreviewingItemId(previewKey);
+    fiveSecondPreviewTimerRef.current = window.setTimeout(() => {
+      if (previewTokenRef.current === token) stopPreview();
+    }, 5000);
+    void audio.play().catch((error) => {
+      console.warn("[profile] ai music invite preview blocked", error);
+      if (previewTokenRef.current === token) setPreviewingItemId(null);
+    });
+  }, [stopPreview]);
 
   const openChallengeCut = useCallback((item: CreatorItem, mode: "custom" | "defender" = "custom") => {
     stopPreview();
@@ -958,6 +1055,11 @@ function ProfileInner() {
     wins,
   ]);
 
+  const pendingAiMusicInvites = useMemo(
+    () => aiMusicInvites.filter((invite) => invite.status === "pending"),
+    [aiMusicInvites],
+  );
+
   const stats = [
     { key: "listenBar" as const, label: copy.listenBar, value: barTracks.length, sub: `${barTracks.filter((track) => track.is_active).length} ${copy.active}` },
     { key: "battle" as const, label: copy.battle, value: battleQueues.length, sub: isZh ? "已上傳戰帖" : "uploaded cards" },
@@ -1114,6 +1216,97 @@ function ProfileInner() {
             </div>
 
             {creatorError && <p className="mt-4 rounded-2xl border border-orange-300/20 bg-orange-300/10 px-4 py-3 text-xs text-orange-100">{creatorError}</p>}
+
+            <section id="pending-ai-music-challenges" className="mt-5 rounded-2xl border border-red-300/24 bg-red-500/[0.055] p-4 shadow-[0_0_34px_rgba(220,38,38,0.08)]">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-red-100/75">AI MUSIC DEFENSE</p>
+                  <h3 className="mt-1 text-lg font-black text-red-50">
+                    {copy.pendingChallenges}
+                    {pendingAiMusicInvites.length > 0 ? <span className="ml-2 text-red-200">{pendingAiMusicInvites.length}</span> : null}
+                  </h3>
+                  <p className="mt-1 text-xs font-bold leading-5 text-zinc-400">{copy.pendingChallengesHelp}</p>
+                </div>
+              </div>
+              {pendingAiMusicInvites.length > 0 ? (
+                <div className="mt-4 grid gap-3">
+                  {pendingAiMusicInvites.map((invite) => {
+                    const track = invite.listen_bar_tracks;
+                    const trackTitle = track?.title?.trim() || invite.defender_song_name?.trim() || (isZh ? "未命名作品" : "Untitled Track");
+                    const challengerName = invite.challenger_name?.trim() || (isZh ? "挑戰者" : "Challenger");
+                    const challengerSong = invite.challenger_song_name?.trim() || (isZh ? "挑戰 Drop" : "Challenge Drop");
+                    const genre = track?.genre?.trim() || "AI Music";
+                    const defenderPreviewKey = `invite:${invite.id}:defender`;
+                    const challengerPreviewKey = `invite:${invite.id}:challenger`;
+                    return (
+                      <article key={invite.id} className="rounded-2xl border border-white/10 bg-black/42 p-4">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-red-100/75">{copy.pendingChallengeKicker}</p>
+                            <h4 className="mt-1 truncate text-lg font-black text-white">《{trackTitle}》</h4>
+                            <div className="mt-2 grid gap-1 text-xs font-bold leading-5 text-zinc-400 sm:grid-cols-2">
+                              <span>{copy.challenger}: <span className="text-zinc-100">{challengerName}</span></span>
+                              <span>{copy.genreLabel}: <span className="text-zinc-100">{genre}</span></span>
+                              <span className="sm:col-span-2">{copy.scheduledStart}: <span className="text-yellow-100">{formatDateTime(invite.scheduled_start_at, lang)}</span></span>
+                              <span className="sm:col-span-2">{isZh ? "挑戰 Drop" : "Challenge Drop"}: <span className="text-zinc-100">{challengerSong}</span></span>
+                            </div>
+                            <p className="mt-2 text-xs font-bold text-cyan-100/75">
+                              {isZh ? "守擂 Drop 已鎖定，回覆前不可修改。" : "Defender Drop is locked until you respond."}
+                            </p>
+                          </div>
+                          <div className="grid min-w-[min(100%,20rem)] gap-2 text-xs font-black sm:grid-cols-2 lg:min-w-[21rem]">
+                            <button
+                              type="button"
+                              disabled={!invite.defenderPreviewUrl}
+                              onClick={() => playFiveSecondPreview(invite.defenderPreviewUrl, defenderPreviewKey)}
+                              className="rounded-xl border border-orange-200/30 bg-orange-400/10 px-3 py-2.5 text-orange-100 transition hover:border-orange-100/70 disabled:cursor-not-allowed disabled:opacity-45"
+                            >
+                              {previewingItemId === defenderPreviewKey ? copy.previewingFiveSeconds : copy.defenderPreview}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={!invite.challengerPreviewUrl}
+                              onClick={() => playFiveSecondPreview(invite.challengerPreviewUrl, challengerPreviewKey)}
+                              className="rounded-xl border border-cyan-200/30 bg-cyan-300/10 px-3 py-2.5 text-cyan-100 transition hover:border-cyan-100/70 disabled:cursor-not-allowed disabled:opacity-45"
+                            >
+                              {previewingItemId === challengerPreviewKey ? copy.previewingFiveSeconds : copy.challengerPreview}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={Boolean(challengeBusy[`invite:${invite.id}`])}
+                              onClick={() => void respondAiMusicInvite(invite, "accept")}
+                              className="rounded-xl border border-green-200/40 bg-green-400/14 px-3 py-2.5 text-green-100 transition hover:border-green-100/70 disabled:cursor-wait disabled:opacity-45"
+                            >
+                              {isZh ? "接受接戰" : "Accept"}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={Boolean(challengeBusy[`invite:${invite.id}`])}
+                              onClick={() => void respondAiMusicInvite(invite, "reject")}
+                              className="rounded-xl border border-red-200/40 bg-red-500/14 px-3 py-2.5 text-red-100 transition hover:border-red-100/70 disabled:cursor-wait disabled:opacity-45"
+                            >
+                              {isZh ? "拒絕" : "Reject"}
+                            </button>
+                            {invite.battle_id ? (
+                              <Link
+                                href={`/battle/${invite.battle_id}?lang=${lang}`}
+                                className="rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2.5 text-center text-zinc-100 transition hover:border-white/30 sm:col-span-2"
+                              >
+                                {copy.openBattleRoom}
+                              </Link>
+                            ) : null}
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="mt-4 rounded-xl border border-white/10 bg-black/24 px-3 py-3 text-xs font-bold text-zinc-500">
+                  {copy.pendingChallengesEmpty}
+                </p>
+              )}
+            </section>
 
             <div className="mt-5 flex flex-wrap gap-2">
               <button

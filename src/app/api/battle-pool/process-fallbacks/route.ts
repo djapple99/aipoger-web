@@ -72,6 +72,19 @@ type ExpiredHookQueueRow = {
   cancellation_evaluation_at?: string | null;
 };
 
+type AiMusicChallengeInviteRow = {
+  id: string;
+  defender_track_id: string;
+  defender_user_id: string;
+  challenger_user_id: string;
+  defender_queue_id?: string | null;
+  challenger_queue_id?: string | null;
+  battle_id?: string | null;
+  status?: string | null;
+  scheduled_start_at?: string | null;
+  expires_at?: string | null;
+};
+
 export async function GET(request: NextRequest) {
   return processFallbacks(request);
 }
@@ -120,11 +133,12 @@ async function processFallbacks(request: NextRequest) {
   const expiredHookQueue = await expireStaleHookQueue(admin, warnings);
   const expiredDailyQueue = await expireStaleDailyQueue(admin, warnings);
   const expiredRematchClaims = await expireStaleRematchClaims(admin, warnings);
+  const expiredAiMusicInvites = await expireStaleAiMusicChallengeInvites(admin, warnings);
   const stalePendingBattles = await cancelStalePendingDropBattles(admin);
   warnings.push(...stalePendingBattles.errors);
 
   return NextResponse.json({
-    processed: poolProcessed + hookSettled + hookArchived + dailySettled + expiredHookQueue + expiredDailyQueue + expiredRematchClaims + stalePendingBattles.cancelled,
+    processed: poolProcessed + hookSettled + hookArchived + dailySettled + expiredHookQueue + expiredDailyQueue + expiredRematchClaims + expiredAiMusicInvites + stalePendingBattles.cancelled,
     poolProcessed,
     hookSettled,
     hookArchived,
@@ -132,9 +146,81 @@ async function processFallbacks(request: NextRequest) {
     expiredHookQueue,
     expiredDailyQueue,
     expiredRematchClaims,
+    expiredAiMusicInvites,
     stalePendingBattles: stalePendingBattles.cancelled,
     warnings,
   });
+}
+
+async function expireStaleAiMusicChallengeInvites(admin: SupabaseAdmin, warnings: string[]) {
+  const now = new Date().toISOString();
+  const { data: candidates, error: readError } = await admin
+    .from("ai_music_challenge_invites")
+    .select("id,defender_track_id,defender_user_id,challenger_user_id,defender_queue_id,challenger_queue_id,battle_id,status,scheduled_start_at,expires_at")
+    .eq("status", "pending")
+    .lte("expires_at", now)
+    .limit(50);
+
+  if (readError) {
+    if (!/ai_music_challenge_invites|schema cache|does not exist|Could not find/i.test(readError.message)) {
+      warnings.push(`expire ai music challenge invites: ${readError.message}`);
+    }
+    return 0;
+  }
+
+  const rows = (candidates ?? []) as AiMusicChallengeInviteRow[];
+  if (rows.length === 0) return 0;
+
+  const ids = rows.map((row) => row.id);
+  const { error: updateError } = await admin
+    .from("ai_music_challenge_invites")
+    .update({ status: "expired", responded_at: now, updated_at: now })
+    .in("id", ids)
+    .eq("status", "pending");
+  if (updateError) {
+    warnings.push(`expire ai music challenge invites: ${updateError.message}`);
+    return 0;
+  }
+
+  const battleIds = Array.from(new Set(rows.map((row) => row.battle_id).filter((id): id is string => Boolean(id))));
+  if (battleIds.length > 0) {
+    const battleResult = await admin
+      .from("battles")
+      .update({ status: "expired", battle_ended_at: now, updated_at: now })
+      .in("id", battleIds);
+    if (battleResult.error) warnings.push(`expire ai music challenge battles: ${battleResult.error.message}`);
+  }
+
+  const queueIds = Array.from(new Set(rows.flatMap((row) => [row.defender_queue_id, row.challenger_queue_id]).filter((id): id is string => Boolean(id))));
+  if (queueIds.length > 0) {
+    const queueResult = await admin.from("battle_queue").update({ status: "expired", updated_at: now }).in("id", queueIds);
+    if (queueResult.error) warnings.push(`expire ai music challenge queues: ${queueResult.error.message}`);
+  }
+
+  const noticeRows = rows.flatMap((row) => ([
+    {
+      user_id: row.defender_user_id,
+      queue_id: row.defender_queue_id ?? null,
+      battle_id: row.battle_id ?? null,
+      type: "ai_music_challenge_expired",
+      title: "攻擂邀請已失效",
+      body: "未在預定開打前回覆，這場不算戰績、不進 Showtime，也不算任何一方勝敗。",
+      metadata: { inviteId: row.id, defenderTrackId: row.defender_track_id, expiredAt: now, href: "/profile#pending-ai-music-challenges" },
+    },
+    {
+      user_id: row.challenger_user_id,
+      queue_id: row.challenger_queue_id ?? null,
+      battle_id: row.battle_id ?? null,
+      type: "ai_music_challenge_expired",
+      title: "攻擂邀請已失效",
+      body: "關主未在期限內回覆，這場不算戰績、不進 Showtime，也不算任何一方勝敗。",
+      metadata: { inviteId: row.id, defenderTrackId: row.defender_track_id, expiredAt: now },
+    },
+  ]));
+  const noticeResult = await admin.from("battle_notifications").insert(noticeRows);
+  if (noticeResult.error) warnings.push(`notify expired ai music invites: ${noticeResult.error.message}`);
+
+  return rows.length;
 }
 
 async function expireStaleRematchClaims(admin: SupabaseAdmin, warnings: string[]) {
