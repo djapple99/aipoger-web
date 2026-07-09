@@ -73,6 +73,7 @@ Discord operating note, 2026-07-02:
 - These auth rules are system behavior rules. Do not surface them as a long rule block in the product UI unless a help/legal page explicitly needs them.
 - A signed-in account can send one Heart per Bar Heartbreak track every 24 hours.
 - Re-pressing Heart on the same track during the 24-hour Heart cooldown is idempotent: it must not duplicate, cancel, or remove the saved favorite.
+- Removing a saved favorite is allowed even while the listener is inside the 24-hour Heart cooldown. This happens only from the user's Profile saved-song manager, not by re-pressing the public Heart button.
 - Public music surfaces must show total Heart count only as the public metric. They may light the viewer's own Heart button to show that this account is inside the 24-hour Heart cooldown, but must not display a public favorite state, favorite-user count, or who saved the song; personal saved-song management belongs in the user's Profile.
 - Explore AI Music and Bar Heartbreak must read and update the same `listen_bar_tracks` Heart totals for the same song; Explore must not create a separate favorite or Heart counter.
 - V1 allows creators to react to their own Bar Heartbreak song.
@@ -237,6 +238,7 @@ Current rules:
 - A listener must sign in to press Heart or comment. Pressing Heart on a Bar Heartbreak track also saves that track to the listener's favorites. Removing it later from favorites in Profile does not remove the historical Heart reaction; pressing Heart again after the 24-hour Heart cooldown saves it again without duplicate favorites.
 - Profile `收藏歌曲` is the user's saved-song manager. It should support batch selection and batch removal of saved favorites, while keeping historical Heart reactions intact.
 - Profile creator-song management should list songs in pages of 10. Profile creator-song management for the user's own Bar Heartbreak songs should support batch selection and batch removal from the public/battle surfaces through the creator-owned remove flow.
+- Bar Heartbreak's room-message surface should be titled `傷心的故事傾訴留言`, not `AI 音樂交流區`. General room messages are temporary and retained for 12 hours.
 - Explore AI Music cards sourced from Bar Heartbreak must display the same total Heart count as the Bar Heartbreak track and send Heart reactions through the same Bar Heartbreak reaction path.
 - New submissions get priority after the current song finishes; each priority batch starts when the first upload arrives, airs up to 8 new uploads within 1 hour, and pushes overflow to the next hour.
 - Bar Heartbreak upload metadata should stay compact: user-entered creator name, AI tool, and album/mood are limited to 12 CJK characters or about 24 English characters; one-line song description is limited to 16 CJK characters or about 32 English characters. Auto-detected song titles are not subject to this compact metadata limit.

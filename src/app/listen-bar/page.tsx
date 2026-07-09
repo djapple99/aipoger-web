@@ -2915,17 +2915,14 @@ export default function ListenBarPage() {
             <div className="flex min-h-[34rem] min-w-0 flex-col rounded-[1.6rem] border border-cyan-200/14 bg-black/68 p-4 shadow-[0_28px_90px_rgba(0,0,0,0.48),0_0_40px_rgba(0,202,255,0.06)] backdrop-blur md:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.28em] text-orange-300/70">
-                    {isZh ? "AI 音樂交流區" : "AI MUSIC TALK"}
-                  </p>
-                  <h2 className="mt-1 text-3xl font-black text-white">{isZh ? "AI 音樂交流區" : "AI Music Talk"}</h2>
+                  <h2 className="text-3xl font-black text-white">{isZh ? "傷心的故事傾訴留言" : "Bar Heartbreak Stories"}</h2>
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-zinc-500">
                     {isZh ? `${localizedMessages.length} 則留言` : `${localizedMessages.length} Messages`}
                   </p>
                   <p className="mt-1 text-xs font-black text-orange-200/80">{listenBarPresenceLabel}</p>
-                  <p className="mt-0.5 text-[11px] font-bold text-zinc-600">{isZh ? "留言保留 8H" : "Messages Keep 8H"}</p>
+                  <p className="mt-0.5 text-[11px] font-bold text-zinc-600">{isZh ? "留言保留 12H" : "Messages Keep 12H"}</p>
                 </div>
               </div>
               <SafetyNotice kind="chat" compact className="mb-3" />
@@ -2934,7 +2931,7 @@ export default function ListenBarPage() {
                 <div className="grid gap-2">
                   {localizedMessages.length === 0 ? (
                     <div className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-8 text-center text-sm font-bold text-zinc-500">
-                      {isZh ? "還沒有人留言，快來聊聊 AI 音樂。" : "No Messages Yet. Start the AI Music Talk."}
+                      {isZh ? "還沒有人留言，說說你的傷心故事。" : "No Messages Yet. Share your Bar Heartbreak story."}
                     </div>
                   ) : (
                     localizedMessages.map((msg) => (
@@ -2957,7 +2954,7 @@ export default function ListenBarPage() {
                   ref={chatInputRef}
                   value={chatInput}
                   onChange={(event) => setChatInput(event.target.value)}
-                  placeholder={isZh ? "說點什麼..." : "Say something..."}
+                  placeholder={isZh ? "說說你的傷心故事..." : "Share your Bar Heartbreak story..."}
                   className="h-14 rounded-full border border-orange-200/35 bg-black/70 px-5 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/20"
                 />
                 <button

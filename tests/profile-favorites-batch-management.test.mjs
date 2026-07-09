@@ -21,10 +21,10 @@ test("Profile saved songs expose batch selection and removal controls", () => {
   assert.ok(profilePage.includes("creatorPageStartIndex + CREATOR_ITEMS_PER_PAGE"));
 });
 
-test("Profile batch removal reuses favorite toggle API sequentially", () => {
+test("Profile batch removal uses explicit favorite removal API sequentially", () => {
   assert.ok(profilePage.includes("removeFavoriteItems"));
   assert.ok(profilePage.includes('fetch("/api/honor-board/interactions"'));
-  assert.ok(profilePage.includes('action: "favorite"'));
+  assert.ok(profilePage.includes('action: "removeFavorite"'));
   assert.ok(profilePage.includes("for (const item of favoriteItems)"));
   assert.ok(profilePage.includes("setHonorFavorites((current) => current.filter"));
   assert.ok(profilePage.includes("setFavoriteOrder((current) => current.filter"));
@@ -47,4 +47,5 @@ test("Profile favorite management rules and release checklist cover batch remova
   assert.ok(releaseChecklist.includes("Profile `收藏歌曲` supports batch selection and batch removal"));
   assert.ok(releaseChecklist.includes("Profile creator data lists songs in pages of 10"));
   assert.ok(releaseChecklist.includes("historical Heart reactions"));
+  assert.ok(productRules.includes("Removing a saved favorite is allowed even while the listener is inside the 24-hour Heart cooldown"));
 });

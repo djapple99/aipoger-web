@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 type HonorTargetKind = "battle" | "bar";
+type HonorAction = "favorite" | "removeFavorite" | "comment";
 
 type StoredHonorComment = {
   id: string;
@@ -401,7 +402,10 @@ export async function POST(request: NextRequest) {
     displayName?: unknown;
     text?: unknown;
   } | null;
-  const action = body?.action === "favorite" || body?.action === "comment" ? body.action : null;
+  const action: HonorAction | null =
+    body?.action === "favorite" || body?.action === "removeFavorite" || body?.action === "comment"
+      ? body.action
+      : null;
   const recordKey = cleanRecordKey(body?.recordKey);
   const targetKind = cleanTargetKind(body?.targetKind);
   const targetId = cleanText(body?.targetId, 120);
@@ -437,10 +441,14 @@ export async function POST(request: NextRequest) {
     if (targetGenre) record.targetGenre = targetGenre;
     record.updatedAt = now;
 
-    if (action === "favorite") {
-      record.favoriteUserIds = record.favoriteUserIds.includes(userId)
-        ? record.favoriteUserIds.filter((id) => id !== userId)
-        : [...record.favoriteUserIds, userId];
+    if (action === "favorite" || action === "removeFavorite") {
+      if (action === "removeFavorite") {
+        record.favoriteUserIds = record.favoriteUserIds.filter((id) => id !== userId);
+      } else {
+        record.favoriteUserIds = record.favoriteUserIds.includes(userId)
+          ? record.favoriteUserIds.filter((id) => id !== userId)
+          : [...record.favoriteUserIds, userId];
+      }
     } else {
       const text = cleanText(body?.text, 280);
       if (!text) return jsonError("請輸入評論內容。");

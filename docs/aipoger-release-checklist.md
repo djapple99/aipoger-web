@@ -46,6 +46,7 @@ Check:
 - Logged-out visitors are asked to sign in before upload/Battle actions.
 - Logged-in users can see profile/fighter identity where expected.
 - Profile `收藏歌曲` supports batch selection and batch removal, and removing saved favorites does not delete historical Heart reactions.
+- Profile saved favorites can be removed even during the active 24-hour Heart cooldown; re-pressing the public Heart button still must not cancel or duplicate the Heart.
 - Profile creator data lists songs in pages of 10; `收藏歌曲` can batch-delete saved favorites, and the creator's own Bar Heartbreak songs can be batch-removed from public/battle surfaces.
 
 ## Drop Battle Checklist
@@ -146,6 +147,7 @@ Check:
 - Logged-out commenting shows sign-in message.
 - Logged-in Heart reactions allow one Heart per track per 24-hour cooldown.
 - Re-pressing Heart on the same track during the 24-hour cooldown does not duplicate or cancel the Heart.
+- Bar Heartbreak room-message surface title is `傷心的故事傾訴留言`, not `AI 音樂交流區`, and general room messages are retained for 12H.
 - Public music surfaces show total Heart count only as the public metric; the viewer's own Heart button may light to show the current 24-hour cooldown, but the page must not show public favorite state, favorite-user count, or who saved the song.
 - Explore AI Music and Bar Heartbreak show the same total Heart count for the same `listen_bar_tracks` song and write through the same reaction flow.
 - Track comments persist.

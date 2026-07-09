@@ -918,7 +918,7 @@ function ProfileInner() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            action: "favorite",
+            action: "removeFavorite",
             recordKey: record.recordKey,
             targetKind: record.targetKind,
             targetId: record.targetId,

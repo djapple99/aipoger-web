@@ -11,7 +11,7 @@ type StoredBarMessage = {
 const DATA_BUCKET = "listen-bar-data";
 const MESSAGE_PATH = "bar-talk/messages.json";
 const MESSAGE_LIMIT = 80;
-const MESSAGE_RETENTION_HOURS = 8;
+const MESSAGE_RETENTION_HOURS = 12;
 const MESSAGE_RETENTION_MS = MESSAGE_RETENTION_HOURS * 60 * 60 * 1000;
 
 function isMissingStorageObject(error: unknown) {
