@@ -1694,9 +1694,7 @@ export default function ListenBarPage() {
   }, Date.now(), survivalStartedAt);
   const nowTrackTitle = !isZh && nowTrack.id === EMPTY_LISTEN_BAR_TRACK.id ? "Waiting for Creator Uploads" : nowTrack.title;
   const nowTrackTitleClass = nowPlayingTitleClass(nowTrackTitle);
-  const myCurrentReaction = myReactions[nowTrack.id] ?? null;
   const currentHeartTotal = Math.max(0, currentReactions.heart ?? 0);
-  const hasMyHeartReaction = myCurrentReaction === "heart";
 
   const handleReaction = (key: ReactionKey) => {
     tryStartRadio();
@@ -1709,12 +1707,14 @@ export default function ListenBarPage() {
       return;
     }
     const previous = myReactions[nowTrack.id] ?? null;
-    const next = previous === key ? null : key;
+    const next = key;
 
     setReactionCounts((allCounts) => {
       const counts = { ...emptyReactions, ...(allCounts[nowTrack.id] ?? {}) };
-      if (previous) counts[previous] = Math.max(0, counts[previous] - 1);
-      if (next) counts[next] += 1;
+      if (previous !== next) {
+        if (previous) counts[previous] = Math.max(0, counts[previous] - 1);
+        counts[next] += 1;
+      }
       return { ...allCounts, [nowTrack.id]: counts };
     });
     setMyReactions((items) => ({ ...items, [nowTrack.id]: next }));
@@ -1763,8 +1763,10 @@ export default function ListenBarPage() {
     })().catch((error) => {
       setReactionCounts((allCounts) => {
         const counts = { ...emptyReactions, ...(allCounts[nowTrack.id] ?? {}) };
-        if (next) counts[next] = Math.max(0, counts[next] - 1);
-        if (previous) counts[previous] += 1;
+        if (previous !== next) {
+          counts[next] = Math.max(0, counts[next] - 1);
+          if (previous) counts[previous] += 1;
+        }
         return { ...allCounts, [nowTrack.id]: counts };
       });
       setMyReactions((items) => ({ ...items, [nowTrack.id]: previous }));
@@ -2665,23 +2667,18 @@ export default function ListenBarPage() {
                       {isZh ? "聽眾反應" : "REACTIONS"}
                     </span>
                     <span className="text-xs font-bold text-orange-100/70">
-                      {isZh ? "登入後每帳號每天每首歌 1 票，可更換或取消。" : "One vote per account per song per day; change or cancel anytime."}
+                      {isZh ? "登入後每帳號每天每首歌 1 顆愛心，不重複累加。" : "One heart per account per song each day; no duplicates."}
                     </span>
                   </div>
                   <div className="grid gap-3 rounded-2xl border border-orange-300/18 bg-orange-500/8 p-3 sm:grid-cols-[auto_1fr] sm:items-center">
                     <button
                       type="button"
                       onClick={() => handleReaction("heart")}
-                      aria-pressed={hasMyHeartReaction}
                       aria-label={isZh ? "送出愛心支持" : "Send a heart"}
                       title={isZh ? "送出愛心支持" : "Send a heart"}
-                      className={`flex h-24 min-w-32 items-center justify-center gap-3 rounded-2xl border px-5 text-3xl font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 ${
-                        hasMyHeartReaction
-                          ? "border-orange-300 bg-orange-500 text-black shadow-[0_0_26px_rgba(255,106,0,0.3)]"
-                          : "border-white/10 bg-black/35 text-zinc-100 hover:border-orange-300/55 hover:text-white"
-                      }`}
+                      className="flex h-24 min-w-32 items-center justify-center gap-3 rounded-2xl border border-white/10 bg-black/35 px-5 text-3xl font-black text-zinc-100 transition hover:border-orange-300/55 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
                     >
-                      <span className={`text-5xl leading-none ${hasMyHeartReaction ? "text-red-700 drop-shadow-[0_0_16px_rgba(220,38,38,0.45)]" : ""}`}>♥</span>
+                      <span className="text-5xl leading-none">♥</span>
                       <span className="tabular-nums">{currentHeartTotal}</span>
                     </button>
                     <div className="min-w-0">

@@ -71,9 +71,10 @@ Discord operating note, 2026-07-02:
 - Bar Heartbreak must remain publicly listenable; do not block the radio/player behind auth.
 - Music analysis entry and any future analysis API must require sign-in before upload, scoring, or report generation.
 - These auth rules are system behavior rules. Do not surface them as a long rule block in the product UI unless a help/legal page explicitly needs them.
-- A signed-in account can keep only one reaction per Bar Heartbreak track.
-- Clicking another reaction changes the reaction.
-- Clicking the same reaction again cancels it.
+- A signed-in account can send one Heart per Bar Heartbreak track per Taiwan day.
+- Re-pressing Heart on the same track on the same Taiwan day is idempotent: it must not duplicate, cancel, or remove the saved favorite.
+- Public music surfaces must show total Heart count only. Do not display a per-user lit/unlit favorite state or public favorite-user count; personal saved-song management belongs in the user's Profile.
+- Explore AI Music and Bar Heartbreak must read and update the same `listen_bar_tracks` Heart totals for the same song; Explore must not create a separate favorite or Heart counter.
 - V1 allows creators to react to their own Bar Heartbreak song.
 
 ## Music Analysis / AI A&R Gate
@@ -233,7 +234,8 @@ Current rules:
 - The legacy 30-day `completed` removal rule is retired and must not remove songs.
 - Public pool target: 36 songs per genre, currently 396 songs across 11 genres. Challenger priority airplay can still surface protected new submissions.
 - After that song's genre activation point, a song with 30 hearts/positive reactions or 7 public survival days becomes Showtime eligible.
-- A listener must sign in to react or comment. Pressing Heart on a Bar Heartbreak track also saves that track to the listener's favorites. Removing it later from favorites does not remove the historical heart reaction; pressing Heart again after unsaving saves it again without duplicate favorites.
+- A listener must sign in to press Heart or comment. Pressing Heart on a Bar Heartbreak track also saves that track to the listener's favorites. Removing it later from favorites in Profile does not remove the historical Heart reaction; pressing Heart again on a later Taiwan day saves it again without duplicate favorites.
+- Explore AI Music cards sourced from Bar Heartbreak must display the same total Heart count as the Bar Heartbreak track and send Heart reactions through the same Bar Heartbreak reaction path.
 - New submissions get priority after the current song finishes; each priority batch starts when the first upload arrives, airs up to 8 new uploads within 1 hour, and pushes overflow to the next hour.
 - Bar Heartbreak upload metadata should stay compact: user-entered creator name, AI tool, and album/mood are limited to 12 CJK characters or about 24 English characters; one-line song description is limited to 16 CJK characters or about 32 English characters. Auto-detected song titles are not subject to this compact metadata limit.
 - Bar Heartbreak submissions may include one optional YouTube MV URL. The public now-playing metadata row shows it only as a compact `看 MV` / `Watch MV` action; it must not replace audio playback or interrupt the radio. Creators can add or edit this URL from their own track detail form, and admins can edit it from `/admin/listen-bar`.
@@ -274,7 +276,7 @@ This page is the AI music works browser. It should:
 - Keep `Drop Battle` / `AI 音樂鬥歌場` as internal options from this page, not the homepage first-layer primary entry.
 - `台語熊high` is a current fixed music genre. Treat old spaced labels such as `台語熊 High` only as aliases into `台語熊high`; do not display `City Pop / Disco / Funk 城市律動` or `心靈 Ambient 宇宙` as current category names.
 
-If a source track does not explicitly allow direct challenge, it may be played, saved, and shared, but it must not be presented as directly challengeable.
+If a source track does not explicitly allow direct challenge, it may be played, hearted, and shared, but it must not be presented as directly challengeable.
 
 Explore direct challenge loop:
 

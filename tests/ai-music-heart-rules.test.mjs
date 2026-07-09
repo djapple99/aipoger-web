@@ -1,0 +1,34 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+
+const aiMusicSource = readFileSync(new URL("../src/app/ai-music/ai-music-client.tsx", import.meta.url), "utf8");
+const listenBarSource = readFileSync(new URL("../src/app/listen-bar/page.tsx", import.meta.url), "utf8");
+const productRulesSource = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
+
+test("Explore AI Music hearts use total public heart count instead of personal favorite state", () => {
+  assert.ok(aiMusicSource.includes('fetch("/api/listen-bar/reaction"'));
+  assert.ok(aiMusicSource.includes('reaction: "heart"'));
+  assert.ok(aiMusicSource.includes("trackId: track.sourceId"));
+  assert.ok(aiMusicSource.includes('.from("listen_bar_tracks")'));
+  assert.ok(aiMusicSource.includes("row.heart_count ?? track.positiveReactionCount"));
+  assert.equal(aiMusicSource.includes("battle_result_archives"), false);
+  assert.equal(aiMusicSource.includes("battle_song_stats"), false);
+  assert.equal(aiMusicSource.includes("/api/honor-board/interactions?keys="), false);
+  assert.equal(aiMusicSource.includes("myFavorited"), false);
+  assert.equal(aiMusicSource.includes("favoriteCount"), false);
+  assert.equal(aiMusicSource.includes("取消收藏"), false);
+});
+
+test("Bar Heartbreak Heart is idempotent for the same track and day", () => {
+  assert.ok(listenBarSource.includes("const next = key;"));
+  assert.ok(listenBarSource.includes("不重複累加"));
+  assert.equal(listenBarSource.includes("previous === key ? null : key"), false);
+  assert.equal(listenBarSource.includes("可更換或取消"), false);
+});
+
+test("product rules keep personal favorite state out of public music surfaces", () => {
+  assert.ok(productRulesSource.includes("Public music surfaces must show total Heart count only"));
+  assert.ok(productRulesSource.includes("must not duplicate, cancel, or remove the saved favorite"));
+  assert.ok(productRulesSource.includes("Explore AI Music and Bar Heartbreak must read and update the same `listen_bar_tracks` Heart totals"));
+});

@@ -22,15 +22,12 @@ import {
 } from "@/lib/ai-music-challenge-rules";
 
 type TrackSource = "battle" | "bar";
-type BattleWinnerSide = "fighter_a" | "fighter_b";
 
 type AiMusicTrack = {
   id: string;
   source: TrackSource;
   sourceId: string;
   recordKey: string;
-  targetKind: TrackSource;
-  targetId: string;
   title: string;
   creator: string;
   aiTool: string;
@@ -51,70 +48,21 @@ type AiMusicTrack = {
   href: string;
 };
 
-type HonorInteractionPayload = {
-  recordKey: string;
-  favoriteCount: number;
-  myFavorited: boolean;
-  comments?: unknown[];
-};
-
-type HonorInteractionState = {
-  favoriteCount: number;
-  myFavorited: boolean;
-};
-
-type BattleMediaRow = {
-  id?: string | null;
-  winner?: string | null;
-  fighter_a_name?: string | null;
-  fighter_b_name?: string | null;
-  song_a_name?: string | null;
-  song_b_name?: string | null;
-  ai_tool_a?: string | null;
-  ai_tool_b?: string | null;
-  audio_a_path?: string | null;
-  audio_b_path?: string | null;
-  song_a_cover?: string | null;
-  song_b_cover?: string | null;
-  fighter_a_avatar?: string | null;
-  fighter_b_avatar?: string | null;
-};
-
-type SongStatsRow = {
-  owner_user_id?: string | null;
-  display_title?: string | null;
-  genre?: string | null;
-  ai_tool?: string | null;
-  latest_audio_path?: string | null;
-  battle_count?: number | null;
-  wins?: number | null;
-  losses?: number | null;
-  no_contests?: number | null;
-  total_votes_for?: number | null;
-  total_votes_against?: number | null;
-  honor_board_count?: number | null;
-  last_battled_at?: string | null;
-  updated_at?: string | null;
+type ListenBarReactionPayload = {
+  counts?: {
+    heart?: number;
+  };
+  positiveReactionCount?: number;
+  favoriteSynced?: boolean;
+  error?: string;
 };
 
 type LoadState = "loading" | "ready" | "error";
-
-const BATTLE_ARCHIVE_SELECT =
-  "battle_id,battle_code,winner,winner_name,winner_song_name,winner_ai_tool,opponent_name,opponent_song_name,final_vote_left,final_vote_right,total_votes,audience_review,result_payload,archived_at,winner_song_battle_count,winner_song_wins,winner_song_losses,winner_song_no_contests,winner_song_total_votes_for,winner_song_total_votes_against,winner_song_honor_board_count";
-
-function cleanText(value: unknown, fallback = "") {
-  const clean = typeof value === "string" ? value.trim() : "";
-  return clean || fallback;
-}
 
 function numberValue(value: unknown) {
   const number = Number(value);
   if (!Number.isFinite(number)) return 0;
   return Math.max(0, Math.round(number));
-}
-
-function normalizeWinnerSide(value: unknown): BattleWinnerSide | null {
-  return value === "fighter_a" || value === "fighter_b" ? value : null;
 }
 
 function normalizeTitleKey(value: string | null | undefined) {
@@ -134,11 +82,6 @@ function canonicalGenreBucket(value: string | null | undefined) {
 function safeDate(value: string | null | undefined) {
   const parsed = new Date(value || "");
   return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : new Date().toISOString();
-}
-
-function resultPathForBattle(id: string, lang: string) {
-  const params = new URLSearchParams({ lang });
-  return `/battle/result?battleId=${encodeURIComponent(id)}&${params.toString()}`;
 }
 
 function aiMusicChallengeHref(track: AiMusicTrack, lang: string) {
@@ -165,220 +108,7 @@ function storagePublicUrl(bucket: string, path: string | null | undefined) {
   return supabase.storage.from(bucket).getPublicUrl(clean).data.publicUrl;
 }
 
-async function signedStorageUrl(bucket: string, path: string | null | undefined) {
-  const clean = path?.trim();
-  if (!clean) return null;
-  if (/^(https?:|blob:|data:)/i.test(clean)) return clean;
-  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(clean, 60 * 30);
-  if (error) return null;
-  return data?.signedUrl ?? null;
-}
-
-async function battleMediaUrl(path: string | null | undefined) {
-  const clean = path?.trim();
-  if (!clean) return null;
-  if (/^(https?:|blob:|data:)/i.test(clean)) return clean;
-  for (const bucket of ["battle-audio", "avatars"] as const) {
-    const url = await signedStorageUrl(bucket, clean);
-    if (url) return url;
-  }
-  return null;
-}
-
-function payloadObject(value: unknown) {
-  return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
-}
-
-function songStatsFromArchive(row: Record<string, unknown>, payload: Record<string, unknown>) {
-  const payloadStats =
-    typeof payload.songStats === "object" && payload.songStats !== null
-      ? payloadObject(payloadObject(payload.songStats).winner)
-      : {};
-  const battleCount = numberValue(row.winner_song_battle_count ?? payloadStats.battleCount);
-  const wins = numberValue(row.winner_song_wins ?? payloadStats.wins);
-  const losses = numberValue(row.winner_song_losses ?? payloadStats.losses);
-  const totalVotes = numberValue(
-    row.winner_song_total_votes_for ??
-      payloadStats.totalVotesFor ??
-      row.total_votes ??
-      payload.votesTotal ??
-      payload.votes,
-  );
-  return {
-    battleCount,
-    wins,
-    losses,
-    totalVotes,
-    winRate: battleCount > 0 ? Math.round((wins / battleCount) * 100) : 0,
-  };
-}
-
-async function readBattleArchiveRows() {
-  const primary = await supabase
-    .from("battle_result_archives")
-    .select(BATTLE_ARCHIVE_SELECT)
-    .order("archived_at", { ascending: false })
-    .limit(180);
-  if (!primary.error) return (primary.data ?? []) as Record<string, unknown>[];
-
-  const fallback = await supabase
-    .from("battle_result_archives")
-    .select(
-      "battle_id,battle_code,winner,winner_name,winner_song_name,winner_ai_tool,opponent_name,opponent_song_name,final_vote_left,final_vote_right,total_votes,audience_review,result_payload,archived_at",
-    )
-    .order("archived_at", { ascending: false })
-    .limit(180);
-  if (fallback.error) throw fallback.error;
-  return (fallback.data ?? []) as Record<string, unknown>[];
-}
-
-async function readBattleMediaRows(battleIds: string[]) {
-  if (battleIds.length === 0) return new Map<string, BattleMediaRow>();
-  const selectAttempts = [
-    "id,winner,fighter_a_name,fighter_b_name,song_a_name,song_b_name,ai_tool_a,ai_tool_b,audio_a_path,audio_b_path,song_a_cover,song_b_cover,fighter_a_avatar,fighter_b_avatar",
-    "id,winner,fighter_a_name,fighter_b_name,song_a_name,song_b_name,ai_tool_a,ai_tool_b,audio_a_path,audio_b_path",
-  ];
-
-  for (const select of selectAttempts) {
-    const { data, error } = await supabase.from("battles").select(select).in("id", battleIds);
-    if (!error) {
-      return new Map((data ?? []).map((row) => [String((row as BattleMediaRow).id), row as BattleMediaRow]));
-    }
-    if (!/schema cache|does not exist|PGRST204|song_a_cover|fighter_a_avatar/i.test(error.message)) {
-      console.warn("[ai-music battle media]", error.message);
-      return new Map<string, BattleMediaRow>();
-    }
-  }
-
-  return new Map<string, BattleMediaRow>();
-}
-
-async function readSongStatsRows() {
-  const { data, error } = await supabase
-    .from("battle_song_stats")
-    .select(
-      "owner_user_id,display_title,genre,ai_tool,latest_audio_path,battle_count,wins,losses,no_contests,total_votes_for,total_votes_against,honor_board_count,last_battled_at,updated_at",
-    )
-    .order("battle_count", { ascending: false })
-    .limit(240);
-  if (error) {
-    if (!/schema cache|does not exist|permission denied/i.test(error.message)) {
-      console.warn("[ai-music song stats]", error.message);
-    }
-    return [];
-  }
-  return (data ?? []) as SongStatsRow[];
-}
-
-function buildSongStatsLookup(rows: SongStatsRow[]) {
-  const byOwnerAndTitle = new Map<string, SongStatsRow>();
-  const byTitle = new Map<string, SongStatsRow>();
-  for (const row of rows) {
-    const titleKey = normalizeTitleKey(row.display_title);
-    if (!titleKey) continue;
-    if (row.owner_user_id) byOwnerAndTitle.set(`${row.owner_user_id}:${titleKey}`, row);
-    const current = byTitle.get(titleKey);
-    if (!current || numberValue(row.battle_count) > numberValue(current.battle_count)) byTitle.set(titleKey, row);
-  }
-  return { byOwnerAndTitle, byTitle };
-}
-
-async function tracksFromBattleArchives(lang: string) {
-  const rows = await readBattleArchiveRows();
-  const filteredRows = rows.filter((row) => {
-    const payload = payloadObject(row.result_payload);
-    const audience = numberValue(payload.audienceCount ?? payload.audienceVoterCount ?? row.total_votes);
-    const min = numberValue(payload.officialAudienceMin) || 3;
-    return cleanText(row.winner_name) && cleanText(row.winner_song_name) && audience >= min;
-  });
-  const battleIds = Array.from(
-    new Set(filteredRows.map((row) => cleanText(row.battle_id)).filter(Boolean)),
-  );
-  const battleMediaById = await readBattleMediaRows(battleIds);
-
-  const mediaUrlByKey = new Map<string, string | null>();
-  await Promise.all(
-    filteredRows.map(async (row) => {
-      const battleId = cleanText(row.battle_id);
-      const media = battleId ? battleMediaById.get(battleId) : null;
-      const winner = normalizeWinnerSide(media?.winner ?? row.winner);
-      const winnerIsB = winner === "fighter_b";
-      const audioPath = winnerIsB ? media?.audio_b_path : media?.audio_a_path;
-      const coverPath = winnerIsB
-        ? media?.song_b_cover || media?.fighter_b_avatar
-        : media?.song_a_cover || media?.fighter_a_avatar;
-      const [audioUrl, coverUrl] = await Promise.all([
-        signedStorageUrl("battle-audio", audioPath),
-        battleMediaUrl(coverPath),
-      ]);
-      if (battleId) {
-        mediaUrlByKey.set(`${battleId}:audio`, audioUrl);
-        mediaUrlByKey.set(`${battleId}:cover`, coverUrl);
-      }
-    }),
-  );
-
-  return filteredRows.map<AiMusicTrack>((row) => {
-    const payload = payloadObject(row.result_payload);
-    const battleId = cleanText(row.battle_id) || cleanText(row.battle_code) || cleanText(row.winner_song_name);
-    const media = battleId ? battleMediaById.get(battleId) : null;
-    const winner = normalizeWinnerSide(media?.winner ?? row.winner);
-    const winnerIsB = winner === "fighter_b";
-    const title = cleanText(
-      winnerIsB ? media?.song_b_name : media?.song_a_name,
-      cleanText(row.winner_song_name, "Untitled AI Music"),
-    );
-    const creator = cleanText(
-      winnerIsB ? media?.fighter_b_name : media?.fighter_a_name,
-      cleanText(row.winner_name, "AIPOGER Creator"),
-    );
-    const aiTool = cleanText(
-      winnerIsB ? media?.ai_tool_b : media?.ai_tool_a,
-      cleanText(row.winner_ai_tool || payload.tool, "AI Music"),
-    );
-    const stats = songStatsFromArchive(row, payload);
-    const genre = canonicalGenreBucket(cleanText(payload.genre, cleanText(row.genre, "")));
-    const audienceVotes = numberValue(payload.audienceCount ?? payload.audienceVoterCount ?? row.total_votes);
-    const battleCode = cleanText(row.battle_code);
-    const sourceId = cleanText(row.battle_id) || battleCode || battleId;
-    const audioUrl =
-      cleanText(payload.audioUrl) ||
-      (cleanText(row.battle_id) ? mediaUrlByKey.get(`${cleanText(row.battle_id)}:audio`) ?? null : null);
-    const coverUrl =
-      cleanText(payload.coverUrl) ||
-      (cleanText(row.battle_id) ? mediaUrlByKey.get(`${cleanText(row.battle_id)}:cover`) ?? "" : "") ||
-      AIPOGER_BRAND_LOGO;
-
-    return {
-      id: `battle-${sourceId}`,
-      source: "battle",
-      sourceId,
-      recordKey: `battle:${sourceId}`,
-      targetKind: "battle",
-      targetId: battleCode || sourceId,
-      title,
-      creator,
-      aiTool,
-      genre,
-      coverUrl,
-      audioUrl: audioUrl || null,
-      createdAt: safeDate(cleanText(row.archived_at)),
-      heartCount: 0,
-      challengeCount: stats.battleCount,
-      wins: stats.wins,
-      losses: stats.losses,
-      audienceVotes: stats.totalVotes || audienceVotes,
-      winRate: stats.winRate,
-      openForChallenge: false,
-      hasDefenderDrop: false,
-      challengeStatus: "showcase",
-      statusLabel: lang === "zh" ? "Showtime 展示" : "Showtime showcase",
-      href: resultPathForBattle(sourceId, lang),
-    };
-  });
-}
-
-async function tracksFromListenBar(songStats: ReturnType<typeof buildSongStatsLookup>, lang: string) {
+async function tracksFromListenBar(lang: string) {
   const { data, error } = await supabase
     .from("listen_bar_tracks")
     .select(
@@ -399,16 +129,6 @@ async function tracksFromListenBar(songStats: ReturnType<typeof buildSongStatsLo
       return Boolean(item.track && item.track.source !== "official");
     })
     .map<AiMusicTrack>(({ row, track }) => {
-      const titleKey = normalizeTitleKey(track.title);
-      const stats =
-        (row.created_by ? songStats.byOwnerAndTitle.get(`${row.created_by}:${titleKey}`) : null) ??
-        songStats.byTitle.get(titleKey) ??
-        null;
-      const battleCount = numberValue(stats?.battle_count);
-      const wins = numberValue(stats?.wins);
-      const losses = numberValue(stats?.losses);
-      const votesFor = numberValue(stats?.total_votes_for);
-      const votesAgainst = numberValue(stats?.total_votes_against);
       const genre = canonicalGenreBucket(row.genre ?? track.genre);
       const challengeStatus = normalizeAiMusicChallengeStatus((row as ListenBarTrackRow & { ai_music_challenge_status?: string | null }).ai_music_challenge_status);
       const defenderDropAudioPath = (row as ListenBarTrackRow & { ai_music_defender_drop_audio_path?: string | null }).ai_music_defender_drop_audio_path;
@@ -424,21 +144,19 @@ async function tracksFromListenBar(songStats: ReturnType<typeof buildSongStatsLo
         source: "bar",
         sourceId: track.id,
         recordKey: `bar:${track.id}`,
-        targetKind: "bar",
-        targetId: track.id,
         title: track.title,
         creator: track.artist,
-        aiTool: track.tool || cleanText(stats?.ai_tool, "AI Music"),
+        aiTool: track.tool || "AI Music",
         genre,
         coverUrl: track.coverUrl || storagePublicUrl("listen-bar-covers", row.cover_path) || AIPOGER_BRAND_LOGO,
         audioUrl: track.audioUrl || storagePublicUrl("listen-bar-audio", row.audio_path),
         createdAt: safeDate(track.createdAt),
-        heartCount: numberValue(track.positiveReactionCount),
-        challengeCount: battleCount,
-        wins,
-        losses,
-        audienceVotes: votesFor + votesAgainst,
-        winRate: battleCount > 0 ? Math.round((wins / battleCount) * 100) : 0,
+        heartCount: numberValue(row.heart_count ?? track.positiveReactionCount),
+        challengeCount: 0,
+        wins: 0,
+        losses: 0,
+        audienceVotes: 0,
+        winRate: 0,
         openForChallenge,
         hasDefenderDrop,
         challengeStatus,
@@ -568,28 +286,25 @@ function TrackCard({
   isZh,
   isPlaying,
   isExpanded,
-  interaction,
-  favoriteBusy,
+  heartBusy,
   lang,
   onPlay,
   onToggleExpand,
-  onFavorite,
+  onHeart,
   onShare,
 }: {
   track: AiMusicTrack;
   isZh: boolean;
   isPlaying: boolean;
   isExpanded: boolean;
-  interaction: HonorInteractionState | undefined;
-  favoriteBusy: boolean;
+  heartBusy: boolean;
   lang: string;
   onPlay: (track: AiMusicTrack) => void;
   onToggleExpand: (track: AiMusicTrack) => void;
-  onFavorite: (track: AiMusicTrack) => void;
+  onHeart: (track: AiMusicTrack) => void;
   onShare: (track: AiMusicTrack) => void;
 }) {
-  const heartCount = Math.max(track.heartCount, interaction?.favoriteCount ?? 0);
-  const favorited = Boolean(interaction?.myFavorited);
+  const heartCount = Math.max(0, track.heartCount);
   return (
     <article className="group relative w-[12.5rem] shrink-0 snap-start overflow-hidden rounded-md border border-white/10 bg-black/54 shadow-[0_18px_54px_rgba(0,0,0,0.34)] backdrop-blur transition hover:border-orange-200/45 hover:bg-orange-500/[0.055] sm:w-full">
       <div className="relative aspect-square">
@@ -640,16 +355,12 @@ function TrackCard({
         <div className="grid grid-cols-3 gap-1.5">
           <button
             type="button"
-            onClick={() => onFavorite(track)}
-            disabled={favoriteBusy}
-            className={`inline-flex min-h-9 items-center justify-center rounded-md border px-2 text-[11px] font-black transition disabled:cursor-wait disabled:opacity-55 ${
-              favorited
-                ? "border-rose-200/55 bg-rose-400/18 text-rose-50"
-                : "border-white/10 bg-white/[0.04] text-zinc-300 hover:border-rose-200/40 hover:text-white"
-            }`}
-            aria-label={favorited ? (isZh ? "取消收藏" : "Remove favorite") : isZh ? "收藏" : "Favorite"}
+            onClick={() => onHeart(track)}
+            disabled={heartBusy}
+            className="inline-flex min-h-9 items-center justify-center rounded-md border border-white/10 bg-white/[0.04] px-2 text-[11px] font-black text-zinc-300 transition hover:border-rose-200/40 hover:text-rose-100 disabled:cursor-wait disabled:opacity-55"
+            aria-label={isZh ? "送出愛心支持" : "Send a heart"}
           >
-            <HeartIcon filled={favorited} />
+            <HeartIcon />
           </button>
           <button
             type="button"
@@ -687,11 +398,10 @@ function MiniPlayer({
   track,
   isZh,
   isPlaying,
-  interaction,
-  favoriteBusy,
+  heartBusy,
   lang,
   onTogglePlay,
-  onFavorite,
+  onHeart,
   onShare,
   audioRef,
   onEnded,
@@ -701,11 +411,10 @@ function MiniPlayer({
   track: AiMusicTrack | null;
   isZh: boolean;
   isPlaying: boolean;
-  interaction: HonorInteractionState | undefined;
-  favoriteBusy: boolean;
+  heartBusy: boolean;
   lang: string;
   onTogglePlay: () => void;
-  onFavorite: (track: AiMusicTrack) => void;
+  onHeart: (track: AiMusicTrack) => void;
   onShare: (track: AiMusicTrack) => void;
   audioRef: RefObject<HTMLAudioElement | null>;
   onEnded: () => void;
@@ -713,7 +422,6 @@ function MiniPlayer({
   onPlay: () => void;
 }) {
   if (!track) return null;
-  const favorited = Boolean(interaction?.myFavorited);
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 border-t border-orange-200/20 bg-black/92 px-3 py-2 text-white shadow-[0_-22px_70px_rgba(0,0,0,0.66)] backdrop-blur">
@@ -744,16 +452,13 @@ function MiniPlayer({
           </button>
           <button
             type="button"
-            onClick={() => onFavorite(track)}
-            disabled={favoriteBusy}
-            className={`hidden h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-wait disabled:opacity-55 sm:inline-flex ${
-              favorited
-                ? "border-rose-200/50 bg-rose-400/18 text-rose-50"
-                : "border-white/12 bg-white/[0.045] text-zinc-300 hover:border-rose-200/42 hover:text-white"
-            }`}
-            aria-label={favorited ? (isZh ? "取消收藏" : "Remove favorite") : isZh ? "收藏" : "Favorite"}
+            onClick={() => onHeart(track)}
+            disabled={heartBusy}
+            className="hidden h-10 items-center justify-center gap-1.5 rounded-full border border-white/12 bg-white/[0.045] px-3 text-xs font-black text-zinc-300 transition hover:border-rose-200/42 hover:text-rose-100 disabled:cursor-wait disabled:opacity-55 sm:inline-flex"
+            aria-label={isZh ? "送出愛心支持" : "Send a heart"}
           >
-            <HeartIcon filled={favorited} />
+            <HeartIcon />
+            <span className="tabular-nums">{Math.max(0, track.heartCount)}</span>
           </button>
           <button
             type="button"
@@ -785,8 +490,7 @@ export default function AiMusicClient() {
   const [loadError, setLoadError] = useState("");
   const [expandedGenres, setExpandedGenres] = useState<Record<string, boolean>>({});
   const [expandedHud, setExpandedHud] = useState<Record<string, boolean>>({});
-  const [interactions, setInteractions] = useState<Record<string, HonorInteractionState>>({});
-  const [favoriteBusy, setFavoriteBusy] = useState<Record<string, boolean>>({});
+  const [heartBusy, setHeartBusy] = useState<Record<string, boolean>>({});
   const [notice, setNotice] = useState("");
   const [currentTrack, setCurrentTrack] = useState<AiMusicTrack | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -800,14 +504,9 @@ export default function AiMusicClient() {
       setLoadState("loading");
       setLoadError("");
       try {
-        const statsRows = await readSongStatsRows();
-        const statsLookup = buildSongStatsLookup(statsRows);
-        const [battleTracks, barTracks] = await Promise.all([
-          tracksFromBattleArchives(lang),
-          tracksFromListenBar(statsLookup, lang),
-        ]);
+        const barTracks = await tracksFromListenBar(lang);
         if (!cancelled) {
-          setTracks(mergeDuplicateTracks([...battleTracks, ...barTracks]));
+          setTracks(mergeDuplicateTracks(barTracks));
           setLoadState("ready");
         }
       } catch (error) {
@@ -837,50 +536,6 @@ export default function AiMusicClient() {
       tracks: groups.get(genre) ?? [],
     }));
   }, [tracks, t]);
-
-  const visibleRecordKeys = useMemo(() => {
-    const keys = new Set<string>();
-    groupedTracks.forEach((group) => {
-      const visible = expandedGenres[group.genre] ? group.tracks : group.tracks.slice(0, 6);
-      visible.forEach((track) => keys.add(track.recordKey));
-    });
-    return Array.from(keys);
-  }, [expandedGenres, groupedTracks]);
-
-  useEffect(() => {
-    if (visibleRecordKeys.length === 0) return;
-    let cancelled = false;
-
-    const loadInteractions = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const response = await fetch(
-        `/api/honor-board/interactions?keys=${encodeURIComponent(visibleRecordKeys.join(","))}`,
-        {
-          headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
-          cache: "no-store",
-        },
-      );
-      const payload = (await response.json().catch(() => null)) as { records?: HonorInteractionPayload[] } | null;
-      if (!response.ok || !Array.isArray(payload?.records) || cancelled) return;
-      setInteractions((current) => {
-        const next = { ...current };
-        payload.records?.forEach((record) => {
-          next[record.recordKey] = {
-            favoriteCount: Math.max(0, numberValue(record.favoriteCount)),
-            myFavorited: Boolean(record.myFavorited),
-          };
-        });
-        return next;
-      });
-    };
-
-    void loadInteractions();
-    return () => {
-      cancelled = true;
-    };
-  }, [visibleRecordKeys]);
 
   useEffect(() => {
     if (!currentTrack || !audioRef.current) return;
@@ -916,49 +571,49 @@ export default function AiMusicClient() {
     setIsPlaying(true);
   };
 
-  const toggleFavorite = async (track: AiMusicTrack) => {
+  const sendHeart = async (track: AiMusicTrack) => {
     setNotice("");
+    if (track.source !== "bar") {
+      setNotice(isZh ? "這筆展示紀錄目前沒有公播愛心資料。" : "This showcase record has no public-airplay heart data yet.");
+      return;
+    }
     const {
       data: { session },
     } = await supabase.auth.getSession();
     if (!session?.access_token) {
-      setNotice(isZh ? "請先登入，愛心會成為你的收藏。" : "Sign in to save this track.");
+      setNotice(isZh ? "請先登入，每天每首歌可以送 1 顆愛心。" : "Sign in to send one heart per track each day.");
       return;
     }
 
-    setFavoriteBusy((current) => ({ ...current, [track.recordKey]: true }));
-    const response = await fetch("/api/honor-board/interactions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({
-        action: "favorite",
-        recordKey: track.recordKey,
-        targetKind: track.targetKind,
-        targetId: track.targetId,
-        targetTitle: track.title,
-        targetArtist: track.creator,
-        targetGenre: track.genre,
-      }),
-    });
-    const payload = (await response.json().catch(() => null)) as {
-      record?: HonorInteractionPayload;
-      error?: string;
-    } | null;
-    setFavoriteBusy((current) => ({ ...current, [track.recordKey]: false }));
-    if (!response.ok || !payload?.record) {
-      setNotice(payload?.error || (isZh ? "收藏失敗，請稍後再試。" : "Favorite failed. Try again later."));
-      return;
+    setHeartBusy((current) => ({ ...current, [track.recordKey]: true }));
+    try {
+      const response = await fetch("/api/listen-bar/reaction", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          trackId: track.sourceId,
+          reaction: "heart",
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as ListenBarReactionPayload | null;
+      if (!response.ok || !payload?.counts) {
+        setNotice(payload?.error || (isZh ? "愛心送出失敗，請稍後再試。" : "Heart failed. Try again later."));
+        return;
+      }
+      const heartCount = Math.max(0, numberValue(payload.counts.heart));
+      setTracks((current) =>
+        current.map((item) => (item.recordKey === track.recordKey ? { ...item, heartCount } : item)),
+      );
+      setCurrentTrack((current) => (current?.recordKey === track.recordKey ? { ...current, heartCount } : current));
+      setNotice(isZh ? "今天的愛心已送出，歌曲已同步收藏到你的後台。" : "Heart sent for today. The track is saved in your profile.");
+    } catch {
+      setNotice(isZh ? "愛心送出失敗，請稍後再試。" : "Heart failed. Try again later.");
+    } finally {
+      setHeartBusy((current) => ({ ...current, [track.recordKey]: false }));
     }
-    setInteractions((current) => ({
-      ...current,
-      [track.recordKey]: {
-        favoriteCount: Math.max(0, numberValue(payload.record?.favoriteCount)),
-        myFavorited: Boolean(payload.record?.myFavorited),
-      },
-    }));
   };
 
   const shareTrack = async (track: AiMusicTrack) => {
@@ -1000,8 +655,8 @@ export default function AiMusicClient() {
             </h1>
             <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-zinc-400 sm:text-base">
               {isZh
-                ? "依照風格快速瀏覽作品，聽歌、收藏，或向你喜歡的作品發起挑戰。"
-                : "Browse tracks by style, listen, save favorites, or start a challenge from music you like."}
+                ? "依照風格快速瀏覽作品，聽歌、送愛心，或向你喜歡的作品發起挑戰。"
+                : "Browse tracks by style, listen, send hearts, or start a challenge from music you like."}
             </p>
           </div>
           <div className="flex flex-wrap gap-2 md:justify-end">
@@ -1099,12 +754,11 @@ export default function AiMusicClient() {
                             isZh={isZh}
                             isPlaying={currentTrack?.id === track.id && isPlaying}
                             isExpanded={Boolean(expandedHud[track.id])}
-                            interaction={interactions[track.recordKey]}
-                            favoriteBusy={Boolean(favoriteBusy[track.recordKey])}
+                            heartBusy={Boolean(heartBusy[track.recordKey])}
                             lang={lang}
                             onPlay={handlePlayTrack}
                             onToggleExpand={(item) => setExpandedHud((current) => ({ ...current, [item.id]: !current[item.id] }))}
-                            onFavorite={(item) => void toggleFavorite(item)}
+                            onHeart={(item) => void sendHeart(item)}
                             onShare={(item) => void shareTrack(item)}
                           />
                         ))}
@@ -1131,8 +785,7 @@ export default function AiMusicClient() {
         track={currentTrack}
         isZh={isZh}
         isPlaying={isPlaying}
-        interaction={currentTrack ? interactions[currentTrack.recordKey] : undefined}
-        favoriteBusy={currentTrack ? Boolean(favoriteBusy[currentTrack.recordKey]) : false}
+        heartBusy={currentTrack ? Boolean(heartBusy[currentTrack.recordKey]) : false}
         lang={lang}
         onTogglePlay={() => {
           if (!currentTrack) return;
@@ -1143,7 +796,7 @@ export default function AiMusicClient() {
             setIsPlaying(true);
           }
         }}
-        onFavorite={(track) => void toggleFavorite(track)}
+        onHeart={(track) => void sendHeart(track)}
         onShare={(track) => void shareTrack(track)}
         audioRef={audioRef}
         onEnded={() => setIsPlaying(false)}

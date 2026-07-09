@@ -39,7 +39,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "AIPOGER 愛播歌｜探索 AI 音樂、Drop Battle 與傷心酒吧",
-    description: "探索正在被聽見、收藏與挑戰的 AI 音樂作品，從喜歡的歌曲延伸到 Drop Battle、傷心酒吧與 Showtime。",
+    description: "探索正在被聽見、送出愛心與挑戰的 AI 音樂作品，從喜歡的歌曲延伸到 Drop Battle、傷心酒吧與 Showtime。",
     url: siteUrl,
     siteName: "AIPOGER 愛播歌",
     locale: "zh_TW",

@@ -132,9 +132,10 @@ Check:
 - Comment box appears near reactions.
 - Logged-out voting shows sign-in message.
 - Logged-out commenting shows sign-in message.
-- Logged-in reactions allow one reaction per track.
-- Clicking another reaction changes the reaction.
-- Clicking the same reaction cancels the reaction.
+- Logged-in Heart reactions allow one Heart per track per Taiwan day.
+- Re-pressing Heart on the same track on the same Taiwan day does not duplicate or cancel the Heart.
+- Public music surfaces show total Heart count only, without per-user lit/unlit favorite state.
+- Explore AI Music and Bar Heartbreak show the same total Heart count for the same `listen_bar_tracks` song and write through the same reaction flow.
 - Track comments persist.
 - Track comments notify the song creator through account notifications, except self-comments.
 - Upload requires sign-in.

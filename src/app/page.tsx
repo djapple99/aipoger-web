@@ -158,7 +158,7 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
       explore: {
         eyebrow: "EXPLORE",
         title: "Explore AI Music",
-        body: "Browse AI music that is being heard, saved, and challenged across AIPOGER.",
+        body: "Browse AI music that is being heard, hearted, and challenged across AIPOGER.",
         tone: "orange",
       },
       bar: {
@@ -180,7 +180,7 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
     explore: {
       eyebrow: "EXPLORE",
       title: "探索 AI 音樂",
-      body: "瀏覽正在被聽見、收藏與挑戰的 AI 音樂作品",
+      body: "瀏覽正在被聽見、送出愛心與挑戰的 AI 音樂作品",
       tone: "orange",
     },
     bar: {
@@ -896,7 +896,7 @@ export default function HomePage() {
       ];
   const infoLinks = isZh
     ? [
-        { href: withLang("/ai-music"), title: "AI 音樂作品", desc: "先聽歌、收藏，再發起挑戰" },
+        { href: withLang("/ai-music"), title: "AI 音樂作品", desc: "先聽歌、送愛心，再發起挑戰" },
         { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: "作品定位、Drop 與參戰路線" },
         { href: withLang("/rank"), title: "AIPOGER Showtime", desc: "被認可作品的音樂舞台" },
         { href: choiceWeeklyHref, title: "AIPOGER Choice Weekly", desc: "每週策展與 DJ 選歌方向" },

@@ -166,7 +166,9 @@ Current rules:
 - Public-pool elimination runs per genre only when that genre has more than 36 public songs and removes at most 3 low-reaction older songs per pass.
 - Each elimination pass removes only overflow inside overfull genre pools.
 - A song with 30 hearts/positive reactions or 7 public survival days after its genre pool is full becomes Honor Board eligible.
-- Pressing Heart on a Bar Heartbreak track also saves it to the listener's favorites. Removing it from favorites does not remove the historical heart reaction.
+- Pressing Heart on a Bar Heartbreak track also saves it to the listener's favorites. Each account can send one Heart per track per Taiwan day; re-pressing the same day must not duplicate or cancel it. Removing it from favorites in Profile does not remove the historical heart reaction.
+- Public music surfaces show total Heart count only. Do not display per-user lit/unlit favorite state or public favorite-user counts.
+- Explore AI Music and Bar Heartbreak must read and update the same `listen_bar_tracks` Heart totals for the same song; Explore must not create a separate favorite or Heart counter.
 - New uploads get priority play after the current song finishes; up to 8 new uploads can air within a 1-hour priority batch.
 - Daily Spotlight is a curated promotion layer for one Bar Heartbreak track. It uses `/today`, QR code, and social drafts to send listeners to the featured song without interrupting the shared radio rotation.
 - Spotlight hearts/comments must write to the same Bar Heartbreak track record, so promotion activity helps the song's normal survival and honor signals.
