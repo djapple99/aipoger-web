@@ -282,6 +282,9 @@ This page is the AI music works browser. It should:
 - Group real works by the current 11 fixed music genres.
 - Show at most 6 works per genre before `看更多`.
 - Keep cards music-platform-like: cover, song title, creator, AI tool, heart count, and challenge count.
+- Challenge-ready cards must show a red angled `接戰` corner badge on the cover's top-right. This badge means the original creator is ready to accept a challenge; it is not the attack action. The bottom `攻擂` button remains the challenge action.
+- Show the `接戰` badge only when the work is visible on Explore, playable, not Showtime-certified, not retired, not hidden/removed/moderation-held, the creator set the track to `等人挑戰`, and a defender 60s Drop is prepared. Do not show the badge for showcase/closed/custom-only works, missing defender Drop, Showtime works, retired works, or unplayable/incomplete tracks.
+- If a `NEW · 類型` label is present, keep NEW on the cover's left side or in the info area and keep `接戰` on the cover's right side so the labels do not overlap.
 - Heart buttons on cards and the mini player may light for the signed-in viewer when that viewer already sent a Heart during the current 24-hour cooldown. This is a Heart cooldown status, not a public favorite/count UI.
 - Show battle HUD details on desktop hover and provide an equivalent mobile expand action.
 - Open playback through the fixed bottom mini player instead of expanding a player inside each card.

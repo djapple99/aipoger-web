@@ -342,6 +342,22 @@ function TrackCover({ track, className = "" }: { track: AiMusicTrack; className?
   );
 }
 
+function ChallengeReadyBadge({ isZh }: { isZh: boolean }) {
+  const label = isZh ? "接戰" : "OPEN";
+  const title = isZh ? "原作者已準備 60s Drop，可接受攻擂。" : "The creator has a defender 60s Drop ready.";
+  return (
+    <span
+      className="pointer-events-none absolute right-0 top-0 z-20 block h-14 w-14 overflow-hidden text-white"
+      aria-label={title}
+      title={title}
+    >
+      <span className={`${fontRighteous.className} absolute right-[-1.95rem] top-2.5 w-24 rotate-45 bg-red-600 py-1 text-center text-[10px] font-black uppercase leading-none tracking-[0.16em] text-white shadow-[0_0_22px_rgba(220,38,38,0.5)] ring-1 ring-white/[0.22]`}>
+        {label}
+      </span>
+    </span>
+  );
+}
+
 function formatRecord(track: AiMusicTrack, isZh: boolean) {
   if (track.challengeCount <= 0) {
     return isZh ? "尚未形成正式戰績" : "No official record yet";
@@ -430,6 +446,7 @@ function TrackCard({
   onShare: (track: AiMusicTrack) => void;
 }) {
   const heartCount = Math.max(0, track.heartCount);
+  const showChallengeReadyBadge = track.openForChallenge && Boolean(track.audioUrl);
   const heartActionLabel = heartedToday
     ? isZh
       ? "今日已送出愛心"
@@ -442,6 +459,7 @@ function TrackCard({
       <div className="relative aspect-square">
         <TrackCover track={track} className="h-full w-full" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/12 to-transparent" />
+        {showChallengeReadyBadge ? <ChallengeReadyBadge isZh={isZh} /> : null}
         <button
           type="button"
           onClick={() => onPlay(track)}

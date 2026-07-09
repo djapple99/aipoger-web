@@ -182,6 +182,8 @@ Check:
 - The `/ai-music` page includes `這裡怎麼玩？`, explaining that Hearts also save tracks, saved tracks are managed from the top-right avatar/Profile, and challengeable works need a prepared defender 60s Drop.
 - The page groups works by the current 11 fixed music genres and shows at most 6 cards per genre before `看更多`.
 - Cards show song title, creator, AI tool, heart count, and challenge count.
+- Cards that are truly challenge-ready show a non-clickable red angled `接戰` badge at the cover's top-right on desktop and mobile; non-ready, Showtime, retired, hidden/removed/moderation-held, missing-drop, or unplayable works do not show it.
+- The card's bottom `攻擂` button remains the only challenge action; the `接戰` badge must not replace it or use `攻擂` as badge text.
 - Signed-in users who already sent a Heart in the current 24-hour cooldown see the Heart button lit on `/ai-music` cards and the bottom mini player, while the card still shows only total Heart count publicly.
 - Desktop hover exposes the Battle Record HUD.
 - Mobile exposes an equivalent expanded HUD via the info action.
