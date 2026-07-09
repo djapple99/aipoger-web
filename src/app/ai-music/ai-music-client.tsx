@@ -55,10 +55,16 @@ type ListenBarReactionPayload = {
   };
   positiveReactionCount?: number;
   favoriteSynced?: boolean;
+  alreadyReacted?: boolean;
+  heartedToday?: boolean;
+  heartCooldownUntil?: string | null;
   error?: string;
 };
 
 type LoadState = "loading" | "ready" | "error";
+type HeartCooldownState = Record<string, string>;
+
+const HEART_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 function numberValue(value: unknown) {
   const number = Number(value);
@@ -83,6 +89,18 @@ function canonicalGenreBucket(value: string | null | undefined) {
 function safeDate(value: string | null | undefined) {
   const parsed = new Date(value || "");
   return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : new Date().toISOString();
+}
+
+function heartCooldownUntil(createdAt: string | null | undefined) {
+  const time = new Date(createdAt || "").getTime();
+  if (!Number.isFinite(time)) return null;
+  return new Date(time + HEART_COOLDOWN_MS).toISOString();
+}
+
+function isHeartCoolingDown(cooldownUntil: string | null | undefined) {
+  if (!cooldownUntil) return false;
+  const time = new Date(cooldownUntil).getTime();
+  return Number.isFinite(time) && time > Date.now();
 }
 
 function formatPlayerTime(value: number) {
@@ -305,6 +323,7 @@ function TrackCard({
   isPlaying,
   isExpanded,
   heartBusy,
+  heartedToday,
   lang,
   onPlay,
   onToggleExpand,
@@ -316,6 +335,7 @@ function TrackCard({
   isPlaying: boolean;
   isExpanded: boolean;
   heartBusy: boolean;
+  heartedToday: boolean;
   lang: string;
   onPlay: (track: AiMusicTrack) => void;
   onToggleExpand: (track: AiMusicTrack) => void;
@@ -323,6 +343,13 @@ function TrackCard({
   onShare: (track: AiMusicTrack) => void;
 }) {
   const heartCount = Math.max(0, track.heartCount);
+  const heartActionLabel = heartedToday
+    ? isZh
+      ? "今日已送出愛心"
+      : "Heart sent today"
+    : isZh
+      ? "送出愛心支持"
+      : "Send a heart";
   return (
     <article className="group relative w-[12.5rem] shrink-0 snap-start overflow-hidden rounded-md border border-white/10 bg-black/54 shadow-[0_18px_54px_rgba(0,0,0,0.34)] backdrop-blur transition hover:border-orange-200/45 hover:bg-orange-500/[0.055] sm:w-full">
       <div className="relative aspect-square">
@@ -375,10 +402,15 @@ function TrackCard({
             type="button"
             onClick={() => onHeart(track)}
             disabled={heartBusy}
-            className="inline-flex min-h-9 items-center justify-center rounded-md border border-white/10 bg-white/[0.04] px-2 text-[11px] font-black text-zinc-300 transition hover:border-rose-200/40 hover:text-rose-100 disabled:cursor-wait disabled:opacity-55"
-            aria-label={isZh ? "送出愛心支持" : "Send a heart"}
+            className={`inline-flex min-h-9 items-center justify-center rounded-md border px-2 text-[11px] font-black transition disabled:cursor-wait disabled:opacity-55 ${
+              heartedToday
+                ? "border-rose-200/55 bg-rose-500/18 text-rose-50 shadow-[0_0_18px_rgba(244,63,94,0.2)] hover:border-rose-100/70"
+                : "border-white/10 bg-white/[0.04] text-zinc-300 hover:border-rose-200/40 hover:text-rose-100"
+            }`}
+            aria-label={heartActionLabel}
+            title={heartActionLabel}
           >
-            <HeartIcon />
+            <HeartIcon filled={heartedToday} />
           </button>
           <button
             type="button"
@@ -417,6 +449,7 @@ function MiniPlayer({
   isZh,
   isPlaying,
   heartBusy,
+  heartedToday,
   lang,
   onTogglePlay,
   onHeart,
@@ -430,6 +463,7 @@ function MiniPlayer({
   isZh: boolean;
   isPlaying: boolean;
   heartBusy: boolean;
+  heartedToday: boolean;
   lang: string;
   onTogglePlay: () => void;
   onHeart: (track: AiMusicTrack) => void;
@@ -481,6 +515,13 @@ function MiniPlayer({
   };
 
   if (!track) return null;
+  const heartActionLabel = heartedToday
+    ? isZh
+      ? "今日已送出愛心"
+      : "Heart sent today"
+    : isZh
+      ? "送出愛心支持"
+      : "Send a heart";
 
   return (
     <>
@@ -603,10 +644,15 @@ function MiniPlayer({
                 type="button"
                 onClick={() => onHeart(track)}
                 disabled={heartBusy}
-                className="hidden h-10 items-center justify-center gap-1.5 rounded-full border border-white/12 bg-white/[0.045] px-3 text-xs font-black text-zinc-300 transition hover:border-rose-200/42 hover:text-rose-100 disabled:cursor-wait disabled:opacity-55 sm:inline-flex sm:h-9 sm:px-2.5"
-                aria-label={isZh ? "送出愛心支持" : "Send a heart"}
+                className={`hidden h-10 items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-black transition disabled:cursor-wait disabled:opacity-55 sm:inline-flex sm:h-9 sm:px-2.5 ${
+                  heartedToday
+                    ? "border-rose-200/55 bg-rose-500/18 text-rose-50 shadow-[0_0_18px_rgba(244,63,94,0.2)] hover:border-rose-100/70"
+                    : "border-white/12 bg-white/[0.045] text-zinc-300 hover:border-rose-200/42 hover:text-rose-100"
+                }`}
+                aria-label={heartActionLabel}
+                title={heartActionLabel}
               >
-                <HeartIcon />
+                <HeartIcon filled={heartedToday} />
                 <span className="tabular-nums">{Math.max(0, track.heartCount)}</span>
               </button>
               <button
@@ -642,12 +688,30 @@ export default function AiMusicClient() {
   const [expandedGenres, setExpandedGenres] = useState<Record<string, boolean>>({});
   const [expandedHud, setExpandedHud] = useState<Record<string, boolean>>({});
   const [heartBusy, setHeartBusy] = useState<Record<string, boolean>>({});
+  const [heartCooldowns, setHeartCooldowns] = useState<HeartCooldownState>({});
   const [notice, setNotice] = useState("");
+  const [userId, setUserId] = useState<string | null>(null);
   const [currentTrack, setCurrentTrack] = useState<AiMusicTrack | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const withLang = useCallback((href: string) => `${href}${href.includes("?") ? "&" : "?"}lang=${lang}`, [lang]);
+
+  useEffect(() => {
+    let mounted = true;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (mounted) setUserId(data.session?.user.id ?? null);
+    });
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserId(session?.user.id ?? null);
+    });
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -674,6 +738,53 @@ export default function AiMusicClient() {
       cancelled = true;
     };
   }, [lang]);
+
+  useEffect(() => {
+    if (!userId || tracks.length === 0) {
+      setHeartCooldowns({});
+      return;
+    }
+
+    let mounted = true;
+    const loadHeartCooldowns = async () => {
+      const barTracks = tracks.filter((track) => track.source === "bar");
+      const sourceIds = Array.from(new Set(barTracks.map((track) => track.sourceId))).slice(0, 240);
+      if (sourceIds.length === 0) {
+        if (mounted) setHeartCooldowns({});
+        return;
+      }
+      const recordKeyBySourceId = new Map(barTracks.map((track) => [track.sourceId, track.recordKey]));
+      const since = new Date(Date.now() - HEART_COOLDOWN_MS).toISOString();
+      const { data, error } = await supabase
+        .from("listen_bar_track_reactions")
+        .select("track_id, reaction, created_at")
+        .eq("user_id", userId)
+        .eq("reaction", "heart")
+        .gte("created_at", since)
+        .in("track_id", sourceIds);
+
+      if (!mounted) return;
+      if (error) {
+        console.warn("[ai-music heart cooldowns]", error);
+        return;
+      }
+
+      const cooldowns: HeartCooldownState = {};
+      for (const row of (data ?? []) as Array<{ track_id?: string | null; created_at?: string | null }>) {
+        const recordKey = row.track_id ? recordKeyBySourceId.get(row.track_id) : null;
+        const cooldownUntil = heartCooldownUntil(row.created_at);
+        if (recordKey && cooldownUntil && isHeartCoolingDown(cooldownUntil)) {
+          cooldowns[recordKey] = cooldownUntil;
+        }
+      }
+      setHeartCooldowns(cooldowns);
+    };
+
+    void loadHeartCooldowns();
+    return () => {
+      mounted = false;
+    };
+  }, [tracks, userId]);
 
   const groupedTracks = useMemo(() => {
     const groups = new Map(MUSIC_GENRE_VALUES.map((genre) => [genre, [] as AiMusicTrack[]]));
@@ -728,11 +839,15 @@ export default function AiMusicClient() {
       setNotice(isZh ? "這筆展示紀錄目前沒有公播愛心資料。" : "This showcase record has no public-airplay heart data yet.");
       return;
     }
+    if (isHeartCoolingDown(heartCooldowns[track.recordKey])) {
+      setNotice(isZh ? "你已送過這首歌的愛心，24H 後可以再送一次。" : "You already sent a heart for this track. Try again after 24 hours.");
+      return;
+    }
     const {
       data: { session },
     } = await supabase.auth.getSession();
     if (!session?.access_token) {
-      setNotice(isZh ? "請先登入，每天每首歌可以送 1 顆愛心。" : "Sign in to send one heart per track each day.");
+      setNotice(isZh ? "請先登入，每首歌 24H 內可以送 1 顆愛心。" : "Sign in to send one heart per track every 24 hours.");
       return;
     }
 
@@ -759,7 +874,15 @@ export default function AiMusicClient() {
         current.map((item) => (item.recordKey === track.recordKey ? { ...item, heartCount } : item)),
       );
       setCurrentTrack((current) => (current?.recordKey === track.recordKey ? { ...current, heartCount } : current));
-      setNotice(isZh ? "今天的愛心已送出，歌曲已同步收藏到你的後台。" : "Heart sent for today. The track is saved in your profile.");
+      const cooldownUntil = payload.heartCooldownUntil || new Date(Date.now() + HEART_COOLDOWN_MS).toISOString();
+      setHeartCooldowns((current) => ({ ...current, [track.recordKey]: cooldownUntil }));
+      setNotice(payload.alreadyReacted
+        ? isZh
+          ? "你已送過這首歌的愛心，24H 後可以再送一次。"
+          : "You already sent a heart for this track. Try again after 24 hours."
+        : isZh
+          ? "今天的愛心已送出，歌曲已同步收藏到你的後台。"
+          : "Heart sent. The track is saved in your profile.");
     } catch {
       setNotice(isZh ? "愛心送出失敗，請稍後再試。" : "Heart failed. Try again later.");
     } finally {
@@ -916,6 +1039,7 @@ export default function AiMusicClient() {
                             isPlaying={currentTrack?.id === track.id && isPlaying}
                             isExpanded={Boolean(expandedHud[track.id])}
                             heartBusy={Boolean(heartBusy[track.recordKey])}
+                            heartedToday={isHeartCoolingDown(heartCooldowns[track.recordKey])}
                             lang={lang}
                             onPlay={handlePlayTrack}
                             onToggleExpand={(item) => setExpandedHud((current) => ({ ...current, [item.id]: !current[item.id] }))}
@@ -947,6 +1071,7 @@ export default function AiMusicClient() {
         isZh={isZh}
         isPlaying={isPlaying}
         heartBusy={currentTrack ? Boolean(heartBusy[currentTrack.recordKey]) : false}
+        heartedToday={currentTrack ? isHeartCoolingDown(heartCooldowns[currentTrack.recordKey]) : false}
         lang={lang}
         onTogglePlay={() => {
           if (!currentTrack) return;

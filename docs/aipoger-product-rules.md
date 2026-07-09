@@ -71,9 +71,9 @@ Discord operating note, 2026-07-02:
 - Bar Heartbreak must remain publicly listenable; do not block the radio/player behind auth.
 - Music analysis entry and any future analysis API must require sign-in before upload, scoring, or report generation.
 - These auth rules are system behavior rules. Do not surface them as a long rule block in the product UI unless a help/legal page explicitly needs them.
-- A signed-in account can send one Heart per Bar Heartbreak track per Taiwan day.
-- Re-pressing Heart on the same track on the same Taiwan day is idempotent: it must not duplicate, cancel, or remove the saved favorite.
-- Public music surfaces must show total Heart count only. Do not display a per-user lit/unlit favorite state or public favorite-user count; personal saved-song management belongs in the user's Profile.
+- A signed-in account can send one Heart per Bar Heartbreak track every 24 hours.
+- Re-pressing Heart on the same track during the 24-hour Heart cooldown is idempotent: it must not duplicate, cancel, or remove the saved favorite.
+- Public music surfaces must show total Heart count only as the public metric. They may light the viewer's own Heart button to show that this account is inside the 24-hour Heart cooldown, but must not display a public favorite state, favorite-user count, or who saved the song; personal saved-song management belongs in the user's Profile.
 - Explore AI Music and Bar Heartbreak must read and update the same `listen_bar_tracks` Heart totals for the same song; Explore must not create a separate favorite or Heart counter.
 - V1 allows creators to react to their own Bar Heartbreak song.
 
@@ -234,7 +234,7 @@ Current rules:
 - The legacy 30-day `completed` removal rule is retired and must not remove songs.
 - Public pool target: 36 songs per genre, currently 396 songs across 11 genres. Challenger priority airplay can still surface protected new submissions.
 - After that song's genre activation point, a song with 30 hearts/positive reactions or 7 public survival days becomes Showtime eligible.
-- A listener must sign in to press Heart or comment. Pressing Heart on a Bar Heartbreak track also saves that track to the listener's favorites. Removing it later from favorites in Profile does not remove the historical Heart reaction; pressing Heart again on a later Taiwan day saves it again without duplicate favorites.
+- A listener must sign in to press Heart or comment. Pressing Heart on a Bar Heartbreak track also saves that track to the listener's favorites. Removing it later from favorites in Profile does not remove the historical Heart reaction; pressing Heart again after the 24-hour Heart cooldown saves it again without duplicate favorites.
 - Explore AI Music cards sourced from Bar Heartbreak must display the same total Heart count as the Bar Heartbreak track and send Heart reactions through the same Bar Heartbreak reaction path.
 - New submissions get priority after the current song finishes; each priority batch starts when the first upload arrives, airs up to 8 new uploads within 1 hour, and pushes overflow to the next hour.
 - Bar Heartbreak upload metadata should stay compact: user-entered creator name, AI tool, and album/mood are limited to 12 CJK characters or about 24 English characters; one-line song description is limited to 16 CJK characters or about 32 English characters. Auto-detected song titles are not subject to this compact metadata limit.
@@ -275,6 +275,7 @@ This page is the AI music works browser. It should:
 - Group real works by the current 11 fixed music genres.
 - Show at most 6 works per genre before `看更多`.
 - Keep cards music-platform-like: cover, song title, creator, AI tool, heart count, and challenge count.
+- Heart buttons on cards and the mini player may light for the signed-in viewer when that viewer already sent a Heart during the current 24-hour cooldown. This is a Heart cooldown status, not a public favorite/count UI.
 - Show battle HUD details on desktop hover and provide an equivalent mobile expand action.
 - Open playback through the fixed bottom mini player instead of expanding a player inside each card.
 - The fixed bottom mini player must include a draggable playback progress bar with time labels, plus a lyrics action that opens lyrics as a HUD-style popup above the player. The lyrics HUD should scroll independently and include a side slider for scrubbing through the lyrics; missing lyrics should show a compact `歌詞未提供` state.

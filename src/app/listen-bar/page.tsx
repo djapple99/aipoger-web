@@ -187,6 +187,7 @@ const LISTEN_BAR_MESSAGE_LIMIT = 80;
 const LIVE_RADIO_EPOCH_MS = Date.UTC(2026, 0, 1);
 const PRIORITY_AIRPLAY_BATCH_MS = 60 * 60 * 1000;
 const STOP_HOME_BGM_EVENT = "aipoger:stop-home-bgm";
+const HEART_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 const LISTEN_BAR_GENRES = MUSIC_GENRE_OPTIONS;
 const LISTEN_BAR_GENRE_SLUGS = new Map<string, string>(LISTEN_BAR_GENRES.map((genre, index) => [genre.value, String(index + 1)]));
@@ -524,20 +525,6 @@ function getListenBarVisitorId() {
   const next = `visitor:${crypto.randomUUID()}`;
   window.localStorage.setItem(LISTEN_BAR_VISITOR_ID_KEY, next);
   return next;
-}
-
-function taipeiVoteDate(now = new Date()) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Taipei",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(now);
-  const year = parts.find((part) => part.type === "year")?.value;
-  const month = parts.find((part) => part.type === "month")?.value;
-  const day = parts.find((part) => part.type === "day")?.value;
-  if (!year || !month || !day) return now.toISOString().slice(0, 10);
-  return `${year}-${month}-${day}`;
 }
 
 function albumDisplayLabel(value: string, isZh: boolean) {
@@ -1372,12 +1359,13 @@ export default function ListenBarPage() {
     let mounted = true;
     const loadMyReactions = async () => {
       const trackIds = allRotationTracks.map((track) => track.id).slice(0, LISTEN_BAR_TOTAL_ROTATION_LIMIT);
-      const voteDate = taipeiVoteDate();
+      const heartCooldownSince = new Date(Date.now() - HEART_COOLDOWN_MS).toISOString();
       const { data, error } = await supabase
         .from("listen_bar_track_reactions")
-        .select("track_id, reaction, vote_date")
+        .select("track_id, reaction, created_at")
         .eq("user_id", userId)
-        .eq("vote_date", voteDate)
+        .eq("reaction", "heart")
+        .gte("created_at", heartCooldownSince)
         .in("track_id", trackIds);
 
       if (!mounted) return;
@@ -1386,9 +1374,9 @@ export default function ListenBarPage() {
         return;
       }
 
-      const nextReactions = (data as Array<{ track_id?: string | null; reaction?: ReactionKey | null; vote_date?: string | null }> | null) ?? [];
+      const nextReactions = (data as Array<{ track_id?: string | null; reaction?: ReactionKey | null; created_at?: string | null }> | null) ?? [];
       const reactions = nextReactions.reduce<Record<string, ReactionKey | null>>((acc, row) => {
-        if (row.track_id && row.reaction && row.vote_date === voteDate) acc[row.track_id] = row.reaction;
+        if (row.track_id && row.reaction === "heart") acc[row.track_id] = row.reaction;
         return acc;
       }, {});
       setMyReactions(reactions);
@@ -1695,6 +1683,7 @@ export default function ListenBarPage() {
   const nowTrackTitle = !isZh && nowTrack.id === EMPTY_LISTEN_BAR_TRACK.id ? "Waiting for Creator Uploads" : nowTrack.title;
   const nowTrackTitleClass = nowPlayingTitleClass(nowTrackTitle);
   const currentHeartTotal = Math.max(0, currentReactions.heart ?? 0);
+  const currentHeartSent = myReactions[nowTrack.id] === "heart";
 
   const handleReaction = (key: ReactionKey) => {
     tryStartRadio();
@@ -1708,6 +1697,10 @@ export default function ListenBarPage() {
     }
     const previous = myReactions[nowTrack.id] ?? null;
     const next = key;
+    if (previous === next) {
+      setTrackCommentError(isZh ? "你已送過這首歌的愛心，24H 後可以再送一次。" : "You already sent a heart for this track. Try again after 24 hours.");
+      return;
+    }
 
     setReactionCounts((allCounts) => {
       const counts = { ...emptyReactions, ...(allCounts[nowTrack.id] ?? {}) };
@@ -2667,16 +2660,20 @@ export default function ListenBarPage() {
                       {isZh ? "聽眾反應" : "REACTIONS"}
                     </span>
                     <span className="text-xs font-bold text-orange-100/70">
-                      {isZh ? "登入後每帳號每天每首歌 1 顆愛心，不重複累加。" : "One heart per account per song each day; no duplicates."}
+                      {isZh ? "登入後每帳號每首歌 24H 內 1 顆愛心，不重複累加。" : "One heart per account per track every 24 hours; no duplicates."}
                     </span>
                   </div>
                   <div className="grid gap-3 rounded-2xl border border-orange-300/18 bg-orange-500/8 p-3 sm:grid-cols-[auto_1fr] sm:items-center">
                     <button
                       type="button"
                       onClick={() => handleReaction("heart")}
-                      aria-label={isZh ? "送出愛心支持" : "Send a heart"}
-                      title={isZh ? "送出愛心支持" : "Send a heart"}
-                      className="flex h-24 min-w-32 items-center justify-center gap-3 rounded-2xl border border-white/10 bg-black/35 px-5 text-3xl font-black text-zinc-100 transition hover:border-orange-300/55 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
+                      aria-label={currentHeartSent ? (isZh ? "今日已送出愛心" : "Heart sent today") : isZh ? "送出愛心支持" : "Send a heart"}
+                      title={currentHeartSent ? (isZh ? "今日已送出愛心" : "Heart sent today") : isZh ? "送出愛心支持" : "Send a heart"}
+                      className={`flex h-24 min-w-32 items-center justify-center gap-3 rounded-2xl border px-5 text-3xl font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 ${
+                        currentHeartSent
+                          ? "border-rose-200/60 bg-rose-500/18 text-rose-50 shadow-[0_0_30px_rgba(244,63,94,0.22)] hover:border-rose-100/75"
+                          : "border-white/10 bg-black/35 text-zinc-100 hover:border-orange-300/55 hover:text-white"
+                      }`}
                     >
                       <span className="text-5xl leading-none">♥</span>
                       <span className="tabular-nums">{currentHeartTotal}</span>

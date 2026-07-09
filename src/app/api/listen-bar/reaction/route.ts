@@ -38,6 +38,7 @@ type ReactionDatabase = {
 type AdminClient = SupabaseClient<ReactionDatabase>;
 
 const reactionKeys = new Set<ReactionKey>(["heart", "star", "thumb", "happy"]);
+const HEART_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const FAVORITES_BUCKET = "listen-bar-data";
 const FAVORITES_PATH = "honor-board/interactions.json";
 
@@ -178,6 +179,18 @@ function taipeiVoteDate(now = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
+function heartCooldownUntil(createdAt: string | null | undefined) {
+  const time = new Date(createdAt || "").getTime();
+  if (!Number.isFinite(time)) return null;
+  return new Date(time + HEART_COOLDOWN_MS).toISOString();
+}
+
+function isHeartCooldownActive(cooldownUntil: string | null) {
+  if (!cooldownUntil) return false;
+  const time = new Date(cooldownUntil).getTime();
+  return Number.isFinite(time) && time > Date.now();
+}
+
 export async function POST(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY;
@@ -206,21 +219,45 @@ export async function POST(request: NextRequest) {
   if (userError || !user) return jsonError("登入狀態已過期，請重新登入後再投票。", 401);
 
   const voteDate = taipeiVoteDate();
+  let alreadyReacted = false;
+  let heartedToday = false;
+  let heartCooldownUntilValue: string | null = null;
 
-  if (reaction) {
+  if (reaction === "heart") {
+    const { data: recentHeartRows, error: recentHeartError } = await admin
+      .from("listen_bar_track_reactions")
+      .select("created_at")
+      .eq("track_id", body.trackId)
+      .eq("user_id", user.id)
+      .eq("reaction", "heart")
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (recentHeartError) return jsonError(recentHeartError.message, 500);
+    heartCooldownUntilValue = heartCooldownUntil(recentHeartRows?.[0]?.created_at);
+    alreadyReacted = isHeartCooldownActive(heartCooldownUntilValue);
+    heartedToday = alreadyReacted;
+  }
+
+  if (reaction && !alreadyReacted) {
     const { error } = await admin.from("listen_bar_track_reactions").upsert(
       { track_id: body.trackId, user_id: user.id, vote_date: voteDate, reaction },
       { onConflict: "track_id,user_id,vote_date" },
     );
     if (error) return jsonError(error.message, 500);
+    if (reaction === "heart") {
+      heartedToday = true;
+      heartCooldownUntilValue = new Date(Date.now() + HEART_COOLDOWN_MS).toISOString();
+    }
   } else {
-    const { error } = await admin
-      .from("listen_bar_track_reactions")
-      .delete()
-      .eq("track_id", body.trackId)
-      .eq("user_id", user.id)
-      .eq("vote_date", voteDate);
-    if (error) return jsonError(error.message, 500);
+    if (!reaction) {
+      const { error } = await admin
+        .from("listen_bar_track_reactions")
+        .delete()
+        .eq("track_id", body.trackId)
+        .eq("user_id", user.id)
+        .eq("vote_date", voteDate);
+      if (error) return jsonError(error.message, 500);
+    }
   }
 
   const { data: reactionRows, error: countError } = await admin
@@ -257,5 +294,15 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, reaction, voteDate, counts, positiveReactionCount: total, favoriteSynced });
+  return NextResponse.json({
+    ok: true,
+    reaction,
+    voteDate,
+    counts,
+    positiveReactionCount: total,
+    favoriteSynced,
+    alreadyReacted,
+    heartedToday,
+    heartCooldownUntil: heartCooldownUntilValue,
+  });
 }

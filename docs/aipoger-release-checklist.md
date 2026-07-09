@@ -133,9 +133,9 @@ Check:
 - Comment box appears near reactions.
 - Logged-out voting shows sign-in message.
 - Logged-out commenting shows sign-in message.
-- Logged-in Heart reactions allow one Heart per track per Taiwan day.
-- Re-pressing Heart on the same track on the same Taiwan day does not duplicate or cancel the Heart.
-- Public music surfaces show total Heart count only, without per-user lit/unlit favorite state.
+- Logged-in Heart reactions allow one Heart per track per 24-hour cooldown.
+- Re-pressing Heart on the same track during the 24-hour cooldown does not duplicate or cancel the Heart.
+- Public music surfaces show total Heart count only as the public metric; the viewer's own Heart button may light to show the current 24-hour cooldown, but the page must not show public favorite state, favorite-user count, or who saved the song.
 - Explore AI Music and Bar Heartbreak show the same total Heart count for the same `listen_bar_tracks` song and write through the same reaction flow.
 - Track comments persist.
 - Track comments notify the song creator through account notifications, except self-comments.
@@ -180,6 +180,7 @@ Check:
 - The `/ai-music` header includes the upload prompt `上傳音樂讓大家看到你的作品，請從傷心酒吧投稿。` and links it to Bar Heartbreak submission.
 - The page groups works by the current 11 fixed music genres and shows at most 6 cards per genre before `看更多`.
 - Cards show song title, creator, AI tool, heart count, and challenge count.
+- Signed-in users who already sent a Heart in the current 24-hour cooldown see the Heart button lit on `/ai-music` cards and the bottom mini player, while the card still shows only total Heart count publicly.
 - Desktop hover exposes the Battle Record HUD.
 - Mobile exposes an equivalent expanded HUD via the info action.
 - Card play opens the bottom mini player and does not expand per-card audio controls.
