@@ -37,6 +37,10 @@ test("Global notification dock shows unread account notices and routes to pendin
   assert.ok(globalOverlay.includes('select("id", { count: "exact", head: true })'));
   assert.ok(globalOverlay.includes("profileNoticeHref"));
   assert.ok(globalOverlay.includes("pending-ai-music-challenges"));
+  assert.ok(globalOverlay.includes('AI_MUSIC_CHALLENGE_INVITE_NOTICE_TYPE = "ai_music_challenge_invite"'));
+  assert.ok(globalOverlay.includes("setExpiredNotice(latest)"));
+  assert.ok(globalOverlay.includes("去待接戰"));
+  assert.ok(globalOverlay.includes("onClick={() => void markRead(expiredNotice.id)}"));
   assert.ok(globalOverlay.includes("aipoger:account-notices-read"));
 });
 

@@ -46,6 +46,7 @@ Check:
 - Logged-out visitors are asked to sign in before upload/Battle actions.
 - Logged-in users can see profile/fighter identity where expected.
 - Profile `收藏歌曲` supports batch selection and batch removal, and removing saved favorites does not delete historical Heart reactions.
+- Profile creator data lists songs in pages of 10; `收藏歌曲` can batch-delete saved favorites, and the creator's own Bar Heartbreak songs can be batch-removed from public/battle surfaces.
 
 ## Drop Battle Checklist
 
@@ -87,7 +88,7 @@ Check:
 - Challenging from Explore opens the 60s Drop cropper/setup flow, carries the defender track ID through upload, and requires a start time.
 - Submitted Explore challenges copy the defender's prepared Drop at invite creation; they must not use the full public-airplay song as the defender battle audio.
 - Submitted Explore challenges create a pending battle/invite; the battle room allows both 5-second previews but voting remains closed.
-- Submitted Explore challenges write a defender-side in-app notification. The right-top notification dock shows a red dot or unread number and opens Profile's `待接戰` section.
+- Submitted Explore challenges write a defender-side in-app notification. The right-top notification dock shows a red dot or unread number, opens a readable account-notice card, and routes Explore challenge invites to Profile's `待接戰` section.
 - Profile / 我的作品 shows `待接戰` cards with song title, challenger, genre, scheduled start time, defender 5-second preview, challenger 5-second preview, Accept, and Reject.
 - The individual track row shows `待回覆` / locked defender Drop state while a pending invite exists; replacing the defender Drop is blocked until the invite is accepted, rejected, or expired.
 - Defender accept moves the battle to active/live according to the scheduled time; reject closes the invite without stats.
@@ -173,6 +174,7 @@ Challenger and public pool:
 Daily Spotlight:
 
 - `/admin/listen-bar` shows the Daily Spotlight admin surface inside Bar Heartbreak admin.
+- `/admin/listen-bar` song management lists 10 songs per page; `選取本頁` selects only the current page, while bulk update / hide / restore / delete still works for accumulated selections.
 - Admin can select the date and a Bar Heartbreak track, then generate recommendation copy and social caption.
 - The public short entry is `https://aipoger.com/today`; QR codes and short-form captions should use this fixed URL, not a dated `spotlight=` URL.
 - `/today` redirects by Taiwan date to the current spotlight route.

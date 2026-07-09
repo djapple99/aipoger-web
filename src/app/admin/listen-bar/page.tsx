@@ -139,6 +139,7 @@ const initialBulkMetadataForm: BulkMetadataForm = {
 
 const LIVE_RADIO_EPOCH_MS = Date.UTC(2026, 0, 1);
 const UPCOMING_ROTATION_PREVIEW_COUNT = 6;
+const ADMIN_TRACKS_PER_PAGE = 10;
 const LISTEN_BAR_ADMIN_GENRE_OPTIONS = MUSIC_GENRE_OPTIONS;
 const GENRE_VALUES = new Set(LISTEN_BAR_ADMIN_GENRE_OPTIONS.map((genre) => genre.value));
 
@@ -474,6 +475,7 @@ export default function ListenBarAdminPage() {
   const [trackMonthFilter, setTrackMonthFilter] = useState("all");
   const [trackSearch, setTrackSearch] = useState("");
   const [trackSortMode, setTrackSortMode] = useState<TrackSortMode>("manual");
+  const [trackPage, setTrackPage] = useState(1);
   const [selectedTrackIds, setSelectedTrackIds] = useState<string[]>([]);
   const [bulkMetadataForm, setBulkMetadataForm] = useState<BulkMetadataForm>(initialBulkMetadataForm);
   const [focusedTrackId, setFocusedTrackId] = useState("");
@@ -532,12 +534,17 @@ export default function ListenBarAdminPage() {
     });
     return sortTracksForAdmin(filteredTracks, trackSortMode);
   }, [displayTracks, trackGenreFilter, trackMonthFilter, trackSearch, trackSortMode, trackVisibilityFilter]);
+  const trackTotalPages = Math.max(1, Math.ceil(renderedTracks.length / ADMIN_TRACKS_PER_PAGE));
+  const safeTrackPage = Math.min(trackPage, trackTotalPages);
+  const trackPageStartIndex = (safeTrackPage - 1) * ADMIN_TRACKS_PER_PAGE;
+  const pagedRenderedTracks = renderedTracks.slice(trackPageStartIndex, trackPageStartIndex + ADMIN_TRACKS_PER_PAGE);
+  const trackPageEndIndex = Math.min(renderedTracks.length, trackPageStartIndex + pagedRenderedTracks.length);
   const selectedTrackIdSet = useMemo(() => new Set(selectedTrackIds), [selectedTrackIds]);
   const selectedTracks = useMemo(
     () => displayTracks.filter((track) => selectedTrackIdSet.has(track.id)),
     [displayTracks, selectedTrackIdSet],
   );
-  const allRenderedSelected = renderedTracks.length > 0 && renderedTracks.every((track) => selectedTrackIdSet.has(track.id));
+  const allRenderedSelected = pagedRenderedTracks.length > 0 && pagedRenderedTracks.every((track) => selectedTrackIdSet.has(track.id));
   const hiddenTrackCount = useMemo(() => displayTracks.filter(isHiddenTrack).length, [displayTracks]);
   const capacityEliminatedTrackCount = useMemo(() => displayTracks.filter(capacityEliminatedStatus).length, [displayTracks]);
   const liveRotation = useMemo(() => liveRotationSnapshot(displayTracks, nowMs), [displayTracks, nowMs]);
@@ -654,6 +661,14 @@ export default function ListenBarAdminPage() {
   }, []);
 
   useEffect(() => {
+    setTrackPage(1);
+  }, [trackGenreFilter, trackMonthFilter, trackSearch, trackSortMode, trackVisibilityFilter]);
+
+  useEffect(() => {
+    if (trackPage > trackTotalPages) setTrackPage(trackTotalPages);
+  }, [trackPage, trackTotalPages]);
+
+  useEffect(() => {
     return () => {
       activeAdminAudioRef.current?.pause();
       activeAdminAudioRef.current = null;
@@ -733,6 +748,8 @@ export default function ListenBarAdminPage() {
     setTrackMonthFilter("all");
     setTrackSearch("");
     setTrackSortMode("manual");
+    const trackIndex = sortTracksForAdmin(displayTracks, "manual").findIndex((track) => track.id === trackId);
+    setTrackPage(trackIndex >= 0 ? Math.floor(trackIndex / ADMIN_TRACKS_PER_PAGE) + 1 : 1);
     setFocusedTrackId(trackId);
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
@@ -742,7 +759,7 @@ export default function ListenBarAdminPage() {
         });
       });
     });
-  }, []);
+  }, [displayTracks]);
 
   const beginEditTrack = (track: AdminListenBarTrackRow) => {
     setEditingTrackId(track.id);
@@ -1122,11 +1139,11 @@ export default function ListenBarAdminPage() {
 
   const toggleRenderedSelection = () => {
     if (allRenderedSelected) {
-      const renderedIds = new Set(renderedTracks.map((track) => track.id));
+      const renderedIds = new Set(pagedRenderedTracks.map((track) => track.id));
       setSelectedTrackIds((current) => current.filter((id) => !renderedIds.has(id)));
       return;
     }
-    setSelectedTrackIds((current) => Array.from(new Set([...current, ...renderedTracks.map((track) => track.id)])));
+    setSelectedTrackIds((current) => Array.from(new Set([...current, ...pagedRenderedTracks.map((track) => track.id)])));
   };
 
   const bulkTrackAction = async (action: "hide" | "restore" | "remove") => {
@@ -1664,7 +1681,7 @@ export default function ListenBarAdminPage() {
                 <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/70">MANAGE TRACKS</p>
                 <h2 className="mt-1 text-2xl font-black text-white">歌曲上架整理</h2>
                 <p className="mt-1 text-xs font-bold text-zinc-500">
-                  顯示 {renderedTracks.length} / {displayTracks.length}{selectedTrackIds.length > 0 ? `，已選 ${selectedTrackIds.length}` : ""}
+                  顯示 {renderedTracks.length === 0 ? 0 : trackPageStartIndex + 1}-{trackPageEndIndex} / {renderedTracks.length}（全部 {displayTracks.length}），每頁 10 首{selectedTrackIds.length > 0 ? `，已選 ${selectedTrackIds.length}` : ""}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -1735,7 +1752,7 @@ export default function ListenBarAdminPage() {
                 <button
                   type="button"
                   onClick={toggleRenderedSelection}
-                  disabled={renderedTracks.length === 0}
+                  disabled={pagedRenderedTracks.length === 0}
                   className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45"
                 >
                   {allRenderedSelected ? "取消本頁選取" : "選取本頁"}
@@ -1880,7 +1897,7 @@ export default function ListenBarAdminPage() {
                           : "目前已隱藏下架歌曲，沒有可顯示的上架歌曲。"}
                 </div>
               ) : (
-                renderedTracks.map((track) => {
+                pagedRenderedTracks.map((track) => {
                   const coverUrl = rowPublicUrl(LISTEN_BAR_COVER_BUCKET, track.cover_path) || DEFAULT_LISTEN_BAR_COVER;
                   const audioUrl = rowPublicUrl(LISTEN_BAR_AUDIO_BUCKET, track.audio_path);
                   const hidden = isHiddenTrack(track);
@@ -2112,6 +2129,35 @@ export default function ListenBarAdminPage() {
                 })
               )}
             </div>
+            {renderedTracks.length > ADMIN_TRACKS_PER_PAGE ? (
+              <div className="mt-4 flex flex-col gap-2 rounded-2xl border border-white/10 bg-black/28 px-3 py-3 text-xs font-bold text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
+                <span>
+                  {trackPageStartIndex + 1}-{trackPageEndIndex} / {renderedTracks.length}
+                  <span className="ml-2 text-zinc-600">每頁 10 首</span>
+                </span>
+                <span className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={safeTrackPage <= 1}
+                    onClick={() => setTrackPage((page) => Math.max(1, page - 1))}
+                    className="rounded-full border border-white/10 bg-black/25 px-3 py-1.5 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 hover:text-cyan-100 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    上一頁
+                  </button>
+                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-zinc-300">
+                    {safeTrackPage} / {trackTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={safeTrackPage >= trackTotalPages}
+                    onClick={() => setTrackPage((page) => Math.min(trackTotalPages, page + 1))}
+                    className="rounded-full border border-white/10 bg-black/25 px-3 py-1.5 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 hover:text-cyan-100 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    下一頁
+                  </button>
+                </span>
+              </div>
+            ) : null}
           </section>
         </section>
       </div>

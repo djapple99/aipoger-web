@@ -83,14 +83,8 @@ const ACCOUNT_NOTICE_COLLAPSED_KEY = "aipoger:account-notice-collapsed";
 const ACCOUNT_NOTICE_DISMISSED_KEY = "aipoger:account-notice-dismissed";
 const ACCOUNT_NOTICE_URGENT_DISMISSED_KEY = "aipoger:account-notice-urgent-dismissed";
 const BATTLE_START_ALERT_LEAD_MS = 60 * 1000;
-const EXPIRED_OR_FINISHED_NOTICE_TYPES = [
-  "battle_queue_expired",
-  "battle_finished",
-  "battle_no_contest",
-  "daily_battle_expired",
-  "daily_battle_finished",
-];
 const LISTEN_BAR_COMMENT_NOTICE_TYPE = "listen_bar_track_comment";
+const AI_MUSIC_CHALLENGE_INVITE_NOTICE_TYPE = "ai_music_challenge_invite";
 
 function BellIcon() {
   return (
@@ -473,7 +467,6 @@ export default function GlobalBattleCallOverlay() {
         .from("battle_notifications")
         .select("id, queue_id, battle_id, type, title, body, metadata, read_at, created_at")
         .eq("user_id", uid)
-        .in("type", ["battle_matched", ...EXPIRED_OR_FINISHED_NOTICE_TYPES, LISTEN_BAR_COMMENT_NOTICE_TYPE])
         .is("read_at", null)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -482,9 +475,8 @@ export default function GlobalBattleCallOverlay() {
       const latestCall = latest ? toBattleCall(latest) : null;
       if (mounted && latestCall) showCall(latestCall);
       if (mounted && latest?.type === "battle_matched") void markRead(latest.id);
-      if (mounted && latest?.type && EXPIRED_OR_FINISHED_NOTICE_TYPES.includes(latest.type)) {
+      if (mounted && latest && latest.type !== "battle_matched" && !latestCall) {
         setCall(null);
-        setActiveNotice(null);
         setExpiredNotice(latest);
         setExpiredNoticeOpen(true);
         setAccountNoticeCollapsed(true);
@@ -501,9 +493,8 @@ export default function GlobalBattleCallOverlay() {
             const next = toBattleCall(row);
             if (next) showCall(next);
             if (row.type === "battle_matched") void markRead(row.id);
-            if (row.type && EXPIRED_OR_FINISHED_NOTICE_TYPES.includes(row.type)) {
+            if (row.type !== "battle_matched" && !next) {
               setCall(null);
-              setActiveNotice(null);
               setExpiredNotice(row);
               setExpiredNoticeOpen(true);
               setAccountNoticeCollapsed(true);
@@ -674,10 +665,16 @@ export default function GlobalBattleCallOverlay() {
     const isDropFinishedNotice = expiredNotice.type === "battle_finished";
     const isDropNoContestNotice = expiredNotice.type === "battle_no_contest";
     const isListenBarCommentNotice = expiredNotice.type === LISTEN_BAR_COMMENT_NOTICE_TYPE;
+    const isAiMusicChallengeInviteNotice = expiredNotice.type === AI_MUSIC_CHALLENGE_INVITE_NOTICE_TYPE;
     const isSyntheticDropFinishedNotice = expiredNotice.id.startsWith("synthetic-battle-finished-");
+    const metadataHref = expiredNotice.metadata?.href?.trim();
     const title =
       expiredNotice.title ||
-      (isListenBarCommentNotice
+      (isAiMusicChallengeInviteNotice
+        ? isZh
+          ? "有人向你的作品攻擂"
+          : "New Challenge Invite"
+        : isListenBarCommentNotice
         ? isZh
           ? "你的歌曲收到新留言"
           : "New Comment on Your Song"
@@ -697,12 +694,20 @@ export default function GlobalBattleCallOverlay() {
               ? isZh
                 ? "24H Full Song 已過期"
                 : "24H Full Song Expired"
-              : isZh
-                ? "Drop Battle 已取消"
-                : "Drop Battle Cancelled");
+              : expiredNotice.type
+                ? isZh
+                  ? "帳號消息"
+                  : "Account Notice"
+                : isZh
+                  ? "帳號消息"
+                  : "Account Notice");
     const body =
       expiredNotice.body ||
-      (isListenBarCommentNotice
+      (isAiMusicChallengeInviteNotice
+        ? isZh
+          ? "有創作者從探索 AI 音樂挑戰你的作品，請到 Profile 的待接戰區回覆。"
+          : "A creator challenged your Explore AI Music work. Reply from Profile pending challenges."
+        : isListenBarCommentNotice
         ? isZh
           ? "有人在你投稿到傷心酒吧的歌曲下面留下了評論。"
           : "Someone commented on your Bar Heartbreak track."
@@ -723,10 +728,13 @@ export default function GlobalBattleCallOverlay() {
                 ? "你剛有一場 24H Full Song 因 24 小時內沒有對手接受，已從公開挑戰池移除。"
                 : "One 24H Full Song card expired because no challenger joined within 24 hours."
               : isZh
-                ? "你剛有一場 Drop Battle 因等待時間結束，已從公開挑戰池移除。可以重新上傳或開新戰帖。"
-                : "One Drop Battle waiting card ended and was removed from the public pool. You can open a new card.");
+                ? "你有一則新的帳號消息。打開查看或按知道了清除通知。"
+                : "You have a new account notice. Open it or dismiss the notification.");
     const primaryHref =
-      isListenBarCommentNotice
+      metadataHref ||
+      (isAiMusicChallengeInviteNotice
+        ? profileNoticeHref
+        : isListenBarCommentNotice
         ? `/listen-bar?lang=${lang}`
         : isSyntheticDropFinishedNotice && expiredNotice.battle_id
         ? `/battle/${encodeURIComponent(expiredNotice.battle_id)}?lang=${lang}`
@@ -738,9 +746,13 @@ export default function GlobalBattleCallOverlay() {
             ? `/battle/daily/${encodeURIComponent(expiredNotice.metadata.dailyBattleId)}?lang=${lang}`
             : isDailyExpiredNotice
               ? `/battle/setup?battleMode=daily&from=expired-card&lang=${lang}`
-              : `/battle/setup?battleMode=instant&from=expired-card&lang=${lang}`;
+              : `/profile?lang=${lang}`);
     const primaryLabel =
-      isListenBarCommentNotice
+      isAiMusicChallengeInviteNotice
+        ? isZh
+          ? "去待接戰"
+          : "Open Pending"
+        : isListenBarCommentNotice
         ? isZh
           ? "去聽這首歌"
           : "Open Bar"
@@ -765,8 +777,8 @@ export default function GlobalBattleCallOverlay() {
                 ? "重新開 24H"
                 : "Open New 24H"
               : isZh
-                ? "重新開 Drop"
-                : "Open New Drop";
+                ? "查看"
+                : "Open";
     if (expiredNoticeCollapsed) {
       return (
         <AccountNoticeDock hasNotice unreadCount={unreadAccountNoticeCount} onBellClick={() => setAccountNoticeCollapsed(false)} />
@@ -793,11 +805,13 @@ export default function GlobalBattleCallOverlay() {
               <span className="rounded-full border border-zinc-200/20 bg-white/10 px-2 py-1 text-[10px] font-black text-zinc-200">
                 {isListenBarCommentNotice
                   ? (isZh ? "新留言" : "Comment")
+                  : isAiMusicChallengeInviteNotice
+                    ? (isZh ? "待接戰" : "Challenge")
                   : isDropFinishedNotice || isDropNoContestNotice || isDailyFinishedNotice
                     ? (isZh ? "已結束" : "Finished")
                     : isDailyExpiredNotice
                       ? (isZh ? "已過期" : "Expired")
-                      : (isZh ? "已取消" : "Cancelled")}
+                      : (isZh ? "消息" : "Notice")}
               </span>
             </button>
             <button
@@ -812,7 +826,11 @@ export default function GlobalBattleCallOverlay() {
             <div className="space-y-3 border-t border-white/10 px-4 py-4">
               <p className="text-sm font-bold leading-6 text-zinc-300">{body}</p>
               <div className="grid grid-cols-2 gap-2 text-xs font-black">
-                <Link href={primaryHref} className="rounded-xl bg-cyan-300 px-3 py-3 text-center text-black transition hover:bg-cyan-100">
+                <Link
+                  href={primaryHref}
+                  onClick={() => void markRead(expiredNotice.id)}
+                  className="rounded-xl bg-cyan-300 px-3 py-3 text-center text-black transition hover:bg-cyan-100"
+                >
                   {primaryLabel}
                 </Link>
                 <button

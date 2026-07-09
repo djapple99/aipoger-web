@@ -28,3 +28,13 @@ test("listen bar admin audio previews are mutually exclusive", () => {
   assert.ok(adminListenBarSource.includes("onPlay={handleAdminAudioPlay}"));
   assert.ok(productRulesSource.includes("track-card audio controls must be mutually exclusive"));
 });
+
+test("listen bar admin paginates management tracks and selects only the current page", () => {
+  assert.ok(adminListenBarSource.includes("ADMIN_TRACKS_PER_PAGE = 10"));
+  assert.ok(adminListenBarSource.includes("pagedRenderedTracks"));
+  assert.ok(adminListenBarSource.includes("trackTotalPages"));
+  assert.ok(adminListenBarSource.includes("每頁 10 首"));
+  assert.ok(adminListenBarSource.includes("pagedRenderedTracks.map((track)"));
+  assert.ok(adminListenBarSource.includes("new Set(pagedRenderedTracks.map((track) => track.id))"));
+  assert.ok(productRulesSource.includes("/admin/listen-bar` track management paginates songs at 10 per page"));
+});

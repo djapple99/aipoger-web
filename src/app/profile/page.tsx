@@ -23,6 +23,7 @@ const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 const BATTLE_AUDIO_BUCKET = "battle-audio";
 const PROFILE_CHALLENGE_AUDIO_KEY = "aipoger:profile-challenge-audio";
 const FAVORITE_ORDER_STORAGE_PREFIX = "aipoger:profile-favorite-order";
+const CREATOR_ITEMS_PER_PAGE = 10;
 
 type ListenBarTrack = {
   id: string;
@@ -249,6 +250,10 @@ function ProfileInner() {
   const [favoriteSelectionMode, setFavoriteSelectionMode] = useState(false);
   const [selectedFavoriteIds, setSelectedFavoriteIds] = useState<string[]>([]);
   const [bulkFavoriteBusy, setBulkFavoriteBusy] = useState(false);
+  const [creatorPage, setCreatorPage] = useState(1);
+  const [listenBarSelectionMode, setListenBarSelectionMode] = useState(false);
+  const [selectedListenBarItemIds, setSelectedListenBarItemIds] = useState<string[]>([]);
+  const [bulkListenBarBusy, setBulkListenBarBusy] = useState(false);
   const [challengeBusy, setChallengeBusy] = useState<Record<string, boolean>>({});
   const cropFileInputRef = useRef<HTMLInputElement>(null);
   const avatarSectionRef = useRef<HTMLDivElement>(null);
@@ -290,7 +295,7 @@ function ProfileInner() {
             moveDown: "下移",
             manageFavorites: "批次管理",
             finishManageFavorites: "完成",
-            selectVisibleFavorites: "全選顯示",
+            selectVisibleFavorites: "全選本頁",
             clearFavoriteSelection: "取消選取",
             removeSelectedFavorites: "刪除選取",
             selectedFavoritesPrefix: "已選",
@@ -299,6 +304,21 @@ function ProfileInner() {
             favoriteBatchRemoveFailed: "部分收藏刪除失敗，請稍後再試。",
             favoriteSelected: "已選取",
             favoriteTapToSelect: "點擊選取",
+            manageSongs: "批次管理",
+            finishManageSongs: "完成",
+            selectVisibleSongs: "全選本頁",
+            clearSongSelection: "取消選取",
+            removeSelectedSongs: "撤下選取",
+            selectedSongsPrefix: "已選",
+            selectedSongsSuffix: "首",
+            songBatchHelp: "選取多首自己的傷心酒吧歌曲，可一次撤下前台公播與挑戰池。",
+            songBatchRemoveFailed: "部分歌曲撤下失敗，請稍後再試。",
+            songSelected: "已選取",
+            songTapToSelect: "點擊選取",
+            songBatchConfirm: "確定撤下已選取的歌曲？撤下後會離開前台公播/挑戰池。",
+            previousPage: "上一頁",
+            nextPage: "下一頁",
+            perPageHint: "每頁 10 首",
             removeFavorite: "刪除",
             removingFavorite: "刪除中",
             active: "公開中",
@@ -351,7 +371,7 @@ function ProfileInner() {
             moveDown: "Move Down",
             manageFavorites: "Manage",
             finishManageFavorites: "Done",
-            selectVisibleFavorites: "Select Visible",
+            selectVisibleFavorites: "Select Page",
             clearFavoriteSelection: "Clear",
             removeSelectedFavorites: "Remove Selected",
             selectedFavoritesPrefix: "Selected",
@@ -360,6 +380,21 @@ function ProfileInner() {
             favoriteBatchRemoveFailed: "Some saved songs could not be removed. Please try again.",
             favoriteSelected: "Selected",
             favoriteTapToSelect: "Tap to select",
+            manageSongs: "Manage",
+            finishManageSongs: "Done",
+            selectVisibleSongs: "Select Page",
+            clearSongSelection: "Clear",
+            removeSelectedSongs: "Remove Selected",
+            selectedSongsPrefix: "Selected",
+            selectedSongsSuffix: "songs",
+            songBatchHelp: "Select your Bar Heartbreak songs and remove them from public/battle surfaces at once.",
+            songBatchRemoveFailed: "Some songs could not be removed. Please try again.",
+            songSelected: "Selected",
+            songTapToSelect: "Tap to select",
+            songBatchConfirm: "Remove the selected songs from public/battle surfaces?",
+            previousPage: "Previous",
+            nextPage: "Next",
+            perPageHint: "10 per page",
             removeFavorite: "Remove",
             removingFavorite: "Removing",
             active: "Live",
@@ -600,6 +635,20 @@ function ProfileInner() {
     const currentFavoriteIds = new Set(honorFavorites.map((record) => `favorite-${record.recordKey}`));
     setSelectedFavoriteIds((current) => current.filter((id) => currentFavoriteIds.has(id)));
   }, [creatorFilter, honorFavorites]);
+
+  useEffect(() => {
+    if (creatorFilter !== "listenBar") {
+      setListenBarSelectionMode(false);
+      setSelectedListenBarItemIds([]);
+      return;
+    }
+    const currentListenBarIds = new Set(barTracks.map((track) => `bar-${track.id}`));
+    setSelectedListenBarItemIds((current) => current.filter((id) => currentListenBarIds.has(id)));
+  }, [barTracks, creatorFilter]);
+
+  useEffect(() => {
+    setCreatorPage(1);
+  }, [creatorFilter]);
 
   const stopPreview = useCallback(() => {
     previewTokenRef.current += 1;
@@ -910,6 +959,63 @@ function ProfileInner() {
     await removeFavoriteItems([item]);
   }, [removeFavoriteItems]);
 
+  const toggleListenBarSelection = useCallback((itemId: string) => {
+    setSelectedListenBarItemIds((current) => (
+      current.includes(itemId) ? current.filter((id) => id !== itemId) : [...current, itemId]
+    ));
+  }, []);
+
+  const removeListenBarItems = useCallback(async (items: CreatorItem[]) => {
+    const listenBarItems = items.filter((item) => item.category === "listenBar" && item.trackId);
+    if (listenBarItems.length === 0) return;
+    const confirmMessage = listenBarItems.length > 1
+      ? `${copy.songBatchConfirm} ${isZh ? `共 ${listenBarItems.length} 首。` : `${listenBarItems.length} songs selected.`}`
+      : copy.songBatchConfirm;
+    if (!window.confirm(confirmMessage)) return;
+
+    setBulkListenBarBusy(true);
+    const removedItemIds: string[] = [];
+    const removedTrackIds: string[] = [];
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        router.push("/auth");
+        return;
+      }
+
+      for (const item of listenBarItems) {
+        if (!item.trackId) continue;
+        const response = await fetch("/api/listen-bar/remove-track", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ trackId: item.trackId }),
+        });
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        if (!response.ok) throw new Error(payload?.error ?? "remove listen bar track failed");
+        removedItemIds.push(item.id);
+        removedTrackIds.push(item.trackId);
+      }
+
+      if (removedItemIds.length > 0) {
+        if (previewingItemId && removedItemIds.includes(previewingItemId)) stopPreview();
+        setBarTracks((current) => current.filter((track) => !removedTrackIds.includes(track.id)));
+        setSelectedListenBarItemIds((current) => current.filter((id) => !removedItemIds.includes(id)));
+        if (listenBarItems.length > 1) setListenBarSelectionMode(false);
+      }
+    } catch (error) {
+      console.warn("[profile] remove listen bar tracks failed", error);
+      alert(copy.songBatchRemoveFailed);
+    } finally {
+      setBulkListenBarBusy(false);
+    }
+  }, [copy.songBatchConfirm, copy.songBatchRemoveFailed, isZh, previewingItemId, router, stopPreview]);
+
   const updateTrackChallengeStatus = useCallback(async (trackId: string, status: AiMusicChallengeStatus) => {
     setChallengeBusy((current) => ({ ...current, [`track:${trackId}`]: true }));
     try {
@@ -1152,16 +1258,34 @@ function ProfileInner() {
           })
       : creatorFilter === "all"
         ? creatorItems
-        : creatorItems.filter((item) => item.category === creatorFilter)
+      : creatorItems.filter((item) => item.category === creatorFilter)
   );
-  const filteredCreatorItems = creatorFilter === "favorites" ? filteredCreatorItemsBase : filteredCreatorItemsBase.slice(0, 16);
+  const creatorTotalPages = Math.max(1, Math.ceil(filteredCreatorItemsBase.length / CREATOR_ITEMS_PER_PAGE));
+  const safeCreatorPage = Math.min(creatorPage, creatorTotalPages);
+  const creatorPageStartIndex = (safeCreatorPage - 1) * CREATOR_ITEMS_PER_PAGE;
+  const filteredCreatorItems = filteredCreatorItemsBase.slice(
+    creatorPageStartIndex,
+    creatorPageStartIndex + CREATOR_ITEMS_PER_PAGE,
+  );
+  const creatorPageEndIndex = Math.min(filteredCreatorItemsBase.length, creatorPageStartIndex + filteredCreatorItems.length);
   const selectedFavoriteIdSet = useMemo(() => new Set(selectedFavoriteIds), [selectedFavoriteIds]);
+  const selectedListenBarItemIdSet = useMemo(() => new Set(selectedListenBarItemIds), [selectedListenBarItemIds]);
   const visibleFavoriteIds = filteredCreatorItems
     .filter((item) => item.category === "favorites")
     .map((item) => item.id);
+  const visibleListenBarItemIds = filteredCreatorItems
+    .filter((item) => item.category === "listenBar")
+    .map((item) => item.id);
   const selectedVisibleFavoriteIds = visibleFavoriteIds.filter((id) => selectedFavoriteIdSet.has(id));
-  const selectedFavoriteItems = filteredCreatorItems.filter((item) => item.category === "favorites" && selectedFavoriteIdSet.has(item.id));
+  const selectedVisibleListenBarItemIds = visibleListenBarItemIds.filter((id) => selectedListenBarItemIdSet.has(id));
+  const selectedFavoriteItems = filteredCreatorItemsBase.filter((item) => item.category === "favorites" && selectedFavoriteIdSet.has(item.id));
+  const selectedListenBarItems = filteredCreatorItemsBase.filter((item) => item.category === "listenBar" && selectedListenBarItemIdSet.has(item.id));
   const allVisibleFavoritesSelected = visibleFavoriteIds.length > 0 && selectedVisibleFavoriteIds.length === visibleFavoriteIds.length;
+  const allVisibleListenBarItemsSelected = visibleListenBarItemIds.length > 0 && selectedVisibleListenBarItemIds.length === visibleListenBarItemIds.length;
+
+  useEffect(() => {
+    if (creatorPage > creatorTotalPages) setCreatorPage(creatorTotalPages);
+  }, [creatorPage, creatorTotalPages]);
 
   useEffect(() => {
     playlistItemsRef.current = filteredCreatorItems;
@@ -1484,13 +1608,79 @@ function ProfileInner() {
                     {favoriteSelectionMode ? <p className="text-xs font-bold text-zinc-500">{copy.favoriteBatchHelp}</p> : null}
                   </div>
                 ) : null}
+                {creatorFilter === "listenBar" && filteredCreatorItems.length > 0 ? (
+                  <div className="flex flex-col gap-2 sm:items-end">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {listenBarSelectionMode ? (
+                        <>
+                          <span className="rounded-full border border-cyan-200/20 bg-cyan-300/[0.07] px-3 py-1.5 text-xs font-black text-cyan-100">
+                            {copy.selectedSongsPrefix} {selectedListenBarItemIds.length} {copy.selectedSongsSuffix}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={bulkListenBarBusy || allVisibleListenBarItemsSelected}
+                            onClick={() => {
+                              setSelectedListenBarItemIds((current) => Array.from(new Set([...current, ...visibleListenBarItemIds])));
+                            }}
+                            className="rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-xs font-black text-zinc-200 transition hover:border-cyan-200/50 hover:text-cyan-100 disabled:cursor-wait disabled:opacity-45"
+                          >
+                            {copy.selectVisibleSongs}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={bulkListenBarBusy || selectedListenBarItemIds.length === 0}
+                            onClick={() => setSelectedListenBarItemIds([])}
+                            className="rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-xs font-black text-zinc-400 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-45"
+                          >
+                            {copy.clearSongSelection}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={bulkListenBarBusy || selectedListenBarItems.length === 0}
+                            onClick={() => void removeListenBarItems(selectedListenBarItems)}
+                            className="rounded-full border border-red-300/30 bg-red-500/12 px-3 py-1.5 text-xs font-black text-red-100 transition hover:border-red-200/70 hover:bg-red-500/18 disabled:cursor-not-allowed disabled:opacity-45"
+                          >
+                            {bulkListenBarBusy ? copy.removingFavorite : copy.removeSelectedSongs}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={bulkListenBarBusy}
+                            onClick={() => {
+                              setListenBarSelectionMode(false);
+                              setSelectedListenBarItemIds([]);
+                            }}
+                            className="rounded-full border border-orange-200/25 bg-orange-400/10 px-3 py-1.5 text-xs font-black text-orange-100 transition hover:border-orange-100/55 disabled:cursor-wait disabled:opacity-45"
+                          >
+                            {copy.finishManageSongs}
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setListenBarSelectionMode(true)}
+                          className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-3 py-1.5 text-xs font-black text-cyan-100 transition hover:border-cyan-100/55"
+                        >
+                          {copy.manageSongs}
+                        </button>
+                      )}
+                    </div>
+                    {listenBarSelectionMode ? <p className="text-xs font-bold text-zinc-500">{copy.songBatchHelp}</p> : null}
+                  </div>
+                ) : null}
               </div>
               {filteredCreatorItems.length > 0 ? (
                 <div className="space-y-2">
                   {filteredCreatorItems.map((item, index) => {
+                    const itemOverallIndex = creatorPageStartIndex + index;
                     const dateParts = formatDateParts(item.date, lang);
                     const showFavoriteControls = creatorFilter === "favorites" && item.category === "favorites";
                     const isFavoriteSelected = selectedFavoriteIdSet.has(item.id);
+                    const showListenBarBatchControls = creatorFilter === "listenBar" && item.category === "listenBar";
+                    const isListenBarSelected = selectedListenBarItemIdSet.has(item.id);
+                    const selectionModeActive = (favoriteSelectionMode && showFavoriteControls) || (listenBarSelectionMode && showListenBarBatchControls);
+                    const isSelectionSelected = isFavoriteSelected || isListenBarSelected;
+                    const selectionSelectedLabel = showListenBarBatchControls ? copy.songSelected : copy.favoriteSelected;
+                    const selectionTapLabel = showListenBarBatchControls ? copy.songTapToSelect : copy.favoriteTapToSelect;
                     const isMarqueeSelected = selectedMarqueeItemId === item.id;
                     const showAiMusicChallengeControls = item.category === "listenBar" && Boolean(item.trackId);
                     const challengeStatus = item.challengeStatus ?? "showcase";
@@ -1519,13 +1709,14 @@ function ProfileInner() {
                         onClick={() => {
                           setSelectedMarqueeItemId(item.id);
                           if (favoriteSelectionMode && showFavoriteControls) toggleFavoriteSelection(item.id);
+                          if (listenBarSelectionMode && showListenBarBatchControls) toggleListenBarSelection(item.id);
                         }}
                         onFocusCapture={() => setSelectedMarqueeItemId(item.id)}
                         onMouseEnter={() => setSelectedMarqueeItemId(item.id)}
                         onMouseLeave={() => setSelectedMarqueeItemId((current) => (current === item.id ? null : current))}
                         className={`aipo-profile-row grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 rounded-2xl border px-4 py-3 transition sm:grid-cols-[2.5rem_4.5rem_minmax(0,1fr)_auto] sm:items-center ${
-                          favoriteSelectionMode && showFavoriteControls
-                            ? isFavoriteSelected
+                          selectionModeActive
+                            ? isSelectionSelected
                               ? "border-cyan-200/55 bg-cyan-300/[0.075] shadow-[0_0_28px_rgba(103,232,249,0.1)]"
                               : "border-white/10 bg-black/25 hover:border-cyan-200/45 hover:bg-cyan-300/[0.045]"
                             : "border-white/10 bg-black/25 hover:border-orange-300/45 hover:bg-orange-300/[0.06]"
@@ -1533,24 +1724,25 @@ function ProfileInner() {
                           isMarqueeSelected ? "aipo-profile-marquee-active" : ""
                         }`}
                       >
-                        {favoriteSelectionMode && showFavoriteControls ? (
+                        {selectionModeActive ? (
                           <button
                             type="button"
                             onClick={(event) => {
                               event.preventDefault();
                               event.stopPropagation();
-                              toggleFavoriteSelection(item.id);
+                              if (favoriteSelectionMode && showFavoriteControls) toggleFavoriteSelection(item.id);
+                              if (listenBarSelectionMode && showListenBarBatchControls) toggleListenBarSelection(item.id);
                             }}
                             className={`flex h-10 w-10 items-center justify-center rounded-xl border text-sm font-black transition ${
-                              isFavoriteSelected
+                              isSelectionSelected
                                 ? "border-cyan-100 bg-cyan-300 text-black shadow-[0_0_18px_rgba(103,232,249,0.35)]"
                                 : "border-cyan-200/25 bg-cyan-300/[0.08] text-cyan-100 hover:border-cyan-100/70"
                             }`}
-                            aria-pressed={isFavoriteSelected}
-                            aria-label={isFavoriteSelected ? copy.favoriteSelected : copy.favoriteTapToSelect}
-                            title={isFavoriteSelected ? copy.favoriteSelected : copy.favoriteTapToSelect}
+                            aria-pressed={isSelectionSelected}
+                            aria-label={isSelectionSelected ? selectionSelectedLabel : selectionTapLabel}
+                            title={isSelectionSelected ? selectionSelectedLabel : selectionTapLabel}
                           >
-                            {isFavoriteSelected ? "✓" : ""}
+                            {isSelectionSelected ? "✓" : ""}
                           </button>
                         ) : item.audioUrl ? (
                           <button
@@ -1574,7 +1766,7 @@ function ProfileInner() {
                             item.kind
                           )}
                         </span>
-                        {favoriteSelectionMode && showFavoriteControls ? (
+                        {selectionModeActive ? (
                           <span className="min-w-0 rounded-xl">{titleContent}</span>
                         ) : item.canNavigate === false || !item.href ? (
                           <span className="min-w-0 rounded-xl">{titleContent}</span>
@@ -1588,7 +1780,7 @@ function ProfileInner() {
                             <span className="block">{dateParts.date}</span>
                             <span className="block">{dateParts.time}</span>
                           </span>
-                          {showAiMusicChallengeControls ? (
+                          {!selectionModeActive && showAiMusicChallengeControls ? (
                             <span className="flex max-w-full flex-wrap justify-start gap-1.5 sm:justify-end">
                               {(["showcase", "open", "custom"] as const).map((status) => {
                                 const selected = challengeStatus === status;
@@ -1622,7 +1814,7 @@ function ProfileInner() {
                               })}
                             </span>
                           ) : null}
-                          {showAiMusicChallengeControls && item.audioUrl ? (
+                          {!selectionModeActive && showAiMusicChallengeControls && item.audioUrl ? (
                             <span className="flex justify-start sm:justify-end">
                               <button
                                 type="button"
@@ -1643,7 +1835,7 @@ function ProfileInner() {
                               </button>
                             </span>
                           ) : null}
-                          {pendingChallengeInvite ? (
+                          {!selectionModeActive && pendingChallengeInvite ? (
                             <span className="flex flex-wrap justify-start gap-1.5 sm:justify-end">
                               <Link
                                 href={pendingChallengeInvite.battle_id ? `/battle/${pendingChallengeInvite.battle_id}?lang=${lang}` : "#"}
@@ -1677,7 +1869,15 @@ function ProfileInner() {
                               </button>
                             </span>
                           ) : null}
-                          {showFavoriteControls ? (
+                          {listenBarSelectionMode && showListenBarBatchControls ? (
+                            <span className={`rounded-full border px-3 py-1.5 text-xs font-black ${
+                              isListenBarSelected
+                                ? "border-cyan-200/45 bg-cyan-300/10 text-cyan-100"
+                                : "border-white/10 bg-black/25 text-zinc-500"
+                            }`}>
+                              {isListenBarSelected ? copy.songSelected : copy.songTapToSelect}
+                            </span>
+                          ) : showFavoriteControls ? (
                             favoriteSelectionMode ? (
                               <span className={`rounded-full border px-3 py-1.5 text-xs font-black ${
                                 isFavoriteSelected
@@ -1690,7 +1890,7 @@ function ProfileInner() {
                             <span className="flex items-center gap-1">
                               <button
                                 type="button"
-                                disabled={index === 0}
+                                disabled={itemOverallIndex === 0}
                                 onClick={() => moveFavoriteItem(item.id, -1)}
                                 className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/25 text-sm font-black text-cyan-100 transition hover:border-cyan-200 disabled:cursor-not-allowed disabled:opacity-30"
                                 aria-label={copy.moveUp}
@@ -1700,7 +1900,7 @@ function ProfileInner() {
                               </button>
                               <button
                                 type="button"
-                                disabled={index === filteredCreatorItems.length - 1}
+                                disabled={itemOverallIndex === filteredCreatorItemsBase.length - 1}
                                 onClick={() => moveFavoriteItem(item.id, 1)}
                                 className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/25 text-sm font-black text-cyan-100 transition hover:border-cyan-200 disabled:cursor-not-allowed disabled:opacity-30"
                                 aria-label={copy.moveDown}
@@ -1720,7 +1920,7 @@ function ProfileInner() {
                               </button>
                             </span>
                             )
-                          ) : item.audioUrl && item.category !== "favorites" && (item.category !== "listenBar" || challengeStatus === "custom") ? (
+                          ) : !selectionModeActive && item.audioUrl && item.category !== "favorites" && (item.category !== "listenBar" || challengeStatus === "custom") ? (
                             <button
                               type="button"
                               onClick={() => openChallengeCut(item)}
@@ -1733,6 +1933,35 @@ function ProfileInner() {
                       </article>
                     );
                   })}
+                  {filteredCreatorItemsBase.length > CREATOR_ITEMS_PER_PAGE ? (
+                    <div className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-black/22 px-3 py-3 text-xs font-bold text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
+                      <span>
+                        {filteredCreatorItemsBase.length === 0 ? 0 : creatorPageStartIndex + 1}-{creatorPageEndIndex} / {filteredCreatorItemsBase.length}
+                        <span className="ml-2 text-zinc-600">{copy.perPageHint}</span>
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={safeCreatorPage <= 1}
+                          onClick={() => setCreatorPage((page) => Math.max(1, page - 1))}
+                          className="rounded-full border border-white/10 bg-black/25 px-3 py-1.5 text-xs font-black text-zinc-200 transition hover:border-cyan-200/50 hover:text-cyan-100 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {copy.previousPage}
+                        </button>
+                        <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-zinc-300">
+                          {safeCreatorPage} / {creatorTotalPages}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={safeCreatorPage >= creatorTotalPages}
+                          onClick={() => setCreatorPage((page) => Math.min(creatorTotalPages, page + 1))}
+                          className="rounded-full border border-white/10 bg-black/25 px-3 py-1.5 text-xs font-black text-zinc-200 transition hover:border-cyan-200/50 hover:text-cyan-100 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {copy.nextPage}
+                        </button>
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <div className="rounded-2xl border border-dashed border-white/12 bg-black/20 p-6 text-sm text-zinc-500">
