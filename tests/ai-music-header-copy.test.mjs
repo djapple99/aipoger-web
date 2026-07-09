@@ -10,6 +10,10 @@ test("Explore AI Music header uses compact public copy and current navigation or
   assert.ok(aiMusicSource.includes("依照風格快速瀏覽作品，聽歌、送愛心，或向你喜歡的作品發起挑戰。"));
   assert.ok(aiMusicSource.includes("text-yellow-200"));
   assert.ok(aiMusicSource.includes("上傳音樂讓大家看到你的作品"));
+  assert.ok(aiMusicSource.includes("Public Wall"));
+  assert.ok(aiMusicSource.includes("Live Drop Signal"));
+  assert.ok(aiMusicSource.includes("ai-music-console-tab"));
+  assert.ok(aiMusicSource.includes("ai-music-hero-title"));
   assert.ok(aiMusicSource.includes('#play-request'));
   assert.ok(aiMusicSource.includes("這裡怎麼玩？"));
   assert.ok(aiMusicSource.includes("愛心會同步收藏"));

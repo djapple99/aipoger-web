@@ -942,97 +942,145 @@ export default function AiMusicClient() {
   };
 
   const totalVisibleTracks = groupedTracks.reduce((sum, group) => sum + group.tracks.length, 0);
+  const navItems = [
+    { href: "#works", label: isZh ? "作品瀏覽" : "Works" },
+    { href: withLang("/listen-bar"), label: isZh ? "傷心酒吧" : "Bar Heartbreak" },
+    { href: withLang("/battle"), label: "Drop Battle" },
+    { href: withLang("/rank"), label: "Showtime" },
+    { href: `/rank?lang=${lang}#choice-weekly`, label: "Choice" },
+  ];
+  const heroStats = [
+    {
+      label: isZh ? "作品數" : "Tracks",
+      value: totalVisibleTracks,
+      note: isZh ? "公播作品" : "Public works",
+    },
+    {
+      label: isZh ? "風格" : "Styles",
+      value: MUSIC_GENRE_OPTIONS.length,
+      note: isZh ? "現行十一種類型" : "Current genre set",
+    },
+    {
+      label: "Drop Battle",
+      value: isZh ? "頁內選項" : "Internal",
+      note: isZh ? "先探索，再挑戰" : "Explore first, battle next",
+    },
+  ];
 
   return (
     <main className={`${fontGlowSans.className} aipo-stage-bg relative min-h-screen overflow-hidden px-4 pb-28 pt-20 text-white sm:px-6 lg:px-8`}>
       <div className="relative z-10 mx-auto w-full max-w-7xl">
-        <header className="grid gap-5 pb-7 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
-          <div className="min-w-0">
-            <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.24em] text-orange-100/68`}>
-              Explore AI Music
-            </p>
-            <h1 className="mt-3 text-4xl font-black leading-tight text-white sm:text-5xl">
-              {isZh ? "AI 音樂作品" : "AI Music Works"}
-            </h1>
-            <p className="mt-3 max-w-3xl text-sm font-black leading-7 text-yellow-200 sm:text-base">
-              {isZh
-                ? "依照風格快速瀏覽作品，聽歌、送愛心，或向你喜歡的作品發起挑戰。"
-                : "Browse tracks by style, listen, send hearts, or start a challenge from music you like."}
-            </p>
-            <p className="mt-2 max-w-3xl text-xs font-black leading-6 text-yellow-200 sm:text-sm">
-              {isZh ? "上傳音樂讓大家看到你的作品，請從 " : "Upload your music so listeners can find it here. Submit through "}
-              <Link
-                href={`${withLang("/listen-bar")}#play-request`}
-                className="font-black text-yellow-50 underline decoration-yellow-200/45 underline-offset-4 transition hover:text-white hover:decoration-yellow-100"
-              >
-                {isZh ? "傷心酒吧投稿" : "Bar Heartbreak"}
-              </Link>
-              {isZh ? "。" : "."}
-            </p>
+        <header className="relative mb-6 overflow-hidden rounded-lg border border-orange-200/18 bg-black/64 shadow-[0_30px_110px_rgba(0,0,0,0.62),0_0_54px_rgba(255,106,0,0.12)]">
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(112deg,rgba(255,106,0,0.2)_0%,rgba(255,106,0,0.08)_30%,rgba(6,9,9,0.44)_62%,rgba(0,202,255,0.09)_100%)]" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-200/70 to-transparent" />
+          <div className="pointer-events-none absolute inset-0 opacity-[0.14] [background-image:linear-gradient(90deg,rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(135deg,transparent_0_46%,rgba(255,106,0,0.22)_47%,transparent_49%)] [background-size:64px_64px,22px_22px]" />
+
+          <div className="relative grid gap-5 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(21rem,31rem)] lg:items-end">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className={`${fontRighteous.className} text-xs uppercase text-orange-100/78`}>
+                  Explore AI Music
+                </p>
+                <span className={`${fontRighteous.className} rounded-sm border border-cyan-100/24 bg-cyan-300/10 px-2 py-1 text-[10px] uppercase text-cyan-100/80`}>
+                  Public Wall
+                </span>
+              </div>
+              <h1 className="ai-music-hero-title mt-3 max-w-[9ch] font-sans text-[clamp(3.8rem,8.2vw,7.1rem)] font-black leading-[0.86] text-white drop-shadow-[0_0_34px_rgba(255,106,0,0.36)]">
+                {isZh ? "AI 音樂作品" : "AI Music Works"}
+              </h1>
+              <div className="mt-4 grid max-w-3xl gap-2">
+                <p className="text-sm font-black leading-7 text-yellow-200 sm:text-lg">
+                  {isZh
+                    ? "依照風格快速瀏覽作品，聽歌、送愛心，或向你喜歡的作品發起挑戰。"
+                    : "Browse tracks by style, listen, send hearts, or start a challenge from music you like."}
+                </p>
+                <p className="inline-flex max-w-fit flex-wrap items-center gap-x-2 rounded-sm border border-yellow-200/22 bg-yellow-300/10 px-3 py-2 text-xs font-black leading-6 text-yellow-100 shadow-[0_0_28px_rgba(253,224,71,0.1)] sm:text-sm">
+                  <span className={`${fontRighteous.className} text-[10px] uppercase text-orange-100/72`}>
+                    Submit
+                  </span>
+                  <span>{isZh ? "上傳音樂讓大家看到你的作品，請從 " : "Upload your music so listeners can find it here. Submit through "}</span>
+                  <Link
+                    href={`${withLang("/listen-bar")}#play-request`}
+                    className="font-black text-yellow-50 underline decoration-yellow-200/45 underline-offset-4 transition hover:text-white hover:decoration-yellow-100"
+                  >
+                    {isZh ? "傷心酒吧投稿" : "Bar Heartbreak"}
+                  </Link>
+                  <span>{isZh ? "。" : "."}</span>
+                </p>
+              </div>
+            </div>
+
+            <aside className="relative overflow-hidden border border-white/12 bg-black/66 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] [clip-path:polygon(0_0,100%_0,100%_calc(100%-16px),calc(100%-16px)_100%,0_100%)]">
+              <div className="flex items-center justify-between gap-3">
+                <p className={`${fontRighteous.className} text-xs uppercase text-cyan-100/76`}>Live Drop Signal</p>
+                <span className="rounded-sm border border-orange-200/28 bg-orange-500/14 px-2 py-1 text-[10px] font-black text-orange-100">
+                  60s READY
+                </span>
+              </div>
+              <div className="mt-5 flex h-20 items-end gap-1.5 border-y border-white/8 py-3" aria-hidden="true">
+                {[30, 52, 78, 44, 88, 64, 38, 72, 55, 92, 48, 68, 34, 58, 80, 42].map((height, index) => (
+                  <span
+                    key={`${height}-${index}`}
+                    className="w-full rounded-t-sm bg-gradient-to-t from-orange-600 via-orange-300 to-cyan-100 shadow-[0_0_18px_rgba(255,106,0,0.26)]"
+                    style={{ height: `${height}%` }}
+                  />
+                ))}
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-px overflow-hidden border border-white/10 bg-white/10">
+                {heroStats.map((item) => (
+                  <div key={item.label} className="bg-black/78 px-3 py-3">
+                    <p className={`${fontRighteous.className} text-[10px] uppercase text-cyan-100/58`}>
+                      {item.label}
+                    </p>
+                    <p className="mt-1 font-sans text-2xl font-black leading-none text-white">{item.value}</p>
+                    <p className="mt-1 text-[10px] font-bold text-zinc-500">{item.note}</p>
+                  </div>
+                ))}
+              </div>
+            </aside>
           </div>
-          <div className="flex flex-wrap gap-2 md:justify-end">
-            {[
-              { href: "#works", label: isZh ? "作品瀏覽" : "Works" },
-              { href: withLang("/listen-bar"), label: isZh ? "傷心酒吧" : "Bar Heartbreak" },
-              { href: withLang("/battle"), label: "Drop Battle" },
-              { href: withLang("/rank"), label: "Showtime" },
-              { href: `/rank?lang=${lang}#choice-weekly`, label: "Choice" },
-            ].map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/12 bg-white/[0.045] px-3 text-xs font-black text-zinc-200 transition hover:border-orange-200/50 hover:bg-orange-500/12 hover:text-white"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
+
+          <nav className="relative border-t border-orange-200/16 bg-black/72 px-3 py-3" aria-label={isZh ? "探索 AI 音樂導覽" : "Explore AI Music navigation"}>
+            <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {navItems.map((item, index) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`ai-music-console-tab group relative inline-flex min-h-11 shrink-0 items-center gap-2 border px-4 text-xs font-black transition [clip-path:polygon(8px_0,100%_0,calc(100%-8px)_100%,0_100%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200 ${
+                    index === 0
+                      ? "border-orange-200/58 bg-orange-500/24 text-white shadow-[0_0_28px_rgba(255,106,0,0.24)]"
+                      : "border-white/12 bg-white/[0.045] text-zinc-300 hover:border-cyan-100/42 hover:bg-cyan-300/10 hover:text-white"
+                  }`}
+                >
+                  <span className={`${fontRighteous.className} text-[10px] text-orange-100/70`}>{String(index + 1).padStart(2, "0")}</span>
+                  <span>{item.label}</span>
+                </Link>
+              ))}
+            </div>
+          </nav>
         </header>
 
-        <section className="flex flex-wrap gap-2 pb-7">
-          {[
-            {
-              label: isZh ? "作品數" : "Tracks",
-              value: totalVisibleTracks,
-              note: isZh ? "公播作品" : "Public works",
-            },
-            {
-              label: isZh ? "風格" : "Styles",
-              value: MUSIC_GENRE_OPTIONS.length,
-              note: isZh ? "現行十一種類型" : "Current genre set",
-            },
-            {
-              label: "Drop Battle",
-              value: isZh ? "頁內選項" : "Internal",
-              note: isZh ? "先探索，再挑戰" : "Explore first, battle next",
-            },
-          ].map((item) => (
-            <div key={item.label} className="min-w-[8.4rem] rounded-md border border-white/10 bg-black/48 px-3 py-2 shadow-[0_12px_30px_rgba(0,0,0,0.26)] sm:min-w-[9.2rem]">
-              <p className={`${fontRighteous.className} text-[10px] uppercase tracking-[0.18em] text-cyan-100/62`}>
-                {item.label}
-              </p>
-              <p className="mt-0.5 text-lg font-black leading-tight text-white sm:text-xl">{item.value}</p>
-              <p className="mt-0.5 text-[10px] font-bold text-zinc-500 sm:text-[11px]">{item.note}</p>
-            </div>
-          ))}
-        </section>
-
-        <section className="mb-7 rounded-md border border-yellow-200/18 bg-yellow-300/[0.055] px-4 py-4 shadow-[0_16px_42px_rgba(0,0,0,0.2)]">
-          <p className={`${fontRighteous.className} text-[11px] uppercase tracking-[0.2em] text-yellow-100/82`}>
-            {isZh ? "這裡怎麼玩？" : "How This Works"}
-          </p>
-          <div className="mt-3 grid gap-3 text-xs font-bold leading-6 text-zinc-300 md:grid-cols-3">
-            <p>
+        <section className="mb-7 grid gap-3 border-y border-orange-200/16 bg-black/34 px-3 py-4 shadow-[0_18px_60px_rgba(0,0,0,0.32)] md:grid-cols-[10rem_minmax(0,1fr)] md:items-stretch">
+          <div className="flex items-center border-l-4 border-orange-400 bg-orange-500/10 px-4 py-3">
+            <p className={`${fontRighteous.className} text-sm uppercase text-yellow-100/88`}>
+              {isZh ? "這裡怎麼玩？" : "How This Works"}
+            </p>
+          </div>
+          <div className="grid gap-2 text-xs font-bold leading-6 text-zinc-300 md:grid-cols-3">
+            <p className="border-l border-orange-200/28 bg-black/42 px-3 py-3">
+              <span className={`${fontRighteous.className} mb-1 block text-[10px] uppercase text-orange-100/72`}>01 Public Airplay</span>
               {isZh
                 ? "這裡是公開上傳作品牆。作品先從傷心酒吧的 AI 音樂公播池投稿，符合展示條件後就會出現在探索頁。"
                 : "This is the public uploaded-works wall. Tracks enter through Bar Heartbreak's AI music airplay pool, then appear here when display-ready."}
             </p>
-            <p>
+            <p className="border-l border-cyan-100/24 bg-black/42 px-3 py-3">
+              <span className={`${fontRighteous.className} mb-1 block text-[10px] uppercase text-cyan-100/72`}>02 Heart Sync</span>
               {isZh
                 ? "看到喜歡的歌就點愛心；愛心會同步收藏。自己的收藏請從右上角頭像進入 Profile 管理。"
                 : "Tap Heart on tracks you like. Hearts also save the track, and your saved music is managed from the top-right avatar/Profile."}
             </p>
-            <p>
+            <p className="border-l border-yellow-200/28 bg-black/42 px-3 py-3">
+              <span className={`${fontRighteous.className} mb-1 block text-[10px] uppercase text-yellow-100/72`}>03 60s Drop</span>
               {isZh
                 ? "只有尚未進 Showtime、已開放接戰、且已準備守擂 60s Drop 的作品才能被攻擂。未進 Showtime 的作品若累積 8 場正式敗績，會從這面公開牆退場並停止接戰。"
                 : "Only non-Showtime tracks with challenge enabled and a prepared defender 60s Drop can be attacked. Non-Showtime works retire from this wall after 8 official losses."}
