@@ -145,9 +145,9 @@ function aiMusicChallengeHref(track: AiMusicTrack, lang: string) {
   return `/battle/setup?${params.toString()}`;
 }
 
-function listenBarHref(id: string, lang: string) {
+function aiMusicTrackHref(id: string, lang: string) {
   const params = new URLSearchParams({ lang, track: id });
-  return `/listen-bar?${params.toString()}`;
+  return `/ai-music?${params.toString()}#works`;
 }
 
 function storagePublicUrl(bucket: string, path: string | null | undefined) {
@@ -241,7 +241,7 @@ async function tracksFromListenBar(lang: string) {
         retiredFromExplore,
         challengeStatus,
         statusLabel,
-        href: listenBarHref(track.id, lang),
+        href: aiMusicTrackHref(track.id, lang),
       };
     })
     .filter((track) => !track.retiredFromExplore);
@@ -472,7 +472,7 @@ function TrackCard({
       ? "送出愛心支持"
       : "Send a heart";
   return (
-    <article className="group relative w-[12.5rem] shrink-0 snap-start overflow-hidden rounded-md border border-white/10 bg-black/54 shadow-[0_18px_54px_rgba(0,0,0,0.34)] backdrop-blur transition hover:border-orange-200/45 hover:bg-orange-500/[0.055] sm:w-full">
+    <article id={`ai-music-work-${track.sourceId}`} className="group relative w-[12.5rem] shrink-0 snap-start overflow-hidden rounded-md border border-white/10 bg-black/54 shadow-[0_18px_54px_rgba(0,0,0,0.34)] backdrop-blur transition hover:border-orange-200/45 hover:bg-orange-500/[0.055] sm:w-full">
       <div className="relative aspect-square">
         <TrackCover track={track} className="h-full w-full" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/12 to-transparent" />
@@ -940,6 +940,8 @@ export default function AiMusicClient() {
   const isZh = lang === "zh";
   const [tracks, setTracks] = useState<AiMusicTrack[]>([]);
   const [worksView, setWorksView] = useState<"genre" | "heat">("genre");
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [sharedTrackSourceId, setSharedTrackSourceId] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [loadError, setLoadError] = useState("");
   const [expandedGenres, setExpandedGenres] = useState<Record<string, boolean>>({});
@@ -951,8 +953,66 @@ export default function AiMusicClient() {
   const [currentTrack, setCurrentTrack] = useState<AiMusicTrack | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const guideButtonRef = useRef<HTMLButtonElement | null>(null);
+  const guideDialogRef = useRef<HTMLDivElement | null>(null);
+  const guideCloseButtonRef = useRef<HTMLButtonElement | null>(null);
+  const guideReturnFocusRef = useRef(false);
 
   const withLang = useCallback((href: string) => `${href}${href.includes("?") ? "&" : "?"}lang=${lang}`, [lang]);
+  const closeGuide = useCallback(() => {
+    guideReturnFocusRef.current = true;
+    setGuideOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (guideOpen) {
+      const frame = window.requestAnimationFrame(() => guideCloseButtonRef.current?.focus());
+      return () => window.cancelAnimationFrame(frame);
+    }
+    if (!guideReturnFocusRef.current) return;
+    guideReturnFocusRef.current = false;
+    const frame = window.requestAnimationFrame(() => guideButtonRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [guideOpen]);
+
+  useEffect(() => {
+    if (!guideOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeGuide();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const dialog = guideDialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'),
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [closeGuide, guideOpen]);
+
+  useEffect(() => {
+    const updateSharedTrack = () => {
+      const trackId = new URLSearchParams(window.location.search).get("track")?.trim() || null;
+      setSharedTrackSourceId(trackId);
+    };
+    updateSharedTrack();
+    window.addEventListener("popstate", updateSharedTrack);
+    return () => window.removeEventListener("popstate", updateSharedTrack);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -995,6 +1055,29 @@ export default function AiMusicClient() {
       cancelled = true;
     };
   }, [lang]);
+
+  useEffect(() => {
+    if (!sharedTrackSourceId || tracks.length === 0) return;
+    const sharedTrack = tracks.find((track) => track.sourceId === sharedTrackSourceId);
+    if (!sharedTrack) return;
+    setWorksView("genre");
+    setExpandedGenres((current) => (
+      current[sharedTrack.genre] ? current : { ...current, [sharedTrack.genre]: true }
+    ));
+  }, [sharedTrackSourceId, tracks]);
+
+  useEffect(() => {
+    if (!sharedTrackSourceId || worksView !== "genre") return;
+    const sharedTrack = tracks.find((track) => track.sourceId === sharedTrackSourceId);
+    if (!sharedTrack || !expandedGenres[sharedTrack.genre]) return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(`ai-music-work-${sharedTrack.sourceId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [expandedGenres, sharedTrackSourceId, tracks, worksView]);
 
   useEffect(() => {
     if (!userId || tracks.length === 0) {
@@ -1174,17 +1257,21 @@ export default function AiMusicClient() {
     { href: `/rank?lang=${lang}#choice-weekly`, label: "Choice" },
   ];
   const catalogMetadata = isZh
-    ? `${totalVisibleTracks} 作品 · ${MUSIC_GENRE_OPTIONS.length} 種風格`
-    : `${totalVisibleTracks} works · ${MUSIC_GENRE_OPTIONS.length} styles`;
+    ? `${totalVisibleTracks} 首公開作品 · ${MUSIC_GENRE_OPTIONS.length} 種風格`
+    : `${totalVisibleTracks} public works · ${MUSIC_GENRE_OPTIONS.length} styles`;
 
   return (
     <main className={`${fontGlowSans.className} aipo-stage-bg relative min-h-screen overflow-hidden px-4 pb-28 pt-20 text-white sm:px-6 lg:px-8`}>
       <div className="relative z-10 mx-auto w-full max-w-7xl">
-        <header className="mb-5 border-b border-orange-200/18 pb-4">
-          <div className="flex flex-col gap-3 py-3 sm:py-4">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <header className="mb-4 border-b border-orange-200/18 pb-3 text-center">
+          <div className="flex flex-col items-center gap-2.5 py-3 sm:py-4">
+            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5">
               <p className={`${fontRighteous.className} text-[11px] uppercase tracking-[0.18em] text-orange-100/72`}>Explore AI Music</p>
-              <span className="text-[11px] font-bold text-zinc-500">{catalogMetadata}</span>
+            </div>
+            <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 border-y border-orange-200/14 py-1.5 text-[11px] font-black text-orange-100/82">
+              <span className={`${fontRighteous.className} uppercase tracking-[0.12em] text-orange-200`}>{isZh ? "作品庫" : "Catalog"}</span>
+              <span className="text-zinc-500" aria-hidden="true">/</span>
+              <span className="text-zinc-300">{catalogMetadata}</span>
             </div>
             <h1 className="ai-music-hero-title text-4xl font-black leading-none text-white sm:text-5xl">{isZh ? "AI 音樂作品" : "AI Music Works"}</h1>
             <p className="max-w-3xl text-sm font-black leading-6 text-yellow-200 sm:text-base">
@@ -1200,18 +1287,21 @@ export default function AiMusicClient() {
               {isZh ? "。" : "."}
             </p>
           </div>
-          <nav className="flex gap-1 overflow-x-auto border-t border-white/8 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label={isZh ? "探索 AI 音樂導覽" : "Explore AI Music navigation"}>
-            {navItems.map((item, index) => (
-              <Link key={item.href} href={item.href} className={`inline-flex min-h-9 shrink-0 items-center border-b-2 px-3 text-xs font-black transition ${index === 0 ? "border-orange-300 text-white" : "border-transparent text-zinc-500 hover:border-cyan-100/55 hover:text-zinc-100"}`}>
-                {item.label}
-              </Link>
-            ))}
+          <nav className="flex justify-center overflow-x-auto border-t border-white/8 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label={isZh ? "探索 AI 音樂導覽" : "Explore AI Music navigation"}>
+            <div className="flex min-w-max gap-0.5 px-2 sm:mx-auto sm:gap-1 sm:px-4">
+              {navItems.map((item, index) => (
+                <Link key={item.href} href={item.href} className={`inline-flex min-h-9 shrink-0 items-center border-b-2 px-2 text-[11px] font-black transition sm:px-3 sm:text-xs ${index === 0 ? "border-orange-300 text-white" : "border-transparent text-zinc-500 hover:border-cyan-100/55 hover:text-zinc-100"}`}>
+                  {item.label}
+                </Link>
+              ))}
+            </div>
           </nav>
         </header>
 
-        <section id="works" className="grid gap-6 scroll-mt-24">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-y border-white/10 py-3">
-            <div className="inline-flex rounded-md border border-white/12 bg-black/54 p-1" role="group" aria-label={isZh ? "作品瀏覽方式" : "Works browsing mode"}>
+        <section id="works" className="grid gap-5 scroll-mt-24">
+          <div className="flex justify-center border-y border-white/10 py-3">
+            <div className="flex items-center justify-center gap-2">
+              <div className="inline-flex rounded-md border border-white/12 bg-black/54 p-1" role="group" aria-label={isZh ? "作品瀏覽方式" : "Works browsing mode"}>
               <button
                 type="button"
                 onClick={() => setWorksView("genre")}
@@ -1228,11 +1318,18 @@ export default function AiMusicClient() {
               >
                 {isZh ? "正在升溫" : "Hot Now"}
               </button>
+              </div>
+              <button
+                ref={guideButtonRef}
+                type="button"
+                onClick={() => setGuideOpen(true)}
+                className="inline-flex h-11 w-12 shrink-0 items-center justify-center rounded-md border border-orange-200/28 bg-black/54 p-1.5 transition hover:border-orange-100/70 hover:bg-orange-500/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-100"
+                aria-label={isZh ? "這裡怎麼玩？" : "How this works"}
+                title={isZh ? "這裡怎麼玩？" : "How this works"}
+              >
+                <img src="/guide.png" alt="" className="h-full w-full object-contain" />
+              </button>
             </div>
-            <details className="text-xs font-bold text-zinc-500">
-              <summary className="cursor-pointer text-zinc-400 transition hover:text-yellow-100">{isZh ? "這裡怎麼玩？" : "How this works"}</summary>
-              <p className="mt-2 max-w-xl leading-6">{isZh ? "愛心會同步收藏並從 Profile 管理；可攻擂作品已準備守擂 60s Drop。" : "Hearts also save tracks in Profile. Challenge-ready works have a prepared defender 60s Drop."}</p>
-            </details>
           </div>
           {loadState === "loading" ? (
             <div className="rounded-md border border-white/10 bg-black/46 px-5 py-12 text-center text-sm font-bold text-zinc-400">
@@ -1320,6 +1417,69 @@ export default function AiMusicClient() {
       {notice ? (
         <div className="fixed bottom-24 left-1/2 z-[60] w-[min(92vw,28rem)] -translate-x-1/2 rounded-md border border-orange-200/28 bg-black/92 px-4 py-3 text-center text-sm font-bold text-orange-50 shadow-[0_18px_50px_rgba(0,0,0,0.52)]">
           {notice}
+        </div>
+      ) : null}
+
+      {guideOpen ? (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/78 px-4 py-6 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeGuide();
+          }}
+        >
+          <div
+            ref={guideDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ai-music-guide-title"
+            className="max-h-[min(42rem,calc(100svh-3rem))] w-full max-w-xl overflow-y-auto border border-orange-200/40 bg-[#090807] shadow-[0_28px_90px_rgba(0,0,0,0.72)]"
+          >
+            <div className="flex items-center justify-between gap-4 border-b border-orange-200/22 px-5 py-4 sm:px-6">
+              <div className="flex min-w-0 items-center gap-3">
+                <img src="/guide.png" alt="" className="h-8 w-11 shrink-0 object-contain" />
+                <p className={`${fontRighteous.className} text-[11px] uppercase tracking-[0.18em] text-orange-100/72`}>Guide</p>
+              </div>
+              <button
+                ref={guideCloseButtonRef}
+                type="button"
+                onClick={closeGuide}
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center border border-white/12 text-xl leading-none text-zinc-300 transition hover:border-orange-100/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-100"
+                aria-label={isZh ? "關閉說明" : "Close guide"}
+                title={isZh ? "關閉" : "Close"}
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+            </div>
+            <div className="px-5 py-5 sm:px-6">
+              <h2 id="ai-music-guide-title" className="text-2xl font-black text-white">{isZh ? "探索怎麼玩？" : "How Explore Works"}</h2>
+              <div className="mt-5 divide-y divide-white/10 border-y border-white/10">
+                <div className="py-4 first:pt-0">
+                  <h3 className="text-sm font-black text-orange-100">{isZh ? "逛作品" : "Browse works"}</h3>
+                  <p className="mt-1.5 text-sm font-bold leading-6 text-zinc-300">
+                    {isZh ? "依風格播放作品，喜歡就送愛心。" : "Play works by style and send a Heart when a track lands."}
+                  </p>
+                </div>
+                <div className="py-4">
+                  <h3 className="text-sm font-black text-orange-100">{isZh ? "收藏歌曲" : "Save tracks"}</h3>
+                  <p className="mt-1.5 text-sm font-bold leading-6 text-zinc-300">
+                    {isZh ? "愛心會同步加入收藏；從右上角頭像進入 Profile 可整理收藏歌曲。" : "A Heart also saves the track. Manage saved tracks from Profile through the avatar at the top right."}
+                  </p>
+                </div>
+                <div className="py-4">
+                  <h3 className="text-sm font-black text-orange-100">{isZh ? "發起攻擂" : "Start a challenge"}</h3>
+                  <p className="mt-1.5 text-sm font-bold leading-6 text-zinc-300">
+                    {isZh ? "看到作品封面右上紅色「接戰」角標，表示原作者已準備 60s Drop 並開放攻擂。" : "A red 接戰 badge at a cover's top right means the creator has prepared a 60s Drop and opened the work to challenges."}
+                  </p>
+                </div>
+                <div className="py-4 last:pb-0">
+                  <h3 className="text-sm font-black text-orange-100">{isZh ? "正式戰績" : "Official results"}</h3>
+                  <p className="mt-1.5 text-sm font-bold leading-6 text-zinc-300">
+                    {isZh ? "至少 3 位非參賽者完成投票才成立。進入 Showtime 的作品只供播放、收藏與分享，不再接戰。" : "A result needs at least three non-participant votes. Showtime works remain available to play, save, and share, but no longer accept challenges."}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       ) : null}
 

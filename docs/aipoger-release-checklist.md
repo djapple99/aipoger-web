@@ -188,10 +188,11 @@ Check:
 
 - Homepage first-layer primary action says `探索 AI 音樂` and links to `/ai-music?lang=zh`.
 - `/ai-music?lang=zh` returns 200 and uses the main title `AI 音樂作品`.
-- The `/ai-music` header subtitle is bright yellow, the top summary items are compact chips, and the public UI does not show `真實資料，不含 mock` / `Real records only`.
+- The `/ai-music` header is a compact, centered catalog stage. Its eyebrow, live `[作品庫] {count} 首公開作品 · 11 種風格` marker, title, yellow subtitle, submission prompt, cross-surface navigation, and local view control share one central axis; the public UI does not show `真實資料，不含 mock` / `Real records only`.
 - The `/ai-music` header includes the upload prompt `上傳音樂讓大家看到你的作品，請從傷心酒吧投稿。` and links it to Bar Heartbreak submission.
 - The `/ai-music` internal navigation order is `作品瀏覽` -> `傷心酒吧` -> `Drop Battle` -> `Showtime` -> `Choice`.
-- The `/ai-music` page includes `這裡怎麼玩？`, explaining that Hearts also save tracks, saved tracks are managed from the top-right avatar/Profile, and challengeable works need a prepared defender 60s Drop.
+- The fixed icon-only `/guide.png` button opens the `/ai-music` GUIDE HUD. Verify its accessible name, X, Escape, backdrop close, focus trap and focus return, its Chinese and English copy, mobile scrolling above the mini player, and that no visible `<details>` explainer remains.
+- An Explore share URL has the shape `/ai-music?lang=<lang>&track=<id>#works`, stays on Explore rather than Bar Heartbreak, expands the matching style lane, and scrolls to the shared work without autoplay.
 - The masthead is compact and cover-led: the first genre title and first covers are visible at 1440x900 and 390x844 without a fake waveform, `Live Drop Signal`, `60s READY`, dashboard cards, or a long gameplay explainer occupying the first screen.
 - `依類型 | 正在升溫` is a local Explore control. The default preserves genre lanes; Hot Now is a single cover-led list and remains separate from Showtime and Choice.
 - Hot Now reads only 7-day distinct Heart supporters, official Battle audience votes from archives meeting the 3-voter threshold, latest qualified interaction, then created_at/id. It never uses all-time Hearts, play counts, mock scores, or Heat Score. Signal-less works are `正在累積` with no rank number; Showtime rows have no attack action.
