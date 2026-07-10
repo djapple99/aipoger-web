@@ -41,10 +41,13 @@ Supabase production now also has `battle_result_archives.showtime_public_removed
 
 2026-07-10 30-day check and apply: production read-only preview confirmed `45` eligible public community works at or older than the 30-day cutoff. The youngest eligible work was already `31.63` days old, so no current production row was exactly on the 30.00-day boundary, but the preview/apply condition remains inclusive (`public_time <= cutoff`). The owner then confirmed that at-or-over-30-day works should move to Showtime, and the `45` candidates were written to production with `ai_music_showtime_certified=true` and `ai_music_showtime_certification_source='founder_catalog'` at `2026-07-10T10:37:03.399Z`.
 
+After the write, `/api/ai-music/tracks?surface=showtime` still returned `0` because production was missing `listen_bar_tracks.support_url` and `support_url_status`; the route fell back to legacy selects that do not include Showtime fields. `supabase/20260710_listen_bar_support_url_schema.sql` was added and applied to production. The live Showtime API then returned `45` tracks.
+
 ## Verification
 
 - Unit tests cover persisted Showtime surface split, old flow blocking, creator Showtime metadata limits, guarded preview/apply path, and removal of public Heart/day eligibility promises.
 - Unit tests cover Battle archive Showtime soft removals so hidden archive records keep their history but leave the public catalog.
 - Unit tests cover the inclusive 30-day founder catalog cutoff and optional demo soft-delete guard.
+- Unit tests cover the `support_url` schema needed to keep Showtime AI Music API reads on the modern select path.
 - TypeScript casts are intentionally local to Supabase select result boundaries because shared select-field strings are not parseable by the generated Supabase type parser.
 - Do not infer demo songs by fuzzy title matching. Any future public-removal operation should use exact owner-confirmed IDs or battle codes.

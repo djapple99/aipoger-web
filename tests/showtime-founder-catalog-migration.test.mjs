@@ -17,6 +17,7 @@ const previewScriptSource = readFileSync(new URL("../scripts/showtime-founder-ca
 const applyScriptSource = readFileSync(new URL("../scripts/showtime-founder-catalog-apply.mjs", import.meta.url), "utf8");
 const migrationSource = readFileSync(new URL("../supabase/20260710_showtime_founder_catalog.sql", import.meta.url), "utf8");
 const archiveRemovalMigrationSource = readFileSync(new URL("../supabase/20260710_showtime_archive_public_removal.sql", import.meta.url), "utf8");
+const supportUrlMigrationSource = readFileSync(new URL("../supabase/20260710_listen_bar_support_url_schema.sql", import.meta.url), "utf8");
 const productRulesSource = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
 const listenBarSource = readFileSync(new URL("../src/app/listen-bar/page.tsx", import.meta.url), "utf8");
 
@@ -89,4 +90,12 @@ test("Battle archive Showtime public removals keep history but leave the public 
   assert.ok(honorInteractionsRouteSource.includes(".is(\"showtime_public_removed_at\", null)"));
   assert.ok(dropFullSongsRouteSource.includes(".is(\"showtime_public_removed_at\", null)"));
   assert.equal(archiveRemovalMigrationSource.includes("delete from public.battle_result_archives"), false);
+});
+
+test("Showtime API schema includes support URL fields so modern selects do not fall back to legacy rows", () => {
+  assert.ok(supportUrlMigrationSource.includes("add column if not exists support_url text"));
+  assert.ok(supportUrlMigrationSource.includes("support_url_status text not null default 'none'"));
+  assert.ok(supportUrlMigrationSource.includes("listen_bar_tracks_support_url_status_check"));
+  assert.ok(aiMusicTracksRouteSource.includes("AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS"));
+  assert.ok(aiMusicTracksRouteSource.includes("surface === \"showtime\""));
 });
