@@ -156,7 +156,8 @@ export async function GET(request: NextRequest) {
   }
 
   const auth = await readUser(admin, request);
-  if (auth.error || !auth.userId) return auth.error;
+  if (auth.error) return auth.error;
+  if (!auth.userId) return jsonError("請先登入後再管理 Showtime 作品。", 401);
 
   const result = await admin
     .from("listen_bar_tracks")
@@ -186,7 +187,8 @@ export async function PATCH(request: NextRequest) {
   }
 
   const auth = await readUser(admin, request);
-  if (auth.error || !auth.userId) return auth.error;
+  if (auth.error) return auth.error;
+  if (!auth.userId) return jsonError("請先登入後再管理 Showtime 作品。", 401);
 
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   if (!isUuid(body?.trackId)) return jsonError("Invalid track id.");

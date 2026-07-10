@@ -30,10 +30,18 @@ Read-only preview ran on 2026-07-10 and wrote `docs/handoffs/showtime-founder-ca
 
 Because the two demo tracks were not identified unambiguously, the spec requires stopping at preview. No production soft delete and no founder batch Showtime write was performed.
 
-Production schema check after deploy showed `listen_bar_tracks.ai_music_showtime_certified` is not present yet (`42703`). The additive migration is committed but still pending execution against Supabase production. Runtime APIs keep legacy fallback behavior until the migration is applied.
+2026-07-10 update: the additive `listen_bar_tracks` Showtime migration was applied to Supabase production and verified by `information_schema`.
+
+The two demo Battle archive cards were later confirmed by the owner from the live Showtime screenshot and soft-hidden from public Showtime display, without deleting the archive/result history:
+
+- `AIPO-000060` / battle `7cda58b9-0e89-410d-b0a5-fb02dd81a8e4` / `网易云音乐人` / `夜色狂欢`
+- `AIPO-000062` / battle `84951a3f-5ac8-48e6-9e92-96fa6c76ecd5` / `飄浪a勇哥` / `命に嫌われている`
+
+Supabase production now also has `battle_result_archives.showtime_public_removed_at`, `showtime_public_removed_by`, `showtime_public_removal_note`, and `showtime_updated_at` from `supabase/20260710_showtime_archive_public_removal.sql`. Public Showtime catalog reads must keep filtering `showtime_public_removed_at is null`.
 
 ## Verification
 
 - Unit tests cover persisted Showtime surface split, old flow blocking, creator Showtime metadata limits, guarded preview/apply path, and removal of public Heart/day eligibility promises.
+- Unit tests cover Battle archive Showtime soft removals so hidden archive records keep their history but leave the public catalog.
 - TypeScript casts are intentionally local to Supabase select result boundaries because shared select-field strings are not parseable by the generated Supabase type parser.
-- Before production data writes in a later run, re-run the preview, confirm exactly two demo IDs, and pass explicit IDs to the apply script. Do not infer demo songs by fuzzy title matching.
+- Do not infer demo songs by fuzzy title matching. Any future public-removal operation should use exact owner-confirmed IDs or battle codes.

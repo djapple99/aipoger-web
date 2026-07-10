@@ -55,8 +55,9 @@ export async function POST(request: Request) {
 
   const { data: archives, error: archiveError } = await admin
     .from("battle_result_archives")
-    .select("battle_id")
-    .in("battle_id", battleIds);
+    .select("battle_id,showtime_public_removed_at")
+    .in("battle_id", battleIds)
+    .is("showtime_public_removed_at", null);
   if (archiveError) return jsonError(archiveError.message, 500);
 
   const archivedBattleIds = Array.from(

@@ -11,9 +11,12 @@ const removeTrackRouteSource = readFileSync(new URL("../src/app/api/listen-bar/r
 const showtimeMyTracksRouteSource = readFileSync(new URL("../src/app/api/showtime/my-tracks/route.ts", import.meta.url), "utf8");
 const profileSource = readFileSync(new URL("../src/app/profile/page.tsx", import.meta.url), "utf8");
 const rankSource = readFileSync(new URL("../src/app/rank/page.tsx", import.meta.url), "utf8");
+const honorInteractionsRouteSource = readFileSync(new URL("../src/app/api/honor-board/interactions/route.ts", import.meta.url), "utf8");
+const dropFullSongsRouteSource = readFileSync(new URL("../src/app/api/honor-board/drop-full-songs/route.ts", import.meta.url), "utf8");
 const previewScriptSource = readFileSync(new URL("../scripts/showtime-founder-catalog-preview.mjs", import.meta.url), "utf8");
 const applyScriptSource = readFileSync(new URL("../scripts/showtime-founder-catalog-apply.mjs", import.meta.url), "utf8");
 const migrationSource = readFileSync(new URL("../supabase/20260710_showtime_founder_catalog.sql", import.meta.url), "utf8");
+const archiveRemovalMigrationSource = readFileSync(new URL("../supabase/20260710_showtime_archive_public_removal.sql", import.meta.url), "utf8");
 const productRulesSource = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
 const listenBarSource = readFileSync(new URL("../src/app/listen-bar/page.tsx", import.meta.url), "utf8");
 
@@ -70,4 +73,15 @@ test("public Bar Heartbreak copy no longer promises Heart/day Showtime eligibili
   assert.equal(listenBarSource.includes("makes it Showtime eligible"), false);
   assert.equal(listenBarSource.includes("顆心，或公播存活"), false);
   assert.ok(listenBarSource.includes("Showtime 是 AIPOGER 認可作品庫"));
+});
+
+test("Battle archive Showtime public removals keep history but leave the public catalog", () => {
+  assert.ok(archiveRemovalMigrationSource.includes("showtime_public_removed_at"));
+  assert.ok(archiveRemovalMigrationSource.includes("battle_result_archives_showtime_public_idx"));
+  assert.ok(archiveRemovalMigrationSource.includes("keeps the original battle archive/result history intact"));
+  assert.ok(rankSource.includes(".is(\"showtime_public_removed_at\", null)"));
+  assert.ok(rankSource.includes("row.showtimePublicRemovedAt"));
+  assert.ok(honorInteractionsRouteSource.includes(".is(\"showtime_public_removed_at\", null)"));
+  assert.ok(dropFullSongsRouteSource.includes(".is(\"showtime_public_removed_at\", null)"));
+  assert.equal(archiveRemovalMigrationSource.includes("delete from public.battle_result_archives"), false);
 });

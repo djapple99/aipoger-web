@@ -50,6 +50,7 @@ type HonorInteractionDatabase = {
           winner_song_name: string | null;
           result_payload: Record<string, unknown> | null;
           archived_at: string | null;
+          showtime_public_removed_at: string | null;
         };
         Insert: Record<string, never>;
         Update: Record<string, never>;
@@ -268,16 +269,18 @@ async function fetchTargetMetadata(admin: AdminClient, records: StoredHonorRecor
   if (battleTargets.length > 0) {
     const readByCode = await admin
       .from("battle_result_archives")
-      .select("battle_id,battle_code,winner_name,winner_song_name,result_payload,archived_at")
-      .in("battle_code", battleTargets);
+      .select("battle_id,battle_code,winner_name,winner_song_name,result_payload,archived_at,showtime_public_removed_at")
+      .in("battle_code", battleTargets)
+      .is("showtime_public_removed_at", null);
     if (!readByCode.error) archiveRows.push(...(readByCode.data ?? []));
 
     const uuidTargets = battleTargets.filter(isUuidLike);
     if (uuidTargets.length > 0) {
       const readByBattleId = await admin
         .from("battle_result_archives")
-        .select("battle_id,battle_code,winner_name,winner_song_name,result_payload,archived_at")
-        .in("battle_id", uuidTargets);
+        .select("battle_id,battle_code,winner_name,winner_song_name,result_payload,archived_at,showtime_public_removed_at")
+        .in("battle_id", uuidTargets)
+        .is("showtime_public_removed_at", null);
       if (!readByBattleId.error) archiveRows.push(...(readByBattleId.data ?? []));
     }
   }

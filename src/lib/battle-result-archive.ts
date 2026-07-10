@@ -48,6 +48,7 @@ export type ArchivedBattleResult = {
   fullSongDurationSeconds?: number;
   lyrics?: string;
   songStats?: SongBattleStatsSnapshot | null;
+  showtimePublicRemovedAt?: string | null;
   createdAt: string;
 };
 
@@ -167,6 +168,8 @@ function sanitizeArchiveEntry(value: unknown): ArchivedBattleResult | null {
     fullSongDurationSeconds: Math.max(0, Number(row.fullSongDurationSeconds) || 0),
     lyrics: typeof row.lyrics === "string" ? row.lyrics.trim() : undefined,
     songStats: sanitizeSongBattleStatsSnapshot(row.songStats),
+    showtimePublicRemovedAt:
+      typeof row.showtimePublicRemovedAt === "string" ? row.showtimePublicRemovedAt.trim() || null : null,
     createdAt: String(row.createdAt || new Date().toISOString()),
   };
 }

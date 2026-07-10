@@ -145,7 +145,7 @@ type FighterProfileMediaRow = {
 
 const MOCK_PATTERN = /(qa-|mock|demo|test|ghost|sample)/i;
 const ARCHIVE_SELECT_BASE =
-  "battle_id,battle_code,winner,winner_name,winner_song_name,winner_ai_tool,opponent_name,opponent_song_name,final_vote_left,final_vote_right,total_votes,audience_review,result_payload,archived_at";
+  "battle_id,battle_code,winner,winner_name,winner_song_name,winner_ai_tool,opponent_name,opponent_song_name,final_vote_left,final_vote_right,total_votes,audience_review,result_payload,archived_at,showtime_public_removed_at,showtime_public_removal_note";
 const HONOR_ACTION_CLASS =
   "!border-yellow-100/25 !bg-white/[0.035] !text-zinc-200 hover:!border-yellow-100/45 hover:!bg-white/[0.055] hover:!text-white active:!bg-yellow-300 active:!text-black";
 
@@ -532,6 +532,7 @@ function rowFromArchive(entry: ArchivedBattleResult, index: number): RankRow {
 function mergeArchives(remoteRows: ArchivedBattleResult[]) {
   const unique = new Map<string, ArchivedBattleResult>();
   for (const row of remoteRows) {
+    if (row.showtimePublicRemovedAt) continue;
     if (!hasArchivedCoreData(row)) continue;
     if (isProbablyMockArchive(row)) continue;
     if (!isOfficialArchivedResult(row)) continue;
@@ -594,6 +595,7 @@ async function fetchBattleArchivesForRank() {
   return supabase
     .from("battle_result_archives")
     .select(ARCHIVE_SELECT_BASE)
+    .is("showtime_public_removed_at", null)
     .order("archived_at", { ascending: false })
     .limit(200);
 }
@@ -1009,89 +1011,93 @@ export default function RankPage() {
       }
 
       const mappedArchives: ArchivedBattleResult[] = Array.isArray(archiveData)
-        ? archiveData.map((rawRow) => {
-            const row = rawRow as Record<string, unknown>;
-            const payload =
-              typeof row.result_payload === "object" && row.result_payload !== null
-                ? (row.result_payload as Record<string, unknown>)
-                : {};
-            const finalVoteLeft = normalizeVoteCount(row.final_vote_left);
-            const finalVoteRight = normalizeVoteCount(row.final_vote_right);
-            const tableVoteTotal = normalizeVoteCount(row.total_votes);
-            const payloadVoteTotal = normalizeVoteCount(
-              payload.votesTotal ?? payload.votes ?? payload.voteCount,
-            );
-            const hasPayloadVoteTotal = payloadVoteTotal > 0;
-            const tableLooksLikePercentTotal =
-              tableVoteTotal === 100 &&
-              finalVoteLeft + finalVoteRight === 100 &&
-              !hasPayloadVoteTotal;
-            const payloadSongStats =
-              typeof payload.songStats === "object" && payload.songStats !== null
-                ? (payload.songStats as Record<string, unknown>).winner
-                : null;
-            const tableSongStats = sanitizeSongBattleStatsSnapshot({
-              battleCount: row.winner_song_battle_count,
-              wins: row.winner_song_wins,
-              losses: row.winner_song_losses,
-              noContests: row.winner_song_no_contests,
-              totalVotesFor: row.winner_song_total_votes_for,
-              totalVotesAgainst: row.winner_song_total_votes_against,
-              honorBoardCount: row.winner_song_honor_board_count,
-            });
-            return {
-              id: String(row.battle_id || row.battle_code || ""),
-              battleId: row.battle_id ? String(row.battle_id) : null,
-              battleCode: String(row.battle_code || ""),
-              winnerSide: normalizeWinnerSide(row.winner),
-              winnerName: String(row.winner_name || "").trim(),
-              winnerSong: String(row.winner_song_name || "").trim(),
-              opponentName: String(row.opponent_name || "").trim(),
-              opponentSong: String(row.opponent_song_name || "").trim(),
-              rank: safeRankForFighter(
-                String(row.winner_name || ""),
-                typeof payload.rank === "string" ? payload.rank : null,
-              ),
-              tool: String(row.winner_ai_tool || payload.tool || "").trim(),
-              genre: String(payload.genre || "AI Music").trim(),
-              coverUrl: String(payload.coverUrl || "").trim(),
-              avatarUrl: String(payload.avatarUrl || "").trim(),
-              opponentCoverUrl:
-                typeof payload.opponentCoverUrl === "string" ? payload.opponentCoverUrl : null,
-              opponentAvatarUrl:
-                typeof payload.opponentAvatarUrl === "string" ? payload.opponentAvatarUrl : null,
-              finalVoteLeft,
-              finalVoteRight,
-              votesTotal: hasPayloadVoteTotal
-                ? payloadVoteTotal
-                : tableLooksLikePercentTotal
-                  ? 0
-                  : tableVoteTotal,
-              audienceCount: normalizeVoteCount(payload.audienceCount ?? payload.audienceVoterCount ?? payload.audience),
-              officialAudienceMin: normalizeVoteCount(payload.officialAudienceMin) || DROP_BATTLE_OFFICIAL_AUDIENCE_MIN,
-              audienceReview: String(row.audience_review || payload.audienceReview || "").trim(),
-              aiReview: String(payload.aiReview || "").trim(),
-              feedbackA:
-                typeof payload.feedbackA === "object" && payload.feedbackA !== null
-                  ? (payload.feedbackA as ArchivedBattleResult["feedbackA"])
-                  : { rhyme: 0, impact: 0, melody: 0, emotion: 0, structure: 0 },
-              feedbackB:
-                typeof payload.feedbackB === "object" && payload.feedbackB !== null
-                  ? (payload.feedbackB as ArchivedBattleResult["feedbackB"])
-                  : { rhyme: 0, impact: 0, melody: 0, emotion: 0, structure: 0 },
-              resultHref: String(payload.resultHref || "").trim(),
-              audioUrl: typeof payload.audioUrl === "string" ? payload.audioUrl.trim() : undefined,
-              fullSongUrl: typeof payload.fullSongUrl === "string" ? payload.fullSongUrl.trim() : undefined,
-              fullSongLabel: typeof payload.fullSongLabel === "string" ? payload.fullSongLabel.trim() : undefined,
-              fullSongDurationSeconds: normalizeVoteCount(payload.fullSongDurationSeconds),
-              lyrics: typeof payload.lyrics === "string" ? payload.lyrics.trim() : undefined,
-              songStats:
-                tableSongStats && tableSongStats.battleCount > 0
-                  ? tableSongStats
-                  : sanitizeSongBattleStatsSnapshot(payloadSongStats),
-              createdAt: String(row.archived_at || new Date().toISOString()),
-            };
-          })
+        ? archiveData
+            .filter((rawRow) => !String((rawRow as Record<string, unknown>).showtime_public_removed_at || "").trim())
+            .map((rawRow) => {
+              const row = rawRow as Record<string, unknown>;
+              const payload =
+                typeof row.result_payload === "object" && row.result_payload !== null
+                  ? (row.result_payload as Record<string, unknown>)
+                  : {};
+              const finalVoteLeft = normalizeVoteCount(row.final_vote_left);
+              const finalVoteRight = normalizeVoteCount(row.final_vote_right);
+              const tableVoteTotal = normalizeVoteCount(row.total_votes);
+              const payloadVoteTotal = normalizeVoteCount(
+                payload.votesTotal ?? payload.votes ?? payload.voteCount,
+              );
+              const hasPayloadVoteTotal = payloadVoteTotal > 0;
+              const tableLooksLikePercentTotal =
+                tableVoteTotal === 100 &&
+                finalVoteLeft + finalVoteRight === 100 &&
+                !hasPayloadVoteTotal;
+              const payloadSongStats =
+                typeof payload.songStats === "object" && payload.songStats !== null
+                  ? (payload.songStats as Record<string, unknown>).winner
+                  : null;
+              const tableSongStats = sanitizeSongBattleStatsSnapshot({
+                battleCount: row.winner_song_battle_count,
+                wins: row.winner_song_wins,
+                losses: row.winner_song_losses,
+                noContests: row.winner_song_no_contests,
+                totalVotesFor: row.winner_song_total_votes_for,
+                totalVotesAgainst: row.winner_song_total_votes_against,
+                honorBoardCount: row.winner_song_honor_board_count,
+              });
+              return {
+                id: String(row.battle_id || row.battle_code || ""),
+                battleId: row.battle_id ? String(row.battle_id) : null,
+                battleCode: String(row.battle_code || ""),
+                winnerSide: normalizeWinnerSide(row.winner),
+                winnerName: String(row.winner_name || "").trim(),
+                winnerSong: String(row.winner_song_name || "").trim(),
+                opponentName: String(row.opponent_name || "").trim(),
+                opponentSong: String(row.opponent_song_name || "").trim(),
+                rank: safeRankForFighter(
+                  String(row.winner_name || ""),
+                  typeof payload.rank === "string" ? payload.rank : null,
+                ),
+                tool: String(row.winner_ai_tool || payload.tool || "").trim(),
+                genre: String(payload.genre || "AI Music").trim(),
+                coverUrl: String(payload.coverUrl || "").trim(),
+                avatarUrl: String(payload.avatarUrl || "").trim(),
+                opponentCoverUrl:
+                  typeof payload.opponentCoverUrl === "string" ? payload.opponentCoverUrl : null,
+                opponentAvatarUrl:
+                  typeof payload.opponentAvatarUrl === "string" ? payload.opponentAvatarUrl : null,
+                finalVoteLeft,
+                finalVoteRight,
+                votesTotal: hasPayloadVoteTotal
+                  ? payloadVoteTotal
+                  : tableLooksLikePercentTotal
+                    ? 0
+                    : tableVoteTotal,
+                audienceCount: normalizeVoteCount(payload.audienceCount ?? payload.audienceVoterCount ?? payload.audience),
+                officialAudienceMin: normalizeVoteCount(payload.officialAudienceMin) || DROP_BATTLE_OFFICIAL_AUDIENCE_MIN,
+                audienceReview: String(row.audience_review || payload.audienceReview || "").trim(),
+                aiReview: String(payload.aiReview || "").trim(),
+                feedbackA:
+                  typeof payload.feedbackA === "object" && payload.feedbackA !== null
+                    ? (payload.feedbackA as ArchivedBattleResult["feedbackA"])
+                    : { rhyme: 0, impact: 0, melody: 0, emotion: 0, structure: 0 },
+                feedbackB:
+                  typeof payload.feedbackB === "object" && payload.feedbackB !== null
+                    ? (payload.feedbackB as ArchivedBattleResult["feedbackB"])
+                    : { rhyme: 0, impact: 0, melody: 0, emotion: 0, structure: 0 },
+                resultHref: String(payload.resultHref || "").trim(),
+                audioUrl: typeof payload.audioUrl === "string" ? payload.audioUrl.trim() : undefined,
+                fullSongUrl: typeof payload.fullSongUrl === "string" ? payload.fullSongUrl.trim() : undefined,
+                fullSongLabel: typeof payload.fullSongLabel === "string" ? payload.fullSongLabel.trim() : undefined,
+                fullSongDurationSeconds: normalizeVoteCount(payload.fullSongDurationSeconds),
+                lyrics: typeof payload.lyrics === "string" ? payload.lyrics.trim() : undefined,
+                songStats:
+                  tableSongStats && tableSongStats.battleCount > 0
+                    ? tableSongStats
+                    : sanitizeSongBattleStatsSnapshot(payloadSongStats),
+                showtimePublicRemovedAt:
+                  typeof row.showtime_public_removed_at === "string" ? row.showtime_public_removed_at.trim() || null : null,
+                createdAt: String(row.archived_at || new Date().toISOString()),
+              };
+            })
         : [];
 
       const merged = await attachBattleAudioUrls(applyFallbackSongStats(mergeArchives(mappedArchives)));
