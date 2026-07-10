@@ -170,9 +170,9 @@ Current rules:
 - Public music surfaces show total Heart count only. Do not display per-user lit/unlit favorite state or public favorite-user counts.
 - Explore AI Music and Bar Heartbreak must read and update the same `listen_bar_tracks` Heart totals for the same song; Explore must not create a separate favorite or Heart counter.
 - New uploads get priority play after the current song finishes; up to 8 new uploads can air within a 1-hour priority batch.
-- Daily Spotlight is a curated promotion layer for one Bar Heartbreak track. It uses `/today`, QR code, and social drafts to send listeners to the featured song without interrupting the shared radio rotation.
-- Spotlight hearts/comments must write to the same Bar Heartbreak track record, so promotion activity helps the song's normal survival and honor signals.
-- Saving a Daily Spotlight creates drafts; external publishing still requires admin approval and a platform-specific publish action. Discord can publish through webhook when configured, but approval alone is not a send.
+- Daily Spotlight is retired. `/today` remains only as a 307 compatibility entry to `/rank?lang=<lang>#choice-weekly`, while `/listen-bar?spotlight=...` opens the normal radio without a specified song.
+- AIPOGER Choice is the only human curation direction: 5-10 cross-genre works each week, no ranking and no automated weekly winner claim.
+- `/admin/social` remains the sole draft, approval, and manual publishing console. Discord can publish through webhook only after approval and the explicit platform publish action.
 
 ## Honor Board Rules
 

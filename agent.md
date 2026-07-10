@@ -153,6 +153,7 @@
 - 探索 AI 音樂是 cover-led 音樂目錄，不可再做 PPT 式大型 masthead。`Live Drop Signal`、fake waveform、60s ready 儀表、dashboard 統計與三欄首屏玩法說明不得壓在作品前。作品瀏覽可在同頁切換 `依類型 | 正在升溫`；正在升溫只依近 7 日不同帳號 Heart 支持、已成立正式 Battle 的非參賽者有效票、最近合格互動與 created_at/id 排序，不使用 all-time Heart、假播放數、mock score 或黑箱 Heat Score。Showtime 可列出但顯示 SHOWTIME 並不可攻擂；無近期訊號的作品只標示正在累積、不給假排名。
 - 三個音樂展示面的定位不可混淆：傷心酒吧是 AI 音樂公播池與投稿入口；探索 AI 音樂是公開上傳作品牆；Showtime 是認證作品庫。Showtime 作品入選後不再接受挑戰，也不適用 8 敗退場。未進 Showtime 的探索作品若開放守擂並守下 6 場正式探索攻擂，進入 Showtime；同一挑戰者對同一首歌最多計入 1 次守擂成功。未進 Showtime 的探索作品若累積 8 場正式敗績，會從探索公開牆退場並停止接戰。以上只計入至少 3 位非參賽者投票成立的正式戰績；拒絕、超時、觀眾不足、未開打、自定開戰不算。
 - 探索 AI 音樂作品卡右上角紅色斜角 `接戰` 是狀態角標，不是按鈕；只有真正可被攻擂的作品顯示。底部 `攻擂` 才是發起挑戰的操作。未準備守擂 Drop、僅展示、暫不接戰、已進 Showtime、已退場、hidden / removed / moderation hold 或不可播放作品都不可顯示 `接戰`。
+- 每日推薦歌 / Daily Spotlight 已退役：不再是傷心酒吧、Explore、`/admin/listen-bar` 或社群發布工作流，也不建立新的單曲 Spotlight 替代品。`/today` 只保留歷史連結相容並固定導向 `/rank?lang=<lang>#choice-weekly`；`/listen-bar?spotlight=...` 必須正常開啟一般公播。`AIPOGER Choice` 是唯一人為策展方向，每週 5-10 首、不排名、可跨類型；`/admin/social` 是唯一社群草稿、批准與手動發布中控台。
 - 傷心酒吧首屏右上角不要堆主要 CTA；`我要播歌`、`分享吧台`、`AI 音樂鬥歌場`、`榮譽榜` 放在下方 action strip，`練功聖經` / `關於愛波哥` 不放在該區。傷心酒吧分享要用 `/l/all` 或 `/l/{genreIndex}` 短網址，分類分享必須回到同一播放類型。
 - 傷心酒吧首屏招牌不可改成含中文字的圖片字，因為語言切換會失效；主標、副標與 `AIPOGER RADIO` / `BAR HEARTBREAK` 必須用 live text。手機版 action strip 第一排放 `我要播歌`、`分享吧台`、`榮譽榜`，第二排 `AI 音樂鬥歌場` 置中。
 

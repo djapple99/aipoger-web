@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { todaySpotlightPath } from "@/lib/daily-spotlight";
 
 export function GET(request: NextRequest) {
-  const lang = request.nextUrl.searchParams.get("lang") ?? "zh";
-  return NextResponse.redirect(new URL(todaySpotlightPath(lang), request.url), 307);
+  const requestedLang = request.nextUrl.searchParams.get("lang")?.trim() ?? "zh";
+  const lang = /^[a-z]{2}$/i.test(requestedLang) ? requestedLang : "zh";
+  return NextResponse.redirect(new URL(`/rank?lang=${encodeURIComponent(lang)}#choice-weekly`, request.url), 307);
 }

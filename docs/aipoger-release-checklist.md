@@ -173,16 +173,14 @@ Challenger and public pool:
 - `GET /api/listen-bar/process-rotation` is manual/monitoring dry-run preview only.
 - Mutation requires protected POST and `LISTEN_BAR_ROTATION_ENABLED=true`.
 
-Daily Spotlight:
+Choice and retired Spotlight:
 
-- `/admin/listen-bar` shows the Daily Spotlight admin surface inside Bar Heartbreak admin.
 - `/admin/listen-bar` song management lists 10 songs per page; `選取本頁` selects only the current page, while bulk update / hide / restore / delete still works for accumulated selections.
-- Admin can select the date and a Bar Heartbreak track, then generate recommendation copy and social caption.
-- The public short entry is `https://aipoger.com/today`; QR codes and short-form captions should use this fixed URL, not a dated `spotlight=` URL.
-- `/today` redirects by Taiwan date to the current spotlight route.
-- Spotlight reactions and comments apply to the same Bar Heartbreak track, not a separate duplicate record.
-- Saving the spotlight creates or updates social drafts only. It must not automatically publish to Discord, Facebook, Instagram, TikTok, or YouTube.
-- Discord publishing requires an approved draft plus the explicit Discord publish action, and should store message/channel response when Discord returns it.
+- `/admin/listen-bar` has no Daily Spotlight selector, date, copy, media, preview, save, or draft-generation controls, and makes no Daily Spotlight API request.
+- `/listen-bar?spotlight=YYYY-MM-DD&lang=zh` returns normal Bar Heartbreak with no specified-song playback or Spotlight panel.
+- `/today?lang=zh` returns 307 to `/rank?lang=zh#choice-weekly`.
+- `/admin/social` remains the only draft, approval, and manual publishing console; Discord publishing still requires an approved draft plus its explicit publish action.
+- Existing `listen_bar_daily_spotlights`, historical assets, and old social drafts are not deleted during this retirement.
 
 ## AI Music Works Checklist
 

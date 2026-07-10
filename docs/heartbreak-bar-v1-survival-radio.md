@@ -83,17 +83,13 @@
 - V2 允許創作者替自己的歌每天投 1 票；這是公開支持，不代表保證留在公播池。
 - 累積 30 個正向反應，或成功在公播池存活 7 天的歌曲，取得 Showtime 入選資格。
 
-## 每日推薦歌 / Spotlight
+## AIPOGER Choice 與社群發布
 
-- 每日推薦歌是傷心酒吧的策展與宣傳層，不是另一個排行榜。
-- 管理者每天可從傷心酒吧歌曲中選一首作為推薦歌，產出推薦文、Shorts / Reels caption、QR code 與社群草稿。
-- 固定入口使用 `https://aipoger.com/today`。此入口依台灣日期導向當天 spotlight，避免短影音或 QR code 過期。
-- 每日推薦採台灣日曆日，不是發布後 24 小時倒數；過台灣午夜後 `/today` 導向新日期，但舊日期 spotlight 不應被刪除或失效。
-- 舊的 dated spotlight 連結可保留給查核與舊分享；對外 QR code、短影音與社群 caption 仍優先放固定 `/today`。
-- 推薦歌不應打斷主輪播；從 Shorts、Reels、Discord 或 QR code 進來的人可以直接打開 spotlight 歌曲，主輪播仍照原本規則繼續。
-- 推薦歌的愛心與留言沿用同一首傷心酒吧 track；聽眾在 spotlight 按愛心，應該直接累積到該歌曲的傷心酒吧反應。
-- 後台可上傳推薦影像素材並與推薦文一起建立社群草稿；儲存每日推薦歌不等於自動發到外部平台。
-- Discord 可在草稿批准後透過 webhook 發布；Facebook 社團、Instagram、TikTok、YouTube 先以草稿 / caption / 素材輔助為主，除非官方發布流程已驗證。
+- 每日推薦歌 / Daily Spotlight 已退役；它不是傷心酒吧、Explore 或後台的日常流程，也不做單曲替代品。
+- 傷心酒吧維持投稿與公播。`/listen-bar?spotlight=...` 只作相容參數，必須正常開啟一般公播，不可指定歌曲或打斷輪播。
+- `AIPOGER Choice` 是唯一人為策展訊號：每週 5-10 首、不排名、可跨類型。主 CTA 指向 `/rank?lang=zh#choice-weekly`。
+- `/today` 只保留歷史 QR code 與舊貼文相容，固定 307 到 Choice；既有資料、素材與草稿不刪除。
+- `/admin/social` 是唯一社群草稿、批准與手動發布中控台。Discord 可在批准後明確發布；Facebook 社團、Instagram、TikTok、YouTube 維持草稿 / caption / 素材輔助。
 
 ## 生存審判
 
@@ -120,7 +116,7 @@
 已同步到 AIPOGER Discord：
 
 - `#傷心酒吧公告`：傷心酒吧不是排行榜，是 AI 音樂生存電台；不再使用全站 88 首規則；改依 11 類型分池生存。
-- `#今日推薦-today`：每日推薦歌固定入口 `https://aipoger.com/today`，是策展導流層，不是另一個排行榜，也不打斷主輪播。
+- `#今日推薦-today` 為舊頻道 / 歷史命名，不再用於現行 CTA；現行策展導流一律使用 AIPOGER Choice。
 - `#如何玩-aipoger`：補上 11 類型、每類 36 首、2026-07-06 前不做系統容量淘汰、Heart 等同收藏等重點。
 - `#規則-rules`：補上網站入口與登入規則，提醒 Discord 討論可以留在社群，正式聽歌、投票、按心、留言與投稿回 AIPOGER 網站完成。
 

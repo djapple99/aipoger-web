@@ -57,7 +57,6 @@ import {
 } from "@/lib/listen-bar";
 import { usePresenceCount } from "@/lib/use-presence-count";
 import { logAnalyticsEvent } from "@/lib/analytics-client";
-import { normalizeSpotlightDate } from "@/lib/daily-spotlight";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import { listenBarShortPath } from "@/lib/share-short-links";
 import { normalizeYouTubeUrl } from "@/lib/youtube-url";
@@ -123,28 +122,6 @@ type MyTracksPayload = {
   challengerLimit?: number;
   publicCount?: number;
   tracks?: ListenBarTrackRow[];
-  error?: string;
-};
-
-type DailySpotlightView = {
-  date: string;
-  headline: string;
-  intro: string;
-  caption: string;
-  trackId: string;
-};
-
-type DailySpotlightPayload = {
-  date?: string;
-  missingTable?: boolean;
-  spotlight?: {
-    spotlight_date: string;
-    track_id: string;
-    headline: string | null;
-    intro: string | null;
-    caption: string | null;
-  } | null;
-  track?: ListenBarTrackRow | null;
   error?: string;
 };
 
@@ -753,8 +730,6 @@ export default function ListenBarPage() {
   const [publicUploadError, setPublicUploadError] = useState("");
   const [myBroadcastStats, setMyBroadcastStats] = useState<MyBroadcastStat[]>([]);
   const [nowTrack, setNowTrack] = useState<ListenBarTrack>(EMPTY_LISTEN_BAR_TRACK);
-  const [dailySpotlight, setDailySpotlight] = useState<DailySpotlightView | null>(null);
-  const [spotlightDate, setSpotlightDate] = useState("");
   const [, setHistory] = useState<ListenBarTrack[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackBlocked, setPlaybackBlocked] = useState(false);
@@ -1040,9 +1015,7 @@ export default function ListenBarPage() {
   useEffect(() => {
     const syncListenBarUrlState = () => {
       const params = new URLSearchParams(window.location.search);
-      const requestedDate = params.get("spotlight");
       const requestedGenre = params.get("genre")?.trim() ?? "";
-      setSpotlightDate(requestedDate ? normalizeSpotlightDate(requestedDate) : "");
       if (requestedGenre === "all") {
         setSelectedPlaybackGenre("all");
       } else if (LISTEN_BAR_GENRES.some((genre) => genre.value === requestedGenre)) {
@@ -1222,35 +1195,7 @@ export default function ListenBarPage() {
         .slice(0, LISTEN_BAR_TOTAL_ROTATION_LIMIT)
         .map(listenBarRowToTrack)
         .filter((track): track is ListenBarTrack => track !== null);
-      let spotlightTrack: ListenBarTrack | null = null;
-      if (spotlightDate) {
-        const spotlightResponse = await fetch(`/api/listen-bar/daily-spotlight?date=${encodeURIComponent(spotlightDate)}`, {
-          cache: "no-store",
-        }).catch((error) => ({ ok: false, json: async () => ({ error: String(error) }) }) as Response);
-        if (mounted && spotlightResponse.ok) {
-          const spotlightPayload = await spotlightResponse.json().catch(() => null) as DailySpotlightPayload | null;
-          const rowTrack = spotlightPayload?.track ? listenBarRowToTrack(spotlightPayload.track) : null;
-          spotlightTrack = rowTrack;
-          if (spotlightPayload?.spotlight && rowTrack) {
-            setDailySpotlight({
-              date: spotlightPayload.date ?? spotlightPayload.spotlight.spotlight_date,
-              headline: spotlightPayload.spotlight.headline?.trim() || rowTrack.title,
-              intro: spotlightPayload.spotlight.intro?.trim() || rowTrack.description || rowTrack.mood,
-              caption: spotlightPayload.spotlight.caption?.trim() || "",
-              trackId: rowTrack.id,
-            });
-          } else {
-            setDailySpotlight(null);
-          }
-        } else if (mounted) {
-          setDailySpotlight(null);
-        }
-      } else {
-        setDailySpotlight(null);
-      }
-      const tracks = spotlightTrack && !community.some((track) => track.id === spotlightTrack?.id)
-        ? [spotlightTrack, ...community].slice(0, LISTEN_BAR_TOTAL_ROTATION_LIMIT)
-        : community;
+      const tracks = community;
       const persistedCounts = rows.reduce<Record<string, ReactionCounts>>((acc, row) => {
         acc[row.id] = {
           heart: Math.max(0, row.heart_count ?? 0),
@@ -1271,15 +1216,6 @@ export default function ListenBarPage() {
 
       setOfficialTracks(tracks);
       setNowTrack((current) => {
-        if (spotlightTrack) {
-          if (current.id === spotlightTrack.id) return current;
-          startTrackAtZeroRef.current = true;
-          liveRadioSyncEnabledRef.current = false;
-          localOverrideTrackIdRef.current = spotlightTrack.id;
-          liveSeekRef.current = { trackId: spotlightTrack.id, offset: 0 };
-          setElapsed(0);
-          return spotlightTrack;
-        }
         if (current.audioUrl && tracks.some((track) => track.id === current.id)) return current;
         const livePosition = liveRadioSyncEnabledRef.current ? getLiveRadioPosition(tracks) : null;
         if (livePosition) liveSeekRef.current = { trackId: livePosition.track.id, offset: livePosition.offset };
@@ -1297,7 +1233,7 @@ export default function ListenBarPage() {
       mounted = false;
       window.clearInterval(playlistRefreshTimer);
     };
-  }, [isZh, spotlightDate]);
+  }, [isZh]);
 
   useEffect(() => {
     const container = chatScrollRef.current;
@@ -2484,36 +2420,6 @@ export default function ListenBarPage() {
             </Link>
           </div>
         </header>
-
-        {dailySpotlight && nowTrack.id === dailySpotlight.trackId ? (
-          <section className="aipo-control-panel aipo-panel-line relative overflow-hidden rounded-[1.35rem] p-4">
-            <div className="pointer-events-none absolute inset-0 [background:linear-gradient(110deg,rgba(255,106,0,0.18),rgba(0,202,255,0.07),transparent)]" />
-            <div className="relative flex flex-wrap items-center justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-300/80">
-                  {isZh ? "今日推薦歌" : "Today Spotlight"}
-                </p>
-                <h2 className="mt-1 break-words text-2xl font-black text-white">
-                  {dailySpotlight.headline}
-                </h2>
-                <p className="mt-2 max-w-4xl text-sm font-bold leading-6 text-zinc-300">
-                  {dailySpotlight.intro}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-orange-200/30 bg-orange-500/12 px-3 py-1 text-xs font-black text-orange-100">
-                  {dailySpotlight.date}
-                </span>
-                <Link
-                  href={`/today?lang=${encodeURIComponent(lang)}`}
-                  className="rounded-full border border-cyan-200/30 bg-cyan-300/10 px-4 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-100"
-                >
-                  /today
-                </Link>
-              </div>
-            </div>
-          </section>
-        ) : null}
 
         <section className="grid min-w-0 gap-4 lg:grid-cols-[1.08fr_0.92fr]">
           <div className="aipo-control-panel aipo-panel-line relative min-w-0 overflow-hidden rounded-[1.35rem] p-4 md:p-5">

@@ -1,6 +1,6 @@
 # AIPOGER Product Rules
 
-Last updated: 2026-07-09
+Last updated: 2026-07-10
 
 This document is the product-rule source of truth for AIPOGER. Use it before changing Battle, Bar Heartbreak, AIPOGER Showtime, auth, upload, or deployment behavior.
 
@@ -36,31 +36,16 @@ Current behavior target:
 - Do not store social platform passwords. Tokens, webhooks, and API keys belong in environment variables or encrypted storage, never in repo, docs, or logs.
 - If a platform token/webhook is not configured, show a disconnected/pending state and do not attempt publishing.
 
-## Daily Spotlight / 每日推薦歌
+## AIPOGER Choice 與社群發布
 
-Current behavior target:
+Daily Spotlight 已退役：它不再是傷心酒吧、Explore、`/admin/listen-bar` 或社群發布的工作流，也不建立新的單曲 Spotlight 替代品。
 
-- Daily Spotlight is the bridge between Bar Heartbreak and short-form promotion. It promotes one selected Bar Heartbreak track without interrupting the radio rotation.
-- The fixed public entry is `https://aipoger.com/today`. It redirects by Taiwan date to the current day's spotlight page, such as `/listen-bar?spotlight=YYYY-MM-DD&lang=zh`.
-- Daily Spotlight is a Taiwan calendar-date setting, not a "24 hours after publish" countdown. Passing midnight in Taiwan moves `/today` to the new date; it must not delete or expire the older dated spotlight record.
-- Dated spotlight URLs may remain accessible for audits or old shares, but public QR codes, short videos, and social captions should still use the fixed `/today` entry.
-- Shorts, Reels, Discord posts, Facebook group copy, QR codes, and on-screen video text should use `https://aipoger.com/today` instead of a dated `spotlight=` URL, so old videos keep pointing to the current daily recommendation entry.
-- The spotlight page or highlighted Bar Heartbreak track should still use the normal Bar Heartbreak reaction system. Listeners who like the recommendation can press heart; those reactions count toward the same track record.
-- Daily Spotlight must not force the selected song to play next in the main Bar Heartbreak rotation. Visitors coming from `/today` can open the spotlight track directly while the shared radio rotation keeps running normally.
-- `/admin/listen-bar` is the working admin surface for choosing the daily recommended track, generating intro/caption copy, uploading the recommendation media asset, and creating social drafts.
-- Recommendation media may be image or short video. Supported upload formats should include JPG, PNG, WebP, GIF, MP4, MOV, and WebM when storage/browser support allows.
-- Saving a Daily Spotlight creates or updates social post drafts; it must not automatically publish to external platforms.
-- `/admin/social` remains the publishing control room. A draft must be approved by an admin, and platform publishing still requires the appropriate platform action. Approval alone does not mean the post was sent.
-- Discord may be directly published through the configured webhook after approval. Going forward, successful Discord sends should store the returned message id/channel response when Discord provides it, so missing-post debugging can distinguish "not sent" from "sent to another channel."
-- Facebook group, Instagram, TikTok, and YouTube flows remain manual or draft-assisted unless their official publishing workflows are explicitly verified.
-- QR code generation belongs to the Daily Spotlight workflow and should point to `https://aipoger.com/today`.
-
-Discord operating note, 2026-07-02:
-
-- The live AIPOGER Discord server was updated with 2026/07 rule notices in `#規則-rules`, `#如何玩-aipoger`, `#傷心酒吧公告`, and `#今日推薦-today`.
-- Discord is a community amplifier, not the source of truth for product state. Product rules remain in this file and the website implementation.
-- The Discord notices must keep routing official listening, voting, heart reactions, comments, and submissions back to AIPOGER website routes.
-- `#今日推薦-today` should keep using `https://aipoger.com/today`, not dated spotlight links, and should say that Daily Spotlight does not interrupt the main Bar Heartbreak rotation.
+- 傷心酒吧只負責投稿與公播；Explore 負責找歌、收藏、分享、攻擂與正在升溫；Showtime 是認證作品庫。
+- `AIPOGER Choice` 是唯一人為策展訊號：每週 5-10 首、不排名、可跨類型。Choice 主 CTA 是 `/rank?lang=zh#choice-weekly`。
+- `/today` 只作舊外部連結相容入口，固定以 307 導向 Choice；`/listen-bar?spotlight=...` 必須退化為正常傷心酒吧，不指定歌曲也不改變輪播。
+- `listen_bar_daily_spotlights`、歷史素材與舊社群草稿只保留歷史資料，不再由 app 日常流程讀寫；本階段不刪資料、不跑 destructive SQL。
+- `/admin/social` 是唯一社群草稿、批准與手動發布中控台。草稿需先批准，Discord 仍需明確按平台發布才送 webhook；Facebook 社團、Instagram、TikTok、YouTube 維持草稿或手動發布。
+- Discord 是社群擴散管道，不是產品規則來源。所有對外 CTA 應把聽歌、投票、按心、留言與投稿導回 AIPOGER 網站與 Choice。
 
 ## Auth Rules
 
@@ -244,7 +229,7 @@ Current rules:
 - Bar Heartbreak upload metadata should stay compact: user-entered creator name, AI tool, and album/mood are limited to 12 CJK characters or about 24 English characters; one-line song description is limited to 16 CJK characters or about 32 English characters. Auto-detected song titles are not subject to this compact metadata limit.
 - Bar Heartbreak submissions may include one optional YouTube MV URL. The public now-playing metadata row shows it only as a compact `看 MV` / `Watch MV` action; it must not replace audio playback or interrupt the radio. Creators can add or edit this URL from their own track detail form, and admins can edit it from `/admin/listen-bar`.
 - `/admin/listen-bar` track management must use a dropdown filter for the fixed 11 music genres. Do not bring back a primary `待補類型` filter, badge, or empty state for normal admin management. Admin upload previews and track-card audio controls must be mutually exclusive: starting one preview pauses the previously playing preview. `/admin/listen-bar` track management paginates songs at 10 per page; `選取本頁` applies only to the current page while accumulated selected songs can still be processed in bulk.
-- Daily Spotlight can feature a Bar Heartbreak track for promotion through `/today`, QR code, and social drafts. It is a curated spotlight layer, not a replacement for the shared radio rotation and not a separate reaction pool.
+- Daily Spotlight 已退役；`/today` 固定導向 AIPOGER Choice，傷心酒吧不再讀取或指定 Spotlight 歌曲。
 - Bar Heartbreak top-right hero controls should stay minimal; primary actions belong in the lower hero action strip. The strip should group `我要播歌`, bar sharing, `探索 AI 音樂`, and `Showtime`; do not put `練功聖經` or `關於愛波哥` in this hero action strip.
 - Bar Heartbreak hero signage must be localizable live text, not a bitmap containing fixed Chinese copy. The title/subtitle can use a dark gold plaque treatment, but language switching must keep working. On mobile, the hero action strip first row is `我要播歌` / `分享吧台` / `Showtime`; `探索 AI 音樂` sits centered on the second row.
 - Bar Heartbreak share URLs must use short routes. The whole bar uses `/l/all?lang=...`; selected genre sharing uses `/l/{genreIndex}?lang=...` and must reopen `/listen-bar` with that genre selected.
