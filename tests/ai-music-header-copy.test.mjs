@@ -6,22 +6,23 @@ const aiMusicSource = readFileSync(new URL("../src/app/ai-music/ai-music-client.
 const listenBarSource = readFileSync(new URL("../src/app/listen-bar/page.tsx", import.meta.url), "utf8");
 const showtimeSource = readFileSync(new URL("../src/app/rank/page.tsx", import.meta.url), "utf8");
 
-test("Explore AI Music header uses compact public copy and current navigation order", () => {
+test("Explore AI Music uses a compact catalog masthead and current navigation order", () => {
   assert.ok(aiMusicSource.includes("依照風格快速瀏覽作品，聽歌、送愛心，或向你喜歡的作品發起挑戰。"));
   assert.ok(aiMusicSource.includes("text-yellow-200"));
   assert.ok(aiMusicSource.includes("上傳音樂讓大家看到你的作品"));
-  assert.ok(aiMusicSource.includes("Public Wall"));
-  assert.ok(aiMusicSource.includes("Live Drop Signal"));
-  assert.ok(aiMusicSource.includes("ai-music-console-tab"));
+  assert.ok(aiMusicSource.includes("catalogMetadata"));
+  assert.ok(aiMusicSource.includes('setWorksView("genre")'));
+  assert.ok(aiMusicSource.includes('setWorksView("heat")'));
+  assert.ok(aiMusicSource.includes("正在升溫"));
+  assert.equal(aiMusicSource.includes("Live Drop Signal"), false);
+  assert.equal(aiMusicSource.includes("60s READY"), false);
   assert.ok(aiMusicSource.includes("ai-music-hero-title"));
   assert.ok(aiMusicSource.includes('#play-request'));
   assert.ok(aiMusicSource.includes("這裡怎麼玩？"));
-  assert.ok(aiMusicSource.includes("愛心會同步收藏"));
+  assert.ok(aiMusicSource.includes("愛心會同步收藏並從 Profile 管理"));
   assert.ok(aiMusicSource.includes("Profile 管理"));
   assert.ok(aiMusicSource.includes("守擂 60s Drop"));
   assert.ok(aiMusicSource.includes("守擂進度"));
-  assert.ok(aiMusicSource.includes("守下 6 場正式探索攻擂會進入 Showtime"));
-  assert.ok(aiMusicSource.includes("8 場正式敗績"));
   const worksIndex = aiMusicSource.indexOf('label: isZh ? "作品瀏覽" : "Works"');
   const barIndex = aiMusicSource.indexOf('label: isZh ? "傷心酒吧" : "Bar Heartbreak"');
   const dropIndex = aiMusicSource.indexOf('label: "Drop Battle"');
@@ -31,7 +32,7 @@ test("Explore AI Music header uses compact public copy and current navigation or
   assert.ok(barIndex < dropIndex);
   assert.ok(dropIndex < showtimeIndex);
   assert.ok(showtimeIndex < choiceIndex);
-  assert.ok(aiMusicSource.includes("公播作品"));
+  assert.ok(aiMusicSource.includes("作品 ·"));
   assert.equal(aiMusicSource.includes("真實資料，不含 mock"), false);
   assert.equal(aiMusicSource.includes("Real records only"), false);
 });

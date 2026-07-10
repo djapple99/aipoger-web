@@ -194,6 +194,9 @@ Check:
 - The `/ai-music` header includes the upload prompt `上傳音樂讓大家看到你的作品，請從傷心酒吧投稿。` and links it to Bar Heartbreak submission.
 - The `/ai-music` internal navigation order is `作品瀏覽` -> `傷心酒吧` -> `Drop Battle` -> `Showtime` -> `Choice`.
 - The `/ai-music` page includes `這裡怎麼玩？`, explaining that Hearts also save tracks, saved tracks are managed from the top-right avatar/Profile, and challengeable works need a prepared defender 60s Drop.
+- The masthead is compact and cover-led: the first genre title and first covers are visible at 1440x900 and 390x844 without a fake waveform, `Live Drop Signal`, `60s READY`, dashboard cards, or a long gameplay explainer occupying the first screen.
+- `依類型 | 正在升溫` is a local Explore control. The default preserves genre lanes; Hot Now is a single cover-led list and remains separate from Showtime and Choice.
+- Hot Now reads only 7-day distinct Heart supporters, official Battle audience votes from archives meeting the 3-voter threshold, latest qualified interaction, then created_at/id. It never uses all-time Hearts, play counts, mock scores, or Heat Score. Signal-less works are `正在累積` with no rank number; Showtime rows have no attack action.
 - The page groups works by the current 11 fixed music genres and shows at most 6 cards per genre before `看更多`.
 - Explore has no standalone `最新上架` / `New Arrivals` / `72 小時新歌` shelf, route, category, or independent `看更多`; new eligible works appear at the front of their existing genre lane.
 - A fresh work (within 72 hours by `created_at`, never `updated_at`) appears ahead of established works in its genre lane; lanes with fresh works lead the wall by newest fresh `created_at`, while lanes without fresh works keep the fixed genre order.

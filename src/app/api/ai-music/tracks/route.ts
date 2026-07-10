@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
+  AI_MUSIC_CHALLENGE_BATTLE_TYPE,
   AI_MUSIC_SHOWTIME_DEFENSE_SUCCESS_TARGET,
   aiMusicShowtimeDefenseRemaining,
 } from "@/lib/ai-music-challenge-rules";
 import { buildAiMusicSurfaceLifecycleMap, isAiMusicLifecycleSchemaMissing } from "@/lib/ai-music-surface-lifecycle";
+import { AI_MUSIC_HEAT_WINDOW_MS } from "@/lib/ai-music-heat";
+import { isOfficialDropBattleResult } from "@/lib/drop-battle-rematch";
 import {
   LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
   listenBarPromotionProtectionActive,
@@ -13,6 +16,36 @@ import {
 import { isCurrentMusicGenre } from "@/lib/music-genres";
 
 type AdminClient = SupabaseClient;
+
+type RecentHeartRow = {
+  track_id?: string | null;
+  user_id?: string | null;
+  created_at?: string | null;
+};
+
+type RecentInviteRow = {
+  defender_track_id?: string | null;
+  battle_id?: string | null;
+  status?: string | null;
+};
+
+type RecentBattleRow = {
+  id?: string | null;
+  battle_type?: string | null;
+};
+
+type RecentArchiveRow = {
+  battle_id?: string | null;
+  total_votes?: number | null;
+  result_payload?: Record<string, unknown> | null;
+  archived_at?: string | null;
+};
+
+type RecentHeat = {
+  heartSupporterIds: Set<string>;
+  officialAudienceVotes: number;
+  latestInteractionAt: string | null;
+};
 
 const MODERN_SELECT = [
   "id",
@@ -142,6 +175,100 @@ function isPublicPlayableTrack(row: ListenBarTrackRow) {
   );
 }
 
+function numberField(value: unknown) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.max(0, Math.round(number)) : 0;
+}
+
+function archiveAudienceCount(row: RecentArchiveRow) {
+  const payload = row.result_payload && typeof row.result_payload === "object" ? row.result_payload : {};
+  return numberField(payload.audienceCount ?? payload.audience_count ?? row.total_votes);
+}
+
+function latestIso(current: string | null, candidate: string | null | undefined) {
+  const candidateMs = new Date(candidate ?? "").getTime();
+  if (!Number.isFinite(candidateMs)) return current;
+  const currentMs = new Date(current ?? "").getTime();
+  return !Number.isFinite(currentMs) || candidateMs > currentMs ? new Date(candidateMs).toISOString() : current;
+}
+
+async function readRecentHeat(admin: AdminClient, trackIds: string[]) {
+  const ids = Array.from(new Set(trackIds.filter(Boolean)));
+  const heatByTrackId = new Map<string, RecentHeat>();
+  for (const id of ids) {
+    heatByTrackId.set(id, { heartSupporterIds: new Set<string>(), officialAudienceVotes: 0, latestInteractionAt: null });
+  }
+  if (ids.length === 0) return heatByTrackId;
+
+  const since = new Date(Date.now() - AI_MUSIC_HEAT_WINDOW_MS).toISOString();
+  const [heartResult, inviteResult] = await Promise.all([
+    admin
+      .from("listen_bar_track_reactions")
+      .select("track_id,user_id,created_at")
+      .in("track_id", ids)
+      .eq("reaction", "heart")
+      .gte("created_at", since),
+    admin
+      .from("ai_music_challenge_invites")
+      .select("defender_track_id,battle_id,status")
+      .in("defender_track_id", ids)
+      .eq("status", "accepted")
+      .not("battle_id", "is", null),
+  ]);
+  if (heartResult.error) throw heartResult.error;
+  if (inviteResult.error) {
+    if (isAiMusicLifecycleSchemaMissing(inviteResult.error)) return heatByTrackId;
+    throw inviteResult.error;
+  }
+
+  for (const row of (heartResult.data ?? []) as RecentHeartRow[]) {
+    const trackId = row.track_id ?? "";
+    const userId = row.user_id?.trim() ?? "";
+    const heat = heatByTrackId.get(trackId);
+    if (!heat || !userId) continue;
+    heat.heartSupporterIds.add(userId);
+    heat.latestInteractionAt = latestIso(heat.latestInteractionAt, row.created_at);
+  }
+
+  const acceptedInvites = ((inviteResult.data ?? []) as RecentInviteRow[]).filter((row): row is { defender_track_id: string; battle_id: string; status: string } => {
+    return Boolean(row.defender_track_id && row.battle_id && row.status === "accepted");
+  });
+  const battleIds = Array.from(new Set(acceptedInvites.map((row) => row.battle_id)));
+  if (battleIds.length === 0) return heatByTrackId;
+
+  const [battleResult, archiveResult] = await Promise.all([
+    admin.from("battles").select("id,battle_type").in("id", battleIds),
+    admin
+      .from("battle_result_archives")
+      .select("battle_id,total_votes,result_payload,archived_at")
+      .in("battle_id", battleIds)
+      .gte("archived_at", since),
+  ]);
+  if (battleResult.error || archiveResult.error) {
+    const error = battleResult.error ?? archiveResult.error;
+    if (isAiMusicLifecycleSchemaMissing(error)) return heatByTrackId;
+    throw error;
+  }
+
+  const trackIdByBattleId = new Map(acceptedInvites.map((row) => [row.battle_id, row.defender_track_id]));
+  const eligibleBattleIds = new Set(
+    ((battleResult.data ?? []) as RecentBattleRow[])
+      .filter((row) => row.id && row.battle_type === AI_MUSIC_CHALLENGE_BATTLE_TYPE)
+      .map((row) => row.id as string),
+  );
+  for (const archive of (archiveResult.data ?? []) as RecentArchiveRow[]) {
+    const battleId = archive.battle_id ?? "";
+    const trackId = trackIdByBattleId.get(battleId);
+    const heat = trackId ? heatByTrackId.get(trackId) : null;
+    const audienceCount = archiveAudienceCount(archive);
+    if (!heat || !eligibleBattleIds.has(battleId) || !isOfficialDropBattleResult({ audienceCount, totalVotes: archive.total_votes })) continue;
+    heat.officialAudienceVotes += audienceCount;
+    heat.latestInteractionAt = latestIso(heat.latestInteractionAt, archive.archived_at);
+  }
+
+  return heatByTrackId;
+}
+
 export async function GET() {
   try {
     const admin = adminClient();
@@ -173,10 +300,14 @@ export async function GET() {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     const playableRows = applyLegacyOpeningGrace(rows).filter(isPublicPlayableTrack);
-    const lifecycleByTrackId = await buildAiMusicSurfaceLifecycleMap(admin, playableRows);
+    const [lifecycleByTrackId, recentHeatByTrackId] = await Promise.all([
+      buildAiMusicSurfaceLifecycleMap(admin, playableRows),
+      readRecentHeat(admin, playableRows.map((row) => row.id)),
+    ]);
     const tracks = playableRows
       .map((row) => {
         const lifecycle = lifecycleByTrackId.get(row.id);
+        const recentHeat = recentHeatByTrackId.get(row.id);
         return {
           ...row,
           ai_music_challenge_status: row.ai_music_challenge_status ?? "showcase",
@@ -189,6 +320,9 @@ export async function GET() {
           ai_music_official_wins: lifecycle?.officialWins ?? 0,
           ai_music_official_losses: lifecycle?.officialLosses ?? 0,
           ai_music_official_audience_votes: lifecycle?.officialAudienceVotes ?? 0,
+          ai_music_recent_heart_supporter_count: recentHeat?.heartSupporterIds.size ?? 0,
+          ai_music_recent_official_audience_votes: recentHeat?.officialAudienceVotes ?? 0,
+          ai_music_recent_interaction_at: recentHeat?.latestInteractionAt ?? null,
         };
       })
       .filter((row) => !row.ai_music_explore_retired);
