@@ -195,6 +195,9 @@ Check:
 - The `/ai-music` internal navigation order is `作品瀏覽` -> `傷心酒吧` -> `Drop Battle` -> `Showtime` -> `Choice`.
 - The `/ai-music` page includes `這裡怎麼玩？`, explaining that Hearts also save tracks, saved tracks are managed from the top-right avatar/Profile, and challengeable works need a prepared defender 60s Drop.
 - The page groups works by the current 11 fixed music genres and shows at most 6 cards per genre before `看更多`.
+- Explore has no standalone `最新上架` / `New Arrivals` / `72 小時新歌` shelf, route, category, or independent `看更多`; new eligible works appear at the front of their existing genre lane.
+- A fresh work (within 72 hours by `created_at`, never `updated_at`) appears ahead of established works in its genre lane; lanes with fresh works lead the wall by newest fresh `created_at`, while lanes without fresh works keep the fixed genre order.
+- The collapsed first 6 cards in a genre lane show at most one fresh work per creator; all other fresh works remain visible after that lane's `看更多` expansion.
 - Cards show song title, creator, AI tool, heart count, and challenge count.
 - Cards that are truly challenge-ready show a non-clickable red angled `接戰` badge at the cover's top-right on desktop and mobile; non-ready, Showtime, retired, hidden/removed/moderation-held, missing-drop, or unplayable works do not show it.
 - The card's bottom `攻擂` button remains the only challenge action; the `接戰` badge must not replace it or use `攻擂` as badge text.

@@ -10,6 +10,7 @@ import {
   listenBarPromotionProtectionActive,
   type ListenBarTrackRow,
 } from "@/lib/listen-bar";
+import { isCurrentMusicGenre } from "@/lib/music-genres";
 
 type AdminClient = SupabaseClient;
 
@@ -41,7 +42,6 @@ const MODERN_SELECT = [
   "thumb_count",
   "happy_count",
   "created_at",
-  "updated_at",
   "promoted_at",
   "created_by",
   "ai_music_challenge_status",
@@ -77,7 +77,6 @@ const LEGACY_SELECT = [
   "thumb_count",
   "happy_count",
   "created_at",
-  "updated_at",
   "promoted_at",
   "created_by",
 ].join(",");
@@ -128,13 +127,16 @@ function applyLegacyOpeningGrace(rows: ListenBarTrackRow[]): ListenBarTrackRow[]
 
 function isPublicPlayableTrack(row: ListenBarTrackRow) {
   const status = row.review_status?.toLowerCase();
+  const moderationHeld = status === "moderation_hold" || status === "moderation hold";
   return (
     row.is_active !== false &&
     status !== "hidden" &&
     status !== "removed" &&
+    !moderationHeld &&
     !row.hidden_at &&
     !row.removed_at &&
     Boolean(row.audio_path?.trim()) &&
+    isCurrentMusicGenre(row.genre) &&
     row.source !== "official" &&
     !row.is_featured_official
   );

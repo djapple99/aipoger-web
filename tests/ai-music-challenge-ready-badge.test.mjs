@@ -17,13 +17,14 @@ test("Explore AI Music uses a non-clickable challenge-ready badge separate from 
   assert.ok(aiMusicSource.includes("href={aiMusicChallengeHref(track, lang)}"));
 });
 
-test("product rules lock the badge eligibility and NEW co-existence semantics", () => {
+test("product rules lock the badge eligibility without reviving a NEW category", () => {
   assert.ok(productRulesSource.includes("red angled `接戰` corner badge"));
   assert.ok(productRulesSource.includes("This badge means the original creator is ready to accept a challenge; it is not the attack action"));
   assert.ok(productRulesSource.includes("The bottom `攻擂` button remains the challenge action"));
   assert.ok(productRulesSource.includes("not Showtime-certified, not retired, not hidden/removed/moderation-held"));
   assert.ok(productRulesSource.includes("a defender 60s Drop is prepared"));
-  assert.ok(productRulesSource.includes("NEW · 類型"));
+  assert.ok(productRulesSource.includes("Do not add a `NEW` label or a new-song category"));
+  assert.equal(productRulesSource.includes("NEW · 類型"), false);
   assert.ok(releaseChecklistSource.includes("non-clickable red angled `接戰` badge"));
   assert.ok(releaseChecklistSource.includes("The card's bottom `攻擂` button remains the only challenge action"));
 });

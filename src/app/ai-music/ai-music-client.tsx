@@ -9,7 +9,6 @@ import {
   canonicalMusicGenre,
   isCurrentMusicGenre,
   MUSIC_GENRE_OPTIONS,
-  MUSIC_GENRE_VALUES,
 } from "@/lib/music-genres";
 import { supabase } from "@/lib/supabase";
 import { listenBarRowToTrack, type ListenBarTrackRow } from "@/lib/listen-bar";
@@ -23,10 +22,11 @@ import {
   shouldRetireAiMusicTrackFromExplore,
   type AiMusicChallengeStatus,
 } from "@/lib/ai-music-challenge-rules";
+import { buildAiMusicExploreGenreLanes, type AiMusicExploreOrderTrack } from "@/lib/ai-music-explore-order";
 
 type TrackSource = "battle" | "bar";
 
-type AiMusicTrack = {
+type AiMusicTrack = AiMusicExploreOrderTrack & {
   id: string;
   source: TrackSource;
   sourceId: string;
@@ -34,12 +34,12 @@ type AiMusicTrack = {
   title: string;
   creator: string;
   aiTool: string;
-  genre: string;
   coverUrl: string;
   audioUrl: string | null;
   lyrics: string | null;
   createdAt: string;
   heartCount: number;
+  positiveReactionCount: number;
   challengeCount: number;
   defenseSuccesses: number;
   defenseTarget: number;
@@ -107,7 +107,7 @@ function canonicalGenreBucket(value: string | null | undefined) {
 
 function safeDate(value: string | null | undefined) {
   const parsed = new Date(value || "");
-  return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : new Date().toISOString();
+  return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : new Date(0).toISOString();
 }
 
 function heartCooldownUntil(createdAt: string | null | undefined) {
@@ -217,6 +217,7 @@ async function tracksFromListenBar(lang: string) {
         lyrics: row.lyrics?.trim() || track.lyrics?.trim() || null,
         createdAt: safeDate(track.createdAt),
         heartCount: numberValue(row.heart_count ?? track.positiveReactionCount),
+        positiveReactionCount: numberValue(row.positive_reaction_count ?? track.positiveReactionCount),
         challengeCount: officialChallengeCount,
         defenseSuccesses: officialDefenseSuccesses,
         defenseTarget,
@@ -246,12 +247,13 @@ function mergeDuplicateTracks(rows: AiMusicTrack[]) {
       bySignature.set(signature, row);
       continue;
     }
-    const currentScore = current.challengeCount * 10 + current.wins * 8 + current.heartCount;
-    const nextScore = row.challengeCount * 10 + row.wins * 8 + row.heartCount;
-    if (nextScore > currentScore) {
+    const currentCreatedAt = new Date(current.createdAt).getTime();
+    const nextCreatedAt = new Date(row.createdAt).getTime();
+    if (nextCreatedAt > currentCreatedAt || (nextCreatedAt === currentCreatedAt && row.id.localeCompare(current.id) > 0)) {
       bySignature.set(signature, {
         ...row,
         heartCount: Math.max(row.heartCount, current.heartCount),
+        positiveReactionCount: Math.max(row.positiveReactionCount, current.positiveReactionCount),
         challengeCount: Math.max(row.challengeCount, current.challengeCount),
         defenseSuccesses: Math.max(row.defenseSuccesses, current.defenseSuccesses),
         defenseTarget: Math.max(row.defenseTarget, current.defenseTarget),
@@ -264,6 +266,7 @@ function mergeDuplicateTracks(rows: AiMusicTrack[]) {
       bySignature.set(signature, {
         ...current,
         heartCount: Math.max(row.heartCount, current.heartCount),
+        positiveReactionCount: Math.max(row.positiveReactionCount, current.positiveReactionCount),
         challengeCount: Math.max(row.challengeCount, current.challengeCount),
         defenseSuccesses: Math.max(row.defenseSuccesses, current.defenseSuccesses),
         defenseTarget: Math.max(row.defenseTarget, current.defenseTarget),
@@ -274,12 +277,7 @@ function mergeDuplicateTracks(rows: AiMusicTrack[]) {
       });
     }
   }
-  return Array.from(bySignature.values()).sort((a, b) => {
-    const scoreA = a.challengeCount * 12 + a.wins * 10 + a.heartCount;
-    const scoreB = b.challengeCount * 12 + b.wins * 10 + b.heartCount;
-    if (scoreA !== scoreB) return scoreB - scoreA;
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
+  return Array.from(bySignature.values());
 }
 
 function PlayIcon({ playing = false }: { playing?: boolean }) {
@@ -899,15 +897,9 @@ export default function AiMusicClient() {
   }, [tracks, userId]);
 
   const groupedTracks = useMemo(() => {
-    const groups = new Map(MUSIC_GENRE_VALUES.map((genre) => [genre, [] as AiMusicTrack[]]));
-    for (const track of tracks) {
-      const genre = canonicalGenreBucket(track.genre);
-      groups.get(genre)?.push({ ...track, genre });
-    }
-    return MUSIC_GENRE_VALUES.map((genre) => ({
-      genre,
-      label: t(MUSIC_GENRE_OPTIONS.find((option) => option.value === genre)?.labelKey ?? ""),
-      tracks: groups.get(genre) ?? [],
+    return buildAiMusicExploreGenreLanes(tracks).map((group) => ({
+      ...group,
+      label: t(MUSIC_GENRE_OPTIONS.find((option) => option.value === group.genre)?.labelKey ?? ""),
     }));
   }, [tracks, t]);
 
@@ -1187,7 +1179,7 @@ export default function AiMusicClient() {
           {loadState === "ready"
             ? groupedTracks.map((group) => {
                 const expanded = Boolean(expandedGenres[group.genre]);
-                const visible = expanded ? group.tracks : group.tracks.slice(0, 6);
+                const visible = expanded ? group.tracks : group.collapsedTracks;
                 return (
                   <section key={group.genre} className="grid gap-3">
                     <div className="flex flex-wrap items-end justify-between gap-3 border-b border-white/10 pb-3">
