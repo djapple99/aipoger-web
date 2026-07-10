@@ -30,6 +30,8 @@ Read-only preview ran on 2026-07-10 and wrote `docs/handoffs/showtime-founder-ca
 
 Because the two demo tracks were not identified unambiguously, the spec requires stopping at preview. No production soft delete and no founder batch Showtime write was performed.
 
+Production schema check after deploy showed `listen_bar_tracks.ai_music_showtime_certified` is not present yet (`42703`). The additive migration is committed but still pending execution against Supabase production. Runtime APIs keep legacy fallback behavior until the migration is applied.
+
 ## Verification
 
 - Unit tests cover persisted Showtime surface split, old flow blocking, creator Showtime metadata limits, guarded preview/apply path, and removal of public Heart/day eligibility promises.
