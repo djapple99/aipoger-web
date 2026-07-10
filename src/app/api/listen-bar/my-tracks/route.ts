@@ -5,6 +5,7 @@ import {
   listenBarPromotionProtectionActive,
   listenBarChallengerSlotLimitForPublicCount,
 } from "@/lib/listen-bar";
+import { AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS, isAiMusicPersistedShowtimeCertified } from "@/lib/ai-music-showtime";
 import {
   LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS,
   LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS,
@@ -44,6 +45,12 @@ type ListenBarTrackRow = {
   ai_music_defender_drop_duration_seconds?: number | null;
   ai_music_defender_drop_lyrics?: string | null;
   ai_music_defender_drop_prepared_at?: string | null;
+  ai_music_showtime_certified?: boolean | null;
+  ai_music_showtime_certified_at?: string | null;
+  ai_music_showtime_certification_source?: string | null;
+  ai_music_showtime_public_removed_at?: string | null;
+  support_url?: string | null;
+  support_url_status?: string | null;
 };
 
 type ListenBarMyTracksDatabase = {
@@ -65,7 +72,7 @@ type ListenBarMyTracksDatabase = {
 
 type AdminClient = SupabaseClient<ListenBarMyTracksDatabase>;
 
-const MODERN_SELECT = "id,title,artist,ai_tool,genre,mood,description,youtube_url,lyrics,duration_seconds,audio_path,created_by,source,bar_phase,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at,promoted_at,ai_music_challenge_status,ai_music_challenge_updated_at,ai_music_defender_drop_audio_path,ai_music_defender_drop_audio_sha256,ai_music_defender_drop_original_name,ai_music_defender_drop_duration_seconds,ai_music_defender_drop_lyrics,ai_music_defender_drop_prepared_at";
+const MODERN_SELECT = `id,title,artist,ai_tool,genre,mood,description,youtube_url,lyrics,duration_seconds,audio_path,created_by,source,bar_phase,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at,promoted_at,ai_music_challenge_status,ai_music_challenge_updated_at,ai_music_defender_drop_audio_path,ai_music_defender_drop_audio_sha256,ai_music_defender_drop_original_name,ai_music_defender_drop_duration_seconds,ai_music_defender_drop_lyrics,ai_music_defender_drop_prepared_at,${AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS}`;
 const LEGACY_WITH_DESCRIPTION_SELECT = "id,title,artist,ai_tool,genre,mood,description,lyrics,duration_seconds,audio_path,created_by,source,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at";
 const LEGACY_SELECT = "id,title,artist,ai_tool,genre,mood,lyrics,duration_seconds,audio_path,created_by,source,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at";
 const allowedGenreValues = new Set(MUSIC_GENRE_OPTIONS.map((genre) => genre.value));
@@ -190,7 +197,7 @@ export async function GET(request: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    const tracks = applyLegacyOpeningGrace(rows ?? []);
+    const tracks = applyLegacyOpeningGrace(rows ?? []).filter((track) => !isAiMusicPersistedShowtimeCertified(track));
     const challengerCount = tracks.filter((track) => track.bar_phase !== "public").length;
     const publicCount = tracks.filter((track) => track.bar_phase === "public").length;
     const challengerLimit = listenBarChallengerSlotLimitForPublicCount(publicCount);

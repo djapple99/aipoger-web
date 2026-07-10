@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
   LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT,
@@ -11,6 +11,7 @@ import {
   listenBarSurvivalStartedAt,
 } from "@/lib/listen-bar";
 import { buildListenBarRotationPreview, type ListenBarRotationTrack } from "@/lib/listen-bar-rotation";
+import { isAiMusicPersistedShowtimeCertified } from "@/lib/ai-music-showtime";
 
 const CAPACITY_EVICTION_NOTE = "36-song genre public pool capacity rotation eviction.";
 
@@ -26,7 +27,38 @@ type TrackForRotation = {
   review_status?: string | null;
   hidden_at?: string | null;
   removed_at?: string | null;
+  ai_music_showtime_certified?: boolean | null;
+  ai_music_showtime_public_removed_at?: string | null;
 };
+
+const ROTATION_SELECT_LEGACY = "id,title,genre,created_by,positive_reaction_count,created_at,promoted_at,bar_phase,review_status,hidden_at,removed_at";
+const ROTATION_SELECT = `${ROTATION_SELECT_LEGACY},ai_music_showtime_certified,ai_music_showtime_public_removed_at`;
+
+function isMissingShowtimeColumn(error: { message?: string; code?: string } | null | undefined) {
+  return /schema cache|column.*does not exist|PGRST204|ai_music_showtime/i.test(`${error?.message ?? ""} ${error?.code ?? ""}`);
+}
+
+type TrackRowsResult = {
+  data: TrackForRotation[] | null;
+  error: { message?: string; code?: string } | null;
+};
+
+async function readActiveCommunityRows(admin: SupabaseClient) {
+  let result = await admin
+    .from("listen_bar_tracks")
+    .select(ROTATION_SELECT)
+    .eq("source", "community")
+    .eq("is_active", true) as TrackRowsResult;
+  if (result.error && isMissingShowtimeColumn(result.error)) {
+    result = await admin
+      .from("listen_bar_tracks")
+      .select(ROTATION_SELECT_LEGACY)
+      .eq("source", "community")
+      .eq("is_active", true) as TrackRowsResult;
+  }
+  if (result.error) throw result.error;
+  return ((result.data ?? []).filter(isVisibleActiveTrack));
+}
 
 export async function GET(request: NextRequest) {
   return processRotationPreview(request);
@@ -67,41 +99,24 @@ async function processRotation(request: NextRequest) {
   const promotionProtectionActive = listenBarPromotionProtectionActive(now.getTime());
   const observationCutoff = new Date(now.getTime() - LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS * 60 * 60 * 1000).toISOString();
 
-  const { count: activeCount, error: countError } = await admin
-    .from("listen_bar_tracks")
-    .select("id", { count: "exact", head: true })
-    .eq("source", "community")
-    .eq("is_active", true);
-
-  if (countError) return NextResponse.json({ error: countError.message }, { status: 500 });
-
-  let eligibleQuery = admin
-    .from("listen_bar_tracks")
-    .select("id, genre, created_by, positive_reaction_count, created_at, bar_phase")
-    .eq("source", "community")
-    .eq("is_active", true)
-    .eq("bar_phase", "challenger");
-  if (!promotionProtectionActive) {
-    eligibleQuery = eligibleQuery.lt("created_at", observationCutoff);
+  let activeRows: TrackForRotation[];
+  try {
+    activeRows = await readActiveCommunityRows(admin);
+  } catch (error) {
+    return NextResponse.json({ error: String((error as { message?: string })?.message ?? error) }, { status: 500 });
   }
-  const { data: eligibleChallengers, error: eligibleError } = await eligibleQuery.order("created_at", { ascending: true });
 
-  if (eligibleError) return NextResponse.json({ error: eligibleError.message }, { status: 500 });
-
-  const { data: publicRowsBeforePromotion, error: publicRowsBeforePromotionError } = await admin
-    .from("listen_bar_tracks")
-    .select("id, genre, created_by, positive_reaction_count, created_at, promoted_at, bar_phase")
-    .eq("source", "community")
-    .eq("is_active", true)
-    .eq("bar_phase", "public")
-    .order("positive_reaction_count", { ascending: true })
-    .order("created_at", { ascending: true });
-
-  if (publicRowsBeforePromotionError) return NextResponse.json({ error: publicRowsBeforePromotionError.message }, { status: 500 });
+  const eligibleChallengers = activeRows
+    .filter((row) => row.bar_phase === "challenger")
+    .filter((row) => promotionProtectionActive || new Date(row.created_at ?? 0).getTime() < new Date(observationCutoff).getTime())
+    .sort((left, right) => createdAtMs(left) - createdAtMs(right));
+  const publicRowsBeforePromotion = activeRows
+    .filter((row) => row.bar_phase === "public")
+    .sort((left, right) => reactionCount(left) - reactionCount(right) || createdAtMs(left) - createdAtMs(right));
 
   const promotedIds = promotionCandidatesWithinCreatorGenreLimit(
-    (eligibleChallengers as TrackForRotation[] | null) ?? [],
-    (publicRowsBeforePromotion as TrackForRotation[] | null) ?? [],
+    eligibleChallengers,
+    publicRowsBeforePromotion,
   ).map((row) => row.id);
   if (promotedIds.length > 0) {
     const { error } = await admin
@@ -111,18 +126,16 @@ async function processRotation(request: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const { data: publicRows, error: publicRowsError } = await admin
-    .from("listen_bar_tracks")
-    .select("id, genre, created_by, positive_reaction_count, created_at, promoted_at, bar_phase")
-    .eq("source", "community")
-    .eq("is_active", true)
-    .eq("bar_phase", "public")
-    .order("positive_reaction_count", { ascending: true })
-    .order("created_at", { ascending: true });
+  try {
+    activeRows = await readActiveCommunityRows(admin);
+  } catch (error) {
+    return NextResponse.json({ error: String((error as { message?: string })?.message ?? error) }, { status: 500 });
+  }
+  const publicRows = activeRows
+    .filter((row) => row.bar_phase === "public")
+    .sort((left, right) => reactionCount(left) - reactionCount(right) || createdAtMs(left) - createdAtMs(right));
 
-  if (publicRowsError) return NextResponse.json({ error: publicRowsError.message }, { status: 500 });
-
-  const overflowCandidates = genreOverflowRemovalCandidates((publicRows as TrackForRotation[] | null) ?? [], now.getTime());
+  const overflowCandidates = genreOverflowRemovalCandidates(publicRows, now.getTime());
   const publicOverflow = overflowCandidates.length;
   const removedPublicIds = promotionProtectionActive
     ? []
@@ -145,7 +158,7 @@ async function processRotation(request: NextRequest) {
   }
 
   return NextResponse.json({
-    activeCommunity: activeCount ?? 0,
+    activeCommunity: activeRows.length,
     promotedToPublic: promotedIds.length,
     completedMonthlySurvival: 0,
     removedFromPublic: removedPublicIds.length,
@@ -186,7 +199,8 @@ function isVisibleActiveTrack(row: TrackForRotation) {
     status !== "completed" &&
     status !== "rejected" &&
     !row.hidden_at &&
-    !row.removed_at
+    !row.removed_at &&
+    !isAiMusicPersistedShowtimeCertified(row)
   );
 }
 
@@ -279,15 +293,8 @@ async function processRotationPreview(request: NextRequest) {
   try {
     const admin = adminClient();
     const detailed = requestHasCronSecret(request);
-    const { data, error } = await admin
-      .from("listen_bar_tracks")
-      .select("id,title,genre,created_by,positive_reaction_count,created_at,promoted_at,bar_phase,review_status,hidden_at,removed_at")
-      .eq("source", "community")
-      .eq("is_active", true);
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-    const rows = ((data as TrackForRotation[] | null) ?? []).filter(isVisibleActiveTrack).map(toRotationTrack);
+    const data = await readActiveCommunityRows(admin);
+    const rows = data.map(toRotationTrack);
     const preview = buildListenBarRotationPreview(rows);
     return NextResponse.json(
       {

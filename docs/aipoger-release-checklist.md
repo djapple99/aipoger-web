@@ -224,6 +224,10 @@ Check:
 - Showtime includes a slim `AIPOGER Choice` direction anchor after the catalog without claiming a complete weekly automation workflow.
 - Showtime is one unified certified-works catalog, not separate Drop victory / Bar heat / 24H boards or source tabs.
 - Song cards include the recognition source in the song intro, such as `正式 Battle 認證`, `探索守擂認證`, or `傷心酒吧公播認證`.
+- Showtime track intake is persisted certification, not dynamic public display of old `30 hearts`, `7 public days`, or `30 days` eligibility copy.
+- Founder catalog migration must start with a read-only candidate report, confirm exactly two demo rows before soft delete, and must not mutate production track data until owner confirmation.
+- Founder-catalog certified works appear only in Showtime, not Explore or Bar Heartbreak public lists; cards show no `接戰`, `攻擂`, or challenge action.
+- Profile Showtime management allows only own display metadata/support URL edits and public-display soft hide; it must not edit audio, recognition source, battle stats, votes, wins/losses, Showtime status/time, or reopen challenges.
 - Cards do not show numeric rank badges.
 - Drop cards use victory/result language.
 - Bar Heartbreak and Explore-certified cards use catalog/recognition language, not heat-board language.

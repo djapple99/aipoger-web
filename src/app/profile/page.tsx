@@ -12,6 +12,7 @@ import { readFighterNameFromStorage, writeFighterNameToStorage } from "@/lib/fig
 import { loadFighterNameFromProfile, saveFighterNameToProfile } from "@/lib/user-profile-fighter-name";
 import { loadIsAdmin } from "@/lib/user-profile-admin";
 import { LISTEN_BAR_AUDIO_BUCKET } from "@/lib/listen-bar";
+import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import {
   aiMusicChallengeStatusLabel,
   hasPreparedAiMusicDefenderDrop,
@@ -45,6 +46,29 @@ type ListenBarTrack = {
   ai_music_defender_drop_duration_seconds?: number | null;
   ai_music_defender_drop_lyrics?: string | null;
   ai_music_defender_drop_prepared_at?: string | null;
+};
+
+type ShowtimeTrack = {
+  id: string;
+  title?: string | null;
+  artist?: string | null;
+  ai_tool?: string | null;
+  genre?: string | null;
+  mood?: string | null;
+  description?: string | null;
+  youtube_url?: string | null;
+  lyrics?: string | null;
+  duration_seconds?: number | null;
+  audio_path?: string | null;
+  cover_path?: string | null;
+  heart_count?: number | null;
+  positive_reaction_count?: number | null;
+  created_at?: string | null;
+  ai_music_showtime_certified_at?: string | null;
+  ai_music_showtime_certification_source?: string | null;
+  ai_music_showtime_public_removed_at?: string | null;
+  support_url?: string | null;
+  support_url_status?: string | null;
 };
 
 type BattleQueueRow = {
@@ -138,9 +162,22 @@ type CreatorItem = {
   challengeStatus?: AiMusicChallengeStatus;
   hasDefenderDrop?: boolean;
   pendingChallengeInvite?: AiMusicChallengeInvite | null;
+  showtimeTrack?: ShowtimeTrack | null;
 };
 
-type CreatorFilter = "all" | "listenBar" | "battle" | "records" | "wins" | "favorites";
+type CreatorFilter = "all" | "listenBar" | "showtime" | "battle" | "records" | "wins" | "favorites";
+
+type ShowtimeEditForm = {
+  title: string;
+  artist: string;
+  aiTool: string;
+  genre: string;
+  album: string;
+  description: string;
+  youtubeUrl: string;
+  lyrics: string;
+  supportUrl: string;
+};
 
 function authAvatarUrl(user: { user_metadata?: Record<string, unknown> } | null | undefined): string | null {
   const meta = user?.user_metadata;
@@ -236,6 +273,7 @@ function ProfileInner() {
   const [creatorLoading, setCreatorLoading] = useState(true);
   const [creatorError, setCreatorError] = useState("");
   const [barTracks, setBarTracks] = useState<ListenBarTrack[]>([]);
+  const [showtimeTracks, setShowtimeTracks] = useState<ShowtimeTrack[]>([]);
   const [battleQueues, setBattleQueues] = useState<BattleQueueRow[]>([]);
   const [battles, setBattles] = useState<BattleRow[]>([]);
   const [wins, setWins] = useState<BattleArchiveRow[]>([]);
@@ -254,6 +292,19 @@ function ProfileInner() {
   const [listenBarSelectionMode, setListenBarSelectionMode] = useState(false);
   const [selectedListenBarItemIds, setSelectedListenBarItemIds] = useState<string[]>([]);
   const [bulkListenBarBusy, setBulkListenBarBusy] = useState(false);
+  const [showtimeBusy, setShowtimeBusy] = useState<Record<string, boolean>>({});
+  const [editingShowtimeTrackId, setEditingShowtimeTrackId] = useState<string | null>(null);
+  const [showtimeEditForm, setShowtimeEditForm] = useState<ShowtimeEditForm>({
+    title: "",
+    artist: "",
+    aiTool: "",
+    genre: "Original 自我風格",
+    album: "",
+    description: "",
+    youtubeUrl: "",
+    lyrics: "",
+    supportUrl: "",
+  });
   const [challengeBusy, setChallengeBusy] = useState<Record<string, boolean>>({});
   const cropFileInputRef = useRef<HTMLInputElement>(null);
   const avatarSectionRef = useRef<HTMLDivElement>(null);
@@ -286,6 +337,7 @@ function ProfileInner() {
             error: "部分創作資料暫時讀不到，頁面先顯示可取得的內容。",
             battle: "Drop 戰帖",
             listenBar: "傷心酒吧",
+            showtime: "Showtime 展示",
             records: "對戰場次",
             wins: "勝出封存",
             favorites: "收藏歌曲",
@@ -316,6 +368,15 @@ function ProfileInner() {
             songSelected: "已選取",
             songTapToSelect: "點擊選取",
             songBatchConfirm: "確定撤下已選取的歌曲？撤下後會離開前台公播/挑戰池。",
+            showtimeEdit: "編輯展示",
+            showtimeSave: "儲存 Showtime",
+            showtimeCancel: "取消",
+            showtimeHide: "隱藏展示",
+            showtimeHidden: "已隱藏公開展示",
+            showtimeSupportPending: "支持連結待審核，審核通過才會出現在前台。",
+            showtimeSupportApproved: "支持連結已核准",
+            showtimeHideConfirm: "確定隱藏這首 Showtime 作品的公開展示？不會刪除底層音檔、戰績、收藏或認可紀錄。",
+            showtimeSaveFailed: "Showtime 展示資料儲存失敗，請稍後再試。",
             previousPage: "上一頁",
             nextPage: "下一頁",
             perPageHint: "每頁 10 首",
@@ -362,6 +423,7 @@ function ProfileInner() {
             error: "Some creator data could not be loaded, so this page is showing what is available.",
             battle: "Drop Cards",
             listenBar: "Listen Bar",
+            showtime: "Showtime Display",
             records: "Battle Matches",
             wins: "Archived Wins",
             favorites: "Saved Songs",
@@ -392,6 +454,15 @@ function ProfileInner() {
             songSelected: "Selected",
             songTapToSelect: "Tap to select",
             songBatchConfirm: "Remove the selected songs from public/battle surfaces?",
+            showtimeEdit: "Edit Display",
+            showtimeSave: "Save Showtime",
+            showtimeCancel: "Cancel",
+            showtimeHide: "Hide Display",
+            showtimeHidden: "Public display hidden",
+            showtimeSupportPending: "Support link pending review. It appears publicly only after approval.",
+            showtimeSupportApproved: "Support link approved",
+            showtimeHideConfirm: "Hide this Showtime work from public display? Audio, records, favorites, and recognition history stay intact.",
+            showtimeSaveFailed: "Could not save Showtime display data. Please try again.",
             previousPage: "Previous",
             nextPage: "Next",
             perPageHint: "10 per page",
@@ -433,6 +504,14 @@ function ProfileInner() {
           return (await response.json()) as { tracks?: ListenBarTrack[] };
         });
 
+        const showtimeTracksPromise = fetch("/api/showtime/my-tracks", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          cache: "no-store",
+        }).then(async (response) => {
+          if (!response.ok) throw new Error(`showtime-my-tracks ${response.status}`);
+          return (await response.json()) as { tracks?: ShowtimeTrack[]; schemaReady?: boolean };
+        });
+
         const queuesPromise = supabase
           .from("battle_queue")
           .select("id,status,created_at,scheduled_start_at,original_file_name,genre,ai_tool,audio_path,match_group_id")
@@ -470,8 +549,9 @@ function ProfileInner() {
           return (await response.json()) as { incoming?: AiMusicChallengeInvite[]; outgoing?: AiMusicChallengeInvite[] };
         });
 
-        const [tracksResult, queuesResult, battlesResult, winsResult, favoritesResult, challengeInvitesResult] = await Promise.allSettled([
+        const [tracksResult, showtimeTracksResult, queuesResult, battlesResult, winsResult, favoritesResult, challengeInvitesResult] = await Promise.allSettled([
           tracksPromise,
+          showtimeTracksPromise,
           queuesPromise,
           battlesPromise,
           winsPromise,
@@ -481,6 +561,12 @@ function ProfileInner() {
 
         if (tracksResult.status === "fulfilled") {
           setBarTracks(Array.isArray(tracksResult.value.tracks) ? tracksResult.value.tracks : []);
+        } else {
+          setCreatorError(copy.error);
+        }
+
+        if (showtimeTracksResult.status === "fulfilled") {
+          setShowtimeTracks(Array.isArray(showtimeTracksResult.value.tracks) ? showtimeTracksResult.value.tracks : []);
         } else {
           setCreatorError(copy.error);
         }
@@ -1103,6 +1189,80 @@ function ProfileInner() {
     }
   }, [lang, router]);
 
+  const openShowtimeEditor = useCallback((track: ShowtimeTrack) => {
+    setEditingShowtimeTrackId(track.id);
+    setShowtimeEditForm({
+      title: track.title?.trim() ?? "",
+      artist: track.artist?.trim() ?? "",
+      aiTool: track.ai_tool?.trim() ?? "",
+      genre: track.genre?.trim() || "Original 自我風格",
+      album: track.mood?.trim() ?? "",
+      description: track.description?.trim() ?? "",
+      youtubeUrl: track.youtube_url?.trim() ?? "",
+      lyrics: track.lyrics?.trim() ?? "",
+      supportUrl: track.support_url?.trim() ?? "",
+    });
+  }, []);
+
+  const patchShowtimeTrack = useCallback(async (trackId: string, payload: Record<string, unknown>) => {
+    setShowtimeBusy((current) => ({ ...current, [trackId]: true }));
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        router.push("/auth");
+        return null;
+      }
+      const response = await fetch("/api/showtime/my-tracks", {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ trackId, ...payload }),
+      });
+      const result = (await response.json().catch(() => null)) as { track?: ShowtimeTrack; error?: string } | null;
+      if (!response.ok) throw new Error(result?.error ?? "showtime update failed");
+      if (result?.track) {
+        setShowtimeTracks((current) => current.map((track) => (track.id === trackId ? result.track! : track)));
+      }
+      return result?.track ?? null;
+    } catch (error) {
+      console.warn("[profile] showtime update failed", error);
+      alert(error instanceof Error ? error.message : copy.showtimeSaveFailed);
+      return null;
+    } finally {
+      setShowtimeBusy((current) => {
+        const next = { ...current };
+        delete next[trackId];
+        return next;
+      });
+    }
+  }, [copy.showtimeSaveFailed, router]);
+
+  const saveShowtimeMetadata = useCallback(async (trackId: string) => {
+    const saved = await patchShowtimeTrack(trackId, {
+      title: showtimeEditForm.title,
+      artist: showtimeEditForm.artist,
+      aiTool: showtimeEditForm.aiTool,
+      genre: showtimeEditForm.genre,
+      album: showtimeEditForm.album,
+      description: showtimeEditForm.description,
+      youtubeUrl: showtimeEditForm.youtubeUrl,
+      lyrics: showtimeEditForm.lyrics,
+      supportUrl: showtimeEditForm.supportUrl,
+    });
+    if (saved) setEditingShowtimeTrackId(null);
+  }, [patchShowtimeTrack, showtimeEditForm]);
+
+  const hideShowtimeDisplay = useCallback(async (track: ShowtimeTrack) => {
+    if (!window.confirm(copy.showtimeHideConfirm)) return;
+    await patchShowtimeTrack(track.id, { hidePublic: true });
+    setEditingShowtimeTrackId((current) => (current === track.id ? null : current));
+  }, [copy.showtimeHideConfirm, patchShowtimeTrack]);
+
   const creatorItems = useMemo<CreatorItem[]>(() => {
     const pendingInviteByTrackId = new Map(
       aiMusicInvites
@@ -1136,6 +1296,38 @@ function ProfileInner() {
         challengeStatus,
         hasDefenderDrop,
         pendingChallengeInvite: pendingInviteByTrackId.get(track.id) ?? null,
+      };
+    });
+
+    const showtimeItems = showtimeTracks.map((track) => {
+      const publicHidden = Boolean(track.ai_music_showtime_public_removed_at);
+      const supportStatus = track.support_url?.trim()
+        ? track.support_url_status === "approved"
+          ? copy.showtimeSupportApproved
+          : copy.showtimeSupportPending
+        : "";
+      return {
+        id: `showtime-${track.id}`,
+        category: "showtime" as const,
+        kind: copy.showtime,
+        title: track.title?.trim() || (isZh ? "未命名 Showtime 作品" : "Untitled Showtime Work"),
+        meta: [
+          track.artist?.trim(),
+          track.ai_tool?.trim(),
+          track.genre?.trim(),
+          supportStatus,
+          publicHidden ? copy.showtimeHidden : null,
+          `${track.heart_count ?? track.positive_reaction_count ?? 0} ${isZh ? "愛心" : "hearts"}`,
+        ]
+          .filter(Boolean)
+          .join(" / "),
+        href: lang === "en" ? "/rank?lang=en" : "/rank?lang=zh",
+        date: track.ai_music_showtime_certified_at ?? track.created_at,
+        genre: track.genre,
+        aiTool: track.ai_tool,
+        audioUrl: storagePublicUrl(LISTEN_BAR_AUDIO_BUCKET, track.audio_path),
+        trackId: track.id,
+        showtimeTrack: track,
       };
     });
 
@@ -1176,8 +1368,8 @@ function ProfileInner() {
       const kind =
         record.targetKind === "bar"
           ? isZh
-            ? "傷心酒吧熱播"
-            : "Bar Heartbreak"
+            ? "Showtime 認證"
+            : "Showtime certified"
           : isZh
             ? "Drop 勝利作品"
             : "Drop Winner";
@@ -1212,7 +1404,7 @@ function ProfileInner() {
     const favoriteRank = new Map(orderedFavoriteIds.map((id, index) => [id, index]));
     const orderedFavorites = [...favorites].sort((a, b) => (favoriteRank.get(a.id) ?? 9999) - (favoriteRank.get(b.id) ?? 9999));
 
-    return [...tracks, ...queues, ...battleRecords, ...archivedWins, ...orderedFavorites]
+    return [...showtimeItems, ...tracks, ...queues, ...battleRecords, ...archivedWins, ...orderedFavorites]
       .sort((a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime());
   }, [
     barTracks,
@@ -1224,12 +1416,17 @@ function ProfileInner() {
     copy.defenderDropReady,
     copy.honorFavorite,
     copy.listenBar,
+    copy.showtime,
+    copy.showtimeHidden,
+    copy.showtimeSupportApproved,
+    copy.showtimeSupportPending,
     copy.records,
     copy.wins,
     favoriteOrder,
     honorFavorites,
     isZh,
     lang,
+    showtimeTracks,
     userId,
     wins,
   ]);
@@ -1241,6 +1438,7 @@ function ProfileInner() {
 
   const stats = [
     { key: "listenBar" as const, label: copy.listenBar, value: barTracks.length, sub: `${barTracks.filter((track) => track.is_active).length} ${copy.active}` },
+    { key: "showtime" as const, label: copy.showtime, value: showtimeTracks.length, sub: isZh ? "認證作品" : "certified works" },
     { key: "battle" as const, label: copy.battle, value: battleQueues.length, sub: isZh ? "已上傳戰帖" : "uploaded cards" },
     { key: "records" as const, label: copy.records, value: battles.length, sub: isZh ? "已進場對戰" : "entered matches" },
     { key: "wins" as const, label: copy.wins, value: wins.length, sub: isZh ? "勝利作品" : "winning tracks" },
@@ -1527,7 +1725,7 @@ function ProfileInner() {
               </button>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
               {stats.map((stat) => (
                 <button
                   key={stat.label}
@@ -1677,6 +1875,8 @@ function ProfileInner() {
                     const isFavoriteSelected = selectedFavoriteIdSet.has(item.id);
                     const showListenBarBatchControls = creatorFilter === "listenBar" && item.category === "listenBar";
                     const isListenBarSelected = selectedListenBarItemIdSet.has(item.id);
+                    const showShowtimeControls = creatorFilter === "showtime" && item.category === "showtime" && Boolean(item.showtimeTrack);
+                    const showtimeTrack = item.showtimeTrack ?? null;
                     const selectionModeActive = (favoriteSelectionMode && showFavoriteControls) || (listenBarSelectionMode && showListenBarBatchControls);
                     const isSelectionSelected = isFavoriteSelected || isListenBarSelected;
                     const selectionSelectedLabel = showListenBarBatchControls ? copy.songSelected : copy.favoriteSelected;
@@ -1920,7 +2120,34 @@ function ProfileInner() {
                               </button>
                             </span>
                             )
-                          ) : !selectionModeActive && item.audioUrl && item.category !== "favorites" && (item.category !== "listenBar" || challengeStatus === "custom") ? (
+                          ) : showShowtimeControls && showtimeTrack ? (
+                            <span className="flex flex-wrap justify-start gap-1.5 sm:justify-end">
+                              <button
+                                type="button"
+                                disabled={Boolean(showtimeBusy[showtimeTrack.id])}
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  openShowtimeEditor(showtimeTrack);
+                                }}
+                                className="rounded-full border border-yellow-200/30 bg-yellow-300/10 px-3 py-1.5 text-xs font-black text-yellow-100 transition hover:border-yellow-100/60 disabled:cursor-wait disabled:opacity-45"
+                              >
+                                {copy.showtimeEdit}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={Boolean(showtimeBusy[showtimeTrack.id]) || Boolean(showtimeTrack.ai_music_showtime_public_removed_at)}
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  void hideShowtimeDisplay(showtimeTrack);
+                                }}
+                                className="rounded-full border border-red-300/25 bg-red-500/10 px-3 py-1.5 text-xs font-black text-red-100 transition hover:border-red-200/65 disabled:cursor-not-allowed disabled:opacity-45"
+                              >
+                                {showtimeTrack.ai_music_showtime_public_removed_at ? copy.showtimeHidden : copy.showtimeHide}
+                              </button>
+                            </span>
+                          ) : !selectionModeActive && item.audioUrl && item.category !== "favorites" && item.category !== "showtime" && (item.category !== "listenBar" || challengeStatus === "custom") ? (
                             <button
                               type="button"
                               onClick={() => openChallengeCut(item)}
@@ -1930,6 +2157,121 @@ function ProfileInner() {
                             </button>
                           ) : null}
                         </span>
+                        {showShowtimeControls && showtimeTrack && editingShowtimeTrackId === showtimeTrack.id ? (
+                          <div
+                            className="col-span-2 rounded-2xl border border-yellow-200/18 bg-yellow-300/[0.045] p-3 sm:col-span-4"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <label className="grid gap-1 text-xs font-black text-zinc-300">
+                                {isZh ? "歌名" : "Title"}
+                                <input
+                                  value={showtimeEditForm.title}
+                                  onChange={(event) => setShowtimeEditForm((current) => ({ ...current, title: event.target.value }))}
+                                  maxLength={500}
+                                  className="h-10 rounded-xl border border-white/10 bg-black/45 px-3 text-sm font-bold text-white outline-none focus:border-yellow-100/55"
+                                />
+                              </label>
+                              <label className="grid gap-1 text-xs font-black text-zinc-300">
+                                {isZh ? "創作者顯示名" : "Creator Name"}
+                                <input
+                                  value={showtimeEditForm.artist}
+                                  onChange={(event) => setShowtimeEditForm((current) => ({ ...current, artist: event.target.value }))}
+                                  maxLength={80}
+                                  className="h-10 rounded-xl border border-white/10 bg-black/45 px-3 text-sm font-bold text-white outline-none focus:border-yellow-100/55"
+                                />
+                              </label>
+                              <label className="grid gap-1 text-xs font-black text-zinc-300">
+                                {isZh ? "AI 工具" : "AI Tool"}
+                                <input
+                                  value={showtimeEditForm.aiTool}
+                                  onChange={(event) => setShowtimeEditForm((current) => ({ ...current, aiTool: event.target.value }))}
+                                  maxLength={80}
+                                  className="h-10 rounded-xl border border-white/10 bg-black/45 px-3 text-sm font-bold text-white outline-none focus:border-yellow-100/55"
+                                />
+                              </label>
+                              <label className="grid gap-1 text-xs font-black text-zinc-300">
+                                {isZh ? "類型" : "Genre"}
+                                <select
+                                  value={showtimeEditForm.genre}
+                                  onChange={(event) => setShowtimeEditForm((current) => ({ ...current, genre: event.target.value }))}
+                                  className="h-10 rounded-xl border border-white/10 bg-black/45 px-3 text-sm font-bold text-white outline-none focus:border-yellow-100/55"
+                                >
+                                  {MUSIC_GENRE_OPTIONS.map((genre) => (
+                                    <option key={genre.value} value={genre.value}>{genre.value}</option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label className="grid gap-1 text-xs font-black text-zinc-300">
+                                {isZh ? "作品資訊" : "Production Info"}
+                                <input
+                                  value={showtimeEditForm.album}
+                                  onChange={(event) => setShowtimeEditForm((current) => ({ ...current, album: event.target.value }))}
+                                  maxLength={80}
+                                  className="h-10 rounded-xl border border-white/10 bg-black/45 px-3 text-sm font-bold text-white outline-none focus:border-yellow-100/55"
+                                />
+                              </label>
+                              <label className="grid gap-1 text-xs font-black text-zinc-300">
+                                {isZh ? "外部支持連結" : "External Support URL"}
+                                <input
+                                  value={showtimeEditForm.supportUrl}
+                                  onChange={(event) => setShowtimeEditForm((current) => ({ ...current, supportUrl: event.target.value }))}
+                                  placeholder="https://"
+                                  maxLength={500}
+                                  className="h-10 rounded-xl border border-white/10 bg-black/45 px-3 text-sm font-bold text-white outline-none focus:border-yellow-100/55"
+                                />
+                              </label>
+                              <label className="grid gap-1 text-xs font-black text-zinc-300 sm:col-span-2">
+                                {isZh ? "一句介紹" : "Description"}
+                                <input
+                                  value={showtimeEditForm.description}
+                                  onChange={(event) => setShowtimeEditForm((current) => ({ ...current, description: event.target.value }))}
+                                  maxLength={120}
+                                  className="h-10 rounded-xl border border-white/10 bg-black/45 px-3 text-sm font-bold text-white outline-none focus:border-yellow-100/55"
+                                />
+                              </label>
+                              <label className="grid gap-1 text-xs font-black text-zinc-300 sm:col-span-2">
+                                YouTube / MV
+                                <input
+                                  value={showtimeEditForm.youtubeUrl}
+                                  onChange={(event) => setShowtimeEditForm((current) => ({ ...current, youtubeUrl: event.target.value }))}
+                                  maxLength={300}
+                                  className="h-10 rounded-xl border border-white/10 bg-black/45 px-3 text-sm font-bold text-white outline-none focus:border-yellow-100/55"
+                                />
+                              </label>
+                              <label className="grid gap-1 text-xs font-black text-zinc-300 sm:col-span-2">
+                                {isZh ? "歌詞" : "Lyrics"}
+                                <textarea
+                                  value={showtimeEditForm.lyrics}
+                                  onChange={(event) => setShowtimeEditForm((current) => ({ ...current, lyrics: event.target.value }))}
+                                  rows={4}
+                                  className="rounded-xl border border-white/10 bg-black/45 px-3 py-2 text-sm font-bold leading-6 text-white outline-none focus:border-yellow-100/55"
+                                />
+                              </label>
+                            </div>
+                            <p className="mt-3 text-xs font-bold leading-5 text-zinc-500">
+                              {showtimeEditForm.supportUrl ? copy.showtimeSupportPending : isZh ? "支援連結只接受 HTTPS；AIPOGER 不處理付款或金額。" : "Support links must be HTTPS. AIPOGER does not process payments or amounts."}
+                            </p>
+                            <div className="mt-3 flex flex-wrap justify-end gap-2">
+                              <button
+                                type="button"
+                                disabled={Boolean(showtimeBusy[showtimeTrack.id])}
+                                onClick={() => setEditingShowtimeTrackId(null)}
+                                className="rounded-full border border-white/10 bg-black/25 px-4 py-2 text-xs font-black text-zinc-300 transition hover:border-white/30 disabled:cursor-wait disabled:opacity-45"
+                              >
+                                {copy.showtimeCancel}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={Boolean(showtimeBusy[showtimeTrack.id])}
+                                onClick={() => void saveShowtimeMetadata(showtimeTrack.id)}
+                                className="rounded-full border border-yellow-200/45 bg-yellow-300 px-5 py-2 text-xs font-black text-black transition hover:bg-yellow-100 disabled:cursor-wait disabled:opacity-55"
+                              >
+                                {copy.showtimeSave}
+                              </button>
+                            </div>
+                          </div>
+                        ) : null}
                       </article>
                     );
                   })}

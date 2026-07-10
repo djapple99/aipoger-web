@@ -39,15 +39,12 @@ import {
   LISTEN_BAR_CREATOR_PUBLIC_UPLOAD_LIMIT_STARTED_AT,
   LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD,
   LISTEN_BAR_GENRE_POOL_LIMIT,
-  LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD,
-  LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS,
   LISTEN_BAR_TOTAL_ROTATION_LIMIT,
   EMPTY_LISTEN_BAR_TRACK,
   fallbackOfficialPlaylist,
   listenBarChallengerSlotLimitForPublicCount,
   listenBarCreatorDailyUploadLimitReached,
   listenBarCreatorGenrePublicLimitReached,
-  listenBarIsHonorEligible,
   listenBarPublicDisplayDay,
   listenBarRowToTrack,
   listenBarSubmissionPhaseForGenrePublicCount,
@@ -1614,12 +1611,6 @@ export default function ListenBarPage() {
   };
 
   const currentReactions = reactionCounts[nowTrack.id] ?? emptyReactions;
-  const currentPositiveTotal = Object.values(currentReactions).reduce((sum, count) => sum + count, 0);
-  const honorRollQualified = listenBarIsHonorEligible({
-    positiveReactionCount: currentPositiveTotal,
-    promotedAt: nowTrack.promotedAt,
-    createdAt: nowTrack.createdAt,
-  }, Date.now(), survivalStartedAt);
   const nowTrackTitle = !isZh && nowTrack.id === EMPTY_LISTEN_BAR_TRACK.id ? "Waiting for Creator Uploads" : nowTrack.title;
   const nowTrackTitleClass = nowPlayingTitleClass(nowTrackTitle);
   const currentHeartTotal = Math.max(0, currentReactions.heart ?? 0);
@@ -2502,11 +2493,6 @@ export default function ListenBarPage() {
                       {isZh ? `公播 Day ${nowSurvivalDay}` : `Public Day ${nowSurvivalDay}`}
                     </span>
                   )}
-                  {honorRollQualified && (
-                    <span className="rounded-full border border-yellow-200/35 bg-yellow-300/10 px-2 py-0.5 font-bold text-yellow-100">
-                      {isZh ? "Showtime 入選資格" : "Showtime Eligible"}
-                    </span>
-                  )}
                 </div>
                 <div className="mt-3 -ml-1 flex flex-wrap items-center gap-2">
                   <span className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-100">
@@ -2597,8 +2583,8 @@ export default function ListenBarPage() {
                       </p>
                       <p className="mt-1 text-xs font-bold leading-5 text-orange-100/70">
                         {isZh
-                          ? `累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 顆心，或公播存活 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天，即可取得 Showtime 入選資格。`
-                          : `${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} hearts or ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} public days makes it Showtime eligible.`}
+                          ? "愛心會同步加入收藏；Showtime 由 AIPOGER 認可後進入認證作品庫。"
+                          : "A Heart also saves the track. Showtime is reserved for AIPOGER-certified works."}
                       </p>
                     </div>
                   </div>
@@ -3132,8 +3118,8 @@ export default function ListenBarPage() {
             </p>
             <p className="mt-2 break-words text-sm font-bold leading-6 text-zinc-300 [overflow-wrap:anywhere]">
               {isZh
-                ? `傷心酒吧不是排行榜，而是 AIPOGER 的 AI 音樂公播池與投稿入口。聽歌不需登入；留言、投票與投稿需登入。上傳後歌曲會進入分類輪播，也會出現在探索 AI 音樂。來訪者可選公播或指定類型播放；目前 ${LISTEN_BAR_GENRES.length} 種類型每類滿池 ${LISTEN_BAR_GENRE_POOL_LIMIT} 首，總公播池上限 ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} 首。未滿池的新投稿直接進同類公播池；滿池後才進 Challenger。每一類滿池後才啟動該類淘汰與 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天 Showtime 計時；累積 ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} 顆心，或滿池啟動後公播存活 ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} 天，就取得 Showtime 入選資格。`
-                : `Bar Heartbreak is not a chart. It is AIPOGER's AI music airplay pool and submission entry. Listening is open; comments, votes, and uploads require sign-in. Uploaded tracks rotate by genre and also appear in Explore AI Music. Each of the ${LISTEN_BAR_GENRES.length} genres has a ${LISTEN_BAR_GENRE_POOL_LIMIT}-track public pool, for ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} public slots total. New submissions enter the same-genre public pool until that genre is full; after that they enter Challenger. Survival and the ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS}-day Honor timer start per genre only after that genre pool is full. ${LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD} hearts or ${LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS} public days after activation makes a track Showtime eligible.`}
+                ? `傷心酒吧不是排行榜，而是 AIPOGER 的 AI 音樂公播池與投稿入口。聽歌不需登入；留言、投票與投稿需登入。上傳後歌曲會進入分類輪播，也會出現在探索 AI 音樂。來訪者可選公播或指定類型播放；目前 ${LISTEN_BAR_GENRES.length} 種類型每類滿池 ${LISTEN_BAR_GENRE_POOL_LIMIT} 首，總公播池上限 ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} 首。未滿池的新投稿直接進同類公播池；滿池後才進 Challenger。Showtime 是 AIPOGER 認可作品庫，入選後作品離開公播與探索接戰。`
+                : `Bar Heartbreak is not a chart. It is AIPOGER's AI music airplay pool and submission entry. Listening is open; comments, votes, and uploads require sign-in. Uploaded tracks rotate by genre and also appear in Explore AI Music. Each of the ${LISTEN_BAR_GENRES.length} genres has a ${LISTEN_BAR_GENRE_POOL_LIMIT}-track public pool, for ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} public slots total. New submissions enter the same-genre public pool until that genre is full; after that they enter Challenger. Showtime is AIPOGER's certified catalog; certified works leave public airplay and Explore challenges.`}
             </p>
           </div>
 

@@ -212,14 +212,14 @@ Current rules:
 - `GET /api/listen-bar/process-rotation` is a manual/monitoring dry-run preview only.
 - Real promotion/removal requires the protected `POST` route with `LISTEN_BAR_ROTATION_ENABLED=true`.
 - Public-pool elimination runs per genre only when that genre has more than 36 public songs.
-- Bar Heartbreak survival and Showtime eligibility start per genre only after that genre has reached 36 public songs. Existing public-pool time before that genre activation point must not be counted toward the 7-public-day Showtime rule.
 - Elimination must never bring an active genre public pool below 36 songs.
 - Each elimination pass removes at most the overflow above 36 inside overfull genre pools, capped at 3 low-performing public-pool songs.
 - If songs have the same positive reaction count, remove the older song first.
 - If a genre public pool is at or below 36 songs, elimination stops for that genre and no refill action is needed.
 - The legacy 30-day `completed` removal rule is retired and must not remove songs.
 - Public pool target: 36 songs per genre, currently 396 songs across 11 genres. Challenger priority airplay can still surface protected new submissions.
-- After that song's genre activation point, a song with 30 hearts/positive reactions or 7 public survival days becomes Showtime eligible.
+- Public airplay support, comments, and retention may inform curation, but Bar Heartbreak must not present `30 hearts`, `7 public days`, or `30 days` as current public Showtime-entry promises.
+- Once a song is persistently certified into Showtime, it leaves Bar Heartbreak public/submission-visible lists and Explore challenge surfaces while retaining its source track, Hearts, favorites, comments, battle records, and recognition history.
 - A listener must sign in to press Heart or comment. Pressing Heart on a Bar Heartbreak track also saves that track to the listener's favorites. Removing it later from favorites in Profile does not remove the historical Heart reaction; pressing Heart again after the 24-hour Heart cooldown saves it again without duplicate favorites.
 - Profile `收藏歌曲` is the user's saved-song manager. It should support batch selection and batch removal of saved favorites, while keeping historical Heart reactions intact.
 - Profile creator-song management should list songs in pages of 10. Profile creator-song management for the user's own Bar Heartbreak songs should support batch selection and batch removal from the public/battle surfaces through the creator-owned remove flow.
@@ -329,11 +329,16 @@ Showtime is the certified archive, not a challenge surface:
 - Works in Showtime no longer accept Explore direct challenges.
 - Showtime records are not removed by later battle losses.
 - Showtime works do not follow the 8-official-loss Explore retirement rule.
+- Showtime status is a persisted recognition state. Do not dynamically promote public Bar Heartbreak songs into Showtime only because they reach old Heart/day thresholds.
+- The 2026-07-10 founder catalog migration is a one-time owner-confirmed batch, not a public or recurring `30 days -> Showtime` rule. The public UI must not expose `30 days`, `early creator reward`, `batch migration`, or similar internal criteria.
+- Creator-facing Showtime management may edit only public display metadata and approved external support URLs for the creator's own Showtime work. It must not edit audio, recognition source, battle stats, votes, wins/losses, Showtime status/time, or reopen Explore challenges.
+- `support_url` must be an external HTTPS URL and must not introduce AIPOGER payment handling, money amounts, wallets, refunds, revenue sharing, or direct checkout flows. Public cards display it only when the existing support URL review state allows display.
 
 Showtime display is a single certified-works catalog:
 
 - Do not split the front stage into Drop victory boards, Bar Heartbreak heat boards, 24H boards, or source tabs.
 - Official Drop Battle archive records, Explore defense-certified works, and Bar Heartbreak airplay-certified works all appear in the same playable catalog.
+- Founder-catalog migrated works use normal recognition copy in this catalog; do not label them as founder, early reward, batch, or 30-day works.
 - Month, style, and search filters may remain for browsing, but they are catalog controls, not separate ranking boards.
 - Recognition source belongs inside the individual song introduction, using labels such as `正式 Battle 認證`, `探索守擂認證`, or `傷心酒吧公播認證`.
 - Do not show duplicate Featured/Top sections above the same catalog results.

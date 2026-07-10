@@ -100,6 +100,14 @@ export type ListenBarTrackRow = {
   ai_music_defender_drop_duration_seconds?: number | null;
   ai_music_defender_drop_lyrics?: string | null;
   ai_music_defender_drop_prepared_at?: string | null;
+  ai_music_showtime_certified?: boolean | null;
+  ai_music_showtime_certified_at?: string | null;
+  ai_music_showtime_certification_source?: string | null;
+  ai_music_showtime_public_removed_at?: string | null;
+  ai_music_showtime_public_removed_by?: string | null;
+  ai_music_showtime_public_removal_note?: string | null;
+  support_url?: string | null;
+  support_url_status?: string | null;
 };
 
 export const EMPTY_LISTEN_BAR_TRACK: ListenBarTrack = {

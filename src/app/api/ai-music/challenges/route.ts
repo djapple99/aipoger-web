@@ -20,6 +20,7 @@ import {
   isAiMusicChallengeStatus,
 } from "@/lib/ai-music-challenge-rules";
 import { buildAiMusicSurfaceLifecycleMap } from "@/lib/ai-music-surface-lifecycle";
+import { AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS, isAiMusicPersistedShowtimeCertified } from "@/lib/ai-music-showtime";
 import type { ListenBarTrackRow as LifecycleListenBarTrackRow } from "@/lib/listen-bar";
 
 type AdminClient = SupabaseClient;
@@ -64,6 +65,14 @@ type ListenBarTrackRow = {
   ai_music_defender_drop_duration_seconds?: number | null;
   ai_music_defender_drop_lyrics?: string | null;
   ai_music_defender_drop_prepared_at?: string | null;
+  ai_music_showtime_certified?: boolean | null;
+  ai_music_showtime_certified_at?: string | null;
+  ai_music_showtime_certification_source?: string | null;
+  ai_music_showtime_public_removed_at?: string | null;
+};
+type TrackRowsResult<T> = {
+  data: T[] | null;
+  error: { message: string; details?: string; hint?: string; code?: string } | null;
 };
 type InviteRow = {
   id: string;
@@ -107,7 +116,12 @@ type DefenderDropPayload = {
 };
 
 const CLOSED_BATTLE_STATUSES = ["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"];
-const LIFECYCLE_TRACK_SELECT = "id,title,artist,ai_tool,genre,mood,bpm,duration_seconds,audio_path,cover_path,lyrics,is_active,review_status,hidden_at,removed_at,source,is_featured_official,bar_phase,positive_reaction_count,heart_count,star_count,thumb_count,happy_count,created_at,promoted_at";
+const LIFECYCLE_TRACK_SELECT_LEGACY = "id,title,artist,ai_tool,genre,mood,bpm,duration_seconds,audio_path,cover_path,lyrics,is_active,review_status,hidden_at,removed_at,source,is_featured_official,bar_phase,positive_reaction_count,heart_count,star_count,thumb_count,happy_count,created_at,promoted_at";
+const LIFECYCLE_TRACK_SELECT = `${LIFECYCLE_TRACK_SELECT_LEGACY},${AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS}`;
+const DEFENDER_TRACK_SELECT_LEGACY = "id,title,artist,ai_tool,genre,lyrics,audio_path,cover_path,created_by,source,bar_phase,is_active,review_status,ai_music_challenge_status,ai_music_defender_drop_audio_path,ai_music_defender_drop_audio_sha256,ai_music_defender_drop_original_name,ai_music_defender_drop_duration_seconds,ai_music_defender_drop_lyrics,ai_music_defender_drop_prepared_at";
+const DEFENDER_TRACK_SELECT = `${DEFENDER_TRACK_SELECT_LEGACY},${AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS}`;
+const PROTECTED_TRACK_SELECT_LEGACY = "id,created_by,source,is_active";
+const PROTECTED_TRACK_SELECT = `${PROTECTED_TRACK_SELECT_LEGACY},${AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS}`;
 const AI_MUSIC_INVITE_SELECT = "id,defender_track_id,defender_user_id,challenger_user_id,defender_queue_id,challenger_queue_id,battle_id,status,scheduled_start_at,expires_at,created_at,listen_bar_tracks(title,artist,genre,ai_tool)";
 const AI_MUSIC_INVITE_RESPONSE_WINDOW_MS = 5 * 60 * 1000;
 
@@ -132,7 +146,7 @@ function adminClient(): AdminClient {
 
 function isSchemaMissing(error: { message?: string; details?: string; hint?: string; code?: string } | null | undefined) {
   const msg = `${error?.message ?? ""} ${error?.details ?? ""} ${error?.hint ?? ""} ${error?.code ?? ""}`;
-  return /ai_music_challenge|battle_type|schema cache|column.*does not exist|relation.*does not exist|PGRST204|42P01/i.test(msg);
+  return /ai_music_challenge|ai_music_showtime|support_url|battle_type|schema cache|column.*does not exist|relation.*does not exist|PGRST204|42P01/i.test(msg);
 }
 
 function cleanText(value: unknown, fallback: string, maxLength: number) {
@@ -489,24 +503,44 @@ export async function POST(request: NextRequest) {
     return jsonError(`你今天已送出 ${AI_MUSIC_CHALLENGE_DAILY_INVITE_LIMIT} 次攻擂邀請，明天再來。`, 429);
   }
 
-  const { data: track, error: trackError } = await admin
+  let trackResult = await admin
     .from("listen_bar_tracks")
-    .select("id,title,artist,ai_tool,genre,lyrics,audio_path,cover_path,created_by,source,bar_phase,is_active,review_status,ai_music_challenge_status,ai_music_defender_drop_audio_path,ai_music_defender_drop_audio_sha256,ai_music_defender_drop_original_name,ai_music_defender_drop_duration_seconds,ai_music_defender_drop_lyrics,ai_music_defender_drop_prepared_at")
+    .select(DEFENDER_TRACK_SELECT)
     .eq("id", defenderTrackId)
     .maybeSingle<ListenBarTrackRow>();
+  if (trackResult.error && isSchemaMissing(trackResult.error)) {
+    trackResult = await admin
+      .from("listen_bar_tracks")
+      .select(DEFENDER_TRACK_SELECT_LEGACY)
+      .eq("id", defenderTrackId)
+      .maybeSingle<ListenBarTrackRow>();
+  }
+  const { data: track, error: trackError } = trackResult;
   if (trackError) return jsonError(trackError.message, isSchemaMissing(trackError) ? 409 : 500);
   if (!track?.id) return jsonError("找不到要挑戰的作品。", 404);
   if (!track.created_by) return jsonError("這首作品沒有可接戰的創作者帳號。", 409);
   if (track.created_by === auth.user.id) return jsonError("不能從探索頁攻擂自己的作品。", 409);
+  if (isAiMusicPersistedShowtimeCertified(track)) {
+    return jsonError("這首作品已進入 Showtime，入選後不再接受挑戰。", 409);
+  }
   if (track.source !== "community" || track.is_active === false || track.review_status === "removed" || track.review_status === "rejected") {
     return jsonError("這首作品目前不在 AI 音樂公播池。", 409);
   }
-  const { data: lifecycleRows, error: lifecycleRowsError } = await admin
+  let lifecycleRowsResult = await admin
     .from("listen_bar_tracks")
     .select(LIFECYCLE_TRACK_SELECT)
     .eq("source", "community")
     .eq("is_active", true)
-    .limit(500);
+    .limit(500) as TrackRowsResult<LifecycleListenBarTrackRow>;
+  if (lifecycleRowsResult.error && isSchemaMissing(lifecycleRowsResult.error)) {
+    lifecycleRowsResult = await admin
+      .from("listen_bar_tracks")
+      .select(LIFECYCLE_TRACK_SELECT_LEGACY)
+      .eq("source", "community")
+      .eq("is_active", true)
+      .limit(500) as TrackRowsResult<LifecycleListenBarTrackRow>;
+  }
+  const { data: lifecycleRows, error: lifecycleRowsError } = lifecycleRowsResult;
   if (lifecycleRowsError) return jsonError(lifecycleRowsError.message, isSchemaMissing(lifecycleRowsError) ? 409 : 500);
   let lifecycleByTrackId: Awaited<ReturnType<typeof buildAiMusicSurfaceLifecycleMap>>;
   try {
@@ -731,6 +765,31 @@ export async function PATCH(request: NextRequest) {
   } | null;
 
   if (isUuid(body?.trackId)) {
+    let protectedTrackResult = await admin
+      .from("listen_bar_tracks")
+      .select(PROTECTED_TRACK_SELECT)
+      .eq("id", body.trackId)
+      .eq("created_by", auth.user.id)
+      .eq("source", "community")
+      .eq("is_active", true)
+      .maybeSingle<ListenBarTrackRow>();
+    if (protectedTrackResult.error && isSchemaMissing(protectedTrackResult.error)) {
+      protectedTrackResult = await admin
+        .from("listen_bar_tracks")
+        .select(PROTECTED_TRACK_SELECT_LEGACY)
+        .eq("id", body.trackId)
+        .eq("created_by", auth.user.id)
+        .eq("source", "community")
+        .eq("is_active", true)
+        .maybeSingle<ListenBarTrackRow>();
+    }
+    const { data: protectedTrack, error: protectedTrackError } = protectedTrackResult;
+    if (protectedTrackError) return jsonError(protectedTrackError.message, isSchemaMissing(protectedTrackError) ? 409 : 500);
+    if (!protectedTrack?.id) return jsonError("找不到可修改的歌曲。", 404);
+    if (isAiMusicPersistedShowtimeCertified(protectedTrack)) {
+      return jsonError("Showtime 作品入選後不再接受挑戰，也不能修改守擂設定。", 409);
+    }
+
     if (body?.defenderDrop && typeof body.defenderDrop === "object") {
       const defenderDrop = body.defenderDrop;
       const audioPath = trimOrNull(defenderDrop.audioPath, 1600);

@@ -14,6 +14,8 @@ test("Showtime renders one certified works catalog without old source boards", (
   assert.ok(showtimeSource.includes("正式 Battle 認證"));
   assert.ok(showtimeSource.includes("探索守擂認證"));
   assert.ok(showtimeSource.includes("傷心酒吧公播認證"));
+  assert.ok(showtimeSource.includes("surface=showtime"));
+  assert.ok(showtimeSource.includes("Support Creator"));
   assert.ok(showtimeSource.includes("[...battleRows, ...hotBarRows]"));
   assert.ok(showtimeSource.includes('id="choice-weekly"'));
   assert.equal(showtimeSource.includes("type BoardKey"), false);

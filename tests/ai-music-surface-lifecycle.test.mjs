@@ -16,6 +16,7 @@ test("Explore AI Music lifecycle reads official challenge results before display
   assert.ok(lifecycleSource.includes('status === "accepted"'));
   assert.ok(lifecycleSource.includes('defenseSuccessChallengerIdsByTrackId'));
   assert.ok(lifecycleSource.includes('stats.officialDefenseSuccesses = challengerIds.size'));
+  assert.ok(lifecycleSource.includes('isAiMusicPersistedShowtimeCertified'));
   assert.ok(lifecycleSource.includes('shouldCertifyAiMusicTrackForShowtimeByDefense'));
   assert.ok(lifecycleSource.includes('shouldRetireAiMusicTrackFromExplore'));
 });
@@ -25,7 +26,9 @@ test("Explore AI Music API filters retired works and challenge API blocks retire
   assert.ok(aiMusicTracksRouteSource.includes('ai_music_official_defense_successes'));
   assert.ok(aiMusicTracksRouteSource.includes('ai_music_showtime_defense_target'));
   assert.ok(aiMusicTracksRouteSource.includes('AI_MUSIC_SHOWTIME_DEFENSE_SUCCESS_TARGET'));
-  assert.ok(aiMusicTracksRouteSource.includes('.filter((row) => !row.ai_music_explore_retired)'));
+  assert.ok(aiMusicTracksRouteSource.includes('surface === "showtime"'));
+  assert.ok(aiMusicTracksRouteSource.includes('return row.ai_music_showtime_certified'));
+  assert.ok(aiMusicTracksRouteSource.includes('return !row.ai_music_showtime_certified && !row.ai_music_explore_retired'));
   assert.ok(aiMusicChallengeRouteSource.includes('buildAiMusicSurfaceLifecycleMap'));
   assert.ok(aiMusicChallengeRouteSource.includes('已進入 Showtime，入選後不再接受挑戰'));
   assert.ok(aiMusicChallengeRouteSource.includes('已累積 8 場正式敗績'));

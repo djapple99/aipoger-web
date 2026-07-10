@@ -165,7 +165,8 @@ Current rules:
 - Challenger has a 36-hour protection period, then becomes eligible to move into the same-genre public pool. The old 1-positive-reaction promotion gate is retired.
 - Public-pool elimination runs per genre only when that genre has more than 36 public songs and removes at most 3 low-reaction older songs per pass.
 - Each elimination pass removes only overflow inside overfull genre pools.
-- A song with 30 hearts/positive reactions or 7 public survival days after its genre pool is full becomes Honor Board eligible.
+- Public airplay support, comments, and retention can inform curation, but the public product must not promise `30 hearts`, `7 public days`, or `30 days` as current Showtime entry rules.
+- Once a song is persistently certified into Showtime, it leaves Bar Heartbreak public airplay and Explore challenge surfaces while retaining Hearts, favorites, records, and recognition history.
 - Pressing Heart on a Bar Heartbreak track also saves it to the listener's favorites. Each account can send one Heart per track per Taiwan day; re-pressing the same day must not duplicate or cancel it. Removing it from favorites in Profile does not remove the historical heart reaction.
 - Public music surfaces show total Heart count only. Do not display per-user lit/unlit favorite state or public favorite-user counts.
 - Explore AI Music and Bar Heartbreak must read and update the same `listen_bar_tracks` Heart totals for the same song; Explore must not create a separate favorite or Heart counter.
@@ -177,6 +178,8 @@ Current rules:
 ## AIPOGER Showtime Rules
 
 Showtime is not a numbered ranking. It is a certified works archive and public music catalog.
+
+Showtime entry is a persisted recognition state. The 2026-07-10 founder catalog migration is a one-time owner-confirmed batch, not a recurring public `30 days -> Showtime` rule, and public UI must not expose that internal criterion.
 
 Catalog structure:
 

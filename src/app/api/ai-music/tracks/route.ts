@@ -7,6 +7,7 @@ import {
 } from "@/lib/ai-music-challenge-rules";
 import { buildAiMusicSurfaceLifecycleMap, isAiMusicLifecycleSchemaMissing } from "@/lib/ai-music-surface-lifecycle";
 import { AI_MUSIC_HEAT_WINDOW_MS } from "@/lib/ai-music-heat";
+import { isAiMusicPersistedShowtimeCertified, AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS } from "@/lib/ai-music-showtime";
 import { isOfficialDropBattleResult } from "@/lib/drop-battle-rematch";
 import {
   LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
@@ -80,6 +81,7 @@ const MODERN_SELECT = [
   "ai_music_challenge_status",
   "ai_music_defender_drop_audio_path",
   "ai_music_defender_drop_prepared_at",
+  AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS,
 ].join(",");
 
 const LEGACY_SELECT = [
@@ -125,7 +127,7 @@ function adminClient(): AdminClient {
 
 function isMissingTrackColumn(error: { message?: string; details?: string; hint?: string; code?: string } | null | undefined) {
   const text = `${error?.message ?? ""} ${error?.details ?? ""} ${error?.hint ?? ""} ${error?.code ?? ""}`;
-  return /schema cache|column.*does not exist|PGRST204|ai_music_challenge|defender_drop|description|youtube_url/i.test(text);
+  return /schema cache|column.*does not exist|PGRST204|ai_music_challenge|defender_drop|ai_music_showtime|support_url|description|youtube_url/i.test(text);
 }
 
 function applyLegacyOpeningGrace(rows: ListenBarTrackRow[]): ListenBarTrackRow[] {
@@ -269,9 +271,11 @@ async function readRecentHeat(admin: AdminClient, trackIds: string[]) {
   return heatByTrackId;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const admin = adminClient();
+    const url = new URL(request.url);
+    const surface = url.searchParams.get("surface") === "showtime" ? "showtime" : "explore";
     const modern = await admin
       .from("listen_bar_tracks")
       .select(MODERN_SELECT)
@@ -308,10 +312,12 @@ export async function GET() {
       .map((row) => {
         const lifecycle = lifecycleByTrackId.get(row.id);
         const recentHeat = recentHeatByTrackId.get(row.id);
+        const persistedShowtimeCertified = isAiMusicPersistedShowtimeCertified(row);
+        const showtimeCertified = persistedShowtimeCertified || lifecycle?.isShowtimeCertified || false;
         return {
           ...row,
           ai_music_challenge_status: row.ai_music_challenge_status ?? "showcase",
-          ai_music_showtime_certified: lifecycle?.isShowtimeCertified ?? false,
+          ai_music_showtime_certified: showtimeCertified,
           ai_music_explore_retired: lifecycle?.retiredFromExplore ?? false,
           ai_music_official_challenge_count: lifecycle?.officialChallengeCount ?? 0,
           ai_music_official_defense_successes: lifecycle?.officialDefenseSuccesses ?? 0,
@@ -325,7 +331,10 @@ export async function GET() {
           ai_music_recent_interaction_at: recentHeat?.latestInteractionAt ?? null,
         };
       })
-      .filter((row) => !row.ai_music_explore_retired);
+      .filter((row) => {
+        if (surface === "showtime") return row.ai_music_showtime_certified;
+        return !row.ai_music_showtime_certified && !row.ai_music_explore_retired;
+      });
 
     return NextResponse.json({ tracks }, { headers: { "Cache-Control": "no-store, max-age=0" } });
   } catch (error) {

@@ -8,6 +8,8 @@
     "start": "next start",
     "test": "node --test --experimental-strip-types tests/*.test.mjs",
     "lint": "eslint .",
+    "showtime:founder-preview": "node scripts/showtime-founder-catalog-preview.mjs --write=docs/handoffs/showtime-founder-catalog-preview.json",
+    "showtime:founder-apply": "node scripts/showtime-founder-catalog-apply.mjs",
     "migrate:music-genres": "node scripts/migrate-music-genres.mjs",
     "subset:glow-sans": "node scripts/subset-glow-sans.mjs",
     "subset:glow-sans:battle": "node scripts/subset-glow-sans-battle.mjs"

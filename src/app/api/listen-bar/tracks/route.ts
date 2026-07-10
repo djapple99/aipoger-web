@@ -4,6 +4,7 @@ import {
   LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
   listenBarPromotionProtectionActive,
 } from "@/lib/listen-bar";
+import { AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS, isAiMusicPersistedShowtimeCertified } from "@/lib/ai-music-showtime";
 
 type ListenBarTrackRow = {
   id: string;
@@ -36,6 +37,10 @@ type ListenBarTrackRow = {
   created_at?: string | null;
   updated_at?: string | null;
   promoted_at?: string | null;
+  ai_music_showtime_certified?: boolean | null;
+  ai_music_showtime_public_removed_at?: string | null;
+  support_url?: string | null;
+  support_url_status?: string | null;
 };
 
 type ListenBarTracksDatabase = {
@@ -88,6 +93,7 @@ const MODERN_SELECT = [
   "created_at",
   "updated_at",
   "promoted_at",
+  AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS,
 ].join(",");
 
 const LEGACY_WITH_DESCRIPTION_SELECT = [
@@ -162,7 +168,7 @@ function isMissingColumnError(error: unknown): boolean {
         (error as { code?: string }).code,
       ].filter(Boolean).join(" ")
     : String(error ?? "");
-  return /schema cache|column.*does not exist|PGRST204|bar_phase|promoted_at|audio_sha256|description|youtube_url/i.test(text);
+  return /schema cache|column.*does not exist|PGRST204|bar_phase|promoted_at|audio_sha256|ai_music_showtime|support_url|description|youtube_url/i.test(text);
 }
 
 function applyLegacyOpeningGrace(rows: ListenBarTrackRow[]): ListenBarTrackRow[] {
@@ -206,6 +212,7 @@ function isPublicPlayableTrack(row: ListenBarTrackRow) {
     status !== "removed" &&
     !row.hidden_at &&
     !row.removed_at &&
+    !isAiMusicPersistedShowtimeCertified(row) &&
     Boolean(row.audio_path?.trim())
   );
 }

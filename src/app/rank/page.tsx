@@ -26,12 +26,10 @@ import { fontGlowSans, fontRighteous } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import {
-  LISTEN_BAR_GENRE_POOL_LIMIT,
-  listenBarIsHonorEligible,
   listenBarRowToTrack,
-  listenBarSurvivalStartedAt,
   type ListenBarTrackRow,
 } from "@/lib/listen-bar";
+import { canDisplayShowtimeSupportUrl, normalizeAiMusicShowtimeCertificationSource } from "@/lib/ai-music-showtime";
 import { DROP_BATTLE_OFFICIAL_AUDIENCE_MIN } from "@/lib/drop-battle-rematch";
 import { battleResultShortPath, isUuid } from "@/lib/share-short-links";
 import { supabase } from "@/lib/supabase";
@@ -65,6 +63,7 @@ type RankRow = {
   fullSongUrl?: string;
   fullSongLabel?: string;
   fullSongDurationSeconds?: number;
+  supportUrl?: string;
   lyrics?: string;
   songStats?: SongBattleStatsSnapshot | null;
   positiveReactions?: number;
@@ -74,6 +73,9 @@ type RankAiMusicTrackRow = ListenBarTrackRow & {
   ai_music_showtime_certified?: boolean | null;
   ai_music_official_defense_successes?: number | null;
   ai_music_showtime_defense_target?: number | null;
+  ai_music_showtime_certification_source?: string | null;
+  support_url?: string | null;
+  support_url_status?: string | null;
 };
 
 type LyricsModalState = {
@@ -551,27 +553,9 @@ function hotBarRowsFromTracks(tracks: RankAiMusicTrackRow[]) {
     .map((row) => ({ row, track: listenBarRowToTrack(row) }))
     .filter((item): item is { row: RankAiMusicTrackRow; track: NonNullable<ReturnType<typeof listenBarRowToTrack>> } => Boolean(item.track))
     .filter(({ track }) => track.source !== "official");
-  const survivalStartedAtByGenre = new Map(
-    MUSIC_GENRE_OPTIONS.map((genre) => [
-      genre.value,
-      listenBarSurvivalStartedAt(communityTracks.map(({ row, track }) => ({
-        barPhase: track.barPhase,
-        genre: track.genre,
-        promotedAt: row.promoted_at ?? track.promotedAt,
-        createdAt: track.createdAt,
-      })), LISTEN_BAR_GENRE_POOL_LIMIT, genre.value),
-    ]),
-  );
 
   return communityTracks
-    .filter(({ row, track }) => {
-      const showtimeCertified = Boolean((row as RankAiMusicTrackRow).ai_music_showtime_certified);
-      return showtimeCertified || listenBarIsHonorEligible({
-        positiveReactionCount: track.positiveReactionCount,
-        promotedAt: row.promoted_at ?? track.promotedAt,
-        createdAt: track.createdAt,
-      }, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null);
-    })
+    .filter(({ row }) => Boolean((row as RankAiMusicTrackRow).ai_music_showtime_certified))
     .sort((a, b) => {
       const byReaction = (b.track.positiveReactionCount || 0) - (a.track.positiveReactionCount || 0);
       if (byReaction !== 0) return byReaction;
@@ -582,7 +566,8 @@ function hotBarRowsFromTracks(tracks: RankAiMusicTrackRow[]) {
       const showtimeCertified = Boolean(aiMusicRow.ai_music_showtime_certified);
       const defenseSuccesses = Math.max(0, Math.round(Number(aiMusicRow.ai_music_official_defense_successes ?? 0)));
       const defenseTarget = Math.max(1, Math.round(Number(aiMusicRow.ai_music_showtime_defense_target ?? 6)));
-      const certifiedByDefense = showtimeCertified && defenseSuccesses >= defenseTarget;
+      const source = normalizeAiMusicShowtimeCertificationSource(aiMusicRow.ai_music_showtime_certification_source);
+      const certifiedByDefense = showtimeCertified && (source === "defense" || defenseSuccesses >= defenseTarget);
       return {
         id: `bar-${track.id}`,
         kind: "bar",
@@ -598,6 +583,7 @@ function hotBarRowsFromTracks(tracks: RankAiMusicTrackRow[]) {
         aiTool: track.tool || "AI Music",
         createdAt: track.createdAt || new Date().toISOString(),
         audioUrl: track.audioUrl,
+        supportUrl: canDisplayShowtimeSupportUrl(aiMusicRow) ? aiMusicRow.support_url?.trim() : undefined,
         lyrics: cleanLyrics(track.lyrics) || undefined,
         positiveReactions: Math.max(0, Math.round(track.positiveReactionCount || 0)),
       };
@@ -614,7 +600,7 @@ async function fetchBattleArchivesForRank() {
 
 async function fetchAiMusicTracksForRank(lang: string): Promise<{ data: RankAiMusicTrackRow[]; error: Error | null }> {
   try {
-    const response = await fetch(`/api/ai-music/tracks?lang=${encodeURIComponent(lang)}`, {
+    const response = await fetch(`/api/ai-music/tracks?surface=showtime&lang=${encodeURIComponent(lang)}`, {
       cache: "no-store",
     });
     const payload = (await response.json().catch(() => null)) as { tracks?: RankAiMusicTrackRow[]; error?: string } | null;
@@ -1601,6 +1587,16 @@ export default function RankPage() {
                                       <span className="rounded-full border border-cyan-200/20 bg-cyan-300/10 px-2 py-1 text-[10px] font-black text-cyan-100">
                                         {displayText(row.aiTool, isZh ? "未封存工具" : "Tool Missing")}
                                       </span>
+                                      {row.supportUrl ? (
+                                        <a
+                                          href={row.supportUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className={`inline-flex items-center justify-center rounded-full border px-2.5 py-1.5 text-[11px] font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-200/70 ${HONOR_ACTION_CLASS}`}
+                                        >
+                                          {isZh ? "支持創作者" : "Support Creator"}
+                                        </a>
+                                      ) : null}
                                       <LyricsAction row={row} isZh={isZh} onOpen={openLyricsModal} />
                                     </div>
                                     <p className="mt-2 truncate text-xs font-bold text-zinc-500">

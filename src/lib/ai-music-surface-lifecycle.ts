@@ -5,13 +5,8 @@ import {
   shouldRetireAiMusicTrackFromExplore,
 } from "@/lib/ai-music-challenge-rules";
 import { isOfficialDropBattleResult } from "@/lib/drop-battle-rematch";
-import { listenBarRowToTrack, type ListenBarTrackRow } from "@/lib/listen-bar";
-import {
-  LISTEN_BAR_GENRE_POOL_LIMIT,
-  listenBarIsHonorEligible,
-  listenBarSurvivalStartedAt,
-} from "@/lib/listen-bar-rules";
-import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
+import type { ListenBarTrackRow } from "@/lib/listen-bar";
+import { isAiMusicPersistedShowtimeCertified } from "@/lib/ai-music-showtime";
 
 type AdminClient = SupabaseClient;
 
@@ -74,39 +69,6 @@ function numberField(value: unknown) {
 function audienceCountFromArchive(row: ArchiveRow) {
   const payload = row.result_payload && typeof row.result_payload === "object" ? row.result_payload : {};
   return numberField(payload.audienceCount ?? payload.audience_count ?? row.total_votes);
-}
-
-function showtimeTrackIdsFromListenBarRows(rows: ListenBarTrackRow[]) {
-  const communityTracks = rows
-    .map((row) => ({ row, track: listenBarRowToTrack(row) }))
-    .filter((item): item is { row: ListenBarTrackRow; track: NonNullable<ReturnType<typeof listenBarRowToTrack>> } => {
-      return Boolean(item.track && item.track.source !== "official");
-    });
-
-  const survivalInput = communityTracks.map(({ row, track }) => ({
-    barPhase: track.barPhase,
-    genre: track.genre,
-    promotedAt: row.promoted_at ?? track.promotedAt,
-    createdAt: track.createdAt,
-  }));
-  const survivalStartedAtByGenre = new Map(
-    MUSIC_GENRE_OPTIONS.map((genre) => [
-      genre.value,
-      listenBarSurvivalStartedAt(survivalInput, LISTEN_BAR_GENRE_POOL_LIMIT, genre.value),
-    ]),
-  );
-
-  const ids = new Set<string>();
-  for (const { row, track } of communityTracks) {
-    if (listenBarIsHonorEligible({
-      positiveReactionCount: track.positiveReactionCount,
-      promotedAt: row.promoted_at ?? track.promotedAt,
-      createdAt: track.createdAt,
-    }, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null)) {
-      ids.add(track.id);
-    }
-  }
-  return ids;
 }
 
 export async function readAiMusicOfficialChallengeStats(admin: AdminClient, trackIds: string[]) {
@@ -202,15 +164,14 @@ export async function readAiMusicOfficialChallengeStats(admin: AdminClient, trac
 export async function buildAiMusicSurfaceLifecycleMap(admin: AdminClient, rows: ListenBarTrackRow[]) {
   const trackIds = rows.map((row) => row.id).filter(Boolean);
   const challengeStats = await readAiMusicOfficialChallengeStats(admin, trackIds);
-  const showtimeIds = showtimeTrackIdsFromListenBarRows(rows);
 
   const lifecycleByTrackId = new Map<string, AiMusicSurfaceLifecycleStats>();
   for (const row of rows) {
     const stats = challengeStats.get(row.id) ?? cloneEmptyStats();
-    const isShowtimeCertifiedByPublicPool = showtimeIds.has(row.id);
-    stats.isShowtimeCertified = isShowtimeCertifiedByPublicPool || shouldCertifyAiMusicTrackForShowtimeByDefense({
+    const persistedShowtimeCertified = isAiMusicPersistedShowtimeCertified(row);
+    stats.isShowtimeCertified = persistedShowtimeCertified || shouldCertifyAiMusicTrackForShowtimeByDefense({
       officialDefenseSuccesses: stats.officialDefenseSuccesses,
-      isShowtimeCertified: isShowtimeCertifiedByPublicPool,
+      isShowtimeCertified: persistedShowtimeCertified,
     });
     stats.retiredFromExplore = shouldRetireAiMusicTrackFromExplore({
       officialLosses: stats.officialLosses,
