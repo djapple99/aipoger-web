@@ -330,17 +330,18 @@ Showtime is the certified archive, not a challenge surface:
 - Showtime records are not removed by later battle losses.
 - Showtime works do not follow the 8-official-loss Explore retirement rule.
 
-Current board sections:
+Showtime display is a single certified-works catalog:
 
-- `熱血 Drop 抓波勝利榜`: shows Drop Battle winners.
-- `24H Full Song 勝利榜`: shows 24H Full Song winners.
-- `傷心酒吧熱播榜`: shows Bar Heartbreak hot tracks.
+- Do not split the front stage into Drop victory boards, Bar Heartbreak heat boards, 24H boards, or source tabs.
+- Official Drop Battle archive records, Explore defense-certified works, and Bar Heartbreak airplay-certified works all appear in the same playable catalog.
+- Month, style, and search filters may remain for browsing, but they are catalog controls, not separate ranking boards.
+- Recognition source belongs inside the individual song introduction, using labels such as `正式 Battle 認證`, `探索守擂認證`, or `傷心酒吧公播認證`.
+- Do not show duplicate Featured/Top sections above the same catalog results.
+- `AIPOGER Choice` remains as a slim curation direction anchor after the catalog for `/today` compatibility and human DJ/operation picks. It must not be presented as another chart, an automated weekly winner, or a large top panel.
 
 Display principles:
 
-- Do not present these boards as first/second/third-place rankings.
-- Use honor/record language: victory, archive, hot track, public response.
-- Card badges can say `WIN`, `24H`, or `HOT`.
+- Use catalog/recognition language, not ranking-board language.
 - Do not show mock records as real Showtime content.
 - Showtime cards may expose a `歌詞` / `LYRICS` action when the archived or source track has lyrics.
 - Drop Battle Showtime cards may expose `Full Song` only when the winning creator explicitly enabled complete-song public playback. Otherwise they should show or play only the archived Drop clip.
@@ -350,7 +351,7 @@ Display principles:
 
 AIPOGER Choice Weekly:
 
-- AIPOGER Choice Weekly is a weekly curation direction that grows from Showtime records, Bar Heartbreak heat, favorites, and comments.
+- AIPOGER Choice Weekly is a human curation direction that grows from Showtime certified works and later DJ/operation picks.
 - It is not a separate ranking chart and should not be presented as a fully automated weekly winner until the data workflow exists.
 - The current front-stage implementation may provide a homepage entry that jumps to the `#choice-weekly` direction block on `/rank`.
 - Choice Weekly can later feed social drafts, DJ selection, and weekly recommendation copy.

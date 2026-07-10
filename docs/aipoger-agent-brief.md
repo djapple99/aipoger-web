@@ -174,20 +174,21 @@ Current rules:
 - AIPOGER Choice is the only human curation direction: 5-10 cross-genre works each week, no ranking and no automated weekly winner claim.
 - `/admin/social` remains the sole draft, approval, and manual publishing console. Discord can publish through webhook only after approval and the explicit platform publish action.
 
-## Honor Board Rules
+## AIPOGER Showtime Rules
 
-The Honor Board is not a numbered ranking. It is a record archive.
+Showtime is not a numbered ranking. It is a certified works archive and public music catalog.
 
-Sections:
+Catalog structure:
 
-- `熱血 Drop 抓波勝利榜`
-- `24H Full Song 勝利榜`
-- `傷心酒吧熱播榜`
+- One unified catalog of certified works.
+- No separate Drop victory, 24H, Bar heat, or source-tab boards.
+- Official Battle archive records, Explore defense-certified works, and Bar Heartbreak airplay-certified works appear together.
+- Recognition source is shown inside the song card intro: `正式 Battle 認證`, `探索守擂認證`, or `傷心酒吧公播認證`.
+- `AIPOGER Choice` is a slim curation anchor after the catalog, not another chart.
 
 Display principles:
 
-- Use honor, record, victory, archive, hot track, and public response language.
-- Use badges like `WIN`, `24H`, and `HOT`.
+- Use catalog and recognition language.
 - Do not show mock/demo records as real content.
 - Cards may show lyrics when provided.
 - If lyrics exist, show them in a readable modal.

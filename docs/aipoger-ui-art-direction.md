@@ -190,23 +190,24 @@ Copy direction:
 
 Role:
 
-- Real records of victory and heat.
+- Certified works catalog.
 - No fake content.
 - No numbered placement language.
 - Front-stage name is `AIPOGER Showtime`; old `Honor Board` wording is legacy/internal context, not the main public name.
 - `AIPOGER Choice Weekly` is a curation direction from Showtime records, not a separate ranking chart.
 
-Current sections:
+Current layout:
 
-- `熱血 Drop 抓波勝利榜`
-- `24H Full Song 勝利榜`
-- `傷心酒吧熱播榜`
+- One unified catalog of certified songs.
+- No Drop victory / Bar heat source tabs.
+- No duplicate Featured row above the same results.
+- Recognition source appears in each song card intro, for example `正式 Battle 認證`, `探索守擂認證`, or `傷心酒吧公播認證`.
+- `AIPOGER Choice` sits after the catalog as a slim curation note and legacy anchor.
 
 UI direction:
 
-- Use `WIN`, `24H`, `HOT` badges rather than numeric rank badges.
-- Present records as honor cards.
-- The page should feel prestigious, not like a top-10 chart.
+- Present records as playable music cards, not board tiles.
+- The page should feel like a certified music shelf, not a top-10 chart or presentation slide.
 
 ## Account And Login
 

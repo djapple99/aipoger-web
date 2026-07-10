@@ -76,7 +76,7 @@ Check:
 - Waiting room opens correctly.
 - 0-2 distinct audience voters becomes audience-insufficient / no contest and does not create a result card, Showtime archive, song battle stats, battle history, or rematch window.
 - 3+ distinct audience voters creates an official result that can be archived.
-- AIPOGER Showtime reads Drop winners as `熱血 Drop 抓波勝利榜`.
+- AIPOGER Showtime reads Drop winners as `正式 Battle 認證` rows inside the unified certified-works catalog.
 
 ## Explore AI Music Challenge Checklist
 
@@ -124,7 +124,7 @@ Check:
 - Live 24H share links use `/h/{shortId}`.
 - Voting requires login.
 - Finished 24H battle records winner when not tied.
-- AIPOGER Showtime reads 24H winners as `24H Full Song 勝利榜`.
+- 24H winners, if surfaced from legacy records, must appear as certified works in the unified Showtime catalog rather than a separate 24H board.
 
 When the 10 active limit is implemented, also check:
 
@@ -221,15 +221,12 @@ Check:
 - Main title says `AIPOGER Showtime`.
 - Header copy says Showtime is a certified works archive and that certified works no longer accept challenges.
 - Homepage exposes an `AIPOGER Choice Weekly` entry that lands on `/rank?lang=zh#choice-weekly`.
-- Showtime includes a Choice Weekly direction block without claiming a complete weekly automation workflow.
-- Sections are:
-  - `熱血 Drop 抓波勝利榜`
-  - `24H Full Song 勝利榜`
-  - `傷心酒吧熱播榜`
+- Showtime includes a slim `AIPOGER Choice` direction anchor after the catalog without claiming a complete weekly automation workflow.
+- Showtime is one unified certified-works catalog, not separate Drop victory / Bar heat / 24H boards or source tabs.
+- Song cards include the recognition source in the song intro, such as `正式 Battle 認證`, `探索守擂認證`, or `傷心酒吧公播認證`.
 - Cards do not show numeric rank badges.
 - Drop cards use victory/result language.
-- 24H cards use Full Song victory language.
-- Bar Heartbreak cards use hot/response language.
+- Bar Heartbreak and Explore-certified cards use catalog/recognition language, not heat-board language.
 - Empty state does not use mock/demo records.
 - Cards with lyrics show a `歌詞` / `LYRICS` action that opens a readable modal.
 - Cards without lyrics show `歌詞未提供` / `No Lyrics`.
