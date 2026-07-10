@@ -329,8 +329,8 @@ Showtime is the certified archive, not a challenge surface:
 - Works in Showtime no longer accept Explore direct challenges.
 - Showtime records are not removed by later battle losses.
 - Showtime works do not follow the 8-official-loss Explore retirement rule.
-- Showtime status is a persisted recognition state. Do not dynamically promote public Bar Heartbreak songs into Showtime only because they reach old Heart/day thresholds.
-- The 2026-07-10 founder catalog migration is a one-time owner-confirmed batch, not a public or recurring `30 days -> Showtime` rule. The public UI must not expose `30 days`, `early creator reward`, `batch migration`, or similar internal criteria.
+- Showtime status is a persisted recognition state. Do not dynamically promote public Bar Heartbreak songs into Showtime only because they reach old Heart thresholds.
+- The 2026-07-10 founder catalog migration is a one-time owner-confirmed batch: eligible public community works with `public_time <= now() - 30 days` are migrated into Showtime, including works exactly 30 days old. This is not a public or recurring `30 days -> Showtime` promise. The public UI must not expose `30 days`, `early creator reward`, `batch migration`, or similar internal criteria.
 - Creator-facing Showtime management may edit only public display metadata and approved external support URLs for the creator's own Showtime work. It must not edit audio, recognition source, battle stats, votes, wins/losses, Showtime status/time, or reopen Explore challenges.
 - `support_url` must be an external HTTPS URL and must not introduce AIPOGER payment handling, money amounts, wallets, refunds, revenue sharing, or direct checkout flows. Public cards display it only when the existing support URL review state allows display.
 

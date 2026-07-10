@@ -49,29 +49,35 @@ async function main() {
   const demoIds = splitIds(argValue("demo-ids"));
   const candidateIds = splitIds(argValue("candidate-ids"));
   if (!confirmed) throw new Error("Missing --confirm=showtime-founder-catalog-2026-07-10");
-  if (demoIds.length !== 2 || !demoIds.every(isUuid)) throw new Error("Exactly two confirmed demo UUIDs are required.");
+  if (demoIds.length > 0 && (demoIds.length !== 2 || !demoIds.every(isUuid))) {
+    throw new Error("If demo IDs are provided, exactly two confirmed demo UUIDs are required.");
+  }
   if (candidateIds.length === 0 || !candidateIds.every(isUuid)) throw new Error("Explicit founder catalog candidate UUIDs are required.");
 
   const admin = adminClient();
   const now = new Date().toISOString();
-  const { data: demoRows, error: demoReadError } = await admin
-    .from("listen_bar_tracks")
-    .select("id,title,artist,created_by,review_status,removed_at")
-    .in("id", demoIds);
-  if (demoReadError) throw demoReadError;
-  if ((demoRows ?? []).length !== 2) throw new Error("Confirmed demo IDs did not resolve to exactly two rows.");
+  let softDeletedDemoCount = 0;
+  if (demoIds.length === 2) {
+    const { data: demoRows, error: demoReadError } = await admin
+      .from("listen_bar_tracks")
+      .select("id,title,artist,created_by,review_status,removed_at")
+      .in("id", demoIds);
+    if (demoReadError) throw demoReadError;
+    if ((demoRows ?? []).length !== 2) throw new Error("Confirmed demo IDs did not resolve to exactly two rows.");
 
-  const { error: demoError } = await admin
-    .from("listen_bar_tracks")
-    .update({
-      is_active: false,
-      review_status: "removed",
-      removed_at: now,
-      moderation_note: "Admin soft-deleted confirmed founder catalog demo track.",
-      updated_at: now,
-    })
-    .in("id", demoIds);
-  if (demoError) throw demoError;
+    const { error: demoError } = await admin
+      .from("listen_bar_tracks")
+      .update({
+        is_active: false,
+        review_status: "removed",
+        removed_at: now,
+        moderation_note: "Admin soft-deleted confirmed founder catalog demo track.",
+        updated_at: now,
+      })
+      .in("id", demoIds);
+    if (demoError) throw demoError;
+    softDeletedDemoCount = demoIds.length;
+  }
 
   const { error: showtimeError } = await admin
     .from("listen_bar_tracks")
@@ -94,7 +100,7 @@ async function main() {
   console.log(JSON.stringify({
     ok: true,
     applied_at: now,
-    soft_deleted_demo_count: demoIds.length,
+    soft_deleted_demo_count: softDeletedDemoCount,
     requested_showtime_candidate_count: candidateIds.length,
   }, null, 2));
 }

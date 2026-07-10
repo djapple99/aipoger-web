@@ -2,7 +2,7 @@
 
 ## Decision
 
-Showtime founder catalog intake is a persisted certification path, not a new public automatic rule. The app must not promise `30 hearts`, `7 public days`, or `30 days` as current Showtime entry rules.
+Showtime founder catalog intake is a persisted certification path, not a new public automatic rule. For the 2026-07-10 owner-confirmed founder batch, eligible public community works with `public_time <= now() - 30 days` move into Showtime, including exactly-30-day works. The app still must not promise `30 hearts`, `7 public days`, or `30 days` as public Showtime-entry rules.
 
 ## Implementation
 
@@ -28,7 +28,7 @@ Read-only preview ran on 2026-07-10 and wrote `docs/handoffs/showtime-founder-ca
 - Exclusions: `140`.
 - `write_safe=false`.
 
-Because the two demo tracks were not identified unambiguously, the spec requires stopping at preview. No production soft delete and no founder batch Showtime write was performed.
+Because the two demo tracks were not identified unambiguously at that point, the first run stopped at preview. No production soft delete and no founder batch Showtime write was performed in that run.
 
 2026-07-10 update: the additive `listen_bar_tracks` Showtime migration was applied to Supabase production and verified by `information_schema`.
 
@@ -39,9 +39,12 @@ The two demo Battle archive cards were later confirmed by the owner from the liv
 
 Supabase production now also has `battle_result_archives.showtime_public_removed_at`, `showtime_public_removed_by`, `showtime_public_removal_note`, and `showtime_updated_at` from `supabase/20260710_showtime_archive_public_removal.sql`. Public Showtime catalog reads must keep filtering `showtime_public_removed_at is null`.
 
+2026-07-10 30-day check and apply: production read-only preview confirmed `45` eligible public community works at or older than the 30-day cutoff. The youngest eligible work was already `31.63` days old, so no current production row was exactly on the 30.00-day boundary, but the preview/apply condition remains inclusive (`public_time <= cutoff`). The owner then confirmed that at-or-over-30-day works should move to Showtime, and the `45` candidates were written to production with `ai_music_showtime_certified=true` and `ai_music_showtime_certification_source='founder_catalog'` at `2026-07-10T10:37:03.399Z`.
+
 ## Verification
 
 - Unit tests cover persisted Showtime surface split, old flow blocking, creator Showtime metadata limits, guarded preview/apply path, and removal of public Heart/day eligibility promises.
 - Unit tests cover Battle archive Showtime soft removals so hidden archive records keep their history but leave the public catalog.
+- Unit tests cover the inclusive 30-day founder catalog cutoff and optional demo soft-delete guard.
 - TypeScript casts are intentionally local to Supabase select result boundaries because shared select-field strings are not parseable by the generated Supabase type parser.
 - Do not infer demo songs by fuzzy title matching. Any future public-removal operation should use exact owner-confirmed IDs or battle codes.

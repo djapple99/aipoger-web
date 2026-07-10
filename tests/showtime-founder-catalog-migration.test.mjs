@@ -28,7 +28,9 @@ test("founder catalog uses persisted Showtime state instead of old dynamic Heart
   assert.equal(lifecycleSource.includes("showtimeTrackIdsFromListenBarRows"), false);
   assert.equal(lifecycleSource.includes("listenBarIsHonorEligible"), false);
   assert.ok(productRulesSource.includes("persisted recognition state"));
-  assert.ok(productRulesSource.includes("not a public or recurring `30 days -> Showtime` rule"));
+  assert.ok(productRulesSource.includes("public_time <= now() - 30 days"));
+  assert.ok(productRulesSource.includes("including works exactly 30 days old"));
+  assert.ok(productRulesSource.includes("not a public or recurring `30 days -> Showtime` promise"));
 });
 
 test("Explore, Bar Heartbreak, and Showtime APIs split certified works by surface", () => {
@@ -63,8 +65,11 @@ test("founder catalog production write path is guarded by read-only preview and 
   assert.ok(previewScriptSource.includes("write_safe: false"));
   assert.ok(previewScriptSource.includes("ambiguous_or_not_exactly_two_do_not_apply"));
   assert.ok(previewScriptSource.includes("demo_candidate_needs_owner_confirmation"));
+  assert.ok(previewScriptSource.includes("surfacedMs > cutoffMs"));
+  assert.ok(previewScriptSource.includes("public_less_than_30_days"));
   assert.ok(applyScriptSource.includes("--confirm=showtime-founder-catalog-2026-07-10"));
-  assert.ok(applyScriptSource.includes("Exactly two confirmed demo UUIDs are required"));
+  assert.ok(applyScriptSource.includes("If demo IDs are provided, exactly two confirmed demo UUIDs are required."));
+  assert.ok(applyScriptSource.includes("let softDeletedDemoCount = 0"));
   assert.ok(applyScriptSource.includes("Explicit founder catalog candidate UUIDs are required"));
 });
 
