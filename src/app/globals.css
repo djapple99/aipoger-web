@@ -916,18 +916,24 @@ a {
 
   .battle-pool-star-cta {
     position: absolute;
-    right: -1.25rem;
+    right: 0.35rem;
     top: 50%;
     z-index: 3;
     display: block;
-    width: 14.4rem;
-    height: 14.4rem;
+    width: 9rem;
+    height: 9rem;
     transform: translateY(-50%);
     cursor: pointer;
     isolation: isolate;
     filter:
       drop-shadow(0 18px 20px rgba(0, 0, 0, 0.48))
       drop-shadow(0 0 18px rgba(255, 171, 20, 0.28));
+  }
+
+  .battle-pool-head {
+    min-height: 8.5rem;
+    overflow: hidden;
+    padding-right: 10rem;
   }
 
   .battle-pool-star-cta:hover {

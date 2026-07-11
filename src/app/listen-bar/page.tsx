@@ -2401,12 +2401,18 @@ export default function ListenBarPage() {
               <span className="pointer-events-none absolute inset-y-0 left-0 z-10 hidden w-10 bg-gradient-to-r from-black via-black/80 to-transparent sm:block" />
               <span className="pointer-events-none absolute inset-y-0 right-0 z-10 hidden w-10 bg-gradient-to-l from-black via-black/80 to-transparent sm:block" />
               <span
-                className={`aipo-marquee-track text-left text-sm font-black leading-6 tracking-[0.08em] transition-colors group-hover:text-white ${
+                className={`${battleTickerMessages.length > 0 ? "aipo-marquee-track text-left" : "w-full text-center"} text-sm font-black leading-6 tracking-[0.08em] transition-colors group-hover:text-white ${
                   battleTickerMessages.length > 0 ? "text-red-300" : "text-cyan-100/78"
                 }`}
               >
-                <span className="pr-12">{battleTickerText}</span>
-                <span className="pr-12" aria-hidden="true">{battleTickerText}</span>
+                {battleTickerMessages.length > 0 ? (
+                  <>
+                    <span className="pr-12">{battleTickerText}</span>
+                    <span className="pr-12" aria-hidden="true">{battleTickerText}</span>
+                  </>
+                ) : (
+                  <span>{battleTickerText}</span>
+                )}
               </span>
             </Link>
           </div>

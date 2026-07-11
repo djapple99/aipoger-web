@@ -215,6 +215,8 @@ export default function GlobalBattleCallOverlay() {
   const [expiredNoticeCollapsed, setExpiredNoticeCollapsed] = useState(false);
   const [accountAvatarUrl, setAccountAvatarUrl] = useState<string | null>(null);
   const [accountInitial, setAccountInitial] = useState("A");
+  const [accountUserId, setAccountUserId] = useState<string | null>(isAuthBypassEnabled ? "auth-bypass" : null);
+  const [accountSessionResolved, setAccountSessionResolved] = useState(isAuthBypassEnabled);
   const [unreadAccountNoticeCount, setUnreadAccountNoticeCount] = useState(0);
 
   const routeTone = useMemo(() => {
@@ -226,9 +228,7 @@ export default function GlobalBattleCallOverlay() {
     return "default";
   }, [pathname]);
   const isListenBarPage = pathname === "/listen-bar";
-  const accountDockClassName = isListenBarPage
-    ? "fixed right-4 top-44 z-[92] flex flex-col items-center gap-2 sm:right-5"
-    : "fixed right-4 top-20 z-[92] flex items-center gap-2 sm:right-5";
+  const accountDockClassName = "fixed right-24 top-4 z-[92] flex items-center gap-2";
   const accountNoticePanelClassName = isListenBarPage
     ? "fixed right-4 top-44 z-[92] w-[min(calc(100vw-2rem),340px)] sm:right-5"
     : "fixed right-4 top-24 z-[92] w-[min(calc(100vw-2rem),340px)] sm:right-5";
@@ -351,7 +351,10 @@ export default function GlobalBattleCallOverlay() {
         data: { session },
       } = await supabase.auth.getSession();
       const uid = session?.user?.id;
-      if (!mounted || !uid) return;
+      if (!mounted) return;
+      setAccountUserId(uid ?? null);
+      setAccountSessionResolved(true);
+      if (!uid) return;
       setAccessToken(session?.access_token ?? "");
       setAccountInitial((session?.user?.email ?? session?.user?.user_metadata?.full_name ?? "A").slice(0, 1).toUpperCase());
 
@@ -586,6 +589,23 @@ export default function GlobalBattleCallOverlay() {
     unreadCount?: number;
     onBellClick?: () => void;
   }) => {
+    if (!accountSessionResolved) return null;
+    if (!accountUserId) {
+      if (pathname === "/" || pathname === "/auth") return null;
+      const nextPath = `${pathname || "/"}?lang=${lang}`;
+      return (
+        <div className={accountDockClassName}>
+          <Link
+            href={`/auth?next=${encodeURIComponent(nextPath)}`}
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-cyan-200/25 bg-black/82 px-4 text-sm font-black text-cyan-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_24px_rgba(0,203,255,0.1)] backdrop-blur-xl transition hover:border-cyan-100 hover:text-white"
+            aria-label={isZh ? "登入 AIPOGER" : "Sign in to AIPOGER"}
+          >
+            {isZh ? "登入" : "Sign in"}
+          </Link>
+        </div>
+      );
+    }
+
     const avatarClassName = `relative flex h-12 w-12 items-center justify-center overflow-visible rounded-full border bg-black/82 text-sm font-black shadow-[0_18px_58px_rgba(0,0,0,0.45)] backdrop-blur-xl transition ${
       hasNotice
         ? urgent

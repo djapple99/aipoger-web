@@ -279,6 +279,17 @@ Look for:
 - Buttons too small to tap.
 - Horizontally overflowing content.
 - Audio controls crowding layout.
+- Fixed home, language, and account controls do not cover page kickers or headings.
+- Logged-out visitors see a sign-in action rather than a profile avatar with an empty notification bell; `/profile` returns them to sign-in and preserves the Profile return path.
+
+## Smoothness Checklist
+
+Check:
+
+- The desktop Battle Pool start-challenge artwork stays inside its header and does not cover genre filters or challenge cards.
+- Bar Heartbreak shows one static Explore hint when there are no live Battle messages; duplicated marquee content is reserved for an active scrolling ticker.
+- Legacy `/watch?lang=<lang>` keeps the supported language when it redirects to `/battle`.
+- Music analysis cold starts return a non-error warming response while Render wakes; an actual upstream failure still returns a service error.
 
 ## Documentation Checklist
 

@@ -13,6 +13,7 @@ import { loadFighterNameFromProfile, saveFighterNameToProfile } from "@/lib/user
 import { loadIsAdmin } from "@/lib/user-profile-admin";
 import { LISTEN_BAR_AUDIO_BUCKET } from "@/lib/listen-bar";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
+import { rememberAuthNextPath } from "@/lib/auth-urls";
 import {
   aiMusicChallengeStatusLabel,
   hasPreparedAiMusicDefenderDrop,
@@ -648,8 +649,10 @@ function ProfileInner() {
     } = await supabase.auth.getSession();
     if (!session?.user) {
       setUserId(null);
-      setProfileLoading(false);
       setCreatorLoading(false);
+      const nextPath = `/profile?lang=${lang}`;
+      rememberAuthNextPath(nextPath);
+      router.replace(`/auth?next=${encodeURIComponent(nextPath)}`);
       return;
     }
     const uid = session.user.id;
@@ -680,7 +683,7 @@ function ProfileInner() {
     );
     setProfileLoading(false);
     void loadCreatorData(uid, session.access_token);
-  }, [loadCreatorData, searchParams]);
+  }, [lang, loadCreatorData, router, searchParams]);
 
   useEffect(() => {
     void loadProfile();
@@ -1495,7 +1498,7 @@ function ProfileInner() {
   const creatorEmptyText = creatorFilter === "favorites" ? copy.favoriteEmpty : copy.empty;
 
   return (
-    <div className="aipo-stage-bg min-h-screen px-4 py-10 text-white">
+    <div className="aipo-stage-bg min-h-screen px-4 pb-10 pt-24 text-white sm:py-10">
       <div className="relative z-10 mx-auto w-full max-w-6xl space-y-6">
         <header className="max-w-3xl">
           <p className="aipo-section-kicker">{copy.kicker}</p>

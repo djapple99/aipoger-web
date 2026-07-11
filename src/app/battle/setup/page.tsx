@@ -1502,7 +1502,7 @@ export default function BattleSetupPage() {
     }
 
     return (
-      <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#050505] p-6 text-white">
+      <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#050505] px-6 pb-6 pt-24 text-white md:p-6">
         <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_20%_18%,rgba(255,106,0,0.24),transparent_32%),radial-gradient(circle_at_84%_24%,rgba(0,203,255,0.16),transparent_30%),linear-gradient(180deg,#050505,#0b0908)]" />
         <div className="pointer-events-none absolute inset-0 opacity-[0.12] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:52px_52px]" />
         <div className="relative z-10 w-full max-w-4xl space-y-7">
