@@ -391,6 +391,12 @@ Operating guidance:
 - Keep duplicate-file checks active for Battle and 24H surfaces.
 - Consider cleanup policies for cancelled, expired, or orphaned uploaded files before public scale.
 
+Mobile playback guidance:
+
+- Bar Heartbreak exposes an in-page volume slider on mobile and desktop.
+- Do not treat a changing percentage label as proof that mobile volume works. Some mobile browsers lock `HTMLMediaElement.volume`; after a user gesture, Bar Heartbreak must fall back to a Web Audio gain node while keeping normal native volume on browsers that support it.
+- If the browser suspends the Web Audio context, the explicit resume-playback action must resume both the media element and the gain context. If neither native volume nor gain control is available, show a concise system-volume fallback instead of silently presenting a nonfunctional slider.
+
 ## Image Upload Moderation
 
 Current behavior target:

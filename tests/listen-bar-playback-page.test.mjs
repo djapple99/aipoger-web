@@ -27,6 +27,15 @@ test("listen bar repeats a one-track genre after the song ends", () => {
   assert.ok(listenBarPageSource.includes("void audio.play()"));
 });
 
+test("listen bar volume falls back to Web Audio gain when mobile media volume is locked", () => {
+  assert.ok(listenBarPageSource.includes("setNativeMediaVolume(audio, normalizedVolume)"));
+  assert.ok(listenBarPageSource.includes("createMediaElementSource(audio)"));
+  assert.ok(listenBarPageSource.includes("audioContext.createGain()"));
+  assert.ok(listenBarPageSource.includes("void ensureRadioVolumeControl()"));
+  assert.ok(listenBarPageSource.includes('audioContext?.state === "suspended"'));
+  assert.ok(listenBarPageSource.includes('crossOrigin="anonymous"'));
+});
+
 test("listen bar upload form previews the selected genre destination", () => {
   assert.ok(listenBarPageSource.includes("送出後直接進公播"));
   assert.ok(listenBarPageSource.includes("送出後進 Challenger"));

@@ -158,6 +158,7 @@
 - 每日推薦歌 / Daily Spotlight 已退役：不再是傷心酒吧、Explore、`/admin/listen-bar` 或社群發布工作流，也不建立新的單曲 Spotlight 替代品。`/today` 只保留歷史連結相容並固定導向 `/rank?lang=<lang>#choice-weekly`；`/listen-bar?spotlight=...` 必須正常開啟一般公播。`AIPOGER Choice` 是唯一人為策展方向，每週 5-10 首、不排名、可跨類型；`/admin/social` 是唯一社群草稿、批准與手動發布中控台。
 - 傷心酒吧首屏右上角不要堆主要 CTA；`我要播歌`、`分享吧台`、`AI 音樂鬥歌場`、`榮譽榜` 放在下方 action strip，`練功聖經` / `關於愛波哥` 不放在該區。傷心酒吧分享要用 `/l/all` 或 `/l/{genreIndex}` 短網址，分類分享必須回到同一播放類型。
 - 傷心酒吧首屏招牌不可改成含中文字的圖片字，因為語言切換會失效；主標、副標與 `AIPOGER RADIO` / `BAR HEARTBREAK` 必須用 live text。手機版 action strip 第一排放 `我要播歌`、`分享吧台`、`榮譽榜`，第二排 `AI 音樂鬥歌場` 置中。
+- 傷心酒吧手機音量不能只改 `<audio>.volume` 後就視為完成；對鎖住媒體音量的手機瀏覽器，使用者觸碰音量滑桿後要改用 Web Audio gain 控制，且恢復播放時同步恢復 audio context。若瀏覽器連 gain 都不可用，才提示搭配手機側邊音量鍵。
 
 ## AIPOGER Battle 帳號限制規則
 

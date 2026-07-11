@@ -57,6 +57,7 @@ import { logAnalyticsEvent } from "@/lib/analytics-client";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import { listenBarShortPath } from "@/lib/share-short-links";
 import { normalizeYouTubeUrl } from "@/lib/youtube-url";
+import { clampMediaVolume, setNativeMediaVolume } from "@/lib/media-volume-control";
 import type { User } from "@supabase/supabase-js";
 
 type ChatMessage = {
@@ -698,6 +699,9 @@ export default function ListenBarPage() {
   const nowTrackRef = useRef<ListenBarTrack>(EMPTY_LISTEN_BAR_TRACK);
   const radioShouldResumeRef = useRef(true);
   const volumeRef = useRef(0.72);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioSourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const audioGainNodeRef = useRef<GainNode | null>(null);
   const lastElapsedPaintRef = useRef(-1);
   const [userName, setUserName] = useState("吧友");
   const [visitorAvatarUrl, setVisitorAvatarUrl] = useState<string | null>(null);
@@ -733,6 +737,7 @@ export default function ListenBarPage() {
   const [elapsed, setElapsed] = useState(0);
   const [trackDuration, setTrackDuration] = useState(EMPTY_LISTEN_BAR_TRACK.duration);
   const [volume, setVolume] = useState(0.72);
+  const [volumeControlFallback, setVolumeControlFallback] = useState(false);
   const [reactionCounts, setReactionCounts] = useState<Record<string, ReactionCounts>>({});
   const [myReactions, setMyReactions] = useState<Record<string, ReactionKey | null>>({});
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -748,6 +753,64 @@ export default function ListenBarPage() {
     listenBarPresenceCount <= 1
       ? listenCopy.warming
       : listenCopy.listeners(listenBarPresenceCount);
+  const applyRadioVolume = useCallback((audio: HTMLAudioElement, nextVolume: number) => {
+    const normalizedVolume = clampMediaVolume(nextVolume);
+    const nativeApplied = setNativeMediaVolume(audio, normalizedVolume);
+    const audioContext = audioContextRef.current;
+    const gainNode = audioGainNodeRef.current;
+    if (audioContext && gainNode) {
+      gainNode.gain.setValueAtTime(normalizedVolume, audioContext.currentTime);
+    }
+    return nativeApplied || Boolean(gainNode);
+  }, []);
+
+  const ensureRadioVolumeControl = useCallback(async () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const normalizedVolume = clampMediaVolume(volumeRef.current);
+    if (setNativeMediaVolume(audio, normalizedVolume)) {
+      setVolumeControlFallback(false);
+      return;
+    }
+
+    try {
+      const AudioContextConstructor = window.AudioContext
+        ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextConstructor) {
+        setVolumeControlFallback(true);
+        return;
+      }
+
+      let audioContext = audioContextRef.current;
+      let gainNode = audioGainNodeRef.current;
+      if (!audioContext || !gainNode) {
+        audioContext = new AudioContextConstructor();
+        const sourceNode = audioContext.createMediaElementSource(audio);
+        gainNode = audioContext.createGain();
+        sourceNode.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        audioContextRef.current = audioContext;
+        audioSourceNodeRef.current = sourceNode;
+        audioGainNodeRef.current = gainNode;
+      }
+
+      gainNode.gain.setValueAtTime(normalizedVolume, audioContext.currentTime);
+      if (audioContext.state === "suspended") await audioContext.resume();
+      setVolumeControlFallback(false);
+    } catch (error) {
+      console.warn("[listen-bar] mobile volume gain unavailable", error);
+      setVolumeControlFallback(true);
+    }
+  }, []);
+
+  useEffect(() => () => {
+    audioSourceNodeRef.current?.disconnect();
+    audioGainNodeRef.current?.disconnect();
+    const audioContext = audioContextRef.current;
+    if (audioContext && audioContext.state !== "closed") void audioContext.close();
+  }, []);
+
   const logSongPlaybackEvent = useCallback((
     eventType: "song_play" | "song_finish" | "song_skip" | "song_pause" | "song_resume",
     track: ListenBarTrack,
@@ -1421,7 +1484,7 @@ export default function ListenBarPage() {
       if (!audio) return;
       audio.currentTime = 0;
       audio.muted = false;
-      audio.volume = volumeRef.current;
+      applyRadioVolume(audio, volumeRef.current);
       void audio.play()
         .then(() => {
           setPlaybackBlocked(false);
@@ -1434,7 +1497,7 @@ export default function ListenBarPage() {
       return;
     }
     setNowTrack(nextTrack);
-  }, [nowTrack, priorityAirplaySourceTracks, rotationTracks]);
+  }, [applyRadioVolume, nowTrack, priorityAirplaySourceTracks, rotationTracks]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -1486,7 +1549,7 @@ export default function ListenBarPage() {
     audio.addEventListener("loadedmetadata", applyLiveSeek, { once: true });
     audio.load();
     audio.muted = false;
-    audio.volume = volumeRef.current;
+    applyRadioVolume(audio, volumeRef.current);
     radioShouldResumeRef.current = true;
     void audio.play()
       .then(() => {
@@ -1500,19 +1563,21 @@ export default function ListenBarPage() {
     return () => {
       audio.removeEventListener("loadedmetadata", applyLiveSeek);
     };
-  }, [nowTrack.audioUrl, nowTrack.duration, nowTrack.id]);
+  }, [applyRadioVolume, nowTrack.audioUrl, nowTrack.duration, nowTrack.id]);
 
   useEffect(() => {
     volumeRef.current = volume;
-    if (audioRef.current) audioRef.current.volume = volume;
-  }, [volume]);
+    if (audioRef.current) applyRadioVolume(audioRef.current, volume);
+  }, [applyRadioVolume, volume]);
 
   const resumeRadioPlayback = useCallback((syncLivePosition = false, volumeOverride?: number) => {
     const audio = audioRef.current;
     if (!audio || !nowTrack.audioUrl) return;
     radioShouldResumeRef.current = true;
     audio.muted = false;
-    audio.volume = volumeOverride ?? volume;
+    applyRadioVolume(audio, volumeOverride ?? volume);
+    const audioContext = audioContextRef.current;
+    if (audioContext?.state === "suspended") void audioContext.resume();
     if (syncLivePosition && audio.readyState >= 1) {
       const livePosition = !liveRadioSyncEnabledRef.current ? null : getLiveRadioPosition(rotationTracksRef.current);
       const offset = livePosition?.track.id === nowTrack.id
@@ -1533,7 +1598,7 @@ export default function ListenBarPage() {
         setPlaybackBlocked(true);
         setIsPlaying(false);
       });
-  }, [nowTrack.audioUrl, nowTrack.duration, nowTrack.id, volume]);
+  }, [applyRadioVolume, nowTrack.audioUrl, nowTrack.duration, nowTrack.id, volume]);
 
   useEffect(() => {
     if (!playbackBlocked) return;
@@ -2549,6 +2614,12 @@ export default function ListenBarPage() {
                     max="1"
                     step="0.01"
                     value={volume}
+                    onPointerDown={() => {
+                      void ensureRadioVolumeControl();
+                    }}
+                    onKeyDown={() => {
+                      void ensureRadioVolumeControl();
+                    }}
                     onChange={(event) => {
                       setVolume(Number(event.target.value));
                     }}
@@ -2558,6 +2629,11 @@ export default function ListenBarPage() {
                   <span className="text-xs font-black tabular-nums text-orange-200">
                     {Math.round(volume * 100)}%
                   </span>
+                  {volumeControlFallback && (
+                    <span className="text-[11px] font-bold text-zinc-400 sm:col-span-3">
+                      {isZh ? "此手機請搭配側邊音量鍵調整。" : "Use your phone's volume buttons on this browser."}
+                    </span>
+                  )}
                 </div>
                 <div className="mt-3 rounded-2xl border border-white/10 bg-black/35 px-4 py-4">
                   <div className="mb-3 flex items-center justify-between gap-3">
@@ -2774,6 +2850,7 @@ export default function ListenBarPage() {
             <audio
               ref={audioRef}
               src={nowTrack.audioUrl}
+              crossOrigin="anonymous"
               preload="auto"
               playsInline
               onPlay={() => {

@@ -271,6 +271,7 @@ Check at least one mobile viewport after UI changes:
 - Bar Heartbreak now-playing area.
 - Bar Heartbreak upload form.
 - AIPOGER Showtime.
+- Bar Heartbreak volume slider changes the effective audio level on a volume-locked mobile-media simulation, not only the displayed percentage; playback still advances after the gain node is connected.
 
 Look for:
 
