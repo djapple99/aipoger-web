@@ -41,10 +41,10 @@ Current behavior target:
 Daily Spotlight 已退役：它不再是傷心酒吧、Explore、`/admin/listen-bar` 或社群發布的工作流，也不建立新的單曲 Spotlight 替代品。
 
 - 傷心酒吧只負責投稿與公播；Explore 負責找歌、收藏、分享、攻擂與正在升溫；Showtime 是認證作品庫。
-- `AIPOGER Choice` 是唯一人為策展訊號：每週 5-10 首、不排名、可跨類型。Choice 主 CTA 是 `/rank?lang=zh#choice-weekly`。
+- `AIPOGER Choice` 是唯一人為策展訊號：每週 5-10 首、不排名、可跨類型。Choice 主 CTA 是 `/rank?lang=zh#choice-weekly`；`/admin/choice` 由 owner 手動建立週次、挑選公開 Showtime 認證作品、排序、發布與撤回。
 - `/today` 只作舊外部連結相容入口，固定以 307 導向 Choice；`/listen-bar?spotlight=...` 必須退化為正常傷心酒吧，不指定歌曲也不改變輪播。
 - `listen_bar_daily_spotlights`、歷史素材與舊社群草稿只保留歷史資料，不再由 app 日常流程讀寫；本階段不刪資料、不跑 destructive SQL。
-- `/admin/social` 是唯一社群草稿、批准與手動發布中控台。草稿需先批准，Discord 仍需明確按平台發布才送 webhook；Facebook 社團、Instagram、TikTok、YouTube 維持草稿或手動發布。
+- `/admin/showtime` 只可將合格的傷心酒吧公開作品認證為固定的公播來源，或收回／恢復既有 Showtime 的公開展示；不得改寫既有認證來源、音檔、Battle 戰績、票數、Heart 或重新開戰。`/admin/social` 是唯一社群草稿、批准與手動發布中控台。Choice 選曲不會建立社群草稿或自動外部發布；草稿需先批准，Discord 仍需明確按平台發布才送 webhook；Facebook 社團、Instagram、TikTok、YouTube 維持草稿或手動發布。
 - Discord 是社群擴散管道，不是產品規則來源。所有對外 CTA 應把聽歌、投票、按心、留言與投稿導回 AIPOGER 網站與 Choice。
 
 ## Auth Rules
@@ -342,7 +342,7 @@ Showtime display is a single certified-works catalog:
 - Month, style, and search filters may remain for browsing, but they are catalog controls, not separate ranking boards.
 - Recognition source belongs inside the individual song introduction, using labels such as `正式 Battle 認證`, `探索守擂認證`, or `傷心酒吧公播認證`.
 - Do not show duplicate Featured/Top sections above the same catalog results.
-- `AIPOGER Choice` remains as a slim curation direction anchor after the catalog for `/today` compatibility and human DJ/operation picks. It must not be presented as another chart, an automated weekly winner, or a large top panel.
+- `AIPOGER Choice` appears after the catalog as a slim manually published weekly curation list for `/today` compatibility and human DJ/operation picks. It must not be presented as another chart, an automated weekly winner, or a large top panel.
 
 Display principles:
 
@@ -357,9 +357,10 @@ Display principles:
 AIPOGER Choice Weekly:
 
 - AIPOGER Choice Weekly is a human curation direction that grows from Showtime certified works and later DJ/operation picks.
-- It is not a separate ranking chart and should not be presented as a fully automated weekly winner until the data workflow exists.
-- The current front-stage implementation may provide a homepage entry that jumps to the `#choice-weekly` direction block on `/rank`.
-- Choice Weekly can later feed social drafts, DJ selection, and weekly recommendation copy.
+- It is not a separate ranking chart or automated weekly winner.
+- The owner-managed `/admin/choice` workflow keeps weekly date, optional curation copy, 5-10 selected public Showtime works, order, and publication state. A public Choice must still have 5-10 currently public Showtime works; hidden or withdrawn works cannot be newly selected.
+- The front-stage implementation may provide a homepage entry that jumps to the `#choice-weekly` curation list on `/rank`.
+- Choice may later inform social drafts or DJ selection, but this management workflow does not auto-create drafts or publish externally.
 
 Creator stages:
 

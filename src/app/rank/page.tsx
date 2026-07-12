@@ -30,6 +30,7 @@ import {
   type ListenBarTrackRow,
 } from "@/lib/listen-bar";
 import { canDisplayShowtimeSupportUrl, normalizeAiMusicShowtimeCertificationSource } from "@/lib/ai-music-showtime";
+import type { AipogerChoiceCollection } from "@/lib/aipoger-choice";
 import { DROP_BATTLE_OFFICIAL_AUDIENCE_MIN } from "@/lib/drop-battle-rematch";
 import { battleResultShortPath, isUuid } from "@/lib/share-short-links";
 import { supabase } from "@/lib/supabase";
@@ -615,6 +616,17 @@ async function fetchAiMusicTracksForRank(lang: string): Promise<{ data: RankAiMu
   }
 }
 
+async function fetchCurrentChoice(): Promise<{ collection: AipogerChoiceCollection | null; error: Error | null }> {
+  try {
+    const response = await fetch("/api/choice/current", { cache: "no-store" });
+    const payload = (await response.json().catch(() => null)) as { collection?: AipogerChoiceCollection | null; error?: string } | null;
+    if (!response.ok) return { collection: null, error: new Error(payload?.error || "Could not load AIPOGER Choice.") };
+    return { collection: payload?.collection ?? null, error: null };
+  } catch (error) {
+    return { collection: null, error: error instanceof Error ? error : new Error(String(error)) };
+  }
+}
+
 function battleAudioPathToUrl(path: string | null | undefined) {
   const clean = path?.trim();
   if (!clean) return Promise.resolve<string | null>(null);
@@ -972,6 +984,7 @@ export default function RankPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [archivedResults, setArchivedResults] = useState<ArchivedBattleResult[]>([]);
   const [hotBarRows, setHotBarRows] = useState<RankRow[]>([]);
+  const [choiceCollection, setChoiceCollection] = useState<AipogerChoiceCollection | null>(null);
   const [lyricsModal, setLyricsModal] = useState<LyricsModalState | null>(null);
   const [honorInteractions, setHonorInteractions] = useState<Record<string, HonorInteractionState>>({});
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
@@ -998,9 +1011,11 @@ export default function RankPage() {
       const [
         { data: archiveData, error: archiveError },
         { data: hotData, error: hotError },
+        { collection: nextChoice, error: choiceError },
       ] = await Promise.all([
         fetchBattleArchivesForRank(),
         fetchAiMusicTracksForRank(lang),
+        fetchCurrentChoice(),
       ]);
 
       if (archiveError) {
@@ -1008,6 +1023,9 @@ export default function RankPage() {
       }
       if (hotError && !/schema cache|does not exist|permission denied/i.test(hotError.message || "")) {
         console.warn("[rank hot tracks]", hotError.message);
+      }
+      if (choiceError && !/schema cache|does not exist|permission denied|aipoger_choice/i.test(choiceError.message || "")) {
+        console.warn("[rank choice]", choiceError.message);
       }
 
       const mappedArchives: ArchivedBattleResult[] = Array.isArray(archiveData)
@@ -1106,6 +1124,7 @@ export default function RankPage() {
       if (!cancelled) {
         setArchivedResults(merged);
         setHotBarRows(hotRows);
+        setChoiceCollection(nextChoice);
       }
     };
 
@@ -1772,16 +1791,35 @@ export default function RankPage() {
           id="choice-weekly"
           className="scroll-mt-24 border-t border-white/10 py-5"
         >
-          <div className="grid gap-2 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-baseline sm:gap-4">
-            <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.22em] text-cyan-100/70`}>
-              AIPOGER Choice
-            </p>
-            <p className="max-w-4xl text-sm font-bold leading-7 text-zinc-400">
-              {isZh
-                ? "Choice 是 DJ 與營運的人為策展方向，會從 Showtime 認證作品中挑歌，不是另一張榜單，也不做自動週冠軍。"
-                : "Choice is a human curation direction from DJ and operations picks inside Showtime, not another chart or automated weekly winner."}
-            </p>
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <div className="grid gap-1 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-baseline sm:gap-4">
+              <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.22em] text-cyan-100/70`}>
+                AIPOGER Choice
+              </p>
+              <p className="max-w-4xl text-sm font-bold leading-7 text-zinc-400">
+                {choiceCollection?.intro || (isZh
+                  ? "DJ 與營運從 Showtime 認證作品中人工挑選；不是另一張榜單，也不做自動週冠軍。"
+                  : "Human picks from the Showtime catalog, never another chart or automated weekly winner.")}
+              </p>
+            </div>
+            {choiceCollection ? <span className="text-xs font-black text-zinc-500">{choiceCollection.weekStart}</span> : null}
           </div>
+          {choiceCollection?.title ? <h2 className="mt-2 text-lg font-black text-white">{choiceCollection.title}</h2> : null}
+          {choiceCollection?.items.length ? (
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              {choiceCollection.items.map((item) => (
+                <article key={item.itemId} className="flex min-w-0 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.025] p-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={mediaSrc(item.coverUrl)} alt="" className="h-10 w-10 shrink-0 rounded-md object-cover" />
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-black text-white">{item.title}</p>
+                    <p className="mt-0.5 truncate text-[11px] font-bold text-zinc-500">{item.artist}</p>
+                    <p className="mt-0.5 truncate text-[10px] font-black text-cyan-100/80">{item.recognition}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : null}
         </section>
 
         {lyricsModal ? (

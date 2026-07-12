@@ -180,6 +180,8 @@ Choice and retired Spotlight:
 - `/listen-bar?spotlight=YYYY-MM-DD&lang=zh` returns normal Bar Heartbreak with no specified-song playback or Spotlight panel.
 - `/today?lang=zh` returns 307 to `/rank?lang=zh#choice-weekly`.
 - `/admin/social` remains the only draft, approval, and manual publishing console; Discord publishing still requires an approved draft plus its explicit publish action.
+- `/admin/showtime` is owner-only and may certify only eligible public Bar Heartbreak works, or soft-hide/restore Showtime public display without editing audio, Battle results, votes, Hearts, or recognition source.
+- `/admin/choice` is owner-only and can create a Monday-based weekly draft, add/reorder/remove 5-10 currently public Showtime works, and publish or withdraw it. It must not create social drafts or publish externally.
 - Existing `listen_bar_daily_spotlights`, historical assets, and old social drafts are not deleted during this retirement.
 
 ## AI Music Works Checklist
@@ -221,7 +223,7 @@ Check:
 - Main title says `AIPOGER Showtime`.
 - Header copy says Showtime is a certified works archive and that certified works no longer accept challenges.
 - Homepage exposes an `AIPOGER Choice Weekly` entry that lands on `/rank?lang=zh#choice-weekly`.
-- Showtime includes a slim `AIPOGER Choice` direction anchor after the catalog without claiming a complete weekly automation workflow.
+- Showtime includes a slim published `AIPOGER Choice` curation list after the catalog without ranking, automatic weekly-winner claims, or a large top panel.
 - Showtime is one unified certified-works catalog, not separate Drop victory / Bar heat / 24H boards or source tabs.
 - Song cards include the recognition source in the song intro, such as `正式 Battle 認證`, `探索守擂認證`, or `傷心酒吧公播認證`.
 - Showtime track intake is persisted certification, not dynamic public display of old `30 hearts`, `7 public days`, or `30 days` eligibility copy.

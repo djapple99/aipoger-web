@@ -1604,6 +1604,12 @@ function ProfileInner() {
                   <Link className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm font-bold text-zinc-100 transition hover:border-orange-300/50" href="/admin/social">
                     社群
                   </Link>
+                  <Link className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm font-bold text-zinc-100 transition hover:border-yellow-300/50" href="/admin/showtime">
+                    Showtime
+                  </Link>
+                  <Link className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm font-bold text-zinc-100 transition hover:border-cyan-300/50" href="/admin/choice">
+                    Choice
+                  </Link>
                   <Link className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm font-bold text-zinc-100 transition hover:border-orange-300/50" href="/admin/quiz">
                     Quiz
                   </Link>
