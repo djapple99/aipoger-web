@@ -7,6 +7,7 @@ import { loadIsAdmin } from "@/lib/user-profile-admin";
 import type { SocialPlatform, SocialPostStatus, SocialPublishMode } from "@/lib/social-posting";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
+type DraftMode = "manual" | "battle";
 
 type SocialTarget = {
   id: string;
@@ -18,25 +19,19 @@ type SocialTarget = {
   content_text: string;
   target_url: string | null;
   manual_publish_url: string | null;
-  media_url: string | null;
   background_audio_url: string | null;
   background_audio_label: string | null;
   notes: string | null;
-  external_post_id: string | null;
   error_message: string | null;
-  last_attempt_at: string | null;
   published_at: string | null;
 };
 
 type SocialPost = {
   id: string;
   source_type: "manual" | "battle_result";
-  source_id: string | null;
   title: string;
   status: SocialPostStatus;
-  scheduled_at: string | null;
   approved_at: string | null;
-  published_at: string | null;
   created_at: string;
   social_post_targets?: SocialTarget[];
 };
@@ -47,20 +42,16 @@ type RecentBattleResult = {
   battle_code: string | null;
   winner_name: string | null;
   winner_song_name: string | null;
-  opponent_name: string | null;
-  opponent_song_name: string | null;
   final_vote_left: number | null;
   final_vote_right: number | null;
   total_votes: number | null;
-  archived_at: string | null;
 };
 
 type SocialAccountStatus = {
   platform: SocialPlatform;
   displayName: string;
-  connectionStatus: "connected" | "not_connected" | "manual" | "draft_only";
+  connectionStatus: "configured" | "not_configured" | "manual" | "draft_only";
   publishMode: SocialPublishMode;
-  envKeys: string[];
   note: string;
 };
 
@@ -71,21 +62,20 @@ type AdminPayload = {
   error?: string;
 };
 
-const platformLabel: Record<SocialPlatform, string> = {
+const platformLabel: Partial<Record<SocialPlatform, string>> = {
   discord: "Discord",
   x: "X",
   instagram: "Instagram",
-  tiktok: "TikTok",
   youtube: "YouTube",
   facebook_group: "Facebook 社團",
 };
 
 const statusLabel: Record<SocialPostStatus, string> = {
   draft: "草稿",
-  needs_review: "待審核",
+  needs_review: "待批准",
   scheduled: "已批准",
   published: "已發布",
-  failed: "失敗",
+  failed: "需處理",
 };
 
 async function authHeader(): Promise<Record<string, string>> {
@@ -97,40 +87,41 @@ async function authHeader(): Promise<Record<string, string>> {
 
 function formatTime(value?: string | null) {
   if (!value) return "-";
-  return new Intl.DateTimeFormat("zh-TW", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
+  return new Intl.DateTimeFormat("zh-TW", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
 }
 
 function shortId(value: string) {
   return value.slice(0, 8);
 }
 
-function sortedTargets(post: SocialPost) {
-  const order: SocialPlatform[] = ["discord", "x", "instagram", "tiktok", "youtube", "facebook_group"];
-  return [...(post.social_post_targets ?? [])].sort((a, b) => order.indexOf(a.platform) - order.indexOf(b.platform));
+function visibleTargets(post: SocialPost) {
+  const order: SocialPlatform[] = ["discord", "x", "instagram", "youtube", "facebook_group"];
+  return [...(post.social_post_targets ?? [])]
+    .filter((target) => target.platform !== "tiktok")
+    .sort((a, b) => order.indexOf(a.platform) - order.indexOf(b.platform));
+}
+
+function labelForPlatform(platform: SocialPlatform) {
+  return platformLabel[platform] ?? "已封存平台";
 }
 
 function connectionLabel(status: SocialAccountStatus["connectionStatus"]) {
-  if (status === "connected") return "可直發";
-  if (status === "manual") return "手動";
+  if (status === "configured") return "已設定";
+  if (status === "manual") return "手動發布";
   if (status === "draft_only") return "產草稿";
-  return "待設定";
+  return "尚未設定";
 }
 
 function connectionClass(status: SocialAccountStatus["connectionStatus"]) {
-  if (status === "connected") return "border-emerald-300/30 bg-emerald-300/10 text-emerald-100";
-  if (status === "manual") return "border-cyan-300/30 bg-cyan-300/10 text-cyan-100";
-  if (status === "draft_only") return "border-white/10 bg-white/[0.04] text-zinc-300";
-  return "border-orange-300/30 bg-orange-500/10 text-orange-100";
+  if (status === "configured") return "border-emerald-300/35 bg-emerald-300/10 text-emerald-100";
+  if (status === "manual") return "border-cyan-300/35 bg-cyan-300/10 text-cyan-100";
+  if (status === "draft_only") return "border-white/15 bg-white/[0.04] text-zinc-200";
+  return "border-orange-300/35 bg-orange-500/10 text-orange-100";
 }
 
 type RunAction = (action: string, body: Record<string, unknown>, busyKey: string, success: string) => Promise<boolean>;
 
-function SocialTargetPanel({
+function SocialTargetEditor({
   post,
   target,
   busyId,
@@ -159,106 +150,78 @@ function SocialTargetPanel({
     setBackgroundAudioLabel(target.background_audio_label ?? "");
   }, [target]);
 
+  const platform = labelForPlatform(target.platform);
+  const readyToSend = target.publish_mode === "api" && accountStatus?.connectionStatus === "configured";
+  const canAct = post.status === "scheduled";
+
   async function saveTarget() {
     await runAction(
       "update_target",
-      {
-        targetId: target.id,
-        title,
-        content,
-        targetUrl,
-        backgroundAudioUrl,
-        backgroundAudioLabel,
-      },
+      { targetId: target.id, title, content, targetUrl, backgroundAudioUrl, backgroundAudioLabel },
       `save-${target.id}`,
-      `${platformLabel[target.platform]} 草稿已更新。`,
+      `${platform} 草稿已儲存。`,
+    );
+  }
+
+  async function confirmPublish() {
+    const message = target.publish_mode === "api"
+      ? `確定要把這篇文案發送到 ${platform} 嗎？`
+      : `確定已在 ${platform} 完成手動發布嗎？`;
+    if (!window.confirm(message)) return;
+    await runAction(
+      target.publish_mode === "api" ? "publish_target" : "mark_manual_published",
+      { targetId: target.id },
+      target.id,
+      target.publish_mode === "api" ? `${platform} 已發送。` : `${platform} 已標記完成。`,
     );
   }
 
   return (
-    <section className="rounded-lg border border-white/10 bg-black/55 p-4">
+    <section className="border-t border-white/10 py-4 first:border-t-0 first:pt-0">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">{platformLabel[target.platform]}</p>
-          <input
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            className="mt-1 w-full rounded-md border border-white/10 bg-[#050505] px-2 py-2 text-lg font-black text-white outline-none"
-          />
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-black text-white">{platform}</p>
+          <span className={`rounded-full border px-2 py-1 text-[0.65rem] font-black ${target.status === "published" ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-100" : target.status === "failed" ? "border-red-300/30 bg-red-500/10 text-red-100" : "border-white/10 bg-white/[0.04] text-zinc-300"}`}>
+            {statusLabel[target.status]}
+          </span>
+          <span className="text-xs font-bold text-zinc-500">{target.publish_mode === "api" ? "可直接發送" : target.publish_mode === "manual" ? "手動完成" : "複製後發布"}</span>
         </div>
-        <span className={`rounded-md px-2 py-1 text-[0.65rem] font-black ${target.status === "published" ? "bg-emerald-300/15 text-emerald-100" : target.status === "failed" ? "bg-red-400/15 text-red-100" : "bg-white/10 text-zinc-300"}`}>
-          {statusLabel[target.status]}
-        </span>
+        {target.published_at ? <span className="text-xs font-bold text-zinc-500">{formatTime(target.published_at)}</span> : null}
       </div>
 
-      <textarea
-        value={content}
-        onChange={(event) => setContent(event.target.value)}
-        rows={8}
-        className="mt-3 w-full resize-y rounded-lg border border-white/10 bg-[#050505] px-3 py-3 text-sm font-bold leading-6 text-zinc-100 outline-none"
-      />
+      <label className="mt-4 block text-xs font-black text-zinc-500">
+        標題
+        <input value={title} onChange={(event) => setTitle(event.target.value)} className="mt-2 h-10 w-full rounded-md border border-white/10 bg-black px-3 text-sm font-black text-white outline-none focus:border-orange-300/60" />
+      </label>
+      <label className="mt-3 block text-xs font-black text-zinc-500">
+        文案
+        <textarea value={content} onChange={(event) => setContent(event.target.value)} rows={6} className="mt-2 w-full resize-y rounded-md border border-white/10 bg-black px-3 py-3 text-sm font-bold leading-6 text-zinc-100 outline-none focus:border-orange-300/60" />
+      </label>
+      <label className="mt-3 block text-xs font-black text-zinc-500">
+        連結
+        <input value={targetUrl} onChange={(event) => setTargetUrl(event.target.value)} className="mt-2 h-10 w-full rounded-md border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none focus:border-orange-300/60" />
+      </label>
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        <label className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
-          目標連結
-          <input value={targetUrl} onChange={(event) => setTargetUrl(event.target.value)} className="mt-2 w-full rounded-lg border border-white/10 bg-[#050505] px-3 py-2 text-xs font-bold normal-case tracking-normal text-white outline-none" />
-        </label>
-        <label className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
-          配樂名稱
-          <input value={backgroundAudioLabel} onChange={(event) => setBackgroundAudioLabel(event.target.value)} className="mt-2 w-full rounded-lg border border-white/10 bg-[#050505] px-3 py-2 text-xs font-bold normal-case tracking-normal text-white outline-none" />
-        </label>
-        <label className="sm:col-span-2 text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
-          背景配樂 URL
-          <input value={backgroundAudioUrl} onChange={(event) => setBackgroundAudioUrl(event.target.value)} className="mt-2 w-full rounded-lg border border-white/10 bg-[#050505] px-3 py-2 text-xs font-bold normal-case tracking-normal text-white outline-none" />
-        </label>
-      </div>
+      <details className="mt-3 border-t border-white/10 pt-3 text-xs font-bold text-zinc-500">
+        <summary className="cursor-pointer text-zinc-300">配樂與發布備註</summary>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <label>配樂名稱<input value={backgroundAudioLabel} onChange={(event) => setBackgroundAudioLabel(event.target.value)} className="mt-2 h-9 w-full rounded-md border border-white/10 bg-black px-3 text-xs font-bold text-white outline-none" /></label>
+          <label>配樂 URL<input value={backgroundAudioUrl} onChange={(event) => setBackgroundAudioUrl(event.target.value)} className="mt-2 h-9 w-full rounded-md border border-white/10 bg-black px-3 text-xs font-bold text-white outline-none" /></label>
+        </div>
+        {target.notes ? <p className="mt-3 leading-6">{target.notes}</p> : null}
+      </details>
 
-      <div className="mt-3 space-y-2 text-xs font-bold leading-6 text-zinc-400">
-        <p>模式：{target.publish_mode === "api" ? "API 可發布" : target.publish_mode === "manual" ? "手動發布" : "草稿素材"}</p>
-        {backgroundAudioUrl ? (
-          <p className="break-all text-orange-100">背景配樂：{backgroundAudioLabel || "勝出音樂"}｜{backgroundAudioUrl}</p>
-        ) : (
-          <p className="text-zinc-500">背景配樂：尚無音檔連結；發布前需手動補勝出音樂。</p>
-        )}
-        {target.notes && <p>{target.notes}</p>}
-        {target.error_message && <p className="text-red-200">錯誤：{target.error_message}</p>}
-      </div>
-
+      {target.error_message ? <p className="mt-3 text-xs font-bold text-red-200">錯誤：{target.error_message}</p> : null}
       <div className="mt-4 flex flex-wrap gap-2">
-        <button type="button" onClick={saveTarget} disabled={busyId === `save-${target.id}`} className="rounded-lg border border-emerald-300/30 px-3 py-2 text-xs font-black text-emerald-100 hover:border-emerald-200 disabled:cursor-not-allowed disabled:opacity-50">
-          儲存
-        </button>
-        <button type="button" onClick={() => copyText(content)} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-black text-white hover:border-white/30">
-          複製文案
-        </button>
-        {backgroundAudioUrl && (
-          <a href={backgroundAudioUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-orange-300/30 px-3 py-2 text-xs font-black text-orange-100 hover:border-orange-200">
-            開啟配樂
-          </a>
-        )}
-        {target.manual_publish_url && (
-          <a href={target.manual_publish_url} target="_blank" rel="noreferrer" className="rounded-lg border border-cyan-300/30 px-3 py-2 text-xs font-black text-cyan-100 hover:border-cyan-200">
-            開啟發布頁
-          </a>
-        )}
+        <button type="button" onClick={() => void saveTarget()} disabled={busyId === `save-${target.id}`} className="rounded-md border border-white/15 px-3 py-2 text-xs font-black text-white disabled:opacity-40">儲存</button>
+        <button type="button" onClick={() => void copyText(content)} className="rounded-md border border-white/15 px-3 py-2 text-xs font-black text-white">複製文案</button>
+        {target.manual_publish_url ? <a href={target.manual_publish_url} target="_blank" rel="noreferrer" className="rounded-md border border-cyan-300/35 px-3 py-2 text-xs font-black text-cyan-100">開啟發布頁</a> : null}
         {target.publish_mode === "api" ? (
-          <button
-            type="button"
-            disabled={busyId === target.id || post.status === "needs_review" || accountStatus?.connectionStatus !== "connected"}
-            onClick={() => runAction("publish_target", { targetId: target.id }, target.id, `${platformLabel[target.platform]} 發布完成。`)}
-            className="rounded-lg bg-white px-3 py-2 text-xs font-black text-black disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {accountStatus?.connectionStatus === "connected" ? "發布" : "待連線"}
+          <button type="button" onClick={() => void confirmPublish()} disabled={!canAct || !readyToSend || busyId === target.id} className="rounded-md bg-orange-400 px-3 py-2 text-xs font-black text-black disabled:cursor-not-allowed disabled:opacity-40">
+            {readyToSend ? `發送到 ${platform}` : "尚未設定"}
           </button>
         ) : (
-          <button
-            type="button"
-            disabled={busyId === target.id || post.status === "needs_review"}
-            onClick={() => runAction("mark_manual_published", { targetId: target.id }, target.id, `${platformLabel[target.platform]} 已標記為已處理。`)}
-            className="rounded-lg bg-white px-3 py-2 text-xs font-black text-black disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            標記已處理
-          </button>
+          <button type="button" onClick={() => void confirmPublish()} disabled={!canAct || busyId === target.id} className="rounded-md bg-white px-3 py-2 text-xs font-black text-black disabled:cursor-not-allowed disabled:opacity-40">完成手動發布</button>
         )}
       </div>
     </section>
@@ -270,32 +233,30 @@ export default function AdminSocialPage() {
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [recentBattleResults, setRecentBattleResults] = useState<RecentBattleResult[]>([]);
   const [accountStatuses, setAccountStatuses] = useState<SocialAccountStatus[]>([]);
+  const [draftMode, setDraftMode] = useState<DraftMode>("manual");
   const [selectedBattleId, setSelectedBattleId] = useState("");
   const [manualTopic, setManualTopic] = useState("Creator Wanted");
   const [manualBody, setManualBody] = useState("徵求第一批 AI 音樂創作者。帶你的作品進 AIPOGER，讓 30-60 秒抓波上場被聽見。");
   const [manualCta, setManualCta] = useState("加入 AIPOGER，帶你的 30-60 秒抓波進場 battle。");
   const [manualLinkUrl, setManualLinkUrl] = useState("https://aipoger.com/battle?lang=zh");
-  const [manualAudioUrl, setManualAudioUrl] = useState("");
-  const [manualAudioLabel, setManualAudioLabel] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [expandedPostId, setExpandedPostId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
+  const visiblePosts = useMemo(() => posts.filter((post) => visibleTargets(post).length > 0), [posts]);
   const stats = useMemo(() => {
-    const targets = posts.flatMap((post) => post.social_post_targets ?? []);
+    const targets = visiblePosts.flatMap(visibleTargets);
     return {
-      posts: posts.length,
-      ready: posts.filter((post) => post.status === "scheduled").length,
-      publishedTargets: targets.filter((target) => target.status === "published").length,
-      failedTargets: targets.filter((target) => target.status === "failed").length,
+      drafts: visiblePosts.filter((post) => post.status === "needs_review").length,
+      approved: visiblePosts.filter((post) => post.status === "scheduled").length,
+      published: targets.filter((target) => target.status === "published").length,
     };
-  }, [posts]);
+  }, [visiblePosts]);
 
   const loadData = useCallback(async () => {
     setError("");
-    const response = await fetch("/api/admin/social", {
-      headers: await authHeader(),
-    });
+    const response = await fetch("/api/admin/social", { headers: await authHeader() });
     const payload = (await response.json().catch(() => null)) as AdminPayload | null;
     if (!response.ok) {
       setError(payload?.error || "社群後台讀取失敗。");
@@ -307,9 +268,7 @@ export default function AdminSocialPage() {
     setSelectedBattleId((current) => current || payload?.recentBattleResults?.[0]?.battle_id || "");
   }, []);
 
-  const accountStatusByPlatform = useMemo(() => {
-    return new Map(accountStatuses.map((account) => [account.platform, account]));
-  }, [accountStatuses]);
+  const accountStatusByPlatform = useMemo(() => new Map(accountStatuses.map((account) => [account.platform, account])), [accountStatuses]);
 
   useEffect(() => {
     let mounted = true;
@@ -339,10 +298,7 @@ export default function AdminSocialPage() {
     setMessage("");
     const response = await fetch("/api/admin/social", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(await authHeader()),
-      },
+      headers: { "Content-Type": "application/json", ...(await authHeader()) },
       body: JSON.stringify({ action, ...body }),
     });
     const payload = (await response.json().catch(() => null)) as { error?: string } | null;
@@ -358,284 +314,119 @@ export default function AdminSocialPage() {
 
   async function createBattleDraft() {
     if (!selectedBattleId) {
-      setError("請先選擇一場 battle 戰報。");
+      setError("目前沒有可建立草稿的正式戰報。");
       return;
     }
-    await runAction("create_battle_draft", { battleId: selectedBattleId }, "create-battle", "已產生 Battle 戰報草稿。");
+    const created = await runAction("create_battle_draft", { battleId: selectedBattleId }, "create-battle", "已建立 Battle 戰報草稿。");
+    if (created) setDraftMode("manual");
   }
 
   async function createManualDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await runAction(
+    const created = await runAction(
       "create_manual_draft",
-      {
-        topic: manualTopic,
-        body: manualBody,
-        cta: manualCta,
-        linkUrl: manualLinkUrl,
-        backgroundAudioUrl: manualAudioUrl,
-        backgroundAudioLabel: manualAudioLabel,
-      },
+      { topic: manualTopic, body: manualBody, cta: manualCta, linkUrl: manualLinkUrl },
       "create-manual",
-      "已建立人工排程草稿。",
+      "已建立公告草稿。",
     );
+    if (created) setDraftMode("manual");
   }
 
   async function copyText(text: string) {
-    await navigator.clipboard.writeText(text);
-    setMessage("文案已複製。");
+    try {
+      await navigator.clipboard.writeText(text);
+      setMessage("文案已複製。");
+    } catch {
+      setError("無法存取剪貼簿，請直接選取文案複製。");
+    }
   }
 
   async function deletePost(post: SocialPost) {
-    const ok = window.confirm(`確定刪除「${post.title}」這筆社群草稿？刪除後各平台文案也會一起移除。`);
-    if (!ok) return;
-    await runAction("delete_post", { postId: post.id }, `delete-${post.id}`, "社群草稿已刪除。");
+    if (!window.confirm(`確定刪除「${post.title}」這筆草稿？`)) return;
+    await runAction("delete_post", { postId: post.id }, `delete-${post.id}`, "草稿已刪除。");
   }
 
   if (adminState === "checking") {
-    return (
-      <main className="min-h-screen bg-[#050505] px-5 py-10 text-white">
-        <p className="text-sm font-black text-zinc-400">檢查社群後台權限中...</p>
-      </main>
-    );
+    return <main className="min-h-screen bg-[#050505] px-5 py-10 text-sm font-black text-zinc-400">檢查社群後台權限中...</main>;
   }
 
   if (adminState === "login" || adminState === "denied") {
     return (
       <main className="min-h-screen bg-[#050505] px-5 py-10 text-white">
-        <section className="mx-auto max-w-2xl rounded-[1.2rem] border border-white/10 bg-black/60 p-6">
+        <section className="mx-auto max-w-2xl border border-white/10 bg-black/60 p-6">
           <p className="text-xs font-black uppercase tracking-[0.24em] text-red-200/75">AIPOGER ADMIN</p>
-          <h1 className="mt-3 text-4xl font-black text-white">{adminState === "login" ? "請先登入" : "沒有管理權限"}</h1>
-          <p className="mt-3 text-sm font-bold leading-7 text-zinc-400">社群發文後台只允許 owner 帳號進入。</p>
-          <Link href="/auth" className="mt-5 inline-flex rounded-full bg-orange-500 px-5 py-3 text-sm font-black text-black">
-            前往登入
-          </Link>
+          <h1 className="mt-3 text-3xl font-black">{adminState === "login" ? "請先登入" : "沒有管理權限"}</h1>
+          <Link href="/auth" className="mt-5 inline-flex rounded-md bg-orange-500 px-4 py-3 text-sm font-black text-black">前往登入</Link>
         </section>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#050505] px-4 py-8 text-white sm:px-6">
-      <section className="mx-auto max-w-7xl">
-        <div className="flex flex-col gap-4 border-b border-white/10 pb-6 lg:flex-row lg:items-end lg:justify-between">
+    <main className="min-h-screen bg-[#050505] px-4 py-7 text-white sm:px-6">
+      <section className="mx-auto max-w-6xl">
+        <header className="flex flex-col gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-200/80">AIPOGER SOCIAL DESK</p>
-            <h1 className="mt-3 text-3xl font-black tracking-tight text-white sm:text-5xl">社群發文中控台</h1>
-            <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-zinc-400">
-              Battle 戰報與人工公告都先進審核。IG / TikTok / YouTube / FB 社團第一版產草稿與素材提示；背景配樂以勝出作品為準。
-            </p>
+            <p className="text-xs font-black uppercase tracking-[0.26em] text-orange-200/80">AIPOGER SOCIAL</p>
+            <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">社群發文</h1>
+            <p className="mt-2 text-sm font-bold text-zinc-400">建立草稿，確認內容，批准後才發送。</p>
           </div>
-          <div className="flex flex-col gap-3">
-            <nav className="flex flex-wrap justify-start gap-2 lg:justify-end">
-              <Link href="/admin/analytics" className="rounded-full border border-yellow-200/25 bg-yellow-300/10 px-4 py-2 text-xs font-black text-yellow-100">
-                數據後台
-              </Link>
-              <Link href="/admin/quiz" className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-4 py-2 text-xs font-black text-cyan-100">
-                測驗後台
-              </Link>
-              <Link href="/admin/battles" className="rounded-full border border-orange-200/25 bg-orange-500/10 px-4 py-2 text-xs font-black text-orange-100">
-                Battle 管理
-              </Link>
-              <Link href="/admin/listen-bar" className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-black text-zinc-200">
-                酒吧後台
-              </Link>
-            </nav>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {[
-                ["草稿", stats.posts],
-                ["已批准", stats.ready],
-                ["平台已發", stats.publishedTargets],
-                ["失敗", stats.failedTargets],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-lg border border-white/10 bg-white/[0.04] px-4 py-3">
-                  <p className="text-[0.65rem] font-black uppercase tracking-[0.2em] text-zinc-500">{label}</p>
-                  <p className="mt-1 text-2xl font-black text-white">{value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+          <nav className="flex flex-wrap gap-2 text-xs font-black">
+            <Link href="/admin/choice" className="rounded-full border border-white/15 px-3 py-2 text-zinc-200">Choice 管理</Link>
+            <Link href="/admin/showtime" className="rounded-full border border-white/15 px-3 py-2 text-zinc-200">Showtime 管理</Link>
+            <Link href="/admin/analytics" className="rounded-full border border-white/15 px-3 py-2 text-zinc-200">數據</Link>
+          </nav>
+        </header>
 
-        {(message || error) && (
-          <div className={`mt-5 rounded-lg border px-4 py-3 text-sm font-black ${error ? "border-red-400/30 bg-red-500/10 text-red-100" : "border-emerald-300/30 bg-emerald-400/10 text-emerald-100"}`}>
-            {error || message}
-          </div>
-        )}
+        {(message || error) ? <div className={`mt-4 border px-4 py-3 text-sm font-black ${error ? "border-red-400/35 bg-red-500/10 text-red-100" : "border-emerald-300/35 bg-emerald-300/10 text-emerald-100"}`}>{error || message}</div> : null}
 
-        <section className="mt-6 rounded-lg border border-white/10 bg-white/[0.04] p-5">
-          <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-200/80">怎麼使用</p>
-          <div className="mt-3 grid gap-3 text-sm font-bold leading-7 text-zinc-300 lg:grid-cols-3">
-            <p>
-              <span className="text-white">1. 生文案：</span>
-              Battle 有勝出戰報時，左邊可自動產各平台文案；沒有戰報時，用右邊人工公告先產草稿。
-            </p>
-            <p>
-              <span className="text-white">2. 圖與影片：</span>
-              第一版還不是自動出圖/剪影片。IG、TikTok、YouTube、FB 社團會給文案、腳本、連結與背景配樂提示。
-            </p>
-            <p>
-              <span className="text-white">3. 發布：</span>
-              先按批准；Discord/X 有 API 設定才可直發。FB 社團點「開啟發布頁」，複製文案後手動貼上。
-            </p>
+        <section className="mt-5 border-y border-white/10 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">PUBLISH ROUTES</p><h2 className="mt-1 text-lg font-black">平台狀態</h2></div>
+            <p className="text-xs font-bold text-zinc-500">Webhook／token 只會顯示是否已設定，不會自動送測試訊息。</p>
           </div>
-        </section>
-
-        <section className="mt-6 rounded-lg border border-white/10 bg-black/45 p-5">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-200/80">發布設定</p>
-              <h2 className="mt-2 text-xl font-black">平台連線狀態</h2>
-            </div>
-            <p className="max-w-2xl text-xs font-bold leading-6 text-zinc-500">
-              不在 repo 保存密碼或 token。Discord/X 需要 Vercel env；IG/TikTok/YT 先產草稿；FB 社團採手動發布。
-            </p>
-          </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-5">
             {accountStatuses.map((account) => (
-              <div key={account.platform} className="rounded-lg border border-white/10 bg-white/[0.035] p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-black text-white">{account.displayName}</p>
-                  <span className={`rounded-md border px-2 py-1 text-[0.65rem] font-black ${connectionClass(account.connectionStatus)}`}>
-                    {connectionLabel(account.connectionStatus)}
-                  </span>
-                </div>
-                <p className="mt-3 text-xs font-bold leading-6 text-zinc-400">{account.note}</p>
-                {account.envKeys.length > 0 && (
-                  <p className="mt-2 break-all text-[0.65rem] font-bold leading-5 text-zinc-600">
-                    Env：{account.envKeys.join(" / ")}
-                  </p>
-                )}
+              <div key={account.platform} className="min-w-0 border-l border-white/10 pl-3 first:border-l-0 first:pl-0 lg:first:border-l lg:first:pl-3">
+                <div className="flex flex-wrap items-center gap-2"><p className="text-sm font-black">{account.displayName}</p><span className={`rounded-full border px-2 py-1 text-[0.62rem] font-black ${connectionClass(account.connectionStatus)}`}>{connectionLabel(account.connectionStatus)}</span></div>
+                <p className="mt-2 text-xs font-bold leading-5 text-zinc-500">{account.note}</p>
               </div>
             ))}
           </div>
         </section>
 
-        <div className="mt-6 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-          <section className="rounded-lg border border-orange-300/20 bg-orange-500/[0.06] p-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-200/80">Battle 戰報草稿</p>
-                <h2 className="mt-2 text-xl font-black">從勝出 battle 產生各平台文案</h2>
+        <section className="mt-6 grid gap-5 lg:grid-cols-[1fr_0.65fr]">
+          <div className="border border-white/10 bg-black/35 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">NEW DRAFT</p><h2 className="mt-1 text-xl font-black">建立草稿</h2></div><div className="inline-flex border border-white/10 p-1"><button type="button" onClick={() => setDraftMode("manual")} className={`px-3 py-2 text-xs font-black ${draftMode === "manual" ? "bg-white text-black" : "text-zinc-400"}`}>手動公告</button><button type="button" onClick={() => setDraftMode("battle")} className={`px-3 py-2 text-xs font-black ${draftMode === "battle" ? "bg-white text-black" : "text-zinc-400"}`}>Battle 戰報</button></div></div>
+
+            {draftMode === "battle" ? (
+              <div className="mt-5">
+                <label className="text-xs font-black text-zinc-500">選擇正式 Battle 戰報</label>
+                <select value={selectedBattleId} onChange={(event) => setSelectedBattleId(event.target.value)} className="mt-2 h-11 w-full border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none">
+                  {recentBattleResults.length === 0 ? <option value="">目前沒有可用戰報</option> : recentBattleResults.map((result) => <option key={result.id} value={result.battle_id}>{result.battle_code || shortId(result.battle_id)}｜{result.winner_name}《{result.winner_song_name}》｜{result.final_vote_left}:{result.final_vote_right}</option>)}
+                </select>
+                <button type="button" disabled={!selectedBattleId || busyId === "create-battle"} onClick={() => void createBattleDraft()} className="mt-4 rounded-md bg-orange-400 px-4 py-3 text-sm font-black text-black disabled:opacity-40">建立戰報草稿</button>
               </div>
-              <button
-                type="button"
-                disabled={busyId === "create-battle" || !selectedBattleId}
-                onClick={createBattleDraft}
-                className="rounded-lg bg-orange-400 px-4 py-3 text-sm font-black text-black disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                產生戰報草稿
-              </button>
-            </div>
-            <select
-              value={selectedBattleId}
-              onChange={(event) => setSelectedBattleId(event.target.value)}
-              className="mt-4 w-full rounded-lg border border-white/10 bg-black px-3 py-3 text-sm font-bold text-white outline-none"
-            >
-              {recentBattleResults.length === 0 ? (
-                <option value="">尚無可用戰報</option>
-              ) : (
-                recentBattleResults.map((result) => (
-                  <option key={result.id} value={result.battle_id}>
-                    {result.battle_code || shortId(result.battle_id)}｜{result.winner_name}《{result.winner_song_name}》勝出｜{result.final_vote_left}:{result.final_vote_right}｜{result.total_votes} 票
-                  </option>
-                ))
-              )}
-            </select>
-            <p className="mt-3 text-xs font-bold leading-6 text-orange-100/70">
-              只列出有觀眾票的 battle result；0:0 no contest 不會生成 Winner Circle 社群戰報。
-            </p>
-          </section>
+            ) : (
+              <form onSubmit={createManualDraft} className="mt-5 grid gap-3">
+                <div className="grid gap-3 sm:grid-cols-2"><label className="text-xs font-black text-zinc-500">主題<input value={manualTopic} onChange={(event) => setManualTopic(event.target.value)} className="mt-2 h-11 w-full border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none" /></label><label className="text-xs font-black text-zinc-500">連結<span className="ml-2 text-zinc-700">選填</span><input value={manualLinkUrl} onChange={(event) => setManualLinkUrl(event.target.value)} className="mt-2 h-11 w-full border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none" /></label></div>
+                <label className="text-xs font-black text-zinc-500">內文<textarea value={manualBody} onChange={(event) => setManualBody(event.target.value)} rows={4} className="mt-2 w-full resize-y border border-white/10 bg-black px-3 py-3 text-sm font-bold leading-6 text-white outline-none" /></label>
+                <label className="text-xs font-black text-zinc-500">行動句<input value={manualCta} onChange={(event) => setManualCta(event.target.value)} className="mt-2 h-11 w-full border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none" /></label>
+                <button type="submit" disabled={busyId === "create-manual"} className="justify-self-start rounded-md bg-cyan-300 px-4 py-3 text-sm font-black text-black disabled:opacity-40">建立草稿</button>
+              </form>
+            )}
+          </div>
 
-          <form onSubmit={createManualDraft} className="rounded-lg border border-white/10 bg-white/[0.04] p-5">
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-200/80">人工排程草稿</p>
-            <h2 className="mt-2 text-xl font-black">手動建立跨平台公告</h2>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <label className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
-                主題
-                <input value={manualTopic} onChange={(event) => setManualTopic(event.target.value)} className="mt-2 w-full rounded-lg border border-white/10 bg-black px-3 py-3 text-sm font-bold normal-case tracking-normal text-white outline-none" />
-              </label>
-              <label className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
-                連結
-                <input value={manualLinkUrl} onChange={(event) => setManualLinkUrl(event.target.value)} className="mt-2 w-full rounded-lg border border-white/10 bg-black px-3 py-3 text-sm font-bold normal-case tracking-normal text-white outline-none" />
-              </label>
-              <label className="sm:col-span-2 text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
-                內文
-                <textarea value={manualBody} onChange={(event) => setManualBody(event.target.value)} rows={3} className="mt-2 w-full rounded-lg border border-white/10 bg-black px-3 py-3 text-sm font-bold normal-case tracking-normal text-white outline-none" />
-              </label>
-              <label className="sm:col-span-2 text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
-                CTA
-                <input value={manualCta} onChange={(event) => setManualCta(event.target.value)} className="mt-2 w-full rounded-lg border border-white/10 bg-black px-3 py-3 text-sm font-bold normal-case tracking-normal text-white outline-none" />
-              </label>
-              <label className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
-                背景配樂 URL
-                <input value={manualAudioUrl} onChange={(event) => setManualAudioUrl(event.target.value)} placeholder="選填" className="mt-2 w-full rounded-lg border border-white/10 bg-black px-3 py-3 text-sm font-bold normal-case tracking-normal text-white outline-none" />
-              </label>
-              <label className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
-                配樂名稱
-                <input value={manualAudioLabel} onChange={(event) => setManualAudioLabel(event.target.value)} placeholder="選填" className="mt-2 w-full rounded-lg border border-white/10 bg-black px-3 py-3 text-sm font-bold normal-case tracking-normal text-white outline-none" />
-              </label>
-            </div>
-            <button type="submit" disabled={busyId === "create-manual"} className="mt-4 rounded-lg bg-cyan-300 px-4 py-3 text-sm font-black text-black disabled:cursor-not-allowed disabled:opacity-50">
-              建立人工草稿
-            </button>
-          </form>
-        </div>
+          <aside className="border border-white/10 p-5">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">WORK QUEUE</p>
+            <dl className="mt-4 grid grid-cols-3 gap-3"><div><dt className="text-xs font-bold text-zinc-500">待批准</dt><dd className="mt-1 text-2xl font-black">{stats.drafts}</dd></div><div><dt className="text-xs font-bold text-zinc-500">已批准</dt><dd className="mt-1 text-2xl font-black">{stats.approved}</dd></div><div><dt className="text-xs font-bold text-zinc-500">已發布</dt><dd className="mt-1 text-2xl font-black">{stats.published}</dd></div></dl>
+            <p className="mt-5 border-t border-white/10 pt-4 text-xs font-bold leading-6 text-zinc-500">Discord 與 X 需先批准再明確發送；Instagram、YouTube 與 Facebook 只提供可複製的文案與手動交接。</p>
+          </aside>
+        </section>
 
-        <section className="mt-6 space-y-5">
-          {posts.length === 0 ? (
-            <div className="rounded-lg border border-white/10 bg-white/[0.04] p-8 text-sm font-bold text-zinc-400">
-              尚未建立社群草稿。先從 battle 戰報或人工公告產生第一批內容。
-            </div>
-          ) : (
-            posts.map((post) => (
-              <article key={post.id} className="rounded-lg border border-white/10 bg-[#0b0b0b] p-5">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-md bg-white/10 px-2 py-1 text-[0.65rem] font-black uppercase tracking-[0.18em] text-zinc-300">{post.source_type === "battle_result" ? "Battle 戰報" : "人工公告"}</span>
-                      <span className="rounded-md bg-orange-400/15 px-2 py-1 text-[0.65rem] font-black text-orange-100">{statusLabel[post.status]}</span>
-                      <span className="text-xs font-bold text-zinc-500">{formatTime(post.created_at)}</span>
-                    </div>
-                    <h2 className="mt-3 text-2xl font-black text-white">{post.title}</h2>
-                    {post.approved_at && <p className="mt-2 text-xs font-bold text-emerald-200/80">已批准：{formatTime(post.approved_at)}</p>}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      disabled={busyId === post.id || post.status === "published"}
-                      onClick={() => runAction("approve_post", { postId: post.id }, post.id, "已批准社群草稿，可開始發布或手動處理。")}
-                      className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-4 py-3 text-sm font-black text-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      批准
-                    </button>
-                    <button
-                      type="button"
-                      disabled={busyId === `delete-${post.id}` || post.status === "published"}
-                      onClick={() => deletePost(post)}
-                      className="rounded-lg border border-red-300/30 bg-red-500/10 px-4 py-3 text-sm font-black text-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      刪除草稿
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-5 grid gap-4 xl:grid-cols-2">
-                  {sortedTargets(post).map((target) => (
-                    <SocialTargetPanel
-                      key={target.id}
-                      post={post}
-                      target={target}
-                      busyId={busyId}
-                      runAction={runAction}
-                      copyText={copyText}
-                      accountStatus={accountStatusByPlatform.get(target.platform)}
-                    />
-                  ))}
-                </div>
-              </article>
-            ))
-          )}
+        <section className="mt-8 border-t border-white/10 pt-5">
+          <div className="flex items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">DRAFTS</p><h2 className="mt-1 text-xl font-black">草稿與發布紀錄</h2></div><span className="text-sm font-bold text-zinc-500">{visiblePosts.length} 筆</span></div>
+          {visiblePosts.length === 0 ? <p className="mt-4 border border-dashed border-white/15 px-4 py-8 text-center text-sm font-bold text-zinc-500">目前沒有草稿。從上方建立第一篇即可。</p> : <div className="mt-4 divide-y divide-white/10 border-y border-white/10">{visiblePosts.map((post) => { const targets = visibleTargets(post); const expanded = expandedPostId === post.id; return <article key={post.id} className="py-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="text-xs font-black text-orange-100">{post.source_type === "battle_result" ? "BATTLE 戰報" : "人工公告"}</span><span className="rounded-full border border-white/10 px-2 py-1 text-[0.65rem] font-black text-zinc-300">{statusLabel[post.status]}</span><span className="text-xs font-bold text-zinc-600">{formatTime(post.created_at)}</span></div><h3 className="mt-2 truncate text-lg font-black">{post.title}</h3><p className="mt-2 flex flex-wrap gap-1.5">{targets.map((target) => <span key={target.id} className="rounded-full bg-white/[0.05] px-2 py-1 text-[0.65rem] font-black text-zinc-400">{labelForPlatform(target.platform)} · {statusLabel[target.status]}</span>)}</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => setExpandedPostId(expanded ? null : post.id)} className="rounded-md border border-white/15 px-3 py-2 text-xs font-black">{expanded ? "收合" : "管理"}</button><button type="button" disabled={post.status !== "needs_review" || busyId === post.id} onClick={() => void runAction("approve_post", { postId: post.id }, post.id, "草稿已批准，可依平台處理。")} className="rounded-md bg-emerald-300 px-3 py-2 text-xs font-black text-black disabled:opacity-40">{post.status === "scheduled" ? "已批准" : "批准"}</button><button type="button" disabled={post.status === "published" || busyId === `delete-${post.id}`} onClick={() => void deletePost(post)} className="rounded-md border border-red-300/35 px-3 py-2 text-xs font-black text-red-100 disabled:opacity-40">刪除</button></div></div>{expanded ? <div className="mt-5 border border-white/10 bg-black/35 p-4">{targets.map((target) => <SocialTargetEditor key={target.id} post={post} target={target} busyId={busyId} runAction={runAction} copyText={copyText} accountStatus={accountStatusByPlatform.get(target.platform)} />)}</div> : null}</article>; })}</div>}
         </section>
       </section>
     </main>

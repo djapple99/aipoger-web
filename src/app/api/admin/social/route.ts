@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isAdminEmail } from "@/lib/admin-emails";
-import { battleResultShortPath, battleShortPath, isUuid } from "@/lib/share-short-links";
+import { battleResultShortPath, isUuid } from "@/lib/share-short-links";
 import {
   SOCIAL_PLATFORMS,
+  ACTIVE_SOCIAL_PLATFORMS,
   buildBattleSocialDraft,
   buildManualSocialDraft,
   type BattleSocialDraftInput,
@@ -82,9 +83,8 @@ type BattleRow = {
 type SocialAccountStatus = {
   platform: SocialPlatform;
   displayName: string;
-  connectionStatus: "connected" | "not_connected" | "manual" | "draft_only";
+  connectionStatus: "configured" | "not_configured" | "manual" | "draft_only";
   publishMode: SocialPublishMode;
-  envKeys: string[];
   note: string;
 };
 
@@ -179,70 +179,48 @@ async function loadRecentBattleResults(admin: AdminClient) {
   return (data ?? []) as unknown as BattleArchiveRow[];
 }
 
-async function loadAccounts(admin: AdminClient) {
-  const { data, error } = await admin
-    .from("social_accounts")
-    .select("platform,display_name,connection_status,token_hint,metadata,updated_at")
-    .order("platform", { ascending: true });
-  if (error) throw error;
-  return data ?? [];
-}
-
 function envHasAny(keys: string[]) {
   return keys.some((key) => Boolean(process.env[key]));
 }
 
 function runtimeAccountStatuses(): SocialAccountStatus[] {
   const discordKeys = ["SOCIAL_DISCORD_WEBHOOK_URL", "DISCORD_SOCIAL_WEBHOOK_URL", "DISCORD_WEBHOOK_URL"];
-  const xKeys = ["X_API_BEARER_TOKEN", "SOCIAL_X_BEARER_TOKEN"];
+  const xKeys = ["X_USER_ACCESS_TOKEN", "SOCIAL_X_USER_ACCESS_TOKEN"];
   return [
     {
       platform: "discord",
       displayName: "Discord",
-      connectionStatus: envHasAny(discordKeys) ? "connected" : "not_connected",
+      connectionStatus: envHasAny(discordKeys) ? "configured" : "not_configured",
       publishMode: "api",
-      envKeys: discordKeys,
-      note: "設定 Discord webhook 後可從後台直發到指定頻道。",
+      note: "Webhook 已設定；草稿批准後仍須由你明確按下發送。",
     },
     {
       platform: "x",
       displayName: "X",
-      connectionStatus: envHasAny(xKeys) ? "connected" : "not_connected",
+      connectionStatus: envHasAny(xKeys) ? "configured" : "not_configured",
       publishMode: "api",
-      envKeys: xKeys,
-      note: "設定 X API token 後可從後台直發文字與連結。",
+      note: "需要具 tweet.write 權限的 X 使用者 access token；目前不會把一般 app bearer token 當成可發布憑證。",
     },
     {
       platform: "instagram",
       displayName: "Instagram",
       connectionStatus: "draft_only",
       publishMode: "draft_only",
-      envKeys: [],
-      note: "第一版先產 IG 圖文/Reels 草稿與背景配樂提示。",
-    },
-    {
-      platform: "tiktok",
-      displayName: "TikTok",
-      connectionStatus: "draft_only",
-      publishMode: "draft_only",
-      envKeys: [],
-      note: "第一版先產短影音腳本與 caption，不直發。",
+      note: "產生圖文 / Reels 文案與配樂提示，使用 Instagram 完成發布。",
     },
     {
       platform: "youtube",
       displayName: "YouTube",
       connectionStatus: "draft_only",
       publishMode: "draft_only",
-      envKeys: [],
-      note: "YouTube 先不設定；第一版只產 Shorts 標題與 description。",
+      note: "產生 Shorts 標題、說明與連結，使用 YouTube Studio 完成發布。",
     },
     {
       platform: "facebook_group",
       displayName: "Facebook 社團",
       connectionStatus: "manual",
       publishMode: "manual",
-      envKeys: [],
-      note: "FB 社團使用半自動：複製文案後手動貼到 AIPOGER 社團。",
+      note: "複製文案後手動貼到 AIPOGER 社團，不做帳密或瀏覽器自動發布。",
     },
   ];
 }
@@ -332,7 +310,6 @@ async function loadBattleDraftInput(admin: AdminClient, battleId: string): Promi
     finalVoteRight: archive.final_vote_right ?? 0,
     totalVotes: archive.total_votes ?? 0,
     resultUrl: absoluteUrl(battleResultShortPath(archive.battle_id, "zh")),
-    battleUrl: absoluteUrl(battleShortPath(archive.battle_id, "zh")),
     backgroundAudioUrl,
   };
 }
@@ -373,8 +350,8 @@ async function publishDiscord(content: string) {
 }
 
 async function publishX(content: string) {
-  const token = process.env.X_API_BEARER_TOKEN ?? process.env.SOCIAL_X_BEARER_TOKEN;
-  if (!token) throw new Error("X token 尚未設定。請設定 X_API_BEARER_TOKEN。");
+  const token = process.env.X_USER_ACCESS_TOKEN ?? process.env.SOCIAL_X_USER_ACCESS_TOKEN;
+  if (!token) throw new Error("X 尚未設定可發布的使用者 access token。");
   const response = await fetch("https://api.x.com/2/tweets", {
     method: "POST",
     headers: {
@@ -396,6 +373,9 @@ async function publishTarget(admin: AdminClient, userId: string, targetId: strin
     .maybeSingle<SocialTargetRow>();
   if (error) throw error;
   if (!targetRow) throw new Error("找不到平台草稿。");
+  if (!ACTIVE_SOCIAL_PLATFORMS.includes(targetRow.platform as (typeof ACTIVE_SOCIAL_PLATFORMS)[number])) {
+    throw new Error("TikTok 已從目前社群工作台移出；歷史紀錄會保留。");
+  }
   if (targetRow.publish_mode !== "api") throw new Error("這個平台第一版不是 API 直發，請用手動發布流程。");
 
   const now = new Date().toISOString();
@@ -454,15 +434,11 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireOwnerAdmin(request);
     if ("error" in auth) return auth.error;
-    const [posts, recentBattleResults, accounts] = await Promise.all([
+    const [posts, recentBattleResults] = await Promise.all([
       loadSocialPosts(auth.admin),
       loadRecentBattleResults(auth.admin),
-      loadAccounts(auth.admin).catch((error) => {
-        if (isMissingSocialSchema(error)) return [];
-        throw error;
-      }),
     ]);
-    return NextResponse.json({ posts, recentBattleResults, accounts, accountStatuses: runtimeAccountStatuses() });
+    return NextResponse.json({ posts, recentBattleResults, accountStatuses: runtimeAccountStatuses() });
   } catch (error) {
     if (isMissingSocialSchema(error as { message?: string })) {
       return jsonError("社群發文資料表尚未建立，請先套用 supabase/20260623_social_posting.sql。", 503);
@@ -565,6 +541,9 @@ export async function POST(request: NextRequest) {
         .maybeSingle<{ id: string; post_id: string; platform: SocialPlatform }>();
       if (loadError) throw loadError;
       if (!targetRow) return jsonError("找不到平台草稿。", 404);
+      if (!ACTIVE_SOCIAL_PLATFORMS.includes(targetRow.platform as (typeof ACTIVE_SOCIAL_PLATFORMS)[number])) {
+        return jsonError("TikTok 已從目前社群工作台移出；歷史紀錄會保留。", 409);
+      }
       const { error } = await admin
         .from("social_post_targets")
         .update({ status: "published", error_message: null, last_attempt_at: now, published_at: now, updated_at: now })

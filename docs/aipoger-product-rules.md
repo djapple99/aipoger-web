@@ -29,9 +29,10 @@ Current behavior target:
 - A 0:0 no contest must not generate a Winner Circle post.
 - Winner posts that become image/video/Reels content should use the winning creator's music as the background track when rights and platform workflow allow it.
 - Instagram image and video posting must preserve the original crop/aspect setting whenever the platform UI offers it.
-- Discord may publish directly through official webhooks when configured.
-- X may publish text/link posts through the official API when developer credentials are configured.
-- Instagram, TikTok, and YouTube should start as draft/script/caption generators until their media and API workflows are fully verified.
+- The Social Desk connection indicator means only that the required runtime configuration exists. It must not claim delivery has been verified, and it must never send a test message automatically.
+- Discord may publish directly through its official webhook only after a draft is approved and an admin explicitly presses that platform's send control.
+- X may publish text/link posts only with a user-context access token carrying `tweet.write` (`X_USER_ACCESS_TOKEN` or `SOCIAL_X_USER_ACCESS_TOKEN`); an app-only bearer token is not a publishing credential.
+- Instagram and YouTube remain draft/script/caption generators until their media and API workflows are fully verified. Facebook Groups remain manual. TikTok is excluded from the active Social Desk and new draft generation; historical targets and records remain intact.
 - Facebook Groups must not be auto-posted through unstable browser automation or password-based login. For the AIPOGER group, provide copy, assets, and the group link for manual posting: `https://www.facebook.com/groups/aipoger`.
 - Do not store social platform passwords. Tokens, webhooks, and API keys belong in environment variables or encrypted storage, never in repo, docs, or logs.
 - If a platform token/webhook is not configured, show a disconnected/pending state and do not attempt publishing.
@@ -44,7 +45,7 @@ Daily Spotlight 已退役：它不再是傷心酒吧、Explore、`/admin/listen-
 - `AIPOGER Choice` 是唯一人為策展訊號：每週 5-10 首、不排名、可跨類型。Choice 主 CTA 是 `/rank?lang=zh#choice-weekly`；owner 主要從 `/admin/showtime` 的作品勾選模式建立週次、挑選公開 Showtime 認證作品、排序、發布與撤回，`/admin/choice` 保留為相同資料的直接管理入口。
 - `/today` 只作舊外部連結相容入口，固定以 307 導向 Choice；`/listen-bar?spotlight=...` 必須退化為正常傷心酒吧，不指定歌曲也不改變輪播。
 - `listen_bar_daily_spotlights`、歷史素材與舊社群草稿只保留歷史資料，不再由 app 日常流程讀寫；本階段不刪資料、不跑 destructive SQL。
-- `/admin/showtime` 是 owner 的緊湊封面作品目錄：桌機每列 6 首、每頁 12 首。它可將合格的傷心酒吧公開作品認證為固定的公播來源，或收回／恢復既有 Showtime 的公開展示；對創作者投稿的 AI Music 作品，owner 可改封面與顯示資料（歌名、創作者、AI 工具、類型、製作資訊、作品介紹／評語、歌詞、YouTube、外部支持連結）。不得改寫音檔、既有認證來源、Battle 戰績、票數、Heart 或重新開戰。`/admin/social` 是唯一社群草稿、批准與手動發布中控台。Choice 選曲不會建立社群草稿或自動外部發布；草稿需先批准，Discord 仍需明確按平台發布才送 webhook；Facebook 社團、Instagram、TikTok、YouTube 維持草稿或手動發布。
+- `/admin/showtime` 是 owner 的緊湊封面作品目錄：桌機每列 6 首、每頁 12 首。它可將合格的傷心酒吧公開作品認證為固定的公播來源，或收回／恢復既有 Showtime 的公開展示；對創作者投稿的 AI Music 作品，owner 可改封面與顯示資料（歌名、創作者、AI 工具、類型、製作資訊、作品介紹／評語、歌詞、YouTube、外部支持連結）。不得改寫音檔、既有認證來源、Battle 戰績、票數、Heart 或重新開戰。`/admin/social` 是唯一社群草稿、批准與手動發布中控台。Choice 選曲不會建立社群草稿或自動外部發布；草稿需先批准，Discord 仍需明確按平台發布才送 webhook；Facebook 社團維持手動發布，Instagram 與 YouTube 維持草稿。TikTok 不在目前工作台或新增草稿流程，歷史資料保留。
 - Discord 是社群擴散管道，不是產品規則來源。所有對外 CTA 應把聽歌、投票、按心、留言與投稿導回 AIPOGER 網站與 Choice。
 
 ## Auth Rules

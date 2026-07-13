@@ -1,4 +1,5 @@
 export const SOCIAL_PLATFORMS = ["discord", "x", "instagram", "tiktok", "youtube", "facebook_group"] as const;
+export const ACTIVE_SOCIAL_PLATFORMS = ["discord", "x", "instagram", "youtube", "facebook_group"] as const;
 
 export type SocialPlatform = (typeof SOCIAL_PLATFORMS)[number];
 export type SocialPostStatus = "draft" | "needs_review" | "scheduled" | "published" | "failed";
@@ -31,7 +32,6 @@ export type BattleSocialDraftInput = {
   finalVoteRight: number;
   totalVotes: number;
   resultUrl: string;
-  battleUrl?: string | null;
   backgroundAudioUrl?: string | null;
 };
 
@@ -126,7 +126,6 @@ export function buildBattleSocialDraft(input: BattleSocialDraftInput): SocialDra
   const opponentSong = cleanText(input.opponentSong, "Rival Drop");
   const genre = cleanText(input.genre, "AI Music");
   const resultUrl = cleanText(input.resultUrl);
-  const battleUrl = cleanText(input.battleUrl);
   const audioUrl = cleanText(input.backgroundAudioUrl);
   const audioLabel = winnerSong;
   const score = `${winnerVotes(input)}:${opponentVotes(input)}`;
@@ -134,8 +133,6 @@ export function buildBattleSocialDraft(input: BattleSocialDraftInput): SocialDra
   const base = `AIPOGER 60s Drop Battle 戰報\n\n${winnerName}《${winnerSong}》擊敗 ${opponentName}《${opponentSong}》。\n\n類型：${genre}\n票數：${score}，共 ${totalVotes} 票\n\n這不是單純上傳作品，是讓 drop 上場被聽見、被投票、被認可。`;
   const cta = "進場看戰報，也帶你的 30-60 秒抓波來挑戰。";
   const shortCaption = `LEFT or RIGHT 的結果出爐。\n\n${winnerName}《${winnerSong}》在 AIPOGER 60s Drop Battle 勝出。\n票數 ${score}，共 ${totalVotes} 票。\n\n${cta}`;
-  const videoScript = `短影音腳本：\n1. 開場顯示 Winner Card：${winnerName}《${winnerSong}》。\n2. 背景配樂使用勝出作品《${winnerSong}》。\n3. 中段顯示票數 ${score} 與類型 ${genre}。\n4. 結尾 CTA：帶你的 30-60 秒抓波進場 battle。`;
-
   return {
     title,
     sourceType: "battle_result",
@@ -157,12 +154,6 @@ export function buildBattleSocialDraft(input: BattleSocialDraftInput): SocialDra
         backgroundAudioUrl: audioUrl || null,
         backgroundAudioLabel: audioLabel,
         notes: "第一版產 IG 圖文/Reels 草稿；發布時把勝出音樂設為背景配樂。",
-      }),
-      target("tiktok", title, `${videoScript}\n\nCaption:\n${shortCaption}\n${socialTags()}`, "draft_only", {
-        targetUrl: battleUrl || resultUrl,
-        backgroundAudioUrl: audioUrl || null,
-        backgroundAudioLabel: audioLabel,
-        notes: "第一版只產 TikTok 腳本與 caption；發布時使用勝出音樂。",
       }),
       target("youtube", title, `Shorts 標題：${winnerName}《${winnerSong}》贏下 AIPOGER 60s Drop Battle\n\nDescription:\n${shortCaption}\n\n看完整戰報：${resultUrl}\n${socialTags()}`, "draft_only", {
         targetUrl: resultUrl,
@@ -197,7 +188,6 @@ export function buildManualSocialDraft(input: ManualSocialDraftInput): SocialDra
       target("discord", topic, appendLink(base, link), "api", { targetUrl: link || null, backgroundAudioUrl: audioUrl || null, backgroundAudioLabel: audioLabel || null }),
       target("x", topic, appendLink(`${body}\n\n${cta}`, link), "api", { targetUrl: link || null, backgroundAudioUrl: audioUrl || null, backgroundAudioLabel: audioLabel || null }),
       target("instagram", topic, `${base}\n\n${socialTags()}`, "draft_only", { targetUrl: link || null, backgroundAudioUrl: audioUrl || null, backgroundAudioLabel: audioLabel || null }),
-      target("tiktok", topic, `短影音腳本：用戰報圖文快速講 ${topic}。\n\nCaption:\n${base}\n${socialTags()}`, "draft_only", { targetUrl: link || null, backgroundAudioUrl: audioUrl || null, backgroundAudioLabel: audioLabel || null }),
       target("youtube", topic, `Shorts 標題：${topic}\n\nDescription:\n${base}\n${link ? `\n${link}` : ""}\n${socialTags()}`, "draft_only", { targetUrl: link || null, backgroundAudioUrl: audioUrl || null, backgroundAudioLabel: audioLabel || null }),
       target("facebook_group", topic, appendLink(`${base}\n\n${socialTags()}`, link), "manual", {
         targetUrl: link || null,
