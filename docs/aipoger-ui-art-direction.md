@@ -209,6 +209,7 @@ Showtime admin layout:
 - `/admin/showtime` is a dense cover-led owner catalog, not a vertical list: use 6 cards per desktop row, 3 per tablet row, 2 per mobile row, and keep each card focused on cover, identity, recognition and operations.
 - `編輯本期 Choice` reveals selection checkboxes on eligible public works plus a compact weekly curation workbench. It is a selection state, not another dashboard panel or social-publishing control.
 - The work editor may change display metadata and cover only; audio, recognition source, Hearts, votes and Battle history are visibly described as locked.
+- `/profile/choice` is a creator workbench, not an owner dashboard: first show the creator's own Showtime works and their external-link controls, then a compact all-creator Showtime cover catalog for building a personal Choice. Eligibility is earned by one Showtime-certified work, but curators may select any currently public Showtime work. Keep this visually distinct from the official owner Choice and do not add social-publishing controls.
 
 UI direction:
 

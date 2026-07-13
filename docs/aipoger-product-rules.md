@@ -332,7 +332,7 @@ Showtime is the certified archive, not a challenge surface:
 - Showtime status is a persisted recognition state. Do not dynamically promote public Bar Heartbreak songs into Showtime only because they reach old Heart thresholds.
 - The 2026-07-10 founder catalog migration is a one-time owner-confirmed batch: eligible public community works with `public_time <= now() - 30 days` are migrated into Showtime, including works exactly 30 days old. This is not a public or recurring `30 days -> Showtime` promise. The public UI must not expose `30 days`, `early creator reward`, `batch migration`, or similar internal criteria.
 - Creator-facing Showtime management may edit only public display metadata and approved external support URLs for the creator's own Showtime work. It must not edit audio, recognition source, battle stats, votes, wins/losses, Showtime status/time, or reopen Explore challenges.
-- `support_url` must be an external HTTPS URL and must not introduce AIPOGER payment handling, money amounts, wallets, refunds, revenue sharing, or direct checkout flows. Public cards display it only when the existing support URL review state allows display.
+- `support_url` must be an external HTTPS URL and may carry a short `support_url_label` explaining its purpose, for example `前往 YouTube 頻道`, `觀看 MV`, or `支持創作者`. The label and URL re-enter the existing review state on change; public cards display them only when approved. This must not introduce AIPOGER payment handling, money amounts, wallets, refunds, revenue sharing, or direct checkout flows.
 
 Showtime display is a single certified-works catalog:
 
@@ -359,6 +359,7 @@ AIPOGER Choice Weekly:
 - AIPOGER Choice Weekly is a human curation direction that grows from Showtime certified works and later DJ/operation picks.
 - It is not a separate ranking chart or automated weekly winner.
 - The owner-managed `/admin/showtime` Choice workbench keeps weekly date, optional curation copy, 5-10 selected public Showtime works, order, and publication state; `/admin/choice` exposes the same workflow directly. A public Choice must still have 5-10 currently public Showtime works; hidden or withdrawn works cannot be newly selected.
+- This official owner Choice remains separate from creator-published Choice. A creator who has at least one persisted Showtime-certified community work may use `/profile/choice` to create weekly 5-10-track Choice collections. Their own recognition grants curation access, but their selection pool is all currently public Showtime works from any creator, not only their own songs. Each creator can manage only their own drafts and published collections; a published creator Choice has its own share page and never replaces the official weekly Choice at `#choice-weekly`.
 - The front-stage implementation may provide a homepage entry that jumps to the `#choice-weekly` curation list on `/rank`.
 - Choice may later inform social drafts or DJ selection, but this management workflow does not auto-create drafts or publish externally.
 

@@ -10,6 +10,7 @@ export const AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS = [
   "ai_music_showtime_certification_source",
   "ai_music_showtime_public_removed_at",
   "support_url",
+  "support_url_label",
   "support_url_status",
 ].join(",");
 
@@ -19,6 +20,7 @@ export type AiMusicShowtimeTrackFields = {
   ai_music_showtime_certification_source?: string | null;
   ai_music_showtime_public_removed_at?: string | null;
   support_url?: string | null;
+  support_url_label?: string | null;
   support_url_status?: string | null;
 };
 
@@ -63,6 +65,13 @@ export function cleanShowtimeSupportUrl(value: unknown) {
   }
   if (parsed.protocol !== "https:") return null;
   return parsed.toString();
+}
+
+export function cleanShowtimeSupportLabel(value: unknown) {
+  if (typeof value !== "string") return null;
+  const clean = value.trim().replace(/\s+/g, " ");
+  if (!clean) return null;
+  return clean.slice(0, 80);
 }
 
 export function canDisplayShowtimeSupportUrl(row: AiMusicShowtimeTrackFields | null | undefined) {

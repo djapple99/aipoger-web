@@ -12,6 +12,7 @@ export type ShowtimeAdminTrackRow = ListenBarTrackRow & {
   description?: string | null;
   youtube_url?: string | null;
   support_url?: string | null;
+  support_url_label?: string | null;
   support_url_status?: string | null;
   ai_music_showtime_certified?: boolean | null;
   ai_music_showtime_certified_at?: string | null;
@@ -53,6 +54,7 @@ const TRACK_SELECT = [
   "youtube_url",
   "lyrics",
   "support_url",
+  "support_url_label",
   "support_url_status",
   "audio_path",
   "cover_path",

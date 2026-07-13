@@ -70,6 +70,7 @@ type ShowtimeTrack = {
   ai_music_showtime_certification_source?: string | null;
   ai_music_showtime_public_removed_at?: string | null;
   support_url?: string | null;
+  support_url_label?: string | null;
   support_url_status?: string | null;
 };
 
@@ -179,6 +180,7 @@ type ShowtimeEditForm = {
   youtubeUrl: string;
   lyrics: string;
   supportUrl: string;
+  supportLabel: string;
 };
 
 function authAvatarUrl(user: { user_metadata?: Record<string, unknown> } | null | undefined): string | null {
@@ -308,6 +310,7 @@ function ProfileInner() {
     youtubeUrl: "",
     lyrics: "",
     supportUrl: "",
+    supportLabel: "",
   });
   const [challengeBusy, setChallengeBusy] = useState<Record<string, boolean>>({});
   const cropFileInputRef = useRef<HTMLInputElement>(null);
@@ -1209,6 +1212,7 @@ function ProfileInner() {
       youtubeUrl: track.youtube_url?.trim() ?? "",
       lyrics: track.lyrics?.trim() ?? "",
       supportUrl: track.support_url?.trim() ?? "",
+      supportLabel: track.support_url_label?.trim() ?? "",
     });
   }, []);
 
@@ -1297,6 +1301,7 @@ function ProfileInner() {
       youtubeUrl: showtimeEditForm.youtubeUrl,
       lyrics: showtimeEditForm.lyrics,
       supportUrl: showtimeEditForm.supportUrl,
+      supportLabel: showtimeEditForm.supportLabel,
       ...(uploadedCoverPath ? { coverPath: uploadedCoverPath } : {}),
     });
     if (saved) {
@@ -1595,6 +1600,9 @@ function ProfileInner() {
                   </Link>
                   <Link href="/listen-bar" className="aipo-ghost-button rounded-2xl px-4 py-2 text-sm font-black text-orange-100">
                     {copy.openBar}
+                  </Link>
+                  <Link href="/profile/choice" className="rounded-2xl border border-yellow-200/30 bg-yellow-300/10 px-4 py-2 text-sm font-black text-yellow-100 transition hover:border-yellow-100/65">
+                    我的 Choice
                   </Link>
                 </div>
               </div>
@@ -2292,6 +2300,16 @@ function ProfileInner() {
                                   className="h-10 rounded-xl border border-white/10 bg-black/45 px-3 text-sm font-bold text-white outline-none focus:border-yellow-100/55"
                                 />
                               </label>
+                              <label className="grid gap-1 text-xs font-black text-zinc-300">
+                                {isZh ? "連結用途" : "Link Label"}
+                                <input
+                                  value={showtimeEditForm.supportLabel}
+                                  onChange={(event) => setShowtimeEditForm((current) => ({ ...current, supportLabel: event.target.value }))}
+                                  placeholder={isZh ? "例如：前往 YouTube 頻道" : "For example: Visit my YouTube channel"}
+                                  maxLength={80}
+                                  className="h-10 rounded-xl border border-white/10 bg-black/45 px-3 text-sm font-bold text-white outline-none focus:border-yellow-100/55"
+                                />
+                              </label>
                               <label className="grid gap-1 text-xs font-black text-zinc-300 sm:col-span-2">
                                 {isZh ? "一句介紹" : "Description"}
                                 <input
@@ -2321,7 +2339,7 @@ function ProfileInner() {
                               </label>
                             </div>
                             <p className="mt-3 text-xs font-bold leading-5 text-zinc-500">
-                              {showtimeEditForm.supportUrl ? copy.showtimeSupportPending : isZh ? "支援連結只接受 HTTPS；AIPOGER 不處理付款或金額。" : "Support links must be HTTPS. AIPOGER does not process payments or amounts."}
+                              {showtimeEditForm.supportUrl ? `${copy.showtimeSupportPending}${isZh ? " 可寫明 YouTube、MV 或支持／打賞頁用途；AIPOGER 不處理付款或金額。" : " Add a label for YouTube, an MV, or a tip page. AIPOGER does not process payments or amounts."}` : isZh ? "連結只接受 HTTPS；可寫明 YouTube、MV 或支持／打賞頁用途。AIPOGER 不處理付款或金額。" : "Links must use HTTPS. Label YouTube, an MV, or a tip page. AIPOGER does not process payments or amounts."}
                             </p>
                             <div className="mt-3 flex flex-wrap justify-end gap-2">
                               <button

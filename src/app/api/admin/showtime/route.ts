@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isAdminEmail } from "@/lib/admin-emails";
-import { cleanShowtimeSupportUrl } from "@/lib/ai-music-showtime";
+import { cleanShowtimeSupportLabel, cleanShowtimeSupportUrl } from "@/lib/ai-music-showtime";
 import {
   LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS,
   LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS,
@@ -157,9 +157,15 @@ async function updateTrackMetadata(
   const incomingSupport = hasField(body, "supportUrl") && typeof body.supportUrl === "string" ? body.supportUrl.trim() : null;
   const supportUrl = hasField(body, "supportUrl") ? cleanShowtimeSupportUrl(body.supportUrl) : track.support_url?.trim() || null;
   if (hasField(body, "supportUrl") && incomingSupport && !supportUrl) throw new Error("外部支持連結只接受 HTTPS 網址。" );
+  const supportLabel = hasField(body, "supportLabel") ? cleanShowtimeSupportLabel(body.supportLabel) : track.support_url_label?.trim() || null;
+  if (hasField(body, "supportLabel") && typeof body.supportLabel === "string" && body.supportLabel.trim() && !supportUrl) {
+    throw new Error("請先填寫 HTTPS 外部連結，再設定連結用途。" );
+  }
+  const supportChanged = supportUrl !== (track.support_url?.trim() || null)
+    || supportLabel !== (track.support_url_label?.trim() || null);
   const supportUrlStatus = !supportUrl
     ? "none"
-    : supportUrl === track.support_url?.trim() && track.support_url_status === "approved"
+    : !supportChanged && track.support_url_status === "approved"
       ? "approved"
       : "pending";
   const now = new Date().toISOString();
@@ -174,6 +180,7 @@ async function updateTrackMetadata(
     lyrics: hasField(body, "lyrics") ? (typeof body.lyrics === "string" ? body.lyrics.trim().slice(0, 16000) || null : null) : track.lyrics ?? null,
     youtube_url: hasField(body, "youtubeUrl") ? normalizeYouTubeUrl(body.youtubeUrl) : track.youtube_url ?? null,
     support_url: incomingSupport === "" ? null : supportUrl,
+    support_url_label: supportUrl ? supportLabel : null,
     support_url_status: supportUrlStatus,
     ...(isCertified
       ? {

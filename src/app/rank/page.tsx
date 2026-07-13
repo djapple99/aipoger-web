@@ -65,6 +65,7 @@ type RankRow = {
   fullSongLabel?: string;
   fullSongDurationSeconds?: number;
   supportUrl?: string;
+  supportLabel?: string;
   lyrics?: string;
   songStats?: SongBattleStatsSnapshot | null;
   positiveReactions?: number;
@@ -76,6 +77,7 @@ type RankAiMusicTrackRow = ListenBarTrackRow & {
   ai_music_showtime_defense_target?: number | null;
   ai_music_showtime_certification_source?: string | null;
   support_url?: string | null;
+  support_url_label?: string | null;
   support_url_status?: string | null;
 };
 
@@ -586,6 +588,7 @@ function hotBarRowsFromTracks(tracks: RankAiMusicTrackRow[]) {
         createdAt: track.createdAt || new Date().toISOString(),
         audioUrl: track.audioUrl,
         supportUrl: canDisplayShowtimeSupportUrl(aiMusicRow) ? aiMusicRow.support_url?.trim() : undefined,
+        supportLabel: canDisplayShowtimeSupportUrl(aiMusicRow) ? aiMusicRow.support_url_label?.trim() || undefined : undefined,
         lyrics: cleanLyrics(track.lyrics) || undefined,
         positiveReactions: Math.max(0, Math.round(track.positiveReactionCount || 0)),
       };
@@ -1619,7 +1622,7 @@ export default function RankPage() {
                                           rel="noopener noreferrer"
                                           className={`inline-flex items-center justify-center rounded-full border px-2.5 py-1.5 text-[11px] font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-200/70 ${HONOR_ACTION_CLASS}`}
                                         >
-                                          {isZh ? "支持創作者" : "Support Creator"}
+                                          {row.supportLabel || (isZh ? "支持創作者" : "Support Creator")}
                                         </a>
                                       ) : null}
                                       <LyricsAction row={row} isZh={isZh} onOpen={openLyricsModal} />

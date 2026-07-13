@@ -230,6 +230,8 @@ Check:
 - Founder catalog migration must start with a read-only candidate report and must not mutate production track data until owner confirmation. The one-time founder batch includes eligible public community works with `public_time <= now() - 30 days`, so exactly-30-day works count. Demo soft-delete IDs are optional; if supplied, they must be exact owner-confirmed IDs.
 - Founder-catalog certified works appear only in Showtime, not Explore or Bar Heartbreak public lists; cards show no `接戰`, `攻擂`, or challenge action.
 - Profile Showtime management allows only own display metadata/support URL edits and public-display soft hide; it must not edit audio, recognition source, battle stats, votes, wins/losses, Showtime status/time, or reopen challenges.
+- Profile Showtime links accept HTTPS only and allow a short purpose label such as a YouTube channel, MV, or external support page. Changing either URL or label returns the link to review; AIPOGER never handles payments, amounts, or checkout.
+- A creator with at least one persisted Showtime-certified community work can open `/profile/choice`, see their own Showtime works, and create, reorder, publish, withdraw, and share their own 5-10-work Choice. The selection catalog contains currently public Showtime works from any creator; a creator cannot edit another curator's Choice or add hidden/withdrawn/non-Showtime work. Creator Choice does not replace the owner-managed `#choice-weekly` list or create social drafts.
 - Cards do not show numeric rank badges.
 - Drop cards use victory/result language.
 - Bar Heartbreak and Explore-certified cards use catalog/recognition language, not heat-board language.

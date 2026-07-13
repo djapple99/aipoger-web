@@ -45,6 +45,7 @@ type ShowtimeEditForm = {
   youtubeUrl: string;
   lyrics: string;
   supportUrl: string;
+  supportLabel: string;
 };
 
 type EditingTrack = {
@@ -90,6 +91,7 @@ function formFromTrack(track: ShowtimeAdminTrackRow): ShowtimeEditForm {
     youtubeUrl: track.youtube_url?.trim() || "",
     lyrics: track.lyrics?.trim() || "",
     supportUrl: track.support_url?.trim() || "",
+    supportLabel: track.support_url_label?.trim() || "",
   };
 }
 
@@ -587,6 +589,9 @@ export default function AdminShowtimePage() {
                 </label>
                 <label className="grid gap-1 text-xs font-black text-zinc-300">外部支持連結
                   <input value={editForm.supportUrl} maxLength={500} placeholder="https://" onChange={(event) => setEditForm((current) => current ? { ...current, supportUrl: event.target.value } : current)} className="h-10 rounded-xl border border-white/10 bg-black/45 px-3 text-sm font-bold text-white outline-none focus:border-cyan-100/55" />
+                </label>
+                <label className="grid gap-1 text-xs font-black text-zinc-300">連結用途
+                  <input value={editForm.supportLabel} maxLength={80} placeholder="例如：前往 YouTube 頻道" onChange={(event) => setEditForm((current) => current ? { ...current, supportLabel: event.target.value } : current)} className="h-10 rounded-xl border border-white/10 bg-black/45 px-3 text-sm font-bold text-white outline-none focus:border-cyan-100/55" />
                 </label>
                 <label className="grid gap-1 text-xs font-black text-zinc-300 sm:col-span-2">作品介紹／評語
                   <input value={editForm.description} maxLength={120} onChange={(event) => setEditForm((current) => current ? { ...current, description: event.target.value } : current)} className="h-10 rounded-xl border border-white/10 bg-black/45 px-3 text-sm font-bold text-white outline-none focus:border-cyan-100/55" />

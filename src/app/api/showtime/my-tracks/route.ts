@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
+  cleanShowtimeSupportLabel,
   cleanShowtimeSupportUrl,
   AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS,
   isAiMusicPersistedShowtimeCertified,
@@ -39,6 +40,7 @@ type ShowtimeTrackRow = {
   ai_music_showtime_certification_source?: string | null;
   ai_music_showtime_public_removed_at?: string | null;
   support_url?: string | null;
+  support_url_label?: string | null;
   support_url_status?: string | null;
 };
 
@@ -265,10 +267,18 @@ export async function PATCH(request: NextRequest) {
   if (Object.prototype.hasOwnProperty.call(body, "supportUrl") && body.supportUrl && !supportUrl) {
     return jsonError("外部支持連結只接受 HTTPS 網址。", 400);
   }
+  const supportLabel = hasField(body, "supportLabel")
+    ? cleanShowtimeSupportLabel(body.supportLabel)
+    : track.support_url_label?.trim() || null;
+  if (hasField(body, "supportLabel") && typeof body.supportLabel === "string" && body.supportLabel.trim() && !supportLabel) {
+    return jsonError("請先填寫 HTTPS 外部連結，再設定連結用途。", 400);
+  }
   const incomingSupport = typeof body.supportUrl === "string" ? body.supportUrl.trim() : null;
+  const supportChanged = supportUrl !== (track.support_url?.trim() || null)
+    || supportLabel !== (track.support_url_label?.trim() || null);
   const supportUrlStatus = !supportUrl
     ? "none"
-    : supportUrl === track.support_url?.trim() && track.support_url_status === "approved"
+    : !supportChanged && track.support_url_status === "approved"
       ? "approved"
       : "pending";
 
@@ -283,6 +293,7 @@ export async function PATCH(request: NextRequest) {
     youtube_url: youtubeUrl,
     cover_path: hasField(body, "coverPath") ? incomingCoverPath : track.cover_path ?? null,
     support_url: incomingSupport === "" ? null : supportUrl,
+    support_url_label: supportUrl ? supportLabel : null,
     support_url_status: supportUrlStatus,
     ai_music_challenge_status: "showcase",
     ai_music_showtime_updated_at: now,
