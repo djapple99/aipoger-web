@@ -173,8 +173,12 @@ export default function AdminShowtimePage() {
       }
       const allowed = await loadIsAdmin(user.id);
       if (!mounted) return;
-      setAdminState(allowed ? "ready" : "denied");
-      if (allowed) await loadData();
+      if (!allowed) {
+        setAdminState("denied");
+        return;
+      }
+      await loadData();
+      if (mounted) setAdminState("ready");
     }
     void check();
     return () => { mounted = false; };
