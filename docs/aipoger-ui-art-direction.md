@@ -204,6 +204,12 @@ Current layout:
 - Recognition source appears in each song card intro, for example `正式 Battle 認證`, `探索守擂認證`, or `傷心酒吧公播認證`.
 - `AIPOGER Choice` sits after the catalog as a slim curation note and legacy anchor.
 
+Showtime admin layout:
+
+- `/admin/showtime` is a dense cover-led owner catalog, not a vertical list: use 6 cards per desktop row, 3 per tablet row, 2 per mobile row, and keep each card focused on cover, identity, recognition and operations.
+- `編輯本期 Choice` reveals selection checkboxes on eligible public works plus a compact weekly curation workbench. It is a selection state, not another dashboard panel or social-publishing control.
+- The work editor may change display metadata and cover only; audio, recognition source, Hearts, votes and Battle history are visibly described as locked.
+
 UI direction:
 
 - Present records as playable music cards, not board tiles.

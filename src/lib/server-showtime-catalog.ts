@@ -8,6 +8,11 @@ import { LISTEN_BAR_COVER_BUCKET, type ListenBarTrackRow } from "@/lib/listen-ba
 import type { AipogerChoiceCatalogItem } from "@/lib/aipoger-choice";
 
 export type ShowtimeAdminTrackRow = ListenBarTrackRow & {
+  created_by?: string | null;
+  description?: string | null;
+  youtube_url?: string | null;
+  support_url?: string | null;
+  support_url_status?: string | null;
   ai_music_showtime_certified?: boolean | null;
   ai_music_showtime_certified_at?: string | null;
   ai_music_showtime_certification_source?: string | null;
@@ -44,6 +49,11 @@ const TRACK_SELECT = [
   "ai_tool",
   "genre",
   "mood",
+  "description",
+  "youtube_url",
+  "lyrics",
+  "support_url",
+  "support_url_status",
   "audio_path",
   "cover_path",
   "is_active",
@@ -53,6 +63,7 @@ const TRACK_SELECT = [
   "source",
   "bar_phase",
   "created_at",
+  "created_by",
   "ai_music_challenge_status",
   "ai_music_showtime_certified",
   "ai_music_showtime_certified_at",

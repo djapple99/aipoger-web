@@ -126,6 +126,17 @@ function cleanDescriptionField(value: unknown) {
   return cleanListenBarDisplayText(value, LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS);
 }
 
+function hasField(body: Record<string, unknown>, key: string) {
+  return Object.prototype.hasOwnProperty.call(body, key);
+}
+
+function cleanOwnedShowtimeCoverPath(value: unknown, userId: string) {
+  if (typeof value !== "string") return null;
+  const path = value.trim();
+  if (!path) return "";
+  return path.startsWith(`${userId}/community/`) ? path : null;
+}
+
 async function readUser(admin: AdminClient, request: NextRequest) {
   const token = tokenFromRequest(request);
   if (!token) return { userId: null, error: jsonError("請先登入後再管理 Showtime 作品。", 401) };
@@ -217,8 +228,36 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ track: data });
   }
 
-  const genre = cleanText(body.genre, 80) ?? track.genre ?? "Original 自我風格";
-  if (!allowedGenreValues.has(genre)) return jsonError("請從固定類型選單選擇 Showtime 類型。", 400);
+  const title = hasField(body, "title")
+    ? cleanText(body.title, 500)
+    : track.title?.trim() || "AIPOGER Showtime";
+  if (!title) return jsonError("歌名必填。", 400);
+
+  const artist = hasField(body, "artist")
+    ? cleanShortField(body.artist)
+    : track.artist?.trim() || "AIPOGER Creator";
+  if (!artist) return jsonError("創作者顯示名必填。", 400);
+
+  const genre = hasField(body, "genre")
+    ? cleanText(body.genre, 80)
+    : track.genre ?? "Original 自我風格";
+  if (!genre || !allowedGenreValues.has(genre)) return jsonError("請從固定類型選單選擇 Showtime 類型。", 400);
+
+  const aiTool = hasField(body, "aiTool")
+    ? cleanShortField(body.aiTool) ?? "AI Music"
+    : track.ai_tool?.trim() || "AI Music";
+  const mood = hasField(body, "album") ? cleanShortField(body.album) : track.mood ?? null;
+  const description = hasField(body, "description") ? cleanDescriptionField(body.description) : track.description ?? null;
+  const lyrics = hasField(body, "lyrics")
+    ? (typeof body.lyrics === "string" ? body.lyrics.trim().slice(0, 16000) || null : null)
+    : track.lyrics ?? null;
+  const youtubeUrl = hasField(body, "youtubeUrl")
+    ? normalizeYouTubeUrl(body.youtubeUrl)
+    : track.youtube_url ?? null;
+  const incomingCoverPath = hasField(body, "coverPath") ? cleanOwnedShowtimeCoverPath(body.coverPath, auth.userId) : null;
+  if (hasField(body, "coverPath") && incomingCoverPath === null) {
+    return jsonError("Showtime 封面必須使用自己的已上傳圖片。", 400);
+  }
 
   const supportUrl = Object.prototype.hasOwnProperty.call(body, "supportUrl")
     ? cleanShowtimeSupportUrl(body.supportUrl)
@@ -234,14 +273,15 @@ export async function PATCH(request: NextRequest) {
       : "pending";
 
   const patch = {
-    title: cleanText(body.title, 500) ?? track.title ?? "AIPOGER Showtime",
-    artist: cleanShortField(body.artist) ?? track.artist ?? "AIPOGER Creator",
-    ai_tool: cleanShortField(body.aiTool) ?? track.ai_tool ?? "AI Music",
+    title,
+    artist,
+    ai_tool: aiTool,
     genre,
-    mood: cleanShortField(body.album) ?? track.mood ?? null,
-    description: cleanDescriptionField(body.description) ?? track.description ?? null,
-    lyrics: typeof body.lyrics === "string" ? body.lyrics.trim().slice(0, 16000) : track.lyrics ?? null,
-    youtube_url: normalizeYouTubeUrl(body.youtubeUrl) ?? track.youtube_url ?? null,
+    mood,
+    description,
+    lyrics,
+    youtube_url: youtubeUrl,
+    cover_path: hasField(body, "coverPath") ? incomingCoverPath : track.cover_path ?? null,
     support_url: incomingSupport === "" ? null : supportUrl,
     support_url_status: supportUrlStatus,
     ai_music_challenge_status: "showcase",

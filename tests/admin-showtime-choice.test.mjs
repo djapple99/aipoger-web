@@ -10,18 +10,32 @@ const choiceCurrentRoute = readFileSync(new URL("../src/app/api/choice/current/r
 const choiceHelper = readFileSync(new URL("../src/lib/aipoger-choice.ts", import.meta.url), "utf8");
 const rankPage = readFileSync(new URL("../src/app/rank/page.tsx", import.meta.url), "utf8");
 const profilePage = readFileSync(new URL("../src/app/profile/page.tsx", import.meta.url), "utf8");
-const migration = readFileSync(new URL("../supabase/migrations/20260712071102_choice_weekly_curation.sql", import.meta.url), "utf8");
+const migration = readFileSync(new URL("../supabase/migrations/20260712072918_choice_weekly_curation.sql", import.meta.url), "utf8");
 const productRules = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
 
-test("Showtime admin manages certification and display only", () => {
+test("Showtime admin uses a six-cover catalog with display-only editing", () => {
   assert.ok(showtimeAdminPage.includes("Showtime 管理"));
-  assert.ok(showtimeAdminPage.includes("SHOWTIME_PER_PAGE = 10"));
-  assert.ok(showtimeAdminRoute.includes('type ShowtimeAction = "certify_track" | "hide_track" | "restore_track" | "hide_archive" | "restore_archive"'));
+  assert.ok(showtimeAdminPage.includes("SHOWTIME_PER_PAGE = 12"));
+  assert.ok(showtimeAdminPage.includes("xl:grid-cols-6"));
+  assert.ok(showtimeAdminPage.includes("編輯資料"));
+  assert.ok(showtimeAdminPage.includes("作品介紹／評語"));
+  assert.ok(showtimeAdminRoute.includes("update_track_metadata"));
+  assert.ok(showtimeAdminRoute.includes("uploadTrackCover"));
   assert.ok(showtimeAdminRoute.includes('ai_music_challenge_status: "showcase"'));
   assert.ok(showtimeAdminRoute.includes('ai_music_showtime_certification_source: "airplay"'));
   assert.equal(showtimeAdminRoute.includes("audio_path:"), false);
   assert.equal(showtimeAdminRoute.includes("heart_count:"), false);
   assert.equal(showtimeAdminRoute.includes("final_vote_left:"), false);
+});
+
+test("Showtime catalog can curate and publish the current Choice in place", () => {
+  assert.ok(showtimeAdminPage.includes("編輯本期 Choice"));
+  assert.ok(showtimeAdminPage.includes("勾選 Showtime 作品，組成本期 Choice"));
+  assert.ok(showtimeAdminPage.includes('runChoiceAction("add_item"'));
+  assert.ok(showtimeAdminPage.includes('runChoiceAction("remove_item"'));
+  assert.ok(showtimeAdminPage.includes('runChoiceAction("set_published"'));
+  assert.ok(showtimeAdminPage.includes("choiceItemCountMessage"));
+  assert.ok(showtimeAdminPage.includes("item.selectable"));
 });
 
 test("Choice persists human weekly selections with strict bounded publishing", () => {

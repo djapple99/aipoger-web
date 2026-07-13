@@ -11,7 +11,7 @@ import { IMAGE_UPLOAD_ACCEPT, IMAGE_UPLOAD_FORMAT_LABEL, isAllowedImageUploadFil
 import { readFighterNameFromStorage, writeFighterNameToStorage } from "@/lib/fighter-name-storage";
 import { loadFighterNameFromProfile, saveFighterNameToProfile } from "@/lib/user-profile-fighter-name";
 import { loadIsAdmin } from "@/lib/user-profile-admin";
-import { LISTEN_BAR_AUDIO_BUCKET } from "@/lib/listen-bar";
+import { DEFAULT_LISTEN_BAR_COVER, LISTEN_BAR_AUDIO_BUCKET, LISTEN_BAR_COVER_BUCKET } from "@/lib/listen-bar";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import { rememberAuthNextPath } from "@/lib/auth-urls";
 import {
@@ -26,6 +26,7 @@ const BATTLE_AUDIO_BUCKET = "battle-audio";
 const PROFILE_CHALLENGE_AUDIO_KEY = "aipoger:profile-challenge-audio";
 const FAVORITE_ORDER_STORAGE_PREFIX = "aipoger:profile-favorite-order";
 const CREATOR_ITEMS_PER_PAGE = 10;
+const MAX_SHOWTIME_COVER_BYTES = 10 * 1024 * 1024;
 
 type ListenBarTrack = {
   id: string;
@@ -295,6 +296,8 @@ function ProfileInner() {
   const [bulkListenBarBusy, setBulkListenBarBusy] = useState(false);
   const [showtimeBusy, setShowtimeBusy] = useState<Record<string, boolean>>({});
   const [editingShowtimeTrackId, setEditingShowtimeTrackId] = useState<string | null>(null);
+  const [showtimeCoverFile, setShowtimeCoverFile] = useState<File | null>(null);
+  const [showtimeCoverPreview, setShowtimeCoverPreview] = useState<string | null>(null);
   const [showtimeEditForm, setShowtimeEditForm] = useState<ShowtimeEditForm>({
     title: "",
     artist: "",
@@ -1194,6 +1197,8 @@ function ProfileInner() {
 
   const openShowtimeEditor = useCallback((track: ShowtimeTrack) => {
     setEditingShowtimeTrackId(track.id);
+    setShowtimeCoverFile(null);
+    setShowtimeCoverPreview(null);
     setShowtimeEditForm({
       title: track.title?.trim() ?? "",
       artist: track.artist?.trim() ?? "",
@@ -1205,6 +1210,26 @@ function ProfileInner() {
       lyrics: track.lyrics?.trim() ?? "",
       supportUrl: track.support_url?.trim() ?? "",
     });
+  }, []);
+
+  useEffect(() => () => {
+    if (showtimeCoverPreview?.startsWith("blob:")) URL.revokeObjectURL(showtimeCoverPreview);
+  }, [showtimeCoverPreview]);
+
+  const closeShowtimeEditor = useCallback(() => {
+    setEditingShowtimeTrackId(null);
+    setShowtimeCoverFile(null);
+    setShowtimeCoverPreview(null);
+  }, []);
+
+  const changeShowtimeCover = useCallback((file: File | null) => {
+    if (!file) return;
+    if (!isAllowedImageUploadFile(file) || file.size <= 0 || file.size > MAX_SHOWTIME_COVER_BYTES) {
+      alert(`${IMAGE_UPLOAD_FORMAT_LABEL}，封面最大 10MB。`);
+      return;
+    }
+    setShowtimeCoverFile(file);
+    setShowtimeCoverPreview(URL.createObjectURL(file));
   }, []);
 
   const patchShowtimeTrack = useCallback(async (trackId: string, payload: Record<string, unknown>) => {
@@ -1246,6 +1271,22 @@ function ProfileInner() {
   }, [copy.showtimeSaveFailed, router]);
 
   const saveShowtimeMetadata = useCallback(async (trackId: string) => {
+    let uploadedCoverPath: string | null = null;
+    if (showtimeCoverFile) {
+      if (!userId) {
+        alert(copy.showtimeSaveFailed);
+        return;
+      }
+      const safeName = showtimeCoverFile.name.replace(/[^a-zA-Z0-9._-]+/g, "-") || "cover.jpg";
+      uploadedCoverPath = `${userId}/community/showtime/${trackId}/${Date.now()}-${crypto.randomUUID()}-${safeName}`;
+      const { error: uploadError } = await supabase.storage
+        .from(LISTEN_BAR_COVER_BUCKET)
+        .upload(uploadedCoverPath, showtimeCoverFile, { contentType: showtimeCoverFile.type, upsert: false });
+      if (uploadError) {
+        alert(uploadError.message || copy.showtimeSaveFailed);
+        return;
+      }
+    }
     const saved = await patchShowtimeTrack(trackId, {
       title: showtimeEditForm.title,
       artist: showtimeEditForm.artist,
@@ -1256,9 +1297,14 @@ function ProfileInner() {
       youtubeUrl: showtimeEditForm.youtubeUrl,
       lyrics: showtimeEditForm.lyrics,
       supportUrl: showtimeEditForm.supportUrl,
+      ...(uploadedCoverPath ? { coverPath: uploadedCoverPath } : {}),
     });
-    if (saved) setEditingShowtimeTrackId(null);
-  }, [patchShowtimeTrack, showtimeEditForm]);
+    if (saved) {
+      closeShowtimeEditor();
+    } else if (uploadedCoverPath) {
+      await supabase.storage.from(LISTEN_BAR_COVER_BUCKET).remove([uploadedCoverPath]);
+    }
+  }, [closeShowtimeEditor, copy.showtimeSaveFailed, patchShowtimeTrack, showtimeCoverFile, showtimeEditForm, userId]);
 
   const hideShowtimeDisplay = useCallback(async (track: ShowtimeTrack) => {
     if (!window.confirm(copy.showtimeHideConfirm)) return;
@@ -2171,6 +2217,22 @@ function ProfileInner() {
                             className="col-span-2 rounded-2xl border border-yellow-200/18 bg-yellow-300/[0.045] p-3 sm:col-span-4"
                             onClick={(event) => event.stopPropagation()}
                           >
+                            <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-black/25 p-2.5 sm:col-span-2">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={showtimeCoverPreview || storagePublicUrl(LISTEN_BAR_COVER_BUCKET, showtimeTrack.cover_path) || DEFAULT_LISTEN_BAR_COVER}
+                                alt=""
+                                className="h-14 w-14 rounded-lg border border-white/10 object-cover"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-black text-zinc-200">{isZh ? "作品封面" : "Cover Art"}</p>
+                                <p className="mt-1 text-[11px] font-bold text-zinc-500">{isZh ? "可更換展示封面，不會更動音檔或認可紀錄。" : "Updates display art only. Audio and recognition stay locked."}</p>
+                              </div>
+                              <label className="cursor-pointer rounded-full border border-yellow-200/30 bg-yellow-300/10 px-3 py-1.5 text-xs font-black text-yellow-100 transition hover:border-yellow-100/60">
+                                {isZh ? "更換封面" : "Replace Cover"}
+                                <input type="file" accept={IMAGE_UPLOAD_ACCEPT} className="sr-only" onChange={(event) => changeShowtimeCover(event.target.files?.[0] ?? null)} />
+                              </label>
+                            </div>
                             <div className="grid gap-3 sm:grid-cols-2">
                               <label className="grid gap-1 text-xs font-black text-zinc-300">
                                 {isZh ? "歌名" : "Title"}
@@ -2265,7 +2327,7 @@ function ProfileInner() {
                               <button
                                 type="button"
                                 disabled={Boolean(showtimeBusy[showtimeTrack.id])}
-                                onClick={() => setEditingShowtimeTrackId(null)}
+                                onClick={closeShowtimeEditor}
                                 className="rounded-full border border-white/10 bg-black/25 px-4 py-2 text-xs font-black text-zinc-300 transition hover:border-white/30 disabled:cursor-wait disabled:opacity-45"
                               >
                                 {copy.showtimeCancel}

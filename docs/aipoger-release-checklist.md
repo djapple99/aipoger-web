@@ -180,8 +180,8 @@ Choice and retired Spotlight:
 - `/listen-bar?spotlight=YYYY-MM-DD&lang=zh` returns normal Bar Heartbreak with no specified-song playback or Spotlight panel.
 - `/today?lang=zh` returns 307 to `/rank?lang=zh#choice-weekly`.
 - `/admin/social` remains the only draft, approval, and manual publishing console; Discord publishing still requires an approved draft plus its explicit publish action.
-- `/admin/showtime` is owner-only and may certify only eligible public Bar Heartbreak works, or soft-hide/restore Showtime public display without editing audio, Battle results, votes, Hearts, or recognition source.
-- `/admin/choice` is owner-only and can create a Monday-based weekly draft, add/reorder/remove 5-10 currently public Showtime works, and publish or withdraw it. It must not create social drafts or publish externally.
+- `/admin/showtime` is owner-only, renders a compact six-cover desktop catalog (12 works per page), may certify eligible public Bar Heartbreak works, soft-hide/restore Showtime display, and edit only community-work display metadata and cover. Audio, Battle results, votes, Hearts, and recognition source remain immutable.
+- `/admin/showtime` Choice mode is owner-only and can create a Monday-based weekly draft, check/uncheck and reorder 5-10 currently public Showtime works, and publish or withdraw it. `/admin/choice` remains a direct route for the same workflow. Neither route may create social drafts or publish externally.
 - Existing `listen_bar_daily_spotlights`, historical assets, and old social drafts are not deleted during this retirement.
 
 ## AI Music Works Checklist
