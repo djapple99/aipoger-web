@@ -63,7 +63,7 @@ function resolveCollection(row: ChoiceCollectionRow, catalog: AipogerChoiceCatal
     items: (row.aipoger_creator_choice_items ?? [])
       .map((item) => {
         const source = byKey.get(catalogKey(item.source_kind, item.source_id));
-        return source?.selectable ? { ...source, itemId: item.id, position: Math.max(1, Math.round(item.position)) } : null;
+        return source?.isPublic && source.selectable ? { ...source, itemId: item.id, position: Math.max(1, Math.round(item.position)) } : null;
       })
       .filter((item): item is AipogerCreatorChoiceCollection["items"][number] => Boolean(item))
       .sort((a, b) => a.position - b.position),

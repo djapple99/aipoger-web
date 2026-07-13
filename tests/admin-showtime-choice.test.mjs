@@ -47,9 +47,17 @@ test("Choice persists human weekly selections with strict bounded publishing", (
   assert.ok(choiceHelper.includes("AIPOGER_CHOICE_MAX_ITEMS = 10"));
   assert.ok(choiceAdminRoute.includes("Choice 發布需要 ${AIPOGER_CHOICE_MIN_ITEMS}-${AIPOGER_CHOICE_MAX_ITEMS} 首 Showtime 作品。"));
   assert.ok(choiceAdminRoute.includes("assertSelectableSource"));
+  assert.ok(choiceAdminRoute.includes("!source?.isPublic || !source.selectable"));
   assert.ok(choiceAdminRoute.includes('action === "set_published"'));
   assert.ok(choiceAdminPage.includes("Choice 管理"));
   assert.ok(choiceAdminPage.includes("加入本週 Choice"));
+});
+
+test("Choice selection shows only currently public Showtime works in a compact cover catalog", () => {
+  assert.ok(choiceAdminPage.includes("item.isPublic && item.selectable"));
+  assert.ok(choiceAdminPage.includes("只顯示目前仍在 Showtime 公開展示中的認證作品。"));
+  assert.ok(choiceAdminPage.includes("lg:grid-cols-6"));
+  assert.ok(choiceAdminPage.includes("CHOICE_CATALOG_PER_PAGE = 24"));
 });
 
 test("published Choice reaches Showtime without becoming a ranking or social publisher", () => {

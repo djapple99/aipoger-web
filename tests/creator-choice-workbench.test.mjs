@@ -25,6 +25,7 @@ test("only creators with a Showtime work can manage their own Choice while catal
   assert.match(creatorChoiceRoute, /需要至少一首已認證 Showtime 的作品/);
   assert.match(creatorChoiceRoute, /loadShowtimeAdminCatalog\(admin\)/);
   assert.match(creatorChoiceRoute, /只能加入目前公開展示中的 Showtime 認證作品/);
+  assert.match(creatorChoiceRoute, /item\.isPublic && item\.selectable/);
   assert.doesNotMatch(creatorChoiceRoute, /\.eq\("created_by", guard\.user\.id\).*sourceKind/s);
 });
 
@@ -33,9 +34,9 @@ test("creator Choice can be shared only after publication and keeps 5-10 current
   assert.match(creatorChoiceRoute, /AIPOGER_CHOICE_MAX_ITEMS/);
   assert.match(creatorChoiceRoute, /published_at: publish \? now : null/);
   assert.match(publicChoiceRoute, /\.eq\("is_published", true\)/);
-  assert.match(publicChoiceRoute, /source\?\.selectable/);
+  assert.match(publicChoiceRoute, /source\?\.isPublic && source\.selectable/);
   assert.match(profileChoicePage, /creatorChoicePublicPath/);
-  assert.match(profileChoicePage, /可選其他創作者的公開 Showtime 作品，不限自己的歌。/);
+  assert.match(profileChoicePage, /只顯示目前公開展示中的 Showtime 作品；可選其他創作者，不限自己的歌。/);
 });
 
 test("creator Showtime management supports an explanatory external-link label without payment handling", () => {

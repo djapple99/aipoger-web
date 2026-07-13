@@ -143,7 +143,7 @@ async function assertSelectableSource(admin: ReturnType<typeof adminClient>, sou
   const catalog = await loadShowtimeAdminCatalog(admin);
   if (!catalog.schemaReady) throw new Error("Showtime 資料尚未準備完成。" );
   const source = catalog.items.find((item) => item.sourceKind === sourceKind && item.id === sourceId);
-  if (!source?.selectable) throw new Error("只能加入目前公開展示中的 Showtime 認證作品。" );
+  if (!source?.isPublic || !source.selectable) throw new Error("只能加入目前公開展示中的 Showtime 認證作品。" );
   return source;
 }
 

@@ -19,7 +19,7 @@ type ChoicePayload = {
   error?: string;
 };
 
-const CHOICE_CATALOG_PER_PAGE = 10;
+const CHOICE_CATALOG_PER_PAGE = 24;
 
 async function authHeader(): Promise<Record<string, string>> {
   const {
@@ -103,7 +103,7 @@ export default function AdminChoicePage() {
   }, [selected]);
 
   const selectedKeys = useMemo(() => new Set((selected?.items ?? []).map((item) => `${item.sourceKind}:${item.id}`)), [selected]);
-  const eligibleCatalog = useMemo(() => catalog.filter((item) => item.selectable), [catalog]);
+  const eligibleCatalog = useMemo(() => catalog.filter((item) => item.isPublic && item.selectable), [catalog]);
   const filteredCatalog = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return eligibleCatalog;
@@ -240,20 +240,27 @@ export default function AdminChoicePage() {
             <div><p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">Showtime Catalog</p><h2 className="mt-1 text-xl font-black">加入本週 Choice</h2></div>
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋歌名、創作者、類型" className="h-10 w-full rounded-xl border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none sm:w-72" />
           </div>
-          <div className="mt-4 grid gap-2">
+          <p className="mt-2 text-xs font-bold text-zinc-500">只顯示目前仍在 Showtime 公開展示中的認證作品。</p>
+          <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
             {pagedCatalog.map((item) => {
               const key = `${item.sourceKind}:${item.id}`;
               const added = selectedKeys.has(key);
               return (
-                <article key={key} className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-black/55 p-2.5">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={item.coverUrl} alt="" className="h-12 w-12 rounded-lg object-cover" />
-                  <div className="min-w-0 flex-1"><p className="truncate text-sm font-black">{item.title}</p><p className="truncate text-xs font-bold text-zinc-400">{item.artist} · {item.genre} · {item.recognition}</p></div>
-                  <button type="button" disabled={!selected || added || busy !== ""} onClick={() => selected && void runAction("add_item", { collectionId: selected.id, sourceKind: item.sourceKind, sourceId: item.id }, "已加入本週 Choice。", selected.id)} className={`rounded-full border px-3 py-2 text-xs font-black disabled:opacity-40 ${added ? "border-emerald-200/25 bg-emerald-300/10 text-emerald-100" : "border-cyan-200/30 bg-cyan-300/10 text-cyan-100"}`}>{added ? "已加入" : "加入"}</button>
+                <article key={key} className="group min-w-0 overflow-hidden rounded-lg border border-white/10 bg-black/55">
+                  <div className="relative aspect-square overflow-hidden bg-zinc-950">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={item.coverUrl} alt="" className="h-full w-full object-cover transition duration-200 group-hover:scale-[1.025]" />
+                    <span className="absolute left-1 top-1 bg-black/80 px-1.5 py-1 text-[9px] font-black text-yellow-100">SHOWTIME</span>
+                    <button type="button" disabled={!selected || added || busy !== ""} onClick={() => selected && void runAction("add_item", { collectionId: selected.id, sourceKind: item.sourceKind, sourceId: item.id }, "已加入本週 Choice。", selected.id)} className={`absolute bottom-1 right-1 flex h-7 min-w-7 items-center justify-center rounded-full border px-1.5 text-xs font-black shadow-lg disabled:opacity-40 ${added ? "border-emerald-200/35 bg-emerald-300/90 text-black" : "border-cyan-100/50 bg-black/80 text-cyan-100 hover:bg-cyan-300 hover:text-black"}`} aria-label={`${added ? "已加入" : "加入"}本週 Choice：${item.title}`}>{added ? "已選" : "+"}</button>
+                  </div>
+                  <div className="p-2">
+                    <p className="line-clamp-2 min-h-9 text-xs font-black leading-4 text-white">{item.title}</p>
+                    <p className="mt-1 truncate text-[11px] font-bold text-zinc-500">{item.artist}</p>
+                  </div>
                 </article>
               );
             })}
-            {pagedCatalog.length === 0 ? <p className="rounded-xl border border-dashed border-white/10 px-3 py-8 text-center text-sm font-bold text-zinc-500">目前沒有可加入的公開 Showtime 作品。</p> : null}
+            {pagedCatalog.length === 0 ? <p className="col-span-full rounded-xl border border-dashed border-white/10 px-3 py-8 text-center text-sm font-bold text-zinc-500">目前沒有可加入的 Showtime 公開展示作品。</p> : null}
           </div>
           <div className="mt-4 flex items-center justify-between text-sm font-bold text-zinc-500"><span>{currentCatalogPage} / {catalogTotalPages}</span><div className="flex gap-2"><button type="button" disabled={currentCatalogPage <= 1} onClick={() => setCatalogPage((page) => Math.max(1, page - 1))} className="rounded-full border border-white/10 px-3 py-2 text-xs font-black disabled:opacity-35">上一頁</button><button type="button" disabled={currentCatalogPage >= catalogTotalPages} onClick={() => setCatalogPage((page) => Math.min(catalogTotalPages, page + 1))} className="rounded-full border border-white/10 px-3 py-2 text-xs font-black disabled:opacity-35">下一頁</button></div></div>
         </section>
