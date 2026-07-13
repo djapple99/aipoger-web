@@ -138,22 +138,6 @@ function certificationLabel(source: unknown) {
   return "傷心酒吧公播認證";
 }
 
-export function isShowtimeTrackCertificationCandidate(row: ShowtimeAdminTrackRow) {
-  const status = row.review_status?.toLowerCase();
-  return (
-    row.source === "community" &&
-    row.bar_phase === "public" &&
-    row.is_active !== false &&
-    status !== "hidden" &&
-    status !== "removed" &&
-    status !== "moderation_hold" &&
-    !row.hidden_at &&
-    !row.removed_at &&
-    Boolean(row.audio_path?.trim()) &&
-    !row.ai_music_showtime_certified
-  );
-}
-
 function catalogItemFromTrack(admin: SupabaseClient, row: ShowtimeAdminTrackRow): AipogerChoiceCatalogItem {
   const certified = Boolean(row.ai_music_showtime_certified);
   const publicVisible = certified && isAiMusicShowtimePubliclyVisible(row);
@@ -164,7 +148,7 @@ function catalogItemFromTrack(admin: SupabaseClient, row: ShowtimeAdminTrackRow)
     artist: stringValue(row.artist, "AIPOGER 創作者"),
     genre: stringValue(row.genre, "AI Music"),
     coverUrl: coverUrl(admin, row.cover_path),
-    recognition: certified ? certificationLabel(row.ai_music_showtime_certification_source) : "傷心酒吧公播候選",
+    recognition: certificationLabel(row.ai_music_showtime_certification_source),
     certifiedAt: dateValue(row.ai_music_showtime_certified_at ?? row.created_at),
     isPublic: publicVisible,
     selectable: publicVisible,
@@ -205,12 +189,21 @@ export async function loadShowtimeAdminCatalog(admin: SupabaseClient): Promise<S
 
   const tracks = (trackResult.data ?? []) as unknown as ShowtimeAdminTrackRow[];
   const archives = archiveResult.error ? [] : (archiveResult.data ?? []) as unknown as ShowtimeAdminArchiveRow[];
-  const trackItems = tracks
-    .filter((row) => Boolean(row.ai_music_showtime_certified) || isShowtimeTrackCertificationCandidate(row))
-    .map((row) => catalogItemFromTrack(admin, row));
-  const archiveItems = archives.map(catalogItemFromArchive).filter((row): row is AipogerChoiceCatalogItem => Boolean(row));
+  const currentTracks = tracks.filter(
+    (row) => Boolean(row.ai_music_showtime_certified) && isAiMusicShowtimePubliclyVisible(row),
+  );
+  const currentArchives = archives
+    .map((archive) => ({ archive, item: catalogItemFromArchive(archive) }))
+    .filter((entry): entry is { archive: ShowtimeAdminArchiveRow; item: AipogerChoiceCatalogItem } => Boolean(entry.item?.isPublic && entry.item.selectable));
+  const trackItems = currentTracks.map((row) => catalogItemFromTrack(admin, row));
+  const archiveItems = currentArchives.map((entry) => entry.item);
   const items = [...trackItems, ...archiveItems]
     .sort((a, b) => new Date(b.certifiedAt).getTime() - new Date(a.certifiedAt).getTime() || a.id.localeCompare(b.id));
 
-  return { schemaReady: true, items, tracks, archives };
+  return {
+    schemaReady: true,
+    items,
+    tracks: currentTracks,
+    archives: currentArchives.map((entry) => entry.archive),
+  };
 }

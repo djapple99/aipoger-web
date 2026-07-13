@@ -4,6 +4,7 @@ import test from "node:test";
 
 const showtimeAdminPage = readFileSync(new URL("../src/app/admin/showtime/page.tsx", import.meta.url), "utf8");
 const showtimeAdminRoute = readFileSync(new URL("../src/app/api/admin/showtime/route.ts", import.meta.url), "utf8");
+const showtimeCatalog = readFileSync(new URL("../src/lib/server-showtime-catalog.ts", import.meta.url), "utf8");
 const choiceAdminPage = readFileSync(new URL("../src/app/admin/choice/page.tsx", import.meta.url), "utf8");
 const choiceAdminRoute = readFileSync(new URL("../src/app/api/admin/choice/route.ts", import.meta.url), "utf8");
 const choiceCurrentRoute = readFileSync(new URL("../src/app/api/choice/current/route.ts", import.meta.url), "utf8");
@@ -13,16 +14,23 @@ const profilePage = readFileSync(new URL("../src/app/profile/page.tsx", import.m
 const migration = readFileSync(new URL("../supabase/migrations/20260712072918_choice_weekly_curation.sql", import.meta.url), "utf8");
 const productRules = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
 
-test("Showtime admin uses a six-cover catalog with display-only editing", () => {
+test("Showtime admin uses a current public six-cover catalog with display-only editing", () => {
   assert.ok(showtimeAdminPage.includes("Showtime 管理"));
   assert.ok(showtimeAdminPage.includes("SHOWTIME_PER_PAGE = 12"));
   assert.ok(showtimeAdminPage.includes("xl:grid-cols-6"));
   assert.ok(showtimeAdminPage.includes("編輯資料"));
-  assert.ok(showtimeAdminPage.includes("作品介紹／評語"));
+  assert.ok(showtimeAdminPage.includes("Showtime 評語／作品介紹"));
+  assert.ok(showtimeAdminPage.includes("textarea value={editForm.description}"));
   assert.ok(showtimeAdminRoute.includes("update_track_metadata"));
   assert.ok(showtimeAdminRoute.includes("uploadTrackCover"));
   assert.ok(showtimeAdminRoute.includes('ai_music_challenge_status: "showcase"'));
-  assert.ok(showtimeAdminRoute.includes('ai_music_showtime_certification_source: "airplay"'));
+  assert.ok(showtimeCatalog.includes("Boolean(row.ai_music_showtime_certified) && isAiMusicShowtimePubliclyVisible(row)"));
+  assert.ok(showtimeCatalog.includes("entry.item?.isPublic && entry.item.selectable"));
+  assert.equal(showtimeCatalog.includes("isShowtimeTrackCertificationCandidate"), false);
+  assert.equal(showtimeAdminPage.includes("公播候選"), false);
+  assert.equal(showtimeAdminPage.includes("certify_track"), false);
+  assert.equal(showtimeAdminRoute.includes("certify_track"), false);
+  assert.ok(showtimeAdminRoute.includes('body.action !== "hide_archive"'));
   assert.equal(showtimeAdminRoute.includes("audio_path:"), false);
   assert.equal(showtimeAdminRoute.includes("heart_count:"), false);
   assert.equal(showtimeAdminRoute.includes("final_vote_left:"), false);
@@ -55,9 +63,17 @@ test("Choice persists human weekly selections with strict bounded publishing", (
 
 test("Choice selection shows only currently public Showtime works in a compact cover catalog", () => {
   assert.ok(choiceAdminPage.includes("item.isPublic && item.selectable"));
-  assert.ok(choiceAdminPage.includes("只顯示目前仍在 Showtime 公開展示中的認證作品。"));
+  assert.ok(choiceAdminPage.includes("只顯示目前仍在 Showtime 公開展示中的認證作品；尚未建立草稿時，按＋會自動建立本週草稿。"));
   assert.ok(choiceAdminPage.includes("lg:grid-cols-6"));
   assert.ok(choiceAdminPage.includes("CHOICE_CATALOG_PER_PAGE = 24"));
+});
+
+test("official Choice can create a draft from the first selected song", () => {
+  assert.ok(choiceAdminPage.includes("async function ensureChoiceCollection"));
+  assert.ok(choiceAdminPage.includes("async function addChoiceItem"));
+  assert.ok(choiceAdminPage.includes("void addChoiceItem(item)"));
+  assert.equal(choiceAdminPage.includes("disabled={!selected || added || busy !== \"\"}"), false);
+  assert.ok(choiceAdminPage.includes("按＋會自動建立本週草稿"));
 });
 
 test("published Choice reaches Showtime without becoming a ranking or social publisher", () => {

@@ -45,7 +45,7 @@ Daily Spotlight 已退役：它不再是傷心酒吧、Explore、`/admin/listen-
 - `AIPOGER Choice` 是唯一人為策展訊號：每週 5-10 首、不排名、可跨類型。Choice 主 CTA 是 `/rank?lang=zh#choice-weekly`；owner 主要從 `/admin/showtime` 的作品勾選模式建立週次、挑選公開 Showtime 認證作品、排序、發布與撤回，`/admin/choice` 保留為相同資料的直接管理入口。
 - `/today` 只作舊外部連結相容入口，固定以 307 導向 Choice；`/listen-bar?spotlight=...` 必須退化為正常傷心酒吧，不指定歌曲也不改變輪播。
 - `listen_bar_daily_spotlights`、歷史素材與舊社群草稿只保留歷史資料，不再由 app 日常流程讀寫；本階段不刪資料、不跑 destructive SQL。
-- `/admin/showtime` 是 owner 的緊湊封面作品目錄：桌機每列 6 首、每頁 12 首。它可將合格的傷心酒吧公開作品認證為固定的公播來源，或收回／恢復既有 Showtime 的公開展示；對創作者投稿的 AI Music 作品，owner 可改封面與顯示資料（歌名、創作者、AI 工具、類型、製作資訊、作品介紹／評語、歌詞、YouTube、外部支持連結）。不得改寫音檔、既有認證來源、Battle 戰績、票數、Heart 或重新開戰。`/admin/social` 是唯一社群草稿、批准與手動發布中控台。Choice 選曲不會建立社群草稿或自動外部發布；草稿需先批准，Discord 仍需明確按平台發布才送 webhook；Facebook 社團維持手動發布，Instagram 與 YouTube 維持草稿。TikTok 不在目前工作台或新增草稿流程，歷史資料保留。
+- `/admin/showtime` 是 owner 的緊湊封面作品目錄：只列出目前已進 Showtime 且仍公開展示的認證作品，桌機每列 6 首、每頁 12 首。它不是傷心酒吧投稿或公播候選清單，也不提供候選認證入口；對創作者投稿的 AI Music 作品，owner 可改封面與顯示資料（歌名、創作者、AI 工具、類型、製作資訊、Showtime 評語／作品介紹、歌詞、YouTube、外部支持連結），或收回目前公開展示。不得改寫音檔、既有認證來源、Battle 戰績、票數、Heart 或重新開戰。`/admin/social` 是唯一社群草稿、批准與手動發布中控台。Choice 選曲不會建立社群草稿或自動外部發布；草稿需先批准，Discord 仍需明確按平台發布才送 webhook；Facebook 社團維持手動發布，Instagram 與 YouTube 維持草稿。TikTok 不在目前工作台或新增草稿流程，歷史資料保留。
 - Discord 是社群擴散管道，不是產品規則來源。所有對外 CTA 應把聽歌、投票、按心、留言與投稿導回 AIPOGER 網站與 Choice。
 
 ## Auth Rules
@@ -361,6 +361,7 @@ AIPOGER Choice Weekly:
 - It is not a separate ranking chart or automated weekly winner.
 - The owner-managed `/admin/showtime` Choice workbench keeps weekly date, optional curation copy, 5-10 selected currently public Showtime works, order, and publication state; `/admin/choice` exposes the same workflow directly. The selection catalog must use `isPublic && selectable`, so historical certification, hidden, withdrawn, inactive, unplayable, or moderation-held works cannot be newly selected.
 - Choice selection is a compact cover catalog, not one tall metadata row per song: show six small cover-led options per desktop row, a minimal title/creator line, and an overlay add state. `/admin/choice` and `/profile/choice` must use this same density model.
+- When the owner or eligible creator selects their first song before creating a weekly draft, the Choice UI must create that week’s draft first and then add the selected work. The overlay add control must not be disabled merely because no draft has been manually created yet.
 - This official owner Choice remains separate from creator-published Choice. A creator who has at least one persisted Showtime-certified community work may use `/profile/choice` to create weekly 5-10-track Choice collections. Their own recognition grants curation access, but their selection pool is all currently public Showtime works from any creator, not only their own songs. Each creator can manage only their own drafts and published collections; a published creator Choice has its own share page and never replaces the official weekly Choice at `#choice-weekly`.
 - The front-stage implementation may provide a homepage entry that jumps to the `#choice-weekly` curation list on `/rank`.
 - Choice may later inform social drafts or DJ selection, but this management workflow does not auto-create drafts or publish externally.

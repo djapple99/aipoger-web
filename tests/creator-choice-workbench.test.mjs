@@ -39,6 +39,14 @@ test("creator Choice can be shared only after publication and keeps 5-10 current
   assert.match(profileChoicePage, /只顯示目前公開展示中的 Showtime 作品；可選其他創作者，不限自己的歌。/);
 });
 
+test("creator Choice can create a draft from the first selected song", () => {
+  assert.match(profileChoicePage, /const ensureChoiceCollection = useCallback/);
+  assert.match(profileChoicePage, /const addChoiceItem = useCallback/);
+  assert.match(profileChoicePage, /void addChoiceItem\(item\)/);
+  assert.doesNotMatch(profileChoicePage, /disabled=\{!selected \|\| added \|\| busy !== ""\}/);
+  assert.match(profileChoicePage, /按＋會自動建立本週草稿/);
+});
+
 test("creator Showtime management supports an explanatory external-link label without payment handling", () => {
   assert.match(migration, /add column if not exists support_url_label text/i);
   assert.match(showtimeHelper, /cleanShowtimeSupportLabel/);

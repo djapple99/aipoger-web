@@ -12,13 +12,12 @@ import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import { normalizeYouTubeUrl } from "@/lib/youtube-url";
 import {
   isMissingShowtimeSchema,
-  isShowtimeTrackCertificationCandidate,
   loadShowtimeAdminCatalog,
   type ShowtimeAdminArchiveRow,
   type ShowtimeAdminTrackRow,
 } from "@/lib/server-showtime-catalog";
 
-type ShowtimeAction = "certify_track" | "hide_track" | "restore_track" | "hide_archive" | "restore_archive" | "update_track_metadata";
+type ShowtimeAction = "hide_track" | "hide_archive" | "update_track_metadata";
 
 const allowedGenreValues = new Set(MUSIC_GENRE_OPTIONS.map((genre) => genre.value));
 const allowedCoverMimeTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -100,36 +99,13 @@ async function updateTrack(
   track: ShowtimeAdminTrackRow,
 ) {
   const now = new Date().toISOString();
-  if (action === "certify_track") {
-    if (!isShowtimeTrackCertificationCandidate(track)) {
-      throw new Error("這首歌目前不是可認證的傷心酒吧公播作品。" );
-    }
-    const { error } = await admin
-      .from("listen_bar_tracks")
-      .update({
-        ai_music_showtime_certified: true,
-        ai_music_showtime_certified_at: now,
-        ai_music_showtime_certification_source: "airplay",
-        ai_music_showtime_public_removed_at: null,
-        ai_music_showtime_public_removed_by: null,
-        ai_music_showtime_public_removal_note: null,
-        ai_music_challenge_status: "showcase",
-        ai_music_showtime_updated_at: now,
-        updated_at: now,
-      })
-      .eq("id", track.id);
-    if (error) throw error;
-    return "已認證為 Showtime 傷心酒吧公播作品，並停止接戰。";
-  }
-
   if (!track.ai_music_showtime_certified) throw new Error("只能管理已認證的 Showtime 作品。" );
-  const hide = action === "hide_track";
   const { error } = await admin
     .from("listen_bar_tracks")
     .update({
-      ai_music_showtime_public_removed_at: hide ? now : null,
-      ai_music_showtime_public_removed_by: hide ? userId : null,
-      ai_music_showtime_public_removal_note: hide ? "Admin removed public Showtime display." : null,
+      ai_music_showtime_public_removed_at: now,
+      ai_music_showtime_public_removed_by: userId,
+      ai_music_showtime_public_removal_note: "Admin removed public Showtime display.",
       ai_music_challenge_status: "showcase",
       ai_music_showtime_updated_at: now,
       updated_at: now,
@@ -137,7 +113,7 @@ async function updateTrack(
     .eq("id", track.id)
     .eq("ai_music_showtime_certified", true);
   if (error) throw error;
-  return hide ? "已從 Showtime 公開目錄收回作品。" : "已恢復 Showtime 公開展示。";
+  return "已從 Showtime 公開目錄收回作品。";
 }
 
 async function updateTrackMetadata(
@@ -240,18 +216,17 @@ async function updateArchive(
 ) {
   if (!archive.battle_id) throw new Error("找不到 Battle 封存紀錄。" );
   const now = new Date().toISOString();
-  const hide = action === "hide_archive";
   const { error } = await admin
     .from("battle_result_archives")
     .update({
-      showtime_public_removed_at: hide ? now : null,
-      showtime_public_removed_by: hide ? userId : null,
-      showtime_public_removal_note: hide ? "Admin removed public Showtime display." : null,
+      showtime_public_removed_at: now,
+      showtime_public_removed_by: userId,
+      showtime_public_removal_note: "Admin removed public Showtime display.",
       showtime_updated_at: now,
     })
     .eq("battle_id", archive.battle_id);
   if (error) throw error;
-  return hide ? "已從 Showtime 公開目錄收回 Battle 作品。" : "已恢復 Battle 作品的 Showtime 公開展示。";
+  return "已從 Showtime 公開目錄收回 Battle 作品。";
 }
 
 export async function GET(request: NextRequest) {
@@ -273,7 +248,7 @@ export async function PATCH(request: NextRequest) {
     const body = (await request.json().catch(() => null)) as (Record<string, unknown> & { action?: ShowtimeAction; id?: string }) | null;
     if (!body?.action || !isUuid(body.id)) return jsonError("管理操作資料不完整。" );
 
-    if (body.action === "certify_track" || body.action === "hide_track" || body.action === "restore_track" || body.action === "update_track_metadata") {
+    if (body.action === "hide_track" || body.action === "update_track_metadata") {
       const track = await loadTrack(guard.admin, body.id);
       if (!track) return jsonError("找不到 Showtime 作品。", 404);
       if (body.action === "update_track_metadata") {
@@ -284,6 +259,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ message });
     }
 
+    if (body.action !== "hide_archive") return jsonError("不支援的 Showtime 管理操作。", 400);
     const archive = await loadArchive(guard.admin, body.id);
     if (!archive) return jsonError("找不到 Battle Showtime 紀錄。", 404);
     const message = await updateArchive(guard.admin, guard.userId, body.action, archive);

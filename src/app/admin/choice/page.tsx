@@ -128,12 +128,12 @@ export default function AdminChoicePage() {
     setBusy("");
     if (!response.ok) {
       setError(payload?.error || "Choice 操作失敗。");
-      return false;
+      return null;
     }
     const nextId = payload?.collectionId ?? preferredId ?? selectedId;
     setMessage(payload?.message || success);
     await loadData(nextId);
-    return true;
+    return { ...payload, collectionId: nextId ?? undefined };
   }
 
   async function saveCollection() {
@@ -143,6 +143,27 @@ export default function AdminChoicePage() {
       title,
       intro,
     }, "Choice 草稿已儲存。", selected?.id);
+  }
+
+  async function ensureChoiceCollection() {
+    if (selected) return selected.id;
+    const result = await runAction("save_collection", {
+      weekStart,
+      title,
+      intro,
+    }, "已建立本週 Choice 草稿。");
+    return result?.collectionId ?? null;
+  }
+
+  async function addChoiceItem(item: AipogerChoiceCatalogItem) {
+    if (busy !== "" || selectedKeys.has(`${item.sourceKind}:${item.id}`)) return;
+    const collectionId = await ensureChoiceCollection();
+    if (!collectionId) return;
+    await runAction("add_item", {
+      collectionId,
+      sourceKind: item.sourceKind,
+      sourceId: item.id,
+    }, "已加入本週 Choice。", collectionId);
   }
 
   if (adminState === "checking") {
@@ -229,7 +250,7 @@ export default function AdminChoicePage() {
                   </div>
                 </article>
               )) : null}
-              {!selected ? <p className="rounded-xl border border-dashed border-white/10 px-3 py-6 text-center text-sm font-bold text-zinc-500">先建立一個週次草稿，再加入 Showtime 作品。</p> : null}
+              {!selected ? <p className="rounded-xl border border-dashed border-white/10 px-3 py-6 text-center text-sm font-bold text-zinc-500">按目錄的＋即可建立本週草稿並加入 Showtime 作品。</p> : null}
               {selected && selected.items.length === 0 ? <p className="rounded-xl border border-dashed border-white/10 px-3 py-6 text-center text-sm font-bold text-zinc-500">從左側 Showtime 目錄挑選 5–10 首作品。</p> : null}
             </div>
           </aside>
@@ -240,7 +261,7 @@ export default function AdminChoicePage() {
             <div><p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">Showtime Catalog</p><h2 className="mt-1 text-xl font-black">加入本週 Choice</h2></div>
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋歌名、創作者、類型" className="h-10 w-full rounded-xl border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none sm:w-72" />
           </div>
-          <p className="mt-2 text-xs font-bold text-zinc-500">只顯示目前仍在 Showtime 公開展示中的認證作品。</p>
+          <p className="mt-2 text-xs font-bold text-zinc-500">只顯示目前仍在 Showtime 公開展示中的認證作品；尚未建立草稿時，按＋會自動建立本週草稿。</p>
           <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
             {pagedCatalog.map((item) => {
               const key = `${item.sourceKind}:${item.id}`;
@@ -251,7 +272,7 @@ export default function AdminChoicePage() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={item.coverUrl} alt="" className="h-full w-full object-cover transition duration-200 group-hover:scale-[1.025]" />
                     <span className="absolute left-1 top-1 bg-black/80 px-1.5 py-1 text-[9px] font-black text-yellow-100">SHOWTIME</span>
-                    <button type="button" disabled={!selected || added || busy !== ""} onClick={() => selected && void runAction("add_item", { collectionId: selected.id, sourceKind: item.sourceKind, sourceId: item.id }, "已加入本週 Choice。", selected.id)} className={`absolute bottom-1 right-1 flex h-7 min-w-7 items-center justify-center rounded-full border px-1.5 text-xs font-black shadow-lg disabled:opacity-40 ${added ? "border-emerald-200/35 bg-emerald-300/90 text-black" : "border-cyan-100/50 bg-black/80 text-cyan-100 hover:bg-cyan-300 hover:text-black"}`} aria-label={`${added ? "已加入" : "加入"}本週 Choice：${item.title}`}>{added ? "已選" : "+"}</button>
+                    <button type="button" disabled={added || busy !== ""} onClick={() => void addChoiceItem(item)} className={`absolute bottom-1 right-1 flex h-7 min-w-7 items-center justify-center rounded-full border px-1.5 text-xs font-black shadow-lg disabled:opacity-40 ${added ? "border-emerald-200/35 bg-emerald-300/90 text-black" : "border-cyan-100/50 bg-black/80 text-cyan-100 hover:bg-cyan-300 hover:text-black"}`} aria-label={`${added ? "已加入" : "加入"}本週 Choice：${item.title}`}>{added ? "已選" : "+"}</button>
                   </div>
                   <div className="p-2">
                     <p className="line-clamp-2 min-h-9 text-xs font-black leading-4 text-white">{item.title}</p>

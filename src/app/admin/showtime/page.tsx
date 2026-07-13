@@ -14,7 +14,6 @@ import { supabase } from "@/lib/supabase";
 import { loadIsAdmin } from "@/lib/user-profile-admin";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
-type ViewFilter = "all" | "published" | "candidate" | "hidden";
 
 type ShowtimePayload = {
   schemaReady?: boolean;
@@ -64,10 +63,6 @@ async function authHeader(): Promise<Record<string, string>> {
   return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
 }
 
-function sourceLabel(item: AipogerChoiceCatalogItem) {
-  return item.sourceKind === "battle_archive" ? "正式 Battle" : "AI Music";
-}
-
 function displayDate(value: string) {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return "-";
@@ -105,7 +100,6 @@ export default function AdminShowtimePage() {
   const [choiceSchemaReady, setChoiceSchemaReady] = useState(true);
   const [items, setItems] = useState<AipogerChoiceCatalogItem[]>([]);
   const [tracks, setTracks] = useState<ShowtimeAdminTrackRow[]>([]);
-  const [filter, setFilter] = useState<ViewFilter>("all");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -222,22 +216,15 @@ export default function AdminShowtimePage() {
 
   const filteredItems = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    return items.filter((item) => {
-      const isCandidate = item.recognition === "傷心酒吧公播候選";
-      const hidden = !item.isPublic && !isCandidate;
-      if (filter === "published" && !item.isPublic) return false;
-      if (filter === "candidate" && !isCandidate) return false;
-      if (filter === "hidden" && !hidden) return false;
-      if (!normalized) return true;
-      return [item.title, item.artist, item.genre, item.recognition].join(" ").toLowerCase().includes(normalized);
-    });
-  }, [filter, items, query]);
+    if (!normalized) return items;
+    return items.filter((item) => [item.title, item.artist, item.genre, item.recognition].join(" ").toLowerCase().includes(normalized));
+  }, [items, query]);
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / SHOWTIME_PER_PAGE));
   const currentPage = Math.min(page, totalPages);
   const pagedItems = filteredItems.slice((currentPage - 1) * SHOWTIME_PER_PAGE, currentPage * SHOWTIME_PER_PAGE);
 
-  useEffect(() => { setPage(1); }, [filter, query]);
+  useEffect(() => { setPage(1); }, [query]);
 
   function closeEditor() {
     setEditing(null);
@@ -265,13 +252,10 @@ export default function AdminShowtimePage() {
     setEditCoverPreview(URL.createObjectURL(file));
   }
 
-  async function runShowtimeAction(item: AipogerChoiceCatalogItem, action: "certify_track" | "hide_track" | "restore_track" | "hide_archive" | "restore_archive") {
+  async function runShowtimeAction(item: AipogerChoiceCatalogItem, action: "hide_track" | "hide_archive") {
     const verbs: Record<typeof action, string> = {
-      certify_track: "認證為 Showtime",
       hide_track: "從 Showtime 收回",
-      restore_track: "恢復 Showtime 公開展示",
       hide_archive: "從 Showtime 收回",
-      restore_archive: "恢復 Showtime 公開展示",
     };
     if (!window.confirm(`確定要${verbs[action]}《${item.title}》？`)) return;
     setBusyId(`${action}:${item.id}`);
@@ -414,7 +398,7 @@ export default function AdminShowtimePage() {
           <div>
             <p className="text-xs font-black uppercase tracking-[0.24em] text-yellow-100/70">AIPOGER ADMIN</p>
             <h1 className="mt-2 text-3xl font-black sm:text-4xl">Showtime 管理</h1>
-            <p className="mt-2 max-w-3xl text-sm font-bold leading-6 text-zinc-400">封面作品目錄與本期 Choice 都在這裡完成。編輯只影響公開展示資料，不會修改音檔、認可來源、愛心或 Battle 戰績。</p>
+            <p className="mt-2 max-w-3xl text-sm font-bold leading-6 text-zinc-400">只顯示目前在 Showtime 公開展示的認證作品。可補充評語與編輯封面、公開資料；不會修改音檔、認可來源、愛心或 Battle 戰績。</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link href="/rank?lang=zh" className="rounded-full border border-white/15 px-3 py-2 text-xs font-black text-zinc-200">看 Showtime</Link>
@@ -478,23 +462,14 @@ export default function AdminShowtimePage() {
         ) : null}
 
         <section className="mt-5 rounded-xl border border-white/10 bg-black/45 p-3 sm:p-4">
-          <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto]">
+          <div>
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋歌名、創作者、類型" className="h-11 rounded-xl border border-white/10 bg-black/55 px-3 text-sm font-bold text-white outline-none focus:border-yellow-200/60" />
-            <div className="grid grid-cols-2 gap-2 sm:flex">
-              {(["all", "published", "candidate", "hidden"] as const).map((value) => (
-                <button key={value} type="button" onClick={() => setFilter(value)} className={`rounded-xl border px-3 py-2 text-xs font-black ${filter === value ? "border-yellow-200/55 bg-yellow-300 text-black" : "border-white/10 bg-white/[0.03] text-zinc-300"}`}>
-                  {{ all: "全部", published: "公開中", candidate: "公播候選", hidden: "已收回" }[value]}
-                </button>
-              ))}
-            </div>
           </div>
-          <p className="mt-3 text-xs font-bold text-zinc-500">{filteredItems.length} 首作品，桌機每列 6 首，每頁 {SHOWTIME_PER_PAGE} 首。</p>
+          <p className="mt-3 text-xs font-bold text-zinc-500">目前公開展示 {filteredItems.length} 首 Showtime 作品，桌機每列 6 首，每頁 {SHOWTIME_PER_PAGE} 首。</p>
         </section>
 
         <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
           {pagedItems.map((item) => {
-            const isCandidate = item.recognition === "傷心酒吧公播候選";
-            const hidden = !item.isPublic && !isCandidate;
             const track = item.sourceKind === "listen_bar_track" ? trackById.get(item.id) ?? null : null;
             const canEdit = Boolean(track?.source === "community");
             const busy = busyId?.endsWith(`:${item.id}`);
@@ -507,7 +482,7 @@ export default function AdminShowtimePage() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={item.coverUrl} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
                   <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-1 p-2">
-                    <span className="rounded-md border border-cyan-200/25 bg-black/70 px-1.5 py-1 text-[10px] font-black text-cyan-100">{sourceLabel(item)}</span>
+                    <span className="rounded-md border border-cyan-200/25 bg-black/70 px-1.5 py-1 text-[10px] font-black text-cyan-100">SHOWTIME</span>
                     {canSelectChoice ? (
                       <label className="flex cursor-pointer items-center gap-1 rounded-md border border-cyan-100/30 bg-black/80 px-1.5 py-1 text-[10px] font-black text-cyan-50">
                         <input type="checkbox" checked={isChoiceSelected} disabled={Boolean(choiceBusy)} onChange={() => void toggleChoiceItem(item)} className="h-3.5 w-3.5 accent-cyan-300" />
@@ -515,7 +490,7 @@ export default function AdminShowtimePage() {
                       </label>
                     ) : null}
                   </div>
-                  <span className={`absolute bottom-2 left-2 rounded-md border px-1.5 py-1 text-[10px] font-black ${item.isPublic ? "border-emerald-200/25 bg-emerald-950/90 text-emerald-100" : isCandidate ? "border-yellow-200/25 bg-yellow-950/90 text-yellow-100" : "border-white/10 bg-black/80 text-zinc-400"}`}>{item.isPublic ? "公開中" : isCandidate ? "可認證" : "已收回"}</span>
+                  <span className="absolute bottom-2 left-2 rounded-md border border-emerald-200/25 bg-emerald-950/90 px-1.5 py-1 text-[10px] font-black text-emerald-100">公開中</span>
                 </div>
                 <div className="flex min-h-0 flex-1 flex-col p-3">
                   <h2 className="min-h-10 line-clamp-2 text-sm font-black leading-5 text-white">{item.title}</h2>
@@ -524,13 +499,7 @@ export default function AdminShowtimePage() {
                   <p className="mt-1 text-[10px] font-bold text-yellow-100/75">{displayDate(item.certifiedAt)}</p>
                   <div className="mt-3 grid grid-cols-2 gap-1.5">
                     {canEdit ? <button type="button" onClick={() => track && openEditor(item, track)} className="min-h-8 rounded-lg border border-cyan-200/25 bg-cyan-300/10 px-2 py-1.5 text-[11px] font-black text-cyan-50 transition hover:border-cyan-100/60">編輯資料</button> : <span />}
-                    {isCandidate ? (
-                      <button type="button" disabled={busy} onClick={() => void runShowtimeAction(item, "certify_track")} className="min-h-8 rounded-lg border border-yellow-200/45 bg-yellow-300 px-2 py-1.5 text-[11px] font-black text-black disabled:opacity-50">{busy ? "處理中" : "認證"}</button>
-                    ) : item.sourceKind === "listen_bar_track" ? (
-                      <button type="button" disabled={busy} onClick={() => void runShowtimeAction(item, hidden ? "restore_track" : "hide_track")} className={`min-h-8 rounded-lg border px-2 py-1.5 text-[11px] font-black disabled:opacity-50 ${hidden ? "border-emerald-200/35 bg-emerald-300/10 text-emerald-100" : "border-red-200/35 bg-red-500/10 text-red-100"}`}>{busy ? "處理中" : hidden ? "恢復" : "收回"}</button>
-                    ) : (
-                      <button type="button" disabled={busy} onClick={() => void runShowtimeAction(item, hidden ? "restore_archive" : "hide_archive")} className={`min-h-8 rounded-lg border px-2 py-1.5 text-[11px] font-black disabled:opacity-50 ${hidden ? "border-emerald-200/35 bg-emerald-300/10 text-emerald-100" : "border-red-200/35 bg-red-500/10 text-red-100"}`}>{busy ? "處理中" : hidden ? "恢復" : "收回"}</button>
-                    )}
+                    <button type="button" disabled={busy} onClick={() => void runShowtimeAction(item, item.sourceKind === "listen_bar_track" ? "hide_track" : "hide_archive")} className="min-h-8 rounded-lg border border-red-200/35 bg-red-500/10 px-2 py-1.5 text-[11px] font-black text-red-100 disabled:opacity-50">{busy ? "處理中" : "收回"}</button>
                   </div>
                 </div>
               </article>
@@ -593,8 +562,8 @@ export default function AdminShowtimePage() {
                 <label className="grid gap-1 text-xs font-black text-zinc-300">連結用途
                   <input value={editForm.supportLabel} maxLength={80} placeholder="例如：前往 YouTube 頻道" onChange={(event) => setEditForm((current) => current ? { ...current, supportLabel: event.target.value } : current)} className="h-10 rounded-xl border border-white/10 bg-black/45 px-3 text-sm font-bold text-white outline-none focus:border-cyan-100/55" />
                 </label>
-                <label className="grid gap-1 text-xs font-black text-zinc-300 sm:col-span-2">作品介紹／評語
-                  <input value={editForm.description} maxLength={120} onChange={(event) => setEditForm((current) => current ? { ...current, description: event.target.value } : current)} className="h-10 rounded-xl border border-white/10 bg-black/45 px-3 text-sm font-bold text-white outline-none focus:border-cyan-100/55" />
+                <label className="grid gap-1 text-xs font-black text-zinc-300 sm:col-span-2">Showtime 評語／作品介紹
+                  <textarea value={editForm.description} maxLength={120} rows={3} onChange={(event) => setEditForm((current) => current ? { ...current, description: event.target.value } : current)} className="resize-y rounded-xl border border-white/10 bg-black/45 px-3 py-2 text-sm font-bold leading-6 text-white outline-none focus:border-cyan-100/55" />
                 </label>
                 <label className="grid gap-1 text-xs font-black text-zinc-300 sm:col-span-2">YouTube / MV
                   <input value={editForm.youtubeUrl} maxLength={300} placeholder="https://youtu.be/..." onChange={(event) => setEditForm((current) => current ? { ...current, youtubeUrl: event.target.value } : current)} className="h-10 rounded-xl border border-white/10 bg-black/45 px-3 text-sm font-bold text-white outline-none focus:border-cyan-100/55" />
