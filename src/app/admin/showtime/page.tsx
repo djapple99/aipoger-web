@@ -402,7 +402,7 @@ export default function AdminShowtimePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#050505] px-4 py-6 text-white sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-[#050505] px-4 py-6 text-white sm:px-6 lg:px-8 xl:pl-28">
       <div className="mx-auto max-w-[1680px]">
         <header className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-5">
           <div>
