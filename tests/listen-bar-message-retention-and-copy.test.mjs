@@ -19,10 +19,11 @@ test("Listen Bar story messages use 12 hour retention and current copy", () => {
   assert.equal(listenBarPage.includes("留言保留 8H"), false);
 });
 
-test("Saved favorite removal is explicit and independent from Heart cooldown", () => {
+test("Saved favorite removal remains explicit while public Heart re-press cancels the daily reaction", () => {
   assert.ok(honorInteractionsRoute.includes('body?.action === "removeFavorite"'));
   assert.ok(honorInteractionsRoute.includes('action === "removeFavorite"'));
   assert.ok(honorInteractionsRoute.includes("record.favoriteUserIds = record.favoriteUserIds.filter((id) => id !== userId);"));
-  assert.ok(productRules.includes("Removing a saved favorite is allowed even while the listener is inside the 24-hour Heart cooldown"));
-  assert.ok(releaseChecklist.includes("saved favorites can be removed even during the active 24-hour Heart cooldown"));
+  assert.ok(productRules.includes("Removing a saved favorite is also available from the user's Profile saved-song manager, even while that day's Heart remains active"));
+  assert.ok(releaseChecklist.includes("Profile saved favorites can be removed while that day's Heart remains active"));
+  assert.ok(releaseChecklist.includes("Re-pressing the public Heart button must cancel that day's Heart and synchronized favorite"));
 });

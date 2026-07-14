@@ -162,7 +162,6 @@ const LISTEN_BAR_MESSAGE_LIMIT = 80;
 const LIVE_RADIO_EPOCH_MS = Date.UTC(2026, 0, 1);
 const PRIORITY_AIRPLAY_BATCH_MS = 60 * 60 * 1000;
 const STOP_HOME_BGM_EVENT = "aipoger:stop-home-bgm";
-const HEART_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 const LISTEN_BAR_GENRES = MUSIC_GENRE_OPTIONS;
 const LISTEN_BAR_GENRE_SLUGS = new Map<string, string>(LISTEN_BAR_GENRES.map((genre, index) => [genre.value, String(index + 1)]));
@@ -182,6 +181,19 @@ function taipeiDayKey(value: string | number | Date | null | undefined) {
     .filter((part) => part.type !== "literal")
     .map((part) => part.value)
     .join("-");
+}
+
+function taipeiVoteDate(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  return year && month && day ? `${year}-${month}-${day}` : now.toISOString().slice(0, 10);
 }
 
 type PublicUploadForm = {
@@ -1359,13 +1371,13 @@ export default function ListenBarPage() {
     let mounted = true;
     const loadMyReactions = async () => {
       const trackIds = allRotationTracks.map((track) => track.id).slice(0, LISTEN_BAR_TOTAL_ROTATION_LIMIT);
-      const heartCooldownSince = new Date(Date.now() - HEART_COOLDOWN_MS).toISOString();
+      const today = taipeiVoteDate();
       const { data, error } = await supabase
         .from("listen_bar_track_reactions")
-        .select("track_id, reaction, created_at")
+        .select("track_id, reaction")
         .eq("user_id", userId)
         .eq("reaction", "heart")
-        .gte("created_at", heartCooldownSince)
+        .eq("vote_date", today)
         .in("track_id", trackIds);
 
       if (!mounted) return;
@@ -1374,7 +1386,7 @@ export default function ListenBarPage() {
         return;
       }
 
-      const nextReactions = (data as Array<{ track_id?: string | null; reaction?: ReactionKey | null; created_at?: string | null }> | null) ?? [];
+      const nextReactions = (data as Array<{ track_id?: string | null; reaction?: ReactionKey | null }> | null) ?? [];
       const reactions = nextReactions.reduce<Record<string, ReactionKey | null>>((acc, row) => {
         if (row.track_id && row.reaction === "heart") acc[row.track_id] = row.reaction;
         return acc;
@@ -1691,19 +1703,14 @@ export default function ListenBarPage() {
       setTrackCommentError(isZh ? "請先登入再投票；聽歌不需要登入。" : "Sign in to vote; listening does not require an account.");
       return;
     }
+    setTrackCommentError("");
     const previous = myReactions[nowTrack.id] ?? null;
-    const next = key;
-    if (previous === next) {
-      setTrackCommentError(isZh ? "你已送過這首歌的愛心，24H 後可以再送一次。" : "You already sent a heart for this track. Try again after 24 hours.");
-      return;
-    }
+    const next = previous === key ? null : key;
 
     setReactionCounts((allCounts) => {
       const counts = { ...emptyReactions, ...(allCounts[nowTrack.id] ?? {}) };
-      if (previous !== next) {
-        if (previous) counts[previous] = Math.max(0, counts[previous] - 1);
-        counts[next] += 1;
-      }
+      if (previous) counts[previous] = Math.max(0, counts[previous] - 1);
+      if (next) counts[next] += 1;
       return { ...allCounts, [nowTrack.id]: counts };
     });
     setMyReactions((items) => ({ ...items, [nowTrack.id]: next }));
@@ -1728,6 +1735,7 @@ export default function ListenBarPage() {
       const payload = await response.json().catch(() => null) as {
         counts?: ReactionCounts;
         positiveReactionCount?: number;
+        reaction?: ReactionKey | null;
         error?: string;
       } | null;
       if (!response.ok || !payload?.counts) throw new Error(payload?.error || "Reaction failed.");
@@ -1743,6 +1751,7 @@ export default function ListenBarPage() {
           artist: nowTrack.artist,
         },
       });
+      setMyReactions((items) => ({ ...items, [nowTrack.id]: payload.reaction === "heart" ? "heart" : null }));
       setReactionCounts((allCounts) => ({ ...allCounts, [nowTrack.id]: payload.counts! }));
       setOfficialTracks((tracks) => tracks.map((track) => (
         track.id === nowTrack.id
@@ -1752,10 +1761,8 @@ export default function ListenBarPage() {
     })().catch((error) => {
       setReactionCounts((allCounts) => {
         const counts = { ...emptyReactions, ...(allCounts[nowTrack.id] ?? {}) };
-        if (previous !== next) {
-          counts[next] = Math.max(0, counts[next] - 1);
-          if (previous) counts[previous] += 1;
-        }
+        if (next) counts[next] = Math.max(0, counts[next] - 1);
+        if (previous) counts[previous] += 1;
         return { ...allCounts, [nowTrack.id]: counts };
       });
       setMyReactions((items) => ({ ...items, [nowTrack.id]: previous }));
@@ -2641,15 +2648,15 @@ export default function ListenBarPage() {
                       {isZh ? "聽眾反應" : "REACTIONS"}
                     </span>
                     <span className="text-xs font-bold text-orange-100/70">
-                      {isZh ? "登入後每帳號每首歌 24H 內 1 顆愛心，不重複累加。" : "One heart per account per track every 24 hours; no duplicates."}
+                      {isZh ? "每帳號每天每首歌保留 1 顆有效愛心；再按一次即可取消。" : "One active Heart per account and track each day. Tap again to cancel."}
                     </span>
                   </div>
                   <div className="grid gap-3 rounded-2xl border border-orange-300/18 bg-orange-500/8 p-3 sm:grid-cols-[auto_1fr] sm:items-center">
                     <button
                       type="button"
                       onClick={() => handleReaction("heart")}
-                      aria-label={currentHeartSent ? (isZh ? "今日已送出愛心" : "Heart sent today") : isZh ? "送出愛心支持" : "Send a heart"}
-                      title={currentHeartSent ? (isZh ? "今日已送出愛心" : "Heart sent today") : isZh ? "送出愛心支持" : "Send a heart"}
+                      aria-label={currentHeartSent ? (isZh ? "取消愛心與收藏" : "Remove Heart and saved track") : isZh ? "送出愛心支持" : "Send a heart"}
+                      title={currentHeartSent ? (isZh ? "再按一次取消愛心與收藏" : "Tap again to remove Heart and saved track") : isZh ? "送出愛心支持" : "Send a heart"}
                       className={`flex h-24 min-w-32 items-center justify-center gap-3 rounded-2xl border px-5 text-3xl font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 ${
                         currentHeartSent
                           ? "border-rose-200/60 bg-rose-500/18 text-rose-50 shadow-[0_0_30px_rgba(244,63,94,0.22)] hover:border-rose-100/75"
@@ -2665,8 +2672,8 @@ export default function ListenBarPage() {
                       </p>
                       <p className="mt-1 text-xs font-bold leading-5 text-orange-100/70">
                         {isZh
-                          ? "愛心會同步加入收藏；Showtime 由 AIPOGER 認可後進入認證作品庫。"
-                          : "A Heart also saves the track. Showtime is reserved for AIPOGER-certified works."}
+                          ? "愛心會同步加入收藏；再按一次會取消愛心與收藏。"
+                          : "A Heart also saves the track. Tap it again to remove both."}
                       </p>
                     </div>
                   </div>

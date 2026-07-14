@@ -63,9 +63,15 @@ test("Choice persists human weekly selections with strict bounded publishing", (
 
 test("Choice selection shows only currently public Showtime works in a compact cover catalog", () => {
   assert.ok(choiceAdminPage.includes("item.isPublic && item.selectable"));
-  assert.ok(choiceAdminPage.includes("只顯示目前仍在 Showtime 公開展示中的認證作品；尚未建立草稿時，按＋會自動建立本週草稿。"));
+  assert.ok(choiceAdminPage.includes("只顯示目前仍在 Showtime 公開展示中的認證作品；左下播放鈕可直接試聽，尚未建立草稿時，按＋會自動建立本週草稿。"));
   assert.ok(choiceAdminPage.includes("lg:grid-cols-6"));
   assert.ok(choiceAdminPage.includes("CHOICE_CATALOG_PER_PAGE = 24"));
+  assert.ok(choiceAdminPage.includes("ChoicePreviewPlayer"));
+  assert.ok(choiceAdminPage.includes("setPreviewTrack(item)"));
+  assert.ok(choiceAdminPage.includes("左下播放鈕可直接試聽"));
+  assert.ok(choiceHelper.includes("audioUrl: string | null"));
+  assert.ok(showtimeCatalog.includes("signedBattleAudioUrl"));
+  assert.ok(showtimeCatalog.includes("audioUrl: audioUrl(admin, row.audio_path)"));
 });
 
 test("official Choice can create a draft from the first selected song", () => {

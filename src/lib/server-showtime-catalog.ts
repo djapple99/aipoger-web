@@ -4,8 +4,9 @@ import {
   isAiMusicShowtimePubliclyVisible,
   normalizeAiMusicShowtimeCertificationSource,
 } from "@/lib/ai-music-showtime";
-import { LISTEN_BAR_COVER_BUCKET, type ListenBarTrackRow } from "@/lib/listen-bar";
+import { LISTEN_BAR_AUDIO_BUCKET, LISTEN_BAR_COVER_BUCKET, type ListenBarTrackRow } from "@/lib/listen-bar";
 import type { AipogerChoiceCatalogItem } from "@/lib/aipoger-choice";
+import { signedBattleAudioUrl } from "@/lib/official-gatekeeper-media";
 
 export type ShowtimeAdminTrackRow = ListenBarTrackRow & {
   created_by?: string | null;
@@ -24,6 +25,7 @@ export type ShowtimeAdminTrackRow = ListenBarTrackRow & {
 export type ShowtimeAdminArchiveRow = {
   battle_id: string | null;
   battle_code: string | null;
+  winner: "fighter_a" | "fighter_b" | null;
   winner_name: string | null;
   winner_song_name: string | null;
   winner_ai_tool: string | null;
@@ -34,6 +36,13 @@ export type ShowtimeAdminArchiveRow = {
   archived_at: string | null;
   showtime_public_removed_at?: string | null;
   showtime_public_removal_note?: string | null;
+};
+
+type ShowtimeBattleAudioRow = {
+  id: string | null;
+  winner: "fighter_a" | "fighter_b" | null;
+  audio_a_path: string | null;
+  audio_b_path: string | null;
 };
 
 export type ShowtimeAdminCatalog = {
@@ -77,6 +86,7 @@ const TRACK_SELECT = [
 const ARCHIVE_SELECT = [
   "battle_id",
   "battle_code",
+  "winner",
   "winner_name",
   "winner_song_name",
   "winner_ai_tool",
@@ -130,6 +140,13 @@ function coverUrl(admin: SupabaseClient, path: string | null | undefined) {
   return admin.storage.from(LISTEN_BAR_COVER_BUCKET).getPublicUrl(clean).data.publicUrl || AIPOGER_BRAND_LOGO;
 }
 
+function audioUrl(admin: SupabaseClient, path: string | null | undefined) {
+  const clean = path?.trim();
+  if (!clean) return null;
+  if (/^https?:/i.test(clean)) return clean;
+  return admin.storage.from(LISTEN_BAR_AUDIO_BUCKET).getPublicUrl(clean).data.publicUrl || null;
+}
+
 function certificationLabel(source: unknown) {
   const normalized = normalizeAiMusicShowtimeCertificationSource(source);
   if (normalized === "battle") return "正式 Battle 認證";
@@ -148,6 +165,7 @@ function catalogItemFromTrack(admin: SupabaseClient, row: ShowtimeAdminTrackRow)
     artist: stringValue(row.artist, "AIPOGER 創作者"),
     genre: stringValue(row.genre, "AI Music"),
     coverUrl: coverUrl(admin, row.cover_path),
+    audioUrl: audioUrl(admin, row.audio_path),
     recognition: certificationLabel(row.ai_music_showtime_certification_source),
     certifiedAt: dateValue(row.ai_music_showtime_certified_at ?? row.created_at),
     isPublic: publicVisible,
@@ -155,7 +173,7 @@ function catalogItemFromTrack(admin: SupabaseClient, row: ShowtimeAdminTrackRow)
   };
 }
 
-function catalogItemFromArchive(row: ShowtimeAdminArchiveRow): AipogerChoiceCatalogItem | null {
+function catalogItemFromArchive(row: ShowtimeAdminArchiveRow, playbackUrl: string | null): AipogerChoiceCatalogItem | null {
   const sourceId = stringValue(row.battle_id);
   if (!sourceId) return null;
   const payload = archivePayload(row);
@@ -168,6 +186,7 @@ function catalogItemFromArchive(row: ShowtimeAdminArchiveRow): AipogerChoiceCata
     artist: stringValue(row.winner_name, "AIPOGER 創作者"),
     genre: stringValue(payload.genre, "AI Music"),
     coverUrl: stringValue(payload.coverUrl, AIPOGER_BRAND_LOGO),
+    audioUrl: playbackUrl,
     recognition: "正式 Battle 認證",
     certifiedAt: dateValue(row.archived_at),
     isPublic: publicVisible,
@@ -193,11 +212,26 @@ export async function loadShowtimeAdminCatalog(admin: SupabaseClient): Promise<S
     (row) => Boolean(row.ai_music_showtime_certified) && isAiMusicShowtimePubliclyVisible(row),
   );
   const currentArchives = archives
-    .map((archive) => ({ archive, item: catalogItemFromArchive(archive) }))
+    .map((archive) => ({ archive, item: catalogItemFromArchive(archive, null) }))
     .filter((entry): entry is { archive: ShowtimeAdminArchiveRow; item: AipogerChoiceCatalogItem } => Boolean(entry.item?.isPublic && entry.item.selectable));
+  const archiveIds = currentArchives.map((entry) => entry.archive.battle_id).filter((id): id is string => Boolean(id));
+  const { data: battleRowsData, error: battleRowsError } = archiveIds.length > 0
+    ? await admin.from("battles").select("id,winner,audio_a_path,audio_b_path").in("id", archiveIds)
+    : { data: [], error: null };
+  if (battleRowsError) throw battleRowsError;
+
+  const battleRows = (battleRowsData ?? []) as unknown as ShowtimeBattleAudioRow[];
+  const battleById = new Map(battleRows.filter((row): row is ShowtimeBattleAudioRow & { id: string } => Boolean(row.id)).map((row) => [row.id, row]));
+  const archiveItems = await Promise.all(currentArchives.map(async ({ archive }) => {
+    const battle = archive.battle_id ? battleById.get(archive.battle_id) : null;
+    const winner = archive.winner ?? battle?.winner ?? null;
+    const winnerAudioPath = winner === "fighter_b" ? battle?.audio_b_path : battle?.audio_a_path;
+    const playbackUrl = await signedBattleAudioUrl(admin, winnerAudioPath, 60 * 60);
+    return catalogItemFromArchive(archive, playbackUrl);
+  }));
   const trackItems = currentTracks.map((row) => catalogItemFromTrack(admin, row));
-  const archiveItems = currentArchives.map((entry) => entry.item);
   const items = [...trackItems, ...archiveItems]
+    .filter((item): item is AipogerChoiceCatalogItem => Boolean(item))
     .sort((a, b) => new Date(b.certifiedAt).getTime() - new Date(a.certifiedAt).getTime() || a.id.localeCompare(b.id));
 
   return {

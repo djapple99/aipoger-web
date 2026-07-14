@@ -11,6 +11,7 @@ export type AipogerChoiceCatalogItem = {
   artist: string;
   genre: string;
   coverUrl: string;
+  audioUrl: string | null;
   recognition: string;
   certifiedAt: string;
   isPublic: boolean;

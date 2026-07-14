@@ -10,6 +10,7 @@ import {
 } from "@/lib/aipoger-choice";
 import { supabase } from "@/lib/supabase";
 import { loadIsAdmin } from "@/lib/user-profile-admin";
+import { ChoicePreviewPlayer } from "@/components/choice-preview-player";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
 type ChoicePayload = {
@@ -48,6 +49,7 @@ export default function AdminChoicePage() {
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [previewTrack, setPreviewTrack] = useState<AipogerChoiceCatalogItem | null>(null);
 
   const loadData = useCallback(async (preferredId?: string | null) => {
     setError("");
@@ -182,7 +184,7 @@ export default function AdminChoicePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#050505] px-4 py-6 text-white sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-[#050505] px-4 py-6 pb-28 text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
         <header className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-5">
           <div>
@@ -244,6 +246,7 @@ export default function AdminChoicePage() {
                   <img src={item.coverUrl} alt="" className="h-10 w-10 rounded-lg object-cover" />
                   <div className="min-w-0 flex-1"><p className="truncate text-sm font-black">{item.title}</p><p className="truncate text-[11px] font-bold text-zinc-500">{item.artist}</p></div>
                   <div className="flex gap-1">
+                    <button type="button" disabled={!item.audioUrl} onClick={() => setPreviewTrack(item)} className="h-8 w-8 rounded-full border border-cyan-100/25 text-sm font-black text-cyan-100 disabled:cursor-not-allowed disabled:opacity-30" aria-label={`播放 ${item.title}`} title={item.audioUrl ? "播放試聽" : "目前沒有可播放音檔"}>▶</button>
                     <button type="button" disabled={busy !== "" || index === 0} onClick={() => void runAction("move_item", { collectionId: selected.id, itemId: item.itemId, direction: "up" }, "Choice 順序已更新。", selected.id)} className="h-8 w-8 rounded-full border border-white/10 text-sm font-black text-zinc-200 disabled:opacity-30" aria-label="上移">↑</button>
                     <button type="button" disabled={busy !== "" || index === (selected.items.length - 1)} onClick={() => void runAction("move_item", { collectionId: selected.id, itemId: item.itemId, direction: "down" }, "Choice 順序已更新。", selected.id)} className="h-8 w-8 rounded-full border border-white/10 text-sm font-black text-zinc-200 disabled:opacity-30" aria-label="下移">↓</button>
                     <button type="button" disabled={busy !== ""} onClick={() => void runAction("remove_item", { collectionId: selected.id, itemId: item.itemId }, "已移除 Choice 作品。", selected.id)} className="h-8 w-8 rounded-full border border-red-200/30 text-sm font-black text-red-100 disabled:opacity-30" aria-label="移除">×</button>
@@ -261,7 +264,7 @@ export default function AdminChoicePage() {
             <div><p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">Showtime Catalog</p><h2 className="mt-1 text-xl font-black">加入本週 Choice</h2></div>
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋歌名、創作者、類型" className="h-10 w-full rounded-xl border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none sm:w-72" />
           </div>
-          <p className="mt-2 text-xs font-bold text-zinc-500">只顯示目前仍在 Showtime 公開展示中的認證作品；尚未建立草稿時，按＋會自動建立本週草稿。</p>
+          <p className="mt-2 text-xs font-bold text-zinc-500">只顯示目前仍在 Showtime 公開展示中的認證作品；左下播放鈕可直接試聽，尚未建立草稿時，按＋會自動建立本週草稿。</p>
           <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
             {pagedCatalog.map((item) => {
               const key = `${item.sourceKind}:${item.id}`;
@@ -272,6 +275,7 @@ export default function AdminChoicePage() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={item.coverUrl} alt="" className="h-full w-full object-cover transition duration-200 group-hover:scale-[1.025]" />
                     <span className="absolute left-1 top-1 bg-black/80 px-1.5 py-1 text-[9px] font-black text-yellow-100">SHOWTIME</span>
+                    <button type="button" disabled={!item.audioUrl} onClick={() => setPreviewTrack(item)} className="absolute bottom-1 left-1 flex h-7 w-7 items-center justify-center rounded-full border border-cyan-100/50 bg-black/80 text-xs font-black text-cyan-100 shadow-lg transition hover:bg-cyan-300 hover:text-black disabled:cursor-not-allowed disabled:opacity-35" aria-label={`播放 ${item.title}`} title={item.audioUrl ? "播放試聽" : "目前沒有可播放音檔"}>▶</button>
                     <button type="button" disabled={added || busy !== ""} onClick={() => void addChoiceItem(item)} className={`absolute bottom-1 right-1 flex h-7 min-w-7 items-center justify-center rounded-full border px-1.5 text-xs font-black shadow-lg disabled:opacity-40 ${added ? "border-emerald-200/35 bg-emerald-300/90 text-black" : "border-cyan-100/50 bg-black/80 text-cyan-100 hover:bg-cyan-300 hover:text-black"}`} aria-label={`${added ? "已加入" : "加入"}本週 Choice：${item.title}`}>{added ? "已選" : "+"}</button>
                   </div>
                   <div className="p-2">
@@ -286,6 +290,7 @@ export default function AdminChoicePage() {
           <div className="mt-4 flex items-center justify-between text-sm font-bold text-zinc-500"><span>{currentCatalogPage} / {catalogTotalPages}</span><div className="flex gap-2"><button type="button" disabled={currentCatalogPage <= 1} onClick={() => setCatalogPage((page) => Math.max(1, page - 1))} className="rounded-full border border-white/10 px-3 py-2 text-xs font-black disabled:opacity-35">上一頁</button><button type="button" disabled={currentCatalogPage >= catalogTotalPages} onClick={() => setCatalogPage((page) => Math.min(catalogTotalPages, page + 1))} className="rounded-full border border-white/10 px-3 py-2 text-xs font-black disabled:opacity-35">下一頁</button></div></div>
         </section>
       </div>
+      <ChoicePreviewPlayer track={previewTrack} onClose={() => setPreviewTrack(null)} />
     </main>
   );
 }

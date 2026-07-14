@@ -36,7 +36,7 @@ test("creator Choice can be shared only after publication and keeps 5-10 current
   assert.match(publicChoiceRoute, /\.eq\("is_published", true\)/);
   assert.match(publicChoiceRoute, /source\?\.isPublic && source\.selectable/);
   assert.match(profileChoicePage, /creatorChoicePublicPath/);
-  assert.match(profileChoicePage, /只顯示目前公開展示中的 Showtime 作品；可選其他創作者，不限自己的歌。/);
+  assert.match(profileChoicePage, /只顯示目前公開展示中的 Showtime 作品；左下播放鈕可直接試聽，可選其他創作者，不限自己的歌。/);
 });
 
 test("creator Choice can create a draft from the first selected song", () => {
@@ -45,6 +45,9 @@ test("creator Choice can create a draft from the first selected song", () => {
   assert.match(profileChoicePage, /void addChoiceItem\(item\)/);
   assert.doesNotMatch(profileChoicePage, /disabled=\{!selected \|\| added \|\| busy !== ""\}/);
   assert.match(profileChoicePage, /按＋會自動建立本週草稿/);
+  assert.match(profileChoicePage, /ChoicePreviewPlayer/);
+  assert.match(profileChoicePage, /setPreviewTrack\(item\)/);
+  assert.match(profileChoicePage, /左下播放鈕可直接試聽/);
 });
 
 test("creator Showtime management supports an explanatory external-link label without payment handling", () => {

@@ -46,7 +46,7 @@ Check:
 - Logged-out visitors are asked to sign in before upload/Battle actions.
 - Logged-in users can see profile/fighter identity where expected.
 - Profile `收藏歌曲` supports batch selection and batch removal, and removing saved favorites does not delete historical Heart reactions.
-- Profile saved favorites can be removed even during the active 24-hour Heart cooldown; re-pressing the public Heart button still must not cancel or duplicate the Heart.
+- Profile saved favorites can be removed while that day's Heart remains active; this direct Profile action does not cancel or recount the Heart. Re-pressing the public Heart button must cancel that day's Heart and synchronized favorite, then allow a new Heart afterward.
 - Profile creator data lists songs in pages of 10; `收藏歌曲` can batch-delete saved favorites, and the creator's own Bar Heartbreak songs can be batch-removed from public/battle surfaces.
 
 ## Drop Battle Checklist
@@ -145,10 +145,10 @@ Check:
 - Comment box appears near reactions.
 - Logged-out voting shows sign-in message.
 - Logged-out commenting shows sign-in message.
-- Logged-in Heart reactions allow one Heart per track per 24-hour cooldown.
-- Re-pressing Heart on the same track during the 24-hour cooldown does not duplicate or cancel the Heart.
+- Logged-in Heart reactions allow one active Heart per track per Asia/Taipei day.
+- Re-pressing Heart on the same track cancels that day's Heart and synchronized favorite, decrements the shared total, and allows a subsequent new Heart.
 - Bar Heartbreak room-message surface title is `傷心的故事傾訴留言`, not `AI 音樂交流區`, and general room messages are retained for 12H.
-- Public music surfaces show total Heart count only as the public metric; the viewer's own Heart button may light to show the current 24-hour cooldown, but the page must not show public favorite state, favorite-user count, or who saved the song.
+- Public music surfaces show total Heart count only as the public metric; the viewer's own Heart button may light to show today's active Heart, but the page must not show public favorite state, favorite-user count, or who saved the song.
 - Explore AI Music and Bar Heartbreak show the same total Heart count for the same `listen_bar_tracks` song and write through the same reaction flow.
 - Track comments persist.
 - Track comments notify the song creator through account notifications, except self-comments.
@@ -205,7 +205,7 @@ Check:
 - Cards show song title, creator, AI tool, heart count, and challenge count.
 - Cards that are truly challenge-ready show a non-clickable red angled `接戰` badge at the cover's top-right on desktop and mobile; non-ready, Showtime, retired, hidden/removed/moderation-held, missing-drop, or unplayable works do not show it.
 - The card's bottom `攻擂` button remains the only challenge action; the `接戰` badge must not replace it or use `攻擂` as badge text.
-- Signed-in users who already sent a Heart in the current 24-hour cooldown see the Heart button lit on `/ai-music` cards and the bottom mini player, while the card still shows only total Heart count publicly.
+- Signed-in users with today's active Heart see the Heart button lit on `/ai-music` cards and the bottom mini player; re-pressing it cancels the Heart and synchronized favorite while the card still shows only total Heart count publicly.
 - Desktop hover exposes the Battle Record HUD.
 - Mobile exposes an equivalent expanded HUD via the info action.
 - Cards and the Battle Record HUD show the Showtime defense progress, for example `守擂進度 4 / 6，再守下 2 場正式挑戰，進入 Showtime`.

@@ -38,7 +38,6 @@ type ReactionDatabase = {
 type AdminClient = SupabaseClient<ReactionDatabase>;
 
 const reactionKeys = new Set<ReactionKey>(["heart", "star", "thumb", "happy"]);
-const HEART_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const FAVORITES_BUCKET = "listen-bar-data";
 const FAVORITES_PATH = "honor-board/interactions.json";
 
@@ -165,6 +164,16 @@ async function ensureListenBarFavorite(admin: AdminClient, userId: string, track
   await writeFavoritesStore(admin, store);
 }
 
+async function removeListenBarFavorite(admin: AdminClient, userId: string, trackId: string) {
+  const store = await readFavoritesStore(admin);
+  const record = store.records.find((item) => item.recordKey === `bar:${trackId}`);
+  if (!record || !record.favoriteUserIds.includes(userId)) return false;
+  record.favoriteUserIds = record.favoriteUserIds.filter((id) => id !== userId);
+  record.updatedAt = new Date().toISOString();
+  await writeFavoritesStore(admin, store);
+  return true;
+}
+
 function taipeiVoteDate(now = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Taipei",
@@ -177,18 +186,6 @@ function taipeiVoteDate(now = new Date()): string {
   const day = parts.find((part) => part.type === "day")?.value;
   if (!year || !month || !day) return now.toISOString().slice(0, 10);
   return `${year}-${month}-${day}`;
-}
-
-function heartCooldownUntil(createdAt: string | null | undefined) {
-  const time = new Date(createdAt || "").getTime();
-  if (!Number.isFinite(time)) return null;
-  return new Date(time + HEART_COOLDOWN_MS).toISOString();
-}
-
-function isHeartCooldownActive(cooldownUntil: string | null) {
-  if (!cooldownUntil) return false;
-  const time = new Date(cooldownUntil).getTime();
-  return Number.isFinite(time) && time > Date.now();
 }
 
 export async function POST(request: NextRequest) {
@@ -219,45 +216,33 @@ export async function POST(request: NextRequest) {
   if (userError || !user) return jsonError("登入狀態已過期，請重新登入後再投票。", 401);
 
   const voteDate = taipeiVoteDate();
-  let alreadyReacted = false;
-  let heartedToday = false;
-  let heartCooldownUntilValue: string | null = null;
+  const { data: existingReactionRow, error: existingReactionError } = await admin
+    .from("listen_bar_track_reactions")
+    .select("reaction")
+    .eq("track_id", body.trackId)
+    .eq("user_id", user.id)
+    .eq("vote_date", voteDate)
+    .maybeSingle();
+  if (existingReactionError) return jsonError(existingReactionError.message, 500);
 
-  if (reaction === "heart") {
-    const { data: recentHeartRows, error: recentHeartError } = await admin
-      .from("listen_bar_track_reactions")
-      .select("created_at")
-      .eq("track_id", body.trackId)
-      .eq("user_id", user.id)
-      .eq("reaction", "heart")
-      .order("created_at", { ascending: false })
-      .limit(1);
-    if (recentHeartError) return jsonError(recentHeartError.message, 500);
-    heartCooldownUntilValue = heartCooldownUntil(recentHeartRows?.[0]?.created_at);
-    alreadyReacted = isHeartCooldownActive(heartCooldownUntilValue);
-    heartedToday = alreadyReacted;
-  }
+  const previousReaction = existingReactionRow?.reaction ?? null;
+  const cancelCurrentReaction = Boolean(reaction && previousReaction === reaction);
+  const nextReaction = cancelCurrentReaction ? null : reaction;
 
-  if (reaction && !alreadyReacted) {
+  if (nextReaction) {
     const { error } = await admin.from("listen_bar_track_reactions").upsert(
-      { track_id: body.trackId, user_id: user.id, vote_date: voteDate, reaction },
+      { track_id: body.trackId, user_id: user.id, vote_date: voteDate, reaction: nextReaction },
       { onConflict: "track_id,user_id,vote_date" },
     );
     if (error) return jsonError(error.message, 500);
-    if (reaction === "heart") {
-      heartedToday = true;
-      heartCooldownUntilValue = new Date(Date.now() + HEART_COOLDOWN_MS).toISOString();
-    }
-  } else {
-    if (!reaction) {
-      const { error } = await admin
-        .from("listen_bar_track_reactions")
-        .delete()
-        .eq("track_id", body.trackId)
-        .eq("user_id", user.id)
-        .eq("vote_date", voteDate);
-      if (error) return jsonError(error.message, 500);
-    }
+  } else if (previousReaction) {
+    const { error } = await admin
+      .from("listen_bar_track_reactions")
+      .delete()
+      .eq("track_id", body.trackId)
+      .eq("user_id", user.id)
+      .eq("vote_date", voteDate);
+    if (error) return jsonError(error.message, 500);
   }
 
   const { data: reactionRows, error: countError } = await admin
@@ -285,24 +270,31 @@ export async function POST(request: NextRequest) {
   if (updateError) return jsonError(updateError.message, 500);
 
   let favoriteSynced = false;
-  if (reaction === "heart") {
+  const heartWasCancelled = previousReaction === "heart" && nextReaction !== "heart";
+  if (nextReaction === "heart") {
     try {
       await ensureListenBarFavorite(admin, user.id, body.trackId);
       favoriteSynced = true;
     } catch (error) {
       console.warn("[listen-bar reaction favorite sync]", error);
     }
+  } else if (heartWasCancelled) {
+    try {
+      favoriteSynced = await removeListenBarFavorite(admin, user.id, body.trackId);
+    } catch (error) {
+      console.warn("[listen-bar reaction favorite removal]", error);
+    }
   }
 
   return NextResponse.json({
     ok: true,
-    reaction,
+    reaction: nextReaction,
+    previousReaction,
     voteDate,
     counts,
     positiveReactionCount: total,
     favoriteSynced,
-    alreadyReacted,
-    heartedToday,
-    heartCooldownUntil: heartCooldownUntilValue,
+    heartedToday: nextReaction === "heart",
+    heartCancelled: heartWasCancelled,
   });
 }

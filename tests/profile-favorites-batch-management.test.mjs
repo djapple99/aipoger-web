@@ -47,5 +47,5 @@ test("Profile favorite management rules and release checklist cover batch remova
   assert.ok(releaseChecklist.includes("Profile `收藏歌曲` supports batch selection and batch removal"));
   assert.ok(releaseChecklist.includes("Profile creator data lists songs in pages of 10"));
   assert.ok(releaseChecklist.includes("historical Heart reactions"));
-  assert.ok(productRules.includes("Removing a saved favorite is allowed even while the listener is inside the 24-hour Heart cooldown"));
+  assert.ok(productRules.includes("Removing a saved favorite is also available from the user's Profile saved-song manager, even while that day's Heart remains active"));
 });

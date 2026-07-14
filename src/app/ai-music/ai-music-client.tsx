@@ -64,14 +64,13 @@ type ListenBarReactionPayload = {
   };
   positiveReactionCount?: number;
   favoriteSynced?: boolean;
-  alreadyReacted?: boolean;
   heartedToday?: boolean;
-  heartCooldownUntil?: string | null;
+  heartCancelled?: boolean;
   error?: string;
 };
 
 type LoadState = "loading" | "ready" | "error";
-type HeartCooldownState = Record<string, string>;
+type HeartState = Record<string, boolean>;
 type AiMusicApiTrackRow = ListenBarTrackRow & {
   ai_music_showtime_certified?: boolean | null;
   ai_music_explore_retired?: boolean | null;
@@ -86,8 +85,6 @@ type AiMusicApiTrackRow = ListenBarTrackRow & {
   ai_music_recent_official_audience_votes?: number | null;
   ai_music_recent_interaction_at?: string | null;
 };
-
-const HEART_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 function numberValue(value: unknown) {
   const number = Number(value);
@@ -114,16 +111,17 @@ function safeDate(value: string | null | undefined) {
   return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : new Date(0).toISOString();
 }
 
-function heartCooldownUntil(createdAt: string | null | undefined) {
-  const time = new Date(createdAt || "").getTime();
-  if (!Number.isFinite(time)) return null;
-  return new Date(time + HEART_COOLDOWN_MS).toISOString();
-}
-
-function isHeartCoolingDown(cooldownUntil: string | null | undefined) {
-  if (!cooldownUntil) return false;
-  const time = new Date(cooldownUntil).getTime();
-  return Number.isFinite(time) && time > Date.now();
+function taipeiVoteDate(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  return year && month && day ? `${year}-${month}-${day}` : now.toISOString().slice(0, 10);
 }
 
 function formatPlayerTime(value: number) {
@@ -466,8 +464,8 @@ function TrackCard({
   const showChallengeReadyBadge = track.openForChallenge && Boolean(track.audioUrl);
   const heartActionLabel = heartedToday
     ? isZh
-      ? "今日已送出愛心"
-      : "Heart sent today"
+      ? "取消愛心與收藏"
+      : "Remove Heart and saved track"
     : isZh
       ? "送出愛心支持"
       : "Send a heart";
@@ -590,7 +588,7 @@ function HeatList({
   currentTrackId,
   isPlaying,
   heartBusy,
-  heartCooldowns,
+  heartStates,
   lang,
   onPlay,
   onHeart,
@@ -601,7 +599,7 @@ function HeatList({
   currentTrackId: string | null;
   isPlaying: boolean;
   heartBusy: Record<string, boolean>;
-  heartCooldowns: HeartCooldownState;
+  heartStates: HeartState;
   lang: string;
   onPlay: (track: AiMusicTrack) => void;
   onHeart: (track: AiMusicTrack) => void;
@@ -622,9 +620,9 @@ function HeatList({
 
       <div className="overflow-hidden border-y border-white/10">
         {rows.map(({ track, rank, hasRecentSignal }) => {
-          const heartedToday = isHeartCoolingDown(heartCooldowns[track.recordKey]);
+          const heartedToday = Boolean(heartStates[track.recordKey]);
           const heartActionLabel = heartedToday
-            ? isZh ? "今日已送出愛心" : "Heart sent today"
+            ? isZh ? "取消愛心與收藏" : "Remove Heart and saved track"
             : isZh ? "送出愛心支持" : "Send a heart";
           return (
             <article
@@ -773,8 +771,8 @@ function MiniPlayer({
   if (!track) return null;
   const heartActionLabel = heartedToday
     ? isZh
-      ? "今日已送出愛心"
-      : "Heart sent today"
+      ? "取消愛心與收藏"
+      : "Remove Heart and saved track"
     : isZh
       ? "送出愛心支持"
       : "Send a heart";
@@ -947,7 +945,7 @@ export default function AiMusicClient() {
   const [expandedGenres, setExpandedGenres] = useState<Record<string, boolean>>({});
   const [expandedHud, setExpandedHud] = useState<Record<string, boolean>>({});
   const [heartBusy, setHeartBusy] = useState<Record<string, boolean>>({});
-  const [heartCooldowns, setHeartCooldowns] = useState<HeartCooldownState>({});
+  const [heartStates, setHeartStates] = useState<HeartState>({});
   const [notice, setNotice] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [currentTrack, setCurrentTrack] = useState<AiMusicTrack | null>(null);
@@ -1081,46 +1079,43 @@ export default function AiMusicClient() {
 
   useEffect(() => {
     if (!userId || tracks.length === 0) {
-      setHeartCooldowns({});
+      setHeartStates({});
       return;
     }
 
     let mounted = true;
-    const loadHeartCooldowns = async () => {
+    const loadHeartStates = async () => {
       const barTracks = tracks.filter((track) => track.source === "bar");
       const sourceIds = Array.from(new Set(barTracks.map((track) => track.sourceId))).slice(0, 240);
       if (sourceIds.length === 0) {
-        if (mounted) setHeartCooldowns({});
+        if (mounted) setHeartStates({});
         return;
       }
       const recordKeyBySourceId = new Map(barTracks.map((track) => [track.sourceId, track.recordKey]));
-      const since = new Date(Date.now() - HEART_COOLDOWN_MS).toISOString();
+      const voteDate = taipeiVoteDate();
       const { data, error } = await supabase
         .from("listen_bar_track_reactions")
-        .select("track_id, reaction, created_at")
+        .select("track_id, reaction")
         .eq("user_id", userId)
         .eq("reaction", "heart")
-        .gte("created_at", since)
+        .eq("vote_date", voteDate)
         .in("track_id", sourceIds);
 
       if (!mounted) return;
       if (error) {
-        console.warn("[ai-music heart cooldowns]", error);
+        console.warn("[ai-music heart states]", error);
         return;
       }
 
-      const cooldowns: HeartCooldownState = {};
-      for (const row of (data ?? []) as Array<{ track_id?: string | null; created_at?: string | null }>) {
+      const states: HeartState = {};
+      for (const row of (data ?? []) as Array<{ track_id?: string | null }>) {
         const recordKey = row.track_id ? recordKeyBySourceId.get(row.track_id) : null;
-        const cooldownUntil = heartCooldownUntil(row.created_at);
-        if (recordKey && cooldownUntil && isHeartCoolingDown(cooldownUntil)) {
-          cooldowns[recordKey] = cooldownUntil;
-        }
+        if (recordKey) states[recordKey] = true;
       }
-      setHeartCooldowns(cooldowns);
+      setHeartStates(states);
     };
 
-    void loadHeartCooldowns();
+    void loadHeartStates();
     return () => {
       mounted = false;
     };
@@ -1173,15 +1168,11 @@ export default function AiMusicClient() {
       setNotice(isZh ? "這筆展示紀錄目前沒有公播愛心資料。" : "This showcase record has no public-airplay heart data yet.");
       return;
     }
-    if (isHeartCoolingDown(heartCooldowns[track.recordKey])) {
-      setNotice(isZh ? "你已送過這首歌的愛心，24H 後可以再送一次。" : "You already sent a heart for this track. Try again after 24 hours.");
-      return;
-    }
     const {
       data: { session },
     } = await supabase.auth.getSession();
     if (!session?.access_token) {
-      setNotice(isZh ? "請先登入，每首歌 24H 內可以送 1 顆愛心。" : "Sign in to send one heart per track every 24 hours.");
+      setNotice(isZh ? "請先登入後再送愛心。" : "Sign in to send a heart.");
       return;
     }
 
@@ -1208,15 +1199,14 @@ export default function AiMusicClient() {
         current.map((item) => (item.recordKey === track.recordKey ? { ...item, heartCount } : item)),
       );
       setCurrentTrack((current) => (current?.recordKey === track.recordKey ? { ...current, heartCount } : current));
-      const cooldownUntil = payload.heartCooldownUntil || new Date(Date.now() + HEART_COOLDOWN_MS).toISOString();
-      setHeartCooldowns((current) => ({ ...current, [track.recordKey]: cooldownUntil }));
-      setNotice(payload.alreadyReacted
+      setHeartStates((current) => ({ ...current, [track.recordKey]: payload.heartedToday === true }));
+      setNotice(payload.heartedToday
         ? isZh
-          ? "你已送過這首歌的愛心，24H 後可以再送一次。"
-          : "You already sent a heart for this track. Try again after 24 hours."
+          ? "愛心已送出，歌曲已同步收藏到你的後台。"
+          : "Heart sent. The track is saved in your profile."
         : isZh
-          ? "今天的愛心已送出，歌曲已同步收藏到你的後台。"
-          : "Heart sent. The track is saved in your profile.");
+          ? "已取消愛心與收藏。"
+          : "Heart and saved track removed.");
     } catch {
       setNotice(isZh ? "愛心送出失敗，請稍後再試。" : "Heart failed. Try again later.");
     } finally {
@@ -1348,7 +1338,7 @@ export default function AiMusicClient() {
               currentTrackId={currentTrack?.id ?? null}
               isPlaying={isPlaying}
               heartBusy={heartBusy}
-              heartCooldowns={heartCooldowns}
+              heartStates={heartStates}
               lang={lang}
               onPlay={handlePlayTrack}
               onHeart={(track) => void sendHeart(track)}
@@ -1393,7 +1383,7 @@ export default function AiMusicClient() {
                             isPlaying={currentTrack?.id === track.id && isPlaying}
                             isExpanded={Boolean(expandedHud[track.id])}
                             heartBusy={Boolean(heartBusy[track.recordKey])}
-                            heartedToday={isHeartCoolingDown(heartCooldowns[track.recordKey])}
+                            heartedToday={Boolean(heartStates[track.recordKey])}
                             lang={lang}
                             onPlay={handlePlayTrack}
                             onToggleExpand={(item) => setExpandedHud((current) => ({ ...current, [item.id]: !current[item.id] }))}
@@ -1462,7 +1452,7 @@ export default function AiMusicClient() {
                 <div className="py-4">
                   <h3 className="text-sm font-black text-orange-100">{isZh ? "收藏歌曲" : "Save tracks"}</h3>
                   <p className="mt-1.5 text-sm font-bold leading-6 text-zinc-300">
-                    {isZh ? "愛心會同步加入收藏；從右上角頭像進入 Profile 可整理收藏歌曲。" : "A Heart also saves the track. Manage saved tracks from Profile through the avatar at the top right."}
+                    {isZh ? "愛心會同步加入收藏；再按一次會取消。從右上角頭像進入 Profile 可整理收藏歌曲。" : "A Heart also saves the track. Tap it again to remove it, or manage saved tracks from Profile through the avatar at the top right."}
                   </p>
                 </div>
                 <div className="py-4">
@@ -1488,7 +1478,7 @@ export default function AiMusicClient() {
         isZh={isZh}
         isPlaying={isPlaying}
         heartBusy={currentTrack ? Boolean(heartBusy[currentTrack.recordKey]) : false}
-        heartedToday={currentTrack ? isHeartCoolingDown(heartCooldowns[currentTrack.recordKey]) : false}
+        heartedToday={currentTrack ? Boolean(heartStates[currentTrack.recordKey]) : false}
         lang={lang}
         onTogglePlay={() => {
           if (!currentTrack) return;
