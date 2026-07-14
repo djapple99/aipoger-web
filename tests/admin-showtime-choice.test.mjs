@@ -44,6 +44,9 @@ test("Showtime catalog can curate and publish the current Choice in place", () =
   assert.ok(showtimeAdminPage.includes('runChoiceAction("set_published"'));
   assert.ok(showtimeAdminPage.includes("choiceItemCountMessage"));
   assert.ok(showtimeAdminPage.includes("item.selectable"));
+  assert.ok(showtimeAdminPage.includes("ChoicePreviewPlayer"));
+  assert.ok(showtimeAdminPage.includes("setPreviewTrack(item)"));
+  assert.ok(showtimeAdminPage.includes("封面右下播放鈕可先試聽，再勾選。"));
 });
 
 test("Choice persists human weekly selections with strict bounded publishing", () => {

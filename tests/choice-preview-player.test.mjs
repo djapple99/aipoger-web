@@ -4,6 +4,7 @@ import test from "node:test";
 
 const playerSource = readFileSync(new URL("../src/components/choice-preview-player.tsx", import.meta.url), "utf8");
 const adminChoiceSource = readFileSync(new URL("../src/app/admin/choice/page.tsx", import.meta.url), "utf8");
+const adminShowtimeSource = readFileSync(new URL("../src/app/admin/showtime/page.tsx", import.meta.url), "utf8");
 const creatorChoiceSource = readFileSync(new URL("../src/app/profile/choice/page.tsx", import.meta.url), "utf8");
 
 test("Choice preview player provides a compact bottom audio surface", () => {
@@ -15,8 +16,8 @@ test("Choice preview player provides a compact bottom audio surface", () => {
   assert.ok(playerSource.includes("onClick={toggle}"));
 });
 
-test("official and creator Choice catalogs expose playable preview controls", () => {
-  for (const source of [adminChoiceSource, creatorChoiceSource]) {
+test("all official and creator Choice catalogs expose playable preview controls", () => {
+  for (const source of [adminChoiceSource, adminShowtimeSource, creatorChoiceSource]) {
     assert.ok(source.includes("disabled={!item.audioUrl}"));
     assert.ok(source.includes('title={item.audioUrl ? "播放試聽" : "目前沒有可播放音檔"}'));
     assert.ok(source.includes("<ChoicePreviewPlayer track={previewTrack}"));

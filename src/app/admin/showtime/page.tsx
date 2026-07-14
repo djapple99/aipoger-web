@@ -12,6 +12,7 @@ import type { ShowtimeAdminTrackRow } from "@/lib/server-showtime-catalog";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import { supabase } from "@/lib/supabase";
 import { loadIsAdmin } from "@/lib/user-profile-admin";
+import { ChoicePreviewPlayer } from "@/components/choice-preview-player";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
 
@@ -119,6 +120,7 @@ export default function AdminShowtimePage() {
   const [choiceIntro, setChoiceIntro] = useState("");
   const [choiceBusy, setChoiceBusy] = useState("");
   const [choiceError, setChoiceError] = useState("");
+  const [previewTrack, setPreviewTrack] = useState<AipogerChoiceCatalogItem | null>(null);
 
   const loadShowtimeData = useCallback(async () => {
     const response = await fetch("/api/admin/showtime", { headers: await authHeader(), cache: "no-store" });
@@ -392,7 +394,7 @@ export default function AdminShowtimePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#050505] px-4 py-6 text-white sm:px-6 lg:px-8 xl:pl-28">
+    <main className="min-h-screen bg-[#050505] px-4 py-6 pb-28 text-white sm:px-6 lg:px-8 xl:pl-28">
       <div className="mx-auto max-w-[1680px]">
         <header className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-5">
           <div>
@@ -419,6 +421,7 @@ export default function AdminShowtimePage() {
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-100/70">This Week Choice</p>
                 <h2 className="mt-1 text-xl font-black">勾選 Showtime 作品，組成本期 Choice</h2>
+                <p className="mt-1 text-xs font-bold text-cyan-50/70">封面右下播放鈕可先試聽，再勾選。</p>
               </div>
               <select value={choiceCollectionId ?? ""} onChange={(event) => setChoiceCollectionId(event.target.value || null)} className="h-10 min-w-52 rounded-xl border border-white/10 bg-black/55 px-3 text-sm font-bold text-white outline-none focus:border-cyan-200/60">
                 <option value="">新增本期 Choice</option>
@@ -451,6 +454,7 @@ export default function AdminShowtimePage() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={choiceItem.coverUrl} alt="" className="h-6 w-6 rounded object-cover" />
                     <span className="max-w-40 truncate">{choiceItem.title}</span>
+                    <button type="button" disabled={!choiceItem.audioUrl} onClick={() => setPreviewTrack(choiceItem)} className="text-cyan-100 disabled:opacity-30" title={choiceItem.audioUrl ? "播放試聽" : "目前沒有可播放音檔"} aria-label={`播放 ${choiceItem.title}`}>▶</button>
                     <button type="button" disabled={Boolean(choiceBusy) || index === 0} onClick={() => void runChoiceAction("move_item", { collectionId: selectedChoice.id, itemId: choiceItem.itemId, direction: "up" }, selectedChoice.id)} className="text-zinc-400 disabled:opacity-30" title="上移">↑</button>
                     <button type="button" disabled={Boolean(choiceBusy) || index === selectedChoice.items.length - 1} onClick={() => void runChoiceAction("move_item", { collectionId: selectedChoice.id, itemId: choiceItem.itemId, direction: "down" }, selectedChoice.id)} className="text-zinc-400 disabled:opacity-30" title="下移">↓</button>
                     <button type="button" disabled={Boolean(choiceBusy)} onClick={() => void runChoiceAction("remove_item", { collectionId: selectedChoice.id, itemId: choiceItem.itemId }, selectedChoice.id)} className="text-red-200/80 transition hover:text-red-100 disabled:opacity-30" title="移出本期 Choice" aria-label={`移出本期 Choice：${choiceItem.title}`}>×</button>
@@ -491,6 +495,7 @@ export default function AdminShowtimePage() {
                     ) : null}
                   </div>
                   <span className="absolute bottom-2 left-2 rounded-md border border-emerald-200/25 bg-emerald-950/90 px-1.5 py-1 text-[10px] font-black text-emerald-100">公開中</span>
+                  <button type="button" disabled={!item.audioUrl} onClick={() => setPreviewTrack(item)} className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full border border-cyan-100/50 bg-black/85 text-xs font-black text-cyan-100 shadow-lg transition hover:bg-cyan-300 hover:text-black disabled:cursor-not-allowed disabled:opacity-35" aria-label={`播放 ${item.title}`} title={item.audioUrl ? "播放試聽" : "目前沒有可播放音檔"}>▶</button>
                 </div>
                 <div className="flex min-h-0 flex-1 flex-col p-3">
                   <h2 className="min-h-10 line-clamp-2 text-sm font-black leading-5 text-white">{item.title}</h2>
@@ -516,6 +521,7 @@ export default function AdminShowtimePage() {
           </div>
         </div>
       </div>
+      <ChoicePreviewPlayer track={previewTrack} onClose={() => setPreviewTrack(null)} />
 
       {editing && editForm ? (
         <div className="fixed inset-0 z-[120] flex items-end bg-black/75 p-0 backdrop-blur-sm sm:items-center sm:justify-center sm:p-6" onMouseDown={(event) => { if (event.currentTarget === event.target && !editorBusy) closeEditor(); }}>
