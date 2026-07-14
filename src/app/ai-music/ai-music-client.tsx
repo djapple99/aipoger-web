@@ -443,6 +443,8 @@ function TrackCard({
   heartBusy,
   heartedToday,
   lang,
+  catalogLabel,
+  catalogNote,
   onPlay,
   onToggleExpand,
   onHeart,
@@ -455,6 +457,8 @@ function TrackCard({
   heartBusy: boolean;
   heartedToday: boolean;
   lang: string;
+  catalogLabel?: string;
+  catalogNote?: string;
   onPlay: (track: AiMusicTrack) => void;
   onToggleExpand: (track: AiMusicTrack) => void;
   onHeart: (track: AiMusicTrack) => void;
@@ -474,6 +478,11 @@ function TrackCard({
       <div className="relative aspect-square">
         <TrackCover track={track} className="h-full w-full" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/12 to-transparent" />
+        {catalogLabel ? (
+          <span className={`${fontRighteous.className} absolute left-3 top-3 rounded-sm border border-orange-100/40 bg-black/72 px-2 py-1 text-[10px] font-black tracking-[0.12em] text-orange-50 shadow-[0_0_18px_rgba(255,106,0,0.16)] backdrop-blur`}>
+            {catalogLabel}
+          </span>
+        ) : null}
         {showChallengeReadyBadge ? <ChallengeReadyBadge isZh={isZh} /> : null}
         <button
           type="button"
@@ -504,6 +513,7 @@ function TrackCard({
           <p className="mt-1 truncate text-[11px] font-bold text-zinc-400">
             {isZh ? "by" : "by"} {track.creator} · {track.aiTool}
           </p>
+          {catalogNote ? <p className="mt-1 line-clamp-2 text-[10px] font-black leading-4 text-orange-100/82">{catalogNote}</p> : null}
         </div>
         <div className="flex items-center justify-between gap-2 text-[11px] font-black text-zinc-300">
           <span className="inline-flex items-center gap-1 text-rose-100">
@@ -587,10 +597,12 @@ function HeatList({
   isZh,
   currentTrackId,
   isPlaying,
+  expandedHud,
   heartBusy,
   heartStates,
   lang,
   onPlay,
+  onToggleExpand,
   onHeart,
   onShare,
 }: {
@@ -598,10 +610,12 @@ function HeatList({
   isZh: boolean;
   currentTrackId: string | null;
   isPlaying: boolean;
+  expandedHud: Record<string, boolean>;
   heartBusy: Record<string, boolean>;
   heartStates: HeartState;
   lang: string;
   onPlay: (track: AiMusicTrack) => void;
+  onToggleExpand: (track: AiMusicTrack) => void;
   onHeart: (track: AiMusicTrack) => void;
   onShare: (track: AiMusicTrack) => void;
 }) {
@@ -618,79 +632,25 @@ function HeatList({
         </p>
       </div>
 
-      <div className="overflow-hidden border-y border-white/10">
+      <div className="flex snap-x gap-3 overflow-x-auto pb-2 [scrollbar-width:thin] sm:grid sm:grid-cols-3 sm:overflow-visible md:grid-cols-4 xl:grid-cols-6">
         {rows.map(({ track, rank, hasRecentSignal }) => {
-          const heartedToday = Boolean(heartStates[track.recordKey]);
-          const heartActionLabel = heartedToday
-            ? isZh ? "取消愛心與收藏" : "Remove Heart and saved track"
-            : isZh ? "送出愛心支持" : "Send a heart";
           return (
-            <article
+            <TrackCard
               key={track.id}
-              className="grid grid-cols-[2.15rem_4.5rem_minmax(0,1fr)] gap-x-3 border-b border-white/8 px-1 py-3 last:border-b-0 sm:grid-cols-[2.6rem_5.5rem_minmax(0,1fr)_minmax(12rem,0.7fr)_auto] sm:items-center sm:gap-x-4 sm:px-2"
-            >
-              <div className={`${fontRighteous.className} flex h-9 items-center justify-center text-xs font-black ${hasRecentSignal ? "text-orange-100" : "text-zinc-600"}`}>
-                {rank ? `#${String(rank).padStart(2, "0")}` : isZh ? "累積" : "New"}
-              </div>
-              <div className="relative aspect-square overflow-hidden border border-white/10 bg-black">
-                <TrackCover track={track} className="h-full w-full" />
-                {track.openForChallenge ? <ChallengeReadyBadge isZh={isZh} /> : null}
-                <button
-                  type="button"
-                  onClick={() => onPlay(track)}
-                  disabled={!track.audioUrl}
-                  className="absolute inset-0 flex items-center justify-center bg-black/22 text-orange-200 transition hover:bg-black/44 hover:text-orange-100 disabled:cursor-not-allowed disabled:text-zinc-600"
-                  aria-label={currentTrackId === track.id && isPlaying ? (isZh ? "暫停" : "Pause") : isZh ? `播放 ${track.title}` : `Play ${track.title}`}
-                >
-                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-orange-500 text-black shadow-[0_0_18px_rgba(255,106,0,0.34)]">
-                    <PlayIcon playing={currentTrackId === track.id && isPlaying} />
-                  </span>
-                </button>
-              </div>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="line-clamp-1 text-sm font-black text-white sm:text-base">{track.title}</h3>
-                  {track.isShowtimeCertified ? (
-                    <span className={`${fontRighteous.className} rounded-sm border border-yellow-200/45 bg-yellow-300/14 px-1.5 py-0.5 text-[9px] uppercase text-yellow-100`}>SHOWTIME</span>
-                  ) : null}
-                </div>
-                <p className="mt-1 truncate text-[11px] font-bold text-zinc-400">by {track.creator} · {track.aiTool} · {track.genre}</p>
-                <p className={`mt-1 text-[11px] font-black leading-5 ${hasRecentSignal ? "text-orange-100" : "text-zinc-500"}`}>{heatReason(track, isZh)}</p>
-              </div>
-              <div className="col-span-2 col-start-2 mt-2 flex min-w-0 items-center gap-2 text-[11px] font-bold text-zinc-500 sm:col-auto sm:mt-0 sm:block">
-                <span className="text-rose-100">{track.heartCount} {isZh ? "愛心" : "Hearts"}</span>
-                <span className="sm:mt-1 sm:block">{track.challengeCount > 0 ? formatRecord(track, isZh) : isZh ? "尚未形成正式戰績" : "No official record yet"}</span>
-              </div>
-              <div className="col-span-3 mt-2 flex items-center gap-1.5 sm:col-auto sm:mt-0">
-                <button
-                  type="button"
-                  onClick={() => onHeart(track)}
-                  disabled={Boolean(heartBusy[track.recordKey])}
-                  className={`inline-flex h-9 w-9 items-center justify-center rounded-md border transition disabled:cursor-wait disabled:opacity-55 ${heartedToday ? "border-rose-200/55 bg-rose-500/18 text-rose-50" : "border-white/10 bg-white/[0.035] text-zinc-300 hover:border-rose-200/40 hover:text-rose-100"}`}
-                  aria-label={heartActionLabel}
-                  title={heartActionLabel}
-                >
-                  <HeartIcon filled={heartedToday} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onShare(track)}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/10 bg-white/[0.035] text-zinc-300 transition hover:border-cyan-100/40 hover:text-white"
-                  aria-label={isZh ? "分享" : "Share"}
-                  title={isZh ? "分享" : "Share"}
-                >
-                  <ShareIcon />
-                </button>
-                {track.openForChallenge ? (
-                  <Link
-                    href={aiMusicChallengeHref(track, lang)}
-                    className="inline-flex h-9 items-center justify-center rounded-md border border-orange-200/35 bg-orange-500/12 px-2.5 text-[11px] font-black text-orange-50 transition hover:border-orange-100/65 hover:bg-orange-500/20"
-                  >
-                    {isZh ? "攻擂" : "Challenge"}
-                  </Link>
-                ) : null}
-              </div>
-            </article>
+              track={track}
+              isZh={isZh}
+              isPlaying={currentTrackId === track.id && isPlaying}
+              isExpanded={Boolean(expandedHud[track.id])}
+              heartBusy={Boolean(heartBusy[track.recordKey])}
+              heartedToday={Boolean(heartStates[track.recordKey])}
+              lang={lang}
+              catalogLabel={rank ? `#${String(rank).padStart(2, "0")}` : isZh ? "累積" : "BUILDING"}
+              catalogNote={hasRecentSignal ? heatReason(track, isZh) : undefined}
+              onPlay={onPlay}
+              onToggleExpand={onToggleExpand}
+              onHeart={onHeart}
+              onShare={onShare}
+            />
           );
         })}
       </div>
@@ -1337,10 +1297,12 @@ export default function AiMusicClient() {
               isZh={isZh}
               currentTrackId={currentTrack?.id ?? null}
               isPlaying={isPlaying}
+              expandedHud={expandedHud}
               heartBusy={heartBusy}
               heartStates={heartStates}
               lang={lang}
               onPlay={handlePlayTrack}
+              onToggleExpand={(item) => setExpandedHud((current) => ({ ...current, [item.id]: !current[item.id] }))}
               onHeart={(track) => void sendHeart(track)}
               onShare={(track) => void shareTrack(track)}
             />

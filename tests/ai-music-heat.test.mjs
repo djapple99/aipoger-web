@@ -61,6 +61,10 @@ test("Explore Hot Now reads real recent Heart and official Battle archive data w
   assert.ok(aiMusicSource.includes('setWorksView("heat")'));
   assert.ok(aiMusicSource.includes("function HeatList"));
   assert.ok(aiMusicSource.includes("AIPOGER HEAT"));
+  assert.ok(aiMusicSource.includes("catalogLabel={rank ? `#${String(rank).padStart(2, \"0\")}`"));
+  assert.ok(aiMusicSource.includes("catalogNote={hasRecentSignal ? heatReason(track, isZh) : undefined}"));
+  assert.ok(aiMusicSource.includes("sm:grid sm:grid-cols-3 sm:overflow-visible md:grid-cols-4 xl:grid-cols-6"));
+  assert.equal(aiMusicSource.includes("sm:grid-cols-[2.6rem_5.5rem_minmax(0,1fr)_minmax(12rem,0.7fr)_auto]"), false);
   assert.equal(aiMusicSource.includes("Live Drop Signal"), false);
   assert.equal(aiMusicSource.includes("60s READY"), false);
   assert.equal(aiMusicSource.includes("Heat Score"), false);
