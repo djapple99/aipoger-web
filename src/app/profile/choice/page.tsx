@@ -229,11 +229,11 @@ export default function CreatorChoicePage() {
   }, [selected]);
 
   if (loading) {
-    return <main className="min-h-screen bg-[#050505] px-5 py-10 text-sm font-black text-zinc-400">正在準備你的 Showtime / Choice...</main>;
+    return <main className="min-h-screen bg-[#050505] px-5 pb-10 pt-24 text-sm font-black text-zinc-400 sm:pt-10">正在準備你的 Showtime / Choice...</main>;
   }
 
   return (
-    <main className="min-h-screen bg-[#050505] px-4 pb-28 pt-8 text-zinc-100 sm:px-7 lg:px-10">
+    <main className="min-h-screen bg-[#050505] px-4 pb-28 pt-24 text-zinc-100 sm:px-7 sm:pt-8 lg:px-10">
       <div className="mx-auto max-w-7xl">
         <header className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-5">
           <div>

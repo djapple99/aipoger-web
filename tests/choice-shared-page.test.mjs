@@ -9,6 +9,7 @@ const profilePage = readFileSync(new URL("../src/app/profile/page.tsx", import.m
 const rankPage = readFileSync(new URL("../src/app/rank/page.tsx", import.meta.url), "utf8");
 
 test("shared Choice links resolve official and creator collections to the playable public page", () => {
+  assert.match(sharedPage, /pb-28 pt-24[^\"]*sm:pt-8/);
   assert.match(sharedRoute, /searchParams\.get\("kind"\) === "official"/);
   assert.match(sharedRoute, /aipoger_choice_collections/);
   assert.match(sharedRoute, /aipoger_creator_choice_collections/);

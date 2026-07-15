@@ -140,7 +140,7 @@ export default function PublicChoicePage() {
   const title = collection.title || `${collection.curatorName || "AIPOGER"} Choice`;
 
   return (
-    <main className="min-h-screen bg-[#050505] px-4 pb-28 pt-8 text-zinc-100 sm:px-7 lg:px-10">
+    <main className="min-h-screen bg-[#050505] px-4 pb-28 pt-24 text-zinc-100 sm:px-7 sm:pt-8 lg:px-10">
       <div className="mx-auto max-w-7xl">
         <header className="border-b border-yellow-200/20 pb-7">
           <div className="flex flex-wrap items-start justify-between gap-6">

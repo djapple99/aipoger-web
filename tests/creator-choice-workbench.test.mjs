@@ -40,6 +40,7 @@ test("creator Choice can be shared only after publication and keeps 5-10 current
 });
 
 test("creator Choice selected tracks do not overflow the mobile workbench", () => {
+  assert.match(profileChoicePage, /pb-28 pt-24[^\"]*sm:pt-8/);
   assert.match(profileChoicePage, /grid-cols-\[1\.5rem_2\.75rem_minmax\(0,1fr\)\]/);
   assert.match(profileChoicePage, /col-span-3 flex justify-end/);
   assert.match(profileChoicePage, /h-11 w-11/);
