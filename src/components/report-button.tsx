@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { Flag } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 type ReportTargetType =
@@ -31,6 +32,7 @@ type ReportButtonProps = {
   context?: string;
   lang?: string;
   className?: string;
+  iconOnly?: boolean;
 };
 
 const REASONS: Array<{ key: ReportReason; zh: string; en: string }> = [
@@ -68,6 +70,7 @@ export default function ReportButton({
   context,
   lang = "zh",
   className = "",
+  iconOnly = false,
 }: ReportButtonProps) {
   const isZh = lang !== "en";
   const [open, setOpen] = useState(false);
@@ -134,8 +137,10 @@ export default function ReportButton({
           setError("");
         }}
         className={`inline-flex items-center justify-center rounded-full border border-red-200/25 bg-red-500/8 px-3 py-1.5 text-xs font-black text-red-100 transition hover:border-red-200/70 hover:bg-red-500/14 ${className}`}
+        aria-label={isZh ? "檢舉" : "Report"}
+        title={isZh ? "檢舉" : "Report"}
       >
-        {isZh ? "檢舉" : "Report"}
+        {iconOnly ? <Flag className="h-3.5 w-3.5" aria-hidden="true" /> : isZh ? "檢舉" : "Report"}
       </button>
 
       {open ? (

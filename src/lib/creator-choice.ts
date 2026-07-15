@@ -5,6 +5,11 @@ export type AipogerCreatorChoiceCollection = AipogerChoiceCollection & {
   publishedAt: string | null;
 };
 
+export type AipogerPublicCreatorChoiceCollection = AipogerCreatorChoiceCollection & {
+  creatorId: string;
+  avatarUrl: string;
+};
+
 export type CreatorChoiceEligibility = {
   eligible: boolean;
   showtimeWorkCount: number;

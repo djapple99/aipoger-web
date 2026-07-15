@@ -1,5 +1,6 @@
 "use client";
 
+import { Share2 } from "lucide-react";
 import { useState } from "react";
 
 type ShareButtonProps = {
@@ -10,6 +11,7 @@ type ShareButtonProps = {
   copiedLabel?: string;
   className?: string;
   wrapperClassName?: string;
+  iconOnly?: boolean;
 };
 
 export default function ShareButton({
@@ -20,6 +22,7 @@ export default function ShareButton({
   copiedLabel = "已複製",
   className = "",
   wrapperClassName = "",
+  iconOnly = false,
 }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
   const [shareUnavailable, setShareUnavailable] = useState(false);
@@ -104,13 +107,8 @@ export default function ShareButton({
         aria-label={label}
         title={label}
       >
-        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-          <path d="M8.4 10.6 15.7 6.7M8.4 13.4l7.3 3.9" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
-          <circle cx="6.5" cy="12" r="2.7" stroke="currentColor" strokeWidth="1.9" />
-          <circle cx="17.5" cy="5.8" r="2.7" stroke="currentColor" strokeWidth="1.9" />
-          <circle cx="17.5" cy="18.2" r="2.7" stroke="currentColor" strokeWidth="1.9" />
-        </svg>
-        <span>{shareUnavailable ? "請手動複製網址" : copied ? copiedLabel : label}</span>
+        <Share2 className="h-4 w-4" aria-hidden="true" />
+        {iconOnly ? <span className="sr-only">{label}</span> : <span>{shareUnavailable ? "請手動複製網址" : copied ? copiedLabel : label}</span>}
       </button>
       {shareUnavailable && manualUrl && (
         <span className="absolute right-0 top-[calc(100%+0.45rem)] z-30 w-[min(82vw,22rem)] rounded-2xl border border-orange-200/35 bg-black/95 p-2 shadow-[0_18px_50px_rgba(0,0,0,0.45)]">

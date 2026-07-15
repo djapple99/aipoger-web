@@ -223,8 +223,9 @@ Check:
 - Main title says `AIPOGER Showtime`.
 - Header copy says Showtime is a certified works archive and that certified works no longer accept challenges.
 - Homepage exposes an `AIPOGER Choice Weekly` entry that lands on `/rank?lang=zh#choice-weekly`.
-- Showtime includes a slim published `AIPOGER Choice` curation list after the catalog without ranking, automatic weekly-winner claims, or a large top panel.
+- Showtime begins with a dedicated `AIPOGER Choice` curator-avatar shelf at `#choice-weekly`, before the Showtime heading and filters. Avatar play runs the published 5-10-track Choice in order; tracklist opens the complete songs; copy says `由創作者選出他們心目中的歌單` and makes no ranking or automatic-winner claim.
 - Showtime is one unified certified-works catalog, not separate Drop victory / Bar heat / 24H boards or source tabs.
+- Showtime remains grouped by genre below Choice and uses 2 / 3 / 4 / 6 compact cards. Cards do not embed one native player each; Choice and Showtime use one bottom player with seek, previous/next, and usable mobile volume.
 - Song cards include the recognition source in the song intro, such as `正式 Battle 認證`, `探索守擂認證`, or `傷心酒吧公播認證`.
 - Showtime track intake is persisted certification, not dynamic public display of old `30 hearts`, `7 public days`, or `30 days` eligibility copy.
 - Founder catalog migration must start with a read-only candidate report and must not mutate production track data until owner confirmation. The one-time founder batch includes eligible public community works with `public_time <= now() - 30 days`, so exactly-30-day works count. Demo soft-delete IDs are optional; if supplied, they must be exact owner-confirmed IDs.

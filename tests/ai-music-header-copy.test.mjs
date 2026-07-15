@@ -57,7 +57,9 @@ test("Explore share links stay on the shared work in the Explore catalog", () =>
 test("Bar Heartbreak and Showtime pages state their current surface positioning", () => {
   assert.ok(listenBarSource.includes("AI 音樂公播池與投稿入口"));
   assert.ok(listenBarSource.includes("也會出現在探索 AI 音樂"));
-  assert.ok(showtimeSource.includes("Showtime 是 AIPOGER 的認證作品庫"));
+  assert.ok(
+    showtimeSource.includes("收錄保留已獲得反應、正式戰績或策展認可的作品： 入選後不再接受挑戰"),
+  );
   assert.ok(showtimeSource.includes("入選後不再接受挑戰"));
   assert.ok(showtimeSource.includes("/api/ai-music/tracks"));
   assert.ok(showtimeSource.includes("ai_music_showtime_certified"));

@@ -10,6 +10,10 @@ const choiceAdminRoute = readFileSync(new URL("../src/app/api/admin/choice/route
 const choiceCurrentRoute = readFileSync(new URL("../src/app/api/choice/current/route.ts", import.meta.url), "utf8");
 const choiceHelper = readFileSync(new URL("../src/lib/aipoger-choice.ts", import.meta.url), "utf8");
 const rankPage = readFileSync(new URL("../src/app/rank/page.tsx", import.meta.url), "utf8");
+const showtimeChoiceShelf = readFileSync(
+  new URL("../src/components/showtime-choice-shelf.tsx", import.meta.url),
+  "utf8",
+);
 const profilePage = readFileSync(new URL("../src/app/profile/page.tsx", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../supabase/migrations/20260712072918_choice_weekly_curation.sql", import.meta.url), "utf8");
 const productRules = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
@@ -89,7 +93,7 @@ test("published Choice reaches Showtime without becoming a ranking or social pub
   assert.ok(choiceCurrentRoute.includes('.eq("is_published", true)'));
   assert.ok(rankPage.includes("fetchCurrentChoice"));
   assert.ok(rankPage.includes("choiceCollection?.items.length"));
-  assert.ok(rankPage.includes('id="choice-weekly"'));
+  assert.ok(showtimeChoiceShelf.includes('id="choice-weekly"'));
   assert.equal(choiceAdminRoute.includes("social_posts"), false);
   assert.equal(choiceAdminRoute.includes("publish_target"), false);
   assert.ok(productRules.includes("Choice 選曲不會建立社群草稿或自動外部發布"));

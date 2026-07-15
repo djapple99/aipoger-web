@@ -2,9 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { ExternalLink, FileText, MessageSquare, Play, Trophy } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import ShareButton from "@/components/share-button";
 import ReportButton from "@/components/report-button";
+import ShowtimeChoiceShelf, { type ShowtimeChoiceShelfEntry } from "@/components/showtime-choice-shelf";
+import ShowtimeQueuePlayer, { type ShowtimePlayerTrack } from "@/components/showtime-queue-player";
 import {
   AIPOGER_BRAND_LOGO,
   AIPOGER_CONTACT_EMAIL,
@@ -31,6 +34,10 @@ import {
 } from "@/lib/listen-bar";
 import { canDisplayShowtimeSupportUrl, normalizeAiMusicShowtimeCertificationSource } from "@/lib/ai-music-showtime";
 import type { AipogerChoiceCollection } from "@/lib/aipoger-choice";
+import {
+  creatorChoicePublicPath,
+  type AipogerPublicCreatorChoiceCollection,
+} from "@/lib/creator-choice";
 import { DROP_BATTLE_OFFICIAL_AUDIENCE_MIN } from "@/lib/drop-battle-rematch";
 import { battleResultShortPath, isUuid } from "@/lib/share-short-links";
 import { supabase } from "@/lib/supabase";
@@ -138,6 +145,12 @@ type DropFullSongPayload = {
     label?: string;
     durationSeconds?: number;
   }>;
+};
+
+type ShowtimePlayerSession = {
+  queue: ShowtimePlayerTrack[];
+  index: number;
+  sourceLabel: string;
 };
 
 type FighterProfileMediaRow = {
@@ -424,14 +437,6 @@ function formatSongStats(stats: SongBattleStatsSnapshot | null | undefined, isZh
     : `${stats.battleCount} battles · ${stats.wins}W ${stats.losses}L · ${winRate}%${honor}`;
 }
 
-function formatDurationLabel(seconds: number | null | undefined) {
-  const safe = Math.max(0, Math.round(Number(seconds) || 0));
-  if (safe <= 0) return "";
-  const minutes = Math.floor(safe / 60);
-  const rest = safe % 60;
-  return `${minutes}:${String(rest).padStart(2, "0")}`;
-}
-
 async function fetchDropFullSongMap(battleIds: string[]) {
   if (battleIds.length === 0) return new Map<string, { audioUrl: string; label: string; durationSeconds: number }>();
   try {
@@ -627,6 +632,22 @@ async function fetchCurrentChoice(): Promise<{ collection: AipogerChoiceCollecti
     return { collection: payload?.collection ?? null, error: null };
   } catch (error) {
     return { collection: null, error: error instanceof Error ? error : new Error(String(error)) };
+  }
+}
+
+async function fetchPublicCreatorChoices(): Promise<{ collections: AipogerPublicCreatorChoiceCollection[]; error: Error | null }> {
+  try {
+    const response = await fetch("/api/creator-choice/public", { cache: "no-store" });
+    const payload = (await response.json().catch(() => null)) as {
+      collections?: AipogerPublicCreatorChoiceCollection[];
+      error?: string;
+    } | null;
+    if (!response.ok) {
+      return { collections: [], error: new Error(payload?.error || "Could not load creator Choice playlists.") };
+    }
+    return { collections: Array.isArray(payload?.collections) ? payload.collections : [], error: null };
+  } catch (error) {
+    return { collections: [], error: error instanceof Error ? error : new Error(String(error)) };
   }
 }
 
@@ -828,15 +849,17 @@ function LyricsAction({
   row,
   isZh,
   onOpen,
+  compact = false,
 }: {
   row: RankRow;
   isZh: boolean;
   onOpen: (row: RankRow) => void;
+  compact?: boolean;
 }) {
   const hasLyrics = Boolean(cleanLyrics(row.lyrics));
   if (!hasLyrics) {
     return (
-      <span className="inline-flex cursor-default items-center justify-center rounded-full border border-white/10 bg-black/20 px-2.5 py-1.5 text-[11px] font-black text-zinc-500">
+      compact ? null : <span className="inline-flex cursor-default items-center justify-center rounded-full border border-white/10 bg-black/20 px-2.5 py-1.5 text-[11px] font-black text-zinc-500">
         {isZh ? "歌詞未提供" : "No Lyrics"}
       </span>
     );
@@ -846,46 +869,12 @@ function LyricsAction({
     <button
       type="button"
       onClick={() => onOpen(row)}
-      className={`inline-flex items-center justify-center rounded-full border px-2.5 py-1.5 text-[11px] font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-200/70 ${HONOR_ACTION_CLASS}`}
+      className={`inline-flex items-center justify-center rounded-full border text-[11px] font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-200/70 ${compact ? "h-8 w-8 p-0" : "px-2.5 py-1.5"} ${HONOR_ACTION_CLASS}`}
+      aria-label={isZh ? "看歌詞" : "View lyrics"}
+      title={isZh ? "看歌詞" : "View lyrics"}
     >
-      {isZh ? "歌詞" : "Lyrics"}
+      {compact ? <FileText className="h-3.5 w-3.5" aria-hidden="true" /> : isZh ? "歌詞" : "Lyrics"}
     </button>
-  );
-}
-
-function BattleAudioPlayer({ row, isZh, compact = false }: { row: RankRow; isZh: boolean; compact?: boolean }) {
-  const src = row.fullSongUrl || row.audioUrl;
-  if (!src) return null;
-  const duration = row.fullSongUrl ? formatDurationLabel(row.fullSongDurationSeconds) : "";
-  return (
-    <div className={compact ? "mt-3" : "mt-2"}>
-      <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-        <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black ${
-          row.fullSongUrl
-            ? "border-yellow-200/45 bg-yellow-300/14 text-yellow-100"
-            : "border-orange-200/25 bg-orange-400/10 text-orange-100"
-        }`}
-        >
-          {row.fullSongUrl ? (isZh ? "Full Song / 完整版" : "Full Song") : isZh ? "Play Drop" : "Play Drop"}
-        </span>
-        {duration ? <span className="text-[10px] font-black text-zinc-500">{duration}</span> : null}
-        {!row.fullSongUrl ? (
-          <span className="text-[10px] font-bold text-zinc-600">
-            {isZh ? "創作者未公開完整版" : "Full song not public"}
-          </span>
-        ) : null}
-      </div>
-      <audio
-        className="h-9 w-full accent-orange-500"
-        controls
-        controlsList="nodownload"
-        onContextMenu={(event) => event.preventDefault()}
-        preload="metadata"
-        src={src}
-      >
-        {isZh ? "你的瀏覽器暫時不支援播放。" : "Your browser does not support audio playback."}
-      </audio>
-    </div>
   );
 }
 
@@ -900,6 +889,7 @@ function HonorCommentsPanel({
   onToggle,
   onDraftChange,
   onSubmit,
+  compact = false,
 }: {
   row: RankRow;
   isZh: boolean;
@@ -911,6 +901,7 @@ function HonorCommentsPanel({
   onToggle: () => void;
   onDraftChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  compact?: boolean;
 }) {
   const comments = interaction.comments.slice().reverse();
   return (
@@ -918,13 +909,13 @@ function HonorCommentsPanel({
       <button
         type="button"
         onClick={onToggle}
-        className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[11px] font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-200/70 ${HONOR_ACTION_CLASS}`}
+        className={`inline-flex items-center justify-center gap-1.5 rounded-full border text-[11px] font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-200/70 ${compact ? "h-8 w-8 p-0" : "px-2.5 py-1.5"} ${HONOR_ACTION_CLASS}`}
         aria-expanded={expanded}
+        aria-label={isZh ? "評論" : "Comments"}
+        title={isZh ? "評論" : "Comments"}
       >
-        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
-          <path d="M5.5 18.5v-12h13v8.2h-7.4l-5.6 3.8Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-        </svg>
-        <span>
+        <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" />
+        <span className={compact ? "sr-only" : ""}>
           {isZh ? "評論" : "Comments"}
           {comments.length > 0 ? ` ${comments.length}` : ""}
         </span>
@@ -988,6 +979,8 @@ export default function RankPage() {
   const [archivedResults, setArchivedResults] = useState<ArchivedBattleResult[]>([]);
   const [hotBarRows, setHotBarRows] = useState<RankRow[]>([]);
   const [choiceCollection, setChoiceCollection] = useState<AipogerChoiceCollection | null>(null);
+  const [creatorChoices, setCreatorChoices] = useState<AipogerPublicCreatorChoiceCollection[]>([]);
+  const [playerSession, setPlayerSession] = useState<ShowtimePlayerSession | null>(null);
   const [lyricsModal, setLyricsModal] = useState<LyricsModalState | null>(null);
   const [honorInteractions, setHonorInteractions] = useState<Record<string, HonorInteractionState>>({});
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
@@ -1015,10 +1008,12 @@ export default function RankPage() {
         { data: archiveData, error: archiveError },
         { data: hotData, error: hotError },
         { collection: nextChoice, error: choiceError },
+        { collections: nextCreatorChoices, error: creatorChoiceError },
       ] = await Promise.all([
         fetchBattleArchivesForRank(),
         fetchAiMusicTracksForRank(lang),
         fetchCurrentChoice(),
+        fetchPublicCreatorChoices(),
       ]);
 
       if (archiveError) {
@@ -1029,6 +1024,13 @@ export default function RankPage() {
       }
       if (choiceError && !/schema cache|does not exist|permission denied|aipoger_choice/i.test(choiceError.message || "")) {
         console.warn("[rank choice]", choiceError.message);
+      }
+      if (creatorChoiceError && !/schema cache|does not exist|permission denied|aipoger_creator_choice/i.test(creatorChoiceError.message || "")) {
+        console.warn("[rank creator choices]", creatorChoiceError.message);
+      }
+      if (!cancelled) {
+        setChoiceCollection(nextChoice);
+        setCreatorChoices(nextCreatorChoices);
       }
 
       const mappedArchives: ArchivedBattleResult[] = Array.isArray(archiveData)
@@ -1127,7 +1129,6 @@ export default function RankPage() {
       if (!cancelled) {
         setArchivedResults(merged);
         setHotBarRows(hotRows);
-        setChoiceCollection(nextChoice);
       }
     };
 
@@ -1148,6 +1149,63 @@ export default function RankPage() {
       return a.id.localeCompare(b.id);
     });
   }, [battleRows, hotBarRows]);
+
+  const choiceEntries = useMemo<ShowtimeChoiceShelfEntry[]>(() => {
+    const official = choiceCollection?.items.length
+      ? [{
+          id: `official-${choiceCollection.id}`,
+          curatorName: "AIPOGER",
+          avatarUrl: AIPOGER_BRAND_LOGO,
+          title: choiceCollection.title || "AIPOGER Choice",
+          intro: choiceCollection.intro,
+          weekStart: choiceCollection.weekStart,
+          items: choiceCollection.items,
+        }]
+      : [];
+    const creators = creatorChoices.map((collection) => ({
+      id: collection.id,
+      curatorName: collection.curatorName,
+      avatarUrl: mediaSrc(collection.avatarUrl),
+      title: collection.title || `${collection.curatorName} Choice`,
+      intro: collection.intro,
+      weekStart: collection.weekStart,
+      href: creatorChoicePublicPath(collection.id),
+      items: collection.items,
+    }));
+    return [...official, ...creators];
+  }, [choiceCollection, creatorChoices]);
+
+  const startChoicePlayback = (entry: ShowtimeChoiceShelfEntry, itemId?: string) => {
+    const playable = entry.items
+      .filter((item): item is typeof item & { audioUrl: string } => Boolean(item.audioUrl))
+      .map<ShowtimePlayerTrack>((item) => ({
+        id: `${item.sourceKind}:${item.id}`,
+        title: item.title,
+        artist: item.artist,
+        coverUrl: mediaSrc(item.coverUrl),
+        audioUrl: item.audioUrl,
+      }));
+    if (playable.length === 0) return;
+    const selected = itemId ? entry.items.find((item) => item.itemId === itemId) : null;
+    const index = selected ? Math.max(0, playable.findIndex((item) => item.id === `${selected.sourceKind}:${selected.id}`)) : 0;
+    setPlayerSession({ queue: playable, index, sourceLabel: `${entry.curatorName} Choice` });
+  };
+
+  const startShowtimePlayback = (row: RankRow) => {
+    const audioUrl = row.fullSongUrl || row.audioUrl;
+    if (!audioUrl) return;
+    setPlayerSession({
+      queue: [{
+        id: honorRecordKey(row),
+        title: displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived"),
+        artist: row.name,
+        coverUrl: mediaSrc(row.coverUrl),
+        audioUrl,
+      }],
+      index: 0,
+      sourceLabel: "AIPOGER Showtime",
+    });
+  };
 
   useEffect(() => {
     const keys = Array.from(new Set(displayRows.map(honorRecordKey)));
@@ -1372,7 +1430,7 @@ export default function RankPage() {
 
   return (
     <main
-      className={`${fontGlowSans.className} aipo-stage-bg relative min-h-screen overflow-hidden px-4 py-5 text-white sm:px-6 lg:px-8`}
+      className={`${fontGlowSans.className} aipo-stage-bg relative min-h-screen overflow-hidden px-4 pb-28 pt-5 text-white sm:px-6 lg:px-8`}
     >
       <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_15%_0%,rgba(255,106,0,0.18),transparent_28%),radial-gradient(circle_at_92%_6%,rgba(0,202,255,0.12),transparent_26%),linear-gradient(180deg,#060606,#0a0806_48%,#050505)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:56px_56px]" />
@@ -1397,18 +1455,25 @@ export default function RankPage() {
           </nav>
         </header>
 
-        <section className="py-5">
-          <div className="max-w-5xl">
-            <h1 className="text-3xl font-black leading-tight text-white sm:text-4xl">
-              AIPOGER Showtime
+        <div className="mt-5">
+          <ShowtimeChoiceShelf entries={choiceEntries} isZh={isZh} onPlay={startChoicePlayback} />
+        </div>
+
+        <section className="py-5 sm:py-6">
+          <div className="max-w-6xl">
+            <p className={`${fontRighteous.className} text-[10px] uppercase tracking-[0.2em] text-cyan-100/75`}>
+              CERTIFIED MUSIC CATALOG
+            </p>
+            <h1 className={`${fontRighteous.className} mt-1 text-2xl leading-tight text-white sm:text-3xl`}>
+              AIPOGER <span className="text-orange-300">SHOWTIME</span>
             </h1>
-            <p className="mt-3 max-w-3xl whitespace-pre-line text-sm leading-7 text-zinc-400 sm:text-base">
+            <p className="mt-2 text-sm font-black leading-6 text-yellow-100 sm:text-base">
               {isZh
-                ? "Showtime 是 AIPOGER 的認證作品庫，不是繼續被攻擂的戰場。\n這裡收錄已獲得反應、正式戰績或策展認可的作品；入選後不再接受挑戰，只保留為可回聽、收藏、分享與策展的認證紀錄。"
-                : "Showtime is AIPOGER's certified works archive, not an active challenge surface.\nIt keeps works recognized through response, official battle records, or curation. Once certified, a work no longer accepts challenges; it stays playable, saved, shared, and curated."}
+                ? "收錄保留已獲得反應、正式戰績或策展認可的作品： 入選後不再接受挑戰"
+                : "Certified works recognized through response, official results, or curation; once selected, they no longer accept challenges."}
             </p>
             <div
-              className="mt-4 flex max-w-full items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className="mt-3 flex max-w-full items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               aria-label={isZh ? "Showtime 操作" : "Showtime Actions"}
             >
               <ShareButton
@@ -1560,7 +1625,7 @@ export default function RankPage() {
                               {rows.length} {isZh ? "首" : "tracks"}
                             </span>
                           </div>
-                          <div className="grid gap-x-5 gap-y-7 sm:grid-cols-2 xl:grid-cols-4">
+                          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
                             {rows.map((row, index) => {
                               const rowResultHref = resultHref(row, lang);
                               const recordKey = honorRecordKey(row);
@@ -1568,35 +1633,41 @@ export default function RankPage() {
                               return (
                                 <article
                                   key={`${genreLabel}-${row.id}-${index}`}
-                                  className={`group min-w-0 rounded-lg border p-2.5 transition hover:-translate-y-0.5 hover:bg-white/[0.055] ${accentClasses(row.accent)}`}
+                                  className={`group min-w-0 rounded-md border p-2 transition hover:-translate-y-0.5 hover:bg-white/[0.055] ${accentClasses(row.accent)}`}
                                 >
-                                  <div className="relative aspect-[16/10] overflow-hidden rounded-md border border-white/10 bg-black sm:aspect-square">
+                                  <div className="relative aspect-square overflow-hidden rounded border border-white/10 bg-black">
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img
                                       src={mediaSrc(row.coverUrl)}
                                       alt={displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}
                                       className={honorCoverImageClass(row.coverUrl)}
                                     />
-                                    <div className="absolute left-2 top-2 flex max-w-[calc(100%-1rem)] flex-wrap gap-1.5">
-                                      <span className="max-w-[8rem] truncate rounded-full border border-cyan-100/25 bg-black/70 px-2 py-1 text-[10px] font-black text-cyan-100">
-                                        {displayGenre(row.genre || row.note, isZh)}
+                                    <div className="absolute left-1.5 top-1.5 flex max-w-[calc(100%-0.75rem)] flex-wrap gap-1">
+                                      <span className="max-w-[7rem] truncate rounded border border-cyan-100/25 bg-black/78 px-1.5 py-1 text-[9px] font-black text-cyan-100">
+                                        {certificationLabel(row, isZh)}
                                       </span>
                                     </div>
-                                    <div className="absolute bottom-3 left-3 h-14 w-14 overflow-hidden rounded-full border-[3px] border-white/80 bg-black shadow-[0_0_28px_rgba(255,255,255,0.18)]">
+                                    <button
+                                      type="button"
+                                      onClick={() => startShowtimePlayback(row)}
+                                      disabled={!(row.fullSongUrl || row.audioUrl)}
+                                      className="absolute left-1/2 top-1/2 inline-flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-orange-500 text-black shadow-[0_8px_25px_rgba(0,0,0,0.5)] transition hover:scale-105 hover:bg-orange-300 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500"
+                                      aria-label={isZh ? `播放 ${displaySongTitle(row.hook, "作品")}` : `Play ${displaySongTitle(row.hook, "track")}`}
+                                    >
+                                      <Play className="h-4 w-4" fill="currentColor" />
+                                    </button>
+                                    <div className="absolute bottom-2 left-2 h-9 w-9 overflow-hidden rounded-full border-2 border-white/80 bg-black shadow-[0_0_20px_rgba(255,255,255,0.15)]">
                                       {/* eslint-disable-next-line @next/next/no-img-element */}
                                       <img src={mediaSrc(row.avatarUrl)} alt={row.name} className="h-full w-full object-cover" />
                                     </div>
                                   </div>
 
-                                  <div className="min-h-[8.2rem] pt-3">
-                                    <h3 className="line-clamp-2 text-[15px] font-black leading-5 text-white">
+                                  <div className="min-h-[7rem] pt-2.5">
+                                    <h3 className="line-clamp-2 text-[13px] font-black leading-[1.15rem] text-white">
                                       {displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}
                                     </h3>
-                                    <p className="mt-1 truncate text-sm font-bold text-zinc-300">{row.name}</p>
-                                    <p className="mt-1 truncate text-xs font-black text-yellow-100/90">
-                                      {certificationLabel(row, isZh)}
-                                    </p>
-                                    <p className="mt-1 truncate text-xs font-bold text-zinc-500">
+                                    <p className="mt-1 truncate text-[11px] font-bold text-zinc-300">{row.name}</p>
+                                    <p className="mt-1 truncate text-[10px] font-bold text-zinc-500">
                                       {row.kind === "battle"
                                         ? `VS ${displayText(row.opponentName || "", isZh ? "對手未封存" : "Opponent Missing")}`
                                         : row.certification === "defense" && row.note
@@ -1604,30 +1675,19 @@ export default function RankPage() {
                                           : displayGenre(row.genre || row.note, isZh)}
                                     </p>
                                     {row.kind === "battle" && row.songStats?.battleCount ? (
-                                      <p className="mt-2 line-clamp-2 text-[11px] font-black leading-4 text-yellow-100/90">
+                                      <p className="mt-1.5 line-clamp-2 text-[10px] font-black leading-4 text-yellow-100/90">
                                         {formatSongStats(row.songStats, isZh)}
                                       </p>
                                     ) : null}
-                                    <div className="mt-2 flex flex-wrap gap-1.5">
-                                      <span className="rounded-full border border-white/12 bg-black/28 px-2 py-1 text-[10px] font-bold text-zinc-100">
-                                        {displayGenre(row.genre || row.note, isZh)}
-                                      </span>
-                                      <span className="rounded-full border border-cyan-200/20 bg-cyan-300/10 px-2 py-1 text-[10px] font-black text-cyan-100">
+                                    <div className="mt-1.5 flex flex-wrap gap-1">
+                                      <span className="rounded border border-cyan-200/20 bg-cyan-300/10 px-1.5 py-1 text-[9px] font-black text-cyan-100">
                                         {displayText(row.aiTool, isZh ? "未封存工具" : "Tool Missing")}
                                       </span>
-                                      {row.supportUrl ? (
-                                        <a
-                                          href={row.supportUrl}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className={`inline-flex items-center justify-center rounded-full border px-2.5 py-1.5 text-[11px] font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-200/70 ${HONOR_ACTION_CLASS}`}
-                                        >
-                                          {row.supportLabel || (isZh ? "支持創作者" : "Support Creator")}
-                                        </a>
-                                      ) : null}
-                                      <LyricsAction row={row} isZh={isZh} onOpen={openLyricsModal} />
+                                      <span className="rounded border border-yellow-200/20 bg-yellow-300/8 px-1.5 py-1 text-[9px] font-black text-yellow-100">
+                                        {row.fullSongUrl ? "FULL" : "DROP"}
+                                      </span>
                                     </div>
-                                    <p className="mt-2 truncate text-xs font-bold text-zinc-500">
+                                    <p className="mt-1.5 truncate text-[10px] font-bold text-zinc-500">
                                       {row.kind === "battle"
                                         ? row.votesTotal && row.votesTotal > 0
                                           ? `${row.votesTotal.toLocaleString()} ${isZh ? "票" : "votes"}`
@@ -1640,14 +1700,16 @@ export default function RankPage() {
                                     </p>
                                   </div>
 
-                                  <div className="flex flex-wrap gap-1.5 border-t border-white/10 pt-2">
+                                  <div className="flex flex-wrap items-center gap-1 border-t border-white/10 pt-2">
                                     {row.kind === "battle" ? (
                                       <>
                                         <Link
                                           href={rowResultHref}
-                                          className={`inline-flex items-center justify-center rounded-full border px-2.5 py-1.5 text-[11px] font-black transition ${HONOR_ACTION_CLASS}`}
+                                          className={`inline-flex h-8 w-8 items-center justify-center rounded-full border p-0 text-[11px] font-black transition ${HONOR_ACTION_CLASS}`}
+                                          aria-label={isZh ? "成果卡" : "Result"}
+                                          title={isZh ? "成果卡" : "Result"}
                                         >
-                                          {isZh ? "成果卡" : "Result"}
+                                          <Trophy className="h-3.5 w-3.5" aria-hidden="true" />
                                         </Link>
                                         <HonorCommentsPanel
                                           row={row}
@@ -1667,6 +1729,7 @@ export default function RankPage() {
                                             setCommentDrafts((current) => ({ ...current, [recordKey]: value }))
                                           }
                                           onSubmit={(event) => void submitHonorComment(event, row)}
+                                          compact
                                         />
                                         <ShareButton
                                           title={`${row.name} VS ${displayText(row.opponentName || "", isZh ? "對手" : "Opponent")}`}
@@ -1678,13 +1741,14 @@ export default function RankPage() {
                                           url={rowResultHref}
                                           label={isZh ? "分享" : "Share"}
                                           copiedLabel={isZh ? "已複製" : "Copied"}
-                                          className={`!px-2.5 !py-1.5 !text-[11px] ${HONOR_ACTION_CLASS}`}
+                                          className={`!h-8 !w-8 !p-0 !text-[11px] ${HONOR_ACTION_CLASS}`}
+                                          iconOnly
                                         />
                                         <button
                                           type="button"
                                           onClick={() => void toggleFavorite(row)}
                                           disabled={favoriteBusy[recordKey]}
-                                          className={`inline-flex items-center justify-center gap-1 rounded-full border px-2.5 py-1.5 text-[11px] font-black transition ${
+                                          className={`inline-flex h-8 items-center justify-center gap-1 rounded-full border px-2 text-[10px] font-black transition ${
                                             interaction.myFavorited
                                               ? "border-red-200/70 bg-red-500/18 text-red-100"
                                               : "border-white/12 bg-black/20 text-zinc-300 hover:border-red-200/55 hover:text-red-100"
@@ -1716,6 +1780,7 @@ export default function RankPage() {
                                             setCommentDrafts((current) => ({ ...current, [recordKey]: value }))
                                           }
                                           onSubmit={(event) => void submitHonorComment(event, row)}
+                                          compact
                                         />
                                         <ShareButton
                                           title={`${row.name} / ${displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}`}
@@ -1727,13 +1792,14 @@ export default function RankPage() {
                                           url={`/rank?lang=${lang}`}
                                           label={isZh ? "分享" : "Share"}
                                           copiedLabel={isZh ? "已複製" : "Copied"}
-                                          className={`!px-2.5 !py-1.5 !text-[11px] ${HONOR_ACTION_CLASS}`}
+                                          className={`!h-8 !w-8 !p-0 !text-[11px] ${HONOR_ACTION_CLASS}`}
+                                          iconOnly
                                         />
                                         <button
                                           type="button"
                                           onClick={() => void toggleFavorite(row)}
                                           disabled={favoriteBusy[recordKey]}
-                                          className={`inline-flex items-center justify-center gap-1 rounded-full border px-2.5 py-1.5 text-[11px] font-black transition ${
+                                          className={`inline-flex h-8 items-center justify-center gap-1 rounded-full border px-2 text-[10px] font-black transition ${
                                             interaction.myFavorited
                                               ? "border-red-200/70 bg-red-500/18 text-red-100"
                                               : "border-white/12 bg-black/20 text-zinc-300 hover:border-red-200/55 hover:text-red-100"
@@ -1746,6 +1812,12 @@ export default function RankPage() {
                                         </button>
                                       </>
                                     )}
+                                    <LyricsAction row={row} isZh={isZh} onOpen={openLyricsModal} compact />
+                                    {row.supportUrl ? (
+                                      <a href={row.supportUrl} target="_blank" rel="noopener noreferrer" className={`inline-flex h-8 w-8 items-center justify-center rounded-full border p-0 ${HONOR_ACTION_CLASS}`} aria-label={row.supportLabel || (isZh ? "支持創作者" : "Support Creator")} title={row.supportLabel || (isZh ? "支持創作者" : "Support Creator")}>
+                                        <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                                      </a>
+                                    ) : null}
                                     <ReportButton
                                       targetType={row.kind === "battle" ? "battle_result" : "listen_bar_track"}
                                       targetId={row.kind === "battle" ? row.battleCode || row.id : row.id}
@@ -1753,7 +1825,8 @@ export default function RankPage() {
                                       targetUrl={row.kind === "battle" ? rowResultHref : `/rank?lang=${lang}`}
                                       context={`Showtime catalog row kind=${row.kind}`}
                                       lang={lang}
-                                      className={`!px-2.5 !py-1.5 !text-[11px] ${HONOR_ACTION_CLASS}`}
+                                      className={`!h-8 !w-8 !p-0 !text-[11px] ${HONOR_ACTION_CLASS}`}
+                                      iconOnly
                                     />
                                   </div>
                                   {interactionErrors[recordKey] && !expandedComments[recordKey] ? (
@@ -1762,20 +1835,6 @@ export default function RankPage() {
                                     </p>
                                   ) : null}
 
-                                  {row.kind === "battle" ? (
-                                    <BattleAudioPlayer row={row} isZh={isZh} />
-                                  ) : row.audioUrl ? (
-                                    <audio
-                                      className="mt-2 h-9 w-full accent-orange-500"
-                                      controls
-                                      controlsList="nodownload"
-                                      onContextMenu={(event) => event.preventDefault()}
-                                      preload="metadata"
-                                      src={row.audioUrl}
-                                    >
-                                      {isZh ? "你的瀏覽器暫時不支援播放。" : "Your browser does not support audio playback."}
-                                    </audio>
-                                  ) : null}
                                 </article>
                               );
                             })}
@@ -1788,41 +1847,6 @@ export default function RankPage() {
               )}
             </div>
           </div>
-        </section>
-
-        <section
-          id="choice-weekly"
-          className="scroll-mt-24 border-t border-white/10 py-5"
-        >
-          <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <div className="grid gap-1 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-baseline sm:gap-4">
-              <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.22em] text-cyan-100/70`}>
-                AIPOGER Choice
-              </p>
-              <p className="max-w-4xl text-sm font-bold leading-7 text-zinc-400">
-                {choiceCollection?.intro || (isZh
-                  ? "DJ 與營運從 Showtime 認證作品中人工挑選；不是另一張榜單，也不做自動週冠軍。"
-                  : "Human picks from the Showtime catalog, never another chart or automated weekly winner.")}
-              </p>
-            </div>
-            {choiceCollection ? <span className="text-xs font-black text-zinc-500">{choiceCollection.weekStart}</span> : null}
-          </div>
-          {choiceCollection?.title ? <h2 className="mt-2 text-lg font-black text-white">{choiceCollection.title}</h2> : null}
-          {choiceCollection?.items.length ? (
-            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-              {choiceCollection.items.map((item) => (
-                <article key={item.itemId} className="flex min-w-0 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.025] p-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={mediaSrc(item.coverUrl)} alt="" className="h-10 w-10 shrink-0 rounded-md object-cover" />
-                  <div className="min-w-0">
-                    <p className="truncate text-xs font-black text-white">{item.title}</p>
-                    <p className="mt-0.5 truncate text-[11px] font-bold text-zinc-500">{item.artist}</p>
-                    <p className="mt-0.5 truncate text-[10px] font-black text-cyan-100/80">{item.recognition}</p>
-                  </div>
-                </article>
-              ))}
-            </div>
-          ) : null}
         </section>
 
         {lyricsModal ? (
@@ -1876,6 +1900,17 @@ export default function RankPage() {
           </div>
         </footer>
       </div>
+
+      {playerSession ? (
+        <ShowtimeQueuePlayer
+          queue={playerSession.queue}
+          index={playerSession.index}
+          sourceLabel={playerSession.sourceLabel}
+          isZh={isZh}
+          onIndexChange={(index) => setPlayerSession((current) => current ? { ...current, index } : current)}
+          onClose={() => setPlayerSession(null)}
+        />
+      ) : null}
     </main>
   );
 }
