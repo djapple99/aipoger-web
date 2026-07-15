@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { ListMusic, Play, X } from "lucide-react";
+import { Heart, ListMusic, Play, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import ShareButton from "@/components/share-button";
 import type { AipogerChoiceItem } from "@/lib/aipoger-choice";
+import { fontRighteous } from "@/lib/fonts";
 
 export type ShowtimeChoiceShelfEntry = {
   id: string;
+  kind: "official" | "creator";
   curatorName: string;
-  avatarUrl: string;
+  coverUrl: string;
   title: string;
   intro: string;
   weekStart: string;
@@ -16,13 +19,38 @@ export type ShowtimeChoiceShelfEntry = {
   items: AipogerChoiceItem[];
 };
 
+export type ShowtimeChoiceHeartState = {
+  heartCount: number;
+  myHeart: boolean;
+};
+
 type ShowtimeChoiceShelfProps = {
   entries: ShowtimeChoiceShelfEntry[];
   isZh: boolean;
   onPlay: (entry: ShowtimeChoiceShelfEntry, itemId?: string) => void;
+  hearts: Record<string, ShowtimeChoiceHeartState>;
+  heartBusy: Record<string, boolean>;
+  heartError?: string;
+  onToggleHeart: (entry: ShowtimeChoiceShelfEntry) => void;
 };
 
-export default function ShowtimeChoiceShelf({ entries, isZh, onPlay }: ShowtimeChoiceShelfProps) {
+function recordKey(entry: ShowtimeChoiceShelfEntry) {
+  return `${entry.kind}:${entry.id}`;
+}
+
+function shareUrl(entry: ShowtimeChoiceShelfEntry) {
+  return entry.href || "/rank#choice-weekly";
+}
+
+export default function ShowtimeChoiceShelf({
+  entries,
+  isZh,
+  onPlay,
+  hearts,
+  heartBusy,
+  heartError,
+  onToggleHeart,
+}: ShowtimeChoiceShelfProps) {
   const [detail, setDetail] = useState<ShowtimeChoiceShelfEntry | null>(null);
 
   useEffect(() => {
@@ -36,58 +64,95 @@ export default function ShowtimeChoiceShelf({ entries, isZh, onPlay }: ShowtimeC
 
   return (
     <>
-      <section id="choice-weekly" className="scroll-mt-20 border-y border-yellow-100/15 py-4 sm:py-5">
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-300">CURATOR SETS</p>
-            <h2 className="mt-1 text-xl font-black text-white sm:text-2xl">AIPOGER CHOICE</h2>
-            <p className="mt-1 text-sm font-black text-yellow-100">
-              {isZh ? "由創作者選出他們心目中的歌單" : "Playlists chosen by AIPOGER creators."}
-            </p>
-          </div>
-          <Link href="/profile/choice" className="text-xs font-black text-cyan-100 transition hover:text-white">
+      <section id="choice-weekly" className="scroll-mt-20 border-y border-yellow-100/15 py-5 sm:py-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <h2 className={`${fontRighteous.className} text-4xl leading-[0.88] text-white sm:text-5xl lg:text-6xl`}>
+            AIPOGER <span className="text-orange-300">CHOICE</span>
+          </h2>
+          <Link href="/profile/choice" className="aipo-ghost-button rounded-full px-3 py-2 text-xs font-black text-cyan-100 transition hover:text-white">
             {isZh ? "建立我的 Choice" : "Build My Choice"}
           </Link>
         </div>
 
         {entries.length > 0 ? (
-          <div className="mt-4 flex snap-x gap-4 overflow-x-auto pb-2 [scrollbar-width:thin]">
-            {entries.map((entry) => (
-              <article key={entry.id} className="w-[5.4rem] shrink-0 snap-start text-center sm:w-[6rem]">
-                <div className="group relative mx-auto h-[4.7rem] w-[4.7rem] overflow-hidden rounded-full border-2 border-yellow-100/35 bg-black shadow-[0_10px_28px_rgba(0,0,0,0.42)] sm:h-[5.25rem] sm:w-[5.25rem]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={entry.avatarUrl} alt={entry.curatorName} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
-                  <button
-                    type="button"
-                    onClick={() => onPlay(entry)}
-                    disabled={!entry.items.some((item) => Boolean(item.audioUrl))}
-                    className="absolute inset-0 inline-flex items-center justify-center bg-black/22 text-white transition hover:bg-black/45 disabled:cursor-not-allowed disabled:opacity-35"
-                    aria-label={isZh ? `順播 ${entry.curatorName} 的 Choice` : `Play ${entry.curatorName}'s Choice`}
-                  >
-                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 text-black shadow-lg">
-                      <Play className="h-4 w-4" fill="currentColor" />
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDetail(entry)}
-                    className="absolute bottom-0.5 right-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/35 bg-black text-cyan-100 transition hover:bg-cyan-200 hover:text-black"
-                    aria-label={isZh ? `查看 ${entry.curatorName} 的歌單` : `View ${entry.curatorName}'s tracklist`}
-                  >
-                    <ListMusic className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-                <button type="button" onClick={() => setDetail(entry)} className="mt-2 w-full truncate text-xs font-black text-zinc-100 hover:text-yellow-100">
-                  {entry.curatorName}
-                </button>
-              </article>
-            ))}
+          <div className="mt-5 flex snap-x gap-4 overflow-x-auto pb-3 [scrollbar-width:thin]">
+            {entries.map((entry) => {
+              const key = recordKey(entry);
+              const heart = hearts[key] ?? { heartCount: 0, myHeart: false };
+              const playable = entry.items.some((item) => Boolean(item.audioUrl));
+              return (
+                <article key={key} className="w-[16.5rem] shrink-0 snap-start rounded-lg border border-yellow-100/20 bg-black/35 p-2.5 shadow-[0_16px_42px_rgba(0,0,0,0.28)] sm:w-[17.5rem]">
+                  <div className="group relative aspect-square overflow-hidden rounded-md bg-[#090909]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={entry.coverUrl} alt={`${entry.curatorName} Choice`} className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.025]" />
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent" />
+                    <button
+                      type="button"
+                      onClick={() => onPlay(entry)}
+                      disabled={!playable}
+                      className="absolute bottom-3 left-3 inline-flex h-11 w-11 items-center justify-center rounded-full bg-orange-500 text-black shadow-[0_10px_22px_rgba(0,0,0,0.44)] transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-35"
+                      aria-label={isZh ? `順播 ${entry.curatorName} 的 Choice` : `Play ${entry.curatorName}'s Choice`}
+                    >
+                      <Play className="h-5 w-5" fill="currentColor" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDetail(entry)}
+                      className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/30 bg-black/75 text-cyan-100 transition hover:border-cyan-100 hover:text-white"
+                      aria-label={isZh ? `查看 ${entry.curatorName} 的歌單` : `View ${entry.curatorName}'s tracklist`}
+                      title={isZh ? "查看歌單" : "View tracklist"}
+                    >
+                      <ListMusic className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="px-1 pb-1 pt-3">
+                    <button type="button" onClick={() => setDetail(entry)} className="block w-full truncate text-left text-base font-black text-white transition hover:text-orange-100" title={entry.title || `${entry.curatorName} Choice`}>
+                      {entry.title || `${entry.curatorName} Choice`}
+                    </button>
+                    <p className="mt-1 truncate text-xs font-black text-cyan-100">{entry.curatorName}</p>
+                    {entry.intro ? <p className="mt-2 min-h-[3.15rem] line-clamp-3 text-xs font-bold leading-5 text-zinc-400">{entry.intro}</p> : <div className="min-h-[3.15rem]" aria-hidden="true" />}
+                    <div className="mt-3 flex items-center gap-2 border-t border-white/10 pt-3">
+                      <button
+                        type="button"
+                        onClick={() => onToggleHeart(entry)}
+                        disabled={Boolean(heartBusy[key])}
+                        className={`aipo-ghost-button inline-flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-full px-2.5 text-xs font-black transition disabled:cursor-not-allowed disabled:opacity-45 ${heart.myHeart ? "border-rose-200/45 bg-rose-500/20 text-rose-100" : "text-zinc-200 hover:text-white"}`}
+                        aria-label={heart.myHeart ? (isZh ? "取消收藏 Choice" : "Remove Choice from favorites") : (isZh ? "收藏 Choice" : "Favorite Choice")}
+                        title={heart.myHeart ? (isZh ? "取消收藏" : "Remove favorite") : (isZh ? "收藏 Choice" : "Favorite Choice")}
+                      >
+                        <Heart className="h-4 w-4" fill={heart.myHeart ? "currentColor" : "none"} />
+                        <span className="tabular-nums">{heart.heartCount}</span>
+                      </button>
+                      <ShareButton
+                        title={entry.title || `${entry.curatorName} Choice`}
+                        text={entry.intro || `${entry.curatorName} Choice`}
+                        url={shareUrl(entry)}
+                        label={isZh ? "分享 Choice" : "Share Choice"}
+                        copiedLabel={isZh ? "已複製" : "Copied"}
+                        iconOnly
+                        className="h-9 w-9 rounded-full p-0 text-cyan-100"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setDetail(entry)}
+                        className="aipo-ghost-button ml-auto inline-flex h-9 w-9 items-center justify-center rounded-full text-cyan-100 transition hover:text-white"
+                        aria-label={isZh ? "查看歌單" : "View tracklist"}
+                        title={isZh ? "查看歌單" : "View tracklist"}
+                      >
+                        <ListMusic className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         ) : (
           <p className="mt-4 border-l-2 border-orange-400 pl-3 text-sm font-bold text-zinc-500">
             {isZh ? "目前還沒有已發布的 Choice。" : "No published Choice playlists yet."}
           </p>
         )}
+        {heartError ? <p className="mt-3 text-xs font-bold text-rose-200">{heartError}</p> : null}
       </section>
 
       {detail ? (

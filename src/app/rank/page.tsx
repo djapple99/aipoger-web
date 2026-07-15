@@ -6,7 +6,7 @@ import { ExternalLink, FileText, MessageSquare, Play, Trophy } from "lucide-reac
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import ShareButton from "@/components/share-button";
 import ReportButton from "@/components/report-button";
-import ShowtimeChoiceShelf, { type ShowtimeChoiceShelfEntry } from "@/components/showtime-choice-shelf";
+import ShowtimeChoiceShelf, { type ShowtimeChoiceHeartState, type ShowtimeChoiceShelfEntry } from "@/components/showtime-choice-shelf";
 import ShowtimeQueuePlayer, { type ShowtimePlayerTrack } from "@/components/showtime-queue-player";
 import {
   AIPOGER_BRAND_LOGO,
@@ -117,6 +117,12 @@ type HonorInteractionPayload = {
   comments: HonorComment[];
 };
 
+type ChoiceInteractionPayload = {
+  recordKey: string;
+  heartCount: number;
+  myHeart: boolean;
+};
+
 type RankBattleMediaRow = {
   id?: string | null;
   winner?: string | null;
@@ -218,6 +224,17 @@ function honorTargetId(row: RankRow) {
 
 function emptyHonorInteraction(): HonorInteractionState {
   return { favoriteCount: 0, myFavorited: false, comments: [] };
+}
+
+function choiceRecordKey(entry: ShowtimeChoiceShelfEntry) {
+  return `${entry.kind}:${entry.id}`;
+}
+
+function normalizeChoiceInteraction(payload: ChoiceInteractionPayload): ShowtimeChoiceHeartState {
+  return {
+    heartCount: Math.max(0, Math.round(Number(payload.heartCount) || 0)),
+    myHeart: Boolean(payload.myHeart),
+  };
 }
 
 function normalizeHonorRecord(payload: HonorInteractionPayload): HonorInteractionState {
@@ -980,6 +997,9 @@ export default function RankPage() {
   const [hotBarRows, setHotBarRows] = useState<RankRow[]>([]);
   const [choiceCollection, setChoiceCollection] = useState<AipogerChoiceCollection | null>(null);
   const [creatorChoices, setCreatorChoices] = useState<AipogerPublicCreatorChoiceCollection[]>([]);
+  const [choiceHearts, setChoiceHearts] = useState<Record<string, ShowtimeChoiceHeartState>>({});
+  const [choiceHeartBusy, setChoiceHeartBusy] = useState<Record<string, boolean>>({});
+  const [choiceHeartError, setChoiceHeartError] = useState("");
   const [playerSession, setPlayerSession] = useState<ShowtimePlayerSession | null>(null);
   const [lyricsModal, setLyricsModal] = useState<LyricsModalState | null>(null);
   const [honorInteractions, setHonorInteractions] = useState<Record<string, HonorInteractionState>>({});
@@ -1153,9 +1173,10 @@ export default function RankPage() {
   const choiceEntries = useMemo<ShowtimeChoiceShelfEntry[]>(() => {
     const official = choiceCollection?.items.length
       ? [{
-          id: `official-${choiceCollection.id}`,
+          id: choiceCollection.id,
+          kind: "official" as const,
           curatorName: "AIPOGER",
-          avatarUrl: AIPOGER_BRAND_LOGO,
+          coverUrl: AIPOGER_BRAND_LOGO,
           title: choiceCollection.title || "AIPOGER Choice",
           intro: choiceCollection.intro,
           weekStart: choiceCollection.weekStart,
@@ -1164,8 +1185,9 @@ export default function RankPage() {
       : [];
     const creators = creatorChoices.map((collection) => ({
       id: collection.id,
+      kind: "creator" as const,
       curatorName: collection.curatorName,
-      avatarUrl: mediaSrc(collection.avatarUrl),
+      coverUrl: mediaSrc(collection.avatarUrl),
       title: collection.title || `${collection.curatorName} Choice`,
       intro: collection.intro,
       weekStart: collection.weekStart,
@@ -1189,6 +1211,81 @@ export default function RankPage() {
     const selected = itemId ? entry.items.find((item) => item.itemId === itemId) : null;
     const index = selected ? Math.max(0, playable.findIndex((item) => item.id === `${selected.sourceKind}:${selected.id}`)) : 0;
     setPlayerSession({ queue: playable, index, sourceLabel: `${entry.curatorName} Choice` });
+  };
+
+  useEffect(() => {
+    const keys = Array.from(new Set(choiceEntries.map(choiceRecordKey)));
+    if (keys.length === 0) {
+      setChoiceHearts({});
+      return;
+    }
+    let cancelled = false;
+
+    const loadChoiceHearts = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const response = await fetch(`/api/choice/interactions?keys=${encodeURIComponent(keys.join(","))}`, {
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+        cache: "no-store",
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        interactions?: ChoiceInteractionPayload[];
+      } | null;
+      if (!response.ok || !Array.isArray(payload?.interactions) || cancelled) return;
+      setChoiceHearts((current) => {
+        const next = { ...current };
+        payload.interactions?.forEach((interaction) => {
+          next[interaction.recordKey] = normalizeChoiceInteraction(interaction);
+        });
+        return next;
+      });
+    };
+
+    void loadChoiceHearts();
+    return () => {
+      cancelled = true;
+    };
+  }, [choiceEntries]);
+
+  const toggleChoiceHeart = async (entry: ShowtimeChoiceShelfEntry) => {
+    const key = choiceRecordKey(entry);
+    setChoiceHeartError("");
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      setChoiceHeartError(isZh ? "請先登入，才能收藏 Choice。" : "Sign in to save a Choice.");
+      return;
+    }
+
+    setChoiceHeartBusy((current) => ({ ...current, [key]: true }));
+    const response = await fetch("/api/choice/interactions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        action: choiceHearts[key]?.myHeart ? "remove_heart" : "heart",
+        collectionKind: entry.kind,
+        collectionId: entry.id,
+      }),
+    });
+    const payload = (await response.json().catch(() => null)) as {
+      interaction?: ChoiceInteractionPayload;
+      error?: string;
+    } | null;
+    setChoiceHeartBusy((current) => ({ ...current, [key]: false }));
+    if (!response.ok || !payload?.interaction) {
+      setChoiceHeartError(payload?.error || (isZh ? "Choice 收藏失敗，請稍後再試。" : "Choice favorite failed. Try again later."));
+      return;
+    }
+    const interaction = payload.interaction;
+    setChoiceHearts((current) => ({
+      ...current,
+      [key]: normalizeChoiceInteraction(interaction),
+    }));
   };
 
   const startShowtimePlayback = (row: RankRow) => {
@@ -1456,7 +1553,15 @@ export default function RankPage() {
         </header>
 
         <div className="mt-5">
-          <ShowtimeChoiceShelf entries={choiceEntries} isZh={isZh} onPlay={startChoicePlayback} />
+          <ShowtimeChoiceShelf
+            entries={choiceEntries}
+            isZh={isZh}
+            onPlay={startChoicePlayback}
+            hearts={choiceHearts}
+            heartBusy={choiceHeartBusy}
+            heartError={choiceHeartError}
+            onToggleHeart={toggleChoiceHeart}
+          />
         </div>
 
         <section className="py-5 sm:py-6">

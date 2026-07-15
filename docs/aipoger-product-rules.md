@@ -344,7 +344,7 @@ Showtime display is a single certified-works catalog:
 - Month, style, and search filters may remain for browsing, but they are catalog controls, not separate ranking boards.
 - Recognition source belongs inside the individual song introduction, using labels such as `正式 Battle 認證`, `探索守擂認證`, or `傷心酒吧公播認證`.
 - Do not show duplicate Featured/Top sections above the same catalog results.
-- `AIPOGER Choice` is the first public content shelf on `/rank`, before the Showtime heading, filters, and genre catalog. The shelf shows published curator avatars instead of song-card rows; avatar play starts the playlist in order and the tracklist action opens its complete 5-10 works. The fixed public explanation is `由創作者選出他們心目中的歌單`. It remains non-ranked and is never an automated weekly winner.
+- `AIPOGER Choice` is the first public content shelf on `/rank`, before the Showtime heading, filters, and genre catalog. Render every published Choice as a compact square, cover-led editorial card using the curator's existing identity cover. Cover play starts the playlist in order; separate tracklist, share, and toggleable Choice-save actions remain visible; the editor's `intro` is visible as the recommendation article excerpt. The title is the large designed `AIPOGER CHOICE` wordmark only: do not show `CURATOR SETS`, circular avatars, or the redundant public explanation `由創作者選出他們心目中的歌單`. Choice saves are collection-level and do not reuse song Hearts, song totals, or the song 24-hour cooldown. Choice remains non-ranked and is never an automated weekly winner.
 - Showtime remains below Choice, grouped by genre with a compact 2 / 3 / 4 / 6-card responsive catalog. Choice and Showtime tracks share one bottom queue player with seek, previous/next, and mobile volume controls.
 
 Display principles:
@@ -359,13 +359,14 @@ Display principles:
 
 AIPOGER Choice Weekly:
 
-- AIPOGER Choice is a creator-curated playlist direction presented as a Beatport-style curator shelf above Showtime.
+- AIPOGER Choice is a creator-curated playlist direction presented as a Beatport-style square cover shelf above Showtime. The cover is the recommender identity cover until a dedicated Choice-cover authoring feature is explicitly shipped.
 - It is not a separate ranking chart or automated weekly winner.
 - The owner-managed `/admin/showtime` Choice workbench keeps weekly date, optional curation copy, 5-10 selected currently public Showtime works, order, and publication state; `/admin/choice` exposes the same workflow directly. The selection catalog must use `isPublic && selectable`, so historical certification, hidden, withdrawn, inactive, unplayable, or moderation-held works cannot be newly selected.
 - Choice selection is a compact cover catalog, not one tall metadata row per song: show six small cover-led options per desktop row, a minimal title/creator line, and an overlay add state. `/admin/choice` and `/profile/choice` must use this same density model.
 - When the owner or eligible creator selects their first song before creating a weekly draft, the Choice UI must create that week’s draft first and then add the selected work. The overlay add control must not be disabled merely because no draft has been manually created yet.
 - This official owner Choice remains separate from creator-published Choice. A creator who has at least one persisted Showtime-certified community work may use `/profile/choice` to create weekly 5-10-track Choice collections. Their own recognition grants curation access, but their selection pool is all currently public Showtime works from any creator, not only their own songs. Each creator can manage only their own drafts and published collections; a published creator Choice has its own share page and never replaces the official weekly Choice at `#choice-weekly`.
 - The front-stage keeps `#choice-weekly` as the top Choice shelf anchor for homepage, `/today`, and older shared links.
+- A public Choice card shows its existing recommendation article excerpt and active heart/save plus share controls. Its save may be toggled off by the same listener and must persist independently of all song reactions.
 - Choice may later inform social drafts or DJ selection, but this management workflow does not auto-create drafts or publish externally.
 
 Creator stages:

@@ -202,7 +202,7 @@ Current layout:
 - No Drop victory / Bar heat source tabs.
 - No duplicate Featured row above the same results.
 - Recognition source appears in each song card intro, for example `正式 Battle 認證`, `探索守擂認證`, or `傷心酒吧公播認證`.
-- `AIPOGER Choice` is the first content shelf: a Beatport/DJ-style horizontal row of published curator avatars with direct sequential play and a separate full-tracklist action. Use `由創作者選出他們心目中的歌單`; do not render song rows in the shelf.
+- `AIPOGER Choice` is the first content shelf: a Beatport/DJ-style horizontal row of compact square editorial cover cards, never circular curator avatars. Use the curator's existing identity cover, a direct sequential-play control, a separate full-tracklist control, a visible recommendation article excerpt, and compact heart/save plus share actions. The title is large, designed `AIPOGER CHOICE`; do not render `CURATOR SETS` or `由創作者選出他們心目中的歌單`.
 - Showtime follows underneath by genre. Use 2 cards on mobile, 3 on small desktop/tablet, 4 on large tablet, and 6 on wide desktop; cards use a shared bottom player instead of embedding a full audio control in every card.
 
 Showtime admin layout:

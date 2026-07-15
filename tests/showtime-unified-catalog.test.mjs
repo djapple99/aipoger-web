@@ -6,6 +6,8 @@ const showtimeSource = readFileSync(new URL("../src/app/rank/page.tsx", import.m
 const choiceShelfSource = readFileSync(new URL("../src/components/showtime-choice-shelf.tsx", import.meta.url), "utf8");
 const queuePlayerSource = readFileSync(new URL("../src/components/showtime-queue-player.tsx", import.meta.url), "utf8");
 const publicCreatorChoiceSource = readFileSync(new URL("../src/app/api/creator-choice/public/route.ts", import.meta.url), "utf8");
+const choiceInteractionsSource = readFileSync(new URL("../src/app/api/choice/interactions/route.ts", import.meta.url), "utf8");
+const choiceHeartsMigration = readFileSync(new URL("../supabase/migrations/20260715083000_choice_collection_hearts.sql", import.meta.url), "utf8");
 const productRulesSource = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
 const releaseChecklistSource = readFileSync(new URL("../docs/aipoger-release-checklist.md", import.meta.url), "utf8");
 const artDirectionSource = readFileSync(new URL("../docs/aipoger-ui-art-direction.md", import.meta.url), "utf8");
@@ -33,15 +35,34 @@ test("Showtime renders one certified works catalog without old source boards", (
   assert.equal(showtimeSource.includes("傷心酒吧熱播紀錄"), false);
 });
 
-test("Showtime puts playable creator Choice avatars before a compact six-column catalog", () => {
+test("Showtime puts cover-led Choice editorials before a compact six-column catalog", () => {
   assert.ok(showtimeSource.includes("<ShowtimeChoiceShelf"));
   assert.ok(showtimeSource.indexOf("<ShowtimeChoiceShelf") < showtimeSource.indexOf("CERTIFIED MUSIC CATALOG"));
   assert.ok(showtimeSource.includes("xl:grid-cols-6"));
   assert.ok(showtimeSource.includes("收錄保留已獲得反應、正式戰績或策展認可的作品： 入選後不再接受挑戰"));
   assert.equal(showtimeSource.includes("DJ 與營運從 Showtime 認證作品中人工挑選"), false);
-  assert.ok(choiceShelfSource.includes("由創作者選出他們心目中的歌單"));
+  assert.ok(choiceShelfSource.includes("AIPOGER <span className=\"text-orange-300\">CHOICE</span>"));
+  assert.ok(choiceShelfSource.includes("aspect-square"));
+  assert.ok(choiceShelfSource.includes("entry.coverUrl"));
+  assert.ok(choiceShelfSource.includes("entry.intro"));
+  assert.ok(choiceShelfSource.includes("<ShareButton"));
+  assert.ok(choiceShelfSource.includes("onToggleHeart(entry)"));
+  assert.equal(choiceShelfSource.includes("CURATOR SETS"), false);
+  assert.equal(choiceShelfSource.includes("由創作者選出他們心目中的歌單"), false);
   assert.ok(choiceShelfSource.includes("查看 ${entry.curatorName} 的歌單"));
   assert.ok(choiceShelfSource.includes("onPlay(entry)"));
+});
+
+test("Choice saves persist independently from song Hearts and only target public collections", () => {
+  assert.ok(showtimeSource.includes("/api/choice/interactions"));
+  assert.ok(showtimeSource.includes("action: choiceHearts[key]?.myHeart ? \"remove_heart\" : \"heart\""));
+  assert.ok(choiceInteractionsSource.includes("aipoger_choice_collection_hearts"));
+  assert.ok(choiceInteractionsSource.includes(".eq(\"is_published\", true)"));
+  assert.ok(choiceInteractionsSource.includes('action === "heart" || body?.action === "remove_heart"'));
+  assert.ok(choiceHeartsMigration.includes("create table if not exists public.aipoger_choice_collection_hearts"));
+  assert.ok(choiceHeartsMigration.includes("enable row level security"));
+  assert.ok(choiceHeartsMigration.includes("revoke all on table public.aipoger_choice_collection_hearts from anon, authenticated"));
+  assert.ok(productRulesSource.includes("Choice saves are collection-level"));
 });
 
 test("Choice and Showtime use one sequential bottom player with mobile volume", () => {
