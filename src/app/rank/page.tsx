@@ -33,7 +33,7 @@ import {
   type ListenBarTrackRow,
 } from "@/lib/listen-bar";
 import { canDisplayShowtimeSupportUrl, normalizeAiMusicShowtimeCertificationSource } from "@/lib/ai-music-showtime";
-import type { AipogerChoiceCollection } from "@/lib/aipoger-choice";
+import { choicePublicPath, type AipogerChoiceCollection } from "@/lib/aipoger-choice";
 import {
   creatorChoicePublicPath,
   type AipogerPublicCreatorChoiceCollection,
@@ -1182,6 +1182,7 @@ export default function RankPage() {
           title: choiceCollection.title || `${choiceCollection.curatorName || "AIPOGER"} Choice`,
           intro: choiceCollection.intro,
           weekStart: choiceCollection.weekStart,
+          href: choicePublicPath(choiceCollection.id, "official"),
           items: choiceCollection.items,
         }]
       : [];

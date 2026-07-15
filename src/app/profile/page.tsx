@@ -14,6 +14,8 @@ import { loadIsAdmin } from "@/lib/user-profile-admin";
 import { DEFAULT_LISTEN_BAR_COVER, LISTEN_BAR_AUDIO_BUCKET, LISTEN_BAR_COVER_BUCKET } from "@/lib/listen-bar";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import { rememberAuthNextPath } from "@/lib/auth-urls";
+import { choicePublicPath, type AipogerChoiceCollection } from "@/lib/aipoger-choice";
+import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import {
   aiMusicChallengeStatusLabel,
   hasPreparedAiMusicDefenderDrop,
@@ -118,6 +120,11 @@ type HonorFavoriteRecord = {
   favoriteCount?: number | null;
   myFavorited?: boolean | null;
   updatedAt?: string | null;
+};
+
+type SavedChoiceCollection = AipogerChoiceCollection & {
+  kind: "official" | "creator";
+  savedAt: string;
 };
 
 type AiMusicChallengeInvite = {
@@ -282,6 +289,7 @@ function ProfileInner() {
   const [battles, setBattles] = useState<BattleRow[]>([]);
   const [wins, setWins] = useState<BattleArchiveRow[]>([]);
   const [honorFavorites, setHonorFavorites] = useState<HonorFavoriteRecord[]>([]);
+  const [savedChoices, setSavedChoices] = useState<SavedChoiceCollection[]>([]);
   const [aiMusicInvites, setAiMusicInvites] = useState<AiMusicChallengeInvite[]>([]);
   const [creatorFilter, setCreatorFilter] = useState<CreatorFilter>("all");
   const [previewingItemId, setPreviewingItemId] = useState<string | null>(null);
@@ -341,6 +349,9 @@ function ProfileInner() {
             recent: "最近資料",
             empty: "目前還沒有讀到上傳紀錄。",
             favoriteEmpty: "目前還沒有收藏歌曲。到 Showtime 點愛心後，作品會收進這裡。",
+            savedChoiceTitle: "收藏的 Choice",
+            savedChoiceEmpty: "目前還沒有收藏 Choice 歌單。到 Choice 點愛心後，歌單會收進這裡。",
+            removeSavedChoice: "取消收藏",
             error: "部分創作資料暫時讀不到，頁面先顯示可取得的內容。",
             battle: "Drop 戰帖",
             listenBar: "傷心酒吧",
@@ -427,6 +438,9 @@ function ProfileInner() {
             recent: "Recent Data",
             empty: "No uploads found yet.",
             favoriteEmpty: "No saved songs yet. Heart tracks on Showtime to collect them here.",
+            savedChoiceTitle: "Saved Choices",
+            savedChoiceEmpty: "No saved Choice playlists yet. Heart a Choice playlist to collect it here.",
+            removeSavedChoice: "Remove save",
             error: "Some creator data could not be loaded, so this page is showing what is available.",
             battle: "Drop Cards",
             listenBar: "Listen Bar",
@@ -556,7 +570,15 @@ function ProfileInner() {
           return (await response.json()) as { incoming?: AiMusicChallengeInvite[]; outgoing?: AiMusicChallengeInvite[] };
         });
 
-        const [tracksResult, showtimeTracksResult, queuesResult, battlesResult, winsResult, favoritesResult, challengeInvitesResult] = await Promise.allSettled([
+        const savedChoicesPromise = fetch("/api/choice/saved", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          cache: "no-store",
+        }).then(async (response) => {
+          if (!response.ok) throw new Error(`saved-choices ${response.status}`);
+          return (await response.json()) as { collections?: SavedChoiceCollection[] };
+        });
+
+        const [tracksResult, showtimeTracksResult, queuesResult, battlesResult, winsResult, favoritesResult, challengeInvitesResult, savedChoicesResult] = await Promise.allSettled([
           tracksPromise,
           showtimeTracksPromise,
           queuesPromise,
@@ -564,6 +586,7 @@ function ProfileInner() {
           winsPromise,
           favoritesPromise,
           challengeInvitesPromise,
+          savedChoicesPromise,
         ]);
 
         if (tracksResult.status === "fulfilled") {
@@ -629,7 +652,13 @@ function ProfileInner() {
             .is("read_at", null)
             .then(() => {
               window.dispatchEvent(new CustomEvent("aipoger:account-notices-read"));
-            });
+          });
+        }
+
+        if (savedChoicesResult.status === "fulfilled") {
+          setSavedChoices(Array.isArray(savedChoicesResult.value.collections) ? savedChoicesResult.value.collections : []);
+        } else {
+          setCreatorError(copy.error);
         }
       } catch (error) {
         console.error("[profile creator data]", error);
@@ -1053,6 +1082,26 @@ function ProfileInner() {
   const removeFavoriteItem = useCallback(async (item: CreatorItem) => {
     await removeFavoriteItems([item]);
   }, [removeFavoriteItems]);
+
+  const removeSavedChoice = useCallback(async (choice: SavedChoiceCollection) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      router.push("/auth");
+      return;
+    }
+    try {
+      const response = await fetch("/api/choice/interactions", {
+        method: "POST",
+        headers: { "content-type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ action: "remove_heart", collectionKind: choice.kind, collectionId: choice.id }),
+      });
+      if (!response.ok) throw new Error("remove saved choice failed");
+      setSavedChoices((current) => current.filter((item) => !(item.kind === choice.kind && item.id === choice.id)));
+    } catch (error) {
+      console.warn("[profile] remove saved choice failed", error);
+      alert(isZh ? "取消收藏失敗，請稍後再試。" : "Could not remove this saved Choice.");
+    }
+  }, [isZh, router]);
 
   const toggleListenBarSelection = useCallback((itemId: string) => {
     setSelectedListenBarItemIds((current) => (
@@ -1771,6 +1820,33 @@ function ProfileInner() {
                 <p className="mt-4 rounded-xl border border-white/10 bg-black/24 px-3 py-3 text-xs font-bold text-zinc-500">
                   {copy.pendingChallengesEmpty}
                 </p>
+              )}
+            </section>
+
+            <section className="mt-5 rounded-2xl border border-yellow-200/18 bg-yellow-300/[0.035] p-4">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-yellow-100/70">CHOICE PLAYLISTS</p>
+                  <h3 className="mt-1 text-lg font-black text-white">{copy.savedChoiceTitle}</h3>
+                </div>
+                <Link href="/rank?lang=zh#choice-weekly" className="text-xs font-black text-cyan-100 underline decoration-cyan-100/30 underline-offset-4 hover:text-white">{isZh ? "去找 Choice" : "Browse Choices"}</Link>
+              </div>
+              {savedChoices.length > 0 ? (
+                <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {savedChoices.map((choice) => (
+                    <article key={`${choice.kind}:${choice.id}`} className="flex min-w-0 items-center gap-3 rounded-xl border border-white/10 bg-black/30 p-2.5">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={choice.avatarUrl || AIPOGER_BRAND_LOGO} alt="" className="h-12 w-12 shrink-0 rounded-full border border-yellow-100/20 object-cover" />
+                      <div className="min-w-0 flex-1">
+                        <Link href={choicePublicPath(choice.id, choice.kind)} className="block truncate text-sm font-black text-white hover:text-yellow-100">{choice.title || `${choice.curatorName} Choice`}</Link>
+                        <p className="mt-1 truncate text-xs font-bold text-zinc-500">{choice.curatorName} · {choice.items.length} {isZh ? "首" : "tracks"}</p>
+                      </div>
+                      <button type="button" onClick={() => void removeSavedChoice(choice)} className="shrink-0 rounded-full border border-red-200/20 px-2.5 py-1.5 text-[11px] font-black text-red-100 transition hover:border-red-200/60">{copy.removeSavedChoice}</button>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-4 rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-xs font-bold text-zinc-500">{copy.savedChoiceEmpty}</p>
               )}
             </section>
 

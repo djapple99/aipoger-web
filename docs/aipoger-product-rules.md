@@ -368,6 +368,8 @@ AIPOGER Choice Weekly:
 - The front-stage keeps `#choice-weekly` as the top Choice shelf anchor for homepage, `/today`, and older shared links.
 - A public Choice card shows its existing recommendation article excerpt and active heart/save plus share controls. Its save may be toggled off by the same listener and must persist independently of all song reactions.
 - Choice may later inform social drafts or DJ selection, but this management workflow does not auto-create drafts or publish externally.
+- A published Choice has a functional public share page at `/choice/{id}?kind=official|creator`. The share page is a Beatport-style playlist surface: it keeps the curator identity, date, stored recommendation article, share action, collection-level Heart/save action, per-track play, Play All, tracklist, and the shared bottom queue player. It must not degrade to a static card or redirect back to `/rank` without playback.
+- Signed-in listeners can see their saved Choice playlists in Profile through `/api/choice/saved`, open the same public playlist page, and remove a saved Choice directly. Choice saves remain separate from song Hearts, song totals, and saved-song management.
 
 Creator stages:
 

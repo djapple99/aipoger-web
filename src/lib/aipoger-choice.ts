@@ -46,6 +46,10 @@ export function choiceWeekStart(value: Date = new Date()) {
   return date.toISOString().slice(0, 10);
 }
 
+export function choicePublicPath(collectionId: string, kind: "official" | "creator" = "official") {
+  return `/choice/${encodeURIComponent(collectionId)}?kind=${kind}`;
+}
+
 export function isAipogerChoiceSourceKind(value: unknown): value is AipogerChoiceSourceKind {
   return AIPOGER_CHOICE_SOURCE_KINDS.includes(value as AipogerChoiceSourceKind);
 }
