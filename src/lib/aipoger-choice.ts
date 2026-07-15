@@ -4,6 +4,9 @@ export const AIPOGER_CHOICE_MAX_ITEMS = 10;
 export const AIPOGER_CHOICE_SOURCE_KINDS = ["listen_bar_track", "battle_archive"] as const;
 export type AipogerChoiceSourceKind = (typeof AIPOGER_CHOICE_SOURCE_KINDS)[number];
 
+export const AIPOGER_CHOICE_CURATOR_IDENTITIES = ["official", "personal"] as const;
+export type AipogerChoiceCuratorIdentity = (typeof AIPOGER_CHOICE_CURATOR_IDENTITIES)[number];
+
 export type AipogerChoiceCatalogItem = {
   id: string;
   sourceKind: AipogerChoiceSourceKind;
@@ -29,6 +32,9 @@ export type AipogerChoiceCollection = {
   title: string;
   intro: string;
   isPublished: boolean;
+  curatorIdentity?: AipogerChoiceCuratorIdentity;
+  curatorName?: string;
+  avatarUrl?: string;
   items: AipogerChoiceItem[];
 };
 

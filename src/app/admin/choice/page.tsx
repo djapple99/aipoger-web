@@ -7,6 +7,7 @@ import {
   choiceWeekStart,
   type AipogerChoiceCatalogItem,
   type AipogerChoiceCollection,
+  type AipogerChoiceCuratorIdentity,
 } from "@/lib/aipoger-choice";
 import { supabase } from "@/lib/supabase";
 import { loadIsAdmin } from "@/lib/user-profile-admin";
@@ -44,6 +45,7 @@ export default function AdminChoicePage() {
   const [weekStart, setWeekStart] = useState(choiceWeekStart());
   const [title, setTitle] = useState("");
   const [intro, setIntro] = useState("");
+  const [curatorIdentity, setCuratorIdentity] = useState<AipogerChoiceCuratorIdentity>("official");
   const [query, setQuery] = useState("");
   const [catalogPage, setCatalogPage] = useState(1);
   const [busy, setBusy] = useState("");
@@ -97,11 +99,13 @@ export default function AdminChoicePage() {
       setWeekStart(choiceWeekStart());
       setTitle("");
       setIntro("");
+      setCuratorIdentity("official");
       return;
     }
     setWeekStart(selected.weekStart);
     setTitle(selected.title);
     setIntro(selected.intro);
+    setCuratorIdentity(selected.curatorIdentity ?? "official");
   }, [selected]);
 
   const selectedKeys = useMemo(() => new Set((selected?.items ?? []).map((item) => `${item.sourceKind}:${item.id}`)), [selected]);
@@ -144,6 +148,7 @@ export default function AdminChoicePage() {
       weekStart,
       title,
       intro,
+      curatorIdentity,
     }, "Choice 草稿已儲存。", selected?.id);
   }
 
@@ -153,6 +158,7 @@ export default function AdminChoicePage() {
       weekStart,
       title,
       intro,
+      curatorIdentity,
     }, "已建立本週 Choice 草稿。");
     return result?.collectionId ?? null;
   }
@@ -222,8 +228,15 @@ export default function AdminChoicePage() {
               <label className="grid gap-1 text-xs font-black text-zinc-400">標題（可選）
                 <input value={title} maxLength={120} onChange={(event) => setTitle(event.target.value)} placeholder="本週 Choice" className="h-10 rounded-xl border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none focus:border-cyan-200/55" />
               </label>
-              <label className="grid gap-1 text-xs font-black text-zinc-400 sm:col-span-2">策展說明（可選）
+              <label className="grid gap-1 text-xs font-black text-zinc-400">策展身分
+                <select value={curatorIdentity} onChange={(event) => setCuratorIdentity(event.target.value as AipogerChoiceCuratorIdentity)} className="h-10 rounded-xl border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none focus:border-cyan-200/55">
+                  <option value="official">官方 AIPOGER Choice</option>
+                  <option value="personal">愛波哥 Choice（個人頭像）</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs font-black text-zinc-400 sm:col-span-2">推薦文章（可選）
                 <textarea value={intro} maxLength={500} rows={3} onChange={(event) => setIntro(event.target.value)} placeholder="這週想帶大家聽的 5–10 首作品。" className="rounded-xl border border-white/10 bg-black px-3 py-2 text-sm font-bold leading-6 text-white outline-none focus:border-cyan-200/55" />
+                <span className="font-bold text-zinc-600">儲存後前台卡片顯示摘要，文章圖示開啟完整 HUD。</span>
               </label>
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">

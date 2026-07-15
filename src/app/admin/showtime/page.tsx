@@ -7,6 +7,7 @@ import {
   choiceWeekStart,
   type AipogerChoiceCatalogItem,
   type AipogerChoiceCollection,
+  type AipogerChoiceCuratorIdentity,
 } from "@/lib/aipoger-choice";
 import type { ShowtimeAdminTrackRow } from "@/lib/server-showtime-catalog";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
@@ -118,6 +119,7 @@ export default function AdminShowtimePage() {
   const [choiceWeek, setChoiceWeek] = useState(choiceWeekStart());
   const [choiceTitle, setChoiceTitle] = useState("");
   const [choiceIntro, setChoiceIntro] = useState("");
+  const [choiceCuratorIdentity, setChoiceCuratorIdentity] = useState<AipogerChoiceCuratorIdentity>("official");
   const [choiceBusy, setChoiceBusy] = useState("");
   const [choiceError, setChoiceError] = useState("");
   const [previewTrack, setPreviewTrack] = useState<AipogerChoiceCatalogItem | null>(null);
@@ -214,6 +216,7 @@ export default function AdminShowtimePage() {
     setChoiceWeek(selectedChoice.weekStart);
     setChoiceTitle(selectedChoice.title);
     setChoiceIntro(selectedChoice.intro);
+    setChoiceCuratorIdentity(selectedChoice.curatorIdentity ?? "official");
   }, [selectedChoice]);
 
   const filteredItems = useMemo(() => {
@@ -351,6 +354,7 @@ export default function AdminShowtimePage() {
       weekStart: choiceWeek,
       title: choiceTitle,
       intro: choiceIntro,
+      curatorIdentity: choiceCuratorIdentity,
     });
     return result?.collectionId ?? null;
   }
@@ -374,6 +378,7 @@ export default function AdminShowtimePage() {
       weekStart: choiceWeek,
       title: choiceTitle,
       intro: choiceIntro,
+      curatorIdentity: choiceCuratorIdentity,
     }, selectedChoice?.id);
   }
 
@@ -428,14 +433,20 @@ export default function AdminShowtimePage() {
                 {choiceCollections.map((collection) => <option key={collection.id} value={collection.id}>{choiceDateLabel(collection.weekStart)} {collection.isPublished ? "· 已發布" : "· 草稿"}</option>)}
               </select>
             </div>
-            <div className="mt-4 grid gap-3 lg:grid-cols-[10rem_minmax(12rem,0.7fr)_minmax(14rem,1fr)]">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-[10rem_minmax(12rem,0.7fr)_minmax(12rem,0.7fr)_minmax(14rem,1fr)]">
               <label className="grid gap-1 text-xs font-black text-zinc-400">週次（星期一）
                 <input type="date" value={choiceWeek} onChange={(event) => setChoiceWeek(event.target.value)} className="h-10 rounded-xl border border-white/10 bg-black/55 px-3 text-sm font-bold text-white outline-none focus:border-cyan-200/60" />
               </label>
               <label className="grid gap-1 text-xs font-black text-zinc-400">標題（可選）
                 <input value={choiceTitle} maxLength={120} onChange={(event) => setChoiceTitle(event.target.value)} placeholder="本週 Choice" className="h-10 rounded-xl border border-white/10 bg-black/55 px-3 text-sm font-bold text-white outline-none focus:border-cyan-200/60" />
               </label>
-              <label className="grid gap-1 text-xs font-black text-zinc-400">策展評語（可選）
+              <label className="grid gap-1 text-xs font-black text-zinc-400">策展身分
+                <select value={choiceCuratorIdentity} onChange={(event) => setChoiceCuratorIdentity(event.target.value as AipogerChoiceCuratorIdentity)} className="h-10 rounded-xl border border-white/10 bg-black/55 px-3 text-sm font-bold text-white outline-none focus:border-cyan-200/60">
+                  <option value="official">官方 AIPOGER Choice</option>
+                  <option value="personal">愛波哥 Choice（個人頭像）</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs font-black text-zinc-400">推薦文章（可選）
                 <input value={choiceIntro} maxLength={500} onChange={(event) => setChoiceIntro(event.target.value)} placeholder="這週想帶大家聽的 5–10 首作品。" className="h-10 rounded-xl border border-white/10 bg-black/55 px-3 text-sm font-bold text-white outline-none focus:border-cyan-200/60" />
               </label>
             </div>

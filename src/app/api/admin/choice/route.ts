@@ -4,6 +4,8 @@ import { isAdminEmail } from "@/lib/admin-emails";
 import {
   AIPOGER_CHOICE_MAX_ITEMS,
   AIPOGER_CHOICE_MIN_ITEMS,
+  AIPOGER_CHOICE_CURATOR_IDENTITIES,
+  type AipogerChoiceCuratorIdentity,
   isAipogerChoiceSourceKind,
   type AipogerChoiceCatalogItem,
   type AipogerChoiceCollection,
@@ -16,6 +18,7 @@ type ChoiceCollectionRow = {
   title: string | null;
   intro: string | null;
   is_published: boolean | null;
+  curator_identity: string | null;
   aipoger_choice_items?: ChoiceItemRow[] | null;
 };
 
@@ -52,6 +55,12 @@ function cleanText(value: unknown, maxLength: number) {
 function isMonday(value: string) {
   const date = new Date(`${value}T00:00:00.000Z`);
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(date.getTime()) && date.getUTCDay() === 1;
+}
+
+function curatorIdentity(value: unknown): AipogerChoiceCuratorIdentity {
+  return AIPOGER_CHOICE_CURATOR_IDENTITIES.includes(value as AipogerChoiceCuratorIdentity)
+    ? value as AipogerChoiceCuratorIdentity
+    : "official";
 }
 
 function isMissingChoiceSchema(error: unknown) {
@@ -97,6 +106,7 @@ function normalizeCollections(rows: ChoiceCollectionRow[], catalog: AipogerChoic
     title: row.title?.trim() ?? "",
     intro: row.intro?.trim() ?? "",
     isPublished: Boolean(row.is_published),
+    curatorIdentity: curatorIdentity(row.curator_identity),
     items: (row.aipoger_choice_items ?? [])
       .map((item) => {
         const source = byKey.get(catalogKey(item.source_kind, item.source_id));
@@ -111,7 +121,7 @@ function normalizeCollections(rows: ChoiceCollectionRow[], catalog: AipogerChoic
 async function loadCollections(admin: ReturnType<typeof adminClient>) {
   const { data, error } = await admin
     .from("aipoger_choice_collections")
-    .select("id,week_start,title,intro,is_published,aipoger_choice_items(id,collection_id,source_kind,source_id,position)")
+    .select("id,week_start,title,intro,is_published,curator_identity,aipoger_choice_items(id,collection_id,source_kind,source_id,position)")
     .order("week_start", { ascending: false })
     .limit(80);
   if (error) throw error;
@@ -179,6 +189,7 @@ export async function PATCH(request: NextRequest) {
         week_start: weekStart,
         title: cleanText(body?.title, 120),
         intro: cleanText(body?.intro, 500),
+        curator_identity: curatorIdentity(body?.curatorIdentity),
         updated_at: new Date().toISOString(),
       };
       if (isUuid(body?.collectionId)) {

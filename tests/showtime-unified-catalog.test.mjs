@@ -11,6 +11,9 @@ const choiceHeartsMigration = readFileSync(new URL("../supabase/migrations/20260
 const productRulesSource = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
 const releaseChecklistSource = readFileSync(new URL("../docs/aipoger-release-checklist.md", import.meta.url), "utf8");
 const artDirectionSource = readFileSync(new URL("../docs/aipoger-ui-art-direction.md", import.meta.url), "utf8");
+const adminChoiceSource = readFileSync(new URL("../src/app/admin/choice/page.tsx", import.meta.url), "utf8");
+const adminShowtimeSource = readFileSync(new URL("../src/app/admin/showtime/page.tsx", import.meta.url), "utf8");
+const curatorIdentityMigration = readFileSync(new URL("../supabase/migrations/20260715085800_choice_curator_identity.sql", import.meta.url), "utf8");
 
 test("Showtime renders one certified works catalog without old source boards", () => {
   assert.ok(showtimeSource.includes("All Certified Works"));
@@ -38,19 +41,47 @@ test("Showtime renders one certified works catalog without old source boards", (
 test("Showtime puts cover-led Choice editorials before a compact six-column catalog", () => {
   assert.ok(showtimeSource.includes("<ShowtimeChoiceShelf"));
   assert.ok(showtimeSource.indexOf("<ShowtimeChoiceShelf") < showtimeSource.indexOf("CERTIFIED MUSIC CATALOG"));
-  assert.ok(showtimeSource.includes("xl:grid-cols-6"));
+  assert.ok(showtimeSource.includes("lg:grid-cols-6"));
   assert.ok(showtimeSource.includes("收錄保留已獲得反應、正式戰績或策展認可的作品： 入選後不再接受挑戰"));
   assert.equal(showtimeSource.includes("DJ 與營運從 Showtime 認證作品中人工挑選"), false);
   assert.ok(choiceShelfSource.includes("AIPOGER <span className=\"text-orange-300\">CHOICE</span>"));
   assert.ok(choiceShelfSource.includes("aspect-square"));
+  assert.ok(choiceShelfSource.includes("grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6"));
   assert.ok(choiceShelfSource.includes("entry.coverUrl"));
   assert.ok(choiceShelfSource.includes("entry.intro"));
+  assert.ok(choiceShelfSource.includes("閱讀推薦文章"));
+  assert.ok(choiceShelfSource.includes("whitespace-pre-wrap"));
   assert.ok(choiceShelfSource.includes("<ShareButton"));
   assert.ok(choiceShelfSource.includes("onToggleHeart(entry)"));
   assert.equal(choiceShelfSource.includes("CURATOR SETS"), false);
   assert.equal(choiceShelfSource.includes("由創作者選出他們心目中的歌單"), false);
   assert.ok(choiceShelfSource.includes("查看 ${entry.curatorName} 的歌單"));
   assert.ok(choiceShelfSource.includes("onPlay(entry)"));
+});
+
+test("owner Choice preserves an explicit official or personal publishing identity", () => {
+  const currentChoiceSource = readFileSync(new URL("../src/app/api/choice/current/route.ts", import.meta.url), "utf8");
+  assert.ok(currentChoiceSource.includes("created_by"));
+  assert.ok(currentChoiceSource.includes("curator_identity"));
+  assert.ok(currentChoiceSource.includes('identity === "personal"'));
+  assert.ok(currentChoiceSource.includes('from("fighter_profiles")'));
+  assert.ok(currentChoiceSource.includes("display_name,avatar_url"));
+  assert.ok(showtimeSource.includes("choiceCollection.curatorName || \"AIPOGER\""));
+  assert.ok(showtimeSource.includes('choiceCollection.curatorIdentity === "personal"'));
+  assert.ok(showtimeSource.includes('mediaSrc(choiceCollection.avatarUrl || "")'));
+  assert.ok(showtimeSource.includes(": AIPOGER_BRAND_LOGO"));
+  assert.ok(showtimeSource.includes("title: choiceCollection.title || `${choiceCollection.curatorName || \"AIPOGER\"} Choice`"));
+  assert.ok(adminChoiceSource.includes('option value="official"'));
+  assert.ok(adminChoiceSource.includes('option value="personal"'));
+  assert.ok(adminShowtimeSource.includes("choiceCuratorIdentity"));
+  assert.ok(curatorIdentityMigration.includes("curator_identity in ('official', 'personal')"));
+});
+
+test("Choice recommendation copy opens in a dedicated readable HUD", () => {
+  assert.ok(choiceShelfSource.includes("setEditorial(entry)"));
+  assert.ok(choiceShelfSource.includes('aria-label={isZh ? "Choice 推薦文章" : "Choice editorial"}'));
+  assert.ok(choiceShelfSource.includes("max-h-[65vh] overflow-y-auto"));
+  assert.ok(choiceShelfSource.includes("whitespace-pre-wrap"));
 });
 
 test("Choice saves persist independently from song Hearts and only target public collections", () => {

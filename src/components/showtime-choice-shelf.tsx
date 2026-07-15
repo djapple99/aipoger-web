@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, ListMusic, Play, X } from "lucide-react";
+import { FileText, Heart, ListMusic, Play, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import ShareButton from "@/components/share-button";
 import type { AipogerChoiceItem } from "@/lib/aipoger-choice";
@@ -52,15 +52,19 @@ export default function ShowtimeChoiceShelf({
   onToggleHeart,
 }: ShowtimeChoiceShelfProps) {
   const [detail, setDetail] = useState<ShowtimeChoiceShelfEntry | null>(null);
+  const [editorial, setEditorial] = useState<ShowtimeChoiceShelfEntry | null>(null);
 
   useEffect(() => {
-    if (!detail) return;
+    if (!detail && !editorial) return;
     const close = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setDetail(null);
+      if (event.key === "Escape") {
+        setDetail(null);
+        setEditorial(null);
+      }
     };
     window.addEventListener("keydown", close);
     return () => window.removeEventListener("keydown", close);
-  }, [detail]);
+  }, [detail, editorial]);
 
   return (
     <>
@@ -75,13 +79,13 @@ export default function ShowtimeChoiceShelf({
         </div>
 
         {entries.length > 0 ? (
-          <div className="mt-5 flex snap-x gap-4 overflow-x-auto pb-3 [scrollbar-width:thin]">
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
             {entries.map((entry) => {
               const key = recordKey(entry);
               const heart = hearts[key] ?? { heartCount: 0, myHeart: false };
               const playable = entry.items.some((item) => Boolean(item.audioUrl));
               return (
-                <article key={key} className="w-[16.5rem] shrink-0 snap-start rounded-lg border border-yellow-100/20 bg-black/35 p-2.5 shadow-[0_16px_42px_rgba(0,0,0,0.28)] sm:w-[17.5rem]">
+                <article key={key} className="group min-w-0 rounded-md border border-yellow-100/20 bg-black/35 p-1.5 shadow-[0_10px_26px_rgba(0,0,0,0.24)] transition hover:-translate-y-0.5 hover:border-yellow-100/40">
                   <div className="group relative aspect-square overflow-hidden rounded-md bg-[#090909]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={entry.coverUrl} alt={`${entry.curatorName} Choice`} className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.025]" />
@@ -90,37 +94,37 @@ export default function ShowtimeChoiceShelf({
                       type="button"
                       onClick={() => onPlay(entry)}
                       disabled={!playable}
-                      className="absolute bottom-3 left-3 inline-flex h-11 w-11 items-center justify-center rounded-full bg-orange-500 text-black shadow-[0_10px_22px_rgba(0,0,0,0.44)] transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-35"
+                      className="absolute bottom-2 left-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 text-black shadow-[0_8px_18px_rgba(0,0,0,0.44)] transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-35"
                       aria-label={isZh ? `順播 ${entry.curatorName} 的 Choice` : `Play ${entry.curatorName}'s Choice`}
                     >
-                      <Play className="h-5 w-5" fill="currentColor" />
+                      <Play className="h-3.5 w-3.5" fill="currentColor" />
                     </button>
                     <button
                       type="button"
                       onClick={() => setDetail(entry)}
-                      className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/30 bg-black/75 text-cyan-100 transition hover:border-cyan-100 hover:text-white"
+                      className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/30 bg-black/75 text-cyan-100 transition hover:border-cyan-100 hover:text-white"
                       aria-label={isZh ? `查看 ${entry.curatorName} 的歌單` : `View ${entry.curatorName}'s tracklist`}
                       title={isZh ? "查看歌單" : "View tracklist"}
                     >
-                      <ListMusic className="h-4 w-4" />
+                      <ListMusic className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  <div className="px-1 pb-1 pt-3">
-                    <button type="button" onClick={() => setDetail(entry)} className="block w-full truncate text-left text-base font-black text-white transition hover:text-orange-100" title={entry.title || `${entry.curatorName} Choice`}>
+                  <div className="px-0.5 pb-0.5 pt-2">
+                    <button type="button" onClick={() => setDetail(entry)} className="block w-full truncate text-left text-sm font-black text-white transition hover:text-orange-100" title={entry.title || `${entry.curatorName} Choice`}>
                       {entry.title || `${entry.curatorName} Choice`}
                     </button>
-                    <p className="mt-1 truncate text-xs font-black text-cyan-100">{entry.curatorName}</p>
-                    {entry.intro ? <p className="mt-2 min-h-[3.15rem] line-clamp-3 text-xs font-bold leading-5 text-zinc-400">{entry.intro}</p> : <div className="min-h-[3.15rem]" aria-hidden="true" />}
-                    <div className="mt-3 flex items-center gap-2 border-t border-white/10 pt-3">
+                    <p className="mt-0.5 truncate text-[11px] font-black text-cyan-100">{entry.curatorName}</p>
+                    {entry.intro ? <p className="mt-1.5 line-clamp-2 text-[11px] font-bold leading-4 text-zinc-400">{entry.intro}</p> : null}
+                    <div className="mt-2 flex items-center gap-1.5 border-t border-white/10 pt-2">
                       <button
                         type="button"
                         onClick={() => onToggleHeart(entry)}
                         disabled={Boolean(heartBusy[key])}
-                        className={`aipo-ghost-button inline-flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-full px-2.5 text-xs font-black transition disabled:cursor-not-allowed disabled:opacity-45 ${heart.myHeart ? "border-rose-200/45 bg-rose-500/20 text-rose-100" : "text-zinc-200 hover:text-white"}`}
+                        className={`aipo-ghost-button inline-flex h-7 min-w-7 items-center justify-center gap-1 rounded-full px-2 text-[10px] font-black transition disabled:cursor-not-allowed disabled:opacity-45 ${heart.myHeart ? "border-rose-200/45 bg-rose-500/20 text-rose-100" : "text-zinc-200 hover:text-white"}`}
                         aria-label={heart.myHeart ? (isZh ? "取消收藏 Choice" : "Remove Choice from favorites") : (isZh ? "收藏 Choice" : "Favorite Choice")}
                         title={heart.myHeart ? (isZh ? "取消收藏" : "Remove favorite") : (isZh ? "收藏 Choice" : "Favorite Choice")}
                       >
-                        <Heart className="h-4 w-4" fill={heart.myHeart ? "currentColor" : "none"} />
+                        <Heart className="h-3.5 w-3.5" fill={heart.myHeart ? "currentColor" : "none"} />
                         <span className="tabular-nums">{heart.heartCount}</span>
                       </button>
                       <ShareButton
@@ -130,16 +134,27 @@ export default function ShowtimeChoiceShelf({
                         label={isZh ? "分享 Choice" : "Share Choice"}
                         copiedLabel={isZh ? "已複製" : "Copied"}
                         iconOnly
-                        className="h-9 w-9 rounded-full p-0 text-cyan-100"
+                        className="h-7 w-7 rounded-full p-0 text-cyan-100"
                       />
+                      {entry.intro ? (
+                        <button
+                          type="button"
+                          onClick={() => setEditorial(entry)}
+                          className="aipo-ghost-button inline-flex h-7 w-7 items-center justify-center rounded-full text-cyan-100 transition hover:text-white"
+                          aria-label={isZh ? "閱讀推薦文章" : "Read editorial"}
+                          title={isZh ? "閱讀推薦文章" : "Read editorial"}
+                        >
+                          <FileText className="h-3.5 w-3.5" />
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => setDetail(entry)}
-                        className="aipo-ghost-button ml-auto inline-flex h-9 w-9 items-center justify-center rounded-full text-cyan-100 transition hover:text-white"
+                        className="aipo-ghost-button ml-auto inline-flex h-7 w-7 items-center justify-center rounded-full text-cyan-100 transition hover:text-white"
                         aria-label={isZh ? "查看歌單" : "View tracklist"}
                         title={isZh ? "查看歌單" : "View tracklist"}
                       >
-                        <ListMusic className="h-4 w-4" />
+                        <ListMusic className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </div>
@@ -162,7 +177,6 @@ export default function ShowtimeChoiceShelf({
               <div className="min-w-0">
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-orange-300">{detail.curatorName} · CHOICE</p>
                 <h2 className="mt-1 truncate text-xl font-black text-white">{detail.title || `${detail.curatorName} Choice`}</h2>
-                {detail.intro ? <p className="mt-1 line-clamp-2 text-sm font-bold text-zinc-400">{detail.intro}</p> : null}
               </div>
               <button type="button" onClick={() => setDetail(null)} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 text-zinc-300 transition hover:border-white/30 hover:text-white" aria-label={isZh ? "關閉歌單" : "Close tracklist"}><X className="h-4 w-4" /></button>
             </div>
@@ -181,6 +195,25 @@ export default function ShowtimeChoiceShelf({
             </div>
             {detail.href ? <div className="border-t border-white/10 px-4 py-3 text-right"><Link href={detail.href} className="text-xs font-black text-cyan-100 hover:text-white">{isZh ? "開啟完整分享頁" : "Open full share page"}</Link></div> : null}
           </div>
+        </div>
+      ) : null}
+
+      {editorial ? (
+        <div className="fixed inset-0 z-[231] flex items-end bg-black/78 px-3 py-4 backdrop-blur-sm sm:items-center sm:justify-center" role="dialog" aria-modal="true" aria-label={isZh ? "Choice 推薦文章" : "Choice editorial"} onClick={() => setEditorial(null)}>
+          <article className="w-full max-w-2xl overflow-hidden rounded-lg border border-yellow-100/25 bg-[#080808] shadow-[0_28px_100px_rgba(0,0,0,0.78)]" onClick={(event) => event.stopPropagation()}>
+            <header className="flex items-start gap-3 border-b border-white/10 px-4 py-4 sm:px-5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={editorial.coverUrl} alt="" className="h-11 w-11 rounded-full border border-white/15 object-cover" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-orange-300">{editorial.curatorName} · CHOICE</p>
+                <h2 className="mt-1 truncate text-xl font-black text-white">{editorial.title || `${editorial.curatorName} Choice`}</h2>
+              </div>
+              <button type="button" onClick={() => setEditorial(null)} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 text-zinc-300 transition hover:border-white/30 hover:text-white" aria-label={isZh ? "關閉推薦文章" : "Close editorial"}><X className="h-4 w-4" /></button>
+            </header>
+            <div className="max-h-[65vh] overflow-y-auto px-4 py-5 sm:px-5">
+              <p className="whitespace-pre-wrap text-sm font-bold leading-7 text-zinc-300">{editorial.intro}</p>
+            </div>
+          </article>
         </div>
       ) : null}
     </>

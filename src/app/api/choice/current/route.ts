@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import type { AipogerChoiceCatalogItem, AipogerChoiceCollection } from "@/lib/aipoger-choice";
+import {
+  AIPOGER_CHOICE_CURATOR_IDENTITIES,
+  type AipogerChoiceCatalogItem,
+  type AipogerChoiceCollection,
+  type AipogerChoiceCuratorIdentity,
+} from "@/lib/aipoger-choice";
 import { loadShowtimeAdminCatalog } from "@/lib/server-showtime-catalog";
 
 type ChoiceItemRow = {
@@ -12,10 +17,17 @@ type ChoiceItemRow = {
 
 type ChoiceCollectionRow = {
   id: string;
+  created_by: string | null;
   week_start: string;
   title: string | null;
   intro: string | null;
+  curator_identity: string | null;
   aipoger_choice_items?: ChoiceItemRow[] | null;
+};
+
+type CuratorProfileRow = {
+  display_name: string | null;
+  avatar_url: string | null;
 };
 
 function adminClient() {
@@ -43,14 +55,28 @@ function catalogKey(kind: string, id: string) {
   return `${kind}:${id}`;
 }
 
-function resolveCollection(row: ChoiceCollectionRow, catalog: AipogerChoiceCatalogItem[]): AipogerChoiceCollection {
+function curatorIdentity(value: string | null): AipogerChoiceCuratorIdentity {
+  return AIPOGER_CHOICE_CURATOR_IDENTITIES.includes(value as AipogerChoiceCuratorIdentity)
+    ? value as AipogerChoiceCuratorIdentity
+    : "official";
+}
+
+function resolveCollection(
+  row: ChoiceCollectionRow,
+  catalog: AipogerChoiceCatalogItem[],
+  curator: CuratorProfileRow | null,
+): AipogerChoiceCollection {
   const byKey = new Map(catalog.map((item) => [catalogKey(item.sourceKind, item.id), item]));
+  const identity = curatorIdentity(row.curator_identity);
   return {
     id: row.id,
     weekStart: row.week_start,
     title: row.title?.trim() ?? "",
     intro: row.intro?.trim() ?? "",
     isPublished: true,
+    curatorIdentity: identity,
+    curatorName: identity === "personal" ? curator?.display_name?.trim() || "愛波哥" : "AIPOGER",
+    avatarUrl: identity === "personal" ? curator?.avatar_url?.trim() || "" : "",
     items: (row.aipoger_choice_items ?? [])
       .map((item) => {
         const source = byKey.get(catalogKey(item.source_kind, item.source_id));
@@ -66,7 +92,7 @@ export async function GET() {
     const admin = adminClient();
     const { data, error } = await admin
       .from("aipoger_choice_collections")
-      .select("id,week_start,title,intro,aipoger_choice_items(id,source_kind,source_id,position)")
+      .select("id,created_by,week_start,title,intro,curator_identity,aipoger_choice_items(id,source_kind,source_id,position)")
       .eq("is_published", true)
       .order("week_start", { ascending: false })
       .limit(1)
@@ -74,11 +100,17 @@ export async function GET() {
     if (error) throw error;
     if (!data) return NextResponse.json({ schemaReady: true, collection: null }, { headers: { "Cache-Control": "no-store" } });
 
-    const catalog = await loadShowtimeAdminCatalog(admin);
+    const [catalog, curatorResult] = await Promise.all([
+      loadShowtimeAdminCatalog(admin),
+      data.created_by
+        ? admin.from("fighter_profiles").select("display_name,avatar_url").eq("id", data.created_by).maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+    ]);
+    if (curatorResult.error) throw curatorResult.error;
     if (!catalog.schemaReady) return NextResponse.json({ schemaReady: false, collection: null });
     return NextResponse.json({
       schemaReady: true,
-      collection: resolveCollection(data as ChoiceCollectionRow, catalog.items),
+      collection: resolveCollection(data as ChoiceCollectionRow, catalog.items, curatorResult.data as CuratorProfileRow | null),
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (isMissingChoiceSchema(error)) return NextResponse.json({ schemaReady: false, collection: null });

@@ -1175,9 +1175,11 @@ export default function RankPage() {
       ? [{
           id: choiceCollection.id,
           kind: "official" as const,
-          curatorName: "AIPOGER",
-          coverUrl: AIPOGER_BRAND_LOGO,
-          title: choiceCollection.title || "AIPOGER Choice",
+          curatorName: choiceCollection.curatorName || "AIPOGER",
+          coverUrl: choiceCollection.curatorIdentity === "personal"
+            ? mediaSrc(choiceCollection.avatarUrl || "")
+            : AIPOGER_BRAND_LOGO,
+          title: choiceCollection.title || `${choiceCollection.curatorName || "AIPOGER"} Choice`,
           intro: choiceCollection.intro,
           weekStart: choiceCollection.weekStart,
           items: choiceCollection.items,
@@ -1730,7 +1732,7 @@ export default function RankPage() {
                               {rows.length} {isZh ? "首" : "tracks"}
                             </span>
                           </div>
-                          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                             {rows.map((row, index) => {
                               const rowResultHref = resultHref(row, lang);
                               const recordKey = honorRecordKey(row);
