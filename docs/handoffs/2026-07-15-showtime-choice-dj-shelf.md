@@ -19,3 +19,12 @@
 - `aipoger_choice_collections.curator_identity` stores `official` or `personal`; the owner API is the only app writer for this field.
 - The 2026-07-13 published collection is set to `personal`, preserving its ten items and publication state.
 - The currently published collection still has an empty `intro`; the app does not fabricate recommendation copy. The owner must save the article text before the article control appears publicly.
+
+## Verification And Release
+
+- App commit: `396a137 Add explicit Choice curator identities`.
+- Production deployment: `dpl_adjzTvAcs7HeMv61RCzwR8oYCmXh`, aliased to `https://aipoger.com`.
+- Production `/api/choice/current` returns `curatorIdentity: personal`, `curatorName: 愛波哥`, and the current personal profile avatar.
+- Live `/rank` smoke confirms Choice and Showtime use six columns at 1440 px and two columns at 390 px, with no horizontal overflow.
+- `npm test`: 172 passing; focused Showtime catalog tests: 8 passing.
+- `npx tsc --noEmit`, `npm run lint`, and `npm run build` pass. Lint retains 11 pre-existing warnings outside this change.
