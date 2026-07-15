@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Volume2 } from "lucide-react";
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { fontGlowSans, fontRighteous } from "@/lib/fonts";
@@ -689,9 +690,11 @@ function MiniPlayer({
 }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(0.85);
   const [lyricsOpen, setLyricsOpen] = useState(false);
   const [lyricsScrollPercent, setLyricsScrollPercent] = useState(0);
   const lyricsPanelRef = useRef<HTMLDivElement | null>(null);
+  const lyricsCloseButtonRef = useRef<HTMLButtonElement | null>(null);
   const lyrics = track?.lyrics?.trim() ?? "";
   const lyricsLines = useMemo(() => (lyrics ? lyrics.split(/\r?\n/) : []), [lyrics]);
   const progressValue = duration > 0 ? Math.min(currentTime, duration) : 0;
@@ -703,6 +706,25 @@ function MiniPlayer({
     setLyricsOpen(false);
     setLyricsScrollPercent(0);
   }, [track?.id]);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = volume;
+  }, [audioRef, volume]);
+
+  useEffect(() => {
+    if (!lyricsOpen) return;
+    const frame = window.requestAnimationFrame(() => lyricsCloseButtonRef.current?.focus());
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setLyricsOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [lyricsOpen]);
 
   const syncLyricsScroll = () => {
     const panel = lyricsPanelRef.current;
@@ -740,7 +762,12 @@ function MiniPlayer({
   return (
     <>
       {lyricsOpen ? (
-        <div className="fixed inset-x-3 bottom-[7.1rem] z-[55] mx-auto max-w-2xl rounded-md border border-orange-200/24 bg-black/94 p-4 text-white shadow-[0_24px_80px_rgba(0,0,0,0.72)] backdrop-blur-xl sm:bottom-[6.35rem] sm:max-w-lg sm:p-3.5">
+        <div
+          className="fixed inset-x-3 bottom-[8.6rem] z-[55] mx-auto max-w-2xl rounded-md border border-orange-200/24 bg-black/94 p-4 text-white shadow-[0_24px_80px_rgba(0,0,0,0.72)] backdrop-blur-xl sm:bottom-[6.35rem] sm:max-w-lg sm:p-3.5"
+          role="dialog"
+          aria-modal="true"
+          aria-label={isZh ? `${track.title} 歌詞` : `${track.title} lyrics`}
+        >
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className={`${fontRighteous.className} text-[10px] uppercase tracking-[0.18em] text-orange-100/72`}>
@@ -750,9 +777,11 @@ function MiniPlayer({
               <p className="truncate text-[11px] font-bold text-zinc-500">{track.creator}</p>
             </div>
             <button
+              ref={lyricsCloseButtonRef}
               type="button"
               onClick={() => setLyricsOpen(false)}
               className="inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-white/12 bg-white/[0.045] px-3 text-xs font-black text-zinc-300 transition hover:border-orange-100/45 hover:text-white"
+              aria-label={isZh ? "關閉歌詞" : "Close lyrics"}
             >
               {isZh ? "關閉" : "Close"}
             </button>
@@ -819,6 +848,7 @@ function MiniPlayer({
                 src={track.audioUrl ?? undefined}
                 preload="metadata"
                 onLoadedMetadata={(event) => {
+                  event.currentTarget.volume = volume;
                   setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0);
                   setCurrentTime(event.currentTarget.currentTime || 0);
                 }}
@@ -887,6 +917,19 @@ function MiniPlayer({
               ) : null}
             </div>
           </div>
+          <label className="flex items-center gap-2 text-zinc-400 sm:hidden">
+            <Volume2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={volume}
+              onChange={(event) => setVolume(Math.min(1, Math.max(0, Number(event.currentTarget.value))))}
+              className="h-2 w-full cursor-pointer accent-orange-400"
+              aria-label={isZh ? "調整音量" : "Adjust volume"}
+            />
+          </label>
         </div>
       </div>
     </>

@@ -10,7 +10,7 @@ import { loadShowtimeAdminCatalog } from "@/lib/server-showtime-catalog";
 
 type Kind = "official" | "creator";
 type HeartRow = { collection_kind: Kind; collection_id: string; created_at: string };
-type ItemRow = { id: string; source_kind: string; source_id: string; position: number };
+type ItemRow = { id: string; collection_id: string; source_kind: string; source_id: string; position: number };
 type ProfileRow = { display_name?: string | null; avatar_url?: string | null };
 type CollectionRow = {
   id: string; week_start: string; title: string | null; intro: string | null; created_by?: string | null;
@@ -89,15 +89,24 @@ export async function GET(request: NextRequest) {
     if (rows.length === 0) return NextResponse.json({ collections: [] }, { headers: { "Cache-Control": "no-store" } });
     const officialIds = rows.filter((row) => row.collection_kind === "official").map((row) => row.collection_id);
     const creatorIds = rows.filter((row) => row.collection_kind === "creator").map((row) => row.collection_id);
-    const [official, creator] = await Promise.all([
-      officialIds.length ? admin.from("aipoger_choice_collections").select("id,created_by,week_start,title,intro,curator_identity,aipoger_choice_items(id,source_kind,source_id,position)").in("id", officialIds).eq("is_published", true) : Promise.resolve({ data: [], error: null }),
-      creatorIds.length ? admin.from("aipoger_creator_choice_collections").select("id,creator_id,curator_name,week_start,title,intro,published_at,aipoger_creator_choice_items(id,source_kind,source_id,position)").in("id", creatorIds).eq("is_published", true) : Promise.resolve({ data: [], error: null }),
+    const [official, creator, officialItems, creatorItems] = await Promise.all([
+      officialIds.length ? admin.from("aipoger_choice_collections").select("id,created_by,week_start,title,intro,curator_identity").in("id", officialIds).eq("is_published", true) : Promise.resolve({ data: [], error: null }),
+      creatorIds.length ? admin.from("aipoger_creator_choice_collections").select("id,creator_id,curator_name,week_start,title,intro,published_at").in("id", creatorIds).eq("is_published", true) : Promise.resolve({ data: [], error: null }),
+      officialIds.length ? admin.from("aipoger_choice_items").select("id,collection_id,source_kind,source_id,position").in("collection_id", officialIds).order("position", { ascending: true }) : Promise.resolve({ data: [], error: null }),
+      creatorIds.length ? admin.from("aipoger_creator_choice_items").select("id,collection_id,source_kind,source_id,position").in("collection_id", creatorIds).order("position", { ascending: true }) : Promise.resolve({ data: [], error: null }),
     ]);
     if (official.error) throw official.error;
     if (creator.error) throw creator.error;
+    if (officialItems.error) throw officialItems.error;
+    if (creatorItems.error) throw creatorItems.error;
     const catalog = await loadShowtimeAdminCatalog(admin);
-    if (!catalog.schemaReady) return NextResponse.json({ collections: [] }, { headers: { "Cache-Control": "no-store" } });
-    const ownerIds = [...((official.data ?? []) as CollectionRow[]).map((row) => row.created_by).filter((id): id is string => Boolean(id)), ...((creator.data ?? []) as CollectionRow[]).map((row) => row.creator_id).filter((id): id is string => Boolean(id))];
+    const officialItemsByCollection = new Map<string, ItemRow[]>();
+    const creatorItemsByCollection = new Map<string, ItemRow[]>();
+    ((officialItems.data ?? []) as ItemRow[]).forEach((item) => officialItemsByCollection.set(item.collection_id, [...(officialItemsByCollection.get(item.collection_id) ?? []), item]));
+    ((creatorItems.data ?? []) as ItemRow[]).forEach((item) => creatorItemsByCollection.set(item.collection_id, [...(creatorItemsByCollection.get(item.collection_id) ?? []), item]));
+    const officialRows = ((official.data ?? []) as CollectionRow[]).map((row) => ({ ...row, aipoger_choice_items: officialItemsByCollection.get(row.id) ?? [] }));
+    const creatorRows = ((creator.data ?? []) as CollectionRow[]).map((row) => ({ ...row, aipoger_creator_choice_items: creatorItemsByCollection.get(row.id) ?? [] }));
+    const ownerIds = [...officialRows.map((row) => row.created_by).filter((id): id is string => Boolean(id)), ...creatorRows.map((row) => row.creator_id).filter((id): id is string => Boolean(id))];
     const [fighter, profiles] = ownerIds.length ? await Promise.all([
       admin.from("fighter_profiles").select("id,display_name,avatar_url").in("id", ownerIds),
       admin.from("user_profiles").select("id,avatar_url").in("id", ownerIds),
@@ -107,15 +116,15 @@ export async function GET(request: NextRequest) {
     const fighterById = new Map((fighter.data ?? []).map((row) => [String(row.id), row as ProfileRow]));
     const profileById = new Map((profiles.data ?? []).map((row) => [String(row.id), row as ProfileRow]));
     const profileFor = (id: string | null | undefined) => id ? { ...profileById.get(id), ...fighterById.get(id) } : null;
-    const officialById = new Map(((official.data ?? []) as CollectionRow[]).map((row) => [row.id, row]));
-    const creatorById = new Map(((creator.data ?? []) as CollectionRow[]).map((row) => [row.id, row]));
+    const officialById = new Map(officialRows.map((row) => [row.id, row]));
+    const creatorById = new Map(creatorRows.map((row) => [row.id, row]));
     const collections = rows.map((saved) => {
       const row = saved.collection_kind === "official" ? officialById.get(saved.collection_id) : creatorById.get(saved.collection_id);
       if (!row) return null;
-      const collection = resolve(row, saved.collection_kind, catalog.items, profileFor(row.created_by ?? row.creator_id));
+      const collection = resolve(row, saved.collection_kind, catalog.schemaReady ? catalog.items : [], profileFor(row.created_by ?? row.creator_id));
       return { ...collection, kind: saved.collection_kind, savedAt: saved.created_at };
     }).filter(Boolean);
-    return NextResponse.json({ collections }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ collections, schemaReady: catalog.schemaReady }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (isMissingChoiceSchema(error)) return NextResponse.json({ collections: [], schemaReady: false }, { headers: { "Cache-Control": "no-store" } });
     return NextResponse.json({ error: error instanceof Error ? error.message : "收藏的 Choice 暫時無法讀取。" }, { status: 500 });

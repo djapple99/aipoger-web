@@ -19,6 +19,8 @@ test("shared Choice links resolve official and creator collections to the playab
 
 test("shared Choice page supports collection Heart save and remove", () => {
   assert.match(sharedPage, /收藏 Choice/);
+  assert.match(sharedPage, /取消收藏 Choice/);
+  assert.match(sharedPage, /aria-pressed=\{heart\.myHeart\}/);
   assert.match(sharedPage, /action: heart\.myHeart \? "remove_heart" : "heart"/);
   assert.match(sharedPage, /collectionKind: kind/);
   assert.match(sharedPage, /rememberAuthNextPath/);
@@ -31,6 +33,10 @@ test("signed-in Profile exposes saved Choice playlists and removal", () => {
   assert.match(profilePage, /removeSavedChoice/);
   assert.match(savedRoute, /\.eq\("user_id", userData\.user\.id\)/);
   assert.match(savedRoute, /collection_kind/);
+  assert.match(savedRoute, /aipoger_choice_items/);
+  assert.match(savedRoute, /aipoger_creator_choice_items/);
+  assert.match(savedRoute, /collection_id/);
+  assert.match(savedRoute, /schemaReady: catalog\.schemaReady/);
 });
 
 test("official Choice shelf shares a unique public page instead of the rank anchor", () => {

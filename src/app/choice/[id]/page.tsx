@@ -157,7 +157,7 @@ export default function PublicChoicePage() {
               <button type="button" onClick={() => void play()} disabled={queue.length === 0} className="inline-flex items-center gap-2 rounded-full border border-orange-200/45 bg-orange-500 px-4 py-2 text-sm font-black text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-45" aria-label="全部播放">
                 <Play className="h-4 w-4" fill="currentColor" /> 全部播放
               </button>
-              <button type="button" onClick={() => void toggleHeart()} disabled={heartBusy} className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-black transition disabled:cursor-wait disabled:opacity-45 ${heart.myHeart ? "border-pink-200/60 bg-pink-300/15 text-pink-100" : "border-white/20 bg-white/[0.03] text-zinc-200 hover:border-pink-200/45"}`} aria-label="收藏 Choice">
+              <button type="button" onClick={() => void toggleHeart()} disabled={heartBusy} className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 py-2 text-sm font-black transition disabled:cursor-wait disabled:opacity-45 ${heart.myHeart ? "border-pink-200/60 bg-pink-300/15 text-pink-100" : "border-white/20 bg-white/[0.03] text-zinc-200 hover:border-pink-200/45"}`} aria-label={heart.myHeart ? "取消收藏 Choice" : "收藏 Choice"} aria-pressed={heart.myHeart} title={heart.myHeart ? "取消收藏 Choice" : "收藏 Choice"}>
                 <Heart className="h-4 w-4" fill={heart.myHeart ? "currentColor" : "none"} /> {heart.heartCount}
               </button>
               <ShareButton title={title} text={collection.intro || `${collection.curatorName || "AIPOGER"} 的 Choice`} url={`/choice/${choiceId}?kind=${kind}`} label="分享 Choice" />

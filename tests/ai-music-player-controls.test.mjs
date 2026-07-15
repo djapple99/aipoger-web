@@ -17,4 +17,12 @@ test("Explore AI Music mini player exposes lyrics in a scrollable HUD", () => {
   assert.ok(aiMusicSource.includes('aria-label={isZh ? "拖曳瀏覽歌詞" : "Scroll lyrics"}'));
   assert.ok(aiMusicSource.includes("lyricsPanelRef"));
   assert.ok(aiMusicSource.includes("歌詞未提供"));
+  assert.ok(aiMusicSource.includes('event.key !== "Escape"'));
+  assert.ok(aiMusicSource.includes('aria-modal="true"'));
+});
+
+test("Explore AI Music mini player exposes mobile volume control", () => {
+  assert.ok(aiMusicSource.includes('aria-label={isZh ? "調整音量" : "Adjust volume"}'));
+  assert.ok(aiMusicSource.includes('className="flex items-center gap-2 text-zinc-400 sm:hidden"'));
+  assert.ok(aiMusicSource.includes("event.currentTarget.volume = volume"));
 });
