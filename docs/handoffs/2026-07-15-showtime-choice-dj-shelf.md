@@ -36,3 +36,7 @@
 - Share uses a fixed icon-only layout so its SVG cannot be squeezed away by text-button padding.
 - The article action remains visible and opens either the stored long-form recommendation or a clear unsaved state. Article authoring accepts up to 3,000 characters across owner and creator workbenches.
 - The tracklist HUD includes `全部播放` / `Play all` to start the full Choice queue from the first playable song.
+- Follow-up app commit: `0364320 Polish Choice date article and playlist controls`.
+- Production deployment: `dpl_8PD6cT2EgnPHqFDeEaDTu7afF43n`, aliased to `https://aipoger.com`.
+- Live desktop and mobile smoke confirms `2026.07.13`, one tracklist control, a visible 16 px share icon, the article HUD, `全部播放`, and zero horizontal overflow.
+- Final verification: 173 tests passing, TypeScript and production build passing, lint with 0 errors and 11 pre-existing warnings.
