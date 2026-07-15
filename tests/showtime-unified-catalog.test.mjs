@@ -13,6 +13,11 @@ const releaseChecklistSource = readFileSync(new URL("../docs/aipoger-release-che
 const artDirectionSource = readFileSync(new URL("../docs/aipoger-ui-art-direction.md", import.meta.url), "utf8");
 const adminChoiceSource = readFileSync(new URL("../src/app/admin/choice/page.tsx", import.meta.url), "utf8");
 const adminShowtimeSource = readFileSync(new URL("../src/app/admin/showtime/page.tsx", import.meta.url), "utf8");
+const profileChoiceSource = readFileSync(new URL("../src/app/profile/choice/page.tsx", import.meta.url), "utf8");
+const adminChoiceApiSource = readFileSync(new URL("../src/app/api/admin/choice/route.ts", import.meta.url), "utf8");
+const creatorChoiceApiSource = readFileSync(new URL("../src/app/api/creator-choice/route.ts", import.meta.url), "utf8");
+const choiceModelSource = readFileSync(new URL("../src/lib/aipoger-choice.ts", import.meta.url), "utf8");
+const shareButtonSource = readFileSync(new URL("../src/components/share-button.tsx", import.meta.url), "utf8");
 const curatorIdentityMigration = readFileSync(new URL("../supabase/migrations/20260715085800_choice_curator_identity.sql", import.meta.url), "utf8");
 
 test("Showtime renders one certified works catalog without old source boards", () => {
@@ -55,7 +60,7 @@ test("Showtime puts cover-led Choice editorials before a compact six-column cata
   assert.ok(choiceShelfSource.includes("onToggleHeart(entry)"));
   assert.equal(choiceShelfSource.includes("CURATOR SETS"), false);
   assert.equal(choiceShelfSource.includes("由創作者選出他們心目中的歌單"), false);
-  assert.ok(choiceShelfSource.includes("查看 ${entry.curatorName} 的歌單"));
+  assert.ok(choiceShelfSource.includes('aria-label={isZh ? "查看歌單" : "View tracklist"}'));
   assert.ok(choiceShelfSource.includes("onPlay(entry)"));
 });
 
@@ -82,6 +87,22 @@ test("Choice recommendation copy opens in a dedicated readable HUD", () => {
   assert.ok(choiceShelfSource.includes('aria-label={isZh ? "Choice 推薦文章" : "Choice editorial"}'));
   assert.ok(choiceShelfSource.includes("max-h-[65vh] overflow-y-auto"));
   assert.ok(choiceShelfSource.includes("whitespace-pre-wrap"));
+  assert.ok(choiceShelfSource.includes("這期推薦文章尚未儲存。"));
+  assert.ok(choiceShelfSource.includes("choiceDateLabel(entry.weekStart, isZh)"));
+  assert.ok(choiceShelfSource.includes("choiceDateLabel(editorial.weekStart, isZh)"));
+  assert.equal((choiceShelfSource.match(/<ListMusic/g) ?? []).length, 1);
+  assert.ok(choiceShelfSource.includes('aria-label={isZh ? "全部播放" : "Play all"}'));
+  assert.ok(choiceShelfSource.includes("onPlay(detail); setDetail(null);"));
+});
+
+test("Choice editor supports long-form recommendation articles and visible icon-only sharing", () => {
+  assert.ok(choiceModelSource.includes("AIPOGER_CHOICE_INTRO_MAX_LENGTH = 3000"));
+  assert.ok(adminChoiceApiSource.includes("cleanText(body?.intro, AIPOGER_CHOICE_INTRO_MAX_LENGTH)"));
+  assert.ok(creatorChoiceApiSource.includes("cleanText(body?.intro, AIPOGER_CHOICE_INTRO_MAX_LENGTH)"));
+  assert.ok(adminChoiceSource.includes("maxLength={AIPOGER_CHOICE_INTRO_MAX_LENGTH}"));
+  assert.ok(adminShowtimeSource.includes("maxLength={AIPOGER_CHOICE_INTRO_MAX_LENGTH}"));
+  assert.ok(profileChoiceSource.includes("maxLength={AIPOGER_CHOICE_INTRO_MAX_LENGTH}"));
+  assert.ok(shareButtonSource.includes('iconOnly ? "p-0" : "px-4 py-2"'));
 });
 
 test("Choice saves persist independently from song Hearts and only target public collections", () => {

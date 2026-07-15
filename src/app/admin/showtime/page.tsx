@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  AIPOGER_CHOICE_INTRO_MAX_LENGTH,
   choiceItemCountMessage,
   choiceWeekStart,
   type AipogerChoiceCatalogItem,
@@ -447,7 +448,7 @@ export default function AdminShowtimePage() {
                 </select>
               </label>
               <label className="grid gap-1 text-xs font-black text-zinc-400">推薦文章（可選）
-                <input value={choiceIntro} maxLength={500} onChange={(event) => setChoiceIntro(event.target.value)} placeholder="這週想帶大家聽的 5–10 首作品。" className="h-10 rounded-xl border border-white/10 bg-black/55 px-3 text-sm font-bold text-white outline-none focus:border-cyan-200/60" />
+                <textarea value={choiceIntro} maxLength={AIPOGER_CHOICE_INTRO_MAX_LENGTH} rows={5} onChange={(event) => setChoiceIntro(event.target.value)} placeholder="寫下這期 Choice 的推薦文章。" className="rounded-xl border border-white/10 bg-black/55 px-3 py-2 text-sm font-bold leading-6 text-white outline-none focus:border-cyan-200/60" />
               </label>
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-cyan-100/10 pt-4">

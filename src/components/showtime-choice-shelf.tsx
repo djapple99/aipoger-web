@@ -42,6 +42,12 @@ function shareUrl(entry: ShowtimeChoiceShelfEntry) {
   return entry.href || "/rank#choice-weekly";
 }
 
+function choiceDateLabel(value: string, isZh: boolean) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return value;
+  return isZh ? `${match[1]}.${match[2]}.${match[3]}` : `${match[1]}-${match[2]}-${match[3]}`;
+}
+
 export default function ShowtimeChoiceShelf({
   entries,
   isZh,
@@ -99,21 +105,15 @@ export default function ShowtimeChoiceShelf({
                     >
                       <Play className="h-3.5 w-3.5" fill="currentColor" />
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setDetail(entry)}
-                      className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/30 bg-black/75 text-cyan-100 transition hover:border-cyan-100 hover:text-white"
-                      aria-label={isZh ? `查看 ${entry.curatorName} 的歌單` : `View ${entry.curatorName}'s tracklist`}
-                      title={isZh ? "查看歌單" : "View tracklist"}
-                    >
-                      <ListMusic className="h-3.5 w-3.5" />
-                    </button>
                   </div>
                   <div className="px-0.5 pb-0.5 pt-2">
                     <button type="button" onClick={() => setDetail(entry)} className="block w-full truncate text-left text-sm font-black text-white transition hover:text-orange-100" title={entry.title || `${entry.curatorName} Choice`}>
                       {entry.title || `${entry.curatorName} Choice`}
                     </button>
-                    <p className="mt-0.5 truncate text-[11px] font-black text-cyan-100">{entry.curatorName}</p>
+                    <div className="mt-0.5 flex items-center justify-between gap-2 text-[11px] font-black">
+                      <p className="truncate text-cyan-100">{entry.curatorName}</p>
+                      <time dateTime={entry.weekStart} className="shrink-0 tabular-nums text-orange-200/75">{choiceDateLabel(entry.weekStart, isZh)}</time>
+                    </div>
                     {entry.intro ? <p className="mt-1.5 line-clamp-2 text-[11px] font-bold leading-4 text-zinc-400">{entry.intro}</p> : null}
                     <div className="mt-2 flex items-center gap-1.5 border-t border-white/10 pt-2">
                       <button
@@ -136,17 +136,15 @@ export default function ShowtimeChoiceShelf({
                         iconOnly
                         className="h-7 w-7 rounded-full p-0 text-cyan-100"
                       />
-                      {entry.intro ? (
-                        <button
-                          type="button"
-                          onClick={() => setEditorial(entry)}
-                          className="aipo-ghost-button inline-flex h-7 w-7 items-center justify-center rounded-full text-cyan-100 transition hover:text-white"
-                          aria-label={isZh ? "閱讀推薦文章" : "Read editorial"}
-                          title={isZh ? "閱讀推薦文章" : "Read editorial"}
-                        >
-                          <FileText className="h-3.5 w-3.5" />
-                        </button>
-                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => setEditorial(entry)}
+                        className="aipo-ghost-button inline-flex h-7 w-7 items-center justify-center rounded-full text-cyan-100 transition hover:text-white"
+                        aria-label={isZh ? "閱讀推薦文章" : "Read editorial"}
+                        title={isZh ? "閱讀推薦文章" : "Read editorial"}
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => setDetail(entry)}
@@ -177,8 +175,12 @@ export default function ShowtimeChoiceShelf({
               <div className="min-w-0">
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-orange-300">{detail.curatorName} · CHOICE</p>
                 <h2 className="mt-1 truncate text-xl font-black text-white">{detail.title || `${detail.curatorName} Choice`}</h2>
+                <time dateTime={detail.weekStart} className="mt-1 block text-xs font-black tabular-nums text-zinc-500">{choiceDateLabel(detail.weekStart, isZh)}</time>
               </div>
-              <button type="button" onClick={() => setDetail(null)} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 text-zinc-300 transition hover:border-white/30 hover:text-white" aria-label={isZh ? "關閉歌單" : "Close tracklist"}><X className="h-4 w-4" /></button>
+              <div className="flex shrink-0 items-center gap-2">
+                <button type="button" onClick={() => { onPlay(detail); setDetail(null); }} disabled={!detail.items.some((item) => Boolean(item.audioUrl))} className="inline-flex h-9 items-center gap-2 rounded-full border border-orange-200/35 bg-orange-500 px-3 text-xs font-black text-black transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-40" aria-label={isZh ? "全部播放" : "Play all"}><Play className="h-3.5 w-3.5" fill="currentColor" />{isZh ? "全部播放" : "Play all"}</button>
+                <button type="button" onClick={() => setDetail(null)} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-zinc-300 transition hover:border-white/30 hover:text-white" aria-label={isZh ? "關閉歌單" : "Close tracklist"}><X className="h-4 w-4" /></button>
+              </div>
             </div>
             <div className="max-h-[58vh] overflow-y-auto p-3 sm:p-4">
               <div className="grid gap-2 sm:grid-cols-2">
@@ -207,11 +209,12 @@ export default function ShowtimeChoiceShelf({
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-orange-300">{editorial.curatorName} · CHOICE</p>
                 <h2 className="mt-1 truncate text-xl font-black text-white">{editorial.title || `${editorial.curatorName} Choice`}</h2>
+                <time dateTime={editorial.weekStart} className="mt-1 block text-xs font-black tabular-nums text-zinc-500">{choiceDateLabel(editorial.weekStart, isZh)}</time>
               </div>
               <button type="button" onClick={() => setEditorial(null)} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 text-zinc-300 transition hover:border-white/30 hover:text-white" aria-label={isZh ? "關閉推薦文章" : "Close editorial"}><X className="h-4 w-4" /></button>
             </header>
             <div className="max-h-[65vh] overflow-y-auto px-4 py-5 sm:px-5">
-              <p className="whitespace-pre-wrap text-sm font-bold leading-7 text-zinc-300">{editorial.intro}</p>
+              {editorial.intro ? <p className="whitespace-pre-wrap text-sm font-bold leading-7 text-zinc-300">{editorial.intro}</p> : <p className="text-sm font-bold text-zinc-500">{isZh ? "這期推薦文章尚未儲存。" : "No editorial has been saved for this Choice yet."}</p>}
             </div>
           </article>
         </div>

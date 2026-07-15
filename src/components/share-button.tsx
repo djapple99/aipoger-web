@@ -103,7 +103,7 @@ export default function ShareButton({
       <button
         type="button"
         onClick={handleShare}
-        className={`aipo-ghost-button inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-black text-orange-100 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 ${className}`}
+        className={`aipo-ghost-button inline-flex shrink-0 items-center justify-center gap-2 rounded-full text-sm font-black text-orange-100 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 ${iconOnly ? "p-0" : "px-4 py-2"} ${className}`}
         aria-label={label}
         title={label}
       >

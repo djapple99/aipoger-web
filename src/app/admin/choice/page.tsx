@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  AIPOGER_CHOICE_INTRO_MAX_LENGTH,
   choiceItemCountMessage,
   choiceWeekStart,
   type AipogerChoiceCatalogItem,
@@ -235,7 +236,7 @@ export default function AdminChoicePage() {
                 </select>
               </label>
               <label className="grid gap-1 text-xs font-black text-zinc-400 sm:col-span-2">推薦文章（可選）
-                <textarea value={intro} maxLength={500} rows={3} onChange={(event) => setIntro(event.target.value)} placeholder="這週想帶大家聽的 5–10 首作品。" className="rounded-xl border border-white/10 bg-black px-3 py-2 text-sm font-bold leading-6 text-white outline-none focus:border-cyan-200/55" />
+                <textarea value={intro} maxLength={AIPOGER_CHOICE_INTRO_MAX_LENGTH} rows={6} onChange={(event) => setIntro(event.target.value)} placeholder="寫下這期 Choice 的推薦文章。" className="rounded-xl border border-white/10 bg-black px-3 py-2 text-sm font-bold leading-6 text-white outline-none focus:border-cyan-200/55" />
                 <span className="font-bold text-zinc-600">儲存後前台卡片顯示摘要，文章圖示開啟完整 HUD。</span>
               </label>
             </div>

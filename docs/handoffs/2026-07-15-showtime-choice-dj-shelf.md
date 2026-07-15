@@ -28,3 +28,11 @@
 - Live `/rank` smoke confirms Choice and Showtime use six columns at 1440 px and two columns at 390 px, with no horizontal overflow.
 - `npm test`: 172 passing; focused Showtime catalog tests: 8 passing.
 - `npx tsc --noEmit`, `npm run lint`, and `npm run build` pass. Lint retains 11 pre-existing warnings outside this change.
+
+## Choice Control Follow-up
+
+- Choice cards display the stored week date even when the optional title is empty.
+- The duplicate cover tracklist icon is removed; one card-level tracklist icon remains.
+- Share uses a fixed icon-only layout so its SVG cannot be squeezed away by text-button padding.
+- The article action remains visible and opens either the stored long-form recommendation or a clear unsaved state. Article authoring accepts up to 3,000 characters across owner and creator workbenches.
+- The tracklist HUD includes `全部播放` / `Play all` to start the full Choice queue from the first playable song.

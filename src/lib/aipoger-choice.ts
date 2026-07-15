@@ -1,5 +1,6 @@
 export const AIPOGER_CHOICE_MIN_ITEMS = 5;
 export const AIPOGER_CHOICE_MAX_ITEMS = 10;
+export const AIPOGER_CHOICE_INTRO_MAX_LENGTH = 3000;
 
 export const AIPOGER_CHOICE_SOURCE_KINDS = ["listen_bar_track", "battle_archive"] as const;
 export type AipogerChoiceSourceKind = (typeof AIPOGER_CHOICE_SOURCE_KINDS)[number];

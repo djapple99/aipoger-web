@@ -4,6 +4,7 @@ import { isAdminEmail } from "@/lib/admin-emails";
 import {
   AIPOGER_CHOICE_MAX_ITEMS,
   AIPOGER_CHOICE_MIN_ITEMS,
+  AIPOGER_CHOICE_INTRO_MAX_LENGTH,
   AIPOGER_CHOICE_CURATOR_IDENTITIES,
   type AipogerChoiceCuratorIdentity,
   isAipogerChoiceSourceKind,
@@ -188,7 +189,7 @@ export async function PATCH(request: NextRequest) {
       const payload = {
         week_start: weekStart,
         title: cleanText(body?.title, 120),
-        intro: cleanText(body?.intro, 500),
+        intro: cleanText(body?.intro, AIPOGER_CHOICE_INTRO_MAX_LENGTH),
         curator_identity: curatorIdentity(body?.curatorIdentity),
         updated_at: new Date().toISOString(),
       };

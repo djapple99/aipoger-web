@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import {
   AIPOGER_CHOICE_MAX_ITEMS,
   AIPOGER_CHOICE_MIN_ITEMS,
+  AIPOGER_CHOICE_INTRO_MAX_LENGTH,
   isAipogerChoiceSourceKind,
   type AipogerChoiceCatalogItem,
 } from "@/lib/aipoger-choice";
@@ -268,7 +269,7 @@ export async function PATCH(request: NextRequest) {
         week_start: weekStart,
         curator_name: curatorName.slice(0, 80),
         title: cleanText(body?.title, 120),
-        intro: cleanText(body?.intro, 500),
+        intro: cleanText(body?.intro, AIPOGER_CHOICE_INTRO_MAX_LENGTH),
         updated_at: new Date().toISOString(),
       };
       if (isUuid(body?.collectionId)) {
