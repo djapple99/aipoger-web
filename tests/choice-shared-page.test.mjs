@@ -37,6 +37,8 @@ test("signed-in Profile exposes saved Choice playlists and removal", () => {
   assert.match(savedRoute, /aipoger_creator_choice_items/);
   assert.match(savedRoute, /collection_id/);
   assert.match(savedRoute, /schemaReady: catalog\.schemaReady/);
+  assert.match(savedRoute, /from\("user_profiles"\)\.select\("id,display_name"\)/);
+  assert.doesNotMatch(savedRoute, /from\("user_profiles"\)\.select\("id,avatar_url"\)/);
 });
 
 test("official Choice shelf shares a unique public page instead of the rank anchor", () => {

@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
     const ownerIds = [...officialRows.map((row) => row.created_by).filter((id): id is string => Boolean(id)), ...creatorRows.map((row) => row.creator_id).filter((id): id is string => Boolean(id))];
     const [fighter, profiles] = ownerIds.length ? await Promise.all([
       admin.from("fighter_profiles").select("id,display_name,avatar_url").in("id", ownerIds),
-      admin.from("user_profiles").select("id,avatar_url").in("id", ownerIds),
+      admin.from("user_profiles").select("id,display_name").in("id", ownerIds),
     ]) : [{ data: [], error: null }, { data: [], error: null }];
     if (fighter.error) throw fighter.error;
     if (profiles.error) throw profiles.error;
