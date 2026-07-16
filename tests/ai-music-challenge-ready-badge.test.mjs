@@ -8,7 +8,7 @@ const releaseChecklistSource = readFileSync(new URL("../docs/aipoger-release-che
 
 test("Explore AI Music uses a non-clickable challenge-ready badge separate from the challenge action", () => {
   assert.ok(aiMusicSource.includes("function ChallengeReadyBadge"));
-  assert.ok(aiMusicSource.includes('const label = isZh ? "接戰" : "OPEN";'));
+  assert.ok(aiMusicSource.includes('const label = localeText(lang, "接戰", "OPEN", "挑戦可", "도전 가능");'));
   assert.ok(aiMusicSource.includes("right-0 top-0"));
   assert.ok(aiMusicSource.includes("rotate-45 bg-red-600"));
   assert.ok(aiMusicSource.includes("pointer-events-none"));

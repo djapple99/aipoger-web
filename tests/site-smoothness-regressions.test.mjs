@@ -13,7 +13,8 @@ const analysisHealthSource = fs.readFileSync("src/app/api/music-analysis/health/
 test("logged-out account dock does not present a fake notification bell", () => {
   assert.ok(overlaySource.includes("accountSessionResolved"));
   assert.ok(overlaySource.includes('pathname === "/" || pathname === "/auth"'));
-  assert.ok(overlaySource.includes("登入 AIPOGER"));
+  assert.ok(overlaySource.includes('const signInLabel = lang === "ja" ? "ログイン" : lang === "ko" ? "로그인" : lang === "en" ? "Sign in" : "登入";'));
+  assert.ok(overlaySource.includes('aria-label={`${signInLabel} AIPOGER`}'));
   assert.ok(overlaySource.includes('"fixed right-24 top-4'));
   assert.ok(profileSource.includes("rememberAuthNextPath(nextPath)"));
   assert.ok(profileSource.includes("router.replace(`/auth?next=${encodeURIComponent(nextPath)}`)"));

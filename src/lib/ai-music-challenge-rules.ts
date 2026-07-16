@@ -77,6 +77,16 @@ export function pickDropBattleWinnerForRules(
 }
 
 export function aiMusicChallengeStatusLabel(status: AiMusicChallengeStatus, lang: "zh" | "en" | string = "zh") {
+  if (lang === "ja") {
+    if (status === "open") return "Drop挑戦を受付中";
+    if (status === "custom") return "カスタムバトル";
+    return "ショーケースのみ";
+  }
+  if (lang === "ko") {
+    if (status === "open") return "Drop 도전 접수 중";
+    if (status === "custom") return "커스텀 배틀";
+    return "쇼케이스 전용";
+  }
   if (lang === "en") {
     if (status === "open") return "Open to Drop challenge";
     if (status === "custom") return "Custom battle";

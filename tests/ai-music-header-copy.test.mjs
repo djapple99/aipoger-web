@@ -12,7 +12,7 @@ test("Explore AI Music uses a compact catalog masthead and current navigation or
   assert.ok(aiMusicSource.includes("上傳音樂讓大家看到你的作品"));
   assert.ok(aiMusicSource.includes("catalogMetadata"));
   assert.ok(aiMusicSource.includes("首公開作品"));
-  assert.ok(aiMusicSource.includes('isZh ? "作品庫" : "Catalog"'));
+  assert.ok(aiMusicSource.includes('catalog: localeText(lang, "作品庫", "Catalog", "作品カタログ", "작품 카탈로그")'));
   assert.ok(aiMusicSource.includes('setWorksView("genre")'));
   assert.ok(aiMusicSource.includes('setWorksView("heat")'));
   assert.ok(aiMusicSource.includes("正在升溫"));
@@ -31,8 +31,8 @@ test("Explore AI Music uses a compact catalog masthead and current navigation or
   assert.ok(aiMusicSource.includes("Profile 可整理收藏歌曲"));
   assert.ok(aiMusicSource.includes("已準備 60s Drop"));
   assert.ok(aiMusicSource.includes("守擂進度"));
-  const worksIndex = aiMusicSource.indexOf('label: isZh ? "作品瀏覽" : "Works"');
-  const barIndex = aiMusicSource.indexOf('label: isZh ? "傷心酒吧" : "Bar Heartbreak"');
+  const worksIndex = aiMusicSource.indexOf('label: copy.browseWorks');
+  const barIndex = aiMusicSource.indexOf('label: copy.bar');
   const dropIndex = aiMusicSource.indexOf('label: "Drop Battle"');
   const showtimeIndex = aiMusicSource.indexOf('label: "Showtime"');
   const choiceIndex = aiMusicSource.indexOf('label: "Choice"');

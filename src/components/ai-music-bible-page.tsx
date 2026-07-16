@@ -12,7 +12,6 @@ import {
   Headphones,
   LibraryBig,
   LockKeyhole,
-  LogIn,
   MessageCirclePlus,
   Music2,
   Search,
@@ -21,7 +20,6 @@ import {
   ThumbsDown,
   ThumbsUp,
   Video,
-  UserPlus,
   WandSparkles,
   X,
 } from "lucide-react";
@@ -31,6 +29,7 @@ import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
 import StemSeparationGuideSection from "@/components/stem-separation-guide-section";
 import SunoPracticeLibrarySection from "@/components/suno-practice-library-section";
+import AuthRequiredDialog from "@/components/auth-required-dialog";
 import {
   TAIWANESE_LYRICS_CATEGORIES,
   TAIWANESE_LYRICS_ENTRIES,
@@ -85,6 +84,83 @@ function practiceAreasForLanguage(isZh: boolean): PracticeArea[] {
 function appendLang(href: string, lang: string) {
   if (href.startsWith("#") || href.startsWith("http")) return href;
   return `${href}${href.includes("?") ? "&" : "?"}lang=${lang}`;
+}
+
+function bibleGateCopyForLanguage(lang: string) {
+  if (lang === "ja") {
+    return {
+      title: "AI音楽 実践バイブル",
+      body: "Prompt、歌詞、Sonic DNA、Stem分離、台湾語の発音テストを、検索・コピーして何度でも使える実践データベースにまとめています。",
+      start: "練習を始める",
+      listen: "まず音楽を聴く",
+      bar: "Bar Heartbreakへ",
+      marker: "実践データベース",
+      stats: ["1,518件の検索インデックス", "Prompt × 歌詞の実践集", "コピー・コメント・共同検証"],
+      asideEyebrow: "WHAT IS INSIDE",
+      asideTitle: "迷ったときに、すぐ調べられる",
+      asideBody: "長い教材を最初から読むのではなく、今つまずいている場所から入れます。",
+      cards: [
+        ["Prompt × 歌詞", "曲調、歌い方、構成、感情をすぐ試せる形に整理。"],
+        ["Sonic DNA × レシピ", "771件の音色リファレンスと747件の重複なしレシピ。"],
+        ["Stem × 台湾語", "分離ツールの選び方と、AI歌唱の発音テストを収録。"],
+      ],
+    };
+  }
+  if (lang === "ko") {
+    return {
+      title: "AI 음악 실전 바이블",
+      body: "Prompt, 가사, Sonic DNA, Stem 분리, 대만어 발음 테스트를 검색하고 복사해 반복해서 쓸 수 있는 실전 데이터베이스로 정리했습니다.",
+      start: "연습 시작",
+      listen: "음악 먼저 듣기",
+      bar: "Bar Heartbreak 가기",
+      marker: "실전 데이터베이스",
+      stats: ["검색 가능한 인덱스 1,518개", "Prompt × 가사 실전 자료", "복사·댓글·공동 검증"],
+      asideEyebrow: "WHAT IS INSIDE",
+      asideTitle: "막힐 때 바로 찾아보세요",
+      asideBody: "처음부터 긴 자료를 읽지 않아도, 지금 막힌 문제부터 바로 들어갈 수 있습니다.",
+      cards: [
+        ["Prompt × 가사", "장르, 보컬, 구성, 감정을 바로 테스트할 수 있게 정리했습니다."],
+        ["Sonic DNA × 레시피", "사운드 레퍼런스 771개와 중복을 뺀 레시피 747개."],
+        ["Stem × 대만어", "분리 도구 선택법과 AI 보컬 발음 테스트를 함께 제공합니다."],
+      ],
+    };
+  }
+  if (lang === "en") {
+    return {
+      title: "AI Music Practice Bible",
+      body: "A searchable, copyable field database for prompts, lyrics, sonic DNA, stem separation, and Taiwanese pronunciation tests—built to revisit whenever a track gets stuck.",
+      start: "Start practicing",
+      listen: "Listen first",
+      bar: "Visit Bar Heartbreak",
+      marker: "Field database",
+      stats: ["1,518 searchable entries", "Prompt × lyric practice", "Copy, discuss, verify"],
+      asideEyebrow: "WHAT IS INSIDE",
+      asideTitle: "A place to look whenever a track gets stuck",
+      asideBody: "Start from the problem in front of you instead of reading one long manual from beginning to end.",
+      cards: [
+        ["Prompt × Lyrics", "Shape genre, vocal delivery, structure, and emotion with practical moves."],
+        ["Sonic DNA × Recipes", "771 sonic references and 747 deduplicated prompt recipes."],
+        ["Stems × Taiwanese", "Choose separation tools and learn from AI singing pronunciation tests."],
+      ],
+    };
+  }
+  return {
+    title: "AI 音樂練功聖經",
+    body: "把 Prompt、歌詞、聲音 DNA、Stem 與台語調音整理成可以搜尋、複製、反覆回來查的實戰資料庫。",
+    start: "開始練功",
+    listen: "先去聽歌",
+    bar: "去傷心酒吧",
+    marker: "實戰資料庫",
+    stats: ["1,518 組可搜尋索引", "Prompt × 歌詞實戰庫", "複製、評論、共同驗證"],
+    asideEyebrow: "WHAT IS INSIDE",
+    asideTitle: "每次卡關，都有地方查",
+    asideBody: "不用從頭讀完一整本教材，直接從你現在卡住的問題開始練。",
+    cards: [
+      ["Prompt × 歌詞", "曲風、唱法、段落與情緒，整理成能立刻試的招式。"],
+      ["聲音 DNA × 配方", "771 組聲音參考與 747 組去重 Prompt 配方。"],
+      ["Stem × 台語", "拆軌工具選擇與 AI 歌唱發音實測，少走冤枉路。"],
+    ],
+  };
 }
 
 async function submitContribution(payload: Record<string, string>) {
@@ -146,6 +222,7 @@ export default function AiMusicBiblePage() {
   const [submitState, setSubmitState] = useState<SubmitState>({ tone: "idle", message: "" });
   const [feedbackState, setFeedbackState] = useState<Record<string, "loading" | "sent" | "error">>({});
   const [accessState, setAccessState] = useState<AccessState>("checking");
+  const [authPromptOpen, setAuthPromptOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -160,6 +237,10 @@ export default function AiMusicBiblePage() {
       listener.subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (accessState === "signedOut") setAuthPromptOpen(true);
+  }, [accessState]);
 
   const filteredEntries = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
@@ -218,7 +299,7 @@ export default function AiMusicBiblePage() {
   };
 
   if (accessState !== "signedIn") {
-    const loginHref = `/auth?next=${encodeURIComponent(`/ai-music-bible?lang=${lang}`)}`;
+    const gateCopy = bibleGateCopyForLanguage(lang);
     return (
       <main className="relative min-h-screen overflow-hidden bg-[#050505] px-4 pb-20 pt-24 text-zinc-100 sm:px-6">
         <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(255,106,0,0.22),transparent_32%),radial-gradient(circle_at_86%_14%,rgba(34,211,238,0.13),transparent_28%),linear-gradient(180deg,#050505_0%,#0b0806_48%,#030707_100%)]" />
@@ -235,53 +316,60 @@ export default function AiMusicBiblePage() {
               <div className="relative px-5 py-9 sm:px-9 lg:px-12 lg:py-14">
                 <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-300/70 to-transparent" />
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className={`${fontRighteous.className} text-xs uppercase tracking-[0.36em] text-cyan-200/80`}>AIPOGER MEMBER CODEX</span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-300/28 bg-orange-400/[0.09] px-3 py-1 text-[11px] font-black text-orange-100"><LockKeyhole className="h-3 w-3" /> {isZh ? "會員限定" : "Members only"}</span>
+                  <span className={`${fontRighteous.className} text-xs uppercase tracking-[0.34em] text-cyan-100/82`}>AIPOGER PRACTICE BIBLE</span>
+                  <span className="rounded-full border border-orange-300/28 bg-orange-400/[0.09] px-3 py-1 text-[11px] font-black text-orange-100">{gateCopy.marker}</span>
                 </div>
-                <h1 className="mt-6 max-w-3xl text-[clamp(2.7rem,6vw,5.4rem)] font-black leading-[0.96] tracking-[-0.045em] text-[#fff8ed]">
-                  {isZh ? "登入解鎖 AI 音樂練功聖經" : "Sign in to unlock the AI Music Practice Bible"}
+                <h1 className="mt-6 whitespace-nowrap text-[clamp(2.05rem,7.8vw,4.15rem)] font-black leading-[1.02] tracking-[-0.05em] text-[#fff8ed]">
+                  {gateCopy.title}
                 </h1>
-                <p className="mt-6 max-w-2xl text-base font-bold leading-8 text-zinc-300 sm:text-lg">
-                  {isZh
-                    ? "把公開聽歌當入口，把真正能反覆查、複製、實測的創作資料留給會員。免費加入後，就能完整使用 Prompt、歌詞、聲音 DNA、Stem 與台語調音資料庫。"
-                    : "Public listening stays open. Join free to unlock the searchable prompt, lyric, sonic DNA, stem, and Taiwanese pronunciation practice databases."}
-                </p>
+                <p className="mt-6 max-w-2xl text-base font-bold leading-8 text-zinc-200 sm:text-lg">{gateCopy.body}</p>
                 <div className="mt-7 grid gap-2 sm:grid-cols-3">
-                  {(isZh ? ["1,518 組可搜尋索引", "Prompt × 歌詞實戰庫", "複製、評論、共同補資料"] : ["1,518 searchable entries", "Prompt × lyric practice", "Copy, discuss, contribute"]).map((item) => (
+                  {gateCopy.stats.map((item) => (
                     <div key={item} className="rounded-xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm font-black text-zinc-200"><Check className="mr-2 inline h-4 w-4 text-emerald-300" />{item}</div>
                   ))}
                 </div>
                 <div className="mt-8 flex flex-wrap gap-3">
-                  <Link href={loginHref} className="aipo-primary-button inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-sm font-black">
-                    <UserPlus className="h-4 w-4" /> {isZh ? "登入／免費加入" : "Sign in / Join free"}
-                  </Link>
+                  <button type="button" onClick={() => setAuthPromptOpen(true)} className="aipo-primary-button inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-sm font-black">
+                    <BookOpenText className="h-4 w-4" /> {gateCopy.start}
+                  </button>
                   <Link href={appendLang("/ai-music", lang)} className="aipo-ghost-button inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-sm font-black text-white">
-                    <Headphones className="h-4 w-4" /> {isZh ? "先去探索音樂" : "Explore music first"}
+                    <Headphones className="h-4 w-4" /> {gateCopy.listen}
+                  </Link>
+                  <Link href={appendLang("/listen-bar", lang)} className="aipo-ghost-button inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-sm font-black text-white">
+                    <Music2 className="h-4 w-4" /> {gateCopy.bar}
                   </Link>
                 </div>
-                <p className="mt-5 flex items-start gap-2 text-xs font-bold leading-6 text-zinc-500"><LogIn className="mt-1 h-3.5 w-3.5 shrink-0 text-zinc-600" />{isZh ? "Explore 與傷心酒吧免登入即可聽歌；愛心、收藏、評論與練功聖經需要登入。" : "Explore and Bar Heartbreak are open for listening. Hearts, saves, comments, and the Bible require sign-in."}</p>
               </div>
 
               <aside className="border-t border-white/10 bg-[radial-gradient(circle_at_80%_10%,rgba(34,211,238,0.12),transparent_36%),linear-gradient(145deg,rgba(255,106,0,0.09),rgba(0,0,0,0.78)_58%)] p-5 sm:p-8 lg:border-l lg:border-t-0 lg:p-9">
-                <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.3em] text-orange-300/75`}>PUBLIC LISTENING DOORS</p>
-                <h2 className="mt-3 text-3xl font-black text-white">{isZh ? "還不想登入？先聽歌。" : "Not ready to sign in? Listen first."}</h2>
-                <p className="mt-3 text-sm font-bold leading-7 text-zinc-500">{isZh ? "兩個公開入口都能直接播放；當你想收藏、按愛心或加入討論時，再登入成為會員。" : "Both public doors play immediately. Sign in when you want to save, heart, or join the conversation."}</p>
+                <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.3em] text-orange-200/82`}>{gateCopy.asideEyebrow}</p>
+                <h2 className="mt-3 text-3xl font-black leading-tight text-white">{gateCopy.asideTitle}</h2>
+                <p className="mt-3 text-sm font-bold leading-7 text-zinc-300">{gateCopy.asideBody}</p>
                 <div className="mt-7 grid gap-3">
-                  <Link href={appendLang("/ai-music", lang)} className="group rounded-[1.05rem] border border-cyan-200/18 bg-cyan-300/[0.045] p-5 transition hover:border-cyan-200/48 hover:bg-cyan-300/[0.075]">
-                    <div className="flex items-center justify-between gap-3"><Headphones className="h-7 w-7 text-cyan-200" /><ArrowRight className="h-5 w-5 text-zinc-600 transition group-hover:translate-x-1 group-hover:text-white" /></div>
-                    <p className="mt-5 text-xl font-black text-white">{isZh ? "探索 AI 音樂" : "Explore AI Music"}</p>
-                    <p className="mt-2 text-xs font-bold leading-6 text-zinc-500">{isZh ? "快速找歌、看 Choice、Showtime 與挑戰作品。" : "Discover Choice, Showtime, and challenge-ready works."}</p>
-                  </Link>
-                  <Link href={appendLang("/listen-bar", lang)} className="group rounded-[1.05rem] border border-orange-200/18 bg-orange-400/[0.045] p-5 transition hover:border-orange-200/48 hover:bg-orange-400/[0.075]">
-                    <div className="flex items-center justify-between gap-3"><Music2 className="h-7 w-7 text-orange-200" /><ArrowRight className="h-5 w-5 text-zinc-600 transition group-hover:translate-x-1 group-hover:text-white" /></div>
-                    <p className="mt-5 text-xl font-black text-white">{isZh ? "傷心酒吧聽歌" : "Listen in Bar Heartbreak"}</p>
-                    <p className="mt-2 text-xs font-bold leading-6 text-zinc-500">{isZh ? "免登入播放公開作品，登入後再按 Heart 與留言。" : "Play public songs freely; sign in for Hearts and comments."}</p>
-                  </Link>
+                  {gateCopy.cards.map(([title, body], index) => {
+                    const Icon = index === 0 ? WandSparkles : index === 1 ? LibraryBig : AudioWaveform;
+                    return (
+                      <div key={title} className="rounded-[1.05rem] border border-white/10 bg-white/[0.035] p-4">
+                        <div className="flex items-center gap-3">
+                          <Icon className={`h-6 w-6 ${index === 1 ? "text-cyan-200" : "text-orange-200"}`} />
+                          <p className="text-lg font-black text-white">{title}</p>
+                        </div>
+                        <p className="mt-2 text-xs font-bold leading-6 text-zinc-300">{body}</p>
+                      </div>
+                    );
+                  })}
                 </div>
               </aside>
             </div>
           )}
         </section>
+        <AuthRequiredDialog
+          open={authPromptOpen}
+          kind="bible"
+          lang={lang}
+          nextPath={`/ai-music-bible?lang=${lang}`}
+          onClose={() => setAuthPromptOpen(false)}
+        />
       </main>
     );
   }

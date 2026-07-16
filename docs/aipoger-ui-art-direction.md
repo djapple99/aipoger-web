@@ -227,6 +227,7 @@ Role:
 Rules:
 
 - Listening surfaces should not feel blocked by login.
+- Keep authentication out of large marketing headlines and explanatory hero paragraphs. Use the normal product promise first, then a compact modal or sheet at the protected action boundary, with one primary sign-in action, a dismiss action, and the intended return path.
 - Uploading, voting, commenting, and Battle actions should clearly ask users to sign in.
 - Error copy should explain what is blocked and what remains open.
 

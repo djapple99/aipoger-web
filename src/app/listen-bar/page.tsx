@@ -27,6 +27,7 @@ import {
 } from "@/lib/listen-bar-upload-policy";
 import ShareButton from "@/components/share-button";
 import ReportButton from "@/components/report-button";
+import AuthRequiredDialog from "@/components/auth-required-dialog";
 import { shouldExpireOpenDropQueue } from "@/lib/battle-pool-client";
 import {
   DEFAULT_LISTEN_BAR_COVER,
@@ -95,6 +96,13 @@ type StoredTrackCommentRow = {
 type ReactionKey = "heart" | "star" | "thumb" | "happy";
 
 type ReactionCounts = Record<ReactionKey, number>;
+
+function barText(lang: string, zh: string, en: string, ja: string, ko: string) {
+  if (lang === "ja") return ja;
+  if (lang === "ko") return ko;
+  if (lang === "en") return en;
+  return zh;
+}
 
 type MyBroadcastStat = {
   id: string;
@@ -514,7 +522,7 @@ function getListenBarVisitorId() {
   return next;
 }
 
-function albumDisplayLabel(value: string, isZh: boolean) {
+function albumDisplayLabel(value: string, lang: string) {
   const cleanValue = value
     .replace(/^AI Music\s*\/\s*/i, "")
     .replace(/^官方公播\s*\/\s*/i, "")
@@ -522,22 +530,22 @@ function albumDisplayLabel(value: string, isZh: boolean) {
     .replace(/^Album\s*\/\s*/i, "")
     .trim();
   if (!cleanValue || cleanValue === "官方輪播") return "";
-  if (cleanValue === "創作者投稿" || cleanValue === "Creator submission" || cleanValue === "Creator Submission") return isZh ? "創作者投稿" : "Creator Submission";
-  return isZh ? `專輯名稱 / ${cleanValue}` : `Album / ${cleanValue}`;
+  if (cleanValue === "創作者投稿" || cleanValue === "Creator submission" || cleanValue === "Creator Submission") return barText(lang, "創作者投稿", "Creator Submission", "クリエイター投稿", "크리에이터 업로드");
+  return barText(lang, `專輯名稱 / ${cleanValue}`, `Album / ${cleanValue}`, `アルバム / ${cleanValue}`, `앨범 / ${cleanValue}`);
 }
 
-function genreDisplayLabel(value: string | null | undefined, isZh: boolean) {
+function genreDisplayLabel(value: string | null | undefined, lang: string) {
   const cleanValue = value?.trim();
   if (!cleanValue || cleanValue === "自我風格" || cleanValue === "Original 自我風格" || cleanValue === "Custom Style" || cleanValue === "Original Style") {
-    return isZh ? "Original 自我風格" : "Original Style";
+    return barText(lang, "Original 自我風格", "Original Style", "Original 独自スタイル", "Original 자유 스타일");
   }
   return cleanValue;
 }
 
-function descriptionDisplayLabel(value: string | null | undefined, isZh: boolean) {
+function descriptionDisplayLabel(value: string | null | undefined, lang: string) {
   const cleanValue = value?.trim();
   if (cleanValue) return cleanValue;
-  return isZh ? "這首歌還在等創作者補上一句故事" : "This track is waiting for a one-line story";
+  return barText(lang, "這首歌還在等創作者補上一句故事", "This track is waiting for a one-line story", "この曲はクリエイターの一言を待っています", "이 곡은 크리에이터의 한 줄 이야기를 기다리고 있습니다");
 }
 
 function titleDisplayUnits(value: string) {
@@ -569,9 +577,9 @@ function listenBarDescriptionHint(isZh: boolean) {
   return isZh ? "中文 16 字內；英文約 32 字元" : "16 CJK chars; about 32 English characters";
 }
 
-function aiToolDisplayLabel(value: string | null | undefined, isZh: boolean) {
+function aiToolDisplayLabel(value: string | null | undefined, lang: string) {
   const cleanValue = value?.trim() || "AI Music";
-  return isZh ? `AI 工具 ${cleanValue}` : `AI Tool ${cleanValue}`;
+  return barText(lang, `AI 工具 ${cleanValue}`, `AI Tool ${cleanValue}`, `AIツール ${cleanValue}`, `AI 도구 ${cleanValue}`);
 }
 
 function challengerProtectionPercent(value: string | null | undefined) {
@@ -646,15 +654,15 @@ export default function ListenBarPage() {
           battleHall: "Explore AI Music",
           title: "Bar Heartbreak",
           subtitle: "深く刺さる曲だけがオンエアに残る",
-          surfaceHint: "AI music airplay pool and submission entry. Uploaded tracks rotate here and appear in Explore AI Music.",
+          surfaceHint: "AI音楽の公開放送と投稿の入口です。投稿曲はジャンル別にローテーションされ、Explore AI Musicにも表示されます。",
           navBattle: "AI音楽を探す",
           navRank: "Showtime",
           ticker: "AI音楽を探して、好きな曲から挑戦へ。",
-          queueTitle: "Upcoming Sad Songs",
-          queueWaiting: "Waiting for Songs",
+          queueTitle: "次に流れる6曲",
+          queueWaiting: "次の曲を待っています",
           queueEmpty: "次のクリエイタートラックはここに表示されます。",
-          warming: "Warming Up",
-          listeners: (count: number) => `${count} Listeners`,
+          warming: "放送準備中",
+          listeners: (count: number) => `${count}人が聴いています`,
         }
       : lang === "ko"
         ? {
@@ -666,15 +674,15 @@ export default function ListenBarPage() {
             battleHall: "Explore AI Music",
             title: "Bar Heartbreak",
             subtitle: "강하게 꽂히는 곡만 온에어에 남는다",
-            surfaceHint: "AI music airplay pool and submission entry. Uploaded tracks rotate here and appear in Explore AI Music.",
+            surfaceHint: "AI 음악 공개 방송과 업로드 입구입니다. 업로드한 곡은 장르별로 재생되며 Explore AI Music에도 표시됩니다.",
             navBattle: "AI 음악 탐색",
             navRank: "Showtime",
             ticker: "AI 음악을 먼저 탐색하고, 마음에 드는 곡에서 도전하세요.",
-            queueTitle: "Upcoming Sad Songs",
-            queueWaiting: "Waiting for Songs",
+            queueTitle: "다음 재생 6곡",
+            queueWaiting: "다음 곡을 기다리는 중",
             queueEmpty: "다음 크리에이터 트랙이 여기에 표시됩니다.",
-            warming: "Warming Up",
-            listeners: (count: number) => `${count} Listeners`,
+            warming: "방송 준비 중",
+            listeners: (count: number) => `${count}명 청취 중`,
           }
         : {
             playMySong: "Play My Song",
@@ -752,6 +760,7 @@ export default function ListenBarPage() {
   const [volumeControlFallback, setVolumeControlFallback] = useState(false);
   const [reactionCounts, setReactionCounts] = useState<Record<string, ReactionCounts>>({});
   const [myReactions, setMyReactions] = useState<Record<string, ReactionKey | null>>({});
+  const [authPromptOpen, setAuthPromptOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatError, setChatError] = useState("");
@@ -765,6 +774,29 @@ export default function ListenBarPage() {
     listenBarPresenceCount <= 1
       ? listenCopy.warming
       : listenCopy.listeners(listenBarPresenceCount);
+  const pageTitle = lang === "ja"
+    ? "Bar Heartbreak｜AI音楽の公開放送と投稿｜AIPOGER"
+    : lang === "ko"
+      ? "Bar Heartbreak｜AI 음악 공개 방송과 업로드｜AIPOGER"
+      : lang === "en"
+        ? "Bar Heartbreak | AI Music Airplay & Uploads | AIPOGER"
+        : "傷心酒吧｜AI 音樂公播與投稿｜AIPOGER";
+
+  useEffect(() => {
+    const syncTitle = () => {
+      if (document.title !== pageTitle) document.title = pageTitle;
+    };
+    syncTitle();
+    const frame = window.requestAnimationFrame(syncTitle);
+    const timer = window.setTimeout(syncTitle, 1200);
+    const observer = new MutationObserver(syncTitle);
+    observer.observe(document.head, { childList: true, subtree: true, characterData: true });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+      observer.disconnect();
+    };
+  }, [pageTitle]);
   const applyRadioVolume = useCallback((audio: HTMLAudioElement, nextVolume: number) => {
     const normalizedVolume = clampMediaVolume(nextVolume);
     const nativeApplied = setNativeMediaVolume(audio, normalizedVolume);
@@ -899,8 +931,8 @@ export default function ListenBarPage() {
     return stats;
   }, [allCommunityTracks]);
   const selectedGenreLabel = selectedPlaybackGenre === "all"
-    ? (isZh ? "公播" : "All")
-    : genreDisplayLabel(selectedPlaybackGenre, isZh);
+    ? barText(lang, "公播", "All", "すべて", "전체")
+    : genreDisplayLabel(selectedPlaybackGenre, lang);
   const selectedGenreSlug = selectedPlaybackGenre === "all" ? "all" : (LISTEN_BAR_GENRE_SLUGS.get(selectedPlaybackGenre) ?? "all");
   const selectedGenreShareUrl = listenBarShortPath(selectedGenreSlug, lang);
   const barShareUrl = listenBarShortPath("all", lang);
@@ -909,9 +941,13 @@ export default function ListenBarPage() {
     : `${listenCopy.shareTitle} / ${selectedGenreLabel}`;
   const selectedGenreShareText = selectedPlaybackGenre === "all"
     ? listenCopy.shareText
-    : isZh
-      ? `我正在 AIPOGER 傷心酒吧聽 ${selectedGenreLabel} 類型。進來聽這一類 AI 音樂公播。`
-      : `I am listening to ${selectedGenreLabel} on AIPOGER Bar Heartbreak. Open this genre radio.`;
+    : barText(
+        lang,
+        `我正在 AIPOGER 傷心酒吧聽 ${selectedGenreLabel} 類型。進來聽這一類 AI 音樂公播。`,
+        `I am listening to ${selectedGenreLabel} on AIPOGER Bar Heartbreak. Open this genre radio.`,
+        `AIPOGER Bar Heartbreakで${selectedGenreLabel}を聴いています。このジャンルのAI音楽放送を開いてください。`,
+        `AIPOGER Bar Heartbreak에서 ${selectedGenreLabel} 장르를 듣고 있어요. 이 AI 음악 방송을 열어 보세요.`,
+      );
   const rotationTracks = useMemo(
     () => selectedPlaybackGenre === "all"
       ? allRotationTracks
@@ -1033,7 +1069,7 @@ export default function ListenBarPage() {
   const publicUploadBlocked = creatorGenrePublicLimitFull || creatorDailyUploadLimitFull || challengerSlotsFull;
   const displayedChallengerSlotCount = uploadGenre ? myChallengerStatsForUploadGenre.length : challengerSlotCount;
   const uploadGenreRemainingPublicSlots = Math.max(0, LISTEN_BAR_GENRE_POOL_LIMIT - uploadGenreStats.public);
-  const uploadGenreDisplayName = uploadGenre ? genreDisplayLabel(uploadGenre, isZh) : "";
+  const uploadGenreDisplayName = uploadGenre ? genreDisplayLabel(uploadGenre, lang) : "";
   const uploadPhaseNoticeTitle = creatorGenrePublicLimitFull
       ? (isZh ? "此類公播已嚴重超標" : "Genre Public Limit Exceeded")
       : creatorDailyUploadLimitFull
@@ -1667,16 +1703,14 @@ export default function ListenBarPage() {
 
   const progress = Math.min(100, (elapsed / Math.max(1, trackDuration)) * 100);
   const radioStatusLine = useMemo(() => {
-    if (playlistStatus === "loading") return isZh ? "電台正在接上訊號..." : "Tuning the Station Signal...";
+    if (playlistStatus === "loading") return barText(lang, "電台正在接上訊號...", "Tuning the Station Signal...", "放送信号に接続しています…", "방송 신호에 연결하는 중…");
     if (nextCommunityTrack) {
-      return isZh
-        ? "插播已排入，下一首上場。"
-        : "Creator Track Queued. Next up.";
+      return barText(lang, "插播已排入，下一首上場。", "Creator Track Queued. Next up.", "投稿曲をキューに追加しました。次に再生します。", "업로드 곡이 대기열에 추가되었습니다. 다음 곡으로 재생합니다.");
     }
     return playlistStatus === "database"
       ? ""
-      : (isZh ? "公播準備中。" : "Station Warming Up.");
-  }, [isZh, nextCommunityTrack, playlistStatus]);
+      : barText(lang, "公播準備中。", "Station Warming Up.", "放送準備中です。", "방송 준비 중입니다.");
+  }, [lang, nextCommunityTrack, playlistStatus]);
 
   const localizedMessages = useMemo(
     () => messages.map((message) => localizeListenBarMessage(message, isZh)),
@@ -1688,7 +1722,9 @@ export default function ListenBarPage() {
   };
 
   const currentReactions = reactionCounts[nowTrack.id] ?? emptyReactions;
-  const nowTrackTitle = !isZh && nowTrack.id === EMPTY_LISTEN_BAR_TRACK.id ? "Waiting for Creator Uploads" : nowTrack.title;
+  const nowTrackTitle = nowTrack.id === EMPTY_LISTEN_BAR_TRACK.id
+    ? barText(lang, nowTrack.title, "Waiting for Creator Uploads", "クリエイターの投稿を待っています", "크리에이터 업로드를 기다리는 중")
+    : nowTrack.title;
   const nowTrackTitleClass = nowPlayingTitleClass(nowTrackTitle);
   const currentHeartTotal = Math.max(0, currentReactions.heart ?? 0);
   const currentHeartSent = myReactions[nowTrack.id] === "heart";
@@ -1700,7 +1736,8 @@ export default function ListenBarPage() {
       return;
     }
     if (!userId) {
-      setTrackCommentError(isZh ? "請先登入再投票；聽歌不需要登入。" : "Sign in to vote; listening does not require an account.");
+      setTrackCommentError("");
+      setAuthPromptOpen(true);
       return;
     }
     setTrackCommentError("");
@@ -2362,7 +2399,9 @@ export default function ListenBarPage() {
   const nowCoverUrl = nowTrack.coverUrl?.trim() || DEFAULT_LISTEN_BAR_COVER;
   const nowPresenterName = nowTrack.queuedBy?.trim() || nowTrack.artist;
   const rawPresenterRank = nowTrack.queuedByRank?.trim() || "";
-  const nowPresenterRank = !isZh && rawPresenterRank === "創作者投稿" ? "Creator Submission" : rawPresenterRank;
+  const nowPresenterRank = rawPresenterRank === "創作者投稿"
+    ? barText(lang, "創作者投稿", "Creator Submission", "クリエイター投稿", "크리에이터 업로드")
+    : rawPresenterRank;
   const nowSurvivalDay = nowTrack.source === "community" && nowTrack.barPhase === "public"
     ? listenBarPublicDisplayDay(nowTrack.promotedAt, nowTrack.createdAt, Date.now(), survivalStartedAt)
     : 0;
@@ -2378,10 +2417,10 @@ export default function ListenBarPage() {
     });
     return index;
   }, [elapsed, lyricLines]);
-  const nowAlbumLabel = albumDisplayLabel(nowTrack.album ?? "", isZh);
-  const nowGenreLabel = genreDisplayLabel(nowTrack.genre, isZh);
-  const nowDescriptionLabel = descriptionDisplayLabel(nowTrack.description, isZh);
-  const nowAiToolLabel = aiToolDisplayLabel(nowTrack.tool, isZh);
+  const nowAlbumLabel = albumDisplayLabel(nowTrack.album ?? "", lang);
+  const nowGenreLabel = genreDisplayLabel(nowTrack.genre, lang);
+  const nowDescriptionLabel = descriptionDisplayLabel(nowTrack.description, lang);
+  const nowAiToolLabel = aiToolDisplayLabel(nowTrack.tool, lang);
   const nowYouTubeUrl = nowTrack.youtubeUrl?.trim() || "";
   const battleTickerText = battleTickerMessages.length > 0
     ? battleTickerMessages.join("   /   ")
@@ -2404,6 +2443,7 @@ export default function ListenBarPage() {
 
   return (
     <main className="aipo-stage-bg relative min-h-screen w-full overflow-x-hidden px-3 py-5 text-zinc-100 sm:px-5 lg:px-7">
+      <title>{pageTitle}</title>
       <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_18%_10%,rgba(255,106,0,0.3),transparent_30%),radial-gradient(circle_at_86%_18%,rgba(0,202,255,0.18),transparent_28%),linear-gradient(180deg,#080706_0%,#050505_46%,#090604_100%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.15] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:52px_52px]" />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_50%_0%,rgba(255,138,43,0.16),transparent_44%)]" />
@@ -2499,7 +2539,7 @@ export default function ListenBarPage() {
 
                 <div className="rounded-[1.35rem] border border-orange-300/14 bg-black/38 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                   <p className="text-xs font-black tracking-[0.18em] text-orange-300/75">
-                    {isZh ? "傷心字幕" : "HEARTBREAK LYRICS"}
+                    {barText(lang, "傷心字幕", "HEARTBREAK LYRICS", "HEARTBREAK 歌詞", "HEARTBREAK 가사")}
                   </p>
                   <div ref={lyricScrollRef} className="mt-3 h-48 overflow-y-auto rounded-2xl border border-white/8 bg-black/46 px-4 py-4 text-center md:h-64">
                     {lyricLines.length > 0 ? (
@@ -2521,7 +2561,7 @@ export default function ListenBarPage() {
                       </div>
                     ) : (
                       <p className="text-sm font-black text-zinc-500">
-                        {isZh ? "尚無歌詞，等創作者把心事補上。" : "No lyrics yet."}
+                        {barText(lang, "尚無歌詞，等創作者把心事補上。", "No lyrics yet.", "歌詞はまだありません。", "아직 가사가 없습니다.")}
                       </p>
                     )}
                   </div>
@@ -2551,7 +2591,7 @@ export default function ListenBarPage() {
                   <span>{nowAiToolLabel}</span>
                 </div>
                 <div className="mt-4 inline-flex max-w-full flex-wrap items-center gap-2 rounded-full border border-orange-300/20 bg-black/36 px-3 py-2 text-xs text-zinc-300">
-                  <span className="font-black text-orange-200">{isZh ? "播歌者" : "Host"}</span>
+                  <span className="font-black text-orange-200">{barText(lang, "播歌者", "Host", "ホスト", "호스트")}</span>
                   <span className="font-bold text-white">{nowPresenterName}</span>
                   {nowPresenterRank && (
                     <span className="rounded-full border border-cyan-200/25 bg-cyan-300/8 px-2 py-0.5 font-bold text-cyan-100">{nowPresenterRank}</span>
@@ -2563,12 +2603,12 @@ export default function ListenBarPage() {
                       rel="noopener noreferrer"
                       className="rounded-full border border-red-300/35 bg-red-500/12 px-2 py-0.5 font-bold text-red-100 transition hover:border-red-200 hover:bg-red-500/20"
                     >
-                      {isZh ? "看 MV" : "Watch MV"}
+                      {barText(lang, "看 MV", "Watch MV", "MVを見る", "MV 보기")}
                     </a>
                   )}
                   {nowSurvivalDay > 0 && (
                     <span className="rounded-full border border-orange-300/25 bg-orange-500/8 px-2 py-0.5 font-bold text-orange-100">
-                      {isZh ? `公播 Day ${nowSurvivalDay}` : `Public Day ${nowSurvivalDay}`}
+                      {barText(lang, `公播 Day ${nowSurvivalDay}`, `Public Day ${nowSurvivalDay}`, `公開放送 ${nowSurvivalDay}日目`, `공개 방송 ${nowSurvivalDay}일차`)}
                     </span>
                   )}
                 </div>
@@ -2607,13 +2647,13 @@ export default function ListenBarPage() {
                     onClick={() => resumeRadioPlayback(false)}
                     className="mt-4 inline-flex items-center justify-center rounded-full border border-orange-300/35 bg-orange-500 px-4 py-2 text-xs font-black text-black shadow-[0_0_22px_rgba(255,106,0,0.18)] transition hover:bg-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
                   >
-                    {isZh ? "點一下恢復播放" : "Tap to Resume Playback"}
+                    {barText(lang, "點一下恢復播放", "Tap to Resume Playback", "タップして再生を再開", "눌러서 재생 다시 시작")}
                   </button>
                 )}
 
                 <div className="mt-5 grid gap-2 rounded-2xl border border-white/10 bg-black/35 px-4 py-3 sm:grid-cols-[auto_1fr_auto] sm:items-center">
                   <span className="text-xs font-bold text-zinc-500">
-                    {isZh ? "公播音量" : "BAR VOLUME"}
+                    {barText(lang, "公播音量", "BAR VOLUME", "放送音量", "방송 볼륨")}
                   </span>
                   <input
                     type="range"
@@ -2630,7 +2670,7 @@ export default function ListenBarPage() {
                     onChange={(event) => {
                       setVolume(Number(event.target.value));
                     }}
-                    aria-label={isZh ? "公播音量" : "Bar Volume"}
+                    aria-label={barText(lang, "公播音量", "Bar Volume", "放送音量", "방송 볼륨")}
                     className="h-2 w-full accent-orange-500"
                   />
                   <span className="text-xs font-black tabular-nums text-orange-200">
@@ -2638,25 +2678,25 @@ export default function ListenBarPage() {
                   </span>
                   {volumeControlFallback && (
                     <span className="text-[11px] font-bold text-zinc-400 sm:col-span-3">
-                      {isZh ? "此手機請搭配側邊音量鍵調整。" : "Use your phone's volume buttons on this browser."}
+                      {barText(lang, "此手機請搭配側邊音量鍵調整。", "Use your phone's volume buttons on this browser.", "このブラウザでは端末の音量ボタンも使って調整してください。", "이 브라우저에서는 휴대폰 볼륨 버튼도 함께 사용해 주세요.")}
                     </span>
                   )}
                 </div>
                 <div className="mt-3 rounded-2xl border border-white/10 bg-black/35 px-4 py-4">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <span className="text-xs font-black text-zinc-500">
-                      {isZh ? "聽眾反應" : "REACTIONS"}
+                      {barText(lang, "聽眾反應", "REACTIONS", "リスナーの反応", "청취자 반응")}
                     </span>
                     <span className="text-xs font-bold text-orange-100/70">
-                      {isZh ? "每帳號每天每首歌保留 1 顆有效愛心；再按一次即可取消。" : "One active Heart per account and track each day. Tap again to cancel."}
+                      {barText(lang, "每帳號每天每首歌保留 1 顆有效愛心；再按一次即可取消。", "One active Heart per account and track each day. Tap again to cancel.", "1アカウントにつき、各曲へ1日1件の有効なHeartを送れます。もう一度押すと解除できます。", "계정당 곡별로 하루 1개의 유효 Heart를 보낼 수 있습니다. 다시 누르면 취소됩니다.")}
                     </span>
                   </div>
                   <div className="grid gap-3 rounded-2xl border border-orange-300/18 bg-orange-500/8 p-3 sm:grid-cols-[auto_1fr] sm:items-center">
                     <button
                       type="button"
                       onClick={() => handleReaction("heart")}
-                      aria-label={currentHeartSent ? (isZh ? "取消愛心與收藏" : "Remove Heart and saved track") : isZh ? "送出愛心支持" : "Send a heart"}
-                      title={currentHeartSent ? (isZh ? "再按一次取消愛心與收藏" : "Tap again to remove Heart and saved track") : isZh ? "送出愛心支持" : "Send a heart"}
+                      aria-label={currentHeartSent ? barText(lang, "取消愛心與收藏", "Remove Heart and saved track", "Heartと保存を解除", "Heart와 저장 취소") : barText(lang, "送出愛心支持", "Send a heart", "Heartを送る", "Heart 보내기")}
+                      title={currentHeartSent ? barText(lang, "再按一次取消愛心與收藏", "Tap again to remove Heart and saved track", "もう一度押すとHeartと保存を解除します", "다시 누르면 Heart와 저장이 취소됩니다") : barText(lang, "送出愛心支持", "Send a heart", "Heartを送る", "Heart 보내기")}
                       className={`flex h-24 min-w-32 items-center justify-center gap-3 rounded-2xl border px-5 text-3xl font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 ${
                         currentHeartSent
                           ? "border-rose-200/60 bg-rose-500/18 text-rose-50 shadow-[0_0_30px_rgba(244,63,94,0.22)] hover:border-rose-100/75"
@@ -2668,19 +2708,17 @@ export default function ListenBarPage() {
                     </button>
                     <div className="min-w-0">
                       <p className="text-sm font-black leading-6 text-orange-50">
-                        {isZh ? "給他一個大大的愛心表達你的支持" : "Give this track a big heart to show support"}
+                        {barText(lang, "給他一個大大的愛心表達你的支持", "Give this track a big heart to show support", "大きなHeartでこの曲を応援しよう", "큰 Heart로 이 곡을 응원해 주세요")}
                       </p>
                       <p className="mt-1 text-xs font-bold leading-5 text-orange-100/70">
-                        {isZh
-                          ? "愛心會同步加入收藏；再按一次會取消愛心與收藏。"
-                          : "A Heart also saves the track. Tap it again to remove both."}
+                        {barText(lang, "愛心會同步加入收藏；再按一次會取消愛心與收藏。", "A Heart also saves the track. Tap it again to remove both.", "Heartを送ると曲も保存されます。もう一度押すと両方解除できます。", "Heart를 보내면 곡도 저장됩니다. 다시 누르면 둘 다 취소됩니다.")}
                       </p>
                     </div>
                   </div>
                   <form onSubmit={handleTrackCommentSubmit} className="mt-3 rounded-xl border border-orange-200/18 bg-orange-300/[0.055] p-3">
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-xs font-black text-orange-100">
-                        {isZh ? "這首歌的傷心評論" : "Track Comments"}
+                        {barText(lang, "這首歌的傷心評論", "Track Comments", "この曲へのコメント", "이 곡의 댓글")}
                       </p>
                     </div>
                     <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
@@ -2688,7 +2726,7 @@ export default function ListenBarPage() {
                         value={trackCommentInput}
                         onChange={(event) => setTrackCommentInput(event.target.value)}
                         maxLength={280}
-                        placeholder={isZh ? "留下你對這首歌的評論..." : "Comment on this song..."}
+                        placeholder={barText(lang, "留下你對這首歌的評論...", "Comment on this song...", "この曲へのコメント…", "이 곡에 댓글 남기기…")}
                         className="h-11 rounded-full border border-white/10 bg-black/62 px-4 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
                       />
                       <button
@@ -2696,7 +2734,7 @@ export default function ListenBarPage() {
                         disabled={trackCommentBusy || !trackCommentInput.trim()}
                         className="h-11 rounded-full bg-orange-500 px-5 text-xs font-black text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:bg-white/[0.08] disabled:text-zinc-500"
                       >
-                        {trackCommentBusy ? (isZh ? "送出中" : "Sending") : (isZh ? "送出" : "Send")}
+                        {trackCommentBusy ? barText(lang, "送出中", "Sending", "送信中", "전송 중") : barText(lang, "送出", "Send", "送信", "보내기")}
                       </button>
                     </div>
                     {trackCommentError && <p className="mt-2 text-xs font-bold text-red-200">{trackCommentError}</p>}
@@ -2726,7 +2764,7 @@ export default function ListenBarPage() {
               <div className="relative flex flex-wrap items-end justify-between gap-3 border-b border-white/8 px-4 py-3">
                 <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1">
                   <p className="text-[11px] font-black uppercase tracking-[0.28em] text-cyan-200/70">
-                    SAD SONG QUEUE
+                    {barText(lang, "傷心歌單", "SAD SONG QUEUE", "次の曲", "다음 곡")}
                   </p>
                   <h2 className="text-[clamp(1.55rem,8vw,2.9rem)] font-black leading-none text-white sm:whitespace-nowrap">
                     {upcomingHeartbreakerTracks.length > 0
@@ -2739,7 +2777,9 @@ export default function ListenBarPage() {
                     title={selectedGenreShareTitle}
                     text={selectedGenreShareText}
                     url={selectedGenreShareUrl}
-                    label={selectedPlaybackGenre === "all" ? (isZh ? "分享公播" : "Share All") : (isZh ? "分享此類" : "Share Genre")}
+                    label={selectedPlaybackGenre === "all"
+                      ? barText(lang, "分享公播", "Share All", "放送全体をシェア", "전체 방송 공유")
+                      : barText(lang, "分享此類", "Share Genre", "このジャンルをシェア", "이 장르 공유")}
                     copiedLabel={listenCopy.copied}
                     className="min-h-10 !border-rose-200/72 !bg-[linear-gradient(180deg,rgba(164,24,42,0.8)_0%,rgba(96,18,30,0.76)_100%)] px-3 py-1 text-[11px] !text-white !shadow-[0_0_30px_rgba(255,49,80,0.36),inset_0_1px_0_rgba(255,255,255,0.11)] ring-1 ring-rose-100/20 hover:!border-rose-100/90 hover:!bg-[linear-gradient(180deg,rgba(202,32,58,0.9)_0%,rgba(122,20,36,0.84)_100%)] hover:!shadow-[0_0_42px_rgba(255,49,80,0.48),inset_0_1px_0_rgba(255,255,255,0.15)]"
                   />
@@ -2763,7 +2803,7 @@ export default function ListenBarPage() {
                     }`}
                   >
                     <span className="block truncate text-[10px] font-black uppercase tracking-[0.16em]">
-                      {isZh ? "公播" : "All"}
+                      {barText(lang, "公播", "All", "すべて", "전체")}
                     </span>
                     <span className="mt-0.5 block text-xs font-black tabular-nums">
                       {publicPoolTracks.length}/{LISTEN_BAR_TOTAL_ROTATION_LIMIT}
@@ -2829,9 +2869,13 @@ export default function ListenBarPage() {
                                 </p>
                                 {track.barPhase === "public" ? (
                                   <p className="mt-1 text-[11px] font-black text-orange-100/80">
-                                    {isZh
-                                      ? `公播 Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null)}`
-                                      : `Public Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null)}`}
+                                    {barText(
+                                      lang,
+                                      `公播 Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null)}`,
+                                      `Public Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null)}`,
+                                      `公開放送 ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null)}日目`,
+                                      `공개 방송 ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null)}일차`,
+                                    )}
                                   </p>
                                 ) : (
                                   <p className="mt-1 text-[11px] font-black text-cyan-100/80">
@@ -2841,7 +2885,7 @@ export default function ListenBarPage() {
                               </div>
                               {startIndex + index === 0 && (
                                 <span className="hidden rounded-full border border-cyan-200/25 bg-cyan-300/8 px-2.5 py-1 text-[10px] font-black text-cyan-100 sm:inline-flex">
-                                  {isZh ? "即將插播" : "Next"}
+                                  {barText(lang, "即將插播", "Next", "次に再生", "다음 재생")}
                                 </span>
                               )}
                             </div>
@@ -2897,14 +2941,14 @@ export default function ListenBarPage() {
             <div className="flex min-h-[34rem] min-w-0 flex-col rounded-[1.6rem] border border-cyan-200/14 bg-black/68 p-4 shadow-[0_28px_90px_rgba(0,0,0,0.48),0_0_40px_rgba(0,202,255,0.06)] backdrop-blur md:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-3xl font-black text-white">{isZh ? "傷心的故事傾訴留言" : "Bar Heartbreak Stories"}</h2>
+                  <h2 className="text-3xl font-black text-white">{barText(lang, "傷心的故事傾訴留言", "Bar Heartbreak Stories", "Bar Heartbreakの物語", "Bar Heartbreak 이야기")}</h2>
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-zinc-500">
-                    {isZh ? `${localizedMessages.length} 則留言` : `${localizedMessages.length} Messages`}
+                    {barText(lang, `${localizedMessages.length} 則留言`, `${localizedMessages.length} Messages`, `${localizedMessages.length}件のメッセージ`, `메시지 ${localizedMessages.length}개`)}
                   </p>
                   <p className="mt-1 text-xs font-black text-orange-200/80">{listenBarPresenceLabel}</p>
-                  <p className="mt-0.5 text-[11px] font-bold text-zinc-600">{isZh ? "留言保留 12H" : "Messages Keep 12H"}</p>
+                  <p className="mt-0.5 text-[11px] font-bold text-zinc-600">{barText(lang, "留言保留 12H", "Messages Keep 12H", "メッセージは12時間保存", "메시지는 12시간 보관")}</p>
                 </div>
               </div>
               <SafetyNotice kind="chat" compact className="mb-3" />
@@ -2913,7 +2957,7 @@ export default function ListenBarPage() {
                 <div className="grid gap-2">
                   {localizedMessages.length === 0 ? (
                     <div className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-8 text-center text-sm font-bold text-zinc-500">
-                      {isZh ? "還沒有人留言，說說你的傷心故事。" : "No Messages Yet. Share your Bar Heartbreak story."}
+                      {barText(lang, "還沒有人留言，說說你的傷心故事。", "No Messages Yet. Share your Bar Heartbreak story.", "まだメッセージはありません。あなたのBar Heartbreakの物語を聞かせてください。", "아직 메시지가 없습니다. 당신의 Bar Heartbreak 이야기를 들려주세요.")}
                     </div>
                   ) : (
                     localizedMessages.map((msg) => (
@@ -2936,7 +2980,7 @@ export default function ListenBarPage() {
                   ref={chatInputRef}
                   value={chatInput}
                   onChange={(event) => setChatInput(event.target.value)}
-                  placeholder={isZh ? "說說你的傷心故事..." : "Share your Bar Heartbreak story..."}
+                  placeholder={barText(lang, "說說你的傷心故事...", "Share your Bar Heartbreak story...", "Bar Heartbreakの物語を聞かせて…", "Bar Heartbreak 이야기 남기기…")}
                   className="h-14 rounded-full border border-orange-200/35 bg-black/70 px-5 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/20"
                 />
                 <button
@@ -2944,7 +2988,7 @@ export default function ListenBarPage() {
                   className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-orange-500 px-7 text-sm font-black text-black transition hover:bg-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
                 >
                   <SendIcon />
-                  {isZh ? "發送" : "Send"}
+                  {barText(lang, "發送", "Send", "送信", "보내기")}
                 </button>
               </form>
               {chatError && <p className="mt-2 text-xs font-bold text-red-200">{chatError}</p>}
@@ -2955,12 +2999,10 @@ export default function ListenBarPage() {
                 <div>
                   <p className="text-xs uppercase tracking-[0.28em] text-orange-300/70">PLAY REQUEST</p>
                   <h2 className="mt-1 text-2xl font-black text-white">
-                    {isZh ? "我要播歌！" : "Play My Song"}
+                    {listenCopy.playMySong}
                   </h2>
                   <p className="mt-2 max-w-xl text-xs leading-5 text-zinc-500">
-                    {isZh
-                      ? "上傳後不打斷現在播放；這首播完優先插播新投稿。每 1 小時最多 8 首，其餘排到下一小時。"
-                      : "Uploads do not interrupt the current song; new submissions get priority next. Up to 8 air per 1-hour batch, with overflow pushed to the next hour."}
+                    {barText(lang, "上傳後不打斷現在播放；這首播完優先插播新投稿。每 1 小時最多 8 首，其餘排到下一小時。", "Uploads do not interrupt the current song; new submissions get priority next. Up to 8 air per 1-hour batch, with overflow pushed to the next hour.", "投稿しても現在の再生は中断されません。次の枠で新しい投稿が優先され、1時間に最大8曲、それ以降は次の時間帯へ送られます。", "업로드해도 현재 재생은 중단되지 않습니다. 새 업로드는 다음 순서에서 우선 재생되며, 시간당 최대 8곡 이후에는 다음 시간대로 넘어갑니다.")}
                   </p>
                 </div>
                 {visitorAvatarUrl && (
@@ -2992,16 +3034,26 @@ export default function ListenBarPage() {
                   <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.07),transparent_36%,rgba(255,255,255,0.025))]" />
                   <span className="relative z-10 flex w-full items-center justify-between gap-3">
                     <span className="min-w-0">
-                      <span className="block text-[11px] font-black uppercase tracking-[0.22em] text-orange-200/75">AUDIO FILE</span>
+                      <span className="block text-[11px] font-black uppercase tracking-[0.22em] text-orange-200/75">
+                        {barText(lang, "音訊檔案", "AUDIO FILE", "音声ファイル", "오디오 파일")}
+                      </span>
                       <span className="mt-1 block truncate text-lg font-black leading-tight text-white">
-                        {publicAudioFile?.name ?? (isZh ? `音檔 MP3 / M4A / AAC / OGG，上限 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}` : `MP3 / M4A / AAC / OGG, max ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}`)}
+                        {publicAudioFile?.name ?? barText(
+                          lang,
+                          `音檔 MP3 / M4A / AAC / OGG，上限 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}`,
+                          `MP3 / M4A / AAC / OGG, max ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}`,
+                          `MP3 / M4A / AAC / OGG、最大 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}`,
+                          `MP3 / M4A / AAC / OGG, 최대 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}`,
+                        )}
                       </span>
                       <span className="mt-1 block text-xs text-zinc-400">
-                        {isZh ? "點一下選歌，自動偵測歌名" : "Tap to Choose; Title Auto-Detects"}
+                        {barText(lang, "點一下選歌，自動偵測歌名", "Tap to choose; title auto-detects", "タップして選曲すると曲名を自動検出します", "눌러서 곡을 선택하면 제목을 자동 감지합니다")}
                       </span>
                     </span>
                     <span className={`shrink-0 rounded-full border px-3 py-1 text-xs font-black ${publicAudioFile ? "border-cyan-200/35 bg-cyan-300/10 text-cyan-100" : "border-orange-200/35 bg-black/30 text-orange-100"}`}>
-                      {publicAudioFile ? (isZh ? "已選取" : "Selected") : (isZh ? "必填" : "Required")}
+                      {publicAudioFile
+                        ? barText(lang, "已選取", "Selected", "選択済み", "선택됨")
+                        : barText(lang, "必填", "Required", "必須", "필수")}
                     </span>
                   </span>
                   <input type="file" accept={LISTEN_BAR_AUDIO_UPLOAD_ACCEPT} onChange={handlePublicAudioChange} className="hidden" />
@@ -3011,7 +3063,7 @@ export default function ListenBarPage() {
                   <input
                     value={publicUploadForm.title}
                     onChange={(event) => setPublicUploadForm((current) => ({ ...current, title: event.target.value }))}
-                    placeholder={isZh ? "歌曲名稱" : "Track Title"}
+                    placeholder={barText(lang, "歌曲名稱", "Track Title", "曲名", "곡 제목")}
                     maxLength={80}
                     required
                     className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
@@ -3022,7 +3074,7 @@ export default function ListenBarPage() {
                       ...current,
                       artist: limitListenBarDisplayText(event.target.value, LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
                     }))}
-                    placeholder={isZh ? "創作者名稱（12字內）" : "Creator Name (24 chars max)"}
+                    placeholder={barText(lang, "創作者名稱（12字內）", "Creator Name (24 chars max)", "クリエイター名（24文字以内）", "크리에이터 이름(24자 이내)")}
                     maxLength={LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS}
                     title={listenBarShortFieldHint(isZh)}
                     className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
@@ -3033,7 +3085,7 @@ export default function ListenBarPage() {
                       ...current,
                       aiTool: limitListenBarDisplayText(event.target.value, LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
                     }))}
-                    placeholder={isZh ? "AI 工具（12字內）" : "AI Tool (24 chars max)"}
+                    placeholder={barText(lang, "AI 工具（12字內）", "AI Tool (24 chars max)", "AIツール（24文字以内）", "AI 도구(24자 이내)")}
                     maxLength={LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS}
                     title={listenBarShortFieldHint(isZh)}
                     className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
@@ -3058,7 +3110,7 @@ export default function ListenBarPage() {
                       ...current,
                       album: limitListenBarDisplayText(event.target.value, LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
                     }))}
-                    placeholder={isZh ? "專輯名稱（12字內，選填）" : "Album Name (24 chars max)"}
+                    placeholder={barText(lang, "專輯名稱（12字內，選填）", "Album Name (24 chars max)", "アルバム名（任意・24文字以内）", "앨범명(선택, 24자 이내)")}
                     maxLength={LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS}
                     title={listenBarShortFieldHint(isZh)}
                     className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
@@ -3069,7 +3121,7 @@ export default function ListenBarPage() {
                       ...current,
                       description: limitListenBarDisplayText(event.target.value, LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS),
                     }))}
-                    placeholder={isZh ? "一句歌曲介紹（16字內，選填）" : "One-Line Description (32 chars max)"}
+                    placeholder={barText(lang, "一句歌曲介紹（16字內，選填）", "One-Line Description (32 chars max)", "曲の紹介（任意・32文字以内）", "한 줄 곡 소개(선택, 32자 이내)")}
                     maxLength={LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS}
                     title={listenBarDescriptionHint(isZh)}
                     className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
@@ -3078,7 +3130,7 @@ export default function ListenBarPage() {
                     type="url"
                     value={publicUploadForm.youtubeUrl}
                     onChange={(event) => setPublicUploadForm((current) => ({ ...current, youtubeUrl: event.target.value.slice(0, 300) }))}
-                    placeholder={isZh ? "YouTube MV 連結（選填）" : "YouTube MV Link (optional)"}
+                    placeholder={barText(lang, "YouTube MV 連結（選填）", "YouTube MV Link (optional)", "YouTube MVリンク（任意）", "YouTube MV 링크(선택)")}
                     maxLength={300}
                     className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18 sm:col-span-2"
                   />
@@ -3118,7 +3170,7 @@ export default function ListenBarPage() {
 
                 <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
                   <label className="flex h-11 cursor-pointer items-center justify-center rounded-xl border border-cyan-200/18 bg-cyan-300/[0.055] px-3 text-xs font-black text-cyan-100 transition hover:border-cyan-100/50">
-                    {publicCoverFile?.name ?? (isZh ? "封面可選" : "Optional Cover")}
+                    {publicCoverFile?.name ?? barText(lang, "封面可選", "Optional Cover", "カバー画像（任意）", "커버 이미지(선택)")}
                     <input
                       type="file"
                       accept={IMAGE_UPLOAD_ACCEPT}
@@ -3127,7 +3179,7 @@ export default function ListenBarPage() {
                     />
                   </label>
                   <label className="flex h-11 cursor-pointer items-center justify-center rounded-xl border border-orange-300/24 bg-orange-500/10 px-3 text-xs font-black text-orange-100 transition hover:border-orange-200/70">
-                    {isZh ? "歌詞 .txt/.lrc" : "Lyrics"}
+                    {barText(lang, "歌詞 .txt/.lrc", "Lyrics .txt/.lrc", "歌詞 .txt/.lrc", "가사 .txt/.lrc")}
                     <input type="file" accept=".txt,.lrc,text/plain" onChange={handlePublicLyricsFileChange} className="hidden" />
                   </label>
                 </div>
@@ -3136,7 +3188,7 @@ export default function ListenBarPage() {
                   value={publicLyricsText}
                   onChange={(event) => setPublicLyricsText(event.target.value.slice(0, 12000))}
                   rows={3}
-                  placeholder={isZh ? "貼上歌詞，LRC 時間碼可同步播放..." : "Paste lyrics; LRC timestamps can sync..."}
+                  placeholder={barText(lang, "貼上歌詞，LRC 時間碼可同步播放...", "Paste lyrics; LRC timestamps can sync...", "歌詞を貼り付け。LRCタイムコードで同期できます…", "가사를 붙여 넣으세요. LRC 타임코드로 동기화할 수 있습니다…")}
                   className="min-h-20 w-full resize-y rounded-xl border border-white/10 bg-black/62 px-3 py-2 text-sm font-bold leading-6 text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
                 />
 
@@ -3146,14 +3198,14 @@ export default function ListenBarPage() {
                   className="h-12 rounded-xl bg-orange-500 px-5 text-sm font-black tracking-[0.12em] text-black shadow-[0_0_28px_rgba(255,106,0,0.24)] transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:border disabled:border-white/10 disabled:bg-white/[0.045] disabled:text-zinc-500 disabled:shadow-none"
                 >
                   {publicUploadBusy
-                    ? (isZh ? "上傳中..." : "Uploading...")
+                    ? barText(lang, "上傳中...", "Uploading...", "投稿中…", "업로드 중…")
                     : creatorGenrePublicLimitFull
-                      ? (isZh ? "此類須降到4首" : "Reduce Genre to 4")
+                      ? barText(lang, "此類須降到4首", "Reduce Genre to 4", "同ジャンルを4曲に減らす", "이 장르를 4곡으로 줄이기")
                       : creatorDailyUploadLimitFull
-                        ? (isZh ? "今日額度已滿" : "Daily Limit Used")
+                        ? barText(lang, "今日額度已滿", "Daily Limit Used", "本日の上限に到達", "오늘 한도 소진")
                         : challengerSlotsFull
-                          ? (isZh ? "挑戰席已滿" : "Seats Full")
-                      : (isZh ? "我要播歌！" : "Play My Song")}
+                          ? barText(lang, "挑戰席已滿", "Seats Full", "挑戦枠が満席", "도전 좌석 만석")
+                          : listenCopy.playMySong}
                 </button>
               </form>
             </div>
@@ -3164,14 +3216,14 @@ export default function ListenBarPage() {
           <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="text-[11px] font-black uppercase tracking-[0.28em] text-cyan-100/70">CHALLENGER POOL</p>
-              <h2 className="mt-1 text-2xl font-black text-white">{isZh ? "挑戰池" : "Challenger Pool"}</h2>
+              <h2 className="mt-1 text-2xl font-black text-white">{barText(lang, "挑戰池", "Challenger Pool", "チャレンジャープール", "챌린저 풀")}</h2>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full border border-orange-300/20 bg-orange-500/10 px-3 py-1 text-[11px] font-black text-orange-100">
-                {isZh ? `${challengerQueueTracks.length} 首正在挑戰` : `${challengerQueueTracks.length} Challengers`}
+                {barText(lang, `${challengerQueueTracks.length} 首正在挑戰`, `${challengerQueueTracks.length} Challengers`, `${challengerQueueTracks.length}曲が挑戦中`, `${challengerQueueTracks.length}곡 도전 중`)}
               </span>
               <span className="rounded-full border border-cyan-200/18 bg-cyan-300/8 px-3 py-1 text-[11px] font-black text-cyan-100">
-                {isZh ? `每批 1 小時最多 ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} 首新歌上公播` : `${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} new songs per 1-hour airplay batch`}
+                {barText(lang, `每批 1 小時最多 ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} 首新歌上公播`, `${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} new songs per 1-hour airplay batch`, `1時間の放送枠につき新曲は最大${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT}曲`, `1시간 방송 배치당 신곡 최대 ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT}곡`)}
               </span>
             </div>
           </div>
@@ -3185,7 +3237,7 @@ export default function ListenBarPage() {
                   <div className="min-w-0">
                     <p className="truncate text-sm font-black text-white" title={track.title}>{track.title}</p>
                     <p className="mt-1 truncate text-xs font-bold text-zinc-500">
-                      {track.artist} · {formatDuration(track.duration)} · {track.positiveReactionCount ?? 0} hearts
+                      {track.artist} · {formatDuration(track.duration)} · {track.positiveReactionCount ?? 0} {barText(lang, "愛心", "hearts", "Heart", "Heart")}
                     </p>
                     <p className="mt-1 text-[11px] font-black text-cyan-100/80">
                       {isZh ? `Challenger #${index + 1}` : `Challenger #${index + 1}`}
@@ -3196,7 +3248,7 @@ export default function ListenBarPage() {
             </div>
           ) : (
             <p className="rounded-xl border border-white/8 bg-black/35 px-4 py-5 text-sm font-bold text-zinc-500">
-              {isZh ? `目前沒有 Challenger，新投稿會優先排入挑戰池保護 ${LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS}H。` : `No Challengers yet. New uploads enter Challenger protection for ${LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS}H first.`}
+              {barText(lang, `目前沒有 Challenger，新投稿會優先排入挑戰池保護 ${LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS}H。`, `No Challengers yet. New uploads enter Challenger protection for ${LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS}H first.`, `現在チャレンジャーはいません。新規投稿は最初に${LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS}時間の保護枠へ入ります。`, `현재 챌린저가 없습니다. 새 업로드는 먼저 ${LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS}시간 보호 구간에 들어갑니다.`)}
             </p>
           )}
         </section>
@@ -3204,24 +3256,28 @@ export default function ListenBarPage() {
         <section className="grid min-w-0 gap-4 lg:grid-cols-[1.08fr_1.1fr_0.82fr]">
           <div className="min-w-0 rounded-[1.45rem] border border-orange-300/18 bg-black/58 px-4 py-4 shadow-[0_20px_58px_rgba(0,0,0,0.38)] backdrop-blur">
             <p className="text-[11px] font-black uppercase tracking-[0.24em] text-orange-200/75">
-              {isZh ? "公播規則" : "AIRPLAY RULES"}
+              {barText(lang, "公播規則", "AIRPLAY RULES", "放送ルール", "방송 규칙")}
             </p>
             <p className="mt-2 break-words text-sm font-bold leading-6 text-zinc-300 [overflow-wrap:anywhere]">
-              {isZh
-                ? `傷心酒吧不是排行榜，而是 AIPOGER 的 AI 音樂公播池與投稿入口。聽歌不需登入；留言、投票與投稿需登入。上傳後歌曲會進入分類輪播，也會出現在探索 AI 音樂。來訪者可選公播或指定類型播放；目前 ${LISTEN_BAR_GENRES.length} 種類型每類滿池 ${LISTEN_BAR_GENRE_POOL_LIMIT} 首，總公播池上限 ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} 首。未滿池的新投稿直接進同類公播池；滿池後才進 Challenger。Showtime 是 AIPOGER 認可作品庫，入選後作品離開公播與探索接戰。`
-                : `Bar Heartbreak is not a chart. It is AIPOGER's AI music airplay pool and submission entry. Listening is open; comments, votes, and uploads require sign-in. Uploaded tracks rotate by genre and also appear in Explore AI Music. Each of the ${LISTEN_BAR_GENRES.length} genres has a ${LISTEN_BAR_GENRE_POOL_LIMIT}-track public pool, for ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} public slots total. New submissions enter the same-genre public pool until that genre is full; after that they enter Challenger. Showtime is AIPOGER's certified catalog; certified works leave public airplay and Explore challenges.`}
+              {barText(
+                lang,
+                `傷心酒吧不是排行榜，而是 AIPOGER 的 AI 音樂公播池與投稿入口。上傳後歌曲會進入分類輪播，也會出現在探索 AI 音樂。來訪者可選公播或指定類型播放；目前 ${LISTEN_BAR_GENRES.length} 種類型每類滿池 ${LISTEN_BAR_GENRE_POOL_LIMIT} 首，總公播池上限 ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} 首。未滿池的新投稿直接進同類公播池；滿池後才進 Challenger。Showtime 是 AIPOGER 認可作品庫，入選後作品離開公播與探索接戰。`,
+                `Bar Heartbreak is not a chart. It is AIPOGER's AI music airplay pool and submission entry. Uploaded tracks rotate by genre and also appear in Explore AI Music. Each of the ${LISTEN_BAR_GENRES.length} genres has a ${LISTEN_BAR_GENRE_POOL_LIMIT}-track public pool, for ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} public slots total. New submissions enter the same-genre public pool until that genre is full; after that they enter Challenger. Showtime is AIPOGER's certified catalog; certified works leave public airplay and Explore challenges.`,
+                `Bar Heartbreakはランキングではなく、AIPOGERのAI音楽放送プール兼投稿入口です。投稿曲はジャンル別にローテーションされ、Explore AI Musicにも表示されます。${LISTEN_BAR_GENRES.length}ジャンルは各${LISTEN_BAR_GENRE_POOL_LIMIT}曲、合計${LISTEN_BAR_TOTAL_ROTATION_LIMIT}枠。空きがある間は同ジャンルの放送枠へ、満杯になるとChallengerへ進みます。Showtime認定作品は放送とExploreの挑戦枠を卒業します。`,
+                `Bar Heartbreak는 순위표가 아니라 AIPOGER의 AI 음악 방송 풀 겸 업로드 입구입니다. 업로드한 곡은 장르별로 순환 재생되며 Explore AI Music에도 표시됩니다. ${LISTEN_BAR_GENRES.length}개 장르는 각각 ${LISTEN_BAR_GENRE_POOL_LIMIT}곡, 총 ${LISTEN_BAR_TOTAL_ROTATION_LIMIT}개 공개 방송 슬롯을 가집니다. 빈자리가 있으면 같은 장르 방송 풀에, 가득 차면 Challenger에 들어갑니다. Showtime 인증 작품은 방송과 Explore 도전에서 졸업합니다.`,
+              )}
             </p>
           </div>
 
           <div className="min-w-0 rounded-[1.45rem] border border-cyan-200/14 bg-black/58 px-3 py-3 shadow-[0_20px_58px_rgba(0,0,0,0.38)] backdrop-blur sm:px-4 sm:py-4">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2 sm:mb-3 sm:gap-3">
-              <p className="text-xs uppercase tracking-[0.22em] text-cyan-100/70">{isZh ? "我的吧台歌曲" : "My Bar Tracks"}</p>
+              <p className="text-xs uppercase tracking-[0.22em] text-cyan-100/70">{barText(lang, "我的吧台歌曲", "My Bar Tracks", "マイ・バートラック", "내 바 트랙")}</p>
               <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
                 <span className="max-w-full rounded-full border border-orange-300/18 bg-orange-500/8 px-2 py-0.5 text-[11px] font-black text-orange-100">
                   {isZh ? `Challenger ${displayedChallengerSlotCount}/${challengerSlotLimit}` : `${displayedChallengerSlotCount}/${challengerSlotLimit} Challengers`}
                 </span>
                 <span className="max-w-full rounded-full border border-white/10 px-2 py-0.5 text-[11px] font-bold text-zinc-400">
-                  {isZh ? `${myPublicStats.length} 公播` : `${myPublicStats.length} public`}
+                  {barText(lang, `${myPublicStats.length} 公播`, `${myPublicStats.length} public`, `${myPublicStats.length}曲 放送中`, `${myPublicStats.length}곡 공개 방송`)}
                 </span>
               </div>
             </div>
@@ -3278,7 +3334,7 @@ export default function ListenBarPage() {
                               {isZh ? "看 MV" : "Watch MV"}
                             </a>
                           )}
-                          <span>{genreDisplayLabel(track.genre, isZh)}</span>
+                          <span>{genreDisplayLabel(track.genre, lang)}</span>
                           <span>{track.aiTool || "AI Music"}</span>
                         </p>
                       </div>
@@ -3358,15 +3414,15 @@ export default function ListenBarPage() {
             ) : (
               <p className="rounded-xl border border-white/8 bg-black/32 px-3 py-4 text-sm text-zinc-500">
                 {userId
-                  ? (isZh ? "尚未有 Challenger 或公播池歌曲。" : "No Challenger or Public Pool tracks yet.")
-                  : (isZh ? "登入後會顯示你的挑戰席與公播池歌曲。" : "Sign in to see your Challenger seats and Public Pool tracks.")}
+                  ? barText(lang, "尚未有 Challenger 或公播池歌曲。", "No Challenger or Public Pool tracks yet.", "Challengerまたは放送中の曲はまだありません。", "Challenger 또는 공개 방송 곡이 아직 없습니다.")
+                  : barText(lang, "你的投稿與挑戰紀錄會顯示在這裡。", "Your submissions and challenge record will appear here.", "投稿と挑戦の記録はここに表示されます。", "업로드와 도전 기록이 여기에 표시됩니다.")}
               </p>
             )}
           </div>
 
           <div className="relative min-w-0 overflow-hidden rounded-[1.45rem] border border-orange-300/18 bg-[radial-gradient(circle_at_50%_0%,rgba(255,106,0,0.16),transparent_48%),rgba(0,0,0,0.58)] px-4 py-4 shadow-[0_20px_58px_rgba(0,0,0,0.38)] backdrop-blur">
             <p className="text-[11px] font-black uppercase tracking-[0.24em] text-orange-200/75">
-              {isZh ? "公播歌池" : "AIRPLAY POOL"}
+              {barText(lang, "公播歌池", "AIRPLAY POOL", "放送プール", "방송 풀")}
             </p>
             <div className="mt-3 flex items-end gap-2">
               <span className="text-5xl font-black tabular-nums text-white">{publicPoolTracks.length}</span>
@@ -3375,9 +3431,13 @@ export default function ListenBarPage() {
               </span>
             </div>
             <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">
-              {isZh
-                ? `${totalCommunityTrackCount} 首投稿歌進入傷心酒吧；${publicPoolTracks.length} 首正在公播。${LISTEN_BAR_GENRES.length} 種類型各自滿池 ${LISTEN_BAR_GENRE_POOL_LIMIT} 首，先同類比較，再進 Showtime。`
-                : `${totalCommunityTrackCount} creator tracks are in Bar Heartbreak; ${publicPoolTracks.length} are on public airplay. Each genre fills its own ${LISTEN_BAR_GENRE_POOL_LIMIT}-track pool before survival starts.`}
+              {barText(
+                lang,
+                `${totalCommunityTrackCount} 首投稿歌進入傷心酒吧；${publicPoolTracks.length} 首正在公播。${LISTEN_BAR_GENRES.length} 種類型各自滿池 ${LISTEN_BAR_GENRE_POOL_LIMIT} 首，先同類比較，再進 Showtime。`,
+                `${totalCommunityTrackCount} creator tracks are in Bar Heartbreak; ${publicPoolTracks.length} are on public airplay. Each genre fills its own ${LISTEN_BAR_GENRE_POOL_LIMIT}-track pool before survival starts.`,
+                `${totalCommunityTrackCount}曲がBar Heartbreakに参加し、${publicPoolTracks.length}曲を放送中。${LISTEN_BAR_GENRES.length}ジャンルは各${LISTEN_BAR_GENRE_POOL_LIMIT}曲まで、同ジャンル内で競いShowtimeを目指します。`,
+                `${totalCommunityTrackCount}곡이 Bar Heartbreak에 참여했고 ${publicPoolTracks.length}곡이 공개 방송 중입니다. ${LISTEN_BAR_GENRES.length}개 장르는 각각 ${LISTEN_BAR_GENRE_POOL_LIMIT}곡까지 채운 뒤 같은 장르 안에서 Showtime을 향해 경쟁합니다.`,
+              )}
             </p>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
               <div
@@ -3388,6 +3448,13 @@ export default function ListenBarPage() {
           </div>
         </section>
       </div>
+      <AuthRequiredDialog
+        open={authPromptOpen}
+        kind="heart"
+        lang={lang}
+        nextPath={`/listen-bar?lang=${lang}${nowTrack.id ? `&track=${encodeURIComponent(nowTrack.id)}` : ""}`}
+        onClose={() => setAuthPromptOpen(false)}
+      />
     </main>
   );
 }

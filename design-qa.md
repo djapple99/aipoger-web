@@ -70,3 +70,55 @@ The normalized side-by-side image compares the chosen Frequency Editorial Gate c
 - [x] Console checked with no errors.
 
 final result: passed
+
+---
+
+# Member Gate + Four-Language Release — Design QA (2026-07-17)
+
+## Same-Viewport Comparison
+
+- Combined before/after input: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/member-language-fix-comparison-2026-07-17.png`
+- Bible before: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/playwright/member-language-qa-2026-07-17/01-bible-gate-zh-desktop.png`
+- Bible after: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/playwright/member-language-fix-2026-07-17/01-bible-zh-desktop.png`
+- Explore Japanese before: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/playwright/member-language-qa-2026-07-17/09-explore-ja-english-fallback.png`
+- Explore Japanese after: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/playwright/member-language-fix-2026-07-17/06-explore-ja-desktop.png`
+- Bar Japanese before: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/playwright/member-language-qa-2026-07-17/14-listen-bar-ja-partial.png`
+- Bar Japanese after: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/playwright/member-language-fix-2026-07-17/09-listen-bar-ja-desktop.png`
+- All comparison pairs: 1440 × 900, signed out, default first-view state.
+
+## Focused Evidence
+
+- Bible focused sign-in dialog: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/playwright/member-language-fix-2026-07-17/02-bible-signin-dialog-zh-desktop.png`
+- Explore Heart dialog: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/playwright/member-language-fix-2026-07-17/07-explore-heart-dialog-ja.png`
+- Bar Heart dialog: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/playwright/member-language-fix-2026-07-17/10-listen-bar-heart-dialog-ja.png`
+- Bible mobile: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/playwright/member-language-fix-2026-07-17/03-bible-zh-mobile.png`
+- Explore Korean mobile: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/playwright/member-language-fix-2026-07-17/08-explore-ko-mobile.png`
+- Bar Korean mobile: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/playwright/member-language-fix-2026-07-17/11-listen-bar-ko-mobile.png`
+
+## Findings And Fix History
+
+### Pass 1
+
+- P1: the Bible used a large sign-in headline as its primary product message. Replaced it with the normal practice value proposition and content preview; authentication now appears only in a focused system dialog when the visitor enters the protected Bible.
+- P1: Japanese and Korean surfaces fell back to English or mixed Chinese on Explore and Bar Heartbreak. Added localized navigation, filters, controls, upload fields, moderation labels, queue states, title metadata, and rule summaries.
+- P1: signed-out Heart presses used an inline failure instead of a clear conversion step. Added the shared focused dialog and preserved the exact track return URL.
+- P2: Bar Heartbreak's rule paragraph called out sign-in requirements inside the main editorial copy. Removed the auth sentence; protected actions now explain authentication at the moment of intent.
+- P2: Bar Heartbreak's browser title was reset by the App Router shell after hydration. Added a guarded head synchronization so Japanese and Korean titles remain correct.
+- P2: category/control labels were low-contrast or undersized in the earlier UI. Active states now use the established orange/cyan tokens and primary controls meet a 44 px touch target.
+
+### Pass 2
+
+- Compared the three old/new desktop pairs in one 2880 × 2700 visual input and inspected the combined image.
+- Bible normal value hero, Explore Japanese catalog, and Bar Japanese broadcast surface retain AIPOGER's existing black/orange/cyan system without clipping, accidental reflow, or washed-out inactive controls.
+- 390 × 844 checks report `scrollWidth === innerWidth`; desktop checks report 1440 px for both values.
+- Dynamic creator names, song titles, lyrics, taxonomy names, and AI tool names intentionally remain source-authored rather than being machine-translated.
+- No actionable P0, P1, or P2 visual findings remain.
+
+## Interaction And Accessibility Checks
+
+- Bible entry opens one dialog, traps focus, supports Escape/backdrop close, restores focus, and keeps the normal hero visible after dismissal.
+- Explore and Bar Heart dialogs use localized copy and return to the exact language and track through `/auth?next=...`.
+- Japanese/Korean document language, page title, mobile overflow, and visible 44 px controls were browser-verified.
+- Full typecheck, 207 tests, ESLint (0 errors), and production build passed.
+
+final result: passed

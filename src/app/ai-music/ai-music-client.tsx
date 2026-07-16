@@ -26,6 +26,7 @@ import {
 } from "@/lib/ai-music-challenge-rules";
 import { buildAiMusicExploreGenreLanes, type AiMusicExploreOrderTrack } from "@/lib/ai-music-explore-order";
 import { buildAiMusicHeatList, type AiMusicHeatTrack } from "@/lib/ai-music-heat";
+import AuthRequiredDialog from "@/components/auth-required-dialog";
 
 type TrackSource = "battle" | "bar";
 
@@ -87,6 +88,54 @@ type AiMusicApiTrackRow = ListenBarTrackRow & {
   ai_music_recent_official_audience_votes?: number | null;
   ai_music_recent_interaction_at?: string | null;
 };
+
+function localeText(lang: string, zh: string, en: string, ja: string, ko: string) {
+  if (lang === "ja") return ja;
+  if (lang === "ko") return ko;
+  if (lang === "en") return en;
+  return zh;
+}
+
+function exploreCopy(lang: string) {
+  return {
+    catalog: localeText(lang, "作品庫", "Catalog", "作品カタログ", "작품 카탈로그"),
+    works: localeText(lang, "音樂作品", "Music Works", "音楽作品", "음악 작품"),
+    subtitle: localeText(
+      lang,
+      "依照風格快速瀏覽作品，聽歌、送愛心，或向你喜歡的作品發起挑戰。",
+      "Browse tracks by style, listen, send hearts, or start a challenge from music you like.",
+      "ジャンルから作品を探して聴き、Heartを送り、気になる曲へ挑戦できます。",
+      "장르별로 작품을 듣고 Heart를 보내거나 마음에 드는 곡에 도전해 보세요.",
+    ),
+    uploadPrefix: localeText(lang, "上傳音樂讓大家看到你的作品，請從 ", "Upload your music so listeners can find it here. Submit through ", "作品を公開するには、", "내 음악을 공개하려면 "),
+    uploadLink: localeText(lang, "傷心酒吧投稿", "Bar Heartbreak", "Bar Heartbreakから投稿", "Bar Heartbreak에서 업로드"),
+    uploadSuffix: localeText(lang, "。", ".", "してください。", "하세요."),
+    navigation: localeText(lang, "探索 AI 音樂導覽", "Explore AI Music navigation", "AI音楽探索ナビゲーション", "AI 음악 탐색 내비게이션"),
+    browseWorks: localeText(lang, "作品瀏覽", "Works", "作品を見る", "작품 보기"),
+    bar: localeText(lang, "傷心酒吧", "Bar Heartbreak", "Bar Heartbreak", "Bar Heartbreak"),
+    browseMode: localeText(lang, "作品瀏覽方式", "Works browsing mode", "作品の表示方法", "작품 탐색 방식"),
+    byStyle: localeText(lang, "依類型", "By Style", "ジャンル別", "장르별"),
+    hotNow: localeText(lang, "正在升溫", "Hot Now", "注目上昇中", "인기 상승 중"),
+    guideLabel: localeText(lang, "這裡怎麼玩？", "How this works", "使い方を見る", "이용 방법"),
+    loading: localeText(lang, "正在載入 AI 音樂作品...", "Loading AI music works...", "AI音楽作品を読み込んでいます…", "AI 음악 작품을 불러오는 중…"),
+    loadError: localeText(lang, "作品載入失敗：", "Could not load works: ", "作品を読み込めませんでした：", "작품을 불러오지 못했습니다: "),
+    less: localeText(lang, "收合", "Show Less", "閉じる", "접기"),
+    more: localeText(lang, "看更多", "See More", "もっと見る", "더 보기"),
+    empty: localeText(lang, "這個類型目前還沒有可展示作品。", "No public works in this style yet.", "このジャンルには公開作品がまだありません。", "이 장르에는 아직 공개 작품이 없습니다."),
+    styleLane: localeText(lang, "風格分類", "Style Lane", "ジャンルレーン", "장르 레인"),
+    closeGuide: localeText(lang, "關閉說明", "Close guide", "ガイドを閉じる", "가이드 닫기"),
+    close: localeText(lang, "關閉", "Close", "閉じる", "닫기"),
+    guideTitle: localeText(lang, "探索怎麼玩？", "How Explore Works", "Exploreの使い方", "Explore 이용 방법"),
+    guideBrowseTitle: localeText(lang, "逛作品", "Browse works", "作品を探す", "작품 둘러보기"),
+    guideBrowseBody: localeText(lang, "依風格播放作品，喜歡就送愛心。", "Play works by style and send a Heart when a track lands.", "ジャンル別に再生し、気に入ったらHeartを送れます。", "장르별로 재생하고 마음에 들면 Heart를 보낼 수 있습니다."),
+    guideSaveTitle: localeText(lang, "收藏歌曲", "Save tracks", "曲を保存", "곡 저장"),
+    guideSaveBody: localeText(lang, "愛心會同步加入收藏；再按一次會取消。從右上角頭像進入 Profile 可整理收藏歌曲。", "A Heart also saves the track. Tap it again to remove it, or manage saved tracks from Profile through the avatar at the top right.", "Heartを送ると曲も保存されます。もう一度押すと解除でき、右上のアバターからProfileで整理できます。", "Heart를 보내면 곡도 저장됩니다. 다시 누르면 취소되며, 오른쪽 위 아바타의 Profile에서 정리할 수 있습니다."),
+    guideChallengeTitle: localeText(lang, "發起攻擂", "Start a challenge", "挑戦を始める", "도전 시작"),
+    guideChallengeBody: localeText(lang, "看到作品封面右上紅色「接戰」角標，表示原作者已準備 60s Drop 並開放攻擂。", "A red OPEN badge at a cover's top right means the creator has prepared a 60s Drop and opened the work to challenges.", "カバー右上の赤い「挑戦可」は、原作者が60秒のDropを用意して挑戦を受け付けている印です。", "커버 오른쪽 위의 빨간 ‘도전 가능’ 표시는 원작자가 60초 Drop을 준비해 도전을 받고 있다는 뜻입니다."),
+    guideRecordTitle: localeText(lang, "正式戰績", "Official results", "公式戦績", "공식 전적"),
+    guideRecordBody: localeText(lang, "至少 3 位非參賽者完成投票才成立。進入 Showtime 的作品只供播放、收藏與分享，不再接戰。", "A result needs at least three non-participant votes. Showtime works remain available to play, save, and share, but no longer accept challenges.", "参加者以外の投票が3票以上で公式戦績になります。Showtime入りした作品は再生・保存・共有のみで、挑戦受付は終了します。", "참가자가 아닌 사용자 3명 이상이 투표해야 공식 전적이 됩니다. Showtime 진출 곡은 재생·저장·공유만 가능하며 더 이상 도전을 받지 않습니다."),
+  };
+}
 
 function numberValue(value: unknown) {
   const number = Number(value);
@@ -200,13 +249,13 @@ async function tracksFromListenBar(lang: string) {
       });
       let statusLabel = aiMusicChallengeStatusLabel(challengeStatus, lang);
       if (challengeStatus === "open" && !hasDefenderDrop) {
-        statusLabel = lang === "zh" ? "尚未準備守擂 Drop" : "Defender Drop missing";
+        statusLabel = localeText(lang, "尚未準備守擂 Drop", "Defender Drop missing", "防衛Dropが未準備", "방어 Drop 미준비");
       }
       if (retiredFromExplore) {
-        statusLabel = lang === "zh" ? "8 場正式敗績退場" : "Retired after 8 official losses";
+        statusLabel = localeText(lang, "8 場正式敗績退場", "Retired after 8 official losses", "公式戦8敗で退出", "공식 8패로 퇴장");
       }
       if (isShowtimeCertified) {
-        statusLabel = lang === "zh" ? "Showtime 認證" : "Showtime certified";
+        statusLabel = localeText(lang, "Showtime 認證", "Showtime certified", "Showtime認定", "Showtime 인증");
       }
       const winRate = officialChallengeCount > 0 ? Math.round((officialWins / officialChallengeCount) * 100) : 0;
       return {
@@ -359,9 +408,15 @@ function TrackCover({ track, className = "" }: { track: AiMusicTrack; className?
   );
 }
 
-function ChallengeReadyBadge({ isZh }: { isZh: boolean }) {
-  const label = isZh ? "接戰" : "OPEN";
-  const title = isZh ? "原作者已準備 60s Drop，可接受攻擂。" : "The creator has a defender 60s Drop ready.";
+function ChallengeReadyBadge({ lang }: { lang: string }) {
+  const label = localeText(lang, "接戰", "OPEN", "挑戦可", "도전 가능");
+  const title = localeText(
+    lang,
+    "原作者已準備 60s Drop，可接受攻擂。",
+    "The creator has a defender 60s Drop ready.",
+    "原作者が60秒のDropを用意し、挑戦を受け付けています。",
+    "원작자가 60초 Drop을 준비해 도전을 받고 있습니다.",
+  );
   return (
     <span
       className="pointer-events-none absolute right-0 top-0 z-20 block h-14 w-14 overflow-hidden text-white"
@@ -375,13 +430,11 @@ function ChallengeReadyBadge({ isZh }: { isZh: boolean }) {
   );
 }
 
-function formatRecord(track: AiMusicTrack, isZh: boolean) {
+function formatRecord(track: AiMusicTrack, lang: string) {
   if (track.challengeCount <= 0) {
-    return isZh ? "尚未形成正式戰績" : "No official record yet";
+    return localeText(lang, "尚未形成正式戰績", "No official record yet", "公式戦績はまだありません", "아직 공식 전적이 없습니다");
   }
-  return isZh
-    ? `${track.wins}W / ${track.losses}L · ${track.winRate}%`
-    : `${track.wins}W / ${track.losses}L · ${track.winRate}%`;
+  return `${track.wins}W / ${track.losses}L · ${track.winRate}%`;
 }
 
 function defenseProgressValues(track: AiMusicTrack) {
@@ -391,25 +444,27 @@ function defenseProgressValues(track: AiMusicTrack) {
   return { successes, target, remaining };
 }
 
-function defenseProgressText(track: AiMusicTrack, isZh: boolean) {
+function defenseProgressText(track: AiMusicTrack, lang: string) {
   if (track.isShowtimeCertified) {
-    return isZh ? "已進入 Showtime，不再接受挑戰。" : "Certified in Showtime. Challenges are closed.";
+    return localeText(lang, "已進入 Showtime，不再接受挑戰。", "Certified in Showtime. Challenges are closed.", "Showtime認定済み。挑戦受付は終了しました。", "Showtime 인증 완료. 더 이상 도전을 받지 않습니다.");
   }
   const { successes, target, remaining } = defenseProgressValues(track);
-  return isZh
-    ? `守擂進度 ${successes} / ${target}，再守下 ${remaining} 場正式挑戰，進入 Showtime`
-    : `Defense progress ${successes} / ${target}. ${remaining} official defense wins to enter Showtime.`;
+  return localeText(
+    lang,
+    `守擂進度 ${successes} / ${target}，再守下 ${remaining} 場正式挑戰，進入 Showtime`,
+    `Defense progress ${successes} / ${target}. ${remaining} official defense wins to enter Showtime.`,
+    `防衛進捗 ${successes} / ${target}。あと${remaining}勝でShowtimeへ。`,
+    `방어 진행 ${successes} / ${target}. ${remaining}승을 더하면 Showtime에 진출합니다.`,
+  );
 }
 
-function defenseProgressShortText(track: AiMusicTrack, isZh: boolean) {
-  if (track.isShowtimeCertified) return isZh ? "Showtime 認證 · 不再接戰" : "Showtime certified · Closed";
+function defenseProgressShortText(track: AiMusicTrack, lang: string) {
+  if (track.isShowtimeCertified) return localeText(lang, "Showtime 認證 · 不再接戰", "Showtime certified · Closed", "Showtime認定 · 挑戦終了", "Showtime 인증 · 도전 종료");
   const { successes, target, remaining } = defenseProgressValues(track);
-  return isZh
-    ? `守擂 ${successes}/${target} · 再 ${remaining} 場進 Showtime`
-    : `Defense ${successes}/${target} · ${remaining} to Showtime`;
+  return localeText(lang, `守擂 ${successes}/${target} · 再 ${remaining} 場進 Showtime`, `Defense ${successes}/${target} · ${remaining} to Showtime`, `防衛 ${successes}/${target} · あと${remaining}勝`, `방어 ${successes}/${target} · ${remaining}승 남음`);
 }
 
-function TrackHud({ track, isZh }: { track: AiMusicTrack; isZh: boolean }) {
+function TrackHud({ track, lang }: { track: AiMusicTrack; lang: string }) {
   const hasOfficialRecord = track.challengeCount > 0;
   return (
     <div className="grid gap-2 rounded-md border border-white/14 bg-black/76 p-3 text-left shadow-[0_18px_44px_rgba(0,0,0,0.46)] backdrop-blur">
@@ -417,20 +472,20 @@ function TrackHud({ track, isZh }: { track: AiMusicTrack; isZh: boolean }) {
         Battle Record
       </p>
       <p className="text-sm font-black text-white">
-        {hasOfficialRecord ? formatRecord(track, isZh) : isZh ? "尚未形成正式戰績" : "No official record yet"}
+        {formatRecord(track, lang)}
       </p>
       <div className="grid grid-cols-2 gap-2 text-[11px] font-bold text-zinc-300">
-        <span>{isZh ? "有效投票" : "Valid votes"} {track.audienceVotes}</span>
-        <span>{isZh ? "挑戰" : "Battles"} {track.challengeCount}</span>
-        <span>{isZh ? "同類型勝率" : "Style win rate"} {track.winRate}%</span>
+        <span>{localeText(lang, "有效投票", "Valid votes", "有効投票", "유효 투표")} {track.audienceVotes}</span>
+        <span>{localeText(lang, "挑戰", "Battles", "挑戦", "도전")} {track.challengeCount}</span>
+        <span>{localeText(lang, "同類型勝率", "Style win rate", "同ジャンル勝率", "동일 장르 승률")} {track.winRate}%</span>
         <span>{track.statusLabel}</span>
       </div>
       <p className="rounded-sm border border-yellow-200/18 bg-yellow-300/[0.08] px-2.5 py-2 text-[11px] font-black leading-5 text-yellow-100">
-        {defenseProgressText(track, isZh)}
+        {defenseProgressText(track, lang)}
       </p>
       {!hasOfficialRecord ? (
         <p className="text-[11px] font-bold leading-5 text-zinc-500">
-          {isZh ? "正式戰績需要至少 3 位非參賽者投票。" : "Official records need at least 3 non-fighter votes."}
+          {localeText(lang, "正式戰績需要至少 3 位非參賽者投票。", "Official records need at least 3 non-fighter votes.", "公式戦績には参加者以外の投票が3票以上必要です。", "공식 전적은 참가자가 아닌 사용자의 투표가 3표 이상 필요합니다.")}
         </p>
       ) : null}
     </div>
@@ -469,12 +524,8 @@ function TrackCard({
   const heartCount = Math.max(0, track.heartCount);
   const showChallengeReadyBadge = track.openForChallenge && Boolean(track.audioUrl);
   const heartActionLabel = heartedToday
-    ? isZh
-      ? "取消愛心與收藏"
-      : "Remove Heart and saved track"
-    : isZh
-      ? "送出愛心支持"
-      : "Send a heart";
+    ? localeText(lang, "取消愛心與收藏", "Remove Heart and saved track", "Heartと保存を解除", "Heart와 저장 취소")
+    : localeText(lang, "送出愛心支持", "Send a heart", "Heartを送る", "Heart 보내기");
   return (
     <article id={`ai-music-work-${track.sourceId}`} className="group relative w-[12.5rem] shrink-0 snap-start overflow-hidden rounded-md border border-white/10 bg-black/54 shadow-[0_18px_54px_rgba(0,0,0,0.34)] backdrop-blur transition hover:border-orange-200/45 hover:bg-orange-500/[0.055] sm:w-full">
       <div className="relative aspect-square">
@@ -485,13 +536,13 @@ function TrackCard({
             {catalogLabel}
           </span>
         ) : null}
-        {showChallengeReadyBadge ? <ChallengeReadyBadge isZh={isZh} /> : null}
+        {showChallengeReadyBadge ? <ChallengeReadyBadge lang={lang} /> : null}
         <button
           type="button"
           onClick={() => onPlay(track)}
           disabled={!track.audioUrl}
           className="absolute bottom-3 left-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-black shadow-[0_0_26px_rgba(255,106,0,0.36)] transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
-          aria-label={isPlaying ? (isZh ? "暫停" : "Pause") : isZh ? `播放 ${track.title}` : `Play ${track.title}`}
+          aria-label={isPlaying ? localeText(lang, "暫停", "Pause", "一時停止", "일시정지") : localeText(lang, `播放 ${track.title}`, `Play ${track.title}`, `${track.title}を再生`, `${track.title} 재생`)}
         >
           <PlayIcon playing={isPlaying} />
         </button>
@@ -500,12 +551,12 @@ function TrackCard({
           onClick={() => onToggleExpand(track)}
           className="absolute bottom-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/18 bg-black/62 text-xs font-black text-white backdrop-blur transition hover:border-cyan-100/50 md:hidden"
           aria-expanded={isExpanded}
-          aria-label={isZh ? "顯示戰績資訊" : "Show record info"}
+          aria-label={localeText(lang, "顯示戰績資訊", "Show record info", "戦績情報を表示", "전적 정보 보기")}
         >
           i
         </button>
         <div className="pointer-events-none absolute inset-x-3 top-3 hidden translate-y-2 opacity-0 transition duration-200 group-hover:translate-y-0 group-hover:opacity-100 md:block">
-          <TrackHud track={track} isZh={isZh} />
+          <TrackHud track={track} lang={lang} />
         </div>
       </div>
 
@@ -529,11 +580,11 @@ function TrackCard({
             ? "border-cyan-100/28 bg-cyan-300/[0.08] text-cyan-50"
             : "border-yellow-200/18 bg-yellow-300/[0.08] text-yellow-100"
         }`}>
-          {defenseProgressShortText(track, isZh)}
+          {defenseProgressShortText(track, lang)}
         </p>
         {isExpanded ? (
           <div className="md:hidden">
-            <TrackHud track={track} isZh={isZh} />
+            <TrackHud track={track} lang={lang} />
           </div>
         ) : null}
         <div className="grid grid-cols-3 gap-1.5">
@@ -555,7 +606,7 @@ function TrackCard({
             type="button"
             onClick={() => onShare(track)}
             className="inline-flex min-h-9 items-center justify-center rounded-md border border-white/10 bg-white/[0.04] px-2 text-[11px] font-black text-zinc-300 transition hover:border-cyan-100/40 hover:text-white"
-            aria-label={isZh ? "分享" : "Share"}
+            aria-label={localeText(lang, "分享", "Share", "共有", "공유")}
           >
             <ShareIcon />
           </button>
@@ -564,17 +615,13 @@ function TrackCard({
               href={aiMusicChallengeHref(track, lang)}
               className="inline-flex min-h-9 items-center justify-center rounded-md border border-orange-200/38 bg-orange-500/15 px-2 text-[11px] font-black text-orange-50 transition hover:border-orange-100/65 hover:bg-orange-500/22"
             >
-              {isZh ? "攻擂" : "Challenge"}
+              {localeText(lang, "攻擂", "Challenge", "挑戦", "도전")}
             </Link>
           ) : (
             <span className="inline-flex min-h-9 items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-2 text-[11px] font-black text-zinc-600">
               {track.challengeStatus === "open" && !track.hasDefenderDrop
-                ? isZh
-                  ? "未備 Drop"
-                  : "No Drop"
-                : isZh
-                  ? "暫不接戰"
-                  : "Closed"}
+                  ? localeText(lang, "未備 Drop", "No Drop", "Drop未準備", "Drop 미준비")
+                  : localeText(lang, "暫不接戰", "Closed", "受付終了", "도전 종료")}
             </span>
           )}
         </div>
@@ -583,15 +630,15 @@ function TrackCard({
   );
 }
 
-function heatReason(track: AiMusicTrack, isZh: boolean) {
+function heatReason(track: AiMusicTrack, lang: string) {
   const signals: string[] = [];
   if (track.recentHeartSupporters > 0) {
-    signals.push(isZh ? `近 7 日 ${track.recentHeartSupporters} 人支持` : `${track.recentHeartSupporters} supporters in 7d`);
+    signals.push(localeText(lang, `近 7 日 ${track.recentHeartSupporters} 人支持`, `${track.recentHeartSupporters} supporters in 7d`, `直近7日で${track.recentHeartSupporters}人が支持`, `최근 7일 ${track.recentHeartSupporters}명 지지`));
   }
   if (track.recentOfficialAudienceVotes > 0) {
-    signals.push(isZh ? `正式 Battle ${track.recentOfficialAudienceVotes} 有效票` : `${track.recentOfficialAudienceVotes} official votes`);
+    signals.push(localeText(lang, `正式 Battle ${track.recentOfficialAudienceVotes} 有效票`, `${track.recentOfficialAudienceVotes} official votes`, `公式Battle 有効票${track.recentOfficialAudienceVotes}`, `공식 Battle 유효표 ${track.recentOfficialAudienceVotes}`));
   }
-  return signals.join(" · ") || (isZh ? "正在累積近期支持" : "Building recent support");
+  return signals.join(" · ") || localeText(lang, "正在累積近期支持", "Building recent support", "最近の支持を集計中", "최근 지지를 모으는 중");
 }
 
 function HeatList({
@@ -623,14 +670,14 @@ function HeatList({
 }) {
   const rows = buildAiMusicHeatList(tracks);
   return (
-    <section className="grid gap-3" aria-label={isZh ? "正在升溫作品" : "Hot Now works"}>
+    <section className="grid gap-3" aria-label={localeText(lang, "正在升溫作品", "Hot Now works", "注目上昇中の作品", "인기 상승 작품")}>
       <div className="flex flex-wrap items-end justify-between gap-3 border-b border-orange-200/18 pb-3">
         <div>
           <p className={`${fontRighteous.className} text-[10px] uppercase tracking-[0.2em] text-orange-100/68`}>AIPOGER HEAT</p>
-          <h2 className="mt-1 text-xl font-black text-white">{isZh ? "正在升溫" : "Hot Now"}</h2>
+          <h2 className="mt-1 text-xl font-black text-white">{localeText(lang, "正在升溫", "Hot Now", "注目上昇中", "인기 상승 중")}</h2>
         </div>
         <p className="max-w-sm text-xs font-bold leading-5 text-zinc-500">
-          {isZh ? "依近 7 日不同帳號支持與已成立正式 Battle 有效票排序。" : "Ordered by 7-day distinct supporters and official Battle audience votes."}
+          {localeText(lang, "依近 7 日不同帳號支持與已成立正式 Battle 有效票排序。", "Ordered by 7-day distinct supporters and official Battle audience votes.", "直近7日間の異なるアカウントからの支持と、成立した公式Battleの有効票で並びます。", "최근 7일간 서로 다른 계정의 지지와 성립된 공식 Battle 유효표 순으로 정렬합니다.")}
         </p>
       </div>
 
@@ -646,8 +693,8 @@ function HeatList({
               heartBusy={Boolean(heartBusy[track.recordKey])}
               heartedToday={Boolean(heartStates[track.recordKey])}
               lang={lang}
-              catalogLabel={rank ? `#${String(rank).padStart(2, "0")}` : isZh ? "累積" : "BUILDING"}
-              catalogNote={hasRecentSignal ? heatReason(track, isZh) : undefined}
+              catalogLabel={rank ? `#${String(rank).padStart(2, "0")}` : localeText(lang, "累積", "BUILDING", "集計中", "집계 중")}
+              catalogNote={hasRecentSignal ? heatReason(track, lang) : undefined}
               onPlay={onPlay}
               onToggleExpand={onToggleExpand}
               onHeart={onHeart}
@@ -662,7 +709,6 @@ function HeatList({
 
 function MiniPlayer({
   track,
-  isZh,
   isPlaying,
   heartBusy,
   heartedToday,
@@ -676,7 +722,6 @@ function MiniPlayer({
   onPlay,
 }: {
   track: AiMusicTrack | null;
-  isZh: boolean;
   isPlaying: boolean;
   heartBusy: boolean;
   heartedToday: boolean;
@@ -753,12 +798,8 @@ function MiniPlayer({
 
   if (!track) return null;
   const heartActionLabel = heartedToday
-    ? isZh
-      ? "取消愛心與收藏"
-      : "Remove Heart and saved track"
-    : isZh
-      ? "送出愛心支持"
-      : "Send a heart";
+    ? localeText(lang, "取消愛心與收藏", "Remove Heart and saved track", "Heartと保存を解除", "Heart와 저장 취소")
+    : localeText(lang, "送出愛心支持", "Send a heart", "Heartを送る", "Heart 보내기");
 
   return (
     <>
@@ -767,7 +808,7 @@ function MiniPlayer({
           className="fixed inset-x-3 bottom-[8.6rem] z-[55] mx-auto max-w-2xl rounded-md border border-orange-200/24 bg-black/94 p-4 text-white shadow-[0_24px_80px_rgba(0,0,0,0.72)] backdrop-blur-xl sm:bottom-[6.35rem] sm:max-w-lg sm:p-3.5"
           role="dialog"
           aria-modal="true"
-          aria-label={isZh ? `${track.title} 歌詞` : `${track.title} lyrics`}
+          aria-label={localeText(lang, `${track.title} 歌詞`, `${track.title} lyrics`, `${track.title}の歌詞`, `${track.title} 가사`)}
         >
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
@@ -782,9 +823,9 @@ function MiniPlayer({
               type="button"
               onClick={() => setLyricsOpen(false)}
               className="inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-white/12 bg-white/[0.045] px-3 text-xs font-black text-zinc-300 transition hover:border-orange-100/45 hover:text-white"
-              aria-label={isZh ? "關閉歌詞" : "Close lyrics"}
+              aria-label={localeText(lang, "關閉歌詞", "Close lyrics", "歌詞を閉じる", "가사 닫기")}
             >
-              {isZh ? "關閉" : "Close"}
+              {localeText(lang, "關閉", "Close", "閉じる", "닫기")}
             </button>
           </div>
           <div className="mt-4 grid grid-cols-[minmax(0,1fr)_1.45rem] gap-3">
@@ -800,7 +841,7 @@ function MiniPlayer({
                   </p>
                 ))
               ) : (
-                <p className="text-zinc-500">{isZh ? "歌詞未提供。" : "Lyrics not provided."}</p>
+                <p className="text-zinc-500">{localeText(lang, "歌詞未提供。", "Lyrics not provided.", "歌詞は提供されていません。", "가사가 제공되지 않았습니다.")}</p>
               )}
             </div>
             <input
@@ -813,7 +854,7 @@ function MiniPlayer({
               disabled={lyricsLines.length === 0}
               className="h-full min-h-52 w-5 cursor-pointer accent-orange-400 disabled:cursor-not-allowed disabled:opacity-35"
               style={{ writingMode: "vertical-lr", direction: "rtl" }}
-              aria-label={isZh ? "拖曳瀏覽歌詞" : "Scroll lyrics"}
+              aria-label={localeText(lang, "拖曳瀏覽歌詞", "Scroll lyrics", "歌詞をスクロール", "가사 스크롤")}
             />
           </div>
         </div>
@@ -840,7 +881,7 @@ function MiniPlayer({
                   disabled={!track.audioUrl || duration <= 0}
                   className="h-2 w-full cursor-pointer accent-orange-400 disabled:cursor-not-allowed disabled:opacity-40"
                   style={{ background: `linear-gradient(to right, rgba(255,106,0,0.92) 0%, rgba(255,106,0,0.92) ${progressPercent}%, rgba(255,255,255,0.16) ${progressPercent}%, rgba(255,255,255,0.16) 100%)` }}
-                  aria-label={isZh ? "拖曳播放進度" : "Seek playback"}
+                  aria-label={localeText(lang, "拖曳播放進度", "Seek playback", "再生位置を移動", "재생 위치 이동")}
                 />
                 <span className="text-right text-[10px] font-black tabular-nums text-zinc-500">{formatPlayerTime(duration)}</span>
               </div>
@@ -868,7 +909,7 @@ function MiniPlayer({
                 type="button"
                 onClick={onTogglePlay}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-black transition hover:bg-orange-300 sm:h-9 sm:w-9"
-                aria-label={isPlaying ? (isZh ? "暫停" : "Pause") : isZh ? "播放" : "Play"}
+                aria-label={isPlaying ? localeText(lang, "暫停", "Pause", "一時停止", "일시정지") : localeText(lang, "播放", "Play", "再生", "재생")}
               >
                 <PlayIcon playing={isPlaying} />
               </button>
@@ -880,10 +921,10 @@ function MiniPlayer({
                 }}
                 className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full border border-white/12 bg-white/[0.045] px-3 text-xs font-black text-zinc-300 transition hover:border-orange-100/42 hover:text-white sm:h-9 sm:px-2.5"
                 aria-expanded={lyricsOpen}
-                aria-label={isZh ? "看歌詞" : "View lyrics"}
+                aria-label={localeText(lang, "看歌詞", "View lyrics", "歌詞を見る", "가사 보기")}
               >
                 <LyricsIcon />
-                <span>{isZh ? "歌詞" : "Lyrics"}</span>
+                <span>{localeText(lang, "歌詞", "Lyrics", "歌詞", "가사")}</span>
               </button>
               <button
                 type="button"
@@ -904,7 +945,7 @@ function MiniPlayer({
                 type="button"
                 onClick={() => onShare(track)}
                 className="hidden h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-white/[0.045] text-zinc-300 transition hover:border-cyan-100/42 hover:text-white sm:inline-flex sm:h-9 sm:w-9"
-                aria-label={isZh ? "分享" : "Share"}
+                aria-label={localeText(lang, "分享", "Share", "共有", "공유")}
               >
                 <ShareIcon />
               </button>
@@ -913,7 +954,7 @@ function MiniPlayer({
                   href={aiMusicChallengeHref(track, lang)}
                   className="hidden min-h-10 items-center justify-center rounded-full border border-orange-200/38 bg-orange-500/15 px-3 text-xs font-black text-orange-50 transition hover:border-orange-100/65 hover:bg-orange-500/22 md:inline-flex sm:min-h-9 sm:px-2.5"
                 >
-                  {isZh ? "攻擂這首" : "Challenge"}
+                  {localeText(lang, "攻擂這首", "Challenge", "この曲に挑戦", "이 곡에 도전")}
                 </Link>
               ) : null}
             </div>
@@ -928,7 +969,7 @@ function MiniPlayer({
               value={volume}
               onChange={(event) => setVolume(Math.min(1, Math.max(0, Number(event.currentTarget.value))))}
               className="h-2 w-full cursor-pointer accent-orange-400"
-              aria-label={isZh ? "調整音量" : "Adjust volume"}
+              aria-label={localeText(lang, "調整音量", "Adjust volume", "音量を調整", "볼륨 조절")}
             />
           </label>
         </div>
@@ -940,6 +981,7 @@ function MiniPlayer({
 export default function AiMusicClient() {
   const { lang, t } = useI18n();
   const isZh = lang === "zh";
+  const copy = exploreCopy(lang);
   const [tracks, setTracks] = useState<AiMusicTrack[]>([]);
   const [worksView, setWorksView] = useState<"genre" | "heat">("genre");
   const [guideOpen, setGuideOpen] = useState(false);
@@ -950,6 +992,7 @@ export default function AiMusicClient() {
   const [expandedHud, setExpandedHud] = useState<Record<string, boolean>>({});
   const [heartBusy, setHeartBusy] = useState<Record<string, boolean>>({});
   const [heartStates, setHeartStates] = useState<HeartState>({});
+  const [authPromptTrack, setAuthPromptTrack] = useState<AiMusicTrack | null>(null);
   const [notice, setNotice] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [currentTrack, setCurrentTrack] = useState<AiMusicTrack | null>(null);
@@ -1138,9 +1181,9 @@ export default function AiMusicClient() {
     void audioRef.current.play().catch((error) => {
       console.warn("[ai-music player]", error);
       setIsPlaying(false);
-      setNotice(isZh ? "瀏覽器暫時阻擋播放，請再按一次播放。" : "Playback was blocked. Tap play again.");
+      setNotice(localeText(lang, "瀏覽器暫時阻擋播放，請再按一次播放。", "Playback was blocked. Tap play again.", "ブラウザが再生をブロックしました。もう一度再生を押してください。", "브라우저가 재생을 차단했습니다. 재생을 다시 눌러 주세요."));
     });
-  }, [currentTrack, isPlaying, isZh]);
+  }, [currentTrack, isPlaying, lang]);
 
   useEffect(() => {
     if (!notice) return;
@@ -1150,7 +1193,7 @@ export default function AiMusicClient() {
 
   const handlePlayTrack = (track: AiMusicTrack) => {
     if (!track.audioUrl) {
-      setNotice(isZh ? "這首作品目前沒有可播放音檔。" : "This track has no playable audio yet.");
+      setNotice(localeText(lang, "這首作品目前沒有可播放音檔。", "This track has no playable audio yet.", "この作品には再生できる音源がまだありません。", "이 작품에는 아직 재생 가능한 음원이 없습니다."));
       return;
     }
     if (currentTrack?.id === track.id) {
@@ -1169,14 +1212,14 @@ export default function AiMusicClient() {
   const sendHeart = async (track: AiMusicTrack) => {
     setNotice("");
     if (track.source !== "bar") {
-      setNotice(isZh ? "這筆展示紀錄目前沒有公播愛心資料。" : "This showcase record has no public-airplay heart data yet.");
+      setNotice(localeText(lang, "這筆展示紀錄目前沒有公播愛心資料。", "This showcase record has no public-airplay heart data yet.", "この展示作品には公開放送のHeartデータがまだありません。", "이 쇼케이스 작품에는 아직 공개 방송 Heart 데이터가 없습니다."));
       return;
     }
     const {
       data: { session },
     } = await supabase.auth.getSession();
     if (!session?.access_token) {
-      setNotice(isZh ? "請先登入後再送愛心。" : "Sign in to send a heart.");
+      setAuthPromptTrack(track);
       return;
     }
 
@@ -1195,7 +1238,7 @@ export default function AiMusicClient() {
       });
       const payload = (await response.json().catch(() => null)) as ListenBarReactionPayload | null;
       if (!response.ok || !payload?.counts) {
-        setNotice(payload?.error || (isZh ? "愛心送出失敗，請稍後再試。" : "Heart failed. Try again later."));
+        setNotice(payload?.error || localeText(lang, "愛心送出失敗，請稍後再試。", "Heart failed. Try again later.", "Heartを送れませんでした。しばらくしてから再試行してください。", "Heart 전송에 실패했습니다. 잠시 후 다시 시도해 주세요."));
         return;
       }
       const heartCount = Math.max(0, numberValue(payload.counts.heart));
@@ -1205,14 +1248,10 @@ export default function AiMusicClient() {
       setCurrentTrack((current) => (current?.recordKey === track.recordKey ? { ...current, heartCount } : current));
       setHeartStates((current) => ({ ...current, [track.recordKey]: payload.heartedToday === true }));
       setNotice(payload.heartedToday
-        ? isZh
-          ? "愛心已送出，歌曲已同步收藏到你的後台。"
-          : "Heart sent. The track is saved in your profile."
-        : isZh
-          ? "已取消愛心與收藏。"
-          : "Heart and saved track removed.");
+        ? localeText(lang, "愛心已送出，歌曲已同步收藏到你的後台。", "Heart sent. The track is saved in your profile.", "Heartを送り、この曲をProfileに保存しました。", "Heart를 보냈고 곡이 Profile에 저장되었습니다.")
+        : localeText(lang, "已取消愛心與收藏。", "Heart and saved track removed.", "Heartと保存を解除しました。", "Heart와 저장을 취소했습니다."));
     } catch {
-      setNotice(isZh ? "愛心送出失敗，請稍後再試。" : "Heart failed. Try again later.");
+      setNotice(localeText(lang, "愛心送出失敗，請稍後再試。", "Heart failed. Try again later.", "Heartを送れませんでした。しばらくしてから再試行してください。", "Heart 전송에 실패했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setHeartBusy((current) => ({ ...current, [track.recordKey]: false }));
     }
@@ -1220,9 +1259,7 @@ export default function AiMusicClient() {
 
   const shareTrack = async (track: AiMusicTrack) => {
     const url = typeof window !== "undefined" ? `${window.location.origin}${track.href}` : track.href;
-    const text = isZh
-      ? `在 AIPOGER 聽 ${track.creator} 的《${track.title}》`
-      : `Listen to "${track.title}" by ${track.creator} on AIPOGER`;
+    const text = localeText(lang, `在 AIPOGER 聽 ${track.creator} 的《${track.title}》`, `Listen to "${track.title}" by ${track.creator} on AIPOGER`, `AIPOGERで${track.creator}の「${track.title}」を聴く`, `AIPOGER에서 ${track.creator}의 '${track.title}' 듣기`);
     const fallback = `${text}\n${url}`;
     try {
       if (navigator.share) {
@@ -1230,29 +1267,33 @@ export default function AiMusicClient() {
         return;
       }
       await navigator.clipboard.writeText(fallback);
-      setNotice(isZh ? "作品連結已複製。" : "Track link copied.");
+      setNotice(localeText(lang, "作品連結已複製。", "Track link copied.", "作品リンクをコピーしました。", "작품 링크를 복사했습니다."));
     } catch (error) {
       if ((error as Error)?.name === "AbortError") return;
       try {
         await navigator.clipboard.writeText(fallback);
-        setNotice(isZh ? "作品連結已複製。" : "Track link copied.");
+        setNotice(localeText(lang, "作品連結已複製。", "Track link copied.", "作品リンクをコピーしました。", "작품 링크를 복사했습니다."));
       } catch {
-        setNotice(isZh ? "分享失敗，請稍後再試。" : "Share failed. Try again later.");
+        setNotice(localeText(lang, "分享失敗，請稍後再試。", "Share failed. Try again later.", "共有できませんでした。しばらくしてから再試行してください。", "공유에 실패했습니다. 잠시 후 다시 시도해 주세요."));
       }
     }
   };
 
   const totalVisibleTracks = groupedTracks.reduce((sum, group) => sum + group.tracks.length, 0);
   const navItems = [
-    { href: "#works", label: isZh ? "作品瀏覽" : "Works" },
-    { href: withLang("/listen-bar"), label: isZh ? "傷心酒吧" : "Bar Heartbreak" },
+    { href: "#works", label: copy.browseWorks },
+    { href: withLang("/listen-bar"), label: copy.bar },
     { href: withLang("/battle"), label: "Drop Battle" },
     { href: withLang("/rank"), label: "Showtime" },
     { href: `/rank?lang=${lang}#choice-weekly`, label: "Choice" },
   ];
-  const catalogMetadata = isZh
-    ? `${totalVisibleTracks} 首公開作品 · ${MUSIC_GENRE_OPTIONS.length} 種風格`
-    : `${totalVisibleTracks} public works · ${MUSIC_GENRE_OPTIONS.length} styles`;
+  const catalogMetadata = localeText(
+    lang,
+    `${totalVisibleTracks} 首公開作品 · ${MUSIC_GENRE_OPTIONS.length} 種風格`,
+    `${totalVisibleTracks} public works · ${MUSIC_GENRE_OPTIONS.length} styles`,
+    `公開作品 ${totalVisibleTracks}曲 · ${MUSIC_GENRE_OPTIONS.length}ジャンル`,
+    `공개 작품 ${totalVisibleTracks}곡 · ${MUSIC_GENRE_OPTIONS.length}개 장르`,
+  );
 
   return (
     <main className={`${fontGlowSans.className} aipo-stage-bg relative min-h-screen overflow-hidden px-4 pb-28 pt-20 text-white sm:px-6 lg:px-8`}>
@@ -1277,7 +1318,7 @@ export default function AiMusicClient() {
 
             <div className="mt-2.5 inline-flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 border-y border-orange-100/20 bg-black/48 px-3 py-1.5 text-[10px] font-black text-orange-100/84 backdrop-blur-sm sm:text-[11px]">
               <span className={`${fontRighteous.className} uppercase tracking-[0.14em] text-orange-200`}>
-                {isZh ? "作品庫" : "Catalog"}
+                {copy.catalog}
               </span>
               <span className="text-orange-400/70" aria-hidden="true">/</span>
               <span className="text-zinc-200">{catalogMetadata}</span>
@@ -1289,25 +1330,23 @@ export default function AiMusicClient() {
               </span>
               <span className="h-12 w-px bg-orange-100/36 sm:h-16" aria-hidden="true" />
               <span className={`${isZh ? fontSourceSerifTC.className : fontRighteous.className} text-[2.45rem] font-black leading-[0.86] tracking-[-0.07em] text-[#fff8e9] drop-shadow-[0_8px_22px_rgba(0,0,0,0.86)] sm:text-[3.9rem] lg:text-[4.65rem]`}>
-                {isZh ? "音樂作品" : "Music Works"}
+                {copy.works}
               </span>
             </h1>
 
             <p className="mt-3 max-w-3xl text-[13px] font-black leading-5 text-yellow-200 drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] sm:text-base sm:leading-6">
-              {isZh
-                ? "依照風格快速瀏覽作品，聽歌、送愛心，或向你喜歡的作品發起挑戰。"
-                : "Browse tracks by style, listen, send hearts, or start a challenge from music you like."}
+              {copy.subtitle}
             </p>
             <p className="mt-1 text-[11px] font-bold leading-5 text-orange-50/82 sm:text-sm sm:leading-6">
-              {isZh ? "上傳音樂讓大家看到你的作品，請從 " : "Upload your music so listeners can find it here. Submit through "}
+              {copy.uploadPrefix}
               <Link href={`${withLang("/listen-bar")}#play-request`} className="font-black text-cyan-100 underline decoration-cyan-200/55 underline-offset-4 transition hover:text-white">
-                {isZh ? "傷心酒吧投稿" : "Bar Heartbreak"}
+                {copy.uploadLink}
               </Link>
-              {isZh ? "。" : "."}
+              {copy.uploadSuffix}
             </p>
           </div>
 
-          <nav className="relative flex justify-center overflow-x-auto border-t border-orange-100/16 bg-black/72 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label={isZh ? "探索 AI 音樂導覽" : "Explore AI Music navigation"}>
+          <nav className="relative flex justify-center overflow-x-auto border-t border-orange-100/16 bg-black/72 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label={copy.navigation}>
             <div className="flex min-w-max gap-0.5 px-2 sm:mx-auto sm:gap-1 sm:px-4">
               {navItems.map((item, index) => (
                 <Link key={item.href} href={item.href} className={`inline-flex min-h-11 shrink-0 items-center border-b-2 px-2.5 text-[11px] font-black transition sm:px-4 sm:text-xs ${index === 0 ? "border-orange-400 text-orange-200" : "border-transparent text-zinc-400 hover:border-cyan-100/55 hover:text-white"}`}>
@@ -1321,14 +1360,14 @@ export default function AiMusicClient() {
         <section id="works" className="grid gap-5 scroll-mt-24">
           <div className="flex justify-center border-b border-white/10 pb-3 pt-1">
             <div className="flex items-center justify-center gap-2 rounded-lg border border-orange-100/18 bg-black/76 p-1.5 shadow-[0_16px_42px_rgba(0,0,0,0.36)]">
-              <div className="inline-flex" role="group" aria-label={isZh ? "作品瀏覽方式" : "Works browsing mode"}>
+              <div className="inline-flex" role="group" aria-label={copy.browseMode}>
               <button
                 type="button"
                 onClick={() => setWorksView("genre")}
                 aria-pressed={worksView === "genre"}
                 className={`min-h-10 rounded-md px-4 text-xs font-black transition sm:px-5 ${worksView === "genre" ? "bg-orange-500 text-black shadow-[0_0_22px_rgba(255,106,0,0.24)]" : "text-zinc-300 hover:bg-white/6 hover:text-white"}`}
               >
-                {isZh ? "依類型" : "By Style"}
+                {copy.byStyle}
               </button>
               <button
                 type="button"
@@ -1336,7 +1375,7 @@ export default function AiMusicClient() {
                 aria-pressed={worksView === "heat"}
                 className={`min-h-10 rounded-md px-4 text-xs font-black transition sm:px-5 ${worksView === "heat" ? "bg-orange-500 text-black shadow-[0_0_22px_rgba(255,106,0,0.24)]" : "text-zinc-300 hover:bg-white/6 hover:text-white"}`}
               >
-                {isZh ? "正在升溫" : "Hot Now"}
+                {copy.hotNow}
               </button>
               </div>
               <span className="h-7 w-px bg-white/12" aria-hidden="true" />
@@ -1344,9 +1383,9 @@ export default function AiMusicClient() {
                 ref={guideButtonRef}
                 type="button"
                 onClick={() => setGuideOpen(true)}
-                className="inline-flex h-10 w-11 shrink-0 items-center justify-center rounded-md border border-orange-200/32 bg-orange-500/8 p-1.5 transition hover:border-orange-100/70 hover:bg-orange-500/16 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-100"
-                aria-label={isZh ? "這裡怎麼玩？" : "How this works"}
-                title={isZh ? "這裡怎麼玩？" : "How this works"}
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-orange-200/32 bg-orange-500/8 p-1.5 transition hover:border-orange-100/70 hover:bg-orange-500/16 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-100"
+                aria-label={copy.guideLabel}
+                title={copy.guideLabel}
               >
                 <img src="/guide.png" alt="" className="h-full w-full object-contain" />
               </button>
@@ -1354,12 +1393,12 @@ export default function AiMusicClient() {
           </div>
           {loadState === "loading" ? (
             <div className="rounded-md border border-white/10 bg-black/46 px-5 py-12 text-center text-sm font-bold text-zinc-400">
-              {isZh ? "正在載入 AI 音樂作品..." : "Loading AI music works..."}
+              {copy.loading}
             </div>
           ) : null}
           {loadState === "error" ? (
             <div className="rounded-md border border-red-200/25 bg-red-500/10 px-5 py-8 text-sm font-bold text-red-100">
-              {isZh ? "作品載入失敗：" : "Could not load works: "} {loadError}
+              {copy.loadError} {loadError}
             </div>
           ) : null}
           {loadState === "ready" && worksView === "heat" ? (
@@ -1387,7 +1426,7 @@ export default function AiMusicClient() {
                     <div className="flex flex-wrap items-end justify-between gap-3 border-b border-white/10 pb-3">
                       <div className="min-w-0">
                         <p className={`${fontRighteous.className} text-[10px] uppercase tracking-[0.18em] text-orange-100/58`}>
-                          Style Lane
+                          {copy.styleLane}
                         </p>
                         <h2 className="mt-1 text-xl font-black text-white">{group.label}</h2>
                       </div>
@@ -1401,7 +1440,7 @@ export default function AiMusicClient() {
                             onClick={() => setExpandedGenres((current) => ({ ...current, [group.genre]: !expanded }))}
                             className="rounded-md border border-orange-200/35 bg-orange-500/12 px-3 py-1.5 text-[11px] font-black text-orange-50 transition hover:border-orange-100/60 hover:bg-orange-500/20"
                           >
-                            {expanded ? (isZh ? "收合" : "Show Less") : isZh ? "看更多" : "See More"}
+                            {expanded ? copy.less : copy.more}
                           </button>
                         ) : null}
                       </div>
@@ -1427,7 +1466,7 @@ export default function AiMusicClient() {
                       </div>
                     ) : (
                       <div className="rounded-md border border-white/10 bg-black/34 px-4 py-6 text-sm font-bold text-zinc-500">
-                        {isZh ? "這個類型目前還沒有可展示作品。" : "No public works in this style yet."}
+                        {copy.empty}
                       </div>
                     )}
                   </section>
@@ -1467,37 +1506,37 @@ export default function AiMusicClient() {
                 type="button"
                 onClick={closeGuide}
                 className="inline-flex h-9 w-9 shrink-0 items-center justify-center border border-white/12 text-xl leading-none text-zinc-300 transition hover:border-orange-100/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-100"
-                aria-label={isZh ? "關閉說明" : "Close guide"}
-                title={isZh ? "關閉" : "Close"}
+                aria-label={copy.closeGuide}
+                title={copy.close}
               >
                 <span aria-hidden="true">×</span>
               </button>
             </div>
             <div className="px-5 py-5 sm:px-6">
-              <h2 id="ai-music-guide-title" className="text-2xl font-black text-white">{isZh ? "探索怎麼玩？" : "How Explore Works"}</h2>
+              <h2 id="ai-music-guide-title" className="text-2xl font-black text-white">{copy.guideTitle}</h2>
               <div className="mt-5 divide-y divide-white/10 border-y border-white/10">
                 <div className="py-4 first:pt-0">
-                  <h3 className="text-sm font-black text-orange-100">{isZh ? "逛作品" : "Browse works"}</h3>
+                  <h3 className="text-sm font-black text-orange-100">{copy.guideBrowseTitle}</h3>
                   <p className="mt-1.5 text-sm font-bold leading-6 text-zinc-300">
-                    {isZh ? "依風格播放作品，喜歡就送愛心。" : "Play works by style and send a Heart when a track lands."}
+                    {copy.guideBrowseBody}
                   </p>
                 </div>
                 <div className="py-4">
-                  <h3 className="text-sm font-black text-orange-100">{isZh ? "收藏歌曲" : "Save tracks"}</h3>
+                  <h3 className="text-sm font-black text-orange-100">{copy.guideSaveTitle}</h3>
                   <p className="mt-1.5 text-sm font-bold leading-6 text-zinc-300">
-                    {isZh ? "愛心會同步加入收藏；再按一次會取消。從右上角頭像進入 Profile 可整理收藏歌曲。" : "A Heart also saves the track. Tap it again to remove it, or manage saved tracks from Profile through the avatar at the top right."}
+                    {copy.guideSaveBody}
                   </p>
                 </div>
                 <div className="py-4">
-                  <h3 className="text-sm font-black text-orange-100">{isZh ? "發起攻擂" : "Start a challenge"}</h3>
+                  <h3 className="text-sm font-black text-orange-100">{copy.guideChallengeTitle}</h3>
                   <p className="mt-1.5 text-sm font-bold leading-6 text-zinc-300">
-                    {isZh ? "看到作品封面右上紅色「接戰」角標，表示原作者已準備 60s Drop 並開放攻擂。" : "A red 接戰 badge at a cover's top right means the creator has prepared a 60s Drop and opened the work to challenges."}
+                    {copy.guideChallengeBody}
                   </p>
                 </div>
                 <div className="py-4 last:pb-0">
-                  <h3 className="text-sm font-black text-orange-100">{isZh ? "正式戰績" : "Official results"}</h3>
+                  <h3 className="text-sm font-black text-orange-100">{copy.guideRecordTitle}</h3>
                   <p className="mt-1.5 text-sm font-bold leading-6 text-zinc-300">
-                    {isZh ? "至少 3 位非參賽者完成投票才成立。進入 Showtime 的作品只供播放、收藏與分享，不再接戰。" : "A result needs at least three non-participant votes. Showtime works remain available to play, save, and share, but no longer accept challenges."}
+                    {copy.guideRecordBody}
                   </p>
                 </div>
               </div>
@@ -1506,9 +1545,16 @@ export default function AiMusicClient() {
         </div>
       ) : null}
 
+      <AuthRequiredDialog
+        open={Boolean(authPromptTrack)}
+        kind="heart"
+        lang={lang}
+        nextPath={authPromptTrack ? aiMusicTrackHref(authPromptTrack.sourceId, lang) : `/ai-music?lang=${lang}`}
+        onClose={() => setAuthPromptTrack(null)}
+      />
+
       <MiniPlayer
         track={currentTrack}
-        isZh={isZh}
         isPlaying={isPlaying}
         heartBusy={currentTrack ? Boolean(heartBusy[currentTrack.recordKey]) : false}
         heartedToday={currentTrack ? Boolean(heartStates[currentTrack.recordKey]) : false}

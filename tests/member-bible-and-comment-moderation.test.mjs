@@ -7,6 +7,9 @@ function source(path) {
 }
 
 const biblePage = source("../src/components/ai-music-bible-page.tsx");
+const authDialog = source("../src/components/auth-required-dialog.tsx");
+const explorePage = source("../src/app/ai-music/ai-music-client.tsx");
+const listenBarPage = source("../src/app/listen-bar/page.tsx");
 const bibleCommentsRoute = source("../src/app/api/ai-music-bible/comments/route.ts");
 const choiceCommentsRoute = source("../src/app/api/choice/comments/route.ts");
 const trackCommentsRoute = source("../src/app/api/listen-bar/track-comments/route.ts");
@@ -14,15 +17,34 @@ const adminPage = source("../src/app/admin/comments/page.tsx");
 const adminRoute = source("../src/app/api/admin/comments/route.ts");
 const migration = source("../supabase/migrations/20260716185707_centralized_comment_moderation.sql");
 
-test("the Practice Bible is a member gate with public listening exits", () => {
+test("the Practice Bible uses a normal value hero and a focused member prompt", () => {
   assert.match(biblePage, /type AccessState = "checking" \| "signedOut" \| "signedIn"/);
   assert.match(biblePage, /supabase\.auth\.getSession\(\)/);
   assert.match(biblePage, /supabase\.auth\.onAuthStateChange/);
-  assert.match(biblePage, /登入解鎖 AI 音樂練功聖經/);
-  assert.match(biblePage, /登入／免費加入/);
+  assert.match(biblePage, /AI 音樂練功聖經/);
+  assert.match(biblePage, /AIPOGER PRACTICE BIBLE/);
+  assert.match(biblePage, /AuthRequiredDialog/);
+  assert.match(biblePage, /kind="bible"/);
+  assert.match(biblePage, /setAuthPromptOpen\(true\)/);
   assert.match(biblePage, /appendLang\("\/ai-music", lang\)/);
   assert.match(biblePage, /appendLang\("\/listen-bar", lang\)/);
-  assert.match(biblePage, /愛心、收藏、評論與練功聖經需要登入/);
+  assert.doesNotMatch(biblePage, /登入解鎖 AI 音樂練功聖經/);
+  assert.doesNotMatch(biblePage, /AIPOGER MEMBER CODEX/);
+  assert.doesNotMatch(biblePage, /愛心、收藏、評論與練功聖經需要登入/);
+  assert.match(authDialog, /登入後開始練功/);
+  assert.match(authDialog, /ログインして練習を始める/);
+  assert.match(authDialog, /로그인하고 연습 시작/);
+});
+
+test("signed-out Hearts open the shared system prompt and preserve the track return path", () => {
+  assert.match(explorePage, /setAuthPromptTrack\(track\)/);
+  assert.match(explorePage, /kind="heart"/);
+  assert.match(explorePage, /aiMusicTrackHref\(authPromptTrack\.sourceId, lang\)/);
+  assert.match(listenBarPage, /setAuthPromptOpen\(true\)/);
+  assert.match(listenBarPage, /kind="heart"/);
+  assert.match(authDialog, /愛心會同步收藏這首歌/);
+  assert.match(authDialog, /role="dialog"/);
+  assert.match(authDialog, /aria-modal="true"/);
 });
 
 test("Bible comments cannot be read without a verified member token", () => {

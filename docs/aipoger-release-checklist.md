@@ -43,9 +43,9 @@ Check:
 - Logged-out visitors can open home, Battle list, Bar Heartbreak, AIPOGER Showtime, rules pages.
 - Logged-out visitors can listen to public Bar Heartbreak tracks.
 - Logged-out visitors can browse and listen on Explore AI Music without sign-in.
-- Logged-out visitors opening `/ai-music-bible` see the member gate, not the searchable Bible content; the primary action preserves the Bible return path through sign-in.
+- Logged-out visitors opening `/ai-music-bible` see the normal Bible title/value preview and a focused sign-in dialog, not the searchable Bible content. No large hero headline says "sign in" or "unlock"; the primary dialog action preserves the Bible return path.
 - Logged-out visitors cannot vote or comment in Bar Heartbreak.
-- Hearts and saved favorites on public listening surfaces require sign-in.
+- Hearts and saved favorites on public listening surfaces require sign-in. Pressing Heart while signed out opens the focused sign-in dialog and preserves the exact track return path; it does not replace the public-listening hero with login copy.
 - Logged-out visitors are asked to sign in before upload/Battle actions.
 - Logged-in users can see profile/fighter identity where expected.
 - Profile `收藏歌曲` supports batch selection and batch removal, and removing saved favorites does not delete historical Heart reactions.
@@ -221,7 +221,7 @@ Check:
 ## AI Music Practice Bible Checklist
 
 - Homepage lower navigation shows `AI 音樂練功聖經` with the book icon and links to `/ai-music-bible?lang=zh`; the old homepage `歌曲分析` card is absent.
-- `/ai-music-bible?lang=zh` returns 200. Signed-out visitors see the member acquisition gate with public links to Explore and Bar Heartbreak; signed-in members see the complete Bible and A&R Gate remains only inside its practice map/toolbox.
+- `/ai-music-bible?lang=zh` returns 200. Signed-out visitors see the normal Bible title/value preview, a focused sign-in dialog, and public links to Explore and Bar Heartbreak; signed-in members see the complete Bible and A&R Gate remains only inside its practice map/toolbox.
 - Desktop at 1440x900 keeps the full `AI 音樂練功聖經` title together without a single orphan character; mobile at 390x844 has no horizontal page overflow.
 - `#suno-prompt-library` and nested `#lyric-control-library` are directly reachable from the practice map and render complete Chinese and English variants.
 - The Suno library contains 18 unique prompt moves, 16 unique lyric moves, at least 80 unique normalized genre terms, and six production-flow steps. Every move has bilingual title, summary, use case, copy text, source attribution, and an official / field-tested / version-sensitive evidence label.

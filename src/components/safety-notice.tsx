@@ -27,11 +27,27 @@ const copy = {
     chatBody:
       "React and vote based on the music. No insults, attacks, discrimination, harassment, spam, political agitation, ads, scams, sexual/violent content, or sharing personal data. Violators may be removed immediately; severe cases can be permanently suspended.",
   },
+  ja: {
+    uploadTitle: "投稿ルール",
+    uploadBody:
+      "成人本人の露出のない水着、ステージ衣装、上品なセクシーファッションは投稿できます。ヌード、性行為、成人向け誘導、未成年者の性的表現、残虐な暴力、自傷、差別、政治宣伝、広告・詐欺、ギャンブル、薬物・武器、個人情報、なりすまし、権利侵害は禁止です。違反内容は削除され、重大または反復する違反は利用停止となる場合があります。",
+    chatTitle: "コミュニティルール",
+    chatBody:
+      "音楽を基準に反応・投票してください。侮辱、攻撃、差別、嫌がらせ、スパム、政治的扇動、広告、詐欺、性的・暴力的内容、個人情報の共有は禁止です。違反者は即時退出、重大な場合は永久停止となることがあります。",
+  },
+  ko: {
+    uploadTitle: "업로드 규칙",
+    uploadBody:
+      "성인 본인의 노출 없는 수영복, 무대 의상, 품격 있는 섹시 패션은 업로드할 수 있습니다. 누드, 성행위, 성인물 유도, 미성년자 성적 표현, 잔혹한 폭력, 자해, 혐오·차별, 정치 선전, 광고·사기, 도박, 마약·무기, 개인정보, 사칭 및 권리 침해 콘텐츠는 금지됩니다. 위반 콘텐츠는 삭제되며 중대하거나 반복될 경우 이용이 정지될 수 있습니다.",
+    chatTitle: "커뮤니티 규칙",
+    chatBody:
+      "음악을 기준으로 반응하고 투표해 주세요. 모욕, 공격, 차별, 괴롭힘, 도배, 정치 선동, 광고, 사기, 성적·폭력적 콘텐츠 및 개인정보 공유는 금지됩니다. 위반자는 즉시 퇴장되며 중대한 경우 영구 정지될 수 있습니다.",
+  },
 };
 
 export default function SafetyNotice({ kind, compact = false, className = "" }: SafetyNoticeProps) {
   const { lang } = useI18n();
-  const text = lang === "zh" ? copy.zh : copy.en;
+  const text = lang === "ja" ? copy.ja : lang === "ko" ? copy.ko : lang === "en" ? copy.en : copy.zh;
   const title = kind === "upload" ? text.uploadTitle : text.chatTitle;
   const body = kind === "upload" ? text.uploadBody : text.chatBody;
 

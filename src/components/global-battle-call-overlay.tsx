@@ -756,14 +756,15 @@ export default function GlobalBattleCallOverlay() {
     if (!accountUserId) {
       if (pathname === "/" || pathname === "/auth") return null;
       const nextPath = `${pathname || "/"}?lang=${lang}`;
+      const signInLabel = lang === "ja" ? "ログイン" : lang === "ko" ? "로그인" : lang === "en" ? "Sign in" : "登入";
       return (
         <div className={accountDockStaticClassName}>
           <Link
             href={`/auth?next=${encodeURIComponent(nextPath)}`}
             className="inline-flex min-h-11 items-center justify-center rounded-full border border-cyan-200/25 bg-black/82 px-4 text-sm font-black text-cyan-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_24px_rgba(0,203,255,0.1)] backdrop-blur-xl transition hover:border-cyan-100 hover:text-white"
-            aria-label={isZh ? "登入 AIPOGER" : "Sign in to AIPOGER"}
+            aria-label={`${signInLabel} AIPOGER`}
           >
-            {isZh ? "登入" : "Sign in"}
+            {signInLabel}
           </Link>
         </div>
       );
