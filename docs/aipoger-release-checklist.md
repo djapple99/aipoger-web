@@ -215,6 +215,17 @@ Check:
 - `/api/ai-music/tracks` returns official Explore defense success progress toward the 6-defense Showtime threshold, filters non-Showtime works that have 8 official Explore losses, and `/api/ai-music/challenges` blocks attacks against Showtime-certified or retired works.
 - `/rank?lang=zh` consumes the same AI Music lifecycle API so 6-defense-certified Explore works appear in Showtime.
 
+## AI Music Practice Bible Checklist
+
+- Homepage lower navigation shows `AI 音樂練功聖經` with the book icon and links to `/ai-music-bible?lang=zh`; the old homepage `歌曲分析` card is absent.
+- `/ai-music-bible?lang=zh` returns 200 and preserves A&R Gate only inside its practice map/toolbox.
+- Desktop at 1440x900 keeps the full `AI 音樂練功聖經` title together without a single orphan character; mobile at 390x844 has no horizontal page overflow.
+- The Taiwanese lab contains 38 unique seed rows, searches across meaning/recommended form/Suno form/note, filters by category, copies the Suno form, and switches from a desktop table to mobile cards.
+- The lab disclaimer distinguishes AI singing phonetic experiments from recommended Taiwanese orthography.
+- New suggestions require meaning, Suno writing, and a test note. Successful submissions show a pending-review confirmation instead of claiming immediate publication.
+- `ai_music_bible_contributions` has RLS enabled; `anon` and `authenticated` have no direct table read/write grants; only the server service role can insert/review rows.
+- Contribution requests reject foreign origins, use a honeypot, validate lengths and enums, and limit a request fingerprint to 6 submissions per hour.
+
 ## AIPOGER Showtime Checklist
 
 Check:

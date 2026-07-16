@@ -85,6 +85,19 @@ Current behavior target:
 - Do not claim deep audio feature extraction unless the analysis service actually extracted audio features. If the service only has upload metadata and user-provided lyrics, phrase output as A&R judgement based on submitted data.
 - User-facing analysis should not mention external Codex skills or implementation tools.
 
+## AI Music Practice Bible / AI 音樂練功聖經
+
+Current public entry and learning-surface rules:
+
+- The homepage second lower navigation card is `AI 音樂練功聖經`, linking to `/ai-music-bible?lang=<lang>`. It replaces the old homepage-first `歌曲分析` card.
+- A&R Gate is not deleted. `分析你的音樂` lives inside the Bible's practice map and toolbox as an optional second-opinion tool after a creator has made something.
+- The Bible is a living, searchable practice database rather than one long static resource article. Its primary areas are prompts, lyrics, Drop practice, rights, AIPOGER tutorials, and the A&R tool.
+- `Suno 台語歌詞調音實驗室` is the first flagship database. Its initial 38 rows come from the owner-provided `Suno 台語歌歌詞調教對照表` PDF and must remain searchable, category-filterable, and one-click copyable on desktop and mobile.
+- The Taiwanese lab must clearly state that AI singing phonetic experiments and loan-character spellings are not recommended Taiwanese orthography. Model version, melody, and vocal timbre may change results.
+- Community `有效` / `唱錯` feedback and new-row suggestions enter a moderated pending queue. They must never edit the public seed catalog directly.
+- Public clients have no direct Data API access to `ai_music_bible_contributions`. Submission goes through the same-origin server route, with validation, a honeypot, per-request-fingerprint rate limiting, optional signed-in attribution, and service-role-only database access.
+- The main Bible and Taiwanese catalog must keep working if contribution storage is temporarily unavailable; only feedback/submission should show a compact failure state.
+
 ## Drop Battle
 
 Current behavior:
