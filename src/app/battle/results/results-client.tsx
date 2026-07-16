@@ -431,14 +431,14 @@ export default function BattleResultsClient() {
       <div className="relative z-10 mx-auto max-w-[1280px]">
         <header className="grid gap-4 border-b border-white/10 pb-5 lg:grid-cols-[1fr_auto] lg:items-end">
           <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.28em] text-orange-200/80">AIPOGER DROP ARCHIVE</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.28em] text-orange-200/80">AIPOGER BATTLE RECORDS</p>
             <h1 className={`${fontRighteous.className} mt-2 text-[clamp(2.45rem,5vw,4.6rem)] leading-[0.9] text-white drop-shadow-[0_0_28px_rgba(255,106,0,0.3)]`}>
-              {isZh ? "成果牆" : "Result Wall"}
+              {isZh ? "對戰記錄" : "Battle Records"}
             </h1>
             <p className="mt-3 max-w-3xl text-sm font-bold leading-6 text-zinc-400">
               {isZh
-                ? "按月份封存每一張 Drop Battle 戰果，正式與非正式分層展示。這裡不是 Showtime，是可以聽、可以分享、可以追溯的戰績展廳。"
-                : "A monthly hall for Drop Battle results, with official and unofficial records separated. Listen, share, and trace each win."}
+                ? "按月份整理已成立的 Drop Battle 對戰記錄，可回聽、分享並追溯每場正式戰績。這裡不是 Showtime 認證作品庫。"
+                : "Browse established Drop Battle records by month. Listen, share, and trace each official battle without mixing this archive with Showtime."}
             </p>
           </div>
           <div className="flex flex-wrap gap-2 lg:justify-end">
@@ -486,11 +486,11 @@ export default function BattleResultsClient() {
 
         {loading ? (
           <div className="mt-10 rounded-[1.5rem] border border-white/10 bg-black/58 p-8 text-center text-sm font-black text-orange-100">
-            {isZh ? "載入成果牆..." : "Loading result wall..."}
+            {isZh ? "載入對戰記錄..." : "Loading battle records..."}
           </div>
         ) : error ? (
           <div className="mt-10 rounded-[1.5rem] border border-red-300/30 bg-red-500/10 p-8 text-center text-sm font-black text-red-100">
-            {isZh ? `成果牆讀取失敗：${error}` : `Could not load result wall: ${error}`}
+            {isZh ? `對戰記錄讀取失敗：${error}` : `Could not load battle records: ${error}`}
           </div>
         ) : records.length === 0 ? (
           <div className="mt-10 rounded-[1.5rem] border border-white/10 bg-black/58 p-8 text-center">

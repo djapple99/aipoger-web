@@ -1,6 +1,6 @@
 # AIPOGER Battle Pool Art Direction
 
-Last updated: 2026-06-22
+Last updated: 2026-07-16
 
 This file records the approved visual direction for the Battle Pool / AI 音樂鬥歌場 area. Use it before changing `/battle`, Battle Pool cards, Battle entry CTAs, or related mobile hero layouts.
 
@@ -20,21 +20,22 @@ Use:
 
 - Black / near-black stage background.
 - Red and orange light as battle energy.
-- Gold only for the main challenge CTA or honor-level highlights.
-- Music signals such as waveform, deck, EQ, BPM, key, and Drop duration where they support the interface.
-- Glassy dark panels with readable contrast.
+- Red-orange for the main challenge CTA and small cyan accents for navigation.
+- A compact two-character stage visual that supports, rather than replaces, the working interface.
+- Dark tool surfaces with readable contrast and restrained borders.
 
 Avoid:
 
 - Plain SaaS list pages.
 - Stock marketplace layouts.
-- Decorative music elements that cover key UI.
+- Decorative or fake waveforms, EQ bars, deck controls, or audio controls that do not operate.
 - Overly complex rule text in the hero.
 - Mobile hero elements that overlap the title or CTA.
+- PPT-style mastheads that push the public challenge pool below the first viewport.
 
 ## Main CTA
 
-The star CTA is a real button, not just decoration.
+The main CTA is a real text-and-icon button.
 
 Chinese:
 
@@ -48,36 +49,23 @@ Rules:
 
 - Do not use `我要挑戰` for this primary CTA.
 - Keep the button accessible: the actual button text and `aria-label` must match the locale.
-- The star graphic can carry the visible text, but the underlying button must still have real text for accessibility and future interaction.
-- Keep the star text visually horizontal and centered; do not rotate the text inside the star.
-- The star must look clickable, with a button-like glow, ring, hover state, or arrow indicator.
+- Use the crossed-swords icon with visible localized text.
+- Keep it compact, high contrast, keyboard accessible, and visually separate from share.
 - On click, it should begin the same Battle start flow as the normal `Start a Challenge` action.
 
-## Star CTA Visual
+## Quick Navigation
 
-Use a gold-orange 3D star with visible depth and shadow.
+The Battle hero quick navigation is a compact command strip, not a row of dashboard cards.
 
-Approved direction:
+Required order:
 
-- Orange-gold gradient, not flat yellow.
-- Dimensional bevels and a soft drop shadow.
-- Red dimensional Chinese lettering.
-- No white outline around the CTA text.
-- CTA text should not look crooked or misaligned.
-- The star should look upright on mobile.
+- `探索音樂`
+- `傷心酒吧`
+- `對戰記錄`
+- `Showtime`
+- `Drop 規則`
 
-Desktop:
-
-- The star can overlap the right side of the `Drop Battle 公開挑戰池` header area.
-- Its center should align with the vertical center of the pool header.
-- It should feel like a stage sticker / badge, not a normal rounded button.
-
-Mobile:
-
-- The star should sit between the two characters.
-- Its center should align with the midpoint between the female and male character centers.
-- Do not rotate the mobile star through CSS if the image asset already includes text or dimensional perspective.
-- Keep it smaller than the characters so it reads as a CTA, not as the main character.
+Share is a separate command beside `發起挑戰`; it must not look like another destination tab.
 
 ## Desktop Hero
 
@@ -86,9 +74,9 @@ Desktop Battle Pool hero should preserve:
 - Eyebrow: `AIPOGER BATTLE POOL`.
 - Main headline: `AI 音樂鬥歌場`.
 - Supporting line: short, stage-like, and direct.
-- Left side: title, subtitle, audio / music signal.
+- Left side: title, subtitle, primary challenge CTA, and share.
 - Right side: two character cutouts with a central `VS`.
-- Functional nav cards below the hero copy.
+- Compact functional navigation at the bottom of the hero.
 
 Desktop character direction:
 
@@ -99,11 +87,7 @@ Desktop character direction:
 - The `VS` can remain on desktop because there is enough space.
 - The `VS` mark should sit between the two character centers, not over one character or the title.
 
-Music elements:
-
-- Desktop may use waveform, DJ deck, EQ meter, BPM / key / Drop duration, or mini-player accents.
-- These elements should sit behind or beside the core UI, not over the CTA or card text.
-- Do not show redundant `DROP CUT 00:05 PREVIEW` text in the hero; previews already exist on the Drop cards below.
+The hero must not include a fake waveform, decorative play button, deck, or EQ. Actual audio previews remain on the Drop cards below.
 
 ## Mobile Hero
 
@@ -111,23 +95,16 @@ Mobile hero must be simpler than desktop.
 
 Approved mobile structure:
 
-- Top microcopy block:
-  - `AIPOGER BATTLE POOL`
-  - `挑戰 AI、對決全場。用 60 秒 Drop 讓聽眾投票。`
-- Centered headline:
-  - `AI 音樂鬥歌場`
-- Left female character.
-- Right male character.
-- Gold-orange star CTA centered between the two characters.
+- Compact copy block with eyebrow, one-line title, short subtitle, `發起挑戰`, and share.
+- Two supporting character cutouts on the right/lower side.
+- A horizontally scrollable quick navigation strip that starts with `探索音樂`.
 
 Mobile rules:
 
-- `AI 音樂鬥歌場` must stay on one line and be horizontally centered.
-- Remove the mobile `VS`; it makes the small hero crowded.
-- Do not show the mobile waveform behind the female character.
-- Do not let the title overlap either character's face.
-- Keep the star in the visual midpoint between characters, not pushed toward the right character.
-- Keep the star upright and readable.
+- `AI 音樂鬥歌場` must stay on one line.
+- Do not display `VS`, fake waveform, decorative play control, star CTA, or dashboard cards.
+- Do not let the title, subtitle, CTA, or navigation overlap either character's face.
+- The first public challenge-pool heading must remain visible within a 390x844 first viewport.
 
 ## Battle Pool Header
 
@@ -207,12 +184,10 @@ Avoid:
 
 ## Implementation Notes
 
-Recommended production asset naming:
+Production character assets:
 
 - `public/images/battle/battle-fighter-citypop-female.png`
 - `public/images/battle/battle-fighter-gatekeeper-male.png`
-- `public/images/battle/battle-start-challenge-star-zh.png`
-- `public/images/battle/battle-start-challenge-star-en.png`
 
 Current mock reference from the design iteration:
 
@@ -227,10 +202,11 @@ Before shipping Battle Pool visual changes:
 
 - Check desktop and mobile.
 - Check Chinese and English labels.
-- Confirm the star CTA text matches the locale.
-- Confirm the star button is keyboard/focus accessible.
-- Confirm mobile title stays one line and centered.
-- Confirm mobile `VS` and waveform are not visible.
-- Confirm the star is between the two characters on mobile.
+- Confirm the challenge CTA text matches the locale and is keyboard/focus accessible.
+- Confirm `探索音樂` is the first quick-navigation destination on desktop and mobile.
+- Confirm `對戰記錄` is used instead of `成果牆` / `Result Wall`.
+- Confirm mobile title stays on one line and mobile `VS` is not visible.
+- Confirm fake waveform, deck, EQ, and decorative play controls are absent.
 - Confirm no text overlaps characters, cards, or CTA.
 - Confirm the CTA starts the Battle creation flow.
+- Confirm the first public challenge-pool heading is visible at 1440x900 and 390x844.

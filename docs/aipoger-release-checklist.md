@@ -296,6 +296,9 @@ Look for:
 Check:
 
 - The desktop Battle Pool start-challenge artwork stays inside its header and does not cover genre filters or challenge cards.
+- The Battle Pool first viewport shows `探索音樂` / `Explore Music`, `傷心酒吧`, `對戰記錄`, `Showtime`, and `Drop 規則` in that order; share is separate from destination navigation.
+- At 1440x900 and 390x844, the public challenge-pool heading is visible without a fake waveform, decorative play control, deck/EQ decoration, oversized navigation cards, character overlap, or mobile `VS`.
+- `/battle/results?lang=zh` uses `對戰記錄`; `/battle/results?lang=en` uses `Battle Records`. No public entry should still say `成果牆` / `Result Wall`.
 - Bar Heartbreak shows one static Explore hint when there are no live Battle messages; duplicated marquee content is reserved for an active scrolling ticker.
 - Legacy `/watch?lang=<lang>` keeps the supported language when it redirects to `/battle`.
 - Music analysis cold starts return a non-error warming response while Render wakes; an actual upstream failure still returns a service error.

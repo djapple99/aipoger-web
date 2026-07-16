@@ -253,7 +253,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           title: "戰果與紀錄",
           body:
             "Drop Battle 的重點不是空喊誰比較強，而是讓作品留下公開聽眾反應。只要有聽眾投票，這場對決就能成為創作者判斷作品方向的參考。",
-          items: ["0 票不產生戰果", "1-2 位聽眾投票可形成非正式戰果", "3 位以上不同聽眾投票才有機會進入正式紀錄", "優秀作品可往成果牆與 Showtime 累積"],
+          items: ["0 票不產生戰果", "1-2 位聽眾投票可形成非正式戰果", "3 位以上不同聽眾投票才有機會進入正式紀錄", "成立的正式戰績會進入對戰記錄"],
         },
         {
           title: "評分精神",
@@ -296,7 +296,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           title: "Results and Records",
           body:
             "Drop Battle is not just about claiming a track is stronger. It creates a public listener signal that helps creators decide what to refine, share, and bring back to the stage.",
-          items: ["0 votes means no result", "1-2 listener votes can create an unofficial result", "3+ distinct listener votes can become an official record", "Strong records can feed the Result Wall and Showtime"],
+          items: ["0 votes means no result", "1-2 listener votes can create an unofficial result", "3+ distinct listener votes can become an official record", "Established official results appear in Battle Records"],
         },
         {
           title: "Judging Spirit",

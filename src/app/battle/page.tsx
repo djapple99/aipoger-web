@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { BadgeCheck, BookOpen, Compass, History, Radio, Swords } from "lucide-react";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
@@ -63,8 +64,6 @@ const SHOW_DAILY_BATTLE_SECTION = false;
 const DROP_BATTLE_GENRE_OPTIONS = MUSIC_GENRE_OPTIONS;
 const BATTLE_FEMALE_ASSET = "/images/battle/battle-fighter-citypop-female.png";
 const BATTLE_MALE_ASSET = "/images/battle/battle-fighter-gatekeeper-male.png";
-const BATTLE_STAR_ASSET_ZH = "/images/battle/battle-start-challenge-star-zh.png";
-const BATTLE_STAR_ASSET_EN = "/images/battle/battle-start-challenge-star-en.png";
 
 function normalizeGenreFilter(value: string | null | undefined) {
   return String(value || "").trim().toLowerCase();
@@ -192,21 +191,17 @@ function BattleStageHero({
 }) {
   const startLabel = isZh ? "發起挑戰" : "Start a Challenge";
   const startHref = `/battle/setup?lang=${lang}`;
-  const starAsset = isZh ? BATTLE_STAR_ASSET_ZH : BATTLE_STAR_ASSET_EN;
+  const quickLinks = [
+    { href: `/ai-music?lang=${lang}`, label: isZh ? "探索音樂" : "Explore Music", Icon: Compass },
+    { href: `/listen-bar?lang=${lang}`, label: t("btn_listen_bar"), Icon: Radio },
+    { href: `/battle/results?lang=${lang}`, label: t("watch_result_card"), Icon: History },
+    { href: `/rank?lang=${lang}`, label: t("watch_rank"), Icon: BadgeCheck },
+    { href: `/hook-guide?lang=${lang}`, label: isZh ? "Drop 規則" : "Drop Rules", Icon: BookOpen },
+  ];
 
   return (
     <header className="battle-stage-hero">
       <div className="battle-stage-visual" aria-hidden="true">
-        <div className="battle-stage-deck" />
-        <div className="battle-stage-deck-arm" />
-        <div className="battle-stage-eq">
-          <i />
-          <i />
-          <i />
-          <i />
-          <i />
-          <i />
-        </div>
         <Image
           src={BATTLE_FEMALE_ASSET}
           alt=""
@@ -224,14 +219,7 @@ function BattleStageHero({
           className="battle-stage-fighter battle-stage-fighter-male"
         />
         <div className="battle-stage-vs">VS</div>
-        <span className="battle-stage-spark battle-stage-spark-a" />
-        <span className="battle-stage-spark battle-stage-spark-b" />
       </div>
-
-      <Link href={startHref} aria-label={startLabel} className="battle-stage-star-cta">
-        <Image src={starAsset} alt="" width={640} height={640} priority className="h-full w-full object-contain" />
-        <span className="sr-only">{startLabel}</span>
-      </Link>
 
       <div className="battle-stage-copy">
         <p className="battle-stage-kicker">AIPOGER BATTLE POOL</p>
@@ -239,41 +227,29 @@ function BattleStageHero({
         <p className="battle-stage-subtitle">
           {isZh ? "挑戰 AI、對決全場。用 60 秒 Drop 讓聽眾投票。" : "Challenge AI, face the room, and let listeners vote on a 60s Drop."}
         </p>
-        <div className="battle-stage-audio-strip" aria-hidden="true">
-          <span className="battle-stage-play-dot">▶</span>
-          <span className="battle-stage-waveform" />
+        <div className="battle-stage-primary-actions">
+          <Link href={startHref} className="battle-stage-primary-cta">
+            <Swords aria-hidden="true" size={18} strokeWidth={2.4} />
+            <span>{startLabel}</span>
+          </Link>
+          <ShareButton
+            title={t("watch_share_title")}
+            text={t("watch_share_text")}
+            label={isZh ? "分享鬥歌場" : "Share Battle Hall"}
+            copiedLabel={t("common_copied")}
+            className="battle-stage-share-action"
+          />
         </div>
       </div>
 
-      <div className="battle-stage-actions" aria-label={isZh ? "Battle 快速入口" : "Battle Quick Links"}>
-        <ShareButton
-          title={t("watch_share_title")}
-          text={t("watch_share_text")}
-          label={isZh ? "分享鬥歌場" : "Share Battle Hall"}
-          copiedLabel={t("common_copied")}
-          className="battle-stage-action-card battle-stage-share-card"
-        />
-        <Link href="/listen-bar" className="battle-stage-action-card">
-          <span className="battle-stage-action-icon">♪</span>
-          <strong>{t("btn_listen_bar")}</strong>
-          <small>{isZh ? "公播你的情緒歌" : "Public survival radio"}</small>
-        </Link>
-        <Link href="/battle/results" className="battle-stage-action-card">
-          <span className="battle-stage-action-icon">▦</span>
-          <strong>{t("watch_result_card")}</strong>
-          <small>{isZh ? "看最近對戰紀錄" : "Recent battle records"}</small>
-        </Link>
-        <Link href="/rank" className="battle-stage-action-card">
-          <span className="battle-stage-action-icon">★</span>
-          <strong>{t("watch_rank")}</strong>
-          <small>{isZh ? "正式勝利封存" : "Official wins archive"}</small>
-        </Link>
-        <Link href={`/hook-guide${lang === "en" ? "?lang=en" : "?lang=zh"}`} className="battle-stage-action-card">
-          <span className="battle-stage-action-icon">≡</span>
-          <strong>{isZh ? "Drop 規則" : "Drop Rules"}</strong>
-          <small>{isZh ? "看懂挑戰門檻" : "Challenge basics"}</small>
-        </Link>
-      </div>
+      <nav className="battle-stage-actions" aria-label={isZh ? "Battle 快速入口" : "Battle Quick Links"}>
+        {quickLinks.map(({ href, label, Icon }) => (
+          <Link key={href} href={href} className="battle-stage-action-link">
+            <Icon aria-hidden="true" size={16} strokeWidth={2.2} />
+            <span>{label}</span>
+          </Link>
+        ))}
+      </nav>
     </header>
   );
 }
@@ -1007,7 +983,6 @@ function BattlePoolList() {
   const isZh = lang === "zh";
   const startChallengeLabel = isZh ? "發起挑戰" : "Start a Challenge";
   const startChallengeHref = `/battle/setup?lang=${lang}`;
-  const starAsset = isZh ? BATTLE_STAR_ASSET_ZH : BATTLE_STAR_ASSET_EN;
   const searchParams = useSearchParams();
   const focusQueueId = searchParams.get("focusQueue");
   const [rows, setRows] = useState<PoolEntryRow[]>([]);
@@ -1332,15 +1307,25 @@ function BattlePoolList() {
 
   if (loading) {
     return (
-      <section className="aipo-control-panel mt-8 rounded-[1.35rem] p-6 text-sm text-zinc-500">
-        {t("pool_loading")}
+      <section id="drop-battle-pool" className="battle-pool-shell aipo-panel-line mt-5 scroll-mt-24 rounded-xl p-4 md:p-5">
+        <div className="battle-pool-head mb-4">
+          <div>
+            <p className="aipo-section-kicker">60S DROP BATTLE POOL</p>
+            <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "Drop Battle 公開挑戰池" : "Drop Battle Challenge Pool"}</h2>
+          </div>
+          <Link href={startChallengeHref} aria-label={startChallengeLabel} className="battle-pool-head-cta">
+            <Swords aria-hidden="true" size={17} strokeWidth={2.4} />
+            <span>{startChallengeLabel}</span>
+          </Link>
+        </div>
+        <div className="rounded-lg border border-white/10 bg-black/35 px-4 py-3 text-sm text-zinc-500">{t("pool_loading")}</div>
       </section>
     );
   }
 
   return (
-    <section id="drop-battle-pool" className="battle-pool-shell aipo-panel-line mt-8 scroll-mt-24 rounded-[1.35rem] p-5 md:p-6">
-      <div className="battle-pool-head mb-5">
+    <section id="drop-battle-pool" className="battle-pool-shell aipo-panel-line mt-5 scroll-mt-24 rounded-xl p-4 md:p-5">
+      <div className="battle-pool-head mb-4">
         <div>
           <p className="aipo-section-kicker">60S DROP BATTLE POOL</p>
           <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "Drop Battle 公開挑戰池" : "Drop Battle Challenge Pool"}</h2>
@@ -1348,10 +1333,10 @@ function BattlePoolList() {
         <Link
           href={startChallengeHref}
           aria-label={startChallengeLabel}
-          className="battle-pool-star-cta"
+          className="battle-pool-head-cta"
         >
-          <Image src={starAsset} alt="" width={640} height={640} className="h-full w-full object-contain" />
-          <span className="sr-only">{startChallengeLabel}</span>
+          <Swords aria-hidden="true" size={17} strokeWidth={2.4} />
+          <span>{startChallengeLabel}</span>
         </Link>
       </div>
 

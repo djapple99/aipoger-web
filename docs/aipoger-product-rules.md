@@ -122,7 +122,8 @@ Current behavior:
 - Duplicate active Drop audio should be blocked by audio hash when the column exists.
 - The Battle Pool genre filter shows only the fixed music genres. It must not show `全部風格` / `All Styles`; the default unselected state still displays all official Gatekeeper Drops and open Battle cards.
 - Clicking an already selected Battle Pool genre clears the selection and returns to the unselected all-content view.
-- The Result Wall / 成果牆 must not be used to preserve under-threshold battle outcomes. Public result cards require the official 3-distinct-audience threshold.
+- The Battle Pool first viewport is a compact working stage, not a poster or dashboard. Its quick navigation order is `Explore Music`, `Bar Heartbreak`, `Battle Records`, `Showtime`, and `Drop Rules`; share remains a separate command. Fake waveforms, decorative play controls, deck/EQ decoration, and oversized navigation cards must not push the public challenge pool below the first viewport.
+- Battle Records / 對戰記錄 must not preserve under-threshold battle outcomes. Public result cards require the official 3-distinct-audience threshold.
 - AIPOGER Showtime only consumes official Drop Battle results with at least 3 distinct audience voters.
 - Battle history should focus on the song, not the fighter profile. Cards may show per-song challenge count, wins, losses, ties, and win rate.
 - V1 song battle stats do not open URL upload or a full creator song-library UI. They only group the same creator's repeated Drop Battle entries by normalized song title and show battle count, wins, losses, votes, win rate, and Showtime count.

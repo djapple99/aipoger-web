@@ -151,6 +151,7 @@
 - 探索 AI 音樂底部 mini player 要有可拖曳播放進度條、時間標示與「歌詞」HUD；歌詞 HUD 在播放器上方彈出，旁邊提供可拖動的歌詞瀏覽滑桿，不要把歌詞展開到作品卡或列表中。
 - 探索 AI 音樂的新歌曝光不做獨立 `最新上架` / `New Arrivals` / `72 小時新歌` 橫列、路由、看更多或 NEW 分類。符合展示條件的新歌以 `created_at`（不可用 `updated_at`）在 72 小時內排到自己的 genre lane 最前面；含新歌的 lane 依最新新歌 `created_at desc` 前推，沒有新歌的 lane 維持現行 11 類順序。同類型收合前 6 張中，同創作者最多一首 fresh work，其他仍留在該類型的看更多；完整展開仍是新歌優先、再依公開正向反應與時間排序。
 - 探索 AI 音樂是 cover-led 音樂目錄，不可再做 PPT 式大型 masthead。`Live Drop Signal`、fake waveform、60s ready 儀表、dashboard 統計與三欄首屏玩法說明不得壓在作品前。作品瀏覽可在同頁切換 `依類型 | 正在升溫`；正在升溫只依近 7 日不同帳號 Heart 支持、已成立正式 Battle 的非參賽者有效票、最近合格互動與 created_at/id 排序，不使用 all-time Heart、假播放數、mock score 或黑箱 Heat Score。Hot Now 必須沿用依類型的緊湊封面作品卡、手機橫滑與桌機 3 / 4 / 6 欄網格，不可保留全寬排行列或表格式空白；名次與近 7 日訊號只作卡片上的輕量標示。Showtime 可列出但顯示 SHOWTIME 並不可攻擂；無近期訊號的作品只標示正在累積、不給假排名。
+- Battle Pool 首屏必須是可操作的 compact stage，不是 PPT 海報或 dashboard：快速入口順序固定為 `探索音樂`、`傷心酒吧`、`對戰記錄`、`Showtime`、`Drop 規則`，分享獨立於目的地導覽。不得用 fake waveform、裝飾播放鍵、deck / EQ 或大型入口卡把公開挑戰池推離 1440x900 / 390x844 首屏；手機不顯示 `VS`，角色不可遮住文字或操作。
 - 探索 AI 音樂頁首是 compact 的中央目錄舞台：eyebrow、實際作品數的 `[作品庫]` marker、主標、黃色副標與投稿提示、跨頁導覽、`依類型 | 正在升溫` 都以同一中央軸排列，桌機與手機首屏仍要看到作品。固定 `/guide.png` icon-only GUIDE（tooltip / accessible name 為 `這裡怎麼玩？` / `How this works`）開啟可及 HUD，不可回到可見 `<details>` 說明；HUD 支援 X、Escape、backdrop、焦點圈與回焦，解釋 Heart 同步收藏、接戰守擂 60s Drop、3 位非參賽者投票與 Showtime 不再接戰。Explore 作品分享必須使用 `/ai-music?lang=<lang>&track=<id>#works`，載入後展開目標類型並定位作品，不能導回傷心酒吧或自動播放。
 - 三個音樂展示面的定位不可混淆：傷心酒吧是 AI 音樂公播池與投稿入口；探索 AI 音樂是公開上傳作品牆；Showtime 是認證作品庫。Showtime 作品入選後不再接受挑戰，也不適用 8 敗退場。未進 Showtime 的探索作品若開放守擂並守下 6 場正式探索攻擂，進入 Showtime；同一挑戰者對同一首歌最多計入 1 次守擂成功。未進 Showtime 的探索作品若累積 8 場正式敗績，會從探索公開牆退場並停止接戰。以上只計入至少 3 位非參賽者投票成立的正式戰績；拒絕、超時、觀眾不足、未開打、自定開戰不算。
 - Showtime 前台一律是認證作品目錄，不再分舊 Drop 勝利 / Bar 熱播分榜或 source tabs；所有正式 Battle 認證、探索守擂認證與傷心酒吧公播認證作品統一展示，認證來源寫在單首歌介紹內。`AIPOGER Choice` 固定在 `/rank` 最上方做獨立的 cover-led DJ shelf：只放已發布 Choice，每份以策展者現有身份封面做方形封面，封面播放鈕依歌單順播，歌單鈕開完整曲目，卡片必須直接展示策展文章摘要並提供愛心／收藏與分享操作。標題只用大型有設計感的 `AIPOGER CHOICE`，不得顯示 `CURATOR SETS`、圓形頭像展示或「由創作者選出他們心目中的歌單」這類重複說明。Choice 收藏是歌單層級的獨立可切換收藏，不共用歌曲 24 小時 Heart、歌曲總愛心或個人歌曲收藏。Showtime 在下方依類型排列，桌機每列 6 首、手機 2 首，Choice 與 Showtime 共用含進度、上一首／下一首及手機音量的底部播放器。`/admin/showtime` 是 owner 的緊湊封面作品目錄：桌機每列 6 首、每頁 12 首，可認證、收回／恢復公開展示，並可編輯創作者投稿作品的封面與顯示資料（歌名、創作者、AI 工具、類型、製作資訊、作品介紹／評語、歌詞、YouTube、外部支持連結與連結用途）；不得改音檔、既有認證來源、Battle 戰績、票數、Heart 或重新開戰。它同時是官方本期 Choice 的主要勾選、排序、發布／撤回工作台；`/admin/choice` 保留為同一官方 Choice 資料的直接管理入口。曾擁有至少一首 Showtime 認證作品的創作者可在 `/profile/choice` 建立自己的 Choice，從全站目前公開的 Showtime 認證作品策展，不限作者；創作者 Choice 與官方 Choice 分開，不會自動發布社群貼文。
@@ -180,7 +181,7 @@
 
 - 官方守門 Drop 是最多四張 owner 管理的常駐模板卡，放在鬥歌池讓任何人挑戰。
 - owner 只在後台上傳守門歌、裁切 60 秒內 Drop、設定類型、封面、歌詞、啟用 / 停用；owner 不設定開戰時間。
-- 後台設定官方守門 Drop 的類型時，必須使用與 Battle 上傳一致的固定類型選單，不使用自由手打，避免鬥歌池 / 成果牆 / 榮譽榜分類不一致。
+- 後台設定官方守門 Drop 的類型時，必須使用與 Battle 上傳一致的固定類型選單，不使用自由手打，避免鬥歌池 / 對戰記錄 / Showtime 分類不一致。
 - 官方守門 Drop 音檔上傳沿用標準音檔限制：MP3 / WAV / AIFF / M4A / AAC / OGG，單檔上限 100MB，並必須進 60 秒 Drop 裁切器後再保存。封面沿用標準圖片格式，上限 10MB；歌詞可選填或匯入文字檔。
 - 正式站必須先套用 `supabase/20260618_official_gatekeeper_drops.sql` 與 `supabase/20260619_official_gatekeeper_media.sql`，否則後台只能看到預設卡，不能完整保存音檔、封面、歌詞或啟用卡片。
 - 挑戰者點「挑戰這首 Drop」後，上傳自己的 Drop，並由挑戰者設定 10 / 15 / 20 分鐘或 24 小時內自訂開戰時間，方便自己約人投票。

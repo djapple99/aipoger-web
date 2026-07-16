@@ -788,12 +788,12 @@ function BattleResultContent() {
           </h1>
           <p className="mt-3 text-sm font-bold leading-7 text-zinc-400">
             {lang === "zh"
-              ? "成果卡是單場 Battle 的公開證明。要看所有月份戰果，請進成果牆。"
-              : "A result card proves one battle. To browse monthly results, open the Result Wall."}
+              ? "成果卡是單場 Battle 的公開證明。要看所有月份戰績，請進對戰記錄。"
+              : "A result card proves one battle. To browse monthly results, open Battle Records."}
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             <Link href={`/battle/results?lang=${lang}`} className="rounded-full bg-orange-500 px-5 py-3 text-sm font-black text-black transition hover:bg-orange-300">
-              {lang === "zh" ? "進成果牆" : "Open Result Wall"}
+              {lang === "zh" ? "看對戰記錄" : "Open Battle Records"}
             </Link>
             <Link href={`/battle?lang=${lang}`} className="rounded-full border border-cyan-200/35 bg-cyan-300/10 px-5 py-3 text-sm font-black text-cyan-50 transition hover:border-cyan-100">
               {lang === "zh" ? "回鬥歌場" : "Back to Battle"}
