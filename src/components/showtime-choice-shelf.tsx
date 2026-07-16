@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Heart, ListMusic, MessageCircle, Play, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import ChoiceCommentsDialog from "@/components/choice-comments-dialog";
 import ShareButton from "@/components/share-button";
 import { choiceItemRecordKey, type AipogerChoiceItem } from "@/lib/aipoger-choice";
@@ -199,7 +200,7 @@ export default function ShowtimeChoiceShelf({
         {heartError ? <p className="mt-3 text-xs font-bold text-rose-200">{heartError}</p> : null}
       </section>
 
-      {detail ? (
+      {detail && typeof document !== "undefined" ? createPortal((
         <div className="fixed inset-0 z-[230] flex items-end bg-black/78 px-3 py-4 backdrop-blur-sm sm:items-center sm:justify-center" role="dialog" aria-modal="true" aria-label={isZh ? "Choice 歌單預覽" : "Choice tracklist preview"} onClick={() => setDetail(null)}>
           <section className="max-h-[82vh] w-full max-w-3xl overflow-hidden rounded-lg border border-yellow-100/25 bg-[#080808] shadow-[0_28px_100px_rgba(0,0,0,0.78)]" onClick={(event) => event.stopPropagation()}>
             <header className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 border-b border-white/10 px-4 py-4 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto] sm:px-5">
@@ -259,7 +260,7 @@ export default function ShowtimeChoiceShelf({
             </footer>
           </section>
         </div>
-      ) : null}
+      ), document.body) : null}
 
       {commentsEntry ? (
         <ChoiceCommentsDialog

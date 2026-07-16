@@ -86,6 +86,8 @@ test("Choice tracklist HUD supports song saves, individual playback, and play al
   assert.ok(choiceShelfSource.includes("TracklistPreview"));
   assert.ok(choiceShelfSource.includes("group-hover/tracklist:visible"));
   assert.ok(choiceShelfSource.includes("setDetail(entry)"));
+  assert.ok(choiceShelfSource.includes("createPortal(("));
+  assert.ok(choiceShelfSource.includes("document.body"));
   assert.ok(choiceShelfSource.includes("choiceDateLabel(entry.weekStart, isZh)"));
   assert.ok(choiceShelfSource.includes("choiceItemRecordKey(item)"));
   assert.ok(choiceShelfSource.includes("onToggleItemHeart(item)"));
