@@ -24,3 +24,12 @@
 - Mobile screenshots: `output/playwright/choice-2026-07-16/latest-choice-hud-mobile.png`, `latest-choice-mobile-playing.png`, and `latest-choice-public-mobile.png`.
 - Local Browser QA passed: authored title, intro/date header, 10 ordered songs, per-song Heart/play, modal close on playback, Play All, full public link, Return to Showtime, seek, mobile volume, and real audio progress (`currentTime > 2`, `paused=false`). Console errors: 0.
 - Automated checks: `npm test` 183/183; `npx tsc --noEmit`; `npm run lint` with 0 errors and the same 11 pre-existing warnings; `npm run build` passed.
+
+## Production Release
+
+- Feature commit: `77f4b46 feat: add interactive Choice tracklist HUD`.
+- Mobile stacking fix: `5146d28 fix: keep Choice HUD above player`. The HUD is portaled to `document.body`, so an existing fixed bottom player cannot cover or intercept HUD footer controls.
+- Production deployment: `dpl_GzmW43RSpMbdii13gHuPwVYXqkpt`, Ready and aliased to `https://aipoger.com`.
+- Live desktop screenshot: `output/playwright/choice-2026-07-16/live-interactive-choice-hud-desktop-final.png`.
+- Live mobile screenshots: `live-interactive-choice-hud-mobile-player-open.png` and `live-interactive-choice-public-mobile.png` in the same output folder.
+- Live QA passed on desktop and mobile: authored title/date/intro, 10 song Hearts and play commands, HUD above an already-open player, playable Play All, modal close on playback, public Choice page, Return to Showtime, seek, previous/next, mobile volume, and real audio progress. Production console errors: 0.
