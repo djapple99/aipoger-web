@@ -207,6 +207,8 @@ Before shipping Battle Pool visual changes:
 - Confirm `對戰記錄` is used instead of `成果牆` / `Result Wall`.
 - Confirm mobile title stays on one line and mobile `VS` is not visible.
 - Confirm fake waveform, deck, EQ, and decorative play controls are absent.
+- Confirm desktop `VS` remains a large, high-contrast confrontation signal between the two fighters while mobile keeps it hidden.
+- Confirm the signed-in account dock starts in the safe upper-right slot and retains its dragged edge-relative position after pointer release, reload, and viewport resize.
 - Confirm no text overlaps characters, cards, or CTA.
 - Confirm the CTA starts the Battle creation flow.
 - Confirm the first public challenge-pool heading is visible at 1440x900 and 390x844.

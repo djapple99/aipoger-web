@@ -20,12 +20,21 @@ test("logged-out account dock does not present a fake notification bell", () => 
 });
 
 test("signed-in account dock can be dragged without losing its saved position", () => {
-  assert.ok(overlaySource.includes("ACCOUNT_DOCK_POSITION_KEY"));
+  assert.ok(overlaySource.includes('aipoger:account-dock-position-v2'));
   assert.ok(overlaySource.includes("beginAccountDockDrag"));
   assert.ok(overlaySource.includes("moveAccountDock"));
   assert.ok(overlaySource.includes("suppressAccountDockClickRef"));
   assert.ok(overlaySource.includes("clampAccountDockPosition"));
-  assert.ok(overlaySource.includes("window.localStorage.setItem(ACCOUNT_DOCK_POSITION_KEY"));
+  assert.ok(overlaySource.includes("encodeAccountDockPosition"));
+  assert.ok(overlaySource.includes("decodeAccountDockPosition"));
+  assert.ok(overlaySource.includes("persistAccountDockPosition"));
+  assert.ok(overlaySource.includes('window.addEventListener("pointermove", moveAccountDock'));
+  assert.ok(overlaySource.includes('window.addEventListener("pointerup", finishAccountDockDrag'));
+});
+
+test("battle stage keeps a dramatic desktop VS while hiding it on mobile", () => {
+  assert.match(globalsSource, /\.battle-stage-vs \{[\s\S]*?display: none;/);
+  assert.match(globalsSource, /@media \(min-width: 768px\)[\s\S]*?\.battle-stage-vs \{[\s\S]*?display: block;[\s\S]*?font-size: 6\.75rem;/);
 });
 
 test("mobile creator entry headers clear the fixed home logo", () => {

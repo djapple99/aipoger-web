@@ -1228,10 +1228,17 @@ a {
   }
 
   .battle-stage-vs {
-    right: 18.5%;
-    top: 41%;
+    right: 16.8%;
+    top: 37%;
     display: block;
-    font-size: 4.2rem;
+    color: #ff332b;
+    font-size: 6.75rem;
+    letter-spacing: 0;
+    -webkit-text-stroke: 1px rgba(255, 180, 160, 0.72);
+    text-shadow:
+      0 0 10px rgba(255, 220, 204, 0.58),
+      0 0 28px rgba(255, 49, 38, 0.72),
+      0 12px 30px rgba(0, 0, 0, 0.72);
   }
 
   .battle-stage-actions {
@@ -1264,6 +1271,6 @@ a {
   }
 
   .battle-stage-vs {
-    right: 17.5%;
+    right: 16.2%;
   }
 }

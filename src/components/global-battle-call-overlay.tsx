@@ -82,26 +82,99 @@ const DEMO_CALL_EVENT = "aipoger:battle-call-demo";
 const ACCOUNT_NOTICE_COLLAPSED_KEY = "aipoger:account-notice-collapsed";
 const ACCOUNT_NOTICE_DISMISSED_KEY = "aipoger:account-notice-dismissed";
 const ACCOUNT_NOTICE_URGENT_DISMISSED_KEY = "aipoger:account-notice-urgent-dismissed";
-const ACCOUNT_DOCK_POSITION_KEY = "aipoger:account-dock-position-v1";
+const ACCOUNT_DOCK_POSITION_KEY = "aipoger:account-dock-position-v2";
+const ACCOUNT_DOCK_MARGIN = 8;
+const ACCOUNT_DOCK_SIZE = 56;
+const ACCOUNT_DOCK_SAFE_RIGHT_GAP = 88;
 const BATTLE_START_ALERT_LEAD_MS = 60 * 1000;
 const LISTEN_BAR_COMMENT_NOTICE_TYPE = "listen_bar_track_comment";
 const AI_MUSIC_CHALLENGE_INVITE_NOTICE_TYPE = "ai_music_challenge_invite";
 
 type AccountDockPosition = { x: number; y: number };
+type StoredAccountDockPosition = {
+  version: 2;
+  horizontalAnchor: "left" | "right";
+  edgeOffset: number;
+  yRatio: number;
+};
+
+function accountDockBounds() {
+  if (typeof window === "undefined") {
+    return { minX: ACCOUNT_DOCK_MARGIN, maxX: ACCOUNT_DOCK_MARGIN, minY: ACCOUNT_DOCK_MARGIN, maxY: ACCOUNT_DOCK_MARGIN };
+  }
+  return {
+    minX: ACCOUNT_DOCK_MARGIN,
+    maxX: Math.max(ACCOUNT_DOCK_MARGIN, window.innerWidth - ACCOUNT_DOCK_SIZE - ACCOUNT_DOCK_MARGIN),
+    minY: ACCOUNT_DOCK_MARGIN,
+    maxY: Math.max(ACCOUNT_DOCK_MARGIN, window.innerHeight - ACCOUNT_DOCK_SIZE - ACCOUNT_DOCK_MARGIN),
+  };
+}
 
 function clampAccountDockPosition(position: AccountDockPosition): AccountDockPosition {
   if (typeof window === "undefined") return position;
-  const margin = 8;
-  const dockSize = 56;
+  const bounds = accountDockBounds();
   return {
-    x: Math.min(Math.max(margin, position.x), Math.max(margin, window.innerWidth - dockSize - margin)),
-    y: Math.min(Math.max(margin, position.y), Math.max(margin, window.innerHeight - dockSize - margin)),
+    x: Math.min(Math.max(bounds.minX, position.x), bounds.maxX),
+    y: Math.min(Math.max(bounds.minY, position.y), bounds.maxY),
   };
 }
 
 function defaultAccountDockPosition(): AccountDockPosition {
   if (typeof window === "undefined") return { x: 0, y: 16 };
-  return clampAccountDockPosition({ x: window.innerWidth - 144, y: 16 });
+  return clampAccountDockPosition({
+    x: window.innerWidth - ACCOUNT_DOCK_SIZE - ACCOUNT_DOCK_SAFE_RIGHT_GAP,
+    y: 16,
+  });
+}
+
+function encodeAccountDockPosition(position: AccountDockPosition): StoredAccountDockPosition {
+  const bounds = accountDockBounds();
+  const clamped = clampAccountDockPosition(position);
+  const leftOffset = clamped.x - bounds.minX;
+  const rightOffset = bounds.maxX - clamped.x;
+  const ySpan = Math.max(1, bounds.maxY - bounds.minY);
+  return {
+    version: 2,
+    horizontalAnchor: leftOffset <= rightOffset ? "left" : "right",
+    edgeOffset: Math.max(0, Math.min(leftOffset, rightOffset)),
+    yRatio: Math.max(0, Math.min(1, (clamped.y - bounds.minY) / ySpan)),
+  };
+}
+
+function decodeAccountDockPosition(stored: StoredAccountDockPosition): AccountDockPosition {
+  const bounds = accountDockBounds();
+  const x = stored.horizontalAnchor === "left"
+    ? bounds.minX + stored.edgeOffset
+    : bounds.maxX - stored.edgeOffset;
+  const y = bounds.minY + Math.max(0, Math.min(1, stored.yRatio)) * Math.max(1, bounds.maxY - bounds.minY);
+  return clampAccountDockPosition({ x, y });
+}
+
+function readAccountDockPosition(): AccountDockPosition | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(ACCOUNT_DOCK_POSITION_KEY) ?? "null") as Partial<StoredAccountDockPosition> | null;
+    if (
+      stored?.version === 2 &&
+      (stored.horizontalAnchor === "left" || stored.horizontalAnchor === "right") &&
+      Number.isFinite(stored.edgeOffset) &&
+      Number.isFinite(stored.yRatio)
+    ) {
+      return decodeAccountDockPosition(stored as StoredAccountDockPosition);
+    }
+  } catch {
+    // Use the safe default when storage is unavailable or invalid.
+  }
+  return null;
+}
+
+function persistAccountDockPosition(position: AccountDockPosition) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(ACCOUNT_DOCK_POSITION_KEY, JSON.stringify(encodeAccountDockPosition(position)));
+  } catch {
+    // Ignore storage failures in hardened browsers.
+  }
 }
 
 function BellIcon() {
@@ -301,27 +374,15 @@ export default function GlobalBattleCallOverlay() {
 
   useEffect(() => {
     if (!ready) return;
-    let position = defaultAccountDockPosition();
-    try {
-      const saved = JSON.parse(window.localStorage.getItem(ACCOUNT_DOCK_POSITION_KEY) ?? "null") as Partial<AccountDockPosition> | null;
-      if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) {
-        position = clampAccountDockPosition({ x: Number(saved.x), y: Number(saved.y) });
-      }
-    } catch {
-      // Use the default position when storage is unavailable or invalid.
-    }
+    const position = readAccountDockPosition() ?? defaultAccountDockPosition();
     accountDockPositionRef.current = position;
     setAccountDockPosition(position);
 
     const keepVisible = () => {
-      const next = clampAccountDockPosition(accountDockPositionRef.current ?? defaultAccountDockPosition());
+      const next = readAccountDockPosition() ?? clampAccountDockPosition(accountDockPositionRef.current ?? defaultAccountDockPosition());
       accountDockPositionRef.current = next;
       setAccountDockPosition(next);
-      try {
-        window.localStorage.setItem(ACCOUNT_DOCK_POSITION_KEY, JSON.stringify(next));
-      } catch {
-        // Ignore storage failures in hardened browsers.
-      }
+      persistAccountDockPosition(next);
     };
     window.addEventListener("resize", keepVisible);
     return () => window.removeEventListener("resize", keepVisible);
@@ -330,6 +391,7 @@ export default function GlobalBattleCallOverlay() {
   const beginAccountDockDrag = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
     const position = accountDockPositionRef.current ?? defaultAccountDockPosition();
+    suppressAccountDockClickRef.current = false;
     accountDockDragRef.current = {
       pointerId: event.pointerId,
       offsetX: event.clientX - position.x,
@@ -340,33 +402,41 @@ export default function GlobalBattleCallOverlay() {
     event.currentTarget.setPointerCapture(event.pointerId);
   }, []);
 
-  const moveAccountDock = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+  const moveAccountDock = useCallback((event: PointerEvent) => {
     const drag = accountDockDragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     if (Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > 4) {
       suppressAccountDockClickRef.current = true;
       setAccountDockDragging(true);
+      event.preventDefault();
     }
     const next = clampAccountDockPosition({ x: event.clientX - drag.offsetX, y: event.clientY - drag.offsetY });
     accountDockPositionRef.current = next;
     setAccountDockPosition(next);
   }, []);
 
-  const finishAccountDockDrag = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+  const finishAccountDockDrag = useCallback((event: PointerEvent) => {
     const drag = accountDockDragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     accountDockDragRef.current = null;
     setAccountDockDragging(false);
     const position = accountDockPositionRef.current ?? defaultAccountDockPosition();
-    try {
-      window.localStorage.setItem(ACCOUNT_DOCK_POSITION_KEY, JSON.stringify(position));
-    } catch {
-      // Ignore storage failures in hardened browsers.
-    }
+    persistAccountDockPosition(position);
     window.setTimeout(() => {
       suppressAccountDockClickRef.current = false;
     }, 0);
   }, []);
+
+  useEffect(() => {
+    window.addEventListener("pointermove", moveAccountDock, { passive: false });
+    window.addEventListener("pointerup", finishAccountDockDrag, true);
+    window.addEventListener("pointercancel", finishAccountDockDrag, true);
+    return () => {
+      window.removeEventListener("pointermove", moveAccountDock);
+      window.removeEventListener("pointerup", finishAccountDockDrag, true);
+      window.removeEventListener("pointercancel", finishAccountDockDrag, true);
+    };
+  }, [finishAccountDockDrag, moveAccountDock]);
 
   useEffect(() => {
     const id = window.setInterval(() => setNoticeClockMs(Date.now()), 5000);
@@ -742,9 +812,6 @@ export default function GlobalBattleCallOverlay() {
         className={accountDockClassName}
         style={accountDockPosition ? { left: accountDockPosition.x, top: accountDockPosition.y } : { right: 96, top: 16 }}
         onPointerDown={beginAccountDockDrag}
-        onPointerMove={moveAccountDock}
-        onPointerUp={finishAccountDockDrag}
-        onPointerCancel={finishAccountDockDrag}
         onClickCapture={(event) => {
           if (!suppressAccountDockClickRef.current) return;
           event.preventDefault();

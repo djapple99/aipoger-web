@@ -16,6 +16,8 @@ Baseline captures at 1440x900 and 390x844 showed an oversized poster-like hero, 
 
 The compact stage removes non-functional audio decoration, separates primary action from navigation, keeps two character cutouts inside the visual zone, hides `VS` on mobile, and exposes the public pool heading in the first viewport.
 
+Follow-up refinement enlarges the desktop `VS` to a 108px high-contrast confrontation mark. The signed-in account dock now uses versioned edge-relative storage, ignores the obsolete absolute-pixel position, and listens for pointer move/up at window scope so a drag cannot be lost when the pointer leaves the avatar.
+
 Audit captures are stored outside Git under `output/design-audit/2026-07-16-battle-pool/`.
 
 ## Main Files
