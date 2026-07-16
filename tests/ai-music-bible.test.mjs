@@ -8,6 +8,12 @@ import {
   STEM_ENGINES,
   STEM_GOALS,
 } from "../src/lib/stem-separation-guide.ts";
+import {
+  AI_PRODUCTION_FLOW,
+  SUNO_GENRE_GROUPS,
+  SUNO_LYRIC_MOVES,
+  SUNO_PROMPT_MOVES,
+} from "../src/lib/suno-practice-library.ts";
 
 test("Taiwanese lyrics lab keeps the PDF seed catalog complete and uniquely addressable", () => {
   assert.equal(TAIWANESE_LYRICS_ENTRIES.length, 38);
@@ -55,4 +61,36 @@ test("stem separation guide is bilingual, sourced, and points only to known engi
     && goal.engineKeys.length > 0
     && goal.engineKeys.every((key) => engineKeys.has(key))
   )));
+});
+
+test("Suno prompt and lyric libraries keep unique, bilingual, sourced moves", () => {
+  assert.equal(SUNO_PROMPT_MOVES.length, 18);
+  assert.equal(SUNO_LYRIC_MOVES.length, 16);
+
+  for (const entries of [SUNO_PROMPT_MOVES, SUNO_LYRIC_MOVES]) {
+    assert.equal(new Set(entries.map((entry) => entry.key)).size, entries.length);
+    assert.ok(entries.every((entry) => (
+      entry.title.zh
+      && entry.title.en
+      && entry.summary.zh
+      && entry.summary.en
+      && entry.use.zh
+      && entry.use.en
+      && entry.copy.zh
+      && entry.copy.en
+      && ["official", "field", "version"].includes(entry.evidence)
+      && entry.sources.length > 0
+      && entry.keywords.length > 0
+    )));
+  }
+});
+
+test("genre crate and production flow remain complete and bilingual", () => {
+  const genreTerms = SUNO_GENRE_GROUPS.flatMap((group) => group.terms);
+
+  assert.ok(genreTerms.length >= 80);
+  assert.equal(new Set(genreTerms.map((term) => term.toLocaleLowerCase())).size, genreTerms.length);
+  assert.ok(SUNO_GENRE_GROUPS.every((group) => group.key && group.label.zh && group.label.en && group.terms.length > 0));
+  assert.equal(AI_PRODUCTION_FLOW.length, 6);
+  assert.ok(AI_PRODUCTION_FLOW.every((step) => step.title.zh && step.title.en && step.body.zh && step.body.en));
 });

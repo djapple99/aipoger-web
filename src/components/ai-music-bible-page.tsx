@@ -27,6 +27,7 @@ import { fontRighteous } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
 import StemSeparationGuideSection from "@/components/stem-separation-guide-section";
+import SunoPracticeLibrarySection from "@/components/suno-practice-library-section";
 import {
   TAIWANESE_LYRICS_CATEGORIES,
   TAIWANESE_LYRICS_ENTRIES,
@@ -58,16 +59,16 @@ type PracticeArea = {
 function practiceAreasForLanguage(isZh: boolean): PracticeArea[] {
   return isZh
     ? [
-        { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt 招式庫", body: "把曲風、情緒、樂器、段落與 vocal 說清楚。", href: "#practice-map", accent: "orange" },
-        { icon: BookOpenText, eyebrow: "LYRICS", title: "歌詞調教", body: "副歌記憶句、段落格式、口語與咬字實測。", href: "#taiwanese-lab", accent: "cyan" },
+        { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt 招式庫", body: "18 招 Prompt、80+ 個曲風詞與愛波哥私藏配方。", href: "#suno-prompt-library", accent: "orange" },
+        { icon: BookOpenText, eyebrow: "LYRICS", title: "歌詞調教", body: "段落、唱法、合唱、情緒與台語咬字實測。", href: "#lyric-control-library", accent: "cyan" },
         { icon: Music2, eyebrow: "DROP", title: "Drop 製作練習", body: "用 30–60 秒練節奏、情緒與記憶點。", href: "/hook-guide", accent: "orange" },
         { icon: Headphones, eyebrow: "A&R TOOL", title: "分析你的音樂", body: "需要第二意見時，再用 A&R Gate 檢查作品路線。", href: "/music-analysis", accent: "cyan" },
         { icon: AudioWaveform, eyebrow: "STEMS", title: "AI 拆軌避坑指南", body: "看懂 10 種引擎家族，避免為同一能力重複付費。", href: "#stem-separation-guide", accent: "orange" },
         { icon: Video, eyebrow: "AIPOGER", title: "愛波哥影片教學", body: "從中文實戰影片建立完整創作流程。", href: tutorialPlaylist, accent: "cyan", external: true },
       ]
     : [
-        { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt Patterns", body: "Define genre, emotion, instruments, sections, and vocal direction.", href: "#practice-map", accent: "orange" },
-        { icon: BookOpenText, eyebrow: "LYRICS", title: "Lyric Practice", body: "Practice chorus memory, section labels, diction, and pronunciation.", href: "#taiwanese-lab", accent: "cyan" },
+        { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt Moves", body: "18 prompt moves, 80+ genre terms, and curated AIPOGER recipes.", href: "#suno-prompt-library", accent: "orange" },
+        { icon: BookOpenText, eyebrow: "LYRICS", title: "Lyric Control", body: "Shape sections, delivery, duets, emotion, and Taiwanese pronunciation.", href: "#lyric-control-library", accent: "cyan" },
         { icon: Music2, eyebrow: "DROP", title: "Drop Practice", body: "Train rhythm, emotion, and recall inside a focused 30–60 seconds.", href: "/hook-guide", accent: "orange" },
         { icon: Headphones, eyebrow: "A&R TOOL", title: "Analyze Your Music", body: "Use A&R Gate when you need a second opinion on the track's route.", href: "/music-analysis", accent: "cyan" },
         { icon: AudioWaveform, eyebrow: "STEMS", title: "Stem Separation Guide", body: "Understand 10 engine families and avoid paying twice for the same capability.", href: "#stem-separation-guide", accent: "orange" },
@@ -100,8 +101,8 @@ export default function AiMusicBiblePage() {
   const isZh = lang === "zh";
   const ui = isZh
     ? {
-        updated: "持續更新", enterLab: "進入 AI 拆軌指南", viewMap: "看練功地圖",
-        labCount: "2 個實戰資料庫", seedSource: "收錄 38 筆台語發音實測與 10 種 AI Stem 引擎家族；新資料會保留來源、日期與不確定性。",
+        updated: "持續更新", enterLab: "進入 Prompt 招式庫", viewMap: "看練功地圖",
+        labCount: "4 個實戰資料庫", seedSource: "新增 Prompt 招式、歌詞控制與 80+ 個曲風詞，並保留台語調音與 AI Stem 指南；每筆都標示來源與可靠度。",
         traits: ["繁中整理", "官方核對", "共同驗證"], practiceTitle: "今天要練哪一招？", practiceBody: "先選一個問題練，不必從頭把整本看完。每一區都會慢慢增加實測範例。",
         labTitle: "Suno 台語歌詞調音實驗室", labBody: "搜尋華語意思，複製實測寫法，再告訴大家這個版本唱得準不準。不同模型、旋律與聲線都可能改變結果。",
         addData: "補一筆資料", disclaimer: "這裡整理的是 AI 歌唱發音實測，不代表台語推薦正字。借音字只用來協助模型發音；正式書寫請另外查證。",
@@ -116,8 +117,8 @@ export default function AiMusicBiblePage() {
         submitting: "正在送進待驗證區…", submitted: "收到！資料已進待驗證區，確認後才會加入正式表。", submitError: "投稿失敗，請稍後再試。", copy: "複製 Suno 寫法", effective: "這個寫法有效", incorrect: "這個寫法會唱錯", reported: "已回報", unavailable: "暫時送不出",
       }
     : {
-        updated: "Living guide", enterLab: "Enter Stem Separation Guide", viewMap: "View practice map",
-        labCount: "2 field databases", seedSource: "Explore 38 Taiwanese pronunciation tests and 10 AI stem engine families, with source dates and uncertainty kept visible.",
+        updated: "Living guide", enterLab: "Enter Prompt Moves", viewMap: "View practice map",
+        labCount: "4 field databases", seedSource: "Explore prompt moves, lyric controls, 80+ genre terms, Taiwanese pronunciation tests, and AI stem guidance with sources and confidence kept visible.",
         traits: ["Bilingual", "Cross-checked", "Community tested"], practiceTitle: "What do you want to practice?", practiceBody: "Pick one problem instead of reading everything in order. Each section will keep gaining tested examples.",
         labTitle: "Suno Taiwanese Lyrics Lab", labBody: "Search by Mandarin meaning, copy a tested spelling, then report whether your Suno version sings it correctly.",
         addData: "Add a test", disclaimer: "These are AI singing pronunciation experiments, not recommended Taiwanese orthography. Loan characters are only used to guide model pronunciation.",
@@ -217,7 +218,7 @@ export default function AiMusicBiblePage() {
                 : "A living field guide for Suno, prompts, lyrics, Drops, rights, and real-world AI music practice."}
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <a href="#stem-separation-guide" className="aipo-primary-button inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-sm font-black">
+              <a href="#suno-prompt-library" className="aipo-primary-button inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-sm font-black">
                 {ui.enterLab} <ArrowRight className="h-4 w-4" />
               </a>
               <a href="#practice-map" className="aipo-ghost-button inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-sm font-black text-white">
@@ -278,7 +279,11 @@ export default function AiMusicBiblePage() {
           </div>
         </section>
 
-        <StemSeparationGuideSection locale={isZh ? "zh" : "en"} />
+        <SunoPracticeLibrarySection locale={isZh ? "zh" : "en"} />
+
+        <div className="mt-10">
+          <StemSeparationGuideSection locale={isZh ? "zh" : "en"} />
+        </div>
 
         <section id="taiwanese-lab" className="mt-10 scroll-mt-20 overflow-hidden rounded-[1.6rem] border border-orange-300/22 bg-[#070707]/90 shadow-[0_30px_100px_rgba(0,0,0,0.5)]">
           <div className="border-b border-white/10 bg-[radial-gradient(circle_at_15%_0%,rgba(255,106,0,0.18),transparent_32%),radial-gradient(circle_at_90%_10%,rgba(34,211,238,0.1),transparent_30%)] px-5 py-7 sm:px-8 lg:px-10 lg:py-10">
