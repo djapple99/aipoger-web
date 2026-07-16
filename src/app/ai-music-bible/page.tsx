@@ -7,11 +7,11 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   const { lang } = await searchParams;
   const isZh = !lang || lang === "zh";
   const title = isZh
-    ? "AI 音樂練功聖經｜Suno、歌詞、Prompt 實戰資料庫"
-    : "AI Music Practice Bible｜Suno, Lyrics, and Prompt Lab";
+    ? "AI 音樂練功聖經｜Stem 拆軌、Suno 歌詞與 Prompt 實戰資料庫"
+    : "AI Music Practice Bible｜Stem Separation, Suno Lyrics, and Prompts";
   const description = isZh
-    ? "AIPOGER 的 AI 音樂實戰資料庫：Suno 台語歌詞調音、Prompt、Drop、編曲、版權與愛波哥教學。一起實測、回報並補充資料。"
-    : "AIPOGER's living AI music field guide for Suno, Taiwanese lyrics, prompts, Drops, rights, and community-tested pronunciation.";
+    ? "AIPOGER 的 AI 音樂實戰資料庫：AI Stem 拆軌引擎、Suno 台語歌詞調音、Prompt、Drop、版權與愛波哥教學。"
+    : "AIPOGER's living field guide for AI stem separation engines, Suno, Taiwanese lyrics, prompts, Drops, and rights.";
 
   return {
     title,

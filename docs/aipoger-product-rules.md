@@ -91,7 +91,11 @@ Current public entry and learning-surface rules:
 
 - The homepage second lower navigation card is `AI 音樂練功聖經`, linking to `/ai-music-bible?lang=<lang>`. It replaces the old homepage-first `歌曲分析` card.
 - A&R Gate is not deleted. `分析你的音樂` lives inside the Bible's practice map and toolbox as an optional second-opinion tool after a creator has made something.
-- The Bible is a living, searchable practice database rather than one long static resource article. Its primary areas are prompts, lyrics, Drop practice, rights, AIPOGER tutorials, and the A&R tool.
+- The Bible is a living, searchable practice database rather than one long static resource article. Its primary areas are prompts, lyrics, Stem separation, Drop practice, rights, AIPOGER tutorials, and the A&R tool.
+- `AI 拆軌避坑指南` is the Bible's second flagship database. It adapts the owner-provided `AI Stem Separation Guide 2026` into a complete Traditional Chinese and English decision guide with 10 engine families and 7 goal-based routes.
+- The Stem guide must credit the source PDF, cross-check product claims against current official documentation, date the cross-check, and clearly distinguish confirmed behavior, version-dependent model results, and undisclosed engine details.
+- Product wrappers must not be presented as distinct engines when they share an underlying provider, and unconfirmed model mappings such as FL Studio = Demucs must remain labeled as speculation rather than purchase guidance.
+- The Stem guide must remind creators to compare the same reference track before paying and that separation does not grant sampling, remix, or publication rights.
 - `Suno 台語歌詞調音實驗室` is the first flagship database. Its initial 38 rows come from the owner-provided `Suno 台語歌歌詞調教對照表` PDF and must remain searchable, category-filterable, and one-click copyable on desktop and mobile.
 - The Taiwanese lab must clearly state that AI singing phonetic experiments and loan-character spellings are not recommended Taiwanese orthography. Model version, melody, and vocal timbre may change results.
 - Community `有效` / `唱錯` feedback and new-row suggestions enter a moderated pending queue. They must never edit the public seed catalog directly.
