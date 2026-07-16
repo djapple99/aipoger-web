@@ -31,6 +31,9 @@
 - Feature commit: `77f4b46 feat: add interactive Choice tracklist HUD`.
 - Mobile stacking fix: `5146d28 fix: keep Choice HUD above player`. The HUD is portaled to `document.body`, so an existing fixed bottom player cannot cover or intercept HUD footer controls.
 - Production deployment: `dpl_GzmW43RSpMbdii13gHuPwVYXqkpt`, Ready and aliased to `https://aipoger.com`.
+- Choice share metadata fix: `7e3cbe6 fix: use Choice curator avatar in share metadata`.
+- Choice share metadata deployment: `dpl_8CZ2bY5oEdJmFSWNHSeEQnk84fGV`, Ready and aliased to `https://aipoger.com`.
 - Live desktop screenshot: `output/playwright/choice-2026-07-16/live-interactive-choice-hud-desktop-final.png`.
 - Live mobile screenshots: `live-interactive-choice-hud-mobile-player-open.png` and `live-interactive-choice-public-mobile.png` in the same output folder.
 - Live QA passed on desktop and mobile: authored title/date/intro, 10 song Hearts and play commands, HUD above an already-open player, playable Play All, modal close on playback, public Choice page, Return to Showtime, seek, previous/next, mobile volume, and real audio progress. Production console errors: 0.
+- Live share metadata smoke passed for creator Choice `5ec199c7-8580-4319-9c05-3bdc22f290e6`: `og:title` is `愛波哥的7/15小文青choice`, `og:description` is the stored recommendation intro, and both `og:image` / `twitter:image` resolve to the current `fighter_profiles.avatar_url`. The avatar responds `200 image/png`; the page responds `200` with private no-store caching.
