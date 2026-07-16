@@ -8,12 +8,13 @@
 - Every HUD row exposes the existing Showtime/song favorite Heart and a play command. These are song interactions, separate from the Choice card's collection-level Heart.
 - The HUD footer exposes Play All and the full public Choice link. All playback uses the shared bottom queue player.
 - The public `/choice/{id}?kind=official|creator` page keeps Return to Showtime, collection Heart, comments, share, per-song Heart/play, Play All, seek, previous/next, and mobile volume.
+- Public Choice pages emit collection-specific server metadata: creator and owner-personal Choice use the curator's current Profile avatar as the Open Graph/Twitter share image; only persisted official AIPOGER identity uses the brand card. The authored issue title and recommendation intro are the share title and description.
 
 ## Verification Required
 
 - Desktop: six-column Choice/Showtime density, card title de-duplication, hover preview, interactive HUD song Heart/play, Play All, full share link, bottom player.
 - Mobile: card title wrapping, interactive HUD row controls, scroll containment, bottom player seek/volume, no header or account-dock overlap.
-- Production: API response, audio progress, no console errors, `aipoger.com` screenshots, and a live link returning to `#showtime-catalog`.
+- Production: API response, audio progress, no console errors, `aipoger.com` screenshots, a live link returning to `#showtime-catalog`, and raw HTML `og:image` / `twitter:image` verification against the curator avatar URL.
 
 ## Implementation And Local Verification
 

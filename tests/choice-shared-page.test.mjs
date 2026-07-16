@@ -15,6 +15,8 @@ const creatorChoiceRoute = readFileSync(new URL("../src/app/api/creator-choice/r
 const adminChoiceRoute = readFileSync(new URL("../src/app/api/admin/choice/route.ts", import.meta.url), "utf8");
 const profileChoicePage = readFileSync(new URL("../src/app/profile/choice/page.tsx", import.meta.url), "utf8");
 const choiceModel = readFileSync(new URL("../src/lib/aipoger-choice.ts", import.meta.url), "utf8");
+const choiceLayout = readFileSync(new URL("../src/app/choice/[id]/layout.tsx", import.meta.url), "utf8");
+const choiceShareMetadata = readFileSync(new URL("../src/lib/server-choice-share-metadata.ts", import.meta.url), "utf8");
 
 test("shared Choice links resolve official and creator collections to the playable public page", () => {
   assert.match(sharedPage, /pb-28 pt-24/);
@@ -46,6 +48,20 @@ test("Choice uses the authored issue title and exposes song-level saves in the i
   assert.match(sharedPage, /toggleItemHeart/);
   assert.match(sharedPage, /取消收藏 \$\{item\.title\}/);
   assert.match(sharedPage, /播放 \$\{item\.title\}/);
+});
+
+test("Choice share metadata uses the curator profile avatar instead of the global brand card", () => {
+  assert.match(choiceLayout, /generateMetadata/);
+  assert.match(choiceLayout, /loadChoiceShareMetadata/);
+  assert.match(choiceLayout, /images: \[\{ url: imageUrl/);
+  assert.match(choiceLayout, /choiceDisplayTitle\(choice\.curatorName, choice\.title\)/);
+  assert.match(choiceShareMetadata, /aipoger_creator_choice_collections/);
+  assert.match(choiceShareMetadata, /aipoger_choice_collections/);
+  assert.match(choiceShareMetadata, /from\("fighter_profiles"\)/);
+  assert.doesNotMatch(choiceShareMetadata, /from\("user_profiles"\)/);
+  assert.match(choiceShareMetadata, /auth\.admin\.getUserById/);
+  assert.match(choiceShareMetadata, /imageUrl: profile\.avatarUrl/);
+  assert.match(choiceShareMetadata, /personal \? profile\.avatarUrl : ""/);
 });
 
 test("signed-in Profile exposes saved Choice playlists and removal", () => {
