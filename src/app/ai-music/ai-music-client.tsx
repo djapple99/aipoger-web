@@ -1,10 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { Volume2 } from "lucide-react";
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
-import { fontGlowSans, fontRighteous } from "@/lib/fonts";
+import { fontGlowSans, fontRighteous, fontSourceSerifTC } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n";
 import {
   canonicalMusicGenre,
@@ -1256,34 +1257,60 @@ export default function AiMusicClient() {
   return (
     <main className={`${fontGlowSans.className} aipo-stage-bg relative min-h-screen overflow-hidden px-4 pb-28 pt-20 text-white sm:px-6 lg:px-8`}>
       <div className="relative z-10 mx-auto w-full max-w-7xl">
-        <header className="mb-4 border-b border-orange-200/18 pb-3 text-center">
-          <div className="flex flex-col items-center gap-2.5 py-3 sm:py-4">
-            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5">
-              <p className={`${fontRighteous.className} text-[11px] uppercase tracking-[0.18em] text-orange-100/72`}>Explore AI Music</p>
+        <header className="relative mb-3 overflow-hidden border-y border-orange-200/20 bg-black text-center shadow-[0_26px_80px_rgba(0,0,0,0.38)]">
+          <Image
+            src="/ai-music/explore-frequency-stage.webp"
+            alt=""
+            fill
+            priority
+            sizes="(max-width: 1280px) 100vw, 1280px"
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-80"
+          />
+          <div className="pointer-events-none absolute inset-0 bg-black/28" aria-hidden="true" />
+
+          <div className="relative flex flex-col items-center px-3 pb-3 pt-4 sm:px-6 sm:pb-4 sm:pt-5">
+            <div className="flex items-center justify-center gap-2.5 text-[10px] uppercase sm:text-[11px]">
+              <span className={`${fontRighteous.className} tracking-[0.3em] text-orange-100/78`}>Explore</span>
+              <span className="font-black text-cyan-200" aria-hidden="true">/</span>
+              <span className={`${fontRighteous.className} tracking-[0.3em] text-zinc-400`}>AI Music</span>
             </div>
-            <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 border-y border-orange-200/14 py-1.5 text-[11px] font-black text-orange-100/82">
-              <span className={`${fontRighteous.className} uppercase tracking-[0.12em] text-orange-200`}>{isZh ? "作品庫" : "Catalog"}</span>
-              <span className="text-zinc-500" aria-hidden="true">/</span>
-              <span className="text-zinc-300">{catalogMetadata}</span>
+
+            <div className="mt-2.5 inline-flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 border-y border-orange-100/20 bg-black/48 px-3 py-1.5 text-[10px] font-black text-orange-100/84 backdrop-blur-sm sm:text-[11px]">
+              <span className={`${fontRighteous.className} uppercase tracking-[0.14em] text-orange-200`}>
+                {isZh ? "作品庫" : "Catalog"}
+              </span>
+              <span className="text-orange-400/70" aria-hidden="true">/</span>
+              <span className="text-zinc-200">{catalogMetadata}</span>
             </div>
-            <h1 className="ai-music-hero-title text-4xl font-black leading-none text-white sm:text-5xl">{isZh ? "AI 音樂作品" : "AI Music Works"}</h1>
-            <p className="max-w-3xl text-sm font-black leading-6 text-yellow-200 sm:text-base">
+
+            <h1 className="ai-music-hero-title mt-3 flex items-center justify-center gap-3 sm:gap-5">
+              <span className={`${fontRighteous.className} text-[2.9rem] leading-[0.78] tracking-[-0.08em] text-orange-50/86 sm:text-[4.4rem] lg:text-[5.25rem]`}>
+                AI
+              </span>
+              <span className="h-12 w-px bg-orange-100/36 sm:h-16" aria-hidden="true" />
+              <span className={`${isZh ? fontSourceSerifTC.className : fontRighteous.className} text-[2.45rem] font-black leading-[0.86] tracking-[-0.07em] text-[#fff8e9] drop-shadow-[0_8px_22px_rgba(0,0,0,0.86)] sm:text-[3.9rem] lg:text-[4.65rem]`}>
+                {isZh ? "音樂作品" : "Music Works"}
+              </span>
+            </h1>
+
+            <p className="mt-3 max-w-3xl text-[13px] font-black leading-5 text-yellow-200 drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] sm:text-base sm:leading-6">
               {isZh
                 ? "依照風格快速瀏覽作品，聽歌、送愛心，或向你喜歡的作品發起挑戰。"
                 : "Browse tracks by style, listen, send hearts, or start a challenge from music you like."}
             </p>
-            <p className="text-xs font-bold leading-6 text-yellow-100 sm:text-sm">
+            <p className="mt-1 text-[11px] font-bold leading-5 text-orange-50/82 sm:text-sm sm:leading-6">
               {isZh ? "上傳音樂讓大家看到你的作品，請從 " : "Upload your music so listeners can find it here. Submit through "}
-              <Link href={`${withLang("/listen-bar")}#play-request`} className="font-black underline decoration-yellow-200/55 underline-offset-4 transition hover:text-white">
+              <Link href={`${withLang("/listen-bar")}#play-request`} className="font-black text-cyan-100 underline decoration-cyan-200/55 underline-offset-4 transition hover:text-white">
                 {isZh ? "傷心酒吧投稿" : "Bar Heartbreak"}
               </Link>
               {isZh ? "。" : "."}
             </p>
           </div>
-          <nav className="flex justify-center overflow-x-auto border-t border-white/8 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label={isZh ? "探索 AI 音樂導覽" : "Explore AI Music navigation"}>
+
+          <nav className="relative flex justify-center overflow-x-auto border-t border-orange-100/16 bg-black/72 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label={isZh ? "探索 AI 音樂導覽" : "Explore AI Music navigation"}>
             <div className="flex min-w-max gap-0.5 px-2 sm:mx-auto sm:gap-1 sm:px-4">
               {navItems.map((item, index) => (
-                <Link key={item.href} href={item.href} className={`inline-flex min-h-9 shrink-0 items-center border-b-2 px-2 text-[11px] font-black transition sm:px-3 sm:text-xs ${index === 0 ? "border-orange-300 text-white" : "border-transparent text-zinc-500 hover:border-cyan-100/55 hover:text-zinc-100"}`}>
+                <Link key={item.href} href={item.href} className={`inline-flex min-h-11 shrink-0 items-center border-b-2 px-2.5 text-[11px] font-black transition sm:px-4 sm:text-xs ${index === 0 ? "border-orange-400 text-orange-200" : "border-transparent text-zinc-400 hover:border-cyan-100/55 hover:text-white"}`}>
                   {item.label}
                 </Link>
               ))}
@@ -1292,14 +1319,14 @@ export default function AiMusicClient() {
         </header>
 
         <section id="works" className="grid gap-5 scroll-mt-24">
-          <div className="flex justify-center border-y border-white/10 py-3">
-            <div className="flex items-center justify-center gap-2">
-              <div className="inline-flex rounded-md border border-white/12 bg-black/54 p-1" role="group" aria-label={isZh ? "作品瀏覽方式" : "Works browsing mode"}>
+          <div className="flex justify-center border-b border-white/10 pb-3 pt-1">
+            <div className="flex items-center justify-center gap-2 rounded-lg border border-orange-100/18 bg-black/76 p-1.5 shadow-[0_16px_42px_rgba(0,0,0,0.36)]">
+              <div className="inline-flex" role="group" aria-label={isZh ? "作品瀏覽方式" : "Works browsing mode"}>
               <button
                 type="button"
                 onClick={() => setWorksView("genre")}
                 aria-pressed={worksView === "genre"}
-                className={`min-h-9 rounded-sm px-3 text-xs font-black transition ${worksView === "genre" ? "bg-orange-500 text-black" : "text-zinc-500 hover:text-white"}`}
+                className={`min-h-10 rounded-md px-4 text-xs font-black transition sm:px-5 ${worksView === "genre" ? "bg-orange-500 text-black shadow-[0_0_22px_rgba(255,106,0,0.24)]" : "text-zinc-300 hover:bg-white/6 hover:text-white"}`}
               >
                 {isZh ? "依類型" : "By Style"}
               </button>
@@ -1307,16 +1334,17 @@ export default function AiMusicClient() {
                 type="button"
                 onClick={() => setWorksView("heat")}
                 aria-pressed={worksView === "heat"}
-                className={`min-h-9 rounded-sm px-3 text-xs font-black transition ${worksView === "heat" ? "bg-orange-500 text-black" : "text-zinc-500 hover:text-white"}`}
+                className={`min-h-10 rounded-md px-4 text-xs font-black transition sm:px-5 ${worksView === "heat" ? "bg-orange-500 text-black shadow-[0_0_22px_rgba(255,106,0,0.24)]" : "text-zinc-300 hover:bg-white/6 hover:text-white"}`}
               >
                 {isZh ? "正在升溫" : "Hot Now"}
               </button>
               </div>
+              <span className="h-7 w-px bg-white/12" aria-hidden="true" />
               <button
                 ref={guideButtonRef}
                 type="button"
                 onClick={() => setGuideOpen(true)}
-                className="inline-flex h-11 w-12 shrink-0 items-center justify-center rounded-md border border-orange-200/28 bg-black/54 p-1.5 transition hover:border-orange-100/70 hover:bg-orange-500/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-100"
+                className="inline-flex h-10 w-11 shrink-0 items-center justify-center rounded-md border border-orange-200/32 bg-orange-500/8 p-1.5 transition hover:border-orange-100/70 hover:bg-orange-500/16 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-100"
                 aria-label={isZh ? "這裡怎麼玩？" : "How this works"}
                 title={isZh ? "這裡怎麼玩？" : "How this works"}
               >
