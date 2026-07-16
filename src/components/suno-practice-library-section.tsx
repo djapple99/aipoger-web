@@ -12,6 +12,7 @@ import {
   Search,
   Sparkles,
   WandSparkles,
+  X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { fontRighteous } from "@/lib/fonts";
@@ -200,18 +201,41 @@ export default function SunoPracticeLibrarySection({ locale }: { locale: SunoLib
           <span className="rounded-full border border-white/10 px-3 py-1.5 text-[10px] font-black tracking-[0.12em] text-zinc-600">SEARCH · FILTER · COPY</span>
         </div>
 
-        <div className="mt-6 rounded-[1.15rem] border border-white/10 bg-white/[0.025] p-4 sm:p-5">
-          <label className="flex min-h-12 items-center gap-3 rounded-xl border border-white/10 bg-black/50 px-4 focus-within:border-cyan-200/40">
-            <Search className="h-4 w-4 shrink-0 text-zinc-600" />
-            <input value={promptSearch} onChange={(event) => setPromptSearch(event.target.value)} placeholder={isZh ? "搜尋：EDM、側鏈、轉調、Runway、Extend…" : "Search: EDM, sidechain, key change, runway, Extend…"} className="min-w-0 flex-1 bg-transparent py-3 text-sm font-bold text-white outline-none placeholder:text-zinc-700" />
-          </label>
-          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-            {SUNO_PROMPT_CATEGORIES.map((category) => (
-              <button key={category.key} type="button" onClick={() => setPromptCategory(category.key)} className={`shrink-0 rounded-full border px-3.5 py-2 text-xs font-black transition ${promptCategory === category.key ? "border-cyan-200/55 bg-cyan-300/12 text-cyan-50" : "border-white/10 text-zinc-600 hover:text-white"}`}>
-                {sunoLibraryText(category.label, locale)}
-              </button>
-            ))}
+        <div role="search" aria-label={isZh ? "搜尋與篩選 Prompt 招式" : "Search and filter prompt moves"} className="mt-6 rounded-[1.15rem] border border-cyan-200/25 bg-[#091011] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_16px_50px_rgba(0,0,0,0.24)] sm:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-base font-black text-white">{isZh ? "找你需要的 Prompt 招式" : "Find the prompt move you need"}</p>
+              <p className="mt-1 text-xs font-bold leading-5 text-zinc-400">{isZh ? "輸入關鍵字，或直接點下面的分類。" : "Type a keyword or choose a category below."}</p>
+            </div>
+            <span aria-live="polite" className="rounded-full border border-cyan-200/25 bg-cyan-300/[0.08] px-3 py-1.5 text-xs font-black text-cyan-50">
+              {isZh ? `找到 ${promptResults.length} 招` : `${promptResults.length} moves found`}
+            </span>
           </div>
+          <label className="mt-4 flex min-h-14 items-center gap-3 rounded-xl border-2 border-cyan-200/30 bg-black/75 px-3 shadow-[0_0_24px_rgba(34,211,238,0.05)] transition focus-within:border-cyan-200 focus-within:shadow-[0_0_28px_rgba(34,211,238,0.13)]">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-300/12 text-cyan-100">
+              <Search className="h-5 w-5" />
+            </span>
+            <input aria-label={isZh ? "搜尋 Prompt 招式" : "Search prompt moves"} value={promptSearch} onChange={(event) => setPromptSearch(event.target.value)} placeholder={isZh ? "輸入關鍵字，例如：EDM、側鏈、轉調…" : "Type a keyword, e.g. EDM, sidechain, key change…"} className="min-w-0 flex-1 bg-transparent py-3 text-base font-bold text-white outline-none placeholder:text-zinc-400" />
+            {promptSearch && (
+              <button type="button" onClick={() => setPromptSearch("")} aria-label={isZh ? "清除 Prompt 搜尋" : "Clear prompt search"} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-white/[0.05] text-zinc-300 transition hover:border-white/30 hover:text-white">
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </label>
+          <fieldset className="mt-4">
+            <legend className="text-xs font-black tracking-[0.12em] text-zinc-300">{isZh ? "選擇分類" : "CHOOSE A CATEGORY"}</legend>
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              {SUNO_PROMPT_CATEGORIES.map((category) => {
+                const selected = promptCategory === category.key;
+                return (
+                  <button key={category.key} type="button" aria-pressed={selected} onClick={() => setPromptCategory(category.key)} className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-black transition ${selected ? "border-cyan-200 bg-cyan-300/[0.18] text-white shadow-[0_0_18px_rgba(34,211,238,0.13)]" : "border-white/20 bg-black/55 text-zinc-300 hover:border-cyan-200/45 hover:bg-cyan-300/[0.07] hover:text-white"}`}>
+                    {selected && <Check className="h-4 w-4 text-cyan-200" />}
+                    {sunoLibraryText(category.label, locale)}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
         </div>
 
         <div className="mt-5 grid gap-3 lg:grid-cols-2">
@@ -265,18 +289,41 @@ export default function SunoPracticeLibrarySection({ locale }: { locale: SunoLib
             <BookOpenText className="h-8 w-8 text-orange-300/70" />
           </div>
 
-          <div className="mt-6 rounded-[1.15rem] border border-white/10 bg-white/[0.025] p-4 sm:p-5">
-            <label className="flex min-h-12 items-center gap-3 rounded-xl border border-white/10 bg-black/50 px-4 focus-within:border-orange-300/40">
-              <Search className="h-4 w-4 shrink-0 text-zinc-600" />
-              <input value={lyricSearch} onChange={(event) => setLyricSearch(event.target.value)} placeholder={isZh ? "搜尋：副歌、二重唱、哭腔、括號、環境聲…" : "Search: chorus, duet, crying, brackets, ambience…"} className="min-w-0 flex-1 bg-transparent py-3 text-sm font-bold text-white outline-none placeholder:text-zinc-700" />
-            </label>
-            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-              {SUNO_LYRIC_CATEGORIES.map((category) => (
-                <button key={category.key} type="button" onClick={() => setLyricCategory(category.key)} className={`shrink-0 rounded-full border px-3.5 py-2 text-xs font-black transition ${lyricCategory === category.key ? "border-orange-300/55 bg-orange-400/12 text-orange-50" : "border-white/10 text-zinc-600 hover:text-white"}`}>
-                  {sunoLibraryText(category.label, locale)}
-                </button>
-              ))}
+          <div role="search" aria-label={isZh ? "搜尋與篩選歌詞招式" : "Search and filter lyric moves"} className="mt-6 rounded-[1.15rem] border border-orange-300/25 bg-[#120d09] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_16px_50px_rgba(0,0,0,0.24)] sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-base font-black text-white">{isZh ? "找你需要的歌詞控制" : "Find the lyric control you need"}</p>
+                <p className="mt-1 text-xs font-bold leading-5 text-zinc-400">{isZh ? "輸入唱法、情緒或段落，或直接點下面的分類。" : "Search by delivery, emotion, or section—or choose a category."}</p>
+              </div>
+              <span aria-live="polite" className="rounded-full border border-orange-300/25 bg-orange-400/[0.08] px-3 py-1.5 text-xs font-black text-orange-50">
+                {isZh ? `找到 ${lyricResults.length} 招` : `${lyricResults.length} moves found`}
+              </span>
             </div>
+            <label className="mt-4 flex min-h-14 items-center gap-3 rounded-xl border-2 border-orange-300/30 bg-black/75 px-3 shadow-[0_0_24px_rgba(251,146,60,0.05)] transition focus-within:border-orange-300 focus-within:shadow-[0_0_28px_rgba(251,146,60,0.13)]">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-400/12 text-orange-100">
+                <Search className="h-5 w-5" />
+              </span>
+              <input aria-label={isZh ? "搜尋歌詞招式" : "Search lyric moves"} value={lyricSearch} onChange={(event) => setLyricSearch(event.target.value)} placeholder={isZh ? "輸入關鍵字，例如：副歌、二重唱、哭腔…" : "Type a keyword, e.g. chorus, duet, crying…"} className="min-w-0 flex-1 bg-transparent py-3 text-base font-bold text-white outline-none placeholder:text-zinc-400" />
+              {lyricSearch && (
+                <button type="button" onClick={() => setLyricSearch("")} aria-label={isZh ? "清除歌詞搜尋" : "Clear lyric search"} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-white/[0.05] text-zinc-300 transition hover:border-white/30 hover:text-white">
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </label>
+            <fieldset className="mt-4">
+              <legend className="text-xs font-black tracking-[0.12em] text-zinc-300">{isZh ? "選擇分類" : "CHOOSE A CATEGORY"}</legend>
+              <div className="mt-2.5 flex flex-wrap gap-2">
+                {SUNO_LYRIC_CATEGORIES.map((category) => {
+                  const selected = lyricCategory === category.key;
+                  return (
+                    <button key={category.key} type="button" aria-pressed={selected} onClick={() => setLyricCategory(category.key)} className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-black transition ${selected ? "border-orange-300 bg-orange-400/[0.18] text-white shadow-[0_0_18px_rgba(251,146,60,0.13)]" : "border-white/20 bg-black/55 text-zinc-300 hover:border-orange-300/45 hover:bg-orange-400/[0.07] hover:text-white"}`}>
+                      {selected && <Check className="h-4 w-4 text-orange-200" />}
+                      {sunoLibraryText(category.label, locale)}
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
           </div>
 
           <div className="mt-5 grid gap-3 lg:grid-cols-2">

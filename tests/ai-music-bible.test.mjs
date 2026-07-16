@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   TAIWANESE_LYRICS_CATEGORIES,
@@ -14,6 +15,8 @@ import {
   SUNO_LYRIC_MOVES,
   SUNO_PROMPT_MOVES,
 } from "../src/lib/suno-practice-library.ts";
+
+const practiceLibraryComponent = readFileSync(new URL("../src/components/suno-practice-library-section.tsx", import.meta.url), "utf8");
 
 test("Taiwanese lyrics lab keeps the PDF seed catalog complete and uniquely addressable", () => {
   assert.equal(TAIWANESE_LYRICS_ENTRIES.length, 38);
@@ -93,4 +96,14 @@ test("genre crate and production flow remain complete and bilingual", () => {
   assert.ok(SUNO_GENRE_GROUPS.every((group) => group.key && group.label.zh && group.label.en && group.terms.length > 0));
   assert.equal(AI_PRODUCTION_FLOW.length, 6);
   assert.ok(AI_PRODUCTION_FLOW.every((step) => step.title.zh && step.title.en && step.body.zh && step.body.en));
+});
+
+test("Prompt and lyric finders explain their controls and expose clear states", () => {
+  assert.match(practiceLibraryComponent, /找你需要的 Prompt 招式/);
+  assert.match(practiceLibraryComponent, /找你需要的歌詞控制/);
+  assert.match(practiceLibraryComponent, /aria-live="polite"/);
+  assert.match(practiceLibraryComponent, /aria-pressed=\{selected\}/);
+  assert.match(practiceLibraryComponent, /清除 Prompt 搜尋/);
+  assert.match(practiceLibraryComponent, /清除歌詞搜尋/);
+  assert.doesNotMatch(practiceLibraryComponent, /mt-3 flex gap-2 overflow-x-auto pb-1/);
 });

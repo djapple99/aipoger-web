@@ -223,6 +223,7 @@ Check:
 - `#suno-prompt-library` and nested `#lyric-control-library` are directly reachable from the practice map and render complete Chinese and English variants.
 - The Suno library contains 18 unique prompt moves, 16 unique lyric moves, at least 80 unique normalized genre terms, and six production-flow steps. Every move has bilingual title, summary, use case, copy text, source attribution, and an official / field-tested / version-sensitive evidence label.
 - Prompt, lyric, and genre search/filter interactions work on desktop and mobile; technique cards and genre groups copy the expected text, and Show All reveals the complete catalog without page-level horizontal overflow.
+- Prompt and lyric search panels include a visible instruction, readable placeholder, live result count, clear-search action, 44px-or-larger category targets, `aria-pressed` selected state, and wrapping category controls without a mobile horizontal scrollbar.
 - The library labels the supplied V4.5/V5 material as older than current V5.5, links to official Suno documentation, and does not claim bracket tags, percentage recipes, key changes, or mix/master wording are guaranteed commands.
 - `#stem-separation-guide` renders complete Chinese and English variants with 10 unique engine families, 7 unique goal routes, and official source links that open externally.
 - Choosing a Stem goal updates the recommendation and highlights only the matching engine cards; accordion cards expose strengths, limits, implementations, and source links on desktop and mobile.
