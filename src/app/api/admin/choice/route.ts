@@ -284,6 +284,9 @@ export async function PATCH(request: NextRequest) {
 
     if (action === "set_published") {
       const publish = body?.isPublished === true;
+      const hasDraftFields = body && ("weekStart" in body || "title" in body || "intro" in body || "curatorIdentity" in body);
+      const weekStart = typeof body?.weekStart === "string" ? body.weekStart : "";
+      if (hasDraftFields && !isMonday(weekStart)) return jsonError("Choice 週期必須選擇星期一。");
       if (publish) {
         const items = await collectionItems(guard.admin, collectionId);
         if (items.length < AIPOGER_CHOICE_MIN_ITEMS || items.length > AIPOGER_CHOICE_MAX_ITEMS) {
@@ -291,9 +294,22 @@ export async function PATCH(request: NextRequest) {
         }
         for (const item of items) await assertSelectableSource(guard.admin, item.source_kind, item.source_id);
       }
+      const now = new Date().toISOString();
+      const update = {
+        is_published: publish,
+        updated_at: now,
+        ...(hasDraftFields
+          ? {
+              week_start: weekStart,
+              title: cleanText(body?.title, 120),
+              intro: cleanText(body?.intro, AIPOGER_CHOICE_INTRO_MAX_LENGTH),
+              curator_identity: curatorIdentity(body?.curatorIdentity),
+            }
+          : {}),
+      };
       const { error } = await guard.admin
         .from("aipoger_choice_collections")
-        .update({ is_published: publish, updated_at: new Date().toISOString() })
+        .update(update)
         .eq("id", collectionId);
       if (error) throw error;
       return NextResponse.json({ message: publish ? "Choice 已發布到 Showtime。" : "Choice 已從 Showtime 撤回。" });

@@ -19,6 +19,15 @@ test("logged-out account dock does not present a fake notification bell", () => 
   assert.ok(profileSource.includes("router.replace(`/auth?next=${encodeURIComponent(nextPath)}`)"));
 });
 
+test("signed-in account dock can be dragged without losing its saved position", () => {
+  assert.ok(overlaySource.includes("ACCOUNT_DOCK_POSITION_KEY"));
+  assert.ok(overlaySource.includes("beginAccountDockDrag"));
+  assert.ok(overlaySource.includes("moveAccountDock"));
+  assert.ok(overlaySource.includes("suppressAccountDockClickRef"));
+  assert.ok(overlaySource.includes("clampAccountDockPosition"));
+  assert.ok(overlaySource.includes("window.localStorage.setItem(ACCOUNT_DOCK_POSITION_KEY"));
+});
+
 test("mobile creator entry headers clear the fixed home logo", () => {
   assert.ok(profileSource.includes("pb-10 pt-24"));
   assert.ok(battleSetupSource.includes("px-6 pb-6 pt-24"));

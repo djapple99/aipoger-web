@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { User } from "@supabase/supabase-js";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 import { supabase } from "@/lib/supabase";
@@ -82,9 +82,27 @@ const DEMO_CALL_EVENT = "aipoger:battle-call-demo";
 const ACCOUNT_NOTICE_COLLAPSED_KEY = "aipoger:account-notice-collapsed";
 const ACCOUNT_NOTICE_DISMISSED_KEY = "aipoger:account-notice-dismissed";
 const ACCOUNT_NOTICE_URGENT_DISMISSED_KEY = "aipoger:account-notice-urgent-dismissed";
+const ACCOUNT_DOCK_POSITION_KEY = "aipoger:account-dock-position-v1";
 const BATTLE_START_ALERT_LEAD_MS = 60 * 1000;
 const LISTEN_BAR_COMMENT_NOTICE_TYPE = "listen_bar_track_comment";
 const AI_MUSIC_CHALLENGE_INVITE_NOTICE_TYPE = "ai_music_challenge_invite";
+
+type AccountDockPosition = { x: number; y: number };
+
+function clampAccountDockPosition(position: AccountDockPosition): AccountDockPosition {
+  if (typeof window === "undefined") return position;
+  const margin = 8;
+  const dockSize = 56;
+  return {
+    x: Math.min(Math.max(margin, position.x), Math.max(margin, window.innerWidth - dockSize - margin)),
+    y: Math.min(Math.max(margin, position.y), Math.max(margin, window.innerHeight - dockSize - margin)),
+  };
+}
+
+function defaultAccountDockPosition(): AccountDockPosition {
+  if (typeof window === "undefined") return { x: 0, y: 16 };
+  return clampAccountDockPosition({ x: window.innerWidth - 144, y: 16 });
+}
 
 function BellIcon() {
   return (
@@ -218,6 +236,11 @@ export default function GlobalBattleCallOverlay() {
   const [accountUserId, setAccountUserId] = useState<string | null>(isAuthBypassEnabled ? "auth-bypass" : null);
   const [accountSessionResolved, setAccountSessionResolved] = useState(isAuthBypassEnabled);
   const [unreadAccountNoticeCount, setUnreadAccountNoticeCount] = useState(0);
+  const [accountDockPosition, setAccountDockPosition] = useState<AccountDockPosition | null>(null);
+  const [accountDockDragging, setAccountDockDragging] = useState(false);
+  const accountDockPositionRef = useRef<AccountDockPosition | null>(null);
+  const accountDockDragRef = useRef<{ pointerId: number; offsetX: number; offsetY: number; startX: number; startY: number } | null>(null);
+  const suppressAccountDockClickRef = useRef(false);
 
   const routeTone = useMemo(() => {
     const seg = pathname?.match(/^\/battle\/([^/]+)$/)?.[1];
@@ -228,7 +251,8 @@ export default function GlobalBattleCallOverlay() {
     return "default";
   }, [pathname]);
   const isListenBarPage = pathname === "/listen-bar";
-  const accountDockClassName = "fixed right-24 top-4 z-[92] flex items-center gap-2";
+  const accountDockStaticClassName = "fixed right-24 top-4 z-[92] flex items-center gap-2";
+  const accountDockClassName = `fixed z-[92] flex touch-none select-none items-center gap-2 ${accountDockDragging ? "cursor-grabbing" : "cursor-grab"}`;
   const accountNoticePanelClassName = isListenBarPage
     ? "fixed right-4 top-44 z-[92] w-[min(calc(100vw-2rem),340px)] sm:right-5"
     : "fixed right-4 top-24 z-[92] w-[min(calc(100vw-2rem),340px)] sm:right-5";
@@ -273,6 +297,75 @@ export default function GlobalBattleCallOverlay() {
 
   useEffect(() => {
     setReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    let position = defaultAccountDockPosition();
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(ACCOUNT_DOCK_POSITION_KEY) ?? "null") as Partial<AccountDockPosition> | null;
+      if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) {
+        position = clampAccountDockPosition({ x: Number(saved.x), y: Number(saved.y) });
+      }
+    } catch {
+      // Use the default position when storage is unavailable or invalid.
+    }
+    accountDockPositionRef.current = position;
+    setAccountDockPosition(position);
+
+    const keepVisible = () => {
+      const next = clampAccountDockPosition(accountDockPositionRef.current ?? defaultAccountDockPosition());
+      accountDockPositionRef.current = next;
+      setAccountDockPosition(next);
+      try {
+        window.localStorage.setItem(ACCOUNT_DOCK_POSITION_KEY, JSON.stringify(next));
+      } catch {
+        // Ignore storage failures in hardened browsers.
+      }
+    };
+    window.addEventListener("resize", keepVisible);
+    return () => window.removeEventListener("resize", keepVisible);
+  }, [ready]);
+
+  const beginAccountDockDrag = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    const position = accountDockPositionRef.current ?? defaultAccountDockPosition();
+    accountDockDragRef.current = {
+      pointerId: event.pointerId,
+      offsetX: event.clientX - position.x,
+      offsetY: event.clientY - position.y,
+      startX: event.clientX,
+      startY: event.clientY,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }, []);
+
+  const moveAccountDock = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = accountDockDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > 4) {
+      suppressAccountDockClickRef.current = true;
+      setAccountDockDragging(true);
+    }
+    const next = clampAccountDockPosition({ x: event.clientX - drag.offsetX, y: event.clientY - drag.offsetY });
+    accountDockPositionRef.current = next;
+    setAccountDockPosition(next);
+  }, []);
+
+  const finishAccountDockDrag = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = accountDockDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    accountDockDragRef.current = null;
+    setAccountDockDragging(false);
+    const position = accountDockPositionRef.current ?? defaultAccountDockPosition();
+    try {
+      window.localStorage.setItem(ACCOUNT_DOCK_POSITION_KEY, JSON.stringify(position));
+    } catch {
+      // Ignore storage failures in hardened browsers.
+    }
+    window.setTimeout(() => {
+      suppressAccountDockClickRef.current = false;
+    }, 0);
   }, []);
 
   useEffect(() => {
@@ -594,7 +687,7 @@ export default function GlobalBattleCallOverlay() {
       if (pathname === "/" || pathname === "/auth") return null;
       const nextPath = `${pathname || "/"}?lang=${lang}`;
       return (
-        <div className={accountDockClassName}>
+        <div className={accountDockStaticClassName}>
           <Link
             href={`/auth?next=${encodeURIComponent(nextPath)}`}
             className="inline-flex min-h-11 items-center justify-center rounded-full border border-cyan-200/25 bg-black/82 px-4 text-sm font-black text-cyan-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_24px_rgba(0,203,255,0.1)] backdrop-blur-xl transition hover:border-cyan-100 hover:text-white"
@@ -645,7 +738,21 @@ export default function GlobalBattleCallOverlay() {
     );
 
     return (
-      <div className={accountDockClassName}>
+      <div
+        className={accountDockClassName}
+        style={accountDockPosition ? { left: accountDockPosition.x, top: accountDockPosition.y } : { right: 96, top: 16 }}
+        onPointerDown={beginAccountDockDrag}
+        onPointerMove={moveAccountDock}
+        onPointerUp={finishAccountDockDrag}
+        onPointerCancel={finishAccountDockDrag}
+        onClickCapture={(event) => {
+          if (!suppressAccountDockClickRef.current) return;
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+        aria-label={isZh ? "帳號頭像，可拖曳移動" : "Account avatar, draggable"}
+        title={isZh ? "拖曳可移動" : "Drag to move"}
+      >
         {hasNotice && onBellClick ? (
           <button
             type="button"

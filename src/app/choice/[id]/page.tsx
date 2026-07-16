@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, ListMusic, Play, X } from "lucide-react";
+import { ArrowLeft, Heart, ListMusic, MessageCircle, Play, X } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import ChoiceCommentsDialog from "@/components/choice-comments-dialog";
 import ShareButton from "@/components/share-button";
-import ShowtimeQueuePlayer, { type ShowtimePlayerTrack } from "@/components/showtime-queue-player";
+import ShowtimeQueuePlayer, { type ShowtimePlayerTrack, type ShowtimeQueuePlayerHandle } from "@/components/showtime-queue-player";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
-import type { AipogerChoiceCollection, AipogerChoiceItem } from "@/lib/aipoger-choice";
+import { choiceDisplayTitle, type AipogerChoiceCollection, type AipogerChoiceItem } from "@/lib/aipoger-choice";
 import { rememberAuthNextPath } from "@/lib/auth-urls";
 import { supabase } from "@/lib/supabase";
 
@@ -49,7 +50,8 @@ export default function PublicChoicePage() {
   const [heart, setHeart] = useState<HeartState>({ heartCount: 0, myHeart: false });
   const [heartBusy, setHeartBusy] = useState(false);
   const [tracklistOpen, setTracklistOpen] = useState(false);
-  const [player, setPlayer] = useState<{ queue: ShowtimePlayerTrack[]; index: number } | null>(null);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const playerRef = useRef<ShowtimeQueuePlayerHandle>(null);
 
   useEffect(() => {
     if (!choiceId) return;
@@ -98,9 +100,9 @@ export default function PublicChoicePage() {
   const play = useCallback((item?: AipogerChoiceItem) => {
     if (queue.length === 0) return;
     const index = item ? Math.max(0, queue.findIndex((track) => track.id === `${item.sourceKind}:${item.id}`)) : 0;
-    setPlayer({ queue, index: index < 0 ? 0 : index });
+    void playerRef.current?.start(queue, index < 0 ? 0 : index, `${collection?.curatorName || "AIPOGER"} Choice`);
     setTracklistOpen(false);
-  }, [queue]);
+  }, [collection?.curatorName, queue]);
 
   const toggleHeart = useCallback(async () => {
     if (heartBusy) return;
@@ -137,33 +139,36 @@ export default function PublicChoicePage() {
   if (!collection) return <main className="min-h-screen bg-[#050505] px-5 py-14 text-sm font-black text-red-100">{error || "找不到這份 Choice。"}</main>;
 
   const coverUrl = collection.avatarUrl?.trim() || AIPOGER_BRAND_LOGO;
-  const title = collection.title || `${collection.curatorName || "AIPOGER"} Choice`;
+  const title = choiceDisplayTitle(collection.curatorName, collection.title);
 
   return (
-    <main className="min-h-screen bg-[#050505] px-4 pb-28 pt-24 text-zinc-100 sm:px-7 sm:pt-8 lg:px-10">
+    <main className="min-h-screen bg-[#050505] px-4 pb-28 pt-24 text-zinc-100 sm:px-7 lg:px-10">
       <div className="mx-auto max-w-7xl">
         <header className="border-b border-yellow-200/20 pb-7">
-          <div className="flex flex-wrap items-start justify-between gap-6">
+          <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.8fr)] lg:gap-10">
             <div className="flex min-w-0 items-center gap-4">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={coverUrl} alt="" className="h-16 w-16 rounded-full border border-orange-200/35 object-cover" />
               <div className="min-w-0">
-                <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-300">AIPOGER CHOICE</p>
-                <h1 className="mt-2 truncate text-3xl font-black text-white sm:text-5xl">{title}</h1>
+                <h1 className="text-3xl font-black leading-tight text-white sm:text-5xl">{title}</h1>
                 <p className="mt-2 text-sm font-bold text-zinc-400">策展：{collection.curatorName || "AIPOGER"} · {displayDate(collection.weekStart)}</p>
               </div>
             </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
-              <button type="button" onClick={() => void play()} disabled={queue.length === 0} className="inline-flex items-center gap-2 rounded-full border border-orange-200/45 bg-orange-500 px-4 py-2 text-sm font-black text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-45" aria-label="全部播放">
-                <Play className="h-4 w-4" fill="currentColor" /> 全部播放
-              </button>
-              <button type="button" onClick={() => void toggleHeart()} disabled={heartBusy} className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 py-2 text-sm font-black transition disabled:cursor-wait disabled:opacity-45 ${heart.myHeart ? "border-pink-200/60 bg-pink-300/15 text-pink-100" : "border-white/20 bg-white/[0.03] text-zinc-200 hover:border-pink-200/45"}`} aria-label={heart.myHeart ? "取消收藏 Choice" : "收藏 Choice"} aria-pressed={heart.myHeart} title={heart.myHeart ? "取消收藏 Choice" : "收藏 Choice"}>
-                <Heart className="h-4 w-4" fill={heart.myHeart ? "currentColor" : "none"} /> {heart.heartCount}
-              </button>
-              <ShareButton title={title} text={collection.intro || `${collection.curatorName || "AIPOGER"} 的 Choice`} url={`/choice/${choiceId}?kind=${kind}`} label="分享 Choice" />
+            <div className="min-w-0">
+              {collection.intro ? <p className="max-w-2xl text-base font-bold leading-7 text-zinc-300">{collection.intro}</p> : null}
+              <div className="mt-4 flex max-w-full flex-wrap items-center gap-2">
+                <Link href="/rank?lang=zh#showtime-catalog" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-cyan-100/25 bg-white/[0.025] px-4 py-2 text-sm font-black text-cyan-100 transition hover:border-cyan-100/55 hover:text-white"><ArrowLeft className="h-4 w-4" />回到 Showtime</Link>
+                <button type="button" onClick={() => void play()} disabled={queue.length === 0} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-orange-200/45 bg-orange-500 px-4 py-2 text-sm font-black text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-45" aria-label="全部播放">
+                  <Play className="h-4 w-4" fill="currentColor" /> 全部播放
+                </button>
+                <button type="button" onClick={() => void toggleHeart()} disabled={heartBusy} className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 py-2 text-sm font-black transition disabled:cursor-wait disabled:opacity-45 ${heart.myHeart ? "border-pink-200/60 bg-pink-300/15 text-pink-100" : "border-white/20 bg-white/[0.03] text-zinc-200 hover:border-pink-200/45"}`} aria-label={heart.myHeart ? "取消收藏 Choice" : "收藏 Choice"} aria-pressed={heart.myHeart} title={heart.myHeart ? "取消收藏 Choice" : "收藏 Choice"}>
+                  <Heart className="h-4 w-4" fill={heart.myHeart ? "currentColor" : "none"} /> {heart.heartCount}
+                </button>
+                <button type="button" onClick={() => setCommentsOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 bg-white/[0.03] px-4 py-2 text-sm font-black text-zinc-200 transition hover:border-cyan-100/45 hover:text-white" aria-label="查看 Choice 評論"><MessageCircle className="h-4 w-4" />評論</button>
+                <ShareButton title={title} text={collection.intro || `${collection.curatorName || "AIPOGER"} 的 Choice`} url={`/choice/${choiceId}?kind=${kind}`} label="分享 Choice" />
+              </div>
             </div>
           </div>
-          {collection.intro ? <p className="mt-6 max-w-3xl text-base font-bold leading-7 text-zinc-300">{collection.intro}</p> : null}
           {error ? <p className="mt-4 text-xs font-bold text-red-200">{error}</p> : null}
         </header>
 
@@ -195,26 +200,31 @@ export default function PublicChoicePage() {
           </div>
         </section>
 
-        <div className="mt-8">
-          <Link href="/rank?lang=zh#choice-weekly" className="text-sm font-black text-cyan-100 underline decoration-cyan-100/30 underline-offset-4 hover:text-white">回到 AIPOGER Choice</Link>
-        </div>
       </div>
 
       {tracklistOpen ? (
         <div className="fixed inset-0 z-[180] flex items-end justify-center bg-black/75 p-3 backdrop-blur-sm sm:items-center">
           <section className="max-h-[88vh] w-full max-w-3xl overflow-hidden border border-yellow-100/25 bg-[#0a0a0a] shadow-2xl">
             <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 sm:px-5">
-              <div><p className="text-xs font-black uppercase tracking-[0.2em] text-orange-300">{collection.curatorName || "AIPOGER"} · CHOICE</p><h2 className="mt-1 text-lg font-black text-white">{title}</h2></div>
+              <h2 className="text-lg font-black text-white">{title}</h2>
               <button type="button" onClick={() => setTracklistOpen(false)} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-zinc-300 hover:text-white" aria-label="關閉曲目清單"><X className="h-4 w-4" /></button>
             </div>
             <div className="grid max-h-[70vh] gap-2 overflow-y-auto p-3 sm:grid-cols-2 sm:p-4">
-              {collection.items.map((item, index) => <button key={item.itemId} type="button" onClick={() => void play(item)} disabled={!item.audioUrl} className="grid min-w-0 grid-cols-[2rem_2.75rem_minmax(0,1fr)_auto] items-center gap-2 border border-white/10 bg-white/[0.025] p-2 text-left disabled:opacity-40"><span className="text-xs font-black text-zinc-600">{String(index + 1).padStart(2, "0")}</span><img src={item.coverUrl} alt="" className="h-11 w-11 rounded object-cover" /><span className="min-w-0"><span className="block truncate text-sm font-black text-white">{item.title}</span><span className="mt-1 block truncate text-xs font-bold text-zinc-500">{item.artist}</span></span><Play className="h-4 w-4 text-orange-300" fill="currentColor" /></button>)}
+              {collection.items.map((item, index) => (
+                <article key={item.itemId} className="grid min-w-0 grid-cols-[2rem_2.75rem_minmax(0,1fr)] items-center gap-2 border border-white/10 bg-white/[0.025] p-2">
+                  <span className="text-xs font-black text-zinc-600">{String(index + 1).padStart(2, "0")}</span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={item.coverUrl} alt="" className="h-11 w-11 rounded object-cover" />
+                  <span className="min-w-0"><span className="block truncate text-sm font-black text-white">{item.title}</span><span className="mt-1 block truncate text-xs font-bold text-zinc-500">{item.artist}</span></span>
+                </article>
+              ))}
             </div>
           </section>
         </div>
       ) : null}
 
-      {player ? <ShowtimeQueuePlayer queue={player.queue} index={player.index} sourceLabel={`${collection.curatorName || "AIPOGER"} Choice`} isZh onIndexChange={(index) => setPlayer((current) => current ? { ...current, index } : current)} onClose={() => setPlayer(null)} /> : null}
+      <ChoiceCommentsDialog open={commentsOpen} collectionKind={kind} collectionId={choiceId} title={title} isZh onClose={() => setCommentsOpen(false)} />
+      <ShowtimeQueuePlayer ref={playerRef} isZh />
     </main>
   );
 }

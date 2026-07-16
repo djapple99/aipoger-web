@@ -3,11 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ExternalLink, FileText, MessageSquare, Play, Trophy } from "lucide-react";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import ShareButton from "@/components/share-button";
 import ReportButton from "@/components/report-button";
 import ShowtimeChoiceShelf, { type ShowtimeChoiceHeartState, type ShowtimeChoiceShelfEntry } from "@/components/showtime-choice-shelf";
-import ShowtimeQueuePlayer, { type ShowtimePlayerTrack } from "@/components/showtime-queue-player";
+import ShowtimeQueuePlayer, { type ShowtimePlayerTrack, type ShowtimeQueuePlayerHandle } from "@/components/showtime-queue-player";
 import {
   AIPOGER_BRAND_LOGO,
   AIPOGER_CONTACT_EMAIL,
@@ -33,7 +33,7 @@ import {
   type ListenBarTrackRow,
 } from "@/lib/listen-bar";
 import { canDisplayShowtimeSupportUrl, normalizeAiMusicShowtimeCertificationSource } from "@/lib/ai-music-showtime";
-import { choicePublicPath, type AipogerChoiceCollection } from "@/lib/aipoger-choice";
+import { choiceDisplayTitle, choicePublicPath, type AipogerChoiceCollection } from "@/lib/aipoger-choice";
 import {
   creatorChoicePublicPath,
   type AipogerPublicCreatorChoiceCollection,
@@ -151,12 +151,6 @@ type DropFullSongPayload = {
     label?: string;
     durationSeconds?: number;
   }>;
-};
-
-type ShowtimePlayerSession = {
-  queue: ShowtimePlayerTrack[];
-  index: number;
-  sourceLabel: string;
 };
 
 type FighterProfileMediaRow = {
@@ -1000,7 +994,7 @@ export default function RankPage() {
   const [choiceHearts, setChoiceHearts] = useState<Record<string, ShowtimeChoiceHeartState>>({});
   const [choiceHeartBusy, setChoiceHeartBusy] = useState<Record<string, boolean>>({});
   const [choiceHeartError, setChoiceHeartError] = useState("");
-  const [playerSession, setPlayerSession] = useState<ShowtimePlayerSession | null>(null);
+  const playerRef = useRef<ShowtimeQueuePlayerHandle>(null);
   const [lyricsModal, setLyricsModal] = useState<LyricsModalState | null>(null);
   const [honorInteractions, setHonorInteractions] = useState<Record<string, HonorInteractionState>>({});
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
@@ -1179,7 +1173,7 @@ export default function RankPage() {
           coverUrl: choiceCollection.curatorIdentity === "personal"
             ? mediaSrc(choiceCollection.avatarUrl || "")
             : AIPOGER_BRAND_LOGO,
-          title: choiceCollection.title || `${choiceCollection.curatorName || "AIPOGER"} Choice`,
+          title: choiceDisplayTitle(choiceCollection.curatorName, choiceCollection.title),
           intro: choiceCollection.intro,
           weekStart: choiceCollection.weekStart,
           href: choicePublicPath(choiceCollection.id, "official"),
@@ -1191,7 +1185,7 @@ export default function RankPage() {
       kind: "creator" as const,
       curatorName: collection.curatorName,
       coverUrl: mediaSrc(collection.avatarUrl),
-      title: collection.title || `${collection.curatorName} Choice`,
+      title: choiceDisplayTitle(collection.curatorName, collection.title),
       intro: collection.intro,
       weekStart: collection.weekStart,
       href: creatorChoicePublicPath(collection.id),
@@ -1213,7 +1207,7 @@ export default function RankPage() {
     if (playable.length === 0) return;
     const selected = itemId ? entry.items.find((item) => item.itemId === itemId) : null;
     const index = selected ? Math.max(0, playable.findIndex((item) => item.id === `${selected.sourceKind}:${selected.id}`)) : 0;
-    setPlayerSession({ queue: playable, index, sourceLabel: `${entry.curatorName} Choice` });
+    void playerRef.current?.start(playable, index, `${entry.curatorName} Choice`);
   };
 
   useEffect(() => {
@@ -1294,17 +1288,13 @@ export default function RankPage() {
   const startShowtimePlayback = (row: RankRow) => {
     const audioUrl = row.fullSongUrl || row.audioUrl;
     if (!audioUrl) return;
-    setPlayerSession({
-      queue: [{
+    void playerRef.current?.start([{
         id: honorRecordKey(row),
         title: displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived"),
         artist: row.name,
         coverUrl: mediaSrc(row.coverUrl),
         audioUrl,
-      }],
-      index: 0,
-      sourceLabel: "AIPOGER Showtime",
-    });
+      }], 0, "AIPOGER Showtime");
   };
 
   useEffect(() => {
@@ -1567,7 +1557,7 @@ export default function RankPage() {
           />
         </div>
 
-        <section className="py-5 sm:py-6">
+        <section id="showtime-catalog" className="scroll-mt-20 py-5 sm:py-6">
           <div className="max-w-6xl">
             <p className={`${fontRighteous.className} text-[10px] uppercase tracking-[0.2em] text-cyan-100/75`}>
               CERTIFIED MUSIC CATALOG
@@ -2009,16 +1999,7 @@ export default function RankPage() {
         </footer>
       </div>
 
-      {playerSession ? (
-        <ShowtimeQueuePlayer
-          queue={playerSession.queue}
-          index={playerSession.index}
-          sourceLabel={playerSession.sourceLabel}
-          isZh={isZh}
-          onIndexChange={(index) => setPlayerSession((current) => current ? { ...current, index } : current)}
-          onClose={() => setPlayerSession(null)}
-        />
-      ) : null}
+      <ShowtimeQueuePlayer ref={playerRef} isZh={isZh} />
     </main>
   );
 }

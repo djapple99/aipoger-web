@@ -237,14 +237,14 @@ export default function AdminChoicePage() {
               </label>
               <label className="grid gap-1 text-xs font-black text-zinc-400 sm:col-span-2">推薦文章（可選）
                 <textarea value={intro} maxLength={AIPOGER_CHOICE_INTRO_MAX_LENGTH} rows={6} onChange={(event) => setIntro(event.target.value)} placeholder="寫下這期 Choice 的推薦文章。" className="rounded-xl border border-white/10 bg-black px-3 py-2 text-sm font-bold leading-6 text-white outline-none focus:border-cyan-200/55" />
-                <span className="font-bold text-zinc-600">儲存後前台卡片顯示摘要，文章圖示開啟完整 HUD。</span>
+                <span className="font-bold text-zinc-600">儲存後會顯示在 Choice 卡片與公開頁標題旁。</span>
               </label>
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
               <p className="text-xs font-bold text-zinc-500">{choiceItemCountMessage(selected?.items.length ?? 0)}</p>
               <div className="flex flex-wrap gap-2">
                 <button type="button" disabled={busy !== ""} onClick={() => void saveCollection()} className="rounded-full border border-white/15 px-4 py-2 text-xs font-black text-zinc-100 disabled:opacity-45">{busy === "save_collection" ? "儲存中" : selected ? "儲存草稿" : "建立草稿"}</button>
-                {selected ? <button type="button" disabled={busy !== ""} onClick={() => void runAction("set_published", { collectionId: selected.id, isPublished: !selected.isPublished }, selected.isPublished ? "Choice 已撤回。" : "Choice 已發布。", selected.id)} className={`rounded-full border px-4 py-2 text-xs font-black disabled:opacity-45 ${selected.isPublished ? "border-red-200/35 bg-red-500/10 text-red-100" : "border-cyan-200/45 bg-cyan-300 text-black"}`}>{busy === "set_published" ? "處理中" : selected.isPublished ? "撤回發布" : "發布到 Showtime"}</button> : null}
+                {selected ? <button type="button" disabled={busy !== ""} onClick={() => void runAction("set_published", { collectionId: selected.id, isPublished: !selected.isPublished, weekStart, title, intro, curatorIdentity }, selected.isPublished ? "Choice 已撤回。" : "Choice 已發布。", selected.id)} className={`rounded-full border px-4 py-2 text-xs font-black disabled:opacity-45 ${selected.isPublished ? "border-red-200/35 bg-red-500/10 text-red-100" : "border-cyan-200/45 bg-cyan-300 text-black"}`}>{busy === "set_published" ? "處理中" : selected.isPublished ? "撤回發布" : "發布到 Showtime"}</button> : null}
               </div>
             </div>
           </div>

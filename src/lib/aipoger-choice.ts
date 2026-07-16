@@ -1,6 +1,7 @@
 export const AIPOGER_CHOICE_MIN_ITEMS = 5;
 export const AIPOGER_CHOICE_MAX_ITEMS = 10;
 export const AIPOGER_CHOICE_INTRO_MAX_LENGTH = 3000;
+export const AIPOGER_CHOICE_COMMENT_MAX_LENGTH = 280;
 
 export const AIPOGER_CHOICE_SOURCE_KINDS = ["listen_bar_track", "battle_archive"] as const;
 export type AipogerChoiceSourceKind = (typeof AIPOGER_CHOICE_SOURCE_KINDS)[number];
@@ -48,6 +49,14 @@ export function choiceWeekStart(value: Date = new Date()) {
 
 export function choicePublicPath(collectionId: string, kind: "official" | "creator" = "official") {
   return `/choice/${encodeURIComponent(collectionId)}?kind=${kind}`;
+}
+
+export function choiceDisplayTitle(curatorName: string | null | undefined, title: string | null | undefined) {
+  const curator = curatorName?.trim() || "AIPOGER";
+  const base = `${curator} Choice`;
+  const authoredTitle = title?.trim() || "";
+  if (!authoredTitle || authoredTitle.toLocaleLowerCase() === base.toLocaleLowerCase()) return base;
+  return `${base}｜${authoredTitle}`;
 }
 
 export function isAipogerChoiceSourceKind(value: unknown): value is AipogerChoiceSourceKind {

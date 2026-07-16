@@ -54,13 +54,13 @@ test("Showtime puts cover-led Choice editorials before a compact six-column cata
   assert.ok(choiceShelfSource.includes("grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6"));
   assert.ok(choiceShelfSource.includes("entry.coverUrl"));
   assert.ok(choiceShelfSource.includes("entry.intro"));
-  assert.ok(choiceShelfSource.includes("閱讀推薦文章"));
-  assert.ok(choiceShelfSource.includes("whitespace-pre-wrap"));
+  assert.ok(choiceShelfSource.includes("entry.intro"));
+  assert.ok(choiceShelfSource.includes("ChoiceCommentsDialog"));
   assert.ok(choiceShelfSource.includes("<ShareButton"));
   assert.ok(choiceShelfSource.includes("onToggleHeart(entry)"));
   assert.equal(choiceShelfSource.includes("CURATOR SETS"), false);
   assert.equal(choiceShelfSource.includes("由創作者選出他們心目中的歌單"), false);
-  assert.ok(choiceShelfSource.includes('aria-label={isZh ? "查看歌單" : "View tracklist"}'));
+  assert.ok(choiceShelfSource.includes('aria-label={isZh ? "預覽歌單" : "Preview tracklist"}'));
   assert.ok(choiceShelfSource.includes("onPlay(entry)"));
 });
 
@@ -75,24 +75,22 @@ test("owner Choice preserves an explicit official or personal publishing identit
   assert.ok(showtimeSource.includes('choiceCollection.curatorIdentity === "personal"'));
   assert.ok(showtimeSource.includes('mediaSrc(choiceCollection.avatarUrl || "")'));
   assert.ok(showtimeSource.includes(": AIPOGER_BRAND_LOGO"));
-  assert.ok(showtimeSource.includes("title: choiceCollection.title || `${choiceCollection.curatorName || \"AIPOGER\"} Choice`"));
+  assert.ok(showtimeSource.includes("choiceDisplayTitle(choiceCollection.curatorName, choiceCollection.title)"));
   assert.ok(adminChoiceSource.includes('option value="official"'));
   assert.ok(adminChoiceSource.includes('option value="personal"'));
   assert.ok(adminShowtimeSource.includes("choiceCuratorIdentity"));
   assert.ok(curatorIdentityMigration.includes("curator_identity in ('official', 'personal')"));
 });
 
-test("Choice recommendation copy opens in a dedicated readable HUD", () => {
-  assert.ok(choiceShelfSource.includes("setEditorial(entry)"));
-  assert.ok(choiceShelfSource.includes('aria-label={isZh ? "Choice 推薦文章" : "Choice editorial"}'));
-  assert.ok(choiceShelfSource.includes("max-h-[65vh] overflow-y-auto"));
-  assert.ok(choiceShelfSource.includes("whitespace-pre-wrap"));
-  assert.ok(choiceShelfSource.includes("這期推薦文章尚未儲存。"));
+test("Choice tracklist HUD is read-only while the card remains the playback control", () => {
+  assert.ok(choiceShelfSource.includes("TracklistPreview"));
+  assert.ok(choiceShelfSource.includes("group-hover/tracklist:visible"));
+  assert.ok(choiceShelfSource.includes("setDetail(entry)"));
   assert.ok(choiceShelfSource.includes("choiceDateLabel(entry.weekStart, isZh)"));
-  assert.ok(choiceShelfSource.includes("choiceDateLabel(editorial.weekStart, isZh)"));
   assert.equal((choiceShelfSource.match(/<ListMusic/g) ?? []).length, 1);
-  assert.ok(choiceShelfSource.includes('aria-label={isZh ? "全部播放" : "Play all"}'));
-  assert.ok(choiceShelfSource.includes("onPlay(detail); setDetail(null);"));
+  assert.equal(choiceShelfSource.includes('aria-label={isZh ? "全部播放" : "Play all"}'), false);
+  assert.equal(choiceShelfSource.includes("onPlay(detail)"), false);
+  assert.ok(choiceShelfSource.includes("onPlay(entry)"));
 });
 
 test("Choice editor supports long-form recommendation articles and visible icon-only sharing", () => {
@@ -121,7 +119,9 @@ test("Choice and Showtime use one sequential bottom player with mobile volume", 
   assert.ok(showtimeSource.includes("<ShowtimeQueuePlayer"));
   assert.ok(queuePlayerSource.includes("data-showtime-queue-player"));
   assert.ok(queuePlayerSource.includes("onEnded"));
-  assert.ok(queuePlayerSource.includes("onIndexChange(index + 1)"));
+  assert.ok(queuePlayerSource.includes("useImperativeHandle"));
+  assert.ok(queuePlayerSource.includes("await audio.play()"));
+  assert.ok(queuePlayerSource.includes("current.index + 1"));
   assert.ok(queuePlayerSource.includes('aria-label={isZh ? "調整音量"'));
   assert.ok(queuePlayerSource.includes("lg:hidden"));
 });

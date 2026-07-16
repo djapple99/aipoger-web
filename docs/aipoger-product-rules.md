@@ -43,6 +43,9 @@ Daily Spotlight 已退役：它不再是傷心酒吧、Explore、`/admin/listen-
 
 - 傷心酒吧只負責投稿與公播；Explore 負責找歌、收藏、分享、攻擂與正在升溫；Showtime 是認證作品庫。
 - `AIPOGER Choice` 是唯一人為策展訊號：每週 5-10 首、不排名、可跨類型。Choice 主 CTA 是 `/rank?lang=zh#choice-weekly`；owner 主要從 `/admin/showtime` 的作品勾選模式建立週次、挑選公開 Showtime 認證作品、排序、發布與撤回，`/admin/choice` 保留為相同資料的直接管理入口。
+- Choice 卡片使用策展者的個人資料封面，固定顯示日期、`策展者 Choice｜當期自訂標題`、文章摘要、歌單 Heart、分享、評論與歌單圖示。推薦文章直接放在卡片與公開頁標題旁，不另做文章 HUD。
+- 歌單圖示只負責唯讀順序預覽：桌機 hover / focus、手機點擊開啟，HUD 不得放單曲播放或「全部播放」。順播由卡片封面原本的播放鈕啟動；完整公開頁保留逐首播放與「全部播放」。
+- Choice 評論是歌單層級內容：公開可讀，登入後可留言，作者可刪除自己的留言，其他留言可檢舉。發布／撤回同一請求必須保存當下週次、標題、推薦文章與 owner 策展身分。
 - `/today` 只作舊外部連結相容入口，固定以 307 導向 Choice；`/listen-bar?spotlight=...` 必須退化為正常傷心酒吧，不指定歌曲也不改變輪播。
 - `listen_bar_daily_spotlights`、歷史素材與舊社群草稿只保留歷史資料，不再由 app 日常流程讀寫；本階段不刪資料、不跑 destructive SQL。
 - `/admin/showtime` 是 owner 的緊湊封面作品目錄：只列出目前已進 Showtime 且仍公開展示的認證作品，桌機每列 6 首、每頁 12 首。它不是傷心酒吧投稿或公播候選清單，也不提供候選認證入口；對創作者投稿的 AI Music 作品，owner 可改封面與顯示資料（歌名、創作者、AI 工具、類型、製作資訊、Showtime 評語／作品介紹、歌詞、YouTube、外部支持連結），或收回目前公開展示。不得改寫音檔、既有認證來源、Battle 戰績、票數、Heart 或重新開戰。`/admin/social` 是唯一社群草稿、批准與手動發布中控台。Choice 選曲不會建立社群草稿或自動外部發布；草稿需先批准，Discord 仍需明確按平台發布才送 webhook；Facebook 社團維持手動發布，Instagram 與 YouTube 維持草稿。TikTok 不在目前工作台或新增草稿流程，歷史資料保留。
