@@ -15,8 +15,15 @@ import {
   SUNO_LYRIC_MOVES,
   SUNO_PROMPT_MOVES,
 } from "../src/lib/suno-practice-library.ts";
+import {
+  SUNO_ARTIST_DNA_ENTRIES,
+  SUNO_INSPIRATION_SOURCE,
+  SUNO_PROMPT_RECIPES,
+  SUNO_RECIPE_GENRES,
+} from "../src/lib/suno-inspiration-index.ts";
 
 const practiceLibraryComponent = readFileSync(new URL("../src/components/suno-practice-library-section.tsx", import.meta.url), "utf8");
+const inspirationIndexComponent = readFileSync(new URL("../src/components/suno-inspiration-index-section.tsx", import.meta.url), "utf8");
 
 test("Taiwanese lyrics lab keeps the PDF seed catalog complete and uniquely addressable", () => {
   assert.equal(TAIWANESE_LYRICS_ENTRIES.length, 38);
@@ -106,4 +113,63 @@ test("Prompt and lyric finders explain their controls and expose clear states", 
   assert.match(practiceLibraryComponent, /清除 Prompt 搜尋/);
   assert.match(practiceLibraryComponent, /清除歌詞搜尋/);
   assert.doesNotMatch(practiceLibraryComponent, /mt-3 flex gap-2 overflow-x-auto pb-1/);
+});
+
+test("artist encyclopedia becomes 771 unique, searchable sonic DNA references", () => {
+  assert.equal(SUNO_ARTIST_DNA_ENTRIES.length, 771);
+  assert.equal(SUNO_INSPIRATION_SOURCE.artist.suppliedEntries, 771);
+  assert.equal(new Set(SUNO_ARTIST_DNA_ENTRIES.map((entry) => entry.key)).size, 771);
+  assert.equal(new Set(SUNO_ARTIST_DNA_ENTRIES.map((entry) => entry.artist.toLocaleLowerCase())).size, 771);
+  assert.ok(SUNO_ARTIST_DNA_ENTRIES.every((entry) => (
+    entry.artist
+    && entry.sourcePage >= 3
+    && entry.sourcePage <= 38
+    && entry.tags.length >= 2
+    && entry.summaryZh.length === 4
+    && entry.prompt.includes("no direct artist imitation")
+    && entry.searchText.includes(entry.artist.toLocaleLowerCase())
+  )));
+});
+
+test("750 supplied prompts become 747 unique bilingual recipes", () => {
+  assert.equal(SUNO_INSPIRATION_SOURCE.recipes.suppliedEntries, 750);
+  assert.equal(SUNO_INSPIRATION_SOURCE.recipes.canonicalEntries, 747);
+  assert.equal(SUNO_INSPIRATION_SOURCE.recipes.exactDuplicatesRemoved, 3);
+  assert.equal(SUNO_PROMPT_RECIPES.length, 747);
+  assert.equal(SUNO_RECIPE_GENRES.length, 10);
+  assert.equal(new Set(SUNO_PROMPT_RECIPES.map((entry) => entry.key)).size, 747);
+
+  const signatures = SUNO_PROMPT_RECIPES.map((entry) => [
+    entry.genre,
+    entry.vocal,
+    entry.mood,
+    entry.instrument,
+    entry.story,
+    entry.texture,
+  ].join("|"));
+  assert.equal(new Set(signatures).size, 747);
+  assert.ok(SUNO_PROMPT_RECIPES.every((entry) => (
+    entry.genreZh
+    && entry.vocalZh
+    && entry.moodZh
+    && entry.instrumentZh
+    && entry.storyZh
+    && entry.textureZh
+    && entry.prompt.includes(entry.genre)
+  )));
+});
+
+test("large inspiration index exposes clear search, filter, copy, comment, and paging controls", () => {
+  assert.match(practiceLibraryComponent, /SunoInspirationIndexSection/);
+  assert.match(practiceLibraryComponent, /id="suno-inspiration-index"/);
+  assert.match(inspirationIndexComponent, /聲音 DNA × Prompt 配方索引/);
+  assert.match(inspirationIndexComponent, /771 組參考風格/);
+  assert.match(inspirationIndexComponent, /747 組去重配方/);
+  assert.match(inspirationIndexComponent, /aria-live="polite"/);
+  assert.match(inspirationIndexComponent, /aria-pressed={selected}/);
+  assert.match(inspirationIndexComponent, /複製聲音 DNA/);
+  assert.match(inspirationIndexComponent, /複製英文 Prompt/);
+  assert.match(inspirationIndexComponent, /BibleEntryCommentsDialog/);
+  assert.match(inspirationIndexComponent, /再載入 18 筆/);
+  assert.doesNotMatch(inspirationIndexComponent, /overflow-x-auto/);
 });

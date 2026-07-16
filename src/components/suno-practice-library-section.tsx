@@ -14,6 +14,7 @@ import {
   WandSparkles,
   X,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { fontRighteous } from "@/lib/fonts";
 import {
@@ -30,6 +31,15 @@ import {
   type SunoPromptCategory,
   type SunoTechnique,
 } from "@/lib/suno-practice-library";
+
+const SunoInspirationIndexSection = dynamic(
+  () => import("@/components/suno-inspiration-index-section"),
+  {
+    loading: () => (
+      <div className="mt-14 min-h-48 animate-pulse rounded-[1.5rem] border border-white/10 bg-white/[0.025]" />
+    ),
+  },
+);
 
 type AnyTechnique = SunoTechnique<SunoPromptCategory> | SunoTechnique<SunoLyricCategory>;
 
@@ -174,8 +184,8 @@ export default function SunoPracticeLibrarySection({ locale }: { locale: SunoLib
             </h2>
             <p className="mt-5 max-w-3xl text-base font-bold leading-8 text-zinc-300">
               {isZh
-                ? "七份教材不是整包倒進來，而是拆成可以搜尋、可以複製、知道何時該用的招式。重複內容已合併，拼字與過度堆疊的舊 Prompt 也已重新整理。"
-                : "Seven source files are distilled into searchable, copyable moves with clear use cases. Duplicates are merged, while misspellings and overloaded legacy prompts are cleaned up."}
+                ? "九份教材不是整包倒進來，而是拆成可以搜尋、可以複製、知道何時該用的招式。重複內容已合併，拼字與過度堆疊的舊 Prompt 也已重新整理。"
+                : "Nine source files are distilled into searchable, copyable moves with clear use cases. Duplicates are merged, while misspellings and overloaded legacy prompts are cleaned up."}
             </p>
           </div>
           <div className="rounded-xl border border-yellow-300/18 bg-yellow-300/[0.055] p-4 text-sm font-bold leading-6 text-yellow-50/85">
@@ -185,9 +195,10 @@ export default function SunoPracticeLibrarySection({ locale }: { locale: SunoLib
               : "The supplied material focuses on V4.5/V5, while Suno's current official line is V5.5. Tags are generation signals, not guaranteed commands, so entries distinguish official features, field tests, and version-sensitive behavior."}
           </div>
         </div>
-        <div className="mt-7 grid grid-cols-3 gap-3 border-t border-white/10 pt-5 text-center sm:max-w-2xl">
+        <div className="mt-7 grid grid-cols-2 gap-3 border-t border-white/10 pt-5 text-center sm:max-w-3xl sm:grid-cols-4">
           <div><strong className="block text-2xl font-black text-white">{SUNO_PROMPT_MOVES.length}</strong><span className="text-[10px] font-black tracking-[0.12em] text-zinc-600">PROMPT MOVES</span></div>
           <div><strong className="block text-2xl font-black text-white">{SUNO_LYRIC_MOVES.length}</strong><span className="text-[10px] font-black tracking-[0.12em] text-zinc-600">LYRIC MOVES</span></div>
+          <div><strong className="block text-2xl font-black text-white">1,518</strong><span className="text-[10px] font-black tracking-[0.12em] text-zinc-600">INDEXED REFERENCES</span></div>
           <div><strong className="block text-2xl font-black text-white">{SUNO_GENRE_GROUPS.reduce((sum, group) => sum + group.terms.length, 0)}</strong><span className="text-[10px] font-black tracking-[0.12em] text-zinc-600">GENRE TERMS</span></div>
         </div>
       </div>
@@ -277,6 +288,10 @@ export default function SunoPracticeLibrarySection({ locale }: { locale: SunoLib
               </article>
             ))}
           </div>
+        </div>
+
+        <div id="suno-inspiration-index" className="scroll-mt-24">
+          <SunoInspirationIndexSection isZh={isZh} />
         </div>
 
         <div id="lyric-control-library" className="scroll-mt-20 mt-12 border-t border-white/10 pt-10">

@@ -60,6 +60,7 @@ function practiceAreasForLanguage(isZh: boolean): PracticeArea[] {
   return isZh
     ? [
         { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt 招式庫", body: "18 招 Prompt、80+ 個曲風詞與愛波哥私藏配方。", href: "#suno-prompt-library", accent: "orange" },
+        { icon: LibraryBig, eyebrow: "1,518 INDEX", title: "聲音 DNA × Prompt 索引", body: "771 組藝術家聲音 DNA 與 747 組去重配方，可搜尋、複製與評論。", href: "#suno-inspiration-index", accent: "cyan" },
         { icon: BookOpenText, eyebrow: "LYRICS", title: "歌詞調教", body: "段落、唱法、合唱、情緒與台語咬字實測。", href: "#lyric-control-library", accent: "cyan" },
         { icon: Music2, eyebrow: "DROP", title: "Drop 製作練習", body: "用 30–60 秒練節奏、情緒與記憶點。", href: "/hook-guide", accent: "orange" },
         { icon: Headphones, eyebrow: "A&R TOOL", title: "分析你的音樂", body: "需要第二意見時，再用 A&R Gate 檢查作品路線。", href: "/music-analysis", accent: "cyan" },
@@ -68,6 +69,7 @@ function practiceAreasForLanguage(isZh: boolean): PracticeArea[] {
       ]
     : [
         { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt Moves", body: "18 prompt moves, 80+ genre terms, and curated AIPOGER recipes.", href: "#suno-prompt-library", accent: "orange" },
+        { icon: LibraryBig, eyebrow: "1,518 INDEX", title: "Sonic DNA × Prompt Index", body: "Search, copy, and discuss 771 artist DNA references and 747 unique recipes.", href: "#suno-inspiration-index", accent: "cyan" },
         { icon: BookOpenText, eyebrow: "LYRICS", title: "Lyric Control", body: "Shape sections, delivery, duets, emotion, and Taiwanese pronunciation.", href: "#lyric-control-library", accent: "cyan" },
         { icon: Music2, eyebrow: "DROP", title: "Drop Practice", body: "Train rhythm, emotion, and recall inside a focused 30–60 seconds.", href: "/hook-guide", accent: "orange" },
         { icon: Headphones, eyebrow: "A&R TOOL", title: "Analyze Your Music", body: "Use A&R Gate when you need a second opinion on the track's route.", href: "/music-analysis", accent: "cyan" },
@@ -102,7 +104,7 @@ export default function AiMusicBiblePage() {
   const ui = isZh
     ? {
         updated: "持續更新", enterLab: "進入 Prompt 招式庫", viewMap: "看練功地圖",
-        labCount: "4 個實戰資料庫", seedSource: "新增 Prompt 招式、歌詞控制與 80+ 個曲風詞，並保留台語調音與 AI Stem 指南；每筆都標示來源與可靠度。",
+        labCount: "6 個實戰資料庫", seedSource: "新增 771 組藝術家聲音 DNA、747 組去重 Prompt 配方、招式與歌詞控制，並保留台語調音與 AI Stem 指南；每區都標示來源與可靠度。",
         traits: ["繁中整理", "官方核對", "共同驗證"], practiceTitle: "今天要練哪一招？", practiceBody: "先選一個問題練，不必從頭把整本看完。每一區都會慢慢增加實測範例。",
         labTitle: "Suno 台語歌詞調音實驗室", labBody: "搜尋華語意思，複製實測寫法，再告訴大家這個版本唱得準不準。不同模型、旋律與聲線都可能改變結果。",
         addData: "補一筆資料", disclaimer: "這裡整理的是 AI 歌唱發音實測，不代表台語推薦正字。借音字只用來協助模型發音；正式書寫請另外查證。",
@@ -118,7 +120,7 @@ export default function AiMusicBiblePage() {
       }
     : {
         updated: "Living guide", enterLab: "Enter Prompt Moves", viewMap: "View practice map",
-        labCount: "4 field databases", seedSource: "Explore prompt moves, lyric controls, 80+ genre terms, Taiwanese pronunciation tests, and AI stem guidance with sources and confidence kept visible.",
+        labCount: "6 field databases", seedSource: "Explore 771 artist DNA references, 747 unique prompt recipes, prompt and lyric moves, Taiwanese pronunciation tests, and AI stem guidance with source context kept visible.",
         traits: ["Bilingual", "Cross-checked", "Community tested"], practiceTitle: "What do you want to practice?", practiceBody: "Pick one problem instead of reading everything in order. Each section will keep gaining tested examples.",
         labTitle: "Suno Taiwanese Lyrics Lab", labBody: "Search by Mandarin meaning, copy a tested spelling, then report whether your Suno version sings it correctly.",
         addData: "Add a test", disclaimer: "These are AI singing pronunciation experiments, not recommended Taiwanese orthography. Loan characters are only used to guide model pronunciation.",
