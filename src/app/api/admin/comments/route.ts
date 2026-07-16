@@ -38,6 +38,15 @@ type ReportRow = {
   created_at: string;
 };
 
+type StoredReportRow = ReportRow & {
+  target_type: string;
+  action_taken?: string | null;
+  admin_note?: string | null;
+  resolved_by?: string | null;
+  resolved_at?: string | null;
+  updated_at?: string | null;
+};
+
 const TABLES: Record<CommentSource, string> = {
   listen_bar: "listen_bar_track_comments",
   choice: "aipoger_choice_collection_comments",
@@ -51,6 +60,9 @@ const BASE_SELECTS: Record<CommentSource, string> = {
 };
 
 const MODERATION_SELECT = "moderation_status,moderation_note,moderated_at";
+const DATA_BUCKET = "listen-bar-data";
+const REPORT_PATH = "moderation/content-reports.json";
+const REPORT_LIMIT = 500;
 const SOURCES = new Set<CommentSource>(["listen_bar", "choice", "bible"]);
 const ACTIONS = new Set<AdminAction>(["hide", "restore", "delete", "resolve_reports"]);
 
@@ -121,6 +133,48 @@ async function requireOwner(request: NextRequest) {
   return { admin, userId: data.user.id };
 }
 
+async function ensureDataBucket(admin: ReturnType<typeof adminClient>) {
+  const { data } = await admin.storage.getBucket(DATA_BUCKET);
+  if (data) return;
+  await admin.storage.createBucket(DATA_BUCKET, {
+    public: false,
+    fileSizeLimit: 1024 * 1024,
+    allowedMimeTypes: ["application/json"],
+  });
+}
+
+async function readStoredReports(admin: ReturnType<typeof adminClient>): Promise<StoredReportRow[]> {
+  await ensureDataBucket(admin);
+  const { data, error } = await admin.storage.from(DATA_BUCKET).download(REPORT_PATH);
+  if (error) {
+    if (/not found|not exist|404/i.test(error.message)) return [];
+    throw error;
+  }
+  const parsed = JSON.parse(await data.text()) as unknown;
+  if (!Array.isArray(parsed)) return [];
+  return parsed.filter((item): item is StoredReportRow => (
+    typeof item === "object"
+    && item !== null
+    && typeof (item as StoredReportRow).id === "string"
+    && typeof (item as StoredReportRow).target_type === "string"
+    && typeof (item as StoredReportRow).target_id === "string"
+    && typeof (item as StoredReportRow).status === "string"
+  ));
+}
+
+async function writeStoredReports(admin: ReturnType<typeof adminClient>, reports: StoredReportRow[]) {
+  await ensureDataBucket(admin);
+  const rows = reports
+    .sort((left, right) => new Date(left.created_at).getTime() - new Date(right.created_at).getTime())
+    .slice(-REPORT_LIMIT);
+  const { error } = await admin.storage.from(DATA_BUCKET).upload(
+    REPORT_PATH,
+    new Blob([JSON.stringify(rows, null, 2)], { type: "application/json" }),
+    { contentType: "application/json", upsert: true },
+  );
+  if (error) throw error;
+}
+
 async function loadSource(admin: ReturnType<typeof adminClient>, source: CommentSource) {
   const table = TABLES[source];
   const modern = await admin
@@ -171,7 +225,7 @@ export async function GET(request: NextRequest) {
     const creatorChoiceIds = unique(choice.rows.filter((row) => row.collection_kind === "creator").map((row) => row.collection_id));
     const commentIds = allRows.map(({ row }) => row.id);
 
-    const [tracksResult, officialChoiceResult, creatorChoiceResult, reportsResult] = await Promise.all([
+    const [tracksResult, officialChoiceResult, creatorChoiceResult, reportsResult, storedReports] = await Promise.all([
       trackIds.length
         ? admin.from("listen_bar_tracks").select("id,title,artist").in("id", trackIds)
         : Promise.resolve({ data: [], error: null }),
@@ -184,6 +238,7 @@ export async function GET(request: NextRequest) {
       commentIds.length
         ? admin.from("content_reports").select("id,target_id,status,reason,created_at").eq("target_type", "comment").in("target_id", commentIds).order("created_at", { ascending: false }).limit(500)
         : Promise.resolve({ data: [], error: null }),
+      readStoredReports(admin).catch(() => []),
     ]);
 
     const trackTitles = new Map<string, string>();
@@ -199,7 +254,10 @@ export async function GET(request: NextRequest) {
     }
     const artistTitles = new Map(SUNO_ARTIST_DNA_ENTRIES.map((entry) => [entry.key, entry.artist]));
     const recipeTitles = new Map(SUNO_PROMPT_RECIPES.map((entry) => [entry.key, `${entry.genreZh} · ${entry.moodZh}`]));
-    const reports = reportsResult.error ? [] : (reportsResult.data ?? []) as ReportRow[];
+    const reports = [
+      ...(reportsResult.error ? [] : (reportsResult.data ?? []) as ReportRow[]),
+      ...storedReports.filter((report) => report.target_type === "comment" && commentIds.includes(report.target_id)),
+    ].reduce<ReportRow[]>((items, report) => items.some((item) => item.id === report.id) ? items : [...items, report], []);
     const reportsByComment = reports.reduce<Map<string, ReportRow[]>>((items, report) => {
       items.set(report.target_id, [...(items.get(report.target_id) ?? []), report]);
       return items;
@@ -254,6 +312,7 @@ export async function GET(request: NextRequest) {
         hidden: comments.filter((comment) => comment.moderationStatus === "hidden").length,
         reported: comments.filter((comment) => comment.openReportCount > 0).length,
       },
+      reportStorageFallback: Boolean(reportsResult.error || storedReports.length > 0),
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return NextResponse.json({ error: errorText(error) || "評論資料讀取失敗。" }, { status: 500 });
@@ -315,7 +374,25 @@ export async function PATCH(request: NextRequest) {
         .eq("target_type", "comment")
         .eq("target_id", commentId)
         .in("status", ["open", "reviewing"]);
-      if (error && !isMissingTable(error, "content_reports")) throw error;
+      if (error) {
+        if (!isMissingTable(error, "content_reports")) throw error;
+        const storedReports = await readStoredReports(admin);
+        const now = new Date().toISOString();
+        const nextReports = storedReports.map((report) => (
+          report.target_type === "comment"
+          && report.target_id === commentId
+          && (report.status === "open" || report.status === "reviewing")
+        ) ? {
+            ...report,
+            status: "resolved" as const,
+            action_taken: action === "resolve_reports" ? "comment_reviewed" : `${action}_comment`,
+            admin_note: adminNote,
+            resolved_by: userId,
+            resolved_at: now,
+            updated_at: now,
+          } : report);
+        await writeStoredReports(admin, nextReports);
+      }
     }
 
     return NextResponse.json({ ok: true });

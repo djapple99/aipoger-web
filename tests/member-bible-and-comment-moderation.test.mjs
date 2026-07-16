@@ -45,6 +45,8 @@ test("owner comment API centralizes all persistent comment sources", () => {
   assert.match(adminRoute, /aipoger_choice_collection_comments/);
   assert.match(adminRoute, /ai_music_bible_entry_comments/);
   assert.match(adminRoute, /content_reports/);
+  assert.match(adminRoute, /moderation\/content-reports\.json/);
+  assert.match(adminRoute, /writeStoredReports/);
   assert.match(adminRoute, /isAdminEmail\(data\.user\.email\)/);
   assert.match(adminRoute, /admin\.auth\.getUser\(token\)/);
   assert.match(adminRoute, /"hide" \| "restore" \| "delete" \| "resolve_reports"/);

@@ -51,6 +51,7 @@ type SourceState = Record<CommentSource, { exists: boolean; moderationReady: boo
 type ApiPayload = {
   comments?: AdminComment[];
   sourceState?: SourceState;
+  reportStorageFallback?: boolean;
   error?: string;
 };
 
@@ -105,6 +106,7 @@ async function authHeader(): Promise<Record<string, string>> {
 export default function AdminCommentsPage() {
   const [adminState, setAdminState] = useState<AdminState>("checking");
   const [comments, setComments] = useState<AdminComment[]>([]);
+  const [reportStorageFallback, setReportStorageFallback] = useState(false);
   const [sourceState, setSourceState] = useState<SourceState>({
     listen_bar: { exists: true, moderationReady: false },
     choice: { exists: true, moderationReady: false },
@@ -136,6 +138,7 @@ export default function AdminCommentsPage() {
       return;
     }
     setComments(Array.isArray(payload?.comments) ? payload.comments : []);
+    setReportStorageFallback(payload?.reportStorageFallback === true);
     if (payload?.sourceState) setSourceState(payload.sourceState);
   }, []);
 
@@ -277,7 +280,7 @@ export default function AdminCommentsPage() {
         {missingModeration.length > 0 || missingSources.length > 0 ? (
           <section className="mt-5 flex items-start gap-3 rounded-xl border border-amber-300/25 bg-amber-300/[0.06] px-4 py-3 text-sm font-bold leading-6 text-amber-100">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
-            <p>正式資料庫尚未套用評論治理 migration。現有評論仍可查看與永久刪除；隱藏／恢復會在 migration 核准後開放。{missingSources.includes("bible") ? "聖經評論表目前也尚未建立。" : ""}</p>
+            <p>正式資料庫尚未套用評論治理 migration。現有評論仍可查看與永久刪除；隱藏／恢復會在 migration 核准後開放。{missingSources.includes("bible") ? "聖經評論表目前也尚未建立。" : ""}{reportStorageFallback ? " 檢舉案件已自動併入既有安全備援資料。" : ""}</p>
           </section>
         ) : null}
 
