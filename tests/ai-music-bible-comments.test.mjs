@@ -15,7 +15,7 @@ test("Bible entry comments use validated catalog keys and narrow server-side acc
   assert.match(apiRoute, /\.eq\("user_id", user\.id\)/);
 });
 
-test("Bible comment UI supports public reads, authenticated writes, deletion, and reporting", () => {
+test("Bible comment UI supports member reads, authenticated writes, deletion, and reporting", () => {
   assert.match(dialog, /\/api\/ai-music-bible\/comments/);
   assert.match(dialog, /登入後留下評論/);
   assert.match(dialog, /刪除自己的評論/);

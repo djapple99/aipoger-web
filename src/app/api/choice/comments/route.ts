@@ -54,6 +54,18 @@ function isMissingChoiceCommentsSchema(error: unknown) {
   return /aipoger_choice_collection_comments|schema cache|relation.*does not exist|PGRST204|42P01/i.test(value);
 }
 
+function isMissingModerationColumn(error: unknown) {
+  const value = error && typeof error === "object"
+    ? [
+        (error as { message?: string }).message,
+        (error as { details?: string }).details,
+        (error as { hint?: string }).hint,
+        (error as { code?: string }).code,
+      ].filter(Boolean).join(" ")
+    : String(error ?? "");
+  return /moderation_status|column.*does not exist|PGRST204|schema cache/i.test(value);
+}
+
 async function isPublishedCollection(
   admin: ReturnType<typeof adminClient>,
   kind: ChoiceCollectionKind,
@@ -124,17 +136,27 @@ export async function GET(request: NextRequest) {
     const admin = adminClient();
     if (!(await isPublishedCollection(admin, kind, collectionId))) return jsonError("這份 Choice 目前未公開。", 404);
     const user = await optionalUser(request, admin);
-    const { data, error } = await admin
+    const modern = await admin
       .from("aipoger_choice_collection_comments")
-      .select("id,collection_kind,collection_id,user_id,display_name,avatar_url,body,created_at")
+      .select("id,collection_kind,collection_id,user_id,display_name,avatar_url,body,created_at,moderation_status")
       .eq("collection_kind", kind)
       .eq("collection_id", collectionId)
+      .eq("moderation_status", "visible")
       .order("created_at", { ascending: true })
       .limit(100);
-    if (error) throw error;
+    const result = modern.error && isMissingModerationColumn(modern.error)
+      ? await admin
+          .from("aipoger_choice_collection_comments")
+          .select("id,collection_kind,collection_id,user_id,display_name,avatar_url,body,created_at")
+          .eq("collection_kind", kind)
+          .eq("collection_id", collectionId)
+          .order("created_at", { ascending: true })
+          .limit(100)
+      : modern;
+    if (result.error) throw result.error;
     return NextResponse.json({
       schemaReady: true,
-      comments: ((data ?? []) as ChoiceCommentRow[]).map((row) => publicComment(row, user?.id ?? null)),
+      comments: ((result.data ?? []) as ChoiceCommentRow[]).map((row) => publicComment(row, user?.id ?? null)),
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (isMissingChoiceCommentsSchema(error)) {

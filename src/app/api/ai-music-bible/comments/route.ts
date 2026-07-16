@@ -76,8 +76,8 @@ function isUuid(value: unknown): value is string {
     && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
-function missingSchema(error: unknown) {
-  const value = error && typeof error === "object"
+function schemaErrorText(error: unknown) {
+  return error && typeof error === "object"
     ? [
         (error as { message?: string }).message,
         (error as { details?: string }).details,
@@ -85,14 +85,11 @@ function missingSchema(error: unknown) {
         (error as { code?: string }).code,
       ].filter(Boolean).join(" ")
     : String(error ?? "");
-  return /ai_music_bible_entry_comments|schema cache|relation.*does not exist|PGRST204|42P01/i.test(value);
 }
 
-async function optionalUser(request: NextRequest, admin: SupabaseClient) {
-  const token = tokenFromRequest(request);
-  if (!token) return null;
-  const { data } = await admin.auth.getUser(token);
-  return data.user ?? null;
+function missingSchema(error: unknown) {
+  const value = schemaErrorText(error);
+  return /ai_music_bible_entry_comments|schema cache|relation.*does not exist|PGRST204|42P01/i.test(value);
 }
 
 async function requiredUser(request: NextRequest, admin: SupabaseClient) {
@@ -148,25 +145,33 @@ export async function GET(request: NextRequest) {
 
   const admin = adminClient();
   if (!admin) {
-    return NextResponse.json(
-      { schemaReady: false, comments: [] },
-      { headers: { "Cache-Control": "no-store" } },
-    );
+    return jsonError("評論服務尚未連線。", 503);
   }
 
   try {
-    const user = await optionalUser(request, admin);
-    const { data, error } = await admin
+    const user = await requiredUser(request, admin);
+    if (!user) return jsonError("請先登入，才能查看練功聖經評論。", 401);
+    const modern = await admin
       .from(TABLE)
-      .select("id,entry_kind,entry_key,user_id,display_name,avatar_url,body,created_at")
+      .select("id,entry_kind,entry_key,user_id,display_name,avatar_url,body,created_at,moderation_status")
       .eq("entry_kind", kind)
       .eq("entry_key", key)
+      .eq("moderation_status", "visible")
       .order("created_at", { ascending: true })
       .limit(100);
-    if (error) throw error;
+    const result = modern.error && /moderation_status|column.*does not exist|PGRST204|schema cache/i.test(schemaErrorText(modern.error))
+      ? await admin
+          .from(TABLE)
+          .select("id,entry_kind,entry_key,user_id,display_name,avatar_url,body,created_at")
+          .eq("entry_kind", kind)
+          .eq("entry_key", key)
+          .order("created_at", { ascending: true })
+          .limit(100)
+      : modern;
+    if (result.error) throw result.error;
     return NextResponse.json({
       schemaReady: true,
-      comments: ((data ?? []) as CommentRow[]).map((row) => publicComment(row, user?.id ?? null)),
+      comments: ((result.data ?? []) as CommentRow[]).map((row) => publicComment(row, user.id)),
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (missingSchema(error)) {

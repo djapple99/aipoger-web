@@ -26,6 +26,7 @@ type TrackCommentDatabase = {
           display_name: string;
           body: string;
           created_at: string;
+          moderation_status?: "visible" | "hidden";
         };
         Insert: {
           track_id: string;
@@ -90,6 +91,18 @@ function isMissingTrackCommentsTable(error: unknown): boolean {
   return /listen_bar_track_comments|schema cache|relation.*does not exist|Could not find the table|PGRST205/i.test(text);
 }
 
+function isMissingModerationColumn(error: unknown): boolean {
+  const text = error && typeof error === "object"
+    ? [
+        (error as { message?: string }).message,
+        (error as { details?: string }).details,
+        (error as { hint?: string }).hint,
+        (error as { code?: string }).code,
+      ].filter(Boolean).join(" ")
+    : String(error ?? "");
+  return /moderation_status|column.*does not exist|PGRST204|schema cache/i.test(text);
+}
+
 function storagePath(trackId: string) {
   return `track-comments/${trackId}.json`;
 }
@@ -126,19 +139,29 @@ async function readComments(admin: AdminClient, trackId: string): Promise<Stored
 }
 
 async function readDatabaseComments(admin: AdminClient, trackId: string): Promise<StoredTrackComment[] | null> {
-  const { data, error } = await admin
+  const modern = await admin
     .from("listen_bar_track_comments")
-    .select("id, track_id, display_name, body, created_at")
+    .select("id, track_id, display_name, body, created_at, moderation_status")
     .eq("track_id", trackId)
+    .eq("moderation_status", "visible")
     .order("created_at", { ascending: true })
     .limit(COMMENT_LIMIT_PER_TRACK);
 
-  if (error) {
-    if (isMissingTrackCommentsTable(error)) return null;
-    throw error;
+  const result = modern.error && isMissingModerationColumn(modern.error)
+    ? await admin
+        .from("listen_bar_track_comments")
+        .select("id, track_id, display_name, body, created_at")
+        .eq("track_id", trackId)
+        .order("created_at", { ascending: true })
+        .limit(COMMENT_LIMIT_PER_TRACK)
+    : modern;
+
+  if (result.error) {
+    if (isMissingTrackCommentsTable(result.error)) return null;
+    throw result.error;
   }
 
-  return ((data as TrackCommentDatabase["public"]["Tables"]["listen_bar_track_comments"]["Row"][] | null) ?? []).map((row) => ({
+  return ((result.data as TrackCommentDatabase["public"]["Tables"]["listen_bar_track_comments"]["Row"][] | null) ?? []).map((row) => ({
     id: row.id,
     trackId: row.track_id,
     name: row.display_name,

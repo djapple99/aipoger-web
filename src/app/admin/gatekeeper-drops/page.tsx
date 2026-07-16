@@ -359,6 +359,9 @@ export default function AdminGatekeeperDropsPage() {
             <Link href="/admin/moderation" className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-black text-zinc-200">
               檢舉管理
             </Link>
+            <Link href="/admin/comments" className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-4 py-2 text-xs font-black text-cyan-100">
+              評論管理
+            </Link>
             <Link href="/battle?lang=zh" className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-4 py-2 text-xs font-black text-cyan-100">
               鬥歌池
             </Link>

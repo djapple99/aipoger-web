@@ -42,7 +42,10 @@ Check:
 
 - Logged-out visitors can open home, Battle list, Bar Heartbreak, AIPOGER Showtime, rules pages.
 - Logged-out visitors can listen to public Bar Heartbreak tracks.
+- Logged-out visitors can browse and listen on Explore AI Music without sign-in.
+- Logged-out visitors opening `/ai-music-bible` see the member gate, not the searchable Bible content; the primary action preserves the Bible return path through sign-in.
 - Logged-out visitors cannot vote or comment in Bar Heartbreak.
+- Hearts and saved favorites on public listening surfaces require sign-in.
 - Logged-out visitors are asked to sign in before upload/Battle actions.
 - Logged-in users can see profile/fighter identity where expected.
 - Profile `收藏歌曲` supports batch selection and batch removal, and removing saved favorites does not delete historical Heart reactions.
@@ -218,7 +221,7 @@ Check:
 ## AI Music Practice Bible Checklist
 
 - Homepage lower navigation shows `AI 音樂練功聖經` with the book icon and links to `/ai-music-bible?lang=zh`; the old homepage `歌曲分析` card is absent.
-- `/ai-music-bible?lang=zh` returns 200 and preserves A&R Gate only inside its practice map/toolbox.
+- `/ai-music-bible?lang=zh` returns 200. Signed-out visitors see the member acquisition gate with public links to Explore and Bar Heartbreak; signed-in members see the complete Bible and A&R Gate remains only inside its practice map/toolbox.
 - Desktop at 1440x900 keeps the full `AI 音樂練功聖經` title together without a single orphan character; mobile at 390x844 has no horizontal page overflow.
 - `#suno-prompt-library` and nested `#lyric-control-library` are directly reachable from the practice map and render complete Chinese and English variants.
 - The Suno library contains 18 unique prompt moves, 16 unique lyric moves, at least 80 unique normalized genre terms, and six production-flow steps. Every move has bilingual title, summary, use case, copy text, source attribution, and an official / field-tested / version-sensitive evidence label.
@@ -227,13 +230,23 @@ Check:
 - `#suno-inspiration-index` is reachable from the practice map and shows two obvious database tabs: 771 artist sonic-DNA references and 747 canonical prompt recipes. The source total is 750 recipes and exactly three duplicate combinations are removed.
 - Artist and recipe searches accept Chinese and English terms, selected genre filters are unmistakable, result counts update live, clear-all resets every condition, and Load More adds 18 cards without page-level horizontal overflow.
 - Artist cards show the lookup name but the copy action exports only sonic traits plus the no-direct-imitation guard. Recipe cards expose Chinese dimensions and copy a concise English prompt.
-- Every index card exposes comments. Anonymous visitors can read and are offered sign-in to write; signed-in users can post up to 280 characters, delete only their own comments, and report other comments.
+- Every index card exposes comments after member sign-in. The comments GET endpoint rejects missing/expired bearer tokens; signed-in users can post up to 280 characters, delete only their own comments, and report other comments.
 - `ai_music_bible_entry_comments` has RLS enabled and no public/anon/authenticated table grants. The same-origin API validates catalog keys, authenticates bearer tokens with `auth.getUser`, rate-limits writes, and degrades to a compact preparing state when the schema is unavailable.
 - The library labels the supplied V4.5/V5 material as older than current V5.5, links to official Suno documentation, and does not claim bracket tags, percentage recipes, key changes, or mix/master wording are guaranteed commands.
 - `#stem-separation-guide` renders complete Chinese and English variants with 10 unique engine families, 7 unique goal routes, and official source links that open externally.
 - Choosing a Stem goal updates the recommendation and highlights only the matching engine cards; accordion cards expose strengths, limits, implementations, and source links on desktop and mobile.
 - The Stem guide credits the owner-provided PDF and its credited author, shows the 2026-07-17 cross-check date, treats FL Studio's underlying engine as undisclosed, and does not repeat the PDF's unconfirmed LALAL.AI direct-synthesis claim as fact.
 - The Stem section remains readable at 1440x900 and 390x844 without page-level horizontal overflow.
+
+## Comment Moderation Checklist
+
+- `/admin/comments` rejects signed-out and non-owner accounts, and the API validates the bearer token with `auth.getUser` plus the owner allowlist.
+- The desk loads Bar Heartbreak, Choice, and Bible persistent comments into one newest-first list without exposing user email addresses.
+- Search, source filters, status filters, report-first view, target links, refresh, and pagination work on desktop and mobile.
+- Hide removes a comment from its public/member API while preserving its body and moderation audit fields; restore makes it visible again.
+- Resolving a reported comment closes matching open/reviewing `content_reports`; hide and permanent delete also resolve matching reports.
+- Permanent deletion requires a second confirmation and removes only the selected source/id pair.
+- Before enabling hide/restore in production, `20260716185707_centralized_comment_moderation.sql` is applied and verified. Existing comments default to `visible`; the migration creates the Bible comments table if an earlier environment missed it.
 - The Taiwanese lab contains 38 unique seed rows, searches across meaning/recommended form/Suno form/note, filters by category, copies the Suno form, and switches from a desktop table to mobile cards.
 - The lab disclaimer distinguishes AI singing phonetic experiments from recommended Taiwanese orthography.
 - New suggestions require meaning, Suno writing, and a test note. Successful submissions show a pending-review confirmation instead of claiming immediate publication.

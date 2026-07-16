@@ -90,6 +90,8 @@ Current behavior target:
 Current public entry and learning-surface rules:
 
 - The homepage second lower navigation card is `AI 音樂練功聖經`, linking to `/ai-music-bible?lang=<lang>`. It replaces the old homepage-first `歌曲分析` card.
+- The Bible is a member acquisition surface. Signed-out visitors see a clear value preview and `登入／免費加入` action, but the searchable Bible content is available only after sign-in.
+- Public listening remains the low-friction entrance: `/ai-music` and `/listen-bar` can play public music without sign-in. Hearts, saved favorites, comments, contributions, and the Bible require sign-in.
 - A&R Gate is not deleted. `分析你的音樂` lives inside the Bible's practice map and toolbox as an optional second-opinion tool after a creator has made something.
 - The Bible is a living, searchable practice database rather than one long static resource article. Its primary areas are prompts, lyrics, Stem separation, Drop practice, rights, AIPOGER tutorials, and the A&R tool.
 - `Prompt 招式庫` and `歌詞控制` are the Bible's prompt-first practice surface. They adapt nine owner-provided Suno PDFs, DOCX files, and a genre screenshot into 18 bilingual prompt moves, 16 bilingual lyric-control moves, 93 normalized genre terms, a six-step production workflow, and the large inspiration indexes below.
@@ -110,8 +112,15 @@ Current public entry and learning-surface rules:
 - The Taiwanese lab must clearly state that AI singing phonetic experiments and loan-character spellings are not recommended Taiwanese orthography. Model version, melody, and vocal timbre may change results.
 - Community `有效` / `唱錯` feedback and new-row suggestions enter a moderated pending queue. They must never edit the public seed catalog directly.
 - Public clients have no direct Data API access to `ai_music_bible_contributions`. Submission goes through the same-origin server route, with validation, a honeypot, per-request-fingerprint rate limiting, optional signed-in attribution, and service-role-only database access.
-- Indexed-entry comments are publicly readable and require sign-in to create or delete. The API validates every catalog key, rejects foreign-origin writes, resolves identity server-side, rate-limits signed-in writers, allows deletion only by the comment owner, and keeps `ai_music_bible_entry_comments` service-role mediated with RLS enabled.
+- Indexed-entry comments require sign-in to read, create, or delete. The API validates every catalog key, authenticates bearer tokens with `auth.getUser`, rejects foreign-origin writes, resolves identity server-side, rate-limits signed-in writers, allows deletion only by the comment owner, and keeps `ai_music_bible_entry_comments` service-role mediated with RLS enabled.
 - The main Bible and Taiwanese catalog must keep working if contribution storage is temporarily unavailable; only feedback/submission should show a compact failure state.
+
+Comment moderation:
+
+- `/admin/comments` is the owner-only centralized desk for persistent Bar Heartbreak track comments, Choice collection comments, and Bible indexed-entry comments. Live room chat remains a separate transient surface.
+- The desk supports author/body/target search, source and status filters, report-first review, target deep links, pagination, refresh, internal notes, hide, restore, report resolution, and two-step permanent deletion.
+- Hide is the default moderation action: it preserves the row, moderator, timestamp, and internal note while removing it from public/member APIs. Permanent deletion is explicitly destructive and must require a second confirmation.
+- Comment moderation tables are server mediated with RLS enabled and no anon/authenticated Data API grants. Owner actions authenticate bearer tokens with `auth.getUser` and owner email allowlisting.
 
 ## Drop Battle
 

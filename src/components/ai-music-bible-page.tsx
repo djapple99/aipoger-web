@@ -11,6 +11,8 @@ import {
   FlaskConical,
   Headphones,
   LibraryBig,
+  LockKeyhole,
+  LogIn,
   MessageCirclePlus,
   Music2,
   Search,
@@ -19,10 +21,11 @@ import {
   ThumbsDown,
   ThumbsUp,
   Video,
+  UserPlus,
   WandSparkles,
   X,
 } from "lucide-react";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { fontRighteous } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
@@ -35,6 +38,7 @@ import {
 } from "@/lib/taiwanese-lyrics-lab";
 
 type SubmitState = { tone: "idle" | "loading" | "success" | "error"; message: string };
+type AccessState = "checking" | "signedOut" | "signedIn";
 
 const categoryLabels: Record<TaiwaneseLyricsCategory, string> = {
   人稱: "Pronouns",
@@ -141,6 +145,21 @@ export default function AiMusicBiblePage() {
   const [suggestionOpen, setSuggestionOpen] = useState(false);
   const [submitState, setSubmitState] = useState<SubmitState>({ tone: "idle", message: "" });
   const [feedbackState, setFeedbackState] = useState<Record<string, "loading" | "sent" | "error">>({});
+  const [accessState, setAccessState] = useState<AccessState>("checking");
+
+  useEffect(() => {
+    let active = true;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (active) setAccessState(data.session?.user ? "signedIn" : "signedOut");
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (active) setAccessState(session?.user ? "signedIn" : "signedOut");
+    });
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
+  }, []);
 
   const filteredEntries = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
@@ -197,6 +216,75 @@ export default function AiMusicBiblePage() {
       setSubmitState({ tone: "error", message: error instanceof Error ? error.message : ui.submitError });
     }
   };
+
+  if (accessState !== "signedIn") {
+    const loginHref = `/auth?next=${encodeURIComponent(`/ai-music-bible?lang=${lang}`)}`;
+    return (
+      <main className="relative min-h-screen overflow-hidden bg-[#050505] px-4 pb-20 pt-24 text-zinc-100 sm:px-6">
+        <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(255,106,0,0.22),transparent_32%),radial-gradient(circle_at_86%_14%,rgba(34,211,238,0.13),transparent_28%),linear-gradient(180deg,#050505_0%,#0b0806_48%,#030707_100%)]" />
+        <div className="pointer-events-none fixed inset-0 opacity-[0.05] [background-image:linear-gradient(rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.1)_1px,transparent_1px)] [background-size:64px_64px]" />
+        <section className="relative mx-auto grid min-h-[calc(100svh-8rem)] w-full max-w-6xl place-items-center">
+          {accessState === "checking" ? (
+            <div className="text-center" role="status">
+              <LockKeyhole className="mx-auto h-9 w-9 animate-pulse text-orange-300" />
+              <p className={`${fontRighteous.className} mt-5 text-xs uppercase tracking-[0.34em] text-cyan-200/70`}>CHECKING MEMBER ACCESS</p>
+              <p className="mt-3 text-sm font-black text-zinc-500">{isZh ? "正在確認會員狀態…" : "Checking member access…"}</p>
+            </div>
+          ) : (
+            <div className="w-full overflow-hidden rounded-[1.7rem] border border-orange-300/24 bg-black/62 shadow-[0_35px_120px_rgba(0,0,0,0.68),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(21rem,0.85fr)]">
+              <div className="relative px-5 py-9 sm:px-9 lg:px-12 lg:py-14">
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-300/70 to-transparent" />
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className={`${fontRighteous.className} text-xs uppercase tracking-[0.36em] text-cyan-200/80`}>AIPOGER MEMBER CODEX</span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-300/28 bg-orange-400/[0.09] px-3 py-1 text-[11px] font-black text-orange-100"><LockKeyhole className="h-3 w-3" /> {isZh ? "會員限定" : "Members only"}</span>
+                </div>
+                <h1 className="mt-6 max-w-3xl text-[clamp(2.7rem,6vw,5.4rem)] font-black leading-[0.96] tracking-[-0.045em] text-[#fff8ed]">
+                  {isZh ? "登入解鎖 AI 音樂練功聖經" : "Sign in to unlock the AI Music Practice Bible"}
+                </h1>
+                <p className="mt-6 max-w-2xl text-base font-bold leading-8 text-zinc-300 sm:text-lg">
+                  {isZh
+                    ? "把公開聽歌當入口，把真正能反覆查、複製、實測的創作資料留給會員。免費加入後，就能完整使用 Prompt、歌詞、聲音 DNA、Stem 與台語調音資料庫。"
+                    : "Public listening stays open. Join free to unlock the searchable prompt, lyric, sonic DNA, stem, and Taiwanese pronunciation practice databases."}
+                </p>
+                <div className="mt-7 grid gap-2 sm:grid-cols-3">
+                  {(isZh ? ["1,518 組可搜尋索引", "Prompt × 歌詞實戰庫", "複製、評論、共同補資料"] : ["1,518 searchable entries", "Prompt × lyric practice", "Copy, discuss, contribute"]).map((item) => (
+                    <div key={item} className="rounded-xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm font-black text-zinc-200"><Check className="mr-2 inline h-4 w-4 text-emerald-300" />{item}</div>
+                  ))}
+                </div>
+                <div className="mt-8 flex flex-wrap gap-3">
+                  <Link href={loginHref} className="aipo-primary-button inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-sm font-black">
+                    <UserPlus className="h-4 w-4" /> {isZh ? "登入／免費加入" : "Sign in / Join free"}
+                  </Link>
+                  <Link href={appendLang("/ai-music", lang)} className="aipo-ghost-button inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-sm font-black text-white">
+                    <Headphones className="h-4 w-4" /> {isZh ? "先去探索音樂" : "Explore music first"}
+                  </Link>
+                </div>
+                <p className="mt-5 flex items-start gap-2 text-xs font-bold leading-6 text-zinc-500"><LogIn className="mt-1 h-3.5 w-3.5 shrink-0 text-zinc-600" />{isZh ? "Explore 與傷心酒吧免登入即可聽歌；愛心、收藏、評論與練功聖經需要登入。" : "Explore and Bar Heartbreak are open for listening. Hearts, saves, comments, and the Bible require sign-in."}</p>
+              </div>
+
+              <aside className="border-t border-white/10 bg-[radial-gradient(circle_at_80%_10%,rgba(34,211,238,0.12),transparent_36%),linear-gradient(145deg,rgba(255,106,0,0.09),rgba(0,0,0,0.78)_58%)] p-5 sm:p-8 lg:border-l lg:border-t-0 lg:p-9">
+                <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.3em] text-orange-300/75`}>PUBLIC LISTENING DOORS</p>
+                <h2 className="mt-3 text-3xl font-black text-white">{isZh ? "還不想登入？先聽歌。" : "Not ready to sign in? Listen first."}</h2>
+                <p className="mt-3 text-sm font-bold leading-7 text-zinc-500">{isZh ? "兩個公開入口都能直接播放；當你想收藏、按愛心或加入討論時，再登入成為會員。" : "Both public doors play immediately. Sign in when you want to save, heart, or join the conversation."}</p>
+                <div className="mt-7 grid gap-3">
+                  <Link href={appendLang("/ai-music", lang)} className="group rounded-[1.05rem] border border-cyan-200/18 bg-cyan-300/[0.045] p-5 transition hover:border-cyan-200/48 hover:bg-cyan-300/[0.075]">
+                    <div className="flex items-center justify-between gap-3"><Headphones className="h-7 w-7 text-cyan-200" /><ArrowRight className="h-5 w-5 text-zinc-600 transition group-hover:translate-x-1 group-hover:text-white" /></div>
+                    <p className="mt-5 text-xl font-black text-white">{isZh ? "探索 AI 音樂" : "Explore AI Music"}</p>
+                    <p className="mt-2 text-xs font-bold leading-6 text-zinc-500">{isZh ? "快速找歌、看 Choice、Showtime 與挑戰作品。" : "Discover Choice, Showtime, and challenge-ready works."}</p>
+                  </Link>
+                  <Link href={appendLang("/listen-bar", lang)} className="group rounded-[1.05rem] border border-orange-200/18 bg-orange-400/[0.045] p-5 transition hover:border-orange-200/48 hover:bg-orange-400/[0.075]">
+                    <div className="flex items-center justify-between gap-3"><Music2 className="h-7 w-7 text-orange-200" /><ArrowRight className="h-5 w-5 text-zinc-600 transition group-hover:translate-x-1 group-hover:text-white" /></div>
+                    <p className="mt-5 text-xl font-black text-white">{isZh ? "傷心酒吧聽歌" : "Listen in Bar Heartbreak"}</p>
+                    <p className="mt-2 text-xs font-bold leading-6 text-zinc-500">{isZh ? "免登入播放公開作品，登入後再按 Heart 與留言。" : "Play public songs freely; sign in for Hearts and comments."}</p>
+                  </Link>
+                </div>
+              </aside>
+            </div>
+          )}
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#050505] text-zinc-100">
