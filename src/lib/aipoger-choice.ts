@@ -51,12 +51,15 @@ export function choicePublicPath(collectionId: string, kind: "official" | "creat
   return `/choice/${encodeURIComponent(collectionId)}?kind=${kind}`;
 }
 
+export function choiceItemRecordKey(item: Pick<AipogerChoiceItem, "sourceKind" | "id">) {
+  const targetKind = item.sourceKind === "listen_bar_track" ? "bar" : "battle";
+  return `${targetKind}:${item.id}`;
+}
+
 export function choiceDisplayTitle(curatorName: string | null | undefined, title: string | null | undefined) {
   const curator = curatorName?.trim() || "AIPOGER";
-  const base = `${curator} Choice`;
   const authoredTitle = title?.trim() || "";
-  if (!authoredTitle || authoredTitle.toLocaleLowerCase() === base.toLocaleLowerCase()) return base;
-  return `${base}｜${authoredTitle}`;
+  return authoredTitle || `${curator} Choice`;
 }
 
 export function isAipogerChoiceSourceKind(value: unknown): value is AipogerChoiceSourceKind {

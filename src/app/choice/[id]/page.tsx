@@ -6,9 +6,10 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ChoiceCommentsDialog from "@/components/choice-comments-dialog";
 import ShareButton from "@/components/share-button";
+import type { ShowtimeChoiceItemHeartState } from "@/components/showtime-choice-shelf";
 import ShowtimeQueuePlayer, { type ShowtimePlayerTrack, type ShowtimeQueuePlayerHandle } from "@/components/showtime-queue-player";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
-import { choiceDisplayTitle, type AipogerChoiceCollection, type AipogerChoiceItem } from "@/lib/aipoger-choice";
+import { choiceDisplayTitle, choiceItemRecordKey, type AipogerChoiceCollection, type AipogerChoiceItem } from "@/lib/aipoger-choice";
 import { rememberAuthNextPath } from "@/lib/auth-urls";
 import { supabase } from "@/lib/supabase";
 
@@ -49,6 +50,8 @@ export default function PublicChoicePage() {
   const [error, setError] = useState("");
   const [heart, setHeart] = useState<HeartState>({ heartCount: 0, myHeart: false });
   const [heartBusy, setHeartBusy] = useState(false);
+  const [itemHearts, setItemHearts] = useState<Record<string, ShowtimeChoiceItemHeartState>>({});
+  const [itemHeartBusy, setItemHeartBusy] = useState<Record<string, boolean>>({});
   const [tracklistOpen, setTracklistOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const playerRef = useRef<ShowtimeQueuePlayerHandle>(null);
@@ -97,6 +100,34 @@ export default function PublicChoicePage() {
 
   const queue = useMemo(() => playableQueue(collection?.items ?? []), [collection?.items]);
 
+  useEffect(() => {
+    const keys = Array.from(new Set((collection?.items ?? []).map(choiceItemRecordKey)));
+    if (keys.length === 0) {
+      setItemHearts({});
+      return;
+    }
+    let alive = true;
+    void authHeader()
+      .then((headers) => fetch(`/api/honor-board/interactions?keys=${encodeURIComponent(keys.join(","))}`, { headers, cache: "no-store" }))
+      .then(async (response) => response.ok ? await response.json() as { records?: Array<{ recordKey: string; favoriteCount: number; myFavorited: boolean }> } : null)
+      .then((payload) => {
+        if (!alive) return;
+        const next: Record<string, ShowtimeChoiceItemHeartState> = {};
+        keys.forEach((key) => {
+          const record = payload?.records?.find((item) => item.recordKey === key);
+          next[key] = {
+            heartCount: Math.max(0, Math.round(Number(record?.favoriteCount) || 0)),
+            myHeart: Boolean(record?.myFavorited),
+          };
+        });
+        setItemHearts(next);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [authHeader, collection?.items]);
+
   const play = useCallback((item?: AipogerChoiceItem) => {
     if (queue.length === 0) return;
     const index = item ? Math.max(0, queue.findIndex((track) => track.id === `${item.sourceKind}:${item.id}`)) : 0;
@@ -134,6 +165,49 @@ export default function PublicChoicePage() {
       setHeartBusy(false);
     }
   }, [choiceId, heart.myHeart, heartBusy, kind, router]);
+
+  const toggleItemHeart = useCallback(async (item: AipogerChoiceItem) => {
+    const key = choiceItemRecordKey(item);
+    if (itemHeartBusy[key]) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      const nextPath = typeof window === "undefined" ? `/choice/${choiceId}?kind=${kind}` : `${window.location.pathname}${window.location.search}`;
+      rememberAuthNextPath(nextPath);
+      router.push(`/auth?next=${encodeURIComponent(nextPath)}`);
+      return;
+    }
+    setItemHeartBusy((current) => ({ ...current, [key]: true }));
+    setError("");
+    try {
+      const targetKind = item.sourceKind === "listen_bar_track" ? "bar" : "battle";
+      const response = await fetch("/api/honor-board/interactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({
+          action: "favorite",
+          recordKey: key,
+          targetKind,
+          targetId: item.id,
+          targetTitle: `${item.artist} / ${item.title}`,
+          targetArtist: item.artist,
+          targetGenre: item.genre,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as { record?: { favoriteCount: number; myFavorited: boolean }; error?: string } | null;
+      if (!response.ok || !payload?.record) throw new Error(payload?.error || "歌曲收藏失敗，請稍後再試。");
+      setItemHearts((current) => ({
+        ...current,
+        [key]: {
+          heartCount: Math.max(0, Math.round(Number(payload.record?.favoriteCount) || 0)),
+          myHeart: Boolean(payload.record?.myFavorited),
+        },
+      }));
+    } catch (toggleError) {
+      setError(toggleError instanceof Error ? toggleError.message : "歌曲收藏失敗，請稍後再試。");
+    } finally {
+      setItemHeartBusy((current) => ({ ...current, [key]: false }));
+    }
+  }, [choiceId, itemHeartBusy, kind, router]);
 
   if (loading) return <main className="min-h-screen bg-[#050505] px-5 py-14 text-sm font-black text-zinc-400">正在開啟 Choice...</main>;
   if (!collection) return <main className="min-h-screen bg-[#050505] px-5 py-14 text-sm font-black text-red-100">{error || "找不到這份 Choice。"}</main>;
@@ -184,7 +258,10 @@ export default function PublicChoicePage() {
             </div>
           </div>
           <div className="mt-4 grid gap-2 md:grid-cols-2">
-            {collection.items.map((item, index) => (
+            {collection.items.map((item, index) => {
+              const itemKey = choiceItemRecordKey(item);
+              const itemHeart = itemHearts[itemKey] ?? { heartCount: 0, myHeart: false };
+              return (
               <article key={item.itemId} className="flex min-w-0 items-center gap-3 border border-white/10 bg-white/[0.025] p-2.5 transition hover:border-yellow-100/35">
                 <span className="w-6 shrink-0 text-center text-xs font-black tabular-nums text-zinc-600">{String(index + 1).padStart(2, "0")}</span>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -194,9 +271,11 @@ export default function PublicChoicePage() {
                   <p className="mt-1 truncate text-xs font-bold text-zinc-400">{item.artist}</p>
                   <p className="mt-1 truncate text-[11px] font-bold text-zinc-600">{item.genre} · {item.recognition}</p>
                 </div>
+                <button type="button" onClick={() => void toggleItemHeart(item)} disabled={Boolean(itemHeartBusy[itemKey])} className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition disabled:cursor-wait disabled:opacity-45 ${itemHeart.myHeart ? "border-rose-200/55 bg-rose-500/20 text-rose-200" : "border-white/15 text-zinc-400 hover:border-rose-200/45 hover:text-rose-200"}`} aria-label={itemHeart.myHeart ? `取消收藏 ${item.title}` : `收藏 ${item.title}`} aria-pressed={itemHeart.myHeart}><Heart className="h-4 w-4" fill={itemHeart.myHeart ? "currentColor" : "none"} /></button>
                 <button type="button" onClick={() => void play(item)} disabled={!item.audioUrl} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-500 text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-30" aria-label={`播放 ${item.title}`}><Play className="h-4 w-4" fill="currentColor" /></button>
               </article>
-            ))}
+              );
+            })}
           </div>
         </section>
 
@@ -205,20 +284,28 @@ export default function PublicChoicePage() {
       {tracklistOpen ? (
         <div className="fixed inset-0 z-[180] flex items-end justify-center bg-black/75 p-3 backdrop-blur-sm sm:items-center">
           <section className="max-h-[88vh] w-full max-w-3xl overflow-hidden border border-yellow-100/25 bg-[#0a0a0a] shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 sm:px-5">
-              <h2 className="text-lg font-black text-white">{title}</h2>
-              <button type="button" onClick={() => setTracklistOpen(false)} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-zinc-300 hover:text-white" aria-label="關閉曲目清單"><X className="h-4 w-4" /></button>
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 border-b border-white/10 px-4 py-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto] sm:px-5">
+              <div className="col-start-1 row-start-1 min-w-0 self-center"><h2 className="text-lg font-black text-white">{title}</h2><time dateTime={collection.weekStart} className="mt-1 block text-xs font-black tabular-nums text-zinc-500">{displayDate(collection.weekStart)}</time></div>
+              {collection.intro ? <p className="col-span-2 col-start-1 row-start-2 text-sm font-bold leading-6 text-zinc-300 sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:self-center">{collection.intro}</p> : <span className="hidden sm:block" />}
+              <button type="button" onClick={() => setTracklistOpen(false)} className="col-start-2 row-start-1 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-zinc-300 hover:text-white sm:col-start-3" aria-label="關閉曲目清單"><X className="h-4 w-4" /></button>
             </div>
             <div className="grid max-h-[70vh] gap-2 overflow-y-auto p-3 sm:grid-cols-2 sm:p-4">
-              {collection.items.map((item, index) => (
-                <article key={item.itemId} className="grid min-w-0 grid-cols-[2rem_2.75rem_minmax(0,1fr)] items-center gap-2 border border-white/10 bg-white/[0.025] p-2">
+              {collection.items.map((item, index) => {
+                const itemKey = choiceItemRecordKey(item);
+                const itemHeart = itemHearts[itemKey] ?? { heartCount: 0, myHeart: false };
+                return (
+                <article key={item.itemId} className="grid min-w-0 grid-cols-[1.5rem_2.75rem_minmax(0,1fr)_2.25rem_2.25rem] items-center gap-2 border border-white/10 bg-white/[0.025] p-2">
                   <span className="text-xs font-black text-zinc-600">{String(index + 1).padStart(2, "0")}</span>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={item.coverUrl} alt="" className="h-11 w-11 rounded object-cover" />
                   <span className="min-w-0"><span className="block truncate text-sm font-black text-white">{item.title}</span><span className="mt-1 block truncate text-xs font-bold text-zinc-500">{item.artist}</span></span>
+                  <button type="button" onClick={() => void toggleItemHeart(item)} disabled={Boolean(itemHeartBusy[itemKey])} className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition disabled:cursor-wait disabled:opacity-45 ${itemHeart.myHeart ? "border-rose-200/55 bg-rose-500/20 text-rose-200" : "border-white/15 text-zinc-400 hover:border-rose-200/45 hover:text-rose-200"}`} aria-label={itemHeart.myHeart ? `取消收藏 ${item.title}` : `收藏 ${item.title}`} aria-pressed={itemHeart.myHeart}><Heart className="h-4 w-4" fill={itemHeart.myHeart ? "currentColor" : "none"} /></button>
+                  <button type="button" onClick={() => void play(item)} disabled={!item.audioUrl} className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-orange-500 text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-30" aria-label={`播放 ${item.title}`}><Play className="h-4 w-4" fill="currentColor" /></button>
                 </article>
-              ))}
+                );
+              })}
             </div>
+            <div className="border-t border-white/10 px-4 py-3"><button type="button" onClick={() => void play()} disabled={queue.length === 0} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-xs font-black text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-35" aria-label="全部播放"><Play className="h-4 w-4" fill="currentColor" />全部播放</button></div>
           </section>
         </div>
       ) : null}

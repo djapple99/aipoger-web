@@ -14,6 +14,7 @@ const commentsMigration = readFileSync(new URL("../supabase/migrations/202607160
 const creatorChoiceRoute = readFileSync(new URL("../src/app/api/creator-choice/route.ts", import.meta.url), "utf8");
 const adminChoiceRoute = readFileSync(new URL("../src/app/api/admin/choice/route.ts", import.meta.url), "utf8");
 const profileChoicePage = readFileSync(new URL("../src/app/profile/choice/page.tsx", import.meta.url), "utf8");
+const choiceModel = readFileSync(new URL("../src/lib/aipoger-choice.ts", import.meta.url), "utf8");
 
 test("shared Choice links resolve official and creator collections to the playable public page", () => {
   assert.match(sharedPage, /pb-28 pt-24/);
@@ -35,6 +36,16 @@ test("shared Choice page supports collection Heart save and remove", () => {
   assert.match(sharedPage, /action: heart\.myHeart \? "remove_heart" : "heart"/);
   assert.match(sharedPage, /collectionKind: kind/);
   assert.match(sharedPage, /rememberAuthNextPath/);
+});
+
+test("Choice uses the authored issue title and exposes song-level saves in the interactive HUD", () => {
+  assert.match(choiceModel, /return authoredTitle \|\| `\$\{curator\} Choice`/);
+  assert.doesNotMatch(choiceModel, /return `\$\{base\}｜\$\{authoredTitle\}`/);
+  assert.match(sharedPage, /choiceItemRecordKey/);
+  assert.match(sharedPage, /api\/honor-board\/interactions/);
+  assert.match(sharedPage, /toggleItemHeart/);
+  assert.match(sharedPage, /取消收藏 \$\{item\.title\}/);
+  assert.match(sharedPage, /播放 \$\{item\.title\}/);
 });
 
 test("signed-in Profile exposes saved Choice playlists and removal", () => {

@@ -82,14 +82,16 @@ test("owner Choice preserves an explicit official or personal publishing identit
   assert.ok(curatorIdentityMigration.includes("curator_identity in ('official', 'personal')"));
 });
 
-test("Choice tracklist HUD is read-only while the card remains the playback control", () => {
+test("Choice tracklist HUD supports song saves, individual playback, and play all", () => {
   assert.ok(choiceShelfSource.includes("TracklistPreview"));
   assert.ok(choiceShelfSource.includes("group-hover/tracklist:visible"));
   assert.ok(choiceShelfSource.includes("setDetail(entry)"));
   assert.ok(choiceShelfSource.includes("choiceDateLabel(entry.weekStart, isZh)"));
-  assert.equal((choiceShelfSource.match(/<ListMusic/g) ?? []).length, 1);
-  assert.equal(choiceShelfSource.includes('aria-label={isZh ? "全部播放" : "Play all"}'), false);
-  assert.equal(choiceShelfSource.includes("onPlay(detail)"), false);
+  assert.ok(choiceShelfSource.includes("choiceItemRecordKey(item)"));
+  assert.ok(choiceShelfSource.includes("onToggleItemHeart(item)"));
+  assert.ok(choiceShelfSource.includes("onPlay(detail, item.itemId)"));
+  assert.ok(choiceShelfSource.includes('aria-label={isZh ? "全部播放" : "Play all"}'));
+  assert.ok(choiceShelfSource.includes("onPlay(detail)"));
   assert.ok(choiceShelfSource.includes("onPlay(entry)"));
 });
 
@@ -112,7 +114,7 @@ test("Choice saves persist independently from song Hearts and only target public
   assert.ok(choiceHeartsMigration.includes("create table if not exists public.aipoger_choice_collection_hearts"));
   assert.ok(choiceHeartsMigration.includes("enable row level security"));
   assert.ok(choiceHeartsMigration.includes("revoke all on table public.aipoger_choice_collection_hearts from anon, authenticated"));
-  assert.ok(productRulesSource.includes("Choice saves are collection-level"));
+  assert.ok(productRulesSource.includes("Choice saves remain collection-level"));
 });
 
 test("Choice and Showtime use one sequential bottom player with mobile volume", () => {

@@ -6,7 +6,11 @@ import { ExternalLink, FileText, MessageSquare, Play, Trophy } from "lucide-reac
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import ShareButton from "@/components/share-button";
 import ReportButton from "@/components/report-button";
-import ShowtimeChoiceShelf, { type ShowtimeChoiceHeartState, type ShowtimeChoiceShelfEntry } from "@/components/showtime-choice-shelf";
+import ShowtimeChoiceShelf, {
+  type ShowtimeChoiceHeartState,
+  type ShowtimeChoiceItemHeartState,
+  type ShowtimeChoiceShelfEntry,
+} from "@/components/showtime-choice-shelf";
 import ShowtimeQueuePlayer, { type ShowtimePlayerTrack, type ShowtimeQueuePlayerHandle } from "@/components/showtime-queue-player";
 import {
   AIPOGER_BRAND_LOGO,
@@ -33,7 +37,7 @@ import {
   type ListenBarTrackRow,
 } from "@/lib/listen-bar";
 import { canDisplayShowtimeSupportUrl, normalizeAiMusicShowtimeCertificationSource } from "@/lib/ai-music-showtime";
-import { choiceDisplayTitle, choicePublicPath, type AipogerChoiceCollection } from "@/lib/aipoger-choice";
+import { choiceDisplayTitle, choiceItemRecordKey, choicePublicPath, type AipogerChoiceCollection, type AipogerChoiceItem } from "@/lib/aipoger-choice";
 import {
   creatorChoicePublicPath,
   type AipogerPublicCreatorChoiceCollection,
@@ -1210,6 +1214,16 @@ export default function RankPage() {
     void playerRef.current?.start(playable, index, `${entry.curatorName} Choice`);
   };
 
+  const choiceItemHearts = useMemo<Record<string, ShowtimeChoiceItemHeartState>>(() => {
+    const next: Record<string, ShowtimeChoiceItemHeartState> = {};
+    choiceEntries.forEach((entry) => entry.items.forEach((item) => {
+      const key = choiceItemRecordKey(item);
+      const interaction = honorInteractions[key] ?? emptyHonorInteraction();
+      next[key] = { heartCount: interaction.favoriteCount, myHeart: interaction.myFavorited };
+    }));
+    return next;
+  }, [choiceEntries, honorInteractions]);
+
   useEffect(() => {
     const keys = Array.from(new Set(choiceEntries.map(choiceRecordKey)));
     if (keys.length === 0) {
@@ -1298,7 +1312,10 @@ export default function RankPage() {
   };
 
   useEffect(() => {
-    const keys = Array.from(new Set(displayRows.map(honorRecordKey)));
+    const keys = Array.from(new Set([
+      ...displayRows.map(honorRecordKey),
+      ...choiceEntries.flatMap((entry) => entry.items.map(choiceItemRecordKey)),
+    ]));
     if (keys.length === 0) return;
     let cancelled = false;
 
@@ -1327,7 +1344,7 @@ export default function RankPage() {
     return () => {
       cancelled = true;
     };
-  }, [displayRows]);
+  }, [choiceEntries, displayRows]);
 
   useEffect(() => {
     if (!lyricsModal) return;
@@ -1466,6 +1483,48 @@ export default function RankPage() {
     setHonorInteractions((current) => ({ ...current, [key]: normalizeHonorRecord(nextRecord) }));
   };
 
+  const toggleChoiceItemHeart = async (item: AipogerChoiceItem) => {
+    const key = choiceItemRecordKey(item);
+    setChoiceHeartError("");
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      setChoiceHeartError(isZh ? "請先登入，才能收藏歌曲。" : "Sign in to save songs.");
+      return;
+    }
+
+    setFavoriteBusy((current) => ({ ...current, [key]: true }));
+    const targetKind = item.sourceKind === "listen_bar_track" ? "bar" : "battle";
+    const response = await fetch("/api/honor-board/interactions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        action: "favorite",
+        recordKey: key,
+        targetKind,
+        targetId: item.id,
+        targetTitle: `${item.artist} / ${item.title}`,
+        targetArtist: item.artist,
+        targetGenre: item.genre,
+      }),
+    });
+    const payload = (await response.json().catch(() => null)) as {
+      record?: HonorInteractionPayload;
+      error?: string;
+    } | null;
+    setFavoriteBusy((current) => ({ ...current, [key]: false }));
+    if (!response.ok || !payload?.record) {
+      setChoiceHeartError(payload?.error || (isZh ? "歌曲收藏失敗，請稍後再試。" : "Song favorite failed. Try again later."));
+      return;
+    }
+    const nextRecord = payload.record;
+    setHonorInteractions((current) => ({ ...current, [key]: normalizeHonorRecord(nextRecord) }));
+  };
+
   const submitHonorComment = async (event: FormEvent<HTMLFormElement>, row: RankRow) => {
     event.preventDefault();
     const key = honorRecordKey(row);
@@ -1554,6 +1613,9 @@ export default function RankPage() {
             heartBusy={choiceHeartBusy}
             heartError={choiceHeartError}
             onToggleHeart={toggleChoiceHeart}
+            itemHearts={choiceItemHearts}
+            itemHeartBusy={favoriteBusy}
+            onToggleItemHeart={toggleChoiceItemHeart}
           />
         </div>
 

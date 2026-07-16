@@ -5,7 +5,7 @@ import { Heart, ListMusic, MessageCircle, Play, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import ChoiceCommentsDialog from "@/components/choice-comments-dialog";
 import ShareButton from "@/components/share-button";
-import type { AipogerChoiceItem } from "@/lib/aipoger-choice";
+import { choiceItemRecordKey, type AipogerChoiceItem } from "@/lib/aipoger-choice";
 import { fontRighteous } from "@/lib/fonts";
 
 export type ShowtimeChoiceShelfEntry = {
@@ -25,6 +25,11 @@ export type ShowtimeChoiceHeartState = {
   myHeart: boolean;
 };
 
+export type ShowtimeChoiceItemHeartState = {
+  heartCount: number;
+  myHeart: boolean;
+};
+
 type ShowtimeChoiceShelfProps = {
   entries: ShowtimeChoiceShelfEntry[];
   isZh: boolean;
@@ -33,6 +38,9 @@ type ShowtimeChoiceShelfProps = {
   heartBusy: Record<string, boolean>;
   heartError?: string;
   onToggleHeart: (entry: ShowtimeChoiceShelfEntry) => void;
+  itemHearts: Record<string, ShowtimeChoiceItemHeartState>;
+  itemHeartBusy: Record<string, boolean>;
+  onToggleItemHeart: (item: AipogerChoiceItem) => void;
 };
 
 function recordKey(entry: ShowtimeChoiceShelfEntry) {
@@ -73,6 +81,9 @@ export default function ShowtimeChoiceShelf({
   heartBusy,
   heartError,
   onToggleHeart,
+  itemHearts,
+  itemHeartBusy,
+  onToggleItemHeart,
 }: ShowtimeChoiceShelfProps) {
   const [detail, setDetail] = useState<ShowtimeChoiceShelfEntry | null>(null);
   const [commentsEntry, setCommentsEntry] = useState<ShowtimeChoiceShelfEntry | null>(null);
@@ -191,26 +202,61 @@ export default function ShowtimeChoiceShelf({
       {detail ? (
         <div className="fixed inset-0 z-[230] flex items-end bg-black/78 px-3 py-4 backdrop-blur-sm sm:items-center sm:justify-center" role="dialog" aria-modal="true" aria-label={isZh ? "Choice 歌單預覽" : "Choice tracklist preview"} onClick={() => setDetail(null)}>
           <section className="max-h-[82vh] w-full max-w-3xl overflow-hidden rounded-lg border border-yellow-100/25 bg-[#080808] shadow-[0_28px_100px_rgba(0,0,0,0.78)]" onClick={(event) => event.stopPropagation()}>
-            <header className="flex items-start justify-between gap-4 border-b border-white/10 px-4 py-4 sm:px-5">
-              <div className="min-w-0">
+            <header className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 border-b border-white/10 px-4 py-4 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto] sm:px-5">
+              <div className="col-start-1 row-start-1 min-w-0 self-center">
                 <h2 className="line-clamp-2 text-xl font-black text-white">{detail.title}</h2>
                 <time dateTime={detail.weekStart} className="mt-1 block text-xs font-black tabular-nums text-zinc-500">{choiceDateLabel(detail.weekStart, isZh)}</time>
               </div>
-              <button type="button" onClick={() => setDetail(null)} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 text-zinc-300 transition hover:border-white/30 hover:text-white" aria-label={isZh ? "關閉歌單" : "Close tracklist"}><X className="h-4 w-4" /></button>
+              {detail.intro ? <p className="col-span-2 col-start-1 row-start-2 text-sm font-bold leading-6 text-zinc-300 sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:self-center">{detail.intro}</p> : <span className="hidden sm:block" />}
+              <button type="button" onClick={() => setDetail(null)} className="col-start-2 row-start-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 text-zinc-300 transition hover:border-white/30 hover:text-white sm:col-start-3" aria-label={isZh ? "關閉歌單" : "Close tracklist"}><X className="h-4 w-4" /></button>
             </header>
             <div className="max-h-[58vh] overflow-y-auto p-3 sm:p-4">
               <div className="grid gap-2 sm:grid-cols-2">
-                {detail.items.map((item, index) => (
-                  <article key={item.itemId} className="grid min-w-0 grid-cols-[2rem_2.75rem_minmax(0,1fr)] items-center gap-2 rounded border border-white/10 bg-white/[0.025] p-2">
-                    <span className="text-center text-[10px] font-black tabular-nums text-zinc-600">{String(index + 1).padStart(2, "0")}</span>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={item.coverUrl} alt="" className="h-11 w-11 rounded object-cover" />
-                    <span className="min-w-0"><span className="block truncate text-xs font-black text-white">{item.title}</span><span className="mt-0.5 block truncate text-[11px] font-bold text-zinc-500">{item.artist}</span></span>
-                  </article>
-                ))}
+                {detail.items.map((item, index) => {
+                  const itemKey = choiceItemRecordKey(item);
+                  const itemHeart = itemHearts[itemKey] ?? { heartCount: 0, myHeart: false };
+                  return (
+                    <article key={item.itemId} className="grid min-w-0 grid-cols-[1.5rem_2.75rem_minmax(0,1fr)_2.25rem_2.25rem] items-center gap-2 rounded border border-white/10 bg-white/[0.025] p-2">
+                      <span className="text-center text-[10px] font-black tabular-nums text-zinc-600">{String(index + 1).padStart(2, "0")}</span>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={item.coverUrl} alt="" className="h-11 w-11 rounded object-cover" />
+                      <span className="min-w-0"><span className="block truncate text-xs font-black text-white">{item.title}</span><span className="mt-0.5 block truncate text-[11px] font-bold text-zinc-500">{item.artist}</span></span>
+                      <button
+                        type="button"
+                        onClick={() => onToggleItemHeart(item)}
+                        disabled={Boolean(itemHeartBusy[itemKey])}
+                        className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition disabled:cursor-wait disabled:opacity-45 ${itemHeart.myHeart ? "border-rose-200/55 bg-rose-500/20 text-rose-200" : "border-white/12 text-zinc-400 hover:border-rose-200/45 hover:text-rose-200"}`}
+                        aria-label={itemHeart.myHeart ? (isZh ? `取消收藏 ${item.title}` : `Remove ${item.title} from favorites`) : (isZh ? `收藏 ${item.title}` : `Favorite ${item.title}`)}
+                        aria-pressed={itemHeart.myHeart}
+                      >
+                        <Heart className="h-4 w-4" fill={itemHeart.myHeart ? "currentColor" : "none"} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onPlay(detail, item.itemId);
+                          setDetail(null);
+                        }}
+                        disabled={!item.audioUrl}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-orange-500 text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-30"
+                        aria-label={isZh ? `播放 ${item.title}` : `Play ${item.title}`}
+                      >
+                        <Play className="h-4 w-4" fill="currentColor" />
+                      </button>
+                    </article>
+                  );
+                })}
               </div>
             </div>
-            {detail.href ? <footer className="border-t border-white/10 px-4 py-3 text-right"><Link href={detail.href} className="text-xs font-black text-cyan-100 hover:text-white">{isZh ? "開啟完整分享頁" : "Open full share page"}</Link></footer> : null}
+            <footer className="flex items-center justify-between gap-3 border-t border-white/10 px-4 py-3">
+              <button type="button" onClick={() => {
+                onPlay(detail);
+                setDetail(null);
+              }} disabled={!detail.items.some((item) => Boolean(item.audioUrl))} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-xs font-black text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-35" aria-label={isZh ? "全部播放" : "Play all"}>
+                <Play className="h-4 w-4" fill="currentColor" />{isZh ? "全部播放" : "Play all"}
+              </button>
+              {detail.href ? <Link href={detail.href} className="text-xs font-black text-cyan-100 hover:text-white">{isZh ? "開啟完整分享頁" : "Open full share page"}</Link> : null}
+            </footer>
           </section>
         </div>
       ) : null}
