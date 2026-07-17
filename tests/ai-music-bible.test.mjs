@@ -125,9 +125,9 @@ test("Prompt and lyric finders explain their controls and expose clear states", 
   assert.match(practiceLibraryComponent, /aria-pressed=\{selected\}/);
   assert.match(practiceLibraryComponent, /清除 Prompt 搜尋/);
   assert.match(practiceLibraryComponent, /清除歌詞搜尋/);
-  assert.match(practiceLibraryComponent, /NuNaught 的 Suno Prompting Guide/);
-  assert.match(practiceLibraryComponent, /comments\/1tau0gh\/suno_prompting_guideopen_agent_skill/);
-  assert.match(practiceLibraryComponent, /NuNaught\/suno-songwriting-skill/);
+  assert.doesNotMatch(practiceLibraryComponent, /閱讀 Reddit 原文|Read Reddit guide|查看開源 Skill|View open skill/);
+  assert.doesNotMatch(practiceLibraryComponent, /NEW SOURCE · COMMUNITY FIELD GUIDE/);
+  assert.match(practiceLibraryComponent, /官方文件核對：2026-07-17/);
   assert.doesNotMatch(practiceLibraryComponent, /mt-3 flex gap-2 overflow-x-auto pb-1/);
 });
 

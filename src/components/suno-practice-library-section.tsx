@@ -41,9 +41,6 @@ const SunoInspirationIndexSection = dynamic(
   },
 );
 
-const NUNAUGHT_REDDIT_GUIDE = "https://www.reddit.com/r/SunoAI/comments/1tau0gh/suno_prompting_guideopen_agent_skill/";
-const NUNAUGHT_OPEN_SKILL = "https://github.com/NuNaught/suno-songwriting-skill";
-
 type AnyTechnique = SunoTechnique<SunoPromptCategory> | SunoTechnique<SunoLyricCategory>;
 
 function techniqueMatches(item: AnyTechnique, search: string) {
@@ -85,6 +82,10 @@ function TechniqueCard({
     field: "border-cyan-200/18 bg-cyan-300/[0.06] text-cyan-100",
     version: "border-yellow-300/18 bg-yellow-300/[0.06] text-yellow-100",
   };
+  const visibleSources = item.sources.filter((source) => {
+    const normalized = source.toLowerCase();
+    return !normalized.includes("nunaught") && !normalized.includes("suno-songwriting");
+  });
 
   return (
     <article className="overflow-hidden rounded-[1.1rem] border border-white/10 bg-black/45">
@@ -123,9 +124,11 @@ function TechniqueCard({
         <div className="border-t border-white/8 bg-white/[0.018] px-5 py-4 sm:px-6">
           <p className="text-[11px] font-black uppercase tracking-[0.14em] text-orange-300/75">{isZh ? "適合使用" : "Best use"}</p>
           <p className="mt-2 text-sm font-bold leading-6 text-zinc-300">{sunoLibraryText(item.use, locale)}</p>
-          <p className="mt-3 text-[11px] font-bold leading-5 text-zinc-600">
-            {isZh ? "整理來源：" : "Source synthesis: "}{item.sources.join(" · ")}
-          </p>
+          {visibleSources.length > 0 && (
+            <p className="mt-3 text-[11px] font-bold leading-5 text-zinc-600">
+              {isZh ? "整理來源：" : "Source synthesis: "}{visibleSources.join(" · ")}
+            </p>
+          )}
         </div>
       )}
     </article>
@@ -187,8 +190,8 @@ export default function SunoPracticeLibrarySection({ locale }: { locale: SunoLib
             </h2>
             <p className="mt-5 max-w-3xl text-base font-bold leading-8 text-zinc-300">
               {isZh
-                ? "九份教材加上一份社群實測指南，不是整包倒進來，而是拆成可以搜尋、可以複製、知道何時該用的招式。重複內容已合併，拼字與過度堆疊的舊 Prompt 也已重新整理。"
-                : "Nine supplied files plus a community field guide are distilled into searchable, copyable moves with clear use cases. Duplicates are merged, while misspellings and overloaded legacy prompts are cleaned up."}
+                ? "九份教材整理成可以搜尋、可以複製、知道何時該用的招式。重複內容已合併，拼字與過度堆疊的舊 Prompt 也已重新整理。"
+                : "Nine supplied files are distilled into searchable, copyable moves with clear use cases. Duplicates are merged, while misspellings and overloaded legacy prompts are cleaned up."}
             </p>
           </div>
           <div className="rounded-xl border border-yellow-300/18 bg-yellow-300/[0.055] p-4 text-sm font-bold leading-6 text-yellow-50/85">
@@ -203,25 +206,6 @@ export default function SunoPracticeLibrarySection({ locale }: { locale: SunoLib
           <div><strong className="block text-2xl font-black text-white">{SUNO_LYRIC_MOVES.length}</strong><span className="text-[10px] font-black tracking-[0.12em] text-zinc-600">LYRIC MOVES</span></div>
           <div><strong className="block text-2xl font-black text-white">1,518</strong><span className="text-[10px] font-black tracking-[0.12em] text-zinc-600">INDEXED REFERENCES</span></div>
           <div><strong className="block text-2xl font-black text-white">{SUNO_GENRE_GROUPS.reduce((sum, group) => sum + group.terms.length, 0)}</strong><span className="text-[10px] font-black tracking-[0.12em] text-zinc-600">GENRE TERMS</span></div>
-        </div>
-        <div className="mt-5 flex flex-col gap-4 rounded-xl border border-cyan-200/16 bg-cyan-300/[0.035] p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200/70">NEW SOURCE · COMMUNITY FIELD GUIDE</p>
-            <p className="mt-1.5 text-sm font-black text-white">{isZh ? "新收錄：NuNaught 的 Suno Prompting Guide" : "New: NuNaught's Suno Prompting Guide"}</p>
-            <p className="mt-1 text-xs font-bold leading-5 text-zinc-400">
-              {isZh
-                ? "已去重整理成 7 招：兩欄分工、人聲身份、樂器角色、段落密度、跨界融合、複合 cue 與可唱性校稿。社群實測不等於官方命令。"
-                : "Distilled into 7 non-duplicate moves covering field routing, vocal identity, instrument roles, density, fusion, combined cues, and singability. Community testing is not an official command set."}
-            </p>
-          </div>
-          <div className="flex shrink-0 flex-wrap gap-2">
-            <a href={NUNAUGHT_REDDIT_GUIDE} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-cyan-200/25 px-3.5 text-xs font-black text-cyan-100 transition hover:border-cyan-100/60 hover:text-white">
-              {isZh ? "閱讀 Reddit 原文" : "Read Reddit guide"}<ExternalLink className="h-3.5 w-3.5" />
-            </a>
-            <a href={NUNAUGHT_OPEN_SKILL} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-white/15 px-3.5 text-xs font-black text-zinc-300 transition hover:border-white/35 hover:text-white">
-              {isZh ? "查看開源 Skill" : "View open skill"}<ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          </div>
         </div>
       </div>
 
@@ -391,10 +375,8 @@ export default function SunoPracticeLibrarySection({ locale }: { locale: SunoLib
         </div>
 
         <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-white/8 pt-5 text-xs font-black">
-          <span className="text-zinc-600">{isZh ? "來源核對：2026-07-17" : "Source cross-check: 2026-07-17"}</span>
+          <span className="text-zinc-600">{isZh ? "官方文件核對：2026-07-17" : "Official docs cross-check: 2026-07-17"}</span>
           {[
-            ["Reddit field guide", NUNAUGHT_REDDIT_GUIDE],
-            ["Open agent skill", NUNAUGHT_OPEN_SKILL],
             ["Suno v5.5", "https://help.suno.com/en/articles/11362305"],
             ["Creative Sliders", "https://help.suno.com/en/articles/6141377"],
             ["Music Glossary", "https://help.suno.com/en/articles/9010177"],
