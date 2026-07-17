@@ -16,6 +16,7 @@ const trackCommentsRoute = source("../src/app/api/listen-bar/track-comments/rout
 const adminPage = source("../src/app/admin/comments/page.tsx");
 const adminRoute = source("../src/app/api/admin/comments/route.ts");
 const migration = source("../supabase/migrations/20260716185707_centralized_comment_moderation.sql");
+const auditIndexMigration = source("../supabase/migrations/20260717093516_comment_moderation_audit_indexes.sql");
 
 test("the Practice Bible uses a normal value hero and a focused member prompt", () => {
   assert.match(biblePage, /type AccessState = "checking" \| "signedOut" \| "signedIn"/);
@@ -98,4 +99,6 @@ test("moderation migration is additive, auditable, and server mediated", () => {
   assert.match(migration, /visible.*hidden/);
   assert.match(migration, /revoke all on table public\.listen_bar_track_comments from public, anon, authenticated/);
   assert.match(migration, /grant all on table public\.ai_music_bible_entry_comments to service_role/);
+  assert.equal((auditIndexMigration.match(/create index if not exists/g) || []).length, 3);
+  assert.equal((auditIndexMigration.match(/\(moderated_by\)/g) || []).length, 3);
 });

@@ -246,7 +246,7 @@ Check:
 - Hide removes a comment from its public/member API while preserving its body and moderation audit fields; restore makes it visible again.
 - Resolving a reported comment closes matching open/reviewing `content_reports`; hide and permanent delete also resolve matching reports.
 - Permanent deletion requires a second confirmation and removes only the selected source/id pair.
-- Before enabling hide/restore in production, `20260716185707_centralized_comment_moderation.sql` is applied and verified. Existing comments default to `visible`; the migration creates the Bible comments table if an earlier environment missed it.
+- Production moderation schema was applied and verified on 2026-07-17 with `20260716180323_ai_music_bible_entry_comments.sql`, `20260716185707_centralized_comment_moderation.sql`, and `20260717093516_comment_moderation_audit_indexes.sql`. All 20 pre-existing Bar Heartbreak comments remained `visible`; Choice and Bible began empty; no comment was deleted. All three tables have RLS enabled, no `anon` or `authenticated` grants, complete `service_role` access, moderation constraints, lookup indexes, and covered moderator audit foreign keys.
 - The Taiwanese lab contains 38 unique seed rows, searches across meaning/recommended form/Suno form/note, filters by category, copies the Suno form, and switches from a desktop table to mobile cards.
 - The lab disclaimer distinguishes AI singing phonetic experiments from recommended Taiwanese orthography.
 - New suggestions require meaning, Suno writing, and a test note. Successful submissions show a pending-review confirmation instead of claiming immediate publication.
