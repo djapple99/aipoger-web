@@ -31,6 +31,7 @@ import { AIPOGER_TUTORIAL_PLAYLIST_URL } from "@/lib/brand";
 import StemSeparationGuideSection from "@/components/stem-separation-guide-section";
 import SunoPracticeLibrarySection from "@/components/suno-practice-library-section";
 import AuthRequiredDialog from "@/components/auth-required-dialog";
+import ShareButton from "@/components/share-button";
 import {
   TAIWANESE_LYRICS_CATEGORIES,
   TAIWANESE_LYRICS_ENTRIES,
@@ -162,6 +163,39 @@ function bibleGateCopyForLanguage(lang: string) {
   };
 }
 
+function bibleShareCopyForLanguage(lang: string) {
+  if (lang === "ja") {
+    return {
+      title: "AI音楽 実践バイブル｜AIPOGER",
+      text: "Suno、Prompt、歌詞、Sonic DNAをまとめたAIPOGERの実践データベース。",
+      label: "バイブルを共有",
+      copiedLabel: "コピーしました",
+    };
+  }
+  if (lang === "ko") {
+    return {
+      title: "AI 음악 실전 바이블｜AIPOGER",
+      text: "Suno, Prompt, 가사와 Sonic DNA를 모은 AIPOGER 실전 데이터베이스입니다.",
+      label: "바이블 공유",
+      copiedLabel: "복사됨",
+    };
+  }
+  if (lang === "en") {
+    return {
+      title: "AI Music Practice Bible | AIPOGER",
+      text: "AIPOGER's searchable field database for Suno, prompts, lyrics, and Sonic DNA.",
+      label: "Share Bible",
+      copiedLabel: "Copied",
+    };
+  }
+  return {
+    title: "AI 音樂練功聖經｜AIPOGER 愛播歌",
+    text: "AIPOGER 的 Suno、Prompt、歌詞與聲音 DNA 實戰資料庫。",
+    label: "分享聖經",
+    copiedLabel: "已複製",
+  };
+}
+
 async function submitContribution(payload: Record<string, string>) {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
@@ -214,6 +248,8 @@ export default function AiMusicBiblePage() {
         submitting: "Sending to the review queue…", submitted: "Received. Your test is waiting for review before it can join the public catalog.", submitError: "Submission failed. Please try again later.", copy: "Copy Suno spelling", effective: "This spelling worked", incorrect: "This spelling was wrong", reported: "Reported", unavailable: "Unavailable",
       };
   const practiceAreas = useMemo(() => practiceAreasForLanguage(isZh), [isZh]);
+  const shareCopy = bibleShareCopyForLanguage(lang);
+  const shareUrl = `/ai-music-bible?lang=${lang}`;
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<TaiwaneseLyricsCategory | "全部">("全部");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -337,6 +373,14 @@ export default function AiMusicBiblePage() {
                   <Link href={appendLang("/listen-bar", lang)} className="aipo-ghost-button inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-sm font-black text-white">
                     <Music2 className="h-4 w-4" /> {gateCopy.bar}
                   </Link>
+                  <ShareButton
+                    title={shareCopy.title}
+                    text={shareCopy.text}
+                    url={shareUrl}
+                    label={shareCopy.label}
+                    copiedLabel={shareCopy.copiedLabel}
+                    className="min-h-12 border-cyan-200/25 bg-cyan-300/[0.06] px-6 text-cyan-50 hover:border-cyan-100/65 hover:bg-cyan-300/[0.12]"
+                  />
                 </div>
               </div>
 
@@ -401,6 +445,14 @@ export default function AiMusicBiblePage() {
               <a href="#practice-map" className="aipo-ghost-button inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-sm font-black text-white">
                 {ui.viewMap}
               </a>
+              <ShareButton
+                title={shareCopy.title}
+                text={shareCopy.text}
+                url={shareUrl}
+                label={shareCopy.label}
+                copiedLabel={shareCopy.copiedLabel}
+                className="min-h-12 border-cyan-200/25 bg-cyan-300/[0.06] px-6 text-cyan-50 hover:border-cyan-100/65 hover:bg-cyan-300/[0.12]"
+              />
             </div>
           </div>
 

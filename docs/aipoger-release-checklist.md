@@ -222,6 +222,7 @@ Check:
 
 - Homepage lower navigation shows `AI 音樂練功聖經` with the book icon and links to `/ai-music-bible?lang=zh`; the old homepage `歌曲分析` card is absent.
 - `/ai-music-bible?lang=zh` returns 200. Signed-out visitors see the normal Bible title/value preview, a focused sign-in dialog, and public links to Explore and Bar Heartbreak; signed-in members see the complete Bible and A&R Gate remains only inside its practice map/toolbox.
+- The Bible Hero exposes a clear localized `分享聖經` / `Share Bible` action in both access states. It keeps the current `lang` in the shared URL, uses native sharing when available, and shows the copy fallback without requiring sign-in.
 - Desktop at 1440x900 keeps the full `AI 音樂練功聖經` title together without a single orphan character; mobile at 390x844 has no horizontal page overflow.
 - `#suno-prompt-library` and nested `#lyric-control-library` are directly reachable from the practice map and render complete Chinese and English variants.
 - The Suno library contains 23 unique prompt moves, 18 unique lyric moves, at least 80 unique normalized genre terms, and six production-flow steps. Every move has bilingual title, summary, use case, copy text, source attribution, and an official / field-tested / version-sensitive evidence label.

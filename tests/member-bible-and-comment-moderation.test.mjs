@@ -25,6 +25,13 @@ test("the Practice Bible uses a normal value hero and a focused member prompt", 
   assert.match(biblePage, /AI 音樂練功聖經/);
   assert.match(biblePage, /AIPOGER PRACTICE BIBLE/);
   assert.match(biblePage, /AuthRequiredDialog/);
+  assert.match(biblePage, /import ShareButton from "@\/components\/share-button"/);
+  assert.equal((biblePage.match(/<ShareButton/g) || []).length, 2);
+  assert.match(biblePage, /分享聖經/);
+  assert.match(biblePage, /Share Bible/);
+  assert.match(biblePage, /バイブルを共有/);
+  assert.match(biblePage, /바이블 공유/);
+  assert.match(biblePage, /const shareUrl = `\/ai-music-bible\?lang=\$\{lang\}`/);
   assert.match(biblePage, /kind="bible"/);
   assert.match(biblePage, /setAuthPromptOpen\(true\)/);
   assert.match(biblePage, /appendLang\("\/ai-music", lang\)/);
