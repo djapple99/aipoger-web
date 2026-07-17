@@ -74,8 +74,8 @@ test("stem separation guide is bilingual, sourced, and points only to known engi
 });
 
 test("Suno prompt and lyric libraries keep unique, bilingual, sourced moves", () => {
-  assert.equal(SUNO_PROMPT_MOVES.length, 18);
-  assert.equal(SUNO_LYRIC_MOVES.length, 16);
+  assert.equal(SUNO_PROMPT_MOVES.length, 23);
+  assert.equal(SUNO_LYRIC_MOVES.length, 18);
 
   for (const entries of [SUNO_PROMPT_MOVES, SUNO_LYRIC_MOVES]) {
     assert.equal(new Set(entries.map((entry) => entry.key)).size, entries.length);
@@ -92,6 +92,19 @@ test("Suno prompt and lyric libraries keep unique, bilingual, sourced moves", ()
       && entry.sources.length > 0
       && entry.keywords.length > 0
     )));
+  }
+
+  for (const key of [
+    "two-field-routing",
+    "vocal-identity-stack",
+    "instrument-role-map",
+    "section-density-arc",
+    "fusion-four-part",
+  ]) {
+    assert.ok(SUNO_PROMPT_MOVES.some((entry) => entry.key === key));
+  }
+  for (const key of ["enriched-section-cue", "singability-edit"]) {
+    assert.ok(SUNO_LYRIC_MOVES.some((entry) => entry.key === key));
   }
 });
 
@@ -112,6 +125,9 @@ test("Prompt and lyric finders explain their controls and expose clear states", 
   assert.match(practiceLibraryComponent, /aria-pressed=\{selected\}/);
   assert.match(practiceLibraryComponent, /清除 Prompt 搜尋/);
   assert.match(practiceLibraryComponent, /清除歌詞搜尋/);
+  assert.match(practiceLibraryComponent, /NuNaught 的 Suno Prompting Guide/);
+  assert.match(practiceLibraryComponent, /comments\/1tau0gh\/suno_prompting_guideopen_agent_skill/);
+  assert.match(practiceLibraryComponent, /NuNaught\/suno-songwriting-skill/);
   assert.doesNotMatch(practiceLibraryComponent, /mt-3 flex gap-2 overflow-x-auto pb-1/);
 });
 
