@@ -27,6 +27,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { fontRighteous } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
+import { AIPOGER_TUTORIAL_PLAYLIST_URL } from "@/lib/brand";
 import StemSeparationGuideSection from "@/components/stem-separation-guide-section";
 import SunoPracticeLibrarySection from "@/components/suno-practice-library-section";
 import AuthRequiredDialog from "@/components/auth-required-dialog";
@@ -47,8 +48,6 @@ const categoryLabels: Record<TaiwaneseLyricsCategory, string> = {
   空間與疑問: "Place / Question",
 };
 
-const tutorialPlaylist = "https://www.youtube.com/playlist?list=PL3mhsgQ58HjYu-vzSOr-s4SK5S3f0uaez";
-
 type PracticeArea = {
   icon: typeof WandSparkles;
   eyebrow: string;
@@ -68,7 +67,7 @@ function practiceAreasForLanguage(isZh: boolean): PracticeArea[] {
         { icon: Music2, eyebrow: "DROP", title: "Drop 製作練習", body: "用 30–60 秒練節奏、情緒與記憶點。", href: "/hook-guide", accent: "orange" },
         { icon: Headphones, eyebrow: "A&R TOOL", title: "分析你的音樂", body: "需要第二意見時，再用 A&R Gate 檢查作品路線。", href: "/music-analysis", accent: "cyan" },
         { icon: AudioWaveform, eyebrow: "STEMS", title: "AI 拆軌避坑指南", body: "看懂 10 種引擎家族，避免為同一能力重複付費。", href: "#stem-separation-guide", accent: "orange" },
-        { icon: Video, eyebrow: "AIPOGER", title: "愛波哥影片教學", body: "從中文實戰影片建立完整創作流程。", href: tutorialPlaylist, accent: "cyan", external: true },
+        { icon: Video, eyebrow: "AIPOGER", title: "愛波哥影片教學", body: "從中文實戰影片建立完整創作流程。", href: AIPOGER_TUTORIAL_PLAYLIST_URL, accent: "cyan", external: true },
       ]
     : [
         { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt Moves", body: "18 prompt moves, 80+ genre terms, and curated AIPOGER recipes.", href: "#suno-prompt-library", accent: "orange" },
@@ -77,7 +76,7 @@ function practiceAreasForLanguage(isZh: boolean): PracticeArea[] {
         { icon: Music2, eyebrow: "DROP", title: "Drop Practice", body: "Train rhythm, emotion, and recall inside a focused 30–60 seconds.", href: "/hook-guide", accent: "orange" },
         { icon: Headphones, eyebrow: "A&R TOOL", title: "Analyze Your Music", body: "Use A&R Gate when you need a second opinion on the track's route.", href: "/music-analysis", accent: "cyan" },
         { icon: AudioWaveform, eyebrow: "STEMS", title: "Stem Separation Guide", body: "Understand 10 engine families and avoid paying twice for the same capability.", href: "#stem-separation-guide", accent: "orange" },
-        { icon: Video, eyebrow: "AIPOGER", title: "AIPOGER Tutorials", body: "Build your workflow with AIPOGER's Traditional Chinese videos.", href: tutorialPlaylist, accent: "cyan", external: true },
+        { icon: Video, eyebrow: "AIPOGER", title: "AIPOGER Tutorials", body: "Build your workflow with AIPOGER's Traditional Chinese videos.", href: AIPOGER_TUTORIAL_PLAYLIST_URL, accent: "cyan", external: true },
       ];
 }
 

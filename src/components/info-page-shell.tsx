@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AIPOGER_CONTACT_EMAIL, AIPOGER_SOCIAL_LINKS } from "@/lib/brand";
+import { AIPOGER_CONTACT_EMAIL, AIPOGER_SOCIAL_LINKS, AIPOGER_TUTORIAL_PLAYLIST_URL } from "@/lib/brand";
 import { fontRighteous } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n";
 
@@ -34,7 +34,6 @@ type InfoPageContent = {
 
 const mail = AIPOGER_CONTACT_EMAIL;
 const youtubeChannel = "https://www.youtube.com/@djapple2000";
-const aipogerTutorialPlaylist = "https://youtube.com/playlist?list=PLm4XZTsplHgQLZG-4sm-y3LZTrbnxSPHs&si=7W976U7M4lK0E7z3";
 const promptDropPptUrl = "https://drive.google.com/file/d/1w_2CEPfAxiOJ1-LTHRhghxf9oFf7EOCo/view?usp=drive_link";
 
 const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }> = {
@@ -316,7 +315,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
         "這頁是給 AIPOGER 創作者的練功清單：先看愛波哥教學建立觀念，再用官方文件補工具細節，最後用提示詞、歌詞、音訊參考與版權觀念把作品做得更穩。",
       youtubeLabel: "愛波哥教學播放列表",
       cards: [
-        { label: "Start", value: "愛波哥cheers", detail: "ai 工具tool 學習心得分享播放列表", href: aipogerTutorialPlaylist },
+        { label: "Start", value: "愛波哥cheers", detail: "ai 工具tool 學習心得分享播放列表", href: AIPOGER_TUTORIAL_PLAYLIST_URL },
         { label: "Core", value: "Suno / Udio", detail: "先練兩大主流文字生歌工具" },
         { label: "Skill", value: "Prompt + Drop", detail: "把曲風、情緒、段落、聲音設計講清楚", href: promptDropPptUrl },
       ],
@@ -328,7 +327,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           links: [
             {
               title: "愛波哥cheers：ai 工具tool 學習心得分享",
-              href: aipogerTutorialPlaylist,
+              href: AIPOGER_TUTORIAL_PLAYLIST_URL,
               note: "AIPOGER 官方推薦起手式，適合繁體中文創作者先打底。",
             },
           ],
@@ -448,7 +447,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
         "AIPOGER's learning map for creators: start with AIPOGER's Chinese tutorials, then use official docs for tool details, and practice prompts, lyrics, audio references, Drops, and copyright discipline.",
       youtubeLabel: "AIPOGER Tutorial Playlist",
       cards: [
-        { label: "Start", value: "愛波哥cheers", detail: "AI tools and music learning playlist", href: aipogerTutorialPlaylist },
+        { label: "Start", value: "愛波哥cheers", detail: "AI tools and music learning playlist", href: AIPOGER_TUTORIAL_PLAYLIST_URL },
         { label: "Core", value: "Suno / Udio", detail: "Practice the two major text-to-song workflows" },
         { label: "Skill", value: "Prompt + Drop", detail: "Define style, emotion, sections, and sound design clearly", href: promptDropPptUrl },
       ],
@@ -460,7 +459,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           links: [
             {
               title: "愛波哥cheers: AI Tools & Music Learning Playlist",
-              href: aipogerTutorialPlaylist,
+              href: AIPOGER_TUTORIAL_PLAYLIST_URL,
               note: "The recommended AIPOGER starting point for Traditional Chinese creators.",
             },
           ],
@@ -543,7 +542,7 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
   const isPolicyPage = kind === "about";
 
   const primaryHref =
-    kind === "partners" || kind === "about" ? `mailto:${mail}` : kind === "ai-music-bible" ? aipogerTutorialPlaylist : "/battle/setup";
+    kind === "partners" || kind === "about" ? `mailto:${mail}` : kind === "ai-music-bible" ? AIPOGER_TUTORIAL_PLAYLIST_URL : "/battle/setup";
   const secondaryHref = kind === "partners" || kind === "about" ? "/hook-guide" : kind === "ai-music-bible" ? "/battle/setup" : "/listen-bar";
 
   return (
