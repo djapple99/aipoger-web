@@ -32,9 +32,9 @@ import StemSeparationGuideSection from "@/components/stem-separation-guide-secti
 import SunoPracticeLibrarySection from "@/components/suno-practice-library-section";
 import AuthRequiredDialog from "@/components/auth-required-dialog";
 import ShareButton from "@/components/share-button";
+import { bibleCatalogDefaults, type BibleCatalog } from "@/lib/ai-music-bible-content";
 import {
   TAIWANESE_LYRICS_CATEGORIES,
-  TAIWANESE_LYRICS_ENTRIES,
   type TaiwaneseLyricsCategory,
 } from "@/lib/taiwanese-lyrics-lab";
 
@@ -258,6 +258,7 @@ export default function AiMusicBiblePage() {
   const [feedbackState, setFeedbackState] = useState<Record<string, "loading" | "sent" | "error">>({});
   const [accessState, setAccessState] = useState<AccessState>("checking");
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
+  const [bibleContent, setBibleContent] = useState<BibleCatalog>(() => bibleCatalogDefaults());
 
   useEffect(() => {
     let active = true;
@@ -277,9 +278,31 @@ export default function AiMusicBiblePage() {
     if (accessState === "signedOut") setAuthPromptOpen(true);
   }, [accessState]);
 
+  useEffect(() => {
+    if (accessState !== "signedIn") return;
+    let active = true;
+    void (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+      const response = await fetch("/api/ai-music-bible/content", {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!response.ok) return;
+      const payload = await response.json().catch(() => null) as Partial<BibleCatalog> | null;
+      if (!active || !payload) return;
+      setBibleContent((current) => ({
+        promptMoves: Array.isArray(payload.promptMoves) ? payload.promptMoves : current.promptMoves,
+        lyricMoves: Array.isArray(payload.lyricMoves) ? payload.lyricMoves : current.lyricMoves,
+        taiwaneseEntries: Array.isArray(payload.taiwaneseEntries) ? payload.taiwaneseEntries : current.taiwaneseEntries,
+      }));
+    })();
+    return () => { active = false; };
+  }, [accessState]);
+
   const filteredEntries = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
-    return TAIWANESE_LYRICS_ENTRIES.filter((entry) => {
+    return bibleContent.taiwaneseEntries.filter((entry) => {
       if (category !== "全部" && entry.category !== category) return false;
       if (!normalized) return true;
       return [entry.meaning, entry.recommended, entry.sunoWriting, entry.note, entry.category]
@@ -287,7 +310,7 @@ export default function AiMusicBiblePage() {
         .toLocaleLowerCase()
         .includes(normalized);
     });
-  }, [category, query]);
+  }, [bibleContent.taiwaneseEntries, category, query]);
 
   const handleCopy = async (key: string, value: string) => {
     try {
@@ -508,7 +531,7 @@ export default function AiMusicBiblePage() {
           </div>
         </section>
 
-        <SunoPracticeLibrarySection locale={isZh ? "zh" : "en"} />
+        <SunoPracticeLibrarySection locale={isZh ? "zh" : "en"} promptMoves={bibleContent.promptMoves} lyricMoves={bibleContent.lyricMoves} />
 
         <div className="mt-10">
           <StemSeparationGuideSection locale={isZh ? "zh" : "en"} />
@@ -541,7 +564,7 @@ export default function AiMusicBiblePage() {
                 <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-600" />
                 <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={ui.search} className="h-13 w-full rounded-xl border border-white/12 bg-black/60 pl-12 pr-4 text-sm font-bold text-white outline-none transition placeholder:text-zinc-700 focus:border-cyan-200/55" />
               </label>
-              <p className="text-right text-xs font-black tracking-[0.12em] text-zinc-600">{ui.showing} {filteredEntries.length} / {TAIWANESE_LYRICS_ENTRIES.length}</p>
+              <p className="text-right text-xs font-black tracking-[0.12em] text-zinc-600">{ui.showing} {filteredEntries.length} / {bibleContent.taiwaneseEntries.length}</p>
             </div>
             <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
               {(["全部", ...TAIWANESE_LYRICS_CATEGORIES] as const).map((item) => (

@@ -254,6 +254,7 @@ export default function AdminCommentsPage() {
             <Link href="/admin/moderation" className="rounded-full border border-rose-200/20 bg-rose-300/[0.07] px-4 py-2 text-xs font-black text-rose-100">檢舉管理</Link>
             <Link href="/admin/listen-bar" className="rounded-full border border-cyan-200/20 bg-cyan-300/[0.07] px-4 py-2 text-xs font-black text-cyan-100">歌曲後台</Link>
             <Link href="/admin/analytics" className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-black text-zinc-200">數據後台</Link>
+            <Link href="/admin/ai-music-bible" className="rounded-full border border-orange-200/25 bg-orange-500/10 px-4 py-2 text-xs font-black text-orange-100">聖經編輯</Link>
           </nav>
         </header>
 

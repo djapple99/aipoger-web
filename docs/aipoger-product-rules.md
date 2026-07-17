@@ -115,6 +115,7 @@ Current public entry and learning-surface rules:
 - Community `有效` / `唱錯` feedback and new-row suggestions enter a moderated pending queue. They must never edit the public seed catalog directly.
 - Public clients have no direct Data API access to `ai_music_bible_contributions`. Submission goes through the same-origin server route, with validation, a honeypot, per-request-fingerprint rate limiting, optional signed-in attribution, and service-role-only database access.
 - Indexed-entry comments require sign-in to read, create, or delete. The API validates every catalog key, authenticates bearer tokens with `auth.getUser`, rejects foreign-origin writes, resolves identity server-side, rate-limits signed-in writers, allows deletion only by the comment owner, and keeps `ai_music_bible_entry_comments` service-role mediated with RLS enabled.
+- `/admin/ai-music-bible` is the owner-only editorial workbench for small canonical-content fixes. It can override prompt moves, lyric moves, and the 38 Taiwanese lab rows without changing keys or provenance; deleting an override returns that row to the TypeScript default. The override table is RLS-enabled with no browser-role grants, and server routes verify the bearer token plus owner email before reading or writing.
 - The main Bible and Taiwanese catalog must keep working if contribution storage is temporarily unavailable; only feedback/submission should show a compact failure state.
 
 Comment moderation:

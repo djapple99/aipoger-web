@@ -135,7 +135,15 @@ function TechniqueCard({
   );
 }
 
-export default function SunoPracticeLibrarySection({ locale }: { locale: SunoLibraryLocale }) {
+export default function SunoPracticeLibrarySection({
+  locale,
+  promptMoves = SUNO_PROMPT_MOVES,
+  lyricMoves = SUNO_LYRIC_MOVES,
+}: {
+  locale: SunoLibraryLocale;
+  promptMoves?: typeof SUNO_PROMPT_MOVES;
+  lyricMoves?: typeof SUNO_LYRIC_MOVES;
+}) {
   const isZh = locale === "zh";
   const [promptCategory, setPromptCategory] = useState<SunoPromptCategory | "all">("all");
   const [lyricCategory, setLyricCategory] = useState<SunoLyricCategory | "all">("all");
@@ -147,12 +155,12 @@ export default function SunoPracticeLibrarySection({ locale }: { locale: SunoLib
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const promptResults = useMemo(
-    () => SUNO_PROMPT_MOVES.filter((item) => (promptCategory === "all" || item.category === promptCategory) && techniqueMatches(item, promptSearch)),
-    [promptCategory, promptSearch],
+    () => promptMoves.filter((item) => (promptCategory === "all" || item.category === promptCategory) && techniqueMatches(item, promptSearch)),
+    [promptCategory, promptMoves, promptSearch],
   );
   const lyricResults = useMemo(
-    () => SUNO_LYRIC_MOVES.filter((item) => (lyricCategory === "all" || item.category === lyricCategory) && techniqueMatches(item, lyricSearch)),
-    [lyricCategory, lyricSearch],
+    () => lyricMoves.filter((item) => (lyricCategory === "all" || item.category === lyricCategory) && techniqueMatches(item, lyricSearch)),
+    [lyricCategory, lyricMoves, lyricSearch],
   );
   const genreResults = useMemo(() => {
     const query = genreSearch.trim().toLowerCase();
@@ -202,8 +210,8 @@ export default function SunoPracticeLibrarySection({ locale }: { locale: SunoLib
           </div>
         </div>
         <div className="mt-7 grid grid-cols-2 gap-3 border-t border-white/10 pt-5 text-center sm:max-w-3xl sm:grid-cols-4">
-          <div><strong className="block text-2xl font-black text-white">{SUNO_PROMPT_MOVES.length}</strong><span className="text-[10px] font-black tracking-[0.12em] text-zinc-600">PROMPT MOVES</span></div>
-          <div><strong className="block text-2xl font-black text-white">{SUNO_LYRIC_MOVES.length}</strong><span className="text-[10px] font-black tracking-[0.12em] text-zinc-600">LYRIC MOVES</span></div>
+          <div><strong className="block text-2xl font-black text-white">{promptMoves.length}</strong><span className="text-[10px] font-black tracking-[0.12em] text-zinc-600">PROMPT MOVES</span></div>
+          <div><strong className="block text-2xl font-black text-white">{lyricMoves.length}</strong><span className="text-[10px] font-black tracking-[0.12em] text-zinc-600">LYRIC MOVES</span></div>
           <div><strong className="block text-2xl font-black text-white">1,518</strong><span className="text-[10px] font-black tracking-[0.12em] text-zinc-600">INDEXED REFERENCES</span></div>
           <div><strong className="block text-2xl font-black text-white">{SUNO_GENRE_GROUPS.reduce((sum, group) => sum + group.terms.length, 0)}</strong><span className="text-[10px] font-black tracking-[0.12em] text-zinc-600">GENRE TERMS</span></div>
         </div>

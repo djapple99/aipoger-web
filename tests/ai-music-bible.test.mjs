@@ -21,6 +21,11 @@ import {
   SUNO_PROMPT_RECIPES,
   SUNO_RECIPE_GENRES,
 } from "../src/lib/suno-inspiration-index.ts";
+import {
+  bibleCatalogDefaults,
+  mergeBibleCatalog,
+  sanitizeBiblePayload,
+} from "../src/lib/ai-music-bible-content.ts";
 
 const practiceLibraryComponent = readFileSync(new URL("../src/components/suno-practice-library-section.tsx", import.meta.url), "utf8");
 const inspirationIndexComponent = readFileSync(new URL("../src/components/suno-inspiration-index-section.tsx", import.meta.url), "utf8");
@@ -29,6 +34,40 @@ test("Taiwanese lyrics lab keeps the PDF seed catalog complete and uniquely addr
   assert.equal(TAIWANESE_LYRICS_ENTRIES.length, 38);
   assert.equal(new Set(TAIWANESE_LYRICS_ENTRIES.map((entry) => entry.key)).size, 38);
   assert.ok(TAIWANESE_LYRICS_ENTRIES.every((entry) => entry.meaning && entry.sunoWriting && entry.note));
+});
+
+test("Bible editorial overrides are narrow, merge onto defaults, and preserve the catalog shape", () => {
+  const defaults = bibleCatalogDefaults();
+  const merged = mergeBibleCatalog([
+    {
+      content_kind: "prompt_move",
+      content_key: "prompt-dna",
+      payload: { title: { zh: "新版聲音 DNA" }, copy: { zh: "新版可複製公式" }, category: "lyric" },
+      updated_by: null,
+      updated_at: "2026-07-18T00:00:00.000Z",
+    },
+    {
+      content_kind: "taiwanese_entry",
+      content_key: "pronoun-me",
+      payload: { sunoWriting: "新版阮", note: "新版測試說明" },
+      updated_by: null,
+      updated_at: "2026-07-18T00:00:00.000Z",
+    },
+  ]);
+  assert.equal(merged.promptMoves.length, defaults.promptMoves.length);
+  assert.equal(merged.lyricMoves.length, defaults.lyricMoves.length);
+  assert.equal(merged.taiwaneseEntries.length, defaults.taiwaneseEntries.length);
+  assert.equal(merged.promptMoves.find((item) => item.key === "prompt-dna").title.zh, "新版聲音 DNA");
+  assert.equal(merged.promptMoves.find((item) => item.key === "prompt-dna").copy.zh, "新版可複製公式");
+  assert.equal(merged.promptMoves.find((item) => item.key === "prompt-dna").category, "foundation");
+  assert.equal(merged.taiwaneseEntries.find((item) => item.key === "pronoun-me").sunoWriting, "新版阮");
+});
+
+test("Bible editor payload sanitization rejects unknown shapes and caps editable values", () => {
+  assert.equal(sanitizeBiblePayload(null), null);
+  assert.equal(sanitizeBiblePayload({ __proto__: "unsafe" }), null);
+  const payload = sanitizeBiblePayload({ title: { zh: "  可用標題  ", nope: "discard" }, evidence: "field", keywords: [" prompt ", 4] });
+  assert.deepEqual(payload, { title: { zh: "可用標題" }, evidence: "field", keywords: ["prompt"] });
 });
 
 test("every Taiwanese lyrics lab entry uses a supported category", () => {

@@ -1716,6 +1716,9 @@ function ProfileInner() {
                   <Link className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm font-bold text-zinc-100 transition hover:border-orange-300/50" href="/admin/quiz">
                     Quiz
                   </Link>
+                  <Link className="rounded-xl border border-orange-300/25 bg-orange-400/[0.08] px-3 py-2 text-sm font-bold text-orange-100 transition hover:border-orange-300/60" href="/admin/ai-music-bible">
+                    聖經編輯
+                  </Link>
                 </div>
               </div>
             )}

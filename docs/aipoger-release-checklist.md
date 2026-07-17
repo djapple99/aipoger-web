@@ -253,6 +253,8 @@ Check:
 - The lab disclaimer distinguishes AI singing phonetic experiments from recommended Taiwanese orthography.
 - New suggestions require meaning, Suno writing, and a test note. Successful submissions show a pending-review confirmation instead of claiming immediate publication.
 - `ai_music_bible_contributions` has RLS enabled; `anon` and `authenticated` have no direct table read/write grants; only the server service role can insert/review rows.
+- `/admin/ai-music-bible` lets an owner search three editable groups, save bilingual copy/category/evidence fields or Taiwanese pronunciation notes, and restore a single row to its default. The page must show a clear migration-unavailable state instead of implying a save succeeded.
+- `ai_music_bible_content_overrides` has RLS enabled with no `anon`/`authenticated` grants; public/member Bible reads and owner edits are server-mediated and preserve the static catalog as a fallback.
 - Contribution requests reject foreign origins, use a honeypot, validate lengths and enums, and limit a request fingerprint to 6 submissions per hour.
 
 ## AIPOGER Showtime Checklist
