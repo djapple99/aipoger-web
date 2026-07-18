@@ -9,6 +9,17 @@ const listenBarSource = fs.readFileSync("src/app/listen-bar/page.tsx", "utf8");
 const globalsSource = fs.readFileSync("src/app/globals.css", "utf8");
 const watchSource = fs.readFileSync("src/app/watch/page.tsx", "utf8");
 const analysisHealthSource = fs.readFileSync("src/app/api/music-analysis/health/route.ts", "utf8");
+const brandSource = fs.readFileSync("src/lib/brand.ts", "utf8");
+const socialIconSource = fs.readFileSync("src/components/social-icons.tsx", "utf8");
+
+test("public social cluster exposes the LINE community with a desktop QR handoff", () => {
+  assert.ok(brandSource.includes("AIPOGER_LINE_COMMUNITY_URL"));
+  assert.ok(brandSource.includes("https://line.me/ti/g2/XIyoidP5f8UVtFEhAhEABAx0JUNXYgCu-Af6dA"));
+  assert.ok(socialIconSource.includes('normalized.includes("line")'));
+  assert.ok(socialIconSource.includes("api.qrserver.com/v1/create-qr-code"));
+  assert.ok(socialIconSource.includes("複製邀請連結"));
+  assert.ok(socialIconSource.includes("在 LINE 開啟"));
+});
 
 test("logged-out account dock does not present a fake notification bell", () => {
   assert.ok(overlaySource.includes("accountSessionResolved"));

@@ -37,6 +37,12 @@ Current behavior target:
 - Do not store social platform passwords. Tokens, webhooks, and API keys belong in environment variables or encrypted storage, never in repo, docs, or logs.
 - If a platform token/webhook is not configured, show a disconnected/pending state and do not attempt publishing.
 
+Public social entry:
+
+- The public social icon cluster includes the AIPOGER LINE community invite alongside Discord, Instagram, and the Facebook group.
+- LINE is the direct mobile action; a separate QR control opens a compact modal for desktop visitors, with the same canonical invite URL and a copy action.
+- Keep the QR code out of the permanent homepage layout so it does not add clutter or create a useless mobile scan step.
+
 ## AIPOGER Choice 與社群發布
 
 Daily Spotlight 已退役：它不再是傷心酒吧、Explore、`/admin/listen-bar` 或社群發布的工作流，也不建立新的單曲 Spotlight 替代品。
