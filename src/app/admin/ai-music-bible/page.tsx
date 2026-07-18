@@ -4,8 +4,7 @@ import Link from "next/link";
 import { BookOpenText, Check, ChevronLeft, RotateCcw, Save, Search, ShieldCheck, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fontRighteous } from "@/lib/fonts";
-import { supabase } from "@/lib/supabase";
-import { loadIsAdmin } from "@/lib/user-profile-admin";
+import { getActiveAuthSession, loadIsAdmin } from "@/lib/user-profile-admin";
 import type { BibleContentKind, BibleContentPayload } from "@/lib/ai-music-bible-content";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
@@ -58,7 +57,7 @@ const categoryOptions: Record<BibleContentKind, string[]> = {
 };
 
 async function authHeader(): Promise<Record<string, string>> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const session = await getActiveAuthSession();
   return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
 }
 
@@ -119,7 +118,12 @@ export default function AdminAiMusicBiblePage() {
     const response = await fetch("/api/admin/ai-music-bible/content", { cache: "no-store", headers: await authHeader() });
     const payload = await response.json().catch(() => null) as ApiPayload | null;
     setLoading(false);
-    if (!response.ok) { setError(payload?.error || "聖經資料讀取失敗。"); return false; }
+    if (!response.ok) {
+      setError(payload?.error || "聖經資料讀取失敗。");
+      if (response.status === 401) setAdminState("login");
+      if (response.status === 403) setAdminState("denied");
+      return false;
+    }
     const nextItems = payload?.items ?? [];
     setItems(nextItems);
     setSchemaReady(payload?.schemaReady !== false);
@@ -130,14 +134,15 @@ export default function AdminAiMusicBiblePage() {
   useEffect(() => {
     let active = true;
     void (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const session = await getActiveAuthSession();
+      const user = session?.user ?? null;
       if (!active) return;
       if (!user) { setAdminState("login"); return; }
       const allowed = await loadIsAdmin(user.id);
       if (!active) return;
       if (!allowed) { setAdminState("denied"); return; }
-      await load();
-      if (active) setAdminState("ready");
+      const loaded = await load();
+      if (active && loaded) setAdminState("ready");
     })();
     return () => { active = false; };
   }, [load]);
@@ -171,7 +176,10 @@ export default function AdminAiMusicBiblePage() {
 
   if (adminState !== "ready") {
     const checking = adminState === "checking";
-    return <main className="min-h-screen bg-[#060606] px-4 pb-16 pt-28 text-white"><section className="mx-auto max-w-2xl rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-8 text-center shadow-2xl"><ShieldCheck className="mx-auto h-10 w-10 text-orange-300" /><p className={`${fontRighteous.className} mt-5 text-xs uppercase tracking-[0.34em] text-orange-300/75`}>AIPOGER BIBLE DESK</p><h1 className="mt-3 text-4xl font-black">{checking ? "正在確認後台權限…" : adminState === "login" ? "請先登入" : "沒有管理權限"}</h1>{!checking && <Link href="/auth?next=%2Fadmin%2Fai-music-bible" className="aipo-primary-button mt-7 inline-flex min-h-11 items-center rounded-full px-6 text-sm font-black">登入 owner 帳號</Link>}</section></main>;
+    const authHref = adminState === "denied"
+      ? "/auth?next=%2Fadmin%2Fai-music-bible&owner=1&switch=1"
+      : "/auth?next=%2Fadmin%2Fai-music-bible&owner=1";
+    return <main className="min-h-screen bg-[#060606] px-4 pb-16 pt-28 text-white"><section className="mx-auto max-w-2xl rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-8 text-center shadow-2xl"><ShieldCheck className="mx-auto h-10 w-10 text-orange-300" /><p className={`${fontRighteous.className} mt-5 text-xs uppercase tracking-[0.34em] text-orange-300/75`}>AIPOGER BIBLE DESK</p><h1 className="mt-3 text-4xl font-black">{checking ? "正在確認後台權限…" : adminState === "login" ? "請先登入" : "沒有管理權限"}</h1>{!checking && <><p className="mx-auto mt-3 max-w-md text-sm font-bold leading-6 text-zinc-400">{adminState === "denied" ? "目前登入的帳號不是 owner，請切換到 owner 帳號後再進入。" : "請先登入 owner 帳號，才能編輯練功聖經內容。"}</p><Link href={authHref} className="aipo-primary-button mt-7 inline-flex min-h-11 items-center rounded-full px-6 text-sm font-black">{adminState === "denied" ? "切換 owner 帳號" : "登入 owner 帳號"}</Link></>}</section></main>;
   }
 
   const fields = selected?.kind === "taiwanese_entry" ? taiwaneseFields : techniqueFields;

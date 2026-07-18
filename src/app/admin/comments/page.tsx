@@ -19,8 +19,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fontRighteous } from "@/lib/fonts";
-import { supabase } from "@/lib/supabase";
-import { loadIsAdmin } from "@/lib/user-profile-admin";
+import { getActiveAuthSession, loadIsAdmin } from "@/lib/user-profile-admin";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
 type CommentSource = "listen_bar" | "choice" | "bible";
@@ -99,7 +98,7 @@ function initialFor(value: string) {
 }
 
 async function authHeader(): Promise<Record<string, string>> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const session = await getActiveAuthSession();
   return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
 }
 
@@ -145,7 +144,7 @@ export default function AdminCommentsPage() {
   useEffect(() => {
     let active = true;
     void (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const session = await getActiveAuthSession();
       if (!active) return;
       if (!session?.user) {
         setAdminState("login");
@@ -228,7 +227,7 @@ export default function AdminCommentsPage() {
           <p className={`${fontRighteous.className} mt-5 text-xs uppercase tracking-[0.34em] text-orange-300/75`}>AIPOGER COMMENT DESK</p>
           <h1 className="mt-3 text-4xl font-black">{isChecking ? "正在確認後台權限…" : adminState === "login" ? "請先登入" : "沒有管理權限"}</h1>
           {!isChecking ? (
-            <Link href="/auth?next=%2Fadmin%2Fcomments" className="aipo-primary-button mt-7 inline-flex min-h-11 items-center rounded-full px-6 text-sm font-black">
+            <Link href={adminState === "denied" ? "/auth?next=%2Fadmin%2Fcomments&owner=1&switch=1" : "/auth?next=%2Fadmin%2Fcomments&owner=1"} className="aipo-primary-button mt-7 inline-flex min-h-11 items-center rounded-full px-6 text-sm font-black">
               {adminState === "login" ? "登入 owner 帳號" : "切換帳號"}
             </Link>
           ) : null}

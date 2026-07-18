@@ -280,8 +280,8 @@ export default function AdminModerationPage() {
           <p className="mt-3 text-sm font-bold leading-7 text-zinc-400">
             目前後台只允許 owner 帳號進入。
           </p>
-          <Link href="/login" className="mt-5 inline-flex rounded-full bg-orange-500 px-5 py-3 text-sm font-black text-black">
-            前往登入
+          <Link href={adminState === "denied" ? "/auth?next=%2Fadmin%2Fmoderation&owner=1&switch=1" : "/auth?next=%2Fadmin%2Fmoderation&owner=1"} className="mt-5 inline-flex rounded-full bg-orange-500 px-5 py-3 text-sm font-black text-black">
+            {adminState === "denied" ? "切換 owner 帳號" : "前往登入"}
           </Link>
         </section>
       </main>

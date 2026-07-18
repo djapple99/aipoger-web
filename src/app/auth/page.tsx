@@ -64,9 +64,12 @@ function AuthPageInner() {
   const [loginUrl, setLoginUrl] = useState("");
   const [email, setEmail] = useState("");
   const [emailSent, setEmailSent] = useState(false);
+  const [switchingAccount, setSwitchingAccount] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const explicitNext = searchParams.get("next");
+  const ownerLogin = searchParams.get("owner") === "1" || safeNextPath(explicitNext).startsWith("/admin");
+  const switchAccount = searchParams.get("switch") === "1";
   const rememberedNext = !explicitNext && !searchParams.get("intent")
     ? readRememberedAuthNextPath() ?? readRememberedAuthNextCookie()
     : null;
@@ -166,6 +169,17 @@ function AuthPageInner() {
   }, [searchParams, t]);
 
   useEffect(() => {
+    if (switchAccount) {
+      setSwitchingAccount(true);
+      void supabase.auth.signOut()
+        .catch((signOutError) => console.error("[auth] account switch sign out failed", signOutError))
+        .finally(() => {
+          setSwitchingAccount(false);
+          setNotice(ownerLogin ? "已清除目前登入，請改用 owner 帳號登入。" : "已清除目前登入，請重新登入。");
+        });
+      return;
+    }
+
     const checkUser = async () => {
       const {
         data: { session },
@@ -175,13 +189,13 @@ function AuthPageInner() {
       }
     };
     void checkUser();
-  }, [goHomeOnce]);
+  }, [goHomeOnce, ownerLogin, switchAccount]);
 
   useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
+      if (session && !switchAccount) {
         goHomeOnce();
       }
     });
@@ -189,7 +203,7 @@ function AuthPageInner() {
     return () => {
       subscription.unsubscribe();
     };
-  }, [goHomeOnce]);
+  }, [goHomeOnce, switchAccount]);
 
   const handleOAuthLogin = async (provider: "google" | "facebook") => {
     if (isEmbeddedBrowser) {
@@ -292,7 +306,7 @@ function AuthPageInner() {
           <div className="aipo-control-panel rounded-[1.35rem] p-4 sm:p-5">
             <p className="text-center text-xs font-black uppercase tracking-[0.22em] text-zinc-500">{t("login_methods")}</p>
             <p className="mx-auto mt-3 max-w-md rounded-2xl border border-orange-300/24 bg-orange-500/10 px-4 py-3 text-sm font-bold leading-6 text-orange-100">
-              {t("login_creator_guard")}
+              {ownerLogin ? "這是 owner 後台登入流程，請使用 AIPOGER owner 帳號。" : t("login_creator_guard")}
             </p>
           </div>
           {isEmbeddedBrowser ? (
@@ -358,7 +372,7 @@ function AuthPageInner() {
               />
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || switchingAccount}
                 className="min-h-14 rounded-2xl border border-cyan-100/45 bg-cyan-300 px-5 text-sm font-black text-black transition hover:bg-cyan-100 disabled:opacity-60"
               >
                 {t("login_email_send")}
@@ -379,7 +393,7 @@ function AuthPageInner() {
               <button
                 type="button"
                 onClick={() => void handleOAuthLogin("google")}
-                disabled={loading}
+                disabled={loading || switchingAccount}
                 className="flex w-full items-center justify-center gap-3 rounded-2xl border border-white/30 bg-white px-6 py-4 font-black text-zinc-900 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-45"
               >
                 <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
@@ -393,7 +407,7 @@ function AuthPageInner() {
               <button
                 type="button"
                 onClick={() => void handleOAuthLogin("facebook")}
-                disabled={loading}
+                disabled={loading || switchingAccount}
                 className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[#1877F2] px-6 py-4 font-medium text-white transition hover:bg-[#1666d6] disabled:cursor-not-allowed disabled:opacity-45"
               >
                 <span className="text-2xl" aria-hidden>f</span>

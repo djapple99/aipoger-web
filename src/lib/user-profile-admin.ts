@@ -1,4 +1,4 @@
-import type { User } from "@supabase/supabase-js";
+import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { isAdminEmail } from "@/lib/admin-emails";
 
@@ -7,6 +7,19 @@ function userIsAdminByEmail(user: User | null | undefined): boolean {
   if (isAdminEmail(user.email)) return true;
   const meta = user.user_metadata as Record<string, unknown> | undefined;
   return isAdminEmail(typeof meta?.email === "string" ? meta.email : null);
+}
+
+/** Read a session with an access token, retrying after Supabase refreshes the user. */
+export async function getActiveAuthSession(): Promise<Session | null> {
+  const first = await supabase.auth.getSession();
+  if (first.data.session?.access_token) return first.data.session;
+
+  const userResult = await supabase.auth.getUser();
+  if (!userResult.data.user) return null;
+
+  const refreshed = await supabase.auth.getSession();
+  if (refreshed.data.session?.user.id !== userResult.data.user.id) return null;
+  return refreshed.data.session;
 }
 
 export function isMissingIsAdminColumn(err: unknown): boolean {
@@ -19,7 +32,11 @@ export function isMissingIsAdminColumn(err: unknown): boolean {
 
 /** 是否為管理員 */
 export async function loadIsAdmin(userId: string): Promise<boolean> {
-  void userId;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (user?.id === userId) return userIsAdminByEmail(user);
+
   const {
     data: { session },
   } = await supabase.auth.getSession();

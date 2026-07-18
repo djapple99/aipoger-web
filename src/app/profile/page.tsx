@@ -1695,6 +1695,9 @@ function ProfileInner() {
                   </div>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-2">
+                  <Link className="rounded-xl border border-orange-300/30 bg-orange-400/[0.12] px-3 py-2 text-sm font-bold text-orange-50 transition hover:border-orange-200/70" href="/admin">
+                    後台總覽
+                  </Link>
                   <Link className="rounded-xl border border-yellow-300/20 bg-yellow-300/[0.08] px-3 py-2 text-sm font-bold text-yellow-100 transition hover:border-yellow-300/50" href="/admin/analytics">
                     Analytics
                   </Link>
