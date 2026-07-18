@@ -343,6 +343,7 @@ function ProfileInner() {
             nameHelp: "這個名稱會出現在 Battle、Showtime 與公播資料。",
             adminEntry: "後台入口",
             adminHelp: "管理員可快速進入營運與內容後台。",
+            adminEntryButton: "進入後台",
             creations: "我的創作資料",
             creationsHelp: "整理你上傳與收藏的 AI 音樂作品。",
             all: "全部資料",
@@ -432,6 +433,7 @@ function ProfileInner() {
             nameHelp: "This name appears in Battles, Showtime, and public play data.",
             adminEntry: "Admin Entry",
             adminHelp: "Quick access for operations and content management.",
+            adminEntryButton: "Open admin",
             creations: "My Creator Data",
             creationsHelp: "Your uploaded and saved AI music records.",
             all: "All Data",
@@ -1614,9 +1616,15 @@ function ProfileInner() {
                 <p className="mt-1 text-xs leading-5 text-zinc-500">{copy.avatarHelp}</p>
               </div>
               {isAdmin && (
-                <span className="rounded-full border border-amber-300/35 bg-amber-300/10 px-3 py-1 text-xs font-black text-amber-200">
-                  管理員
-                </span>
+                <Link
+                  href="/admin"
+                  aria-label={copy.adminEntryButton}
+                  title={copy.adminEntryButton}
+                  className="group inline-flex items-center gap-1.5 rounded-full border border-amber-300/45 bg-amber-300/10 px-3 py-1 text-xs font-black text-amber-100 transition hover:border-amber-200 hover:bg-amber-300/20 hover:text-white"
+                >
+                  <span>管理員</span>
+                  <span aria-hidden="true" className="text-[11px] transition-transform group-hover:translate-x-0.5">↗</span>
+                </Link>
               )}
             </div>
 
@@ -1653,6 +1661,11 @@ function ProfileInner() {
                   <Link href="/profile/choice" className="rounded-2xl border border-yellow-200/30 bg-yellow-300/10 px-4 py-2 text-sm font-black text-yellow-100 transition hover:border-yellow-100/65">
                     我的 Choice
                   </Link>
+                  {isAdmin && (
+                    <Link href="/admin" className="rounded-2xl border border-amber-300/40 bg-amber-300/10 px-4 py-2 text-sm font-black text-amber-100 transition hover:border-amber-200 hover:bg-amber-300/20 hover:text-white">
+                      {copy.adminEntryButton}
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>
