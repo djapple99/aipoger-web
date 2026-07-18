@@ -44,16 +44,23 @@ export function safeNextPath(value: string | null | undefined): string {
   const raw = value?.trim();
   if (!raw) return "/";
 
+  const normalizePath = (pathname: string, search: string, hash: string): string => {
+    // Next's router treats a double-leading slash as a protocol-relative URL.
+    // Keep all return paths rooted on this origin, including trusted absolute URLs.
+    if (!pathname.startsWith("/") || pathname.startsWith("//")) return "/";
+    return `${pathname}${search}${hash}` || "/";
+  };
+
   try {
     if (raw.startsWith("http://") || raw.startsWith("https://")) {
       const parsed = new URL(raw);
       if (!isTrustedReturnHost(parsed.hostname)) return "/";
-      return `${parsed.pathname}${parsed.search}${parsed.hash}` || "/";
+      return normalizePath(parsed.pathname, parsed.search, parsed.hash);
     }
 
     if (!raw.startsWith("/") || raw.startsWith("//")) return "/";
     const parsed = new URL(raw, AIPOGER_PUBLIC_ORIGIN);
-    return `${parsed.pathname}${parsed.search}${parsed.hash}` || "/";
+    return normalizePath(parsed.pathname, parsed.search, parsed.hash);
   } catch {
     return "/";
   }

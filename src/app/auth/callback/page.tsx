@@ -59,24 +59,9 @@ function AuthCallbackInner() {
         return;
       }
 
-      // 舊的 implicit OAuth redirect 會把 token 放在 hash；保留這段避免舊連結失效。
-      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-      const accessToken = hashParams.get("access_token");
-      const refreshToken = hashParams.get("refresh_token");
-      if (accessToken && refreshToken) {
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-        if (sessionError) {
-          console.error("[auth callback] hash session failed", sessionError);
-          fail();
-          return;
-        }
-        finish();
-        return;
-      }
-
+      // The app uses PKCE. Never adopt access/refresh tokens from the URL hash:
+      // doing so would allow login CSRF/session fixation with an attacker-owned
+      // token pair. A callback without a session or PKCE code is incomplete.
       fail("登入資訊不完整，請重試");
     };
 

@@ -5,6 +5,18 @@ import {
   mergeBibleCatalog,
   type BibleOverrideRow,
 } from "@/lib/ai-music-bible-content";
+import {
+  AI_PRODUCTION_FLOW,
+  SUNO_GENRE_GROUPS,
+  SUNO_LYRIC_CATEGORIES,
+  SUNO_PROMPT_CATEGORIES,
+} from "@/lib/suno-practice-library";
+import {
+  SUNO_ARTIST_DNA_ENTRIES,
+  SUNO_PROMPT_RECIPES,
+  SUNO_RECIPE_GENRES,
+} from "@/lib/suno-inspiration-index";
+import { STEM_ENGINES, STEM_GOALS } from "@/lib/stem-separation-guide";
 
 export const runtime = "nodejs";
 
@@ -47,6 +59,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       schemaReady: !result.error,
       ...mergeBibleCatalog(rows),
+      genreGroups: SUNO_GENRE_GROUPS,
+      productionFlow: AI_PRODUCTION_FLOW,
+      promptCategories: SUNO_PROMPT_CATEGORIES,
+      lyricCategories: SUNO_LYRIC_CATEGORIES,
+      stemEngines: STEM_ENGINES,
+      stemGoals: STEM_GOALS,
+      artistDnaEntries: SUNO_ARTIST_DNA_ENTRIES,
+      promptRecipes: SUNO_PROMPT_RECIPES,
+      recipeGenres: SUNO_RECIPE_GENRES,
       defaultsAvailable: Boolean(bibleCatalogDefaults()),
     }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {

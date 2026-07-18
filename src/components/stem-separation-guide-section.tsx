@@ -3,13 +3,20 @@
 import { BadgeCheck, ChevronDown, ChevronUp, CircleHelp, Cpu, ExternalLink, Gauge, Layers3, ShieldAlert } from "lucide-react";
 import { useMemo, useState } from "react";
 import { fontRighteous } from "@/lib/fonts";
-import { STEM_ENGINES, STEM_GOALS, stemText, type StemGoalKey, type StemGuideLocale } from "@/lib/stem-separation-guide";
+import { type StemEngine, type StemGoal, type StemGoalKey, type StemGuideLocale } from "@/lib/stem-separation-guide";
 
-export default function StemSeparationGuideSection({ locale }: { locale: StemGuideLocale }) {
+function stemText(text: { zh: string; en: string }, locale: StemGuideLocale) {
+  return text[locale];
+}
+
+export default function StemSeparationGuideSection({ locale, engines, goals }: { locale: StemGuideLocale; engines: StemEngine[]; goals: StemGoal[] }) {
   const isZh = locale === "zh";
   const [goal, setGoal] = useState<StemGoalKey>("vocals");
   const [expanded, setExpanded] = useState<string | null>("uvr-community");
-  const activeGoal = useMemo(() => STEM_GOALS.find((item) => item.key === goal) ?? STEM_GOALS[0], [goal]);
+  const activeGoal = useMemo(() => goals.find((item) => item.key === goal) ?? goals[0], [goals, goal]);
+  if (!activeGoal) {
+    return <section id="stem-separation-guide" className="min-h-48 animate-pulse rounded-[1.6rem] border border-white/10 bg-white/[0.025]" aria-label="Loading stem guide" />;
+  }
   const highlighted = new Set(activeGoal.engineKeys);
 
   const confidenceLabel = {
@@ -55,7 +62,7 @@ export default function StemSeparationGuideSection({ locale }: { locale: StemGui
         </div>
 
         <div className="mt-5 flex gap-2 overflow-x-auto pb-2">
-          {STEM_GOALS.map((item) => (
+          {goals.map((item) => (
             <button key={item.key} type="button" onClick={() => setGoal(item.key)} className={`shrink-0 rounded-full border px-4 py-2.5 text-xs font-black transition ${goal === item.key ? "border-cyan-200/65 bg-cyan-300/14 text-cyan-50" : "border-white/10 bg-white/[0.03] text-zinc-500 hover:text-white"}`}>
               {stemText(item.label, locale)}
             </button>
@@ -71,7 +78,7 @@ export default function StemSeparationGuideSection({ locale }: { locale: StemGui
         </div>
 
         <div className="mt-8 grid gap-3 lg:grid-cols-2">
-          {STEM_ENGINES.map((engine, index) => {
+          {engines.map((engine, index) => {
             const isOpen = expanded === engine.key;
             const isHighlighted = highlighted.has(engine.key);
             return (

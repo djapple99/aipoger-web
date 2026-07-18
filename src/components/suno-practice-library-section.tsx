@@ -18,19 +18,15 @@ import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { fontRighteous } from "@/lib/fonts";
 import {
-  AI_PRODUCTION_FLOW,
-  SUNO_GENRE_GROUPS,
-  SUNO_LYRIC_CATEGORIES,
-  SUNO_LYRIC_MOVES,
-  SUNO_PROMPT_CATEGORIES,
-  SUNO_PROMPT_MOVES,
-  sunoLibraryText,
   type SunoEvidence,
+  type SunoGenreGroup,
   type SunoLibraryLocale,
+  type SunoLocalizedText,
   type SunoLyricCategory,
   type SunoPromptCategory,
   type SunoTechnique,
 } from "@/lib/suno-practice-library";
+import type { SunoArtistDnaEntry, SunoPromptRecipe } from "@/lib/suno-inspiration-index";
 
 const SunoInspirationIndexSection = dynamic(
   () => import("@/components/suno-inspiration-index-section"),
@@ -42,6 +38,10 @@ const SunoInspirationIndexSection = dynamic(
 );
 
 type AnyTechnique = SunoTechnique<SunoPromptCategory> | SunoTechnique<SunoLyricCategory>;
+
+function sunoLibraryText(text: SunoLocalizedText, locale: SunoLibraryLocale) {
+  return text[locale];
+}
 
 function techniqueMatches(item: AnyTechnique, search: string) {
   const query = search.trim().toLowerCase();
@@ -137,12 +137,26 @@ function TechniqueCard({
 
 export default function SunoPracticeLibrarySection({
   locale,
-  promptMoves = SUNO_PROMPT_MOVES,
-  lyricMoves = SUNO_LYRIC_MOVES,
+  promptMoves,
+  lyricMoves,
+  genreGroups,
+  productionFlow,
+  promptCategories,
+  lyricCategories,
+  artistDnaEntries,
+  promptRecipes,
+  recipeGenres,
 }: {
   locale: SunoLibraryLocale;
-  promptMoves?: typeof SUNO_PROMPT_MOVES;
-  lyricMoves?: typeof SUNO_LYRIC_MOVES;
+  promptMoves: SunoTechnique<SunoPromptCategory>[];
+  lyricMoves: SunoTechnique<SunoLyricCategory>[];
+  genreGroups: SunoGenreGroup[];
+  productionFlow: { title: SunoLocalizedText; body: SunoLocalizedText }[];
+  promptCategories: { key: SunoPromptCategory | "all"; label: SunoLocalizedText }[];
+  lyricCategories: { key: SunoLyricCategory | "all"; label: SunoLocalizedText }[];
+  artistDnaEntries: readonly SunoArtistDnaEntry[];
+  promptRecipes: readonly SunoPromptRecipe[];
+  recipeGenres: { key: string; zh: string; en: string }[];
 }) {
   const isZh = locale === "zh";
   const [promptCategory, setPromptCategory] = useState<SunoPromptCategory | "all">("all");
@@ -164,12 +178,12 @@ export default function SunoPracticeLibrarySection({
   );
   const genreResults = useMemo(() => {
     const query = genreSearch.trim().toLowerCase();
-    if (!query) return SUNO_GENRE_GROUPS;
-    return SUNO_GENRE_GROUPS.map((group) => ({
+    if (!query) return genreGroups;
+    return genreGroups.map((group) => ({
       ...group,
       terms: group.terms.filter((term) => `${term} ${group.label.zh} ${group.label.en}`.toLowerCase().includes(query)),
     })).filter((group) => group.terms.length > 0);
-  }, [genreSearch]);
+  }, [genreGroups, genreSearch]);
 
   const copyValue = async (key: string, value: string) => {
     try {
@@ -213,7 +227,7 @@ export default function SunoPracticeLibrarySection({
           <div><strong className="block text-2xl font-black text-white">{promptMoves.length}</strong><span className="text-[10px] font-black tracking-[0.12em] text-zinc-600">PROMPT MOVES</span></div>
           <div><strong className="block text-2xl font-black text-white">{lyricMoves.length}</strong><span className="text-[10px] font-black tracking-[0.12em] text-zinc-600">LYRIC MOVES</span></div>
           <div><strong className="block text-2xl font-black text-white">1,518</strong><span className="text-[10px] font-black tracking-[0.12em] text-zinc-600">INDEXED REFERENCES</span></div>
-          <div><strong className="block text-2xl font-black text-white">{SUNO_GENRE_GROUPS.reduce((sum, group) => sum + group.terms.length, 0)}</strong><span className="text-[10px] font-black tracking-[0.12em] text-zinc-600">GENRE TERMS</span></div>
+          <div><strong className="block text-2xl font-black text-white">{genreGroups.reduce((sum, group) => sum + group.terms.length, 0)}</strong><span className="text-[10px] font-black tracking-[0.12em] text-zinc-600">GENRE TERMS</span></div>
         </div>
       </div>
 
@@ -250,7 +264,7 @@ export default function SunoPracticeLibrarySection({
           <fieldset className="mt-4">
             <legend className="text-xs font-black tracking-[0.12em] text-zinc-300">{isZh ? "選擇分類" : "CHOOSE A CATEGORY"}</legend>
             <div className="mt-2.5 flex flex-wrap gap-2">
-              {SUNO_PROMPT_CATEGORIES.map((category) => {
+          {promptCategories.map((category) => {
                 const selected = promptCategory === category.key;
                 return (
                   <button key={category.key} type="button" aria-pressed={selected} onClick={() => setPromptCategory(category.key)} className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-black transition ${selected ? "border-cyan-200 bg-cyan-300/[0.18] text-white shadow-[0_0_18px_rgba(34,211,238,0.13)]" : "border-white/20 bg-black/55 text-zinc-300 hover:border-cyan-200/45 hover:bg-cyan-300/[0.07] hover:text-white"}`}>
@@ -305,7 +319,12 @@ export default function SunoPracticeLibrarySection({
         </div>
 
         <div id="suno-inspiration-index" className="scroll-mt-24">
-          <SunoInspirationIndexSection isZh={isZh} />
+          <SunoInspirationIndexSection
+            isZh={isZh}
+            artistDnaEntries={artistDnaEntries}
+            promptRecipes={promptRecipes}
+            recipeGenres={recipeGenres}
+          />
         </div>
 
         <div id="lyric-control-library" className="scroll-mt-20 mt-12 border-t border-white/10 pt-10">
@@ -342,7 +361,7 @@ export default function SunoPracticeLibrarySection({
             <fieldset className="mt-4">
               <legend className="text-xs font-black tracking-[0.12em] text-zinc-300">{isZh ? "選擇分類" : "CHOOSE A CATEGORY"}</legend>
               <div className="mt-2.5 flex flex-wrap gap-2">
-                {SUNO_LYRIC_CATEGORIES.map((category) => {
+                {lyricCategories.map((category) => {
                   const selected = lyricCategory === category.key;
                   return (
                     <button key={category.key} type="button" aria-pressed={selected} onClick={() => setLyricCategory(category.key)} className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-black transition ${selected ? "border-orange-300 bg-orange-400/[0.18] text-white shadow-[0_0_18px_rgba(251,146,60,0.13)]" : "border-white/20 bg-black/55 text-zinc-300 hover:border-orange-300/45 hover:bg-orange-400/[0.07] hover:text-white"}`}>
@@ -373,7 +392,7 @@ export default function SunoPracticeLibrarySection({
           <h3 className="mt-3 text-2xl font-black text-white sm:text-3xl">{isZh ? "《AI 音樂製作小指南》放在這裡最合理" : "Where the AI production guide belongs"}</h3>
           <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-zinc-500">{isZh ? "它不是 Prompt 字典，也不是歌詞技巧，而是從想法、挑選、拆軌、DAW 到留存創作證據的製作流程。" : "It is neither a prompt dictionary nor a lyric guide. It is a production path from ideation and selection through stems, DAW work, and process archiving."}</p>
           <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {AI_PRODUCTION_FLOW.map((step) => (
+            {productionFlow.map((step) => (
               <article key={step.title.en} className="rounded-xl border border-white/9 bg-black/38 p-4">
                 <h4 className="text-sm font-black text-orange-100">{sunoLibraryText(step.title, locale)}</h4>
                 <p className="mt-2 text-xs font-bold leading-6 text-zinc-400">{sunoLibraryText(step.body, locale)}</p>

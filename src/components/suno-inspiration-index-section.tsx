@@ -14,15 +14,17 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import BibleEntryCommentsDialog from "@/components/bible-entry-comments-dialog";
-import {
-  SUNO_ARTIST_DNA_ENTRIES,
-  SUNO_PROMPT_RECIPES,
-  SUNO_RECIPE_GENRES,
-  type SunoInspirationKind,
+import type {
+  SunoArtistDnaEntry,
+  SunoInspirationKind,
+  SunoPromptRecipe,
 } from "@/lib/suno-inspiration-index";
 
 type SunoInspirationIndexSectionProps = {
   isZh: boolean;
+  artistDnaEntries: readonly SunoArtistDnaEntry[];
+  promptRecipes: readonly SunoPromptRecipe[];
+  recipeGenres: readonly { key: string; zh: string; en: string }[];
 };
 
 type CommentTarget = {
@@ -58,7 +60,7 @@ function highlightClass(active: boolean, tone: "orange" | "cyan") {
     : "border-cyan-200/65 bg-cyan-200/12 text-cyan-50 shadow-[0_0_24px_rgba(103,232,249,0.1)]";
 }
 
-export default function SunoInspirationIndexSection({ isZh }: SunoInspirationIndexSectionProps) {
+export default function SunoInspirationIndexSection({ isZh, artistDnaEntries, promptRecipes, recipeGenres }: SunoInspirationIndexSectionProps) {
   const [activeKind, setActiveKind] = useState<SunoInspirationKind>("artist_dna");
   const [query, setQuery] = useState("");
   const [artistGenre, setArtistGenre] = useState("all");
@@ -73,19 +75,19 @@ export default function SunoInspirationIndexSection({ isZh }: SunoInspirationInd
 
   const artistResults = useMemo(() => {
     const needle = normalize(query);
-    return SUNO_ARTIST_DNA_ENTRIES.filter((entry) => {
+    return artistDnaEntries.filter((entry) => {
       if (artistGenre !== "all" && !entry.summaryZh.includes(artistGenre)) return false;
       return !needle || entry.searchText.includes(needle);
     });
-  }, [artistGenre, query]);
+  }, [artistDnaEntries, artistGenre, query]);
 
   const recipeResults = useMemo(() => {
     const needle = normalize(query);
-    return SUNO_PROMPT_RECIPES.filter((entry) => {
+    return promptRecipes.filter((entry) => {
       if (recipeGenre !== "all" && entry.genre !== recipeGenre) return false;
       return !needle || entry.searchText.includes(needle);
     });
-  }, [query, recipeGenre]);
+  }, [promptRecipes, query, recipeGenre]);
 
   const resultCount = activeKind === "artist_dna" ? artistResults.length : recipeResults.length;
   const visibleArtists = artistResults.slice(0, visibleCount);
@@ -241,7 +243,7 @@ export default function SunoInspirationIndexSection({ isZh }: SunoInspirationInd
                         </button>
                       );
                     })
-                  : [{ key: "all", zh: "全部曲風", en: "All genres" }, ...SUNO_RECIPE_GENRES].map((filter) => {
+                  : [{ key: "all", zh: "全部曲風", en: "All genres" }, ...recipeGenres].map((filter) => {
                       const selected = recipeGenre === filter.key;
                       return (
                         <button

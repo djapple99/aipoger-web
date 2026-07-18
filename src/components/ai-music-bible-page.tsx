@@ -32,9 +32,8 @@ import StemSeparationGuideSection from "@/components/stem-separation-guide-secti
 import SunoPracticeLibrarySection from "@/components/suno-practice-library-section";
 import AuthRequiredDialog from "@/components/auth-required-dialog";
 import ShareButton from "@/components/share-button";
-import { bibleCatalogDefaults, type BibleCatalog } from "@/lib/ai-music-bible-content";
+import type { BibleCatalog } from "@/lib/ai-music-bible-content";
 import {
-  TAIWANESE_LYRICS_CATEGORIES,
   type TaiwaneseLyricsCategory,
 } from "@/lib/taiwanese-lyrics-lab";
 
@@ -48,6 +47,8 @@ const categoryLabels: Record<TaiwaneseLyricsCategory, string> = {
   情緒與口語: "Emotion / Spoken",
   空間與疑問: "Place / Question",
 };
+
+const TAIWANESE_LYRICS_CATEGORIES: TaiwaneseLyricsCategory[] = ["人稱", "動作與狀態", "時間", "情緒與口語", "空間與疑問"];
 
 type PracticeArea = {
   icon: typeof WandSparkles;
@@ -258,7 +259,11 @@ export default function AiMusicBiblePage() {
   const [feedbackState, setFeedbackState] = useState<Record<string, "loading" | "sent" | "error">>({});
   const [accessState, setAccessState] = useState<AccessState>("checking");
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
-  const [bibleContent, setBibleContent] = useState<BibleCatalog>(() => bibleCatalogDefaults());
+  const [bibleContent, setBibleContent] = useState<BibleCatalog>({
+    promptMoves: [],
+    lyricMoves: [],
+    taiwaneseEntries: [],
+  });
 
   useEffect(() => {
     let active = true;
@@ -295,6 +300,15 @@ export default function AiMusicBiblePage() {
         promptMoves: Array.isArray(payload.promptMoves) ? payload.promptMoves : current.promptMoves,
         lyricMoves: Array.isArray(payload.lyricMoves) ? payload.lyricMoves : current.lyricMoves,
         taiwaneseEntries: Array.isArray(payload.taiwaneseEntries) ? payload.taiwaneseEntries : current.taiwaneseEntries,
+        genreGroups: Array.isArray(payload.genreGroups) ? payload.genreGroups : current.genreGroups,
+        productionFlow: Array.isArray(payload.productionFlow) ? payload.productionFlow : current.productionFlow,
+        promptCategories: Array.isArray(payload.promptCategories) ? payload.promptCategories : current.promptCategories,
+        lyricCategories: Array.isArray(payload.lyricCategories) ? payload.lyricCategories : current.lyricCategories,
+        stemEngines: Array.isArray(payload.stemEngines) ? payload.stemEngines : current.stemEngines,
+        stemGoals: Array.isArray(payload.stemGoals) ? payload.stemGoals : current.stemGoals,
+        artistDnaEntries: Array.isArray(payload.artistDnaEntries) ? payload.artistDnaEntries : current.artistDnaEntries,
+        promptRecipes: Array.isArray(payload.promptRecipes) ? payload.promptRecipes : current.promptRecipes,
+        recipeGenres: Array.isArray(payload.recipeGenres) ? payload.recipeGenres : current.recipeGenres,
       }));
     })();
     return () => { active = false; };
@@ -531,10 +545,21 @@ export default function AiMusicBiblePage() {
           </div>
         </section>
 
-        <SunoPracticeLibrarySection locale={isZh ? "zh" : "en"} promptMoves={bibleContent.promptMoves} lyricMoves={bibleContent.lyricMoves} />
+        <SunoPracticeLibrarySection
+          locale={isZh ? "zh" : "en"}
+          promptMoves={bibleContent.promptMoves}
+          lyricMoves={bibleContent.lyricMoves}
+          genreGroups={bibleContent.genreGroups ?? []}
+          productionFlow={bibleContent.productionFlow ?? []}
+          promptCategories={bibleContent.promptCategories ?? []}
+          lyricCategories={bibleContent.lyricCategories ?? []}
+          artistDnaEntries={bibleContent.artistDnaEntries ?? []}
+          promptRecipes={bibleContent.promptRecipes ?? []}
+          recipeGenres={bibleContent.recipeGenres ?? []}
+        />
 
         <div className="mt-10">
-          <StemSeparationGuideSection locale={isZh ? "zh" : "en"} />
+          <StemSeparationGuideSection locale={isZh ? "zh" : "en"} engines={bibleContent.stemEngines ?? []} goals={bibleContent.stemGoals ?? []} />
         </div>
 
         <section id="taiwanese-lab" className="mt-10 scroll-mt-20 overflow-hidden rounded-[1.6rem] border border-orange-300/22 bg-[#070707]/90 shadow-[0_30px_100px_rgba(0,0,0,0.5)]">

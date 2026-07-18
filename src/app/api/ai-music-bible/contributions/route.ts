@@ -58,7 +58,7 @@ function requestFingerprint(request: NextRequest, serviceKey: string) {
   return createHmac("sha256", salt).update(`${day}:${ip}:${userAgent}`).digest("hex");
 }
 
-async function optionalUserId(request: NextRequest, admin: SupabaseClient) {
+async function requiredUserId(request: NextRequest, admin: SupabaseClient) {
   const authorization = request.headers.get("authorization") || "";
   if (!authorization.toLowerCase().startsWith("bearer ")) return null;
   const token = authorization.slice(7).trim();
@@ -76,6 +76,11 @@ export async function POST(request: NextRequest) {
   const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY)?.trim();
   if (!admin || !serviceKey) {
     return NextResponse.json({ error: "投稿服務暫時未連線，主要資料仍可正常使用。" }, { status: 503 });
+  }
+
+  const userId = await requiredUserId(request, admin);
+  if (!userId) {
+    return NextResponse.json({ error: "請先登入，才能補充練功聖經資料。" }, { status: 401 });
   }
 
   let body: ContributionBody;
@@ -130,7 +135,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "你這一小時的回報已達上限，晚一點再來補資料。" }, { status: 429 });
   }
 
-  const userId = await optionalUserId(request, admin);
   const { error } = await admin.from(TABLE).insert({
     user_id: userId,
     contribution_kind: kind,

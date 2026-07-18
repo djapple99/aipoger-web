@@ -14,6 +14,8 @@ import {
   type TaiwaneseLyricsCategory,
   type TaiwaneseLyricsEntry,
 } from "./taiwanese-lyrics-lab.ts";
+import type { StemEngine, StemGoal } from "./stem-separation-guide.ts";
+import type { SunoArtistDnaEntry, SunoPromptRecipe } from "./suno-inspiration-index.ts";
 
 export type BibleContentKind = "prompt_move" | "lyric_move" | "taiwanese_entry";
 export type BibleTechnique = SunoTechnique<SunoPromptCategory> | SunoTechnique<SunoLyricCategory>;
@@ -44,6 +46,15 @@ export type BibleCatalog = {
   promptMoves: SunoTechnique<SunoPromptCategory>[];
   lyricMoves: SunoTechnique<SunoLyricCategory>[];
   taiwaneseEntries: TaiwaneseLyricsEntry[];
+  genreGroups?: { key: string; label: { zh: string; en: string }; terms: string[] }[];
+  productionFlow?: { title: { zh: string; en: string }; body: { zh: string; en: string } }[];
+  promptCategories?: { key: SunoPromptCategory | "all"; label: { zh: string; en: string } }[];
+  lyricCategories?: { key: SunoLyricCategory | "all"; label: { zh: string; en: string } }[];
+  stemEngines?: StemEngine[];
+  stemGoals?: StemGoal[];
+  artistDnaEntries?: readonly SunoArtistDnaEntry[];
+  promptRecipes?: readonly SunoPromptRecipe[];
+  recipeGenres?: { key: string; zh: string; en: string }[];
 };
 
 const promptCategoryKeys = new Set(SUNO_PROMPT_CATEGORIES.map((item) => item.key).filter((key) => key !== "all"));

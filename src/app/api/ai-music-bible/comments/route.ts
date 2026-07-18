@@ -159,19 +159,20 @@ export async function GET(request: NextRequest) {
       .eq("moderation_status", "visible")
       .order("created_at", { ascending: true })
       .limit(100);
-    const result = modern.error && /moderation_status|column.*does not exist|PGRST204|schema cache/i.test(schemaErrorText(modern.error))
-      ? await admin
-          .from(TABLE)
-          .select("id,entry_kind,entry_key,user_id,display_name,avatar_url,body,created_at")
-          .eq("entry_kind", kind)
-          .eq("entry_key", key)
-          .order("created_at", { ascending: true })
-          .limit(100)
-      : modern;
-    if (result.error) throw result.error;
+    if (modern.error) {
+      // Never fall back to an unfiltered legacy query: during a stale schema
+      // cache or partial migration it could expose rows hidden by moderation.
+      if (/moderation_status|column.*does not exist|PGRST204|schema cache/i.test(schemaErrorText(modern.error))) {
+        return NextResponse.json(
+          { schemaReady: false, comments: [] },
+          { status: 503, headers: { "Cache-Control": "no-store" } },
+        );
+      }
+      throw modern.error;
+    }
     return NextResponse.json({
       schemaReady: true,
-      comments: ((result.data ?? []) as CommentRow[]).map((row) => publicComment(row, user.id)),
+      comments: ((modern.data ?? []) as CommentRow[]).map((row) => publicComment(row, user.id)),
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (missingSchema(error)) {
