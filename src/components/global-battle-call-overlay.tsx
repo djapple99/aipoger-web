@@ -312,7 +312,15 @@ export default function GlobalBattleCallOverlay() {
   const [accountDockPosition, setAccountDockPosition] = useState<AccountDockPosition | null>(null);
   const [accountDockDragging, setAccountDockDragging] = useState(false);
   const accountDockPositionRef = useRef<AccountDockPosition | null>(null);
-  const accountDockDragRef = useRef<{ pointerId: number; offsetX: number; offsetY: number; startX: number; startY: number } | null>(null);
+  const accountDockDragRef = useRef<{
+    pointerId: number;
+    offsetX: number;
+    offsetY: number;
+    startX: number;
+    startY: number;
+    target: HTMLElement;
+    active: boolean;
+  } | null>(null);
   const suppressAccountDockClickRef = useRef(false);
 
   const routeTone = useMemo(() => {
@@ -389,7 +397,7 @@ export default function GlobalBattleCallOverlay() {
   }, [ready]);
 
   const beginAccountDockDrag = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
+    if (event.pointerType !== "touch" && event.button !== 0) return;
     const position = accountDockPositionRef.current ?? defaultAccountDockPosition();
     suppressAccountDockClickRef.current = false;
     accountDockDragRef.current = {
@@ -398,18 +406,24 @@ export default function GlobalBattleCallOverlay() {
       offsetY: event.clientY - position.y,
       startX: event.clientX,
       startY: event.clientY,
+      target: event.currentTarget,
+      active: false,
     };
-    event.currentTarget.setPointerCapture(event.pointerId);
   }, []);
 
   const moveAccountDock = useCallback((event: PointerEvent) => {
     const drag = accountDockDragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
-    if (Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > 4) {
+    if (Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > 8) {
+      if (!drag.active) {
+        drag.active = true;
+        drag.target.setPointerCapture?.(event.pointerId);
+      }
       suppressAccountDockClickRef.current = true;
       setAccountDockDragging(true);
       event.preventDefault();
     }
+    if (!drag.active) return;
     const next = clampAccountDockPosition({ x: event.clientX - drag.offsetX, y: event.clientY - drag.offsetY });
     accountDockPositionRef.current = next;
     setAccountDockPosition(next);
@@ -419,6 +433,9 @@ export default function GlobalBattleCallOverlay() {
     const drag = accountDockDragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     accountDockDragRef.current = null;
+    if (drag.active && drag.target.hasPointerCapture?.(event.pointerId)) {
+      drag.target.releasePointerCapture?.(event.pointerId);
+    }
     setAccountDockDragging(false);
     const position = accountDockPositionRef.current ?? defaultAccountDockPosition();
     persistAccountDockPosition(position);

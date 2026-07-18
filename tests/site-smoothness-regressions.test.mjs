@@ -38,6 +38,8 @@ test("floating account avatar always opens Profile while the bell remains a sepa
   assert.ok(overlaySource.includes('aria-label={isZh ? "帳號消息" : "Account notices"}'));
   assert.ok(overlaySource.includes('onPointerDown={(event) => event.stopPropagation()}'));
   assert.ok(overlaySource.includes("supabase.auth.onAuthStateChange"));
+  assert.ok(overlaySource.includes("drag.target.setPointerCapture?.(event.pointerId)"));
+  assert.ok(overlaySource.includes("Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > 8"));
 });
 
 test("battle stage keeps a dramatic desktop VS while hiding it on mobile", () => {
