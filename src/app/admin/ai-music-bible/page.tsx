@@ -4,7 +4,7 @@ import Link from "next/link";
 import { BookOpenText, Check, ChevronLeft, RotateCcw, Save, Search, ShieldCheck, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fontRighteous } from "@/lib/fonts";
-import { getActiveAuthSession, loadIsAdmin } from "@/lib/user-profile-admin";
+import { getActiveAuthSession, loadIsAdmin, refreshActiveAuthSession } from "@/lib/user-profile-admin";
 import type { BibleContentKind, BibleContentPayload } from "@/lib/ai-music-bible-content";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
@@ -56,7 +56,8 @@ const categoryOptions: Record<BibleContentKind, string[]> = {
   taiwanese_entry: ["人稱", "動作與狀態", "時間", "情緒與口語", "空間與疑問"],
 };
 
-async function authHeader(): Promise<Record<string, string>> {
+async function authHeader(accessToken?: string): Promise<Record<string, string>> {
+  if (accessToken) return { Authorization: `Bearer ${accessToken}` };
   const session = await getActiveAuthSession();
   return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
 }
@@ -113,9 +114,17 @@ export default function AdminAiMusicBiblePage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (accessToken?: string) => {
     setLoading(true);
-    const response = await fetch("/api/admin/ai-music-bible/content", { cache: "no-store", headers: await authHeader() });
+    let response = await fetch("/api/admin/ai-music-bible/content", { cache: "no-store", headers: await authHeader(accessToken) });
+    // A token can expire between the auth gate and the API request. Refresh the
+    // client session once and retry, while keeping the route owner-protected.
+    if (response.status === 401) {
+      const retrySession = await refreshActiveAuthSession();
+      if (retrySession?.access_token && retrySession.access_token !== accessToken) {
+        response = await fetch("/api/admin/ai-music-bible/content", { cache: "no-store", headers: await authHeader(retrySession.access_token) });
+      }
+    }
     const payload = await response.json().catch(() => null) as ApiPayload | null;
     setLoading(false);
     if (!response.ok) {
@@ -135,13 +144,13 @@ export default function AdminAiMusicBiblePage() {
     let active = true;
     void (async () => {
       const session = await getActiveAuthSession();
-      const user = session?.user ?? null;
       if (!active) return;
-      if (!user) { setAdminState("login"); return; }
+      if (!session?.user || !session.access_token) { setAdminState("login"); return; }
+      const user = session.user;
       const allowed = await loadIsAdmin(user.id);
       if (!active) return;
       if (!allowed) { setAdminState("denied"); return; }
-      const loaded = await load();
+      const loaded = await load(session.access_token);
       if (active && loaded) setAdminState("ready");
     })();
     return () => { active = false; };
