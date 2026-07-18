@@ -8,12 +8,14 @@ import {
   Check,
   ChevronRight,
   Clipboard,
+  ExternalLink,
   FlaskConical,
   Headphones,
   LibraryBig,
   LockKeyhole,
   MessageCirclePlus,
   Music2,
+  QrCode,
   Search,
   ShieldCheck,
   Sparkles,
@@ -27,11 +29,12 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { fontRighteous } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
-import { AIPOGER_TUTORIAL_PLAYLIST_URL } from "@/lib/brand";
+import { AIPOGER_LINE_COMMUNITY_URL, AIPOGER_TUTORIAL_PLAYLIST_URL } from "@/lib/brand";
 import StemSeparationGuideSection from "@/components/stem-separation-guide-section";
 import SunoPracticeLibrarySection from "@/components/suno-practice-library-section";
 import AuthRequiredDialog from "@/components/auth-required-dialog";
 import ShareButton from "@/components/share-button";
+import { LineCommunityDialog, SocialIcon } from "@/components/social-icons";
 import type { BibleCatalog } from "@/lib/ai-music-bible-content";
 import {
   type TaiwaneseLyricsCategory,
@@ -197,6 +200,47 @@ function bibleShareCopyForLanguage(lang: string) {
   };
 }
 
+function bibleCommunityCopyForLanguage(lang: string) {
+  if (lang === "ja") {
+    return {
+      eyebrow: "LINE FIELD ROOM",
+      title: "LINEで実測を共有する",
+      body: "Suno、Prompt、歌詞、台湾語の発音テストを持ち寄って、うまくいった条件と失敗を一緒に検証します。",
+      join: "LINEコミュニティに参加",
+      qr: "QRコードを表示",
+      note: "バイブルで調べた内容を、実際のテスト結果と一緒にコミュニティへ戻してください。",
+    };
+  }
+  if (lang === "ko") {
+    return {
+      eyebrow: "LINE FIELD ROOM",
+      title: "LINE에서 실전 테스트를 나눠요",
+      body: "Suno, Prompt, 가사와 대만어 발음 테스트를 가져와 성공한 조건과 실패를 함께 검증합니다.",
+      join: "LINE 커뮤니티 참여",
+      qr: "QR 코드 보기",
+      note: "바이블에서 찾은 내용을 실제 테스트 결과와 함께 커뮤니티로 다시 가져와 주세요.",
+    };
+  }
+  if (lang === "en") {
+    return {
+      eyebrow: "LINE FIELD ROOM",
+      title: "Bring your tests into the room",
+      body: "Share Suno, prompt, lyric, and Taiwanese pronunciation tests so the community can compare what worked and what broke.",
+      join: "Join LINE community",
+      qr: "Show QR code",
+      note: "Look it up in the Bible, test it in your workflow, then bring the result back to the room.",
+    };
+  }
+  return {
+    eyebrow: "LINE 實測討論區",
+    title: "來 LINE 一起補完這本聖經",
+    body: "把 Suno、Prompt、歌詞與台語發音實測帶進來；成功與唱錯，都可以一起討論、一起驗證。",
+    join: "加入 LINE 社群",
+    qr: "顯示 QR code",
+    note: "先在聖經查資料，再把你的實測、問題與新發現帶回社群。",
+  };
+}
+
 async function submitContribution(payload: Record<string, string>) {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
@@ -250,6 +294,7 @@ export default function AiMusicBiblePage() {
       };
   const practiceAreas = useMemo(() => practiceAreasForLanguage(isZh), [isZh]);
   const shareCopy = bibleShareCopyForLanguage(lang);
+  const communityCopy = bibleCommunityCopyForLanguage(lang);
   const shareUrl = `/ai-music-bible?lang=${lang}`;
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<TaiwaneseLyricsCategory | "全部">("全部");
@@ -259,6 +304,7 @@ export default function AiMusicBiblePage() {
   const [feedbackState, setFeedbackState] = useState<Record<string, "loading" | "sent" | "error">>({});
   const [accessState, setAccessState] = useState<AccessState>("checking");
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
+  const [lineCommunityOpen, setLineCommunityOpen] = useState(false);
   const [bibleContent, setBibleContent] = useState<BibleCatalog>({
     promptMoves: [],
     lyricMoves: [],
@@ -544,6 +590,35 @@ export default function AiMusicBiblePage() {
             })}
           </div>
         </section>
+
+        <section id="line-community" className="scroll-mt-24 mt-2 overflow-hidden rounded-[1.5rem] border border-[#06c755]/25 bg-[linear-gradient(135deg,rgba(6,199,85,0.12),rgba(0,0,0,0.78)_48%,rgba(34,211,238,0.07))] shadow-[0_24px_70px_rgba(0,0,0,0.32)]">
+          <div className="relative grid gap-7 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:p-9">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#06c755]/65 to-transparent" />
+            <div className="relative flex items-start gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[#06c755]/40 bg-[#06c755]/[0.12] shadow-[0_12px_30px_rgba(6,199,85,0.16)]">
+                <SocialIcon label="LINE" className="h-8 w-8" />
+              </div>
+              <div className="min-w-0">
+                <p className={`${fontRighteous.className} text-[11px] uppercase tracking-[0.28em] text-[#7af0a1]`}>{communityCopy.eyebrow}</p>
+                <h2 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-3xl">{communityCopy.title}</h2>
+                <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-zinc-300">{communityCopy.body}</p>
+              </div>
+            </div>
+            <div className="relative flex flex-wrap gap-2 lg:justify-end">
+              <a href={AIPOGER_LINE_COMMUNITY_URL} target="_blank" rel="noreferrer" className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-[#06c755] px-5 text-sm font-black text-[#031b0b] transition hover:bg-[#38df79] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b6ffcb]">
+                {communityCopy.join}
+                <ExternalLink className="h-4 w-4" aria-hidden="true" />
+              </a>
+              <button type="button" onClick={() => setLineCommunityOpen(true)} className="inline-flex min-h-12 items-center gap-2 rounded-xl border border-[#06c755]/45 bg-black/35 px-5 text-sm font-black text-[#c8ffd7] transition hover:border-[#06c755] hover:bg-[#06c755]/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#06c755]">
+                <QrCode className="h-4 w-4" aria-hidden="true" />
+                {communityCopy.qr}
+              </button>
+            </div>
+            <p className="relative text-xs font-bold leading-6 text-[#a7d8b4]/75 lg:col-span-2">{communityCopy.note}</p>
+          </div>
+        </section>
+
+        <LineCommunityDialog open={lineCommunityOpen} onClose={() => setLineCommunityOpen(false)} lang={lang as "zh" | "en" | "ja" | "ko"} />
 
         <SunoPracticeLibrarySection
           locale={isZh ? "zh" : "en"}

@@ -11,6 +11,7 @@ const watchSource = fs.readFileSync("src/app/watch/page.tsx", "utf8");
 const analysisHealthSource = fs.readFileSync("src/app/api/music-analysis/health/route.ts", "utf8");
 const brandSource = fs.readFileSync("src/lib/brand.ts", "utf8");
 const socialIconSource = fs.readFileSync("src/components/social-icons.tsx", "utf8");
+const bibleSource = fs.readFileSync("src/components/ai-music-bible-page.tsx", "utf8");
 
 test("public social cluster exposes the LINE community with a desktop QR handoff", () => {
   assert.ok(brandSource.includes("AIPOGER_LINE_COMMUNITY_URL"));
@@ -19,6 +20,13 @@ test("public social cluster exposes the LINE community with a desktop QR handoff
   assert.ok(socialIconSource.includes("api.qrserver.com/v1/create-qr-code"));
   assert.ok(socialIconSource.includes("複製邀請連結"));
   assert.ok(socialIconSource.includes("在 LINE 開啟"));
+});
+
+test("the signed-in practice Bible offers a LINE field room", () => {
+  assert.ok(bibleSource.includes('id="line-community"'));
+  assert.ok(bibleSource.includes("LineCommunityDialog"));
+  assert.ok(bibleSource.includes("AIPOGER_LINE_COMMUNITY_URL"));
+  assert.ok(bibleSource.includes("加入 LINE 社群"));
 });
 
 test("logged-out account dock does not present a fake notification bell", () => {

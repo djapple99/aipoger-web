@@ -121,9 +121,10 @@ Mobile layout:
 
 Social icons:
 
-- Use colored Instagram, Discord, and Facebook icons for the public homepage cluster.
+- Use official brand icon paths for LINE, Instagram, Discord, and Facebook, rendered inside one consistent AIPOGER stage-button treatment. Do not mix hand-drawn sticker shapes, emoji, or unrelated glow styles.
 - Discord uses the permanent invite URL `https://discord.gg/3bWVgyPKk`.
 - Facebook should link to the AIPOGER group when using the public social cluster.
+- LINE is the community action; its QR control opens a compact modal instead of permanently placing a QR image in the homepage strip.
 
 ## Drop Battle
 
