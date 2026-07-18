@@ -6,6 +6,12 @@ import { createClient } from "@supabase/supabase-js";
  * 大檔 WAV 在 Vercel 可能觸發 413：可調高方案限制，或改用客戶端 supabase.storage（見 battle_arena_rls_and_storage.sql 之 anon hooks 政策）。
  */
 const MIME_ATTEMPTS = ["audio/wav", "audio/x-wav", "audio/wave", "audio/vnd.wave"] as const;
+const MAX_AUDIO_BYTES = 30 * 1024 * 1024;
+
+function bearerToken(req: Request) {
+  const value = req.headers.get("authorization") ?? "";
+  return value.replace(/^Bearer\s+/i, "").trim() || null;
+}
 
 function isLikelyStorageMimeRejection(err: unknown): boolean {
   const msg = String((err as { message?: string })?.message ?? err).toLowerCase();
@@ -20,15 +26,19 @@ function isLikelyStorageMimeRejection(err: unknown): boolean {
 
 export async function POST(req: Request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const serviceKey =
     process.env.SUPABASE_SERVICE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
-  if (!supabaseUrl || !serviceKey) {
+  if (!supabaseUrl || !anonKey || !serviceKey) {
     return NextResponse.json(
-      { error: "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_KEY / SUPABASE_SERVICE_ROLE_KEY" },
+      { error: "Missing Supabase server configuration" },
       { status: 500 },
     );
   }
+
+  const token = bearerToken(req);
+  if (!token) return NextResponse.json({ error: "Missing authorization token" }, { status: 401 });
 
   let body: { storagePath?: string; audioBase64?: string; userId?: string };
   try {
@@ -53,8 +63,19 @@ export async function POST(req: Request) {
 
   const path = storagePath.trim();
   const uid = userId.trim();
-  if (path.includes("..") || !path.startsWith(`${uid}/hooks/`)) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uid)) {
+    return NextResponse.json({ error: "Invalid userId" }, { status: 400 });
+  }
+  if (!/^[a-zA-Z0-9/._-]+$/.test(path) || path.includes("..") || !path.startsWith(`${uid}/hooks/`)) {
     return NextResponse.json({ error: "Invalid storagePath" }, { status: 400 });
+  }
+
+  const authClient = createClient(supabaseUrl, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: userData, error: userError } = await authClient.auth.getUser(token);
+  if (userError || userData.user?.id !== uid) {
+    return NextResponse.json({ error: "Unauthorized upload path" }, { status: 403 });
   }
 
   let buffer: Buffer;
@@ -66,6 +87,9 @@ export async function POST(req: Request) {
 
   if (buffer.length === 0) {
     return NextResponse.json({ error: "Empty audio payload" }, { status: 400 });
+  }
+  if (buffer.length > MAX_AUDIO_BYTES) {
+    return NextResponse.json({ error: "Audio payload is too large" }, { status: 413 });
   }
 
   const supabase = createClient(supabaseUrl, serviceKey, {
