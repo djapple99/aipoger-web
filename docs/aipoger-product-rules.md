@@ -1,6 +1,6 @@
 # AIPOGER Product Rules
 
-Last updated: 2026-07-10
+Last updated: 2026-07-18
 
 This document is the product-rule source of truth for AIPOGER. Use it before changing Battle, Bar Heartbreak, AIPOGER Showtime, auth, upload, or deployment behavior.
 
@@ -68,6 +68,14 @@ Daily Spotlight 已退役：它不再是傷心酒吧、Explore、`/admin/listen-
 - Explore AI Music and Bar Heartbreak must read and update the same `listen_bar_tracks` Heart totals for the same song; Explore must not create a separate favorite or Heart counter.
 - Official and creator Choice workbenches must let curators preview a current Showtime track before adding it. Use the compact bottom audio player with play/pause, seek progress, and volume controls; unavailable audio stays visibly disabled rather than pretending to be playable.
 - V1 allows creators to react to their own Bar Heartbreak song.
+
+## Account Dock / 浮動帳號頭像
+
+- The signed-in floating account avatar is always the Profile entry for every account, including owners. A Battle or account notice must never replace the avatar link with a notice-opening button.
+- The notification bell is a separate, smaller control attached to the avatar. Clicking the avatar opens `/profile?lang=<lang>`; clicking the bell opens or expands the account-notice panel.
+- Dragging is an enhancement, not the primary action: pointer capture must begin only after the pointer has moved more than 8px. A normal click must reach the Profile link, and a real drag must persist the edge-relative position across release, reload, and viewport resize.
+- The dock listens for Supabase auth state changes so signed-in users, owners, sign-outs, and account switches receive the correct avatar and Profile entry without relying on a full page reload. Logged-out visitors continue to see the sign-in entry on routes where the dock is shown.
+- Owner administration remains a second step from Profile (`/admin` and the owner-only management links); the floating avatar is not a hidden owner-only admin shortcut.
 
 ## Music Analysis / AI A&R Gate
 

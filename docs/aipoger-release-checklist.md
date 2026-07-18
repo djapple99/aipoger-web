@@ -332,6 +332,9 @@ Look for:
 - Audio controls crowding layout.
 - Fixed home, language, and account controls do not cover page kickers or headings.
 - Logged-out visitors see a sign-in action rather than a profile avatar with an empty notification bell; `/profile` returns them to sign-in and preserves the Profile return path.
+- Signed-in users can click the center of the floating avatar to open Profile even when an account/Battle notice is present; the small bell is the separate notice control.
+- Floating-avatar click is not swallowed by drag handling: pointer capture starts only after more than 8px of movement, while a real drag still persists its edge-relative position across release, reload, and viewport resize.
+- Owner and non-owner signed-in sessions both render the floating Profile entry; Supabase auth-state changes update the dock when a session is signed in, signed out, or switched without requiring a full reload.
 
 ## Smoothness Checklist
 
