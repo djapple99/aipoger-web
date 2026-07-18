@@ -33,6 +33,13 @@ test("signed-in account dock can be dragged without losing its saved position", 
   assert.ok(overlaySource.includes('window.addEventListener("pointerup", finishAccountDockDrag'));
 });
 
+test("floating account avatar always opens Profile while the bell remains a separate notice action", () => {
+  assert.ok(overlaySource.includes('href={`/profile?lang=${lang}`}'));
+  assert.ok(overlaySource.includes('aria-label={isZh ? "帳號消息" : "Account notices"}'));
+  assert.ok(overlaySource.includes('onPointerDown={(event) => event.stopPropagation()}'));
+  assert.ok(overlaySource.includes("supabase.auth.onAuthStateChange"));
+});
+
 test("battle stage keeps a dramatic desktop VS while hiding it on mobile", () => {
   assert.match(globalsSource, /\.battle-stage-vs \{[\s\S]*?display: none;/);
   assert.match(globalsSource, /@media \(min-width: 768px\)[\s\S]*?\.battle-stage-vs \{[\s\S]*?display: block;[\s\S]*?font-size: 6\.75rem;/);

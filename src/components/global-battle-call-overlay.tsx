@@ -509,6 +509,25 @@ export default function GlobalBattleCallOverlay() {
     let mounted = true;
     let channel: ReturnType<typeof supabase.channel> | null = null;
 
+    const { data: authState } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!mounted) return;
+      const nextUser = nextSession?.user ?? null;
+      setAccountUserId(nextUser?.id ?? null);
+      setAccountSessionResolved(true);
+      setAccessToken(nextSession?.access_token ?? "");
+      setAccountInitial((nextUser?.email ?? nextUser?.user_metadata?.full_name ?? "A").slice(0, 1).toUpperCase());
+      setAccountAvatarUrl(authAvatarUrl(nextUser));
+      if (!nextUser) {
+        setUnreadAccountNoticeCount(0);
+        setActiveNotice(null);
+        setExpiredNotice(null);
+        if (channel) {
+          void supabase.removeChannel(channel);
+          channel = null;
+        }
+      }
+    });
+
     void (async () => {
       const {
         data: { session },
@@ -672,6 +691,7 @@ export default function GlobalBattleCallOverlay() {
 
     return () => {
       mounted = false;
+      authState.subscription.unsubscribe();
       if (channel) void supabase.removeChannel(channel);
     };
   }, [isZh, markRead, ready, routeTone, setAccountNoticeCollapsed, showCall]);
@@ -777,7 +797,7 @@ export default function GlobalBattleCallOverlay() {
           : "border-orange-200/55 text-orange-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_28px_rgba(255,106,0,0.2)] hover:border-orange-100"
         : "border-cyan-200/30 text-cyan-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_24px_rgba(0,203,255,0.14)] hover:border-cyan-100 hover:text-white"
     }`;
-    const avatarContent = (
+    const avatarVisual = (
       <>
         {accountAvatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -802,11 +822,14 @@ export default function GlobalBattleCallOverlay() {
             />
           )
         )}
-        <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-black bg-black/88 text-orange-100 shadow-[0_0_18px_rgba(255,106,0,0.24)]">
-          <BellIcon />
-        </span>
       </>
     );
+
+    const openNotice = onBellClick ?? (() => {
+      setAccountNoticeCollapsed(false);
+      setActiveNoticeOpen(true);
+      setExpiredNoticeOpen(true);
+    });
 
     return (
       <div
@@ -821,35 +844,24 @@ export default function GlobalBattleCallOverlay() {
         aria-label={isZh ? "帳號頭像，可拖曳移動" : "Account avatar, draggable"}
         title={isZh ? "拖曳可移動" : "Drag to move"}
       >
-        {hasNotice && onBellClick ? (
-          <button
-            type="button"
-            onClick={onBellClick}
-            className={avatarClassName}
-            aria-label={isZh ? "展開帳號消息" : "Expand account notice"}
-            title={isZh ? "帳號消息" : "Account Notice"}
-          >
-            {avatarContent}
-          </button>
-        ) : hasNotice ? (
-          <Link
-            href={profileNoticeHref}
-            className={avatarClassName}
-            aria-label={isZh ? "查看帳號消息" : "Open account notices"}
-            title={isZh ? "帳號消息" : "Account Notice"}
-          >
-            {avatarContent}
-          </Link>
-        ) : (
-          <Link
-            href={`/profile?lang=${lang}`}
-            className={avatarClassName}
-            aria-label={isZh ? "個人資料" : "Profile"}
-            title={isZh ? "個人資料" : "Profile"}
-          >
-            {avatarContent}
-          </Link>
-        )}
+        <Link
+          href={`/profile?lang=${lang}`}
+          className={avatarClassName}
+          aria-label={isZh ? "個人資料" : "Profile"}
+          title={isZh ? "開啟個人資料" : "Open profile"}
+        >
+          {avatarVisual}
+        </Link>
+        <button
+          type="button"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={openNotice}
+          className={`absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-black bg-black/88 text-orange-100 shadow-[0_0_18px_rgba(255,106,0,0.24)] transition hover:bg-orange-500 hover:text-black ${hasNotice ? "opacity-100" : "opacity-70"}`}
+          aria-label={isZh ? "帳號消息" : "Account notices"}
+          title={isZh ? "帳號消息" : "Account notices"}
+        >
+          <BellIcon />
+        </button>
       </div>
     );
   };
