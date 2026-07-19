@@ -1,3 +1,5 @@
+import { SUNO_STUDIO_MASTERING_MOVES } from "./suno-studio-mastering-prompts.ts";
+
 export type SunoLibraryLocale = "zh" | "en";
 
 export type SunoLocalizedText = {
@@ -12,6 +14,7 @@ export type SunoPromptCategory =
   | "workflow"
   | "dance"
   | "production"
+  | "mastering"
   | "theory"
   | "recipe";
 
@@ -47,6 +50,7 @@ export const SUNO_PROMPT_CATEGORIES: { key: SunoPromptCategory | "all"; label: S
   { key: "workflow", label: { zh: "生成工作流", en: "Workflow" } },
   { key: "dance", label: { zh: "舞曲能量", en: "Dance energy" } },
   { key: "production", label: { zh: "音色與混音", en: "Sound & mix" } },
+  { key: "mastering", label: { zh: "錄音室 Mastering", en: "Studio mastering" } },
   { key: "theory", label: { zh: "調性與節奏", en: "Key & rhythm" } },
   { key: "recipe", label: { zh: "愛波哥配方", en: "AIPOGER recipes" } },
 ];
@@ -61,7 +65,7 @@ export const SUNO_LYRIC_CATEGORIES: { key: SunoLyricCategory | "all"; label: Sun
   { key: "atmosphere", label: { zh: "環境與特效", en: "Atmosphere & SFX" } },
 ];
 
-export const SUNO_PROMPT_MOVES: SunoTechnique<SunoPromptCategory>[] = [
+const SUNO_CORE_PROMPT_MOVES: SunoTechnique<SunoPromptCategory>[] = [
   {
     key: "prompt-dna",
     category: "foundation",
@@ -315,6 +319,11 @@ export const SUNO_PROMPT_MOVES: SunoTechnique<SunoPromptCategory>[] = [
     sources: ["SUNO Prompt"],
     keywords: ["bossa", "r&b", "romantic", "jazz"],
   },
+];
+
+export const SUNO_PROMPT_MOVES: SunoTechnique<SunoPromptCategory>[] = [
+  ...SUNO_CORE_PROMPT_MOVES,
+  ...SUNO_STUDIO_MASTERING_MOVES,
 ];
 
 export const SUNO_LYRIC_MOVES: SunoTechnique<SunoLyricCategory>[] = [

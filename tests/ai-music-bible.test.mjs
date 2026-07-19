@@ -15,6 +15,7 @@ import {
   SUNO_LYRIC_MOVES,
   SUNO_PROMPT_MOVES,
 } from "../src/lib/suno-practice-library.ts";
+import { SUNO_STUDIO_MASTERING_MOVES } from "../src/lib/suno-studio-mastering-prompts.ts";
 import {
   SUNO_ARTIST_DNA_ENTRIES,
   SUNO_INSPIRATION_SOURCE,
@@ -113,7 +114,9 @@ test("stem separation guide is bilingual, sourced, and points only to known engi
 });
 
 test("Suno prompt and lyric libraries keep unique, bilingual, sourced moves", () => {
-  assert.equal(SUNO_PROMPT_MOVES.length, 23);
+  assert.equal(SUNO_PROMPT_MOVES.length, 42);
+  assert.equal(SUNO_STUDIO_MASTERING_MOVES.length, 19);
+  assert.equal(SUNO_STUDIO_MASTERING_MOVES.filter((entry) => entry.category === "mastering").length, 19);
   assert.equal(SUNO_LYRIC_MOVES.length, 18);
 
   for (const entries of [SUNO_PROMPT_MOVES, SUNO_LYRIC_MOVES]) {
@@ -142,6 +145,8 @@ test("Suno prompt and lyric libraries keep unique, bilingual, sourced moves", ()
   ]) {
     assert.ok(SUNO_PROMPT_MOVES.some((entry) => entry.key === key));
   }
+  assert.ok(SUNO_STUDIO_MASTERING_MOVES.some((entry) => entry.key === "studio-mastering-general"));
+  assert.ok(SUNO_STUDIO_MASTERING_MOVES.some((entry) => entry.key === "studio-mastering-taiwanese-pop"));
   for (const key of ["enriched-section-cue", "singability-edit"]) {
     assert.ok(SUNO_LYRIC_MOVES.some((entry) => entry.key === key));
   }

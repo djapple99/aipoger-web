@@ -66,7 +66,7 @@ type PracticeArea = {
 function practiceAreasForLanguage(isZh: boolean): PracticeArea[] {
   return isZh
     ? [
-        { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt 招式庫", body: "23 招 Prompt、80+ 個曲風詞與愛波哥私藏配方。", href: "#suno-prompt-library", accent: "orange" },
+        { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt 招式庫", body: "42 招 Prompt、80+ 個曲風詞與愛波哥私藏配方。", href: "#suno-prompt-library", accent: "orange" },
         { icon: LibraryBig, eyebrow: "1,518 INDEX", title: "聲音 DNA × Prompt 索引", body: "771 組藝術家聲音 DNA 與 747 組去重配方，可搜尋、複製與評論。", href: "#suno-inspiration-index", accent: "cyan" },
         { icon: BookOpenText, eyebrow: "LYRICS", title: "歌詞調教", body: "段落、唱法、合唱、情緒與台語咬字實測。", href: "#lyric-control-library", accent: "cyan" },
         { icon: Music2, eyebrow: "DROP", title: "Drop 製作練習", body: "用 30–60 秒練節奏、情緒與記憶點。", href: "/hook-guide", accent: "orange" },
@@ -75,7 +75,7 @@ function practiceAreasForLanguage(isZh: boolean): PracticeArea[] {
         { icon: Video, eyebrow: "AIPOGER", title: "愛波哥影片教學", body: "從中文實戰影片建立完整創作流程。", href: AIPOGER_TUTORIAL_PLAYLIST_URL, accent: "cyan", external: true },
       ]
     : [
-        { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt Moves", body: "23 prompt moves, 80+ genre terms, and curated AIPOGER recipes.", href: "#suno-prompt-library", accent: "orange" },
+        { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt Moves", body: "42 prompt moves, 80+ genre terms, and curated AIPOGER recipes.", href: "#suno-prompt-library", accent: "orange" },
         { icon: LibraryBig, eyebrow: "1,518 INDEX", title: "Sonic DNA × Prompt Index", body: "Search, copy, and discuss 771 artist DNA references and 747 unique recipes.", href: "#suno-inspiration-index", accent: "cyan" },
         { icon: BookOpenText, eyebrow: "LYRICS", title: "Lyric Control", body: "Shape sections, delivery, duets, emotion, and Taiwanese pronunciation.", href: "#lyric-control-library", accent: "cyan" },
         { icon: Music2, eyebrow: "DROP", title: "Drop Practice", body: "Train rhythm, emotion, and recall inside a focused 30–60 seconds.", href: "/hook-guide", accent: "orange" },
