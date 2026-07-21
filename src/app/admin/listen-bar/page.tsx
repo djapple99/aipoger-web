@@ -32,7 +32,7 @@ import { normalizeYouTubeUrl } from "@/lib/youtube-url";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
 type TrackSortMode = "manual" | "updated_desc" | "updated_asc" | "created_desc" | "created_asc" | "genre";
-type TrackVisibilityFilter = "active" | "hidden";
+type TrackVisibilityFilter = "active" | "hidden" | "removed";
 type AdminListenBarTrackRow = ListenBarTrackRow & {
   review_status?: "approved" | "pending" | "hidden" | "removed" | string | null;
   moderation_note?: string | null;
@@ -440,8 +440,10 @@ export default function ListenBarAdminPage() {
     const query = trackSearch.trim().toLowerCase();
     const filteredTracks = displayTracks.filter((track) => {
       const hidden = isHiddenTrack(track);
+      const removed = removedStatus(track);
       if (trackVisibilityFilter === "active" && hidden) return false;
-      if (trackVisibilityFilter === "hidden" && !hidden) return false;
+      if (trackVisibilityFilter === "hidden" && (!hidden || removed)) return false;
+      if (trackVisibilityFilter === "removed" && !removed) return false;
       if (trackGenreFilter !== "all" && track.genre?.trim() !== trackGenreFilter) return false;
       if (trackMonthFilter !== "all" && trackMonthKey(track) !== trackMonthFilter) return false;
       if (!query) return true;
@@ -460,7 +462,8 @@ export default function ListenBarAdminPage() {
     [displayTracks, selectedTrackIdSet],
   );
   const allRenderedSelected = pagedRenderedTracks.length > 0 && pagedRenderedTracks.every((track) => selectedTrackIdSet.has(track.id));
-  const hiddenTrackCount = useMemo(() => displayTracks.filter(isHiddenTrack).length, [displayTracks]);
+  const hiddenTrackCount = useMemo(() => displayTracks.filter((track) => isHiddenTrack(track) && !removedStatus(track)).length, [displayTracks]);
+  const removedTrackCount = useMemo(() => displayTracks.filter(removedStatus).length, [displayTracks]);
   const newTrackCount = useMemo(
     () => activeDisplayTracks.filter((track) => isNewlyPublishedMusic(track.created_at, new Date(nowMs))).length,
     [activeDisplayTracks, nowMs],
@@ -1452,6 +1455,17 @@ export default function ListenBarAdminPage() {
                 >
                   只看下架{hiddenTrackCount > 0 ? ` ${hiddenTrackCount}` : ""}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setTrackVisibilityFilter("removed")}
+                  className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-200/55 ${
+                    trackVisibilityFilter === "removed"
+                      ? "border-red-300/45 bg-red-500/10 text-red-100"
+                      : "border-white/12 text-zinc-200 hover:border-red-300/45"
+                  }`}
+                >
+                  已移除{removedTrackCount > 0 ? ` ${removedTrackCount}` : ""}
+                </button>
                 <button type="button" disabled={playlistBusy || visiblePlayableTracks.length < 2} onClick={() => void randomizeTrackOrder()} className="rounded-full border border-orange-300/30 bg-orange-500/10 px-4 py-2 text-xs font-black text-orange-100 transition hover:border-orange-200/65 disabled:cursor-not-allowed disabled:opacity-45">
                   {playlistBusy ? "排列中" : "隨機排列"}
                 </button>
@@ -1621,6 +1635,8 @@ export default function ListenBarAdminPage() {
                         ? "這個種類目前沒有符合條件的歌曲。"
                       : trackVisibilityFilter === "hidden"
                         ? "目前沒有下架歌曲。"
+                        : trackVisibilityFilter === "removed"
+                          ? "目前沒有已移除歌曲。"
                           : "目前沒有可顯示的上架歌曲。要查看下架歌曲，請切到「只看下架」。"}
                 </div>
               ) : (
