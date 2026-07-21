@@ -44,7 +44,7 @@ const DATA_BUCKET = "listen-bar-data";
 const MESSAGE_PATH = "bar-talk/messages.json";
 const MESSAGE_LIMIT = 80;
 const MESSAGE_MAX_LENGTH = 240;
-const MESSAGE_RETENTION_HOURS = 12;
+const MESSAGE_RETENTION_HOURS = 24;
 const WINDOW_MS = MESSAGE_RETENTION_HOURS * 60 * 60 * 1000;
 
 function jsonError(message: string, status = 400) {

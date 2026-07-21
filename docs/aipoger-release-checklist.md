@@ -150,7 +150,7 @@ Check:
 - Logged-out commenting shows sign-in message.
 - Logged-in Heart reactions allow one active Heart per track per Asia/Taipei day.
 - Re-pressing Heart on the same track cancels that day's Heart and synchronized favorite, decrements the shared total, and allows a subsequent new Heart.
-- Bar Heartbreak room-message surface title is `傷心的故事傾訴留言`, not `AI 音樂交流區`, and general room messages are retained for 12H.
+- Bar Heartbreak room-message surface title is `傷心的故事傾訴留言`, not `AI 音樂交流區`, and general room messages are retained for 24H.
 - Public music surfaces show total Heart count only as the public metric; the viewer's own Heart button may light to show today's active Heart, but the page must not show public favorite state, favorite-user count, or who saved the song.
 - Explore AI Music and Bar Heartbreak show the same total Heart count for the same `listen_bar_tracks` song and write through the same reaction flow.
 - Track comments persist.

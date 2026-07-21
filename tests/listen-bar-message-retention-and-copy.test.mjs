@@ -9,14 +9,15 @@ const honorInteractionsRoute = readFileSync(new URL("../src/app/api/honor-board/
 const productRules = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
 const releaseChecklist = readFileSync(new URL("../docs/aipoger-release-checklist.md", import.meta.url), "utf8");
 
-test("Listen Bar story messages use 12 hour retention and current copy", () => {
-  assert.ok(messagesRoute.includes("MESSAGE_RETENTION_HOURS = 12"));
-  assert.ok(cleanupMessagesRoute.includes("MESSAGE_RETENTION_HOURS = 12"));
+test("Listen Bar story messages use 24 hour retention and current copy", () => {
+  assert.ok(messagesRoute.includes("MESSAGE_RETENTION_HOURS = 24"));
+  assert.ok(cleanupMessagesRoute.includes("MESSAGE_RETENTION_HOURS = 24"));
   assert.ok(listenBarPage.includes("傷心的故事傾訴留言"));
-  assert.ok(listenBarPage.includes("留言保留 12H"));
+  assert.ok(listenBarPage.includes("留言保留 24H"));
   assert.ok(listenBarPage.includes("說說你的傷心故事"));
   assert.equal(listenBarPage.includes("AI 音樂交流區"), false);
   assert.equal(listenBarPage.includes("留言保留 8H"), false);
+  assert.equal(listenBarPage.includes("留言保留 12H"), false);
 });
 
 test("Saved favorite removal remains explicit while public Heart re-press cancels the daily reaction", () => {

@@ -2962,7 +2962,7 @@ export default function ListenBarPage() {
                     {barText(lang, `${localizedMessages.length} 則留言`, `${localizedMessages.length} Messages`, `${localizedMessages.length}件のメッセージ`, `메시지 ${localizedMessages.length}개`)}
                   </p>
                   <p className="mt-1 text-xs font-black text-orange-200/80">{listenBarPresenceLabel}</p>
-                  <p className="mt-0.5 text-[11px] font-bold text-zinc-600">{barText(lang, "留言保留 12H", "Messages Keep 12H", "メッセージは12時間保存", "메시지는 12시간 보관")}</p>
+                  <p className="mt-0.5 text-[11px] font-bold text-zinc-600">{barText(lang, "留言保留 24H", "Messages Keep 24H", "メッセージは24時間保存", "메시지는 24시간 보관")}</p>
                 </div>
               </div>
               <SafetyNotice kind="chat" compact className="mb-3" />

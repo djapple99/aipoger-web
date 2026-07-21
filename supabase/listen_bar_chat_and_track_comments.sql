@@ -1,8 +1,8 @@
--- AIPOGER 傷心酒吧 Bar Heartbreak：AI 音樂交流區 8H 即時留言 + 單曲永久評論
+-- AIPOGER 傷心酒吧 Bar Heartbreak：傷心的故事傾訴留言 24H + 單曲永久評論
 -- 在 Supabase SQL Editor 執行。可重複執行。
 --
 -- 兩種留言分工：
--- 1. listen_bar_messages：AI 音樂交流區，前端與 cron 只保留最近 8H。
+-- 1. listen_bar_messages：傷心的故事傾訴留言，前端與 cron 只保留最近 24H。
 -- 2. listen_bar_track_comments：綁定單曲的永久評論，會一直給大家看。
 
 create table if not exists public.listen_bar_messages (
