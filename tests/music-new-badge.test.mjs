@@ -36,9 +36,9 @@ test("Bar Heartbreak marks new now-playing and visible list tracks", () => {
   assert.ok((listenBarSource.match(/isNewlyPublishedMusic\(track\.createdAt\)/g) ?? []).length >= 3);
 });
 
-test("product rules keep NEW separate from sorting and Choice Weekly", () => {
+test("product rules use the same seven-day window for NEW display and ordering", () => {
   assert.ok(productRulesSource.includes("rolling 7 x 24 hours"));
-  assert.ok(productRulesSource.includes("72-hour sorting boost remains unchanged"));
+  assert.ok(productRulesSource.includes("rolling seven-day NEW window is both the badge and sorting window"));
   assert.ok(productRulesSource.includes("Do not label this state `Weekly`"));
   assert.equal(productRulesSource.includes("Do not add a `NEW` label"), false);
 });
