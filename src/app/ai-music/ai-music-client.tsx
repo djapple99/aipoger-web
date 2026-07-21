@@ -26,7 +26,9 @@ import {
 } from "@/lib/ai-music-challenge-rules";
 import { buildAiMusicExploreGenreLanes, type AiMusicExploreOrderTrack } from "@/lib/ai-music-explore-order";
 import { buildAiMusicHeatList, type AiMusicHeatTrack } from "@/lib/ai-music-heat";
+import { isNewlyPublishedMusic } from "@/lib/music-newness";
 import AuthRequiredDialog from "@/components/auth-required-dialog";
+import NewMusicBadge from "@/components/new-music-badge";
 
 type TrackSource = "battle" | "bar";
 
@@ -522,6 +524,7 @@ function TrackCard({
   onShare: (track: AiMusicTrack) => void;
 }) {
   const heartCount = Math.max(0, track.heartCount);
+  const showNewBadge = isNewlyPublishedMusic(track.createdAt);
   const showChallengeReadyBadge = track.openForChallenge && Boolean(track.audioUrl);
   const heartActionLabel = heartedToday
     ? localeText(lang, "取消愛心與收藏", "Remove Heart and saved track", "Heartと保存を解除", "Heart와 저장 취소")
@@ -531,8 +534,14 @@ function TrackCard({
       <div className="relative aspect-square">
         <TrackCover track={track} className="h-full w-full" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/12 to-transparent" />
+        {showNewBadge ? (
+          <NewMusicBadge
+            lang={lang}
+            className="absolute left-3 top-3 z-20 transition-opacity md:group-hover:opacity-0"
+          />
+        ) : null}
         {catalogLabel ? (
-          <span className={`${fontRighteous.className} absolute left-3 top-3 rounded-sm border border-orange-100/40 bg-black/72 px-2 py-1 text-[10px] font-black tracking-[0.12em] text-orange-50 shadow-[0_0_18px_rgba(255,106,0,0.16)] backdrop-blur`}>
+          <span className={`${fontRighteous.className} absolute left-3 ${showNewBadge ? "top-10" : "top-3"} rounded-sm border border-orange-100/40 bg-black/72 px-2 py-1 text-[10px] font-black tracking-[0.12em] text-orange-50 shadow-[0_0_18px_rgba(255,106,0,0.16)] backdrop-blur`}>
             {catalogLabel}
           </span>
         ) : null}

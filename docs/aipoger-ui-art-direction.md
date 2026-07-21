@@ -86,6 +86,7 @@ Must preserve:
 - Link the primary action to `/ai-music`.
 - Use the supporting idea `先探索 AI 音樂，再從喜歡的作品發起挑戰`.
 - The AI music works page then contains `Drop Battle` / `AI 音樂鬥歌場` as internal options.
+- Explore work cards use a compact yellow `NEW` badge at the cover's top-left for the first rolling 7 x 24 hours after `created_at`; the red angled `接戰` status stays at the top-right. Neither badge may cover the play control or each other.
 
 ### Homepage 2026-06-24 Baseline
 
@@ -168,6 +169,7 @@ Must preserve:
 - Voting/commenting requires sign-in.
 - Reaction copy near buttons should encourage active voting.
 - The record visual is central and should feel like a public broadcast.
+- For a track within its first rolling 7 x 24 hours after `created_at`, place the compact `NEW` badge at the now-playing cover's upper-left and beside track titles in visible queue/pool lists. Keep it static and do not add it to the moving Battle ticker.
 - Lyrics area should be substantial enough to read, visually aligned with the comments area where practical.
 - Underfilled genres send new submissions straight into the same-genre public pool.
 - Challenger is shown only when that genre is already full and the new track is in 36-hour protection before public-pool promotion.

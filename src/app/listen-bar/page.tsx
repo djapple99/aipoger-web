@@ -28,6 +28,7 @@ import {
 import ShareButton from "@/components/share-button";
 import ReportButton from "@/components/report-button";
 import AuthRequiredDialog from "@/components/auth-required-dialog";
+import NewMusicBadge from "@/components/new-music-badge";
 import { shouldExpireOpenDropQueue } from "@/lib/battle-pool-client";
 import {
   DEFAULT_LISTEN_BAR_COVER,
@@ -59,6 +60,7 @@ import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import { listenBarShortPath } from "@/lib/share-short-links";
 import { normalizeYouTubeUrl } from "@/lib/youtube-url";
 import { clampMediaVolume, setNativeMediaVolume } from "@/lib/media-volume-control";
+import { isNewlyPublishedMusic } from "@/lib/music-newness";
 import type { User } from "@supabase/supabase-js";
 
 type ChatMessage = {
@@ -230,11 +232,14 @@ type ListenBarRecordArtProps = {
   coverUrl: string;
   title: string;
   isPlaying: boolean;
+  isNew: boolean;
+  lang: string;
 };
 
-const ListenBarRecordArt = memo(function ListenBarRecordArt({ coverUrl, title, isPlaying }: ListenBarRecordArtProps) {
+const ListenBarRecordArt = memo(function ListenBarRecordArt({ coverUrl, title, isPlaying, isNew, lang }: ListenBarRecordArtProps) {
   return (
     <div className="relative isolate mx-auto flex aspect-square w-full max-w-[17rem] items-center justify-center rounded-full border border-white/10 bg-[#0a0a0a] shadow-[inset_0_0_70px_rgba(255,255,255,0.055),0_0_52px_rgba(255,106,0,0.16)] [contain:paint] min-[430px]:max-w-[18.5rem] sm:max-w-[23rem] sm:shadow-[inset_0_0_70px_rgba(255,255,255,0.055),0_0_74px_rgba(255,106,0,0.14)]">
+      {isNew ? <NewMusicBadge lang={lang} className="absolute left-[20%] top-[11%] z-20 sm:top-[12%]" /> : null}
       <div
         className={`pointer-events-none absolute inset-[4%] rounded-full border transition-[border-color,box-shadow,opacity] duration-500 ${
           isPlaying
@@ -2535,7 +2540,13 @@ export default function ListenBarPage() {
             <div className="pointer-events-none absolute inset-0 [background:linear-gradient(115deg,rgba(255,106,0,0.14),transparent_35%,rgba(0,202,255,0.08))]" />
             <div className="relative grid min-w-0 gap-6 md:grid-cols-[minmax(18rem,0.98fr)_1.02fr] md:items-start">
               <div className="flex min-w-0 flex-col justify-start gap-4 pt-1 md:pt-3">
-                <ListenBarRecordArt coverUrl={nowCoverUrl} title={nowTrackTitle} isPlaying={isPlaying} />
+                <ListenBarRecordArt
+                  coverUrl={nowCoverUrl}
+                  title={nowTrackTitle}
+                  isPlaying={isPlaying}
+                  isNew={isNewlyPublishedMusic(nowTrack.createdAt)}
+                  lang={lang}
+                />
 
                 <div className="rounded-[1.35rem] border border-orange-300/14 bg-black/38 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                   <p className="text-xs font-black tracking-[0.18em] text-orange-300/75">
@@ -2857,9 +2868,12 @@ export default function ListenBarPage() {
                                 {startIndex + index + 1}
                               </span>
                               <div className="min-w-0">
-                                <p className="line-clamp-1 text-lg font-black leading-tight text-white" title={track.title}>
-                                  {track.title}
-                                </p>
+                                <div className="flex min-w-0 items-center gap-2">
+                                  {isNewlyPublishedMusic(track.createdAt) ? <NewMusicBadge lang={lang} className="shrink-0" /> : null}
+                                  <p className="min-w-0 line-clamp-1 text-lg font-black leading-tight text-white" title={track.title}>
+                                    {track.title}
+                                  </p>
+                                </div>
                                 <p className="mt-1 truncate text-sm font-bold text-zinc-500">
                                   <span className="text-orange-200">{track.artist}</span>
                                   <span className="mx-2 text-zinc-700">/</span>
@@ -3235,7 +3249,10 @@ export default function ListenBarPage() {
                     #{index + 1}
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-black text-white" title={track.title}>{track.title}</p>
+                    <div className="flex min-w-0 items-center gap-2">
+                      {isNewlyPublishedMusic(track.createdAt) ? <NewMusicBadge lang={lang} className="shrink-0" /> : null}
+                      <p className="min-w-0 truncate text-sm font-black text-white" title={track.title}>{track.title}</p>
+                    </div>
                     <p className="mt-1 truncate text-xs font-bold text-zinc-500">
                       {track.artist} · {formatDuration(track.duration)} · {track.positiveReactionCount ?? 0} {barText(lang, "愛心", "hearts", "Heart", "Heart")}
                     </p>
@@ -3300,7 +3317,10 @@ export default function ListenBarPage() {
                       <div className="min-w-0 overflow-hidden">
                         <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
                           <div className="min-w-0">
-                            <p className="min-w-0 truncate text-sm font-black text-white">{track.title}</p>
+                            <div className="flex min-w-0 items-center gap-2">
+                              {isNewlyPublishedMusic(track.createdAt) ? <NewMusicBadge lang={lang} className="shrink-0" /> : null}
+                              <p className="min-w-0 truncate text-sm font-black text-white">{track.title}</p>
+                            </div>
                             <p className="mt-0.5 truncate text-[11px] font-bold text-zinc-500">
                               {statusLabel} · {formatDuration(track.duration)} · {track.positives} hearts
                             </p>

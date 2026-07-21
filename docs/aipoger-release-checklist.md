@@ -203,6 +203,8 @@ Check:
 - Hot Now reads only 7-day distinct Heart supporters, official Battle audience votes from archives meeting the 3-voter threshold, latest qualified interaction, then created_at/id. It never uses all-time Hearts, play counts, mock scores, or Heat Score. Signal-less works are `正在累積` with no rank number; Showtime rows have no attack action.
 - The page groups works by the current 11 fixed music genres and shows at most 6 cards per genre before `看更多`.
 - Explore has no standalone `最新上架` / `New Arrivals` / `72 小時新歌` shelf, route, category, or independent `看更多`; new eligible works appear at the front of their existing genre lane.
+- `NEW` is a display-only badge for `created_at` younger than a rolling 7 x 24 hours; it expires at the seven-day boundary, never reads `updated_at`, and does not extend the 72-hour sorting boost.
+- Explore places `NEW` at the cover top-left and keeps `接戰` at the top-right without overlap on desktop/mobile. Bar Heartbreak shows `NEW` on the now-playing cover and beside new tracks in the visible queue, Challenger pool, and creator track list.
 - A fresh work (within 72 hours by `created_at`, never `updated_at`) appears ahead of established works in its genre lane; lanes with fresh works lead the wall by newest fresh `created_at`, while lanes without fresh works keep the fixed genre order.
 - The collapsed first 6 cards in a genre lane show at most one fresh work per creator; all other fresh works remain visible after that lane's `看更多` expansion.
 - Cards show song title, creator, AI tool, heart count, and challenge count.

@@ -10,6 +10,8 @@
 
 2026-07-06 補充：production 已套 `20260706_listen_bar_retire_legacy_88_rotation.sql`，DB 層封鎖舊全站 88 首淘汰與未標記的 public-pool soft delete。容量淘汰只能使用 `36-song genre public pool capacity rotation eviction.`，且只能在同一類型 active public 超過 36 首時發生。創作者自刪、owner/admin 下架、moderation 下架必須帶明確人工註記。
 
+2026-07-21 新歌標示：作品自 `created_at` 起未滿滾動 7 x 24 小時時，傷心酒吧正在播放封面與可見歌單／挑戰池標題旁顯示 `NEW`。滿 7 天即移除；不可用 `updated_at` 重新起算，也不使用 `Weekly`，避免與 AIPOGER Choice Weekly 混淆。這是視覺狀態，不改公播、Challenger、淘汰或 Explore 72 小時排序規則。
+
 ## 類型播放與同類競爭
 
 - 傷心酒吧保留「全部播放」，但必須支援依音樂類型播放，讓聽眾可以重複聆聽自己想待的情境。
