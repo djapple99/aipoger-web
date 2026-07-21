@@ -4,13 +4,14 @@ import { isAdminEmail } from "@/lib/admin-emails";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import { normalizeYouTubeUrl } from "@/lib/youtube-url";
 
-type TrackAction = "hide" | "restore" | "remove" | "sort" | "randomize" | "move" | "normalize" | "metadata" | "bulkMetadata";
+type TrackAction = "hide" | "restore" | "remove" | "sort" | "randomize" | "move" | "normalize" | "metadata" | "bulkMetadata" | "promotion_check";
 type AdminListenBarTrackRow = {
   id: string;
   is_active?: boolean | null;
   review_status?: string | null;
   hidden_at?: string | null;
   removed_at?: string | null;
+  promotion_checked_at?: string | null;
   audio_path?: string | null;
   sort_order?: number | null;
   created_at?: string | null;
@@ -74,7 +75,7 @@ async function requireOwnerAdmin(request: NextRequest) {
 }
 
 async function loadTracks(admin: ReturnType<typeof adminClient>) {
-  const modernSelect = "id, title, artist, ai_tool, genre, mood, youtube_url, bpm, duration_seconds, audio_path, cover_path, lyrics, sort_order, is_active, source, bar_phase, review_status, moderation_note, hidden_at, removed_at, promoted_at, positive_reaction_count, heart_count, star_count, thumb_count, happy_count, created_at, updated_at";
+  const modernSelect = "id, title, artist, ai_tool, genre, mood, youtube_url, bpm, duration_seconds, audio_path, cover_path, lyrics, sort_order, is_active, source, bar_phase, review_status, moderation_note, hidden_at, removed_at, promoted_at, promotion_checked_at, positive_reaction_count, heart_count, star_count, thumb_count, happy_count, created_at, updated_at";
   const legacySelect = "id, title, artist, ai_tool, genre, mood, bpm, duration_seconds, audio_path, cover_path, lyrics, sort_order, is_active, created_at, updated_at";
 
   const modern = await admin
@@ -173,6 +174,22 @@ async function updateTrack(admin: ReturnType<typeof adminClient>, trackId: strin
     .select("id")
     .maybeSingle();
   if (legacy.error) throw legacy.error;
+}
+
+async function updateTrackPromotionCheck(admin: ReturnType<typeof adminClient>, trackId: string, checked: boolean) {
+  const now = new Date().toISOString();
+  const { error } = await admin
+    .from("listen_bar_tracks")
+    .update({
+      promotion_checked_at: checked ? now : null,
+      updated_at: now,
+    })
+    .eq("id", trackId);
+  if (!error) return;
+  if (isMissingColumnError(error)) {
+    throw new Error("宣傳勾選欄位尚未建立，請先套用 supabase/migrations/20260721130437_listen_bar_promotion_check_20260721.sql。");
+  }
+  throw error;
 }
 
 async function updateTrackMetadata(admin: ReturnType<typeof adminClient>, trackId: string, body: Record<string, unknown>) {
@@ -298,7 +315,8 @@ export async function GET(request: NextRequest) {
     const tracks = await loadTracks(guard.admin);
     return NextResponse.json({ tracks });
   } catch (error) {
-    return jsonError(String((error as { message?: string })?.message ?? error), 500);
+    const message = String((error as { message?: string })?.message ?? error);
+    return jsonError(message, message.includes("promotion_checked_at") ? 409 : 500);
   }
 }
 
@@ -314,7 +332,7 @@ export async function PATCH(request: NextRequest) {
       ? body.trackIds.map((id) => cleanText(id, 160)).filter((id): id is string => Boolean(id))
       : [];
     const action = cleanText(body.action, 40) as TrackAction | null;
-    if (action !== "hide" && action !== "restore" && action !== "remove" && action !== "sort" && action !== "randomize" && action !== "move" && action !== "normalize" && action !== "metadata" && action !== "bulkMetadata") return jsonError("未知後台動作。", 400);
+    if (action !== "hide" && action !== "restore" && action !== "remove" && action !== "sort" && action !== "randomize" && action !== "move" && action !== "normalize" && action !== "metadata" && action !== "bulkMetadata" && action !== "promotion_check") return jsonError("未知後台動作。", 400);
     const targetTrackIds = trackIds.length > 0 ? trackIds : trackId ? [trackId] : [];
     if (action !== "randomize" && action !== "normalize" && targetTrackIds.length === 0) return jsonError("缺少歌曲 ID。", 400);
     if ((action === "metadata" || action === "move" || action === "sort") && !trackId) return jsonError("這個動作需要單一歌曲 ID。", 400);
@@ -323,6 +341,7 @@ export async function PATCH(request: NextRequest) {
       ? Math.round(body.sortOrder)
       : null;
     if (action === "sort" && sortOrder === null) return jsonError("缺少排序數字。", 400);
+    if (action === "promotion_check" && typeof body.promotionChecked !== "boolean") return jsonError("缺少宣傳勾選狀態。", 400);
 
     if (action === "randomize") {
       await randomizeActiveTracks(guard.admin);
@@ -336,12 +355,15 @@ export async function PATCH(request: NextRequest) {
       await updateTrackMetadata(guard.admin, trackId as string, body);
     } else if (action === "bulkMetadata") {
       await updateBulkTrackMetadata(guard.admin, targetTrackIds, body);
+    } else if (action === "promotion_check") {
+      await Promise.all(targetTrackIds.map((id) => updateTrackPromotionCheck(guard.admin, id, body.promotionChecked as boolean)));
     } else {
       await Promise.all(targetTrackIds.map((id) => updateTrack(guard.admin, id, action, sortOrder, cleanText(body.note, 1200))));
     }
     const tracks = await loadTracks(guard.admin);
     return NextResponse.json({ ok: true, tracks });
   } catch (error) {
-    return jsonError(String((error as { message?: string })?.message ?? error), 500);
+    const message = String((error as { message?: string })?.message ?? error);
+    return jsonError(message, message.includes("promotion_checked_at") ? 409 : 500);
   }
 }

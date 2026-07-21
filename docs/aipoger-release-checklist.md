@@ -179,6 +179,7 @@ Challenger and public pool:
 Choice and retired Spotlight:
 
 - `/admin/listen-bar` song management lists 10 songs per page; `選取本頁` selects only the current page, while bulk update / hide / restore / delete still works for accumulated selections.
+- `/admin/listen-bar` defaults to active/on-air songs, provides an explicit `只看下架` view with restore, shows `NEW` for `created_at` within seven rolling days, and persists the owner-only external-promotion checkbox without changing `promoted_at`.
 - `/admin/listen-bar` has no Daily Spotlight selector, date, copy, media, preview, save, or draft-generation controls, and makes no Daily Spotlight API request.
 - `/listen-bar?spotlight=YYYY-MM-DD&lang=zh` returns normal Bar Heartbreak with no specified-song playback or Spotlight panel.
 - `/today?lang=zh` returns 307 to `/rank?lang=zh#choice-weekly`.

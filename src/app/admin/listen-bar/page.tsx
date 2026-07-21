@@ -27,16 +27,18 @@ import {
   uploadListenBarAudioFile,
 } from "@/lib/listen-bar-upload-policy";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
+import { isNewlyPublishedMusic } from "@/lib/music-newness";
 import { normalizeYouTubeUrl } from "@/lib/youtube-url";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
 type TrackSortMode = "manual" | "updated_desc" | "updated_asc" | "created_desc" | "created_asc" | "genre";
-type TrackVisibilityFilter = "all" | "active" | "hidden" | "capacity_eliminated";
+type TrackVisibilityFilter = "active" | "hidden";
 type AdminListenBarTrackRow = ListenBarTrackRow & {
   review_status?: "approved" | "pending" | "hidden" | "removed" | string | null;
   moderation_note?: string | null;
   hidden_at?: string | null;
   removed_at?: string | null;
+  promotion_checked_at?: string | null;
 };
 
 type TrackForm = {
@@ -399,7 +401,7 @@ export default function ListenBarAdminPage() {
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [operatingTrackId, setOperatingTrackId] = useState("");
   const [playlistBusy, setPlaylistBusy] = useState(false);
-  const [trackVisibilityFilter, setTrackVisibilityFilter] = useState<TrackVisibilityFilter>("all");
+  const [trackVisibilityFilter, setTrackVisibilityFilter] = useState<TrackVisibilityFilter>("active");
   const [trackGenreFilter, setTrackGenreFilter] = useState("all");
   const [trackMonthFilter, setTrackMonthFilter] = useState("all");
   const [trackSearch, setTrackSearch] = useState("");
@@ -433,13 +435,13 @@ export default function ListenBarAdminPage() {
     [displayTracks],
   );
   const visiblePlayableTracks = useMemo(() => activePlayableTracks(displayTracks), [displayTracks]);
+  const activeDisplayTracks = useMemo(() => displayTracks.filter((track) => !isHiddenTrack(track)), [displayTracks]);
   const renderedTracks = useMemo(() => {
     const query = trackSearch.trim().toLowerCase();
     const filteredTracks = displayTracks.filter((track) => {
       const hidden = isHiddenTrack(track);
       if (trackVisibilityFilter === "active" && hidden) return false;
       if (trackVisibilityFilter === "hidden" && !hidden) return false;
-      if (trackVisibilityFilter === "capacity_eliminated" && !capacityEliminatedStatus(track)) return false;
       if (trackGenreFilter !== "all" && track.genre?.trim() !== trackGenreFilter) return false;
       if (trackMonthFilter !== "all" && trackMonthKey(track) !== trackMonthFilter) return false;
       if (!query) return true;
@@ -459,7 +461,14 @@ export default function ListenBarAdminPage() {
   );
   const allRenderedSelected = pagedRenderedTracks.length > 0 && pagedRenderedTracks.every((track) => selectedTrackIdSet.has(track.id));
   const hiddenTrackCount = useMemo(() => displayTracks.filter(isHiddenTrack).length, [displayTracks]);
-  const capacityEliminatedTrackCount = useMemo(() => displayTracks.filter(capacityEliminatedStatus).length, [displayTracks]);
+  const newTrackCount = useMemo(
+    () => activeDisplayTracks.filter((track) => isNewlyPublishedMusic(track.created_at, new Date(nowMs))).length,
+    [activeDisplayTracks, nowMs],
+  );
+  const pendingPromotionTrackCount = useMemo(
+    () => activeDisplayTracks.filter((track) => isNewlyPublishedMusic(track.created_at, new Date(nowMs)) && !track.promotion_checked_at).length,
+    [activeDisplayTracks, nowMs],
+  );
   const liveRotation = useMemo(() => liveRotationSnapshot(displayTracks, nowMs), [displayTracks, nowMs]);
   const currentlyPlayingId = liveRotation.current?.id ?? "";
   const totalActive = visiblePlayableTracks.length;
@@ -562,7 +571,7 @@ export default function ListenBarAdminPage() {
 
   const focusTrackInList = useCallback((trackId: string) => {
     if (!trackId) return;
-    setTrackVisibilityFilter("all");
+    setTrackVisibilityFilter("active");
     setTrackGenreFilter("all");
     setTrackMonthFilter("all");
     setTrackSearch("");
@@ -950,6 +959,40 @@ export default function ListenBarAdminPage() {
     setOperatingTrackId("");
   };
 
+  const togglePromotionCheck = async (track: AdminListenBarTrackRow, checked: boolean) => {
+    setError("");
+    setMessage("");
+    setOperatingTrackId(track.id);
+    const checkedAt = checked ? new Date().toISOString() : null;
+    setOptimisticTrackPatches((current) => ({
+      ...current,
+      [track.id]: { promotion_checked_at: checkedAt },
+    }));
+    const response = await fetch("/api/admin/listen-bar-tracks", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(await authHeader()),
+      },
+      body: JSON.stringify({ action: "promotion_check", trackId: track.id, promotionChecked: checked }),
+    });
+    const payload = (await response.json().catch(() => null)) as ListenBarTracksAdminPayload | null;
+    if (!response.ok) {
+      setError(`宣傳標記${checked ? "儲存" : "取消"}失敗：${payload?.error || "後台 API 無法更新宣傳紀錄。"}`);
+      setOptimisticTrackPatches((current) => {
+        const next = { ...current };
+        delete next[track.id];
+        return next;
+      });
+      setOperatingTrackId("");
+      return;
+    }
+    setTracks(payload?.tracks ?? []);
+    setOptimisticTrackPatches({});
+    setMessage(checked ? `「${track.title}」已標記為已宣傳。` : `已取消「${track.title}」的宣傳標記。`);
+    setOperatingTrackId("");
+  };
+
   const toggleTrackSelection = (trackId: string) => {
     setSelectedTrackIds((current) => (
       current.includes(trackId) ? current.filter((id) => id !== trackId) : [...current, trackId]
@@ -994,6 +1037,33 @@ export default function ListenBarAdminPage() {
     setOptimisticTrackPatches({});
     setSelectedTrackIds([]);
     setMessage(`已${actionLabel} ${selectedTrackIds.length} 首歌曲。`);
+    setPlaylistBusy(false);
+  };
+
+  const bulkPromotionCheck = async (checked: boolean) => {
+    if (selectedTrackIds.length === 0) return;
+    const selectedCount = selectedTrackIds.length;
+    setError("");
+    setMessage("");
+    setPlaylistBusy(true);
+    const response = await fetch("/api/admin/listen-bar-tracks", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(await authHeader()),
+      },
+      body: JSON.stringify({ action: "promotion_check", trackIds: selectedTrackIds, promotionChecked: checked }),
+    });
+    const payload = (await response.json().catch(() => null)) as ListenBarTracksAdminPayload | null;
+    if (!response.ok) {
+      setError(`宣傳標記${checked ? "儲存" : "取消"}失敗：${payload?.error || "後台 API 無法更新宣傳紀錄。"}`);
+      setPlaylistBusy(false);
+      return;
+    }
+    setTracks(payload?.tracks ?? []);
+    setOptimisticTrackPatches({});
+    setSelectedTrackIds([]);
+    setMessage(`已${checked ? "標記" : "取消標記"} ${selectedCount} 首歌曲的宣傳紀錄。`);
     setPlaylistBusy(false);
   };
 
@@ -1356,20 +1426,20 @@ export default function ListenBarAdminPage() {
                 <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/70">MANAGE TRACKS</p>
                 <h2 className="mt-1 text-2xl font-black text-white">歌曲上架整理</h2>
                 <p className="mt-1 text-xs font-bold text-zinc-500">
-                  顯示 {renderedTracks.length === 0 ? 0 : trackPageStartIndex + 1}-{trackPageEndIndex} / {renderedTracks.length}（全部 {displayTracks.length}），每頁 10 首{selectedTrackIds.length > 0 ? `，已選 ${selectedTrackIds.length}` : ""}
+                  顯示 {renderedTracks.length === 0 ? 0 : trackPageStartIndex + 1}-{trackPageEndIndex} / {renderedTracks.length}（上架中 {displayTracks.length - hiddenTrackCount} 首 · 新歌 {newTrackCount} 首 · 待宣傳 {pendingPromotionTrackCount} 首），每頁 10 首{selectedTrackIds.length > 0 ? `，已選 ${selectedTrackIds.length}` : ""}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => setTrackVisibilityFilter("all")}
+                  onClick={() => setTrackVisibilityFilter("active")}
                   className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 ${
-                    trackVisibilityFilter === "all"
+                    trackVisibilityFilter === "active"
                       ? "border-cyan-200/55 bg-cyan-300/10 text-cyan-100"
                       : "border-white/12 text-zinc-200 hover:border-cyan-200/55"
                   }`}
                 >
-                  全部
+                  上架中
                 </button>
                 <button
                   type="button"
@@ -1392,17 +1462,6 @@ export default function ListenBarAdminPage() {
                   }`}
                 >
                   只看下架{hiddenTrackCount > 0 ? ` ${hiddenTrackCount}` : ""}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTrackVisibilityFilter("capacity_eliminated")}
-                  className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-200/55 ${
-                    trackVisibilityFilter === "capacity_eliminated"
-                      ? "border-fuchsia-200/60 bg-fuchsia-500/14 text-fuchsia-100"
-                      : "border-white/12 text-zinc-200 hover:border-fuchsia-200/55"
-                  }`}
-                >
-                  類型池淘汰{capacityEliminatedTrackCount > 0 ? ` ${capacityEliminatedTrackCount}` : ""}
                 </button>
                 <button type="button" disabled={playlistBusy || visiblePlayableTracks.length < 2} onClick={() => void randomizeTrackOrder()} className="rounded-full border border-orange-300/30 bg-orange-500/10 px-4 py-2 text-xs font-black text-orange-100 transition hover:border-orange-200/65 disabled:cursor-not-allowed disabled:opacity-45">
                   {playlistBusy ? "排列中" : "隨機排列"}
@@ -1543,6 +1602,12 @@ export default function ListenBarAdminPage() {
                   </button>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
+                  <button type="button" disabled={playlistBusy} onClick={() => void bulkPromotionCheck(true)} className="rounded-full border border-emerald-200/30 bg-emerald-400/10 px-4 py-2 text-xs font-black text-emerald-100 transition hover:border-emerald-200/65 disabled:cursor-not-allowed disabled:opacity-45">
+                    標記已宣傳
+                  </button>
+                  <button type="button" disabled={playlistBusy} onClick={() => void bulkPromotionCheck(false)} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45">
+                    取消宣傳標記
+                  </button>
                   <button type="button" disabled={playlistBusy} onClick={() => void bulkTrackAction("hide")} className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45">
                     批次下架
                   </button>
@@ -1567,9 +1632,7 @@ export default function ListenBarAdminPage() {
                         ? "這個種類目前沒有符合條件的歌曲。"
                       : trackVisibilityFilter === "hidden"
                         ? "目前沒有下架歌曲。"
-                        : trackVisibilityFilter === "capacity_eliminated"
-                          ? "目前沒有因類型池容量規則被淘汰的歌曲。"
-                          : "目前已隱藏下架歌曲，沒有可顯示的上架歌曲。"}
+                          : "目前沒有可顯示的上架歌曲。要查看下架歌曲，請切到「只看下架」。"}
                 </div>
               ) : (
                 pagedRenderedTracks.map((track) => {
@@ -1578,6 +1641,8 @@ export default function ListenBarAdminPage() {
                   const hidden = isHiddenTrack(track);
                   const status = trackStatusBadge(track, currentlyPlayingId);
                   const updatedAt = track.updated_at ? new Date(track.updated_at).toLocaleString("zh-TW", { hour12: false }) : "-";
+                  const isNewTrack = isNewlyPublishedMusic(track.created_at, new Date(nowMs));
+                  const promotionChecked = Boolean(track.promotion_checked_at);
                   const focused = focusedTrackId === track.id;
                   const editing = editingTrackId === track.id && metadataForm;
                   const selected = selectedTrackIdSet.has(track.id);
@@ -1611,14 +1676,30 @@ export default function ListenBarAdminPage() {
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-start justify-between gap-1.5 sm:gap-2">
                             <div className="min-w-0">
-                              <p className="truncate text-sm font-black text-white sm:text-lg">{track.title}</p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="truncate text-sm font-black text-white sm:text-lg">{track.title}</p>
+                                {isNewTrack ? <span className="rounded border border-yellow-200/55 bg-yellow-300 px-1.5 py-0.5 text-[9px] font-black tracking-[0.12em] text-black">NEW</span> : null}
+                              </div>
                               <p className="mt-0.5 truncate text-[11px] text-zinc-400 sm:mt-1 sm:text-sm">
                                 {track.artist} / {track.ai_tool || "AI Music"} / {track.genre || "AI Music"}
                               </p>
                             </div>
-                            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black sm:px-3 sm:py-1 sm:text-xs ${status.className}`}>
-                              {status.label}
-                            </span>
+                            <div className="flex flex-wrap items-center justify-end gap-2">
+                              <label className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-black transition sm:px-3 sm:py-1.5 sm:text-xs ${promotionChecked ? "border-emerald-200/45 bg-emerald-400/10 text-emerald-100" : "border-white/12 text-zinc-400 hover:border-emerald-200/45 hover:text-emerald-100"}`} title="只記錄後台宣傳進度，不影響歌曲上架狀態">
+                                <input
+                                  type="checkbox"
+                                  checked={promotionChecked}
+                                  disabled={operatingTrackId === track.id}
+                                  onChange={(event) => void togglePromotionCheck(track, event.target.checked)}
+                                  className="h-3.5 w-3.5 accent-emerald-400"
+                                  aria-label={`${promotionChecked ? "取消" : "標記"} ${track.title} 已宣傳`}
+                                />
+                                {promotionChecked ? "已宣傳" : "宣傳完成"}
+                              </label>
+                              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black sm:px-3 sm:py-1 sm:text-xs ${status.className}`}>
+                                {status.label}
+                              </span>
+                            </div>
                           </div>
                           <div className="mt-2 flex flex-wrap gap-1 sm:mt-3 sm:gap-2">
                             <span className="rounded-full border border-white/10 bg-white/[0.035] px-2 py-0.5 text-[10px] font-bold text-zinc-300 sm:px-3 sm:py-1 sm:text-[11px]">

@@ -21,6 +21,7 @@ alter table public.listen_bar_tracks
   add column if not exists bar_phase text not null default 'public',
   add column if not exists first_aired_at timestamptz,
   add column if not exists promoted_at timestamptz,
+  add column if not exists promotion_checked_at timestamptz,
   add column if not exists removed_at timestamptz;
 
 alter table public.listen_bar_tracks
