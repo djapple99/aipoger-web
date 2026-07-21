@@ -73,6 +73,83 @@ final result: passed
 
 ---
 
+# 耳朵蟲 — Design QA (2026-07-22)
+
+## Comparison Target
+
+- Source visual truth: `/Users/huangyihong/.codex/generated_images/019f8583-6aeb-75e0-b838-c9a80cfd6c5b/exec-514f2f06-5a02-415a-81b6-742f857dcfa6.png`
+- Normalized full-view comparison: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-design-qa-comparison.png`
+- Implementation desktop screenshot: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-design-qa-desktop-1440x1000.png`
+- Implementation mobile screenshot: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-design-qa-mobile-390x844.png`
+- Preview deployment: `https://aipoger-web-rnz8-2of1lc9x7-yohungs-projects.vercel.app/earworm` (Vercel Preview Authentication remains enabled.)
+- Route/state: `/earworm?genre=Rap%20街頭說唱`, loaded public same-genre A/B works, signed out.
+- Viewports: 1440 × 1000 desktop and 390 × 1300 full-page mobile capture.
+
+## Full-view Comparison Evidence
+
+The normalized comparison places the selected mock and the browser-rendered desktop state in one image. The implementation keeps the chosen concept's core moves: a dark stage, warm orange / cool cyan A/B lanes, real cover artwork, horizontal playback controls, a centered Earworm title, three-way decision buttons, and a skip path. The implementation uses live catalog content instead of the mock's fixed sample songs and retains AIPOGER's shared fixed shell.
+
+## Focused Region Evidence
+
+- Header: desktop capture shows the live AIPOGER logo, Earworm title, genre selector, round indicator, and shared login/language controls without clipping.
+- A/B player rows: both rows contain real cover images, live track metadata, accessible play buttons, seekable range controls, duration labels, and an 8-second readiness gate.
+- Decision panel: selected state, optional explanation field, disabled submit state, APC reward copy, and skip action are visible at the same time.
+- Mobile: 390px capture shows the header tools below the shared shell, two vertically stacked track rows, one-column decision buttons, and no horizontal overflow (`scrollWidth === innerWidth`).
+
+## Required Fidelity Surfaces
+
+- Fonts and typography: passed. The title uses the existing AIPOGER serif display font, while the listening-game index and compact labels use the existing Righteous treatment; live Chinese copy remains readable at desktop and mobile sizes.
+- Spacing and layout rhythm: passed after the mobile header adjustment. Desktop uses a four-column track rhythm; mobile collapses metadata and playback into a second row while preserving tap targets and content order.
+- Colors and visual tokens: passed. Near-black stage, orange primary energy, cyan secondary lane, and gold decision framing follow the existing AIPOGER visual direction and the selected mock.
+- Image quality and asset fidelity: passed. The implementation uses the existing real AIPOGER logo and real public cover artwork; no fake waveform, emoji, handcrafted SVG, or baked-in UI asset is used.
+- Copy and content: passed. The page clearly states the same-genre listening goal, 8-second requirement, A/B/neutral choices, skip action, and APC reward.
+- Responsiveness and accessibility: passed. A/B controls have accessible labels, vote buttons expose `aria-pressed`, the submit button exposes a disabled state, and desktop/mobile browser captures show no horizontal clipping.
+
+## Findings
+
+- No actionable P0, P1, or P2 findings remain.
+- P3 accepted: the source mock has a more theatrical speaker backdrop and a lighter title treatment; the implementation intentionally uses the shared AIPOGER shell, live public cover assets, and a restrained CSS stage treatment so the game remains a real product surface rather than a static poster.
+
+## Interaction And Runtime Checks
+
+- Play A: row enters the active playing state.
+- A/B playback: starting one player pauses the other.
+- Vote gate: selecting A before both 8-second thresholds leaves submit disabled.
+- Skip: advances to the next round and reloads a same-genre pair.
+- Mobile and desktop route loaded successfully from the local Next app.
+- Browser console errors checked: none.
+- `npm run lint`: passed with the repository's existing 12 warnings and 0 errors.
+- `npm test`: passed, 224 tests.
+- `npm run build`: passed before final QA capture; a final post-capture build is run as the release gate.
+
+## Comparison History
+
+### Pass 1
+
+- Earlier finding: P2 mobile shared-shell controls overlapped the Earworm genre selector and page logo at the top of the 390px viewport.
+- Fix: increased the Earworm mobile top padding from 1.15rem to 5.5rem so the page header clears the shared fixed controls.
+- Post-fix evidence: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-design-qa-mobile-390x844.png`; `scrollWidth === 390`.
+
+### Pass 2
+
+- Earlier findings: none at P0/P1/P2 after the responsive fix.
+- Fixes: no further blocking visual fixes; the final comparison confirms the selected visual direction remains intact with live data.
+- Post-fix evidence: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-design-qa-comparison.png` and the desktop/mobile implementation captures above.
+
+## Implementation Checklist
+
+- [x] Selected first visual direction translated into a live `/earworm` route.
+- [x] Real same-genre A/B audio playback and seek controls work.
+- [x] Selection, skip, listening threshold, auth gate, duplicate protection, and APC reward path are implemented.
+- [x] Desktop/mobile browser evidence captured.
+- [x] Console checked with no errors.
+- [x] Migration and regression tests added.
+- [ ] Apply `supabase/20260722_earworm_game.sql` in the production Supabase project before enabling rewards.
+
+final result: passed
+
+---
+
 # Member Gate + Four-Language Release — Design QA (2026-07-17)
 
 ## Same-Viewport Comparison

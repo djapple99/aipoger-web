@@ -5,7 +5,7 @@ import { ArrowRight, LockKeyhole, X } from "lucide-react";
 import { useEffect, useId, useRef } from "react";
 import { fontRighteous } from "@/lib/fonts";
 
-type AuthPromptKind = "bible" | "heart";
+type AuthPromptKind = "bible" | "heart" | "earworm";
 
 type AuthPromptCopy = {
   eyebrow: string;
@@ -34,6 +34,14 @@ const COPY: Record<"zh" | "en" | "ja" | "ko", Record<AuthPromptKind, AuthPromptC
       cancel: "繼續聽歌",
       close: "關閉登入提示",
     },
+    earworm: {
+      eyebrow: "EARWORM LISTENER",
+      title: "登入後送出耳朵蟲判斷",
+      body: "你的聽感會留下作品認可資料，送出後也會獲得 APC 點數。",
+      primary: "登入／免費加入",
+      cancel: "先繼續聽",
+      close: "關閉登入提示",
+    },
   },
   en: {
     bible: {
@@ -48,6 +56,14 @@ const COPY: Record<"zh" | "en" | "ja" | "ko", Record<AuthPromptKind, AuthPromptC
       eyebrow: "SAVE THIS TRACK",
       title: "Sign in to send a Heart",
       body: "A Heart also saves this track. You can continue right where you left off after signing in.",
+      primary: "Sign in / Join free",
+      cancel: "Keep listening",
+      close: "Close sign-in prompt",
+    },
+    earworm: {
+      eyebrow: "EARWORM LISTENER",
+      title: "Sign in to submit your earworm pick",
+      body: "Your listening judgment helps build recognition data, and you earn APC points after submitting.",
       primary: "Sign in / Join free",
       cancel: "Keep listening",
       close: "Close sign-in prompt",
@@ -70,6 +86,14 @@ const COPY: Record<"zh" | "en" | "ja" | "ko", Record<AuthPromptKind, AuthPromptC
       cancel: "このまま聴く",
       close: "ログイン案内を閉じる",
     },
+    earworm: {
+      eyebrow: "EARWORM LISTENER",
+      title: "ログインして耳朵蟲の判定を送る",
+      body: "聴感の判定が作品認可データになり、送信後にAPCポイントを受け取れます。",
+      primary: "ログイン／無料登録",
+      cancel: "このまま聴く",
+      close: "ログイン案内を閉じる",
+    },
   },
   ko: {
     bible: {
@@ -84,6 +108,14 @@ const COPY: Record<"zh" | "en" | "ja" | "ko", Record<AuthPromptKind, AuthPromptC
       eyebrow: "SAVE THIS TRACK",
       title: "로그인하고 Heart 보내기",
       body: "Heart를 보내면 이 곡도 함께 저장됩니다. 로그인 후 바로 이어서 할 수 있어요.",
+      primary: "로그인／무료 가입",
+      cancel: "계속 듣기",
+      close: "로그인 안내 닫기",
+    },
+    earworm: {
+      eyebrow: "EARWORM LISTENER",
+      title: "로그인하고 귀벌레 판단 보내기",
+      body: "청취 판단이 작품 인증 데이터가 되고, 제출 후 APC 포인트를 받을 수 있습니다.",
       primary: "로그인／무료 가입",
       cancel: "계속 듣기",
       close: "로그인 안내 닫기",

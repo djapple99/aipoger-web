@@ -1274,3 +1274,572 @@ a {
     right: 16.2%;
   }
 }
+
+/* Earworm: same-genre listening judgment game */
+.earworm-page {
+  --earworm-orange: #ff6b1a;
+  --earworm-cyan: #62d5d8;
+  --earworm-gold: #f2c96b;
+  min-height: 100dvh;
+  background:
+    radial-gradient(circle at 50% 10%, rgba(255, 101, 21, 0.13), transparent 24rem),
+    linear-gradient(125deg, #080807 0%, #11100d 48%, #080807 100%);
+}
+
+.earworm-page::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background-image: linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+  background-size: 100% 4px;
+  opacity: 0.3;
+}
+
+.earworm-stage-lamp {
+  position: absolute;
+  top: -10rem;
+  width: 22rem;
+  height: 44rem;
+  pointer-events: none;
+  filter: blur(42px);
+  opacity: 0.26;
+  transform: rotate(24deg);
+}
+
+.earworm-stage-lamp-left {
+  left: -12rem;
+  background: linear-gradient(90deg, transparent, rgba(255, 104, 30, 0.58), transparent);
+}
+
+.earworm-stage-lamp-right {
+  right: -12rem;
+  background: linear-gradient(90deg, transparent, rgba(95, 207, 211, 0.42), transparent);
+  transform: rotate(-24deg);
+}
+
+.earworm-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.earworm-logo {
+  width: 9.1rem;
+  height: auto;
+  justify-self: start;
+  object-fit: contain;
+  object-position: left center;
+  filter: drop-shadow(0 0 18px rgba(255, 112, 22, 0.12));
+}
+
+.earworm-title-wrap {
+  position: relative;
+  text-align: center;
+}
+
+.earworm-title-signal {
+  position: absolute;
+  top: 0.25rem;
+  left: 50%;
+  width: 8.3rem;
+  height: 2.6rem;
+  border-top: 1px solid rgba(255, 107, 26, 0.66);
+  border-radius: 50%;
+  transform: translateX(-50%) rotate(-8deg);
+  opacity: 0.75;
+}
+
+.earworm-kicker {
+  position: relative;
+  margin: 0 0 0.25rem;
+  color: rgba(245, 190, 151, 0.66);
+  font-size: 0.62rem;
+  letter-spacing: 0.25em;
+}
+
+.earworm-title-wrap h1 {
+  position: relative;
+  margin: 0;
+  color: #ff8338;
+  font-size: clamp(2.9rem, 7vw, 5.8rem);
+  font-weight: 900;
+  line-height: 0.96;
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 22px rgba(255, 91, 12, 0.34), 0 3px 0 rgba(103, 31, 10, 0.45);
+}
+
+.earworm-title-wrap > p:last-child {
+  position: relative;
+  margin: 0.55rem 0 0;
+  color: rgba(255, 231, 207, 0.7);
+  font-size: 0.84rem;
+  letter-spacing: 0.18em;
+}
+
+.earworm-header-tools {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.65rem;
+}
+
+.earworm-genre-select,
+.earworm-round {
+  min-height: 2.4rem;
+  border: 1px solid rgba(255, 181, 130, 0.28);
+  background: rgba(19, 15, 12, 0.82);
+  color: rgba(255, 235, 218, 0.92);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.earworm-genre-select {
+  max-width: 13rem;
+  padding: 0.45rem 2rem 0.45rem 0.75rem;
+  border-radius: 0.35rem;
+}
+
+.earworm-genre-select:focus-visible,
+.earworm-explanation-wrap input:focus-visible,
+.earworm-vote-button:focus-visible,
+.earworm-play-button:focus-visible,
+.earworm-submit-button:focus-visible,
+.earworm-skip-button:focus-visible,
+.earworm-secondary-button:focus-visible {
+  outline: 2px solid rgba(98, 213, 216, 0.9);
+  outline-offset: 3px;
+}
+
+.earworm-round {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.7rem;
+  border-color: rgba(98, 213, 216, 0.3);
+  border-radius: 999px;
+  color: rgba(153, 234, 235, 0.82);
+  font-family: var(--font-righteous), sans-serif;
+  font-size: 0.67rem;
+  letter-spacing: 0.15em;
+}
+
+.earworm-rule-line {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin: 2.4rem 0 1.15rem;
+  color: rgba(242, 201, 107, 0.52);
+  font-family: var(--font-righteous), sans-serif;
+  font-size: 0.58rem;
+  letter-spacing: 0.28em;
+}
+
+.earworm-rule-line::before,
+.earworm-rule-line::after {
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(90deg, transparent, rgba(242, 201, 107, 0.38));
+  content: "";
+}
+
+.earworm-rule-line::after {
+  background: linear-gradient(90deg, rgba(242, 201, 107, 0.38), transparent);
+}
+
+.earworm-state-panel {
+  display: grid;
+  min-height: 20rem;
+  place-items: center;
+  padding: 2rem;
+  border: 1px solid rgba(255, 185, 130, 0.18);
+  background: rgba(11, 10, 8, 0.78);
+  color: rgba(255, 228, 208, 0.72);
+  text-align: center;
+}
+
+.earworm-track-row {
+  display: grid;
+  grid-template-columns: 2.35rem 5.5rem minmax(11rem, 1.2fr) minmax(18rem, 2fr);
+  align-items: center;
+  gap: 1rem;
+  min-height: 7.7rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid rgba(255, 221, 197, 0.14);
+  border-left: 3px solid rgba(255, 107, 26, 0.74);
+  background: linear-gradient(105deg, rgba(28, 21, 17, 0.94), rgba(17, 15, 13, 0.82));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 14px 35px rgba(0, 0, 0, 0.2);
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+
+.earworm-track-row:nth-child(2) {
+  border-left-color: rgba(98, 213, 216, 0.8);
+}
+
+.earworm-track-row.is-playing {
+  border-color: rgba(255, 167, 100, 0.55);
+  background: linear-gradient(105deg, rgba(55, 27, 15, 0.96), rgba(20, 18, 14, 0.9));
+  transform: translateY(-1px);
+}
+
+.earworm-track-row:nth-child(2).is-playing {
+  border-color: rgba(133, 240, 241, 0.55);
+  background: linear-gradient(105deg, rgba(16, 39, 39, 0.96), rgba(19, 19, 16, 0.9));
+}
+
+.earworm-track-label {
+  color: rgba(255, 190, 139, 0.72);
+  font-family: var(--font-righteous), sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-align: center;
+}
+
+.earworm-track-row:nth-child(2) .earworm-track-label {
+  color: rgba(145, 232, 234, 0.78);
+}
+
+.earworm-cover-wrap {
+  width: 5.5rem;
+  height: 5.5rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 220, 195, 0.18);
+  background: #17120e;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.34);
+}
+
+.earworm-track-meta {
+  min-width: 0;
+}
+
+.earworm-track-meta h2 {
+  overflow: hidden;
+  margin: 0;
+  color: rgba(255, 245, 236, 0.96);
+  font-size: clamp(1rem, 1.8vw, 1.22rem);
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.earworm-track-meta p {
+  overflow: hidden;
+  margin: 0.32rem 0 0;
+  color: rgba(255, 220, 198, 0.58);
+  font-size: 0.83rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.earworm-track-meta span {
+  display: inline-flex;
+  margin-top: 0.65rem;
+  padding: 0.22rem 0.45rem;
+  border: 1px solid rgba(255, 166, 100, 0.22);
+  color: rgba(255, 197, 150, 0.7);
+  font-size: 0.61rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.earworm-player-control {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.earworm-play-button {
+  display: inline-flex;
+  width: 2.8rem;
+  height: 2.8rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 160, 94, 0.65);
+  border-radius: 50%;
+  background: rgba(255, 93, 17, 0.16);
+  color: #ffad72;
+  cursor: pointer;
+  transition: background 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.earworm-track-row:nth-child(2) .earworm-play-button {
+  border-color: rgba(121, 224, 226, 0.58);
+  background: rgba(72, 194, 198, 0.12);
+  color: #9cedef;
+}
+
+.earworm-play-button:hover {
+  background: rgba(255, 93, 17, 0.3);
+  color: #fff4e9;
+  transform: scale(1.04);
+}
+
+.earworm-track-row:nth-child(2) .earworm-play-button:hover {
+  background: rgba(72, 194, 198, 0.26);
+}
+
+.earworm-progress-line {
+  min-width: 0;
+}
+
+.earworm-progress-line input {
+  display: block;
+  width: 100%;
+  height: 1rem;
+  accent-color: var(--earworm-orange);
+  cursor: pointer;
+}
+
+.earworm-track-row:nth-child(2) .earworm-progress-line input {
+  accent-color: var(--earworm-cyan);
+}
+
+.earworm-heard-status {
+  min-width: 3.15rem;
+  color: rgba(255, 218, 188, 0.65);
+  font-family: var(--font-righteous), sans-serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-align: right;
+}
+
+.earworm-track-row.is-heard .earworm-heard-status {
+  color: var(--earworm-gold);
+}
+
+.earworm-vote-panel {
+  margin-top: 1.6rem;
+  padding: 1.35rem 1.45rem 1.2rem;
+  border: 1px solid rgba(242, 201, 107, 0.22);
+  background: linear-gradient(115deg, rgba(34, 24, 16, 0.94), rgba(15, 16, 15, 0.92));
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.25);
+}
+
+.earworm-vote-panel h2 {
+  margin: 0.25rem 0 0;
+  color: rgba(255, 237, 222, 0.96);
+  font-size: clamp(1.05rem, 2vw, 1.35rem);
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+.earworm-listen-hint {
+  margin: 0;
+  color: rgba(255, 218, 186, 0.54);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.earworm-vote-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-top: 1.15rem;
+}
+
+.earworm-vote-button {
+  min-height: 3.2rem;
+  border: 1px solid rgba(255, 224, 198, 0.2);
+  background: rgba(11, 10, 8, 0.58);
+  color: rgba(255, 235, 222, 0.78);
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  transition: border-color 180ms ease, background 180ms ease, color 180ms ease;
+}
+
+.earworm-vote-button:hover,
+.earworm-vote-button.is-selected {
+  border-color: rgba(255, 153, 81, 0.82);
+  background: rgba(255, 103, 25, 0.22);
+  color: #fff5eb;
+}
+
+.earworm-vote-b:hover,
+.earworm-vote-b.is-selected {
+  border-color: rgba(116, 227, 229, 0.78);
+  background: rgba(72, 194, 198, 0.18);
+}
+
+.earworm-vote-neither:hover,
+.earworm-vote-neither.is-selected {
+  border-color: rgba(242, 201, 107, 0.78);
+  background: rgba(242, 201, 107, 0.14);
+}
+
+.earworm-submit-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 0.8rem;
+}
+
+.earworm-explanation-wrap input {
+  width: 100%;
+  min-height: 2.65rem;
+  border: 1px solid rgba(255, 224, 198, 0.14);
+  border-radius: 0.25rem;
+  background: rgba(8, 8, 7, 0.7);
+  padding: 0.6rem 0.75rem;
+  color: rgba(255, 239, 226, 0.9);
+  font-size: 0.78rem;
+}
+
+.earworm-explanation-wrap input::placeholder {
+  color: rgba(255, 225, 202, 0.38);
+}
+
+.earworm-submit-button,
+.earworm-skip-button,
+.earworm-secondary-button {
+  display: inline-flex;
+  min-height: 2.65rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-radius: 0.25rem;
+  padding: 0.65rem 0.9rem;
+  cursor: pointer;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  transition: opacity 180ms ease, background 180ms ease, border-color 180ms ease;
+}
+
+.earworm-submit-button {
+  border: 1px solid rgba(255, 143, 72, 0.78);
+  background: linear-gradient(105deg, #e94b0f, #ff7428);
+  color: #fff8f2;
+  box-shadow: 0 6px 22px rgba(234, 73, 16, 0.18);
+}
+
+.earworm-submit-button:hover:not(:disabled) {
+  background: linear-gradient(105deg, #ff5f15, #ff8b4e);
+}
+
+.earworm-submit-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.36;
+}
+
+.earworm-skip-button,
+.earworm-secondary-button {
+  border: 1px solid rgba(255, 224, 198, 0.18);
+  background: rgba(255, 255, 255, 0.035);
+  color: rgba(255, 230, 211, 0.64);
+}
+
+.earworm-skip-button:hover,
+.earworm-secondary-button:hover {
+  border-color: rgba(255, 224, 198, 0.42);
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+}
+
+.earworm-notice {
+  margin: 0.8rem 0 0;
+  color: rgba(156, 236, 239, 0.82);
+  font-size: 0.76rem;
+}
+
+@media (max-width: 800px) {
+  .earworm-page {
+    padding-top: 5.5rem;
+  }
+
+  .earworm-header {
+    grid-template-columns: 1fr auto;
+    align-items: start;
+  }
+
+  .earworm-logo {
+    width: 7.2rem;
+  }
+
+  .earworm-title-wrap {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-top: 0.9rem;
+    text-align: left;
+  }
+
+  .earworm-title-signal {
+    left: 0;
+    transform: rotate(-8deg);
+  }
+
+  .earworm-title-wrap > p:last-child {
+    letter-spacing: 0.08em;
+  }
+
+  .earworm-header-tools {
+    align-items: flex-end;
+  }
+
+  .earworm-rule-line {
+    margin-top: 1.5rem;
+  }
+
+  .earworm-track-row {
+    grid-template-columns: 1.6rem 4.4rem minmax(0, 1fr);
+    gap: 0.7rem;
+    padding: 0.85rem;
+  }
+
+  .earworm-cover-wrap {
+    width: 4.4rem;
+    height: 4.4rem;
+  }
+
+  .earworm-player-control {
+    grid-column: 2 / -1;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.65rem;
+  }
+
+  .earworm-vote-panel {
+    padding: 1.1rem;
+  }
+
+  .earworm-submit-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .earworm-explanation-wrap {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 480px) {
+  .earworm-header {
+    gap: 0.7rem;
+  }
+
+  .earworm-genre-select {
+    max-width: 9.4rem;
+    font-size: 0.68rem;
+  }
+
+  .earworm-round {
+    font-size: 0.58rem;
+  }
+
+  .earworm-vote-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .earworm-submit-row {
+    grid-template-columns: 1fr;
+  }
+
+  .earworm-submit-button,
+  .earworm-skip-button {
+    width: 100%;
+  }
+}
