@@ -1439,18 +1439,7 @@ export default function ListenBarAdminPage() {
                       : "border-white/12 text-zinc-200 hover:border-cyan-200/55"
                   }`}
                 >
-                  上架中
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTrackVisibilityFilter("active")}
-                  className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 ${
-                    trackVisibilityFilter === "active"
-                      ? "border-cyan-200/55 bg-cyan-300/10 text-cyan-100"
-                      : "border-white/12 text-zinc-200 hover:border-cyan-200/55"
-                  }`}
-                >
-                  隱藏下架
+                  全部上架
                 </button>
                 <button
                   type="button"

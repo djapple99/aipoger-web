@@ -43,6 +43,8 @@ test("listen bar admin paginates management tracks and selects only the current 
 
 test("listen bar admin prioritizes current work and records promotion separately", () => {
   assert.ok(adminListenBarSource.includes('useState<TrackVisibilityFilter>("active")'));
+  assert.ok(adminListenBarSource.includes("全部上架"));
+  assert.equal(adminListenBarSource.includes("隱藏下架"), false);
   assert.ok(adminListenBarSource.includes('trackVisibilityFilter === "hidden"'));
   assert.ok(adminListenBarSource.includes("isNewlyPublishedMusic(track.created_at"));
   assert.ok(adminListenBarSource.includes("標記已宣傳"));
