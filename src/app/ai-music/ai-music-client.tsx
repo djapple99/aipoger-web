@@ -151,8 +151,8 @@ function earwormExploreCopy(lang: string) {
   return {
     promptEyebrow: localeText(lang, "先讓耳朵帶路", "LET YOUR EARS LEAD", "まず耳で選ぶ", "먼저 귀로 골라요"),
     promptTitle: localeText(lang, "先測一下，你會更快遇到對味的歌。", "Take a quick test to find tracks that fit you faster.", "先にテストすると、好みの曲に早く出会えます。", "먼저 테스트하면 취향에 맞는 곡을 더 빨리 만나요."),
-    promptBody: localeText(lang, "盲聽 10 首、每首聽滿 8 秒再憑直覺選。完成後會揭曉你的音樂主場，並把推薦帶回探索。", "Blind-listen to 10 tracks, then react by instinct. You will get a music type and recommendations here.", "10曲をブラインドで聴き、直感で選択。結果とおすすめをExploreに返します。", "10곡을 블라인드로 듣고 직감대로 선택하면 취향 유형과 추천을 보여드려요."),
-    start: localeText(lang, "開始耳朵測驗｜約 2 分鐘", "Start Ear Test · about 2 min", "耳テストを始める・約2分", "귀 테스트 시작 · 약 2분"),
+    promptBody: localeText(lang, "盲聽 10 首，每首會自動播放；第一耳就能選，選完立刻接下一首。完成後揭曉你的音樂主場，並把推薦帶回探索。", "Blind-listen to 10 tracks with automatic playback. React on first impression and the next track starts right away. Your result and recommendations return here.", "10曲を自動再生でブラインド試聴。第一印象で選ぶと、すぐ次の曲が流れます。結果とおすすめはExploreに戻ります。", "10곡을 자동 재생으로 블라인드 청취해요. 첫인상으로 고르면 바로 다음 곡이 재생되고, 결과와 추천은 Explore로 돌아옵니다."),
+    start: localeText(lang, "開始耳朵測驗｜約 1 分鐘", "Start Ear Test · about 1 min", "耳テストを始める・約1分", "귀 테스트 시작 · 약 1분"),
     skip: localeText(lang, "先逛逛", "Browse first", "先に見てみる", "먼저 둘러보기"),
     reopen: localeText(lang, "測測你的耳朵", "Test your ears", "耳をテスト", "귀 테스트"),
     profileEyebrow: localeText(lang, "EARWORM FOR YOU", "EARWORM FOR YOU", "EARWORM FOR YOU", "EARWORM FOR YOU"),

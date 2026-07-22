@@ -24,7 +24,7 @@ import {
 
 test("耳朵蟲 is a ten-track personality test without a point dependency", () => {
   assert.equal(EARWORM_TRACK_COUNT, 10);
-  assert.equal(EARWORM_MIN_LISTEN_SECONDS, 8);
+  assert.equal(EARWORM_MIN_LISTEN_SECONDS, 0);
   assert.equal(isEarwormReaction("love"), true);
   assert.equal(isEarwormReaction("replay"), true);
   assert.equal(isEarwormReaction("okay"), true);
@@ -115,4 +115,25 @@ test("耳朵蟲 affinity migration is additive, account-distinct, and APC-free",
   assert.match(migration, /grant select on table public\.earworm_track_affinity_stats to service_role/);
   assert.doesNotMatch(migration, /reward_points|reward_day|award_battle_points|APC/i);
   assert.doesNotMatch(migration, /drop table|truncate|delete from/i);
+});
+
+test("耳朵蟲 supports instant reactions, automatic playback, and a clear Explore result action", async () => {
+  const client = await readFile(new URL("../src/app/earworm/earworm-client.tsx", import.meta.url), "utf8");
+  const instantMigration = await readFile(new URL("../supabase/20260725_earworm_instant_reactions.sql", import.meta.url), "utf8");
+
+  assert.match(client, /autoPlay/);
+  assert.match(client, /AUTO PLAY/);
+  assert.match(client, /第一耳就能選，選完自動播下一首/);
+  assert.match(client, /不喜歡就<\/small>下一首/);
+  assert.match(client, /去探索音樂/);
+  assert.match(client, /去傷心酒吧/);
+  assert.doesNotMatch(client, /結果已保存到你的帳號/);
+  assert.doesNotMatch(client, />結果已保存</);
+  assert.doesNotMatch(client, /登入保存結果/);
+  assert.ok(client.indexOf("去探索音樂") < client.indexOf("去傷心酒吧"));
+  assert.ok(client.indexOf("去傷心酒吧") < client.indexOf("看看為我挑的歌"));
+  assert.ok(client.indexOf("看看為我挑的歌") < client.indexOf("分享我的耳朵類型"));
+  assert.ok(client.indexOf("分享我的耳朵類型") < client.indexOf("重新測一次"));
+  assert.match(instantMigration, /listened_seconds >= 0/);
+  assert.doesNotMatch(instantMigration, /drop table|truncate|delete from/i);
 });

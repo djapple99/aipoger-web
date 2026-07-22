@@ -2,13 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Headphones, LogIn, Pause, Play, RotateCcw, Share2 } from "lucide-react";
+import { ArrowRight, AudioLines, Compass, Headphones, Pause, Play, RadioTower, RotateCcw, Share2, SkipForward } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import AuthRequiredDialog from "@/components/auth-required-dialog";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import {
   EARWORM_GENRE_PERSONALITY,
-  EARWORM_MIN_LISTEN_SECONDS,
   EARWORM_TRACK_COUNT,
   calculateEarwormResult,
   type EarwormAnswer,
@@ -44,8 +42,6 @@ type PendingResult = {
   result: EarwormPersonalityResult;
   savedAt: number;
 };
-
-type SaveState = "guest" | "saving" | "saved" | "error";
 
 const PENDING_RESULT_KEY = "aipoger-earworm-pending-result-v2";
 const PENDING_RESULT_MAX_AGE = 6 * 60 * 60 * 1000;
@@ -102,16 +98,14 @@ export default function EarwormClient() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [listenedSeconds, setListenedSeconds] = useState(0);
-  const [saveState, setSaveState] = useState<SaveState>("guest");
+  const [autoPlayBlocked, setAutoPlayBlocked] = useState(false);
+  const [advancing, setAdvancing] = useState(false);
   const [notice, setNotice] = useState("");
-  const [authOpen, setAuthOpen] = useState(false);
   const [recommendationHref, setRecommendationHref] = useState("/ai-music?view=for-you&lang=zh");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastPlaybackTickRef = useRef<number | null>(null);
 
   const currentTrack = quiz?.tracks[trackIndex] ?? null;
-  const minListenSeconds = quiz?.minListenSeconds ?? EARWORM_MIN_LISTEN_SECONDS;
-  const canReact = listenedSeconds >= minListenSeconds;
   const completion = result ? 100 : Math.round((answers.length / EARWORM_TRACK_COUNT) * 100);
   const personality = result ? EARWORM_GENRE_PERSONALITY[result.primaryGenre] : null;
 
@@ -126,11 +120,9 @@ export default function EarwormClient() {
     const sessionResult = await supabase.auth.getSession();
     const accessToken = sessionResult.data.session?.access_token;
     if (!accessToken) {
-      setSaveState("guest");
       return false;
     }
 
-    setSaveState("saving");
     setNotice("");
     try {
       const response = await fetch("/api/earworm/task", {
@@ -144,22 +136,14 @@ export default function EarwormClient() {
         alreadySaved?: boolean;
       } | null;
       if (response.status === 401) {
-        setSaveState("guest");
-        setAuthOpen(true);
         return false;
       }
       if (!response.ok) throw new Error(payload?.error || "結果暫時無法保存。");
       if (payload?.result) setResult(payload.result);
-      setSaveState("saved");
       window.sessionStorage.removeItem(PENDING_RESULT_KEY);
-      if (payload?.alreadySaved) {
-        setNotice("這次結果已經保存過了。");
-      } else {
-        setNotice("結果已保存到你的帳號。");
-      }
+      setNotice("");
       return true;
     } catch (error) {
-      setSaveState("error");
       setNotice(String((error as { message?: string })?.message ?? error));
       return false;
     }
@@ -169,6 +153,8 @@ export default function EarwormClient() {
     setLoadState("loading");
     setNotice("");
     setPlaying(false);
+    setAutoPlayBlocked(false);
+    setAdvancing(false);
     audioRef.current?.pause();
 
     if (restore) {
@@ -178,7 +164,6 @@ export default function EarwormClient() {
         setAnswers(pending.answers);
         setResult(pending.result);
         setTrackIndex(EARWORM_TRACK_COUNT - 1);
-        setSaveState("guest");
         writeEarwormLocalProfile(buildEarwormLocalProfile(pending.result, pending.savedAt));
         setLoadState("ready");
         return;
@@ -196,7 +181,8 @@ export default function EarwormClient() {
       setCurrentTime(0);
       setDuration(0);
       setListenedSeconds(0);
-      setSaveState("guest");
+      setAutoPlayBlocked(false);
+      setAdvancing(false);
       setLoadState("ready");
     } catch (error) {
       setLoadState("error");
@@ -214,6 +200,8 @@ export default function EarwormClient() {
     const onPlay = () => {
       lastPlaybackTickRef.current = performance.now();
       setPlaying(true);
+      setAutoPlayBlocked(false);
+      setNotice("");
     };
     const onPause = () => {
       lastPlaybackTickRef.current = null;
@@ -225,7 +213,7 @@ export default function EarwormClient() {
       const previous = lastPlaybackTickRef.current;
       if (!audio.paused && previous !== null) {
         const delta = Math.min(1.5, Math.max(0, (now - previous) / 1000));
-        setListenedSeconds((value) => Math.min(minListenSeconds, value + delta));
+        setListenedSeconds((value) => value + delta);
       }
       lastPlaybackTickRef.current = now;
     };
@@ -246,7 +234,34 @@ export default function EarwormClient() {
       audio.removeEventListener("loadedmetadata", onMetadata);
       audio.removeEventListener("ended", onEnded);
     };
-  }, [currentTrack, minListenSeconds, result]);
+  }, [currentTrack, result]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !currentTrack || result || loadState !== "ready") return;
+
+    let cancelled = false;
+    setAdvancing(false);
+    setAutoPlayBlocked(false);
+    const start = async () => {
+      try {
+        await audio.play();
+        if (!cancelled) setAutoPlayBlocked(false);
+      } catch {
+        if (!cancelled) setAutoPlayBlocked(true);
+      }
+    };
+
+    if (audio.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      void start();
+    } else {
+      audio.addEventListener("canplay", start, { once: true });
+    }
+    return () => {
+      cancelled = true;
+      audio.removeEventListener("canplay", start);
+    };
+  }, [currentTrack, loadState, result]);
 
   const toggleAudio = async () => {
     const audio = audioRef.current;
@@ -257,7 +272,9 @@ export default function EarwormClient() {
     }
     try {
       await audio.play();
+      setAutoPlayBlocked(false);
     } catch {
+      setAutoPlayBlocked(true);
       setNotice("瀏覽器暫時阻擋播放，請再按一次播放鍵。");
     }
   };
@@ -271,7 +288,8 @@ export default function EarwormClient() {
   };
 
   const react = async (reaction: EarwormReaction) => {
-    if (!quiz || !currentTrack || !canReact || result) return;
+    if (!quiz || !currentTrack || advancing || result) return;
+    setAdvancing(true);
     audioRef.current?.pause();
     setPlaying(false);
     lastPlaybackTickRef.current = null;
@@ -297,17 +315,8 @@ export default function EarwormClient() {
     setCurrentTime(0);
     setDuration(0);
     setListenedSeconds(0);
+    setAutoPlayBlocked(false);
     setNotice("");
-  };
-
-  const saveResult = async () => {
-    if (!quiz || answers.length !== EARWORM_TRACK_COUNT) return;
-    const sessionResult = await supabase.auth.getSession();
-    if (!sessionResult.data.session?.access_token) {
-      setAuthOpen(true);
-      return;
-    }
-    await persistResult(quiz, answers);
   };
 
   const restart = async () => {
@@ -386,18 +395,18 @@ export default function EarwormClient() {
             </div>
 
             <div className="earworm-result-actions">
-              {saveState === "guest" ? (
-                <button type="button" className="earworm-submit-button" onClick={() => void saveResult()}><LogIn className="h-4 w-4" />登入保存結果</button>
-              ) : saveState === "saving" ? (
-                <button type="button" className="earworm-submit-button" disabled>保存中…</button>
-              ) : saveState === "saved" ? (
-                <span className="earworm-saved-badge">結果已保存</span>
-              ) : (
-                <button type="button" className="earworm-submit-button" onClick={() => void saveResult()}>再試著保存</button>
-              )}
-              <button type="button" className="earworm-share-button" onClick={() => void shareResult()}><Share2 className="h-4 w-4" />分享我的耳朵類型</button>
+              <Link href="/ai-music?lang=zh" className="earworm-explore-result-link">
+                <span className="earworm-explore-result-icon"><Compass className="h-5 w-5" /></span>
+                <span><strong>去探索音樂</strong><small>帶著你的耳朵主場，逛逛所有 AI 音樂作品</small></span>
+                <ArrowRight className="h-5 w-5" />
+              </Link>
+              <Link href={`/listen-bar?genre=${encodeURIComponent(result.primaryGenre)}`} className="earworm-explore-result-link is-bar">
+                <span className="earworm-explore-result-icon"><RadioTower className="h-5 w-5" /></span>
+                <span><strong>去傷心酒吧</strong><small>進入 AI 音樂公播場，接著聽這一類</small></span>
+                <ArrowRight className="h-5 w-5" />
+              </Link>
               <Link href={recommendationHref} className="earworm-listen-result-link is-primary">看看為我挑的歌<ArrowRight className="h-4 w-4" /></Link>
-              <Link href={`/listen-bar?genre=${encodeURIComponent(result.primaryGenre)}`} className="earworm-listen-result-link">去傷心酒吧聽這一類</Link>
+              <button type="button" className="earworm-share-button" onClick={() => void shareResult()}><Share2 className="h-4 w-4" />分享我的耳朵類型</button>
               <button type="button" className="earworm-restart-button" onClick={() => void restart()}><RotateCcw className="h-4 w-4" />重新測一次</button>
             </div>
             {notice ? <p className="earworm-notice" aria-live="polite">{notice}</p> : null}
@@ -432,8 +441,15 @@ export default function EarwormClient() {
                     />
                     <div className="earworm-time-row"><span>{formatTime(currentTime)}</span><span>{formatTime(duration || currentTrack.duration)}</span></div>
                   </div>
-                  <div className={`earworm-heard-status ${canReact ? "is-ready" : ""}`}>
-                    {canReact ? "READY" : `${Math.max(0, Math.ceil(minListenSeconds - listenedSeconds))}s`}
+                  <div className="earworm-player-side">
+                    {autoPlayBlocked ? (
+                      <button type="button" className="earworm-autoplay-resume" onClick={() => void toggleAudio()}><Play className="h-3.5 w-3.5" fill="currentColor" />啟動自動播放</button>
+                    ) : (
+                      <div className="earworm-heard-status is-ready"><AudioLines className="h-3.5 w-3.5" />AUTO PLAY</div>
+                    )}
+                    <button type="button" className="earworm-next-button" onClick={() => void react("pass")} disabled={advancing}>
+                      <span><small>不喜歡就</small>下一首</span><SkipForward className="h-4 w-4" fill="currentColor" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -445,31 +461,25 @@ export default function EarwormClient() {
                   <p className={`${fontRighteous.className}`}>TRUST YOUR FIRST FEELING</p>
                   <h2>這首歌，留在你耳朵裡多少？</h2>
                 </div>
-                <span>{canReact ? "可以選了，照直覺按" : `先實際聽滿 ${minListenSeconds} 秒再選`}</span>
+                <span>第一耳就能選，選完自動播下一首</span>
               </div>
               <div className="earworm-reaction-grid">
                 {REACTIONS.map((item) => (
-                  <button key={item.value} type="button" className={`earworm-reaction-button is-${item.value}`} onClick={() => void react(item.value)} disabled={!canReact}>
+                  <button key={item.value} type="button" className={`earworm-reaction-button is-${item.value}`} onClick={() => void react(item.value)} disabled={advancing}>
                     <strong>{item.label}</strong><span>{item.note}</span>
                   </button>
                 ))}
               </div>
+              <p className="earworm-next-note">一出來就不喜歡？按「下一首」會直接記為無感。</p>
               <p className="earworm-blind-note">測驗中先不顯示類型，避免名稱影響你的耳朵；完成後一次揭曉。</p>
               {notice ? <p className="earworm-notice" aria-live="polite">{notice}</p> : null}
             </section>
 
-            <audio key={currentTrack.id} ref={audioRef} src={currentTrack.audioUrl} preload="metadata" />
+            <audio key={currentTrack.id} ref={audioRef} src={currentTrack.audioUrl} preload="auto" autoPlay />
           </>
         ) : null}
       </div>
 
-      <AuthRequiredDialog
-        open={authOpen}
-        kind="earworm"
-        lang="zh"
-        nextPath={`/earworm?resume=1&return=${encodeURIComponent(recommendationHref)}`}
-        onClose={() => setAuthOpen(false)}
-      />
     </main>
   );
 }

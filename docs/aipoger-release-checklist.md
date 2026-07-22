@@ -266,21 +266,21 @@ Check:
 
 - `/earworm` loads 10 real public playable works without a genre selector.
 - Genre labels stay hidden during the questions and appear only in the final personality result.
-- Every work requires 8 seconds of actual playback before its four reaction buttons become available.
+- All four reactions are available immediately because Earworm records first impressions; there is no minimum listening time. Each track attempts automatic playback, and a visible `下一首` action records `無感` before advancing.
 - Progress advances exactly once per answered work and reveals the result only after 10 answers.
-- The result shows one `目前最接近` primary genre, two nearby genres, listening keywords, share, retest, and `看看為我挑的歌` returning to Explore recommendations.
-- A signed-out visitor can see the result; sign-in is requested only for saving it to an account.
+- The result shows one `目前最接近` primary genre, two nearby genres, and listening keywords. Its vertical action order is `去探索音樂` -> `去傷心酒吧` -> `看看為我挑的歌` -> share -> retest; Explore and Bar use equal destination-card treatment.
+- A signed-out visitor can see the result without a save prompt. Signed-in results save silently; the result has no `結果已保存`, account-save status, or separate save control.
 - Ordinary `/ai-music?lang=zh` entry shows a dismissible Earworm invitation only when no fresh completion or skip exists; track/share/genre/challenge links bypass it. `先逛逛` suppresses it for 7 days and a completion suppresses it for 30 days.
 - Completion writes a compact browser-local result for guests and members without per-song reactions. Explore shows one approximately 70/30 match/discovery recommendation shelf; the standard catalog remains available.
-- The API rejects fewer/more than 10 answers, duplicate track IDs, invalid reactions, under-8-second answers, unavailable tracks, and a mismatched quiz key.
+- The API rejects fewer/more than 10 answers, duplicate track IDs, invalid reactions, negative observed listening seconds, unavailable tracks, and a mismatched quiz key.
 - Earworm exposes no APC copy, reward field, daily point limit, or point-award RPC call.
 - `earworm_personality_results` has RLS enabled, no direct `anon` or `authenticated` grants, service-role access, and one-result-per-quiz protection.
 - `earworm_track_reactions` has RLS enabled, no direct `anon` or `authenticated` grants, service-role access, and unique `(user_id, track_id)` protection. Retesting updates the latest aggregate input instead of adding a second public sample; no per-song personal history is exposed in Explore or Bar Heartbreak.
 - `earworm_track_affinity_stats` is service-role-only. Explore and Bar Heartbreak read the same track aggregate, hide percentages below 20 distinct accounts, and show `好感度累積中` for tested small-sample works.
-- Production Supabase application was verified on 2026-07-22: `earworm_personality_results` and `earworm_track_reactions` have RLS enabled; anon/authenticated direct reads are revoked; the service-role aggregate view is available and began with zero rows.
+- Production Supabase application was verified on 2026-07-22: `earworm_personality_results` and `earworm_track_reactions` have RLS enabled; anon/authenticated direct reads are revoked; the service-role aggregate view is available. `20260725_earworm_instant_reactions.sql` was applied to relax only the listening-time check from eight seconds to non-negative observed time; all 10 existing reaction rows remained and RLS/grants were unchanged.
 - Blind affinity never changes Heart totals, Bar pool/survival order, Battle votes/results, defense progress, Showtime certification, Choice, or public rankings.
 - Earworm writes no formal Battle votes, results, wins/losses, defense progress, or Showtime state.
-- Verify 1440x900 and 390x844 layouts, Explore invitation/skip/reopen, the single recommendation shelf, public favorability labels without personal-answer chips in Explore and Bar, play/pause, seek, reaction gate, tenth-answer result, guest save prompt, retest, and no browser console errors.
+- Verify 1440x900 and 390x844 layouts, Explore invitation/skip/reopen, the single recommendation shelf, public favorability labels without personal-answer chips in Explore and Bar, first-load autoplay fallback, play/pause, seek, immediate reactions, `下一首`, next-track autoplay after a user gesture, tenth-answer result, the exact five-action result order, retest, and no browser console errors.
 
 ## AIPOGER Showtime Checklist
 

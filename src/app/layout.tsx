@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./earworm-v3.css";
 import { I18nProvider } from "@/lib/i18n";
 import GlobalLangToggle from "@/components/global-lang-toggle";
 import NavHomeLink from "@/components/nav-home-link";

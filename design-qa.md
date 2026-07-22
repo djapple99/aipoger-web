@@ -73,6 +73,82 @@ final result: passed
 
 ---
 
+# 耳朵蟲即時試聽與結果動線 — Design QA (2026-07-22)
+
+## Comparison Target
+
+- Source visual truth: `/var/folders/z5/42v3w_nj2_b36bxx5c2559ph0000gn/T/TemporaryItems/NSIRD_screencaptureui_DrjaoO/截屏2026-07-22 下午1.03.40.png`
+- Browser-rendered mobile implementation: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-result-action-order-mobile-final-396x867.png`
+- Browser-rendered desktop implementation: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-result-action-order-desktop-final-1280x720.png`
+- Full-view comparison input: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-design-comparison-final.png`
+- Focused action-stack comparison input: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-result-actions-focused-comparison-final.png`
+- Route/state: `/earworm?lang=zh`, completed ten-song guest result.
+- Source pixels: `704 × 820`. Mobile capture pixels: `381 × 835` from a `396 × 867` CSS viewport at `1×`; the browser capture excludes scrollbar/browser edges. Desktop capture pixels: `1265 × 712` from a `1280 × 720` CSS viewport at `1×`.
+- Normalization: the full-view comparison scales both source and mobile evidence to `820 px` high. The focused comparison crops the rendered action region before scaling it to the same `820 px` comparison height.
+
+## Full-view Comparison Evidence
+
+The combined input puts the user's current result-action stack beside the revised browser result. The revision preserves the near-black stage, warm Explore commitment color, clear vertical rhythm, bordered secondary actions, and strong top-to-bottom scan. It intentionally changes the old hierarchy by removing both save-result controls and promoting Bar Heartbreak into a second destination card directly below Explore.
+
+## Focused Region Evidence
+
+The focused comparison verifies the exact five-step order: `去探索音樂` → `去傷心酒吧` → `看看為我挑的歌` → `分享我的耳朵類型` → `重新測一次`. Explore and Bar Heartbreak use the same two-line card component, `84 px` mobile height, icon well, trailing arrow, radius, padding, and text hierarchy. Orange and cyan distinguish destinations without implying that Bar Heartbreak is a utility button.
+
+## Required Fidelity Surfaces
+
+- Fonts and typography: passed. Destination headings, supporting copy, recommendation label, share, and restart retain a readable descending hierarchy without clipping or awkward orphan lines.
+- Spacing and layout rhythm: passed. Mobile cards measure the same `84 px` height; desktop cards both measure `77 px`. All five actions occupy one full-width column with consistent gaps and no overlap.
+- Colors and visual tokens: passed. Explore keeps the product's high-energy orange; Bar Heartbreak uses the existing cyan listening accent with equally strong fill, border, and contrast. Secondary actions remain quieter by design.
+- Image quality and asset fidelity: passed. This action region does not require raster imagery. Icons come from the installed Lucide family; no emoji, handcrafted SVG, CSS drawing, or placeholder asset was introduced.
+- Copy and content: passed. Save-success and login-to-save labels are absent. Destination copy states what each route does, while the requested action labels and order are preserved.
+- Icons and affordances: passed. Both destinations have equal icon wells and arrows; recommendation, share, and restart retain familiar icons and keyboard focus styling.
+- Responsiveness and accessibility: passed. Mobile tap targets are at least `44 px`; both destination cards are larger. Desktop and mobile captures show no clipped controls, and browser console errors are empty.
+
+## Findings
+
+- No actionable P0, P1, or P2 findings remain.
+
+## Open Questions
+
+- None blocking. The first-load browser autoplay policy may require one explicit `啟動自動播放` gesture; after that, reaction and `下一首` transitions automatically start the next track.
+
+## Interaction And Runtime Checks
+
+- Reaction choices are enabled immediately; no eight-second gate remains.
+- `下一首` records a neutral pass so every completed quiz still contains ten first-impression answers.
+- After one allowed playback gesture, advancing to the next song starts it automatically.
+- Result DOM contains exactly five ordered actions, two primary destination cards, and zero save-result labels or controls.
+- Explore resolves to `/ai-music?lang=zh`; Bar Heartbreak resolves to the result genre route; recommendations resolve to `/ai-music?view=for-you&lang=zh`.
+- Browser console errors checked on mobile and desktop: none.
+
+## Comparison History
+
+### Pass 1
+
+- Earlier P2: Explore measured `84 px` while Bar Heartbreak measured `71 px` on mobile because only the Explore subtitle wrapped.
+- Fix: raised the shared mobile destination-card minimum height to `5.25rem`.
+- Post-fix evidence: both destination cards measure `84 px` at the `396 × 867` viewport and remain equal at `77 px` on desktop.
+
+### Pass 2
+
+- The revised full-view and focused comparisons show no remaining P0/P1/P2 mismatch.
+
+## Implementation Checklist
+
+- [x] Remove result-save success and login-save controls.
+- [x] Promote Explore and Bar Heartbreak as equal destination cards.
+- [x] Preserve the requested five-action vertical order.
+- [x] Add immediate reactions, visible next, and post-gesture autoplay.
+- [x] Verify desktop/mobile layout, routes, tap targets, and console.
+
+## Follow-up Polish
+
+- No P3 item is required for this handoff.
+
+final result: passed
+
+---
+
 # Earworm Affinity Badge Prominence — Design QA (2026-07-22)
 
 ## Same-Viewport Comparison

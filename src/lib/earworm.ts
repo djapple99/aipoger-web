@@ -1,7 +1,7 @@
 import { canonicalMusicGenre, isCurrentMusicGenre, MUSIC_GENRE_VALUES } from "./music-genres.ts";
 
 export const EARWORM_TRACK_COUNT = 10;
-export const EARWORM_MIN_LISTEN_SECONDS = 8;
+export const EARWORM_MIN_LISTEN_SECONDS = 0;
 
 export type EarwormReaction = "love" | "replay" | "okay" | "pass";
 

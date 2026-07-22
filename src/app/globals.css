@@ -2212,8 +2212,7 @@ a {
 
 .earworm-share-button,
 .earworm-restart-button,
-.earworm-listen-result-link,
-.earworm-saved-badge {
+.earworm-listen-result-link {
   display: inline-flex;
   min-height: 2.75rem;
   align-items: center;
@@ -2253,11 +2252,6 @@ a {
   border-color: #ffd2ad;
   background: #ffa35f;
   color: #080403;
-}
-
-.earworm-saved-badge {
-  border-color: rgba(242, 201, 107, 0.38);
-  color: rgba(249, 220, 151, 0.82);
 }
 
 @media (max-width: 800px) {
