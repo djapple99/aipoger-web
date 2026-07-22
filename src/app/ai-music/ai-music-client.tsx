@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Volume2 } from "lucide-react";
+import { ArrowRight, AudioLines, Headphones, Volume2 } from "lucide-react";
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { fontGlowSans, fontRighteous, fontSourceSerifTC } from "@/lib/fonts";
@@ -29,6 +29,12 @@ import { buildAiMusicHeatList, type AiMusicHeatTrack } from "@/lib/ai-music-heat
 import { isNewlyPublishedMusic } from "@/lib/music-newness";
 import AuthRequiredDialog from "@/components/auth-required-dialog";
 import NewMusicBadge from "@/components/new-music-badge";
+import {
+  markEarwormPromptSkipped,
+  readEarwormLocalProfile,
+  shouldPromptForEarwormFromBrowser,
+  type EarwormLocalProfile,
+} from "@/lib/earworm-profile";
 
 type TrackSource = "battle" | "bar";
 
@@ -45,6 +51,8 @@ type AiMusicTrack = AiMusicExploreOrderTrack & AiMusicHeatTrack & {
   lyrics: string | null;
   createdAt: string;
   heartCount: number;
+  earwormAffinitySampleCount: number;
+  earwormAffinityPercent: number | null;
   positiveReactionCount: number;
   challengeCount: number;
   defenseSuccesses: number;
@@ -136,6 +144,21 @@ function exploreCopy(lang: string) {
     guideChallengeBody: localeText(lang, "看到作品封面右上紅色「接戰」角標，表示原作者已準備 60s Drop 並開放攻擂。", "A red OPEN badge at a cover's top right means the creator has prepared a 60s Drop and opened the work to challenges.", "カバー右上の赤い「挑戦可」は、原作者が60秒のDropを用意して挑戦を受け付けている印です。", "커버 오른쪽 위의 빨간 ‘도전 가능’ 표시는 원작자가 60초 Drop을 준비해 도전을 받고 있다는 뜻입니다."),
     guideRecordTitle: localeText(lang, "正式戰績", "Official results", "公式戦績", "공식 전적"),
     guideRecordBody: localeText(lang, "至少 3 位非參賽者完成投票才成立。進入 Showtime 的作品只供播放、收藏與分享，不再接戰。", "A result needs at least three non-participant votes. Showtime works remain available to play, save, and share, but no longer accept challenges.", "参加者以外の投票が3票以上で公式戦績になります。Showtime入りした作品は再生・保存・共有のみで、挑戦受付は終了します。", "참가자가 아닌 사용자 3명 이상이 투표해야 공식 전적이 됩니다. Showtime 진출 곡은 재생·저장·공유만 가능하며 더 이상 도전을 받지 않습니다."),
+  };
+}
+
+function earwormExploreCopy(lang: string) {
+  return {
+    promptEyebrow: localeText(lang, "先讓耳朵帶路", "LET YOUR EARS LEAD", "まず耳で選ぶ", "먼저 귀로 골라요"),
+    promptTitle: localeText(lang, "先測一下，你會更快遇到對味的歌。", "Take a quick test to find tracks that fit you faster.", "先にテストすると、好みの曲に早く出会えます。", "먼저 테스트하면 취향에 맞는 곡을 더 빨리 만나요."),
+    promptBody: localeText(lang, "盲聽 10 首、每首聽滿 8 秒再憑直覺選。完成後會揭曉你的音樂主場，並把推薦帶回探索。", "Blind-listen to 10 tracks, then react by instinct. You will get a music type and recommendations here.", "10曲をブラインドで聴き、直感で選択。結果とおすすめをExploreに返します。", "10곡을 블라인드로 듣고 직감대로 선택하면 취향 유형과 추천을 보여드려요."),
+    start: localeText(lang, "開始耳朵測驗｜約 2 分鐘", "Start Ear Test · about 2 min", "耳テストを始める・約2分", "귀 테스트 시작 · 약 2분"),
+    skip: localeText(lang, "先逛逛", "Browse first", "先に見てみる", "먼저 둘러보기"),
+    reopen: localeText(lang, "測測你的耳朵", "Test your ears", "耳をテスト", "귀 테스트"),
+    profileEyebrow: localeText(lang, "EARWORM FOR YOU", "EARWORM FOR YOU", "EARWORM FOR YOU", "EARWORM FOR YOU"),
+    profileTitle: localeText(lang, "你的耳朵主場", "Your music home", "あなたの音楽ホーム", "당신의 음악 홈"),
+    recommendedTitle: localeText(lang, "依你的耳朵推薦", "Picked for your ears", "あなたの耳におすすめ", "당신의 귀를 위한 추천"),
+    recommendedBody: localeText(lang, "以你的主場與靠近方向為主，也留一點位置給意外驚喜。", "Mostly your strongest and nearby styles, with a little room for discovery.", "得意ジャンルを中心に、少しだけ新しい発見も混ぜています。", "주 취향과 가까운 장르를 중심으로 새로운 발견도 조금 섞었어요."),
   };
 }
 
@@ -275,6 +298,10 @@ async function tracksFromListenBar(lang: string) {
         createdAt: safeDate(track.createdAt),
         heartCount: numberValue(row.heart_count ?? track.positiveReactionCount),
         positiveReactionCount: numberValue(row.positive_reaction_count ?? track.positiveReactionCount),
+        earwormAffinitySampleCount: numberValue(row.earworm_affinity_sample_count),
+        earwormAffinityPercent: typeof row.earworm_affinity_percent === "number"
+          ? Math.min(100, Math.max(0, Math.round(row.earworm_affinity_percent)))
+          : null,
         recentHeartSupporters,
         recentOfficialAudienceVotes,
         recentQualifiedInteractionAt: lifecycleRow.ai_music_recent_interaction_at ?? null,
@@ -494,6 +521,33 @@ function TrackHud({ track, lang }: { track: AiMusicTrack; lang: string }) {
   );
 }
 
+function EarwormAffinityStatus({
+  track,
+  lang,
+}: {
+  track: AiMusicTrack;
+  lang: string;
+}) {
+  const showPublicSignal = track.earwormAffinityPercent !== null || track.earwormAffinitySampleCount > 0;
+  if (!showPublicSignal) return null;
+  const publicLabel = track.earwormAffinityPercent !== null
+    ? localeText(lang, `好感度 ${track.earwormAffinityPercent}%`, `Affinity ${track.earwormAffinityPercent}%`, `好感度 ${track.earwormAffinityPercent}%`, `호감도 ${track.earwormAffinityPercent}%`)
+    : localeText(lang, "好感度累積中", "Building affinity", "好感度を集計中", "호감도 집계 중");
+  return (
+    <div className="pointer-events-none absolute inset-x-2 bottom-0 z-30 flex translate-y-1/2 justify-center">
+      <span
+        className="inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-full border border-orange-100/80 bg-[linear-gradient(100deg,#f97316_0%,#fb4f73_56%,#ff8a3d_100%)] px-2.5 py-1 text-[10px] font-black leading-4 text-white shadow-[0_0_24px_rgba(251,79,115,0.56),0_7px_20px_rgba(0,0,0,0.6)]"
+        title={track.earwormAffinitySampleCount > 0 ? `${track.earwormAffinitySampleCount} responses` : undefined}
+      >
+        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-black/22 ring-1 ring-white/20">
+          <AudioLines className="h-3.5 w-3.5" strokeWidth={2.6} aria-hidden="true" />
+        </span>
+        <span className="truncate">{publicLabel}</span>
+      </span>
+    </div>
+  );
+}
+
 function TrackCard({
   track,
   isZh,
@@ -526,6 +580,7 @@ function TrackCard({
   const heartCount = Math.max(0, track.heartCount);
   const showNewBadge = isNewlyPublishedMusic(track.createdAt);
   const showChallengeReadyBadge = track.openForChallenge && Boolean(track.audioUrl);
+  const showEarwormAffinity = track.earwormAffinityPercent !== null || track.earwormAffinitySampleCount > 0;
   const heartActionLabel = heartedToday
     ? localeText(lang, "取消愛心與收藏", "Remove Heart and saved track", "Heartと保存を解除", "Heart와 저장 취소")
     : localeText(lang, "送出愛心支持", "Send a heart", "Heartを送る", "Heart 보내기");
@@ -550,7 +605,7 @@ function TrackCard({
           type="button"
           onClick={() => onPlay(track)}
           disabled={!track.audioUrl}
-          className="absolute bottom-3 left-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-black shadow-[0_0_26px_rgba(255,106,0,0.36)] transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+          className="absolute bottom-5 left-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-black shadow-[0_0_26px_rgba(255,106,0,0.36)] transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
           aria-label={isPlaying ? localeText(lang, "暫停", "Pause", "一時停止", "일시정지") : localeText(lang, `播放 ${track.title}`, `Play ${track.title}`, `${track.title}を再生`, `${track.title} 재생`)}
         >
           <PlayIcon playing={isPlaying} />
@@ -558,7 +613,7 @@ function TrackCard({
         <button
           type="button"
           onClick={() => onToggleExpand(track)}
-          className="absolute bottom-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/18 bg-black/62 text-xs font-black text-white backdrop-blur transition hover:border-cyan-100/50 md:hidden"
+          className="absolute bottom-5 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/18 bg-black/62 text-xs font-black text-white backdrop-blur transition hover:border-cyan-100/50 md:hidden"
           aria-expanded={isExpanded}
           aria-label={localeText(lang, "顯示戰績資訊", "Show record info", "戦績情報を表示", "전적 정보 보기")}
         >
@@ -567,9 +622,10 @@ function TrackCard({
         <div className="pointer-events-none absolute inset-x-3 top-3 hidden translate-y-2 opacity-0 transition duration-200 group-hover:translate-y-0 group-hover:opacity-100 md:block">
           <TrackHud track={track} lang={lang} />
         </div>
+        <EarwormAffinityStatus track={track} lang={lang} />
       </div>
 
-      <div className="grid gap-2 p-3">
+      <div className={`grid gap-2 px-3 pb-3 ${showEarwormAffinity ? "pt-6" : "pt-3"}`}>
         <div className="min-w-0">
           <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-black leading-5 text-white">{track.title}</h3>
           <p className="mt-1 truncate text-[11px] font-bold text-zinc-400">
@@ -991,9 +1047,12 @@ export default function AiMusicClient() {
   const { lang, t } = useI18n();
   const isZh = lang === "zh";
   const copy = exploreCopy(lang);
+  const earwormCopy = earwormExploreCopy(lang);
   const [tracks, setTracks] = useState<AiMusicTrack[]>([]);
   const [worksView, setWorksView] = useState<"genre" | "heat">("genre");
   const [guideOpen, setGuideOpen] = useState(false);
+  const [earwormPromptOpen, setEarwormPromptOpen] = useState(false);
+  const [earwormProfile, setEarwormProfile] = useState<EarwormLocalProfile | null>(null);
   const [sharedTrackSourceId, setSharedTrackSourceId] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [loadError, setLoadError] = useState("");
@@ -1011,12 +1070,57 @@ export default function AiMusicClient() {
   const guideDialogRef = useRef<HTMLDivElement | null>(null);
   const guideCloseButtonRef = useRef<HTMLButtonElement | null>(null);
   const guideReturnFocusRef = useRef(false);
+  const earwormDialogRef = useRef<HTMLDivElement | null>(null);
+  const earwormStartRef = useRef<HTMLAnchorElement | null>(null);
 
   const withLang = useCallback((href: string) => `${href}${href.includes("?") ? "&" : "?"}lang=${lang}`, [lang]);
   const closeGuide = useCallback(() => {
     guideReturnFocusRef.current = true;
     setGuideOpen(false);
   }, []);
+  const closeEarwormPrompt = useCallback(() => {
+    markEarwormPromptSkipped();
+    setEarwormPromptOpen(false);
+  }, []);
+
+  useEffect(() => {
+    const profile = readEarwormLocalProfile();
+    setEarwormProfile(profile);
+    if (!shouldPromptForEarwormFromBrowser(profile)) return;
+    const frame = window.requestAnimationFrame(() => setEarwormPromptOpen(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  useEffect(() => {
+    if (!earwormPromptOpen) return;
+    const frame = window.requestAnimationFrame(() => earwormStartRef.current?.focus());
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeEarwormPrompt();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const dialog = earwormDialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'));
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [closeEarwormPrompt, earwormPromptOpen]);
 
   useEffect(() => {
     if (guideOpen) {
@@ -1183,6 +1287,28 @@ export default function AiMusicClient() {
       label: t(MUSIC_GENRE_OPTIONS.find((option) => option.value === group.genre)?.labelKey ?? ""),
     }));
   }, [tracks, t]);
+
+  const earwormRecommendations = useMemo(() => {
+    if (!earwormProfile) return [];
+    const preferredGenres = [earwormProfile.primaryGenre, ...earwormProfile.secondaryGenres];
+    const relevant = tracks
+      .filter((track) => preferredGenres.includes(track.genre))
+      .sort((left, right) => preferredGenres.indexOf(left.genre) - preferredGenres.indexOf(right.genre) || right.heartCount - left.heartCount || left.sourceId.localeCompare(right.sourceId));
+    const discovery = tracks
+      .filter((track) => !preferredGenres.includes(track.genre))
+      .sort((left, right) => right.heartCount - left.heartCount || left.sourceId.localeCompare(right.sourceId));
+    return [...relevant.slice(0, 4), ...discovery.slice(0, 2)].slice(0, 6);
+  }, [earwormProfile, tracks]);
+
+  useEffect(() => {
+    if (!earwormProfile || loadState !== "ready") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("view") !== "for-you" && window.location.hash !== "#earworm-for-you") return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById("earworm-for-you")?.scrollIntoView({ block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [earwormProfile, loadState]);
 
   useEffect(() => {
     if (!currentTrack || !audioRef.current) return;
@@ -1367,6 +1493,74 @@ export default function AiMusicClient() {
         </header>
 
         <section id="works" className="grid gap-5 scroll-mt-24">
+          {earwormProfile ? (
+            <section id="earworm-for-you" className="scroll-mt-24 border-y border-orange-200/20 bg-[linear-gradient(115deg,rgba(255,106,0,0.13),rgba(0,202,255,0.045),rgba(0,0,0,0.72))] px-3 py-5 shadow-[0_22px_70px_rgba(0,0,0,0.32)] sm:px-5">
+              <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/10 pb-4">
+                <div>
+                  <p className={`${fontRighteous.className} text-[10px] tracking-[0.2em] text-orange-200/72`}>{earwormCopy.profileEyebrow}</p>
+                  <h2 className="mt-1 text-2xl font-black text-white">
+                    {earwormCopy.profileTitle}：<span className="text-orange-200">{earwormProfile.primaryGenre}</span>
+                  </h2>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {earwormProfile.keywords.map((keyword) => (
+                      <span key={keyword} className="rounded-full border border-cyan-100/20 bg-cyan-300/[0.06] px-2.5 py-1 text-[10px] font-black text-cyan-50/78">{keyword}</span>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEarwormPromptOpen(true)}
+                  className="inline-flex min-h-10 items-center gap-2 rounded-md border border-orange-200/35 bg-orange-500/12 px-3 text-xs font-black text-orange-50 transition hover:border-orange-100/65 hover:bg-orange-500/20"
+                >
+                  <Headphones className="h-4 w-4" aria-hidden="true" />
+                  {earwormCopy.reopen}
+                </button>
+              </div>
+
+              <div className="mt-5 grid gap-3">
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-black text-white">{earwormCopy.recommendedTitle}</h3>
+                    <p className="mt-1 max-w-2xl text-xs font-bold leading-5 text-zinc-400">{earwormCopy.recommendedBody}</p>
+                  </div>
+                  <span className="text-[10px] font-black tracking-[0.12em] text-orange-100/60">70% MATCH / 30% DISCOVERY</span>
+                </div>
+                {earwormRecommendations.length > 0 ? (
+                  <div className="flex snap-x gap-3 overflow-x-auto pb-2 [scrollbar-width:thin] sm:grid sm:grid-cols-3 sm:overflow-visible md:grid-cols-4 xl:grid-cols-6">
+                    {earwormRecommendations.map((track) => {
+                      const catalogLabel = track.genre === earwormProfile.primaryGenre
+                        ? localeText(lang, "主場", "HOME", "本命", "주 취향")
+                        : earwormProfile.secondaryGenres.includes(track.genre)
+                          ? localeText(lang, "靠近", "NEARBY", "近い", "가까움")
+                          : localeText(lang, "探索", "DISCOVER", "発見", "탐색");
+                      return (
+                        <TrackCard
+                          key={`earworm-pick-${track.id}`}
+                          track={track}
+                          isZh={isZh}
+                          isPlaying={currentTrack?.id === track.id && isPlaying}
+                          isExpanded={Boolean(expandedHud[track.id])}
+                          heartBusy={Boolean(heartBusy[track.recordKey])}
+                          heartedToday={Boolean(heartStates[track.recordKey])}
+                          lang={lang}
+                          catalogLabel={catalogLabel}
+                          onPlay={handlePlayTrack}
+                          onToggleExpand={(item) => setExpandedHud((current) => ({ ...current, [item.id]: !current[item.id] }))}
+                          onHeart={(item) => void sendHeart(item)}
+                          onShare={(item) => void shareTrack(item)}
+                        />
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="rounded-md border border-white/10 bg-black/30 px-4 py-4 text-sm font-bold text-zinc-500">
+                    {localeText(lang, "符合你耳朵方向的新作品正在補進來。", "More tracks for your profile are on the way.", "あなた向けの新しい曲を準備中です。", "취향에 맞는 새 곡을 준비 중이에요.")}
+                  </p>
+                )}
+              </div>
+            </section>
+          ) : null}
+
           <div className="flex justify-center border-b border-white/10 pb-3 pt-1">
             <div className="flex items-center justify-center gap-2 rounded-lg border border-orange-100/18 bg-black/76 p-1.5 shadow-[0_16px_42px_rgba(0,0,0,0.36)]">
               <div className="inline-flex" role="group" aria-label={copy.browseMode}>
@@ -1387,6 +1581,15 @@ export default function AiMusicClient() {
                 {copy.hotNow}
               </button>
               </div>
+              <span className="h-7 w-px bg-white/12" aria-hidden="true" />
+              <button
+                type="button"
+                onClick={() => setEarwormPromptOpen(true)}
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-cyan-100/22 bg-cyan-300/[0.06] px-3 text-[11px] font-black text-cyan-50/82 transition hover:border-cyan-100/50 hover:text-white"
+              >
+                <Headphones className="h-4 w-4" aria-hidden="true" />
+                {earwormCopy.reopen}
+              </button>
               <span className="h-7 w-px bg-white/12" aria-hidden="true" />
               <button
                 ref={guideButtonRef}
@@ -1488,6 +1691,57 @@ export default function AiMusicClient() {
       {notice ? (
         <div className="fixed bottom-24 left-1/2 z-[60] w-[min(92vw,28rem)] -translate-x-1/2 rounded-md border border-orange-200/28 bg-black/92 px-4 py-3 text-center text-sm font-bold text-orange-50 shadow-[0_18px_50px_rgba(0,0,0,0.52)]">
           {notice}
+        </div>
+      ) : null}
+
+      {earwormPromptOpen ? (
+        <div
+          className="fixed inset-0 z-[85] flex items-end justify-center bg-black/82 px-3 py-3 backdrop-blur-sm sm:items-center sm:px-5 sm:py-6"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeEarwormPrompt();
+          }}
+        >
+          <div
+            ref={earwormDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="earworm-explore-prompt-title"
+            className="relative w-full max-w-2xl overflow-hidden rounded-t-[1.65rem] border border-orange-200/35 bg-[#090807] shadow-[0_30px_110px_rgba(0,0,0,0.78),0_0_50px_rgba(255,106,0,0.12)] sm:rounded-[1.4rem]"
+          >
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(255,106,0,0.24),transparent_36%),radial-gradient(circle_at_92%_12%,rgba(0,202,255,0.12),transparent_32%)]" aria-hidden="true" />
+            <div className="relative grid gap-5 px-5 py-6 sm:grid-cols-[auto_1fr] sm:gap-6 sm:px-7 sm:py-7">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full border border-orange-200/42 bg-orange-500/12 text-orange-100 shadow-[0_0_35px_rgba(255,106,0,0.2)] sm:h-20 sm:w-20">
+                <Headphones className="h-8 w-8 sm:h-10 sm:w-10" aria-hidden="true" />
+              </div>
+              <div className="min-w-0">
+                <p className={`${fontRighteous.className} text-[10px] tracking-[0.22em] text-orange-200/72`}>{earwormCopy.promptEyebrow}</p>
+                <h2 id="earworm-explore-prompt-title" className="mt-2 text-2xl font-black leading-tight text-white sm:text-3xl">
+                  {earwormCopy.promptTitle}
+                </h2>
+                <p className="mt-3 text-sm font-bold leading-6 text-zinc-300">{earwormCopy.promptBody}</p>
+                <div className="mt-5 grid gap-2 sm:grid-cols-[1fr_auto]">
+                  <Link
+                    ref={earwormStartRef}
+                    href={`/earworm?return=${encodeURIComponent(`/ai-music?view=for-you&lang=${lang}#earworm-for-you`)}`}
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-orange-100/70 bg-orange-500 px-4 text-sm font-black text-black shadow-[0_0_26px_rgba(255,106,0,0.24)] transition hover:bg-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-100"
+                  >
+                    {earwormCopy.start}
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={closeEarwormPrompt}
+                    className="min-h-12 rounded-md border border-white/12 bg-white/[0.04] px-5 text-sm font-black text-zinc-300 transition hover:border-white/30 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-100"
+                  >
+                    {earwormCopy.skip}
+                  </button>
+                </div>
+                <p className="mt-3 text-[10px] font-bold leading-4 text-zinc-500">
+                  {localeText(lang, "訪客也能得到個人結果；公開好感只統計登入帳號，滿 20 人才顯示百分比。", "Guests still get a personal result; public affinity appears after 20 signed-in responses.", "ゲストも個人結果を取得でき、公開好感はログイン回答20件から表示します。", "게스트도 개인 결과를 받고, 공개 호감도는 로그인 응답 20명부터 표시돼요.")}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       ) : null}
 

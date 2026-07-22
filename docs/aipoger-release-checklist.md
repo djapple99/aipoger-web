@@ -260,6 +260,28 @@ Check:
 - `ai_music_bible_content_overrides` has RLS enabled with no `anon`/`authenticated` grants; public/member Bible reads and owner edits are server-mediated and preserve the static catalog as a fallback.
 - Contribution requests reject foreign origins, use a honeypot, validate lengths and enums, and limit a request fingerprint to 6 submissions per hour.
 
+## Earworm Checklist
+
+Check:
+
+- `/earworm` loads 10 real public playable works without a genre selector.
+- Genre labels stay hidden during the questions and appear only in the final personality result.
+- Every work requires 8 seconds of actual playback before its four reaction buttons become available.
+- Progress advances exactly once per answered work and reveals the result only after 10 answers.
+- The result shows one `目前最接近` primary genre, two nearby genres, listening keywords, share, retest, and `看看為我挑的歌` returning to Explore recommendations.
+- A signed-out visitor can see the result; sign-in is requested only for saving it to an account.
+- Ordinary `/ai-music?lang=zh` entry shows a dismissible Earworm invitation only when no fresh completion or skip exists; track/share/genre/challenge links bypass it. `先逛逛` suppresses it for 7 days and a completion suppresses it for 30 days.
+- Completion writes a compact browser-local result for guests and members without per-song reactions. Explore shows one approximately 70/30 match/discovery recommendation shelf; the standard catalog remains available.
+- The API rejects fewer/more than 10 answers, duplicate track IDs, invalid reactions, under-8-second answers, unavailable tracks, and a mismatched quiz key.
+- Earworm exposes no APC copy, reward field, daily point limit, or point-award RPC call.
+- `earworm_personality_results` has RLS enabled, no direct `anon` or `authenticated` grants, service-role access, and one-result-per-quiz protection.
+- `earworm_track_reactions` has RLS enabled, no direct `anon` or `authenticated` grants, service-role access, and unique `(user_id, track_id)` protection. Retesting updates the latest aggregate input instead of adding a second public sample; no per-song personal history is exposed in Explore or Bar Heartbreak.
+- `earworm_track_affinity_stats` is service-role-only. Explore and Bar Heartbreak read the same track aggregate, hide percentages below 20 distinct accounts, and show `好感度累積中` for tested small-sample works.
+- Production Supabase application was verified on 2026-07-22: `earworm_personality_results` and `earworm_track_reactions` have RLS enabled; anon/authenticated direct reads are revoked; the service-role aggregate view is available and began with zero rows.
+- Blind affinity never changes Heart totals, Bar pool/survival order, Battle votes/results, defense progress, Showtime certification, Choice, or public rankings.
+- Earworm writes no formal Battle votes, results, wins/losses, defense progress, or Showtime state.
+- Verify 1440x900 and 390x844 layouts, Explore invitation/skip/reopen, the single recommendation shelf, public favorability labels without personal-answer chips in Explore and Bar, play/pause, seek, reaction gate, tenth-answer result, guest save prompt, retest, and no browser console errors.
+
 ## AIPOGER Showtime Checklist
 
 Check:

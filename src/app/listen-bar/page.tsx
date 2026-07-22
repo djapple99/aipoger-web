@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AudioLines } from "lucide-react";
 import { ChangeEvent, FormEvent, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import LangToggle from "@/components/lang-toggle";
 import SafetyNotice from "@/components/safety-notice";
@@ -104,6 +105,36 @@ function barText(lang: string, zh: string, en: string, ja: string, ko: string) {
   if (lang === "ko") return ko;
   if (lang === "en") return en;
   return zh;
+}
+
+function ListenBarEarwormSignal({
+  track,
+  lang,
+  compact = false,
+}: {
+  track: ListenBarTrack;
+  lang: string;
+  compact?: boolean;
+}) {
+  const showSignal = track.earwormAffinityPercent !== null && track.earwormAffinityPercent !== undefined
+    || Boolean(track.earwormAffinitySampleCount);
+  if (!showSignal) return null;
+  const publicLabel = track.earwormAffinityPercent !== null && track.earwormAffinityPercent !== undefined
+    ? barText(lang, `好感度 ${track.earwormAffinityPercent}%`, `Affinity ${track.earwormAffinityPercent}%`, `好感度 ${track.earwormAffinityPercent}%`, `호감도 ${track.earwormAffinityPercent}%`)
+    : barText(lang, "好感度累積中", "Building affinity", "好感度を集計中", "호감도 집계 중");
+  return (
+    <div className={`flex flex-wrap gap-1.5 ${compact ? "mt-1" : "mt-3"}`}>
+      <span
+        className={`inline-flex items-center gap-1.5 rounded-full border border-orange-100/80 bg-[linear-gradient(100deg,#f97316_0%,#fb4f73_56%,#ff8a3d_100%)] font-black text-white shadow-[0_0_22px_rgba(251,79,115,0.45),0_5px_16px_rgba(0,0,0,0.42)] ${compact ? "px-2.5 py-1 text-[10px]" : "px-3 py-1.5 text-xs"}`}
+        title={track.earwormAffinitySampleCount ? `${track.earwormAffinitySampleCount} responses` : undefined}
+      >
+        <span className={`inline-flex shrink-0 items-center justify-center rounded-full bg-black/22 ring-1 ring-white/20 ${compact ? "h-4 w-4" : "h-5 w-5"}`}>
+          <AudioLines className={compact ? "h-3 w-3" : "h-3.5 w-3.5"} strokeWidth={2.6} aria-hidden="true" />
+        </span>
+        <span>{publicLabel}</span>
+      </span>
+    </div>
+  );
 }
 
 type MyBroadcastStat = {
@@ -2638,6 +2669,10 @@ export default function ListenBarPage() {
                     />
                   ) : null}
                 </div>
+                <ListenBarEarwormSignal
+                  track={nowTrack}
+                  lang={lang}
+                />
                 <div className="mt-7">
                   <div className="h-2 overflow-hidden rounded-full bg-white/10">
                     <div
@@ -2896,6 +2931,11 @@ export default function ListenBarPage() {
                                     Challenger #{challengerRankById.get(track.id) ?? startIndex + index + 1}
                                   </p>
                                 )}
+                                <ListenBarEarwormSignal
+                                  track={track}
+                                  lang={lang}
+                                  compact
+                                />
                               </div>
                               {startIndex + index === 0 && (
                                 <span className="hidden rounded-full border border-cyan-200/25 bg-cyan-300/8 px-2.5 py-1 text-[10px] font-black text-cyan-100 sm:inline-flex">

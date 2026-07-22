@@ -15,6 +15,7 @@ import {
   type ListenBarTrackRow,
 } from "@/lib/listen-bar";
 import { isCurrentMusicGenre } from "@/lib/music-genres";
+import { readEarwormAffinityMap } from "@/lib/earworm-affinity";
 
 type AdminClient = SupabaseClient;
 
@@ -304,14 +305,16 @@ export async function GET(request: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     const playableRows = applyLegacyOpeningGrace(rows).filter(isPublicPlayableTrack);
-    const [lifecycleByTrackId, recentHeatByTrackId] = await Promise.all([
+    const [lifecycleByTrackId, recentHeatByTrackId, affinityByTrackId] = await Promise.all([
       buildAiMusicSurfaceLifecycleMap(admin, playableRows),
       readRecentHeat(admin, playableRows.map((row) => row.id)),
+      readEarwormAffinityMap(admin, playableRows.map((row) => row.id)),
     ]);
     const tracks = playableRows
       .map((row) => {
         const lifecycle = lifecycleByTrackId.get(row.id);
         const recentHeat = recentHeatByTrackId.get(row.id);
+        const affinity = affinityByTrackId.get(row.id);
         const persistedShowtimeCertified = isAiMusicPersistedShowtimeCertified(row);
         const showtimeCertified = persistedShowtimeCertified || lifecycle?.isShowtimeCertified || false;
         return {
@@ -329,6 +332,8 @@ export async function GET(request: Request) {
           ai_music_recent_heart_supporter_count: recentHeat?.heartSupporterIds.size ?? 0,
           ai_music_recent_official_audience_votes: recentHeat?.officialAudienceVotes ?? 0,
           ai_music_recent_interaction_at: recentHeat?.latestInteractionAt ?? null,
+          earworm_affinity_sample_count: affinity?.sampleCount ?? 0,
+          earworm_affinity_percent: affinity?.percent ?? null,
         };
       })
       .filter((row) => {

@@ -36,8 +36,8 @@ const COPY: Record<"zh" | "en" | "ja" | "ko", Record<AuthPromptKind, AuthPromptC
     },
     earworm: {
       eyebrow: "EARWORM LISTENER",
-      title: "登入後送出耳朵蟲判斷",
-      body: "你的聽感會留下作品認可資料，送出後也會獲得 APC 點數。",
+      title: "登入保存你的耳朵人格",
+      body: "把這次的音樂人格結果保存到帳號，之後回來還能找到它。",
       primary: "登入／免費加入",
       cancel: "先繼續聽",
       close: "關閉登入提示",
@@ -62,8 +62,8 @@ const COPY: Record<"zh" | "en" | "ja" | "ko", Record<AuthPromptKind, AuthPromptC
     },
     earworm: {
       eyebrow: "EARWORM LISTENER",
-      title: "Sign in to submit your earworm pick",
-      body: "Your listening judgment helps build recognition data, and you earn APC points after submitting.",
+      title: "Sign in to save your Earworm profile",
+      body: "Save this music personality result to your account so you can find it again later.",
       primary: "Sign in / Join free",
       cancel: "Keep listening",
       close: "Close sign-in prompt",
@@ -88,8 +88,8 @@ const COPY: Record<"zh" | "en" | "ja" | "ko", Record<AuthPromptKind, AuthPromptC
     },
     earworm: {
       eyebrow: "EARWORM LISTENER",
-      title: "ログインして耳朵蟲の判定を送る",
-      body: "聴感の判定が作品認可データになり、送信後にAPCポイントを受け取れます。",
+      title: "ログインしてEarworm結果を保存",
+      body: "今回の音楽タイプの結果をアカウントに保存し、あとからもう一度確認できます。",
       primary: "ログイン／無料登録",
       cancel: "このまま聴く",
       close: "ログイン案内を閉じる",
@@ -114,8 +114,8 @@ const COPY: Record<"zh" | "en" | "ja" | "ko", Record<AuthPromptKind, AuthPromptC
     },
     earworm: {
       eyebrow: "EARWORM LISTENER",
-      title: "로그인하고 귀벌레 판단 보내기",
-      body: "청취 판단이 작품 인증 데이터가 되고, 제출 후 APC 포인트를 받을 수 있습니다.",
+      title: "로그인하고 Earworm 결과 저장",
+      body: "이번 음악 성향 결과를 계정에 저장하고 나중에 다시 확인할 수 있습니다.",
       primary: "로그인／무료 가입",
       cancel: "계속 듣기",
       close: "로그인 안내 닫기",

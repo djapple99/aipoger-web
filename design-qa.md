@@ -73,6 +73,172 @@ final result: passed
 
 ---
 
+# Earworm Affinity Badge Prominence — Design QA (2026-07-22)
+
+## Same-Viewport Comparison
+
+- Before/after comparison: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-affinity-badge-design-qa-comparison.png`
+- Before: the tested-song cards repeated an unexplained `命中` cover chip and placed `盲聽好感累積中` as a small muted cyan metadata pill inside the card body.
+- After the information-reduction pass: the entire per-song personal reaction shelf is removed. Explore keeps only the compact personality result and one recommendation shelf; public `好感度` badges remain available on songs that have aggregate samples.
+
+## Responsive Evidence
+
+- Desktop 1440 × 900: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-affinity-badge-desktop-1440x900.png`
+- Mobile 390 × 844: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-affinity-badge-mobile-390x844.png`
+- Personal-reaction removal comparison: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-personal-reaction-removal-comparison.png`
+- Simplified desktop: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-recommendation-trim-desktop-1440x900.png`
+- Simplified mobile: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-recommendation-trim-mobile-390x844.png`
+- Bar Heartbreak shares the same label, icon, and high-contrast color treatment for tested tracks.
+
+## Findings And Fixes
+
+- P1: `命中` had no clear object and duplicated the already-explicit tested-song shelf plus personal reaction. Removed the chip from all tested-song cards.
+- P1: the public affinity state was visually quieter than secondary card metadata. Moved it to the cover seam and added a dedicated audio-signal icon, white type, bright warm gradient, border, and glow.
+- P2: `盲聽好感累積中` was long and sounded like implementation language. Renamed it to `好感度累積中`; published results use `好感度 N%`.
+- P1: per-song `你的反應` labels and the `剛剛打中你的歌` shelf added more personal detail than the product needs. Both are removed from Explore and Bar Heartbreak.
+- P1: browser-local profiles previously retained all ten track reactions. Version 2 keeps only the compact personality result and automatically rewrites legacy profiles without their reaction list.
+- No P0/P1/P2 clipping, overlap, or horizontal overflow findings remain in the 1440 × 900 and 390 × 844 captures.
+
+## Verification
+
+- Browser DOM check after simplification: one recommendation shelf with six cards, zero `剛剛打中你的歌` shelves, and zero `你的反應` labels.
+- TypeScript, unit tests, lint, and production build are run as the final release gate.
+
+final result: passed
+
+---
+
+# 耳朵蟲 Explore 前導與個人推薦 — Design QA (2026-07-22)
+
+## Comparison Target
+
+- Source visual truth: `/Users/huangyihong/.codex/generated_images/019f8583-6aeb-75e0-b838-c9a80cfd6c5b/exec-514f2f06-5a02-415a-81b6-742f857dcfa6.png`
+- Combined reference / implementation input: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-explore-entry-design-qa-comparison.png`
+- Desktop invitation evidence: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-explore-prompt-desktop-1440x900.png`
+- Mobile invitation evidence: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-explore-prompt-mobile-390x844.png`
+- Desktop personalized results evidence: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-explore-personalized-desktop-1440x900.png`
+- Mobile personalized results evidence: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-explore-personalized-mobile-390x844.png`
+- Bar Heartbreak affinity evidence: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-listen-bar-affinity-desktop-1440x900.png`
+- Routes/states: ordinary `/ai-music?lang=zh` invitation; completed local profile at `/ai-music?view=for-you&lang=zh#earworm-for-you`; tested R&B work at `/listen-bar?lang=zh&genre=R%26B%20深情瞬間`.
+
+## Full-view Comparison Evidence
+
+The combined input places the chosen Earworm stage direction beside the browser-rendered Explore invitation at the same normalized 720 × 450 frame. The entry keeps the chosen direction's near-black stage, warm orange commitment action, cyan listening accent, headphones cue, and strong centered decision hierarchy. It intentionally uses a compact modal over the existing live Explore catalog instead of rebuilding the page as a second Earworm landing screen.
+
+## Focused Region Evidence
+
+- Invitation: the desktop and mobile captures show one clear promise, `開始耳朵測驗｜約 2 分鐘`, a visible `先逛逛` path, and the signed-in sample threshold note without introducing reward-system copy.
+- Personalized Explore: the browser-rendered completed state shows the primary genre, keywords, and one 70% match / 30% discovery lane without exposing per-song personal answers or replacing standard Explore browsing.
+- Bar Heartbreak: queue rows may show the same public `好感度累積中` signal when aggregate samples exist, but never a per-listener answer label.
+
+## Required Fidelity Surfaces
+
+- Typography and hierarchy: passed. The invitation headline, two actions, profile title, section headings, and card metadata remain legible at 1440 × 900 and 390 × 844.
+- Colors and visual tokens: passed. Orange remains the primary action/match color, the public affinity badge uses a brighter orange/coral signal treatment, and all new surfaces reuse the existing Explore and Bar black-stage palette.
+- Real assets: passed. Personalized shelves use live work covers and existing playback cards. The prompt uses the installed Lucide headphones icon; no fake cover, waveform, emoji, handcrafted SVG, CSS illustration, or placeholder art was added.
+- Core journey: passed. Skip closes the invitation; the result CTA preserves `/ai-music?view=for-you&lang=zh#earworm-for-you`; the returned page exposes the recommendation heading; tested works show the same local reaction in Explore and Bar.
+- Responsive behavior: passed. Both 390 × 844 states report no document overflow. The mobile prompt becomes a readable bottom sheet and the existing horizontal cover lanes remain intentional contained scrollers.
+- Data integrity: passed in code and local fallback. Guest answers produce only the compact browser-local personality result. Signed-in aggregate inputs remain service-only, public percentages require 20 distinct accounts, and missing/unapplied affinity schema falls back to no public percentage instead of breaking the catalog.
+
+## Findings And Fix History
+
+### Pass 1
+
+- P1: the first invitation draft mentioned APC even though that product system is not part of this Earworm flow.
+- Fix: removed APC from all new outward-facing invitation copy and stated only the actual guest/member behavior and 20-account public sample threshold.
+
+### Pass 2
+
+- P1: the affinity migration initially shared the personality migration's date prefix and would sort before its foreign-key dependency by filename.
+- Fix: moved the additive reaction/aggregate migration to `20260724_earworm_affinity_signals.sql`, after `20260723_earworm_personality_quiz.sql`.
+
+### Pass 3
+
+- No actionable P0, P1, or P2 visual findings remain after the normalized reference comparison and desktop/mobile browser checks.
+
+## Interaction And Runtime Checks
+
+- Explore invitation opened from the unique profile control as one accessible dialog; `先逛逛` closed it.
+- Earworm result `看看為我挑的歌` resolved to the expected return URL and navigated to a visible `依你的耳朵推薦` section.
+- Personalized Explore renders one six-card recommendation shelf and no tested-song personal-history shelf.
+- Bar Heartbreak keeps only the aggregate favorability signal and no Earworm personal-reaction metadata.
+- Desktop and mobile document overflow: none.
+- Browser console errors: none.
+- `npm test`: 229 passed.
+- `npx tsc --noEmit`: passed.
+- `npm run lint`: 0 errors; 12 existing warnings.
+- `npm run build`: passed.
+- Production Supabase state: `supabase/20260723_earworm_personality_quiz.sql` and `supabase/20260724_earworm_affinity_signals.sql` were applied in order on 2026-07-22. RLS/grants and the empty initial aggregate were verified against the linked production project.
+
+final result: passed
+
+---
+
+# 耳朵蟲 V2 音樂人格測驗 — Design QA (2026-07-22)
+
+## Comparison Target
+
+- Source visual truth: `/Users/huangyihong/.codex/generated_images/019f8583-6aeb-75e0-b838-c9a80cfd6c5b/exec-514f2f06-5a02-415a-81b6-742f857dcfa6.png`
+- Combined reference / implementation input: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-v2-design-qa-comparison.png`
+- Desktop first-song evidence: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-v2-desktop-start.png`
+- Desktop result evidence: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-v2-desktop-result.png`
+- Mobile first-song evidence: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-v2-mobile-start.png`
+- Mobile result evidence: `/Users/huangyihong/Documents/GitHub/aipoger-web/output/earworm-v2-mobile-viewport.png`
+- Route/state: `/earworm`, signed out, live ten-track quiz sampled from public playable AIPOGER works.
+- Normalization: source `1487 × 1058` was center-cropped/resized to the implementation's `1265 × 1007` desktop screenshot before side-by-side comparison. Browser density was `1×`; mobile used a `390 × 844` CSS viewport and produced a `375 × 812` viewport capture after scrollbar width.
+
+## Full-view Comparison Evidence
+
+The combined image places the selected stage-like Earworm concept beside the browser-rendered V2 first-song screen. V2 keeps the concept's near-black stage, orange energy, cyan listening accent, centered display title, real cover-led playback, horizontal audio control, and decisive listening actions. The product format intentionally changes from same-genre A/B voting to one blind song at a time so ten reactions can produce a music-personality result.
+
+## Focused Region Evidence
+
+- The desktop result capture verifies the account CTA now says only `登入保存結果`; no APC or reward promise remains.
+- The mobile first-song capture verifies `類型於完成後揭曉`, the ten-step progress, cover stack, and first playback control fit without horizontal document overflow.
+
+## Required Fidelity Surfaces
+
+- Typography and hierarchy: passed. The Earworm title remains the dominant stage mark; the ten-step progress, blind-listen note, work title, artist, and reaction prompt form a clear descending hierarchy.
+- Color and atmosphere: passed. Orange remains the primary stage energy, cyan marks current listening/progress, and gold is reserved for readiness/result confidence.
+- Real assets: passed. The page uses the existing AIPOGER logo and live public work covers/audio. No fake waveform, emoji, placeholder box, handcrafted SVG, or baked-in interface asset was introduced.
+- Core journey: passed. Guests can complete all ten tracks and receive one primary genre, two nearby genres, three keywords, a description, and a confidence signal. Sign-in is deferred until optional result saving.
+- Responsive behavior: passed. At the 390 × 844 mobile gate, document width stays within the viewport, the cover/player stack collapses to one column, reaction buttons retain 70px tap height, and result actions stack vertically.
+- Product separation: passed. Earworm reads public playable works but does not write Battle votes, rankings, records, or Showtime state.
+
+## Findings And Fix History
+
+### Pass 1
+
+- P1: after choosing a reaction, the next audio element was paused but the play control could retain the previous track's `playing` state and display `暫停`. The reaction transition now explicitly resets the playback state and timing ref before advancing.
+- Post-fix: all ten tracks began with one correctly labeled `播放` control, each reaction stayed disabled until eight seconds of actual playback, and the tenth answer produced the result screen.
+
+### Pass 2
+
+- Compared the selected direction and live first-song screen in one normalized side-by-side image.
+- Checked desktop first-song/result and mobile first-song/result states. No actionable P0, P1, or P2 visual findings remain.
+
+### Pass 3
+
+- Earlier finding: P1 product mismatch — the preview promised a 20 APC completion reward even though Earworm has no active APC product system.
+- Fix: removed APC copy, reward fields, daily reward constraints, and the point-award RPC path; replaced the header reward line with `類型於完成後揭曉` and kept sign-in only for optional result saving.
+- Post-fix evidence: refreshed desktop first-song/result and mobile first-song captures above; a fresh browser tab contains no `APC` text and reports no console errors.
+
+## Interaction And Runtime Checks
+
+- Completed ten real playback rounds with the eight-second gate enforced on every track.
+- Verified progress advances from `第 01 / 10 首` to `RESULT` and reaches 100%.
+- Verified the result exposes primary/secondary genres, keywords, description, signal, sign-in save CTA, share, filtered listening link, and retest.
+- Fresh post-restart browser console errors: none.
+- `npm test`: 225 passed.
+- `npx tsc --noEmit`: passed.
+- `npm run lint`: passed with 0 errors and the repository's existing 12 warnings.
+- `npm run build`: passed.
+- Production Supabase state: the personality migration and its dependent affinity migration were applied in order on 2026-07-22 and verified on the linked production project.
+
+final result: passed
+
+---
+
 # 耳朵蟲 — Design QA (2026-07-22)
 
 ## Comparison Target
@@ -93,7 +259,7 @@ The normalized comparison places the selected mock and the browser-rendered desk
 
 - Header: desktop capture shows the live AIPOGER logo, Earworm title, genre selector, round indicator, and shared login/language controls without clipping.
 - A/B player rows: both rows contain real cover images, live track metadata, accessible play buttons, seekable range controls, duration labels, and an 8-second readiness gate.
-- Decision panel: selected state, optional explanation field, disabled submit state, APC reward copy, and skip action are visible at the same time.
+- Decision panel: selected state, optional explanation field, disabled submit state, and skip action are visible at the same time.
 - Mobile: 390px capture shows the header tools below the shared shell, two vertically stacked track rows, one-column decision buttons, and no horizontal overflow (`scrollWidth === innerWidth`).
 
 ## Required Fidelity Surfaces
@@ -102,7 +268,7 @@ The normalized comparison places the selected mock and the browser-rendered desk
 - Spacing and layout rhythm: passed after the mobile header adjustment. Desktop uses a four-column track rhythm; mobile collapses metadata and playback into a second row while preserving tap targets and content order.
 - Colors and visual tokens: passed. Near-black stage, orange primary energy, cyan secondary lane, and gold decision framing follow the existing AIPOGER visual direction and the selected mock.
 - Image quality and asset fidelity: passed. The implementation uses the existing real AIPOGER logo and real public cover artwork; no fake waveform, emoji, handcrafted SVG, or baked-in UI asset is used.
-- Copy and content: passed. The page clearly states the same-genre listening goal, 8-second requirement, A/B/neutral choices, skip action, and APC reward.
+- Copy and content: passed for the superseded V1 concept. The page stated the same-genre listening goal, 8-second requirement, A/B/neutral choices, and skip action.
 - Responsiveness and accessibility: passed. A/B controls have accessible labels, vote buttons expose `aria-pressed`, the submit button exposes a disabled state, and desktop/mobile browser captures show no horizontal clipping.
 
 ## Findings
@@ -140,11 +306,11 @@ The normalized comparison places the selected mock and the browser-rendered desk
 
 - [x] Selected first visual direction translated into a live `/earworm` route.
 - [x] Real same-genre A/B audio playback and seek controls work.
-- [x] Selection, skip, listening threshold, auth gate, duplicate protection, and APC reward path are implemented.
+- [x] Selection, skip, listening threshold, auth gate, and duplicate protection were implemented in the superseded V1 concept.
 - [x] Desktop/mobile browser evidence captured.
 - [x] Console checked with no errors.
 - [x] Migration and regression tests added.
-- [ ] Apply `supabase/20260722_earworm_game.sql` in the production Supabase project before enabling rewards.
+- [x] V1 was superseded before push; its unused vote-table migration was removed and must not be applied.
 
 final result: passed
 

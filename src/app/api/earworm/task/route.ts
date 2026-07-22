@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
-import { EARWORM_MAX_EXPLANATION_LENGTH, EARWORM_MIN_LISTEN_SECONDS, EARWORM_REWARD_POINTS, earwormTaskKey, isEarwormSelection } from "@/lib/earworm";
+import {
+  EARWORM_MIN_LISTEN_SECONDS,
+  EARWORM_REACTION_POINTS,
+  EARWORM_TRACK_COUNT,
+  calculateEarwormResult,
+  earwormQuizKey,
+  isEarwormReaction,
+  type EarwormAnswer,
+} from "@/lib/earworm";
 import { canonicalMusicGenre, isCurrentMusicGenre, MUSIC_GENRE_VALUES } from "@/lib/music-genres";
 
 type TrackRow = {
@@ -77,10 +85,6 @@ function isPlayable(row: TrackRow) {
   );
 }
 
-function normalizedCreator(row: TrackRow) {
-  return (row.artist ?? "").trim().toLowerCase();
-}
-
 function hashSeed(value: string) {
   let hash = 2166136261;
   for (let index = 0; index < value.length; index += 1) {
@@ -99,7 +103,7 @@ async function readPlayableTracks(admin: EarwormDatabase) {
     .order("created_at", { ascending: false })
     .limit(500);
 
-  let rows = (modern.data as TrackRow[] | null) ?? [];
+  let rows = (modern.data as unknown as TrackRow[] | null) ?? [];
   if (modern.error) {
     const legacy = await admin
       .from("listen_bar_tracks")
@@ -109,9 +113,17 @@ async function readPlayableTracks(admin: EarwormDatabase) {
       .order("created_at", { ascending: false })
       .limit(500);
     if (legacy.error) throw legacy.error;
-    rows = (legacy.data as TrackRow[] | null) ?? [];
+    rows = (legacy.data as unknown as TrackRow[] | null) ?? [];
   }
   return rows.filter(isPlayable);
+}
+
+async function readTracksByIds(admin: EarwormDatabase, ids: string[]) {
+  const modern = await admin.from("listen_bar_tracks").select(MODERN_SELECT).in("id", ids);
+  if (!modern.error) return (modern.data as unknown as TrackRow[] | null) ?? [];
+  const legacy = await admin.from("listen_bar_tracks").select(BASE_SELECT).in("id", ids);
+  if (legacy.error) throw legacy.error;
+  return (legacy.data as unknown as TrackRow[] | null) ?? [];
 }
 
 function serializeTrack(admin: EarwormDatabase, row: TrackRow) {
@@ -129,7 +141,9 @@ function serializeTrack(admin: EarwormDatabase, row: TrackRow) {
   };
 }
 
-function choosePair(rows: TrackRow[], requestedGenre: string | null, nonce = "") {
+function chooseQuizTracks(rows: TrackRow[], nonce: string) {
+  if (rows.length < EARWORM_TRACK_COUNT) return null;
+
   const byGenre = new Map<string, TrackRow[]>();
   for (const row of rows) {
     const genre = canonicalMusicGenre(row.genre);
@@ -138,41 +152,55 @@ function choosePair(rows: TrackRow[], requestedGenre: string | null, nonce = "")
     byGenre.set(genre, group);
   }
 
-  const preferred = requestedGenre ? canonicalMusicGenre(requestedGenre) : null;
-  const genre = preferred && (byGenre.get(preferred)?.length ?? 0) >= 2
-    ? preferred
-    : MUSIC_GENRE_VALUES.find((value) => (byGenre.get(value)?.length ?? 0) >= 2) ?? null;
-  if (!genre) return null;
+  const genreOrder = MUSIC_GENRE_VALUES
+    .filter((genre) => (byGenre.get(genre)?.length ?? 0) > 0)
+    .sort((left, right) => hashSeed(`${nonce}:genre:${left}`) - hashSeed(`${nonce}:genre:${right}`));
 
-  const group = [...(byGenre.get(genre) ?? [])].sort((left, right) => left.id.localeCompare(right.id));
-  const slot = hashSeed(`${genre}:${nonce || new Date().toISOString().slice(0, 13)}`) % group.length;
-  const trackA = group[slot];
-  let nextIndex = (slot + 1) % group.length;
-  if (normalizedCreator(group[nextIndex]) === normalizedCreator(trackA) && group.length > 2) {
-    nextIndex = (slot + 2) % group.length;
+  const selected: TrackRow[] = [];
+  for (const genre of genreOrder.slice(0, EARWORM_TRACK_COUNT)) {
+    const group = [...(byGenre.get(genre) ?? [])]
+      .sort((left, right) => hashSeed(`${nonce}:${genre}:${left.id}`) - hashSeed(`${nonce}:${genre}:${right.id}`));
+    if (group[0]) selected.push(group[0]);
   }
-  return { genre, trackA, trackB: group[nextIndex], availableGenres: Array.from(byGenre.keys()).filter((value) => (byGenre.get(value)?.length ?? 0) >= 2) };
+
+  if (selected.length < EARWORM_TRACK_COUNT) {
+    const selectedIds = new Set(selected.map((row) => row.id));
+    const selectedCreators = new Set(selected.map((row) => (row.artist ?? "").trim().toLowerCase()).filter(Boolean));
+    const remaining = rows
+      .filter((row) => !selectedIds.has(row.id))
+      .sort((left, right) => {
+        const leftCreator = (left.artist ?? "").trim().toLowerCase();
+        const rightCreator = (right.artist ?? "").trim().toLowerCase();
+        const leftRepeat = leftCreator && selectedCreators.has(leftCreator) ? 1 : 0;
+        const rightRepeat = rightCreator && selectedCreators.has(rightCreator) ? 1 : 0;
+        return leftRepeat - rightRepeat || hashSeed(`${nonce}:fill:${left.id}`) - hashSeed(`${nonce}:fill:${right.id}`);
+      });
+    selected.push(...remaining.slice(0, EARWORM_TRACK_COUNT - selected.length));
+  }
+
+  if (selected.length !== EARWORM_TRACK_COUNT) return null;
+  return selected.sort((left, right) => hashSeed(`${nonce}:order:${left.id}`) - hashSeed(`${nonce}:order:${right.id}`));
+}
+
+function migrationUnavailable(message: string) {
+  return /earworm_personality_results|earworm_track_reactions|schema cache|does not exist/i.test(message);
 }
 
 export async function GET(request: Request) {
   try {
     const admin = adminClient();
-    const searchParams = new URL(request.url).searchParams;
-    const requestedGenre = searchParams.get("genre");
-    const pair = choosePair(await readPlayableTracks(admin), requestedGenre, searchParams.get("nonce") ?? "");
-    if (!pair) {
-      return NextResponse.json({ error: "目前還沒有足夠的同類型作品可以開始耳朵蟲。" }, { status: 404 });
+    const nonce = new URL(request.url).searchParams.get("nonce") || new Date().toISOString().slice(0, 16);
+    const tracks = chooseQuizTracks(await readPlayableTracks(admin), nonce);
+    if (!tracks) {
+      return NextResponse.json({ error: `目前至少需要 ${EARWORM_TRACK_COUNT} 首公開作品才能開始耳朵蟲。` }, { status: 404 });
     }
+    const serialized = tracks.map((row) => serializeTrack(admin, row));
     return NextResponse.json({
-      task: {
-        id: earwormTaskKey(pair.genre, pair.trackA.id, pair.trackB.id),
-        genre: pair.genre,
-        trackA: serializeTrack(admin, pair.trackA),
-        trackB: serializeTrack(admin, pair.trackB),
+      quiz: {
+        id: earwormQuizKey(serialized.map((track) => track.id)),
+        tracks: serialized,
         minListenSeconds: EARWORM_MIN_LISTEN_SECONDS,
-        rewardPoints: EARWORM_REWARD_POINTS,
       },
-      availableGenres: pair.availableGenres,
     }, { headers: { "Cache-Control": "no-store, max-age=0" } });
   } catch (error) {
     return NextResponse.json({ error: String((error as { message?: string })?.message ?? error) }, { status: 500 });
@@ -182,104 +210,108 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
-    if (!token) return NextResponse.json({ error: "請先登入再送出耳朵蟲判斷。" }, { status: 401 });
+    if (!token) return NextResponse.json({ error: "請先登入，再保存你的耳朵人格結果。" }, { status: 401 });
 
     const admin = adminClient();
     const { data: userData, error: userError } = await admin.auth.getUser(token);
     if (userError || !userData.user) return NextResponse.json({ error: "登入狀態已過期，請重新登入。" }, { status: 401 });
 
-    const body = await request.json().catch(() => null) as {
-      taskKey?: unknown;
-      genre?: unknown;
-      trackAId?: unknown;
-      trackBId?: unknown;
-      selection?: unknown;
-      listenedASeconds?: unknown;
-      listenedBSeconds?: unknown;
-      explanation?: unknown;
-    } | null;
-    const genre = typeof body?.genre === "string" ? canonicalMusicGenre(body.genre) : "";
-    const trackAId = typeof body?.trackAId === "string" ? body.trackAId.trim() : "";
-    const trackBId = typeof body?.trackBId === "string" ? body.trackBId.trim() : "";
-    const taskKey = typeof body?.taskKey === "string" ? body.taskKey.trim() : "";
-    const listenedASeconds = Math.max(0, Number(body?.listenedASeconds) || 0);
-    const listenedBSeconds = Math.max(0, Number(body?.listenedBSeconds) || 0);
-    const explanation = typeof body?.explanation === "string" ? body.explanation.trim().slice(0, EARWORM_MAX_EXPLANATION_LENGTH) : null;
-
-    if (!taskKey || !trackAId || !trackBId || trackAId === trackBId || !isCurrentMusicGenre(genre) || !isEarwormSelection(body?.selection)) {
-      return NextResponse.json({ error: "耳朵蟲資料不完整，請重新載入這組作品。" }, { status: 400 });
-    }
-    if (listenedASeconds < EARWORM_MIN_LISTEN_SECONDS || listenedBSeconds < EARWORM_MIN_LISTEN_SECONDS) {
-      return NextResponse.json({ error: `請先完整聽過 A、B 兩首至少 ${EARWORM_MIN_LISTEN_SECONDS} 秒。` }, { status: 400 });
+    const body = await request.json().catch(() => null) as { quizKey?: unknown; answers?: unknown } | null;
+    const quizKey = typeof body?.quizKey === "string" ? body.quizKey.trim() : "";
+    if (!quizKey || !Array.isArray(body?.answers) || body.answers.length !== EARWORM_TRACK_COUNT) {
+      return NextResponse.json({ error: `請完成全部 ${EARWORM_TRACK_COUNT} 首再保存結果。` }, { status: 400 });
     }
 
-    const modernTracks = await admin
-      .from("listen_bar_tracks")
-      .select(MODERN_SELECT)
-      .in("id", [trackAId, trackBId]);
-    let rows = modernTracks.data as TrackRow[] | null;
-    if (modernTracks.error) {
-      const legacyTracks = await admin
-        .from("listen_bar_tracks")
-        .select(BASE_SELECT)
-        .in("id", [trackAId, trackBId]);
-      if (legacyTracks.error) {
-        return NextResponse.json({ error: "這組作品已經不可用，請換下一組。" }, { status: 409 });
-      }
-      rows = legacyTracks.data as TrackRow[] | null;
-    }
-    if (!rows || rows.length !== 2) {
-      return NextResponse.json({ error: "這組作品已經不可用，請換下一組。" }, { status: 409 });
-    }
-    const trackRows = rows as TrackRow[];
-    if (!trackRows.every(isPlayable) || trackRows.some((row) => canonicalMusicGenre(row.genre) !== genre)) {
-      return NextResponse.json({ error: "耳朵蟲只能比較同一類型的公開作品。" }, { status: 400 });
-    }
-    if (taskKey !== earwormTaskKey(genre, trackAId, trackBId)) {
-      return NextResponse.json({ error: "這組耳朵蟲已失效，請載入下一組。" }, { status: 409 });
-    }
-
-    const { data: vote, error: voteError } = await admin
-      .from("earworm_votes")
-      .insert({
-        user_id: userData.user.id,
-        task_key: taskKey,
-        genre,
-        track_a_id: trackAId,
-        track_b_id: trackBId,
-        selection: body.selection,
-        listened_a_seconds: listenedASeconds,
-        listened_b_seconds: listenedBSeconds,
-        explanation,
-      })
-      .select("id")
-      .single();
-    if (voteError) {
-      if (voteError.code === "23505") return NextResponse.json({ error: "這組你已經判斷過了，換下一組吧。", alreadySubmitted: true }, { status: 409 });
-      if (/earworm_votes|schema cache|does not exist/i.test(voteError.message)) {
-        return NextResponse.json({ error: "耳朵蟲資料表尚未啟用，請先套用最新資料庫 migration。" }, { status: 503 });
-      }
-      return NextResponse.json({ error: voteError.message }, { status: 500 });
-    }
-
-    const reward = await admin.rpc("award_battle_points", {
-      p_user_id: userData.user.id,
-      p_points: EARWORM_REWARD_POINTS,
-      p_event_type: "earworm_vote_reward",
-      p_queue_id: null,
-      p_battle_id: null,
-      p_reason: "耳朵蟲同類型抓耳判斷獎勵",
+    const parsedAnswers = body.answers.map((answer) => {
+      const value = answer as { trackId?: unknown; reaction?: unknown; listenedSeconds?: unknown };
+      return {
+        trackId: typeof value.trackId === "string" ? value.trackId.trim() : "",
+        reaction: value.reaction,
+        listenedSeconds: Math.max(0, Number(value.listenedSeconds) || 0),
+      };
     });
-    if (reward.error) {
-      await admin.from("earworm_votes").delete().eq("id", vote.id);
-      return NextResponse.json({ error: "點數服務尚未啟用，這次判斷沒有被送出。" }, { status: 503 });
+    const trackIds = parsedAnswers.map((answer) => answer.trackId);
+    if (
+      trackIds.some((id) => !id) ||
+      new Set(trackIds).size !== EARWORM_TRACK_COUNT ||
+      parsedAnswers.some((answer) => !isEarwormReaction(answer.reaction) || answer.listenedSeconds < EARWORM_MIN_LISTEN_SECONDS) ||
+      quizKey !== earwormQuizKey(trackIds)
+    ) {
+      return NextResponse.json({ error: "測驗資料不完整，請重新完成這次耳朵蟲。" }, { status: 400 });
     }
 
-    return NextResponse.json({
-      ok: true,
-      rewardPoints: EARWORM_REWARD_POINTS,
-      balance: typeof reward.data === "number" ? reward.data : null,
-    });
+    const rows = await readTracksByIds(admin, trackIds);
+    if (rows.length !== EARWORM_TRACK_COUNT || !rows.every(isPlayable)) {
+      return NextResponse.json({ error: "測驗中的作品已經不可用，請重新測一次。" }, { status: 409 });
+    }
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    const answers: EarwormAnswer[] = parsedAnswers.map((answer) => ({
+      trackId: answer.trackId,
+      genre: canonicalMusicGenre(byId.get(answer.trackId)?.genre),
+      reaction: answer.reaction as EarwormAnswer["reaction"],
+      listenedSeconds: answer.listenedSeconds,
+    }));
+    if (answers.some((answer) => !isCurrentMusicGenre(answer.genre))) {
+      return NextResponse.json({ error: "測驗類型資料已失效，請重新測一次。" }, { status: 409 });
+    }
+
+    const result = calculateEarwormResult(answers);
+    const insertPayload = {
+      user_id: userData.user.id,
+      quiz_key: quizKey,
+      track_ids: trackIds,
+      answers,
+      scores: result.scores,
+      primary_genre: result.primaryGenre,
+      secondary_genres: result.secondaryGenres,
+    };
+
+    const insertion = await admin.from("earworm_personality_results").insert(insertPayload).select("id").single();
+    let quizResultId = typeof insertion.data?.id === "string" ? insertion.data.id : "";
+    let alreadySaved = false;
+    if (insertion.error?.code === "23505") {
+      const existing = await admin
+        .from("earworm_personality_results")
+        .select("id")
+        .eq("user_id", userData.user.id)
+        .eq("quiz_key", quizKey)
+        .maybeSingle();
+      if (existing.data) {
+        quizResultId = existing.data.id;
+        alreadySaved = true;
+      }
+    }
+
+    if ((!quizResultId || insertion.error) && !alreadySaved) {
+      if (insertion.error && migrationUnavailable(insertion.error.message)) {
+        return NextResponse.json({ error: "耳朵人格資料表尚未啟用，請先套用最新 Supabase migration。" }, { status: 503 });
+      }
+      return NextResponse.json({ error: insertion.error?.message || "結果暫時無法保存。" }, { status: 500 });
+    }
+
+    const reactionRows = answers.map((answer) => ({
+      user_id: userData.user.id,
+      track_id: answer.trackId,
+      quiz_result_id: quizResultId,
+      reaction: answer.reaction,
+      reaction_score: EARWORM_REACTION_POINTS[answer.reaction],
+      listened_seconds: Math.round(answer.listenedSeconds * 100) / 100,
+      updated_at: new Date().toISOString(),
+    }));
+    const affinityInsertion = await admin
+      .from("earworm_track_reactions")
+      .upsert(reactionRows, { onConflict: "user_id,track_id" });
+    if (affinityInsertion.error) {
+      if (!alreadySaved) {
+        await admin.from("earworm_personality_results").delete().eq("id", quizResultId);
+      }
+      if (migrationUnavailable(affinityInsertion.error.message)) {
+        return NextResponse.json({ error: "耳朵蟲好感資料表尚未啟用，請先套用最新 Supabase migration。" }, { status: 503 });
+      }
+      return NextResponse.json({ error: affinityInsertion.error.message || "盲聽反應暫時無法保存。" }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true, result, alreadySaved });
   } catch (error) {
     return NextResponse.json({ error: String((error as { message?: string })?.message ?? error) }, { status: 500 });
   }

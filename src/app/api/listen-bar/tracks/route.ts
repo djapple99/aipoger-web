@@ -5,6 +5,7 @@ import {
   listenBarPromotionProtectionActive,
 } from "@/lib/listen-bar";
 import { AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS, isAiMusicPersistedShowtimeCertified } from "@/lib/ai-music-showtime";
+import { readEarwormAffinityMap } from "@/lib/earworm-affinity";
 
 type ListenBarTrackRow = {
   id: string;
@@ -258,8 +259,22 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    const playableRows = applyLegacyOpeningGrace((rows ?? []).filter(isPublicPlayableTrack));
+    const affinityByTrackId = await readEarwormAffinityMap(
+      admin as unknown as SupabaseClient,
+      playableRows.map((row) => row.id),
+    );
+    const tracks = playableRows.map((row) => {
+      const affinity = affinityByTrackId.get(row.id);
+      return {
+        ...row,
+        earworm_affinity_sample_count: affinity?.sampleCount ?? 0,
+        earworm_affinity_percent: affinity?.percent ?? null,
+      };
+    });
+
     return NextResponse.json(
-      { tracks: applyLegacyOpeningGrace((rows ?? []).filter(isPublicPlayableTrack)) },
+      { tracks },
       { headers: { "Cache-Control": "no-store, max-age=0" } },
     );
   } catch (error) {

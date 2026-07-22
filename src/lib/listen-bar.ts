@@ -55,6 +55,8 @@ export type ListenBarTrack = {
   source: "official" | "community";
   barPhase?: "challenger" | "public";
   positiveReactionCount?: number;
+  earwormAffinitySampleCount?: number;
+  earwormAffinityPercent?: number | null;
   createdAt?: string;
   promotedAt?: string;
 };
@@ -84,6 +86,8 @@ export type ListenBarTrackRow = {
   is_featured_official?: boolean | null;
   bar_phase?: "challenger" | "public" | null;
   positive_reaction_count?: number | null;
+  earworm_affinity_sample_count?: number | null;
+  earworm_affinity_percent?: number | null;
   heart_count?: number | null;
   star_count?: number | null;
   thumb_count?: number | null;
@@ -189,6 +193,10 @@ export function listenBarRowToTrack(row: ListenBarTrackRow): ListenBarTrack | nu
     source,
     barPhase: source === "community" ? barPhase : undefined,
     positiveReactionCount: Math.max(0, Math.round(row.positive_reaction_count ?? 0)),
+    earwormAffinitySampleCount: Math.max(0, Math.round(row.earworm_affinity_sample_count ?? 0)),
+    earwormAffinityPercent: typeof row.earworm_affinity_percent === "number"
+      ? Math.min(100, Math.max(0, Math.round(row.earworm_affinity_percent)))
+      : null,
     createdAt: row.created_at ?? undefined,
     promotedAt: row.promoted_at ?? undefined,
   };

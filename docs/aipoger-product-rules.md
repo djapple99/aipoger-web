@@ -380,6 +380,24 @@ Drop cutting keyboard rule:
 - The Drop cropper may keep Space as play/pause only when focus is not inside a text-editing target and no meta/ctrl/alt modifier or IME composition is active.
 - Space must enter a normal blank character inside lyrics textarea, song title input, creator input, AI tool fields, genre select, notes/description fields, contenteditable areas, or `role="textbox"` widgets. It must not call `preventDefault` or toggle playback in those cases.
 
+## Earworm / 耳朵蟲
+
+Earworm is AIPOGER's ten-track music personality test. It is a listener discovery and recognition-data surface, not a formal Battle, ranking, or same-genre winner declaration.
+
+- One test contains exactly 10 public, playable community works. Sampling should cover different current fixed genres before repeating a genre or creator.
+- During the test, the genre label stays hidden. Each work must be actually listened to for at least 8 seconds before the listener can choose `超對味`, `會再聽`, `還可以`, or `無感`.
+- The result appears only after all 10 works have an answer. It shows one current primary listening direction, two nearby genres, and listening keywords; copy must say `目前最接近` rather than presenting a permanent psychological identity.
+- A guest may finish and see the result. Signing in is required only to save the result to an account.
+- Earworm has no APC reward, stake, daily point claim, or dependency on the Battle point economy. The completion value is the personality result, sharing, and continued genre listening.
+- On an ordinary first Explore entry, AIPOGER may invite the visitor to start Earworm before browsing. The invitation must be dismissible with `先逛逛`; a skip is remembered for 7 days and a completion suppresses the invitation for 30 days. Track/share/genre/challenge deep links must bypass the invitation.
+- Completing Earworm stores only the compact taste result needed for recommendations: primary genre, nearby genres, keywords, and completion time. Per-song reactions must not be kept in the browser profile or shown later as personal labels/history. The result's primary action returns to Explore `為你挑的歌`, where one compact recommendation mix is shown. The mix should be approximately 70% primary/nearby genres and 30% discovery; it must not change public catalog ordering, Battle eligibility, or Showtime state.
+- Earworm results live in their own server-written table. They do not write to `battle_votes`, `battle_guest_votes`, Battle archives, wins/losses, defense progress, Showtime certification, or public ranking.
+- Signed-in answers upsert one latest service-only aggregate input per account and track in `earworm_track_reactions`; a retest replaces that account's earlier input for the same track. These rows exist only to deduplicate and calculate public affinity. They are not a user-facing preference history. Guest answers calculate the local personality result but never enter the public aggregate.
+- Explore and Bar Heartbreak may show `好感度 N%` for the same `listen_bar_tracks.id`. The score is `(love×4 + replay×3 + okay×1) / (distinct valid accounts×4)`, rounded to an integer. A public percentage appears only after 20 distinct signed-in accounts; below that threshold works with aggregate samples say `好感度累積中`. No card may add `你的反應` or another per-listener answer label.
+- Blind affinity is a discovery signal only. It is separate from Heart, Bar survival, Battle votes/results, defense progress, Choice, Showtime, and every public ranking/order.
+- The API revalidates all 10 track IDs, public/playable state, reaction values, and minimum listened seconds before saving. Client-computed personality output is never trusted as the authoritative stored result.
+- The V2 personality and affinity migrations create only server-written result/reaction storage plus a server-only aggregate view and their indexes/RLS grants; they do not create a formal Earworm vote table or call any point-award RPC.
+
 ## AIPOGER Showtime
 
 AIPOGER Showtime is the front-stage name for the old Honor Board surface at `/rank`.
