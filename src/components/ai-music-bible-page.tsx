@@ -9,7 +9,9 @@ import {
   ChevronRight,
   Clipboard,
   ExternalLink,
+  FileKey2,
   FlaskConical,
+  Gauge,
   Headphones,
   LibraryBig,
   LockKeyhole,
@@ -32,6 +34,8 @@ import { supabase } from "@/lib/supabase";
 import { AIPOGER_LINE_COMMUNITY_URL, AIPOGER_TUTORIAL_PLAYLIST_URL } from "@/lib/brand";
 import StemSeparationGuideSection from "@/components/stem-separation-guide-section";
 import SunoPracticeLibrarySection from "@/components/suno-practice-library-section";
+import SunoReferenceGuideSection from "@/components/suno-reference-guide-section";
+import BibleCommandDock from "@/components/bible-command-dock";
 import AuthRequiredDialog from "@/components/auth-required-dialog";
 import ShareButton from "@/components/share-button";
 import { LineCommunityDialog, SocialIcon } from "@/components/social-icons";
@@ -66,21 +70,25 @@ type PracticeArea = {
 function practiceAreasForLanguage(isZh: boolean): PracticeArea[] {
   return isZh
     ? [
+        { icon: Gauge, eyebrow: "START HERE", title: "Suno 起手式", body: "先分清 Style、Lyrics、Title，再過生成前檢查。", href: "#suno-control-desk", accent: "cyan" },
         { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt 招式庫", body: "42 招 Prompt、80+ 個曲風詞與愛波哥私藏配方。", href: "#suno-prompt-library", accent: "orange" },
         { icon: LibraryBig, eyebrow: "1,518 INDEX", title: "聲音 DNA × Prompt 索引", body: "771 組藝術家聲音 DNA 與 747 組去重配方，可搜尋、複製與評論。", href: "#suno-inspiration-index", accent: "cyan" },
         { icon: BookOpenText, eyebrow: "LYRICS", title: "歌詞調教", body: "段落、唱法、合唱、情緒與台語咬字實測。", href: "#lyric-control-library", accent: "cyan" },
         { icon: Music2, eyebrow: "DROP", title: "Drop 製作練習", body: "用 30–60 秒練節奏、情緒與記憶點。", href: "/hook-guide", accent: "orange" },
         { icon: Headphones, eyebrow: "A&R TOOL", title: "分析你的音樂", body: "需要第二意見時，再用 A&R Gate 檢查作品路線。", href: "/music-analysis", accent: "cyan" },
         { icon: AudioWaveform, eyebrow: "STEMS", title: "AI 拆軌避坑指南", body: "看懂 10 種引擎家族，避免為同一能力重複付費。", href: "#stem-separation-guide", accent: "orange" },
+        { icon: FileKey2, eyebrow: "RIGHTS", title: "權利與發行", body: "分清生成、商用與著作權，正式發行前先過風險檢查。", href: "#rights-release", accent: "cyan" },
         { icon: Video, eyebrow: "AIPOGER", title: "愛波哥影片教學", body: "從中文實戰影片建立完整創作流程。", href: AIPOGER_TUTORIAL_PLAYLIST_URL, accent: "cyan", external: true },
       ]
     : [
+        { icon: Gauge, eyebrow: "START HERE", title: "Suno Quick Start", body: "Separate Style, Lyrics, and Title, then run the pre-flight check.", href: "#suno-control-desk", accent: "cyan" },
         { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt Moves", body: "42 prompt moves, 80+ genre terms, and curated AIPOGER recipes.", href: "#suno-prompt-library", accent: "orange" },
         { icon: LibraryBig, eyebrow: "1,518 INDEX", title: "Sonic DNA × Prompt Index", body: "Search, copy, and discuss 771 artist DNA references and 747 unique recipes.", href: "#suno-inspiration-index", accent: "cyan" },
         { icon: BookOpenText, eyebrow: "LYRICS", title: "Lyric Control", body: "Shape sections, delivery, duets, emotion, and Taiwanese pronunciation.", href: "#lyric-control-library", accent: "cyan" },
         { icon: Music2, eyebrow: "DROP", title: "Drop Practice", body: "Train rhythm, emotion, and recall inside a focused 30–60 seconds.", href: "/hook-guide", accent: "orange" },
         { icon: Headphones, eyebrow: "A&R TOOL", title: "Analyze Your Music", body: "Use A&R Gate when you need a second opinion on the track's route.", href: "/music-analysis", accent: "cyan" },
         { icon: AudioWaveform, eyebrow: "STEMS", title: "Stem Separation Guide", body: "Understand 10 engine families and avoid paying twice for the same capability.", href: "#stem-separation-guide", accent: "orange" },
+        { icon: FileKey2, eyebrow: "RIGHTS", title: "Rights & Release", body: "Separate generation, commercial use, and copyright before release.", href: "#rights-release", accent: "cyan" },
         { icon: Video, eyebrow: "AIPOGER", title: "AIPOGER Tutorials", body: "Build your workflow with AIPOGER's Traditional Chinese videos.", href: AIPOGER_TUTORIAL_PLAYLIST_URL, accent: "cyan", external: true },
       ];
 }
@@ -262,7 +270,7 @@ export default function AiMusicBiblePage() {
   const ui = isZh
     ? {
         updated: "持續更新", enterLab: "進入 Prompt 招式庫", viewMap: "看練功地圖",
-        labCount: "6 個實戰資料庫", seedSource: "新增 771 組藝術家聲音 DNA、747 組去重 Prompt 配方、招式與歌詞控制，並保留台語調音與 AI Stem 指南；每區都標示來源與可靠度。",
+        labCount: "8 個實戰模組", seedSource: "從 Suno 起手式、疑難排解、Prompt、歌詞、聲音 DNA、Stem 到權利發行；每區都標示可靠度與更新狀態。",
         traits: ["繁中整理", "官方核對", "共同驗證"], practiceTitle: "今天要練哪一招？", practiceBody: "先選一個問題練，不必從頭把整本看完。每一區都會慢慢增加實測範例。",
         labTitle: "Suno 台語歌詞調音實驗室", labBody: "搜尋華語意思，複製實測寫法，再告訴大家這個版本唱得準不準。不同模型、旋律與聲線都可能改變結果。",
         addData: "補一筆資料", disclaimer: "這裡整理的是 AI 歌唱發音實測，不代表台語推薦正字。借音字只用來協助模型發音；正式書寫請另外查證。",
@@ -278,7 +286,7 @@ export default function AiMusicBiblePage() {
       }
     : {
         updated: "Living guide", enterLab: "Enter Prompt Moves", viewMap: "View practice map",
-        labCount: "6 field databases", seedSource: "Explore 771 artist DNA references, 747 unique prompt recipes, prompt and lyric moves, Taiwanese pronunciation tests, and AI stem guidance with source context kept visible.",
+        labCount: "8 practice modules", seedSource: "Move from Suno quick start and troubleshooting through prompts, lyrics, sonic DNA, stems, and release rights with evidence status kept visible.",
         traits: ["Bilingual", "Cross-checked", "Community tested"], practiceTitle: "What do you want to practice?", practiceBody: "Pick one problem instead of reading everything in order. Each section will keep gaining tested examples.",
         labTitle: "Suno Taiwanese Lyrics Lab", labBody: "Search by Mandarin meaning, copy a tested spelling, then report whether your Suno version sings it correctly.",
         addData: "Add a test", disclaimer: "These are AI singing pronunciation experiments, not recommended Taiwanese orthography. Loan characters are only used to guide model pronunciation.",
@@ -437,7 +445,7 @@ export default function AiMusicBiblePage() {
                   <span className={`${fontRighteous.className} text-xs uppercase tracking-[0.34em] text-cyan-100/82`}>AIPOGER PRACTICE BIBLE</span>
                   <span className="rounded-full border border-orange-300/28 bg-orange-400/[0.09] px-3 py-1 text-[11px] font-black text-orange-100">{gateCopy.marker}</span>
                 </div>
-                <h1 className="mt-6 whitespace-nowrap text-[clamp(2.05rem,7.8vw,4.15rem)] font-black leading-[1.02] tracking-[-0.05em] text-[#fff8ed]">
+                <h1 className={`mt-6 whitespace-nowrap font-black leading-[1.02] tracking-[-0.05em] text-[#fff8ed] ${lang === "en" ? "text-[clamp(1.72rem,7.1vw,4.15rem)]" : "text-[clamp(2.05rem,7.8vw,4.15rem)]"}`}>
                   {gateCopy.title}
                 </h1>
                 <p className="mt-6 max-w-2xl text-base font-bold leading-8 text-zinc-200 sm:text-lg">{gateCopy.body}</p>
@@ -557,6 +565,8 @@ export default function AiMusicBiblePage() {
           </div>
         </section>
 
+        <BibleCommandDock locale={isZh ? "zh" : "en"} />
+
         <section id="practice-map" className="scroll-mt-24 py-12">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
@@ -620,7 +630,10 @@ export default function AiMusicBiblePage() {
 
         <LineCommunityDialog open={lineCommunityOpen} onClose={() => setLineCommunityOpen(false)} lang={lang as "zh" | "en" | "ja" | "ko"} />
 
-        <SunoPracticeLibrarySection
+        <SunoReferenceGuideSection locale={isZh ? "zh" : "en"} />
+
+        <div className="mt-10">
+          <SunoPracticeLibrarySection
           locale={isZh ? "zh" : "en"}
           promptMoves={bibleContent.promptMoves}
           lyricMoves={bibleContent.lyricMoves}
@@ -631,7 +644,8 @@ export default function AiMusicBiblePage() {
           artistDnaEntries={bibleContent.artistDnaEntries ?? []}
           promptRecipes={bibleContent.promptRecipes ?? []}
           recipeGenres={bibleContent.recipeGenres ?? []}
-        />
+          />
+        </div>
 
         <div className="mt-10">
           <StemSeparationGuideSection locale={isZh ? "zh" : "en"} engines={bibleContent.stemEngines ?? []} goals={bibleContent.stemGoals ?? []} />

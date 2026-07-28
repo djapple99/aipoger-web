@@ -402,7 +402,7 @@ export default function SunoPracticeLibrarySection({
         </div>
 
         <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-white/8 pt-5 text-xs font-black">
-          <span className="text-zinc-600">{isZh ? "官方文件核對：2026-07-17" : "Official docs cross-check: 2026-07-17"}</span>
+          <span className="text-zinc-600">{isZh ? "官方文件核對：2026-07-28" : "Official docs cross-check: 2026-07-28"}</span>
           {[
             ["Suno v5.5", "https://help.suno.com/en/articles/11362305"],
             ["Creative Sliders", "https://help.suno.com/en/articles/6141377"],

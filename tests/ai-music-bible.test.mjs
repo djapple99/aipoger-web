@@ -27,9 +27,22 @@ import {
   mergeBibleCatalog,
   sanitizeBiblePayload,
 } from "../src/lib/ai-music-bible-content.ts";
+import {
+  PUBLIC_BIBLE_FAQ,
+  SUNO_FEATURE_WATCH,
+  SUNO_OFFICIAL_CROSS_CHECK_DATE,
+  SUNO_PREFLIGHT_ITEMS,
+  SUNO_QUICK_START_FIELDS,
+  SUNO_RIGHTS_GUIDE,
+  SUNO_TROUBLESHOOTING,
+} from "../src/lib/suno-reference-guide.ts";
 
 const practiceLibraryComponent = readFileSync(new URL("../src/components/suno-practice-library-section.tsx", import.meta.url), "utf8");
 const inspirationIndexComponent = readFileSync(new URL("../src/components/suno-inspiration-index-section.tsx", import.meta.url), "utf8");
+const referenceGuideComponent = readFileSync(new URL("../src/components/suno-reference-guide-section.tsx", import.meta.url), "utf8");
+const commandDockComponent = readFileSync(new URL("../src/components/bible-command-dock.tsx", import.meta.url), "utf8");
+const publicFaqComponent = readFileSync(new URL("../src/components/public-bible-faq.tsx", import.meta.url), "utf8");
+const bibleRoute = readFileSync(new URL("../src/app/ai-music-bible/page.tsx", import.meta.url), "utf8");
 
 test("Taiwanese lyrics lab keeps the PDF seed catalog complete and uniquely addressable", () => {
   assert.equal(TAIWANESE_LYRICS_ENTRIES.length, 38);
@@ -171,8 +184,56 @@ test("Prompt and lyric finders explain their controls and expose clear states", 
   assert.match(practiceLibraryComponent, /清除歌詞搜尋/);
   assert.doesNotMatch(practiceLibraryComponent, /閱讀 Reddit 原文|Read Reddit guide|查看開源 Skill|View open skill/);
   assert.doesNotMatch(practiceLibraryComponent, /NEW SOURCE · COMMUNITY FIELD GUIDE/);
-  assert.match(practiceLibraryComponent, /官方文件核對：2026-07-17/);
+  assert.match(practiceLibraryComponent, /官方文件核對：2026-07-28/);
   assert.doesNotMatch(practiceLibraryComponent, /mt-3 flex gap-2 overflow-x-auto pb-1/);
+});
+
+test("Suno control desk keeps the P0 quick start, pre-flight, and troubleshooting sets complete", () => {
+  assert.equal(SUNO_QUICK_START_FIELDS.length, 3);
+  assert.deepEqual(SUNO_QUICK_START_FIELDS.map((item) => item.key), ["style", "lyrics", "title"]);
+  assert.equal(SUNO_PREFLIGHT_ITEMS.length, 8);
+  assert.equal(new Set(SUNO_PREFLIGHT_ITEMS.map((item) => item.key)).size, 8);
+  assert.equal(SUNO_TROUBLESHOOTING.length, 6);
+  assert.equal(new Set(SUNO_TROUBLESHOOTING.map((item) => item.key)).size, 6);
+  assert.ok(SUNO_TROUBLESHOOTING.every((item) => item.symptom.zh && item.symptom.en && item.likely.zh && item.likely.en && item.move.zh && item.move.en));
+  assert.match(referenceGuideComponent, /id="suno-control-desk"/);
+  assert.match(referenceGuideComponent, /id="suno-preflight"/);
+  assert.match(referenceGuideComponent, /id="suno-troubleshooting"/);
+  assert.match(referenceGuideComponent, /4–7 個 Style 重點與三版比較是實測工作法，不是 Suno 官方限制/);
+});
+
+test("version watch and rights guide point to official Suno guidance with separate dates", () => {
+  assert.equal(SUNO_OFFICIAL_CROSS_CHECK_DATE, "2026-07-28");
+  assert.equal(SUNO_FEATURE_WATCH.length, 3);
+  assert.equal(SUNO_RIGHTS_GUIDE.length, 4);
+  assert.ok([...SUNO_FEATURE_WATCH, ...SUNO_RIGHTS_GUIDE].every((item) => item.source.url.startsWith("https://help.suno.com/")));
+  assert.match(referenceGuideComponent, /id="suno-version-watch"/);
+  assert.match(referenceGuideComponent, /id="rights-release"/);
+  assert.match(referenceGuideComponent, /這裡是風險檢查，不是法律意見/);
+});
+
+test("Bible command search exposes high-contrast navigation and keyboard controls", () => {
+  assert.match(commandDockComponent, /搜尋整本聖經/);
+  assert.match(commandDockComponent, /event\.metaKey \|\| event\.ctrlKey/);
+  assert.match(commandDockComponent, /event\.key === "\/"/);
+  assert.match(commandDockComponent, /ArrowDown/);
+  assert.match(commandDockComponent, /ArrowUp/);
+  assert.match(commandDockComponent, /role="dialog"/);
+  assert.match(commandDockComponent, /aria-modal="true"/);
+  assert.match(commandDockComponent, /overflow-x-auto/);
+});
+
+test("public starter stays compact, multilingual, and indexable without exposing the member catalog", () => {
+  assert.deepEqual(Object.keys(PUBLIC_BIBLE_FAQ).sort(), ["en", "ja", "ko", "zh"]);
+  assert.ok(Object.values(PUBLIC_BIBLE_FAQ).every((entries) => entries.length === 5));
+  assert.match(publicFaqComponent, /AIPOGER PUBLIC STARTER/);
+  assert.match(publicFaqComponent, /공개 스타터/);
+  assert.match(publicFaqComponent, /公開スターター/);
+  assert.doesNotMatch(publicFaqComponent, /SUNO_ARTIST_DNA_ENTRIES|SUNO_PROMPT_RECIPES/);
+  assert.match(bibleRoute, /"@type": "TechArticle"/);
+  assert.match(bibleRoute, /"@type": "FAQPage"/);
+  assert.match(bibleRoute, /summary_large_image/);
+  assert.match(bibleRoute, /dangerouslySetInnerHTML/);
 });
 
 test("artist encyclopedia becomes 771 unique, searchable sonic DNA references", () => {
