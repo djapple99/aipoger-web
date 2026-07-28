@@ -236,20 +236,30 @@ test("public starter stays compact, multilingual, and indexable without exposing
   assert.match(bibleRoute, /dangerouslySetInnerHTML/);
 });
 
-test("artist encyclopedia becomes 771 unique, searchable sonic DNA references", () => {
-  assert.equal(SUNO_ARTIST_DNA_ENTRIES.length, 771);
+test("artist encyclopedia and AIPOGER additions become 772 unique, searchable sonic DNA references", () => {
+  assert.equal(SUNO_ARTIST_DNA_ENTRIES.length, 772);
   assert.equal(SUNO_INSPIRATION_SOURCE.artist.suppliedEntries, 771);
-  assert.equal(new Set(SUNO_ARTIST_DNA_ENTRIES.map((entry) => entry.key)).size, 771);
-  assert.equal(new Set(SUNO_ARTIST_DNA_ENTRIES.map((entry) => entry.artist.toLocaleLowerCase())).size, 771);
+  assert.equal(SUNO_INSPIRATION_SOURCE.artist.curatedEntries, 1);
+  assert.equal(SUNO_INSPIRATION_SOURCE.artist.canonicalEntries, 772);
+  assert.equal(new Set(SUNO_ARTIST_DNA_ENTRIES.map((entry) => entry.key)).size, 772);
+  assert.equal(new Set(SUNO_ARTIST_DNA_ENTRIES.map((entry) => entry.artist.toLocaleLowerCase())).size, 772);
   assert.ok(SUNO_ARTIST_DNA_ENTRIES.every((entry) => (
     entry.artist
-    && entry.sourcePage >= 3
-    && entry.sourcePage <= 38
+    && (entry.source === "aipoger" || (entry.sourcePage >= 3 && entry.sourcePage <= 38))
     && entry.tags.length >= 2
     && entry.summaryZh.length === 4
     && entry.prompt.includes("no direct artist imitation")
     && entry.searchText.includes(entry.artist.toLocaleLowerCase())
   )));
+
+  const jocelynBrown = SUNO_ARTIST_DNA_ENTRIES.find((entry) => entry.artist === "Jocelyn Brown");
+  assert.ok(jocelynBrown);
+  assert.equal(jocelynBrown.source, "aipoger");
+  assert.equal(jocelynBrown.sourcePage, null);
+  assert.ok(jocelynBrown.summaryZh.includes("電子音樂"));
+  assert.match(jocelynBrown.sourcePrompt, /powerhouse, soulful female lead vocal/i);
+  assert.match(jocelynBrown.prompt, /gospel house/);
+  assert.doesNotMatch(jocelynBrown.prompt, /Jocelyn Brown/i);
 });
 
 test("750 supplied prompts become 747 unique bilingual recipes", () => {
@@ -284,7 +294,7 @@ test("large inspiration index exposes clear search, filter, copy, comment, and p
   assert.match(practiceLibraryComponent, /SunoInspirationIndexSection/);
   assert.match(practiceLibraryComponent, /id="suno-inspiration-index"/);
   assert.match(inspirationIndexComponent, /聲音 DNA × Prompt 配方索引/);
-  assert.match(inspirationIndexComponent, /771 組參考風格/);
+  assert.match(inspirationIndexComponent, /772 組參考風格/);
   assert.match(inspirationIndexComponent, /747 組去重配方/);
   assert.match(inspirationIndexComponent, /aria-live="polite"/);
   assert.match(inspirationIndexComponent, /aria-pressed={selected}/);

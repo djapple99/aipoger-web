@@ -226,7 +226,7 @@ export default function SunoPracticeLibrarySection({
         <div className="mt-7 grid grid-cols-2 gap-3 border-t border-white/10 pt-5 text-center sm:max-w-3xl sm:grid-cols-4">
           <div><strong className="block text-2xl font-black text-white">{promptMoves.length}</strong><span className="text-[10px] font-black tracking-[0.12em] text-zinc-600">PROMPT MOVES</span></div>
           <div><strong className="block text-2xl font-black text-white">{lyricMoves.length}</strong><span className="text-[10px] font-black tracking-[0.12em] text-zinc-600">LYRIC MOVES</span></div>
-          <div><strong className="block text-2xl font-black text-white">1,518</strong><span className="text-[10px] font-black tracking-[0.12em] text-zinc-600">INDEXED REFERENCES</span></div>
+          <div><strong className="block text-2xl font-black text-white">1,519</strong><span className="text-[10px] font-black tracking-[0.12em] text-zinc-600">INDEXED REFERENCES</span></div>
           <div><strong className="block text-2xl font-black text-white">{genreGroups.reduce((sum, group) => sum + group.terms.length, 0)}</strong><span className="text-[10px] font-black tracking-[0.12em] text-zinc-600">GENRE TERMS</span></div>
         </div>
       </div>

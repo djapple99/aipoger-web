@@ -33,7 +33,7 @@ const BIBLE_DOCK_ITEMS: readonly DockItem[] = [
   { id: "suno-preflight", eyebrow: "CHECK", zh: "生成前檢查", en: "Pre-flight check", keywords: "checklist prompt 生成 檢查", icon: CheckSquare, accent: "orange" },
   { id: "suno-troubleshooting", eyebrow: "FIX", zh: "疑難排解", en: "Troubleshooting", keywords: "咬字 聲線 副歌 失真 vocal lyric hook distortion", icon: WandSparkles, accent: "cyan" },
   { id: "suno-prompt-library", eyebrow: "PROMPT", zh: "Prompt 招式庫", en: "Prompt moves", keywords: "prompt mastering 曲風 錄音室", icon: WandSparkles, accent: "orange" },
-  { id: "suno-inspiration-index", eyebrow: "1,518", zh: "聲音 DNA × Prompt 索引", en: "Sonic DNA × Prompt index", keywords: "artist recipe 藝術家 配方 771 747", icon: LibraryBig, accent: "cyan" },
+  { id: "suno-inspiration-index", eyebrow: "1,519", zh: "聲音 DNA × Prompt 索引", en: "Sonic DNA × Prompt index", keywords: "artist recipe 藝術家 配方 772 747", icon: LibraryBig, accent: "cyan" },
   { id: "lyric-control-library", eyebrow: "LYRICS", zh: "歌詞控制", en: "Lyric control", keywords: "歌詞 唱法 段落 duet chorus", icon: BookOpenText, accent: "orange" },
   { id: "stem-separation-guide", eyebrow: "STEMS", zh: "AI 拆軌指南", en: "Stem separation", keywords: "人聲 伴奏 stem vocal separation", icon: AudioWaveform, accent: "cyan" },
   { id: "taiwanese-lab", eyebrow: "LAB", zh: "台語調音實驗室", en: "Taiwanese lyrics lab", keywords: "台語 發音 taiwanese pronunciation", icon: FlaskConical, accent: "orange" },

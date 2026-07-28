@@ -75,10 +75,12 @@ export default function SunoInspirationIndexSection({ isZh, artistDnaEntries, pr
 
   const artistResults = useMemo(() => {
     const needle = normalize(query);
-    return artistDnaEntries.filter((entry) => {
-      if (artistGenre !== "all" && !entry.summaryZh.includes(artistGenre)) return false;
-      return !needle || entry.searchText.includes(needle);
-    });
+    return artistDnaEntries
+      .filter((entry) => {
+        if (artistGenre !== "all" && !entry.summaryZh.includes(artistGenre)) return false;
+        return !needle || entry.searchText.includes(needle);
+      })
+      .sort((left, right) => Number(right.source === "aipoger") - Number(left.source === "aipoger"));
   }, [artistDnaEntries, artistGenre, query]);
 
   const recipeResults = useMemo(() => {
@@ -132,13 +134,13 @@ export default function SunoInspirationIndexSection({ isZh, artistDnaEntries, pr
               </h2>
               <p className="mt-3 max-w-2xl text-sm font-bold leading-7 text-zinc-400 sm:text-base">
                 {isZh
-                  ? "不是把兩本 PDF 原樣堆上來。這裡把 771 組藝術家風格拆成可搜尋的聲音特徵，再把 750 組 Prompt 去除 3 筆重複，留下 747 組可直接練習的配方。"
-                  : "A working index, not a PDF dump: 771 artist references become searchable sonic traits, while 750 source prompts become 747 unique practice recipes after exact deduplication."}
+                  ? "不是把資料原樣堆上來。這裡把 771 組百科參考加上 AIPOGER 持續新增的聲音，整理成 772 組可搜尋 DNA；750 組 Prompt 去除 3 筆重複後，留下 747 組可直接練習的配方。"
+                  : "A working index, not a document dump: 771 encyclopedia references plus AIPOGER additions become 772 searchable sonic profiles, while 750 source prompts become 747 unique practice recipes after exact deduplication."}
               </p>
             </div>
             <div className="grid shrink-0 grid-cols-2 gap-2">
               <div className="rounded-xl border border-cyan-200/18 bg-black/45 px-4 py-3">
-                <p className="text-2xl font-black tabular-nums text-cyan-100">771</p>
+                <p className="text-2xl font-black tabular-nums text-cyan-100">772</p>
                 <p className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">{isZh ? "聲音 DNA" : "Sonic DNA"}</p>
               </div>
               <div className="rounded-xl border border-orange-300/18 bg-black/45 px-4 py-3">
@@ -178,7 +180,7 @@ export default function SunoInspirationIndexSection({ isZh, artistDnaEntries, pr
                 <Sparkles className="h-4 w-4" />
                 {isZh ? "找藝術家聲音 DNA" : "Find Artist Sonic DNA"}
               </span>
-              <span className="mt-1 block text-xs font-bold opacity-70">{isZh ? "771 組參考風格" : "771 reference styles"}</span>
+              <span className="mt-1 block text-xs font-bold opacity-70">{isZh ? "772 組參考風格" : "772 reference styles"}</span>
             </button>
             <button
               id="prompt-recipe-tab"
@@ -295,7 +297,9 @@ export default function SunoInspirationIndexSection({ isZh, artistDnaEntries, pr
                   <article key={entry.key} className="flex min-w-0 flex-col rounded-xl border border-cyan-100/13 bg-black/54 p-4 transition hover:border-cyan-100/28">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100/55">{isZh ? "站內參考名稱" : "Lookup reference"} · p.{entry.sourcePage}</p>
+                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100/55">
+                          {isZh ? "站內參考名稱" : "Lookup reference"} · {entry.source === "aipoger" ? (isZh ? "AIPOGER 新增" : "AIPOGER addition") : `p.${entry.sourcePage}`}
+                        </p>
                         <h3 className="mt-1 break-words text-xl font-black text-white">{entry.artist}</h3>
                       </div>
                       <span className="shrink-0 rounded-full border border-cyan-100/16 bg-cyan-100/[0.06] px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-cyan-100/75">DNA</span>
@@ -399,7 +403,7 @@ export default function SunoInspirationIndexSection({ isZh, artistDnaEntries, pr
           </div>
 
           <footer className="mt-7 grid gap-3 border-t border-white/8 pt-5 text-xs font-bold leading-6 text-zinc-500 md:grid-cols-2">
-            <p>{isZh ? "資料來源：使用者提供的《Suno AI — Full Artist Encyclopedia》；已重組為聲音特徵索引，非 Suno 官方推薦。" : "Source: the user-supplied Suno AI — Full Artist Encyclopedia, restructured as a sonic-trait index and not endorsed by Suno."}</p>
+            <p>{isZh ? "資料來源：使用者提供的《Suno AI — Full Artist Encyclopedia》與 AIPOGER 後續新增；已重組為聲音特徵索引，非 Suno 官方推薦。" : "Source: the user-supplied Suno AI — Full Artist Encyclopedia plus later AIPOGER additions, restructured as a sonic-trait index and not endorsed by Suno."}</p>
             <p>{isZh ? "資料來源：使用者提供的《750 Music Prompts》；3 組完全重複配方已移除。配方是練習起點，請自行試聽與改寫。" : "Source: the user-supplied 750 Music Prompts. Three exact duplicates were removed. Treat every recipe as a testable starting point."}</p>
           </footer>
         </div>

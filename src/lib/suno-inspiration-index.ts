@@ -6,7 +6,9 @@ export type SunoInspirationKind = "artist_dna" | "prompt_recipe";
 export type SunoArtistDnaEntry = {
   key: string;
   artist: string;
-  sourcePage: number;
+  source: "encyclopedia" | "aipoger";
+  sourcePage: number | null;
+  sourcePrompt?: string;
   tags: readonly string[];
   summaryZh: readonly string[];
   prompt: string;
@@ -90,7 +92,7 @@ function cleanTag(tag: string) {
   return tag.replace(/\s+/g, " ").trim().replace(/[.;]+$/, "");
 }
 
-export const SUNO_ARTIST_DNA_ENTRIES: readonly SunoArtistDnaEntry[] = SUNO_ARTIST_DNA_RAW.map(
+const SUNO_ENCYCLOPEDIA_ARTIST_DNA_ENTRIES: readonly SunoArtistDnaEntry[] = SUNO_ARTIST_DNA_RAW.map(
   ([artist, sourcePage, genre, vocal, arrangement, mood], index) => {
     const tags = [genre, vocal, arrangement, mood].map(cleanTag);
     const joined = tags.join(", ");
@@ -103,6 +105,7 @@ export const SUNO_ARTIST_DNA_ENTRIES: readonly SunoArtistDnaEntry[] = SUNO_ARTIS
     return {
       key: "artist-dna-" + String(index + 1).padStart(3, "0"),
       artist,
+      source: "encyclopedia",
       sourcePage,
       tags,
       summaryZh,
@@ -111,6 +114,37 @@ export const SUNO_ARTIST_DNA_ENTRIES: readonly SunoArtistDnaEntry[] = SUNO_ARTIS
     };
   },
 );
+
+const JOCELYN_BROWN_SOURCE_PROMPT = "A powerhouse, soulful female lead vocal, delivered in the iconic, unmistakable style of Jocelyn Brown, Her voice is strong, full-bodied, and rich, with a distinctive gritty texture and commanding, passionate delivery, Emphasize her signature belting, energetic";
+
+const SUNO_AIPOGER_ARTIST_DNA_ENTRIES: readonly SunoArtistDnaEntry[] = [
+  {
+    key: "artist-dna-aipoger-001",
+    artist: "Jocelyn Brown",
+    source: "aipoger",
+    sourcePage: null,
+    sourcePrompt: JOCELYN_BROWN_SOURCE_PROMPT,
+    tags: [
+      "Electronic dance / gospel house",
+      "powerhouse soulful female lead vocal with a strong, full-bodied, rich tone",
+      "distinctive gritty texture, commanding passionate delivery, emphatic chest-led belting",
+      "energetic high-impact chorus lift",
+    ],
+    summaryZh: ["電子音樂", "強力高張力人聲", "合成器電子編曲", "高能量副歌"],
+    prompt: "electronic dance and gospel house, powerhouse soulful female lead vocal, strong full-bodied rich tone, distinctive gritty texture, commanding passionate delivery, emphatic chest-led belting, energetic high-impact chorus lift, original vocal identity, no direct artist imitation",
+    searchText: [
+      "Jocelyn Brown",
+      "electronic dance gospel house soulful female lead vocal powerhouse full-bodied rich gritty belting energetic",
+      "電子音樂 強力高張力人聲 合成器電子編曲 高能量副歌 靈魂女聲 沙啞 顆粒 爆發力",
+      JOCELYN_BROWN_SOURCE_PROMPT,
+    ].join(" ").toLocaleLowerCase(),
+  },
+];
+
+export const SUNO_ARTIST_DNA_ENTRIES: readonly SunoArtistDnaEntry[] = [
+  ...SUNO_ENCYCLOPEDIA_ARTIST_DNA_ENTRIES,
+  ...SUNO_AIPOGER_ARTIST_DNA_ENTRIES,
+];
 
 const RECIPE_ZH = {
   genres: {
@@ -244,6 +278,8 @@ export const SUNO_INSPIRATION_SOURCE = {
   artist: {
     title: "Suno AI — Full Artist Encyclopedia",
     suppliedEntries: 771,
+    curatedEntries: 1,
+    canonicalEntries: 772,
     sourcePages: 40,
   },
   recipes: {

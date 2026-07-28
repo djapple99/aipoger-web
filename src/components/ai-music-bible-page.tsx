@@ -72,7 +72,7 @@ function practiceAreasForLanguage(isZh: boolean): PracticeArea[] {
     ? [
         { icon: Gauge, eyebrow: "START HERE", title: "Suno 起手式", body: "先分清 Style、Lyrics、Title，再過生成前檢查。", href: "#suno-control-desk", accent: "cyan" },
         { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt 招式庫", body: "42 招 Prompt、80+ 個曲風詞與愛波哥私藏配方。", href: "#suno-prompt-library", accent: "orange" },
-        { icon: LibraryBig, eyebrow: "1,518 INDEX", title: "聲音 DNA × Prompt 索引", body: "771 組藝術家聲音 DNA 與 747 組去重配方，可搜尋、複製與評論。", href: "#suno-inspiration-index", accent: "cyan" },
+        { icon: LibraryBig, eyebrow: "1,519 INDEX", title: "聲音 DNA × Prompt 索引", body: "772 組藝術家聲音 DNA 與 747 組去重配方，可搜尋、複製與評論。", href: "#suno-inspiration-index", accent: "cyan" },
         { icon: BookOpenText, eyebrow: "LYRICS", title: "歌詞調教", body: "段落、唱法、合唱、情緒與台語咬字實測。", href: "#lyric-control-library", accent: "cyan" },
         { icon: Music2, eyebrow: "DROP", title: "Drop 製作練習", body: "用 30–60 秒練節奏、情緒與記憶點。", href: "/hook-guide", accent: "orange" },
         { icon: Headphones, eyebrow: "A&R TOOL", title: "分析你的音樂", body: "需要第二意見時，再用 A&R Gate 檢查作品路線。", href: "/music-analysis", accent: "cyan" },
@@ -83,7 +83,7 @@ function practiceAreasForLanguage(isZh: boolean): PracticeArea[] {
     : [
         { icon: Gauge, eyebrow: "START HERE", title: "Suno Quick Start", body: "Separate Style, Lyrics, and Title, then run the pre-flight check.", href: "#suno-control-desk", accent: "cyan" },
         { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt Moves", body: "42 prompt moves, 80+ genre terms, and curated AIPOGER recipes.", href: "#suno-prompt-library", accent: "orange" },
-        { icon: LibraryBig, eyebrow: "1,518 INDEX", title: "Sonic DNA × Prompt Index", body: "Search, copy, and discuss 771 artist DNA references and 747 unique recipes.", href: "#suno-inspiration-index", accent: "cyan" },
+        { icon: LibraryBig, eyebrow: "1,519 INDEX", title: "Sonic DNA × Prompt Index", body: "Search, copy, and discuss 772 artist DNA references and 747 unique recipes.", href: "#suno-inspiration-index", accent: "cyan" },
         { icon: BookOpenText, eyebrow: "LYRICS", title: "Lyric Control", body: "Shape sections, delivery, duets, emotion, and Taiwanese pronunciation.", href: "#lyric-control-library", accent: "cyan" },
         { icon: Music2, eyebrow: "DROP", title: "Drop Practice", body: "Train rhythm, emotion, and recall inside a focused 30–60 seconds.", href: "/hook-guide", accent: "orange" },
         { icon: Headphones, eyebrow: "A&R TOOL", title: "Analyze Your Music", body: "Use A&R Gate when you need a second opinion on the track's route.", href: "/music-analysis", accent: "cyan" },
@@ -107,13 +107,13 @@ function bibleGateCopyForLanguage(lang: string) {
       listen: "まず音楽を聴く",
       bar: "Bar Heartbreakへ",
       marker: "実践データベース",
-      stats: ["1,518件の検索インデックス", "Prompt × 歌詞の実践集", "コピー・コメント・共同検証"],
+      stats: ["1,519件の検索インデックス", "Prompt × 歌詞の実践集", "コピー・コメント・共同検証"],
       asideEyebrow: "WHAT IS INSIDE",
       asideTitle: "迷ったときに、すぐ調べられる",
       asideBody: "長い教材を最初から読むのではなく、今つまずいている場所から入れます。",
       cards: [
         ["Prompt × 歌詞", "曲調、歌い方、構成、感情をすぐ試せる形に整理。"],
-        ["Sonic DNA × レシピ", "771件の音色リファレンスと747件の重複なしレシピ。"],
+        ["Sonic DNA × レシピ", "772件の音色リファレンスと747件の重複なしレシピ。"],
         ["Stem × 台湾語", "分離ツールの選び方と、AI歌唱の発音テストを収録。"],
       ],
     };
@@ -126,13 +126,13 @@ function bibleGateCopyForLanguage(lang: string) {
       listen: "음악 먼저 듣기",
       bar: "Bar Heartbreak 가기",
       marker: "실전 데이터베이스",
-      stats: ["검색 가능한 인덱스 1,518개", "Prompt × 가사 실전 자료", "복사·댓글·공동 검증"],
+      stats: ["검색 가능한 인덱스 1,519개", "Prompt × 가사 실전 자료", "복사·댓글·공동 검증"],
       asideEyebrow: "WHAT IS INSIDE",
       asideTitle: "막힐 때 바로 찾아보세요",
       asideBody: "처음부터 긴 자료를 읽지 않아도, 지금 막힌 문제부터 바로 들어갈 수 있습니다.",
       cards: [
         ["Prompt × 가사", "장르, 보컬, 구성, 감정을 바로 테스트할 수 있게 정리했습니다."],
-        ["Sonic DNA × 레시피", "사운드 레퍼런스 771개와 중복을 뺀 레시피 747개."],
+        ["Sonic DNA × 레시피", "사운드 레퍼런스 772개와 중복을 뺀 레시피 747개."],
         ["Stem × 대만어", "분리 도구 선택법과 AI 보컬 발음 테스트를 함께 제공합니다."],
       ],
     };
@@ -145,13 +145,13 @@ function bibleGateCopyForLanguage(lang: string) {
       listen: "Listen first",
       bar: "Visit Bar Heartbreak",
       marker: "Field database",
-      stats: ["1,518 searchable entries", "Prompt × lyric practice", "Copy, discuss, verify"],
+      stats: ["1,519 searchable entries", "Prompt × lyric practice", "Copy, discuss, verify"],
       asideEyebrow: "WHAT IS INSIDE",
       asideTitle: "A place to look whenever a track gets stuck",
       asideBody: "Start from the problem in front of you instead of reading one long manual from beginning to end.",
       cards: [
         ["Prompt × Lyrics", "Shape genre, vocal delivery, structure, and emotion with practical moves."],
-        ["Sonic DNA × Recipes", "771 sonic references and 747 deduplicated prompt recipes."],
+        ["Sonic DNA × Recipes", "772 sonic references and 747 deduplicated prompt recipes."],
         ["Stems × Taiwanese", "Choose separation tools and learn from AI singing pronunciation tests."],
       ],
     };
@@ -163,13 +163,13 @@ function bibleGateCopyForLanguage(lang: string) {
     listen: "先去聽歌",
     bar: "去傷心酒吧",
     marker: "實戰資料庫",
-    stats: ["1,518 組可搜尋索引", "Prompt × 歌詞實戰庫", "複製、評論、共同驗證"],
+    stats: ["1,519 組可搜尋索引", "Prompt × 歌詞實戰庫", "複製、評論、共同驗證"],
     asideEyebrow: "WHAT IS INSIDE",
     asideTitle: "每次卡關，都有地方查",
     asideBody: "不用從頭讀完一整本教材，直接從你現在卡住的問題開始練。",
     cards: [
       ["Prompt × 歌詞", "曲風、唱法、段落與情緒，整理成能立刻試的招式。"],
-      ["聲音 DNA × 配方", "771 組聲音參考與 747 組去重 Prompt 配方。"],
+      ["聲音 DNA × 配方", "772 組聲音參考與 747 組去重 Prompt 配方。"],
       ["Stem × 台語", "拆軌工具選擇與 AI 歌唱發音實測，少走冤枉路。"],
     ],
   };
