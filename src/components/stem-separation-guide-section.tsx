@@ -12,7 +12,7 @@ function stemText(text: { zh: string; en: string }, locale: StemGuideLocale) {
 export default function StemSeparationGuideSection({ locale, engines, goals }: { locale: StemGuideLocale; engines: StemEngine[]; goals: StemGoal[] }) {
   const isZh = locale === "zh";
   const [goal, setGoal] = useState<StemGoalKey>("vocals");
-  const [expanded, setExpanded] = useState<string | null>("uvr-community");
+  const [expanded, setExpanded] = useState<string | null>(null);
   const activeGoal = useMemo(() => goals.find((item) => item.key === goal) ?? goals[0], [goals, goal]);
   if (!activeGoal) {
     return <section id="stem-separation-guide" className="min-h-48 animate-pulse rounded-[1.6rem] border border-white/10 bg-white/[0.025]" aria-label="Loading stem guide" />;
@@ -93,7 +93,12 @@ export default function StemSeparationGuideSection({ locale, engines, goals }: {
                     <span className="mt-2 block text-xs font-black tracking-[0.08em] text-cyan-200/75">{stemText(engine.family, locale)} · {stemText(engine.access, locale)}</span>
                     <span className="mt-3 block text-sm font-bold leading-6 text-zinc-500">{stemText(engine.summary, locale)}</span>
                   </span>
-                  {isOpen ? <ChevronUp className="mt-1 h-5 w-5 shrink-0 text-zinc-500" /> : <ChevronDown className="mt-1 h-5 w-5 shrink-0 text-zinc-500" />}
+                  <span className="flex shrink-0 flex-col items-end gap-2 text-right">
+                    <span className={`whitespace-nowrap text-[10px] font-black uppercase tracking-[0.12em] ${isOpen ? "text-cyan-100" : "text-zinc-400"}`}>
+                      {isOpen ? (isZh ? "收起詳細資料" : "Collapse details") : (isZh ? "展開優缺點" : "Open pros & limits")}
+                    </span>
+                    {isOpen ? <ChevronUp className="h-5 w-5 text-cyan-100" /> : <ChevronDown className="h-5 w-5 text-zinc-400" />}
+                  </span>
                 </button>
 
                 {isOpen && (

@@ -8,9 +8,7 @@ import {
   ChevronUp,
   Copy,
   ExternalLink,
-  LibraryBig,
   Search,
-  Sparkles,
   WandSparkles,
   X,
 } from "lucide-react";
@@ -27,6 +25,10 @@ import {
   type SunoTechnique,
 } from "@/lib/suno-practice-library";
 import type { SunoArtistDnaEntry, SunoPromptRecipe } from "@/lib/suno-inspiration-index";
+
+const PROMPT_PREVIEW_COUNT = 8;
+const LYRIC_PREVIEW_COUNT = 8;
+const GENRE_PREVIEW_COUNT = 6;
 
 const SunoInspirationIndexSection = dynamic(
   () => import("@/components/suno-inspiration-index-section"),
@@ -166,6 +168,7 @@ export default function SunoPracticeLibrarySection({
   const [genreSearch, setGenreSearch] = useState("");
   const [showAllPrompt, setShowAllPrompt] = useState(false);
   const [showAllLyric, setShowAllLyric] = useState(false);
+  const [showAllGenres, setShowAllGenres] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const promptResults = useMemo(
@@ -195,8 +198,9 @@ export default function SunoPracticeLibrarySection({
     }
   };
 
-  const visiblePrompt = showAllPrompt || promptSearch || promptCategory !== "all" ? promptResults : promptResults.slice(0, 8);
-  const visibleLyrics = showAllLyric || lyricSearch || lyricCategory !== "all" ? lyricResults : lyricResults.slice(0, 8);
+  const visiblePrompt = showAllPrompt ? promptResults : promptResults.slice(0, PROMPT_PREVIEW_COUNT);
+  const visibleLyrics = showAllLyric ? lyricResults : lyricResults.slice(0, LYRIC_PREVIEW_COUNT);
+  const visibleGenres = showAllGenres ? genreResults : genreResults.slice(0, GENRE_PREVIEW_COUNT);
 
   return (
     <section id="suno-prompt-library" className="scroll-mt-20 overflow-hidden rounded-[1.6rem] border border-orange-300/20 bg-[#070707]/94 shadow-[0_30px_100px_rgba(0,0,0,0.52)]">
@@ -254,9 +258,9 @@ export default function SunoPracticeLibrarySection({
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-300/12 text-cyan-100">
               <Search className="h-5 w-5" />
             </span>
-            <input aria-label={isZh ? "搜尋 Prompt 招式" : "Search prompt moves"} value={promptSearch} onChange={(event) => setPromptSearch(event.target.value)} placeholder={isZh ? "搜尋：Jazz、1980s、印度、交響、側鏈…" : "Search: jazz, 1980s, Indian, symphonic, sidechain…"} className="min-w-0 flex-1 bg-transparent py-3 text-base font-bold text-white outline-none placeholder:text-zinc-400" />
+            <input aria-label={isZh ? "搜尋 Prompt 招式" : "Search prompt moves"} value={promptSearch} onChange={(event) => { setPromptSearch(event.target.value); setShowAllPrompt(false); }} placeholder={isZh ? "搜尋：Jazz、1980s、印度、交響、側鏈…" : "Search: jazz, 1980s, Indian, symphonic, sidechain…"} className="min-w-0 flex-1 bg-transparent py-3 text-base font-bold text-white outline-none placeholder:text-zinc-400" />
             {promptSearch && (
-              <button type="button" onClick={() => setPromptSearch("")} aria-label={isZh ? "清除 Prompt 搜尋" : "Clear prompt search"} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-white/[0.05] text-zinc-300 transition hover:border-white/30 hover:text-white">
+              <button type="button" onClick={() => { setPromptSearch(""); setShowAllPrompt(false); }} aria-label={isZh ? "清除 Prompt 搜尋" : "Clear prompt search"} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-white/[0.05] text-zinc-300 transition hover:border-white/30 hover:text-white">
                 <X className="h-4 w-4" />
               </button>
             )}
@@ -267,7 +271,7 @@ export default function SunoPracticeLibrarySection({
           {promptCategories.map((category) => {
                 const selected = promptCategory === category.key;
                 return (
-                  <button key={category.key} type="button" aria-pressed={selected} onClick={() => setPromptCategory(category.key)} className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-black transition ${selected ? "border-cyan-200 bg-cyan-300/[0.18] text-white shadow-[0_0_18px_rgba(34,211,238,0.13)]" : "border-white/20 bg-black/55 text-zinc-300 hover:border-cyan-200/45 hover:bg-cyan-300/[0.07] hover:text-white"}`}>
+                  <button key={category.key} type="button" aria-pressed={selected} onClick={() => { setPromptCategory(category.key); setShowAllPrompt(false); }} className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-black transition ${selected ? "border-cyan-200 bg-cyan-300/[0.18] text-white shadow-[0_0_18px_rgba(34,211,238,0.13)]" : "border-white/20 bg-black/55 text-zinc-300 hover:border-cyan-200/45 hover:bg-cyan-300/[0.07] hover:text-white"}`}>
                     {selected && <Check className="h-4 w-4 text-cyan-200" />}
                     {sunoLibraryText(category.label, locale)}
                   </button>
@@ -277,16 +281,26 @@ export default function SunoPracticeLibrarySection({
           </fieldset>
         </div>
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-2">
+        <div id="prompt-move-results" className="mt-5 grid gap-3 lg:grid-cols-2">
           {visiblePrompt.map((item) => (
             <TechniqueCard key={item.key} item={item} locale={locale} copied={copiedKey === item.key} onCopy={() => copyValue(item.key, sunoLibraryText(item.copy, locale))} />
           ))}
         </div>
         {promptResults.length === 0 && <p className="mt-6 rounded-xl border border-white/10 p-5 text-sm font-bold text-zinc-500">{isZh ? "找不到這個 Prompt 招式，換個關鍵字試試。" : "No matching prompt move. Try another search."}</p>}
-        {!showAllPrompt && !promptSearch && promptCategory === "all" && promptResults.length > 8 && (
-          <button type="button" onClick={() => setShowAllPrompt(true)} className="aipo-ghost-button mx-auto mt-5 flex min-h-11 items-center gap-2 rounded-full px-5 text-xs font-black text-white">
-            <LibraryBig className="h-4 w-4" />{isZh ? `展開全部 ${promptResults.length} 招` : `Show all ${promptResults.length} moves`}
-          </button>
+        {promptResults.length > PROMPT_PREVIEW_COUNT && (
+          <div className="mt-5 flex flex-col items-center gap-2 rounded-xl border border-cyan-200/16 bg-cyan-300/[0.035] px-4 py-4 text-center">
+            <p className="text-xs font-black text-cyan-100/75">
+              {showAllPrompt
+                ? (isZh ? `已展開全部 ${promptResults.length} 招` : `All ${promptResults.length} moves are open`)
+                : (isZh ? `目前顯示前 ${PROMPT_PREVIEW_COUNT} 招，還有 ${promptResults.length - PROMPT_PREVIEW_COUNT} 招` : `Showing the first ${PROMPT_PREVIEW_COUNT}; ${promptResults.length - PROMPT_PREVIEW_COUNT} more moves remain`)}
+            </p>
+            <button type="button" onClick={() => setShowAllPrompt((value) => !value)} aria-expanded={showAllPrompt} aria-controls="prompt-move-results" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-cyan-200/45 bg-cyan-300/[0.1] px-6 text-sm font-black text-white transition hover:border-cyan-100 hover:bg-cyan-300/[0.16] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100">
+              {showAllPrompt ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              {showAllPrompt
+                ? (isZh ? `收起，只看前 ${PROMPT_PREVIEW_COUNT} 招` : `Collapse to the first ${PROMPT_PREVIEW_COUNT}`)
+                : (isZh ? `展開全部 ${promptResults.length} 招` : `Show all ${promptResults.length} moves`)}
+            </button>
+          </div>
         )}
 
         <div className="mt-10 rounded-[1.25rem] border border-cyan-200/16 bg-cyan-300/[0.035] p-5 sm:p-7">
@@ -298,11 +312,11 @@ export default function SunoPracticeLibrarySection({
             </div>
             <label className="flex min-h-11 w-full max-w-sm items-center gap-2 rounded-full border border-white/10 bg-black/45 px-4 focus-within:border-cyan-200/40">
               <Search className="h-4 w-4 text-zinc-600" />
-              <input value={genreSearch} onChange={(event) => setGenreSearch(event.target.value)} placeholder={isZh ? "搜尋曲風" : "Search genres"} className="min-w-0 flex-1 bg-transparent text-sm font-bold text-white outline-none placeholder:text-zinc-700" />
+              <input value={genreSearch} onChange={(event) => { setGenreSearch(event.target.value); setShowAllGenres(false); }} placeholder={isZh ? "搜尋曲風" : "Search genres"} className="min-w-0 flex-1 bg-transparent text-sm font-bold text-white outline-none placeholder:text-zinc-700" />
             </label>
           </div>
-          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {genreResults.map((group) => (
+          <div id="genre-crate-results" className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {visibleGenres.map((group) => (
               <article key={group.key} className="rounded-xl border border-white/9 bg-black/40 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <h4 className="font-black text-white">{sunoLibraryText(group.label, locale)}</h4>
@@ -316,6 +330,19 @@ export default function SunoPracticeLibrarySection({
               </article>
             ))}
           </div>
+          {genreResults.length > GENRE_PREVIEW_COUNT && (
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-3 border-t border-white/8 pt-5">
+              <span className="text-xs font-black text-zinc-500">
+                {showAllGenres
+                  ? (isZh ? `全部 ${genreResults.length} 組曲風已展開` : `All ${genreResults.length} genre groups are open`)
+                  : (isZh ? `還有 ${genreResults.length - GENRE_PREVIEW_COUNT} 組曲風分類` : `${genreResults.length - GENRE_PREVIEW_COUNT} more genre groups`)}
+              </span>
+              <button type="button" onClick={() => setShowAllGenres((value) => !value)} aria-expanded={showAllGenres} aria-controls="genre-crate-results" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-cyan-200/28 bg-black/38 px-5 text-xs font-black text-cyan-50 transition hover:border-cyan-100/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100">
+                {showAllGenres ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                {showAllGenres ? (isZh ? "收起曲風分類" : "Collapse genres") : (isZh ? `展開全部 ${genreResults.length} 組` : `Show all ${genreResults.length} groups`)}
+              </button>
+            </div>
+          )}
         </div>
 
         <div id="suno-inspiration-index" className="scroll-mt-24">
@@ -351,9 +378,9 @@ export default function SunoPracticeLibrarySection({
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-400/12 text-orange-100">
                 <Search className="h-5 w-5" />
               </span>
-              <input aria-label={isZh ? "搜尋歌詞招式" : "Search lyric moves"} value={lyricSearch} onChange={(event) => setLyricSearch(event.target.value)} placeholder={isZh ? "輸入關鍵字，例如：副歌、二重唱、哭腔…" : "Type a keyword, e.g. chorus, duet, crying…"} className="min-w-0 flex-1 bg-transparent py-3 text-base font-bold text-white outline-none placeholder:text-zinc-400" />
+              <input aria-label={isZh ? "搜尋歌詞招式" : "Search lyric moves"} value={lyricSearch} onChange={(event) => { setLyricSearch(event.target.value); setShowAllLyric(false); }} placeholder={isZh ? "輸入關鍵字，例如：副歌、二重唱、哭腔…" : "Type a keyword, e.g. chorus, duet, crying…"} className="min-w-0 flex-1 bg-transparent py-3 text-base font-bold text-white outline-none placeholder:text-zinc-400" />
               {lyricSearch && (
-                <button type="button" onClick={() => setLyricSearch("")} aria-label={isZh ? "清除歌詞搜尋" : "Clear lyric search"} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-white/[0.05] text-zinc-300 transition hover:border-white/30 hover:text-white">
+                <button type="button" onClick={() => { setLyricSearch(""); setShowAllLyric(false); }} aria-label={isZh ? "清除歌詞搜尋" : "Clear lyric search"} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-white/[0.05] text-zinc-300 transition hover:border-white/30 hover:text-white">
                   <X className="h-4 w-4" />
                 </button>
               )}
@@ -364,7 +391,7 @@ export default function SunoPracticeLibrarySection({
                 {lyricCategories.map((category) => {
                   const selected = lyricCategory === category.key;
                   return (
-                    <button key={category.key} type="button" aria-pressed={selected} onClick={() => setLyricCategory(category.key)} className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-black transition ${selected ? "border-orange-300 bg-orange-400/[0.18] text-white shadow-[0_0_18px_rgba(251,146,60,0.13)]" : "border-white/20 bg-black/55 text-zinc-300 hover:border-orange-300/45 hover:bg-orange-400/[0.07] hover:text-white"}`}>
+                    <button key={category.key} type="button" aria-pressed={selected} onClick={() => { setLyricCategory(category.key); setShowAllLyric(false); }} className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-black transition ${selected ? "border-orange-300 bg-orange-400/[0.18] text-white shadow-[0_0_18px_rgba(251,146,60,0.13)]" : "border-white/20 bg-black/55 text-zinc-300 hover:border-orange-300/45 hover:bg-orange-400/[0.07] hover:text-white"}`}>
                       {selected && <Check className="h-4 w-4 text-orange-200" />}
                       {sunoLibraryText(category.label, locale)}
                     </button>
@@ -374,16 +401,26 @@ export default function SunoPracticeLibrarySection({
             </fieldset>
           </div>
 
-          <div className="mt-5 grid gap-3 lg:grid-cols-2">
+          <div id="lyric-move-results" className="mt-5 grid gap-3 lg:grid-cols-2">
             {visibleLyrics.map((item) => (
               <TechniqueCard key={item.key} item={item} locale={locale} copied={copiedKey === item.key} onCopy={() => copyValue(item.key, sunoLibraryText(item.copy, locale))} />
             ))}
           </div>
           {lyricResults.length === 0 && <p className="mt-6 rounded-xl border border-white/10 p-5 text-sm font-bold text-zinc-500">{isZh ? "找不到這個歌詞招式，換個關鍵字試試。" : "No matching lyric move. Try another search."}</p>}
-          {!showAllLyric && !lyricSearch && lyricCategory === "all" && lyricResults.length > 8 && (
-            <button type="button" onClick={() => setShowAllLyric(true)} className="aipo-ghost-button mx-auto mt-5 flex min-h-11 items-center gap-2 rounded-full px-5 text-xs font-black text-white">
-              <Sparkles className="h-4 w-4" />{isZh ? `展開全部 ${lyricResults.length} 招` : `Show all ${lyricResults.length} moves`}
-            </button>
+          {lyricResults.length > LYRIC_PREVIEW_COUNT && (
+            <div className="mt-5 flex flex-col items-center gap-2 rounded-xl border border-orange-300/16 bg-orange-400/[0.035] px-4 py-4 text-center">
+              <p className="text-xs font-black text-orange-100/75">
+                {showAllLyric
+                  ? (isZh ? `已展開全部 ${lyricResults.length} 招` : `All ${lyricResults.length} moves are open`)
+                  : (isZh ? `目前顯示前 ${LYRIC_PREVIEW_COUNT} 招，還有 ${lyricResults.length - LYRIC_PREVIEW_COUNT} 招` : `Showing the first ${LYRIC_PREVIEW_COUNT}; ${lyricResults.length - LYRIC_PREVIEW_COUNT} more moves remain`)}
+              </p>
+              <button type="button" onClick={() => setShowAllLyric((value) => !value)} aria-expanded={showAllLyric} aria-controls="lyric-move-results" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-orange-300/45 bg-orange-400/[0.1] px-6 text-sm font-black text-white transition hover:border-orange-200 hover:bg-orange-400/[0.16] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200">
+                {showAllLyric ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                {showAllLyric
+                  ? (isZh ? `收起，只看前 ${LYRIC_PREVIEW_COUNT} 招` : `Collapse to the first ${LYRIC_PREVIEW_COUNT}`)
+                  : (isZh ? `展開全部 ${lyricResults.length} 招` : `Show all ${lyricResults.length} moves`)}
+              </button>
+            </div>
           )}
         </div>
 

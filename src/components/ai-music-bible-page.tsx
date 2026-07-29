@@ -6,7 +6,9 @@ import {
   ArrowRight,
   BookOpenText,
   Check,
+  ChevronDown,
   ChevronRight,
+  ChevronUp,
   Clipboard,
   ExternalLink,
   FileKey2,
@@ -56,6 +58,7 @@ const categoryLabels: Record<TaiwaneseLyricsCategory, string> = {
 };
 
 const TAIWANESE_LYRICS_CATEGORIES: TaiwaneseLyricsCategory[] = ["人稱", "動作與狀態", "時間", "情緒與口語", "空間與疑問"];
+const TAIWANESE_PREVIEW_COUNT = 8;
 
 const BIBLE_DOCUMENT_TITLES = {
   zh: "AI 音樂練功聖經｜Suno 聲音 DNA、Prompt 索引與歌詞調教｜AIPOGER 愛播歌",
@@ -318,6 +321,7 @@ export default function AiMusicBiblePage() {
 
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<TaiwaneseLyricsCategory | "全部">("全部");
+  const [showAllTaiwanese, setShowAllTaiwanese] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [suggestionOpen, setSuggestionOpen] = useState(false);
   const [submitState, setSubmitState] = useState<SubmitState>({ tone: "idle", message: "" });
@@ -391,6 +395,7 @@ export default function AiMusicBiblePage() {
         .includes(normalized);
     });
   }, [bibleContent.taiwaneseEntries, category, query]);
+  const visibleTaiwaneseEntries = showAllTaiwanese ? filteredEntries : filteredEntries.slice(0, TAIWANESE_PREVIEW_COUNT);
 
   const handleCopy = async (key: string, value: string) => {
     try {
@@ -688,23 +693,24 @@ export default function AiMusicBiblePage() {
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
               <label className="relative block">
                 <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-600" />
-                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={ui.search} className="h-13 w-full rounded-xl border border-white/12 bg-black/60 pl-12 pr-4 text-sm font-bold text-white outline-none transition placeholder:text-zinc-700 focus:border-cyan-200/55" />
+                <input value={query} onChange={(event) => { setQuery(event.target.value); setShowAllTaiwanese(false); }} placeholder={ui.search} className="h-13 w-full rounded-xl border border-white/12 bg-black/60 pl-12 pr-4 text-sm font-bold text-white outline-none transition placeholder:text-zinc-700 focus:border-cyan-200/55" />
               </label>
               <p className="text-right text-xs font-black tracking-[0.12em] text-zinc-600">{ui.showing} {filteredEntries.length} / {bibleContent.taiwaneseEntries.length}</p>
             </div>
             <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
               {(["全部", ...TAIWANESE_LYRICS_CATEGORIES] as const).map((item) => (
-                <button key={item} type="button" onClick={() => setCategory(item)} className={`shrink-0 rounded-full border px-4 py-2 text-xs font-black transition ${category === item ? "border-orange-200/65 bg-orange-500/18 text-orange-100" : "border-white/10 bg-white/[0.035] text-zinc-500 hover:text-white"}`}>
+                <button key={item} type="button" onClick={() => { setCategory(item); setShowAllTaiwanese(false); }} className={`shrink-0 rounded-full border px-4 py-2 text-xs font-black transition ${category === item ? "border-orange-200/65 bg-orange-500/18 text-orange-100" : "border-white/10 bg-white/[0.035] text-zinc-500 hover:text-white"}`}>
                   {item === "全部" ? ui.all : isZh ? item : categoryLabels[item]}
                 </button>
               ))}
             </div>
 
-            <div className="mt-5 hidden overflow-hidden rounded-xl border border-white/10 lg:block">
+            <div id="taiwanese-lab-results" className="mt-5">
+            <div className="hidden overflow-hidden rounded-xl border border-white/10 lg:block">
               <div className="grid grid-cols-[0.82fr_1fr_1.15fr_1.55fr_9.5rem] bg-white/[0.055] px-5 py-3 text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">
                 {ui.headers.map((header) => <span key={header}>{header}</span>)}
               </div>
-              {filteredEntries.map((entry) => (
+              {visibleTaiwaneseEntries.map((entry) => (
                 <div key={entry.key} className="grid grid-cols-[0.82fr_1fr_1.15fr_1.55fr_9.5rem] items-center border-t border-white/8 px-5 py-4 text-sm transition hover:bg-white/[0.025]">
                   <div><span className="mb-1 block text-[10px] font-black tracking-[0.16em] text-zinc-700">{isZh ? entry.category : categoryLabels[entry.category]}</span><strong className="text-white">{entry.meaning}</strong></div>
                   <span className="pr-4 font-bold text-zinc-300">{entry.recommended}</span>
@@ -717,14 +723,31 @@ export default function AiMusicBiblePage() {
               ))}
             </div>
 
-            <div className="mt-5 grid gap-3 lg:hidden">
-              {filteredEntries.map((entry) => (
+            <div className="grid gap-3 lg:hidden">
+              {visibleTaiwaneseEntries.map((entry) => (
                 <article key={entry.key} className="rounded-xl border border-white/10 bg-black/48 p-4">
                   <div className="flex items-start justify-between gap-3"><div><span className="text-[10px] font-black tracking-[0.16em] text-zinc-600">{isZh ? entry.category : categoryLabels[entry.category]}</span><h3 className="mt-1 text-xl font-black text-white">{entry.meaning}</h3></div><FeedbackButtons compact entryKey={entry.key} state={feedbackState[entry.key]} onFeedback={handleFeedback} labels={ui} /></div>
                   <div className="mt-4 grid gap-2 text-sm"><p className="text-zinc-500"><span className="mr-2 text-xs font-black text-zinc-700">{ui.recommended}</span>{entry.recommended}</p><button type="button" onClick={() => void handleCopy(entry.key, entry.sunoWriting)} title={ui.copy} className="flex items-center justify-between rounded-lg border border-cyan-200/14 bg-cyan-300/[0.055] px-3 py-3 text-left font-black text-cyan-50"><span>{entry.sunoWriting}</span>{copiedKey === entry.key ? <Check className="h-4 w-4 text-emerald-300" /> : <Clipboard className="h-4 w-4 text-cyan-200/55" />}</button><p className="pt-1 text-xs font-bold leading-6 text-zinc-500">{entry.note}</p></div>
                 </article>
               ))}
             </div>
+            </div>
+
+            {filteredEntries.length > TAIWANESE_PREVIEW_COUNT && (
+              <div className="mt-5 flex flex-col items-center gap-2 rounded-xl border border-orange-300/16 bg-orange-400/[0.035] px-4 py-4 text-center">
+                <p className="text-xs font-black text-orange-100/75">
+                  {showAllTaiwanese
+                    ? (isZh ? `已展開全部 ${filteredEntries.length} 筆實測資料` : `All ${filteredEntries.length} tests are open`)
+                    : (isZh ? `目前顯示前 ${TAIWANESE_PREVIEW_COUNT} 筆，還有 ${filteredEntries.length - TAIWANESE_PREVIEW_COUNT} 筆實測資料` : `Showing the first ${TAIWANESE_PREVIEW_COUNT}; ${filteredEntries.length - TAIWANESE_PREVIEW_COUNT} more tests remain`)}
+                </p>
+                <button type="button" onClick={() => setShowAllTaiwanese((value) => !value)} aria-expanded={showAllTaiwanese} aria-controls="taiwanese-lab-results" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-orange-300/45 bg-orange-400/[0.1] px-6 text-sm font-black text-white transition hover:border-orange-200 hover:bg-orange-400/[0.16] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200">
+                  {showAllTaiwanese ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  {showAllTaiwanese
+                    ? (isZh ? `收起，只看前 ${TAIWANESE_PREVIEW_COUNT} 筆` : `Collapse to the first ${TAIWANESE_PREVIEW_COUNT}`)
+                    : (isZh ? `展開全部 ${filteredEntries.length} 筆` : `Show all ${filteredEntries.length} tests`)}
+                </button>
+              </div>
+            )}
 
             {filteredEntries.length === 0 && <div className="my-8 rounded-xl border border-dashed border-white/12 px-6 py-12 text-center"><p className="font-black text-zinc-300">{ui.noResult}</p><button type="button" onClick={() => setSuggestionOpen(true)} className="mt-3 text-sm font-black text-orange-200 hover:text-white">{ui.addMissing}</button></div>}
           </div>

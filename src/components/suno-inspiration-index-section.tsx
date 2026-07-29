@@ -3,6 +3,7 @@
 import {
   Check,
   ChevronDown,
+  ChevronUp,
   Copy,
   LibraryBig,
   MessageCircle,
@@ -33,7 +34,7 @@ type CommentTarget = {
   title: string;
 };
 
-const PAGE_SIZE = 18;
+const PAGE_SIZE = 12;
 
 const ARTIST_GENRE_FILTERS = [
   { key: "all", zh: "全部風格", en: "All styles" },
@@ -389,16 +390,39 @@ export default function SunoInspirationIndexSection({ isZh, artistDnaEntries, pr
               </div>
             ) : null}
 
-            {visibleCount < resultCount ? (
-              <button
-                type="button"
-                onClick={() => setVisibleCount((current) => current + PAGE_SIZE)}
-                className="mx-auto mt-6 flex min-h-12 items-center gap-2 rounded-full border border-white/18 bg-white/[0.04] px-6 text-sm font-black text-white transition hover:border-white/38 hover:bg-white/[0.07]"
-              >
-                <ChevronDown className="h-4 w-4" />
-                {isZh ? "再載入 18 筆" : "Load 18 more"}
-                <span className="text-xs text-zinc-500">({Math.min(visibleCount, resultCount)}/{resultCount})</span>
-              </button>
+            {visibleCount < resultCount || visibleCount > PAGE_SIZE ? (
+              <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-white/10 bg-white/[0.025] px-4 py-4 text-center">
+                <p className="text-xs font-black text-zinc-500">
+                  {isZh
+                    ? `目前顯示 ${Math.min(visibleCount, resultCount)} / ${resultCount} 筆${visibleCount < resultCount ? `，還有 ${resultCount - visibleCount} 筆` : ""}`
+                    : `Showing ${Math.min(visibleCount, resultCount)} / ${resultCount}${visibleCount < resultCount ? `, with ${resultCount - visibleCount} more` : ""}`}
+                </p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {visibleCount < resultCount ? (
+                    <button
+                      type="button"
+                      onClick={() => setVisibleCount((current) => current + PAGE_SIZE)}
+                      aria-expanded={visibleCount > PAGE_SIZE}
+                      aria-controls="suno-index-results"
+                      className="flex min-h-12 items-center gap-2 rounded-full border border-white/20 bg-white/[0.05] px-6 text-sm font-black text-white transition hover:border-white/42 hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                      {isZh ? "再展開 12 筆" : "Show 12 more"}
+                    </button>
+                  ) : null}
+                  {visibleCount > PAGE_SIZE ? (
+                    <button
+                      type="button"
+                      onClick={() => setVisibleCount(PAGE_SIZE)}
+                      aria-controls="suno-index-results"
+                      className="flex min-h-12 items-center gap-2 rounded-full border border-cyan-200/28 bg-cyan-300/[0.05] px-6 text-sm font-black text-cyan-50 transition hover:border-cyan-100/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                      {isZh ? "收起，只看前 12 筆" : "Collapse to the first 12"}
+                    </button>
+                  ) : null}
+                </div>
+              </div>
             ) : null}
           </div>
 

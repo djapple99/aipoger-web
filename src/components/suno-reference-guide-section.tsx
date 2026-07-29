@@ -3,6 +3,8 @@
 import {
   BadgeCheck,
   Check,
+  ChevronDown,
+  ChevronUp,
   ClipboardCheck,
   Copy,
   ExternalLink,
@@ -16,7 +18,7 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fontRighteous } from "@/lib/fonts";
 import {
   SUNO_FEATURE_WATCH,
@@ -40,6 +42,20 @@ export default function SunoReferenceGuideSection({ locale }: { locale: Referenc
   const [checked, setChecked] = useState<Set<string>>(() => new Set());
   const [copied, setCopied] = useState(false);
   const [troubleQuery, setTroubleQuery] = useState("");
+  const [guideOpen, setGuideOpen] = useState(false);
+
+  useEffect(() => {
+    const openForHash = () => {
+      const target = window.location.hash;
+      if (["#suno-control-desk", "#suno-preflight", "#suno-troubleshooting", "#suno-version-watch", "#rights-release"].includes(target)) {
+        setGuideOpen(true);
+        window.setTimeout(() => document.querySelector(target)?.scrollIntoView({ block: "start" }), 0);
+      }
+    };
+    openForHash();
+    window.addEventListener("hashchange", openForHash);
+    return () => window.removeEventListener("hashchange", openForHash);
+  }, []);
 
   const troubleResults = useMemo(() => {
     const query = troubleQuery.trim().toLocaleLowerCase();
@@ -106,9 +122,29 @@ export default function SunoReferenceGuideSection({ locale }: { locale: Referenc
             </p>
           </div>
         </div>
+        <div className="mt-7 flex flex-col gap-4 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-black text-white">
+              {isZh ? "內含 5 個實戰工具區" : "Includes 5 practical tool zones"}
+            </p>
+            <p className="mt-1 text-xs font-bold leading-5 text-zinc-500">
+              {isZh ? "3 欄工作法 · 可複製模板 · 8 關檢查 · 6 種排錯 · 版本與權利" : "3-field workflow · copyable template · 8 checks · 6 fixes · version and rights"}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setGuideOpen((value) => !value)}
+            aria-expanded={guideOpen}
+            aria-controls="suno-control-desk-content"
+            className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full border border-orange-300/48 bg-orange-400/[0.12] px-6 text-sm font-black text-orange-50 shadow-[0_0_28px_rgba(251,146,60,0.1)] transition hover:border-orange-200 hover:bg-orange-400/[0.18] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+          >
+            {guideOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {guideOpen ? (isZh ? "收起完整起手式" : "Collapse full starter") : (isZh ? "展開完整起手式" : "Open full starter")}
+          </button>
+        </div>
       </div>
 
-      <div className="px-4 py-6 sm:px-7 sm:py-8 lg:px-9 lg:py-10">
+      {guideOpen && <div id="suno-control-desk-content" className="px-4 py-6 sm:px-7 sm:py-8 lg:px-9 lg:py-10">
         <div className="grid gap-3 lg:grid-cols-3">
           {SUNO_QUICK_START_FIELDS.map((field, index) => (
             <article key={field.key} className="group relative overflow-hidden rounded-[1.2rem] border border-white/10 bg-black/48 p-5 transition hover:-translate-y-0.5 hover:border-orange-300/36 sm:p-6">
@@ -263,7 +299,7 @@ export default function SunoReferenceGuideSection({ locale }: { locale: Referenc
             })}
           </div>
         </section>
-      </div>
+      </div>}
     </section>
   );
 }

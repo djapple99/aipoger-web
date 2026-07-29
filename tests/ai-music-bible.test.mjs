@@ -233,6 +233,12 @@ test("Prompt and lyric finders explain their controls and expose clear states", 
   assert.match(practiceLibraryComponent, /aria-pressed=\{selected\}/);
   assert.match(practiceLibraryComponent, /清除 Prompt 搜尋/);
   assert.match(practiceLibraryComponent, /清除歌詞搜尋/);
+  assert.match(practiceLibraryComponent, /目前顯示前 \$\{PROMPT_PREVIEW_COUNT\} 招，還有/);
+  assert.match(practiceLibraryComponent, /收起，只看前 \$\{PROMPT_PREVIEW_COUNT\} 招/);
+  assert.match(practiceLibraryComponent, /aria-controls="prompt-move-results"/);
+  assert.match(practiceLibraryComponent, /還有 \$\{genreResults\.length - GENRE_PREVIEW_COUNT\} 組曲風分類/);
+  assert.doesNotMatch(practiceLibraryComponent, /showAllPrompt \|\| promptSearch \|\| promptCategory !== "all"/);
+  assert.doesNotMatch(practiceLibraryComponent, /showAllLyric \|\| lyricSearch \|\| lyricCategory !== "all"/);
   assert.doesNotMatch(practiceLibraryComponent, /閱讀 Reddit 原文|Read Reddit guide|查看開源 Skill|View open skill/);
   assert.doesNotMatch(practiceLibraryComponent, /NEW SOURCE · COMMUNITY FIELD GUIDE/);
   assert.match(practiceLibraryComponent, /官方文件核對：2026-07-28/);
@@ -250,6 +256,11 @@ test("Suno control desk keeps the P0 quick start, pre-flight, and troubleshootin
   assert.match(referenceGuideComponent, /id="suno-control-desk"/);
   assert.match(referenceGuideComponent, /id="suno-preflight"/);
   assert.match(referenceGuideComponent, /id="suno-troubleshooting"/);
+  assert.match(referenceGuideComponent, /內含 5 個實戰工具區/);
+  assert.match(referenceGuideComponent, /展開完整起手式/);
+  assert.match(referenceGuideComponent, /aria-controls="suno-control-desk-content"/);
+  assert.match(referenceGuideComponent, /window\.addEventListener\("hashchange", openForHash\)/);
+  assert.match(referenceGuideComponent, /document\.querySelector\(target\)\?\.scrollIntoView/);
   assert.match(referenceGuideComponent, /4–7 個 Style 重點與三版比較是實測工作法，不是 Suno 官方限制/);
 });
 
@@ -354,6 +365,17 @@ test("large inspiration index exposes clear search, filter, copy, comment, and p
   assert.match(inspirationIndexComponent, /複製聲音 DNA/);
   assert.match(inspirationIndexComponent, /複製英文 Prompt/);
   assert.match(inspirationIndexComponent, /BibleEntryCommentsDialog/);
-  assert.match(inspirationIndexComponent, /再載入 18 筆/);
+  assert.match(inspirationIndexComponent, /再展開 12 筆/);
+  assert.match(inspirationIndexComponent, /收起，只看前 12 筆/);
   assert.doesNotMatch(inspirationIndexComponent, /overflow-x-auto/);
+});
+
+test("long Bible datasets start compact and clearly expose remaining material", () => {
+  assert.match(biblePageComponent, /visibleTaiwaneseEntries = showAllTaiwanese \? filteredEntries : filteredEntries\.slice\(0, TAIWANESE_PREVIEW_COUNT\)/);
+  assert.match(biblePageComponent, /還有 \$\{filteredEntries\.length - TAIWANESE_PREVIEW_COUNT\} 筆實測資料/);
+  assert.match(biblePageComponent, /aria-controls="taiwanese-lab-results"/);
+  assert.match(biblePageComponent, /收起，只看前 \$\{TAIWANESE_PREVIEW_COUNT\} 筆/);
+  assert.match(referenceGuideComponent, /const \[guideOpen, setGuideOpen\] = useState\(false\)/);
+  assert.match(readFileSync(new URL("../src/components/stem-separation-guide-section.tsx", import.meta.url), "utf8"), /const \[expanded, setExpanded\] = useState<string \| null>\(null\)/);
+  assert.match(readFileSync(new URL("../src/components/stem-separation-guide-section.tsx", import.meta.url), "utf8"), /展開優缺點/);
 });
