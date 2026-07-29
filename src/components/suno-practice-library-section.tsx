@@ -254,7 +254,7 @@ export default function SunoPracticeLibrarySection({
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-300/12 text-cyan-100">
               <Search className="h-5 w-5" />
             </span>
-            <input aria-label={isZh ? "搜尋 Prompt 招式" : "Search prompt moves"} value={promptSearch} onChange={(event) => setPromptSearch(event.target.value)} placeholder={isZh ? "輸入關鍵字，例如：EDM、側鏈、轉調…" : "Type a keyword, e.g. EDM, sidechain, key change…"} className="min-w-0 flex-1 bg-transparent py-3 text-base font-bold text-white outline-none placeholder:text-zinc-400" />
+            <input aria-label={isZh ? "搜尋 Prompt 招式" : "Search prompt moves"} value={promptSearch} onChange={(event) => setPromptSearch(event.target.value)} placeholder={isZh ? "搜尋：Jazz、1980s、印度、交響、側鏈…" : "Search: jazz, 1980s, Indian, symphonic, sidechain…"} className="min-w-0 flex-1 bg-transparent py-3 text-base font-bold text-white outline-none placeholder:text-zinc-400" />
             {promptSearch && (
               <button type="button" onClick={() => setPromptSearch("")} aria-label={isZh ? "清除 Prompt 搜尋" : "Clear prompt search"} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-white/[0.05] text-zinc-300 transition hover:border-white/30 hover:text-white">
                 <X className="h-4 w-4" />

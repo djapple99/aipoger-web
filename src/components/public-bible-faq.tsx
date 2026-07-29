@@ -1,5 +1,9 @@
+"use client";
+
 import { BookOpenText, ChevronDown, SlidersHorizontal, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
 import { fontRighteous } from "@/lib/fonts";
+import { useI18n } from "@/lib/i18n";
 import { PUBLIC_BIBLE_FAQ, SUNO_QUICK_START_FIELDS, type PublicFaqLocale } from "@/lib/suno-reference-guide";
 
 const copyByLocale: Record<PublicFaqLocale, { eyebrow: string; title: string; body: string; fieldTitle: string; faqTitle: string; note: string; fields: readonly { title: string; body: string }[] }> = {
@@ -49,7 +53,14 @@ const copyByLocale: Record<PublicFaqLocale, { eyebrow: string; title: string; bo
   },
 };
 
-export default function PublicBibleFaq({ lang }: { lang: PublicFaqLocale }) {
+export default function PublicBibleFaq({ lang: serverLang }: { lang: PublicFaqLocale }) {
+  const { lang: activeLang } = useI18n();
+  const [lang, setLang] = useState<PublicFaqLocale>(serverLang);
+
+  useEffect(() => {
+    setLang(activeLang);
+  }, [activeLang]);
+
   const copy = copyByLocale[lang];
 
   return (

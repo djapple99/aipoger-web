@@ -127,9 +127,9 @@ test("stem separation guide is bilingual, sourced, and points only to known engi
 });
 
 test("Suno prompt and lyric libraries keep unique, bilingual, sourced moves", () => {
-  assert.equal(SUNO_PROMPT_MOVES.length, 42);
-  assert.equal(SUNO_STUDIO_MASTERING_MOVES.length, 19);
-  assert.equal(SUNO_STUDIO_MASTERING_MOVES.filter((entry) => entry.category === "mastering").length, 19);
+  assert.equal(SUNO_PROMPT_MOVES.length, 73);
+  assert.equal(SUNO_STUDIO_MASTERING_MOVES.length, 50);
+  assert.equal(SUNO_STUDIO_MASTERING_MOVES.filter((entry) => entry.category === "mastering").length, 50);
   assert.equal(SUNO_LYRIC_MOVES.length, 18);
 
   for (const entries of [SUNO_PROMPT_MOVES, SUNO_LYRIC_MOVES]) {
@@ -160,6 +160,28 @@ test("Suno prompt and lyric libraries keep unique, bilingual, sourced moves", ()
   }
   assert.ok(SUNO_STUDIO_MASTERING_MOVES.some((entry) => entry.key === "studio-mastering-general"));
   assert.ok(SUNO_STUDIO_MASTERING_MOVES.some((entry) => entry.key === "studio-mastering-taiwanese-pop"));
+  for (const key of [
+    "studio-mastering-big-band-swing",
+    "studio-mastering-jazz-fusion",
+    "studio-mastering-1950s-rockabilly",
+    "studio-mastering-1980s-new-wave",
+    "studio-mastering-2000s-indie-rock",
+    "studio-mastering-k-pop-dance",
+    "studio-mastering-indian-classical-fusion",
+    "studio-mastering-french-chanson",
+    "studio-mastering-amapiano",
+    "studio-mastering-full-symphony",
+    "studio-mastering-chicago-blues",
+  ]) {
+    assert.ok(SUNO_STUDIO_MASTERING_MOVES.some((entry) => entry.key === key));
+  }
+  assert.equal(
+    new Set(SUNO_STUDIO_MASTERING_MOVES.map((entry) => entry.copy.en)).size,
+    SUNO_STUDIO_MASTERING_MOVES.length,
+  );
+  for (const decade of ["1950s", "1960s", "1970s", "1980s", "1990s", "2000s"]) {
+    assert.ok(SUNO_STUDIO_MASTERING_MOVES.some((entry) => entry.keywords.includes(decade)));
+  }
   for (const key of ["enriched-section-cue", "singability-edit"]) {
     assert.ok(SUNO_LYRIC_MOVES.some((entry) => entry.key === key));
   }
@@ -175,8 +197,33 @@ test("genre crate and production flow remain complete and bilingual", () => {
   assert.ok(AI_PRODUCTION_FLOW.every((step) => step.title.zh && step.title.en && step.body.zh && step.body.en));
 });
 
+test("expanded Studio Mastering prompts are discoverable by genre, culture, and era", () => {
+  const matchingKeys = (term) => {
+    const query = term.toLocaleLowerCase();
+    return SUNO_STUDIO_MASTERING_MOVES.filter((entry) => [
+      entry.title.zh,
+      entry.title.en,
+      entry.summary.zh,
+      entry.summary.en,
+      entry.use.zh,
+      entry.use.en,
+      entry.copy.zh,
+      entry.copy.en,
+      ...entry.keywords,
+    ].join(" ").toLocaleLowerCase().includes(query)).map((entry) => entry.key);
+  };
+
+  assert.ok(matchingKeys("jazz").length >= 7);
+  assert.deepEqual(matchingKeys("1980s").sort(), ["studio-mastering-1980s-arena-rock", "studio-mastering-1980s-new-wave"]);
+  assert.deepEqual(matchingKeys("印度").sort(), ["studio-mastering-bollywood-pop", "studio-mastering-indian-classical-fusion"]);
+  assert.ok(matchingKeys("交響").includes("studio-mastering-full-symphony"));
+  assert.ok(matchingKeys("獨立搖滾").includes("studio-mastering-2000s-indie-rock"));
+  assert.ok(matchingKeys("French").includes("studio-mastering-french-chanson"));
+});
+
 test("Prompt and lyric finders explain their controls and expose clear states", () => {
   assert.match(practiceLibraryComponent, /找你需要的 Prompt 招式/);
+  assert.match(practiceLibraryComponent, /Jazz、1980s、印度、交響、側鏈/);
   assert.match(practiceLibraryComponent, /找你需要的歌詞控制/);
   assert.match(practiceLibraryComponent, /aria-live="polite"/);
   assert.match(practiceLibraryComponent, /aria-pressed=\{selected\}/);
@@ -229,6 +276,8 @@ test("public starter stays compact, multilingual, and indexable without exposing
   assert.match(publicFaqComponent, /AIPOGER PUBLIC STARTER/);
   assert.match(publicFaqComponent, /공개 스타터/);
   assert.match(publicFaqComponent, /公開スターター/);
+  assert.match(publicFaqComponent, /useI18n/);
+  assert.match(publicFaqComponent, /setLang\(activeLang\)/);
   assert.doesNotMatch(publicFaqComponent, /SUNO_ARTIST_DNA_ENTRIES|SUNO_PROMPT_RECIPES/);
   assert.match(bibleRoute, /"@type": "TechArticle"/);
   assert.match(bibleRoute, /"@type": "FAQPage"/);
