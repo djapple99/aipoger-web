@@ -57,6 +57,13 @@ const categoryLabels: Record<TaiwaneseLyricsCategory, string> = {
 
 const TAIWANESE_LYRICS_CATEGORIES: TaiwaneseLyricsCategory[] = ["人稱", "動作與狀態", "時間", "情緒與口語", "空間與疑問"];
 
+const BIBLE_DOCUMENT_TITLES = {
+  zh: "AI 音樂練功聖經｜Suno 聲音 DNA、Prompt 索引與歌詞調教｜AIPOGER 愛播歌",
+  en: "AI Music Practice Bible | Suno Sonic DNA, Prompts, and Lyrics | AIPOGER",
+  ja: "AI音楽 実践バイブル｜Suno Sonic DNA・Prompt・歌詞｜AIPOGER",
+  ko: "AI 음악 실전 바이블｜Suno Sonic DNA·Prompt·가사｜AIPOGER",
+} as const;
+
 type PracticeArea = {
   icon: typeof WandSparkles;
   eyebrow: string;
@@ -71,7 +78,7 @@ function practiceAreasForLanguage(isZh: boolean): PracticeArea[] {
   return isZh
     ? [
         { icon: Gauge, eyebrow: "START HERE", title: "Suno 起手式", body: "先分清 Style、Lyrics、Title，再過生成前檢查。", href: "#suno-control-desk", accent: "cyan" },
-        { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt 招式庫", body: "42 招 Prompt、80+ 個曲風詞與愛波哥私藏配方。", href: "#suno-prompt-library", accent: "orange" },
+        { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt 招式庫", body: "73 招 Prompt、80+ 個曲風詞與愛波哥私藏配方。", href: "#suno-prompt-library", accent: "orange" },
         { icon: LibraryBig, eyebrow: "1,519 INDEX", title: "聲音 DNA × Prompt 索引", body: "772 組藝術家聲音 DNA 與 747 組去重配方，可搜尋、複製與評論。", href: "#suno-inspiration-index", accent: "cyan" },
         { icon: BookOpenText, eyebrow: "LYRICS", title: "歌詞調教", body: "段落、唱法、合唱、情緒與台語咬字實測。", href: "#lyric-control-library", accent: "cyan" },
         { icon: Music2, eyebrow: "DROP", title: "Drop 製作練習", body: "用 30–60 秒練節奏、情緒與記憶點。", href: "/hook-guide", accent: "orange" },
@@ -82,7 +89,7 @@ function practiceAreasForLanguage(isZh: boolean): PracticeArea[] {
       ]
     : [
         { icon: Gauge, eyebrow: "START HERE", title: "Suno Quick Start", body: "Separate Style, Lyrics, and Title, then run the pre-flight check.", href: "#suno-control-desk", accent: "cyan" },
-        { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt Moves", body: "42 prompt moves, 80+ genre terms, and curated AIPOGER recipes.", href: "#suno-prompt-library", accent: "orange" },
+        { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt Moves", body: "73 prompt moves, 80+ genre terms, and curated AIPOGER recipes.", href: "#suno-prompt-library", accent: "orange" },
         { icon: LibraryBig, eyebrow: "1,519 INDEX", title: "Sonic DNA × Prompt Index", body: "Search, copy, and discuss 772 artist DNA references and 747 unique recipes.", href: "#suno-inspiration-index", accent: "cyan" },
         { icon: BookOpenText, eyebrow: "LYRICS", title: "Lyric Control", body: "Shape sections, delivery, duets, emotion, and Taiwanese pronunciation.", href: "#lyric-control-library", accent: "cyan" },
         { icon: Music2, eyebrow: "DROP", title: "Drop Practice", body: "Train rhythm, emotion, and recall inside a focused 30–60 seconds.", href: "/hook-guide", accent: "orange" },
@@ -304,6 +311,11 @@ export default function AiMusicBiblePage() {
   const shareCopy = bibleShareCopyForLanguage(lang);
   const communityCopy = bibleCommunityCopyForLanguage(lang);
   const shareUrl = `/ai-music-bible?lang=${lang}`;
+
+  useEffect(() => {
+    document.title = BIBLE_DOCUMENT_TITLES[lang];
+  }, [lang]);
+
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<TaiwaneseLyricsCategory | "全部">("全部");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);

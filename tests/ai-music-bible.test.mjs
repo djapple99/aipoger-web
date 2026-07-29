@@ -42,6 +42,7 @@ const inspirationIndexComponent = readFileSync(new URL("../src/components/suno-i
 const referenceGuideComponent = readFileSync(new URL("../src/components/suno-reference-guide-section.tsx", import.meta.url), "utf8");
 const commandDockComponent = readFileSync(new URL("../src/components/bible-command-dock.tsx", import.meta.url), "utf8");
 const publicFaqComponent = readFileSync(new URL("../src/components/public-bible-faq.tsx", import.meta.url), "utf8");
+const biblePageComponent = readFileSync(new URL("../src/components/ai-music-bible-page.tsx", import.meta.url), "utf8");
 const bibleRoute = readFileSync(new URL("../src/app/ai-music-bible/page.tsx", import.meta.url), "utf8");
 
 test("Taiwanese lyrics lab keeps the PDF seed catalog complete and uniquely addressable", () => {
@@ -222,6 +223,9 @@ test("expanded Studio Mastering prompts are discoverable by genre, culture, and 
 });
 
 test("Prompt and lyric finders explain their controls and expose clear states", () => {
+  assert.match(biblePageComponent, /73 招 Prompt/);
+  assert.match(biblePageComponent, /73 prompt moves/);
+  assert.match(biblePageComponent, /document\.title = BIBLE_DOCUMENT_TITLES\[lang\]/);
   assert.match(practiceLibraryComponent, /找你需要的 Prompt 招式/);
   assert.match(practiceLibraryComponent, /Jazz、1980s、印度、交響、側鏈/);
   assert.match(practiceLibraryComponent, /找你需要的歌詞控制/);
