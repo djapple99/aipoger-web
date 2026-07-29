@@ -69,6 +69,19 @@ export default function SunoInspirationIndexSection({ isZh, artistDnaEntries, pr
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [copiedKey, setCopiedKey] = useState("");
   const [commentTarget, setCommentTarget] = useState<CommentTarget | null>(null);
+  const [indexOpen, setIndexOpen] = useState(false);
+
+  useEffect(() => {
+    const openForHash = () => {
+      if (window.location.hash === "#suno-inspiration-index") {
+        setIndexOpen(true);
+        window.setTimeout(() => document.getElementById("suno-inspiration-index")?.scrollIntoView({ block: "start" }), 0);
+      }
+    };
+    openForHash();
+    window.addEventListener("hashchange", openForHash);
+    return () => window.removeEventListener("hashchange", openForHash);
+  }, []);
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
@@ -164,9 +177,19 @@ export default function SunoInspirationIndexSection({ isZh, artistDnaEntries, pr
               </p>
             </div>
           </div>
+
+          <div className="mt-5 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs font-black text-zinc-400">
+              {isZh ? "772 組聲音 DNA · 747 組 Prompt 配方" : "772 sonic profiles · 747 prompt recipes"}
+            </p>
+            <button type="button" onClick={() => setIndexOpen((value) => !value)} aria-expanded={indexOpen} aria-controls="suno-inspiration-index-content" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-cyan-200/38 bg-cyan-300/[0.08] px-6 text-sm font-black text-cyan-50 transition hover:border-cyan-100/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100">
+              {indexOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              {indexOpen ? (isZh ? "收起索引工具" : "Collapse index tool") : (isZh ? "展開搜尋 1,519 筆資料" : "Open search for 1,519 entries")}
+            </button>
+          </div>
         </header>
 
-        <div className="px-4 py-5 sm:px-7 sm:py-7">
+        {indexOpen && <div id="suno-inspiration-index-content" className="px-4 py-5 sm:px-7 sm:py-7">
           <div role="tablist" aria-label={isZh ? "選擇索引資料庫" : "Choose index database"} className="grid gap-2 sm:grid-cols-2">
             <button
               id="artist-dna-tab"
@@ -430,7 +453,7 @@ export default function SunoInspirationIndexSection({ isZh, artistDnaEntries, pr
             <p>{isZh ? "資料來源：使用者提供的《Suno AI — Full Artist Encyclopedia》與 AIPOGER 後續新增；已重組為聲音特徵索引，非 Suno 官方推薦。" : "Source: the user-supplied Suno AI — Full Artist Encyclopedia plus later AIPOGER additions, restructured as a sonic-trait index and not endorsed by Suno."}</p>
             <p>{isZh ? "資料來源：使用者提供的《750 Music Prompts》；3 組完全重複配方已移除。配方是練習起點，請自行試聽與改寫。" : "Source: the user-supplied 750 Music Prompts. Three exact duplicates were removed. Treat every recipe as a testable starting point."}</p>
           </footer>
-        </div>
+        </div>}
       </div>
 
       {commentTarget ? (

@@ -58,7 +58,7 @@ const categoryLabels: Record<TaiwaneseLyricsCategory, string> = {
 };
 
 const TAIWANESE_LYRICS_CATEGORIES: TaiwaneseLyricsCategory[] = ["人稱", "動作與狀態", "時間", "情緒與口語", "空間與疑問"];
-const TAIWANESE_PREVIEW_COUNT = 8;
+const TAIWANESE_PREVIEW_COUNT = 6;
 
 const BIBLE_DOCUMENT_TITLES = {
   zh: "AI 音樂練功聖經｜Suno 聲音 DNA、Prompt 索引與歌詞調教｜AIPOGER 愛播歌",

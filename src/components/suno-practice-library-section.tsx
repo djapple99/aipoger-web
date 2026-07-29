@@ -13,7 +13,7 @@ import {
   X,
 } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fontRighteous } from "@/lib/fonts";
 import {
   type SunoEvidence,
@@ -26,7 +26,7 @@ import {
 } from "@/lib/suno-practice-library";
 import type { SunoArtistDnaEntry, SunoPromptRecipe } from "@/lib/suno-inspiration-index";
 
-const PROMPT_PREVIEW_COUNT = 8;
+const PROMPT_PREVIEW_COUNT = 6;
 const LYRIC_PREVIEW_COUNT = 8;
 const GENRE_PREVIEW_COUNT = 6;
 
@@ -169,7 +169,22 @@ export default function SunoPracticeLibrarySection({
   const [showAllPrompt, setShowAllPrompt] = useState(false);
   const [showAllLyric, setShowAllLyric] = useState(false);
   const [showAllGenres, setShowAllGenres] = useState(false);
+  const [genreCrateOpen, setGenreCrateOpen] = useState(false);
+  const [lyricLibraryOpen, setLyricLibraryOpen] = useState(false);
+  const [productionFlowOpen, setProductionFlowOpen] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    const openForHash = () => {
+      if (window.location.hash === "#lyric-control-library") {
+        setLyricLibraryOpen(true);
+        window.setTimeout(() => document.getElementById("lyric-control-library")?.scrollIntoView({ block: "start" }), 0);
+      }
+    };
+    openForHash();
+    window.addEventListener("hashchange", openForHash);
+    return () => window.removeEventListener("hashchange", openForHash);
+  }, []);
 
   const promptResults = useMemo(
     () => promptMoves.filter((item) => (promptCategory === "all" || item.category === promptCategory) && techniqueMatches(item, promptSearch)),
@@ -310,11 +325,16 @@ export default function SunoPracticeLibrarySection({
               <h3 className="mt-2 text-2xl font-black text-white sm:text-3xl">{isZh ? "曲風唱片箱" : "Genre crate"}</h3>
               <p className="mt-2 text-sm font-bold leading-6 text-zinc-500">{isZh ? "依使用者提供的曲風截圖重新校字與分組；曲風名稱是起點，不是完整 Prompt。" : "Cleaned and regrouped from the supplied genre screenshot. A genre name is a starting point, not a complete prompt."}</p>
             </div>
-            <label className="flex min-h-11 w-full max-w-sm items-center gap-2 rounded-full border border-white/10 bg-black/45 px-4 focus-within:border-cyan-200/40">
-              <Search className="h-4 w-4 text-zinc-600" />
-              <input value={genreSearch} onChange={(event) => { setGenreSearch(event.target.value); setShowAllGenres(false); }} placeholder={isZh ? "搜尋曲風" : "Search genres"} className="min-w-0 flex-1 bg-transparent text-sm font-bold text-white outline-none placeholder:text-zinc-700" />
-            </label>
+            <button type="button" onClick={() => setGenreCrateOpen((value) => !value)} aria-expanded={genreCrateOpen} aria-controls="genre-crate-content" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-cyan-200/35 bg-cyan-300/[0.08] px-5 text-sm font-black text-cyan-50 transition hover:border-cyan-100/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100">
+              {genreCrateOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              {genreCrateOpen ? (isZh ? "收起曲風唱片箱" : "Collapse genre crate") : (isZh ? `展開 ${genreResults.length} 組曲風` : `Open ${genreResults.length} genre groups`)}
+            </button>
           </div>
+          {genreCrateOpen && <div id="genre-crate-content">
+          <label className="mt-5 flex min-h-11 w-full max-w-sm items-center gap-2 rounded-full border border-white/10 bg-black/45 px-4 focus-within:border-cyan-200/40">
+            <Search className="h-4 w-4 text-zinc-600" />
+            <input value={genreSearch} onChange={(event) => { setGenreSearch(event.target.value); setShowAllGenres(false); }} placeholder={isZh ? "搜尋曲風" : "Search genres"} className="min-w-0 flex-1 bg-transparent text-sm font-bold text-white outline-none placeholder:text-zinc-700" />
+          </label>
           <div id="genre-crate-results" className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {visibleGenres.map((group) => (
               <article key={group.key} className="rounded-xl border border-white/9 bg-black/40 p-4">
@@ -343,6 +363,7 @@ export default function SunoPracticeLibrarySection({
               </button>
             </div>
           )}
+          </div>}
         </div>
 
         <div id="suno-inspiration-index" className="scroll-mt-24">
@@ -361,9 +382,14 @@ export default function SunoPracticeLibrarySection({
               <h3 className="mt-2 text-3xl font-black text-white md:text-4xl">{isZh ? "歌詞調教：控制怎麼唱" : "Lyric control: shape the delivery"}</h3>
               <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-zinc-500">{isZh ? "這裡處理段落、唱法、情緒與表演；台語字詞發音仍在下方的台語調音實驗室。" : "This library handles sections, delivery, emotion, and performance. Taiwanese pronunciation remains in the dedicated lab below."}</p>
             </div>
-            <BookOpenText className="h-8 w-8 text-orange-300/70" />
+            <button type="button" onClick={() => setLyricLibraryOpen((value) => !value)} aria-expanded={lyricLibraryOpen} aria-controls="lyric-library-content" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-orange-300/38 bg-orange-400/[0.08] px-5 text-sm font-black text-orange-50 transition hover:border-orange-200/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200">
+              <BookOpenText className="h-4 w-4" />
+              {lyricLibraryOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              {lyricLibraryOpen ? (isZh ? "收起歌詞招式" : "Collapse lyric moves") : (isZh ? `展開 ${lyricResults.length} 招歌詞控制` : `Open ${lyricResults.length} lyric moves`)}
+            </button>
           </div>
 
+          {lyricLibraryOpen && <div id="lyric-library-content">
           <div role="search" aria-label={isZh ? "搜尋與篩選歌詞招式" : "Search and filter lyric moves"} className="mt-6 rounded-[1.15rem] border border-orange-300/25 bg-[#120d09] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_16px_50px_rgba(0,0,0,0.24)] sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -422,20 +448,29 @@ export default function SunoPracticeLibrarySection({
               </button>
             </div>
           )}
+          </div>}
         </div>
 
         <div className="mt-12 rounded-[1.25rem] border border-orange-300/16 bg-orange-400/[0.035] p-5 sm:p-7">
-          <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.25em] text-orange-300/75`}>FROM MATERIAL TO WORK</p>
-          <h3 className="mt-3 text-2xl font-black text-white sm:text-3xl">{isZh ? "《AI 音樂製作小指南》放在這裡最合理" : "Where the AI production guide belongs"}</h3>
-          <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-zinc-500">{isZh ? "它不是 Prompt 字典，也不是歌詞技巧，而是從想法、挑選、拆軌、DAW 到留存創作證據的製作流程。" : "It is neither a prompt dictionary nor a lyric guide. It is a production path from ideation and selection through stems, DAW work, and process archiving."}</p>
-          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.25em] text-orange-300/75`}>FROM MATERIAL TO WORK</p>
+              <h3 className="mt-3 text-2xl font-black text-white sm:text-3xl">{isZh ? "AI 音樂製作流程" : "AI music production flow"}</h3>
+              <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-zinc-500">{isZh ? "從想法、挑選、拆軌、DAW 到留存創作證據，共 6 個步驟。" : "Six steps from ideation and selection through stems, DAW work, and process archiving."}</p>
+            </div>
+            <button type="button" onClick={() => setProductionFlowOpen((value) => !value)} aria-expanded={productionFlowOpen} aria-controls="production-flow-content" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-orange-300/28 bg-black/35 px-5 text-xs font-black text-orange-50 transition hover:border-orange-200/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200">
+              {productionFlowOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              {productionFlowOpen ? (isZh ? "收起 6 步流程" : "Collapse 6-step flow") : (isZh ? "展開 6 步流程" : "Open 6-step flow")}
+            </button>
+          </div>
+          {productionFlowOpen && <div id="production-flow-content" className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {productionFlow.map((step) => (
               <article key={step.title.en} className="rounded-xl border border-white/9 bg-black/38 p-4">
                 <h4 className="text-sm font-black text-orange-100">{sunoLibraryText(step.title, locale)}</h4>
                 <p className="mt-2 text-xs font-bold leading-6 text-zinc-400">{sunoLibraryText(step.body, locale)}</p>
               </article>
             ))}
-          </div>
+          </div>}
         </div>
 
         <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-white/8 pt-5 text-xs font-black">

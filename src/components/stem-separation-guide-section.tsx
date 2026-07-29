@@ -13,11 +13,14 @@ export default function StemSeparationGuideSection({ locale, engines, goals }: {
   const isZh = locale === "zh";
   const [goal, setGoal] = useState<StemGoalKey>("vocals");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [showAllEngines, setShowAllEngines] = useState(false);
   const activeGoal = useMemo(() => goals.find((item) => item.key === goal) ?? goals[0], [goals, goal]);
   if (!activeGoal) {
     return <section id="stem-separation-guide" className="min-h-48 animate-pulse rounded-[1.6rem] border border-white/10 bg-white/[0.025]" aria-label="Loading stem guide" />;
   }
   const highlighted = new Set(activeGoal.engineKeys);
+  const orderedEngines = [...engines].sort((left, right) => Number(highlighted.has(right.key)) - Number(highlighted.has(left.key)));
+  const visibleEngines = showAllEngines ? orderedEngines : orderedEngines.slice(0, 4);
 
   const confidenceLabel = {
     confirmed: isZh ? "官方資料可確認" : "Officially documented",
@@ -63,7 +66,7 @@ export default function StemSeparationGuideSection({ locale, engines, goals }: {
 
         <div className="mt-5 flex gap-2 overflow-x-auto pb-2">
           {goals.map((item) => (
-            <button key={item.key} type="button" onClick={() => setGoal(item.key)} className={`shrink-0 rounded-full border px-4 py-2.5 text-xs font-black transition ${goal === item.key ? "border-cyan-200/65 bg-cyan-300/14 text-cyan-50" : "border-white/10 bg-white/[0.03] text-zinc-500 hover:text-white"}`}>
+            <button key={item.key} type="button" onClick={() => { setGoal(item.key); setShowAllEngines(false); setExpanded(null); }} className={`shrink-0 rounded-full border px-4 py-2.5 text-xs font-black transition ${goal === item.key ? "border-cyan-200/65 bg-cyan-300/14 text-cyan-50" : "border-white/10 bg-white/[0.03] text-zinc-500 hover:text-white"}`}>
               {stemText(item.label, locale)}
             </button>
           ))}
@@ -77,8 +80,9 @@ export default function StemSeparationGuideSection({ locale, engines, goals }: {
           </div>
         </div>
 
-        <div className="mt-8 grid gap-3 lg:grid-cols-2">
-          {engines.map((engine, index) => {
+        <div id="stem-engine-results" className="mt-8 grid gap-3 lg:grid-cols-2">
+          {visibleEngines.map((engine) => {
+            const index = engines.findIndex((item) => item.key === engine.key);
             const isOpen = expanded === engine.key;
             const isHighlighted = highlighted.has(engine.key);
             return (
@@ -136,6 +140,19 @@ export default function StemSeparationGuideSection({ locale, engines, goals }: {
             );
           })}
         </div>
+        {engines.length > 4 && (
+          <div className="mt-5 flex flex-col items-center gap-2 rounded-xl border border-cyan-200/14 bg-cyan-300/[0.03] px-4 py-4 text-center">
+            <p className="text-xs font-black text-cyan-100/70">
+              {showAllEngines
+                ? (isZh ? `已展開全部 ${engines.length} 類引擎` : `All ${engines.length} engine families are open`)
+                : (isZh ? `優先顯示本次推薦，還有 ${engines.length - 4} 類引擎` : `Goal matches first, with ${engines.length - 4} more engine families`)}
+            </p>
+            <button type="button" onClick={() => { setShowAllEngines((value) => !value); setExpanded(null); }} aria-expanded={showAllEngines} aria-controls="stem-engine-results" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-cyan-200/38 bg-cyan-300/[0.08] px-6 text-sm font-black text-cyan-50 transition hover:border-cyan-100/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100">
+              {showAllEngines ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              {showAllEngines ? (isZh ? "收起，只看推薦 4 類" : "Collapse to 4 recommended") : (isZh ? `展開全部 ${engines.length} 類引擎` : `Show all ${engines.length} engine families`)}
+            </button>
+          </div>
+        )}
 
         <div className="mt-6 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
           <article className="rounded-[1.15rem] border border-yellow-300/18 bg-yellow-300/[0.045] p-5 sm:p-6">

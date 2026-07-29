@@ -237,6 +237,9 @@ test("Prompt and lyric finders explain their controls and expose clear states", 
   assert.match(practiceLibraryComponent, /收起，只看前 \$\{PROMPT_PREVIEW_COUNT\} 招/);
   assert.match(practiceLibraryComponent, /aria-controls="prompt-move-results"/);
   assert.match(practiceLibraryComponent, /還有 \$\{genreResults\.length - GENRE_PREVIEW_COUNT\} 組曲風分類/);
+  assert.match(practiceLibraryComponent, /aria-controls="genre-crate-content"/);
+  assert.match(practiceLibraryComponent, /展開 \$\{lyricResults\.length\} 招歌詞控制/);
+  assert.match(practiceLibraryComponent, /aria-controls="production-flow-content"/);
   assert.doesNotMatch(practiceLibraryComponent, /showAllPrompt \|\| promptSearch \|\| promptCategory !== "all"/);
   assert.doesNotMatch(practiceLibraryComponent, /showAllLyric \|\| lyricSearch \|\| lyricCategory !== "all"/);
   assert.doesNotMatch(practiceLibraryComponent, /閱讀 Reddit 原文|Read Reddit guide|查看開源 Skill|View open skill/);
@@ -367,6 +370,8 @@ test("large inspiration index exposes clear search, filter, copy, comment, and p
   assert.match(inspirationIndexComponent, /BibleEntryCommentsDialog/);
   assert.match(inspirationIndexComponent, /再展開 12 筆/);
   assert.match(inspirationIndexComponent, /收起，只看前 12 筆/);
+  assert.match(inspirationIndexComponent, /展開搜尋 1,519 筆資料/);
+  assert.match(inspirationIndexComponent, /aria-controls="suno-inspiration-index-content"/);
   assert.doesNotMatch(inspirationIndexComponent, /overflow-x-auto/);
 });
 
@@ -378,4 +383,5 @@ test("long Bible datasets start compact and clearly expose remaining material", 
   assert.match(referenceGuideComponent, /const \[guideOpen, setGuideOpen\] = useState\(false\)/);
   assert.match(readFileSync(new URL("../src/components/stem-separation-guide-section.tsx", import.meta.url), "utf8"), /const \[expanded, setExpanded\] = useState<string \| null>\(null\)/);
   assert.match(readFileSync(new URL("../src/components/stem-separation-guide-section.tsx", import.meta.url), "utf8"), /展開優缺點/);
+  assert.match(readFileSync(new URL("../src/components/stem-separation-guide-section.tsx", import.meta.url), "utf8"), /展開全部 \$\{engines\.length\} 類引擎/);
 });
