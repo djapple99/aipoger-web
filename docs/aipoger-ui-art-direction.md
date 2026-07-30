@@ -110,6 +110,8 @@ Desktop layout:
 - The desktop `AIPOGER` wordmark should be large, dominant, and left-stage, while the right-side logo panel supports navigation rather than competing as the primary brand signal.
 - The right-side panel logo area should feel centered inside its upper disc zone. If the AIPOGER logo looks small or off-center, enlarge the disc/logo together and verify the visual center in a rendered desktop screenshot.
 - The right-side logo should remain bigger than the small header logo and should feel like a record/emblem, not a tiny icon.
+- The right-side action panel has four destinations in this order: `探索 AI 音樂`, `傷心酒吧`, `Drop Battle`, `Showtime`. Explore remains the only solid-orange primary action; the other three stay dark secondary actions with their own hover/focus color.
+- Adding the fourth destination must not make the panel collide with the lower navigation cards at 1440x900. Keep the panel footprint compact by reducing the upper record/logo zone and tightening button spacing instead of simply extending the panel downward.
 - Desktop social icons belong under the left hero stats/social area, replacing the left waveform position. Do not place them as a floating orphan under the right panel.
 - Remove decorative waveforms that sit under the right panel or create clutter near the social icons. Keep only waveforms that support the center stage composition.
 - The row of lower navigation cards should sit close enough to the main hero to feel connected. Do not let it sink too low with excessive empty space.
@@ -118,6 +120,7 @@ Mobile layout:
 
 - The mobile `AIPOGER` wordmark must be centered within its visible section and should not feel optically left-heavy.
 - Social icons on mobile should sit below the Drop Signal card, bright enough to read quickly.
+- The four homepage destinations use a readable 2 x 2 grid in the same order: Explore, Bar Heartbreak, Drop Battle, Showtime. Do not shrink them into four cramped one-line targets.
 - Do not add extra explanatory labels such as `與音波同行`; the icons should speak for themselves.
 
 Social icons:

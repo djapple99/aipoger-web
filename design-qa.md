@@ -73,6 +73,60 @@ final result: passed
 
 ---
 
+# Homepage Four-Destination Panel — Design QA (2026-07-31)
+
+## Comparison Target
+
+- Source visual truth: `/var/folders/z5/42v3w_nj2_b36bxx5c2559ph0000gn/T/TemporaryItems/NSIRD_screencaptureui_VkTcpQ/截屏2026-07-31 凌晨1.05.37.png`
+- Same-frame implementation: `/var/folders/z5/42v3w_nj2_b36bxx5c2559ph0000gn/T/aipoger-home-four-entry-qa/implementation-desktop-1671x829.png`
+- Combined full-view comparison: `/var/folders/z5/42v3w_nj2_b36bxx5c2559ph0000gn/T/aipoger-home-four-entry-qa/comparison-full.png`
+- Combined focused panel comparison: `/var/folders/z5/42v3w_nj2_b36bxx5c2559ph0000gn/T/aipoger-home-four-entry-qa/comparison-panel.png`
+- Desktop pressure check: `/var/folders/z5/42v3w_nj2_b36bxx5c2559ph0000gn/T/aipoger-home-four-entry-qa/implementation-desktop-1440x900.png`
+- Mobile evidence: `/var/folders/z5/42v3w_nj2_b36bxx5c2559ph0000gn/T/aipoger-home-four-entry-qa/implementation-mobile-390x844.png`
+- Route/state: `/?lang=zh`, post-splash homepage. The source is signed in and the implementation capture is signed out; the right navigation panel and page composition are the same comparison state.
+- Dimensions and normalization: the source is a Retina `3342 × 1658` capture normalized to its `1671 × 829` CSS frame. The implementation uses a `1671 × 829` CSS viewport at `1×`, producing the same `1671 × 829` comparison frame.
+
+## Full-View Comparison Evidence
+
+The combined input places the source on the left and the browser-rendered implementation on the right. The implementation preserves the existing black club stage, orange/cyan brand accents, large left wordmark, center Explore signal, social row, and lower navigation cards. The only structural change is the requested fourth right-panel destination; the panel keeps the original footprint and visual hierarchy instead of pushing into the card row.
+
+## Focused Region Evidence
+
+The focused side-by-side panel comparison confirms the requested order: `探索 AI 音樂` → `傷心酒吧` → `Drop Battle` → `Showtime`. Explore remains the only solid-orange primary action. The new Drop Battle row uses the installed crossed-swords icon and a dark secondary surface, while the record/logo zone and inter-button gaps are reduced just enough to preserve the panel boundary.
+
+## Required Fidelity Surfaces
+
+- Fonts and typography: passed. Existing display/body fonts, weight hierarchy, and label scale remain unchanged; `Drop Battle` fits on one line at desktop and mobile sizes.
+- Spacing and layout: passed. Four desktop rows remain inside the bordered panel. At `1440 × 900`, the panel ends above the lower card divider with no overlap or clipping.
+- Colors and tokens: passed. Explore keeps the orange primary fill; Bar, Drop Battle, and Showtime remain dark secondary destinations with orange, red/coral, and cyan interaction accents.
+- Image quality and assets: passed. Existing background and AIPOGER logo assets remain intact; the logo zone is resized without stretching or changing aspect ratio.
+- Icons: passed. The new crossed-swords mark comes from the project's installed Lucide icon family and aligns optically with the existing line icons.
+- Copy and content: passed. The new row is named `Drop Battle`, links to the current battle route, and exposes localized 60-second battle prompt copy in Chinese, English, Japanese, and Korean.
+- Responsiveness and accessibility: passed. At a `390 × 844` CSS viewport, the four destinations form a two-column, two-row grid with `101 px`-high link regions; no horizontal page overflow is present. Links remain semantic and keyboard-focusable with visible focus treatments.
+
+## Findings And Iteration History
+
+### Pass 1
+
+- Design constraint: inserting a fourth row at the old dimensions would extend the panel into the lower navigation region.
+- Fix: compressed the record/logo zone, tightened vertical gaps, and slightly reduced desktop action heights while keeping every target above the minimum practical control height.
+- Post-fix evidence: the `1440 × 900` and `1671 × 829` captures show all four destinations contained inside the panel with clear separation from the lower cards.
+
+### Pass 2
+
+- No actionable P0, P1, or P2 findings remain in the normalized full-view, focused panel, desktop pressure, or mobile checks.
+
+## Interaction And Runtime Checks
+
+- Exactly one visible desktop Drop Battle link was found at the comparison viewport.
+- Activating it navigated to `/battle?lang=zh` and loaded the existing Drop Battle page.
+- Desktop destination order and `/battle?lang=zh` href were verified from the rendered DOM.
+- Mobile rendered Explore, Bar, Drop Battle, and Showtime in the requested two-by-two order with no horizontal overflow.
+
+final result: passed
+
+---
+
 # 耳朵蟲即時試聽與結果動線 — Design QA (2026-07-22)
 
 ## Comparison Target

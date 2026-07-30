@@ -17,6 +17,16 @@ test("homepage keeps 60s Drop Battle as a secondary product signal", () => {
   assert.ok(homePageSource.includes("[\"60s\", \"Drop Battle\"]"));
 });
 
+test("homepage exposes four ordered primary destinations", () => {
+  assert.ok(homePageSource.includes('type HomeActionKey = "explore" | "bar" | "battle" | "rank"'));
+  assert.match(
+    homePageSource,
+    /href=\{withLang\("\/ai-music"\)\}[\s\S]*?href=\{withLang\("\/listen-bar"\)\}[\s\S]*?href=\{withLang\("\/battle"\)\}[\s\S]*?href=\{withLang\("\/rank"\)\}/,
+  );
+  assert.ok(homePageSource.includes("帶上 30–60 秒抓波"));
+  assert.ok(homePageSource.includes("grid-cols-2 gap-x-8 gap-y-4"));
+});
+
 test("homepage no longer advertises retired 90s Drop Battle labels", () => {
   assert.equal(homePageSource.includes("[\"90s\""), false);
   assert.equal(homePageSource.includes("最強Drop Battle 對決抓波規則"), false);
