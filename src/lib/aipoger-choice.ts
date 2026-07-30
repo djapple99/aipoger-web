@@ -2,6 +2,8 @@ export const AIPOGER_CHOICE_MIN_ITEMS = 5;
 export const AIPOGER_CHOICE_MAX_ITEMS = 10;
 export const AIPOGER_CHOICE_INTRO_MAX_LENGTH = 3000;
 export const AIPOGER_CHOICE_COMMENT_MAX_LENGTH = 280;
+export const AIPOGER_CHOICE_NEW_RELEASE_WINDOW_DAYS = 30;
+export const AIPOGER_CHOICE_NEW_RELEASE_WINDOW_MS = AIPOGER_CHOICE_NEW_RELEASE_WINDOW_DAYS * 24 * 60 * 60 * 1000;
 
 export const AIPOGER_CHOICE_SOURCE_KINDS = ["listen_bar_track", "battle_archive"] as const;
 export type AipogerChoiceSourceKind = (typeof AIPOGER_CHOICE_SOURCE_KINDS)[number];
@@ -68,6 +70,18 @@ export function choiceDisplayTitle(curatorName: string | null | undefined, title
 
 export function isAipogerChoiceSourceKind(value: unknown): value is AipogerChoiceSourceKind {
   return AIPOGER_CHOICE_SOURCE_KINDS.includes(value as AipogerChoiceSourceKind);
+}
+
+export function isAipogerChoiceNewRelease(
+  createdAt: string | null | undefined,
+  now: Date = new Date(),
+) {
+  const createdAtMs = new Date(createdAt ?? "").getTime();
+  const nowMs = now.getTime();
+  if (!Number.isFinite(createdAtMs) || !Number.isFinite(nowMs)) return false;
+
+  const ageMs = nowMs - createdAtMs;
+  return ageMs >= 0 && ageMs < AIPOGER_CHOICE_NEW_RELEASE_WINDOW_MS;
 }
 
 export function choiceItemCountMessage(count: number, isZh = true) {

@@ -208,7 +208,7 @@ export default function AdminChoicePage() {
           <div className="min-w-0">
             <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-100/70">AIPOGER ADMIN</p>
             <h1 className="mt-2 text-3xl font-black sm:text-4xl">Choice 管理</h1>
-            <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-zinc-400">從公開 Showtime 認證作品與上架 7 天內的新歌，人工挑選每週 5–10 首。這不是排行榜，也不會自動生成社群貼文。</p>
+            <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-zinc-400">從公開 Showtime 認證作品與上架 30 天內的新歌，人工挑選每週 5–10 首。這不是排行榜，也不會自動生成社群貼文。</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link href="/rank?lang=zh#choice-weekly" className="rounded-full border border-white/15 px-3 py-2 text-xs font-black text-zinc-200">看前台 Choice</Link>
@@ -285,7 +285,7 @@ export default function AdminChoicePage() {
             <div><p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">Choice Selection Pool</p><h2 className="mt-1 text-xl font-black">加入本週 Choice</h2></div>
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋歌名、創作者、類型" className="h-10 w-full rounded-xl border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none sm:w-72" />
           </div>
-          <p className="mt-2 text-xs font-bold text-zinc-500">可選目前公開的 Showtime 認證作品及上架 7 天內的新歌；新歌入選 Choice 不等於取得 Showtime 認證。左下播放鈕可直接試聽，按＋會自動建立本週草稿。</p>
+          <p className="mt-2 text-xs font-bold text-zinc-500">可選目前公開的 Showtime 認證作品及上架 30 天內的新歌；新歌入選 Choice 不等於取得 Showtime 認證。左下播放鈕可直接試聽，按＋會自動建立本週草稿。</p>
           <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
             {pagedCatalog.map((item) => {
               const key = `${item.sourceKind}:${item.id}`;
@@ -306,7 +306,7 @@ export default function AdminChoicePage() {
                 </article>
               );
             })}
-            {pagedCatalog.length === 0 ? <p className="col-span-full rounded-xl border border-dashed border-white/10 px-3 py-8 text-center text-sm font-bold text-zinc-500">目前沒有可加入的 Showtime 認證作品或 7 天內新歌。</p> : null}
+            {pagedCatalog.length === 0 ? <p className="col-span-full rounded-xl border border-dashed border-white/10 px-3 py-8 text-center text-sm font-bold text-zinc-500">目前沒有可加入的 Showtime 認證作品或 30 天內新歌。</p> : null}
           </div>
           <div className="mt-4 flex items-center justify-between text-sm font-bold text-zinc-500"><span>{currentCatalogPage} / {catalogTotalPages}</span><div className="flex gap-2"><button type="button" disabled={currentCatalogPage <= 1} onClick={() => setCatalogPage((page) => Math.max(1, page - 1))} className="rounded-full border border-white/10 px-3 py-2 text-xs font-black disabled:opacity-35">上一頁</button><button type="button" disabled={currentCatalogPage >= catalogTotalPages} onClick={() => setCatalogPage((page) => Math.min(catalogTotalPages, page + 1))} className="rounded-full border border-white/10 px-3 py-2 text-xs font-black disabled:opacity-35">下一頁</button></div></div>
         </section>

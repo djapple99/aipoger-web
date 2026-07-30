@@ -27,7 +27,7 @@ test("only creators with a Showtime work can manage their own Choice while selec
   assert.match(creatorChoiceRoute, /\.eq\("ai_music_showtime_certified", true\)/);
   assert.match(creatorChoiceRoute, /需要至少一首已認證 Showtime 的作品/);
   assert.match(creatorChoiceRoute, /loadChoiceSelectionCatalog\(admin\)/);
-  assert.match(creatorChoiceRoute, /Showtime 認證作品或 7 天內新歌/);
+  assert.match(creatorChoiceRoute, /Showtime 認證作品或 30 天內新歌/);
   assert.match(creatorChoiceRoute, /item\.isPublic && item\.selectable/);
   assert.doesNotMatch(creatorChoiceRoute, /\.eq\("created_by", guard\.user\.id\).*sourceKind/s);
 });
@@ -39,7 +39,7 @@ test("creator Choice can be shared only after publication and keeps 5-10 curated
   assert.match(publicChoiceRoute, /\.eq\("is_published", true\)/);
   assert.match(publicChoiceRoute, /source\?\.isPublic/);
   assert.match(profileChoicePage, /creatorChoicePublicPath/);
-  assert.match(profileChoicePage, /可選全站公開 Showtime 認證作品及上架 7 天內的新歌/);
+  assert.match(profileChoicePage, /可選全站公開 Showtime 認證作品及上架 30 天內的新歌/);
 });
 
 test("Choice selected tracks use a compact responsive editor with direct position input", () => {

@@ -51,7 +51,7 @@ test("Showtime catalog can curate and publish the current Choice in place", () =
   assert.ok(showtimeAdminPage.includes("item.selectable"));
   assert.ok(showtimeAdminPage.includes("ChoicePreviewPlayer"));
   assert.ok(showtimeAdminPage.includes("setPreviewTrack(item)"));
-  assert.ok(showtimeAdminPage.includes("公開 Showtime 認證作品及上架 7 天內的新歌"));
+  assert.ok(showtimeAdminPage.includes("公開 Showtime 認證作品及上架 30 天內的新歌"));
 });
 
 test("Choice persists human weekly selections with strict bounded publishing", () => {
@@ -69,11 +69,11 @@ test("Choice persists human weekly selections with strict bounded publishing", (
   assert.ok(choiceAdminPage.includes("加入本週 Choice"));
 });
 
-test("Choice selection shows public Showtime works and seven-day new releases in a compact cover catalog", () => {
+test("Choice selection shows public Showtime works and 30-day new releases in a compact cover catalog", () => {
   assert.ok(choiceAdminPage.includes("item.isPublic && item.selectable"));
-  assert.ok(choiceAdminPage.includes("上架 7 天內的新歌"));
+  assert.ok(choiceAdminPage.includes("上架 30 天內的新歌"));
   assert.ok(choiceAdminPage.includes("CHOICE 新選"));
-  assert.ok(choiceCatalog.includes("isNewlyPublishedMusic"));
+  assert.ok(choiceCatalog.includes("isAipogerChoiceNewRelease"));
   assert.ok(choiceCatalog.includes('choiceSource: "new_release"'));
   assert.ok(choiceCatalog.includes("retiredFromExplore"));
   assert.ok(choiceAdminPage.includes("lg:grid-cols-6"));

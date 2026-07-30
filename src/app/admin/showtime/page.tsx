@@ -433,7 +433,7 @@ export default function AdminShowtimePage() {
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-100/70">This Week Choice</p>
                 <h2 className="mt-1 text-xl font-black">從認證作品與本週新歌組成 Choice</h2>
-                <p className="mt-1 text-xs font-bold text-cyan-50/70">可選公開 Showtime 認證作品及上架 7 天內的新歌；封面右下播放鈕可先試聽。</p>
+                <p className="mt-1 text-xs font-bold text-cyan-50/70">可選公開 Showtime 認證作品及上架 30 天內的新歌；封面右下播放鈕可先試聽。</p>
               </div>
               <select value={choiceCollectionId ?? ""} onChange={(event) => setChoiceCollectionId(event.target.value || null)} className="h-10 min-w-52 rounded-xl border border-white/10 bg-black/55 px-3 text-sm font-bold text-white outline-none focus:border-cyan-200/60">
                 <option value="">新增本期 Choice</option>
@@ -487,7 +487,7 @@ export default function AdminShowtimePage() {
           <div>
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋歌名、創作者、類型" className="h-11 rounded-xl border border-white/10 bg-black/55 px-3 text-sm font-bold text-white outline-none focus:border-yellow-200/60" />
           </div>
-          <p className="mt-3 text-xs font-bold text-zinc-500">{choiceMode ? `目前有 ${filteredItems.length} 首 Choice 可選作品，包含 Showtime 認證歌與 7 天內新歌。` : `目前公開展示 ${filteredItems.length} 首 Showtime 作品，桌機每列 6 首，每頁 ${SHOWTIME_PER_PAGE} 首。`}</p>
+          <p className="mt-3 text-xs font-bold text-zinc-500">{choiceMode ? `目前有 ${filteredItems.length} 首 Choice 可選作品，包含 Showtime 認證歌與 30 天內新歌。` : `目前公開展示 ${filteredItems.length} 首 Showtime 作品，桌機每列 6 首，每頁 ${SHOWTIME_PER_PAGE} 首。`}</p>
         </section>
 
         <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
@@ -512,7 +512,7 @@ export default function AdminShowtimePage() {
                       </label>
                     ) : null}
                   </div>
-                  <span className="absolute bottom-2 left-2 rounded-md border border-emerald-200/25 bg-emerald-950/90 px-1.5 py-1 text-[10px] font-black text-emerald-100">{item.choiceSource === "new_release" ? "7 天內新歌" : "公開中"}</span>
+                  <span className="absolute bottom-2 left-2 rounded-md border border-emerald-200/25 bg-emerald-950/90 px-1.5 py-1 text-[10px] font-black text-emerald-100">{item.choiceSource === "new_release" ? "30 天內新歌" : "公開中"}</span>
                   <button type="button" disabled={!item.audioUrl} onClick={() => setPreviewTrack(item)} className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full border border-cyan-100/50 bg-black/85 text-xs font-black text-cyan-100 shadow-lg transition hover:bg-cyan-300 hover:text-black disabled:cursor-not-allowed disabled:opacity-35" aria-label={`播放 ${item.title}`} title={item.audioUrl ? "播放試聽" : "目前沒有可播放音檔"}>▶</button>
                 </div>
                 <div className="flex min-h-0 flex-1 flex-col p-3">
@@ -528,7 +528,7 @@ export default function AdminShowtimePage() {
               </article>
             );
           })}
-          {pagedItems.length === 0 ? <p className="col-span-full rounded-xl border border-white/10 bg-black/40 px-4 py-10 text-center text-sm font-bold text-zinc-500">{choiceMode ? "目前沒有可加入 Choice 的認證作品或 7 天內新歌。" : "目前沒有符合條件的 Showtime 作品。"}</p> : null}
+          {pagedItems.length === 0 ? <p className="col-span-full rounded-xl border border-white/10 bg-black/40 px-4 py-10 text-center text-sm font-bold text-zinc-500">{choiceMode ? "目前沒有可加入 Choice 的認證作品或 30 天內新歌。" : "目前沒有符合條件的 Showtime 作品。"}</p> : null}
         </section>
 
         <div className="mt-5 flex items-center justify-between gap-3 text-sm font-bold text-zinc-400">

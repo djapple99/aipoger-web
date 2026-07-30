@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AipogerChoiceCatalogItem } from "@/lib/aipoger-choice";
+import { isAipogerChoiceNewRelease, type AipogerChoiceCatalogItem } from "@/lib/aipoger-choice";
 import { buildAiMusicSurfaceLifecycleMap } from "@/lib/ai-music-surface-lifecycle";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import {
@@ -7,7 +7,6 @@ import {
   LISTEN_BAR_COVER_BUCKET,
   type ListenBarTrackRow,
 } from "@/lib/listen-bar";
-import { isNewlyPublishedMusic } from "@/lib/music-newness";
 import { isCurrentMusicGenre } from "@/lib/music-genres";
 import { loadShowtimeAdminCatalog } from "@/lib/server-showtime-catalog";
 
@@ -74,7 +73,7 @@ function releaseCatalogItem(admin: SupabaseClient, row: ListenBarTrackRow): Aipo
     recognition: "Choice 新選",
     certifiedAt: createdAt,
     isPublic: true,
-    selectable: isNewlyPublishedMusic(createdAt),
+    selectable: isAipogerChoiceNewRelease(createdAt),
     choiceSource: "new_release",
   };
 }

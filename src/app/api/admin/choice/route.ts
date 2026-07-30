@@ -171,7 +171,7 @@ async function assertSelectableSource(admin: ReturnType<typeof adminClient>, sou
   const catalog = await loadChoiceSelectionCatalog(admin);
   if (!catalog.schemaReady) throw new Error("Choice 選歌資料尚未準備完成。" );
   const source = catalog.items.find((item) => item.sourceKind === sourceKind && item.id === sourceId);
-  if (!source?.isPublic || !source.selectable) throw new Error("只能加入目前公開的 Showtime 認證作品或 7 天內新歌。" );
+  if (!source?.isPublic || !source.selectable) throw new Error("只能加入目前公開的 Showtime 認證作品或 30 天內新歌。" );
   return source;
 }
 
