@@ -23,6 +23,8 @@ test("Choice selection combines certified Showtime works with eligible seven-day
   assert.match(adminChoicePage, /公開 Showtime 認證作品與上架 7 天內的新歌/);
   assert.match(adminChoicePage, /grid-cols-\[minmax\(0,1fr\)\]/);
   assert.match(adminChoicePage, /px-4 pb-28 pt-24/);
+  assert.match(adminChoicePage, /mt-4 grid grid-cols-\[minmax\(0,1fr\)\] gap-2/);
+  assert.match(adminChoicePage, /h-7 w-7[^"]+sm:h-8 sm:w-8/);
 });
 
 test("new-release selection does not weaken creator eligibility or expire existing Choice playback", () => {
