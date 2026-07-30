@@ -6,6 +6,9 @@ export const AIPOGER_CHOICE_COMMENT_MAX_LENGTH = 280;
 export const AIPOGER_CHOICE_SOURCE_KINDS = ["listen_bar_track", "battle_archive"] as const;
 export type AipogerChoiceSourceKind = (typeof AIPOGER_CHOICE_SOURCE_KINDS)[number];
 
+export const AIPOGER_CHOICE_CATALOG_SOURCES = ["showtime", "new_release"] as const;
+export type AipogerChoiceCatalogSource = (typeof AIPOGER_CHOICE_CATALOG_SOURCES)[number];
+
 export const AIPOGER_CHOICE_CURATOR_IDENTITIES = ["official", "personal"] as const;
 export type AipogerChoiceCuratorIdentity = (typeof AIPOGER_CHOICE_CURATOR_IDENTITIES)[number];
 
@@ -21,6 +24,7 @@ export type AipogerChoiceCatalogItem = {
   certifiedAt: string;
   isPublic: boolean;
   selectable: boolean;
+  choiceSource?: AipogerChoiceCatalogSource;
 };
 
 export type AipogerChoiceItem = AipogerChoiceCatalogItem & {
@@ -71,8 +75,8 @@ export function choiceItemCountMessage(count: number, isZh = true) {
   if (safeCount < AIPOGER_CHOICE_MIN_ITEMS) {
     const remaining = AIPOGER_CHOICE_MIN_ITEMS - safeCount;
     return isZh
-      ? `還要加入 ${remaining} 首 Showtime 作品才能發布。`
-      : `Add ${remaining} more Showtime work${remaining === 1 ? "" : "s"} before publishing.`;
+      ? `還要加入 ${remaining} 首 Choice 作品才能發布。`
+      : `Add ${remaining} more Choice track${remaining === 1 ? "" : "s"} before publishing.`;
   }
   if (safeCount > AIPOGER_CHOICE_MAX_ITEMS) {
     return isZh ? "Choice 每週最多 10 首。" : "Choice allows at most 10 works per week.";

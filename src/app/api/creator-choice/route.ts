@@ -8,7 +8,7 @@ import {
   type AipogerChoiceCatalogItem,
 } from "@/lib/aipoger-choice";
 import type { AipogerCreatorChoiceCollection, CreatorChoiceEligibility } from "@/lib/creator-choice";
-import { loadShowtimeAdminCatalog } from "@/lib/server-showtime-catalog";
+import { loadChoiceSelectionCatalog } from "@/lib/server-choice-catalog";
 
 type CreatorChoiceItemRow = {
   id: string;
@@ -209,10 +209,10 @@ async function collectionOwnedBy(admin: ReturnType<typeof adminClient>, collecti
 
 async function assertSelectableSource(admin: ReturnType<typeof adminClient>, sourceKind: unknown, sourceId: unknown) {
   if (!isAipogerChoiceSourceKind(sourceKind) || !isUuid(sourceId)) throw new Error("Choice 作品資料不完整。");
-  const catalog = await loadShowtimeAdminCatalog(admin);
-  if (!catalog.schemaReady) throw new Error("Showtime 資料尚未準備完成。");
+  const catalog = await loadChoiceSelectionCatalog(admin);
+  if (!catalog.schemaReady) throw new Error("Choice 選歌資料尚未準備完成。");
   const source = catalog.items.find((item) => item.sourceKind === sourceKind && item.id === sourceId);
-  if (!source?.isPublic || !source.selectable) throw new Error("只能加入目前公開展示中的 Showtime 認證作品。");
+  if (!source?.isPublic || !source.selectable) throw new Error("只能加入目前公開的 Showtime 認證作品或 7 天內新歌。");
   return source;
 }
 
@@ -228,7 +228,7 @@ export async function GET(request: NextRequest) {
     if (guard.error) return guard.error;
     const [eligibilityState, catalog] = await Promise.all([
       creatorEligibility(guard.admin, guard.user.id),
-      loadShowtimeAdminCatalog(guard.admin),
+      loadChoiceSelectionCatalog(guard.admin),
     ]);
     if (!catalog.schemaReady) {
       return NextResponse.json({ schemaReady: false, eligibility: eligibilityState.eligibility, ownShowtimeWorks: eligibilityState.ownTracks, catalog: [], collections: [] });
@@ -306,7 +306,7 @@ export async function PATCH(request: NextRequest) {
       const existing = await collectionItems(guard.admin, collectionId);
       if (existing.length >= AIPOGER_CHOICE_MAX_ITEMS) return jsonError("Choice 每期最多 10 首作品。");
       if (existing.some((item) => item.source_kind === source.sourceKind && item.source_id === source.id)) {
-        return jsonError("這首 Showtime 作品已經在你的 Choice。", 409);
+        return jsonError("這首作品已經在你的 Choice。", 409);
       }
       const { error } = await guard.admin.from("aipoger_creator_choice_items").insert({
         collection_id: collectionId,
@@ -373,7 +373,7 @@ export async function PATCH(request: NextRequest) {
       if (publish) {
         const items = await collectionItems(guard.admin, collectionId);
         if (items.length < AIPOGER_CHOICE_MIN_ITEMS || items.length > AIPOGER_CHOICE_MAX_ITEMS) {
-          return jsonError(`發布 Choice 需要 ${AIPOGER_CHOICE_MIN_ITEMS}-${AIPOGER_CHOICE_MAX_ITEMS} 首 Showtime 作品。`);
+          return jsonError(`發布 Choice 需要 ${AIPOGER_CHOICE_MIN_ITEMS}-${AIPOGER_CHOICE_MAX_ITEMS} 首作品。`);
         }
         for (const item of items) await assertSelectableSource(guard.admin, item.source_kind, item.source_id);
       }

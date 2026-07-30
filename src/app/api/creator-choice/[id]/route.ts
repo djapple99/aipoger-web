@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { AipogerChoiceCatalogItem } from "@/lib/aipoger-choice";
 import type { AipogerCreatorChoiceCollection } from "@/lib/creator-choice";
-import { loadShowtimeAdminCatalog } from "@/lib/server-showtime-catalog";
+import { loadChoiceSelectionCatalog } from "@/lib/server-choice-catalog";
 
 type ChoiceItemRow = {
   id: string;
@@ -63,7 +63,7 @@ function resolveCollection(row: ChoiceCollectionRow, catalog: AipogerChoiceCatal
     items: (row.aipoger_creator_choice_items ?? [])
       .map((item) => {
         const source = byKey.get(catalogKey(item.source_kind, item.source_id));
-        return source?.isPublic && source.selectable ? { ...source, itemId: item.id, position: Math.max(1, Math.round(item.position)) } : null;
+        return source?.isPublic ? { ...source, itemId: item.id, position: Math.max(1, Math.round(item.position)) } : null;
       })
       .filter((item): item is AipogerCreatorChoiceCollection["items"][number] => Boolean(item))
       .sort((a, b) => a.position - b.position),
@@ -84,8 +84,8 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     if (error) throw error;
     if (!data) return NextResponse.json({ error: "這份 Choice 尚未發布或已撤回。" }, { status: 404 });
 
-    const catalog = await loadShowtimeAdminCatalog(admin);
-    if (!catalog.schemaReady) return NextResponse.json({ error: "Showtime 資料尚未準備完成。" }, { status: 409 });
+    const catalog = await loadChoiceSelectionCatalog(admin);
+    if (!catalog.schemaReady) return NextResponse.json({ error: "Choice 選歌資料尚未準備完成。" }, { status: 409 });
     return NextResponse.json({ collection: resolveCollection(data as ChoiceCollectionRow, catalog.items) }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (isMissingCreatorChoiceSchema(error)) return NextResponse.json({ error: "Creator Choice 尚未啟用。" }, { status: 404 });

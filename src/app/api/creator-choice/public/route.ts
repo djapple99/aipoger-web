@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { AipogerChoiceCatalogItem } from "@/lib/aipoger-choice";
 import type { AipogerPublicCreatorChoiceCollection } from "@/lib/creator-choice";
-import { loadShowtimeAdminCatalog } from "@/lib/server-showtime-catalog";
+import { loadChoiceSelectionCatalog } from "@/lib/server-choice-catalog";
 
 type ChoiceItemRow = {
   id: string;
@@ -71,7 +71,7 @@ function resolveCollection(
     items: (row.aipoger_creator_choice_items ?? [])
       .map((item) => {
         const source = byKey.get(catalogKey(item.source_kind, item.source_id));
-        return source?.isPublic && source.selectable
+        return source?.isPublic
           ? { ...source, itemId: item.id, position: Math.max(1, Math.round(item.position)) }
           : null;
       })
@@ -103,7 +103,7 @@ export async function GET() {
 
     const creatorIds = currentRows.map((row) => row.creator_id);
     const [catalog, fighterProfiles, userProfiles] = await Promise.all([
-      loadShowtimeAdminCatalog(admin),
+      loadChoiceSelectionCatalog(admin),
       admin.from("fighter_profiles").select("id,avatar_url").in("id", creatorIds),
       admin.from("user_profiles").select("id,avatar_url").in("id", creatorIds),
     ]);

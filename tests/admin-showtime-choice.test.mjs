@@ -9,6 +9,7 @@ const choiceAdminPage = readFileSync(new URL("../src/app/admin/choice/page.tsx",
 const choiceAdminRoute = readFileSync(new URL("../src/app/api/admin/choice/route.ts", import.meta.url), "utf8");
 const choiceCurrentRoute = readFileSync(new URL("../src/app/api/choice/current/route.ts", import.meta.url), "utf8");
 const choiceHelper = readFileSync(new URL("../src/lib/aipoger-choice.ts", import.meta.url), "utf8");
+const choiceCatalog = readFileSync(new URL("../src/lib/server-choice-catalog.ts", import.meta.url), "utf8");
 const rankPage = readFileSync(new URL("../src/app/rank/page.tsx", import.meta.url), "utf8");
 const showtimeChoiceShelf = readFileSync(
   new URL("../src/components/showtime-choice-shelf.tsx", import.meta.url),
@@ -42,7 +43,7 @@ test("Showtime admin uses a current public six-cover catalog with display-only e
 
 test("Showtime catalog can curate and publish the current Choice in place", () => {
   assert.ok(showtimeAdminPage.includes("編輯本期 Choice"));
-  assert.ok(showtimeAdminPage.includes("勾選 Showtime 作品，組成本期 Choice"));
+  assert.ok(showtimeAdminPage.includes("從認證作品與本週新歌組成 Choice"));
   assert.ok(showtimeAdminPage.includes('runChoiceAction("add_item"'));
   assert.ok(showtimeAdminPage.includes('runChoiceAction("remove_item"'));
   assert.ok(showtimeAdminPage.includes('runChoiceAction("set_published"'));
@@ -50,7 +51,7 @@ test("Showtime catalog can curate and publish the current Choice in place", () =
   assert.ok(showtimeAdminPage.includes("item.selectable"));
   assert.ok(showtimeAdminPage.includes("ChoicePreviewPlayer"));
   assert.ok(showtimeAdminPage.includes("setPreviewTrack(item)"));
-  assert.ok(showtimeAdminPage.includes("封面右下播放鈕可先試聽，再勾選。"));
+  assert.ok(showtimeAdminPage.includes("公開 Showtime 認證作品及上架 7 天內的新歌"));
 });
 
 test("Choice persists human weekly selections with strict bounded publishing", () => {
@@ -60,7 +61,7 @@ test("Choice persists human weekly selections with strict bounded publishing", (
   assert.ok(migration.includes("revoke all on table public.aipoger_choice_collections from anon, authenticated"));
   assert.ok(choiceHelper.includes("AIPOGER_CHOICE_MIN_ITEMS = 5"));
   assert.ok(choiceHelper.includes("AIPOGER_CHOICE_MAX_ITEMS = 10"));
-  assert.ok(choiceAdminRoute.includes("Choice 發布需要 ${AIPOGER_CHOICE_MIN_ITEMS}-${AIPOGER_CHOICE_MAX_ITEMS} 首 Showtime 作品。"));
+  assert.ok(choiceAdminRoute.includes("Choice 發布需要 ${AIPOGER_CHOICE_MIN_ITEMS}-${AIPOGER_CHOICE_MAX_ITEMS} 首作品。"));
   assert.ok(choiceAdminRoute.includes("assertSelectableSource"));
   assert.ok(choiceAdminRoute.includes("!source?.isPublic || !source.selectable"));
   assert.ok(choiceAdminRoute.includes('action === "set_published"'));
@@ -68,9 +69,13 @@ test("Choice persists human weekly selections with strict bounded publishing", (
   assert.ok(choiceAdminPage.includes("加入本週 Choice"));
 });
 
-test("Choice selection shows only currently public Showtime works in a compact cover catalog", () => {
+test("Choice selection shows public Showtime works and seven-day new releases in a compact cover catalog", () => {
   assert.ok(choiceAdminPage.includes("item.isPublic && item.selectable"));
-  assert.ok(choiceAdminPage.includes("只顯示目前仍在 Showtime 公開展示中的認證作品；左下播放鈕可直接試聽，尚未建立草稿時，按＋會自動建立本週草稿。"));
+  assert.ok(choiceAdminPage.includes("上架 7 天內的新歌"));
+  assert.ok(choiceAdminPage.includes("CHOICE 新選"));
+  assert.ok(choiceCatalog.includes("isNewlyPublishedMusic"));
+  assert.ok(choiceCatalog.includes('choiceSource: "new_release"'));
+  assert.ok(choiceCatalog.includes("retiredFromExplore"));
   assert.ok(choiceAdminPage.includes("lg:grid-cols-6"));
   assert.ok(choiceAdminPage.includes("CHOICE_CATALOG_PER_PAGE = 24"));
   assert.ok(choiceAdminPage.includes("ChoicePreviewPlayer"));

@@ -6,7 +6,7 @@ import {
   type AipogerChoiceCollection,
   type AipogerChoiceCuratorIdentity,
 } from "@/lib/aipoger-choice";
-import { loadShowtimeAdminCatalog } from "@/lib/server-showtime-catalog";
+import { loadChoiceSelectionCatalog } from "@/lib/server-choice-catalog";
 
 type ChoiceItemRow = {
   id: string;
@@ -80,7 +80,7 @@ function resolveCollection(
     items: (row.aipoger_choice_items ?? [])
       .map((item) => {
         const source = byKey.get(catalogKey(item.source_kind, item.source_id));
-        return source?.selectable ? { ...source, itemId: item.id, position: Math.max(1, Math.round(item.position)) } : null;
+        return source?.isPublic ? { ...source, itemId: item.id, position: Math.max(1, Math.round(item.position)) } : null;
       })
       .filter((item): item is AipogerChoiceCollection["items"][number] => Boolean(item))
       .sort((a, b) => a.position - b.position),
@@ -101,7 +101,7 @@ export async function GET() {
     if (!data) return NextResponse.json({ schemaReady: true, collection: null }, { headers: { "Cache-Control": "no-store" } });
 
     const [catalog, curatorResult] = await Promise.all([
-      loadShowtimeAdminCatalog(admin),
+      loadChoiceSelectionCatalog(admin),
       data.created_by
         ? admin.from("fighter_profiles").select("display_name,avatar_url").eq("id", data.created_by).maybeSingle()
         : Promise.resolve({ data: null, error: null }),

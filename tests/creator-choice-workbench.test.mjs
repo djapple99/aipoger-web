@@ -19,24 +19,24 @@ test("creator Choice has a separate creator-owned schema and does not replace th
   assert.match(migration, /revoke all on table public\.aipoger_creator_choice_items from anon, authenticated/i);
 });
 
-test("only creators with a Showtime work can manage their own Choice while catalog selection remains cross-creator", () => {
+test("only creators with a Showtime work can manage their own Choice while selection includes cross-creator new releases", () => {
   assert.match(creatorChoiceRoute, /\.eq\("created_by", userId\)/);
   assert.match(creatorChoiceRoute, /\.eq\("ai_music_showtime_certified", true\)/);
   assert.match(creatorChoiceRoute, /需要至少一首已認證 Showtime 的作品/);
-  assert.match(creatorChoiceRoute, /loadShowtimeAdminCatalog\(admin\)/);
-  assert.match(creatorChoiceRoute, /只能加入目前公開展示中的 Showtime 認證作品/);
+  assert.match(creatorChoiceRoute, /loadChoiceSelectionCatalog\(admin\)/);
+  assert.match(creatorChoiceRoute, /Showtime 認證作品或 7 天內新歌/);
   assert.match(creatorChoiceRoute, /item\.isPublic && item\.selectable/);
   assert.doesNotMatch(creatorChoiceRoute, /\.eq\("created_by", guard\.user\.id\).*sourceKind/s);
 });
 
-test("creator Choice can be shared only after publication and keeps 5-10 current Showtime works", () => {
+test("creator Choice can be shared only after publication and keeps 5-10 curated works", () => {
   assert.match(creatorChoiceRoute, /AIPOGER_CHOICE_MIN_ITEMS/);
   assert.match(creatorChoiceRoute, /AIPOGER_CHOICE_MAX_ITEMS/);
   assert.match(creatorChoiceRoute, /published_at: publish \? now : null/);
   assert.match(publicChoiceRoute, /\.eq\("is_published", true\)/);
-  assert.match(publicChoiceRoute, /source\?\.isPublic && source\.selectable/);
+  assert.match(publicChoiceRoute, /source\?\.isPublic/);
   assert.match(profileChoicePage, /creatorChoicePublicPath/);
-  assert.match(profileChoicePage, /只顯示目前公開展示中的 Showtime 作品；左下播放鈕可直接試聽，可選其他創作者，不限自己的歌。/);
+  assert.match(profileChoicePage, /可選全站公開 Showtime 認證作品及上架 7 天內的新歌/);
 });
 
 test("creator Choice selected tracks do not overflow the mobile workbench", () => {

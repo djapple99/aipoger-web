@@ -6,7 +6,7 @@ import {
   type AipogerChoiceCollection,
   type AipogerChoiceCuratorIdentity,
 } from "@/lib/aipoger-choice";
-import { loadShowtimeAdminCatalog } from "@/lib/server-showtime-catalog";
+import { loadChoiceSelectionCatalog } from "@/lib/server-choice-catalog";
 
 type Kind = "official" | "creator";
 type HeartRow = { collection_kind: Kind; collection_id: string; created_at: string };
@@ -51,7 +51,7 @@ function resolveItems(rows: ItemRow[] | null | undefined, catalog: AipogerChoice
   const byKey = new Map(catalog.map((item) => [recordKey(item.sourceKind, item.id), item]));
   return (rows ?? []).map((row) => {
     const source = byKey.get(recordKey(row.source_kind, row.source_id));
-    return source?.isPublic && source.selectable ? { ...source, itemId: row.id, position: Math.max(1, Math.round(row.position)) } : null;
+    return source?.isPublic ? { ...source, itemId: row.id, position: Math.max(1, Math.round(row.position)) } : null;
   }).filter((item): item is AipogerChoiceCollection["items"][number] => Boolean(item)).sort((a, b) => a.position - b.position);
 }
 
@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
     if (creator.error) throw creator.error;
     if (officialItems.error) throw officialItems.error;
     if (creatorItems.error) throw creatorItems.error;
-    const catalog = await loadShowtimeAdminCatalog(admin);
+    const catalog = await loadChoiceSelectionCatalog(admin);
     const officialItemsByCollection = new Map<string, ItemRow[]>();
     const creatorItemsByCollection = new Map<string, ItemRow[]>();
     ((officialItems.data ?? []) as ItemRow[]).forEach((item) => officialItemsByCollection.set(item.collection_id, [...(officialItemsByCollection.get(item.collection_id) ?? []), item]));

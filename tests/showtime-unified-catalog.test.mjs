@@ -130,10 +130,10 @@ test("Choice and Showtime use one sequential bottom player with mobile volume", 
   assert.ok(queuePlayerSource.includes("lg:hidden"));
 });
 
-test("public Creator Choice shelf exposes only latest published playable Showtime selections", () => {
+test("public Creator Choice shelf keeps published playable selections after the new-release window", () => {
   assert.match(publicCreatorChoiceSource, /\.eq\("is_published", true\)/);
   assert.match(publicCreatorChoiceSource, /latestByCreator/);
-  assert.match(publicCreatorChoiceSource, /source\?\.isPublic && source\.selectable/);
+  assert.match(publicCreatorChoiceSource, /source\?\.isPublic/);
   assert.match(publicCreatorChoiceSource, /fighter_profiles/);
   assert.match(publicCreatorChoiceSource, /user_profiles/);
 });

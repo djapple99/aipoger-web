@@ -27,6 +27,7 @@ type ShowtimePayload = {
 
 type ChoicePayload = {
   schemaReady?: boolean;
+  catalog?: AipogerChoiceCatalogItem[];
   collections?: AipogerChoiceCollection[];
   error?: string;
 };
@@ -115,6 +116,7 @@ export default function AdminShowtimePage() {
   const [editorBusy, setEditorBusy] = useState(false);
 
   const [choiceCollections, setChoiceCollections] = useState<AipogerChoiceCollection[]>([]);
+  const [choiceCatalog, setChoiceCatalog] = useState<AipogerChoiceCatalogItem[]>([]);
   const [choiceCollectionId, setChoiceCollectionId] = useState<string | null>(null);
   const [choiceMode, setChoiceMode] = useState(false);
   const [choiceWeek, setChoiceWeek] = useState(choiceWeekStart());
@@ -147,6 +149,7 @@ export default function AdminShowtimePage() {
     }
     const collections = payload?.collections ?? [];
     setChoiceSchemaReady(payload?.schemaReady !== false);
+    setChoiceCatalog(payload?.catalog ?? []);
     setChoiceCollections(collections);
     setChoiceCollectionId((current) => {
       if (preferredId && collections.some((collection) => collection.id === preferredId)) return preferredId;
@@ -221,10 +224,13 @@ export default function AdminShowtimePage() {
   }, [selectedChoice]);
 
   const filteredItems = useMemo(() => {
+    const availableItems = choiceMode
+      ? choiceCatalog.filter((item) => item.isPublic && item.selectable)
+      : items;
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return items;
-    return items.filter((item) => [item.title, item.artist, item.genre, item.recognition].join(" ").toLowerCase().includes(normalized));
-  }, [items, query]);
+    if (!normalized) return availableItems;
+    return availableItems.filter((item) => [item.title, item.artist, item.genre, item.recognition].join(" ").toLowerCase().includes(normalized));
+  }, [choiceCatalog, choiceMode, items, query]);
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / SHOWTIME_PER_PAGE));
   const currentPage = Math.min(page, totalPages);
@@ -426,8 +432,8 @@ export default function AdminShowtimePage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-100/70">This Week Choice</p>
-                <h2 className="mt-1 text-xl font-black">勾選 Showtime 作品，組成本期 Choice</h2>
-                <p className="mt-1 text-xs font-bold text-cyan-50/70">封面右下播放鈕可先試聽，再勾選。</p>
+                <h2 className="mt-1 text-xl font-black">從認證作品與本週新歌組成 Choice</h2>
+                <p className="mt-1 text-xs font-bold text-cyan-50/70">可選公開 Showtime 認證作品及上架 7 天內的新歌；封面右下播放鈕可先試聽。</p>
               </div>
               <select value={choiceCollectionId ?? ""} onChange={(event) => setChoiceCollectionId(event.target.value || null)} className="h-10 min-w-52 rounded-xl border border-white/10 bg-black/55 px-3 text-sm font-bold text-white outline-none focus:border-cyan-200/60">
                 <option value="">新增本期 Choice</option>
@@ -481,13 +487,13 @@ export default function AdminShowtimePage() {
           <div>
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋歌名、創作者、類型" className="h-11 rounded-xl border border-white/10 bg-black/55 px-3 text-sm font-bold text-white outline-none focus:border-yellow-200/60" />
           </div>
-          <p className="mt-3 text-xs font-bold text-zinc-500">目前公開展示 {filteredItems.length} 首 Showtime 作品，桌機每列 6 首，每頁 {SHOWTIME_PER_PAGE} 首。</p>
+          <p className="mt-3 text-xs font-bold text-zinc-500">{choiceMode ? `目前有 ${filteredItems.length} 首 Choice 可選作品，包含 Showtime 認證歌與 7 天內新歌。` : `目前公開展示 ${filteredItems.length} 首 Showtime 作品，桌機每列 6 首，每頁 ${SHOWTIME_PER_PAGE} 首。`}</p>
         </section>
 
         <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
           {pagedItems.map((item) => {
             const track = item.sourceKind === "listen_bar_track" ? trackById.get(item.id) ?? null : null;
-            const canEdit = Boolean(track?.source === "community");
+            const canEdit = !choiceMode && Boolean(track?.source === "community");
             const busy = busyId?.endsWith(`:${item.id}`);
             const choiceKey = `${item.sourceKind}:${item.id}`;
             const isChoiceSelected = selectedChoiceKeys.has(choiceKey);
@@ -498,7 +504,7 @@ export default function AdminShowtimePage() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={item.coverUrl} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
                   <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-1 p-2">
-                    <span className="rounded-md border border-cyan-200/25 bg-black/70 px-1.5 py-1 text-[10px] font-black text-cyan-100">SHOWTIME</span>
+                    <span className={`rounded-md border bg-black/75 px-1.5 py-1 text-[10px] font-black ${item.choiceSource === "new_release" ? "border-lime-200/35 text-lime-100" : "border-cyan-200/25 text-cyan-100"}`}>{item.choiceSource === "new_release" ? "CHOICE 新選" : "SHOWTIME"}</span>
                     {canSelectChoice ? (
                       <label className="flex cursor-pointer items-center gap-1 rounded-md border border-cyan-100/30 bg-black/80 px-1.5 py-1 text-[10px] font-black text-cyan-50">
                         <input type="checkbox" checked={isChoiceSelected} disabled={Boolean(choiceBusy)} onChange={() => void toggleChoiceItem(item)} className="h-3.5 w-3.5 accent-cyan-300" />
@@ -506,23 +512,23 @@ export default function AdminShowtimePage() {
                       </label>
                     ) : null}
                   </div>
-                  <span className="absolute bottom-2 left-2 rounded-md border border-emerald-200/25 bg-emerald-950/90 px-1.5 py-1 text-[10px] font-black text-emerald-100">公開中</span>
+                  <span className="absolute bottom-2 left-2 rounded-md border border-emerald-200/25 bg-emerald-950/90 px-1.5 py-1 text-[10px] font-black text-emerald-100">{item.choiceSource === "new_release" ? "7 天內新歌" : "公開中"}</span>
                   <button type="button" disabled={!item.audioUrl} onClick={() => setPreviewTrack(item)} className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full border border-cyan-100/50 bg-black/85 text-xs font-black text-cyan-100 shadow-lg transition hover:bg-cyan-300 hover:text-black disabled:cursor-not-allowed disabled:opacity-35" aria-label={`播放 ${item.title}`} title={item.audioUrl ? "播放試聽" : "目前沒有可播放音檔"}>▶</button>
                 </div>
                 <div className="flex min-h-0 flex-1 flex-col p-3">
                   <h2 className="min-h-10 line-clamp-2 text-sm font-black leading-5 text-white">{item.title}</h2>
                   <p className="mt-1 truncate text-xs font-bold text-zinc-300">{item.artist}</p>
                   <p className="mt-1 truncate text-[11px] font-bold text-zinc-500">{item.genre} · {item.recognition}</p>
-                  <p className="mt-1 text-[10px] font-bold text-yellow-100/75">{displayDate(item.certifiedAt)}</p>
-                  <div className="mt-3 grid grid-cols-2 gap-1.5">
+                  <p className="mt-1 text-[10px] font-bold text-yellow-100/75">{item.choiceSource === "new_release" ? "上架 " : "認證 "}{displayDate(item.certifiedAt)}</p>
+                  {!choiceMode ? <div className="mt-3 grid grid-cols-2 gap-1.5">
                     {canEdit ? <button type="button" onClick={() => track && openEditor(item, track)} className="min-h-8 rounded-lg border border-cyan-200/25 bg-cyan-300/10 px-2 py-1.5 text-[11px] font-black text-cyan-50 transition hover:border-cyan-100/60">編輯資料</button> : <span />}
                     <button type="button" disabled={busy} onClick={() => void runShowtimeAction(item, item.sourceKind === "listen_bar_track" ? "hide_track" : "hide_archive")} className="min-h-8 rounded-lg border border-red-200/35 bg-red-500/10 px-2 py-1.5 text-[11px] font-black text-red-100 disabled:opacity-50">{busy ? "處理中" : "收回"}</button>
-                  </div>
+                  </div> : null}
                 </div>
               </article>
             );
           })}
-          {pagedItems.length === 0 ? <p className="col-span-full rounded-xl border border-white/10 bg-black/40 px-4 py-10 text-center text-sm font-bold text-zinc-500">目前沒有符合條件的 Showtime 作品。</p> : null}
+          {pagedItems.length === 0 ? <p className="col-span-full rounded-xl border border-white/10 bg-black/40 px-4 py-10 text-center text-sm font-bold text-zinc-500">{choiceMode ? "目前沒有可加入 Choice 的認證作品或 7 天內新歌。" : "目前沒有符合條件的 Showtime 作品。"}</p> : null}
         </section>
 
         <div className="mt-5 flex items-center justify-between gap-3 text-sm font-bold text-zinc-400">

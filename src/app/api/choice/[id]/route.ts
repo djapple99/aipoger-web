@@ -6,7 +6,7 @@ import {
   type AipogerChoiceCollection,
   type AipogerChoiceCuratorIdentity,
 } from "@/lib/aipoger-choice";
-import { loadShowtimeAdminCatalog } from "@/lib/server-showtime-catalog";
+import { loadChoiceSelectionCatalog } from "@/lib/server-choice-catalog";
 
 type CollectionKind = "official" | "creator";
 type ChoiceItemRow = { id: string; source_kind: string; source_id: string; position: number };
@@ -64,7 +64,7 @@ function resolveItems(rows: ChoiceItemRow[] | null | undefined, catalog: Aipoger
   return (rows ?? [])
     .map((item) => {
       const source = byKey.get(key(item.source_kind, item.source_id));
-      return source?.isPublic && source.selectable
+      return source?.isPublic
         ? { ...source, itemId: item.id, position: Math.max(1, Math.round(item.position)) }
         : null;
     })
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     const kind: CollectionKind = request.nextUrl.searchParams.get("kind") === "official" ? "official" : "creator";
     if (!isUuid(id)) return NextResponse.json({ error: "找不到這份 Choice。" }, { status: 404 });
     const admin = adminClient();
-    const catalog = await loadShowtimeAdminCatalog(admin);
+    const catalog = await loadChoiceSelectionCatalog(admin);
     if (!catalog.schemaReady) return NextResponse.json({ error: "Showtime 資料尚未準備完成。" }, { status: 409 });
 
     if (kind === "official") {
