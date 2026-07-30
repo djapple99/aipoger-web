@@ -4,8 +4,11 @@ import { readFileSync } from "node:fs";
 
 const migration = readFileSync(new URL("../supabase/migrations/20260713090833_creator_choice_collections.sql", import.meta.url), "utf8");
 const creatorChoiceRoute = readFileSync(new URL("../src/app/api/creator-choice/route.ts", import.meta.url), "utf8");
+const adminChoiceRoute = readFileSync(new URL("../src/app/api/admin/choice/route.ts", import.meta.url), "utf8");
 const publicChoiceRoute = readFileSync(new URL("../src/app/api/creator-choice/[id]/route.ts", import.meta.url), "utf8");
 const profileChoicePage = readFileSync(new URL("../src/app/profile/choice/page.tsx", import.meta.url), "utf8");
+const adminChoicePage = readFileSync(new URL("../src/app/admin/choice/page.tsx", import.meta.url), "utf8");
+const selectedWorks = readFileSync(new URL("../src/components/choice-selected-works.tsx", import.meta.url), "utf8");
 const profilePage = readFileSync(new URL("../src/app/profile/page.tsx", import.meta.url), "utf8");
 const showtimeRoute = readFileSync(new URL("../src/app/api/showtime/my-tracks/route.ts", import.meta.url), "utf8");
 const showtimeHelper = readFileSync(new URL("../src/lib/ai-music-showtime.ts", import.meta.url), "utf8");
@@ -39,11 +42,20 @@ test("creator Choice can be shared only after publication and keeps 5-10 curated
   assert.match(profileChoicePage, /可選全站公開 Showtime 認證作品及上架 7 天內的新歌/);
 });
 
-test("creator Choice selected tracks do not overflow the mobile workbench", () => {
+test("Choice selected tracks use a compact responsive editor with direct position input", () => {
   assert.match(profileChoicePage, /pb-28 pt-24[^\"]*sm:pt-8/);
-  assert.match(profileChoicePage, /grid-cols-\[1\.5rem_2\.75rem_minmax\(0,1fr\)\]/);
-  assert.match(profileChoicePage, /col-span-3 flex justify-end/);
-  assert.match(profileChoicePage, /h-11 w-11/);
+  assert.match(profileChoicePage, /<ChoiceSelectedWorks/);
+  assert.match(adminChoicePage, /<ChoiceSelectedWorks/);
+  assert.match(selectedWorks, /type="number"/);
+  assert.match(selectedWorks, /md:grid-cols-2/);
+  assert.match(selectedWorks, /grid-cols-\[2\.5rem_2\.5rem_minmax\(0,1fr\)_auto\]/);
+  assert.match(selectedWorks, /<Play/);
+  assert.match(selectedWorks, /<Trash2/);
+  assert.doesNotMatch(selectedWorks, /aria-label="上移"|aria-label="下移"/);
+  assert.match(creatorChoiceRoute, /requestedPosition/);
+  assert.match(adminChoiceRoute, /requestedPosition/);
+  assert.match(creatorChoiceRoute, /items\.splice\(targetIndex, 0, moved\)/);
+  assert.match(adminChoiceRoute, /items\.splice\(targetIndex, 0, moved\)/);
 });
 
 test("creator Choice can create a draft from the first selected song", () => {

@@ -13,6 +13,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { loadIsAdmin } from "@/lib/user-profile-admin";
 import { ChoicePreviewPlayer } from "@/components/choice-preview-player";
+import { ChoiceSelectedWorks } from "@/components/choice-selected-works";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
 type ChoicePayload = {
@@ -175,6 +176,16 @@ export default function AdminChoicePage() {
     }, "已加入本週 Choice。", collectionId);
   }
 
+  async function moveChoiceItem(itemId: string, position: number) {
+    if (!selected) return false;
+    const result = await runAction("move_item", {
+      collectionId: selected.id,
+      itemId,
+      position,
+    }, "Choice 順序已更新。", selected.id);
+    return Boolean(result);
+  }
+
   if (adminState === "checking") {
     return <main className="min-h-screen bg-[#050505] px-5 py-10 text-sm font-black text-zinc-400">檢查 Choice 後台權限中...</main>;
   }
@@ -252,21 +263,17 @@ export default function AdminChoicePage() {
           <aside className="min-w-0 rounded-2xl border border-white/10 bg-black/45 p-4">
             <p className="text-xs font-black uppercase tracking-[0.2em] text-yellow-100/70">This Week</p>
             <h2 className="mt-1 text-xl font-black">已選作品 {selected?.items.length ?? 0} / 10</h2>
-            <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-2">
-              {selected ? selected.items.map((item, index) => (
-                <article key={item.itemId} className="flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-black/55 p-2 sm:gap-3">
-                  <span className="w-5 text-center text-xs font-black text-cyan-100">{index + 1}</span>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={item.coverUrl} alt="" className="h-10 w-10 rounded-lg object-cover" />
-                  <div className="min-w-0 flex-1"><p className="truncate text-sm font-black">{item.title}</p><p className="truncate text-[11px] font-bold text-zinc-500">{item.artist}</p></div>
-                  <div className="flex shrink-0 gap-0.5 sm:gap-1">
-                    <button type="button" disabled={!item.audioUrl} onClick={() => setPreviewTrack(item)} className="h-7 w-7 rounded-full border border-cyan-100/25 text-xs font-black text-cyan-100 disabled:cursor-not-allowed disabled:opacity-30 sm:h-8 sm:w-8 sm:text-sm" aria-label={`播放 ${item.title}`} title={item.audioUrl ? "播放試聽" : "目前沒有可播放音檔"}>▶</button>
-                    <button type="button" disabled={busy !== "" || index === 0} onClick={() => void runAction("move_item", { collectionId: selected.id, itemId: item.itemId, direction: "up" }, "Choice 順序已更新。", selected.id)} className="h-7 w-7 rounded-full border border-white/10 text-xs font-black text-zinc-200 disabled:opacity-30 sm:h-8 sm:w-8 sm:text-sm" aria-label="上移">↑</button>
-                    <button type="button" disabled={busy !== "" || index === (selected.items.length - 1)} onClick={() => void runAction("move_item", { collectionId: selected.id, itemId: item.itemId, direction: "down" }, "Choice 順序已更新。", selected.id)} className="h-7 w-7 rounded-full border border-white/10 text-xs font-black text-zinc-200 disabled:opacity-30 sm:h-8 sm:w-8 sm:text-sm" aria-label="下移">↓</button>
-                    <button type="button" disabled={busy !== ""} onClick={() => void runAction("remove_item", { collectionId: selected.id, itemId: item.itemId }, "已移除 Choice 作品。", selected.id)} className="h-7 w-7 rounded-full border border-red-200/30 text-xs font-black text-red-100 disabled:opacity-30 sm:h-8 sm:w-8 sm:text-sm" aria-label="移除">×</button>
-                  </div>
-                </article>
-              )) : null}
+            <div className="mt-4">
+              {selected ? (
+                <ChoiceSelectedWorks
+                  items={selected.items}
+                  busy={busy !== ""}
+                  layout="sidebar"
+                  onPreview={setPreviewTrack}
+                  onMove={moveChoiceItem}
+                  onRemove={(itemId) => void runAction("remove_item", { collectionId: selected.id, itemId }, "已移除 Choice 作品。", selected.id)}
+                />
+              ) : null}
               {!selected ? <p className="rounded-xl border border-dashed border-white/10 px-3 py-6 text-center text-sm font-bold text-zinc-500">按目錄的＋即可建立本週草稿並加入 Choice 作品。</p> : null}
               {selected && selected.items.length === 0 ? <p className="rounded-xl border border-dashed border-white/10 px-3 py-6 text-center text-sm font-bold text-zinc-500">從選歌池挑選 5–10 首認證作品或新歌。</p> : null}
             </div>

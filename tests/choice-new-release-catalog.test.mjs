@@ -8,6 +8,7 @@ const creatorRoute = readFileSync(new URL("../src/app/api/creator-choice/route.t
 const publicRoute = readFileSync(new URL("../src/app/api/choice/[id]/route.ts", import.meta.url), "utf8");
 const currentRoute = readFileSync(new URL("../src/app/api/choice/current/route.ts", import.meta.url), "utf8");
 const adminChoicePage = readFileSync(new URL("../src/app/admin/choice/page.tsx", import.meta.url), "utf8");
+const selectedWorks = readFileSync(new URL("../src/components/choice-selected-works.tsx", import.meta.url), "utf8");
 const productRules = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
 
 test("Choice selection combines certified Showtime works with eligible seven-day releases", () => {
@@ -23,8 +24,9 @@ test("Choice selection combines certified Showtime works with eligible seven-day
   assert.match(adminChoicePage, /公開 Showtime 認證作品與上架 7 天內的新歌/);
   assert.match(adminChoicePage, /grid-cols-\[minmax\(0,1fr\)\]/);
   assert.match(adminChoicePage, /px-4 pb-28 pt-24/);
-  assert.match(adminChoicePage, /mt-4 grid grid-cols-\[minmax\(0,1fr\)\] gap-2/);
-  assert.match(adminChoicePage, /h-7 w-7[^"]+sm:h-8 sm:w-8/);
+  assert.match(adminChoicePage, /layout="sidebar"/);
+  assert.match(selectedWorks, /md:grid-cols-2 xl:grid-cols-1/);
+  assert.match(selectedWorks, /h-10 w-10[^\"]+sm:h-8 sm:w-8/);
 });
 
 test("new-release selection does not weaken creator eligibility or expire existing Choice playback", () => {

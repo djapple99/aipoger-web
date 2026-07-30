@@ -196,6 +196,23 @@ async function collectionItems(admin: ReturnType<typeof adminClient>, collection
   return (data ?? []) as CreatorChoiceItemRow[];
 }
 
+async function saveItemOrder(admin: ReturnType<typeof adminClient>, items: CreatorChoiceItemRow[]) {
+  for (let index = 0; index < items.length; index += 1) {
+    const { error } = await admin
+      .from("aipoger_creator_choice_items")
+      .update({ position: 90 + index })
+      .eq("id", items[index].id);
+    if (error) throw error;
+  }
+  for (let index = 0; index < items.length; index += 1) {
+    const { error } = await admin
+      .from("aipoger_creator_choice_items")
+      .update({ position: index + 1 })
+      .eq("id", items[index].id);
+    if (error) throw error;
+  }
+}
+
 async function collectionOwnedBy(admin: ReturnType<typeof adminClient>, collectionId: string, userId: string) {
   const { data, error } = await admin
     .from("aipoger_creator_choice_collections")
@@ -338,30 +355,24 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (action === "move_item") {
-      if (!isUuid(body?.itemId) || (body?.direction !== "up" && body?.direction !== "down")) {
+      const direction = body?.direction === "up" || body?.direction === "down" ? body.direction : null;
+      const requestedPosition = typeof body?.position === "number" && Number.isInteger(body.position) ? body.position : null;
+      if (!isUuid(body?.itemId) || (!direction && requestedPosition === null)) {
         return jsonError("Choice 排序資料不完整。");
       }
       const items = await collectionItems(guard.admin, collectionId);
       const currentIndex = items.findIndex((item) => item.id === body.itemId);
-      const targetIndex = body.direction === "up" ? currentIndex - 1 : currentIndex + 1;
+      if (requestedPosition !== null && (requestedPosition < 1 || requestedPosition > items.length)) {
+        return jsonError(`Choice 播放順序必須介於 1-${items.length}。`);
+      }
+      const targetIndex = requestedPosition !== null
+        ? requestedPosition - 1
+        : direction === "up" ? currentIndex - 1 : currentIndex + 1;
       if (currentIndex < 0 || targetIndex < 0 || targetIndex >= items.length) return NextResponse.json({ message: "Choice 順序未改變。" });
-      const current = items[currentIndex];
-      const target = items[targetIndex];
-      const { error: temporaryError } = await guard.admin
-        .from("aipoger_creator_choice_items")
-        .update({ position: 99 })
-        .eq("id", current.id);
-      if (temporaryError) throw temporaryError;
-      const { error: targetError } = await guard.admin
-        .from("aipoger_creator_choice_items")
-        .update({ position: current.position })
-        .eq("id", target.id);
-      if (targetError) throw targetError;
-      const { error: currentError } = await guard.admin
-        .from("aipoger_creator_choice_items")
-        .update({ position: target.position })
-        .eq("id", current.id);
-      if (currentError) throw currentError;
+      if (currentIndex === targetIndex) return NextResponse.json({ message: "Choice 順序未改變。" });
+      const [moved] = items.splice(currentIndex, 1);
+      items.splice(targetIndex, 0, moved);
+      await saveItemOrder(guard.admin, items);
       return NextResponse.json({ message: "Choice 順序已更新。" });
     }
 
