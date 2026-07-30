@@ -28,8 +28,8 @@
 - 傷心酒吧首屏招牌必須使用可切換語言的 live text，不得把含「傷心酒吧」或副標的整張圖片直接貼上當招牌；圖片字會破壞語言切換。
 - 招牌視覺可採深色科幻金屬牌質感，但 `AIPOGER RADIO`、`BAR HEARTBREAK`、主標與副標都必須由頁面文字渲染。副標使用與主標同系的金色立體字質感，只縮小尺寸維持層級。
 - 傷心酒吧首屏右上角不要堆主要 CTA；右上保留語言或必要 utility 即可。
-- 首屏下方 action strip 放主要入口：`我要播歌`、`分享吧台`、`探索 AI 音樂`、`Showtime`。`練功聖經` 與 `關於愛波哥` 先不放在傷心酒吧首屏 action strip。
-- 手機版 action strip 第一排放 `我要播歌`、`分享吧台`、`Showtime` 三顆；`探索 AI 音樂` 放第二排並置中。
+- 首屏下方 action strip 放主要入口：`我要播歌`、`分享吧台`、`探索 AI 音樂`、`Drop Battle`、`Showtime`。`Drop Battle` 必須直接放在 `探索 AI 音樂` 旁邊並連到公開 Battle Pool；`練功聖經` 與 `關於愛波哥` 先不放在傷心酒吧首屏 action strip。
+- 手機版 action strip 第一排放 `我要播歌`、`分享吧台`、`Showtime` 三顆；`探索 AI 音樂` 與 `Drop Battle` 在第二排並排置中。
 - action strip 內的 Battle 訊息必須是會持續移動的跑馬燈；不要只用 truncate 顯示靜態單行。
 - 所有傷心酒吧分享都走短網址。吧台分享使用 `/l/all?lang=...`；類型分享使用 `/l/{genreIndex}?lang=...`，由短路由轉回 `/listen-bar?genre=...`。
 

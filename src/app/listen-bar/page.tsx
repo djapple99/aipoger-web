@@ -672,6 +672,7 @@ export default function ListenBarPage() {
         subtitle: "在 AI 與不 AI 之間只有真正被聽見的歌才能留下來",
         surfaceHint: "AI 音樂公播池與投稿入口：上傳後進入分類輪播，也會出現在探索 AI 音樂。",
         navBattle: "探索 AI 音樂",
+        navDrop: "Drop Battle",
         navRank: "Showtime",
         ticker: "先探索 AI 音樂，再從喜歡的作品發起挑戰。",
         queueTitle: "接續的六首歌",
@@ -692,6 +693,7 @@ export default function ListenBarPage() {
           subtitle: "深く刺さる曲だけがオンエアに残る",
           surfaceHint: "AI音楽の公開放送と投稿の入口です。投稿曲はジャンル別にローテーションされ、Explore AI Musicにも表示されます。",
           navBattle: "AI音楽を探す",
+          navDrop: "Drop Battle",
           navRank: "Showtime",
           ticker: "AI音楽を探して、好きな曲から挑戦へ。",
           queueTitle: "次に流れる6曲",
@@ -712,6 +714,7 @@ export default function ListenBarPage() {
             subtitle: "강하게 꽂히는 곡만 온에어에 남는다",
             surfaceHint: "AI 음악 공개 방송과 업로드 입구입니다. 업로드한 곡은 장르별로 재생되며 Explore AI Music에도 표시됩니다.",
             navBattle: "AI 음악 탐색",
+            navDrop: "Drop Battle",
             navRank: "Showtime",
             ticker: "AI 음악을 먼저 탐색하고, 마음에 드는 곡에서 도전하세요.",
             queueTitle: "다음 재생 6곡",
@@ -731,6 +734,7 @@ export default function ListenBarPage() {
             subtitle: "Only the songs that hit hard stay on air",
             surfaceHint: "AI music airplay pool and submission entry. Uploaded tracks rotate here and appear in Explore AI Music.",
             navBattle: "Explore AI Music",
+            navDrop: "Drop Battle",
             navRank: "Showtime",
             ticker: "Explore AI music first, then challenge from tracks you like.",
             queueTitle: "Upcoming Sad Songs",
@@ -2510,10 +2514,13 @@ export default function ListenBarPage() {
           </div>
 
           <div className="relative mt-3 grid max-w-full gap-2 rounded-[1.15rem] border border-white/10 bg-black/52 p-2 shadow-[0_16px_54px_rgba(0,0,0,0.24)] backdrop-blur lg:grid-cols-[minmax(0,max-content)_minmax(18rem,1fr)] lg:items-center">
-            <nav className="flex min-w-0 flex-wrap items-center justify-center gap-2 sm:justify-start">
+            <nav
+              data-listen-bar-action-strip
+              className="flex min-w-0 flex-wrap items-center justify-center gap-2 sm:justify-start"
+            >
               <a
                 href="#play-request"
-                className="order-1 inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full border border-orange-300/45 bg-orange-500/16 px-3 py-2 text-sm font-black text-orange-100 transition hover:border-orange-100 hover:bg-orange-500/24 sm:px-4"
+                className="order-1 inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full border border-orange-300/45 bg-orange-500/16 px-2 py-2 text-sm font-black text-orange-100 transition hover:border-orange-100 hover:bg-orange-500/24 sm:px-4"
               >
                 {listenCopy.playMySong}
               </a>
@@ -2524,20 +2531,26 @@ export default function ListenBarPage() {
                 label={listenCopy.shareLabel}
                 copiedLabel={listenCopy.copied}
                 wrapperClassName="order-2"
-                className="min-h-11 !border-rose-200/70 !bg-[linear-gradient(180deg,rgba(164,24,42,0.78)_0%,rgba(116,21,34,0.72)_100%)] px-3 text-sm !text-white !shadow-[0_0_34px_rgba(255,49,80,0.34),inset_0_1px_0_rgba(255,255,255,0.12)] ring-1 ring-rose-100/20 hover:!border-rose-100/90 hover:!bg-[linear-gradient(180deg,rgba(194,30,54,0.88)_0%,rgba(130,22,38,0.8)_100%)] hover:!shadow-[0_0_46px_rgba(255,49,80,0.46),inset_0_1px_0_rgba(255,255,255,0.16)] sm:px-4"
+                className="min-h-11 !border-rose-200/70 !bg-[linear-gradient(180deg,rgba(164,24,42,0.78)_0%,rgba(116,21,34,0.72)_100%)] !px-2 text-sm !text-white !shadow-[0_0_34px_rgba(255,49,80,0.34),inset_0_1px_0_rgba(255,255,255,0.12)] ring-1 ring-rose-100/20 hover:!border-rose-100/90 hover:!bg-[linear-gradient(180deg,rgba(194,30,54,0.88)_0%,rgba(130,22,38,0.8)_100%)] hover:!shadow-[0_0_46px_rgba(255,49,80,0.46),inset_0_1px_0_rgba(255,255,255,0.16)] sm:!px-4"
               />
               <Link
                 href={`/rank${langQuery}`}
-                className="order-3 inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full border border-white/10 bg-white/[0.045] px-3 py-2 text-sm font-black text-zinc-200 transition hover:border-orange-300/70 hover:bg-orange-500/10 hover:text-white sm:px-4 md:order-4"
+                className="order-3 inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full border border-white/10 bg-white/[0.045] px-2 py-2 text-sm font-black text-zinc-200 transition hover:border-orange-300/70 hover:bg-orange-500/10 hover:text-white sm:px-4 md:order-4"
               >
                 {listenCopy.navRank}
               </Link>
-              <span className="order-4 flex basis-full justify-center md:order-3 md:basis-auto">
+              <span className="order-4 flex basis-full flex-wrap justify-center gap-2 md:order-3 md:basis-auto md:flex-nowrap">
                 <Link
                   href={`/ai-music${langQuery}`}
                   className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full border border-white/10 bg-white/[0.045] px-4 py-2 text-sm font-black text-zinc-200 transition hover:border-orange-300/70 hover:bg-orange-500/10 hover:text-white"
                 >
                   {listenCopy.navBattle}
+                </Link>
+                <Link
+                  href={`/battle${langQuery}`}
+                  className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full border border-rose-200/30 bg-rose-500/[0.08] px-4 py-2 text-sm font-black text-rose-100 transition hover:border-rose-200/75 hover:bg-rose-500/16 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-200/65"
+                >
+                  {listenCopy.navDrop}
                 </Link>
               </span>
             </nav>

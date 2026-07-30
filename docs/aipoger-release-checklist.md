@@ -152,6 +152,7 @@ Check:
 
 - Page loads at `/listen-bar?lang=zh`.
 - Public listening works without sign-in.
+- The lower hero action strip shows `Drop Battle` directly beside `探索 AI 音樂`; it links to `/battle?lang=<lang>`. On mobile, both actions remain centered side by side on the second row without horizontal overflow.
 - There is no explicit play/pause button in the public radio UI.
 - Record/cover image renders.
 - Progress bar and public volume control render.

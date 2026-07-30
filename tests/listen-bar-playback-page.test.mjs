@@ -53,6 +53,14 @@ test("listen bar hero actions stay in the lower action strip", () => {
   assert.equal(listenBarPageSource.includes("navAbout"), false);
   assert.equal(listenBarPageSource.includes('href: "/ai-music-bible"'), false);
   assert.equal(listenBarPageSource.includes('href: "/about"'), false);
+  assert.equal((listenBarPageSource.match(/navDrop: "Drop Battle"/g) ?? []).length, 4);
+  assert.ok(listenBarPageSource.includes("data-listen-bar-action-strip"));
+  assert.ok(listenBarPageSource.includes('href={`/battle${langQuery}`}'));
+  assert.ok(
+    listenBarPageSource.indexOf('href={`/ai-music${langQuery}`}')
+      < listenBarPageSource.indexOf('href={`/battle${langQuery}`}'),
+  );
+  assert.ok(listenBarPageSource.includes("basis-full flex-wrap justify-center gap-2"));
 });
 
 test("listen bar ticker is an animated marquee instead of static truncation", () => {

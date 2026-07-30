@@ -176,14 +176,14 @@ Must preserve:
 - Lyrics area should be substantial enough to read, visually aligned with the comments area where practical.
 - Underfilled genres send new submissions straight into the same-genre public pool.
 - Challenger is shown only when that genre is already full and the new track is in 36-hour protection before public-pool promotion.
-- The hero's top-right cluster should stay light; do not crowd it with the main action buttons. Put `我要播歌`, bar sharing, `探索 AI 音樂`, and `Showtime` together in the lower hero action strip.
+- The hero's top-right cluster should stay light; do not crowd it with the main action buttons. Put `我要播歌`, bar sharing, `探索 AI 音樂`, `Drop Battle`, and `Showtime` together in the lower hero action strip, with `Drop Battle` directly beside Explore.
 - Do not show `練功聖經` or `關於愛波哥` inside the Bar Heartbreak hero action strip unless a later explicit redesign restores them.
 - The hero action strip ticker is a moving Battle marquee, not a static truncated label.
 - The queue header should expose a selected-genre share action so listeners can share the exact Bar Heartbreak category they are hearing.
 - The Bar Heartbreak hero sign must remain text-driven and localizable. Do not replace the sign title/subtitle with a bitmap containing Chinese text, because language switching must keep working.
 - The sign may visually reference the dark gold sci-fi plaque style, but the title, `AIPOGER RADIO`, `BAR HEARTBREAK`, and subtitle must be live text. The subtitle should use the same gold dimensional text family as the main title, scaled down for hierarchy.
 - On desktop, keep the Bar Heartbreak sign compact rather than full-width. The plaque should sit around two-thirds of the previous oversized desktop treatment so it reads as a sign, not a giant banner that pushes the radio content down.
-- On mobile, the lower hero action strip should place `我要播歌`, `分享吧台`, and `Showtime` on the first row, with `探索 AI 音樂` centered on the second row.
+- On mobile, the lower hero action strip should place `我要播歌`, `分享吧台`, and `Showtime` on the first row, with `探索 AI 音樂` and `Drop Battle` centered side by side on the second row.
 - The now-playing song title should keep short names dramatic, but long mixed Chinese/English titles must auto-size down and allow two lines before truncation. Do not lock every title to the largest fixed display size.
 
 Copy direction:
