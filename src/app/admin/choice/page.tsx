@@ -191,10 +191,10 @@ export default function AdminChoicePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#050505] px-4 py-6 pb-28 text-white sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-[#050505] px-4 pb-28 pt-24 text-white sm:px-6 sm:py-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
         <header className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-5">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-100/70">AIPOGER ADMIN</p>
             <h1 className="mt-2 text-3xl font-black sm:text-4xl">Choice 管理</h1>
             <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-zinc-400">從公開 Showtime 認證作品與上架 7 天內的新歌，人工挑選每週 5–10 首。這不是排行榜，也不會自動生成社群貼文。</p>
@@ -210,14 +210,14 @@ export default function AdminChoicePage() {
         {message ? <p className="mt-4 rounded-xl border border-emerald-200/25 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-100">{message}</p> : null}
         {error ? <p className="mt-4 rounded-xl border border-red-200/25 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-100">{error}</p> : null}
 
-        <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)]">
-          <div className="rounded-2xl border border-white/10 bg-black/55 p-4 sm:p-5">
+        <section className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)]">
+          <div className="min-w-0 rounded-2xl border border-white/10 bg-black/55 p-4 sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-100/70">Weekly Curation</p>
                 <h2 className="mt-1 text-xl font-black">{selected ? `週次 ${displayDate(selected.weekStart)}` : "建立 Choice 週次"}</h2>
               </div>
-              <select value={selectedId ?? ""} onChange={(event) => setSelectedId(event.target.value || null)} className="h-10 min-w-44 rounded-xl border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none">
+              <select value={selectedId ?? ""} onChange={(event) => setSelectedId(event.target.value || null)} className="h-10 w-full min-w-0 rounded-xl border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none sm:w-auto sm:min-w-44">
                 <option value="">新增週次</option>
                 {collections.map((collection) => <option key={collection.id} value={collection.id}>{displayDate(collection.weekStart)} {collection.isPublished ? "· 已發布" : "· 草稿"}</option>)}
               </select>
@@ -249,7 +249,7 @@ export default function AdminChoicePage() {
             </div>
           </div>
 
-          <aside className="rounded-2xl border border-white/10 bg-black/45 p-4">
+          <aside className="min-w-0 rounded-2xl border border-white/10 bg-black/45 p-4">
             <p className="text-xs font-black uppercase tracking-[0.2em] text-yellow-100/70">This Week</p>
             <h2 className="mt-1 text-xl font-black">已選作品 {selected?.items.length ?? 0} / 10</h2>
             <div className="mt-4 grid gap-2">
