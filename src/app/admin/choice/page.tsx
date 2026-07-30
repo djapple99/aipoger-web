@@ -197,7 +197,7 @@ export default function AdminChoicePage() {
           <div>
             <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-100/70">AIPOGER ADMIN</p>
             <h1 className="mt-2 text-3xl font-black sm:text-4xl">Choice 管理</h1>
-            <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-zinc-400">從已公開的 Showtime 認證作品人工挑選每週 5–10 首。這不是排行榜，也不會自動生成社群貼文。</p>
+            <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-zinc-400">從公開 Showtime 認證作品與上架 7 天內的新歌，人工挑選每週 5–10 首。這不是排行榜，也不會自動生成社群貼文。</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link href="/rank?lang=zh#choice-weekly" className="rounded-full border border-white/15 px-3 py-2 text-xs font-black text-zinc-200">看前台 Choice</Link>

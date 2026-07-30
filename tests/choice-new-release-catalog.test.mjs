@@ -7,6 +7,7 @@ const adminRoute = readFileSync(new URL("../src/app/api/admin/choice/route.ts", 
 const creatorRoute = readFileSync(new URL("../src/app/api/creator-choice/route.ts", import.meta.url), "utf8");
 const publicRoute = readFileSync(new URL("../src/app/api/choice/[id]/route.ts", import.meta.url), "utf8");
 const currentRoute = readFileSync(new URL("../src/app/api/choice/current/route.ts", import.meta.url), "utf8");
+const adminChoicePage = readFileSync(new URL("../src/app/admin/choice/page.tsx", import.meta.url), "utf8");
 const productRules = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
 
 test("Choice selection combines certified Showtime works with eligible seven-day releases", () => {
@@ -19,6 +20,7 @@ test("Choice selection combines certified Showtime works with eligible seven-day
   assert.match(adminRoute, /loadChoiceSelectionCatalog/);
   assert.match(creatorRoute, /loadChoiceSelectionCatalog/);
   assert.match(adminRoute, /Showtime 認證作品或 7 天內新歌/);
+  assert.match(adminChoicePage, /公開 Showtime 認證作品與上架 7 天內的新歌/);
 });
 
 test("new-release selection does not weaken creator eligibility or expire existing Choice playback", () => {
