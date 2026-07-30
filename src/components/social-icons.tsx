@@ -205,20 +205,26 @@ export function SocialIconCluster({
   label,
   className = "",
   iconClassName = "h-7 w-7",
+  size = "default",
 }: {
   label?: string;
   className?: string;
   iconClassName?: string;
+  size?: "default" | "compact";
 }) {
   const { lang } = useI18n();
   const [qrOpen, setQrOpen] = useState(false);
   const clusterLabel = label ?? (lang === "zh" ? "AIPOGER 社群連結" : lang === "ja" ? "AIPOGER ソーシャルリンク" : lang === "ko" ? "AIPOGER 소셜 링크" : "AIPOGER social links");
+  const itemFrameClassName = size === "compact" ? "h-10 w-10 rounded-[0.82rem]" : "h-12 w-12 rounded-[1rem]";
+  const itemInsetClassName = size === "compact" ? "inset-0.5 rounded-[0.68rem]" : "inset-1 rounded-[0.8rem]";
+  const itemGapClassName = size === "compact" ? "gap-2" : "gap-2.5 sm:gap-3";
+  const qrIconClassName = size === "compact" ? "h-5 w-5" : "h-6 w-6";
 
   return (
     <>
       <div className={`flex flex-wrap items-center gap-3 ${className}`} aria-label={clusterLabel}>
         {label && <span className="text-[0.68rem] font-black uppercase tracking-[0.22em] text-zinc-500">{label}</span>}
-        <div className="flex items-center gap-2.5 sm:gap-3">
+        <div className={`flex items-center ${itemGapClassName}`}>
           {AIPOGER_SOCIAL_LINKS.map((social) => (
             <a
               key={social.label}
@@ -227,9 +233,9 @@ export function SocialIconCluster({
               rel="noreferrer"
               title={`${social.label} ${social.handle}`}
               aria-label={`${social.label} ${social.handle}`}
-              className="group relative inline-flex h-12 w-12 items-center justify-center rounded-[1rem] border border-white/12 bg-black/55 shadow-[0_10px_24px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:-translate-y-0.5 hover:border-white/35 hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+              className={`group relative inline-flex items-center justify-center border border-white/12 bg-black/55 shadow-[0_10px_24px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:-translate-y-0.5 hover:border-white/35 hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200 ${itemFrameClassName}`}
             >
-              <span className="absolute inset-1 rounded-[0.8rem] bg-white/[0.04] opacity-0 blur-md transition group-hover:opacity-100" aria-hidden="true" />
+              <span className={`absolute bg-white/[0.04] opacity-0 blur-md transition group-hover:opacity-100 ${itemInsetClassName}`} aria-hidden="true" />
               <SocialIcon label={social.label} className={`${iconClassName} relative drop-shadow-[0_5px_8px_rgba(0,0,0,0.55)]`} />
             </a>
           ))}
@@ -238,9 +244,9 @@ export function SocialIconCluster({
             onClick={() => setQrOpen(true)}
             title={LINE_DIALOG_COPY[lang].qrButton}
             aria-label={LINE_DIALOG_COPY[lang].qrButton}
-            className="group relative inline-flex h-12 w-12 items-center justify-center rounded-[1rem] border border-[#06c755]/48 bg-[#06c755]/[0.07] text-[#9bf3b7] shadow-[0_10px_24px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:-translate-y-0.5 hover:border-[#06c755] hover:bg-[#06c755]/[0.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#06c755]"
+            className={`group relative inline-flex items-center justify-center border border-[#06c755]/48 bg-[#06c755]/[0.07] text-[#9bf3b7] shadow-[0_10px_24px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:-translate-y-0.5 hover:border-[#06c755] hover:bg-[#06c755]/[0.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#06c755] ${itemFrameClassName}`}
           >
-            <QrCode className="relative h-6 w-6" strokeWidth={2.1} aria-hidden="true" />
+            <QrCode className={`relative ${qrIconClassName}`} strokeWidth={2.1} aria-hidden="true" />
             <span className="sr-only">QR</span>
           </button>
         </div>

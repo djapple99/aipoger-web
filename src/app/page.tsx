@@ -564,7 +564,8 @@ function DesktopReferenceHome({
 
             <SocialIconCluster
               className="absolute left-[2.5rem] top-[calc(100%+1.05rem)] z-20 justify-start"
-              iconClassName="h-11 w-11"
+              iconClassName="h-9 w-9"
+              size="compact"
             />
             <DesktopWaveLine className="left-[24rem] top-[calc(100%+1.6rem)] w-[15rem] text-orange-300/52" />
           </div>
@@ -650,7 +651,7 @@ function DesktopReferenceHome({
           </div>
         </div>
 
-        <div className="relative z-10 mt-[clamp(1rem,2.4vh,1.8rem)] border-t border-orange-300/22 pt-[clamp(0.9rem,1.7vh,1.3rem)]">
+        <div className="relative z-10 mt-[clamp(1.4rem,3.05vh,2.2rem)] border-t border-orange-300/22 pt-[clamp(0.9rem,1.7vh,1.3rem)]">
           <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-300/48 to-transparent" />
           <div className="grid grid-cols-5 gap-[clamp(0.55rem,0.85vw,0.9rem)]">
             {infoLinks.map((item, index) => (

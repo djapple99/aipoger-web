@@ -27,6 +27,14 @@ test("homepage exposes four ordered primary destinations", () => {
   assert.ok(homePageSource.includes("grid-cols-2 gap-x-8 gap-y-4"));
 });
 
+test("desktop homepage keeps the social rail clear of the lower entry cards", () => {
+  assert.match(
+    homePageSource,
+    /<SocialIconCluster[\s\S]*?iconClassName="h-9 w-9"[\s\S]*?size="compact"/,
+  );
+  assert.ok(homePageSource.includes("mt-[clamp(1.4rem,3.05vh,2.2rem)] border-t"));
+});
+
 test("homepage no longer advertises retired 90s Drop Battle labels", () => {
   assert.equal(homePageSource.includes("[\"90s\""), false);
   assert.equal(homePageSource.includes("最強Drop Battle 對決抓波規則"), false);

@@ -127,6 +127,62 @@ final result: passed
 
 ---
 
+# Homepage Social Rail Spacing — Design QA (2026-07-31)
+
+## Comparison Target
+
+- Source visual truth: `/Users/huangyihong/Desktop/截屏2026-07-31 凌晨1.27.39.png`
+- Normalized source: `/tmp/aipoger-home-spacing-qa/source-normalized-1558x789.png`
+- Browser-rendered implementation: `/tmp/aipoger-home-spacing-qa/implementation-1558x789.png`
+- Combined full-view comparison: `/tmp/aipoger-home-spacing-qa/comparison-full-source-left.png`
+- Combined focused comparison: `/tmp/aipoger-home-spacing-qa/comparison-focus-source-left.png`
+- Desktop pressure check: `/tmp/aipoger-home-spacing-qa/implementation-1440x900.png`
+- Mobile evidence: `/tmp/aipoger-home-spacing-qa/implementation-390x844.png`
+- Route/state: `/?lang=zh`, post-splash homepage. The source is signed in and the implementation is signed out; the social rail and lower navigation are in the same layout state.
+- Dimensions and normalization: the source is a Retina `3116 × 1578` capture normalized to its `1558 × 789` CSS frame. The implementation is a `1558 × 789` browser capture at `1×`. The mobile check uses a `390 × 844` CSS viewport and produces a `375 × 812` content capture after browser edges.
+
+## Full-view Comparison Evidence
+
+The combined input places the user's source screenshot on the left and the revised browser-rendered homepage on the right. The black club stage, hero typography, four-destination panel, waveform accent, and five-card lower navigation remain unchanged in hierarchy. The requested adjustment is isolated to the social rail and the vertical handoff into the lower navigation.
+
+## Focused Region Evidence
+
+The focused comparison shows that the source's 48px social buttons descend into the lower-card boundary, while the revised 40px buttons finish above the divider. The complete lower navigation row is shifted down by roughly 5–6px. At the matched `1558 × 789` viewport, the social-button bottom is `619.63px`, the card top is `643.81px`, and the resulting clear gap is `24.19px`.
+
+## Required Fidelity Surfaces
+
+- Fonts and typography: passed. No title, label, weight, line-height, wrapping, or content hierarchy changed.
+- Spacing and layout rhythm: passed. The compact social rail no longer collides with the divider or cards, and the lower row moves as one unit without sinking out of the first viewport.
+- Colors and visual tokens: passed. Existing social brand colors, near-black surfaces, orange borders, and cyan accents remain unchanged.
+- Image quality and asset fidelity: passed. Existing official social icons, AIPOGER imagery, and lower-card assets remain intact and sharp; no substitute artwork was introduced.
+- Copy and content: passed. Social destinations, QR affordance, and all five lower-card labels and descriptions are unchanged.
+- Icons and affordances: passed. Desktop social buttons remain 40px keyboard-focusable controls; mobile retains the established 48px tap targets.
+- Responsiveness and accessibility: passed. `1440 × 900` has no document overflow and keeps the full lower row visible. `390 × 844` retains the original mobile social sizing and reports no horizontal document overflow.
+
+## Findings And Iteration History
+
+### Pass 1
+
+- P2: the source screenshot shows the social icons visually pressing into the divider and overlapping the top edge of the lower entrance cards.
+- Fix: added a compact social-cluster size for the desktop reference homepage only, reduced visible marks from 44px to 36px inside 40px controls, and increased the lower-row top margin by approximately 5–6px.
+- Post-fix evidence: the normalized full-view and focused comparisons show a measured `24.19px` clear gap between social controls and lower cards.
+
+### Pass 2
+
+- No actionable P0, P1, or P2 findings remain at the matched viewport, `1440 × 900`, or `390 × 844`.
+
+## Interaction And Runtime Checks
+
+- Desktop still exposes four social links plus the LINE QR button with their original accessible labels.
+- The lower row still exposes all five destinations as semantic links.
+- Desktop `1558 × 789`: `scrollWidth === innerWidth` and `scrollHeight === innerHeight`.
+- Desktop `1440 × 900`: `scrollWidth === innerWidth` and `scrollHeight === innerHeight`.
+- Mobile `390 × 844`: no horizontal document overflow; vertical page scrolling remains expected.
+
+final result: passed
+
+---
+
 # 耳朵蟲即時試聽與結果動線 — Design QA (2026-07-22)
 
 ## Comparison Target

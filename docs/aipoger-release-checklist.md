@@ -59,6 +59,7 @@ Check:
 - Desktop right-side destinations appear in this order: `探索 AI 音樂`, `傷心酒吧`, `Drop Battle`, `Showtime`; only Explore uses the solid-orange primary treatment.
 - `Drop Battle` links to `/battle?lang=<lang>` and exposes the localized 60s Drop Battle hover/focus description.
 - At 1440x900, all four desktop actions remain inside the right panel and the panel does not overlap the lower navigation cards.
+- At desktop reference widths, the compact social row ends above the divider and does not overlap the five lower navigation cards; the lower row remains fully visible in the first viewport.
 - At 390x844, the four destinations use a 2 x 2 grid with readable labels, usable tap targets, and no horizontal overflow.
 
 ## Drop Battle Checklist
