@@ -123,6 +123,7 @@ test("耳朵蟲 supports instant reactions, automatic playback, and a clear Expl
 
   assert.match(client, /autoPlay/);
   assert.match(client, /AUTO PLAY/);
+  assert.match(client, /width=\{146\} height=\{146\} className="earworm-logo"/);
   assert.match(client, /第一耳就能選，選完自動播下一首/);
   assert.match(client, /不喜歡就<\/small>下一首/);
   assert.match(client, /去探索音樂/);

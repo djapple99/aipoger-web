@@ -67,7 +67,8 @@ test("battle stage keeps a dramatic desktop VS while hiding it on mobile", () =>
 });
 
 test("mobile creator entry headers clear the fixed home logo", () => {
-  assert.ok(profileSource.includes("pb-10 pt-24"));
+  assert.ok(profileSource.includes("pb-40 pt-24"));
+  assert.ok(profileSource.includes("sm:pb-28 sm:pt-10"));
   assert.ok(battleSetupSource.includes("px-6 pb-6 pt-24"));
 });
 

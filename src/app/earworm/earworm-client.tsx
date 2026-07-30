@@ -348,7 +348,7 @@ export default function EarwormClient() {
       <div className="earworm-stage-lamp earworm-stage-lamp-right" aria-hidden="true" />
       <div className="relative z-10 mx-auto w-full max-w-6xl">
         <header className="earworm-header">
-          <Image src={AIPOGER_BRAND_LOGO} alt="AIPOGER 愛播歌" width={146} height={48} className="earworm-logo" priority />
+          <Image src={AIPOGER_BRAND_LOGO} alt="AIPOGER 愛播歌" width={146} height={146} className="earworm-logo" priority />
           <div className="earworm-title-wrap">
             <div className="earworm-title-signal" aria-hidden="true" />
             <p className={`${fontRighteous.className} earworm-kicker`}>MUSIC PERSONALITY TEST</p>

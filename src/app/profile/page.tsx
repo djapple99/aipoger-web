@@ -7,6 +7,10 @@ import { supabase } from "@/lib/supabase";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 import { useI18n } from "@/lib/i18n";
 import { AvatarCropUploadModal } from "@/components/avatar-crop-upload-modal";
+import ShowtimeQueuePlayer, {
+  type ShowtimePlayerTrack,
+  type ShowtimeQueuePlayerHandle,
+} from "@/components/showtime-queue-player";
 import { IMAGE_UPLOAD_ACCEPT, IMAGE_UPLOAD_FORMAT_LABEL, isAllowedImageUploadFile } from "@/lib/image-upload-policy";
 import { readFighterNameFromStorage, writeFighterNameToStorage } from "@/lib/fighter-name-storage";
 import { loadFighterNameFromProfile, saveFighterNameToProfile } from "@/lib/user-profile-fighter-name";
@@ -164,9 +168,11 @@ type CreatorItem = {
   href: string;
   canNavigate?: boolean;
   date?: string | null;
+  artist?: string | null;
   genre?: string | null;
   aiTool?: string | null;
   audioUrl?: string | null;
+  coverUrl?: string | null;
   favoriteRecord?: HonorFavoriteRecord | null;
   trackId?: string | null;
   challengeStatus?: AiMusicChallengeStatus;
@@ -323,11 +329,11 @@ function ProfileInner() {
   const [challengeBusy, setChallengeBusy] = useState<Record<string, boolean>>({});
   const cropFileInputRef = useRef<HTMLInputElement>(null);
   const avatarSectionRef = useRef<HTMLDivElement>(null);
+  const profilePlayerRef = useRef<ShowtimeQueuePlayerHandle>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const fiveSecondPreviewTimerRef = useRef<number | null>(null);
   const playlistItemsRef = useRef<CreatorItem[]>([]);
   const previewTokenRef = useRef(0);
-  const playPreviewItemRef = useRef<((item: CreatorItem) => void) | null>(null);
 
   const copy = useMemo(
     () =>
@@ -879,53 +885,31 @@ function ProfileInner() {
     }
   };
 
-  const playPreviewItem = useCallback((item: CreatorItem) => {
-    const audioUrl = item.audioUrl?.trim();
-    if (!audioUrl) return;
+  const playProfileItem = useCallback((item: CreatorItem) => {
+    const playableItems = playlistItemsRef.current.filter((candidate) => candidate.audioUrl?.trim());
+    const index = playableItems.findIndex((candidate) => candidate.id === item.id);
+    if (index < 0) return;
 
+    const queue: ShowtimePlayerTrack[] = playableItems.map((candidate) => ({
+      id: candidate.id,
+      title: candidate.title,
+      artist: candidate.artist?.trim() || (isZh ? "AIPOGER 音樂人" : "AIPOGER Artist"),
+      coverUrl: candidate.coverUrl?.trim() || DEFAULT_LISTEN_BAR_COVER,
+      audioUrl: candidate.audioUrl!.trim(),
+    }));
     stopPreview();
-    const token = previewTokenRef.current + 1;
-    previewTokenRef.current = token;
-    const audio = new Audio(audioUrl);
-    audio.preload = "auto";
-    audio.onended = () => {
-      if (previewTokenRef.current !== token) return;
-      const playlist = playlistItemsRef.current.filter((candidate) => candidate.audioUrl?.trim());
-      const index = playlist.findIndex((candidate) => candidate.id === item.id);
-      const next = index >= 0 ? playlist[index + 1] : null;
-      if (item.category === "favorites" && next) {
-        playPreviewItemRef.current?.(next);
-        return;
-      }
-      setPreviewingItemId(null);
-    };
-    audio.onerror = () => {
-      if (previewTokenRef.current !== token) return;
-      console.warn("[profile] preview audio failed", item.id);
-      setPreviewingItemId(null);
-    };
-    previewAudioRef.current = audio;
-    setPreviewingItemId(item.id);
-    void audio.play().catch((error) => {
-      console.warn("[profile] preview play blocked", error);
-      if (previewTokenRef.current === token) setPreviewingItemId(null);
-    });
-  }, [stopPreview]);
-  playPreviewItemRef.current = playPreviewItem;
-
-  const togglePreview = useCallback((item: CreatorItem) => {
-    const current = previewAudioRef.current;
-    if (previewingItemId === item.id && current && !current.paused) {
-      stopPreview();
-      return;
-    }
-    playPreviewItem(item);
-  }, [playPreviewItem, previewingItemId, stopPreview]);
+    void profilePlayerRef.current?.start(
+      queue,
+      index,
+      item.category === "favorites" ? copy.favorites : copy.recent,
+    );
+  }, [copy.favorites, copy.recent, isZh, stopPreview]);
 
   const playFiveSecondPreview = useCallback((audioUrl: string | null | undefined, previewKey: string) => {
     const cleanUrl = audioUrl?.trim();
     if (!cleanUrl) return;
 
+    profilePlayerRef.current?.close();
     stopPreview();
     const token = previewTokenRef.current + 1;
     previewTokenRef.current = token;
@@ -952,6 +936,7 @@ function ProfileInner() {
   }, [stopPreview]);
 
   const openChallengeCut = useCallback((item: CreatorItem, mode: "custom" | "defender" = "custom") => {
+    profilePlayerRef.current?.close();
     stopPreview();
     const params = new URLSearchParams({
       flow: "upload-first",
@@ -1060,6 +1045,7 @@ function ProfileInner() {
       }
 
       if (removedItemIds.length > 0) {
+        profilePlayerRef.current?.close();
         if (previewingItemId && removedItemIds.includes(previewingItemId)) stopPreview();
         setHonorFavorites((current) => current.filter((favorite) => !removedRecordKeys.includes(favorite.recordKey)));
         setFavoriteOrder((current) => current.filter((id) => !removedItemIds.includes(id)));
@@ -1149,6 +1135,7 @@ function ProfileInner() {
       }
 
       if (removedItemIds.length > 0) {
+        profilePlayerRef.current?.close();
         if (previewingItemId && removedItemIds.includes(previewingItemId)) stopPreview();
         setBarTracks((current) => current.filter((track) => !removedTrackIds.includes(track.id)));
         setSelectedListenBarItemIds((current) => current.filter((id) => !removedItemIds.includes(id)));
@@ -1394,6 +1381,7 @@ function ProfileInner() {
           .join(" / "),
         href: "/listen-bar",
         date: track.created_at,
+        artist: track.artist,
         genre: track.genre,
         aiTool: track.ai_tool,
         audioUrl: storagePublicUrl(LISTEN_BAR_AUDIO_BUCKET, track.audio_path),
@@ -1428,9 +1416,11 @@ function ProfileInner() {
           .join(" / "),
         href: lang === "en" ? "/rank?lang=en" : "/rank?lang=zh",
         date: track.ai_music_showtime_certified_at ?? track.created_at,
+        artist: track.artist,
         genre: track.genre,
         aiTool: track.ai_tool,
         audioUrl: storagePublicUrl(LISTEN_BAR_AUDIO_BUCKET, track.audio_path),
+        coverUrl: storagePublicUrl(LISTEN_BAR_COVER_BUCKET, track.cover_path) ?? DEFAULT_LISTEN_BAR_COVER,
         trackId: track.id,
         showtimeTrack: track,
       };
@@ -1444,6 +1434,7 @@ function ProfileInner() {
       meta: [compactStatus(queue.status, lang), queue.ai_tool?.trim(), queue.genre?.trim()].filter(Boolean).join(" / "),
       href: queue.match_group_id ? `/battle/${queue.match_group_id}` : "/battle/setup",
       date: queue.created_at ?? queue.scheduled_start_at,
+      artist: fighterName || (isZh ? "AIPOGER 音樂人" : "AIPOGER Artist"),
       genre: queue.genre,
       aiTool: queue.ai_tool,
       audioUrl: queue.previewAudioUrl,
@@ -1496,8 +1487,10 @@ function ProfileInner() {
         href,
         canNavigate: Boolean(href),
         date: record.updatedAt,
+        artist: record.targetArtist,
         genre: record.targetGenre,
         audioUrl: record.audioUrl,
+        coverUrl: DEFAULT_LISTEN_BAR_COVER,
         favoriteRecord: record,
       };
     });
@@ -1528,6 +1521,7 @@ function ProfileInner() {
     copy.records,
     copy.wins,
     favoriteOrder,
+    fighterName,
     honorFavorites,
     isZh,
     lang,
@@ -1600,7 +1594,7 @@ function ProfileInner() {
   const creatorEmptyText = creatorFilter === "favorites" ? copy.favoriteEmpty : copy.empty;
 
   return (
-    <div className="aipo-stage-bg min-h-screen px-4 pb-10 pt-24 text-white sm:py-10">
+    <div className="aipo-stage-bg min-h-screen px-4 pb-40 pt-24 text-white sm:pb-28 sm:pt-10">
       <div className="relative z-10 mx-auto w-full max-w-6xl space-y-6">
         <header className="max-w-3xl">
           <p className="aipo-section-kicker">{copy.kicker}</p>
@@ -2105,11 +2099,15 @@ function ProfileInner() {
                         ) : item.audioUrl ? (
                           <button
                             type="button"
-                            onClick={() => togglePreview(item)}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              playProfileItem(item);
+                            }}
                             className="flex h-10 w-10 items-center justify-center rounded-full border border-cyan-200/30 bg-cyan-300/[0.08] text-sm font-black text-cyan-100 transition hover:border-cyan-100 hover:bg-cyan-300/15"
-                            aria-label={previewingItemId === item.id ? (isZh ? "暫停預覽" : "Pause preview") : (isZh ? "預覽歌曲" : "Preview track")}
+                            aria-label={`${isZh ? "播放" : "Play"} ${item.title}`}
                           >
-                            {previewingItemId === item.id ? "Ⅱ" : "▶"}
+                            ▶
                           </button>
                         ) : (
                           <span className="h-10 w-10" aria-hidden="true" />
@@ -2514,6 +2512,7 @@ function ProfileInner() {
           }}
         />
       ) : null}
+      <ShowtimeQueuePlayer ref={profilePlayerRef} isZh={isZh} />
     </div>
   );
 }
