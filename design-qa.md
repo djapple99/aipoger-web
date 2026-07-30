@@ -73,6 +73,60 @@ final result: passed
 
 ---
 
+# Listen Bar Admin Review Controls — Design QA (2026-07-31)
+
+## Comparison Target
+
+- User-reported source: `/Users/huangyihong/Desktop/截屏2026-07-31 凌晨1.50.35.png`
+- Same-viewport production before: `/tmp/aipoger-admin-listen-bar-qa/source-production-before-1701x847.jpg`
+- Browser-rendered production implementation: `/tmp/aipoger-admin-listen-bar-qa/implementation-toolbar-1701x847.jpg`
+- Combined full-view comparison: `/tmp/aipoger-admin-listen-bar-qa/comparison-before-left-after-right.jpg`
+- Combined focused comparison: `/tmp/aipoger-admin-listen-bar-qa/comparison-focus-before-left-after-right.jpg`
+- Shared-player state: `/tmp/aipoger-admin-listen-bar-qa/implementation-player-1701x847.jpg`
+- Route/state: `https://aipoger.com/admin/listen-bar?lang=zh`, signed-in owner session, active-song management view.
+- Viewport: `1701 × 847` CSS pixels in the owner's existing Chrome session for both before and after captures.
+
+## Full-view And Focused Evidence
+
+The combined input places the previous production toolbar on the left and the revised production toolbar on the right. The old five-column declaration wrapped the sixth sort control onto a second line and squeezed the upload-time button into a narrow vertical pill. The revised six-column responsive grid keeps all six controls on one desktop row without changing the surrounding management card, search field, status filters, or track density.
+
+The focused comparison confirms that all six controls share the same `44 px` height, `12 px` corner radius, and `401.5 px` top coordinate at the measured state. Button labels stay on one line, all dropdowns fit inside the toolbar, and the sort selector is no longer orphaned below the row.
+
+## Required Fidelity Surfaces
+
+- Fonts and typography: passed. Existing admin type scale and weight hierarchy remain intact; formerly vertical button copy now stays readable on one line.
+- Spacing and layout: passed. The six controls divide the available `721.59 px` toolbar width evenly with `8 px` gaps and identical top/bottom alignment.
+- Colors and tokens: passed. Existing cyan active, orange action, dark-surface, and border tokens are unchanged.
+- Image quality and assets: passed. Existing track covers and AIPOGER brand assets remain untouched; the new playback affordances use the installed Lucide icon family.
+- Icons: passed. Play, pause, volume, and close use one consistent icon set and optical scale.
+- Copy and content: passed. Current filter names and sort choices remain unchanged.
+- Responsiveness and accessibility: passed for the requested desktop surface. The toolbar explicitly steps through two, three, and six columns at responsive breakpoints, keeps controls at a `44 px` target height, and prevents button-label wrapping. The authenticated production browser could not be resized independently without discarding the owner's session, so narrower breakpoints were verified through the responsive source contract, build, and regression assertions rather than a second authenticated screenshot.
+
+## Interaction And Runtime Checks
+
+- Production rendered ten track-row play buttons and zero per-card native audio controls.
+- Starting the first song created exactly one fixed bottom player; selecting a second song replaced its title and active row while the player count remained one.
+- The player measured the full `1686 px` content width, stayed fixed to the viewport bottom, and exposed play/pause, seek, volume, and close controls.
+- Closing removed the player. The selected `上傳時間：新到舊` view remained `created_desc` after opening, switching, and closing previews.
+- Saving metadata was not performed against real production records. Preservation of visibility, genre, month, search, sort, and page state is covered by the removal of both forced `updated_desc` resets and a dedicated regression test.
+- Fresh browser logging showed no application error. One error originated from an installed Chrome extension URL and is unrelated to AIPOGER.
+
+## Findings And Iteration History
+
+### Pass 1
+
+- P1 behavior: metadata and bulk-metadata saves forced the list to update-time sorting, interrupting upload-time review. Fix: removed both forced sort resets so the complete current view remains untouched.
+- P2 layout: six controls were assigned to five grid columns, causing a tall wrapped button and an orphaned sort selector. Fix: introduced a six-column desktop grid and one shared control height/radius.
+- P2 playback: native audio controls occupied every card and made stopping the active song spatially difficult. Fix: reduced each row to one play button and routed every preview through one persistent bottom player.
+
+### Pass 2
+
+- Post-deployment production measurements, combined comparison, player switching, close behavior, selected upload-time view, and application logs show no remaining actionable P0, P1, or P2 finding.
+
+final result: passed
+
+---
+
 # Homepage Four-Destination Panel — Design QA (2026-07-31)
 
 ## Comparison Target
