@@ -1681,6 +1681,14 @@ function BattlePoolList() {
                       >
                         {isZh ? "進入戰場" : "Enter Arena"}
                       </Link>
+                      {!isMatched && entry.status === "waiting_challenge" ? (
+                        <Link
+                          href={acceptPath}
+                          className="aipo-primary-button rounded-full px-4 py-2 text-sm font-black transition"
+                        >
+                          {isZh ? "用另一首 Drop 挑戰" : "Challenge With Another Drop"}
+                        </Link>
+                      ) : null}
                       {!isMatched ? (
                         <button
                           type="button"

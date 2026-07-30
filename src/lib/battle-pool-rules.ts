@@ -167,8 +167,8 @@ export function canBattleEntriesMatch(
   targetQueueId?: string | null,
   maxLevelGap = 2,
 ): boolean {
-  if (challenger.userId === opponent.userId) return false;
   if (challenger.queueId === opponent.queueId) return false;
+  if (!targetQueueId && challenger.userId === opponent.userId) return false;
   if (!isOpenPoolStatus(challenger.status) || !isOpenPoolStatus(opponent.status)) return false;
   if (normalizeBattleGenre(challenger.genre) !== normalizeBattleGenre(opponent.genre)) return false;
   if (targetQueueId && opponent.queueId !== targetQueueId) return false;

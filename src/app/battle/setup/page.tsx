@@ -1614,7 +1614,9 @@ export default function BattleSetupPage() {
         </p>
         {challengeEntryId && (
           <p className="mx-auto mt-4 max-w-xl rounded-full border border-orange-400/30 bg-orange-500/10 px-4 py-2 text-xs font-bold text-orange-100">
-            你正在接受公開挑戰池的最強抓波 Drop Battle，上傳後會優先與該作品配對
+            {lang === 'zh'
+              ? '你正在指定挑戰這張 Drop Battle 戰帖；上傳後只會與這張卡配對。'
+              : 'You are targeting this Drop Battle card. Your upload will match only with this card.'}
           </p>
         )}
         {battleMode === 'instant' && draft?.fullAudioPublic && (

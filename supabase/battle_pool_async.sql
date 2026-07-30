@@ -459,7 +459,7 @@ begin
   from public.battle_queue q
   left join public.user_profiles op on op.id = q.user_id
   where q.status in ('searching', 'waiting', 'waiting_challenge')
-    and q.user_id <> me_row.user_id
+    and (p_target_queue_id is not null or q.user_id <> me_row.user_id)
     and q.id <> me_row.id
     and q.genre = me_row.genre
     and abs(coalesce(op.level, 1) - coalesce(me_level, 1)) <= 2

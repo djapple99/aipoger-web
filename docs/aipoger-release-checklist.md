@@ -74,6 +74,7 @@ Check:
 - Ended `/battle/[id]` links with no active rematch redirect to `/listen-bar`.
 - Ended `/battle/[id]` links with active or uploaded rematch stay in the battle flow.
 - Accepting a challenge card respects genre and ownership rules.
+- A creator-owned waiting card shows `用另一首 Drop 挑戰` / `Challenge With Another Drop`; that explicit target flow may compare two same-genre Drops from the same account, while automatic pairing still never self-matches.
 - Both participants can cancel an unfinished Drop Battle when the user is eligible.
 - Quick start labels and stored start times are based on successful publish time, not a stale `expires_at`.
 - Waiting room opens correctly.

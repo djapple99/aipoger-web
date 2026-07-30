@@ -227,6 +227,27 @@ test("targeted challenge still requires the same genre", () => {
   );
 });
 
+test("targeted challenge allows two different Drops from the same creator", () => {
+  const challenger = {
+    userId: "user-a",
+    queueId: "queue-challenger",
+    genre: "EDM 百大電音",
+    status: "searching",
+    level: 2,
+  };
+  const ownOpenCard = {
+    userId: "user-a",
+    queueId: "queue-founder",
+    genre: "EDM 百大電音",
+    status: "waiting_challenge",
+    level: 2,
+  };
+
+  assert.equal(canBattleEntriesMatch(challenger, ownOpenCard, "queue-founder"), true);
+  assert.equal(canBattleEntriesMatch(challenger, ownOpenCard), false);
+  assert.equal(canBattleEntriesMatch(challenger, challenger, "queue-challenger"), false);
+});
+
 test("mobile auth can build Chrome open URLs for embedded browsers", () => {
   assert.equal(
     buildChromeOpenUrl("https://aipoger.com/auth?next=%2Fbattle", "Mozilla/5.0 (iPhone) Line/15.0"),

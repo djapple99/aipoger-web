@@ -6,6 +6,11 @@ const battlePageSource = readFileSync(new URL("../src/app/battle/page.tsx", impo
 const productRulesSource = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
 const i18nSource = readFileSync(new URL("../src/lib/i18n.tsx", import.meta.url), "utf8");
 const battleResultsSource = readFileSync(new URL("../src/app/battle/results/results-client.tsx", import.meta.url), "utf8");
+const matchmakingRouteSource = readFileSync(new URL("../src/app/api/battle-pool/attempt-matchmaking/route.ts", import.meta.url), "utf8");
+const selfChallengeMigrationSource = readFileSync(
+  new URL("../supabase/migrations/20260730165800_allow_targeted_drop_self_challenge.sql", import.meta.url),
+  "utf8",
+);
 
 test("Battle Pool uses current official gatekeeper copy", () => {
   assert.ok(battlePageSource.includes("歡迎任何人來挑戰 AIPOGER 官方關卡"));
@@ -35,6 +40,24 @@ test("Battle Pool compact navigation starts with Explore and keeps share separat
   assert.equal(battlePageSource.includes("battle-stage-waveform"), false);
   assert.equal(battlePageSource.includes("battle-stage-deck"), false);
   assert.equal(battlePageSource.includes("battle-stage-eq"), false);
+});
+
+test("creator-owned waiting cards expose intentional self challenge", () => {
+  assert.ok(battlePageSource.includes("用另一首 Drop 挑戰"));
+  assert.ok(battlePageSource.includes("Challenge With Another Drop"));
+  assert.match(
+    battlePageSource,
+    /!isMatched && entry\.status === "waiting_challenge"[\s\S]*?href=\{acceptPath\}/,
+  );
+});
+
+test("targeted self challenge stays explicit across API and SQL", () => {
+  assert.match(
+    matchmakingRouteSource,
+    /if \(targetQueueId\)[\s\S]*?opponentQuery = opponentQuery\.eq\("id", targetQueueId\);[\s\S]*?else \{[\s\S]*?\.neq\("user_id", meRow\.user_id\)/,
+  );
+  assert.ok(selfChallengeMigrationSource.includes("p_target_queue_id is not null or q.user_id <> me_row.user_id"));
+  assert.ok(selfChallengeMigrationSource.includes("queue_a_id <> queue_b_id"));
 });
 
 test("public Battle archive uses Battle Records instead of Result Wall", () => {
