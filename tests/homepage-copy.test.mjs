@@ -32,7 +32,8 @@ test("desktop homepage keeps the social rail clear of the lower entry cards", ()
     homePageSource,
     /<SocialIconCluster[\s\S]*?iconClassName="h-9 w-9"[\s\S]*?size="compact"/,
   );
-  assert.ok(homePageSource.includes("mt-[clamp(1.4rem,3.05vh,2.2rem)] border-t"));
+  assert.ok(homePageSource.includes("pb-[clamp(1.4rem,3vh,2rem)]"));
+  assert.ok(homePageSource.includes("mt-[clamp(2rem,4.35vh,2.85rem)] border-t"));
 });
 
 test("homepage no longer advertises retired 90s Drop Battle labels", () => {

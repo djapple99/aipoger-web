@@ -133,11 +133,12 @@ final result: passed
 
 - Source visual truth: `/Users/huangyihong/Desktop/截屏2026-07-31 凌晨1.27.39.png`
 - Normalized source: `/tmp/aipoger-home-spacing-qa/source-normalized-1558x789.png`
-- Browser-rendered implementation: `/tmp/aipoger-home-spacing-qa/implementation-1558x789.png`
-- Combined full-view comparison: `/tmp/aipoger-home-spacing-qa/comparison-full-source-left.png`
-- Combined focused comparison: `/tmp/aipoger-home-spacing-qa/comparison-focus-source-left.png`
-- Desktop pressure check: `/tmp/aipoger-home-spacing-qa/implementation-1440x900.png`
-- Mobile evidence: `/tmp/aipoger-home-spacing-qa/implementation-390x844.png`
+- Second-pass source: `/tmp/aipoger-home-spacing-qa/production-1558x789.png`
+- Browser-rendered final implementation: `/tmp/aipoger-home-alignment-qa/implementation-final-1558x789.png`
+- Combined final full-view comparison: `/tmp/aipoger-home-alignment-qa/comparison-full-before-left.png`
+- Combined final focused comparison: `/tmp/aipoger-home-alignment-qa/comparison-focus-before-left.png`
+- Desktop pressure check: `/tmp/aipoger-home-alignment-qa/implementation-1440x900.png`
+- Mobile evidence: `/tmp/aipoger-home-alignment-qa/implementation-390x844.png`
 - Route/state: `/?lang=zh`, post-splash homepage. The source is signed in and the implementation is signed out; the social rail and lower navigation are in the same layout state.
 - Dimensions and normalization: the source is a Retina `3116 × 1578` capture normalized to its `1558 × 789` CSS frame. The implementation is a `1558 × 789` browser capture at `1×`. The mobile check uses a `390 × 844` CSS viewport and produces a `375 × 812` content capture after browser edges.
 
@@ -147,12 +148,12 @@ The combined input places the user's source screenshot on the left and the revis
 
 ## Focused Region Evidence
 
-The focused comparison shows that the source's 48px social buttons descend into the lower-card boundary, while the revised 40px buttons finish above the divider. The complete lower navigation row is shifted down by roughly 5–6px. At the matched `1558 × 789` viewport, the social-button bottom is `619.63px`, the card top is `643.81px`, and the resulting clear gap is `24.19px`.
+The focused comparison shows that the source's 48px social buttons descend into the lower-card boundary, while the revised 40px buttons finish above the divider. After the user's second alignment pass, the complete lower navigation row moves another `10.26px` down. At the matched `1558 × 789` viewport, all five cards share the same `654.07px` top and `763.26px` bottom, the social-button bottom is `619.63px`, the clear gap is `34.45px`, and the cards finish on a consistent `25.74px` bottom inset.
 
 ## Required Fidelity Surfaces
 
 - Fonts and typography: passed. No title, label, weight, line-height, wrapping, or content hierarchy changed.
-- Spacing and layout rhythm: passed. The compact social rail no longer collides with the divider or cards, and the lower row moves as one unit without sinking out of the first viewport.
+- Spacing and layout rhythm: passed. The compact social rail no longer collides with the divider or cards. All five lower cards share the same top and bottom coordinates, sit on a deliberate bottom baseline, and remain fully visible without creating a desktop scrollbar.
 - Colors and visual tokens: passed. Existing social brand colors, near-black surfaces, orange borders, and cyan accents remain unchanged.
 - Image quality and asset fidelity: passed. Existing official social icons, AIPOGER imagery, and lower-card assets remain intact and sharp; no substitute artwork was introduced.
 - Copy and content: passed. Social destinations, QR affordance, and all five lower-card labels and descriptions are unchanged.
@@ -168,6 +169,12 @@ The focused comparison shows that the source's 48px social buttons descend into 
 - Post-fix evidence: the normalized full-view and focused comparisons show a measured `24.19px` clear gap between social controls and lower cards.
 
 ### Pass 2
+
+- The first fix removed the collision but the user judged the desktop lower row still visually too high for the intended bottom alignment.
+- Fix: increased the desktop lower-row margin by another `10.26px` at the matched viewport and reduced only the desktop wrapper's bottom padding so the row could sit lower without creating vertical overflow.
+- Post-fix evidence: the final focused comparison shows five identical card tops and bottoms, a `34.45px` social-to-card gap, a `25.74px` bottom inset, and no scrollbar.
+
+### Pass 3
 
 - No actionable P0, P1, or P2 findings remain at the matched viewport, `1440 × 900`, or `390 × 844`.
 

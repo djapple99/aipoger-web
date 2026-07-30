@@ -501,7 +501,7 @@ function DesktopReferenceHome({
       <div className="pointer-events-none absolute inset-0 opacity-[0.028] [background-image:linear-gradient(rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.12)_1px,transparent_1px)] [background-size:48px_48px]" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[28vh] bg-gradient-to-t from-black via-black/70 to-transparent" />
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-[1840px] flex-col px-[clamp(4.25rem,7.2vw,8.5rem)] pb-[clamp(2rem,4vh,3.35rem)] pt-[clamp(5.7rem,8.2vh,7.1rem)]">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-[1840px] flex-col px-[clamp(4.25rem,7.2vw,8.5rem)] pb-[clamp(1.4rem,3vh,2rem)] pt-[clamp(5.7rem,8.2vh,7.1rem)]">
         <div className="pointer-events-none absolute left-[clamp(4.25rem,7.2vw,8.5rem)] right-[clamp(4.25rem,7.2vw,8.5rem)] top-[clamp(5.25rem,7.4vh,6.5rem)] h-px bg-gradient-to-r from-transparent via-orange-300/55 to-transparent" />
         <div className="pointer-events-none absolute left-[clamp(4.25rem,7.2vw,8.5rem)] top-[clamp(7.1rem,11vh,9.2rem)] h-[47vh] w-px rounded-full bg-gradient-to-b from-transparent via-orange-300/42 to-transparent" />
         <div className="pointer-events-none absolute right-[clamp(4.25rem,7.2vw,8.5rem)] top-[clamp(6.9rem,10vh,8.4rem)] h-[50vh] w-px rounded-full bg-gradient-to-b from-transparent via-cyan-200/28 to-transparent" />
@@ -651,7 +651,7 @@ function DesktopReferenceHome({
           </div>
         </div>
 
-        <div className="relative z-10 mt-[clamp(1.4rem,3.05vh,2.2rem)] border-t border-orange-300/22 pt-[clamp(0.9rem,1.7vh,1.3rem)]">
+        <div className="relative z-10 mt-[clamp(2rem,4.35vh,2.85rem)] border-t border-orange-300/22 pt-[clamp(0.9rem,1.7vh,1.3rem)]">
           <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-300/48 to-transparent" />
           <div className="grid grid-cols-5 gap-[clamp(0.55rem,0.85vw,0.9rem)]">
             {infoLinks.map((item, index) => (
