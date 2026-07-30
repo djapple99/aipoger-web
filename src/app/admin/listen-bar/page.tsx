@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { ChangeEvent, FormEvent, SyntheticEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Play } from "lucide-react";
+import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { ChoicePreviewPlayer } from "@/components/choice-preview-player";
 import LangToggle from "@/components/lang-toggle";
 import SafetyNotice from "@/components/safety-notice";
+import type { AipogerChoiceCatalogItem } from "@/lib/aipoger-choice";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { fontGlowSans, fontRighteous } from "@/lib/fonts";
 import {
@@ -357,6 +360,22 @@ function metadataFormFromTrack(track: AdminListenBarTrackRow): TrackMetadataForm
   };
 }
 
+function previewItemFromTrack(track: AdminListenBarTrackRow): AipogerChoiceCatalogItem {
+  return {
+    id: track.id,
+    sourceKind: "listen_bar_track",
+    title: track.title?.trim() || "未命名作品",
+    artist: track.artist?.trim() || "AIPOGER 創作者",
+    genre: track.genre?.trim() || "AI Music",
+    coverUrl: rowPublicUrl(LISTEN_BAR_COVER_BUCKET, track.cover_path) || DEFAULT_LISTEN_BAR_COVER,
+    audioUrl: rowPublicUrl(LISTEN_BAR_AUDIO_BUCKET, track.audio_path) || null,
+    recognition: "傷心酒吧後台試聽",
+    certifiedAt: track.created_at ?? track.updated_at ?? new Date(0).toISOString(),
+    isPublic: false,
+    selectable: false,
+  };
+}
+
 function sortTracksForAdmin(tracks: AdminListenBarTrackRow[], mode: TrackSortMode) {
   const next = [...tracks];
   if (mode === "manual") return next;
@@ -391,7 +410,7 @@ export default function ListenBarAdminPage() {
   const [embeddedCover, setEmbeddedCover] = useState<ParsedMp3Metadata["cover"] | null>(null);
   const [coverPreview, setCoverPreview] = useState(DEFAULT_LISTEN_BAR_COVER);
   const [audioPreview, setAudioPreview] = useState("");
-  const activeAdminAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [previewTrack, setPreviewTrack] = useState<AipogerChoiceCatalogItem | null>(null);
   const [tableReady, setTableReady] = useState(true);
   const [openReportCount, setOpenReportCount] = useState(0);
   const [reportStorageFallback, setReportStorageFallback] = useState(false);
@@ -549,27 +568,12 @@ export default function ListenBarAdminPage() {
     if (trackPage > trackTotalPages) setTrackPage(trackTotalPages);
   }, [trackPage, trackTotalPages]);
 
-  useEffect(() => {
-    return () => {
-      activeAdminAudioRef.current?.pause();
-      activeAdminAudioRef.current = null;
-    };
-  }, []);
-
   const updateForm = (patch: Partial<TrackForm>) => {
     setForm((current) => ({ ...current, ...patch }));
   };
 
   const updateMetadataForm = (patch: Partial<TrackMetadataForm>) => {
     setMetadataForm((current) => (current ? { ...current, ...patch } : current));
-  };
-
-  const handleAdminAudioPlay = (event: SyntheticEvent<HTMLAudioElement>) => {
-    const currentAudio = event.currentTarget;
-    document.querySelectorAll<HTMLAudioElement>("[data-admin-listen-bar-audio]").forEach((audio) => {
-      if (audio !== currentAudio) audio.pause();
-    });
-    activeAdminAudioRef.current = currentAudio;
   };
 
   const focusTrackInList = useCallback((trackId: string) => {
@@ -608,6 +612,7 @@ export default function ListenBarAdminPage() {
     event.target.value = "";
     setError("");
     setMessage("");
+    setPreviewTrack((current) => (current?.id.startsWith("upload-preview:") ? null : current));
     if (audioPreview) URL.revokeObjectURL(audioPreview);
     if (file && !isAllowedListenBarAudioFile(file)) {
       setAudioFile(null);
@@ -753,6 +758,7 @@ export default function ListenBarAdminPage() {
       setEmbeddedCover(null);
       setAudioPreview("");
       setCoverPreview(DEFAULT_LISTEN_BAR_COVER);
+      setPreviewTrack((current) => (current?.id.startsWith("upload-preview:") ? null : current));
       setMessage("已加入傷心酒吧官方輪播。");
       await loadTracks();
     } catch (saveError) {
@@ -1106,7 +1112,6 @@ export default function ListenBarAdminPage() {
     setBulkMetadataForm(initialBulkMetadataForm);
     setOptimisticTrackPatches({});
     setSelectedTrackIds([]);
-    setTrackSortMode("updated_desc");
     setMessage(`已更新 ${selectedTrackIds.length} 首歌曲資料。`);
     setPlaylistBusy(false);
   };
@@ -1156,7 +1161,6 @@ export default function ListenBarAdminPage() {
     }
     setTracks(payload?.tracks ?? []);
     setOptimisticTrackPatches({});
-    setTrackSortMode("updated_desc");
     setFocusedTrackId(track.id);
     setEditingTrackId("");
     setMetadataForm(null);
@@ -1198,7 +1202,7 @@ export default function ListenBarAdminPage() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#050505] px-4 py-5 text-zinc-100 sm:px-6 lg:px-8">
+    <main className="relative min-h-screen overflow-hidden bg-[#050505] px-4 pb-32 pt-5 text-zinc-100 sm:px-6 sm:pb-28 lg:px-8">
       <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_16%_10%,rgba(255,106,0,0.28),transparent_32%),radial-gradient(circle_at_86%_18%,rgba(0,202,255,0.16),transparent_30%),linear-gradient(180deg,#050505_0%,#090706_45%,#050505_100%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.14] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:54px_54px]" />
 
@@ -1360,16 +1364,26 @@ export default function ListenBarAdminPage() {
               </label>
 
               {audioPreview && (
-                <audio
-                  className="w-full accent-orange-500"
-                  controls
-                  data-admin-listen-bar-audio="true"
-                  onPlay={handleAdminAudioPlay}
-                  preload="metadata"
-                  src={audioPreview}
+                <button
+                  type="button"
+                  onClick={() => setPreviewTrack({
+                    id: `upload-preview:${audioPreview}`,
+                    sourceKind: "listen_bar_track",
+                    title: form.title.trim() || audioFile?.name || "新上傳音檔",
+                    artist: form.artist.trim() || "AIPOGER",
+                    genre: form.genre.trim() || "AI Music",
+                    coverUrl: coverPreview,
+                    audioUrl: audioPreview,
+                    recognition: "新增輪播歌曲試聽",
+                    certifiedAt: new Date().toISOString(),
+                    isPublic: false,
+                    selectable: false,
+                  })}
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-orange-300/35 bg-orange-500/10 px-4 text-xs font-black text-orange-100 transition hover:border-orange-200/70 hover:bg-orange-500/16 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-200/55"
                 >
-                  <track kind="captions" />
-                </audio>
+                  <Play className="h-4 w-4" fill="currentColor" />
+                  試聽新音檔
+                </button>
               )}
 
               <div className="grid gap-3 sm:grid-cols-[8rem_1fr]">
@@ -1485,19 +1499,19 @@ export default function ListenBarAdminPage() {
                 placeholder="搜尋歌名、創作者、AI 工具、類型、狀態"
                 className="h-11 w-full rounded-xl border border-white/12 bg-black/50 px-4 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-200/70"
               />
-              <div className="grid gap-2 sm:grid-cols-[auto_auto_minmax(11rem,1fr)_minmax(9rem,1fr)_minmax(10rem,1fr)]">
+              <div data-admin-listen-bar-toolbar className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                 <button
                   type="button"
                   onClick={toggleRenderedSelection}
                   disabled={pagedRenderedTracks.length === 0}
-                  className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45"
+                  className="h-11 min-w-0 whitespace-nowrap rounded-xl border border-white/12 px-3 text-xs font-black text-zinc-200 transition hover:border-cyan-200/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 disabled:cursor-not-allowed disabled:opacity-45"
                 >
                   {allRenderedSelected ? "取消本頁選取" : "選取本頁"}
                 </button>
                 <button
                   type="button"
                   onClick={() => setTrackSortMode((current) => (current === "updated_desc" ? "updated_asc" : "updated_desc"))}
-                  className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 ${
+                  className={`h-11 min-w-0 whitespace-nowrap rounded-xl border px-3 text-xs font-black transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 ${
                     trackSortMode === "updated_desc" || trackSortMode === "updated_asc"
                       ? "border-cyan-200/55 bg-cyan-300/10 text-cyan-100"
                       : "border-white/12 text-zinc-200 hover:border-cyan-200/55"
@@ -1508,7 +1522,7 @@ export default function ListenBarAdminPage() {
                 <button
                   type="button"
                   onClick={() => setTrackSortMode((current) => (current === "genre" ? "manual" : "genre"))}
-                  className={`rounded-full border px-4 py-2 text-xs font-black transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 ${
+                  className={`h-11 min-w-0 whitespace-nowrap rounded-xl border px-3 text-xs font-black transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 ${
                     trackSortMode === "genre"
                       ? "border-cyan-200/55 bg-cyan-300/10 text-cyan-100"
                       : "border-white/12 text-zinc-200 hover:border-cyan-200/55"
@@ -1519,7 +1533,7 @@ export default function ListenBarAdminPage() {
                 <select
                   value={trackGenreFilter}
                   onChange={(event) => setTrackGenreFilter(event.target.value)}
-                  className="h-10 rounded-full border border-white/12 bg-black/55 px-4 text-xs font-black text-zinc-200 outline-none transition focus:border-cyan-200/70"
+                  className="h-11 min-w-0 w-full rounded-xl border border-white/12 bg-black/55 px-3 text-xs font-black text-zinc-200 outline-none transition focus:border-cyan-200/70"
                   aria-label="依歌曲種類篩選"
                 >
                   <option value="all">全部種類</option>
@@ -1532,7 +1546,7 @@ export default function ListenBarAdminPage() {
                 <select
                   value={trackMonthFilter}
                   onChange={(event) => setTrackMonthFilter(event.target.value)}
-                  className="h-10 rounded-full border border-white/12 bg-black/55 px-4 text-xs font-black text-zinc-200 outline-none transition focus:border-cyan-200/70"
+                  className="h-11 min-w-0 w-full rounded-xl border border-white/12 bg-black/55 px-3 text-xs font-black text-zinc-200 outline-none transition focus:border-cyan-200/70"
                 >
                   <option value="all">全部月份</option>
                   {monthOptions.map((month) => (
@@ -1544,7 +1558,7 @@ export default function ListenBarAdminPage() {
                 <select
                   value={trackSortMode}
                   onChange={(event) => setTrackSortMode(event.target.value as TrackSortMode)}
-                  className="h-10 rounded-full border border-white/12 bg-black/55 px-4 text-xs font-black text-zinc-200 outline-none transition focus:border-cyan-200/70"
+                  className="h-11 min-w-0 w-full rounded-xl border border-white/12 bg-black/55 px-3 text-xs font-black text-zinc-200 outline-none transition focus:border-cyan-200/70"
                 >
                   <option value="manual">管理順序</option>
                   <option value="updated_desc">更新時間：新到舊</option>
@@ -1741,23 +1755,22 @@ export default function ListenBarAdminPage() {
                               排序 <span className="font-black text-white">{track.sort_order ?? 100}</span>
                             </div>
                           </div>
-                          {audioUrl && (
-                            <audio
-                              className="mt-3 w-full accent-orange-500"
-                              controls
-                              controlsList="nodownload noplaybackrate"
-                              data-admin-listen-bar-audio="true"
-                              onPlay={handleAdminAudioPlay}
-                              preload="metadata"
-                              src={audioUrl}
+                          <div className="mt-2 grid grid-cols-3 gap-1.5 sm:mt-3 sm:flex sm:flex-wrap sm:gap-2">
+                            <button
+                              type="button"
+                              disabled={!audioUrl}
+                              onClick={() => setPreviewTrack(previewItemFromTrack(track))}
+                              aria-label={`播放 ${track.title}`}
+                              aria-pressed={previewTrack?.id === track.id}
+                              title={audioUrl ? "使用底部播放器試聽" : "目前沒有可播放音檔"}
+                              className={`inline-flex min-h-8 items-center justify-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-black transition focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-200/55 disabled:cursor-not-allowed disabled:opacity-35 sm:px-4 sm:py-2 sm:text-xs ${previewTrack?.id === track.id ? "border-orange-200/65 bg-orange-500 text-black" : "border-orange-200/30 bg-orange-500/10 text-orange-100 hover:border-orange-200/65"}`}
                             >
-                              <track kind="captions" />
-                            </audio>
-                          )}
-	                          <div className="mt-2 grid grid-cols-3 gap-1.5 sm:mt-3 sm:flex sm:flex-wrap sm:gap-2">
-	                            <button type="button" disabled={metadataSavingId === track.id} onClick={() => (editing ? cancelEditTrack() : beginEditTrack(track))} className="min-h-8 rounded-full border border-orange-200/25 bg-orange-500/10 px-2 py-1 text-[11px] font-black text-orange-100 transition hover:border-orange-200/65 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-200/55 disabled:cursor-not-allowed disabled:opacity-45 sm:px-4 sm:py-2 sm:text-xs">
-	                              {editing ? "收起編輯" : "編輯資料"}
-	                            </button>
+                              <Play className="h-3.5 w-3.5" fill="currentColor" />
+                              播放
+                            </button>
+                            <button type="button" disabled={metadataSavingId === track.id} onClick={() => (editing ? cancelEditTrack() : beginEditTrack(track))} className="min-h-8 rounded-full border border-orange-200/25 bg-orange-500/10 px-2 py-1 text-[11px] font-black text-orange-100 transition hover:border-orange-200/65 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-200/55 disabled:cursor-not-allowed disabled:opacity-45 sm:px-4 sm:py-2 sm:text-xs">
+                              {editing ? "收起編輯" : "編輯資料"}
+                            </button>
 	                            <button type="button" disabled={operatingTrackId === track.id} onClick={() => void (hidden ? restoreTrack(track) : hideTrack(track))} className={`min-h-8 rounded-full border px-2 py-1 text-[11px] font-black transition focus:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-45 sm:px-4 sm:py-2 sm:text-xs ${hidden ? "border-cyan-300/25 text-cyan-100 hover:border-cyan-200/65 focus-visible:ring-cyan-200/55" : "border-white/12 text-zinc-200 hover:border-cyan-200/55 focus-visible:ring-cyan-200/55"}`}>
 	                              {operatingTrackId === track.id ? "處理中" : hidden ? "恢復上架" : "下架"}
 	                            </button>
@@ -1922,6 +1935,7 @@ export default function ListenBarAdminPage() {
           </section>
         </section>
       </div>
+      <ChoicePreviewPlayer track={previewTrack} onClose={() => setPreviewTrack(null)} />
     </main>
   );
 }

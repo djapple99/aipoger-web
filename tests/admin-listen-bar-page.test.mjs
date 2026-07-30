@@ -22,13 +22,25 @@ test("listen bar admin no longer exposes pending genre review as a primary filte
   assert.ok(productRulesSource.includes("Do not bring back a primary `待補類型` filter"));
 });
 
-test("listen bar admin audio previews are mutually exclusive", () => {
-  assert.ok(adminListenBarSource.includes("handleAdminAudioPlay"));
-  assert.ok(adminListenBarSource.includes('querySelectorAll<HTMLAudioElement>("[data-admin-listen-bar-audio]")'));
-  assert.ok(adminListenBarSource.includes("if (audio !== currentAudio) audio.pause();"));
-  assert.ok(adminListenBarSource.includes('data-admin-listen-bar-audio="true"'));
-  assert.ok(adminListenBarSource.includes("onPlay={handleAdminAudioPlay}"));
-  assert.ok(productRulesSource.includes("track-card audio controls must be mutually exclusive"));
+test("listen bar admin routes every preview through one bottom player", () => {
+  assert.ok(adminListenBarSource.includes('import { ChoicePreviewPlayer } from "@/components/choice-preview-player"'));
+  assert.ok(adminListenBarSource.includes("previewItemFromTrack"));
+  assert.ok(adminListenBarSource.includes("setPreviewTrack(previewItemFromTrack(track))"));
+  assert.ok(adminListenBarSource.includes("使用底部播放器試聽"));
+  assert.ok(adminListenBarSource.includes("<ChoicePreviewPlayer track={previewTrack}"));
+  assert.equal(adminListenBarSource.includes('data-admin-listen-bar-audio="true"'), false);
+  assert.ok(productRulesSource.includes("one fixed bottom preview player"));
+});
+
+test("listen bar admin keeps the current time view after metadata updates", () => {
+  assert.equal(adminListenBarSource.includes('setTrackSortMode("updated_desc")'), false);
+  assert.ok(productRulesSource.includes("preserve the current visibility, genre, month, search, sort, and page view"));
+});
+
+test("listen bar admin toolbar controls share one consistent size", () => {
+  assert.ok(adminListenBarSource.includes("data-admin-listen-bar-toolbar"));
+  assert.ok(adminListenBarSource.includes("xl:grid-cols-6"));
+  assert.ok(adminListenBarSource.includes("h-11 min-w-0 whitespace-nowrap rounded-xl"));
 });
 
 test("listen bar admin paginates management tracks and selects only the current page", () => {

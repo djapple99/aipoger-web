@@ -191,6 +191,9 @@ Choice and retired Spotlight:
 
 - `/admin/listen-bar` song management lists 10 songs per page; `選取本頁` selects only the current page, while bulk update / hide / restore / delete still works for accumulated selections.
 - `/admin/listen-bar` defaults to the `全部上架` active/on-air view, has no duplicate `隱藏下架` filter, keeps removed songs out of both active and hidden views, and provides separate `只看下架` and `已移除` views with restore. It shows `NEW` for `created_at` within seven rolling days and persists the owner-only external-promotion checkbox without changing `promoted_at`.
+- `/admin/listen-bar` search/filter toolbar uses one consistent control height and radius at desktop and mobile widths, with no vertically wrapped button labels or orphaned sort control.
+- `/admin/listen-bar` metadata and bulk-metadata saves preserve the current visibility, genre, month, search, sort, and page view; editing while sorted by upload time must not jump to update-time sorting.
+- `/admin/listen-bar` upload preview and track rows each expose one play action. Every preview switches the same fixed bottom player with play/pause, seek, volume, and close controls; no track card renders its own native audio control.
 - `/admin/listen-bar` has no Daily Spotlight selector, date, copy, media, preview, save, or draft-generation controls, and makes no Daily Spotlight API request.
 - `/listen-bar?spotlight=YYYY-MM-DD&lang=zh` returns normal Bar Heartbreak with no specified-song playback or Spotlight panel.
 - `/today?lang=zh` returns 307 to `/rank?lang=zh#choice-weekly`.

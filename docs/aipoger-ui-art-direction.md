@@ -248,3 +248,5 @@ Direction:
 - Admin pages can be more functional than public pages.
 - Avoid oversized hero design in admin tools.
 - Keep image/audio review and moderation actions clear.
+- Repeated filter and sorting controls in one toolbar must share a consistent height, radius, type scale, and responsive grid. Do not let one control wrap into a tall pill while its neighbors remain short.
+- Music-review lists use one compact play button per item and one fixed bottom preview player; do not embed a separate native audio bar inside every management card.
