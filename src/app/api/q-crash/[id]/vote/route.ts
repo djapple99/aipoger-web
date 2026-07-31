@@ -34,8 +34,9 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
   } = await admin.auth.getUser(token);
   if (!user) return jsonError("登入狀態已失效。", 401);
 
-  const body = (await request.json().catch(() => null)) as { votedFor?: QCrashSide } | null;
+  const body = (await request.json().catch(() => null)) as { votedFor?: QCrashSide; confirmed?: boolean } | null;
   if (body?.votedFor !== "fighter_a" && body?.votedFor !== "fighter_b") return jsonError("請選擇作品 A 或作品 B。");
+  if (body.confirmed !== true) return jsonError("請按「確定送出」完成投票。");
 
   const { data: card, error: cardError } = await admin
     .from("q_crash_cards")
@@ -102,6 +103,6 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
   return NextResponse.json({
     accepted: true,
     votedFor: body.votedFor,
-    message: "你已投票，結果將在截止後公開。",
+    message: "投票已確認送出，結果將在截止後公開。",
   });
 }

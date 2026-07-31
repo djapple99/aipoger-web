@@ -74,6 +74,11 @@ test("Q Crash voting requires sign-in, excludes participants, and cannot be chan
   assert.ok(voteRouteSource.includes('if (!token) return jsonError("請先登入再投票。", 401)'));
   assert.ok(voteRouteSource.includes("作品持有人不能替自己的 Q Crash 投票"));
   assert.ok(voteRouteSource.includes("Q Crash 不提供改票"));
+  assert.ok(voteRouteSource.includes('body.confirmed !== true'));
+  assert.ok(voteRouteSource.includes('請按「確定送出」完成投票'));
+  assert.ok(cardClientSource.includes('body: JSON.stringify({ votedFor, confirmed: true })'));
+  assert.ok(cardClientSource.includes('確定送出作品'));
+  assert.ok(cardClientSource.includes('送出前可繼續重播、快轉或改選；送出後無法更改。'));
   assert.ok(guestVoteRouteSource.includes('battle.battle_type === "q_crash"'));
 });
 
@@ -133,6 +138,7 @@ test("product rules lock the asynchronous Q Crash contract", () => {
     "`30 minutes`, `2 hours` (default), `6 hours`, and `24 hours`",
     "At least 3 establishes an official Drop Battle result",
     "Work owners cannot vote",
+    "Selecting work A or B is a reversible client-side draft",
     "No visitor, participant, or host may see counts",
     "Each of the five feedback keys",
     "Battle Pool renders one Q Crash matchup card",

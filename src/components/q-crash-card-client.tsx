@@ -187,6 +187,7 @@ function QCrashWorkCard(props: {
   final: boolean;
   winner: boolean;
   selectedVote: boolean;
+  submittedVote: boolean;
   canVote: boolean;
   votingBusy: boolean;
   isZh: boolean;
@@ -202,6 +203,7 @@ function QCrashWorkCard(props: {
     final,
     winner,
     selectedVote,
+    submittedVote,
     canVote,
     votingBusy,
     isZh,
@@ -298,11 +300,16 @@ function QCrashWorkCard(props: {
       {!final ? (
         <button
           type="button"
-          disabled={!canVote || votingBusy || selectedVote}
+          disabled={!canVote || votingBusy || submittedVote}
           onClick={onVote}
+          aria-pressed={selectedVote}
           className={`mt-4 flex min-h-13 w-full items-center justify-center gap-2 rounded-2xl border text-sm font-black transition ${
-            selectedVote
+            submittedVote
               ? "border-green-300/40 bg-green-400/12 text-green-100"
+              : selectedVote
+                ? side === "A"
+                  ? "border-orange-200 bg-orange-500/28 text-orange-50 shadow-[0_0_24px_rgba(249,115,22,0.14)]"
+                  : "border-cyan-200 bg-cyan-400/24 text-cyan-50 shadow-[0_0_24px_rgba(34,211,238,0.12)]"
               : canVote
                 ? side === "A"
                   ? "border-orange-300/55 bg-orange-500/16 text-orange-50 hover:bg-orange-500/28"
@@ -310,10 +317,12 @@ function QCrashWorkCard(props: {
                 : "cursor-not-allowed border-white/10 bg-white/[0.03] text-zinc-600"
           }`}
         >
-          {selectedVote ? <Check size={18} /> : <Heart size={18} fill={selectedVote ? "currentColor" : "none"} />}
-          {selectedVote
-            ? isZh ? "你已投這首" : "Your vote"
-            : isZh ? `投給作品 ${side}` : `Vote Work ${side}`}
+          {selectedVote ? <Check size={18} /> : <Heart size={18} />}
+          {submittedVote
+            ? isZh ? "你已投這首" : "Your submitted vote"
+            : selectedVote
+              ? isZh ? `已選作品 ${side}` : `Work ${side} selected`
+              : isZh ? `選擇作品 ${side}` : `Select Work ${side}`}
         </button>
       ) : null}
       <span className={`pointer-events-none absolute -right-12 top-7 h-px w-32 rotate-45 ${
@@ -338,6 +347,7 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.9);
+  const [pendingVote, setPendingVote] = useState<VoteSide | null>(null);
   const [votingBusy, setVotingBusy] = useState(false);
   const [feedbackSide, setFeedbackSide] = useState<Side>("A");
   const [feedbackBusy, setFeedbackBusy] = useState<QCrashFeedbackKey | null>(null);
@@ -411,6 +421,12 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
     if (audioRef.current) audioRef.current.volume = volume;
   }, [volume]);
 
+  useEffect(() => {
+    if (!payload || payload.card.status !== "q_crash_voting" || payload.viewer.hasVoted) {
+      setPendingVote(null);
+    }
+  }, [payload]);
+
   const works = payload?.works;
   const currentWork = currentSide ? works?.[currentSide] ?? null : null;
   const final = payload?.card.status === "q_crash_finished" || payload?.card.status === "q_crash_insufficient";
@@ -453,8 +469,9 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
     playSide(next);
   };
 
-  const vote = async (votedFor: VoteSide) => {
-    if (!payload) return;
+  const submitVote = async () => {
+    if (!payload || !pendingVote || votingBusy) return;
+    const votedFor = pendingVote;
     const session = (await supabase.auth.getSession()).data.session;
     if (!session?.access_token) {
       rememberAuthNextPath(currentPath);
@@ -469,7 +486,7 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
         "Content-Type": "application/json",
         Authorization: `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({ votedFor }),
+      body: JSON.stringify({ votedFor, confirmed: true }),
     });
     const data = (await response.json().catch(() => null)) as { error?: string } | null;
     if (!response.ok) {
@@ -484,6 +501,7 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
           votedFor,
         },
       } : current);
+      setPendingVote(null);
     }
     setVotingBusy(false);
   };
@@ -598,9 +616,11 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
     ? isZh ? "作品持有人不能投票；分享同一張卡，邀請聽眾決定。" : "Work owners cannot vote. Share the same card with listeners."
     : payload.viewer.hasVoted
       ? isZh ? "你已投票，結果將在截止後公開。" : "You voted. Results appear after the deadline."
+      : pendingVote
+        ? isZh ? `目前選擇作品 ${pendingVote === "fighter_a" ? "A" : "B"}，尚未送出。` : `Work ${pendingVote === "fighter_a" ? "A" : "B"} is selected but not submitted.`
       : !payload.viewer.userId
-        ? isZh ? "登入後才能投票；聽歌與分享保持開放。" : "Sign in to vote. Listening and sharing stay open."
-        : isZh ? "先聽兩段 Drop，再把唯一一票投給作品。" : "Hear both Drops, then cast your one vote.";
+        ? isZh ? "可先選 A／B；按確定送出時會請你登入。" : "Select A or B first. You will sign in when you confirm."
+        : isZh ? "可重播、快轉並切換選擇；按確定後才會送出票。" : "Replay, seek, and switch your choice. Your vote is sent only after confirmation.";
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_14%_8%,rgba(249,115,22,0.1),transparent_24%),radial-gradient(circle_at_88%_10%,rgba(34,211,238,0.07),transparent_26%),#020202] px-4 pb-52 pt-20 text-white md:px-8">
@@ -670,13 +690,14 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
                 playing={currentSide === "A" && playing}
                 final={Boolean(final)}
                 winner={winnerQueueId === works!.A.queueId}
-                selectedVote={payload.viewer.votedFor === "fighter_a"}
+                selectedVote={pendingVote === "fighter_a" || payload.viewer.votedFor === "fighter_a"}
+                submittedVote={payload.viewer.votedFor === "fighter_a"}
                 canVote={voteActionEnabled}
                 votingBusy={votingBusy}
                 isZh={isZh}
                 onPlay={() => playSide("A")}
                 onLyrics={() => setLyricsSide((current) => current === "A" ? null : "A")}
-                onVote={() => void vote("fighter_a")}
+                onVote={() => setPendingVote("fighter_a")}
               />
 
               <div className="flex items-center justify-center py-1 md:px-1">
@@ -693,13 +714,14 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
                   playing={currentSide === "B" && playing}
                   final={Boolean(final)}
                   winner={winnerQueueId === works!.B.queueId}
-                  selectedVote={payload.viewer.votedFor === "fighter_b"}
+                  selectedVote={pendingVote === "fighter_b" || payload.viewer.votedFor === "fighter_b"}
+                  submittedVote={payload.viewer.votedFor === "fighter_b"}
                   canVote={voteActionEnabled}
                   votingBusy={votingBusy}
                   isZh={isZh}
                   onPlay={() => playSide("B")}
                   onLyrics={() => setLyricsSide((current) => current === "B" ? null : "B")}
-                  onVote={() => void vote("fighter_b")}
+                  onVote={() => setPendingVote("fighter_b")}
                 />
               ) : (
                 <article className="flex min-h-64 flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-cyan-300/30 bg-cyan-300/[0.04] p-6 text-center">
@@ -760,6 +782,46 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
                 <p className="mt-1 text-xs font-bold text-zinc-500">
                   {isZh ? "勝負票與五項感受分開；截止前不顯示票數、評分總和或領先作品。" : "Winner votes and feedback are separate. No totals or leader signals appear before the deadline."}
                 </p>
+                {voteActionEnabled ? (
+                  <div className="mx-auto mt-4 flex max-w-xl flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-center">
+                    <span className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-4 text-xs font-black ${
+                      pendingVote === "fighter_a"
+                        ? "border-orange-300/45 bg-orange-400/10 text-orange-100"
+                        : pendingVote === "fighter_b"
+                          ? "border-cyan-300/45 bg-cyan-300/10 text-cyan-100"
+                          : "border-white/10 bg-white/[0.03] text-zinc-500"
+                    }`}>
+                      {pendingVote ? <Check size={17} /> : <Heart size={17} />}
+                      {pendingVote
+                        ? isZh ? `尚未送出 · 作品 ${pendingVote === "fighter_a" ? "A" : "B"}` : `Not submitted · Work ${pendingVote === "fighter_a" ? "A" : "B"}`
+                        : isZh ? "請先選擇作品 A 或 B" : "Select Work A or B first"}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={!pendingVote || votingBusy}
+                      onClick={() => void submitVote()}
+                      className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-5 text-sm font-black transition ${
+                        pendingVote === "fighter_a"
+                          ? "border-orange-200 bg-orange-500 text-white hover:bg-orange-400"
+                          : pendingVote === "fighter_b"
+                            ? "border-cyan-200 bg-cyan-400 text-black hover:bg-cyan-300"
+                            : "cursor-not-allowed border-white/8 bg-white/[0.035] text-zinc-600"
+                      }`}
+                    >
+                      <Check size={18} />
+                      {votingBusy
+                        ? isZh ? "送出中…" : "Submitting…"
+                        : pendingVote
+                          ? isZh ? `確定送出作品 ${pendingVote === "fighter_a" ? "A" : "B"}` : `Confirm Work ${pendingVote === "fighter_a" ? "A" : "B"}`
+                          : isZh ? "確定送出" : "Confirm Vote"}
+                    </button>
+                  </div>
+                ) : null}
+                {voteActionEnabled ? (
+                  <p className="mt-2 text-[11px] font-bold text-zinc-600">
+                    {isZh ? "送出前可繼續重播、快轉或改選；送出後無法更改。" : "Replay, seek, or switch before submitting. A submitted vote cannot be changed."}
+                  </p>
+                ) : null}
               </section>
             ) : null}
 

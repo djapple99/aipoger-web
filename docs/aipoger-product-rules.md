@@ -203,6 +203,7 @@ Current behavior:
 - A pending invitation expires after 24 hours. Creator cancellation or expiry produces no public vote, result, stats, history, or Showtime progress.
 - Guests may open the card, listen to both Drops, see time remaining, and share. Voting requires sign-in and must return the listener to the same Q Crash card after auth.
 - Each signed-in non-participant account gets exactly one immutable vote per Q Crash. Work owners cannot vote, including a creator who owns both A and B.
+- Selecting work A or B is a reversible client-side draft, not a submitted vote. The listener may replay, seek, or switch sides until pressing the explicit confirm-submit control; only that confirmation writes the sealed vote, and the submitted vote remains immutable.
 - Q Crash votes remain in a server-only sealed vote store while voting is open. No visitor, participant, or host may see counts, percentages, total voter count, a leader, or another signal that reveals the result before the deadline.
 - Winner voting and five-axis feedback are separate actions. Each of the five feedback keys (`rhyme`, `impact`, `melody`, `emotion`, and `structure`) may be selected once per work by each signed-in non-participant account; every selection is immutable, and work owners cannot submit feedback.
 - Open-card feedback is private to the current listener. Before settlement, the public/API surface may show only which keys that listener already selected; it must not return aggregate feedback totals, comparisons, progress, or a winner-shaped radar.
