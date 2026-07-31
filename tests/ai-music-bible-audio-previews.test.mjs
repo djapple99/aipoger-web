@@ -28,7 +28,7 @@ test("AI Music Bible publishes 49 distinct Studio Mastering audio previews", () 
   assert.equal(previewSlugs.length, 49);
   assert.equal(new Set(previewSlugs).size, 49);
   assert.equal(previewKeys.includes("studio-mastering-taiwanese-pop"), false);
-  assert.ok(productRules.includes("49 prompts total"));
+  assert.ok(productRules.includes("all 49 free prompts"));
 });
 
 test("every Bible preview URL has a compact public MP3 asset", () => {

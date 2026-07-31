@@ -8,9 +8,9 @@
 
 ## 現行範圍
 
-- 錄音室 Mastering 共 50 招。
-- 49 招提供 15 秒聲音示例。
-- `Modern Taiwanese Pop` 保留完整 Prompt 文字，但現有聲音方向未通過站長確認，因此不顯示試聽按鈕，也不保留公開 MP3。
+- 免費錄音室 Mastering 共 49 招，全部提供 15 秒聲音示例。
+- `Modern Taiwanese Pop` 的免費 Prompt 卡、公開 mapping 與 MP3 均撤下，不保留文字版卡片。
+- `Modern Taiwanese Pop` 僅記錄為未來可能的付費內容方向；收費產品尚未建立前，不顯示鎖頭、價格、結帳或 Premium 佔位。
 - 第一批 13 招中的台灣流行示例撤下後，保留 12 招；本批新增 37 招，合計 49 招。
 - 新增招式原則上各生成兩個 Suno v5.5 候選後選一首。Alternative Rock 因早期佇列校正保留四個候選，最終仍只公開一首。
 
@@ -79,12 +79,12 @@
 | Nashville Country Rock | `46c86e2f-c1c1-4c64-9586-515e8f3db39a` | 03:34 |
 | Contemporary Gospel Choir | `63fa59d1-2edd-4e3f-8f7f-ff73bb058582` | 03:47 |
 
-撤下記錄：`Modern Taiwanese Pop` 原選用 `60676667-d955-4383-ab81-56ed880eaaa1`，站長於 2026-07-31 判定方向不合，因此公開 mapping 與 MP3 均移除。
+撤下記錄：`Modern Taiwanese Pop` 原選用 `60676667-d955-4383-ab81-56ed880eaaa1`，站長於 2026-07-31 判定方向不合；公開 Prompt 卡、mapping 與 MP3 均移除，未來若收費需另立產品規格。
 
 ## 介面規則
 
 - 有示例的 Prompt 卡只放一個 `15 秒試聽` / `15s preview` 按鈕。
-- 沒有核准示例的 Prompt 卡仍可搜尋與複製，但不顯示空按鈕或假音檔。
+- 免費 Studio Mastering 只顯示已核准 Prompt 與真實音檔；不顯示空按鈕、假音檔或未建立的付費佔位。
 - 不自動播放。
 - 所有示例共用頁面底部播放器；切換歌曲時取代上一首，不在卡片內插入原生 audio controls。
 - 底部播放器提供播放／暫停、進度、上一首、下一首、音量與關閉。
@@ -94,5 +94,5 @@
 ## QA
 
 - mapping 必須恰好有 49 個唯一 Prompt key 與 49 個唯一 MP3。
-- `studio-mastering-taiwanese-pop` 不得出現在 audio mapping。
+- `studio-mastering-taiwanese-pop` 不得出現在免費 Prompt catalog 或 audio mapping。
 - 49 個公開 MP3 都需為 15 秒、無削波，並通過桌機與手機底部播放器操作。

@@ -210,17 +210,6 @@ export const SUNO_STUDIO_MASTERING_MOVES: SunoTechnique<"mastering">[] = [
     keywords: ["afrobeat", "highlife", "percussion", "groove", "非洲節奏", "城市律動"],
   },
   {
-    key: "studio-mastering-taiwanese-pop",
-    category: "mastering",
-    title: { zh: "Modern Taiwanese Pop／台語流行錄音室母帶", en: "Modern Taiwanese pop studio master" },
-    summary: { zh: "把台語咬字、主唱情緒與流行副歌放在最前面，保留現代樂團與電子層次。", en: "Puts Taiwanese diction, vocal emotion, and a memorable pop chorus first while retaining modern band and electronic layers." },
-    use: { zh: "台語流行、在地故事、海邊與生活感作品", en: "Taiwanese pop, local storytelling, seaside themes, and everyday-life songs" },
-    copy: { zh: "Modern Taiwanese pop, 96 BPM, F major, warm expressive lead with clear Taiwanese diction, piano and acoustic guitar support a melodic bass line, restrained live drums, subtle synth pads, and harmony responses, intimate verse into a memorable sing-along chorus, lyrics about returning to a seaside town, vocal-forward studio mix, controlled sibilance, smooth low mids, natural stereo width, preserved emotion.", en: "Modern Taiwanese pop, 96 BPM, F major, warm expressive lead with clear Taiwanese diction, piano and acoustic guitar support a melodic bass line, restrained live drums, subtle synth pads, and harmony responses, intimate verse into a memorable sing-along chorus, lyrics about returning to a seaside town, vocal-forward studio mix, controlled sibilance, smooth low mids, natural stereo width, preserved emotion." },
-    evidence: "version",
-    sources: STUDIO_SOURCES,
-    keywords: ["taiwanese pop", "taiwanese", "台語", "台灣流行", "diction", "咬字"],
-  },
-  {
     key: "studio-mastering-big-band-swing",
     category: "mastering",
     title: { zh: "1930s–40s Big Band Swing 錄音室母帶", en: "1930s–40s big-band swing studio master" },
