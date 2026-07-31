@@ -255,9 +255,9 @@ function BattleStageHero({
   );
 }
 
-function BattlePanelLabel({ tone, children }: { tone: "cyan" | "red"; children: string }) {
+function BattlePanelLabel({ tone, wide = false, children }: { tone: "cyan" | "red"; wide?: boolean; children: string }) {
   return (
-    <div className={`battle-panel-label battle-panel-label-${tone}`}>
+    <div className={`battle-panel-label battle-panel-label-${tone}${wide ? " battle-panel-label-wide" : ""}`}>
       <span>{children}</span>
       <ChevronsRight aria-hidden="true" size={24} strokeWidth={3} />
     </div>
@@ -1464,7 +1464,7 @@ function BattlePoolList() {
       <section id="drop-battle-pool" className="battle-pool-shell aipo-panel-line mt-5 scroll-mt-24 rounded-xl p-4 md:p-5">
         <div className="battle-pool-head mb-4">
           <div>
-            <BattlePanelLabel tone="red">60S DROP BATTLE POOL</BattlePanelLabel>
+            <BattlePanelLabel tone="red" wide>60S DROP BATTLE POOL</BattlePanelLabel>
             <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "Drop Battle 公開挑戰池" : "Drop Battle Challenge Pool"}</h2>
           </div>
           <Link href={startChallengeHref} aria-label={startChallengeLabel} className="battle-pool-head-cta battle-mode-action-cta drop-battle-solid-cta">
@@ -1484,7 +1484,7 @@ function BattlePoolList() {
         className="q-crash-matchups-panel mt-5 scroll-mt-24 overflow-hidden rounded-xl border border-cyan-300/35 bg-[radial-gradient(circle_at_86%_8%,rgba(34,211,238,0.12),transparent_30%),linear-gradient(140deg,rgba(3,20,29,0.88),rgba(0,0,0,0.7))] p-4 shadow-[0_20px_70px_rgba(0,0,0,0.38),0_0_34px_rgba(34,211,238,0.07)] md:p-4"
       >
         <div className="mb-3 border-b border-cyan-300/18 pb-3">
-          <BattlePanelLabel tone="cyan">Q CRASH MATCHUPS</BattlePanelLabel>
+          <BattlePanelLabel tone="cyan" wide>Q CRASH MATCHUPS</BattlePanelLabel>
           <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "Q Crash 對戰卡" : "Q Crash Matchup Cards"}</h2>
         </div>
         {qCrashCards.length > 0 ? (
@@ -1503,7 +1503,7 @@ function BattlePoolList() {
       <section id="drop-battle-pool" className="battle-pool-shell aipo-panel-line mt-5 scroll-mt-24 rounded-xl border-red-400/30 p-4 md:p-5">
       <div className="battle-pool-head mb-4">
         <div>
-          <BattlePanelLabel tone="red">60S DROP BATTLE POOL</BattlePanelLabel>
+          <BattlePanelLabel tone="red" wide>60S DROP BATTLE POOL</BattlePanelLabel>
           <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "Drop Battle 公開挑戰池" : "Drop Battle Challenge Pool"}</h2>
         </div>
         <Link

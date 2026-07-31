@@ -78,8 +78,8 @@ test("Battle Pool renders one grouped Q Crash card and removes its two queue row
 
 test("Battle Pool keeps Q Crash cyan, Drop Battle red, and solid actions dark", () => {
   assert.ok(battlePoolSource.includes('<BattlePanelLabel tone="cyan">Q CRASH</BattlePanelLabel>'));
-  assert.ok(battlePoolSource.includes('<BattlePanelLabel tone="cyan">Q CRASH MATCHUPS</BattlePanelLabel>'));
-  assert.ok(battlePoolSource.includes('<BattlePanelLabel tone="red">60S DROP BATTLE POOL</BattlePanelLabel>'));
+  assert.ok(battlePoolSource.includes('<BattlePanelLabel tone="cyan" wide>Q CRASH MATCHUPS</BattlePanelLabel>'));
+  assert.ok(battlePoolSource.includes('<BattlePanelLabel tone="red" wide>60S DROP BATTLE POOL</BattlePanelLabel>'));
   assert.ok(battlePoolSource.includes("q-crash-solid-cta"));
   assert.ok(battlePoolSource.includes("drop-battle-solid-cta"));
   assert.match(globalStylesSource, /\.q-crash-solid-cta \{[\s\S]*?color: #020708 !important;/);
