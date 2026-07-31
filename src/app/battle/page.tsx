@@ -277,7 +277,7 @@ function QCrashModePanel({ isZh, lang }: { isZh: boolean; lang: string }) {
       </div>
       <Link
         href={`/battle/q-crash/new?lang=${lang}`}
-        className="mt-4 inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-2xl bg-cyan-400 px-5 text-sm font-black text-black shadow-[0_0_28px_rgba(34,211,238,0.2)] transition hover:bg-cyan-300 md:mt-0"
+        className="battle-mode-action-cta mt-4 inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-2xl bg-cyan-400 px-5 text-black shadow-[0_0_28px_rgba(34,211,238,0.2)] transition hover:bg-cyan-300 md:mt-0"
       >
         <Swords size={18} />
         {isZh ? "建立 Q Crash" : "Create Q Crash"}
@@ -1460,7 +1460,7 @@ function BattlePoolList() {
             <p className="aipo-section-kicker">60S DROP BATTLE POOL</p>
             <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "Drop Battle 公開挑戰池" : "Drop Battle Challenge Pool"}</h2>
           </div>
-          <Link href={startChallengeHref} aria-label={startChallengeLabel} className="battle-pool-head-cta">
+          <Link href={startChallengeHref} aria-label={startChallengeLabel} className="battle-pool-head-cta battle-mode-action-cta">
             <Swords aria-hidden="true" size={17} strokeWidth={2.4} />
             <span>{startChallengeLabel}</span>
           </Link>
@@ -1480,7 +1480,7 @@ function BattlePoolList() {
         <Link
           href={startChallengeHref}
           aria-label={startChallengeLabel}
-          className="battle-pool-head-cta"
+          className="battle-pool-head-cta battle-mode-action-cta"
         >
           <Swords aria-hidden="true" size={17} strokeWidth={2.4} />
           <span>{startChallengeLabel}</span>

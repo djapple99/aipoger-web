@@ -654,3 +654,53 @@ QA bundle: `/private/tmp/aipoger-q-crash-design-qa-20260731`
 - Final implementation contains no visual-QA fixture or mock-data path.
 
 No severity 1 or severity 2 design issues remain.
+
+---
+
+# Battle Mode CTA Typography — Design QA (2026-07-31)
+
+## Comparison Target
+
+- Source visual truth: `/Users/huangyihong/Desktop/截屏2026-07-31 晚上8.15.44.png`
+- Browser-rendered desktop implementation: `/private/tmp/aipoger-q-crash-cta-qa-20260731/implementation-desktop.png`
+- Browser-rendered mobile implementation: `/private/tmp/aipoger-q-crash-cta-qa-20260731/implementation-mobile.png`
+- Combined focused comparison: `/private/tmp/aipoger-q-crash-cta-qa-20260731/source-vs-implementation-desktop.png`
+- Route/state: `/battle?lang=zh`, signed-out public Battle Pool with Q Crash and Drop Battle headers visible.
+- Source pixels: `2300 × 598`. Desktop capture: `1265 × 712` from a `1280 × 720` CSS viewport at `1×`. Mobile capture: `375 × 812` from a `390 × 844` CSS viewport at `1×`.
+
+## Full-view And Focused Evidence
+
+The combined comparison places the reported production screenshot above the revised browser-rendered CTA region. The original state visibly used a larger label for `建立 Q Crash` than `發起挑戰`. The revised state applies one shared typography contract to both actions while preserving their distinct cyan and orange functions.
+
+Focused computed-style evidence confirms both labels render at `14px`, weight `900`, and `20px` line height on desktop and mobile. Both remain single-line at the tested Chinese state, and the mobile page reports no horizontal overflow.
+
+## Required Fidelity Surfaces
+
+- Fonts and typography: passed. Both mode CTAs now share the same font size, weight, and line height.
+- Spacing and layout rhythm: passed. Only text metrics were unified; the established Q Crash and Drop Battle button footprints, section hierarchy, and spacing remain intact.
+- Colors and visual tokens: passed. Cyan continues to identify Q Crash and orange continues to identify the standard Drop Battle action.
+- Image quality and asset fidelity: passed. Existing page imagery and installed crossed-swords icons are unchanged.
+- Copy and content: passed. `建立 Q Crash` and `發起挑戰` remain unchanged and readable.
+- Responsiveness and accessibility: passed. Both labels stay legible and uncut at `1280 × 720` and `390 × 844`; semantic links and accessible labels are preserved.
+
+## Findings And Iteration History
+
+### Pass 1
+
+- P2 typography inconsistency: `建立 Q Crash` used the Q Crash panel's `text-sm` treatment while `發起挑戰` used a smaller custom `0.78rem` rule.
+- Fix: introduced one shared `battle-mode-action-cta` typography class and applied it to both the loaded and normal Battle Pool header states plus the Q Crash action.
+
+### Pass 2
+
+- Post-fix visual comparison and computed-style checks show no remaining actionable P0, P1, or P2 findings.
+
+## Interaction And Runtime Checks
+
+- Both CTA destinations remain unchanged and present in the rendered DOM.
+- Desktop computed styles: both `14px / 900 / 20px`.
+- Mobile computed styles: both `14px / 900 / 20px`.
+- Mobile document width: `scrollWidth 375`, with no horizontal overflow.
+- Browser console errors and warnings: none.
+- TypeScript, targeted ESLint, 271 tests, and production build passed.
+
+final result: passed
