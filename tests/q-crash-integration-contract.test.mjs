@@ -8,6 +8,8 @@ function source(path) {
 
 const migrationSource = source("../supabase/20260731_q_crash_async_drop_battle.sql");
 const feedbackMigrationSource = source("../supabase/20260731193000_q_crash_feedback.sql");
+const battleStatsRepairMigrationSource = source("../supabase/20260731122043_battle_song_stats_runtime_dependencies.sql");
+const battleStatsIndexMigrationSource = source("../supabase/20260731123402_battle_song_stats_fk_indexes.sql");
 const poolRouteSource = source("../src/app/api/q-crash/route.ts");
 const cardRouteSource = source("../src/app/api/q-crash/[id]/route.ts");
 const voteRouteSource = source("../src/app/api/q-crash/[id]/vote/route.ts");
@@ -86,6 +88,18 @@ test("Q Crash settlement archives only official results and stores the winning w
   assert.ok(settlementSource.includes("feedbackA: feedbackCounts.A"));
   assert.ok(settlementSource.includes("feedbackB: feedbackCounts.B"));
   assert.ok(settlementSource.includes("不產生正式勝負、不進 Showtime"));
+});
+
+test("Q Crash production archive dependencies exist without backfilling under-threshold history", () => {
+  assert.ok(battleStatsRepairMigrationSource.includes("create table if not exists public.battle_song_stats"));
+  assert.ok(battleStatsRepairMigrationSource.includes("create table if not exists public.battle_song_stat_events"));
+  assert.ok(battleStatsRepairMigrationSource.includes("record_battle_song_stats_for_battle"));
+  assert.ok(battleStatsRepairMigrationSource.includes("winner_song_stats_id"));
+  assert.ok(battleStatsRepairMigrationSource.includes("winner_song_honor_board_count"));
+  assert.ok(battleStatsRepairMigrationSource.includes("intentionally does not backfill historical"));
+  assert.equal(battleStatsRepairMigrationSource.includes("update public.battle_queue q"), false);
+  assert.equal(battleStatsRepairMigrationSource.includes("from public.battle_result_archives a"), false);
+  assert.ok(battleStatsIndexMigrationSource.includes("battle_song_stats_latest_battle_id_idx"));
 });
 
 test("legacy live Drop Battle fallback cannot archive Q Crash through the old path", () => {
