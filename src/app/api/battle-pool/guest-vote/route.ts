@@ -111,11 +111,12 @@ export async function POST(request: NextRequest) {
 
   const { data: battle, error: battleError } = await admin
     .from("battles")
-    .select("id,status,winner,battle_ended_at,scheduled_start_at,started_at,battle_started_at")
+    .select("id,status,battle_type,winner,battle_ended_at,scheduled_start_at,started_at,battle_started_at")
     .eq("id", battleId)
     .maybeSingle<{
       id: string;
       status: string | null;
+      battle_type?: string | null;
       winner: string | null;
       battle_ended_at: string | null;
       scheduled_start_at?: string | null;
@@ -124,6 +125,7 @@ export async function POST(request: NextRequest) {
     }>();
   if (battleError) return jsonError(battleError.message, 500);
   if (!battle?.id) return jsonError("Battle not found", 404);
+  if (battle.battle_type === "q_crash") return jsonError("Q Crash voting requires sign-in.", 401);
   if (battle.winner || battle.status === "finished" || battle.battle_ended_at) return jsonError("Battle already settled", 409);
   if (battle.status === "pending") return jsonError("Voting is not open while waiting for defender acceptance", 409);
   const startMs = new Date(battle.battle_started_at ?? battle.started_at ?? battle.scheduled_start_at ?? "").getTime();

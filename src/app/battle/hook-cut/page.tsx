@@ -548,6 +548,11 @@ function HookCutContent() {
   const aiMusicChallengeTrackId = searchParams.get('aiMusicChallengeTrackId');
   const aiMusicDefenderTrackId = searchParams.get('aiMusicDefenderTrackId');
   const defenderTrackTitle = searchParams.get('defenderTrackTitle');
+  const qCrashCreate = searchParams.get('qCrashCreate') === '1';
+  const qCrashCardId = searchParams.get('qCrashCardId');
+  const qCrashSelf = searchParams.get('qCrashSelf') === '1';
+  const qCrashDurationMinutes = searchParams.get('qCrashDurationMinutes');
+  const qCrashInviteeUserId = searchParams.get('qCrashInviteeUserId');
   const rematchClaimId = searchParams.get('rematchClaimId');
   const sourceBattleId = searchParams.get('sourceBattleId');
   const isRematchUpload = Boolean(rematchClaimId && sourceBattleId);
@@ -1102,7 +1107,7 @@ function HookCutContent() {
       }
       const userId = isAuthBypassEnabled ? mockUserId : session!.user.id;
 
-      if (!isAuthBypassEnabled && !isAiMusicDefenderDropSetup) {
+      if (!isAuthBypassEnabled && !isAiMusicDefenderDropSetup && !(qCrashCardId && qCrashSelf)) {
         const requestedDropRole: DropBattleUserRole = aiMusicChallengeTrackId || gatekeeperId ? "challenger" : dropBattleRoleForChallengeTarget(challengeTargetQueueId);
         const activeLock = await findActiveBattleLock(userId, requestedDropRole);
         if (activeLock) {
@@ -1292,6 +1297,7 @@ function HookCutContent() {
           audio_sha256: audioSha256,
           original_file_name: (songName.trim() || fileName).slice(0, 500),
           status: initialQueueStatus,
+          ...((qCrashCreate || qCrashCardId) ? { drop_duration_seconds: Number((end - start).toFixed(2)) } : {}),
           ...(fullAudioPath
             ? {
                 full_audio_path: fullAudioPath,
@@ -1370,6 +1376,56 @@ function HookCutContent() {
           throw new Error("queue insert returned no id — 請在 Supabase 執行 supabase/battle_queue_grants.sql 並確認 battle_queue RLS");
         }
         queueIdForNav = first.id;
+
+        if ((qCrashCreate || qCrashCardId) && session?.access_token) {
+          const endpoint = qCrashCardId ? `/api/q-crash/${encodeURIComponent(qCrashCardId)}/join` : "/api/q-crash";
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify(
+              qCrashCardId
+                ? {
+                    queueId: queueIdForNav,
+                    dropDurationSeconds: Number((end - start).toFixed(2)),
+                  }
+                : {
+                    queueId: queueIdForNav,
+                    durationMinutes: qCrashDurationMinutes,
+                    invitedUserId: qCrashInviteeUserId || null,
+                    dropDurationSeconds: Number((end - start).toFixed(2)),
+                  },
+            ),
+          });
+          const qCrashPayload = (await response.json().catch(() => null)) as {
+            cardId?: string;
+            battleId?: string;
+            error?: string;
+          } | null;
+          if (!response.ok) {
+            const cancelResult = await supabase
+              .from("battle_queue")
+              .update({ status: "cancelled", updated_at: new Date().toISOString() })
+              .eq("id", queueIdForNav)
+              .eq("user_id", userId);
+            if (!cancelResult.error) {
+              await supabase.storage.from("battle-audio").remove(
+                [storagePath, fullAudioPath].filter((path): path is string => Boolean(path)),
+              );
+            }
+            throw new Error(qCrashPayload?.error || (lang === "zh" ? "Q Crash 建立失敗。" : "Could not create Q Crash."));
+          }
+          nextPath = qCrashPayload?.battleId
+            ? `/battle/${qCrashPayload.battleId}?lang=${lang}`
+            : `/battle/q-crash/${qCrashPayload?.cardId}?lang=${lang}`;
+          setUploadPhase(lang === "zh" ? "Q Crash 已鎖定，準備開場…" : "Q Crash locked. Opening the stage...");
+          window.setTimeout(() => {
+            router.push(nextPath);
+          }, 650);
+          return;
+        }
 
         if (!challengeTargetQueueId && instantPairing === "invite") {
           nextPath = `/battle/${queueIdForNav}?lang=${lang}`;

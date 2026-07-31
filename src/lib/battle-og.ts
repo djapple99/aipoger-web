@@ -13,6 +13,8 @@ export type BattleOgData = {
   fighter_b_avatar: string | null;
   ai_tool_a: string | null;
   ai_tool_b: string | null;
+  battle_type?: string | null;
+  voting_ends_at?: string | null;
   match_group_id?: string | null;
   queue_status?: string | null;
   expires_at?: string | null;
@@ -36,6 +38,8 @@ const BATTLE_OG_SELECT = [
   "fighter_b_avatar",
   "ai_tool_a",
   "ai_tool_b",
+  "battle_type",
+  "voting_ends_at",
 ].join(",");
 
 const BATTLE_OG_BASE_SELECT = [
@@ -109,6 +113,8 @@ export function fallbackBattleOgData(id: string): BattleOgData {
     fighter_b_avatar: null,
     ai_tool_a: null,
     ai_tool_b: null,
+    battle_type: null,
+    voting_ends_at: null,
   };
 }
 

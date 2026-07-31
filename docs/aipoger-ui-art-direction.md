@@ -1,6 +1,6 @@
 # AIPOGER UI And Art Direction
 
-Last updated: 2026-07-04
+Last updated: 2026-07-31
 
 This document protects AIPOGER's visual identity. Use it before redesigning any page, adding major UI, or changing user-facing copy.
 
@@ -143,6 +143,17 @@ UI direction:
 - Make waiting/challenge states clear.
 - Keep actions obvious: start, accept, cancel, enter room.
 - Do not blur Drop Battle with 24H Full Song; they are different products.
+
+### Q Crash
+
+- `Q Crash` is the asynchronous Drop Battle mode, not a survey or ordinary social poll.
+- Keep the same black stage, orange battle energy, small cyan electrical accent, A/B confrontation, and music-first language.
+- Desktop uses two side-by-side work seats with a compact VS signal. Mobile stacks the seats and keeps both play/vote actions easy to reach without horizontal overflow.
+- Each work seat shows cover, work/version label, song, creator, genre, AI tool, Drop duration, one play action, and one vote action.
+- Playback uses one fixed bottom A/B player with play/pause, seek, previous/next, and close. Do not embed a native audio control in each work card.
+- Voting state shows only the mode, deadline, work information, and the listener's private submitted state. Never show a count, percentage, total audience, leader, or visual progress toward a winner before settlement.
+- Final copy leads with the winning work and then its creator. Never say that a creator defeated themself when both works have one owner.
+- The Battle Pool exposes one compact `建立 Q Crash` mode panel before the ordinary public Drop challenge pool; it must not push the normal pool out of the first viewport at 1440x900 or 390x844.
 
 ## 24H Full Song Battle
 

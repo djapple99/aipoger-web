@@ -326,8 +326,9 @@ export default function GlobalBattleCallOverlay() {
   const routeTone = useMemo(() => {
     const seg = pathname?.match(/^\/battle\/([^/]+)$/)?.[1];
     const isArena = Boolean(seg && !FIXED_BATTLE_ROUTES.has(seg));
+    const isQCrashArena = Boolean(pathname?.match(/^\/battle\/q-crash\/[^/]+$/));
     const isCreatorFlow = pathname === "/battle/setup" || pathname === "/battle/hook-cut" || pathname === "/battle/matchmaking";
-    if (isArena) return "watching";
+    if (isArena || isQCrashArena) return "watching";
     if (isCreatorFlow) return "creator";
     return "default";
   }, [pathname]);

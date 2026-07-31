@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { BadgeCheck, BookOpen, Compass, History, Radio, Swords } from "lucide-react";
+import { BadgeCheck, BookOpen, Clock3, Compass, History, Radio, Swords } from "lucide-react";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
@@ -251,6 +251,37 @@ function BattleStageHero({
         ))}
       </nav>
     </header>
+  );
+}
+
+function QCrashModePanel({ isZh, lang }: { isZh: boolean; lang: string }) {
+  return (
+    <section className="mt-5 overflow-hidden rounded-[1.4rem] border border-cyan-300/25 bg-[radial-gradient(circle_at_16%_10%,rgba(249,115,22,0.14),transparent_35%),radial-gradient(circle_at_84%_30%,rgba(34,211,238,0.12),transparent_34%),rgba(0,0,0,0.52)] px-5 py-5 shadow-[0_0_38px_rgba(34,211,238,0.06)] md:flex md:items-center md:justify-between md:gap-7 md:px-6">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-orange-300/35 bg-orange-400/10 px-3 py-1 text-[10px] font-black tracking-[0.2em] text-orange-100">
+            NEW MODE
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-black tracking-[0.16em] text-cyan-100">
+            <Clock3 size={14} />
+            ASYNC 60S DROP
+          </span>
+        </div>
+        <h2 className="mt-3 text-3xl font-black tracking-tight text-white">Q Crash</h2>
+        <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-zinc-300">
+          {isZh
+            ? "不用約同一時間。兩首 60 秒 Drop 到位後立即開放投票，截止才公開結果。"
+            : "No synchronized meetup. Voting opens when both 60-second Drops lock, and results stay sealed until the deadline."}
+        </p>
+      </div>
+      <Link
+        href={`/battle/q-crash/new?lang=${lang}`}
+        className="mt-4 inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-2xl bg-cyan-400 px-5 text-sm font-black text-black shadow-[0_0_28px_rgba(34,211,238,0.2)] transition hover:bg-cyan-300 md:mt-0"
+      >
+        <Swords size={18} />
+        {isZh ? "建立 Q Crash" : "Create Q Crash"}
+      </Link>
+    </section>
   );
 }
 
@@ -1982,6 +2013,7 @@ function LiveBattleList() {
 
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 pb-10 pt-24 sm:px-6 md:px-10">
         <BattleStageHero isZh={isZh} lang={lang} t={t} />
+        <QCrashModePanel isZh={isZh} lang={lang} />
 
         {isAuthBypassEnabled && (
           <p className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/90">

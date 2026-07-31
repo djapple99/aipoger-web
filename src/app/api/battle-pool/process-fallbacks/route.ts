@@ -9,6 +9,7 @@ import { cancelStalePendingDropBattles, isMissingScheduleColumn } from "@/lib/ba
 import { battleSeedForId } from "@/lib/battle-90s-system";
 import { DROP_BATTLE_OFFICIAL_AUDIENCE_MIN } from "@/lib/drop-battle-rematch";
 import { pickDropBattleWinnerForRules } from "@/lib/ai-music-challenge-rules";
+import { settleQCrashBattle } from "@/lib/server-q-crash";
 
 type SupabaseAdmin = SupabaseClient;
 
@@ -134,11 +135,13 @@ async function processFallbacks(request: NextRequest) {
   const expiredDailyQueue = await expireStaleDailyQueue(admin, warnings);
   const expiredRematchClaims = await expireStaleRematchClaims(admin, warnings);
   const expiredAiMusicInvites = await expireStaleAiMusicChallengeInvites(admin, warnings);
+  const expiredQCrashInvites = await expireStaleQCrashInvites(admin, warnings);
+  const qCrashSettled = await settleExpiredQCrashBattles(admin, warnings);
   const stalePendingBattles = await cancelStalePendingDropBattles(admin);
   warnings.push(...stalePendingBattles.errors);
 
   return NextResponse.json({
-    processed: poolProcessed + hookSettled + hookArchived + dailySettled + expiredHookQueue + expiredDailyQueue + expiredRematchClaims + expiredAiMusicInvites + stalePendingBattles.cancelled,
+    processed: poolProcessed + hookSettled + hookArchived + dailySettled + expiredHookQueue + expiredDailyQueue + expiredRematchClaims + expiredAiMusicInvites + expiredQCrashInvites + qCrashSettled + stalePendingBattles.cancelled,
     poolProcessed,
     hookSettled,
     hookArchived,
@@ -147,9 +150,95 @@ async function processFallbacks(request: NextRequest) {
     expiredDailyQueue,
     expiredRematchClaims,
     expiredAiMusicInvites,
+    expiredQCrashInvites,
+    qCrashSettled,
     stalePendingBattles: stalePendingBattles.cancelled,
     warnings,
   });
+}
+
+async function settleExpiredQCrashBattles(admin: SupabaseAdmin, warnings: string[]) {
+  const now = new Date().toISOString();
+  const { data, error } = await admin
+    .from("battles")
+    .select("id")
+    .eq("battle_type", "q_crash")
+    .eq("status", "q_crash_voting")
+    .lte("voting_ends_at", now)
+    .order("voting_ends_at", { ascending: true })
+    .limit(50);
+  if (error) {
+    if (!/q_crash|voting_ends_at|schema cache|does not exist|PGRST/i.test(error.message)) {
+      warnings.push(`Q Crash settlement query: ${error.message}`);
+    }
+    return 0;
+  }
+
+  let settled = 0;
+  for (const row of data ?? []) {
+    try {
+      const result = await settleQCrashBattle(admin, row.id);
+      if (result.state === "official" || result.state === "insufficient" || result.state === "already_settled") {
+        settled += 1;
+      }
+    } catch (error) {
+      warnings.push(`Q Crash settle ${row.id}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  return settled;
+}
+
+async function expireStaleQCrashInvites(admin: SupabaseAdmin, warnings: string[]) {
+  const now = new Date().toISOString();
+  const { data, error } = await admin
+    .from("q_crash_cards")
+    .select("id,founder_user_id,founder_queue_id,invited_user_id")
+    .eq("status", "q_crash_pending_invite")
+    .lte("invite_expires_at", now)
+    .order("invite_expires_at", { ascending: true })
+    .limit(50);
+  if (error) {
+    if (!/q_crash_cards|schema cache|does not exist|PGRST/i.test(error.message)) {
+      warnings.push(`Q Crash invite expiry query: ${error.message}`);
+    }
+    return 0;
+  }
+
+  let expired = 0;
+  for (const row of data ?? []) {
+    const { data: updated, error: updateError } = await admin
+      .from("q_crash_cards")
+      .update({ status: "q_crash_cancelled", cancelled_at: now, updated_at: now })
+      .eq("id", row.id)
+      .eq("status", "q_crash_pending_invite")
+      .select("id")
+      .maybeSingle<{ id: string }>();
+    if (updateError) {
+      warnings.push(`Q Crash invite expiry ${row.id}: ${updateError.message}`);
+      continue;
+    }
+    if (!updated?.id) continue;
+    const queueResult = await admin
+      .from("battle_queue")
+      .update({ status: "expired", updated_at: now })
+      .eq("id", row.founder_queue_id);
+    if (queueResult.error) warnings.push(`Q Crash invite queue expiry ${row.id}: ${queueResult.error.message}`);
+
+    const recipients = new Set([row.founder_user_id, row.invited_user_id].filter((id): id is string => Boolean(id)));
+    const noticeResult = await admin.from("battle_notifications").insert(
+      [...recipients].map((userId) => ({
+        user_id: userId,
+        queue_id: row.founder_queue_id,
+        type: "q_crash_invite_expired",
+        title: "Q Crash 邀請已失效",
+        body: "作品 B 未在 24 小時內加入；這張卡已取消，不產生投票或戰績。",
+        metadata: { cardId: row.id, battleType: "q_crash" },
+      })),
+    );
+    if (noticeResult.error) warnings.push(`Q Crash invite expiry notice ${row.id}: ${noticeResult.error.message}`);
+    expired += 1;
+  }
+  return expired;
 }
 
 async function expireStaleAiMusicChallengeInvites(admin: SupabaseAdmin, warnings: string[]) {
@@ -460,6 +549,7 @@ async function archiveFinishedUnarchivedHookBattles(admin: SupabaseAdmin, warnin
       "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,song_a_cover,song_b_cover,status,created_at,scheduled_start_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner,battle_type",
     )
     .eq("status", "finished")
+    .neq("battle_type", "q_crash")
     .not("winner", "is", null)
     .is("result_archived_at", null)
     .order("battle_ended_at", { ascending: true, nullsFirst: false })

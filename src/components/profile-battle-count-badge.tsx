@@ -11,7 +11,7 @@ type ProfileBattleCountBadgeProps = {
   lang?: "zh" | "en";
 };
 
-const ACTIVE_STATUSES = ["live", "pending", "active", "matched"] as const;
+const ACTIVE_STATUSES = ["live", "pending", "active", "matched", "q_crash_voting"] as const;
 const HISTORY_STATUSES = [
   "finished",
   "cancelled",
@@ -21,16 +21,20 @@ const HISTORY_STATUSES = [
   "expired",
   "ghost_battle",
   "public_voting",
+  "q_crash_finished",
+  "q_crash_insufficient",
+  "q_crash_cancelled",
 ] as const;
 const COUNTED_STATUSES = [...ACTIVE_STATUSES, ...HISTORY_STATUSES] as const;
 const ACTIVE_QUEUE_STATUSES = ["pending", "searching", "waiting", "waiting_challenge", "matched", "active"] as const;
-const UNCANCELLABLE_BATTLE_STATUSES = new Set(["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"]);
-const CLOSED_BATTLE_STATUSES = new Set(["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"]);
+const UNCANCELLABLE_BATTLE_STATUSES = new Set(["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired", "q_crash_finished", "q_crash_insufficient", "q_crash_cancelled"]);
+const CLOSED_BATTLE_STATUSES = new Set(["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired", "q_crash_finished", "q_crash_insufficient", "q_crash_cancelled"]);
 
 type BattleStatus = (typeof ACTIVE_STATUSES)[number] | (typeof HISTORY_STATUSES)[number];
 
 type BattleRow = {
   id: string;
+  battle_type?: string | null;
   status: BattleStatus | string | null;
   created_at: string | null;
   battle_ended_at: string | null;
@@ -174,7 +178,7 @@ export function ProfileBattleCountBadge({ userId, currentUserId = null, lang = "
       const battleQuery = supabase
         .from("battles")
         .select(
-          "id,status,created_at,battle_ended_at,scheduled_start_at,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,genre",
+          "id,battle_type,status,created_at,battle_ended_at,scheduled_start_at,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,genre",
         )
         .or(`fighter_a_user_id.eq.${userId},fighter_b_user_id.eq.${userId}`)
         .in("status", [...COUNTED_STATUSES])
@@ -287,6 +291,7 @@ export function ProfileBattleCountBadge({ userId, currentUserId = null, lang = "
   };
 
   const renderBattleRow = (battle: BattleRow) => {
+    const isQCrash = battle.battle_type === "q_crash";
     const opponentName = userId ? getOpponentName(battle, userId, lang) : copy.unknown;
     const trackName = userId ? getTrackName(battle, userId) : null;
     const startsAt = formatDateTime(battle.scheduled_start_at, lang);
@@ -301,7 +306,9 @@ export function ProfileBattleCountBadge({ userId, currentUserId = null, lang = "
       <li key={battle.id} className="rounded-2xl border border-zinc-800/80 bg-black/25 px-3 py-2">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold text-zinc-100">{copy.withOpponent(opponentName)}</p>
+            <p className="truncate text-xs font-semibold text-zinc-100">
+              {isQCrash ? `Q Crash · ${battle.song_a_name || "作品 A"} vs ${battle.song_b_name || "作品 B"}` : copy.withOpponent(opponentName)}
+            </p>
             <p className="mt-1 truncate text-[11px] text-zinc-500">
               {trackName ? `${trackName} · ` : ""}
               {startsAt ? copy.startsAt(startsAt) : createdAt ? copy.createdAt(createdAt) : battle.status}

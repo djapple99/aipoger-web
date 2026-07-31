@@ -1,6 +1,6 @@
 # AIPOGER Product Rules
 
-Last updated: 2026-07-18
+Last updated: 2026-07-31
 
 This document is the product-rule source of truth for AIPOGER. Use it before changing Battle, Bar Heartbreak, AIPOGER Showtime, auth, upload, or deployment behavior.
 
@@ -191,6 +191,26 @@ Current behavior:
 - V1 song battle stats do not open URL upload or a full creator song-library UI. They only group the same creator's repeated Drop Battle entries by normalized song title and show battle count, wins, losses, votes, win rate, and Showtime count.
 - Waiting cards should provide a `約人鬥歌` share action.
 - Live or public-voting cards should provide an `邀請觀戰投票` share action.
+
+### Q Crash / 非同步 Drop Battle
+
+- `Q Crash` is the asynchronous 60-second Drop Battle mode. Existing live Drop Battle remains unchanged.
+- The public promise is: `兩首 60 秒 Drop，不用等人到齊，讓大家在自己的時間決定哪首歌勝出。`
+- Every Q Crash has exactly two work seats, A and B. The same creator may intentionally compare two own versions, or a second creator may accept the shared/targeted invitation and lock their own work into seat B.
+- Both Drops must use the existing cropper, remain at or below 60 seconds, and use the same fixed music genre. Voting starts only after two distinct queue/work entries are locked.
+- Same-title works display explicit `版本 A` / `版本 B` labels. Results are work-first: winner storage uses the winning queue/work identifier, and the creator is read from that work.
+- Simple voting windows are `30 minutes`, `2 hours` (default), `6 hours`, and `24 hours`. The server sets `voting_ends_at` when work B locks; neither creator may extend or edit the deadline afterward.
+- A pending invitation expires after 24 hours. Creator cancellation or expiry produces no public vote, result, stats, history, or Showtime progress.
+- Guests may open the card, listen to both Drops, see time remaining, and share. Voting requires sign-in and must return the listener to the same Q Crash card after auth.
+- Each signed-in non-participant account gets exactly one immutable vote per Q Crash. Work owners cannot vote, including a creator who owns both A and B.
+- Q Crash votes remain in a server-only sealed vote store while voting is open. No visitor, participant, or host may see counts, percentages, total voter count, a leader, or another signal that reveals the result before the deadline.
+- The server/cron settles from `voting_ends_at`; browser time is never authoritative. After settlement, 0-2 distinct signed-in non-participant listeners is audience-insufficient/no result. At least 3 establishes an official Drop Battle result.
+- Official Q Crash results copy the sealed votes into the existing official Battle archive/stat path, save `winner_queue_id`, and may feed Battle Records, work stats, and existing Showtime eligibility. Insufficient results update none of those.
+- Official ties reuse the stable formal Drop Battle tie breaker. Creator identity never changes the winner rule.
+- Q Crash V1 does not open the live rematch window. A repeat comparison creates a new Q Crash.
+- Public sharing uses the existing `/b/{shortId}` Battle arena link once voting starts. Both work owners share the same battle ID and card; the system must never clone a second card for the second creator.
+- Account limits reuse Drop roles: opening Q Crash occupies the founder state; a different creator accepting seat B occupies their challenger state. When one creator owns both works, Q Crash occupies only that creator's founder state.
+- Front-stage UI stays hot and DJ-battle-led: desktop uses two side-by-side work seats, mobile stacks them, and one fixed bottom player switches between A and B. Do not render Q Crash as a survey, leaderboard, or plain poll card.
 
 Official Gatekeeper Drops:
 

@@ -1,6 +1,6 @@
 # AIPOGER Release Checklist
 
-Last updated: 2026-07-09
+Last updated: 2026-07-31
 
 Use this checklist before and after deploying production changes.
 
@@ -92,6 +92,26 @@ Check:
 - 0-2 distinct audience voters becomes audience-insufficient / no contest and does not create a result card, Showtime archive, song battle stats, battle history, or rematch window.
 - 3+ distinct audience voters creates an official result that can be archived.
 - AIPOGER Showtime reads Drop winners as `正式 Battle 認證` rows inside the unified certified-works catalog.
+
+### Q Crash
+
+- Battle Pool shows one compact `建立 Q Crash` entry while keeping the existing live Drop Battle CTA and challenge pool unchanged.
+- Creating work A uses the existing cropper, enforces a 60-second maximum, stores a fixed current genre, and creates one pending Q Crash card.
+- The creator may place a second own work, leave the card open for a shared invite, or target an existing creator account. A targeted creator receives a readable account notification linked to the pending card.
+- Work B must use a distinct queue entry and the exact same fixed genre. A different creator must own the submitted Drop; the original creator may intentionally submit a second own Drop.
+- The first successful work-B acceptance wins the pending-card claim. Two simultaneous accepts must not create duplicate battles.
+- Voting begins only after both works lock. Both creators see the same battle ID and `/b/{shortId}` share link.
+- Server time sets the immutable 30-minute / 2-hour / 6-hour / 24-hour deadline; 2 hours is the default.
+- Logged-out visitors can open, listen, switch A/B playback, see time remaining, and share. Pressing the protected vote path returns through sign-in to the exact card.
+- Participants cannot vote. A signed-in audience account can vote once and cannot recast.
+- During voting, the public API/UI returns no tally, percentage, total audience, leader, or inference signal. Direct guest voting and the normal `cast_vote` path reject Q Crash.
+- Deadline settlement runs from the 5-minute Battle fallback cron and also settles opportunistically on a post-deadline card read.
+- Verify 0, 1, and 2 valid audience accounts settle as insufficient with no archive/stats/Showtime/rematch. Verify 3+ creates an official work-first result and saves the winning queue/work ID.
+- Verify official ties reuse the stable formal Drop Battle tie breaker.
+- Final notifications and result copy name the winning work first and then the creator. Same-owner comparisons never say the creator defeated themself.
+- Check the pending, voting, voted, insufficient, official-result, cancelled, and expired screens at 1440x900 and 390x844. The fixed bottom A/B player must not cover vote actions or create horizontal overflow.
+- Confirm ordinary live Drop Battle guest voting, Battle Records, official gatekeepers, rematch, Explore challenges, and Showtime do not regress.
+- Before enabling Q Crash in production, apply and verify `supabase/20260731_q_crash_async_drop_battle.sql`; code deployment without that schema is a release blocker.
 
 ## Explore AI Music Challenge Checklist
 
