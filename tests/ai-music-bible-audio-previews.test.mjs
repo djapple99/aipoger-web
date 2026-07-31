@@ -15,23 +15,25 @@ const productRules = readFileSync(
   "utf8",
 );
 
-const previewKeys = [...previewCatalog.matchAll(/key: "(studio-mastering-[^"]+)"/g)].map(
+const previewKeys = [...previewCatalog.matchAll(/\["(studio-mastering-[^"]+)", "[^"]+"\]/g)].map(
   (match) => match[1],
 );
-const previewUrls = [...previewCatalog.matchAll(/audioUrl: "([^"]+\.mp3)"/g)].map(
+const previewSlugs = [...previewCatalog.matchAll(/\["studio-mastering-[^"]+", "([^"]+)"\]/g)].map(
   (match) => match[1],
 );
 
-test("AI Music Bible publishes 13 distinct Studio Mastering audio previews", () => {
-  assert.equal(previewKeys.length, 13);
-  assert.equal(new Set(previewKeys).size, 13);
-  assert.equal(previewUrls.length, 13);
-  assert.equal(new Set(previewUrls).size, 13);
-  assert.ok(productRules.includes("for 13 prompts total"));
+test("AI Music Bible publishes 49 distinct Studio Mastering audio previews", () => {
+  assert.equal(previewKeys.length, 49);
+  assert.equal(new Set(previewKeys).size, 49);
+  assert.equal(previewSlugs.length, 49);
+  assert.equal(new Set(previewSlugs).size, 49);
+  assert.equal(previewKeys.includes("studio-mastering-taiwanese-pop"), false);
+  assert.ok(productRules.includes("49 prompts total"));
 });
 
 test("every Bible preview URL has a compact public MP3 asset", () => {
-  for (const audioUrl of previewUrls) {
+  for (const slug of previewSlugs) {
+    const audioUrl = `/audio/ai-music-bible/studio-mastering/${slug}.mp3`;
     const file = new URL(`../public${audioUrl}`, import.meta.url);
     assert.equal(existsSync(file), true, `${audioUrl} is missing`);
     const size = statSync(file).size;

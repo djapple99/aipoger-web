@@ -257,3 +257,4 @@ Direction:
 - Studio Mastering Prompt examples use one compact `15 秒試聽` action only on cards with a real audio asset.
 - Route every Prompt example through the shared fixed bottom player. Do not autoplay, expand card height with waveforms, or place a native audio control in each card.
 - Keep the example disclaimer visible and quiet: the clip demonstrates a sound direction and does not promise an identical Suno generation.
+- `Modern Taiwanese Pop` remains a normal copyable Prompt card but intentionally has no preview action until a replacement sound direction is approved.
