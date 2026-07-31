@@ -8,12 +8,17 @@ import {
   ChevronUp,
   Copy,
   ExternalLink,
+  Play,
   Search,
   WandSparkles,
   X,
 } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import ShowtimeQueuePlayer, {
+  type ShowtimePlayerTrack,
+  type ShowtimeQueuePlayerHandle,
+} from "@/components/showtime-queue-player";
 import { fontRighteous } from "@/lib/fonts";
 import {
   type SunoEvidence,
@@ -25,6 +30,10 @@ import {
   type SunoTechnique,
 } from "@/lib/suno-practice-library";
 import type { SunoArtistDnaEntry, SunoPromptRecipe } from "@/lib/suno-inspiration-index";
+import {
+  getSunoStudioMasteringAudioPreview,
+  SUNO_STUDIO_MASTERING_AUDIO_PREVIEWS,
+} from "@/lib/suno-studio-mastering-audio-previews";
 
 const PROMPT_PREVIEW_COUNT = 6;
 const LYRIC_PREVIEW_COUNT = 8;
@@ -66,11 +75,15 @@ function TechniqueCard({
   locale,
   copied,
   onCopy,
+  hasAudioPreview = false,
+  onPlayAudioPreview,
 }: {
   item: AnyTechnique;
   locale: SunoLibraryLocale;
   copied: boolean;
   onCopy: () => void;
+  hasAudioPreview?: boolean;
+  onPlayAudioPreview?: () => void;
 }) {
   const isZh = locale === "zh";
   const [expanded, setExpanded] = useState(false);
@@ -110,6 +123,22 @@ function TechniqueCard({
           </button>
         </div>
         <p className="mt-3 text-sm font-bold leading-7 text-zinc-400">{sunoLibraryText(item.summary, locale)}</p>
+        {hasAudioPreview ? (
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onPlayAudioPreview?.()}
+              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-orange-300/45 bg-orange-400/[0.1] px-4 text-sm font-black text-orange-50 transition hover:border-orange-200 hover:bg-orange-400/[0.18] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-100"
+              aria-label={isZh ? `播放 ${item.title.zh} 的 15 秒聲音示例` : `Play the 15-second sound example for ${item.title.en}`}
+            >
+              <Play className="h-4 w-4" fill="currentColor" />
+              {isZh ? "15 秒試聽" : "15s preview"}
+            </button>
+            <span className="text-[11px] font-bold leading-5 text-zinc-500">
+              {isZh ? "聲音示例・實際生成仍會變化" : "Sound example · generations will vary"}
+            </span>
+          </div>
+        ) : null}
         <div className="mt-4 overflow-hidden rounded-xl border border-white/9 bg-[#050707]">
           <pre className="overflow-x-auto whitespace-pre-wrap break-words p-4 font-mono text-xs font-bold leading-6 text-cyan-50/88">{sunoLibraryText(item.copy, locale)}</pre>
           <button
@@ -173,6 +202,7 @@ export default function SunoPracticeLibrarySection({
   const [lyricLibraryOpen, setLyricLibraryOpen] = useState(false);
   const [productionFlowOpen, setProductionFlowOpen] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const previewPlayerRef = useRef<ShowtimeQueuePlayerHandle>(null);
 
   useEffect(() => {
     const openForHash = () => {
@@ -216,6 +246,29 @@ export default function SunoPracticeLibrarySection({
   const visiblePrompt = showAllPrompt ? promptResults : promptResults.slice(0, PROMPT_PREVIEW_COUNT);
   const visibleLyrics = showAllLyric ? lyricResults : lyricResults.slice(0, LYRIC_PREVIEW_COUNT);
   const visibleGenres = showAllGenres ? genreResults : genreResults.slice(0, GENRE_PREVIEW_COUNT);
+  const masteringPreviewQueue = useMemo<ShowtimePlayerTrack[]>(() => (
+    SUNO_STUDIO_MASTERING_AUDIO_PREVIEWS.flatMap((preview) => {
+      const prompt = promptMoves.find((item) => item.key === preview.key);
+      if (!prompt) return [];
+      return [{
+        id: preview.key,
+        title: sunoLibraryText(prompt.title, locale),
+        artist: "AIPOGER × Suno",
+        coverUrl: "/aipoger-logo.png",
+        audioUrl: preview.audioUrl,
+      }];
+    })
+  ), [locale, promptMoves]);
+
+  const playMasteringPreview = (key: string) => {
+    const index = masteringPreviewQueue.findIndex((track) => track.id === key);
+    if (index < 0) return;
+    void previewPlayerRef.current?.start(
+      masteringPreviewQueue,
+      index,
+      isZh ? "錄音室 Prompt 聲音示例" : "Studio Prompt sound examples",
+    );
+  };
 
   return (
     <section id="suno-prompt-library" className="scroll-mt-20 overflow-hidden rounded-[1.6rem] border border-orange-300/20 bg-[#070707]/94 shadow-[0_30px_100px_rgba(0,0,0,0.52)]">
@@ -298,7 +351,15 @@ export default function SunoPracticeLibrarySection({
 
         <div id="prompt-move-results" className="mt-5 grid gap-3 lg:grid-cols-2">
           {visiblePrompt.map((item) => (
-            <TechniqueCard key={item.key} item={item} locale={locale} copied={copiedKey === item.key} onCopy={() => copyValue(item.key, sunoLibraryText(item.copy, locale))} />
+            <TechniqueCard
+              key={item.key}
+              item={item}
+              locale={locale}
+              copied={copiedKey === item.key}
+              onCopy={() => copyValue(item.key, sunoLibraryText(item.copy, locale))}
+              hasAudioPreview={Boolean(getSunoStudioMasteringAudioPreview(item.key))}
+              onPlayAudioPreview={() => playMasteringPreview(item.key)}
+            />
           ))}
         </div>
         {promptResults.length === 0 && <p className="mt-6 rounded-xl border border-white/10 p-5 text-sm font-bold text-zinc-500">{isZh ? "找不到這個 Prompt 招式，換個關鍵字試試。" : "No matching prompt move. Try another search."}</p>}
@@ -486,6 +547,7 @@ export default function SunoPracticeLibrarySection({
           ))}
         </div>
       </div>
+      <ShowtimeQueuePlayer ref={previewPlayerRef} isZh={isZh} />
     </section>
   );
 }

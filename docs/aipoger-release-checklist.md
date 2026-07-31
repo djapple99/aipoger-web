@@ -263,6 +263,8 @@ Check:
 - Choosing a Stem goal updates the recommendation and highlights only the matching engine cards; accordion cards expose strengths, limits, implementations, and source links on desktop and mobile.
 - The Stem guide credits the owner-provided PDF and its credited author, shows the 2026-07-17 cross-check date, treats FL Studio's underlying engine as undisclosed, and does not repeat the PDF's unconfirmed LALAL.AI direct-synthesis claim as fact.
 - The Stem section remains readable at 1440x900 and 390x844 without page-level horizontal overflow.
+- The 13 Studio Mastering Prompt cards with audio assets show one localized `15 秒試聽` / `15s preview` action and the generation-variability note. Clicking any example opens the shared fixed bottom player with seek, previous/next, mobile/desktop volume, and close; cards do not autoplay or render native audio controls.
+- All 13 public Prompt preview MP3 URLs return `200`, have a duration of 15 seconds within normal encoding tolerance, and keep a consistent perceived loudness without clipping.
 
 ## Comment Moderation Checklist
 

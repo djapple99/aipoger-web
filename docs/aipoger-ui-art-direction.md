@@ -251,3 +251,9 @@ Direction:
 - Keep image/audio review and moderation actions clear.
 - Repeated filter and sorting controls in one toolbar must share a consistent height, radius, type scale, and responsive grid. Do not let one control wrap into a tall pill while its neighbors remain short.
 - Music-review lists use one compact play button per item and one fixed bottom preview player; do not embed a separate native audio bar inside every management card.
+
+## AI Music Practice Bible
+
+- Studio Mastering Prompt examples use one compact `15 秒試聽` action only on cards with a real audio asset.
+- Route every Prompt example through the shared fixed bottom player. Do not autoplay, expand card height with waveforms, or place a native audio control in each card.
+- Keep the example disclaimer visible and quiet: the clip demonstrates a sound direction and does not promise an identical Suno generation.
