@@ -71,6 +71,55 @@ The normalized side-by-side image compares the chosen Frequency Editorial Gate c
 
 final result: passed
 
+## Battle Mode CTA Full-Size Alignment — Design QA (2026-07-31, second pass)
+
+**Source visual truth**
+
+- `/var/folders/z5/42v3w_nj2_b36bxx5c2559ph0000gn/T/TemporaryItems/NSIRD_screencaptureui_5TdzjW/截屏2026-07-31 晚上9.44.46.png`
+- Source pixels: `2170 x 582`.
+- State: Chinese Battle page, Q Crash mode panel followed by the Drop Battle Pool header.
+
+**Rendered implementation**
+
+- `/private/tmp/aipoger-q-crash-cta-qa-20260731/implementation-equal-size-desktop-final.png`
+- `/private/tmp/aipoger-q-crash-cta-qa-20260731/implementation-equal-size-mobile-final.png`
+- Desktop capture pixels: `1835 x 546`, browser CSS viewport requested at `2170 x 550`.
+- Mobile capture pixels: `375 x 812`, browser CSS viewport requested at `390 x 844`.
+- Combined comparison: `/private/tmp/aipoger-q-crash-cta-qa-20260731/source-vs-implementation-equal-size.png`.
+- Density normalization: source and implementation were resized to a common `1200px` comparison width and centered on equal `1200 x 360` canvases before vertical stacking.
+
+**Full-view comparison evidence**
+
+- The source state showed the cyan `建立 Q Crash` control visibly larger than the orange `發起挑戰` control in height, width, padding, radius, and icon scale.
+- The revised desktop state gives both Chinese controls the same measured `160 x 44px` geometry while retaining cyan/orange semantic color separation.
+- The revised mobile state also measures both controls at `160 x 44px`, with no page-level horizontal overflow (`scrollWidth = clientWidth = 375`).
+- English desktop uses the same `176 x 44px` geometry for both controls and keeps both labels on one line.
+
+**Focused component evidence**
+
+- Chinese desktop and mobile: `14px` type, `900` weight, `20px` line-height, `10px 16px` padding, `8px` icon gap, `12px` radius, and `18px` crossed-swords icon on both actions.
+- Browser console warnings/errors: none.
+
+**Comparison history**
+
+- Earlier P2 finding: typography values matched, but Q Crash still used a `48px`-high rounded control while the Drop Battle action was approximately `42px` high, creating a persistent optical size mismatch.
+- Fix: moved height, padding, radius, gap, icon dimensions, and localized desktop width into the shared `battle-mode-action-cta` contract; reduced the mobile pool-header gap to preserve the fixed Chinese width without overflow.
+- Post-fix evidence: both Chinese actions measure exactly `160 x 44px` at desktop and mobile; both English desktop actions measure `176 x 44px` without wrapping.
+
+**Required fidelity surfaces**
+
+- Fonts and typography: passed; size, weight, line-height, and single-line behavior match.
+- Spacing and layout rhythm: passed; control dimensions, padding, gap, and radius match without responsive overflow.
+- Colors and visual tokens: passed; cyan continues to identify Q Crash and orange continues to identify the standard Drop Battle action.
+- Image quality and asset fidelity: passed; the existing Lucide crossed-swords icon remains sharp and is now the same measured size on both actions.
+- Copy and content: passed; `建立 Q Crash` and `發起挑戰` remain unchanged.
+
+**Findings**
+
+- No remaining P0/P1/P2 mismatch in the two requested action controls.
+
+final result: passed
+
 ---
 
 # Listen Bar Admin Review Controls — Design QA (2026-07-31)

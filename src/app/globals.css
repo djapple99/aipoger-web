@@ -1173,9 +1173,27 @@ a {
 }
 
 .battle-mode-action-cta {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  padding: 0.625rem 1rem;
   font-size: 0.875rem;
   font-weight: 900;
   line-height: 1.25rem;
+  white-space: nowrap;
+}
+
+.battle-mode-action-cta svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: 0 0 auto;
+}
+
+:lang(zh) .battle-mode-action-cta {
+  width: 10rem;
 }
 
 .battle-pool-head-cta:hover {
@@ -1183,6 +1201,14 @@ a {
 }
 
 @media (min-width: 768px) {
+  .battle-mode-action-cta {
+    width: 11rem;
+  }
+
+  :lang(zh) .battle-mode-action-cta {
+    width: 10rem;
+  }
+
   .battle-stage-hero {
     min-height: 19rem;
     padding: 2rem 2.2rem 4.75rem;
@@ -1262,6 +1288,12 @@ a {
 
   .battle-pool-head {
     padding: 1rem 1.15rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .battle-pool-head {
+    gap: 0.75rem;
   }
 }
 
