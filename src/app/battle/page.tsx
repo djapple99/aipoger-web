@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { BadgeCheck, BookOpen, Clock3, Compass, History, Radio, Swords } from "lucide-react";
+import { BadgeCheck, BookOpen, ChevronsRight, Clock3, Compass, History, Radio, Swords } from "lucide-react";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
@@ -255,33 +255,45 @@ function BattleStageHero({
   );
 }
 
+function BattlePanelLabel({ tone, children }: { tone: "cyan" | "red"; children: string }) {
+  return (
+    <div className={`battle-panel-label battle-panel-label-${tone}`}>
+      <span>{children}</span>
+      <ChevronsRight aria-hidden="true" size={24} strokeWidth={3} />
+    </div>
+  );
+}
+
 function QCrashModePanel({ isZh, lang }: { isZh: boolean; lang: string }) {
   return (
-    <section className="mt-5 overflow-hidden rounded-[1.4rem] border border-cyan-300/35 bg-[radial-gradient(circle_at_82%_24%,rgba(34,211,238,0.15),transparent_34%),linear-gradient(115deg,rgba(3,20,29,0.92),rgba(0,0,0,0.68))] px-5 py-5 shadow-[0_0_40px_rgba(34,211,238,0.09)] md:flex md:items-center md:justify-between md:gap-7 md:px-6">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-cyan-300/40 bg-cyan-300/10 px-3 py-1 text-[10px] font-black tracking-[0.2em] text-cyan-50">
-            NEW MODE
-          </span>
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-black tracking-[0.16em] text-cyan-100">
-            <Clock3 size={14} />
-            ASYNC 60S DROP
-          </span>
+    <section className="q-crash-mode-panel mt-5 overflow-hidden rounded-[1.4rem] border border-cyan-300/35 bg-[radial-gradient(circle_at_82%_24%,rgba(34,211,238,0.15),transparent_34%),linear-gradient(115deg,rgba(3,20,29,0.92),rgba(0,0,0,0.68))] px-4 py-4 shadow-[0_0_40px_rgba(34,211,238,0.09)] md:px-5 md:py-4">
+      <BattlePanelLabel tone="cyan">Q CRASH</BattlePanelLabel>
+      <div className="q-crash-mode-body mt-4 md:flex md:items-center md:justify-between md:gap-7">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-cyan-300/40 bg-cyan-300/10 px-3 py-1 text-[10px] font-black tracking-[0.2em] text-cyan-50">
+              NEW MODE
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-black tracking-[0.16em] text-cyan-100">
+              <Clock3 size={14} />
+              ASYNC 60S DROP
+            </span>
+          </div>
+          <h2 className="mt-3 text-3xl font-black tracking-tight text-white">Q Crash</h2>
+          <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-zinc-300">
+            {isZh
+              ? "不用約同一時間。兩首 60 秒 Drop 到位後立即開放投票，截止才公開結果。"
+              : "No synchronized meetup. Voting opens when both 60-second Drops lock, and results stay sealed until the deadline."}
+          </p>
         </div>
-        <h2 className="mt-3 text-3xl font-black tracking-tight text-white">Q Crash</h2>
-        <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-zinc-300">
-          {isZh
-            ? "不用約同一時間。兩首 60 秒 Drop 到位後立即開放投票，截止才公開結果。"
-            : "No synchronized meetup. Voting opens when both 60-second Drops lock, and results stay sealed until the deadline."}
-        </p>
+        <Link
+          href={`/battle/q-crash/new?lang=${lang}`}
+          className="battle-mode-action-cta q-crash-solid-cta mt-4 shrink-0 bg-cyan-400 shadow-[0_0_28px_rgba(34,211,238,0.2)] transition hover:bg-cyan-300 md:mt-0"
+        >
+          <Swords size={18} />
+          {isZh ? "建立 Q Crash" : "Create Q Crash"}
+        </Link>
       </div>
-      <Link
-        href={`/battle/q-crash/new?lang=${lang}`}
-        className="battle-mode-action-cta mt-4 shrink-0 bg-cyan-400 text-black shadow-[0_0_28px_rgba(34,211,238,0.2)] transition hover:bg-cyan-300 md:mt-0"
-      >
-        <Swords size={18} />
-        {isZh ? "建立 Q Crash" : "Create Q Crash"}
-      </Link>
     </section>
   );
 }
@@ -645,7 +657,7 @@ function QCrashPoolMatchCard({ card, isZh, lang }: { card: QCrashPoolCardRow; is
         <div className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end">
           <Link
             href={href}
-            className="inline-flex min-h-11 items-center justify-center rounded-full bg-cyan-400 px-5 text-sm font-black text-black shadow-[0_0_22px_rgba(34,211,238,0.2)] transition hover:bg-cyan-300"
+            className="q-crash-solid-cta inline-flex min-h-11 items-center justify-center rounded-full bg-cyan-400 px-5 text-sm font-black shadow-[0_0_22px_rgba(34,211,238,0.2)] transition hover:bg-cyan-300"
           >
             {voting ? (isZh ? "進入 Q Crash" : "Enter Q Crash") : (isZh ? "查看 Q Crash" : "Open Q Crash")}
           </Link>
@@ -1452,10 +1464,10 @@ function BattlePoolList() {
       <section id="drop-battle-pool" className="battle-pool-shell aipo-panel-line mt-5 scroll-mt-24 rounded-xl p-4 md:p-5">
         <div className="battle-pool-head mb-4">
           <div>
-            <p className="aipo-section-kicker">60S DROP BATTLE POOL</p>
+            <BattlePanelLabel tone="red">60S DROP BATTLE POOL</BattlePanelLabel>
             <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "Drop Battle 公開挑戰池" : "Drop Battle Challenge Pool"}</h2>
           </div>
-          <Link href={startChallengeHref} aria-label={startChallengeLabel} className="battle-pool-head-cta battle-mode-action-cta">
+          <Link href={startChallengeHref} aria-label={startChallengeLabel} className="battle-pool-head-cta battle-mode-action-cta drop-battle-solid-cta">
             <Swords aria-hidden="true" size={18} strokeWidth={2.4} />
             <span>{startChallengeLabel}</span>
           </Link>
@@ -1469,14 +1481,11 @@ function BattlePoolList() {
     <>
       <section
         id="q-crash-matchups"
-        className="mt-5 scroll-mt-24 overflow-hidden rounded-xl border border-cyan-300/35 bg-[radial-gradient(circle_at_86%_8%,rgba(34,211,238,0.12),transparent_30%),linear-gradient(140deg,rgba(3,20,29,0.88),rgba(0,0,0,0.7))] p-4 shadow-[0_20px_70px_rgba(0,0,0,0.38),0_0_34px_rgba(34,211,238,0.07)] md:p-5"
+        className="q-crash-matchups-panel mt-5 scroll-mt-24 overflow-hidden rounded-xl border border-cyan-300/35 bg-[radial-gradient(circle_at_86%_8%,rgba(34,211,238,0.12),transparent_30%),linear-gradient(140deg,rgba(3,20,29,0.88),rgba(0,0,0,0.7))] p-4 shadow-[0_20px_70px_rgba(0,0,0,0.38),0_0_34px_rgba(34,211,238,0.07)] md:p-4"
       >
-        <div className="mb-4 border-b border-cyan-300/18 pb-4">
-          <p className="text-[11px] font-black tracking-[0.24em] text-cyan-300">Q CRASH MATCHUPS</p>
+        <div className="mb-3 border-b border-cyan-300/18 pb-3">
+          <BattlePanelLabel tone="cyan">Q CRASH MATCHUPS</BattlePanelLabel>
           <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "Q Crash 對戰卡" : "Q Crash Matchup Cards"}</h2>
-          <p className="mt-2 text-xs font-bold leading-5 text-zinc-500">
-            {isZh ? "非同步投票中的 Q Crash 集中在這一區，與公開 Drop 挑戰分開顯示。" : "Asynchronous Q Crash matchups live here, separate from the public Drop challenge pool."}
-          </p>
         </div>
         {qCrashCards.length > 0 ? (
           <div className="grid gap-3">
@@ -1494,13 +1503,13 @@ function BattlePoolList() {
       <section id="drop-battle-pool" className="battle-pool-shell aipo-panel-line mt-5 scroll-mt-24 rounded-xl border-red-400/30 p-4 md:p-5">
       <div className="battle-pool-head mb-4">
         <div>
-          <p className="aipo-section-kicker">60S DROP BATTLE POOL</p>
+          <BattlePanelLabel tone="red">60S DROP BATTLE POOL</BattlePanelLabel>
           <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "Drop Battle 公開挑戰池" : "Drop Battle Challenge Pool"}</h2>
         </div>
         <Link
           href={startChallengeHref}
           aria-label={startChallengeLabel}
-          className="battle-pool-head-cta battle-mode-action-cta"
+          className="battle-pool-head-cta battle-mode-action-cta drop-battle-solid-cta"
         >
           <Swords aria-hidden="true" size={18} strokeWidth={2.4} />
           <span>{startChallengeLabel}</span>
@@ -1594,7 +1603,7 @@ function BattlePoolList() {
                       )}
                       <Link
                         href={`/battle/setup?${setupParams.toString()}`}
-                        className="rounded-full bg-red-500 px-4 py-2 text-xs font-black text-white shadow-[0_0_20px_rgba(239,68,68,0.18)] transition hover:bg-red-400"
+                        className="drop-battle-solid-cta rounded-full bg-red-500 px-4 py-2 text-xs font-black shadow-[0_0_20px_rgba(239,68,68,0.18)] transition hover:bg-red-400"
                       >
                         {isZh ? "挑戰這首 Drop" : "Challenge This Drop"}
                       </Link>

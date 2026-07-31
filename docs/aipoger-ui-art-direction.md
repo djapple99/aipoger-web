@@ -157,6 +157,7 @@ UI direction:
 - Official results use a compact result panel and show the winning work's pentagon feedback distribution. An insufficient Q Crash shows no radar.
 - Final copy leads with the winning work and then its creator. Never say that a creator defeated themself when both works have one owner.
 - The Battle Pool exposes one compact `建立 Q Crash` mode panel before the ordinary public Drop challenge pool; it must not push the normal pool out of the first viewport at 1440x900 or 390x844. Every active Q Crash appears as one paired A/B battle card, never two ordinary queue cards.
+- Battle Pool mode identity must remain unmistakable on desktop and mobile: the Q Crash introduction and matchup section use cyan live-text ribbons and cyan borders, while the public Drop Battle section uses red/coral live-text ribbons and red borders. Solid cyan/red mode labels and primary actions use near-black text; ordinary dark-card titles and supporting copy remain white/gray.
 
 ## 24H Full Song Battle
 

@@ -23,6 +23,7 @@ const fallbackSource = source("../src/app/api/battle-pool/process-fallbacks/rout
 const hookCutSource = source("../src/app/battle/hook-cut/page.tsx");
 const cardClientSource = source("../src/components/q-crash-card-client.tsx");
 const battlePoolSource = source("../src/app/battle/page.tsx");
+const globalStylesSource = source("../src/app/globals.css");
 const productRulesSource = source("../docs/aipoger-product-rules.md");
 
 test("Q Crash migration seals votes and enforces 60-second Drops", () => {
@@ -73,6 +74,16 @@ test("Battle Pool renders one grouped Q Crash card and removes its two queue row
   assert.ok(battlePoolSource.includes("Q CRASH MATCHUPS"));
   assert.ok(battlePoolSource.includes("Q Crash 對戰卡"));
   assert.match(battlePoolSource, /q-crash-matchups[\s\S]*?qCrashCards\.map[\s\S]*?drop-battle-pool/);
+});
+
+test("Battle Pool keeps Q Crash cyan, Drop Battle red, and solid actions dark", () => {
+  assert.ok(battlePoolSource.includes('<BattlePanelLabel tone="cyan">Q CRASH</BattlePanelLabel>'));
+  assert.ok(battlePoolSource.includes('<BattlePanelLabel tone="cyan">Q CRASH MATCHUPS</BattlePanelLabel>'));
+  assert.ok(battlePoolSource.includes('<BattlePanelLabel tone="red">60S DROP BATTLE POOL</BattlePanelLabel>'));
+  assert.ok(battlePoolSource.includes("q-crash-solid-cta"));
+  assert.ok(battlePoolSource.includes("drop-battle-solid-cta"));
+  assert.match(globalStylesSource, /\.q-crash-solid-cta \{[\s\S]*?color: #020708 !important;/);
+  assert.match(globalStylesSource, /\.drop-battle-solid-cta \{[\s\S]*?color: #160604 !important;/);
 });
 
 test("Q Crash voter comments require a vote and stay sealed until settlement", () => {

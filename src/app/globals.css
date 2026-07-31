@@ -1158,6 +1158,46 @@ a {
   font-size: 1.22rem;
 }
 
+/* Battle Pool mode ribbons share one live-text treatment across desktop and mobile. */
+.battle-panel-label {
+  display: inline-flex;
+  min-height: 1.9rem;
+  align-items: center;
+  gap: 0.55rem;
+  border-radius: 0.45rem;
+  padding: 0.35rem 0.55rem 0.35rem 0.7rem;
+  color: #050505;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.battle-panel-label svg {
+  width: 1.35rem;
+  height: 1.35rem;
+  margin-right: -0.15rem;
+}
+
+.battle-panel-label-cyan {
+  background: #2bd9f3;
+  box-shadow: 0 0 22px rgba(34, 211, 238, 0.2);
+}
+
+.battle-panel-label-red {
+  background: #ff5938;
+  box-shadow: 0 0 22px rgba(255, 75, 36, 0.18);
+}
+
+.q-crash-solid-cta {
+  color: #020708 !important;
+}
+
+.drop-battle-solid-cta {
+  color: #160604 !important;
+}
+
 .battle-pool-head-cta {
   display: inline-flex;
   min-height: 2.6rem;
@@ -1201,6 +1241,15 @@ a {
 }
 
 @media (min-width: 768px) {
+  .q-crash-mode-panel {
+    padding-top: 0.9rem;
+    padding-bottom: 0.9rem;
+  }
+
+  .q-crash-mode-body {
+    margin-top: 0.8rem;
+  }
+
   .battle-mode-action-cta {
     width: 11rem;
   }

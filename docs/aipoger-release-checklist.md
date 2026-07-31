@@ -103,6 +103,7 @@ Check:
 - Voting begins only after both works lock. Both creators see the same battle ID and `/b/{shortId}` share link.
 - Battle Pool shows exactly one paired Q Crash card for that ID and suppresses both A/B queue rows from the ordinary card list.
 - Battle Pool places Q Crash matchup cards in a distinct blue/cyan section directly below the Q Crash introduction. The red/orange `Drop Battle 公開挑戰池` contains only official/public Drop cards and its genre filters do not hide Q Crash cards.
+- At 1440x900 and the 1092px desktop reference width, Q Crash introduction/matchups read as one cyan system and the public Drop Battle pool reads as a separate red/coral system. Cyan/red live-text ribbons and solid primary CTAs use black text; ordinary card titles remain white, and the page has no horizontal overflow.
 - Server time sets the immutable 30-minute / 2-hour / 6-hour / 24-hour deadline; 2 hours is the default.
 - Logged-out visitors can open, listen, switch A/B playback, see time remaining, and share. Pressing the protected vote path returns through sign-in to the exact card.
 - Participants cannot vote. A signed-in audience account can vote once and cannot recast.
