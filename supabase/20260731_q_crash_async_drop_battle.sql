@@ -141,6 +141,9 @@ begin
 end;
 $$;
 
+revoke all on function public.q_crash_set_updated_at() from public, anon, authenticated;
+grant execute on function public.q_crash_set_updated_at() to service_role;
+
 drop trigger if exists trg_q_crash_cards_updated_at on public.q_crash_cards;
 create trigger trg_q_crash_cards_updated_at
 before update on public.q_crash_cards
@@ -182,6 +185,9 @@ begin
   return new;
 end;
 $$;
+
+revoke all on function public.block_unsealed_q_crash_battle_votes() from public, anon, authenticated;
+grant execute on function public.block_unsealed_q_crash_battle_votes() to service_role;
 
 drop trigger if exists trg_block_unsealed_q_crash_battle_votes on public.battle_votes;
 create trigger trg_block_unsealed_q_crash_battle_votes
