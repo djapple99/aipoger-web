@@ -204,6 +204,8 @@ Current behavior:
 - Guests may open the card, listen to both Drops, see time remaining, and share. Voting requires sign-in and must return the listener to the same Q Crash card after auth.
 - Each signed-in non-participant account gets exactly one immutable vote per Q Crash. Work owners cannot vote, including a creator who owns both A and B.
 - Selecting work A or B is a reversible client-side draft, not a submitted vote. The listener may replay, seek, or switch sides until pressing the explicit confirm-submit control; only that confirmation writes the sealed vote, and the submitted vote remains immutable.
+- After the confirmed vote, that audience account may optionally save one comment of at most 120 characters for the Q Crash. The voter may update or delete their own comment. While voting is open, only that voter may see their saved comment; all visible voter comments are revealed only after settlement, so comments never expose an audience count or momentum signal before the deadline.
+- Q Crash comments are qualitative context only. They do not change the winner vote, five-axis feedback, official audience threshold, Battle record, or Showtime eligibility.
 - Q Crash votes remain in a server-only sealed vote store while voting is open. No visitor, participant, or host may see counts, percentages, total voter count, a leader, or another signal that reveals the result before the deadline.
 - Winner voting and five-axis feedback are separate actions. Each of the five feedback keys (`rhyme`, `impact`, `melody`, `emotion`, and `structure`) may be selected once per work by each signed-in non-participant account; every selection is immutable, and work owners cannot submit feedback.
 - Open-card feedback is private to the current listener. Before settlement, the public/API surface may show only which keys that listener already selected; it must not return aggregate feedback totals, comparisons, progress, or a winner-shaped radar.
@@ -213,6 +215,7 @@ Current behavior:
 - Q Crash V1 does not open the live rematch window. A repeat comparison creates a new Q Crash.
 - Public sharing uses the existing `/b/{shortId}` Battle arena link once voting starts. Both work owners share the same battle ID and card; the system must never clone a second card for the second creator.
 - Battle Pool renders one Q Crash matchup card per Q Crash card/battle ID. Its A and B queue rows must be removed from the ordinary waiting-card list so one battle never appears as two separate cards.
+- Battle Pool visually separates the modes: Q Crash matchup cards live directly below the Q Crash introduction in a blue/cyan section, while official and public Drop Battle cards stay in their own red/orange `Drop Battle 公開挑戰池` section. Genre filters belong to the public Drop section and do not hide Q Crash cards.
 - Account limits reuse Drop roles: opening Q Crash occupies the founder state; a different creator accepting seat B occupies their challenger state. When one creator owns both works, Q Crash occupies only that creator's founder state.
 - Front-stage UI stays hot and DJ-battle-led: desktop uses two side-by-side work seats, mobile stacks them, every work exposes a lyrics HUD with a clear `歌詞未提供` state, and one fixed bottom player switches between A and B. Do not render Q Crash as a survey, leaderboard, or plain poll card.
 

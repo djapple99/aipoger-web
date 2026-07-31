@@ -257,10 +257,10 @@ function BattleStageHero({
 
 function QCrashModePanel({ isZh, lang }: { isZh: boolean; lang: string }) {
   return (
-    <section className="mt-5 overflow-hidden rounded-[1.4rem] border border-cyan-300/25 bg-[radial-gradient(circle_at_16%_10%,rgba(249,115,22,0.14),transparent_35%),radial-gradient(circle_at_84%_30%,rgba(34,211,238,0.12),transparent_34%),rgba(0,0,0,0.52)] px-5 py-5 shadow-[0_0_38px_rgba(34,211,238,0.06)] md:flex md:items-center md:justify-between md:gap-7 md:px-6">
+    <section className="mt-5 overflow-hidden rounded-[1.4rem] border border-cyan-300/35 bg-[radial-gradient(circle_at_82%_24%,rgba(34,211,238,0.15),transparent_34%),linear-gradient(115deg,rgba(3,20,29,0.92),rgba(0,0,0,0.68))] px-5 py-5 shadow-[0_0_40px_rgba(34,211,238,0.09)] md:flex md:items-center md:justify-between md:gap-7 md:px-6">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-orange-300/35 bg-orange-400/10 px-3 py-1 text-[10px] font-black tracking-[0.2em] text-orange-100">
+          <span className="rounded-full border border-cyan-300/40 bg-cyan-300/10 px-3 py-1 text-[10px] font-black tracking-[0.2em] text-cyan-50">
             NEW MODE
           </span>
           <span className="inline-flex items-center gap-1.5 text-[11px] font-black tracking-[0.16em] text-cyan-100">
@@ -601,19 +601,19 @@ function QCrashPoolMatchCard({ card, isZh, lang }: { card: QCrashPoolCardRow; is
   const coverB = card.works.B?.coverUrl || AIPOGER_BRAND_LOGO;
 
   return (
-    <article className="mb-4 overflow-hidden rounded-[1.35rem] border border-orange-200/25 bg-[radial-gradient(circle_at_14%_30%,rgba(249,115,22,0.12),transparent_28%),radial-gradient(circle_at_86%_20%,rgba(34,211,238,0.09),transparent_30%),rgba(0,0,0,0.56)] p-4 shadow-[0_18px_54px_rgba(0,0,0,0.28)] md:p-5">
+    <article className="overflow-hidden rounded-[1.35rem] border border-cyan-200/30 bg-[radial-gradient(circle_at_12%_28%,rgba(14,165,233,0.13),transparent_30%),radial-gradient(circle_at_88%_20%,rgba(34,211,238,0.1),transparent_30%),rgba(0,0,0,0.6)] p-4 shadow-[0_18px_54px_rgba(0,0,0,0.3),0_0_30px_rgba(34,211,238,0.06)] md:p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
         <div className="flex min-w-0 flex-1 items-center gap-4">
           <div className="relative h-20 w-28 shrink-0 sm:h-24 sm:w-36">
             <span
-              className="absolute left-0 top-0 h-20 w-20 rounded-2xl border border-orange-300/40 bg-black bg-contain bg-center bg-no-repeat shadow-[0_0_24px_rgba(249,115,22,0.15)] sm:h-24 sm:w-24"
+              className="absolute left-0 top-0 h-20 w-20 rounded-2xl border border-sky-300/45 bg-black bg-contain bg-center bg-no-repeat shadow-[0_0_24px_rgba(14,165,233,0.16)] sm:h-24 sm:w-24"
               style={{ backgroundImage: `url("${coverA.replace(/"/g, "%22")}")` }}
             />
             <span
               className="absolute right-0 top-2 h-16 w-16 rounded-2xl border border-cyan-300/40 bg-black bg-contain bg-center bg-no-repeat shadow-[0_0_24px_rgba(34,211,238,0.12)] sm:h-20 sm:w-20"
               style={{ backgroundImage: `url("${coverB.replace(/"/g, "%22")}")` }}
             />
-            <span className="absolute left-1 top-1 rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-black text-black">A</span>
+            <span className="absolute left-1 top-1 rounded-full bg-sky-300 px-2 py-0.5 text-[10px] font-black text-black">A</span>
             <span className="absolute right-1 top-3 rounded-full bg-cyan-300 px-2 py-0.5 text-[10px] font-black text-black">B</span>
           </div>
 
@@ -630,7 +630,7 @@ function QCrashPoolMatchCard({ card, isZh, lang }: { card: QCrashPoolCardRow; is
               {card.genre ? ` · ${card.genre}` : ""}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-orange-300/30 bg-orange-400/10 px-3 text-[11px] font-black text-orange-100">
+              <span className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-cyan-300/35 bg-cyan-300/10 px-3 text-[11px] font-black text-cyan-50">
                 <Swords size={13} />
                 {voting ? (isZh ? "Q Crash 投票中" : "Q Crash Voting") : (isZh ? "等待作品 B" : "Waiting for Work B")}
               </span>
@@ -645,7 +645,7 @@ function QCrashPoolMatchCard({ card, isZh, lang }: { card: QCrashPoolCardRow; is
         <div className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end">
           <Link
             href={href}
-            className="inline-flex min-h-11 items-center justify-center rounded-full bg-orange-500 px-5 text-sm font-black text-black shadow-[0_0_22px_rgba(249,115,22,0.22)] transition hover:bg-orange-300"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-cyan-400 px-5 text-sm font-black text-black shadow-[0_0_22px_rgba(34,211,238,0.2)] transition hover:bg-cyan-300"
           >
             {voting ? (isZh ? "進入 Q Crash" : "Enter Q Crash") : (isZh ? "查看 Q Crash" : "Open Q Crash")}
           </Link>
@@ -1424,13 +1424,13 @@ function BattlePoolList() {
   };
   const poolGenreCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    [...officialDrops.map((drop) => drop.genre), ...qCrashCards.map((card) => card.genre), ...rows.map((row) => row.genre), ...acceptedBattleRows.map((row) => row.genre)].forEach((genre) => {
+    [...officialDrops.map((drop) => drop.genre), ...rows.map((row) => row.genre), ...acceptedBattleRows.map((row) => row.genre)].forEach((genre) => {
       const key = normalizeGenreFilter(genre);
       if (!key) return;
       counts[key] = (counts[key] ?? 0) + 1;
     });
     return counts;
-  }, [acceptedBattleRows, officialDrops, qCrashCards, rows]);
+  }, [acceptedBattleRows, officialDrops, rows]);
   const filteredOfficialDrops = useMemo(() => {
     if (activeGenre === "all") return officialDrops;
     const target = normalizeGenreFilter(activeGenre);
@@ -1441,11 +1441,6 @@ function BattlePoolList() {
     const target = normalizeGenreFilter(activeGenre);
     return rows.filter((row) => normalizeGenreFilter(row.genre) === target);
   }, [activeGenre, rows]);
-  const filteredQCrashCards = useMemo(() => {
-    if (activeGenre === "all") return qCrashCards;
-    const target = normalizeGenreFilter(activeGenre);
-    return qCrashCards.filter((card) => normalizeGenreFilter(card.genre) === target);
-  }, [activeGenre, qCrashCards]);
   const filteredAcceptedBattleRows = useMemo(() => {
     if (activeGenre === "all") return acceptedBattleRows;
     const target = normalizeGenreFilter(activeGenre);
@@ -1471,7 +1466,32 @@ function BattlePoolList() {
   }
 
   return (
-    <section id="drop-battle-pool" className="battle-pool-shell aipo-panel-line mt-5 scroll-mt-24 rounded-xl p-4 md:p-5">
+    <>
+      <section
+        id="q-crash-matchups"
+        className="mt-5 scroll-mt-24 overflow-hidden rounded-xl border border-cyan-300/35 bg-[radial-gradient(circle_at_86%_8%,rgba(34,211,238,0.12),transparent_30%),linear-gradient(140deg,rgba(3,20,29,0.88),rgba(0,0,0,0.7))] p-4 shadow-[0_20px_70px_rgba(0,0,0,0.38),0_0_34px_rgba(34,211,238,0.07)] md:p-5"
+      >
+        <div className="mb-4 border-b border-cyan-300/18 pb-4">
+          <p className="text-[11px] font-black tracking-[0.24em] text-cyan-300">Q CRASH MATCHUPS</p>
+          <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "Q Crash 對戰卡" : "Q Crash Matchup Cards"}</h2>
+          <p className="mt-2 text-xs font-bold leading-5 text-zinc-500">
+            {isZh ? "非同步投票中的 Q Crash 集中在這一區，與公開 Drop 挑戰分開顯示。" : "Asynchronous Q Crash matchups live here, separate from the public Drop challenge pool."}
+          </p>
+        </div>
+        {qCrashCards.length > 0 ? (
+          <div className="grid gap-3">
+            {qCrashCards.map((card) => (
+              <QCrashPoolMatchCard key={card.cardId} card={card} isZh={isZh} lang={lang} />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-[1.2rem] border border-dashed border-cyan-300/25 bg-cyan-300/[0.035] px-4 py-5 text-center text-sm font-bold text-zinc-500">
+            {isZh ? "目前沒有開放中的 Q Crash；建立後，對戰卡會出現在這裡。" : "No open Q Crash right now. New matchup cards will appear here."}
+          </div>
+        )}
+      </section>
+
+      <section id="drop-battle-pool" className="battle-pool-shell aipo-panel-line mt-5 scroll-mt-24 rounded-xl border-red-400/30 p-4 md:p-5">
       <div className="battle-pool-head mb-4">
         <div>
           <p className="aipo-section-kicker">60S DROP BATTLE POOL</p>
@@ -1494,14 +1514,6 @@ function BattlePoolList() {
       ) : null}
 
       <GenreFilterBar activeGenre={activeGenre} onChange={setActiveGenre} counts={poolGenreCounts} t={t} isZh={isZh} showAllButton={false} />
-
-      {filteredQCrashCards.length > 0 ? (
-        <div className="mb-5">
-          {filteredQCrashCards.map((card) => (
-            <QCrashPoolMatchCard key={card.cardId} card={card} isZh={isZh} lang={lang} />
-          ))}
-        </div>
-      ) : null}
 
       {filteredOfficialDrops.length > 0 ? (
         <div className="mb-5">
@@ -1692,7 +1704,7 @@ function BattlePoolList() {
         </div>
       ) : null}
 
-      {filteredOfficialDrops.length === 0 && filteredQCrashCards.length === 0 && filteredRows.length === 0 && !focusedClosedCard && filteredAcceptedBattleRows.length === 0 ? (
+      {filteredOfficialDrops.length === 0 && filteredRows.length === 0 && !focusedClosedCard && filteredAcceptedBattleRows.length === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-6 text-center">
           <p className="text-sm font-bold text-zinc-300">
             {activeGenre === "all" ? t("pool_empty_title") : isZh ? "這個風格目前沒有公開挑戰" : "No open challenges in this style right now"}
@@ -1924,7 +1936,8 @@ function BattlePoolList() {
           })}
         </ul>
       ) : null}
-    </section>
+      </section>
+    </>
   );
 }
 

@@ -8,12 +8,14 @@ function source(path) {
 
 const migrationSource = source("../supabase/20260731_q_crash_async_drop_battle.sql");
 const feedbackMigrationSource = source("../supabase/20260731193000_q_crash_feedback.sql");
+const commentMigrationSource = source("../supabase/20260731233000_q_crash_voter_comments.sql");
 const battleStatsRepairMigrationSource = source("../supabase/20260731122043_battle_song_stats_runtime_dependencies.sql");
 const battleStatsIndexMigrationSource = source("../supabase/20260731123402_battle_song_stats_fk_indexes.sql");
 const poolRouteSource = source("../src/app/api/q-crash/route.ts");
 const cardRouteSource = source("../src/app/api/q-crash/[id]/route.ts");
 const voteRouteSource = source("../src/app/api/q-crash/[id]/vote/route.ts");
 const feedbackRouteSource = source("../src/app/api/q-crash/[id]/feedback/route.ts");
+const commentRouteSource = source("../src/app/api/q-crash/[id]/comments/route.ts");
 const guestVoteRouteSource = source("../src/app/api/battle-pool/guest-vote/route.ts");
 const cancelCurrentRouteSource = source("../src/app/api/battle-pool/cancel-current/route.ts");
 const settlementSource = source("../src/lib/server-q-crash.ts");
@@ -68,6 +70,22 @@ test("Battle Pool renders one grouped Q Crash card and removes its two queue row
   assert.ok(battlePoolSource.includes("function QCrashPoolMatchCard"));
   assert.ok(battlePoolSource.includes("qCrashQueueIds.has(row.id)"));
   assert.ok(battlePoolSource.includes("Q CRASH · ONE BATTLE"));
+  assert.ok(battlePoolSource.includes("Q CRASH MATCHUPS"));
+  assert.ok(battlePoolSource.includes("Q Crash 對戰卡"));
+  assert.match(battlePoolSource, /q-crash-matchups[\s\S]*?qCrashCards\.map[\s\S]*?drop-battle-pool/);
+});
+
+test("Q Crash voter comments require a vote and stay sealed until settlement", () => {
+  assert.ok(commentMigrationSource.includes("q_crash_comments_one_per_voter unique (battle_id, user_id)"));
+  assert.ok(commentMigrationSource.includes("references public.q_crash_votes(battle_id, user_id)"));
+  assert.ok(commentMigrationSource.includes("char_length(body) between 1 and 120"));
+  assert.ok(commentMigrationSource.includes("revoke all on table public.q_crash_comments from anon, authenticated"));
+  assert.ok(commentRouteSource.includes('from("q_crash_votes")'));
+  assert.ok(commentRouteSource.includes("完成投票後，才可以留下"));
+  assert.match(commentRouteSource, /const revealed = isFinalQCrash[\s\S]*?revealed \?[\s\S]*?moderation_status/);
+  assert.match(commentRouteSource, /comments: revealed \? mapped : \[\]/);
+  assert.ok(cardClientSource.includes("投票期間只看得到自己的留言"));
+  assert.ok(cardClientSource.includes("會在截止時與結果一起公開"));
 });
 
 test("Q Crash voting requires sign-in, excludes participants, and cannot be changed", () => {
@@ -141,6 +159,7 @@ test("product rules lock the asynchronous Q Crash contract", () => {
     "Selecting work A or B is a reversible client-side draft",
     "No visitor, participant, or host may see counts",
     "Each of the five feedback keys",
+    "one comment of at most 120 characters",
     "Battle Pool renders one Q Crash matchup card",
     "does not open the live rematch window",
   ]) {

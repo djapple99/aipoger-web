@@ -13,18 +13,22 @@ import {
   Heart,
   HeartPulse,
   LogIn,
+  MessageCircle,
   MicVocal,
   Music2,
   Pause,
   Play,
+  Send,
   Share2,
   SkipBack,
   SkipForward,
   Swords,
+  Trash2,
   Volume2,
   X,
 } from "lucide-react";
 import {
+  Q_CRASH_COMMENT_MAX_LENGTH,
   Q_CRASH_FEEDBACK_KEYS,
   emptyQCrashFeedbackCounts,
   type QCrashFeedbackCounts,
@@ -85,6 +89,22 @@ type QCrashPayload = {
     counts: Record<VoteSide, number> | null;
     audienceCount: number | null;
   } | null;
+};
+type QCrashComment = {
+  id: string;
+  displayName: string;
+  avatarUrl: string | null;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+  isMine: boolean;
+};
+type QCrashCommentsPayload = {
+  available: boolean;
+  revealed: boolean;
+  canComment: boolean;
+  viewerComment: QCrashComment | null;
+  comments: QCrashComment[];
 };
 
 function formatClock(seconds: number) {
@@ -176,6 +196,132 @@ function FeedbackRadar({ counts, isZh }: { counts: QCrashFeedbackCounts; isZh: b
           : isZh ? "本場尚無五項感受資料" : "No feedback data for this battle"}
       </p>
     </div>
+  );
+}
+
+function QCrashCommentsPanel(props: {
+  data: QCrashCommentsPayload | null;
+  text: string;
+  busy: boolean;
+  error: string | null;
+  isZh: boolean;
+  onTextChange: (value: string) => void;
+  onSubmit: () => void;
+  onDelete: () => void;
+}) {
+  const { data, text, busy, error, isZh, onTextChange, onSubmit, onDelete } = props;
+  const length = Array.from(text).length;
+  return (
+    <section className="mt-4 overflow-hidden rounded-[1.35rem] border border-cyan-300/20 bg-[radial-gradient(circle_at_10%_0%,rgba(34,211,238,0.08),transparent_28%),rgba(0,0,0,0.62)] px-4 py-4 md:px-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="inline-flex items-center gap-2 text-sm font-black text-white">
+            <MessageCircle size={17} className="text-cyan-300" />
+            {isZh ? "投票後評論" : "Post-vote Comments"}
+          </p>
+          <p className="mt-1 text-xs font-bold leading-5 text-zinc-500">
+            {isZh ? "每位有效投票者可留一則 120 字短評；投票期間只看得到自己的留言。" : "Each valid voter may leave one 120-character note. During voting, only your own note is visible."}
+          </p>
+        </div>
+        {data?.revealed ? (
+          <span className="rounded-full border border-cyan-300/25 bg-cyan-300/8 px-3 py-1 text-[10px] font-black tracking-[0.16em] text-cyan-100">
+            {isZh ? "已隨結果公開" : "REVEALED"}
+          </span>
+        ) : null}
+      </div>
+
+      {!data ? (
+        <p className="mt-4 text-xs font-bold text-zinc-600">{isZh ? "正在讀取評論…" : "Loading comments…"}</p>
+      ) : !data.available ? (
+        <p className="mt-4 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-3 text-xs font-bold text-zinc-500">
+          {isZh ? "評論功能準備中。" : "Comments are being prepared."}
+        </p>
+      ) : null}
+
+      {data?.available && data.canComment ? (
+        <div className="mt-4">
+          <textarea
+            value={text}
+            maxLength={Q_CRASH_COMMENT_MAX_LENGTH}
+            onChange={(event) => onTextChange(event.target.value)}
+            placeholder={isZh ? "聽完後，留一句你為什麼選它…" : "Why did this Drop win your vote?"}
+            className="min-h-24 w-full resize-y rounded-2xl border border-white/12 bg-black/65 px-4 py-3 text-sm font-bold leading-6 text-white outline-none transition placeholder:text-zinc-700 focus:border-cyan-300/55"
+          />
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <span className={`text-[11px] font-black ${length >= Q_CRASH_COMMENT_MAX_LENGTH ? "text-orange-300" : "text-zinc-600"}`}>
+              {length}/{Q_CRASH_COMMENT_MAX_LENGTH}
+            </span>
+            <div className="flex items-center gap-2">
+              {data.viewerComment ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={onDelete}
+                  className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-red-300/20 bg-red-500/7 px-3 text-xs font-black text-red-100 transition hover:bg-red-500/14 disabled:opacity-50"
+                >
+                  <Trash2 size={15} />
+                  {isZh ? "刪除" : "Delete"}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                disabled={busy || length === 0 || length > Q_CRASH_COMMENT_MAX_LENGTH}
+                onClick={onSubmit}
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-cyan-400 px-4 text-xs font-black text-black transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-600"
+              >
+                <Send size={15} />
+                {busy
+                  ? isZh ? "儲存中…" : "Saving…"
+                  : data.viewerComment
+                    ? isZh ? "更新評論" : "Update Comment"
+                    : isZh ? "留下評論" : "Leave Comment"}
+              </button>
+            </div>
+          </div>
+          <p className="mt-2 text-[11px] font-bold text-zinc-600">
+            {data.revealed
+              ? isZh ? "結果已公開；儲存後會立即顯示。" : "Results are public; your saved comment appears immediately."
+              : isZh ? "你的評論已保存後，會在截止時與結果一起公開。" : "Your saved comment will be revealed with the result at the deadline."}
+          </p>
+        </div>
+      ) : null}
+
+      {error ? (
+        <p className="mt-3 rounded-xl border border-red-300/25 bg-red-500/8 px-3 py-2 text-xs font-black text-red-100">{error}</p>
+      ) : null}
+
+      {data?.available && !data.revealed && data.viewerComment ? (
+        <div className="mt-4 rounded-xl border border-cyan-300/18 bg-cyan-300/[0.04] px-3 py-3 text-xs font-bold leading-5 text-zinc-300">
+          <span className="font-black text-cyan-200">{isZh ? "已保存，等待公開：" : "Saved, awaiting reveal: "}</span>
+          {data.viewerComment.body}
+        </div>
+      ) : null}
+
+      {data?.available && data.revealed ? (
+        <div className="mt-5 border-t border-white/8 pt-4">
+          {data.comments.length > 0 ? (
+            <ul className="space-y-3">
+              {data.comments.map((comment) => (
+                <li key={comment.id} className="flex gap-3 rounded-2xl border border-white/8 bg-white/[0.025] px-3 py-3">
+                  <span
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-cyan-300/20 bg-cyan-300/8 bg-cover bg-center text-xs font-black text-cyan-100"
+                    style={comment.avatarUrl ? { backgroundImage: `url("${comment.avatarUrl.replace(/"/g, "%22")}")` } : undefined}
+                  >
+                    {comment.avatarUrl ? null : comment.displayName.slice(0, 1).toUpperCase()}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-black text-zinc-300">{comment.displayName}{comment.isMine ? (isZh ? " · 你" : " · You") : ""}</p>
+                    <p className="mt-1 whitespace-pre-wrap break-words text-sm font-bold leading-6 text-zinc-100">{comment.body}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-center text-xs font-bold text-zinc-600">{isZh ? "這場還沒有觀眾短評。" : "No voter comments yet."}</p>
+          )}
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -353,9 +499,30 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
   const [feedbackBusy, setFeedbackBusy] = useState<QCrashFeedbackKey | null>(null);
   const [lyricsSide, setLyricsSide] = useState<Side | null>(null);
   const [shareNotice, setShareNotice] = useState<string | null>(null);
+  const [commentsPayload, setCommentsPayload] = useState<QCrashCommentsPayload | null>(null);
+  const [commentText, setCommentText] = useState("");
+  const [commentBusy, setCommentBusy] = useState(false);
+  const [commentError, setCommentError] = useState<string | null>(null);
+  const commentTouchedRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const currentPath = `${pathname}?lang=${lang}`;
+  const loadComments = useCallback(async (targetId: string) => {
+    const token = (await supabase.auth.getSession()).data.session?.access_token;
+    const response = await fetch(`/api/q-crash/${encodeURIComponent(targetId)}/comments`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      cache: "no-store",
+    });
+    const data = (await response.json().catch(() => null)) as (QCrashCommentsPayload & { error?: string }) | null;
+    if (!response.ok || !data) {
+      setCommentError(data?.error || (isZh ? "評論讀取失敗。" : "Could not load comments."));
+      return;
+    }
+    setCommentsPayload(data);
+    if (!commentTouchedRef.current) setCommentText(data.viewerComment?.body ?? "");
+    setCommentError(null);
+  }, [isZh]);
+
   const load = useCallback(async () => {
     const token = (await supabase.auth.getSession()).data.session?.access_token;
     const response = await fetch(`/api/q-crash/${encodeURIComponent(identifier)}`, {
@@ -371,8 +538,10 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
     setPayload(data);
     setError(null);
     setSecondsLeft(timeLeft(data.card.status === "q_crash_pending_invite" ? data.card.inviteExpiresAt : data.card.votingEndsAt));
+    if (data.card.battleId) void loadComments(data.card.battleId);
+    else setCommentsPayload(null);
     setLoading(false);
-  }, [identifier, isZh]);
+  }, [identifier, isZh, loadComments]);
 
   useEffect(() => {
     void load();
@@ -502,6 +671,7 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
         },
       } : current);
       setPendingVote(null);
+      void loadComments(payload.card.battleId || payload.card.id);
     }
     setVotingBusy(false);
   };
@@ -544,6 +714,57 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
       } : current);
     }
     setFeedbackBusy(null);
+  };
+
+  const submitComment = async () => {
+    if (!payload || commentBusy) return;
+    const session = (await supabase.auth.getSession()).data.session;
+    if (!session?.access_token) {
+      rememberAuthNextPath(currentPath);
+      router.push(`/auth?next=${encodeURIComponent(currentPath)}`);
+      return;
+    }
+    setCommentBusy(true);
+    setCommentError(null);
+    const targetId = payload.card.battleId || payload.card.id;
+    const response = await fetch(`/api/q-crash/${encodeURIComponent(targetId)}/comments`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ comment: commentText }),
+    });
+    const data = (await response.json().catch(() => null)) as { error?: string } | null;
+    if (!response.ok) {
+      setCommentError(data?.error || (isZh ? "評論儲存失敗。" : "Could not save comment."));
+    } else {
+      commentTouchedRef.current = false;
+      await loadComments(targetId);
+    }
+    setCommentBusy(false);
+  };
+
+  const deleteComment = async () => {
+    if (!payload || commentBusy) return;
+    const session = (await supabase.auth.getSession()).data.session;
+    if (!session?.access_token) return;
+    setCommentBusy(true);
+    setCommentError(null);
+    const targetId = payload.card.battleId || payload.card.id;
+    const response = await fetch(`/api/q-crash/${encodeURIComponent(targetId)}/comments`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    const data = (await response.json().catch(() => null)) as { error?: string } | null;
+    if (!response.ok) {
+      setCommentError(data?.error || (isZh ? "評論刪除失敗。" : "Could not delete comment."));
+    } else {
+      commentTouchedRef.current = false;
+      setCommentText("");
+      await loadComments(targetId);
+    }
+    setCommentBusy(false);
   };
 
   const share = async () => {
@@ -823,6 +1044,22 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
                   </p>
                 ) : null}
               </section>
+            ) : null}
+
+            {works?.B && (payload.viewer.hasVoted || final) ? (
+              <QCrashCommentsPanel
+                data={commentsPayload}
+                text={commentText}
+                busy={commentBusy}
+                error={commentError}
+                isZh={isZh}
+                onTextChange={(value) => {
+                  commentTouchedRef.current = true;
+                  setCommentText(value);
+                }}
+                onSubmit={() => void submitComment()}
+                onDelete={() => void deleteComment()}
+              />
             ) : null}
 
             {voting && works?.B ? (

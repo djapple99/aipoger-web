@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  Q_CRASH_COMMENT_MAX_LENGTH,
   Q_CRASH_FEEDBACK_KEYS,
   Q_CRASH_OFFICIAL_AUDIENCE_MIN,
   canQCrashAccountJoin,
@@ -11,10 +12,19 @@ import {
   isQCrashOfficialAudienceCount,
   isValidQCrashDropDuration,
   pickQCrashWinner,
+  qCrashCommentText,
   qCrashDurationMinutes,
   qCrashGenresMatch,
   qCrashVersionLabels,
 } from "../src/lib/q-crash-rules.ts";
+
+test("Q Crash voter comments are optional short notes capped at 120 characters", () => {
+  assert.equal(Q_CRASH_COMMENT_MAX_LENGTH, 120);
+  assert.equal(qCrashCommentText("  旋律很抓耳  "), "旋律很抓耳");
+  assert.equal(qCrashCommentText(""), null);
+  assert.equal(qCrashCommentText("a".repeat(120)), "a".repeat(120));
+  assert.equal(qCrashCommentText("a".repeat(121)), null);
+});
 
 test("Q Crash accepts only the four simple duration presets", () => {
   assert.equal(qCrashDurationMinutes(30), 30);

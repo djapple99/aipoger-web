@@ -222,13 +222,14 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
   "hook-guide": {
     zh: {
       navTitle: "Drop Battle 規則",
-      title: "什麼是 Drop Battle？",
+      title: "Drop Battle 與 Q Crash 怎麼玩？",
       lead:
-        "把一首歌最抓耳的 30-60 秒剪出來，讓聽眾直接比較、投票，看看哪一段最能讓人停下來聽。",
+        "把一首歌最抓耳的 30-60 秒剪出來，用現場 Drop Battle 或非同步 Q Crash 讓聽眾比較、投票，看看哪一段最能讓人停下來聽。",
       cards: [
         { label: "Drop", value: "30-60 秒", detail: "剪出最抓耳的爆點" },
         { label: "Battle", value: "開戰 / 接戰", detail: "讓作品直接被比較" },
-        { label: "Vote", value: "聽眾投票", detail: "有票才形成戰果" },
+        { label: "Vote", value: "聽眾投票", detail: "3 位有效觀眾才列正式戰績" },
+        { label: "Q Crash", value: "非同步投票", detail: "不用等大家同時上線" },
       ],
       sections: [
         {
@@ -240,7 +241,13 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           title: "基本比賽規則",
           body:
             "創作者上傳歌曲後裁切 Drop，開出戰帖或接受挑戰。系統會優先讓同歌曲種類的作品對決，觀眾進場聽 A / B 兩方，再用投票留下聽眾反應。",
-          items: ["每場以 A / B 兩方對決", "Drop 最長 60 秒，可剪短", "優先配對相同歌曲種類", "觀眾一人一票，截止前可改投", "有聽眾投票才形成戰果紀錄", "禁止上傳非本人授權或侵權歌曲"],
+          items: ["每場以 A / B 兩方對決", "Drop 最長 60 秒，可剪短", "優先配對相同歌曲種類", "一般 Drop Battle 依現行戰場流程投票", "至少 3 位非參賽觀眾完成投票才成立正式戰績", "禁止上傳非本人授權或侵權歌曲"],
+        },
+        {
+          title: "Q Crash 非同步 Drop Battle",
+          body:
+            "Q Crash 適合大家無法同時上線時使用。兩首同類型、最長 60 秒的 Drop 到位後立即開放投票，大家收到連結後可在自己的時間重播、快轉、比較，截止後才一起公開結果。",
+          items: ["可放自己的兩個版本，也可邀請另一位創作者放入作品 B", "投票時間可選 30 分鐘、2 小時、6 小時或 24 小時，預設 2 小時", "登入且非參賽的觀眾才能投票；選 A／B 後必須按「確定送出」，送出後不能改票", "每位觀眾可分別替兩首作品點選押韻、爆點、旋律、情緒、結構，每項每首限一次", "完成投票後可選擇留下一則最多 120 字的評論；投票期間只有自己看得到，截止後與結果一起公開", "0-2 位有效觀眾為觀眾不足；至少 3 位才成立正式戰績與勝出作品五角分布"],
         },
         {
           title: "創作者小技巧",
@@ -251,8 +258,8 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
         {
           title: "戰果與紀錄",
           body:
-            "Drop Battle 的重點不是空喊誰比較強，而是讓作品留下公開聽眾反應。只要有聽眾投票，這場對決就能成為創作者判斷作品方向的參考。",
-          items: ["0 票不產生戰果", "1-2 位聽眾投票可形成非正式戰果", "3 位以上不同聽眾投票才有機會進入正式紀錄", "成立的正式戰績會進入對戰記錄"],
+            "Drop Battle 的重點不是空喊誰比較強，而是讓作品留下可信的聽眾反應。觀眾不足時不包裝成正式勝負；達到門檻後，才把結果寫進作品戰績。",
+          items: ["0-2 位非參賽觀眾：觀眾不足，不產生正式勝負、成果卡或 Showtime 戰績", "3 位以上不同非參賽觀眾完成投票，才成立正式紀錄", "參賽者自己的票不算有效觀眾", "成立的正式戰績會進入對戰記錄"],
         },
         {
           title: "評分精神",
@@ -265,13 +272,14 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
     },
     en: {
       navTitle: "Drop Battle Rules",
-      title: "What Is Drop Battle?",
+      title: "How Do Drop Battle and Q Crash Work?",
       lead:
-        "Cut the most addictive 30-60 seconds from a song, put it head-to-head, and let listeners vote on which moment makes them stop and listen.",
+        "Cut the most addictive 30-60 seconds from a song, then use live Drop Battle or asynchronous Q Crash to let listeners compare which moment makes them stop and listen.",
       cards: [
         { label: "Drop", value: "30-60s", detail: "Cut the strongest moment" },
         { label: "Battle", value: "Open / Accept", detail: "Put two tracks side by side" },
-        { label: "Vote", value: "Listener Vote", detail: "Votes create the result" },
+        { label: "Vote", value: "Listener Vote", detail: "3 valid voters make it official" },
+        { label: "Q Crash", value: "Async Vote", detail: "No synchronized meetup" },
       ],
       sections: [
         {
@@ -283,7 +291,13 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           title: "Battle Flow",
           body:
             "Creators upload a track, cut a Drop, then open a challenge card or accept another creator's card. Listeners enter the room, compare A / B, and vote for the moment that lands harder.",
-          items: ["A / B battle format", "Drops can be up to 60 seconds", "Same music category is prioritized", "One vote per listener; votes can be switched before close", "A result requires listener votes", "Only original or properly licensed AI music is allowed"],
+          items: ["A / B battle format", "Drops can be up to 60 seconds", "Same music category is prioritized", "Standard Drop Battles follow the current arena voting flow", "An official record requires at least 3 non-participant voters", "Only original or properly licensed AI music is allowed"],
+        },
+        {
+          title: "Q Crash: Asynchronous Drop Battle",
+          body:
+            "Q Crash is for listeners who cannot arrive at the same time. Voting opens as soon as two same-genre Drops of up to 60 seconds are locked. Everyone can replay, seek, and compare in their own time; the result stays sealed until the deadline.",
+          items: ["Compare two versions from the same creator or invite another creator to fill Work B", "Choose 30 minutes, 2 hours, 6 hours, or 24 hours; 2 hours is the default", "Only signed-in non-participants may vote; A/B is not submitted until Confirm, then it cannot be changed", "Each listener may tap Rhyme, Impact, Melody, Emotion, and Structure once per work", "After voting, a listener may leave one optional comment up to 120 characters; it stays private until the result is revealed", "0-2 valid voters is insufficient; 3+ creates the official result and winning-work radar"],
         },
         {
           title: "Creator Tip",
@@ -295,7 +309,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           title: "Results and Records",
           body:
             "Drop Battle is not just about claiming a track is stronger. It creates a public listener signal that helps creators decide what to refine, share, and bring back to the stage.",
-          items: ["0 votes means no result", "1-2 listener votes can create an unofficial result", "3+ distinct listener votes can become an official record", "Established official results appear in Battle Records"],
+          items: ["0-2 non-participant voters is insufficient and creates no official result, result card, or Showtime record", "3+ distinct non-participant voters establishes the official record", "Participant votes do not count toward the audience threshold", "Established official results appear in Battle Records"],
         },
         {
           title: "Judging Spirit",

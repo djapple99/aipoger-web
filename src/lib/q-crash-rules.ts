@@ -6,6 +6,7 @@ export const Q_CRASH_MAX_DROP_SECONDS = 60;
 export const Q_CRASH_INVITE_HOURS = 24;
 export const Q_CRASH_DURATION_PRESETS = [30, 120, 360, 1440] as const;
 export const Q_CRASH_FEEDBACK_KEYS = ["rhyme", "impact", "melody", "emotion", "structure"] as const;
+export const Q_CRASH_COMMENT_MAX_LENGTH = 120;
 
 export type QCrashDurationMinutes = (typeof Q_CRASH_DURATION_PRESETS)[number];
 export type QCrashSide = "fighter_a" | "fighter_b";
@@ -44,6 +45,13 @@ export function isQCrashOfficialAudienceCount(value: unknown): boolean {
 
 export function isQCrashFeedbackKey(value: unknown): value is QCrashFeedbackKey {
   return typeof value === "string" && Q_CRASH_FEEDBACK_KEYS.includes(value as QCrashFeedbackKey);
+}
+
+export function qCrashCommentText(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const text = value.trim();
+  if (!text || Array.from(text).length > Q_CRASH_COMMENT_MAX_LENGTH) return null;
+  return text;
 }
 
 export function emptyQCrashFeedbackCounts(): QCrashFeedbackCounts {

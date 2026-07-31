@@ -102,9 +102,11 @@ Check:
 - The first successful work-B acceptance wins the pending-card claim. Two simultaneous accepts must not create duplicate battles.
 - Voting begins only after both works lock. Both creators see the same battle ID and `/b/{shortId}` share link.
 - Battle Pool shows exactly one paired Q Crash card for that ID and suppresses both A/B queue rows from the ordinary card list.
+- Battle Pool places Q Crash matchup cards in a distinct blue/cyan section directly below the Q Crash introduction. The red/orange `Drop Battle 公開挑戰池` contains only official/public Drop cards and its genre filters do not hide Q Crash cards.
 - Server time sets the immutable 30-minute / 2-hour / 6-hour / 24-hour deadline; 2 hours is the default.
 - Logged-out visitors can open, listen, switch A/B playback, see time remaining, and share. Pressing the protected vote path returns through sign-in to the exact card.
 - Participants cannot vote. A signed-in audience account can vote once and cannot recast.
+- After the vote is confirmed, that voter may save one optional comment of at most 120 characters, update it, or delete it. Before settlement the API/UI returns only that viewer's own comment and no public comment list/count; after settlement visible comments are public. Comments never affect voting or five-axis feedback.
 - Each signed-in non-participant may select 押韻、爆點、旋律、情緒、結構 once per work. Every key locks immediately; participants cannot submit feedback.
 - During voting, the public API/UI returns no tally, percentage, total audience, feedback aggregate, leader, radar, or inference signal. It may return only the current listener's own selected feedback keys. Direct guest voting and the normal `cast_vote` path reject Q Crash.
 - Deadline settlement runs from the 5-minute Battle fallback cron and also settles opportunistically on a post-deadline card read.
@@ -115,7 +117,7 @@ Check:
 - Every work opens an in-page lyrics HUD and has a readable `歌詞未提供` fallback.
 - Check the pending, voting, voted, insufficient, official-result, cancelled, and expired screens at 1440x900 and 390x844. The shared five-key dock and fixed bottom A/B player must not cover vote actions or create horizontal overflow.
 - Confirm ordinary live Drop Battle guest voting, Battle Records, official gatekeepers, rematch, Explore challenges, and Showtime do not regress.
-- Before enabling Q Crash in production, apply and verify `supabase/20260731_q_crash_async_drop_battle.sql` and `supabase/20260731193000_q_crash_feedback.sql`; code deployment without both schemas is a release blocker.
+- Before enabling Q Crash in production, apply and verify `supabase/20260731_q_crash_async_drop_battle.sql`, `supabase/20260731193000_q_crash_feedback.sql`, and `supabase/20260731233000_q_crash_voter_comments.sql`; code deployment without all three schemas is a release blocker.
 
 ## Explore AI Music Challenge Checklist
 
