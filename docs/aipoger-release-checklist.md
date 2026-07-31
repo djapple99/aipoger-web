@@ -101,17 +101,21 @@ Check:
 - Work B must use a distinct queue entry and the exact same fixed genre. A different creator must own the submitted Drop; the original creator may intentionally submit a second own Drop.
 - The first successful work-B acceptance wins the pending-card claim. Two simultaneous accepts must not create duplicate battles.
 - Voting begins only after both works lock. Both creators see the same battle ID and `/b/{shortId}` share link.
+- Battle Pool shows exactly one paired Q Crash card for that ID and suppresses both A/B queue rows from the ordinary card list.
 - Server time sets the immutable 30-minute / 2-hour / 6-hour / 24-hour deadline; 2 hours is the default.
 - Logged-out visitors can open, listen, switch A/B playback, see time remaining, and share. Pressing the protected vote path returns through sign-in to the exact card.
 - Participants cannot vote. A signed-in audience account can vote once and cannot recast.
-- During voting, the public API/UI returns no tally, percentage, total audience, leader, or inference signal. Direct guest voting and the normal `cast_vote` path reject Q Crash.
+- Each signed-in non-participant may select 押韻、爆點、旋律、情緒、結構 once per work. Every key locks immediately; participants cannot submit feedback.
+- During voting, the public API/UI returns no tally, percentage, total audience, feedback aggregate, leader, radar, or inference signal. It may return only the current listener's own selected feedback keys. Direct guest voting and the normal `cast_vote` path reject Q Crash.
 - Deadline settlement runs from the 5-minute Battle fallback cron and also settles opportunistically on a post-deadline card read.
 - Verify 0, 1, and 2 valid audience accounts settle as insufficient with no archive/stats/Showtime/rematch. Verify 3+ creates an official work-first result and saves the winning queue/work ID.
 - Verify official ties reuse the stable formal Drop Battle tie breaker.
 - Final notifications and result copy name the winning work first and then the creator. Same-owner comparisons never say the creator defeated themself.
-- Check the pending, voting, voted, insufficient, official-result, cancelled, and expired screens at 1440x900 and 390x844. The fixed bottom A/B player must not cover vote actions or create horizontal overflow.
+- Official result shows the winning work's five-axis pentagon distribution. Insufficient result shows no radar or feedback aggregate.
+- Every work opens an in-page lyrics HUD and has a readable `歌詞未提供` fallback.
+- Check the pending, voting, voted, insufficient, official-result, cancelled, and expired screens at 1440x900 and 390x844. The shared five-key dock and fixed bottom A/B player must not cover vote actions or create horizontal overflow.
 - Confirm ordinary live Drop Battle guest voting, Battle Records, official gatekeepers, rematch, Explore challenges, and Showtime do not regress.
-- Before enabling Q Crash in production, apply and verify `supabase/20260731_q_crash_async_drop_battle.sql`; code deployment without that schema is a release blocker.
+- Before enabling Q Crash in production, apply and verify `supabase/20260731_q_crash_async_drop_battle.sql` and `supabase/20260731193000_q_crash_feedback.sql`; code deployment without both schemas is a release blocker.
 
 ## Explore AI Music Challenge Checklist
 

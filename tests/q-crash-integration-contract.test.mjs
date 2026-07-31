@@ -7,14 +7,18 @@ function source(path) {
 }
 
 const migrationSource = source("../supabase/20260731_q_crash_async_drop_battle.sql");
+const feedbackMigrationSource = source("../supabase/20260731193000_q_crash_feedback.sql");
+const poolRouteSource = source("../src/app/api/q-crash/route.ts");
 const cardRouteSource = source("../src/app/api/q-crash/[id]/route.ts");
 const voteRouteSource = source("../src/app/api/q-crash/[id]/vote/route.ts");
+const feedbackRouteSource = source("../src/app/api/q-crash/[id]/feedback/route.ts");
 const guestVoteRouteSource = source("../src/app/api/battle-pool/guest-vote/route.ts");
 const cancelCurrentRouteSource = source("../src/app/api/battle-pool/cancel-current/route.ts");
 const settlementSource = source("../src/lib/server-q-crash.ts");
 const fallbackSource = source("../src/app/api/battle-pool/process-fallbacks/route.ts");
 const hookCutSource = source("../src/app/battle/hook-cut/page.tsx");
 const cardClientSource = source("../src/components/q-crash-card-client.tsx");
+const battlePoolSource = source("../src/app/battle/page.tsx");
 const productRulesSource = source("../docs/aipoger-product-rules.md");
 
 test("Q Crash migration seals votes and enforces 60-second Drops", () => {
@@ -39,6 +43,31 @@ test("Q Crash API returns tallies only after the card reaches a final state", ()
   assert.ok(cardRouteSource.includes("battle?.audio_b_path || queueB.audio_path"));
 });
 
+test("Q Crash feedback is immutable, server-only, and aggregate-sealed", () => {
+  assert.ok(feedbackMigrationSource.includes("q_crash_feedback_one_per_work_key unique (battle_id, user_id, queue_id, feedback_key)"));
+  assert.ok(feedbackMigrationSource.includes("revoke all on table public.q_crash_feedback from anon, authenticated"));
+  assert.ok(feedbackMigrationSource.includes("security invoker"));
+  assert.ok(feedbackMigrationSource.includes("set search_path = ''"));
+  assert.ok(feedbackMigrationSource.includes("trg_reject_q_crash_feedback_changes"));
+  assert.ok(feedbackMigrationSource.includes("Q Crash feedback is immutable"));
+  assert.ok(feedbackRouteSource.includes('if (!token) return jsonError("請先登入再送出評分。", 401)'));
+  assert.ok(feedbackRouteSource.includes("作品持有人不能替自己的 Q Crash 送出評分"));
+  assert.ok(feedbackRouteSource.includes("每首作品的每一項只能點一次"));
+  assert.equal(feedbackRouteSource.includes("counts:"), false);
+  assert.match(cardRouteSource, /if \(viewer && card\.battle_id\)[\s\S]*?eq\("user_id", viewer\.id\)/);
+  assert.match(cardRouteSource, /if \(isFinal && card\.battle_id\)[\s\S]*?if \(card\.status === "q_crash_finished"\)[\s\S]*?from\("q_crash_feedback"\)/);
+});
+
+test("Battle Pool renders one grouped Q Crash card and removes its two queue rows", () => {
+  assert.ok(poolRouteSource.includes('from("q_crash_cards")'));
+  assert.ok(poolRouteSource.includes("await settleQCrashBattle(admin, card.battle_id, nowMs)"));
+  assert.ok(poolRouteSource.includes("visibleCards.push(card)"));
+  assert.ok(poolRouteSource.includes("queueIds: [queueA.id, queueB?.id ?? null]"));
+  assert.ok(battlePoolSource.includes("function QCrashPoolMatchCard"));
+  assert.ok(battlePoolSource.includes("qCrashQueueIds.has(row.id)"));
+  assert.ok(battlePoolSource.includes("Q CRASH · ONE BATTLE"));
+});
+
 test("Q Crash voting requires sign-in, excludes participants, and cannot be changed", () => {
   assert.ok(voteRouteSource.includes('if (!token) return jsonError("請先登入再投票。", 401)'));
   assert.ok(voteRouteSource.includes("作品持有人不能替自己的 Q Crash 投票"));
@@ -54,6 +83,8 @@ test("Q Crash settlement archives only official results and stores the winning w
   assert.ok(settlementSource.includes('status: "q_crash_insufficient"'));
   assert.ok(settlementSource.includes('status: "q_crash_finished"'));
   assert.ok(settlementSource.includes("winner_queue_id: winnerQueueId"));
+  assert.ok(settlementSource.includes("feedbackA: feedbackCounts.A"));
+  assert.ok(settlementSource.includes("feedbackB: feedbackCounts.B"));
   assert.ok(settlementSource.includes("不產生正式勝負、不進 Showtime"));
 });
 
@@ -75,8 +106,10 @@ test("Q Crash reuses the Drop cutter and keeps the sealed-vote presentation", ()
   assert.ok(hookCutSource.includes("searchParams.get('qCrashCreate')"));
   assert.ok(hookCutSource.includes("searchParams.get('qCrashCardId')"));
   assert.ok(hookCutSource.includes("/api/q-crash/"));
-  assert.ok(cardClientSource.includes("投票期間不顯示票數、百分比或領先作品"));
+  assert.ok(cardClientSource.includes("截止前不顯示票數、評分總和或領先作品"));
   assert.ok(cardClientSource.includes('className="fixed inset-x-3 bottom-3'));
+  assert.ok(cardClientSource.includes("勝出作品五角評分分布"));
+  assert.ok(cardClientSource.includes("歌詞未提供"));
   assert.ok(cardClientSource.includes("battleShortPath(payload.card.battleId, lang)"));
 });
 
@@ -87,6 +120,8 @@ test("product rules lock the asynchronous Q Crash contract", () => {
     "At least 3 establishes an official Drop Battle result",
     "Work owners cannot vote",
     "No visitor, participant, or host may see counts",
+    "Each of the five feedback keys",
+    "Battle Pool renders one Q Crash matchup card",
     "does not open the live rematch window",
   ]) {
     assert.ok(productRulesSource.includes(phrase), `missing product rule: ${phrase}`);

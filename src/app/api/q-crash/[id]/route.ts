@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
+  Q_CRASH_FEEDBACK_KEYS,
   Q_CRASH_OFFICIAL_AUDIENCE_MIN,
   canQCrashAccountJoin,
+  canQCrashAccountSendFeedback,
   canQCrashAccountVote,
+  emptyQCrashFeedbackCounts,
   qCrashVersionLabels,
+  type QCrashFeedbackCounts,
+  type QCrashFeedbackKey,
   type QCrashSide,
 } from "@/lib/q-crash-rules";
 import { settleQCrashBattle } from "@/lib/server-q-crash";
@@ -64,6 +69,10 @@ type BattleRow = {
   fighter_a_avatar: string | null;
   fighter_b_avatar: string | null;
 };
+type FeedbackRow = {
+  queue_id: string;
+  feedback_key: QCrashFeedbackKey;
+};
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -76,6 +85,23 @@ function isUuid(value: unknown): value is string {
 function tokenFromRequest(request: NextRequest) {
   const auth = request.headers.get("authorization") ?? "";
   return auth.startsWith("Bearer ") ? auth.slice("Bearer ".length).trim() || null : null;
+}
+
+function isMissingFeedbackSchema(message: string | null | undefined) {
+  return /q_crash_feedback|schema cache|does not exist|PGRST/i.test(message ?? "");
+}
+
+function feedbackCountsByQueue(rows: FeedbackRow[], queueAId: string, queueBId: string | null) {
+  const counts: { A: QCrashFeedbackCounts; B: QCrashFeedbackCounts } = {
+    A: emptyQCrashFeedbackCounts(),
+    B: emptyQCrashFeedbackCounts(),
+  };
+  rows.forEach((row) => {
+    const side = row.queue_id === queueAId ? "A" : row.queue_id === queueBId ? "B" : null;
+    if (!side || !Q_CRASH_FEEDBACK_KEYS.includes(row.feedback_key)) return;
+    counts[side][row.feedback_key] += 1;
+  });
+  return counts;
 }
 
 function adminClient() {
@@ -189,6 +215,23 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
           .maybeSingle<{ voted_for: QCrashSide }>()
       : { data: null };
 
+  let feedbackAvailable = true;
+  let viewerFeedbackRows: FeedbackRow[] = [];
+  if (viewer && card.battle_id) {
+    const viewerFeedbackResult = await admin
+      .from("q_crash_feedback")
+      .select("queue_id,feedback_key")
+      .eq("battle_id", card.battle_id)
+      .eq("user_id", viewer.id)
+      .returns<FeedbackRow[]>();
+    if (viewerFeedbackResult.error) {
+      if (isMissingFeedbackSchema(viewerFeedbackResult.error.message)) feedbackAvailable = false;
+      else return jsonError(viewerFeedbackResult.error.message, 500);
+    } else {
+      viewerFeedbackRows = viewerFeedbackResult.data ?? [];
+    }
+  }
+
   const [profileA, profileB, audioA, audioB] = await Promise.all([
     profileMedia(admin, queueA.user_id),
     queueB ? profileMedia(admin, queueB.user_id) : Promise.resolve(null),
@@ -199,6 +242,7 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
   const isFinal = card.status === "q_crash_finished" || card.status === "q_crash_insufficient";
   let counts: Record<QCrashSide, number> | null = null;
   let audienceCount: number | null = null;
+  let feedbackCounts: { A: QCrashFeedbackCounts; B: QCrashFeedbackCounts } | null = null;
   if (isFinal && card.battle_id) {
     const { data: finalVotes } = await admin
       .from("q_crash_votes")
@@ -213,6 +257,20 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
       fighter_b: validVotes.filter((vote) => vote.voted_for === "fighter_b").length,
     };
     audienceCount = new Set(validVotes.map((vote) => vote.user_id)).size;
+
+    if (card.status === "q_crash_finished") {
+      const finalFeedbackResult = await admin
+        .from("q_crash_feedback")
+        .select("queue_id,feedback_key")
+        .eq("battle_id", card.battle_id)
+        .returns<FeedbackRow[]>();
+      if (finalFeedbackResult.error) {
+        if (isMissingFeedbackSchema(finalFeedbackResult.error.message)) feedbackAvailable = false;
+        else return jsonError(finalFeedbackResult.error.message, 500);
+      } else {
+        feedbackCounts = feedbackCountsByQueue(finalFeedbackResult.data ?? [], queueA.id, queueB?.id ?? null);
+      }
+    }
   }
 
   const viewerId = viewer?.id ?? null;
@@ -234,6 +292,22 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
     alreadyVoted: hasVoted,
     nowMs,
   });
+  const canSendFeedback = feedbackAvailable && canQCrashAccountSendFeedback({
+    status: card.status,
+    votingEndsAt: card.voting_ends_at,
+    viewerUserId: viewerId,
+    fighterAUserId: queueA.user_id,
+    fighterBUserId: queueB?.user_id,
+    nowMs,
+  });
+  const selectedFeedback = {
+    A: viewerFeedbackRows
+      .filter((row) => row.queue_id === queueA.id)
+      .map((row) => row.feedback_key),
+    B: viewerFeedbackRows
+      .filter((row) => row.queue_id === queueB?.id)
+      .map((row) => row.feedback_key),
+  };
 
   return NextResponse.json(
     {
@@ -286,6 +360,12 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
         canVote,
         hasVoted,
         votedFor: viewerVote?.voted_for ?? null,
+      },
+      feedback: {
+        available: feedbackAvailable,
+        canSubmit: canSendFeedback,
+        selected: selectedFeedback,
+        counts: feedbackCounts,
       },
       result: isFinal
         ? {

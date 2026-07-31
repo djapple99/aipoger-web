@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  Q_CRASH_FEEDBACK_KEYS,
   Q_CRASH_OFFICIAL_AUDIENCE_MIN,
   canQCrashAccountJoin,
+  canQCrashAccountSendFeedback,
   canQCrashAccountVote,
+  isQCrashFeedbackKey,
   isQCrashOfficialAudienceCount,
   isValidQCrashDropDuration,
   pickQCrashWinner,
@@ -69,6 +72,30 @@ test("Q Crash vote eligibility requires login, excludes participants, blocks rec
   assert.equal(canQCrashAccountVote({ ...base, viewerUserId: "listener" }), true);
   assert.equal(
     canQCrashAccountVote({
+      ...base,
+      viewerUserId: "listener",
+      nowMs: Date.parse("2026-07-31T02:00:00.000Z"),
+    }),
+    false,
+  );
+});
+
+test("Q Crash feedback uses five fixed keys and excludes signed-out visitors and work owners", () => {
+  assert.deepEqual(Q_CRASH_FEEDBACK_KEYS, ["rhyme", "impact", "melody", "emotion", "structure"]);
+  assert.equal(isQCrashFeedbackKey("melody"), true);
+  assert.equal(isQCrashFeedbackKey("overall"), false);
+  const base = {
+    status: "q_crash_voting",
+    votingEndsAt: "2026-07-31T02:00:00.000Z",
+    fighterAUserId: "creator-a",
+    fighterBUserId: "creator-b",
+    nowMs: Date.parse("2026-07-31T01:00:00.000Z"),
+  };
+  assert.equal(canQCrashAccountSendFeedback({ ...base, viewerUserId: null }), false);
+  assert.equal(canQCrashAccountSendFeedback({ ...base, viewerUserId: "creator-a" }), false);
+  assert.equal(canQCrashAccountSendFeedback({ ...base, viewerUserId: "listener" }), true);
+  assert.equal(
+    canQCrashAccountSendFeedback({
       ...base,
       viewerUserId: "listener",
       nowMs: Date.parse("2026-07-31T02:00:00.000Z"),

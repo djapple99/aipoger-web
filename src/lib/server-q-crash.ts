@@ -1,9 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   Q_CRASH_BATTLE_TYPE,
+  Q_CRASH_FEEDBACK_KEYS,
   Q_CRASH_OFFICIAL_AUDIENCE_MIN,
+  emptyQCrashFeedbackCounts,
   isQCrashOfficialAudienceCount,
   pickQCrashWinner,
+  type QCrashFeedbackCounts,
+  type QCrashFeedbackKey,
   type QCrashSide,
 } from "./q-crash-rules";
 
@@ -33,6 +37,11 @@ type QCrashVoteRow = {
   created_at?: string | null;
 };
 
+type QCrashFeedbackRow = {
+  queue_id: string;
+  feedback_key: QCrashFeedbackKey;
+};
+
 export type QCrashSettlementResult = {
   state: "open" | "official" | "insufficient" | "already_settled";
   battleId: string;
@@ -60,6 +69,31 @@ function countQCrashVotes(rows: QCrashVoteRow[]) {
     },
     { fighter_a: 0, fighter_b: 0 },
   );
+}
+
+async function readQCrashFeedbackCounts(
+  admin: SupabaseClient,
+  battle: QCrashBattleRow,
+): Promise<{ A: QCrashFeedbackCounts; B: QCrashFeedbackCounts }> {
+  const counts = {
+    A: emptyQCrashFeedbackCounts(),
+    B: emptyQCrashFeedbackCounts(),
+  };
+  const { data, error } = await admin
+    .from("q_crash_feedback")
+    .select("queue_id,feedback_key")
+    .eq("battle_id", battle.id)
+    .returns<QCrashFeedbackRow[]>();
+  if (error) {
+    if (/q_crash_feedback|schema cache|does not exist|PGRST/i.test(error.message)) return counts;
+    throw new Error(`Q Crash feedback read failed: ${error.message}`);
+  }
+  (data ?? []).forEach((row) => {
+    const side = row.queue_id === battle.queue_a_id ? "A" : row.queue_id === battle.queue_b_id ? "B" : null;
+    if (!side || !Q_CRASH_FEEDBACK_KEYS.includes(row.feedback_key)) return;
+    counts[side][row.feedback_key] += 1;
+  });
+  return counts;
 }
 
 async function closeQCrashQueues(
@@ -202,6 +236,7 @@ export async function settleQCrashBattle(
   const winner = pickQCrashWinner(counts, battle.id);
   if (!winner) throw new Error("Q Crash official result has no winner");
   const winnerQueueId = winner === "fighter_a" ? battle.queue_a_id : battle.queue_b_id;
+  const feedbackCounts = await readQCrashFeedbackCounts(admin, battle);
 
   await admin.from("battle_guest_votes").delete().eq("battle_id", battle.id);
   const officialVoteRows = audienceVotes.map((vote) => ({
@@ -238,6 +273,8 @@ export async function settleQCrashBattle(
       votesB: counts.fighter_b,
       votesTotal: counts.fighter_a + counts.fighter_b,
       audienceCount,
+      feedbackA: feedbackCounts.A,
+      feedbackB: feedbackCounts.B,
       genre: battle.genre,
       officialAudienceMin: Q_CRASH_OFFICIAL_AUDIENCE_MIN,
       settledAt: now,

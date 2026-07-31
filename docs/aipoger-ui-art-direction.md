@@ -150,10 +150,12 @@ UI direction:
 - Keep the same black stage, orange battle energy, small cyan electrical accent, A/B confrontation, and music-first language.
 - Desktop uses two side-by-side work seats with a compact VS signal. Mobile stacks the seats and keeps both play/vote actions easy to reach without horizontal overflow.
 - Each work seat shows cover, work/version label, song, creator, genre, AI tool, Drop duration, one play action, and one vote action.
-- Playback uses one fixed bottom A/B player with play/pause, seek, previous/next, and close. Do not embed a native audio control in each work card.
-- Voting state shows only the mode, deadline, work information, and the listener's private submitted state. Never show a count, percentage, total audience, leader, or visual progress toward a winner before settlement.
+- Keep the `Q CRASH` title compact so the work comparison starts high in the viewport. Lyrics open as an in-page HUD below the work pair; missing lyrics say `歌詞未提供` rather than leaving a blank panel.
+- Playback uses one fixed bottom A/B player with explicit A/B switches, play/pause, seek, previous/next, volume on desktop, and close. Do not embed a native audio control in each work card.
+- Voting state shows only the mode, deadline, work information, and the listener's private submitted state. A shared bottom rating dock switches between A and B and contains exactly five keys: 押韻、爆點、旋律、情緒、結構. Never show a count, percentage, total audience, feedback total, leader, radar, or visual progress toward a winner before settlement.
+- Official results use a compact result panel and show the winning work's pentagon feedback distribution. An insufficient Q Crash shows no radar.
 - Final copy leads with the winning work and then its creator. Never say that a creator defeated themself when both works have one owner.
-- The Battle Pool exposes one compact `建立 Q Crash` mode panel before the ordinary public Drop challenge pool; it must not push the normal pool out of the first viewport at 1440x900 or 390x844.
+- The Battle Pool exposes one compact `建立 Q Crash` mode panel before the ordinary public Drop challenge pool; it must not push the normal pool out of the first viewport at 1440x900 or 390x844. Every active Q Crash appears as one paired A/B battle card, never two ordinary queue cards.
 
 ## 24H Full Song Battle
 

@@ -612,3 +612,45 @@ final result: passed
 - Full typecheck, 207 tests, ESLint (0 errors), and production build passed.
 
 final result: passed
+
+---
+
+## Q Crash Focus Listen Dock QA (2026-07-31)
+
+Result: **Passed**
+
+Date: 2026-07-31
+
+Reference: selected Focus Listen Dock design (`exec-768886b0-8d2a-4397-8232-3ab76374d1ae.png`)
+
+Implementation states: active voting, private five-key feedback, lyrics available, lyrics unavailable, active A/B player, and grouped Battle Pool card.
+
+### Visual comparison
+
+- Compared the selected reference and the final 1487×1058 implementation in one side-by-side image.
+- The implementation keeps the selected hierarchy: compact Q CRASH heading, A/B work cards, compact VS, lyrics HUD, full-width shared five-key dock, result panel, and fixed A/B player.
+- The reference's pre-deadline radar was intentionally not reproduced. Product rules require feedback aggregates and winner-shaped signals to remain sealed until official settlement.
+- After comparison, the desktop feedback dock was widened to align with the full battle frame instead of ending at the work-card column.
+
+QA bundle: `/private/tmp/aipoger-q-crash-design-qa-20260731`
+
+### Rubric
+
+| Dimension | Result | Notes |
+| --- | --- | --- |
+| Interface organization | Pass | One battle is represented by one paired Battle Pool card; work comparison, lyrics, feedback, result, and playback have distinct regions. |
+| Core interactions | Pass | A/B playback, seek, previous/next, A/B feedback switch, private selected states, lyrics open/close, and missing-lyrics copy were exercised. |
+| Responsive behavior | Pass | Checked at desktop and 390×844 mobile. Mobile `scrollWidth` matched `clientWidth`; no horizontal overflow was present. |
+| Visual craft | Pass | Orange/cyan work accents, compact typography, border rhythm, spacing, and locked-result treatment match the chosen direction. |
+| Product consistency | Pass | Uses the existing AIPOGER black stage, Battle language, icon library, fixed player pattern, and sealed-result contract. |
+
+### Functional and safety checks
+
+- No vote count, percentage, audience total, feedback aggregate, leader, or radar is exposed while voting is active.
+- Each feedback key is visibly immutable after selection, and the API/database enforce one selection per account, work, and key.
+- Work owners cannot vote or submit feedback.
+- The official radar is shown only for a settled official winner; insufficient battles publish no radar.
+- Browser console check returned no errors or warnings in the exercised Q Crash state.
+- Final implementation contains no visual-QA fixture or mock-data path.
+
+No severity 1 or severity 2 design issues remain.

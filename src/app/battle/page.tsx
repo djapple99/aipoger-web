@@ -24,6 +24,7 @@ import {
   shouldExpireOpenDropQueue,
 } from "@/lib/battle-pool-client";
 import { officialGatekeeperDisplayTitle, type OfficialGatekeeperDrop } from "@/lib/official-gatekeeper-drops";
+import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 
 const seedComments = [
   "A Side 節奏很穩，這段 drop 很強。",
@@ -304,6 +305,19 @@ type PoolEntryRow = {
   created_at: string;
 };
 
+type QCrashPoolCardRow = {
+  cardId: string;
+  battleId: string | null;
+  status: string;
+  endsAt: string | null;
+  queueIds: [string, string | null];
+  genre: string;
+  works: {
+    A: { songName: string; creatorName: string; coverUrl: string | null };
+    B: { songName: string; creatorName: string; coverUrl: string | null } | null;
+  };
+};
+
 type FocusedPoolCardState = {
   id: string;
   status: string | null;
@@ -567,6 +581,86 @@ function formatBattleTimeLeft(value: string | null | undefined, isZh: boolean) {
   const minutes = Math.max(1, Math.ceil((ms % 3_600_000) / 60_000));
   if (hours <= 0) return isZh ? `${minutes} 分鐘` : `${minutes}m`;
   return isZh ? `${hours} 小時 ${minutes} 分` : `${hours}h ${minutes}m`;
+}
+
+function QCrashPoolMatchCard({ card, isZh, lang }: { card: QCrashPoolCardRow; isZh: boolean; lang: string }) {
+  const [, setClockTick] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => setClockTick((value) => value + 1), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const voting = card.status === "q_crash_voting" && Boolean(card.works.B);
+  const href = card.battleId
+    ? focusedBattleHref(card.battleId, lang)
+    : `/battle/q-crash/${encodeURIComponent(card.cardId)}?lang=${lang}`;
+  const shareUrl = card.battleId
+    ? battleShortPath(card.battleId, lang)
+    : `/battle/q-crash/${encodeURIComponent(card.cardId)}?lang=${lang}`;
+  const coverA = card.works.A.coverUrl || AIPOGER_BRAND_LOGO;
+  const coverB = card.works.B?.coverUrl || AIPOGER_BRAND_LOGO;
+
+  return (
+    <article className="mb-4 overflow-hidden rounded-[1.35rem] border border-orange-200/25 bg-[radial-gradient(circle_at_14%_30%,rgba(249,115,22,0.12),transparent_28%),radial-gradient(circle_at_86%_20%,rgba(34,211,238,0.09),transparent_30%),rgba(0,0,0,0.56)] p-4 shadow-[0_18px_54px_rgba(0,0,0,0.28)] md:p-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+        <div className="flex min-w-0 flex-1 items-center gap-4">
+          <div className="relative h-20 w-28 shrink-0 sm:h-24 sm:w-36">
+            <span
+              className="absolute left-0 top-0 h-20 w-20 rounded-2xl border border-orange-300/40 bg-black bg-contain bg-center bg-no-repeat shadow-[0_0_24px_rgba(249,115,22,0.15)] sm:h-24 sm:w-24"
+              style={{ backgroundImage: `url("${coverA.replace(/"/g, "%22")}")` }}
+            />
+            <span
+              className="absolute right-0 top-2 h-16 w-16 rounded-2xl border border-cyan-300/40 bg-black bg-contain bg-center bg-no-repeat shadow-[0_0_24px_rgba(34,211,238,0.12)] sm:h-20 sm:w-20"
+              style={{ backgroundImage: `url("${coverB.replace(/"/g, "%22")}")` }}
+            />
+            <span className="absolute left-1 top-1 rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-black text-black">A</span>
+            <span className="absolute right-1 top-3 rounded-full bg-cyan-300 px-2 py-0.5 text-[10px] font-black text-black">B</span>
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-black tracking-[0.26em] text-zinc-500">Q CRASH · ONE BATTLE</p>
+            <div className="mt-2 flex min-w-0 flex-col gap-1 text-base font-black text-white sm:flex-row sm:items-center sm:gap-3 sm:text-lg">
+              <span className="truncate">{card.works.A.songName}</span>
+              <span className="shrink-0 text-xs italic text-zinc-600">VS</span>
+              <span className="truncate">{card.works.B?.songName || (isZh ? "等待作品 B" : "Waiting for Work B")}</span>
+            </div>
+            <p className="mt-1 truncate text-xs font-bold text-zinc-500">
+              {card.works.A.creatorName}
+              {card.works.B ? ` · ${card.works.B.creatorName}` : ""}
+              {card.genre ? ` · ${card.genre}` : ""}
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-orange-300/30 bg-orange-400/10 px-3 text-[11px] font-black text-orange-100">
+                <Swords size={13} />
+                {voting ? (isZh ? "Q Crash 投票中" : "Q Crash Voting") : (isZh ? "等待作品 B" : "Waiting for Work B")}
+              </span>
+              <span className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 text-[11px] font-black text-zinc-300">
+                <Clock3 size={13} className="text-cyan-300" />
+                {isZh ? "剩餘" : "Left"} {formatBattleTimeLeft(card.endsAt, isZh)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end">
+          <Link
+            href={href}
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-orange-500 px-5 text-sm font-black text-black shadow-[0_0_22px_rgba(249,115,22,0.22)] transition hover:bg-orange-300"
+          >
+            {voting ? (isZh ? "進入 Q Crash" : "Enter Q Crash") : (isZh ? "查看 Q Crash" : "Open Q Crash")}
+          </Link>
+          <ShareButton
+            title={`Q Crash｜${card.works.A.songName} VS ${card.works.B?.songName || "60s Drop"}`}
+            text={isZh ? "兩首 60 秒 Drop，不用等人到齊。進來聽重點，決定哪首歌勝出。" : "Two 60-second Drops. Listen in your own time and choose the winner."}
+            url={shareUrl}
+            label={voting ? (isZh ? "邀請觀戰投票" : "Invite Voters") : (isZh ? "分享邀請" : "Share Invite")}
+            copiedLabel={isZh ? "已複製" : "Copied"}
+            className="min-h-11 border-white/15 bg-white/[0.04] text-zinc-200"
+          />
+        </div>
+      </div>
+    </article>
+  );
 }
 
 function formatBattleAge(value: string | null | undefined, isZh: boolean) {
@@ -1018,6 +1112,7 @@ function BattlePoolList() {
   const focusQueueId = searchParams.get("focusQueue");
   const [rows, setRows] = useState<PoolEntryRow[]>([]);
   const [officialDrops, setOfficialDrops] = useState<OfficialGatekeeperDrop[]>([]);
+  const [qCrashCards, setQCrashCards] = useState<QCrashPoolCardRow[]>([]);
   const [acceptedBattleRows, setAcceptedBattleRows] = useState<LiveBattleRow[]>([]);
   const [hookSongStats, setHookSongStats] = useState<Record<string, SongBattleStats>>({});
   const [loading, setLoading] = useState(true);
@@ -1075,6 +1170,7 @@ function BattlePoolList() {
       if (isAuthBypassEnabled) {
         setRows([]);
         setOfficialDrops([]);
+        setQCrashCards([]);
         setAcceptedBattleRows([]);
         setLoading(false);
         return;
@@ -1086,6 +1182,10 @@ function BattlePoolList() {
         .then((response) => response.json())
         .then((payload: { drops?: OfficialGatekeeperDrop[] }) => payload.drops ?? [])
         .catch(() => [] as OfficialGatekeeperDrop[]);
+      const qCrashCardsPromise = fetch("/api/q-crash", { cache: "no-store" })
+        .then((response) => response.json())
+        .then((payload: { cards?: QCrashPoolCardRow[] }) => payload.cards ?? [])
+        .catch(() => [] as QCrashPoolCardRow[]);
 
       let { data, error } = await supabase
         .from("battle_queue")
@@ -1116,9 +1216,13 @@ function BattlePoolList() {
           console.error("[battle pool]", error);
         }
         setRows([]);
+        setQCrashCards([]);
         setAcceptedBattleRows([]);
       } else {
         const baseRows = ((data as PoolEntryRow[]) ?? []);
+        const nextQCrashCards = await qCrashCardsPromise;
+        const qCrashQueueIds = new Set(nextQCrashCards.flatMap((card) => card.queueIds).filter((id): id is string => Boolean(id)));
+        const qCrashBattleIds = new Set(nextQCrashCards.map((card) => card.battleId).filter((id): id is string => Boolean(id)));
         const linkedBattleIds = Array.from(
           new Set(baseRows.map((row) => row.match_group_id).filter((id): id is string => Boolean(id))),
         );
@@ -1132,7 +1236,13 @@ function BattlePoolList() {
             .filter((row) => row.id && (row.battle_ended_at || ["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"].includes(row.status ?? "")))
             .forEach((row) => closedBattleIds.add(row.id as string));
         }
-        const visibleRows = baseRows.filter((row) => !row.official_gatekeeper_id && !isExpiredOpenPoolEntry(row) && (!row.match_group_id || !closedBattleIds.has(row.match_group_id)));
+        const visibleRows = baseRows.filter((row) =>
+          !row.official_gatekeeper_id
+          && !qCrashQueueIds.has(row.id)
+          && (!row.match_group_id || !qCrashBattleIds.has(row.match_group_id))
+          && !isExpiredOpenPoolEntry(row)
+          && (!row.match_group_id || !closedBattleIds.has(row.match_group_id)),
+        );
         let { data: acceptedData, error: acceptedError } = await supabase
           .from("battles")
           .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, scheduled_start_at, battle_started_at, started_at, battle_ended_at")
@@ -1236,6 +1346,7 @@ function BattlePoolList() {
           fetchHookSongBattleStats(visibleRows.map((row) => row.original_file_name)),
         ]);
         setOfficialDrops(nextOfficialDrops.filter((drop) => drop.active && drop.audioPath));
+        setQCrashCards(nextQCrashCards);
         setHookSongStats(nextHookSongStats);
         const userIds = Array.from(
           new Set(
@@ -1313,13 +1424,13 @@ function BattlePoolList() {
   };
   const poolGenreCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    [...officialDrops.map((drop) => drop.genre), ...rows.map((row) => row.genre), ...acceptedBattleRows.map((row) => row.genre)].forEach((genre) => {
+    [...officialDrops.map((drop) => drop.genre), ...qCrashCards.map((card) => card.genre), ...rows.map((row) => row.genre), ...acceptedBattleRows.map((row) => row.genre)].forEach((genre) => {
       const key = normalizeGenreFilter(genre);
       if (!key) return;
       counts[key] = (counts[key] ?? 0) + 1;
     });
     return counts;
-  }, [acceptedBattleRows, officialDrops, rows]);
+  }, [acceptedBattleRows, officialDrops, qCrashCards, rows]);
   const filteredOfficialDrops = useMemo(() => {
     if (activeGenre === "all") return officialDrops;
     const target = normalizeGenreFilter(activeGenre);
@@ -1330,6 +1441,11 @@ function BattlePoolList() {
     const target = normalizeGenreFilter(activeGenre);
     return rows.filter((row) => normalizeGenreFilter(row.genre) === target);
   }, [activeGenre, rows]);
+  const filteredQCrashCards = useMemo(() => {
+    if (activeGenre === "all") return qCrashCards;
+    const target = normalizeGenreFilter(activeGenre);
+    return qCrashCards.filter((card) => normalizeGenreFilter(card.genre) === target);
+  }, [activeGenre, qCrashCards]);
   const filteredAcceptedBattleRows = useMemo(() => {
     if (activeGenre === "all") return acceptedBattleRows;
     const target = normalizeGenreFilter(activeGenre);
@@ -1378,6 +1494,14 @@ function BattlePoolList() {
       ) : null}
 
       <GenreFilterBar activeGenre={activeGenre} onChange={setActiveGenre} counts={poolGenreCounts} t={t} isZh={isZh} showAllButton={false} />
+
+      {filteredQCrashCards.length > 0 ? (
+        <div className="mb-5">
+          {filteredQCrashCards.map((card) => (
+            <QCrashPoolMatchCard key={card.cardId} card={card} isZh={isZh} lang={lang} />
+          ))}
+        </div>
+      ) : null}
 
       {filteredOfficialDrops.length > 0 ? (
         <div className="mb-5">
@@ -1568,7 +1692,7 @@ function BattlePoolList() {
         </div>
       ) : null}
 
-      {filteredOfficialDrops.length === 0 && filteredRows.length === 0 && !focusedClosedCard && filteredAcceptedBattleRows.length === 0 ? (
+      {filteredOfficialDrops.length === 0 && filteredQCrashCards.length === 0 && filteredRows.length === 0 && !focusedClosedCard && filteredAcceptedBattleRows.length === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-6 text-center">
           <p className="text-sm font-bold text-zinc-300">
             {activeGenre === "all" ? t("pool_empty_title") : isZh ? "這個風格目前沒有公開挑戰" : "No open challenges in this style right now"}

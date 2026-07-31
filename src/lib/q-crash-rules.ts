@@ -5,9 +5,12 @@ export const Q_CRASH_OFFICIAL_AUDIENCE_MIN = 3;
 export const Q_CRASH_MAX_DROP_SECONDS = 60;
 export const Q_CRASH_INVITE_HOURS = 24;
 export const Q_CRASH_DURATION_PRESETS = [30, 120, 360, 1440] as const;
+export const Q_CRASH_FEEDBACK_KEYS = ["rhyme", "impact", "melody", "emotion", "structure"] as const;
 
 export type QCrashDurationMinutes = (typeof Q_CRASH_DURATION_PRESETS)[number];
 export type QCrashSide = "fighter_a" | "fighter_b";
+export type QCrashFeedbackKey = (typeof Q_CRASH_FEEDBACK_KEYS)[number];
+export type QCrashFeedbackCounts = Record<QCrashFeedbackKey, number>;
 export type QCrashCardStatus =
   | "q_crash_pending_invite"
   | "q_crash_joining"
@@ -37,6 +40,20 @@ export function qCrashGenresMatch(left: string | null | undefined, right: string
 export function isQCrashOfficialAudienceCount(value: unknown): boolean {
   const count = Number(value);
   return Number.isFinite(count) && count >= Q_CRASH_OFFICIAL_AUDIENCE_MIN;
+}
+
+export function isQCrashFeedbackKey(value: unknown): value is QCrashFeedbackKey {
+  return typeof value === "string" && Q_CRASH_FEEDBACK_KEYS.includes(value as QCrashFeedbackKey);
+}
+
+export function emptyQCrashFeedbackCounts(): QCrashFeedbackCounts {
+  return {
+    rhyme: 0,
+    impact: 0,
+    melody: 0,
+    emotion: 0,
+    structure: 0,
+  };
 }
 
 export function canQCrashAccountJoin(args: {
@@ -74,6 +91,19 @@ export function canQCrashAccountVote(args: {
   nowMs?: number;
 }): boolean {
   if (!args.viewerUserId || args.alreadyVoted) return false;
+  if (args.viewerUserId === args.fighterAUserId || args.viewerUserId === args.fighterBUserId) return false;
+  return isQCrashVotingOpen(args);
+}
+
+export function canQCrashAccountSendFeedback(args: {
+  status: string | null | undefined;
+  votingEndsAt?: string | null;
+  viewerUserId?: string | null;
+  fighterAUserId?: string | null;
+  fighterBUserId?: string | null;
+  nowMs?: number;
+}): boolean {
+  if (!args.viewerUserId) return false;
   if (args.viewerUserId === args.fighterAUserId || args.viewerUserId === args.fighterBUserId) return false;
   return isQCrashVotingOpen(args);
 }
