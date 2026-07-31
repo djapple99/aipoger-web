@@ -1,12 +1,17 @@
 "use client";
 
 import { Suspense, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { clearRememberedAuthNextPath, readRememberedAuthNextCookie, readRememberedAuthNextPath, safeNextPath } from "@/lib/auth-urls";
+import {
+  markAuthReturnPending,
+  readRememberedAuthNextCookie,
+  readRememberedAuthNextPath,
+  rememberAuthNextPath,
+  safeNextPath,
+} from "@/lib/auth-urls";
 
 function AuthCallbackInner() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState("完成登入中…");
   const handledRef = useRef(false);
@@ -26,19 +31,22 @@ function AuthCallbackInner() {
     if (error) {
       console.error("[auth callback]", error, errorDescription);
       setStatus("登入失敗，請重試");
-      setTimeout(() => router.replace(`/auth?error=oauth&next=${encodeURIComponent(nextPath)}`), 1500);
+      setTimeout(() => window.location.replace(`/auth?error=oauth&next=${encodeURIComponent(nextPath)}`), 1500);
       return;
     }
 
     const finish = () => {
-      setStatus("登入成功！");
-      clearRememberedAuthNextPath();
-      setTimeout(() => router.replace(nextPath), 500);
+      setStatus("登入成功！正在回到剛才的頁面…");
+      // Keep the target until the destination really loads. If navigation is
+      // interrupted, the next auth attempt can still recover the exact card.
+      rememberAuthNextPath(nextPath);
+      markAuthReturnPending(nextPath);
+      setTimeout(() => window.location.replace(nextPath), 300);
     };
 
     const fail = (message = "登入失敗，請重試") => {
       setStatus(message);
-      setTimeout(() => router.replace(`/auth?error=oauth&next=${encodeURIComponent(nextPath)}`), 1500);
+      setTimeout(() => window.location.replace(`/auth?error=oauth&next=${encodeURIComponent(nextPath)}`), 1500);
     };
 
     const handleCallback = async () => {
@@ -66,7 +74,7 @@ function AuthCallbackInner() {
     };
 
     void handleCallback();
-  }, [router, searchParams]);
+  }, [searchParams]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-black text-white">

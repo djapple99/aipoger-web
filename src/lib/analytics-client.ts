@@ -35,6 +35,15 @@ type AnalyticsPayload = {
   metadata?: Record<string, unknown>;
 };
 
+export type QCrashAnalyticsStage =
+  | "open"
+  | "play"
+  | "listen_qualified"
+  | "both_listened"
+  | "selected"
+  | "auth_required"
+  | "submitted";
+
 const SESSION_KEY = "aipoger:analytics-session-id";
 const SESSION_STARTED_KEY = "aipoger:analytics-session-started-at";
 const SESSION_TTL_MS = 30 * 60 * 1000;
@@ -94,4 +103,28 @@ export async function logAnalyticsEvent(payload: AnalyticsPayload) {
       console.warn("[analytics] event dropped", error);
     }
   }
+}
+
+export function logQCrashAnalyticsStage(payload: {
+  stage: QCrashAnalyticsStage;
+  battleId: string;
+  side?: "A" | "B";
+  cardId?: string;
+  workA?: string;
+  workB?: string;
+}) {
+  const intentStages = new Set<QCrashAnalyticsStage>(["selected", "auth_required", "submitted"]);
+  return logAnalyticsEvent({
+    eventType: intentStages.has(payload.stage) ? "battle_vote" : "battle_enter",
+    battleId: payload.battleId,
+    source: "q_crash",
+    metadata: {
+      mode: "q_crash",
+      qCrashStage: payload.stage,
+      ...(payload.side ? { side: payload.side } : {}),
+      ...(payload.cardId ? { cardId: payload.cardId } : {}),
+      ...(payload.workA ? { workA: payload.workA } : {}),
+      ...(payload.workB ? { workB: payload.workB } : {}),
+    },
+  });
 }

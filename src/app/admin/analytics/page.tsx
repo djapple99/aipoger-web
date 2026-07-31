@@ -33,6 +33,19 @@ type SongRank = {
   comments?: number;
 };
 type GrowthPoint = { date: string; visitors: number; minutes: number; uploads: number; battles: number; likes: number };
+type QCrashFunnelCard = {
+  battleId: string;
+  title: string;
+  opened: number;
+  playedBoth: number;
+  listenedBoth: number;
+  selected: number;
+  authRequired: number;
+  submitted: number;
+  listenedNoVote: number;
+  openedNoVote: number;
+  conversionRate: number;
+};
 
 type AnalyticsPayload = {
   range?: { label: string; start: string; end: string; preset: string };
@@ -72,6 +85,16 @@ type AnalyticsPayload = {
     dailyPlaybackTrend: GrowthPoint[];
   };
   battle?: Record<string, number | LabelValue[] | [string, number] | null>;
+  qCrash?: {
+    opened: number;
+    playedBoth: number;
+    listenedBoth: number;
+    selected: number;
+    authRequired: number;
+    submitted: number;
+    listenedNoVote: number;
+    cards: QCrashFunnelCard[];
+  };
   creator?: Record<string, number | LabelValue[]>;
   honor?: {
     todayNewHonorSongs: number;
@@ -502,6 +525,67 @@ export default function AdminAnalyticsPage() {
               <div className="mt-3"><BarList rows={(payload?.creator?.topCreators as LabelValue[] | undefined) ?? []} /></div>
             </div>
           </div>
+
+          <section className="rounded-[1.2rem] border border-cyan-300/20 bg-[radial-gradient(circle_at_10%_0%,rgba(34,211,238,0.1),transparent_32%),rgba(0,0,0,0.58)] p-5">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-300">Q Crash Funnel</p>
+                <h2 className="mt-1 text-2xl font-black text-white">打開、聽完、選擇到正式投票</h2>
+                <p className="mt-2 text-xs font-bold leading-5 text-zinc-500">
+                  Owner 私有估算；以 30 分鐘瀏覽 session 去重。每首實際播放累積 5 秒才列入「兩邊都聽」，不會在截止前顯示給參賽者或觀眾。
+                </p>
+              </div>
+              <span className="rounded-full border border-cyan-300/25 bg-cyan-300/8 px-3 py-2 text-xs font-black text-cyan-100">
+                聽完未投 {formatNumber(payload?.qCrash?.listenedNoVote)}
+              </span>
+            </div>
+            <div className="mt-5">
+              <StatGrid rows={[
+                { label: "Opened", value: payload?.qCrash?.opened ?? 0 },
+                { label: "Played Both", value: payload?.qCrash?.playedBoth ?? 0 },
+                { label: "Listened Both 5s+", value: payload?.qCrash?.listenedBoth ?? 0 },
+                { label: "Selected A / B", value: payload?.qCrash?.selected ?? 0 },
+                { label: "Hit Login", value: payload?.qCrash?.authRequired ?? 0 },
+                { label: "Vote Submitted", value: payload?.qCrash?.submitted ?? 0 },
+                { label: "Listened, No Vote", value: payload?.qCrash?.listenedNoVote ?? 0 },
+              ]} />
+            </div>
+            <div className="mt-5 overflow-x-auto rounded-xl border border-white/10">
+              <table className="min-w-[880px] w-full text-left text-xs">
+                <thead className="bg-white/[0.045] uppercase tracking-[0.12em] text-zinc-500">
+                  <tr>
+                    <th className="px-3 py-3">Q Crash</th>
+                    <th className="px-3 py-3 text-right">打開</th>
+                    <th className="px-3 py-3 text-right">兩邊播放</th>
+                    <th className="px-3 py-3 text-right">兩邊聽 5s+</th>
+                    <th className="px-3 py-3 text-right">已選擇</th>
+                    <th className="px-3 py-3 text-right">完成投票</th>
+                    <th className="px-3 py-3 text-right">聽完未投</th>
+                    <th className="px-3 py-3 text-right">轉換率</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/8">
+                  {(payload?.qCrash?.cards ?? []).length === 0 ? (
+                    <tr><td colSpan={8} className="px-3 py-6 text-center font-bold text-zinc-600">新漏斗上線後，這裡會開始累積資料。</td></tr>
+                  ) : payload?.qCrash?.cards.map((card) => (
+                    <tr key={card.battleId} className="bg-black/25">
+                      <td className="max-w-sm px-3 py-3">
+                        <p className="truncate font-black text-white">{card.title}</p>
+                        <p className="mt-1 font-mono text-[10px] text-zinc-600">{card.battleId.slice(0, 8)}</p>
+                      </td>
+                      <td className="px-3 py-3 text-right font-black text-zinc-300">{card.opened}</td>
+                      <td className="px-3 py-3 text-right font-black text-zinc-300">{card.playedBoth}</td>
+                      <td className="px-3 py-3 text-right font-black text-cyan-100">{card.listenedBoth}</td>
+                      <td className="px-3 py-3 text-right font-black text-zinc-300">{card.selected}</td>
+                      <td className="px-3 py-3 text-right font-black text-emerald-200">{card.submitted}</td>
+                      <td className="px-3 py-3 text-right font-black text-orange-200">{card.listenedNoVote}</td>
+                      <td className="px-3 py-3 text-right font-black text-white">{card.conversionRate}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
 
           <div className="grid gap-5 xl:grid-cols-[1fr_0.85fr]">
             <div className="rounded-[1.2rem] border border-yellow-200/15 bg-black/58 p-5">

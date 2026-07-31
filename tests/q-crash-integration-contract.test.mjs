@@ -25,6 +25,8 @@ const cardClientSource = source("../src/components/q-crash-card-client.tsx");
 const battlePoolSource = source("../src/app/battle/page.tsx");
 const globalStylesSource = source("../src/app/globals.css");
 const productRulesSource = source("../docs/aipoger-product-rules.md");
+const analyticsRouteSource = source("../src/app/api/admin/analytics/route.ts");
+const analyticsPageSource = source("../src/app/admin/analytics/page.tsx");
 
 test("Q Crash migration seals votes and enforces 60-second Drops", () => {
   assert.ok(migrationSource.includes("drop_duration_seconds > 0 and drop_duration_seconds <= 60"));
@@ -108,7 +110,20 @@ test("Q Crash voting requires sign-in, excludes participants, and cannot be chan
   assert.ok(cardClientSource.includes('body: JSON.stringify({ votedFor, confirmed: true })'));
   assert.ok(cardClientSource.includes('確定送出作品'));
   assert.ok(cardClientSource.includes('送出前可繼續重播、快轉或改選；送出後無法更改。'));
+  assert.ok(cardClientSource.includes('登入並投作品'));
+  assert.ok(cardClientSource.includes('bottom-[9.5rem] md:bottom-[6.75rem]'));
   assert.ok(guestVoteRouteSource.includes('battle.battle_type === "q_crash"'));
+});
+
+test("Q Crash engagement funnel stays owner-only and does not change voting eligibility", () => {
+  assert.ok(cardClientSource.includes('trackStage("open")'));
+  assert.ok(cardClientSource.includes('trackStage("listen_qualified", side)'));
+  assert.ok(cardClientSource.includes('listenSecondsRef.current[side] < 5'));
+  assert.ok(cardClientSource.includes('trackStage("submitted"'));
+  assert.ok(analyticsRouteSource.includes("function qCrashFunnel"));
+  assert.ok(analyticsRouteSource.includes("listenedNoVote"));
+  assert.ok(analyticsPageSource.includes("Owner 私有估算"));
+  assert.ok(analyticsPageSource.includes("聽完未投"));
 });
 
 test("Q Crash settlement archives only official results and stores the winning work", () => {

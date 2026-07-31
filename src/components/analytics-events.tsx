@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { logAnalyticsEvent } from "@/lib/analytics-client";
+import { completeAuthReturnIfCurrent } from "@/lib/auth-urls";
 
 const SESSION_START_MARK_KEY = "aipoger:analytics-session-start-event";
 const SESSION_START_TTL_MS = 30 * 60 * 1000;
@@ -21,6 +22,7 @@ export default function AnalyticsEvents() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const pagePath = `${window.location.pathname}${window.location.search}`;
+    completeAuthReturnIfCurrent(`${pagePath}${window.location.hash}`);
     if (lastPathRef.current === pagePath) return;
     lastPathRef.current = pagePath;
 

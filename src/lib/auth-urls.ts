@@ -1,6 +1,7 @@
 export const AIPOGER_PUBLIC_ORIGIN = "https://aipoger.com";
 export const AUTH_NEXT_STORAGE_KEY = "aipoger:auth-next";
 export const AUTH_NEXT_COOKIE_KEY = "aipoger_auth_next";
+export const AUTH_RETURN_PENDING_STORAGE_KEY = "aipoger:auth-return-pending";
 
 const AIPOGER_HOSTS = new Set(["aipoger.com", "www.aipoger.com"]);
 
@@ -117,6 +118,46 @@ export function rememberAuthNextPath(nextPath: string | null | undefined) {
   }
 }
 
+export function markAuthReturnPending(nextPath: string | null | undefined) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(AUTH_RETURN_PENDING_STORAGE_KEY, safeNextPath(nextPath));
+  } catch {
+    // localStorage may be unavailable in private or embedded browsers.
+  }
+}
+
+export function readPendingAuthReturnPath(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const remembered = window.localStorage.getItem(AUTH_RETURN_PENDING_STORAGE_KEY);
+    return remembered ? safeNextPath(remembered) : null;
+  } catch {
+    return null;
+  }
+}
+
+function comparablePath(value: string | null | undefined): string {
+  const parsed = new URL(safeNextPath(value), AIPOGER_PUBLIC_ORIGIN);
+  const entries = [...parsed.searchParams.entries()].sort(([leftKey, leftValue], [rightKey, rightValue]) => {
+    const keyOrder = leftKey.localeCompare(rightKey);
+    return keyOrder === 0 ? leftValue.localeCompare(rightValue) : keyOrder;
+  });
+  const search = new URLSearchParams(entries).toString();
+  return `${parsed.pathname}${search ? `?${search}` : ""}${parsed.hash}`;
+}
+
+export function isAuthReturnDestination(currentPath: string, expectedPath: string): boolean {
+  return comparablePath(currentPath) === comparablePath(expectedPath);
+}
+
+export function completeAuthReturnIfCurrent(currentPath: string): boolean {
+  const expectedPath = readPendingAuthReturnPath();
+  if (!expectedPath || !isAuthReturnDestination(currentPath, expectedPath)) return false;
+  clearRememberedAuthNextPath();
+  return true;
+}
+
 export function readRememberedAuthNextPath(): string | null {
   if (typeof window === "undefined") return null;
   try {
@@ -144,6 +185,7 @@ export function clearRememberedAuthNextPath() {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.removeItem(AUTH_NEXT_STORAGE_KEY);
+    window.localStorage.removeItem(AUTH_RETURN_PENDING_STORAGE_KEY);
   } catch {
     // Ignore storage cleanup failures.
   }

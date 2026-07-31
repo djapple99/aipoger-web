@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState, type ComponentType } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Blocks,
@@ -35,6 +35,12 @@ import {
   type QCrashFeedbackKey,
 } from "@/lib/q-crash-rules";
 import { rememberAuthNextPath } from "@/lib/auth-urls";
+import { logQCrashAnalyticsStage, type QCrashAnalyticsStage } from "@/lib/analytics-client";
+import {
+  clearQCrashVoteDraft,
+  readQCrashVoteDraft,
+  rememberQCrashVoteDraft,
+} from "@/lib/q-crash-vote-draft";
 import { battleShortPath } from "@/lib/share-short-links";
 import { supabase } from "@/lib/supabase";
 
@@ -479,7 +485,6 @@ function QCrashWorkCard(props: {
 }
 
 export default function QCrashCardClient({ identifier }: { identifier: string }) {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const lang = searchParams.get("lang") === "en" ? "en" : "zh";
@@ -494,6 +499,7 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.9);
   const [pendingVote, setPendingVote] = useState<VoteSide | null>(null);
+  const [listenedSides, setListenedSides] = useState<Record<Side, boolean>>({ A: false, B: false });
   const [votingBusy, setVotingBusy] = useState(false);
   const [feedbackSide, setFeedbackSide] = useState<Side>("A");
   const [feedbackBusy, setFeedbackBusy] = useState<QCrashFeedbackKey | null>(null);
@@ -505,8 +511,32 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
   const [commentError, setCommentError] = useState<string | null>(null);
   const commentTouchedRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const analyticsSentRef = useRef(new Set<string>());
+  const restoredDraftKeyRef = useRef<string | null>(null);
+  const listenedSidesRef = useRef<Record<Side, boolean>>({ A: false, B: false });
+  const listenSecondsRef = useRef<Record<Side, number>>({ A: 0, B: 0 });
 
   const currentPath = `${pathname}?lang=${lang}`;
+  const draftKey = payload?.card.battleId || payload?.card.id || null;
+  const trackStage = useCallback((stage: QCrashAnalyticsStage, side?: Side) => {
+    if (!payload?.card.battleId || payload.card.status !== "q_crash_voting") return;
+    const key = `${payload.card.battleId}:${stage}:${side ?? "both"}`;
+    if (analyticsSentRef.current.has(key)) return;
+    analyticsSentRef.current.add(key);
+    void logQCrashAnalyticsStage({
+      stage,
+      side,
+      battleId: payload.card.battleId,
+      cardId: payload.card.id,
+      workA: payload.works.A.songName,
+      workB: payload.works.B?.songName,
+    });
+  }, [payload]);
+
+  const redirectToAuth = useCallback(() => {
+    rememberAuthNextPath(currentPath);
+    window.location.assign(`/auth?next=${encodeURIComponent(currentPath)}`);
+  }, [currentPath]);
   const loadComments = useCallback(async (targetId: string) => {
     const token = (await supabase.auth.getSession()).data.session?.access_token;
     const response = await fetch(`/api/q-crash/${encodeURIComponent(targetId)}/comments`, {
@@ -591,10 +621,53 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
   }, [volume]);
 
   useEffect(() => {
-    if (!payload || payload.card.status !== "q_crash_voting" || payload.viewer.hasVoted) {
+    if (!payload || !draftKey) return;
+    const draftAllowed = payload.card.status === "q_crash_voting" && !payload.viewer.hasVoted && !payload.viewer.isParticipant;
+    if (!draftAllowed) {
+      clearQCrashVoteDraft(draftKey);
       setPendingVote(null);
+      setListenedSides({ A: false, B: false });
+      listenedSidesRef.current = { A: false, B: false };
+      listenSecondsRef.current = { A: 0, B: 0 };
+      restoredDraftKeyRef.current = draftKey;
+      return;
     }
-  }, [payload]);
+    if (restoredDraftKeyRef.current === draftKey) return;
+    const draft = readQCrashVoteDraft(draftKey);
+    const restoredListened = draft?.listened ?? { A: false, B: false };
+    setPendingVote(draft?.vote ?? null);
+    setListenedSides(restoredListened);
+    listenedSidesRef.current = restoredListened;
+    listenSecondsRef.current = {
+      A: restoredListened.A ? 5 : 0,
+      B: restoredListened.B ? 5 : 0,
+    };
+    restoredDraftKeyRef.current = draftKey;
+    if (restoredListened.A) trackStage("listen_qualified", "A");
+    if (restoredListened.B) trackStage("listen_qualified", "B");
+    if (restoredListened.A && restoredListened.B) trackStage("both_listened");
+  }, [draftKey, payload, trackStage]);
+
+  useEffect(() => {
+    trackStage("open");
+  }, [trackStage]);
+
+  useEffect(() => {
+    if (!playing || !currentSide || !draftKey || payload?.card.status !== "q_crash_voting") return;
+    const side = currentSide;
+    const timer = window.setInterval(() => {
+      listenSecondsRef.current[side] += 0.5;
+      if (listenSecondsRef.current[side] < 5 || listenedSidesRef.current[side]) return;
+
+      const next = { ...listenedSidesRef.current, [side]: true };
+      listenedSidesRef.current = next;
+      setListenedSides(next);
+      rememberQCrashVoteDraft(draftKey, { listened: next }, payload.card.votingEndsAt);
+      trackStage("listen_qualified", side);
+      if (next.A && next.B) trackStage("both_listened");
+    }, 500);
+    return () => window.clearInterval(timer);
+  }, [currentSide, draftKey, payload?.card.status, payload?.card.votingEndsAt, playing, trackStage]);
 
   const works = payload?.works;
   const currentWork = currentSide ? works?.[currentSide] ?? null : null;
@@ -611,6 +684,7 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
     if (!work?.audioUrl) return;
     const audio = audioRef.current;
     if (!audio) return;
+    trackStage("play", side);
     if (currentSide === side) {
       if (audio.paused) void audio.play();
       else audio.pause();
@@ -638,13 +712,22 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
     playSide(next);
   };
 
+  const selectPendingVote = (votedFor: VoteSide) => {
+    setPendingVote(votedFor);
+    if (draftKey) {
+      rememberQCrashVoteDraft(draftKey, { vote: votedFor }, payload?.card.votingEndsAt);
+    }
+    trackStage("selected", votedFor === "fighter_a" ? "A" : "B");
+  };
+
   const submitVote = async () => {
     if (!payload || !pendingVote || votingBusy) return;
     const votedFor = pendingVote;
     const session = (await supabase.auth.getSession()).data.session;
     if (!session?.access_token) {
-      rememberAuthNextPath(currentPath);
-      router.push(`/auth?next=${encodeURIComponent(currentPath)}`);
+      if (draftKey) rememberQCrashVoteDraft(draftKey, { vote: votedFor }, payload.card.votingEndsAt);
+      trackStage("auth_required", votedFor === "fighter_a" ? "A" : "B");
+      redirectToAuth();
       return;
     }
     setVotingBusy(true);
@@ -671,6 +754,8 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
         },
       } : current);
       setPendingVote(null);
+      if (draftKey) clearQCrashVoteDraft(draftKey);
+      trackStage("submitted", votedFor === "fighter_a" ? "A" : "B");
       void loadComments(payload.card.battleId || payload.card.id);
     }
     setVotingBusy(false);
@@ -681,8 +766,7 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
     if (payload.feedback.selected[feedbackSide].includes(key)) return;
     const session = (await supabase.auth.getSession()).data.session;
     if (!session?.access_token) {
-      rememberAuthNextPath(currentPath);
-      router.push(`/auth?next=${encodeURIComponent(currentPath)}`);
+      redirectToAuth();
       return;
     }
     setFeedbackBusy(key);
@@ -720,8 +804,7 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
     if (!payload || commentBusy) return;
     const session = (await supabase.auth.getSession()).data.session;
     if (!session?.access_token) {
-      rememberAuthNextPath(currentPath);
-      router.push(`/auth?next=${encodeURIComponent(currentPath)}`);
+      redirectToAuth();
       return;
     }
     setCommentBusy(true);
@@ -790,8 +873,7 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
     if (!payload || !window.confirm(isZh ? "確定取消這張 Q Crash？取消後無法恢復。" : "Cancel this Q Crash?")) return;
     const token = (await supabase.auth.getSession()).data.session?.access_token;
     if (!token) {
-      rememberAuthNextPath(currentPath);
-      router.push(`/auth?next=${encodeURIComponent(currentPath)}`);
+      redirectToAuth();
       return;
     }
     const response = await fetch(`/api/q-crash/${encodeURIComponent(payload.card.id)}`, {
@@ -844,7 +926,7 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
         : isZh ? "可重播、快轉並切換選擇；按確定後才會送出票。" : "Replay, seek, and switch your choice. Your vote is sent only after confirmation.";
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_14%_8%,rgba(249,115,22,0.1),transparent_24%),radial-gradient(circle_at_88%_10%,rgba(34,211,238,0.07),transparent_26%),#020202] px-4 pb-52 pt-20 text-white md:px-8">
+    <main className={`min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_14%_8%,rgba(249,115,22,0.1),transparent_24%),radial-gradient(circle_at_88%_10%,rgba(34,211,238,0.07),transparent_26%),#020202] px-4 pt-20 text-white md:px-8 ${voteActionEnabled ? "pb-80" : "pb-52"}`}>
       <audio ref={audioRef} preload="metadata" />
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -918,7 +1000,7 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
                 isZh={isZh}
                 onPlay={() => playSide("A")}
                 onLyrics={() => setLyricsSide((current) => current === "A" ? null : "A")}
-                onVote={() => setPendingVote("fighter_a")}
+                onVote={() => selectPendingVote("fighter_a")}
               />
 
               <div className="flex items-center justify-center py-1 md:px-1">
@@ -942,7 +1024,7 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
                   isZh={isZh}
                   onPlay={() => playSide("B")}
                   onLyrics={() => setLyricsSide((current) => current === "B" ? null : "B")}
-                  onVote={() => setPendingVote("fighter_b")}
+                  onVote={() => selectPendingVote("fighter_b")}
                 />
               ) : (
                 <article className="flex min-h-64 flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-cyan-300/30 bg-cyan-300/[0.04] p-6 text-center">
@@ -1004,38 +1086,16 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
                   {isZh ? "勝負票與五項感受分開；截止前不顯示票數、評分總和或領先作品。" : "Winner votes and feedback are separate. No totals or leader signals appear before the deadline."}
                 </p>
                 {voteActionEnabled ? (
-                  <div className="mx-auto mt-4 flex max-w-xl flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-center">
-                    <span className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-4 text-xs font-black ${
-                      pendingVote === "fighter_a"
-                        ? "border-orange-300/45 bg-orange-400/10 text-orange-100"
-                        : pendingVote === "fighter_b"
-                          ? "border-cyan-300/45 bg-cyan-300/10 text-cyan-100"
-                          : "border-white/10 bg-white/[0.03] text-zinc-500"
-                    }`}>
-                      {pendingVote ? <Check size={17} /> : <Heart size={17} />}
-                      {pendingVote
-                        ? isZh ? `尚未送出 · 作品 ${pendingVote === "fighter_a" ? "A" : "B"}` : `Not submitted · Work ${pendingVote === "fighter_a" ? "A" : "B"}`
-                        : isZh ? "請先選擇作品 A 或 B" : "Select Work A or B first"}
+                  <div className="mx-auto mt-4 grid max-w-xl grid-cols-3 gap-2 text-[11px] font-black sm:text-xs">
+                    <span className={`rounded-xl border px-2 py-2 ${listenedSides.A ? "border-orange-300/40 bg-orange-400/10 text-orange-100" : "border-white/8 text-zinc-600"}`}>
+                      {listenedSides.A ? "✓" : "1"} · {isZh ? "聽作品 A" : "Listen A"}
                     </span>
-                    <button
-                      type="button"
-                      disabled={!pendingVote || votingBusy}
-                      onClick={() => void submitVote()}
-                      className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-5 text-sm font-black transition ${
-                        pendingVote === "fighter_a"
-                          ? "border-orange-200 bg-orange-500 text-white hover:bg-orange-400"
-                          : pendingVote === "fighter_b"
-                            ? "border-cyan-200 bg-cyan-400 text-black hover:bg-cyan-300"
-                            : "cursor-not-allowed border-white/8 bg-white/[0.035] text-zinc-600"
-                      }`}
-                    >
-                      <Check size={18} />
-                      {votingBusy
-                        ? isZh ? "送出中…" : "Submitting…"
-                        : pendingVote
-                          ? isZh ? `確定送出作品 ${pendingVote === "fighter_a" ? "A" : "B"}` : `Confirm Work ${pendingVote === "fighter_a" ? "A" : "B"}`
-                          : isZh ? "確定送出" : "Confirm Vote"}
-                    </button>
+                    <span className={`rounded-xl border px-2 py-2 ${listenedSides.B ? "border-cyan-300/40 bg-cyan-300/10 text-cyan-100" : "border-white/8 text-zinc-600"}`}>
+                      {listenedSides.B ? "✓" : "2"} · {isZh ? "聽作品 B" : "Listen B"}
+                    </span>
+                    <span className={`rounded-xl border px-2 py-2 ${pendingVote ? "border-white/25 bg-white/[0.06] text-white" : "border-white/8 text-zinc-600"}`}>
+                      {pendingVote ? "✓" : "3"} · {isZh ? "選擇並確定" : "Choose & confirm"}
+                    </span>
                   </div>
                 ) : null}
                 {voteActionEnabled ? (
@@ -1199,6 +1259,76 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
           </p>
         ) : null}
       </div>
+
+      {voteActionEnabled ? (
+        <div
+          className={`fixed inset-x-3 z-50 mx-auto max-w-4xl rounded-[1.35rem] border border-cyan-300/30 bg-zinc-950/96 p-3 shadow-[0_0_50px_rgba(34,211,238,0.18)] backdrop-blur md:inset-x-6 md:p-4 ${
+            currentWork ? "bottom-[9.5rem] md:bottom-[6.75rem]" : "bottom-3 md:bottom-4"
+          }`}
+          aria-live="polite"
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-[10px] font-black tracking-[0.2em] text-cyan-300">Q CRASH · FINAL VOTE</p>
+              <p className="mt-1 truncate text-sm font-black text-white">
+                {pendingVote
+                  ? isZh ? `已選作品 ${pendingVote === "fighter_a" ? "A" : "B"}，還差最後確認` : `Work ${pendingVote === "fighter_a" ? "A" : "B"} selected — confirm to submit`
+                  : isZh ? "請在上方選擇作品 A 或 B" : "Choose Work A or B above"}
+              </p>
+              <p className="mt-1 text-[11px] font-bold text-zinc-500">
+                {isZh ? "可重播、快轉與改選；只有按下右側按鈕才算投票。" : "Replay, seek, or switch. Your vote only counts after confirmation."}
+              </p>
+            </div>
+            <div className="grid shrink-0 grid-cols-[auto_auto_minmax(0,1fr)] gap-2">
+              {(["A", "B"] as Side[]).map((side) => {
+                const vote = side === "A" ? "fighter_a" : "fighter_b";
+                const selected = pendingVote === vote;
+                return (
+                  <button
+                    key={side}
+                    type="button"
+                    disabled={votingBusy}
+                    onClick={() => selectPendingVote(vote)}
+                    aria-pressed={selected}
+                    className={`min-h-13 rounded-2xl border px-4 text-sm font-black transition ${
+                      selected
+                        ? side === "A"
+                          ? "border-orange-200 bg-orange-500/24 text-orange-50"
+                          : "border-cyan-200 bg-cyan-400/22 text-cyan-50"
+                        : "border-white/10 bg-white/[0.035] text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    {isZh ? `選 ${side}` : side}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                disabled={!pendingVote || votingBusy}
+                onClick={() => void submitVote()}
+                className={`inline-flex min-h-13 min-w-0 items-center justify-center gap-2 rounded-2xl border px-4 text-sm font-black transition sm:px-6 ${
+                  pendingVote === "fighter_a"
+                    ? "border-orange-200 bg-orange-500 text-black shadow-[0_0_28px_rgba(249,115,22,0.28)] hover:bg-orange-400"
+                    : pendingVote === "fighter_b"
+                      ? "border-cyan-200 bg-cyan-400 text-black shadow-[0_0_28px_rgba(34,211,238,0.25)] hover:bg-cyan-300"
+                      : "cursor-not-allowed border-white/8 bg-white/[0.035] text-zinc-600"
+                }`}
+              >
+                {payload.viewer.userId ? <Check size={18} className="shrink-0" /> : <LogIn size={18} className="shrink-0" />}
+                <span className="truncate">
+                  {votingBusy
+                    ? isZh ? "送出中…" : "Submitting…"
+                    : pendingVote
+                      ? payload.viewer.userId
+                        ? isZh ? `確定送出作品 ${pendingVote === "fighter_a" ? "A" : "B"}` : `Confirm Work ${pendingVote === "fighter_a" ? "A" : "B"}`
+                        : isZh ? `登入並投作品 ${pendingVote === "fighter_a" ? "A" : "B"}` : `Sign in & vote Work ${pendingVote === "fighter_a" ? "A" : "B"}`
+                      : isZh ? "確定送出" : "Confirm"}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {currentWork ? (
         <div className="fixed inset-x-3 bottom-3 z-40 mx-auto max-w-6xl rounded-[1.4rem] border border-white/15 bg-zinc-950/95 p-3 shadow-[0_0_50px_rgba(0,0,0,0.75)] backdrop-blur md:inset-x-6 md:p-4">

@@ -287,6 +287,97 @@ function groupCounts<T>(items: T[], key: (item: T) => string | null | undefined)
   return [...counts.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
 }
 
+function metadataText(event: AnalyticsEventRow, key: string) {
+  const value = event.metadata?.[key];
+  return typeof value === "string" ? value : "";
+}
+
+function intersectSets(left: Set<string>, right: Set<string>) {
+  return new Set([...left].filter((value) => right.has(value)));
+}
+
+function qCrashFunnel(events: AnalyticsEventRow[]) {
+  type Bucket = {
+    battleId: string;
+    workA: string;
+    workB: string;
+    opened: Set<string>;
+    playedA: Set<string>;
+    playedB: Set<string>;
+    listenedA: Set<string>;
+    listenedB: Set<string>;
+    bothListened: Set<string>;
+    selected: Set<string>;
+    authRequired: Set<string>;
+    submitted: Set<string>;
+  };
+
+  const buckets = new Map<string, Bucket>();
+  events.forEach((event) => {
+    if (event.metadata?.mode !== "q_crash" || !event.battle_id || !event.session_id) return;
+    const stage = metadataText(event, "qCrashStage");
+    const side = metadataText(event, "side");
+    const bucket = buckets.get(event.battle_id) ?? {
+      battleId: event.battle_id,
+      workA: metadataText(event, "workA") || "作品 A",
+      workB: metadataText(event, "workB") || "作品 B",
+      opened: new Set<string>(),
+      playedA: new Set<string>(),
+      playedB: new Set<string>(),
+      listenedA: new Set<string>(),
+      listenedB: new Set<string>(),
+      bothListened: new Set<string>(),
+      selected: new Set<string>(),
+      authRequired: new Set<string>(),
+      submitted: new Set<string>(),
+    };
+    if (metadataText(event, "workA")) bucket.workA = metadataText(event, "workA");
+    if (metadataText(event, "workB")) bucket.workB = metadataText(event, "workB");
+    // Any deeper event proves the session opened this Q Crash, even if the
+    // first keepalive request was dropped by the browser.
+    bucket.opened.add(event.session_id);
+    if (stage === "play") (side === "B" ? bucket.playedB : bucket.playedA).add(event.session_id);
+    if (stage === "listen_qualified") (side === "B" ? bucket.listenedB : bucket.listenedA).add(event.session_id);
+    if (stage === "both_listened") bucket.bothListened.add(event.session_id);
+    if (stage === "selected") bucket.selected.add(event.session_id);
+    if (stage === "auth_required") bucket.authRequired.add(event.session_id);
+    if (stage === "submitted") bucket.submitted.add(event.session_id);
+    buckets.set(event.battle_id, bucket);
+  });
+
+  const cards = [...buckets.values()].map((bucket) => {
+    const playedBoth = intersectSets(bucket.playedA, bucket.playedB);
+    const qualifiedBySides = intersectSets(bucket.listenedA, bucket.listenedB);
+    const listenedBoth = new Set([...bucket.bothListened, ...qualifiedBySides]);
+    const listenedNoVote = new Set([...listenedBoth].filter((session) => !bucket.submitted.has(session)));
+    const openedNoVote = new Set([...bucket.opened].filter((session) => !bucket.submitted.has(session)));
+    return {
+      battleId: bucket.battleId,
+      title: `${bucket.workA} VS ${bucket.workB}`,
+      opened: bucket.opened.size,
+      playedBoth: playedBoth.size,
+      listenedBoth: listenedBoth.size,
+      selected: bucket.selected.size,
+      authRequired: bucket.authRequired.size,
+      submitted: bucket.submitted.size,
+      listenedNoVote: listenedNoVote.size,
+      openedNoVote: openedNoVote.size,
+      conversionRate: pct(bucket.submitted.size, bucket.opened.size),
+    };
+  }).sort((left, right) => right.opened - left.opened);
+
+  return {
+    opened: cards.reduce((sum, card) => sum + card.opened, 0),
+    playedBoth: cards.reduce((sum, card) => sum + card.playedBoth, 0),
+    listenedBoth: cards.reduce((sum, card) => sum + card.listenedBoth, 0),
+    selected: cards.reduce((sum, card) => sum + card.selected, 0),
+    authRequired: cards.reduce((sum, card) => sum + card.authRequired, 0),
+    submitted: cards.reduce((sum, card) => sum + card.submitted, 0),
+    listenedNoVote: cards.reduce((sum, card) => sum + card.listenedNoVote, 0),
+    cards,
+  };
+}
+
 function metricSnapshot(
   period: { start: Date; end: Date },
   events: AnalyticsEventRow[],
@@ -564,6 +655,7 @@ export async function GET(request: NextRequest) {
       topBattleGenres: groupCounts([...selectedBattles, ...selectedQueues], (item) => item.genre).slice(0, 8),
       battleCompletionRate: pct(completedBattles.length, selectedBattles.length),
     },
+    qCrash: qCrashFunnel(selectedEvents),
     creator: {
       newCreators: selectedProfiles.length,
       activeCreators: uniqueCount([...selectedTracks.map((track) => track.created_by), ...selectedQueues.map((queue) => queue.user_id)]),

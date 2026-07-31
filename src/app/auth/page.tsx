@@ -5,12 +5,13 @@ import Image from "next/image";
 import { type FormEvent, useEffect, useState, Suspense, useRef, useCallback } from "react";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { supabase } from "@/lib/supabase";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import {
   buildAuthCallbackUrl,
   buildChromeOpenUrl,
   buildAuthPageUrl,
+  markAuthReturnPending,
   readRememberedAuthNextCookie,
   readRememberedAuthNextPath,
   rememberAuthNextPath,
@@ -65,7 +66,6 @@ function AuthPageInner() {
   const [email, setEmail] = useState("");
   const [emailSent, setEmailSent] = useState(false);
   const [switchingAccount, setSwitchingAccount] = useState(false);
-  const router = useRouter();
   const searchParams = useSearchParams();
   const explicitNext = searchParams.get("next");
   const ownerLogin = searchParams.get("owner") === "1" || safeNextPath(explicitNext).startsWith("/admin");
@@ -150,8 +150,10 @@ function AuthPageInner() {
   const goHomeOnce = useCallback(() => {
     if (redirectingRef.current) return;
     redirectingRef.current = true;
-    router.replace(nextPath);
-  }, [router, nextPath]);
+    rememberAuthNextPath(nextPath);
+    markAuthReturnPending(nextPath);
+    window.location.replace(nextPath);
+  }, [nextPath]);
 
   useEffect(() => {
     rememberAuthNextPath(nextPath);

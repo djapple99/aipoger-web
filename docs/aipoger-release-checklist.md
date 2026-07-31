@@ -106,17 +106,20 @@ Check:
 - At 1440x900 and the 1092px desktop reference width, Q Crash introduction/matchups read as one cyan system and the public Drop Battle pool reads as a separate red/coral system. Cyan/red live-text ribbons and solid primary CTAs use black text; ordinary card titles remain white, and the page has no horizontal overflow.
 - Server time sets the immutable 30-minute / 2-hour / 6-hour / 24-hour deadline; 2 hours is the default.
 - Logged-out visitors can open, listen, switch A/B playback, see time remaining, and share. Pressing the protected vote path returns through sign-in to the exact card.
+- Before leaving for sign-in, the selected A/B draft is stored with the voting deadline. Email and OAuth callbacks keep the exact return target until the Q Crash destination really loads, use a full-page return navigation, restore the draft without auto-submitting it, and do not fall back to `/`.
 - Participants cannot vote. A signed-in audience account can vote once and cannot recast.
+- Selecting A/B does not write a vote. A fixed, explicit confirmation dock remains visible above the player; before confirmation the listener may replay, seek, and switch choices, and after confirmation the vote cannot change. Logged-out copy says `登入並投作品 A/B`.
 - After the vote is confirmed, that voter may save one optional comment of at most 120 characters, update it, or delete it. Before settlement the API/UI returns only that viewer's own comment and no public comment list/count; after settlement visible comments are public. Comments never affect voting or five-axis feedback.
 - Each signed-in non-participant may select 押韻、爆點、旋律、情緒、結構 once per work. Every key locks immediately; participants cannot submit feedback.
 - During voting, the public API/UI returns no tally, percentage, total audience, feedback aggregate, leader, radar, or inference signal. It may return only the current listener's own selected feedback keys. Direct guest voting and the normal `cast_vote` path reject Q Crash.
+- Owner Analytics records a private funnel with distinct browser sessions: open, both works played, both works listened for 5+ cumulative real seconds, A/B selected, sign-in encountered, and vote submitted. Seeking alone does not satisfy listening. The dashboard reports `聽完未投`, while no funnel count appears in any public or participant-facing pre-deadline surface.
 - Deadline settlement runs from the 5-minute Battle fallback cron and also settles opportunistically on a post-deadline card read.
 - Verify 0, 1, and 2 valid audience accounts settle as insufficient with no archive/stats/Showtime/rematch. Verify 3+ creates an official work-first result and saves the winning queue/work ID.
 - Verify official ties reuse the stable formal Drop Battle tie breaker.
 - Final notifications and result copy name the winning work first and then the creator. Same-owner comparisons never say the creator defeated themself.
 - Official result shows the winning work's five-axis pentagon distribution. Insufficient result shows no radar or feedback aggregate.
 - Every work opens an in-page lyrics HUD and has a readable `歌詞未提供` fallback.
-- Check the pending, voting, voted, insufficient, official-result, cancelled, and expired screens at 1440x900 and 390x844. The shared five-key dock and fixed bottom A/B player must not cover vote actions or create horizontal overflow.
+- Check the pending, voting, voted, insufficient, official-result, cancelled, and expired screens at 1440x900 and 390x844. The shared five-key dock, fixed confirmation dock, and fixed bottom A/B player must not cover one another or create horizontal overflow.
 - Confirm ordinary live Drop Battle guest voting, Battle Records, official gatekeepers, rematch, Explore challenges, and Showtime do not regress.
 - Before enabling Q Crash in production, apply and verify `supabase/20260731_q_crash_async_drop_battle.sql`, `supabase/20260731193000_q_crash_feedback.sql`, and `supabase/20260731233000_q_crash_voter_comments.sql`; code deployment without all three schemas is a release blocker.
 
