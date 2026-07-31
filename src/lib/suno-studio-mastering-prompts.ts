@@ -397,6 +397,17 @@ export const SUNO_STUDIO_MASTERING_MOVES: SunoTechnique<"mastering">[] = [
     keywords: ["k-pop", "kpop", "dance pop", "dance break", "rap", "韓國流行", "唱跳"],
   },
   {
+    key: "studio-mastering-chinese-gufeng",
+    category: "mastering",
+    title: { zh: "中式古風／武俠電影感錄音室母帶", en: "Chinese gufeng cinematic studio master" },
+    summary: { zh: "用古箏、琵琶、簫笛、二胡與堂鼓，從月夜清雅推向俠氣昂揚的東方電影高潮。", en: "Uses guzheng, pipa, xiao and dizi, erhu, and tanggu to move from moonlit elegance into a heroic Chinese cinematic climax." },
+    use: { zh: "新派古風、武俠／仙俠、歷史幻想與東方電影配樂", en: "Modern gufeng, wuxia and xianxia, historical fantasy, and Chinese cinematic scoring" },
+    copy: { zh: "Chinese gufeng cinematic instrumental, 92 BPM, D minor pentatonic, elegant moonlit wuxia atmosphere growing into heroic resolve, guzheng arpeggios carry the pulse, pipa tremolo adds momentum, xiao and dizi trade breathy phrases, erhu states the central theme, tanggu and restrained low strings drive the climax, sparse guzheng-and-xiao opening into a layered ensemble rise, broad erhu-dizi finale and quiet coda, spacious organic studio mix, crisp plucked transients, natural wood and breath detail, centered percussion, controlled low end, deep uncluttered hall ambience, no vocals, EDM drop, trap hats, modern pop drum kit, koto, or shamisen.", en: "Chinese gufeng cinematic instrumental, 92 BPM, D minor pentatonic, elegant moonlit wuxia atmosphere growing into heroic resolve, guzheng arpeggios carry the pulse, pipa tremolo adds momentum, xiao and dizi trade breathy phrases, erhu states the central theme, tanggu and restrained low strings drive the climax, sparse guzheng-and-xiao opening into a layered ensemble rise, broad erhu-dizi finale and quiet coda, spacious organic studio mix, crisp plucked transients, natural wood and breath detail, centered percussion, controlled low end, deep uncluttered hall ambience, no vocals, EDM drop, trap hats, modern pop drum kit, koto, or shamisen." },
+    evidence: "version",
+    sources: STUDIO_SOURCES,
+    keywords: ["Chinese gufeng", "gufeng", "wuxia", "xianxia", "Chinese fusion", "古風", "新派古風", "武俠", "仙俠", "古箏", "琵琶", "簫", "笛子", "二胡", "堂鼓"],
+  },
+  {
     key: "studio-mastering-bollywood-pop",
     category: "mastering",
     title: { zh: "Bollywood Cinematic Pop 錄音室母帶", en: "Bollywood cinematic pop studio master" },

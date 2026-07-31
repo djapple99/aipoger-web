@@ -39,6 +39,7 @@ const SUNO_STUDIO_MASTERING_AUDIO_PREVIEW_ASSETS = [
   ["studio-mastering-1990s-britpop", "1990s-britpop"],
   ["studio-mastering-2000s-indie-rock", "2000s-indie-rock"],
   ["studio-mastering-k-pop-dance", "k-pop-dance"],
+  ["studio-mastering-chinese-gufeng", "chinese-gufeng"],
   ["studio-mastering-bollywood-pop", "bollywood-pop"],
   ["studio-mastering-indian-classical-fusion", "indian-classical-fusion"],
   ["studio-mastering-flamenco-pop", "flamenco-pop"],

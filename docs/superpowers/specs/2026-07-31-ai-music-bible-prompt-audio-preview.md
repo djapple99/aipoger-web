@@ -8,10 +8,10 @@
 
 ## 現行範圍
 
-- 免費錄音室 Mastering 共 49 招，全部提供 15 秒聲音示例。
+- 免費錄音室 Mastering 共 50 招，全部提供 15 秒聲音示例。
 - `Modern Taiwanese Pop` 的免費 Prompt 卡、公開 mapping 與 MP3 均撤下，不保留文字版卡片。
 - `Modern Taiwanese Pop` 僅記錄為未來可能的付費內容方向；收費產品尚未建立前，不顯示鎖頭、價格、結帳或 Premium 佔位。
-- 第一批 13 招中的台灣流行示例撤下後，保留 12 招；本批新增 37 招，合計 49 招。
+- 第一批 13 招中的台灣流行示例撤下後，保留 12 招；前批新增 37 招，本批再新增 1 招中式古風／武俠電影感，合計 50 招。
 - 新增招式原則上各生成兩個 Suno v5.5 候選後選一首。Alternative Rock 因早期佇列校正保留四個候選，最終仍只公開一首。
 
 ## 音檔規格
@@ -64,6 +64,7 @@
 | 1990s Britpop | `17bc5990-da82-4a93-84e3-2e1e7a07f231` | 00:10 |
 | Early-2000s Indie Rock Revival | `9788d41e-d2c6-489e-b637-59de11a4ce9d` | 00:39 |
 | Contemporary K-Pop Dance | `330e5cf0-4708-4a71-8295-b65bd37d7762` | 01:44 |
+| Chinese Gufeng Cinematic | `70c2ea3e-2a8c-43f5-bfca-732783617f21` | 01:53 |
 | Bollywood Cinematic Pop | `b5f6e06a-ab4d-4dee-bf68-5a0d9f7fe5a0` | 04:19 |
 | Indian Classical Fusion | `3e823045-5cef-4233-ae8a-30db98d2c073` | 03:02 |
 | Modern Flamenco Pop | `06efcedd-5966-4171-a66e-d4fb35a10824` | 02:58 |
@@ -81,6 +82,8 @@
 
 撤下記錄：`Modern Taiwanese Pop` 原選用 `60676667-d955-4383-ab81-56ed880eaaa1`，站長於 2026-07-31 判定方向不合；公開 Prompt 卡、mapping 與 MP3 均移除，未來若收費需另立產品規格。
 
+新增記錄：`Chinese Gufeng Cinematic` 以同一方向生成兩個 Suno v5.5 候選，選用動態較乾淨、削波較少的第二版 `70c2ea3e-2a8c-43f5-bfca-732783617f21`，從 01:53 裁出 15 秒高潮段。
+
 ## 介面規則
 
 - 有示例的 Prompt 卡只放一個 `15 秒試聽` / `15s preview` 按鈕。
@@ -93,6 +96,7 @@
 
 ## QA
 
-- mapping 必須恰好有 49 個唯一 Prompt key 與 49 個唯一 MP3。
+- mapping 必須恰好有 50 個唯一 Prompt key 與 50 個唯一 MP3。
 - `studio-mastering-taiwanese-pop` 不得出現在免費 Prompt catalog 或 audio mapping。
-- 49 個公開 MP3 都需為 15 秒、無削波，並通過桌機與手機底部播放器操作。
+- `studio-mastering-chinese-gufeng` 必須可由「古風」與 `wuxia` 搜尋，並連到核准音檔。
+- 50 個公開 MP3 都需為 15 秒、無削波，並通過桌機與手機底部播放器操作。

@@ -81,7 +81,7 @@ function practiceAreasForLanguage(isZh: boolean): PracticeArea[] {
   return isZh
     ? [
         { icon: Gauge, eyebrow: "START HERE", title: "Suno 起手式", body: "先分清 Style、Lyrics、Title，再過生成前檢查。", href: "#suno-control-desk", accent: "cyan" },
-        { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt 招式庫", body: "72 招 Prompt、80+ 個曲風詞與愛波哥私藏配方。", href: "#suno-prompt-library", accent: "orange" },
+        { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt 招式庫", body: "73 招 Prompt、80+ 個曲風詞與愛波哥私藏配方。", href: "#suno-prompt-library", accent: "orange" },
         { icon: LibraryBig, eyebrow: "1,519 INDEX", title: "聲音 DNA × Prompt 索引", body: "772 組藝術家聲音 DNA 與 747 組去重配方，可搜尋、複製與評論。", href: "#suno-inspiration-index", accent: "cyan" },
         { icon: BookOpenText, eyebrow: "LYRICS", title: "歌詞調教", body: "段落、唱法、合唱、情緒與台語咬字實測。", href: "#lyric-control-library", accent: "cyan" },
         { icon: Music2, eyebrow: "DROP", title: "Drop 製作練習", body: "用 30–60 秒練節奏、情緒與記憶點。", href: "/hook-guide", accent: "orange" },
@@ -92,7 +92,7 @@ function practiceAreasForLanguage(isZh: boolean): PracticeArea[] {
       ]
     : [
         { icon: Gauge, eyebrow: "START HERE", title: "Suno Quick Start", body: "Separate Style, Lyrics, and Title, then run the pre-flight check.", href: "#suno-control-desk", accent: "cyan" },
-        { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt Moves", body: "72 prompt moves, 80+ genre terms, and curated AIPOGER recipes.", href: "#suno-prompt-library", accent: "orange" },
+        { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt Moves", body: "73 prompt moves, 80+ genre terms, and curated AIPOGER recipes.", href: "#suno-prompt-library", accent: "orange" },
         { icon: LibraryBig, eyebrow: "1,519 INDEX", title: "Sonic DNA × Prompt Index", body: "Search, copy, and discuss 772 artist DNA references and 747 unique recipes.", href: "#suno-inspiration-index", accent: "cyan" },
         { icon: BookOpenText, eyebrow: "LYRICS", title: "Lyric Control", body: "Shape sections, delivery, duets, emotion, and Taiwanese pronunciation.", href: "#lyric-control-library", accent: "cyan" },
         { icon: Music2, eyebrow: "DROP", title: "Drop Practice", body: "Train rhythm, emotion, and recall inside a focused 30–60 seconds.", href: "/hook-guide", accent: "orange" },

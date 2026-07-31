@@ -128,9 +128,9 @@ test("stem separation guide is bilingual, sourced, and points only to known engi
 });
 
 test("Suno prompt and lyric libraries keep unique, bilingual, sourced moves", () => {
-  assert.equal(SUNO_PROMPT_MOVES.length, 72);
-  assert.equal(SUNO_STUDIO_MASTERING_MOVES.length, 49);
-  assert.equal(SUNO_STUDIO_MASTERING_MOVES.filter((entry) => entry.category === "mastering").length, 49);
+  assert.equal(SUNO_PROMPT_MOVES.length, 73);
+  assert.equal(SUNO_STUDIO_MASTERING_MOVES.length, 50);
+  assert.equal(SUNO_STUDIO_MASTERING_MOVES.filter((entry) => entry.category === "mastering").length, 50);
   assert.equal(SUNO_LYRIC_MOVES.length, 18);
 
   for (const entries of [SUNO_PROMPT_MOVES, SUNO_LYRIC_MOVES]) {
@@ -171,6 +171,7 @@ test("Suno prompt and lyric libraries keep unique, bilingual, sourced moves", ()
     "studio-mastering-1980s-new-wave",
     "studio-mastering-2000s-indie-rock",
     "studio-mastering-k-pop-dance",
+    "studio-mastering-chinese-gufeng",
     "studio-mastering-indian-classical-fusion",
     "studio-mastering-french-chanson",
     "studio-mastering-amapiano",
@@ -223,11 +224,13 @@ test("expanded Studio Mastering prompts are discoverable by genre, culture, and 
   assert.ok(matchingKeys("交響").includes("studio-mastering-full-symphony"));
   assert.ok(matchingKeys("獨立搖滾").includes("studio-mastering-2000s-indie-rock"));
   assert.ok(matchingKeys("French").includes("studio-mastering-french-chanson"));
+  assert.ok(matchingKeys("古風").includes("studio-mastering-chinese-gufeng"));
+  assert.ok(matchingKeys("wuxia").includes("studio-mastering-chinese-gufeng"));
 });
 
 test("Prompt and lyric finders explain their controls and expose clear states", () => {
-  assert.match(biblePageComponent, /72 招 Prompt/);
-  assert.match(biblePageComponent, /72 prompt moves/);
+  assert.match(biblePageComponent, /73 招 Prompt/);
+  assert.match(biblePageComponent, /73 prompt moves/);
   assert.match(biblePageComponent, /document\.title = BIBLE_DOCUMENT_TITLES\[lang\]/);
   assert.match(practiceLibraryComponent, /找你需要的 Prompt 招式/);
   assert.match(practiceLibraryComponent, /Jazz、1980s、印度、交響、側鏈/);

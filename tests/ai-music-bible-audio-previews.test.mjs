@@ -22,13 +22,14 @@ const previewSlugs = [...previewCatalog.matchAll(/\["studio-mastering-[^"]+", "(
   (match) => match[1],
 );
 
-test("AI Music Bible publishes 49 distinct Studio Mastering audio previews", () => {
-  assert.equal(previewKeys.length, 49);
-  assert.equal(new Set(previewKeys).size, 49);
-  assert.equal(previewSlugs.length, 49);
-  assert.equal(new Set(previewSlugs).size, 49);
+test("AI Music Bible publishes 50 distinct Studio Mastering audio previews", () => {
+  assert.equal(previewKeys.length, 50);
+  assert.equal(new Set(previewKeys).size, 50);
+  assert.equal(previewSlugs.length, 50);
+  assert.equal(new Set(previewSlugs).size, 50);
   assert.equal(previewKeys.includes("studio-mastering-taiwanese-pop"), false);
-  assert.ok(productRules.includes("all 49 free prompts"));
+  assert.equal(previewKeys.includes("studio-mastering-chinese-gufeng"), true);
+  assert.ok(productRules.includes("all 50 free prompts"));
 });
 
 test("every Bible preview URL has a compact public MP3 asset", () => {
