@@ -71,6 +71,35 @@ The normalized side-by-side image compares the chosen Frequency Editorial Gate c
 
 final result: passed
 
+---
+
+## Battle Desktop Mode Identity — Design QA (2026-08-01)
+
+### Visual target
+
+- Reference: `/var/folders/z5/42v3w_nj2_b36bxx5c2559ph0000gn/T/TemporaryItems/NSIRD_screencaptureui_Y0LwRN/截屏2026-07-31 晚上11.59.25.png`
+- Production capture: `/private/tmp/aipoger-q-crash-production-final-1092x1596.png`
+- Side-by-side comparison: `/private/tmp/aipoger-q-crash-reference-vs-production-final.png`
+- Page/state: `https://aipoger.com/battle?lang=zh`, signed out, active Q Crash matchup, official Drop cards visible.
+- Viewport: 1092 × 1596 CSS pixels; scrolled so the Q Crash panel begins at 75 px.
+
+### Iteration history
+
+1. The first pass inherited white foreground text on solid cyan and coral buttons. Explicit near-black foreground rules were added for solid mode labels and primary CTAs.
+2. The first production comparison showed the desktop mode ribbons were too compact. The Q Crash matchup and Drop Battle pool ribbons were widened to 304 px, while the Q Crash intro ribbon was widened to 216 px.
+
+### Final checks
+
+- [x] Q Crash intro and matchup areas use a cyan identity and remain visually grouped.
+- [x] Drop Battle public pool uses a coral/red identity and is visually separated from Q Crash.
+- [x] Solid cyan and coral labels and CTAs use near-black text and icons.
+- [x] Normal content on dark cards remains white/gray for readability.
+- [x] One Q Crash battle renders as one grouped matchup card.
+- [x] No horizontal overflow at 1092 px production, 1440 px desktop, or 390 px mobile.
+- [x] The mobile layout remains compact and functional.
+
+final result: passed
+
 ## Battle Mode CTA Full-Size Alignment — Design QA (2026-07-31, second pass)
 
 **Source visual truth**
