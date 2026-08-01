@@ -353,6 +353,7 @@ Product language:
 - Avoid calling Challenger a waiting room in user-facing copy.
 - Avoid implying Bar Heartbreak is a ranking chart.
 - Bar Heartbreak is an AI music survival radio, not a leaderboard.
+- On a first visit with no explicit URL language or saved preference, use Vercel country geo defaults: `CN` / `TW` → Traditional Chinese, `JP` → Japanese, `KR` → Korean, and every other country → English. A manual language choice is saved in the `aipoger_lang` cookie and always wins over geo detection. If country geo is unavailable, use the browser language only as a fallback.
 
 ## Explore AI Music / AI 音樂作品
 

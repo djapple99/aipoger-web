@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { cookies, headers } from "next/headers";
 import "./globals.css";
 import "./earworm-v3.css";
 import { I18nProvider } from "@/lib/i18n";
+import { htmlLangFor, isSupportedLang, LANG_COOKIE_NAME, langForRequest } from "@/lib/locale";
 import GlobalLangToggle from "@/components/global-lang-toggle";
 import NavHomeLink from "@/components/nav-home-link";
 import GlobalBattleCallOverlay from "@/components/global-battle-call-overlay";
@@ -62,15 +64,24 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const requestHeaders = await headers();
+  const cookieLang = (await cookies()).get(LANG_COOKIE_NAME)?.value;
+  const requestLang = requestHeaders.get("x-aipoger-lang");
+  const initialLang = isSupportedLang(requestLang)
+    ? requestLang
+    : isSupportedLang(cookieLang)
+      ? cookieLang
+      : langForRequest(requestHeaders.get("x-vercel-ip-country"), requestHeaders.get("accept-language"));
+
   return (
-    <html lang="zh-Hant">
+    <html lang={htmlLangFor(initialLang)}>
       <body>
-        <I18nProvider>
+        <I18nProvider initialLang={initialLang}>
           <AnalyticsEvents />
           <NavHomeLink />
           <GlobalSitePresenceBadge />

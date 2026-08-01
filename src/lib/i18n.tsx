@@ -1,9 +1,12 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-
-const SUPPORTED_LANGS = ['zh', 'en', 'ja', 'ko'] as const;
-type Lang = (typeof SUPPORTED_LANGS)[number];
+import {
+  isSupportedLang,
+  LANG_COOKIE_MAX_AGE,
+  LANG_COOKIE_NAME,
+  type Lang,
+} from './locale';
 
 const NEXT_LANG: Record<Lang, Lang> = {
   zh: 'en',
@@ -11,10 +14,6 @@ const NEXT_LANG: Record<Lang, Lang> = {
   ja: 'ko',
   ko: 'zh',
 };
-
-function isSupportedLang(value: string | null): value is Lang {
-  return SUPPORTED_LANGS.includes(value as Lang);
-}
 
 interface I18nContextValue {
   lang: Lang;
@@ -645,19 +644,26 @@ const dict: Record<Lang, Partial<Record<string, string>>> = {
   },
 };
 
-export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Lang>('zh');
+export function I18nProvider({ children, initialLang = 'zh' }: { children: React.ReactNode; initialLang?: Lang }) {
+  const [lang, setLangState] = useState<Lang>(initialLang);
   const [initialized, setInitialized] = useState(false);
+
+  const persistLanguageCookie = useCallback((value: Lang) => {
+    if (typeof document === 'undefined') return;
+    const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `${LANG_COOKIE_NAME}=${value}; Path=/; Max-Age=${LANG_COOKIE_MAX_AGE}; SameSite=Lax${secure}`;
+  }, []);
 
   const setLang = useCallback((l: Lang) => {
     setLangState(l);
     if (typeof window !== 'undefined') {
       localStorage.setItem('aipoger_lang', l);
+      persistLanguageCookie(l);
       const url = new URL(window.location.href);
       url.searchParams.set('lang', l);
       window.history.replaceState(null, '', url.toString());
     }
-  }, []);
+  }, [persistLanguageCookie]);
 
   const toggleLang = useCallback(() => {
     setLang(NEXT_LANG[lang]);
@@ -670,15 +676,19 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     if (isSupportedLang(fromUrl)) {
       setLangState(fromUrl);
       localStorage.setItem('aipoger_lang', fromUrl);
+      persistLanguageCookie(fromUrl);
       setInitialized(true);
       return;
     }
     const stored = localStorage.getItem('aipoger_lang');
     if (isSupportedLang(stored)) {
       setLangState(stored);
+      persistLanguageCookie(stored);
+    } else {
+      setLangState(initialLang);
     }
     setInitialized(true);
-  }, [initialized]);
+  }, [initialLang, initialized, persistLanguageCookie]);
 
   const t = useCallback(
     (key: string, vars?: Record<string, string | number>): string => {
