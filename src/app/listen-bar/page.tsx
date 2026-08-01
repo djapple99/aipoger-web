@@ -8,6 +8,7 @@ import SafetyNotice from "@/components/safety-notice";
 import { useI18n } from "@/lib/i18n";
 import { parseAudioMetadata } from "@/lib/audio-metadata";
 import { sha256File } from "@/lib/file-hash";
+import { getFreshSession } from "@/lib/auth-session";
 import { supabase } from "@/lib/supabase";
 import { loadFighterNameFromProfile } from "@/lib/user-profile-fighter-name";
 import { IMAGE_UPLOAD_ACCEPT, imageContentType, isAllowedImageUploadFile } from "@/lib/image-upload-policy";
@@ -1247,8 +1248,8 @@ export default function ListenBarPage() {
 
   useEffect(() => {
     const loadUser = async () => {
-      const { data } = await supabase.auth.getSession();
-      const user = data.session?.user ?? null;
+      const session = await getFreshSession();
+      const user = session?.user ?? null;
       const fighterName = user?.id ? await loadFighterNameFromProfile(user.id) : null;
       const uploadName = fighterName?.trim() ?? "";
       setUserName(uploadName || userDisplayName(user));
@@ -1256,7 +1257,7 @@ export default function ListenBarPage() {
       setUserId(user?.id ?? null);
       setVisitorAvatarUrl(userAvatarUrl(user));
       if (user?.id) {
-        const token = data.session?.access_token ?? "";
+        const token = session?.access_token ?? "";
         const [myTracksResult, fighterAvatarResult, userAvatarResult] = await Promise.all([
           fetch("/api/listen-bar/my-tracks", {
             cache: "no-store",
@@ -1798,14 +1799,14 @@ export default function ListenBarPage() {
     });
 
     void (async () => {
-      const { data: sessionData } = await supabase.auth.getSession();
+      const session = await getFreshSession();
       const visitorId = getListenBarVisitorId();
       const response = await fetch("/api/listen-bar/reaction", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-AIPOGER-Visitor-Id": visitorId,
-          ...(sessionData.session?.access_token ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}),
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
         body: JSON.stringify({ trackId: nowTrack.id, reaction: next }),
       });
@@ -1858,12 +1859,12 @@ export default function ListenBarPage() {
     }
     setChatInput("");
     void (async () => {
-      const { data: sessionData } = await supabase.auth.getSession();
+      const session = await getFreshSession();
       const response = await fetch("/api/listen-bar/messages", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(sessionData.session?.access_token ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}),
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
         body: JSON.stringify({
           displayName: userName,
@@ -1903,12 +1904,12 @@ export default function ListenBarPage() {
     }
     setTrackCommentBusy(true);
     void (async () => {
-      const { data: sessionData } = await supabase.auth.getSession();
+      const session = await getFreshSession();
       const response = await fetch("/api/listen-bar/track-comments", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(sessionData.session?.access_token ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}),
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
         body: JSON.stringify({
           trackId: nowTrack.id,
@@ -2373,12 +2374,12 @@ export default function ListenBarPage() {
     setPublicUploadError("");
     setPublicUploadMessage("");
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
+      const session = await getFreshSession();
       const response = await fetch("/api/listen-bar/remove-track", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(sessionData.session?.access_token ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}),
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
         body: JSON.stringify({ trackId: track.id }),
       });
@@ -2513,70 +2514,32 @@ export default function ListenBarPage() {
             </div>
           </div>
 
-          <div className="relative mt-3 grid max-w-full gap-2 rounded-[1.15rem] border border-white/10 bg-black/52 p-2 shadow-[0_16px_54px_rgba(0,0,0,0.24)] backdrop-blur lg:grid-cols-[minmax(0,max-content)_minmax(18rem,1fr)] lg:items-center">
-            <nav
-              data-listen-bar-action-strip
-              className="flex min-w-0 flex-wrap items-center justify-center gap-2 sm:justify-start"
-            >
-              <a
-                href="#play-request"
-                className="order-1 inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full border border-orange-300/45 bg-orange-500/16 px-2 py-2 text-sm font-black text-orange-100 transition hover:border-orange-100 hover:bg-orange-500/24 sm:px-4"
-              >
-                {listenCopy.playMySong}
-              </a>
-              <ShareButton
-                title={listenCopy.shareTitle}
-                text={listenCopy.shareText}
-                url={barShareUrl}
-                label={listenCopy.shareLabel}
-                copiedLabel={listenCopy.copied}
-                wrapperClassName="order-2"
-                className="min-h-11 !border-rose-200/70 !bg-[linear-gradient(180deg,rgba(164,24,42,0.78)_0%,rgba(116,21,34,0.72)_100%)] !px-2 text-sm !text-white !shadow-[0_0_34px_rgba(255,49,80,0.34),inset_0_1px_0_rgba(255,255,255,0.12)] ring-1 ring-rose-100/20 hover:!border-rose-100/90 hover:!bg-[linear-gradient(180deg,rgba(194,30,54,0.88)_0%,rgba(130,22,38,0.8)_100%)] hover:!shadow-[0_0_46px_rgba(255,49,80,0.46),inset_0_1px_0_rgba(255,255,255,0.16)] sm:!px-4"
-              />
-              <Link
-                href={`/rank${langQuery}`}
-                className="order-3 inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full border border-white/10 bg-white/[0.045] px-2 py-2 text-sm font-black text-zinc-200 transition hover:border-orange-300/70 hover:bg-orange-500/10 hover:text-white sm:px-4 md:order-4"
-              >
-                {listenCopy.navRank}
-              </Link>
-              <span className="order-4 flex basis-full flex-wrap justify-center gap-2 md:order-3 md:basis-auto md:flex-nowrap">
-                <Link
-                  href={`/ai-music${langQuery}`}
-                  className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full border border-white/10 bg-white/[0.045] px-4 py-2 text-sm font-black text-zinc-200 transition hover:border-orange-300/70 hover:bg-orange-500/10 hover:text-white"
-                >
-                  {listenCopy.navBattle}
+          <nav className="relative mt-4 flex max-w-full flex-wrap items-center justify-center gap-2 rounded-[1.15rem] border border-white/10 bg-black/52 px-4 py-3 shadow-[0_16px_54px_rgba(0,0,0,0.24)] backdrop-blur">
+            {navLinks.map((item) => {
+              const href = `${item.href}${item.href === "/" ? "" : lang === "en" ? "?lang=en" : "?lang=zh"}`;
+              const className = "rounded-full border border-white/10 bg-white/[0.045] px-4 py-2 text-xs font-black text-zinc-200 transition hover:border-orange-300/70 hover:bg-orange-500/10 hover:text-white";
+              if (item.href === "/") {
+                return (
+                  <Link
+                    key={item.href}
+                    href={href}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      window.location.assign("/");
+                    }}
+                    className={className}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              }
+              return (
+                <Link key={item.href} href={href} className={className}>
+                  {item.label}
                 </Link>
-                <Link
-                  href={`/battle${langQuery}`}
-                  className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full border border-rose-200/30 bg-rose-500/[0.08] px-4 py-2 text-sm font-black text-rose-100 transition hover:border-rose-200/75 hover:bg-rose-500/16 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-200/65"
-                >
-                  {listenCopy.navDrop}
-                </Link>
-              </span>
-            </nav>
-            <Link
-              href={battleTickerHref}
-              className="group aipo-marquee relative flex min-h-12 min-w-0 items-center overflow-hidden rounded-[1rem] border border-cyan-200/20 bg-[linear-gradient(90deg,rgba(4,10,12,0.86),rgba(0,28,34,0.42),rgba(4,10,12,0.86))] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 sm:rounded-full"
-              aria-label={battleTickerText}
-            >
-              <span className="pointer-events-none absolute inset-y-0 left-0 z-10 hidden w-10 bg-gradient-to-r from-black via-black/80 to-transparent sm:block" />
-              <span className="pointer-events-none absolute inset-y-0 right-0 z-10 hidden w-10 bg-gradient-to-l from-black via-black/80 to-transparent sm:block" />
-              <span
-                className={`${battleTickerMessages.length > 0 ? "aipo-marquee-track text-left" : "w-full text-center"} text-sm font-black leading-6 tracking-[0.08em] transition-colors group-hover:text-white ${
-                  battleTickerMessages.length > 0 ? "text-red-300" : "text-cyan-100/78"
-                }`}
-              >
-                {battleTickerMessages.length > 0 ? (
-                  <>
-                    <span className="pr-12">{battleTickerText}</span>
-                    <span className="pr-12" aria-hidden="true">{battleTickerText}</span>
-                  </>
-                ) : (
-                  <span>{battleTickerText}</span>
-                )}
-              </span>
-            </Link>
-          </div>
+              );
+            })}
+          </nav>
         </header>
 
         <section className="grid min-w-0 gap-4 lg:grid-cols-[1.08fr_0.92fr]">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getFreshSession } from "@/lib/auth-session";
 import { supabase } from "@/lib/supabase";
 
 const PRESENCE_VISITOR_KEY = "aipoger_presence_visitor_id";
@@ -47,9 +48,7 @@ export function usePresenceCount(channelName: string, enabled = true, scope = "s
 
     void channel.subscribe(async (status) => {
       if (status !== "SUBSCRIBED") return;
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const session = await getFreshSession();
       if (!mounted) return;
       await channel.track({
         visitor_id: fallbackVisitorId,

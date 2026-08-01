@@ -4,6 +4,8 @@ export const AUTH_NEXT_COOKIE_KEY = "aipoger_auth_next";
 export const AUTH_RETURN_PENDING_STORAGE_KEY = "aipoger:auth-return-pending";
 
 const AIPOGER_HOSTS = new Set(["aipoger.com", "www.aipoger.com"]);
+export const AUTH_RETURN_STORAGE_KEY = "aipoger:auth-return";
+const AUTH_RETURN_MAX_AGE_MS = 5 * 60 * 1000;
 
 function normalizeOrigin(value: string | null | undefined): string | null {
   const raw = value?.trim();
@@ -89,109 +91,73 @@ export function buildAuthPageUrl(nextPath: string | null | undefined): string {
   return `${getAuthSiteOrigin()}/auth?next=${encodeURIComponent(safeNext)}`;
 }
 
-export function buildChromeOpenUrl(publicUrl: string, userAgent: string | null | undefined): string {
-  const target = new URL(publicUrl, AIPOGER_PUBLIC_ORIGIN);
-  const ua = userAgent ?? "";
+type AuthReturnRecord = {
+  nextPath: string;
+  createdAt: number;
+};
 
-  if (/Android/i.test(ua)) {
-    const path = `${target.host}${target.pathname}${target.search}${target.hash}`;
-    return `intent://${path}#Intent;scheme=${target.protocol.replace(":", "")};package=com.android.chrome;end`;
-  }
-
-  const chromeScheme = target.protocol === "https:" ? "googlechromes" : "googlechrome";
-  return `${chromeScheme}://${target.host}${target.pathname}${target.search}${target.hash}`;
-}
-
-export function rememberAuthNextPath(nextPath: string | null | undefined) {
-  if (typeof window === "undefined") return;
-  const safeNext = safeNextPath(nextPath);
-  try {
-    window.localStorage.setItem(AUTH_NEXT_STORAGE_KEY, safeNext);
-  } catch {
-    // localStorage may be unavailable in private or embedded browsers.
-  }
-  try {
-    const secure = window.location.protocol === "https:" ? "; Secure" : "";
-    document.cookie = `${AUTH_NEXT_COOKIE_KEY}=${encodeURIComponent(safeNext)}; Path=/; Max-Age=1800; SameSite=Lax${secure}`;
-  } catch {
-    // Cookies may be unavailable in hardened embedded browsers.
-  }
-}
-
-export function markAuthReturnPending(nextPath: string | null | undefined) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(AUTH_RETURN_PENDING_STORAGE_KEY, safeNextPath(nextPath));
-  } catch {
-    // localStorage may be unavailable in private or embedded browsers.
-  }
-}
-
-export function readPendingAuthReturnPath(): string | null {
+function readAuthReturnRecord(): AuthReturnRecord | null {
   if (typeof window === "undefined") return null;
+
   try {
-    const remembered = window.localStorage.getItem(AUTH_RETURN_PENDING_STORAGE_KEY);
-    return remembered ? safeNextPath(remembered) : null;
+    const raw = window.localStorage.getItem(AUTH_RETURN_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<AuthReturnRecord>;
+    if (typeof parsed.nextPath !== "string" || typeof parsed.createdAt !== "number") return null;
+    return {
+      nextPath: safeNextPath(parsed.nextPath),
+      createdAt: parsed.createdAt,
+    };
   } catch {
     return null;
   }
 }
 
-function comparablePath(value: string | null | undefined): string {
-  const parsed = new URL(safeNextPath(value), AIPOGER_PUBLIC_ORIGIN);
-  const entries = [...parsed.searchParams.entries()].sort(([leftKey, leftValue], [rightKey, rightValue]) => {
-    const keyOrder = leftKey.localeCompare(rightKey);
-    return keyOrder === 0 ? leftValue.localeCompare(rightValue) : keyOrder;
-  });
-  const search = new URLSearchParams(entries).toString();
-  return `${parsed.pathname}${search ? `?${search}` : ""}${parsed.hash}`;
-}
-
-export function isAuthReturnDestination(currentPath: string, expectedPath: string): boolean {
-  return comparablePath(currentPath) === comparablePath(expectedPath);
-}
-
-export function completeAuthReturnIfCurrent(currentPath: string): boolean {
-  const expectedPath = readPendingAuthReturnPath();
-  if (!expectedPath || !isAuthReturnDestination(currentPath, expectedPath)) return false;
-  clearRememberedAuthNextPath();
-  return true;
-}
-
-export function readRememberedAuthNextPath(): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const remembered = window.localStorage.getItem(AUTH_NEXT_STORAGE_KEY);
-    return remembered ? safeNextPath(remembered) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function readRememberedAuthNextCookie(): string | null {
-  if (typeof document === "undefined") return null;
-  try {
-    const item = document.cookie
-      .split("; ")
-      .find((part) => part.startsWith(`${AUTH_NEXT_COOKIE_KEY}=`));
-    if (!item) return null;
-    return safeNextPath(decodeURIComponent(item.slice(AUTH_NEXT_COOKIE_KEY.length + 1)));
-  } catch {
-    return null;
-  }
-}
-
-export function clearRememberedAuthNextPath() {
+function clearAuthReturnRecord() {
   if (typeof window === "undefined") return;
+
   try {
-    window.localStorage.removeItem(AUTH_NEXT_STORAGE_KEY);
-    window.localStorage.removeItem(AUTH_RETURN_PENDING_STORAGE_KEY);
+    window.localStorage.removeItem(AUTH_RETURN_STORAGE_KEY);
   } catch {
-    // Ignore storage cleanup failures.
+    // Ignore storage failures; auth should still land safely on home.
   }
+}
+
+export function rememberAuthReturnPath(value: string | null | undefined): string {
+  const nextPath = safeNextPath(value);
+  if (typeof window === "undefined") return nextPath;
+
   try {
-    document.cookie = `${AUTH_NEXT_COOKIE_KEY}=; Path=/; Max-Age=0; SameSite=Lax`;
+    window.localStorage.setItem(
+      AUTH_RETURN_STORAGE_KEY,
+      JSON.stringify({ nextPath, createdAt: Date.now() } satisfies AuthReturnRecord),
+    );
   } catch {
-    // Ignore cookie cleanup failures.
+    // Ignore storage failures; the callback will fall back to home.
   }
+
+  return nextPath;
+}
+
+export function consumeFreshAuthReturnPath(value: string | null | undefined): string {
+  const hasExplicitValue = typeof value === "string" && value.trim().length > 0;
+  const requestedNext = safeNextPath(value);
+  const record = readAuthReturnRecord();
+  const isFresh = record ? Date.now() - record.createdAt <= AUTH_RETURN_MAX_AGE_MS : false;
+
+  if (!hasExplicitValue) {
+    clearAuthReturnRecord();
+    return record && isFresh ? record.nextPath : "/";
+  }
+
+  if (requestedNext === "/") {
+    clearAuthReturnRecord();
+    return "/";
+  }
+
+  const matchesRequest = record?.nextPath === requestedNext;
+
+  clearAuthReturnRecord();
+
+  return isFresh && matchesRequest ? requestedNext : "/";
 }

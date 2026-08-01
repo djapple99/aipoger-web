@@ -1,4 +1,5 @@
-import type { Session, User } from "@supabase/supabase-js";
+import type { User } from "@supabase/supabase-js";
+import { getFreshSession } from "@/lib/auth-session";
 import { supabase } from "@/lib/supabase";
 import { isAdminEmail } from "@/lib/admin-emails";
 
@@ -45,13 +46,19 @@ export function isMissingIsAdminColumn(err: unknown): boolean {
 
 /** 是否為管理員 */
 export async function loadIsAdmin(userId: string): Promise<boolean> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (user?.id === userId) return userIsAdminByEmail(user);
+  const session = await getFreshSession();
+  if (userIsAdminByEmail(session?.user)) return true;
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  return userIsAdminByEmail(session?.user);
+  const { data, error } = await supabase
+    .from("user_profiles")
+    .select("is_admin")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) {
+    if (isMissingIsAdminColumn(error)) return false;
+    console.warn("[is_admin] load", error);
+    return false;
+  }
+  return data?.is_admin === true;
 }

@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import SafetyNotice from "@/components/safety-notice";
 import ShareButton from "@/components/share-button";
 import { supabase } from "@/lib/supabase";
+import { getFreshSession } from "@/lib/auth-session";
 import { useI18n } from "@/lib/i18n";
 import { dailyBattleShortPath } from "@/lib/share-short-links";
 
@@ -277,9 +278,7 @@ export default function DailyBattleRoomPage() {
     setSubmitting(true);
     setVoteMessage("");
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const session = await getFreshSession();
       if (!session?.user) {
         setVoteMessage(isZh ? "請先登入後再投票。" : "Sign in before voting.");
         return;
