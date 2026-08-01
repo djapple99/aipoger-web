@@ -113,6 +113,11 @@ type QCrashCommentsPayload = {
   viewerComment: QCrashComment | null;
   comments: QCrashComment[];
 };
+type QCrashPostResultPreferencePayload = {
+  available: boolean;
+  counts: Record<VoteSide, number>;
+  viewerChoice: VoteSide | null;
+};
 
 function formatClock(seconds: number) {
   const safe = Math.max(0, Math.floor(seconds));
@@ -510,6 +515,8 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
   const [commentText, setCommentText] = useState("");
   const [commentBusy, setCommentBusy] = useState(false);
   const [commentError, setCommentError] = useState<string | null>(null);
+  const [postResultPreference, setPostResultPreference] = useState<QCrashPostResultPreferencePayload | null>(null);
+  const [postResultPreferenceBusy, setPostResultPreferenceBusy] = useState(false);
   const commentTouchedRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const analyticsSentRef = useRef(new Set<string>());
@@ -553,6 +560,16 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
     if (!commentTouchedRef.current) setCommentText(data.viewerComment?.body ?? "");
     setCommentError(null);
   }, [isZh]);
+  const loadPostResultPreference = useCallback(async (targetId: string) => {
+    const token = (await supabase.auth.getSession()).data.session?.access_token;
+    const response = await fetch(`/api/q-crash/${encodeURIComponent(targetId)}/post-result-preference`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      cache: "no-store",
+    });
+    const data = (await response.json().catch(() => null)) as (QCrashPostResultPreferencePayload & { error?: string }) | null;
+    if (!response.ok || !data) return;
+    setPostResultPreference(data);
+  }, []);
 
   const load = useCallback(async () => {
     const token = (await supabase.auth.getSession()).data.session?.access_token;
@@ -571,8 +588,10 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
     setSecondsLeft(timeLeft(data.card.status === "q_crash_pending_invite" ? data.card.inviteExpiresAt : data.card.votingEndsAt));
     if (data.card.battleId) void loadComments(data.card.battleId);
     else setCommentsPayload(null);
+    if (data.result?.official && data.card.battleId) void loadPostResultPreference(data.card.battleId);
+    else setPostResultPreference(null);
     setLoading(false);
-  }, [identifier, isZh, loadComments]);
+  }, [identifier, isZh, loadComments, loadPostResultPreference]);
 
   useEffect(() => {
     void load();
@@ -851,6 +870,32 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
     setCommentBusy(false);
   };
 
+  const submitPostResultPreference = async (preferredSide: VoteSide) => {
+    if (!payload?.card.battleId || !payload.result?.official || postResultPreferenceBusy) return;
+    const session = (await supabase.auth.getSession()).data.session;
+    if (!session?.access_token) {
+      redirectToAuth();
+      return;
+    }
+    setPostResultPreferenceBusy(true);
+    setError(null);
+    const response = await fetch(`/api/q-crash/${encodeURIComponent(payload.card.battleId)}/post-result-preference`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ preferredSide }),
+    });
+    const data = (await response.json().catch(() => null)) as (QCrashPostResultPreferencePayload & { error?: string }) | null;
+    if (!response.ok || !data) {
+      setError(data?.error || (isZh ? "喜好送出失敗，請稍後再試。" : "Could not save your preference."));
+    } else {
+      setPostResultPreference(data);
+    }
+    setPostResultPreferenceBusy(false);
+  };
+
   const share = async () => {
     const url = new URL(sharePath, window.location.origin).toString();
     const title = works?.B
@@ -1125,6 +1170,57 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
                 onSubmit={() => void submitComment()}
                 onDelete={() => void deleteComment()}
               />
+            ) : null}
+
+            {final && result?.official && works?.B ? (
+              <section className="mt-4 rounded-[1.35rem] border border-cyan-300/25 bg-cyan-300/[0.045] px-4 py-4 md:px-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-black text-cyan-50">{isZh ? "結果公布後，你比較喜歡哪首？" : "Now that the result is out, which one do you prefer?"}</p>
+                    <p className="mt-1 text-xs font-bold leading-5 text-zinc-500">
+                      {isZh ? "這是結算後的獨立喜好，不會改變正式勝負、票數或五角評分。登入後可選，也可以回來改選。" : "This is a separate post-result signal. It never changes the official winner, votes, or five-axis feedback. Sign in to choose, and you can change it later."}
+                    </p>
+                  </div>
+                  {postResultPreference?.available === false ? (
+                    <span className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[10px] font-black text-zinc-500">{isZh ? "準備中" : "Preparing"}</span>
+                  ) : null}
+                </div>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {(["fighter_a", "fighter_b"] as VoteSide[]).map((side) => {
+                    const selected = postResultPreference?.viewerChoice === side;
+                    const count = postResultPreference?.counts[side] ?? 0;
+                    const work = side === "fighter_a" ? works.A : works.B;
+                    if (!work) return null;
+                    return (
+                      <button
+                        key={side}
+                        type="button"
+                        disabled={postResultPreferenceBusy || postResultPreference?.available === false}
+                        onClick={() => void submitPostResultPreference(side)}
+                        className={`flex min-h-14 items-center justify-between gap-3 rounded-2xl border px-4 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                          selected
+                            ? side === "fighter_a" ? "border-orange-200/70 bg-orange-400/16" : "border-cyan-200/70 bg-cyan-300/16"
+                            : "border-white/12 bg-black/35 hover:border-cyan-200/50 hover:bg-white/[0.06]"
+                        }`}
+                      >
+                        <span className="min-w-0">
+                          <span className={`block text-[10px] font-black tracking-[0.18em] ${side === "fighter_a" ? "text-orange-300" : "text-cyan-300"}`}>{side === "fighter_a" ? "WORK A" : "WORK B"}</span>
+                          <span className="mt-1 block truncate text-sm font-black text-white">{work.songName}</span>
+                        </span>
+                        <span className="shrink-0 text-right">
+                          <span className="block text-lg font-black text-white">{count}</span>
+                          <span className="text-[10px] font-bold text-zinc-500">{isZh ? "喜好" : "likes"}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-3 text-[11px] font-bold text-zinc-600">
+                  {postResultPreference?.viewerChoice
+                    ? isZh ? "你的結算後喜好已記錄；想改選時直接再點另一首。" : "Your post-result preference is saved. Tap the other work if you change your mind."
+                    : isZh ? "登入後留下你的結算後喜好。" : "Sign in to leave your post-result preference."}
+                </p>
+              </section>
             ) : null}
 
             {voting && works?.B ? (

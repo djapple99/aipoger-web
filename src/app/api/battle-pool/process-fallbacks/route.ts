@@ -745,7 +745,8 @@ async function archiveHookBattleResult(
         ? `${battle.fighter_a_name} 以 ${counts.fighter_a}:${counts.fighter_b} 拿下這場 Drop Battle。`
         : `${battle.fighter_b_name} 以 ${counts.fighter_b}:${counts.fighter_a} 拿下這場 Drop Battle。`,
     p_result_payload: {
-      source: "cron",
+      source: "drop_battle",
+      battleType: "formal",
       votesA: counts.fighter_a,
       votesB: counts.fighter_b,
       audienceCount,
@@ -817,7 +818,8 @@ async function archiveHookBattleResultDirect(
         total_votes: totalVotes,
         audience_review: audienceReview,
         result_payload: {
-          source: "cron-direct-fallback",
+          source: "drop_battle",
+          battleType: "formal",
           archiveScope: "official-result",
           isOfficial: true,
           votesA: counts.fighter_a,

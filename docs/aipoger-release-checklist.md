@@ -119,10 +119,14 @@ Check:
 - Verify official ties reuse the stable formal Drop Battle tie breaker.
 - Final notifications and result copy name the winning work first and then the creator. Same-owner comparisons never say the creator defeated themself.
 - Official result shows the winning work's five-axis pentagon distribution. Insufficient result shows no radar or feedback aggregate.
+- Battle Records places official Q Crash results in a separate cyan section, labels them `Q CRASH`, and links to `/b/{shortId}` / the interactive Q Crash card rather than only the generic result page.
+- After an official result, signed-in non-participants can choose a separate preferred work A/B and change it later; the UI labels it as post-result preference and never mixes it into official vote totals or winner stats.
+- Legacy archives without `source: drop_battle` or `source: q_crash` stay in storage but are hidden from the public Battle Records list.
 - Every work opens an in-page lyrics HUD and has a readable `歌詞未提供` fallback.
 - Check the pending, voting, voted, insufficient, official-result, cancelled, and expired screens at 1440x900 and 390x844. The shared five-key dock, fixed confirmation dock, and fixed bottom A/B player must not cover one another or create horizontal overflow.
 - Confirm ordinary live Drop Battle guest voting, Battle Records, official gatekeepers, rematch, Explore challenges, and Showtime do not regress.
 - Before enabling Q Crash in production, apply and verify `supabase/20260731_q_crash_async_drop_battle.sql`, `supabase/20260731193000_q_crash_feedback.sql`, `supabase/20260731233000_q_crash_voter_comments.sql`, and `supabase/20260801000000_q_crash_work_covers.sql`; code deployment without these schemas/columns is a release blocker.
+- Apply and verify `supabase/20260801070000_q_crash_post_result_preferences.sql` before enabling the post-result A/B preference controls; until then the card must remain readable without breaking official Q Crash results.
 
 ## Explore AI Music Challenge Checklist
 

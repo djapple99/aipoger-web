@@ -6,10 +6,11 @@ import ShareButton from "@/components/share-button";
 import { fontRighteous } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n";
 import { DROP_BATTLE_OFFICIAL_AUDIENCE_MIN } from "@/lib/drop-battle-rematch";
-import { battleResultShortPath } from "@/lib/share-short-links";
+import { battleResultShortPath, battleShortPath } from "@/lib/share-short-links";
 import { supabase } from "@/lib/supabase";
 
 type WinnerSide = "fighter_a" | "fighter_b";
+type BattleRecordMode = "q_crash" | "drop_battle";
 
 type ArchiveRow = {
   battle_id?: string | null;
@@ -68,6 +69,8 @@ type ResultRecord = {
   audienceReview: string;
   archivedAt: string;
   audioUrl: string | null;
+  mode: BattleRecordMode;
+  publicVisible: boolean;
 };
 
 const ARCHIVE_SELECT =
@@ -134,13 +137,18 @@ function firstText(...values: Array<string | null | undefined>) {
 }
 
 function resultHref(record: ResultRecord, lang: string) {
-  if (record.battleId && isUuid(record.battleId)) return battleResultShortPath(record.battleId, lang);
+  if (record.battleId && isUuid(record.battleId)) {
+    return record.mode === "q_crash" ? battleShortPath(record.battleId, lang) : battleResultShortPath(record.battleId, lang);
+  }
   if (record.battleId) return `/battle/result?battleId=${encodeURIComponent(record.battleId)}&lang=${lang}`;
   return `/battle/result?battle=${encodeURIComponent(record.battleCode)}&lang=${lang}`;
 }
 
 function resultFromArchive(row: ArchiveRow): ResultRecord {
   const payload = payloadFrom(row);
+  const source = textField(payload.source);
+  const mode: BattleRecordMode = payload.battleType === "q_crash" || source === "q_crash" ? "q_crash" : "drop_battle";
+  const publicVisible = mode === "q_crash" || source === "drop_battle" || source === "cron" || source === "cron-direct-fallback" || source === "formal" || payload.battleType === "formal";
   const finalVoteLeft = numberField(row.final_vote_left);
   const finalVoteRight = numberField(row.final_vote_right);
   const tableVotes = numberField(row.total_votes);
@@ -169,7 +177,13 @@ function resultFromArchive(row: ArchiveRow): ResultRecord {
     audienceReview: textField(row.audience_review) || textField(payload.audienceReview),
     archivedAt: textField(row.archived_at) || new Date().toISOString(),
     audioUrl: null,
+    mode,
+    publicVisible,
   };
+}
+
+function isPublicRecord(record: ResultRecord) {
+  return record.publicVisible;
 }
 
 async function attachMedia(records: ResultRecord[]) {
@@ -293,10 +307,13 @@ function ResultCard({ record, isZh, lang }: { record: ResultRecord; isZh: boolea
       ? 100
       : 0;
   const isOfficial = record.audienceCount >= DROP_BATTLE_OFFICIAL_AUDIENCE_MIN;
+  const isQCrash = record.mode === "q_crash";
   return (
     <article
       className={`group min-w-0 rounded-xl border bg-black/42 p-2.5 transition hover:-translate-y-0.5 hover:bg-white/[0.055] ${
-        isOfficial ? "border-yellow-200/26 hover:border-yellow-100/55" : "border-white/10 hover:border-orange-100/42"
+        isQCrash
+          ? "border-cyan-300/35 hover:border-cyan-100/75"
+          : isOfficial ? "border-yellow-200/26 hover:border-yellow-100/55" : "border-white/10 hover:border-orange-100/42"
       }`}
     >
       <div className="relative aspect-square overflow-hidden rounded-lg bg-black shadow-[0_16px_38px_rgba(0,0,0,0.34)]">
@@ -318,9 +335,11 @@ function ResultCard({ record, isZh, lang }: { record: ResultRecord; isZh: boolea
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.02),rgba(0,0,0,0.78))]" />
         <div className="absolute left-2 top-2 flex flex-wrap gap-1.5">
           <span className={`rounded-md border px-1.5 py-1 text-[9px] font-black ${
-            isOfficial ? "border-yellow-200/42 bg-yellow-300/20 text-yellow-50" : "border-orange-200/32 bg-orange-300/18 text-orange-50"
+            isQCrash
+              ? "border-cyan-200/55 bg-cyan-300/25 text-cyan-50"
+              : isOfficial ? "border-yellow-200/42 bg-yellow-300/20 text-yellow-50" : "border-orange-200/32 bg-orange-300/18 text-orange-50"
           }`}>
-            {isOfficial ? (isZh ? "正式" : "Official") : (isZh ? "非正式" : "Unofficial")}
+            {isQCrash ? "Q CRASH" : isOfficial ? (isZh ? "正式" : "Official") : (isZh ? "非正式" : "Unofficial")}
           </span>
         </div>
         <div className="absolute inset-x-0 bottom-0 p-2.5">
@@ -356,12 +375,14 @@ function ResultCard({ record, isZh, lang }: { record: ResultRecord; isZh: boolea
         <ResultAudio record={record} isZh={isZh} />
 
         <div className="mt-2 flex items-center gap-1.5">
-          <Link href={href} className="inline-flex flex-1 items-center justify-center rounded-lg bg-orange-500 px-2 py-1.5 text-[11px] font-black text-black transition hover:bg-orange-300">
-            {isZh ? "打開" : "Open"}
+          <Link href={href} className={`inline-flex flex-1 items-center justify-center rounded-lg px-2 py-1.5 text-[11px] font-black text-black transition ${isQCrash ? "bg-cyan-400 hover:bg-cyan-300" : "bg-orange-500 hover:bg-orange-300"}`}>
+            {isQCrash ? (isZh ? "重聽 Q Crash" : "Reopen Q Crash") : isZh ? "打開" : "Open"}
           </Link>
           <ShareButton
-            title={`AIPOGER Drop Battle Winner｜${record.winnerSong}`}
-            text={`${record.winnerName}《${record.winnerSong}》${isZh ? "拿下一場 Drop Battle。" : "won a Drop Battle."}`}
+            title={isQCrash ? `AIPOGER Q Crash｜${record.winnerSong}` : `AIPOGER Drop Battle Winner｜${record.winnerSong}`}
+            text={isQCrash
+              ? `${record.winnerName}《${record.winnerSong}》${isZh ? "在 Q Crash 勝出；進來重聽並看看你比較喜歡哪首。" : "won this Q Crash. Reopen it and see which work you prefer."}`
+              : `${record.winnerName}《${record.winnerSong}》${isZh ? "拿下一場 Drop Battle。" : "won a Drop Battle."}`}
             url={href}
             label={isZh ? "分享" : "Share"}
             copiedLabel={isZh ? "已複製" : "Copied"}
@@ -398,7 +419,7 @@ export default function BattleResultsClient() {
         }
         return;
       }
-      const mapped = (data ?? []).map((row) => resultFromArchive(row as ArchiveRow));
+      const mapped = (data ?? []).map((row) => resultFromArchive(row as ArchiveRow)).filter(isPublicRecord);
       const withAudio = await attachMedia(mapped);
       if (cancelled) return;
       setRecords(withAudio);
@@ -419,7 +440,8 @@ export default function BattleResultsClient() {
     () => records.filter((record) => monthKey(record.archivedAt) === activeMonth),
     [activeMonth, records],
   );
-  const officialCount = monthRecords.filter((record) => record.audienceCount >= DROP_BATTLE_OFFICIAL_AUDIENCE_MIN).length;
+  const qCrashRecords = useMemo(() => records.filter((record) => record.mode === "q_crash").slice(0, 12), [records]);
+  const dropMonthRecords = useMemo(() => monthRecords.filter((record) => record.mode !== "q_crash"), [monthRecords]);
   const totalVotes = monthRecords.reduce((sum, record) => sum + record.votesTotal, 0);
   const totalAudience = monthRecords.reduce((sum, record) => sum + record.audienceCount, 0);
 
@@ -471,8 +493,8 @@ export default function BattleResultsClient() {
 
           <div className="grid grid-cols-4 gap-2">
             {[
-              { label: isZh ? "戰果" : "Results", value: monthRecords.length },
-              { label: isZh ? "正式" : "Official", value: officialCount },
+              { label: isZh ? "本月戰果" : "Month", value: monthRecords.length },
+              { label: isZh ? "Q Crash" : "Q Crash", value: qCrashRecords.length },
               { label: isZh ? "票數" : "Votes", value: totalVotes },
               { label: isZh ? "觀眾" : "Audience", value: totalAudience },
             ].map((item) => (
@@ -501,16 +523,34 @@ export default function BattleResultsClient() {
           </div>
         ) : (
           <>
+            {qCrashRecords.length > 0 ? (
+              <section className="mt-5 rounded-[1.6rem] border border-cyan-300/35 bg-[radial-gradient(circle_at_8%_0%,rgba(34,211,238,0.12),transparent_30%),rgba(0,12,16,0.72)] p-4 shadow-[0_0_50px_rgba(34,211,238,0.08)] sm:p-5">
+                <div className="flex flex-wrap items-end justify-between gap-3 border-b border-cyan-200/15 pb-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300">Q CRASH · AFTER THE RESULT</p>
+                    <h2 className="mt-1 text-2xl font-black text-white">{isZh ? "Q Crash 戰報" : "Q Crash Reports"}</h2>
+                    <p className="mt-1 max-w-2xl text-xs font-bold leading-5 text-cyan-50/60">
+                      {isZh ? "結果已經出來，還是可以回來重聽、留言，留下你最後比較喜歡哪首的想法。" : "The official result is fixed, but the listening, comments, and post-result preference stay open."}
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-3 py-1.5 text-xs font-black text-cyan-100">{qCrashRecords.length} {isZh ? "場" : "battles"}</span>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+                  {qCrashRecords.map((record) => <ResultCard key={`q-crash-${record.id}-${record.battleCode}`} record={record} isZh={isZh} lang={lang} />)}
+                </div>
+              </section>
+            ) : null}
+
             <section className="mt-5">
               <div className="mb-3 flex items-center justify-between gap-3">
-                <h2 className="text-xl font-black text-white">{isZh ? "最新戰果" : "Latest Results"}</h2>
-                <p className="text-xs font-black text-zinc-500">{monthRecords.length} {isZh ? "張成果卡" : "cards"}</p>
+                <h2 className="text-xl font-black text-white">{isZh ? "Drop Battle 正式戰績" : "Drop Battle Results"}</h2>
+                <p className="text-xs font-black text-zinc-500">{dropMonthRecords.length} {isZh ? "張成果卡" : "cards"}</p>
               </div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-                {monthRecords.map((record) => (
+              {dropMonthRecords.length > 0 ? <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+                {dropMonthRecords.map((record) => (
                   <ResultCard key={`${record.id}-${record.battleCode}`} record={record} isZh={isZh} lang={lang} />
                 ))}
-              </div>
+              </div> : <div className="rounded-[1.5rem] border border-white/10 bg-black/42 p-7 text-center text-sm font-bold text-zinc-500">{isZh ? "這個月份沒有公開的 Drop Battle 戰績；先看看上方 Q Crash 戰報。" : "No public Drop Battle results in this month. Start with the Q Crash reports above."}</div>}
             </section>
           </>
         )}

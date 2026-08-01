@@ -709,6 +709,8 @@ function BattleResultContent() {
           p_final_vote_right: finalVoteRight,
           p_audience_review: audienceReview,
           p_result_payload: {
+            source: "drop_battle",
+            battleType: "formal",
             coverUrl: coverUrlRaw,
             avatarUrl: avatarUrlRaw,
             opponentCoverUrl: opponentCoverUrlRaw,
