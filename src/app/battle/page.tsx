@@ -13,6 +13,7 @@ import SafetyNotice from "@/components/safety-notice";
 import { rememberAuthNextPath } from "@/lib/auth-urls";
 import { rankLabelForLevel } from "@/lib/battle-pool-rules";
 import { battleResultShortPath, battleShortPath, dailyBattleShortPath, dailyEntryShortPath } from "@/lib/share-short-links";
+import { qCrashDisplayLang } from "@/lib/q-crash-rules";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import {
   DROP_BATTLE_EXPECTED_END_BUFFER_MS,
@@ -265,6 +266,7 @@ function BattlePanelLabel({ tone, wide = false, children }: { tone: "cyan" | "re
 }
 
 function QCrashModePanel({ isZh, lang }: { isZh: boolean; lang: string }) {
+  const displayLang = qCrashDisplayLang(lang);
   return (
     <section className="q-crash-mode-panel mt-5 overflow-hidden rounded-[1.4rem] border border-cyan-300/35 bg-[radial-gradient(circle_at_82%_24%,rgba(34,211,238,0.15),transparent_34%),linear-gradient(115deg,rgba(3,20,29,0.92),rgba(0,0,0,0.68))] px-4 py-4 shadow-[0_0_40px_rgba(34,211,238,0.09)] md:px-5 md:py-4">
       <BattlePanelLabel tone="cyan">Q CRASH</BattlePanelLabel>
@@ -287,7 +289,7 @@ function QCrashModePanel({ isZh, lang }: { isZh: boolean; lang: string }) {
           </p>
         </div>
         <Link
-          href={`/battle/q-crash/new?lang=${lang}`}
+          href={`/battle/q-crash/new?lang=${displayLang}`}
           className="battle-mode-action-cta q-crash-solid-cta mt-4 shrink-0 bg-cyan-400 shadow-[0_0_28px_rgba(34,211,238,0.2)] transition hover:bg-cyan-300 md:mt-0"
         >
           <Swords size={18} />
@@ -603,12 +605,13 @@ function QCrashPoolMatchCard({ card, isZh, lang }: { card: QCrashPoolCardRow; is
   }, []);
 
   const voting = card.status === "q_crash_voting" && Boolean(card.works.B);
+  const displayLang = qCrashDisplayLang(lang);
   const href = card.battleId
-    ? focusedBattleHref(card.battleId, lang)
-    : `/battle/q-crash/${encodeURIComponent(card.cardId)}?lang=${lang}`;
+    ? focusedBattleHref(card.battleId, displayLang)
+    : `/battle/q-crash/${encodeURIComponent(card.cardId)}?lang=${displayLang}`;
   const shareUrl = card.battleId
-    ? battleShortPath(card.battleId, lang)
-    : `/battle/q-crash/${encodeURIComponent(card.cardId)}?lang=${lang}`;
+    ? battleShortPath(card.battleId, displayLang)
+    : `/battle/q-crash/${encodeURIComponent(card.cardId)}?lang=${displayLang}`;
   const coverA = card.works.A.coverUrl || AIPOGER_BRAND_LOGO;
   const coverB = card.works.B?.coverUrl || AIPOGER_BRAND_LOGO;
 

@@ -31,6 +31,7 @@ import {
   Q_CRASH_COMMENT_MAX_LENGTH,
   Q_CRASH_FEEDBACK_KEYS,
   emptyQCrashFeedbackCounts,
+  qCrashDisplayLang,
   type QCrashFeedbackCounts,
   type QCrashFeedbackKey,
 } from "@/lib/q-crash-rules";
@@ -487,7 +488,7 @@ function QCrashWorkCard(props: {
 export default function QCrashCardClient({ identifier }: { identifier: string }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const lang = searchParams.get("lang") === "en" ? "en" : "zh";
+  const lang = qCrashDisplayLang(searchParams.get("lang"));
   const isZh = lang === "zh";
   const [payload, setPayload] = useState<QCrashPayload | null>(null);
   const [loading, setLoading] = useState(true);

@@ -20,6 +20,13 @@ export type QCrashCardStatus =
   | "q_crash_insufficient"
   | "q_crash_cancelled";
 
+export type QCrashDisplayLang = "zh" | "en";
+
+/** Q Crash only has Traditional Chinese copy; every other UI language uses English. */
+export function qCrashDisplayLang(value: string | null | undefined): QCrashDisplayLang {
+  return value === null || value === undefined || value === "zh" ? "zh" : "en";
+}
+
 export function qCrashDurationMinutes(value: unknown): QCrashDurationMinutes | null {
   const minutes = typeof value === "number" || typeof value === "string" ? Number(value) : NaN;
   return Q_CRASH_DURATION_PRESETS.includes(minutes as QCrashDurationMinutes)

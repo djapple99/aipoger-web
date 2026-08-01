@@ -7,7 +7,7 @@ function source(path) {
 }
 
 const migrationSource = source("../supabase/20260731_q_crash_async_drop_battle.sql");
-const coverMigrationSource = source("../supabase/20260801000000_q_crash_work_covers.sql");
+const coverMigrationSource = source("../supabase/20260801055052_q_crash_work_covers.sql");
 const feedbackMigrationSource = source("../supabase/20260731193000_q_crash_feedback.sql");
 const commentMigrationSource = source("../supabase/20260731233000_q_crash_voter_comments.sql");
 const battleStatsRepairMigrationSource = source("../supabase/20260731122043_battle_song_stats_runtime_dependencies.sql");
@@ -23,8 +23,11 @@ const settlementSource = source("../src/lib/server-q-crash.ts");
 const fallbackSource = source("../src/app/api/battle-pool/process-fallbacks/route.ts");
 const hookCutSource = source("../src/app/battle/hook-cut/page.tsx");
 const qCrashNewSource = source("../src/app/battle/q-crash/new/page.tsx");
+const qCrashPageSource = source("../src/app/battle/q-crash/[id]/page.tsx");
 const cardClientSource = source("../src/components/q-crash-card-client.tsx");
 const battlePoolSource = source("../src/app/battle/page.tsx");
+const battlePageSource = source("../src/app/battle/[id]/page.tsx");
+const qCrashRulesSource = source("../src/lib/q-crash-rules.ts");
 const globalStylesSource = source("../src/app/globals.css");
 const productRulesSource = source("../docs/aipoger-product-rules.md");
 const analyticsRouteSource = source("../src/app/api/admin/analytics/route.ts");
@@ -47,6 +50,16 @@ test("Q Crash stores work-specific covers and keeps a profile fallback", () => {
   assert.ok(cardRouteSource.includes("queueA.cover_url"));
   assert.ok(cardClientSource.includes("這兩首歌到底哪首比較好聽啊？我有點選不出來！"));
   assert.ok(battlePoolSource.includes("幫我選一下："));
+});
+
+test("Q Crash uses Traditional Chinese only for zh and English for every other language", () => {
+  assert.ok(qCrashRulesSource.includes('return value === null || value === undefined || value === "zh" ? "zh" : "en";'));
+  assert.ok(qCrashNewSource.includes("qCrashDisplayLang(searchParams.get(\"lang\"))"));
+  assert.ok(cardClientSource.includes("qCrashDisplayLang(searchParams.get(\"lang\"))"));
+  assert.ok(battlePoolSource.includes("const displayLang = qCrashDisplayLang(lang);"));
+  assert.ok(qCrashPageSource.includes("Q Crash | AIPOGER Async Drop Battle"));
+  assert.ok(qCrashPageSource.includes("Which song sounds better? I can't decide!"));
+  assert.ok(battlePageSource.includes("const isZh = qCrashDisplayLang(rawLang) === \"zh\";"));
 });
 
 test("Q Crash API returns tallies only after the card reaches a final state", () => {

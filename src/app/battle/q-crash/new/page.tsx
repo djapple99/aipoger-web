@@ -8,7 +8,7 @@ import { rememberAuthNextPath } from "@/lib/auth-urls";
 import { readFighterNameFromStorage, writeFighterNameToStorage } from "@/lib/fighter-name-storage";
 import { IMAGE_UPLOAD_ACCEPT, imageContentType, isAllowedImageUploadFile } from "@/lib/image-upload-policy";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
-import { Q_CRASH_DURATION_PRESETS } from "@/lib/q-crash-rules";
+import { Q_CRASH_DURATION_PRESETS, qCrashDisplayLang } from "@/lib/q-crash-rules";
 import { supabase } from "@/lib/supabase";
 
 type CreatorOption = { id: string; name: string; avatarUrl: string | null };
@@ -46,7 +46,7 @@ const DURATION_LABELS: Record<number, { zh: string; en: string }> = {
 function QCrashNewContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const lang = searchParams.get("lang") === "en" ? "en" : "zh";
+  const lang = qCrashDisplayLang(searchParams.get("lang"));
   const isZh = lang === "zh";
   const joinCardId = searchParams.get("join");
   const isJoin = Boolean(joinCardId);
