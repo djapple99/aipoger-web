@@ -12,7 +12,6 @@ import { isAuthBypassEnabled, mockUserId } from "@/lib/auth-bypass";
 import { useI18n } from "@/lib/i18n";
 import { fontGlowSansBattle } from "@/lib/fonts";
 import { supabase } from "@/lib/supabase";
-import { getFreshSession } from "@/lib/auth-session";
 import ShareButton from "@/components/share-button";
 import ReportButton from "@/components/report-button";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
@@ -1552,7 +1551,9 @@ function BattleArenaContent() {
         setMyDisplayName(searchParams.get("fighterName")?.trim() || "我");
         return;
       }
-      const session = await getFreshSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) {
         currentSessionUserIdRef.current = "";
         setMyUserId("");
@@ -1634,7 +1635,9 @@ function BattleArenaContent() {
         let fighterProfileCover: string | null = null;
         let oauthAv: string | null = null;
         if (!isAuthBypassEnabled) {
-          const session = await getFreshSession();
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
           oauthAv = oauthProviderAvatar(session?.user);
           const uid = session?.user?.id;
           if (uid) {
@@ -1692,9 +1695,20 @@ function BattleArenaContent() {
         return;
       }
 
-      const authed = await getFreshSession();
-      if (!isAuthBypassEnabled && !authed?.user && !battleId.startsWith("mock-")) {
-        if (mounted) setLoading(false);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      // 還原 session 可能略晚於首次 render，短重試避免 RLS 擋讀
+      let authed = session;
+      for (let i = 0; i < 6 && !authed?.user && !isAuthBypassEnabled; i++) {
+        await new Promise((r) => setTimeout(r, 80));
+        const { data: d2 } = await supabase.auth.getSession();
+        authed = d2.session;
+      }
+
+      const arenaEntryResult = await refreshArenaEntry();
+      if (!mounted) return;
+      if (arenaEntryResult === "battle" || arenaEntryResult === "redirect") {
         return;
       }
 

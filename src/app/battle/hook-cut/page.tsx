@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import WaveSurfer from 'wavesurfer.js';
 import Regions from 'wavesurfer.js/dist/plugins/regions.esm.js';
 import { supabase } from '@/lib/supabase';
-import { getFreshSession } from '@/lib/auth-session';
 import { isAuthBypassEnabled, mockUserId } from '@/lib/auth-bypass';
 import { readFighterNameFromStorage, writeFighterNameToStorage } from '@/lib/fighter-name-storage';
 import { buildFullSongStoragePath, buildHookStoragePath, isValidStorageObjectKey } from '@/lib/storage-path';
@@ -545,7 +544,18 @@ function HookCutContent() {
   const avatarUrl = searchParams.get('avatarUrl');
   const assetKey = searchParams.get('assetKey');
   const challengeTargetQueueId = searchParams.get('challengeEntryId');
-  const challengeDailyEntryId = searchParams.get('challengeDailyEntryId');
+  const gatekeeperId = searchParams.get('gatekeeperId');
+  const aiMusicChallengeTrackId = searchParams.get('aiMusicChallengeTrackId');
+  const aiMusicDefenderTrackId = searchParams.get('aiMusicDefenderTrackId');
+  const defenderTrackTitle = searchParams.get('defenderTrackTitle');
+  const qCrashCreate = searchParams.get('qCrashCreate') === '1';
+  const qCrashCardId = searchParams.get('qCrashCardId');
+  const qCrashSelf = searchParams.get('qCrashSelf') === '1';
+  const qCrashDurationMinutes = searchParams.get('qCrashDurationMinutes');
+  const qCrashInviteeUserId = searchParams.get('qCrashInviteeUserId');
+  const rematchClaimId = searchParams.get('rematchClaimId');
+  const sourceBattleId = searchParams.get('sourceBattleId');
+  const isRematchUpload = Boolean(rematchClaimId && sourceBattleId);
   const battleMode = searchParams.get('battleMode') === 'daily' ? 'daily' : 'instant';
   const instantPairing = searchParams.get('instantPairing') === 'gatekeeper' ? 'gatekeeper' : searchParams.get('instantPairing') === 'invite' ? 'invite' : 'auto';
   const dailyPairing = searchParams.get('dailyPairing') === 'invite' ? 'invite' : 'auto';
@@ -557,23 +567,7 @@ function HookCutContent() {
 
   const t = getT(lang);
 
-  useEffect(() => {
-    if (battleMode !== 'daily') return;
-
-    const setupParams = new URLSearchParams({
-      battleMode: 'daily',
-      dailyPairing,
-      lang,
-    });
-    if (challengeDailyEntryId) setupParams.set('challengeDailyEntryId', challengeDailyEntryId);
-    if (fighterName.trim()) setupParams.set('fighterName', fighterName.trim());
-    if (songName.trim()) setupParams.set('songName', songName.trim());
-    if (genre.trim()) setupParams.set('genre', genre.trim());
-
-    router.replace(`/battle/setup?${setupParams.toString()}`);
-  }, [battleMode, challengeDailyEntryId, dailyPairing, fighterName, genre, lang, router, songName]);
-
-  const [, setAudioFile] = useState<File | null>(null);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isDecoding, setIsDecoding] = useState(false);
@@ -632,8 +626,10 @@ function HookCutContent() {
     if (isAuthBypassEnabled || (!challengeTargetQueueId && !aiMusicDefenderTrackId)) return;
     let mounted = true;
     void (async () => {
-      const freshSession = await getFreshSession();
-      if (!mounted || freshSession?.user) return;
+      const { data } = await supabase.auth.getSession();
+      if (!mounted || data.session?.user) return;
+      const refreshed = await supabase.auth.refreshSession().catch(() => null);
+      if (!mounted || refreshed?.data.session?.user) return;
       router.replace(authHrefForCurrentPage());
     })();
     return () => {
@@ -1104,7 +1100,7 @@ function HookCutContent() {
 
       const session = isAuthBypassEnabled
         ? null
-        : await getFreshSession();
+        : ((await supabase.auth.getSession()).data.session ?? (await supabase.auth.refreshSession().catch(() => null))?.data.session ?? null);
       if (!isAuthBypassEnabled && !session?.user) {
         router.push(authHrefForCurrentPage());
         throw new Error("登入狀態已過期，請重新登入後會回到這張接戰上傳頁。");

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isAuthBypassEnabled, mockSkipMatchBattleId } from "@/lib/auth-bypass";
-import { getFreshSession } from "@/lib/auth-session";
 import { supabase } from "@/lib/supabase";
 import { resolveCoverUrlFromParam } from "@/lib/cover-url";
 import { useI18n } from "@/lib/i18n";
@@ -344,7 +343,9 @@ function MatchmakingContent(props: MatchmakingContentProps) {
     }
     let cancelled = false;
     void (async () => {
-      const session = await getFreshSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       const uid = session?.user?.id;
       if (!uid) return;
       const { data } = await supabase.from("user_profiles").select("avatar_url").eq("id", uid).maybeSingle();
@@ -398,7 +399,8 @@ function MatchmakingContent(props: MatchmakingContentProps) {
         };
         let rpcError: { message?: string; details?: string | null; hint?: string | null } | null = null;
         try {
-          const token = (await getFreshSession())?.access_token;
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData.session?.access_token;
           if (!token) throw new Error("Missing session token");
           await attemptMatchmakingWithoutApcGate({
             queueId,
@@ -521,7 +523,9 @@ function MatchmakingContent(props: MatchmakingContentProps) {
     let mounted = true;
 
     void (async () => {
-      const session = await getFreshSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       const uid = session?.user?.id;
       if (!mounted || !uid) return;
 

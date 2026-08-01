@@ -6,15 +6,25 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { BadgeCheck, BookOpen, ChevronsRight, Clock3, Compass, History, Radio, Swords } from "lucide-react";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
-import { getFreshSession } from "@/lib/auth-session";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
 import ShareButton from "@/components/share-button";
 import SafetyNotice from "@/components/safety-notice";
 import { rememberAuthNextPath } from "@/lib/auth-urls";
 import { rankLabelForLevel } from "@/lib/battle-pool-rules";
-import { cancelCurrentBattleIntent } from "@/lib/battle-pool-client";
-import { dailyChallengeSetupPath, dailyChallengeSharePath } from "@/lib/short-battle-links";
+import { battleResultShortPath, battleShortPath, dailyBattleShortPath, dailyEntryShortPath } from "@/lib/share-short-links";
+import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
+import {
+  DROP_BATTLE_EXPECTED_END_BUFFER_MS,
+  cancelCurrentBattleIntent,
+  isClosedDropBattleStatus,
+  isDropBattleEndedOrPastExpectedEnd,
+  resolveDropBattleRuntimeStart,
+  resolveDropBattleScheduledStart,
+  shouldExpireOpenDropQueue,
+} from "@/lib/battle-pool-client";
+import { officialGatekeeperDisplayTitle, type OfficialGatekeeperDrop } from "@/lib/official-gatekeeper-drops";
+import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 
 const seedComments = [
   "A Side 節奏很穩，這段 drop 很強。",
@@ -730,8 +740,8 @@ function DailyBattleList() {
   useEffect(() => {
     if (isAuthBypassEnabled) return;
     let mounted = true;
-    void getFreshSession().then((freshSession) => {
-      if (mounted) setCurrentUserId(freshSession?.user.id ?? null);
+    void supabase.auth.getSession().then(({ data }) => {
+      if (mounted) setCurrentUserId(data.session?.user.id ?? null);
     });
     return () => {
       mounted = false;
@@ -742,7 +752,8 @@ function DailyBattleList() {
     setDailyCancelError("");
     setDailyCancelId(entryId);
     try {
-      const token = (await getFreshSession())?.access_token;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
       if (!token) throw new Error(isZh ? "請先登入後再取消 Daily Battle。" : "Sign in to cancel this Daily Battle.");
       const response = await fetch("/api/daily-battle/cancel-entry", {
         method: "POST",
@@ -978,7 +989,7 @@ function DailyBattleList() {
                       </p>
                       {row.status === "queued" && row.user_id !== currentUserId ? (
                         <Link
-                          href={dailyChallengeSetupPath(row.id, lang)}
+                          href={`/battle/setup?battleMode=daily&dailyPairing=invite&challengeDailyEntryId=${row.id}&genre=${encodeURIComponent(row.genre || "")}&lang=${lang}`}
                           className="mt-3 inline-flex rounded-full border border-cyan-200/40 bg-cyan-300/12 px-4 py-1.5 text-xs font-black text-cyan-100 transition hover:border-cyan-100 hover:bg-cyan-300 hover:text-black"
                         >
                           {isZh ? "接受 24H 整首挑戰" : "Accept 24H Challenge"}
@@ -1012,13 +1023,9 @@ function DailyBattleList() {
                               ? `${row.fighter_name} 的《${row.title || "未命名作品"}》正在等人接戰，進來用整首歌挑戰。`
                               : `${row.fighter_name}'s "${row.title || "Untitled Track"}" is waiting for a full-track challenger.`
                           }
-                          url={
-                            row.status === "queued"
-                              ? dailyChallengeSharePath(row.id, lang)
-                              : `/battle?lang=${lang}`
-                          }
-                          label={isZh ? "約人鬥歌" : "Find challenger"}
-                          copiedLabel={isZh ? "戰帖已複製" : "Challenge copied"}
+                          url={row.status === "queued" ? dailyEntryShortPath(row.id, lang) : `/battle?lang=${lang}`}
+                          label={isZh ? "約人鬥歌" : "Find Challenger"}
+                          copiedLabel={isZh ? "戰帖已複製" : "Challenge Copied"}
                           className="px-3 py-1.5 text-xs"
                         />
                       </div>
@@ -1972,8 +1979,8 @@ function LiveBattleList() {
   useEffect(() => {
     if (isAuthBypassEnabled) return;
     let mounted = true;
-    void getFreshSession().then((freshSession) => {
-      if (mounted) setCurrentUserId(freshSession?.user.id ?? null);
+    void supabase.auth.getSession().then(({ data }) => {
+      if (mounted) setCurrentUserId(data.session?.user.id ?? null);
     });
     return () => {
       mounted = false;
@@ -1990,307 +1997,7 @@ function LiveBattleList() {
         return;
       }
 
-      await fetch("/api/battle-pool/expire-open-cards", { method: "POST" }).catch(() => null);
-
-      const { data, error } = await supabase
-        .from("battle_queue")
-        .select("id, user_id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, public_vote_score, created_at")
-        .in("status", ["waiting_challenge", "public_voting", "ghost_battle"])
-        .order("created_at", { ascending: false })
-        .limit(24);
-
-      if (!mounted) return;
-      if (error) {
-        const msg = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`;
-        if (!/status|expires_at|public_vote_score|schema cache|does not exist|PGRST204/i.test(msg)) {
-          console.error("[battle pool]", error);
-        }
-        setRows([]);
-      } else {
-        const baseRows = ((data as PoolEntryRow[]) ?? []);
-        const visibleRows = baseRows.filter((row) => !isExpiredOpenPoolEntry(row));
-        setHookSongStats(await fetchHookSongBattleStats(visibleRows.map((row) => row.original_file_name)));
-        const userIds = Array.from(new Set(visibleRows.map((row) => row.user_id).filter(Boolean)));
-        const { data: profiles } =
-          userIds.length > 0
-            ? await supabase.from("user_profiles").select("id, level").in("id", userIds)
-            : { data: [] };
-        const levelMap = new Map((profiles ?? []).map((row: { id: string; level?: number | null }) => [row.id, row.level ?? 1]));
-        setRows(
-          visibleRows.map((row) => {
-            return { ...row, fighter_rank: rankLabelForLevel(levelMap.get(row.user_id) ?? 1, row.fighter_name) };
-          }),
-        );
-      }
-      setLoading(false);
-    };
-
-    void load();
-
-    const channel =
-      !isAuthBypassEnabled &&
-      supabase
-        .channel("battle-pool-open")
-        .on("postgres_changes", { event: "*", schema: "public", table: "battle_queue" }, () => {
-          void load();
-        })
-        .subscribe();
-
-    return () => {
-      mounted = false;
-      if (channel) void supabase.removeChannel(channel);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!focusQueueId || loading || rows.length === 0) return;
-    const id = window.setTimeout(() => {
-      document.getElementById(`battle-pool-${focusQueueId}`)?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    }, 120);
-    return () => window.clearTimeout(id);
-  }, [focusQueueId, loading, rows.length]);
-
-  const cancelOwnHook = async (entryId: string) => {
-    setCancelError(null);
-    setCancelQueueId(entryId);
-    try {
-      const token = (await getFreshSession())?.access_token;
-      if (!token) throw new Error(isZh ? "請先登入後再取消挑戰。" : "Please sign in before cancelling.");
-      await cancelCurrentBattleIntent({ accessToken: token });
-      setRows((items) => items.filter((item) => item.id !== entryId));
-    } catch (error) {
-      setCancelError(error instanceof Error ? error.message : isZh ? "取消失敗，請稍後再試。" : "Cancel failed. Please try again.");
-    } finally {
-      setCancelQueueId(null);
-    }
-  };
-
-  if (loading) {
-    return (
-      <section className="mt-8 rounded-[2rem] border border-white/10 bg-white/[0.035] p-6 text-sm text-zinc-500">
-        {t("pool_loading")}
-      </section>
-    );
-  }
-
-  return (
-    <section className="mt-8 rounded-[2rem] border border-orange-300/18 bg-black/45 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.24)] backdrop-blur md:p-6">
-      <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-[0.38em] text-orange-300/80">90s Drop Battle Pool</p>
-          <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "90s 最強抓波Drop Battle 公開挑戰池" : "90s Drop Battle Challenge Pool"}</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-7 text-zinc-400">
-            {t("pool_body")}
-          </p>
-        </div>
-        <Link
-          href="/battle/setup"
-          className="w-fit rounded-full border border-white/15 px-5 py-2.5 text-sm font-bold text-zinc-200 transition hover:border-orange-300/60 hover:text-white"
-        >
-          {isZh ? "挑戰 90s 最強抓波Drop Battle" : "Challenge 90s Drop Battle"}
-        </Link>
-      </div>
-
-      {cancelError ? (
-        <div className="mb-4 rounded-2xl border border-red-400/35 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-100">
-          {cancelError}
-        </div>
-      ) : null}
-
-      {rows.length === 0 ? (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-6 text-center">
-          <p className="text-sm font-bold text-zinc-300">{t("pool_empty_title")}</p>
-          <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-zinc-500">
-            {t("pool_empty_body")}
-          </p>
-        </div>
-      ) : (
-        <ul className="grid gap-3 md:grid-cols-2">
-          {rows.map((entry) => {
-            const isGhost = entry.status === "ghost_battle" && entry.match_group_id;
-            const isPublicVoting = entry.status === "public_voting";
-            const isMine = Boolean(currentUserId && entry.user_id === currentUserId);
-            const isFocused = focusQueueId === entry.id;
-            const inviteParams = new URLSearchParams({
-              lang,
-              type: "hook-card",
-            });
-            const invitePath = `/battle/invite/${entry.id}?${inviteParams.toString()}`;
-            const href = isGhost
-              ? `/battle/${entry.match_group_id}`
-              : invitePath;
-            const waitingRoomPath = `/battle/waiting-room/${entry.id}?lang=${lang}`;
-            const shareUrl = isGhost
-              ? `/battle/${entry.match_group_id}?lang=${lang}`
-              : invitePath;
-            const shareLabel = isGhost || isPublicVoting
-              ? isZh
-                ? "邀請觀戰投票"
-                : "Invite voters"
-              : isZh
-                ? "分享戰帖 / 約戰"
-                : "Share / Challenge";
-            const hookStartText = entry.expires_at
-              ? isZh
-                ? `開戰時間：${formatBattleCardTime(entry.expires_at, true)}（台灣時間）。`
-                : `Starts: ${formatBattleCardTime(entry.expires_at, false)} Taiwan time.`
-              : "";
-            const label = isMine
-              ? isZh
-                ? "我的等待卡"
-                : "My Waiting Card"
-              : isGhost
-                ? t("pool_enter_ghost")
-                : isPublicVoting
-                  ? t("pool_public_vote")
-                : isZh
-                  ? "接受 90s Drop Battle 挑戰"
-                  : "Accept 90s Drop Battle";
-            const cardClassName = `group block rounded-[1.4rem] border p-4 transition ${
-              isFocused
-                ? "border-orange-200/80 bg-orange-400/[0.13] shadow-[0_0_38px_rgba(255,106,0,0.22)]"
-                : isMine
-                  ? "border-cyan-200/35 bg-cyan-300/[0.07]"
-                  : "border-white/10 bg-white/[0.04] hover:border-orange-300/50 hover:bg-white/[0.065]"
-            }`;
-            const content = (
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="text-xs uppercase tracking-[0.22em] text-zinc-500">
-                    {isMine
-                      ? isZh
-                        ? "MY WAITING DROP"
-                        : "MY WAITING DROP"
-                      : entry.status === "waiting_challenge"
-                        ? isZh
-                          ? "等待挑戰"
-                          : "Waiting Challenge"
-                        : entry.status === "ghost_battle"
-                          ? "Ghost Battle"
-                          : "Public Voting"}
-                  </p>
-                  <p className="mt-2 truncate text-lg font-black text-white">{entry.original_file_name}</p>
-                  <p className="mt-1 text-sm text-zinc-400">
-                    {entry.fighter_name}
-                    {entry.fighter_rank && <span className="ml-2 rounded-full border border-orange-300/25 px-2 py-0.5 text-[11px] font-bold text-orange-100">{entry.fighter_rank}</span>}
-                    <span className="ml-2">· {entry.genre}</span>
-                  </p>
-                  <div className="mt-2">
-                    <SongBattleStatsPill stats={hookSongStats[normalizeSongStatsKey(entry.original_file_name)]} isZh={isZh} />
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px] font-black text-orange-100/85">
-                    <span className="inline-flex shrink-0 items-center rounded-full border border-white/10 bg-white/[0.05] px-3 py-1">
-                      {isPublicVoting ? (isZh ? "投票開放" : "Voting") : isZh ? "上架" : "Listed"} {formatBattleCardTime(entry.created_at, isZh)}
-                    </span>
-                    {!isPublicVoting ? (
-                      <span className="inline-flex shrink-0 items-center rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-zinc-300">
-                        {formatBattleAge(entry.created_at, isZh)}
-                      </span>
-                    ) : null}
-                    {entry.expires_at ? (
-                      <span className="inline-flex shrink-0 items-center rounded-full border border-orange-200/45 bg-orange-400/15 px-4 py-1 text-base text-orange-50 shadow-[0_0_18px_rgba(255,116,28,0.16)]">
-                        {isZh ? "開戰" : "Starts"} {formatBattleCardTime(entry.expires_at, isZh)}
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="mt-1 text-xs text-zinc-500">
-                    {isMine
-                      ? isZh
-                        ? "你的 90s 最強抓波Drop Battle 正在等待挑戰。可先進等待場看倒數、聽 5 秒 teaser；對手加入後會直接進鬥場。"
-                        : "Your 90s Drop Battle is open. Enter the waiting room for countdown and a 5-second teaser."
-                      : entry.status === "waiting_challenge"
-                        ? isZh
-                          ? `${entry.ai_tool || "AI Tool"} · 點卡片可選擇挑戰或觀戰`
-                          : `${entry.ai_tool || "AI Tool"} · Open card to challenge or watch`
-                        : `${entry.ai_tool || "AI Tool"} ${isPublicVoting && entry.public_vote_score ? `· +${entry.public_vote_score} APC` : ""}`}
-                  </p>
-                  {isMine ? (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <Link
-                        href={waitingRoomPath}
-                        className="rounded-full bg-cyan-300 px-4 py-2 text-sm font-black text-black transition hover:bg-cyan-100"
-                      >
-                        {isZh ? "進入等待場" : "Enter Waiting Room"}
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => void cancelOwnHook(entry.id)}
-                        disabled={cancelQueueId === entry.id}
-                        className="rounded-full border border-red-300/30 bg-red-500/10 px-4 py-2 text-sm font-black text-red-100 transition hover:border-red-200/70 hover:bg-red-400/20 disabled:cursor-wait disabled:opacity-60"
-                      >
-                        {cancelQueueId === entry.id ? (isZh ? "取消中..." : "Cancelling...") : isZh ? "取消 / 離開" : "Cancel / Leave"}
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-                <span
-                  className={`shrink-0 rounded-full border px-3 py-1 text-xs font-bold transition ${
-                    isMine
-                      ? "border-cyan-200/35 bg-cyan-300/10 text-cyan-100"
-                      : "border-orange-300/30 text-orange-100 group-hover:bg-orange-500 group-hover:text-black"
-                  }`}
-                >
-                  {label}
-                </span>
-              </div>
-            );
-            return (
-              <li key={entry.id} id={`battle-pool-${entry.id}`}>
-                <article className={cardClassName}>
-                  {isMine ? content : (
-                    <Link href={href} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300">
-                      {content}
-                    </Link>
-                  )}
-                  <div className="mt-4 flex justify-end border-t border-white/10 pt-3">
-                  <ShareButton
-                    title={isZh ? "AIPOGER 90s 最強抓波Drop Battle 戰帖" : "AIPOGER 90s Drop Battle Card"}
-                    text={
-                      isGhost || isPublicVoting
-                        ? isZh
-                          ? `《${entry.original_file_name}》正在 AIPOGER 鬥歌場，進來觀戰投票。`
-                          : `"${entry.original_file_name}" is in AIPOGER Battle. Come vote.`
-                        : isZh
-                          ? `${entry.fighter_name} 的《${entry.original_file_name}》正在等人接戰。${hookStartText}進來約戰，或先聽 5 秒 teaser。`
-                          : `${entry.fighter_name}'s "${entry.original_file_name}" is waiting for a challenger. ${hookStartText}Challenge it, or hear the 5s teaser first.`
-                    }
-                    url={shareUrl}
-                    label={shareLabel}
-                    copiedLabel={isZh ? "戰帖已複製" : "Battle card copied"}
-                    className="px-3 py-1.5 text-xs"
-                  />
-                  </div>
-                </article>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </section>
-  );
-}
-
-function LiveBattleList() {
-  const { t, lang } = useI18n();
-  const [rows, setRows] = useState<LiveBattleRow[]>([]);
-  const [liveSongStats, setLiveSongStats] = useState<Record<string, SongBattleStats>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const load = async () => {
-      if (isAuthBypassEnabled) {
-        setRows([]);
-        setLoading(false);
-        return;
-      }
-
-      const { data, error: qErr } = await supabase
+      let { data, error: qErr } = await supabase
         .from("battles")
         .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, scheduled_start_at, battle_started_at, started_at, battle_ended_at")
         .in("status", ["matched", "active", "live"])

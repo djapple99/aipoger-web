@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { type CSSProperties, type PointerEvent, useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
-import { getFreshSession } from "@/lib/auth-session";
 import { useI18n } from "@/lib/i18n";
 import { writeFighterNameToStorage } from "@/lib/fighter-name-storage";
 import LangToggle from "@/components/lang-toggle";
@@ -693,8 +692,8 @@ function HomeAuthBar() {
   const [session, setSession] = useState<Session | null>(null);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(true);
   const menuRef = useRef<HTMLDivElement>(null);
+  const forceShowLogin = process.env.NEXT_PUBLIC_FORCE_SHOW_LOGIN === "true";
 
   const loadProfile = useCallback(
     async (userId: string) => {
@@ -745,45 +744,21 @@ function HomeAuthBar() {
 
   useEffect(() => {
     let mounted = true;
-    let initialSessionResolved = false;
-
-    const applySession = (s: Session | null) => {
+    void supabase.auth.getSession().then(({ data: { session: s } }) => {
       if (!mounted) return;
+      setSession(s);
+      if (s?.user) void loadProfile(s.user.id);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
       if (s?.user) {
         void loadProfile(s.user.id);
       } else {
         setProfileAvatarUrl(null);
       }
-    };
-
-    void (async () => {
-      applySession(await getFreshSession(8000));
-      if (mounted) {
-        initialSessionResolved = true;
-        setCheckingSession(false);
-      }
-    })();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, s) => {
-      if (!initialSessionResolved && !s?.user && event !== "SIGNED_OUT") return;
-      if (!s?.user) {
-        void (async () => {
-          const freshSession = await getFreshSession(4000);
-          if (freshSession?.user) {
-            applySession(freshSession);
-            setCheckingSession(false);
-            return;
-          }
-          if (event === "SIGNED_OUT") applySession(null);
-          setCheckingSession(false);
-        })();
-        return;
-      }
-      applySession(s);
-      setCheckingSession(false);
     });
 
     return () => {
@@ -811,15 +786,7 @@ function HomeAuthBar() {
   const user = session?.user ?? null;
   const avatarUrl = profileAvatarUrl ?? (user ? userAvatarUrl(user) : null);
 
-  if (checkingSession) {
-    return (
-      <span className="inline-flex items-center gap-2 rounded-2xl border border-zinc-700 bg-zinc-950/70 px-4 py-2.5 text-sm font-semibold text-zinc-400 shadow-lg backdrop-blur">
-        {t("common_loading")}
-      </span>
-    );
-  }
-
-  if (!user) {
+  if (forceShowLogin || !user) {
     return (
       <Link
         href="/auth"
@@ -1055,7 +1022,7 @@ export default function HomePage() {
             <div className="h-px flex-1 bg-gradient-to-r from-orange-500/70 via-white/20 to-transparent" />
           </div>
 
-          <p className={`w-full max-w-full text-[4.25rem] font-black uppercase leading-[0.82] tracking-[-0.04em] text-[#fffaf1] min-[390px]:text-[4.55rem] sm:text-[6.25rem] md:text-[clamp(8.35rem,14.15vw,16.7rem)] md:leading-[0.78] md:tracking-[-0.066em] ${heroChromeShadow}`}>
+          <p className={`mx-auto w-full max-w-full overflow-visible whitespace-nowrap text-center text-[4.25rem] font-black uppercase leading-[0.82] tracking-[-0.04em] text-[#fffaf1] min-[390px]:text-[4.55rem] sm:text-[6.25rem] md:text-[clamp(8.35rem,14.15vw,16.7rem)] md:leading-[0.78] md:tracking-[-0.066em] ${heroChromeShadow}`}>
             AIPOGER
           </p>
           <p
@@ -1088,15 +1055,22 @@ export default function HomePage() {
                 }`}
               >
                 <WatchIcon />
-                <span className="text-base font-black tracking-[0.08em]">{t("btn_watch")}</span>
-              </Link>
-              <Link
-                href="/listen-bar"
-                onClick={(event) => {
-                  event.preventDefault();
-                  window.location.assign("/listen-bar");
-                }}
-                className="group flex min-h-24 flex-col justify-between rounded-2xl border border-orange-200/25 bg-white/[0.06] px-4 py-4 text-white transition hover:border-orange-200 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+              </span>
+              <span className="text-[0.78rem] font-black leading-tight tracking-[0.04em]">{mobileActionLabels.explore}</span>
+            </Link>
+            <Link
+              href={withLang("/listen-bar")}
+              aria-label={t("btn_listen_bar")}
+              onPointerEnter={() => setActiveMobileAction("bar")}
+              onFocus={() => setActiveMobileAction("bar")}
+              className="group flex min-w-0 flex-col items-center gap-2 text-center text-white focus-visible:outline-none"
+            >
+              <span
+                className={`flex h-[4.85rem] w-[4.85rem] items-center justify-center rounded-full border shadow-[0_0_28px_rgba(255,255,255,0.05)] transition group-hover:border-cyan-200 group-hover:bg-white/[0.1] group-focus-visible:ring-2 group-focus-visible:ring-cyan-100 ${
+                  activeMobileAction === "bar"
+                    ? "border-orange-200/75 bg-orange-500/22 text-orange-50 shadow-[0_0_32px_rgba(255,106,0,0.22)]"
+                    : "border-cyan-200/24 bg-white/[0.055]"
+                }`}
               >
                 <ListenBarIcon />
               </span>
@@ -1204,12 +1178,10 @@ export default function HomePage() {
                 </Link>
 
                 <Link
-                  href="/listen-bar"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    window.location.assign("/listen-bar");
-                  }}
-                  className="group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] border border-white/14 bg-white/[0.055] px-5 text-white shadow-[0_12px_26px_rgba(0,0,0,0.2)] transition hover:border-cyan-200/45 hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
+                  href={withLang("/listen-bar")}
+                  onPointerMove={handlePointerGlowMove}
+                  style={pointerGlowStyle(HOME_ACTION_GLOW.bar)}
+                  className="aipo-pointer-glow group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] border border-white/14 bg-white/[0.055] px-5 text-white shadow-[0_12px_26px_rgba(0,0,0,0.2)] transition hover:border-orange-300/45 hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
                 >
                   <ListenBarIcon />
                   <span className={`text-lg tracking-[0.08em] ${isZh ? `${zhDisplayClass} font-black` : "font-black"}`}>

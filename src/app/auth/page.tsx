@@ -4,11 +4,19 @@
 import Image from "next/image";
 import { type FormEvent, useEffect, useState, Suspense, useRef, useCallback } from "react";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
-import { createSupabaseImplicitAuthClient, supabase } from "@/lib/supabase";
-import { getFreshSession } from "@/lib/auth-session";
+import { supabase } from "@/lib/supabase";
 import { useSearchParams } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
-import { buildAuthCallbackUrl, buildAuthPageUrl, consumeFreshAuthReturnPath, rememberAuthReturnPath, safeNextPath } from "@/lib/auth-urls";
+import {
+  buildAuthCallbackUrl,
+  buildChromeOpenUrl,
+  buildAuthPageUrl,
+  markAuthReturnPending,
+  readRememberedAuthNextCookie,
+  readRememberedAuthNextPath,
+  rememberAuthNextPath,
+  safeNextPath,
+} from "@/lib/auth-urls";
 
 function intentToNextPath(intent: string | null, lang: string | null): string {
   const langQuery = lang && ["zh", "en", "ja", "ko"].includes(lang) ? `?lang=${lang}` : "";
@@ -38,17 +46,6 @@ function isLikelyEmbeddedBrowser(userAgent: string): boolean {
   return hasExplicitInAppToken || isAndroidWebView;
 }
 
-function shouldAutoRememberReturnPath(path: string): boolean {
-  if (path === "/") return false;
-  if (path.startsWith("/music-analysis")) return true;
-  if (path.startsWith("/listen-bar")) return true;
-  if (path.startsWith("/rank")) return true;
-  if (path.startsWith("/profile")) return true;
-  if (path === "/battle" || path.startsWith("/battle?")) return true;
-  if (path === "/battle/setup" || path.startsWith("/battle/setup?")) return !path.includes("challenge");
-  return false;
-}
-
 function AuthLoadingFallback() {
   const { t } = useI18n();
   return (
@@ -68,6 +65,7 @@ function AuthPageInner() {
   const [loginUrl, setLoginUrl] = useState("");
   const [email, setEmail] = useState("");
   const [emailSent, setEmailSent] = useState(false);
+  const [switchingAccount, setSwitchingAccount] = useState(false);
   const searchParams = useSearchParams();
   const explicitNext = searchParams.get("next");
   const ownerLogin = searchParams.get("owner") === "1" || safeNextPath(explicitNext).startsWith("/admin");
@@ -152,22 +150,23 @@ function AuthPageInner() {
   const goHomeOnce = useCallback(() => {
     if (redirectingRef.current) return;
     redirectingRef.current = true;
-    window.location.replace(consumeFreshAuthReturnPath(searchParams.get("next")));
-  }, [searchParams]);
+    rememberAuthNextPath(nextPath);
+    markAuthReturnPending(nextPath);
+    window.location.replace(nextPath);
+  }, [nextPath]);
 
   useEffect(() => {
-    setLoginUrl(buildAuthPageUrl(nextPath));
-    if (searchParams.get("next") && shouldAutoRememberReturnPath(nextPath)) {
-      rememberAuthReturnPath(nextPath);
-    }
+    rememberAuthNextPath(nextPath);
+    const publicLoginUrl = buildAuthPageUrl(nextPath);
+    setLoginUrl(publicLoginUrl);
     const ua = navigator.userAgent || "";
     setIsEmbeddedBrowser(isLikelyEmbeddedBrowser(ua));
-  }, [nextPath, searchParams]);
+    setChromeOpenUrl(buildChromeOpenUrl(publicLoginUrl, ua));
+  }, [nextPath]);
 
   useEffect(() => {
-    const authMessage = searchParams.get("auth_message");
     if (searchParams.get("error")) {
-      setError(authMessage ? `${t("auth_error")} ${authMessage}` : t("auth_error"));
+      setError(t("auth_error"));
     }
   }, [searchParams, t]);
 
@@ -184,7 +183,10 @@ function AuthPageInner() {
     }
 
     const checkUser = async () => {
-      if (await getFreshSession()) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session) {
         goHomeOnce();
       }
     };
@@ -207,27 +209,23 @@ function AuthPageInner() {
 
   const handleOAuthLogin = async (provider: "google" | "facebook") => {
     if (isEmbeddedBrowser) {
-      setNotice("你目前在 App 內建瀏覽器中。Google / Facebook 登入容易被這類瀏覽器擋掉，請用 Email 登入連結，或改用 Safari / Chrome 開啟。");
+      setNotice(embeddedCopy.oauthNotice);
       return;
     }
     setLoading(true);
     setError(null);
     setNotice(null);
 
-    const returnPath = rememberAuthReturnPath(nextPath);
-    const redirectTo = buildAuthCallbackUrl(returnPath);
+    const redirectTo = buildAuthCallbackUrl(nextPath);
 
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider,
-      options: {
-        redirectTo,
-        queryParams: provider === "google" ? { prompt: "select_account" } : undefined,
-      },
+      options: { redirectTo },
     });
 
     if (oauthError) {
       console.error(oauthError);
-      setError(`${t("auth_error")} ${oauthError.message}`);
+      setError(t("auth_error"));
       setLoading(false);
     }
   };
@@ -246,10 +244,10 @@ function AuthPageInner() {
     setNotice(null);
     setEmailSent(false);
 
-    const { error: otpError } = await createSupabaseImplicitAuthClient().auth.signInWithOtp({
+    const { error: otpError } = await supabase.auth.signInWithOtp({
       email: normalizedEmail,
       options: {
-        emailRedirectTo: buildAuthCallbackUrl(rememberAuthReturnPath(nextPath)),
+        emailRedirectTo: buildAuthCallbackUrl(nextPath),
         shouldCreateUser: true,
       },
     });
@@ -314,13 +312,13 @@ function AuthPageInner() {
             </p>
           </div>
           {isEmbeddedBrowser ? (
-            <div className="rounded-3xl border border-orange-300/40 bg-orange-500/10 p-5 text-sm leading-7 text-orange-50">
-              <p className="text-base font-black text-orange-200">App 內建瀏覽器會限制社群登入</p>
+            <div className="aipo-control-panel rounded-[1.35rem] p-5 text-sm leading-7 text-orange-50">
+              <p className="text-base font-black text-orange-200">{embeddedCopy.title}</p>
               <p className="mt-2 text-zinc-200">
-                你目前可能在 Gmail、IG、LINE、Facebook、TikTok 或 Google App 的內建瀏覽器中。這類環境常會封鎖 Google / Facebook 登入，不是 AIPOGER 帳號壞掉。
+                {embeddedCopy.body}
               </p>
               <p className="mt-2 text-zinc-100">
-                最穩方式：直接輸入 Email 收登入連結；如果要用 Google / Facebook，請點右上角分享 / 選單，改用 Safari 或 Chrome 開啟後再登入。
+                {embeddedCopy.best}
               </p>
               <p className="mt-2 rounded-2xl border border-cyan-200/25 bg-black/35 px-3 py-2 text-cyan-100">
                 {embeddedCopy.lineHint}
@@ -389,16 +387,16 @@ function AuthPageInner() {
             ) : null}
           </form>
           {isEmbeddedBrowser ? (
-            <p className="rounded-2xl border border-zinc-700 bg-zinc-900/80 p-4 text-center text-sm leading-relaxed text-zinc-300">
-              手機目前建議使用 Email 登入。Google / Facebook 社群登入請改用 Safari 或 Chrome 開啟本頁。
+            <p className="aipo-control-panel rounded-2xl p-4 text-center text-sm leading-relaxed text-zinc-300">
+              {embeddedCopy.socialHint}
             </p>
           ) : (
             <>
               <button
                 type="button"
                 onClick={() => void handleOAuthLogin("google")}
-                disabled={loading}
-                className="flex w-full items-center justify-center gap-3 rounded-2xl bg-white px-6 py-4 font-medium text-zinc-800 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-45"
+                disabled={loading || switchingAccount}
+                className="flex w-full items-center justify-center gap-3 rounded-2xl border border-white/30 bg-white px-6 py-4 font-black text-zinc-900 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-45"
               >
                 <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -411,7 +409,7 @@ function AuthPageInner() {
               <button
                 type="button"
                 onClick={() => void handleOAuthLogin("facebook")}
-                disabled={loading}
+                disabled={loading || switchingAccount}
                 className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[#1877F2] px-6 py-4 font-medium text-white transition hover:bg-[#1666d6] disabled:cursor-not-allowed disabled:opacity-45"
               >
                 <span className="text-2xl" aria-hidden>f</span>

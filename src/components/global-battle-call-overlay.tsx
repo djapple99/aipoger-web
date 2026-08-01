@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { User } from "@supabase/supabase-js";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
-import { getFreshSession } from "@/lib/auth-session";
 import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
 import { cancelCurrentBattleIntent, isDropBattleEndedOrPastExpectedEnd, resolveDropBattleScheduledStart, shouldExpireOpenDropQueue } from "@/lib/battle-pool-client";
@@ -548,7 +547,9 @@ export default function GlobalBattleCallOverlay() {
     });
 
     void (async () => {
-      const session = await getFreshSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       const uid = session?.user?.id;
       if (!mounted) return;
       setAccountUserId(uid ?? null);

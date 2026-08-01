@@ -4,7 +4,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { getFreshSession as getStableSession } from '@/lib/auth-session';
 import { isAuthBypassEnabled, mockUserId } from '@/lib/auth-bypass';
 import { useI18n } from '@/lib/i18n';
 import { readFighterNameFromStorage, writeFighterNameToStorage } from '@/lib/fighter-name-storage';
@@ -334,7 +333,10 @@ function authHrefForCurrentPage(): string {
 }
 
 async function getFreshSession() {
-  return getStableSession();
+  const current = await supabase.auth.getSession();
+  if (current.data.session?.user) return current.data.session;
+  const refreshed = await supabase.auth.refreshSession().catch(() => null);
+  return refreshed?.data.session ?? null;
 }
 
 function toDatetimeLocalValue(date: Date) {
@@ -430,13 +432,9 @@ export default function BattleSetupPage() {
   const [profileAvatarPreview, setProfileAvatarPreview] = useState<string | null>(null);
 
   useEffect(() => {
-    let mounted = true;
-    void getFreshSession().then((freshSession) => {
-      if (mounted) setUploadUserId(freshSession?.user?.id ?? null);
+    void supabase.auth.getSession().then(({ data }) => {
+      setUploadUserId(data.session?.user?.id ?? null);
     });
-    return () => {
-      mounted = false;
-    };
   }, []);
 
   useEffect(() => {
@@ -615,10 +613,10 @@ export default function BattleSetupPage() {
   }, [lang, router]);
 
   useEffect(() => {
-    if (!challengeDailyEntryId && dailyBattleCount >= DAILY_BATTLE_ACTIVE_LIMIT && battleMode === 'daily') {
+    if ((!DAILY_BATTLE_PUBLIC_ENTRY_ENABLED || dailyBattleCount >= DAILY_BATTLE_ACTIVE_LIMIT) && battleMode === 'daily') {
       setBattleMode('instant');
     }
-  }, [battleMode, challengeDailyEntryId, dailyBattleCount]);
+  }, [battleMode, dailyBattleCount]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1282,9 +1280,93 @@ export default function BattleSetupPage() {
 
   const displayAvatarUrl = avatarPreview ?? savedAvatarUrl ?? profileAvatarPreview;
   const displayCoverUrl = coverPreview ?? savedCoverUrl;
-  const hookDurationLabel = draft?.hookDuration ? `${Number(draft.hookDuration).toFixed(1)}s` : '45s';
-  const dailyBattleLocked = !challengeDailyEntryId && dailyBattleCount >= DAILY_BATTLE_ACTIVE_LIMIT;
-  const dailyModeDisabled = dailyBattleLocked || dailySchemaMissing;
+  const hookDurationLabel = draft?.hookDuration ? `${Number(draft.hookDuration).toFixed(1)}s` : '60s';
+  const showDropBattleSchedule = battleMode === 'instant' && (instantPairingMode === 'invite' || instantPairingMode === 'gatekeeper' || Boolean(aiMusicChallengeTrackId)) && !challengeEntryId;
+  const customScheduleMin = toDatetimeLocalValue(new Date(Date.now() + DROP_BATTLE_SCHEDULE_MIN_LEAD_MS));
+  const customScheduleMax = toDatetimeLocalValue(new Date(Date.now() + DROP_BATTLE_SCHEDULE_MAX_LEAD_MS));
+  const dropBattleSchedulePicker = showDropBattleSchedule ? (
+    <div className="rounded-2xl border border-orange-300/20 bg-orange-500/[0.08] p-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <label className="block text-sm font-bold text-zinc-300">
+            {lang === 'zh' ? '開戰時間' : 'Start time'} <span className="font-black text-orange-400">*</span>
+          </label>
+          <p className="mt-1 text-xs leading-5 text-zinc-500">
+            {lang === 'zh'
+              ? '快速時間從戰帖發布成功後開始倒數；自訂時間則照你指定的時間開打。'
+              : 'Quick times count from successful battle-card publishing; custom time starts at the exact time you choose.'}
+          </p>
+        </div>
+        <span className="rounded-full border border-orange-200/25 bg-black/40 px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-orange-100/80">
+          DROP BATTLE
+        </span>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+        <button
+          type="button"
+          onClick={() => {
+            setBattleStartOption('custom');
+            setScheduleError(null);
+            setFormError(null);
+          }}
+          className={`min-h-12 rounded-2xl border px-3 py-3 text-sm font-black transition ${
+            battleStartOption === 'custom'
+              ? 'border-cyan-200/70 bg-cyan-300/14 text-cyan-50 shadow-[0_0_24px_rgba(0,203,255,0.12)]'
+              : 'border-white/10 bg-black/35 text-zinc-300 hover:border-cyan-200/35'
+          }`}
+        >
+          {lang === 'zh' ? '自訂時間' : 'Custom Time'}
+        </button>
+        {DROP_BATTLE_SCHEDULE_PRESETS.map((minutes) => {
+          const selected = battleStartOption === minutes;
+          return (
+            <button
+              key={minutes}
+              type="button"
+              onClick={() => {
+                setBattleStartOption(minutes);
+                setScheduleError(null);
+                setFormError(null);
+              }}
+              className={`min-h-12 rounded-2xl border px-3 py-3 text-sm font-black transition ${
+                selected
+                  ? 'border-orange-200/70 bg-orange-400/18 text-orange-50 shadow-[0_0_24px_rgba(255,106,0,0.14)]'
+                  : 'border-white/10 bg-black/35 text-zinc-300 hover:border-orange-200/35'
+              }`}
+            >
+              {lang === 'zh' ? `發布後 ${minutes} 分鐘` : `${minutes} Min After Publish`}
+            </button>
+          );
+        })}
+      </div>
+      {battleStartOption === 'custom' ? (
+        <input
+          type="datetime-local"
+          value={hookBattleAt}
+          min={customScheduleMin}
+          max={customScheduleMax}
+          onChange={(event) => {
+            setHookBattleAt(event.target.value);
+            setScheduleError(null);
+            setFormError(null);
+          }}
+          className="mt-3 w-full rounded-2xl border border-white/10 bg-black/55 px-4 py-3 text-base font-black text-white outline-none transition focus:border-cyan-200/70"
+        />
+      ) : null}
+      {scheduleError ? (
+        <p className="mt-3 text-sm font-black text-red-300">{scheduleError}</p>
+      ) : null}
+      <p className="mt-3 text-xs font-bold leading-5 text-zinc-500">
+        {battleStartOption === 'custom'
+          ? lang === 'zh'
+            ? '自訂時間是固定開打時間，不會因上傳流程延後。'
+            : 'Custom time is a fixed start time and does not move with the upload flow.'
+          : lang === 'zh'
+            ? '快速時間會等資料送出、戰帖發布成功後才開始倒數。'
+            : 'Quick time starts only after the battle card is published successfully.'}
+      </p>
+    </div>
+  ) : null;
   const battleModeSelector = (
     <section className="rounded-[1.75rem] border border-white/10 bg-black/58 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl">
       <div className="flex flex-wrap items-end justify-between gap-3">

@@ -5,7 +5,6 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type Chang
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
-import { getFreshSession } from "@/lib/auth-session";
 import { useI18n } from "@/lib/i18n";
 import { AvatarCropUploadModal } from "@/components/avatar-crop-upload-modal";
 import ShowtimeQueuePlayer, {
@@ -688,7 +687,9 @@ function ProfileInner() {
       setCreatorLoading(false);
       return;
     }
-    const session = await getFreshSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session?.user) {
       setUserId(null);
       setCreatorLoading(false);

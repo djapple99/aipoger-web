@@ -4,8 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import LangToggle from "@/components/lang-toggle";
-import { getFreshSession } from "@/lib/auth-session";
-import { rememberAuthReturnPath } from "@/lib/auth-urls";
+import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
 import { fontRighteous } from "@/lib/fonts";
 
@@ -29,9 +28,9 @@ export default function MusicAnalysisPage() {
 
   useEffect(() => {
     let mounted = true;
-    void getFreshSession().then((freshSession) => {
+    void supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
-      setSession(freshSession);
+      setSession(data.session ?? null);
       setChecking(false);
     });
     return () => {
@@ -160,8 +159,7 @@ export default function MusicAnalysisPage() {
             ) : !session ? (
               <Link
                 href={loginHref}
-                onClick={() => rememberAuthReturnPath(nextPath)}
-                className="inline-flex min-h-14 items-center justify-center rounded-2xl bg-orange-500 px-8 text-base font-black text-black shadow-[0_0_34px_rgba(255,106,0,0.28)] transition hover:bg-orange-300"
+                className="aipo-primary-button inline-flex min-h-14 items-center justify-center rounded-2xl px-8 text-base font-black transition"
               >
                 {isZh ? "登入後分析歌曲" : "Sign In and Analyze"}
               </Link>
