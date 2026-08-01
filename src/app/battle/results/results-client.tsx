@@ -183,7 +183,7 @@ function resultFromArchive(row: ArchiveRow): ResultRecord {
 }
 
 function isPublicRecord(record: ResultRecord) {
-  return record.publicVisible;
+  return record.publicVisible && record.audienceCount >= DROP_BATTLE_OFFICIAL_AUDIENCE_MIN;
 }
 
 async function attachMedia(records: ResultRecord[]) {
