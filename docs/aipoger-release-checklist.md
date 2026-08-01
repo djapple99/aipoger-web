@@ -97,6 +97,7 @@ Check:
 
 - Battle Pool shows one compact `建立 Q Crash` entry while keeping the existing live Drop Battle CTA and challenge pool unchanged.
 - Creating work A uses the existing cropper, enforces a 60-second maximum, stores a fixed current genre, and creates one pending Q Crash card.
+- Work A and Work B may each upload and preview their own cover before cutting the Drop; the selected cover is stored with that queue/work and appears on the matching A/B seat.
 - The creator may place a second own work, leave the card open for a shared invite, or target an existing creator account. A targeted creator receives a readable account notification linked to the pending card.
 - Work B must use a distinct queue entry and the exact same fixed genre. A different creator must own the submitted Drop; the original creator may intentionally submit a second own Drop.
 - The first successful work-B acceptance wins the pending-card claim. Two simultaneous accepts must not create duplicate battles.
@@ -121,7 +122,7 @@ Check:
 - Every work opens an in-page lyrics HUD and has a readable `歌詞未提供` fallback.
 - Check the pending, voting, voted, insufficient, official-result, cancelled, and expired screens at 1440x900 and 390x844. The shared five-key dock, fixed confirmation dock, and fixed bottom A/B player must not cover one another or create horizontal overflow.
 - Confirm ordinary live Drop Battle guest voting, Battle Records, official gatekeepers, rematch, Explore challenges, and Showtime do not regress.
-- Before enabling Q Crash in production, apply and verify `supabase/20260731_q_crash_async_drop_battle.sql`, `supabase/20260731193000_q_crash_feedback.sql`, and `supabase/20260731233000_q_crash_voter_comments.sql`; code deployment without all three schemas is a release blocker.
+- Before enabling Q Crash in production, apply and verify `supabase/20260731_q_crash_async_drop_battle.sql`, `supabase/20260731193000_q_crash_feedback.sql`, `supabase/20260731233000_q_crash_voter_comments.sql`, and `supabase/20260801000000_q_crash_work_covers.sql`; code deployment without these schemas/columns is a release blocker.
 
 ## Explore AI Music Challenge Checklist
 

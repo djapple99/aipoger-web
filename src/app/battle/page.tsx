@@ -662,8 +662,14 @@ function QCrashPoolMatchCard({ card, isZh, lang }: { card: QCrashPoolCardRow; is
             {voting ? (isZh ? "進入 Q Crash" : "Enter Q Crash") : (isZh ? "查看 Q Crash" : "Open Q Crash")}
           </Link>
           <ShareButton
-            title={`Q Crash｜${card.works.A.songName} VS ${card.works.B?.songName || "60s Drop"}`}
-            text={isZh ? "兩首 60 秒 Drop，不用等人到齊。進來聽重點，決定哪首歌勝出。" : "Two 60-second Drops. Listen in your own time and choose the winner."}
+            title={card.works.B ? `幫我選一下：${card.works.A.songName} VS ${card.works.B.songName}` : `來幫我找另一首：${card.works.A.songName}`}
+            text={isZh
+              ? card.works.B
+                ? "這兩首歌到底哪首比較好聽啊？我有點選不出來！兩首 60 秒 Drop，進來聽重點，幫我決定哪首勝出！"
+                : "我先放了一首 60 秒 Drop，來幫我找另一首一起比一下！"
+              : card.works.B
+                ? "Which song sounds better? I can't decide! Two 60-second Drops—listen to the key moments and help me pick a winner."
+                : "I have one 60-second Drop ready. Help me find another track to compare it with."}
             url={shareUrl}
             label={voting ? (isZh ? "邀請觀戰投票" : "Invite Voters") : (isZh ? "分享邀請" : "Share Invite")}
             copiedLabel={isZh ? "已複製" : "Copied"}

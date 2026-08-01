@@ -1308,6 +1308,10 @@ function HookCutContent() {
               }
             : {}),
         };
+        const baseRowWithQCrashCover = {
+          ...baseRow,
+          ...((qCrashCreate || qCrashCardId) && coverUrl?.trim() ? { cover_url: coverUrl.trim() } : {}),
+        };
 
         let queueRows: { id: string }[] | null = null;
         let queueError: { message: string; code?: string; details?: string; hint?: string } | null = null;
@@ -1325,26 +1329,28 @@ function HookCutContent() {
           ? { expires_at: schedulePayload.scheduled_start_at, ...schedulePayload }
           : {};
         const legacySchedule = schedulePayload ? { expires_at: schedulePayload.scheduled_start_at } : {};
-        const baseRowWithoutAudioHash = { ...baseRow };
+        const baseRowWithoutAudioHash = { ...baseRowWithQCrashCover };
         delete (baseRowWithoutAudioHash as Record<string, unknown>).audio_sha256;
+        const baseRowWithoutCover = { ...baseRowWithoutAudioHash };
+        delete (baseRowWithoutCover as Record<string, unknown>).cover_url;
 
         const insertAttempts: Array<Record<string, unknown>> = [
-          { ...baseRow, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null, lyrics: lyricsForSave || null },
-          { ...baseRow, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null },
-          { ...baseRow, ...optionalChallenge, ...optionalSchedule, lyrics: lyricsForSave || null },
-          { ...baseRow, ...optionalChallenge, ...optionalSchedule },
-          { ...baseRow, ...optionalChallenge, ...legacySchedule, ai_tool: aiTool.trim() || null, lyrics: lyricsForSave || null },
-          { ...baseRow, ...optionalChallenge, ...legacySchedule, ai_tool: aiTool.trim() || null },
-          { ...baseRow, ...optionalChallenge, ...legacySchedule, lyrics: lyricsForSave || null },
-          { ...baseRow, ...optionalChallenge, ...legacySchedule },
-          { ...baseRowWithoutAudioHash, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null, lyrics: lyricsForSave || null },
-          { ...baseRowWithoutAudioHash, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null },
-          { ...baseRowWithoutAudioHash, ...optionalChallenge, ...optionalSchedule, lyrics: lyricsForSave || null },
-          { ...baseRowWithoutAudioHash, ...optionalChallenge, ...optionalSchedule },
-          { ...baseRowWithoutAudioHash, ...optionalChallenge, ...legacySchedule, ai_tool: aiTool.trim() || null, lyrics: lyricsForSave || null },
-          { ...baseRowWithoutAudioHash, ...optionalChallenge, ...legacySchedule, ai_tool: aiTool.trim() || null },
-          { ...baseRowWithoutAudioHash, ...optionalChallenge, ...legacySchedule, lyrics: lyricsForSave || null },
-          { ...baseRowWithoutAudioHash, ...optionalChallenge, ...legacySchedule },
+          { ...baseRowWithQCrashCover, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null, lyrics: lyricsForSave || null },
+          { ...baseRowWithQCrashCover, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null },
+          { ...baseRowWithQCrashCover, ...optionalChallenge, ...optionalSchedule, lyrics: lyricsForSave || null },
+          { ...baseRowWithQCrashCover, ...optionalChallenge, ...optionalSchedule },
+          { ...baseRowWithQCrashCover, ...optionalChallenge, ...legacySchedule, ai_tool: aiTool.trim() || null, lyrics: lyricsForSave || null },
+          { ...baseRowWithQCrashCover, ...optionalChallenge, ...legacySchedule, ai_tool: aiTool.trim() || null },
+          { ...baseRowWithQCrashCover, ...optionalChallenge, ...legacySchedule, lyrics: lyricsForSave || null },
+          { ...baseRowWithQCrashCover, ...optionalChallenge, ...legacySchedule },
+          { ...baseRowWithoutCover, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null, lyrics: lyricsForSave || null },
+          { ...baseRowWithoutCover, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null },
+          { ...baseRowWithoutCover, ...optionalChallenge, ...optionalSchedule, lyrics: lyricsForSave || null },
+          { ...baseRowWithoutCover, ...optionalChallenge, ...optionalSchedule },
+          { ...baseRowWithoutCover, ...optionalChallenge, ...legacySchedule, ai_tool: aiTool.trim() || null, lyrics: lyricsForSave || null },
+          { ...baseRowWithoutCover, ...optionalChallenge, ...legacySchedule, ai_tool: aiTool.trim() || null },
+          { ...baseRowWithoutCover, ...optionalChallenge, ...legacySchedule, lyrics: lyricsForSave || null },
+          { ...baseRowWithoutCover, ...optionalChallenge, ...legacySchedule },
         ];
 
         for (const row of insertAttempts) {

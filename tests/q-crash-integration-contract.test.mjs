@@ -7,6 +7,7 @@ function source(path) {
 }
 
 const migrationSource = source("../supabase/20260731_q_crash_async_drop_battle.sql");
+const coverMigrationSource = source("../supabase/20260801000000_q_crash_work_covers.sql");
 const feedbackMigrationSource = source("../supabase/20260731193000_q_crash_feedback.sql");
 const commentMigrationSource = source("../supabase/20260731233000_q_crash_voter_comments.sql");
 const battleStatsRepairMigrationSource = source("../supabase/20260731122043_battle_song_stats_runtime_dependencies.sql");
@@ -21,6 +22,7 @@ const cancelCurrentRouteSource = source("../src/app/api/battle-pool/cancel-curre
 const settlementSource = source("../src/lib/server-q-crash.ts");
 const fallbackSource = source("../src/app/api/battle-pool/process-fallbacks/route.ts");
 const hookCutSource = source("../src/app/battle/hook-cut/page.tsx");
+const qCrashNewSource = source("../src/app/battle/q-crash/new/page.tsx");
 const cardClientSource = source("../src/components/q-crash-card-client.tsx");
 const battlePoolSource = source("../src/app/battle/page.tsx");
 const globalStylesSource = source("../src/app/globals.css");
@@ -34,6 +36,17 @@ test("Q Crash migration seals votes and enforces 60-second Drops", () => {
   assert.ok(migrationSource.includes("revoke all on table public.q_crash_votes from anon, authenticated"));
   assert.ok(migrationSource.includes("block_unsealed_q_crash_battle_votes"));
   assert.ok(migrationSource.includes("Q Crash votes must use the sealed server vote route"));
+});
+
+test("Q Crash stores work-specific covers and keeps a profile fallback", () => {
+  assert.ok(coverMigrationSource.includes("add column if not exists cover_url text"));
+  assert.ok(qCrashNewSource.includes("作品封面（選填）"));
+  assert.ok(qCrashNewSource.includes("MAX_Q_CRASH_COVER_BYTES"));
+  assert.ok(hookCutSource.includes("cover_url: coverUrl.trim()"));
+  assert.ok(poolRouteSource.includes("queueA.cover_url"));
+  assert.ok(cardRouteSource.includes("queueA.cover_url"));
+  assert.ok(cardClientSource.includes("這兩首歌到底哪首比較好聽啊？我有點選不出來！"));
+  assert.ok(battlePoolSource.includes("幫我選一下："));
 });
 
 test("Q Crash API returns tallies only after the card reaches a final state", () => {

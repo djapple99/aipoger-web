@@ -26,6 +26,7 @@ type QueueRow = {
   original_file_name: string;
   ai_tool: string | null;
   lyrics: string | null;
+  cover_url: string | null;
   status: string;
   match_group_id: string | null;
 };
@@ -83,11 +84,20 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
     return jsonError("這張 Q Crash 已被接受、已過期，或只開放給指定創作者。", 409);
   }
 
-  const { data: queues, error: queuesError } = await admin
+  let { data: queues, error: queuesError } = await admin
     .from("battle_queue")
-    .select("id,user_id,fighter_name,genre,audio_path,original_file_name,ai_tool,lyrics,status,match_group_id")
+    .select("id,user_id,fighter_name,genre,audio_path,original_file_name,ai_tool,lyrics,cover_url,status,match_group_id")
     .in("id", [card.founder_queue_id, body.queueId])
     .returns<QueueRow[]>();
+  if (queuesError && /cover_url|schema cache|column.*does not exist|PGRST204/i.test(queuesError.message)) {
+    const legacyQueues = await admin
+      .from("battle_queue")
+      .select("id,user_id,fighter_name,genre,audio_path,original_file_name,ai_tool,lyrics,status,match_group_id")
+      .in("id", [card.founder_queue_id, body.queueId])
+      .returns<QueueRow[]>();
+    queues = legacyQueues.data;
+    queuesError = legacyQueues.error;
+  }
   if (queuesError) return jsonError(queuesError.message, 500);
   const founderQueue = (queues ?? []).find((queue) => queue.id === card.founder_queue_id);
   const challengerQueue = (queues ?? []).find((queue) => queue.id === body.queueId);
@@ -161,8 +171,8 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
       ai_tool_b: challengerQueue.ai_tool,
       lyrics_a: founderQueue.lyrics,
       lyrics_b: challengerQueue.lyrics,
-      song_a_cover: fighterA?.song_cover_url ?? null,
-      song_b_cover: fighterB?.song_cover_url ?? null,
+      song_a_cover: founderQueue.cover_url ?? fighterA?.song_cover_url ?? null,
+      song_b_cover: challengerQueue.cover_url ?? fighterB?.song_cover_url ?? null,
       fighter_a_avatar: userA?.avatar_url || fighterA?.avatar_url || null,
       fighter_b_avatar: userB?.avatar_url || fighterB?.avatar_url || null,
       started_at: nowIso,

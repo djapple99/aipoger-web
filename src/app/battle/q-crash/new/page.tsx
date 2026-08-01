@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Clock3, Search, Swords, UserRoundPlus, X } from "lucide-react";
 import { rememberAuthNextPath } from "@/lib/auth-urls";
 import { readFighterNameFromStorage, writeFighterNameToStorage } from "@/lib/fighter-name-storage";
+import { IMAGE_UPLOAD_ACCEPT, imageContentType, isAllowedImageUploadFile } from "@/lib/image-upload-policy";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import { Q_CRASH_DURATION_PRESETS } from "@/lib/q-crash-rules";
 import { supabase } from "@/lib/supabase";
@@ -23,6 +24,7 @@ type JoinCardPayload = {
       songName: string;
       creatorName: string;
       genre: string;
+      coverUrl?: string | null;
     };
   };
   viewer?: {
@@ -33,6 +35,7 @@ type JoinCardPayload = {
 };
 
 const AI_TOOLS = ["Suno", "Udio", "Lyria", "Mureka", "AceStudio", "MiniMax", "ElevenLabs", "其他"];
+const MAX_Q_CRASH_COVER_BYTES = 10 * 1024 * 1024;
 const DURATION_LABELS: Record<number, { zh: string; en: string }> = {
   30: { zh: "30 分鐘", en: "30 min" },
   120: { zh: "2 小時", en: "2 hours" },
@@ -51,6 +54,10 @@ function QCrashNewContent() {
   const [songName, setSongName] = useState("");
   const [genre, setGenre] = useState("");
   const [aiTool, setAiTool] = useState("Suno");
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [savedCoverUrl, setSavedCoverUrl] = useState<string | null>(null);
+  const [coverUploading, setCoverUploading] = useState(false);
   const [durationMinutes, setDurationMinutes] = useState<number>(120);
   const [joinCard, setJoinCard] = useState<JoinCardPayload | null>(null);
   const [loadingCard, setLoadingCard] = useState(Boolean(joinCardId));
@@ -75,11 +82,12 @@ function QCrashNewContent() {
       if (storedName) setFighterName(storedName);
       if (session?.user.id) {
         const [{ data: fighter }, { data: profile }] = await Promise.all([
-          supabase.from("fighter_profiles").select("display_name").eq("id", session.user.id).maybeSingle(),
+          supabase.from("fighter_profiles").select("display_name,song_cover_url").eq("id", session.user.id).maybeSingle(),
           supabase.from("user_profiles").select("fighter_name").eq("id", session.user.id).maybeSingle(),
         ]);
         if (!active) return;
         setFighterName((current) => current || fighter?.display_name || profile?.fighter_name || "");
+        if (fighter?.song_cover_url) setSavedCoverUrl(fighter.song_cover_url);
       }
     });
     return () => {
@@ -134,6 +142,38 @@ function QCrashNewContent() {
     return () => window.clearTimeout(timer);
   }, [creatorQuery, isJoin, selectedCreator]);
 
+  const handleCoverUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
+    if (!file) return;
+    if (!isAllowedImageUploadFile(file)) {
+      setError(isZh ? "封面只接受 JPG、PNG、WebP 或 GIF。" : "Cover art must be JPG, PNG, WebP, or GIF.");
+      return;
+    }
+    if (file.size > MAX_Q_CRASH_COVER_BYTES) {
+      setError(isZh ? "封面不能超過 10MB。" : "Cover art must be 10MB or smaller.");
+      return;
+    }
+    setError(null);
+    setCoverFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setCoverPreview(typeof reader.result === "string" ? reader.result : null);
+    reader.readAsDataURL(file);
+  };
+
+  const uploadCover = async (file: File, userId: string) => {
+    const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const path = `${userId}/q-crash-covers/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
+    const { error: uploadError } = await supabase.storage.from("battle-audio").upload(path, file, {
+      upsert: false,
+      contentType: imageContentType(file),
+    });
+    if (uploadError) throw uploadError;
+    const { data, error: signedError } = await supabase.storage.from("battle-audio").createSignedUrl(path, 60 * 60 * 24 * 365);
+    if (signedError || !data?.signedUrl) throw signedError ?? new Error("cover signed URL missing");
+    return data.signedUrl;
+  };
+
   const continueToCut = async () => {
     setError(null);
     const session = (await supabase.auth.getSession()).data.session;
@@ -156,6 +196,19 @@ function QCrashNewContent() {
     }
 
     writeFighterNameToStorage(fighterName.trim());
+    let finalCoverUrl = savedCoverUrl;
+    if (coverFile) {
+      setCoverUploading(true);
+      try {
+        finalCoverUrl = await uploadCover(coverFile, session.user.id);
+      } catch (coverError) {
+        console.error("[q-crash] cover upload failed", coverError);
+        setError(isZh ? "封面上傳失敗，請稍後再試。" : "Cover upload failed. Try again.");
+        setCoverUploading(false);
+        return;
+      }
+      setCoverUploading(false);
+    }
     const params = new URLSearchParams({
       lang,
       fighterName: fighterName.trim(),
@@ -164,6 +217,7 @@ function QCrashNewContent() {
       aiTool,
       instantPairing: "invite",
     });
+    if (finalCoverUrl) params.set("coverUrl", finalCoverUrl);
     if (isJoin && joinCard?.card?.id && joinCard.works?.A?.queueId) {
       params.set("qCrashCardId", joinCard.card.id);
       params.set("challengeEntryId", joinCard.works.A.queueId);
@@ -214,12 +268,18 @@ function QCrashNewContent() {
               <p className="text-sm font-bold text-zinc-400">{isZh ? "讀取作品 A…" : "Loading Work A..."}</p>
             ) : joinCard?.works?.A ? (
               <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <p className="text-[11px] font-black tracking-[0.22em] text-orange-300">WORK A LOCKED</p>
-                  <h2 className="mt-2 text-2xl font-black">{joinCard.works.A.songName}</h2>
-                  <p className="mt-1 text-sm font-bold text-zinc-400">
-                    {joinCard.works.A.creatorName} · {joinCard.works.A.genre}
-                  </p>
+                <div className="flex min-w-0 items-center gap-4">
+                  {joinCard.works.A.coverUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={joinCard.works.A.coverUrl} alt="" className="h-16 w-16 shrink-0 rounded-xl border border-orange-200/20 object-cover" />
+                  ) : null}
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-black tracking-[0.22em] text-orange-300">WORK A LOCKED</p>
+                    <h2 className="mt-2 truncate text-2xl font-black">{joinCard.works.A.songName}</h2>
+                    <p className="mt-1 text-sm font-bold text-zinc-400">
+                      {joinCard.works.A.creatorName} · {joinCard.works.A.genre}
+                    </p>
+                  </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-black text-zinc-200">
                   <Clock3 className="mr-2 inline" size={16} />
@@ -240,6 +300,34 @@ function QCrashNewContent() {
               placeholder={isZh ? "你的創作者名稱" : "Creator name"}
             />
           </label>
+
+          <div className="md:col-span-2 rounded-[1.5rem] border border-cyan-300/20 bg-cyan-300/[0.05] p-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <span className="text-xs font-black tracking-[0.15em] text-cyan-100">{isZh ? "作品封面（選填）" : "WORK COVER (OPTIONAL)"}</span>
+                <p className="mt-1 max-w-xl text-xs font-bold leading-5 text-zinc-400">
+                  {isZh ? "上傳一張封面，讓 A／B 對戰卡一眼分得出來；不提供時會使用你的預設作品封面。" : "Add cover art so the A/B matchup is easy to read. Without one, your default work cover is used."}
+                </p>
+              </div>
+              <label className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-cyan-200/45 bg-cyan-300/10 px-4 text-sm font-black text-cyan-50 transition hover:bg-cyan-300/20">
+                {coverPreview || savedCoverUrl ? (isZh ? "更換封面" : "Change cover") : (isZh ? "上傳封面" : "Upload cover")}
+                <input type="file" accept={IMAGE_UPLOAD_ACCEPT} className="hidden" onChange={handleCoverUpload} />
+              </label>
+            </div>
+            {coverPreview || savedCoverUrl ? (
+              <div className="mt-4 flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={coverPreview || savedCoverUrl || ""} alt={isZh ? "作品封面預覽" : "Work cover preview"} className="h-16 w-16 rounded-xl border border-cyan-200/30 object-cover" />
+                <button
+                  type="button"
+                  onClick={() => { setCoverFile(null); setCoverPreview(null); setSavedCoverUrl(null); }}
+                  className="text-xs font-bold text-zinc-500 transition hover:text-red-300"
+                >
+                  {isZh ? "移除封面" : "Remove cover"}
+                </button>
+              </div>
+            ) : null}
+          </div>
           <label className="block">
             <span className="text-xs font-black tracking-[0.15em] text-zinc-400">{isZh ? "作品名稱" : "WORK TITLE"}</span>
             <input
@@ -356,12 +444,12 @@ function QCrashNewContent() {
           </p>
           <button
             type="button"
-            disabled={loadingCard}
+            disabled={loadingCard || coverUploading}
             onClick={() => void continueToCut()}
             className="inline-flex min-h-14 items-center justify-center gap-3 rounded-2xl bg-orange-500 px-7 text-base font-black text-white shadow-[0_0_34px_rgba(249,115,22,0.28)] transition hover:bg-orange-400 disabled:cursor-wait disabled:opacity-50"
           >
             <Swords size={20} />
-            {isJoin ? (isZh ? "切出作品 B Drop" : "Cut Work B Drop") : (isZh ? "切出作品 A Drop" : "Cut Work A Drop")}
+            {coverUploading ? (isZh ? "封面上傳中…" : "Uploading cover…") : isJoin ? (isZh ? "切出作品 B Drop" : "Cut Work B Drop") : (isZh ? "切出作品 A Drop" : "Cut Work A Drop")}
           </button>
         </div>
       </div>

@@ -39,6 +39,7 @@ type PoolQueueRow = {
   original_file_name: string;
   genre: string;
   ai_tool: string | null;
+  cover_url: string | null;
 };
 
 function jsonError(message: string, status = 400) {
@@ -97,11 +98,11 @@ export async function GET() {
 
   const queueIds = Array.from(new Set(visibleCards.flatMap((card) => [card.founder_queue_id, card.challenger_queue_id]).filter((id): id is string => Boolean(id))));
   const battleIds = Array.from(new Set(visibleCards.map((card) => card.battle_id).filter((id): id is string => Boolean(id))));
-  const [{ data: queues, error: queueError }, { data: battles, error: battleError }] = await Promise.all([
+  const [queueResult, battleResult] = await Promise.all([
     queueIds.length > 0
       ? admin
           .from("battle_queue")
-          .select("id,user_id,fighter_name,original_file_name,genre,ai_tool")
+          .select("id,user_id,fighter_name,original_file_name,genre,ai_tool,cover_url")
           .in("id", queueIds)
           .returns<PoolQueueRow[]>()
       : Promise.resolve({ data: [] as PoolQueueRow[], error: null }),
@@ -122,6 +123,17 @@ export async function GET() {
           }>>()
       : Promise.resolve({ data: [], error: null }),
   ]);
+  let { data: queues, error: queueError } = queueResult;
+  const { data: battles, error: battleError } = battleResult;
+  if (queueError && /cover_url|schema cache|column.*does not exist|PGRST204/i.test(queueError.message)) {
+    const legacyQueues = await admin
+      .from("battle_queue")
+      .select("id,user_id,fighter_name,original_file_name,genre,ai_tool")
+      .in("id", queueIds)
+      .returns<PoolQueueRow[]>();
+    queues = legacyQueues.data;
+    queueError = legacyQueues.error;
+  }
   if (queueError) return jsonError(queueError.message, 500);
   if (battleError) return jsonError(battleError.message, 500);
 
@@ -151,13 +163,13 @@ export async function GET() {
         A: {
           songName: battle?.song_a_name || queueA.original_file_name,
           creatorName: battle?.fighter_a_name || queueA.fighter_name || profileA?.display_name || "AIPOGER 創作者",
-          coverUrl: battle?.song_a_cover || profileA?.song_cover_url || null,
+          coverUrl: battle?.song_a_cover || queueA.cover_url || profileA?.song_cover_url || null,
         },
         B: queueB
           ? {
               songName: battle?.song_b_name || queueB.original_file_name,
               creatorName: battle?.fighter_b_name || queueB.fighter_name || profileB?.display_name || "AIPOGER 創作者",
-              coverUrl: battle?.song_b_cover || profileB?.song_cover_url || null,
+              coverUrl: battle?.song_b_cover || queueB.cover_url || profileB?.song_cover_url || null,
             }
           : null,
       },

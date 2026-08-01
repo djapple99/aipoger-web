@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: Pick<Props, "params">): Promi
   const { id } = await params;
   const canonical = `${siteOrigin()}/battle/q-crash/${encodeURIComponent(id)}`;
   const title = "Q Crash｜AIPOGER 非同步 Drop Battle";
-  const description = "兩首 60 秒 Drop，不用等人到齊。進來聽重點，在自己的時間決定哪首歌勝出。";
+  const description = "這兩首歌到底哪首比較好聽啊？我有點選不出來！兩首 60 秒 Drop，進來聽重點，幫我決定哪首勝出！";
   return {
     title,
     description,

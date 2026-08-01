@@ -198,6 +198,7 @@ Current behavior:
 - The public promise is: `兩首 60 秒 Drop，不用等人到齊，讓大家在自己的時間決定哪首歌勝出。`
 - Every Q Crash has exactly two work seats, A and B. The same creator may intentionally compare two own versions, or a second creator may accept the shared/targeted invitation and lock their own work into seat B.
 - Both Drops must use the existing cropper, remain at or below 60 seconds, and use the same fixed music genre. Voting starts only after two distinct queue/work entries are locked.
+- Each work may attach its own JPG, PNG, WebP, or GIF cover during the Q Crash upload flow. The cover belongs to that submitted queue/work, is copied to the matching battle side, and must not be inferred only from the creator's current profile cover; if no work cover is supplied, the profile cover remains the fallback.
 - Same-title works display explicit `版本 A` / `版本 B` labels. Results are work-first: winner storage uses the winning queue/work identifier, and the creator is read from that work.
 - Simple voting windows are `30 minutes`, `2 hours` (default), `6 hours`, and `24 hours`. The server sets `voting_ends_at` when work B locks; neither creator may extend or edit the deadline afterward.
 - A pending invitation expires after 24 hours. Creator cancellation or expiry produces no public vote, result, stats, history, or Showtime progress.
@@ -217,6 +218,7 @@ Current behavior:
 - Official ties reuse the stable formal Drop Battle tie breaker. Creator identity never changes the winner rule.
 - Q Crash V1 does not open the live rematch window. A repeat comparison creates a new Q Crash.
 - Public sharing uses the existing `/b/{shortId}` Battle arena link once voting starts. Both work owners share the same battle ID and card; the system must never clone a second card for the second creator.
+- Q Crash sharing copy should sound like a real friend asking for a quick listen, for example `這兩首歌到底哪首比較好聽啊？我有點選不出來！兩首 60 秒 Drop，進來聽重點，幫我決定哪首勝出！`; avoid formal system copy such as `不用等人到齊，決定哪首歌勝出` as the primary share invitation.
 - Battle Pool renders one Q Crash matchup card per Q Crash card/battle ID. Its A and B queue rows must be removed from the ordinary waiting-card list so one battle never appears as two separate cards.
 - Battle Pool visually separates the modes: Q Crash matchup cards live directly below the Q Crash introduction in a blue/cyan section, while official and public Drop Battle cards stay in their own red/orange `Drop Battle 公開挑戰池` section. Genre filters belong to the public Drop section and do not hide Q Crash cards.
 - Account limits reuse Drop roles: opening Q Crash occupies the founder state; a different creator accepting seat B occupies their challenger state. When one creator owns both works, Q Crash occupies only that creator's founder state.

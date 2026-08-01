@@ -40,6 +40,7 @@ type QueueRow = {
   lyrics: string | null;
   audio_path: string;
   drop_duration_seconds: number | null;
+  cover_url: string | null;
 };
 type BattleRow = {
   id: string;
@@ -179,10 +180,10 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
   }
 
   const queueIds = [card.founder_queue_id, card.challenger_queue_id].filter((value): value is string => Boolean(value));
-  const [{ data: queues, error: queueError }, battleResult] = await Promise.all([
+  const [queueResult, battleResult] = await Promise.all([
     admin
       .from("battle_queue")
-      .select("id,user_id,fighter_name,original_file_name,genre,ai_tool,lyrics,audio_path,drop_duration_seconds")
+      .select("id,user_id,fighter_name,original_file_name,genre,ai_tool,lyrics,audio_path,drop_duration_seconds,cover_url")
       .in("id", queueIds)
       .returns<QueueRow[]>(),
     card.battle_id
@@ -193,6 +194,16 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
           .maybeSingle<BattleRow>()
       : Promise.resolve({ data: null as BattleRow | null, error: null }),
   ]);
+  let { data: queues, error: queueError } = queueResult;
+  if (queueError && /cover_url|schema cache|column.*does not exist|PGRST204/i.test(queueError.message)) {
+    const legacyQueues = await admin
+      .from("battle_queue")
+      .select("id,user_id,fighter_name,original_file_name,genre,ai_tool,lyrics,audio_path,drop_duration_seconds")
+      .in("id", queueIds)
+      .returns<QueueRow[]>();
+    queues = legacyQueues.data;
+    queueError = legacyQueues.error;
+  }
   if (queueError) return jsonError(queueError.message, 500);
   if (battleResult.error) return jsonError(battleResult.error.message, 500);
   const queueMap = new Map((queues ?? []).map((queue) => [queue.id, queue]));
@@ -332,7 +343,7 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
           lyrics: battle?.lyrics_a ?? queueA.lyrics,
           durationSeconds: queueA.drop_duration_seconds,
           audioUrl: audioA,
-          coverUrl: battle?.song_a_cover || profileA.coverUrl,
+          coverUrl: battle?.song_a_cover || queueA.cover_url || profileA.coverUrl,
           avatarUrl: battle?.fighter_a_avatar || profileA.avatarUrl,
         },
         B: queueB
@@ -346,7 +357,7 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
               lyrics: battle?.lyrics_b ?? queueB.lyrics,
               durationSeconds: queueB.drop_duration_seconds,
               audioUrl: audioB,
-              coverUrl: battle?.song_b_cover || profileB?.coverUrl,
+              coverUrl: battle?.song_b_cover || queueB.cover_url || profileB?.coverUrl,
               avatarUrl: battle?.fighter_b_avatar || profileB?.avatarUrl,
             }
           : null,
