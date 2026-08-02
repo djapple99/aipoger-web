@@ -62,4 +62,5 @@ test("Q Crash public pages use editorial covers and expose complete versions onl
   assert.match(publicMediaApi, /fullSongUrl: qCrashEditorialShowsFullSong/);
   assert.match(battleRecords, /\/api\/q-crash\/public-media/);
   assert.match(battleRecords, /record\.fullSongUrl/);
+  assert.match(battleRecords, /text-black transition .*bg-cyan-400/);
 });

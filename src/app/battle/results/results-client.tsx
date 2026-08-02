@@ -471,7 +471,7 @@ function ResultCard({ record, isZh, lang, viewerId }: { record: ResultRecord; is
         ) : null}
 
         <div className="mt-2 flex items-center gap-1.5">
-          <Link href={href} className={`inline-flex flex-1 items-center justify-center rounded-lg px-2 py-1.5 text-[11px] font-black text-black transition ${isQCrash ? "bg-cyan-400 hover:bg-cyan-300" : "bg-orange-500 hover:bg-orange-300"}`}>
+          <Link href={href} className={`inline-flex flex-1 items-center justify-center rounded-lg px-2 py-1.5 text-[11px] font-black !text-black transition ${isQCrash ? "bg-cyan-400 hover:bg-cyan-300" : "bg-orange-500 hover:bg-orange-300"}`}>
             {isQCrash ? (isZh ? "重聽 Q Crash" : "Reopen Q Crash") : isZh ? "打開" : "Open"}
           </Link>
           <ShareButton
