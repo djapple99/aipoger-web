@@ -9,6 +9,8 @@
 5. 聽眾登入後重播、快轉、選 A／B 並確認送出
 6. 截止後查看勝出作品與五角評分分布
 
+另外包含一支「AI 音樂練功聖經」16:9 簡介片，介紹搜尋索引、Suno Control Desk、Prompt／歌詞／聲音 DNA、AI 拆軌、台語歌詞調音與共同驗證。
+
 ## 預覽與輸出
 
 ```bash
@@ -16,6 +18,8 @@ npm i
 npm run dev
 npx remotion still QCrashTutorial output/preview.png --frame=900 --scale=0.5
 npx remotion render QCrashTutorial output/q-crash-tutorial-16x9.mp4 --codec=h264 --crf=18
+npx remotion still BibleIntro output/bible-preview.png --frame=720 --scale=0.5
+npx remotion render BibleIntro output/ai-music-bible-intro-16x9.mp4 --codec=h264 --crf=18
 ```
 
 目前版本使用 AIPOGER 現有背景音樂，字幕與介面示意直接由 Remotion 動畫生成；之後可以再加入旁白、實際網站錄屏或替換示意作品名稱。
