@@ -39,12 +39,6 @@ export function isValidQCrashDropDuration(value: unknown): boolean {
   return Number.isFinite(seconds) && seconds > 0 && seconds <= Q_CRASH_MAX_DROP_SECONDS;
 }
 
-export function qCrashGenresMatch(left: string | null | undefined, right: string | null | undefined): boolean {
-  const a = left?.trim();
-  const b = right?.trim();
-  return Boolean(a && b && a === b);
-}
-
 export function isQCrashOfficialAudienceCount(value: unknown): boolean {
   const count = Number(value);
   return Number.isFinite(count) && count >= Q_CRASH_OFFICIAL_AUDIENCE_MIN;

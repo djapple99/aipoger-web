@@ -158,17 +158,19 @@ export async function GET() {
       status: card.status,
       endsAt: card.status === "q_crash_voting" ? card.voting_ends_at : card.invite_expires_at,
       queueIds: [queueA.id, queueB?.id ?? null],
-      genre: battle?.genre || queueA.genre,
+      genre: queueA.genre || battle?.genre,
       works: {
         A: {
           songName: battle?.song_a_name || queueA.original_file_name,
           creatorName: battle?.fighter_a_name || queueA.fighter_name || profileA?.display_name || "AIPOGER 創作者",
+          genre: queueA.genre,
           coverUrl: battle?.song_a_cover || queueA.cover_url || profileA?.song_cover_url || null,
         },
         B: queueB
           ? {
               songName: battle?.song_b_name || queueB.original_file_name,
               creatorName: battle?.fighter_b_name || queueB.fighter_name || profileB?.display_name || "AIPOGER 創作者",
+              genre: queueB.genre,
               coverUrl: battle?.song_b_cover || queueB.cover_url || profileB?.song_cover_url || null,
             }
           : null,

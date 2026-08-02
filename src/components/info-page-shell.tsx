@@ -246,7 +246,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
         {
           title: "Q Crash 非同步 Drop Battle",
           body:
-            "Q Crash 適合大家無法同時上線時使用。兩首同類型、最長 60 秒的 Drop 到位後立即開放投票，大家收到連結後可在自己的時間重播、快轉、比較，截止後才一起公開結果。",
+            "Q Crash 適合大家無法同時上線時使用。兩首最長 60 秒的 Drop 到位後立即開放投票，不限曲風；大家收到連結後可在自己的時間重播、快轉、比較，截止後才一起公開結果。",
           items: ["可放自己的兩個版本，也可邀請另一位創作者放入作品 B", "投票時間可選 30 分鐘、2 小時、6 小時或 24 小時，預設 2 小時", "登入且非參賽的觀眾才能投票；選 A／B 後必須按「確定送出」，送出後不能改票", "每位觀眾可分別替兩首作品點選押韻、爆點、旋律、情緒、結構，每項每首限一次", "完成投票後可選擇留下一則最多 120 字的評論；投票期間只有自己看得到，截止後與結果一起公開", "0-2 位有效觀眾為觀眾不足；至少 3 位才成立正式戰績與勝出作品五角分布"],
         },
         {
@@ -296,7 +296,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
         {
           title: "Q Crash: Asynchronous Drop Battle",
           body:
-            "Q Crash is for listeners who cannot arrive at the same time. Voting opens as soon as two same-genre Drops of up to 60 seconds are locked. Everyone can replay, seek, and compare in their own time; the result stays sealed until the deadline.",
+            "Q Crash is for listeners who cannot arrive at the same time. Voting opens as soon as two Drops of up to 60 seconds are locked, with no same-genre requirement. Everyone can replay, seek, and compare in their own time; the result stays sealed until the deadline.",
           items: ["Compare two versions from the same creator or invite another creator to fill Work B", "Choose 30 minutes, 2 hours, 6 hours, or 24 hours; 2 hours is the default", "Only signed-in non-participants may vote; A/B is not submitted until Confirm, then it cannot be changed", "Each listener may tap Rhyme, Impact, Melody, Emotion, and Structure once per work", "After voting, a listener may leave one optional comment up to 120 characters; it stays private until the result is revealed", "0-2 valid voters is insufficient; 3+ creates the official result and winning-work radar"],
         },
         {

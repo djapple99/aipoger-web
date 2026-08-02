@@ -197,7 +197,8 @@ Current behavior:
 - `Q Crash` is the asynchronous 60-second Drop Battle mode. Existing live Drop Battle remains unchanged.
 - The public promise is: `兩首 60 秒 Drop，不用等人到齊，讓大家在自己的時間決定哪首歌勝出。`
 - Every Q Crash has exactly two work seats, A and B. The same creator may intentionally compare two own versions, or a second creator may accept the shared/targeted invitation and lock their own work into seat B.
-- Both Drops must use the existing cropper, remain at or below 60 seconds, and use the same fixed music genre. Voting starts only after two distinct queue/work entries are locked.
+- Both Drops must use the existing cropper and remain at or below 60 seconds. Q Crash does not require matching genres: each work keeps its own fixed genre tag for display, search, and later analysis, while voting starts only after two distinct queue/work entries are locked.
+- Q Crash creation starts with the full-song upload. The client reads embedded title metadata when available and falls back to the file name; the creator may edit the title, then adds cover art and lyrics before cutting and locking the 60-second Drop. The staged full audio must not be used as the active Battle playback.
 - Each work may attach its own JPG, PNG, WebP, or GIF cover during the Q Crash upload flow. The cover belongs to that submitted queue/work, is copied to the matching battle side, and must not be inferred only from the creator's current profile cover; if no work cover is supplied, the profile cover remains the fallback.
 - Same-title works display explicit `版本 A` / `版本 B` labels. Results are work-first: winner storage uses the winning queue/work identifier, and the creator is read from that work.
 - Simple voting windows are `30 minutes`, `2 hours` (default), `6 hours`, and `24 hours`. The server sets `voting_ends_at` when work B locks; neither creator may extend or edit the deadline afterward.

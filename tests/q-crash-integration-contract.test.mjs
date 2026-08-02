@@ -14,6 +14,7 @@ const battleStatsRepairMigrationSource = source("../supabase/20260731122043_batt
 const battleStatsIndexMigrationSource = source("../supabase/20260731123402_battle_song_stats_fk_indexes.sql");
 const poolRouteSource = source("../src/app/api/q-crash/route.ts");
 const cardRouteSource = source("../src/app/api/q-crash/[id]/route.ts");
+const joinRouteSource = source("../src/app/api/q-crash/[id]/join/route.ts");
 const voteRouteSource = source("../src/app/api/q-crash/[id]/vote/route.ts");
 const feedbackRouteSource = source("../src/app/api/q-crash/[id]/feedback/route.ts");
 const commentRouteSource = source("../src/app/api/q-crash/[id]/comments/route.ts");
@@ -45,6 +46,9 @@ test("Q Crash stores work-specific covers and keeps a profile fallback", () => {
   assert.ok(coverMigrationSource.includes("add column if not exists cover_url text"));
   assert.ok(qCrashNewSource.includes("作品封面（選填）"));
   assert.ok(qCrashNewSource.includes("MAX_Q_CRASH_COVER_BYTES"));
+  assert.ok(qCrashNewSource.includes("先上傳完整歌曲"));
+  assert.ok(qCrashNewSource.includes("parseAudioMetadata"));
+  assert.ok(hookCutSource.includes("q-crash-upload-first"));
   assert.ok(hookCutSource.includes("cover_url: coverUrl.trim()"));
   assert.ok(poolRouteSource.includes("queueA.cover_url"));
   assert.ok(cardRouteSource.includes("queueA.cover_url"));
@@ -74,6 +78,7 @@ test("Q Crash API returns tallies only after the card reaches a final state", ()
   assert.ok(voteRouteSource.includes("結果將在截止後公開"));
   assert.ok(cardRouteSource.includes("battle?.audio_a_path || queueA.audio_path"));
   assert.ok(cardRouteSource.includes("battle?.audio_b_path || queueB.audio_path"));
+  assert.equal(joinRouteSource.includes("qCrashGenresMatch"), false);
 });
 
 test("Q Crash feedback is immutable, server-only, and aggregate-sealed", () => {
@@ -160,6 +165,8 @@ test("Q Crash settlement archives only official results and stores the winning w
   assert.ok(settlementSource.includes('status: "q_crash_insufficient"'));
   assert.ok(settlementSource.includes('status: "q_crash_finished"'));
   assert.ok(settlementSource.includes("winner_queue_id: winnerQueueId"));
+  assert.ok(settlementSource.includes("winnerQueueGenres"));
+  assert.ok(settlementSource.includes("genre: winnerGenre"));
   assert.ok(settlementSource.includes("feedbackA: feedbackCounts.A"));
   assert.ok(settlementSource.includes("feedbackB: feedbackCounts.B"));
   assert.ok(settlementSource.includes("不產生正式勝負、不進 Showtime"));

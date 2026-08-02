@@ -186,7 +186,7 @@ async function loadCatalog(admin: AdminClient) {
         queueId: args.queue?.id ?? (isA ? queueAId : queueBId),
         songName: (isA ? battle?.song_a_name : battle?.song_b_name) || args.queue?.original_file_name || "未命名作品",
         creatorName: (isA ? battle?.fighter_a_name : battle?.fighter_b_name) || args.queue?.fighter_name || "AIPOGER 創作者",
-        genre: battle?.genre || args.queue?.genre || "未設定",
+        genre: args.queue?.genre || battle?.genre || "未設定",
         aiTool: (isA ? battle?.ai_tool_a : battle?.ai_tool_b) || args.queue?.ai_tool || "AI Music",
         coverUrl,
         originalCoverUrl: await signedMedia(admin, battleCover || args.queue?.cover_url),

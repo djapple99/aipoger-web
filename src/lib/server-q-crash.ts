@@ -42,6 +42,11 @@ type QCrashFeedbackRow = {
   feedback_key: QCrashFeedbackKey;
 };
 
+type QCrashQueueGenreRow = {
+  id: string;
+  genre: string | null;
+};
+
 export type QCrashSettlementResult = {
   state: "open" | "official" | "insufficient" | "already_settled";
   battleId: string;
@@ -236,6 +241,13 @@ export async function settleQCrashBattle(
   const winner = pickQCrashWinner(counts, battle.id);
   if (!winner) throw new Error("Q Crash official result has no winner");
   const winnerQueueId = winner === "fighter_a" ? battle.queue_a_id : battle.queue_b_id;
+  const { data: winnerQueueGenres, error: winnerGenreError } = await admin
+    .from("battle_queue")
+    .select("id,genre")
+    .in("id", [battle.queue_a_id, battle.queue_b_id])
+    .returns<QCrashQueueGenreRow[]>();
+  if (winnerGenreError) throw new Error(`Q Crash winner genre read failed: ${winnerGenreError.message}`);
+  const winnerGenre = winnerQueueGenres?.find((row) => row.id === winnerQueueId)?.genre?.trim() || battle.genre;
   const feedbackCounts = await readQCrashFeedbackCounts(admin, battle);
 
   await admin.from("battle_guest_votes").delete().eq("battle_id", battle.id);
@@ -275,7 +287,7 @@ export async function settleQCrashBattle(
       audienceCount,
       feedbackA: feedbackCounts.A,
       feedbackB: feedbackCounts.B,
-      genre: battle.genre,
+      genre: winnerGenre,
       officialAudienceMin: Q_CRASH_OFFICIAL_AUDIENCE_MIN,
       settledAt: now,
     },

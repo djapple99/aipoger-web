@@ -3,7 +3,6 @@ import { createClient } from "@supabase/supabase-js";
 import {
   canQCrashAccountJoin,
   isValidQCrashDropDuration,
-  qCrashGenresMatch,
 } from "@/lib/q-crash-rules";
 import { ACTIVE_DROP_QUEUE_STATUSES, dropBattleRoleLockMessage } from "@/lib/battle-pool-rules";
 
@@ -107,10 +106,6 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
   if (challengerQueue.match_group_id || !["searching", "waiting_challenge"].includes(challengerQueue.status)) {
     return jsonError("作品 B 已進入其他 Battle。", 409);
   }
-  if (!qCrashGenresMatch(founderQueue.genre, challengerQueue.genre)) {
-    return jsonError(`兩首作品必須是同一類型；作品 A 是「${founderQueue.genre}」。`, 409);
-  }
-
   if (user.id !== card.founder_user_id) {
     const { data: otherChallenges, error: otherChallengeError } = await admin
       .from("battle_queue")

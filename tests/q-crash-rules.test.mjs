@@ -14,7 +14,6 @@ import {
   pickQCrashWinner,
   qCrashCommentText,
   qCrashDurationMinutes,
-  qCrashGenresMatch,
   qCrashVersionLabels,
 } from "../src/lib/q-crash-rules.ts";
 
@@ -34,13 +33,11 @@ test("Q Crash accepts only the four simple duration presets", () => {
   assert.equal(qCrashDurationMinutes(60), null);
 });
 
-test("Q Crash enforces 60-second Drops and matching genres", () => {
+test("Q Crash enforces 60-second Drops without requiring matching genres", () => {
   assert.equal(isValidQCrashDropDuration(15), true);
   assert.equal(isValidQCrashDropDuration(60), true);
   assert.equal(isValidQCrashDropDuration(60.01), false);
   assert.equal(isValidQCrashDropDuration(0), false);
-  assert.equal(qCrashGenresMatch("K-Pop 韓式動感", "K-Pop 韓式動感"), true);
-  assert.equal(qCrashGenresMatch("K-Pop 韓式動感", "Rap 街頭說唱"), false);
 });
 
 test("same creator can intentionally fill both Q Crash work seats", () => {

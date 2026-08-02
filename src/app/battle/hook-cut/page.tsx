@@ -29,6 +29,7 @@ import SafetyNotice from '@/components/safety-notice';
 import { blobToDataUrl, parseAudioMetadata } from '@/lib/audio-metadata';
 import { sha256File } from '@/lib/file-hash';
 import { shouldHandleDropCutSpaceShortcut } from '@/lib/drop-cut-keyboard';
+import { clearPendingQCrashAudio, readPendingQCrashAudio } from '@/lib/pending-q-crash-audio';
 
 const MAX_HOOK_SECONDS = 60;
 const MIN_REGION_SECONDS = 0.25;
@@ -553,6 +554,7 @@ function HookCutContent() {
   const qCrashSelf = searchParams.get('qCrashSelf') === '1';
   const qCrashDurationMinutes = searchParams.get('qCrashDurationMinutes');
   const qCrashInviteeUserId = searchParams.get('qCrashInviteeUserId');
+  const qCrashUploadFirst = searchParams.get('flow') === 'q-crash-upload-first';
   const rematchClaimId = searchParams.get('rematchClaimId');
   const sourceBattleId = searchParams.get('sourceBattleId');
   const isRematchUpload = Boolean(rematchClaimId && sourceBattleId);
@@ -616,6 +618,7 @@ function HookCutContent() {
   const playOffsetRef = useRef<number>(0);
   const isPlayingRef = useRef(false);
   const profileAudioLoadedRef = useRef(false);
+  const pendingQCrashAudioLoadedRef = useRef(false);
   const processAudioFileRef = useRef<((file: File) => Promise<void>) | null>(null);
 
   useEffect(() => {
@@ -835,6 +838,25 @@ function HookCutContent() {
     }
   };
   processAudioFileRef.current = processAudioFile;
+
+  useEffect(() => {
+    if (!qCrashUploadFirst || (!qCrashCreate && !qCrashCardId) || pendingQCrashAudioLoadedRef.current) return;
+    pendingQCrashAudioLoadedRef.current = true;
+    void (async () => {
+      try {
+        const pendingFile = await readPendingQCrashAudio();
+        if (!pendingFile) {
+          setAudioError(lang === 'zh' ? '找不到剛剛選擇的歌曲，請回上一頁重新選擇。' : 'The selected song is missing. Go back and choose it again.');
+          return;
+        }
+        await processAudioFileRef.current?.(pendingFile);
+        await clearPendingQCrashAudio();
+      } catch (error) {
+        console.error('[hook-cut] pending Q Crash audio load failed', error);
+        setAudioError(t.uploadDecodeError);
+      }
+    })();
+  }, [lang, qCrashCardId, qCrashCreate, qCrashUploadFirst, t.uploadDecodeError]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

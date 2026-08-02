@@ -7,7 +7,10 @@ import { ArrowLeft, Clock3, Search, Swords, UserRoundPlus, X } from "lucide-reac
 import { rememberAuthNextPath } from "@/lib/auth-urls";
 import { readFighterNameFromStorage, writeFighterNameToStorage } from "@/lib/fighter-name-storage";
 import { IMAGE_UPLOAD_ACCEPT, imageContentType, isAllowedImageUploadFile } from "@/lib/image-upload-policy";
+import { AUDIO_UPLOAD_MAX_BYTES_100MB, AUDIO_UPLOAD_MAX_LABEL_100MB, STANDARD_AUDIO_UPLOAD_ACCEPT, isAllowedStandardAudioFile } from "@/lib/audio-upload-policy";
+import { parseAudioMetadata } from "@/lib/audio-metadata";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
+import { readPendingQCrashAudio, savePendingQCrashAudio } from "@/lib/pending-q-crash-audio";
 import { Q_CRASH_DURATION_PRESETS, qCrashDisplayLang } from "@/lib/q-crash-rules";
 import { supabase } from "@/lib/supabase";
 
@@ -54,6 +57,9 @@ function QCrashNewContent() {
   const [songName, setSongName] = useState("");
   const [genre, setGenre] = useState("");
   const [aiTool, setAiTool] = useState("Suno");
+  const [audioFileName, setAudioFileName] = useState("");
+  const [audioMetaLine, setAudioMetaLine] = useState("");
+  const [audioReading, setAudioReading] = useState(false);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [savedCoverUrl, setSavedCoverUrl] = useState<string | null>(null);
@@ -96,6 +102,27 @@ function QCrashNewContent() {
   }, []);
 
   useEffect(() => {
+    let active = true;
+    void (async () => {
+      const pendingFile = await readPendingQCrashAudio().catch(() => null);
+      if (!active || !pendingFile) return;
+      setAudioFileName(pendingFile.name);
+      try {
+        const metadata = await parseAudioMetadata(pendingFile);
+        if (!active) return;
+        const detectedTitle = metadata.title?.trim() || metadata.fallbackTitle || pendingFile.name.replace(/\.[^.]+$/, "");
+        setSongName(detectedTitle.slice(0, 100));
+        const detectedGenre = metadata.genre?.trim();
+        if (detectedGenre && MUSIC_GENRE_OPTIONS.some((option) => option.value === detectedGenre)) setGenre(detectedGenre);
+        setAudioMetaLine([metadata.title?.trim(), metadata.artist?.trim(), metadata.album?.trim()].filter(Boolean).join(" / "));
+      } catch {
+        if (active) setSongName(pendingFile.name.replace(/\.[^.]+$/, "").slice(0, 100));
+      }
+    })();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
     if (!joinCardId) return;
     let active = true;
     setLoadingCard(true);
@@ -113,7 +140,6 @@ function QCrashNewContent() {
         setError(payload?.error || (isZh ? "讀不到這張 Q Crash。" : "Could not load this Q Crash."));
         return;
       }
-      if (payload?.works?.A?.genre) setGenre(payload.works.A.genre);
       if (payload?.card?.durationMinutes) setDurationMinutes(payload.card.durationMinutes);
     })();
     return () => {
@@ -161,6 +187,42 @@ function QCrashNewContent() {
     reader.readAsDataURL(file);
   };
 
+  const handleAudioUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
+    if (!file) return;
+    if (!isAllowedStandardAudioFile(file)) {
+      setError(isZh ? "歌曲只接受 MP3、WAV、AIFF、M4A、AAC 或 OGG。" : "Use MP3, WAV, AIFF, M4A, AAC, or OGG audio.");
+      return;
+    }
+    if (file.size > AUDIO_UPLOAD_MAX_BYTES_100MB) {
+      setError(isZh ? `歌曲不能超過 ${AUDIO_UPLOAD_MAX_LABEL_100MB}。` : `Audio must be ${AUDIO_UPLOAD_MAX_LABEL_100MB} or smaller.`);
+      return;
+    }
+    setAudioReading(true);
+    setError(null);
+    try {
+      await savePendingQCrashAudio(file);
+      let metadata = null;
+      try {
+        metadata = await parseAudioMetadata(file);
+      } catch (metadataError) {
+        console.warn("[q-crash] audio metadata read failed", metadataError);
+      }
+      const detectedTitle = metadata?.title?.trim() || metadata?.fallbackTitle || file.name.replace(/\.[^.]+$/, "");
+      setSongName(detectedTitle.slice(0, 100));
+      const detectedGenre = metadata?.genre?.trim();
+      if (detectedGenre && MUSIC_GENRE_OPTIONS.some((option) => option.value === detectedGenre)) setGenre(detectedGenre);
+      setAudioFileName(file.name);
+      setAudioMetaLine([metadata?.title?.trim(), metadata?.artist?.trim(), metadata?.album?.trim()].filter(Boolean).join(" / "));
+    } catch (audioError) {
+      console.error("[q-crash] audio staging failed", audioError);
+      setError(isZh ? "歌曲暫存失敗，請重新選擇音檔。" : "Could not stage this audio. Please choose it again.");
+    } finally {
+      setAudioReading(false);
+    }
+  };
+
   const uploadCover = async (file: File, userId: string) => {
     const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
     const path = `${userId}/q-crash-covers/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
@@ -180,6 +242,10 @@ function QCrashNewContent() {
     if (!session?.user) {
       rememberAuthNextPath(returnPath);
       router.push(`/auth?next=${encodeURIComponent(returnPath)}`);
+      return;
+    }
+    if (!audioFileName) {
+      setError(isZh ? "請先上傳完整歌曲，系統才能讀取歌名並進入下一步。" : "Upload the full song first so we can read its title and continue.");
       return;
     }
     if (!fighterName.trim() || !songName.trim() || !genre) {
@@ -209,14 +275,15 @@ function QCrashNewContent() {
       }
       setCoverUploading(false);
     }
-    const params = new URLSearchParams({
-      lang,
-      fighterName: fighterName.trim(),
-      songName: songName.trim(),
-      genre,
-      aiTool,
-      instantPairing: "invite",
-    });
+      const params = new URLSearchParams({
+        lang,
+        fighterName: fighterName.trim(),
+        songName: songName.trim(),
+        genre,
+        aiTool,
+        flow: "q-crash-upload-first",
+        instantPairing: "invite",
+      });
     if (finalCoverUrl) params.set("coverUrl", finalCoverUrl);
     if (isJoin && joinCard?.card?.id && joinCard.works?.A?.queueId) {
       params.set("qCrashCardId", joinCard.card.id);
@@ -291,6 +358,26 @@ function QCrashNewContent() {
         ) : null}
 
         <section className="mt-6 grid gap-5 rounded-[2rem] border border-white/12 bg-black/55 p-5 backdrop-blur md:grid-cols-2 md:p-7">
+          <div className="md:col-span-2 rounded-[1.5rem] border border-orange-300/30 bg-orange-500/[0.07] p-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <span className="text-xs font-black tracking-[0.15em] text-orange-200">{isZh ? "STEP 1 · 先上傳完整歌曲" : "STEP 1 · UPLOAD FULL SONG FIRST"}</span>
+                <p className="mt-1 text-xs font-bold leading-5 text-zinc-300">
+                  {isZh ? "系統會先讀取音檔中的歌名；沒有標題時會使用檔名。下一步再裁切 60 秒 Drop，並補上封面與歌詞。" : "We read the embedded title first, or use the file name when there is none. Next you will cut the 60-second Drop and add cover art and lyrics."}
+                </p>
+              </div>
+              <label className="inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-orange-400 px-4 text-sm font-black text-black transition hover:bg-orange-300">
+                {audioReading ? (isZh ? "讀取中…" : "Reading…") : audioFileName ? (isZh ? "更換歌曲" : "Change song") : (isZh ? "選擇歌曲" : "Choose song")}
+                <input type="file" accept={STANDARD_AUDIO_UPLOAD_ACCEPT} className="hidden" onChange={(event) => void handleAudioUpload(event)} />
+              </label>
+            </div>
+            {audioFileName ? (
+              <div className="mt-3 rounded-xl border border-orange-200/20 bg-black/35 px-3 py-2 text-xs font-bold text-orange-50">
+                <span className="block truncate">{audioFileName}</span>
+                {audioMetaLine ? <span className="mt-1 block truncate text-orange-100/65">{isZh ? "讀取到：" : "Detected: "}{audioMetaLine}</span> : null}
+              </div>
+            ) : null}
+          </div>
           <label className="block">
             <span className="text-xs font-black tracking-[0.15em] text-zinc-400">{isZh ? "創作者" : "CREATOR"}</span>
             <input
@@ -329,7 +416,7 @@ function QCrashNewContent() {
             ) : null}
           </div>
           <label className="block">
-            <span className="text-xs font-black tracking-[0.15em] text-zinc-400">{isZh ? "作品名稱" : "WORK TITLE"}</span>
+            <span className="text-xs font-black tracking-[0.15em] text-zinc-400">{isZh ? "作品名稱（自動讀取，可修改）" : "WORK TITLE (AUTO-DETECTED, EDITABLE)"}</span>
             <input
               value={songName}
               onChange={(event) => setSongName(event.target.value.slice(0, 100))}
@@ -341,7 +428,6 @@ function QCrashNewContent() {
             <span className="text-xs font-black tracking-[0.15em] text-zinc-400">{isZh ? "音樂類型" : "MUSIC STYLE"}</span>
             <select
               value={genre}
-              disabled={isJoin}
               onChange={(event) => setGenre(event.target.value)}
               className="mt-2 min-h-12 w-full rounded-2xl border border-white/15 bg-black/70 px-4 font-bold outline-none transition focus:border-orange-300/70 disabled:cursor-not-allowed disabled:text-zinc-400"
             >
@@ -440,11 +526,11 @@ function QCrashNewContent() {
 
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs font-bold leading-5 text-zinc-500">
-            {isZh ? "下一步會開啟 Drop 裁切器；只能使用 60 秒以內的重點段落。" : "Next: cut the key section in the Drop editor, up to 60 seconds."}
+            {isZh ? "下一步會開啟 Drop 裁切器；音檔已先暫存，接著補歌詞並只能使用 60 秒以內的重點段落。" : "Next: the staged song opens in the Drop cutter; add lyrics and choose a key section up to 60 seconds."}
           </p>
           <button
             type="button"
-            disabled={loadingCard || coverUploading}
+            disabled={loadingCard || coverUploading || audioReading}
             onClick={() => void continueToCut()}
             className="inline-flex min-h-14 items-center justify-center gap-3 rounded-2xl bg-orange-500 px-7 text-base font-black text-white shadow-[0_0_34px_rgba(249,115,22,0.28)] transition hover:bg-orange-400 disabled:cursor-wait disabled:opacity-50"
           >

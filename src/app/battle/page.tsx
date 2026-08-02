@@ -327,8 +327,8 @@ type QCrashPoolCardRow = {
   queueIds: [string, string | null];
   genre: string;
   works: {
-    A: { songName: string; creatorName: string; coverUrl: string | null };
-    B: { songName: string; creatorName: string; coverUrl: string | null } | null;
+    A: { songName: string; creatorName: string; genre: string; coverUrl: string | null };
+    B: { songName: string; creatorName: string; genre: string; coverUrl: string | null } | null;
   };
 };
 
@@ -642,7 +642,8 @@ function QCrashPoolMatchCard({ card, isZh, lang }: { card: QCrashPoolCardRow; is
             <p className="mt-1 truncate text-xs font-bold text-zinc-500">
               {card.works.A.creatorName}
               {card.works.B ? ` · ${card.works.B.creatorName}` : ""}
-              {card.genre ? ` · ${card.genre}` : ""}
+              {card.works.A.genre ? ` · A ${card.works.A.genre}` : ""}
+              {card.works.B?.genre ? ` · B ${card.works.B.genre}` : ""}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <span className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-cyan-300/35 bg-cyan-300/10 px-3 text-[11px] font-black text-cyan-50">
