@@ -15,6 +15,7 @@ const modules = [
   { href: "/admin/analytics", title: "Analytics", label: "數據", description: "查看會員、播放、互動與成長訊號。", tone: "yellow" },
   { href: "/admin/listen-bar", title: "傷心酒吧", label: "音樂目錄", description: "管理公播歌曲、排序、分類與展示資料。", tone: "cyan" },
   { href: "/admin/battles", title: "Battle 管理", label: "鬥歌場", description: "檢視進行中的 Drop Battle 與結果。", tone: "orange" },
+  { href: "/admin/q-crash", title: "Q Crash 編輯", label: "Q CRASH", description: "調整 Q Crash 封面與結果後的完整版連結。", tone: "cyan" },
   { href: "/admin/showtime", title: "Showtime", label: "認證作品", description: "維護認證作品展示與 Choice 選曲。", tone: "yellow" },
   { href: "/admin/choice", title: "Choice", label: "策展歌單", description: "建立、編輯與發布 AIPOGER Choice。", tone: "cyan" },
   { href: "/admin/social", title: "社群後台", label: "發布", description: "整理社群草稿、審核與發布節奏。", tone: "emerald" },

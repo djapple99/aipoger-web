@@ -50,6 +50,17 @@ type FighterProfileMediaRow = {
   avatar_url?: string | null;
 };
 
+type QCrashPublicMediaWork = {
+  queueId: string | null;
+  coverUrl: string | null;
+  fullSongUrl: string | null;
+};
+
+type QCrashPublicMediaItem = {
+  battleId: string;
+  works: { A: QCrashPublicMediaWork; B: QCrashPublicMediaWork };
+};
+
 type ResultRecord = {
   id: string;
   battleId: string | null;
@@ -69,6 +80,7 @@ type ResultRecord = {
   audienceReview: string;
   archivedAt: string;
   audioUrl: string | null;
+  fullSongUrl: string | null;
   mode: BattleRecordMode;
   publicVisible: boolean;
 };
@@ -177,6 +189,7 @@ function resultFromArchive(row: ArchiveRow): ResultRecord {
     audienceReview: textField(row.audience_review) || textField(payload.audienceReview),
     archivedAt: textField(row.archived_at) || new Date().toISOString(),
     audioUrl: null,
+    fullSongUrl: null,
     mode,
     publicVisible,
   };
@@ -216,6 +229,25 @@ async function attachMedia(records: ResultRecord[]) {
     return records;
   }
 
+  const qCrashIds = records
+    .filter((record) => record.mode === "q_crash")
+    .map((record) => record.battleId)
+    .filter((id): id is string => Boolean(id));
+  const qCrashMediaByBattle = new Map<string, QCrashPublicMediaItem>();
+  if (qCrashIds.length > 0) {
+    try {
+      const mediaResponse = await fetch(`/api/q-crash/public-media?battleIds=${encodeURIComponent(qCrashIds.join(","))}`, {
+        cache: "no-store",
+      });
+      if (mediaResponse.ok) {
+        const mediaPayload = (await mediaResponse.json().catch(() => null)) as { items?: QCrashPublicMediaItem[] } | null;
+        for (const item of mediaPayload?.items ?? []) qCrashMediaByBattle.set(item.battleId, item);
+      }
+    } catch (error) {
+      console.warn("[battle results q crash editorial media]", error);
+    }
+  }
+
   const userIds = Array.from(
     new Set((rows ?? []).flatMap((battle) => [battle.fighter_a_user_id, battle.fighter_b_user_id]).filter((id): id is string => Boolean(id))),
   );
@@ -232,7 +264,7 @@ async function attachMedia(records: ResultRecord[]) {
     }
   }
 
-  const mediaByBattle = new Map<string, { audioUrl: string | null; coverUrl: string | null }>();
+  const mediaByBattle = new Map<string, { audioUrl: string | null; coverUrl: string | null; fullSongUrl: string | null }>();
   await Promise.all(
     (rows ?? []).map(async (battle) => {
       if (!battle.id) return;
@@ -240,7 +272,10 @@ async function attachMedia(records: ResultRecord[]) {
       const winnerIsB = side === "fighter_b";
       const path = winnerIsB ? battle.audio_b_path : battle.audio_a_path;
       const profile = profilesById.get(winnerIsB ? battle.fighter_b_user_id ?? "" : battle.fighter_a_user_id ?? "");
+      const qCrashMedia = qCrashMediaByBattle.get(battle.id);
+      const qCrashWork = winnerIsB ? qCrashMedia?.works.B : qCrashMedia?.works.A;
       const coverCandidate = firstText(
+        qCrashWork?.coverUrl,
         winnerIsB ? battle.song_b_cover : battle.song_a_cover,
         profile?.song_cover_url,
         profile?.avatar_url,
@@ -249,7 +284,7 @@ async function attachMedia(records: ResultRecord[]) {
         battleAssetPathToUrl(path),
         battleAssetPathToUrl(coverCandidate),
       ]);
-      mediaByBattle.set(battle.id, { audioUrl, coverUrl });
+      mediaByBattle.set(battle.id, { audioUrl, coverUrl, fullSongUrl: qCrashWork?.fullSongUrl ?? null });
     }),
   );
 
@@ -257,6 +292,7 @@ async function attachMedia(records: ResultRecord[]) {
     ...record,
     audioUrl: record.battleId ? mediaByBattle.get(record.battleId)?.audioUrl ?? null : null,
     coverUrl: record.coverUrl || (record.battleId ? mediaByBattle.get(record.battleId)?.coverUrl ?? "" : ""),
+    fullSongUrl: record.fullSongUrl || (record.battleId ? mediaByBattle.get(record.battleId)?.fullSongUrl ?? null : null),
   }));
 }
 
@@ -373,6 +409,17 @@ function ResultCard({ record, isZh, lang }: { record: ResultRecord; isZh: boolea
         </div>
 
         <ResultAudio record={record} isZh={isZh} />
+
+        {isQCrash && record.fullSongUrl ? (
+          <a
+            href={record.fullSongUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-2 inline-flex min-h-9 w-full items-center justify-center rounded-lg border border-yellow-200/30 bg-yellow-300/[0.08] px-2 py-1.5 text-[11px] font-black text-yellow-100 transition hover:border-yellow-100/65 hover:bg-yellow-300/15"
+          >
+            {isZh ? "聽勝出作品完整版本 ↗" : "Listen to the winner's full version ↗"}
+          </a>
+        ) : null}
 
         <div className="mt-2 flex items-center gap-1.5">
           <Link href={href} className={`inline-flex flex-1 items-center justify-center rounded-lg px-2 py-1.5 text-[11px] font-black text-black transition ${isQCrash ? "bg-cyan-400 hover:bg-cyan-300" : "bg-orange-500 hover:bg-orange-300"}`}>

@@ -12,7 +12,9 @@ import {
   type QCrashFeedbackKey,
   type QCrashSide,
 } from "@/lib/q-crash-rules";
+import { qCrashEditorialShowsFullSong } from "@/lib/q-crash-editorial";
 import { settleQCrashBattle } from "@/lib/server-q-crash";
+import { loadQCrashEditorial, signedQCrashCover } from "@/lib/server-q-crash-editorial";
 
 type RouteProps = { params: Promise<{ id: string }> };
 type CardRow = {
@@ -211,6 +213,9 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
   const queueB = card.challenger_queue_id ? queueMap.get(card.challenger_queue_id) : null;
   if (!queueA) return jsonError("作品 A 已無法讀取。", 500);
   const battle = battleResult.data;
+  const editorial = await loadQCrashEditorial(admin, [queueA.id, queueB?.id ?? ""]);
+  const editorialA = editorial.rows.find((row) => row.queue_id === queueA.id) ?? null;
+  const editorialB = queueB ? editorial.rows.find((row) => row.queue_id === queueB.id) ?? null : null;
   const songAName = battle?.song_a_name || queueA.original_file_name;
   const songBName = battle?.song_b_name || queueB?.original_file_name;
 
@@ -243,11 +248,13 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
     }
   }
 
-  const [profileA, profileB, audioA, audioB] = await Promise.all([
+  const [profileA, profileB, audioA, audioB, editorialCoverA, editorialCoverB] = await Promise.all([
     profileMedia(admin, queueA.user_id),
     queueB ? profileMedia(admin, queueB.user_id) : Promise.resolve(null),
     signedAudio(admin, battle?.audio_a_path || queueA.audio_path),
     queueB ? signedAudio(admin, battle?.audio_b_path || queueB.audio_path) : Promise.resolve(null),
+    signedQCrashCover(admin, editorialA?.cover_path),
+    signedQCrashCover(admin, editorialB?.cover_path),
   ]);
   const labels = qCrashVersionLabels(songAName, songBName);
   const isFinal = card.status === "q_crash_finished" || card.status === "q_crash_insufficient";
@@ -343,7 +350,8 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
           lyrics: battle?.lyrics_a ?? queueA.lyrics,
           durationSeconds: queueA.drop_duration_seconds,
           audioUrl: audioA,
-          coverUrl: battle?.song_a_cover || queueA.cover_url || profileA.coverUrl,
+          coverUrl: editorialCoverA || battle?.song_a_cover || queueA.cover_url || profileA.coverUrl,
+          fullSongUrl: qCrashEditorialShowsFullSong(card.status) ? editorialA?.full_song_url ?? null : null,
           avatarUrl: battle?.fighter_a_avatar || profileA.avatarUrl,
         },
         B: queueB
@@ -357,7 +365,8 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
               lyrics: battle?.lyrics_b ?? queueB.lyrics,
               durationSeconds: queueB.drop_duration_seconds,
               audioUrl: audioB,
-              coverUrl: battle?.song_b_cover || queueB.cover_url || profileB?.coverUrl,
+              coverUrl: editorialCoverB || battle?.song_b_cover || queueB.cover_url || profileB?.coverUrl,
+              fullSongUrl: qCrashEditorialShowsFullSong(card.status) ? editorialB?.full_song_url ?? null : null,
               avatarUrl: battle?.fighter_b_avatar || profileB?.avatarUrl,
             }
           : null,

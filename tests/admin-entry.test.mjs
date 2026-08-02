@@ -13,6 +13,7 @@ test("owner backend has a real /admin entry with all core modules", () => {
   assert.match(rootAdmin, /href: "\/admin\/ai-music-bible"/);
   assert.match(rootAdmin, /href: "\/admin\/comments"/);
   assert.match(rootAdmin, /href: "\/admin\/analytics"/);
+  assert.match(rootAdmin, /href: "\/admin\/q-crash"/);
 });
 
 test("admin auth can recover a missing bearer session and switch accounts", () => {

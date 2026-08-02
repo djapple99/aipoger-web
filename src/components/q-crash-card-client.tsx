@@ -8,6 +8,7 @@ import {
   Blocks,
   Check,
   Clock3,
+  ExternalLink,
   FileText,
   Flame,
   Heart,
@@ -59,6 +60,7 @@ type Work = {
   durationSeconds: number | null;
   audioUrl: string | null;
   coverUrl: string | null;
+  fullSongUrl: string | null;
   avatarUrl: string | null;
 };
 type QCrashPayload = {
@@ -451,6 +453,17 @@ function QCrashWorkCard(props: {
               <FileText size={15} />
               {isZh ? "查看歌詞" : "Lyrics"}
             </button>
+            {final && work.fullSongUrl ? (
+              <a
+                href={work.fullSongUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-yellow-200/35 bg-yellow-300/[0.08] px-4 text-xs font-black text-yellow-100 transition hover:border-yellow-100/70 hover:bg-yellow-300/15"
+              >
+                <ExternalLink size={15} />
+                {isZh ? "聽完整版本" : "Listen Full Version"}
+              </a>
+            ) : null}
           </div>
         </div>
       </div>
