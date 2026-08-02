@@ -75,6 +75,7 @@ type RankRow = {
   fullSongUrl?: string;
   fullSongLabel?: string;
   fullSongDurationSeconds?: number;
+  youtubeUrl?: string;
   supportUrl?: string;
   supportLabel?: string;
   lyrics?: string;
@@ -152,6 +153,7 @@ type DropFullSongPayload = {
   items?: Array<{
     battleId?: string;
     audioUrl?: string;
+    youtubeUrl?: string | null;
     label?: string;
     durationSeconds?: number;
   }>;
@@ -453,14 +455,14 @@ function formatSongStats(stats: SongBattleStatsSnapshot | null | undefined, isZh
 }
 
 async function fetchDropFullSongMap(battleIds: string[]) {
-  if (battleIds.length === 0) return new Map<string, { audioUrl: string; label: string; durationSeconds: number }>();
+  if (battleIds.length === 0) return new Map<string, { audioUrl: string; label: string; durationSeconds: number; youtubeUrl: string | null }>();
   try {
     const response = await fetch("/api/honor-board/drop-full-songs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ battleIds }),
     });
-    if (!response.ok) return new Map<string, { audioUrl: string; label: string; durationSeconds: number }>();
+    if (!response.ok) return new Map<string, { audioUrl: string; label: string; durationSeconds: number; youtubeUrl: string | null }>();
     const payload = (await response.json().catch(() => null)) as DropFullSongPayload | null;
     const items = Array.isArray(payload?.items) ? payload.items : [];
     return new Map(
@@ -472,12 +474,13 @@ async function fetchDropFullSongMap(battleIds: string[]) {
             audioUrl: item.audioUrl!,
             label: item.label?.trim() || "Full Song",
             durationSeconds: Math.max(0, Number(item.durationSeconds) || 0),
+            youtubeUrl: item.youtubeUrl?.trim() || null,
           },
         ]),
     );
   } catch (error) {
     console.warn("[rank full song]", error);
-    return new Map<string, { audioUrl: string; label: string; durationSeconds: number }>();
+    return new Map<string, { audioUrl: string; label: string; durationSeconds: number; youtubeUrl: string | null }>();
   }
 }
 
@@ -547,6 +550,7 @@ function rowFromArchive(entry: ArchivedBattleResult, index: number): RankRow {
     fullSongUrl: entry.fullSongUrl,
     fullSongLabel: entry.fullSongLabel,
     fullSongDurationSeconds: entry.fullSongDurationSeconds,
+    youtubeUrl: entry.youtubeUrl,
     lyrics: cleanLyrics(entry.lyrics) || undefined,
     songStats: entry.songStats,
   };
@@ -851,6 +855,7 @@ async function attachBattleAudioUrls(rows: ArchivedBattleResult[]) {
       fullSongUrl: fullSong?.audioUrl || reconciled.fullSongUrl,
       fullSongLabel: fullSong?.label || reconciled.fullSongLabel,
       fullSongDurationSeconds: fullSong?.durationSeconds || reconciled.fullSongDurationSeconds,
+      youtubeUrl: fullSong?.youtubeUrl || reconciled.youtubeUrl,
       lyrics: cleanLyrics(reconciled.lyrics) || (row.battleId ? truth?.winnerLyrics || undefined : undefined),
       coverUrl: reconciled.coverUrl || (row.battleId ? truth?.coverUrl || "" : ""),
       avatarUrl: reconciled.avatarUrl || (row.battleId ? truth?.avatarUrl || "" : ""),
@@ -1976,6 +1981,12 @@ export default function RankPage() {
                                     {row.supportUrl ? (
                                       <a href={row.supportUrl} target="_blank" rel="noopener noreferrer" className={`inline-flex h-8 w-8 items-center justify-center rounded-full border p-0 ${HONOR_ACTION_CLASS}`} aria-label={row.supportLabel || (isZh ? "支持創作者" : "Support Creator")} title={row.supportLabel || (isZh ? "支持創作者" : "Support Creator")}>
                                         <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                                      </a>
+                                    ) : null}
+                                    {row.youtubeUrl ? (
+                                      <a href={row.youtubeUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center justify-center gap-1 rounded-full border border-red-200/28 bg-red-400/[0.08] px-2 text-[10px] font-black text-red-100 transition hover:border-red-100/65 hover:bg-red-400/15" aria-label={isZh ? "觀看勝出作品 MV" : "Watch winner MV"} title={isZh ? "觀看勝出作品 MV" : "Watch winner MV"}>
+                                        <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                                        <span>MV</span>
                                       </a>
                                     ) : null}
                                     <ReportButton

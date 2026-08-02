@@ -97,8 +97,8 @@ const T = {
     rematchTitle: '你正在挑戰擂主',
     rematchDesc: '請在 120 秒內完成上傳，這場會沿用上一場 genre。',
     rematchComplete: '守擂挑戰已接上，前往下一場 Battle。',
-    fullSongTitle: '如果進 Showtime，公開完整版',
-    fullSongDesc: 'Battle 仍只播放你的 Drop。開啟後，只有作品進 Showtime 時聽眾才會看到 Full Song；關閉則只顯示 Drop。',
+    fullSongTitle: '勝出後公開完整作品',
+    fullSongDesc: 'Battle 仍只播放你的 Drop。勾選後，正式勝出時完整歌曲會在 Showtime 公開；YouTube MV 連結可在勝出後再提交。',
   },
   en: {
     title: 'Drop Battle Cut',
@@ -141,8 +141,8 @@ const T = {
     rematchTitle: 'You are challenging the defender',
     rematchDesc: 'Finish uploading within 120 seconds. This battle keeps the previous genre.',
     rematchComplete: 'Rematch connected. Entering the next Battle.',
-    fullSongTitle: 'Publish Full Song if it reaches Showtime',
-    fullSongDesc: 'The battle still uses your Drop. When enabled, listeners see Full Song only after the work reaches Showtime; otherwise only the Drop is shown.',
+    fullSongTitle: 'Publish the full song after a win',
+    fullSongDesc: 'The battle still uses your Drop. If enabled, the full song appears in Showtime after an official win; you can submit the YouTube MV link after the result.',
   },
 } as const;
 
@@ -1787,7 +1787,7 @@ function HookCutContent() {
               />
             </div>
 
-            {!isAiMusicDefenderDropSetup ? (
+            {!isAiMusicDefenderDropSetup && !qCrashCreate && !qCrashCardId ? (
               <div className="rounded-3xl border border-yellow-200/18 bg-yellow-300/[0.06] p-5 shadow-[0_16px_54px_rgba(0,0,0,0.24)]">
                 <div className="flex items-center justify-between gap-4">
                   <div>

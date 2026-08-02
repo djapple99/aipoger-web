@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import ShareButton from "@/components/share-button";
+import BattleWinnerReleaseLink from "@/components/battle-winner-release-link";
 import { fontRighteous } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n";
 import { DROP_BATTLE_OFFICIAL_AUDIENCE_MIN } from "@/lib/drop-battle-rematch";
@@ -81,6 +82,7 @@ type ResultRecord = {
   archivedAt: string;
   audioUrl: string | null;
   fullSongUrl: string | null;
+  youtubeUrl: string | null;
   mode: BattleRecordMode;
   publicVisible: boolean;
 };
@@ -190,6 +192,7 @@ function resultFromArchive(row: ArchiveRow): ResultRecord {
     archivedAt: textField(row.archived_at) || new Date().toISOString(),
     audioUrl: null,
     fullSongUrl: null,
+    youtubeUrl: null,
     mode,
     publicVisible,
   };
@@ -248,6 +251,30 @@ async function attachMedia(records: ResultRecord[]) {
     }
   }
 
+  const fullSongByBattle = new Map<string, { audioUrl: string | null; youtubeUrl: string | null }>();
+  try {
+    const fullSongResponse = await fetch("/api/honor-board/drop-full-songs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ battleIds: ids }),
+    });
+    if (fullSongResponse.ok) {
+      const fullSongPayload = (await fullSongResponse.json().catch(() => null)) as {
+        items?: Array<{ battleId?: string; audioUrl?: string | null; youtubeUrl?: string | null }>;
+      } | null;
+      for (const item of fullSongPayload?.items ?? []) {
+        if (item.battleId) {
+          fullSongByBattle.set(item.battleId, {
+            audioUrl: item.audioUrl?.trim() || null,
+            youtubeUrl: item.youtubeUrl?.trim() || null,
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.warn("[battle results full song media]", error);
+  }
+
   const userIds = Array.from(
     new Set((rows ?? []).flatMap((battle) => [battle.fighter_a_user_id, battle.fighter_b_user_id]).filter((id): id is string => Boolean(id))),
   );
@@ -264,7 +291,7 @@ async function attachMedia(records: ResultRecord[]) {
     }
   }
 
-  const mediaByBattle = new Map<string, { audioUrl: string | null; coverUrl: string | null; fullSongUrl: string | null }>();
+  const mediaByBattle = new Map<string, { audioUrl: string | null; coverUrl: string | null; fullSongUrl: string | null; youtubeUrl: string | null }>();
   await Promise.all(
     (rows ?? []).map(async (battle) => {
       if (!battle.id) return;
@@ -284,7 +311,13 @@ async function attachMedia(records: ResultRecord[]) {
         battleAssetPathToUrl(path),
         battleAssetPathToUrl(coverCandidate),
       ]);
-      mediaByBattle.set(battle.id, { audioUrl, coverUrl, fullSongUrl: qCrashWork?.fullSongUrl ?? null });
+      const fullSong = fullSongByBattle.get(battle.id);
+      mediaByBattle.set(battle.id, {
+        audioUrl,
+        coverUrl,
+        fullSongUrl: qCrashWork?.fullSongUrl ?? fullSong?.audioUrl ?? null,
+        youtubeUrl: fullSong?.youtubeUrl ?? null,
+      });
     }),
   );
 
@@ -293,6 +326,7 @@ async function attachMedia(records: ResultRecord[]) {
     audioUrl: record.battleId ? mediaByBattle.get(record.battleId)?.audioUrl ?? null : null,
     coverUrl: record.coverUrl || (record.battleId ? mediaByBattle.get(record.battleId)?.coverUrl ?? "" : ""),
     fullSongUrl: record.fullSongUrl || (record.battleId ? mediaByBattle.get(record.battleId)?.fullSongUrl ?? null : null),
+    youtubeUrl: record.youtubeUrl || (record.battleId ? mediaByBattle.get(record.battleId)?.youtubeUrl ?? null : null),
   }));
 }
 
@@ -333,7 +367,7 @@ function ResultAudio({ record, isZh }: { record: ResultRecord; isZh: boolean }) 
   );
 }
 
-function ResultCard({ record, isZh, lang }: { record: ResultRecord; isZh: boolean; lang: string }) {
+function ResultCard({ record, isZh, lang, viewerId }: { record: ResultRecord; isZh: boolean; lang: string; viewerId: string | null }) {
   const href = resultHref(record, lang);
   const coverUrl = record.coverUrl.trim();
   const finalVoteTotal = record.finalVoteLeft + record.finalVoteRight;
@@ -410,7 +444,7 @@ function ResultCard({ record, isZh, lang }: { record: ResultRecord; isZh: boolea
 
         <ResultAudio record={record} isZh={isZh} />
 
-        {isQCrash && record.fullSongUrl ? (
+        {record.fullSongUrl ? (
           <a
             href={record.fullSongUrl}
             target="_blank"
@@ -419,6 +453,21 @@ function ResultCard({ record, isZh, lang }: { record: ResultRecord; isZh: boolea
           >
             {isZh ? "聽勝出作品完整版本 ↗" : "Listen to the winner's full version ↗"}
           </a>
+        ) : null}
+
+        {record.youtubeUrl ? (
+          <a
+            href={record.youtubeUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-2 inline-flex min-h-9 w-full items-center justify-center rounded-lg border border-red-200/30 bg-red-400/[0.08] px-2 py-1.5 text-[11px] font-black text-red-100 transition hover:border-red-100/65 hover:bg-red-400/15"
+          >
+            {isZh ? "觀看勝出作品 MV ↗" : "Watch the winner's MV ↗"}
+          </a>
+        ) : null}
+
+        {!isQCrash && isOfficial && viewerId && record.battleId ? (
+          <BattleWinnerReleaseLink battleId={record.battleId} isZh={isZh} />
         ) : null}
 
         <div className="mt-2 flex items-center gap-1.5">
@@ -448,6 +497,11 @@ export default function BattleResultsClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeMonth, setActiveMonth] = useState("");
+  const [viewerId, setViewerId] = useState<string | null>(null);
+
+  useEffect(() => {
+    void supabase.auth.getSession().then(({ data }) => setViewerId(data.session?.user?.id ?? null));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -583,7 +637,7 @@ export default function BattleResultsClient() {
                   <span className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-3 py-1.5 text-xs font-black text-cyan-100">{qCrashRecords.length} {isZh ? "場" : "battles"}</span>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-                  {qCrashRecords.map((record) => <ResultCard key={`q-crash-${record.id}-${record.battleCode}`} record={record} isZh={isZh} lang={lang} />)}
+                  {qCrashRecords.map((record) => <ResultCard key={`q-crash-${record.id}-${record.battleCode}`} record={record} isZh={isZh} lang={lang} viewerId={viewerId} />)}
                 </div>
               </section>
             ) : null}
@@ -593,11 +647,15 @@ export default function BattleResultsClient() {
                 <h2 className="text-xl font-black text-white">{isZh ? "Drop Battle 正式戰績" : "Drop Battle Results"}</h2>
                 <p className="text-xs font-black text-zinc-500">{dropMonthRecords.length} {isZh ? "張成果卡" : "cards"}</p>
               </div>
-              {dropMonthRecords.length > 0 ? <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-                {dropMonthRecords.map((record) => (
-                  <ResultCard key={`${record.id}-${record.battleCode}`} record={record} isZh={isZh} lang={lang} />
-                ))}
-              </div> : <div className="rounded-[1.5rem] border border-white/10 bg-black/42 p-7 text-center text-sm font-bold text-zinc-500">{isZh ? "這個月份沒有公開的 Drop Battle 戰績；先看看上方 Q Crash 戰報。" : "No public Drop Battle results in this month. Start with the Q Crash reports above."}</div>}
+              {dropMonthRecords.length > 0 ? (
+                <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+                  {dropMonthRecords.map((record) => (
+                  <ResultCard key={`${record.id}-${record.battleCode}`} record={record} isZh={isZh} lang={lang} viewerId={viewerId} />
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-[1.5rem] border border-white/10 bg-black/42 p-7 text-center text-sm font-bold text-zinc-500">{isZh ? "這個月份沒有公開的 Drop Battle 戰績；先看看上方 Q Crash 戰報。" : "No public Drop Battle results in this month. Start with the Q Crash reports above."}</div>
+              )}
             </section>
           </>
         )}

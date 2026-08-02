@@ -14,6 +14,7 @@ type QueueRow = {
   full_audio_public?: boolean | null;
   full_audio_original_name?: string | null;
   full_audio_duration_seconds?: number | null;
+  full_song_youtube_url?: string | null;
 };
 
 function jsonError(message: string, status = 400) {
@@ -42,7 +43,7 @@ function cleanBattleIds(value: unknown) {
 
 function isMissingFullAudioSchema(error: { message?: string; details?: string; hint?: string; code?: string } | null) {
   const msg = `${error?.message ?? ""} ${error?.details ?? ""} ${error?.hint ?? ""} ${error?.code ?? ""}`;
-  return /full_audio_|column.*does not exist|schema cache|PGRST204/i.test(msg);
+  return /full_audio_|full_song_youtube_url|column.*does not exist|schema cache|PGRST204/i.test(msg);
 }
 
 export async function POST(request: Request) {
@@ -81,13 +82,22 @@ export async function POST(request: Request) {
   const queueIds = Array.from(new Set([...queueIdByBattleId.values()]));
   if (queueIds.length === 0) return NextResponse.json({ items: [] });
 
-  const { data: queues, error: queueError } = await admin
-    .from("battle_queue")
-    .select("id,full_audio_path,full_audio_public,full_audio_original_name,full_audio_duration_seconds")
-    .in("id", queueIds);
+  const queueSelects = [
+    "id,full_audio_path,full_audio_public,full_audio_original_name,full_audio_duration_seconds,full_song_youtube_url",
+    "id,full_audio_path,full_audio_public,full_audio_original_name,full_audio_duration_seconds",
+  ];
+  let queues: QueueRow[] | null = null;
+  let queueError: { message?: string; details?: string; hint?: string; code?: string } | null = null;
+  for (const select of queueSelects) {
+    const result = await admin.from("battle_queue").select(select).in("id", queueIds);
+    queueError = result.error;
+    queues = result.data as QueueRow[] | null;
+    if (!queueError) break;
+    if (!/full_song_youtube_url|column.*does not exist|schema cache|PGRST204/i.test(`${queueError.message ?? ""} ${queueError.code ?? ""}`)) break;
+  }
   if (queueError) {
     if (isMissingFullAudioSchema(queueError)) return NextResponse.json({ items: [] });
-    return jsonError(queueError.message, 500);
+    return jsonError(queueError.message ?? "Full Song 資料讀取失敗。", 500);
   }
 
   const queuesById = new Map<string, QueueRow>();
@@ -107,6 +117,7 @@ export async function POST(request: Request) {
         audioUrl: data.signedUrl,
         label: queue?.full_audio_original_name?.trim() || "Full Song",
         durationSeconds: Math.max(0, Number(queue?.full_audio_duration_seconds) || 0),
+        youtubeUrl: queue?.full_song_youtube_url?.trim() || null,
       };
     }),
   );

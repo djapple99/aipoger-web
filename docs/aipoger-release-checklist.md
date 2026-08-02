@@ -92,6 +92,9 @@ Check:
 - 0-2 distinct audience voters becomes audience-insufficient / no contest and does not create a result card, Showtime archive, song battle stats, battle history, or rematch window.
 - 3+ distinct audience voters creates an official result that can be archived.
 - AIPOGER Showtime reads Drop winners as `正式 Battle 認證` rows inside the unified certified-works catalog.
+- Upload-time full-song consent is captured before the Drop is published; the client cannot rewrite that consent or the stored full-song path afterward. After an official win, only the winning creator can submit an HTTPS YouTube MV URL from Battle Records.
+- The submitted YouTube MV URL appears on the official Battle Record and Showtime card; no link appears for an opted-out winner, an unofficial result, a non-winner, or a Q Crash card using its separate editorial workflow.
+- Apply and verify `supabase/20260802143000_battle_winner_release_links.sql` before enabling the winner release form. Confirm direct client updates to release fields are rejected while the server winner-release endpoint accepts only the verified winner.
 
 ### Q Crash
 

@@ -46,6 +46,7 @@ export type ArchivedBattleResult = {
   fullSongUrl?: string;
   fullSongLabel?: string;
   fullSongDurationSeconds?: number;
+  youtubeUrl?: string;
   lyrics?: string;
   songStats?: SongBattleStatsSnapshot | null;
   showtimePublicRemovedAt?: string | null;
@@ -166,6 +167,7 @@ function sanitizeArchiveEntry(value: unknown): ArchivedBattleResult | null {
     fullSongUrl: typeof row.fullSongUrl === "string" ? row.fullSongUrl.trim() : undefined,
     fullSongLabel: typeof row.fullSongLabel === "string" ? row.fullSongLabel.trim() : undefined,
     fullSongDurationSeconds: Math.max(0, Number(row.fullSongDurationSeconds) || 0),
+    youtubeUrl: typeof row.youtubeUrl === "string" ? row.youtubeUrl.trim() : undefined,
     lyrics: typeof row.lyrics === "string" ? row.lyrics.trim() : undefined,
     songStats: sanitizeSongBattleStatsSnapshot(row.songStats),
     showtimePublicRemovedAt:

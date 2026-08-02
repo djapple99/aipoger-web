@@ -155,6 +155,9 @@ Current behavior:
 - Drop Battle clips have a hard maximum of 60 seconds. Creators may cut shorter clips; the recommended public range is about 30-60 seconds so the hook/drop has enough time to reach its payoff without turning the battle into full-song listening.
 - Drop Battle creators may opt in to publish the complete song only if the Drop reaches AIPOGER Showtime. If they do not opt in, Showtime must only expose the Drop clip. The complete song must not be publicly playable by default.
 - When complete-song publishing is enabled, the Battle Room still uses only the Drop clip; `Full Song` is a Showtime extension state, not a battle playback rule.
+- The complete-song decision is made during the original upload and is immutable for client-side edits. The upload form does not require a YouTube link yet; it only records whether the creator agrees to release the full work after an official win.
+- After an official result, only the winning creator may submit or update a YouTube MV URL. The server verifies the official 3-voter result, winning queue ownership, and upload-time full-song consent before saving it; admins cannot replace the creator's URL.
+- A submitted YouTube MV link is shown only on the official Battle Record and the corresponding Showtime work. The winner's complete audio is also playable in Showtime when upload-time consent was granted; the Battle Room remains Drop-only.
 - Drop Battle quick start options are relative to successful battle-card publishing: `發布後 10 / 15 / 20 分鐘`. Custom start time is an absolute user-selected time and should not move with upload/cutting duration.
 - `battle_queue.expires_at` is only a cleanup/expiry deadline. It must never be used as a Battle start time; opening time must come from `scheduled_start_at` or `cancellation_evaluation_at`.
 - Fast start options must calculate the visible start time only after the queue/battle data has been successfully written. Do not pre-render a time label that ignores upload, cutting, or network duration.
@@ -188,7 +191,7 @@ Current behavior:
 - Battle Records / 對戰記錄 must not preserve under-threshold battle outcomes. Public result cards require the official 3-distinct-audience threshold.
 - AIPOGER Showtime only consumes official Drop Battle results with at least 3 distinct audience voters.
 - Battle history should focus on the song, not the fighter profile. Cards may show per-song challenge count, wins, losses, ties, and win rate.
-- V1 song battle stats do not open URL upload or a full creator song-library UI. They only group the same creator's repeated Drop Battle entries by normalized song title and show battle count, wins, losses, votes, win rate, and Showtime count.
+- V1 song battle stats do not open arbitrary URL upload or a full creator song-library UI. The only external link exception is the narrow post-win YouTube MV release link described above.
 - Waiting cards should provide a `約人鬥歌` share action.
 - Live or public-voting cards should provide an `邀請觀戰投票` share action.
 

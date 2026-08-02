@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense, useEffect, useId, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import ShareButton from "@/components/share-button";
+import BattleWinnerReleaseLink from "@/components/battle-winner-release-link";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { fontRighteous } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n";
@@ -1076,6 +1077,9 @@ function BattleResultContent() {
               winnerSong={winnerSong}
               opponentSong={opponentSong}
             />
+            {isOfficialBattleResult && battleId && isUuid(battleId) ? (
+              <BattleWinnerReleaseLink battleId={battleId} isZh={lang === "zh"} />
+            ) : null}
             <SkillRadar skills={localizedSkills} className="mt-1 max-w-[580px] md:max-w-[620px]" />
           </section>
 
