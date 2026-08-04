@@ -12,6 +12,7 @@ import {
 } from "@/lib/listen-bar";
 import { buildListenBarRotationPreview, type ListenBarRotationTrack } from "@/lib/listen-bar-rotation";
 import { isAiMusicPersistedShowtimeCertified } from "@/lib/ai-music-showtime";
+import { authorizeCronRequest, hasValidCronSecret } from "@/lib/cron-auth";
 
 const CAPACITY_EVICTION_NOTE = "36-song genre public pool capacity rotation eviction.";
 
@@ -76,13 +77,9 @@ async function processRotation(request: NextRequest) {
     });
   }
 
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const auth = request.headers.get("authorization") ?? "";
-    const token = auth.startsWith("Bearer ") ? auth.slice("Bearer ".length) : request.nextUrl.searchParams.get("secret");
-    if (token !== cronSecret) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const authorization = authorizeCronRequest(request);
+  if (!authorization.ok) {
+    return NextResponse.json({ error: authorization.error }, { status: authorization.status });
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -181,14 +178,6 @@ function adminClient() {
   return createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-}
-
-function requestHasCronSecret(request: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return false;
-  const auth = request.headers.get("authorization") ?? "";
-  const token = auth.startsWith("Bearer ") ? auth.slice("Bearer ".length) : request.nextUrl.searchParams.get("secret");
-  return token === cronSecret;
 }
 
 function isVisibleActiveTrack(row: TrackForRotation) {
@@ -292,7 +281,7 @@ function redactPreviewTracks(tracks: ListenBarRotationTrack[], detailed: boolean
 async function processRotationPreview(request: NextRequest) {
   try {
     const admin = adminClient();
-    const detailed = requestHasCronSecret(request);
+    const detailed = hasValidCronSecret(request);
     const data = await readActiveCommunityRows(admin);
     const rows = data.map(toRotationTrack);
     const preview = buildListenBarRotationPreview(rows);

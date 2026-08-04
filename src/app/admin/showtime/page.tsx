@@ -10,7 +10,7 @@ import {
   type AipogerChoiceCollection,
   type AipogerChoiceCuratorIdentity,
 } from "@/lib/aipoger-choice";
-import type { ShowtimeAdminTrackRow } from "@/lib/server-showtime-catalog";
+import type { ShowtimeAdminCandidate, ShowtimeAdminTrackRow } from "@/lib/server-showtime-catalog";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import { supabase } from "@/lib/supabase";
 import { loadIsAdmin } from "@/lib/user-profile-admin";
@@ -22,6 +22,9 @@ type ShowtimePayload = {
   schemaReady?: boolean;
   items?: AipogerChoiceCatalogItem[];
   tracks?: ShowtimeAdminTrackRow[];
+  candidates?: ShowtimeAdminCandidate[];
+  weeklyAirplayCertificationCount?: number;
+  weeklyAirplayCertificationLimit?: number;
   error?: string;
 };
 
@@ -57,6 +60,7 @@ type EditingTrack = {
 };
 
 const SHOWTIME_PER_PAGE = 12;
+const SHOWTIME_CANDIDATES_PER_PAGE = 12;
 const MAX_COVER_BYTES = 10 * 1024 * 1024;
 const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
 
@@ -104,9 +108,15 @@ export default function AdminShowtimePage() {
   const [choiceSchemaReady, setChoiceSchemaReady] = useState(true);
   const [items, setItems] = useState<AipogerChoiceCatalogItem[]>([]);
   const [tracks, setTracks] = useState<ShowtimeAdminTrackRow[]>([]);
+  const [candidates, setCandidates] = useState<ShowtimeAdminCandidate[]>([]);
+  const [weeklyAirplayCertificationCount, setWeeklyAirplayCertificationCount] = useState(0);
+  const [weeklyAirplayCertificationLimit, setWeeklyAirplayCertificationLimit] = useState(4);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [candidateQuery, setCandidateQuery] = useState("");
+  const [candidatePage, setCandidatePage] = useState(1);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [candidateBusyId, setCandidateBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<EditingTrack | null>(null);
@@ -137,6 +147,9 @@ export default function AdminShowtimePage() {
     setSchemaReady(payload?.schemaReady !== false);
     setItems(payload?.items ?? []);
     setTracks(payload?.tracks ?? []);
+    setCandidates(payload?.candidates ?? []);
+    setWeeklyAirplayCertificationCount(payload?.weeklyAirplayCertificationCount ?? 0);
+    setWeeklyAirplayCertificationLimit(payload?.weeklyAirplayCertificationLimit ?? 4);
     return true;
   }, []);
 
@@ -232,11 +245,25 @@ export default function AdminShowtimePage() {
     return availableItems.filter((item) => [item.title, item.artist, item.genre, item.recognition].join(" ").toLowerCase().includes(normalized));
   }, [choiceCatalog, choiceMode, items, query]);
 
+  const filteredCandidates = useMemo(() => {
+    const normalized = candidateQuery.trim().toLowerCase();
+    if (!normalized) return candidates;
+    return candidates.filter((candidate) => [candidate.title, candidate.artist, candidate.genre].join(" ").toLowerCase().includes(normalized));
+  }, [candidateQuery, candidates]);
+
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / SHOWTIME_PER_PAGE));
   const currentPage = Math.min(page, totalPages);
   const pagedItems = filteredItems.slice((currentPage - 1) * SHOWTIME_PER_PAGE, currentPage * SHOWTIME_PER_PAGE);
 
+  const candidateTotalPages = Math.max(1, Math.ceil(filteredCandidates.length / SHOWTIME_CANDIDATES_PER_PAGE));
+  const currentCandidatePage = Math.min(candidatePage, candidateTotalPages);
+  const pagedCandidates = filteredCandidates.slice(
+    (currentCandidatePage - 1) * SHOWTIME_CANDIDATES_PER_PAGE,
+    currentCandidatePage * SHOWTIME_CANDIDATES_PER_PAGE,
+  );
+
   useEffect(() => { setPage(1); }, [query]);
+  useEffect(() => { setCandidatePage(1); }, [candidateQuery]);
 
   function closeEditor() {
     setEditing(null);
@@ -286,6 +313,66 @@ export default function AdminShowtimePage() {
     }
     setMessage(payload?.message || "Showtime 已更新。");
     await Promise.all([loadShowtimeData(), loadChoiceData()]);
+  }
+
+  function candidatePreviewItem(candidate: ShowtimeAdminCandidate): AipogerChoiceCatalogItem {
+    return {
+      id: candidate.id,
+      sourceKind: "listen_bar_track",
+      title: candidate.title,
+      artist: candidate.artist,
+      genre: candidate.genre,
+      coverUrl: candidate.coverUrl,
+      audioUrl: candidate.audioUrl,
+      recognition: "30 天以上候選",
+      certifiedAt: candidate.createdAt,
+      isPublic: false,
+      selectable: false,
+    };
+  }
+
+  async function certifyCandidate(candidate: ShowtimeAdminCandidate) {
+    if (weeklyAirplayCertificationCount >= weeklyAirplayCertificationLimit) {
+      setError(`本週人工認可已達 ${weeklyAirplayCertificationLimit} 首上限，下週再決選。`);
+      return;
+    }
+    if (!window.confirm(`確定將《${candidate.title}》認可進 Showtime？\n\n認可後會離開傷心酒吧與探索公開列表。`)) return;
+    setCandidateBusyId(candidate.id);
+    setError("");
+    setMessage("");
+    const response = await fetch("/api/admin/showtime", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...(await authHeader()) },
+      body: JSON.stringify({ action: "certify_candidate", id: candidate.id }),
+    });
+    const payload = (await response.json().catch(() => null)) as { message?: string; error?: string } | null;
+    setCandidateBusyId(null);
+    if (!response.ok) {
+      setError(payload?.error || "Showtime 認可失敗。");
+      return;
+    }
+    setMessage(payload?.message || "已認可進 Showtime。");
+    await loadShowtimeData();
+  }
+
+  async function removeCandidate(candidate: ShowtimeAdminCandidate) {
+    if (!window.confirm(`確定移除《${candidate.title}》？\n\n這會從網站公開顯示與播放池移除，但保留後台資料。`)) return;
+    setCandidateBusyId(candidate.id);
+    setError("");
+    setMessage("");
+    const response = await fetch("/api/admin/showtime", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...(await authHeader()) },
+      body: JSON.stringify({ action: "remove_candidate", id: candidate.id }),
+    });
+    const payload = (await response.json().catch(() => null)) as { message?: string; error?: string } | null;
+    setCandidateBusyId(null);
+    if (!response.ok) {
+      setError(payload?.error || "歌曲移除失敗。");
+      return;
+    }
+    setMessage(payload?.message || "歌曲已移除；資料仍保留在後台。");
+    await loadShowtimeData();
   }
 
   async function saveTrackEditor() {
@@ -482,6 +569,64 @@ export default function AdminShowtimePage() {
             ) : null}
           </section>
         ) : null}
+
+        <section className="mt-5 rounded-xl border border-yellow-200/25 bg-yellow-300/[0.045] p-4 sm:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-yellow-100/70">Showtime Review Queue</p>
+              <h2 className="mt-1 text-xl font-black">30 天以上候選歌曲</h2>
+              <p className="mt-1 max-w-3xl text-xs font-bold leading-5 text-yellow-50/70">這裡只列公開、可播放且尚未進 Showtime 的老歌。先聽歌、看愛心數，再由你人工決選；認可後會離開傷心酒吧與探索公開列表。</p>
+            </div>
+            <div className="rounded-xl border border-yellow-100/20 bg-black/30 px-3 py-2 text-right">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-yellow-100/65">本週人工認可</p>
+              <p className="mt-1 text-xl font-black tabular-nums text-yellow-100">{weeklyAirplayCertificationCount} / {weeklyAirplayCertificationLimit}</p>
+              <p className="text-[10px] font-bold text-zinc-500">目標每週約 3–4 首</p>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <input value={candidateQuery} onChange={(event) => setCandidateQuery(event.target.value)} placeholder="搜尋候選歌名、創作者、類型" className="h-10 min-w-64 rounded-xl border border-white/10 bg-black/55 px-3 text-sm font-bold text-white outline-none focus:border-yellow-200/60" />
+            <p className="text-xs font-bold text-zinc-500">目前 {filteredCandidates.length} 首候選</p>
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+            {pagedCandidates.map((candidate) => {
+              const previewItem = candidatePreviewItem(candidate);
+              const busy = candidateBusyId === candidate.id;
+              const blocked = weeklyAirplayCertificationCount >= weeklyAirplayCertificationLimit;
+              return (
+                <article key={candidate.id} className="group relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-yellow-100/15 bg-black/55">
+                  <div className="relative aspect-square overflow-hidden bg-zinc-900">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={candidate.coverUrl} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
+                    <span className="absolute left-2 top-2 rounded-md border border-yellow-100/25 bg-black/75 px-1.5 py-1 text-[10px] font-black text-yellow-100">30+ DAYS</span>
+                    <span className="absolute bottom-2 left-2 rounded-md border border-pink-200/25 bg-black/80 px-1.5 py-1 text-[11px] font-black text-pink-100">♥ {candidate.heartCount}</span>
+                    <button type="button" disabled={!candidate.audioUrl} onClick={() => setPreviewTrack(previewItem)} className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full border border-yellow-100/50 bg-black/85 text-xs font-black text-yellow-100 shadow-lg transition hover:bg-yellow-300 hover:text-black disabled:cursor-not-allowed disabled:opacity-35" aria-label={`播放候選歌曲 ${candidate.title}`} title={candidate.audioUrl ? "播放試聽" : "目前沒有可播放音檔"}>▶</button>
+                  </div>
+                  <div className="flex min-h-0 flex-1 flex-col p-3">
+                    <h3 className="min-h-10 line-clamp-2 text-sm font-black leading-5 text-white">{candidate.title}</h3>
+                    <p className="mt-1 truncate text-xs font-bold text-zinc-300">{candidate.artist}</p>
+                    <p className="mt-1 truncate text-[11px] font-bold text-zinc-500">{candidate.genre}</p>
+                    <p className="mt-1 text-[10px] font-bold text-zinc-500">上架 {displayDate(candidate.createdAt)} · 其他反應 {candidate.positiveReactionCount}</p>
+                    <div className="mt-3 grid grid-cols-2 gap-1.5">
+                      <button type="button" disabled={busy || blocked} onClick={() => void certifyCandidate(candidate)} className="min-h-9 rounded-lg border border-yellow-100/45 bg-yellow-300 px-2 py-1.5 text-[11px] font-black text-black transition hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-45">{busy ? "處理中" : blocked ? "本週已滿" : "認可進 Showtime"}</button>
+                      <button type="button" disabled={busy} onClick={() => void removeCandidate(candidate)} className="min-h-9 rounded-lg border border-red-200/35 bg-red-500/10 px-2 py-1.5 text-[11px] font-black text-red-100 transition hover:border-red-200/65 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-45">{busy ? "處理中" : "移除歌曲"}</button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+            {pagedCandidates.length === 0 ? <p className="col-span-full rounded-xl border border-white/10 bg-black/30 px-4 py-10 text-center text-sm font-bold text-zinc-500">目前沒有 30 天以上的可決選候選歌曲。</p> : null}
+          </div>
+
+          <div className="mt-4 flex items-center justify-between gap-3 text-sm font-bold text-zinc-400">
+            <span>{currentCandidatePage} / {candidateTotalPages}</span>
+            <div className="flex gap-2">
+              <button type="button" disabled={currentCandidatePage <= 1} onClick={() => setCandidatePage((value) => Math.max(1, value - 1))} className="rounded-full border border-white/10 px-3 py-2 text-xs font-black disabled:opacity-35">上一頁</button>
+              <button type="button" disabled={currentCandidatePage >= candidateTotalPages} onClick={() => setCandidatePage((value) => Math.min(candidateTotalPages, value + 1))} className="rounded-full border border-white/10 px-3 py-2 text-xs font-black disabled:opacity-35">下一頁</button>
+            </div>
+          </div>
+        </section>
 
         <section className="mt-5 rounded-xl border border-white/10 bg-black/45 p-3 sm:p-4">
           <div>

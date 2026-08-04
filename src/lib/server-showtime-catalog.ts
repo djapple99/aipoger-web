@@ -7,6 +7,10 @@ import {
 import { LISTEN_BAR_AUDIO_BUCKET, LISTEN_BAR_COVER_BUCKET, type ListenBarTrackRow } from "@/lib/listen-bar";
 import type { AipogerChoiceCatalogItem } from "@/lib/aipoger-choice";
 import { signedBattleAudioUrl } from "@/lib/official-gatekeeper-media";
+import { isCurrentMusicGenre } from "@/lib/music-genres";
+
+export const SHOWTIME_REVIEW_AGE_DAYS = 30;
+export const SHOWTIME_WEEKLY_AIRPLAY_CERTIFICATION_LIMIT = 4;
 
 export type ShowtimeAdminTrackRow = ListenBarTrackRow & {
   created_by?: string | null;
@@ -20,6 +24,18 @@ export type ShowtimeAdminTrackRow = ListenBarTrackRow & {
   ai_music_showtime_certification_source?: string | null;
   ai_music_showtime_public_removed_at?: string | null;
   ai_music_showtime_public_removal_note?: string | null;
+};
+
+export type ShowtimeAdminCandidate = {
+  id: string;
+  title: string;
+  artist: string;
+  genre: string;
+  coverUrl: string;
+  audioUrl: string | null;
+  heartCount: number;
+  positiveReactionCount: number;
+  createdAt: string;
 };
 
 export type ShowtimeAdminArchiveRow = {
@@ -50,6 +66,9 @@ export type ShowtimeAdminCatalog = {
   items: AipogerChoiceCatalogItem[];
   tracks: ShowtimeAdminTrackRow[];
   archives: ShowtimeAdminArchiveRow[];
+  candidates: ShowtimeAdminCandidate[];
+  weeklyAirplayCertificationCount: number;
+  weeklyAirplayCertificationLimit: number;
 };
 
 const TRACK_SELECT = [
@@ -75,6 +94,8 @@ const TRACK_SELECT = [
   "bar_phase",
   "created_at",
   "created_by",
+  "heart_count",
+  "positive_reaction_count",
   "ai_music_challenge_status",
   "ai_music_showtime_certified",
   "ai_music_showtime_certified_at",
@@ -82,6 +103,26 @@ const TRACK_SELECT = [
   "ai_music_showtime_public_removed_at",
   "ai_music_showtime_public_removal_note",
 ].join(",");
+
+function taipeiWeekStartIso(value = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(value);
+  const year = Number(parts.find((part) => part.type === "year")?.value);
+  const month = Number(parts.find((part) => part.type === "month")?.value);
+  const day = Number(parts.find((part) => part.type === "day")?.value);
+  const taipeiDate = new Date(Date.UTC(year, month - 1, day));
+  const weekday = taipeiDate.getUTCDay() || 7;
+  taipeiDate.setUTCDate(taipeiDate.getUTCDate() - weekday + 1);
+  return new Date(taipeiDate.getTime() - 8 * 60 * 60 * 1000).toISOString();
+}
+
+function showtimeReviewCutoffIso(value = new Date()) {
+  return new Date(value.getTime() - SHOWTIME_REVIEW_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+}
 
 const ARCHIVE_SELECT = [
   "battle_id",
@@ -173,6 +214,41 @@ function catalogItemFromTrack(admin: SupabaseClient, row: ShowtimeAdminTrackRow)
   };
 }
 
+function isEligibleShowtimeCandidate(row: ShowtimeAdminTrackRow, cutoffIso: string) {
+  const status = row.review_status?.toLowerCase();
+  const moderationHeld = status === "moderation_hold" || status === "moderation hold";
+  const createdAt = new Date(row.created_at ?? 0);
+  return (
+    row.source === "community" &&
+    row.is_active !== false &&
+    !row.ai_music_showtime_certified &&
+    !row.ai_music_showtime_public_removed_at &&
+    status !== "hidden" &&
+    status !== "removed" &&
+    !moderationHeld &&
+    !row.hidden_at &&
+    !row.removed_at &&
+    Boolean(row.audio_path?.trim()) &&
+    isCurrentMusicGenre(row.genre) &&
+    Number.isFinite(createdAt.getTime()) &&
+    createdAt.toISOString() < cutoffIso
+  );
+}
+
+function candidateFromTrack(admin: SupabaseClient, row: ShowtimeAdminTrackRow): ShowtimeAdminCandidate {
+  return {
+    id: row.id,
+    title: stringValue(row.title, "未命名作品"),
+    artist: stringValue(row.artist, "AIPOGER 創作者"),
+    genre: stringValue(row.genre, "Original 自我風格"),
+    coverUrl: coverUrl(admin, row.cover_path),
+    audioUrl: audioUrl(admin, row.audio_path),
+    heartCount: Math.max(0, Math.round(Number(row.heart_count ?? 0))),
+    positiveReactionCount: Math.max(0, Math.round(Number(row.positive_reaction_count ?? 0))),
+    createdAt: dateValue(row.created_at),
+  };
+}
+
 function catalogItemFromArchive(row: ShowtimeAdminArchiveRow, playbackUrl: string | null): AipogerChoiceCatalogItem | null {
   const sourceId = stringValue(row.battle_id);
   if (!sourceId) return null;
@@ -194,20 +270,37 @@ function catalogItemFromArchive(row: ShowtimeAdminArchiveRow, playbackUrl: strin
   };
 }
 
-export async function loadShowtimeAdminCatalog(admin: SupabaseClient): Promise<ShowtimeAdminCatalog> {
-  const [trackResult, archiveResult] = await Promise.all([
+export async function loadShowtimeAdminCatalog(
+  admin: SupabaseClient,
+  options: { includeCandidates?: boolean } = {},
+): Promise<ShowtimeAdminCatalog> {
+  const includeCandidates = options.includeCandidates === true;
+  const [trackResult, archiveResult, candidateResult] = await Promise.all([
     admin.from("listen_bar_tracks").select(TRACK_SELECT).order("ai_music_showtime_certified_at", { ascending: false }).limit(500),
     admin.from("battle_result_archives").select(ARCHIVE_SELECT).order("archived_at", { ascending: false }).limit(200),
+    includeCandidates
+      ? admin.from("listen_bar_tracks").select(TRACK_SELECT).eq("source", "community").eq("is_active", true).order("created_at", { ascending: false }).limit(500)
+      : Promise.resolve({ data: [], error: null }),
   ]);
 
   if (trackResult.error && isMissingShowtimeSchema(trackResult.error)) {
-    return { schemaReady: false, items: [], tracks: [], archives: [] };
+    return {
+      schemaReady: false,
+      items: [],
+      tracks: [],
+      archives: [],
+      candidates: [],
+      weeklyAirplayCertificationCount: 0,
+      weeklyAirplayCertificationLimit: SHOWTIME_WEEKLY_AIRPLAY_CERTIFICATION_LIMIT,
+    };
   }
   if (trackResult.error) throw trackResult.error;
   if (archiveResult.error && !isMissingShowtimeSchema(archiveResult.error)) throw archiveResult.error;
+  if (candidateResult.error && !isMissingShowtimeSchema(candidateResult.error)) throw candidateResult.error;
 
   const tracks = (trackResult.data ?? []) as unknown as ShowtimeAdminTrackRow[];
   const archives = archiveResult.error ? [] : (archiveResult.data ?? []) as unknown as ShowtimeAdminArchiveRow[];
+  const candidateRows = candidateResult.error ? [] : (candidateResult.data ?? []) as unknown as ShowtimeAdminTrackRow[];
   const currentTracks = tracks.filter(
     (row) => Boolean(row.ai_music_showtime_certified) && isAiMusicShowtimePubliclyVisible(row),
   );
@@ -234,10 +327,33 @@ export async function loadShowtimeAdminCatalog(admin: SupabaseClient): Promise<S
     .filter((item): item is AipogerChoiceCatalogItem => Boolean(item))
     .sort((a, b) => new Date(b.certifiedAt).getTime() - new Date(a.certifiedAt).getTime() || a.id.localeCompare(b.id));
 
+  const cutoffIso = showtimeReviewCutoffIso();
+  const candidates = includeCandidates
+    ? candidateRows
+      .filter((row) => isEligibleShowtimeCandidate(row, cutoffIso))
+      .map((row) => candidateFromTrack(admin, row))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() || a.id.localeCompare(b.id))
+    : [];
+
+  let weeklyAirplayCertificationCount = 0;
+  if (includeCandidates) {
+    const weeklyCountResult = await admin
+      .from("listen_bar_tracks")
+      .select("id", { count: "exact", head: true })
+      .eq("ai_music_showtime_certified", true)
+      .eq("ai_music_showtime_certification_source", "airplay")
+      .gte("ai_music_showtime_certified_at", taipeiWeekStartIso());
+    if (weeklyCountResult.error) throw weeklyCountResult.error;
+    weeklyAirplayCertificationCount = weeklyCountResult.count ?? 0;
+  }
+
   return {
     schemaReady: true,
     items,
     tracks: currentTracks,
     archives: currentArchives.map((entry) => entry.archive),
+    candidates,
+    weeklyAirplayCertificationCount,
+    weeklyAirplayCertificationLimit: SHOWTIME_WEEKLY_AIRPLAY_CERTIFICATION_LIMIT,
   };
 }

@@ -18,7 +18,6 @@ import {
   type BattleFeedbackCounts,
   type BattleFeedbackKey,
 } from "@/lib/battle-result-archive";
-import { completeBattleCardIntent } from "@/lib/battle-pool-client";
 import { DROP_BATTLE_OFFICIAL_AUDIENCE_MIN, isOfficialDropBattleResult } from "@/lib/drop-battle-rematch";
 import { battleResultShortPath } from "@/lib/share-short-links";
 import { supabase } from "@/lib/supabase";
@@ -685,61 +684,6 @@ function BattleResultContent() {
       });
     }
 
-    if (!isUuid(battleId)) return;
-    const settledBattleId = battleId;
-    void (async () => {
-      const settle90s = await supabase.rpc("settle_90s_battle", {
-        p_battle_id: settledBattleId,
-        p_winner: winnerSide,
-      });
-      if (settle90s.error) {
-        const fallback = await supabase.rpc("settle_battle", {
-          p_battle_id: settledBattleId,
-          p_winner: winnerSide,
-        });
-        if (fallback.error && !/already settled|already closed|finished/i.test(fallback.error.message)) {
-          console.warn("[battle result settle]", fallback.error.message);
-        }
-      }
-
-      if (isOfficialBattleResult) {
-        const archive = await supabase.rpc("archive_battle_result", {
-          p_battle_id: settledBattleId,
-          p_winner: winnerSide,
-          p_final_vote_left: finalVoteLeft,
-          p_final_vote_right: finalVoteRight,
-          p_audience_review: audienceReview,
-          p_result_payload: {
-            source: "drop_battle",
-            battleType: "formal",
-            coverUrl: coverUrlRaw,
-            avatarUrl: avatarUrlRaw,
-            opponentCoverUrl: opponentCoverUrlRaw,
-            opponentAvatarUrl: opponentAvatarUrlRaw,
-            aiReview,
-            rank: displayRank,
-            genre: cleanParam(searchParams.get("genre")),
-            votesTotal: displayVoteTotal,
-            audienceCount,
-            officialAudienceMin,
-            feedbackA,
-            feedbackB,
-            resultHref,
-          },
-        });
-        if (archive.error) console.warn("[battle result archive]", archive.error.message);
-      }
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-      if (accessToken) {
-        await completeBattleCardIntent({ accessToken, battleId: settledBattleId, outcome: "completed" }).catch((err) => {
-          console.warn("[battle result complete card]", err);
-        });
-      }
-    })();
   }, [
     aiReview,
     audienceReview,

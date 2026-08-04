@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -14,11 +15,9 @@ export async function POST(request: NextRequest) {
 }
 
 async function expireRematchClaims(request: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const auth = request.headers.get("authorization") ?? "";
-    const token = auth.startsWith("Bearer ") ? auth.slice("Bearer ".length) : request.nextUrl.searchParams.get("secret");
-    if (token !== cronSecret) return jsonError("Unauthorized", 401);
+  const authorization = authorizeCronRequest(request);
+  if (!authorization.ok) {
+    return jsonError(authorization.error, authorization.status);
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

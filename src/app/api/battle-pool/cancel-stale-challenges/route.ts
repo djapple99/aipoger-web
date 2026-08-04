@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { cancelStalePendingDropBattles } from "@/lib/battle-pool-maintenance";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 export async function GET(request: NextRequest) {
   return cancelStaleChallenges(request);
@@ -11,13 +12,9 @@ export async function POST(request: NextRequest) {
 }
 
 async function cancelStaleChallenges(request: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const auth = request.headers.get("authorization") ?? "";
-    const token = auth.startsWith("Bearer ") ? auth.slice("Bearer ".length) : request.nextUrl.searchParams.get("secret");
-    if (token !== cronSecret) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const authorization = authorizeCronRequest(request);
+  if (!authorization.ok) {
+    return NextResponse.json({ error: authorization.error }, { status: authorization.status });
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

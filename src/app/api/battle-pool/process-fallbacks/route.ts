@@ -10,6 +10,7 @@ import { battleSeedForId } from "@/lib/battle-90s-system";
 import { DROP_BATTLE_OFFICIAL_AUDIENCE_MIN } from "@/lib/drop-battle-rematch";
 import { pickDropBattleWinnerForRules } from "@/lib/ai-music-challenge-rules";
 import { settleQCrashBattle } from "@/lib/server-q-crash";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 type SupabaseAdmin = SupabaseClient;
 
@@ -95,13 +96,9 @@ export async function POST(request: NextRequest) {
 }
 
 async function processFallbacks(request: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const auth = request.headers.get("authorization") ?? "";
-    const token = auth.startsWith("Bearer ") ? auth.slice("Bearer ".length) : request.nextUrl.searchParams.get("secret");
-    if (token !== cronSecret) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const authorization = authorizeCronRequest(request);
+  if (!authorization.ok) {
+    return NextResponse.json({ error: authorization.error }, { status: authorization.status });
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

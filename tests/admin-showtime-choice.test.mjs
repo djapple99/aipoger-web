@@ -19,14 +19,23 @@ const profilePage = readFileSync(new URL("../src/app/profile/page.tsx", import.m
 const migration = readFileSync(new URL("../supabase/migrations/20260712072918_choice_weekly_curation.sql", import.meta.url), "utf8");
 const productRules = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
 
-test("Showtime admin uses a current public six-cover catalog with display-only editing", () => {
+test("Showtime admin keeps a manual 30-day review queue beside the public catalog", () => {
   assert.ok(showtimeAdminPage.includes("Showtime 管理"));
   assert.ok(showtimeAdminPage.includes("SHOWTIME_PER_PAGE = 12"));
+  assert.ok(showtimeAdminPage.includes("SHOWTIME_CANDIDATES_PER_PAGE = 12"));
+  assert.ok(showtimeAdminPage.includes("30 天以上候選歌曲"));
+  assert.ok(showtimeAdminPage.includes("candidate.heartCount"));
+  assert.ok(showtimeAdminPage.includes("candidatePreviewItem"));
+  assert.ok(showtimeAdminPage.includes('action: "certify_candidate"'));
+  assert.ok(showtimeAdminPage.includes('action: "remove_candidate"'));
   assert.ok(showtimeAdminPage.includes("xl:grid-cols-6"));
   assert.ok(showtimeAdminPage.includes("編輯資料"));
   assert.ok(showtimeAdminPage.includes("Showtime 評語／作品介紹"));
   assert.ok(showtimeAdminPage.includes("textarea value={editForm.description}"));
   assert.ok(showtimeAdminRoute.includes("update_track_metadata"));
+  assert.ok(showtimeAdminRoute.includes("certify_candidate"));
+  assert.ok(showtimeAdminRoute.includes("remove_candidate"));
+  assert.ok(showtimeAdminRoute.includes("30-day Showtime review dislike"));
   assert.ok(showtimeAdminRoute.includes("uploadTrackCover"));
   assert.ok(showtimeAdminRoute.includes('ai_music_challenge_status: "showcase"'));
   assert.ok(showtimeCatalog.includes("Boolean(row.ai_music_showtime_certified) && isAiMusicShowtimePubliclyVisible(row)"));
@@ -35,6 +44,9 @@ test("Showtime admin uses a current public six-cover catalog with display-only e
   assert.equal(showtimeAdminPage.includes("公播候選"), false);
   assert.equal(showtimeAdminPage.includes("certify_track"), false);
   assert.equal(showtimeAdminRoute.includes("certify_track"), false);
+  assert.ok(showtimeCatalog.includes("SHOWTIME_REVIEW_AGE_DAYS = 30"));
+  assert.ok(showtimeCatalog.includes("SHOWTIME_WEEKLY_AIRPLAY_CERTIFICATION_LIMIT = 4"));
+  assert.ok(showtimeCatalog.includes("heartCount"));
   assert.ok(showtimeAdminRoute.includes('body.action !== "hide_archive"'));
   assert.equal(showtimeAdminRoute.includes("audio_path:"), false);
   assert.equal(showtimeAdminRoute.includes("heart_count:"), false);

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 type StoredBarMessage = {
   id: string;
@@ -43,14 +44,6 @@ function adminClient() {
   return createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-}
-
-function assertCronAuthorized(request: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return true;
-  const auth = request.headers.get("authorization") ?? "";
-  const token = auth.startsWith("Bearer ") ? auth.slice("Bearer ".length) : request.nextUrl.searchParams.get("secret");
-  return token === cronSecret;
 }
 
 async function cleanupStoredMessages(admin: ReturnType<typeof adminClient>) {
@@ -97,8 +90,9 @@ async function cleanupDatabaseMessages(admin: ReturnType<typeof adminClient>) {
 }
 
 async function cleanupMessages(request: NextRequest) {
-  if (!assertCronAuthorized(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const authorization = authorizeCronRequest(request);
+  if (!authorization.ok) {
+    return NextResponse.json({ error: authorization.error }, { status: authorization.status });
   }
 
   try {

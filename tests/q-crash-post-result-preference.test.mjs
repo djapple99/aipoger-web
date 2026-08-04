@@ -31,5 +31,6 @@ test("Battle Records surfaces Q Crash separately and hides unmarked legacy archi
   assert.match(records, /record\.publicVisible/);
   assert.match(records, /record\.audienceCount >= DROP_BATTLE_OFFICIAL_AUDIENCE_MIN/);
   assert.match(records, /battleShortPath/);
-  assert.match(normalResult, /source: "drop_battle"/);
+  assert.match(normalResult, /upsertArchivedBattleResult/);
+  assert.doesNotMatch(normalResult, /settle_90s_battle|archive_battle_result/);
 });

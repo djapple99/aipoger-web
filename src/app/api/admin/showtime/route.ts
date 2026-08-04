@@ -13,11 +13,12 @@ import { normalizeYouTubeUrl } from "@/lib/youtube-url";
 import {
   isMissingShowtimeSchema,
   loadShowtimeAdminCatalog,
+  SHOWTIME_WEEKLY_AIRPLAY_CERTIFICATION_LIMIT,
   type ShowtimeAdminArchiveRow,
   type ShowtimeAdminTrackRow,
 } from "@/lib/server-showtime-catalog";
 
-type ShowtimeAction = "hide_track" | "hide_archive" | "update_track_metadata";
+type ShowtimeAction = "hide_track" | "hide_archive" | "update_track_metadata" | "certify_candidate" | "remove_candidate";
 
 const allowedGenreValues = new Set(MUSIC_GENRE_OPTIONS.map((genre) => genre.value));
 const allowedCoverMimeTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -90,6 +91,65 @@ async function loadTrack(admin: ReturnType<typeof adminClient>, id: string) {
 async function loadArchive(admin: ReturnType<typeof adminClient>, id: string) {
   const { archives } = await loadShowtimeAdminCatalog(admin);
   return archives.find((row) => row.battle_id === id) ?? null;
+}
+
+async function certifyCandidate(admin: ReturnType<typeof adminClient>, id: string) {
+  const catalog = await loadShowtimeAdminCatalog(admin, { includeCandidates: true });
+  const candidate = catalog.candidates.find((row) => row.id === id);
+  if (!candidate) throw new Error("這首歌不在可決選的 30 天以上候選清單中，可能已下架或已進 Showtime。" );
+  if (catalog.weeklyAirplayCertificationCount >= SHOWTIME_WEEKLY_AIRPLAY_CERTIFICATION_LIMIT) {
+    throw new Error(`本週人工認可已達 ${SHOWTIME_WEEKLY_AIRPLAY_CERTIFICATION_LIMIT} 首上限，下週再決選。` );
+  }
+
+  const now = new Date().toISOString();
+  const { data, error } = await admin
+    .from("listen_bar_tracks")
+    .update({
+      ai_music_showtime_certified: true,
+      ai_music_showtime_certified_at: now,
+      ai_music_showtime_certification_source: "airplay",
+      ai_music_showtime_public_removed_at: null,
+      ai_music_showtime_public_removed_by: null,
+      ai_music_showtime_public_removal_note: null,
+      ai_music_challenge_status: "showcase",
+      ai_music_showtime_updated_at: now,
+      updated_at: now,
+    })
+    .eq("id", id)
+    .eq("source", "community")
+    .eq("ai_music_showtime_certified", false)
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  if (!data?.id) throw new Error("這首歌剛剛已被其他操作更新，請重新整理候選清單。" );
+  return `已將《${candidate.title}》認可進 Showtime。`;
+}
+
+async function removeCandidate(admin: ReturnType<typeof adminClient>, id: string) {
+  const catalog = await loadShowtimeAdminCatalog(admin, { includeCandidates: true });
+  const candidate = catalog.candidates.find((row) => row.id === id);
+  if (!candidate) throw new Error("這首歌不在可移除的 30 天以上候選清單中，可能已下架或已進 Showtime。" );
+
+  const now = new Date().toISOString();
+  const { data, error } = await admin
+    .from("listen_bar_tracks")
+    .update({
+      is_active: false,
+      review_status: "removed",
+      hidden_at: now,
+      removed_at: now,
+      moderation_note: "Owner removed from Bar Heartbreak console. 30-day Showtime review dislike.",
+      updated_at: now,
+    })
+    .eq("id", id)
+    .eq("source", "community")
+    .eq("is_active", true)
+    .eq("ai_music_showtime_certified", false)
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  if (!data?.id) throw new Error("這首歌剛剛已被其他操作更新，請重新整理候選清單。" );
+  return `已移除《${candidate.title}》；歌曲資料仍保留在後台。`;
 }
 
 async function updateTrack(
@@ -233,7 +293,7 @@ export async function GET(request: NextRequest) {
   try {
     const guard = await requireOwnerAdmin(request);
     if (guard.error) return guard.error;
-    const catalog = await loadShowtimeAdminCatalog(guard.admin);
+    const catalog = await loadShowtimeAdminCatalog(guard.admin, { includeCandidates: true });
     return NextResponse.json(catalog, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (isMissingShowtimeSchema(error)) return NextResponse.json({ schemaReady: false, items: [], tracks: [], archives: [] });
@@ -247,6 +307,16 @@ export async function PATCH(request: NextRequest) {
     if (guard.error) return guard.error;
     const body = (await request.json().catch(() => null)) as (Record<string, unknown> & { action?: ShowtimeAction; id?: string }) | null;
     if (!body?.action || !isUuid(body.id)) return jsonError("管理操作資料不完整。" );
+
+    if (body.action === "certify_candidate") {
+      const message = await certifyCandidate(guard.admin, body.id);
+      return NextResponse.json({ message });
+    }
+
+    if (body.action === "remove_candidate") {
+      const message = await removeCandidate(guard.admin, body.id);
+      return NextResponse.json({ message });
+    }
 
     if (body.action === "hide_track" || body.action === "update_track_metadata") {
       const track = await loadTrack(guard.admin, body.id);
