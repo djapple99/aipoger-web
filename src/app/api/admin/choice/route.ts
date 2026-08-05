@@ -43,6 +43,7 @@ type CreatorChoiceCollectionRow = {
   title: string | null;
   intro: string | null;
   is_published: boolean | null;
+  cover_path: string | null;
   published_at: string | null;
   aipoger_creator_choice_items?: ChoiceItemRow[] | null;
 };
@@ -57,10 +58,11 @@ type ChoiceLibraryEntry = {
   isPublished: boolean;
   itemCount: number;
   coverUrl: string | null;
+  creatorId?: string;
   href: string;
 };
 
-type ChoiceAction = "save_collection" | "add_item" | "remove_item" | "move_item" | "set_published" | "clear_cover";
+type ChoiceAction = "save_collection" | "add_item" | "remove_item" | "move_item" | "set_published" | "clear_cover" | "delete_collection";
 
 const MAX_COVER_BYTES = 10 * 1024 * 1024;
 const ALLOWED_COVER_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -217,12 +219,21 @@ async function loadChoiceLibrary(
   officialRows: ChoiceCollectionRow[],
   catalog: AipogerChoiceCatalogItem[],
 ) {
-  const [{ data: creatorData, error: creatorError }, { data: profileData, error: profileError }] = await Promise.all([
-    admin
+  let { data: creatorData, error: creatorError } = await admin
+    .from("aipoger_creator_choice_collections")
+    .select("id,creator_id,curator_name,week_start,title,intro,is_published,cover_path,published_at,aipoger_creator_choice_items(id,collection_id,source_kind,source_id,position)")
+    .order("week_start", { ascending: false })
+    .limit(80);
+  if (creatorError && isMissingChoiceCover(creatorError)) {
+    const fallback = await admin
       .from("aipoger_creator_choice_collections")
       .select("id,creator_id,curator_name,week_start,title,intro,is_published,published_at,aipoger_creator_choice_items(id,collection_id,source_kind,source_id,position)")
       .order("week_start", { ascending: false })
-      .limit(80),
+      .limit(80);
+    creatorData = (fallback.data ?? []).map((row) => ({ ...row, cover_path: null }));
+    creatorError = fallback.error;
+  }
+  const [{ data: profileData, error: profileError }] = await Promise.all([
     (() => {
       const ids = officialRows.map((row) => row.created_by).filter((value): value is string => Boolean(value));
       return ids.length > 0
@@ -254,13 +265,14 @@ async function loadChoiceLibrary(
   const creatorEntries: ChoiceLibraryEntry[] = ((creatorData ?? []) as CreatorChoiceCollectionRow[]).map((row) => ({
     id: row.id,
     kind: "creator",
+    creatorId: row.creator_id,
     weekStart: row.week_start,
     title: row.title?.trim() || "",
     curatorName: row.curator_name?.trim() || "創作者",
     intro: row.intro?.trim() || "",
     isPublished: Boolean(row.is_published),
     itemCount: row.aipoger_creator_choice_items?.length ?? 0,
-    coverUrl: libraryCover(admin, null, row.aipoger_creator_choice_items, catalog),
+    coverUrl: libraryCover(admin, row.cover_path, row.aipoger_creator_choice_items, catalog),
     href: choicePublicPath(row.id, "creator"),
   }));
   return [...officialEntries, ...creatorEntries].sort(
@@ -303,6 +315,36 @@ async function collectionExists(admin: ReturnType<typeof adminClient>, collectio
     .maybeSingle();
   if (error) throw error;
   return Boolean(data?.id);
+}
+
+async function collectionCoverPath(admin: ReturnType<typeof adminClient>, collectionId: string) {
+  let { data, error } = await admin
+    .from("aipoger_choice_collections")
+    .select("id,cover_path")
+    .eq("id", collectionId)
+    .maybeSingle();
+  if (error && isMissingChoiceCover(error)) {
+    const fallback = await admin
+      .from("aipoger_choice_collections")
+      .select("id")
+      .eq("id", collectionId)
+      .maybeSingle();
+    data = fallback.data ? { ...fallback.data, cover_path: null } : null;
+    error = fallback.error;
+  }
+  if (error) throw error;
+  return { exists: Boolean(data?.id), coverPath: typeof data?.cover_path === "string" ? data.cover_path : null };
+}
+
+async function removeChoiceEngagement(admin: ReturnType<typeof adminClient>, collectionId: string) {
+  for (const table of ["aipoger_choice_collection_hearts", "aipoger_choice_collection_comments"] as const) {
+    const { error } = await admin
+      .from(table)
+      .delete()
+      .eq("collection_kind", "official")
+      .eq("collection_id", collectionId);
+    if (error && !isMissingChoiceSchema(error)) throw error;
+  }
 }
 
 async function assertSelectableSource(admin: ReturnType<typeof adminClient>, sourceKind: unknown, sourceId: unknown) {
@@ -374,6 +416,22 @@ export async function PATCH(request: NextRequest) {
     const collectionId = body?.collectionId;
     if (!isUuid(collectionId) || !(await collectionExists(guard.admin, collectionId))) {
       return jsonError("找不到 Choice 週期。", 404);
+    }
+
+    if (action === "delete_collection") {
+      if (body?.confirmed !== true) return jsonError("刪除 Choice 前需要再次確認。", 400);
+      const current = await collectionCoverPath(guard.admin, collectionId);
+      if (!current.exists) return jsonError("找不到 Choice 週期。", 404);
+      await removeChoiceEngagement(guard.admin, collectionId);
+      const { error } = await guard.admin
+        .from("aipoger_choice_collections")
+        .delete()
+        .eq("id", collectionId);
+      if (error) throw error;
+      if (current.coverPath) {
+        await guard.admin.storage.from(LISTEN_BAR_COVER_BUCKET).remove([current.coverPath]);
+      }
+      return NextResponse.json({ message: "這一期 Choice 已刪除。" });
     }
 
     if (action === "add_item") {

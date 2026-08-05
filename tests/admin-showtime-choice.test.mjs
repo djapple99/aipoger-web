@@ -82,6 +82,8 @@ test("Choice persists human weekly selections with strict bounded publishing", (
   assert.ok(choiceAdminRoute.includes("!source?.isPublic || !source.selectable"));
   assert.ok(choiceAdminRoute.includes('action === "set_published"'));
   assert.ok(choiceAdminRoute.includes('action === "clear_cover"'));
+  assert.ok(choiceAdminRoute.includes('action === "delete_collection"'));
+  assert.ok(choiceAdminRoute.includes("confirmed !== true"));
   assert.ok(choiceAdminPage.includes("Choice 管理"));
   assert.ok(choiceAdminPage.includes("加入本週 Choice"));
   assert.ok(choiceAdminPage.includes("上傳封面"));
@@ -114,6 +116,8 @@ test("Choice admin exposes a compact visual library for each weekly issue", () =
   assert.ok(choiceAdminPage.includes("entry.isPublished ? \"已發布\" : \"草稿\""));
   assert.ok(choiceAdminPage.includes("entry.itemCount"));
   assert.ok(choiceAdminPage.includes("創作者 Choice"));
+  assert.ok(choiceAdminPage.includes("點擊小圖示就能進入編輯"));
+  assert.ok(choiceAdminPage.includes("刪除這一期"));
   assert.ok(choiceAdminRoute.includes("aipoger_creator_choice_collections"));
   assert.ok(choiceAdminRoute.includes("choicePublicPath(row.id, \"creator\")"));
 });
@@ -154,4 +158,15 @@ test("published Creator Choice keeps history and supports a dedicated cover", ()
 test("profile exposes dedicated owner entry points for Showtime and Choice", () => {
   assert.ok(profilePage.includes('href="/admin/showtime"'));
   assert.ok(profilePage.includes('href="/admin/choice"'));
+});
+
+test("Choice history opens creator editing and supports confirmed deletion", () => {
+  const creatorChoiceRoute = readFileSync(new URL("../src/app/api/creator-choice/route.ts", import.meta.url), "utf8");
+  const creatorChoiceProfile = readFileSync(new URL("../src/app/profile/choice/page.tsx", import.meta.url), "utf8");
+  assert.ok(creatorChoiceRoute.includes('action === "delete_collection"'));
+  assert.ok(creatorChoiceRoute.includes("confirmed !== true"));
+  assert.ok(creatorChoiceProfile.includes("CHOICE LIBRARY"));
+  assert.ok(creatorChoiceProfile.includes("delete_collection"));
+  assert.ok(creatorChoiceProfile.includes("刪除這一期"));
+  assert.ok(creatorChoiceProfile.includes("searchParams.get(\"collection\")"));
 });

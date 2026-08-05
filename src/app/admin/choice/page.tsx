@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarDays, CheckCircle2, FilePlus2, Music2 } from "lucide-react";
+import { CalendarDays, CheckCircle2, FilePlus2, Music2, Pencil } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AIPOGER_CHOICE_INTRO_MAX_LENGTH,
@@ -35,6 +35,7 @@ type ChoiceLibraryEntry = {
   isPublished: boolean;
   itemCount: number;
   coverUrl: string | null;
+  creatorId?: string;
   href: string;
 };
 
@@ -73,10 +74,12 @@ function ChoiceLibraryCard({
   entry,
   active,
   onSelect,
+  editHref,
 }: {
   entry: ChoiceLibraryEntry;
   active: boolean;
   onSelect: () => void;
+  editHref?: string;
 }) {
   const content = (
     <>
@@ -105,6 +108,9 @@ function ChoiceLibraryCard({
   );
 
   if (entry.kind === "creator") {
+    if (editHref) {
+      return <Link href={editHref} className="group relative flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-black/45 p-2 text-left transition hover:-translate-y-0.5 hover:border-cyan-100/60" title="編輯自己的 Creator Choice">{content}<Pencil className="absolute right-1.5 top-1.5 h-3 w-3 text-cyan-100" aria-hidden="true" /></Link>;
+    }
     return <Link href={entry.href} className="group flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-black/45 p-2 text-left transition hover:-translate-y-0.5 hover:border-white/25" title="查看前台 Creator Choice">{content}</Link>;
   }
 
@@ -113,6 +119,7 @@ function ChoiceLibraryCard({
       type="button"
       onClick={onSelect}
       aria-pressed={active}
+      aria-label={`編輯 ${libraryDisplayTitle(entry)}`}
       className={`group flex min-w-0 items-center gap-2 rounded-xl border p-2 text-left transition hover:-translate-y-0.5 ${active ? "border-cyan-100/70 bg-cyan-300/12 shadow-[0_8px_24px_rgba(34,211,238,0.12)]" : "border-white/10 bg-black/45 hover:border-white/25"}`}
     >
       {content}
@@ -122,6 +129,7 @@ function ChoiceLibraryCard({
 
 export default function AdminChoicePage() {
   const [adminState, setAdminState] = useState<AdminState>("checking");
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [schemaReady, setSchemaReady] = useState(true);
   const [catalog, setCatalog] = useState<AipogerChoiceCatalogItem[]>([]);
   const [collections, setCollections] = useState<AipogerChoiceCollection[]>([]);
@@ -182,6 +190,7 @@ export default function AdminChoicePage() {
         setAdminState("login");
         return;
       }
+      setCurrentUserId(user.id);
       const allowed = await loadIsAdmin(user.id);
       if (!mounted) return;
       setAdminState(allowed ? "ready" : "denied");
@@ -339,6 +348,17 @@ export default function AdminChoicePage() {
     return Boolean(result);
   }
 
+  function selectOfficialChoice(id: string | null) {
+    setSelectedId(id);
+    window.requestAnimationFrame(() => document.getElementById("choice-editor")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
+
+  async function deleteChoice() {
+    if (!selected) return;
+    if (!window.confirm(`確定刪除「${selected.title.trim() || "這一期 Choice"}」？這一期的歌曲排序與封面會一併移除，但不會刪除歌曲本身。`)) return;
+    await runAction("delete_collection", { collectionId: selected.id, confirmed: true }, "這一期 Choice 已刪除。", null);
+  }
+
   if (adminState === "checking") {
     return <main className="min-h-screen bg-[#050505] px-5 py-10 text-sm font-black text-zinc-400">檢查 Choice 後台權限中...</main>;
   }
@@ -379,11 +399,11 @@ export default function AdminChoicePage() {
             <div>
               <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-100/70">Choice Library</p>
               <h2 className="mt-1 text-xl font-black">歷期 Choice</h2>
-              <p className="mt-1 text-xs font-bold text-zinc-500">用小圖示快速切換每一期；可為每期 Choice 上傳專用封面。</p>
+              <p className="mt-1 text-xs font-bold text-zinc-500">點擊小圖示就能進入編輯；自己的 Creator Choice 會開啟個人編輯台。</p>
             </div>
             <button
               type="button"
-              onClick={() => setSelectedId(null)}
+              onClick={() => selectOfficialChoice(null)}
               className="inline-flex items-center gap-2 rounded-full border border-cyan-100/35 bg-cyan-300/10 px-3 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-100/65 hover:bg-cyan-300/20"
             >
               <FilePlus2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -391,19 +411,19 @@ export default function AdminChoicePage() {
             </button>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-            {library.map((entry) => <ChoiceLibraryCard key={`${entry.kind}:${entry.id}`} entry={entry} active={entry.kind === "official" && entry.id === selectedId} onSelect={() => setSelectedId(entry.id)} />)}
+            {library.map((entry) => <ChoiceLibraryCard key={`${entry.kind}:${entry.id}`} entry={entry} active={entry.kind === "official" && entry.id === selectedId} editHref={entry.kind === "creator" && entry.creatorId === currentUserId ? `/profile/choice?collection=${encodeURIComponent(entry.id)}` : undefined} onSelect={() => selectOfficialChoice(entry.id)} />)}
             {library.length === 0 ? <p className="col-span-full rounded-xl border border-dashed border-white/10 px-3 py-7 text-center text-sm font-bold text-zinc-500">尚未建立 Choice，按「新增一期」開始。</p> : null}
           </div>
         </section>
 
-        <section className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)]">
+        <section id="choice-editor" className="mt-5 scroll-mt-6 grid grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)]">
           <div className="min-w-0 rounded-2xl border border-white/10 bg-black/55 p-4 sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-100/70">Weekly Curation</p>
                 <h2 className="mt-1 text-xl font-black">{selected ? `週次 ${displayDate(selected.weekStart)}` : "建立 Choice 週次"}</h2>
               </div>
-              <select value={selectedId ?? ""} onChange={(event) => setSelectedId(event.target.value || null)} className="h-10 w-full min-w-0 rounded-xl border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none sm:w-auto sm:min-w-44">
+              <select value={selectedId ?? ""} onChange={(event) => selectOfficialChoice(event.target.value || null)} className="h-10 w-full min-w-0 rounded-xl border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none sm:w-auto sm:min-w-44">
                 <option value="">新增週次</option>
                 {collections.map((collection) => <option key={collection.id} value={collection.id}>{displayDate(collection.weekStart)} {collection.isPublished ? "· 已發布" : "· 草稿"}</option>)}
               </select>
@@ -450,8 +470,8 @@ export default function AdminChoicePage() {
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
               <p className="text-xs font-bold text-zinc-500">{choiceItemCountMessage(selected?.items.length ?? 0)}</p>
               <div className="flex flex-wrap gap-2">
-                <button type="button" disabled={busy !== ""} onClick={() => void saveCollection()} className="rounded-full border border-white/15 px-4 py-2 text-xs font-black text-zinc-100 disabled:opacity-45">{busy === "save_collection" ? "儲存中" : selected ? "儲存草稿" : "建立草稿"}</button>
-                {selected ? <button type="button" disabled={busy !== ""} onClick={() => void runAction("set_published", { collectionId: selected.id, isPublished: !selected.isPublished, weekStart, title, intro, curatorIdentity }, selected.isPublished ? "Choice 已撤回。" : "Choice 已發布。", selected.id)} className={`rounded-full border px-4 py-2 text-xs font-black disabled:opacity-45 ${selected.isPublished ? "border-red-200/35 bg-red-500/10 text-red-100" : "border-cyan-200/45 bg-cyan-300 text-black"}`}>{busy === "set_published" ? "處理中" : selected.isPublished ? "撤回發布" : "發布到 Showtime"}</button> : null}
+                <button type="button" disabled={busy !== ""} onClick={() => void saveCollection()} className="rounded-full border border-white/15 px-4 py-2 text-xs font-black text-zinc-100 disabled:opacity-45">{busy === "save_collection" ? "儲存中" : selected?.isPublished ? "儲存並更新發布" : selected ? "儲存草稿" : "建立草稿"}</button>
+                {selected ? <><button type="button" disabled={busy !== ""} onClick={() => void runAction("set_published", { collectionId: selected.id, isPublished: !selected.isPublished, weekStart, title, intro, curatorIdentity }, selected.isPublished ? "Choice 已撤回。" : "Choice 已重新發布。", selected.id)} className={`rounded-full border px-4 py-2 text-xs font-black disabled:opacity-45 ${selected.isPublished ? "border-red-200/35 bg-red-500/10 text-red-100" : "border-cyan-200/45 bg-cyan-300 text-black"}`}>{busy === "set_published" ? "處理中" : selected.isPublished ? "撤回發布" : "重新發布"}</button><button type="button" disabled={busy !== ""} onClick={() => void deleteChoice()} className="rounded-full border border-red-200/25 px-4 py-2 text-xs font-black text-red-100 transition hover:border-red-200/60 disabled:opacity-45">刪除這一期</button></> : null}
               </div>
             </div>
           </div>
