@@ -173,8 +173,11 @@ test("Choice history opens creator editing and supports confirmed deletion", () 
 });
 
 test("Choice covers carry a clear AIPOGER mark in the top-left corner", () => {
-  assert.ok(choiceCover.includes("AIPOGER_BRAND_LOGO"));
-  assert.ok(choiceCover.includes("absolute left-1.5 top-1.5"));
+  assert.ok(choiceCover.includes("AIPOGER_CHOICE_LOGO"));
+  assert.ok(choiceCover.includes("absolute left-2 top-2"));
+  assert.ok(choiceCover.includes("drop-shadow"));
+  assert.equal(choiceCover.includes("bg-black"), false);
+  assert.equal(choiceCover.includes("border-white"), false);
   assert.ok(showtimeChoiceShelf.includes("AipogerChoiceCover"));
   assert.ok(choiceAdminPage.includes("AipogerChoiceCover"));
   assert.ok(creatorChoiceProfilePage.includes("AipogerChoiceCover"));

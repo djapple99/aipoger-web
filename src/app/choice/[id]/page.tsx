@@ -222,7 +222,7 @@ export default function PublicChoicePage() {
         <header className="border-b border-yellow-200/20 pb-7">
           <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.8fr)] lg:gap-10">
             <div className="flex min-w-0 items-center gap-4">
-              <AipogerChoiceCover src={coverUrl} className="h-16 w-16 shrink-0 rounded-full border border-orange-200/35" logoClassName="h-2.5 w-8" />
+              <AipogerChoiceCover src={coverUrl} className="h-16 w-16 shrink-0 rounded-full border border-orange-200/35" logoClassName="h-3.5 w-4" />
               <div className="min-w-0">
                 <h1 className="text-3xl font-black leading-tight text-white sm:text-5xl">{title}</h1>
                 <p className="mt-2 text-sm font-bold text-zinc-400">策展：{collection.curatorName || "AIPOGER"} · {displayDate(collection.weekStart)}</p>

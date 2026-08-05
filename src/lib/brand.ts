@@ -1,5 +1,6 @@
 export const AIPOGER_BRAND_LOGO_PATH = "/aipoger-brand-logo-transparent-20260522.png";
 export const AIPOGER_BRAND_LOGO = AIPOGER_BRAND_LOGO_PATH;
+export const AIPOGER_CHOICE_LOGO = "/aipoger-choice-logo-transparent.png";
 export const AIPOGER_CONTACT_EMAIL = "aipoger99@gmail.com";
 export const AIPOGER_TUTORIAL_PLAYLIST_URL =
   "https://www.youtube.com/playlist?list=PLm4XZTsplHgQLZG-4sm-y3LZTrbnxSPHs";

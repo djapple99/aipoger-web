@@ -1,4 +1,4 @@
-import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
+import { AIPOGER_CHOICE_LOGO } from "@/lib/brand";
 
 type AipogerChoiceCoverProps = {
   src: string;
@@ -11,16 +11,19 @@ export function AipogerChoiceCover({
   src,
   alt = "",
   className = "",
-  logoClassName = "h-4 w-12",
+  logoClassName = "h-7 w-8",
 }: AipogerChoiceCoverProps) {
   return (
     <span className={`relative block overflow-hidden ${className}`}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt={alt} className="h-full w-full object-cover" />
-      <span className="pointer-events-none absolute left-1.5 top-1.5 z-10 inline-flex items-center rounded border border-white/60 bg-black/65 px-1 py-0.5 shadow-[0_2px_8px_rgba(0,0,0,0.5)] backdrop-blur-[2px]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={AIPOGER_BRAND_LOGO} alt="" aria-hidden="true" className={`${logoClassName} object-contain`} />
-      </span>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={AIPOGER_CHOICE_LOGO}
+        alt=""
+        aria-hidden="true"
+        className={`pointer-events-none absolute left-2 top-2 z-10 object-contain drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] ${logoClassName}`}
+      />
     </span>
   );
 }
