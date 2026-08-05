@@ -21,7 +21,21 @@ type ChoicePayload = {
   schemaReady?: boolean;
   catalog?: AipogerChoiceCatalogItem[];
   collections?: AipogerChoiceCollection[];
+  library?: ChoiceLibraryEntry[];
   error?: string;
+};
+
+type ChoiceLibraryEntry = {
+  id: string;
+  kind: "official" | "creator";
+  weekStart: string;
+  title: string;
+  curatorName: string;
+  intro: string;
+  isPublished: boolean;
+  itemCount: number;
+  coverUrl: string | null;
+  href: string;
 };
 
 const CHOICE_CATALOG_PER_PAGE = 24;
@@ -43,11 +57,67 @@ function choiceThumb(collection: AipogerChoiceCollection) {
   return collection.items[0]?.coverUrl?.trim() || null;
 }
 
+function libraryDisplayTitle(entry: ChoiceLibraryEntry) {
+  return entry.title.trim() || `${entry.curatorName.trim() || "AIPOGER"} Choice`;
+}
+
+function ChoiceLibraryCard({
+  entry,
+  active,
+  onSelect,
+}: {
+  entry: ChoiceLibraryEntry;
+  active: boolean;
+  onSelect: () => void;
+}) {
+  const content = (
+    <>
+      <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-zinc-950">
+        {entry.coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={entry.coverUrl} alt="" className="h-full w-full object-cover transition duration-200 group-hover:scale-105" />
+        ) : (
+          <span className="flex h-full w-full items-center justify-center text-cyan-100/70"><Music2 className="h-5 w-5" aria-hidden="true" /></span>
+        )}
+        <span className={`absolute right-0.5 top-0.5 h-2 w-2 rounded-full border border-black ${entry.isPublished ? "bg-emerald-300" : "bg-zinc-500"}`} aria-hidden="true" />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-xs font-black text-white">{libraryDisplayTitle(entry)}</span>
+        <span className="mt-0.5 block truncate text-[10px] font-bold text-cyan-100/75">{entry.kind === "creator" ? "創作者 Choice" : "官方 Choice"} · {entry.curatorName}</span>
+        <span className="mt-0.5 flex items-center gap-1 text-[10px] font-bold text-zinc-500">
+          <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
+          {displayDate(entry.weekStart)}
+        </span>
+        <span className={`mt-0.5 flex items-center gap-1 text-[10px] font-black ${entry.isPublished ? "text-emerald-200" : "text-zinc-500"}`}>
+          {entry.isPublished ? <CheckCircle2 className="h-3 w-3 shrink-0" aria-hidden="true" /> : <span className="h-3 w-3 shrink-0 text-center">·</span>}
+          {entry.isPublished ? "已發布" : "草稿"} · {entry.itemCount} 首
+        </span>
+      </span>
+    </>
+  );
+
+  if (entry.kind === "creator") {
+    return <Link href={entry.href} className="group flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-black/45 p-2 text-left transition hover:-translate-y-0.5 hover:border-white/25" title="查看前台 Creator Choice">{content}</Link>;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={active}
+      className={`group flex min-w-0 items-center gap-2 rounded-xl border p-2 text-left transition hover:-translate-y-0.5 ${active ? "border-cyan-100/70 bg-cyan-300/12 shadow-[0_8px_24px_rgba(34,211,238,0.12)]" : "border-white/10 bg-black/45 hover:border-white/25"}`}
+    >
+      {content}
+    </button>
+  );
+}
+
 export default function AdminChoicePage() {
   const [adminState, setAdminState] = useState<AdminState>("checking");
   const [schemaReady, setSchemaReady] = useState(true);
   const [catalog, setCatalog] = useState<AipogerChoiceCatalogItem[]>([]);
   const [collections, setCollections] = useState<AipogerChoiceCollection[]>([]);
+  const [library, setLibrary] = useState<ChoiceLibraryEntry[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [weekStart, setWeekStart] = useState(choiceWeekStart());
   const [title, setTitle] = useState("");
@@ -72,6 +142,18 @@ export default function AdminChoicePage() {
     setSchemaReady(payload?.schemaReady !== false);
     setCatalog(payload?.catalog ?? []);
     setCollections(nextCollections);
+    setLibrary(payload?.library ?? nextCollections.map((collection) => ({
+      id: collection.id,
+      kind: "official" as const,
+      weekStart: collection.weekStart,
+      title: collection.title,
+      curatorName: collection.curatorName || "AIPOGER",
+      intro: collection.intro,
+      isPublished: collection.isPublished,
+      itemCount: collection.items.length,
+      coverUrl: choiceThumb(collection),
+      href: `/choice/${encodeURIComponent(collection.id)}?kind=official`,
+    })));
     setSelectedId((current) => {
       if (preferredId && nextCollections.some((item) => item.id === preferredId)) return preferredId;
       if (current && nextCollections.some((item) => item.id === current)) return current;
@@ -243,41 +325,8 @@ export default function AdminChoicePage() {
             </button>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-            {collections.map((collection) => {
-              const active = collection.id === selectedId;
-              const thumb = choiceThumb(collection);
-              return (
-                <button
-                  key={collection.id}
-                  type="button"
-                  onClick={() => setSelectedId(collection.id)}
-                  aria-pressed={active}
-                  className={`group flex min-w-0 items-center gap-2 rounded-xl border p-2 text-left transition hover:-translate-y-0.5 ${active ? "border-cyan-100/70 bg-cyan-300/12 shadow-[0_8px_24px_rgba(34,211,238,0.12)]" : "border-white/10 bg-black/45 hover:border-white/25"}`}
-                >
-                  <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-zinc-950">
-                    {thumb ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={thumb} alt="" className="h-full w-full object-cover transition duration-200 group-hover:scale-105" />
-                    ) : (
-                      <span className="flex h-full w-full items-center justify-center text-cyan-100/70"><Music2 className="h-5 w-5" aria-hidden="true" /></span>
-                    )}
-                    <span className={`absolute right-0.5 top-0.5 h-2 w-2 rounded-full border border-black ${collection.isPublished ? "bg-emerald-300" : "bg-zinc-500"}`} aria-hidden="true" />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate text-xs font-black text-white">{collection.title || "未命名 Choice"}</span>
-                    <span className="mt-0.5 flex items-center gap-1 text-[10px] font-bold text-zinc-500">
-                      <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
-                      {displayDate(collection.weekStart)}
-                    </span>
-                    <span className={`mt-0.5 flex items-center gap-1 text-[10px] font-black ${collection.isPublished ? "text-emerald-200" : "text-zinc-500"}`}>
-                      {collection.isPublished ? <CheckCircle2 className="h-3 w-3 shrink-0" aria-hidden="true" /> : <span className="h-3 w-3 shrink-0 text-center">·</span>}
-                      {collection.isPublished ? "已發布" : "草稿"} · {collection.items.length} 首
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
-            {collections.length === 0 ? <p className="col-span-full rounded-xl border border-dashed border-white/10 px-3 py-7 text-center text-sm font-bold text-zinc-500">尚未建立 Choice，按「新增一期」開始。</p> : null}
+            {library.map((entry) => <ChoiceLibraryCard key={`${entry.kind}:${entry.id}`} entry={entry} active={entry.kind === "official" && entry.id === selectedId} onSelect={() => setSelectedId(entry.id)} />)}
+            {library.length === 0 ? <p className="col-span-full rounded-xl border border-dashed border-white/10 px-3 py-7 text-center text-sm font-bold text-zinc-500">尚未建立 Choice，按「新增一期」開始。</p> : null}
           </div>
         </section>
 

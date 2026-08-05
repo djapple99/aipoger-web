@@ -104,8 +104,11 @@ test("Choice admin exposes a compact visual library for each weekly issue", () =
   assert.ok(choiceAdminPage.includes("choiceThumb(collection)"));
   assert.ok(choiceAdminPage.includes("FilePlus2"));
   assert.ok(choiceAdminPage.includes("aria-pressed={active}"));
-  assert.ok(choiceAdminPage.includes("collection.isPublished ? \"已發布\" : \"草稿\""));
-  assert.ok(choiceAdminPage.includes("collection.items.length"));
+  assert.ok(choiceAdminPage.includes("entry.isPublished ? \"已發布\" : \"草稿\""));
+  assert.ok(choiceAdminPage.includes("entry.itemCount"));
+  assert.ok(choiceAdminPage.includes("創作者 Choice"));
+  assert.ok(choiceAdminRoute.includes("aipoger_creator_choice_collections"));
+  assert.ok(choiceAdminRoute.includes("choicePublicPath(row.id, \"creator\")"));
 });
 
 test("official Choice can create a draft from the first selected song", () => {

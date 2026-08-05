@@ -6,6 +6,7 @@ import {
   AIPOGER_CHOICE_MIN_ITEMS,
   AIPOGER_CHOICE_INTRO_MAX_LENGTH,
   AIPOGER_CHOICE_CURATOR_IDENTITIES,
+  choicePublicPath,
   type AipogerChoiceCuratorIdentity,
   isAipogerChoiceSourceKind,
   type AipogerChoiceCatalogItem,
@@ -15,6 +16,7 @@ import { loadChoiceSelectionCatalog } from "@/lib/server-choice-catalog";
 
 type ChoiceCollectionRow = {
   id: string;
+  created_by: string | null;
   week_start: string;
   title: string | null;
   intro: string | null;
@@ -29,6 +31,31 @@ type ChoiceItemRow = {
   source_kind: string;
   source_id: string;
   position: number;
+};
+
+type CreatorChoiceCollectionRow = {
+  id: string;
+  creator_id: string;
+  curator_name: string | null;
+  week_start: string;
+  title: string | null;
+  intro: string | null;
+  is_published: boolean | null;
+  published_at: string | null;
+  aipoger_creator_choice_items?: ChoiceItemRow[] | null;
+};
+
+type ChoiceLibraryEntry = {
+  id: string;
+  kind: "official" | "creator";
+  weekStart: string;
+  title: string;
+  curatorName: string;
+  intro: string;
+  isPublished: boolean;
+  itemCount: number;
+  coverUrl: string | null;
+  href: string;
 };
 
 type ChoiceAction = "save_collection" | "add_item" | "remove_item" | "move_item" | "set_published";
@@ -122,11 +149,76 @@ function normalizeCollections(rows: ChoiceCollectionRow[], catalog: AipogerChoic
 async function loadCollections(admin: ReturnType<typeof adminClient>) {
   const { data, error } = await admin
     .from("aipoger_choice_collections")
-    .select("id,week_start,title,intro,is_published,curator_identity,aipoger_choice_items(id,collection_id,source_kind,source_id,position)")
+    .select("id,created_by,week_start,title,intro,is_published,curator_identity,aipoger_choice_items(id,collection_id,source_kind,source_id,position)")
     .order("week_start", { ascending: false })
     .limit(80);
   if (error) throw error;
   return (data ?? []) as ChoiceCollectionRow[];
+}
+
+function libraryCover(items: ChoiceItemRow[] | null | undefined, catalog: AipogerChoiceCatalogItem[]) {
+  const first = (items ?? [])
+    .slice()
+    .sort((left, right) => left.position - right.position)
+    .map((item) => catalog.find((candidate) => candidate.sourceKind === item.source_kind && candidate.id === item.source_id))
+    .find(Boolean);
+  return first?.coverUrl?.trim() || null;
+}
+
+async function loadChoiceLibrary(
+  admin: ReturnType<typeof adminClient>,
+  officialRows: ChoiceCollectionRow[],
+  catalog: AipogerChoiceCatalogItem[],
+) {
+  const [{ data: creatorData, error: creatorError }, { data: profileData, error: profileError }] = await Promise.all([
+    admin
+      .from("aipoger_creator_choice_collections")
+      .select("id,creator_id,curator_name,week_start,title,intro,is_published,published_at,aipoger_creator_choice_items(id,collection_id,source_kind,source_id,position)")
+      .order("week_start", { ascending: false })
+      .limit(80),
+    (() => {
+      const ids = officialRows.map((row) => row.created_by).filter((value): value is string => Boolean(value));
+      return ids.length > 0
+        ? admin.from("fighter_profiles").select("id,display_name").in("id", ids)
+        : Promise.resolve({ data: [], error: null });
+    })(),
+  ]);
+  if (creatorError && !isMissingChoiceSchema(creatorError)) throw creatorError;
+  if (profileError) throw profileError;
+
+  const profiles = new Map(
+    ((profileData ?? []) as Array<{ id: string; display_name: string | null }>).map((profile) => [profile.id, profile.display_name?.trim() || "愛波哥"]),
+  );
+  const officialEntries: ChoiceLibraryEntry[] = officialRows.map((row) => {
+    const curatorName = row.curator_identity === "personal" ? profiles.get(row.created_by ?? "") || "愛波哥" : "AIPOGER";
+    return {
+      id: row.id,
+      kind: "official",
+      weekStart: row.week_start,
+      title: row.title?.trim() || "",
+      curatorName,
+      intro: row.intro?.trim() || "",
+      isPublished: Boolean(row.is_published),
+      itemCount: row.aipoger_choice_items?.length ?? 0,
+      coverUrl: libraryCover(row.aipoger_choice_items, catalog),
+      href: choicePublicPath(row.id, "official"),
+    };
+  });
+  const creatorEntries: ChoiceLibraryEntry[] = ((creatorData ?? []) as CreatorChoiceCollectionRow[]).map((row) => ({
+    id: row.id,
+    kind: "creator",
+    weekStart: row.week_start,
+    title: row.title?.trim() || "",
+    curatorName: row.curator_name?.trim() || "創作者",
+    intro: row.intro?.trim() || "",
+    isPublished: Boolean(row.is_published),
+    itemCount: row.aipoger_creator_choice_items?.length ?? 0,
+    coverUrl: libraryCover(row.aipoger_creator_choice_items, catalog),
+    href: choicePublicPath(row.id, "creator"),
+  }));
+  return [...officialEntries, ...creatorEntries].sort(
+    (left, right) => right.weekStart.localeCompare(left.weekStart) || (left.kind === "official" ? -1 : 1),
+  );
 }
 
 async function collectionItems(admin: ReturnType<typeof adminClient>, collectionId: string) {
@@ -181,10 +273,12 @@ export async function GET(request: NextRequest) {
     if (guard.error) return guard.error;
     const [catalog, rows] = await Promise.all([loadChoiceSelectionCatalog(guard.admin), loadCollections(guard.admin)]);
     if (!catalog.schemaReady) return NextResponse.json({ schemaReady: false, catalog: [], collections: [] });
+    const library = await loadChoiceLibrary(guard.admin, rows, catalog.items);
     return NextResponse.json({
       schemaReady: true,
       catalog: catalog.items,
       collections: normalizeCollections(rows, catalog.items),
+      library,
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (isMissingChoiceSchema(error)) return NextResponse.json({ schemaReady: false, catalog: [], collections: [] });
