@@ -98,6 +98,16 @@ test("Choice selection shows public Showtime works and 30-day new releases in a 
   assert.ok(showtimeCatalog.includes("audioUrl: audioUrl(admin, row.audio_path)"));
 });
 
+test("Choice admin exposes a compact visual library for each weekly issue", () => {
+  assert.ok(choiceAdminPage.includes("Choice Library"));
+  assert.ok(choiceAdminPage.includes("歷期 Choice"));
+  assert.ok(choiceAdminPage.includes("choiceThumb(collection)"));
+  assert.ok(choiceAdminPage.includes("FilePlus2"));
+  assert.ok(choiceAdminPage.includes("aria-pressed={active}"));
+  assert.ok(choiceAdminPage.includes("collection.isPublished ? \"已發布\" : \"草稿\""));
+  assert.ok(choiceAdminPage.includes("collection.items.length"));
+});
+
 test("official Choice can create a draft from the first selected song", () => {
   assert.ok(choiceAdminPage.includes("async function ensureChoiceCollection"));
   assert.ok(choiceAdminPage.includes("async function addChoiceItem"));

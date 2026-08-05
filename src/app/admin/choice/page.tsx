@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CalendarDays, CheckCircle2, FilePlus2, Music2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AIPOGER_CHOICE_INTRO_MAX_LENGTH,
@@ -36,6 +37,10 @@ function displayDate(value: string) {
   const date = new Date(`${value}T00:00:00`);
   if (!Number.isFinite(date.getTime())) return value;
   return new Intl.DateTimeFormat("zh-TW", { year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+}
+
+function choiceThumb(collection: AipogerChoiceCollection) {
+  return collection.items[0]?.coverUrl?.trim() || null;
 }
 
 export default function AdminChoicePage() {
@@ -220,6 +225,61 @@ export default function AdminChoicePage() {
         {!schemaReady ? <section className="mt-5 rounded-xl border border-red-200/30 bg-red-500/10 p-4 text-sm font-bold text-red-100">Choice 資料表尚未套用。部署本次 migration 後，此管理頁會自動可用。</section> : null}
         {message ? <p className="mt-4 rounded-xl border border-emerald-200/25 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-100">{message}</p> : null}
         {error ? <p className="mt-4 rounded-xl border border-red-200/25 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-100">{error}</p> : null}
+
+        <section className="mt-5 rounded-2xl border border-white/10 bg-black/45 p-4 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-100/70">Choice Library</p>
+              <h2 className="mt-1 text-xl font-black">歷期 Choice</h2>
+              <p className="mt-1 text-xs font-bold text-zinc-500">用小圖示快速切換每一期，封面取自該期第一首作品。</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedId(null)}
+              className="inline-flex items-center gap-2 rounded-full border border-cyan-100/35 bg-cyan-300/10 px-3 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-100/65 hover:bg-cyan-300/20"
+            >
+              <FilePlus2 className="h-3.5 w-3.5" aria-hidden="true" />
+              新增一期
+            </button>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            {collections.map((collection) => {
+              const active = collection.id === selectedId;
+              const thumb = choiceThumb(collection);
+              return (
+                <button
+                  key={collection.id}
+                  type="button"
+                  onClick={() => setSelectedId(collection.id)}
+                  aria-pressed={active}
+                  className={`group flex min-w-0 items-center gap-2 rounded-xl border p-2 text-left transition hover:-translate-y-0.5 ${active ? "border-cyan-100/70 bg-cyan-300/12 shadow-[0_8px_24px_rgba(34,211,238,0.12)]" : "border-white/10 bg-black/45 hover:border-white/25"}`}
+                >
+                  <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-zinc-950">
+                    {thumb ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={thumb} alt="" className="h-full w-full object-cover transition duration-200 group-hover:scale-105" />
+                    ) : (
+                      <span className="flex h-full w-full items-center justify-center text-cyan-100/70"><Music2 className="h-5 w-5" aria-hidden="true" /></span>
+                    )}
+                    <span className={`absolute right-0.5 top-0.5 h-2 w-2 rounded-full border border-black ${collection.isPublished ? "bg-emerald-300" : "bg-zinc-500"}`} aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-xs font-black text-white">{collection.title || "未命名 Choice"}</span>
+                    <span className="mt-0.5 flex items-center gap-1 text-[10px] font-bold text-zinc-500">
+                      <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      {displayDate(collection.weekStart)}
+                    </span>
+                    <span className={`mt-0.5 flex items-center gap-1 text-[10px] font-black ${collection.isPublished ? "text-emerald-200" : "text-zinc-500"}`}>
+                      {collection.isPublished ? <CheckCircle2 className="h-3 w-3 shrink-0" aria-hidden="true" /> : <span className="h-3 w-3 shrink-0 text-center">·</span>}
+                      {collection.isPublished ? "已發布" : "草稿"} · {collection.items.length} 首
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+            {collections.length === 0 ? <p className="col-span-full rounded-xl border border-dashed border-white/10 px-3 py-7 text-center text-sm font-bold text-zinc-500">尚未建立 Choice，按「新增一期」開始。</p> : null}
+          </div>
+        </section>
 
         <section className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)]">
           <div className="min-w-0 rounded-2xl border border-white/10 bg-black/55 p-4 sm:p-5">
