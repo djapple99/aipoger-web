@@ -29,7 +29,7 @@ type ProfileRow = {
 
 function adminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY;
+  const serviceKey = process.env.SUPABASE_SERVICE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceKey) throw new Error("Missing Supabase server configuration.");
   return createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -45,7 +45,7 @@ function isMissingCreatorChoiceSchema(error: unknown) {
         (error as { code?: string }).code,
       ].filter(Boolean).join(" ")
     : String(error ?? "");
-  return /aipoger_creator_choice|schema cache|relation.*does not exist|PGRST204|42P01/i.test(value);
+  return /schema cache|relation.*does not exist|PGRST204|42P01/i.test(value);
 }
 
 function catalogKey(kind: string, id: string) {

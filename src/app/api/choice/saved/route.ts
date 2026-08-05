@@ -20,7 +20,7 @@ type CollectionRow = {
 
 function adminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY;
+  const key = process.env.SUPABASE_SERVICE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new Error("Missing Supabase server configuration.");
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
@@ -34,7 +34,7 @@ function isMissingChoiceSchema(error: unknown) {
   const text = error && typeof error === "object"
     ? [(error as { message?: string }).message, (error as { details?: string }).details, (error as { code?: string }).code].filter(Boolean).join(" ")
     : String(error ?? "");
-  return /aipoger_(creator_)?choice|schema cache|relation.*does not exist|PGRST204|42P01/i.test(text);
+  return /schema cache|relation.*does not exist|PGRST204|42P01/i.test(text);
 }
 
 function recordKey(kind: string, id: string) {
