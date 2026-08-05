@@ -121,6 +121,12 @@ export async function GET() {
 
     return NextResponse.json({ schemaReady: true, collections }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
+    console.error("[creator-choice/public] read failed", {
+      code: error && typeof error === "object" ? (error as { code?: string }).code : undefined,
+      message: error instanceof Error ? error.message : String(error ?? ""),
+      details: error && typeof error === "object" ? (error as { details?: string }).details : undefined,
+      hint: error && typeof error === "object" ? (error as { hint?: string }).hint : undefined,
+    });
     if (isMissingCreatorChoiceSchema(error)) {
       return NextResponse.json({ schemaReady: false, collections: [] }, { headers: { "Cache-Control": "no-store" } });
     }

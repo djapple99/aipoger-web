@@ -113,6 +113,12 @@ export async function GET() {
       collection: resolveCollection(data as ChoiceCollectionRow, catalog.items, curatorResult.data as CuratorProfileRow | null),
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
+    console.error("[choice/current] read failed", {
+      code: error && typeof error === "object" ? (error as { code?: string }).code : undefined,
+      message: error instanceof Error ? error.message : String(error ?? ""),
+      details: error && typeof error === "object" ? (error as { details?: string }).details : undefined,
+      hint: error && typeof error === "object" ? (error as { hint?: string }).hint : undefined,
+    });
     if (isMissingChoiceSchema(error)) return NextResponse.json({ schemaReady: false, collection: null });
     return NextResponse.json({ error: error instanceof Error ? error.message : "Choice 暫時無法讀取。" }, { status: 500 });
   }
