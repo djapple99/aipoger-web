@@ -643,14 +643,19 @@ async function fetchAiMusicTracksForRank(lang: string): Promise<{ data: RankAiMu
   }
 }
 
-async function fetchCurrentChoice(): Promise<{ collection: AipogerChoiceCollection | null; error: Error | null }> {
+async function fetchCurrentChoice(): Promise<{ collections: AipogerChoiceCollection[]; error: Error | null }> {
   try {
     const response = await fetch("/api/choice/current", { cache: "no-store" });
-    const payload = (await response.json().catch(() => null)) as { collection?: AipogerChoiceCollection | null; error?: string } | null;
-    if (!response.ok) return { collection: null, error: new Error(payload?.error || "Could not load AIPOGER Choice.") };
-    return { collection: payload?.collection ?? null, error: null };
+    const payload = (await response.json().catch(() => null)) as { collection?: AipogerChoiceCollection | null; collections?: AipogerChoiceCollection[]; error?: string } | null;
+    if (!response.ok) return { collections: [], error: new Error(payload?.error || "Could not load AIPOGER Choice.") };
+    const collections = Array.isArray(payload?.collections)
+      ? payload.collections
+      : payload?.collection
+        ? [payload.collection]
+        : [];
+    return { collections, error: null };
   } catch (error) {
-    return { collection: null, error: error instanceof Error ? error : new Error(String(error)) };
+    return { collections: [], error: error instanceof Error ? error : new Error(String(error)) };
   }
 }
 
@@ -998,7 +1003,7 @@ export default function RankPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [archivedResults, setArchivedResults] = useState<ArchivedBattleResult[]>([]);
   const [hotBarRows, setHotBarRows] = useState<RankRow[]>([]);
-  const [choiceCollection, setChoiceCollection] = useState<AipogerChoiceCollection | null>(null);
+  const [choiceCollections, setChoiceCollections] = useState<AipogerChoiceCollection[]>([]);
   const [creatorChoices, setCreatorChoices] = useState<AipogerPublicCreatorChoiceCollection[]>([]);
   const [choiceHearts, setChoiceHearts] = useState<Record<string, ShowtimeChoiceHeartState>>({});
   const [choiceHeartBusy, setChoiceHeartBusy] = useState<Record<string, boolean>>({});
@@ -1030,7 +1035,7 @@ export default function RankPage() {
       const [
         { data: archiveData, error: archiveError },
         { data: hotData, error: hotError },
-        { collection: nextChoice, error: choiceError },
+        { collections: nextChoiceCollections, error: choiceError },
         { collections: nextCreatorChoices, error: creatorChoiceError },
       ] = await Promise.all([
         fetchBattleArchivesForRank(),
@@ -1052,7 +1057,7 @@ export default function RankPage() {
         console.warn("[rank creator choices]", creatorChoiceError.message);
       }
       if (!cancelled) {
-        setChoiceCollection(nextChoice);
+        setChoiceCollections(nextChoiceCollections);
         setCreatorChoices(nextCreatorChoices);
       }
 
@@ -1174,21 +1179,20 @@ export default function RankPage() {
   }, [battleRows, hotBarRows]);
 
   const choiceEntries = useMemo<ShowtimeChoiceShelfEntry[]>(() => {
-    const official = choiceCollection?.items.length
-      ? [{
+    const official = choiceCollections
+      .filter((collection) => collection.items.length > 0)
+      .map((choiceCollection) => ({
           id: choiceCollection.id,
           kind: "official" as const,
           curatorName: choiceCollection.curatorName || "AIPOGER",
-          coverUrl: choiceCollection.curatorIdentity === "personal"
-            ? mediaSrc(choiceCollection.avatarUrl || "")
-            : AIPOGER_BRAND_LOGO,
+          coverUrl: choiceCollection.coverUrl?.trim()
+            || (choiceCollection.curatorIdentity === "personal" ? mediaSrc(choiceCollection.avatarUrl || "") : AIPOGER_BRAND_LOGO),
           title: choiceDisplayTitle(choiceCollection.curatorName, choiceCollection.title),
           intro: choiceCollection.intro,
           weekStart: choiceCollection.weekStart,
           href: choicePublicPath(choiceCollection.id, "official"),
           items: choiceCollection.items,
-        }]
-      : [];
+        }));
     const creators = creatorChoices.map((collection) => ({
       id: collection.id,
       kind: "creator" as const,
@@ -1201,7 +1205,7 @@ export default function RankPage() {
       items: collection.items,
     }));
     return [...official, ...creators];
-  }, [choiceCollection, creatorChoices]);
+  }, [choiceCollections, creatorChoices]);
 
   const startChoicePlayback = (entry: ShowtimeChoiceShelfEntry, itemId?: string) => {
     const playable = entry.items

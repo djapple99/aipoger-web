@@ -39,6 +39,8 @@ type ChoiceLibraryEntry = {
 };
 
 const CHOICE_CATALOG_PER_PAGE = 24;
+const MAX_COVER_BYTES = 10 * 1024 * 1024;
+const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
 
 async function authHeader(): Promise<Record<string, string>> {
   const {
@@ -54,7 +56,13 @@ function displayDate(value: string) {
 }
 
 function choiceThumb(collection: AipogerChoiceCollection) {
-  return collection.items[0]?.coverUrl?.trim() || null;
+  return collection.coverUrl?.trim() || collection.items[0]?.coverUrl?.trim() || null;
+}
+
+function isAcceptedCover(file: File) {
+  return ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)
+    && file.size > 0
+    && file.size <= MAX_COVER_BYTES;
 }
 
 function libraryDisplayTitle(entry: ChoiceLibraryEntry) {
@@ -123,6 +131,8 @@ export default function AdminChoicePage() {
   const [title, setTitle] = useState("");
   const [intro, setIntro] = useState("");
   const [curatorIdentity, setCuratorIdentity] = useState<AipogerChoiceCuratorIdentity>("official");
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState("");
   const [query, setQuery] = useState("");
   const [catalogPage, setCatalogPage] = useState(1);
   const [busy, setBusy] = useState("");
@@ -189,13 +199,21 @@ export default function AdminChoicePage() {
       setTitle("");
       setIntro("");
       setCuratorIdentity("official");
+      setCoverFile(null);
+      setCoverPreview("");
       return;
     }
     setWeekStart(selected.weekStart);
     setTitle(selected.title);
     setIntro(selected.intro);
     setCuratorIdentity(selected.curatorIdentity ?? "official");
+    setCoverFile(null);
+    setCoverPreview(choiceThumb(selected) || "");
   }, [selected]);
+
+  useEffect(() => () => {
+    if (coverPreview.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
+  }, [coverPreview]);
 
   const selectedKeys = useMemo(() => new Set((selected?.items ?? []).map((item) => `${item.sourceKind}:${item.id}`)), [selected]);
   const eligibleCatalog = useMemo(() => catalog.filter((item) => item.isPublic && item.selectable), [catalog]);
@@ -232,13 +250,61 @@ export default function AdminChoicePage() {
   }
 
   async function saveCollection() {
-    await runAction("save_collection", {
+    const pendingCoverFile = coverFile;
+    const result = await runAction("save_collection", {
       collectionId: selected?.id,
       weekStart,
       title,
       intro,
       curatorIdentity,
     }, "Choice 草稿已儲存。", selected?.id);
+    const collectionId = result?.collectionId ?? selected?.id;
+    if (!collectionId || !pendingCoverFile) return;
+    setBusy("upload_cover");
+    setError("");
+    try {
+      const form = new FormData();
+      form.set("collectionId", collectionId);
+      form.set("file", pendingCoverFile);
+      const response = await fetch("/api/admin/choice", {
+        method: "POST",
+        headers: await authHeader(),
+        body: form,
+      });
+      const payload = (await response.json().catch(() => null)) as { message?: string; error?: string; coverUrl?: string } | null;
+      if (!response.ok) throw new Error(payload?.error || "Choice 封面上傳失敗。");
+      setMessage(`${payload?.message || "Choice 草稿已儲存。"}`);
+      setCoverFile(null);
+      if (payload?.coverUrl) setCoverPreview(payload.coverUrl);
+      await loadData(collectionId);
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Choice 封面上傳失敗。");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  function onCoverChange(file: File | null) {
+    if (!file) return;
+    if (!isAcceptedCover(file)) {
+      setError("封面只接受 JPG、PNG、WebP、GIF，且檔案需小於 10MB。");
+      return;
+    }
+    if (coverPreview.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
+    setCoverFile(file);
+    setCoverPreview(URL.createObjectURL(file));
+    setError("");
+  }
+
+  async function clearChoiceCover() {
+    if (!selected) return;
+    if (coverFile) {
+      if (coverPreview.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
+      setCoverFile(null);
+      setCoverPreview(selected.coverUrl?.trim() || selected.items[0]?.coverUrl?.trim() || "");
+      return;
+    }
+    await runAction("clear_cover", { collectionId: selected.id }, "已移除本期 Choice 封面。", selected.id);
   }
 
   async function ensureChoiceCollection() {
@@ -313,7 +379,7 @@ export default function AdminChoicePage() {
             <div>
               <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-100/70">Choice Library</p>
               <h2 className="mt-1 text-xl font-black">歷期 Choice</h2>
-              <p className="mt-1 text-xs font-bold text-zinc-500">用小圖示快速切換每一期，封面取自該期第一首作品。</p>
+              <p className="mt-1 text-xs font-bold text-zinc-500">用小圖示快速切換每一期；可為每期 Choice 上傳專用封面。</p>
             </div>
             <button
               type="button"
@@ -359,6 +425,27 @@ export default function AdminChoicePage() {
                 <textarea value={intro} maxLength={AIPOGER_CHOICE_INTRO_MAX_LENGTH} rows={6} onChange={(event) => setIntro(event.target.value)} placeholder="寫下這期 Choice 的推薦文章。" className="rounded-xl border border-white/10 bg-black px-3 py-2 text-sm font-bold leading-6 text-white outline-none focus:border-cyan-200/55" />
                 <span className="font-bold text-zinc-600">儲存後會顯示在 Choice 卡片與公開頁標題旁。</span>
               </label>
+              <div className="grid gap-2 text-xs font-black text-zinc-400 sm:col-span-2">
+                <span>本期 Choice 封面（可選）</span>
+                <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-black p-3">
+                  <span className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-zinc-950">
+                    {coverPreview ? (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={coverPreview} alt="" className="h-full w-full object-cover" />
+                      </>
+                    ) : <span className="flex h-full w-full items-center justify-center text-[10px] font-black text-zinc-600">第一首作品</span>}
+                  </span>
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                    <label className="inline-flex cursor-pointer items-center rounded-full border border-cyan-100/35 bg-cyan-300/10 px-3 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-100/70 hover:bg-cyan-300/20">
+                      上傳封面
+                      <input type="file" accept={IMAGE_ACCEPT} className="sr-only" onChange={(event) => onCoverChange(event.target.files?.[0] ?? null)} />
+                    </label>
+                    {selected && (coverFile || selected.coverUrl) ? <button type="button" disabled={busy !== ""} onClick={() => void clearChoiceCover()} className="rounded-full border border-red-200/25 px-3 py-2 text-xs font-black text-red-100 transition hover:border-red-200/60 disabled:opacity-45">{coverFile ? "取消新封面" : "移除自訂封面"}</button> : null}
+                    <span className="text-[11px] font-bold text-zinc-500">JPG / PNG / WebP / GIF，最大 10MB。未上傳時使用第一首作品封面。</span>
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
               <p className="text-xs font-bold text-zinc-500">{choiceItemCountMessage(selected?.items.length ?? 0)}</p>

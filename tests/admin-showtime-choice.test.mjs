@@ -17,6 +17,7 @@ const showtimeChoiceShelf = readFileSync(
 );
 const profilePage = readFileSync(new URL("../src/app/profile/page.tsx", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../supabase/migrations/20260712072918_choice_weekly_curation.sql", import.meta.url), "utf8");
+const coverMigration = readFileSync(new URL("../supabase/migrations/20260805190000_choice_collection_cover.sql", import.meta.url), "utf8");
 const productRules = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
 
 test("Showtime admin keeps a manual 30-day review queue beside the public catalog", () => {
@@ -77,8 +78,11 @@ test("Choice persists human weekly selections with strict bounded publishing", (
   assert.ok(choiceAdminRoute.includes("assertSelectableSource"));
   assert.ok(choiceAdminRoute.includes("!source?.isPublic || !source.selectable"));
   assert.ok(choiceAdminRoute.includes('action === "set_published"'));
+  assert.ok(choiceAdminRoute.includes('action === "clear_cover"'));
   assert.ok(choiceAdminPage.includes("Choice 管理"));
   assert.ok(choiceAdminPage.includes("加入本週 Choice"));
+  assert.ok(choiceAdminPage.includes("上傳封面"));
+  assert.ok(coverMigration.includes("add column if not exists cover_path"));
 });
 
 test("Choice selection shows public Showtime works and 30-day new releases in a compact cover catalog", () => {
@@ -121,8 +125,10 @@ test("official Choice can create a draft from the first selected song", () => {
 
 test("published Choice reaches Showtime without becoming a ranking or social publisher", () => {
   assert.ok(choiceCurrentRoute.includes('.eq("is_published", true)'));
+  assert.ok(choiceCurrentRoute.includes(".limit(80)"));
+  assert.ok(choiceCurrentRoute.includes("collections"));
   assert.ok(rankPage.includes("fetchCurrentChoice"));
-  assert.ok(rankPage.includes("choiceCollection?.items.length"));
+  assert.ok(rankPage.includes("choiceCollections"));
   assert.ok(showtimeChoiceShelf.includes('id="choice-weekly"'));
   assert.equal(choiceAdminRoute.includes("social_posts"), false);
   assert.equal(choiceAdminRoute.includes("publish_target"), false);

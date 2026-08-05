@@ -212,7 +212,7 @@ export default function PublicChoicePage() {
   if (loading) return <main className="min-h-screen bg-[#050505] px-5 py-14 text-sm font-black text-zinc-400">正在開啟 Choice...</main>;
   if (!collection) return <main className="min-h-screen bg-[#050505] px-5 py-14 text-sm font-black text-red-100">{error || "找不到這份 Choice。"}</main>;
 
-  const coverUrl = collection.avatarUrl?.trim() || AIPOGER_BRAND_LOGO;
+  const coverUrl = collection.coverUrl?.trim() || collection.avatarUrl?.trim() || AIPOGER_BRAND_LOGO;
   const title = choiceDisplayTitle(collection.curatorName, collection.title);
 
   return (

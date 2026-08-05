@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { LISTEN_BAR_COVER_BUCKET } from "@/lib/listen-bar";
 
 export type ChoiceShareMetadata = {
   kind: "official" | "creator";
@@ -22,6 +23,7 @@ type OfficialChoiceRow = {
   curator_identity: string | null;
   title: string | null;
   intro: string | null;
+  cover_path: string | null;
 };
 
 type FighterProfileRow = {
@@ -42,6 +44,13 @@ function isUuid(value: string) {
 
 function clean(value: string | null | undefined) {
   return value?.trim() ?? "";
+}
+
+function publicCoverUrl(admin: SupabaseClient, path: string | null | undefined) {
+  const cleanPath = clean(path);
+  if (!cleanPath) return "";
+  if (/^https?:/i.test(cleanPath)) return cleanPath;
+  return admin.storage.from(LISTEN_BAR_COVER_BUCKET).getPublicUrl(cleanPath).data.publicUrl || "";
 }
 
 async function loadProfile(admin: SupabaseClient, userId: string | null) {
@@ -75,7 +84,7 @@ export async function loadChoiceShareMetadata(id: string): Promise<ChoiceShareMe
       .maybeSingle(),
     admin
       .from("aipoger_choice_collections")
-      .select("created_by,curator_identity,title,intro")
+      .select("created_by,curator_identity,title,intro,cover_path")
       .eq("id", id)
       .eq("is_published", true)
       .maybeSingle(),
@@ -104,7 +113,7 @@ export async function loadChoiceShareMetadata(id: string): Promise<ChoiceShareMe
       curatorName: personal ? profile.displayName || "愛波哥" : "AIPOGER",
       title: clean(row.title),
       intro: clean(row.intro),
-      imageUrl: personal ? profile.avatarUrl : "",
+      imageUrl: publicCoverUrl(admin, row.cover_path) || (personal ? profile.avatarUrl : ""),
     };
   }
 

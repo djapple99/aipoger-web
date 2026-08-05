@@ -43,6 +43,7 @@ export type AipogerChoiceCollection = {
   curatorIdentity?: AipogerChoiceCuratorIdentity;
   curatorName?: string;
   avatarUrl?: string;
+  coverUrl?: string;
   items: AipogerChoiceItem[];
 };
 

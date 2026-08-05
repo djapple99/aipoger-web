@@ -7,6 +7,7 @@ import {
   type AipogerChoiceCuratorIdentity,
 } from "@/lib/aipoger-choice";
 import { loadChoiceSelectionCatalog } from "@/lib/server-choice-catalog";
+import { LISTEN_BAR_COVER_BUCKET } from "@/lib/listen-bar";
 
 type CollectionKind = "official" | "creator";
 type ChoiceItemRow = { id: string; source_kind: string; source_id: string; position: number };
@@ -17,6 +18,7 @@ type OfficialRow = {
   title: string | null;
   intro: string | null;
   curator_identity: string | null;
+  cover_path: string | null;
   aipoger_choice_items?: ChoiceItemRow[] | null;
 };
 type CreatorRow = {
@@ -46,11 +48,25 @@ function isMissingChoiceSchema(error: unknown) {
   const text = error && typeof error === "object"
     ? [(error as { message?: string }).message, (error as { details?: string }).details, (error as { code?: string }).code].filter(Boolean).join(" ")
     : String(error ?? "");
-  return /schema cache|relation.*does not exist|PGRST204|42P01/i.test(text);
+  return /schema cache|relation.*does not exist|column.*does not exist|PGRST204|42P01/i.test(text);
+}
+
+function isMissingChoiceCover(error: unknown) {
+  const text = error && typeof error === "object"
+    ? [(error as { message?: string }).message, (error as { details?: string }).details, (error as { code?: string }).code].filter(Boolean).join(" ")
+    : String(error ?? "");
+  return /cover_path.*does not exist|column.*cover_path/i.test(text);
 }
 
 function key(kind: string, id: string) {
   return `${kind}:${id}`;
+}
+
+function publicCoverUrl(admin: ReturnType<typeof adminClient>, path: string | null | undefined) {
+  const clean = path?.trim();
+  if (!clean) return "";
+  if (/^https?:/i.test(clean)) return clean;
+  return admin.storage.from(LISTEN_BAR_COVER_BUCKET).getPublicUrl(clean).data.publicUrl || "";
 }
 
 function identity(value: string | null): AipogerChoiceCuratorIdentity {
@@ -72,7 +88,7 @@ function resolveItems(rows: ChoiceItemRow[] | null | undefined, catalog: Aipoger
     .sort((a, b) => a.position - b.position);
 }
 
-function resolveOfficial(row: OfficialRow, catalog: AipogerChoiceCatalogItem[], profile: ProfileRow | null): AipogerChoiceCollection {
+function resolveOfficial(admin: ReturnType<typeof adminClient>, row: OfficialRow, catalog: AipogerChoiceCatalogItem[], profile: ProfileRow | null): AipogerChoiceCollection {
   const curatorIdentity = identity(row.curator_identity);
   return {
     id: row.id,
@@ -83,6 +99,7 @@ function resolveOfficial(row: OfficialRow, catalog: AipogerChoiceCatalogItem[], 
     curatorIdentity,
     curatorName: curatorIdentity === "personal" ? profile?.display_name?.trim() || "愛波哥" : "AIPOGER",
     avatarUrl: curatorIdentity === "personal" ? profile?.avatar_url?.trim() || "" : "",
+    coverUrl: publicCoverUrl(admin, row.cover_path),
     items: resolveItems(row.aipoger_choice_items, catalog),
   };
 }
@@ -111,18 +128,28 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     if (!catalog.schemaReady) return NextResponse.json({ error: "Showtime 資料尚未準備完成。" }, { status: 409 });
 
     if (kind === "official") {
-      const { data, error } = await admin
+      let { data, error } = await admin
         .from("aipoger_choice_collections")
-        .select("id,created_by,week_start,title,intro,curator_identity,aipoger_choice_items(id,source_kind,source_id,position)")
+        .select("id,created_by,week_start,title,intro,curator_identity,cover_path,aipoger_choice_items(id,source_kind,source_id,position)")
         .eq("id", id)
         .eq("is_published", true)
         .maybeSingle();
+      if (error && isMissingChoiceCover(error)) {
+        const fallback = await admin
+          .from("aipoger_choice_collections")
+          .select("id,created_by,week_start,title,intro,curator_identity,aipoger_choice_items(id,source_kind,source_id,position)")
+          .eq("id", id)
+          .eq("is_published", true)
+          .maybeSingle();
+        data = fallback.data ? { ...fallback.data, cover_path: null } : null;
+        error = fallback.error;
+      }
       if (error) throw error;
       if (!data) return NextResponse.json({ error: "這份 Choice 尚未發布或已撤回。" }, { status: 404 });
       const profile = (data.created_by
         ? (await admin.from("fighter_profiles").select("display_name,avatar_url").eq("id", data.created_by).maybeSingle()).data
         : null) as ProfileRow | null;
-      return NextResponse.json({ kind, collection: resolveOfficial(data as OfficialRow, catalog.items, profile) }, { headers: { "Cache-Control": "no-store" } });
+      return NextResponse.json({ kind, collection: resolveOfficial(admin, data as OfficialRow, catalog.items, profile) }, { headers: { "Cache-Control": "no-store" } });
     }
 
     const { data, error } = await admin

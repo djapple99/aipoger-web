@@ -13,6 +13,7 @@ import {
   type AipogerChoiceCollection,
 } from "@/lib/aipoger-choice";
 import { loadChoiceSelectionCatalog } from "@/lib/server-choice-catalog";
+import { LISTEN_BAR_COVER_BUCKET } from "@/lib/listen-bar";
 
 type ChoiceCollectionRow = {
   id: string;
@@ -22,6 +23,7 @@ type ChoiceCollectionRow = {
   intro: string | null;
   is_published: boolean | null;
   curator_identity: string | null;
+  cover_path: string | null;
   aipoger_choice_items?: ChoiceItemRow[] | null;
 };
 
@@ -58,7 +60,24 @@ type ChoiceLibraryEntry = {
   href: string;
 };
 
-type ChoiceAction = "save_collection" | "add_item" | "remove_item" | "move_item" | "set_published";
+type ChoiceAction = "save_collection" | "add_item" | "remove_item" | "move_item" | "set_published" | "clear_cover";
+
+const MAX_COVER_BYTES = 10 * 1024 * 1024;
+const ALLOWED_COVER_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+
+function coverExtension(contentType: string) {
+  return contentType === "image/png" ? "png"
+    : contentType === "image/webp" ? "webp"
+      : contentType === "image/gif" ? "gif"
+        : "jpg";
+}
+
+function publicCoverUrl(admin: ReturnType<typeof adminClient>, path: string | null | undefined) {
+  const clean = path?.trim();
+  if (!clean) return null;
+  if (/^https?:/i.test(clean)) return clean;
+  return admin.storage.from(LISTEN_BAR_COVER_BUCKET).getPublicUrl(clean).data.publicUrl || null;
+}
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -100,7 +119,14 @@ function isMissingChoiceSchema(error: unknown) {
         (error as { code?: string }).code,
       ].filter(Boolean).join(" ")
     : String(error ?? "");
-  return /schema cache|relation.*does not exist|PGRST204|42P01/i.test(text);
+  return /schema cache|relation.*does not exist|column.*does not exist|PGRST204|42P01/i.test(text);
+}
+
+function isMissingChoiceCover(error: unknown) {
+  const text = error && typeof error === "object"
+    ? [(error as { message?: string }).message, (error as { details?: string }).details, (error as { code?: string }).code].filter(Boolean).join(" ")
+    : String(error ?? "");
+  return /cover_path.*does not exist|column.*cover_path/i.test(text);
 }
 
 function adminClient() {
@@ -126,7 +152,11 @@ function catalogKey(kind: string, id: string) {
   return `${kind}:${id}`;
 }
 
-function normalizeCollections(rows: ChoiceCollectionRow[], catalog: AipogerChoiceCatalogItem[]): AipogerChoiceCollection[] {
+function normalizeCollections(
+  admin: ReturnType<typeof adminClient>,
+  rows: ChoiceCollectionRow[],
+  catalog: AipogerChoiceCatalogItem[],
+): AipogerChoiceCollection[] {
   const byKey = new Map(catalog.map((item) => [catalogKey(item.sourceKind, item.id), item]));
   return rows.map((row) => ({
     id: row.id,
@@ -135,6 +165,7 @@ function normalizeCollections(rows: ChoiceCollectionRow[], catalog: AipogerChoic
     intro: row.intro?.trim() ?? "",
     isPublished: Boolean(row.is_published),
     curatorIdentity: curatorIdentity(row.curator_identity),
+    coverUrl: publicCoverUrl(admin, row.cover_path) || undefined,
     items: (row.aipoger_choice_items ?? [])
       .map((item) => {
         const source = byKey.get(catalogKey(item.source_kind, item.source_id));
@@ -147,16 +178,32 @@ function normalizeCollections(rows: ChoiceCollectionRow[], catalog: AipogerChoic
 }
 
 async function loadCollections(admin: ReturnType<typeof adminClient>) {
-  const { data, error } = await admin
+  let { data, error } = await admin
     .from("aipoger_choice_collections")
-    .select("id,created_by,week_start,title,intro,is_published,curator_identity,aipoger_choice_items(id,collection_id,source_kind,source_id,position)")
+    .select("id,created_by,week_start,title,intro,is_published,curator_identity,cover_path,aipoger_choice_items(id,collection_id,source_kind,source_id,position)")
     .order("week_start", { ascending: false })
     .limit(80);
+  if (error && isMissingChoiceCover(error)) {
+    const fallback = await admin
+      .from("aipoger_choice_collections")
+      .select("id,created_by,week_start,title,intro,is_published,curator_identity,aipoger_choice_items(id,collection_id,source_kind,source_id,position)")
+      .order("week_start", { ascending: false })
+      .limit(80);
+    data = (fallback.data ?? []).map((row) => ({ ...row, cover_path: null }));
+    error = fallback.error;
+  }
   if (error) throw error;
   return (data ?? []) as ChoiceCollectionRow[];
 }
 
-function libraryCover(items: ChoiceItemRow[] | null | undefined, catalog: AipogerChoiceCatalogItem[]) {
+function libraryCover(
+  admin: ReturnType<typeof adminClient>,
+  coverPath: string | null | undefined,
+  items: ChoiceItemRow[] | null | undefined,
+  catalog: AipogerChoiceCatalogItem[],
+) {
+  const custom = publicCoverUrl(admin, coverPath);
+  if (custom) return custom;
   const first = (items ?? [])
     .slice()
     .sort((left, right) => left.position - right.position)
@@ -200,7 +247,7 @@ async function loadChoiceLibrary(
       intro: row.intro?.trim() || "",
       isPublished: Boolean(row.is_published),
       itemCount: row.aipoger_choice_items?.length ?? 0,
-      coverUrl: libraryCover(row.aipoger_choice_items, catalog),
+      coverUrl: libraryCover(admin, row.cover_path, row.aipoger_choice_items, catalog),
       href: choicePublicPath(row.id, "official"),
     };
   });
@@ -213,7 +260,7 @@ async function loadChoiceLibrary(
     intro: row.intro?.trim() || "",
     isPublished: Boolean(row.is_published),
     itemCount: row.aipoger_creator_choice_items?.length ?? 0,
-    coverUrl: libraryCover(row.aipoger_creator_choice_items, catalog),
+    coverUrl: libraryCover(admin, null, row.aipoger_creator_choice_items, catalog),
     href: choicePublicPath(row.id, "creator"),
   }));
   return [...officialEntries, ...creatorEntries].sort(
@@ -277,7 +324,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       schemaReady: true,
       catalog: catalog.items,
-      collections: normalizeCollections(rows, catalog.items),
+      collections: normalizeCollections(guard.admin, rows, catalog.items),
       library,
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
@@ -420,9 +467,53 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ message: publish ? "Choice 已發布到 Showtime。" : "Choice 已從 Showtime 撤回。" });
     }
 
+    if (action === "clear_cover") {
+      const { error } = await guard.admin
+        .from("aipoger_choice_collections")
+        .update({ cover_path: null, updated_at: new Date().toISOString() })
+        .eq("id", collectionId);
+      if (error) throw error;
+      return NextResponse.json({ message: "已移除本期 Choice 封面，將改用第一首作品封面。", collectionId });
+    }
+
     return jsonError("不支援的 Choice 管理操作。" );
   } catch (error) {
     if (isMissingChoiceSchema(error)) return jsonError("Choice 資料表尚未準備完成。", 409);
     return jsonError(error instanceof Error ? error.message : "Choice 管理操作失敗。", 500);
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const guard = await requireOwnerAdmin(request);
+    if (guard.error) return guard.error;
+    const form = await request.formData();
+    const collectionId = form.get("collectionId");
+    const file = form.get("file");
+    if (!isUuid(collectionId) || !(file instanceof File)) return jsonError("Choice 封面上傳資料不完整。");
+    if (!ALLOWED_COVER_TYPES.has(file.type)) return jsonError("封面只接受 JPG、PNG、WebP 或 GIF。");
+    if (file.size <= 0 || file.size > MAX_COVER_BYTES) return jsonError("封面檔案需小於 10MB。");
+
+    const path = `choice/admin/${collectionId}/${Date.now()}-${crypto.randomUUID()}.${coverExtension(file.type)}`;
+    const upload = await guard.admin.storage
+      .from(LISTEN_BAR_COVER_BUCKET)
+      .upload(path, Buffer.from(await file.arrayBuffer()), { contentType: file.type, upsert: false });
+    if (upload.error) throw upload.error;
+
+    const { data, error } = await guard.admin
+      .from("aipoger_choice_collections")
+      .update({ cover_path: path, updated_at: new Date().toISOString() })
+      .eq("id", collectionId)
+      .select("id,cover_path")
+      .maybeSingle();
+    if (error || !data) {
+      await guard.admin.storage.from(LISTEN_BAR_COVER_BUCKET).remove([path]);
+      if (error) throw error;
+      return jsonError("找不到 Choice 週期。", 404);
+    }
+    return NextResponse.json({ message: "本期 Choice 封面已更新。", collectionId: data.id, coverUrl: publicCoverUrl(guard.admin, data.cover_path) });
+  } catch (error) {
+    if (isMissingChoiceSchema(error)) return jsonError("Choice 封面欄位尚未準備完成，請先套用最新資料庫 migration。", 409);
+    return jsonError(error instanceof Error ? error.message : "Choice 封面上傳失敗。", 500);
   }
 }

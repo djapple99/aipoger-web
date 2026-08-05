@@ -7,6 +7,7 @@ import {
   type AipogerChoiceCuratorIdentity,
 } from "@/lib/aipoger-choice";
 import { loadChoiceSelectionCatalog } from "@/lib/server-choice-catalog";
+import { LISTEN_BAR_COVER_BUCKET } from "@/lib/listen-bar";
 
 type ChoiceItemRow = {
   id: string;
@@ -22,6 +23,7 @@ type ChoiceCollectionRow = {
   title: string | null;
   intro: string | null;
   curator_identity: string | null;
+  cover_path: string | null;
   aipoger_choice_items?: ChoiceItemRow[] | null;
 };
 
@@ -48,11 +50,25 @@ function isMissingChoiceSchema(error: unknown) {
         (error as { code?: string }).code,
       ].filter(Boolean).join(" ")
     : String(error ?? "");
-  return /schema cache|relation.*does not exist|PGRST204|42P01/i.test(text);
+  return /schema cache|relation.*does not exist|column.*does not exist|PGRST204|42P01/i.test(text);
+}
+
+function isMissingChoiceCover(error: unknown) {
+  const text = error && typeof error === "object"
+    ? [(error as { message?: string }).message, (error as { details?: string }).details, (error as { code?: string }).code].filter(Boolean).join(" ")
+    : String(error ?? "");
+  return /cover_path.*does not exist|column.*cover_path/i.test(text);
 }
 
 function catalogKey(kind: string, id: string) {
   return `${kind}:${id}`;
+}
+
+function publicCoverUrl(admin: ReturnType<typeof adminClient>, path: string | null | undefined) {
+  const clean = path?.trim();
+  if (!clean) return "";
+  if (/^https?:/i.test(clean)) return clean;
+  return admin.storage.from(LISTEN_BAR_COVER_BUCKET).getPublicUrl(clean).data.publicUrl || "";
 }
 
 function curatorIdentity(value: string | null): AipogerChoiceCuratorIdentity {
@@ -62,6 +78,7 @@ function curatorIdentity(value: string | null): AipogerChoiceCuratorIdentity {
 }
 
 function resolveCollection(
+  admin: ReturnType<typeof adminClient>,
   row: ChoiceCollectionRow,
   catalog: AipogerChoiceCatalogItem[],
   curator: CuratorProfileRow | null,
@@ -77,6 +94,7 @@ function resolveCollection(
     curatorIdentity: identity,
     curatorName: identity === "personal" ? curator?.display_name?.trim() || "愛波哥" : "AIPOGER",
     avatarUrl: identity === "personal" ? curator?.avatar_url?.trim() || "" : "",
+    coverUrl: publicCoverUrl(admin, row.cover_path),
     items: (row.aipoger_choice_items ?? [])
       .map((item) => {
         const source = byKey.get(catalogKey(item.source_kind, item.source_id));
@@ -90,27 +108,43 @@ function resolveCollection(
 export async function GET() {
   try {
     const admin = adminClient();
-    const { data, error } = await admin
+    let { data, error } = await admin
       .from("aipoger_choice_collections")
-      .select("id,created_by,week_start,title,intro,curator_identity,aipoger_choice_items(id,source_kind,source_id,position)")
+      .select("id,created_by,week_start,title,intro,curator_identity,cover_path,aipoger_choice_items(id,source_kind,source_id,position)")
       .eq("is_published", true)
       .order("week_start", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(80);
+    if (error && isMissingChoiceCover(error)) {
+      const fallback = await admin
+        .from("aipoger_choice_collections")
+        .select("id,created_by,week_start,title,intro,curator_identity,aipoger_choice_items(id,source_kind,source_id,position)")
+        .eq("is_published", true)
+        .order("week_start", { ascending: false })
+        .limit(80);
+      data = (fallback.data ?? []).map((row) => ({ ...row, cover_path: null }));
+      error = fallback.error;
+    }
     if (error) throw error;
-    if (!data) return NextResponse.json({ schemaReady: true, collection: null }, { headers: { "Cache-Control": "no-store" } });
+    const rows = (data ?? []) as ChoiceCollectionRow[];
+    if (rows.length === 0) return NextResponse.json({ schemaReady: true, collection: null, collections: [] }, { headers: { "Cache-Control": "no-store" } });
 
+    const curatorIds = rows.map((row) => row.created_by).filter((value): value is string => Boolean(value));
     const [catalog, curatorResult] = await Promise.all([
       loadChoiceSelectionCatalog(admin),
-      data.created_by
-        ? admin.from("fighter_profiles").select("display_name,avatar_url").eq("id", data.created_by).maybeSingle()
-        : Promise.resolve({ data: null, error: null }),
+      curatorIds.length > 0
+        ? admin.from("fighter_profiles").select("id,display_name,avatar_url").in("id", curatorIds)
+        : Promise.resolve({ data: [], error: null }),
     ]);
     if (curatorResult.error) throw curatorResult.error;
     if (!catalog.schemaReady) return NextResponse.json({ schemaReady: false, collection: null });
+    const profiles = new Map(
+      ((curatorResult.data ?? []) as Array<CuratorProfileRow & { id: string }>).map((profile) => [profile.id, profile]),
+    );
+    const collections = rows.map((row) => resolveCollection(admin, row, catalog.items, row.created_by ? profiles.get(row.created_by) ?? null : null));
     return NextResponse.json({
       schemaReady: true,
-      collection: resolveCollection(data as ChoiceCollectionRow, catalog.items, curatorResult.data as CuratorProfileRow | null),
+      collection: collections[0] ?? null,
+      collections,
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("[choice/current] read failed", {
