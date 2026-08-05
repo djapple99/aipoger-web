@@ -18,6 +18,7 @@ const showtimeChoiceShelf = readFileSync(
   new URL("../src/components/showtime-choice-shelf.tsx", import.meta.url),
   "utf8",
 );
+const choiceCover = readFileSync(new URL("../src/components/aipoger-choice-cover.tsx", import.meta.url), "utf8");
 const profilePage = readFileSync(new URL("../src/app/profile/page.tsx", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../supabase/migrations/20260712072918_choice_weekly_curation.sql", import.meta.url), "utf8");
 const coverMigration = readFileSync(new URL("../supabase/migrations/20260805190000_choice_collection_cover.sql", import.meta.url), "utf8");
@@ -169,4 +170,12 @@ test("Choice history opens creator editing and supports confirmed deletion", () 
   assert.ok(creatorChoiceProfile.includes("delete_collection"));
   assert.ok(creatorChoiceProfile.includes("刪除這一期"));
   assert.ok(creatorChoiceProfile.includes("searchParams.get(\"collection\")"));
+});
+
+test("Choice covers carry a clear AIPOGER mark in the top-left corner", () => {
+  assert.ok(choiceCover.includes("AIPOGER_BRAND_LOGO"));
+  assert.ok(choiceCover.includes("absolute left-1.5 top-1.5"));
+  assert.ok(showtimeChoiceShelf.includes("AipogerChoiceCover"));
+  assert.ok(choiceAdminPage.includes("AipogerChoiceCover"));
+  assert.ok(creatorChoiceProfilePage.includes("AipogerChoiceCover"));
 });

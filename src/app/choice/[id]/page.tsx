@@ -5,6 +5,7 @@ import { ArrowLeft, Heart, ListMusic, MessageCircle, Play, X } from "lucide-reac
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ChoiceCommentsDialog from "@/components/choice-comments-dialog";
+import { AipogerChoiceCover } from "@/components/aipoger-choice-cover";
 import ShareButton from "@/components/share-button";
 import type { ShowtimeChoiceItemHeartState } from "@/components/showtime-choice-shelf";
 import ShowtimeQueuePlayer, { type ShowtimePlayerTrack, type ShowtimeQueuePlayerHandle } from "@/components/showtime-queue-player";
@@ -221,8 +222,7 @@ export default function PublicChoicePage() {
         <header className="border-b border-yellow-200/20 pb-7">
           <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.8fr)] lg:gap-10">
             <div className="flex min-w-0 items-center gap-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={coverUrl} alt="" className="h-16 w-16 rounded-full border border-orange-200/35 object-cover" />
+              <AipogerChoiceCover src={coverUrl} className="h-16 w-16 shrink-0 rounded-full border border-orange-200/35" logoClassName="h-2.5 w-8" />
               <div className="min-w-0">
                 <h1 className="text-3xl font-black leading-tight text-white sm:text-5xl">{title}</h1>
                 <p className="mt-2 text-sm font-bold text-zinc-400">策展：{collection.curatorName || "AIPOGER"} · {displayDate(collection.weekStart)}</p>

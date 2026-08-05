@@ -15,6 +15,7 @@ import { supabase } from "@/lib/supabase";
 import { loadIsAdmin } from "@/lib/user-profile-admin";
 import { ChoicePreviewPlayer } from "@/components/choice-preview-player";
 import { ChoiceSelectedWorks } from "@/components/choice-selected-works";
+import { AipogerChoiceCover } from "@/components/aipoger-choice-cover";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
 type ChoicePayload = {
@@ -85,8 +86,7 @@ function ChoiceLibraryCard({
     <>
       <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-zinc-950">
         {entry.coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={entry.coverUrl} alt="" className="h-full w-full object-cover transition duration-200 group-hover:scale-105" />
+          <AipogerChoiceCover src={entry.coverUrl} className="h-full w-full transition duration-200 group-hover:scale-105" logoClassName="h-2.5 w-8" />
         ) : (
           <span className="flex h-full w-full items-center justify-center text-cyan-100/70"><Music2 className="h-5 w-5" aria-hidden="true" /></span>
         )}
@@ -450,10 +450,7 @@ export default function AdminChoicePage() {
                 <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-black p-3">
                   <span className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-zinc-950">
                     {coverPreview ? (
-                      <>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={coverPreview} alt="" className="h-full w-full object-cover" />
-                      </>
+                      <AipogerChoiceCover src={coverPreview} className="h-full w-full" logoClassName="h-3 w-9" />
                     ) : <span className="flex h-full w-full items-center justify-center text-[10px] font-black text-zinc-600">第一首作品</span>}
                   </span>
                   <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">

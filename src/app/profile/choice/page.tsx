@@ -17,6 +17,7 @@ import { rememberAuthNextPath } from "@/lib/auth-urls";
 import { supabase } from "@/lib/supabase";
 import { ChoicePreviewPlayer } from "@/components/choice-preview-player";
 import { ChoiceSelectedWorks } from "@/components/choice-selected-works";
+import { AipogerChoiceCover } from "@/components/aipoger-choice-cover";
 
 type OwnShowtimeWork = {
   id: string;
@@ -391,11 +392,8 @@ export default function CreatorChoicePage() {
                 {collections.map((collection) => {
                   const preview = collection.coverUrl?.trim() || collection.avatarUrl?.trim() || collection.items[0]?.coverUrl?.trim() || AIPOGER_BRAND_LOGO;
                   return <button key={collection.id} type="button" onClick={() => setSelectedId(collection.id)} aria-pressed={collection.id === selectedId} aria-label={`編輯 ${collection.title || "這一期 Choice"}`} className={`group relative flex min-w-0 items-center gap-2 border p-2 text-left transition hover:-translate-y-0.5 ${collection.id === selectedId ? "border-cyan-100/70 bg-cyan-300/12 shadow-[0_8px_24px_rgba(34,211,238,0.12)]" : "border-white/10 bg-black/45 hover:border-cyan-100/50"}`}>
-                    <span className="relative h-12 w-12 shrink-0 overflow-hidden border border-white/10 bg-zinc-950">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={preview} alt="" className="h-full w-full object-cover" />
-                      <span className={`absolute right-0.5 top-0.5 h-2 w-2 rounded-full border border-black ${collection.isPublished ? "bg-emerald-300" : "bg-zinc-500"}`} />
-                    </span>
+                    <AipogerChoiceCover src={preview} className="h-12 w-12 shrink-0 border border-white/10 bg-zinc-950" logoClassName="h-2.5 w-8" />
+                    <span className={`absolute right-0.5 top-0.5 h-2 w-2 rounded-full border border-black ${collection.isPublished ? "bg-emerald-300" : "bg-zinc-500"}`} />
                     <span className="min-w-0"><span className="block truncate text-xs font-black text-white">{collection.title || "未命名 Choice"}</span><span className="mt-0.5 flex items-center gap-1 text-[10px] font-bold text-zinc-500"><CalendarDays className="h-3 w-3" aria-hidden="true" />{displayDate(collection.weekStart)}</span><span className={`mt-0.5 flex items-center gap-1 text-[10px] font-black ${collection.isPublished ? "text-emerald-200" : "text-zinc-500"}`}>{collection.isPublished ? <CheckCircle2 className="h-3 w-3" aria-hidden="true" /> : null}{collection.isPublished ? "已發布" : "草稿"} · {collection.items.length} 首</span></span>
                     <Pencil className="absolute right-1.5 top-1.5 h-3 w-3 text-cyan-100" aria-hidden="true" />
                   </button>;
@@ -413,8 +411,7 @@ export default function CreatorChoicePage() {
                 <label className="grid gap-1 text-xs font-black text-zinc-300">推薦文章（可選）<textarea value={intro} onChange={(event) => setIntro(event.target.value)} maxLength={AIPOGER_CHOICE_INTRO_MAX_LENGTH} rows={5} placeholder="寫下這期 Choice 的推薦文章。" className="border border-white/10 bg-black px-3 py-2 text-sm font-bold leading-6 text-white outline-none focus:border-cyan-100/60" /></label>
                 <div className="grid gap-2 border border-white/10 bg-black/35 p-3 md:col-span-3 md:grid-cols-[112px_minmax(0,1fr)_auto] md:items-center">
                   <div className="relative aspect-square w-28 overflow-hidden bg-zinc-950">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={coverPreview || AIPOGER_BRAND_LOGO} alt="Choice 封面預覽" className="h-full w-full object-cover" />
+                    <AipogerChoiceCover src={coverPreview || AIPOGER_BRAND_LOGO} alt="Choice 封面預覽" className="h-full w-full" logoClassName="h-3.5 w-10" />
                   </div>
                   <div>
                     <p className="text-xs font-black text-zinc-200">本期 Choice 封面</p>

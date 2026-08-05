@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import ChoiceCommentsDialog from "@/components/choice-comments-dialog";
 import ShareButton from "@/components/share-button";
+import { AipogerChoiceCover } from "@/components/aipoger-choice-cover";
 import { choiceItemRecordKey, type AipogerChoiceItem } from "@/lib/aipoger-choice";
 import { fontRighteous } from "@/lib/fonts";
 
@@ -119,8 +120,7 @@ export default function ShowtimeChoiceShelf({
               return (
                 <article key={key} className="group min-w-0 rounded-md border border-yellow-100/20 bg-black/35 p-1.5 shadow-[0_10px_26px_rgba(0,0,0,0.24)] transition hover:-translate-y-0.5 hover:border-yellow-100/40">
                   <div className="group relative aspect-square overflow-hidden rounded-md bg-[#090909]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={entry.coverUrl} alt={`${entry.curatorName} Choice`} className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.025]" />
+                    <AipogerChoiceCover src={entry.coverUrl} alt={`${entry.curatorName} Choice`} className="absolute inset-0 transition duration-300 group-hover:scale-[1.025]" />
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent" />
                     <button
                       type="button"
