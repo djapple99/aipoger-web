@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { AipogerChoiceCatalogItem } from "@/lib/aipoger-choice";
 import type { AipogerPublicCreatorChoiceCollection } from "@/lib/creator-choice";
 import { loadChoiceSelectionCatalog } from "@/lib/server-choice-catalog";
+import { LISTEN_BAR_COVER_BUCKET } from "@/lib/listen-bar";
 
 type ChoiceItemRow = {
   id: string;
@@ -18,6 +19,7 @@ type ChoiceCollectionRow = {
   week_start: string;
   title: string | null;
   intro: string | null;
+  cover_path: string | null;
   published_at: string | null;
   aipoger_creator_choice_items?: ChoiceItemRow[] | null;
 };
@@ -48,11 +50,26 @@ function isMissingCreatorChoiceSchema(error: unknown) {
   return /schema cache|relation.*does not exist|PGRST204|42P01/i.test(value);
 }
 
+function isMissingChoiceCover(error: unknown) {
+  const value = error && typeof error === "object"
+    ? [(error as { message?: string }).message, (error as { details?: string }).details, (error as { code?: string }).code].filter(Boolean).join(" ")
+    : String(error ?? "");
+  return /cover_path.*does not exist|column.*cover_path/i.test(value);
+}
+
 function catalogKey(kind: string, id: string) {
   return `${kind}:${id}`;
 }
 
+function publicCoverUrl(admin: ReturnType<typeof adminClient>, path: string | null | undefined) {
+  const clean = path?.trim();
+  if (!clean) return "";
+  if (/^https?:/i.test(clean)) return clean;
+  return admin.storage.from(LISTEN_BAR_COVER_BUCKET).getPublicUrl(clean).data.publicUrl || "";
+}
+
 function resolveCollection(
+  admin: ReturnType<typeof adminClient>,
   row: ChoiceCollectionRow,
   catalog: AipogerChoiceCatalogItem[],
   avatarUrl: string,
@@ -66,6 +83,7 @@ function resolveCollection(
     weekStart: row.week_start,
     title: row.title?.trim() ?? "",
     intro: row.intro?.trim() ?? "",
+    coverUrl: publicCoverUrl(admin, row.cover_path),
     isPublished: true,
     publishedAt: row.published_at ?? null,
     items: (row.aipoger_creator_choice_items ?? [])
@@ -83,25 +101,30 @@ function resolveCollection(
 export async function GET() {
   try {
     const admin = adminClient();
-    const { data, error } = await admin
+    let { data, error } = await admin
       .from("aipoger_creator_choice_collections")
-      .select("id,creator_id,curator_name,week_start,title,intro,published_at,aipoger_creator_choice_items(id,source_kind,source_id,position)")
+      .select("id,creator_id,curator_name,week_start,title,intro,cover_path,published_at,aipoger_creator_choice_items(id,source_kind,source_id,position)")
       .eq("is_published", true)
       .order("published_at", { ascending: false })
       .limit(48);
+    if (error && isMissingChoiceCover(error)) {
+      const fallback = await admin
+        .from("aipoger_creator_choice_collections")
+        .select("id,creator_id,curator_name,week_start,title,intro,published_at,aipoger_creator_choice_items(id,source_kind,source_id,position)")
+        .eq("is_published", true)
+        .order("published_at", { ascending: false })
+        .limit(48);
+      data = (fallback.data ?? []).map((row) => ({ ...row, cover_path: null }));
+      error = fallback.error;
+    }
     if (error) throw error;
 
     const rows = (data ?? []) as ChoiceCollectionRow[];
-    const latestByCreator = new Map<string, ChoiceCollectionRow>();
-    rows.forEach((row) => {
-      if (!latestByCreator.has(row.creator_id)) latestByCreator.set(row.creator_id, row);
-    });
-    const currentRows = Array.from(latestByCreator.values());
-    if (currentRows.length === 0) {
+    if (rows.length === 0) {
       return NextResponse.json({ schemaReady: true, collections: [] }, { headers: { "Cache-Control": "no-store" } });
     }
 
-    const creatorIds = currentRows.map((row) => row.creator_id);
+    const creatorIds = rows.map((row) => row.creator_id);
     const [catalog, fighterProfiles, userProfiles] = await Promise.all([
       loadChoiceSelectionCatalog(admin),
       admin.from("fighter_profiles").select("id,avatar_url").in("id", creatorIds),
@@ -115,8 +138,8 @@ export async function GET() {
     const userById = new Map(
       ((userProfiles.data ?? []) as ProfileRow[]).map((profile) => [profile.id, profile.avatar_url?.trim() || ""]),
     );
-    const collections = currentRows
-      .map((row) => resolveCollection(row, catalog.items, fighterById.get(row.creator_id) || userById.get(row.creator_id) || ""))
+    const collections = rows
+      .map((row) => resolveCollection(admin, row, catalog.items, fighterById.get(row.creator_id) || userById.get(row.creator_id) || ""))
       .filter((collection) => collection.items.length > 0);
 
     return NextResponse.json({ schemaReady: true, collections }, { headers: { "Cache-Control": "no-store" } });

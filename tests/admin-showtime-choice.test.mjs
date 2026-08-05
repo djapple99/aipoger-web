@@ -8,6 +8,9 @@ const showtimeCatalog = readFileSync(new URL("../src/lib/server-showtime-catalog
 const choiceAdminPage = readFileSync(new URL("../src/app/admin/choice/page.tsx", import.meta.url), "utf8");
 const choiceAdminRoute = readFileSync(new URL("../src/app/api/admin/choice/route.ts", import.meta.url), "utf8");
 const choiceCurrentRoute = readFileSync(new URL("../src/app/api/choice/current/route.ts", import.meta.url), "utf8");
+const creatorChoicePublicRoute = readFileSync(new URL("../src/app/api/creator-choice/public/route.ts", import.meta.url), "utf8");
+const creatorChoiceRoute = readFileSync(new URL("../src/app/api/creator-choice/route.ts", import.meta.url), "utf8");
+const creatorChoiceProfilePage = readFileSync(new URL("../src/app/profile/choice/page.tsx", import.meta.url), "utf8");
 const choiceHelper = readFileSync(new URL("../src/lib/aipoger-choice.ts", import.meta.url), "utf8");
 const choiceCatalog = readFileSync(new URL("../src/lib/server-choice-catalog.ts", import.meta.url), "utf8");
 const rankPage = readFileSync(new URL("../src/app/rank/page.tsx", import.meta.url), "utf8");
@@ -133,6 +136,19 @@ test("published Choice reaches Showtime without becoming a ranking or social pub
   assert.equal(choiceAdminRoute.includes("social_posts"), false);
   assert.equal(choiceAdminRoute.includes("publish_target"), false);
   assert.ok(productRules.includes("Choice 選曲不會建立社群草稿或自動外部發布"));
+});
+
+test("published Creator Choice keeps history and supports a dedicated cover", () => {
+  assert.equal(creatorChoicePublicRoute.includes("latestByCreator"), false);
+  assert.ok(creatorChoicePublicRoute.includes('.eq("is_published", true)'));
+  assert.ok(creatorChoicePublicRoute.includes(".limit(48)"));
+  assert.ok(creatorChoicePublicRoute.includes("cover_path"));
+  assert.ok(creatorChoiceRoute.includes('action === "clear_cover"'));
+  assert.ok(creatorChoiceRoute.includes("export async function POST"));
+  assert.ok(creatorChoiceRoute.includes("Choice 封面欄位尚未準備完成"));
+  assert.ok(creatorChoiceProfilePage.includes("上傳封面"));
+  assert.ok(creatorChoiceProfilePage.includes("移除封面"));
+  assert.ok(creatorChoiceProfilePage.includes("IMAGE_ACCEPT"));
 });
 
 test("profile exposes dedicated owner entry points for Showtime and Choice", () => {

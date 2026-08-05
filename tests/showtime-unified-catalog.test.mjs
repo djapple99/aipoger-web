@@ -132,7 +132,8 @@ test("Choice and Showtime use one sequential bottom player with mobile volume", 
 
 test("public Creator Choice shelf keeps published playable selections after the new-release window", () => {
   assert.match(publicCreatorChoiceSource, /\.eq\("is_published", true\)/);
-  assert.match(publicCreatorChoiceSource, /latestByCreator/);
+  assert.doesNotMatch(publicCreatorChoiceSource, /latestByCreator/);
+  assert.match(publicCreatorChoiceSource, /\.limit\(48\)/);
   assert.match(publicCreatorChoiceSource, /source\?\.isPublic/);
   assert.match(publicCreatorChoiceSource, /fighter_profiles/);
   assert.match(publicCreatorChoiceSource, /user_profiles/);

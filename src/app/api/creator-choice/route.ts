@@ -9,6 +9,7 @@ import {
 } from "@/lib/aipoger-choice";
 import type { AipogerCreatorChoiceCollection, CreatorChoiceEligibility } from "@/lib/creator-choice";
 import { loadChoiceSelectionCatalog } from "@/lib/server-choice-catalog";
+import { LISTEN_BAR_COVER_BUCKET } from "@/lib/listen-bar";
 
 type CreatorChoiceItemRow = {
   id: string;
@@ -26,6 +27,7 @@ type CreatorChoiceCollectionRow = {
   title: string | null;
   intro: string | null;
   is_published: boolean | null;
+  cover_path: string | null;
   published_at: string | null;
   aipoger_creator_choice_items?: CreatorChoiceItemRow[] | null;
 };
@@ -43,7 +45,17 @@ type OwnedShowtimeTrack = {
   ai_music_showtime_public_removed_at: string | null;
 };
 
-type ChoiceAction = "save_collection" | "add_item" | "remove_item" | "move_item" | "set_published";
+type ChoiceAction = "save_collection" | "add_item" | "remove_item" | "move_item" | "set_published" | "clear_cover";
+
+const MAX_COVER_BYTES = 10 * 1024 * 1024;
+const ALLOWED_COVER_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+
+function coverExtension(contentType: string) {
+  return contentType === "image/png" ? "png"
+    : contentType === "image/webp" ? "webp"
+      : contentType === "image/gif" ? "gif"
+        : "jpg";
+}
 
 const OWN_SHOWTIME_SELECT = [
   "id",
@@ -95,6 +107,13 @@ function isMissingCreatorChoiceSchema(error: unknown) {
   return /support_url_label|schema cache|relation.*does not exist|column.*does not exist|PGRST204|42P01/i.test(text);
 }
 
+function isMissingChoiceCover(error: unknown) {
+  const text = error && typeof error === "object"
+    ? [(error as { message?: string }).message, (error as { details?: string }).details, (error as { code?: string }).code].filter(Boolean).join(" ")
+    : String(error ?? "");
+  return /cover_path.*does not exist|column.*cover_path/i.test(text);
+}
+
 function adminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -115,6 +134,13 @@ async function requireUser(request: NextRequest) {
 
 function catalogKey(kind: string, id: string) {
   return `${kind}:${id}`;
+}
+
+function publicCoverUrl(admin: ReturnType<typeof adminClient>, path: string | null | undefined) {
+  const clean = path?.trim();
+  if (!clean) return "";
+  if (/^https?:/i.test(clean)) return clean;
+  return admin.storage.from(LISTEN_BAR_COVER_BUCKET).getPublicUrl(clean).data.publicUrl || "";
 }
 
 async function loadOwnedShowtimeTracks(admin: ReturnType<typeof adminClient>, userId: string) {
@@ -155,7 +181,7 @@ async function creatorEligibility(admin: ReturnType<typeof adminClient>, userId:
   };
 }
 
-function normalizeCollections(rows: CreatorChoiceCollectionRow[], catalog: AipogerChoiceCatalogItem[]): AipogerCreatorChoiceCollection[] {
+function normalizeCollections(admin: ReturnType<typeof adminClient>, rows: CreatorChoiceCollectionRow[], catalog: AipogerChoiceCatalogItem[]): AipogerCreatorChoiceCollection[] {
   const byKey = new Map(catalog.map((item) => [catalogKey(item.sourceKind, item.id), item]));
   return rows.map((row) => ({
     id: row.id,
@@ -163,6 +189,7 @@ function normalizeCollections(rows: CreatorChoiceCollectionRow[], catalog: Aipog
     title: row.title?.trim() ?? "",
     intro: row.intro?.trim() ?? "",
     isPublished: Boolean(row.is_published),
+    coverUrl: publicCoverUrl(admin, row.cover_path),
     curatorName: row.curator_name?.trim() || "AIPOGER 創作者",
     publishedAt: row.published_at ?? null,
     items: (row.aipoger_creator_choice_items ?? [])
@@ -176,12 +203,22 @@ function normalizeCollections(rows: CreatorChoiceCollectionRow[], catalog: Aipog
 }
 
 async function loadCollections(admin: ReturnType<typeof adminClient>, userId: string) {
-  const { data, error } = await admin
+  let { data, error } = await admin
     .from("aipoger_creator_choice_collections")
-    .select("id,creator_id,curator_name,week_start,title,intro,is_published,published_at,aipoger_creator_choice_items(id,collection_id,source_kind,source_id,position)")
+    .select("id,creator_id,curator_name,week_start,title,intro,is_published,cover_path,published_at,aipoger_creator_choice_items(id,collection_id,source_kind,source_id,position)")
     .eq("creator_id", userId)
     .order("week_start", { ascending: false })
     .limit(52);
+  if (error && isMissingChoiceCover(error)) {
+    const fallback = await admin
+      .from("aipoger_creator_choice_collections")
+      .select("id,creator_id,curator_name,week_start,title,intro,is_published,published_at,aipoger_creator_choice_items(id,collection_id,source_kind,source_id,position)")
+      .eq("creator_id", userId)
+      .order("week_start", { ascending: false })
+      .limit(52);
+    data = (fallback.data ?? []).map((row) => ({ ...row, cover_path: null }));
+    error = fallback.error;
+  }
   if (error) throw error;
   return (data ?? []) as CreatorChoiceCollectionRow[];
 }
@@ -258,7 +295,7 @@ export async function GET(request: NextRequest) {
       eligibility: eligibilityState.eligibility,
       ownShowtimeWorks: eligibilityState.ownTracks,
       catalog: catalog.items.filter((item) => item.isPublic && item.selectable),
-      collections: normalizeCollections(collections, catalog.items),
+      collections: normalizeCollections(guard.admin, collections, catalog.items),
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (isMissingCreatorChoiceSchema(error)) {
@@ -410,10 +447,59 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ message: publish ? "你的 Choice 已發布。" : "你的 Choice 已撤回。" });
     }
 
+    if (action === "clear_cover") {
+      const { error } = await guard.admin
+        .from("aipoger_creator_choice_collections")
+        .update({ cover_path: null, updated_at: new Date().toISOString() })
+        .eq("id", collectionId)
+        .eq("creator_id", guard.user.id);
+      if (error) throw error;
+      return NextResponse.json({ message: "已移除本期 Choice 封面，將改用預設封面。", collectionId });
+    }
+
     return jsonError("不支援的 Choice 管理操作。");
   } catch (error) {
     if (isMissingCreatorChoiceSchema(error)) return jsonError("Creator Choice 資料表尚未準備完成。", 409);
     if (error instanceof Error && error.message.includes("Showtime")) return jsonError(error.message, 403);
     return jsonError(error instanceof Error ? error.message : "自己的 Choice 操作失敗。", 500);
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const guard = await requireUser(request);
+    if (guard.error) return guard.error;
+    await assertEligibleCreator(guard.admin, guard.user.id);
+    const form = await request.formData();
+    const collectionId = form.get("collectionId");
+    const file = form.get("file");
+    if (!isUuid(collectionId) || !(file instanceof File)) return jsonError("Choice 封面上傳資料不完整。");
+    if (!(await collectionOwnedBy(guard.admin, collectionId, guard.user.id))) return jsonError("找不到自己的 Choice。", 404);
+    if (!ALLOWED_COVER_TYPES.has(file.type)) return jsonError("封面只接受 JPG、PNG、WebP 或 GIF。");
+    if (file.size <= 0 || file.size > MAX_COVER_BYTES) return jsonError("封面檔案需小於 10MB。");
+
+    const path = `choice/creator/${guard.user.id}/${collectionId}/${Date.now()}-${crypto.randomUUID()}.${coverExtension(file.type)}`;
+    const upload = await guard.admin.storage
+      .from(LISTEN_BAR_COVER_BUCKET)
+      .upload(path, Buffer.from(await file.arrayBuffer()), { contentType: file.type, upsert: false });
+    if (upload.error) throw upload.error;
+
+    const { data, error } = await guard.admin
+      .from("aipoger_creator_choice_collections")
+      .update({ cover_path: path, updated_at: new Date().toISOString() })
+      .eq("id", collectionId)
+      .eq("creator_id", guard.user.id)
+      .select("id,cover_path")
+      .maybeSingle();
+    if (error || !data) {
+      await guard.admin.storage.from(LISTEN_BAR_COVER_BUCKET).remove([path]);
+      if (error) throw error;
+      return jsonError("找不到自己的 Choice。", 404);
+    }
+    return NextResponse.json({ message: "本期 Choice 封面已更新。", collectionId: data.id, coverUrl: publicCoverUrl(guard.admin, data.cover_path) });
+  } catch (error) {
+    if (isMissingCreatorChoiceSchema(error)) return jsonError("Choice 封面欄位尚未準備完成，請先套用最新資料庫 migration。", 409);
+    if (error instanceof Error && error.message.includes("Showtime")) return jsonError(error.message, 403);
+    return jsonError(error instanceof Error ? error.message : "Choice 封面上傳失敗。", 500);
   }
 }

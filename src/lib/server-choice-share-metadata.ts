@@ -16,6 +16,7 @@ type CreatorChoiceRow = {
   curator_name: string | null;
   title: string | null;
   intro: string | null;
+  cover_path: string | null;
 };
 
 type OfficialChoiceRow = {
@@ -53,6 +54,13 @@ function publicCoverUrl(admin: SupabaseClient, path: string | null | undefined) 
   return admin.storage.from(LISTEN_BAR_COVER_BUCKET).getPublicUrl(cleanPath).data.publicUrl || "";
 }
 
+function isMissingChoiceCover(error: unknown) {
+  const text = error && typeof error === "object"
+    ? [(error as { message?: string }).message, (error as { details?: string }).details, (error as { code?: string }).code].filter(Boolean).join(" ")
+    : String(error ?? "");
+  return /cover_path.*does not exist|column.*cover_path/i.test(text);
+}
+
 async function loadProfile(admin: SupabaseClient, userId: string | null) {
   if (!userId) return { displayName: "", avatarUrl: "" };
   const fighter = await admin.from("fighter_profiles").select("display_name,avatar_url").eq("id", userId).maybeSingle();
@@ -75,10 +83,10 @@ async function loadProfile(admin: SupabaseClient, userId: string | null) {
 export async function loadChoiceShareMetadata(id: string): Promise<ChoiceShareMetadata | null> {
   if (!isUuid(id)) return null;
   const admin = adminClient();
-  const [creatorResult, officialResult] = await Promise.all([
+  let [creatorResult, officialResult] = await Promise.all([
     admin
       .from("aipoger_creator_choice_collections")
-      .select("creator_id,curator_name,title,intro")
+      .select("creator_id,curator_name,title,intro,cover_path")
       .eq("id", id)
       .eq("is_published", true)
       .maybeSingle(),
@@ -89,6 +97,22 @@ export async function loadChoiceShareMetadata(id: string): Promise<ChoiceShareMe
       .eq("is_published", true)
       .maybeSingle(),
   ]);
+  if (creatorResult.error && isMissingChoiceCover(creatorResult.error)) {
+    creatorResult = await admin
+      .from("aipoger_creator_choice_collections")
+      .select("creator_id,curator_name,title,intro")
+      .eq("id", id)
+      .eq("is_published", true)
+      .maybeSingle();
+  }
+  if (officialResult.error && isMissingChoiceCover(officialResult.error)) {
+    officialResult = await admin
+      .from("aipoger_choice_collections")
+      .select("created_by,curator_identity,title,intro")
+      .eq("id", id)
+      .eq("is_published", true)
+      .maybeSingle();
+  }
   if (creatorResult.error) throw creatorResult.error;
   if (officialResult.error) throw officialResult.error;
 
@@ -100,7 +124,7 @@ export async function loadChoiceShareMetadata(id: string): Promise<ChoiceShareMe
       curatorName: clean(row.curator_name) || profile.displayName || "AIPOGER 創作者",
       title: clean(row.title),
       intro: clean(row.intro),
-      imageUrl: profile.avatarUrl,
+      imageUrl: publicCoverUrl(admin, row.cover_path) || profile.avatarUrl,
     };
   }
 

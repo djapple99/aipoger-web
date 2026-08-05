@@ -1197,7 +1197,7 @@ export default function RankPage() {
       id: collection.id,
       kind: "creator" as const,
       curatorName: collection.curatorName,
-      coverUrl: mediaSrc(collection.avatarUrl),
+      coverUrl: collection.coverUrl?.trim() || mediaSrc(collection.avatarUrl),
       title: choiceDisplayTitle(collection.curatorName, collection.title),
       intro: collection.intro,
       weekStart: collection.weekStart,

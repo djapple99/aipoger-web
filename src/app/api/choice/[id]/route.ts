@@ -28,6 +28,7 @@ type CreatorRow = {
   week_start: string;
   title: string | null;
   intro: string | null;
+  cover_path: string | null;
   published_at: string | null;
   aipoger_creator_choice_items?: ChoiceItemRow[] | null;
 };
@@ -104,7 +105,7 @@ function resolveOfficial(admin: ReturnType<typeof adminClient>, row: OfficialRow
   };
 }
 
-function resolveCreator(row: CreatorRow, catalog: AipogerChoiceCatalogItem[], profile: ProfileRow | null): AipogerChoiceCollection {
+function resolveCreator(admin: ReturnType<typeof adminClient>, row: CreatorRow, catalog: AipogerChoiceCatalogItem[], profile: ProfileRow | null): AipogerChoiceCollection {
   return {
     id: row.id,
     weekStart: row.week_start,
@@ -114,6 +115,7 @@ function resolveCreator(row: CreatorRow, catalog: AipogerChoiceCatalogItem[], pr
     curatorIdentity: "personal",
     curatorName: row.curator_name?.trim() || profile?.display_name?.trim() || "AIPOGER 創作者",
     avatarUrl: profile?.avatar_url?.trim() || "",
+    coverUrl: publicCoverUrl(admin, row.cover_path),
     items: resolveItems(row.aipoger_creator_choice_items, catalog),
   };
 }
@@ -152,12 +154,22 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       return NextResponse.json({ kind, collection: resolveOfficial(admin, data as OfficialRow, catalog.items, profile) }, { headers: { "Cache-Control": "no-store" } });
     }
 
-    const { data, error } = await admin
+    let { data, error } = await admin
       .from("aipoger_creator_choice_collections")
-      .select("id,creator_id,curator_name,week_start,title,intro,published_at,aipoger_creator_choice_items(id,source_kind,source_id,position)")
+      .select("id,creator_id,curator_name,week_start,title,intro,cover_path,published_at,aipoger_creator_choice_items(id,source_kind,source_id,position)")
       .eq("id", id)
       .eq("is_published", true)
       .maybeSingle();
+    if (error && isMissingChoiceCover(error)) {
+      const fallback = await admin
+        .from("aipoger_creator_choice_collections")
+        .select("id,creator_id,curator_name,week_start,title,intro,published_at,aipoger_creator_choice_items(id,source_kind,source_id,position)")
+        .eq("id", id)
+        .eq("is_published", true)
+        .maybeSingle();
+      data = fallback.data ? { ...fallback.data, cover_path: null } : null;
+      error = fallback.error;
+    }
     if (error) throw error;
     if (!data) return NextResponse.json({ error: "這份 Choice 尚未發布或已撤回。" }, { status: 404 });
     const [fighter, user] = await Promise.all([
@@ -168,7 +180,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       display_name: fighter.data?.display_name ?? null,
       avatar_url: fighter.data?.avatar_url ?? user.data?.avatar_url ?? null,
     };
-    return NextResponse.json({ kind, collection: resolveCreator(data as CreatorRow, catalog.items, profile) }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ kind, collection: resolveCreator(admin, data as CreatorRow, catalog.items, profile) }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (isMissingChoiceSchema(error)) return NextResponse.json({ error: "Choice 尚未啟用。" }, { status: 404 });
     return NextResponse.json({ error: error instanceof Error ? error.message : "Choice 暫時無法讀取。" }, { status: 500 });

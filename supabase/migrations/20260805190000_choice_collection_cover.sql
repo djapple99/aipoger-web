@@ -5,5 +5,11 @@
 alter table public.aipoger_choice_collections
   add column if not exists cover_path text;
 
+alter table public.aipoger_creator_choice_collections
+  add column if not exists cover_path text;
+
 comment on column public.aipoger_choice_collections.cover_path is
   'Optional dedicated cover for this official Choice collection. Stored in the listen-bar-covers bucket.';
+
+comment on column public.aipoger_creator_choice_collections.cover_path is
+  'Optional dedicated cover for this creator Choice collection. Stored in the listen-bar-covers bucket.';

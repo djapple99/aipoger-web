@@ -60,7 +60,7 @@ test("Choice share metadata uses the curator profile avatar instead of the globa
   assert.match(choiceShareMetadata, /from\("fighter_profiles"\)/);
   assert.doesNotMatch(choiceShareMetadata, /from\("user_profiles"\)/);
   assert.match(choiceShareMetadata, /auth\.admin\.getUserById/);
-  assert.match(choiceShareMetadata, /imageUrl: profile\.avatarUrl/);
+  assert.match(choiceShareMetadata, /publicCoverUrl\(admin, row\.cover_path\) \|\| profile\.avatarUrl/);
   assert.match(choiceShareMetadata, /personal \? profile\.avatarUrl : ""/);
 });
 

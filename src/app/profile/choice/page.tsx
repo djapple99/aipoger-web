@@ -39,11 +39,20 @@ type ChoicePayload = {
   error?: string;
 };
 
+const MAX_COVER_BYTES = 10 * 1024 * 1024;
+const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
+
 function coverUrl(path: string | null | undefined) {
   const clean = path?.trim();
   if (!clean) return AIPOGER_BRAND_LOGO;
   if (/^https?:/i.test(clean)) return clean;
   return supabase.storage.from(LISTEN_BAR_COVER_BUCKET).getPublicUrl(clean).data.publicUrl || AIPOGER_BRAND_LOGO;
+}
+
+function isAcceptedCover(file: File) {
+  return ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)
+    && file.size > 0
+    && file.size <= MAX_COVER_BYTES;
 }
 
 function displayDate(value: string | null | undefined) {
@@ -65,6 +74,8 @@ export default function CreatorChoicePage() {
   const [weekStart, setWeekStart] = useState(choiceWeekStart());
   const [title, setTitle] = useState("");
   const [intro, setIntro] = useState("");
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState("");
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
@@ -125,12 +136,20 @@ export default function CreatorChoicePage() {
       setWeekStart(choiceWeekStart());
       setTitle("");
       setIntro("");
+      setCoverFile(null);
+      setCoverPreview("");
       return;
     }
     setWeekStart(selected.weekStart);
     setTitle(selected.title);
     setIntro(selected.intro);
+    setCoverFile(null);
+    setCoverPreview(selected.coverUrl?.trim() || selected.avatarUrl?.trim() || AIPOGER_BRAND_LOGO);
   }, [selected]);
+
+  useEffect(() => () => {
+    if (coverPreview.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
+  }, [coverPreview]);
 
   const runAction = useCallback(async (action: string, body: Record<string, unknown>, successMessage: string, preferredId?: string | null) => {
     setBusy(action);
@@ -156,8 +175,52 @@ export default function CreatorChoicePage() {
   }, [authHeader, loadData, selectedId]);
 
   const saveCollection = useCallback(async () => {
-    await runAction("save_collection", { collectionId: selected?.id, weekStart, title, intro }, selected ? "Choice 草稿已儲存。" : "已建立自己的 Choice 草稿。", selected?.id);
-  }, [intro, runAction, selected, title, weekStart]);
+    const pendingCoverFile = coverFile;
+    const result = await runAction("save_collection", { collectionId: selected?.id, weekStart, title, intro }, selected ? "Choice 草稿已儲存。" : "已建立自己的 Choice 草稿。", selected?.id);
+    const collectionId = result?.collectionId ?? selected?.id;
+    if (!collectionId || !pendingCoverFile) return;
+    setBusy("upload_cover");
+    setError("");
+    try {
+      const form = new FormData();
+      form.set("collectionId", collectionId);
+      form.set("file", pendingCoverFile);
+      const response = await fetch("/api/creator-choice", { method: "POST", headers: await authHeader(), body: form });
+      const payload = (await response.json().catch(() => null)) as { message?: string; error?: string; coverUrl?: string } | null;
+      if (!response.ok) throw new Error(payload?.error || "Choice 封面上傳失敗。");
+      setMessage(payload?.message || "本期 Choice 封面已更新。");
+      setCoverFile(null);
+      if (payload?.coverUrl) setCoverPreview(payload.coverUrl);
+      await loadData(collectionId);
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Choice 封面上傳失敗。");
+    } finally {
+      setBusy("");
+    }
+  }, [authHeader, coverFile, intro, loadData, runAction, selected, title, weekStart]);
+
+  function onCoverChange(file: File | null) {
+    if (!file) return;
+    if (!isAcceptedCover(file)) {
+      setError("封面只接受 JPG、PNG、WebP、GIF，且檔案需小於 10MB。");
+      return;
+    }
+    if (coverPreview.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
+    setCoverFile(file);
+    setCoverPreview(URL.createObjectURL(file));
+    setError("");
+  }
+
+  async function clearChoiceCover() {
+    if (!selected) return;
+    if (coverFile) {
+      if (coverPreview.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
+      setCoverFile(null);
+      setCoverPreview(selected.coverUrl?.trim() || selected.avatarUrl?.trim() || AIPOGER_BRAND_LOGO);
+      return;
+    }
+    await runAction("clear_cover", { collectionId: selected.id }, "已移除本期 Choice 封面。", selected.id);
+  }
 
   const ensureChoiceCollection = useCallback(async () => {
     if (selected) return selected.id;
@@ -320,6 +383,23 @@ export default function CreatorChoicePage() {
                 <label className="grid gap-1 text-xs font-black text-zinc-300">週次（星期一）<input type="date" value={weekStart} onChange={(event) => setWeekStart(event.target.value)} className="h-10 border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none focus:border-cyan-100/60" /></label>
                 <label className="grid gap-1 text-xs font-black text-zinc-300">標題（可選）<input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} placeholder="我的本期 Choice" className="h-10 border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none focus:border-cyan-100/60" /></label>
                 <label className="grid gap-1 text-xs font-black text-zinc-300">推薦文章（可選）<textarea value={intro} onChange={(event) => setIntro(event.target.value)} maxLength={AIPOGER_CHOICE_INTRO_MAX_LENGTH} rows={5} placeholder="寫下這期 Choice 的推薦文章。" className="border border-white/10 bg-black px-3 py-2 text-sm font-bold leading-6 text-white outline-none focus:border-cyan-100/60" /></label>
+                <div className="grid gap-2 border border-white/10 bg-black/35 p-3 md:col-span-3 md:grid-cols-[112px_minmax(0,1fr)_auto] md:items-center">
+                  <div className="relative aspect-square w-28 overflow-hidden bg-zinc-950">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={coverPreview || AIPOGER_BRAND_LOGO} alt="Choice 封面預覽" className="h-full w-full object-cover" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-zinc-200">本期 Choice 封面</p>
+                    <p className="mt-1 text-xs font-bold leading-5 text-zinc-500">JPG / PNG / WebP / GIF，最大 10MB。未設定時使用創作者頭像或預設封面。</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 md:justify-end">
+                    <label className="cursor-pointer border border-cyan-200/45 bg-cyan-300 px-3 py-2 text-xs font-black text-black transition hover:bg-cyan-100">
+                      上傳封面
+                      <input type="file" accept={IMAGE_ACCEPT} className="sr-only" onChange={(event) => onCoverChange(event.target.files?.[0] ?? null)} />
+                    </label>
+                    {selected && (coverFile || selected.coverUrl) ? <button type="button" disabled={busy !== ""} onClick={() => void clearChoiceCover()} className="border border-white/15 px-3 py-2 text-xs font-black text-zinc-200 disabled:opacity-45">移除封面</button> : null}
+                  </div>
+                </div>
               </div>
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4"><p className="text-xs font-bold text-zinc-500">{choiceItemCountMessage(selected?.items.length ?? 0)}</p><div className="flex flex-wrap gap-2"><button type="button" disabled={busy !== ""} onClick={() => void saveCollection()} className="border border-white/15 px-4 py-2 text-xs font-black text-zinc-100 disabled:opacity-45">{busy === "save_collection" ? "儲存中" : selected ? "儲存草稿" : "建立草稿"}</button>{selected ? <><button type="button" disabled={busy !== ""} onClick={() => void copyPublicLink()} className="border border-white/15 px-4 py-2 text-xs font-black text-zinc-100 disabled:opacity-45">複製公開連結</button><Link href={creatorChoicePublicPath(selected.id)} className="border border-white/15 px-4 py-2 text-xs font-black text-zinc-100">看公開頁</Link><button type="button" disabled={busy !== ""} onClick={() => void runAction("set_published", { collectionId: selected.id, isPublished: !selected.isPublished, weekStart, title, intro }, selected.isPublished ? "Choice 已撤回。" : "Choice 已發布。", selected.id)} className={`border px-4 py-2 text-xs font-black disabled:opacity-45 ${selected.isPublished ? "border-red-200/35 bg-red-500/10 text-red-100" : "border-cyan-200/50 bg-cyan-300 text-black"}`}>{busy === "set_published" ? "處理中" : selected.isPublished ? "撤回發布" : "發布 Choice"}</button></> : null}</div></div>
             </section>
