@@ -15,6 +15,7 @@ const creatorChoiceRoute = readFileSync(new URL("../src/app/api/creator-choice/r
 const adminChoiceRoute = readFileSync(new URL("../src/app/api/admin/choice/route.ts", import.meta.url), "utf8");
 const profileChoicePage = readFileSync(new URL("../src/app/profile/choice/page.tsx", import.meta.url), "utf8");
 const choiceModel = readFileSync(new URL("../src/lib/aipoger-choice.ts", import.meta.url), "utf8");
+const choiceCopy = readFileSync(new URL("../src/lib/choice-copy.ts", import.meta.url), "utf8");
 const choiceLayout = readFileSync(new URL("../src/app/choice/[id]/layout.tsx", import.meta.url), "utf8");
 const choiceShareMetadata = readFileSync(new URL("../src/lib/server-choice-share-metadata.ts", import.meta.url), "utf8");
 
@@ -25,15 +26,15 @@ test("shared Choice links resolve official and creator collections to the playab
   assert.match(sharedRoute, /aipoger_choice_collections/);
   assert.match(sharedRoute, /aipoger_creator_choice_collections/);
   assert.match(sharedPage, /ShowtimeQueuePlayer/);
-  assert.match(sharedPage, /全部播放/);
+  assert.match(sharedPage, /copy\.playAll/);
   assert.match(sharedPage, /api\/choice\/\$\{encodeURIComponent\(choiceId\)\}\?kind=\$\{kind\}/);
-  assert.match(sharedPage, /回到 Showtime/);
+  assert.match(sharedPage, /copy\.backToShowtime/);
   assert.match(sharedPage, /choiceDisplayTitle/);
 });
 
 test("shared Choice page supports collection Heart save and remove", () => {
-  assert.match(sharedPage, /收藏 Choice/);
-  assert.match(sharedPage, /取消收藏 Choice/);
+  assert.match(sharedPage, /copy\.favoriteChoice/);
+  assert.match(sharedPage, /copy\.removeChoice/);
   assert.match(sharedPage, /aria-pressed=\{heart\.myHeart\}/);
   assert.match(sharedPage, /action: heart\.myHeart \? "remove_heart" : "heart"/);
   assert.match(sharedPage, /collectionKind: kind/);
@@ -46,8 +47,18 @@ test("Choice uses the authored issue title and exposes song-level saves in the i
   assert.match(sharedPage, /choiceItemRecordKey/);
   assert.match(sharedPage, /api\/honor-board\/interactions/);
   assert.match(sharedPage, /toggleItemHeart/);
-  assert.match(sharedPage, /取消收藏 \$\{item\.title\}/);
-  assert.match(sharedPage, /播放 \$\{item\.title\}/);
+  assert.match(sharedPage, /copy\.removeTrack\(item\.title\)/);
+  assert.match(sharedPage, /copy\.playTrack\(item\.title\)/);
+});
+
+test("Choice UI copy follows the four-region language policy", () => {
+  for (const language of ["zh:", "en:", "ja:", "ko:"]) {
+    assert.ok(choiceCopy.includes(language), `missing ${language} Choice copy`);
+  }
+  assert.match(sharedPage, /getChoiceCopy\(lang\)/);
+  assert.match(sharedPage, /isZh=\{lang === "zh"\}/);
+  assert.match(choiceLayout, /isSupportedLang/);
+  assert.match(choiceLayout, /locale = lang === "zh"/);
 });
 
 test("Choice share metadata uses the curator profile avatar instead of the global brand card", () => {

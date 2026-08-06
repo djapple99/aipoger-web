@@ -1005,6 +1005,7 @@ export default function RankPage() {
   const [hotBarRows, setHotBarRows] = useState<RankRow[]>([]);
   const [choiceCollections, setChoiceCollections] = useState<AipogerChoiceCollection[]>([]);
   const [creatorChoices, setCreatorChoices] = useState<AipogerPublicCreatorChoiceCollection[]>([]);
+  const [choiceLoading, setChoiceLoading] = useState(true);
   const [choiceHearts, setChoiceHearts] = useState<Record<string, ShowtimeChoiceHeartState>>({});
   const [choiceHeartBusy, setChoiceHeartBusy] = useState<Record<string, boolean>>({});
   const [choiceHeartError, setChoiceHeartError] = useState("");
@@ -1016,7 +1017,7 @@ export default function RankPage() {
   const [interactionErrors, setInteractionErrors] = useState<Record<string, string>>({});
   const [favoriteBusy, setFavoriteBusy] = useState<Record<string, boolean>>({});
   const [commentBusy, setCommentBusy] = useState<Record<string, boolean>>({});
-  const navSuffix = lang === "en" ? "?lang=en" : "?lang=zh";
+  const navSuffix = `?lang=${lang}`;
 
   const openLyricsModal = (row: RankRow) => {
     const lyrics = cleanLyrics(row.lyrics);
@@ -1035,13 +1036,9 @@ export default function RankPage() {
       const [
         { data: archiveData, error: archiveError },
         { data: hotData, error: hotError },
-        { collections: nextChoiceCollections, error: choiceError },
-        { collections: nextCreatorChoices, error: creatorChoiceError },
       ] = await Promise.all([
         fetchBattleArchivesForRank(),
         fetchAiMusicTracksForRank(lang),
-        fetchCurrentChoice(),
-        fetchPublicCreatorChoices(),
       ]);
 
       if (archiveError) {
@@ -1050,17 +1047,6 @@ export default function RankPage() {
       if (hotError && !/schema cache|does not exist|permission denied/i.test(hotError.message || "")) {
         console.warn("[rank hot tracks]", hotError.message);
       }
-      if (choiceError && !/schema cache|does not exist|permission denied|aipoger_choice/i.test(choiceError.message || "")) {
-        console.warn("[rank choice]", choiceError.message);
-      }
-      if (creatorChoiceError && !/schema cache|does not exist|permission denied|aipoger_creator_choice/i.test(creatorChoiceError.message || "")) {
-        console.warn("[rank creator choices]", creatorChoiceError.message);
-      }
-      if (!cancelled) {
-        setChoiceCollections(nextChoiceCollections);
-        setCreatorChoices(nextCreatorChoices);
-      }
-
       const mappedArchives: ArchivedBattleResult[] = Array.isArray(archiveData)
         ? archiveData
             .filter((rawRow) => !String((rawRow as Record<string, unknown>).showtime_public_removed_at || "").trim())
@@ -1166,6 +1152,35 @@ export default function RankPage() {
     };
   }, [lang]);
 
+  useEffect(() => {
+    let cancelled = false;
+    setChoiceLoading(true);
+
+    const loadChoices = async () => {
+      const [
+        { collections: nextChoiceCollections, error: choiceError },
+        { collections: nextCreatorChoices, error: creatorChoiceError },
+      ] = await Promise.all([fetchCurrentChoice(), fetchPublicCreatorChoices()]);
+
+      if (choiceError && !/schema cache|does not exist|permission denied|aipoger_choice/i.test(choiceError.message || "")) {
+        console.warn("[rank choice]", choiceError.message);
+      }
+      if (creatorChoiceError && !/schema cache|does not exist|permission denied|aipoger_creator_choice/i.test(creatorChoiceError.message || "")) {
+        console.warn("[rank creator choices]", creatorChoiceError.message);
+      }
+      if (!cancelled) {
+        setChoiceCollections(nextChoiceCollections);
+        setCreatorChoices(nextCreatorChoices);
+        setChoiceLoading(false);
+      }
+    };
+
+    void loadChoices();
+    return () => {
+      cancelled = true;
+    };
+  }, [lang]);
+
   const battleRows = useMemo(() => {
     return archivedResults.map((entry, index) => rowFromArchive(entry, index));
   }, [archivedResults]);
@@ -1190,7 +1205,7 @@ export default function RankPage() {
           title: choiceDisplayTitle(choiceCollection.curatorName, choiceCollection.title),
           intro: choiceCollection.intro,
           weekStart: choiceCollection.weekStart,
-          href: choicePublicPath(choiceCollection.id, "official"),
+          href: `${choicePublicPath(choiceCollection.id, "official")}&lang=${lang}`,
           items: choiceCollection.items,
         }));
     const creators = creatorChoices.map((collection) => ({
@@ -1201,11 +1216,11 @@ export default function RankPage() {
       title: choiceDisplayTitle(collection.curatorName, collection.title),
       intro: collection.intro,
       weekStart: collection.weekStart,
-      href: creatorChoicePublicPath(collection.id),
+      href: `${creatorChoicePublicPath(collection.id)}?lang=${lang}`,
       items: collection.items,
     }));
     return [...official, ...creators];
-  }, [choiceCollections, creatorChoices]);
+  }, [choiceCollections, creatorChoices, lang]);
 
   const startChoicePlayback = (entry: ShowtimeChoiceShelfEntry, itemId?: string) => {
     const playable = entry.items
@@ -1616,7 +1631,8 @@ export default function RankPage() {
         <div className="mt-5">
           <ShowtimeChoiceShelf
             entries={choiceEntries}
-            isZh={isZh}
+            lang={lang}
+            loading={choiceLoading}
             onPlay={startChoicePlayback}
             hearts={choiceHearts}
             heartBusy={choiceHeartBusy}

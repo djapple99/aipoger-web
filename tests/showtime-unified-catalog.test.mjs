@@ -60,7 +60,7 @@ test("Showtime puts cover-led Choice editorials before a compact six-column cata
   assert.ok(choiceShelfSource.includes("onToggleHeart(entry)"));
   assert.equal(choiceShelfSource.includes("CURATOR SETS"), false);
   assert.equal(choiceShelfSource.includes("由創作者選出他們心目中的歌單"), false);
-  assert.ok(choiceShelfSource.includes('aria-label={isZh ? "預覽歌單" : "Preview tracklist"}'));
+  assert.ok(choiceShelfSource.includes("aria-label={copy.previewTracklist}"));
   assert.ok(choiceShelfSource.includes("onPlay(entry)"));
 });
 
@@ -88,11 +88,11 @@ test("Choice tracklist HUD supports song saves, individual playback, and play al
   assert.ok(choiceShelfSource.includes("setDetail(entry)"));
   assert.ok(choiceShelfSource.includes("createPortal(("));
   assert.ok(choiceShelfSource.includes("document.body"));
-  assert.ok(choiceShelfSource.includes("choiceDateLabel(entry.weekStart, isZh)"));
+  assert.ok(choiceShelfSource.includes("choiceDateLabel(entry.weekStart, lang)"));
   assert.ok(choiceShelfSource.includes("choiceItemRecordKey(item)"));
   assert.ok(choiceShelfSource.includes("onToggleItemHeart(item)"));
   assert.ok(choiceShelfSource.includes("onPlay(detail, item.itemId)"));
-  assert.ok(choiceShelfSource.includes('aria-label={isZh ? "全部播放" : "Play all"}'));
+  assert.ok(choiceShelfSource.includes("aria-label={copy.playAll}"));
   assert.ok(choiceShelfSource.includes("onPlay(detail)"));
   assert.ok(choiceShelfSource.includes("onPlay(entry)"));
 });
