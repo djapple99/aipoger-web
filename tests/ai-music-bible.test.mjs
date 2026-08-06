@@ -29,9 +29,11 @@ import {
 } from "../src/lib/ai-music-bible-content.ts";
 import {
   PUBLIC_BIBLE_FAQ,
+  SUNO_COMMAND_REFERENCE,
   SUNO_FEATURE_WATCH,
   SUNO_OFFICIAL_CROSS_CHECK_DATE,
   SUNO_PREFLIGHT_ITEMS,
+  SUNO_PROBLEM_ROUTES,
   SUNO_QUICK_START_FIELDS,
   SUNO_RIGHTS_GUIDE,
   SUNO_TROUBLESHOOTING,
@@ -40,6 +42,7 @@ import {
 const practiceLibraryComponent = readFileSync(new URL("../src/components/suno-practice-library-section.tsx", import.meta.url), "utf8");
 const inspirationIndexComponent = readFileSync(new URL("../src/components/suno-inspiration-index-section.tsx", import.meta.url), "utf8");
 const referenceGuideComponent = readFileSync(new URL("../src/components/suno-reference-guide-section.tsx", import.meta.url), "utf8");
+const commandReferenceComponent = readFileSync(new URL("../src/components/suno-command-reference-section.tsx", import.meta.url), "utf8");
 const commandDockComponent = readFileSync(new URL("../src/components/bible-command-dock.tsx", import.meta.url), "utf8");
 const publicFaqComponent = readFileSync(new URL("../src/components/public-bible-faq.tsx", import.meta.url), "utf8");
 const biblePageComponent = readFileSync(new URL("../src/components/ai-music-bible-page.tsx", import.meta.url), "utf8");
@@ -200,6 +203,8 @@ test("genre crate and production flow remain complete and bilingual", () => {
   assert.ok(SUNO_GENRE_GROUPS.every((group) => group.key && group.label.zh && group.label.en && group.terms.length > 0));
   assert.equal(AI_PRODUCTION_FLOW.length, 6);
   assert.ok(AI_PRODUCTION_FLOW.every((step) => step.title.zh && step.title.en && step.body.zh && step.body.en));
+  assert.ok(AI_PRODUCTION_FLOW.some((step) => step.body.zh.includes("A&R") && step.body.zh.includes("留言")));
+  assert.ok(AI_PRODUCTION_FLOW.some((step) => step.title.zh.includes("發表") && step.body.zh.includes("Showtime") && step.body.zh.includes("Choice")));
 });
 
 test("expanded Studio Mastering prompts are discoverable by genre, culture, and era", () => {
@@ -281,6 +286,36 @@ test("version watch and rights guide point to official Suno guidance with separa
   assert.match(referenceGuideComponent, /id="suno-version-watch"/);
   assert.match(referenceGuideComponent, /id="rights-release"/);
   assert.match(referenceGuideComponent, /這裡是風險檢查，不是法律意見/);
+});
+
+test("Suno command reference covers fields, tags, controls, editing, and problem routes", () => {
+  assert.equal(SUNO_COMMAND_REFERENCE.length, 7);
+  assert.equal(new Set(SUNO_COMMAND_REFERENCE.map((item) => item.key)).size, SUNO_COMMAND_REFERENCE.length);
+  assert.deepEqual(new Set(SUNO_COMMAND_REFERENCE.map((item) => item.kind)), new Set(["field", "tag", "control", "edit"]));
+  assert.ok(SUNO_COMMAND_REFERENCE.every((item) => (
+    item.title.zh
+    && item.title.en
+    && item.syntax.zh
+    && item.syntax.en
+    && item.effect.zh
+    && item.effect.en
+    && item.caution.zh
+    && item.caution.en
+    && item.version.zh
+    && item.version.en
+    && ["official", "field", "version"].includes(item.evidence)
+    && item.source.url.startsWith("https://")
+    && item.keywords.length > 0
+  )));
+  assert.equal(SUNO_PROBLEM_ROUTES.length, 4);
+  assert.equal(new Set(SUNO_PROBLEM_ROUTES.map((item) => item.key)).size, SUNO_PROBLEM_ROUTES.length);
+  assert.ok(SUNO_PROBLEM_ROUTES.every((item) => item.title.zh && item.title.en && item.body.zh && item.body.en && item.href.startsWith("#")));
+  assert.match(commandReferenceComponent, /id="suno-command-reference"/);
+  assert.match(commandReferenceComponent, /PROBLEM ROUTER/);
+  assert.match(commandReferenceComponent, /搜尋：Verse、滑桿、唱不清楚、Song Editor/);
+  assert.match(commandReferenceComponent, /aria-pressed={kind === item}/);
+  assert.match(commandReferenceComponent, /複製範例/);
+  assert.match(commandReferenceComponent, /標籤是提示，不是保證命令/);
 });
 
 test("Bible command search exposes high-contrast navigation and keyboard controls", () => {

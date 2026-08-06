@@ -22,6 +22,7 @@ import {
   QrCode,
   Search,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   ThumbsDown,
   ThumbsUp,
@@ -37,6 +38,7 @@ import { AIPOGER_LINE_COMMUNITY_URL, AIPOGER_TUTORIAL_PLAYLIST_URL } from "@/lib
 import StemSeparationGuideSection from "@/components/stem-separation-guide-section";
 import SunoPracticeLibrarySection from "@/components/suno-practice-library-section";
 import SunoReferenceGuideSection from "@/components/suno-reference-guide-section";
+import SunoCommandReferenceSection from "@/components/suno-command-reference-section";
 import BibleCommandDock from "@/components/bible-command-dock";
 import AuthRequiredDialog from "@/components/auth-required-dialog";
 import ShareButton from "@/components/share-button";
@@ -81,6 +83,7 @@ function practiceAreasForLanguage(isZh: boolean): PracticeArea[] {
   return isZh
     ? [
         { icon: Gauge, eyebrow: "START HERE", title: "Suno 起手式", body: "先分清 Style、Lyrics、Title，再過生成前檢查。", href: "#suno-control-desk", accent: "cyan" },
+        { icon: SlidersHorizontal, eyebrow: "QUICK REF", title: "Suno 速查表", body: "查欄位、段落標籤、滑桿與 Song Editor；每項都標出風險與證據。", href: "#suno-command-reference", accent: "orange" },
         { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt 招式庫", body: "73 招 Prompt、80+ 個曲風詞與愛波哥私藏配方。", href: "#suno-prompt-library", accent: "orange" },
         { icon: LibraryBig, eyebrow: "1,519 INDEX", title: "聲音 DNA × Prompt 索引", body: "772 組藝術家聲音 DNA 與 747 組去重配方，可搜尋、複製與評論。", href: "#suno-inspiration-index", accent: "cyan" },
         { icon: BookOpenText, eyebrow: "LYRICS", title: "歌詞調教", body: "段落、唱法、合唱、情緒與台語咬字實測。", href: "#lyric-control-library", accent: "cyan" },
@@ -92,6 +95,7 @@ function practiceAreasForLanguage(isZh: boolean): PracticeArea[] {
       ]
     : [
         { icon: Gauge, eyebrow: "START HERE", title: "Suno Quick Start", body: "Separate Style, Lyrics, and Title, then run the pre-flight check.", href: "#suno-control-desk", accent: "cyan" },
+        { icon: SlidersHorizontal, eyebrow: "QUICK REF", title: "Suno Quick Reference", body: "Look up fields, section tags, sliders, and Song Editor with evidence and caveats.", href: "#suno-command-reference", accent: "orange" },
         { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt Moves", body: "73 prompt moves, 80+ genre terms, and curated AIPOGER recipes.", href: "#suno-prompt-library", accent: "orange" },
         { icon: LibraryBig, eyebrow: "1,519 INDEX", title: "Sonic DNA × Prompt Index", body: "Search, copy, and discuss 772 artist DNA references and 747 unique recipes.", href: "#suno-inspiration-index", accent: "cyan" },
         { icon: BookOpenText, eyebrow: "LYRICS", title: "Lyric Control", body: "Shape sections, delivery, duets, emotion, and Taiwanese pronunciation.", href: "#lyric-control-library", accent: "cyan" },
@@ -648,6 +652,8 @@ export default function AiMusicBiblePage() {
         <LineCommunityDialog open={lineCommunityOpen} onClose={() => setLineCommunityOpen(false)} lang={lang as "zh" | "en" | "ja" | "ko"} />
 
         <SunoReferenceGuideSection locale={isZh ? "zh" : "en"} />
+
+        <SunoCommandReferenceSection locale={isZh ? "zh" : "en"} />
 
         <div className="mt-10">
           <SunoPracticeLibrarySection

@@ -552,12 +552,12 @@ export const SUNO_GENRE_GROUPS: SunoGenreGroup[] = [
 ];
 
 export const AI_PRODUCTION_FLOW: { title: SunoLocalizedText; body: SunoLocalizedText }[] = [
-  { title: { zh: "01 定義方向", en: "01 Define" }, body: { zh: "用 LLM 發想與整理，但歌詞、情境與選擇要由人負責。", en: "Use an LLM to draft and organize, while people own the lyric, context, and decisions." } },
-  { title: { zh: "02 先挑旋律", en: "02 Select" }, body: { zh: "先選旋律與能量成立的版本，再處理咬字與細節。", en: "Choose the version with the strongest melody and energy before fixing diction." } },
-  { title: { zh: "03 拆軌檢查", en: "03 Inspect" }, body: { zh: "分離人聲與樂器，提早發現雜音、漏音與不可修的生成缺陷。", en: "Separate stems to expose artifacts, bleed, and generation defects early." } },
-  { title: { zh: "04 編輯重組", en: "04 Edit" }, body: { zh: "在 DAW 剪輯、對拍、淡入淡出與重組，讓素材真正變成作品。", en: "Cut, align, fade, and rearrange in a DAW so material becomes a finished work." } },
-  { title: { zh: "05 後製驗收", en: "05 Finish" }, body: { zh: "檢查相位、動態、True Peak 與不同裝置；不要迷信單一 LUFS 數字。", en: "Check phase, dynamics, true peak, and multiple devices rather than worshipping one LUFS target." } },
-  { title: { zh: "06 保存歷程", en: "06 Archive" }, body: { zh: "保存 Prompt、歌詞草稿、工程檔、授權與發行紀錄，形成可追溯的創作證據。", en: "Keep prompts, lyric drafts, project files, rights, and release records as a traceable creative history." } },
+  { title: { zh: "01 定義方向", en: "01 Define" }, body: { zh: "用 Prompt、情境與記憶點定義這一版只要測什麼；歌詞與選擇仍由人負責。", en: "Define the one thing this version must test with a prompt, scene, and memory point; people still own the lyric and decisions." } },
+  { title: { zh: "02 生成三版", en: "02 Render three" }, body: { zh: "同一組設定先做三版，再挑旋律、能量與人聲身份最穩的版本，不靠一次中獎。", en: "Render three versions from the same setup, then select the most stable melody, energy, and vocal identity instead of hoping for one lucky take." } },
+  { title: { zh: "03 AIPOGER 聽感驗證", en: "03 Validate" }, body: { zh: "上傳作品交給 A&R Gate，看聲音 DNA、歌詞記憶點與最適合的內容路線；再用留言、愛心與收藏觀察反應。", en: "Bring the track to A&R Gate for sonic DNA, lyric memory, and route judgement; then watch comments, Hearts, and saves for audience signals." } },
+  { title: { zh: "04 選擇測試場", en: "04 Test in public" }, body: { zh: "需要短片段比較就走 Drop；需要兩首歌對決就走 Q Crash；完整作品先進探索或傷心酒吧累積真實聆聽。", en: "Use Drop for focused short tests, Q Crash for a two-song decision, and Explore or Bar Heartbreak for full-song listening." } },
+  { title: { zh: "05 發表與策展", en: "05 Release and curate" }, body: { zh: "通過驗證的作品才往 Showtime；想做方向策展，就進 Choice，讓歌曲有被記住與被分享的出口。", en: "Move validated work toward Showtime; use Choice when a curated direction can give the songs a memorable, shareable home." } },
+  { title: { zh: "06 保存歷程", en: "06 Archive" }, body: { zh: "保存 Prompt、歌詞草稿、模型版本、工程檔、授權與發表紀錄，讓成功條件可以重現。", en: "Keep prompts, lyric drafts, model version, project files, rights, and release records so successful conditions can be reproduced." } },
 ];
 
 export function sunoLibraryText(text: SunoLocalizedText, locale: SunoLibraryLocale) {

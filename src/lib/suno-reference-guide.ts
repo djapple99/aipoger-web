@@ -10,6 +10,28 @@ export type ReferenceSource = {
   url: string;
 };
 
+export type SunoCommandReferenceKind = "field" | "tag" | "control" | "edit";
+
+export type SunoCommandReference = {
+  key: string;
+  kind: SunoCommandReferenceKind;
+  title: ReferenceText;
+  syntax: ReferenceText;
+  effect: ReferenceText;
+  caution: ReferenceText;
+  version: ReferenceText;
+  evidence: "official" | "field" | "version";
+  source: ReferenceSource;
+  keywords: string[];
+};
+
+export type SunoProblemRoute = {
+  key: string;
+  title: ReferenceText;
+  body: ReferenceText;
+  href: string;
+};
+
 export type QuickStartField = {
   key: "style" | "lyrics" | "title";
   eyebrow: string;
@@ -20,6 +42,120 @@ export type QuickStartField = {
 
 export const SUNO_OFFICIAL_CROSS_CHECK_DATE = "2026-07-28";
 export const SUNO_REFERENCE_PAGE_UPDATED_DATE = "2026-07-28";
+
+export const SUNO_PROBLEM_ROUTES: readonly SunoProblemRoute[] = [
+  {
+    key: "beginner",
+    title: { zh: "我是新手", en: "I am new to Suno" },
+    body: { zh: "先分清 Style、Lyrics、Title，再用一份模板做第一版。", en: "Separate Style, Lyrics, and Title before making your first controlled draft." },
+    href: "#suno-control-desk",
+  },
+  {
+    key: "lyrics-rushed",
+    title: { zh: "歌詞唱不清楚", en: "The lyrics are rushed" },
+    body: { zh: "從聽見的咬字問題反推行長、段落與留白，不要一直整首重抽。", en: "Trace diction back to line length, sections, and breathing room instead of rerolling the whole song." },
+    href: "#suno-troubleshooting",
+  },
+  {
+    key: "weak-hook",
+    title: { zh: "副歌記不住", en: "The chorus is forgettable" },
+    body: { zh: "先修短主句，再用三版比較哪一個記憶點真的留下來。", en: "Shorten the main line, then compare three renders to find the hook that stays." },
+    href: "#suno-troubleshooting",
+  },
+  {
+    key: "release",
+    title: { zh: "準備發表", en: "I am preparing a release" },
+    body: { zh: "先查權利，再走 A&R、Drop／Q Crash，最後進 Showtime 或 Choice。", en: "Check rights, validate through A&R and Drop/Q Crash, then move toward Showtime or Choice." },
+    href: "#rights-release",
+  },
+] as const;
+
+export const SUNO_COMMAND_REFERENCE: readonly SunoCommandReference[] = [
+  {
+    key: "style-field",
+    kind: "field",
+    title: { zh: "Style 欄：先定義聲音骨架", en: "Style field: lock the sonic frame" },
+    syntax: { zh: "[主曲風], [次曲風], [律動／能量], [聲線], [主樂器角色], [製作質地]", en: "[genre], [subgenre], [groove / energy], [vocal identity], [lead instrument role], [production texture]" },
+    effect: { zh: "控制整首歌的曲風、聲線、樂器位置與整體質地。", en: "Sets the track-wide genre, vocal identity, instrument roles, and production texture." },
+    caution: { zh: "先留 4–7 個互相相容的重點；不要把整個故事塞進 Style。", en: "Start with 4–7 compatible priorities; do not put the whole story in Style." },
+    version: { zh: "Custom Mode · 欄位工作法", en: "Custom Mode · field workflow" },
+    evidence: "field",
+    source: { label: "AIPOGER 實測方法", url: "https://aipoger.com/ai-music-bible?lang=zh#suno-control-desk" },
+    keywords: ["style", "曲風", "聲線", "genre"],
+  },
+  {
+    key: "lyrics-field",
+    kind: "field",
+    title: { zh: "Lyrics 欄：安排怎麼唱", en: "Lyrics field: shape the delivery" },
+    syntax: { zh: "[段落標籤]\n短句建立畫面\n\n[Chorus]\n一句能被記住的主句", en: "[section tag]\nShort lines build the scene\n\n[Chorus]\nOne line worth remembering" },
+    effect: { zh: "放歌詞、段落、留白與就近的表演提示，讓模型知道哪裡收、哪裡放。", en: "Holds lyrics, sections, spacing, and nearby performance cues so the model can shape the arc." },
+    caution: { zh: "一行只留一個動作；標籤是提示，不是固定命令。", en: "Keep one action per line; tags are cues, not guaranteed commands." },
+    version: { zh: "Custom Mode · 歌詞控制", en: "Custom Mode · lyric control" },
+    evidence: "official",
+    source: { label: "Suno Custom Lyrics", url: "https://help.suno.com/en/articles/2415873" },
+    keywords: ["lyrics", "歌詞", "段落", "custom lyrics"],
+  },
+  {
+    key: "section-tags",
+    kind: "tag",
+    title: { zh: "[Verse]／[Chorus]／[Bridge]", en: "[Verse] / [Chorus] / [Bridge]" },
+    syntax: { zh: "[Verse 1]\n[Pre-Chorus]\n[Chorus]\n[Bridge]\n[Final Chorus]", en: "[Verse 1]\n[Pre-Chorus]\n[Chorus]\n[Bridge]\n[Final Chorus]" },
+    effect: { zh: "提供段落地圖，幫助模型理解歌曲要在哪裡建立、推高與回收。", en: "Provides a section map for building, lifting, and resolving the song." },
+    caution: { zh: "每段再加一個可聽見的變化就好；不要同時塞結構、混音與十個演出指令。", en: "Add one audible change per section; do not stack structure, mix, and ten performance commands." },
+    version: { zh: "版本敏感 · 生成提示", en: "Version-sensitive · generation cue" },
+    evidence: "version",
+    source: { label: "Suno Custom Lyrics", url: "https://help.suno.com/en/articles/2415873" },
+    keywords: ["verse", "chorus", "bridge", "段落", "標籤"],
+  },
+  {
+    key: "section-cue",
+    kind: "tag",
+    title: { zh: "段落就近提示", en: "Local section cue" },
+    syntax: { zh: "[Verse 1 - intimate, sparse piano]\n[Chorus - wider harmony, full drums]", en: "[Verse 1 - intimate, sparse piano]\n[Chorus - wider harmony, full drums]" },
+    effect: { zh: "把唱法、密度或樂器變化放在它真正發生的段落旁邊。", en: "Places delivery, density, or instrument changes beside the section where they should happen." },
+    caution: { zh: "同一段只指定一個主變化，否則難以知道哪個條件有效。", en: "Give each section one main change so you can tell which condition worked." },
+    version: { zh: "實測方法 · 非保證語法", en: "Field method · not guaranteed syntax" },
+    evidence: "field",
+    source: { label: "AIPOGER 實測方法", url: "https://aipoger.com/ai-music-bible?lang=zh#suno-troubleshooting" },
+    keywords: ["section cue", "表演", "密度", "段落提示"],
+  },
+  {
+    key: "no-vocals",
+    kind: "tag",
+    title: { zh: "[no vocals] 純音樂提示", en: "[no vocals] instrumental cue" },
+    syntax: { zh: "[no vocals]\n[Instrumental intro]\n[Instrumental break]", en: "[no vocals]\n[Instrumental intro]\n[Instrumental break]" },
+    effect: { zh: "把某一段的期待導向純樂器空間，適合前奏、間奏或背景音樂測試。", en: "Guides a section toward instrumental space for intros, breaks, or background-music tests." },
+    caution: { zh: "不是絕對靜音開關；請聽三版確認人聲是否真的退出。", en: "It is not a guaranteed mute switch; compare three renders to confirm the vocal actually leaves." },
+    version: { zh: "版本敏感 · 生成提示", en: "Version-sensitive · generation cue" },
+    evidence: "version",
+    source: { label: "Suno Custom Lyrics", url: "https://help.suno.com/en/articles/2415873" },
+    keywords: ["no vocals", "instrumental", "純音樂", "前奏", "間奏"],
+  },
+  {
+    key: "creative-sliders",
+    kind: "control",
+    title: { zh: "Creative Sliders", en: "Creative Sliders" },
+    syntax: { zh: "Weirdness · Style Influence · Audio Influence", en: "Weirdness · Style Influence · Audio Influence" },
+    effect: { zh: "調整生成方向的個性、Style 服從度與音訊參考影響力。", en: "Shapes generation personality, Style adherence, and the influence of audio references." },
+    caution: { zh: "這些是方向旋鈕，不是精準參數；一次只動一個，才有辦法比較。", en: "These are directional controls, not precision parameters; change one at a time." },
+    version: { zh: "Suno 官方功能 · 依方案與版本確認", en: "Official Suno feature · verify plan and version" },
+    evidence: "official",
+    source: { label: "Suno Creative Sliders", url: "https://help.suno.com/en/articles/6141377" },
+    keywords: ["weirdness", "style influence", "audio influence", "滑桿"],
+  },
+  {
+    key: "song-editor",
+    kind: "edit",
+    title: { zh: "Song Editor：先修局部", en: "Song Editor: fix the useful section" },
+    syntax: { zh: "Replace · Edit Lyrics · Extend · Crop · Fade", en: "Replace · Edit Lyrics · Extend · Crop · Fade" },
+    effect: { zh: "對已經有潛力的歌曲局部替換、改詞、延伸、裁切與淡入淡出。", en: "Replace, revise, extend, crop, and fade promising sections without rerolling everything." },
+    caution: { zh: "先保留原始版本與 Prompt；編輯不能替代完整的聽感驗收。", en: "Keep the original render and prompt; editing does not replace a full listening check." },
+    version: { zh: "Suno 官方功能 · 依方案與版本確認", en: "Official Suno feature · verify plan and version" },
+    evidence: "official",
+    source: { label: "Suno Song Editor", url: "https://help.suno.com/en/articles/6141505" },
+    keywords: ["song editor", "replace", "extend", "crop", "fade", "編輯"],
+  },
+] as const;
 
 export const SUNO_QUICK_START_FIELDS: readonly QuickStartField[] = [
   {
