@@ -1659,7 +1659,7 @@ export default function RankPage() {
             </p>
             <div
               className="mt-3 flex max-w-full items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              aria-label={isZh ? "Showtime 操作" : "Showtime Actions"}
+              aria-label={t("rank_showtime_actions")}
             >
               <ShareButton
                 title="AIPOGER Showtime"
@@ -1668,15 +1668,15 @@ export default function RankPage() {
                     ? "來聽 AIPOGER 已認證的 AI 音樂作品。"
                     : "Listen to AIPOGER's certified AI music works."
                 }
-                label={isZh ? "分享 Showtime" : "Share Showtime"}
-                copiedLabel={isZh ? "Showtime 連結已複製" : "Showtime Link Copied"}
+                label={t("rank_share_showtime")}
+                copiedLabel={t("rank_showtime_link_copied")}
                 className="shrink-0 whitespace-nowrap !px-4 !py-2 !text-xs border-yellow-100/30 bg-white/[0.045] text-zinc-100 hover:border-yellow-100/55 active:bg-yellow-300 active:text-black"
               />
               <Link
                 href={`/ai-music${navSuffix}`}
                 className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-yellow-100/30 bg-white/[0.045] px-4 py-2 text-xs font-black text-zinc-100 transition hover:border-yellow-100/55 active:bg-yellow-300 active:text-black"
               >
-                {isZh ? "去探索作品" : "Explore Works"}
+                {t("rank_explore_works")}
               </Link>
             </div>
           </div>
@@ -1688,7 +1688,7 @@ export default function RankPage() {
               <div className="grid gap-2 md:grid-cols-[minmax(9rem,0.8fr)_minmax(9rem,0.8fr)_minmax(0,2fr)_auto] md:items-end">
                 <label className="grid gap-1.5">
                   <span className={`${fontRighteous.className} text-[11px] uppercase tracking-[0.16em] text-yellow-100/65`}>
-                    {isZh ? "月份" : "Month"}
+                    {t("rank_month")}
                   </span>
                   <select
                     value={activeMonth}
@@ -1699,7 +1699,7 @@ export default function RankPage() {
                     className="h-10 min-w-0 rounded-md border border-yellow-100/25 bg-black/45 px-3 text-xs font-black text-zinc-100 outline-none transition hover:border-yellow-100/45 focus:border-yellow-100/60"
                   >
                     <option value="all">
-                      {isZh ? `全部月份 (${searchedDisplayRows.length})` : `All Months (${searchedDisplayRows.length})`}
+                      {t("rank_all_months", { count: searchedDisplayRows.length })}
                     </option>
                     {monthOptions.map((month) => (
                       <option key={month.key} value={month.key}>
@@ -1711,7 +1711,7 @@ export default function RankPage() {
 
                 <label className="grid gap-1.5">
                   <span className={`${fontRighteous.className} text-[11px] uppercase tracking-[0.16em] text-yellow-100/65`}>
-                    {isZh ? "類型" : "Style"}
+                    {t("rank_style")}
                   </span>
                   <select
                     value={activeGenre}
@@ -1719,7 +1719,7 @@ export default function RankPage() {
                     className="h-10 min-w-0 rounded-md border border-yellow-100/25 bg-black/45 px-3 text-xs font-black text-zinc-100 outline-none transition hover:border-yellow-100/45 focus:border-yellow-100/60"
                   >
                     <option value="all">
-                      {isZh ? `所有類型 (${monthFilteredRows.length})` : `All Styles (${monthFilteredRows.length})`}
+                      {t("rank_all_styles", { count: monthFilteredRows.length })}
                     </option>
                     {genreOptions.map((genre) => (
                       <option key={genre.key} value={genre.key}>
@@ -1731,7 +1731,7 @@ export default function RankPage() {
 
                 <label className="grid gap-1.5">
                   <span className={`${fontRighteous.className} text-[11px] uppercase tracking-[0.16em] text-cyan-100/70`}>
-                    SEARCH
+                    {t("rank_search")}
                   </span>
                   <input
                     value={searchTerm}
@@ -1739,7 +1739,7 @@ export default function RankPage() {
                       setSearchTerm(event.target.value);
                       setActiveGenre("all");
                     }}
-                    placeholder={isZh ? "搜尋歌手、歌名、對手、風格或 AI 工具" : "Search artist, song, opponent, style, or AI tool"}
+                    placeholder={t("rank_search_placeholder")}
                     className="aipo-input h-10 min-w-0 rounded-md px-3 text-sm font-bold transition placeholder:text-zinc-600"
                   />
                 </label>
@@ -1754,7 +1754,7 @@ export default function RankPage() {
                     }}
                     className="aipo-ghost-button h-10 rounded-md px-3 text-xs font-black text-zinc-300 transition hover:text-white"
                   >
-                    {isZh ? "清除" : "Clear"}
+                    {t("rank_clear")}
                   </button>
                 ) : (
                     <span className="inline-flex h-10 items-center rounded-md border border-white/10 bg-black/35 px-3 text-xs font-black text-zinc-500">
@@ -1776,7 +1776,7 @@ export default function RankPage() {
                     className="mx-auto h-[4.5rem] w-[4.5rem] rounded-lg object-cover"
                   />
                   <p className="text-lg font-black text-white">
-                    {isZh ? "目前沒有完整封存的正式紀錄" : "No Complete Archived Records Yet"}
+                    {t("rank_no_records")}
                   </p>
                   <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-zinc-500">
                     {isZh
@@ -1793,11 +1793,11 @@ export default function RankPage() {
                           AIPOGER SHOWTIME
                         </p>
                         <h2 className="mt-1 text-2xl font-black text-white">
-                          {isZh ? "所有認證作品" : "All Certified Works"}
+                          {t("rank_all_certified_works")}
                         </h2>
                       </div>
                       <span className="text-xs font-bold text-zinc-500">
-                        {filteredDisplayRows.length} {isZh ? "筆紀錄" : "records"}
+                        {t("rank_records", { count: filteredDisplayRows.length })}
                       </span>
                     </div>
 
@@ -1807,7 +1807,7 @@ export default function RankPage() {
                           <div className="mb-3 flex items-center justify-between gap-3 border-b border-white/10 pb-2">
                             <h3 className="text-lg font-black text-white">{genreLabel}</h3>
                             <span className="text-xs font-black text-zinc-500">
-                              {rows.length} {isZh ? "首" : "tracks"}
+                              {t("rank_tracks", { count: rows.length })}
                             </span>
                           </div>
                           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const showtimeSource = readFileSync(new URL("../src/app/rank/page.tsx", import.meta.url), "utf8");
+const i18nSource = readFileSync(new URL("../src/lib/i18n.tsx", import.meta.url), "utf8");
 const choiceShelfSource = readFileSync(new URL("../src/components/showtime-choice-shelf.tsx", import.meta.url), "utf8");
 const queuePlayerSource = readFileSync(new URL("../src/components/showtime-queue-player.tsx", import.meta.url), "utf8");
 const publicCreatorChoiceSource = readFileSync(new URL("../src/app/api/creator-choice/public/route.ts", import.meta.url), "utf8");
@@ -21,8 +22,9 @@ const shareButtonSource = readFileSync(new URL("../src/components/share-button.t
 const curatorIdentityMigration = readFileSync(new URL("../supabase/migrations/20260715085800_choice_curator_identity.sql", import.meta.url), "utf8");
 
 test("Showtime renders one certified works catalog without old source boards", () => {
-  assert.ok(showtimeSource.includes("All Certified Works"));
-  assert.ok(showtimeSource.includes("所有認證作品"));
+  assert.ok(showtimeSource.includes('t("rank_all_certified_works")'));
+  assert.ok(i18nSource.includes("rank_all_certified_works: 'All Certified Works'"));
+  assert.ok(i18nSource.includes("rank_all_certified_works: '所有認證作品'"));
   assert.ok(showtimeSource.includes("certificationLabel"));
   assert.ok(showtimeSource.includes("正式 Battle 認證"));
   assert.ok(showtimeSource.includes("探索守擂認證"));
