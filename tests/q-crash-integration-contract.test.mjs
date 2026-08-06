@@ -119,17 +119,24 @@ test("Battle Pool keeps Q Crash cyan, Drop Battle red, and solid actions dark", 
   assert.match(globalStylesSource, /\.drop-battle-solid-cta \{[\s\S]*?color: #160604 !important;/);
 });
 
-test("Q Crash voter comments require a vote and stay sealed until settlement", () => {
+test("Q Crash comments are optional at vote confirmation and locked afterward", () => {
   assert.ok(commentMigrationSource.includes("q_crash_comments_one_per_voter unique (battle_id, user_id)"));
   assert.ok(commentMigrationSource.includes("references public.q_crash_votes(battle_id, user_id)"));
   assert.ok(commentMigrationSource.includes("char_length(body) between 1 and 120"));
   assert.ok(commentMigrationSource.includes("revoke all on table public.q_crash_comments from anon, authenticated"));
-  assert.ok(commentRouteSource.includes('from("q_crash_votes")'));
-  assert.ok(commentRouteSource.includes("完成投票後，才可以留下"));
-  assert.match(commentRouteSource, /const revealed = isFinalQCrash[\s\S]*?revealed \?[\s\S]*?moderation_status/);
+  assert.ok(voteRouteSource.includes('from("q_crash_comments")'));
+  assert.ok(voteRouteSource.includes("commentSaved"));
+  assert.ok(commentRouteSource.includes("評論必須在投票時一起送出"));
+  assert.ok(commentRouteSource.includes("投票後不能刪除"));
+  assert.equal(commentRouteSource.includes("完成投票後，才可以留下"), false);
+  assert.match(commentRouteSource, /const revealed = isFinalQCrash[\s\S]*?moderation_status/);
   assert.match(commentRouteSource, /comments: revealed \? mapped : \[\]/);
-  assert.ok(cardClientSource.includes("投票期間只看得到自己的留言"));
-  assert.ok(cardClientSource.includes("會在截止時與結果一起公開"));
+  assert.ok(cardClientSource.includes("評論（選填）"));
+  assert.ok(cardClientSource.includes("評論會和投票一起送出"));
+  assert.ok(cardClientSource.includes("送出後不能修改"));
+  assert.ok(cardClientSource.includes("body: JSON.stringify({ votedFor, confirmed: true, comment: normalizedComment || null })"));
+  assert.equal(cardClientSource.includes("投票後評論"), false);
+  assert.equal(cardClientSource.includes("更新評論"), false);
 });
 
 test("Q Crash voting requires sign-in, excludes participants, and cannot be changed", () => {
@@ -138,7 +145,7 @@ test("Q Crash voting requires sign-in, excludes participants, and cannot be chan
   assert.ok(voteRouteSource.includes("Q Crash 不提供改票"));
   assert.ok(voteRouteSource.includes('body.confirmed !== true'));
   assert.ok(voteRouteSource.includes('請按「確定送出」完成投票'));
-  assert.ok(cardClientSource.includes('body: JSON.stringify({ votedFor, confirmed: true })'));
+  assert.ok(cardClientSource.includes('body: JSON.stringify({ votedFor, confirmed: true, comment: normalizedComment || null })'));
   assert.ok(cardClientSource.includes('確定送出作品'));
   assert.ok(cardClientSource.includes('送出前可繼續重播、快轉或改選；送出後無法更改。'));
   assert.ok(cardClientSource.includes('登入並投作品'));

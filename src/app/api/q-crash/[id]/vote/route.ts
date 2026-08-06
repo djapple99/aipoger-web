@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { canQCrashAccountVote, type QCrashSide } from "@/lib/q-crash-rules";
+import { Q_CRASH_COMMENT_MAX_LENGTH, canQCrashAccountVote, qCrashCommentText, type QCrashSide } from "@/lib/q-crash-rules";
 import { settleQCrashBattle } from "@/lib/server-q-crash";
 
 type RouteProps = { params: Promise<{ id: string }> };
@@ -34,9 +34,12 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
   } = await admin.auth.getUser(token);
   if (!user) return jsonError("登入狀態已失效。", 401);
 
-  const body = (await request.json().catch(() => null)) as { votedFor?: QCrashSide; confirmed?: boolean } | null;
+  const body = (await request.json().catch(() => null)) as { votedFor?: QCrashSide; confirmed?: boolean; comment?: unknown } | null;
   if (body?.votedFor !== "fighter_a" && body?.votedFor !== "fighter_b") return jsonError("請選擇作品 A 或作品 B。");
   if (body.confirmed !== true) return jsonError("請按「確定送出」完成投票。");
+  const rawComment = typeof body.comment === "string" ? body.comment : "";
+  const comment = qCrashCommentText(rawComment);
+  if (rawComment.trim() && !comment) return jsonError(`評論請保持在 1-${Q_CRASH_COMMENT_MAX_LENGTH} 字內。`);
 
   const { data: card, error: cardError } = await admin
     .from("q_crash_cards")
@@ -88,6 +91,16 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
     return jsonError("Q Crash 投票尚未開始或已結束。", 409);
   }
 
+  if (comment) {
+    const { error: commentSchemaError } = await admin.from("q_crash_comments").select("id").limit(1);
+    if (commentSchemaError) {
+      if (/q_crash_comments|schema cache|does not exist|PGRST/i.test(commentSchemaError.message)) {
+        return jsonError("Q Crash 評論功能尚未啟用，請稍後再試。", 503);
+      }
+      return jsonError(commentSchemaError.message, 500);
+    }
+  }
+
   const { error: voteError } = await admin.from("q_crash_votes").insert({
     battle_id: battle.id,
     user_id: user.id,
@@ -100,9 +113,25 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
     return jsonError(voteError.message, 500);
   }
 
+  if (comment) {
+    const { error: commentError } = await admin.from("q_crash_comments").insert({
+      battle_id: battle.id,
+      user_id: user.id,
+      body: comment,
+    });
+    if (commentError) {
+      await admin.from("q_crash_votes").delete().eq("battle_id", battle.id).eq("user_id", user.id);
+      if (/q_crash_comments|schema cache|does not exist|PGRST/i.test(commentError.message)) {
+        return jsonError("Q Crash 評論功能尚未啟用，投票未送出。", 503);
+      }
+      return jsonError("評論儲存失敗，投票未送出，請再試一次。", 500);
+    }
+  }
+
   return NextResponse.json({
     accepted: true,
     votedFor: body.votedFor,
-    message: "投票已確認送出，結果將在截止後公開。",
+    commentSaved: Boolean(comment),
+    message: comment ? "投票與評論已確認送出，結果將在截止後公開。" : "投票已確認送出，結果將在截止後公開。",
   });
 }

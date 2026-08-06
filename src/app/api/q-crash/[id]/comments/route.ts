@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
-import { Q_CRASH_COMMENT_MAX_LENGTH, qCrashCommentText } from "@/lib/q-crash-rules";
 
 type RouteProps = { params: Promise<{ id: string }> };
 type CardRow = { id: string; battle_id: string | null; status: string };
@@ -77,18 +76,6 @@ async function readContext(admin: SupabaseClient, id: string) {
   return { card, battle: battle?.battle_type === "q_crash" ? battle : null };
 }
 
-async function hasAudienceVote(admin: SupabaseClient, battle: BattleRow, userId: string) {
-  if (userId === battle.fighter_a_user_id || userId === battle.fighter_b_user_id) return false;
-  const { data, error } = await admin
-    .from("q_crash_votes")
-    .select("id")
-    .eq("battle_id", battle.id)
-    .eq("user_id", userId)
-    .maybeSingle<{ id: string }>();
-  if (error) throw error;
-  return Boolean(data?.id);
-}
-
 async function commentIdentityMap(admin: SupabaseClient, userIds: string[]) {
   const ids = [...new Set(userIds.filter(Boolean))];
   if (ids.length === 0) return new Map<string, { displayName: string; avatarUrl: string | null }>();
@@ -133,7 +120,6 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
       return NextResponse.json({ available: true, revealed: false, canComment: false, viewerComment: null, comments: [] });
     }
 
-    const canComment = viewer ? await hasAudienceVote(admin, battle, viewer.id) : false;
     const revealed = isFinalQCrash(card.status) || isFinalQCrash(battle.status);
     let rows: CommentRow[] = [];
     const commentQuery = admin
@@ -157,7 +143,7 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
     return NextResponse.json({
       available: true,
       revealed,
-      canComment,
+      canComment: false,
       viewerComment,
       comments: revealed ? mapped : [],
     }, { headers: { "Cache-Control": "no-store" } });
@@ -166,61 +152,10 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
   }
 }
 
-export async function POST(request: NextRequest, { params }: RouteProps) {
-  const { id } = await params;
-  if (!isUuid(id)) return jsonError("Q Crash 連結不正確。");
-  const admin = adminClient();
-  if (!admin) return jsonError("Q Crash 尚未完成伺服器設定。", 503);
-  const viewer = await readViewer(admin, request);
-  if (!viewer) return jsonError("請先登入並完成投票，再留下評論。", 401);
-  const body = (await request.json().catch(() => null)) as { comment?: unknown } | null;
-  const comment = qCrashCommentText(body?.comment);
-  if (!comment) return jsonError(`評論請保持在 1-${Q_CRASH_COMMENT_MAX_LENGTH} 字內。`);
-
-  try {
-    const { card, battle } = await readContext(admin, id);
-    if (!card?.id || !battle?.id) return jsonError("這張 Q Crash 尚未開始投票。", 409);
-    if (!(await hasAudienceVote(admin, battle, viewer.id))) {
-      return jsonError("完成投票後，才可以留下這場 Q Crash 的評論。", 403);
-    }
-    const { data, error } = await admin
-      .from("q_crash_comments")
-      .upsert({ battle_id: battle.id, user_id: viewer.id, body: comment }, { onConflict: "battle_id,user_id" })
-      .select("id,battle_id,user_id,body,moderation_status,created_at,updated_at")
-      .single<CommentRow>();
-    if (error) {
-      if (isMissingCommentSchema(error.message)) return jsonError("Q Crash 評論功能準備中。", 503);
-      throw error;
-    }
-    const [saved] = await publicComments(admin, [data], viewer.id);
-    return NextResponse.json({ comment: saved, revealed: isFinalQCrash(card.status) || isFinalQCrash(battle.status) });
-  } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "Q Crash 評論儲存失敗。", 500);
-  }
+export async function POST() {
+  return jsonError("Q Crash 評論必須在投票時一起送出，投票後不能新增或修改。", 410);
 }
 
-export async function DELETE(request: NextRequest, { params }: RouteProps) {
-  const { id } = await params;
-  if (!isUuid(id)) return jsonError("Q Crash 連結不正確。");
-  const admin = adminClient();
-  if (!admin) return jsonError("Q Crash 尚未完成伺服器設定。", 503);
-  const viewer = await readViewer(admin, request);
-  if (!viewer) return jsonError("請先登入。", 401);
-
-  try {
-    const { battle } = await readContext(admin, id);
-    if (!battle?.id) return jsonError("這張 Q Crash 尚未開始投票。", 409);
-    const { error } = await admin
-      .from("q_crash_comments")
-      .delete()
-      .eq("battle_id", battle.id)
-      .eq("user_id", viewer.id);
-    if (error) {
-      if (isMissingCommentSchema(error.message)) return jsonError("Q Crash 評論功能準備中。", 503);
-      throw error;
-    }
-    return NextResponse.json({ deleted: true });
-  } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "Q Crash 評論刪除失敗。", 500);
-  }
+export async function DELETE() {
+  return jsonError("Q Crash 評論已隨投票送出，投票後不能刪除。", 410);
 }

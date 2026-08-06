@@ -19,12 +19,10 @@ import {
   Music2,
   Pause,
   Play,
-  Send,
   Share2,
   SkipBack,
   SkipForward,
   Swords,
-  Trash2,
   Volume2,
   X,
 } from "lucide-react";
@@ -215,26 +213,20 @@ function FeedbackRadar({ counts, isZh }: { counts: QCrashFeedbackCounts; isZh: b
 
 function QCrashCommentsPanel(props: {
   data: QCrashCommentsPayload | null;
-  text: string;
-  busy: boolean;
   error: string | null;
   isZh: boolean;
-  onTextChange: (value: string) => void;
-  onSubmit: () => void;
-  onDelete: () => void;
 }) {
-  const { data, text, busy, error, isZh, onTextChange, onSubmit, onDelete } = props;
-  const length = Array.from(text).length;
+  const { data, error, isZh } = props;
   return (
     <section className="mt-4 overflow-hidden rounded-[1.35rem] border border-cyan-300/20 bg-[radial-gradient(circle_at_10%_0%,rgba(34,211,238,0.08),transparent_28%),rgba(0,0,0,0.62)] px-4 py-4 md:px-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="inline-flex items-center gap-2 text-sm font-black text-white">
             <MessageCircle size={17} className="text-cyan-300" />
-            {isZh ? "投票後評論" : "Post-vote Comments"}
+            {isZh ? "投票評論" : "Voter Comments"}
           </p>
           <p className="mt-1 text-xs font-bold leading-5 text-zinc-500">
-            {isZh ? "每位有效投票者可留一則 120 字短評；投票期間只看得到自己的留言。" : "Each valid voter may leave one 120-character note. During voting, only your own note is visible."}
+            {isZh ? "評論在投票確認時選填；送出後不能修改，截止後才會與結果一起公開。" : "Comments are optional at vote confirmation, locked after submission, and revealed with the result."}
           </p>
         </div>
         {data?.revealed ? (
@@ -252,62 +244,14 @@ function QCrashCommentsPanel(props: {
         </p>
       ) : null}
 
-      {data?.available && data.canComment ? (
-        <div className="mt-4">
-          <textarea
-            value={text}
-            maxLength={Q_CRASH_COMMENT_MAX_LENGTH}
-            onChange={(event) => onTextChange(event.target.value)}
-            placeholder={isZh ? "聽完後，留一句你為什麼選它…" : "Why did this Drop win your vote?"}
-            className="min-h-24 w-full resize-y rounded-2xl border border-white/12 bg-black/65 px-4 py-3 text-sm font-bold leading-6 text-white outline-none transition placeholder:text-zinc-700 focus:border-cyan-300/55"
-          />
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-            <span className={`text-[11px] font-black ${length >= Q_CRASH_COMMENT_MAX_LENGTH ? "text-orange-300" : "text-zinc-600"}`}>
-              {length}/{Q_CRASH_COMMENT_MAX_LENGTH}
-            </span>
-            <div className="flex items-center gap-2">
-              {data.viewerComment ? (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={onDelete}
-                  className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-red-300/20 bg-red-500/7 px-3 text-xs font-black text-red-100 transition hover:bg-red-500/14 disabled:opacity-50"
-                >
-                  <Trash2 size={15} />
-                  {isZh ? "刪除" : "Delete"}
-                </button>
-              ) : null}
-              <button
-                type="button"
-                disabled={busy || length === 0 || length > Q_CRASH_COMMENT_MAX_LENGTH}
-                onClick={onSubmit}
-                className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-cyan-400 px-4 text-xs font-black text-black transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-600"
-              >
-                <Send size={15} />
-                {busy
-                  ? isZh ? "儲存中…" : "Saving…"
-                  : data.viewerComment
-                    ? isZh ? "更新評論" : "Update Comment"
-                    : isZh ? "留下評論" : "Leave Comment"}
-              </button>
-            </div>
-          </div>
-          <p className="mt-2 text-[11px] font-bold text-zinc-600">
-            {data.revealed
-              ? isZh ? "結果已公開；儲存後會立即顯示。" : "Results are public; your saved comment appears immediately."
-              : isZh ? "你的評論已保存後，會在截止時與結果一起公開。" : "Your saved comment will be revealed with the result at the deadline."}
-          </p>
-        </div>
-      ) : null}
-
       {error ? (
         <p className="mt-3 rounded-xl border border-red-300/25 bg-red-500/8 px-3 py-2 text-xs font-black text-red-100">{error}</p>
       ) : null}
 
-      {data?.available && !data.revealed && data.viewerComment ? (
+      {data?.available && !data.revealed ? (
         <div className="mt-4 rounded-xl border border-cyan-300/18 bg-cyan-300/[0.04] px-3 py-3 text-xs font-bold leading-5 text-zinc-300">
-          <span className="font-black text-cyan-200">{isZh ? "已保存，等待公開：" : "Saved, awaiting reveal: "}</span>
-          {data.viewerComment.body}
+          <span className="font-black text-cyan-200">{isZh ? "評論已鎖定：" : "Comment locked: "}</span>
+          {isZh ? "投票送出後不能再新增、修改或刪除；請等截止後查看公開內容。" : "No new, edited, or deleted comments are allowed after voting. Check back after settlement."}
         </div>
       ) : null}
 
@@ -526,11 +470,9 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
   const [shareNotice, setShareNotice] = useState<string | null>(null);
   const [commentsPayload, setCommentsPayload] = useState<QCrashCommentsPayload | null>(null);
   const [commentText, setCommentText] = useState("");
-  const [commentBusy, setCommentBusy] = useState(false);
   const [commentError, setCommentError] = useState<string | null>(null);
   const [postResultPreference, setPostResultPreference] = useState<QCrashPostResultPreferencePayload | null>(null);
   const [postResultPreferenceBusy, setPostResultPreferenceBusy] = useState(false);
-  const commentTouchedRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const analyticsSentRef = useRef(new Set<string>());
   const restoredDraftKeyRef = useRef<string | null>(null);
@@ -570,7 +512,6 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
       return;
     }
     setCommentsPayload(data);
-    if (!commentTouchedRef.current) setCommentText(data.viewerComment?.body ?? "");
     setCommentError(null);
   }, [isZh]);
   const loadPostResultPreference = useCallback(async (targetId: string) => {
@@ -659,6 +600,7 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
     if (!draftAllowed) {
       clearQCrashVoteDraft(draftKey);
       setPendingVote(null);
+      setCommentText("");
       setListenedSides({ A: false, B: false });
       listenedSidesRef.current = { A: false, B: false };
       listenSecondsRef.current = { A: 0, B: 0 };
@@ -669,6 +611,7 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
     const draft = readQCrashVoteDraft(draftKey);
     const restoredListened = draft?.listened ?? { A: false, B: false };
     setPendingVote(draft?.vote ?? null);
+    setCommentText(draft?.comment ?? "");
     setListenedSides(restoredListened);
     listenedSidesRef.current = restoredListened;
     listenSecondsRef.current = {
@@ -756,9 +699,14 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
   const submitVote = async () => {
     if (!payload || !pendingVote || votingBusy) return;
     const votedFor = pendingVote;
+    const normalizedComment = commentText.trim();
+    if (Array.from(normalizedComment).length > Q_CRASH_COMMENT_MAX_LENGTH) {
+      setError(isZh ? `評論請保持在 ${Q_CRASH_COMMENT_MAX_LENGTH} 字內。` : `Keep the comment within ${Q_CRASH_COMMENT_MAX_LENGTH} characters.`);
+      return;
+    }
     const session = (await supabase.auth.getSession()).data.session;
     if (!session?.access_token) {
-      if (draftKey) rememberQCrashVoteDraft(draftKey, { vote: votedFor }, payload.card.votingEndsAt);
+      if (draftKey) rememberQCrashVoteDraft(draftKey, { vote: votedFor, comment: normalizedComment }, payload.card.votingEndsAt);
       trackStage("auth_required", votedFor === "fighter_a" ? "A" : "B");
       redirectToAuth();
       return;
@@ -771,7 +719,7 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
         "Content-Type": "application/json",
         Authorization: `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({ votedFor, confirmed: true }),
+      body: JSON.stringify({ votedFor, confirmed: true, comment: normalizedComment || null }),
     });
     const data = (await response.json().catch(() => null)) as { error?: string } | null;
     if (!response.ok) {
@@ -787,9 +735,9 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
         },
       } : current);
       setPendingVote(null);
+      setCommentText("");
       if (draftKey) clearQCrashVoteDraft(draftKey);
       trackStage("submitted", votedFor === "fighter_a" ? "A" : "B");
-      void loadComments(payload.card.battleId || payload.card.id);
     }
     setVotingBusy(false);
   };
@@ -831,56 +779,6 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
       } : current);
     }
     setFeedbackBusy(null);
-  };
-
-  const submitComment = async () => {
-    if (!payload || commentBusy) return;
-    const session = (await supabase.auth.getSession()).data.session;
-    if (!session?.access_token) {
-      redirectToAuth();
-      return;
-    }
-    setCommentBusy(true);
-    setCommentError(null);
-    const targetId = payload.card.battleId || payload.card.id;
-    const response = await fetch(`/api/q-crash/${encodeURIComponent(targetId)}/comments`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ comment: commentText }),
-    });
-    const data = (await response.json().catch(() => null)) as { error?: string } | null;
-    if (!response.ok) {
-      setCommentError(data?.error || (isZh ? "評論儲存失敗。" : "Could not save comment."));
-    } else {
-      commentTouchedRef.current = false;
-      await loadComments(targetId);
-    }
-    setCommentBusy(false);
-  };
-
-  const deleteComment = async () => {
-    if (!payload || commentBusy) return;
-    const session = (await supabase.auth.getSession()).data.session;
-    if (!session?.access_token) return;
-    setCommentBusy(true);
-    setCommentError(null);
-    const targetId = payload.card.battleId || payload.card.id;
-    const response = await fetch(`/api/q-crash/${encodeURIComponent(targetId)}/comments`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${session.access_token}` },
-    });
-    const data = (await response.json().catch(() => null)) as { error?: string } | null;
-    if (!response.ok) {
-      setCommentError(data?.error || (isZh ? "評論刪除失敗。" : "Could not delete comment."));
-    } else {
-      commentTouchedRef.current = false;
-      setCommentText("");
-      await loadComments(targetId);
-    }
-    setCommentBusy(false);
   };
 
   const submitPostResultPreference = async (preferredSide: VoteSide) => {
@@ -981,7 +879,7 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
   const voteStatusCopy = payload.viewer.isParticipant
     ? isZh ? "作品持有人不能投票；分享同一張卡，邀請聽眾決定。" : "Work owners cannot vote. Share the same card with listeners."
     : payload.viewer.hasVoted
-      ? isZh ? "你已投票，結果將在截止後公開。" : "You voted. Results appear after the deadline."
+      ? isZh ? "你已投票；若有填寫評論，會在截止後與結果一起公開。" : "Your vote is locked. Any comment you added will be revealed with the result."
       : pendingVote
         ? isZh ? `目前選擇作品 ${pendingVote === "fighter_a" ? "A" : "B"}，尚未送出。` : `Work ${pendingVote === "fighter_a" ? "A" : "B"} is selected but not submitted.`
       : !payload.viewer.userId
@@ -989,7 +887,7 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
         : isZh ? "可重播、快轉並切換選擇；按確定後才會送出票。" : "Replay, seek, and switch your choice. Your vote is sent only after confirmation.";
 
   return (
-    <main className={`min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_14%_8%,rgba(249,115,22,0.1),transparent_24%),radial-gradient(circle_at_88%_10%,rgba(34,211,238,0.07),transparent_26%),#020202] px-4 pt-20 text-white md:px-8 ${voteActionEnabled ? "pb-80" : "pb-52"}`}>
+    <main className={`min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_14%_8%,rgba(249,115,22,0.1),transparent_24%),radial-gradient(circle_at_88%_10%,rgba(34,211,238,0.07),transparent_26%),#020202] px-4 pt-20 text-white md:px-8 ${voteActionEnabled ? "pb-[30rem] md:pb-96" : "pb-52"}`}>
       <audio ref={audioRef} preload="metadata" />
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1169,19 +1067,11 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
               </section>
             ) : null}
 
-            {works?.B && (payload.viewer.hasVoted || final) ? (
+            {works?.B && final ? (
               <QCrashCommentsPanel
                 data={commentsPayload}
-                text={commentText}
-                busy={commentBusy}
                 error={commentError}
                 isZh={isZh}
-                onTextChange={(value) => {
-                  commentTouchedRef.current = true;
-                  setCommentText(value);
-                }}
-                onSubmit={() => void submitComment()}
-                onDelete={() => void deleteComment()}
               />
             ) : null}
 
@@ -1381,8 +1271,8 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
           }`}
           aria-live="polite"
         >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div className="min-w-0 flex-1">
               <p className="text-[10px] font-black tracking-[0.2em] text-cyan-300">Q CRASH · FINAL VOTE</p>
               <p className="mt-1 truncate text-sm font-black text-white">
                 {pendingVote
@@ -1392,8 +1282,29 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
               <p className="mt-1 text-[11px] font-bold text-zinc-500">
                 {isZh ? "可重播、快轉與改選；只有按下右側按鈕才算投票。" : "Replay, seek, or switch. Your vote only counts after confirmation."}
               </p>
+              <div className="mt-3">
+                <label htmlFor="q-crash-vote-comment" className="text-[11px] font-black text-zinc-300">
+                  {isZh ? "評論（選填）" : "Comment (optional)"}
+                </label>
+                <textarea
+                  id="q-crash-vote-comment"
+                  value={commentText}
+                  maxLength={Q_CRASH_COMMENT_MAX_LENGTH}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setCommentText(value);
+                    if (draftKey) rememberQCrashVoteDraft(draftKey, { comment: value }, payload.card.votingEndsAt);
+                  }}
+                  placeholder={isZh ? "可以寫下你為什麼選這首…" : "Why did you choose this work?"}
+                  className="mt-1 min-h-16 w-full resize-y rounded-xl border border-white/12 bg-black/65 px-3 py-2 text-xs font-bold leading-5 text-white outline-none transition placeholder:text-zinc-700 focus:border-cyan-300/55"
+                />
+                <div className="mt-1 flex items-center justify-between gap-2 text-[10px] font-bold text-zinc-600">
+                  <span>{isZh ? "評論會和投票一起送出，送出後不能修改。" : "Sent together with your vote and locked afterward."}</span>
+                  <span className="shrink-0">{Array.from(commentText).length}/{Q_CRASH_COMMENT_MAX_LENGTH}</span>
+                </div>
+              </div>
             </div>
-            <div className="grid shrink-0 grid-cols-[auto_auto_minmax(0,1fr)] gap-2">
+            <div className="grid shrink-0 grid-cols-2 gap-2 md:w-[15rem] md:grid-cols-[auto_auto_minmax(0,1fr)]">
               {(["A", "B"] as Side[]).map((side) => {
                 const vote = side === "A" ? "fighter_a" : "fighter_b";
                 const selected = pendingVote === vote;
@@ -1420,7 +1331,7 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
                 type="button"
                 disabled={!pendingVote || votingBusy}
                 onClick={() => void submitVote()}
-                className={`inline-flex min-h-13 min-w-0 items-center justify-center gap-2 rounded-2xl border px-4 text-sm font-black transition sm:px-6 ${
+                className={`col-span-2 inline-flex min-h-13 min-w-0 items-center justify-center gap-2 rounded-2xl border px-4 text-sm font-black transition md:col-span-1 md:px-3 ${
                   pendingVote === "fighter_a"
                     ? "border-orange-200 bg-orange-500 text-black shadow-[0_0_28px_rgba(249,115,22,0.28)] hover:bg-orange-400"
                     : pendingVote === "fighter_b"
@@ -1434,7 +1345,9 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
                     ? isZh ? "送出中…" : "Submitting…"
                     : pendingVote
                       ? payload.viewer.userId
-                        ? isZh ? `確定送出作品 ${pendingVote === "fighter_a" ? "A" : "B"}` : `Confirm Work ${pendingVote === "fighter_a" ? "A" : "B"}`
+                        ? commentText.trim()
+                          ? isZh ? `送出投票＋評論（作品 ${pendingVote === "fighter_a" ? "A" : "B"}）` : `Submit vote + comment (${pendingVote === "fighter_a" ? "A" : "B"})`
+                          : isZh ? `確定送出作品 ${pendingVote === "fighter_a" ? "A" : "B"}` : `Confirm Work ${pendingVote === "fighter_a" ? "A" : "B"}`
                         : isZh ? `登入並投作品 ${pendingVote === "fighter_a" ? "A" : "B"}` : `Sign in & vote Work ${pendingVote === "fighter_a" ? "A" : "B"}`
                       : isZh ? "確定送出" : "Confirm"}
                 </span>

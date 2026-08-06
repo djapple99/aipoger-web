@@ -3,6 +3,7 @@ export type QCrashVoteDraftSide = "fighter_a" | "fighter_b";
 export type QCrashVoteDraft = {
   vote: QCrashVoteDraftSide | null;
   listened: { A: boolean; B: boolean };
+  comment: string;
   expiresAt: number;
 };
 
@@ -26,6 +27,7 @@ export function parseQCrashVoteDraft(raw: string | null, now = Date.now()): QCra
         A: value.listened?.A === true,
         B: value.listened?.B === true,
       },
+      comment: typeof value.comment === "string" ? value.comment : "",
       expiresAt,
     };
   } catch {
@@ -47,7 +49,7 @@ export function readQCrashVoteDraft(cardOrBattleId: string): QCrashVoteDraft | n
 
 export function rememberQCrashVoteDraft(
   cardOrBattleId: string,
-  patch: Partial<Pick<QCrashVoteDraft, "vote" | "listened">>,
+  patch: Partial<Pick<QCrashVoteDraft, "vote" | "listened" | "comment">>,
   expiresAt?: string | number | null,
 ) {
   if (typeof window === "undefined") return;
@@ -59,6 +61,7 @@ export function rememberQCrashVoteDraft(
   const next: QCrashVoteDraft = {
     vote: patch.vote === undefined ? previous?.vote ?? null : patch.vote,
     listened: patch.listened ?? previous?.listened ?? { A: false, B: false },
+    comment: patch.comment === undefined ? previous?.comment ?? "" : patch.comment,
     expiresAt: safeExpiry,
   };
   try {
