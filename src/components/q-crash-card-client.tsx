@@ -34,7 +34,8 @@ import {
   type QCrashFeedbackCounts,
   type QCrashFeedbackKey,
 } from "@/lib/q-crash-rules";
-import { rememberAuthNextPath } from "@/lib/auth-urls";
+import { buildChromeOpenUrl, rememberAuthNextPath } from "@/lib/auth-urls";
+import { detectEmbeddedBrowser, type BrowserContext } from "@/lib/embedded-browser";
 import { logQCrashAnalyticsStage, type QCrashAnalyticsStage } from "@/lib/analytics-client";
 import {
   clearQCrashVoteDraft,
@@ -473,6 +474,8 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
   const [commentError, setCommentError] = useState<string | null>(null);
   const [postResultPreference, setPostResultPreference] = useState<QCrashPostResultPreferencePayload | null>(null);
   const [postResultPreferenceBusy, setPostResultPreferenceBusy] = useState(false);
+  const [embeddedBrowserKind, setEmbeddedBrowserKind] = useState<BrowserContext>("unknown");
+  const [externalBrowserFailed, setExternalBrowserFailed] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const analyticsSentRef = useRef(new Set<string>());
   const restoredDraftKeyRef = useRef<string | null>(null);
@@ -500,6 +503,52 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
     rememberAuthNextPath(currentPath);
     window.location.assign(`/auth?next=${encodeURIComponent(currentPath)}`);
   }, [currentPath]);
+  const openExternalBrowser = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const targetUrl = buildChromeOpenUrl(window.location.href, navigator.userAgent);
+    setExternalBrowserFailed(false);
+    trackStage("external_browser_cta");
+
+    let pageLeft = false;
+    const cleanup = () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", handlePageHide);
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") pageLeft = true;
+    };
+    const handlePageHide = () => {
+      pageLeft = true;
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", handlePageHide, { once: true });
+    try {
+      window.location.assign(targetUrl);
+    } catch {
+      cleanup();
+      setExternalBrowserFailed(true);
+      trackStage("external_browser_failed");
+      return;
+    }
+
+    window.setTimeout(() => {
+      if (pageLeft) return;
+      cleanup();
+      setExternalBrowserFailed(true);
+      trackStage("external_browser_failed");
+    }, 1400);
+  }, [trackStage]);
+
+  const copyCurrentLinkForBrowser = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setExternalBrowserFailed(false);
+      setShareNotice(isZh ? "連結已複製，請貼到 Safari 或 Chrome 開啟。" : "Link copied. Paste it into Safari or Chrome.");
+    } catch {
+      setShareNotice(isZh ? "請按右上角 ⋯，選擇在瀏覽器開啟。" : "Use the top-right menu and choose Open in Browser.");
+    }
+  }, [isZh]);
   const loadComments = useCallback(async (targetId: string) => {
     const token = (await supabase.auth.getSession()).data.session?.access_token;
     const response = await fetch(`/api/q-crash/${encodeURIComponent(targetId)}/comments`, {
@@ -552,6 +601,11 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
     const poll = window.setInterval(() => void load(), 10_000);
     return () => window.clearInterval(poll);
   }, [load]);
+
+  useEffect(() => {
+    const context = detectEmbeddedBrowser(navigator.userAgent);
+    setEmbeddedBrowserKind(context.kind);
+  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -866,6 +920,8 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
 
   const result = payload.result;
   const voteActionEnabled = voting && !payload.viewer.isParticipant && !payload.viewer.hasVoted;
+  const isEmbeddedBrowser = embeddedBrowserKind !== "standard" && embeddedBrowserKind !== "unknown";
+  const isLineInApp = embeddedBrowserKind === "line";
   const winnerWork = result?.winnerQueueId === payload.works.A.queueId
     ? payload.works.A
     : result?.winnerQueueId === payload.works.B?.queueId
@@ -1261,6 +1317,41 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
           <p className="fixed left-1/2 top-20 z-50 -translate-x-1/2 rounded-full border border-cyan-200/30 bg-zinc-950 px-4 py-2 text-xs font-black text-cyan-100 shadow-2xl">
             {shareNotice}
           </p>
+        ) : null}
+
+        {voteActionEnabled && isEmbeddedBrowser ? (
+          <section className="mt-5 flex flex-col gap-3 rounded-[1.35rem] border border-orange-300/30 bg-[linear-gradient(110deg,rgba(249,115,22,0.13),rgba(34,211,238,0.08))] px-4 py-4 shadow-[0_0_30px_rgba(249,115,22,0.08)] md:flex-row md:items-center md:justify-between md:px-5">
+            <div className="min-w-0">
+              <p className="text-sm font-black text-orange-50">{isLineInApp ? (isZh ? "你現在是在 LINE 裡開啟" : "You are viewing this inside LINE") : (isZh ? "你現在是在 App 內開啟" : "You are viewing this inside an app")}</p>
+              <p className="mt-1 text-xs font-bold leading-5 text-zinc-300">
+                {isZh ? "投票前先用手機瀏覽器開啟，登入會順利很多。建議先按這裡，再選作品。" : "Open this in Safari or Chrome before voting for a smoother sign-in. Do this before selecting a work."}
+              </p>
+              {externalBrowserFailed ? (
+                <p className="mt-2 text-[11px] font-black leading-5 text-orange-200">
+                  {isZh ? "外部瀏覽器沒有自動開啟；可複製連結，或按右上角 ⋯ 選擇在瀏覽器開啟。" : "The external browser did not open. Copy the link or use the top-right menu to open it in a browser."}
+                </p>
+              ) : null}
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={openExternalBrowser}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-orange-400 px-4 text-xs font-black text-black shadow-[0_0_22px_rgba(249,115,22,0.2)] transition hover:bg-orange-300"
+              >
+                <ExternalLink size={16} />
+                {isZh ? "嘗試用瀏覽器開啟" : "Try External Browser"}
+              </button>
+              {externalBrowserFailed ? (
+                <button
+                  type="button"
+                  onClick={() => void copyCurrentLinkForBrowser()}
+                  className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/20 px-4 text-xs font-black text-zinc-100 transition hover:border-white/40"
+                >
+                  {isZh ? "複製連結" : "Copy Link"}
+                </button>
+              ) : null}
+            </div>
+          </section>
         ) : null}
       </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from "@/lib/supabase";
+import { detectEmbeddedBrowser } from "@/lib/embedded-browser";
 
 export type AnalyticsEventType =
   | "page_view"
@@ -42,7 +43,9 @@ export type QCrashAnalyticsStage =
   | "both_listened"
   | "selected"
   | "auth_required"
-  | "submitted";
+  | "submitted"
+  | "external_browser_cta"
+  | "external_browser_failed";
 
 const SESSION_KEY = "aipoger:analytics-session-id";
 const SESSION_STARTED_KEY = "aipoger:analytics-session-started-at";
@@ -114,6 +117,9 @@ export function logQCrashAnalyticsStage(payload: {
   workB?: string;
 }) {
   const intentStages = new Set<QCrashAnalyticsStage>(["selected", "auth_required", "submitted"]);
+  const browserContext = typeof window === "undefined"
+    ? "unknown"
+    : detectEmbeddedBrowser(navigator.userAgent).kind;
   return logAnalyticsEvent({
     eventType: intentStages.has(payload.stage) ? "battle_vote" : "battle_enter",
     battleId: payload.battleId,
@@ -121,6 +127,7 @@ export function logQCrashAnalyticsStage(payload: {
     metadata: {
       mode: "q_crash",
       qCrashStage: payload.stage,
+      browserContext,
       ...(payload.side ? { side: payload.side } : {}),
       ...(payload.cardId ? { cardId: payload.cardId } : {}),
       ...(payload.workA ? { workA: payload.workA } : {}),

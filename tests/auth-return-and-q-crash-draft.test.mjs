@@ -10,6 +10,9 @@ const {
   parseQCrashVoteDraft,
   qCrashVoteDraftKey,
 } = await import("../src/lib/q-crash-vote-draft.ts");
+const {
+  detectEmbeddedBrowser,
+} = await import("../src/lib/embedded-browser.ts");
 
 function source(path) {
   return readFileSync(new URL(path, import.meta.url), "utf8");
@@ -51,4 +54,26 @@ test("Q Crash draft survives auth but remains unsubmitted", () => {
   assert.ok(qCrashCard.includes("readQCrashVoteDraft"));
   assert.ok(qCrashCard.includes("登入並投作品"));
   assert.equal(qCrashCard.includes("autoSubmit"), false);
+});
+
+test("embedded browser detection identifies LINE and keeps normal mobile browsers clear", () => {
+  assert.deepEqual(
+    detectEmbeddedBrowser("Mozilla/5.0 (iPhone) Line/15.0"),
+    { isEmbedded: true, kind: "line" },
+  );
+  assert.equal(
+    detectEmbeddedBrowser("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1").isEmbedded,
+    false,
+  );
+  assert.equal(
+    detectEmbeddedBrowser("Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/128.0.0.0 Mobile Safari/537.36").isEmbedded,
+    false,
+  );
+});
+
+test("Q Crash exposes the browser escape hatch before the protected vote", () => {
+  assert.ok(qCrashCard.includes("external_browser_cta"));
+  assert.ok(qCrashCard.includes("用瀏覽器開啟"));
+  assert.ok(qCrashCard.includes("複製連結"));
+  assert.ok(qCrashCard.includes("投票前先用手機瀏覽器開啟"));
 });

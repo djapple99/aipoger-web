@@ -310,6 +310,9 @@ function qCrashFunnel(events: AnalyticsEventRow[]) {
     selected: Set<string>;
     authRequired: Set<string>;
     submitted: Set<string>;
+    lineInApp: Set<string>;
+    externalBrowserCta: Set<string>;
+    externalBrowserFailed: Set<string>;
   };
 
   const buckets = new Map<string, Bucket>();
@@ -330,6 +333,9 @@ function qCrashFunnel(events: AnalyticsEventRow[]) {
       selected: new Set<string>(),
       authRequired: new Set<string>(),
       submitted: new Set<string>(),
+      lineInApp: new Set<string>(),
+      externalBrowserCta: new Set<string>(),
+      externalBrowserFailed: new Set<string>(),
     };
     if (metadataText(event, "workA")) bucket.workA = metadataText(event, "workA");
     if (metadataText(event, "workB")) bucket.workB = metadataText(event, "workB");
@@ -342,6 +348,9 @@ function qCrashFunnel(events: AnalyticsEventRow[]) {
     if (stage === "selected") bucket.selected.add(event.session_id);
     if (stage === "auth_required") bucket.authRequired.add(event.session_id);
     if (stage === "submitted") bucket.submitted.add(event.session_id);
+    if (metadataText(event, "browserContext") === "line") bucket.lineInApp.add(event.session_id);
+    if (stage === "external_browser_cta") bucket.externalBrowserCta.add(event.session_id);
+    if (stage === "external_browser_failed") bucket.externalBrowserFailed.add(event.session_id);
     buckets.set(event.battle_id, bucket);
   });
 
@@ -360,6 +369,9 @@ function qCrashFunnel(events: AnalyticsEventRow[]) {
       selected: bucket.selected.size,
       authRequired: bucket.authRequired.size,
       submitted: bucket.submitted.size,
+      lineInApp: bucket.lineInApp.size,
+      externalBrowserCta: bucket.externalBrowserCta.size,
+      externalBrowserFailed: bucket.externalBrowserFailed.size,
       listenedNoVote: listenedNoVote.size,
       openedNoVote: openedNoVote.size,
       conversionRate: pct(bucket.submitted.size, bucket.opened.size),
@@ -373,6 +385,9 @@ function qCrashFunnel(events: AnalyticsEventRow[]) {
     selected: cards.reduce((sum, card) => sum + card.selected, 0),
     authRequired: cards.reduce((sum, card) => sum + card.authRequired, 0),
     submitted: cards.reduce((sum, card) => sum + card.submitted, 0),
+    lineInApp: cards.reduce((sum, card) => sum + card.lineInApp, 0),
+    externalBrowserCta: cards.reduce((sum, card) => sum + card.externalBrowserCta, 0),
+    externalBrowserFailed: cards.reduce((sum, card) => sum + card.externalBrowserFailed, 0),
     listenedNoVote: cards.reduce((sum, card) => sum + card.listenedNoVote, 0),
     cards,
   };

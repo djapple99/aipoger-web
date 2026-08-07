@@ -42,6 +42,9 @@ type QCrashFunnelCard = {
   selected: number;
   authRequired: number;
   submitted: number;
+  lineInApp: number;
+  externalBrowserCta: number;
+  externalBrowserFailed: number;
   listenedNoVote: number;
   openedNoVote: number;
   conversionRate: number;
@@ -92,6 +95,9 @@ type AnalyticsPayload = {
     selected: number;
     authRequired: number;
     submitted: number;
+    lineInApp: number;
+    externalBrowserCta: number;
+    externalBrowserFailed: number;
     listenedNoVote: number;
     cards: QCrashFunnelCard[];
   };
@@ -547,11 +553,14 @@ export default function AdminAnalyticsPage() {
                 { label: "Selected A / B", value: payload?.qCrash?.selected ?? 0 },
                 { label: "Hit Login", value: payload?.qCrash?.authRequired ?? 0 },
                 { label: "Vote Submitted", value: payload?.qCrash?.submitted ?? 0 },
+                { label: "Opened in LINE", value: payload?.qCrash?.lineInApp ?? 0 },
+                { label: "External Browser CTA", value: payload?.qCrash?.externalBrowserCta ?? 0 },
+                { label: "Browser Jump Failed", value: payload?.qCrash?.externalBrowserFailed ?? 0 },
                 { label: "Listened, No Vote", value: payload?.qCrash?.listenedNoVote ?? 0 },
               ]} />
             </div>
             <div className="mt-5 overflow-x-auto rounded-xl border border-white/10">
-              <table className="min-w-[880px] w-full text-left text-xs">
+              <table className="min-w-[1120px] w-full text-left text-xs">
                 <thead className="bg-white/[0.045] uppercase tracking-[0.12em] text-zinc-500">
                   <tr>
                     <th className="px-3 py-3">Q Crash</th>
@@ -560,13 +569,16 @@ export default function AdminAnalyticsPage() {
                     <th className="px-3 py-3 text-right">兩邊聽 5s+</th>
                     <th className="px-3 py-3 text-right">已選擇</th>
                     <th className="px-3 py-3 text-right">完成投票</th>
+                    <th className="px-3 py-3 text-right">LINE 開啟</th>
+                    <th className="px-3 py-3 text-right">外部開啟</th>
+                    <th className="px-3 py-3 text-right">跳轉失敗</th>
                     <th className="px-3 py-3 text-right">聽完未投</th>
                     <th className="px-3 py-3 text-right">轉換率</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/8">
                   {(payload?.qCrash?.cards ?? []).length === 0 ? (
-                    <tr><td colSpan={8} className="px-3 py-6 text-center font-bold text-zinc-600">新漏斗上線後，這裡會開始累積資料。</td></tr>
+                    <tr><td colSpan={11} className="px-3 py-6 text-center font-bold text-zinc-600">新漏斗上線後，這裡會開始累積資料。</td></tr>
                   ) : payload?.qCrash?.cards.map((card) => (
                     <tr key={card.battleId} className="bg-black/25">
                       <td className="max-w-sm px-3 py-3">
@@ -578,6 +590,9 @@ export default function AdminAnalyticsPage() {
                       <td className="px-3 py-3 text-right font-black text-cyan-100">{card.listenedBoth}</td>
                       <td className="px-3 py-3 text-right font-black text-zinc-300">{card.selected}</td>
                       <td className="px-3 py-3 text-right font-black text-emerald-200">{card.submitted}</td>
+                      <td className="px-3 py-3 text-right font-black text-orange-200">{card.lineInApp}</td>
+                      <td className="px-3 py-3 text-right font-black text-cyan-100">{card.externalBrowserCta}</td>
+                      <td className="px-3 py-3 text-right font-black text-red-200">{card.externalBrowserFailed}</td>
                       <td className="px-3 py-3 text-right font-black text-orange-200">{card.listenedNoVote}</td>
                       <td className="px-3 py-3 text-right font-black text-white">{card.conversionRate}%</td>
                     </tr>

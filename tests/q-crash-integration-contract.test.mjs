@@ -162,6 +162,9 @@ test("Q Crash engagement funnel stays owner-only and does not change voting elig
   assert.ok(analyticsRouteSource.includes("listenedNoVote"));
   assert.ok(analyticsPageSource.includes("Owner 私有估算"));
   assert.ok(analyticsPageSource.includes("聽完未投"));
+  assert.ok(cardClientSource.includes('trackStage("external_browser_cta")'));
+  assert.ok(analyticsRouteSource.includes('metadataText(event, "browserContext") === "line"'));
+  assert.ok(analyticsPageSource.includes("Opened in LINE"));
 });
 
 test("Q Crash settlement archives only official results and stores the winning work", () => {

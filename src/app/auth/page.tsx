@@ -7,6 +7,7 @@ import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { supabase } from "@/lib/supabase";
 import { useSearchParams } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
+import { isLikelyEmbeddedBrowser } from "@/lib/embedded-browser";
 import {
   buildAuthCallbackUrl,
   buildChromeOpenUrl,
@@ -31,19 +32,6 @@ function intentToNextPath(intent: string | null, lang: string | null): string {
     default:
       return `/${langQuery}`;
   }
-}
-
-function isLikelyEmbeddedBrowser(userAgent: string): boolean {
-  const ua = userAgent || "";
-  const hasExplicitInAppToken =
-    /FBAN|FBAV|FB_IAB|Instagram|Line\/|MicroMessenger|TikTok|Bytedance|Twitter|LinkedInApp|Pinterest|Snapchat|GSA\/|GoogleApp|Gmail/i.test(ua);
-  const isAndroidWebView = /; wv\)|\bwv\b/i.test(ua);
-  const isStandaloneBrowser =
-    /CriOS|Chrome\/|Chromium\/|FxiOS|Firefox\/|EdgiOS|EdgA|Edg\/|OPiOS|OPR\/|SamsungBrowser/i.test(ua) ||
-    (/Safari\//i.test(ua) && /Version\//i.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua));
-
-  if (isStandaloneBrowser && !hasExplicitInAppToken && !isAndroidWebView) return false;
-  return hasExplicitInAppToken || isAndroidWebView;
 }
 
 function AuthLoadingFallback() {
