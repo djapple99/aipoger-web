@@ -14,8 +14,12 @@ import {
   SUNO_GENRE_GROUPS,
   SUNO_LYRIC_MOVES,
   SUNO_PROMPT_MOVES,
+  SUNO_STUDIO_MASTERING_FAMILY_OPTIONS,
 } from "../src/lib/suno-practice-library.ts";
-import { SUNO_STUDIO_MASTERING_MOVES } from "../src/lib/suno-studio-mastering-prompts.ts";
+import {
+  BEATPORT_STUDIO_MASTERING_MOVES,
+  SUNO_STUDIO_MASTERING_MOVES,
+} from "../src/lib/suno-studio-mastering-prompts.ts";
 import {
   SUNO_ARTIST_DNA_ENTRIES,
   SUNO_INSPIRATION_SOURCE,
@@ -131,10 +135,18 @@ test("stem separation guide is bilingual, sourced, and points only to known engi
 });
 
 test("Suno prompt and lyric libraries keep unique, bilingual, sourced moves", () => {
-  assert.equal(SUNO_PROMPT_MOVES.length, 73);
-  assert.equal(SUNO_STUDIO_MASTERING_MOVES.length, 50);
-  assert.equal(SUNO_STUDIO_MASTERING_MOVES.filter((entry) => entry.category === "mastering").length, 50);
+  assert.equal(SUNO_PROMPT_MOVES.length, 118);
+  assert.equal(SUNO_STUDIO_MASTERING_MOVES.length, 95);
+  assert.equal(BEATPORT_STUDIO_MASTERING_MOVES.length, 45);
+  assert.equal(SUNO_STUDIO_MASTERING_MOVES.filter((entry) => entry.category === "mastering").length, 95);
   assert.equal(SUNO_LYRIC_MOVES.length, 18);
+  assert.deepEqual(
+    SUNO_STUDIO_MASTERING_FAMILY_OPTIONS.map((option) => option.key),
+    ["all", "house", "techno", "trance", "bass", "breaks", "global", "pop-urban", "dj-edit"],
+  );
+  assert.ok(SUNO_STUDIO_MASTERING_MOVES.every((entry) => entry.studioFamily));
+  assert.equal(new Set(SUNO_STUDIO_MASTERING_MOVES.map((entry) => entry.studioFamily)).size, 8);
+  assert.ok(BEATPORT_STUDIO_MASTERING_MOVES.some((entry) => entry.studioFamily === "dj-edit"));
 
   for (const entries of [SUNO_PROMPT_MOVES, SUNO_LYRIC_MOVES]) {
     assert.equal(new Set(entries.map((entry) => entry.key)).size, entries.length);
@@ -187,6 +199,8 @@ test("Suno prompt and lyric libraries keep unique, bilingual, sourced moves", ()
     new Set(SUNO_STUDIO_MASTERING_MOVES.map((entry) => entry.copy.en)).size,
     SUNO_STUDIO_MASTERING_MOVES.length,
   );
+  assert.ok(BEATPORT_STUDIO_MASTERING_MOVES.every((entry) => entry.key.includes("studio-mastering-beatport-")));
+  assert.equal(BEATPORT_STUDIO_MASTERING_MOVES.some((entry) => entry.title.en.includes("DJ tools")), false);
   for (const decade of ["1950s", "1960s", "1970s", "1980s", "1990s", "2000s"]) {
     assert.ok(SUNO_STUDIO_MASTERING_MOVES.some((entry) => entry.keywords.includes(decade)));
   }
@@ -234,14 +248,17 @@ test("expanded Studio Mastering prompts are discoverable by genre, culture, and 
 });
 
 test("Prompt and lyric finders explain their controls and expose clear states", () => {
-  assert.match(biblePageComponent, /73 招 Prompt/);
-  assert.match(biblePageComponent, /73 prompt moves/);
+  assert.match(biblePageComponent, /118 招 Prompt/);
+  assert.match(biblePageComponent, /118 prompt moves/);
   assert.match(biblePageComponent, /document\.title = BIBLE_DOCUMENT_TITLES\[lang\]/);
   assert.match(practiceLibraryComponent, /找你需要的 Prompt 招式/);
   assert.match(practiceLibraryComponent, /Jazz、1980s、印度、交響、側鏈/);
   assert.match(practiceLibraryComponent, /找你需要的歌詞控制/);
   assert.match(practiceLibraryComponent, /aria-live="polite"/);
   assert.match(practiceLibraryComponent, /aria-pressed=\{selected\}/);
+  assert.match(practiceLibraryComponent, /錄音室類型/);
+  assert.match(practiceLibraryComponent, /STUDIO FAMILY/);
+  assert.match(practiceLibraryComponent, /promptStudioFamily/);
   assert.match(practiceLibraryComponent, /清除 Prompt 搜尋/);
   assert.match(practiceLibraryComponent, /清除歌詞搜尋/);
   assert.match(practiceLibraryComponent, /目前顯示前 \$\{PROMPT_PREVIEW_COUNT\} 招，還有/);

@@ -275,4 +275,5 @@ Direction:
 - Studio Mastering Prompt examples use one compact `15 秒試聽` action only on cards with a real audio asset.
 - Route every Prompt example through the shared fixed bottom player. Do not autoplay, expand card height with waveforms, or place a native audio control in each card.
 - Keep the example disclaimer visible and quiet: the clip demonstrates a sound direction and does not promise an identical Suno generation.
+- When `錄音室 Mastering` is selected, keep the second-level `錄音室類型` filter wrapped on narrow screens; use the eight approved family labels (`House`, `Techno`, `Trance`, `Bass`, `Breaks`, `Global`, `Pop & Urban`, `DJ Edit`) and show the selected family as a compact orange card badge.
 - `Modern Taiwanese Pop` is fully withdrawn from the free Prompt catalog. Do not leave a disabled card, premium lock, price, or placeholder in the free library; a future paid version needs its own approved product surface.

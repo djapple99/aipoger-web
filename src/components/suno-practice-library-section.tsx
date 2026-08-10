@@ -27,7 +27,9 @@ import {
   type SunoLocalizedText,
   type SunoLyricCategory,
   type SunoPromptCategory,
+  type SunoStudioMasteringFamily,
   type SunoTechnique,
+  SUNO_STUDIO_MASTERING_FAMILY_OPTIONS,
 } from "@/lib/suno-practice-library";
 import type { SunoArtistDnaEntry, SunoPromptRecipe } from "@/lib/suno-inspiration-index";
 import {
@@ -52,6 +54,13 @@ type AnyTechnique = SunoTechnique<SunoPromptCategory> | SunoTechnique<SunoLyricC
 
 function sunoLibraryText(text: SunoLocalizedText, locale: SunoLibraryLocale) {
   return text[locale];
+}
+
+function studioFamilyLabel(family: SunoStudioMasteringFamily, locale: SunoLibraryLocale) {
+  return sunoLibraryText(
+    SUNO_STUDIO_MASTERING_FAMILY_OPTIONS.find((option) => option.key === family)?.label ?? { zh: family, en: family },
+    locale,
+  );
 }
 
 function techniqueMatches(item: AnyTechnique, search: string) {
@@ -107,9 +116,16 @@ function TechniqueCard({
       <div className="p-5 sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-black ${evidenceStyle[item.evidence]}`}>
-              {evidenceLabel[item.evidence]}
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-black ${evidenceStyle[item.evidence]}`}>
+                {evidenceLabel[item.evidence]}
+              </span>
+              {item.studioFamily && (
+                <span className="inline-flex rounded-full border border-orange-300/20 bg-orange-300/[0.06] px-2.5 py-1 text-[10px] font-black text-orange-100/85">
+                  {studioFamilyLabel(item.studioFamily, locale)}
+                </span>
+              )}
+            </div>
             <h4 className="mt-3 text-xl font-black text-white sm:text-2xl">{sunoLibraryText(item.title, locale)}</h4>
           </div>
           <button
@@ -135,7 +151,7 @@ function TechniqueCard({
               {isZh ? "15 秒試聽" : "15s preview"}
             </button>
             <span className="text-[11px] font-bold leading-5 text-zinc-500">
-              {isZh ? "聲音示例・實際生成仍會變化" : "Sound example · generations will vary"}
+              {isZh ? "聲音方向示例・不是正式母帶；Suno 實際生成仍會變化" : "Sound direction sketch · not a final master; Suno generations will vary"}
             </span>
           </div>
         ) : null}
@@ -191,6 +207,7 @@ export default function SunoPracticeLibrarySection({
 }) {
   const isZh = locale === "zh";
   const [promptCategory, setPromptCategory] = useState<SunoPromptCategory | "all">("all");
+  const [promptStudioFamily, setPromptStudioFamily] = useState<SunoStudioMasteringFamily | "all">("all");
   const [lyricCategory, setLyricCategory] = useState<SunoLyricCategory | "all">("all");
   const [promptSearch, setPromptSearch] = useState("");
   const [lyricSearch, setLyricSearch] = useState("");
@@ -217,8 +234,12 @@ export default function SunoPracticeLibrarySection({
   }, []);
 
   const promptResults = useMemo(
-    () => promptMoves.filter((item) => (promptCategory === "all" || item.category === promptCategory) && techniqueMatches(item, promptSearch)),
-    [promptCategory, promptMoves, promptSearch],
+    () => promptMoves.filter((item) => (
+      (promptCategory === "all" || item.category === promptCategory)
+      && (promptCategory !== "mastering" || promptStudioFamily === "all" || item.studioFamily === promptStudioFamily)
+      && techniqueMatches(item, promptSearch)
+    )),
+    [promptCategory, promptMoves, promptSearch, promptStudioFamily],
   );
   const lyricResults = useMemo(
     () => lyricMoves.filter((item) => (lyricCategory === "all" || item.category === lyricCategory) && techniqueMatches(item, lyricSearch)),
@@ -284,8 +305,8 @@ export default function SunoPracticeLibrarySection({
             </h2>
             <p className="mt-5 max-w-3xl text-base font-bold leading-8 text-zinc-300">
               {isZh
-                ? "九份教材整理成可以搜尋、可以複製、知道何時該用的招式。重複內容已合併，拼字與過度堆疊的舊 Prompt 也已重新整理。"
-                : "Nine supplied files are distilled into searchable, copyable moves with clear use cases. Duplicates are merged, while misspellings and overloaded legacy prompts are cleaned up."}
+                ? "九份教材加上 Beatport 類型截圖，整理成可以搜尋、可以複製、知道何時該用的招式。錄音室 Prompt 已分成 House、Techno、Trance、Bass、Breaks、Global、Pop & Urban、DJ Edit 八類。"
+                : "Nine supplied files plus the Beatport genre screenshot are distilled into searchable, copyable moves with clear use cases. Studio Prompt moves are now grouped into eight families: House, Techno, Trance, Bass, Breaks, Global, Pop & Urban, and DJ Edit."}
             </p>
           </div>
           <div className="rounded-xl border border-yellow-300/18 bg-yellow-300/[0.055] p-4 text-sm font-bold leading-6 text-yellow-50/85">
@@ -336,10 +357,10 @@ export default function SunoPracticeLibrarySection({
           <fieldset className="mt-4">
             <legend className="text-xs font-black tracking-[0.12em] text-zinc-300">{isZh ? "選擇分類" : "CHOOSE A CATEGORY"}</legend>
             <div className="mt-2.5 flex flex-wrap gap-2">
-          {promptCategories.map((category) => {
+              {promptCategories.map((category) => {
                 const selected = promptCategory === category.key;
                 return (
-                  <button key={category.key} type="button" aria-pressed={selected} onClick={() => { setPromptCategory(category.key); setShowAllPrompt(false); }} className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-black transition ${selected ? "border-cyan-200 bg-cyan-300/[0.18] text-white shadow-[0_0_18px_rgba(34,211,238,0.13)]" : "border-white/20 bg-black/55 text-zinc-300 hover:border-cyan-200/45 hover:bg-cyan-300/[0.07] hover:text-white"}`}>
+                  <button key={category.key} type="button" aria-pressed={selected} onClick={() => { setPromptCategory(category.key); setPromptStudioFamily("all"); setShowAllPrompt(false); }} className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-black transition ${selected ? "border-cyan-200 bg-cyan-300/[0.18] text-white shadow-[0_0_18px_rgba(34,211,238,0.13)]" : "border-white/20 bg-black/55 text-zinc-300 hover:border-cyan-200/45 hover:bg-cyan-300/[0.07] hover:text-white"}`}>
                     {selected && <Check className="h-4 w-4 text-cyan-200" />}
                     {sunoLibraryText(category.label, locale)}
                   </button>
@@ -347,6 +368,22 @@ export default function SunoPracticeLibrarySection({
               })}
             </div>
           </fieldset>
+          {promptCategory === "mastering" && (
+            <fieldset className="mt-4 border-t border-cyan-200/10 pt-4">
+              <legend className="text-xs font-black tracking-[0.12em] text-zinc-300">{isZh ? "錄音室類型" : "STUDIO FAMILY"}</legend>
+              <div className="mt-2.5 flex flex-wrap gap-2">
+                {SUNO_STUDIO_MASTERING_FAMILY_OPTIONS.map((family) => {
+                  const selected = promptStudioFamily === family.key;
+                  return (
+                    <button key={family.key} type="button" aria-pressed={selected} onClick={() => { setPromptStudioFamily(family.key); setShowAllPrompt(false); }} className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-black transition ${selected ? "border-orange-200 bg-orange-400/[0.18] text-white shadow-[0_0_18px_rgba(251,146,60,0.13)]" : "border-white/20 bg-black/55 text-zinc-300 hover:border-orange-200/45 hover:bg-orange-400/[0.07] hover:text-white"}`}>
+                      {selected && <Check className="h-4 w-4 text-orange-200" />}
+                      {sunoLibraryText(family.label, locale)}
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+          )}
         </div>
 
         <div id="prompt-move-results" className="mt-5 grid gap-3 lg:grid-cols-2">

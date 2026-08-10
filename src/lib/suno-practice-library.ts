@@ -18,6 +18,16 @@ export type SunoPromptCategory =
   | "theory"
   | "recipe";
 
+export type SunoStudioMasteringFamily =
+  | "house"
+  | "techno"
+  | "trance"
+  | "bass"
+  | "breaks"
+  | "global"
+  | "pop-urban"
+  | "dj-edit";
+
 export type SunoLyricCategory =
   | "structure"
   | "formatting"
@@ -36,6 +46,7 @@ export type SunoTechnique<Category extends string> = {
   evidence: SunoEvidence;
   sources: string[];
   keywords: string[];
+  studioFamily?: SunoStudioMasteringFamily;
 };
 
 export type SunoGenreGroup = {
@@ -53,6 +64,18 @@ export const SUNO_PROMPT_CATEGORIES: { key: SunoPromptCategory | "all"; label: S
   { key: "mastering", label: { zh: "錄音室 Mastering", en: "Studio mastering" } },
   { key: "theory", label: { zh: "調性與節奏", en: "Key & rhythm" } },
   { key: "recipe", label: { zh: "愛波哥配方", en: "AIPOGER recipes" } },
+];
+
+export const SUNO_STUDIO_MASTERING_FAMILY_OPTIONS: { key: SunoStudioMasteringFamily | "all"; label: SunoLocalizedText }[] = [
+  { key: "all", label: { zh: "全部錄音室", en: "All studio" } },
+  { key: "house", label: { zh: "House", en: "House" } },
+  { key: "techno", label: { zh: "Techno", en: "Techno" } },
+  { key: "trance", label: { zh: "Trance", en: "Trance" } },
+  { key: "bass", label: { zh: "Bass", en: "Bass" } },
+  { key: "breaks", label: { zh: "Breaks", en: "Breaks" } },
+  { key: "global", label: { zh: "Global", en: "Global" } },
+  { key: "pop-urban", label: { zh: "Pop & Urban", en: "Pop & Urban" } },
+  { key: "dj-edit", label: { zh: "DJ Edit", en: "DJ Edit" } },
 ];
 
 export const SUNO_LYRIC_CATEGORIES: { key: SunoLyricCategory | "all"; label: SunoLocalizedText }[] = [
