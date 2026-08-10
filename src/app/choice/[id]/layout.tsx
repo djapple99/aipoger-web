@@ -3,9 +3,9 @@ import { choiceDisplayTitle } from "@/lib/aipoger-choice";
 import { getChoiceCopy } from "@/lib/choice-copy";
 import { isSupportedLang, type Lang } from "@/lib/locale";
 import { loadChoiceShareMetadata } from "@/lib/server-choice-share-metadata";
+import { publicSiteUrl } from "@/lib/site-url";
 
-const configuredSiteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://aipoger.com").replace(/\/$/, "");
-const siteUrl = configuredSiteUrl === "https://www.aipoger.com" ? "https://aipoger.com" : configuredSiteUrl;
+const siteUrl = publicSiteUrl();
 const defaultImageUrl = `${siteUrl}/aipoger-og-card-20260522.png`;
 
 export async function generateMetadata({

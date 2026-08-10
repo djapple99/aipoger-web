@@ -536,7 +536,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
 const pageLinks = [
   { href: "/about", key: "about" as const },
   { href: "/partners", key: "partners" as const },
-  { href: "/hook-guide", key: "hook-guide" as const },
+  { href: "/drop-guide", key: "hook-guide" as const },
   { href: "/ai-music-bible", key: "ai-music-bible" as const },
 ];
 
@@ -557,7 +557,7 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
 
   const primaryHref =
     kind === "partners" || kind === "about" ? `mailto:${mail}` : kind === "ai-music-bible" ? AIPOGER_TUTORIAL_PLAYLIST_URL : "/battle/setup";
-  const secondaryHref = kind === "partners" || kind === "about" ? "/hook-guide" : kind === "ai-music-bible" ? "/battle/setup" : "/listen-bar";
+  const secondaryHref = kind === "partners" || kind === "about" ? "/drop-guide" : kind === "ai-music-bible" ? "/battle/setup" : "/listen-bar";
 
   return (
     <main className={`aipo-stage-bg relative min-h-screen overflow-hidden px-5 py-6 text-zinc-100 md:px-10 ${isPolicyPage ? "bg-[#070707]" : "bg-[#050505]"}`}>

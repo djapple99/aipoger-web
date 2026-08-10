@@ -10,9 +10,10 @@ import GlobalBattleCallOverlay from "@/components/global-battle-call-overlay";
 import GlobalListenBarDock from "@/components/global-listen-bar-dock";
 import GlobalSitePresenceBadge from "@/components/global-site-presence-badge";
 import AnalyticsEvents from "@/components/analytics-events";
+import SeoJsonLd from "@/components/seo-json-ld";
+import { publicSiteUrl } from "@/lib/site-url";
 
-const configuredSiteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://aipoger.com").replace(/\/$/, "");
-const siteUrl = configuredSiteUrl === "https://www.aipoger.com" ? "https://aipoger.com" : configuredSiteUrl;
+const siteUrl = publicSiteUrl();
 const metadataBase = new URL(siteUrl);
 const ogImage = "/aipoger-og-card-20260522.png";
 
@@ -27,6 +28,12 @@ export const metadata: Metadata = {
   keywords: ["AIPOGER", "愛播歌", "AI 音樂", "AI Music", "鬥歌", "Drop Battle", "傷心酒吧", "AI 音樂創作"],
   alternates: {
     canonical: "/",
+    languages: {
+      "zh-Hant": "/?lang=zh",
+      en: "/?lang=en",
+      ja: "/?lang=ja",
+      ko: "/?lang=ko",
+    },
   },
   manifest: "/site.webmanifest",
   icons: {
@@ -64,6 +71,37 @@ export const metadata: Metadata = {
   },
 };
 
+const aipogerOrganizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "AIPOGER 愛播歌",
+  alternateName: ["AIPOGER", "愛播歌"],
+  url: siteUrl,
+  logo: `${siteUrl}/aipoger-search-icon-512x512.png`,
+  description: "AI 音樂創作者的探索、Drop Battle、公共播放、認可與策展平台。",
+  sameAs: [
+    "https://www.youtube.com/@djapple2000",
+    "https://www.instagram.com/aipoger.ai",
+    "https://www.tiktok.com/@aipoger",
+  ],
+  founder: {
+    "@type": "Person",
+    name: "愛波哥",
+    url: "https://www.youtube.com/@djapple2000",
+  },
+};
+
+const aipogerWebSiteSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "@id": `${siteUrl}/#website`,
+  name: "AIPOGER 愛播歌",
+  alternateName: "AIPOGER",
+  url: siteUrl,
+  inLanguage: ["zh-Hant", "en", "ja", "ko"],
+  publisher: { "@id": `${siteUrl}/#organization` },
+};
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -81,6 +119,8 @@ export default async function RootLayout({
   return (
     <html lang={htmlLangFor(initialLang)}>
       <body>
+        <SeoJsonLd data={{ ...aipogerOrganizationSchema, "@id": `${siteUrl}/#organization` }} />
+        <SeoJsonLd data={aipogerWebSiteSchema} />
         <I18nProvider initialLang={initialLang}>
           <AnalyticsEvents />
           <NavHomeLink />

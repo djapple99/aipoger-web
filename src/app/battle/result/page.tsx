@@ -5,12 +5,13 @@ import {
   loadBattleResultShareData,
   resultShareDataFromSearch,
 } from "@/lib/battle-result-meta";
+import { publicSiteUrl } from "@/lib/site-url";
 
 type BattleResultPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
-const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://aipoger.com").replace(/\/$/, "");
+const siteUrl = publicSiteUrl();
 
 export async function generateMetadata({ searchParams }: BattleResultPageProps): Promise<Metadata> {
   const resolvedSearchParams = (await searchParams) ?? {};

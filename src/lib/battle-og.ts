@@ -1,3 +1,5 @@
+import { publicSiteUrl } from "@/lib/site-url";
+
 export type BattleOgData = {
   id: string;
   fighter_a_user_id: string | null;
@@ -94,7 +96,7 @@ const QUEUE_OG_SELECTS = [
 ].map((columns) => columns.join(","));
 
 export function siteOrigin() {
-  return (process.env.NEXT_PUBLIC_SITE_URL || "https://www.aipoger.com").replace(/\/$/, "");
+  return publicSiteUrl();
 }
 
 export function fallbackBattleOgData(id: string): BattleOgData {

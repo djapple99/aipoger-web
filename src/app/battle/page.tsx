@@ -198,7 +198,7 @@ function BattleStageHero({
     { href: `/listen-bar?lang=${lang}`, label: t("btn_listen_bar"), Icon: Radio },
     { href: `/battle/results?lang=${lang}`, label: t("watch_result_card"), Icon: History },
     { href: `/rank?lang=${lang}`, label: t("watch_rank"), Icon: BadgeCheck },
-    { href: `/hook-guide?lang=${lang}`, label: isZh ? "Drop 規則" : "Drop Rules", Icon: BookOpen },
+    { href: `/drop-guide?lang=${lang}`, label: isZh ? "Drop 規則" : "Drop Rules", Icon: BookOpen },
   ];
 
   return (
