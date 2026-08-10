@@ -142,10 +142,27 @@ test("Suno prompt and lyric libraries keep unique, bilingual, sourced moves", ()
   assert.equal(SUNO_LYRIC_MOVES.length, 18);
   assert.deepEqual(
     SUNO_STUDIO_MASTERING_FAMILY_OPTIONS.map((option) => option.key),
-    ["all", "house", "techno", "trance", "bass", "breaks", "global", "pop-urban", "dj-edit"],
+    [
+      "all",
+      "electronic",
+      "hip-hop",
+      "soul-rnb",
+      "new-age-ambient",
+      "rock-roll",
+      "indie-dance",
+      "disco-funk",
+      "jazz-bossa",
+      "pop",
+      "classical-cinematic",
+      "latin-caribbean",
+      "african-amapiano",
+      "asian-middle-eastern",
+      "country-folk",
+      "dj-edit",
+    ],
   );
   assert.ok(SUNO_STUDIO_MASTERING_MOVES.every((entry) => entry.studioFamily));
-  assert.equal(new Set(SUNO_STUDIO_MASTERING_MOVES.map((entry) => entry.studioFamily)).size, 8);
+  assert.equal(new Set(SUNO_STUDIO_MASTERING_MOVES.map((entry) => entry.studioFamily)).size, 15);
   assert.ok(BEATPORT_STUDIO_MASTERING_MOVES.some((entry) => entry.studioFamily === "dj-edit"));
 
   for (const entries of [SUNO_PROMPT_MOVES, SUNO_LYRIC_MOVES]) {
@@ -257,7 +274,7 @@ test("Prompt and lyric finders explain their controls and expose clear states", 
   assert.match(practiceLibraryComponent, /aria-live="polite"/);
   assert.match(practiceLibraryComponent, /aria-pressed=\{selected\}/);
   assert.match(practiceLibraryComponent, /錄音室類型/);
-  assert.match(practiceLibraryComponent, /STUDIO FAMILY/);
+  assert.match(practiceLibraryComponent, /MUSIC FAMILY/);
   assert.match(practiceLibraryComponent, /promptStudioFamily/);
   assert.match(practiceLibraryComponent, /清除 Prompt 搜尋/);
   assert.match(practiceLibraryComponent, /清除歌詞搜尋/);

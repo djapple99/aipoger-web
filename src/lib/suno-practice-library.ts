@@ -19,13 +19,20 @@ export type SunoPromptCategory =
   | "recipe";
 
 export type SunoStudioMasteringFamily =
-  | "house"
-  | "techno"
-  | "trance"
-  | "bass"
-  | "breaks"
-  | "global"
-  | "pop-urban"
+  | "electronic"
+  | "hip-hop"
+  | "soul-rnb"
+  | "new-age-ambient"
+  | "rock-roll"
+  | "indie-dance"
+  | "disco-funk"
+  | "jazz-bossa"
+  | "pop"
+  | "classical-cinematic"
+  | "latin-caribbean"
+  | "african-amapiano"
+  | "asian-middle-eastern"
+  | "country-folk"
   | "dj-edit";
 
 export type SunoLyricCategory =
@@ -67,15 +74,22 @@ export const SUNO_PROMPT_CATEGORIES: { key: SunoPromptCategory | "all"; label: S
 ];
 
 export const SUNO_STUDIO_MASTERING_FAMILY_OPTIONS: { key: SunoStudioMasteringFamily | "all"; label: SunoLocalizedText }[] = [
-  { key: "all", label: { zh: "全部錄音室", en: "All studio" } },
-  { key: "house", label: { zh: "House", en: "House" } },
-  { key: "techno", label: { zh: "Techno", en: "Techno" } },
-  { key: "trance", label: { zh: "Trance", en: "Trance" } },
-  { key: "bass", label: { zh: "Bass", en: "Bass" } },
-  { key: "breaks", label: { zh: "Breaks", en: "Breaks" } },
-  { key: "global", label: { zh: "Global", en: "Global" } },
-  { key: "pop-urban", label: { zh: "Pop & Urban", en: "Pop & Urban" } },
-  { key: "dj-edit", label: { zh: "DJ Edit", en: "DJ Edit" } },
+  { key: "all", label: { zh: "全部錄音室", en: "All studios" } },
+  { key: "electronic", label: { zh: "電子音樂", en: "Electronic" } },
+  { key: "hip-hop", label: { zh: "Hip-Hop", en: "Hip-Hop" } },
+  { key: "soul-rnb", label: { zh: "Soul & R&B", en: "Soul & R&B" } },
+  { key: "new-age-ambient", label: { zh: "New Age & Ambient", en: "New Age & Ambient" } },
+  { key: "rock-roll", label: { zh: "Rock & Roll", en: "Rock & Roll" } },
+  { key: "indie-dance", label: { zh: "Indie Dance", en: "Indie Dance" } },
+  { key: "disco-funk", label: { zh: "Disco & Funk", en: "Disco & Funk" } },
+  { key: "jazz-bossa", label: { zh: "Jazz & Bossa", en: "Jazz & Bossa" } },
+  { key: "pop", label: { zh: "Pop", en: "Pop" } },
+  { key: "classical-cinematic", label: { zh: "Classical & Cinematic", en: "Classical & Cinematic" } },
+  { key: "latin-caribbean", label: { zh: "Latin & Caribbean", en: "Latin & Caribbean" } },
+  { key: "african-amapiano", label: { zh: "African & Amapiano", en: "African & Amapiano" } },
+  { key: "asian-middle-eastern", label: { zh: "Asian & Middle Eastern", en: "Asian & Middle Eastern" } },
+  { key: "country-folk", label: { zh: "Country & Folk", en: "Country & Folk" } },
+  { key: "dj-edit", label: { zh: "DJ Edit／Extended", en: "DJ Edit / Extended" } },
 ];
 
 export const SUNO_LYRIC_CATEGORIES: { key: SunoLyricCategory | "all"; label: SunoLocalizedText }[] = [

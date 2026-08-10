@@ -305,8 +305,8 @@ export default function SunoPracticeLibrarySection({
             </h2>
             <p className="mt-5 max-w-3xl text-base font-bold leading-8 text-zinc-300">
               {isZh
-                ? "九份教材加上 Beatport 類型截圖，整理成可以搜尋、可以複製、知道何時該用的招式。錄音室 Prompt 已分成 House、Techno、Trance、Bass、Breaks、Global、Pop & Urban、DJ Edit 八類。"
-                : "Nine supplied files plus the Beatport genre screenshot are distilled into searchable, copyable moves with clear use cases. Studio Prompt moves are now grouped into eight families: House, Techno, Trance, Bass, Breaks, Global, Pop & Urban, and DJ Edit."}
+                ? "九份教材加上 Beatport 類型截圖，整理成可以搜尋、可以複製、知道何時該用的招式。錄音室 Prompt 改用音樂文化與聽感分成 15 類，從電子音樂、Hip-Hop、Soul & R&B 一路到 Jazz、Pop、Rock 與世界音樂。"
+                : "Nine supplied files plus the Beatport genre screenshot are distilled into searchable, copyable moves with clear use cases. Studio Prompt moves are now grouped by musical culture and listening character across 15 families, from Electronic, Hip-Hop, and Soul & R&B to Jazz, Pop, Rock, and world music."}
             </p>
           </div>
           <div className="rounded-xl border border-yellow-300/18 bg-yellow-300/[0.055] p-4 text-sm font-bold leading-6 text-yellow-50/85">
@@ -370,7 +370,7 @@ export default function SunoPracticeLibrarySection({
           </fieldset>
           {promptCategory === "mastering" && (
             <fieldset className="mt-4 border-t border-cyan-200/10 pt-4">
-              <legend className="text-xs font-black tracking-[0.12em] text-zinc-300">{isZh ? "錄音室類型" : "STUDIO FAMILY"}</legend>
+              <legend className="text-xs font-black tracking-[0.12em] text-zinc-300">{isZh ? "錄音室類型" : "MUSIC FAMILY"}</legend>
               <div className="mt-2.5 flex flex-wrap gap-2">
                 {SUNO_STUDIO_MASTERING_FAMILY_OPTIONS.map((family) => {
                   const selected = promptStudioFamily === family.key;
