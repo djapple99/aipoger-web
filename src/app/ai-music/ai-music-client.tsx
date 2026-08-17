@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, AudioLines, Headphones, Volume2 } from "lucide-react";
+import { ArrowRight, AudioLines, Headphones, Upload, Volume2 } from "lucide-react";
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { fontGlowSans, fontRighteous, fontSourceSerifTC } from "@/lib/fonts";
@@ -126,6 +126,7 @@ function exploreCopy(lang: string) {
     browseMode: localeText(lang, "作品瀏覽方式", "Works browsing mode", "作品の表示方法", "작품 탐색 방식"),
     byStyle: localeText(lang, "依類型", "By Style", "ジャンル別", "장르별"),
     hotNow: localeText(lang, "正在升溫", "Hot Now", "注目上昇中", "인기 상승 중"),
+    uploadAction: localeText(lang, "我要上傳我的音樂", "Upload My Music", "音楽を投稿", "내 음악 업로드"),
     guideLabel: localeText(lang, "這裡怎麼玩？", "How this works", "使い方を見る", "이용 방법"),
     loading: localeText(lang, "正在載入 AI 音樂作品...", "Loading AI music works...", "AI音楽作品を読み込んでいます…", "AI 음악 작품을 불러오는 중…"),
     loadError: localeText(lang, "作品載入失敗：", "Could not load works: ", "作品を読み込めませんでした：", "작품을 불러오지 못했습니다: "),
@@ -1562,45 +1563,54 @@ export default function AiMusicClient() {
           ) : null}
 
           <div className="flex justify-center border-b border-white/10 pb-3 pt-1">
-            <div className="flex items-center justify-center gap-2 rounded-lg border border-orange-100/18 bg-black/76 p-1.5 shadow-[0_16px_42px_rgba(0,0,0,0.36)]">
+            <div className="flex max-w-full flex-wrap items-center justify-center gap-2 rounded-lg border border-orange-100/18 bg-black/76 p-1.5 shadow-[0_16px_42px_rgba(0,0,0,0.36)]">
               <div className="inline-flex" role="group" aria-label={copy.browseMode}>
-              <button
-                type="button"
-                onClick={() => setWorksView("genre")}
-                aria-pressed={worksView === "genre"}
-                className={`min-h-10 rounded-md px-4 text-xs font-black transition sm:px-5 ${worksView === "genre" ? "bg-orange-500 text-black shadow-[0_0_22px_rgba(255,106,0,0.24)]" : "text-zinc-300 hover:bg-white/6 hover:text-white"}`}
-              >
-                {copy.byStyle}
-              </button>
-              <button
-                type="button"
-                onClick={() => setWorksView("heat")}
-                aria-pressed={worksView === "heat"}
-                className={`min-h-10 rounded-md px-4 text-xs font-black transition sm:px-5 ${worksView === "heat" ? "bg-orange-500 text-black shadow-[0_0_22px_rgba(255,106,0,0.24)]" : "text-zinc-300 hover:bg-white/6 hover:text-white"}`}
-              >
-                {copy.hotNow}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setWorksView("genre")}
+                  aria-pressed={worksView === "genre"}
+                  className={`min-h-10 rounded-md px-4 text-xs font-black transition sm:px-5 ${worksView === "genre" ? "bg-orange-500 text-black shadow-[0_0_22px_rgba(255,106,0,0.24)]" : "text-zinc-300 hover:bg-white/6 hover:text-white"}`}
+                >
+                  {copy.byStyle}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWorksView("heat")}
+                  aria-pressed={worksView === "heat"}
+                  className={`min-h-10 rounded-md px-4 text-xs font-black transition sm:px-5 ${worksView === "heat" ? "bg-orange-500 text-black shadow-[0_0_22px_rgba(255,106,0,0.24)]" : "text-zinc-300 hover:bg-white/6 hover:text-white"}`}
+                >
+                  {copy.hotNow}
+                </button>
               </div>
-              <span className="h-7 w-px bg-white/12" aria-hidden="true" />
-              <button
-                type="button"
-                onClick={() => setEarwormPromptOpen(true)}
-                className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-cyan-100/22 bg-cyan-300/[0.06] px-3 text-[11px] font-black text-cyan-50/82 transition hover:border-cyan-100/50 hover:text-white"
+              <div className="flex items-center gap-2">
+                <span className="h-7 w-px bg-white/12" aria-hidden="true" />
+                <button
+                  type="button"
+                  onClick={() => setEarwormPromptOpen(true)}
+                  className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-cyan-100/22 bg-cyan-300/[0.06] px-3 text-[11px] font-black text-cyan-50/82 transition hover:border-cyan-100/50 hover:text-white"
+                >
+                  <Headphones className="h-4 w-4" aria-hidden="true" />
+                  {earwormCopy.reopen}
+                </button>
+                <span className="h-7 w-px bg-white/12" aria-hidden="true" />
+                <button
+                  ref={guideButtonRef}
+                  type="button"
+                  onClick={() => setGuideOpen(true)}
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-orange-200/32 bg-orange-500/8 p-1.5 transition hover:border-orange-100/70 hover:bg-orange-500/16 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-100"
+                  aria-label={copy.guideLabel}
+                  title={copy.guideLabel}
+                >
+                  <img src="/guide.png" alt="" className="h-full w-full object-contain" />
+                </button>
+              </div>
+              <Link
+                href={`${withLang("/listen-bar")}#play-request`}
+                className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-md border border-orange-100/80 bg-orange-500 px-3 text-[11px] font-black text-black shadow-[0_0_22px_rgba(255,106,0,0.22)] transition hover:border-orange-50 hover:bg-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-100"
               >
-                <Headphones className="h-4 w-4" aria-hidden="true" />
-                {earwormCopy.reopen}
-              </button>
-              <span className="h-7 w-px bg-white/12" aria-hidden="true" />
-              <button
-                ref={guideButtonRef}
-                type="button"
-                onClick={() => setGuideOpen(true)}
-                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-orange-200/32 bg-orange-500/8 p-1.5 transition hover:border-orange-100/70 hover:bg-orange-500/16 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-100"
-                aria-label={copy.guideLabel}
-                title={copy.guideLabel}
-              >
-                <img src="/guide.png" alt="" className="h-full w-full object-contain" />
-              </button>
+                <Upload className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
+                {copy.uploadAction}
+              </Link>
             </div>
           </div>
           {loadState === "loading" ? (
