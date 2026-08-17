@@ -675,7 +675,17 @@ export default function ListenBarPage() {
         navDrop: "Drop Battle",
         navRank: "Showtime",
         ticker: "先探索 AI 音樂，再從喜歡的作品發起挑戰。",
+        queueEyebrow: "正在收聽的播放頻道",
+        queueHint: "選擇一個頻道，電台會在這個範圍裡接續播放。",
+        channelPickerLabel: "播放頻道",
+        channelCountLabel: "12 個播放頻道",
+        channelActiveLabel: "正在收聽",
+        allChannelDescription: "全類型公播池接續播放",
+        genreChannelDescription: "同類型公播池接續播放",
+        allChannelCountLabel: "全類型公播",
+        genreChannelCountLabel: "公播池",
         queueTitle: "接續的六首歌",
+        queueSectionHint: "電台會在這個頻道裡持續接續歌曲。",
         queueWaiting: "等待接續歌曲",
         queueEmpty: "等待創作者投稿後，下一首會顯示在這裡。",
         warming: "現場升溫中",
@@ -696,7 +706,17 @@ export default function ListenBarPage() {
           navDrop: "Drop Battle",
           navRank: "Showtime",
           ticker: "AI音楽を探して、好きな曲から挑戦へ。",
+          queueEyebrow: "いま聴いている放送チャンネル",
+          queueHint: "チャンネルを選ぶと、その範囲で次の曲が続けて流れます。",
+          channelPickerLabel: "放送チャンネル",
+          channelCountLabel: "12チャンネル",
+          channelActiveLabel: "再生中",
+          allChannelDescription: "全ジャンルの公開放送を続けて再生",
+          genreChannelDescription: "同じジャンルの公開放送を続けて再生",
+          allChannelCountLabel: "全ジャンル放送",
+          genreChannelCountLabel: "公開放送プール",
           queueTitle: "次に流れる6曲",
+          queueSectionHint: "このチャンネル内で次の曲が続けて流れます。",
           queueWaiting: "次の曲を待っています",
           queueEmpty: "次のクリエイタートラックはここに表示されます。",
           warming: "放送準備中",
@@ -717,7 +737,17 @@ export default function ListenBarPage() {
             navDrop: "Drop Battle",
             navRank: "Showtime",
             ticker: "AI 음악을 먼저 탐색하고, 마음에 드는 곡에서 도전하세요.",
+            queueEyebrow: "지금 듣는 방송 채널",
+            queueHint: "채널을 고르면 그 범위 안에서 다음 곡이 이어집니다.",
+            channelPickerLabel: "방송 채널",
+            channelCountLabel: "12개 채널",
+            channelActiveLabel: "청취 중",
+            allChannelDescription: "전체 장르 공개 방송 이어 듣기",
+            genreChannelDescription: "같은 장르 공개 방송 이어 듣기",
+            allChannelCountLabel: "전체 장르 방송",
+            genreChannelCountLabel: "공개 방송 풀",
             queueTitle: "다음 재생 6곡",
+            queueSectionHint: "이 채널 안에서 다음 곡이 계속 이어집니다.",
             queueWaiting: "다음 곡을 기다리는 중",
             queueEmpty: "다음 크리에이터 트랙이 여기에 표시됩니다.",
             warming: "방송 준비 중",
@@ -737,7 +767,17 @@ export default function ListenBarPage() {
             navDrop: "Drop Battle",
             navRank: "Showtime",
             ticker: "Explore AI music first, then challenge from tracks you like.",
+            queueEyebrow: "NOW LISTENING",
+            queueHint: "Choose a channel and the radio will continue within that listening range.",
+            channelPickerLabel: "PLAYBACK CHANNELS",
+            channelCountLabel: "12 CHANNELS",
+            channelActiveLabel: "LISTENING NOW",
+            allChannelDescription: "Continue through the full public airplay pool",
+            genreChannelDescription: "Continue within this genre's public airplay pool",
+            allChannelCountLabel: "FULL AIRPLAY",
+            genreChannelCountLabel: "AIRPLAY POOL",
             queueTitle: "Upcoming Sad Songs",
+            queueSectionHint: "The radio will keep continuing inside this channel.",
             queueWaiting: "Waiting for Songs",
             queueEmpty: "The next creator track will appear here.",
             warming: "Warming Up",
@@ -971,8 +1011,11 @@ export default function ListenBarPage() {
     return stats;
   }, [allCommunityTracks]);
   const selectedGenreLabel = selectedPlaybackGenre === "all"
-    ? barText(lang, "公播", "All", "すべて", "전체")
+    ? barText(lang, "全部播放", "All Tracks", "すべて再生", "전체 재생")
     : genreDisplayLabel(selectedPlaybackGenre, lang);
+  const selectedChannelDescription = selectedPlaybackGenre === "all"
+    ? listenCopy.allChannelDescription
+    : listenCopy.genreChannelDescription;
   const selectedGenreSlug = selectedPlaybackGenre === "all" ? "all" : (LISTEN_BAR_GENRE_SLUGS.get(selectedPlaybackGenre) ?? "all");
   const selectedGenreShareUrl = listenBarShortPath(selectedGenreSlug, lang);
   const barShareUrl = listenBarShortPath("all", lang);
@@ -1003,6 +1046,13 @@ export default function ListenBarPage() {
     () => allCommunityTracks.filter((track) => track.barPhase === "public"),
     [allCommunityTracks],
   );
+  const selectedChannelPool = selectedPlaybackGenre === "all"
+    ? { label: listenCopy.allChannelCountLabel, count: publicPoolTracks.length, limit: LISTEN_BAR_TOTAL_ROTATION_LIMIT }
+    : {
+        label: listenCopy.genreChannelCountLabel,
+        count: genrePoolStats.get(selectedPlaybackGenre)?.public ?? 0,
+        limit: LISTEN_BAR_GENRE_POOL_LIMIT,
+      };
   const survivalStartedAtByGenre = useMemo(() => {
     const map = new Map<string, string | null>();
     for (const genre of LISTEN_BAR_GENRES) {
@@ -2823,49 +2873,56 @@ export default function ListenBarPage() {
               <div className="relative flex flex-wrap items-end justify-between gap-3 border-b border-white/8 px-4 py-3">
                 <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1">
                   <p className="text-[11px] font-black uppercase tracking-[0.28em] text-cyan-200/70">
-                    {barText(lang, "傷心歌單", "SAD SONG QUEUE", "次の曲", "다음 곡")}
+                    {listenCopy.queueEyebrow}
                   </p>
-                  <h2 className="text-[clamp(1.55rem,8vw,2.9rem)] font-black leading-none text-white sm:whitespace-nowrap">
-                    {upcomingHeartbreakerTracks.length > 0
-                      ? listenCopy.queueTitle
-                      : listenCopy.queueWaiting}
-                  </h2>
+                  <div className="min-w-0 basis-full sm:basis-auto">
+                    <h2 className="text-[clamp(1.55rem,8vw,2.9rem)] font-black leading-none text-white sm:whitespace-nowrap">
+                      {selectedGenreLabel}
+                    </h2>
+                    <p className="mt-1 text-xs font-bold text-zinc-400">
+                      {selectedChannelDescription}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <ShareButton
-                    title={selectedGenreShareTitle}
-                    text={selectedGenreShareText}
-                    url={selectedGenreShareUrl}
-                    label={selectedPlaybackGenre === "all"
-                      ? barText(lang, "分享公播", "Share All", "放送全体をシェア", "전체 방송 공유")
-                      : barText(lang, "分享此類", "Share Genre", "このジャンルをシェア", "이 장르 공유")}
-                    copiedLabel={listenCopy.copied}
-                    className="min-h-10 !border-rose-200/72 !bg-[linear-gradient(180deg,rgba(164,24,42,0.8)_0%,rgba(96,18,30,0.76)_100%)] px-3 py-1 text-[11px] !text-white !shadow-[0_0_30px_rgba(255,49,80,0.36),inset_0_1px_0_rgba(255,255,255,0.11)] ring-1 ring-rose-100/20 hover:!border-rose-100/90 hover:!bg-[linear-gradient(180deg,rgba(202,32,58,0.9)_0%,rgba(122,20,36,0.84)_100%)] hover:!shadow-[0_0_42px_rgba(255,49,80,0.48),inset_0_1px_0_rgba(255,255,255,0.15)]"
-                  />
-                  <span className="rounded-full border border-cyan-200/20 bg-cyan-300/8 px-3 py-1 text-[11px] font-black text-cyan-100">
-                    {selectedGenreLabel}
-                  </span>
-                  <span className="rounded-full border border-orange-300/24 bg-orange-500/10 px-3 py-1 text-[11px] font-black text-orange-100">
-                    {upcomingHeartbreakerTracks.length}/6
-                  </span>
+                <div className="rounded-full border border-cyan-200/20 bg-cyan-300/8 px-3 py-1 text-[11px] font-black tabular-nums text-cyan-100">
+                  {selectedChannelPool.label} · {selectedChannelPool.count}/{selectedChannelPool.limit}
                 </div>
               </div>
               <div className="relative border-b border-white/8 px-4 py-3">
-                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-6">
+                <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-orange-200/80">
+                      {listenCopy.channelPickerLabel}
+                    </p>
+                    <p className="mt-1 text-xs font-bold text-zinc-500">
+                      {listenCopy.queueHint}
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-white/10 bg-white/[0.035] px-2.5 py-1 text-[10px] font-black text-zinc-500">
+                    {listenCopy.channelCountLabel}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
                   <button
                     type="button"
                     onClick={() => setSelectedPlaybackGenre("all")}
+                    aria-pressed={selectedPlaybackGenre === "all"}
                     className={`min-w-0 rounded-xl border px-2.5 py-2 text-left transition ${
                       selectedPlaybackGenre === "all"
                         ? "border-orange-200/70 bg-orange-400/16 text-orange-50 shadow-[0_0_20px_rgba(255,106,0,0.12)]"
                         : "border-white/10 bg-white/[0.035] text-zinc-400 hover:border-cyan-200/30 hover:bg-cyan-300/8 hover:text-cyan-50"
                     }`}
                   >
-                    <span className="block truncate text-[10px] font-black uppercase tracking-[0.16em]">
-                      {barText(lang, "公播", "All", "すべて", "전체")}
+                    <span className={`block h-3 text-[8px] font-black uppercase tracking-[0.1em] ${
+                      selectedPlaybackGenre === "all" ? "text-orange-100" : "text-transparent"
+                    }`}>
+                      {selectedPlaybackGenre === "all" ? listenCopy.channelActiveLabel : "·"}
                     </span>
-                    <span className="mt-0.5 block text-xs font-black tabular-nums">
-                      {publicPoolTracks.length}/{LISTEN_BAR_TOTAL_ROTATION_LIMIT}
+                    <span className="block min-h-8 break-words text-[10px] font-black uppercase leading-4 tracking-[0.1em]">
+                      {barText(lang, "全部播放", "All Tracks", "すべて再生", "전체 재생")}
+                    </span>
+                    <span className="mt-1 block text-[10px] font-black leading-4 text-zinc-400">
+                      {listenCopy.allChannelCountLabel} · {publicPoolTracks.length}/{LISTEN_BAR_TOTAL_ROTATION_LIMIT}
                     </span>
                   </button>
                   {LISTEN_BAR_GENRES.map((genre) => {
@@ -2876,17 +2933,23 @@ export default function ListenBarPage() {
                         key={genre.value}
                         type="button"
                         onClick={() => setSelectedPlaybackGenre(genre.value)}
+                        aria-pressed={active}
                         className={`min-w-0 rounded-xl border px-2.5 py-2 text-left transition ${
                           active
                             ? "border-orange-200/70 bg-orange-400/16 text-orange-50 shadow-[0_0_20px_rgba(255,106,0,0.12)]"
                             : "border-white/10 bg-white/[0.035] text-zinc-400 hover:border-cyan-200/30 hover:bg-cyan-300/8 hover:text-cyan-50"
                         }`}
                       >
-                        <span className="block truncate text-[10px] font-black uppercase tracking-[0.08em]">
+                        <span className={`block h-3 text-[8px] font-black uppercase tracking-[0.1em] ${
+                          active ? "text-orange-100" : "text-transparent"
+                        }`}>
+                          {active ? listenCopy.channelActiveLabel : "·"}
+                        </span>
+                        <span className="block min-h-8 break-words text-[10px] font-black leading-4 tracking-[0.04em]">
                           {t(genre.labelKey)}
                         </span>
-                        <span className="mt-0.5 block text-xs font-black tabular-nums">
-                          {stats.public}/{LISTEN_BAR_GENRE_POOL_LIMIT}
+                        <span className="mt-1 block text-[10px] font-black leading-4 text-zinc-400">
+                          {listenCopy.genreChannelCountLabel} · {stats.public}/{LISTEN_BAR_GENRE_POOL_LIMIT}
                         </span>
                       </button>
                     );
@@ -2894,6 +2957,31 @@ export default function ListenBarPage() {
                 </div>
               </div>
               <div className="relative grid gap-0 md:grid-cols-2">
+                <div className="flex flex-wrap items-end justify-between gap-3 border-b border-white/8 px-4 py-3 md:col-span-2">
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.26em] text-cyan-200/70">
+                      {listenCopy.queueTitle}
+                    </p>
+                    <p className="mt-1 text-xs font-bold text-zinc-500">
+                      {listenCopy.queueSectionHint}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <ShareButton
+                      title={selectedGenreShareTitle}
+                      text={selectedGenreShareText}
+                      url={selectedGenreShareUrl}
+                      label={selectedPlaybackGenre === "all"
+                        ? barText(lang, "分享公播", "Share All", "放送全体をシェア", "전체 방송 공유")
+                        : barText(lang, "分享此類", "Share Genre", "このジャンルをシェア", "이 장르 공유")}
+                      copiedLabel={listenCopy.copied}
+                      className="min-h-10 !border-rose-200/72 !bg-[linear-gradient(180deg,rgba(164,24,42,0.8)_0%,rgba(96,18,30,0.76)_100%)] px-3 py-1 text-[11px] !text-white !shadow-[0_0_30px_rgba(255,49,80,0.36),inset_0_1px_0_rgba(255,255,255,0.11)] ring-1 ring-rose-100/20 hover:!border-rose-100/90 hover:!bg-[linear-gradient(180deg,rgba(202,32,58,0.9)_0%,rgba(122,20,36,0.84)_100%)] hover:!shadow-[0_0_42px_rgba(255,49,80,0.48),inset_0_1px_0_rgba(255,255,255,0.15)]"
+                    />
+                    <span className="rounded-full border border-orange-300/24 bg-orange-500/10 px-3 py-1 text-[11px] font-black tabular-nums text-orange-100">
+                      {upcomingHeartbreakerTracks.length}/6
+                    </span>
+                  </div>
+                </div>
                 {upcomingHeartbreakerTracks.length === 0 ? (
                   <p className="px-4 py-6 text-sm font-bold text-zinc-500 md:col-span-2">
                     {listenCopy.queueEmpty}
