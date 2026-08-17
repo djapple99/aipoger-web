@@ -139,7 +139,8 @@ test("Suno prompt and lyric libraries keep unique, bilingual, sourced moves", ()
   assert.equal(SUNO_STUDIO_MASTERING_MOVES.length, 95);
   assert.equal(BEATPORT_STUDIO_MASTERING_MOVES.length, 45);
   assert.equal(SUNO_STUDIO_MASTERING_MOVES.filter((entry) => entry.category === "mastering").length, 95);
-  assert.equal(SUNO_LYRIC_MOVES.length, 18);
+  assert.equal(SUNO_LYRIC_MOVES.length, 21);
+  assert.ok(["vocal-delivery", "vocal-character-tone", "vocal-effects", "vocal-placement-space", "vocal-moments-transitions"].every((key) => SUNO_LYRIC_MOVES.some((item) => item.key === key)));
   assert.deepEqual(
     SUNO_STUDIO_MASTERING_FAMILY_OPTIONS.map((option) => option.key),
     [
