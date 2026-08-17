@@ -1,8 +1,10 @@
 # AIPOGER UI And Art Direction
 
-Last updated: 2026-05-29
+Last updated: 2026-07-31
 
 This document protects AIPOGER's visual identity. Use it before redesigning any page, adding major UI, or changing user-facing copy.
+
+For Battle Pool-specific hero, star CTA, character, and mobile layout rules, also read `docs/aipoger-battle-pool-art-direction.md`.
 
 ## Core Feeling
 
@@ -50,7 +52,7 @@ Use:
 - `公播`
 - `挑戰池`
 - `正在拼人氣`
-- `榮譽榜`
+- `AIPOGER Showtime`
 - `勝利榜`
 - `熱播`
 - `封存紀錄`
@@ -69,14 +71,64 @@ Avoid:
 Role:
 
 - First-viewport brand stage.
-- Give users clear routes into Battle, Bar Heartbreak, rules, and Honor Board.
+- Give users clear routes into AI music discovery, Bar Heartbreak, AIPOGER Showtime, and Battle as a next action.
 
 Must preserve:
 
 - AIPOGER as the first signal.
 - Music/stage energy.
-- Primary action to Battle.
+- Primary action to `探索 AI 音樂`.
 - Secondary paths to public listening and rules.
+
+### Homepage 2026-07-09 Explore Entry
+
+- Homepage first-layer main entry uses `探索 AI 音樂`, not `AI 音樂鬥歌場`.
+- Link the primary action to `/ai-music`.
+- Use the supporting idea `先探索 AI 音樂，再從喜歡的作品發起挑戰`.
+- The AI music works page then contains `Drop Battle` / `AI 音樂鬥歌場` as internal options.
+- Explore work cards use a compact yellow `NEW` badge at the cover's top-left for the first rolling 7 x 24 hours after `created_at`; the red angled `接戰` status stays at the top-right. Neither badge may cover the play control or each other.
+
+### Homepage 2026-06-24 Baseline
+
+Today’s homepage baseline should be preserved unless the user explicitly redesigns it again.
+
+Copy:
+
+- Use `AI 音樂擂台` for the large desktop Chinese title.
+- Do not use `AI 音樂播台` as the large title; it feels off-brand and has been rejected.
+- Mobile hero should not visually show the large Chinese `AI 音樂擂台` title. Keep it as screen-reader-only if semantic heading structure is needed.
+- Mobile hero copy should read as two centered lines:
+  - `探索 AI 音樂`
+  - `喜歡再發起挑戰`
+- The mobile first action label should be `探索`, and the signal body should describe browsing AI music works before challenging.
+- The desktop stat row should use `公播 / 60s / 酒吧`; do not show the retired `90s` Drop Battle label.
+
+Desktop layout:
+
+- The left hero stack should align visually with the top of the right-side action panel.
+- Do not let the left hero block drift lower than the right-side panel; avoid vertical centering that makes the stage feel unbalanced.
+- The desktop `AIPOGER` wordmark should be large, dominant, and left-stage, while the right-side logo panel supports navigation rather than competing as the primary brand signal.
+- The right-side panel logo area should feel centered inside its upper disc zone. If the AIPOGER logo looks small or off-center, enlarge the disc/logo together and verify the visual center in a rendered desktop screenshot.
+- The right-side logo should remain bigger than the small header logo and should feel like a record/emblem, not a tiny icon.
+- The right-side action panel has four destinations in this order: `探索 AI 音樂`, `傷心酒吧`, `Drop Battle`, `Showtime`. Explore remains the only solid-orange primary action; the other three stay dark secondary actions with their own hover/focus color.
+- Adding the fourth destination must not make the panel collide with the lower navigation cards at 1440x900. Keep the panel footprint compact by reducing the upper record/logo zone and tightening button spacing instead of simply extending the panel downward.
+- Desktop social icons belong under the left hero stats/social area, replacing the left waveform position. Do not place them as a floating orphan under the right panel.
+- Remove decorative waveforms that sit under the right panel or create clutter near the social icons. Keep only waveforms that support the center stage composition.
+- The row of lower navigation cards should sit close enough to the main hero to feel connected. Do not let it sink too low with excessive empty space.
+
+Mobile layout:
+
+- The mobile `AIPOGER` wordmark must be centered within its visible section and should not feel optically left-heavy.
+- Social icons on mobile should sit below the Drop Signal card, bright enough to read quickly.
+- The four homepage destinations use a readable 2 x 2 grid in the same order: Explore, Bar Heartbreak, Drop Battle, Showtime. Do not shrink them into four cramped one-line targets.
+- Do not add extra explanatory labels such as `與音波同行`; the icons should speak for themselves.
+
+Social icons:
+
+- Use official brand icon paths for LINE, Instagram, Discord, and Facebook, rendered inside one consistent AIPOGER stage-button treatment. Do not mix hand-drawn sticker shapes, emoji, or unrelated glow styles.
+- Discord uses the permanent invite URL `https://discord.gg/3bWVgyPKk`.
+- Facebook should link to the AIPOGER group when using the public social cluster.
+- LINE is the community action; its QR control opens a compact modal instead of permanently placing a QR image in the homepage strip.
 
 ## Drop Battle
 
@@ -92,6 +144,24 @@ UI direction:
 - Keep actions obvious: start, accept, cancel, enter room.
 - Do not blur Drop Battle with 24H Full Song; they are different products.
 
+### Q Crash
+
+- `Q Crash` is the asynchronous Drop Battle mode, not a survey or ordinary social poll.
+- Keep the same black stage, orange battle energy, small cyan electrical accent, A/B confrontation, and music-first language.
+- Desktop uses two side-by-side work seats with a compact VS signal. Mobile stacks the seats and keeps both play/vote actions easy to reach without horizontal overflow.
+- Each work seat shows the work-specific cover, work/version label, song, creator, genre, AI tool, Drop duration, one play action, and one vote action. Q Crash creation must let each side upload and preview that cover before entering the cutter; a creator profile cover is only a fallback.
+- Keep the `Q CRASH` title compact so the work comparison starts high in the viewport. Lyrics open as an in-page HUD below the work pair; missing lyrics say `歌詞未提供` rather than leaving a blank panel.
+- Playback uses one fixed bottom A/B player with explicit A/B switches, play/pause, seek, previous/next, volume on desktop, and close. Do not embed a native audio control in each work card.
+- Voting state shows only the mode, deadline, work information, and the listener's private submitted state. A shared bottom rating dock switches between A and B and contains exactly five keys: 押韻、爆點、旋律、情緒、結構. Never show a count, percentage, total audience, feedback total, leader, radar, or visual progress toward a winner before settlement.
+- Winner voting uses a two-step action: selecting A or B only marks a private, reversible pending choice; a separate `確定送出` / `Confirm Vote` control creates the immutable vote. Before confirmation the listener can replay, seek, and switch sides; after confirmation the choice is locked.
+- Keep confirmation in a fixed high-contrast dock above the A/B player. The dock states the selected work, explains that selection is not yet a vote, changes to `登入並投作品 A/B` for signed-out listeners, and remains readable at 390x844 and 1440x900 without covering playback.
+- Official results use a compact result panel and show the winning work's pentagon feedback distribution. An insufficient Q Crash shows no radar.
+- Q Crash share invitations should feel like a friend asking for a quick listen and decision, not a system announcement: `這兩首歌到底哪首比較好聽啊？我有點選不出來！兩首 60 秒 Drop，進來聽重點，幫我決定哪首勝出！`
+- Q Crash uses Traditional Chinese only when `lang=zh`; English is the fallback for `en`, `ja`, and `ko`, including the card, creation flow, controls, share copy, and social metadata.
+- Final copy leads with the winning work and then its creator. Never say that a creator defeated themself when both works have one owner.
+- The Battle Pool exposes one compact `建立 Q Crash` mode panel before the ordinary public Drop challenge pool; it must not push the normal pool out of the first viewport at 1440x900 or 390x844. Every active Q Crash appears as one paired A/B battle card, never two ordinary queue cards.
+- Battle Pool mode identity must remain unmistakable on desktop and mobile: the Q Crash introduction and matchup section use cyan live-text ribbons and cyan borders, while the public Drop Battle section uses red/coral live-text ribbons and red borders. Solid cyan/red mode labels and primary actions use near-black text; ordinary dark-card titles and supporting copy remain white/gray.
+
 ## 24H Full Song Battle
 
 Role:
@@ -104,7 +174,7 @@ UI direction:
 - Use `24H Full Song` or `24H Daily Battle` consistently where appropriate.
 - Make it clear the full song is uploaded and listeners can take time.
 - Keep global active limits visible when they are implemented.
-- Treat finished winners as Honor Board records, not ranked placements.
+- Treat finished winners as Showtime records, not ranked placements.
 
 ## Bar Heartbreak
 
@@ -120,9 +190,19 @@ Must preserve:
 - Voting/commenting requires sign-in.
 - Reaction copy near buttons should encourage active voting.
 - The record visual is central and should feel like a public broadcast.
+- For a track within its first rolling 7 x 24 hours after `created_at`, place the compact `NEW` badge at the now-playing cover's upper-left and beside track titles in visible queue/pool lists. Keep it static and do not add it to the moving Battle ticker.
 - Lyrics area should be substantial enough to read, visually aligned with the comments area where practical.
-- Challenger is hidden before the public pool reaches 88.
-- Challenger becomes visible automatically after the public pool reaches 88.
+- Underfilled genres send new submissions straight into the same-genre public pool.
+- Challenger is shown only when that genre is already full and the new track is in 36-hour protection before public-pool promotion.
+- The hero's top-right cluster should stay light; do not crowd it with the main action buttons. Put `我要播歌`, bar sharing, `探索 AI 音樂`, `Drop Battle`, and `Showtime` together in the lower hero action strip, with `Drop Battle` directly beside Explore.
+- Do not show `練功聖經` or `關於愛波哥` inside the Bar Heartbreak hero action strip unless a later explicit redesign restores them.
+- The hero action strip ticker is a moving Battle marquee, not a static truncated label.
+- The queue header should expose a selected-genre share action so listeners can share the exact Bar Heartbreak category they are hearing.
+- The Bar Heartbreak hero sign must remain text-driven and localizable. Do not replace the sign title/subtitle with a bitmap containing Chinese text, because language switching must keep working.
+- The sign may visually reference the dark gold sci-fi plaque style, but the title, `AIPOGER RADIO`, `BAR HEARTBREAK`, and subtitle must be live text. The subtitle should use the same gold dimensional text family as the main title, scaled down for hierarchy.
+- On desktop, keep the Bar Heartbreak sign compact rather than full-width. The plaque should sit around two-thirds of the previous oversized desktop treatment so it reads as a sign, not a giant banner that pushes the radio content down.
+- On mobile, the lower hero action strip should place `我要播歌`, `分享吧台`, and `Showtime` on the first row, with `探索 AI 音樂` and `Drop Battle` centered side by side on the second row.
+- The now-playing song title should keep short names dramatic, but long mixed Chinese/English titles must auto-size down and allow two lines before truncation. Do not lock every title to the largest fixed display size.
 
 Copy direction:
 
@@ -130,25 +210,37 @@ Copy direction:
 - It is a survival room / public radio / listener test.
 - Use emotional but clear language.
 
-## Honor Board
+## AIPOGER Showtime
 
 Role:
 
-- Real records of victory and heat.
+- Certified works catalog.
 - No fake content.
 - No numbered placement language.
+- Front-stage name is `AIPOGER Showtime`; old `Honor Board` wording is legacy/internal context, not the main public name.
+- `AIPOGER Choice Weekly` is a curation direction from Showtime records, not a separate ranking chart.
 
-Current sections:
+Current layout:
 
-- `熱血 Drop 抓波勝利榜`
-- `24H Full Song 勝利榜`
-- `傷心酒吧熱播榜`
+- One unified catalog of certified songs.
+- No Drop victory / Bar heat source tabs.
+- No duplicate Featured row above the same results.
+- Recognition source appears in each song card intro, for example `正式 Battle 認證`, `探索守擂認證`, or `傷心酒吧公播認證`.
+- `AIPOGER Choice` is the first content shelf: a Beatport/DJ-style horizontal row of compact square editorial cover cards, never circular curator avatars. Use the curator's existing identity cover, a direct sequential-play control, a separate full-tracklist control, a visible recommendation article excerpt, and compact heart/save plus share actions. The title is large, designed `AIPOGER CHOICE`; do not render `CURATOR SETS` or `由創作者選出他們心目中的歌單`.
+- Showtime follows underneath by genre. Use 2 cards on mobile, 3 on small desktop/tablet, 4 on large tablet, and 6 on wide desktop; cards use a shared bottom player instead of embedding a full audio control in every card.
+
+Showtime admin layout:
+
+- `/admin/showtime` is a dense cover-led owner catalog, not a vertical list: use 6 cards per desktop row, 3 per tablet row, 2 per mobile row, and keep each card focused on cover, identity, recognition and operations.
+- `編輯本期 Choice` reveals selection checkboxes on eligible public works plus a compact weekly curation workbench. It is a selection state, not another dashboard panel or social-publishing control.
+- The work editor may change display metadata and cover only; audio, recognition source, Hearts, votes and Battle history are visibly described as locked.
+- `/profile/choice` is a creator workbench, not an owner dashboard: first show the creator's own Showtime works and their external-link controls, then a compact all-creator Showtime cover catalog for building a personal Choice. Eligibility is earned by one Showtime-certified work, but curators may select any currently public Showtime work. Keep this visually distinct from the official owner Choice and do not add social-publishing controls.
 
 UI direction:
 
-- Use `WIN`, `24H`, `HOT` badges rather than numeric rank badges.
-- Present records as honor cards.
-- The page should feel prestigious, not like a top-10 chart.
+- Present records as playable music cards, not board tiles.
+- The page should feel like a certified music shelf, not a top-10 chart or presentation slide.
+- Keep the `AIPOGER SHOWTIME` heading compact and typographic; the one-sentence certified-archive subtitle uses a clearly visible yellow accent and does not contain a forced line break.
 
 ## Account And Login
 
@@ -159,8 +251,10 @@ Role:
 Rules:
 
 - Listening surfaces should not feel blocked by login.
+- Keep authentication out of large marketing headlines and explanatory hero paragraphs. Use the normal product promise first, then a compact modal or sheet at the protected action boundary, with one primary sign-in action, a dismiss action, and the intended return path.
 - Uploading, voting, commenting, and Battle actions should clearly ask users to sign in.
 - Error copy should explain what is blocked and what remains open.
+- Profile saved music follows the same compact fixed-bottom player language as Explore, Showtime, and Choice. Keep one play action in each song row; do not place waveforms, native audio controls, or competing mini players inside the account list.
 
 ## Admin / Operational UI
 
@@ -173,4 +267,13 @@ Direction:
 - Admin pages can be more functional than public pages.
 - Avoid oversized hero design in admin tools.
 - Keep image/audio review and moderation actions clear.
+- Repeated filter and sorting controls in one toolbar must share a consistent height, radius, type scale, and responsive grid. Do not let one control wrap into a tall pill while its neighbors remain short.
+- Music-review lists use one compact play button per item and one fixed bottom preview player; do not embed a separate native audio bar inside every management card.
 
+## AI Music Practice Bible
+
+- Studio Mastering Prompt examples use one compact `15 秒試聽` action only on cards with a real audio asset.
+- Route every Prompt example through the shared fixed bottom player. Do not autoplay, expand card height with waveforms, or place a native audio control in each card.
+- Keep the example disclaimer visible and quiet: the clip demonstrates a sound direction and does not promise an identical Suno generation.
+- When `錄音室 Mastering` is selected, keep the second-level `錄音室類型` filter wrapped on narrow screens; use the 15 approved music-family labels (`Electronic`, `Hip-Hop`, `Soul & R&B`, `New Age & Ambient`, `Rock & Roll`, `Indie Dance`, `Disco & Funk`, `Jazz & Bossa`, `Pop`, `Classical & Cinematic`, `Latin & Caribbean`, `African & Amapiano`, `Asian & Middle Eastern`, `Country & Folk`, `DJ Edit / Extended`) and show the selected family as a compact orange card badge.
+- `Modern Taiwanese Pop` is fully withdrawn from the free Prompt catalog. Do not leave a disabled card, premium lock, price, or placeholder in the free library; a future paid version needs its own approved product surface.

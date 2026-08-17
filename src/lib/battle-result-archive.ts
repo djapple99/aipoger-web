@@ -5,10 +5,22 @@ import { AIPOGER_PERSONAL_RANK, isAipogerIdentity, rankLabelForLevel } from "@/l
 export type BattleFeedbackKey = "rhyme" | "impact" | "melody" | "emotion" | "structure";
 export type BattleFeedbackCounts = Record<BattleFeedbackKey, number>;
 
+export type SongBattleStatsSnapshot = {
+  battleCount: number;
+  wins: number;
+  losses: number;
+  noContests: number;
+  totalVotesFor: number;
+  totalVotesAgainst: number;
+  honorBoardCount: number;
+  winRate: number;
+};
+
 export type ArchivedBattleResult = {
   id: string;
   battleId?: string | null;
   battleCode: string;
+  winnerSide?: "fighter_a" | "fighter_b" | null;
   winnerName: string;
   winnerSong: string;
   opponentName: string;
@@ -23,11 +35,21 @@ export type ArchivedBattleResult = {
   finalVoteLeft: number;
   finalVoteRight: number;
   votesTotal: number;
+  audienceCount?: number;
+  officialAudienceMin?: number;
   audienceReview: string;
   aiReview: string;
   feedbackA: BattleFeedbackCounts;
   feedbackB: BattleFeedbackCounts;
   resultHref: string;
+  audioUrl?: string;
+  fullSongUrl?: string;
+  fullSongLabel?: string;
+  fullSongDurationSeconds?: number;
+  youtubeUrl?: string;
+  lyrics?: string;
+  songStats?: SongBattleStatsSnapshot | null;
+  showtimePublicRemovedAt?: string | null;
   createdAt: string;
 };
 
@@ -56,6 +78,27 @@ export function sanitizeBattleFeedbackCounts(value: unknown): BattleFeedbackCoun
     acc[key] = Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : 0;
     return acc;
   }, emptyBattleFeedbackCounts());
+}
+
+export function sanitizeSongBattleStatsSnapshot(value: unknown): SongBattleStatsSnapshot | null {
+  if (typeof value !== "object" || value === null) return null;
+  const source = value as Partial<Record<keyof SongBattleStatsSnapshot, unknown>>;
+  const numberField = (key: keyof SongBattleStatsSnapshot) => {
+    const parsed = Number(source[key]);
+    return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : 0;
+  };
+  const battleCount = numberField("battleCount");
+  const wins = numberField("wins");
+  return {
+    battleCount,
+    wins,
+    losses: numberField("losses"),
+    noContests: numberField("noContests"),
+    totalVotesFor: numberField("totalVotesFor"),
+    totalVotesAgainst: numberField("totalVotesAgainst"),
+    honorBoardCount: numberField("honorBoardCount"),
+    winRate: battleCount > 0 ? numberField("winRate") || Math.round((wins / battleCount) * 100) : 0,
+  };
 }
 
 export function parseBattleFeedbackParam(raw: string | null): BattleFeedbackCounts {
@@ -98,6 +141,7 @@ function sanitizeArchiveEntry(value: unknown): ArchivedBattleResult | null {
     id,
     battleId: row.battleId ?? null,
     battleCode,
+    winnerSide: row.winnerSide === "fighter_a" || row.winnerSide === "fighter_b" ? row.winnerSide : null,
     winnerName,
     winnerSong,
     opponentName,
@@ -112,11 +156,22 @@ function sanitizeArchiveEntry(value: unknown): ArchivedBattleResult | null {
     finalVoteLeft: Math.max(0, Number(row.finalVoteLeft) || 0),
     finalVoteRight: Math.max(0, Number(row.finalVoteRight) || 0),
     votesTotal: Math.max(0, Number(row.votesTotal) || 0),
+    audienceCount: Math.max(0, Number(row.audienceCount) || 0),
+    officialAudienceMin: Math.max(0, Number(row.officialAudienceMin) || 0),
     audienceReview: stripCannedBattleReview(row.audienceReview),
     aiReview: stripCannedBattleReview(row.aiReview),
     feedbackA: sanitizeBattleFeedbackCounts(row.feedbackA),
     feedbackB: sanitizeBattleFeedbackCounts(row.feedbackB),
     resultHref: String(row.resultHref || "").trim(),
+    audioUrl: typeof row.audioUrl === "string" ? row.audioUrl.trim() : undefined,
+    fullSongUrl: typeof row.fullSongUrl === "string" ? row.fullSongUrl.trim() : undefined,
+    fullSongLabel: typeof row.fullSongLabel === "string" ? row.fullSongLabel.trim() : undefined,
+    fullSongDurationSeconds: Math.max(0, Number(row.fullSongDurationSeconds) || 0),
+    youtubeUrl: typeof row.youtubeUrl === "string" ? row.youtubeUrl.trim() : undefined,
+    lyrics: typeof row.lyrics === "string" ? row.lyrics.trim() : undefined,
+    songStats: sanitizeSongBattleStatsSnapshot(row.songStats),
+    showtimePublicRemovedAt:
+      typeof row.showtimePublicRemovedAt === "string" ? row.showtimePublicRemovedAt.trim() || null : null,
     createdAt: String(row.createdAt || new Date().toISOString()),
   };
 }

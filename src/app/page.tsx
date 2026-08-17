@@ -2,18 +2,17 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { type CSSProperties, type PointerEvent, useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
-import { getFreshSession } from "@/lib/auth-session";
 import { useI18n } from "@/lib/i18n";
 import { writeFighterNameToStorage } from "@/lib/fighter-name-storage";
-import { loadIsAdmin } from "@/lib/user-profile-admin";
 import LangToggle from "@/components/lang-toggle";
 import HomeBgmPlayer from "@/components/home-bgm-player";
+import { SocialIconCluster } from "@/components/social-icons";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { fontGlowSans, fontRighteous, fontSourceSerifTC } from "@/lib/fonts";
-import { AIPOGER_PERSONAL_RANK, rankLabelForLevel } from "@/lib/battle-pool-rules";
 import type { Session, User } from "@supabase/supabase-js";
+import { Swords } from "lucide-react";
 
 const SPLASH_STEPS = {
   fadeIn: 420,
@@ -25,22 +24,6 @@ const TOTAL_SPLASH_MS =
   SPLASH_STEPS.fadeIn + SPLASH_STEPS.hold + SPLASH_STEPS.fadeOut;
 
 type SplashPhase = "fadeIn" | "hold" | "fadeOut";
-
-function BattleIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      className="h-8 w-8 text-current transition"
-      aria-hidden="true"
-    >
-      <rect x="9" y="3" width="6" height="11" rx="3" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M6 10.5a6 6 0 0 0 12 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M12 16v5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M8.5 21h7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
 
 function WatchIcon() {
   return (
@@ -79,7 +62,7 @@ function ListenBarIcon() {
   );
 }
 
-function AnalyzeMusicIcon() {
+function HonorIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -87,13 +70,610 @@ function AnalyzeMusicIcon() {
       className="h-8 w-8 text-current transition"
       aria-hidden="true"
     >
-      <path d="M4 17V7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M8 19V5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M12 15V9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M16 20V4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M20 16V8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M3.5 21h17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M7 4h10v3.5c0 3-2 5.2-5 5.2S7 10.5 7 7.5V4Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M7 6H4.8c0 3 1.4 4.8 3.4 5.5M17 6h2.2c0 3-1.4 4.8-3.4 5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M12 13v4.5M8.5 20h7M10 17.5h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
+  );
+}
+
+type HomeInfoLink = {
+  href: string;
+  title: string;
+  desc: string;
+};
+
+type HomeStatItem = [string, string];
+type HomeActionKey = "explore" | "bar" | "battle" | "rank";
+type HomeActionPrompt = {
+  eyebrow: string;
+  title: string;
+  body: string | string[];
+  tone: "orange" | "cyan";
+};
+
+const DESKTOP_CARD_ICON_ASSETS = [
+  "/home-art/card-turntable.webp",
+  "/home-art/card-bible.svg",
+  "/home-art/card-waveform.webp",
+  "/home-art/card-crown.webp",
+  "/home-art/card-headphones.webp",
+  "/home-art/card-handshake.webp",
+];
+
+const HOME_ACTION_GLOW = {
+  explore: "rgba(255, 122, 28, 0.42)",
+  bar: "rgba(255, 122, 28, 0.28)",
+  battle: "rgba(248, 113, 113, 0.34)",
+  rank: "rgba(103, 232, 249, 0.28)",
+} as const;
+
+function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt> {
+  if (lang === "ja") {
+    return {
+      explore: {
+        eyebrow: "EXPLORE",
+        title: "AI音楽を探す",
+        body: "聴かれ、保存され、挑戦につながるAI音楽をジャンル別にブラウズ。",
+        tone: "orange",
+      },
+      bar: {
+        eyebrow: "SURVIVAL BAR",
+        title: "Bar Heartbreak",
+        body: "AI音楽を無料で途切れず聴ける。ここは楽曲の生存Bar、作品を出して愛心を集めよう。",
+        tone: "orange",
+      },
+      battle: {
+        eyebrow: "60S DROP BATTLE",
+        title: "Drop Battle",
+        body: "30〜60秒のDropで戦帖を開くか作品に挑戦。リスナー投票で勝負しよう。",
+        tone: "orange",
+      },
+      rank: {
+        eyebrow: "SHOWTIME",
+        title: "AIPOGER Showtime",
+        body: "リスナーに認められたAI音楽のステージ。Weekly Choiceの候補もここから見えてくる。",
+        tone: "cyan",
+      },
+    };
+  }
+
+  if (lang === "ko") {
+    return {
+      explore: {
+        eyebrow: "EXPLORE",
+        title: "AI 음악 탐색",
+        body: "듣고, 저장하고, 도전으로 이어지는 AI 음악을 장르별로 둘러보세요.",
+        tone: "orange",
+      },
+      bar: {
+        eyebrow: "SURVIVAL BAR",
+        title: "Bar Heartbreak",
+        body: "AI 음악을 무료로 끊김 없이 들을 수 있어요. 작품을 올리고 더 많은 하트를 모으는 생존 Bar입니다.",
+        tone: "orange",
+      },
+      battle: {
+        eyebrow: "60S DROP BATTLE",
+        title: "Drop Battle",
+        body: "30–60초 Drop으로 배틀 카드를 열거나 작품에 도전하고, 청중 투표로 겨뤄보세요.",
+        tone: "orange",
+      },
+      rank: {
+        eyebrow: "SHOWTIME",
+        title: "AIPOGER Showtime",
+        body: "청중에게 인정받은 AI 음악이 서는 무대. Weekly Choice 후보도 여기서 이어집니다.",
+        tone: "cyan",
+      },
+    };
+  }
+
+  if (lang === "en") {
+    return {
+      explore: {
+        eyebrow: "EXPLORE",
+        title: "Explore AI Music",
+        body: "Browse AI music that is being heard, hearted, and challenged across AIPOGER.",
+        tone: "orange",
+      },
+      bar: {
+        eyebrow: "SURVIVAL BAR",
+        title: "Bar Heartbreak",
+        body: "Listen to AI music nonstop for free. It is also a survival Bar where your song can earn more hearts.",
+        tone: "orange",
+      },
+      battle: {
+        eyebrow: "60S DROP BATTLE",
+        title: "Drop Battle",
+        body: "Bring a 30–60 second Drop, open a battle card or challenge a work, and let listeners vote.",
+        tone: "orange",
+      },
+      rank: {
+        eyebrow: "SHOWTIME",
+        title: "AIPOGER Showtime",
+        body: "Recognized AI music takes the stage here. AIPOGER Choice Weekly will grow from these records.",
+        tone: "cyan",
+      },
+    };
+  }
+
+  return {
+    explore: {
+      eyebrow: "EXPLORE",
+      title: "探索 AI 音樂",
+      body: "瀏覽正在被聽見、送出愛心與挑戰的 AI 音樂作品",
+      tone: "orange",
+    },
+    bar: {
+      eyebrow: "SURVIVAL BAR",
+      title: "傷心酒吧",
+      body: ["免費不間斷聽 AI 音樂", "歌曲生存 Bar 上傳作品 收穫更多愛心"],
+      tone: "orange",
+    },
+    battle: {
+      eyebrow: "60S DROP BATTLE",
+      title: "Drop Battle",
+      body: ["帶上 30–60 秒抓波", "開戰帖、挑戰作品，讓聽眾投票"],
+      tone: "orange",
+    },
+    rank: {
+      eyebrow: "SHOWTIME",
+      title: "AIPOGER Showtime",
+      body: ["被聽眾認可的 AI 音樂在這裡上台", "AIPOGER Choice Weekly 也會從這裡長出來"],
+      tone: "cyan",
+    },
+  };
+}
+
+function HomePromptBody({
+  body,
+  lineClassName = "",
+}: {
+  body: HomeActionPrompt["body"];
+  lineClassName?: string;
+}) {
+  if (Array.isArray(body)) {
+    return (
+      <>
+        {body.map((line) => (
+          <span key={line} className={lineClassName ? `block ${lineClassName}` : "block"}>
+            {line}
+          </span>
+        ))}
+      </>
+    );
+  }
+
+  return <>{body}</>;
+}
+
+function HomeActionSignal({
+  prompt,
+  className = "",
+}: {
+  prompt: HomeActionPrompt;
+  className?: string;
+}) {
+  const isCyan = prompt.tone === "cyan";
+  return (
+    <div
+      className={`pointer-events-none relative overflow-hidden rounded-[0.8rem] border px-3.5 py-3 transition-colors duration-200 ${
+        isCyan
+          ? "border-cyan-200/30 bg-cyan-300/[0.045] shadow-[0_0_26px_rgba(103,232,249,0.1)]"
+          : "border-orange-300/34 bg-orange-500/[0.07] shadow-[0_0_30px_rgba(255,106,0,0.12)]"
+      } ${className}`}
+      aria-live="polite"
+    >
+      <span
+        className={`absolute left-0 top-0 h-px w-full origin-left animate-[aipoSignalSweep_900ms_ease-out] ${
+          isCyan
+            ? "bg-gradient-to-r from-cyan-200 via-white to-transparent shadow-[0_0_18px_rgba(103,232,249,0.8)]"
+            : "bg-gradient-to-r from-orange-300 via-yellow-100 to-transparent shadow-[0_0_18px_rgba(255,154,69,0.85)]"
+        }`}
+      />
+      <div className="flex items-start gap-3">
+        <span
+          className={`mt-1 h-2 w-2 shrink-0 rounded-full ${
+            isCyan ? "bg-cyan-200 shadow-[0_0_16px_rgba(103,232,249,0.9)]" : "bg-orange-300 shadow-[0_0_16px_rgba(255,154,69,0.9)]"
+          }`}
+        />
+        <div className="min-w-0">
+          <p className={`text-[0.58rem] font-black uppercase tracking-[0.22em] ${isCyan ? "text-cyan-100/78" : "text-orange-100/78"}`}>
+            {prompt.eyebrow}
+          </p>
+          <p className="mt-1 text-[0.92rem] font-black leading-tight text-white">{prompt.title}</p>
+          <p className="mt-1 text-[0.7rem] font-bold leading-[1.42] text-zinc-300">
+            <HomePromptBody body={prompt.body} />
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HomeDesktopActionHud({
+  prompt,
+  activeAction,
+}: {
+  prompt: HomeActionPrompt;
+  activeAction: HomeActionKey;
+}) {
+  const isCyan = prompt.tone === "cyan";
+  const topClass =
+    activeAction === "explore"
+      ? "top-[59%]"
+      : activeAction === "bar"
+        ? "top-[70%]"
+        : activeAction === "battle"
+          ? "top-[81%]"
+          : "top-[92%]";
+
+  return (
+    <div
+      key={`desktop-hud-${activeAction}`}
+      className={`pointer-events-none absolute right-[calc(100%+0.85rem)] ${topClass} hidden w-[clamp(18rem,25vw,30rem)] -translate-y-1/2 select-none lg:block`}
+      aria-live="polite"
+    >
+      <div className="relative pr-[5.7rem] text-right">
+        <svg
+          viewBox="0 0 132 76"
+          aria-hidden="true"
+          className="absolute right-[-0.4rem] top-1/2 h-[4.75rem] w-[8.25rem] -translate-y-1/2 overflow-visible"
+        >
+          <defs>
+            <filter id={`homeHudGlow-${activeAction}`} x="-30%" y="-120%" width="160%" height="340%">
+              <feGaussianBlur stdDeviation="2.4" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          <polyline
+            points="4 14 60 14 84 38 126 38"
+            fill="none"
+            stroke={isCyan ? "rgba(165, 243, 252, 0.94)" : "rgba(255, 213, 128, 0.94)"}
+            strokeWidth="1.45"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            filter={`url(#homeHudGlow-${activeAction})`}
+            className="animate-[aipoSignalSweep_760ms_ease-out]"
+          />
+          <polyline
+            points="4 14 60 14 84 38 126 38"
+            fill="none"
+            stroke={isCyan ? "rgba(103, 232, 249, 0.18)" : "rgba(255, 106, 0, 0.18)"}
+            strokeWidth="7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <circle
+            cx="128"
+            cy="38"
+            r="5.2"
+            fill={isCyan ? "rgb(165, 243, 252)" : "rgb(255, 177, 94)"}
+            stroke={isCyan ? "rgba(236, 254, 255, 0.9)" : "rgba(255, 237, 213, 0.9)"}
+            strokeWidth="1.6"
+            filter={`url(#homeHudGlow-${activeAction})`}
+          />
+          <circle
+            cx="128"
+            cy="38"
+            r="9.2"
+            fill="none"
+            stroke={isCyan ? "rgba(103, 232, 249, 0.22)" : "rgba(255, 106, 0, 0.24)"}
+            strokeWidth="1"
+          />
+        </svg>
+        <span
+          className={`mb-2 ml-auto block h-px w-[min(100%,22rem)] ${
+            isCyan
+              ? "bg-gradient-to-r from-transparent via-cyan-100/72 to-cyan-100"
+              : "bg-gradient-to-r from-transparent via-orange-100/72 to-orange-200"
+          }`}
+        />
+        <p
+          className={`text-[0.66rem] font-black uppercase tracking-[0.34em] ${
+            isCyan
+              ? "text-cyan-50 [text-shadow:0_0_7px_rgba(255,255,255,0.72),0_0_15px_rgba(103,232,249,0.72),0_0_34px_rgba(103,232,249,0.34)]"
+              : "text-orange-50 [text-shadow:0_0_7px_rgba(255,255,255,0.62),0_0_15px_rgba(255,177,94,0.72),0_0_34px_rgba(255,106,0,0.34)]"
+          }`}
+        >
+          {prompt.eyebrow}
+        </p>
+        <p
+          className={`mt-1 text-[clamp(1.2rem,1.45vw,1.65rem)] font-black leading-tight text-white ${
+            isCyan
+              ? "[text-shadow:0_0_8px_rgba(255,255,255,0.66),0_0_22px_rgba(103,232,249,0.44),0_0_40px_rgba(103,232,249,0.22),0_2px_12px_rgba(0,0,0,0.9)]"
+              : "[text-shadow:0_0_8px_rgba(255,255,255,0.58),0_0_22px_rgba(255,154,69,0.46),0_0_40px_rgba(255,106,0,0.22),0_2px_12px_rgba(0,0,0,0.9)]"
+          }`}
+        >
+          {prompt.title}
+        </p>
+        <p
+          className={`ml-auto mt-2 max-w-[29rem] text-[clamp(0.86rem,0.95vw,1.04rem)] font-bold leading-[1.55] text-white/95 ${
+            isCyan
+              ? "[text-shadow:0_0_7px_rgba(255,255,255,0.5),0_0_18px_rgba(103,232,249,0.34),0_2px_9px_rgba(0,0,0,0.88)]"
+              : "[text-shadow:0_0_7px_rgba(255,255,255,0.44),0_0_18px_rgba(255,154,69,0.34),0_2px_9px_rgba(0,0,0,0.88)]"
+          }`}
+        >
+          <HomePromptBody body={prompt.body} lineClassName="whitespace-nowrap" />
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function pointerGlowStyle(color: string): CSSProperties {
+  return { "--aipo-hover-color": color } as CSSProperties;
+}
+
+function handlePointerGlowMove(event: PointerEvent<HTMLElement>) {
+  const rect = event.currentTarget.getBoundingClientRect();
+  event.currentTarget.style.setProperty("--aipo-hover-x", `${event.clientX - rect.left}px`);
+  event.currentTarget.style.setProperty("--aipo-hover-y", `${event.clientY - rect.top}px`);
+}
+
+function DesktopWaveLine({ className = "" }: { className?: string }) {
+  return (
+    <div className={`pointer-events-none absolute h-8 overflow-hidden ${className}`} aria-hidden="true">
+      <div className="flex h-full items-center gap-[3px]">
+        {Array.from({ length: 38 }).map((_, index) => (
+          <span
+            key={index}
+            className="w-[2px] rounded-full bg-current opacity-80"
+            style={{ height: `${7 + ((index * 17) % 26)}px` }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DesktopCardIcon({ index }: { index: number }) {
+  const src = DESKTOP_CARD_ICON_ASSETS[index] ?? DESKTOP_CARD_ICON_ASSETS[0];
+  return (
+    <Image
+      src={src}
+      alt=""
+      width={720}
+      height={400}
+      sizes="128px"
+      aria-hidden="true"
+      className="pointer-events-none relative z-10 h-[clamp(3.7rem,5.8vw,5rem)] w-full object-contain object-center opacity-88 mix-blend-screen saturate-[1.08] transition duration-200 group-hover:scale-[1.04] group-hover:opacity-100"
+    />
+  );
+}
+
+function DesktopReferenceHome({
+  t,
+  withLang,
+  heroTitle,
+  heroLine,
+  heroCopy,
+  statItems,
+  infoLinks,
+  isZh,
+  lang,
+  zhDisplayClass,
+  heroChromeShadow,
+}: {
+  t: (key: string) => string;
+  withLang: (href: string) => string;
+  heroTitle: string;
+  heroLine: string;
+  heroCopy: string;
+  statItems: HomeStatItem[];
+  infoLinks: HomeInfoLink[];
+  isZh: boolean;
+  lang: string;
+  zhDisplayClass: string;
+  heroChromeShadow: string;
+}) {
+  const [activeAction, setActiveAction] = useState<HomeActionKey>("explore");
+  const prompts = useMemo(() => homeActionPrompts(lang), [lang]);
+  const actionPrompt = prompts[activeAction];
+  const actionButtonClass = (key: HomeActionKey, base: string) =>
+    `${base} ${
+      activeAction === key
+        ? key === "explore"
+          ? "border-orange-100/80 shadow-[0_14px_30px_rgba(255,106,0,0.32),0_0_30px_rgba(255,106,0,0.22),inset_0_1px_0_rgba(255,255,255,0.24)]"
+          : key === "rank"
+          ? "border-cyan-100/70 bg-cyan-300/[0.12] shadow-[0_0_28px_rgba(103,232,249,0.2),inset_0_1px_0_rgba(255,255,255,0.12)]"
+          : key === "battle"
+          ? "border-red-200/70 bg-red-500/[0.13] shadow-[0_0_28px_rgba(248,113,113,0.2),inset_0_1px_0_rgba(255,255,255,0.12)]"
+          : "border-orange-200/70 bg-orange-500/[0.16] shadow-[0_0_30px_rgba(255,106,0,0.24),inset_0_1px_0_rgba(255,255,255,0.13)]"
+        : ""
+    }`;
+
+  return (
+    <section className="relative z-10 hidden min-h-screen w-full overflow-hidden md:flex">
+      <div className="pointer-events-none absolute inset-0 bg-[#050505]" />
+      <Image
+        src="/home-art/aipoger-hero-depth.png"
+        alt=""
+        fill
+        priority
+        sizes="(min-width: 768px) 100vw, 1px"
+        className="pointer-events-none absolute inset-0 scale-[1.04] object-cover object-center opacity-[0.74]"
+      />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.82)_0%,rgba(0,0,0,0.38)_23%,rgba(0,0,0,0.1)_54%,rgba(0,0,0,0.62)_100%),linear-gradient(180deg,rgba(0,0,0,0.45)_0%,rgba(0,0,0,0.02)_34%,rgba(0,0,0,0.72)_100%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_24%_36%,rgba(255,106,0,0.18),transparent_34%),radial-gradient(circle_at_78%_25%,rgba(76,217,230,0.12),transparent_32%),radial-gradient(ellipse_at_50%_102%,rgba(255,106,0,0.18),transparent_48%)]" />
+      <div className="pointer-events-none absolute inset-0 opacity-[0.028] [background-image:linear-gradient(rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.12)_1px,transparent_1px)] [background-size:48px_48px]" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[28vh] bg-gradient-to-t from-black via-black/70 to-transparent" />
+
+      <div className="relative mx-auto flex min-h-screen w-full max-w-[1840px] flex-col px-[clamp(4.25rem,7.2vw,8.5rem)] pb-[clamp(1.4rem,3vh,2rem)] pt-[clamp(5.7rem,8.2vh,7.1rem)]">
+        <div className="pointer-events-none absolute left-[clamp(4.25rem,7.2vw,8.5rem)] right-[clamp(4.25rem,7.2vw,8.5rem)] top-[clamp(5.25rem,7.4vh,6.5rem)] h-px bg-gradient-to-r from-transparent via-orange-300/55 to-transparent" />
+        <div className="pointer-events-none absolute left-[clamp(4.25rem,7.2vw,8.5rem)] top-[clamp(7.1rem,11vh,9.2rem)] h-[47vh] w-px rounded-full bg-gradient-to-b from-transparent via-orange-300/42 to-transparent" />
+        <div className="pointer-events-none absolute right-[clamp(4.25rem,7.2vw,8.5rem)] top-[clamp(6.9rem,10vh,8.4rem)] h-[50vh] w-px rounded-full bg-gradient-to-b from-transparent via-cyan-200/28 to-transparent" />
+
+        <div className="grid items-start gap-[clamp(2rem,4vw,5.5rem)] lg:grid-cols-[minmax(0,1fr)_minmax(20rem,25.5rem)]">
+          <div className="relative z-10 min-w-0 pt-0">
+            <div className="mb-3 flex w-[min(42rem,62vw)] items-center gap-4">
+              <Image
+                src={AIPOGER_BRAND_LOGO}
+                alt={t("home_logo_alt")}
+                width={70}
+                height={70}
+                priority
+                className="h-[clamp(3rem,4.1vw,4.35rem)] w-[clamp(3rem,4.1vw,4.35rem)] shrink-0 rounded-full bg-black/78 object-contain shadow-[0_0_24px_rgba(255,106,0,0.18)]"
+              />
+              <div className="h-px flex-1 bg-gradient-to-r from-orange-300/70 via-white/16 to-transparent" />
+            </div>
+
+            <p
+              className={`origin-left skew-x-[-8deg] text-[clamp(7.2rem,9.15vw,11.35rem)] font-black uppercase leading-[0.78] text-[#fff8ed] ${heroChromeShadow}`}
+            >
+              AIPOGER
+            </p>
+            <p
+              className={`mt-[clamp(1rem,2vh,1.45rem)] text-[clamp(1.5rem,1.85vw,2.15rem)] font-black leading-tight text-[#f28a2f] drop-shadow-[0_0_13px_rgba(255,106,0,0.24)] ${
+                isZh ? "font-serif" : fontGlowSans.className
+              }`}
+            >
+              {heroLine}
+            </p>
+            <h1
+              className={`mt-[clamp(1rem,2.1vh,1.55rem)] text-[clamp(4rem,5.4vw,7rem)] font-black leading-[0.94] text-[#fff8ed] ${heroChromeShadow} ${
+                lang === "en"
+                  ? fontRighteous.className
+                  : isZh
+                    ? "aipoger-brand-wordmark"
+                    : fontGlowSans.className
+              }`}
+            >
+              {heroTitle}
+            </h1>
+            <p
+              className={`mt-[clamp(1rem,2vh,1.45rem)] max-w-[58rem] text-[clamp(1.25rem,1.45vw,1.75rem)] font-black leading-tight text-[#f28a2f] drop-shadow-[0_0_13px_rgba(255,106,0,0.22)] ${
+                lang === "en" ? fontRighteous.className : fontGlowSans.className
+              }`}
+            >
+              {heroCopy}
+            </p>
+
+            <div className="mt-[clamp(1.4rem,2.8vh,2rem)] grid w-[min(45rem,66vw)] grid-cols-3 overflow-hidden rounded-[14px] border border-orange-300/24 bg-black/56 shadow-[0_20px_68px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[2px]">
+              {statItems.map(([value, label], index) => (
+                <div key={value} className="relative border-r border-white/14 px-[clamp(1rem,1.65vw,1.75rem)] py-[clamp(0.72rem,1.25vh,1rem)] last:border-r-0">
+                  <span className="absolute right-[clamp(1rem,1.55vw,1.6rem)] top-1/2 h-[7px] w-[7px] -translate-y-1/2 rounded-full bg-orange-300 shadow-[0_0_14px_rgba(255,166,74,0.9)]" />
+                  <p className="text-[clamp(1.35rem,1.65vw,1.85rem)] font-black leading-none text-white">{value}</p>
+                  <p className="mt-2 text-[clamp(0.64rem,0.74vw,0.8rem)] leading-none text-zinc-500">{label}</p>
+                  {index > 0 && <span className="absolute left-0 top-[18%] h-[64%] w-px bg-white/24" />}
+                </div>
+              ))}
+            </div>
+
+            <SocialIconCluster
+              className="absolute left-[2.5rem] top-[calc(100%+1.05rem)] z-20 justify-start"
+              iconClassName="h-9 w-9"
+              size="compact"
+            />
+            <DesktopWaveLine className="left-[24rem] top-[calc(100%+1.6rem)] w-[15rem] text-orange-300/52" />
+          </div>
+
+          <div className="relative z-20 hidden justify-self-end lg:block">
+            <HomeDesktopActionHud prompt={actionPrompt} activeAction={activeAction} />
+            <div className="relative w-[clamp(20rem,22vw,25.5rem)] overflow-hidden rounded-[1.65rem] border border-orange-300/36 bg-[linear-gradient(145deg,rgba(9,12,12,0.62),rgba(0,0,0,0.9)_58%,rgba(1,21,23,0.68))] p-[clamp(0.85rem,1vw,1rem)] shadow-[0_22px_70px_rgba(0,0,0,0.58),0_0_48px_rgba(255,106,0,0.13),inset_0_0_0_1px_rgba(255,255,255,0.04)] backdrop-blur-[3px]">
+              <div className="pointer-events-none absolute inset-[0.75rem] rounded-[1.28rem] border border-orange-300/48" />
+              <div className="pointer-events-none absolute inset-[1.35rem] rounded-[1rem] border border-cyan-100/12" />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_21%,rgba(255,106,0,0.16),transparent_38%),radial-gradient(circle_at_88%_16%,rgba(103,232,249,0.11),transparent_36%)]" />
+              <div className="relative flex min-h-[clamp(30rem,52vh,36rem)] flex-col justify-between px-[clamp(1.1rem,1.3vw,1.55rem)] pb-[clamp(0.85rem,1.2vh,1.1rem)] pt-[clamp(1.4rem,2.2vh,2rem)]">
+                <div className="relative flex min-h-[clamp(12.5rem,21vh,15.25rem)] flex-none items-center justify-center">
+                  <div className="absolute h-[clamp(12.2rem,14vw,14.75rem)] w-[clamp(12.2rem,14vw,14.75rem)] rounded-full border border-orange-300/16 bg-[repeating-radial-gradient(circle,rgba(255,255,255,0.12)_0_1px,transparent_1px_10px)]" />
+                  <div className="absolute h-[clamp(9.7rem,11.5vw,12rem)] w-[clamp(9.7rem,11.5vw,12rem)] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.14),rgba(255,106,0,0.12)_42%,transparent_70%)] blur-md" />
+                  <Image
+                    src={AIPOGER_BRAND_LOGO}
+                    alt={t("home_logo_alt")}
+                    width={236}
+                    height={236}
+                    className="relative h-[clamp(9.4rem,10.8vw,11.4rem)] w-[clamp(9.4rem,10.8vw,11.4rem)] object-contain [filter:drop-shadow(0_0_34px_rgba(255,255,255,0.28))]"
+                  />
+                </div>
+                <div className="grid gap-[clamp(0.55rem,1vh,0.75rem)]">
+                  <Link
+                    href={withLang("/ai-music")}
+                    onPointerEnter={() => setActiveAction("explore")}
+                    onFocus={() => setActiveAction("explore")}
+                    onPointerMove={handlePointerGlowMove}
+                    style={pointerGlowStyle(HOME_ACTION_GLOW.explore)}
+                    className={actionButtonClass(
+                      "explore",
+                      "aipo-pointer-glow group flex min-h-[3.25rem] items-center justify-between rounded-[0.9rem] border border-orange-200/18 bg-[#ff6a00] px-[1.2rem] text-white shadow-[0_14px_30px_rgba(255,106,0,0.28),inset_0_1px_0_rgba(255,255,255,0.22)] transition hover:bg-[#ff8422] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200",
+                    )}
+                  >
+                    <WatchIcon />
+                    <span className={`text-[clamp(1rem,1.05vw,1.18rem)] font-black ${isZh ? zhDisplayClass : ""}`}>{t("btn_explore_music")}</span>
+                  </Link>
+                  <Link
+                    href={withLang("/listen-bar")}
+                    onPointerEnter={() => setActiveAction("bar")}
+                    onFocus={() => setActiveAction("bar")}
+                    onPointerMove={handlePointerGlowMove}
+                    style={pointerGlowStyle(HOME_ACTION_GLOW.bar)}
+                    className={actionButtonClass(
+                      "bar",
+                      "aipo-pointer-glow group flex min-h-[3.1rem] items-center justify-between rounded-[0.85rem] border border-white/16 bg-white/[0.055] px-[1.2rem] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-orange-300/52 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200",
+                    )}
+                  >
+                    <ListenBarIcon />
+                    <span className={`text-[clamp(1rem,1.05vw,1.18rem)] font-black ${isZh ? zhDisplayClass : ""}`}>{t("btn_listen_bar")}</span>
+                  </Link>
+                  <Link
+                    href={withLang("/battle")}
+                    onPointerEnter={() => setActiveAction("battle")}
+                    onFocus={() => setActiveAction("battle")}
+                    onPointerMove={handlePointerGlowMove}
+                    style={pointerGlowStyle(HOME_ACTION_GLOW.battle)}
+                    className={actionButtonClass(
+                      "battle",
+                      "aipo-pointer-glow group flex min-h-[3.1rem] items-center justify-between rounded-[0.85rem] border border-white/16 bg-white/[0.055] px-[1.2rem] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-red-200/52 hover:bg-red-500/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-200",
+                    )}
+                  >
+                    <Swords className="h-8 w-8" aria-hidden="true" />
+                    <span className={`text-[clamp(1rem,1.05vw,1.18rem)] font-black ${isZh ? zhDisplayClass : ""}`}>Drop Battle</span>
+                  </Link>
+                  <Link
+                    href={withLang("/rank")}
+                    onPointerEnter={() => setActiveAction("rank")}
+                    onFocus={() => setActiveAction("rank")}
+                    onPointerMove={handlePointerGlowMove}
+                    style={pointerGlowStyle(HOME_ACTION_GLOW.rank)}
+                    className={actionButtonClass(
+                      "rank",
+                      "aipo-pointer-glow group flex min-h-[3.1rem] items-center justify-between rounded-[0.85rem] border border-white/16 bg-white/[0.055] px-[1.2rem] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-cyan-200/52 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100",
+                    )}
+                  >
+                    <HonorIcon />
+                    <span className={`text-[clamp(1rem,1.05vw,1.18rem)] font-black ${isZh ? zhDisplayClass : ""}`}>{t("watch_rank")}</span>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative z-10 mt-[clamp(2rem,4.35vh,2.85rem)] border-t border-orange-300/22 pt-[clamp(0.9rem,1.7vh,1.3rem)]">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-300/48 to-transparent" />
+          <div className="grid grid-cols-5 gap-[clamp(0.55rem,0.85vw,0.9rem)]">
+            {infoLinks.map((item, index) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="group relative grid min-h-[clamp(6.25rem,11.2vh,8rem)] grid-cols-[minmax(0,1fr)_clamp(4.8rem,5.8vw,6.8rem)] items-center gap-[clamp(0.7rem,0.95vw,1rem)] overflow-hidden rounded-[0.95rem] border border-orange-300/18 bg-black/46 px-[clamp(0.95rem,1.1vw,1.3rem)] py-[clamp(0.85rem,1.25vh,1.05rem)] shadow-[0_18px_58px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.045)] backdrop-blur-[2px] transition hover:border-orange-300/58 hover:bg-orange-500/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
+              >
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/16 to-transparent" />
+                <div className="relative z-10 min-w-0">
+                  <p className="text-[clamp(0.88rem,0.93vw,1.05rem)] font-black leading-[1.18] text-zinc-100 group-hover:text-orange-100">
+                    {item.title}
+                  </p>
+                  <p className="mt-[0.55rem] line-clamp-2 text-[clamp(0.65rem,0.7vw,0.78rem)] leading-[1.25] text-zinc-500">{item.desc}</p>
+                </div>
+                <DesktopCardIcon index={index} />
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -110,139 +690,82 @@ function userAvatarUrl(user: User): string | null {
 function HomeAuthBar() {
   const { t } = useI18n();
   const [session, setSession] = useState<Session | null>(null);
-  const [aipoCoins, setAipoCoins] = useState<number | null>(null);
-  const [levelLine, setLevelLine] = useState<string | null>(null);
-  const [profileLoading, setProfileLoading] = useState(false);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(true);
   const menuRef = useRef<HTMLDivElement>(null);
+  const forceShowLogin = process.env.NEXT_PUBLIC_FORCE_SHOW_LOGIN === "true";
 
   const loadProfile = useCallback(
     async (userId: string) => {
-      setProfileLoading(true);
       try {
         type UserProfileRow = {
-          level?: number | null;
-          total_wins?: number | null;
+          avatar_url?: string | null;
         };
         type FighterProfileRow = {
           display_name?: string | null;
           avatar_url?: string | null;
         };
 
-        const { data, error } = await supabase
-          .from("user_profiles")
-          .select("level, total_wins")
-          .eq("id", userId)
-          .maybeSingle<UserProfileRow>();
+        const [userProfile, fighterProfile] = await Promise.all([
+          supabase
+            .from("user_profiles")
+            .select("avatar_url")
+            .eq("id", userId)
+            .maybeSingle<UserProfileRow>(),
+          supabase
+            .from("fighter_profiles")
+            .select("display_name, avatar_url")
+            .eq("id", userId)
+            .maybeSingle<FighterProfileRow>(),
+        ]);
 
-        if (error) {
-          console.error(error);
-          setAipoCoins(0);
-          setLevelLine(null);
-          setProfileAvatarUrl(null);
-          setIsAdmin(false);
-          return;
+        if (userProfile.error) {
+          console.error(userProfile.error);
         }
-
-        const admin = await loadIsAdmin(userId);
-        setIsAdmin(admin);
-        setAipoCoins(0);
-
-        const { data: fighterProfile } = await supabase
-          .from("fighter_profiles")
-          .select("display_name, avatar_url")
-          .eq("id", userId)
-          .maybeSingle<FighterProfileRow>();
+        if (fighterProfile.error) {
+          console.error(fighterProfile.error);
+        }
 
         setProfileAvatarUrl(
-          typeof fighterProfile?.avatar_url === "string" && fighterProfile.avatar_url.length > 0
-            ? fighterProfile.avatar_url
-            : null,
+          (typeof fighterProfile.data?.avatar_url === "string" && fighterProfile.data.avatar_url.trim()) ||
+            (typeof userProfile.data?.avatar_url === "string" && userProfile.data.avatar_url.trim()) ||
+            null,
         );
 
-        const fn = typeof fighterProfile?.display_name === "string" ? fighterProfile.display_name.trim() : "";
-        if (typeof data?.level === "number") {
-          setLevelLine(admin ? AIPOGER_PERSONAL_RANK : rankLabelForLevel(data.level, fn));
-        } else {
-          setLevelLine(admin ? AIPOGER_PERSONAL_RANK : null);
-        }
+        const fn = typeof fighterProfile.data?.display_name === "string" ? fighterProfile.data.display_name.trim() : "";
         if (fn) writeFighterNameToStorage(fn);
-      } finally {
-        setProfileLoading(false);
+      } catch (error) {
+        console.error("[home profile]", error);
+        setProfileAvatarUrl(null);
       }
     },
     [],
   );
 
-  const runDailyCheckIn = useCallback(async (userId: string) => {
-    if (process.env.NEXT_PUBLIC_AUTH_BYPASS === "true") return;
-    try {
-      if (await loadIsAdmin(userId)) return;
-      const { data: gained, error } = await supabase.rpc("award_daily_login_points");
-      if (error) {
-        console.warn("[daily login]", error);
-        return;
-      }
-      if (typeof gained === "number" && gained > 0) void loadProfile(userId);
-    } catch (e) {
-      console.warn("[daily login]", e);
-    }
-  }, [loadProfile]);
-
   useEffect(() => {
     let mounted = true;
-    let initialSessionResolved = false;
-
-    const applySession = (s: Session | null) => {
+    void supabase.auth.getSession().then(({ data: { session: s } }) => {
       if (!mounted) return;
       setSession(s);
-      if (s?.user) {
-        void loadProfile(s.user.id);
-        void runDailyCheckIn(s.user.id);
-      } else {
-        setAipoCoins(null);
-        setLevelLine(null);
-        setProfileAvatarUrl(null);
-      }
-    };
-
-    void (async () => {
-      applySession(await getFreshSession(8000));
-      if (mounted) {
-        initialSessionResolved = true;
-        setCheckingSession(false);
-      }
-    })();
+      if (s?.user) void loadProfile(s.user.id);
+    });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, s) => {
-      if (!initialSessionResolved && !s?.user && event !== "SIGNED_OUT") return;
-      if (!s?.user) {
-        void (async () => {
-          const freshSession = await getFreshSession(4000);
-          if (freshSession?.user) {
-            applySession(freshSession);
-            setCheckingSession(false);
-            return;
-          }
-          if (event === "SIGNED_OUT") applySession(null);
-          setCheckingSession(false);
-        })();
-        return;
+    } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+      if (s?.user) {
+        void loadProfile(s.user.id);
+      } else {
+        setProfileAvatarUrl(null);
       }
-      applySession(s);
-      setCheckingSession(false);
     });
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [loadProfile, runDailyCheckIn]);
+  }, [loadProfile]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -263,15 +786,7 @@ function HomeAuthBar() {
   const user = session?.user ?? null;
   const avatarUrl = profileAvatarUrl ?? (user ? userAvatarUrl(user) : null);
 
-  if (checkingSession) {
-    return (
-      <span className="inline-flex items-center gap-2 rounded-2xl border border-zinc-700 bg-zinc-950/70 px-4 py-2.5 text-sm font-semibold text-zinc-400 shadow-lg backdrop-blur">
-        {t("common_loading")}
-      </span>
-    );
-  }
-
-  if (!user) {
+  if (forceShowLogin || !user) {
     return (
       <Link
         href="/auth"
@@ -283,89 +798,48 @@ function HomeAuthBar() {
   }
 
   return (
-    <div className="flex items-center gap-3">
-      <div
-        className="hidden min-w-0 sm:block rounded-2xl border border-zinc-700/80 bg-zinc-950/80 px-3 py-2 text-right shadow-lg backdrop-blur"
-        title={t("home_coin_tooltip")}
+    <div className="relative" ref={menuRef}>
+      <button
+        type="button"
+        onClick={() => setMenuOpen((v) => !v)}
+        className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border-2 border-zinc-600 bg-zinc-900 shadow-lg transition hover:border-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00]"
+        aria-expanded={menuOpen}
+        aria-haspopup="menu"
+        aria-label={t("home_account_menu_aria")}
       >
-        <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">{t("aipo_coin")}</p>
-        <p className="truncate text-sm font-bold tabular-nums text-[#ff6a00]">
-          {profileLoading ? "…" : (aipoCoins ?? 0).toLocaleString()}
-        </p>
-        {isAdmin && (
-          <p className="mt-1 text-[10px] font-semibold text-amber-400">{t("home_admin_badge")} · Battle 管理</p>
+        {avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={avatarUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+        ) : (
+          <span className="text-lg font-bold text-zinc-400">
+            {(user.email ?? user.user_metadata?.full_name ?? "?").slice(0, 1).toUpperCase()}
+          </span>
         )}
-        {levelLine && (
-          <p className="mt-1 truncate text-[10px] leading-tight text-zinc-400">
-            <span className="text-zinc-500">{t("home_profile_level")} </span>
-            <span className="font-semibold text-zinc-200">{levelLine}</span>
-          </p>
-        )}
-      </div>
+      </button>
 
-      <div className="relative" ref={menuRef}>
-        <button
-          type="button"
-          onClick={() => setMenuOpen((v) => !v)}
-          className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border-2 border-zinc-600 bg-zinc-900 shadow-lg transition hover:border-[#ff6a00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a00]"
-          aria-expanded={menuOpen}
-          aria-haspopup="menu"
-          aria-label={t("home_account_menu_aria")}
+      {menuOpen && (
+        <div
+          role="menu"
+          className="absolute right-0 mt-2 w-44 overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-950 py-1 shadow-xl ring-1 ring-black/40"
         >
-          {avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatarUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
-          ) : (
-            <span className="text-lg font-bold text-zinc-400">
-              {(user.email ?? user.user_metadata?.full_name ?? "?").slice(0, 1).toUpperCase()}
-            </span>
-          )}
-        </button>
-
-        {menuOpen && (
-          <div
-            role="menu"
-            className="absolute right-0 mt-2 w-44 overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-950 py-1 shadow-xl ring-1 ring-black/40"
+          <Link
+            href="/profile"
+            role="menuitem"
+            className="block w-full px-3 py-2.5 text-left text-sm text-zinc-200 transition hover:bg-zinc-800 hover:text-white"
+            onClick={() => setMenuOpen(false)}
           >
-            <div className="border-b border-zinc-800 px-3 py-2 sm:hidden">
-              <p className="text-[10px] uppercase tracking-wider text-zinc-500">{t("aipo_coin")}</p>
-              <p className="font-bold tabular-nums text-[#ff6a00]">
-                {profileLoading ? "…" : (aipoCoins ?? 0).toLocaleString()}
-              </p>
-              {levelLine && (
-                <p className="mt-1 text-[10px] leading-tight text-zinc-400">
-                  <span className="text-zinc-500">{t("home_profile_level")} </span>
-                  <span className="font-semibold text-zinc-200">{levelLine}</span>
-                </p>
-              )}
-            </div>
-            <Link
-              href="/profile"
-              role="menuitem"
-              className="block w-full px-3 py-2.5 text-left text-sm text-zinc-200 transition hover:bg-zinc-800 hover:text-white"
-              onClick={() => setMenuOpen(false)}
-            >
-              {t("home_profile_link")}
-            </Link>
-            <Link
-              href="/battle/setup#avatar-upload"
-              role="menuitem"
-              className="block w-full px-3 py-2.5 text-left text-sm text-zinc-200 transition hover:bg-zinc-800 hover:text-white"
-              onClick={() => setMenuOpen(false)}
-            >
-              {t("home_avatar_upload_link")}
-            </Link>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => void handleSignOut()}
-              className="w-full px-3 py-2.5 text-left text-sm text-zinc-200 transition hover:bg-zinc-800 hover:text-white"
-            >
-              {t("logout")}
-            </button>
-          </div>
-        )}
-      </div>
+            {t("home_profile_link")}
+          </Link>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => void handleSignOut()}
+            className="w-full px-3 py-2.5 text-left text-sm text-zinc-200 transition hover:bg-zinc-800 hover:text-white"
+          >
+            {t("logout")}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -374,6 +848,15 @@ export default function HomePage() {
   const { t, lang } = useI18n();
   const [isSplashFinished, setIsSplashFinished] = useState(false);
   const [phase, setPhase] = useState<SplashPhase>("fadeIn");
+  const [activeMobileAction, setActiveMobileAction] = useState<HomeActionKey>("explore");
+  const homepageActionPrompts = useMemo(() => homeActionPrompts(lang), [lang]);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("code")) return;
+    url.pathname = "/auth/callback";
+    window.location.replace(url.toString());
+  }, []);
 
   useEffect(() => {
     const fadeInTimer = window.setTimeout(() => setPhase("hold"), SPLASH_STEPS.fadeIn);
@@ -414,46 +897,89 @@ export default function HomePage() {
   }
 
   const isZh = lang === "zh";
+  const withLang = (href: string) => `${href}${href.includes("?") ? "&" : "?"}lang=${lang}`;
   const heroTitle = t("home_secondary_title");
   const heroLine = t("home_hero_line");
+  const mobileHeroLine = isZh
+    ? ["探索 AI 音樂", "喜歡再發起挑戰"]
+    : lang === "ja"
+      ? ["AI音楽を探す", "好きな曲から挑戦"]
+      : lang === "ko"
+        ? ["AI 음악 탐색", "마음에 들면 도전"]
+        : ["Explore AI Music", "Challenge what you like"];
   const heroCopy = t("home_tagline");
   const zhDisplayClass = `${fontGlowSans.className} tracking-[-0.015em]`;
   const zhSerifClass = `${fontSourceSerifTC.className} font-black tracking-[0.012em]`;
   const heroAccentClass = "font-black text-[#f28a2f] drop-shadow-[0_0_15px_rgba(255,106,0,0.2)]";
-  const heroSingleLineClass = "max-w-[min(62rem,calc(100vw-2.5rem))] overflow-hidden text-ellipsis whitespace-nowrap";
+  const heroTextClass = "max-w-[min(62rem,calc(100vw-2.5rem))] whitespace-normal break-words md:overflow-hidden md:text-ellipsis md:whitespace-nowrap";
   const heroChromeShadow = "[text-shadow:0_2px_0_rgba(255,255,255,0.06),0_16px_32px_rgba(0,0,0,0.9),0_0_14px_rgba(255,106,0,0.08)]";
-  const musicAnalysisHref = `/music-analysis?lang=${lang}`;
-  const statItems = isZh
+  const aiMusicBibleHref = `/ai-music-bible?lang=${lang}`;
+  const choiceWeeklyHref = `/rank?lang=${lang}#choice-weekly`;
+  const mobileActionPrompt = homepageActionPrompts[activeMobileAction];
+  const statItems: HomeStatItem[] = isZh
     ? [
-        ["45s", t("home_stat_45_label")],
-        ["24H", t("home_stat_24_label")],
-        ["Survival", t("home_stat_survive_label")],
+        ["公播", "公開聽歌"],
+        ["60s", "Drop Battle"],
+        ["酒吧", "傷心酒吧"],
       ]
+    : lang === "ja"
+      ? [
+          ["Listen", "公開リスニング"],
+          ["60s", "Drop Battle"],
+          ["Bar", "Heartbreak"],
+        ]
+      : lang === "ko"
+        ? [
+            ["Listen", "공개 감상"],
+            ["60s", "Drop Battle"],
+            ["Bar", "Heartbreak"],
+          ]
     : [
-        ["45s", t("home_stat_45_label")],
-        ["24H", t("home_stat_24_label")],
-        ["Survival", t("home_stat_survive_label")],
+        ["Listen", "Open Airplay"],
+        ["60s", "Drop Battle"],
+        ["Bar", "Heartbreak"],
       ];
   const infoLinks = isZh
     ? [
-        { href: "/hook-guide", title: "最強Drop Battle 對決抓波規則", desc: "最強抓波Drop Battle、點數、等級與比賽制度" },
-        { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
-        { href: "/rank", title: "AIPOGER 榮譽榜", desc: "Drop 抓波勝利、24H Full Song 與傷心酒吧熱播" },
-        { href: "/ai-music-bible", title: "AI 音樂練功聖經", desc: "教學播放列表、官方指南與 prompt 練功路線" },
-        { href: "/about", title: "關於愛播歌", desc: "平台理念、著作權原則與聯絡方式" },
-        { href: "/partners", title: "廣告與合作", desc: "品牌投放、活動與內容合作" },
+        { href: withLang("/ai-music"), title: "AI 音樂作品", desc: "先聽歌、送愛心，再發起挑戰" },
+        { href: aiMusicBibleHref, title: t("home_analyze_music_title"), desc: "Suno、歌詞、Prompt 與實戰資料庫" },
+        { href: withLang("/rank"), title: "AIPOGER Showtime", desc: "被認可作品的音樂舞台" },
+        { href: choiceWeeklyHref, title: "AIPOGER Choice Weekly", desc: "每週策展與 DJ 選歌方向" },
+        { href: withLang("/about"), title: "關於愛播歌", desc: "AI 創作者作品認可系統" },
       ]
+    : lang === "ja"
+      ? [
+          { href: withLang("/ai-music"), title: "AI音楽作品", desc: "聴いて、保存して、挑戦へ" },
+          { href: aiMusicBibleHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
+          { href: withLang("/rank"), title: "AIPOGER Showtime", desc: "認められたAI音楽のステージ" },
+          { href: choiceWeeklyHref, title: "AIPOGER Choice Weekly", desc: "週次キュレーションとDJ選曲の方向" },
+          { href: withLang("/about"), title: "AIPOGERについて", desc: "AIクリエイターが成長し、作品が認められるシステム" },
+        ]
+      : lang === "ko"
+        ? [
+            { href: withLang("/ai-music"), title: "AI 음악 작품", desc: "듣고, 저장하고, 도전으로" },
+            { href: aiMusicBibleHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
+            { href: withLang("/rank"), title: "AIPOGER Showtime", desc: "인정받은 AI 음악이 서는 무대" },
+            { href: choiceWeeklyHref, title: "AIPOGER Choice Weekly", desc: "주간 큐레이션과 DJ 선택 방향" },
+            { href: withLang("/about"), title: "AIPOGER 소개", desc: "AI 크리에이터가 성장하고 작품이 인정받는 시스템" },
+          ]
     : [
-        { href: "/hook-guide", title: "Drop Battle Rules", desc: "Drop Battle format, points, levels, and battle rules" },
-        { href: musicAnalysisHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
-        { href: "/rank", title: "AIPOGER Honor Board", desc: "Drop wins, 24H Full Song, and Bar Heartbreak hits" },
-        { href: "/ai-music-bible", title: "AI Music Bible", desc: "Tutorial playlist, official docs, and prompt practice map" },
-        { href: "/about", title: "About AIPOGER", desc: "Platform principles, copyright policy, and contact" },
-        { href: "/partners", title: "Partnerships", desc: "Ads, campaigns, and creator collaborations" },
+        { href: withLang("/ai-music"), title: "AI Music Works", desc: "Listen, save, then challenge" },
+        { href: aiMusicBibleHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
+        { href: withLang("/rank"), title: "AIPOGER Showtime", desc: "The stage for recognized AI music" },
+        { href: choiceWeeklyHref, title: "AIPOGER Choice Weekly", desc: "Weekly curation and DJ choice direction" },
+        { href: withLang("/about"), title: "About AIPOGER", desc: "AI creator growth and music recognition system" },
       ];
+  const mobileActionLabels = isZh
+    ? { explore: "探索", bar: "酒吧", battle: "Drop Battle", rank: "Showtime" }
+    : lang === "ja"
+      ? { explore: "探す", bar: "酒場", battle: "Drop Battle", rank: "Showtime" }
+      : lang === "ko"
+        ? { explore: "탐색", bar: "바", battle: "Drop Battle", rank: "Showtime" }
+        : { explore: "Explore", bar: "Bar", battle: "Drop Battle", rank: "Showtime" };
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-[#050505] px-4 py-4 text-[#f5f5f5] md:px-7 md:py-4">
+    <main className="aipo-home-no-select relative min-h-screen overflow-x-hidden bg-[#050505] px-4 py-4 text-[#f5f5f5] md:px-0 md:py-0">
       <div className="pointer-events-none absolute inset-0 bg-[#050505]" />
       <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_20%_28%,rgba(112,43,12,0.42),transparent_38%),radial-gradient(circle_at_82%_26%,rgba(0,59,66,0.24),transparent_36%),linear-gradient(90deg,rgba(8,6,5,0.96)_0%,rgba(4,4,4,0.98)_54%,rgba(0,8,10,0.94)_100%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.026] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:46px_46px]" />
@@ -468,8 +994,22 @@ export default function HomePage() {
 
       <HomeBgmPlayer />
 
-      <section className="relative z-10 mx-auto grid w-full max-w-[116rem] gap-6 pb-1 pt-16 md:grid-cols-[minmax(0,1fr)_minmax(21rem,25.5rem)] md:items-center md:gap-[clamp(1.8rem,3.8vw,4.8rem)] md:pt-[clamp(4rem,7vh,5.4rem)]">
-        <div className="relative isolate min-w-0 overflow-visible md:min-h-[28.6rem] md:px-[clamp(1.8rem,3.5vw,4.8rem)] md:pb-3 md:pt-[clamp(1.65rem,3.6vh,2.8rem)] xl:pl-[clamp(2.5rem,4.8vw,5.5rem)] before:pointer-events-none before:absolute before:inset-[-4rem_-5rem_-3rem_-3.5rem] before:-z-10 before:bg-[radial-gradient(ellipse_at_22%_46%,rgba(255,106,0,0.078),rgba(66,25,8,0.038)_46%,transparent_76%)] before:blur-[2px] before:content-['']">
+      <DesktopReferenceHome
+        t={t}
+        withLang={withLang}
+        heroTitle={heroTitle}
+        heroLine={heroLine}
+        heroCopy={heroCopy}
+        statItems={statItems}
+        infoLinks={infoLinks}
+        isZh={isZh}
+        lang={lang}
+        zhDisplayClass={zhDisplayClass}
+        heroChromeShadow={heroChromeShadow}
+      />
+
+      <section className="relative z-10 mx-auto grid w-full max-w-[116rem] gap-6 pb-1 pt-16 md:hidden">
+        <div className="relative z-10 isolate min-w-0 overflow-visible md:min-h-[28.6rem] md:px-[clamp(1.8rem,3.5vw,4.8rem)] md:pb-3 md:pt-[clamp(1.65rem,3.6vh,2.8rem)] xl:pl-[clamp(2.5rem,4.8vw,5.5rem)] before:pointer-events-none before:absolute before:inset-[-4rem_-5rem_-3rem_-3.5rem] before:-z-10 before:bg-[radial-gradient(ellipse_at_22%_46%,rgba(255,106,0,0.078),rgba(66,25,8,0.038)_46%,transparent_76%)] before:blur-[2px] before:content-['']">
           <div className="mb-2 flex items-center gap-3">
             <Image
               src={AIPOGER_BRAND_LOGO}
@@ -482,73 +1022,118 @@ export default function HomePage() {
             <div className="h-px flex-1 bg-gradient-to-r from-orange-500/70 via-white/20 to-transparent" />
           </div>
 
-          <p className={`w-full max-w-full text-[4.25rem] font-black uppercase leading-[0.82] tracking-[-0.04em] text-[#fffaf1] min-[390px]:text-[4.55rem] sm:text-[6.25rem] md:text-[clamp(8.35rem,14.15vw,16.7rem)] md:leading-[0.78] md:tracking-[-0.066em] ${heroChromeShadow}`}>
+          <p className={`mx-auto w-full max-w-full overflow-visible whitespace-nowrap text-center text-[4.25rem] font-black uppercase leading-[0.82] tracking-[-0.04em] text-[#fffaf1] min-[390px]:text-[4.55rem] sm:text-[6.25rem] md:text-[clamp(8.35rem,14.15vw,16.7rem)] md:leading-[0.78] md:tracking-[-0.066em] ${heroChromeShadow}`}>
             AIPOGER
           </p>
           <p
-            className={`mt-3 ${heroSingleLineClass} text-[clamp(1.45rem,2.05vw,2.38rem)] leading-[1.38] ${heroAccentClass} ${
-              isZh ? zhSerifClass : `${fontRighteous.className} font-black`
+            className={`mx-auto mt-3 w-full max-w-[22rem] text-center text-[clamp(1.12rem,5.15vw,1.48rem)] leading-[1.34] md:max-w-none md:text-left md:text-[clamp(1.45rem,2.05vw,2.38rem)] md:leading-[1.38] ${heroAccentClass} ${
+              isZh ? zhSerifClass : `${fontGlowSans.className} font-black`
             }`}
           >
-            {heroLine}
+            {mobileHeroLine.map((line) => (
+              <span key={line} className="block whitespace-normal text-balance">
+                {line}
+              </span>
+            ))}
           </p>
 
-          <h1
-            className={`mt-3 max-w-[min(52rem,calc(100vw-2.5rem))] overflow-visible whitespace-nowrap pb-2 pt-0 text-[clamp(4.3rem,6vw,7.15rem)] leading-[1.03] text-[#fffaf1] ${heroChromeShadow} ${
-              lang === "en"
-                ? `${fontRighteous.className} font-normal`
-                : "aipoger-brand-wordmark"
-            }`}
-          >
-            {heroTitle}
-          </h1>
+          <h1 className="sr-only">{heroTitle}</h1>
 
-          <div className="mt-6 grid gap-3 md:hidden">
+          <div className="mt-5 grid grid-cols-2 gap-x-8 gap-y-4 px-4 md:hidden">
             <Link
-              href="/battle/setup"
-              className="group flex items-center justify-between rounded-2xl border border-orange-300/60 bg-orange-500 px-5 py-4 text-black shadow-[0_0_34px_rgba(255,106,0,0.25)] transition hover:bg-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+              href={withLang("/ai-music")}
+              aria-label={t("btn_explore_music")}
+              onPointerEnter={() => setActiveMobileAction("explore")}
+              onFocus={() => setActiveMobileAction("explore")}
+              className="group flex min-w-0 flex-col items-center gap-2 text-center text-white focus-visible:outline-none"
             >
-              <BattleIcon />
-              <span className="text-xl font-black tracking-[0.08em]">{t("btn_battle")}</span>
-            </Link>
-            <a
-              href={musicAnalysisHref}
-              className="group flex items-center justify-between rounded-2xl border border-cyan-200/55 bg-cyan-300/15 px-5 py-4 text-cyan-50 shadow-[0_0_34px_rgba(117,225,231,0.16)] transition hover:border-cyan-100 hover:bg-cyan-300/22 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
-            >
-              <AnalyzeMusicIcon />
-              <span className="text-xl font-black tracking-[0.08em]">{t("btn_analyze_music")}</span>
-            </a>
-            <div className="grid grid-cols-2 gap-3">
-              <Link
-                href="/battle"
-                className="group flex min-h-24 flex-col justify-between rounded-2xl border border-cyan-200/25 bg-white/[0.06] px-4 py-4 text-white transition hover:border-cyan-200 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
+              <span
+                className={`flex h-[4.85rem] w-[4.85rem] items-center justify-center rounded-full border shadow-[0_0_30px_rgba(103,232,249,0.12)] transition group-hover:border-cyan-100 group-hover:bg-cyan-300/18 group-focus-visible:ring-2 group-focus-visible:ring-cyan-100 ${
+                  activeMobileAction === "explore"
+                    ? "border-orange-200/80 bg-orange-500 text-black shadow-[0_0_34px_rgba(255,106,0,0.3)]"
+                    : "border-cyan-200/35 bg-cyan-300/12"
+                }`}
               >
                 <WatchIcon />
-                <span className="text-base font-black tracking-[0.08em]">{t("btn_watch")}</span>
-              </Link>
-              <Link
-                href="/listen-bar"
-                onClick={(event) => {
-                  event.preventDefault();
-                  window.location.assign("/listen-bar");
-                }}
-                className="group flex min-h-24 flex-col justify-between rounded-2xl border border-orange-200/25 bg-white/[0.06] px-4 py-4 text-white transition hover:border-orange-200 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+              </span>
+              <span className="text-[0.78rem] font-black leading-tight tracking-[0.04em]">{mobileActionLabels.explore}</span>
+            </Link>
+            <Link
+              href={withLang("/listen-bar")}
+              aria-label={t("btn_listen_bar")}
+              onPointerEnter={() => setActiveMobileAction("bar")}
+              onFocus={() => setActiveMobileAction("bar")}
+              className="group flex min-w-0 flex-col items-center gap-2 text-center text-white focus-visible:outline-none"
+            >
+              <span
+                className={`flex h-[4.85rem] w-[4.85rem] items-center justify-center rounded-full border shadow-[0_0_28px_rgba(255,255,255,0.05)] transition group-hover:border-cyan-200 group-hover:bg-white/[0.1] group-focus-visible:ring-2 group-focus-visible:ring-cyan-100 ${
+                  activeMobileAction === "bar"
+                    ? "border-orange-200/75 bg-orange-500/22 text-orange-50 shadow-[0_0_32px_rgba(255,106,0,0.22)]"
+                    : "border-cyan-200/24 bg-white/[0.055]"
+                }`}
               >
                 <ListenBarIcon />
-                <span className="text-base font-black tracking-[0.08em]">{t("btn_listen_bar")}</span>
-              </Link>
-            </div>
+              </span>
+              <span className="text-[0.78rem] font-black leading-tight tracking-[0.04em]">{mobileActionLabels.bar}</span>
+            </Link>
+            <Link
+              href={withLang("/battle")}
+              aria-label="Drop Battle"
+              onPointerEnter={() => setActiveMobileAction("battle")}
+              onFocus={() => setActiveMobileAction("battle")}
+              className="group flex min-w-0 flex-col items-center gap-2 text-center text-white focus-visible:outline-none"
+            >
+              <span
+                className={`flex h-[4.85rem] w-[4.85rem] items-center justify-center rounded-full border shadow-[0_0_30px_rgba(248,113,113,0.08)] transition group-hover:border-red-200 group-hover:bg-red-500/[0.12] group-focus-visible:ring-2 group-focus-visible:ring-red-200 ${
+                  activeMobileAction === "battle"
+                    ? "border-red-200/75 bg-red-500/22 text-red-50 shadow-[0_0_32px_rgba(248,113,113,0.2)]"
+                    : "border-cyan-200/24 bg-white/[0.055]"
+                }`}
+              >
+                <Swords className="h-8 w-8" aria-hidden="true" />
+              </span>
+              <span className="text-[0.78rem] font-black leading-tight tracking-[0.04em]">{mobileActionLabels.battle}</span>
+            </Link>
+            <Link
+              href={withLang("/rank")}
+              aria-label={t("watch_rank")}
+              onPointerEnter={() => setActiveMobileAction("rank")}
+              onFocus={() => setActiveMobileAction("rank")}
+              className="group flex min-w-0 flex-col items-center gap-2 text-center text-white focus-visible:outline-none"
+            >
+              <span
+                className={`flex h-[4.85rem] w-[4.85rem] items-center justify-center rounded-full border shadow-[0_0_32px_rgba(255,106,0,0.24)] transition group-hover:bg-orange-300 group-focus-visible:ring-2 group-focus-visible:ring-orange-200 ${
+                  activeMobileAction === "rank"
+                    ? "border-cyan-100/75 bg-cyan-300 text-black shadow-[0_0_34px_rgba(103,232,249,0.24)]"
+                    : "border-cyan-200/24 bg-white/[0.055] text-white"
+                }`}
+              >
+                <HonorIcon />
+              </span>
+              <span className="text-[0.78rem] font-black leading-tight tracking-[0.04em]">{mobileActionLabels.rank}</span>
+            </Link>
           </div>
 
+          <HomeActionSignal
+            key={`mobile-${activeMobileAction}`}
+            prompt={mobileActionPrompt}
+            className="mt-4 md:hidden"
+          />
+
+          <SocialIconCluster
+            className="mt-4 justify-center md:hidden"
+            iconClassName="h-11 w-11"
+          />
+
           <p
-            className={`mt-3 ${heroSingleLineClass} text-[clamp(1.18rem,1.52vw,1.78rem)] leading-[1.42] ${heroAccentClass} ${
-              lang === "en" ? `${fontRighteous.className} font-black` : zhSerifClass
+            className={`mt-3 hidden ${heroTextClass} text-[clamp(1.05rem,5vw,1.32rem)] leading-[1.34] md:block md:text-[clamp(1.18rem,1.52vw,1.78rem)] md:leading-[1.42] ${heroAccentClass} ${
+              lang === "en" ? `${fontRighteous.className} font-black` : `${fontGlowSans.className} font-black`
             }`}
           >
             {heroCopy}
           </p>
 
-          <div className="mt-4 grid max-w-[60rem] grid-cols-3 overflow-hidden rounded-[0.45rem] border border-white/14 bg-black/86 backdrop-blur">
+          <div className="mt-4 hidden max-w-[60rem] grid-cols-3 overflow-hidden rounded-[0.45rem] border border-white/14 bg-black/86 backdrop-blur md:grid">
             {statItems.map(([value, label]) => (
               <div key={value} className="border-r border-white/10 px-3 py-2 last:border-r-0 md:px-4 md:py-2.5">
                 <p className="text-2xl font-black leading-none text-white md:text-[1.65rem]">{value}</p>
@@ -559,14 +1144,15 @@ export default function HomePage() {
 
         </div>
 
-        <div className="hidden justify-self-end md:block md:w-[min(23.4vw,25rem)] md:min-w-[21rem] md:self-center">
-          <div className="relative overflow-hidden rounded-[1.25rem] border border-white/10 bg-[linear-gradient(145deg,rgba(17,17,16,0.72),rgba(4,4,4,0.88)_58%,rgba(0,18,20,0.62))] p-[clamp(1.2rem,1.52vw,1.58rem)] shadow-[0_22px_76px_rgba(0,0,0,0.66),0_0_46px_rgba(255,106,0,0.075)] backdrop-blur-[2px]">
+        <div className="relative z-10 hidden justify-self-end md:block md:w-[min(23.4vw,25rem)] md:min-w-[21rem] md:self-center">
+          <div className="relative overflow-hidden rounded-[1.35rem] border border-orange-300/38 bg-[linear-gradient(145deg,rgba(17,17,16,0.74),rgba(4,4,4,0.92)_58%,rgba(0,18,20,0.68))] p-[clamp(1.2rem,1.52vw,1.58rem)] shadow-[0_22px_76px_rgba(0,0,0,0.66),0_0_46px_rgba(255,106,0,0.13),inset_0_0_0_1px_rgba(255,255,255,0.04)] backdrop-blur-[2px] before:pointer-events-none before:absolute before:inset-[0.55rem] before:rounded-[1.05rem] before:border before:border-orange-300/52 before:content-['']">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_25%,rgba(255,106,0,0.14),transparent_39%),radial-gradient(circle_at_86%_18%,rgba(117,225,231,0.1),transparent_36%),linear-gradient(180deg,rgba(255,255,255,0.035),transparent_28%)]" />
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-300/34 to-transparent" />
             <div className="relative flex min-h-[26.8rem] flex-col justify-between gap-5">
               <div className="flex flex-1 items-center justify-center pt-2">
                 <div className="relative flex h-[13.7rem] w-full max-w-[18.5rem] items-center justify-center">
-                  <div className="pointer-events-none absolute inset-[-2.3rem] rounded-full bg-[radial-gradient(circle_at_50%_48%,rgba(255,106,0,0.48),rgba(255,168,82,0.18)_27%,rgba(117,225,231,0.11)_49%,transparent_70%)] blur-2xl" />
+                  <div className="pointer-events-none absolute inset-[-2.3rem] rounded-full bg-[radial-gradient(circle_at_50%_48%,rgba(255,106,0,0.52),rgba(255,168,82,0.19)_27%,rgba(117,225,231,0.12)_49%,transparent_70%)] blur-2xl" />
+                  <div className="pointer-events-none absolute inset-[-0.8rem] rounded-full border border-orange-300/18 bg-[repeating-radial-gradient(circle,rgba(255,255,255,0.1)_0_1px,transparent_1px_11px)]" />
                   <div className="pointer-events-none absolute h-[11rem] w-[11rem] rounded-full bg-[radial-gradient(circle,rgba(255,244,226,0.13),rgba(255,106,0,0.09)_46%,transparent_70%)] blur-md" />
                   <Image
                     src={AIPOGER_BRAND_LOGO}
@@ -580,65 +1166,71 @@ export default function HomePage() {
 
               <div className="grid gap-3.5">
                 <Link
-                  href="/battle/setup"
-                  className="group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] bg-[#ff6a00] px-5 text-white shadow-[0_12px_30px_rgba(255,106,0,0.22)] transition hover:bg-[#ff8a2a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
-                >
-                  <BattleIcon />
-                  <span className={`text-lg tracking-[0.08em] ${isZh ? `${zhDisplayClass} font-black` : "font-black"}`}>
-                    {t("btn_battle")}
-                  </span>
-                </Link>
-
-                <a
-                  href={musicAnalysisHref}
-                  className="group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] border border-cyan-200/20 bg-cyan-300/[0.075] px-5 text-white shadow-[0_12px_26px_rgba(0,0,0,0.2)] transition hover:border-cyan-200/55 hover:bg-cyan-300/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
-                >
-                  <AnalyzeMusicIcon />
-                  <span className={`text-lg tracking-[0.08em] ${isZh ? `${zhDisplayClass} font-black` : "font-black"}`}>
-                    {t("btn_analyze_music")}
-                  </span>
-                </a>
-
-                <Link
-                  href="/battle"
-                  className="group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] border border-white/14 bg-white/[0.055] px-5 text-white shadow-[0_12px_26px_rgba(0,0,0,0.2)] transition hover:border-orange-300/45 hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+                  href={withLang("/ai-music")}
+                  onPointerMove={handlePointerGlowMove}
+                  style={pointerGlowStyle(HOME_ACTION_GLOW.explore)}
+                  className="aipo-pointer-glow group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] bg-[#ff6a00] px-5 text-white shadow-[0_12px_30px_rgba(255,106,0,0.22)] transition hover:bg-[#ff8a2a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
                 >
                   <WatchIcon />
                   <span className={`text-lg tracking-[0.08em] ${isZh ? `${zhDisplayClass} font-black` : "font-black"}`}>
-                    {t("btn_watch")}
+                    {t("btn_explore_music")}
                   </span>
                 </Link>
 
                 <Link
-                  href="/listen-bar"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    window.location.assign("/listen-bar");
-                  }}
-                  className="group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] border border-white/14 bg-white/[0.055] px-5 text-white shadow-[0_12px_26px_rgba(0,0,0,0.2)] transition hover:border-cyan-200/45 hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
+                  href={withLang("/listen-bar")}
+                  onPointerMove={handlePointerGlowMove}
+                  style={pointerGlowStyle(HOME_ACTION_GLOW.bar)}
+                  className="aipo-pointer-glow group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] border border-white/14 bg-white/[0.055] px-5 text-white shadow-[0_12px_26px_rgba(0,0,0,0.2)] transition hover:border-orange-300/45 hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
                 >
                   <ListenBarIcon />
                   <span className={`text-lg tracking-[0.08em] ${isZh ? `${zhDisplayClass} font-black` : "font-black"}`}>
                     {t("btn_listen_bar")}
                   </span>
                 </Link>
+
+                <Link
+                  href={withLang("/rank")}
+                  onPointerMove={handlePointerGlowMove}
+                  style={pointerGlowStyle(HOME_ACTION_GLOW.rank)}
+                  className="aipo-pointer-glow group flex min-h-[3.85rem] items-center justify-between rounded-[0.95rem] border border-white/14 bg-white/[0.055] px-5 text-white shadow-[0_12px_26px_rgba(0,0,0,0.2)] transition hover:border-cyan-200/45 hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
+                >
+                  <HonorIcon />
+                  <span className={`text-lg tracking-[0.08em] ${isZh ? `${zhDisplayClass} font-black` : "font-black"}`}>
+                    {t("watch_rank")}
+                  </span>
+                </Link>
               </div>
             </div>
           </div>
+          <SocialIconCluster
+            className="mt-3 justify-center"
+            iconClassName="h-11 w-11"
+          />
         </div>
       </section>
 
-      <section className="relative z-10 mx-auto w-full max-w-[72rem] pb-5 pt-7 md:mt-6">
+      <section className="relative z-10 mx-auto w-full max-w-[96rem] pb-5 pt-7 md:hidden">
         <div className="border-t border-white/10 pt-5">
           <div className="grid gap-2 md:grid-cols-6">
-            {infoLinks.map((item) => (
+            {infoLinks.map((item, index) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="group rounded-xl border border-white/10 bg-black/46 px-3 py-2 backdrop-blur transition hover:border-orange-300/55 hover:bg-white/[0.06]"
+                className="group relative min-h-[6.35rem] overflow-hidden rounded-[0.72rem] border border-orange-300/18 bg-black/62 px-4 py-3 pr-[6.3rem] shadow-[0_18px_46px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur transition hover:border-orange-300/62 hover:bg-orange-500/[0.075]"
               >
-                <p className="text-[0.8rem] font-black text-zinc-100 group-hover:text-orange-200">{item.title}</p>
-                <p className="mt-1 text-[10px] leading-3.5 text-zinc-500">{item.desc}</p>
+                <p className="relative z-10 text-[0.86rem] font-black text-zinc-100 group-hover:text-orange-200">{item.title}</p>
+                <p className="relative z-10 mt-1.5 text-[11px] leading-4 text-zinc-500">{item.desc}</p>
+                <div className="absolute bottom-2.5 left-4 right-4 h-[1.35rem] opacity-42 [background:linear-gradient(90deg,transparent,rgba(255,106,0,0.55),transparent)] [mask-image:repeating-linear-gradient(90deg,black_0_2px,transparent_2px_7px)]" />
+                <Image
+                  src={DESKTOP_CARD_ICON_ASSETS[index] ?? DESKTOP_CARD_ICON_ASSETS[0]}
+                  alt=""
+                  width={180}
+                  height={100}
+                  sizes="92px"
+                  aria-hidden="true"
+                  className="pointer-events-none absolute bottom-1.5 right-2.5 h-[3.75rem] w-[5.8rem] object-contain opacity-90 mix-blend-screen saturate-[1.1] transition duration-200 group-hover:scale-105 group-hover:opacity-100"
+                />
               </Link>
             ))}
           </div>

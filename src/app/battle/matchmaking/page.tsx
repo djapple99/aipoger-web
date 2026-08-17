@@ -4,12 +4,11 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isAuthBypassEnabled, mockSkipMatchBattleId } from "@/lib/auth-bypass";
-import { getFreshSession } from "@/lib/auth-session";
 import { supabase } from "@/lib/supabase";
 import { resolveCoverUrlFromParam } from "@/lib/cover-url";
 import { useI18n } from "@/lib/i18n";
 import { INSTANT_MATCH_TIMEOUT_SECONDS } from "@/lib/battle-pool-rules";
-import { attemptMatchmakingWithoutApcGate } from "@/lib/battle-pool-client";
+import { attemptMatchmakingWithoutApcGate, buildDropBattleSchedulePayload, resolveDropBattleScheduledStart } from "@/lib/battle-pool-client";
 
 const DROP_BATTLE_MIN_LEAD_MS = 30_000;
 
@@ -31,6 +30,8 @@ type QueueRow = {
   match_group_id: string | null;
   opponent_user_id: string | null;
   expires_at?: string | null;
+  scheduled_start_at?: string | null;
+  cancellation_evaluation_at?: string | null;
   fallback_kind?: string | null;
 };
 
@@ -65,7 +66,7 @@ function defaultHookCardTimeText() {
 
 function promptHookCardStartIso(lang: string) {
   const input = window.prompt(
-    lang === "zh" ? "設定 Drop Battle 戰帖開戰時間（YYYY-MM-DD HH:mm）" : "Set Drop Battle time (YYYY-MM-DD HH:mm)",
+    lang === "zh" ? "設定 Drop Battle 戰帖開戰時間（YYYY-MM-DD HH:mm）" : "Set Drop Battle Time (YYYY-MM-DD HH:mm)",
     defaultHookCardTimeText(),
   );
   if (input === null) return null;
@@ -149,7 +150,7 @@ function MatchmakingContent(props: MatchmakingContentProps) {
     [router, buildArenaSearch, debugMode],
   );
 
-  /** 建立測試擂臺（RPC）或 fallback 至 mock 擂台（單人即可） */
+  /** 建立測試擂台（RPC）或 fallback 至 mock 擂台（單人即可） */
   const enterTestArena = async () => {
     const path = audioPath.trim();
     if (!path) {
@@ -235,16 +236,27 @@ function MatchmakingContent(props: MatchmakingContentProps) {
       if (!scheduledStartIso) return;
       const { data, error } = await supabase.rpc("move_entry_to_waiting_challenge", { p_queue_id: queueId });
       if (error) throw error;
-      const { error: scheduleError } = await supabase
+      const schedulePayload = buildDropBattleSchedulePayload(scheduledStartIso);
+      const scheduleUpdate = schedulePayload
+        ? { expires_at: schedulePayload.scheduled_start_at, ...schedulePayload }
+        : { expires_at: scheduledStartIso };
+      let { error: scheduleError } = await supabase
         .from("battle_queue")
-        .update({ expires_at: scheduledStartIso })
+        .update(scheduleUpdate)
         .eq("id", queueId);
+      if (scheduleError && /expires_at|scheduled_start_at|cancellation_evaluation_at|schema cache|column.*does not exist|PGRST204/i.test(`${scheduleError.message} ${scheduleError.details ?? ""}`)) {
+        const fallback = await supabase
+          .from("battle_queue")
+          .update({ expires_at: scheduledStartIso })
+          .eq("id", queueId);
+        scheduleError = fallback.error;
+      }
       if (scheduleError) throw scheduleError;
-      const row = data as { expires_at?: string | null } | null;
-      setExpiresAt(scheduledStartIso ?? row?.expires_at ?? null);
+      const row = data as QueueRow | null;
+      setExpiresAt(scheduledStartIso ?? resolveDropBattleScheduledStart(row ?? {}));
       setPhase("waiting");
       setNotice(t("mq_hook_card_opened_notice"));
-      router.push(`/battle?lang=${lang}&focusQueue=${queueId}`);
+      router.push(`/battle/${encodeURIComponent(queueId)}?lang=${lang}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : t("mq_matchmaking_degraded_notice");
       console.warn("[matchmaking] open Drop Battle card failed", error);
@@ -301,7 +313,7 @@ function MatchmakingContent(props: MatchmakingContentProps) {
       if (row.status === "matched" && row.match_group_id) {
         goToArena(row.match_group_id);
       } else if (row.status === "waiting_challenge") {
-        setExpiresAt(row.expires_at);
+        setExpiresAt(resolveDropBattleScheduledStart(row));
         setPhase("waiting");
         setNotice(t("mq_hook_card_opened_notice"));
       } else if (row.status === "ghost_battle" && row.match_group_id) {
@@ -331,7 +343,9 @@ function MatchmakingContent(props: MatchmakingContentProps) {
     }
     let cancelled = false;
     void (async () => {
-      const session = await getFreshSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       const uid = session?.user?.id;
       if (!uid) return;
       const { data } = await supabase.from("user_profiles").select("avatar_url").eq("id", uid).maybeSingle();
@@ -385,7 +399,8 @@ function MatchmakingContent(props: MatchmakingContentProps) {
         };
         let rpcError: { message?: string; details?: string | null; hint?: string | null } | null = null;
         try {
-          const token = (await getFreshSession())?.access_token;
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData.session?.access_token;
           if (!token) throw new Error("Missing session token");
           await attemptMatchmakingWithoutApcGate({
             queueId,
@@ -394,7 +409,8 @@ function MatchmakingContent(props: MatchmakingContentProps) {
           });
         } catch (apiError) {
           const message = apiError instanceof Error ? apiError.message : "matchmaking api failed";
-          if (challengeTargetQueueId) {
+          const isRoleLockError = /戰帖卡|接了一張|challenge card|challenging another/i.test(message);
+          if (challengeTargetQueueId || isRoleLockError) {
             if (intervalId) clearInterval(intervalId);
             setNotice(message);
             setPhase("cancelled");
@@ -420,7 +436,7 @@ function MatchmakingContent(props: MatchmakingContentProps) {
 
         const { data: row, error: rowError } = await supabase
           .from("battle_queue")
-          .select("id, status, match_group_id, opponent_user_id")
+          .select("id, status, match_group_id, opponent_user_id, expires_at")
           .eq("id", queueId)
           .maybeSingle<QueueRow>();
 
@@ -437,7 +453,7 @@ function MatchmakingContent(props: MatchmakingContentProps) {
           goToArena(row.match_group_id);
         } else if (row.status === "waiting_challenge") {
           if (intervalId) clearInterval(intervalId);
-          setExpiresAt(row.expires_at ?? null);
+          setExpiresAt(resolveDropBattleScheduledStart(row));
           setPhase("waiting");
           setNotice(t("mq_hook_card_opened_notice"));
         } else if (row.status === "ghost_battle" && row.match_group_id) {
@@ -476,7 +492,7 @@ function MatchmakingContent(props: MatchmakingContentProps) {
               }
             } else if (nextStatus === "waiting_challenge") {
               if (intervalId) clearInterval(intervalId);
-              setExpiresAt((payload.new as QueueRow).expires_at ?? null);
+              setExpiresAt(resolveDropBattleScheduledStart(payload.new as QueueRow));
               setPhase("waiting");
               setNotice(t("mq_hook_card_opened_notice"));
             } else if (nextStatus === "ghost_battle") {
@@ -507,7 +523,9 @@ function MatchmakingContent(props: MatchmakingContentProps) {
     let mounted = true;
 
     void (async () => {
-      const session = await getFreshSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       const uid = session?.user?.id;
       if (!mounted || !uid) return;
 
@@ -682,12 +700,12 @@ function MatchmakingContent(props: MatchmakingContentProps) {
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
                 <p className="text-xs uppercase tracking-[0.24em] text-zinc-500">{lang === "zh" ? "兩條路" : "Two Paths"}</p>
-                <p className="mt-2 font-black text-white">{lang === "zh" ? "90s Drop Battle 戰帖卡" : "90s Drop Battle Card"}</p>
+                <p className="mt-2 font-black text-white">{lang === "zh" ? "60s Drop Battle 戰帖卡" : "60s Drop Battle Card"}</p>
                 <p className="mt-1 text-zinc-400">
                   {expiresAt
                     ? lang === "zh"
                       ? "已公開，可分享邀人接戰"
-                      : "Published and ready to share"
+                      : "Published and Ready to Share"
                     : lang === "zh"
                       ? "開卡邀人接戰，或去傷心酒吧找對手"
                       : "Publish a challenge card, or find an opponent at Bar Heartbreak"}
@@ -759,7 +777,7 @@ function MatchmakingContent(props: MatchmakingContentProps) {
             <div className="flex items-center gap-4 rounded-2xl border border-green-500/30 bg-green-500/10 px-6 py-4">
               <div className="text-2xl">⏱</div>
               <div>
-                <p className="text-xs text-zinc-500">{lang === "zh" ? "進入鬥歌場倒數" : "Entering arena countdown"}</p>
+                <p className="text-xs text-zinc-500">{lang === "zh" ? "進入鬥歌場倒數" : "Entering Arena Countdown"}</p>
                 <p className="text-2xl font-black text-green-400">{countdown}s</p>
               </div>
             </div>

@@ -8,23 +8,35 @@
     "start": "next start",
     "test": "node --test --experimental-strip-types tests/*.test.mjs",
     "lint": "eslint .",
+    "showtime:founder-preview": "node scripts/showtime-founder-catalog-preview.mjs --write=docs/handoffs/showtime-founder-catalog-preview.json",
+    "showtime:founder-apply": "node scripts/showtime-founder-catalog-apply.mjs",
+    "migrate:music-genres": "node scripts/migrate-music-genres.mjs",
     "subset:glow-sans": "node scripts/subset-glow-sans.mjs",
     "subset:glow-sans:battle": "node scripts/subset-glow-sans-battle.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.104.0",
-    "next": "^16.2.4",
+    "@supabase/supabase-js": "2.110.7",
+    "lucide-react": "^0.468.0",
+    "next": "16.2.12",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-easy-crop": "^5.5.7",
+    "simple-icons": "^16.26.0",
+    "tus-js-client": "^4.3.1",
     "wavesurfer.js": "^7.12.6"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "8.5.20"
+    },
+    "sharp": "0.35.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.1.5",
     "@types/node": "22.14.1",
     "@types/react": "19.1.2",
     "@types/react-dom": "19.1.2",
-    "eslint": "9.24.0",
+    "eslint": "9.39.5",
     "eslint-config-next": "15.3.1",
     "subset-font": "^2.5.0",
     "tailwindcss": "4.1.5",

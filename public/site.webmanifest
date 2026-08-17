@@ -1,0 +1,24 @@
+{
+  "name": "AIPOGER 愛播歌",
+  "short_name": "AIPOGER",
+  "description": "AI 音樂鬥歌場與傷心酒吧",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "icons": [
+    {
+      "src": "/aipoger-search-icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/aipoger-search-icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

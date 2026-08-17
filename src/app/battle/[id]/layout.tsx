@@ -13,8 +13,13 @@ export async function generateMetadata({ params }: Pick<BattleLayoutProps, "para
   const origin = siteOrigin();
   const canonical = `${origin}/battle/${encodeURIComponent(id)}`;
   const image = `${canonical}/opengraph-image`;
-  const title = `AIPOGER 90S 最強抓波Drop Battle 戰帖｜${battle.fighter_a_name} VS ${battle.fighter_b_name}`;
-  const description = `${battle.fighter_a_name}《${battle.song_a_name}》VS ${battle.fighter_b_name}《${battle.song_b_name}》｜開打前集結，先聽 5 秒 teaser，預測誰的 Drop 最炸。`;
+  const isQCrash = battle.battle_type === "q_crash";
+  const title = isQCrash
+    ? `Q Crash｜《${battle.song_a_name}》VS《${battle.song_b_name}》`
+    : `AIPOGER 60s 最強Drop Battle 抓波戰帖｜${battle.fighter_a_name} VS ${battle.fighter_b_name}`;
+  const description = isQCrash
+    ? `這兩首歌到底哪首比較好聽啊？我有點選不出來！${battle.song_a_name} VS ${battle.song_b_name}，兩首 60 秒 Drop，進來聽重點，幫我決定哪首勝出！`
+    : `${battle.fighter_a_name}《${battle.song_a_name}》VS ${battle.fighter_b_name}《${battle.song_b_name}》｜開打前集結，先聽 5 秒預播，預測誰的 Drop 最炸。`;
 
   return {
     title,

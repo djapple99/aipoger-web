@@ -1,6 +1,5 @@
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import { getFreshSession } from "@/lib/auth-session";
 import { isAdminEmail } from "@/lib/admin-emails";
 import { loadIsAdmin } from "@/lib/user-profile-admin";
 
@@ -15,7 +14,9 @@ function emailsFromUser(user: User | null | undefined): string[] {
 
 /** 是否免扣 200 APC（管理員信箱或 user_profiles.is_admin） */
 export async function shouldSkipChallengeFee(userId: string): Promise<boolean> {
-  const session = await getFreshSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   let user = session?.user ?? null;
   if (!user) {
     const { data } = await supabase.auth.getUser();

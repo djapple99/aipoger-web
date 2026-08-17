@@ -1,8 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { AIPOGER_BRAND_LOGO, AIPOGER_CONTACT_EMAIL, AIPOGER_SOCIAL_LINKS } from "@/lib/brand";
+import { AIPOGER_CONTACT_EMAIL, AIPOGER_SOCIAL_LINKS, AIPOGER_TUTORIAL_PLAYLIST_URL } from "@/lib/brand";
 import { fontRighteous } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n";
 
@@ -35,27 +34,28 @@ type InfoPageContent = {
 
 const mail = AIPOGER_CONTACT_EMAIL;
 const youtubeChannel = "https://www.youtube.com/@djapple2000";
-const aipogerTutorialPlaylist = "https://youtube.com/playlist?list=PLm4XZTsplHgQLZG-4sm-y3LZTrbnxSPHs&si=7W976U7M4lK0E7z3";
+const promptDropPptUrl = "https://drive.google.com/file/d/1w_2CEPfAxiOJ1-LTHRhghxf9oFf7EOCo/view?usp=drive_link";
 
 const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }> = {
   about: {
     zh: {
       navTitle: "關於愛播歌",
-      title: "愛播歌是一個以 AI 原創音樂交流為核心的平台。",
+      title: "AIPOGER 愛播歌是 AI 創作者一起成長、讓作品被認可的音樂舞台。",
       lead:
-        "AIPOGER 愛播歌提供 AI 音樂創作者挑戰最強抓波Drop Battle、參與鬥歌、交流播放與觀眾投票的服務。我們鼓勵原創、尊重授權，並以維護創作者、聽眾與權利人的權益為平台基本原則。",
+        "從 Drop Battle、傷心酒吧到 AIPOGER Showtime，AIPOGER 讓 AI 音樂創作者上場、累積聽眾反應、被投票認可，並讓勝出的作品有機會進入播放、策展、發行、授權與商業合作。",
       contactLabel: "聯絡我們",
       cards: [
-        { label: "Platform", value: "AI Music", detail: "Drop Battle、傷心酒吧 Bar Heartbreak、創作者交流與觀眾投票" },
-        { label: "Policy", value: "Original Only", detail: "僅接受原創、已授權或具合法使用依據的音樂內容" },
+        { label: "Mission", value: "Creator Growth", detail: "陪 AI 創作者累積作品、戰績、聽眾反應與舞台紀錄" },
+        { label: "Recognition", value: "Showtime", detail: "用 Drop Battle、傷心酒吧與 Showtime 封存被聽眾認可的作品" },
+        { label: "Rights", value: "Original Only", detail: "僅接受原創、已授權或具合法使用依據的音樂內容" },
         { label: "Contact", value: "Email", detail: mail, href: `mailto:${mail}` },
       ],
       sections: [
         {
           title: "平台定位",
           body:
-            "愛播歌不是音樂授權代理、唱片發行公司或法律審查機構，而是 AI 音樂創作者的交流與展示平台。使用者應自行確認上傳內容的來源、授權狀態與使用權限。",
-          items: ["AI 音樂 Drop 上傳與鬥歌", "觀眾投票與留言交流", "傷心酒吧 Bar Heartbreak 播放分享", "創作者作品曝光與活動延伸"],
+            "AIPOGER 不是普通播放器，也不是只做 battle 的網站。它是 AI 音樂創作者的認可系統：先讓作品接受聽眾與對手檢驗，再把勝出的紀錄變成播放、策展與商業化的起點。",
+          items: ["AI 音樂 Drop 上傳與鬥歌", "傷心酒吧 Bar Heartbreak 公播與聽眾反應", "Showtime 封存勝利與熱播紀錄", "勝出作品播放、策展、發行、授權與商業合作"],
         },
         {
           title: "著作權與上傳原則",
@@ -102,30 +102,31 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
     },
     en: {
       navTitle: "About AIPOGER",
-      title: "AIPOGER is a platform for original AI music exchange.",
+      title: "AIPOGER is where AI creators grow and winning tracks earn recognition.",
       lead:
-        "AIPOGER provides Drop Battle uploads, battles, Bar Heartbreak sharing, and audience voting for AI music creators. The platform encourages originality, respects licensing, and protects creators, listeners, and rights holders.",
+        "From Drop Battles to Bar Heartbreak and AIPOGER Showtime, AIPOGER helps AI music creators get heard, collect crowd signals, earn records, and move winning tracks toward airplay, curation, licensing, and commercial opportunities.",
       contactLabel: "Contact",
       cards: [
-        { label: "Platform", value: "AI Music", detail: "Drop Battle, Bar Heartbreak, creator exchange, audience voting" },
-        { label: "Policy", value: "Original Only", detail: "Only original, licensed, or lawfully usable music content is allowed" },
+        { label: "Mission", value: "Creator Growth", detail: "Build tracks, battle records, listener signals, and stage presence" },
+        { label: "Recognition", value: "Showtime", detail: "Drop Battles, Bar Heartbreak, and Showtime preserve the moments that hit" },
+        { label: "Rights", value: "Original Only", detail: "Only original, licensed, or lawfully usable music content is allowed" },
         { label: "Contact", value: "Email", detail: mail, href: `mailto:${mail}` },
       ],
       sections: [
         {
-          title: "Platform Position",
+          title: "What AIPOGER Is",
           body:
-            "AIPOGER is not a music licensing agency, record label, or legal review service. Users are responsible for confirming the source, license status, and usage rights of any uploaded content.",
-          items: ["AI music Drop Battle uploads and battles", "Audience voting and comments", "Bar Heartbreak sharing", "Creator exposure and activity extensions"],
+            "AIPOGER is not a generic player and not just a battle site. It is a recognition system for AI music: tracks face challengers and listeners first, then winning records can become the start of airplay, curation, licensing, and commercial paths.",
+          items: ["AI Music Drop uploads and battles", "Bar Heartbreak airplay and listener reactions", "Showtime records for wins and heat", "Airplay, curation, licensing, release, and brand collaboration paths"],
         },
         {
-          title: "Copyright And Upload Principles",
+          title: "Copyright and Upload Rules",
           body:
             "Music, lyrics, recordings, performances, and online uses may involve reproduction and public transmission rights. Users may not upload unauthorized commercial songs, covers, adaptations, samples, instrumentals, vocals, lyrics, or any content that may infringe third-party rights.",
           items: ["Uploaders must confirm their work is original, AI-generated, and lawfully usable", "No unauthorized vocals, melodies, lyrics, samples, or recordings", "Non-commercial use is not automatically exempt", "AIPOGER may request proof of authorization when needed"],
         },
         {
-          title: "Removal And Enforcement",
+          title: "Removal and Enforcement",
           body:
             "If AIPOGER receives a rights-holder notice, reasonably suspects infringement, or identifies a policy violation, the platform may restrict public access, remove content, suspend account functions, preserve records, or cooperate with lawful procedures.",
           items: ["Potentially infringing music may be removed", "Repeat violations may lead to service restrictions", "Rights holders should provide content URLs and proof of rights", "Email is the primary contact channel"],
@@ -157,7 +158,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
       navTitle: "廣告與合作",
       title: "AI 音樂品牌合作與廣告投放",
       lead:
-        "AIPOGER 的合作位置不是單純 banner，而是可以和 Drop Battle、傷心酒吧 Bar Heartbreak、教學內容、MV 企劃一起整合的音樂場景。",
+        "AIPOGER 的合作位置不是一般 banner，而是能和 Drop Battle、傷心酒吧 Bar Heartbreak、教學內容、MV 企劃一起整合的音樂場景。",
       contactLabel: "合作洽談",
       cards: [
         { label: "Placement", value: "舞台曝光", detail: "首頁、鬥歌場、傷心酒吧 Bar Heartbreak、活動頁" },
@@ -172,7 +173,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           items: ["AI 音樂與影像工具推廣", "活動或品牌指定 Drop Battle Challenge", "YouTube 頻道 @djapple2000 教學影片與社群曝光", "傷心酒吧 Bar Heartbreak 公播歌單或主題夜合作"],
         },
         {
-          title: "合作形式初稿",
+          title: "合作形式",
           body:
             "可從輕量曝光到完整企劃。初期建議先用月合作或單檔活動測試：包含網站曝光、社群內容、教學置入、主題 battle 與成效回報。",
         },
@@ -186,22 +187,22 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
       secondaryCta: "查看 Drop Battle 規則",
     },
     en: {
-      navTitle: "Ads & Partnership",
-      title: "AI Music Brand Partnerships And Advertising",
+      navTitle: "Partnerships",
+      title: "Partner with the AI music stage where creators grow.",
       lead:
-        "AIPOGER partnerships can live inside Drop Battles, Bar Heartbreak, creator education, and music-video campaigns instead of feeling like a flat banner.",
+        "AIPOGER partnerships should help AI creators make better work, get heard, and turn winning tracks into real cultural and commercial opportunities.",
       contactLabel: "Partnership",
       cards: [
-        { label: "Placement", value: "Stage Exposure", detail: "Home, battle arena, Bar Heartbreak, campaign pages" },
-        { label: "Content", value: "Education", detail: "AI tool tutorials, examples, and song concepts" },
-        { label: "Campaign", value: "Theme Battles", detail: "Sponsored prompts, style weeks, creator challenges" },
+        { label: "Placement", value: "Stage Exposure", detail: "Home, Battle Hall, Bar Heartbreak, Showtime, campaign pages" },
+        { label: "Content", value: "Creator Growth", detail: "Tutorials, tool demos, song concepts, and workflow education" },
+        { label: "Campaign", value: "Theme Battles", detail: "Sponsored prompts, style weeks, creator challenges, and airplay campaigns" },
       ],
       sections: [
         {
           title: "Best Fit",
           body:
             "AI music tools, AI video tools, music hardware, courses, events, venues, music brands, and products that want to reach creators.",
-          items: ["AI music and video tool promotion", "Sponsored Drop Battle Challenges", "YouTube @djapple2000 tutorial integration", "Bar Heartbreak playlists or theme nights"],
+          items: ["AI Music and video tool promotion", "Sponsored Drop Battle challenges", "YouTube @djapple2000 tutorial integration", "Bar Heartbreak airplay, theme nights, or creator missions"],
         },
         {
           title: "Formats",
@@ -211,7 +212,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
         {
           title: "Principle",
           body:
-            "The brand should support music creation. AIPOGER is built for contextual promotion inside real creator workflows and listening moments.",
+            "The brand should support music creation. AIPOGER works best when promotion lives inside real creator workflows, listener reactions, and tracks that are earning recognition.",
         },
       ],
       primaryCta: "Discuss Partnership",
@@ -221,13 +222,14 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
   "hook-guide": {
     zh: {
       navTitle: "Drop Battle 規則",
-      title: "什麼是最強抓波Drop Battle 以及鬥歌點數規則",
+      title: "Drop Battle 與 Q Crash 怎麼玩？",
       lead:
-        "在 AIPOGER，最強抓波Drop Battle 不只是副歌，也可以是前奏、drop、旋律句、節奏口號或一句讓人上癮的聲音設計。鬥歌比的是短時間內抓住聽眾的能力。",
+        "把一首歌最抓耳的 30-60 秒剪出來，用現場 Drop Battle 或非同步 Q Crash 讓聽眾比較、投票，看看哪一段最能讓人停下來聽。",
       cards: [
-        { label: "Drop", value: "15-45 秒", detail: "用最短時間說服耳朵" },
-        { label: "Vote", value: "一人一票", detail: "截止前可改投" },
-        { label: "APC", value: "公測免入場", detail: "先讓大家鬥起來" },
+        { label: "Drop", value: "30-60 秒", detail: "剪出最抓耳的爆點" },
+        { label: "Battle", value: "開戰 / 接戰", detail: "讓作品直接被比較" },
+        { label: "Vote", value: "聽眾投票", detail: "3 位有效觀眾才列正式戰績" },
+        { label: "Q Crash", value: "非同步投票", detail: "不用等大家同時上線" },
       ],
       sections: [
         {
@@ -236,22 +238,28 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
             "Drop 原本指音樂裡能勾住聽眾記憶的段落。流行歌裡常見於副歌，但在舞曲、嘻哈、電子與 AI 音樂裡，任何讓人想再聽一次的聲音都可以成為 Drop。",
         },
         {
-          title: "基本比賽規則初稿",
+          title: "基本比賽規則",
           body:
-            "創作者上傳歌曲後裁切 Drop，系統只配對相同歌曲種類的對手。公測期先取消 APC 入場門檻，讓創作者可以直接進入 Battle；觀眾每場只能投一次票。",
-          items: ["每場以 A / B 兩方對決", "公測期免 APC 參戰，正式經濟規則之後再開", "若跨階配對，仍以音樂類型與等級接近為優先", "觀眾一人一票，截止前可改投", "最後投票命中勝方獲得 100 APC 參與獎勵", "禁止上傳非本人授權或侵權歌曲"],
+            "創作者上傳歌曲後裁切 Drop，開出戰帖或接受挑戰。系統會優先讓同歌曲種類的作品對決，觀眾進場聽 A / B 兩方，再用投票留下聽眾反應。",
+          items: ["每場以 A / B 兩方對決", "Drop 最長 60 秒，可剪短", "優先配對相同歌曲種類", "一般 Drop Battle 依現行戰場流程投票", "至少 3 位非參賽觀眾完成投票才成立正式戰績", "禁止上傳非本人授權或侵權歌曲"],
         },
         {
-          title: "點數與等級制度初稿",
+          title: "Q Crash 非同步 Drop Battle",
           body:
-            "APC 是平台內的參與點數。公測期 APC 不再阻擋 Battle，只用來呈現參與、獎勵、應援與榮譽感，讓核心鬥歌流程先跑順。",
-          items: ["第一階熱血音樂工匠：Lv.1-Lv.3，每贏 10 場升一級", "第二階潮流音樂大師：Lv.4-Lv.7，每贏 20 場升一級，可取得推薦歌曲與 prompt 販售資格", "第三階殿堂級音樂師尊：Lv.8-Lv.10，每贏 50 場升一級，可取得個人頁面空間與 prompt 販售資格", "公測期不扣雙方參戰點數", "投票命中勝方獲得 100 APC 參與獎勵", "傷心酒吧 Bar Heartbreak 是累積曝光與互動點數入口"],
+            "Q Crash 適合大家無法同時上線時使用。兩首最長 60 秒的 Drop 到位後立即開放投票，不限曲風；大家收到連結後可在自己的時間重播、快轉、比較，截止後才一起公開結果。",
+          items: ["可放自己的兩個版本，也可邀請另一位創作者放入作品 B", "投票時間可選 30 分鐘、2 小時、6 小時或 24 小時，預設 2 小時", "登入且非參賽的觀眾才能投票；選 A／B 後必須按「確定送出」，送出後不能改票", "每位觀眾可分別替兩首作品點選押韻、爆點、旋律、情緒、結構，每項每首限一次", "完成投票後可選擇留下一則最多 120 字的評論；投票期間只有自己看得到，截止後與結果一起公開", "0-2 位有效觀眾為觀眾不足；至少 3 位才成立正式戰績與勝出作品五角分布"],
         },
         {
-          title: "階級名稱",
+          title: "創作者小技巧",
           body:
-            "等級名稱會出現在個人狀態與規則頁，讓勝場不只是數字，而是創作者在 AIPOGER 的身份標記。",
-          items: ["Lv.1 訊號啟動者 Signal Starter", "Lv.2 旋律達人 Melody Crafter", "Lv.3 詞曲鬼匠 Lyric Ghost", "Lv.4 流行領航員 Pop Navigator", "Lv.5 優美旋律之王 Melody Monarch", "Lv.6 超狂動感領航員 Rhythm Pilot", "Lv.7 魔幻聲空雕塑家 Sonic Sculptor", "Lv.8 百大 DJ 泰坦 Top 100 Titan", "Lv.9 靈性薩滿法老王 Spirit Pharaoh", "Lv.10 交響樂之教皇 Symphony Pope"],
+            "如果你有兩首同風格作品，但自己選不出哪一首更抓耳，可以開一場 Drop Battle，讓聽眾用投票幫你判斷哪一段更有記憶點。",
+          items: ["兩首歌都喜歡時，可以自己挑戰自己", "適合比較兩個版本、兩種編曲或兩段副歌", "只能由創作者主動指定；系統不會自動把你配給自己", "結果可作為選歌、修歌與發布前的聽眾測試"],
+        },
+        {
+          title: "戰果與紀錄",
+          body:
+            "Drop Battle 的重點不是空喊誰比較強，而是讓作品留下可信的聽眾反應。觀眾不足時不包裝成正式勝負；達到門檻後，才把結果寫進作品戰績。",
+          items: ["0-2 位非參賽觀眾：觀眾不足，不產生正式勝負、成果卡或 Showtime 戰績", "3 位以上不同非參賽觀眾完成投票，才成立正式紀錄", "參賽者自己的票不算有效觀眾", "成立的正式戰績會進入對戰記錄"],
         },
         {
           title: "評分精神",
@@ -264,13 +272,14 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
     },
     en: {
       navTitle: "Drop Battle Rules",
-      title: "What Drop Battle Is And How Battle Points Work",
+      title: "How Do Drop Battle and Q Crash Work?",
       lead:
-        "On AIPOGER, a Drop can be a chorus, intro, drop, melodic phrase, chant, rhythm idea, or any addictive sound design that grabs the listener fast.",
+        "Cut the most addictive 30-60 seconds from a song, then use live Drop Battle or asynchronous Q Crash to let listeners compare which moment makes them stop and listen.",
       cards: [
-        { label: "Drop", value: "15-45s", detail: "Convince the ear fast" },
-        { label: "Vote", value: "One Vote", detail: "Switch before close" },
-        { label: "APC", value: "Beta Free Entry", detail: "Let battles move first" },
+        { label: "Drop", value: "30-60s", detail: "Cut the strongest moment" },
+        { label: "Battle", value: "Open / Accept", detail: "Put two tracks side by side" },
+        { label: "Vote", value: "Listener Vote", detail: "3 valid voters make it official" },
+        { label: "Q Crash", value: "Async Vote", detail: "No synchronized meetup" },
       ],
       sections: [
         {
@@ -279,27 +288,33 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
             "A Drop is the memorable musical idea that catches the listener. In pop it often appears in the chorus, but in dance, hip-hop, electronic, and AI music, any replayable sound can be the Drop.",
         },
         {
-          title: "Battle Rules Draft",
+          title: "Battle Flow",
           body:
-            "Creators upload a track, cut a Drop, and get matched only with the same song category. During public beta, APC entry stakes are disabled so creators can enter Battle directly.",
-          items: ["A / B battle format", "No APC entry stake during public beta", "Cross-stage matches still prioritize close level and music category", "One vote per listener; votes can be switched before close", "Correct final voters receive a 100 APC participation reward", "Only original or properly licensed AI music is allowed"],
+            "Creators upload a track, cut a Drop, then open a challenge card or accept another creator's card. Listeners enter the room, compare A / B, and vote for the moment that lands harder.",
+          items: ["A / B battle format", "Drops can be up to 60 seconds", "Same music category is prioritized", "Standard Drop Battles follow the current arena voting flow", "An official record requires at least 3 non-participant voters", "Only original or properly licensed AI music is allowed"],
         },
         {
-          title: "Points And Levels Draft",
+          title: "Q Crash: Asynchronous Drop Battle",
           body:
-            "APC is the platform participation point. During public beta it does not block Battle entry; it is used for rewards, support, progression, and status.",
-          items: ["Stage 1 Hot-Blooded Music Artisan: Lv.1-Lv.3, level up every 10 wins", "Stage 2 Trend Music Master: Lv.4-Lv.7, level up every 20 wins, recommended songs and prompt selling access", "Stage 3 Hall-Level Music Master: Lv.8-Lv.10, level up every 50 wins, creator page space and prompt selling access", "No fighter entry stake is charged during public beta", "Correct final voters receive 100 APC", "Bar Heartbreak is the exposure and engagement path"],
+            "Q Crash is for listeners who cannot arrive at the same time. Voting opens as soon as two Drops of up to 60 seconds are locked, with no same-genre requirement. Everyone can replay, seek, and compare in their own time; the result stays sealed until the deadline.",
+          items: ["Compare two versions from the same creator or invite another creator to fill Work B", "Choose 30 minutes, 2 hours, 6 hours, or 24 hours; 2 hours is the default", "Only signed-in non-participants may vote; A/B is not submitted until Confirm, then it cannot be changed", "Each listener may tap Rhyme, Impact, Melody, Emotion, and Structure once per work", "After voting, a listener may leave one optional comment up to 120 characters; it stays private until the result is revealed", "0-2 valid voters is insufficient; 3+ creates the official result and winning-work radar"],
         },
         {
-          title: "Rank Names",
+          title: "Creator Tip",
           body:
-            "Rank titles turn wins into creator identity inside AIPOGER.",
-          items: ["Lv.1 Signal Starter", "Lv.2 Melody Crafter", "Lv.3 Lyric Ghost", "Lv.4 Pop Navigator", "Lv.5 Melody Monarch", "Lv.6 Rhythm Pilot", "Lv.7 Sonic Sculptor", "Lv.8 Top 100 Titan", "Lv.9 Spirit Pharaoh", "Lv.10 Symphony Pope"],
+            "If you have two tracks in the same style and cannot choose which one hits harder, you can deliberately battle yourself and let listeners help you decide.",
+          items: ["Use it to compare two tracks you both like", "Test alternate versions, arrangements, or chorus ideas", "Self-battles must be deliberately chosen by the creator", "The system does not auto-match you against yourself"],
+        },
+        {
+          title: "Results and Records",
+          body:
+            "Drop Battle is not just about claiming a track is stronger. It creates a public listener signal that helps creators decide what to refine, share, and bring back to the stage.",
+          items: ["0-2 non-participant voters is insufficient and creates no official result, result card, or Showtime record", "3+ distinct non-participant voters establishes the official record", "Participant votes do not count toward the audience threshold", "Established official results appear in Battle Records"],
         },
         {
           title: "Judging Spirit",
           body:
-            "The platform rewards memorable Drops, clear emotion, personal taste, and creative use of AI tools, not just loudness or production polish.",
+            "The platform rewards memorable Drops, clear emotion, personal taste, and creative use of AI tools. Loudness alone does not earn recognition.",
         },
       ],
       primaryCta: "Start Battle",
@@ -314,9 +329,9 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
         "這頁是給 AIPOGER 創作者的練功清單：先看愛波哥教學建立觀念，再用官方文件補工具細節，最後用提示詞、歌詞、音訊參考與版權觀念把作品做得更穩。",
       youtubeLabel: "愛波哥教學播放列表",
       cards: [
-        { label: "Start", value: "愛波哥cheers", detail: "ai 工具tool 學習心得分享播放列表", href: aipogerTutorialPlaylist },
+        { label: "Start", value: "愛波哥cheers", detail: "ai 工具tool 學習心得分享播放列表", href: AIPOGER_TUTORIAL_PLAYLIST_URL },
         { label: "Core", value: "Suno / Udio", detail: "先練兩大主流文字生歌工具" },
-        { label: "Skill", value: "Prompt + Drop", detail: "把曲風、情緒、段落、聲音設計講清楚" },
+        { label: "Skill", value: "Prompt + Drop", detail: "把曲風、情緒、段落、聲音設計講清楚", href: promptDropPptUrl },
       ],
       sections: [
         {
@@ -326,7 +341,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           links: [
             {
               title: "愛波哥cheers：ai 工具tool 學習心得分享",
-              href: aipogerTutorialPlaylist,
+              href: AIPOGER_TUTORIAL_PLAYLIST_URL,
               note: "AIPOGER 官方推薦起手式，適合繁體中文創作者先打底。",
             },
           ],
@@ -441,30 +456,30 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
     },
     en: {
       navTitle: "AI Music Bible",
-      title: "AI Music Training Bible And Learning Resources",
+      title: "AI Music Training Bible and Learning Resources",
       lead:
-        "AIPOGER's learning map for creators: start with Aipoger's Chinese tutorials, then use official docs for tool details, and practice prompts, lyrics, audio references, Drops, and copyright discipline.",
-      youtubeLabel: "Aipoger Tutorial Playlist",
+        "AIPOGER's learning map for creators: start with AIPOGER's Chinese tutorials, then use official docs for tool details, and practice prompts, lyrics, audio references, Drops, and copyright discipline.",
+      youtubeLabel: "AIPOGER Tutorial Playlist",
       cards: [
-        { label: "Start", value: "愛波哥cheers", detail: "AI tools and music learning playlist", href: aipogerTutorialPlaylist },
+        { label: "Start", value: "愛波哥cheers", detail: "AI tools and music learning playlist", href: AIPOGER_TUTORIAL_PLAYLIST_URL },
         { label: "Core", value: "Suno / Udio", detail: "Practice the two major text-to-song workflows" },
-        { label: "Skill", value: "Prompt + Drop", detail: "Define style, emotion, sections, and sound design clearly" },
+        { label: "Skill", value: "Prompt + Drop", detail: "Define style, emotion, sections, and sound design clearly", href: promptDropPptUrl },
       ],
       sections: [
         {
-          title: "Layer 1: Start With Aipoger's Tutorials",
+          title: "Layer 1: Start With AIPOGER's Tutorials",
           body:
             "Chinese-speaking creators should start with real workflow videos: prompting, listening, revising lyrics, and building Drops that feel intentional instead of random.",
           links: [
             {
               title: "愛波哥cheers: AI Tools & Music Learning Playlist",
-              href: aipogerTutorialPlaylist,
+              href: AIPOGER_TUTORIAL_PLAYLIST_URL,
               note: "The recommended AIPOGER starting point for Traditional Chinese creators.",
             },
           ],
         },
         {
-          title: "Layer 2: Suno Basics To Advanced",
+          title: "Layer 2: Suno Basics to Advanced",
           body:
             "Suno is strong for fast full-song drafts. Start with Simple Mode, move into Custom lyrics, then practice creating from your own voice or audio ideas.",
           links: [
@@ -478,7 +493,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           body:
             "Start here: one official Suno beginner guide, one Suno audio workflow guide, one official Udio prompting guide, one Stable Audio settings guide, and one community resource hub.",
           links: [
-            { title: "Suno Official: Make a song in Simple Mode", href: "https://help.suno.com/en/articles/2462273", note: "Official Suno Help Center guide for basic text-to-song creation." },
+            { title: "Suno Official: Make a Song in Simple Mode", href: "https://help.suno.com/en/articles/2462273", note: "Official Suno Help Center guide for basic text-to-song creation." },
             { title: "Suno Official: Create Music with Audio", href: "https://help.suno.com/en/articles/3197313", note: "Use voice, melody ideas, or audio clips as starting material." },
             { title: "Udio Official: Prompt Like a Master", href: "https://help.udio.com/en/articles/10716541-prompt-like-a-master", note: "Prompt structure for theme, genre, mood, instruments, lyrics, and vocals." },
             { title: "Stable Audio Official: User Guide", href: "https://stableaudio.com/user-guide/interface", note: "Prompt strength, seed, input audio, and generation controls." },
@@ -486,7 +501,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           ],
         },
         {
-          title: "Layer 3: Udio And Audio Workflows",
+          title: "Layer 3: Udio and Audio Workflows",
           body:
             "Use Udio to practice prompts, lyrics, extensions, and audio references. For battles, test emotional and stylistic variants, then choose the Drop with the strongest memory.",
           links: [
@@ -496,7 +511,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           ],
         },
         {
-          title: "Layer 4: Prompting, Settings, And Reference Libraries",
+          title: "Layer 4: Prompting, Settings, and Reference Libraries",
           body:
             "Once you can generate songs, progress comes from sharper prompts and better listening judgment: concrete style, emotion, instrumentation, rhythm, and control settings.",
           links: [
@@ -512,7 +527,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           items: ["Generate 3 versions from the same prompt and compare", "Reverse-engineer good results into prompt templates", "Format lyrics with [Verse] / [Chorus] / [Bridge]", "Only upload audio and lyrics you have the rights to use"],
         },
       ],
-      primaryCta: "Watch Aipoger Tutorials",
+      primaryCta: "Watch AIPOGER Tutorials",
       secondaryCta: "Start Battle",
     },
   },
@@ -521,105 +536,9 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
 const pageLinks = [
   { href: "/about", key: "about" as const },
   { href: "/partners", key: "partners" as const },
-  { href: "/hook-guide", key: "hook-guide" as const },
+  { href: "/drop-guide", key: "hook-guide" as const },
   { href: "/ai-music-bible", key: "ai-music-bible" as const },
 ];
-
-const rankSkillStages = [
-  {
-    stageZh: "第一階 熱血音樂工匠",
-    stageEn: "Stage 1 Hot-Blooded Music Artisan",
-    ruleZh: "每贏 10 場升級",
-    ruleEn: "Level up every 10 wins",
-    stake: "公測免 APC",
-    accent: "orange",
-    nodes: [
-      { level: 1, zh: "訊號啟動者", en: "Signal Starter" },
-      { level: 2, zh: "旋律達人", en: "Melody Crafter" },
-      { level: 3, zh: "詞曲鬼匠", en: "Lyric Ghost" },
-    ],
-  },
-  {
-    stageZh: "第二階 潮流音樂大師",
-    stageEn: "Stage 2 Trend Music Master",
-    ruleZh: "每贏 20 場升級 解鎖推薦與 prompt 販售",
-    ruleEn: "Level up every 20 wins Unlock featured songs and prompt selling",
-    stake: "公測免 APC",
-    accent: "cyan",
-    nodes: [
-      { level: 4, zh: "流行領航員", en: "Pop Navigator" },
-      { level: 5, zh: "優美旋律之王", en: "Melody Monarch" },
-      { level: 6, zh: "超狂動感領航員", en: "Rhythm Pilot" },
-      { level: 7, zh: "魔幻聲空雕塑家", en: "Sonic Sculptor" },
-    ],
-  },
-  {
-    stageZh: "第三階 殿堂級音樂師尊",
-    stageEn: "Stage 3 Hall-Level Music Master",
-    ruleZh: "每贏 50 場升級 解鎖個人頁面空間",
-    ruleEn: "Level up every 50 wins Unlock creator page space",
-    stake: "公測免 APC",
-    accent: "white",
-    nodes: [
-      { level: 8, zh: "百大 DJ 泰坦", en: "Top 100 Titan" },
-      { level: 9, zh: "靈性薩滿法老王", en: "Spirit Pharaoh" },
-      { level: 10, zh: "交響樂之教皇", en: "Symphony Pope" },
-    ],
-  },
-] as const;
-
-function RankSkillTree({ isZh }: { isZh: boolean }) {
-  return (
-    <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4">
-      <div className="grid gap-4 lg:grid-cols-3">
-        {rankSkillStages.map((stage, stageIndex) => {
-          const color =
-            stage.accent === "orange"
-              ? "border-orange-300/35 bg-orange-500/10 text-orange-100"
-              : stage.accent === "cyan"
-                ? "border-cyan-200/35 bg-cyan-300/10 text-cyan-100"
-                : "border-white/25 bg-white/[0.07] text-white";
-          const line =
-            stage.accent === "orange"
-              ? "from-orange-500/80 to-orange-200/30"
-              : stage.accent === "cyan"
-                ? "from-cyan-400/80 to-cyan-100/30"
-                : "from-white/80 to-white/25";
-
-          return (
-            <div key={stage.stageZh} className="relative rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-              {stageIndex > 0 && (
-                <div className="pointer-events-none absolute -left-4 top-1/2 hidden h-px w-4 bg-gradient-to-r from-white/8 to-white/35 lg:block" />
-              )}
-              <div className={`rounded-xl border px-4 py-3 ${color}`}>
-                <p className={`${fontRighteous.className} text-[11px] uppercase tracking-[0.28em] opacity-75`}>
-                  {stage.stake}
-                </p>
-                <h3 className="mt-2 text-lg font-black">{isZh ? stage.stageZh : stage.stageEn}</h3>
-                <p className="mt-1 text-xs leading-5 opacity-70">{isZh ? stage.ruleZh : stage.ruleEn}</p>
-              </div>
-              <div className="relative mt-4 grid gap-3 pl-4">
-                <div className={`absolute bottom-6 left-[1.38rem] top-4 w-px bg-gradient-to-b ${line}`} />
-                {stage.nodes.map((node) => (
-                  <div key={node.level} className="relative flex items-center gap-3">
-                    <div className={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm font-black ${color}`}>
-                      {node.level}
-                    </div>
-                    <div className="min-w-0 rounded-xl border border-white/10 bg-black/38 px-3 py-2">
-                      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-orange-200/80">Lv.{node.level}</p>
-                      <p className="mt-1 text-sm font-black leading-5 text-white">{isZh ? node.zh : node.en}</p>
-                      <p className="mt-0.5 text-xs leading-5 text-zinc-500">{isZh ? node.en : node.zh}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 function ArrowIcon() {
   return (
@@ -632,15 +551,16 @@ function ArrowIcon() {
 export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
   const { lang } = useI18n();
   const isZh = lang === "zh";
-  const data = content[kind][lang];
+  const contentLang = isZh ? "zh" : "en";
+  const data = content[kind][contentLang];
   const isPolicyPage = kind === "about";
 
   const primaryHref =
-    kind === "partners" || kind === "about" ? `mailto:${mail}` : kind === "ai-music-bible" ? aipogerTutorialPlaylist : "/battle/setup";
-  const secondaryHref = kind === "partners" || kind === "about" ? "/hook-guide" : kind === "ai-music-bible" ? "/battle/setup" : "/listen-bar";
+    kind === "partners" || kind === "about" ? `mailto:${mail}` : kind === "ai-music-bible" ? AIPOGER_TUTORIAL_PLAYLIST_URL : "/battle/setup";
+  const secondaryHref = kind === "partners" || kind === "about" ? "/drop-guide" : kind === "ai-music-bible" ? "/battle/setup" : "/listen-bar";
 
   return (
-    <main className={`relative min-h-screen overflow-hidden px-5 py-6 text-zinc-100 md:px-10 ${isPolicyPage ? "bg-[#070707]" : "bg-[#050505]"}`}>
+    <main className={`aipo-stage-bg relative min-h-screen overflow-hidden px-5 py-6 text-zinc-100 md:px-10 ${isPolicyPage ? "bg-[#070707]" : "bg-[#050505]"}`}>
       <div
         className={`pointer-events-none absolute inset-0 ${
           isPolicyPage
@@ -657,13 +577,10 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
       />
 
       <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col gap-8">
-        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5">
-          <Link href="/" className="inline-flex items-center gap-3 rounded-full border border-white/12 bg-white/[0.04] px-3 py-2 text-sm font-bold text-zinc-200 transition hover:border-orange-300/60 hover:text-white">
-            <Image src={AIPOGER_BRAND_LOGO} alt="AIPOGER" width={34} height={34} className="h-8 w-8 rounded-full object-cover" />
-            <span>{isZh ? "返回首頁" : "Back Home"}</span>
-          </Link>
+        <header className="aipo-control-panel aipo-panel-line flex flex-wrap items-center justify-between gap-4 rounded-[1.35rem] px-4 py-3">
+          <div className="h-11 w-16" aria-hidden="true" />
 
-          <nav className="flex flex-wrap justify-end gap-2">
+          <nav className="flex flex-wrap justify-end gap-2 sm:pr-20">
             {pageLinks.map((item) => {
               const active = item.key === kind;
               return (
@@ -672,11 +589,11 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
                   href={item.href}
                   className={`rounded-full border px-4 py-2 text-xs font-bold tracking-[0.14em] transition ${
                     active
-                      ? "border-orange-300 bg-orange-500 text-black"
-                      : "border-white/12 bg-white/[0.04] text-zinc-300 hover:border-cyan-200/60 hover:text-white"
+                      ? "aipo-primary-button text-black"
+                      : "aipo-ghost-button text-zinc-300 hover:text-white"
                   }`}
                 >
-                  {content[item.key][lang].navTitle}
+                  {content[item.key][contentLang].navTitle}
                 </Link>
               );
             })}
@@ -684,13 +601,13 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
         </header>
 
         <section className={`grid gap-8 py-6 lg:grid-cols-[1.02fr_0.98fr] lg:items-center ${isPolicyPage ? "min-h-[26rem]" : "min-h-[34rem]"}`}>
-          <div>
+          <div className="min-w-0">
             <p className={`${fontRighteous.className} text-sm uppercase tracking-[0.42em] text-orange-300/80`}>AIPOGER</p>
             <h1
-              className={`mt-5 max-w-4xl font-black text-white ${
+              className={`mt-5 max-w-4xl break-words font-black text-white [overflow-wrap:anywhere] ${
                 isPolicyPage
-                  ? "text-[clamp(2.15rem,4.4vw,4.2rem)] leading-[1.04]"
-                  : "text-[clamp(2.45rem,5.2vw,5rem)] leading-[1.12] tracking-normal"
+                  ? "text-[clamp(2.05rem,4.2vw,4.05rem)] leading-[1.06]"
+                  : "text-[clamp(2.18rem,5vw,4.65rem)] leading-[1.08] tracking-normal"
               }`}
             >
               {data.title}
@@ -724,11 +641,11 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
               ))}
             </div>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href={primaryHref} className="inline-flex h-12 items-center gap-2 rounded-full bg-orange-500 px-6 text-sm font-black tracking-[0.12em] text-black transition hover:bg-orange-300">
+              <Link href={primaryHref} className="aipo-primary-button inline-flex h-12 items-center gap-2 rounded-full px-6 text-sm font-black tracking-[0.12em] transition">
                 {data.primaryCta}
                 <ArrowIcon />
               </Link>
-              <Link href={secondaryHref} className="inline-flex h-12 items-center gap-2 rounded-full border border-white/15 bg-white/[0.05] px-6 text-sm font-bold text-zinc-100 transition hover:border-cyan-200/60 hover:bg-white/[0.08]">
+              <Link href={secondaryHref} className="aipo-ghost-button inline-flex h-12 items-center gap-2 rounded-full px-6 text-sm font-bold text-zinc-100 transition">
                 {data.secondaryCta}
               </Link>
             </div>
@@ -738,9 +655,9 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
             {data.cards.map((card) => {
               const Wrapper = card.href ? "a" : "div";
               return (
-              <Wrapper key={card.label} href={card.href} target={card.href ? "_blank" : undefined} rel={card.href ? "noreferrer" : undefined} className={`group rounded-2xl border border-white/10 bg-black/48 p-5 backdrop-blur transition hover:border-orange-300/45 ${isPolicyPage ? "shadow-none" : "shadow-[0_20px_80px_rgba(0,0,0,0.38)]"}`}>
-                <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.34em] text-cyan-200/70`}>{card.label}</p>
-                <p className={`mt-3 font-black text-white ${isPolicyPage ? "text-2xl md:text-3xl" : "text-3xl md:text-4xl"}`}>{card.value}</p>
+              <Wrapper key={card.label} href={card.href} target={card.href ? "_blank" : undefined} rel={card.href ? "noreferrer" : undefined} className={`aipo-control-panel group min-w-0 rounded-[1.15rem] p-5 transition hover:border-orange-300/45 ${isPolicyPage ? "shadow-none" : ""}`}>
+                <p className={`${fontRighteous.className} break-words text-xs uppercase tracking-[0.24em] text-cyan-200/70 [overflow-wrap:anywhere] sm:tracking-[0.34em]`}>{card.label}</p>
+                <p className={`mt-3 break-words font-black leading-tight text-white [overflow-wrap:anywhere] ${isPolicyPage ? "text-2xl md:text-3xl" : "text-[1.7rem] md:text-4xl"}`}>{card.value}</p>
                 <p className="mt-2 text-sm leading-6 text-zinc-400">{card.detail}</p>
               </Wrapper>
             )})}
@@ -751,20 +668,17 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
           {data.sections.map((section, index) => (
             <article
               key={section.title}
-              className={`rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur md:p-7 ${
+              className={`aipo-control-panel rounded-[1.15rem] p-5 md:p-7 ${
                 index === 0 ? "lg:col-span-2" : ""
               }`}
             >
               <div className="mb-4 h-px w-full bg-gradient-to-r from-orange-500/70 via-white/12 to-transparent" />
-              <h2 className="text-2xl font-black text-white md:text-3xl">{section.title}</h2>
+              <h2 className="break-words text-2xl font-black leading-tight text-white [overflow-wrap:anywhere] md:text-3xl">{section.title}</h2>
               <p className="mt-4 text-base leading-8 text-zinc-300">{section.body}</p>
-              {(section.title === "階級名稱" || section.title === "Rank Names") && (
-                <RankSkillTree isZh={isZh} />
-              )}
-              {section.items && section.title !== "階級名稱" && section.title !== "Rank Names" && (
+              {section.items && (
                 <ul className="mt-5 grid gap-3 sm:grid-cols-2">
                   {section.items.map((item) => (
-                    <li key={item} className="rounded-xl border border-white/10 bg-black/32 px-4 py-3 text-sm leading-6 text-zinc-200">
+                    <li key={item} className="rounded-xl border border-white/10 bg-black/42 px-4 py-3 text-sm leading-6 text-zinc-200">
                       {item}
                     </li>
                   ))}
@@ -778,7 +692,7 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
                       href={item.href}
                       target="_blank"
                       rel="noreferrer"
-                      className="group rounded-xl border border-white/10 bg-black/32 px-4 py-3 transition hover:border-orange-300/55 hover:bg-white/[0.055]"
+                      className="group rounded-xl border border-white/10 bg-black/42 px-4 py-3 transition hover:border-orange-300/55 hover:bg-white/[0.055]"
                     >
                       <p className="text-sm font-black text-white group-hover:text-orange-200">{item.title}</p>
                       <p className="mt-2 text-sm leading-6 text-zinc-400">{item.note}</p>

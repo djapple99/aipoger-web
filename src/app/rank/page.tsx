@@ -2,38 +2,61 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { ExternalLink, FileText, MessageSquare, Play, Trophy } from "lucide-react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import ShareButton from "@/components/share-button";
+import ReportButton from "@/components/report-button";
+import ShowtimeChoiceShelf, {
+  type ShowtimeChoiceHeartState,
+  type ShowtimeChoiceItemHeartState,
+  type ShowtimeChoiceShelfEntry,
+} from "@/components/showtime-choice-shelf";
+import ShowtimeQueuePlayer, { type ShowtimePlayerTrack, type ShowtimeQueuePlayerHandle } from "@/components/showtime-queue-player";
 import {
   AIPOGER_BRAND_LOGO,
   AIPOGER_CONTACT_EMAIL,
-  AIPOGER_SOCIAL_LINKS,
 } from "@/lib/brand";
 import {
   looksLikeOpaqueArchiveValue,
+  sanitizeSongBattleStatsSnapshot,
   stripCannedBattleReview,
   type ArchivedBattleResult,
+  type SongBattleStatsSnapshot,
 } from "@/lib/battle-result-archive";
 import {
   AIPOGER_PERSONAL_RANK,
   isAipogerIdentity,
   rankLabelForLevel,
+  rankForLevel,
 } from "@/lib/battle-pool-rules";
 import { fontGlowSans, fontRighteous } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n";
-import { listenBarRowToTrack, type ListenBarTrackRow } from "@/lib/listen-bar";
+import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
+import {
+  listenBarRowToTrack,
+  type ListenBarTrackRow,
+} from "@/lib/listen-bar";
+import { canDisplayShowtimeSupportUrl, normalizeAiMusicShowtimeCertificationSource } from "@/lib/ai-music-showtime";
+import { choiceDisplayTitle, choiceItemRecordKey, choicePublicPath, type AipogerChoiceCollection, type AipogerChoiceItem } from "@/lib/aipoger-choice";
+import {
+  creatorChoicePublicPath,
+  type AipogerPublicCreatorChoiceCollection,
+} from "@/lib/creator-choice";
+import { DROP_BATTLE_OFFICIAL_AUDIENCE_MIN } from "@/lib/drop-battle-rematch";
+import { battleResultShortPath, isUuid } from "@/lib/share-short-links";
 import { supabase } from "@/lib/supabase";
 
-type BoardKey = "drop" | "daily" | "bar";
+type BattleWinnerSide = "fighter_a" | "fighter_b";
 
 type RankRow = {
   id: string;
-  kind: "battle" | "daily" | "bar";
+  kind: "battle" | "bar";
+  certification: "battle" | "defense" | "airplay";
   name: string;
   rank: string;
-  title: string;
   hook: string;
   note: string;
+  genre: string;
   accent: "orange" | "cyan" | "gold";
   avatarUrl: string;
   coverUrl: string;
@@ -49,73 +72,104 @@ type RankRow = {
   audienceReview?: string;
   resultHref?: string;
   audioUrl?: string;
+  fullSongUrl?: string;
+  fullSongLabel?: string;
+  fullSongDurationSeconds?: number;
+  youtubeUrl?: string;
+  supportUrl?: string;
+  supportLabel?: string;
+  lyrics?: string;
+  songStats?: SongBattleStatsSnapshot | null;
   positiveReactions?: number;
 };
 
-type BoardMeta = {
-  zh: string;
-  en: string;
+type RankAiMusicTrackRow = ListenBarTrackRow & {
+  ai_music_showtime_certified?: boolean | null;
+  ai_music_official_defense_successes?: number | null;
+  ai_music_showtime_defense_target?: number | null;
+  ai_music_showtime_certification_source?: string | null;
+  support_url?: string | null;
+  support_url_label?: string | null;
+  support_url_status?: string | null;
 };
 
-type DailyBattleEntryRow = {
+type LyricsModalState = {
+  title: string;
+  artist: string;
+  lyrics: string;
+};
+
+type HonorComment = {
+  id: string;
+  recordKey: string;
+  targetKind: "battle" | "bar";
+  targetId: string;
+  name: string;
+  text: string;
+  createdAt: string;
+};
+
+type HonorInteractionState = {
+  favoriteCount: number;
+  myFavorited: boolean;
+  comments: HonorComment[];
+};
+
+type HonorInteractionPayload = {
+  recordKey: string;
+  favoriteCount: number;
+  myFavorited: boolean;
+  comments: HonorComment[];
+};
+
+type ChoiceInteractionPayload = {
+  recordKey: string;
+  heartCount: number;
+  myHeart: boolean;
+};
+
+type RankBattleMediaRow = {
   id?: string | null;
-  title?: string | null;
-  genre?: string | null;
-  ai_tool?: string | null;
-  cover_url?: string | null;
+  winner?: string | null;
+  fighter_a_user_id?: string | null;
+  fighter_b_user_id?: string | null;
+  fighter_a_name?: string | null;
+  fighter_b_name?: string | null;
+  song_a_name?: string | null;
+  song_b_name?: string | null;
+  ai_tool_a?: string | null;
+  ai_tool_b?: string | null;
+  audio_a_path?: string | null;
+  audio_b_path?: string | null;
+  lyrics_a?: string | null;
+  lyrics_b?: string | null;
+  song_a_cover?: string | null;
+  song_b_cover?: string | null;
+  fighter_a_avatar?: string | null;
+  fighter_b_avatar?: string | null;
+};
+
+type DropFullSongPayload = {
+  items?: Array<{
+    battleId?: string;
+    audioUrl?: string;
+    youtubeUrl?: string | null;
+    label?: string;
+    durationSeconds?: number;
+  }>;
+};
+
+type FighterProfileMediaRow = {
+  id?: string | null;
+  song_cover_url?: string | null;
   avatar_url?: string | null;
-  audio_path?: string | null;
 };
 
-type DailyBattleBoardRow = {
-  id?: string | null;
-  entry_a_id?: string | null;
-  entry_b_id?: string | null;
-  winner_entry_id?: string | null;
-  ends_at?: string | null;
-  updated_at?: string | null;
-  entry_a?: DailyBattleEntryRow | DailyBattleEntryRow[] | null;
-  entry_b?: DailyBattleEntryRow | DailyBattleEntryRow[] | null;
-};
-
-const BOARD_META: Record<BoardKey, BoardMeta> = {
-  drop: { zh: "熱血 Drop 抓波勝利榜", en: "Hot Drop Victory Board" },
-  daily: { zh: "24H Full Song 勝利榜", en: "24H Full Song Victory Board" },
-  bar: { zh: "傷心酒吧熱播榜", en: "Bar Heartbreak Hot Board" },
-};
-
-const BOARD_KEYS: BoardKey[] = ["drop", "daily", "bar"];
 const MOCK_PATTERN = /(qa-|mock|demo|test|ghost|sample)/i;
-
-const stageRows = [
-  {
-    stageZh: "第一階",
-    stageEn: "Stage 1",
-    titleZh: "熱血音樂工匠",
-    titleEn: "Hot-Blooded Music Artisan",
-    levels: "Lv.1 - Lv.3",
-    baseZh: "公測免 APC 入場",
-    baseEn: "Public beta: no APC entry stake",
-  },
-  {
-    stageZh: "第二階",
-    stageEn: "Stage 2",
-    titleZh: "潮流音樂大師",
-    titleEn: "Trend Music Master",
-    levels: "Lv.4 - Lv.7",
-    baseZh: "公測免 APC 入場",
-    baseEn: "Public beta: no APC entry stake",
-  },
-  {
-    stageZh: "第三階",
-    stageEn: "Stage 3",
-    titleZh: "殿堂級音樂師尊",
-    titleEn: "Hall-Level Music Master",
-    levels: "Lv.8 - Lv.10",
-    baseZh: "公測免 APC 入場",
-    baseEn: "Public beta: no APC entry stake",
-  },
-];
+const ARCHIVE_SELECT_BASE =
+  "battle_id,battle_code,winner,winner_name,winner_song_name,winner_ai_tool,opponent_name,opponent_song_name,final_vote_left,final_vote_right,total_votes,audience_review,result_payload,archived_at,showtime_public_removed_at,showtime_public_removal_note";
+const HONOR_ACTION_CLASS =
+  "!border-yellow-100/25 !bg-white/[0.035] !text-zinc-200 hover:!border-yellow-100/45 hover:!bg-white/[0.055] hover:!text-white active:!bg-yellow-300 active:!text-black";
 
 function safeRankForFighter(name: string, rank?: string | null) {
   const cleanRank = rank?.trim() ?? "";
@@ -129,6 +183,16 @@ function mediaSrc(value: string) {
   return value?.trim() || AIPOGER_BRAND_LOGO;
 }
 
+function isBrandLogoFallback(value: string) {
+  return mediaSrc(value) === AIPOGER_BRAND_LOGO;
+}
+
+function honorCoverImageClass(value: string, hoverScale = "group-hover:scale-[1.025]") {
+  return isBrandLogoFallback(value)
+    ? "h-full w-full bg-black object-contain p-10 transition duration-300 sm:p-12"
+    : `h-full w-full object-cover transition duration-300 ${hoverScale}`;
+}
+
 function displayText(value: string, fallback: string) {
   return value?.trim() || fallback;
 }
@@ -137,9 +201,69 @@ function displaySongTitle(value: string, fallback: string) {
   return looksLikeOpaqueArchiveValue(value) ? fallback : displayText(value, fallback);
 }
 
-function firstRelation<T>(value: T | T[] | null | undefined): T | null {
-  if (Array.isArray(value)) return value[0] ?? null;
-  return value ?? null;
+function cleanLyrics(value: string | null | undefined) {
+  return String(value || "").trim();
+}
+
+function firstText(...values: Array<string | null | undefined>) {
+  return values.map((value) => value?.trim()).find((value): value is string => Boolean(value)) ?? "";
+}
+
+function cleanBarTrackId(value: string) {
+  return value.replace(/^bar-/, "");
+}
+
+function honorRecordKey(row: RankRow) {
+  const targetId = row.kind === "bar" ? cleanBarTrackId(row.id) : row.id;
+  return `${row.kind}:${targetId}`;
+}
+
+function honorTargetId(row: RankRow) {
+  return row.kind === "bar" ? cleanBarTrackId(row.id) : row.battleCode || row.id;
+}
+
+function emptyHonorInteraction(): HonorInteractionState {
+  return { favoriteCount: 0, myFavorited: false, comments: [] };
+}
+
+function choiceRecordKey(entry: ShowtimeChoiceShelfEntry) {
+  return `${entry.kind}:${entry.id}`;
+}
+
+function normalizeChoiceInteraction(payload: ChoiceInteractionPayload): ShowtimeChoiceHeartState {
+  return {
+    heartCount: Math.max(0, Math.round(Number(payload.heartCount) || 0)),
+    myHeart: Boolean(payload.myHeart),
+  };
+}
+
+function normalizeHonorRecord(payload: HonorInteractionPayload): HonorInteractionState {
+  return {
+    favoriteCount: Math.max(0, Math.round(Number(payload.favoriteCount) || 0)),
+    myFavorited: Boolean(payload.myFavorited),
+    comments: Array.isArray(payload.comments) ? payload.comments : [],
+  };
+}
+
+function formatCommentTime(value: string, isZh: boolean) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat(isZh ? "zh-TW" : "en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function localizedRankLabel(rank: string, isZh: boolean) {
+  if (isZh) return rank;
+  const cleanRank = rank.trim();
+  if (cleanRank === AIPOGER_PERSONAL_RANK) return "LV.0 AIPOGER Founder";
+  const level = cleanRank.match(/Lv\.(\d+)/i)?.[1];
+  if (!level) return cleanRank || "Rank Missing";
+  const rankMeta = rankForLevel(Number(level));
+  return `Lv.${rankMeta.level} ${rankMeta.nameEn}`;
 }
 
 function accentFromIndex(index: number): RankRow["accent"] {
@@ -154,7 +278,30 @@ function accentClasses(accent: RankRow["accent"]) {
   return "border-orange-300/30 bg-orange-500/[0.08] text-orange-100";
 }
 
-function resultHref(row: RankRow, lang: "zh" | "en") {
+function normalizeGenre(value: string | null | undefined) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function displayGenre(value: string | null | undefined, isZh: boolean) {
+  return String(value || "").trim() || (isZh ? "未分類風格" : "Unsorted Style");
+}
+
+function monthKey(value: string | null | undefined) {
+  const date = new Date(value || "");
+  if (Number.isNaN(date.getTime())) return "unknown";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function displayMonth(value: string, isZh: boolean) {
+  if (value === "unknown") return isZh ? "未標月份" : "Unknown Month";
+  const [year, month] = value.split("-");
+  if (!year || !month) return isZh ? "未標月份" : "Unknown Month";
+  return isZh ? `${year} 年 ${Number(month)} 月` : `${new Date(`${value}-01T00:00:00`).toLocaleDateString("en-US", { month: "short", year: "numeric" })}`;
+}
+
+function resultHref(row: RankRow, lang: string) {
+  if (isUuid(row.id)) return battleResultShortPath(row.id, lang);
+
   const params = new URLSearchParams();
   if (row.resultHref) {
     const [path, rawQuery = ""] = row.resultHref.split("?");
@@ -170,7 +317,7 @@ function resultHref(row: RankRow, lang: "zh" | "en") {
   params.set("song", displaySongTitle(row.hook, ""));
   params.set("opponent", row.opponentName || "");
   params.set("opponentSong", displaySongTitle(row.opponentSong || "", ""));
-  params.set("rank", row.rank);
+  params.set("rank", localizedRankLabel(row.rank, lang === "zh"));
   params.set("tool", row.aiTool);
   params.set("battle", row.battleCode || "");
   params.set("votesTotal", String(row.votesTotal || 0));
@@ -210,6 +357,137 @@ function normalizeVoteCount(value: unknown) {
   return Math.max(0, Math.round(count));
 }
 
+function normalizeSongStatsKey(...values: Array<string | null | undefined>) {
+  return values
+    .map((value) =>
+      String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/\.(mp3|wav|aiff|aif|m4a)$/i, "")
+        .replace(/\s+/g, " "),
+    )
+    .filter(Boolean)
+    .join("|");
+}
+
+function emptySongStats(): SongBattleStatsSnapshot {
+  return {
+    battleCount: 0,
+    wins: 0,
+    losses: 0,
+    noContests: 0,
+    totalVotesFor: 0,
+    totalVotesAgainst: 0,
+    honorBoardCount: 0,
+    winRate: 0,
+  };
+}
+
+function addSongStatsOutcome(
+  stats: SongBattleStatsSnapshot,
+  outcome: "win" | "loss",
+  votesFor: number,
+  votesAgainst: number,
+) {
+  stats.battleCount += 1;
+  if (outcome === "win") {
+    stats.wins += 1;
+    stats.honorBoardCount += 1;
+  } else {
+    stats.losses += 1;
+  }
+  stats.totalVotesFor += Math.max(0, votesFor);
+  stats.totalVotesAgainst += Math.max(0, votesAgainst);
+  stats.winRate = stats.battleCount > 0 ? Math.round((stats.wins / stats.battleCount) * 100) : 0;
+}
+
+function voteCountsForArchive(entry: ArchivedBattleResult) {
+  const totalVotes = normalizeVoteCount(entry.votesTotal);
+  const breakdown = computeVoteBreakdown(
+    totalVotes,
+    normalizeVoteCount(entry.finalVoteLeft),
+    normalizeVoteCount(entry.finalVoteRight),
+  );
+  const winnerIsB = entry.winnerSide === "fighter_b";
+  return {
+    winnerVotes: winnerIsB ? breakdown.bVotes : breakdown.aVotes,
+    opponentVotes: winnerIsB ? breakdown.aVotes : breakdown.bVotes,
+  };
+}
+
+function applyFallbackSongStats(rows: ArchivedBattleResult[]) {
+  const statsBySong = new Map<string, SongBattleStatsSnapshot>();
+  for (const row of rows) {
+    const winnerKey = normalizeSongStatsKey(row.winnerName, row.winnerSong);
+    const opponentKey = normalizeSongStatsKey(row.opponentName, row.opponentSong);
+    const { winnerVotes, opponentVotes } = voteCountsForArchive(row);
+    if (winnerKey) {
+      const stats = statsBySong.get(winnerKey) ?? emptySongStats();
+      addSongStatsOutcome(stats, "win", winnerVotes, opponentVotes);
+      statsBySong.set(winnerKey, stats);
+    }
+    if (opponentKey) {
+      const stats = statsBySong.get(opponentKey) ?? emptySongStats();
+      addSongStatsOutcome(stats, "loss", opponentVotes, winnerVotes);
+      statsBySong.set(opponentKey, stats);
+    }
+  }
+
+  return rows.map((row) => {
+    if (row.songStats && row.songStats.battleCount > 0) return row;
+    const fallback = statsBySong.get(normalizeSongStatsKey(row.winnerName, row.winnerSong));
+    return fallback ? { ...row, songStats: fallback } : row;
+  });
+}
+
+function formatSongStats(stats: SongBattleStatsSnapshot | null | undefined, isZh: boolean) {
+  if (!stats || stats.battleCount <= 0) return "";
+  const winRate = stats.winRate || Math.round((stats.wins / stats.battleCount) * 100);
+  const honor = stats.honorBoardCount > 0 ? ` · Showtime ${stats.honorBoardCount}` : "";
+  if (stats.noContests > 0) {
+    return isZh
+      ? `出戰 ${stats.battleCount} 次 · ${stats.wins} 勝 ${stats.losses} 敗 ${stats.noContests} 未分勝負 · 勝率 ${winRate}%${honor}`
+      : `${stats.battleCount} battles · ${stats.wins}W ${stats.losses}L ${stats.noContests} NC · ${winRate}%${honor}`;
+  }
+  return isZh
+    ? `出戰 ${stats.battleCount} 次 · ${stats.wins} 勝 ${stats.losses} 敗 · 勝率 ${winRate}%${honor}`
+    : `${stats.battleCount} battles · ${stats.wins}W ${stats.losses}L · ${winRate}%${honor}`;
+}
+
+async function fetchDropFullSongMap(battleIds: string[]) {
+  if (battleIds.length === 0) return new Map<string, { audioUrl: string; label: string; durationSeconds: number; youtubeUrl: string | null }>();
+  try {
+    const response = await fetch("/api/honor-board/drop-full-songs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ battleIds }),
+    });
+    if (!response.ok) return new Map<string, { audioUrl: string; label: string; durationSeconds: number; youtubeUrl: string | null }>();
+    const payload = (await response.json().catch(() => null)) as DropFullSongPayload | null;
+    const items = Array.isArray(payload?.items) ? payload.items : [];
+    return new Map(
+      items
+        .filter((item) => item.battleId && item.audioUrl)
+        .map((item) => [
+          item.battleId!,
+          {
+            audioUrl: item.audioUrl!,
+            label: item.label?.trim() || "Full Song",
+            durationSeconds: Math.max(0, Number(item.durationSeconds) || 0),
+            youtubeUrl: item.youtubeUrl?.trim() || null,
+          },
+        ]),
+    );
+  } catch (error) {
+    console.warn("[rank full song]", error);
+    return new Map<string, { audioUrl: string; label: string; durationSeconds: number; youtubeUrl: string | null }>();
+  }
+}
+
+function normalizeWinnerSide(value: unknown): BattleWinnerSide | null {
+  return value === "fighter_a" || value === "fighter_b" ? value : null;
+}
+
 function computeVoteBreakdown(votesTotal: number, aRaw: number, bRaw: number) {
   if (votesTotal <= 0) return { votesTotal: 0, aVotes: 0, bVotes: 0 };
   if (aRaw >= 0 && bRaw >= 0 && aRaw + bRaw === 100) {
@@ -227,6 +505,16 @@ function computeVoteBreakdown(votesTotal: number, aRaw: number, bRaw: number) {
   return { votesTotal, aVotes: 0, bVotes: 0 };
 }
 
+function certificationLabel(row: RankRow, isZh: boolean) {
+  if (row.certification === "battle") {
+    return isZh ? "正式 Battle 認證" : "Official battle record";
+  }
+  if (row.certification === "defense") {
+    return isZh ? "探索守擂認證" : "Explore defense certified";
+  }
+  return isZh ? "傷心酒吧公播認證" : "Bar Heartbreak airplay certified";
+}
+
 function rowFromArchive(entry: ArchivedBattleResult, index: number): RankRow {
   const totalVotes = normalizeVoteCount(entry.votesTotal);
   const breakdown = computeVoteBreakdown(
@@ -238,11 +526,12 @@ function rowFromArchive(entry: ArchivedBattleResult, index: number): RankRow {
   return {
     id: entry.battleId || entry.battleCode || entry.id,
     kind: "battle",
+    certification: "battle",
     name: entry.winnerName,
     rank: safeRankForFighter(entry.winnerName, entry.rank),
-    title: "Drop 抓波勝利",
     hook: entry.winnerSong,
     note: displayText(entry.genre, "AI Music"),
+    genre: displayText(entry.genre, "AI Music"),
     accent: accentFromIndex(index),
     avatarUrl: entry.avatarUrl,
     coverUrl: entry.coverUrl,
@@ -257,46 +546,23 @@ function rowFromArchive(entry: ArchivedBattleResult, index: number): RankRow {
     aiReview: stripCannedBattleReview(entry.aiReview),
     audienceReview: stripCannedBattleReview(entry.audienceReview),
     resultHref: entry.resultHref,
+    audioUrl: entry.audioUrl,
+    fullSongUrl: entry.fullSongUrl,
+    fullSongLabel: entry.fullSongLabel,
+    fullSongDurationSeconds: entry.fullSongDurationSeconds,
+    youtubeUrl: entry.youtubeUrl,
+    lyrics: cleanLyrics(entry.lyrics) || undefined,
+    songStats: entry.songStats,
   };
-}
-
-function dailyRowsFromBattles(rows: DailyBattleBoardRow[]) {
-  return rows
-    .filter((battle) => Boolean(battle.id && battle.winner_entry_id))
-    .map<RankRow | null>((battle, index) => {
-      const entryA = firstRelation(battle.entry_a);
-      const entryB = firstRelation(battle.entry_b);
-      const winner = battle.winner_entry_id === entryA?.id ? entryA : battle.winner_entry_id === entryB?.id ? entryB : null;
-      const opponent = winner?.id === entryA?.id ? entryB : entryA;
-      if (!winner?.id || !winner.title) return null;
-      return {
-        id: `daily-${battle.id}`,
-        kind: "daily",
-        name: winner.title,
-        rank: "24H 勝利作品",
-        title: "24H Full Song 勝利",
-        hook: winner.title,
-        note: winner.genre || "Full Song Battle",
-        accent: accentFromIndex(index),
-        avatarUrl: winner.avatar_url || winner.cover_url || AIPOGER_BRAND_LOGO,
-        coverUrl: winner.cover_url || AIPOGER_BRAND_LOGO,
-        aiTool: winner.ai_tool || "AI Music",
-        createdAt: battle.updated_at || battle.ends_at || new Date().toISOString(),
-        opponentName: opponent?.title || "24H 對手",
-        opponentSong: opponent?.title || "",
-        battleCode: battle.id || "",
-        resultHref: `/battle/daily/${battle.id}`,
-      };
-    })
-    .filter((row): row is RankRow => row !== null)
-    .slice(0, 10);
 }
 
 function mergeArchives(remoteRows: ArchivedBattleResult[]) {
   const unique = new Map<string, ArchivedBattleResult>();
   for (const row of remoteRows) {
+    if (row.showtimePublicRemovedAt) continue;
     if (!hasArchivedCoreData(row)) continue;
     if (isProbablyMockArchive(row)) continue;
+    if (!isOfficialArchivedResult(row)) continue;
     const key = archiveSignature(row);
     if (!unique.has(key)) unique.set(key, row);
   }
@@ -305,44 +571,463 @@ function mergeArchives(remoteRows: ArchivedBattleResult[]) {
   );
 }
 
-function hotBarRowsFromTracks(tracks: ListenBarTrackRow[]) {
-  return tracks
-    .map((row) => listenBarRowToTrack(row))
-    .filter((track): track is NonNullable<typeof track> => Boolean(track))
-    .filter((track) => track.source !== "official")
+function isOfficialArchivedResult(row: ArchivedBattleResult) {
+  const min = row.officialAudienceMin && row.officialAudienceMin > 0 ? row.officialAudienceMin : DROP_BATTLE_OFFICIAL_AUDIENCE_MIN;
+  return (row.audienceCount ?? row.votesTotal ?? 0) >= min;
+}
+
+function hotBarRowsFromTracks(tracks: RankAiMusicTrackRow[]) {
+  const communityTracks = tracks
+    .map((row) => ({ row, track: listenBarRowToTrack(row) }))
+    .filter((item): item is { row: RankAiMusicTrackRow; track: NonNullable<ReturnType<typeof listenBarRowToTrack>> } => Boolean(item.track))
+    .filter(({ track }) => track.source !== "official");
+
+  return communityTracks
+    .filter(({ row }) => Boolean((row as RankAiMusicTrackRow).ai_music_showtime_certified))
     .sort((a, b) => {
-      const byReaction = (b.positiveReactionCount || 0) - (a.positiveReactionCount || 0);
+      const byReaction = (b.track.positiveReactionCount || 0) - (a.track.positiveReactionCount || 0);
       if (byReaction !== 0) return byReaction;
-      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      return new Date(b.track.createdAt || 0).getTime() - new Date(a.track.createdAt || 0).getTime();
     })
-    .slice(0, 6)
-    .map<RankRow>((track, index) => ({
-      id: `bar-${track.id}`,
-      kind: "bar",
-      name: track.artist,
-      rank: track.queuedByRank || "創作者投稿",
-      title: "傷心酒吧熱播",
-      hook: track.title,
-      note: track.mood || "AI Music",
-      accent: accentFromIndex(index),
-      avatarUrl: track.coverUrl || AIPOGER_BRAND_LOGO,
-      coverUrl: track.coverUrl || AIPOGER_BRAND_LOGO,
-      aiTool: track.tool || "AI Music",
-      createdAt: track.createdAt || new Date().toISOString(),
-      audioUrl: track.audioUrl,
-      positiveReactions: Math.max(0, Math.round(track.positiveReactionCount || 0)),
-    }));
+    .map<RankRow>(({ row, track }, index) => {
+      const aiMusicRow = row as RankAiMusicTrackRow;
+      const showtimeCertified = Boolean(aiMusicRow.ai_music_showtime_certified);
+      const defenseSuccesses = Math.max(0, Math.round(Number(aiMusicRow.ai_music_official_defense_successes ?? 0)));
+      const defenseTarget = Math.max(1, Math.round(Number(aiMusicRow.ai_music_showtime_defense_target ?? 6)));
+      const source = normalizeAiMusicShowtimeCertificationSource(aiMusicRow.ai_music_showtime_certification_source);
+      const certifiedByDefense = showtimeCertified && (source === "defense" || defenseSuccesses >= defenseTarget);
+      return {
+        id: `bar-${track.id}`,
+        kind: "bar",
+        certification: certifiedByDefense ? "defense" : "airplay",
+        name: track.artist,
+        rank: track.queuedByRank || "創作者投稿",
+        hook: track.title,
+        note: certifiedByDefense ? `守擂 ${defenseSuccesses}/${defenseTarget}` : track.mood || row.genre?.trim() || "AI Music",
+        genre: row.genre?.trim() || track.mood || "AI Music",
+        accent: accentFromIndex(index),
+        avatarUrl: track.coverUrl || AIPOGER_BRAND_LOGO,
+        coverUrl: track.coverUrl || AIPOGER_BRAND_LOGO,
+        aiTool: track.tool || "AI Music",
+        createdAt: track.createdAt || new Date().toISOString(),
+        audioUrl: track.audioUrl,
+        supportUrl: canDisplayShowtimeSupportUrl(aiMusicRow) ? aiMusicRow.support_url?.trim() : undefined,
+        supportLabel: canDisplayShowtimeSupportUrl(aiMusicRow) ? aiMusicRow.support_url_label?.trim() || undefined : undefined,
+        lyrics: cleanLyrics(track.lyrics) || undefined,
+        positiveReactions: Math.max(0, Math.round(track.positiveReactionCount || 0)),
+      };
+    });
+}
+
+async function fetchBattleArchivesForRank() {
+  return supabase
+    .from("battle_result_archives")
+    .select(ARCHIVE_SELECT_BASE)
+    .is("showtime_public_removed_at", null)
+    .order("archived_at", { ascending: false })
+    .limit(200);
+}
+
+async function fetchAiMusicTracksForRank(lang: string): Promise<{ data: RankAiMusicTrackRow[]; error: Error | null }> {
+  try {
+    const response = await fetch(`/api/ai-music/tracks?surface=showtime&lang=${encodeURIComponent(lang)}`, {
+      cache: "no-store",
+    });
+    const payload = (await response.json().catch(() => null)) as { tracks?: RankAiMusicTrackRow[]; error?: string } | null;
+    if (!response.ok || !Array.isArray(payload?.tracks)) {
+      return { data: [], error: new Error(payload?.error || "Could not load AI music Showtime tracks.") };
+    }
+    return { data: payload.tracks, error: null };
+  } catch (error) {
+    return { data: [], error: error instanceof Error ? error : new Error(String(error)) };
+  }
+}
+
+async function fetchCurrentChoice(): Promise<{ collections: AipogerChoiceCollection[]; error: Error | null }> {
+  try {
+    const response = await fetch("/api/choice/current", { cache: "no-store" });
+    const payload = (await response.json().catch(() => null)) as { collection?: AipogerChoiceCollection | null; collections?: AipogerChoiceCollection[]; error?: string } | null;
+    if (!response.ok) return { collections: [], error: new Error(payload?.error || "Could not load AIPOGER Choice.") };
+    const collections = Array.isArray(payload?.collections)
+      ? payload.collections
+      : payload?.collection
+        ? [payload.collection]
+        : [];
+    return { collections, error: null };
+  } catch (error) {
+    return { collections: [], error: error instanceof Error ? error : new Error(String(error)) };
+  }
+}
+
+async function fetchPublicCreatorChoices(): Promise<{ collections: AipogerPublicCreatorChoiceCollection[]; error: Error | null }> {
+  try {
+    const response = await fetch("/api/creator-choice/public", { cache: "no-store" });
+    const payload = (await response.json().catch(() => null)) as {
+      collections?: AipogerPublicCreatorChoiceCollection[];
+      error?: string;
+    } | null;
+    if (!response.ok) {
+      return { collections: [], error: new Error(payload?.error || "Could not load creator Choice playlists.") };
+    }
+    return { collections: Array.isArray(payload?.collections) ? payload.collections : [], error: null };
+  } catch (error) {
+    return { collections: [], error: error instanceof Error ? error : new Error(String(error)) };
+  }
+}
+
+function battleAudioPathToUrl(path: string | null | undefined) {
+  const clean = path?.trim();
+  if (!clean) return Promise.resolve<string | null>(null);
+  if (/^(https?:|blob:|data:)/i.test(clean)) return Promise.resolve(clean);
+  return supabase.storage
+    .from("battle-audio")
+    .createSignedUrl(clean, 60 * 10)
+    .then(({ data, error }) => {
+      if (error) {
+        console.warn("[rank battle audio]", error.message);
+        return null;
+      }
+      return data?.signedUrl ?? null;
+    });
+}
+
+async function battleMediaPathToUrl(path: string | null | undefined) {
+  const clean = path?.trim();
+  if (!clean) return null;
+  if (/^(https?:|blob:|data:)/i.test(clean)) return clean;
+
+  for (const bucket of ["battle-audio", "avatars"] as const) {
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(clean, 60 * 10);
+    if (!error && data?.signedUrl) return data.signedUrl;
+  }
+
+  console.warn("[rank battle media] signed url failed", clean);
+  return null;
+}
+
+async function attachBattleAudioUrls(rows: ArchivedBattleResult[]) {
+  const battleIds = Array.from(new Set(rows.map((row) => row.battleId).filter((id): id is string => Boolean(id))));
+  if (battleIds.length === 0) return rows;
+
+  const selectAttempts = [
+    "id,winner,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,ai_tool_a,ai_tool_b,audio_a_path,audio_b_path,lyrics_a,lyrics_b,song_a_cover,song_b_cover,fighter_a_avatar,fighter_b_avatar",
+    "id,winner,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,ai_tool_a,ai_tool_b,audio_a_path,audio_b_path,song_a_cover,song_b_cover,fighter_a_avatar,fighter_b_avatar",
+    "id,winner,fighter_a_name,fighter_b_name,song_a_name,song_b_name,ai_tool_a,ai_tool_b,audio_a_path,audio_b_path,song_a_cover,song_b_cover",
+    "id,winner,fighter_a_name,fighter_b_name,song_a_name,song_b_name,ai_tool_a,ai_tool_b,audio_a_path,audio_b_path",
+  ];
+
+  let battleRowsData: RankBattleMediaRow[] = [];
+  let battleRowsError = "";
+  for (const select of selectAttempts) {
+    const read = await supabase.from("battles").select(select).in("id", battleIds);
+    if (!read.error) {
+      battleRowsData = (read.data ?? []) as RankBattleMediaRow[];
+      battleRowsError = "";
+      break;
+    }
+    battleRowsError = read.error.message;
+    if (
+      !/fighter_a_user_id|fighter_b_user_id|lyrics_a|lyrics_b|song_a_cover|song_b_cover|fighter_a_avatar|fighter_b_avatar|schema cache|does not exist|PGRST204/i.test(
+        battleRowsError,
+      )
+    ) {
+      break;
+    }
+  }
+
+  if (battleRowsError) {
+    console.warn("[rank battle media rows]", battleRowsError);
+    return rows;
+  }
+
+  const userIds = Array.from(
+    new Set(
+      battleRowsData
+        .flatMap((battle) => [battle.fighter_a_user_id, battle.fighter_b_user_id])
+        .filter((id): id is string => Boolean(id)),
+    ),
+  );
+  const profilesById = new Map<string, FighterProfileMediaRow>();
+  if (userIds.length > 0) {
+    const profileRead = await supabase.from("fighter_profiles").select("id,song_cover_url,avatar_url").in("id", userIds);
+    if (profileRead.error) {
+      console.warn("[rank battle profile media]", profileRead.error.message);
+    } else {
+      for (const profile of (profileRead.data ?? []) as FighterProfileMediaRow[]) {
+        if (profile.id) profilesById.set(profile.id, profile);
+      }
+    }
+  }
+
+  const truthByBattle = new Map<
+    string,
+    {
+      winner: BattleWinnerSide | null;
+      fighterAName: string;
+      fighterBName: string;
+      songAName: string;
+      songBName: string;
+      aiToolA: string;
+      aiToolB: string;
+      audioUrl: string | null;
+      winnerLyrics: string;
+      coverUrl: string | null;
+      avatarUrl: string | null;
+      opponentCoverUrl: string | null;
+      opponentAvatarUrl: string | null;
+    }
+  >();
+  const fullSongByBattle = await fetchDropFullSongMap(battleIds);
+  await Promise.all(
+    battleRowsData.map(async (battle) => {
+      if (!battle.id) return;
+      const winner = normalizeWinnerSide(battle.winner);
+      const winnerIsB = winner === "fighter_b";
+      const winnerPath = winnerIsB ? battle.audio_b_path : battle.audio_a_path;
+      const winnerLyrics = cleanLyrics(winnerIsB ? battle.lyrics_b : battle.lyrics_a);
+      const winnerProfile = profilesById.get(winnerIsB ? battle.fighter_b_user_id ?? "" : battle.fighter_a_user_id ?? "");
+      const opponentProfile = profilesById.get(winnerIsB ? battle.fighter_a_user_id ?? "" : battle.fighter_b_user_id ?? "");
+      const winnerCover = firstText(
+        winnerIsB ? battle.song_b_cover : battle.song_a_cover,
+        winnerProfile?.song_cover_url,
+        winnerIsB ? battle.fighter_b_avatar : battle.fighter_a_avatar,
+        winnerProfile?.avatar_url,
+      );
+      const winnerAvatar = firstText(
+        winnerIsB ? battle.fighter_b_avatar : battle.fighter_a_avatar,
+        winnerProfile?.avatar_url,
+        winnerCover,
+      );
+      const opponentCover = firstText(
+        winnerIsB ? battle.song_a_cover : battle.song_b_cover,
+        opponentProfile?.song_cover_url,
+        winnerIsB ? battle.fighter_a_avatar : battle.fighter_b_avatar,
+        opponentProfile?.avatar_url,
+      );
+      const opponentAvatar = firstText(
+        winnerIsB ? battle.fighter_a_avatar : battle.fighter_b_avatar,
+        opponentProfile?.avatar_url,
+        opponentCover,
+      );
+      const [audioUrl, coverUrl, avatarUrl, opponentCoverUrl, opponentAvatarUrl] = await Promise.all([
+        battleAudioPathToUrl(winnerPath),
+        battleMediaPathToUrl(winnerCover),
+        battleMediaPathToUrl(winnerAvatar),
+        battleMediaPathToUrl(opponentCover),
+        battleMediaPathToUrl(opponentAvatar),
+      ]);
+      truthByBattle.set(battle.id, {
+        winner,
+        fighterAName: String(battle.fighter_a_name || "").trim(),
+        fighterBName: String(battle.fighter_b_name || "").trim(),
+        songAName: String(battle.song_a_name || "").trim(),
+        songBName: String(battle.song_b_name || "").trim(),
+        aiToolA: String(battle.ai_tool_a || "").trim(),
+        aiToolB: String(battle.ai_tool_b || "").trim(),
+        audioUrl,
+        winnerLyrics,
+        coverUrl,
+        avatarUrl,
+        opponentCoverUrl,
+        opponentAvatarUrl,
+      });
+    }),
+  );
+
+  return rows.map((row) => {
+    const truth = row.battleId ? truthByBattle.get(row.battleId) : null;
+    const fullSong = row.battleId ? fullSongByBattle.get(row.battleId) : null;
+    const archivedSide = normalizeWinnerSide(row.winnerSide);
+    const reconciled =
+      truth?.winner && archivedSide && truth.winner !== archivedSide
+        ? {
+            ...row,
+            winnerSide: truth.winner,
+            winnerName: truth.winner === "fighter_b" ? truth.fighterBName || row.opponentName : truth.fighterAName || row.opponentName,
+            winnerSong: truth.winner === "fighter_b" ? truth.songBName || row.opponentSong : truth.songAName || row.opponentSong,
+            tool: truth.winner === "fighter_b" ? truth.aiToolB || row.tool : truth.aiToolA || row.tool,
+            opponentName: truth.winner === "fighter_b" ? truth.fighterAName || row.winnerName : truth.fighterBName || row.winnerName,
+            opponentSong: truth.winner === "fighter_b" ? truth.songAName || row.winnerSong : truth.songBName || row.winnerSong,
+            coverUrl: truth.coverUrl || row.opponentCoverUrl || row.coverUrl,
+            avatarUrl: truth.avatarUrl || row.opponentAvatarUrl || row.avatarUrl,
+            opponentCoverUrl: truth.opponentCoverUrl || row.coverUrl || row.opponentCoverUrl,
+            opponentAvatarUrl: truth.opponentAvatarUrl || row.avatarUrl || row.opponentAvatarUrl,
+          }
+        : row;
+    return {
+      ...reconciled,
+      audioUrl: reconciled.audioUrl || (row.battleId ? truth?.audioUrl || undefined : undefined),
+      fullSongUrl: fullSong?.audioUrl || reconciled.fullSongUrl,
+      fullSongLabel: fullSong?.label || reconciled.fullSongLabel,
+      fullSongDurationSeconds: fullSong?.durationSeconds || reconciled.fullSongDurationSeconds,
+      youtubeUrl: fullSong?.youtubeUrl || reconciled.youtubeUrl,
+      lyrics: cleanLyrics(reconciled.lyrics) || (row.battleId ? truth?.winnerLyrics || undefined : undefined),
+      coverUrl: reconciled.coverUrl || (row.battleId ? truth?.coverUrl || "" : ""),
+      avatarUrl: reconciled.avatarUrl || (row.battleId ? truth?.avatarUrl || "" : ""),
+      opponentCoverUrl: reconciled.opponentCoverUrl || (row.battleId ? truth?.opponentCoverUrl || null : null),
+      opponentAvatarUrl: reconciled.opponentAvatarUrl || (row.battleId ? truth?.opponentAvatarUrl || null : null),
+    };
+  });
+}
+
+function LyricsAction({
+  row,
+  isZh,
+  onOpen,
+  compact = false,
+}: {
+  row: RankRow;
+  isZh: boolean;
+  onOpen: (row: RankRow) => void;
+  compact?: boolean;
+}) {
+  const hasLyrics = Boolean(cleanLyrics(row.lyrics));
+  if (!hasLyrics) {
+    return (
+      compact ? null : <span className="inline-flex cursor-default items-center justify-center rounded-full border border-white/10 bg-black/20 px-2.5 py-1.5 text-[11px] font-black text-zinc-500">
+        {isZh ? "歌詞未提供" : "No Lyrics"}
+      </span>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(row)}
+      className={`inline-flex items-center justify-center rounded-full border text-[11px] font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-200/70 ${compact ? "h-8 w-8 p-0" : "px-2.5 py-1.5"} ${HONOR_ACTION_CLASS}`}
+      aria-label={isZh ? "看歌詞" : "View lyrics"}
+      title={isZh ? "看歌詞" : "View lyrics"}
+    >
+      {compact ? <FileText className="h-3.5 w-3.5" aria-hidden="true" /> : isZh ? "歌詞" : "Lyrics"}
+    </button>
+  );
+}
+
+function HonorCommentsPanel({
+  row,
+  isZh,
+  expanded,
+  interaction,
+  draft,
+  busy,
+  error,
+  onToggle,
+  onDraftChange,
+  onSubmit,
+  compact = false,
+}: {
+  row: RankRow;
+  isZh: boolean;
+  expanded: boolean;
+  interaction: HonorInteractionState;
+  draft: string;
+  busy: boolean;
+  error: string;
+  onToggle: () => void;
+  onDraftChange: (value: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  compact?: boolean;
+}) {
+  const comments = interaction.comments.slice().reverse();
+  return (
+    <div className="min-w-0 w-full sm:w-auto">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`inline-flex items-center justify-center gap-1.5 rounded-full border text-[11px] font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-200/70 ${compact ? "h-8 w-8 p-0" : "px-2.5 py-1.5"} ${HONOR_ACTION_CLASS}`}
+        aria-expanded={expanded}
+        aria-label={isZh ? "評論" : "Comments"}
+        title={isZh ? "評論" : "Comments"}
+      >
+        <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" />
+        <span className={compact ? "sr-only" : ""}>
+          {isZh ? "評論" : "Comments"}
+          {comments.length > 0 ? ` ${comments.length}` : ""}
+        </span>
+      </button>
+
+      {expanded ? (
+        <div className="mt-2 rounded-md border border-yellow-200/18 bg-black/26 p-2 sm:w-[min(22rem,calc(100vw-3rem))]">
+          {comments.length > 0 ? (
+            <div className="flex snap-x gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
+              {comments.map((comment) => (
+                <div
+                  key={comment.id}
+                  className="min-w-[calc(50%-0.25rem)] snap-start rounded-md border border-white/10 bg-white/[0.045] p-2 max-sm:min-w-[82%]"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-[11px] font-black text-yellow-100">{comment.name}</p>
+                    <p className="shrink-0 text-[10px] font-bold text-zinc-600">{formatCommentTime(comment.createdAt, isZh)}</p>
+                  </div>
+                  <p className="mt-1 line-clamp-2 break-words text-[11px] font-bold leading-4 text-zinc-300">
+                    {comment.text}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-md border border-white/10 bg-white/[0.035] px-2 py-2 text-[11px] font-bold text-zinc-500">
+              {isZh ? "還沒有評論，登入後可以留下第一句。" : "No comments yet. Sign in to leave the first one."}
+            </p>
+          )}
+
+          <form onSubmit={onSubmit} className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
+            <input
+              value={draft}
+              onChange={(event) => onDraftChange(event.target.value)}
+              maxLength={280}
+              placeholder={isZh ? "寫一句對這首歌的評論..." : "Write a quick comment..."}
+              className="min-w-0 rounded-md border border-white/10 bg-black/45 px-2.5 py-2 text-[12px] font-bold text-white outline-none placeholder:text-zinc-600 focus:border-yellow-100/60"
+              aria-label={isZh ? `評論 ${row.hook}` : `Comment on ${row.hook}`}
+            />
+            <button
+              type="submit"
+              disabled={busy || !draft.trim()}
+              className={`rounded-md border px-3 py-2 text-[11px] font-black transition disabled:cursor-not-allowed disabled:opacity-45 ${HONOR_ACTION_CLASS}`}
+            >
+              {busy ? (isZh ? "送出中" : "Sending") : isZh ? "送出" : "Post"}
+            </button>
+          </form>
+          {error ? <p className="mt-2 text-[11px] font-bold text-red-200">{error}</p> : null}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export default function RankPage() {
-  const { lang } = useI18n();
+  const { lang, t } = useI18n();
   const isZh = lang === "zh";
-  const [active, setActive] = useState<BoardKey>("drop");
+  const [activeGenre, setActiveGenre] = useState("all");
+  const [activeMonth, setActiveMonth] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const [archivedResults, setArchivedResults] = useState<ArchivedBattleResult[]>([]);
-  const [dailyRows, setDailyRows] = useState<RankRow[]>([]);
   const [hotBarRows, setHotBarRows] = useState<RankRow[]>([]);
-  const navSuffix = lang === "en" ? "?lang=en" : "?lang=zh";
-  const boardTitle = isZh ? BOARD_META[active].zh : BOARD_META[active].en;
+  const [choiceCollections, setChoiceCollections] = useState<AipogerChoiceCollection[]>([]);
+  const [creatorChoices, setCreatorChoices] = useState<AipogerPublicCreatorChoiceCollection[]>([]);
+  const [choiceLoading, setChoiceLoading] = useState(true);
+  const [choiceHearts, setChoiceHearts] = useState<Record<string, ShowtimeChoiceHeartState>>({});
+  const [choiceHeartBusy, setChoiceHeartBusy] = useState<Record<string, boolean>>({});
+  const [choiceHeartError, setChoiceHeartError] = useState("");
+  const playerRef = useRef<ShowtimeQueuePlayerHandle>(null);
+  const [lyricsModal, setLyricsModal] = useState<LyricsModalState | null>(null);
+  const [honorInteractions, setHonorInteractions] = useState<Record<string, HonorInteractionState>>({});
+  const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const [interactionErrors, setInteractionErrors] = useState<Record<string, string>>({});
+  const [favoriteBusy, setFavoriteBusy] = useState<Record<string, boolean>>({});
+  const [commentBusy, setCommentBusy] = useState<Record<string, boolean>>({});
+  const navSuffix = `?lang=${lang}`;
+
+  const openLyricsModal = (row: RankRow) => {
+    const lyrics = cleanLyrics(row.lyrics);
+    if (!lyrics) return;
+    setLyricsModal({
+      title: displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived"),
+      artist: row.name,
+      lyrics,
+    });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -350,113 +1035,113 @@ export default function RankPage() {
     const loadAll = async () => {
       const [
         { data: archiveData, error: archiveError },
-        { data: dailyData, error: dailyError },
         { data: hotData, error: hotError },
       ] = await Promise.all([
-        supabase
-          .from("battle_result_archives")
-          .select(
-            "battle_id,battle_code,winner_name,winner_song_name,winner_ai_tool,opponent_name,opponent_song_name,final_vote_left,final_vote_right,total_votes,audience_review,result_payload,archived_at",
-          )
-          .order("archived_at", { ascending: false })
-          .limit(200),
-        supabase
-          .from("daily_battles")
-          .select(
-            "id,entry_a_id,entry_b_id,winner_entry_id,ends_at,updated_at,entry_a:daily_battle_entries!daily_battles_entry_a_id_fkey(id,title,genre,ai_tool,audio_path,cover_url,avatar_url),entry_b:daily_battle_entries!daily_battles_entry_b_id_fkey(id,title,genre,ai_tool,audio_path,cover_url,avatar_url)",
-          )
-          .eq("status", "finished")
-          .not("winner_entry_id", "is", null)
-          .order("updated_at", { ascending: false })
-          .limit(80),
-        supabase
-          .from("listen_bar_tracks")
-          .select(
-            "id,title,artist,ai_tool,genre,mood,bpm,duration_seconds,audio_path,cover_path,lyrics,is_active,source,is_featured_official,positive_reaction_count,heart_count,star_count,thumb_count,happy_count,created_at",
-          )
-          .eq("is_active", true)
-          .order("positive_reaction_count", { ascending: false })
-          .order("created_at", { ascending: false })
-          .limit(120),
+        fetchBattleArchivesForRank(),
+        fetchAiMusicTracksForRank(lang),
       ]);
 
       if (archiveError) {
         console.warn("[rank archives]", archiveError.message);
       }
-      if (dailyError && !/schema cache|does not exist|permission denied|Could not find/i.test(dailyError.message || "")) {
-        console.warn("[rank daily battles]", dailyError.message);
-      }
       if (hotError && !/schema cache|does not exist|permission denied/i.test(hotError.message || "")) {
         console.warn("[rank hot tracks]", hotError.message);
       }
-
       const mappedArchives: ArchivedBattleResult[] = Array.isArray(archiveData)
-        ? archiveData.map((row) => {
-            const payload =
-              typeof row.result_payload === "object" && row.result_payload !== null
-                ? (row.result_payload as Record<string, unknown>)
-                : {};
-            const finalVoteLeft = normalizeVoteCount(row.final_vote_left);
-            const finalVoteRight = normalizeVoteCount(row.final_vote_right);
-            const tableVoteTotal = normalizeVoteCount(row.total_votes);
-            const payloadVoteTotal = normalizeVoteCount(
-              payload.votesTotal ?? payload.votes ?? payload.voteCount,
-            );
-            const hasPayloadVoteTotal = payloadVoteTotal > 0;
-            const tableLooksLikePercentTotal =
-              tableVoteTotal === 100 &&
-              finalVoteLeft + finalVoteRight === 100 &&
-              !hasPayloadVoteTotal;
-            return {
-              id: String(row.battle_id || row.battle_code || ""),
-              battleId: row.battle_id ? String(row.battle_id) : null,
-              battleCode: String(row.battle_code || ""),
-              winnerName: String(row.winner_name || "").trim(),
-              winnerSong: String(row.winner_song_name || "").trim(),
-              opponentName: String(row.opponent_name || "").trim(),
-              opponentSong: String(row.opponent_song_name || "").trim(),
-              rank: safeRankForFighter(
-                String(row.winner_name || ""),
-                typeof payload.rank === "string" ? payload.rank : null,
-              ),
-              tool: String(row.winner_ai_tool || payload.tool || "").trim(),
-              genre: String(payload.genre || "AI Music").trim(),
-              coverUrl: String(payload.coverUrl || "").trim(),
-              avatarUrl: String(payload.avatarUrl || "").trim(),
-              opponentCoverUrl:
-                typeof payload.opponentCoverUrl === "string" ? payload.opponentCoverUrl : null,
-              opponentAvatarUrl:
-                typeof payload.opponentAvatarUrl === "string" ? payload.opponentAvatarUrl : null,
-              finalVoteLeft,
-              finalVoteRight,
-              votesTotal: hasPayloadVoteTotal
-                ? payloadVoteTotal
-                : tableLooksLikePercentTotal
-                  ? 0
-                  : tableVoteTotal,
-              audienceReview: String(row.audience_review || payload.audienceReview || "").trim(),
-              aiReview: String(payload.aiReview || "").trim(),
-              feedbackA:
-                typeof payload.feedbackA === "object" && payload.feedbackA !== null
-                  ? (payload.feedbackA as ArchivedBattleResult["feedbackA"])
-                  : { rhyme: 0, impact: 0, melody: 0, emotion: 0, structure: 0 },
-              feedbackB:
-                typeof payload.feedbackB === "object" && payload.feedbackB !== null
-                  ? (payload.feedbackB as ArchivedBattleResult["feedbackB"])
-                  : { rhyme: 0, impact: 0, melody: 0, emotion: 0, structure: 0 },
-              resultHref: String(payload.resultHref || "").trim(),
-              createdAt: String(row.archived_at || new Date().toISOString()),
-            };
-          })
+        ? archiveData
+            .filter((rawRow) => !String((rawRow as Record<string, unknown>).showtime_public_removed_at || "").trim())
+            .map((rawRow) => {
+              const row = rawRow as Record<string, unknown>;
+              const payload =
+                typeof row.result_payload === "object" && row.result_payload !== null
+                  ? (row.result_payload as Record<string, unknown>)
+                  : {};
+              const finalVoteLeft = normalizeVoteCount(row.final_vote_left);
+              const finalVoteRight = normalizeVoteCount(row.final_vote_right);
+              const tableVoteTotal = normalizeVoteCount(row.total_votes);
+              const payloadVoteTotal = normalizeVoteCount(
+                payload.votesTotal ?? payload.votes ?? payload.voteCount,
+              );
+              const hasPayloadVoteTotal = payloadVoteTotal > 0;
+              const tableLooksLikePercentTotal =
+                tableVoteTotal === 100 &&
+                finalVoteLeft + finalVoteRight === 100 &&
+                !hasPayloadVoteTotal;
+              const payloadSongStats =
+                typeof payload.songStats === "object" && payload.songStats !== null
+                  ? (payload.songStats as Record<string, unknown>).winner
+                  : null;
+              const tableSongStats = sanitizeSongBattleStatsSnapshot({
+                battleCount: row.winner_song_battle_count,
+                wins: row.winner_song_wins,
+                losses: row.winner_song_losses,
+                noContests: row.winner_song_no_contests,
+                totalVotesFor: row.winner_song_total_votes_for,
+                totalVotesAgainst: row.winner_song_total_votes_against,
+                honorBoardCount: row.winner_song_honor_board_count,
+              });
+              return {
+                id: String(row.battle_id || row.battle_code || ""),
+                battleId: row.battle_id ? String(row.battle_id) : null,
+                battleCode: String(row.battle_code || ""),
+                winnerSide: normalizeWinnerSide(row.winner),
+                winnerName: String(row.winner_name || "").trim(),
+                winnerSong: String(row.winner_song_name || "").trim(),
+                opponentName: String(row.opponent_name || "").trim(),
+                opponentSong: String(row.opponent_song_name || "").trim(),
+                rank: safeRankForFighter(
+                  String(row.winner_name || ""),
+                  typeof payload.rank === "string" ? payload.rank : null,
+                ),
+                tool: String(row.winner_ai_tool || payload.tool || "").trim(),
+                genre: String(payload.genre || "AI Music").trim(),
+                coverUrl: String(payload.coverUrl || "").trim(),
+                avatarUrl: String(payload.avatarUrl || "").trim(),
+                opponentCoverUrl:
+                  typeof payload.opponentCoverUrl === "string" ? payload.opponentCoverUrl : null,
+                opponentAvatarUrl:
+                  typeof payload.opponentAvatarUrl === "string" ? payload.opponentAvatarUrl : null,
+                finalVoteLeft,
+                finalVoteRight,
+                votesTotal: hasPayloadVoteTotal
+                  ? payloadVoteTotal
+                  : tableLooksLikePercentTotal
+                    ? 0
+                    : tableVoteTotal,
+                audienceCount: normalizeVoteCount(payload.audienceCount ?? payload.audienceVoterCount ?? payload.audience),
+                officialAudienceMin: normalizeVoteCount(payload.officialAudienceMin) || DROP_BATTLE_OFFICIAL_AUDIENCE_MIN,
+                audienceReview: String(row.audience_review || payload.audienceReview || "").trim(),
+                aiReview: String(payload.aiReview || "").trim(),
+                feedbackA:
+                  typeof payload.feedbackA === "object" && payload.feedbackA !== null
+                    ? (payload.feedbackA as ArchivedBattleResult["feedbackA"])
+                    : { rhyme: 0, impact: 0, melody: 0, emotion: 0, structure: 0 },
+                feedbackB:
+                  typeof payload.feedbackB === "object" && payload.feedbackB !== null
+                    ? (payload.feedbackB as ArchivedBattleResult["feedbackB"])
+                    : { rhyme: 0, impact: 0, melody: 0, emotion: 0, structure: 0 },
+                resultHref: String(payload.resultHref || "").trim(),
+                audioUrl: typeof payload.audioUrl === "string" ? payload.audioUrl.trim() : undefined,
+                fullSongUrl: typeof payload.fullSongUrl === "string" ? payload.fullSongUrl.trim() : undefined,
+                fullSongLabel: typeof payload.fullSongLabel === "string" ? payload.fullSongLabel.trim() : undefined,
+                fullSongDurationSeconds: normalizeVoteCount(payload.fullSongDurationSeconds),
+                lyrics: typeof payload.lyrics === "string" ? payload.lyrics.trim() : undefined,
+                songStats:
+                  tableSongStats && tableSongStats.battleCount > 0
+                    ? tableSongStats
+                    : sanitizeSongBattleStatsSnapshot(payloadSongStats),
+                showtimePublicRemovedAt:
+                  typeof row.showtime_public_removed_at === "string" ? row.showtime_public_removed_at.trim() || null : null,
+                createdAt: String(row.archived_at || new Date().toISOString()),
+              };
+            })
         : [];
 
-      const merged = mergeArchives(mappedArchives);
-      const dailyBattleRows = Array.isArray(dailyData) ? dailyRowsFromBattles(dailyData as DailyBattleBoardRow[]) : [];
-      const hotRows = Array.isArray(hotData) ? hotBarRowsFromTracks(hotData as ListenBarTrackRow[]) : [];
+      const merged = await attachBattleAudioUrls(applyFallbackSongStats(mergeArchives(mappedArchives)));
+      const hotRows = Array.isArray(hotData) ? hotBarRowsFromTracks(hotData) : [];
 
       if (!cancelled) {
         setArchivedResults(merged);
-        setDailyRows(dailyBattleRows);
         setHotBarRows(hotRows);
       }
     };
@@ -465,53 +1150,477 @@ export default function RankPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [lang]);
 
-  const dropRows = useMemo(() => {
-    return archivedResults.slice(0, 10).map((entry, index) => rowFromArchive(entry, index));
+  useEffect(() => {
+    let cancelled = false;
+    setChoiceLoading(true);
+
+    const loadChoices = async () => {
+      const [
+        { collections: nextChoiceCollections, error: choiceError },
+        { collections: nextCreatorChoices, error: creatorChoiceError },
+      ] = await Promise.all([fetchCurrentChoice(), fetchPublicCreatorChoices()]);
+
+      if (choiceError && !/schema cache|does not exist|permission denied|aipoger_choice/i.test(choiceError.message || "")) {
+        console.warn("[rank choice]", choiceError.message);
+      }
+      if (creatorChoiceError && !/schema cache|does not exist|permission denied|aipoger_creator_choice/i.test(creatorChoiceError.message || "")) {
+        console.warn("[rank creator choices]", creatorChoiceError.message);
+      }
+      if (!cancelled) {
+        setChoiceCollections(nextChoiceCollections);
+        setCreatorChoices(nextCreatorChoices);
+        setChoiceLoading(false);
+      }
+    };
+
+    void loadChoices();
+    return () => {
+      cancelled = true;
+    };
+  }, [lang]);
+
+  const battleRows = useMemo(() => {
+    return archivedResults.map((entry, index) => rowFromArchive(entry, index));
   }, [archivedResults]);
 
   const displayRows = useMemo(() => {
-    if (active === "bar") return hotBarRows;
-    if (active === "daily") return dailyRows;
-    return dropRows;
-  }, [active, dailyRows, hotBarRows, dropRows]);
+    return [...battleRows, ...hotBarRows].sort((a, b) => {
+      const byCreatedAt = new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      if (byCreatedAt !== 0) return byCreatedAt;
+      return a.id.localeCompare(b.id);
+    });
+  }, [battleRows, hotBarRows]);
 
-  const topRow = displayRows[0] ?? null;
-  const activeBadge = active === "bar" ? "HOT" : active === "daily" ? "24H" : "WIN";
+  const choiceEntries = useMemo<ShowtimeChoiceShelfEntry[]>(() => {
+    const official = choiceCollections
+      .filter((collection) => collection.items.length > 0)
+      .map((choiceCollection) => ({
+          id: choiceCollection.id,
+          kind: "official" as const,
+          curatorName: choiceCollection.curatorName || "AIPOGER",
+          coverUrl: choiceCollection.coverUrl?.trim()
+            || (choiceCollection.curatorIdentity === "personal" ? mediaSrc(choiceCollection.avatarUrl || "") : AIPOGER_BRAND_LOGO),
+          title: choiceDisplayTitle(choiceCollection.curatorName, choiceCollection.title),
+          intro: choiceCollection.intro,
+          weekStart: choiceCollection.weekStart,
+          href: `${choicePublicPath(choiceCollection.id, "official")}&lang=${lang}`,
+          items: choiceCollection.items,
+        }));
+    const creators = creatorChoices.map((collection) => ({
+      id: collection.id,
+      kind: "creator" as const,
+      curatorName: collection.curatorName,
+      coverUrl: collection.coverUrl?.trim() || mediaSrc(collection.avatarUrl),
+      title: choiceDisplayTitle(collection.curatorName, collection.title),
+      intro: collection.intro,
+      weekStart: collection.weekStart,
+      href: `${creatorChoicePublicPath(collection.id)}?lang=${lang}`,
+      items: collection.items,
+    }));
+    return [...official, ...creators];
+  }, [choiceCollections, creatorChoices, lang]);
+
+  const startChoicePlayback = (entry: ShowtimeChoiceShelfEntry, itemId?: string) => {
+    const playable = entry.items
+      .filter((item): item is typeof item & { audioUrl: string } => Boolean(item.audioUrl))
+      .map<ShowtimePlayerTrack>((item) => ({
+        id: `${item.sourceKind}:${item.id}`,
+        title: item.title,
+        artist: item.artist,
+        coverUrl: mediaSrc(item.coverUrl),
+        audioUrl: item.audioUrl,
+      }));
+    if (playable.length === 0) return;
+    const selected = itemId ? entry.items.find((item) => item.itemId === itemId) : null;
+    const index = selected ? Math.max(0, playable.findIndex((item) => item.id === `${selected.sourceKind}:${selected.id}`)) : 0;
+    void playerRef.current?.start(playable, index, `${entry.curatorName} Choice`);
+  };
+
+  const choiceItemHearts = useMemo<Record<string, ShowtimeChoiceItemHeartState>>(() => {
+    const next: Record<string, ShowtimeChoiceItemHeartState> = {};
+    choiceEntries.forEach((entry) => entry.items.forEach((item) => {
+      const key = choiceItemRecordKey(item);
+      const interaction = honorInteractions[key] ?? emptyHonorInteraction();
+      next[key] = { heartCount: interaction.favoriteCount, myHeart: interaction.myFavorited };
+    }));
+    return next;
+  }, [choiceEntries, honorInteractions]);
+
+  useEffect(() => {
+    const keys = Array.from(new Set(choiceEntries.map(choiceRecordKey)));
+    if (keys.length === 0) {
+      setChoiceHearts({});
+      return;
+    }
+    let cancelled = false;
+
+    const loadChoiceHearts = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const response = await fetch(`/api/choice/interactions?keys=${encodeURIComponent(keys.join(","))}`, {
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+        cache: "no-store",
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        interactions?: ChoiceInteractionPayload[];
+      } | null;
+      if (!response.ok || !Array.isArray(payload?.interactions) || cancelled) return;
+      setChoiceHearts((current) => {
+        const next = { ...current };
+        payload.interactions?.forEach((interaction) => {
+          next[interaction.recordKey] = normalizeChoiceInteraction(interaction);
+        });
+        return next;
+      });
+    };
+
+    void loadChoiceHearts();
+    return () => {
+      cancelled = true;
+    };
+  }, [choiceEntries]);
+
+  const toggleChoiceHeart = async (entry: ShowtimeChoiceShelfEntry) => {
+    const key = choiceRecordKey(entry);
+    setChoiceHeartError("");
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      setChoiceHeartError(isZh ? "請先登入，才能收藏 Choice。" : "Sign in to save a Choice.");
+      return;
+    }
+
+    setChoiceHeartBusy((current) => ({ ...current, [key]: true }));
+    const response = await fetch("/api/choice/interactions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        action: choiceHearts[key]?.myHeart ? "remove_heart" : "heart",
+        collectionKind: entry.kind,
+        collectionId: entry.id,
+      }),
+    });
+    const payload = (await response.json().catch(() => null)) as {
+      interaction?: ChoiceInteractionPayload;
+      error?: string;
+    } | null;
+    setChoiceHeartBusy((current) => ({ ...current, [key]: false }));
+    if (!response.ok || !payload?.interaction) {
+      setChoiceHeartError(payload?.error || (isZh ? "Choice 收藏失敗，請稍後再試。" : "Choice favorite failed. Try again later."));
+      return;
+    }
+    const interaction = payload.interaction;
+    setChoiceHearts((current) => ({
+      ...current,
+      [key]: normalizeChoiceInteraction(interaction),
+    }));
+  };
+
+  const startShowtimePlayback = (row: RankRow) => {
+    const audioUrl = row.fullSongUrl || row.audioUrl;
+    if (!audioUrl) return;
+    void playerRef.current?.start([{
+        id: honorRecordKey(row),
+        title: displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived"),
+        artist: row.name,
+        coverUrl: mediaSrc(row.coverUrl),
+        audioUrl,
+      }], 0, "AIPOGER Showtime");
+  };
+
+  useEffect(() => {
+    const keys = Array.from(new Set([
+      ...displayRows.map(honorRecordKey),
+      ...choiceEntries.flatMap((entry) => entry.items.map(choiceItemRecordKey)),
+    ]));
+    if (keys.length === 0) return;
+    let cancelled = false;
+
+    const loadInteractions = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const response = await fetch(`/api/honor-board/interactions?keys=${encodeURIComponent(keys.join(","))}`, {
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+        cache: "no-store",
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        records?: HonorInteractionPayload[];
+      } | null;
+      if (!response.ok || !Array.isArray(payload?.records) || cancelled) return;
+      setHonorInteractions((current) => {
+        const next = { ...current };
+        payload.records?.forEach((record) => {
+          next[record.recordKey] = normalizeHonorRecord(record);
+        });
+        return next;
+      });
+    };
+
+    void loadInteractions();
+    return () => {
+      cancelled = true;
+    };
+  }, [choiceEntries, displayRows]);
+
+  useEffect(() => {
+    if (!lyricsModal) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setLyricsModal(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [lyricsModal]);
+
+  const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+
+  const searchedDisplayRows = useMemo(() => {
+    if (!normalizedSearchTerm) return displayRows;
+    return displayRows.filter((row) =>
+      [
+        row.name,
+        row.hook,
+        row.opponentName,
+        row.opponentSong,
+        row.genre,
+        row.note,
+        row.aiTool,
+        row.battleCode,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(normalizedSearchTerm)),
+    );
+  }, [displayRows, normalizedSearchTerm]);
+
+  const monthCounts = useMemo(() => {
+    return searchedDisplayRows.reduce<Record<string, { label: string; count: number }>>((acc, row) => {
+      const key = monthKey(row.createdAt);
+      acc[key] = { label: displayMonth(key, isZh), count: (acc[key]?.count ?? 0) + 1 };
+      return acc;
+    }, {});
+  }, [searchedDisplayRows, isZh]);
+
+  const monthOptions = useMemo(() => {
+    return Object.entries(monthCounts)
+      .map(([key, value]) => ({ key, ...value }))
+      .sort((a, b) => b.key.localeCompare(a.key));
+  }, [monthCounts]);
+
+  const monthFilteredRows = useMemo(() => {
+    if (activeMonth === "all") return searchedDisplayRows;
+    return searchedDisplayRows.filter((row) => monthKey(row.createdAt) === activeMonth);
+  }, [activeMonth, searchedDisplayRows]);
+
+  const genreCounts = useMemo(() => {
+    return monthFilteredRows.reduce<Record<string, { label: string; count: number }>>((acc, row) => {
+      const label = displayGenre(row.genre || row.note, isZh);
+      const key = normalizeGenre(label);
+      acc[key] = { label, count: (acc[key]?.count ?? 0) + 1 };
+      return acc;
+    }, {});
+  }, [monthFilteredRows, isZh]);
+
+  const genreOptions = useMemo(() => {
+    const fixedKeys = new Set(MUSIC_GENRE_OPTIONS.map((genre) => normalizeGenre(genre.value)));
+    const fixedOptions = MUSIC_GENRE_OPTIONS.map((genre) => {
+      const key = normalizeGenre(genre.value);
+      return {
+        key,
+        label: t(genre.labelKey),
+        count: genreCounts[key]?.count ?? 0,
+      };
+    });
+    const legacyOptions = Object.entries(genreCounts)
+      .filter(([key]) => !fixedKeys.has(key))
+      .map(([key, value]) => ({ key, ...value }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+    return [...fixedOptions, ...legacyOptions];
+  }, [genreCounts, t]);
+
+  const filteredDisplayRows = useMemo(() => {
+    if (activeGenre === "all") return monthFilteredRows;
+    return monthFilteredRows.filter((row) => normalizeGenre(row.genre || row.note) === activeGenre);
+  }, [activeGenre, monthFilteredRows]);
+
+  const displayGroups = useMemo(() => {
+    const groups = new Map<string, RankRow[]>();
+    filteredDisplayRows.forEach((row) => {
+      const label = displayGenre(row.genre || row.note, isZh);
+      const existing = groups.get(label) ?? [];
+      existing.push(row);
+      groups.set(label, existing);
+    });
+    return Array.from(groups.entries()).sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+  }, [filteredDisplayRows, isZh]);
+
+  const toggleFavorite = async (row: RankRow) => {
+    const key = honorRecordKey(row);
+    setInteractionErrors((current) => ({ ...current, [key]: "" }));
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      setInteractionErrors((current) => ({
+        ...current,
+        [key]: isZh ? "請先登入，愛心會變成你的收藏。" : "Sign in to turn the heart into your favorite.",
+      }));
+      return;
+    }
+
+    setFavoriteBusy((current) => ({ ...current, [key]: true }));
+    const response = await fetch("/api/honor-board/interactions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        action: "favorite",
+        recordKey: key,
+        targetKind: row.kind,
+        targetId: honorTargetId(row),
+        targetTitle: `${row.name} / ${displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}`,
+        targetArtist: row.name,
+        targetGenre: row.genre || row.note,
+      }),
+    });
+    const payload = (await response.json().catch(() => null)) as {
+      record?: HonorInteractionPayload;
+      error?: string;
+    } | null;
+    setFavoriteBusy((current) => ({ ...current, [key]: false }));
+    if (!response.ok || !payload?.record) {
+      setInteractionErrors((current) => ({
+        ...current,
+        [key]: payload?.error || (isZh ? "收藏失敗，請稍後再試。" : "Favorite failed. Try again later."),
+      }));
+      return;
+    }
+    const nextRecord = payload.record;
+    setHonorInteractions((current) => ({ ...current, [key]: normalizeHonorRecord(nextRecord) }));
+  };
+
+  const toggleChoiceItemHeart = async (item: AipogerChoiceItem) => {
+    const key = choiceItemRecordKey(item);
+    setChoiceHeartError("");
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      setChoiceHeartError(isZh ? "請先登入，才能收藏歌曲。" : "Sign in to save songs.");
+      return;
+    }
+
+    setFavoriteBusy((current) => ({ ...current, [key]: true }));
+    const targetKind = item.sourceKind === "listen_bar_track" ? "bar" : "battle";
+    const response = await fetch("/api/honor-board/interactions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        action: "favorite",
+        recordKey: key,
+        targetKind,
+        targetId: item.id,
+        targetTitle: `${item.artist} / ${item.title}`,
+        targetArtist: item.artist,
+        targetGenre: item.genre,
+      }),
+    });
+    const payload = (await response.json().catch(() => null)) as {
+      record?: HonorInteractionPayload;
+      error?: string;
+    } | null;
+    setFavoriteBusy((current) => ({ ...current, [key]: false }));
+    if (!response.ok || !payload?.record) {
+      setChoiceHeartError(payload?.error || (isZh ? "歌曲收藏失敗，請稍後再試。" : "Song favorite failed. Try again later."));
+      return;
+    }
+    const nextRecord = payload.record;
+    setHonorInteractions((current) => ({ ...current, [key]: normalizeHonorRecord(nextRecord) }));
+  };
+
+  const submitHonorComment = async (event: FormEvent<HTMLFormElement>, row: RankRow) => {
+    event.preventDefault();
+    const key = honorRecordKey(row);
+    const text = (commentDrafts[key] || "").trim();
+    if (!text) return;
+    setInteractionErrors((current) => ({ ...current, [key]: "" }));
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      setInteractionErrors((current) => ({
+        ...current,
+        [key]: isZh ? "請先登入再留下評論。" : "Sign in to comment on this record.",
+      }));
+      return;
+    }
+
+    setCommentBusy((current) => ({ ...current, [key]: true }));
+    const response = await fetch("/api/honor-board/interactions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        action: "comment",
+        recordKey: key,
+        targetKind: row.kind,
+        targetId: honorTargetId(row),
+        targetTitle: `${row.name} / ${displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}`,
+        targetArtist: row.name,
+        targetGenre: row.genre || row.note,
+        text,
+      }),
+    });
+    const payload = (await response.json().catch(() => null)) as {
+      record?: HonorInteractionPayload;
+      error?: string;
+    } | null;
+    setCommentBusy((current) => ({ ...current, [key]: false }));
+    if (!response.ok || !payload?.record) {
+      setInteractionErrors((current) => ({
+        ...current,
+        [key]: payload?.error || (isZh ? "評論送出失敗，請稍後再試。" : "Comment failed. Try again later."),
+      }));
+      return;
+    }
+    setCommentDrafts((current) => ({ ...current, [key]: "" }));
+    const nextRecord = payload.record;
+    setHonorInteractions((current) => ({ ...current, [key]: normalizeHonorRecord(nextRecord) }));
+  };
 
   return (
     <main
-      className={`${fontGlowSans.className} relative min-h-screen overflow-hidden bg-[#050505] px-4 py-6 text-white sm:px-6 lg:px-8`}
+      className={`${fontGlowSans.className} aipo-stage-bg relative min-h-screen overflow-hidden px-4 pb-28 pt-5 text-white sm:px-6 lg:px-8`}
     >
-      <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_18%_15%,rgba(255,106,0,0.22),transparent_30%),radial-gradient(circle_at_86%_18%,rgba(0,202,255,0.16),transparent_28%),linear-gradient(180deg,#050505,#0b0704_54%,#050505)]" />
-      <div className="pointer-events-none absolute inset-0 opacity-[0.13] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:54px_54px]" />
+      <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_15%_0%,rgba(255,106,0,0.18),transparent_28%),radial-gradient(circle_at_92%_6%,rgba(0,202,255,0.12),transparent_26%),linear-gradient(180deg,#060606,#0a0806_48%,#050505)]" />
+      <div className="pointer-events-none absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:56px_56px]" />
 
       <div className="relative z-10 mx-auto w-full max-w-7xl">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-5">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.05] px-3 py-2 text-sm font-bold text-zinc-300 transition hover:border-orange-300/55 hover:text-white"
-          >
-            <Image
-              src={AIPOGER_BRAND_LOGO}
-              alt="AIPOGER"
-              width={28}
-              height={28}
-              className="h-7 w-7 rounded-full object-cover"
-            />
-            {isZh ? "返回首頁" : "Back Home"}
-          </Link>
-          <nav className="flex flex-wrap items-center gap-2">
+        <header className="aipo-control-panel aipo-panel-line flex flex-wrap items-center justify-between gap-3 rounded-[1.35rem] px-4 py-3">
+          <div className="h-11 w-16" aria-hidden="true" />
+          <nav className="flex flex-wrap items-center gap-2 sm:pr-20">
             {[
-              { href: "/battle", label: isZh ? "鬥歌場" : "Battles" },
+              { href: "/ai-music", label: isZh ? "探索 AI 音樂" : "Explore AI Music" },
               { href: "/listen-bar", label: isZh ? "傷心酒吧" : "Bar Heartbreak" },
-              { href: "/hook-guide", label: isZh ? "Drop Battle 規則" : "Rules" },
+              { href: "/battle", label: "Drop Battle" },
             ].map((item) => (
               <Link
                 key={item.href}
                 href={`${item.href}${navSuffix}`}
-                className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-zinc-300 transition hover:border-orange-300/55 hover:text-white"
+                className="aipo-ghost-button rounded-full px-3 py-1.5 text-xs font-bold text-zinc-300 transition hover:text-white"
               >
                 {item.label}
               </Link>
@@ -519,382 +1628,458 @@ export default function RankPage() {
           </nav>
         </header>
 
-        <section className="grid gap-7 py-10 lg:grid-cols-[1fr_0.95fr] lg:items-end">
-          <div>
-            <p className={`${fontRighteous.className} text-sm uppercase text-orange-300/85`}>
-              AIPOGER HONOR
+        <div className="mt-5">
+          <ShowtimeChoiceShelf
+            entries={choiceEntries}
+            lang={lang}
+            loading={choiceLoading}
+            onPlay={startChoicePlayback}
+            hearts={choiceHearts}
+            heartBusy={choiceHeartBusy}
+            heartError={choiceHeartError}
+            onToggleHeart={toggleChoiceHeart}
+            itemHearts={choiceItemHearts}
+            itemHeartBusy={favoriteBusy}
+            onToggleItemHeart={toggleChoiceItemHeart}
+          />
+        </div>
+
+        <section id="showtime-catalog" className="scroll-mt-20 py-5 sm:py-6">
+          <div className="max-w-6xl">
+            <p className={`${fontRighteous.className} text-[10px] uppercase tracking-[0.2em] text-cyan-100/75`}>
+              CERTIFIED MUSIC CATALOG
             </p>
-            <h1 className="mt-4 text-4xl font-black leading-[1.08] text-white sm:text-5xl md:text-6xl">
-              {isZh ? "AIPOGER 榮譽榜" : "AIPOGER Honor Board"}
+            <h1 className={`${fontRighteous.className} mt-1 text-2xl leading-tight text-white sm:text-3xl`}>
+              AIPOGER <span className="text-orange-300">SHOWTIME</span>
             </h1>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-zinc-400">
+            <p className="mt-2 text-sm font-black leading-6 text-yellow-100 sm:text-base">
               {isZh
-                ? "只顯示真實勝利、真實封存與傷心酒吧真實熱播。這裡記錄作品被看見的時刻，不用名次定義創作者。"
-                : "Only real victories, archived results, and Bar Heartbreak hot tracks are shown. This is an honor record, not a numbered chart."}
+                ? "收錄保留已獲得反應、正式戰績或策展認可的作品： 入選後不再接受挑戰"
+                : "Certified works recognized through response, official results, or curation; once selected, they no longer accept challenges."}
             </p>
-            <div className="mt-5 flex flex-wrap gap-3">
+            <div
+              className="mt-3 flex max-w-full items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              aria-label={t("rank_showtime_actions")}
+            >
               <ShareButton
-                title={isZh ? "AIPOGER 榮譽榜" : "AIPOGER Honor Board"}
+                title="AIPOGER Showtime"
                 text={
                   isZh
-                    ? "來看 AIPOGER 真實勝利、24H Full Song 與傷心酒吧熱播紀錄。"
-                    : "Check real AIPOGER victories, 24H Full Song records, and Bar Heartbreak hot tracks."
+                    ? "來聽 AIPOGER 已認證的 AI 音樂作品。"
+                    : "Listen to AIPOGER's certified AI music works."
                 }
-                label={isZh ? "分享榮譽榜" : "Share Board"}
-                copiedLabel={isZh ? "榮譽榜連結已複製" : "Board link copied"}
-                className="border-yellow-200/45 bg-yellow-300/12 px-5 py-2.5 text-yellow-100 hover:bg-yellow-300/18"
+                label={t("rank_share_showtime")}
+                copiedLabel={t("rank_showtime_link_copied")}
+                className="shrink-0 whitespace-nowrap !px-4 !py-2 !text-xs border-yellow-100/30 bg-white/[0.045] text-zinc-100 hover:border-yellow-100/55 active:bg-yellow-300 active:text-black"
               />
               <Link
-                href={`/battle/setup${navSuffix}`}
-                className="inline-flex items-center justify-center rounded-full bg-orange-500 px-5 py-2.5 text-sm font-black text-black transition hover:bg-orange-300"
+                href={`/ai-music${navSuffix}`}
+                className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-yellow-100/30 bg-white/[0.045] px-4 py-2 text-xs font-black text-zinc-100 transition hover:border-yellow-100/55 active:bg-yellow-300 active:text-black"
               >
-                {isZh ? "我要參戰" : "Join Battle"}
+                {t("rank_explore_works")}
               </Link>
             </div>
           </div>
-
-          <div className="grid gap-4">
-            {topRow ? (
-              <div className="overflow-hidden rounded-[1.6rem] border border-yellow-300/25 bg-yellow-400/[0.06] p-4 shadow-[0_24px_90px_rgba(0,0,0,0.34)]">
-                <div className="grid gap-4 sm:grid-cols-[8.5rem_1fr] sm:items-center">
-                  <div className="relative aspect-square overflow-hidden rounded-[1.25rem] border border-yellow-200/35 bg-black shadow-[0_0_42px_rgba(250,204,21,0.14)]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={mediaSrc(topRow.coverUrl)}
-                      alt={displaySongTitle(topRow.hook, isZh ? "歌名未封存" : "Song not archived")}
-                      className="h-full w-full object-cover"
-                    />
-                    <div className="absolute bottom-2 left-2 h-12 w-12 overflow-hidden rounded-full border-2 border-orange-300/80 bg-black shadow-[0_0_24px_rgba(255,106,0,0.35)]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={mediaSrc(topRow.avatarUrl)} alt={topRow.name} className="h-full w-full object-cover" />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs font-black uppercase text-yellow-200/75">
-                      {isZh ? "榮譽焦點" : "Spotlight"}
-                    </p>
-                    <p className="mt-2 text-3xl font-black text-white">{topRow.name}</p>
-                    <p className="mt-1 text-sm font-bold text-yellow-100">
-                      {topRow.rank} / {displayText(topRow.aiTool, isZh ? "工具未封存" : "Tool missing")}
-                    </p>
-                    <p className="mt-3 rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-sm leading-7 text-zinc-300">
-                      {displaySongTitle(topRow.hook, isZh ? "歌名未封存" : "Song not archived")}
-                      {topRow.kind === "battle" && topRow.opponentName
-                        ? ` / VS ${topRow.opponentName}`
-                        : ""}
-                    </p>
-                    {topRow.kind === "battle" ? (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Link
-                          href={resultHref(topRow, lang)}
-                          className="rounded-full border border-orange-200/35 bg-orange-500/12 px-4 py-2 text-xs font-black text-orange-100 transition hover:border-orange-200 hover:text-white"
-                        >
-                          {isZh ? "看成果卡" : "Result Card"}
-                        </Link>
-                        <ShareButton
-                          title={`${topRow.name} / ${displaySongTitle(topRow.hook, isZh ? "歌名未封存" : "Song not archived")}`}
-                          text={
-                            isZh
-                              ? `AIPOGER 榮譽榜焦點：${topRow.name} VS ${topRow.opponentName || "對手"}`
-                              : `AIPOGER spotlight: ${topRow.name} VS ${topRow.opponentName || "Opponent"}`
-                          }
-                          url={resultHref(topRow, lang)}
-                          label={isZh ? "分享成果卡" : "Share Result"}
-                          copiedLabel={isZh ? "成果卡已複製" : "Result copied"}
-                          className="px-4 py-2 text-xs"
-                        />
-                      </div>
-                    ) : topRow.kind === "daily" ? (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Link
-                          href={resultHref(topRow, lang)}
-                          className="rounded-full border border-cyan-200/35 bg-cyan-300/12 px-4 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-100 hover:text-white"
-                        >
-                          {isZh ? "看 24H 戰場" : "View 24H Battle"}
-                        </Link>
-                        <ShareButton
-                          title={`${topRow.name} / ${displaySongTitle(topRow.hook, isZh ? "歌名未封存" : "Song not archived")}`}
-                          text={
-                            isZh
-                              ? `AIPOGER 24H Full Song 勝利：${topRow.name}`
-                              : `AIPOGER 24H Full Song victory: ${topRow.name}`
-                          }
-                          url={resultHref(topRow, lang)}
-                          label={isZh ? "分享 24H 勝利" : "Share 24H Victory"}
-                          copiedLabel={isZh ? "24H 勝利已複製" : "24H victory copied"}
-                          className="px-4 py-2 text-xs"
-                        />
-                      </div>
-                    ) : topRow.audioUrl ? (
-                      <audio
-                        className="mt-3 w-full accent-orange-500"
-                        controls
-                        preload="metadata"
-                        src={topRow.audioUrl}
-                      >
-                        {isZh ? "你的瀏覽器暫時不支援播放。" : "Your browser does not support audio playback."}
-                      </audio>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-[1.6rem] border border-yellow-300/20 bg-yellow-400/[0.05] p-5 text-center shadow-[0_24px_90px_rgba(0,0,0,0.24)]">
-                <Image
-                  src={AIPOGER_BRAND_LOGO}
-                  alt="AIPOGER"
-                  width={72}
-                  height={72}
-                  className="mx-auto h-[4.5rem] w-[4.5rem] rounded-2xl object-cover"
-                />
-                <p className="mt-4 text-2xl font-black text-white">
-                  {isZh ? "目前沒有可封存紀錄" : "No archived records yet"}
-                </p>
-                <p className="mx-auto mt-2 max-w-md text-sm leading-7 text-zinc-400">
-                  {isZh
-                    ? "榮譽榜只顯示真實資料，不再塞入模擬內容。"
-                    : "The honor board now shows real data only."}
-                </p>
-              </div>
-            )}
-          </div>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-[17rem_1fr]">
-          <aside className="rounded-[1.4rem] border border-white/10 bg-black/52 p-3 backdrop-blur">
-            <div className="grid gap-2">
-              {BOARD_KEYS.map((key) => {
-                const selected = active === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setActive(key)}
-                    className={`rounded-2xl px-4 py-3 text-left text-sm font-black transition ${
-                      selected
-                        ? "border border-orange-300/45 bg-orange-500 text-black shadow-[0_0_28px_rgba(255,106,0,0.22)]"
-                        : "border border-white/10 bg-white/[0.035] text-zinc-300 hover:border-orange-300/35 hover:text-white"
-                    }`}
+        <section className="grid gap-5">
+          <div className="min-w-0">
+            <div className="aipo-control-panel rounded-[1.15rem] border-yellow-100/18 p-2">
+              <div className="grid gap-2 md:grid-cols-[minmax(9rem,0.8fr)_minmax(9rem,0.8fr)_minmax(0,2fr)_auto] md:items-end">
+                <label className="grid gap-1.5">
+                  <span className={`${fontRighteous.className} text-[11px] uppercase tracking-[0.16em] text-yellow-100/65`}>
+                    {t("rank_month")}
+                  </span>
+                  <select
+                    value={activeMonth}
+                    onChange={(event) => {
+                      setActiveMonth(event.target.value);
+                      setActiveGenre("all");
+                    }}
+                    className="h-10 min-w-0 rounded-md border border-yellow-100/25 bg-black/45 px-3 text-xs font-black text-zinc-100 outline-none transition hover:border-yellow-100/45 focus:border-yellow-100/60"
                   >
-                    {isZh ? BOARD_META[key].zh : BOARD_META[key].en}
+                    <option value="all">
+                      {t("rank_all_months", { count: searchedDisplayRows.length })}
+                    </option>
+                    {monthOptions.map((month) => (
+                      <option key={month.key} value={month.key}>
+                        {month.label} ({month.count})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="grid gap-1.5">
+                  <span className={`${fontRighteous.className} text-[11px] uppercase tracking-[0.16em] text-yellow-100/65`}>
+                    {t("rank_style")}
+                  </span>
+                  <select
+                    value={activeGenre}
+                    onChange={(event) => setActiveGenre(event.target.value)}
+                    className="h-10 min-w-0 rounded-md border border-yellow-100/25 bg-black/45 px-3 text-xs font-black text-zinc-100 outline-none transition hover:border-yellow-100/45 focus:border-yellow-100/60"
+                  >
+                    <option value="all">
+                      {t("rank_all_styles", { count: monthFilteredRows.length })}
+                    </option>
+                    {genreOptions.map((genre) => (
+                      <option key={genre.key} value={genre.key}>
+                        {genre.label} ({genre.count})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="grid gap-1.5">
+                  <span className={`${fontRighteous.className} text-[11px] uppercase tracking-[0.16em] text-cyan-100/70`}>
+                    {t("rank_search")}
+                  </span>
+                  <input
+                    value={searchTerm}
+                    onChange={(event) => {
+                      setSearchTerm(event.target.value);
+                      setActiveGenre("all");
+                    }}
+                    placeholder={t("rank_search_placeholder")}
+                    className="aipo-input h-10 min-w-0 rounded-md px-3 text-sm font-bold transition placeholder:text-zinc-600"
+                  />
+                </label>
+
+                <div className="flex items-center gap-2">
+                  {searchTerm ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchTerm("");
+                      setActiveGenre("all");
+                    }}
+                    className="aipo-ghost-button h-10 rounded-md px-3 text-xs font-black text-zinc-300 transition hover:text-white"
+                  >
+                    {t("rank_clear")}
                   </button>
-                );
-              })}
-            </div>
-          </aside>
-
-          <section className="rounded-[1.4rem] border border-white/10 bg-black/54 p-4 backdrop-blur md:p-5">
-            <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <p className={`${fontRighteous.className} text-xs uppercase text-orange-300/70`}>
-                  HONOR BOARD
-                </p>
-                <h2 className="mt-1 text-3xl font-black text-white">{boardTitle}</h2>
+                ) : (
+                    <span className="inline-flex h-10 items-center rounded-md border border-white/10 bg-black/35 px-3 text-xs font-black text-zinc-500">
+                      {filteredDisplayRows.length}/{displayRows.length}
+                    </span>
+                )}
+                </div>
               </div>
-              <ShareButton
-                title={isZh ? `${boardTitle} / AIPOGER 榮譽榜` : `${boardTitle} / AIPOGER Honor Board`}
-                text={
-                  isZh
-                    ? `來看 AIPOGER ${boardTitle}，只顯示真實紀錄。`
-                    : `Check the AIPOGER ${boardTitle} with real records only.`
-                }
-                label={isZh ? "分享這個榮譽榜" : "Share This Board"}
-                copiedLabel={isZh ? "榮譽榜連結已複製" : "Board copied"}
-                className="px-4 py-2"
-              />
             </div>
 
-            <div className="grid max-h-[980px] gap-3 overflow-y-auto pr-1">
-              {displayRows.length === 0 ? (
-                <div className="rounded-[1.3rem] border border-white/10 bg-white/[0.035] px-5 py-8 text-center">
+            <div className="space-y-8 pt-5">
+              {filteredDisplayRows.length === 0 ? (
+                <div className="aipo-control-panel rounded-[1.15rem] px-5 py-10 text-center">
+                  <Image
+                    src={AIPOGER_BRAND_LOGO}
+                    alt="AIPOGER"
+                    width={72}
+                    height={72}
+                    className="mx-auto h-[4.5rem] w-[4.5rem] rounded-lg object-cover"
+                  />
                   <p className="text-lg font-black text-white">
-                    {isZh ? "目前沒有完整封存的正式紀錄" : "No complete archived records yet"}
+                    {t("rank_no_records")}
                   </p>
                   <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-zinc-500">
                     {isZh
-                      ? "榮譽榜只顯示真實資料，等作品完成勝利或熱播紀錄後會出現在這裡。"
-                      : "Only real archived data is shown here."}
+                      ? "作品取得 Showtime 認證後，會以可播放、可收藏、可分享的方式出現在這裡。"
+                      : "Certified Showtime works appear here as playable, savable, and shareable records."}
                   </p>
                 </div>
               ) : (
-                displayRows.map((row, index) => {
-                  const rowResultHref = resultHref(row, lang);
-                  return (
-                    <article
-                      key={`${active}-${row.id}-${index}`}
-                      className={`relative overflow-hidden rounded-[1.3rem] border px-4 py-4 ${accentClasses(row.accent)}`}
-                    >
-                      <div className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-current opacity-60" />
-                      <div className="grid gap-4 xl:grid-cols-[3.5rem_8rem_1fr_auto] xl:items-center">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/15 bg-black/45 text-sm font-black tracking-[0.16em] text-white">
-                          {activeBadge}
-                        </div>
-                        <div className="relative h-28 w-full max-w-[12rem] overflow-hidden rounded-[1.15rem] border border-white/15 bg-black shadow-[0_18px_50px_rgba(0,0,0,0.28)]">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={mediaSrc(row.coverUrl)}
-                            alt={displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song not archived")}
-                            className="h-full w-full object-cover"
-                          />
-                          <div className="absolute bottom-2 left-2 h-12 w-12 overflow-hidden rounded-full border-2 border-white/65 bg-black">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={mediaSrc(row.avatarUrl)} alt={row.name} className="h-full w-full object-cover" />
-                          </div>
-                          <div className="absolute right-2 top-2 rounded-full border border-black/40 bg-white/90 px-2 py-1 text-[10px] font-black text-black">
-                            {displayText(row.aiTool, isZh ? "未封存工具" : "Tool missing")}
-                          </div>
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="text-2xl font-black text-white">{row.name}</h3>
-                            <span className="rounded-full border border-white/15 bg-black/28 px-2.5 py-1 text-[11px] font-bold text-zinc-100">
-                              {row.rank}
-                            </span>
-                            <span className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-2.5 py-1 text-[11px] font-black text-cyan-100">
-                              {isZh ? "AI 工具" : "AI Tool"} / {displayText(row.aiTool, isZh ? "未封存" : "Missing")}
-                            </span>
-                          </div>
-                          <p className="mt-1 text-sm font-bold text-current">{row.title}</p>
-                          {row.kind === "battle" ? (
-                            <>
-                              <p className="mt-2 text-sm leading-6 text-zinc-300">
-                                {isZh ? "決鬥" : "Battle"}：{row.name} VS {displayText(row.opponentName || "", isZh ? "對手未封存" : "Opponent missing")}
-                              </p>
-                              <p className="text-sm leading-6 text-zinc-300">
-                                A SIDE：{displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song not archived")}
-                                <span className="mx-2 text-zinc-600">/</span>
-                                B SIDE：{displaySongTitle(row.opponentSong || "", isZh ? "尚未封存" : "Not archived")}
-                              </p>
-                            </>
-                          ) : row.kind === "daily" ? (
-                            <>
-                              <p className="mt-2 text-sm leading-6 text-zinc-300">
-                                24H Full Song：{displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song not archived")}
-                              </p>
-                              <p className="text-sm leading-6 text-zinc-300">
-                                VS：{displayText(row.opponentName || "", isZh ? "對手作品未封存" : "Opponent track missing")}
-                              </p>
-                            </>
-                          ) : (
-                            <p className="mt-2 text-sm leading-6 text-zinc-300">
-                              {isZh ? "曲目" : "Track"}：{displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song not archived")}
-                            </p>
-                          )}
-                          {row.note ? <p className="mt-2 text-sm leading-6 text-zinc-300">{row.note}</p> : null}
-                          {row.kind === "battle" ? (
-                            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                              <p className="rounded-2xl border border-orange-200/16 bg-black/26 px-3 py-2 text-xs font-bold leading-5 text-zinc-300">
-                                <span className="text-orange-100">{isZh ? "AI 評價" : "AI Review"}：</span>
-                                {displayText(row.aiReview || "", isZh ? "無" : "None")}
-                              </p>
-                              <p className="rounded-2xl border border-cyan-200/16 bg-black/26 px-3 py-2 text-xs font-bold leading-5 text-zinc-300">
-                                <span className="text-cyan-100">{isZh ? "觀眾評價" : "Audience"}：</span>
-                                {displayText(row.audienceReview || "", isZh ? "無" : "None")}
-                              </p>
-                            </div>
-                          ) : null}
-                        </div>
-                        <div className="grid min-w-[13rem] gap-2 rounded-2xl border border-white/10 bg-black/34 px-4 py-3">
-                          {row.kind === "battle" ? (
-                            <div>
-                              <p className="text-sm font-black text-white">
-                                {displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song not archived")}
-                              </p>
-                              <p className="mt-1 text-xs font-bold text-zinc-400">
-                                {row.votesTotal && row.votesTotal > 0
-                                  ? `${row.votesTotal.toLocaleString()} ${isZh ? "票" : "votes"} / A SIDE ${row.aSideVotes || 0} ${isZh ? "票" : ""} B SIDE ${row.bSideVotes || 0} ${isZh ? "票" : ""}`
-                                  : isZh
-                                    ? "尚無投票"
-                                    : "No votes yet"}
-                              </p>
-                              <p className="mt-2 text-xs font-black text-yellow-100">
-                                {isZh ? "決鬥編號" : "Battle"} {displayText(row.battleCode || "", "N/A")}
-                              </p>
-                            </div>
-                          ) : row.kind === "daily" ? (
-                            <div>
-                              <p className="text-sm font-black text-white">
-                                {displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song not archived")}
-                              </p>
-                              <p className="mt-1 text-xs font-bold text-zinc-400">
-                                {isZh ? "24H Full Song 勝利作品" : "24H Full Song winner"}
-                              </p>
-                              <p className="mt-2 text-xs font-black text-yellow-100">
-                                24H ID {displayText(row.battleCode || "", "N/A").slice(0, 8)}
-                              </p>
-                            </div>
-                          ) : (
-                            <div>
-                              <p className="text-sm font-black text-white">{displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song not archived")}</p>
-                              <p className="mt-1 text-xs font-bold text-zinc-400">
-                                {isZh
-                                  ? `正向反應 ${(row.positiveReactions || 0).toLocaleString()}`
-                                  : `Positive ${(row.positiveReactions || 0).toLocaleString()}`}
-                              </p>
-                            </div>
-                          )}
-                          <div className="flex flex-wrap gap-2">
-                            {row.kind === "battle" || row.kind === "daily" ? (
-                              <>
-                                <Link
-                                  href={rowResultHref}
-                                  className="inline-flex items-center justify-center rounded-full border border-cyan-200/30 bg-cyan-300/10 px-3 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-100 hover:text-white"
-                                >
-                                  {row.kind === "daily"
-                                    ? (isZh ? "24H 戰場" : "24H Battle")
-                                    : (isZh ? "成果卡" : "Result")}
-                                </Link>
-                                <ShareButton
-                                  title={row.kind === "daily"
-                                    ? `${row.name} / 24H Full Song`
-                                    : `${row.name} VS ${displayText(row.opponentName || "", isZh ? "對手" : "Opponent")}`}
-                                  text={
-                                    row.kind === "daily"
-                                      ? (isZh
-                                          ? `AIPOGER 24H Full Song 勝利：${row.name}`
-                                          : `AIPOGER 24H Full Song victory: ${row.name}`)
-                                      : (isZh
-                                          ? `AIPOGER 戰績：${row.name} VS ${displayText(row.opponentName || "", "對手")}`
-                                          : `AIPOGER result: ${row.name} VS ${displayText(row.opponentName || "", "Opponent")}`)
-                                  }
-                                  url={rowResultHref}
-                                  label={isZh ? "分享" : "Share"}
-                                  copiedLabel={isZh ? "已複製" : "Copied"}
-                                  className="px-3 py-2 text-xs"
-                                />
-                              </>
-                            ) : null}
-                          </div>
-                          {row.audioUrl ? (
-                            <audio className="w-full accent-orange-500" controls preload="metadata" src={row.audioUrl}>
-                              {isZh ? "你的瀏覽器暫時不支援播放。" : "Your browser does not support audio playback."}
-                            </audio>
-                          ) : null}
-                        </div>
+                <>
+                  <section>
+                    <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+                      <div>
+                        <p className={`${fontRighteous.className} text-xs uppercase text-cyan-100/55`}>
+                          AIPOGER SHOWTIME
+                        </p>
+                        <h2 className="mt-1 text-2xl font-black text-white">
+                          {t("rank_all_certified_works")}
+                        </h2>
                       </div>
-                    </article>
-                  );
-                })
+                      <span className="text-xs font-bold text-zinc-500">
+                        {t("rank_records", { count: filteredDisplayRows.length })}
+                      </span>
+                    </div>
+
+                    <div className="space-y-7">
+                      {displayGroups.map(([genreLabel, rows]) => (
+                        <div key={genreLabel}>
+                          <div className="mb-3 flex items-center justify-between gap-3 border-b border-white/10 pb-2">
+                            <h3 className="text-lg font-black text-white">{genreLabel}</h3>
+                            <span className="text-xs font-black text-zinc-500">
+                              {t("rank_tracks", { count: rows.length })}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+                            {rows.map((row, index) => {
+                              const rowResultHref = resultHref(row, lang);
+                              const recordKey = honorRecordKey(row);
+                              const interaction = honorInteractions[recordKey] ?? emptyHonorInteraction();
+                              return (
+                                <article
+                                  key={`${genreLabel}-${row.id}-${index}`}
+                                  className={`group min-w-0 rounded-md border p-2 transition hover:-translate-y-0.5 hover:bg-white/[0.055] ${accentClasses(row.accent)}`}
+                                >
+                                  <div className="relative aspect-square overflow-hidden rounded border border-white/10 bg-black">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={mediaSrc(row.coverUrl)}
+                                      alt={displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}
+                                      className={honorCoverImageClass(row.coverUrl)}
+                                    />
+                                    <div className="absolute left-1.5 top-1.5 flex max-w-[calc(100%-0.75rem)] flex-wrap gap-1">
+                                      <span className="max-w-[7rem] truncate rounded border border-cyan-100/25 bg-black/78 px-1.5 py-1 text-[9px] font-black text-cyan-100">
+                                        {certificationLabel(row, isZh)}
+                                      </span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => startShowtimePlayback(row)}
+                                      disabled={!(row.fullSongUrl || row.audioUrl)}
+                                      className="absolute left-1/2 top-1/2 inline-flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-orange-500 text-black shadow-[0_8px_25px_rgba(0,0,0,0.5)] transition hover:scale-105 hover:bg-orange-300 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500"
+                                      aria-label={isZh ? `播放 ${displaySongTitle(row.hook, "作品")}` : `Play ${displaySongTitle(row.hook, "track")}`}
+                                    >
+                                      <Play className="h-4 w-4" fill="currentColor" />
+                                    </button>
+                                    <div className="absolute bottom-2 left-2 h-9 w-9 overflow-hidden rounded-full border-2 border-white/80 bg-black shadow-[0_0_20px_rgba(255,255,255,0.15)]">
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img src={mediaSrc(row.avatarUrl)} alt={row.name} className="h-full w-full object-cover" />
+                                    </div>
+                                  </div>
+
+                                  <div className="min-h-[7rem] pt-2.5">
+                                    <h3 className="line-clamp-2 text-[13px] font-black leading-[1.15rem] text-white">
+                                      {displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}
+                                    </h3>
+                                    <p className="mt-1 truncate text-[11px] font-bold text-zinc-300">{row.name}</p>
+                                    <p className="mt-1 truncate text-[10px] font-bold text-zinc-500">
+                                      {row.kind === "battle"
+                                        ? `VS ${displayText(row.opponentName || "", isZh ? "對手未封存" : "Opponent Missing")}`
+                                        : row.certification === "defense" && row.note
+                                          ? row.note
+                                          : displayGenre(row.genre || row.note, isZh)}
+                                    </p>
+                                    {row.kind === "battle" && row.songStats?.battleCount ? (
+                                      <p className="mt-1.5 line-clamp-2 text-[10px] font-black leading-4 text-yellow-100/90">
+                                        {formatSongStats(row.songStats, isZh)}
+                                      </p>
+                                    ) : null}
+                                    <div className="mt-1.5 flex flex-wrap gap-1">
+                                      <span className="rounded border border-cyan-200/20 bg-cyan-300/10 px-1.5 py-1 text-[9px] font-black text-cyan-100">
+                                        {displayText(row.aiTool, isZh ? "未封存工具" : "Tool Missing")}
+                                      </span>
+                                      <span className="rounded border border-yellow-200/20 bg-yellow-300/8 px-1.5 py-1 text-[9px] font-black text-yellow-100">
+                                        {row.fullSongUrl ? "FULL" : "DROP"}
+                                      </span>
+                                    </div>
+                                    <p className="mt-1.5 truncate text-[10px] font-bold text-zinc-500">
+                                      {row.kind === "battle"
+                                        ? row.votesTotal && row.votesTotal > 0
+                                          ? `${row.votesTotal.toLocaleString()} ${isZh ? "票" : "votes"}`
+                                          : isZh
+                                            ? "封存勝利"
+                                            : "Archived win"
+                                        : isZh
+                                          ? `正向反應 ${(row.positiveReactions || 0).toLocaleString()}`
+                                          : `Positive ${(row.positiveReactions || 0).toLocaleString()}`}
+                                    </p>
+                                  </div>
+
+                                  <div className="flex flex-wrap items-center gap-1 border-t border-white/10 pt-2">
+                                    {row.kind === "battle" ? (
+                                      <>
+                                        <Link
+                                          href={rowResultHref}
+                                          className={`inline-flex h-8 w-8 items-center justify-center rounded-full border p-0 text-[11px] font-black transition ${HONOR_ACTION_CLASS}`}
+                                          aria-label={isZh ? "成果卡" : "Result"}
+                                          title={isZh ? "成果卡" : "Result"}
+                                        >
+                                          <Trophy className="h-3.5 w-3.5" aria-hidden="true" />
+                                        </Link>
+                                        <HonorCommentsPanel
+                                          row={row}
+                                          isZh={isZh}
+                                          expanded={Boolean(expandedComments[recordKey])}
+                                          interaction={interaction}
+                                          draft={commentDrafts[recordKey] || ""}
+                                          busy={Boolean(commentBusy[recordKey])}
+                                          error={interactionErrors[recordKey] || ""}
+                                          onToggle={() =>
+                                            setExpandedComments((current) => ({
+                                              ...current,
+                                              [recordKey]: !current[recordKey],
+                                            }))
+                                          }
+                                          onDraftChange={(value) =>
+                                            setCommentDrafts((current) => ({ ...current, [recordKey]: value }))
+                                          }
+                                          onSubmit={(event) => void submitHonorComment(event, row)}
+                                          compact
+                                        />
+                                        <ShareButton
+                                          title={`${row.name} VS ${displayText(row.opponentName || "", isZh ? "對手" : "Opponent")}`}
+                                          text={
+                                            isZh
+                                              ? `AIPOGER 戰績：${row.name} VS ${displayText(row.opponentName || "", "對手")}`
+                                              : `AIPOGER result: ${row.name} VS ${displayText(row.opponentName || "", "Opponent")}`
+                                          }
+                                          url={rowResultHref}
+                                          label={isZh ? "分享" : "Share"}
+                                          copiedLabel={isZh ? "已複製" : "Copied"}
+                                          className={`!h-8 !w-8 !p-0 !text-[11px] ${HONOR_ACTION_CLASS}`}
+                                          iconOnly
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => void toggleFavorite(row)}
+                                          disabled={favoriteBusy[recordKey]}
+                                          className={`inline-flex h-8 items-center justify-center gap-1 rounded-full border px-2 text-[10px] font-black transition ${
+                                            interaction.myFavorited
+                                              ? "border-red-200/70 bg-red-500/18 text-red-100"
+                                              : "border-white/12 bg-black/20 text-zinc-300 hover:border-red-200/55 hover:text-red-100"
+                                          }`}
+                                          aria-pressed={interaction.myFavorited}
+                                          title={isZh ? "愛心收藏" : "Favorite"}
+                                        >
+                                          <span className="text-sm leading-none" aria-hidden="true">♥</span>
+                                          <span className="tabular-nums">{interaction.favoriteCount}</span>
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <HonorCommentsPanel
+                                          row={row}
+                                          isZh={isZh}
+                                          expanded={Boolean(expandedComments[recordKey])}
+                                          interaction={interaction}
+                                          draft={commentDrafts[recordKey] || ""}
+                                          busy={Boolean(commentBusy[recordKey])}
+                                          error={interactionErrors[recordKey] || ""}
+                                          onToggle={() =>
+                                            setExpandedComments((current) => ({
+                                              ...current,
+                                              [recordKey]: !current[recordKey],
+                                            }))
+                                          }
+                                          onDraftChange={(value) =>
+                                            setCommentDrafts((current) => ({ ...current, [recordKey]: value }))
+                                          }
+                                          onSubmit={(event) => void submitHonorComment(event, row)}
+                                          compact
+                                        />
+                                        <ShareButton
+                                          title={`${row.name} / ${displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}`}
+                                          text={
+                                            isZh
+                                              ? `AIPOGER Showtime 認證作品：${displaySongTitle(row.hook, "歌名未封存")}`
+                                              : `AIPOGER Showtime certified work: ${displaySongTitle(row.hook, "Song Not Archived")}`
+                                          }
+                                          url={`/rank?lang=${lang}`}
+                                          label={isZh ? "分享" : "Share"}
+                                          copiedLabel={isZh ? "已複製" : "Copied"}
+                                          className={`!h-8 !w-8 !p-0 !text-[11px] ${HONOR_ACTION_CLASS}`}
+                                          iconOnly
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => void toggleFavorite(row)}
+                                          disabled={favoriteBusy[recordKey]}
+                                          className={`inline-flex h-8 items-center justify-center gap-1 rounded-full border px-2 text-[10px] font-black transition ${
+                                            interaction.myFavorited
+                                              ? "border-red-200/70 bg-red-500/18 text-red-100"
+                                              : "border-white/12 bg-black/20 text-zinc-300 hover:border-red-200/55 hover:text-red-100"
+                                          }`}
+                                          aria-pressed={interaction.myFavorited}
+                                          title={isZh ? "愛心收藏" : "Favorite"}
+                                        >
+                                          <span className="text-sm leading-none" aria-hidden="true">♥</span>
+                                          <span className="tabular-nums">{interaction.favoriteCount}</span>
+                                        </button>
+                                      </>
+                                    )}
+                                    <LyricsAction row={row} isZh={isZh} onOpen={openLyricsModal} compact />
+                                    {row.supportUrl ? (
+                                      <a href={row.supportUrl} target="_blank" rel="noopener noreferrer" className={`inline-flex h-8 w-8 items-center justify-center rounded-full border p-0 ${HONOR_ACTION_CLASS}`} aria-label={row.supportLabel || (isZh ? "支持創作者" : "Support Creator")} title={row.supportLabel || (isZh ? "支持創作者" : "Support Creator")}>
+                                        <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                                      </a>
+                                    ) : null}
+                                    {row.youtubeUrl ? (
+                                      <a href={row.youtubeUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center justify-center gap-1 rounded-full border border-red-200/28 bg-red-400/[0.08] px-2 text-[10px] font-black text-red-100 transition hover:border-red-100/65 hover:bg-red-400/15" aria-label={isZh ? "觀看勝出作品 MV" : "Watch winner MV"} title={isZh ? "觀看勝出作品 MV" : "Watch winner MV"}>
+                                        <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                                        <span>MV</span>
+                                      </a>
+                                    ) : null}
+                                    <ReportButton
+                                      targetType={row.kind === "battle" ? "battle_result" : "listen_bar_track"}
+                                      targetId={row.kind === "battle" ? row.battleCode || row.id : row.id}
+                                      targetTitle={`${row.name} / ${displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived")}`}
+                                      targetUrl={row.kind === "battle" ? rowResultHref : `/rank?lang=${lang}`}
+                                      context={`Showtime catalog row kind=${row.kind}`}
+                                      lang={lang}
+                                      className={`!h-8 !w-8 !p-0 !text-[11px] ${HONOR_ACTION_CLASS}`}
+                                      iconOnly
+                                    />
+                                  </div>
+                                  {interactionErrors[recordKey] && !expandedComments[recordKey] ? (
+                                    <p className="mt-2 rounded-md border border-red-200/20 bg-red-500/10 px-2 py-1.5 text-[11px] font-bold text-red-100">
+                                      {interactionErrors[recordKey]}
+                                    </p>
+                                  ) : null}
+
+                                </article>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                </>
               )}
             </div>
-          </section>
+          </div>
         </section>
 
-        <section className="mt-5 grid gap-3 md:grid-cols-3">
-          {stageRows.map((stage) => (
+        {lyricsModal ? (
+          <div
+            className="fixed inset-0 z-[220] flex items-end bg-black/76 px-3 py-4 backdrop-blur-sm sm:items-center sm:justify-center sm:px-6"
+            role="dialog"
+            aria-modal="true"
+            aria-label={isZh ? "歌詞" : "Lyrics"}
+            onClick={() => setLyricsModal(null)}
+          >
             <div
-              key={stage.stageZh}
-              className="rounded-[1.25rem] border border-white/10 bg-white/[0.04] px-4 py-4"
+              className="aipo-control-panel max-h-[82vh] w-full max-w-2xl overflow-hidden rounded-[1.25rem] border border-yellow-200/25 bg-zinc-950 shadow-[0_24px_90px_rgba(0,0,0,0.72)]"
+              onClick={(event) => event.stopPropagation()}
             >
-              <p className="text-sm font-black text-orange-200">{isZh ? stage.stageZh : stage.stageEn}</p>
-              <p className="mt-1 text-xl font-black text-white">{isZh ? stage.titleZh : stage.titleEn}</p>
-              <p className="mt-2 text-sm text-zinc-400">{stage.levels}</p>
-              <p className="mt-3 text-xs font-bold text-zinc-500">{isZh ? stage.baseZh : stage.baseEn}</p>
+              <div className="flex items-start justify-between gap-4 border-b border-white/10 px-4 py-4 sm:px-5">
+                <div className="min-w-0">
+                  <p className={`${fontRighteous.className} text-[11px] uppercase tracking-[0.18em] text-yellow-100/65`}>
+                    {isZh ? "LYRICS / 歌詞" : "LYRICS"}
+                  </p>
+                  <h2 className="mt-1 break-words text-lg font-black leading-6 text-white sm:text-xl">
+                    {isZh ? `《${lyricsModal.title}》歌詞` : `${lyricsModal.title} Lyrics`}
+                  </h2>
+                  <p className="mt-1 truncate text-xs font-bold text-zinc-500">{lyricsModal.artist}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setLyricsModal(null)}
+                  className="shrink-0 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs font-black text-zinc-300 transition hover:border-yellow-100/55 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-200/70"
+                >
+                  {isZh ? "關閉" : "Close"}
+                </button>
+              </div>
+              <div className="max-h-[58vh] overflow-y-auto px-4 py-4 sm:px-5">
+                <p className="whitespace-pre-wrap break-words text-sm font-bold leading-7 text-zinc-200">
+                  {lyricsModal.lyrics}
+                </p>
+              </div>
             </div>
-          ))}
-        </section>
+          </div>
+        ) : null}
 
-        <footer className="mt-8 flex flex-col gap-4 border-t border-white/10 py-6 md:flex-row md:items-center md:justify-between">
+        <footer className="mt-8 border-t border-white/10 py-6">
           <div>
             <p className={`${fontRighteous.className} text-sm uppercase text-zinc-200`}>AIPOGER.AI</p>
             <a
@@ -904,21 +2089,10 @@ export default function RankPage() {
               {AIPOGER_CONTACT_EMAIL}
             </a>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {AIPOGER_SOCIAL_LINKS.map((social) => (
-              <a
-                key={social.label}
-                href={social.href}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-black text-zinc-300 transition hover:border-cyan-200/60 hover:text-white"
-              >
-                {social.label} <span className="text-zinc-500">{social.handle}</span>
-              </a>
-            ))}
-          </div>
         </footer>
       </div>
+
+      <ShowtimeQueuePlayer ref={playerRef} isZh={isZh} />
     </main>
   );
 }

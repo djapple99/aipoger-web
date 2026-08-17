@@ -2,14 +2,30 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
-  LISTEN_BAR_PUBLIC_REACTION_THRESHOLD,
-  LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
+  listenBarPromotionProtectionActive,
+  listenBarChallengerSlotLimitForPublicCount,
 } from "@/lib/listen-bar";
+import { AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS, isAiMusicPersistedShowtimeCertified } from "@/lib/ai-music-showtime";
+import {
+  LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS,
+  LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS,
+  cleanListenBarDisplayText,
+} from "@/lib/listen-bar-field-limits";
+import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
+import { normalizeYouTubeUrl } from "@/lib/youtube-url";
 
 type ListenBarTrackRow = {
   id: string;
   title: string | null;
+  artist?: string | null;
+  ai_tool?: string | null;
+  genre?: string | null;
+  mood?: string | null;
+  description?: string | null;
+  youtube_url?: string | null;
+  lyrics?: string | null;
   duration_seconds?: number | null;
+  audio_path?: string | null;
   created_by: string | null;
   source?: "official" | "community" | null;
   bar_phase?: "challenger" | "public" | null;
@@ -21,6 +37,20 @@ type ListenBarTrackRow = {
   positive_reaction_count?: number | null;
   created_at?: string | null;
   promoted_at?: string | null;
+  ai_music_challenge_status?: string | null;
+  ai_music_challenge_updated_at?: string | null;
+  ai_music_defender_drop_audio_path?: string | null;
+  ai_music_defender_drop_audio_sha256?: string | null;
+  ai_music_defender_drop_original_name?: string | null;
+  ai_music_defender_drop_duration_seconds?: number | null;
+  ai_music_defender_drop_lyrics?: string | null;
+  ai_music_defender_drop_prepared_at?: string | null;
+  ai_music_showtime_certified?: boolean | null;
+  ai_music_showtime_certified_at?: string | null;
+  ai_music_showtime_certification_source?: string | null;
+  ai_music_showtime_public_removed_at?: string | null;
+  support_url?: string | null;
+  support_url_status?: string | null;
 };
 
 type ListenBarMyTracksDatabase = {
@@ -29,7 +59,7 @@ type ListenBarMyTracksDatabase = {
       listen_bar_tracks: {
         Row: ListenBarTrackRow;
         Insert: Record<string, never>;
-        Update: Record<string, never>;
+        Update: Partial<ListenBarTrackRow>;
         Relationships: [];
       };
     };
@@ -42,8 +72,10 @@ type ListenBarMyTracksDatabase = {
 
 type AdminClient = SupabaseClient<ListenBarMyTracksDatabase>;
 
-const MODERN_SELECT = "id,title,duration_seconds,created_by,source,bar_phase,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at,promoted_at";
-const LEGACY_SELECT = "id,title,duration_seconds,created_by,source,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at";
+const MODERN_SELECT = `id,title,artist,ai_tool,genre,mood,description,youtube_url,lyrics,duration_seconds,audio_path,created_by,source,bar_phase,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at,promoted_at,ai_music_challenge_status,ai_music_challenge_updated_at,ai_music_defender_drop_audio_path,ai_music_defender_drop_audio_sha256,ai_music_defender_drop_original_name,ai_music_defender_drop_duration_seconds,ai_music_defender_drop_lyrics,ai_music_defender_drop_prepared_at,${AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS}`;
+const LEGACY_WITH_DESCRIPTION_SELECT = "id,title,artist,ai_tool,genre,mood,description,lyrics,duration_seconds,audio_path,created_by,source,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at";
+const LEGACY_SELECT = "id,title,artist,ai_tool,genre,mood,lyrics,duration_seconds,audio_path,created_by,source,is_active,heart_count,star_count,thumb_count,happy_count,positive_reaction_count,created_at";
+const allowedGenreValues = new Set(MUSIC_GENRE_OPTIONS.map((genre) => genre.value));
 
 function tokenFromRequest(request: NextRequest): string | null {
   const auth = request.headers.get("authorization") ?? "";
@@ -61,19 +93,45 @@ function adminClient(): AdminClient {
 }
 
 function isMissingColumnError(error: unknown): boolean {
+  const code = error && typeof error === "object" ? (error as { code?: string }).code : "";
   const text = error && typeof error === "object"
     ? [
         (error as { message?: string }).message,
         (error as { details?: string }).details,
         (error as { hint?: string }).hint,
-        (error as { code?: string }).code,
       ].filter(Boolean).join(" ")
     : String(error ?? "");
-  return /schema cache|column.*does not exist|PGRST204|bar_phase|promoted_at/i.test(text);
+  return code === "PGRST204" || /schema cache|column .* does not exist|could not find .* column/i.test(text);
 }
 
-function applyLegacyOpeningGrace(rows: ListenBarTrackRow[], openingGraceMode: boolean): ListenBarTrackRow[] {
-  if (openingGraceMode) {
+function missingDescriptionColumnResponse() {
+  return NextResponse.json(
+    {
+      error: "傷心酒吧資料庫還沒套用一句歌曲介紹欄位，請先執行 supabase/20260611_listen_bar_track_metadata.sql 後再補資料。",
+    },
+    { status: 500 },
+  );
+}
+
+function cleanText(value: unknown, maxLength: number): string | null {
+  if (typeof value !== "string") return null;
+  const clean = value.trim().slice(0, maxLength);
+  return clean || null;
+}
+
+function cleanShortField(value: unknown) {
+  return cleanListenBarDisplayText(value, LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS);
+}
+
+function cleanDescriptionField(value: unknown) {
+  return cleanListenBarDisplayText(value, LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS);
+}
+
+function applyLegacyOpeningGrace(rows: ListenBarTrackRow[]): ListenBarTrackRow[] {
+  const hasPersistedPhase = rows.some((row) => Object.prototype.hasOwnProperty.call(row, "bar_phase"));
+  if (hasPersistedPhase) return rows;
+
+  if (listenBarPromotionProtectionActive()) {
     return rows.map((row) => ({
       ...row,
       bar_phase: "public",
@@ -81,15 +139,11 @@ function applyLegacyOpeningGrace(rows: ListenBarTrackRow[], openingGraceMode: bo
     }));
   }
 
-  const hasPersistedPhase = rows.some((row) => Object.prototype.hasOwnProperty.call(row, "bar_phase"));
-  if (hasPersistedPhase) return rows;
-
   const observationCutoffMs = Date.now() - LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS * 60 * 60 * 1000;
   return rows.map((row) => {
     const createdAtMs = new Date(row.created_at ?? 0).getTime();
     const shouldBePublic = Number.isFinite(createdAtMs)
-      && createdAtMs < observationCutoffMs
-      && (row.positive_reaction_count ?? 0) >= LISTEN_BAR_PUBLIC_REACTION_THRESHOLD;
+      && createdAtMs < observationCutoffMs;
     return {
       ...row,
       bar_phase: shouldBePublic ? "public" : "challenger",
@@ -107,13 +161,6 @@ export async function GET(request: NextRequest) {
     const { data: userData, error: userError } = await admin.auth.getUser(token);
     if (userError || !userData.user) return NextResponse.json({ error: "登入狀態已過期，請重新登入。" }, { status: 401 });
 
-    const { count: activeCommunityCount, error: activeCommunityError } = await admin
-      .from("listen_bar_tracks")
-      .select("id", { count: "exact", head: true })
-      .eq("source", "community")
-      .eq("is_active", true);
-    if (activeCommunityError) return NextResponse.json({ error: activeCommunityError.message }, { status: 500 });
-
     const modernResult = await admin
       .from("listen_bar_tracks")
       .select(MODERN_SELECT)
@@ -127,20 +174,113 @@ export async function GET(request: NextRequest) {
     if (error && isMissingColumnError(error)) {
       const legacyResult = await admin
         .from("listen_bar_tracks")
-        .select(LEGACY_SELECT)
+        .select(LEGACY_WITH_DESCRIPTION_SELECT)
         .eq("created_by", userData.user.id)
         .eq("source", "community")
         .eq("is_active", true)
         .order("created_at", { ascending: false });
       rows = (legacyResult.data as ListenBarTrackRow[] | null) ?? null;
       error = legacyResult.error;
+
+      if (error && isMissingColumnError(error)) {
+        const basicLegacyResult = await admin
+          .from("listen_bar_tracks")
+          .select(LEGACY_SELECT)
+          .eq("created_by", userData.user.id)
+          .eq("source", "community")
+          .eq("is_active", true)
+          .order("created_at", { ascending: false });
+        rows = (basicLegacyResult.data as ListenBarTrackRow[] | null) ?? null;
+        error = basicLegacyResult.error;
+      }
     }
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    const tracks = applyLegacyOpeningGrace(rows ?? [], (activeCommunityCount ?? 0) <= LISTEN_BAR_PUBLIC_ROTATION_LIMIT);
+    const tracks = applyLegacyOpeningGrace(rows ?? []).filter((track) => !isAiMusicPersistedShowtimeCertified(track));
     const challengerCount = tracks.filter((track) => track.bar_phase !== "public").length;
-    return NextResponse.json({ activeTrackCount: tracks.length, challengerCount, tracks });
+    const publicCount = tracks.filter((track) => track.bar_phase === "public").length;
+    const challengerLimit = listenBarChallengerSlotLimitForPublicCount(publicCount);
+    return NextResponse.json({ activeTrackCount: tracks.length, challengerCount, publicCount, challengerLimit, tracks });
+  } catch (error) {
+    return NextResponse.json({ error: String((error as { message?: string })?.message ?? error) }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  const token = tokenFromRequest(request);
+  if (!token) return NextResponse.json({ error: "請先登入後再補歌曲資料。" }, { status: 401 });
+
+  try {
+    const body = await request.json().catch(() => null) as Record<string, unknown> | null;
+    const trackId = cleanText(body?.trackId, 80);
+    if (!trackId) return NextResponse.json({ error: "缺少歌曲 ID。" }, { status: 400 });
+
+    const admin = adminClient();
+    const { data: userData, error: userError } = await admin.auth.getUser(token);
+    if (userError || !userData.user) return NextResponse.json({ error: "登入狀態已過期，請重新登入。" }, { status: 401 });
+
+    const patch = {
+      ai_tool: cleanShortField(body?.aiTool) ?? "AI Music",
+      genre: cleanText(body?.genre, 80),
+      mood: cleanShortField(body?.album),
+      description: cleanDescriptionField(body?.description),
+      youtube_url: normalizeYouTubeUrl(body?.youtubeUrl),
+    };
+    if (!patch.genre || !allowedGenreValues.has(patch.genre)) {
+      return NextResponse.json({ error: "請從固定類型選單選擇歌曲類型。" }, { status: 400 });
+    }
+
+    let updateResult = await admin
+      .from("listen_bar_tracks")
+      .update(patch)
+      .eq("id", trackId)
+      .eq("created_by", userData.user.id)
+      .eq("source", "community")
+      .eq("is_active", true)
+      .select(MODERN_SELECT)
+      .maybeSingle();
+
+    if (updateResult.error && isMissingColumnError(updateResult.error)) {
+      const fallbackWithDescriptionPatch = { ...patch };
+      delete (fallbackWithDescriptionPatch as Partial<typeof patch>).youtube_url;
+      updateResult = await admin
+        .from("listen_bar_tracks")
+        .update(fallbackWithDescriptionPatch)
+        .eq("id", trackId)
+        .eq("created_by", userData.user.id)
+        .eq("source", "community")
+        .eq("is_active", true)
+        .select(LEGACY_WITH_DESCRIPTION_SELECT)
+        .maybeSingle();
+
+      if (updateResult.error && isMissingColumnError(updateResult.error)) {
+        if (patch.description) return missingDescriptionColumnResponse();
+        const fallbackPatch = { ...patch };
+        delete (fallbackPatch as Partial<typeof patch>).description;
+        delete (fallbackPatch as Partial<typeof patch>).youtube_url;
+        updateResult = await admin
+          .from("listen_bar_tracks")
+          .update(fallbackPatch)
+          .eq("id", trackId)
+          .eq("created_by", userData.user.id)
+          .eq("source", "community")
+          .eq("is_active", true)
+          .select(LEGACY_SELECT)
+          .maybeSingle();
+      }
+    }
+
+    if (updateResult.error) {
+      const status = updateResult.error.code === "23514" ? 400 : 500;
+      const errorMessage = updateResult.error.code === "23514"
+        ? "資料庫的 YouTube MV 連結規則尚未更新，請先套用 supabase/20260707_listen_bar_youtube_url_accept_music_hosts.sql。"
+        : updateResult.error.message;
+      return NextResponse.json({ error: errorMessage }, { status });
+    }
+    if (!updateResult.data) return NextResponse.json({ error: "找不到可修改的歌曲。" }, { status: 404 });
+
+    return NextResponse.json({ track: updateResult.data });
   } catch (error) {
     return NextResponse.json({ error: String((error as { message?: string })?.message ?? error) }, { status: 500 });
   }

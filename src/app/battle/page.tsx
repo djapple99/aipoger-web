@@ -1,17 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { BadgeCheck, BookOpen, ChevronsRight, Clock3, Compass, History, Radio, Swords } from "lucide-react";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
-import { getFreshSession } from "@/lib/auth-session";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
 import ShareButton from "@/components/share-button";
 import SafetyNotice from "@/components/safety-notice";
+import { rememberAuthNextPath } from "@/lib/auth-urls";
 import { rankLabelForLevel } from "@/lib/battle-pool-rules";
-import { cancelCurrentBattleIntent } from "@/lib/battle-pool-client";
-import { dailyChallengeSetupPath, dailyChallengeSharePath } from "@/lib/short-battle-links";
+import { battleResultShortPath, battleShortPath, dailyBattleShortPath, dailyEntryShortPath } from "@/lib/share-short-links";
+import { qCrashDisplayLang } from "@/lib/q-crash-rules";
+import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
+import {
+  DROP_BATTLE_EXPECTED_END_BUFFER_MS,
+  cancelCurrentBattleIntent,
+  isClosedDropBattleStatus,
+  isDropBattleEndedOrPastExpectedEnd,
+  resolveDropBattleRuntimeStart,
+  resolveDropBattleScheduledStart,
+  shouldExpireOpenDropQueue,
+} from "@/lib/battle-pool-client";
+import { officialGatekeeperDisplayTitle, type OfficialGatekeeperDrop } from "@/lib/official-gatekeeper-drops";
+import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 
 const seedComments = [
   "A Side 節奏很穩，這段 drop 很強。",
@@ -48,6 +62,14 @@ const mockBattleData: BattleViewData = {
 };
 
 const DAILY_BATTLE_QUEUE_MS = 24 * 60 * 60 * 1000;
+const SHOW_DAILY_BATTLE_SECTION = false;
+const DROP_BATTLE_GENRE_OPTIONS = MUSIC_GENRE_OPTIONS;
+const BATTLE_FEMALE_ASSET = "/images/battle/battle-fighter-citypop-female.png";
+const BATTLE_MALE_ASSET = "/images/battle/battle-fighter-gatekeeper-male.png";
+
+function normalizeGenreFilter(value: string | null | undefined) {
+  return String(value || "").trim().toLowerCase();
+}
 
 function Turntable({
   label,
@@ -121,6 +143,7 @@ function VoteButton({ team }: { team: "A" | "B" }) {
 
 type LiveBattleRow = {
   id: string;
+  status?: string | null;
   fighter_a_user_id: string;
   fighter_b_user_id: string;
   fighter_a_name: string;
@@ -131,9 +154,151 @@ type LiveBattleRow = {
   song_b_name: string;
   genre: string;
   created_at: string;
+  scheduled_start_at?: string | null;
+  battle_started_at?: string | null;
+  battle_ended_at?: string | null;
   started_at?: string | null;
   waiting_room_started_at?: string | null;
 };
+
+function normalizedLiveBattlePairKey(row: LiveBattleRow) {
+  const users = [row.fighter_a_user_id, row.fighter_b_user_id].sort().join("|");
+  const songs = [normalizeSongStatsKey(row.song_a_name), normalizeSongStatsKey(row.song_b_name)].sort().join("|");
+  const startMs = new Date(resolveDropBattleRuntimeStart(row) ?? "").getTime();
+  const startBucket = Number.isFinite(startMs) ? Math.floor(startMs / 60_000) : "no-start";
+  return `${row.genre.trim().toLowerCase()}::${users}::${songs}::${startBucket}`;
+}
+
+function dedupeLiveBattleRows(rows: LiveBattleRow[]) {
+  const seenIds = new Set<string>();
+  const seenPairs = new Set<string>();
+  return rows.filter((row) => {
+    if (seenIds.has(row.id)) return false;
+    seenIds.add(row.id);
+    const pairKey = normalizedLiveBattlePairKey(row);
+    if (seenPairs.has(pairKey)) return false;
+    seenPairs.add(pairKey);
+    return true;
+  });
+}
+
+function BattleStageHero({
+  isZh,
+  lang,
+  t,
+}: {
+  isZh: boolean;
+  lang: ReturnType<typeof useI18n>["lang"];
+  t: ReturnType<typeof useI18n>["t"];
+}) {
+  const startLabel = isZh ? "發起挑戰" : "Start a Challenge";
+  const startHref = `/battle/setup?lang=${lang}`;
+  const quickLinks = [
+    { href: `/ai-music?lang=${lang}`, label: isZh ? "探索音樂" : "Explore Music", Icon: Compass },
+    { href: `/listen-bar?lang=${lang}`, label: t("btn_listen_bar"), Icon: Radio },
+    { href: `/battle/results?lang=${lang}`, label: t("watch_result_card"), Icon: History },
+    { href: `/rank?lang=${lang}`, label: t("watch_rank"), Icon: BadgeCheck },
+    { href: `/drop-guide?lang=${lang}`, label: isZh ? "Drop 規則" : "Drop Rules", Icon: BookOpen },
+  ];
+
+  return (
+    <header className="battle-stage-hero">
+      <div className="battle-stage-visual" aria-hidden="true">
+        <Image
+          src={BATTLE_FEMALE_ASSET}
+          alt=""
+          width={851}
+          height={1148}
+          priority
+          className="battle-stage-fighter battle-stage-fighter-female"
+        />
+        <Image
+          src={BATTLE_MALE_ASSET}
+          alt=""
+          width={870}
+          height={1132}
+          priority
+          className="battle-stage-fighter battle-stage-fighter-male"
+        />
+        <div className="battle-stage-vs">VS</div>
+      </div>
+
+      <div className="battle-stage-copy">
+        <p className="battle-stage-kicker">AIPOGER BATTLE POOL</p>
+        <h1>{t("watch_page_title")}</h1>
+        <p className="battle-stage-subtitle">
+          {isZh ? "挑戰 AI、對決全場。用 60 秒 Drop 讓聽眾投票。" : "Challenge AI, face the room, and let listeners vote on a 60s Drop."}
+        </p>
+        <div className="battle-stage-primary-actions">
+          <Link href={startHref} className="battle-stage-primary-cta">
+            <Swords aria-hidden="true" size={18} strokeWidth={2.4} />
+            <span>{startLabel}</span>
+          </Link>
+          <ShareButton
+            title={t("watch_share_title")}
+            text={t("watch_share_text")}
+            label={isZh ? "分享鬥歌場" : "Share Battle Hall"}
+            copiedLabel={t("common_copied")}
+            className="battle-stage-share-action"
+          />
+        </div>
+      </div>
+
+      <nav className="battle-stage-actions" aria-label={isZh ? "Battle 快速入口" : "Battle Quick Links"}>
+        {quickLinks.map(({ href, label, Icon }) => (
+          <Link key={href} href={href} className="battle-stage-action-link">
+            <Icon aria-hidden="true" size={16} strokeWidth={2.2} />
+            <span>{label}</span>
+          </Link>
+        ))}
+      </nav>
+    </header>
+  );
+}
+
+function BattlePanelLabel({ tone, wide = false, children }: { tone: "cyan" | "red"; wide?: boolean; children: string }) {
+  return (
+    <div className={`battle-panel-label battle-panel-label-${tone}${wide ? " battle-panel-label-wide" : ""}`}>
+      <span>{children}</span>
+      <ChevronsRight aria-hidden="true" size={24} strokeWidth={3} />
+    </div>
+  );
+}
+
+function QCrashModePanel({ isZh, lang }: { isZh: boolean; lang: string }) {
+  const displayLang = qCrashDisplayLang(lang);
+  return (
+    <section className="q-crash-mode-panel mt-5 overflow-hidden rounded-[1.4rem] border border-cyan-300/35 bg-[radial-gradient(circle_at_82%_24%,rgba(34,211,238,0.15),transparent_34%),linear-gradient(115deg,rgba(3,20,29,0.92),rgba(0,0,0,0.68))] px-4 py-4 shadow-[0_0_40px_rgba(34,211,238,0.09)] md:px-5 md:py-4">
+      <BattlePanelLabel tone="cyan">Q CRASH</BattlePanelLabel>
+      <div className="q-crash-mode-body mt-4 md:flex md:items-center md:justify-between md:gap-7">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-cyan-300/40 bg-cyan-300/10 px-3 py-1 text-[10px] font-black tracking-[0.2em] text-cyan-50">
+              NEW MODE
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-black tracking-[0.16em] text-cyan-100">
+              <Clock3 size={14} />
+              ASYNC 60S DROP
+            </span>
+          </div>
+          <h2 className="mt-3 text-3xl font-black tracking-tight text-white">Q Crash</h2>
+          <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-zinc-300">
+            {isZh
+              ? "不用約同一時間。兩首 60 秒 Drop 到位後立即開放投票，截止才公開結果。"
+              : "No synchronized meetup. Voting opens when both 60-second Drops lock, and results stay sealed until the deadline."}
+          </p>
+        </div>
+        <Link
+          href={`/battle/q-crash/new?lang=${displayLang}`}
+          className="battle-mode-action-cta q-crash-solid-cta mt-4 shrink-0 bg-cyan-400 shadow-[0_0_28px_rgba(34,211,238,0.2)] transition hover:bg-cyan-300 md:mt-0"
+        >
+          <Swords size={18} />
+          {isZh ? "建立 Q Crash" : "Create Q Crash"}
+        </Link>
+      </div>
+    </section>
+  );
+}
 
 type PoolEntryRow = {
   id: string;
@@ -143,11 +308,36 @@ type PoolEntryRow = {
   original_file_name: string;
   genre: string;
   ai_tool: string | null;
-  status: "waiting_challenge" | "public_voting" | "ghost_battle";
+  status: "waiting_challenge" | "matched" | "public_voting" | "ghost_battle";
   match_group_id: string | null;
   expires_at: string | null;
+  scheduled_start_at?: string | null;
+  cancellation_evaluation_at?: string | null;
+  official_gatekeeper_id?: string | null;
+  official_gatekeeper_role?: string | null;
   public_vote_score: number | null;
   created_at: string;
+};
+
+type QCrashPoolCardRow = {
+  cardId: string;
+  battleId: string | null;
+  status: string;
+  endsAt: string | null;
+  queueIds: [string, string | null];
+  genre: string;
+  works: {
+    A: { songName: string; creatorName: string; genre: string; coverUrl: string | null };
+    B: { songName: string; creatorName: string; genre: string; coverUrl: string | null } | null;
+  };
+};
+
+type FocusedPoolCardState = {
+  id: string;
+  status: string | null;
+  fighterName: string;
+  songName: string;
+  battleId: string | null;
 };
 
 type DailyBattleListRow = {
@@ -267,6 +457,61 @@ function SongBattleStatsPill({
   );
 }
 
+function GenreFilterBar({
+  activeGenre,
+  onChange,
+  counts,
+  t,
+  isZh,
+  showAllButton = true,
+}: {
+  activeGenre: string;
+  onChange: (value: string) => void;
+  counts: Record<string, number>;
+  t: (key: string) => string;
+  isZh: boolean;
+  showAllButton?: boolean;
+}) {
+  const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
+  return (
+    <div className="mb-5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex min-w-max gap-2">
+        {showAllButton ? (
+          <button
+            type="button"
+            onClick={() => onChange("all")}
+            className={`rounded-full border px-4 py-2 text-xs font-black transition ${
+              activeGenre === "all"
+                ? "border-orange-200 bg-orange-500 text-black shadow-[0_0_22px_rgba(255,106,0,0.22)]"
+                : "border-white/12 bg-white/[0.045] text-zinc-300 hover:border-orange-200/55 hover:text-white"
+            }`}
+          >
+            {isZh ? "全部風格" : "All Styles"} <span className="ml-1 opacity-75">{total}</span>
+          </button>
+        ) : null}
+        {DROP_BATTLE_GENRE_OPTIONS.map((genre) => {
+          const count = counts[normalizeGenreFilter(genre.value)] ?? 0;
+          const selected = activeGenre === genre.value;
+          return (
+            <button
+              key={genre.value}
+              type="button"
+              onClick={() => onChange(selected ? "all" : genre.value)}
+              className={`rounded-full border px-4 py-2 text-xs font-black transition ${
+                selected
+                  ? "border-cyan-100 bg-cyan-300 text-black shadow-[0_0_22px_rgba(34,211,238,0.2)]"
+                  : "border-white/12 bg-white/[0.045] text-zinc-300 hover:border-cyan-100/55 hover:text-white"
+              }`}
+            >
+              {t(genre.labelKey)} <span className="ml-1 opacity-75">{count}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 async function fetchHookSongBattleStats(songNames: string[]) {
   const keys = Array.from(new Set(songNames.map(normalizeSongStatsKey).filter(Boolean)));
   const stats = Object.fromEntries(keys.map((key) => [key, emptySongBattleStats()])) as Record<string, SongBattleStats>;
@@ -345,11 +590,99 @@ function formatBattleTimeLeft(value: string | null | undefined, isZh: boolean) {
   const time = new Date(value).getTime();
   if (!Number.isFinite(time)) return isZh ? "時間未定" : "Time TBD";
   const ms = time - Date.now();
-  if (ms <= 0) return isZh ? "等待結算" : "Settling";
+  if (ms <= 0) return isZh ? "已結束" : "Ended";
   const hours = Math.floor(ms / 3_600_000);
   const minutes = Math.max(1, Math.ceil((ms % 3_600_000) / 60_000));
   if (hours <= 0) return isZh ? `${minutes} 分鐘` : `${minutes}m`;
   return isZh ? `${hours} 小時 ${minutes} 分` : `${hours}h ${minutes}m`;
+}
+
+function QCrashPoolMatchCard({ card, isZh, lang }: { card: QCrashPoolCardRow; isZh: boolean; lang: string }) {
+  const [, setClockTick] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => setClockTick((value) => value + 1), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const voting = card.status === "q_crash_voting" && Boolean(card.works.B);
+  const displayLang = qCrashDisplayLang(lang);
+  const href = card.battleId
+    ? focusedBattleHref(card.battleId, displayLang)
+    : `/battle/q-crash/${encodeURIComponent(card.cardId)}?lang=${displayLang}`;
+  const shareUrl = card.battleId
+    ? battleShortPath(card.battleId, displayLang)
+    : `/battle/q-crash/${encodeURIComponent(card.cardId)}?lang=${displayLang}`;
+  const coverA = card.works.A.coverUrl || AIPOGER_BRAND_LOGO;
+  const coverB = card.works.B?.coverUrl || AIPOGER_BRAND_LOGO;
+
+  return (
+    <article className="overflow-hidden rounded-[1.35rem] border border-cyan-200/30 bg-[radial-gradient(circle_at_12%_28%,rgba(14,165,233,0.13),transparent_30%),radial-gradient(circle_at_88%_20%,rgba(34,211,238,0.1),transparent_30%),rgba(0,0,0,0.6)] p-4 shadow-[0_18px_54px_rgba(0,0,0,0.3),0_0_30px_rgba(34,211,238,0.06)] md:p-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+        <div className="flex min-w-0 flex-1 items-center gap-4">
+          <div className="relative h-20 w-28 shrink-0 sm:h-24 sm:w-36">
+            <span
+              className="absolute left-0 top-0 h-20 w-20 rounded-2xl border border-sky-300/45 bg-black bg-contain bg-center bg-no-repeat shadow-[0_0_24px_rgba(14,165,233,0.16)] sm:h-24 sm:w-24"
+              style={{ backgroundImage: `url("${coverA.replace(/"/g, "%22")}")` }}
+            />
+            <span
+              className="absolute right-0 top-2 h-16 w-16 rounded-2xl border border-cyan-300/40 bg-black bg-contain bg-center bg-no-repeat shadow-[0_0_24px_rgba(34,211,238,0.12)] sm:h-20 sm:w-20"
+              style={{ backgroundImage: `url("${coverB.replace(/"/g, "%22")}")` }}
+            />
+            <span className="absolute left-1 top-1 rounded-full bg-sky-300 px-2 py-0.5 text-[10px] font-black text-black">A</span>
+            <span className="absolute right-1 top-3 rounded-full bg-cyan-300 px-2 py-0.5 text-[10px] font-black text-black">B</span>
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-black tracking-[0.26em] text-zinc-500">Q CRASH · ONE BATTLE</p>
+            <div className="mt-2 flex min-w-0 flex-col gap-1 text-base font-black text-white sm:flex-row sm:items-center sm:gap-3 sm:text-lg">
+              <span className="truncate">{card.works.A.songName}</span>
+              <span className="shrink-0 text-xs italic text-zinc-600">VS</span>
+              <span className="truncate">{card.works.B?.songName || (isZh ? "等待作品 B" : "Waiting for Work B")}</span>
+            </div>
+            <p className="mt-1 truncate text-xs font-bold text-zinc-500">
+              {card.works.A.creatorName}
+              {card.works.B ? ` · ${card.works.B.creatorName}` : ""}
+              {card.works.A.genre ? ` · A ${card.works.A.genre}` : ""}
+              {card.works.B?.genre ? ` · B ${card.works.B.genre}` : ""}
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-cyan-300/35 bg-cyan-300/10 px-3 text-[11px] font-black text-cyan-50">
+                <Swords size={13} />
+                {voting ? (isZh ? "Q Crash 投票中" : "Q Crash Voting") : (isZh ? "等待作品 B" : "Waiting for Work B")}
+              </span>
+              <span className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 text-[11px] font-black text-zinc-300">
+                <Clock3 size={13} className="text-cyan-300" />
+                {isZh ? "剩餘" : "Left"} {formatBattleTimeLeft(card.endsAt, isZh)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end">
+          <Link
+            href={href}
+            className="q-crash-solid-cta inline-flex min-h-11 items-center justify-center rounded-full bg-cyan-400 px-5 text-sm font-black shadow-[0_0_22px_rgba(34,211,238,0.2)] transition hover:bg-cyan-300"
+          >
+            {voting ? (isZh ? "進入 Q Crash" : "Enter Q Crash") : (isZh ? "查看 Q Crash" : "Open Q Crash")}
+          </Link>
+          <ShareButton
+            title={card.works.B ? `幫我選一下：${card.works.A.songName} VS ${card.works.B.songName}` : `來幫我找另一首：${card.works.A.songName}`}
+            text={isZh
+              ? card.works.B
+                ? "這兩首歌到底哪首比較好聽啊？我有點選不出來！兩首 60 秒 Drop，進來聽重點，幫我決定哪首勝出！"
+                : "我先放了一首 60 秒 Drop，來幫我找另一首一起比一下！"
+              : card.works.B
+                ? "Which song sounds better? I can't decide! Two 60-second Drops—listen to the key moments and help me pick a winner."
+                : "I have one 60-second Drop ready. Help me find another track to compare it with."}
+            url={shareUrl}
+            label={voting ? (isZh ? "邀請觀戰投票" : "Invite Voters") : (isZh ? "分享邀請" : "Share Invite")}
+            copiedLabel={isZh ? "已複製" : "Copied"}
+            className="min-h-11 border-white/15 bg-white/[0.04] text-zinc-200"
+          />
+        </div>
+      </div>
+    </article>
+  );
 }
 
 function formatBattleAge(value: string | null | undefined, isZh: boolean) {
@@ -371,11 +704,29 @@ function isExpiredDailyQueueEntry(row: Pick<DailyEntryQueueRow, "created_at" | "
   return Number.isFinite(createdAt) && createdAt + DAILY_BATTLE_QUEUE_MS <= Date.now();
 }
 
-function isExpiredOpenPoolEntry(row: Pick<PoolEntryRow, "status" | "expires_at">) {
-  if (!row.expires_at) return false;
-  const expiresAt = new Date(row.expires_at).getTime();
-  if (!Number.isFinite(expiresAt) || expiresAt > Date.now()) return false;
-  return row.status === "waiting_challenge" || row.status === "public_voting" || row.status === "ghost_battle";
+function isExpiredOpenPoolEntry(row: Pick<PoolEntryRow, "status" | "expires_at" | "scheduled_start_at" | "cancellation_evaluation_at">) {
+  return shouldExpireOpenDropQueue(row);
+}
+
+function isClosedBattleStatus(status: string | null | undefined) {
+  return isClosedDropBattleStatus(status);
+}
+
+function focusedQueueHref(queueId: string, lang: string) {
+  return `/battle/${encodeURIComponent(queueId)}?lang=${encodeURIComponent(lang)}`;
+}
+
+function focusedBattleHref(battleId: string, lang: string) {
+  return `/battle/${encodeURIComponent(battleId)}?lang=${encodeURIComponent(lang)}`;
+}
+
+function focusedPoolCardTitle(status: string | null | undefined, isZh: boolean) {
+  if (status === "accepted_unknown") return isZh ? "此戰鬥已經被挑戰" : "This Battle Has Been Accepted";
+  if (["cancelled", "cancelled_no_challenger", "cancelled_founder", "expired"].includes(status ?? "")) {
+    return isZh ? "這張戰帖已結束" : "This Card Has Ended";
+  }
+  if (isClosedBattleStatus(status)) return isZh ? "此戰鬥已經結束" : "This Battle Has Ended";
+  return isZh ? "此戰帖已有人接戰" : "This Card Has Been Accepted";
 }
 
 function DailyBattleList() {
@@ -393,8 +744,8 @@ function DailyBattleList() {
   useEffect(() => {
     if (isAuthBypassEnabled) return;
     let mounted = true;
-    void getFreshSession().then((freshSession) => {
-      if (mounted) setCurrentUserId(freshSession?.user.id ?? null);
+    void supabase.auth.getSession().then(({ data }) => {
+      if (mounted) setCurrentUserId(data.session?.user.id ?? null);
     });
     return () => {
       mounted = false;
@@ -405,7 +756,8 @@ function DailyBattleList() {
     setDailyCancelError("");
     setDailyCancelId(entryId);
     try {
-      const token = (await getFreshSession())?.access_token;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
       if (!token) throw new Error(isZh ? "請先登入後再取消 Daily Battle。" : "Sign in to cancel this Daily Battle.");
       const response = await fetch("/api/daily-battle/cancel-entry", {
         method: "POST",
@@ -580,7 +932,7 @@ function DailyBattleList() {
         <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-6 text-center">
           <p className="text-sm font-bold text-zinc-300">{isZh ? "目前還沒有 24H Daily Battle。" : "No 24H Daily Battles yet."}</p>
           <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-zinc-500">
-            {isZh ? "先上傳一首完整作品，等待系統配對或朋友約戰。" : "Upload a full track and wait for auto match or open challenge."}
+            {isZh ? "先上傳一首完整作品，等待系統配對或朋友約戰。" : "Upload a full track and wait for Auto Match or an open challenge."}
           </p>
         </div>
       ) : (
@@ -637,11 +989,11 @@ function DailyBattleList() {
                           ? (isZh ? "24H 整首挑戰開放中，任何人都可上傳整首作品接受。" : "24H full-track challenge is open. Anyone can answer with a full track.")
                           : row.pairing_mode === "invite"
                             ? (isZh ? "已在公開挑戰池，等待對手接受。" : "Listed in public challenge pool, waiting for opponents.")
-                            : (isZh ? "系統自動配對中，稍後會開戰。" : "Auto matchmaking in progress. Battle will open soon.")}
+                            : (isZh ? "系統自動配對中，稍後會開戰。" : "Auto Match in progress. Battle will open soon.")}
                       </p>
                       {row.status === "queued" && row.user_id !== currentUserId ? (
                         <Link
-                          href={dailyChallengeSetupPath(row.id, lang)}
+                          href={`/battle/setup?battleMode=daily&dailyPairing=invite&challengeDailyEntryId=${row.id}&genre=${encodeURIComponent(row.genre || "")}&lang=${lang}`}
                           className="mt-3 inline-flex rounded-full border border-cyan-200/40 bg-cyan-300/12 px-4 py-1.5 text-xs font-black text-cyan-100 transition hover:border-cyan-100 hover:bg-cyan-300 hover:text-black"
                         >
                           {isZh ? "接受 24H 整首挑戰" : "Accept 24H Challenge"}
@@ -675,13 +1027,9 @@ function DailyBattleList() {
                               ? `${row.fighter_name} 的《${row.title || "未命名作品"}》正在等人接戰，進來用整首歌挑戰。`
                               : `${row.fighter_name}'s "${row.title || "Untitled Track"}" is waiting for a full-track challenger.`
                           }
-                          url={
-                            row.status === "queued"
-                              ? dailyChallengeSharePath(row.id, lang)
-                              : `/battle?lang=${lang}`
-                          }
-                          label={isZh ? "約人鬥歌" : "Find challenger"}
-                          copiedLabel={isZh ? "戰帖已複製" : "Challenge copied"}
+                          url={row.status === "queued" ? dailyEntryShortPath(row.id, lang) : `/battle?lang=${lang}`}
+                          label={isZh ? "約人鬥歌" : "Find Challenger"}
+                          copiedLabel={isZh ? "戰帖已複製" : "Challenge Copied"}
                           className="px-3 py-1.5 text-xs"
                         />
                       </div>
@@ -718,7 +1066,7 @@ function DailyBattleList() {
                               {isZh ? "戰鬥中" : "Battle Live"}
                             </p>
                             <span className="rounded-full border border-cyan-200/35 bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-100">
-                              {isZh ? `${voteCount} 人已投票` : `${voteCount} votes`}
+                              {isZh ? `${voteCount} 人已投票` : `${voteCount} Votes`}
                             </span>
                           </div>
                           <p className="mt-2 text-lg font-black text-white">
@@ -735,7 +1083,7 @@ function DailyBattleList() {
                             {isZh ? "結束" : "Ends"} {formatBattleCardTime(row.ends_at, isZh)} · {formatBattleTimeLeft(row.ends_at, isZh)}
                           </p>
                           <span className="mt-4 inline-flex rounded-full border border-cyan-200/30 px-3 py-1 text-xs font-bold text-cyan-100 transition group-hover:bg-cyan-300 group-hover:text-black">
-                            {isZh ? "進場聽歌投票" : "Enter and vote"} →
+                            {isZh ? "進場聽歌投票" : "Enter and Vote"} →
                           </span>
                         </Link>
                         {mineEntryId ? (
@@ -758,9 +1106,9 @@ function DailyBattleList() {
                                 ? `《${a?.title || "A SIDE"}》vs《${b?.title || "B SIDE"}》正在對決，進來聽完整作品再投票。`
                                 : `"${a?.title || "A SIDE"}" vs "${b?.title || "B SIDE"}" is live. Listen and vote.`
                             }
-                            url={`/battle/daily/${row.id}?lang=${lang}`}
-                            label={isZh ? "邀請觀戰投票" : "Invite voters"}
-                            copiedLabel={isZh ? "觀戰連結已複製" : "Invite copied"}
+                            url={dailyBattleShortPath(row.id, lang)}
+                            label={isZh ? "邀請觀戰投票" : "Invite Voters"}
+                            copiedLabel={isZh ? "觀戰連結已複製" : "Invite Copied"}
                             className="px-3 py-1.5 text-xs"
                           />
                         </div>
@@ -780,25 +1128,62 @@ function DailyBattleList() {
 function BattlePoolList() {
   const { t, lang } = useI18n();
   const isZh = lang === "zh";
+  const startChallengeLabel = isZh ? "發起挑戰" : "Start a Challenge";
+  const startChallengeHref = `/battle/setup?lang=${lang}`;
   const searchParams = useSearchParams();
   const focusQueueId = searchParams.get("focusQueue");
   const [rows, setRows] = useState<PoolEntryRow[]>([]);
+  const [officialDrops, setOfficialDrops] = useState<OfficialGatekeeperDrop[]>([]);
+  const [qCrashCards, setQCrashCards] = useState<QCrashPoolCardRow[]>([]);
+  const [acceptedBattleRows, setAcceptedBattleRows] = useState<LiveBattleRow[]>([]);
   const [hookSongStats, setHookSongStats] = useState<Record<string, SongBattleStats>>({});
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [cancelQueueId, setCancelQueueId] = useState<string | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [focusedClosedCard, setFocusedClosedCard] = useState<FocusedPoolCardState | null>(null);
+  const [activeGenre, setActiveGenre] = useState("all");
+  const [playingOfficialPreviewId, setPlayingOfficialPreviewId] = useState<string | null>(null);
+  const officialPreviewRefs = useRef<Record<string, HTMLAudioElement | null>>({});
+
+  useEffect(() => {
+    if (focusQueueId) rememberAuthNextPath(focusedQueueHref(focusQueueId, lang));
+  }, [focusQueueId, lang]);
 
   useEffect(() => {
     if (isAuthBypassEnabled) return;
     let mounted = true;
-    void getFreshSession().then((freshSession) => {
-      if (mounted) setCurrentUserId(freshSession?.user.id ?? null);
+    void supabase.auth.getSession().then(({ data }) => {
+      if (mounted) setCurrentUserId(data.session?.user.id ?? null);
     });
     return () => {
       mounted = false;
     };
   }, []);
+
+  const stopOfficialPreview = (dropId: string) => {
+    const audio = officialPreviewRefs.current[dropId];
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+    setPlayingOfficialPreviewId((current) => (current === dropId ? null : current));
+  };
+
+  const playOfficialPreview = (dropId: string) => {
+    const audio = officialPreviewRefs.current[dropId];
+    if (!audio) return;
+    Object.entries(officialPreviewRefs.current).forEach(([id, item]) => {
+      if (id === dropId || !item) return;
+      item.pause();
+      item.currentTime = 0;
+    });
+    audio.currentTime = 0;
+    audio.volume = 1;
+    void audio.play()
+      .then(() => setPlayingOfficialPreviewId(dropId))
+      .catch(() => setPlayingOfficialPreviewId(null));
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -806,18 +1191,45 @@ function BattlePoolList() {
     const load = async () => {
       if (isAuthBypassEnabled) {
         setRows([]);
+        setOfficialDrops([]);
+        setQCrashCards([]);
+        setAcceptedBattleRows([]);
         setLoading(false);
         return;
       }
 
       await fetch("/api/battle-pool/expire-open-cards", { method: "POST" }).catch(() => null);
 
-      const { data, error } = await supabase
+      const officialDropsPromise = fetch("/api/official-gatekeeper-drops")
+        .then((response) => response.json())
+        .then((payload: { drops?: OfficialGatekeeperDrop[] }) => payload.drops ?? [])
+        .catch(() => [] as OfficialGatekeeperDrop[]);
+      const qCrashCardsPromise = fetch("/api/q-crash", { cache: "no-store" })
+        .then((response) => response.json())
+        .then((payload: { cards?: QCrashPoolCardRow[] }) => payload.cards ?? [])
+        .catch(() => [] as QCrashPoolCardRow[]);
+
+      let { data, error } = await supabase
         .from("battle_queue")
-        .select("id, user_id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, public_vote_score, created_at")
-        .in("status", ["waiting_challenge", "public_voting", "ghost_battle"])
+        .select("id, user_id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, scheduled_start_at, cancellation_evaluation_at, official_gatekeeper_id, official_gatekeeper_role, public_vote_score, created_at")
+        .in("status", ["waiting_challenge", "matched", "public_voting", "ghost_battle"])
         .order("created_at", { ascending: false })
         .limit(24);
+
+      if (error) {
+        const msg = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`;
+        const missingScheduleColumn = /scheduled_start_at|cancellation_evaluation_at|official_gatekeeper|schema cache|does not exist|PGRST204/i.test(msg);
+        if (missingScheduleColumn) {
+          const legacyRead = await supabase
+            .from("battle_queue")
+            .select("id, user_id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, public_vote_score, created_at")
+            .in("status", ["waiting_challenge", "matched", "public_voting", "ghost_battle"])
+            .order("created_at", { ascending: false })
+            .limit(24);
+          data = legacyRead.data as typeof data;
+          error = legacyRead.error;
+        }
+      }
 
       if (!mounted) return;
       if (error) {
@@ -826,11 +1238,146 @@ function BattlePoolList() {
           console.error("[battle pool]", error);
         }
         setRows([]);
+        setQCrashCards([]);
+        setAcceptedBattleRows([]);
       } else {
         const baseRows = ((data as PoolEntryRow[]) ?? []);
-        const visibleRows = baseRows.filter((row) => !isExpiredOpenPoolEntry(row));
-        setHookSongStats(await fetchHookSongBattleStats(visibleRows.map((row) => row.original_file_name)));
-        const userIds = Array.from(new Set(visibleRows.map((row) => row.user_id).filter(Boolean)));
+        const nextQCrashCards = await qCrashCardsPromise;
+        const qCrashQueueIds = new Set(nextQCrashCards.flatMap((card) => card.queueIds).filter((id): id is string => Boolean(id)));
+        const qCrashBattleIds = new Set(nextQCrashCards.map((card) => card.battleId).filter((id): id is string => Boolean(id)));
+        const linkedBattleIds = Array.from(
+          new Set(baseRows.map((row) => row.match_group_id).filter((id): id is string => Boolean(id))),
+        );
+        const closedBattleIds = new Set<string>();
+        if (linkedBattleIds.length > 0) {
+          const { data: linkedBattles } = await supabase
+            .from("battles")
+            .select("id,status,battle_ended_at")
+            .in("id", linkedBattleIds);
+          ((linkedBattles as Array<{ id?: string | null; status?: string | null; battle_ended_at?: string | null }> | null) ?? [])
+            .filter((row) => row.id && (row.battle_ended_at || ["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"].includes(row.status ?? "")))
+            .forEach((row) => closedBattleIds.add(row.id as string));
+        }
+        const visibleRows = baseRows.filter((row) =>
+          !row.official_gatekeeper_id
+          && !qCrashQueueIds.has(row.id)
+          && (!row.match_group_id || !qCrashBattleIds.has(row.match_group_id))
+          && !isExpiredOpenPoolEntry(row)
+          && (!row.match_group_id || !closedBattleIds.has(row.match_group_id)),
+        );
+        let { data: acceptedData, error: acceptedError } = await supabase
+          .from("battles")
+          .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, scheduled_start_at, battle_started_at, started_at, battle_ended_at")
+          .in("status", ["matched", "active", "live"])
+          .is("battle_ended_at", null)
+          .order("created_at", { ascending: false })
+          .limit(12);
+
+        if (acceptedError) {
+          const msg = `${acceptedError.message ?? ""} ${acceptedError.details ?? ""} ${acceptedError.hint ?? ""}`;
+          const missingRuntimeColumn = /scheduled_start_at|battle_started_at|started_at|schema cache|column.*does not exist|PGRST204/i.test(msg);
+          if (missingRuntimeColumn) {
+            const legacyRead = await supabase
+              .from("battles")
+              .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, battle_started_at, started_at, battle_ended_at")
+              .in("status", ["matched", "active", "live"])
+              .is("battle_ended_at", null)
+              .order("created_at", { ascending: false })
+              .limit(12);
+            acceptedData = legacyRead.data as typeof acceptedData;
+            acceptedError = legacyRead.error;
+          }
+        }
+
+        if (acceptedError) {
+          console.warn("[battle pool accepted]", acceptedError);
+        }
+        const visibleBattleIds = new Set(visibleRows.map((row) => row.match_group_id).filter((id): id is string => Boolean(id)));
+        const acceptedRows = dedupeLiveBattleRows(
+          ((acceptedData as LiveBattleRow[] | null) ?? []).filter((row) => {
+            if (!row.id || visibleBattleIds.has(row.id)) return false;
+            if (row.battle_ended_at || isClosedBattleStatus(row.status) || isDropBattleEndedOrPastExpectedEnd(row)) return false;
+            return ["matched", "active", "live"].includes(row.status ?? "");
+          }),
+        );
+        if (focusQueueId && !visibleRows.some((row) => row.id === focusQueueId)) {
+          let { data: focusedRow, error: focusedError } = await supabase
+            .from("battle_queue")
+            .select("id, fighter_name, original_file_name, status, match_group_id, expires_at, scheduled_start_at, cancellation_evaluation_at")
+            .eq("id", focusQueueId)
+            .maybeSingle<{
+              id: string;
+              fighter_name?: string | null;
+              original_file_name?: string | null;
+              status?: string | null;
+              match_group_id?: string | null;
+              expires_at?: string | null;
+              scheduled_start_at?: string | null;
+              cancellation_evaluation_at?: string | null;
+            }>();
+          if (focusedError) {
+            const msg = `${focusedError.message ?? ""} ${focusedError.details ?? ""} ${focusedError.hint ?? ""}`;
+            const missingScheduleColumn = /scheduled_start_at|cancellation_evaluation_at|schema cache|does not exist|PGRST204/i.test(msg);
+            if (missingScheduleColumn) {
+              const legacyRead = await supabase
+                .from("battle_queue")
+                .select("id, fighter_name, original_file_name, status, match_group_id, expires_at")
+                .eq("id", focusQueueId)
+                .maybeSingle<{
+                  id: string;
+                  fighter_name?: string | null;
+                  original_file_name?: string | null;
+                  status?: string | null;
+                  match_group_id?: string | null;
+                  expires_at?: string | null;
+                }>();
+              focusedRow = legacyRead.data as typeof focusedRow;
+              focusedError = legacyRead.error;
+            }
+          }
+          if (focusedRow?.id) {
+            const focusedStatus = shouldExpireOpenDropQueue({
+              status: focusedRow.status,
+              expires_at: focusedRow.expires_at ?? null,
+              scheduled_start_at: focusedRow.scheduled_start_at ?? null,
+              cancellation_evaluation_at: focusedRow.cancellation_evaluation_at ?? null,
+            })
+              ? "expired"
+              : focusedRow.status ?? null;
+            setFocusedClosedCard({
+              id: focusedRow.id,
+              status: focusedStatus,
+              fighterName: focusedRow.fighter_name || (isZh ? "創作者" : "Creator"),
+              songName: focusedRow.original_file_name || (isZh ? "這首 Drop" : "This Drop"),
+              battleId: focusedRow.match_group_id ?? null,
+            });
+          } else {
+            setFocusedClosedCard({
+              id: focusQueueId,
+              status: "accepted_unknown",
+              fighterName: isZh ? "這張戰帖" : "This card",
+              songName: isZh ? "如果戰鬥仍在，請直接進入戰場觀戰；若已結束，系統會提示你查看戰果。" : "If the battle is still live, enter the arena to watch. If it has ended, the arena will point you to the result.",
+              battleId: focusQueueId,
+            });
+          }
+        } else {
+          setFocusedClosedCard(null);
+        }
+        const [nextOfficialDrops, nextHookSongStats] = await Promise.all([
+          officialDropsPromise,
+          fetchHookSongBattleStats(visibleRows.map((row) => row.original_file_name)),
+        ]);
+        setOfficialDrops(nextOfficialDrops.filter((drop) => drop.active && drop.audioPath));
+        setQCrashCards(nextQCrashCards);
+        setHookSongStats(nextHookSongStats);
+        const userIds = Array.from(
+          new Set(
+            [
+              ...visibleRows.map((row) => row.user_id),
+              ...acceptedRows.flatMap((row) => [row.fighter_a_user_id, row.fighter_b_user_id]),
+            ].filter((id): id is string => typeof id === "string" && id.length > 0),
+          ),
+        );
         const { data: profiles } =
           userIds.length > 0
             ? await supabase.from("user_profiles").select("id, level").in("id", userIds)
@@ -840,6 +1387,13 @@ function BattlePoolList() {
           visibleRows.map((row) => {
             return { ...row, fighter_rank: rankLabelForLevel(levelMap.get(row.user_id) ?? 1, row.fighter_name) };
           }),
+        );
+        setAcceptedBattleRows(
+          acceptedRows.map((row) => ({
+            ...row,
+            fighter_a_rank: rankLabelForLevel(levelMap.get(row.fighter_a_user_id) ?? 1, row.fighter_a_name),
+            fighter_b_rank: rankLabelForLevel(levelMap.get(row.fighter_b_user_id) ?? 1, row.fighter_b_name),
+          })),
         );
       }
       setLoading(false);
@@ -854,16 +1408,19 @@ function BattlePoolList() {
         .on("postgres_changes", { event: "*", schema: "public", table: "battle_queue" }, () => {
           void load();
         })
+        .on("postgres_changes", { event: "*", schema: "public", table: "battles" }, () => {
+          void load();
+        })
         .subscribe();
 
     return () => {
       mounted = false;
       if (channel) void supabase.removeChannel(channel);
     };
-  }, []);
+  }, [focusQueueId, isZh]);
 
   useEffect(() => {
-    if (!focusQueueId || loading || rows.length === 0) return;
+    if (!focusQueueId || loading || (rows.length === 0 && !focusedClosedCard)) return;
     const id = window.setTimeout(() => {
       document.getElementById(`battle-pool-${focusQueueId}`)?.scrollIntoView({
         behavior: "smooth",
@@ -871,15 +1428,15 @@ function BattlePoolList() {
       });
     }, 120);
     return () => window.clearTimeout(id);
-  }, [focusQueueId, loading, rows.length]);
+  }, [focusedClosedCard, focusQueueId, loading, rows.length]);
 
   const cancelOwnHook = async (entryId: string) => {
     setCancelError(null);
     setCancelQueueId(entryId);
     try {
-      const token = (await getFreshSession())?.access_token;
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
       if (!token) throw new Error(isZh ? "請先登入後再取消挑戰。" : "Please sign in before cancelling.");
-      await cancelCurrentBattleIntent({ accessToken: token });
+      await cancelCurrentBattleIntent({ accessToken: token, queueId: entryId });
       setRows((items) => items.filter((item) => item.id !== entryId));
     } catch (error) {
       setCancelError(error instanceof Error ? error.message : isZh ? "取消失敗，請稍後再試。" : "Cancel failed. Please try again.");
@@ -887,30 +1444,85 @@ function BattlePoolList() {
       setCancelQueueId(null);
     }
   };
+  const poolGenreCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    [...officialDrops.map((drop) => drop.genre), ...rows.map((row) => row.genre), ...acceptedBattleRows.map((row) => row.genre)].forEach((genre) => {
+      const key = normalizeGenreFilter(genre);
+      if (!key) return;
+      counts[key] = (counts[key] ?? 0) + 1;
+    });
+    return counts;
+  }, [acceptedBattleRows, officialDrops, rows]);
+  const filteredOfficialDrops = useMemo(() => {
+    if (activeGenre === "all") return officialDrops;
+    const target = normalizeGenreFilter(activeGenre);
+    return officialDrops.filter((drop) => normalizeGenreFilter(drop.genre) === target);
+  }, [activeGenre, officialDrops]);
+  const filteredRows = useMemo(() => {
+    if (activeGenre === "all") return rows;
+    const target = normalizeGenreFilter(activeGenre);
+    return rows.filter((row) => normalizeGenreFilter(row.genre) === target);
+  }, [activeGenre, rows]);
+  const filteredAcceptedBattleRows = useMemo(() => {
+    if (activeGenre === "all") return acceptedBattleRows;
+    const target = normalizeGenreFilter(activeGenre);
+    return acceptedBattleRows.filter((row) => normalizeGenreFilter(row.genre) === target);
+  }, [acceptedBattleRows, activeGenre]);
 
   if (loading) {
     return (
-      <section className="mt-8 rounded-[2rem] border border-white/10 bg-white/[0.035] p-6 text-sm text-zinc-500">
-        {t("pool_loading")}
+      <section id="drop-battle-pool" className="battle-pool-shell aipo-panel-line mt-5 scroll-mt-24 rounded-xl p-4 md:p-5">
+        <div className="battle-pool-head mb-4">
+          <div>
+            <BattlePanelLabel tone="red" wide>60S DROP BATTLE POOL</BattlePanelLabel>
+            <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "Drop Battle 公開挑戰池" : "Drop Battle Challenge Pool"}</h2>
+          </div>
+          <Link href={startChallengeHref} aria-label={startChallengeLabel} className="battle-pool-head-cta battle-mode-action-cta drop-battle-solid-cta">
+            <Swords aria-hidden="true" size={18} strokeWidth={2.4} />
+            <span>{startChallengeLabel}</span>
+          </Link>
+        </div>
+        <div className="rounded-lg border border-white/10 bg-black/35 px-4 py-3 text-sm text-zinc-500">{t("pool_loading")}</div>
       </section>
     );
   }
 
   return (
-    <section className="mt-8 rounded-[2rem] border border-orange-300/18 bg-black/45 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.24)] backdrop-blur md:p-6">
-      <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+    <>
+      <section
+        id="q-crash-matchups"
+        className="q-crash-matchups-panel mt-5 scroll-mt-24 overflow-hidden rounded-xl border border-cyan-300/35 bg-[radial-gradient(circle_at_86%_8%,rgba(34,211,238,0.12),transparent_30%),linear-gradient(140deg,rgba(3,20,29,0.88),rgba(0,0,0,0.7))] p-4 shadow-[0_20px_70px_rgba(0,0,0,0.38),0_0_34px_rgba(34,211,238,0.07)] md:p-4"
+      >
+        <div className="mb-3 border-b border-cyan-300/18 pb-3">
+          <BattlePanelLabel tone="cyan" wide>Q CRASH MATCHUPS</BattlePanelLabel>
+          <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "Q Crash 對戰卡" : "Q Crash Matchup Cards"}</h2>
+        </div>
+        {qCrashCards.length > 0 ? (
+          <div className="grid gap-3">
+            {qCrashCards.map((card) => (
+              <QCrashPoolMatchCard key={card.cardId} card={card} isZh={isZh} lang={lang} />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-[1.2rem] border border-dashed border-cyan-300/25 bg-cyan-300/[0.035] px-4 py-5 text-center text-sm font-bold text-zinc-500">
+            {isZh ? "目前沒有開放中的 Q Crash；建立後，對戰卡會出現在這裡。" : "No open Q Crash right now. New matchup cards will appear here."}
+          </div>
+        )}
+      </section>
+
+      <section id="drop-battle-pool" className="battle-pool-shell aipo-panel-line mt-5 scroll-mt-24 rounded-xl border-red-400/30 p-4 md:p-5">
+      <div className="battle-pool-head mb-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.38em] text-orange-300/80">90s Drop Battle Pool</p>
-          <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "90s 最強抓波Drop Battle 公開挑戰池" : "90s Drop Battle Challenge Pool"}</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-7 text-zinc-400">
-            {t("pool_body")}
-          </p>
+          <BattlePanelLabel tone="red" wide>60S DROP BATTLE POOL</BattlePanelLabel>
+          <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "Drop Battle 公開挑戰池" : "Drop Battle Challenge Pool"}</h2>
         </div>
         <Link
-          href="/battle/setup"
-          className="w-fit rounded-full border border-white/15 px-5 py-2.5 text-sm font-bold text-zinc-200 transition hover:border-orange-300/60 hover:text-white"
+          href={startChallengeHref}
+          aria-label={startChallengeLabel}
+          className="battle-pool-head-cta battle-mode-action-cta drop-battle-solid-cta"
         >
-          {isZh ? "挑戰 90s 最強抓波Drop Battle" : "Challenge 90s Drop Battle"}
+          <Swords aria-hidden="true" size={18} strokeWidth={2.4} />
+          <span>{startChallengeLabel}</span>
         </Link>
       </div>
 
@@ -920,61 +1532,263 @@ function BattlePoolList() {
         </div>
       ) : null}
 
-      {rows.length === 0 ? (
+      <GenreFilterBar activeGenre={activeGenre} onChange={setActiveGenre} counts={poolGenreCounts} t={t} isZh={isZh} showAllButton={false} />
+
+      {filteredOfficialDrops.length > 0 ? (
+        <div className="mb-5">
+          <ul className="grid min-w-0 gap-3 md:grid-cols-2">
+            {filteredOfficialDrops.map((drop) => {
+              const displayTitle = officialGatekeeperDisplayTitle(drop);
+              const setupParams = new URLSearchParams({
+                battleMode: "instant",
+                instantPairing: "gatekeeper",
+                gatekeeperId: drop.id,
+                genre: drop.genre,
+                hookBattlePreset: "10",
+                lang,
+              });
+              return (
+                <li key={drop.id} className="min-w-0">
+                  <article className="min-w-0 overflow-hidden rounded-[1.25rem] border border-red-300/25 bg-[radial-gradient(circle_at_18%_18%,rgba(239,68,68,0.14),transparent_34%),rgba(0,0,0,0.44)] p-4 shadow-[0_0_34px_rgba(239,68,68,0.08)]">
+                    <div className="flex min-w-0 items-start justify-between gap-3 sm:gap-4">
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-black uppercase tracking-[0.22em] text-red-200/78">
+                          {isZh ? "歡迎任何人來挑戰 AIPOGER 官方關卡" : "Open AIPOGER Gatekeeper Challenge"}
+                        </p>
+                        <h4 className="mt-2 text-xl font-black text-white">{displayTitle}</h4>
+                        <p className="mt-1 truncate text-sm font-bold text-zinc-400">
+                          AIPOGER · {isZh ? "守門者" : "Gatekeeper"} · {drop.gateNumber} · {drop.genre}
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <span className="rounded-full border border-red-200/35 bg-red-500/12 px-3 py-1 text-xs font-black text-red-50">
+                            Drop 挑戰開放
+                          </span>
+                          <span className="rounded-full border border-orange-200/25 bg-orange-500/10 px-3 py-1 text-xs font-black text-orange-100">
+                            {drop.genre}
+                          </span>
+                          <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-black text-zinc-300">
+                            {drop.gateNumber}
+                          </span>
+                        </div>
+                        <p className="mt-3 rounded-2xl border border-yellow-200/24 bg-yellow-300/[0.09] px-3 py-2 text-xs font-black leading-5 text-yellow-100">
+                          {isZh
+                            ? "歡迎挑戰這首官方 Drop，設定開戰時間並分享拉人投票。看看你的歌能不能打"
+                            : "Challenge this official Drop, set a start time, and share it for votes. See if your track can hit back."}
+                        </p>
+                      </div>
+                      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-red-200/30 bg-black/70 text-[10px] font-black leading-4 text-red-100 shadow-[0_0_24px_rgba(239,68,68,0.16)]">
+                        {drop.coverUrl ? (
+                          <Image src={drop.coverUrl} alt="" fill sizes="80px" className="object-cover" unoptimized />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center">
+                            AIPO<br />GATE
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-4 flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3">
+                      {drop.audioUrl ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (playingOfficialPreviewId === drop.id) {
+                              stopOfficialPreview(drop.id);
+                            } else {
+                              playOfficialPreview(drop.id);
+                            }
+                          }}
+                          className="inline-flex items-center gap-2 rounded-full border border-red-200/35 bg-black/45 px-4 py-2 text-xs font-black text-red-50 transition hover:border-red-200/65 hover:bg-red-500/12 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-200/55"
+                        >
+                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white">
+                            {playingOfficialPreviewId === drop.id ? "■" : "▶"}
+                          </span>
+                          {playingOfficialPreviewId === drop.id
+                            ? isZh ? "預播中 5 秒" : "Previewing 5s"
+                            : isZh ? "5 秒預播" : "5s Preview"}
+                        </button>
+                      ) : (
+                        <span className="rounded-full border border-white/10 bg-white/[0.035] px-4 py-2 text-xs font-black text-zinc-500">
+                          {isZh ? "暫無預播" : "No Preview"}
+                        </span>
+                      )}
+                      <Link
+                        href={`/battle/setup?${setupParams.toString()}`}
+                        className="drop-battle-solid-cta rounded-full bg-red-500 px-4 py-2 text-xs font-black shadow-[0_0_20px_rgba(239,68,68,0.18)] transition hover:bg-red-400"
+                      >
+                        {isZh ? "挑戰這首 Drop" : "Challenge This Drop"}
+                      </Link>
+                    </div>
+                    {drop.audioUrl ? (
+                      <>
+                        <audio
+                          ref={(node) => {
+                            officialPreviewRefs.current[drop.id] = node;
+                          }}
+                          preload="none"
+                          src={drop.audioUrl}
+                          onTimeUpdate={(event) => {
+                            if (event.currentTarget.currentTime >= 5) stopOfficialPreview(drop.id);
+                          }}
+                          onEnded={() => setPlayingOfficialPreviewId((current) => (current === drop.id ? null : current))}
+                          onContextMenu={(event) => event.preventDefault()}
+                        />
+                      </>
+                    ) : null}
+                  </article>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
+
+      {focusedClosedCard ? (
+        <article id={`battle-pool-${focusedClosedCard.id}`} className="mb-4 rounded-[1.4rem] border border-yellow-200/30 bg-yellow-300/[0.08] p-5 shadow-[0_0_34px_rgba(250,204,21,0.12)]">
+          <p className="text-xs font-black uppercase tracking-[0.26em] text-yellow-100/75">
+            {isZh ? "戰帖狀態" : "Card Status"}
+          </p>
+          <h3 className="mt-2 text-2xl font-black text-white">
+            {focusedPoolCardTitle(focusedClosedCard.status, isZh)}
+          </h3>
+          <p className="mt-2 text-sm font-bold leading-6 text-zinc-300">
+            {focusedClosedCard.fighterName} · {focusedClosedCard.songName}
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {focusedClosedCard.battleId && !isClosedBattleStatus(focusedClosedCard.status) ? (
+              <Link
+                href={`/battle/${encodeURIComponent(focusedClosedCard.battleId)}?lang=${lang}`}
+                className="rounded-full bg-orange-500 px-5 py-2.5 text-sm font-black text-black shadow-[0_0_20px_rgba(255,106,0,0.2)] transition hover:bg-orange-300"
+              >
+                {isZh ? "我要觀戰" : "Watch Battle"}
+              </Link>
+            ) : null}
+            {focusedClosedCard.battleId && isClosedBattleStatus(focusedClosedCard.status) ? (
+              <Link
+                href={`/battle/result?battleId=${encodeURIComponent(focusedClosedCard.battleId)}&lang=${lang}`}
+                className="rounded-full bg-yellow-300 px-5 py-2.5 text-sm font-black text-black transition hover:bg-yellow-100"
+              >
+                {isZh ? "查看戰果" : "View Result"}
+              </Link>
+            ) : null}
+            <Link
+              href={`/battle?lang=${lang}`}
+              className="rounded-full border border-white/15 bg-white/[0.05] px-5 py-2.5 text-sm font-black text-zinc-200 transition hover:border-orange-200/60 hover:text-white"
+            >
+              {isZh ? "回戰鬥池" : "Back to Pool"}
+            </Link>
+          </div>
+        </article>
+      ) : null}
+
+      {filteredAcceptedBattleRows.length > 0 ? (
+        <div className="mb-4 grid gap-3">
+          {filteredAcceptedBattleRows.map((battleRow) => {
+            const scheduledAt = resolveDropBattleRuntimeStart(battleRow);
+            return (
+              <article
+                key={battleRow.id}
+                id={`battle-pool-accepted-${battleRow.id}`}
+                className="rounded-[1.4rem] border border-orange-200/42 bg-orange-400/[0.1] p-4 shadow-[0_0_34px_rgba(255,106,0,0.16)]"
+              >
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-100/75">
+                      {isZh ? "已有人挑戰" : "Challenge Accepted"}
+                    </p>
+                    <p className="mt-2 text-lg font-black text-white">
+                      <span>{battleRow.fighter_a_name}</span>
+                      {battleRow.fighter_a_rank && <span className="ml-2 align-middle text-xs font-bold text-orange-200">{battleRow.fighter_a_rank}</span>}
+                      <span className="mx-2 text-orange-300">vs</span>
+                      <span>{battleRow.fighter_b_name}</span>
+                      {battleRow.fighter_b_rank && <span className="ml-2 align-middle text-xs font-bold text-cyan-200">{battleRow.fighter_b_rank}</span>}
+                    </p>
+                    <p className="mt-1 truncate text-sm font-bold text-zinc-300">
+                      {battleRow.song_a_name} / {battleRow.song_b_name}
+                    </p>
+                    <p className="mt-2 text-xs font-bold text-orange-100/75">
+                      {isZh ? "已接戰，等待開打或進場觀戰投票" : "Accepted. Enter the arena to watch and vote."}
+                      {scheduledAt ? ` · ${formatBattleCardTime(scheduledAt, isZh)}` : ""}
+                    </p>
+                  </div>
+                  <Link
+                    href={focusedBattleHref(battleRow.id, lang)}
+                    className="inline-flex min-h-11 items-center justify-center rounded-full bg-orange-500 px-5 py-2.5 text-sm font-black text-black shadow-[0_0_22px_rgba(255,106,0,0.24)] transition hover:bg-orange-300"
+                  >
+                    {isZh ? "進入戰場" : "Enter Arena"}
+                  </Link>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {filteredOfficialDrops.length === 0 && filteredRows.length === 0 && !focusedClosedCard && filteredAcceptedBattleRows.length === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-6 text-center">
-          <p className="text-sm font-bold text-zinc-300">{t("pool_empty_title")}</p>
-          <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-zinc-500">
-            {t("pool_empty_body")}
+          <p className="text-sm font-bold text-zinc-300">
+            {activeGenre === "all" ? t("pool_empty_title") : isZh ? "這個風格目前沒有公開挑戰" : "No open challenges in this style right now"}
+          </p>
+          <p className="mx-auto mt-2 max-w-xl whitespace-pre-line text-sm leading-7 text-zinc-500">
+            {activeGenre === "all" ? t("pool_empty_body") : isZh ? "可以切換其他風格，或自己發起挑戰。" : "Switch styles or start a challenge yourself."}
           </p>
         </div>
-      ) : (
+      ) : filteredRows.length > 0 ? (
         <ul className="grid gap-3 md:grid-cols-2">
-          {rows.map((entry) => {
-            const isGhost = entry.status === "ghost_battle" && entry.match_group_id;
+          {filteredRows.map((entry) => {
+            const ghostBattleId = entry.status === "ghost_battle" ? entry.match_group_id : null;
+            const matchedBattleId = entry.status === "matched" ? entry.match_group_id : null;
+            const isGhost = Boolean(ghostBattleId);
+            const isMatched = Boolean(matchedBattleId);
             const isPublicVoting = entry.status === "public_voting";
             const isMine = Boolean(currentUserId && entry.user_id === currentUserId);
             const isFocused = focusQueueId === entry.id;
-            const inviteParams = new URLSearchParams({
-              lang,
-              type: "hook-card",
-            });
-            const invitePath = `/battle/invite/${entry.id}?${inviteParams.toString()}`;
+            const arenaPath = `/battle/${entry.id}?lang=${lang}`;
+            const battlePath = matchedBattleId ? focusedBattleHref(matchedBattleId, lang) : arenaPath;
+            const acceptPath = `/battle/accept/${encodeURIComponent(entry.id)}?lang=${lang}`;
             const href = isGhost
-              ? `/battle/${entry.match_group_id}`
-              : invitePath;
-            const waitingRoomPath = `/battle/waiting-room/${entry.id}?lang=${lang}`;
+              ? `/battle/${ghostBattleId}?lang=${lang}`
+              : battlePath;
             const shareUrl = isGhost
-              ? `/battle/${entry.match_group_id}?lang=${lang}`
-              : invitePath;
-            const shareLabel = isGhost || isPublicVoting
+              ? battleShortPath(ghostBattleId || entry.id, lang)
+              : isMatched && matchedBattleId
+                ? battleShortPath(matchedBattleId, lang)
+              : (() => {
+                  return battleShortPath(entry.id, lang);
+                })();
+            const shareLabel = isGhost || isMatched || isPublicVoting
               ? isZh
                 ? "邀請觀戰投票"
-                : "Invite voters"
+                : "Invite Voters"
               : isZh
                 ? "分享戰帖 / 約戰"
                 : "Share / Challenge";
-            const hookStartText = entry.expires_at
+            const hookStartAt = resolveDropBattleScheduledStart(entry);
+            const hookStartText = hookStartAt
               ? isZh
-                ? `開戰時間：${formatBattleCardTime(entry.expires_at, true)}（台灣時間）。`
-                : `Starts: ${formatBattleCardTime(entry.expires_at, false)} Taiwan time.`
+                ? `開戰時間: ${formatBattleCardTime(hookStartAt, true)}（台灣時間）。請大家提前進場。`
+                : `Starts: ${formatBattleCardTime(hookStartAt, false)} Taiwan time. Please enter 1 minute early.`
               : "";
             const label = isMine
               ? isZh
-                ? "我的等待卡"
-                : "My Waiting Card"
+                ? "我的戰場"
+                : "My Arena"
               : isGhost
                 ? t("pool_enter_ghost")
+                : isMatched
+                  ? isZh
+                    ? "已有人挑戰"
+                    : "Accepted"
                 : isPublicVoting
                   ? t("pool_public_vote")
                 : isZh
-                  ? "接受 90s Drop Battle 挑戰"
-                  : "Accept 90s Drop Battle";
+                  ? "開放接戰"
+                  : "Open Challenge";
             const cardClassName = `group block rounded-[1.4rem] border p-4 transition ${
               isFocused
                 ? "border-orange-200/80 bg-orange-400/[0.13] shadow-[0_0_38px_rgba(255,106,0,0.22)]"
                 : isMine
                   ? "border-cyan-200/35 bg-cyan-300/[0.07]"
-                  : "border-white/10 bg-white/[0.04] hover:border-orange-300/50 hover:bg-white/[0.065]"
+                  : "border-white/10 bg-black/38 hover:border-orange-300/50 hover:bg-white/[0.065]"
             }`;
             const content = (
               <div className="flex items-start justify-between gap-4">
@@ -988,6 +1802,10 @@ function BattlePoolList() {
                         ? isZh
                           ? "等待挑戰"
                           : "Waiting Challenge"
+                        : entry.status === "matched"
+                          ? isZh
+                            ? "已有人挑戰"
+                            : "Challenge Accepted"
                         : entry.status === "ghost_battle"
                           ? "Ghost Battle"
                           : "Public Voting"}
@@ -1003,46 +1821,70 @@ function BattlePoolList() {
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px] font-black text-orange-100/85">
                     <span className="inline-flex shrink-0 items-center rounded-full border border-white/10 bg-white/[0.05] px-3 py-1">
-                      {isPublicVoting ? (isZh ? "投票開放" : "Voting") : isZh ? "上架" : "Listed"} {formatBattleCardTime(entry.created_at, isZh)}
+                      {isMatched
+                        ? isZh
+                          ? "已接戰"
+                          : "Accepted"
+                        : isPublicVoting
+                          ? isZh
+                            ? "投票開放"
+                            : "Voting"
+                          : isZh
+                            ? "上架"
+                            : "Listed"} {formatBattleCardTime(entry.created_at, isZh)}
                     </span>
                     {!isPublicVoting ? (
                       <span className="inline-flex shrink-0 items-center rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-zinc-300">
                         {formatBattleAge(entry.created_at, isZh)}
                       </span>
                     ) : null}
-                    {entry.expires_at ? (
+                    {hookStartAt ? (
                       <span className="inline-flex shrink-0 items-center rounded-full border border-orange-200/45 bg-orange-400/15 px-4 py-1 text-base text-orange-50 shadow-[0_0_18px_rgba(255,116,28,0.16)]">
-                        {isZh ? "開戰" : "Starts"} {formatBattleCardTime(entry.expires_at, isZh)}
+                        {isZh ? "開戰" : "Starts"} {formatBattleCardTime(hookStartAt, isZh)}
                       </span>
                     ) : null}
                   </div>
                   <p className="mt-1 text-xs text-zinc-500">
                     {isMine
                       ? isZh
-                        ? "你的 90s 最強抓波Drop Battle 正在等待挑戰。可先進等待場看倒數、聽 5 秒 teaser；對手加入後會直接進鬥場。"
-                        : "Your 90s Drop Battle is open. Enter the waiting room for countdown and a 5-second teaser."
+                        ? "你的 60s 最強抓波 Drop Battle 戰場已開。時間內可離開再進來，對手加入後直接開打。"
+                        : "Your 60s Drop Battle arena is open. Re-enter anytime before start; it goes live when a rival joins."
+                      : isMatched
+                        ? isZh
+                          ? `${entry.ai_tool || "AI Tool"} · 已有人挑戰，進入戰場等待開打或觀戰投票`
+                          : `${entry.ai_tool || "AI Tool"} · A challenger accepted. Enter the arena to watch.`
                       : entry.status === "waiting_challenge"
                         ? isZh
-                          ? `${entry.ai_tool || "AI Tool"} · 點卡片可選擇挑戰或觀戰`
-                          : `${entry.ai_tool || "AI Tool"} · Open card to challenge or watch`
+                          ? `${entry.ai_tool || "AI Tool"} · 接受挑戰先上傳 Drop；觀戰才進戰場`
+                          : `${entry.ai_tool || "AI Tool"} · Accept by uploading a Drop; watch enters the arena`
                         : `${entry.ai_tool || "AI Tool"} ${isPublicVoting && entry.public_vote_score ? `· +${entry.public_vote_score} APC` : ""}`}
                   </p>
                   {isMine ? (
                     <div className="mt-4 flex flex-wrap gap-2">
                       <Link
-                        href={waitingRoomPath}
-                        className="rounded-full bg-cyan-300 px-4 py-2 text-sm font-black text-black transition hover:bg-cyan-100"
+                        href={battlePath}
+                        className="rounded-full border border-cyan-100/45 bg-cyan-300 px-4 py-2 text-sm font-black text-black transition hover:bg-cyan-100"
                       >
-                        {isZh ? "進入等待場" : "Enter Waiting Room"}
+                        {isZh ? "進入戰場" : "Enter Arena"}
                       </Link>
-                      <button
-                        type="button"
-                        onClick={() => void cancelOwnHook(entry.id)}
-                        disabled={cancelQueueId === entry.id}
-                        className="rounded-full border border-red-300/30 bg-red-500/10 px-4 py-2 text-sm font-black text-red-100 transition hover:border-red-200/70 hover:bg-red-400/20 disabled:cursor-wait disabled:opacity-60"
-                      >
-                        {cancelQueueId === entry.id ? (isZh ? "取消中..." : "Cancelling...") : isZh ? "取消 / 離開" : "Cancel / Leave"}
-                      </button>
+                      {!isMatched && entry.status === "waiting_challenge" ? (
+                        <Link
+                          href={acceptPath}
+                          className="aipo-primary-button rounded-full px-4 py-2 text-sm font-black transition"
+                        >
+                          {isZh ? "用另一首 Drop 挑戰" : "Challenge With Another Drop"}
+                        </Link>
+                      ) : null}
+                      {!isMatched ? (
+                        <button
+                          type="button"
+                          onClick={() => void cancelOwnHook(entry.id)}
+                          disabled={cancelQueueId === entry.id}
+                          className="rounded-full border border-red-300/30 bg-red-500/10 px-4 py-2 text-sm font-black text-red-100 transition hover:border-red-200/70 hover:bg-red-400/20 disabled:cursor-wait disabled:opacity-60"
+                        >
+                          {cancelQueueId === entry.id ? (isZh ? "取消中..." : "Cancelling...") : isZh ? "取消 / 離開" : "Cancel / Leave"}
+                        </button>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
@@ -1060,45 +1902,94 @@ function BattlePoolList() {
             return (
               <li key={entry.id} id={`battle-pool-${entry.id}`}>
                 <article className={cardClassName}>
-                  {isMine ? content : (
+                  {isMine || entry.status === "waiting_challenge" ? content : (
                     <Link href={href} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300">
                       {content}
                     </Link>
                   )}
-                  <div className="mt-4 flex justify-end border-t border-white/10 pt-3">
-                  <ShareButton
-                    title={isZh ? "AIPOGER 90s 最強抓波Drop Battle 戰帖" : "AIPOGER 90s Drop Battle Card"}
-                    text={
-                      isGhost || isPublicVoting
-                        ? isZh
-                          ? `《${entry.original_file_name}》正在 AIPOGER 鬥歌場，進來觀戰投票。`
-                          : `"${entry.original_file_name}" is in AIPOGER Battle. Come vote.`
-                        : isZh
-                          ? `${entry.fighter_name} 的《${entry.original_file_name}》正在等人接戰。${hookStartText}進來約戰，或先聽 5 秒 teaser。`
-                          : `${entry.fighter_name}'s "${entry.original_file_name}" is waiting for a challenger. ${hookStartText}Challenge it, or hear the 5s teaser first.`
-                    }
-                    url={shareUrl}
-                    label={shareLabel}
-                    copiedLabel={isZh ? "戰帖已複製" : "Battle card copied"}
-                    className="px-3 py-1.5 text-xs"
-                  />
+                  <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-white/10 pt-3">
+                    {!isMine && entry.status === "waiting_challenge" ? (
+                      <>
+                        <Link
+                          href={acceptPath}
+                          className="aipo-primary-button rounded-full px-4 py-2 text-xs font-black transition"
+                        >
+                          {isZh ? "我要接受挑戰" : "Accept Challenge"}
+                        </Link>
+                        <Link
+                          href={arenaPath}
+                          className="aipo-ghost-button rounded-full px-4 py-2 text-xs font-black text-cyan-50 transition hover:text-white"
+                        >
+                          {isZh ? "我要觀戰" : "Watch"}
+                        </Link>
+                      </>
+                    ) : null}
+                    {isMatched && matchedBattleId ? (
+                      <Link
+                        href={battlePath}
+                        className="aipo-primary-button rounded-full px-4 py-2 text-xs font-black transition"
+                      >
+                        {isZh ? "進入戰場" : "Enter Arena"}
+                      </Link>
+                    ) : null}
+                    <ShareButton
+                      title={isZh ? "AIPOGER 60s 最強抓波 Drop Battle 戰帖" : "AIPOGER 60s Drop Battle Card"}
+                      text={
+                        isGhost || isMatched || isPublicVoting
+                          ? isZh
+                            ? `《${entry.original_file_name}》正在 AIPOGER AI 音樂鬥歌場，進來觀戰投票。`
+                            : `"${entry.original_file_name}" is in the AIPOGER AI Music Battle Hall. Jump in and vote.`
+                          : isZh
+                            ? `${entry.fighter_name}的《${entry.original_file_name}》AIPOGER Drop Battle 戰帖已開。${hookStartText || "請大家提前進場。"}進場聽 5 秒預播、聊天預測，或直接接戰。`
+                            : `${entry.fighter_name}'s "${entry.original_file_name}" is open for challenge. ${hookStartText}Enter for the 5-second teaser, chat, or step in as the challenger.`
+                      }
+                      url={shareUrl}
+                      label={shareLabel}
+                      copiedLabel={isZh ? "戰帖已複製" : "Battle Card Copied"}
+                      className="px-3 py-1.5 text-xs"
+                    />
                   </div>
                 </article>
               </li>
             );
           })}
         </ul>
-      )}
-    </section>
+      ) : null}
+      </section>
+    </>
   );
 }
 
 function LiveBattleList() {
   const { t, lang } = useI18n();
+  const isZh = lang === "zh";
+  const searchParams = useSearchParams();
+  const focusQueueId = searchParams.get("focusQueue");
+  const focusBattleId = searchParams.get("focusBattle");
   const [rows, setRows] = useState<LiveBattleRow[]>([]);
   const [liveSongStats, setLiveSongStats] = useState<Record<string, SongBattleStats>>({});
+  const [archivedBattleIds, setArchivedBattleIds] = useState<Set<string>>(() => new Set());
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [cancelBattleId, setCancelBattleId] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeGenre, setActiveGenre] = useState("all");
+
+  useEffect(() => {
+    if (focusBattleId) rememberAuthNextPath(focusedBattleHref(focusBattleId, lang));
+  }, [focusBattleId, lang]);
+
+  useEffect(() => {
+    if (isAuthBypassEnabled) return;
+    let mounted = true;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (mounted) setCurrentUserId(data.session?.user.id ?? null);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -1110,12 +2001,29 @@ function LiveBattleList() {
         return;
       }
 
-      const { data, error: qErr } = await supabase
+      let { data, error: qErr } = await supabase
         .from("battles")
-        .select("id, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, started_at, waiting_room_started_at")
-        .eq("status", "live")
+        .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, scheduled_start_at, battle_started_at, started_at, battle_ended_at")
+        .in("status", ["matched", "active", "live"])
+        .is("battle_ended_at", null)
         .order("created_at", { ascending: false })
         .limit(30);
+
+      if (qErr) {
+        const msg = `${qErr.message ?? ""} ${qErr.details ?? ""} ${qErr.hint ?? ""}`;
+        const missingRuntimeColumn = /scheduled_start_at|battle_started_at|started_at|schema cache|column.*does not exist|PGRST204/i.test(msg);
+        if (missingRuntimeColumn) {
+          const legacyRead = await supabase
+            .from("battles")
+            .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, battle_started_at, started_at, battle_ended_at")
+            .in("status", ["matched", "active", "live"])
+            .is("battle_ended_at", null)
+            .order("created_at", { ascending: false })
+            .limit(30);
+          data = legacyRead.data as typeof data;
+          qErr = legacyRead.error;
+        }
+      }
 
       if (!mounted) return;
       if (qErr) {
@@ -1124,7 +2032,53 @@ function LiveBattleList() {
         setRows([]);
       } else {
         setError(null);
-        const baseRows = ((data as LiveBattleRow[]) ?? []);
+        let baseRows = ((data as LiveBattleRow[]) ?? []).filter((row) => {
+          if (row.battle_ended_at) return false;
+          if (row.status === "matched" || row.status === "active") return true;
+          if (row.status !== "live") return false;
+          const scheduledMs = Date.parse(row.scheduled_start_at ?? row.started_at ?? "");
+          return !Number.isFinite(scheduledMs) || scheduledMs <= Date.now() || Boolean(row.battle_started_at);
+        });
+        if (focusBattleId && !baseRows.some((row) => row.id === focusBattleId)) {
+          let { data: focusedBattle, error: focusedError } = await supabase
+            .from("battles")
+            .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, scheduled_start_at, battle_started_at, started_at, battle_ended_at")
+            .eq("id", focusBattleId)
+            .maybeSingle<LiveBattleRow>();
+          if (focusedError) {
+            const msg = `${focusedError.message ?? ""} ${focusedError.details ?? ""} ${focusedError.hint ?? ""}`;
+            const missingRuntimeColumn = /scheduled_start_at|battle_started_at|started_at|schema cache|column.*does not exist|PGRST204/i.test(msg);
+            if (missingRuntimeColumn) {
+              const legacyRead = await supabase
+                .from("battles")
+                .select("id, status, fighter_a_user_id, fighter_b_user_id, fighter_a_name, fighter_b_name, song_a_name, song_b_name, genre, created_at, battle_started_at, started_at, battle_ended_at")
+                .eq("id", focusBattleId)
+                .maybeSingle<LiveBattleRow>();
+              focusedBattle = legacyRead.data;
+              focusedError = legacyRead.error;
+            }
+          }
+          if (
+            focusedBattle?.id &&
+            (["matched", "active", "live"].includes(focusedBattle.status ?? "") ||
+              Boolean(focusedBattle.battle_ended_at) ||
+              isClosedBattleStatus(focusedBattle.status) ||
+              isDropBattleEndedOrPastExpectedEnd(focusedBattle))
+          ) {
+            baseRows = [focusedBattle, ...baseRows];
+          }
+        }
+        baseRows = dedupeLiveBattleRows(baseRows);
+        const battleIds = baseRows.map((row) => row.id).filter(Boolean);
+        if (battleIds.length > 0) {
+          const { data: archives } = await supabase
+            .from("battle_result_archives")
+            .select("battle_id")
+            .in("battle_id", battleIds);
+          setArchivedBattleIds(new Set(((archives as Array<{ battle_id?: string | null }> | null) ?? []).map((row) => row.battle_id).filter((id): id is string => Boolean(id))));
+        } else {
+          setArchivedBattleIds(new Set());
+        }
         setLiveSongStats(await fetchHookSongBattleStats(baseRows.flatMap((row) => [row.song_a_name, row.song_b_name])));
         const userIds = Array.from(new Set(baseRows.flatMap((row) => [row.fighter_a_user_id, row.fighter_b_user_id]).filter(Boolean)));
         const { data: profiles } =
@@ -1146,60 +2100,76 @@ function LiveBattleList() {
     };
 
     void load();
+    const channel =
+      !isAuthBypassEnabled &&
+      supabase
+        .channel("battle-live-open")
+        .on("postgres_changes", { event: "*", schema: "public", table: "battles" }, () => {
+          void load();
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "battle_queue" }, () => {
+          void load();
+        })
+        .subscribe();
     return () => {
       mounted = false;
+      if (channel) void supabase.removeChannel(channel);
     };
-  }, [t]);
+  }, [focusBattleId, t]);
+
+  useEffect(() => {
+    if (!focusBattleId || loading || rows.length === 0) return;
+    const timer = window.setTimeout(() => {
+      document.getElementById(`battle-live-${focusBattleId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [focusBattleId, loading, rows.length]);
+
+  const cancelLiveBattle = async (battleId: string) => {
+    setCancelError(null);
+    setCancelBattleId(battleId);
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) throw new Error(isZh ? "請先登入後再取消挑戰。" : "Please sign in before cancelling.");
+      await cancelCurrentBattleIntent({ accessToken: token, battleId });
+      setRows((items) => items.filter((item) => item.id !== battleId));
+      setArchivedBattleIds((current) => {
+        const next = new Set(current);
+        next.delete(battleId);
+        return next;
+      });
+    } catch (error) {
+      setCancelError(error instanceof Error ? error.message : isZh ? "取消失敗，請稍後再試。" : "Cancel failed. Please try again.");
+    } finally {
+      setCancelBattleId(null);
+    }
+  };
+  const liveGenreCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    rows.forEach((row) => {
+      const key = normalizeGenreFilter(row.genre);
+      if (!key) return;
+      counts[key] = (counts[key] ?? 0) + 1;
+    });
+    return counts;
+  }, [rows]);
+  const filteredLiveRows = useMemo(() => {
+    if (activeGenre === "all") return rows;
+    const target = normalizeGenreFilter(activeGenre);
+    return rows.filter((row) => normalizeGenreFilter(row.genre) === target);
+  }, [activeGenre, rows]);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#050505] text-[#ece9e6]">
+    <main className="aipo-stage-bg relative min-h-screen overflow-hidden text-[#ece9e6]">
       <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_18%_20%,rgba(255,106,0,0.2),transparent_32%),radial-gradient(circle_at_82%_8%,rgba(0,203,255,0.14),transparent_28%),linear-gradient(180deg,#050505,#0b0908)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.12] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:48px_48px]" />
 
-      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 pb-10 pt-24 sm:px-6 md:px-10">
-        <header className="mb-8 flex flex-col gap-5 border-b border-white/10 pb-6 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.45em] text-orange-300/80">AIPOGER LIVE LOBBY</p>
-            <h1 className="mt-3 text-4xl font-black tracking-tight text-white md:text-6xl">
-              {t("watch_page_title")}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400 md:text-base">
-              {t("watch_live_hint")}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <ShareButton
-              title={t("watch_share_title")}
-              text={t("watch_share_text")}
-              label={t("watch_share_label")}
-              copiedLabel={t("common_copied")}
-            />
-            <Link
-              href="/listen-bar"
-              className="w-fit rounded-full border border-cyan-300/30 bg-cyan-300/10 px-5 py-2.5 text-sm font-semibold tracking-[0.12em] text-cyan-100 transition hover:border-cyan-200 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
-            >
-              {t("btn_listen_bar")}
-            </Link>
-            <Link
-              href="/battle/result"
-              className="w-fit rounded-full border border-orange-300/30 bg-orange-500/10 px-5 py-2.5 text-sm font-semibold tracking-[0.12em] text-orange-100 transition hover:border-orange-200 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
-            >
-              {t("watch_result_card")}
-            </Link>
-            <Link
-              href="/rank"
-              className="w-fit rounded-full border border-yellow-300/30 bg-yellow-400/10 px-5 py-2.5 text-sm font-semibold tracking-[0.12em] text-yellow-100 transition hover:border-yellow-200 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300"
-            >
-              {t("watch_rank")}
-            </Link>
-            <Link
-              href="/"
-              className="w-fit rounded-full border border-white/15 bg-white/[0.06] px-5 py-2.5 text-sm font-semibold tracking-[0.12em] text-zinc-200 transition hover:border-orange-400/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff7a28]"
-            >
-              {t("battle_back_home")}
-            </Link>
-          </div>
-        </header>
+      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 pb-10 pt-24 sm:px-6 md:px-10">
+        <BattleStageHero isZh={isZh} lang={lang} t={t} />
+        <QCrashModePanel isZh={isZh} lang={lang} />
 
         {isAuthBypassEnabled && (
           <p className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/90">
@@ -1207,46 +2177,91 @@ function LiveBattleList() {
           </p>
         )}
 
+        <BattlePoolList />
+
+        {cancelError ? (
+          <div className="mt-6 rounded-2xl border border-red-400/35 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-100">
+            {cancelError}
+          </div>
+        ) : null}
+
         {loading ? (
-          <p className="rounded-3xl border border-orange-400/20 bg-orange-500/10 px-5 py-8 text-center text-sm tracking-[0.2em] text-[#ff8d40]">
+          <p className="mt-8 rounded-3xl border border-orange-400/20 bg-orange-500/10 px-5 py-8 text-center text-sm tracking-[0.2em] text-[#ff8d40]">
             {t("common_loading")}
           </p>
         ) : error ? (
-          <p className="rounded-3xl border border-red-400/20 bg-red-500/10 px-5 py-8 text-center text-sm text-red-300">{error}</p>
-        ) : rows.length === 0 ? (
-          <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] px-6 py-10 text-center shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur">
+          <p className="mt-8 rounded-3xl border border-red-400/20 bg-red-500/10 px-5 py-8 text-center text-sm text-red-300">{error}</p>
+        ) : rows.length === 0 && !focusQueueId && !focusBattleId ? (
+          <div className="aipo-control-panel mt-8 rounded-[1.35rem] px-6 py-10 text-center">
             <p className="text-2xl font-black text-white">{t("watch_no_live_title")}</p>
-            <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
+            <p className="mx-auto mt-3 max-w-2xl whitespace-pre-line text-sm leading-7 text-zinc-400">
               {t("watch_no_live_body")}
             </p>
             <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
               <Link
                 href="/battle/setup"
-                className="inline-flex rounded-full bg-orange-500 px-6 py-3 text-sm font-black tracking-[0.12em] text-black transition hover:bg-orange-300"
+                className="aipo-primary-button inline-flex rounded-full px-6 py-3 text-sm font-black tracking-[0.12em] transition"
               >
                 {t("watch_upload_pool")}
               </Link>
               <Link
                 href="/listen-bar"
-                className="inline-flex rounded-full border border-cyan-300/35 bg-cyan-300/10 px-6 py-3 text-sm font-black tracking-[0.12em] text-cyan-100 transition hover:border-cyan-200 hover:text-white"
+                className="aipo-ghost-button inline-flex rounded-full px-6 py-3 text-sm font-black tracking-[0.12em] text-cyan-100 transition hover:text-white"
               >
                 {t("watch_listen_public")}
               </Link>
             </div>
           </div>
         ) : (
+          <>
+            <div className="mt-8">
+              <GenreFilterBar activeGenre={activeGenre} onChange={setActiveGenre} counts={liveGenreCounts} t={t} isZh={isZh} />
+            </div>
+            {filteredLiveRows.length === 0 ? (
+              <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.035] px-5 py-6 text-center">
+                <p className="text-sm font-bold text-zinc-300">
+                  {isZh ? "這個風格目前沒有進行中的戰場" : "No live arena in this style right now"}
+                </p>
+                <p className="mt-2 text-sm text-zinc-500">
+                  {isZh ? "切換其他風格，或回挑戰池找等待中的 Drop。" : "Switch styles or check the challenge pool above."}
+                </p>
+              </div>
+            ) : (
           <ul className="grid gap-4">
-            {rows.map((b) => {
-              const scheduledMs = b.started_at ? new Date(b.started_at).getTime() : NaN;
-              const isFutureBattle = Number.isFinite(scheduledMs) && scheduledMs > Date.now();
+            {filteredLiveRows.map((b) => {
+              const scheduledAt = resolveDropBattleRuntimeStart(b);
+              const scheduledMs = new Date(scheduledAt ?? "").getTime();
+              const battleStartShareText = scheduledAt
+                ? lang === "zh"
+                  ? `開戰時間: ${formatBattleCardTime(scheduledAt, true)}（台灣時間）。請大家提前進場。`
+                  : `Starts: ${formatBattleCardTime(scheduledAt, false)} Taiwan time. Please enter 1 minute early.`
+                : "";
+              const likelyEndedByClock =
+                Number.isFinite(scheduledMs) &&
+                scheduledMs + DROP_BATTLE_EXPECTED_END_BUFFER_MS <= Date.now();
+              const isBattleEnded = Boolean(b.battle_ended_at) || isClosedBattleStatus(b.status) || archivedBattleIds.has(b.id);
+              const isEndedByClock = !isBattleEnded && likelyEndedByClock;
+              const showEndedState = isBattleEnded || isEndedByClock;
+              const isFutureBattle =
+                !showEndedState &&
+                (b.status === "matched" || b.status === "active" || (Number.isFinite(scheduledMs) && scheduledMs > Date.now() && !b.battle_started_at));
+              const canCancelBattle =
+                !showEndedState &&
+                isFutureBattle &&
+                Boolean(currentUserId && (b.fighter_a_user_id === currentUserId || b.fighter_b_user_id === currentUserId));
+              const primaryHref = isBattleEnded ? `/battle/result?battleId=${encodeURIComponent(b.id)}&lang=${lang}` : `/battle/${b.id}?lang=${lang}`;
+              const shareHref = isBattleEnded ? battleResultShortPath(b.id, lang) : battleShortPath(b.id, lang);
+              const isFocusedBattle = focusBattleId === b.id;
               return (
-              <li key={b.id}>
-                <article className="group relative overflow-hidden rounded-[1.6rem] border border-white/10 bg-white/[0.045] px-5 py-5 transition hover:border-orange-400/50 hover:bg-white/[0.07] hover:shadow-[0_0_34px_rgba(255,106,0,0.16)]">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-orange-400 via-orange-600 to-cyan-400" />
-                  <Link
-                    href={`/battle/${b.id}?lang=${lang}`}
-                    className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff7a28]"
+                <li key={b.id} id={`battle-live-${b.id}`}>
+                  <article
+                    className={`group relative overflow-hidden rounded-[1.6rem] border px-5 py-5 transition hover:border-orange-400/50 hover:bg-white/[0.07] hover:shadow-[0_0_34px_rgba(255,106,0,0.16)] ${
+                      isFocusedBattle
+                        ? "border-orange-200/80 bg-orange-400/[0.11] shadow-[0_0_44px_rgba(255,106,0,0.22)]"
+                        : "border-white/10 bg-white/[0.045]"
+                    }`}
                   >
+                    <div className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-orange-400 via-orange-600 to-cyan-400" />
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">
@@ -1267,38 +2282,90 @@ function LiveBattleList() {
                           <SongBattleStatsPill stats={liveSongStats[normalizeSongStatsKey(b.song_b_name)]} isZh={lang === "zh"} tone="cyan" />
                         </div>
                         <p className="mt-2 text-xs font-bold text-orange-100/75">
-                          {isFutureBattle ? (lang === "zh" ? "預備戰鬥" : "Scheduled") : (lang === "zh" ? "開戰" : "Started")}{" "}
-                          {formatBattleCardTime(b.started_at || b.created_at, lang === "zh")}
+                          {isBattleEnded
+                            ? (lang === "zh" ? "已完成戰鬥" : "Battle completed")
+                            : isEndedByClock
+                              ? (lang === "zh" ? "已完成戰鬥" : "Battle completed")
+                            : isFutureBattle
+                              ? (lang === "zh" ? "已有人挑戰，等待開打" : "Challenge accepted, waiting to start")
+                              : (lang === "zh" ? "開戰" : "Started")}{" "}
+                          {formatBattleCardTime(scheduledAt, lang === "zh")}
                         </p>
                       </div>
                       <span className="mt-2 shrink-0 rounded-full border border-orange-400/35 px-4 py-2 text-sm font-bold text-[#ffbf99] transition group-hover:bg-orange-500 group-hover:text-black sm:mt-0">
-                        {t("watch_enter")} →
+                        {isBattleEnded
+                          ? (lang === "zh" ? "查看戰果" : "View Result")
+                          : isEndedByClock
+                            ? (lang === "zh" ? "已完成戰鬥" : "Completed")
+                            : isFutureBattle
+                              ? (lang === "zh" ? "已有人挑戰" : "Accepted")
+                              : (lang === "zh" ? "可觀戰投票" : "Watch & Vote")}
                       </span>
                     </div>
-                  </Link>
-                  <div className="mt-4 flex justify-end">
-                    <ShareButton
-                      title={lang === "zh" ? "AIPOGER 90s Drop Battle 觀戰邀請" : "AIPOGER 90s Drop Battle"}
-                      text={
-                        lang === "zh"
-                          ? `《${b.song_a_name}》vs《${b.song_b_name}》正在開打，進來觀戰投票。`
-                          : `"${b.song_a_name}" vs "${b.song_b_name}" is live. Come vote.`
-                      }
-                      url={`/battle/${b.id}?lang=${lang}`}
-                      label={lang === "zh" ? "邀請觀戰投票" : "Invite voters"}
-                      copiedLabel={lang === "zh" ? "觀戰連結已複製" : "Invite copied"}
-                      className="px-3 py-1.5 text-xs"
-                    />
-                  </div>
-                </article>
-              </li>
+                    <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-white/10 pt-3">
+                      <Link
+                        href={primaryHref}
+                        className="rounded-full bg-orange-500 px-4 py-2 text-xs font-black text-black shadow-[0_0_20px_rgba(255,106,0,0.2)] transition hover:bg-orange-300"
+                      >
+                        {isBattleEnded
+                          ? (lang === "zh" ? "查看戰果" : "View Result")
+                          : isEndedByClock
+                            ? (lang === "zh" ? "查看戰鬥卡" : "View Battle")
+                            : (lang === "zh" ? "我要觀戰" : "Watch Battle")}
+                      </Link>
+                      <ShareButton
+                        title={lang === "zh" ? "AIPOGER 60s Drop Battle 觀戰邀請" : "AIPOGER 60s Drop Battle"}
+                        text={
+                          isBattleEnded
+                            ? lang === "zh"
+                              ? `《${b.song_a_name}》vs《${b.song_b_name}》此戰鬥已經結束，進來查看戰果。`
+                              : `"${b.song_a_name}" vs "${b.song_b_name}" has ended. View the result.`
+                          : isEndedByClock
+                            ? lang === "zh"
+                              ? `《${b.song_a_name}》vs《${b.song_b_name}》此戰鬥已經結束，進來查看。`
+                              : `"${b.song_a_name}" vs "${b.song_b_name}" has ended. Open it to view.`
+                          : isFutureBattle
+                              ? lang === "zh"
+                                ? `《${b.song_a_name}》vs《${b.song_b_name}》已進場等待開打。${battleStartShareText}先進來聽 5 秒預播。`
+                                : `"${b.song_a_name}" vs "${b.song_b_name}" is waiting to start. ${battleStartShareText} Hear the 5s previews.`
+                              : lang === "zh"
+                                ? `《${b.song_a_name}》vs《${b.song_b_name}》正在開打，進來觀戰投票。`
+                                : `"${b.song_a_name}" vs "${b.song_b_name}" is live. Come vote.`
+                        }
+                        url={shareHref}
+                        label={isBattleEnded
+                          ? (lang === "zh" ? "分享戰果" : "Share Result")
+                          : isEndedByClock
+                            ? (lang === "zh" ? "分享戰鬥" : "Share Battle")
+                            : isFutureBattle
+                              ? (lang === "zh" ? "分享鬥場" : "Share Arena")
+                              : (lang === "zh" ? "邀請觀戰投票" : "Invite Voters")}
+                        copiedLabel={lang === "zh" ? "觀戰連結已複製" : "Invite Copied"}
+                        className="px-3 py-1.5 text-xs"
+                      />
+                      {canCancelBattle ? (
+                        <button
+                          type="button"
+                          onClick={() => void cancelLiveBattle(b.id)}
+                          disabled={cancelBattleId === b.id}
+                          className="rounded-full border border-white/15 bg-white/[0.035] px-3 py-1.5 text-xs font-black text-zinc-300 transition hover:border-red-300/60 hover:bg-red-500/10 hover:text-red-100 disabled:cursor-wait disabled:opacity-60"
+                        >
+                          {cancelBattleId === b.id
+                            ? (lang === "zh" ? "取消中..." : "Cancelling...")
+                            : (lang === "zh" ? "取消挑戰" : "Cancel Battle")}
+                        </button>
+                      ) : null}
+                    </div>
+                  </article>
+                </li>
               );
             })}
           </ul>
+            )}
+          </>
         )}
 
-        <DailyBattleList />
-        <BattlePoolList />
+        {SHOW_DAILY_BATTLE_SECTION ? <DailyBattleList /> : null}
       </div>
     </main>
   );
@@ -1446,29 +2513,23 @@ function BattleArena({ matchId }: { matchId: string }) {
   };
 
   return (
-    <main className="min-h-screen bg-[#1b1d20] text-[#ece9e6]">
-      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 pb-5 pt-6 sm:px-6 md:px-10 md:pb-8">
-        <header className="mb-5 flex items-center justify-between border-b border-[#4f5358] pb-4">
+    <main className="aipo-stage-bg min-h-screen text-[#ece9e6]">
+      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 pb-5 pt-6 sm:px-6 md:px-10 md:pb-8">
+        <header className="aipo-control-panel aipo-panel-line mb-5 flex items-center justify-between rounded-[1.35rem] px-5 py-4">
           <div>
-            <p className="text-xs tracking-[0.4em] text-[#8e847f]">AIPOGER</p>
+            <p className="aipo-section-kicker">AIPOGER</p>
             <h1 className="mt-2 text-2xl font-semibold tracking-[0.2em] text-[#f2efec] md:text-3xl">
               {t("battle_list_title")}
             </h1>
           </div>
-          <Link
-            href="/"
-            className="rounded-xl border border-[#5d6268] px-4 py-2 text-sm tracking-[0.12em] text-[#d8d3cf] transition hover:border-[#ff8d40] hover:text-[#ffd8bf] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff7a28]"
-          >
-            {t("battle_back_home")}
-          </Link>
         </header>
 
-        <div className="mb-4 rounded-xl border border-[#4f5358] bg-[#25292d] px-4 py-3 text-sm tracking-[0.12em] text-[#f0e6df]">
+        <div className="aipo-control-panel mb-4 rounded-xl px-4 py-3 text-sm tracking-[0.12em] text-[#f0e6df]">
           先攻判定：<span className="font-semibold text-[#ffbf99]">{firstAttack} 隊先攻</span>
         </div>
 
         <section className="grid flex-1 grid-rows-[auto_auto_1fr] gap-6 md:grid-cols-2 md:grid-rows-[auto_auto]">
-          <div className="rounded-3xl border border-[#4d5257] bg-[#24272b]/80 px-4 py-6 md:px-7">
+          <div className="aipo-control-panel rounded-[1.35rem] px-4 py-6 md:px-7">
             <Turntable
               label="SONG DECK A"
               deckKey="A"
@@ -1480,7 +2541,7 @@ function BattleArena({ matchId }: { matchId: string }) {
               onPlay={handlePlay}
             />
           </div>
-          <div className="rounded-3xl border border-[#4d5257] bg-[#24272b]/80 px-4 py-6 md:px-7">
+          <div className="aipo-control-panel rounded-[1.35rem] px-4 py-6 md:px-7">
             <Turntable
               label="SONG DECK B"
               deckKey="B"
@@ -1498,7 +2559,7 @@ function BattleArena({ matchId }: { matchId: string }) {
             <VoteButton team="B" />
           </div>
 
-          <section className="flex min-h-[230px] flex-col rounded-2xl border border-[#4d5257] bg-[#23262a] p-4 md:col-span-2 md:min-h-[260px] md:p-5">
+          <section className="aipo-control-panel flex min-h-[230px] flex-col rounded-[1.35rem] p-4 md:col-span-2 md:min-h-[260px] md:p-5">
             <h2 className="text-sm font-medium tracking-[0.2em] text-[#baa9a0]">彈幕牆</h2>
             <SafetyNotice kind="chat" compact className="mt-3" />
             <div className="mt-4 flex-1 space-y-2 overflow-y-auto rounded-xl border border-[#3f4348] bg-[#1c1f22] p-3">
@@ -1516,11 +2577,11 @@ function BattleArena({ matchId }: { matchId: string }) {
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
                 placeholder="輸入你的彈幕留言..."
-                className="h-11 flex-1 rounded-xl border border-[#5f646a] bg-[#2a2e33] px-4 text-sm text-[#f2efec] placeholder:text-[#9b938e] focus:outline-none focus:ring-2 focus:ring-[#ff7a28]"
+                className="aipo-input h-11 flex-1 rounded-xl px-4 text-sm placeholder:text-[#9b938e]"
               />
               <button
                 type="submit"
-                className="rounded-xl border border-[#767c82] bg-gradient-to-b from-[#646a70] to-[#4a4f55] px-4 text-sm font-medium tracking-[0.1em] text-[#f4efeb] transition hover:border-[#ff8d40] hover:shadow-[0_0_14px_rgba(255,121,40,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff7a28]"
+                className="aipo-primary-button rounded-xl px-4 text-sm font-black tracking-[0.1em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff7a28]"
               >
                 發送
               </button>
@@ -1544,8 +2605,18 @@ function BattleArena({ matchId }: { matchId: string }) {
 }
 
 function BattleContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const matchId = searchParams.get("matchId");
+  const focusQueueId = searchParams.get("focusQueue");
+  const focusBattleId = searchParams.get("focusBattle");
+  const lang = searchParams.get("lang") === "en" ? "en" : "zh";
+
+  useEffect(() => {
+    const deepLinkId = focusBattleId || focusQueueId;
+    if (!deepLinkId) return;
+    router.replace(focusedBattleHref(deepLinkId, lang));
+  }, [focusBattleId, focusQueueId, lang, router]);
 
   if (!matchId) {
     return <LiveBattleList />;
@@ -1557,7 +2628,7 @@ function BattleContent() {
 function BattleSuspenseFallback() {
   const { t } = useI18n();
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#1b1d20] text-sm tracking-[0.2em] text-[#ff8d40]">
+    <div className="aipo-stage-bg flex min-h-screen items-center justify-center text-sm tracking-[0.2em] text-[#ff8d40]">
       {t("common_loading")}
     </div>
   );

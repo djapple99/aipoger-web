@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 
 const BGM_SRC = "/music/home-bgm.mp3";
+const STOP_HOME_BGM_EVENT = "aipoger:stop-home-bgm";
 
 function SpeakerIcon({ playing }: { playing: boolean }) {
   return (
@@ -40,6 +41,16 @@ export default function HomeBgmPlayer() {
   const [playing, setPlaying] = useState(false);
   const autoplayBlockedRef = useRef(false);
   const userPausedRef = useRef(false);
+  const hardStop = useCallback(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    userPausedRef.current = true;
+    autoplayBlockedRef.current = false;
+    el.pause();
+    el.removeAttribute("src");
+    el.load();
+    setPlaying(false);
+  }, []);
 
   useEffect(() => {
     const el = audioRef.current;
@@ -64,8 +75,15 @@ export default function HomeBgmPlayer() {
 
     const onFirstPointer = (ev: PointerEvent) => {
       const target = ev.target;
+      const targetElement = target instanceof Element ? target : null;
+      const href = targetElement?.closest("a")?.getAttribute("href") ?? "";
+      const isListenBarNavigation = href === "/listen-bar" || href.startsWith("/listen-bar?");
+      if (isListenBarNavigation) {
+        hardStop();
+        return;
+      }
       const onSpeaker =
-        target instanceof Element && Boolean(target.closest("[data-home-bgm]"));
+        targetElement && Boolean(targetElement.closest("[data-home-bgm]"));
 
       if (
         !onSpeaker &&
@@ -80,21 +98,27 @@ export default function HomeBgmPlayer() {
       window.removeEventListener("pointerdown", onFirstPointer, true);
     };
 
+    window.addEventListener(STOP_HOME_BGM_EVENT, hardStop);
     window.addEventListener("pointerdown", onFirstPointer, { capture: true });
 
     return () => {
+      window.removeEventListener(STOP_HOME_BGM_EVENT, hardStop);
       window.removeEventListener("pointerdown", onFirstPointer, true);
-      el.pause();
+      hardStop();
       el.removeEventListener("play", onPlay);
       el.removeEventListener("pause", onPause);
     };
-  }, []);
+  }, [hardStop]);
 
   const toggle = useCallback(async () => {
     const el = audioRef.current;
     if (!el) return;
     if (el.paused) {
       userPausedRef.current = false;
+      if (!el.getAttribute("src")) {
+        el.src = BGM_SRC;
+        el.load();
+      }
       try {
         await el.play();
       } catch {
@@ -115,7 +139,7 @@ export default function HomeBgmPlayer() {
         onClick={toggle}
         title={t("home_bgm_tooltip")}
         aria-label={playing ? t("home_bgm_pause_aria") : t("home_bgm_play_aria")}
-        className={`pointer-events-auto fixed left-[4.75rem] top-4 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-zinc-600/80 bg-black/50 text-zinc-100 shadow-lg backdrop-blur transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 md:left-[5rem] ${
+        className={`pointer-events-auto fixed left-4 top-4 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-zinc-600/80 bg-black/50 text-zinc-100 shadow-lg backdrop-blur transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 md:left-[42px] md:top-5 md:h-14 md:w-14 ${
           playing
             ? "ring-2 ring-sky-400/90 shadow-[0_0_22px_rgba(56,189,248,0.55)]"
             : "ring-1 ring-white/15 hover:border-zinc-500 hover:bg-black/65"

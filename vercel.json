@@ -1,25 +1,21 @@
 {
-  "redirects": [
-    {
-      "source": "/:path*",
-      "has": [
-        {
-          "type": "host",
-          "value": "www.aipoger.com"
-        }
-      ],
-      "destination": "https://aipoger.com/:path*",
-      "permanent": true
-    }
-  ],
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
     {
+      "path": "/api/listen-bar/cleanup-messages",
+      "schedule": "0 */8 * * *"
+    },
+    {
       "path": "/api/listen-bar/process-rotation",
-      "schedule": "0 */4 * * *"
+      "schedule": "0 */8 * * *"
     },
     {
       "path": "/api/battle-pool/process-fallbacks",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/battle-pool/cancel-stale-challenges",
+      "schedule": "* * * * *"
     }
   ],
   "functions": {

@@ -21,6 +21,7 @@ create table if not exists public.listen_bar_tracks (
   ai_tool text,
   genre text,
   mood text,
+  description text,
   bpm integer check (bpm is null or (bpm > 0 and bpm < 400)),
   duration_seconds integer check (duration_seconds is null or (duration_seconds > 0 and duration_seconds <= 3600)),
   lyrics text,
@@ -139,15 +140,15 @@ values
     'listen-bar-audio',
     'listen-bar-audio',
     true,
-    52428800,
-    array['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/aiff', 'audio/x-aiff', 'audio/mp4', 'audio/aac', 'audio/ogg']::text[]
+    104857600,
+    array['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave', 'audio/aiff', 'audio/x-aiff', 'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/ogg']::text[]
   ),
   (
     'listen-bar-covers',
     'listen-bar-covers',
     true,
     10485760,
-    array['image/jpeg', 'image/png', 'image/webp']::text[]
+    array['image/jpeg', 'image/png', 'image/webp', 'image/gif']::text[]
   )
 on conflict (id) do update
 set

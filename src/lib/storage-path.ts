@@ -25,6 +25,18 @@ export function buildHookStoragePath(
   return { storagePath, fileName };
 }
 
+export function buildFullSongStoragePath(
+  userId: string,
+  fighterName: string,
+  songName: string,
+  originalFileName: string,
+): { storagePath: string; fileName: string } {
+  const extension = originalFileName.match(/\.([a-zA-Z0-9]{2,6})$/)?.[1]?.toLowerCase() || "mp3";
+  const fileName = `${asciiSlug(fighterName, "fighter")}_${asciiSlug(songName, "song")}_${Date.now()}.${extension}`;
+  const storagePath = `${userId}/full-songs/${fileName}`;
+  return { storagePath, fileName };
+}
+
 export function isValidStorageObjectKey(path: string): boolean {
   return /^[a-zA-Z0-9/._-]+$/.test(path) && !path.includes("..");
 }

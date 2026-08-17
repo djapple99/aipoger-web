@@ -6,8 +6,8 @@ import { useParams } from "next/navigation";
 import SafetyNotice from "@/components/safety-notice";
 import ShareButton from "@/components/share-button";
 import { supabase } from "@/lib/supabase";
-import { getFreshSession } from "@/lib/auth-session";
 import { useI18n } from "@/lib/i18n";
+import { dailyBattleShortPath } from "@/lib/share-short-links";
 
 type DailySide = "A" | "B";
 
@@ -43,7 +43,7 @@ type LoadedBattle = {
 const demoEntryA: DailyEntry = {
   id: "demo-a",
   title: "Neon Dust",
-  genre: "流行舞曲",
+  genre: "K-Pop 韓式動感",
   ai_tool: "Suno",
   audio_path: "/music/home-bgm.mp3",
   cover_url: "/aipoger-brand-logo-transparent-20260522.png",
@@ -52,7 +52,7 @@ const demoEntryA: DailyEntry = {
 const demoEntryB: DailyEntry = {
   id: "demo-b",
   title: "Cold Pulse",
-  genre: "動感電音",
+  genre: "EDM 百大電音",
   ai_tool: "Udio",
   audio_path: "/music/home-bgm.mp3",
   cover_url: "/aipoger-brand-logo-transparent-20260522.png",
@@ -277,7 +277,9 @@ export default function DailyBattleRoomPage() {
     setSubmitting(true);
     setVoteMessage("");
     try {
-      const session = await getFreshSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session?.user) {
         setVoteMessage(isZh ? "請先登入後再投票。" : "Sign in before voting.");
         return;
@@ -322,10 +324,11 @@ export default function DailyBattleRoomPage() {
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full border border-yellow-200/25 bg-yellow-300/10 px-4 py-2 text-sm font-black text-yellow-100">{timeLeftLabel}</span>
               <ShareButton
-                title={isZh ? "AIPOGER 24H Daily Battle" : "AIPOGER 24H Daily Battle"}
+                title={isZh ? "AIPOGER 24H Full Song 對決" : "AIPOGER 24H Full Song Battle"}
                 text={isZh ? `${battle.A.title} vs ${battle.B.title}，進來慢慢聽再投票。` : `${battle.A.title} vs ${battle.B.title}. Listen slowly, then vote.`}
-                label={isZh ? "分享這場" : "Share"}
-                copiedLabel={isZh ? "已複製" : "Copied"}
+                url={dailyBattleShortPath(battle.id, lang)}
+                label={isZh ? "邀請觀戰投票" : "Invite Voters"}
+                copiedLabel={isZh ? "觀戰連結已複製" : "Invite Copied"}
               />
               <Link href="/battle" className="rounded-full border border-white/12 bg-white/[0.055] px-4 py-2 text-sm font-black text-zinc-200 transition hover:border-orange-300/50 hover:text-white">
                 {isZh ? "回鬥歌場" : "Back"}
@@ -372,7 +375,7 @@ export default function DailyBattleRoomPage() {
                       {battle.status === "cancelled"
                         ? isZh
                           ? "這場已取消"
-                          : "Battle cancelled"
+                          : "Battle Cancelled"
                         : winnerSide
                           ? isZh
                             ? `${winnerSide} Side 勝出`
@@ -412,7 +415,7 @@ export default function DailyBattleRoomPage() {
                     <input
                       value={comment}
                       onChange={(event) => setComment(event.target.value)}
-                      placeholder={isZh ? "留下觀眾評價後投票，例如：副歌記憶點更強" : "Leave a listener comment before voting"}
+                      placeholder={isZh ? "留下觀眾評價後投票，例如：副歌記憶點更強" : "Leave a Listener Comment Before Voting"}
                       maxLength={240}
                       className="h-14 rounded-2xl border border-white/10 bg-black/58 px-5 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
                     />

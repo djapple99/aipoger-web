@@ -6,23 +6,37 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import WaveSurfer from 'wavesurfer.js';
 import Regions from 'wavesurfer.js/dist/plugins/regions.esm.js';
 import { supabase } from '@/lib/supabase';
-import { getFreshSession } from '@/lib/auth-session';
 import { isAuthBypassEnabled, mockUserId } from '@/lib/auth-bypass';
 import { readFighterNameFromStorage, writeFighterNameToStorage } from '@/lib/fighter-name-storage';
-import { buildHookStoragePath, isValidStorageObjectKey } from '@/lib/storage-path';
+import { buildFullSongStoragePath, buildHookStoragePath, isValidStorageObjectKey } from '@/lib/storage-path';
 import { saveFighterNameToProfile } from '@/lib/user-profile-fighter-name';
-import { attemptMatchmakingWithoutApcGate, cancelCurrentBattleIntent } from '@/lib/battle-pool-client';
+import {
+  attemptMatchmakingWithoutApcGate,
+  buildDropBattleSchedulePayload,
+  buildDropBattleSchedulePayloadFromPreset,
+  completeDropRematchUploadIntent,
+  dropBattleSchedulePresetFromValue,
+  isDropBattleEndedOrPastExpectedEnd,
+} from '@/lib/battle-pool-client';
+import {
+  ACTIVE_DROP_BATTLE_STATUSES,
+  ACTIVE_DROP_QUEUE_STATUSES,
+  dropBattleRoleForChallengeTarget,
+  dropBattleRoleLockMessage,
+  type DropBattleUserRole,
+} from '@/lib/battle-pool-rules';
 import SafetyNotice from '@/components/safety-notice';
 import { blobToDataUrl, parseAudioMetadata } from '@/lib/audio-metadata';
 import { sha256File } from '@/lib/file-hash';
+import { shouldHandleDropCutSpaceShortcut } from '@/lib/drop-cut-keyboard';
+import { clearPendingQCrashAudio, readPendingQCrashAudio } from '@/lib/pending-q-crash-audio';
 
-const MAX_HOOK_SECONDS = 45;
+const MAX_HOOK_SECONDS = 60;
 const MIN_REGION_SECONDS = 0.25;
 const MAX_LYRICS_CHARS = 8000;
 const PENDING_AUDIO_COVER_KEY = 'aipoger:pending-audio-cover';
-const ACTIVE_QUEUE_STATUSES = ["searching", "waiting", "waiting_challenge", "matched", "active", "ghost_battle", "public_voting"];
-const ACTIVE_BATTLE_STATUSES = ["live", "active", "ghost_battle", "public_voting"];
-const REPLACEABLE_QUEUE_STATUSES = new Set(["searching", "waiting", "waiting_challenge", "public_voting", "ghost_battle"]);
+const PROFILE_CHALLENGE_AUDIO_KEY = 'aipoger:profile-challenge-audio';
+const CLOSED_BATTLE_STATUSES = new Set(["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"]);
 
 type RegionTimes = { start: number; end: number };
 type WaveRegion = RegionTimes & {
@@ -30,13 +44,21 @@ type WaveRegion = RegionTimes & {
   on: (event: 'update', handler: () => void) => void;
 };
 
+type ProfileChallengeAudioPayload = {
+  audioUrl?: string;
+  title?: string;
+  genre?: string;
+  aiTool?: string;
+  fileName?: string;
+};
+
 // ─── i18n ───────────────────────────────────────────────
 type Lang = 'zh' | 'en';
 
 const T = {
   zh: {
-    title: '最強抓波Drop Battle 裁切',
-    subtitle: '最多 45 秒 · 系統會自動 Mastering 美化聲音',
+    title: '最強抓波 Drop Battle 裁切',
+    subtitle: '最多 60 秒 · 系統會自動 Mastering 美化聲音',
     uploadPrompt: '上傳完整歌曲',
     uploadHint: '拖曳波形選擇 Drop',
     uploadDropHint: '點擊或拖曳音檔到這裡',
@@ -44,7 +66,7 @@ const T = {
     uploadReady: '音檔已載入，可以開始裁切 Drop',
     selection: '選取',
     duration: '（{s}秒）',
-    dragHint: '拖左/右邊緣調整長度（最多 45 秒） · 拖中間移動 · 空白鍵預覽/暫停（從選取起點）',
+    dragHint: '拖左/右邊緣調整長度（最多 60 秒） · 點波形或拖播放位置挑聽 · 空白鍵預覽/暫停',
     mastering: '啟用自動 Mastering',
     masteringDesc: '3-band EQ + Compressor + Limiter + Gain 提升清晰度與響度',
     preview: '▶️ 即時預覽選取區間',
@@ -61,7 +83,7 @@ const T = {
     uploadingAudio: '正在處理音檔…',
     uploading: '上傳中…',
     uploadingSaving: '寫入資料庫…',
-    success: '你的最強抓波Drop Battle 已進入 Battle Pool，正在等待對手。你現在可以離開，配對成功會通知你。',
+    success: '你的最強抓波 Drop Battle 已進入 Battle Pool，正在等待對手。你現在可以離開，配對成功會通知你。',
     cutSaved: 'Drop 已裁切完成，前往確認 Battle 資料。',
     uploadError: '上傳失敗，請稍後再試',
     noFile: '請先上傳音檔並選擇 Drop 區間',
@@ -71,11 +93,16 @@ const T = {
     fighter: '鬥士',
     song: '歌曲',
     detectedMeta: '已自動偵測：{value}',
-    proTip: '專業模式：拖曳中即時硬限制 45 秒（超過會自動彈回）',
+    proTip: '專業模式：拖曳中即時硬限制 60 秒（超過會自動彈回）',
+    rematchTitle: '你正在挑戰擂主',
+    rematchDesc: '請在 120 秒內完成上傳，這場會沿用上一場 genre。',
+    rematchComplete: '守擂挑戰已接上，前往下一場 Battle。',
+    fullSongTitle: '勝出後公開完整作品',
+    fullSongDesc: 'Battle 仍只播放你的 Drop。勾選後，正式勝出時完整歌曲會在 Showtime 公開；YouTube MV 連結可在勝出後再提交。',
   },
   en: {
     title: 'Drop Battle Cut',
-    subtitle: 'Max 45 seconds · Auto Mastering to enhance sound',
+    subtitle: 'Max 60 seconds · Auto Mastering to enhance sound',
     uploadPrompt: 'Upload Full Song',
     uploadHint: 'Drag waveform to select Drop',
     uploadDropHint: 'Click or drag audio here',
@@ -83,7 +110,7 @@ const T = {
     uploadReady: 'Audio loaded. Cut your Drop now.',
     selection: 'Selection',
     duration: '({s}s)',
-    dragHint: 'Drag edges to adjust length (max 45s) · Drag middle to move · Spacebar to preview/pause',
+    dragHint: 'Drag edges to resize (max 60s) · Click waveform or scrub playhead · Spacebar to preview/pause',
     mastering: 'Enable Auto Mastering',
     masteringDesc: '3-band EQ + Compressor + Limiter + Gain for clarity and loudness',
     preview: '▶️ Preview Selection',
@@ -110,7 +137,12 @@ const T = {
     fighter: 'Fighter',
     song: 'Song',
     detectedMeta: 'Detected: {value}',
-    proTip: 'Professional: Real-time hard limit 45s (auto-corrects on drag)',
+    proTip: 'Professional: Real-time hard limit 60s (auto-corrects on drag)',
+    rematchTitle: 'You are challenging the defender',
+    rematchDesc: 'Finish uploading within 120 seconds. This battle keeps the previous genre.',
+    rematchComplete: 'Rematch connected. Entering the next Battle.',
+    fullSongTitle: 'Publish the full song after a win',
+    fullSongDesc: 'The battle still uses your Drop. If enabled, the full song appears in Showtime after an official win; you can submit the YouTube MV link after the result.',
   },
 } as const;
 
@@ -120,16 +152,6 @@ function getT(lang: Lang) {
 
 function normalizeLang(value: string | null): Lang {
   return value === 'en' ? 'en' : 'zh';
-}
-
-function canReplaceActiveBattleLock(lock: ActiveBattleLock): boolean {
-  return lock.kind === "queue" && !lock.battleId && REPLACEABLE_QUEUE_STATUSES.has(lock.status);
-}
-
-function existingBattleMessage(lang: Lang): string {
-  return lang === "zh"
-    ? "你目前已有一首最強抓波Drop Battle 正在等待挑戰。AIPOGER 一次只能保留一場 Battle。要挑戰這首歌，系統會先取消你原本等待中的 Drop。"
-    : "You already have one Drop Battle waiting for challenge. AIPOGER only allows one active Battle at a time. To challenge this track, your previous waiting Drop will be cancelled first.";
 }
 
 function setCompactParam(params: URLSearchParams, key: string, value: string | null | undefined, maxLength = 1800) {
@@ -261,6 +283,30 @@ function isLikelyStorageMimeRejection(err: unknown): boolean {
   );
 }
 
+function originalAudioContentType(file: File) {
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.flac')) return 'audio/flac';
+  if (name.endsWith('.aif') || name.endsWith('.aiff')) return 'audio/aiff';
+  if (name.endsWith('.wav')) return 'audio/wav';
+  if (name.endsWith('.m4a')) return 'audio/mp4';
+  if (name.endsWith('.aac')) return 'audio/aac';
+  if (name.endsWith('.ogg')) return 'audio/ogg';
+  return file.type || 'audio/mpeg';
+}
+
+function profileAudioFileName(payload: ProfileChallengeAudioPayload, contentType: string) {
+  const fallbackExt =
+    contentType.includes("mp4") || contentType.includes("m4a")
+      ? "m4a"
+      : contentType.includes("ogg")
+        ? "ogg"
+        : contentType.includes("wav")
+          ? "wav"
+          : "mp3";
+  const base = payload.fileName?.trim() || payload.title?.trim() || "aipoger-track";
+  return /\.[a-z0-9]{2,5}$/i.test(base) ? base : `${base}.${fallbackExt}`;
+}
+
 async function uploadHookWav(
   storagePath: string,
   wavBlob: Blob,
@@ -300,6 +346,17 @@ async function uploadHookWav(
     : '請確認已登入，並已在 Supabase 套用 supabase/storage_battle_audio.sql 與 storage_rls_fix.sql。';
 
   throw new Error(`${detail}\n\n${hint}`);
+}
+
+async function uploadFullSongFile(storagePath: string, file: File): Promise<void> {
+  if (!isValidStorageObjectKey(storagePath)) {
+    throw new Error(`Invalid full-song storage path (ASCII only): ${storagePath}`);
+  }
+  const { error } = await supabase.storage.from('battle-audio').upload(storagePath, file, {
+    contentType: originalAudioContentType(file),
+    upsert: true,
+  });
+  if (error) throw error;
 }
 
 async function uploadHookWavWithSignedUrl(
@@ -342,8 +399,8 @@ type RpcQueueRow = {
 };
 
 type ActiveBattleLock =
-  | { kind: "queue"; id: string; status: string; battleId?: string | null }
-  | { kind: "battle"; id: string; status: string };
+  | { kind: "queue"; id: string; status: string; role: DropBattleUserRole; battleId?: string | null }
+  | { kind: "battle"; id: string; status: string; role: DropBattleUserRole; queueId?: string | null };
 
 function describeSupabaseError(error: unknown): string {
   if (!error || typeof error !== "object") return String(error ?? "Unknown error");
@@ -361,44 +418,114 @@ function isDuplicateAudioHash(error: unknown): boolean {
   return /audio_sha256|duplicate key value|23505/i.test(describeSupabaseError(error));
 }
 
-async function findActiveBattleLock(userId: string): Promise<ActiveBattleLock | null> {
-  const { data: queueRows, error: queueError } = await supabase
+async function findActiveBattleLock(userId: string, requestedRole: DropBattleUserRole): Promise<ActiveBattleLock | null> {
+  let { data: queueRows, error: queueError } = await supabase
     .from("battle_queue")
-    .select("id, status, match_group_id, created_at")
+    .select("id, status, match_group_id, challenge_target_queue_id, official_gatekeeper_role, created_at")
     .eq("user_id", userId)
-    .in("status", ACTIVE_QUEUE_STATUSES)
+    .in("status", [...ACTIVE_DROP_QUEUE_STATUSES])
     .order("created_at", { ascending: false })
-    .limit(1);
+    .limit(12);
+
+  if (queueError && /official_gatekeeper_role|schema cache|column.*does not exist|PGRST204/i.test(describeSupabaseError(queueError))) {
+    const legacy = await supabase
+      .from("battle_queue")
+      .select("id, status, match_group_id, challenge_target_queue_id, created_at")
+      .eq("user_id", userId)
+      .in("status", [...ACTIVE_DROP_QUEUE_STATUSES])
+      .order("created_at", { ascending: false })
+      .limit(12);
+    queueRows = legacy.data as typeof queueRows;
+    queueError = legacy.error;
+  }
 
   if (queueError) throw queueError;
-  const activeQueue = queueRows?.[0] as { id: string; status: string; match_group_id?: string | null } | undefined;
-  if (activeQueue?.id) {
+  const activeQueues = (queueRows ?? []) as Array<{
+    id: string;
+    status: string;
+    match_group_id?: string | null;
+    challenge_target_queue_id?: string | null;
+    official_gatekeeper_role?: string | null;
+  }>;
+  for (const activeQueue of activeQueues) {
+    if (activeQueue.official_gatekeeper_role === "defender") continue;
     if (activeQueue.match_group_id) {
       const { data: linkedBattle } = await supabase
         .from("battles")
-        .select("id, status")
+        .select("id, status, battle_ended_at, started_at, battle_started_at, created_at")
         .eq("id", activeQueue.match_group_id)
         .maybeSingle();
       const status = typeof linkedBattle?.status === "string" ? linkedBattle.status : "";
-      if (["finished", "cancelled", "completed", "expired"].includes(status)) {
+      if (linkedBattle?.battle_ended_at || CLOSED_BATTLE_STATUSES.has(status) || isDropBattleEndedOrPastExpectedEnd(linkedBattle)) {
         void supabase.from("battle_queue").update({ status: "completed" }).eq("id", activeQueue.id);
-        return null;
+        continue;
       }
     }
-    return { kind: "queue", id: activeQueue.id, status: activeQueue.status, battleId: activeQueue.match_group_id ?? null };
+    const role = dropBattleRoleForChallengeTarget(activeQueue.challenge_target_queue_id);
+    if (role === requestedRole) {
+      return { kind: "queue", id: activeQueue.id, status: activeQueue.status, role, battleId: activeQueue.match_group_id ?? null };
+    }
   }
 
   const { data: battleRows, error: battleError } = await supabase
     .from("battles")
-    .select("id, status, created_at")
+    .select("id, queue_a_id, queue_b_id, fighter_a_user_id, fighter_b_user_id, status, battle_ended_at, started_at, battle_started_at, created_at")
     .or(`fighter_a_user_id.eq.${userId},fighter_b_user_id.eq.${userId}`)
-    .in("status", ACTIVE_BATTLE_STATUSES)
+    .in("status", [...ACTIVE_DROP_BATTLE_STATUSES])
+    .is("battle_ended_at", null)
     .order("created_at", { ascending: false })
-    .limit(1);
+    .limit(8);
 
   if (battleError) throw battleError;
-  const activeBattle = battleRows?.[0] as { id: string; status: string } | undefined;
-  return activeBattle?.id ? { kind: "battle", id: activeBattle.id, status: activeBattle.status } : null;
+  const activeBattles = (battleRows ?? []) as Array<{
+    id: string;
+    queue_a_id?: string | null;
+    queue_b_id?: string | null;
+    fighter_a_user_id?: string | null;
+    fighter_b_user_id?: string | null;
+    status: string;
+    battle_ended_at?: string | null;
+    started_at?: string | null;
+    battle_started_at?: string | null;
+    created_at?: string | null;
+  }>;
+  for (const activeBattle of activeBattles) {
+    if (isDropBattleEndedOrPastExpectedEnd(activeBattle)) {
+      void supabase
+        .from("battles")
+        .update({ status: "finished", battle_ended_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq("id", activeBattle.id);
+      continue;
+    }
+    const userQueueId =
+      activeBattle.fighter_a_user_id === userId
+        ? activeBattle.queue_a_id
+        : activeBattle.fighter_b_user_id === userId
+          ? activeBattle.queue_b_id
+          : null;
+    if (!userQueueId) continue;
+    let { data: queueRoleRow, error: queueRoleError } = await supabase
+      .from("battle_queue")
+      .select("id, challenge_target_queue_id, official_gatekeeper_role")
+      .eq("id", userQueueId)
+      .maybeSingle<{ id: string; challenge_target_queue_id?: string | null; official_gatekeeper_role?: string | null }>();
+    if (queueRoleError && /official_gatekeeper_role|schema cache|column.*does not exist|PGRST204/i.test(describeSupabaseError(queueRoleError))) {
+      const legacy = await supabase
+        .from("battle_queue")
+        .select("id, challenge_target_queue_id")
+        .eq("id", userQueueId)
+        .maybeSingle<{ id: string; challenge_target_queue_id?: string | null; official_gatekeeper_role?: string | null }>();
+      queueRoleRow = legacy.data;
+      queueRoleError = legacy.error;
+    }
+    if (queueRoleError) throw queueRoleError;
+    if (queueRoleRow?.official_gatekeeper_role === "defender") continue;
+    const challengeTargetQueueId = queueRoleRow?.challenge_target_queue_id ?? null;
+    if (dropBattleRoleForChallengeTarget(challengeTargetQueueId) === requestedRole) {
+      return { kind: "battle", id: activeBattle.id, status: activeBattle.status, role: requestedRole, queueId: userQueueId };
+    }
+  }
+  return null;
 }
 
 // ─── 主要內容（Suspense 內才能用 useSearchParams）───────────
@@ -418,33 +545,31 @@ function HookCutContent() {
   const avatarUrl = searchParams.get('avatarUrl');
   const assetKey = searchParams.get('assetKey');
   const challengeTargetQueueId = searchParams.get('challengeEntryId');
-  const challengeDailyEntryId = searchParams.get('challengeDailyEntryId');
+  const gatekeeperId = searchParams.get('gatekeeperId');
+  const aiMusicChallengeTrackId = searchParams.get('aiMusicChallengeTrackId');
+  const aiMusicDefenderTrackId = searchParams.get('aiMusicDefenderTrackId');
+  const defenderTrackTitle = searchParams.get('defenderTrackTitle');
+  const qCrashCreate = searchParams.get('qCrashCreate') === '1';
+  const qCrashCardId = searchParams.get('qCrashCardId');
+  const qCrashSelf = searchParams.get('qCrashSelf') === '1';
+  const qCrashDurationMinutes = searchParams.get('qCrashDurationMinutes');
+  const qCrashInviteeUserId = searchParams.get('qCrashInviteeUserId');
+  const qCrashUploadFirst = searchParams.get('flow') === 'q-crash-upload-first';
+  const rematchClaimId = searchParams.get('rematchClaimId');
+  const sourceBattleId = searchParams.get('sourceBattleId');
+  const isRematchUpload = Boolean(rematchClaimId && sourceBattleId);
   const battleMode = searchParams.get('battleMode') === 'daily' ? 'daily' : 'instant';
-  const instantPairing = searchParams.get('instantPairing') === 'invite' ? 'invite' : 'auto';
+  const instantPairing = searchParams.get('instantPairing') === 'gatekeeper' ? 'gatekeeper' : searchParams.get('instantPairing') === 'invite' ? 'invite' : 'auto';
   const dailyPairing = searchParams.get('dailyPairing') === 'invite' ? 'invite' : 'auto';
   const hookBattleAt = searchParams.get('hookBattleAt') || searchParams.get('scheduledBattleAt');
-  const hookBattleStartIso = instantPairing === "invite" && !challengeTargetQueueId ? hookBattleAtToIso(hookBattleAt) : null;
+  const hookBattlePreset = dropBattleSchedulePresetFromValue(searchParams.get('hookBattlePreset'));
+  const hookBattleStartIso = (instantPairing === "invite" || instantPairing === "gatekeeper" || aiMusicChallengeTrackId) && !challengeTargetQueueId ? hookBattleAtToIso(hookBattleAt) : null;
+  const isAiMusicDefenderDropSetup = Boolean(aiMusicDefenderTrackId);
   const lang = normalizeLang(searchParams.get('lang'));
 
   const t = getT(lang);
 
-  useEffect(() => {
-    if (battleMode !== 'daily') return;
-
-    const setupParams = new URLSearchParams({
-      battleMode: 'daily',
-      dailyPairing,
-      lang,
-    });
-    if (challengeDailyEntryId) setupParams.set('challengeDailyEntryId', challengeDailyEntryId);
-    if (fighterName.trim()) setupParams.set('fighterName', fighterName.trim());
-    if (songName.trim()) setupParams.set('songName', songName.trim());
-    if (genre.trim()) setupParams.set('genre', genre.trim());
-
-    router.replace(`/battle/setup?${setupParams.toString()}`);
-  }, [battleMode, challengeDailyEntryId, dailyPairing, fighterName, genre, lang, router, songName]);
-
-  const [, setAudioFile] = useState<File | null>(null);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isDecoding, setIsDecoding] = useState(false);
@@ -457,6 +582,8 @@ function HookCutContent() {
   const [audioError, setAudioError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [detectedMetaLine, setDetectedMetaLine] = useState<string | null>(null);
+  const [cursorTime, setCursorTime] = useState(0);
+  const [publishFullSongOnHonorBoard, setPublishFullSongOnHonorBoard] = useState(false);
 
   useEffect(() => {
     if (urlFighter) {
@@ -489,19 +616,29 @@ function HookCutContent() {
   const playWindowRef = useRef<RegionTimes | null>(null);
   const playStartedAtRef = useRef<number>(0);
   const playOffsetRef = useRef<number>(0);
+  const isPlayingRef = useRef(false);
+  const profileAudioLoadedRef = useRef(false);
+  const pendingQCrashAudioLoadedRef = useRef(false);
+  const processAudioFileRef = useRef<((file: File) => Promise<void>) | null>(null);
 
   useEffect(() => {
-    if (isAuthBypassEnabled || !challengeTargetQueueId) return;
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  useEffect(() => {
+    if (isAuthBypassEnabled || (!challengeTargetQueueId && !aiMusicDefenderTrackId)) return;
     let mounted = true;
     void (async () => {
-      const freshSession = await getFreshSession();
-      if (!mounted || freshSession?.user) return;
+      const { data } = await supabase.auth.getSession();
+      if (!mounted || data.session?.user) return;
+      const refreshed = await supabase.auth.refreshSession().catch(() => null);
+      if (!mounted || refreshed?.data.session?.user) return;
       router.replace(authHrefForCurrentPage());
     })();
     return () => {
       mounted = false;
     };
-  }, [challengeTargetQueueId, router]);
+  }, [aiMusicDefenderTrackId, challengeTargetQueueId, router]);
 
   const formatTime = useMemo(() => {
     const two = (n: number) => String(Math.floor(n)).padStart(2, '0');
@@ -555,16 +692,22 @@ function HookCutContent() {
     const current = playOffsetRef.current + played;
     const clamped = Math.min(windowTimes.end, Math.max(windowTimes.start, current));
     ws.setTime(clamped);
+    setCursorTime(clamped);
     rafRef.current = requestAnimationFrame(syncCursorWhilePlaying);
   };
 
-  const playFromRegion = async () => {
+  const playFromRegion = async (startOverride?: number) => {
     const buffer = audioBufferRef.current;
     const region = regionRef.current;
     if (!buffer || !region) return;
 
-    const start = Math.max(0, region.start);
     const end = Math.min(region.end, durationRef.current || buffer.duration);
+    const fallbackStart = Math.max(0, region.start);
+    const preferredStart = typeof startOverride === "number" && Number.isFinite(startOverride)
+      ? startOverride
+      : wavesurferRef.current?.getCurrentTime() ?? fallbackStart;
+    let start = Math.max(fallbackStart, Math.min(preferredStart, end - 0.01));
+    if (start >= end - 0.01) start = fallbackStart;
     const length = Math.max(0, end - start);
     if (length <= 0.01) return;
 
@@ -602,23 +745,46 @@ function HookCutContent() {
     playWindowRef.current = { start, end };
     playStartedAtRef.current = ctx.currentTime;
     playOffsetRef.current = start;
+    wavesurferRef.current?.setTime(start);
+    setCursorTime(start);
     setIsPlaying(true);
 
     src.onended = () => {
       stopPlayback();
       const ws = wavesurferRef.current;
       if (ws) ws.setTime(end);
+      setCursorTime(end);
     };
 
     src.start(0, start, Math.min(length, MAX_HOOK_SECONDS));
     stopTimerRef.current = window.setTimeout(() => {
       const ws = wavesurferRef.current;
       if (ws) ws.setTime(end);
+      setCursorTime(end);
       stopPlayback();
     }, Math.ceil(length * 1000));
 
     cancelRaf();
     rafRef.current = requestAnimationFrame(syncCursorWhilePlaying);
+  };
+
+  const seekPreviewCursor = (nextTime: number, continuePlayback = isPlayingRef.current) => {
+    const ws = wavesurferRef.current;
+    const duration = durationRef.current || audioBufferRef.current?.duration || 0;
+    if (!ws || duration <= 0) return;
+    const clamped = Math.max(0, Math.min(nextTime, duration));
+    ws.setTime(clamped);
+    setCursorTime(clamped);
+
+    const region = regionRef.current;
+    if (!continuePlayback || !region || !audioBufferRef.current) return;
+    if (clamped >= region.start && clamped < region.end) {
+      void playFromRegion(clamped);
+      return;
+    }
+    stopPlayback();
+    ws.setTime(clamped);
+    setCursorTime(clamped);
   };
 
   const processAudioFile = async (file: File) => {
@@ -630,6 +796,7 @@ function HookCutContent() {
     setIsReady(false);
     setAudioError(null);
     setRegionTimes({ start: 0, end: 0 });
+    setCursorTime(0);
     setIsDecoding(true);
     setDetectedMetaLine(null);
     const url = URL.createObjectURL(file);
@@ -670,6 +837,26 @@ function HookCutContent() {
       setIsDecoding(false);
     }
   };
+  processAudioFileRef.current = processAudioFile;
+
+  useEffect(() => {
+    if (!qCrashUploadFirst || (!qCrashCreate && !qCrashCardId) || pendingQCrashAudioLoadedRef.current) return;
+    pendingQCrashAudioLoadedRef.current = true;
+    void (async () => {
+      try {
+        const pendingFile = await readPendingQCrashAudio();
+        if (!pendingFile) {
+          setAudioError(lang === 'zh' ? '找不到剛剛選擇的歌曲，請回上一頁重新選擇。' : 'The selected song is missing. Go back and choose it again.');
+          return;
+        }
+        await processAudioFileRef.current?.(pendingFile);
+        await clearPendingQCrashAudio();
+      } catch (error) {
+        console.error('[hook-cut] pending Q Crash audio load failed', error);
+        setAudioError(t.uploadDecodeError);
+      }
+    })();
+  }, [lang, qCrashCardId, qCrashCreate, qCrashUploadFirst, t.uploadDecodeError]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -689,6 +876,50 @@ function HookCutContent() {
     }
     await processAudioFile(file);
   };
+
+  useEffect(() => {
+    if (profileAudioLoadedRef.current) return;
+    if (searchParams.get("profileAudio") !== "1") return;
+    if (typeof window === "undefined") return;
+    profileAudioLoadedRef.current = true;
+
+    const raw = window.sessionStorage.getItem(PROFILE_CHALLENGE_AUDIO_KEY);
+    if (!raw) return;
+    window.sessionStorage.removeItem(PROFILE_CHALLENGE_AUDIO_KEY);
+
+    let payload: ProfileChallengeAudioPayload | null = null;
+    try {
+      payload = JSON.parse(raw) as ProfileChallengeAudioPayload;
+    } catch {
+      payload = null;
+    }
+
+    const sourceUrl = payload?.audioUrl?.trim();
+    if (!sourceUrl) return;
+    if (payload?.title?.trim() && !songName.trim()) setSongName(payload.title.trim());
+    if (payload?.genre?.trim() && !genre.trim()) setGenre(payload.genre.trim());
+
+    void (async () => {
+      setAudioError(null);
+      setIsDecoding(true);
+      try {
+        const response = await fetch(sourceUrl, { cache: "no-store" });
+        if (!response.ok) throw new Error(`profile audio ${response.status}`);
+        const blob = await response.blob();
+        const file = new File([blob], profileAudioFileName(payload ?? {}, blob.type || "audio/mpeg"), {
+          type: blob.type || "audio/mpeg",
+        });
+        const process = processAudioFileRef.current;
+        if (!process) throw new Error("profile audio processor unavailable");
+        await process(file);
+      } catch (error) {
+        console.error("[hook-cut] profile audio load failed", error);
+        setAudioError(t.uploadDecodeError);
+      } finally {
+        setIsDecoding(false);
+      }
+    })();
+  }, [genre, searchParams, songName, t.uploadDecodeError]);
 
   const handleLyricsUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -719,6 +950,7 @@ function HookCutContent() {
       barRadius: 2,
       normalize: true,
       interact: true,
+      dragToSeek: true,
       autoScroll: true,
       hideScrollbar: true,
       cursorWidth: 2,
@@ -769,6 +1001,8 @@ function HookCutContent() {
       regionRef.current = region;
       lastRegionRef.current = { start: region.start, end: region.end };
       setRegionTimes({ start: region.start, end: region.end });
+      ws.setTime(region.start);
+      setCursorTime(region.start);
       setIsReady(true);
 
       region.on('update', () => {
@@ -801,6 +1035,13 @@ function HookCutContent() {
         if (end > duration) { const shift = end - duration; end = duration; start = Math.max(0, start - shift); }
 
         applyRegion(start, end);
+        if (!isPlayingRef.current) {
+          const current = wavesurferRef.current?.getCurrentTime() ?? start;
+          if (current < start || current > end) {
+            wavesurferRef.current?.setTime(start);
+            setCursorTime(start);
+          }
+        }
       });
 
       region.on('update-end', () => {
@@ -808,7 +1049,25 @@ function HookCutContent() {
         region.setOptions({ start, end });
         setRegionTimes({ start, end });
         lastRegionRef.current = { start, end };
+        if (!isPlayingRef.current) {
+          const current = wavesurferRef.current?.getCurrentTime() ?? start;
+          const nextCursor = Math.min(end, Math.max(start, current));
+          wavesurferRef.current?.setTime(nextCursor);
+          setCursorTime(nextCursor);
+        }
       });
+    });
+
+    ws.on('interaction', (nextTime) => {
+      seekPreviewCursor(nextTime);
+    });
+
+    ws.on('drag', (relativeX) => {
+      seekPreviewCursor(relativeX * (durationRef.current || ws.getDuration() || 0));
+    });
+
+    ws.on('seeking', (nextTime) => {
+      setCursorTime(nextTime);
     });
 
     wavesurferRef.current = ws;
@@ -822,7 +1081,7 @@ function HookCutContent() {
   // Spacebar preview
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== ' ') return;
+      if (!shouldHandleDropCutSpaceShortcut(e)) return;
       if (!isReady || !audioBufferRef.current) return;
       e.preventDefault();
       if (isPlaying) stopPlayback();
@@ -854,6 +1113,7 @@ function HookCutContent() {
     const region = regionRef.current;
     const { start, end } = region;
     const lyricsForSave = lyricsText.trim().slice(0, MAX_LYRICS_CHARS);
+    let uploadedFullAudioPath: string | null = null;
 
     setUploadPhase(t.uploadingPrepare);
 
@@ -862,26 +1122,18 @@ function HookCutContent() {
 
       const session = isAuthBypassEnabled
         ? null
-        : await getFreshSession();
+        : ((await supabase.auth.getSession()).data.session ?? (await supabase.auth.refreshSession().catch(() => null))?.data.session ?? null);
       if (!isAuthBypassEnabled && !session?.user) {
         router.push(authHrefForCurrentPage());
         throw new Error("登入狀態已過期，請重新登入後會回到這張接戰上傳頁。");
       }
       const userId = isAuthBypassEnabled ? mockUserId : session!.user.id;
 
-      if (!isAuthBypassEnabled) {
-        const activeLock = await findActiveBattleLock(userId);
+      if (!isAuthBypassEnabled && !isAiMusicDefenderDropSetup && !(qCrashCardId && qCrashSelf)) {
+        const requestedDropRole: DropBattleUserRole = aiMusicChallengeTrackId || gatekeeperId ? "challenger" : dropBattleRoleForChallengeTarget(challengeTargetQueueId);
+        const activeLock = await findActiveBattleLock(userId, requestedDropRole);
         if (activeLock) {
-          if (challengeTargetQueueId && canReplaceActiveBattleLock(activeLock)) {
-            const ok = window.confirm(existingBattleMessage(lang));
-            if (!ok) {
-              setUploadPhase(null);
-              return;
-            }
-            setUploadPhase(lang === "zh" ? "取消原本等待中的 Drop…" : "Cancelling previous waiting Drop…");
-            await cancelCurrentBattleIntent({ accessToken: session!.access_token });
-          } else {
-          alert(t.activeBattleExists);
+          alert(dropBattleRoleLockMessage(requestedDropRole, lang));
           setUploadPhase(null);
           const resumeParams = new URLSearchParams({
             fighterName,
@@ -900,7 +1152,6 @@ function HookCutContent() {
             router.push(`/battle/matchmaking?${resumeParams.toString()}`);
           }
           return;
-          }
         }
       }
 
@@ -911,13 +1162,29 @@ function HookCutContent() {
       const { storagePath, fileName } = buildHookStoragePath(userId, fighterName, songName);
       const hookFile = new File([wavBlob], fileName, { type: "audio/wav" });
       const audioSha256 = await sha256File(hookFile);
+      let fullAudioPath: string | null = null;
+      let fullAudioSha256: string | null = null;
+      let fullAudioOriginalName: string | null = null;
+      const fullAudioDurationSeconds = Number.isFinite(buffer.duration) ? Number(buffer.duration.toFixed(2)) : null;
+      const fullAudioStorage = publishFullSongOnHonorBoard && !isAiMusicDefenderDropSetup && audioFile
+        ? buildFullSongStoragePath(userId, fighterName, songName || fileName.replace(/\.wav$/i, ""), audioFile.name)
+        : null;
 
-      if (!isAuthBypassEnabled) {
+      if (publishFullSongOnHonorBoard && !isAiMusicDefenderDropSetup) {
+        if (!audioFile) throw new Error(lang === "zh" ? "找不到完整歌曲原檔，請重新選擇音檔。" : "Full song file is missing. Choose the audio file again.");
+        if (isAuthBypassEnabled) {
+          throw new Error(lang === "zh" ? "開發模式不公開完整版，請登入正式帳號後再上傳。" : "Full-song publishing is disabled in auth-bypass mode.");
+        }
+        fullAudioSha256 = await sha256File(audioFile);
+        fullAudioOriginalName = audioFile.name.slice(0, 500);
+      }
+
+      if (!isAuthBypassEnabled && !isAiMusicDefenderDropSetup) {
         const duplicateCheck = await supabase
           .from("battle_queue")
           .select("id, original_file_name, status")
           .eq("audio_sha256", audioSha256)
-          .in("status", ACTIVE_QUEUE_STATUSES)
+          .in("status", [...ACTIVE_DROP_QUEUE_STATUSES])
           .limit(1)
           .maybeSingle<{ id: string; original_file_name: string | null; status: string | null }>();
 
@@ -932,6 +1199,12 @@ function HookCutContent() {
       setUploadPhase(t.uploading);
 
       let audioPathForNav = storagePath;
+
+      if (fullAudioStorage && audioFile) {
+        await uploadFullSongFile(fullAudioStorage.storagePath, audioFile);
+        fullAudioPath = fullAudioStorage.storagePath;
+        uploadedFullAudioPath = fullAudioPath;
+      }
 
       // 上傳到 Supabase Storage（路徑僅 ASCII；WAV MIME 與 bucket 白名單一致）
       if (isAuthBypassEnabled) {
@@ -948,6 +1221,38 @@ function HookCutContent() {
       }
 
       if (uploadFirstFlow) {
+        if (isAiMusicDefenderDropSetup) {
+          if (isAuthBypassEnabled || !session?.access_token) {
+            throw new Error(lang === "zh" ? "請先登入後再指定守擂 Drop。" : "Sign in before setting a defender Drop.");
+          }
+          const response = await fetch("/api/ai-music/challenges", {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              trackId: aiMusicDefenderTrackId,
+              defenderDrop: {
+                audioPath: audioPathForNav,
+                audioSha256,
+                originalName: songName.trim() || defenderTrackTitle?.trim() || fileName.replace(/\.wav$/i, ""),
+                durationSeconds: Number((end - start).toFixed(2)),
+                lyrics: lyricsForSave || null,
+              },
+            }),
+          });
+          const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+          if (!response.ok) throw new Error(payload?.error || (lang === "zh" ? "指定守擂 Drop 失敗。" : "Failed to set defender Drop."));
+
+          writeFighterNameToStorage(fighterName.trim() || "未命名鬥士");
+          setUploadPhase(lang === "zh" ? "守擂 Drop 已指定，返回創作者中心…" : "Defender Drop set. Returning to profile...");
+          window.setTimeout(() => {
+            router.push(`/profile?lang=${lang}`);
+          }, 650);
+          return;
+        }
+
         const setupParams = new URLSearchParams({
           lang,
           flow: "finalize-battle",
@@ -964,8 +1269,19 @@ function HookCutContent() {
           dailyPairing,
           audioSha256,
         });
+        if (fullAudioPath) {
+          setupParams.set("fullAudioPublic", "1");
+          setupParams.set("fullAudioPath", fullAudioPath);
+          if (fullAudioSha256) setupParams.set("fullAudioSha256", fullAudioSha256);
+          if (fullAudioOriginalName) setupParams.set("fullAudioName", fullAudioOriginalName);
+          if (fullAudioDurationSeconds !== null) setupParams.set("fullAudioDuration", String(fullAudioDurationSeconds));
+        }
         if (challengeTargetQueueId) setupParams.set("challengeEntryId", challengeTargetQueueId);
-        if (hookBattleAt) setupParams.set("hookBattleAt", hookBattleAt);
+        if (gatekeeperId) setupParams.set("gatekeeperId", gatekeeperId);
+        if (aiMusicChallengeTrackId) setupParams.set("aiMusicChallengeTrackId", aiMusicChallengeTrackId);
+        if (defenderTrackTitle) setupParams.set("defenderTrackTitle", defenderTrackTitle);
+        if (hookBattlePreset) setupParams.set("hookBattlePreset", String(hookBattlePreset));
+        else if (hookBattleAt) setupParams.set("hookBattleAt", hookBattleAt);
         setCompactParam(setupParams, "lyrics", lyricsForSave);
 
         writeFighterNameToStorage(fighterName.trim() || "未命名鬥士");
@@ -1003,6 +1319,20 @@ function HookCutContent() {
           audio_sha256: audioSha256,
           original_file_name: (songName.trim() || fileName).slice(0, 500),
           status: initialQueueStatus,
+          ...((qCrashCreate || qCrashCardId) ? { drop_duration_seconds: Number((end - start).toFixed(2)) } : {}),
+          ...(fullAudioPath
+            ? {
+                full_audio_path: fullAudioPath,
+                full_audio_public: true,
+                full_audio_sha256: fullAudioSha256,
+                full_audio_original_name: fullAudioOriginalName,
+                full_audio_duration_seconds: fullAudioDurationSeconds,
+              }
+            : {}),
+        };
+        const baseRowWithQCrashCover = {
+          ...baseRow,
+          ...((qCrashCreate || qCrashCardId) && coverUrl?.trim() ? { cover_url: coverUrl.trim() } : {}),
         };
 
         let queueRows: { id: string }[] | null = null;
@@ -1011,21 +1341,38 @@ function HookCutContent() {
           challengeTargetQueueId && /^[0-9a-f-]{36}$/i.test(challengeTargetQueueId)
             ? { challenge_target_queue_id: challengeTargetQueueId }
             : {};
-        const optionalSchedule = hookBattleStartIso ? { expires_at: hookBattleStartIso } : {};
-        const baseRowWithoutAudioHash = { ...baseRow };
+        const schedulePayload =
+          (instantPairing === "invite" || instantPairing === "gatekeeper" || aiMusicChallengeTrackId) && !challengeTargetQueueId
+            ? hookBattlePreset
+              ? buildDropBattleSchedulePayloadFromPreset(hookBattlePreset)
+              : buildDropBattleSchedulePayload(hookBattleStartIso)
+            : null;
+        const optionalSchedule = schedulePayload
+          ? { expires_at: schedulePayload.scheduled_start_at, ...schedulePayload }
+          : {};
+        const legacySchedule = schedulePayload ? { expires_at: schedulePayload.scheduled_start_at } : {};
+        const baseRowWithoutAudioHash = { ...baseRowWithQCrashCover };
         delete (baseRowWithoutAudioHash as Record<string, unknown>).audio_sha256;
+        const baseRowWithoutCover = { ...baseRowWithoutAudioHash };
+        delete (baseRowWithoutCover as Record<string, unknown>).cover_url;
 
         const insertAttempts: Array<Record<string, unknown>> = [
-          { ...baseRow, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null, lyrics: lyricsForSave || null },
-          { ...baseRow, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null },
-          { ...baseRow, ...optionalChallenge, ...optionalSchedule, lyrics: lyricsForSave || null },
-          { ...baseRow, ...optionalChallenge, ...optionalSchedule },
-          baseRow,
-          { ...baseRowWithoutAudioHash, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null, lyrics: lyricsForSave || null },
-          { ...baseRowWithoutAudioHash, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null },
-          { ...baseRowWithoutAudioHash, ...optionalChallenge, ...optionalSchedule, lyrics: lyricsForSave || null },
-          { ...baseRowWithoutAudioHash, ...optionalChallenge, ...optionalSchedule },
-          baseRowWithoutAudioHash,
+          { ...baseRowWithQCrashCover, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null, lyrics: lyricsForSave || null },
+          { ...baseRowWithQCrashCover, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null },
+          { ...baseRowWithQCrashCover, ...optionalChallenge, ...optionalSchedule, lyrics: lyricsForSave || null },
+          { ...baseRowWithQCrashCover, ...optionalChallenge, ...optionalSchedule },
+          { ...baseRowWithQCrashCover, ...optionalChallenge, ...legacySchedule, ai_tool: aiTool.trim() || null, lyrics: lyricsForSave || null },
+          { ...baseRowWithQCrashCover, ...optionalChallenge, ...legacySchedule, ai_tool: aiTool.trim() || null },
+          { ...baseRowWithQCrashCover, ...optionalChallenge, ...legacySchedule, lyrics: lyricsForSave || null },
+          { ...baseRowWithQCrashCover, ...optionalChallenge, ...legacySchedule },
+          { ...baseRowWithoutCover, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null, lyrics: lyricsForSave || null },
+          { ...baseRowWithoutCover, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null },
+          { ...baseRowWithoutCover, ...optionalChallenge, ...optionalSchedule, lyrics: lyricsForSave || null },
+          { ...baseRowWithoutCover, ...optionalChallenge, ...optionalSchedule },
+          { ...baseRowWithoutCover, ...optionalChallenge, ...legacySchedule, ai_tool: aiTool.trim() || null, lyrics: lyricsForSave || null },
+          { ...baseRowWithoutCover, ...optionalChallenge, ...legacySchedule, ai_tool: aiTool.trim() || null },
+          { ...baseRowWithoutCover, ...optionalChallenge, ...legacySchedule, lyrics: lyricsForSave || null },
+          { ...baseRowWithoutCover, ...optionalChallenge, ...legacySchedule },
         ];
 
         for (const row of insertAttempts) {
@@ -1035,14 +1382,16 @@ function HookCutContent() {
           if (!queueError) break;
 
           const msg = `${queueError.message ?? ""} ${queueError.details ?? ""} ${queueError.hint ?? ""}`;
+          if (fullAudioPath && /full_audio_|column.*does not exist|schema cache|PGRST204/i.test(msg)) break;
           const missingOptionalCol =
-            /ai_tool|lyrics|audio_sha256|column.*does not exist|schema cache/i.test(msg) || queueError.code === "PGRST204";
+            /ai_tool|lyrics|audio_sha256|expires_at|scheduled_start_at|cancellation_evaluation_at|column.*does not exist|schema cache/i.test(msg) || queueError.code === "PGRST204";
           if (!missingOptionalCol) break;
         }
 
         if (queueError) {
           if (isDuplicateAudioHash(queueError)) {
             void supabase.storage.from("battle-audio").remove([storagePath]);
+            if (fullAudioPath) void supabase.storage.from("battle-audio").remove([fullAudioPath]);
             throw new Error("這個 Drop 音檔已經上傳過了，請換另一段 Drop。");
           }
           console.error("[hook-cut] battle_queue insert", queueError);
@@ -1056,12 +1405,76 @@ function HookCutContent() {
         }
         queueIdForNav = first.id;
 
+        if ((qCrashCreate || qCrashCardId) && session?.access_token) {
+          const endpoint = qCrashCardId ? `/api/q-crash/${encodeURIComponent(qCrashCardId)}/join` : "/api/q-crash";
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify(
+              qCrashCardId
+                ? {
+                    queueId: queueIdForNav,
+                    dropDurationSeconds: Number((end - start).toFixed(2)),
+                  }
+                : {
+                    queueId: queueIdForNav,
+                    durationMinutes: qCrashDurationMinutes,
+                    invitedUserId: qCrashInviteeUserId || null,
+                    dropDurationSeconds: Number((end - start).toFixed(2)),
+                  },
+            ),
+          });
+          const qCrashPayload = (await response.json().catch(() => null)) as {
+            cardId?: string;
+            battleId?: string;
+            error?: string;
+          } | null;
+          if (!response.ok) {
+            const cancelResult = await supabase
+              .from("battle_queue")
+              .update({ status: "cancelled", updated_at: new Date().toISOString() })
+              .eq("id", queueIdForNav)
+              .eq("user_id", userId);
+            if (!cancelResult.error) {
+              await supabase.storage.from("battle-audio").remove(
+                [storagePath, fullAudioPath].filter((path): path is string => Boolean(path)),
+              );
+            }
+            throw new Error(qCrashPayload?.error || (lang === "zh" ? "Q Crash 建立失敗。" : "Could not create Q Crash."));
+          }
+          nextPath = qCrashPayload?.battleId
+            ? `/battle/${qCrashPayload.battleId}?lang=${lang}`
+            : `/battle/q-crash/${qCrashPayload?.cardId}?lang=${lang}`;
+          setUploadPhase(lang === "zh" ? "Q Crash 已鎖定，準備開場…" : "Q Crash locked. Opening the stage...");
+          window.setTimeout(() => {
+            router.push(nextPath);
+          }, 650);
+          return;
+        }
+
         if (!challengeTargetQueueId && instantPairing === "invite") {
-          nextPath = `/battle?lang=${lang}&focusQueue=${queueIdForNav}`;
+          nextPath = `/battle/${queueIdForNav}?lang=${lang}`;
           setUploadPhase(t.success);
           window.setTimeout(() => {
             router.push(nextPath);
           }, 450);
+          return;
+        }
+
+        if (isRematchUpload && rematchClaimId && session?.access_token) {
+          const rematch = await completeDropRematchUploadIntent({
+            accessToken: session.access_token,
+            claimId: rematchClaimId,
+            challengerQueueId: queueIdForNav,
+          });
+          nextPath = `/battle/${rematch.nextBattleId}?lang=${lang}`;
+          setUploadPhase(t.rematchComplete);
+          window.setTimeout(() => {
+            router.push(nextPath);
+          }, 650);
           return;
         }
 
@@ -1081,7 +1494,11 @@ function HookCutContent() {
             accessToken: session?.access_token ?? "",
           });
         } catch (apiError) {
-          rpcErr = { message: apiError instanceof Error ? apiError.message : "matchmaking api failed" };
+          const message = apiError instanceof Error ? apiError.message : "matchmaking api failed";
+          if (challengeTargetQueueId || /戰帖卡|接了一張|challenge card|challenging another/i.test(message)) {
+            throw new Error(message);
+          }
+          rpcErr = { message };
           console.warn("[hook-cut] public beta matchmaking api unavailable; trying RPC fallback", apiError);
         }
         if (rpcErr) {
@@ -1157,6 +1574,9 @@ function HookCutContent() {
       }, 1200);
     } catch (err) {
       console.error("Upload failed:", err);
+      if (uploadedFullAudioPath) {
+        void supabase.storage.from("battle-audio").remove([uploadedFullAudioPath]);
+      }
       const msg =
         typeof err === "object" && err !== null && "message" in err
           ? String((err as { message: unknown }).message)
@@ -1172,6 +1592,7 @@ function HookCutContent() {
   };
 
   const selectedDuration = Math.max(0, regionTimes.end - regionTimes.start);
+  const audioDuration = durationRef.current || audioBufferRef.current?.duration || 0;
   const isUploading = uploadPhase !== null;
 
   return (
@@ -1180,12 +1601,14 @@ function HookCutContent() {
         {/* 頂部列 */}
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-black text-orange-400">{t.title}</h1>
+            <h1 className="text-4xl font-black text-orange-400">{isRematchUpload ? t.rematchTitle : t.title}</h1>
             <p className="text-zinc-400 mt-1 text-sm">
-              {uploadFirstFlow
+              {isRematchUpload
+                ? t.rematchDesc
+                : uploadFirstFlow
                 ? lang === "zh"
-                  ? "先上傳歌曲，系統會自動偵測歌名，再裁切 45 秒 Drop"
-                  : "Upload first, auto-detect song info, then cut a 45s Drop"
+                  ? "先上傳歌曲，系統會自動偵測歌名，再裁切 60 秒內 Drop"
+                  : "Upload first, auto-detect song info, then cut a Drop up to 60s"
                 : t.subtitle}
             </p>
           </div>
@@ -1274,6 +1697,26 @@ function HookCutContent() {
                 </div>
               </div>
 
+              <div className="mt-4 rounded-2xl border border-zinc-700/70 bg-black/35 px-4 py-3">
+                <div className="mb-2 flex items-center justify-between text-xs font-bold text-zinc-400">
+                  <span>播放位置</span>
+                  <span className="tabular-nums text-orange-200">
+                    {formatTime(cursorTime)} / {formatTime(audioDuration)}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={Math.max(0.01, audioDuration)}
+                  step={0.01}
+                  value={Math.min(cursorTime, Math.max(0, audioDuration))}
+                  disabled={!isReady || audioDuration <= 0}
+                  onChange={(event) => seekPreviewCursor(Number(event.currentTarget.value))}
+                  className="h-3 w-full cursor-pointer accent-orange-500 disabled:cursor-not-allowed disabled:opacity-45"
+                  aria-label="調整播放位置"
+                />
+              </div>
+
               {/* Mastering 開關 */}
               <div className="mt-6 flex items-center justify-between gap-4 rounded-3xl bg-black/30 ring-1 ring-zinc-800 px-5 py-4">
                 <div>
@@ -1343,6 +1786,37 @@ function HookCutContent() {
                 className="mt-4 min-h-40 w-full resize-y rounded-2xl border border-zinc-800 bg-black/55 px-4 py-3 text-sm leading-7 text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-400/70"
               />
             </div>
+
+            {!isAiMusicDefenderDropSetup && !qCrashCreate && !qCrashCardId ? (
+              <div className="rounded-3xl border border-yellow-200/18 bg-yellow-300/[0.06] p-5 shadow-[0_16px_54px_rgba(0,0,0,0.24)]">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-sm font-black text-yellow-100">{t.fullSongTitle}</div>
+                    <div className="mt-1 text-xs font-bold leading-5 text-zinc-400">{t.fullSongDesc}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPublishFullSongOnHonorBoard((value) => !value)}
+                    className={[
+                      'relative inline-flex h-9 w-16 shrink-0 items-center rounded-full transition',
+                      publishFullSongOnHonorBoard ? 'bg-yellow-300' : 'bg-zinc-700',
+                      'ring-1 ring-white/10',
+                      'focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-200/70',
+                    ].join(' ')}
+                    aria-pressed={publishFullSongOnHonorBoard}
+                    aria-label={t.fullSongTitle}
+                  >
+                    <span
+                      className={[
+                        'inline-block h-7 w-7 transform rounded-full bg-black shadow transition',
+                        publishFullSongOnHonorBoard ? 'translate-x-8' : 'translate-x-1',
+                        'ring-1 ring-white/10',
+                      ].join(' ')}
+                    />
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
             {/* 按鈕 */}
             <div className="flex gap-4">

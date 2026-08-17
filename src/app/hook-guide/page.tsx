@@ -1,5 +1,11 @@
-import InfoPageShell from "@/components/info-page-shell";
+import { redirect } from "next/navigation";
 
-export default function HookGuidePage() {
-  return <InfoPageShell kind="hook-guide" />;
+export default async function HookGuidePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ lang?: string }>;
+}) {
+  const { lang } = await searchParams;
+  const suffix = lang ? `?lang=${encodeURIComponent(lang)}` : "";
+  redirect(`/drop-guide${suffix}`);
 }

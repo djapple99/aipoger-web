@@ -1,21 +1,39 @@
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { AIPOGER_PERSONAL_RANK, isAipogerIdentity } from "@/lib/battle-pool-rules";
 import { supabase } from "@/lib/supabase";
+export {
+  LISTEN_BAR_CHALLENGER_HOURLY_LIMIT,
+  LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
+  LISTEN_BAR_CHALLENGER_SLOT_LIMIT,
+  LISTEN_BAR_CREATOR_DAILY_UPLOAD_LIMIT_AFTER_TOTAL_PUBLIC,
+  LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT,
+  LISTEN_BAR_CREATOR_PUBLIC_UPLOAD_LIMIT_STARTED_AT,
+  LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD,
+  LISTEN_BAR_ACTIVE_GENRE_COUNT,
+  LISTEN_BAR_GENRE_POOL_LIMIT,
+  LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD,
+  LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS,
+  LISTEN_BAR_JUDGMENT_INTERVAL_HOURS,
+  LISTEN_BAR_PROMOTION_PROTECTION_STARTED_AT,
+  LISTEN_BAR_PROMOTION_PROTECTION_UNTIL,
+  LISTEN_BAR_PUBLIC_EVICTION_LIMIT,
+  LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
+  LISTEN_BAR_TOTAL_ROTATION_LIMIT,
+  listenBarChallengerSlotLimitForPublicCount,
+  listenBarCreatorDailyUploadLimitActive,
+  listenBarCreatorDailyUploadLimitReached,
+  listenBarCreatorGenrePublicLimitReached,
+  listenBarIsHonorEligible,
+  listenBarPromotionProtectionActive,
+  listenBarPublicDisplayDay,
+  listenBarPublicSurvivalDays,
+  listenBarSubmissionPhaseForGenrePublicCount,
+  listenBarSurvivalStartedAt,
+} from "@/lib/listen-bar-rules";
 
 export const LISTEN_BAR_AUDIO_BUCKET = "listen-bar-audio";
 export const LISTEN_BAR_COVER_BUCKET = "listen-bar-covers";
 export const AIPOGER_CURATOR_RANK = "";
-export const LISTEN_BAR_CHALLENGER_SLOT_LIMIT = 3;
-export const LISTEN_BAR_PUBLIC_REACTION_THRESHOLD = 1;
-export const LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD = 30;
-export const LISTEN_BAR_PUBLIC_ROTATION_LIMIT = 88;
-export const LISTEN_BAR_TOTAL_ROTATION_LIMIT = 100;
-export const LISTEN_BAR_CHALLENGER_HOURLY_LIMIT = 8;
-export const LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS = 24;
-export const LISTEN_BAR_JUDGMENT_INTERVAL_HOURS = 4;
-export const LISTEN_BAR_JUDGMENT_PROMOTION_LIMIT = 8;
-export const LISTEN_BAR_FIRST_AIRPLAY_TARGET_MINUTES = 5;
-export const LISTEN_BAR_PUBLIC_SURVIVAL_DAYS = 30;
 export const DEFAULT_LISTEN_BAR_COVER = AIPOGER_BRAND_LOGO;
 
 export type ListenBarTrack = {
@@ -23,6 +41,10 @@ export type ListenBarTrack = {
   title: string;
   artist: string;
   tool: string;
+  genre: string;
+  album?: string;
+  description?: string;
+  youtubeUrl?: string;
   mood: string;
   duration: number;
   audioUrl?: string;
@@ -33,6 +55,8 @@ export type ListenBarTrack = {
   source: "official" | "community";
   barPhase?: "challenger" | "public";
   positiveReactionCount?: number;
+  earwormAffinitySampleCount?: number;
+  earwormAffinityPercent?: number | null;
   createdAt?: string;
   promotedAt?: string;
 };
@@ -44,6 +68,8 @@ export type ListenBarTrackRow = {
   ai_tool: string | null;
   genre: string | null;
   mood: string | null;
+  description?: string | null;
+  youtube_url?: string | null;
   bpm: number | null;
   duration_seconds: number | null;
   audio_path: string | null;
@@ -52,10 +78,16 @@ export type ListenBarTrackRow = {
   lyrics: string | null;
   sort_order: number | null;
   is_active: boolean | null;
+  review_status?: string | null;
+  moderation_note?: string | null;
+  hidden_at?: string | null;
+  removed_at?: string | null;
   source?: "official" | "community" | null;
   is_featured_official?: boolean | null;
   bar_phase?: "challenger" | "public" | null;
   positive_reaction_count?: number | null;
+  earworm_affinity_sample_count?: number | null;
+  earworm_affinity_percent?: number | null;
   heart_count?: number | null;
   star_count?: number | null;
   thumb_count?: number | null;
@@ -64,23 +96,41 @@ export type ListenBarTrackRow = {
   updated_at?: string | null;
   created_by?: string | null;
   promoted_at?: string | null;
+  ai_music_challenge_status?: string | null;
+  ai_music_challenge_updated_at?: string | null;
+  ai_music_defender_drop_audio_path?: string | null;
+  ai_music_defender_drop_audio_sha256?: string | null;
+  ai_music_defender_drop_original_name?: string | null;
+  ai_music_defender_drop_duration_seconds?: number | null;
+  ai_music_defender_drop_lyrics?: string | null;
+  ai_music_defender_drop_prepared_at?: string | null;
+  ai_music_showtime_certified?: boolean | null;
+  ai_music_showtime_certified_at?: string | null;
+  ai_music_showtime_certification_source?: string | null;
+  ai_music_showtime_public_removed_at?: string | null;
+  ai_music_showtime_public_removed_by?: string | null;
+  ai_music_showtime_public_removal_note?: string | null;
+  support_url?: string | null;
+  support_url_status?: string | null;
 };
 
-export const fallbackOfficialPlaylist: ListenBarTrack[] = [
-  {
-    id: "official-home-bgm",
-    title: "我整天都想起肖",
-    artist: "AIPOGER",
-    tool: "Suno",
-    mood: "官方輪播",
-    duration: 52,
-    audioUrl: "/music/home-bgm.mp3",
-    queuedBy: "AIPOGER",
-    queuedByRank: AIPOGER_CURATOR_RANK,
-    coverUrl: DEFAULT_LISTEN_BAR_COVER,
-    source: "official",
-  },
-];
+export const EMPTY_LISTEN_BAR_TRACK: ListenBarTrack = {
+  id: "listen-bar-empty",
+  title: "等待創作者投稿",
+  artist: "AIPOGER",
+  tool: "AI Music",
+  genre: "Original 自我風格",
+  description: "等待下一首傷心故事進場",
+  mood: "傷心酒吧待機中",
+  duration: 1,
+  queuedBy: "AIPOGER",
+  queuedByRank: AIPOGER_CURATOR_RANK,
+  coverUrl: DEFAULT_LISTEN_BAR_COVER,
+  source: "community",
+  barPhase: "public",
+};
+
+export const fallbackOfficialPlaylist: ListenBarTrack[] = [];
 
 function publicStorageUrl(bucket: string, path: string | null | undefined): string | undefined {
   const value = path?.trim();
@@ -93,16 +143,31 @@ function displayAlbumOrMood(value: string | null | undefined) {
   const cleanValue = value
     ?.replace(/^官方公播\s*\/\s*/i, "")
     .replace(/^AIPOGER\s*官方公播\s*\/\s*/i, "")
+    .replace(/^專輯名稱\s*\/\s*/i, "")
+    .replace(/^Album\s*\/\s*/i, "")
     .trim();
-  if (!cleanValue || cleanValue === "創作者投稿" || cleanValue === "Creator submission") return cleanValue || "";
-  return cleanValue ? `專輯名稱 / ${cleanValue}` : "";
+  if (!cleanValue || cleanValue === "創作者投稿" || cleanValue === "Creator submission" || cleanValue === "Creator Submission") return cleanValue || "";
+  return cleanValue;
 }
 
 export function listenBarRowToTrack(row: ListenBarTrackRow): ListenBarTrack | null {
+  const reviewStatus = row.review_status?.toLowerCase();
+  if (
+    row.is_active === false ||
+    reviewStatus === "hidden" ||
+    reviewStatus === "removed" ||
+    row.hidden_at ||
+    row.removed_at
+  ) {
+    return null;
+  }
+
   const audioUrl = publicStorageUrl(LISTEN_BAR_AUDIO_BUCKET, row.audio_path);
   if (!audioUrl) return null;
 
-  const tags = [row.genre, displayAlbumOrMood(row.mood)].filter(Boolean);
+  const genre = row.genre?.trim() || "Original 自我風格";
+  const album = displayAlbumOrMood(row.mood);
+  const tags = [genre, album].filter(Boolean);
   if (typeof row.bpm === "number" && row.bpm > 0) tags.push(`${row.bpm} BPM`);
   const source = row.is_featured_official || row.source === "official" ? "official" : "community";
   const queuedBy = row.artist?.trim() || (source === "official" ? "AIPOGER" : "創作者");
@@ -114,6 +179,10 @@ export function listenBarRowToTrack(row: ListenBarTrackRow): ListenBarTrack | nu
     title: row.title?.trim() || "AIPOGER Rotation",
     artist: row.artist?.trim() || "AIPOGER",
     tool: row.ai_tool?.trim() || "AI Music",
+    genre,
+    album: album || undefined,
+    description: row.description?.trim() || undefined,
+    youtubeUrl: row.youtube_url?.trim() || undefined,
     mood: tags.join(" / ") || "官方輪播",
     duration: Math.max(1, Math.round(row.duration_seconds ?? 45)),
     audioUrl,
@@ -124,6 +193,10 @@ export function listenBarRowToTrack(row: ListenBarTrackRow): ListenBarTrack | nu
     source,
     barPhase: source === "community" ? barPhase : undefined,
     positiveReactionCount: Math.max(0, Math.round(row.positive_reaction_count ?? 0)),
+    earwormAffinitySampleCount: Math.max(0, Math.round(row.earworm_affinity_sample_count ?? 0)),
+    earwormAffinityPercent: typeof row.earworm_affinity_percent === "number"
+      ? Math.min(100, Math.max(0, Math.round(row.earworm_affinity_percent)))
+      : null,
     createdAt: row.created_at ?? undefined,
     promotedAt: row.promoted_at ?? undefined,
   };

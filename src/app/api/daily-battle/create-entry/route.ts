@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { ACTIVE_DAILY_BATTLE_STATUSES } from "@/lib/daily-battle-rules";
 import { isSha256Hash } from "@/lib/file-hash";
+import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 
 type CreateDailyEntryBody = {
   title?: unknown;
@@ -58,6 +59,8 @@ function isUuid(value: unknown): value is string {
   return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
+const allowedGenreValues = new Set(MUSIC_GENRE_OPTIONS.map((genre) => genre.value));
+
 export async function POST(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY;
@@ -68,7 +71,7 @@ export async function POST(request: NextRequest) {
 
   const body = (await request.json().catch(() => null)) as CreateDailyEntryBody | null;
   const title = trim(body?.title);
-  const genre = trim(body?.genre) || "自我風格";
+  const genre = trim(body?.genre);
   const aiTool = trimOrNull(body?.aiTool);
   const audioPath = trim(body?.audioPath);
   const audioSha256 = isSha256Hash(body?.audioSha256) ? trim(body?.audioSha256).toLowerCase() : null;
@@ -81,6 +84,7 @@ export async function POST(request: NextRequest) {
   const challengeDailyEntryId = isUuid(rawChallengeDailyEntryId) ? rawChallengeDailyEntryId : null;
 
   if (!title) return jsonError("歌曲名稱不可空白。");
+  if (!genre || !allowedGenreValues.has(genre)) return jsonError("請從固定類型選單選擇歌曲類型。");
   if (!audioPath) return jsonError("音檔尚未上傳完成。");
 
   const admin = createClient(supabaseUrl, serviceKey, {
