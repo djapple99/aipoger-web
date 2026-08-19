@@ -42,6 +42,20 @@ test("every Bible preview URL has a compact public MP3 asset", () => {
     assert.ok(size > 200_000, `${audioUrl} is unexpectedly small`);
     assert.ok(size < 300_000, `${audioUrl} is unexpectedly large`);
   }
+
+  const downtempoAsset = new URL(
+    "../public/audio/ai-music-bible/studio-mastering/beatport-downtempo.mp3",
+    import.meta.url,
+  );
+  const drumAndBassAsset = new URL(
+    "../public/audio/ai-music-bible/studio-mastering/beatport-drum-and-bass.mp3",
+    import.meta.url,
+  );
+  assert.notDeepEqual(
+    readFileSync(downtempoAsset),
+    readFileSync(drumAndBassAsset),
+    "Downtempo and Drum & Bass previews must be different audio assets",
+  );
 });
 
 test("Bible preview cards use one shared bottom queue player", () => {
