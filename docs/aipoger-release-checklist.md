@@ -302,7 +302,7 @@ Check:
 - The Stem guide credits the owner-provided PDF and its credited author, shows the 2026-07-17 cross-check date, treats FL Studio's underlying engine as undisclosed, and does not repeat the PDF's unconfirmed LALAL.AI direct-synthesis claim as fact.
 - The Stem section remains readable at 1440x900 and 390x844 without page-level horizontal overflow.
 - All 95 free Studio Mastering Prompt cards show one localized `15 秒試聽` / `15s preview` action and the generation-variability note. `Modern Taiwanese Pop` must not appear as a free searchable/copyable card or expose a stale preview action. `Chinese Gufeng Cinematic` must be searchable in Chinese and English and expose its approved preview. Clicking any example opens the shared fixed bottom player with seek, previous/next, mobile/desktop volume, and close; cards do not autoplay or render native audio controls.
-- All 95 public Prompt preview MP3 URLs return `200`, have a duration of 15 seconds within normal encoding tolerance, and keep a consistent perceived loudness without clipping. Beatport expansion clips are demo sketches for direction listening and must not be described as formal mastering references.
+- All 95 public Prompt preview MP3 URLs return `200`, have a duration of 15 seconds within normal encoding tolerance, keep a consistent perceived loudness without clipping, and can be traced to a corresponding Suno-generated source and crop point. Beatport expansion clips are demo sketches for direction listening and must not be described as formal mastering references.
 
 ## Comment Moderation Checklist
 

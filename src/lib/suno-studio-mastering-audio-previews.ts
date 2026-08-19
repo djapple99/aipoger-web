@@ -3,6 +3,9 @@ export type SunoStudioMasteringAudioPreview = {
   audioUrl: string;
 };
 
+// Only audited, Prompt-linked Suno generations belong here. Beatport expansion
+// assets stay out until each clip has a real source-generation record and a
+// human listening check; file existence alone is not enough to publish audio.
 const SUNO_STUDIO_MASTERING_AUDIO_PREVIEW_ASSETS = [
   ["studio-mastering-general", "general"],
   ["studio-mastering-acoustic-folk", "acoustic-folk"],
@@ -74,6 +77,7 @@ const SUNO_STUDIO_MASTERING_AUDIO_PREVIEW_ASSETS = [
   ["studio-mastering-beatport-hard-techno", "beatport-hard-techno"],
   ["studio-mastering-beatport-house", "beatport-house"],
   ["studio-mastering-beatport-indie-dance", "beatport-indie-dance"],
+  ["studio-mastering-beatport-tech-house", "beatport-tech-house"],
   ["studio-mastering-beatport-jackin-house", "beatport-jackin-house"],
   ["studio-mastering-beatport-latin-electronic", "beatport-latin-electronic"],
   ["studio-mastering-beatport-mainstage", "beatport-mainstage"],
@@ -83,7 +87,6 @@ const SUNO_STUDIO_MASTERING_AUDIO_PREVIEW_ASSETS = [
   ["studio-mastering-beatport-organic-house", "beatport-organic-house"],
   ["studio-mastering-beatport-progressive-house", "beatport-progressive-house"],
   ["studio-mastering-beatport-psy-trance", "beatport-psy-trance"],
-  ["studio-mastering-beatport-tech-house", "beatport-tech-house"],
   ["studio-mastering-beatport-techno-peak-time-driving", "beatport-techno-peak-time-driving"],
   ["studio-mastering-beatport-techno-raw-deep-hypnotic", "beatport-techno-raw-deep-hypnotic"],
   ["studio-mastering-beatport-trance-main-floor", "beatport-trance-main-floor"],

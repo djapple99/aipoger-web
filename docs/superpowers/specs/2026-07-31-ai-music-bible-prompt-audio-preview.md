@@ -96,7 +96,12 @@
 
 ## QA
 
-- mapping 必須恰好有 50 個唯一 Prompt key 與 50 個唯一 MP3。
+- mapping 必須恰好有 95 個唯一 Prompt key 與 95 個唯一 MP3，包含 45 個 Beatport expansion Prompt 的對應 Suno 生成來源與人工聽感 QA。
 - `studio-mastering-taiwanese-pop` 不得出現在免費 Prompt catalog 或 audio mapping。
 - `studio-mastering-chinese-gufeng` 必須可由「古風」與 `wuxia` 搜尋，並連到核准音檔。
-- 50 個公開 MP3 都需為 15 秒、無削波，並通過桌機與手機底部播放器操作。
+- 95 個公開 MP3 都需為 15 秒、無削波，並通過桌機與手機底部播放器操作。
+
+## 2026-08-18—19 素材稽核記錄
+
+- 2026-08-18 的 Beatport expansion 測試音／規律脈衝素材已從公開 mapping 撤下並刪除。
+- 2026-08-19 已將 45 個 Beatport Style Prompt 逐一送入 Suno，下載對應生成結果，裁成 15 秒並轉成無封面、44.1 kHz stereo / 128 kbps MP3；每個檔案均完成時長與來源對應檢查後重新接回 mapping。
