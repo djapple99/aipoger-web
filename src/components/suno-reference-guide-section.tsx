@@ -7,7 +7,6 @@ import {
   ChevronUp,
   ClipboardCheck,
   Copy,
-  ExternalLink,
   Gauge,
   RadioTower,
   RefreshCcw,
@@ -260,9 +259,6 @@ export default function SunoReferenceGuideSection({ locale }: { locale: Referenc
                 </div>
                 <h4 className="mt-5 text-2xl font-black text-white">{localize(item.title, locale)}</h4>
                 <p className="mt-3 flex-1 text-sm font-bold leading-7 text-zinc-400">{localize(item.body, locale)}</p>
-                <a href={item.source.url} target="_blank" rel="noreferrer" className="mt-5 inline-flex min-h-11 items-center justify-between gap-3 rounded-xl border border-cyan-200/14 bg-cyan-300/[0.035] px-4 text-xs font-black text-cyan-100 transition hover:border-cyan-200/45 hover:text-white">
-                  {isZh ? "查看官方說明" : "Open official guide"}<ExternalLink className="h-4 w-4" />
-                </a>
               </article>
             ))}
           </div>
@@ -291,9 +287,6 @@ export default function SunoReferenceGuideSection({ locale }: { locale: Referenc
                 <article key={item.key} className={`rounded-[1.05rem] border p-5 ${tone}`}>
                   <h4 className="text-lg font-black text-white">{localize(item.title, locale)}</h4>
                   <p className="mt-3 text-sm font-bold leading-7 text-zinc-400">{localize(item.body, locale)}</p>
-                  <a href={item.source.url} target="_blank" rel="noreferrer" className="mt-4 inline-flex min-h-10 items-center gap-2 text-xs font-black text-cyan-200 transition hover:text-white">
-                    {isZh ? "核對官方說明" : "Check official guidance"}<ExternalLink className="h-3.5 w-3.5" />
-                  </a>
                 </article>
               );
             })}

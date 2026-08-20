@@ -5,7 +5,6 @@ import {
   ChevronDown,
   ChevronUp,
   Clipboard,
-  ExternalLink,
   Search,
   SlidersHorizontal,
   X,
@@ -54,7 +53,6 @@ export default function SunoCommandReferenceSection({ locale }: { locale: Refere
         caution: "使用前注意",
         copy: "複製範例",
         copied: "已複製",
-        source: "查看來源",
         showAll: "展開全部速查項目",
         collapse: "收起，只看前 6 項",
         noResult: "找不到符合的速查項目，換一個聽得見的關鍵字。",
@@ -79,7 +77,6 @@ export default function SunoCommandReferenceSection({ locale }: { locale: Refere
         caution: "Watch before using",
         copy: "Copy example",
         copied: "Copied",
-        source: "Open source",
         showAll: "Show all reference entries",
         collapse: "Collapse to the first 6",
         noResult: "No matching reference entry. Try a word you can hear.",
@@ -204,9 +201,8 @@ export default function SunoCommandReferenceSection({ locale }: { locale: Refere
                 <div className="rounded-xl border border-white/8 bg-white/[0.025] px-4 py-3"><dt className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200/60">{labels.effect}</dt><dd className="mt-1 font-bold leading-6 text-zinc-300">{localize(item.effect, locale)}</dd></div>
                 <div className="rounded-xl border border-orange-300/12 bg-orange-300/[0.03] px-4 py-3"><dt className="text-[10px] font-black uppercase tracking-[0.16em] text-orange-200/60">{labels.caution}</dt><dd className="mt-1 font-bold leading-6 text-zinc-400">{localize(item.caution, locale)}</dd></div>
               </dl>
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/8 pt-3 text-[11px] font-black text-zinc-600">
+              <div className="mt-4 border-t border-white/8 pt-3 text-[11px] font-black text-zinc-600">
                 <span>{localize(item.version, locale)}</span>
-                <a href={item.source.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-cyan-200/75 hover:text-white">{labels.source}<ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /></a>
               </div>
             </article>
           ))}

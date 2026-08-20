@@ -7,7 +7,6 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
-  ExternalLink,
   Play,
   Search,
   WandSparkles,
@@ -571,18 +570,6 @@ export default function SunoPracticeLibrarySection({
           </div>}
         </div>
 
-        <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-white/8 pt-5 text-xs font-black">
-          <span className="text-zinc-600">{isZh ? "官方文件核對：2026-07-28" : "Official docs cross-check: 2026-07-28"}</span>
-          {[
-            ["Suno v5.5", "https://help.suno.com/en/articles/11362305"],
-            ["Creative Sliders", "https://help.suno.com/en/articles/6141377"],
-            ["Music Glossary", "https://help.suno.com/en/articles/9010177"],
-            ["Song Editor", "https://help.suno.com/en/articles/6141505"],
-            ["Custom Lyrics", "https://help.suno.com/en/articles/2415873"],
-          ].map(([label, href]) => (
-            <a key={href} href={href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-cyan-200 hover:text-white">{label}<ExternalLink className="h-3.5 w-3.5" /></a>
-          ))}
-        </div>
       </div>
       <ShowtimeQueuePlayer ref={previewPlayerRef} isZh={isZh} />
     </section>

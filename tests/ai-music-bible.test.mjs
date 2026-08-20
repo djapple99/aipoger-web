@@ -290,7 +290,7 @@ test("Prompt and lyric finders explain their controls and expose clear states", 
   assert.doesNotMatch(practiceLibraryComponent, /showAllLyric \|\| lyricSearch \|\| lyricCategory !== "all"/);
   assert.doesNotMatch(practiceLibraryComponent, /閱讀 Reddit 原文|Read Reddit guide|查看開源 Skill|View open skill/);
   assert.doesNotMatch(practiceLibraryComponent, /NEW SOURCE · COMMUNITY FIELD GUIDE/);
-  assert.match(practiceLibraryComponent, /官方文件核對：2026-07-28/);
+  assert.doesNotMatch(practiceLibraryComponent, /官方文件核對：2026-07-28|help\.suno\.com\/en\/articles\//);
   assert.doesNotMatch(practiceLibraryComponent, /mt-3 flex gap-2 overflow-x-auto pb-1/);
 });
 
@@ -351,6 +351,7 @@ test("Suno command reference covers fields, tags, controls, editing, and problem
   assert.match(commandReferenceComponent, /aria-pressed={kind === item}/);
   assert.match(commandReferenceComponent, /複製範例/);
   assert.match(commandReferenceComponent, /標籤是提示，不是保證命令/);
+  assert.doesNotMatch(commandReferenceComponent, /target="_blank"|help\.suno\.com\/en\/articles\//);
 });
 
 test("Bible command search exposes high-contrast navigation and keyboard controls", () => {
