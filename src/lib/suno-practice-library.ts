@@ -1,4 +1,5 @@
 import { SUNO_STUDIO_MASTERING_MOVES } from "./suno-studio-mastering-prompts.ts";
+import { SUNO_INSTRUMENT_TONE_PROMPTS } from "./suno-instrument-tone-prompts.ts";
 
 export type SunoLibraryLocale = "zh" | "en";
 
@@ -361,6 +362,7 @@ const SUNO_CORE_PROMPT_MOVES: SunoTechnique<SunoPromptCategory>[] = [
 export const SUNO_PROMPT_MOVES: SunoTechnique<SunoPromptCategory>[] = [
   ...SUNO_CORE_PROMPT_MOVES,
   ...SUNO_STUDIO_MASTERING_MOVES,
+  ...SUNO_INSTRUMENT_TONE_PROMPTS,
 ];
 
 export const SUNO_LYRIC_MOVES: SunoTechnique<SunoLyricCategory>[] = [

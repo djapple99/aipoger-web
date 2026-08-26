@@ -20,6 +20,7 @@ import {
   BEATPORT_STUDIO_MASTERING_MOVES,
   SUNO_STUDIO_MASTERING_MOVES,
 } from "../src/lib/suno-studio-mastering-prompts.ts";
+import { SUNO_INSTRUMENT_TONE_PROMPTS } from "../src/lib/suno-instrument-tone-prompts.ts";
 import {
   SUNO_ARTIST_DNA_ENTRIES,
   SUNO_INSPIRATION_SOURCE,
@@ -135,7 +136,8 @@ test("stem separation guide is bilingual, sourced, and points only to known engi
 });
 
 test("Suno prompt and lyric libraries keep unique, bilingual, sourced moves", () => {
-  assert.equal(SUNO_PROMPT_MOVES.length, 118);
+  assert.equal(SUNO_PROMPT_MOVES.length, 158);
+  assert.equal(SUNO_INSTRUMENT_TONE_PROMPTS.length, 40);
   assert.equal(SUNO_STUDIO_MASTERING_MOVES.length, 95);
   assert.equal(BEATPORT_STUDIO_MASTERING_MOVES.length, 45);
   assert.equal(SUNO_STUDIO_MASTERING_MOVES.filter((entry) => entry.category === "mastering").length, 95);
@@ -191,6 +193,9 @@ test("Suno prompt and lyric libraries keep unique, bilingual, sourced moves", ()
     "fusion-four-part",
   ]) {
     assert.ok(SUNO_PROMPT_MOVES.some((entry) => entry.key === key));
+  }
+  for (const keyword of ["drums", "electric guitar", "piano", "synth", "bass", "microphone", "compressor", "mix"]) {
+    assert.ok(SUNO_INSTRUMENT_TONE_PROMPTS.some((entry) => entry.keywords.includes(keyword)));
   }
   assert.ok(SUNO_STUDIO_MASTERING_MOVES.some((entry) => entry.key === "studio-mastering-general"));
   assert.equal(
@@ -266,12 +271,17 @@ test("expanded Studio Mastering prompts are discoverable by genre, culture, and 
 });
 
 test("Prompt and lyric finders explain their controls and expose clear states", () => {
-  assert.match(biblePageComponent, /118 招 Prompt/);
-  assert.match(biblePageComponent, /118 prompt moves/);
+  assert.match(biblePageComponent, /158 招 Prompt/);
+  assert.match(biblePageComponent, /158 prompt moves/);
   assert.match(biblePageComponent, /document\.title = BIBLE_DOCUMENT_TITLES\[lang\]/);
   assert.match(practiceLibraryComponent, /找你需要的 Prompt 招式/);
   assert.match(practiceLibraryComponent, /Jazz、1980s、印度、交響、側鏈/);
   assert.match(practiceLibraryComponent, /找你需要的歌詞控制/);
+  assert.match(practiceLibraryComponent, /第一次用人聲 Prompt？先做這三步/);
+  assert.match(practiceLibraryComponent, /放在 Lyrics 欄/);
+  assert.match(practiceLibraryComponent, /直接拿來試：三種常用情境/);
+  assert.match(practiceLibraryComponent, /複製這個範例/);
+  assert.match(practiceLibraryComponent, /看完整詞庫與搜尋/);
   assert.match(practiceLibraryComponent, /aria-live="polite"/);
   assert.match(practiceLibraryComponent, /aria-pressed=\{selected\}/);
   assert.match(practiceLibraryComponent, /錄音室類型/);
@@ -284,7 +294,6 @@ test("Prompt and lyric finders explain their controls and expose clear states", 
   assert.match(practiceLibraryComponent, /aria-controls="prompt-move-results"/);
   assert.match(practiceLibraryComponent, /還有 \$\{genreResults\.length - GENRE_PREVIEW_COUNT\} 組曲風分類/);
   assert.match(practiceLibraryComponent, /aria-controls="genre-crate-content"/);
-  assert.match(practiceLibraryComponent, /展開 \$\{lyricResults\.length\} 招歌詞控制/);
   assert.match(practiceLibraryComponent, /aria-controls="production-flow-content"/);
   assert.doesNotMatch(practiceLibraryComponent, /showAllPrompt \|\| promptSearch \|\| promptCategory !== "all"/);
   assert.doesNotMatch(practiceLibraryComponent, /showAllLyric \|\| lyricSearch \|\| lyricCategory !== "all"/);

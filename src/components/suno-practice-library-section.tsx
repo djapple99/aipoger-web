@@ -40,6 +40,36 @@ const PROMPT_PREVIEW_COUNT = 6;
 const LYRIC_PREVIEW_COUNT = 8;
 const GENRE_PREVIEW_COUNT = 6;
 
+const VOCAL_STARTER_RECIPES = [
+  {
+    key: "vocal-starter-intimate-verse",
+    title: { zh: "主歌：靠近一點唱", en: "Verse: bring the voice close" },
+    meaning: { zh: "適合低聲、私密、像在耳邊說話的主歌。", en: "For an intimate verse that feels close and confessional." },
+    prompt: "[Verse | breathy | vulnerable | close mic]",
+  },
+  {
+    key: "vocal-starter-powerful-chorus",
+    title: { zh: "副歌：把情緒推上去", en: "Chorus: lift the emotion" },
+    meaning: { zh: "適合副歌放大情緒，但先不要一次塞滿所有效果。", en: "For a bigger chorus without stacking every possible effect." },
+    prompt: "[Chorus | sung | powerful | emotional]",
+  },
+  {
+    key: "vocal-starter-distant-outro",
+    title: { zh: "尾奏：慢慢退到遠景", en: "Outro: let the voice drift away" },
+    meaning: { zh: "適合尾奏、回憶感、舞台燈光慢慢熄掉的感覺。", en: "For an outro that feels distant, reflective, and cinematic." },
+    prompt: "[Outro | haunting | far away | echo]",
+  },
+] as const;
+
+const VOCAL_GLOSSARY = [
+  { term: "breathy", zh: "帶氣聲；比較柔、比較靠近耳朵", en: "airy and intimate" },
+  { term: "spoken", zh: "半說半唱；像講話，不是完整旋律唱法", en: "speech-like delivery" },
+  { term: "powerful", zh: "有力量；把音量與情緒往前推", en: "stronger, more projected delivery" },
+  { term: "emotional", zh: "情緒明顯；要求表演有情感起伏", en: "more emotionally expressive" },
+  { term: "close mic", zh: "近麥；聽感更靠近、更私密", en: "close, intimate perspective" },
+  { term: "background", zh: "背景；不要讓這個人聲站在最前面", en: "place the vocal behind the lead" },
+] as const;
+
 const SunoInspirationIndexSection = dynamic(
   () => import("@/components/suno-inspiration-index-section"),
   {
@@ -304,8 +334,8 @@ export default function SunoPracticeLibrarySection({
             </h2>
             <p className="mt-5 max-w-3xl text-base font-bold leading-8 text-zinc-300">
               {isZh
-                ? "九份教材加上 Beatport 類型截圖，整理成可以搜尋、可以複製、知道何時該用的招式。錄音室 Prompt 改用音樂文化與聽感分成 15 類，從電子音樂、Hip-Hop、Soul & R&B 一路到 Jazz、Pop、Rock 與世界音樂。"
-                : "Nine supplied files plus the Beatport genre screenshot are distilled into searchable, copyable moves with clear use cases. Studio Prompt moves are now grouped by musical culture and listening character across 15 families, from Electronic, Hip-Hop, and Soul & R&B to Jazz, Pop, Rock, and world music."}
+                ? "九份教材加上 Beatport 類型截圖，整理成可以搜尋、可以複製、知道何時該用的招式。錄音室 Prompt 依音樂文化與聽感分成 15 類，另補上鼓、電吉他、鋼琴、合成器、Bass、麥克風、效果與混音的經典模組。"
+                : "Nine supplied files plus the Beatport genre screenshot are distilled into searchable, copyable moves with clear use cases. Studio Prompt moves are grouped across 15 musical families, with classic modular prompts for drums, electric guitar, piano, synths, bass, microphones, effects, and mixing."}
             </p>
           </div>
           <div className="rounded-xl border border-yellow-300/18 bg-yellow-300/[0.055] p-4 text-sm font-bold leading-6 text-yellow-50/85">
@@ -477,13 +507,82 @@ export default function SunoPracticeLibrarySection({
             <div>
               <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.28em] text-orange-300/75`}>LYRIC CONTROL</p>
               <h3 className="mt-2 text-3xl font-black text-white md:text-4xl">{isZh ? "歌詞調教：控制怎麼唱" : "Lyric control: shape the delivery"}</h3>
-              <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-zinc-500">{isZh ? "這裡處理段落、唱法、情緒與表演；台語字詞發音仍在下方的台語調音實驗室。" : "This library handles sections, delivery, emotion, and performance. Taiwanese pronunciation remains in the dedicated lab below."}</p>
+              <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-zinc-500">{isZh ? "先用白話學會一招，再查完整詞庫：這些括號是寫在歌詞前的「人聲導演指令」，不是要背的英文單字。台語字詞發音仍在下方的台語調音實驗室。" : "Start with one plain-language move, then explore the full library. These brackets are vocal direction cues placed before lyrics—not English vocabulary you need to memorize. Taiwanese pronunciation remains in the dedicated lab below."}</p>
             </div>
             <button type="button" onClick={() => setLyricLibraryOpen((value) => !value)} aria-expanded={lyricLibraryOpen} aria-controls="lyric-library-content" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-orange-300/38 bg-orange-400/[0.08] px-5 text-sm font-black text-orange-50 transition hover:border-orange-200/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200">
               <BookOpenText className="h-4 w-4" />
               {lyricLibraryOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              {lyricLibraryOpen ? (isZh ? "收起歌詞招式" : "Collapse lyric moves") : (isZh ? `展開 ${lyricResults.length} 招歌詞控制` : `Open ${lyricResults.length} lyric moves`)}
+              {lyricLibraryOpen ? (isZh ? "收起完整詞庫" : "Collapse full library") : (isZh ? "看完整詞庫與搜尋" : "Open full library and search")}
             </button>
+          </div>
+
+          <div className="mt-7 rounded-[1.25rem] border border-orange-200/22 bg-[linear-gradient(135deg,rgba(251,146,60,0.1),rgba(8,16,18,0.88)_48%,rgba(34,211,238,0.06))] p-5 sm:p-7">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="max-w-3xl">
+                <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.24em] text-orange-200/80`}>{isZh ? "新手入口 · START HERE" : "START HERE · FOR NEW CREATORS"}</p>
+                <h4 className="mt-2 text-2xl font-black text-white sm:text-3xl">{isZh ? "第一次用人聲 Prompt？先做這三步" : "First vocal prompt? Start with these three steps"}</h4>
+                <p className="mt-3 text-sm font-bold leading-7 text-zinc-300">{isZh ? "不要先背完整詞庫。把它想成寫在歌詞前的導演指令：告訴 Suno「這一段在哪裡、要怎麼唱、帶什麼情緒」。先複製一張卡，再換成自己的歌詞。" : "You do not need to memorize the full glossary. Think of these as director cues before a lyric section: tell Suno where the section is, how it should be delivered, and what emotion it carries. Copy one card first, then replace the lyrics with your own."}</p>
+              </div>
+              <span className="rounded-full border border-cyan-200/25 bg-cyan-300/[0.08] px-3 py-1.5 text-xs font-black text-cyan-50">{isZh ? "放在 Lyrics 欄" : "Put it in Lyrics"}</span>
+            </div>
+
+            <div className="mt-6 grid gap-3 md:grid-cols-3">
+              {[
+                { number: "01", title: { zh: "先選歌曲段落", en: "Choose the section" }, body: { zh: "主歌用 Verse，副歌用 Chorus，尾奏用 Outro。", en: "Use Verse, Chorus, or Outro to mark where the cue belongs." } },
+                { number: "02", title: { zh: "再選一種唱法", en: "Choose the delivery" }, body: { zh: "例如 breathy 是帶氣聲，spoken 是半說半唱。", en: "For example, breathy is airy; spoken is speech-like." } },
+                { number: "03", title: { zh: "最後加一個方向", en: "Add one direction" }, body: { zh: "補情緒或距離就好；每段先放 2–4 個詞。", en: "Add emotion or distance; start with only 2–4 tags per section." } },
+              ].map((step) => (
+                <div key={step.number} className="rounded-xl border border-white/10 bg-black/30 p-4">
+                  <span className="text-xs font-black tracking-[0.18em] text-orange-200/75">{step.number}</span>
+                  <h5 className="mt-2 text-base font-black text-white">{sunoLibraryText(step.title, locale)}</h5>
+                  <p className="mt-1.5 text-xs font-bold leading-6 text-zinc-400">{sunoLibraryText(step.body, locale)}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 rounded-xl border border-cyan-200/18 bg-[#050a0b]/75 p-4">
+              <p className="text-xs font-black tracking-[0.14em] text-cyan-100/70">{isZh ? "一行公式" : "THE ONE-LINE FORMULA"}</p>
+              <code className="mt-2 block overflow-x-auto whitespace-pre-wrap break-words font-mono text-sm font-black leading-7 text-cyan-50">[Verse | breathy | vulnerable | close mic]</code>
+              <p className="mt-1 text-xs font-bold leading-5 text-zinc-500">{isZh ? "主歌｜帶氣聲｜脆弱感｜近麥。放在 Lyrics 欄、該段歌詞前；括號裡的提示不是歌詞本身。" : "Verse | airy delivery | vulnerability | close perspective. Place it in the Lyrics field before that section; the bracketed cue is not the lyric itself."}</p>
+            </div>
+
+            <div className="mt-6">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="text-base font-black text-white">{isZh ? "直接拿來試：三種常用情境" : "Try these first: three common situations"}</p>
+                  <p className="mt-1 text-xs font-bold leading-5 text-zinc-500">{isZh ? "先聽懂差異，再慢慢組自己的招式。" : "Hear the difference first, then build your own combinations."}</p>
+                </div>
+                <span className="text-xs font-black text-zinc-600">{isZh ? "可直接複製" : "READY TO COPY"}</span>
+              </div>
+              <div className="mt-3 grid gap-3 lg:grid-cols-3">
+                {VOCAL_STARTER_RECIPES.map((recipe) => (
+                  <article key={recipe.key} className="overflow-hidden rounded-xl border border-white/10 bg-black/38">
+                    <div className="p-4">
+                      <h5 className="text-base font-black text-white">{sunoLibraryText(recipe.title, locale)}</h5>
+                      <p className="mt-1.5 min-h-12 text-xs font-bold leading-5 text-zinc-400">{sunoLibraryText(recipe.meaning, locale)}</p>
+                      <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-words rounded-lg border border-white/8 bg-[#050707] p-3 font-mono text-xs font-bold leading-6 text-cyan-50/90">{recipe.prompt}</pre>
+                    </div>
+                    <button type="button" onClick={() => copyValue(recipe.key, recipe.prompt)} aria-label={isZh ? `複製${recipe.title.zh}` : `Copy ${recipe.title.en}`} className="flex min-h-11 w-full items-center justify-center gap-2 border-t border-white/8 bg-white/[0.025] px-4 text-xs font-black text-zinc-400 transition hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200">
+                      {copiedKey === recipe.key ? <Check className="h-4 w-4 text-emerald-300" /> : <Copy className="h-4 w-4" />}
+                      {copiedKey === recipe.key ? (isZh ? "已複製，貼到 Lyrics 欄" : "Copied — paste into Lyrics") : (isZh ? "複製這個範例" : "Copy this example")}
+                    </button>
+                  </article>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-6 border-t border-white/10 pt-5">
+              <p className="text-base font-black text-white">{isZh ? "先看懂這 6 個常用詞" : "Understand these 6 common words first"}</p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {VOCAL_GLOSSARY.map((item) => (
+                  <div key={item.term} className="rounded-lg border border-white/8 bg-black/25 px-3 py-2.5">
+                    <code className="font-mono text-xs font-black text-orange-100">{item.term}</code>
+                    <p className="mt-1 text-xs font-bold leading-5 text-zinc-400">{isZh ? item.zh : item.en}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-4 text-xs font-bold leading-6 text-zinc-500">{isZh ? "小提醒：Style 管整首歌的聲音；這些人聲段落提示放在 Lyrics 欄，對準 Verse／Chorus 等段落使用。" : "Quick reminder: Style shapes the overall sound; these vocal section cues belong in the Lyrics field beside sections such as Verse and Chorus."}</p>
+            </div>
           </div>
 
           {lyricLibraryOpen && <div id="lyric-library-content">
