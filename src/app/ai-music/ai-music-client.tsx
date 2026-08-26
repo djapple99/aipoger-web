@@ -232,9 +232,16 @@ function storagePublicUrl(bucket: string, path: string | null | undefined) {
   return supabase.storage.from(bucket).getPublicUrl(clean).data.publicUrl;
 }
 
+function listenBarAudioPlaybackUrl(path: string | null | undefined) {
+  const clean = path?.trim();
+  if (!clean) return null;
+  if (/^(https?:|blob:|data:)/i.test(clean)) return clean;
+  return `/api/listen-bar/audio/${clean.split("/").map((segment) => encodeURIComponent(segment)).join("/")}`;
+}
+
 async function tracksFromListenBar(lang: string) {
   const response = await fetch(`/api/ai-music/tracks?lang=${encodeURIComponent(lang)}`, {
-    cache: "no-store",
+    cache: "default",
   });
   const payload = (await response.json().catch(() => null)) as { tracks?: AiMusicApiTrackRow[]; error?: string } | null;
   if (!response.ok || !payload?.tracks) {
@@ -294,7 +301,7 @@ async function tracksFromListenBar(lang: string) {
         aiTool: track.tool || "AI Music",
         genre,
         coverUrl: track.coverUrl || storagePublicUrl("listen-bar-covers", row.cover_path) || AIPOGER_BRAND_LOGO,
-        audioUrl: track.audioUrl || storagePublicUrl("listen-bar-audio", row.audio_path),
+        audioUrl: listenBarAudioPlaybackUrl(row.audio_path) || track.audioUrl || storagePublicUrl("listen-bar-audio", row.audio_path),
         lyrics: row.lyrics?.trim() || track.lyrics?.trim() || null,
         createdAt: safeDate(track.createdAt),
         heartCount: numberValue(row.heart_count ?? track.positiveReactionCount),
@@ -378,7 +385,10 @@ function mergeDuplicateTracks(rows: AiMusicTrack[]) {
   return Array.from(bySignature.values());
 }
 
-function PlayIcon({ playing = false }: { playing?: boolean }) {
+function PlayIcon({ playing = false, loading = false }: { playing?: boolean; loading?: boolean }) {
+  if (loading) {
+    return <span className="block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden="true" />;
+  }
   return playing ? (
     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
       <path d="M7 5h3.5v14H7V5Zm6.5 0H17v14h-3.5V5Z" />
@@ -559,6 +569,7 @@ function TrackCard({
   lang,
   catalogLabel,
   catalogNote,
+  onPrepare,
   onPlay,
   onToggleExpand,
   onHeart,
@@ -573,6 +584,7 @@ function TrackCard({
   lang: string;
   catalogLabel?: string;
   catalogNote?: string;
+  onPrepare: (track: AiMusicTrack) => void;
   onPlay: (track: AiMusicTrack) => void;
   onToggleExpand: (track: AiMusicTrack) => void;
   onHeart: (track: AiMusicTrack) => void;
@@ -604,6 +616,8 @@ function TrackCard({
         {showChallengeReadyBadge ? <ChallengeReadyBadge lang={lang} /> : null}
         <button
           type="button"
+          onPointerDown={() => onPrepare(track)}
+          onFocus={() => onPrepare(track)}
           onClick={() => onPlay(track)}
           disabled={!track.audioUrl}
           className="absolute bottom-5 left-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-black shadow-[0_0_26px_rgba(255,106,0,0.36)] transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
@@ -716,6 +730,7 @@ function HeatList({
   heartBusy,
   heartStates,
   lang,
+  onPrepare,
   onPlay,
   onToggleExpand,
   onHeart,
@@ -729,6 +744,7 @@ function HeatList({
   heartBusy: Record<string, boolean>;
   heartStates: HeartState;
   lang: string;
+  onPrepare: (track: AiMusicTrack) => void;
   onPlay: (track: AiMusicTrack) => void;
   onToggleExpand: (track: AiMusicTrack) => void;
   onHeart: (track: AiMusicTrack) => void;
@@ -761,6 +777,7 @@ function HeatList({
               lang={lang}
               catalogLabel={rank ? `#${String(rank).padStart(2, "0")}` : localeText(lang, "累積", "BUILDING", "集計中", "집계 중")}
               catalogNote={hasRecentSignal ? heatReason(track, lang) : undefined}
+              onPrepare={onPrepare}
               onPlay={onPlay}
               onToggleExpand={onToggleExpand}
               onHeart={onHeart}
@@ -786,6 +803,7 @@ function MiniPlayer({
   onEnded,
   onPause,
   onPlay,
+  onError,
 }: {
   track: AiMusicTrack | null;
   isPlaying: boolean;
@@ -799,10 +817,12 @@ function MiniPlayer({
   onEnded: () => void;
   onPause: () => void;
   onPlay: () => void;
+  onError: () => void;
 }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.85);
+  const [isBuffering, setIsBuffering] = useState(false);
   const [lyricsOpen, setLyricsOpen] = useState(false);
   const [lyricsScrollPercent, setLyricsScrollPercent] = useState(0);
   const lyricsPanelRef = useRef<HTMLDivElement | null>(null);
@@ -815,9 +835,10 @@ function MiniPlayer({
   useEffect(() => {
     setCurrentTime(0);
     setDuration(0);
+    setIsBuffering(Boolean(track?.audioUrl && isPlaying));
     setLyricsOpen(false);
     setLyricsScrollPercent(0);
-  }, [track?.id]);
+  }, [isPlaying, track?.audioUrl, track?.id]);
 
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume;
@@ -862,13 +883,50 @@ function MiniPlayer({
     }
   };
 
-  if (!track) return null;
+  const audioElement = (
+    <audio
+      ref={audioRef}
+      src={track?.audioUrl ?? undefined}
+      preload="metadata"
+      playsInline
+      className="hidden"
+      aria-hidden="true"
+      onLoadedMetadata={(event) => {
+        event.currentTarget.volume = volume;
+        setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0);
+        setCurrentTime(event.currentTarget.currentTime || 0);
+        setIsBuffering(false);
+      }}
+      onDurationChange={(event) => setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0)}
+      onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime || 0)}
+      onWaiting={() => setIsBuffering(true)}
+      onCanPlay={() => setIsBuffering(false)}
+      onPlaying={() => {
+        setIsBuffering(false);
+        onPlay();
+      }}
+      onEnded={() => {
+        setCurrentTime(0);
+        onEnded();
+      }}
+      onPause={onPause}
+      onPlay={onPlay}
+      onError={() => {
+        setIsBuffering(false);
+        onError();
+      }}
+    />
+  );
+
   const heartActionLabel = heartedToday
     ? localeText(lang, "取消愛心與收藏", "Remove Heart and saved track", "Heartと保存を解除", "Heart와 저장 취소")
     : localeText(lang, "送出愛心支持", "Send a heart", "Heartを送る", "Heart 보내기");
 
   return (
     <>
+      {audioElement}
+      {!track ? null : (
+        <>
       {lyricsOpen ? (
         <div
           className="fixed inset-x-3 bottom-[8.6rem] z-[55] mx-auto max-w-2xl rounded-md border border-orange-200/24 bg-black/94 p-4 text-white shadow-[0_24px_80px_rgba(0,0,0,0.72)] backdrop-blur-xl sm:bottom-[6.35rem] sm:max-w-lg sm:p-3.5"
@@ -951,33 +1009,15 @@ function MiniPlayer({
                 />
                 <span className="text-right text-[10px] font-black tabular-nums text-zinc-500">{formatPlayerTime(duration)}</span>
               </div>
-              <audio
-                ref={audioRef}
-                src={track.audioUrl ?? undefined}
-                preload="metadata"
-                onLoadedMetadata={(event) => {
-                  event.currentTarget.volume = volume;
-                  setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0);
-                  setCurrentTime(event.currentTarget.currentTime || 0);
-                }}
-                onDurationChange={(event) => setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0)}
-                onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime || 0)}
-                onEnded={() => {
-                  setCurrentTime(0);
-                  onEnded();
-                }}
-                onPause={onPause}
-                onPlay={onPlay}
-              />
             </div>
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={onTogglePlay}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-black transition hover:bg-orange-300 sm:h-9 sm:w-9"
-                aria-label={isPlaying ? localeText(lang, "暫停", "Pause", "一時停止", "일시정지") : localeText(lang, "播放", "Play", "再生", "재생")}
+                aria-label={isBuffering ? localeText(lang, "載入中", "Loading", "読み込み中", "로드 중") : isPlaying ? localeText(lang, "暫停", "Pause", "一時停止", "일시정지") : localeText(lang, "播放", "Play", "再生", "재생")}
               >
-                <PlayIcon playing={isPlaying} />
+                <PlayIcon playing={isPlaying} loading={isBuffering} />
               </button>
               <button
                 type="button"
@@ -1040,6 +1080,8 @@ function MiniPlayer({
           </label>
         </div>
       </div>
+        </>
+      )}
     </>
   );
 }
@@ -1082,6 +1124,16 @@ export default function AiMusicClient() {
   const closeEarwormPrompt = useCallback(() => {
     markEarwormPromptSkipped();
     setEarwormPromptOpen(false);
+  }, []);
+  const prepareTrack = useCallback((track: AiMusicTrack) => {
+    const audio = audioRef.current;
+    const url = track.audioUrl;
+    if (!audio || !url) return;
+    const absoluteUrl = new URL(url, window.location.href).href;
+    if (audio.currentSrc === absoluteUrl || audio.src === absoluteUrl) return;
+    audio.preload = "metadata";
+    audio.src = url;
+    audio.load();
   }, []);
 
   useEffect(() => {
@@ -1332,6 +1384,7 @@ export default function AiMusicClient() {
       setNotice(localeText(lang, "這首作品目前沒有可播放音檔。", "This track has no playable audio yet.", "この作品には再生できる音源がまだありません。", "이 작품에는 아직 재생 가능한 음원이 없습니다."));
       return;
     }
+    prepareTrack(track);
     if (currentTrack?.id === track.id) {
       if (isPlaying) {
         audioRef.current?.pause();
@@ -1545,6 +1598,7 @@ export default function AiMusicClient() {
                           heartedToday={Boolean(heartStates[track.recordKey])}
                           lang={lang}
                           catalogLabel={catalogLabel}
+                          onPrepare={prepareTrack}
                           onPlay={handlePlayTrack}
                           onToggleExpand={(item) => setExpandedHud((current) => ({ ...current, [item.id]: !current[item.id] }))}
                           onHeart={(item) => void sendHeart(item)}
@@ -1633,6 +1687,7 @@ export default function AiMusicClient() {
               heartBusy={heartBusy}
               heartStates={heartStates}
               lang={lang}
+              onPrepare={prepareTrack}
               onPlay={handlePlayTrack}
               onToggleExpand={(item) => setExpandedHud((current) => ({ ...current, [item.id]: !current[item.id] }))}
               onHeart={(track) => void sendHeart(track)}
@@ -1679,6 +1734,7 @@ export default function AiMusicClient() {
                             heartBusy={Boolean(heartBusy[track.recordKey])}
                             heartedToday={Boolean(heartStates[track.recordKey])}
                             lang={lang}
+                            onPrepare={prepareTrack}
                             onPlay={handlePlayTrack}
                             onToggleExpand={(item) => setExpandedHud((current) => ({ ...current, [item.id]: !current[item.id] }))}
                             onHeart={(item) => void sendHeart(item)}
@@ -1847,6 +1903,10 @@ export default function AiMusicClient() {
         onEnded={() => setIsPlaying(false)}
         onPause={() => setIsPlaying(false)}
         onPlay={() => setIsPlaying(true)}
+        onError={() => {
+          setIsPlaying(false);
+          setNotice(localeText(lang, "音檔載入失敗，請再按一次播放。", "The audio failed to load. Please press play again.", "音源の読み込みに失敗しました。もう一度再生してください。", "오디오를 불러오지 못했습니다. 재생을 다시 눌러 주세요."));
+        }}
       />
     </main>
   );

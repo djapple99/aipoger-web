@@ -341,7 +341,11 @@ export async function GET(request: Request) {
         return !row.ai_music_showtime_certified && !row.ai_music_explore_retired;
       });
 
-    return NextResponse.json({ tracks }, { headers: { "Cache-Control": "no-store, max-age=0" } });
+    return NextResponse.json({ tracks }, {
+      headers: {
+        "Cache-Control": "public, max-age=15, s-maxage=15, stale-while-revalidate=60",
+      },
+    });
   } catch (error) {
     if (isAiMusicLifecycleSchemaMissing(error as { message?: string })) {
       return NextResponse.json({ error: "AI music lifecycle schema is not ready." }, { status: 409 });
