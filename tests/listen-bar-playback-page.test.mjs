@@ -31,7 +31,9 @@ test("listen bar volume falls back to Web Audio gain when mobile media volume is
   assert.ok(listenBarPageSource.includes("setNativeMediaVolume(audio, normalizedVolume)"));
   assert.ok(listenBarPageSource.includes("createMediaElementSource(audio)"));
   assert.ok(listenBarPageSource.includes("audioContext.createGain()"));
-  assert.ok(listenBarPageSource.includes("void ensureRadioVolumeControl()"));
+  assert.ok(listenBarPageSource.includes("ensureRadioVolumeControl(nextVolume)"));
+  assert.ok(listenBarPageSource.includes("audioVolumeSetupPromiseRef"));
+  assert.ok(listenBarPageSource.includes("void ensureRadioVolumeControl(volumeRef.current)"));
   assert.ok(listenBarPageSource.includes('audioContext?.state === "suspended"'));
   assert.ok(listenBarPageSource.includes('crossOrigin="anonymous"'));
 });

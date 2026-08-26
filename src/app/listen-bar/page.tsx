@@ -802,6 +802,7 @@ export default function ListenBarPage() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioSourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
   const audioGainNodeRef = useRef<GainNode | null>(null);
+  const audioVolumeSetupPromiseRef = useRef<Promise<boolean> | null>(null);
   const lastElapsedPaintRef = useRef(-1);
   const [userName, setUserName] = useState("吧友");
   const [visitorAvatarUrl, setVisitorAvatarUrl] = useState<string | null>(null);
@@ -888,44 +889,70 @@ export default function ListenBarPage() {
     return nativeApplied || Boolean(gainNode);
   }, []);
 
-  const ensureRadioVolumeControl = useCallback(async () => {
+  const ensureRadioVolumeControl = useCallback(async (requestedVolume = volumeRef.current) => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio) return false;
 
-    const normalizedVolume = clampMediaVolume(volumeRef.current);
+    const normalizedVolume = clampMediaVolume(requestedVolume);
+    volumeRef.current = normalizedVolume;
     if (setNativeMediaVolume(audio, normalizedVolume)) {
       setVolumeControlFallback(false);
-      return;
+      return true;
     }
 
-    try {
-      const AudioContextConstructor = window.AudioContext
-        ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!AudioContextConstructor) {
-        setVolumeControlFallback(true);
-        return;
-      }
-
-      let audioContext = audioContextRef.current;
-      let gainNode = audioGainNodeRef.current;
-      if (!audioContext || !gainNode) {
-        audioContext = new AudioContextConstructor();
-        const sourceNode = audioContext.createMediaElementSource(audio);
-        gainNode = audioContext.createGain();
-        sourceNode.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        audioContextRef.current = audioContext;
-        audioSourceNodeRef.current = sourceNode;
-        audioGainNodeRef.current = gainNode;
-      }
-
+    const applyGainVolume = () => {
+      const audioContext = audioContextRef.current;
+      const gainNode = audioGainNodeRef.current;
+      if (!audioContext || !gainNode) return false;
       gainNode.gain.setValueAtTime(normalizedVolume, audioContext.currentTime);
-      if (audioContext.state === "suspended") await audioContext.resume();
+      return true;
+    };
+
+    if (applyGainVolume()) {
+      const audioContext = audioContextRef.current;
+      if (audioContext?.state === "suspended") await audioContext.resume();
       setVolumeControlFallback(false);
-    } catch (error) {
-      console.warn("[listen-bar] mobile volume gain unavailable", error);
-      setVolumeControlFallback(true);
+      return true;
     }
+
+    if (!audioVolumeSetupPromiseRef.current) {
+      audioVolumeSetupPromiseRef.current = (async () => {
+        try {
+          const AudioContextConstructor = window.AudioContext
+            ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+          if (!AudioContextConstructor) return false;
+
+          const audioContext = audioContextRef.current ?? new AudioContextConstructor();
+          const sourceNode = audioSourceNodeRef.current ?? audioContext.createMediaElementSource(audio);
+          const gainNode = audioGainNodeRef.current ?? audioContext.createGain();
+          if (!audioSourceNodeRef.current) {
+            sourceNode.connect(gainNode);
+            audioSourceNodeRef.current = sourceNode;
+          }
+          if (!audioGainNodeRef.current) {
+            gainNode.connect(audioContext.destination);
+            audioGainNodeRef.current = gainNode;
+          }
+          audioContextRef.current = audioContext;
+          gainNode.gain.setValueAtTime(normalizedVolume, audioContext.currentTime);
+          if (audioContext.state === "suspended") await audioContext.resume();
+          return true;
+        } catch (error) {
+          console.warn("[listen-bar] mobile volume gain unavailable", error);
+          return false;
+        }
+      })();
+    }
+
+    const gainReady = await audioVolumeSetupPromiseRef.current;
+    audioVolumeSetupPromiseRef.current = null;
+    if (gainReady) {
+      applyGainVolume();
+      setVolumeControlFallback(false);
+      return true;
+    }
+    setVolumeControlFallback(true);
+    return false;
   }, []);
 
   useEffect(() => () => {
@@ -2771,13 +2798,16 @@ export default function ListenBarPage() {
                     step="0.01"
                     value={volume}
                     onPointerDown={() => {
-                      void ensureRadioVolumeControl();
+                      void ensureRadioVolumeControl(volumeRef.current);
                     }}
                     onKeyDown={() => {
-                      void ensureRadioVolumeControl();
+                      void ensureRadioVolumeControl(volumeRef.current);
                     }}
                     onChange={(event) => {
-                      setVolume(Number(event.target.value));
+                      const nextVolume = clampMediaVolume(Number(event.currentTarget.value));
+                      volumeRef.current = nextVolume;
+                      setVolume(nextVolume);
+                      void ensureRadioVolumeControl(nextVolume);
                     }}
                     aria-label={barText(lang, "公播音量", "Bar Volume", "放送音量", "방송 볼륨")}
                     className="h-2 w-full accent-orange-500"
