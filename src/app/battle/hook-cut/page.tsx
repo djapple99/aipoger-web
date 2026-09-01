@@ -29,7 +29,6 @@ import SafetyNotice from '@/components/safety-notice';
 import { blobToDataUrl, parseAudioMetadata } from '@/lib/audio-metadata';
 import { sha256File } from '@/lib/file-hash';
 import { shouldHandleDropCutSpaceShortcut } from '@/lib/drop-cut-keyboard';
-import { clearPendingQCrashAudio, readPendingQCrashAudio } from '@/lib/pending-q-crash-audio';
 
 const MAX_HOOK_SECONDS = 60;
 const MIN_REGION_SECONDS = 0.25;
@@ -549,12 +548,6 @@ function HookCutContent() {
   const aiMusicChallengeTrackId = searchParams.get('aiMusicChallengeTrackId');
   const aiMusicDefenderTrackId = searchParams.get('aiMusicDefenderTrackId');
   const defenderTrackTitle = searchParams.get('defenderTrackTitle');
-  const qCrashCreate = searchParams.get('qCrashCreate') === '1';
-  const qCrashCardId = searchParams.get('qCrashCardId');
-  const qCrashSelf = searchParams.get('qCrashSelf') === '1';
-  const qCrashDurationMinutes = searchParams.get('qCrashDurationMinutes');
-  const qCrashInviteeUserId = searchParams.get('qCrashInviteeUserId');
-  const qCrashUploadFirst = searchParams.get('flow') === 'q-crash-upload-first';
   const rematchClaimId = searchParams.get('rematchClaimId');
   const sourceBattleId = searchParams.get('sourceBattleId');
   const isRematchUpload = Boolean(rematchClaimId && sourceBattleId);
@@ -618,7 +611,6 @@ function HookCutContent() {
   const playOffsetRef = useRef<number>(0);
   const isPlayingRef = useRef(false);
   const profileAudioLoadedRef = useRef(false);
-  const pendingQCrashAudioLoadedRef = useRef(false);
   const processAudioFileRef = useRef<((file: File) => Promise<void>) | null>(null);
 
   useEffect(() => {
@@ -838,25 +830,6 @@ function HookCutContent() {
     }
   };
   processAudioFileRef.current = processAudioFile;
-
-  useEffect(() => {
-    if (!qCrashUploadFirst || (!qCrashCreate && !qCrashCardId) || pendingQCrashAudioLoadedRef.current) return;
-    pendingQCrashAudioLoadedRef.current = true;
-    void (async () => {
-      try {
-        const pendingFile = await readPendingQCrashAudio();
-        if (!pendingFile) {
-          setAudioError(lang === 'zh' ? '找不到剛剛選擇的歌曲，請回上一頁重新選擇。' : 'The selected song is missing. Go back and choose it again.');
-          return;
-        }
-        await processAudioFileRef.current?.(pendingFile);
-        await clearPendingQCrashAudio();
-      } catch (error) {
-        console.error('[hook-cut] pending Q Crash audio load failed', error);
-        setAudioError(t.uploadDecodeError);
-      }
-    })();
-  }, [lang, qCrashCardId, qCrashCreate, qCrashUploadFirst, t.uploadDecodeError]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1129,7 +1102,7 @@ function HookCutContent() {
       }
       const userId = isAuthBypassEnabled ? mockUserId : session!.user.id;
 
-      if (!isAuthBypassEnabled && !isAiMusicDefenderDropSetup && !(qCrashCardId && qCrashSelf)) {
+      if (!isAuthBypassEnabled && !isAiMusicDefenderDropSetup) {
         const requestedDropRole: DropBattleUserRole = aiMusicChallengeTrackId || gatekeeperId ? "challenger" : dropBattleRoleForChallengeTarget(challengeTargetQueueId);
         const activeLock = await findActiveBattleLock(userId, requestedDropRole);
         if (activeLock) {
@@ -1319,7 +1292,6 @@ function HookCutContent() {
           audio_sha256: audioSha256,
           original_file_name: (songName.trim() || fileName).slice(0, 500),
           status: initialQueueStatus,
-          ...((qCrashCreate || qCrashCardId) ? { drop_duration_seconds: Number((end - start).toFixed(2)) } : {}),
           ...(fullAudioPath
             ? {
                 full_audio_path: fullAudioPath,
@@ -1330,10 +1302,7 @@ function HookCutContent() {
               }
             : {}),
         };
-        const baseRowWithQCrashCover = {
-          ...baseRow,
-          ...((qCrashCreate || qCrashCardId) && coverUrl?.trim() ? { cover_url: coverUrl.trim() } : {}),
-        };
+        const baseRowForInsert = baseRow;
 
         let queueRows: { id: string }[] | null = null;
         let queueError: { message: string; code?: string; details?: string; hint?: string } | null = null;
@@ -1351,20 +1320,20 @@ function HookCutContent() {
           ? { expires_at: schedulePayload.scheduled_start_at, ...schedulePayload }
           : {};
         const legacySchedule = schedulePayload ? { expires_at: schedulePayload.scheduled_start_at } : {};
-        const baseRowWithoutAudioHash = { ...baseRowWithQCrashCover };
+        const baseRowWithoutAudioHash = { ...baseRowForInsert };
         delete (baseRowWithoutAudioHash as Record<string, unknown>).audio_sha256;
         const baseRowWithoutCover = { ...baseRowWithoutAudioHash };
         delete (baseRowWithoutCover as Record<string, unknown>).cover_url;
 
         const insertAttempts: Array<Record<string, unknown>> = [
-          { ...baseRowWithQCrashCover, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null, lyrics: lyricsForSave || null },
-          { ...baseRowWithQCrashCover, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null },
-          { ...baseRowWithQCrashCover, ...optionalChallenge, ...optionalSchedule, lyrics: lyricsForSave || null },
-          { ...baseRowWithQCrashCover, ...optionalChallenge, ...optionalSchedule },
-          { ...baseRowWithQCrashCover, ...optionalChallenge, ...legacySchedule, ai_tool: aiTool.trim() || null, lyrics: lyricsForSave || null },
-          { ...baseRowWithQCrashCover, ...optionalChallenge, ...legacySchedule, ai_tool: aiTool.trim() || null },
-          { ...baseRowWithQCrashCover, ...optionalChallenge, ...legacySchedule, lyrics: lyricsForSave || null },
-          { ...baseRowWithQCrashCover, ...optionalChallenge, ...legacySchedule },
+          { ...baseRowForInsert, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null, lyrics: lyricsForSave || null },
+          { ...baseRowForInsert, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null },
+          { ...baseRowForInsert, ...optionalChallenge, ...optionalSchedule, lyrics: lyricsForSave || null },
+          { ...baseRowForInsert, ...optionalChallenge, ...optionalSchedule },
+          { ...baseRowForInsert, ...optionalChallenge, ...legacySchedule, ai_tool: aiTool.trim() || null, lyrics: lyricsForSave || null },
+          { ...baseRowForInsert, ...optionalChallenge, ...legacySchedule, ai_tool: aiTool.trim() || null },
+          { ...baseRowForInsert, ...optionalChallenge, ...legacySchedule, lyrics: lyricsForSave || null },
+          { ...baseRowForInsert, ...optionalChallenge, ...legacySchedule },
           { ...baseRowWithoutCover, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null, lyrics: lyricsForSave || null },
           { ...baseRowWithoutCover, ...optionalChallenge, ...optionalSchedule, ai_tool: aiTool.trim() || null },
           { ...baseRowWithoutCover, ...optionalChallenge, ...optionalSchedule, lyrics: lyricsForSave || null },
@@ -1404,56 +1373,6 @@ function HookCutContent() {
           throw new Error("queue insert returned no id — 請在 Supabase 執行 supabase/battle_queue_grants.sql 並確認 battle_queue RLS");
         }
         queueIdForNav = first.id;
-
-        if ((qCrashCreate || qCrashCardId) && session?.access_token) {
-          const endpoint = qCrashCardId ? `/api/q-crash/${encodeURIComponent(qCrashCardId)}/join` : "/api/q-crash";
-          const response = await fetch(endpoint, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify(
-              qCrashCardId
-                ? {
-                    queueId: queueIdForNav,
-                    dropDurationSeconds: Number((end - start).toFixed(2)),
-                  }
-                : {
-                    queueId: queueIdForNav,
-                    durationMinutes: qCrashDurationMinutes,
-                    invitedUserId: qCrashInviteeUserId || null,
-                    dropDurationSeconds: Number((end - start).toFixed(2)),
-                  },
-            ),
-          });
-          const qCrashPayload = (await response.json().catch(() => null)) as {
-            cardId?: string;
-            battleId?: string;
-            error?: string;
-          } | null;
-          if (!response.ok) {
-            const cancelResult = await supabase
-              .from("battle_queue")
-              .update({ status: "cancelled", updated_at: new Date().toISOString() })
-              .eq("id", queueIdForNav)
-              .eq("user_id", userId);
-            if (!cancelResult.error) {
-              await supabase.storage.from("battle-audio").remove(
-                [storagePath, fullAudioPath].filter((path): path is string => Boolean(path)),
-              );
-            }
-            throw new Error(qCrashPayload?.error || (lang === "zh" ? "Q Crash 建立失敗。" : "Could not create Q Crash."));
-          }
-          nextPath = qCrashPayload?.battleId
-            ? `/battle/${qCrashPayload.battleId}?lang=${lang}`
-            : `/battle/q-crash/${qCrashPayload?.cardId}?lang=${lang}`;
-          setUploadPhase(lang === "zh" ? "Q Crash 已鎖定，準備開場…" : "Q Crash locked. Opening the stage...");
-          window.setTimeout(() => {
-            router.push(nextPath);
-          }, 650);
-          return;
-        }
 
         if (!challengeTargetQueueId && instantPairing === "invite") {
           nextPath = `/battle/${queueIdForNav}?lang=${lang}`;
@@ -1787,7 +1706,7 @@ function HookCutContent() {
               />
             </div>
 
-            {!isAiMusicDefenderDropSetup && !qCrashCreate && !qCrashCardId ? (
+            {!isAiMusicDefenderDropSetup ? (
               <div className="rounded-3xl border border-yellow-200/18 bg-yellow-300/[0.06] p-5 shadow-[0_16px_54px_rgba(0,0,0,0.24)]">
                 <div className="flex items-center justify-between gap-4">
                   <div>

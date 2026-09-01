@@ -11,8 +11,8 @@ export async function generateMetadata({ searchParams }: DropGuidePageProps): Pr
   const isEnglish = lang === "en";
   const title = isEnglish ? "Drop Battle Rules and Q Crash Guide" : "Drop Battle 規則與 Q Crash 抓波指南";
   const description = isEnglish
-    ? "Learn how AIPOGER 30-60 second Drop Battles and asynchronous Q Crash voting work, including official audience thresholds and creator rights rules."
-    : "了解 AIPOGER 30-60 秒 Drop Battle 與非同步 Q Crash 怎麼玩，包括正式觀眾門檻、投票規則與創作者權利原則。";
+    ? "Learn how AIPOGER 30-60 second Drop Battles and full-song Q Crash voting work, including official audience thresholds and creator rights rules."
+    : "了解 AIPOGER 30-60 秒 Drop Battle 與整首歌曲 Q Crash 怎麼玩，包括正式觀眾門檻、投票規則與創作者權利原則。";
 
   return {
     title,
@@ -46,7 +46,7 @@ export default function DropGuidePage() {
           "@context": "https://schema.org",
           "@type": "TechArticle",
           headline: "Drop Battle 規則與 Q Crash 抓波指南",
-          description: "AIPOGER 30-60 秒 Drop Battle、Q Crash、投票門檻與創作者權利規則。",
+          description: "AIPOGER 30-60 秒 Drop Battle、整首歌曲 Q Crash、投票門檻與創作者權利規則。",
           url: pageUrl,
           inLanguage: "zh-Hant",
           dateModified: "2026-08-10",

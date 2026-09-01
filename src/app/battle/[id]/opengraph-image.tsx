@@ -21,7 +21,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
       <BattleShareOg
         logoUrl={logoUrl}
         label={isQCrash ? "AIPOGER Q CRASH" : "AIPOGER DROP BATTLE"}
-        subtitle={isQCrash ? "60S DROP · VOTE IN YOUR TIME" : "LISTEN · VOTE · BATTLE"}
+        subtitle={isQCrash ? "FULL SONG · VOTE IN YOUR TIME" : "LISTEN · VOTE · BATTLE"}
       />
     ),
     size,

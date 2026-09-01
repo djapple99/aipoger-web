@@ -278,14 +278,14 @@ function QCrashModePanel({ isZh, lang }: { isZh: boolean; lang: string }) {
             </span>
             <span className="inline-flex items-center gap-1.5 text-[11px] font-black tracking-[0.16em] text-cyan-100">
               <Clock3 size={14} />
-              ASYNC 60S DROP
+              ASYNC FULL SONG
             </span>
           </div>
           <h2 className="mt-3 text-3xl font-black tracking-tight text-white">Q Crash</h2>
           <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-zinc-300">
             {isZh
-              ? "不用約同一時間。兩首 60 秒 Drop 到位後立即開放投票，截止才公開結果。"
-              : "No synchronized meetup. Voting opens when both 60-second Drops lock, and results stay sealed until the deadline."}
+              ? "不用約同一時間。兩首完整歌曲到位後立即開放投票，截止才公開結果。"
+              : "No synchronized meetup. Voting opens when both full songs lock, and results stay sealed until the deadline."}
           </p>
         </div>
         <Link
@@ -669,11 +669,11 @@ function QCrashPoolMatchCard({ card, isZh, lang }: { card: QCrashPoolCardRow; is
             title={card.works.B ? `幫我選一下：${card.works.A.songName} VS ${card.works.B.songName}` : `來幫我找另一首：${card.works.A.songName}`}
             text={isZh
               ? card.works.B
-                ? "這兩首歌到底哪首比較好聽啊？我有點選不出來！兩首 60 秒 Drop，進來聽重點，幫我決定哪首勝出！"
-                : "我先放了一首 60 秒 Drop，來幫我找另一首一起比一下！"
+                ? "這兩首歌到底哪首比較好聽啊？我有點選不出來！進來聽完整歌曲，幫我決定哪首勝出！"
+                : "我先放了一首完整歌曲，來幫我找另一首一起比一下！"
               : card.works.B
-                ? "Which song sounds better? I can't decide! Two 60-second Drops—listen to the key moments and help me pick a winner."
-                : "I have one 60-second Drop ready. Help me find another track to compare it with."}
+                ? "Which song sounds better? I can't decide! Listen to both full songs and help me pick a winner."
+                : "I have one full song ready. Help me find another track to compare it with."}
             url={shareUrl}
             label={voting ? (isZh ? "邀請觀戰投票" : "Invite Voters") : (isZh ? "分享邀請" : "Share Invite")}
             copiedLabel={isZh ? "已複製" : "Copied"}

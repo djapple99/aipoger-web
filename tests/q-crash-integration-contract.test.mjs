@@ -7,6 +7,7 @@ function source(path) {
 }
 
 const migrationSource = source("../supabase/20260731_q_crash_async_drop_battle.sql");
+const fullSongMigrationSource = source("../supabase/migrations/20260901090000_q_crash_full_song_tracks.sql");
 const coverMigrationSource = source("../supabase/20260801055052_q_crash_work_covers.sql");
 const feedbackMigrationSource = source("../supabase/20260731193000_q_crash_feedback.sql");
 const commentMigrationSource = source("../supabase/20260731233000_q_crash_voter_comments.sql");
@@ -24,6 +25,7 @@ const settlementSource = source("../src/lib/server-q-crash.ts");
 const fallbackSource = source("../src/app/api/battle-pool/process-fallbacks/route.ts");
 const hookCutSource = source("../src/app/battle/hook-cut/page.tsx");
 const qCrashNewSource = source("../src/app/battle/q-crash/new/page.tsx");
+const qCrashNewLayoutSource = source("../src/app/battle/q-crash/new/layout.tsx");
 const qCrashPageSource = source("../src/app/battle/q-crash/[id]/page.tsx");
 const cardClientSource = source("../src/components/q-crash-card-client.tsx");
 const battlePoolSource = source("../src/app/battle/page.tsx");
@@ -34,8 +36,16 @@ const productRulesSource = source("../docs/aipoger-product-rules.md");
 const analyticsRouteSource = source("../src/app/api/admin/analytics/route.ts");
 const analyticsPageSource = source("../src/app/admin/analytics/page.tsx");
 
-test("Q Crash migration seals votes and enforces 60-second Drops", () => {
-  assert.ok(migrationSource.includes("drop_duration_seconds > 0 and drop_duration_seconds <= 60"));
+test("Q Crash migration seals votes and stores full-song track sources", () => {
+  assert.ok(fullSongMigrationSource.includes("alter column audio_path drop not null"));
+  assert.ok(fullSongMigrationSource.includes("source_type text not null default 'upload'"));
+  assert.ok(fullSongMigrationSource.includes("source_url text"));
+  assert.ok(fullSongMigrationSource.includes("duration_seconds numeric(10, 2)"));
+  assert.ok(fullSongMigrationSource.includes("rights_confirmed_at timestamptz"));
+  assert.ok(fullSongMigrationSource.includes("alter column audio_a_path drop not null"));
+  assert.ok(fullSongMigrationSource.includes("alter column audio_b_path drop not null"));
+  assert.ok(fullSongMigrationSource.includes("q_crash_cards_duration_check"));
+  assert.ok(fullSongMigrationSource.includes("duration_minutes between 30 and 4320"));
   assert.ok(migrationSource.includes("q_crash_votes_one_account_per_battle unique (battle_id, user_id)"));
   assert.ok(migrationSource.includes("revoke all on table public.q_crash_votes from anon, authenticated"));
   assert.ok(migrationSource.includes("block_unsealed_q_crash_battle_votes"));
@@ -46,10 +56,15 @@ test("Q Crash stores work-specific covers and keeps a profile fallback", () => {
   assert.ok(coverMigrationSource.includes("add column if not exists cover_url text"));
   assert.ok(qCrashNewSource.includes("作品封面（選填）"));
   assert.ok(qCrashNewSource.includes("MAX_Q_CRASH_COVER_BYTES"));
-  assert.ok(qCrashNewSource.includes("先上傳完整歌曲"));
+  assert.ok(qCrashNewSource.includes("Paste Suno Link"));
+  assert.ok(qCrashNewSource.includes("Upload Audio File"));
+  assert.ok(qCrashNewSource.includes("12 小時"));
+  assert.ok(qCrashNewSource.includes("自訂投票分鐘數"));
+  assert.ok(qCrashNewSource.includes("I confirm that I created this track or have permission from the rights holder."));
+  assert.ok(qCrashNewLayoutSource.includes("Q Crash | AIPOGER Full Song Battle"));
   assert.ok(qCrashNewSource.includes("parseAudioMetadata"));
-  assert.ok(hookCutSource.includes("q-crash-upload-first"));
-  assert.ok(hookCutSource.includes("cover_url: coverUrl.trim()"));
+  assert.equal(qCrashNewSource.includes("/battle/hook-cut"), false);
+  assert.equal(hookCutSource.includes("qCrashCreate"), false);
   assert.ok(poolRouteSource.includes("queueA.cover_url"));
   assert.ok(cardRouteSource.includes("queueA.cover_url"));
   assert.ok(cardClientSource.includes("這兩首歌到底哪首比較好聽啊？我有點選不出來！"));
@@ -61,7 +76,7 @@ test("Q Crash uses Traditional Chinese only for zh and English for every other l
   assert.ok(qCrashNewSource.includes("qCrashDisplayLang(searchParams.get(\"lang\"))"));
   assert.ok(cardClientSource.includes("qCrashDisplayLang(searchParams.get(\"lang\"))"));
   assert.ok(battlePoolSource.includes("const displayLang = qCrashDisplayLang(lang);"));
-  assert.ok(qCrashPageSource.includes("Q Crash | AIPOGER Async Drop Battle"));
+  assert.ok(qCrashPageSource.includes("Q Crash | AIPOGER Async Full Song Battle"));
   assert.ok(qCrashPageSource.includes("Which song sounds better? I can't decide!"));
   assert.ok(battlePageSource.includes("const isZh = qCrashDisplayLang(rawLang) === \"zh\";"));
 });
@@ -76,8 +91,12 @@ test("Q Crash API returns tallies only after the card reaches a final state", ()
   assert.match(cardRouteSource, /result: isFinal[\s\S]*?counts,[\s\S]*?audienceCount/);
   assert.equal(voteRouteSource.includes("counts:"), false);
   assert.ok(voteRouteSource.includes("結果將在截止後公開"));
-  assert.ok(cardRouteSource.includes("battle?.audio_a_path || queueA.audio_path"));
-  assert.ok(cardRouteSource.includes("battle?.audio_b_path || queueB.audio_path"));
+  assert.ok(cardRouteSource.includes("sourceType: qCrashSourceType(queueA.source_type) || \"upload\""));
+  assert.ok(cardRouteSource.includes('sourceUrl: qCrashSourceType(queueA.source_type) === "suno" ? queueA.source_url : null'));
+  assert.ok(poolRouteSource.includes('sourceUrl: qCrashSourceType(queueA.source_type) === "suno" ? queueA.source_url : null'));
+  assert.ok(joinRouteSource.includes("rightsConfirmed"));
+  assert.equal(joinRouteSource.includes("dropDurationSeconds"), false);
+  assert.equal(poolRouteSource.includes("dropDurationSeconds"), false);
   assert.equal(joinRouteSource.includes("qCrashGenresMatch"), false);
 });
 
@@ -153,15 +172,14 @@ test("Q Crash voting requires sign-in, excludes participants, and cannot be chan
   assert.ok(guestVoteRouteSource.includes('battle.battle_type === "q_crash"'));
 });
 
-test("Q Crash engagement funnel stays owner-only and does not change voting eligibility", () => {
+test("Q Crash engagement funnel stays owner-only without a listening threshold", () => {
   assert.ok(cardClientSource.includes('trackStage("open")'));
-  assert.ok(cardClientSource.includes('trackStage("listen_qualified", side)'));
-  assert.ok(cardClientSource.includes('listenSecondsRef.current[side] < 5'));
   assert.ok(cardClientSource.includes('trackStage("submitted"'));
   assert.ok(analyticsRouteSource.includes("function qCrashFunnel"));
-  assert.ok(analyticsRouteSource.includes("listenedNoVote"));
+  assert.equal(cardClientSource.includes("listen_qualified"), false);
+  assert.equal(analyticsRouteSource.includes("listenedNoVote"), false);
+  assert.equal(analyticsPageSource.includes("聽完未投"), false);
   assert.ok(analyticsPageSource.includes("Owner 私有估算"));
-  assert.ok(analyticsPageSource.includes("聽完未投"));
   assert.ok(cardClientSource.includes('trackStage("external_browser_cta")'));
   assert.ok(analyticsRouteSource.includes('metadataText(event, "browserContext") === "line"'));
   assert.ok(analyticsPageSource.includes("Opened in LINE"));
@@ -208,10 +226,12 @@ test("generic queue cancellation synchronizes pending Q Crash and protects start
   assert.ok(cancelCurrentRouteSource.includes('status: "q_crash_cancelled"'));
 });
 
-test("Q Crash reuses the Drop cutter and keeps the sealed-vote presentation", () => {
-  assert.ok(hookCutSource.includes("searchParams.get('qCrashCreate')"));
-  assert.ok(hookCutSource.includes("searchParams.get('qCrashCardId')"));
-  assert.ok(hookCutSource.includes("/api/q-crash/"));
+test("Q Crash uses full-song sources and keeps the sealed-vote presentation", () => {
+  assert.equal(hookCutSource.includes("qCrash"), false);
+  assert.ok(qCrashNewSource.includes("source_type"));
+  assert.ok(qCrashNewSource.includes("source_url"));
+  assert.ok(cardClientSource.includes("Open in Suno"));
+  assert.ok(cardClientSource.includes("formatTrackDuration"));
   assert.ok(cardClientSource.includes("截止前不顯示票數、評分總和或領先作品"));
   assert.ok(cardClientSource.includes('className="fixed inset-x-3 bottom-3'));
   assert.ok(cardClientSource.includes("勝出作品五角評分分布"));
@@ -222,8 +242,8 @@ test("Q Crash reuses the Drop cutter and keeps the sealed-vote presentation", ()
 test("product rules lock the asynchronous Q Crash contract", () => {
   for (const phrase of [
     "Q Crash",
-    "`30 minutes`, `2 hours` (default), `6 hours`, and `24 hours`",
-    "At least 3 establishes an official Drop Battle result",
+    "Q Crash voting windows are `30 minutes`, `2 hours` (default), `12 hours`, or a custom window from 30 minutes up to 3 days",
+    "At least 3 establishes an official Q Crash result",
     "Work owners cannot vote",
     "Selecting work A or B is a reversible client-side draft",
     "No visitor, participant, or host may see counts",

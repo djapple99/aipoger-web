@@ -99,24 +99,24 @@ Check:
 ### Q Crash
 
 - Battle Pool shows one compact `建立 Q Crash` entry while keeping the existing live Drop Battle CTA and challenge pool unchanged.
-- Creating work A uses the existing cropper, enforces a 60-second maximum, stores a fixed current genre, and creates one pending Q Crash card.
-- Work A and Work B may each upload and preview their own cover before cutting the Drop; the selected cover is stored with that queue/work and appears on the matching A/B seat.
+- Creating work A offers `Paste Suno Link` or `Upload Audio File` (MP3/WAV), stores a unified full-song Track, captures the rights confirmation, and creates one pending Q Crash card without opening the Drop cropper.
+- Work A and Work B may each attach their own cover; the selected cover is stored with that queue/work and appears on the matching A/B seat. Suno audio is never downloaded or copied into Storage.
 - The creator may place a second own work, leave the card open for a shared invite, or target an existing creator account. A targeted creator receives a readable account notification linked to the pending card.
-- Work B must use a distinct queue entry and the exact same fixed genre. A different creator must own the submitted Drop; the original creator may intentionally submit a second own Drop.
+- Work B must use a distinct queue entry and the exact same fixed genre. A different creator must own the submitted track; the original creator may intentionally submit a second own track.
 - The first successful work-B acceptance wins the pending-card claim. Two simultaneous accepts must not create duplicate battles.
 - Voting begins only after both works lock. Both creators see the same battle ID and `/b/{shortId}` share link.
 - Battle Pool shows exactly one paired Q Crash card for that ID and suppresses both A/B queue rows from the ordinary card list.
 - Battle Pool places Q Crash matchup cards in a distinct blue/cyan section directly below the Q Crash introduction. The red/orange `Drop Battle 公開挑戰池` contains only official/public Drop cards and its genre filters do not hide Q Crash cards.
 - At 1440x900 and the 1092px desktop reference width, Q Crash introduction/matchups read as one cyan system and the public Drop Battle pool reads as a separate red/coral system. Cyan/red live-text ribbons and solid primary CTAs use black text; ordinary card titles remain white, and the page has no horizontal overflow.
-- Server time sets the immutable 30-minute / 2-hour / 6-hour / 24-hour deadline; 2 hours is the default.
-- Logged-out visitors can open, listen, switch A/B playback, see time remaining, and share. Pressing the protected vote path returns through sign-in to the exact card.
+- Server time sets the immutable 30-minute / 2-hour / 12-hour / custom-up-to-3-day deadline; 2 hours is the default. Custom windows use whole-minute values from 30 minutes through 3 days.
+- Logged-out visitors can open, listen to either full song, switch A/B playback, pause, seek, see time remaining, and share. Suno works expose a direct `Open in Suno` fallback. Pressing the protected vote path returns through sign-in to the exact card.
 - Before leaving for sign-in, the selected A/B draft is stored with the voting deadline. Email and OAuth callbacks keep the exact return target until the Q Crash destination really loads, use a full-page return navigation, restore the draft without auto-submitting it, and do not fall back to `/`.
 - Participants cannot vote. A signed-in audience account can vote once and cannot recast.
 - Selecting A/B does not write a vote. A fixed, explicit confirmation dock remains visible above the player; before confirmation the listener may replay, seek, and switch choices, and after confirmation the vote cannot change. Logged-out copy says `登入並投作品 A/B`.
 - Before confirming the vote, that voter may enter one optional comment of at most 120 characters and send it with the A/B vote. After confirmation, the API/UI rejects new, edited, or deleted comments; before settlement it returns no public comment list/count, and after settlement visible comments are public. Comments never affect voting or five-axis feedback.
 - Each signed-in non-participant may select 押韻、爆點、旋律、情緒、結構 once per work. Every key locks immediately; participants cannot submit feedback.
 - During voting, the public API/UI returns no tally, percentage, total audience, feedback aggregate, leader, radar, or inference signal. It may return only the current listener's own selected feedback keys. Direct guest voting and the normal `cast_vote` path reject Q Crash.
-- Owner Analytics records a private funnel with distinct browser sessions: open, both works played, both works listened for 5+ cumulative real seconds, A/B selected, sign-in encountered, and vote submitted. Seeking alone does not satisfy listening. The dashboard reports `聽完未投`, while no funnel count appears in any public or participant-facing pre-deadline surface.
+- Owner Analytics records a private funnel with distinct browser sessions: open, both works played, A/B selected, sign-in encountered, and vote submitted. Playback duration and completion never gate voting, and no funnel count appears in any public or participant-facing pre-deadline surface.
 - Deadline settlement runs from the 5-minute Battle fallback cron and also settles opportunistically on a post-deadline card read.
 - Verify 0, 1, and 2 valid audience accounts settle as insufficient with no archive/stats/Showtime/rematch. Verify 3+ creates an official work-first result and saves the winning queue/work ID.
 - Verify official ties reuse the stable formal Drop Battle tie breaker.
@@ -128,7 +128,7 @@ Check:
 - Every work opens an in-page lyrics HUD and has a readable `歌詞未提供` fallback.
 - Check the pending, voting, voted, insufficient, official-result, cancelled, and expired screens at 1440x900 and 390x844. The shared five-key dock, fixed vote-plus-optional-comment confirmation dock, and fixed bottom A/B player must not cover one another or create horizontal overflow. Before confirmation, the optional comment is sent together with the vote; after confirmation, no comment editor or edit/delete action is shown.
 - Confirm ordinary live Drop Battle guest voting, Battle Records, official gatekeepers, rematch, Explore challenges, and Showtime do not regress.
-- Before enabling Q Crash in production, apply and verify `supabase/20260731_q_crash_async_drop_battle.sql`, `supabase/20260731193000_q_crash_feedback.sql`, `supabase/20260731233000_q_crash_voter_comments.sql`, and `supabase/20260801000000_q_crash_work_covers.sql`; code deployment without these schemas/columns is a release blocker.
+- Before enabling Q Crash in production, apply and verify `supabase/20260731_q_crash_async_drop_battle.sql`, `supabase/20260731193000_q_crash_feedback.sql`, `supabase/20260731233000_q_crash_voter_comments.sql`, `supabase/20260801055052_q_crash_work_covers.sql`, and `supabase/migrations/20260901090000_q_crash_full_song_tracks.sql`; code deployment without these schemas/columns is a release blocker.
 - Apply and verify `supabase/20260801070000_q_crash_post_result_preferences.sql` before enabling the post-result A/B preference controls; until then the card must remain readable without breaking official Q Crash results.
 
 ## Explore AI Music Challenge Checklist

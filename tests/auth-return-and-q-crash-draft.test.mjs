@@ -47,7 +47,7 @@ test("Q Crash draft survives auth but remains unsubmitted", () => {
     expiresAt: now + 60_000,
   }), now);
   assert.equal(draft?.vote, "fighter_b");
-  assert.deepEqual(draft?.listened, { A: true, B: false });
+  assert.equal("listened" in (draft ?? {}), false);
   assert.equal(parseQCrashVoteDraft(JSON.stringify({ vote: "fighter_a", expiresAt: now - 1 }), now), null);
   assert.match(qCrashVoteDraftKey("battle-id"), /battle-id$/);
   assert.ok(qCrashCard.includes("rememberQCrashVoteDraft"));

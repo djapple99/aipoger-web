@@ -31,6 +31,7 @@ import {
   Q_CRASH_FEEDBACK_KEYS,
   emptyQCrashFeedbackCounts,
   qCrashDisplayLang,
+  type QCrashSourceType,
   type QCrashFeedbackCounts,
   type QCrashFeedbackKey,
 } from "@/lib/q-crash-rules";
@@ -58,6 +59,8 @@ type Work = {
   lyrics: string | null;
   durationSeconds: number | null;
   audioUrl: string | null;
+  sourceType: QCrashSourceType;
+  sourceUrl: string | null;
   coverUrl: string | null;
   fullSongUrl: string | null;
   avatarUrl: string | null;
@@ -127,6 +130,11 @@ function formatClock(seconds: number) {
   const secs = safe % 60;
   if (hours > 0) return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+}
+
+function formatTrackDuration(seconds: number | null, isZh: boolean) {
+  if (!seconds || !Number.isFinite(seconds) || seconds <= 0) return isZh ? "完整歌曲" : "Full track";
+  return formatClock(seconds);
 }
 
 function timeLeft(target: string | null | undefined) {
@@ -317,6 +325,7 @@ function QCrashWorkCard(props: {
     onVote,
   } = props;
   const accent = side === "A" ? "orange" : "cyan";
+  const canPlay = Boolean(work.audioUrl);
   return (
     <article
       className={`relative min-w-0 overflow-hidden rounded-[1.75rem] border p-4 transition md:p-5 ${
@@ -332,9 +341,12 @@ function QCrashWorkCard(props: {
       <div className="flex min-w-0 items-start gap-4">
         <button
           type="button"
+          disabled={!canPlay}
           onClick={onPlay}
-          aria-label={`${playing ? (isZh ? "暫停" : "Pause") : (isZh ? "播放" : "Play")} ${work.songName}`}
+          aria-label={canPlay ? `${playing ? (isZh ? "暫停" : "Pause") : (isZh ? "播放" : "Play")} ${work.songName}` : (isZh ? "在 Suno 開啟" : "Open in Suno")}
           className={`group relative h-28 w-28 shrink-0 overflow-hidden rounded-2xl border bg-zinc-950 sm:h-36 sm:w-36 ${
+            canPlay ? "" : "cursor-not-allowed opacity-80"
+          } ${
             side === "A" ? "border-orange-300/30" : "border-cyan-300/30"
           }`}
         >
@@ -350,10 +362,10 @@ function QCrashWorkCard(props: {
           <span className={`absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-white shadow-xl ${
             side === "A" ? "bg-orange-500" : "bg-cyan-500"
           }`}>
-            {playing ? <Pause size={21} fill="currentColor" /> : <Play size={21} fill="currentColor" className="ml-0.5" />}
+            {canPlay ? (playing ? <Pause size={21} fill="currentColor" /> : <Play size={21} fill="currentColor" className="ml-0.5" />) : <ExternalLink size={20} />}
           </span>
           <span className="absolute bottom-2 right-2 rounded-full bg-black/75 px-2 py-1 text-[10px] font-black">
-            {work.durationSeconds ? `${Math.round(work.durationSeconds)}s` : "≤60s"}
+            {formatTrackDuration(work.durationSeconds, isZh)}
           </span>
         </button>
 
@@ -380,8 +392,9 @@ function QCrashWorkCard(props: {
           <div className="mt-4 flex flex-wrap gap-2">
             <button
               type="button"
+              disabled={!canPlay}
               onClick={onPlay}
-              className={`inline-flex min-h-10 items-center gap-2 rounded-full border px-4 text-xs font-black transition ${
+              className={`inline-flex min-h-10 items-center gap-2 rounded-full border px-4 text-xs font-black transition disabled:cursor-not-allowed disabled:opacity-50 ${
                 side === "A"
                   ? "border-orange-300/35 text-orange-100 hover:bg-orange-400/10"
                   : "border-cyan-300/35 text-cyan-100 hover:bg-cyan-300/10"
@@ -390,6 +403,17 @@ function QCrashWorkCard(props: {
               {playing ? <Pause size={15} /> : <Play size={15} />}
               {playing ? (isZh ? "暫停" : "Pause") : (isZh ? "播放" : "Play")}
             </button>
+            {work.sourceType === "suno" && work.sourceUrl ? (
+              <a
+                href={work.sourceUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-cyan-200/35 bg-cyan-300/[0.06] px-4 text-xs font-black text-cyan-100 transition hover:border-cyan-100/70 hover:bg-cyan-300/15"
+              >
+                <ExternalLink size={15} />
+                {isZh ? "在 Suno 開啟" : "Open in Suno"}
+              </a>
+            ) : null}
             <button
               type="button"
               onClick={onLyrics}
@@ -463,7 +487,6 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.9);
   const [pendingVote, setPendingVote] = useState<VoteSide | null>(null);
-  const [listenedSides, setListenedSides] = useState<Record<Side, boolean>>({ A: false, B: false });
   const [votingBusy, setVotingBusy] = useState(false);
   const [feedbackSide, setFeedbackSide] = useState<Side>("A");
   const [feedbackBusy, setFeedbackBusy] = useState<QCrashFeedbackKey | null>(null);
@@ -479,8 +502,6 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const analyticsSentRef = useRef(new Set<string>());
   const restoredDraftKeyRef = useRef<string | null>(null);
-  const listenedSidesRef = useRef<Record<Side, boolean>>({ A: false, B: false });
-  const listenSecondsRef = useRef<Record<Side, number>>({ A: 0, B: 0 });
 
   const currentPath = `${pathname}?lang=${lang}`;
   const draftKey = payload?.card.battleId || payload?.card.id || null;
@@ -655,49 +676,19 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
       clearQCrashVoteDraft(draftKey);
       setPendingVote(null);
       setCommentText("");
-      setListenedSides({ A: false, B: false });
-      listenedSidesRef.current = { A: false, B: false };
-      listenSecondsRef.current = { A: 0, B: 0 };
       restoredDraftKeyRef.current = draftKey;
       return;
     }
     if (restoredDraftKeyRef.current === draftKey) return;
     const draft = readQCrashVoteDraft(draftKey);
-    const restoredListened = draft?.listened ?? { A: false, B: false };
     setPendingVote(draft?.vote ?? null);
     setCommentText(draft?.comment ?? "");
-    setListenedSides(restoredListened);
-    listenedSidesRef.current = restoredListened;
-    listenSecondsRef.current = {
-      A: restoredListened.A ? 5 : 0,
-      B: restoredListened.B ? 5 : 0,
-    };
     restoredDraftKeyRef.current = draftKey;
-    if (restoredListened.A) trackStage("listen_qualified", "A");
-    if (restoredListened.B) trackStage("listen_qualified", "B");
-    if (restoredListened.A && restoredListened.B) trackStage("both_listened");
   }, [draftKey, payload, trackStage]);
 
   useEffect(() => {
     trackStage("open");
   }, [trackStage]);
-
-  useEffect(() => {
-    if (!playing || !currentSide || !draftKey || payload?.card.status !== "q_crash_voting") return;
-    const side = currentSide;
-    const timer = window.setInterval(() => {
-      listenSecondsRef.current[side] += 0.5;
-      if (listenSecondsRef.current[side] < 5 || listenedSidesRef.current[side]) return;
-
-      const next = { ...listenedSidesRef.current, [side]: true };
-      listenedSidesRef.current = next;
-      setListenedSides(next);
-      rememberQCrashVoteDraft(draftKey, { listened: next }, payload.card.votingEndsAt);
-      trackStage("listen_qualified", side);
-      if (next.A && next.B) trackStage("both_listened");
-    }, 500);
-    return () => window.clearInterval(timer);
-  }, [currentSide, draftKey, payload?.card.status, payload?.card.votingEndsAt, playing, trackStage]);
 
   const works = payload?.works;
   const currentWork = currentSide ? works?.[currentSide] ?? null : null;
@@ -865,14 +856,14 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
     const url = new URL(sharePath, window.location.origin).toString();
     const title = works?.B
       ? `幫我選一下：${works.A.songName} VS ${works.B.songName}`
-      : `來幫我找另一首：${works?.A.songName || "60 秒 Drop"}`;
+      : `來幫我找另一首：${works?.A.songName || "完整歌曲"}`;
     const text = isZh
       ? works?.B
-        ? "這兩首歌到底哪首比較好聽啊？我有點選不出來！兩首 60 秒 Drop，進來聽重點，幫我決定哪首勝出！"
-        : "我先放了一首 60 秒 Drop，來幫我找另一首一起比一下！"
+        ? "這兩首歌到底哪首比較好聽啊？我有點選不出來！進來聽完整歌曲，幫我決定哪首勝出！"
+        : "我先放了一首完整歌曲，來幫我找另一首一起比一下！"
       : works?.B
-        ? "Which song sounds better? I can't decide! Two 60-second Drops—listen to the key moments and help me pick a winner."
-        : "I have one 60-second Drop ready. Help me find another track to compare it with.";
+        ? "Which song sounds better? I can't decide! Listen to both full songs and help me pick a winner."
+        : "I have one full song ready. Help me find another track to compare it with.";
     try {
       if (navigator.share) await navigator.share({ title, text, url });
       else {
@@ -968,11 +959,11 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
 
         <header className="mt-5 flex flex-col gap-4 border-b border-white/10 pb-5 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-[10px] font-black tracking-[0.3em] text-orange-300">AIPOGER · ASYNC DROP BATTLE</p>
+            <p className="text-[10px] font-black tracking-[0.3em] text-orange-300">AIPOGER · FULL SONG BATTLE</p>
             <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
               <h1 className="text-3xl font-black tracking-[-0.04em] sm:text-4xl">Q CRASH</h1>
               <p className="text-xs font-bold text-zinc-500 sm:text-sm">
-                {isZh ? "兩首 60 秒 Drop，聽完再決定哪首勝出。" : "Two 60-second Drops. Listen, then choose the winner."}
+                {isZh ? "兩首完整歌曲，聽到你想投的時候再決定。" : "Two full songs. Listen as long as you want, then choose the winner."}
               </p>
             </div>
           </div>
@@ -1046,7 +1037,7 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
               ) : (
                 <article className="flex min-h-64 flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-cyan-300/30 bg-cyan-300/[0.04] p-6 text-center">
                   <span className="flex h-16 w-16 items-center justify-center rounded-full border border-cyan-300/35 bg-cyan-300/10 text-2xl font-black text-cyan-100">B</span>
-                  <h2 className="mt-4 text-xl font-black">{isZh ? "等待第二首 Drop" : "Waiting for the second Drop"}</h2>
+                  <h2 className="mt-4 text-xl font-black">{isZh ? "等待第二首完整歌曲" : "Waiting for the second full song"}</h2>
                   <p className="mt-2 max-w-sm text-sm font-bold leading-6 text-zinc-400">
                     {isZh ? "可以放自己的另一個版本，也可以把這張邀請傳給朋友。" : "Add another version of your own, or send this invite to a friend."}
                   </p>
@@ -1102,19 +1093,6 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
                 <p className="mt-1 text-xs font-bold text-zinc-500">
                   {isZh ? "勝負票與五項感受分開；截止前不顯示票數、評分總和或領先作品。" : "Winner votes and feedback are separate. No totals or leader signals appear before the deadline."}
                 </p>
-                {voteActionEnabled ? (
-                  <div className="mx-auto mt-4 grid max-w-xl grid-cols-3 gap-2 text-[11px] font-black sm:text-xs">
-                    <span className={`rounded-xl border px-2 py-2 ${listenedSides.A ? "border-orange-300/40 bg-orange-400/10 text-orange-100" : "border-white/8 text-zinc-600"}`}>
-                      {listenedSides.A ? "✓" : "1"} · {isZh ? "聽作品 A" : "Listen A"}
-                    </span>
-                    <span className={`rounded-xl border px-2 py-2 ${listenedSides.B ? "border-cyan-300/40 bg-cyan-300/10 text-cyan-100" : "border-white/8 text-zinc-600"}`}>
-                      {listenedSides.B ? "✓" : "2"} · {isZh ? "聽作品 B" : "Listen B"}
-                    </span>
-                    <span className={`rounded-xl border px-2 py-2 ${pendingVote ? "border-white/25 bg-white/[0.06] text-white" : "border-white/8 text-zinc-600"}`}>
-                      {pendingVote ? "✓" : "3"} · {isZh ? "選擇並確定" : "Choose & confirm"}
-                    </span>
-                  </div>
-                ) : null}
                 {voteActionEnabled ? (
                   <p className="mt-2 text-[11px] font-bold text-zinc-600">
                     {isZh ? "送出前可繼續重播、快轉或改選；送出後無法更改。" : "Replay, seek, or switch before submitting. A submitted vote cannot be changed."}

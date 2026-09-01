@@ -8,6 +8,7 @@ import {
   canQCrashAccountVote,
   emptyQCrashFeedbackCounts,
   qCrashVersionLabels,
+  qCrashSourceType,
   type QCrashFeedbackCounts,
   type QCrashFeedbackKey,
   type QCrashSide,
@@ -40,9 +41,14 @@ type QueueRow = {
   genre: string;
   ai_tool: string | null;
   lyrics: string | null;
-  audio_path: string;
+  audio_path: string | null;
   drop_duration_seconds: number | null;
   cover_url: string | null;
+  source_type: string | null;
+  source_url: string | null;
+  title: string | null;
+  creator: string | null;
+  duration_seconds: number | null;
 };
 type BattleRow = {
   id: string;
@@ -56,8 +62,8 @@ type BattleRow = {
   queue_b_id: string;
   song_a_name: string;
   song_b_name: string;
-  audio_a_path: string;
-  audio_b_path: string;
+  audio_a_path: string | null;
+  audio_b_path: string | null;
   genre: string;
   ai_tool_a: string | null;
   ai_tool_b: string | null;
@@ -125,7 +131,8 @@ async function readCard(admin: SupabaseClient, id: string) {
     .maybeSingle<CardRow>();
 }
 
-async function signedAudio(admin: SupabaseClient, path: string) {
+async function signedAudio(admin: SupabaseClient, path: string | null) {
+  if (!path) return null;
   if (/^(https?:|data:|blob:|\/)/i.test(path)) return path;
   const { data } = await admin.storage.from("battle-audio").createSignedUrl(path, 60 * 60);
   return data?.signedUrl ?? null;
@@ -185,7 +192,7 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
   const [queueResult, battleResult] = await Promise.all([
     admin
       .from("battle_queue")
-      .select("id,user_id,fighter_name,original_file_name,genre,ai_tool,lyrics,audio_path,drop_duration_seconds,cover_url")
+      .select("id,user_id,fighter_name,original_file_name,genre,ai_tool,lyrics,audio_path,drop_duration_seconds,cover_url,source_type,source_url,title,creator,duration_seconds")
       .in("id", queueIds)
       .returns<QueueRow[]>(),
     card.battle_id
@@ -216,8 +223,8 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
   const editorial = await loadQCrashEditorial(admin, [queueA.id, queueB?.id ?? ""]);
   const editorialA = editorial.rows.find((row) => row.queue_id === queueA.id) ?? null;
   const editorialB = queueB ? editorial.rows.find((row) => row.queue_id === queueB.id) ?? null : null;
-  const songAName = battle?.song_a_name || queueA.original_file_name;
-  const songBName = battle?.song_b_name || queueB?.original_file_name;
+  const songAName = battle?.song_a_name || queueA.title || queueA.original_file_name;
+  const songBName = battle?.song_b_name || queueB?.title || queueB?.original_file_name;
 
   const token = tokenFromRequest(request);
   const viewer = token ? (await admin.auth.getUser(token)).data.user : null;
@@ -251,8 +258,12 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
   const [profileA, profileB, audioA, audioB, editorialCoverA, editorialCoverB] = await Promise.all([
     profileMedia(admin, queueA.user_id),
     queueB ? profileMedia(admin, queueB.user_id) : Promise.resolve(null),
-    signedAudio(admin, battle?.audio_a_path || queueA.audio_path),
-    queueB ? signedAudio(admin, battle?.audio_b_path || queueB.audio_path) : Promise.resolve(null),
+    qCrashSourceType(queueA.source_type) === "suno" ? Promise.resolve(null) : signedAudio(admin, battle?.audio_a_path || queueA.audio_path),
+    queueB
+      ? qCrashSourceType(queueB.source_type) === "suno"
+        ? Promise.resolve(null)
+        : signedAudio(admin, battle?.audio_b_path || queueB.audio_path)
+      : Promise.resolve(null),
     signedQCrashCover(admin, editorialA?.cover_path),
     signedQCrashCover(admin, editorialB?.cover_path),
   ]);
@@ -344,11 +355,13 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
           queueId: queueA.id,
           label: labels.A,
           songName: songAName,
-          creatorName: battle?.fighter_a_name || queueA.fighter_name || profileA.name || "AIPOGER 創作者",
+          creatorName: battle?.fighter_a_name || queueA.creator || queueA.fighter_name || profileA.name || "AIPOGER 創作者",
           genre: queueA.genre || battle?.genre,
           aiTool: battle?.ai_tool_a ?? queueA.ai_tool,
           lyrics: battle?.lyrics_a ?? queueA.lyrics,
-          durationSeconds: queueA.drop_duration_seconds,
+          sourceType: qCrashSourceType(queueA.source_type) || "upload",
+          sourceUrl: qCrashSourceType(queueA.source_type) === "suno" ? queueA.source_url : null,
+          durationSeconds: queueA.duration_seconds ?? queueA.drop_duration_seconds,
           audioUrl: audioA,
           coverUrl: editorialCoverA || battle?.song_a_cover || queueA.cover_url || profileA.coverUrl,
           fullSongUrl: qCrashEditorialShowsFullSong(card.status) ? editorialA?.full_song_url ?? null : null,
@@ -359,11 +372,13 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
               queueId: queueB.id,
               label: labels.B,
               songName: songBName || queueB.original_file_name,
-              creatorName: battle?.fighter_b_name || queueB.fighter_name || profileB?.name || "AIPOGER 創作者",
+              creatorName: battle?.fighter_b_name || queueB.creator || queueB.fighter_name || profileB?.name || "AIPOGER 創作者",
               genre: queueB.genre || battle?.genre,
               aiTool: battle?.ai_tool_b ?? queueB.ai_tool,
               lyrics: battle?.lyrics_b ?? queueB.lyrics,
-              durationSeconds: queueB.drop_duration_seconds,
+              sourceType: qCrashSourceType(queueB.source_type) || "upload",
+              sourceUrl: qCrashSourceType(queueB.source_type) === "suno" ? queueB.source_url : null,
+              durationSeconds: queueB.duration_seconds ?? queueB.drop_duration_seconds,
               audioUrl: audioB,
               coverUrl: editorialCoverB || battle?.song_b_cover || queueB.cover_url || profileB?.coverUrl,
               fullSongUrl: qCrashEditorialShowsFullSong(card.status) ? editorialB?.full_song_url ?? null : null,

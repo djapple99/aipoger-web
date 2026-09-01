@@ -38,14 +38,12 @@ type QCrashFunnelCard = {
   title: string;
   opened: number;
   playedBoth: number;
-  listenedBoth: number;
   selected: number;
   authRequired: number;
   submitted: number;
   lineInApp: number;
   externalBrowserCta: number;
   externalBrowserFailed: number;
-  listenedNoVote: number;
   openedNoVote: number;
   conversionRate: number;
 };
@@ -91,14 +89,12 @@ type AnalyticsPayload = {
   qCrash?: {
     opened: number;
     playedBoth: number;
-    listenedBoth: number;
     selected: number;
     authRequired: number;
     submitted: number;
     lineInApp: number;
     externalBrowserCta: number;
     externalBrowserFailed: number;
-    listenedNoVote: number;
     cards: QCrashFunnelCard[];
   };
   creator?: Record<string, number | LabelValue[]>;
@@ -536,27 +532,22 @@ export default function AdminAnalyticsPage() {
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-300">Q Crash Funnel</p>
-                <h2 className="mt-1 text-2xl font-black text-white">打開、聽完、選擇到正式投票</h2>
+                <h2 className="mt-1 text-2xl font-black text-white">打開、播放、選擇到正式投票</h2>
                 <p className="mt-2 text-xs font-bold leading-5 text-zinc-500">
-                  Owner 私有估算；以 30 分鐘瀏覽 session 去重。每首實際播放累積 5 秒才列入「兩邊都聽」，不會在截止前顯示給參賽者或觀眾。
+                  Owner 私有估算；以 30 分鐘瀏覽 session 去重。這是行為分析，不會在截止前顯示給參賽者或觀眾，也不會限制投票。
                 </p>
               </div>
-              <span className="rounded-full border border-cyan-300/25 bg-cyan-300/8 px-3 py-2 text-xs font-black text-cyan-100">
-                聽完未投 {formatNumber(payload?.qCrash?.listenedNoVote)}
-              </span>
             </div>
             <div className="mt-5">
               <StatGrid rows={[
                 { label: "Opened", value: payload?.qCrash?.opened ?? 0 },
                 { label: "Played Both", value: payload?.qCrash?.playedBoth ?? 0 },
-                { label: "Listened Both 5s+", value: payload?.qCrash?.listenedBoth ?? 0 },
                 { label: "Selected A / B", value: payload?.qCrash?.selected ?? 0 },
                 { label: "Hit Login", value: payload?.qCrash?.authRequired ?? 0 },
                 { label: "Vote Submitted", value: payload?.qCrash?.submitted ?? 0 },
                 { label: "Opened in LINE", value: payload?.qCrash?.lineInApp ?? 0 },
                 { label: "External Browser CTA", value: payload?.qCrash?.externalBrowserCta ?? 0 },
                 { label: "Browser Jump Failed", value: payload?.qCrash?.externalBrowserFailed ?? 0 },
-                { label: "Listened, No Vote", value: payload?.qCrash?.listenedNoVote ?? 0 },
               ]} />
             </div>
             <div className="mt-5 overflow-x-auto rounded-xl border border-white/10">
@@ -566,19 +557,17 @@ export default function AdminAnalyticsPage() {
                     <th className="px-3 py-3">Q Crash</th>
                     <th className="px-3 py-3 text-right">打開</th>
                     <th className="px-3 py-3 text-right">兩邊播放</th>
-                    <th className="px-3 py-3 text-right">兩邊聽 5s+</th>
                     <th className="px-3 py-3 text-right">已選擇</th>
                     <th className="px-3 py-3 text-right">完成投票</th>
                     <th className="px-3 py-3 text-right">LINE 開啟</th>
                     <th className="px-3 py-3 text-right">外部開啟</th>
                     <th className="px-3 py-3 text-right">跳轉失敗</th>
-                    <th className="px-3 py-3 text-right">聽完未投</th>
                     <th className="px-3 py-3 text-right">轉換率</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/8">
                   {(payload?.qCrash?.cards ?? []).length === 0 ? (
-                    <tr><td colSpan={11} className="px-3 py-6 text-center font-bold text-zinc-600">新漏斗上線後，這裡會開始累積資料。</td></tr>
+                    <tr><td colSpan={9} className="px-3 py-6 text-center font-bold text-zinc-600">新漏斗上線後，這裡會開始累積資料。</td></tr>
                   ) : payload?.qCrash?.cards.map((card) => (
                     <tr key={card.battleId} className="bg-black/25">
                       <td className="max-w-sm px-3 py-3">
@@ -587,13 +576,11 @@ export default function AdminAnalyticsPage() {
                       </td>
                       <td className="px-3 py-3 text-right font-black text-zinc-300">{card.opened}</td>
                       <td className="px-3 py-3 text-right font-black text-zinc-300">{card.playedBoth}</td>
-                      <td className="px-3 py-3 text-right font-black text-cyan-100">{card.listenedBoth}</td>
                       <td className="px-3 py-3 text-right font-black text-zinc-300">{card.selected}</td>
                       <td className="px-3 py-3 text-right font-black text-emerald-200">{card.submitted}</td>
                       <td className="px-3 py-3 text-right font-black text-orange-200">{card.lineInApp}</td>
                       <td className="px-3 py-3 text-right font-black text-cyan-100">{card.externalBrowserCta}</td>
                       <td className="px-3 py-3 text-right font-black text-red-200">{card.externalBrowserFailed}</td>
-                      <td className="px-3 py-3 text-right font-black text-orange-200">{card.listenedNoVote}</td>
                       <td className="px-3 py-3 text-right font-black text-white">{card.conversionRate}%</td>
                     </tr>
                   ))}

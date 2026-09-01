@@ -39,8 +39,6 @@ type AnalyticsPayload = {
 export type QCrashAnalyticsStage =
   | "open"
   | "play"
-  | "listen_qualified"
-  | "both_listened"
   | "selected"
   | "auth_required"
   | "submitted"

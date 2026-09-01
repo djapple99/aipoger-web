@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import {
   canQCrashAccountJoin,
-  isValidQCrashDropDuration,
+  isValidQCrashSunoUrl,
+  qCrashSourceType,
 } from "@/lib/q-crash-rules";
 import { ACTIVE_DROP_QUEUE_STATUSES, dropBattleRoleLockMessage } from "@/lib/battle-pool-rules";
+import { isValidStorageObjectKey } from "@/lib/storage-path";
 
 type RouteProps = { params: Promise<{ id: string }> };
 type CardRow = {
@@ -21,8 +23,14 @@ type QueueRow = {
   user_id: string;
   fighter_name: string;
   genre: string;
-  audio_path: string;
+  audio_path: string | null;
   original_file_name: string;
+  source_type: string | null;
+  source_url: string | null;
+  title: string | null;
+  creator: string | null;
+  duration_seconds: number | null;
+  rights_confirmed_at: string | null;
   ai_tool: string | null;
   lyrics: string | null;
   cover_url: string | null;
@@ -61,10 +69,10 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
 
   const body = (await request.json().catch(() => null)) as {
     queueId?: string;
-    dropDurationSeconds?: number;
+    rightsConfirmed?: boolean;
   } | null;
-  if (!isUuid(body?.queueId)) return jsonError("找不到作品 B 的 Drop。");
-  if (!isValidQCrashDropDuration(body?.dropDurationSeconds)) return jsonError("Q Crash Drop 必須在 60 秒以內。");
+  if (!isUuid(body?.queueId)) return jsonError("找不到作品 B 的歌曲。");
+  if (body?.rightsConfirmed !== true) return jsonError("請先確認歌曲的創作或使用權利。");
 
   const { data: card, error: cardError } = await admin
     .from("q_crash_cards")
@@ -85,7 +93,7 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
 
   let { data: queues, error: queuesError } = await admin
     .from("battle_queue")
-    .select("id,user_id,fighter_name,genre,audio_path,original_file_name,ai_tool,lyrics,cover_url,status,match_group_id")
+    .select("id,user_id,fighter_name,genre,audio_path,original_file_name,ai_tool,lyrics,cover_url,status,match_group_id,source_type,source_url,title,creator,duration_seconds,rights_confirmed_at")
     .in("id", [card.founder_queue_id, body.queueId])
     .returns<QueueRow[]>();
   if (queuesError && /cover_url|schema cache|column.*does not exist|PGRST204/i.test(queuesError.message)) {
@@ -101,8 +109,17 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
   const founderQueue = (queues ?? []).find((queue) => queue.id === card.founder_queue_id);
   const challengerQueue = (queues ?? []).find((queue) => queue.id === body.queueId);
   if (!founderQueue) return jsonError("作品 A 已無法讀取。", 404);
-  if (!challengerQueue || challengerQueue.user_id !== user.id) return jsonError("作品 B 的 Drop 不存在。", 404);
-  if (founderQueue.id === challengerQueue.id) return jsonError("作品 A、B 必須使用兩段不同的 Drop。");
+  if (!challengerQueue || challengerQueue.user_id !== user.id) return jsonError("作品 B 的歌曲不存在。", 404);
+  if (founderQueue.id === challengerQueue.id) return jsonError("作品 A、B 必須使用兩首不同的歌曲。");
+  const challengerSourceType = qCrashSourceType(challengerQueue.source_type) || (challengerQueue.audio_path ? "upload" : null);
+  const challengerSourceUrl = challengerQueue.source_url?.trim() || (challengerSourceType === "upload" ? challengerQueue.audio_path : null);
+  if (!challengerSourceType) return jsonError("作品 B 的歌曲來源資料不完整，請重新提交。", 422);
+  if (challengerSourceType === "suno" && (!isValidQCrashSunoUrl(challengerSourceUrl) || Boolean(challengerQueue.audio_path))) {
+    return jsonError("Suno 來源必須是公開 HTTPS 連結，且不能上傳或轉存 Suno 音訊。", 422);
+  }
+  if (challengerSourceType === "upload" && (!challengerQueue.audio_path || !isValidStorageObjectKey(challengerQueue.audio_path) || challengerSourceUrl !== challengerQueue.audio_path)) {
+    return jsonError("作品 B 的上傳檔案資料不完整，請重新提交。", 422);
+  }
   if (challengerQueue.match_group_id || !["searching", "waiting_challenge"].includes(challengerQueue.status)) {
     return jsonError("作品 B 已進入其他 Battle。", 409);
   }
@@ -154,10 +171,10 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
       fighter_b_user_id: challengerQueue.user_id,
       fighter_a_name: founderQueue.fighter_name,
       fighter_b_name: challengerQueue.fighter_name,
-      song_a_name: founderQueue.original_file_name,
-      song_b_name: challengerQueue.original_file_name,
-      audio_a_path: founderQueue.audio_path,
-      audio_b_path: challengerQueue.audio_path,
+      song_a_name: founderQueue.title || founderQueue.original_file_name,
+      song_b_name: challengerQueue.title || challengerQueue.original_file_name,
+      audio_a_path: qCrashSourceType(founderQueue.source_type) === "suno" ? null : founderQueue.audio_path,
+      audio_b_path: challengerSourceType === "suno" ? null : challengerQueue.audio_path,
       genre: founderQueue.genre,
       status: "q_crash_voting",
       battle_type: "q_crash",
@@ -217,7 +234,7 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
         match_group_id: battle.id,
         opponent_user_id: founderQueue.user_id,
         matched_at: nowIso,
-        drop_duration_seconds: Number(body.dropDurationSeconds),
+        rights_confirmed_at: nowIso,
         ...(user.id === card.founder_user_id ? { challenge_target_queue_id: null } : {}),
         updated_at: nowIso,
       })
@@ -282,7 +299,7 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
       battle_id: battle.id,
       type: "q_crash_voting_started",
       title: "Q Crash 投票開始",
-      body: `《${founderQueue.original_file_name}》與《${challengerQueue.original_file_name}》已到位；分享同一張卡，邀請大家聽 Drop 投票。`,
+      body: `《${founderQueue.title || founderQueue.original_file_name}》與《${challengerQueue.title || challengerQueue.original_file_name}》已到位；分享同一張卡，邀請大家聽完整歌曲投票。`,
       metadata: {
         href: `/battle/${battle.id}`,
         cardId: card.id,

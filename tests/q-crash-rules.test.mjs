@@ -10,7 +10,8 @@ import {
   canQCrashAccountVote,
   isQCrashFeedbackKey,
   isQCrashOfficialAudienceCount,
-  isValidQCrashDropDuration,
+  isValidQCrashAudioFile,
+  isValidQCrashSunoUrl,
   pickQCrashWinner,
   qCrashCommentText,
   qCrashDurationMinutes,
@@ -25,19 +26,25 @@ test("Q Crash voter comments are optional short notes capped at 120 characters",
   assert.equal(qCrashCommentText("a".repeat(121)), null);
 });
 
-test("Q Crash accepts only the four simple duration presets", () => {
+test("Q Crash accepts fixed windows and custom durations up to three days", () => {
   assert.equal(qCrashDurationMinutes(30), 30);
   assert.equal(qCrashDurationMinutes("120"), 120);
-  assert.equal(qCrashDurationMinutes(360), 360);
+  assert.equal(qCrashDurationMinutes(720), 720);
   assert.equal(qCrashDurationMinutes(1440), 1440);
-  assert.equal(qCrashDurationMinutes(60), null);
+  assert.equal(qCrashDurationMinutes(180), 180);
+  assert.equal(qCrashDurationMinutes(4320), 4320);
+  assert.equal(qCrashDurationMinutes(29), null);
+  assert.equal(qCrashDurationMinutes(4321), null);
+  assert.equal(qCrashDurationMinutes(90.5), null);
 });
 
-test("Q Crash enforces 60-second Drops without requiring matching genres", () => {
-  assert.equal(isValidQCrashDropDuration(15), true);
-  assert.equal(isValidQCrashDropDuration(60), true);
-  assert.equal(isValidQCrashDropDuration(60.01), false);
-  assert.equal(isValidQCrashDropDuration(0), false);
+test("Q Crash accepts full-song Suno links and MP3/WAV uploads", () => {
+  assert.equal(isValidQCrashSunoUrl("https://suno.com/song/example"), true);
+  assert.equal(isValidQCrashSunoUrl("http://suno.com/song/example"), false);
+  assert.equal(isValidQCrashSunoUrl("https://example.com/song/example"), false);
+  assert.equal(isValidQCrashAudioFile({ name: "song.mp3", type: "audio/mpeg" }), true);
+  assert.equal(isValidQCrashAudioFile({ name: "song.wav", type: "audio/wav" }), true);
+  assert.equal(isValidQCrashAudioFile({ name: "song.ogg", type: "audio/ogg" }), false);
 });
 
 test("same creator can intentionally fill both Q Crash work seats", () => {

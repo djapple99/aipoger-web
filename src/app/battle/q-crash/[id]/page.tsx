@@ -14,10 +14,10 @@ export async function generateMetadata({ params, searchParams }: QCrashCardPageP
   const rawLang = Array.isArray(query.lang) ? query.lang[0] : query.lang;
   const isZh = qCrashDisplayLang(rawLang) === "zh";
   const canonical = `${siteOrigin()}/battle/q-crash/${encodeURIComponent(id)}`;
-  const title = isZh ? "Q Crash｜AIPOGER 非同步 Drop Battle" : "Q Crash | AIPOGER Async Drop Battle";
+  const title = isZh ? "Q Crash｜AIPOGER 非同步 Full Song Battle" : "Q Crash | AIPOGER Async Full Song Battle";
   const description = isZh
-    ? "這兩首歌到底哪首比較好聽啊？我有點選不出來！兩首 60 秒 Drop，進來聽重點，幫我決定哪首勝出！"
-    : "Which song sounds better? I can't decide! Two 60-second Drops—listen to the key moments and help me pick a winner.";
+    ? "這兩首歌到底哪首比較好聽啊？我有點選不出來！進來聽完整歌曲，幫我決定哪首勝出！"
+    : "Which song sounds better? I can't decide! Listen to both full songs and help me pick a winner.";
   return {
     title,
     description,

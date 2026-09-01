@@ -304,9 +304,6 @@ function qCrashFunnel(events: AnalyticsEventRow[]) {
     opened: Set<string>;
     playedA: Set<string>;
     playedB: Set<string>;
-    listenedA: Set<string>;
-    listenedB: Set<string>;
-    bothListened: Set<string>;
     selected: Set<string>;
     authRequired: Set<string>;
     submitted: Set<string>;
@@ -327,9 +324,6 @@ function qCrashFunnel(events: AnalyticsEventRow[]) {
       opened: new Set<string>(),
       playedA: new Set<string>(),
       playedB: new Set<string>(),
-      listenedA: new Set<string>(),
-      listenedB: new Set<string>(),
-      bothListened: new Set<string>(),
       selected: new Set<string>(),
       authRequired: new Set<string>(),
       submitted: new Set<string>(),
@@ -343,8 +337,6 @@ function qCrashFunnel(events: AnalyticsEventRow[]) {
     // first keepalive request was dropped by the browser.
     bucket.opened.add(event.session_id);
     if (stage === "play") (side === "B" ? bucket.playedB : bucket.playedA).add(event.session_id);
-    if (stage === "listen_qualified") (side === "B" ? bucket.listenedB : bucket.listenedA).add(event.session_id);
-    if (stage === "both_listened") bucket.bothListened.add(event.session_id);
     if (stage === "selected") bucket.selected.add(event.session_id);
     if (stage === "auth_required") bucket.authRequired.add(event.session_id);
     if (stage === "submitted") bucket.submitted.add(event.session_id);
@@ -356,23 +348,18 @@ function qCrashFunnel(events: AnalyticsEventRow[]) {
 
   const cards = [...buckets.values()].map((bucket) => {
     const playedBoth = intersectSets(bucket.playedA, bucket.playedB);
-    const qualifiedBySides = intersectSets(bucket.listenedA, bucket.listenedB);
-    const listenedBoth = new Set([...bucket.bothListened, ...qualifiedBySides]);
-    const listenedNoVote = new Set([...listenedBoth].filter((session) => !bucket.submitted.has(session)));
     const openedNoVote = new Set([...bucket.opened].filter((session) => !bucket.submitted.has(session)));
     return {
       battleId: bucket.battleId,
       title: `${bucket.workA} VS ${bucket.workB}`,
       opened: bucket.opened.size,
       playedBoth: playedBoth.size,
-      listenedBoth: listenedBoth.size,
       selected: bucket.selected.size,
       authRequired: bucket.authRequired.size,
       submitted: bucket.submitted.size,
       lineInApp: bucket.lineInApp.size,
       externalBrowserCta: bucket.externalBrowserCta.size,
       externalBrowserFailed: bucket.externalBrowserFailed.size,
-      listenedNoVote: listenedNoVote.size,
       openedNoVote: openedNoVote.size,
       conversionRate: pct(bucket.submitted.size, bucket.opened.size),
     };
@@ -381,14 +368,12 @@ function qCrashFunnel(events: AnalyticsEventRow[]) {
   return {
     opened: cards.reduce((sum, card) => sum + card.opened, 0),
     playedBoth: cards.reduce((sum, card) => sum + card.playedBoth, 0),
-    listenedBoth: cards.reduce((sum, card) => sum + card.listenedBoth, 0),
     selected: cards.reduce((sum, card) => sum + card.selected, 0),
     authRequired: cards.reduce((sum, card) => sum + card.authRequired, 0),
     submitted: cards.reduce((sum, card) => sum + card.submitted, 0),
     lineInApp: cards.reduce((sum, card) => sum + card.lineInApp, 0),
     externalBrowserCta: cards.reduce((sum, card) => sum + card.externalBrowserCta, 0),
     externalBrowserFailed: cards.reduce((sum, card) => sum + card.externalBrowserFailed, 0),
-    listenedNoVote: cards.reduce((sum, card) => sum + card.listenedNoVote, 0),
     cards,
   };
 }
