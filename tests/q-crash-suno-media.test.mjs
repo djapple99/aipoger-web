@@ -32,6 +32,23 @@ test("Q Crash resolves a short Suno share link from public page metadata", async
   }
 });
 
+test("Q Crash resolves a short Suno share link from its redirect URL", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({
+    ok: false,
+    url: `https://suno.com/song/${TRACK_ID}?sh=example-short-link`,
+    text: async () => "",
+  });
+  try {
+    assert.equal(
+      await resolveQCrashSunoPlaybackUrl("https://suno.com/s/example-short-link"),
+      `https://cdn1.suno.ai/${TRACK_ID}.mp4`,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("Q Crash does not produce a playback source for non-Suno or invalid media IDs", async () => {
   assert.equal(await resolveQCrashSunoPlaybackUrl("https://example.com/song/test"), null);
   assert.equal(qCrashSunoPlaybackUrl("not-a-track-id"), null);

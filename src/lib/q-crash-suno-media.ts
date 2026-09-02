@@ -10,7 +10,11 @@ function directTrackId(value: string) {
 }
 
 function trackIdFromPublicPage(html: string) {
-  const match = html.replaceAll("\\/", "/").match(SUNO_MP4_REGEX);
+  const normalizedHtml = html
+    .replaceAll("\\/", "/")
+    .replaceAll("\\u002F", "/")
+    .replaceAll("\\u002f", "/");
+  const match = normalizedHtml.match(SUNO_MP4_REGEX);
   return match?.[1] ?? null;
 }
 
@@ -40,6 +44,13 @@ export async function resolveQCrashSunoPlaybackUrl(value: unknown): Promise<stri
       cache: "no-store",
       signal: controller.signal,
     });
+
+    // Suno short links normally redirect to /song/<uuid>. The final URL is
+    // the reliable source of the track ID even when the public page is
+    // returned with a bot-check or omits its JSON metadata.
+    const redirectedTrackId = directTrackId(response.url);
+    const redirectedUrl = qCrashSunoPlaybackUrl(redirectedTrackId);
+    if (redirectedUrl) return redirectedUrl;
     if (!response.ok) return null;
     const html = await response.text();
     return qCrashSunoPlaybackUrl(trackIdFromPublicPage(html));
