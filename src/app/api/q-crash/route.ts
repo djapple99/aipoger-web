@@ -10,7 +10,7 @@ import {
 import { ACTIVE_DROP_QUEUE_STATUSES, dropBattleRoleLockMessage } from "@/lib/battle-pool-rules";
 import { settleQCrashBattle } from "@/lib/server-q-crash";
 import { isValidStorageObjectKey } from "@/lib/storage-path";
-import { resolveQCrashSunoPlaybackUrl } from "@/lib/q-crash-suno-media";
+import { resolveQCrashSunoMediaSource } from "@/lib/q-crash-suno-media";
 
 type QueueRow = {
   id: string;
@@ -243,7 +243,7 @@ export async function POST(request: NextRequest) {
   if (sourceType === "suno" && (!isValidQCrashSunoUrl(sourceUrl) || Boolean(queue.audio_path))) {
     return jsonError("Suno 來源必須是公開 HTTPS 連結，且不能上傳或轉存 Suno 音訊。", 422);
   }
-  if (sourceType === "suno" && !(await resolveQCrashSunoPlaybackUrl(sourceUrl))) {
+  if (sourceType === "suno" && !(await resolveQCrashSunoMediaSource(sourceUrl))) {
     return jsonError("這個 Suno 連結目前沒有可用的公開播放來源，請確認歌曲仍可公開播放。", 422);
   }
   if (sourceType === "upload" && (!queue.audio_path || !isValidStorageObjectKey(queue.audio_path) || sourceUrl !== queue.audio_path)) {

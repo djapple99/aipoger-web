@@ -15,6 +15,7 @@ const battleStatsRepairMigrationSource = source("../supabase/20260731122043_batt
 const battleStatsIndexMigrationSource = source("../supabase/20260731123402_battle_song_stats_fk_indexes.sql");
 const poolRouteSource = source("../src/app/api/q-crash/route.ts");
 const cardRouteSource = source("../src/app/api/q-crash/[id]/route.ts");
+const sunoPlaybackRouteSource = source("../src/app/api/q-crash/suno-playback/route.ts");
 const sunoMediaSource = source("../src/lib/q-crash-suno-media.ts");
 const joinRouteSource = source("../src/app/api/q-crash/[id]/join/route.ts");
 const voteRouteSource = source("../src/app/api/q-crash/[id]/vote/route.ts");
@@ -235,7 +236,13 @@ test("Q Crash uses full-song sources and keeps the sealed-vote presentation", ()
   assert.ok(qCrashNewSource.includes("source_type"));
   assert.ok(qCrashNewSource.includes("source_url"));
   assert.ok(sunoMediaSource.includes("cdn1\\\\.suno\\\\.ai"));
-  assert.ok(cardRouteSource.includes("resolveQCrashSunoPlaybackUrl"));
+  assert.ok(sunoMediaSource.includes("d2lwuy8qc234o3.cloudfront.net"));
+  assert.ok(cardRouteSource.includes("resolveQCrashSunoMediaSource"));
+  assert.ok(cardRouteSource.includes("qCrashSunoInAppPlaybackUrl"));
+  assert.ok(sunoPlaybackRouteSource.includes("/api/mango/rights"));
+  assert.ok(sunoPlaybackRouteSource.includes("createDecipheriv"));
+  assert.ok(sunoPlaybackRouteSource.includes("private, no-store"));
+  assert.ok(cardClientSource.includes("這個 Suno 來源暫時無法在站內播放"));
   assert.equal(cardClientSource.includes("Open in Suno"), false);
   assert.ok(cardClientSource.includes("Suno link · In-app playback"));
   assert.ok(cardClientSource.includes("formatTrackDuration"));

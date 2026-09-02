@@ -100,7 +100,7 @@ Check:
 
 - Battle Pool shows one compact `建立 Q Crash` entry while keeping the existing live Drop Battle CTA and challenge pool unchanged.
 - Creating work A offers `Paste Suno Link` or `Upload Audio File` (MP3/WAV), stores a unified full-song Track, captures the rights confirmation, and creates one pending Q Crash card without opening the Drop cropper.
-- Work A and Work B may each attach their own cover; the selected cover is stored with that queue/work and appears on the matching A/B seat. Suno audio is never downloaded or copied into Storage.
+- Work A and Work B may each attach their own cover; the selected cover is stored with that queue/work and appears on the matching A/B seat. Suno playback uses the public Mango rights handshake and just-in-time in-memory decryption; the audio is never persisted, copied into Storage, transcoded, or cropped.
 - The creator may place a second own work, leave the card open for a shared invite, or target an existing creator account. A targeted creator receives a readable account notification linked to the pending card.
 - Work B must use a distinct queue entry and the exact same fixed genre. A different creator must own the submitted track; the original creator may intentionally submit a second own track.
 - The first successful work-B acceptance wins the pending-card claim. Two simultaneous accepts must not create duplicate battles.
@@ -109,7 +109,7 @@ Check:
 - Battle Pool places Q Crash matchup cards in a distinct blue/cyan section directly below the Q Crash introduction. The red/orange `Drop Battle 公開挑戰池` contains only official/public Drop cards and its genre filters do not hide Q Crash cards.
 - At 1440x900 and the 1092px desktop reference width, Q Crash introduction/matchups read as one cyan system and the public Drop Battle pool reads as a separate red/coral system. Cyan/red live-text ribbons and solid primary CTAs use black text; ordinary card titles remain white, and the page has no horizontal overflow.
 - Server time sets the immutable 30-minute / 2-hour / 12-hour / custom-up-to-3-day deadline; 2 hours is the default. Custom windows use whole-minute values from 30 minutes through 3 days.
-- Logged-out visitors can open, listen to either full song, switch A/B playback, pause, seek, see time remaining, and share. Suno works resolve a publicly playable media source and play inside the Q Crash player; they do not silently fall back to opening Suno. Pressing the protected vote path returns through sign-in to the exact card.
+- Logged-out visitors can open, listen to either full song, switch A/B playback, pause, seek, see time remaining, and share. Suno works resolve their public media metadata and playback-rights handshake, then play inside the Q Crash player; a failed source shows an in-app error and never silently falls back to opening Suno. Pressing the protected vote path returns through sign-in to the exact card.
 - Before leaving for sign-in, the selected A/B draft is stored with the voting deadline. Email and OAuth callbacks keep the exact return target until the Q Crash destination really loads, use a full-page return navigation, restore the draft without auto-submitting it, and do not fall back to `/`.
 - Participants cannot vote. A signed-in audience account can vote once and cannot recast.
 - Selecting A/B does not write a vote. A fixed, explicit confirmation dock remains visible above the player; before confirmation the listener may replay, seek, and switch choices, and after confirmation the vote cannot change. Logged-out copy says `登入並投作品 A/B`.

@@ -16,7 +16,10 @@ import {
 import { qCrashEditorialShowsFullSong } from "@/lib/q-crash-editorial";
 import { settleQCrashBattle } from "@/lib/server-q-crash";
 import { loadQCrashEditorial, signedQCrashCover } from "@/lib/server-q-crash-editorial";
-import { resolveQCrashSunoPlaybackUrl } from "@/lib/q-crash-suno-media";
+import {
+  qCrashSunoInAppPlaybackUrl,
+  resolveQCrashSunoMediaSource,
+} from "@/lib/q-crash-suno-media";
 
 type RouteProps = { params: Promise<{ id: string }> };
 type CardRow = {
@@ -260,11 +263,11 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
     profileMedia(admin, queueA.user_id),
     queueB ? profileMedia(admin, queueB.user_id) : Promise.resolve(null),
     qCrashSourceType(queueA.source_type) === "suno"
-      ? resolveQCrashSunoPlaybackUrl(queueA.source_url)
+      ? resolveQCrashSunoMediaSource(queueA.source_url).then((media) => media ? qCrashSunoInAppPlaybackUrl(queueA.source_url) : null)
       : signedAudio(admin, battle?.audio_a_path || queueA.audio_path),
     queueB
       ? qCrashSourceType(queueB.source_type) === "suno"
-        ? resolveQCrashSunoPlaybackUrl(queueB.source_url)
+        ? resolveQCrashSunoMediaSource(queueB.source_url).then((media) => media ? qCrashSunoInAppPlaybackUrl(queueB.source_url) : null)
         : signedAudio(admin, battle?.audio_b_path || queueB.audio_path)
       : Promise.resolve(null),
     signedQCrashCover(admin, editorialA?.cover_path),

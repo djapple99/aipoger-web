@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  qCrashSunoInAppPlaybackUrl,
   qCrashSunoPlaybackUrl,
+  resolveQCrashSunoMediaSource,
   resolveQCrashSunoPlaybackUrl,
 } from "../src/lib/q-crash-suno-media.ts";
 
@@ -43,6 +45,31 @@ test("Q Crash resolves a short Suno share link from its redirect URL", async () 
     assert.equal(
       await resolveQCrashSunoPlaybackUrl("https://suno.com/s/example-short-link"),
       `https://cdn1.suno.ai/${TRACK_ID}.mp4`,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Q Crash resolves Suno's encrypted Mango media source", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(
+    `<a href="https://suno.com/song/${TRACK_ID}?sh=example-short-link">track</a>\n` +
+      `{"media_urls":[{"url":"https:\\/\\/d2lwuy8qc234o3.cloudfront.net\\/1\\/clip\\/${TRACK_ID}.m4a","content_type":"m4a-opus","encoding":"1.0.0"}]}`,
+    { status: 200 },
+  );
+  try {
+    assert.deepEqual(
+      await resolveQCrashSunoMediaSource("https://suno.com/s/example-short-link"),
+      {
+        trackId: TRACK_ID,
+        url: `https://d2lwuy8qc234o3.cloudfront.net/1/clip/${TRACK_ID}.m4a`,
+        encrypted: true,
+      },
+    );
+    assert.equal(
+      qCrashSunoInAppPlaybackUrl("https://suno.com/s/example-short-link"),
+      "/api/q-crash/suno-playback?source=https%3A%2F%2Fsuno.com%2Fs%2Fexample-short-link",
     );
   } finally {
     globalThis.fetch = originalFetch;

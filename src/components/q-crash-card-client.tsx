@@ -482,6 +482,8 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.9);
+  const [playbackLoading, setPlaybackLoading] = useState(false);
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [pendingVote, setPendingVote] = useState<VoteSide | null>(null);
   const [votingBusy, setVotingBusy] = useState(false);
   const [feedbackSide, setFeedbackSide] = useState<Side>("A");
@@ -645,12 +647,25 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
     const onDuration = () => setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
-    const onEnded = () => setPlaying(false);
+    const onReady = () => setPlaybackLoading(false);
+    const onError = () => {
+      setPlaying(false);
+      setPlaybackLoading(false);
+      setDuration(0);
+      setPlaybackError(isZh ? "這個 Suno 來源暫時無法在站內播放，請稍後重試。" : "This Suno source is temporarily unavailable for in-app playback. Try again later.");
+    };
+    const onEnded = () => {
+      setPlaying(false);
+      setPlaybackLoading(false);
+    };
     audio.addEventListener("timeupdate", onTime);
     audio.addEventListener("loadedmetadata", onDuration);
     audio.addEventListener("durationchange", onDuration);
     audio.addEventListener("play", onPlay);
     audio.addEventListener("pause", onPause);
+    audio.addEventListener("canplay", onReady);
+    audio.addEventListener("playing", onReady);
+    audio.addEventListener("error", onError);
     audio.addEventListener("ended", onEnded);
     return () => {
       audio.removeEventListener("timeupdate", onTime);
@@ -658,9 +673,12 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
       audio.removeEventListener("durationchange", onDuration);
       audio.removeEventListener("play", onPlay);
       audio.removeEventListener("pause", onPause);
+      audio.removeEventListener("canplay", onReady);
+      audio.removeEventListener("playing", onReady);
+      audio.removeEventListener("error", onError);
       audio.removeEventListener("ended", onEnded);
     };
-  }, [currentSide]);
+  }, [currentSide, isZh]);
 
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume;
@@ -697,6 +715,16 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
     ? battleShortPath(payload.card.battleId, lang)
     : `/battle/q-crash/${payload?.card.id ?? identifier}?lang=${lang}`;
 
+  const playAudio = (audio: HTMLAudioElement) => {
+    setPlaybackError(null);
+    setPlaybackLoading(true);
+    void audio.play().catch(() => {
+      setPlaying(false);
+      setPlaybackLoading(false);
+      setPlaybackError(isZh ? "這個 Suno 來源暫時無法在站內播放，請稍後重試。" : "This Suno source is temporarily unavailable for in-app playback. Try again later.");
+    });
+  };
+
   const playSide = (side: Side) => {
     const work = works?.[side];
     if (!work?.audioUrl) return;
@@ -704,23 +732,24 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
     if (!audio) return;
     trackStage("play", side);
     if (currentSide === side) {
-      if (audio.paused) void audio.play();
+      if (audio.paused) playAudio(audio);
       else audio.pause();
       return;
     }
     audio.pause();
     audio.src = work.audioUrl;
+    audio.load();
     audio.currentTime = 0;
     setCurrentSide(side);
     setCurrentTime(0);
     setDuration(work.durationSeconds ?? 0);
-    void audio.play();
+    playAudio(audio);
   };
 
   const togglePlay = () => {
     const audio = audioRef.current;
     if (!audio || !currentWork) return;
-    if (audio.paused) void audio.play();
+    if (audio.paused) playAudio(audio);
     else audio.pause();
   };
 
@@ -1492,6 +1521,8 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
                 </p>
                 <span className="shrink-0 font-mono text-[10px] font-black text-zinc-500">{formatClock(currentTime)} / {formatClock(duration)}</span>
               </div>
+              {playbackLoading ? <p className="mt-1 text-[10px] font-black text-cyan-200">{isZh ? "正在載入站內音訊…" : "Loading in-app audio…"}</p> : null}
+              {playbackError ? <p className="mt-1 text-[10px] font-black text-red-200">{playbackError}</p> : null}
               <input
                 type="range"
                 min={0}
@@ -1524,6 +1555,8 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
               onClick={() => {
                 audioRef.current?.pause();
                 setCurrentSide(null);
+                setPlaybackLoading(false);
+                setPlaybackError(null);
               }}
               className="order-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 text-zinc-400 transition hover:border-white/25 hover:text-white md:order-5"
               aria-label={isZh ? "關閉播放器" : "Close player"}
