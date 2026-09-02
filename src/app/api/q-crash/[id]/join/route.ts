@@ -7,6 +7,7 @@ import {
 } from "@/lib/q-crash-rules";
 import { ACTIVE_DROP_QUEUE_STATUSES, dropBattleRoleLockMessage } from "@/lib/battle-pool-rules";
 import { isValidStorageObjectKey } from "@/lib/storage-path";
+import { resolveQCrashSunoPlaybackUrl } from "@/lib/q-crash-suno-media";
 
 type RouteProps = { params: Promise<{ id: string }> };
 type CardRow = {
@@ -116,6 +117,16 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
   if (!challengerSourceType) return jsonError("作品 B 的歌曲來源資料不完整，請重新提交。", 422);
   if (challengerSourceType === "suno" && (!isValidQCrashSunoUrl(challengerSourceUrl) || Boolean(challengerQueue.audio_path))) {
     return jsonError("Suno 來源必須是公開 HTTPS 連結，且不能上傳或轉存 Suno 音訊。", 422);
+  }
+  const [founderSunoPlaybackUrl, challengerSunoPlaybackUrl] = await Promise.all([
+    qCrashSourceType(founderQueue.source_type) === "suno" ? resolveQCrashSunoPlaybackUrl(founderQueue.source_url) : Promise.resolve(null),
+    challengerSourceType === "suno" ? resolveQCrashSunoPlaybackUrl(challengerSourceUrl) : Promise.resolve(null),
+  ]);
+  if (qCrashSourceType(founderQueue.source_type) === "suno" && !founderSunoPlaybackUrl) {
+    return jsonError("作品 A 的 Suno 連結目前沒有可用的公開播放來源，無法開始 Q Crash。", 422);
+  }
+  if (challengerSourceType === "suno" && !challengerSunoPlaybackUrl) {
+    return jsonError("作品 B 的 Suno 連結目前沒有可用的公開播放來源，請確認歌曲仍可公開播放。", 422);
   }
   if (challengerSourceType === "upload" && (!challengerQueue.audio_path || !isValidStorageObjectKey(challengerQueue.audio_path) || challengerSourceUrl !== challengerQueue.audio_path)) {
     return jsonError("作品 B 的上傳檔案資料不完整，請重新提交。", 422);

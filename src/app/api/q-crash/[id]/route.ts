@@ -16,6 +16,7 @@ import {
 import { qCrashEditorialShowsFullSong } from "@/lib/q-crash-editorial";
 import { settleQCrashBattle } from "@/lib/server-q-crash";
 import { loadQCrashEditorial, signedQCrashCover } from "@/lib/server-q-crash-editorial";
+import { resolveQCrashSunoPlaybackUrl } from "@/lib/q-crash-suno-media";
 
 type RouteProps = { params: Promise<{ id: string }> };
 type CardRow = {
@@ -258,10 +259,12 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
   const [profileA, profileB, audioA, audioB, editorialCoverA, editorialCoverB] = await Promise.all([
     profileMedia(admin, queueA.user_id),
     queueB ? profileMedia(admin, queueB.user_id) : Promise.resolve(null),
-    qCrashSourceType(queueA.source_type) === "suno" ? Promise.resolve(null) : signedAudio(admin, battle?.audio_a_path || queueA.audio_path),
+    qCrashSourceType(queueA.source_type) === "suno"
+      ? resolveQCrashSunoPlaybackUrl(queueA.source_url)
+      : signedAudio(admin, battle?.audio_a_path || queueA.audio_path),
     queueB
       ? qCrashSourceType(queueB.source_type) === "suno"
-        ? Promise.resolve(null)
+        ? resolveQCrashSunoPlaybackUrl(queueB.source_url)
         : signedAudio(admin, battle?.audio_b_path || queueB.audio_path)
       : Promise.resolve(null),
     signedQCrashCover(admin, editorialA?.cover_path),
@@ -435,13 +438,21 @@ export async function DELETE(request: NextRequest, { params }: RouteProps) {
   if (card.status !== "q_crash_pending_invite") return jsonError("第二首作品已加入，投票開始後不能取消或改期限。", 409);
 
   const now = new Date().toISOString();
-  const { error: updateError } = await admin
+  const { data: cancelledCard, error: updateError } = await admin
     .from("q_crash_cards")
     .update({ status: "q_crash_cancelled", cancelled_at: now, updated_at: now })
     .eq("id", card.id)
-    .eq("status", "q_crash_pending_invite");
+    .eq("status", "q_crash_pending_invite")
+    .select("id")
+    .maybeSingle<{ id: string }>();
   if (updateError) return jsonError(updateError.message, 500);
-  await admin.from("battle_queue").update({ status: "cancelled", updated_at: now }).eq("id", card.founder_queue_id);
+  if (!cancelledCard) return jsonError("這張 Q Crash 已被接受，現在不能取消。", 409);
+  const { error: queueUpdateError } = await admin
+    .from("battle_queue")
+    .update({ status: "cancelled", updated_at: now })
+    .eq("id", card.founder_queue_id)
+    .eq("user_id", user.id);
+  if (queueUpdateError) return jsonError(queueUpdateError.message, 500);
   if (card.invited_user_id) {
     await admin.from("battle_notifications").insert({
       user_id: card.invited_user_id,

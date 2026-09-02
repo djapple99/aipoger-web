@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState, type ComponentType } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Blocks,
   Check,
   Clock3,
-  ExternalLink,
   FileText,
   Flame,
   Heart,
@@ -25,6 +24,7 @@ import {
   Swords,
   Volume2,
   X,
+  ExternalLink,
 } from "lucide-react";
 import {
   Q_CRASH_COMMENT_MAX_LENGTH,
@@ -343,7 +343,7 @@ function QCrashWorkCard(props: {
           type="button"
           disabled={!canPlay}
           onClick={onPlay}
-          aria-label={canPlay ? `${playing ? (isZh ? "暫停" : "Pause") : (isZh ? "播放" : "Play")} ${work.songName}` : (isZh ? "在 Suno 開啟" : "Open in Suno")}
+          aria-label={canPlay ? `${playing ? (isZh ? "暫停" : "Pause") : (isZh ? "播放" : "Play")} ${work.songName}` : (isZh ? "目前無法播放" : "Playback unavailable")}
           className={`group relative h-28 w-28 shrink-0 overflow-hidden rounded-2xl border bg-zinc-950 sm:h-36 sm:w-36 ${
             canPlay ? "" : "cursor-not-allowed opacity-80"
           } ${
@@ -403,16 +403,11 @@ function QCrashWorkCard(props: {
               {playing ? <Pause size={15} /> : <Play size={15} />}
               {playing ? (isZh ? "暫停" : "Pause") : (isZh ? "播放" : "Play")}
             </button>
-            {work.sourceType === "suno" && work.sourceUrl ? (
-              <a
-                href={work.sourceUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-cyan-200/35 bg-cyan-300/[0.06] px-4 text-xs font-black text-cyan-100 transition hover:border-cyan-100/70 hover:bg-cyan-300/15"
-              >
-                <ExternalLink size={15} />
-                {isZh ? "在 Suno 開啟" : "Open in Suno"}
-              </a>
+            {work.sourceType === "suno" && work.audioUrl ? (
+              <span className="inline-flex min-h-10 items-center gap-2 rounded-full border border-cyan-200/25 bg-cyan-300/[0.05] px-4 text-xs font-black text-cyan-100">
+                <Music2 size={15} />
+                {isZh ? "Suno 連結 · 站內播放" : "Suno link · In-app playback"}
+              </span>
             ) : null}
             <button
               type="button"
@@ -474,6 +469,7 @@ function QCrashWorkCard(props: {
 
 export default function QCrashCardClient({ identifier }: { identifier: string }) {
   const pathname = usePathname();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const lang = qCrashDisplayLang(searchParams.get("lang"));
   const isZh = lang === "zh";
@@ -497,6 +493,7 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
   const [commentError, setCommentError] = useState<string | null>(null);
   const [postResultPreference, setPostResultPreference] = useState<QCrashPostResultPreferencePayload | null>(null);
   const [postResultPreferenceBusy, setPostResultPreferenceBusy] = useState(false);
+  const [cancelBusy, setCancelBusy] = useState(false);
   const [embeddedBrowserKind, setEmbeddedBrowserKind] = useState<BrowserContext>("unknown");
   const [externalBrowserFailed, setExternalBrowserFailed] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -876,12 +873,14 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
   };
 
   const cancelPending = async () => {
-    if (!payload || !window.confirm(isZh ? "確定取消這張 Q Crash？取消後無法恢復。" : "Cancel this Q Crash?")) return;
+    if (cancelBusy || !payload || !window.confirm(isZh ? "確定取消這張 Q Crash？取消後無法恢復。" : "Cancel this Q Crash?")) return;
     const token = (await supabase.auth.getSession()).data.session?.access_token;
     if (!token) {
       redirectToAuth();
       return;
     }
+    setCancelBusy(true);
+    setError(null);
     const response = await fetch(`/api/q-crash/${encodeURIComponent(payload.card.id)}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
@@ -889,9 +888,15 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
     if (!response.ok) {
       const data = (await response.json().catch(() => null)) as { error?: string } | null;
       setError(data?.error || (isZh ? "取消失敗。" : "Cancel failed."));
+      setCancelBusy(false);
       return;
     }
-    void load();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.removeAttribute("src");
+      audioRef.current.load();
+    }
+    router.replace(`/battle?lang=${lang}`);
   };
 
   if (loading) {
@@ -946,6 +951,17 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
             {isZh ? "回鬥歌場" : "Battle Pool"}
           </Link>
           <div className="flex items-center gap-2">
+            {pending && payload.viewer.isFounder ? (
+              <button
+                type="button"
+                disabled={cancelBusy}
+                onClick={() => void cancelPending()}
+                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-red-300/30 bg-red-500/8 px-4 text-sm font-black text-red-100 transition hover:bg-red-500/15 disabled:cursor-wait disabled:opacity-50"
+              >
+                <X size={17} />
+                {cancelBusy ? (isZh ? "取消中…" : "Cancelling…") : (isZh ? "取消 Q Crash" : "Cancel Q Crash")}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => void share()}
@@ -1275,16 +1291,6 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
               <Share2 size={18} />
               {isZh ? "分享邀請連結" : "Share Invite Link"}
             </button>
-            {payload.viewer.isFounder ? (
-              <button
-                type="button"
-                onClick={() => void cancelPending()}
-                className="inline-flex min-h-12 items-center gap-2 rounded-2xl border border-red-300/30 bg-red-500/8 px-5 text-sm font-black text-red-100"
-              >
-                <X size={18} />
-                {isZh ? "取消 Q Crash" : "Cancel Q Crash"}
-              </button>
-            ) : null}
           </div>
         ) : null}
 

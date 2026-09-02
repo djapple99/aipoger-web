@@ -15,6 +15,7 @@ const battleStatsRepairMigrationSource = source("../supabase/20260731122043_batt
 const battleStatsIndexMigrationSource = source("../supabase/20260731123402_battle_song_stats_fk_indexes.sql");
 const poolRouteSource = source("../src/app/api/q-crash/route.ts");
 const cardRouteSource = source("../src/app/api/q-crash/[id]/route.ts");
+const sunoMediaSource = source("../src/lib/q-crash-suno-media.ts");
 const joinRouteSource = source("../src/app/api/q-crash/[id]/join/route.ts");
 const voteRouteSource = source("../src/app/api/q-crash/[id]/vote/route.ts");
 const feedbackRouteSource = source("../src/app/api/q-crash/[id]/feedback/route.ts");
@@ -224,13 +225,19 @@ test("generic queue cancellation synchronizes pending Q Crash and protects start
   assert.ok(cancelCurrentRouteSource.includes('from("q_crash_cards")'));
   assert.ok(cancelCurrentRouteSource.includes("Q Crash 投票開始後不能取消"));
   assert.ok(cancelCurrentRouteSource.includes('status: "q_crash_cancelled"'));
+  assert.ok(cardRouteSource.includes('.select("id")'));
+  assert.ok(cardClientSource.includes("router.replace(`/battle?lang=${lang}`)"));
+  assert.ok(cardClientSource.includes("cancelBusy"));
 });
 
 test("Q Crash uses full-song sources and keeps the sealed-vote presentation", () => {
   assert.equal(hookCutSource.includes("qCrash"), false);
   assert.ok(qCrashNewSource.includes("source_type"));
   assert.ok(qCrashNewSource.includes("source_url"));
-  assert.ok(cardClientSource.includes("Open in Suno"));
+  assert.ok(sunoMediaSource.includes("cdn1\\\\.suno\\\\.ai"));
+  assert.ok(cardRouteSource.includes("resolveQCrashSunoPlaybackUrl"));
+  assert.equal(cardClientSource.includes("Open in Suno"), false);
+  assert.ok(cardClientSource.includes("Suno link · In-app playback"));
   assert.ok(cardClientSource.includes("formatTrackDuration"));
   assert.ok(cardClientSource.includes("截止前不顯示票數、評分總和或領先作品"));
   assert.ok(cardClientSource.includes('className="fixed inset-x-3 bottom-3'));
