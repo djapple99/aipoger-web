@@ -214,6 +214,14 @@ test("Q Crash production archive dependencies exist without backfilling under-th
   assert.ok(battleStatsIndexMigrationSource.includes("battle_song_stats_latest_battle_id_idx"));
 });
 
+test("Q Crash Suno playback exposes byte ranges for seeking", () => {
+  assert.ok(sunoPlaybackRouteSource.includes('"Accept-Ranges": "bytes"'));
+  assert.ok(sunoPlaybackRouteSource.includes("parseByteRange"));
+  assert.ok(sunoPlaybackRouteSource.includes('headers.set("Content-Range"'));
+  assert.ok(sunoPlaybackRouteSource.includes("status: 206"));
+  assert.ok(sunoPlaybackRouteSource.includes("counterAtByteOffset"));
+});
+
 test("legacy live Drop Battle fallback cannot archive Q Crash through the old path", () => {
   assert.match(
     fallbackSource,
