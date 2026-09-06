@@ -1593,7 +1593,7 @@ export default function AiMusicClient() {
             </div>
           </div>
 
-          {earwormProfile ? (
+          {earwormProfile && worksView === "genre" ? (
             <section id="earworm-for-you" className="scroll-mt-24 border-y border-orange-200/20 bg-[linear-gradient(115deg,rgba(255,106,0,0.13),rgba(0,202,255,0.045),rgba(0,0,0,0.72))] px-3 py-5 shadow-[0_22px_70px_rgba(0,0,0,0.32)] sm:px-5">
               <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/10 pb-4">
                 <div>
