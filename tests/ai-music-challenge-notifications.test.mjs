@@ -7,7 +7,7 @@ const profilePage = readFileSync(new URL("../src/app/profile/page.tsx", import.m
 const globalOverlay = readFileSync(new URL("../src/components/global-battle-call-overlay.tsx", import.meta.url), "utf8");
 const processFallbacks = readFileSync(new URL("../src/app/api/battle-pool/process-fallbacks/route.ts", import.meta.url), "utf8");
 const productRules = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
-const releaseChecklist = readFileSync(new URL("../docs/aipoger-release-checklist.md", import.meta.url), "utf8");
+const releaseChecklist = readFileSync(new URL("../docs/aipoger-engineering.md", import.meta.url), "utf8");
 
 test("Explore AI Music challenge invites create in-app notifications and expire pending replies", () => {
   assert.ok(challengesRoute.includes('type: "ai_music_challenge_invite"'));

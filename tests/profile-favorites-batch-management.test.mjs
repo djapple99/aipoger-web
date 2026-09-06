@@ -4,8 +4,8 @@ import test from "node:test";
 
 const profilePage = readFileSync(new URL("../src/app/profile/page.tsx", import.meta.url), "utf8");
 const productRules = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
-const releaseChecklist = readFileSync(new URL("../docs/aipoger-release-checklist.md", import.meta.url), "utf8");
-const uiArtDirection = readFileSync(new URL("../docs/aipoger-ui-art-direction.md", import.meta.url), "utf8");
+const releaseChecklist = readFileSync(new URL("../docs/aipoger-engineering.md", import.meta.url), "utf8");
+const uiArtDirection = readFileSync(new URL("../docs/aipoger-experience.md", import.meta.url), "utf8");
 const queuePlayer = readFileSync(new URL("../src/components/showtime-queue-player.tsx", import.meta.url), "utf8");
 
 test("Profile saved songs expose batch selection and removal controls", () => {

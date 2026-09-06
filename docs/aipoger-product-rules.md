@@ -1,6 +1,6 @@
 # AIPOGER Product Rules
 
-Last updated: 2026-07-31
+Last updated: 2026-09-06 — 主文件 2／6。
 
 This document is the product-rule source of truth for AIPOGER. Use it before changing Battle, Bar Heartbreak, AIPOGER Showtime, auth, upload, or deployment behavior.
 
@@ -55,13 +55,13 @@ Daily Spotlight 已退役：它不再是傷心酒吧、Explore、`/admin/listen-
 - 公開 Choice 分享頁必須在伺服器輸出專屬 Open Graph / Twitter metadata。一般創作者 Choice 與 owner 以 `愛波哥` 個人身分發布的 Choice，分享縮圖使用該策展者目前的 Profile 頭像；只有明確保存為 `官方 AIPOGER` 身分的 Choice 才使用品牌圖。分享標題與描述分別使用當期自訂標題與推薦文章，不得回退成全站通用 AIPOGER 卡片，也不得從標題猜測策展身分。
 - `/today` 只作舊外部連結相容入口，固定以 307 導向 Choice；`/listen-bar?spotlight=...` 必須退化為正常傷心酒吧，不指定歌曲也不改變輪播。
 - `listen_bar_daily_spotlights`、歷史素材與舊社群草稿只保留歷史資料，不再由 app 日常流程讀寫；本階段不刪資料、不跑 destructive SQL。
-- `/admin/showtime` 是 owner 的緊湊封面作品目錄：只列出目前已進 Showtime 且仍公開展示的認證作品，桌機每列 6 首、每頁 12 首。它不是傷心酒吧投稿或公播候選清單，也不提供候選認證入口；對創作者投稿的 AI Music 作品，owner 可改封面與顯示資料（歌名、創作者、AI 工具、類型、製作資訊、Showtime 評語／作品介紹、歌詞、YouTube、外部支持連結），或收回目前公開展示。不得改寫音檔、既有認證來源、Battle 戰績、票數、Heart 或重新開戰。`/admin/social` 是唯一社群草稿、批准與手動發布中控台。Choice 選曲不會建立社群草稿或自動外部發布；草稿需先批准，Discord 仍需明確按平台發布才送 webhook；Facebook 社團維持手動發布，Instagram 與 YouTube 維持草稿。TikTok 不在目前工作台或新增草稿流程，歷史資料保留。
+- `/admin/showtime` 是 owner 的緊湊封面作品目錄：只列出目前已進 Showtime 且仍公開展示的認證作品，桌機每列 6 首、每頁 12 首。主認證目錄不是傷心酒吧投稿清單；另有 owner-only 的 30 天以上候選審閱區，人工認可每個台灣週最多 4 首，詳細規則見下方 AIPOGER Showtime 章節；對創作者投稿的 AI Music 作品，owner 可改封面與顯示資料（歌名、創作者、AI 工具、類型、製作資訊、Showtime 評語／作品介紹、歌詞、YouTube、外部支持連結），或收回目前公開展示。不得改寫音檔、既有認證來源、Battle 戰績、票數、Heart 或重新開戰。`/admin/social` 是唯一社群草稿、批准與手動發布中控台。Choice 選曲不會建立社群草稿或自動外部發布；草稿需先批准，Discord 仍需明確按平台發布才送 webhook；Facebook 社團維持手動發布，Instagram 與 YouTube 維持草稿。TikTok 不在目前工作台或新增草稿流程，歷史資料保留。
 - Discord 是社群擴散管道，不是產品規則來源。所有對外 CTA 應把聽歌、投票、按心、留言與投稿導回 AIPOGER 網站與 Choice。
 
 ## Auth Rules
 
 - Anyone can listen to public music surfaces.
-- Sign-in is required for uploading, voting, commenting, music analysis, Battle participation, and creator-owned track deletion.
+- Sign-in is required for uploading, protected voting/commenting, music analysis, Battle participation, and creator-owned track deletion. The anonymous Drop arena exception is defined in the Drop Battle section; Q Crash voting still requires sign-in.
 - Bar Heartbreak voting and track comments require sign-in.
 - Bar Heartbreak listening does not require sign-in.
 - Bar Heartbreak must remain publicly listenable; do not block the radio/player behind auth.
@@ -296,7 +296,7 @@ Initial operating target:
 
 ## Bar Heartbreak
 
-Authoritative detailed spec: `docs/heartbreak-bar-v1-survival-radio.md`.
+This section is the authoritative Bar Heartbreak rule set. Historical detailed design is retained through the old document redirect.
 
 Current rules:
 
@@ -394,7 +394,7 @@ This page is the AI music works browser. It should:
 - No standalone `最新上架` / `New Arrivals` / `72 小時新歌` shelf, section, route, independent `看更多`, or category label may be added to Explore. The rolling seven-day NEW window is both the badge and sorting window: eligible NEW works lead their own genre lane, and lanes with NEW works lead the wall by their newest NEW `created_at desc`; lanes without NEW works retain the fixed 11-genre order. A work uses `created_at`, then `id desc` for same-time stability. Never use `updated_at` to restore NEW exposure after metadata edits.
 - Within a genre lane, NEW works sort new-to-old before established works. Established works keep public positive-reaction priority, then `created_at desc`, then `id desc`. In the collapsed first 6 cards, one creator may expose at most one NEW work in that genre; their other NEW works remain in the same lane's `看更多` result. This compact-lane rule does not hide the work, suppress established high-reaction works, or affect the expanded list.
 - Only already display-eligible works participate: community/public, active, playable, using a current valid genre, with a cover or approved fallback, and not hidden, removed, moderation-held, or Explore-retired. Sorting refreshes on initial load, manual refresh, or the normal 5-10 minute refresh only; it must not reshuffle while a visitor is scrolling.
-- Keep cards music-platform-like: cover, song title, creator, AI tool, heart count, and challenge count.
+- Keep cards music-platform-like: cover, song title, creator, AI tool, and heart count. Show challenge count when non-zero; zero record details remain available in the HUD.
 - Challenge-ready cards must show a red angled `接戰` corner badge on the cover's top-right. This badge means the original creator is ready to accept a challenge; it is not the attack action. The bottom `攻擂` button remains the challenge action.
 - Show the `接戰` badge only when the work is visible on Explore, playable, not Showtime-certified, not retired, not hidden/removed/moderation-held, the creator set the track to `等人挑戰`, and a defender 60s Drop is prepared. Do not show the badge for showcase/closed/custom-only works, missing defender Drop, Showtime works, retired works, or unplayable/incomplete tracks.
 - A compact `NEW` badge lasts for the rolling 7 x 24 hours after `created_at`, and the same window controls Explore's NEW-first work and genre-lane ordering. `updated_at` must never restart either display or ordering. On Explore, `NEW` sits at the cover's top-left while the red `接戰` keeps the top-right; both remain readable on desktop and mobile. Bar Heartbreak shows the same visual state on the now-playing cover and beside visible queue/pool track titles, without changing Bar rotation rules. Do not label this state `Weekly`, because that wording belongs to AIPOGER Choice Weekly. This does not create a new-song shelf, route, category, or independent `看更多`.
@@ -424,7 +424,7 @@ Explore direct challenge loop:
 - A challenger may send at most 6 Explore attack invites per Taiwan day.
 - Explore direct-challenge official records require at least 3 distinct non-participant audience voters. Ties go to the defender (`fighter_a`). Under 3 voters displays audience-insufficient/no result.
 - A non-Showtime Explore work that is open to defense enters Showtime after 6 official defense successes from Explore-origin attacks. Only accepted, started, official battles with at least 3 distinct non-participant voters count; defender rejects, timeouts, audience-insufficient/no-contest results, unstarted battles, creator self-start/custom battles, and unestablished battles do not count. Ties that meet the audience threshold count as defender wins. The same challenger may contribute at most 1 defense success toward the same track.
-- `/ai-music` must show each non-Showtime work's defense progress, for example `守擂進度 4 / 6，再守下 2 場正式挑戰，進入 Showtime`.
+- `/ai-music` must make each non-Showtime work's defense progress available in its HUD. Show compact progress on the card when open for challenge or when defense successes exist, for example `守擂進度 4 / 6，再守下 2 場正式挑戰，進入 Showtime`.
 - A non-Showtime Explore work retires from the public uploaded-works wall and stops accepting challenges after 8 official losses. Only losses from battles with at least 3 distinct non-participant voters count; rejected, expired, under-threshold, or unstarted invites do not count.
 - The original Drop Battle Pool remains for temporary/open-card matchmaking and quick Drop Battle entry that does not start from Explore AI Music.
 
@@ -556,5 +556,11 @@ Before deploying changes that touch product rules:
 
 - Confirm whether the change affects auth, upload, Battle queueing, Bar Heartbreak rotation, AIPOGER Showtime display, or storage.
 - Update this document if a rule changes.
-- Update `docs/aipoger-release-checklist.md` if a new verification step is needed.
-- Update `docs/aipoger-ui-art-direction.md` if visual language or page identity changes.
+- Update `docs/aipoger-engineering.md` if a new verification step is needed.
+- Update `docs/aipoger-experience.md` if visual language or page identity changes.
+
+## Battle Records 月份與數字呈現
+
+- 月份篩選同時適用 Drop 和 Q Crash 列表及全部聲稱本月的統計；不以不同的跨月最近 N 場混入本月。
+- 單場票比顯示得票率（Vote share），不能標示跨場勝率。缺少雙方票數時不猜測百分比。
+- 跨場 audienceCount 加總稱投票人次（Voter entries），不能當跨場不同觀眾人數。這不改任何正式票數、勝敗或認證。

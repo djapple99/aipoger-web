@@ -269,28 +269,23 @@ function QCrashModePanel({ isZh, lang }: { isZh: boolean; lang: string }) {
   const displayLang = qCrashDisplayLang(lang);
   return (
     <section className="q-crash-mode-panel mt-5 overflow-hidden rounded-[1.4rem] border border-cyan-300/35 bg-[radial-gradient(circle_at_82%_24%,rgba(34,211,238,0.15),transparent_34%),linear-gradient(115deg,rgba(3,20,29,0.92),rgba(0,0,0,0.68))] px-4 py-4 shadow-[0_0_40px_rgba(34,211,238,0.09)] md:px-5 md:py-4">
-      <BattlePanelLabel tone="cyan">Q CRASH</BattlePanelLabel>
-      <div className="q-crash-mode-body mt-4 md:flex md:items-center md:justify-between md:gap-7">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-cyan-300/40 bg-cyan-300/10 px-3 py-1 text-[10px] font-black tracking-[0.2em] text-cyan-50">
-              NEW MODE
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-black tracking-[0.16em] text-cyan-100">
-              <Clock3 size={14} />
-              ASYNC FULL SONG
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0 flex-1 basis-52">
+          <div className="flex flex-wrap items-center gap-3">
+            <BattlePanelLabel tone="cyan">Q CRASH</BattlePanelLabel>
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-black tracking-[0.12em] text-cyan-100">
+              <Clock3 size={14} /> ASYNC FULL SONG
             </span>
           </div>
-          <h2 className="mt-3 text-3xl font-black tracking-tight text-white">Q Crash</h2>
-          <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-zinc-300">
+          <p className="mt-2 max-w-2xl text-xs font-bold leading-5 text-zinc-300">
             {isZh
-              ? "不用約同一時間。兩首完整歌曲到位後立即開放投票，截止才公開結果。"
-              : "No synchronized meetup. Voting opens when both full songs lock, and results stay sealed until the deadline."}
+              ? "兩首完整歌曲，隨時來聽、來投。截止才公開結果。"
+              : "Two full songs. Listen and vote in your own time. Results open at the deadline."}
           </p>
         </div>
         <Link
           href={`/battle/q-crash/new?lang=${displayLang}`}
-          className="battle-mode-action-cta q-crash-solid-cta mt-4 shrink-0 bg-cyan-400 shadow-[0_0_28px_rgba(34,211,238,0.2)] transition hover:bg-cyan-300 md:mt-0"
+          className="battle-mode-action-cta q-crash-solid-cta shrink-0 bg-cyan-400 shadow-[0_0_28px_rgba(34,211,238,0.2)] transition hover:bg-cyan-300 md:mt-0"
         >
           <Swords size={18} />
           {isZh ? "建立 Q Crash" : "Create Q Crash"}
@@ -1489,7 +1484,7 @@ function BattlePoolList() {
 
   return (
     <>
-      <section
+      {qCrashCards.length > 0 ? <section
         id="q-crash-matchups"
         className="q-crash-matchups-panel mt-5 scroll-mt-24 overflow-hidden rounded-xl border border-cyan-300/35 bg-[radial-gradient(circle_at_86%_8%,rgba(34,211,238,0.12),transparent_30%),linear-gradient(140deg,rgba(3,20,29,0.88),rgba(0,0,0,0.7))] p-4 shadow-[0_20px_70px_rgba(0,0,0,0.38),0_0_34px_rgba(34,211,238,0.07)] md:p-4"
       >
@@ -1497,18 +1492,16 @@ function BattlePoolList() {
           <BattlePanelLabel tone="cyan" wide>Q CRASH MATCHUPS</BattlePanelLabel>
           <h2 className="mt-2 text-2xl font-black text-white">{isZh ? "Q Crash 對戰卡" : "Q Crash Matchup Cards"}</h2>
         </div>
-        {qCrashCards.length > 0 ? (
           <div className="grid gap-3">
             {qCrashCards.map((card) => (
               <QCrashPoolMatchCard key={card.cardId} card={card} isZh={isZh} lang={lang} />
             ))}
           </div>
-        ) : (
-          <div className="rounded-[1.2rem] border border-dashed border-cyan-300/25 bg-cyan-300/[0.035] px-4 py-5 text-center text-sm font-bold text-zinc-500">
-            {isZh ? "目前沒有開放中的 Q Crash；建立後，對戰卡會出現在這裡。" : "No open Q Crash right now. New matchup cards will appear here."}
-          </div>
-        )}
-      </section>
+      </section> : (
+        <p id="q-crash-matchups" className="mt-3 scroll-mt-24 px-1 text-xs leading-5 text-cyan-100/80">
+          {isZh ? "Q Crash 目前沒有開放對戰，可從上方建立。" : "No open Q Crash yet. Create one above."}
+        </p>
+      )}
 
       <section id="drop-battle-pool" className="battle-pool-shell aipo-panel-line mt-5 scroll-mt-24 rounded-xl border-red-400/30 p-4 md:p-5">
       <div className="battle-pool-head mb-4">

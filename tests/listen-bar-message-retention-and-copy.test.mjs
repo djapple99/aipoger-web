@@ -7,7 +7,7 @@ const messagesRoute = readFileSync(new URL("../src/app/api/listen-bar/messages/r
 const cleanupMessagesRoute = readFileSync(new URL("../src/app/api/listen-bar/cleanup-messages/route.ts", import.meta.url), "utf8");
 const honorInteractionsRoute = readFileSync(new URL("../src/app/api/honor-board/interactions/route.ts", import.meta.url), "utf8");
 const productRules = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
-const releaseChecklist = readFileSync(new URL("../docs/aipoger-release-checklist.md", import.meta.url), "utf8");
+const releaseChecklist = readFileSync(new URL("../docs/aipoger-engineering.md", import.meta.url), "utf8");
 
 test("Listen Bar story messages use 24 hour retention and current copy", () => {
   assert.ok(messagesRoute.includes("MESSAGE_RETENTION_HOURS = 24"));

@@ -1,8 +1,6 @@
-# Explore Centered Guide HUD Handoff
+# 已整併：2026-07-10-explore-centered-guide-hud
 
-Date: 2026-07-10
+此路徑只保留舊引用相容，不再維護規則。
 
-- `/ai-music` now uses a compact centered catalog header: eyebrow, live catalog marker, title, yellow browse promise, yellow Bar Heartbreak submission link, cross-surface navigation, and local view controls all share one visual axis.
-- `public/guide.png` is the stable GUIDE asset. The icon-only GUIDE tool opens an accessible HUD instead of a visible explanation block.
-- The HUD explains style browsing, Heart-to-favorite/Profile management, the prepared 60s defender Drop behind the red `接戰` badge, and the three non-participant-vote rule. It closes by X, Escape, or backdrop, traps focus while open, and returns focus to GUIDE.
-- Explore shares use `/ai-music?lang=<lang>&track=<id>#works`. The catalog expands the target style and scrolls to the shared work; it does not autoplay audio or send users to Bar Heartbreak.
+- [現行主文件](<../../../../New project/docs/aipoger-roadmap.md>)
+- [歷史原文（2026-09-06 整併前）](<../archive/2026-09-06-consolidation/docs/handoffs/2026-07-10-explore-centered-guide-hud.md>)

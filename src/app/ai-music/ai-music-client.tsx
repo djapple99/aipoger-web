@@ -628,13 +628,13 @@ function TrackCard({
         <button
           type="button"
           onClick={() => onToggleExpand(track)}
-          className="absolute bottom-5 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/18 bg-black/62 text-xs font-black text-white backdrop-blur transition hover:border-cyan-100/50 md:hidden"
+          className="absolute bottom-5 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/18 bg-black/62 text-xs font-black text-white backdrop-blur transition hover:border-cyan-100/50 focus-visible:ring-2 focus-visible:ring-cyan-100"
           aria-expanded={isExpanded}
           aria-label={localeText(lang, "顯示戰績資訊", "Show record info", "戦績情報を表示", "전적 정보 보기")}
         >
           i
         </button>
-        <div className="pointer-events-none absolute inset-x-3 top-3 hidden translate-y-2 opacity-0 transition duration-200 group-hover:translate-y-0 group-hover:opacity-100 md:block">
+        <div className={`pointer-events-none absolute inset-x-3 top-3 hidden transition duration-200 md:block ${isExpanded ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100"}`}>
           <TrackHud track={track} lang={lang} />
         </div>
         <EarwormAffinityStatus track={track} lang={lang} />
@@ -653,21 +653,21 @@ function TrackCard({
             <HeartIcon filled />
             {heartCount}
           </span>
-          <span className="text-orange-100">⚔ {track.challengeCount}</span>
+          {track.challengeCount > 0 ? <span className="text-orange-100">⚔ {track.challengeCount}</span> : null}
         </div>
-        <p className={`rounded-sm border px-2 py-1.5 text-[10px] font-black leading-4 ${
+        {track.isShowtimeCertified || track.openForChallenge || track.defenseSuccesses > 0 ? <p className={`rounded-sm border px-2 py-1.5 text-[10px] font-black leading-4 ${
           track.isShowtimeCertified
             ? "border-cyan-100/28 bg-cyan-300/[0.08] text-cyan-50"
             : "border-yellow-200/18 bg-yellow-300/[0.08] text-yellow-100"
         }`}>
           {defenseProgressShortText(track, lang)}
-        </p>
+        </p> : null}
         {isExpanded ? (
           <div className="md:hidden">
             <TrackHud track={track} lang={lang} />
           </div>
         ) : null}
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className={`grid gap-1.5 ${track.openForChallenge ? "grid-cols-3" : "grid-cols-2"}`}>
           <button
             type="button"
             onClick={() => onHeart(track)}
@@ -697,13 +697,7 @@ function TrackCard({
             >
               {localeText(lang, "攻擂", "Challenge", "挑戦", "도전")}
             </Link>
-          ) : (
-            <span className="inline-flex min-h-9 items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-2 text-[11px] font-black text-zinc-600">
-              {track.challengeStatus === "open" && !track.hasDefenderDrop
-                  ? localeText(lang, "未備 Drop", "No Drop", "Drop未準備", "Drop 미준비")
-                  : localeText(lang, "暫不接戰", "Closed", "受付終了", "도전 종료")}
-            </span>
-          )}
+          ) : null}
         </div>
       </div>
     </article>
@@ -1547,6 +1541,58 @@ export default function AiMusicClient() {
         </header>
 
         <section id="works" className="grid gap-5 scroll-mt-24">
+          <div className="flex justify-center border-b border-white/10 pb-3 pt-1">
+            <div className="flex max-w-full flex-wrap items-center justify-center gap-2 rounded-lg border border-orange-100/18 bg-black/76 p-1.5 shadow-[0_16px_42px_rgba(0,0,0,0.36)]">
+              <div className="inline-flex" role="group" aria-label={copy.browseMode}>
+                <button
+                  type="button"
+                  onClick={() => setWorksView("genre")}
+                  aria-pressed={worksView === "genre"}
+                  className={`min-h-10 rounded-md px-4 text-xs font-black transition sm:px-5 ${worksView === "genre" ? "bg-orange-500 text-black shadow-[0_0_22px_rgba(255,106,0,0.24)]" : "text-zinc-300 hover:bg-white/6 hover:text-white"}`}
+                >
+                  {copy.byStyle}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWorksView("heat")}
+                  aria-pressed={worksView === "heat"}
+                  className={`min-h-10 rounded-md px-4 text-xs font-black transition sm:px-5 ${worksView === "heat" ? "bg-orange-500 text-black shadow-[0_0_22px_rgba(255,106,0,0.24)]" : "text-zinc-300 hover:bg-white/6 hover:text-white"}`}
+                >
+                  {copy.hotNow}
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="h-7 w-px bg-white/12" aria-hidden="true" />
+                <button
+                  type="button"
+                  onClick={() => setEarwormPromptOpen(true)}
+                  className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-cyan-100/22 bg-cyan-300/[0.06] px-3 text-[11px] font-black text-cyan-50/82 transition hover:border-cyan-100/50 hover:text-white"
+                >
+                  <Headphones className="h-4 w-4" aria-hidden="true" />
+                  {earwormCopy.reopen}
+                </button>
+                <span className="h-7 w-px bg-white/12" aria-hidden="true" />
+                <button
+                  ref={guideButtonRef}
+                  type="button"
+                  onClick={() => setGuideOpen(true)}
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-orange-200/32 bg-orange-500/8 p-1.5 transition hover:border-orange-100/70 hover:bg-orange-500/16 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-100"
+                  aria-label={copy.guideLabel}
+                  title={copy.guideLabel}
+                >
+                  <img src="/guide.png" alt="" className="h-full w-full object-contain" />
+                </button>
+              </div>
+              <Link
+                href={`${withLang("/listen-bar")}#play-request`}
+                className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-md border border-orange-100/80 bg-orange-500 px-3 text-[11px] font-black text-black shadow-[0_0_22px_rgba(255,106,0,0.22)] transition hover:border-orange-50 hover:bg-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-100"
+              >
+                <Upload className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
+                {copy.uploadAction}
+              </Link>
+            </div>
+          </div>
+
           {earwormProfile ? (
             <section id="earworm-for-you" className="scroll-mt-24 border-y border-orange-200/20 bg-[linear-gradient(115deg,rgba(255,106,0,0.13),rgba(0,202,255,0.045),rgba(0,0,0,0.72))] px-3 py-5 shadow-[0_22px_70px_rgba(0,0,0,0.32)] sm:px-5">
               <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/10 pb-4">
@@ -1616,57 +1662,6 @@ export default function AiMusicClient() {
             </section>
           ) : null}
 
-          <div className="flex justify-center border-b border-white/10 pb-3 pt-1">
-            <div className="flex max-w-full flex-wrap items-center justify-center gap-2 rounded-lg border border-orange-100/18 bg-black/76 p-1.5 shadow-[0_16px_42px_rgba(0,0,0,0.36)]">
-              <div className="inline-flex" role="group" aria-label={copy.browseMode}>
-                <button
-                  type="button"
-                  onClick={() => setWorksView("genre")}
-                  aria-pressed={worksView === "genre"}
-                  className={`min-h-10 rounded-md px-4 text-xs font-black transition sm:px-5 ${worksView === "genre" ? "bg-orange-500 text-black shadow-[0_0_22px_rgba(255,106,0,0.24)]" : "text-zinc-300 hover:bg-white/6 hover:text-white"}`}
-                >
-                  {copy.byStyle}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setWorksView("heat")}
-                  aria-pressed={worksView === "heat"}
-                  className={`min-h-10 rounded-md px-4 text-xs font-black transition sm:px-5 ${worksView === "heat" ? "bg-orange-500 text-black shadow-[0_0_22px_rgba(255,106,0,0.24)]" : "text-zinc-300 hover:bg-white/6 hover:text-white"}`}
-                >
-                  {copy.hotNow}
-                </button>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-7 w-px bg-white/12" aria-hidden="true" />
-                <button
-                  type="button"
-                  onClick={() => setEarwormPromptOpen(true)}
-                  className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-cyan-100/22 bg-cyan-300/[0.06] px-3 text-[11px] font-black text-cyan-50/82 transition hover:border-cyan-100/50 hover:text-white"
-                >
-                  <Headphones className="h-4 w-4" aria-hidden="true" />
-                  {earwormCopy.reopen}
-                </button>
-                <span className="h-7 w-px bg-white/12" aria-hidden="true" />
-                <button
-                  ref={guideButtonRef}
-                  type="button"
-                  onClick={() => setGuideOpen(true)}
-                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-orange-200/32 bg-orange-500/8 p-1.5 transition hover:border-orange-100/70 hover:bg-orange-500/16 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-100"
-                  aria-label={copy.guideLabel}
-                  title={copy.guideLabel}
-                >
-                  <img src="/guide.png" alt="" className="h-full w-full object-contain" />
-                </button>
-              </div>
-              <Link
-                href={`${withLang("/listen-bar")}#play-request`}
-                className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-md border border-orange-100/80 bg-orange-500 px-3 text-[11px] font-black text-black shadow-[0_0_22px_rgba(255,106,0,0.22)] transition hover:border-orange-50 hover:bg-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-100"
-              >
-                <Upload className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
-                {copy.uploadAction}
-              </Link>
-            </div>
-          </div>
           {loadState === "loading" ? (
             <div className="rounded-md border border-white/10 bg-black/46 px-5 py-12 text-center text-sm font-bold text-zinc-400">
               {copy.loading}

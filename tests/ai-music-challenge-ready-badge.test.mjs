@@ -4,7 +4,7 @@ import test from "node:test";
 
 const aiMusicSource = readFileSync(new URL("../src/app/ai-music/ai-music-client.tsx", import.meta.url), "utf8");
 const productRulesSource = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
-const releaseChecklistSource = readFileSync(new URL("../docs/aipoger-release-checklist.md", import.meta.url), "utf8");
+const releaseChecklistSource = readFileSync(new URL("../docs/aipoger-engineering.md", import.meta.url), "utf8");
 
 test("Explore AI Music uses a non-clickable challenge-ready badge separate from the challenge action", () => {
   assert.ok(aiMusicSource.includes("function ChallengeReadyBadge"));

@@ -10,6 +10,8 @@ import { DROP_BATTLE_OFFICIAL_AUDIENCE_MIN } from "@/lib/drop-battle-rematch";
 import { battleResultShortPath, battleShortPath } from "@/lib/share-short-links";
 import { supabase } from "@/lib/supabase";
 
+import { battleRecordMonth as monthKey, monthlyBattleSummary, leadingVoteShare } from "@/lib/battle-record-summary";
+
 type WinnerSide = "fighter_a" | "fighter_b";
 type BattleRecordMode = "q_crash" | "drop_battle";
 
@@ -105,12 +107,6 @@ function winnerSide(value: unknown): WinnerSide | null {
 
 function isUuid(value: string | null | undefined) {
   return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
-}
-
-function monthKey(value: string) {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "unknown";
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
 function monthLabel(key: string, isZh: boolean) {
@@ -370,12 +366,7 @@ function ResultAudio({ record, isZh }: { record: ResultRecord; isZh: boolean }) 
 function ResultCard({ record, isZh, lang, viewerId }: { record: ResultRecord; isZh: boolean; lang: string; viewerId: string | null }) {
   const href = resultHref(record, lang);
   const coverUrl = record.coverUrl.trim();
-  const finalVoteTotal = record.finalVoteLeft + record.finalVoteRight;
-  const winnerPct = finalVoteTotal > 0
-    ? Math.round((Math.max(record.finalVoteLeft, record.finalVoteRight) / finalVoteTotal) * 100)
-    : record.votesTotal > 0
-      ? 100
-      : 0;
+  const winnerVoteShare = leadingVoteShare(record.finalVoteLeft, record.finalVoteRight);
   const isOfficial = record.audienceCount >= DROP_BATTLE_OFFICIAL_AUDIENCE_MIN;
   const isQCrash = record.mode === "q_crash";
   return (
@@ -437,8 +428,8 @@ function ResultCard({ record, isZh, lang, viewerId }: { record: ResultRecord; is
             <p className="text-sm font-black text-white">{record.votesTotal}</p>
           </div>
           <div className="rounded-lg border border-orange-200/18 bg-orange-300/[0.08] px-1.5 py-1.5">
-            <p className="text-[9px] font-black text-orange-100/70">{isZh ? "勝率" : "Win"}</p>
-            <p className="text-sm font-black text-orange-100">{winnerPct}%</p>
+            <p className="text-[9px] font-black text-orange-100/70">{isZh ? "得票率" : "Vote share"}</p>
+            <p className="text-sm font-black text-orange-100">{winnerVoteShare === null ? "—" : `${winnerVoteShare}%`}</p>
           </div>
         </div>
 
@@ -537,14 +528,10 @@ export default function BattleResultsClient() {
     return keys.length > 0 ? keys : [monthKey(new Date().toISOString())];
   }, [records]);
 
-  const monthRecords = useMemo(
-    () => records.filter((record) => monthKey(record.archivedAt) === activeMonth),
+  const { monthRecords, qCrashRecords, dropMonthRecords, totalVotes, totalAudience } = useMemo(
+    () => monthlyBattleSummary(records, activeMonth),
     [activeMonth, records],
   );
-  const qCrashRecords = useMemo(() => records.filter((record) => record.mode === "q_crash").slice(0, 12), [records]);
-  const dropMonthRecords = useMemo(() => monthRecords.filter((record) => record.mode !== "q_crash"), [monthRecords]);
-  const totalVotes = monthRecords.reduce((sum, record) => sum + record.votesTotal, 0);
-  const totalAudience = monthRecords.reduce((sum, record) => sum + record.audienceCount, 0);
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#050505] px-4 pb-12 pt-20 text-white sm:px-6 lg:px-8">
@@ -597,7 +584,7 @@ export default function BattleResultsClient() {
               { label: isZh ? "本月戰果" : "Month", value: monthRecords.length },
               { label: isZh ? "Q Crash" : "Q Crash", value: qCrashRecords.length },
               { label: isZh ? "票數" : "Votes", value: totalVotes },
-              { label: isZh ? "觀眾" : "Audience", value: totalAudience },
+              { label: isZh ? "投票人次" : "Voter entries", value: totalAudience },
             ].map((item) => (
               <div key={item.label} className="rounded-xl border border-white/10 bg-black/45 px-3 py-2">
                 <p className="text-[9px] font-black uppercase tracking-[0.14em] text-zinc-500">{item.label}</p>

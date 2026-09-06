@@ -14,7 +14,7 @@ const fullSongRoute = source("../src/app/api/honor-board/drop-full-songs/route.t
 const results = source("../src/app/battle/results/results-client.tsx");
 const rank = source("../src/app/rank/page.tsx");
 const productRules = source("../docs/aipoger-product-rules.md");
-const releaseChecklist = source("../docs/aipoger-release-checklist.md");
+const releaseChecklist = source("../docs/aipoger-engineering.md");
 
 test("winner release migration locks upload consent and protects creator release fields", () => {
   assert.ok(migration.includes("add column if not exists full_song_youtube_url text"));
