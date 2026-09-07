@@ -27,9 +27,10 @@ export function listenBarChallengerSlotLimitForPublicCount(publicTrackCount: num
   return LISTEN_BAR_CHALLENGER_SLOT_LIMIT;
 }
 
-export function listenBarSubmissionPhaseForGenrePublicCount(publicTrackCount: number): "public" | "challenger" {
-  const count = Math.max(0, Math.floor(Number.isFinite(publicTrackCount) ? publicTrackCount : 0));
-  return count < LISTEN_BAR_GENRE_POOL_LIMIT ? "public" : "challenger";
+export function listenBarSubmissionPhaseForGenrePublicCount(_publicTrackCount: number): "public" | "challenger" {
+  // Capacity no longer controls submission. Kept for older callers.
+  void _publicTrackCount;
+  return "public";
 }
 
 export function listenBarCreatorGenrePublicLimitReached(publicTrackCount: number): boolean {

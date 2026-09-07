@@ -39,8 +39,8 @@ test("listen bar volume falls back to Web Audio gain when mobile media volume is
 });
 
 test("listen bar upload form previews the selected genre destination", () => {
-  assert.ok(listenBarPageSource.includes("送出後直接進公播"));
-  assert.ok(listenBarPageSource.includes("送出後進 Challenger"));
+  assert.ok(listenBarPageSource.includes("投稿後直接公開"));
+  assert.equal(listenBarPageSource.includes("送出後進 Challenger"), false);
   assert.ok(listenBarPageSource.includes("uploadPhaseNoticeBody"));
 });
 

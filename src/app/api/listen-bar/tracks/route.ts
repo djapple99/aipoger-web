@@ -1,10 +1,7 @@
+import { isPublicBarAirplayTrack } from "@/lib/listen-bar-airplay";
 import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import {
-  LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
-  listenBarPromotionProtectionActive,
-} from "@/lib/listen-bar";
-import { AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS, isAiMusicPersistedShowtimeCertified } from "@/lib/ai-music-showtime";
+import { AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS } from "@/lib/ai-music-showtime";
 import { readEarwormAffinityMap } from "@/lib/earworm-affinity";
 
 type ListenBarTrackRow = {
@@ -97,60 +94,6 @@ const MODERN_SELECT = [
   AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS,
 ].join(",");
 
-const LEGACY_WITH_DESCRIPTION_SELECT = [
-  "id",
-  "title",
-  "artist",
-  "ai_tool",
-  "genre",
-  "mood",
-  "description",
-  "bpm",
-  "duration_seconds",
-  "audio_path",
-  "cover_path",
-  "lyrics",
-  "sort_order",
-  "is_active",
-  "review_status",
-  "hidden_at",
-  "removed_at",
-  "source",
-  "is_featured_official",
-  "positive_reaction_count",
-  "heart_count",
-  "star_count",
-  "thumb_count",
-  "happy_count",
-  "created_at",
-  "updated_at",
-].join(",");
-
-const LEGACY_SELECT = [
-  "id",
-  "title",
-  "artist",
-  "ai_tool",
-  "genre",
-  "mood",
-  "bpm",
-  "duration_seconds",
-  "audio_path",
-  "cover_path",
-  "lyrics",
-  "sort_order",
-  "is_active",
-  "source",
-  "is_featured_official",
-  "positive_reaction_count",
-  "heart_count",
-  "star_count",
-  "thumb_count",
-  "happy_count",
-  "created_at",
-  "updated_at",
-].join(",");
-
 function adminClient(): AdminClient {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY;
@@ -160,110 +103,30 @@ function adminClient(): AdminClient {
   });
 }
 
-function isMissingColumnError(error: unknown): boolean {
-  const text = error && typeof error === "object"
-    ? [
-        (error as { message?: string }).message,
-        (error as { details?: string }).details,
-        (error as { hint?: string }).hint,
-        (error as { code?: string }).code,
-      ].filter(Boolean).join(" ")
-    : String(error ?? "");
-  return /schema cache|column.*does not exist|PGRST204|bar_phase|promoted_at|audio_sha256|ai_music_showtime|support_url|description|youtube_url/i.test(text);
-}
-
-function applyLegacyOpeningGrace(rows: ListenBarTrackRow[]): ListenBarTrackRow[] {
-  const hasPersistedPhase = rows.some((row) => Object.prototype.hasOwnProperty.call(row, "bar_phase"));
-  if (hasPersistedPhase) return rows;
-
-  if (listenBarPromotionProtectionActive()) {
-    return rows.map((row) => ({
-      ...row,
-      bar_phase: "public",
-      promoted_at: row.promoted_at ?? row.created_at,
-    }));
-  }
-
-  const observationCutoffMs = Date.now() - LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS * 60 * 60 * 1000;
-  const eligiblePublicIds = new Set(
-    rows
-      .filter((row) => {
-        const createdAtMs = new Date(row.created_at ?? 0).getTime();
-        return Number.isFinite(createdAtMs)
-          && createdAtMs < observationCutoffMs;
-      })
-      .sort((a, b) => {
-        return new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime();
-      })
-      .map((row) => row.id),
-  );
-
-  return rows.map((row) => ({
-    ...row,
-    bar_phase: eligiblePublicIds.has(row.id) ? "public" : "challenger",
-    promoted_at: eligiblePublicIds.has(row.id) ? (row.promoted_at ?? row.created_at) : row.promoted_at,
-  }));
-}
-
-function isPublicPlayableTrack(row: ListenBarTrackRow) {
-  const status = row.review_status?.toLowerCase();
-  return (
-    row.is_active !== false &&
-    status !== "hidden" &&
-    status !== "removed" &&
-    !row.hidden_at &&
-    !row.removed_at &&
-    !isAiMusicPersistedShowtimeCertified(row) &&
-    Boolean(row.audio_path?.trim())
-  );
-}
-
 export async function GET() {
   try {
     const admin = adminClient();
-    const modernResult = await admin
-      .from("listen_bar_tracks")
-      .select(MODERN_SELECT)
-      .eq("source", "community")
-      .eq("is_active", true)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: false });
-    let rows = (modernResult.data as ListenBarTrackRow[] | null) ?? null;
-    let error = modernResult.error;
-
-    if (error && isMissingColumnError(error)) {
-      const legacyResult = await admin
-        .from("listen_bar_tracks")
-        .select(LEGACY_WITH_DESCRIPTION_SELECT)
-        .eq("source", "community")
-        .eq("is_active", true)
+    const rows: ListenBarTrackRow[] = [];
+    const pageSize = 500;
+    for (let offset = 0; ; offset += pageSize) {
+      const result = await admin.from("listen_bar_tracks").select(MODERN_SELECT)
+        .eq("source", "community").eq("is_active", true)
         .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: false });
-      rows = (legacyResult.data as ListenBarTrackRow[] | null) ?? null;
-      error = legacyResult.error;
-
-      if (error && isMissingColumnError(error)) {
-        const basicLegacyResult = await admin
-          .from("listen_bar_tracks")
-          .select(LEGACY_SELECT)
-          .eq("source", "community")
-          .eq("is_active", true)
-          .order("sort_order", { ascending: true })
-          .order("created_at", { ascending: false });
-        rows = (basicLegacyResult.data as ListenBarTrackRow[] | null) ?? null;
-        error = basicLegacyResult.error;
-      }
+        .order("created_at", { ascending: false }).order("id", { ascending: true })
+        .range(offset, offset + pageSize - 1);
+      if (result.error) return NextResponse.json({ error: result.error.message }, { status: 500 });
+      const page = (result.data ?? []) as unknown as ListenBarTrackRow[];
+      rows.push(...page);
+      if (page.length < pageSize) break;
     }
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    const playableRows = (rows ?? []).filter(isPublicBarAirplayTrack).map((row) => ({ ...row, bar_phase: "public" as const }));
+    const affinityByTrackId = new Map<string, { sampleCount: number; percent: number | null }>();
+    for (let offset = 0; offset < playableRows.length; offset += 200) {
+      const batch = await readEarwormAffinityMap(admin as unknown as SupabaseClient,
+        playableRows.slice(offset, offset + 200).map((row) => row.id));
+      for (const [id, metric] of batch) affinityByTrackId.set(id, metric);
     }
-
-    const playableRows = applyLegacyOpeningGrace((rows ?? []).filter(isPublicPlayableTrack));
-    const affinityByTrackId = await readEarwormAffinityMap(
-      admin as unknown as SupabaseClient,
-      playableRows.map((row) => row.id),
-    );
     const tracks = playableRows.map((row) => {
       const affinity = affinityByTrackId.get(row.id);
       return {

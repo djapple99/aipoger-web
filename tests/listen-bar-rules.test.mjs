@@ -32,10 +32,10 @@ test("listen bar challenger slot limit follows public pool 3/2/1 tiers", () => {
   assert.equal(listenBarChallengerSlotLimitForPublicCount(Number.NaN), 3);
 });
 
-test("listen bar submissions enter public until the selected genre pool is full", () => {
+test("listen bar submissions remain public above former genre capacity", () => {
   assert.equal(listenBarSubmissionPhaseForGenrePublicCount(0), "public");
   assert.equal(listenBarSubmissionPhaseForGenrePublicCount(LISTEN_BAR_PUBLIC_ROTATION_LIMIT - 1), "public");
-  assert.equal(listenBarSubmissionPhaseForGenrePublicCount(LISTEN_BAR_PUBLIC_ROTATION_LIMIT), "challenger");
+  assert.equal(listenBarSubmissionPhaseForGenrePublicCount(LISTEN_BAR_PUBLIC_ROTATION_LIMIT), "public");
   assert.equal(listenBarSubmissionPhaseForGenrePublicCount(Number.NaN), "public");
 });
 
@@ -147,105 +147,16 @@ test("listen bar honor survival starts when the 36th same-genre public song ente
   );
 });
 
-test("listen bar rotation preview protects honor-eligible public songs before overflow removal", () => {
-  const publicRows = Array.from({ length: LISTEN_BAR_PUBLIC_ROTATION_LIMIT }, (_, index) => ({
-    id: `public-${index}`,
-    genre: "EDM 百大電音",
-    barPhase: "public",
-    positiveReactionCount: index === 0 ? 0 : 5,
-    createdAt: new Date(NOW - (10 + index) * DAY_MS).toISOString(),
+test("retired rotation never promotes or removes tracks even above former capacity", () => {
+  const tracks = Array.from({ length: 500 }, (_, index) => ({
+    id: String(index), genre: "EDM 百大電音", barPhase: index % 2 ? "public" : "challenger",
+    positiveReactionCount: 0, createdAt: new Date(NOW - 90 * DAY_MS).toISOString(),
   }));
-  const challenger = {
-    id: "challenger-ready",
-    title: "Ready Challenger",
-    genre: "EDM 百大電音",
-    barPhase: "challenger",
-    positiveReactionCount: 0,
-    createdAt: new Date(NOW - 2 * DAY_MS).toISOString(),
-  };
-
-  const preview = buildListenBarRotationPreview([...publicRows, challenger], NOW);
-
-  assert.equal(preview.eligibleChallengerCount, 1);
-  assert.equal(preview.projectedPublicCount, LISTEN_BAR_PUBLIC_ROTATION_LIMIT + 1);
-  assert.equal(preview.publicOverflow, 1);
-  assert.deepEqual(preview.wouldPromote.map((track) => track.id), ["challenger-ready"]);
-  assert.deepEqual(preview.wouldRemove.map((track) => track.id), ["challenger-ready"]);
-});
-
-test("listen bar rotation preview does not promote challengers over the creator genre public cap", () => {
-  const publicRows = Array.from({ length: LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT }, (_, index) => ({
-    id: `wind-edm-public-${index}`,
-    createdBy: "wind-curator",
-    genre: "EDM 百大電音",
-    barPhase: "public",
-    positiveReactionCount: 3,
-    createdAt: new Date(NOW - (10 + index) * DAY_MS).toISOString(),
-  }));
-  const challenger = {
-    id: "wind-edm-challenger",
-    createdBy: "wind-curator",
-    genre: "EDM 百大電音",
-    barPhase: "challenger",
-    positiveReactionCount: 0,
-    createdAt: new Date(NOW - 2 * DAY_MS).toISOString(),
-  };
-
-  const preview = buildListenBarRotationPreview([...publicRows, challenger], NOW);
-
-  assert.equal(preview.eligibleChallengerCount, 0);
-  assert.deepEqual(preview.wouldPromote, []);
-});
-
-test("listen bar capacity pause remains active until the July 6 cleanup window", () => {
-  const protectionNow = Date.UTC(2026, 6, 1, 12, 0, 0);
-  const preview = buildListenBarRotationPreview([], protectionNow);
-  assert.equal(preview.evictionPaused, true);
-
-  const afterProtection = Date.UTC(2026, 6, 6, 0, 0, 0);
-  const afterPreview = buildListenBarRotationPreview([], afterProtection);
-  assert.equal(afterPreview.evictionPaused, false);
-});
-
-test("listen bar rotation preview keeps protected challengers out of removal candidates", () => {
-  const preview = buildListenBarRotationPreview([
-    {
-      id: "public-low",
-      barPhase: "public",
-      positiveReactionCount: 0,
-      createdAt: new Date(NOW - 8 * DAY_MS).toISOString(),
-    },
-    {
-      id: "challenger-new",
-      barPhase: "challenger",
-      positiveReactionCount: 0,
-      createdAt: new Date(NOW - 2 * 60 * 60 * 1000).toISOString(),
-    },
-  ], NOW);
-
-  assert.equal(preview.eligibleChallengerCount, 0);
-  assert.equal(preview.publicOverflow, 0);
-  assert.deepEqual(preview.wouldRemove, []);
-});
-
-test("listen bar rotation preview only removes overflow inside the same genre pool", () => {
-  const edmRows = Array.from({ length: LISTEN_BAR_PUBLIC_ROTATION_LIMIT + 1 }, (_, index) => ({
-    id: `edm-${index}`,
-    genre: "EDM 百大電音",
-    barPhase: "public",
-    positiveReactionCount: index === 0 ? 0 : 9,
-    createdAt: new Date(NOW - (index + 1) * 60_000).toISOString(),
-  }));
-  const rapRows = Array.from({ length: LISTEN_BAR_PUBLIC_ROTATION_LIMIT - 1 }, (_, index) => ({
-    id: `rap-${index}`,
-    genre: "Rap 街頭說唱",
-    barPhase: "public",
-    positiveReactionCount: 0,
-    createdAt: new Date(NOW - (index + 1) * 60_000).toISOString(),
-  }));
-
-  const preview = buildListenBarRotationPreview([...edmRows, ...rapRows], NOW);
-
-  assert.equal(preview.publicOverflow, 1);
-  assert.deepEqual(preview.wouldRemove.map((track) => track.id), ["edm-0"]);
+  for (const at of [NOW, Date.UTC(2027, 0, 1)]) {
+    const preview = buildListenBarRotationPreview(tracks, at);
+    assert.equal(preview.projectedPublicCount, 500);
+    assert.equal(preview.publicOverflow, 0);
+    assert.deepEqual(preview.wouldPromote, []);
+    assert.deepEqual(preview.wouldRemove, []);
+  }
 });

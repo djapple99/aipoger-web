@@ -34,11 +34,11 @@ test("founder catalog uses persisted Showtime state instead of old dynamic Heart
   assert.ok(productRulesSource.includes("not a public or recurring `30 days -> Showtime` promise"));
 });
 
-test("Explore, Bar Heartbreak, and Showtime APIs split certified works by surface", () => {
+test("Explore keeps its current catalog while Bar allows recognized airplay", () => {
   assert.ok(aiMusicTracksRouteSource.includes('surface = url.searchParams.get("surface") === "showtime"'));
   assert.ok(aiMusicTracksRouteSource.includes('if (surface === "showtime") return row.ai_music_showtime_certified'));
   assert.ok(aiMusicTracksRouteSource.includes("return !row.ai_music_showtime_certified && !row.ai_music_explore_retired"));
-  assert.ok(listenBarTracksRouteSource.includes("!isAiMusicPersistedShowtimeCertified(row)"));
+  assert.ok(listenBarTracksRouteSource.includes("isPublicBarAirplayTrack"));
   assert.ok(rankSource.includes("surface=showtime"));
   assert.equal(rankSource.includes("listenBarIsHonorEligible"), false);
 });
@@ -78,7 +78,7 @@ test("public Bar Heartbreak copy no longer promises Heart/day Showtime eligibili
   assert.equal(listenBarSource.includes("Showtime 入選資格"), false);
   assert.equal(listenBarSource.includes("makes it Showtime eligible"), false);
   assert.equal(listenBarSource.includes("顆心，或公播存活"), false);
-  assert.ok(listenBarSource.includes("Showtime 是 AIPOGER 認可作品庫"));
+  assert.ok(listenBarSource.includes("愛波哥會持續選曲與整理"));
 });
 
 test("Battle archive Showtime public removals keep history but leave the public catalog", () => {

@@ -35,23 +35,16 @@ import {
   DEFAULT_LISTEN_BAR_COVER,
   LISTEN_BAR_AUDIO_BUCKET,
   LISTEN_BAR_CHALLENGER_HOURLY_LIMIT,
-  LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
   LISTEN_BAR_COVER_BUCKET,
   LISTEN_BAR_CREATOR_DAILY_UPLOAD_LIMIT_AFTER_TOTAL_PUBLIC,
   LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT,
   LISTEN_BAR_CREATOR_PUBLIC_UPLOAD_LIMIT_STARTED_AT,
   LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD,
-  LISTEN_BAR_GENRE_POOL_LIMIT,
-  LISTEN_BAR_TOTAL_ROTATION_LIMIT,
   EMPTY_LISTEN_BAR_TRACK,
   fallbackOfficialPlaylist,
-  listenBarChallengerSlotLimitForPublicCount,
   listenBarCreatorDailyUploadLimitReached,
   listenBarCreatorGenrePublicLimitReached,
-  listenBarPublicDisplayDay,
   listenBarRowToTrack,
-  listenBarSubmissionPhaseForGenrePublicCount,
-  listenBarSurvivalStartedAt,
   type ListenBarTrack,
   type ListenBarTrackRow,
 } from "@/lib/listen-bar";
@@ -618,11 +611,6 @@ function aiToolDisplayLabel(value: string | null | undefined, lang: string) {
   return barText(lang, `AI 工具 ${cleanValue}`, `AI Tool ${cleanValue}`, `AIツール ${cleanValue}`, `AI 도구 ${cleanValue}`);
 }
 
-function challengerProtectionPercent(value: string | null | undefined) {
-  const time = new Date(value ?? "").getTime();
-  if (!Number.isFinite(time)) return 0;
-  return Math.max(0, Math.min(100, ((Date.now() - time) / (24 * 60 * 60 * 1000)) * 100));
-}
 
 function parseLyricLines(value: string): LyricLine[] {
   const rawLines = value
@@ -664,12 +652,12 @@ export default function ListenBarPage() {
     ? {
         playMySong: "我要播歌！",
         shareTitle: "AIPOGER 傷心酒吧 Bar Heartbreak",
-        shareText: ["快來來傷心酒吧 Bar Heartbreak", "這麼好聽的歌以後聽不到了怎麼辦？", "只有被聽見留下傷心的歌，才有資格繼續播放"].join("\n"),
+        shareText: ["來 AIPOGER 傷心酒吧", "選一種曲風，一起聽下一首喜歡的歌。"].join("\n"),
         shareLabel: "分享吧台",
         copied: "已複製",
         battleHall: "探索 AI 音樂",
         title: "傷心酒吧",
-        subtitle: "在 AI 與不 AI 之間只有真正被聽見的歌才能留下來",
+        subtitle: "選一種心情，讓音樂陪你一直聽",
         surfaceHint: "AI 音樂公播池與投稿入口：上傳後進入分類輪播，也會出現在探索 AI 音樂。",
         navBattle: "探索 AI 音樂",
         navDrop: "Drop Battle",
@@ -683,7 +671,7 @@ export default function ListenBarPage() {
         allChannelDescription: "全類型公播池接續播放",
         genreChannelDescription: "同類型公播池接續播放",
         allChannelCountLabel: "全類型公播",
-        genreChannelCountLabel: "公播池",
+        genreChannelCountLabel: "歌曲",
         queueTitle: "接續的六首歌",
         queueSectionHint: "電台會在這個頻道裡持續接續歌曲。",
         queueWaiting: "等待接續歌曲",
@@ -695,12 +683,12 @@ export default function ListenBarPage() {
       ? {
           playMySong: "曲を流す",
           shareTitle: "AIPOGER Bar Heartbreak",
-          shareText: ["AIPOGER Bar Heartbreakへ", "この曲を聴く前に消えたらどうする？", "聴かれ、記憶された曲だけがオンエアに残る。"].join("\n"),
+          shareText: ["AIPOGER Bar Heartbreakへ", "好きなジャンルを選んで、次のお気に入りを見つけよう。"].join("\n"),
           shareLabel: "Share",
           copied: "Copied",
           battleHall: "Explore AI Music",
           title: "Bar Heartbreak",
-          subtitle: "深く刺さる曲だけがオンエアに残る",
+          subtitle: "気分に合う音楽を、ずっとそばに",
           surfaceHint: "AI音楽の公開放送と投稿の入口です。投稿曲はジャンル別にローテーションされ、Explore AI Musicにも表示されます。",
           navBattle: "AI音楽を探す",
           navDrop: "Drop Battle",
@@ -714,7 +702,7 @@ export default function ListenBarPage() {
           allChannelDescription: "全ジャンルの公開放送を続けて再生",
           genreChannelDescription: "同じジャンルの公開放送を続けて再生",
           allChannelCountLabel: "全ジャンル放送",
-          genreChannelCountLabel: "公開放送プール",
+          genreChannelCountLabel: "曲",
           queueTitle: "次に流れる6曲",
           queueSectionHint: "このチャンネル内で次の曲が続けて流れます。",
           queueWaiting: "次の曲を待っています",
@@ -726,12 +714,12 @@ export default function ListenBarPage() {
         ? {
             playMySong: "내 곡 틀기",
             shareTitle: "AIPOGER Bar Heartbreak",
-            shareText: ["AIPOGER Bar Heartbreak로 오세요", "이 노래를 듣기 전에 사라지면 어떡하죠?", "들리고 기억된 곡만 온에어에 남습니다."].join("\n"),
+            shareText: ["AIPOGER Bar Heartbreak로 오세요", "좋아하는 장르를 고르고 새로운 음악을 만나 보세요."].join("\n"),
             shareLabel: "Share",
             copied: "Copied",
             battleHall: "Explore AI Music",
             title: "Bar Heartbreak",
-            subtitle: "강하게 꽂히는 곡만 온에어에 남는다",
+            subtitle: "지금 기분에 맞는 음악을 계속 들어요",
             surfaceHint: "AI 음악 공개 방송과 업로드 입구입니다. 업로드한 곡은 장르별로 재생되며 Explore AI Music에도 표시됩니다.",
             navBattle: "AI 음악 탐색",
             navDrop: "Drop Battle",
@@ -745,7 +733,7 @@ export default function ListenBarPage() {
             allChannelDescription: "전체 장르 공개 방송 이어 듣기",
             genreChannelDescription: "같은 장르 공개 방송 이어 듣기",
             allChannelCountLabel: "전체 장르 방송",
-            genreChannelCountLabel: "공개 방송 풀",
+            genreChannelCountLabel: "곡",
             queueTitle: "다음 재생 6곡",
             queueSectionHint: "이 채널 안에서 다음 곡이 계속 이어집니다.",
             queueWaiting: "다음 곡을 기다리는 중",
@@ -756,12 +744,12 @@ export default function ListenBarPage() {
         : {
             playMySong: "Play My Song",
             shareTitle: "AIPOGER Bar Heartbreak",
-            shareText: ["Come to AIPOGER Bar Heartbreak", "What if this song disappears before you hear it?", "Only the songs that get heard and remembered stay in rotation."].join("\n"),
+            shareText: ["Come to AIPOGER Bar Heartbreak", "Pick a genre and discover your next favorite song."].join("\n"),
             shareLabel: "Share",
             copied: "Copied",
             battleHall: "Explore AI Music",
             title: "Bar Heartbreak",
-            subtitle: "Only the songs that hit hard stay on air",
+            subtitle: "Find your mood. Let the music keep you company.",
             surfaceHint: "AI music airplay pool and submission entry. Uploaded tracks rotate here and appear in Explore AI Music.",
             navBattle: "Explore AI Music",
             navDrop: "Drop Battle",
@@ -775,7 +763,7 @@ export default function ListenBarPage() {
             allChannelDescription: "Continue through the full public airplay pool",
             genreChannelDescription: "Continue within this genre's public airplay pool",
             allChannelCountLabel: "FULL AIRPLAY",
-            genreChannelCountLabel: "AIRPLAY POOL",
+            genreChannelCountLabel: "TRACKS",
             queueTitle: "Upcoming Sad Songs",
             queueSectionHint: "The radio will keep continuing inside this channel.",
             queueWaiting: "Waiting for Songs",
@@ -812,7 +800,6 @@ export default function ListenBarPage() {
   const [selectedPlaybackGenre, setSelectedPlaybackGenre] = useState<GenrePlaybackSelection>("all");
   const [playlistStatus, setPlaylistStatus] = useState<"loading" | "database" | "fallback">("loading");
   const [priorityAirplayIds, setPriorityAirplayIds] = useState<Set<string>>(() => new Set());
-  const [challengerSlotCount, setChallengerSlotCount] = useState(0);
   const [publicUploadForm, setPublicUploadForm] = useState<PublicUploadForm>(initialPublicUploadForm);
   const [publicAudioFile, setPublicAudioFile] = useState<File | null>(null);
   const [publicCoverFile, setPublicCoverFile] = useState<File | null>(null);
@@ -1068,41 +1055,16 @@ export default function ListenBarPage() {
     () => rotationTracks.filter((track) => track.source === "community"),
     [rotationTracks],
   );
-  const totalCommunityTrackCount = allCommunityTracks.length;
   const publicPoolTracks = useMemo(
     () => allCommunityTracks.filter((track) => track.barPhase === "public"),
     [allCommunityTracks],
   );
   const selectedChannelPool = selectedPlaybackGenre === "all"
-    ? { label: listenCopy.allChannelCountLabel, count: publicPoolTracks.length, limit: LISTEN_BAR_TOTAL_ROTATION_LIMIT }
+    ? { label: listenCopy.allChannelCountLabel, count: publicPoolTracks.length }
     : {
         label: listenCopy.genreChannelCountLabel,
         count: genrePoolStats.get(selectedPlaybackGenre)?.public ?? 0,
-        limit: LISTEN_BAR_GENRE_POOL_LIMIT,
       };
-  const survivalStartedAtByGenre = useMemo(() => {
-    const map = new Map<string, string | null>();
-    for (const genre of LISTEN_BAR_GENRES) {
-      map.set(genre.value, listenBarSurvivalStartedAt(allCommunityTracks, LISTEN_BAR_GENRE_POOL_LIMIT, genre.value));
-    }
-    return map;
-  }, [allCommunityTracks]);
-  const survivalStartedAt = useMemo(
-    () => nowTrack.genre ? (survivalStartedAtByGenre.get(nowTrack.genre) ?? null) : null,
-    [nowTrack.genre, survivalStartedAtByGenre],
-  );
-  const challengerTracks = useMemo(
-    () => communityRequestTracks.filter((track) => track.barPhase !== "public"),
-    [communityRequestTracks],
-  );
-  const challengerQueueTracks = useMemo(
-    () => [...challengerTracks].sort((a, b) => new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime()),
-    [challengerTracks],
-  );
-  const challengerRankById = useMemo(
-    () => new Map(challengerQueueTracks.map((track, index) => [track.id, index + 1])),
-    [challengerQueueTracks],
-  );
   const priorityAirplaySourceTracks = useMemo(
     () => communityRequestTracks.filter((track) => priorityAirplayIds.has(track.id)),
     [communityRequestTracks, priorityAirplayIds],
@@ -1146,31 +1108,17 @@ export default function ListenBarPage() {
     rotationTracks.forEach(pushTrack);
     return upcoming;
   }, [nextCommunityTrack, nextRotationTrack, nowTrack.id, rotationTracks]);
-  const myChallengerStats = useMemo(
-    () => myBroadcastStats.filter((track) => track.barPhase === "challenger"),
-    [myBroadcastStats],
-  );
   const myPublicStats = useMemo(
     () => myBroadcastStats.filter((track) => track.barPhase === "public"),
     [myBroadcastStats],
   );
   const uploadGenre = publicUploadForm.genre.trim();
   const uploadGenreStats = uploadGenre ? (genrePoolStats.get(uploadGenre) ?? { total: 0, public: 0 }) : { total: 0, public: 0 };
-  const uploadSubmissionPhase = listenBarSubmissionPhaseForGenrePublicCount(uploadGenreStats.public);
-  const uploadWillEnterChallenger = Boolean(uploadGenre) && uploadSubmissionPhase === "challenger";
+  const uploadSubmissionPhase = "public" as const;
   const myPublicStatsForUploadGenre = useMemo(
     () => uploadGenre ? myBroadcastStats.filter((track) => track.barPhase === "public" && track.genre === uploadGenre) : [],
     [myBroadcastStats, uploadGenre],
   );
-  const myChallengerStatsForUploadGenre = useMemo(
-    () => uploadGenre ? myBroadcastStats.filter((track) => track.barPhase === "challenger" && track.genre === uploadGenre) : [],
-    [myBroadcastStats, uploadGenre],
-  );
-  const challengerSlotLimit = useMemo(
-    () => listenBarChallengerSlotLimitForPublicCount(myPublicStatsForUploadGenre.length),
-    [myPublicStatsForUploadGenre.length],
-  );
-  const challengerSlotsFull = uploadWillEnterChallenger && myChallengerStatsForUploadGenre.length >= challengerSlotLimit;
   const creatorGenrePublicLimitFull = Boolean(uploadGenre)
     && listenBarCreatorGenrePublicLimitReached(myPublicStatsForUploadGenre.length);
   const todayTaipeiKey = taipeiDayKey(Date.now());
@@ -1183,19 +1131,13 @@ export default function ListenBarPage() {
     [myBroadcastStats, todayTaipeiKey],
   );
   const creatorDailyUploadLimitFull = listenBarCreatorDailyUploadLimitReached(myPublicStats.length, myUploadsTodayAfterLimitStart);
-  const publicUploadBlocked = creatorGenrePublicLimitFull || creatorDailyUploadLimitFull || challengerSlotsFull;
-  const displayedChallengerSlotCount = uploadGenre ? myChallengerStatsForUploadGenre.length : challengerSlotCount;
-  const uploadGenreRemainingPublicSlots = Math.max(0, LISTEN_BAR_GENRE_POOL_LIMIT - uploadGenreStats.public);
+  const publicUploadBlocked = creatorGenrePublicLimitFull || creatorDailyUploadLimitFull;
   const uploadGenreDisplayName = uploadGenre ? genreDisplayLabel(uploadGenre, lang) : "";
   const uploadPhaseNoticeTitle = creatorGenrePublicLimitFull
       ? (isZh ? "此類公播已嚴重超標" : "Genre Public Limit Exceeded")
       : creatorDailyUploadLimitFull
         ? (isZh ? "今日上傳額度已滿" : "Daily Upload Limit Reached")
-    : uploadWillEnterChallenger
-      ? challengerSlotsFull
-        ? (isZh ? "此類 Challenger 席位已滿" : "Challenger Seats Full")
-        : (isZh ? "送出後進 Challenger" : "Uploads to Challenger")
-      : (isZh ? "送出後直接進公播" : "Uploads Straight to Public");
+    : barText(lang, "投稿後直接公開", "Public immediately", "投稿後すぐ公開", "업로드 후 즉시 공개");
   const uploadPhaseNoticeBody = creatorGenrePublicLimitFull
       ? (isZh
         ? `你在 ${uploadGenreDisplayName} 公播池已有 ${myPublicStatsForUploadGenre.length}/${LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT} 首，已超過同類公播上限。這個種類必須先降到 4 首公播以下，才可以再傳第 5 首。`
@@ -1204,16 +1146,11 @@ export default function ListenBarPage() {
         ? (isZh
           ? `你的公播歌曲已達 ${myPublicStats.length}/${LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD} 首；新規生效後每天最多成功上傳 ${LISTEN_BAR_CREATOR_DAILY_UPLOAD_LIMIT_AFTER_TOTAL_PUBLIC} 首。今天已用完，明天再傳，或先撤下一首公播歌曲讓總數低於 ${LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD}。`
           : `You have ${myPublicStats.length}/${LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD} public tracks. After the new rule, creators at this level can upload ${LISTEN_BAR_CREATOR_DAILY_UPLOAD_LIMIT_AFTER_TOTAL_PUBLIC} track per day. Try tomorrow, or remove one public track to go below ${LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD}.`)
-    : uploadWillEnterChallenger
-      ? (isZh
-        ? `${uploadGenreDisplayName} 已滿 ${uploadGenreStats.public}/${LISTEN_BAR_GENRE_POOL_LIMIT}。這首會先進同類 Challenger；你的同類 Challenger ${myChallengerStatsForUploadGenre.length}/${challengerSlotLimit}。`
-        : `${uploadGenreDisplayName} is full at ${uploadGenreStats.public}/${LISTEN_BAR_GENRE_POOL_LIMIT}. This song enters same-genre Challenger first; your same-genre Challenger seats are ${myChallengerStatsForUploadGenre.length}/${challengerSlotLimit}.`)
-      : (isZh
-        ? `${uploadGenreDisplayName} 目前 ${uploadGenreStats.public}/${LISTEN_BAR_GENRE_POOL_LIMIT}，還有 ${uploadGenreRemainingPublicSlots} 個公播位。這首會加入該類輪播。`
-        : `${uploadGenreDisplayName} is at ${uploadGenreStats.public}/${LISTEN_BAR_GENRE_POOL_LIMIT}, with ${uploadGenreRemainingPublicSlots} public slots left. This song joins that genre rotation.`);
-  const challengerSlotsFullMessage = isZh
-    ? `你的 ${uploadGenre || "此類型"} 公播池已有 ${myPublicStatsForUploadGenre.length} 首，現在 Challenger 上限是 ${challengerSlotLimit} 首。要再上傳，請先撤下一首同類 Challenger，或等同類公播池釋出空間。`
-    : `You have ${myPublicStatsForUploadGenre.length} public tracks in ${uploadGenre || "this genre"}, so your Challenger limit is ${challengerSlotLimit}. Remove one same-genre Challenger, or wait for room in that genre.`;
+    : barText(lang,
+        `${uploadGenreDisplayName} 目前有 ${uploadGenreStats.public} 首歌曲。投稿後直接公開，加入同類輪播。`,
+        `${uploadGenreDisplayName} has ${uploadGenreStats.public} tracks. Uploads join public airplay immediately.`,
+        `${uploadGenreDisplayName}は現在${uploadGenreStats.public}曲。投稿後すぐに公開再生に加わります。`,
+        `${uploadGenreDisplayName} 현재 ${uploadGenreStats.public}곡. 업로드 후 바로 공개 재생됩니다.`);
   const creatorGenrePublicLimitMessage = isZh
     ? `你在 ${uploadGenre || "此類型"} 公播池已有 ${myPublicStatsForUploadGenre.length}/${LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT} 首，已超過同類公播上限。這個種類必須先降到 4 首公播以下，才可以再傳第 5 首。`
     : `You already have ${myPublicStatsForUploadGenre.length}/${LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT} public tracks in ${uploadGenre || "this genre"}. This genre must be reduced to 4 public tracks before you can upload the 5th again.`;
@@ -1224,9 +1161,7 @@ export default function ListenBarPage() {
     ? creatorGenrePublicLimitMessage
     : creatorDailyUploadLimitFull
       ? creatorDailyUploadLimitMessage
-      : challengerSlotsFull
-        ? challengerSlotsFullMessage
-        : "";
+      : "";
 
   useEffect(() => {
     window.dispatchEvent(new Event(STOP_HOME_BGM_EVENT));
@@ -1358,16 +1293,13 @@ export default function ListenBarPage() {
         setVisitorAvatarUrl(fighterAvatar || profileAvatar || userAvatarUrl(user));
         if (myTracksResult.ok) {
           const rows = myTracksResult.payload?.tracks ?? [];
-          setChallengerSlotCount(myTracksResult.payload?.challengerCount ?? rows.filter((row) => row.bar_phase !== "public").length);
           setMyBroadcastStats(rows.map(listenBarRowToMyBroadcastStat));
         } else {
           console.warn("[listen-bar] my tracks", myTracksResult.payload?.error || "load failed");
           setMyBroadcastStats([]);
-          setChallengerSlotCount(0);
         }
       } else {
         setMyBroadcastStats([]);
-        setChallengerSlotCount(0);
       }
     };
     void loadUser();
@@ -1417,7 +1349,7 @@ export default function ListenBarPage() {
       const rows = payload?.tracks ?? [];
       const community = rows
         .filter((row) => !row.is_featured_official && row.source !== "official")
-        .slice(0, LISTEN_BAR_TOTAL_ROTATION_LIMIT)
+
         .map(listenBarRowToTrack)
         .filter((track): track is ListenBarTrack => track !== null);
       const tracks = community;
@@ -1523,15 +1455,13 @@ export default function ListenBarPage() {
 
     let mounted = true;
     const loadMyReactions = async () => {
-      const trackIds = allRotationTracks.map((track) => track.id).slice(0, LISTEN_BAR_TOTAL_ROTATION_LIMIT);
       const today = taipeiVoteDate();
       const { data, error } = await supabase
         .from("listen_bar_track_reactions")
         .select("track_id, reaction")
         .eq("user_id", userId)
         .eq("reaction", "heart")
-        .eq("vote_date", today)
-        .in("track_id", trackIds);
+        .eq("vote_date", today);
 
       if (!mounted) return;
       if (error) {
@@ -2316,9 +2246,6 @@ export default function ListenBarPage() {
           ...tracks.filter((track) => track.id !== normalizedTrack.id),
         ]);
       }
-      if (insertedTrack?.barPhase === "challenger") {
-        setChallengerSlotCount((count) => count + 1);
-      }
       setPublicAudioFile(null);
       setPublicCoverFile(null);
       setPublicLyricsText("");
@@ -2326,15 +2253,11 @@ export default function ListenBarPage() {
         ...initialPublicUploadForm,
         artist: limitListenBarDisplayText(creatorDefaultName, LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
       });
-      setPublicUploadMessage(
-        (insertedTrack?.barPhase ?? uploadSubmissionPhase) === "public"
-          ? isZh
-            ? `上傳完成！已加入 ${publicUploadForm.genre} 公播池，會在這個類型裡輪播。`
-            : `Upload complete. Your track joined the ${publicUploadForm.genre} public pool and will keep rotating in that genre.`
-          : isZh
-            ? `上傳完成！已進入 ${publicUploadForm.genre} Challenger；目前這首播完後會優先插播新投稿。`
-            : `Upload complete. Your track entered the ${publicUploadForm.genre} Challenger lane and gets priority after the current song.`,
-      );
+      setPublicUploadMessage(barText(lang,
+        `上傳完成！已加入 ${publicUploadForm.genre} 輪播。`,
+        `Upload complete. Your track joined ${publicUploadForm.genre} airplay.`,
+        `投稿完了！${publicUploadForm.genre}の再生に加わりました。`,
+        `업로드 완료! ${publicUploadForm.genre} 재생에 추가되었습니다.`));
       setPlaylistStatus("database");
     } catch (submitError) {
       void cleanupPublicUploadAssets({ audioPath, coverPath });
@@ -2437,13 +2360,7 @@ export default function ListenBarPage() {
 
   const handleRemoveMyTrack = async (track: MyBroadcastStat) => {
     if (!userId || removeTrackBusyId) return;
-    const confirmMessage = track.barPhase === "public"
-      ? isZh
-        ? `「${track.title}」已經在公播池。撤下後會離開傷心酒吧，確定撤下嗎？`
-        : `"${track.title}" is in the public pool. Remove it from Bar Heartbreak?`
-      : isZh
-        ? `撤下 Challenger「${track.title}」？撤下後會空出 1 個挑戰席。`
-        : `Remove Challenger "${track.title}" and free one seat?`;
+    const confirmMessage = isZh ? `將「${track.title}」撤下公開展示？` : `Remove "${track.title}" from public display?`;
     if (!window.confirm(confirmMessage)) return;
 
     setRemoveTrackBusyId(track.id);
@@ -2490,18 +2407,7 @@ export default function ListenBarPage() {
         delete next[track.id];
         return next;
       });
-      if (track.barPhase === "challenger") {
-        setChallengerSlotCount((count) => Math.max(0, count - 1));
-      }
-      setPublicUploadMessage(
-        track.barPhase === "public"
-          ? isZh
-            ? "已撤下公播池歌曲，紀錄會保留給後續成績卡使用。"
-            : "Public-pool track removed. Its record is preserved for future score cards."
-          : isZh
-            ? "已撤下 Challenger，現在可以派新歌上場。"
-            : "Challenger removed. You can send a new track now.",
-      );
+      setPublicUploadMessage(isZh ? "已撤下公開展示，作品紀錄保留。" : "Removed from public display. Its record is preserved.");
     } catch (error) {
       setPublicUploadError(
         isZh
@@ -2519,9 +2425,6 @@ export default function ListenBarPage() {
   const nowPresenterRank = rawPresenterRank === "創作者投稿"
     ? barText(lang, "創作者投稿", "Creator Submission", "クリエイター投稿", "크리에이터 업로드")
     : rawPresenterRank;
-  const nowSurvivalDay = nowTrack.source === "community" && nowTrack.barPhase === "public"
-    ? listenBarPublicDisplayDay(nowTrack.promotedAt, nowTrack.createdAt, Date.now(), survivalStartedAt)
-    : 0;
   const nowLyrics = nowTrack.lyrics?.trim() ?? "";
   const lyricLines = useMemo(() => parseLyricLines(nowLyrics), [nowLyrics]);
   const activeLyricIndex = useMemo(() => {
@@ -2738,11 +2641,7 @@ export default function ListenBarPage() {
                       {barText(lang, "看 MV", "Watch MV", "MVを見る", "MV 보기")}
                     </a>
                   )}
-                  {nowSurvivalDay > 0 && (
-                    <span className="rounded-full border border-orange-300/25 bg-orange-500/8 px-2 py-0.5 font-bold text-orange-100">
-                      {barText(lang, `公播 Day ${nowSurvivalDay}`, `Public Day ${nowSurvivalDay}`, `公開放送 ${nowSurvivalDay}日目`, `공개 방송 ${nowSurvivalDay}일차`)}
-                    </span>
-                  )}
+
                 </div>
                 <div className="mt-3 -ml-1 flex flex-wrap items-center gap-2">
                   <span className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-100">
@@ -2915,7 +2814,7 @@ export default function ListenBarPage() {
                   </div>
                 </div>
                 <div className="rounded-full border border-cyan-200/20 bg-cyan-300/8 px-3 py-1 text-[11px] font-black tabular-nums text-cyan-100">
-                  {selectedChannelPool.label} · {selectedChannelPool.count}/{selectedChannelPool.limit}
+                  {selectedChannelPool.label} · {selectedChannelPool.count}
                 </div>
               </div>
               <div className="relative border-b border-white/8 px-4 py-3">
@@ -2952,7 +2851,7 @@ export default function ListenBarPage() {
                       {barText(lang, "全部播放", "All Tracks", "すべて再生", "전체 재생")}
                     </span>
                     <span className="mt-1 block text-[10px] font-black leading-4 text-zinc-400">
-                      {listenCopy.allChannelCountLabel} · {publicPoolTracks.length}/{LISTEN_BAR_TOTAL_ROTATION_LIMIT}
+                      {listenCopy.allChannelCountLabel} · {publicPoolTracks.length}
                     </span>
                   </button>
                   {LISTEN_BAR_GENRES.map((genre) => {
@@ -2979,7 +2878,7 @@ export default function ListenBarPage() {
                           {t(genre.labelKey)}
                         </span>
                         <span className="mt-1 block text-[10px] font-black leading-4 text-zinc-400">
-                          {listenCopy.genreChannelCountLabel} · {stats.public}/{LISTEN_BAR_GENRE_POOL_LIMIT}
+                          {listenCopy.genreChannelCountLabel} · {stats.public}
                         </span>
                       </button>
                     );
@@ -3047,21 +2946,7 @@ export default function ListenBarPage() {
                                   <span className="mx-2 text-zinc-700">/</span>
                                   {formatDuration(track.duration)}
                                 </p>
-                                {track.barPhase === "public" ? (
-                                  <p className="mt-1 text-[11px] font-black text-orange-100/80">
-                                    {barText(
-                                      lang,
-                                      `公播 Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null)}`,
-                                      `Public Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null)}`,
-                                      `公開放送 ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null)}日目`,
-                                      `공개 방송 ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null)}일차`,
-                                    )}
-                                  </p>
-                                ) : (
-                                  <p className="mt-1 text-[11px] font-black text-cyan-100/80">
-                                    Challenger #{challengerRankById.get(track.id) ?? startIndex + index + 1}
-                                  </p>
-                                )}
+
                                 <ListenBarEarwormSignal
                                   track={track}
                                   lang={lang}
@@ -3326,9 +3211,7 @@ export default function ListenBarPage() {
                     className={`rounded-xl border px-3 py-3 ${
                       publicUploadBlocked
                         ? "border-red-300/30 bg-red-500/10"
-                        : uploadWillEnterChallenger
-                          ? "border-orange-300/28 bg-orange-500/10"
-                          : "border-cyan-200/24 bg-cyan-300/[0.075]"
+                        : "border-cyan-200/24 bg-cyan-300/[0.075]"
                     }`}
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -3336,15 +3219,13 @@ export default function ListenBarPage() {
                         className={`text-xs font-black ${
                           publicUploadBlocked
                             ? "text-red-100"
-                            : uploadWillEnterChallenger
-                              ? "text-orange-100"
-                              : "text-cyan-50"
+                            : "text-cyan-50"
                         }`}
                       >
                         {uploadPhaseNoticeTitle}
                       </p>
                       <span className="rounded-full border border-white/10 bg-black/28 px-2.5 py-1 text-[11px] font-black text-white/82">
-                        {uploadGenreStats.public}/{LISTEN_BAR_GENRE_POOL_LIMIT}
+                        {uploadGenreStats.public}
                       </span>
                     </div>
                     <p className="mt-1 text-xs font-bold leading-5 text-zinc-400">
@@ -3388,57 +3269,11 @@ export default function ListenBarPage() {
                       ? barText(lang, "此類須降到4首", "Reduce Genre to 4", "同ジャンルを4曲に減らす", "이 장르를 4곡으로 줄이기")
                       : creatorDailyUploadLimitFull
                         ? barText(lang, "今日額度已滿", "Daily Limit Used", "本日の上限に到達", "오늘 한도 소진")
-                        : challengerSlotsFull
-                          ? barText(lang, "挑戰席已滿", "Seats Full", "挑戦枠が満席", "도전 좌석 만석")
-                          : listenCopy.playMySong}
+                        : listenCopy.playMySong}
                 </button>
               </form>
             </div>
           </div>
-        </section>
-
-        <section className="rounded-[1.55rem] border border-cyan-200/16 bg-black/62 px-4 py-4 shadow-[0_22px_64px_rgba(0,0,0,0.4),0_0_34px_rgba(0,202,255,0.055)] backdrop-blur">
-          <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.28em] text-cyan-100/70">CHALLENGER POOL</p>
-              <h2 className="mt-1 text-2xl font-black text-white">{barText(lang, "挑戰池", "Challenger Pool", "チャレンジャープール", "챌린저 풀")}</h2>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-orange-300/20 bg-orange-500/10 px-3 py-1 text-[11px] font-black text-orange-100">
-                {barText(lang, `${challengerQueueTracks.length} 首正在挑戰`, `${challengerQueueTracks.length} Challengers`, `${challengerQueueTracks.length}曲が挑戦中`, `${challengerQueueTracks.length}곡 도전 중`)}
-              </span>
-              <span className="rounded-full border border-cyan-200/18 bg-cyan-300/8 px-3 py-1 text-[11px] font-black text-cyan-100">
-                {barText(lang, `每批 1 小時最多 ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} 首新歌上公播`, `${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT} new songs per 1-hour airplay batch`, `1時間の放送枠につき新曲は最大${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT}曲`, `1시간 방송 배치당 신곡 최대 ${LISTEN_BAR_CHALLENGER_HOURLY_LIMIT}곡`)}
-              </span>
-            </div>
-          </div>
-          {challengerQueueTracks.length > 0 ? (
-            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-              {challengerQueueTracks.slice(0, 12).map((track, index) => (
-                <div key={track.id} className="grid min-h-[5.5rem] grid-cols-[auto_1fr] items-center gap-3 rounded-xl border border-white/8 bg-white/[0.035] px-3 py-3">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-full border border-orange-300/35 bg-orange-500/12 text-sm font-black tabular-nums text-orange-100">
-                    #{index + 1}
-                  </span>
-                  <div className="min-w-0">
-                    <div className="flex min-w-0 items-center gap-2">
-                      {isNewlyPublishedMusic(track.createdAt) ? <NewMusicBadge lang={lang} className="shrink-0" /> : null}
-                      <p className="min-w-0 truncate text-sm font-black text-white" title={track.title}>{track.title}</p>
-                    </div>
-                    <p className="mt-1 truncate text-xs font-bold text-zinc-500">
-                      {track.artist} · {formatDuration(track.duration)} · {track.positiveReactionCount ?? 0} {barText(lang, "愛心", "hearts", "Heart", "Heart")}
-                    </p>
-                    <p className="mt-1 text-[11px] font-black text-cyan-100/80">
-                      {isZh ? `Challenger #${index + 1}` : `Challenger #${index + 1}`}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="rounded-xl border border-white/8 bg-black/35 px-4 py-5 text-sm font-bold text-zinc-500">
-              {barText(lang, `目前沒有 Challenger，新投稿會優先排入挑戰池保護 ${LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS}H。`, `No Challengers yet. New uploads enter Challenger protection for ${LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS}H first.`, `現在チャレンジャーはいません。新規投稿は最初に${LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS}時間の保護枠へ入ります。`, `현재 챌린저가 없습니다. 새 업로드는 먼저 ${LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS}시간 보호 구간에 들어갑니다.`)}
-            </p>
-          )}
         </section>
 
         <section className="grid min-w-0 gap-4 lg:grid-cols-[1.08fr_1.1fr_0.82fr]">
@@ -3449,10 +3284,10 @@ export default function ListenBarPage() {
             <p className="mt-2 break-words text-sm font-bold leading-6 text-zinc-300 [overflow-wrap:anywhere]">
               {barText(
                 lang,
-                `傷心酒吧不是排行榜，而是 AIPOGER 的 AI 音樂公播池與投稿入口。上傳後歌曲會進入分類輪播，也會出現在探索 AI 音樂。來訪者可選公播或指定類型播放；目前 ${LISTEN_BAR_GENRES.length} 種類型每類滿池 ${LISTEN_BAR_GENRE_POOL_LIMIT} 首，總公播池上限 ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} 首。未滿池的新投稿直接進同類公播池；滿池後才進 Challenger。Showtime 是 AIPOGER 認可作品庫，入選後作品離開公播與探索接戰。`,
-                `Bar Heartbreak is not a chart. It is AIPOGER's AI music airplay pool and submission entry. Uploaded tracks rotate by genre and also appear in Explore AI Music. Each of the ${LISTEN_BAR_GENRES.length} genres has a ${LISTEN_BAR_GENRE_POOL_LIMIT}-track public pool, for ${LISTEN_BAR_TOTAL_ROTATION_LIMIT} public slots total. New submissions enter the same-genre public pool until that genre is full; after that they enter Challenger. Showtime is AIPOGER's certified catalog; certified works leave public airplay and Explore challenges.`,
-                `Bar Heartbreakはランキングではなく、AIPOGERのAI音楽放送プール兼投稿入口です。投稿曲はジャンル別にローテーションされ、Explore AI Musicにも表示されます。${LISTEN_BAR_GENRES.length}ジャンルは各${LISTEN_BAR_GENRE_POOL_LIMIT}曲、合計${LISTEN_BAR_TOTAL_ROTATION_LIMIT}枠。空きがある間は同ジャンルの放送枠へ、満杯になるとChallengerへ進みます。Showtime認定作品は放送とExploreの挑戦枠を卒業します。`,
-                `Bar Heartbreak는 순위표가 아니라 AIPOGER의 AI 음악 방송 풀 겸 업로드 입구입니다. 업로드한 곡은 장르별로 순환 재생되며 Explore AI Music에도 표시됩니다. ${LISTEN_BAR_GENRES.length}개 장르는 각각 ${LISTEN_BAR_GENRE_POOL_LIMIT}곡, 총 ${LISTEN_BAR_TOTAL_ROTATION_LIMIT}개 공개 방송 슬롯을 가집니다. 빈자리가 있으면 같은 장르 방송 풀에, 가득 차면 Challenger에 들어갑니다. Showtime 인증 작품은 방송과 Explore 도전에서 졸업합니다.`,
+                "選一種曲風，讓傷心酒吧陪你一直聽。投稿後作品直接公開，愛波哥會持續選曲與整理；作品可能因策展方向調整而撤下，不保證永久展示。有疑問歡迎在酒吧留言。",
+                "Choose a genre and keep listening. Uploads are public immediately. Aipoger curates the library and may remove works from public display. Permanent listing is not guaranteed; leave a bar message with questions.",
+                "ジャンルを選んで、音楽を続けて聴こう。投稿作品はすぐ公開されます。愛波哥が選曲・整理し、方針により公開を取り下げる場合があります。永久掲載は保証されません。質問はバーのメッセージへ。",
+                "장르를 고르고 계속 들어 보세요. 업로드한 곡은 즉시 공개됩니다. Aipoger의 큐레이션에 따라 공개가 철회될 수 있으며 영구 게재는 보장되지 않습니다. 질문은 바 메시지에 남겨 주세요.",
               )}
             </p>
           </div>
@@ -3461,9 +3296,6 @@ export default function ListenBarPage() {
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2 sm:mb-3 sm:gap-3">
               <p className="text-xs uppercase tracking-[0.22em] text-cyan-100/70">{barText(lang, "我的吧台歌曲", "My Bar Tracks", "マイ・バートラック", "내 바 트랙")}</p>
               <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
-                <span className="max-w-full rounded-full border border-orange-300/18 bg-orange-500/8 px-2 py-0.5 text-[11px] font-black text-orange-100">
-                  {isZh ? `Challenger ${displayedChallengerSlotCount}/${challengerSlotLimit}` : `${displayedChallengerSlotCount}/${challengerSlotLimit} Challengers`}
-                </span>
                 <span className="max-w-full rounded-full border border-white/10 px-2 py-0.5 text-[11px] font-bold text-zinc-400">
                   {barText(lang, `${myPublicStats.length} 公播`, `${myPublicStats.length} public`, `${myPublicStats.length}曲 放送中`, `${myPublicStats.length}곡 공개 방송`)}
                 </span>
@@ -3471,18 +3303,8 @@ export default function ListenBarPage() {
             </div>
             {myBroadcastStats.length > 0 ? (
               <div className="grid max-h-72 min-w-0 gap-1.5 overflow-y-auto overflow-x-hidden pr-1 sm:max-h-56 sm:gap-2">
-                {[...myChallengerStats, ...myPublicStats].slice(0, 6).map((track) => {
-                  const keepPercent = track.barPhase === "public"
-                    ? 100
-                    : challengerProtectionPercent(track.createdAt);
-                  const challengerRank = challengerRankById.get(track.id);
-                  const statusLabel = track.barPhase === "public"
-                    ? isZh
-                      ? `公播 Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null)}`
-                      : `Public Day ${listenBarPublicDisplayDay(track.promotedAt, track.createdAt, Date.now(), survivalStartedAtByGenre.get(track.genre) ?? null)}`
-                    : challengerRank
-                      ? `Challenger #${challengerRank}`
-                      : "Challenger";
+                {myPublicStats.slice(0, 6).map((track) => {
+                  const statusLabel = barText(lang, "公開播放", "On air", "公開再生中", "공개 재생 중");
                   return (
                     <div key={track.id} className="min-w-0 rounded-xl border border-white/8 bg-white/[0.035] px-2.5 py-2 sm:px-3">
                       <div className="min-w-0 overflow-hidden">
@@ -3595,9 +3417,7 @@ export default function ListenBarPage() {
                           </button>
                         </div>
                       )}
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
-                        <div className="h-full rounded-full bg-gradient-to-r from-orange-500 to-cyan-300" style={{ width: `${keepPercent}%` }} />
-                      </div>
+
                     </div>
                   );
                 })}
@@ -3605,7 +3425,7 @@ export default function ListenBarPage() {
             ) : (
               <p className="rounded-xl border border-white/8 bg-black/32 px-3 py-4 text-sm text-zinc-500">
                 {userId
-                  ? barText(lang, "尚未有 Challenger 或公播池歌曲。", "No Challenger or Public Pool tracks yet.", "Challengerまたは放送中の曲はまだありません。", "Challenger 또는 공개 방송 곡이 아직 없습니다.")
+                  ? barText(lang, "尚未有公開歌曲。", "No public tracks yet.", "公開中の曲はまだありません。", "아직 공개된 곡이 없습니다.")
                   : barText(lang, "你的投稿與挑戰紀錄會顯示在這裡。", "Your submissions and challenge record will appear here.", "投稿と挑戦の記録はここに表示されます。", "업로드와 도전 기록이 여기에 표시됩니다.")}
               </p>
             )}
@@ -3617,25 +3437,18 @@ export default function ListenBarPage() {
             </p>
             <div className="mt-3 flex items-end gap-2">
               <span className="text-5xl font-black tabular-nums text-white">{publicPoolTracks.length}</span>
-              <span className="pb-1 text-sm font-black text-zinc-500">
-                / {LISTEN_BAR_TOTAL_ROTATION_LIMIT}
-              </span>
+
             </div>
             <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">
               {barText(
                 lang,
-                `${totalCommunityTrackCount} 首投稿歌進入傷心酒吧；${publicPoolTracks.length} 首正在公播。${LISTEN_BAR_GENRES.length} 種類型各自滿池 ${LISTEN_BAR_GENRE_POOL_LIMIT} 首，先同類比較，再進 Showtime。`,
-                `${totalCommunityTrackCount} creator tracks are in Bar Heartbreak; ${publicPoolTracks.length} are on public airplay. Each genre fills its own ${LISTEN_BAR_GENRE_POOL_LIMIT}-track pool before survival starts.`,
-                `${totalCommunityTrackCount}曲がBar Heartbreakに参加し、${publicPoolTracks.length}曲を放送中。${LISTEN_BAR_GENRES.length}ジャンルは各${LISTEN_BAR_GENRE_POOL_LIMIT}曲まで、同ジャンル内で競いShowtimeを目指します。`,
-                `${totalCommunityTrackCount}곡이 Bar Heartbreak에 참여했고 ${publicPoolTracks.length}곡이 공개 방송 중입니다. ${LISTEN_BAR_GENRES.length}개 장르는 각각 ${LISTEN_BAR_GENRE_POOL_LIMIT}곡까지 채운 뒤 같은 장르 안에서 Showtime을 향해 경쟁합니다.`,
+                `${publicPoolTracks.length} 首歌曲，${LISTEN_BAR_GENRES.length} 種曲風。選你喜歡的，慢慢聽。`,
+                `${publicPoolTracks.length} tracks across ${LISTEN_BAR_GENRES.length} genres. Pick a sound and keep listening.`,
+                `${LISTEN_BAR_GENRES.length}ジャンル、${publicPoolTracks.length}曲。好きな音楽をゆっくり楽しもう。`,
+                `${LISTEN_BAR_GENRES.length}개 장르, ${publicPoolTracks.length}곡. 좋아하는 음악을 골라 들어 보세요.`,
               )}
             </p>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-orange-500 via-orange-300 to-cyan-300"
-                style={{ width: `${Math.min(100, (publicPoolTracks.length / LISTEN_BAR_TOTAL_ROTATION_LIMIT) * 100)}%` }}
-              />
-            </div>
+
           </div>
         </section>
       </div>

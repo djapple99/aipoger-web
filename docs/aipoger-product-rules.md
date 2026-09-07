@@ -302,38 +302,23 @@ Current rules:
 
 - Bar Heartbreak main rotation contains creator submissions only.
 - Official AIPOGER songs do not count as active public-pool songs.
-- If there are no community submissions, hidden fallback store music may prevent a silent station; it must not count toward survival results.
+- If there are no community submissions, hidden fallback store music may prevent a silent station; it must not appear as a creator submission.
 - Public listening supports 12 playback choices: all public airplay plus the 11 fixed music genres.
-- Each fixed music genre has its own 36-track public pool. With the current 11 genres, the full public-pool capacity is 396 community songs.
 - New submissions must include a fixed music genre. Do not silently default missing genre values to `Original 自我風格`.
 - New Bar Heartbreak audio submissions accept MP3, M4A, AAC, or OGG only, with a 30MB single-file limit. Do not accept new WAV or AIFF submissions in the public or admin Bar Heartbreak upload surfaces.
-- The upload form must preview the selected genre outcome before submit: direct public airplay while the genre is under 36 active public songs, or same-genre Challenger once the genre is full.
-- New submissions enter the selected genre's public pool immediately while that genre has fewer than 36 active public songs.
-- From 2026-07-07 onward, existing songs are not retroactively removed, but a creator cannot upload a genre again while that creator already has 5 or more active public-pool songs in that same genre. The genre must be reduced to 4 active public songs before the creator can upload the 5th again.
-- From 2026-07-07 onward, when a creator has 30 or more active public-pool songs across all Bar Heartbreak genres, that creator can successfully upload at most 1 active song per Taiwan day. Removed, hidden, rejected, inactive, and non-public songs do not count toward the 30 public-song threshold.
-- Once the selected genre already has 36 active public songs, new submissions enter same-genre Challenger and receive 36-hour protection before public-pool promotion.
-- Challenger promotion must also respect the per-creator, per-genre 5-public-song cap; a Challenger cannot move into public airplay if it would keep that creator at or above the same-genre public cap.
-- Creator Challenger slots use a per-creator, per-genre 3/2/1 ladder based on that creator's active public-pool songs in the same genre: 0-2 public songs allows up to 3 active Challengers, 3-5 public songs allows up to 2 active Challengers, and 6+ public songs allows up to 1 active Challenger.
-- Public-pool songs do not occupy Challenger slots and are not removed by this limit; they only reduce the creator's new Challenger concurrency.
-- A creator may remove their own Challenger songs.
-- A creator may remove their own public-pool songs.
-- Challenger protection period: 36 hours.
-- A Challenger can be played, reacted to, and commented on during protection, but it is not evicted.
-- Per-track comments are persistent. A signed-in listener can edit their own Bar Heartbreak track comments. When someone comments on a creator's Bar Heartbreak track, the creator receives an account notification unless they commented on their own song.
-- A Challenger becomes eligible to move into the same-genre public pool after 36 hours. The old 1-positive-reaction promotion gate is retired.
-- Own reaction remains allowed in V2, but it is only public support and does not guarantee survival.
-- Judgement interval: every 8 hours.
-- `GET /api/listen-bar/process-rotation` is a manual/monitoring dry-run preview only.
-- Real promotion/removal requires the protected `POST` route with `LISTEN_BAR_ROTATION_ENABLED=true`.
-- Public-pool elimination runs per genre only when that genre has more than 36 public songs.
-- Elimination must never bring an active genre public pool below 36 songs.
-- Each elimination pass removes at most the overflow above 36 inside overfull genre pools, capped at 3 low-performing public-pool songs.
-- If songs have the same positive reaction count, remove the older song first.
-- If a genre public pool is at or below 36 songs, elimination stops for that genre and no refill action is needed.
-- The legacy 30-day `completed` removal rule is retired and must not remove songs.
-- Public pool target: 36 songs per genre, currently 396 songs across 11 genres. Challenger priority airplay can still surface protected new submissions.
-- Public airplay support, comments, and retention may inform curation, but Bar Heartbreak must not present `30 hearts`, `7 public days`, or `30 days` as current public Showtime-entry promises.
-- Once a song is persistently certified into Showtime, it leaves Bar Heartbreak public/submission-visible lists and Explore challenge surfaces while retaining its source track, Hearts, favorites, comments, battle records, and recognition history.
+- Bar Heartbreak is a continuous listening and immediate-submission surface, curated by the owner after publication. No pre-publication manual listening gate is added.
+- There is no per-genre or total library capacity. Genre controls show actual publicly playable track counts, never capacity denominators.
+- New eligible submissions enter public airplay immediately. Challenger admission, seat limits, 36-hour protection, survival days and automatic capacity elimination are retired.
+- Existing per-creator limits remain: at most five active public songs in one genre; creators with at least 30 active public songs can successfully upload at most one per Taiwan day. These are creator submission limits, not genre-library capacity.
+- Existing active, visible Challenger records become public without modifying creation time, audio, reactions or recognition. Previously hidden/removed/rejected works are not restored.
+- Both GET and POST `/api/listen-bar/process-rotation` are inert compatibility responses, even if an old environment flag or caller remains. Vercel no longer schedules rotation. Database `process_listen_bar_rotation_limits()` is also inert; explicit creator/owner/admin/moderation removals remain supported.
+- Publicly playable Showtime-certified community songs remain in Bar airplay using the original track ID, Hearts, favorites and comments. Certification alone never excludes them from Bar. Explicit `ai_music_showtime_public_removed_at` still excludes them. No duplicate upload or new publication time is created.
+- Battle-only archives do not become `listen_bar_tracks` automatically: clip-only, audience-insufficient and nonpublic full-song records must never be republished as full tracks.
+- Explore admission and challenge eligibility remain unchanged in this first Bar release; returning Showtime songs are not relabeled NEW or reopened for challenges.
+- The owner may hide/unhide or soft-remove tracks through the existing admin console without writing a custom review. The system records its standard action note and preserves recovery data. No unrelated existing tracks are removed during this release.
+- Submission copy explains immediate publication, ongoing owner curation, no permanent listing guarantee, and the Bar message board for questions. Room messages retain their existing 24-hour lifetime.
+- Per-track comments remain persistent and require sign-in. New submissions still get priority after the currently playing track ends; priority airplay batching is playback scheduling, not an admission queue.
+
 - A listener must sign in to press Heart or comment. Pressing Heart on a Bar Heartbreak track creates that day's active Heart and saves the track to the listener's favorites; re-pressing Heart cancels both. Removing it later from favorites in Profile remains a separate saved-song action and does not cancel or recount the active Heart reaction.
 - Profile `收藏歌曲` is the user's saved-song manager. It should support batch selection and batch removal of saved favorites, while keeping historical Heart reactions intact.
 - Creator and listener accounts use the same fixed bottom queue player for Profile saved songs. Each saved-song row exposes one play action; play/pause, seek, previous/next, mobile volume, and close controls live in the shared player. Do not bring back invisible playback or separate native audio controls inside saved-song rows.
@@ -353,18 +338,14 @@ Current rules:
 
 Monitoring and automation baseline:
 
-- Any recurring AIPOGER Bar Heartbreak monitoring task must use the 2026-07-01 / 2026-07-02 genre-pool rules as the active rule set.
-- Do not use a global 88-song pool as the current monitoring target. Historical references to 88-song capacity eviction may remain only as legacy moderation-note keys or repair context.
-- As of 2026-07-06, production has an explicit DB guard that blocks legacy/global 88-song public-pool removals and unmarked public-pool removals. Capacity eviction may only use the `36-song genre public pool capacity rotation eviction.` note, and only when that same genre has more than 36 active public tracks. Creator/admin/moderation removals must carry explicit creator/admin/moderation notes.
-- Production monitoring should treat `GET /api/listen-bar/process-rotation` as dry-run preview unless a separate, explicit release task enables protected mutation.
-- Any system capacity removal from a genre at or below 36 active public tracks is a rule violation unless it is an explicit creator/admin/moderation removal rather than automated capacity eviction.
+- Do not schedule Bar survival promotion or removal. Compatibility endpoints and RPC return zero mutations.
+- Explicit creator/admin/moderation actions are permitted; automated capacity eviction is blocked at the database boundary.
 
 Product language:
 
-- Use `Challenger`, `挑戰池`, `挑戰席位`, `正在拼人氣`.
-- Avoid calling Challenger a waiting room in user-facing copy.
+- Use listening, tracks and genre wording; do not present Challenger seats or survival status.
 - Avoid implying Bar Heartbreak is a ranking chart.
-- Bar Heartbreak is an AI music survival radio, not a leaderboard.
+- Bar Heartbreak is a continuous AI music listening space, not a daily survival game.
 - On a first visit with no explicit URL language or saved preference, use Vercel country geo defaults: `CN` / `TW` → Traditional Chinese, `JP` → Japanese, `KR` → Korean, and every other country → English. A manual language choice is saved in the `aipoger_lang` cookie and always wins over geo detection. If country geo is unavailable, use the browser language only as a fallback.
 
 ## Explore AI Music / AI 音樂作品
@@ -467,7 +448,7 @@ Showtime is the certified archive, not a challenge surface:
 - Showtime works do not follow the 8-official-loss Explore retirement rule.
 - Showtime status is a persisted recognition state. Do not dynamically promote public Bar Heartbreak songs into Showtime only because they reach old Heart thresholds.
 - The 2026-07-10 founder catalog migration is a one-time owner-confirmed batch: eligible public community works with `public_time <= now() - 30 days` are migrated into Showtime, including works exactly 30 days old. This is not a public or recurring `30 days -> Showtime` promise. The public UI must not expose `30 days`, `early creator reward`, `batch migration`, or similar internal criteria.
-- The owner-only Showtime workbench may show a private review queue of playable community works older than 30 days, including each track's shared Heart total and an in-place audio preview. The owner decides each promotion manually; the queue never auto-certifies by age or Heart count. The owner may soft-remove a disliked candidate from public surfaces while retaining its underlying track, audio, Hearts, and audit data for backend recovery. Manual Bar Heartbreak airplay certification is capped at four tracks per Asia/Taipei calendar week, with an operating target of roughly three to four tracks, and certified tracks leave the public Bar Heartbreak / Explore surfaces through the existing persisted Showtime state.
+- The owner-only Showtime workbench may show a private review queue of playable community works older than 30 days, including each track's shared Heart total and an in-place audio preview. The owner decides each promotion manually; the queue never auto-certifies by age or Heart count. The owner may soft-remove a disliked candidate from public surfaces while retaining its underlying track, audio, Hearts, and audit data for backend recovery. Manual Bar Heartbreak airplay certification is capped at four tracks per Asia/Taipei calendar week, with an operating target of roughly three to four tracks, and certified tracks leave Explore challenge surfaces through the existing persisted Showtime state, while remaining eligible for Bar airplay.
 - Creator-facing Showtime management may edit only public display metadata and approved external support URLs for the creator's own Showtime work. It must not edit audio, recognition source, battle stats, votes, wins/losses, Showtime status/time, or reopen Explore challenges.
 - `support_url` must be an external HTTPS URL and may carry a short `support_url_label` explaining its purpose, for example `前往 YouTube 頻道`, `觀看 MV`, or `支持創作者`. The label and URL re-enter the existing review state on change; public cards display them only when approved. This must not introduce AIPOGER payment handling, money amounts, wallets, refunds, revenue sharing, or direct checkout flows.
 
