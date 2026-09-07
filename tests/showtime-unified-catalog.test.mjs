@@ -5,7 +5,7 @@ import test from "node:test";
 const showtimeSource = readFileSync(new URL("../src/app/rank/page.tsx", import.meta.url), "utf8");
 const i18nSource = readFileSync(new URL("../src/lib/i18n.tsx", import.meta.url), "utf8");
 const choiceShelfSource = readFileSync(new URL("../src/components/showtime-choice-shelf.tsx", import.meta.url), "utf8");
-const queuePlayerSource = readFileSync(new URL("../src/components/showtime-queue-player.tsx", import.meta.url), "utf8");
+const queuePlayerSource = readFileSync(new URL("../src/components/global-music-player.tsx", import.meta.url), "utf8");
 const publicCreatorChoiceSource = readFileSync(new URL("../src/app/api/creator-choice/public/route.ts", import.meta.url), "utf8");
 const choiceInteractionsSource = readFileSync(new URL("../src/app/api/choice/interactions/route.ts", import.meta.url), "utf8");
 const choiceHeartsMigration = readFileSync(new URL("../supabase/migrations/20260715083000_choice_collection_hearts.sql", import.meta.url), "utf8");
@@ -125,10 +125,10 @@ test("Choice and Showtime use one sequential bottom player with mobile volume", 
   assert.ok(showtimeSource.includes("<ShowtimeQueuePlayer"));
   assert.ok(queuePlayerSource.includes("data-showtime-queue-player"));
   assert.ok(queuePlayerSource.includes("onEnded"));
-  assert.ok(queuePlayerSource.includes("useImperativeHandle"));
+  assert.ok(queuePlayerSource.includes("registerMusicPlayer"));
   assert.ok(queuePlayerSource.includes("await audio.play()"));
-  assert.ok(queuePlayerSource.includes("current.index + 1"));
-  assert.ok(queuePlayerSource.includes('aria-label={isZh ? "調整音量"'));
+  assert.ok(queuePlayerSource.includes("nextMusicIndex"));
+  assert.ok(queuePlayerSource.includes('label("調整音量"'));
   assert.ok(queuePlayerSource.includes("lg:hidden"));
 });
 

@@ -1324,15 +1324,14 @@ export default function RankPage() {
   };
 
   const startShowtimePlayback = (row: RankRow) => {
-    const audioUrl = row.fullSongUrl || row.audioUrl;
-    if (!audioUrl) return;
-    void playerRef.current?.start([{
-        id: honorRecordKey(row),
-        title: displaySongTitle(row.hook, isZh ? "歌名未封存" : "Song Not Archived"),
-        artist: row.name,
-        coverUrl: mediaSrc(row.coverUrl),
-        audioUrl,
-      }], 0, "AIPOGER Showtime");
+    const queue = filteredDisplayRows.filter(item => item.fullSongUrl || item.audioUrl).map<ShowtimePlayerTrack>(item => ({
+      id: honorRecordKey(item),
+      title: displaySongTitle(item.hook, isZh ? "歌名未封存" : "Song Not Archived"),
+      artist: item.name, coverUrl: mediaSrc(item.coverUrl), audioUrl: (item.fullSongUrl || item.audioUrl)!, lyrics: item.lyrics,
+      genre: item.genre,
+    }));
+    const index = queue.findIndex(item => item.id === honorRecordKey(row));
+    if (index >= 0) void playerRef.current?.start(queue, index, "AIPOGER Showtime");
   };
 
   useEffect(() => {

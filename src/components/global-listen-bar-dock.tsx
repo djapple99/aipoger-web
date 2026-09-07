@@ -1,6 +1,2 @@
 "use client";
-
-export default function GlobalListenBarDock() {
-  return null;
-}
-
+export { default } from "@/components/global-music-player";

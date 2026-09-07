@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getMusicPlayerState } from "@/lib/music-player-store";
 import { useI18n } from "@/lib/i18n";
 
 const BGM_SRC = "/music/home-bgm.mp3";
@@ -64,7 +65,7 @@ export default function HomeBgmPlayer() {
     autoplayBlockedRef.current = false;
     userPausedRef.current = false;
 
-    void el.play().then(
+    if (!getMusicPlayerState().session) void el.play().then(
       () => {
         autoplayBlockedRef.current = false;
       },
@@ -86,6 +87,7 @@ export default function HomeBgmPlayer() {
         targetElement && Boolean(targetElement.closest("[data-home-bgm]"));
 
       if (
+        !getMusicPlayerState().session &&
         !onSpeaker &&
         autoplayBlockedRef.current &&
         !userPausedRef.current &&

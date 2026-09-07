@@ -1,9 +1,10 @@
 "use client";
 
+import { musicPlayer, useMusicPlayer } from "@/lib/music-player-store";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, AudioLines, Headphones, Upload, Volume2 } from "lucide-react";
-import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowRight, AudioLines, Headphones, Upload } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { fontGlowSans, fontRighteous, fontSourceSerifTC } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n";
@@ -201,12 +202,7 @@ function taipeiVoteDate(now = new Date()) {
   return year && month && day ? `${year}-${month}-${day}` : now.toISOString().slice(0, 10);
 }
 
-function formatPlayerTime(value: number) {
-  if (!Number.isFinite(value) || value <= 0) return "0:00";
-  const minutes = Math.floor(value / 60);
-  const seconds = Math.floor(value % 60).toString().padStart(2, "0");
-  return `${minutes}:${seconds}`;
-}
+
 
 function aiMusicChallengeHref(track: AiMusicTrack, lang: string) {
   const params = new URLSearchParams({
@@ -420,15 +416,6 @@ function ShareIcon() {
       <circle cx="6.5" cy="12" r="2.7" stroke="currentColor" strokeWidth="1.9" />
       <circle cx="17.5" cy="5.8" r="2.7" stroke="currentColor" strokeWidth="1.9" />
       <circle cx="17.5" cy="18.2" r="2.7" stroke="currentColor" strokeWidth="1.9" />
-    </svg>
-  );
-}
-
-function LyricsIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-      <path d="M7 5.5h10M7 10h8M7 14.5h10M7 19h7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M4.8 4.8v14.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" opacity="0.55" />
     </svg>
   );
 }
@@ -784,302 +771,6 @@ function HeatList({
   );
 }
 
-function MiniPlayer({
-  track,
-  isPlaying,
-  heartBusy,
-  heartedToday,
-  lang,
-  onTogglePlay,
-  onHeart,
-  onShare,
-  audioRef,
-  onEnded,
-  onPause,
-  onPlay,
-  onError,
-}: {
-  track: AiMusicTrack | null;
-  isPlaying: boolean;
-  heartBusy: boolean;
-  heartedToday: boolean;
-  lang: string;
-  onTogglePlay: () => void;
-  onHeart: (track: AiMusicTrack) => void;
-  onShare: (track: AiMusicTrack) => void;
-  audioRef: RefObject<HTMLAudioElement | null>;
-  onEnded: () => void;
-  onPause: () => void;
-  onPlay: () => void;
-  onError: () => void;
-}) {
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(0.85);
-  const [isBuffering, setIsBuffering] = useState(false);
-  const [lyricsOpen, setLyricsOpen] = useState(false);
-  const [lyricsScrollPercent, setLyricsScrollPercent] = useState(0);
-  const lyricsPanelRef = useRef<HTMLDivElement | null>(null);
-  const lyricsCloseButtonRef = useRef<HTMLButtonElement | null>(null);
-  const lyrics = track?.lyrics?.trim() ?? "";
-  const lyricsLines = useMemo(() => (lyrics ? lyrics.split(/\r?\n/) : []), [lyrics]);
-  const progressValue = duration > 0 ? Math.min(currentTime, duration) : 0;
-  const progressPercent = duration > 0 ? Math.min(100, Math.max(0, (progressValue / duration) * 100)) : 0;
-
-  useEffect(() => {
-    setCurrentTime(0);
-    setDuration(0);
-    setIsBuffering(Boolean(track?.audioUrl && isPlaying));
-    setLyricsOpen(false);
-    setLyricsScrollPercent(0);
-  }, [isPlaying, track?.audioUrl, track?.id]);
-
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = volume;
-  }, [audioRef, volume]);
-
-  useEffect(() => {
-    if (!lyricsOpen) return;
-    const frame = window.requestAnimationFrame(() => lyricsCloseButtonRef.current?.focus());
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      setLyricsOpen(false);
-    };
-    window.addEventListener("keydown", closeOnEscape);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [lyricsOpen]);
-
-  const syncLyricsScroll = () => {
-    const panel = lyricsPanelRef.current;
-    if (!panel) return;
-    const maxScroll = panel.scrollHeight - panel.clientHeight;
-    setLyricsScrollPercent(maxScroll > 0 ? Math.round((panel.scrollTop / maxScroll) * 100) : 0);
-  };
-
-  const handleLyricsSlider = (value: number) => {
-    const next = Math.min(100, Math.max(0, value));
-    setLyricsScrollPercent(next);
-    const panel = lyricsPanelRef.current;
-    if (!panel) return;
-    const maxScroll = panel.scrollHeight - panel.clientHeight;
-    panel.scrollTop = maxScroll > 0 ? (maxScroll * next) / 100 : 0;
-  };
-
-  const handleSeek = (value: number) => {
-    const next = Math.min(duration || 0, Math.max(0, value));
-    setCurrentTime(next);
-    if (audioRef.current && Number.isFinite(next)) {
-      audioRef.current.currentTime = next;
-    }
-  };
-
-  const audioElement = (
-    <audio
-      ref={audioRef}
-      src={track?.audioUrl ?? undefined}
-      preload="metadata"
-      playsInline
-      className="hidden"
-      aria-hidden="true"
-      onLoadedMetadata={(event) => {
-        event.currentTarget.volume = volume;
-        setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0);
-        setCurrentTime(event.currentTarget.currentTime || 0);
-        setIsBuffering(false);
-      }}
-      onDurationChange={(event) => setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0)}
-      onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime || 0)}
-      onWaiting={() => setIsBuffering(true)}
-      onCanPlay={() => setIsBuffering(false)}
-      onPlaying={() => {
-        setIsBuffering(false);
-        onPlay();
-      }}
-      onEnded={() => {
-        setCurrentTime(0);
-        onEnded();
-      }}
-      onPause={onPause}
-      onPlay={onPlay}
-      onError={() => {
-        setIsBuffering(false);
-        onError();
-      }}
-    />
-  );
-
-  const heartActionLabel = heartedToday
-    ? localeText(lang, "取消愛心與收藏", "Remove Heart and saved track", "Heartと保存を解除", "Heart와 저장 취소")
-    : localeText(lang, "送出愛心支持", "Send a heart", "Heartを送る", "Heart 보내기");
-
-  return (
-    <>
-      {audioElement}
-      {!track ? null : (
-        <>
-      {lyricsOpen ? (
-        <div
-          className="fixed inset-x-3 bottom-[8.6rem] z-[55] mx-auto max-w-2xl rounded-md border border-orange-200/24 bg-black/94 p-4 text-white shadow-[0_24px_80px_rgba(0,0,0,0.72)] backdrop-blur-xl sm:bottom-[6.35rem] sm:max-w-lg sm:p-3.5"
-          role="dialog"
-          aria-modal="true"
-          aria-label={localeText(lang, `${track.title} 歌詞`, `${track.title} lyrics`, `${track.title}の歌詞`, `${track.title} 가사`)}
-        >
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className={`${fontRighteous.className} text-[10px] uppercase tracking-[0.18em] text-orange-100/72`}>
-                Lyrics HUD
-              </p>
-              <h2 className="mt-1 truncate text-base font-black text-white sm:text-sm">{track.title}</h2>
-              <p className="truncate text-[11px] font-bold text-zinc-500">{track.creator}</p>
-            </div>
-            <button
-              ref={lyricsCloseButtonRef}
-              type="button"
-              onClick={() => setLyricsOpen(false)}
-              className="inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-white/12 bg-white/[0.045] px-3 text-xs font-black text-zinc-300 transition hover:border-orange-100/45 hover:text-white"
-              aria-label={localeText(lang, "關閉歌詞", "Close lyrics", "歌詞を閉じる", "가사 닫기")}
-            >
-              {localeText(lang, "關閉", "Close", "閉じる", "닫기")}
-            </button>
-          </div>
-          <div className="mt-4 grid grid-cols-[minmax(0,1fr)_1.45rem] gap-3">
-            <div
-              ref={lyricsPanelRef}
-              onScroll={syncLyricsScroll}
-              className="max-h-[min(58vh,26rem)] overflow-y-auto rounded-md border border-white/10 bg-white/[0.035] px-4 py-3 text-sm font-bold leading-7 text-zinc-200 [scrollbar-width:thin] sm:max-h-[min(48vh,20rem)] sm:px-3.5 sm:py-2.5 sm:text-[13px] sm:leading-6"
-            >
-              {lyricsLines.length > 0 ? (
-                lyricsLines.map((line, index) => (
-                  <p key={`${index}-${line}`} className="min-h-4 whitespace-pre-wrap">
-                    {line || " "}
-                  </p>
-                ))
-              ) : (
-                <p className="text-zinc-500">{localeText(lang, "歌詞未提供。", "Lyrics not provided.", "歌詞は提供されていません。", "가사가 제공되지 않았습니다.")}</p>
-              )}
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              step="1"
-              value={lyricsScrollPercent}
-              onChange={(event) => handleLyricsSlider(Number(event.currentTarget.value))}
-              disabled={lyricsLines.length === 0}
-              className="h-full min-h-52 w-5 cursor-pointer accent-orange-400 disabled:cursor-not-allowed disabled:opacity-35"
-              style={{ writingMode: "vertical-lr", direction: "rtl" }}
-              aria-label={localeText(lang, "拖曳瀏覽歌詞", "Scroll lyrics", "歌詞をスクロール", "가사 스크롤")}
-            />
-          </div>
-        </div>
-      ) : null}
-
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-orange-200/20 bg-black/92 px-3 pb-[calc(0.6rem+env(safe-area-inset-bottom))] pt-2 text-white shadow-[0_-22px_70px_rgba(0,0,0,0.66)] backdrop-blur sm:pb-[calc(0.45rem+env(safe-area-inset-bottom))] sm:pt-1.5">
-        <div className="mx-auto grid max-w-7xl gap-2">
-          <div className="grid grid-cols-[3.4rem_minmax(0,1fr)_auto] items-center gap-3">
-            <TrackCover track={track} className="h-14 w-14 rounded-md border border-white/10 sm:h-12 sm:w-12" />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-black text-white sm:text-[13px]">{track.title}</p>
-              <p className="truncate text-[11px] font-bold text-zinc-400">
-                {track.creator} · {track.aiTool}
-              </p>
-              <div className="mt-2 grid grid-cols-[2.6rem_minmax(0,1fr)_2.6rem] items-center gap-2 sm:mt-1.5">
-                <span className="text-[10px] font-black tabular-nums text-zinc-500">{formatPlayerTime(progressValue)}</span>
-                <input
-                  type="range"
-                  min="0"
-                  max={duration > 0 ? duration : 0}
-                  step="0.1"
-                  value={progressValue}
-                  onChange={(event) => handleSeek(Number(event.currentTarget.value))}
-                  disabled={!track.audioUrl || duration <= 0}
-                  className="h-2 w-full cursor-pointer accent-orange-400 disabled:cursor-not-allowed disabled:opacity-40"
-                  style={{ background: `linear-gradient(to right, rgba(255,106,0,0.92) 0%, rgba(255,106,0,0.92) ${progressPercent}%, rgba(255,255,255,0.16) ${progressPercent}%, rgba(255,255,255,0.16) 100%)` }}
-                  aria-label={localeText(lang, "拖曳播放進度", "Seek playback", "再生位置を移動", "재생 위치 이동")}
-                />
-                <span className="text-right text-[10px] font-black tabular-nums text-zinc-500">{formatPlayerTime(duration)}</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={onTogglePlay}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-black transition hover:bg-orange-300 sm:h-9 sm:w-9"
-                aria-label={isBuffering ? localeText(lang, "載入中", "Loading", "読み込み中", "로드 중") : isPlaying ? localeText(lang, "暫停", "Pause", "一時停止", "일시정지") : localeText(lang, "播放", "Play", "再生", "재생")}
-              >
-                <PlayIcon playing={isPlaying} loading={isBuffering} />
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setLyricsOpen((current) => !current);
-                  window.requestAnimationFrame(syncLyricsScroll);
-                }}
-                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full border border-white/12 bg-white/[0.045] px-3 text-xs font-black text-zinc-300 transition hover:border-orange-100/42 hover:text-white sm:h-9 sm:px-2.5"
-                aria-expanded={lyricsOpen}
-                aria-label={localeText(lang, "看歌詞", "View lyrics", "歌詞を見る", "가사 보기")}
-              >
-                <LyricsIcon />
-                <span>{localeText(lang, "歌詞", "Lyrics", "歌詞", "가사")}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => onHeart(track)}
-                disabled={heartBusy}
-                className={`hidden h-10 items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-black transition disabled:cursor-wait disabled:opacity-55 sm:inline-flex sm:h-9 sm:px-2.5 ${
-                  heartedToday
-                    ? "border-rose-200/55 bg-rose-500/18 text-rose-50 shadow-[0_0_18px_rgba(244,63,94,0.2)] hover:border-rose-100/70"
-                    : "border-white/12 bg-white/[0.045] text-zinc-300 hover:border-rose-200/42 hover:text-rose-100"
-                }`}
-                aria-label={heartActionLabel}
-                title={heartActionLabel}
-              >
-                <HeartIcon filled={heartedToday} />
-                <span className="tabular-nums">{Math.max(0, track.heartCount)}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => onShare(track)}
-                className="hidden h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-white/[0.045] text-zinc-300 transition hover:border-cyan-100/42 hover:text-white sm:inline-flex sm:h-9 sm:w-9"
-                aria-label={localeText(lang, "分享", "Share", "共有", "공유")}
-              >
-                <ShareIcon />
-              </button>
-              {track.openForChallenge ? (
-                <Link
-                  href={aiMusicChallengeHref(track, lang)}
-                  className="hidden min-h-10 items-center justify-center rounded-full border border-orange-200/38 bg-orange-500/15 px-3 text-xs font-black text-orange-50 transition hover:border-orange-100/65 hover:bg-orange-500/22 md:inline-flex sm:min-h-9 sm:px-2.5"
-                >
-                  {localeText(lang, "攻擂這首", "Challenge", "この曲に挑戦", "이 곡에 도전")}
-                </Link>
-              ) : null}
-            </div>
-          </div>
-          <label className="flex items-center gap-2 text-zinc-400 sm:hidden">
-            <Volume2 className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={volume}
-              onChange={(event) => setVolume(Math.min(1, Math.max(0, Number(event.currentTarget.value))))}
-              className="h-2 w-full cursor-pointer accent-orange-400"
-              aria-label={localeText(lang, "調整音量", "Adjust volume", "音量を調整", "볼륨 조절")}
-            />
-          </label>
-        </div>
-      </div>
-        </>
-      )}
-    </>
-  );
-}
-
 export default function AiMusicClient() {
   const { lang, t } = useI18n();
   const isZh = lang === "zh";
@@ -1100,9 +791,9 @@ export default function AiMusicClient() {
   const [authPromptTrack, setAuthPromptTrack] = useState<AiMusicTrack | null>(null);
   const [notice, setNotice] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
-  const [currentTrack, setCurrentTrack] = useState<AiMusicTrack | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const player = useMusicPlayer();
+  const currentTrack = player.session?.sourceKey === "explore" ? tracks.find(track => track.id === player.session?.queue[player.session.index]?.id) ?? null : null;
+  const isPlaying = Boolean(currentTrack && player.playing);
   const guideButtonRef = useRef<HTMLButtonElement | null>(null);
   const guideDialogRef = useRef<HTMLDivElement | null>(null);
   const guideCloseButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -1119,16 +810,7 @@ export default function AiMusicClient() {
     markEarwormPromptSkipped();
     setEarwormPromptOpen(false);
   }, []);
-  const prepareTrack = useCallback((track: AiMusicTrack) => {
-    const audio = audioRef.current;
-    const url = track.audioUrl;
-    if (!audio || !url) return;
-    const absoluteUrl = new URL(url, window.location.href).href;
-    if (audio.currentSrc === absoluteUrl || audio.src === absoluteUrl) return;
-    audio.preload = "metadata";
-    audio.src = url;
-    audio.load();
-  }, []);
+  const prepareTrack = () => {};
 
   useEffect(() => {
     const profile = readEarwormLocalProfile();
@@ -1358,16 +1040,6 @@ export default function AiMusicClient() {
   }, [earwormProfile, loadState]);
 
   useEffect(() => {
-    if (!currentTrack || !audioRef.current) return;
-    if (!isPlaying) return;
-    void audioRef.current.play().catch((error) => {
-      console.warn("[ai-music player]", error);
-      setIsPlaying(false);
-      setNotice(localeText(lang, "瀏覽器暫時阻擋播放，請再按一次播放。", "Playback was blocked. Tap play again.", "ブラウザが再生をブロックしました。もう一度再生を押してください。", "브라우저가 재생을 차단했습니다. 재생을 다시 눌러 주세요."));
-    });
-  }, [currentTrack, isPlaying, lang]);
-
-  useEffect(() => {
     if (!notice) return;
     const timer = window.setTimeout(() => setNotice(""), 2200);
     return () => window.clearTimeout(timer);
@@ -1378,20 +1050,28 @@ export default function AiMusicClient() {
       setNotice(localeText(lang, "這首作品目前沒有可播放音檔。", "This track has no playable audio yet.", "この作品には再生できる音源がまだありません。", "이 작품에는 아직 재생 가능한 음원이 없습니다."));
       return;
     }
-    prepareTrack(track);
-    if (currentTrack?.id === track.id) {
-      if (isPlaying) {
-        audioRef.current?.pause();
-        setIsPlaying(false);
-      } else {
-        setIsPlaying(true);
-      }
-      return;
-    }
-    setCurrentTrack(track);
-    setIsPlaying(true);
+    if (currentTrack?.id === track.id) { musicPlayer?.toggle(); return; }
+    const sourceTracks = worksView === "heat"
+      ? buildAiMusicHeatList(tracks).map(row => row.track)
+      : groupedTracks.find(group => group.genre === track.genre)?.tracks ?? tracks;
+    const queue = sourceTracks.filter(item => item.audioUrl).map(item => ({
+      id: item.id, heartTrackId: item.source === "bar" ? item.sourceId : undefined, title: item.title, artist: item.creator, coverUrl: item.coverUrl,
+      audioUrl: item.audioUrl!, lyrics: item.lyrics ?? undefined, genre: item.genre,
+    }));
+    void musicPlayer?.start(queue, Math.max(0, queue.findIndex(item => item.id === track.id)),
+      localeText(lang, "探索", "Explore", "探索", "탐색") + " · " + (worksView === "heat" ? copy.hotNow : track.genre), { sourceKey: "explore" });
   };
 
+  useEffect(() => {
+    const updateHeart = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (!detail?.trackId || !detail.counts) return;
+      setTracks(current => current.map(track => track.sourceId === detail.trackId ? { ...track, heartCount: detail.counts.heart } : track));
+      setHeartStates(current => ({ ...current, [`bar:${detail.trackId}`]: detail.heartedToday === true }));
+    };
+    window.addEventListener("aipoger:music-heart", updateHeart);
+    return () => window.removeEventListener("aipoger:music-heart", updateHeart);
+  }, []);
   const sendHeart = async (track: AiMusicTrack) => {
     setNotice("");
     if (track.source !== "bar") {
@@ -1428,7 +1108,6 @@ export default function AiMusicClient() {
       setTracks((current) =>
         current.map((item) => (item.recordKey === track.recordKey ? { ...item, heartCount } : item)),
       );
-      setCurrentTrack((current) => (current?.recordKey === track.recordKey ? { ...current, heartCount } : current));
       setHeartStates((current) => ({ ...current, [track.recordKey]: payload.heartedToday === true }));
       setNotice(payload.heartedToday
         ? localeText(lang, "愛心已送出，歌曲已同步收藏到你的後台。", "Heart sent. The track is saved in your profile.", "Heartを送り、この曲をProfileに保存しました。", "Heart를 보냈고 곡이 Profile에 저장되었습니다.")
@@ -1877,32 +1556,6 @@ export default function AiMusicClient() {
         onClose={() => setAuthPromptTrack(null)}
       />
 
-      <MiniPlayer
-        track={currentTrack}
-        isPlaying={isPlaying}
-        heartBusy={currentTrack ? Boolean(heartBusy[currentTrack.recordKey]) : false}
-        heartedToday={currentTrack ? Boolean(heartStates[currentTrack.recordKey]) : false}
-        lang={lang}
-        onTogglePlay={() => {
-          if (!currentTrack) return;
-          if (isPlaying) {
-            audioRef.current?.pause();
-            setIsPlaying(false);
-          } else {
-            setIsPlaying(true);
-          }
-        }}
-        onHeart={(track) => void sendHeart(track)}
-        onShare={(track) => void shareTrack(track)}
-        audioRef={audioRef}
-        onEnded={() => setIsPlaying(false)}
-        onPause={() => setIsPlaying(false)}
-        onPlay={() => setIsPlaying(true)}
-        onError={() => {
-          setIsPlaying(false);
-          setNotice(localeText(lang, "音檔載入失敗，請再按一次播放。", "The audio failed to load. Please press play again.", "音源の読み込みに失敗しました。もう一度再生してください。", "오디오를 불러오지 못했습니다. 재생을 다시 눌러 주세요."));
-        }}
-      />
     </main>
   );
 }

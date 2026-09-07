@@ -34,7 +34,6 @@ import { shouldExpireOpenDropQueue } from "@/lib/battle-pool-client";
 import {
   DEFAULT_LISTEN_BAR_COVER,
   LISTEN_BAR_AUDIO_BUCKET,
-  LISTEN_BAR_CHALLENGER_HOURLY_LIMIT,
   LISTEN_BAR_COVER_BUCKET,
   LISTEN_BAR_CREATOR_DAILY_UPLOAD_LIMIT_AFTER_TOTAL_PUBLIC,
   LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT,
@@ -53,7 +52,7 @@ import { logAnalyticsEvent } from "@/lib/analytics-client";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import { listenBarShortPath } from "@/lib/share-short-links";
 import { normalizeYouTubeUrl } from "@/lib/youtube-url";
-import { clampMediaVolume, setNativeMediaVolume } from "@/lib/media-volume-control";
+import { getMusicPlayerState, musicPlayer, useMusicPlayer, type MusicTrack } from "@/lib/music-player-store";
 import { isNewlyPublishedMusic } from "@/lib/music-newness";
 import type { User } from "@supabase/supabase-js";
 
@@ -193,8 +192,6 @@ const emptyReactions: ReactionCounts = {
 };
 
 const LISTEN_BAR_MESSAGE_LIMIT = 80;
-const LIVE_RADIO_EPOCH_MS = Date.UTC(2026, 0, 1);
-const PRIORITY_AIRPLAY_BATCH_MS = 60 * 60 * 1000;
 const STOP_HOME_BGM_EVENT = "aipoger:stop-home-bgm";
 
 const LISTEN_BAR_GENRES = MUSIC_GENRE_OPTIONS;
@@ -490,58 +487,6 @@ function SendIcon() {
   );
 }
 
-function pickRandomTrack(tracks: ListenBarTrack[], avoidId?: string): ListenBarTrack | null {
-  if (tracks.length === 0) return null;
-  if (tracks.length === 1) return tracks[0];
-  const candidates = tracks.filter((track) => track.id !== avoidId);
-  const pool = candidates.length > 0 ? candidates : tracks;
-  return pool[Math.floor(Math.random() * pool.length)];
-}
-
-function trackCreatedAtMs(track: ListenBarTrack): number {
-  const value = new Date(track.createdAt ?? 0).getTime();
-  return Number.isFinite(value) ? value : 0;
-}
-
-function getPriorityAirplayBatch(
-  tracks: ListenBarTrack[],
-  servedIds: Set<string>,
-  avoidId?: string,
-  nowMs = Date.now(),
-): ListenBarTrack[] {
-  const orderedTracks = tracks
-    .filter((track) => track.audioUrl && trackCreatedAtMs(track) > 0)
-    .sort((a, b) => trackCreatedAtMs(a) - trackCreatedAtMs(b));
-  if (orderedTracks.length === 0) return [];
-
-  const queueStartMs = trackCreatedAtMs(orderedTracks[0]);
-  const currentBatchIndex = Math.max(0, Math.floor((nowMs - queueStartMs) / PRIORITY_AIRPLAY_BATCH_MS));
-  const batchEnd = Math.min(
-    orderedTracks.length,
-    (currentBatchIndex + 1) * LISTEN_BAR_CHALLENGER_HOURLY_LIMIT,
-  );
-
-  return orderedTracks
-    .slice(0, batchEnd)
-    .filter((track) => track.id !== avoidId && !servedIds.has(track.id));
-}
-
-function getLiveRadioPosition(tracks: ListenBarTrack[], nowMs = Date.now()) {
-  const playableTracks = tracks.filter((track) => track.audioUrl);
-  if (playableTracks.length === 0) return null;
-  const totalDuration = playableTracks.reduce((sum, track) => sum + Math.max(1, Math.round(track.duration || 1)), 0);
-  if (totalDuration <= 0) return { track: playableTracks[0], offset: 0 };
-
-  let cursor = Math.floor(Math.max(0, nowMs - LIVE_RADIO_EPOCH_MS) / 1000) % totalDuration;
-  for (const track of playableTracks) {
-    const duration = Math.max(1, Math.round(track.duration || 1));
-    if (cursor < duration) return { track, offset: cursor };
-    cursor -= duration;
-  }
-
-  return { track: playableTracks[0], offset: 0 };
-}
-
 function getListenBarVisitorId() {
   if (typeof window === "undefined") return "";
   const existing = window.localStorage.getItem(LISTEN_BAR_VISITOR_ID_KEY);
@@ -672,7 +617,7 @@ export default function ListenBarPage() {
         genreChannelDescription: "同類型公播池接續播放",
         allChannelCountLabel: "全類型公播",
         genreChannelCountLabel: "歌曲",
-        queueTitle: "接續的六首歌",
+        queueTitle: "下一首",
         queueSectionHint: "電台會在這個頻道裡持續接續歌曲。",
         queueWaiting: "等待接續歌曲",
         queueEmpty: "等待創作者投稿後，下一首會顯示在這裡。",
@@ -703,7 +648,7 @@ export default function ListenBarPage() {
           genreChannelDescription: "同じジャンルの公開放送を続けて再生",
           allChannelCountLabel: "全ジャンル放送",
           genreChannelCountLabel: "曲",
-          queueTitle: "次に流れる6曲",
+          queueTitle: "次の曲",
           queueSectionHint: "このチャンネル内で次の曲が続けて流れます。",
           queueWaiting: "次の曲を待っています",
           queueEmpty: "次のクリエイタートラックはここに表示されます。",
@@ -734,7 +679,7 @@ export default function ListenBarPage() {
             genreChannelDescription: "같은 장르 공개 방송 이어 듣기",
             allChannelCountLabel: "전체 장르 방송",
             genreChannelCountLabel: "곡",
-            queueTitle: "다음 재생 6곡",
+            queueTitle: "다음 곡",
             queueSectionHint: "이 채널 안에서 다음 곡이 계속 이어집니다.",
             queueWaiting: "다음 곡을 기다리는 중",
             queueEmpty: "다음 크리에이터 트랙이 여기에 표시됩니다.",
@@ -764,34 +709,20 @@ export default function ListenBarPage() {
             genreChannelDescription: "Continue within this genre's public airplay pool",
             allChannelCountLabel: "FULL AIRPLAY",
             genreChannelCountLabel: "TRACKS",
-            queueTitle: "Upcoming Sad Songs",
+            queueTitle: "Up next",
             queueSectionHint: "The radio will keep continuing inside this channel.",
             queueWaiting: "Waiting for Songs",
             queueEmpty: "The next creator track will appear here.",
             warming: "Warming Up",
             listeners: (count: number) => `${count} Listeners`,
           };
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const chatInputRef = useRef<HTMLInputElement | null>(null);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const lyricScrollRef = useRef<HTMLDivElement | null>(null);
   const activeLyricRef = useRef<HTMLDivElement | null>(null);
   const listenBarSyncChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  const servedCommunityIdsRef = useRef<Set<string>>(new Set());
-  const liveSeekRef = useRef<{ trackId: string; offset: number } | null>(null);
-  const playbackSegmentRef = useRef<{ trackId: string; startedAtMs: number; startedAtSecond: number } | null>(null);
-  const startTrackAtZeroRef = useRef(false);
-  const liveRadioSyncEnabledRef = useRef(true);
-  const localOverrideTrackIdRef = useRef<string | null>(null);
   const rotationTracksRef = useRef<ListenBarTrack[]>([]);
   const nowTrackRef = useRef<ListenBarTrack>(EMPTY_LISTEN_BAR_TRACK);
-  const radioShouldResumeRef = useRef(true);
-  const volumeRef = useRef(0.72);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const audioSourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
-  const audioGainNodeRef = useRef<GainNode | null>(null);
-  const audioVolumeSetupPromiseRef = useRef<Promise<boolean> | null>(null);
-  const lastElapsedPaintRef = useRef(-1);
   const [userName, setUserName] = useState("吧友");
   const [visitorAvatarUrl, setVisitorAvatarUrl] = useState<string | null>(null);
   const [creatorDefaultName, setCreatorDefaultName] = useState("");
@@ -799,7 +730,6 @@ export default function ListenBarPage() {
   const [officialTracks, setOfficialTracks] = useState<ListenBarTrack[]>(fallbackOfficialPlaylist);
   const [selectedPlaybackGenre, setSelectedPlaybackGenre] = useState<GenrePlaybackSelection>("all");
   const [playlistStatus, setPlaylistStatus] = useState<"loading" | "database" | "fallback">("loading");
-  const [priorityAirplayIds, setPriorityAirplayIds] = useState<Set<string>>(() => new Set());
   const [publicUploadForm, setPublicUploadForm] = useState<PublicUploadForm>(initialPublicUploadForm);
   const [publicAudioFile, setPublicAudioFile] = useState<File | null>(null);
   const [publicCoverFile, setPublicCoverFile] = useState<File | null>(null);
@@ -818,14 +748,14 @@ export default function ListenBarPage() {
   const [publicUploadMessage, setPublicUploadMessage] = useState("");
   const [publicUploadError, setPublicUploadError] = useState("");
   const [myBroadcastStats, setMyBroadcastStats] = useState<MyBroadcastStat[]>([]);
-  const [nowTrack, setNowTrack] = useState<ListenBarTrack>(EMPTY_LISTEN_BAR_TRACK);
-  const [, setHistory] = useState<ListenBarTrack[]>([]);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackBlocked, setPlaybackBlocked] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
-  const [trackDuration, setTrackDuration] = useState(EMPTY_LISTEN_BAR_TRACK.duration);
-  const [volume, setVolume] = useState(0.72);
-  const [volumeControlFallback, setVolumeControlFallback] = useState(false);
+  const player = useMusicPlayer();
+  const initialPlaybackRef = useRef(false);
+  const [selectedTrack, setNowTrack] = useState<ListenBarTrack>(EMPTY_LISTEN_BAR_TRACK);
+  const barSession = player.session?.sourceKey?.startsWith("bar:") ? player.session : null;
+  const currentPlayerTrack = barSession?.queue[barSession.index];
+  const nowTrack = officialTracks.find(track => track.id === currentPlayerTrack?.id) ?? selectedTrack;
+  const isPlaying = Boolean(barSession && player.playing);
+  const elapsed = barSession ? player.currentTime : 0;
   const [reactionCounts, setReactionCounts] = useState<Record<string, ReactionCounts>>({});
   const [myReactions, setMyReactions] = useState<Record<string, ReactionKey | null>>({});
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
@@ -865,141 +795,6 @@ export default function ListenBarPage() {
       observer.disconnect();
     };
   }, [pageTitle]);
-  const applyRadioVolume = useCallback((audio: HTMLAudioElement, nextVolume: number) => {
-    const normalizedVolume = clampMediaVolume(nextVolume);
-    const nativeApplied = setNativeMediaVolume(audio, normalizedVolume);
-    const audioContext = audioContextRef.current;
-    const gainNode = audioGainNodeRef.current;
-    if (audioContext && gainNode) {
-      gainNode.gain.setValueAtTime(normalizedVolume, audioContext.currentTime);
-    }
-    return nativeApplied || Boolean(gainNode);
-  }, []);
-
-  const ensureRadioVolumeControl = useCallback(async (requestedVolume = volumeRef.current) => {
-    const audio = audioRef.current;
-    if (!audio) return false;
-
-    const normalizedVolume = clampMediaVolume(requestedVolume);
-    volumeRef.current = normalizedVolume;
-    if (setNativeMediaVolume(audio, normalizedVolume)) {
-      setVolumeControlFallback(false);
-      return true;
-    }
-
-    const applyGainVolume = () => {
-      const audioContext = audioContextRef.current;
-      const gainNode = audioGainNodeRef.current;
-      if (!audioContext || !gainNode) return false;
-      gainNode.gain.setValueAtTime(normalizedVolume, audioContext.currentTime);
-      return true;
-    };
-
-    if (applyGainVolume()) {
-      const audioContext = audioContextRef.current;
-      if (audioContext?.state === "suspended") await audioContext.resume();
-      setVolumeControlFallback(false);
-      return true;
-    }
-
-    if (!audioVolumeSetupPromiseRef.current) {
-      audioVolumeSetupPromiseRef.current = (async () => {
-        try {
-          const AudioContextConstructor = window.AudioContext
-            ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-          if (!AudioContextConstructor) return false;
-
-          const audioContext = audioContextRef.current ?? new AudioContextConstructor();
-          const sourceNode = audioSourceNodeRef.current ?? audioContext.createMediaElementSource(audio);
-          const gainNode = audioGainNodeRef.current ?? audioContext.createGain();
-          if (!audioSourceNodeRef.current) {
-            sourceNode.connect(gainNode);
-            audioSourceNodeRef.current = sourceNode;
-          }
-          if (!audioGainNodeRef.current) {
-            gainNode.connect(audioContext.destination);
-            audioGainNodeRef.current = gainNode;
-          }
-          audioContextRef.current = audioContext;
-          gainNode.gain.setValueAtTime(normalizedVolume, audioContext.currentTime);
-          if (audioContext.state === "suspended") await audioContext.resume();
-          return true;
-        } catch (error) {
-          console.warn("[listen-bar] mobile volume gain unavailable", error);
-          return false;
-        }
-      })();
-    }
-
-    const gainReady = await audioVolumeSetupPromiseRef.current;
-    audioVolumeSetupPromiseRef.current = null;
-    if (gainReady) {
-      applyGainVolume();
-      setVolumeControlFallback(false);
-      return true;
-    }
-    setVolumeControlFallback(true);
-    return false;
-  }, []);
-
-  useEffect(() => () => {
-    audioSourceNodeRef.current?.disconnect();
-    audioGainNodeRef.current?.disconnect();
-    const audioContext = audioContextRef.current;
-    if (audioContext && audioContext.state !== "closed") void audioContext.close();
-  }, []);
-
-  const logSongPlaybackEvent = useCallback((
-    eventType: "song_play" | "song_finish" | "song_skip" | "song_pause" | "song_resume",
-    track: ListenBarTrack,
-    metadata: Record<string, unknown> = {},
-  ) => {
-    if (!track.audioUrl || !isUuid(track.id)) return;
-    void logAnalyticsEvent({
-      eventType,
-      songId: track.id,
-      pagePath: "/listen-bar",
-      source: "bar_heartbreak",
-      metadata: {
-        title: track.title,
-        artist: track.artist,
-        genre: track.genre,
-        trackSource: track.source,
-        barPhase: track.barPhase,
-        durationSeconds: track.duration,
-        ...metadata,
-      },
-    });
-  }, []);
-  const closePlaybackSegment = useCallback((eventType: "song_pause" | "song_finish" | "song_skip", audio?: HTMLAudioElement | null) => {
-    const segment = playbackSegmentRef.current;
-    const track = nowTrackRef.current;
-    if (!segment || segment.trackId !== track.id) return;
-    const wallClockSeconds = Math.max(0, Math.round((Date.now() - segment.startedAtMs) / 1000));
-    const mediaSeconds = audio ? Math.max(0, Math.round(audio.currentTime - segment.startedAtSecond)) : wallClockSeconds;
-    const playedSeconds = Math.max(0, Math.min(Math.max(wallClockSeconds, mediaSeconds), Math.max(1, track.duration || wallClockSeconds || 1)));
-    playbackSegmentRef.current = null;
-    logSongPlaybackEvent(eventType, track, {
-      playedSeconds,
-      currentTime: audio ? Math.round(audio.currentTime) : null,
-      progressPercent: Math.round((playedSeconds / Math.max(1, track.duration || playedSeconds || 1)) * 100),
-    });
-  }, [logSongPlaybackEvent]);
-  const syncElapsedFromAudio = useCallback((audio: HTMLAudioElement, force = false) => {
-    const nextSecond = Math.floor(audio.currentTime);
-    if (!force && nextSecond === lastElapsedPaintRef.current) return;
-    lastElapsedPaintRef.current = nextSecond;
-    setElapsed(audio.currentTime);
-  }, []);
-  const markPriorityAirplayTrack = useCallback((trackId: string) => {
-    if (!trackId) return;
-    setPriorityAirplayIds((ids) => {
-      if (ids.has(trackId)) return ids;
-      const nextIds = new Set(ids);
-      nextIds.add(trackId);
-      return nextIds;
-    });
-  }, []);
   const allRotationTracks = useMemo(() => {
     const seen = new Set<string>();
     return officialTracks.filter((track) => {
@@ -1030,30 +825,13 @@ export default function ListenBarPage() {
   const selectedChannelDescription = selectedPlaybackGenre === "all"
     ? listenCopy.allChannelDescription
     : listenCopy.genreChannelDescription;
-  const selectedGenreSlug = selectedPlaybackGenre === "all" ? "all" : (LISTEN_BAR_GENRE_SLUGS.get(selectedPlaybackGenre) ?? "all");
-  const selectedGenreShareUrl = listenBarShortPath(selectedGenreSlug, lang);
+  const selectedGenreShareUrl = listenBarShortPath(selectedPlaybackGenre === "all" ? "all" : LISTEN_BAR_GENRE_SLUGS.get(selectedPlaybackGenre) ?? "all", lang);
   const barShareUrl = listenBarShortPath("all", lang);
-  const selectedGenreShareTitle = selectedPlaybackGenre === "all"
-    ? listenCopy.shareTitle
-    : `${listenCopy.shareTitle} / ${selectedGenreLabel}`;
-  const selectedGenreShareText = selectedPlaybackGenre === "all"
-    ? listenCopy.shareText
-    : barText(
-        lang,
-        `我正在 AIPOGER 傷心酒吧聽 ${selectedGenreLabel} 類型。進來聽這一類 AI 音樂公播。`,
-        `I am listening to ${selectedGenreLabel} on AIPOGER Bar Heartbreak. Open this genre radio.`,
-        `AIPOGER Bar Heartbreakで${selectedGenreLabel}を聴いています。このジャンルのAI音楽放送を開いてください。`,
-        `AIPOGER Bar Heartbreak에서 ${selectedGenreLabel} 장르를 듣고 있어요. 이 AI 음악 방송을 열어 보세요.`,
-      );
   const rotationTracks = useMemo(
     () => selectedPlaybackGenre === "all"
       ? allRotationTracks
       : allRotationTracks.filter((track) => track.genre?.trim() === selectedPlaybackGenre),
     [allRotationTracks, selectedPlaybackGenre],
-  );
-  const communityRequestTracks = useMemo(
-    () => rotationTracks.filter((track) => track.source === "community"),
-    [rotationTracks],
   );
   const publicPoolTracks = useMemo(
     () => allCommunityTracks.filter((track) => track.barPhase === "public"),
@@ -1065,49 +843,21 @@ export default function ListenBarPage() {
         label: listenCopy.genreChannelCountLabel,
         count: genrePoolStats.get(selectedPlaybackGenre)?.public ?? 0,
       };
-  const priorityAirplaySourceTracks = useMemo(
-    () => communityRequestTracks.filter((track) => priorityAirplayIds.has(track.id)),
-    [communityRequestTracks, priorityAirplayIds],
-  );
-  const priorityAirplayTracks = useMemo(
-    () => getPriorityAirplayBatch(priorityAirplaySourceTracks, servedCommunityIdsRef.current, nowTrack.id),
-    [nowTrack.id, priorityAirplaySourceTracks],
-  );
-  const nextCommunityTrack = priorityAirplayTracks[0] ?? null;
-  const nextRotationTrack = useMemo(() => {
-    const playableTracks = rotationTracks.filter((track) => track.audioUrl && track.id !== nowTrack.id);
-    if (playableTracks.length === 0) return null;
-    const currentIndex = rotationTracks.findIndex((track) => track.id === nowTrack.id);
-    if (currentIndex >= 0) {
-      for (let step = 1; step <= rotationTracks.length; step += 1) {
-        const candidate = rotationTracks[(currentIndex + step) % rotationTracks.length];
-        if (candidate?.audioUrl && candidate.id !== nowTrack.id) return candidate;
-      }
-    }
-    return playableTracks[0];
-  }, [nowTrack.id, rotationTracks]);
-  const upcomingHeartbreakerTracks = useMemo(() => {
-    const seen = new Set<string>([nowTrack.id]);
-    const upcoming: ListenBarTrack[] = [];
-    const pushTrack = (track: ListenBarTrack | null) => {
-      if (!track?.audioUrl || seen.has(track.id) || upcoming.length >= 6) return;
-      seen.add(track.id);
-      upcoming.push(track);
-    };
-
-    pushTrack(nextCommunityTrack);
-    pushTrack(nextRotationTrack);
-
-    const currentIndex = rotationTracks.findIndex((track) => track.id === nowTrack.id);
-    if (currentIndex >= 0) {
-      for (let step = 1; step <= rotationTracks.length && upcoming.length < 6; step += 1) {
-        pushTrack(rotationTracks[(currentIndex + step) % rotationTracks.length] ?? null);
-      }
-    }
-
-    rotationTracks.forEach(pushTrack);
-    return upcoming;
-  }, [nextCommunityTrack, nextRotationTrack, nowTrack.id, rotationTracks]);
+  const startBarPlayback = useCallback((genre: GenrePlaybackSelection, requestedId?: string) => {
+    const tracks = (genre === "all" ? allRotationTracks : allRotationTracks.filter(track => track.genre?.trim() === genre)).filter(track => track.audioUrl);
+    if (!tracks.length) return;
+    const queue: MusicTrack[] = tracks.map(track => ({ ...track, heartTrackId: track.id, audioUrl: track.audioUrl!, coverUrl: track.coverUrl || DEFAULT_LISTEN_BAR_COVER }));
+    const index = Math.max(0, queue.findIndex(track => track.id === requestedId));
+    const label = genre === "all" ? barText(lang, "全部曲風", "All genres", "全ジャンル", "전체 장르") : genreDisplayLabel(genre, lang);
+    void musicPlayer?.start(queue, index, `${barText(lang, "傷心酒吧", "Bar Heartbreak", "Bar Heartbreak", "Bar Heartbreak")} · ${label}`, { sourceKey: `bar:${genre}`, repeat: true });
+  }, [allRotationTracks, lang]);
+  const choosePlaybackGenre = (genre: GenrePlaybackSelection) => {
+    setSelectedPlaybackGenre(genre);
+    startBarPlayback(genre);
+  };
+  const nextPreviewTrack = barSession
+    ? barSession.queue[(barSession.index + 1) % barSession.queue.length] ?? null
+    : rotationTracks.find(track => track.audioUrl && track.id !== nowTrack.id) ?? null;
   const myPublicStats = useMemo(
     () => myBroadcastStats.filter((track) => track.barPhase === "public"),
     [myBroadcastStats],
@@ -1239,19 +989,15 @@ export default function ListenBarPage() {
   }, [rotationTracks]);
 
   useEffect(() => {
-    if (rotationTracks.length === 0) {
-      setNowTrack(EMPTY_LISTEN_BAR_TRACK);
-      return;
+    if (initialPlaybackRef.current || !rotationTracks.length || !musicPlayer) return;
+    initialPlaybackRef.current = true;
+    const current = getMusicPlayerState().session;
+    if (current?.sourceKey?.startsWith("bar:")) {
+      const genre = current.sourceKey.slice(4);
+      if (genre === "all" || LISTEN_BAR_GENRES.some(item => item.value === genre)) setSelectedPlaybackGenre(genre as GenrePlaybackSelection);
     }
-    if (rotationTracks.some((track) => track.id === nowTrack.id)) return;
-    const nextTrack = rotationTracks.find((track) => track.audioUrl) ?? rotationTracks[0];
-    startTrackAtZeroRef.current = true;
-    liveRadioSyncEnabledRef.current = false;
-    localOverrideTrackIdRef.current = nextTrack.id;
-    liveSeekRef.current = { trackId: nextTrack.id, offset: 0 };
-    setElapsed(0);
-    setNowTrack(nextTrack);
-  }, [nowTrack.id, rotationTracks]);
+    if (!current) startBarPlayback(selectedPlaybackGenre, selectedTrack.id);
+  }, [rotationTracks.length, selectedPlaybackGenre, selectedTrack.id, startBarPlayback]);
 
   useEffect(() => {
     nowTrackRef.current = nowTrack;
@@ -1374,9 +1120,7 @@ export default function ListenBarPage() {
       setOfficialTracks(tracks);
       setNowTrack((current) => {
         if (current.audioUrl && tracks.some((track) => track.id === current.id)) return current;
-        const livePosition = liveRadioSyncEnabledRef.current ? getLiveRadioPosition(tracks) : null;
-        if (livePosition) liveSeekRef.current = { trackId: livePosition.track.id, offset: livePosition.offset };
-        return livePosition?.track ?? pickRandomTrack(tracks) ?? tracks[0];
+        return tracks[0];
       });
       setPlaylistStatus("database");
     };
@@ -1507,17 +1251,6 @@ export default function ListenBarPage() {
       .on("broadcast", { event: "track-uploaded" }, (payload) => {
         const track = (payload.payload as { track?: ListenBarTrack }).track;
         if (!track?.id || track.source !== "community" || !track.audioUrl) return;
-        servedCommunityIdsRef.current.delete(track.id);
-        if (nowTrackRef.current.audioUrl) {
-          markPriorityAirplayTrack(track.id);
-        } else {
-          startTrackAtZeroRef.current = true;
-          liveRadioSyncEnabledRef.current = false;
-          localOverrideTrackIdRef.current = track.id;
-          liveSeekRef.current = { trackId: track.id, offset: 0 };
-          setElapsed(0);
-          setNowTrack(track);
-        }
         setOfficialTracks((tracks) => {
           if (tracks.some((item) => item.id === track.id)) return tracks;
           return [...tracks, track];
@@ -1530,234 +1263,14 @@ export default function ListenBarPage() {
       listenBarSyncChannelRef.current = null;
       void supabase.removeChannel(channel);
     };
-  }, [isZh, markPriorityAirplayTrack]);
+  }, [isZh]);
 
-  const playNext = useCallback(() => {
-    setHistory((items) => [nowTrack, ...items].slice(0, 8));
-    if (localOverrideTrackIdRef.current === nowTrack.id) {
-      localOverrideTrackIdRef.current = null;
-      liveRadioSyncEnabledRef.current = true;
-    }
-
-    const queuedRequest = getPriorityAirplayBatch(priorityAirplaySourceTracks, servedCommunityIdsRef.current, nowTrack.id)[0] ?? null;
-    if (queuedRequest) {
-      servedCommunityIdsRef.current.add(queuedRequest.id);
-      startTrackAtZeroRef.current = true;
-      liveRadioSyncEnabledRef.current = false;
-      localOverrideTrackIdRef.current = queuedRequest.id;
-      liveSeekRef.current = { trackId: queuedRequest.id, offset: 0 };
-      setElapsed(0);
-      setNowTrack(queuedRequest);
-      return;
-    }
-
-    const playableTracks = rotationTracks.filter((track) => track.audioUrl);
-    if (playableTracks.length === 0) {
-      setElapsed(0);
-      return;
-    }
-
-    const currentIndex = rotationTracks.findIndex((track) => track.id === nowTrack.id);
-    const nextTrack =
-      currentIndex >= 0
-        ? Array.from({ length: rotationTracks.length }, (_, index) => rotationTracks[(currentIndex + index + 1) % rotationTracks.length])
-            .find((track) => track?.audioUrl)
-        : playableTracks[0];
-
-    if (!nextTrack) {
-      setElapsed(0);
-      return;
-    }
-
-    startTrackAtZeroRef.current = true;
-    liveRadioSyncEnabledRef.current = false;
-    localOverrideTrackIdRef.current = nextTrack.id;
-    liveSeekRef.current = { trackId: nextTrack.id, offset: 0 };
-    setElapsed(0);
-    if (nextTrack.id === nowTrack.id) {
-      const audio = audioRef.current;
-      if (!audio) return;
-      audio.currentTime = 0;
-      audio.muted = false;
-      applyRadioVolume(audio, volumeRef.current);
-      void audio.play()
-        .then(() => {
-          setPlaybackBlocked(false);
-          setIsPlaying(true);
-        })
-        .catch(() => {
-          setPlaybackBlocked(true);
-          setIsPlaying(false);
-        });
-      return;
-    }
-    setNowTrack(nextTrack);
-  }, [applyRadioVolume, nowTrack, priorityAirplaySourceTracks, rotationTracks]);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    return () => closePlaybackSegment("song_skip", audio);
-  }, [closePlaybackSegment]);
-
-  useEffect(() => {
-    const forceStart = startTrackAtZeroRef.current;
-    const livePosition = forceStart || !liveRadioSyncEnabledRef.current ? null : getLiveRadioPosition(rotationTracksRef.current);
-    const liveOffset = forceStart
-      ? 0
-      : livePosition?.track.id === nowTrack.id
-        ? livePosition.offset
-        : liveSeekRef.current?.trackId === nowTrack.id
-          ? liveSeekRef.current.offset
-          : 0;
-    if (forceStart) startTrackAtZeroRef.current = false;
-    liveSeekRef.current = { trackId: nowTrack.id, offset: liveOffset };
-    setElapsed(liveOffset);
-    setTrackDuration(nowTrack.duration);
-  }, [nowTrack]);
-
-  useEffect(() => {
-    if (nowTrack.audioUrl) return;
-    const audio = audioRef.current;
-    if (audio) {
-      audio.pause();
-      audio.removeAttribute("src");
-      audio.load();
-    }
-    setPlaybackBlocked(false);
-    setIsPlaying(false);
-  }, [nowTrack.audioUrl]);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !nowTrack.audioUrl) return;
-    const applyLiveSeek = () => {
-      const livePosition = !liveRadioSyncEnabledRef.current ? null : getLiveRadioPosition(rotationTracksRef.current);
-      const offset = livePosition?.track.id === nowTrack.id
-        ? livePosition.offset
-        : liveSeekRef.current?.trackId === nowTrack.id
-          ? liveSeekRef.current.offset
-          : 0;
-      const safeDuration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : nowTrack.duration;
-      audio.currentTime = Math.min(Math.max(0, offset), Math.max(0, safeDuration - 0.25));
-      setElapsed(audio.currentTime);
-    };
-    audio.addEventListener("loadedmetadata", applyLiveSeek, { once: true });
-    audio.load();
-    audio.muted = false;
-    applyRadioVolume(audio, volumeRef.current);
-    radioShouldResumeRef.current = true;
-    void audio.play()
-      .then(() => {
-        setPlaybackBlocked(false);
-        setIsPlaying(true);
-      })
-      .catch(() => {
-        setPlaybackBlocked(true);
-        setIsPlaying(false);
-      });
-    return () => {
-      audio.removeEventListener("loadedmetadata", applyLiveSeek);
-    };
-  }, [applyRadioVolume, nowTrack.audioUrl, nowTrack.duration, nowTrack.id]);
-
-  useEffect(() => {
-    volumeRef.current = volume;
-    if (audioRef.current) applyRadioVolume(audioRef.current, volume);
-  }, [applyRadioVolume, volume]);
-
-  const resumeRadioPlayback = useCallback((syncLivePosition = false, volumeOverride?: number) => {
-    const audio = audioRef.current;
-    if (!audio || !nowTrack.audioUrl) return;
-    radioShouldResumeRef.current = true;
-    audio.muted = false;
-    applyRadioVolume(audio, volumeOverride ?? volume);
-    const audioContext = audioContextRef.current;
-    if (audioContext?.state === "suspended") void audioContext.resume();
-    if (syncLivePosition && audio.readyState >= 1) {
-      const livePosition = !liveRadioSyncEnabledRef.current ? null : getLiveRadioPosition(rotationTracksRef.current);
-      const offset = livePosition?.track.id === nowTrack.id
-        ? livePosition.offset
-        : liveSeekRef.current?.trackId === nowTrack.id
-          ? liveSeekRef.current.offset
-          : audio.currentTime;
-      const safeDuration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : nowTrack.duration;
-      audio.currentTime = Math.min(Math.max(0, offset), Math.max(0, safeDuration - 0.25));
-      setElapsed(audio.currentTime);
-    }
-    void audio.play()
-      .then(() => {
-        setPlaybackBlocked(false);
-        setIsPlaying(true);
-      })
-      .catch(() => {
-        setPlaybackBlocked(true);
-        setIsPlaying(false);
-      });
-  }, [applyRadioVolume, nowTrack.audioUrl, nowTrack.duration, nowTrack.id, volume]);
-
-  useEffect(() => {
-    if (!playbackBlocked) return;
-    const resumeOnGesture = () => resumeRadioPlayback(false);
-    window.addEventListener("pointerdown", resumeOnGesture, { once: true });
-    window.addEventListener("keydown", resumeOnGesture, { once: true });
-    return () => {
-      window.removeEventListener("pointerdown", resumeOnGesture);
-      window.removeEventListener("keydown", resumeOnGesture);
-    };
-  }, [playbackBlocked, resumeRadioPlayback]);
-
-  useEffect(() => {
-    const rememberResumeState = () => {
-      const audio = audioRef.current;
-      radioShouldResumeRef.current = !audio || !audio.paused || isPlaying;
-    };
-    const resumeIfVisible = () => {
-      if (document.visibilityState === "hidden") {
-        rememberResumeState();
-        return;
-      }
-      if (radioShouldResumeRef.current) {
-        window.setTimeout(() => resumeRadioPlayback(false), 140);
-      }
-    };
-    const onPageHide = () => rememberResumeState();
-    document.addEventListener("visibilitychange", resumeIfVisible);
-    window.addEventListener("focus", resumeIfVisible);
-    window.addEventListener("pageshow", resumeIfVisible);
-    window.addEventListener("pagehide", onPageHide);
-    return () => {
-      document.removeEventListener("visibilitychange", resumeIfVisible);
-      window.removeEventListener("focus", resumeIfVisible);
-      window.removeEventListener("pageshow", resumeIfVisible);
-      window.removeEventListener("pagehide", onPageHide);
-    };
-  }, [isPlaying, resumeRadioPlayback]);
-
-  useEffect(() => {
-    if (!isPlaying || nowTrack.audioUrl) return;
-    const timer = window.setInterval(() => {
-      setElapsed((value) => {
-        if (value + 1 >= trackDuration) {
-          window.clearInterval(timer);
-          playNext();
-          return 0;
-        }
-        return value + 1;
-      });
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [isPlaying, nowTrack, playNext, trackDuration]);
-
-  const progress = Math.min(100, (elapsed / Math.max(1, trackDuration)) * 100);
   const radioStatusLine = useMemo(() => {
     if (playlistStatus === "loading") return barText(lang, "電台正在接上訊號...", "Tuning the Station Signal...", "放送信号に接続しています…", "방송 신호에 연결하는 중…");
-    if (nextCommunityTrack) {
-      return barText(lang, "插播已排入，下一首上場。", "Creator Track Queued. Next up.", "投稿曲をキューに追加しました。次に再生します。", "업로드 곡이 대기열에 추가되었습니다. 다음 곡으로 재생합니다.");
-    }
     return playlistStatus === "database"
       ? ""
       : barText(lang, "公播準備中。", "Station Warming Up.", "放送準備中です。", "방송 준비 중입니다.");
-  }, [lang, nextCommunityTrack, playlistStatus]);
+  }, [lang, playlistStatus]);
 
   const localizedMessages = useMemo(
     () => messages.map((message) => localizeListenBarMessage(message, isZh)),
@@ -1765,9 +1278,20 @@ export default function ListenBarPage() {
   );
 
   const tryStartRadio = () => {
-    resumeRadioPlayback(false);
+    if (barSession && currentPlayerTrack?.id === nowTrack.id) return;
+    startBarPlayback(selectedPlaybackGenre, nowTrack.id);
   };
 
+  useEffect(() => {
+    const updateHeart = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (!detail?.trackId || !detail.counts) return;
+      setReactionCounts(current => ({ ...current, [detail.trackId]: detail.counts }));
+      setMyReactions(current => ({ ...current, [detail.trackId]: detail.heartedToday ? "heart" : null }));
+    };
+    window.addEventListener("aipoger:music-heart", updateHeart);
+    return () => window.removeEventListener("aipoger:music-heart", updateHeart);
+  }, []);
   const currentReactions = reactionCounts[nowTrack.id] ?? emptyReactions;
   const nowTrackTitle = nowTrack.id === EMPTY_LISTEN_BAR_TRACK.id
     ? barText(lang, nowTrack.title, "Waiting for Creator Uploads", "クリエイターの投稿を待っています", "크리에이터 업로드를 기다리는 중")
@@ -2212,8 +1736,6 @@ export default function ListenBarPage() {
             durationSeconds: normalizedTrack.duration,
           },
         });
-        servedCommunityIdsRef.current.delete(insertedTrack.id);
-        markPriorityAirplayTrack(normalizedTrack.id);
         setOfficialTracks((tracks) => {
           const withoutDuplicate = tracks.filter((track) => track.id !== normalizedTrack.id);
           return [...withoutDuplicate, normalizedTrack];
@@ -2393,7 +1915,7 @@ export default function ListenBarPage() {
       if (nowTrack.id === track.id) {
         const replacement = rotationTracks.find((item) => item.id !== track.id && item.audioUrl) ?? EMPTY_LISTEN_BAR_TRACK;
         setNowTrack(replacement);
-        setElapsed(0);
+        if (barSession) musicPlayer?.close();
       }
       setMyBroadcastStats((tracks) => tracks.filter((item) => item.id !== track.id));
       if (editTrackId === track.id) setEditTrackId(null);
@@ -2645,7 +2167,7 @@ export default function ListenBarPage() {
                 </div>
                 <div className="mt-3 -ml-1 flex flex-wrap items-center gap-2">
                   <span className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-100">
-                    {nowGenreLabel}
+                    {selectedGenreLabel} · {barText(lang, "本首", "Track", "この曲", "현재 곡")}: {nowGenreLabel}
                   </span>
                   {nowTrack.source === "community" && nowTrack.id !== EMPTY_LISTEN_BAR_TRACK.id ? (
                     <ReportButton
@@ -2662,64 +2184,9 @@ export default function ListenBarPage() {
                   track={nowTrack}
                   lang={lang}
                 />
-                <div className="mt-7">
-                  <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-orange-500 via-orange-300 to-cyan-300 transition-[width]"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                  <div className="mt-2 flex justify-between text-xs tabular-nums text-zinc-500">
-                    <span>{formatDuration(elapsed)}</span>
-                    <span>{formatDuration(trackDuration)}</span>
-                  </div>
-                </div>
-
-                {playbackBlocked && (
-                  <button
-                    type="button"
-                    onPointerDown={() => resumeRadioPlayback(false)}
-                    onClick={() => resumeRadioPlayback(false)}
-                    className="mt-4 inline-flex items-center justify-center rounded-full border border-orange-300/35 bg-orange-500 px-4 py-2 text-xs font-black text-black shadow-[0_0_22px_rgba(255,106,0,0.18)] transition hover:bg-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
-                  >
-                    {barText(lang, "點一下恢復播放", "Tap to Resume Playback", "タップして再生を再開", "눌러서 재생 다시 시작")}
-                  </button>
-                )}
-
-                <div className="mt-5 grid gap-2 rounded-2xl border border-white/10 bg-black/35 px-4 py-3 sm:grid-cols-[auto_1fr_auto] sm:items-center">
-                  <span className="text-xs font-bold text-zinc-500">
-                    {barText(lang, "公播音量", "BAR VOLUME", "放送音量", "방송 볼륨")}
-                  </span>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value={volume}
-                    onPointerDown={() => {
-                      void ensureRadioVolumeControl(volumeRef.current);
-                    }}
-                    onKeyDown={() => {
-                      void ensureRadioVolumeControl(volumeRef.current);
-                    }}
-                    onChange={(event) => {
-                      const nextVolume = clampMediaVolume(Number(event.currentTarget.value));
-                      volumeRef.current = nextVolume;
-                      setVolume(nextVolume);
-                      void ensureRadioVolumeControl(nextVolume);
-                    }}
-                    aria-label={barText(lang, "公播音量", "Bar Volume", "放送音量", "방송 볼륨")}
-                    className="h-2 w-full accent-orange-500"
-                  />
-                  <span className="text-xs font-black tabular-nums text-orange-200">
-                    {Math.round(volume * 100)}%
-                  </span>
-                  {volumeControlFallback && (
-                    <span className="text-[11px] font-bold text-zinc-400 sm:col-span-3">
-                      {barText(lang, "此手機請搭配側邊音量鍵調整。", "Use your phone's volume buttons on this browser.", "このブラウザでは端末の音量ボタンも使って調整してください。", "이 브라우저에서는 휴대폰 볼륨 버튼도 함께 사용해 주세요.")}
-                    </span>
-                  )}
-                </div>
+                {!barSession && nowTrack.audioUrl ? <button type="button" onClick={() => startBarPlayback(selectedPlaybackGenre, nowTrack.id)} className="mt-5 rounded-full bg-orange-500 px-5 py-2 text-sm font-black text-black hover:bg-orange-300">
+                  {barText(lang, "播放此曲風", "Play this genre", "このジャンルを再生", "이 장르 재생")}
+                </button> : null}
                 <div className="mt-3 rounded-2xl border border-white/10 bg-black/35 px-4 py-4">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <span className="text-xs font-black text-zinc-500">
@@ -2834,7 +2301,7 @@ export default function ListenBarPage() {
                 <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
                   <button
                     type="button"
-                    onClick={() => setSelectedPlaybackGenre("all")}
+                    onClick={() => choosePlaybackGenre("all")}
                     aria-pressed={selectedPlaybackGenre === "all"}
                     className={`min-w-0 rounded-xl border px-2.5 py-2 text-left transition ${
                       selectedPlaybackGenre === "all"
@@ -2861,7 +2328,8 @@ export default function ListenBarPage() {
                       <button
                         key={genre.value}
                         type="button"
-                        onClick={() => setSelectedPlaybackGenre(genre.value)}
+                        disabled={(genrePoolStats.get(genre.value)?.public ?? 0) === 0}
+                        onClick={() => choosePlaybackGenre(genre.value)}
                         aria-pressed={active}
                         className={`min-w-0 rounded-xl border px-2.5 py-2 text-left transition ${
                           active
@@ -2885,126 +2353,16 @@ export default function ListenBarPage() {
                   })}
                 </div>
               </div>
-              <div className="relative grid gap-0 md:grid-cols-2">
-                <div className="flex flex-wrap items-end justify-between gap-3 border-b border-white/8 px-4 py-3 md:col-span-2">
-                  <div>
-                    <p className="text-[11px] font-black uppercase tracking-[0.26em] text-cyan-200/70">
-                      {listenCopy.queueTitle}
-                    </p>
-                    <p className="mt-1 text-xs font-bold text-zinc-500">
-                      {listenCopy.queueSectionHint}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <ShareButton
-                      title={selectedGenreShareTitle}
-                      text={selectedGenreShareText}
-                      url={selectedGenreShareUrl}
-                      label={selectedPlaybackGenre === "all"
-                        ? barText(lang, "分享公播", "Share All", "放送全体をシェア", "전체 방송 공유")
-                        : barText(lang, "分享此類", "Share Genre", "このジャンルをシェア", "이 장르 공유")}
-                      copiedLabel={listenCopy.copied}
-                      className="min-h-10 !border-rose-200/72 !bg-[linear-gradient(180deg,rgba(164,24,42,0.8)_0%,rgba(96,18,30,0.76)_100%)] px-3 py-1 text-[11px] !text-white !shadow-[0_0_30px_rgba(255,49,80,0.36),inset_0_1px_0_rgba(255,255,255,0.11)] ring-1 ring-rose-100/20 hover:!border-rose-100/90 hover:!bg-[linear-gradient(180deg,rgba(202,32,58,0.9)_0%,rgba(122,20,36,0.84)_100%)] hover:!shadow-[0_0_42px_rgba(255,49,80,0.48),inset_0_1px_0_rgba(255,255,255,0.15)]"
-                    />
-                    <span className="rounded-full border border-orange-300/24 bg-orange-500/10 px-3 py-1 text-[11px] font-black tabular-nums text-orange-100">
-                      {upcomingHeartbreakerTracks.length}/6
-                    </span>
-                  </div>
-                </div>
-                {upcomingHeartbreakerTracks.length === 0 ? (
-                  <p className="px-4 py-6 text-sm font-bold text-zinc-500 md:col-span-2">
-                    {listenCopy.queueEmpty}
-                  </p>
-                ) : [0, 3].map((startIndex, groupIndex) => {
-                  const tracks = upcomingHeartbreakerTracks.slice(startIndex, startIndex + 3);
-                  return (
-                    <div
-                      key={startIndex}
-                      className={`min-w-0 ${groupIndex === 1 ? "border-t border-white/8 md:border-l md:border-t-0" : ""}`}
-                    >
-                      <div className="divide-y divide-white/8">
-                        {tracks.length > 0 ? (
-                          tracks.map((track, index) => (
-                            <div
-                              key={track.id}
-                              className="grid min-h-[5rem] grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-3 transition hover:bg-white/[0.035]"
-                            >
-                              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-orange-300/35 bg-orange-500/10 text-base font-black tabular-nums text-orange-100 shadow-[0_0_18px_rgba(255,106,0,0.08)]">
-                                {startIndex + index + 1}
-                              </span>
-                              <div className="min-w-0">
-                                <div className="flex min-w-0 items-center gap-2">
-                                  {isNewlyPublishedMusic(track.createdAt) ? <NewMusicBadge lang={lang} className="shrink-0" /> : null}
-                                  <p className="min-w-0 line-clamp-1 text-lg font-black leading-tight text-white" title={track.title}>
-                                    {track.title}
-                                  </p>
-                                </div>
-                                <p className="mt-1 truncate text-sm font-bold text-zinc-500">
-                                  <span className="text-orange-200">{track.artist}</span>
-                                  <span className="mx-2 text-zinc-700">/</span>
-                                  {track.tool}
-                                  <span className="mx-2 text-zinc-700">/</span>
-                                  {formatDuration(track.duration)}
-                                </p>
-
-                                <ListenBarEarwormSignal
-                                  track={track}
-                                  lang={lang}
-                                  compact
-                                />
-                              </div>
-                              {startIndex + index === 0 && (
-                                <span className="hidden rounded-full border border-cyan-200/25 bg-cyan-300/8 px-2.5 py-1 text-[10px] font-black text-cyan-100 sm:inline-flex">
-                                  {barText(lang, "即將插播", "Next", "次に再生", "다음 재생")}
-                                </span>
-                              )}
-                            </div>
-                          ))
-                        ) : null}
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="flex justify-end px-4 py-2">
+                <ShareButton title={listenCopy.shareTitle} text={selectedGenreLabel} url={selectedGenreShareUrl} label={barText(lang, "分享此類", "Share genre", "ジャンルをシェア", "장르 공유")} copiedLabel={listenCopy.copied} />
+              </div>
+              <div data-bar-next-track className="flex min-w-0 items-center gap-3 border-t border-white/10 px-4 py-3">
+                <span className="shrink-0 text-xs font-black text-cyan-200">{barText(lang, "下一首", "Up next", "次の曲", "다음 곡")}</span>
+                <p className="min-w-0 flex-1 truncate text-sm font-bold text-white">
+                  {nextPreviewTrack ? `${nextPreviewTrack.title} · ${nextPreviewTrack.artist}` : listenCopy.queueEmpty}
+                </p>
               </div>
             </div>
-
-            <audio
-              ref={audioRef}
-              src={nowTrack.audioUrl}
-              crossOrigin="anonymous"
-              preload="auto"
-              playsInline
-              onPlay={() => {
-                setPlaybackBlocked(false);
-                setIsPlaying(true);
-                const currentSecond = Math.max(0, Math.floor(audioRef.current?.currentTime ?? 0));
-                if (!playbackSegmentRef.current || playbackSegmentRef.current.trackId !== nowTrack.id) {
-                  playbackSegmentRef.current = {
-                    trackId: nowTrack.id,
-                    startedAtMs: Date.now(),
-                    startedAtSecond: currentSecond,
-                  };
-                  logSongPlaybackEvent("song_play", nowTrack, { startSecond: currentSecond });
-                } else {
-                  logSongPlaybackEvent("song_resume", nowTrack, { startSecond: currentSecond });
-                }
-              }}
-              onPause={(event) => {
-                setIsPlaying(false);
-                if (!event.currentTarget.ended) closePlaybackSegment("song_pause", event.currentTarget);
-              }}
-              onTimeUpdate={(event) => syncElapsedFromAudio(event.currentTarget)}
-              onLoadedMetadata={(event) => {
-                if (Number.isFinite(event.currentTarget.duration)) {
-                  setTrackDuration(Math.max(1, Math.round(event.currentTarget.duration)));
-                }
-                syncElapsedFromAudio(event.currentTarget, true);
-              }}
-              onEnded={(event) => {
-                closePlaybackSegment("song_finish", event.currentTarget);
-                playNext();
-              }}
-            />
           </div>
 
           <div className="grid min-w-0 gap-4">
@@ -3072,7 +2430,7 @@ export default function ListenBarPage() {
                     {listenCopy.playMySong}
                   </h2>
                   <p className="mt-2 max-w-xl text-xs leading-5 text-zinc-500">
-                    {barText(lang, "上傳後不打斷現在播放；這首播完優先插播新投稿。每 1 小時最多 8 首，其餘排到下一小時。", "Uploads do not interrupt the current song; new submissions get priority next. Up to 8 air per 1-hour batch, with overflow pushed to the next hour.", "投稿しても現在の再生は中断されません。次の枠で新しい投稿が優先され、1時間に最大8曲、それ以降は次の時間帯へ送られます。", "업로드해도 현재 재생은 중단되지 않습니다. 새 업로드는 다음 순서에서 우선 재생되며, 시간당 최대 8곡 이후에는 다음 시간대로 넘어갑니다.")}
+                    {barText(lang, "上傳後加入曲風歌庫，不打斷正在播放的歌單。重新選擇曲風即可載入最新歌曲。", "Uploads join the genre library without interrupting your queue. Choose a genre again to load the latest songs.", "投稿曲はジャンル別ライブラリに追加されます。ジャンルを選び直すと最新の曲を読み込めます。", "업로드한 곡은 장르 라이브러리에 추가됩니다. 장르를 다시 선택하면 최신 곡을 불러옵니다.")}
                   </p>
                 </div>
                 {visitorAvatarUrl && (

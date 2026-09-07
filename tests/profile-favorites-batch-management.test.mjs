@@ -6,7 +6,7 @@ const profilePage = readFileSync(new URL("../src/app/profile/page.tsx", import.m
 const productRules = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
 const releaseChecklist = readFileSync(new URL("../docs/aipoger-engineering.md", import.meta.url), "utf8");
 const uiArtDirection = readFileSync(new URL("../docs/aipoger-experience.md", import.meta.url), "utf8");
-const queuePlayer = readFileSync(new URL("../src/components/showtime-queue-player.tsx", import.meta.url), "utf8");
+const queuePlayer = readFileSync(new URL("../src/components/global-music-player.tsx", import.meta.url), "utf8");
 
 test("Profile saved songs expose batch selection and removal controls", () => {
   assert.ok(profilePage.includes("favoriteSelectionMode"));

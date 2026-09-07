@@ -33,7 +33,7 @@ test("Explore shows NEW at the cover top-left while challenge-ready remains top-
 test("Bar Heartbreak marks new now-playing and visible list tracks", () => {
   assert.ok(listenBarSource.includes("isNew={isNewlyPublishedMusic(nowTrack.createdAt)}"));
   assert.ok(listenBarSource.includes('className="absolute left-[20%] top-[11%]'));
-  assert.ok((listenBarSource.match(/isNewlyPublishedMusic\(track\.createdAt\)/g) ?? []).length >= 2);
+  assert.ok((listenBarSource.match(/isNewlyPublishedMusic\(track\.createdAt\)/g) ?? []).length >= 1);
 });
 
 test("product rules use the same seven-day window for NEW display and ordering", () => {

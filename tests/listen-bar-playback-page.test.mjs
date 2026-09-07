@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const listenBarPageSource = readFileSync(new URL("../src/app/listen-bar/page.tsx", import.meta.url), "utf8");
+const playerSource = readFileSync(new URL("../src/components/global-music-player.tsx", import.meta.url), "utf8");
 const listenBarGlobalsSource = readFileSync(new URL("../src/app/globals.css", import.meta.url), "utf8");
 const listenBarShortRouteSource = readFileSync(new URL("../src/app/l/[genre]/route.ts", import.meta.url), "utf8");
 
@@ -21,21 +22,16 @@ test("listen bar resume controls do not force live-position seeking", () => {
   assert.equal(listenBarPageSource.includes("resumeRadioPlayback(true)"), false);
 });
 
-test("listen bar repeats a one-track genre after the song ends", () => {
-  assert.ok(listenBarPageSource.includes("if (nextTrack.id === nowTrack.id) {"));
-  assert.ok(listenBarPageSource.includes("audio.currentTime = 0;"));
-  assert.ok(listenBarPageSource.includes("void audio.play()"));
+test("listen bar uses repeating shared queue and one upcoming preview", () => {
+  assert.ok(listenBarPageSource.includes("repeat: true"));
+  assert.ok(listenBarPageSource.includes("data-bar-next-track"));
+  assert.ok(!listenBarPageSource.includes("<audio"));
+  assert.ok(!listenBarPageSource.includes("upcomingHeartbreakerTracks"));
 });
-
-test("listen bar volume falls back to Web Audio gain when mobile media volume is locked", () => {
-  assert.ok(listenBarPageSource.includes("setNativeMediaVolume(audio, normalizedVolume)"));
-  assert.ok(listenBarPageSource.includes("createMediaElementSource(audio)"));
-  assert.ok(listenBarPageSource.includes("audioContext.createGain()"));
-  assert.ok(listenBarPageSource.includes("ensureRadioVolumeControl(nextVolume)"));
-  assert.ok(listenBarPageSource.includes("audioVolumeSetupPromiseRef"));
-  assert.ok(listenBarPageSource.includes("void ensureRadioVolumeControl(volumeRef.current)"));
-  assert.ok(listenBarPageSource.includes('audioContext?.state === "suspended"'));
-  assert.ok(listenBarPageSource.includes('crossOrigin="anonymous"'));
+test("shared player provides volume fallback for bar", () => {
+  assert.ok(playerSource.includes("createMediaElementSource(audio)"));
+  assert.ok(playerSource.includes("createGain()"));
+  assert.ok(playerSource.includes('crossOrigin="anonymous"'));
 });
 
 test("listen bar upload form previews the selected genre destination", () => {
@@ -89,9 +85,6 @@ test("listen bar now playing title uses dynamic sizing for long names", () => {
 test("listen bar upload and share actions keep visible glow highlights", () => {
   assert.ok(listenBarPageSource.includes("shadow-[0_0_42px_rgba(255,49,80,0.3)"));
   assert.ok(listenBarPageSource.includes("!shadow-[0_0_34px_rgba(255,49,80,0.34)"));
-  assert.ok(listenBarPageSource.includes("!shadow-[0_0_30px_rgba(255,49,80,0.36)"));
   assert.ok(listenBarPageSource.includes("!bg-[linear-gradient(180deg,rgba(164,24,42,0.78)_0%,rgba(116,21,34,0.72)_100%)]"));
-  assert.ok(listenBarPageSource.includes("!bg-[linear-gradient(180deg,rgba(164,24,42,0.8)_0%,rgba(96,18,30,0.76)_100%)]"));
   assert.ok(listenBarPageSource.includes("ring-rose-100/14"));
-  assert.ok(listenBarPageSource.includes("ring-rose-100/20"));
 });
