@@ -857,7 +857,7 @@ export default function ListenBarPage() {
   };
   const nextPreviewTrack = barSession
     ? barSession.queue[(barSession.index + 1) % barSession.queue.length] ?? null
-    : rotationTracks.find(track => track.audioUrl && track.id !== nowTrack.id) ?? null;
+    : null;
   const myPublicStats = useMemo(
     () => myBroadcastStats.filter((track) => track.barPhase === "public"),
     [myBroadcastStats],
@@ -2269,7 +2269,7 @@ export default function ListenBarPage() {
               <div className="relative flex flex-wrap items-end justify-between gap-3 border-b border-white/8 px-4 py-3">
                 <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1">
                   <p className="text-[11px] font-black uppercase tracking-[0.28em] text-cyan-200/70">
-                    {listenCopy.queueEyebrow}
+                    {barText(lang, "播放範圍", "Listening range", "再生範囲", "재생 범위")}
                   </p>
                   <div className="min-w-0 basis-full sm:basis-auto">
                     <h2 className="text-[clamp(1.55rem,8vw,2.9rem)] font-black leading-none text-white sm:whitespace-nowrap">
@@ -2359,7 +2359,7 @@ export default function ListenBarPage() {
               <div data-bar-next-track className="flex min-w-0 items-center gap-3 border-t border-white/10 px-4 py-3">
                 <span className="shrink-0 text-xs font-black text-cyan-200">{barText(lang, "下一首", "Up next", "次の曲", "다음 곡")}</span>
                 <p className="min-w-0 flex-1 truncate text-sm font-bold text-white">
-                  {nextPreviewTrack ? `${nextPreviewTrack.title} · ${nextPreviewTrack.artist}` : listenCopy.queueEmpty}
+                  {nextPreviewTrack ? `${nextPreviewTrack.title} · ${nextPreviewTrack.artist}` : barText(lang, "選擇曲風開始播放", "Choose a genre to start listening", "ジャンルを選んで再生", "장르를 선택해 재생하세요")}
                 </p>
               </div>
             </div>
