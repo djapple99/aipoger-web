@@ -19,7 +19,7 @@ function formatTime(value: number) {
 export default function GlobalMusicPlayer() {
   const { lang } = useI18n();
   const isZh = lang === "zh";
-  const label = (zh: string, en: string, ja: string, ko: string) => lang === "ja" ? ja : lang === "ko" ? ko : isZh ? zh : en;
+  const label = useCallback((zh: string, en: string, ja: string, ko: string) => lang === "ja" ? ja : lang === "ko" ? ko : isZh ? zh : en, [isZh, lang]);
   const playbackSegmentRef = useRef<{ id: string; title: string; artist: string; source: string; pagePath: string; seconds: number; lastTime: number } | null>(null);
   const [heartBusy, setHeartBusy] = useState(false);
   const [hearted, setHearted] = useState<Record<string, boolean>>({});
@@ -124,10 +124,10 @@ export default function GlobalMusicPlayer() {
     } catch {
       if (request !== playRequestRef.current) return false;
       setPlaying(false);
-      setPlaybackError(isZh ? "瀏覽器暫停了自動播放，請再按一次播放。" : "Playback was paused by the browser. Press play again.");
+      setPlaybackError(label("瀏覽器暫停了自動播放，請再按一次播放。", "Playback was paused by the browser. Press play again.", "ブラウザが自動再生を停止しました。再生を押してください。", "브라우저가 자동 재생을 중지했습니다. 재생을 눌러 주세요."));
       return false;
     }
-  }, [applyVolume, ensureVolumeControl, finishSegment, isZh]);
+  }, [applyVolume, ensureVolumeControl, finishSegment, label]);
 
   const close = useCallback(() => {
     ++playRequestRef.current;
@@ -171,12 +171,12 @@ export default function GlobalMusicPlayer() {
     if (audio.paused) {
       void ensureVolumeControl(audio).then(() => audio.play()).then(() => setPlaying(true)).catch(() => {
         setPlaying(false);
-        setPlaybackError(isZh ? "目前無法播放，請稍後再試。" : "Playback is unavailable. Try again shortly.");
+        setPlaybackError(label("目前無法播放，請稍後再試。", "Playback is unavailable. Try again shortly.", "現在再生できません。しばらくしてから再試行してください。", "현재 재생할 수 없습니다. 잠시 후 다시 시도해 주세요."));
       });
     } else {
       audio.pause();
     }
-  }, [ensureVolumeControl, isZh]);
+  }, [ensureVolumeControl, label]);
 
   useEffect(() => {
     registerMusicPlayer({
