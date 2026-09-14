@@ -136,11 +136,11 @@ test("stem separation guide is bilingual, sourced, and points only to known engi
 });
 
 test("Suno prompt and lyric libraries keep unique, bilingual, sourced moves", () => {
-  assert.equal(SUNO_PROMPT_MOVES.length, 158);
+  assert.equal(SUNO_PROMPT_MOVES.length, 163);
   assert.equal(SUNO_INSTRUMENT_TONE_PROMPTS.length, 40);
-  assert.equal(SUNO_STUDIO_MASTERING_MOVES.length, 95);
+  assert.equal(SUNO_STUDIO_MASTERING_MOVES.length, 100);
   assert.equal(BEATPORT_STUDIO_MASTERING_MOVES.length, 45);
-  assert.equal(SUNO_STUDIO_MASTERING_MOVES.filter((entry) => entry.category === "mastering").length, 95);
+  assert.equal(SUNO_STUDIO_MASTERING_MOVES.filter((entry) => entry.category === "mastering").length, 100);
   assert.equal(SUNO_LYRIC_MOVES.length, 21);
   assert.ok(["vocal-delivery", "vocal-character-tone", "vocal-effects", "vocal-placement-space", "vocal-moments-transitions"].every((key) => SUNO_LYRIC_MOVES.some((item) => item.key === key)));
   assert.deepEqual(
@@ -215,6 +215,11 @@ test("Suno prompt and lyric libraries keep unique, bilingual, sourced moves", ()
     "studio-mastering-amapiano",
     "studio-mastering-full-symphony",
     "studio-mastering-chicago-blues",
+    "studio-mastering-classic-disco",
+    "studio-mastering-italo-disco",
+    "studio-mastering-eurodisco",
+    "studio-mastering-hi-nrg-disco",
+    "studio-mastering-boogie-post-disco",
   ]) {
     assert.ok(SUNO_STUDIO_MASTERING_MOVES.some((entry) => entry.key === key));
   }
@@ -261,7 +266,7 @@ test("expanded Studio Mastering prompts are discoverable by genre, culture, and 
   };
 
   assert.ok(matchingKeys("jazz").length >= 7);
-  assert.deepEqual(matchingKeys("1980s").sort(), ["studio-mastering-1980s-arena-rock", "studio-mastering-1980s-new-wave"]);
+  assert.deepEqual(matchingKeys("1980s").sort(), ["studio-mastering-1980s-arena-rock", "studio-mastering-1980s-new-wave", "studio-mastering-italo-disco"]);
   assert.deepEqual(matchingKeys("印度").sort(), ["studio-mastering-bollywood-pop", "studio-mastering-indian-classical-fusion"]);
   assert.ok(matchingKeys("交響").includes("studio-mastering-full-symphony"));
   assert.ok(matchingKeys("獨立搖滾").includes("studio-mastering-2000s-indie-rock"));
@@ -271,8 +276,8 @@ test("expanded Studio Mastering prompts are discoverable by genre, culture, and 
 });
 
 test("Prompt and lyric finders explain their controls and expose clear states", () => {
-  assert.match(biblePageComponent, /158 招 Prompt/);
-  assert.match(biblePageComponent, /158 prompt moves/);
+  assert.match(biblePageComponent, /163 招 Prompt/);
+  assert.match(biblePageComponent, /163 prompt moves/);
   assert.match(biblePageComponent, /document\.title = BIBLE_DOCUMENT_TITLES\[lang\]/);
   assert.match(practiceLibraryComponent, /找你需要的 Prompt 招式/);
   assert.match(practiceLibraryComponent, /Jazz、1980s、印度、交響、側鏈/);
