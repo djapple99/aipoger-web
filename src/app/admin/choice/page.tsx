@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarDays, CheckCircle2, FilePlus2, Music2, Pencil } from "lucide-react";
+import { CalendarDays, CheckCircle2, FilePlus2, Music2, Pencil, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AIPOGER_CHOICE_INTRO_MAX_LENGTH,
@@ -76,11 +76,13 @@ function ChoiceLibraryCard({
   active,
   onSelect,
   editHref,
+  onDeleteCreator,
 }: {
   entry: ChoiceLibraryEntry;
   active: boolean;
   onSelect: () => void;
   editHref?: string;
+  onDeleteCreator?: () => void;
 }) {
   const content = (
     <>
@@ -111,7 +113,7 @@ function ChoiceLibraryCard({
     if (editHref) {
       return <Link href={editHref} className="group relative flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-black/45 p-2 text-left transition hover:-translate-y-0.5 hover:border-cyan-100/60" title="編輯自己的 Creator Choice">{content}<Pencil className="absolute right-1.5 top-1.5 h-3 w-3 text-cyan-100" aria-hidden="true" /></Link>;
     }
-    return <Link href={entry.href} className="group flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-black/45 p-2 text-left transition hover:-translate-y-0.5 hover:border-white/25" title="查看前台 Creator Choice">{content}</Link>;
+    return <div className="group relative flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-black/45 p-2 text-left transition hover:-translate-y-0.5 hover:border-white/25"><Link href={entry.href} className="flex min-w-0 flex-1 items-center gap-2" title="查看前台 Creator Choice">{content}</Link>{onDeleteCreator ? <button type="button" onClick={onDeleteCreator} className="shrink-0 self-start rounded-lg border border-red-200/25 p-1.5 text-red-100 transition hover:border-red-200/65" title="刪除創作者 Choice" aria-label={`刪除 ${libraryDisplayTitle(entry)}`}><Trash2 className="h-3.5 w-3.5" aria-hidden="true" /></button> : null}</div>;
   }
 
   return (
@@ -359,6 +361,12 @@ export default function AdminChoicePage() {
     await runAction("delete_collection", { collectionId: selected.id, confirmed: true }, "這一期 Choice 已刪除。", null);
   }
 
+  async function deleteCreatorChoice(entry: ChoiceLibraryEntry) {
+    if (entry.kind !== "creator") return;
+    if (!window.confirm(`確定刪除「${libraryDisplayTitle(entry)}」？只會移除這份 Choice，歌曲本身不受影響。`)) return;
+    await runAction("delete_creator_collection", { collectionId: entry.id, confirmed: true }, "創作者 Choice 已刪除，歌曲本身未受影響。", null);
+  }
+
   if (adminState === "checking") {
     return <main className="min-h-screen bg-[#050505] px-5 py-10 text-sm font-black text-zinc-400">檢查 Choice 後台權限中...</main>;
   }
@@ -411,7 +419,7 @@ export default function AdminChoicePage() {
             </button>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-            {library.map((entry) => <ChoiceLibraryCard key={`${entry.kind}:${entry.id}`} entry={entry} active={entry.kind === "official" && entry.id === selectedId} editHref={entry.kind === "creator" && entry.creatorId === currentUserId ? `/profile/choice?collection=${encodeURIComponent(entry.id)}` : undefined} onSelect={() => selectOfficialChoice(entry.id)} />)}
+            {library.map((entry) => <ChoiceLibraryCard key={`${entry.kind}:${entry.id}`} entry={entry} active={entry.kind === "official" && entry.id === selectedId} editHref={entry.kind === "creator" && entry.creatorId === currentUserId ? `/profile/choice?collection=${encodeURIComponent(entry.id)}` : undefined} onDeleteCreator={entry.kind === "creator" ? () => void deleteCreatorChoice(entry) : undefined} onSelect={() => selectOfficialChoice(entry.id)} />)}
             {library.length === 0 ? <p className="col-span-full rounded-xl border border-dashed border-white/10 px-3 py-7 text-center text-sm font-bold text-zinc-500">尚未建立 Choice，按「新增一期」開始。</p> : null}
           </div>
         </section>

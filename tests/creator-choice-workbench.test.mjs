@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 
 const migration = readFileSync(new URL("../supabase/migrations/20260713090833_creator_choice_collections.sql", import.meta.url), "utf8");
 const creatorChoiceRoute = readFileSync(new URL("../src/app/api/creator-choice/route.ts", import.meta.url), "utf8");
+const creatorChoiceHelper = readFileSync(new URL("../src/lib/creator-choice.ts", import.meta.url), "utf8");
 const adminChoiceRoute = readFileSync(new URL("../src/app/api/admin/choice/route.ts", import.meta.url), "utf8");
 const publicChoiceRoute = readFileSync(new URL("../src/app/api/creator-choice/[id]/route.ts", import.meta.url), "utf8");
 const profileChoicePage = readFileSync(new URL("../src/app/profile/choice/page.tsx", import.meta.url), "utf8");
@@ -22,10 +23,12 @@ test("creator Choice has a separate creator-owned schema and does not replace th
   assert.match(migration, /revoke all on table public\.aipoger_creator_choice_items from anon, authenticated/i);
 });
 
-test("only creators with a Showtime work can manage their own Choice while selection includes cross-creator new releases", () => {
+test("any signed-in creator can manage a Choice while selection includes cross-creator new releases", () => {
   assert.match(creatorChoiceRoute, /\.eq\("created_by", userId\)/);
   assert.match(creatorChoiceRoute, /\.eq\("ai_music_showtime_certified", true\)/);
-  assert.match(creatorChoiceRoute, /需要至少一首已認證 Showtime 的作品/);
+  assert.match(creatorChoiceRoute, /eligible: true/);
+  assert.match(creatorChoiceHelper, /登入後即可建立自己的 Choice/);
+  assert.doesNotMatch(creatorChoiceRoute, /需要至少一首已認證 Showtime 的作品/);
   assert.match(creatorChoiceRoute, /loadChoiceSelectionCatalog\(admin\)/);
   assert.match(creatorChoiceRoute, /Showtime 認證作品或 30 天內新歌/);
   assert.match(creatorChoiceRoute, /item\.isPublic && item\.selectable/);
@@ -39,7 +42,13 @@ test("creator Choice can be shared only after publication and keeps 5-10 curated
   assert.match(publicChoiceRoute, /\.eq\("is_published", true\)/);
   assert.match(publicChoiceRoute, /source\?\.isPublic/);
   assert.match(profileChoicePage, /creatorChoicePublicPath/);
-  assert.match(profileChoicePage, /可選全站公開 Showtime 認證作品及上架 30 天內的新歌/);
+  assert.match(profileChoicePage, /不需要先有 Showtime 作品/);
+});
+
+test("owner can remove a creator Choice without touching its songs", () => {
+  assert.match(adminChoiceRoute, /delete_creator_collection/);
+  assert.match(adminChoiceRoute, /removeChoiceEngagement\(guard\.admin, collectionId, "creator"\)/);
+  assert.match(adminChoicePage, /刪除創作者 Choice/);
 });
 
 test("Choice selected tracks use a compact responsive editor with direct position input", () => {

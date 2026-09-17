@@ -174,7 +174,9 @@ async function creatorEligibility(admin: ReturnType<typeof adminClient>, userId:
   const ownTracks = await loadOwnedShowtimeTracks(admin, userId);
   return {
     eligibility: {
-      eligible: ownTracks.length > 0,
+      // Choice is an open signed-in curation surface. Showtime count is
+      // informational only and must never gate creator-owned playlists.
+      eligible: true,
       showtimeWorkCount: ownTracks.length,
     },
     ownTracks,
@@ -302,12 +304,6 @@ async function assertSelectableSource(admin: ReturnType<typeof adminClient>, sou
   return source;
 }
 
-async function assertEligibleCreator(admin: ReturnType<typeof adminClient>, userId: string) {
-  const { eligibility, ownTracks } = await creatorEligibility(admin, userId);
-  if (!eligibility.eligible) throw new Error("需要至少一首已認證 Showtime 的作品，才能建立自己的 Choice。");
-  return { eligibility, ownTracks };
-}
-
 export async function GET(request: NextRequest) {
   try {
     const guard = await requireUser(request);
@@ -319,9 +315,7 @@ export async function GET(request: NextRequest) {
     if (!catalog.schemaReady) {
       return NextResponse.json({ schemaReady: false, eligibility: eligibilityState.eligibility, ownShowtimeWorks: eligibilityState.ownTracks, catalog: [], collections: [] });
     }
-    const collections = eligibilityState.eligibility.eligible
-      ? await loadCollections(guard.admin, guard.user.id)
-      : [];
+    const collections = await loadCollections(guard.admin, guard.user.id);
     return NextResponse.json({
       schemaReady: true,
       eligibility: eligibilityState.eligibility,
@@ -341,8 +335,6 @@ export async function PATCH(request: NextRequest) {
   try {
     const guard = await requireUser(request);
     if (guard.error) return guard.error;
-    await assertEligibleCreator(guard.admin, guard.user.id);
-
     const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
     const action = body?.action as ChoiceAction | undefined;
     if (!action) return jsonError("請指定 Choice 管理操作。");
@@ -509,7 +501,6 @@ export async function PATCH(request: NextRequest) {
     return jsonError("不支援的 Choice 管理操作。");
   } catch (error) {
     if (isMissingCreatorChoiceSchema(error)) return jsonError("Creator Choice 資料表尚未準備完成。", 409);
-    if (error instanceof Error && error.message.includes("Showtime")) return jsonError(error.message, 403);
     return jsonError(error instanceof Error ? error.message : "自己的 Choice 操作失敗。", 500);
   }
 }
@@ -518,7 +509,6 @@ export async function POST(request: NextRequest) {
   try {
     const guard = await requireUser(request);
     if (guard.error) return guard.error;
-    await assertEligibleCreator(guard.admin, guard.user.id);
     const form = await request.formData();
     const collectionId = form.get("collectionId");
     const file = form.get("file");
@@ -548,7 +538,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "本期 Choice 封面已更新。", collectionId: data.id, coverUrl: publicCoverUrl(guard.admin, data.cover_path) });
   } catch (error) {
     if (isMissingCreatorChoiceSchema(error)) return jsonError("Choice 封面欄位尚未準備完成，請先套用最新資料庫 migration。", 409);
-    if (error instanceof Error && error.message.includes("Showtime")) return jsonError(error.message, 403);
     return jsonError(error instanceof Error ? error.message : "Choice 封面上傳失敗。", 500);
   }
 }

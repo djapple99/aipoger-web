@@ -313,7 +313,7 @@ export default function CreatorChoicePage() {
   }, [selected]);
 
   if (loading) {
-    return <main className="min-h-screen bg-[#050505] px-5 pb-10 pt-24 text-sm font-black text-zinc-400 sm:pt-10">正在準備你的 Showtime / Choice...</main>;
+    return <main className="min-h-screen bg-[#050505] px-5 pb-10 pt-24 text-sm font-black text-zinc-400 sm:pt-10">正在準備你的 Choice...</main>;
   }
 
   return (
@@ -322,8 +322,8 @@ export default function CreatorChoicePage() {
         <header className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-5">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.24em] text-yellow-100/70">CREATOR DESK</p>
-            <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">我的 Showtime / Choice</h1>
-            <p className="mt-2 max-w-3xl text-sm font-bold leading-6 text-zinc-400">管理自己的 Showtime 展示資料與外部導流連結，並從公開認證作品及 30 天內新歌策展自己的 Choice。</p>
+            <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">我的 Choice / Showtime</h1>
+            <p className="mt-2 max-w-3xl text-sm font-bold leading-6 text-zinc-400">登入後就能建立每週一份自己的 Choice，從公開 Showtime 認證作品與 30 天內新歌中挑選 5–10 首；不需要先有 Showtime 作品。</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link href="/rank?lang=zh" className="rounded-full border border-white/15 px-3 py-2 text-xs font-black text-zinc-200 transition hover:border-yellow-200/55">看 Showtime</Link>
@@ -338,8 +338,8 @@ export default function CreatorChoicePage() {
         <section className="mt-6 border-y border-yellow-200/15 py-5">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-yellow-100/70">SHOWTIME STATUS</p>
-              <h2 className="mt-1 text-xl font-black text-white">{eligibility.showtimeWorkCount} 首 Showtime 作品</h2>
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-yellow-100/70">CURATOR STATUS</p>
+              <h2 className="mt-1 text-xl font-black text-white">Choice 已對登入創作者開放</h2>
               <p className="mt-1 text-sm font-bold text-zinc-400">{creatorChoiceEligibilityMessage(eligibility)}</p>
             </div>
             <Link href="/profile" className="rounded-full border border-yellow-200/30 bg-yellow-300/10 px-4 py-2 text-xs font-black text-yellow-100 transition hover:border-yellow-100/70">編輯所有作品展示資料</Link>
@@ -381,7 +381,7 @@ export default function CreatorChoicePage() {
           </section>
         ) : null}
 
-        {eligibility.eligible && schemaReady ? (
+        {schemaReady ? (
           <>
             <section className="mt-7 border border-white/10 bg-black/45 p-4 sm:p-5">
               <div className="flex flex-wrap items-end justify-between gap-3">
