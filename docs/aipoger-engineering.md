@@ -1,8 +1,14 @@
 # AIPOGER 開發與維運
 
-更新：2026-09-18 02:45 Asia/Taipei。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
+更新：2026-09-18 03:09 Asia/Taipei。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
 
-## 最新發布：排行榜管理與分享
+## 最新發布：頭像後台待辦
+
+- `9fc7074`／`codex/owner-task-avatar`：全站 owner 頭像紅色待辦數、後台彙總及分類入口；不取代 Profile 或原帳號通知。Vercel `dpl_CYiSQUWJWdaXxnQCGG4neeZFwoAw` READY 並 promote 至 aipoger.com。
+- 無 DB migration／正式資料寫入。437 項測試、TypeScript、本機及雲端 build 通過；lint 0 errors／16 既有 warnings。正式 API 未登入／無效 token 為 401；owner 真實登入操作未執行，隔離 runtime 已涵蓋帳號切換、更新及紅點顯示。
+- 新後台工作流要接入 `src/lib/admin-tasks.ts` 及 `/api/admin/tasks` 的真實待處理來源；不能把草稿以外的普通活動、已停用頁面或完成紀錄誤算成待辦。詳見 [發布紀錄](archive/2026-09-18-owner-task-avatar-release.md)。
+
+## 前版：排行榜管理與分享
 
 - 使用者明確回覆 `do it` 後，`9f96865`／`codex/showtime-chart-admin` 已部署並 promote 至 aipoger.com：第 1 款純黑底、整份月榜分享、owner 排行榜管理與 Choice 管理入口整合。
 - Vercel `dpl_EoRgvvWvNPfDNMyZSfg1BJjgfnox` READY；Supabase 已套用本機 `20260917180000_monthly_chart_owner_decisions.sql`，正式 migration ledger 版本 `20260917184048`、名稱 `monthly_chart_owner_decisions`，兩者是同一份 SQL，不重複套用。
