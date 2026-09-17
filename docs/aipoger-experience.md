@@ -1,6 +1,6 @@
 # AIPOGER 版面與使用流程
 
-更新：2026-09-18 05:00 Asia/Taipei。主文件 3／6；產品門檻與權限以 [產品規則](aipoger-product-rules.md) 為準。Showtime 純黑底、月榜分享與管理已正式發布；全站 owner 頭像待辦提醒見 [最新發布紀錄](archive/2026-09-18-owner-task-avatar-release.md)。
+更新：2026-09-18 05:04 Asia/Taipei。主文件 3／6；產品門檻與權限以 [產品規則](aipoger-product-rules.md) 為準。Showtime 純黑底、月榜分享與管理已正式發布；Choice 管理精簡與收藏順序見 [最新發布紀錄](archive/2026-09-18-choice-management-simplify-release.md)。
 
 This document protects AIPOGER's visual identity. Use it before redesigning any page, adding major UI, or changing user-facing copy.
 

@@ -1,8 +1,14 @@
 # AIPOGER 開發與維運
 
-更新：2026-09-18 05:00 Asia/Taipei。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
+更新：2026-09-18 05:04 Asia/Taipei。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
 
-## 最新發布：頭像後台待辦
+## 最新發布：Choice 管理精簡與收藏順序
+
+- 應用 `147dbc6`／`codex/choice-management-simplify`；Vercel `dpl_FfPbhR4V3nXbMaJswnNf5vZ9Yw5t` READY，2026-09-18 05:04 Asia/Taipei 已 promote 至 aipoger.com。
+- 444 項測試、TypeScript、本機／雲端 build 通過；lint 0 errors／16 既有 warnings。無 SQL migration、歷史收藏時間回填或正式資料刪除。
+- 收藏時間為私有 interactions store 的 per-user 欄位，由 Heart 與 favorite 路徑共同維護；只影響個人 Choice 選曲順序。新歌宣傳／官方草稿不再進入待辦彙總。詳見 [發布紀錄](archive/2026-09-18-choice-management-simplify-release.md)。
+
+## 前版發布：頭像後台待辦
 
 - `9fc7074`／`codex/owner-task-avatar`：全站 owner 頭像紅色待辦數、後台彙總及分類入口；不取代 Profile 或原帳號通知。Vercel `dpl_CYiSQUWJWdaXxnQCGG4neeZFwoAw` READY 並 promote 至 aipoger.com。
 - 無 DB migration／正式資料寫入。437 項測試、TypeScript、本機及雲端 build 通過；lint 0 errors／16 既有 warnings。正式 API 未登入／無效 token 為 401；owner 真實登入操作未執行，隔離 runtime 已涵蓋帳號切換、更新及紅點顯示。
@@ -289,7 +295,7 @@ Choice and retired Spotlight:
 - `/today?lang=zh` returns 307 to `/rank?lang=zh#choice-weekly`.
 - `/admin/social` remains the only draft, approval, and manual publishing console; Discord publishing still requires an approved draft plus its explicit publish action.
 - /admin/showtime 不再提供授證；舊入口導至 Choice 管理，作品管理使用 /admin/listen-bar。音檔、實際 Battle 結果、票數及 Heart 不可改寫。
-- /admin/choice 保留 owner 的官方／個人身分策展與週次管理，選擇公開可播作品、不受舊認證或 30 天限制；不自動生成社群草稿或對外發布。
+- /admin/choice 僅管理已發布歌單，owner 統一使用 /profile/choice 製作。官方新增／編輯／發布／封面 API 回傳 410，管理 GET 不返回草稿或選曲庫，分頁讀取全部已發布歌單；不自動生成社群草稿或對外發布。
 - Existing `listen_bar_daily_spotlights`, historical assets, and old social drafts are not deleted during this retirement.
 
 ## AI Music Works Checklist

@@ -1,6 +1,6 @@
 # AIPOGER Product Rules
 
-Last updated: 2026-09-18 05:00 Asia/Taipei。主文件 2／6。
+Last updated: 2026-09-18 05:04 Asia/Taipei。主文件 2／6。
 
 Showtime 認證已退役；月榜與收藏製作 Choice 已正式發布，取代 2026-09-17 23:09 roadmap 的待定細節與更早提案。2026-09-18 起 Choice 與月榜同頁策展，不再分頁籤；同票 owner 裁定、純黑底及整榜分享亦已發布，見 [最新發布紀錄](archive/2026-09-18-showtime-chart-admin-release.md)。
 
