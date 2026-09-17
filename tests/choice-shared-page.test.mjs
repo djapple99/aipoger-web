@@ -110,7 +110,7 @@ test("Choice comments are collection-level, authenticated for writes, and owner-
 test("publishing Choice persists the visible title and recommendation copy in the same action", () => {
   assert.match(creatorChoiceRoute, /hasDraftFields/);
   assert.match(creatorChoiceRoute, /title: cleanText\(body\?\.title, 120\)/);
-  assert.match(adminChoiceRoute, /curator_identity: curatorIdentity\(body\?\.curatorIdentity\)/);
+  assert.doesNotMatch(adminChoiceRoute, /curator_identity: curatorIdentity\(body\?\.curatorIdentity\)/);
   assert.match(profileChoicePage, /isPublished: !selected\.isPublished, \.\.\.draft/);
   assert.match(profileChoicePage, /type Draft = \{ weekStart: string; title: string; intro: string \}/);
 });

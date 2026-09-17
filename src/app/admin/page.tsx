@@ -19,7 +19,7 @@ const modules = [
   { href: "/admin/battles", title: "Battle 管理", label: "鬥歌場", description: "檢視進行中的 Drop Battle 與結果。", tone: "orange" },
   { href: "/admin/q-crash", title: "Q Crash 編輯", label: "Q CRASH", description: "調整 Q Crash 封面與結果後的完整版連結。", tone: "cyan" },
   { href: "/admin/charts", title: "排行榜管理", label: "Showtime", description: "處理同票裁定、查看疑似重複歌曲與歷史排序。", tone: "orange" },
-  { href: "/admin/choice", title: "Choice 管理", label: "策展歌單", description: "管理官方與創作者歌單、發布及指定 Showtime 主推。", tone: "cyan" },
+  { href: "/admin/choice", title: "Choice 管理", label: "策展歌單", description: "管理所有已發布 Choice、指定 Showtime 主推。", tone: "cyan" },
   { href: "/admin/social", title: "社群後台", label: "發布", description: "整理社群草稿、審核與發布節奏。", tone: "emerald" },
   { href: "/admin/quiz", title: "耳朵測驗", label: "互動內容", description: "管理 AI 音樂耳朵測驗題目。", tone: "purple" },
   { href: "/admin/gatekeeper-drops", title: "官方守門 Drop", label: "官方素材", description: "維護常駐入口使用的官方 Drop。", tone: "rose" },

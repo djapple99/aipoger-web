@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { setFavoriteMembership } from "@/lib/favorite-recency";
 
 type HonorTargetKind = "battle" | "bar";
 type HonorAction = "favorite" | "removeFavorite" | "comment";
@@ -22,6 +23,7 @@ type StoredHonorRecord = {
   targetArtist?: string;
   targetGenre?: string;
   favoriteUserIds: string[];
+  favoriteSavedAt?: Record<string, string>;
   comments: StoredHonorComment[];
   updatedAt: string;
 };
@@ -445,13 +447,7 @@ export async function POST(request: NextRequest) {
     record.updatedAt = now;
 
     if (action === "favorite" || action === "removeFavorite") {
-      if (action === "removeFavorite") {
-        record.favoriteUserIds = record.favoriteUserIds.filter((id) => id !== userId);
-      } else {
-        record.favoriteUserIds = record.favoriteUserIds.includes(userId)
-          ? record.favoriteUserIds.filter((id) => id !== userId)
-          : [...record.favoriteUserIds, userId];
-      }
+      setFavoriteMembership(record, userId, action === "favorite" && !record.favoriteUserIds.includes(userId), now);
     } else {
       const text = cleanText(body?.text, 280);
       if (!text) return jsonError("請輸入評論內容。");

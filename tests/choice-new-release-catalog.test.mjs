@@ -17,7 +17,7 @@ test("Choice catalog no longer uses age, certification or ownership as selection
   assert.match(playback, /moderation_hold/);
   assert.doesNotMatch(catalog + playback, /isAipogerChoiceNewRelease|loadShowtimeAdminCatalog|retiredFromExplore|\.eq\("created_by"/);
   assert.match(creatorRoute, /loadCreatorChoiceSelectionCatalog\(guard.admin, guard.user.id\)/);
-  assert.match(adminRoute, /只能加入目前公開可播放的歌曲/);
+  assert.match(adminRoute, /主推歌單必須已發布，且有公開可播放的歌曲/);
   assert.doesNotMatch(adminPage, /30 天|認證作品|CHOICE 新選|choiceSource ===/);
 });
 

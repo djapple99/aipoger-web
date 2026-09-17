@@ -1,6 +1,6 @@
 # AIPOGER 版面與使用流程
 
-更新：2026-09-18 03:09 Asia/Taipei。主文件 3／6；產品門檻與權限以 [產品規則](aipoger-product-rules.md) 為準。Showtime 純黑底、月榜分享與管理已正式發布；全站 owner 頭像待辦提醒見 [最新發布紀錄](archive/2026-09-18-owner-task-avatar-release.md)。
+更新：2026-09-18 05:00 Asia/Taipei。主文件 3／6；產品門檻與權限以 [產品規則](aipoger-product-rules.md) 為準。Showtime 純黑底、月榜分享與管理已正式發布；全站 owner 頭像待辦提醒見 [最新發布紀錄](archive/2026-09-18-owner-task-avatar-release.md)。
 
 This document protects AIPOGER's visual identity. Use it before redesigning any page, adding major UI, or changing user-facing copy.
 
@@ -225,7 +225,7 @@ Monthly chart layout:
 - Each row shows actual rank, small square cover, song title, creator, genre, monthly distinct non-author supporter count, play, song Heart and share. Use fixed rank/cover/action tracks; mobile titles may wrap to two lines without covering counts or controls.
 - Unresolved equal-support groups show `名次待定`, not parallel numeric ranks. Owner-decided order appears only after the server validates it. Below the product-rule minimum, retain the separate compact support-building state. Do not invent ranks, crowns, full Top 10 lists or movement arrows.
 - Put whole-chart share beside the header filter/rules icons, with an accessible localized name. Its URL preserves month/genre/language and restores that view; individual song-share buttons stay in their rows.
-- `/admin/charts` provides pending-month counts, same-score preview/playback, move-up/down controls and explicit save, plus audit history and confirmed soft-withdraw for suspected duplicates. Already settled decisions are disabled. Link it to `/admin/choice` and the owner overview; retain existing official/creator Choice management rather than adding a second editor.
+- `/admin/charts` provides pending-month counts, same-score preview/playback, move-up/down controls and explicit save, plus audit history and confirmed soft-withdraw for suspected duplicates. Already settled decisions are disabled. Link it to `/admin/choice` and the owner overview; link to the published Choice moderation list, never a second curation editor.
 - The history selector contains only snapshots from launch onward; absent history, insufficient support and data errors have concise truthful states. Monthly counts must not be labeled lifetime Hearts, Battle wins, Choice popularity or Earworm affinity.
 - Hide/moderation and playback restrictions remain effective in historical views; preserve the record without exposing restricted music or silently renumbering the frozen month.
 - No Drop victory / Bar heat / certification source tabs, duplicate Featured rows, certificate subtitle or marketing paragraph explaining how the new system works. Operational labels and accessible tooltips are enough.
@@ -234,11 +234,11 @@ Choice shelf and selection:
 
 - Use Beatport-inspired square artwork hierarchy, not a branded clone: larger lead cover, smaller companion, compact more-cover grid. The owner selects the feature from published Choices in the existing admin library. Without a valid designation the heading is simply Choice Playlists, not Featured. Preserve original cover proportions and do not invent separate campaign artwork. Keep authored title, curator/date, recommendation excerpt on the lead, full intro in HUD/share page, sequential play, tracklist, collection Heart/save, share and comments. Do not add `CURATOR SETS`, a standalone article HUD or explanatory marketing copy.
 - `製作我的 Choice` enters `/profile/choice` private favorites selection. Any signed-in account can use it; request sign-in only at the protected action boundary and return to the intended flow. Do not display certified-work, prior-upload or invitation requirements.
-- Show all of the user's public playable favorites, regardless of song age or historical certification. Use compact cover rows with distinct selection checkboxes, play and existing song Heart/favorite controls; keep a separate selected list with ordering, title, introduction, preview, publish and withdrawal. An empty favorites state offers a direct Explore action without marketing text.
+- Show all of the user's public playable favorites, regardless of song age or historical certification. Most recently saved songs come first in the top row; legacy saves without reliable per-user time stay in stable order behind dated saves. Search/genre filters keep this ordering; the selected playlist keeps manual order. Use compact cover rows with distinct selection checkboxes, play and existing song Heart/favorite controls; keep a separate selected list with ordering, title, introduction, preview, publish and withdrawal. An empty favorites state offers a direct Explore action without marketing text.
 - Selecting the first song creates/resumes the current week's draft and adds it immediately; no preliminary create-draft task. Resume persisted work rather than clearing the selection when re-entering. Keep current week and selected count visible; publish validation follows the 5-10-song, one-per-Monday-week product rule.
 - Selection checkboxes must never look like or act as Hearts. Unselecting a song does not remove its favorite; removing a favorite or cancelling its Heart does not remove it from an existing Choice. Unavailable or moderated selections retain an honest disabled state and cannot silently play.
 - Preserve the existing interactive tracklist HUD and usable `/choice/{id}` share page. Both show stored intro, ordered songs, song actions, Play All and the shared player; public Choice remains non-ranked.
-- `/admin/choice` retains official curation/moderation and the owner-only featured selector; `/admin/showtime` redirects to works management. No manual-certification review queue, certification-only catalog or award actions. Do not add social-publishing controls to the personal workbench.
+- `/admin/choice` is a compact published-only management list with search, pagination, real covers, curator/date/song count, public-view link, owner-only feature toggle and confirmed deletion. No official editor, draft creation, cover upload or selection pool. The owner uses `/profile/choice` to create, like everyone else; `/admin/showtime` redirects to works management. No manual-certification review queue, certification-only catalog or award actions. Do not add social-publishing controls to the personal workbench.
 
 Own works and playback:
 
@@ -250,7 +250,7 @@ Own works and playback:
 
 ## Account And Login
 
-Owner task badge (2026-09-18): show the red pending-task count at the avatar's upper-right, separately linked to the admin task list; retain Profile at the avatar center and account/Battle notices at the bell. When both notice types exist, move the existing account-count marker to the upper-left so counts do not overlap. Red badge labels support zh/en/ja/ko. Admin overview lists actionable categories and counts with direct module links; opening it never dismisses unresolved work.
+Owner task badge (2026-09-18): show the red pending-task count at the avatar's upper-right, separately linked to the admin task list; retain Profile at the avatar center and account/Battle notices at the bell. When both notice types exist, move the existing account-count marker to the upper-left so counts do not overlap. Red badge labels support zh/en/ja/ko. Admin overview lists actionable categories and counts with direct module links; opening it never dismisses unresolved work. New-song promotion and all Choice drafts are excluded. The existing Bar promotion count remains inside Bar admin for manual checking.
 
 Role:
 

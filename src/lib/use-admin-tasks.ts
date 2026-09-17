@@ -30,7 +30,7 @@ export function useAdminTasks() {
         if (!alive || version !== generation || revision !== request) return;
         if (!next.counts || !ADMIN_TASKS.every(({ id }) => next.counts[id] === null || (Number.isSafeInteger(next.counts[id]) && next.counts[id]! >= 0))) throw new Error("Invalid task summary");
         setData((previous) => mergeAdminTasks(previous, next));
-        setUnavailable(Object.values(next.counts).some((n) => n === null));
+        setUnavailable(ADMIN_TASKS.some(({ id }) => next.counts[id] === null));
       } catch { if (alive && version === generation && revision === request) setUnavailable(true); }
       finally { clearTimeout(timeout); }
     };

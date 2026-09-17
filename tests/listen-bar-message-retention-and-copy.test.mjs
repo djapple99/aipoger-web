@@ -23,7 +23,7 @@ test("Listen Bar story messages use 24 hour retention and current copy", () => {
 test("Saved favorite removal remains explicit while public Heart re-press cancels the daily reaction", () => {
   assert.ok(honorInteractionsRoute.includes('body?.action === "removeFavorite"'));
   assert.ok(honorInteractionsRoute.includes('action === "removeFavorite"'));
-  assert.ok(honorInteractionsRoute.includes("record.favoriteUserIds = record.favoriteUserIds.filter((id) => id !== userId);"));
+  assert.ok(honorInteractionsRoute.includes('setFavoriteMembership(record, userId, action === "favorite" && !record.favoriteUserIds.includes(userId), now)'));
   assert.ok(productRules.includes("Removing a saved favorite is also available from the user's Profile saved-song manager, even while that day's Heart remains active"));
   assert.ok(releaseChecklist.includes("Profile saved favorites can be removed while that day's Heart remains active"));
   assert.ok(releaseChecklist.includes("Re-pressing the public Heart button must cancel that day's Heart and synchronized favorite"));

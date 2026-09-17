@@ -1,553 +1,119 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarDays, CheckCircle2, FilePlus2, Music2, Pencil, Trash2 } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  AIPOGER_CHOICE_INTRO_MAX_LENGTH,
-  choiceItemCountMessage,
-  choiceWeekStart,
-  type AipogerChoiceCatalogItem,
-  type AipogerChoiceCollection,
-  type AipogerChoiceCuratorIdentity,
-} from "@/lib/aipoger-choice";
 import { supabase } from "@/lib/supabase";
 import { loadIsAdmin } from "@/lib/user-profile-admin";
-import { musicPlayer } from "@/lib/music-player-store";
-import { ChoiceSelectedWorks } from "@/components/choice-selected-works";
-import { AipogerChoiceCover } from "@/components/aipoger-choice-cover";
+import { PublishedChoiceList, displayTitle, type ChoiceLibraryEntry } from "@/components/admin-published-choice-list";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
-type ChoicePayload = {
-  schemaReady?: boolean;
-  catalog?: AipogerChoiceCatalogItem[];
-  collections?: AipogerChoiceCollection[];
-  library?: ChoiceLibraryEntry[];
-  featuredKey?: string | null;
-  error?: string;
-};
-
-type ChoiceLibraryEntry = {
-  id: string;
-  kind: "official" | "creator";
-  weekStart: string;
-  title: string;
-  curatorName: string;
-  intro: string;
-  isPublished: boolean;
-  itemCount: number;
-  coverUrl: string | null;
-  creatorId?: string;
-  href: string;
-};
-
-const CHOICE_CATALOG_PER_PAGE = 24;
-const MAX_COVER_BYTES = 10 * 1024 * 1024;
-const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
+type ChoicePayload = { schemaReady?: boolean; library?: ChoiceLibraryEntry[]; featuredKey?: string | null; error?: string };
+const PER_PAGE = 24;
 
 async function authHeader(): Promise<Record<string, string>> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const { data: { session } } = await supabase.auth.getSession();
   return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
 }
-
-function displayDate(value: string) {
-  const date = new Date(`${value}T00:00:00`);
-  if (!Number.isFinite(date.getTime())) return value;
-  return new Intl.DateTimeFormat("zh-TW", { year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
-}
-
-function choiceThumb(collection: AipogerChoiceCollection) {
-  return collection.coverUrl?.trim() || collection.items[0]?.coverUrl?.trim() || null;
-}
-
-function isAcceptedCover(file: File) {
-  return ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)
-    && file.size > 0
-    && file.size <= MAX_COVER_BYTES;
-}
-
-function libraryDisplayTitle(entry: ChoiceLibraryEntry) {
-  return entry.title.trim() || `${entry.curatorName.trim() || "AIPOGER"} Choice`;
-}
-
-function ChoiceLibraryCard({
-  entry,
-  active,
-  onSelect,
-  editHref,
-  onDeleteCreator,
-}: {
-  entry: ChoiceLibraryEntry;
-  active: boolean;
-  onSelect: () => void;
-  editHref?: string;
-  onDeleteCreator?: () => void;
-}) {
-  const content = (
-    <>
-      <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-zinc-950">
-        {entry.coverUrl ? (
-          <AipogerChoiceCover src={entry.coverUrl} className="h-full w-full transition duration-200 group-hover:scale-105" logoClassName="h-4 w-5" />
-        ) : (
-          <span className="flex h-full w-full items-center justify-center text-cyan-100/70"><Music2 className="h-5 w-5" aria-hidden="true" /></span>
-        )}
-        <span className={`absolute right-0.5 top-0.5 h-2 w-2 rounded-full border border-black ${entry.isPublished ? "bg-emerald-300" : "bg-zinc-500"}`} aria-hidden="true" />
-      </span>
-      <span className="min-w-0">
-        <span className="block truncate text-xs font-black text-white">{libraryDisplayTitle(entry)}</span>
-        <span className="mt-0.5 block truncate text-[10px] font-bold text-cyan-100/75">{entry.kind === "creator" ? "創作者 Choice" : "官方 Choice"} · {entry.curatorName}</span>
-        <span className="mt-0.5 flex items-center gap-1 text-[10px] font-bold text-zinc-500">
-          <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
-          {displayDate(entry.weekStart)}
-        </span>
-        <span className={`mt-0.5 flex items-center gap-1 text-[10px] font-black ${entry.isPublished ? "text-emerald-200" : "text-zinc-500"}`}>
-          {entry.isPublished ? <CheckCircle2 className="h-3 w-3 shrink-0" aria-hidden="true" /> : <span className="h-3 w-3 shrink-0 text-center">·</span>}
-          {entry.isPublished ? "已發布" : "草稿"} · {entry.itemCount} 首
-        </span>
-      </span>
-    </>
-  );
-
-  if (entry.kind === "creator") {
-    if (editHref) {
-      return <Link href={editHref} className="group relative flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-black/45 p-2 text-left transition hover:-translate-y-0.5 hover:border-cyan-100/60" title="編輯自己的 Creator Choice">{content}<Pencil className="absolute right-1.5 top-1.5 h-3 w-3 text-cyan-100" aria-hidden="true" /></Link>;
-    }
-    return <div className="group relative flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-black/45 p-2 text-left transition hover:-translate-y-0.5 hover:border-white/25"><Link href={entry.href} className="flex min-w-0 flex-1 items-center gap-2" title="查看前台 Creator Choice">{content}</Link>{onDeleteCreator ? <button type="button" onClick={onDeleteCreator} className="shrink-0 self-start rounded-lg border border-red-200/25 p-1.5 text-red-100 transition hover:border-red-200/65" title="刪除創作者 Choice" aria-label={`刪除 ${libraryDisplayTitle(entry)}`}><Trash2 className="h-3.5 w-3.5" aria-hidden="true" /></button> : null}</div>;
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-pressed={active}
-      aria-label={`編輯 ${libraryDisplayTitle(entry)}`}
-      className={`group flex min-w-0 items-center gap-2 rounded-xl border p-2 text-left transition hover:-translate-y-0.5 ${active ? "border-cyan-100/70 bg-cyan-300/12 shadow-[0_8px_24px_rgba(34,211,238,0.12)]" : "border-white/10 bg-black/45 hover:border-white/25"}`}
-    >
-      {content}
-    </button>
-  );
-}
-
 export default function AdminChoicePage() {
   const [adminState, setAdminState] = useState<AdminState>("checking");
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [schemaReady, setSchemaReady] = useState(true);
-  const [catalog, setCatalog] = useState<AipogerChoiceCatalogItem[]>([]);
-  const [collections, setCollections] = useState<AipogerChoiceCollection[]>([]);
   const [library, setLibrary] = useState<ChoiceLibraryEntry[]>([]);
   const [featuredKey, setFeaturedKey] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [weekStart, setWeekStart] = useState(choiceWeekStart());
-  const [title, setTitle] = useState("");
-  const [intro, setIntro] = useState("");
-  const [curatorIdentity, setCuratorIdentity] = useState<AipogerChoiceCuratorIdentity>("official");
-  const [coverFile, setCoverFile] = useState<File | null>(null);
-  const [coverPreview, setCoverPreview] = useState("");
   const [query, setQuery] = useState("");
-  const [catalogPage, setCatalogPage] = useState(1);
-  const [busy, setBusy] = useState("");
+  const [page, setPage] = useState(1);
+  const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const setPreviewTrack = useCallback((item: AipogerChoiceCatalogItem) => {
-    if (!item.audioUrl || !item.isPublic) return;
-    void musicPlayer?.start([{ ...item, audioUrl: item.audioUrl, id: `${item.sourceKind}:${item.id}` }], 0, "Choice");
-  }, []);
 
-  const loadData = useCallback(async (preferredId?: string | null) => {
-    setError("");
-    const response = await fetch("/api/admin/choice", { headers: await authHeader() });
-    const payload = (await response.json().catch(() => null)) as ChoicePayload | null;
-    if (!response.ok) {
-      setError(payload?.error || "Choice 後台資料讀取失敗。");
-      return;
-    }
-    const nextCollections = payload?.collections ?? [];
+  const loadData = useCallback(async () => {
+    const response = await fetch("/api/admin/choice", { headers: await authHeader(), cache: "no-store" });
+    const payload = await response.json().catch(() => null) as ChoicePayload | null;
+    if (!response.ok) throw new Error(payload?.error || "Choice 後台資料讀取失敗。");
     setSchemaReady(payload?.schemaReady !== false);
-    setCatalog(payload?.catalog ?? []);
-    setCollections(nextCollections);
+    setLibrary((payload?.library ?? []).filter((entry) => entry.isPublished));
     setFeaturedKey(payload?.featuredKey ?? "");
-    setLibrary(payload?.library ?? nextCollections.map((collection) => ({
-      id: collection.id,
-      kind: "official" as const,
-      weekStart: collection.weekStart,
-      title: collection.title,
-      curatorName: collection.curatorName || "AIPOGER",
-      intro: collection.intro,
-      isPublished: collection.isPublished,
-      itemCount: collection.items.length,
-      coverUrl: choiceThumb(collection),
-      href: `/choice/${encodeURIComponent(collection.id)}?kind=official`,
-    })));
-    setSelectedId((current) => {
-      if (preferredId && nextCollections.some((item) => item.id === preferredId)) return preferredId;
-      if (current && nextCollections.some((item) => item.id === current)) return current;
-      return nextCollections[0]?.id ?? null;
-    });
   }, []);
 
   useEffect(() => {
     let mounted = true;
     async function check() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!mounted) return;
-      if (!user) {
-        setAdminState("login");
-        return;
-      }
-      setCurrentUserId(user.id);
+      if (!user) { setAdminState("login"); return; }
       const allowed = await loadIsAdmin(user.id);
       if (!mounted) return;
       setAdminState(allowed ? "ready" : "denied");
       if (allowed) await loadData();
     }
-    void check();
+    void check().catch(() => { if (mounted) { setAdminState("denied"); setError("無法確認管理權限或讀取資料，請重新載入。"); } });
     return () => { mounted = false; };
   }, [loadData]);
 
-  const selected = useMemo(() => collections.find((collection) => collection.id === selectedId) ?? null, [collections, selectedId]);
+  const filtered = useMemo(() => {
+    const text = query.trim().toLowerCase();
+    return library.filter((entry) => !text || [entry.title, entry.curatorName, entry.weekStart].join(" ").toLowerCase().includes(text));
+  }, [library, query]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  const currentPage = Math.min(page, totalPages);
 
-  useEffect(() => {
-    if (!selected) {
-      setWeekStart(choiceWeekStart());
-      setTitle("");
-      setIntro("");
-      setCuratorIdentity("official");
-      setCoverFile(null);
-      setCoverPreview("");
-      return;
-    }
-    setWeekStart(selected.weekStart);
-    setTitle(selected.title);
-    setIntro(selected.intro);
-    setCuratorIdentity(selected.curatorIdentity ?? "official");
-    setCoverFile(null);
-    setCoverPreview(choiceThumb(selected) || "");
-  }, [selected]);
-
-  useEffect(() => () => {
-    if (coverPreview.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
-  }, [coverPreview]);
-
-  const selectedKeys = useMemo(() => new Set((selected?.items ?? []).map((item) => `${item.sourceKind}:${item.id}`)), [selected]);
-  const eligibleCatalog = useMemo(() => catalog.filter((item) => item.isPublic && item.selectable), [catalog]);
-  const filteredCatalog = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) return eligibleCatalog;
-    return eligibleCatalog.filter((item) => [item.title, item.artist, item.genre, item.recognition].join(" ").toLowerCase().includes(normalized));
-  }, [eligibleCatalog, query]);
-  const catalogTotalPages = Math.max(1, Math.ceil(filteredCatalog.length / CHOICE_CATALOG_PER_PAGE));
-  const currentCatalogPage = Math.min(catalogPage, catalogTotalPages);
-  const pagedCatalog = filteredCatalog.slice((currentCatalogPage - 1) * CHOICE_CATALOG_PER_PAGE, currentCatalogPage * CHOICE_CATALOG_PER_PAGE);
-
-  useEffect(() => { setCatalogPage(1); }, [query]);
-
-  async function runAction(action: string, body: Record<string, unknown>, success: string, preferredId?: string | null) {
-    setBusy(action);
-    setError("");
-    setMessage("");
-    const response = await fetch("/api/admin/choice", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", ...(await authHeader()) },
-      body: JSON.stringify({ action, ...body }),
-    });
-    const payload = (await response.json().catch(() => null)) as { error?: string; message?: string; collectionId?: string } | null;
-    setBusy("");
-    if (!response.ok) {
-      setError(payload?.error || "Choice 操作失敗。");
-      return null;
-    }
-    const nextId = payload?.collectionId ?? preferredId ?? selectedId;
-    setMessage(payload?.message || success);
-    await loadData(nextId);
-    return { ...payload, collectionId: nextId ?? undefined };
-  }
-
-  async function saveCollection() {
-    const pendingCoverFile = coverFile;
-    const result = await runAction("save_collection", {
-      collectionId: selected?.id,
-      weekStart,
-      title,
-      intro,
-      curatorIdentity,
-    }, "Choice 草稿已儲存。", selected?.id);
-    const collectionId = result?.collectionId ?? selected?.id;
-    if (!collectionId || !pendingCoverFile) return;
-    setBusy("upload_cover");
-    setError("");
+  async function runAction(action: string, body: Record<string, unknown>) {
+    if (busy) return;
+    setBusy(true); setError(""); setMessage("");
     try {
-      const form = new FormData();
-      form.set("collectionId", collectionId);
-      form.set("file", pendingCoverFile);
-      const response = await fetch("/api/admin/choice", {
-        method: "POST",
-        headers: await authHeader(),
-        body: form,
-      });
-      const payload = (await response.json().catch(() => null)) as { message?: string; error?: string; coverUrl?: string } | null;
-      if (!response.ok) throw new Error(payload?.error || "Choice 封面上傳失敗。");
-      setMessage(`${payload?.message || "Choice 草稿已儲存。"}`);
-      setCoverFile(null);
-      if (payload?.coverUrl) setCoverPreview(payload.coverUrl);
-      await loadData(collectionId);
-    } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "Choice 封面上傳失敗。");
-    } finally {
-      setBusy("");
-    }
+      const response = await fetch("/api/admin/choice", { method: "PATCH",
+        headers: { "Content-Type": "application/json", ...await authHeader() },
+        body: JSON.stringify({ action, ...body }) });
+      const payload = await response.json().catch(() => null) as { error?: string; message?: string } | null;
+      if (!response.ok) throw new Error(payload?.error || "Choice 操作失敗。");
+      setMessage(payload?.message || "已更新。");
+      await loadData();
+    } catch (failure) { setError(failure instanceof Error ? failure.message : "Choice 操作失敗。"); }
+    finally { setBusy(false); }
+  }
+  function deleteChoice(entry: ChoiceLibraryEntry) {
+    if (!window.confirm(`確定刪除「${displayTitle(entry)}」？只會移除這份 Choice 與歌單互動，歌曲本身不受影響。`)) return;
+    void runAction(entry.kind === "creator" ? "delete_creator_collection" : "delete_collection", { collectionId: entry.id, confirmed: true });
   }
 
-  function onCoverChange(file: File | null) {
-    if (!file) return;
-    if (!isAcceptedCover(file)) {
-      setError("封面只接受 JPG、PNG、WebP、GIF，且檔案需小於 10MB。");
-      return;
-    }
-    if (coverPreview.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
-    setCoverFile(file);
-    setCoverPreview(URL.createObjectURL(file));
-    setError("");
-  }
+  if (adminState !== "ready") return <main className="min-h-screen bg-[#070809] px-5 py-24 text-white">
+    <h1 className="text-xl font-bold">{adminState === "checking" ? "檢查管理權限中..." : adminState === "login" ? "請先登入" : "無法進入 Choice 管理"}</h1>
+    {error ? <p role="alert" className="mt-3 text-red-300">{error}</p> : null}
+    {adminState !== "checking" ? <Link href="/auth" className="mt-5 inline-block text-orange-300">前往登入</Link> : null}
+  </main>;
 
-  async function clearChoiceCover() {
-    if (!selected) return;
-    if (coverFile) {
-      if (coverPreview.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
-      setCoverFile(null);
-      setCoverPreview(selected.coverUrl?.trim() || selected.items[0]?.coverUrl?.trim() || "");
-      return;
-    }
-    await runAction("clear_cover", { collectionId: selected.id }, "已移除本期 Choice 封面。", selected.id);
-  }
-
-  async function ensureChoiceCollection() {
-    if (selected) return selected.id;
-    const result = await runAction("save_collection", {
-      weekStart,
-      title,
-      intro,
-      curatorIdentity,
-    }, "已建立本週 Choice 草稿。");
-    return result?.collectionId ?? null;
-  }
-
-  async function addChoiceItem(item: AipogerChoiceCatalogItem) {
-    if (busy !== "" || selectedKeys.has(`${item.sourceKind}:${item.id}`)) return;
-    const collectionId = await ensureChoiceCollection();
-    if (!collectionId) return;
-    await runAction("add_item", {
-      collectionId,
-      sourceKind: item.sourceKind,
-      sourceId: item.id,
-    }, "已加入本週 Choice。", collectionId);
-  }
-
-  async function moveChoiceItem(itemId: string, position: number) {
-    if (!selected) return false;
-    const result = await runAction("move_item", {
-      collectionId: selected.id,
-      itemId,
-      position,
-    }, "Choice 順序已更新。", selected.id);
-    return Boolean(result);
-  }
-
-  function selectOfficialChoice(id: string | null) {
-    setSelectedId(id);
-    window.requestAnimationFrame(() => document.getElementById("choice-editor")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-  }
-
-  async function deleteChoice() {
-    if (!selected) return;
-    if (!window.confirm(`確定刪除「${selected.title.trim() || "這一期 Choice"}」？這一期的歌曲排序與封面會一併移除，但不會刪除歌曲本身。`)) return;
-    await runAction("delete_collection", { collectionId: selected.id, confirmed: true }, "這一期 Choice 已刪除。", null);
-  }
-
-  async function deleteCreatorChoice(entry: ChoiceLibraryEntry) {
-    if (entry.kind !== "creator") return;
-    if (!window.confirm(`確定刪除「${libraryDisplayTitle(entry)}」？只會移除這份 Choice，歌曲本身不受影響。`)) return;
-    await runAction("delete_creator_collection", { collectionId: entry.id, confirmed: true }, "創作者 Choice 已刪除，歌曲本身未受影響。", null);
-  }
-
-  if (adminState === "checking") {
-    return <main className="min-h-screen bg-[#050505] px-5 py-10 text-sm font-black text-zinc-400">檢查 Choice 後台權限中...</main>;
-  }
-  if (adminState === "login" || adminState === "denied") {
-    return (
-      <main className="min-h-screen bg-[#050505] px-5 py-10 text-white">
-        <section className="mx-auto max-w-2xl rounded-2xl border border-white/10 bg-black/60 p-6">
-          <p className="text-xs font-black uppercase tracking-[0.24em] text-red-200/75">AIPOGER ADMIN</p>
-          <h1 className="mt-3 text-4xl font-black">{adminState === "login" ? "請先登入" : "沒有管理權限"}</h1>
-          <Link href="/auth" className="mt-5 inline-flex rounded-full bg-orange-500 px-5 py-3 text-sm font-black text-black">前往登入</Link>
-        </section>
-      </main>
-    );
-  }
-
-  return (
-    <main className="min-h-screen bg-[#050505] px-4 pb-28 pt-24 text-white sm:px-6 sm:py-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
-        <header className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-5">
-          <div className="min-w-0">
-            <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-100/70">AIPOGER ADMIN</p>
-            <h1 className="mt-2 text-3xl font-black sm:text-4xl">Choice 管理</h1>
-            <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-zinc-400">本期 Choice · 5–10 首</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/admin/charts" className="rounded border border-orange-300/30 px-3 py-2 text-xs font-black text-orange-200">排行榜管理</Link>
-            <Link href="/admin" className="rounded border border-white/15 px-3 py-2 text-xs font-black text-zinc-200">後台總覽</Link>
-            <Link href="/rank?lang=zh#choice-weekly" className="rounded-full border border-white/15 px-3 py-2 text-xs font-black text-zinc-200">看前台 Choice</Link>
-            <Link href="/admin/listen-bar" className="rounded-full border border-yellow-200/30 bg-yellow-300/10 px-3 py-2 text-xs font-black text-yellow-100">作品管理</Link>
-            <Link href="/admin/social" className="rounded-full border border-white/15 px-3 py-2 text-xs font-black text-zinc-200">社群發布</Link>
-          </div>
-        </header>
-
-        {!schemaReady ? <section className="mt-5 rounded-xl border border-red-200/30 bg-red-500/10 p-4 text-sm font-bold text-red-100">Choice 資料表尚未套用。部署本次 migration 後，此管理頁會自動可用。</section> : null}
-        {message ? <p className="mt-4 rounded-xl border border-emerald-200/25 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-100">{message}</p> : null}
-        {error ? <p className="mt-4 rounded-xl border border-red-200/25 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-100">{error}</p> : null}
-
-        <section className="mt-5 rounded-2xl border border-white/10 bg-black/45 p-4 sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-100/70">Choice Library</p>
-              <h2 className="mt-1 text-xl font-black">歷期 Choice</h2>
-              <p className="mt-1 text-xs font-bold text-zinc-500">點擊小圖示就能進入編輯；自己的 Creator Choice 會開啟個人編輯台。</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => selectOfficialChoice(null)}
-              className="inline-flex items-center gap-2 rounded-full border border-cyan-100/35 bg-cyan-300/10 px-3 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-100/65 hover:bg-cyan-300/20"
-            >
-              <FilePlus2 className="h-3.5 w-3.5" aria-hidden="true" />
-              新增一期
-            </button>
-          </div>
-          <label className="mt-4 flex flex-wrap items-center gap-3 text-sm font-bold text-orange-200">
-            Showtime 主推 Choice
-            <select aria-label="Showtime 主推 Choice" value={featuredKey} disabled={busy !== ""} onChange={(event) => { void runAction("set_featured", { featuredKey: event.target.value || null }, "主推已更新。").catch(() => { setError("主推更新失敗，請重試。"); setBusy(""); }); }} className="h-11 min-w-0 max-w-full rounded border border-white/20 bg-black px-3 text-sm text-white">
-              <option value="">不指定主推</option>
-              {featuredKey && !library.some((entry) => entry.isPublished && `${entry.kind}:${entry.id}` === featuredKey) ? <option value={featuredKey}>原主推已撤下</option> : null}
-              {library.filter((entry) => entry.isPublished).map((entry) => <option key={`${entry.kind}:${entry.id}`} value={`${entry.kind}:${entry.id}`}>{entry.curatorName} · {libraryDisplayTitle(entry)}</option>)}
-            </select>
+  return <main className="min-h-screen bg-[#070809] px-4 pb-28 pt-24 text-white sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-6xl">
+      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-white/15 pb-5">
+        <h1 className="text-2xl font-bold">Choice 管理</h1>
+        <nav aria-label="後台導覽" className="flex flex-wrap gap-4 text-sm text-zinc-300">
+          <Link href="/admin">後台總覽</Link>
+          <Link href="/admin/charts">排行榜管理</Link>
+          <Link href="/rank?lang=zh#choice-weekly">公開 Choice</Link>
+          <Link href="/profile/choice" className="text-orange-300">我的 Choice</Link>
+        </nav>
+      </header>
+      {!schemaReady ? <p role="alert" className="mt-4 text-red-300">Choice 資料尚未準備完成。</p> : null}
+      {message ? <p role="status" className="mt-4 text-sm text-emerald-300">{message}</p> : null}
+      {error ? <p role="alert" className="mt-4 text-sm text-red-300">{error}</p> : null}
+      <section className="mt-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h2 className="text-lg font-bold">已發布 Choice <span className="ml-2 text-sm font-normal text-zinc-400">{library.length}</span></h2>
+          <label className="flex w-full items-center gap-2 border-b border-white/25 sm:w-72">
+            <Search className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden="true" />
+            <input aria-label="搜尋已發布 Choice" placeholder="歌單、策展人、週次" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} className="h-11 min-w-0 flex-1 bg-transparent text-sm outline-none" />
           </label>
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-            {library.map((entry) => <ChoiceLibraryCard key={`${entry.kind}:${entry.id}`} entry={entry} active={entry.kind === "official" && entry.id === selectedId} editHref={entry.kind === "creator" && entry.creatorId === currentUserId ? `/profile/choice?collection=${encodeURIComponent(entry.id)}` : undefined} onDeleteCreator={entry.kind === "creator" ? () => void deleteCreatorChoice(entry) : undefined} onSelect={() => selectOfficialChoice(entry.id)} />)}
-            {library.length === 0 ? <p className="col-span-full rounded-xl border border-dashed border-white/10 px-3 py-7 text-center text-sm font-bold text-zinc-500">尚未建立 Choice，按「新增一期」開始。</p> : null}
-          </div>
-        </section>
-
-        <section id="choice-editor" className="mt-5 scroll-mt-6 grid grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)]">
-          <div className="min-w-0 rounded-2xl border border-white/10 bg-black/55 p-4 sm:p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-100/70">Weekly Curation</p>
-                <h2 className="mt-1 text-xl font-black">{selected ? `週次 ${displayDate(selected.weekStart)}` : "建立 Choice 週次"}</h2>
-              </div>
-              <select value={selectedId ?? ""} onChange={(event) => selectOfficialChoice(event.target.value || null)} className="h-10 w-full min-w-0 rounded-xl border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none sm:w-auto sm:min-w-44">
-                <option value="">新增週次</option>
-                {collections.map((collection) => <option key={collection.id} value={collection.id}>{displayDate(collection.weekStart)} {collection.isPublished ? "· 已發布" : "· 草稿"}</option>)}
-              </select>
-            </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <label className="grid gap-1 text-xs font-black text-zinc-400">週次（星期一）
-                <input type="date" value={weekStart} onChange={(event) => setWeekStart(event.target.value)} className="h-10 rounded-xl border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none focus:border-cyan-200/55" />
-              </label>
-              <label className="grid gap-1 text-xs font-black text-zinc-400">標題（可選）
-                <input value={title} maxLength={120} onChange={(event) => setTitle(event.target.value)} placeholder="本週 Choice" className="h-10 rounded-xl border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none focus:border-cyan-200/55" />
-              </label>
-              <label className="grid gap-1 text-xs font-black text-zinc-400">策展身分
-                <select value={curatorIdentity} onChange={(event) => setCuratorIdentity(event.target.value as AipogerChoiceCuratorIdentity)} className="h-10 rounded-xl border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none focus:border-cyan-200/55">
-                  <option value="official">官方 AIPOGER Choice</option>
-                  <option value="personal">愛波哥 Choice（個人頭像）</option>
-                </select>
-              </label>
-              <label className="grid gap-1 text-xs font-black text-zinc-400 sm:col-span-2">推薦文章（可選）
-                <textarea value={intro} maxLength={AIPOGER_CHOICE_INTRO_MAX_LENGTH} rows={6} onChange={(event) => setIntro(event.target.value)} placeholder="寫下這期 Choice 的推薦文章。" className="rounded-xl border border-white/10 bg-black px-3 py-2 text-sm font-bold leading-6 text-white outline-none focus:border-cyan-200/55" />
-                <span className="font-bold text-zinc-600">儲存後會顯示在 Choice 卡片與公開頁標題旁。</span>
-              </label>
-              <div className="grid gap-2 text-xs font-black text-zinc-400 sm:col-span-2">
-                <span>本期 Choice 封面（可選）</span>
-                <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-black p-3">
-                  <span className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-zinc-950">
-                    {coverPreview ? (
-                      <AipogerChoiceCover src={coverPreview} className="h-full w-full" logoClassName="h-5 w-6" />
-                    ) : <span className="flex h-full w-full items-center justify-center text-[10px] font-black text-zinc-600">第一首作品</span>}
-                  </span>
-                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                    <label className="inline-flex cursor-pointer items-center rounded-full border border-cyan-100/35 bg-cyan-300/10 px-3 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-100/70 hover:bg-cyan-300/20">
-                      上傳封面
-                      <input type="file" accept={IMAGE_ACCEPT} className="sr-only" onChange={(event) => onCoverChange(event.target.files?.[0] ?? null)} />
-                    </label>
-                    {selected && (coverFile || selected.coverUrl) ? <button type="button" disabled={busy !== ""} onClick={() => void clearChoiceCover()} className="rounded-full border border-red-200/25 px-3 py-2 text-xs font-black text-red-100 transition hover:border-red-200/60 disabled:opacity-45">{coverFile ? "取消新封面" : "移除自訂封面"}</button> : null}
-                    <span className="text-[11px] font-bold text-zinc-500">JPG / PNG / WebP / GIF，最大 10MB。未上傳時使用第一首作品封面。</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
-              <p className="text-xs font-bold text-zinc-500">{choiceItemCountMessage(selected?.items.length ?? 0)}</p>
-              <div className="flex flex-wrap gap-2">
-                <button type="button" disabled={busy !== ""} onClick={() => void saveCollection()} className="rounded-full border border-white/15 px-4 py-2 text-xs font-black text-zinc-100 disabled:opacity-45">{busy === "save_collection" ? "儲存中" : selected?.isPublished ? "儲存並更新發布" : selected ? "儲存草稿" : "建立草稿"}</button>
-                {selected ? <><button type="button" disabled={busy !== ""} onClick={() => void runAction("set_published", { collectionId: selected.id, isPublished: !selected.isPublished, weekStart, title, intro, curatorIdentity }, selected.isPublished ? "Choice 已撤回。" : "Choice 已重新發布。", selected.id)} className={`rounded-full border px-4 py-2 text-xs font-black disabled:opacity-45 ${selected.isPublished ? "border-red-200/35 bg-red-500/10 text-red-100" : "border-cyan-200/45 bg-cyan-300 text-black"}`}>{busy === "set_published" ? "處理中" : selected.isPublished ? "撤回發布" : "重新發布"}</button><button type="button" disabled={busy !== ""} onClick={() => void deleteChoice()} className="rounded-full border border-red-200/25 px-4 py-2 text-xs font-black text-red-100 transition hover:border-red-200/60 disabled:opacity-45">刪除這一期</button></> : null}
-              </div>
-            </div>
-          </div>
-
-          <aside className="min-w-0 rounded-2xl border border-white/10 bg-black/45 p-4">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-yellow-100/70">This Week</p>
-            <h2 className="mt-1 text-xl font-black">已選作品 {selected?.items.length ?? 0} / 10</h2>
-            <div className="mt-4">
-              {selected ? (
-                <ChoiceSelectedWorks
-                  items={selected.items}
-                  busy={busy !== ""}
-                  layout="sidebar"
-                  onPreview={setPreviewTrack}
-                  onMove={moveChoiceItem}
-                  onRemove={(itemId) => void runAction("remove_item", { collectionId: selected.id, itemId }, "已移除 Choice 作品。", selected.id)}
-                />
-              ) : null}
-              {!selected ? <p className="rounded-xl border border-dashed border-white/10 px-3 py-6 text-center text-sm font-bold text-zinc-500">按目錄的＋即可建立本週草稿並加入 Choice 作品。</p> : null}
-              {selected && selected.items.length === 0 ? <p className="rounded-xl border border-dashed border-white/10 px-3 py-6 text-center text-sm font-bold text-zinc-500">尚未選曲 · 每期 5–10 首公開可播放歌曲</p> : null}
-            </div>
-          </aside>
-        </section>
-
-        <section className="mt-5 rounded-2xl border border-white/10 bg-black/45 p-4 sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div><p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">Choice Selection Pool</p><h2 className="mt-1 text-xl font-black">加入本週 Choice</h2></div>
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋歌名、創作者、類型" className="h-10 w-full rounded-xl border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none sm:w-72" />
-          </div>
-          <p className="mt-2 text-xs font-bold text-zinc-500">公開可播放歌曲</p>
-          <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
-            {pagedCatalog.map((item) => {
-              const key = `${item.sourceKind}:${item.id}`;
-              const added = selectedKeys.has(key);
-              return (
-                <article key={key} className="group min-w-0 overflow-hidden rounded-lg border border-white/10 bg-black/55">
-                  <div className="relative aspect-square overflow-hidden bg-zinc-950">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={item.coverUrl} alt="" className="h-full w-full object-cover transition duration-200 group-hover:scale-[1.025]" />
-                    <span className="absolute left-1 top-1 bg-black/85 px-1.5 py-1 text-[9px] font-black text-zinc-200">{item.genre}</span>
-                    <button type="button" disabled={!item.audioUrl} onClick={() => setPreviewTrack(item)} className="absolute bottom-1 left-1 flex h-7 w-7 items-center justify-center rounded-full border border-cyan-100/50 bg-black/80 text-xs font-black text-cyan-100 shadow-lg transition hover:bg-cyan-300 hover:text-black disabled:cursor-not-allowed disabled:opacity-35" aria-label={`播放 ${item.title}`} title={item.audioUrl ? "播放試聽" : "目前沒有可播放音檔"}>▶</button>
-                    <button type="button" disabled={added || busy !== ""} onClick={() => void addChoiceItem(item)} className={`absolute bottom-1 right-1 flex h-7 min-w-7 items-center justify-center rounded-full border px-1.5 text-xs font-black shadow-lg disabled:opacity-40 ${added ? "border-emerald-200/35 bg-emerald-300/90 text-black" : "border-cyan-100/50 bg-black/80 text-cyan-100 hover:bg-cyan-300 hover:text-black"}`} aria-label={`${added ? "已加入" : "加入"}本週 Choice：${item.title}`}>{added ? "已選" : "+"}</button>
-                  </div>
-                  <div className="p-2">
-                    <p className="line-clamp-2 min-h-9 text-xs font-black leading-4 text-white">{item.title}</p>
-                    <p className="mt-1 truncate text-[11px] font-bold text-zinc-500">{item.artist}</p>
-                  </div>
-                </article>
-              );
-            })}
-            {pagedCatalog.length === 0 ? <p className="col-span-full rounded-xl border border-dashed border-white/10 px-3 py-8 text-center text-sm font-bold text-zinc-500">目前沒有可加入的公開可播放歌曲。</p> : null}
-          </div>
-          <div className="mt-4 flex items-center justify-between text-sm font-bold text-zinc-500"><span>{currentCatalogPage} / {catalogTotalPages}</span><div className="flex gap-2"><button type="button" disabled={currentCatalogPage <= 1} onClick={() => setCatalogPage((page) => Math.max(1, page - 1))} className="rounded-full border border-white/10 px-3 py-2 text-xs font-black disabled:opacity-35">上一頁</button><button type="button" disabled={currentCatalogPage >= catalogTotalPages} onClick={() => setCatalogPage((page) => Math.min(catalogTotalPages, page + 1))} className="rounded-full border border-white/10 px-3 py-2 text-xs font-black disabled:opacity-35">下一頁</button></div></div>
-        </section>
-      </div>
-    </main>
-  );
+        </div>
+        {featuredKey && !library.some((entry) => `${entry.kind}:${entry.id}` === featuredKey) ? <button type="button" disabled={busy} onClick={() => void runAction("set_featured", { featuredKey: null })} className="mt-4 text-sm text-orange-300">清除已撤下的主推設定</button> : null}
+        <PublishedChoiceList entries={filtered.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE)} featuredKey={featuredKey} busy={busy}
+          onFeature={(key) => void runAction("set_featured", { featuredKey: key })} onDelete={deleteChoice} />
+        {filtered.length === 0 ? <p className="py-12 text-center text-sm text-zinc-500">{query ? "沒有符合條件的 Choice。" : "尚無已發布的 Choice。"}</p> : null}
+        {totalPages > 1 ? <nav aria-label="Choice 分頁" className="mt-4 flex items-center justify-end gap-3 text-sm text-zinc-400">
+          <button type="button" title="上一頁" aria-label="上一頁" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} className="flex h-11 w-11 items-center justify-center rounded border border-white/15 disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button>
+          <span>{currentPage} / {totalPages}</span>
+          <button type="button" title="下一頁" aria-label="下一頁" disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)} className="flex h-11 w-11 items-center justify-center rounded border border-white/15 disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button>
+        </nav> : null}
+      </section>
+    </div>
+  </main>;
 }

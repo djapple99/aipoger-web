@@ -73,7 +73,8 @@ test("official and personal Choice covers keep persisted identity and authored t
   assert.match(gallery, /collection\.avatarUrl\?\.trim\(\) \|\| AIPOGER_BRAND_LOGO : AIPOGER_BRAND_LOGO/);
   assert.match(gallery, /choiceDisplayTitle\(collection\.curatorName, collection\.title\)/);
   assert.match(gallery, /choicePublicPath\(collection\.id, "official"\)/);
-  assert.match(adminApi, /curator_identity: curatorIdentity\(body\?\.curatorIdentity\)/);
+  assert.match(adminApi, /row.curator_identity === "personal"/);
+  assert.doesNotMatch(adminApi, /curator_identity: curatorIdentity\(body\?\.curatorIdentity\)/);
   assert.ok(identityMigration.includes("curator_identity in ('official', 'personal')"));
 });
 

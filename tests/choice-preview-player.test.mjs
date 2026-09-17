@@ -16,8 +16,8 @@ test("Choice preview player provides a compact bottom audio surface", () => {
   assert.ok(playerSource.includes("onClick={toggle}"));
 });
 
-test("official and creator Choice workspaces use the existing global player with unavailable media disabled", () => {
-  for (const source of [adminChoiceSource, creatorChoiceSource]) {
+test("personal Choice workspace use the existing global player with unavailable media disabled", () => {
+  for (const source of [creatorChoiceSource]) {
     assert.ok(source.includes("disabled={!item.audioUrl}"));
     assert.ok(source.includes("musicPlayer?.start"));
     assert.equal(source.includes("<ChoicePreviewPlayer"), false);
@@ -25,5 +25,6 @@ test("official and creator Choice workspaces use the existing global player with
   }
   assert.ok(globalPlayerSource.includes("<audio"));
   assert.ok(creatorChoiceSource.includes("Boolean(track.audioUrl && track.isPublic)"));
-  assert.ok(adminChoiceSource.includes("if (!item.audioUrl || !item.isPublic) return"));
+  assert.ok(adminChoiceSource.includes('href="/profile/choice"'));
+  assert.equal(adminChoiceSource.includes("musicPlayer"), false);
 });

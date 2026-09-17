@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { setFavoriteMembership } from "@/lib/favorite-recency";
 
 type ReactionKey = "heart" | "star" | "thumb" | "happy";
 
@@ -49,6 +50,7 @@ type StoredFavoriteRecord = {
   targetArtist?: string;
   targetGenre?: string;
   favoriteUserIds: string[];
+  favoriteSavedAt?: Record<string, string>;
   comments: unknown[];
   updatedAt: string;
 };
@@ -157,9 +159,7 @@ async function ensureListenBarFavorite(admin: AdminClient, userId: string, track
   record.targetArtist = track?.artist?.trim() || record.targetArtist;
   record.targetGenre = track?.genre?.trim() || record.targetGenre;
   record.updatedAt = now;
-  if (!record.favoriteUserIds.includes(userId)) {
-    record.favoriteUserIds = [...record.favoriteUserIds, userId];
-  }
+  setFavoriteMembership(record, userId, true, now);
 
   await writeFavoritesStore(admin, store);
 }
@@ -168,7 +168,7 @@ async function removeListenBarFavorite(admin: AdminClient, userId: string, track
   const store = await readFavoritesStore(admin);
   const record = store.records.find((item) => item.recordKey === `bar:${trackId}`);
   if (!record || !record.favoriteUserIds.includes(userId)) return false;
-  record.favoriteUserIds = record.favoriteUserIds.filter((id) => id !== userId);
+  setFavoriteMembership(record, userId, false, new Date().toISOString());
   record.updatedAt = new Date().toISOString();
   await writeFavoritesStore(admin, store);
   return true;

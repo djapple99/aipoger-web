@@ -4,6 +4,7 @@ import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { LISTEN_BAR_AUDIO_BUCKET, LISTEN_BAR_COVER_BUCKET } from "@/lib/listen-bar";
 import { isPublicBarAirplayTrack } from "@/lib/listen-bar-airplay";
 import { signedBattleAudioUrl } from "@/lib/official-gatekeeper-media";
+import { favoriteSavedTime } from "@/lib/favorite-recency";
 
 type TrackRow = {
   id: string; title: string | null; artist: string | null; genre: string | null;
@@ -108,19 +109,22 @@ export async function loadCreatorChoiceSelectionCatalog(admin: SupabaseClient, u
   const stored: unknown = data ? JSON.parse(await data.text()) : { records: [] };
   const records = stored && typeof stored === "object" && "records" in stored && Array.isArray(stored.records)
     ? stored.records : [];
-  const favorites = new Set<string>();
+  const favorites = new Map<string, number>();
   for (const record of records) {
     if (!record || !Array.isArray(record.favoriteUserIds) || !record.favoriteUserIds.includes(userId)) continue;
     if (record.targetKind !== "bar" && record.targetKind !== "battle") continue;
-    if (typeof record.targetId === "string") favorites.add(`${record.targetKind}:${record.targetId}`);
-    if (typeof record.recordKey === "string" && record.recordKey.startsWith(`${record.targetKind}:`)) favorites.add(record.recordKey);
+    const savedAt = favoriteSavedTime(record, userId);
+    const keys = [typeof record.targetId === "string" ? `${record.targetKind}:${record.targetId}` : null,
+      typeof record.recordKey === "string" && record.recordKey.startsWith(`${record.targetKind}:`) ? record.recordKey : null];
+    for (const key of keys) if (key) favorites.set(key, Math.max(favorites.get(key) ?? 0, savedAt));
   }
   return {
     ...catalog,
-    items: catalog.items.map(({ favoriteAliases, ...item }) => ({
-      ...item,
-      selectable: [item.id, ...(favoriteAliases ?? [])].some((id) =>
-        favorites.has(`${item.sourceKind === "listen_bar_track" ? "bar" : "battle"}:${id}`)),
-    })),
+    items: catalog.items.map(({ favoriteAliases, ...item }) => {
+      const keys = [item.id, ...(favoriteAliases ?? [])].map((id) =>
+        `${item.sourceKind === "listen_bar_track" ? "bar" : "battle"}:${id}`);
+      return { item: { ...item, selectable: keys.some((key) => favorites.has(key)) },
+        savedAt: Math.max(0, ...keys.map((key) => favorites.get(key) ?? 0)) };
+    }).sort((a, b) => b.savedAt - a.savedAt).map(({ item }) => item),
   };
 }

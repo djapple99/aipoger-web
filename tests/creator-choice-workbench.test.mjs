@@ -47,26 +47,26 @@ test("creator Choice can be shared only after publication and keeps 5-10 curated
 
 test("owner can remove a creator Choice without touching its songs", () => {
   assert.match(adminChoiceRoute, /delete_creator_collection/);
-  assert.match(adminChoiceRoute, /removeChoiceEngagement\(guard\.admin, collectionId, "creator"\)/);
-  assert.match(adminChoicePage, /刪除創作者 Choice/);
+  assert.match(adminChoiceRoute, /removeChoiceEngagement\(guard\.admin, collectionId, kind\)/);
+  assert.match(adminChoicePage, /delete_creator_collection/);
 });
 
-test("creator sorting exposes mobile up/down controls and owner direct position input remains", () => {
+test("personal creator sorting remains; retired owner editor is absent", () => {
   assert.match(profileChoicePage, /pb-28 pt-24[^\"]*sm:pt-8/);
   assert.match(profileChoicePage, /<ArrowUp/);
   assert.match(profileChoicePage, /<ArrowDown/);
   assert.match(profileChoicePage, /disabled=\{busy \|\| index === 0\}/);
   assert.match(profileChoicePage, /disabled=\{busy \|\| index === count - 1\}/);
-  assert.match(adminChoicePage, /<ChoiceSelectedWorks/);
+  assert.doesNotMatch(adminChoicePage, /<ChoiceSelectedWorks/);
   assert.match(selectedWorks, /type="number"/);
   assert.match(selectedWorks, /md:grid-cols-2/);
   assert.match(selectedWorks, /grid-cols-\[2\.5rem_2\.5rem_minmax\(0,1fr\)_auto\]/);
   assert.match(selectedWorks, /<Play/);
   assert.match(selectedWorks, /<Trash2/);
   assert.match(creatorChoiceRoute, /requestedPosition/);
-  assert.match(adminChoiceRoute, /requestedPosition/);
+  assert.doesNotMatch(adminChoiceRoute, /requestedPosition/);
   assert.match(creatorChoiceRoute, /items\.splice\(targetIndex, 0, moved\)/);
-  assert.match(adminChoiceRoute, /items\.splice\(targetIndex, 0, moved\)/);
+  assert.doesNotMatch(adminChoiceRoute, /items\.splice\(targetIndex, 0, moved\)/);
 });
 
 test("creator Choice can create a draft from the first selected song", () => {

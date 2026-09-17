@@ -36,71 +36,28 @@ test("retired Showtime admin redirects to works management and cannot certify or
   assert.doesNotMatch(showtimeAdminPage, /runChoiceAction|certify_candidate|30 天/);
 });
 
-test("the independent Choice workbench retains selection, preview and publication controls", () => {
-  assert.match(choiceAdminPage, /async function addChoiceItem/);
-  assert.match(choiceAdminPage, /runAction\("remove_item"/);
-  assert.match(choiceAdminPage, /runAction\("set_published"/);
-  assert.match(choiceAdminPage, /choiceItemCountMessage/);
-  assert.match(choiceAdminPage, /item.selectable/);
-  assert.match(choiceAdminPage, /musicPlayer\?\.start/);
-  assert.match(choiceAdminPage, /setPreviewTrack\(item\)/);
+test("owner desk manages published collections, with no duplicate creation editor", () => {
+  assert.match(choiceAdminPage, /已發布 Choice/);
+  assert.match(choiceAdminPage, /PublishedChoiceList/);
+  assert.match(choiceAdminPage, /href="\/profile\/choice"/);
+  assert.doesNotMatch(choiceAdminPage, /addChoiceItem|ChoiceSelectedWorks|Choice Selection Pool|上傳封面|新增一期/);
+  assert.doesNotMatch(choiceAdminRoute, /save_collection|add_item|remove_item|move_item|set_published|clear_cover/);
+  assert.match(choiceAdminRoute, /delete_creator_collection/);
+  assert.match(choiceAdminRoute, /confirmed !== true/);
+  assert.match(choiceAdminRoute, /eq\("is_published", true\)/);
 });
 
-test("Choice persists human weekly selections with strict bounded publishing", () => {
+test("historical official schema remains; personal publishing preserves bounded selection", () => {
   assert.ok(migration.includes("create table if not exists public.aipoger_choice_collections"));
-  assert.ok(migration.includes("create table if not exists public.aipoger_choice_items"));
   assert.ok(migration.includes("enable row level security"));
-  assert.ok(migration.includes("revoke all on table public.aipoger_choice_collections from anon, authenticated"));
+  assert.ok(coverMigration.includes("add column if not exists cover_path"));
   assert.ok(choiceHelper.includes("AIPOGER_CHOICE_MIN_ITEMS = 5"));
   assert.ok(choiceHelper.includes("AIPOGER_CHOICE_MAX_ITEMS = 10"));
-  assert.ok(choiceAdminRoute.includes("Choice 發布需要 ${AIPOGER_CHOICE_MIN_ITEMS}-${AIPOGER_CHOICE_MAX_ITEMS} 首作品。"));
-  assert.ok(choiceAdminRoute.includes("assertSelectableSource"));
-  assert.ok(choiceAdminRoute.includes("!source?.isPublic || !source.selectable"));
-  assert.ok(choiceAdminRoute.includes('action === "set_published"'));
-  assert.ok(choiceAdminRoute.includes('action === "clear_cover"'));
-  assert.ok(choiceAdminRoute.includes('action === "delete_collection"'));
-  assert.ok(choiceAdminRoute.includes("confirmed !== true"));
-  assert.ok(choiceAdminPage.includes("Choice 管理"));
-  assert.ok(choiceAdminPage.includes("加入本週 Choice"));
-  assert.ok(choiceAdminPage.includes("上傳封面"));
-  assert.ok(coverMigration.includes("add column if not exists cover_path"));
-});
-
-test("Choice selection shows all public playable songs in the compact cover catalog", () => {
-  assert.ok(choiceAdminPage.includes("item.isPublic && item.selectable"));
-  assert.ok(choiceCatalog.includes("loadCreatorChoicePlaybackCatalog"));
-  assert.doesNotMatch(choiceCatalog + choiceAdminPage, /isAipogerChoiceNewRelease|CHOICE 新選|30 天/);
-  assert.ok(choiceAdminPage.includes("lg:grid-cols-6"));
-  assert.ok(choiceAdminPage.includes("CHOICE_CATALOG_PER_PAGE = 24"));
-  assert.ok(choiceAdminPage.includes("musicPlayer?.start"));
-  assert.ok(choiceAdminPage.includes("setPreviewTrack(item)"));
-  assert.ok(choiceHelper.includes("audioUrl: string | null"));
-  assert.ok(playbackCatalog.includes("signedBattleAudioUrl"));
-  assert.ok(playbackCatalog.includes("isPublicBarAirplayTrack"));
-  assert.ok(playbackCatalog.includes("full_audio_public === true"));
-});
-
-test("Choice admin exposes a compact visual library for each weekly issue", () => {
-  assert.ok(choiceAdminPage.includes("Choice Library"));
-  assert.ok(choiceAdminPage.includes("歷期 Choice"));
-  assert.ok(choiceAdminPage.includes("choiceThumb(collection)"));
-  assert.ok(choiceAdminPage.includes("FilePlus2"));
-  assert.ok(choiceAdminPage.includes("aria-pressed={active}"));
-  assert.ok(choiceAdminPage.includes("entry.isPublished ? \"已發布\" : \"草稿\""));
-  assert.ok(choiceAdminPage.includes("entry.itemCount"));
-  assert.ok(choiceAdminPage.includes("創作者 Choice"));
-  assert.ok(choiceAdminPage.includes("點擊小圖示就能進入編輯"));
-  assert.ok(choiceAdminPage.includes("刪除這一期"));
-  assert.ok(choiceAdminRoute.includes("aipoger_creator_choice_collections"));
-  assert.ok(choiceAdminRoute.includes("choicePublicPath(row.id, \"creator\")"));
-});
-
-test("official Choice can create a draft from the first selected song", () => {
-  assert.ok(choiceAdminPage.includes("async function ensureChoiceCollection"));
-  assert.ok(choiceAdminPage.includes("async function addChoiceItem"));
-  assert.ok(choiceAdminPage.includes("void addChoiceItem(item)"));
-  assert.equal(choiceAdminPage.includes("disabled={!selected || added || busy !== \"\"}"), false);
-  assert.match(choiceAdminPage, /const collectionId = await ensureChoiceCollection\(\)/);
+  assert.match(creatorChoiceRoute, /AIPOGER_CHOICE_MIN_ITEMS/);
+  assert.match(creatorChoiceRoute, /AIPOGER_CHOICE_MAX_ITEMS/);
+  assert.match(creatorChoiceProfilePage, /musicPlayer/);
+  assert.match(choiceCatalog, /loadCreatorChoicePlaybackCatalog/);
+  assert.match(playbackCatalog, /full_audio_public === true/);
 });
 
 test("published Choice reaches Showtime without becoming a ranking or social publisher", () => {
@@ -151,6 +108,6 @@ test("Choice covers carry a clear AIPOGER mark in the top-left corner", () => {
   assert.equal(choiceCover.includes("bg-black"), false);
   assert.equal(choiceCover.includes("border-white"), false);
   assert.ok(showtimeChoiceShelf.includes("AipogerChoiceCover"));
-  assert.ok(choiceAdminPage.includes("AipogerChoiceCover"));
+  assert.ok(readFileSync(new URL("../src/components/admin-published-choice-list.tsx", import.meta.url), "utf8").includes("AipogerChoiceCover"));
   assert.ok(creatorChoiceProfilePage.includes("AipogerChoiceCover"));
 });

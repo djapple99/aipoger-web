@@ -2,13 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { loadTs, mockAdmin, mocksFor, request } from "./helpers/choice-runtime.mjs";
 import * as tasks from "../src/lib/admin-tasks.ts";
-import * as newness from "../src/lib/music-newness.ts";
 
 function api(admin, owner = true) {
   return loadTs("src/app/api/admin/tasks/route.ts", { ...mocksFor(admin),
     "@/lib/admin-emails": { isAdminEmail: () => owner },
-    "@/lib/server-monthly-charts": { monthlyChartAdmin: () => admin },
-    "@/lib/music-newness": newness });
+    "@/lib/server-monthly-charts": { monthlyChartAdmin: () => admin } });
 }
 function seed() {
   const admin = mockAdmin({ content_reports: [{ id: "db", status: "resolved", target_type: "comment" }, { id: "open", status: "open", target_type: "song" }],
@@ -30,10 +28,12 @@ test("summary deduplicates reports, counts cross-month ties and actionable visib
   const admin = seed(), response = await api(admin).GET(request(null));
   assert.equal(response.status,200); assert.match(response.headers.get("cache-control"),/no-store/);
   const body = await response.json();
-  assert.deepEqual(body.counts,{charts:3,reports:1,comments:1,promotion:1,choice:1,social:1});
-  assert.equal(tasks.adminTaskTotal(body),8);
+  assert.deepEqual(body.counts,{charts:3,reports:1,comments:1,social:1});
+  assert.equal(tasks.adminTaskTotal(body),6);
   assert.ok(!JSON.stringify(body).includes("storage"));
   assert.ok(admin.operations.every(x=>x.action === "read"));
+  assert.ok(admin.operations.every(x=>!["listen_bar_tracks","aipoger_choice_collections"].includes(x.table)));
+  assert.equal(tasks.adminTaskTotal({...body,counts:{...body.counts,promotion:100,choice:100}}),6);
 });
 test("task readers paginate beyond 1000 and preserve unavailable counts as null", async () => {
   const admin = seed(); admin.tables.content_reports=Array.from({length:1003},(_,i)=>({id:String(i),status:"open",target_type:"song"}));
