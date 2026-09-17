@@ -5,6 +5,8 @@ import { ArrowRight, BookOpenText, ExternalLink, LayoutDashboard, MessageSquareT
 import { useEffect, useState } from "react";
 import { fontRighteous } from "@/lib/fonts";
 import { getActiveAuthSession, loadIsAdmin } from "@/lib/user-profile-admin";
+import { useAdminTasks } from "@/lib/use-admin-tasks";
+import { ADMIN_TASKS, adminTaskTotal } from "@/lib/admin-tasks";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
 
@@ -34,7 +36,7 @@ const toneClasses: Record<(typeof modules)[number]["tone"], string> = {
 
 export default function AdminHomePage() {
   const [state, setState] = useState<AdminState>("checking");
-  const [chartPending, setChartPending] = useState<number | null>(null);
+  const tasks = useAdminTasks();
 
   useEffect(() => {
     let active = true;
@@ -47,12 +49,6 @@ export default function AdminHomePage() {
       }
       const allowed = await loadIsAdmin(session.user.id);
       if (active) setState(allowed ? "ready" : "denied");
-      if (active && allowed) {
-        void fetch("/api/admin/charts", { headers: { Authorization: `Bearer ${session.access_token}` }, cache: "no-store", signal: AbortSignal.timeout(20000) })
-          .then(async (response) => { if (!response.ok) throw new Error("Unavailable"); return response.json(); })
-          .then((data) => { if (active) setChartPending((data.pendingMonths ?? []).reduce((sum: number, item: { count: number }) => sum + item.count, 0)); })
-          .catch(() => { if (active) setChartPending(null); });
-      }
     })();
     return () => {
       active = false;
@@ -102,6 +98,16 @@ export default function AdminHomePage() {
           </nav>
         </header>
 
+        <section id="pending-tasks" aria-label="後台待辦" className="scroll-mt-24 border-b border-white/15 py-6">
+          <h2 className="text-xl font-bold">待處理事項 {tasks.data ? `· ${adminTaskTotal(tasks.data)}` : ""}</h2>
+          {tasks.unavailable && <p role="status" className="mt-2 text-sm text-orange-200">部分待辦暫時無法更新，保留上次數量。</p>}
+          {!tasks.data && !tasks.unavailable && <p className="mt-2 text-sm text-zinc-400">正在確認待辦…</p>}
+          <div className="mt-3 divide-y divide-white/10">
+            {ADMIN_TASKS.filter(({ id }) => (tasks.data?.counts[id] ?? 0) > 0).map((item) => <Link key={item.id} href={item.href} className="flex min-h-12 items-center justify-between gap-4 py-3 text-sm font-bold text-zinc-100 hover:text-orange-200"><span>{item.label}</span><span className="flex items-center gap-3 text-red-300">{tasks.data!.counts[item.id]}<ArrowRight size={16} /></span></Link>)}
+          </div>
+          {tasks.data && !tasks.unavailable && adminTaskTotal(tasks.data) === 0 && <p className="mt-2 text-sm text-zinc-400">目前沒有待處理事項。</p>}
+        </section>
+
         <section className="mt-7 grid gap-4 md:grid-cols-3">
           <div className="rounded-[1.3rem] border border-orange-300/25 bg-orange-400/[0.08] p-5 md:col-span-2">
             <div className="flex items-start gap-4">
@@ -129,7 +135,7 @@ export default function AdminHomePage() {
               <Link key={item.href} href={item.href} className={`group rounded-[1.2rem] border p-5 transition hover:-translate-y-0.5 ${toneClasses[item.tone]}`}>
                 <div className="flex items-start justify-between gap-3"><span className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500">{item.label}</span><ArrowRight className="h-4 w-4 text-zinc-600 transition group-hover:translate-x-1 group-hover:text-white" /></div>
                 <h3 className="mt-4 text-lg font-black text-white">{item.title}</h3>
-                {item.href === "/admin/charts" && chartPending !== null && <p className="mt-2 text-sm font-bold text-orange-200">{chartPending} 組同票待裁定</p>}
+                {ADMIN_TASKS.filter((task) => task.href === item.href && (tasks.data?.counts[task.id] ?? 0) > 0).map((task) => <p key={task.id} className="mt-2 text-sm font-bold text-red-300">{task.label} {tasks.data!.counts[task.id]}</p>)}
                 <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">{item.description}</p>
               </Link>
             ))}

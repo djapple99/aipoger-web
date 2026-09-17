@@ -7,6 +7,8 @@ import type { User } from "@supabase/supabase-js";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
+import { useAdminTasks } from "@/lib/use-admin-tasks";
+import { adminTaskLabel, adminTaskTotal } from "@/lib/admin-tasks";
 import { cancelCurrentBattleIntent, isDropBattleEndedOrPastExpectedEnd, resolveDropBattleScheduledStart, shouldExpireOpenDropQueue } from "@/lib/battle-pool-client";
 
 type BattleCall = {
@@ -309,6 +311,8 @@ export default function GlobalBattleCallOverlay() {
   const [accountUserId, setAccountUserId] = useState<string | null>(isAuthBypassEnabled ? "auth-bypass" : null);
   const [accountSessionResolved, setAccountSessionResolved] = useState(isAuthBypassEnabled);
   const [unreadAccountNoticeCount, setUnreadAccountNoticeCount] = useState(0);
+  const ownerTasks = useAdminTasks();
+  const ownerTaskCount = adminTaskTotal(ownerTasks.data);
   const [accountDockPosition, setAccountDockPosition] = useState<AccountDockPosition | null>(null);
   const [accountDockDragging, setAccountDockDragging] = useState(false);
   const accountDockPositionRef = useRef<AccountDockPosition | null>(null);
@@ -826,7 +830,7 @@ export default function GlobalBattleCallOverlay() {
         {hasNotice && (
           unreadCount > 0 ? (
             <span
-              className={`absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-black ${
+              className={`absolute ${ownerTaskCount > 0 ? "-left-1" : "-right-1"} -top-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-black ${
                 urgent ? "bg-red-500 text-white shadow-[0_0_16px_rgba(248,113,113,1)]" : "bg-red-500 text-white shadow-[0_0_14px_rgba(248,113,113,0.9)]"
               }`}
             >
@@ -834,7 +838,7 @@ export default function GlobalBattleCallOverlay() {
             </span>
           ) : (
             <span
-              className={`absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full ${
+              className={`absolute ${ownerTaskCount > 0 ? "left-1.5" : "right-1.5"} top-1.5 h-2.5 w-2.5 rounded-full ${
                 urgent ? "bg-red-400 shadow-[0_0_16px_rgba(248,113,113,1)]" : "bg-orange-400 shadow-[0_0_14px_rgba(255,106,0,0.9)]"
               }`}
             />
@@ -870,6 +874,17 @@ export default function GlobalBattleCallOverlay() {
         >
           {avatarVisual}
         </Link>
+        {ownerTaskCount > 0 && (
+          <Link
+            href={`/admin?lang=${lang}#pending-tasks`}
+            onPointerDown={(event) => event.stopPropagation()}
+            className="absolute -right-2 -top-2 flex h-7 min-w-7 items-center justify-center rounded-full border-2 border-black bg-red-500 px-1 text-[10px] font-black text-white shadow-sm hover:bg-red-400 focus-visible:outline-2 focus-visible:outline-white"
+            aria-label={adminTaskLabel(lang, ownerTaskCount)}
+            title={adminTaskLabel(lang, ownerTaskCount)}
+          >
+            {ownerTaskCount > 99 ? "99+" : ownerTaskCount}
+          </Link>
+        )}
         <button
           type="button"
           onPointerDown={(event) => event.stopPropagation()}

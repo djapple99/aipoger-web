@@ -250,6 +250,8 @@ Own works and playback:
 
 ## Account And Login
 
+Owner task badge (2026-09-18): show the red pending-task count at the avatar's upper-right, separately linked to the admin task list; retain Profile at the avatar center and account/Battle notices at the bell. When both notice types exist, move the existing account-count marker to the upper-left so counts do not overlap. Red badge labels support zh/en/ja/ko. Admin overview lists actionable categories and counts with direct module links; opening it never dismisses unresolved work.
+
 Role:
 
 - Keep auth useful but not dominant.

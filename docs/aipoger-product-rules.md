@@ -79,11 +79,16 @@ Daily Spotlight 已退役：它不再是傷心酒吧、Explore、`/admin/listen-
 
 ## Account Dock / 浮動帳號頭像
 
+Owner task alerts (2026-09-18): the global avatar has a separate red task-count link for unresolved owner work. It links to `/admin#pending-tasks`; clicking the avatar itself still opens Profile. Pending work includes cross-month chart decisions, open/reviewing work or comment reports, unchecked new-song promotion within the existing seven-day NEW window, unpublished official Choice drafts, and unpublished visible social targets. Personal creator drafts, ordinary comments, published/completed work, retired TikTok-only targets and unenabled workflows are not owner tasks. Opening the task list does not clear the count; completing the actual work does. This is an in-site owner-only alert, not external push or email.
+
+- Recheck visible pages every 30 seconds, on focus/visibility return and route changes. Sign-out or account switch clears private task state. Read failures retain last known positive counts and show an unavailable state in the workbench, never a false successful zero.
+- Task sources are explicitly registered in `src/lib/admin-tasks.ts` and the protected summary API. Future enabled administrative workflows must register their real pending/resolved state and destination here; a new admin page alone does not automatically become a task.
+
 - The signed-in floating account avatar is always the Profile entry for every account, including owners. A Battle or account notice must never replace the avatar link with a notice-opening button.
 - The notification bell is a separate, smaller control attached to the avatar. Clicking the avatar opens `/profile?lang=<lang>`; clicking the bell opens or expands the account-notice panel.
 - Dragging is an enhancement, not the primary action: pointer capture must begin only after the pointer has moved more than 8px. A normal click must reach the Profile link, and a real drag must persist the edge-relative position across release, reload, and viewport resize.
 - The dock listens for Supabase auth state changes so signed-in users, owners, sign-outs, and account switches receive the correct avatar and Profile entry without relying on a full page reload. Logged-out visitors continue to see the sign-in entry on routes where the dock is shown.
-- Owner administration remains a second step from Profile (`/admin` and the owner-only management links); the floating avatar is not a hidden owner-only admin shortcut.
+- Owner administration remains available from Profile. The floating avatar itself is not an owner-only admin shortcut; only its explicitly labeled red task badge links directly to the owner workbench.
 
 ## Music Analysis / AI A&R Gate
 
