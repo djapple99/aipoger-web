@@ -1,12 +1,12 @@
 # AIPOGER 開發與維運
 
-更新：2026-09-06。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
+更新：2026-09-17。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
 
 ## 架構與資料來源
 
 - Next.js App Router、React、TypeScript、Tailwind；精確版本讀 package.json／lockfile，不在文件複製版本號。
 - src/app 放頁面／API，src/components 放共用 UI，src/lib 放規則與資料轉換，tests 使用 Node test runner，supabase 放遷移。
-- Explore 與酒吧共用 listen_bar_tracks／Heart；Showtime 整合多種認證來源；Q Crash 使用自己的完整作品與密封票資料，不能假設跨來源 ID 或收藏語意相同。
+- Explore 與酒吧共用 listen_bar_tracks／Heart；Showtime 月榜只彙總此曲庫的有效支持，Choice 是獨立歌單；Q Crash 使用自己的完整作品與密封票資料，不可混合跨來源 ID 或收藏語意。
 - Supabase 與 Vercel 依使用者背景為 Pro；配額、費用、同時在線能力必須重新實測，舊容量估算不是承諾。
 - 公開／私密資料邊界依產品規則。前端隱藏不等於權限；server 驗證 token、owner 與來源狀態。
 - 發布使用 Vercel 既有 project link；不得建立錯誤新專案或更改帳號。環境值不寫進本文件。
@@ -120,9 +120,9 @@ Check:
 - Waiting room opens correctly.
 - 0-2 distinct audience voters becomes audience-insufficient / no contest and does not create a result card, Showtime archive, song battle stats, battle history, or rematch window.
 - 3+ distinct audience voters creates an official result that can be archived.
-- AIPOGER Showtime reads Drop winners as `正式 Battle 認證` rows inside the unified certified-works catalog.
+- Drop 勝出作品保留在正式對戰記錄，不再授予 Showtime 認證或直接進月榜。
 - Upload-time full-song consent is captured before the Drop is published; the client cannot rewrite that consent or the stored full-song path afterward. After an official win, only the winning creator can submit an HTTPS YouTube MV URL from Battle Records.
-- The submitted YouTube MV URL appears on the official Battle Record and Showtime card; no link appears for an opted-out winner, an unofficial result, a non-winner, or a Q Crash card using its separate editorial workflow.
+- The submitted YouTube MV URL remains on the official Battle Record; no link appears for an opted-out winner, an unofficial result, a non-winner, or a Q Crash card using its separate editorial workflow.
 - Apply and verify `supabase/20260802143000_battle_winner_release_links.sql` before enabling the winner release form. Confirm direct client updates to release fields are rejected while the server winner-release endpoint accepts only the verified winner.
 
 ### Q Crash
@@ -206,7 +206,7 @@ Check:
 - Live 24H share links use `/h/{shortId}`.
 - Voting requires login.
 - Finished 24H battle records winner when not tied.
-- 24H winners, if surfaced from legacy records, must appear as certified works in the unified Showtime catalog rather than a separate 24H board.
+- Legacy 24H results remain historical Battle records; they do not grant certification or enter monthly charts automatically.
 
 When the 10 active limit is implemented, also check:
 
@@ -267,8 +267,8 @@ Choice and retired Spotlight:
 - `/listen-bar?spotlight=YYYY-MM-DD&lang=zh` returns normal Bar Heartbreak with no specified-song playback or Spotlight panel.
 - `/today?lang=zh` returns 307 to `/rank?lang=zh#choice-weekly`.
 - `/admin/social` remains the only draft, approval, and manual publishing console; Discord publishing still requires an approved draft plus its explicit publish action.
-- `/admin/showtime` is owner-only, renders a compact six-cover desktop catalog (12 works per page), may certify eligible public Bar Heartbreak works, soft-hide/restore Showtime display, and edit only community-work display metadata and cover. Audio, Battle results, votes, Hearts, and recognition source remain immutable.
-- `/admin/showtime` Choice mode is owner-only and can create a Monday-based weekly draft, check/uncheck and reorder 5-10 currently public Showtime works, and publish or withdraw it. `/admin/choice` remains a direct route for the same workflow. Neither route may create social drafts or publish externally.
+- /admin/showtime 不再提供授證；舊入口導至 Choice 管理，作品管理使用 /admin/listen-bar。音檔、實際 Battle 結果、票數及 Heart 不可改寫。
+- /admin/choice 保留 owner 的官方／個人身分策展與週次管理，選擇公開可播作品、不受舊認證或 30 天限制；不自動生成社群草稿或對外發布。
 - Existing `listen_bar_daily_spotlights`, historical assets, and old social drafts are not deleted during this retirement.
 
 ## AI Music Works Checklist
@@ -284,7 +284,7 @@ Check:
 - An Explore share URL has the shape `/ai-music?lang=<lang>&track=<id>#works`, stays on Explore rather than Bar Heartbreak, expands the matching style lane, and scrolls to the shared work without autoplay.
 - The masthead is compact and cover-led: the first genre title and first covers are visible at 1440x900 and 390x844 without a fake waveform, `Live Drop Signal`, `60s READY`, dashboard cards, or a long gameplay explainer occupying the first screen.
 - `依類型 | 正在升溫` is a local Explore control. The default preserves genre lanes; Hot Now remains separate from Showtime and Choice, but uses the same compact cover-card density: mobile horizontal scrolling and desktop 3 / 4 / 6-column grid, never a wide rank table.
-- Hot Now reads only 7-day distinct Heart supporters, official Battle audience votes from archives meeting the 3-voter threshold, latest qualified interaction, then created_at/id. It never uses all-time Hearts, play counts, mock scores, or Heat Score. Signal-less works are `正在累積` with no rank number; Showtime rows have no attack action.
+- Hot Now reads only 7-day distinct Heart supporters, official Battle audience votes from archives meeting the 3-voter threshold, latest qualified interaction, then created_at/id. It never uses all-time Hearts, play counts, mock scores, or Heat Score. Signal-less works are `正在累積` with no rank number; this remains separate from monthly chart counting.
 - The page groups works by the current 11 fixed music genres and shows at most 6 cards per genre before `看更多`.
 - Explore has no standalone `最新上架` / `New Arrivals` / `72 小時新歌` shelf, route, category, or independent `看更多`; new eligible works appear at the front of their existing genre lane.
 - `NEW` uses `created_at` younger than a rolling 7 x 24 hours for both its badge and Explore sorting priority; it expires from both at the seven-day boundary and never reads `updated_at`.
@@ -292,17 +292,17 @@ Check:
 - A NEW work (within rolling 7 x 24 hours by `created_at`, never `updated_at`) appears ahead of established works in its genre lane; lanes with NEW works lead the wall by newest NEW `created_at`, while lanes without NEW works keep the fixed genre order.
 - The collapsed first 6 cards in a genre lane show at most one NEW work per creator; all other NEW works remain visible after that lane's `看更多` expansion.
 - Cards show song title, creator, AI tool, heart count, and challenge count.
-- Cards that are truly challenge-ready show a non-clickable red angled `接戰` badge at the cover's top-right on desktop and mobile; non-ready, Showtime, retired, hidden/removed/moderation-held, missing-drop, or unplayable works do not show it.
+- Cards that are truly challenge-ready show a non-clickable red angled `接戰` badge at the cover's top-right on desktop and mobile; non-ready, retired, hidden/removed/moderation-held, missing-drop, or unplayable works do not show it. Old certification alone is no longer a gate; the creator must explicitly opt in after the one-time reset.
 - The card's bottom `攻擂` button remains the only challenge action; the `接戰` badge must not replace it or use `攻擂` as badge text.
 - Signed-in users with today's active Heart see the Heart button lit on `/ai-music` cards and the bottom mini player; re-pressing it cancels the Heart and synchronized favorite while the card still shows only total Heart count publicly.
 - Desktop hover exposes the Battle Record HUD.
 - Mobile exposes an equivalent expanded HUD via the info action.
-- Cards and the Battle Record HUD show the Showtime defense progress, for example `守擂進度 4 / 6，再守下 2 場正式挑戰，進入 Showtime`.
+- Cards and Battle HUD retain actual wins/losses; six-defense certification progress and promotion promises are removed.
 - Card play opens the bottom mini player and does not expand per-card audio controls.
 - `Drop Battle`, `Showtime`, `傷心酒吧`, and `Choice` are internal options on `/ai-music`.
 - Old genre labels are not shown as current category headings.
-- `/api/ai-music/tracks` returns official Explore defense success progress toward the 6-defense Showtime threshold, filters non-Showtime works that have 8 official Explore losses, and `/api/ai-music/challenges` blocks attacks against Showtime-certified or retired works.
-- `/rank?lang=zh` consumes the same AI Music lifecycle API so 6-defense-certified Explore works appear in Showtime.
+- /api/ai-music/tracks 不再排除舊認證作品；8 敗退場及既有歷史豁免仍在。挑戰由公開狀態、未退場、創作者自行 opt in 和準備好的 Drop 決定。
+- /rank 改讀月榜 RPC 與公開 Choice，不從認證或 Battle archive 建造另一份作品牆。
 
 ## AI Music Practice Bible Checklist
 
@@ -372,38 +372,22 @@ Check:
 - Earworm writes no formal Battle votes, results, wins/losses, defense progress, or Showtime state.
 - Verify 1440x900 and 390x844 layouts, Explore invitation/skip/reopen, the single recommendation shelf, public favorability labels without personal-answer chips in Explore and Bar, first-load autoplay fallback, play/pause, seek, immediate reactions, `下一首`, next-track autoplay after a user gesture, tenth-answer result, the exact five-action result order, retest, and no browser console errors.
 
-## AIPOGER Showtime Checklist
+## Showtime 月榜與 Choice 驗收（2026-09-17）
 
-Check:
-
-- Page loads at `/rank?lang=zh`.
-- Main title says `AIPOGER Showtime`.
-- Header copy says Showtime is a certified works archive and that certified works no longer accept challenges.
-- Homepage exposes an `AIPOGER Choice Weekly` entry that lands on `/rank?lang=zh#choice-weekly`.
-- Showtime begins with a dedicated cover-led `AIPOGER CHOICE` shelf at `#choice-weekly`, before the Showtime heading and filters. Published Choice cards use the recommender identity as a square cover, show the authored issue title without a duplicated curator prefix, keep curator and date as separate metadata, display the stored recommendation article excerpt inline, and expose card playback, share, comments, a collection-level toggleable save, and one tracklist icon. Desktop hover/focus may reveal a compact ordered preview; clicking the icon opens the interactive HUD on desktop and mobile. The HUD shows the issue title/date beside its intro, gives every song its existing song-save Heart and play command, and provides HUD `Play all` plus the full share-page link. Do not show `CURATOR SETS`, circular curator avatars, a standalone article HUD, or `由創作者選出他們心目中的歌單`.
-- A published Choice has a playable `/choice/{id}?kind=official|creator` page with a visible return to Showtime, inline recommendation copy, collection comments, play-all, individual playback, share, and save. Publishing/withdrawing persists the current week, title, recommendation copy, and owner identity in the same request. The signed-in avatar dock can be dragged and remains clamped to the visible viewport after reload or resize.
-- The server-rendered HTML for each published Choice exposes its authored title and recommendation copy through `og:title` / `og:description`, and uses the persisted curator Profile avatar for `og:image` and `twitter:image` on creator/personal Choice. Only an explicitly official AIPOGER identity may use the brand share image. Verify the image URL returns `200` with an image content type.
-- Choice saves persist separately from song Hearts: they can be toggled off, never change song Heart totals or daily cooldowns, and the interaction route only accepts published official or creator Choice collections.
-- Showtime is one unified certified-works catalog, not separate Drop victory / Bar heat / 24H boards or source tabs.
-- Showtime remains grouped by genre below Choice and uses 2 / 3 / 4 / 6 compact cards. Cards do not embed one native player each; Choice and Showtime use one bottom player with seek, previous/next, and usable mobile volume.
-- Song cards include the recognition source in the song intro, such as `正式 Battle 認證`, `探索守擂認證`, or `傷心酒吧公播認證`.
-- Showtime track intake is persisted certification, not dynamic public display of old `30 hearts`, `7 public days`, or `30 days` eligibility copy.
-- Founder catalog migration must start with a read-only candidate report and must not mutate production track data until owner confirmation. The one-time founder batch includes eligible public community works with `public_time <= now() - 30 days`, so exactly-30-day works count. Demo soft-delete IDs are optional; if supplied, they must be exact owner-confirmed IDs.
-- Founder-catalog certified works appear only in Showtime, not Explore or Bar Heartbreak public lists; cards show no `接戰`, `攻擂`, or challenge action.
-- Profile Showtime management allows only own display metadata/support URL edits and public-display soft hide; it must not edit audio, recognition source, battle stats, votes, wins/losses, Showtime status/time, or reopen challenges.
-- Profile Showtime links accept HTTPS only and allow a short purpose label such as a YouTube channel, MV, or external support page. Changing either URL or label returns the link to review; AIPOGER never handles payments, amounts, or checkout.
-- A creator with at least one persisted Showtime-certified community work can open `/profile/choice`, see their own Showtime works, and create, reorder, publish, withdraw, and share their own 5-10-work Choice. The selection catalog contains currently public Showtime works from any creator plus public playable community uploads less than 30 x 24 hours old. New-release cards say `CHOICE 新選`, do not gain Showtime certification, and remain playable in an existing Choice after day thirty unless the source becomes unavailable. A creator cannot edit another curator's Choice. Creator Choice does not replace the owner-managed `#choice-weekly` list or create social drafts.
-- Cards do not show numeric rank badges.
-- Drop cards use victory/result language.
-- Bar Heartbreak and Explore-certified cards use catalog/recognition language, not heat-board language.
-- Empty state does not use mock/demo records.
-- Cards with lyrics show a `歌詞` / `LYRICS` action that opens a readable modal.
-- Cards without lyrics show `歌詞未提供` / `No Lyrics`.
-- Lyrics modal fits mobile viewport and does not create horizontal overflow.
-- Stage names are:
-  - `熱血音樂工匠`
-  - `潮流音樂大師`
-  - `殿堂級音樂師尊`
+- /rank 保留 AIPOGER Showtime 品牌，預設月排行榜，Choice 是另一頁籤；#choice-weekly 舊入口直接選中 Choice，瀏覽器上一頁／下一頁同步頁籤。
+- 月榜讀 /api/charts/monthly，DB 依台灣曆月逐筆有效 Heart 去重、排除作者自投，至少 3 位支持才列名次，同分 1、1、3；類型榜使用各類型名次。不得從前端陣列索引或累積愛心捏造順位。
+- 月份選單只顯示啟用後真實月份；本期更新、過期封存，零支持月份仍封存一次。歷史榜不得因下架重排；下架、未公開、審核中或無音檔歌曲不可播放。
+- monthly_charts migration 的讀取／封存 RPC 僅 service_role 可執行；表格 RLS 開啟。來源寫入與月末封存共用 advisory lock；以獨立 PostgreSQL 測試驗證去重、跨月、取消支持、同分、權限、不可改寫及超過 1000 筆。
+- /api/cron/monthly-charts 驗證 CRON_SECRET，每日台灣 00:05 執行；資料讀取與來源寫入也會補結算已完成月份。缺少 schema／權限不可偽装成正常空榜。
+- 圖片、播放、收藏與分享沿用真實歌曲。月榜愛心使用歌曲 /api/listen-bar/reaction，Choice 歌單收藏與既有歌曲收藏保持各自語意；不新增第二套歌曲人氣分數。
+- 公開 Choice 使用 PublicChoiceGallery 與 ShowtimeChoiceShelf，保留策展者身分封面、期別、標題、推薦介紹、HUD、評論、獨立歌單收藏與分享頁。官方／個人身分不可從標題猜測。
+- 任何登入創作者可從 /profile/choice 開啟自己的收藏選曲；搜尋／類型篩選、獨立勾選框、已選清單、第一首自動建草稿、排序與手機上下移動、預覽、發布 5–10 首。單週一份 Choice 不改。
+- 取消收藏不連帶刪除已選 Choice，移出 Choice 不取消歌曲收藏；未收藏新歌不可繞過 API 加入。既有公開歌單及舊 Battle 選曲保留來源 ID／音檔公開同意，不會因認證退役而消失。
+- 所有創作者自有作品由 Profile 管理顯示資料與外部支持連結，音檔、戰績、票數不可改寫；修改外部支持連結仍進既有審核。平台不處理支付或金額。
+- 認證入口、六次守擂認證進度、官方認證標章及認證資格 gating 移除。舊認證 metadata 僅歷史保存，新增資料不得授證。
+- 原認證歌曲在退休遷移時一次設為 showcase；創作者可自行重新 opt in，重跑遷移不得覆蓋之後設定。歷史 8 敗豁免保留，未新增或恢復酒吧淘汰。
+- 中英日韓、桌機 1440x900／手機 390x844 檢查：封面可见、文字換行、無橫向溢出、頁籤鍵盤操作、規則 HUD 關閉、底部唯一播放器不遮操作。
+- 未登入者可聽歌與看榜；收藏／管理要求登入。驗證 auth 切換時清除舊私人資料，忽略舊請求，錯誤能重試且不鎖死 busy 狀態。
 
 ## Storage Checklist
 

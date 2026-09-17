@@ -9,6 +9,7 @@ export const AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS = [
   "ai_music_showtime_certified_at",
   "ai_music_showtime_certification_source",
   "ai_music_showtime_public_removed_at",
+  "ai_music_certification_retired_at",
   "support_url",
   "support_url_label",
   "support_url_status",
@@ -19,6 +20,7 @@ export type AiMusicShowtimeTrackFields = {
   ai_music_showtime_certified_at?: string | null;
   ai_music_showtime_certification_source?: string | null;
   ai_music_showtime_public_removed_at?: string | null;
+  ai_music_certification_retired_at?: string | null;
   support_url?: string | null;
   support_url_label?: string | null;
   support_url_status?: string | null;
@@ -31,7 +33,9 @@ export function normalizeAiMusicShowtimeCertificationSource(value: unknown): AiM
 }
 
 export function isAiMusicPersistedShowtimeCertified(row: AiMusicShowtimeTrackFields | null | undefined) {
-  return Boolean(row?.ai_music_showtime_certified) && !row?.ai_music_showtime_public_removed_at;
+  // Historical exemption only; never use this as an active certification gate.
+  return Boolean(row?.ai_music_showtime_certified || row?.ai_music_certification_retired_at)
+    && !row?.ai_music_showtime_public_removed_at;
 }
 
 export function isAiMusicShowtimePubliclyVisible(row: (ListenBarTrackRow & AiMusicShowtimeTrackFields) | null | undefined) {

@@ -42,11 +42,11 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
       navTitle: "關於愛播歌",
       title: "AIPOGER 愛播歌是 AI 創作者一起成長、讓作品被認可的音樂舞台。",
       lead:
-        "從 Drop Battle、傷心酒吧到 AIPOGER Showtime，AIPOGER 讓 AI 音樂創作者上場、累積聽眾反應、被投票認可，並讓勝出的作品有機會進入播放、策展、發行、授權與商業合作。",
+        "在 AIPOGER 探索 AI 音樂、收聽傷心酒吧、參與 Drop Battle，也能在 Showtime 聽月排行榜與創作者的 Choice 推薦歌單。",
       contactLabel: "聯絡我們",
       cards: [
         { label: "Mission", value: "Creator Growth", detail: "陪 AI 創作者累積作品、戰績、聽眾反應與舞台紀錄" },
-        { label: "Recognition", value: "Showtime", detail: "用 Drop Battle、傷心酒吧與 Showtime 封存被聽眾認可的作品" },
+        { label: "Listen", value: "Showtime", detail: "月排行榜與創作者的 Choice 推薦歌單" },
         { label: "Rights", value: "Original Only", detail: "僅接受原創、已授權或具合法使用依據的音樂內容" },
         { label: "Contact", value: "Email", detail: mail, href: `mailto:${mail}` },
       ],
@@ -54,8 +54,8 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
         {
           title: "平台定位",
           body:
-            "AIPOGER 不是普通播放器，也不是只做 battle 的網站。它是 AI 音樂創作者的認可系統：先讓作品接受聽眾與對手檢驗，再把勝出的紀錄變成播放、策展與商業化的起點。",
-          items: ["AI 音樂 Drop 上傳與鬥歌", "傷心酒吧 Bar Heartbreak 公播與聽眾反應", "Showtime 封存勝利與熱播紀錄", "勝出作品播放、策展、發行、授權與商業合作"],
+            "AIPOGER 讓創作者分享作品、累積聽眾反應，也讓每個人找到喜歡的 AI 音樂。Showtime 呈現月排行榜與 Choice 推薦歌單；創作者可從自己收藏的歌曲編排 Choice，不需要先贏得 Battle。",
+          items: ["AI 音樂 Drop 上傳與鬥歌", "傷心酒吧 Bar Heartbreak 公播與聽眾反應", "Showtime 月排行榜與 Choice 推薦歌單", "創作者從自己收藏的歌曲編排、發布 Choice"],
         },
         {
           title: "著作權與上傳原則",
@@ -102,13 +102,13 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
     },
     en: {
       navTitle: "About AIPOGER",
-      title: "AIPOGER is where AI creators grow and winning tracks earn recognition.",
+      title: "AIPOGER is where AI creators grow and their music gets heard.",
       lead:
-        "From Drop Battles to Bar Heartbreak and AIPOGER Showtime, AIPOGER helps AI music creators get heard, collect crowd signals, earn records, and move winning tracks toward airplay, curation, licensing, and commercial opportunities.",
+        "Explore AI music, tune into Bar Heartbreak, join a Drop Battle, and listen to monthly charts and creator-selected Choice playlists on Showtime.",
       contactLabel: "Contact",
       cards: [
         { label: "Mission", value: "Creator Growth", detail: "Build tracks, battle records, listener signals, and stage presence" },
-        { label: "Recognition", value: "Showtime", detail: "Drop Battles, Bar Heartbreak, and Showtime preserve the moments that hit" },
+        { label: "Listen", value: "Showtime", detail: "Monthly charts and creator-selected Choice playlists" },
         { label: "Rights", value: "Original Only", detail: "Only original, licensed, or lawfully usable music content is allowed" },
         { label: "Contact", value: "Email", detail: mail, href: `mailto:${mail}` },
       ],
@@ -116,8 +116,8 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
         {
           title: "What AIPOGER Is",
           body:
-            "AIPOGER is not a generic player and not just a battle site. It is a recognition system for AI music: tracks face challengers and listeners first, then winning records can become the start of airplay, curation, licensing, and commercial paths.",
-          items: ["AI Music Drop uploads and battles", "Bar Heartbreak airplay and listener reactions", "Showtime records for wins and heat", "Airplay, curation, licensing, release, and brand collaboration paths"],
+            "AIPOGER helps creators share their work and hear from listeners, while everyone can discover AI music they enjoy. Showtime brings together monthly charts and Choice playlists. Creators can curate Choice from their saved songs without winning a Battle first.",
+          items: ["AI Music Drop uploads and battles", "Bar Heartbreak airplay and listener reactions", "Showtime monthly charts and Choice playlists", "Creators curate and publish Choice from their saved songs"],
         },
         {
           title: "Copyright and Upload Rules",
@@ -259,7 +259,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           title: "戰果與紀錄",
           body:
             "Drop Battle 的重點不是空喊誰比較強，而是讓作品留下可信的聽眾反應。觀眾不足時不包裝成正式勝負；達到門檻後，才把結果寫進作品戰績。",
-          items: ["0-2 位非參賽觀眾：觀眾不足，不產生正式勝負、成果卡或 Showtime 戰績", "3 位以上不同非參賽觀眾完成投票，才成立正式紀錄", "參賽者自己的票不算有效觀眾", "成立的正式戰績會進入對戰記錄"],
+          items: ["0-2 位非參賽觀眾：觀眾不足，不產生正式勝負、成果卡或正式戰績", "3 位以上不同非參賽觀眾完成投票，才成立正式紀錄", "參賽者自己的票不算有效觀眾", "成立的正式戰績會進入對戰記錄"],
         },
         {
           title: "評分精神",
@@ -309,7 +309,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
           title: "Results and Records",
           body:
             "Drop Battle is not just about claiming a track is stronger. It creates a public listener signal that helps creators decide what to refine, share, and bring back to the stage.",
-          items: ["0-2 non-participant voters is insufficient and creates no official result, result card, or Showtime record", "3+ distinct non-participant voters establishes the official record", "Participant votes do not count toward the audience threshold", "Established official results appear in Battle Records"],
+          items: ["0-2 non-participant voters is insufficient and creates no official result, result card, or official battle record", "3+ distinct non-participant voters establishes the official record", "Participant votes do not count toward the audience threshold", "Established official results appear in Battle Records"],
         },
         {
           title: "Judging Spirit",
@@ -533,6 +533,56 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
   },
 };
 
+// Localize the product introduction; existing legal sections retain their English fallback.
+const localizedAbout: Record<"ja" | "ko", InfoPageContent> = {
+  ja: {
+    ...content.about.en,
+    navTitle: "AIPOGERについて",
+    title: "AIPOGERは、AIクリエイターが成長し、音楽を届けるステージです。",
+    lead: "AI音楽を探し、Bar Heartbreakを聴き、Drop Battleに参加。Showtimeでは月間チャートとクリエイターのChoiceプレイリストを楽しめます。",
+    contactLabel: "お問い合わせ",
+    cards: [
+      { label: "Mission", value: "Creator Growth", detail: "作品、対戦記録、リスナーの反応を積み重ねる" },
+      { label: "Listen", value: "Showtime", detail: "月間チャートとクリエイターのChoiceプレイリスト" },
+      { label: "Rights", value: "Original Only", detail: "オリジナル、許諾済み、または適法に利用できる音楽のみ" },
+      { label: "Contact", value: "Email", detail: mail, href: `mailto:${mail}` },
+    ],
+    sections: [
+      {
+        title: "AIPOGERとは",
+        body: "クリエイターが作品を共有し、リスナーの反応を受け取り、誰もが好きなAI音楽に出会える場所です。Showtimeには月間チャートとChoiceプレイリストが並びます。クリエイターはお気に入りに保存した曲からChoiceを作成でき、Battleでの勝利は必要ありません。",
+        items: ["AI音楽のDrop投稿と対戦", "Bar Heartbreakの公開再生とリスナーの反応", "Showtimeの月間チャートとChoiceプレイリスト", "お気に入りに保存した曲からChoiceを作成・公開"],
+      },
+      ...content.about.en.sections.slice(1),
+    ],
+    primaryCta: "AIPOGERに問い合わせる",
+    secondaryCta: "Drop Battleのルール",
+  },
+  ko: {
+    ...content.about.en,
+    navTitle: "AIPOGER 소개",
+    title: "AIPOGER는 AI 크리에이터가 성장하고 음악을 들려주는 무대입니다.",
+    lead: "AI 음악을 탐색하고 Bar Heartbreak를 듣고 Drop Battle에 참여하세요. Showtime에서는 월간 차트와 크리에이터의 Choice 플레이리스트를 만날 수 있습니다.",
+    contactLabel: "문의",
+    cards: [
+      { label: "Mission", value: "Creator Growth", detail: "작품, 배틀 기록, 청중의 반응을 쌓아가는 공간" },
+      { label: "Listen", value: "Showtime", detail: "월간 차트와 크리에이터의 Choice 플레이리스트" },
+      { label: "Rights", value: "Original Only", detail: "창작물, 허가받은 음악 또는 합법적으로 이용 가능한 음악만 허용" },
+      { label: "Contact", value: "Email", detail: mail, href: `mailto:${mail}` },
+    ],
+    sections: [
+      {
+        title: "AIPOGER란",
+        body: "크리에이터는 작품을 공유하고 청중의 반응을 받아보며, 누구나 좋아하는 AI 음악을 발견할 수 있습니다. Showtime은 월간 차트와 Choice 플레이리스트를 모아 보여줍니다. 크리에이터는 즐겨찾기에 저장한 곡으로 Choice를 만들 수 있으며, Battle에서 먼저 승리할 필요는 없습니다.",
+        items: ["AI 음악 Drop 업로드와 배틀", "Bar Heartbreak 공개 재생과 청중 반응", "Showtime 월간 차트와 Choice 플레이리스트", "즐겨찾기에 저장한 곡으로 Choice를 구성하고 공개"],
+      },
+      ...content.about.en.sections.slice(1),
+    ],
+    primaryCta: "AIPOGER에 문의하기",
+    secondaryCta: "Drop Battle 규칙",
+  },
+};
+
 const pageLinks = [
   { href: "/about", key: "about" as const },
   { href: "/partners", key: "partners" as const },
@@ -552,7 +602,9 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
   const { lang } = useI18n();
   const isZh = lang === "zh";
   const contentLang = isZh ? "zh" : "en";
-  const data = content[kind][contentLang];
+  const data = kind === "about" && (lang === "ja" || lang === "ko")
+    ? localizedAbout[lang]
+    : content[kind][contentLang];
   const isPolicyPage = kind === "about";
 
   const primaryHref =
@@ -593,7 +645,7 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
                       : "aipo-ghost-button text-zinc-300 hover:text-white"
                   }`}
                 >
-                  {content[item.key][contentLang].navTitle}
+                  {active ? data.navTitle : content[item.key][contentLang].navTitle}
                 </Link>
               );
             })}

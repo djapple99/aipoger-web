@@ -8,7 +8,8 @@ import {
   type AipogerChoiceCatalogItem,
 } from "@/lib/aipoger-choice";
 import type { AipogerCreatorChoiceCollection, CreatorChoiceEligibility } from "@/lib/creator-choice";
-import { loadChoiceSelectionCatalog } from "@/lib/server-choice-catalog";
+import { loadCreatorChoicePlaybackCatalog, loadCreatorChoiceSelectionCatalog } from "@/lib/server-creator-choice-catalog";
+import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { LISTEN_BAR_COVER_BUCKET } from "@/lib/listen-bar";
 
 type CreatorChoiceItemRow = {
@@ -32,20 +33,7 @@ type CreatorChoiceCollectionRow = {
   aipoger_creator_choice_items?: CreatorChoiceItemRow[] | null;
 };
 
-type OwnedShowtimeTrack = {
-  id: string;
-  title: string | null;
-  artist: string | null;
-  genre: string | null;
-  cover_path: string | null;
-  support_url: string | null;
-  support_url_label: string | null;
-  support_url_status: string | null;
-  ai_music_showtime_certified_at: string | null;
-  ai_music_showtime_public_removed_at: string | null;
-};
-
-type ChoiceAction = "save_collection" | "add_item" | "remove_item" | "move_item" | "set_published" | "clear_cover" | "delete_collection";
+type ChoiceAction = "ensure_collection" | "save_collection" | "add_item" | "remove_item" | "move_item" | "set_published" | "clear_cover" | "delete_collection";
 
 const MAX_COVER_BYTES = 10 * 1024 * 1024;
 const ALLOWED_COVER_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -56,19 +44,6 @@ function coverExtension(contentType: string) {
       : contentType === "image/gif" ? "gif"
         : "jpg";
 }
-
-const OWN_SHOWTIME_SELECT = [
-  "id",
-  "title",
-  "artist",
-  "genre",
-  "cover_path",
-  "support_url",
-  "support_url_label",
-  "support_url_status",
-  "ai_music_showtime_certified_at",
-  "ai_music_showtime_public_removed_at",
-].join(",");
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -92,7 +67,8 @@ function cleanText(value: unknown, maxLength: number) {
 
 function isMonday(value: string) {
   const date = new Date(`${value}T00:00:00.000Z`);
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(date.getTime()) && date.getUTCDay() === 1;
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(date.getTime())
+    && date.toISOString().slice(0, 10) === value && date.getUTCDay() === 1;
 }
 
 function isMissingCreatorChoiceSchema(error: unknown) {
@@ -143,18 +119,6 @@ function publicCoverUrl(admin: ReturnType<typeof adminClient>, path: string | nu
   return admin.storage.from(LISTEN_BAR_COVER_BUCKET).getPublicUrl(clean).data.publicUrl || "";
 }
 
-async function loadOwnedShowtimeTracks(admin: ReturnType<typeof adminClient>, userId: string) {
-  const { data, error } = await admin
-    .from("listen_bar_tracks")
-    .select(OWN_SHOWTIME_SELECT)
-    .eq("created_by", userId)
-    .eq("source", "community")
-    .eq("ai_music_showtime_certified", true)
-    .order("ai_music_showtime_certified_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []) as unknown as OwnedShowtimeTrack[];
-}
-
 async function loadCreatorName(admin: ReturnType<typeof adminClient>, user: { id: string; email?: string | null }) {
   const [fighterResult, profileResult] = await Promise.all([
     admin.from("fighter_profiles").select("display_name").eq("id", user.id).maybeSingle(),
@@ -168,19 +132,6 @@ async function loadCreatorName(admin: ReturnType<typeof adminClient>, user: { id
       ? profile.display_name.trim()
       : "";
   return fighterName || profileName || user.email?.split("@")[0] || "AIPOGER 創作者";
-}
-
-async function creatorEligibility(admin: ReturnType<typeof adminClient>, userId: string): Promise<{ eligibility: CreatorChoiceEligibility; ownTracks: OwnedShowtimeTrack[] }> {
-  const ownTracks = await loadOwnedShowtimeTracks(admin, userId);
-  return {
-    eligibility: {
-      // Choice is an open signed-in curation surface. Showtime count is
-      // informational only and must never gate creator-owned playlists.
-      eligible: true,
-      showtimeWorkCount: ownTracks.length,
-    },
-    ownTracks,
-  };
 }
 
 function normalizeCollections(admin: ReturnType<typeof adminClient>, rows: CreatorChoiceCollectionRow[], catalog: AipogerChoiceCatalogItem[]): AipogerCreatorChoiceCollection[] {
@@ -197,7 +148,15 @@ function normalizeCollections(admin: ReturnType<typeof adminClient>, rows: Creat
     items: (row.aipoger_creator_choice_items ?? [])
       .map((item) => {
         const source = byKey.get(catalogKey(item.source_kind, item.source_id));
-        return source ? { ...source, itemId: item.id, position: Math.max(1, Math.round(item.position)) } : null;
+        // Keep unavailable references removable without exposing hidden metadata/media.
+        return isAipogerChoiceSourceKind(item.source_kind) ? {
+          ...(source ?? {
+            id: item.source_id, sourceKind: item.source_kind, title: "作品目前無法公開播放",
+            artist: "", genre: "", coverUrl: AIPOGER_BRAND_LOGO, audioUrl: null,
+            recognition: "", certifiedAt: "", isPublic: false, selectable: false,
+          }),
+          itemId: item.id, position: Math.max(1, Math.round(item.position)),
+        } : null;
       })
       .filter((item): item is AipogerCreatorChoiceCollection["items"][number] => Boolean(item))
       .sort((a, b) => a.position - b.position),
@@ -295,31 +254,16 @@ async function removeChoiceEngagement(admin: ReturnType<typeof adminClient>, col
   }
 }
 
-async function assertSelectableSource(admin: ReturnType<typeof adminClient>, sourceKind: unknown, sourceId: unknown) {
-  if (!isAipogerChoiceSourceKind(sourceKind) || !isUuid(sourceId)) throw new Error("Choice 作品資料不完整。");
-  const catalog = await loadChoiceSelectionCatalog(admin);
-  if (!catalog.schemaReady) throw new Error("Choice 選歌資料尚未準備完成。");
-  const source = catalog.items.find((item) => item.sourceKind === sourceKind && item.id === sourceId);
-  if (!source?.isPublic || !source.selectable) throw new Error("只能加入目前公開的 Showtime 認證作品或 30 天內新歌。");
-  return source;
-}
-
 export async function GET(request: NextRequest) {
   try {
     const guard = await requireUser(request);
     if (guard.error) return guard.error;
-    const [eligibilityState, catalog] = await Promise.all([
-      creatorEligibility(guard.admin, guard.user.id),
-      loadChoiceSelectionCatalog(guard.admin),
-    ]);
-    if (!catalog.schemaReady) {
-      return NextResponse.json({ schemaReady: false, eligibility: eligibilityState.eligibility, ownShowtimeWorks: eligibilityState.ownTracks, catalog: [], collections: [] });
-    }
+    const catalog = await loadCreatorChoiceSelectionCatalog(guard.admin, guard.user.id);
+    const eligibility: CreatorChoiceEligibility = { eligible: true, showtimeWorkCount: 0 };
     const collections = await loadCollections(guard.admin, guard.user.id);
     return NextResponse.json({
       schemaReady: true,
-      eligibility: eligibilityState.eligibility,
-      ownShowtimeWorks: eligibilityState.ownTracks,
+      eligibility,
       catalog: catalog.items.filter((item) => item.isPublic && item.selectable),
       collections: normalizeCollections(guard.admin, collections, catalog.items),
     }, { headers: { "Cache-Control": "no-store" } });
@@ -339,9 +283,16 @@ export async function PATCH(request: NextRequest) {
     const action = body?.action as ChoiceAction | undefined;
     if (!action) return jsonError("請指定 Choice 管理操作。");
 
-    if (action === "save_collection") {
+    if (action === "save_collection" || action === "ensure_collection") {
       const weekStart = typeof body?.weekStart === "string" ? body.weekStart : "";
       if (!isMonday(weekStart)) return jsonError("Choice 週期必須選擇星期一。");
+      if (body?.collectionId != null && !isUuid(body.collectionId)) return jsonError("Choice 資料不完整。");
+      if (action === "ensure_collection") {
+        const existing = await guard.admin.from("aipoger_creator_choice_collections").select("id")
+          .eq("creator_id", guard.user.id).eq("week_start", weekStart).maybeSingle();
+        if (existing.error) throw existing.error;
+        if (existing.data) return NextResponse.json({ collectionId: existing.data.id, created: false });
+      }
       const curatorName = await loadCreatorName(guard.admin, guard.user);
       const payload = {
         week_start: weekStart,
@@ -368,10 +319,16 @@ export async function PATCH(request: NextRequest) {
         .select("id")
         .single();
       if (error) {
+        if (error.code === "23505" && action === "ensure_collection") {
+          const existing = await guard.admin.from("aipoger_creator_choice_collections").select("id")
+            .eq("creator_id", guard.user.id).eq("week_start", weekStart).single();
+          if (existing.error) throw existing.error;
+          return NextResponse.json({ collectionId: existing.data.id, created: false });
+        }
         if (error.code === "23505") return jsonError("這週的 Choice 草稿已存在，請從清單開啟。", 409);
         throw error;
       }
-      return NextResponse.json({ message: "已建立自己的 Choice 草稿。", collectionId: data.id });
+      return NextResponse.json({ message: "已建立自己的 Choice 草稿。", collectionId: data.id, created: true });
     }
 
     const collectionId = body?.collectionId;
@@ -397,7 +354,10 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (action === "add_item") {
-      const source = await assertSelectableSource(guard.admin, body?.sourceKind, body?.sourceId);
+      if (!isAipogerChoiceSourceKind(body?.sourceKind) || !isUuid(body?.sourceId)) return jsonError("Choice 作品資料不完整。");
+      const catalog = await loadCreatorChoiceSelectionCatalog(guard.admin, guard.user.id);
+      const source = catalog.items.find((item) => item.sourceKind === body.sourceKind && item.id === body.sourceId);
+      if (!source?.isPublic || !source.selectable || !source.audioUrl) return jsonError("只能加入自己已收藏且目前公開可播放的歌曲。");
       const existing = await collectionItems(guard.admin, collectionId);
       if (existing.length >= AIPOGER_CHOICE_MAX_ITEMS) return jsonError("Choice 每期最多 10 首作品。");
       if (existing.some((item) => item.source_kind === source.sourceKind && item.source_id === source.id)) {
@@ -409,12 +369,21 @@ export async function PATCH(request: NextRequest) {
         source_id: source.id,
         position: existing.length + 1,
       });
+      if (error?.code === "23505") return jsonError("Choice 已有變更，請重新載入後再選曲。", 409);
       if (error) throw error;
       return NextResponse.json({ message: "已加入你的 Choice。" });
     }
 
     if (action === "remove_item") {
       if (!isUuid(body?.itemId)) return jsonError("找不到 Choice 項目。");
+      const currentItems = await collectionItems(guard.admin, collectionId);
+      if (!currentItems.some((item) => item.id === body.itemId)) return jsonError("找不到 Choice 項目。", 404);
+      const state = await guard.admin.from("aipoger_creator_choice_collections").select("is_published")
+        .eq("id", collectionId).eq("creator_id", guard.user.id).single();
+      if (state.error) throw state.error;
+      if (state.data.is_published && currentItems.length <= AIPOGER_CHOICE_MIN_ITEMS) {
+        return jsonError("已發布 Choice 至少保留 5 首；請先撤回發布再移除。");
+      }
       const { error } = await guard.admin
         .from("aipoger_creator_choice_items")
         .delete()
@@ -446,7 +415,8 @@ export async function PATCH(request: NextRequest) {
       const targetIndex = requestedPosition !== null
         ? requestedPosition - 1
         : direction === "up" ? currentIndex - 1 : currentIndex + 1;
-      if (currentIndex < 0 || targetIndex < 0 || targetIndex >= items.length) return NextResponse.json({ message: "Choice 順序未改變。" });
+      if (currentIndex < 0) return jsonError("找不到 Choice 項目。", 404);
+      if (targetIndex < 0 || targetIndex >= items.length) return NextResponse.json({ message: "Choice 順序未改變。" });
       if (currentIndex === targetIndex) return NextResponse.json({ message: "Choice 順序未改變。" });
       const [moved] = items.splice(currentIndex, 1);
       items.splice(targetIndex, 0, moved);
@@ -455,6 +425,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (action === "set_published") {
+      if (typeof body?.isPublished !== "boolean") return jsonError("請指定發布狀態。");
       const publish = body?.isPublished === true;
       const hasDraftFields = body && ("weekStart" in body || "title" in body || "intro" in body);
       const weekStart = typeof body?.weekStart === "string" ? body.weekStart : "";
@@ -464,7 +435,12 @@ export async function PATCH(request: NextRequest) {
         if (items.length < AIPOGER_CHOICE_MIN_ITEMS || items.length > AIPOGER_CHOICE_MAX_ITEMS) {
           return jsonError(`發布 Choice 需要 ${AIPOGER_CHOICE_MIN_ITEMS}-${AIPOGER_CHOICE_MAX_ITEMS} 首作品。`);
         }
-        for (const item of items) await assertSelectableSource(guard.admin, item.source_kind, item.source_id);
+        const catalog = await loadCreatorChoicePlaybackCatalog(guard.admin);
+        const playable = new Set(catalog.items.filter((item) => item.isPublic && item.audioUrl)
+          .map((item) => catalogKey(item.sourceKind, item.id)));
+        if (items.some((item) => !playable.has(catalogKey(item.source_kind, item.source_id)))) {
+          return jsonError("歌單含有無法公開播放的作品，請先移除或替換。");
+        }
       }
       const now = new Date().toISOString();
       const update = {
@@ -500,6 +476,9 @@ export async function PATCH(request: NextRequest) {
 
     return jsonError("不支援的 Choice 管理操作。");
   } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "23505") {
+      return jsonError("這週已有 Choice，或歌單已在其他視窗更新。請重新載入。", 409);
+    }
     if (isMissingCreatorChoiceSchema(error)) return jsonError("Creator Choice 資料表尚未準備完成。", 409);
     return jsonError(error instanceof Error ? error.message : "自己的 Choice 操作失敗。", 500);
   }

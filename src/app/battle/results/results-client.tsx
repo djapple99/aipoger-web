@@ -547,8 +547,8 @@ export default function BattleResultsClient() {
             </h1>
             <p className="mt-3 max-w-3xl text-sm font-bold leading-6 text-zinc-400">
               {isZh
-                ? "按月份整理已成立的 Drop Battle 對戰記錄，可回聽、分享並追溯每場正式戰績。這裡不是 Showtime 認證作品庫。"
-                : "Browse established Drop Battle records by month. Listen, share, and trace each official battle without mixing this archive with Showtime."}
+                ? "按月份整理已成立的 Drop Battle 對戰記錄，可回聽、分享並追溯每場正式戰績。"
+                : "Browse established Drop Battle records by month. Listen, share, and trace each official battle."}
             </p>
           </div>
           <div className="flex flex-wrap gap-2 lg:justify-end">

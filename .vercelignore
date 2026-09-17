@@ -1,0 +1,6 @@
+.env*
+.playwright-cli/
+output/
+test-results/
+tmp/
+.cleanup-backups/

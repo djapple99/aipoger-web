@@ -3973,8 +3973,8 @@ function BattleArenaContent() {
             </h2>
             <p className="mt-3 text-sm font-bold leading-6 text-zinc-300">
               {lang === "zh"
-                ? `正式戰績需要至少 ${DROP_BATTLE_OFFICIAL_AUDIENCE_MIN} 位非參賽者投票；目前 ${audienceVoteCount}/${DROP_BATTLE_OFFICIAL_AUDIENCE_MIN}，不產生成果卡、不進 Showtime、不算勝敗。`
-                : `Official records need at least ${DROP_BATTLE_OFFICIAL_AUDIENCE_MIN} non-fighter votes. Current audience voters: ${audienceVoteCount}/${DROP_BATTLE_OFFICIAL_AUDIENCE_MIN}. No result card, no Showtime entry, no win/loss.`}
+                ? `正式戰績需要至少 ${DROP_BATTLE_OFFICIAL_AUDIENCE_MIN} 位非參賽者投票；目前 ${audienceVoteCount}/${DROP_BATTLE_OFFICIAL_AUDIENCE_MIN}，不產生成果卡、不算勝敗。`
+                : `Official records need at least ${DROP_BATTLE_OFFICIAL_AUDIENCE_MIN} non-fighter votes. Current audience voters: ${audienceVoteCount}/${DROP_BATTLE_OFFICIAL_AUDIENCE_MIN}. No result card and no win/loss.`}
             </p>
             <Link
               href={`/battle?lang=${lang}`}

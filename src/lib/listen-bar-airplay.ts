@@ -11,7 +11,7 @@ type AirplayRow = {
 // Recognition is not a reason to stop playing; an explicit removal always is.
 export function isPublicBarAirplayTrack(row: AirplayRow): boolean {
   return row.is_active !== false
-    && !["hidden", "removed", "completed", "rejected"].includes(row.review_status?.toLowerCase() ?? "")
+    && (row.review_status == null || row.review_status.toLowerCase() === "approved")
     && !row.hidden_at && !row.removed_at && !row.ai_music_showtime_public_removed_at
     && Boolean(row.audio_path?.trim());
 }

@@ -4,7 +4,7 @@ import test from "node:test";
 
 const playerSource = readFileSync(new URL("../src/components/choice-preview-player.tsx", import.meta.url), "utf8");
 const adminChoiceSource = readFileSync(new URL("../src/app/admin/choice/page.tsx", import.meta.url), "utf8");
-const adminShowtimeSource = readFileSync(new URL("../src/app/admin/showtime/page.tsx", import.meta.url), "utf8");
+const globalPlayerSource = readFileSync(new URL("../src/components/global-music-player.tsx", import.meta.url), "utf8");
 const creatorChoiceSource = readFileSync(new URL("../src/app/profile/choice/page.tsx", import.meta.url), "utf8");
 
 test("Choice preview player provides a compact bottom audio surface", () => {
@@ -16,10 +16,14 @@ test("Choice preview player provides a compact bottom audio surface", () => {
   assert.ok(playerSource.includes("onClick={toggle}"));
 });
 
-test("all official and creator Choice catalogs expose playable preview controls", () => {
-  for (const source of [adminChoiceSource, adminShowtimeSource, creatorChoiceSource]) {
+test("official and creator Choice workspaces use the existing global player with unavailable media disabled", () => {
+  for (const source of [adminChoiceSource, creatorChoiceSource]) {
     assert.ok(source.includes("disabled={!item.audioUrl}"));
-    assert.ok(source.includes('title={item.audioUrl ? "播放試聽" : "目前沒有可播放音檔"}'));
-    assert.ok(source.includes("<ChoicePreviewPlayer track={previewTrack}"));
+    assert.ok(source.includes("musicPlayer?.start"));
+    assert.equal(source.includes("<ChoicePreviewPlayer"), false);
+    assert.equal(source.includes("<audio"), false);
   }
+  assert.ok(globalPlayerSource.includes("<audio"));
+  assert.ok(creatorChoiceSource.includes("Boolean(track.audioUrl && track.isPublic)"));
+  assert.ok(adminChoiceSource.includes("if (!item.audioUrl || !item.isPublic) return"));
 });

@@ -4,7 +4,7 @@ import test from "node:test";
 
 const showtimeAdminPage = readFileSync(new URL("../src/app/admin/showtime/page.tsx", import.meta.url), "utf8");
 const showtimeAdminRoute = readFileSync(new URL("../src/app/api/admin/showtime/route.ts", import.meta.url), "utf8");
-const showtimeCatalog = readFileSync(new URL("../src/lib/server-showtime-catalog.ts", import.meta.url), "utf8");
+const playbackCatalog = readFileSync(new URL("../src/lib/server-creator-choice-catalog.ts", import.meta.url), "utf8");
 const choiceAdminPage = readFileSync(new URL("../src/app/admin/choice/page.tsx", import.meta.url), "utf8");
 const choiceAdminRoute = readFileSync(new URL("../src/app/api/admin/choice/route.ts", import.meta.url), "utf8");
 const choiceCurrentRoute = readFileSync(new URL("../src/app/api/choice/current/route.ts", import.meta.url), "utf8");
@@ -14,6 +14,7 @@ const creatorChoiceProfilePage = readFileSync(new URL("../src/app/profile/choice
 const choiceHelper = readFileSync(new URL("../src/lib/aipoger-choice.ts", import.meta.url), "utf8");
 const choiceCatalog = readFileSync(new URL("../src/lib/server-choice-catalog.ts", import.meta.url), "utf8");
 const rankPage = readFileSync(new URL("../src/app/rank/page.tsx", import.meta.url), "utf8");
+const publicGallery = readFileSync(new URL("../src/components/public-choice-gallery.tsx", import.meta.url), "utf8");
 const showtimeChoiceShelf = readFileSync(
   new URL("../src/components/showtime-choice-shelf.tsx", import.meta.url),
   "utf8",
@@ -24,51 +25,25 @@ const migration = readFileSync(new URL("../supabase/migrations/20260712072918_ch
 const coverMigration = readFileSync(new URL("../supabase/migrations/20260805190000_choice_collection_cover.sql", import.meta.url), "utf8");
 const productRules = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
 
-test("Showtime admin keeps a manual 30-day review queue beside the public catalog", () => {
-  assert.ok(showtimeAdminPage.includes("Showtime 管理"));
-  assert.ok(showtimeAdminPage.includes("SHOWTIME_PER_PAGE = 12"));
-  assert.ok(showtimeAdminPage.includes("SHOWTIME_CANDIDATES_PER_PAGE = 12"));
-  assert.ok(showtimeAdminPage.includes("30 天以上候選歌曲"));
-  assert.ok(showtimeAdminPage.includes("candidate.heartCount"));
-  assert.ok(showtimeAdminPage.includes("candidatePreviewItem"));
-  assert.ok(showtimeAdminPage.includes('action: "certify_candidate"'));
-  assert.ok(showtimeAdminPage.includes('action: "remove_candidate"'));
-  assert.ok(showtimeAdminPage.includes("xl:grid-cols-6"));
-  assert.ok(showtimeAdminPage.includes("編輯資料"));
-  assert.ok(showtimeAdminPage.includes("Showtime 評語／作品介紹"));
-  assert.ok(showtimeAdminPage.includes("textarea value={editForm.description}"));
-  assert.ok(showtimeAdminRoute.includes("update_track_metadata"));
-  assert.ok(showtimeAdminRoute.includes("certify_candidate"));
-  assert.ok(showtimeAdminRoute.includes("remove_candidate"));
-  assert.ok(showtimeAdminRoute.includes("30-day Showtime review dislike"));
-  assert.ok(showtimeAdminRoute.includes("uploadTrackCover"));
-  assert.ok(showtimeAdminRoute.includes('ai_music_challenge_status: "showcase"'));
-  assert.ok(showtimeCatalog.includes("Boolean(row.ai_music_showtime_certified) && isAiMusicShowtimePubliclyVisible(row)"));
-  assert.ok(showtimeCatalog.includes("entry.item?.isPublic && entry.item.selectable"));
-  assert.equal(showtimeCatalog.includes("isShowtimeTrackCertificationCandidate"), false);
-  assert.equal(showtimeAdminPage.includes("公播候選"), false);
-  assert.equal(showtimeAdminPage.includes("certify_track"), false);
-  assert.equal(showtimeAdminRoute.includes("certify_track"), false);
-  assert.ok(showtimeCatalog.includes("SHOWTIME_REVIEW_AGE_DAYS = 30"));
-  assert.ok(showtimeCatalog.includes("SHOWTIME_WEEKLY_AIRPLAY_CERTIFICATION_LIMIT = 4"));
-  assert.ok(showtimeCatalog.includes("heartCount"));
-  assert.ok(showtimeAdminRoute.includes('body.action !== "hide_archive"'));
-  assert.equal(showtimeAdminRoute.includes("audio_path:"), false);
-  assert.equal(showtimeAdminRoute.includes("heart_count:"), false);
-  assert.equal(showtimeAdminRoute.includes("final_vote_left:"), false);
+test("retired Showtime admin redirects to works management and cannot certify or mutate songs", () => {
+  assert.match(showtimeAdminPage, /redirect\("\/admin\/listen-bar"\)/);
+  assert.match(showtimeAdminRoute, /status: 410/);
+  assert.match(showtimeAdminRoute, /status: 401/);
+  assert.match(showtimeAdminRoute, /status: 403/);
+  assert.match(showtimeAdminRoute, /isAdminEmail/);
+  assert.match(showtimeAdminRoute, /choiceUrl: "\/admin\/choice"/);
+  assert.doesNotMatch(showtimeAdminRoute, /\.update\(|\.insert\(|\.delete\(|certify_candidate/);
+  assert.doesNotMatch(showtimeAdminPage, /runChoiceAction|certify_candidate|30 天/);
 });
 
-test("Showtime catalog can curate and publish the current Choice in place", () => {
-  assert.ok(showtimeAdminPage.includes("編輯本期 Choice"));
-  assert.ok(showtimeAdminPage.includes("從認證作品與本週新歌組成 Choice"));
-  assert.ok(showtimeAdminPage.includes('runChoiceAction("add_item"'));
-  assert.ok(showtimeAdminPage.includes('runChoiceAction("remove_item"'));
-  assert.ok(showtimeAdminPage.includes('runChoiceAction("set_published"'));
-  assert.ok(showtimeAdminPage.includes("choiceItemCountMessage"));
-  assert.ok(showtimeAdminPage.includes("item.selectable"));
-  assert.ok(showtimeAdminPage.includes("ChoicePreviewPlayer"));
-  assert.ok(showtimeAdminPage.includes("setPreviewTrack(item)"));
-  assert.ok(showtimeAdminPage.includes("公開 Showtime 認證作品及上架 30 天內的新歌"));
+test("the independent Choice workbench retains selection, preview and publication controls", () => {
+  assert.match(choiceAdminPage, /async function addChoiceItem/);
+  assert.match(choiceAdminPage, /runAction\("remove_item"/);
+  assert.match(choiceAdminPage, /runAction\("set_published"/);
+  assert.match(choiceAdminPage, /choiceItemCountMessage/);
+  assert.match(choiceAdminPage, /item.selectable/);
+  assert.match(choiceAdminPage, /musicPlayer\?\.start/);
+  assert.match(choiceAdminPage, /setPreviewTrack\(item\)/);
 });
 
 test("Choice persists human weekly selections with strict bounded publishing", () => {
@@ -91,21 +66,18 @@ test("Choice persists human weekly selections with strict bounded publishing", (
   assert.ok(coverMigration.includes("add column if not exists cover_path"));
 });
 
-test("Choice selection shows public Showtime works and 30-day new releases in a compact cover catalog", () => {
+test("Choice selection shows all public playable songs in the compact cover catalog", () => {
   assert.ok(choiceAdminPage.includes("item.isPublic && item.selectable"));
-  assert.ok(choiceAdminPage.includes("上架 30 天內的新歌"));
-  assert.ok(choiceAdminPage.includes("CHOICE 新選"));
-  assert.ok(choiceCatalog.includes("isAipogerChoiceNewRelease"));
-  assert.ok(choiceCatalog.includes('choiceSource: "new_release"'));
-  assert.ok(choiceCatalog.includes("retiredFromExplore"));
+  assert.ok(choiceCatalog.includes("loadCreatorChoicePlaybackCatalog"));
+  assert.doesNotMatch(choiceCatalog + choiceAdminPage, /isAipogerChoiceNewRelease|CHOICE 新選|30 天/);
   assert.ok(choiceAdminPage.includes("lg:grid-cols-6"));
   assert.ok(choiceAdminPage.includes("CHOICE_CATALOG_PER_PAGE = 24"));
-  assert.ok(choiceAdminPage.includes("ChoicePreviewPlayer"));
+  assert.ok(choiceAdminPage.includes("musicPlayer?.start"));
   assert.ok(choiceAdminPage.includes("setPreviewTrack(item)"));
-  assert.ok(choiceAdminPage.includes("左下播放鈕可直接試聽"));
   assert.ok(choiceHelper.includes("audioUrl: string | null"));
-  assert.ok(showtimeCatalog.includes("signedBattleAudioUrl"));
-  assert.ok(showtimeCatalog.includes("audioUrl: audioUrl(admin, row.audio_path)"));
+  assert.ok(playbackCatalog.includes("signedBattleAudioUrl"));
+  assert.ok(playbackCatalog.includes("isPublicBarAirplayTrack"));
+  assert.ok(playbackCatalog.includes("full_audio_public === true"));
 });
 
 test("Choice admin exposes a compact visual library for each weekly issue", () => {
@@ -128,15 +100,15 @@ test("official Choice can create a draft from the first selected song", () => {
   assert.ok(choiceAdminPage.includes("async function addChoiceItem"));
   assert.ok(choiceAdminPage.includes("void addChoiceItem(item)"));
   assert.equal(choiceAdminPage.includes("disabled={!selected || added || busy !== \"\"}"), false);
-  assert.ok(choiceAdminPage.includes("按＋會自動建立本週草稿"));
+  assert.match(choiceAdminPage, /const collectionId = await ensureChoiceCollection\(\)/);
 });
 
 test("published Choice reaches Showtime without becoming a ranking or social publisher", () => {
   assert.ok(choiceCurrentRoute.includes('.eq("is_published", true)'));
   assert.ok(choiceCurrentRoute.includes(".limit(80)"));
   assert.ok(choiceCurrentRoute.includes("collections"));
-  assert.ok(rankPage.includes("fetchCurrentChoice"));
-  assert.ok(rankPage.includes("choiceCollections"));
+  assert.ok(rankPage.includes("PublicChoiceGallery"));
+  assert.ok(publicGallery.includes("/api/choice/current"));
   assert.ok(showtimeChoiceShelf.includes('id="choice-weekly"'));
   assert.equal(choiceAdminRoute.includes("social_posts"), false);
   assert.equal(choiceAdminRoute.includes("publish_target"), false);
@@ -151,13 +123,13 @@ test("published Creator Choice keeps history and supports a dedicated cover", ()
   assert.ok(creatorChoiceRoute.includes('action === "clear_cover"'));
   assert.ok(creatorChoiceRoute.includes("export async function POST"));
   assert.ok(creatorChoiceRoute.includes("Choice 封面欄位尚未準備完成"));
-  assert.ok(creatorChoiceProfilePage.includes("上傳封面"));
-  assert.ok(creatorChoiceProfilePage.includes("移除封面"));
-  assert.ok(creatorChoiceProfilePage.includes("IMAGE_ACCEPT"));
+  assert.match(creatorChoiceProfilePage, /type="file"/);
+  assert.match(creatorChoiceProfilePage, /copy.removeCover/);
+  assert.match(creatorChoiceProfilePage, /accept="image\/jpeg,image\/png,image\/webp,image\/gif"/);
 });
 
-test("profile exposes dedicated owner entry points for Showtime and Choice", () => {
-  assert.ok(profilePage.includes('href="/admin/showtime"'));
+test("profile exposes dedicated owner entry points for works and Choice", () => {
+  assert.ok(profilePage.includes('href="/admin/listen-bar"'));
   assert.ok(profilePage.includes('href="/admin/choice"'));
 });
 
@@ -166,9 +138,9 @@ test("Choice history opens creator editing and supports confirmed deletion", () 
   const creatorChoiceProfile = readFileSync(new URL("../src/app/profile/choice/page.tsx", import.meta.url), "utf8");
   assert.ok(creatorChoiceRoute.includes('action === "delete_collection"'));
   assert.ok(creatorChoiceRoute.includes("confirmed !== true"));
-  assert.ok(creatorChoiceProfile.includes("CHOICE LIBRARY"));
+  assert.match(creatorChoiceProfile, /collections.map/);
   assert.ok(creatorChoiceProfile.includes("delete_collection"));
-  assert.ok(creatorChoiceProfile.includes("刪除這一期"));
+  assert.match(creatorChoiceProfile, /window.confirm\(copy.confirmDelete/);
   assert.ok(creatorChoiceProfile.includes("searchParams.get(\"collection\")"));
 });
 

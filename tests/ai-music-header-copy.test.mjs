@@ -30,7 +30,8 @@ test("Explore AI Music uses a compact catalog masthead and current navigation or
   assert.ok(aiMusicSource.includes("愛心會同步加入收藏"));
   assert.ok(aiMusicSource.includes("Profile 可整理收藏歌曲"));
   assert.ok(aiMusicSource.includes("已準備 60s Drop"));
-  assert.ok(aiMusicSource.includes("守擂進度"));
+  assert.ok(aiMusicSource.includes("正式戰績"));
+  assert.equal(aiMusicSource.includes("再守下"), false);
   const worksIndex = aiMusicSource.indexOf('label: copy.browseWorks');
   const barIndex = aiMusicSource.indexOf('label: copy.bar');
   const dropIndex = aiMusicSource.indexOf('label: "Drop Battle"');
@@ -54,15 +55,13 @@ test("Explore share links stay on the shared work in the Explore catalog", () =>
   assert.ok(aiMusicSource.includes("scrollIntoView"));
 });
 
-test("Bar Heartbreak and Showtime pages state their current surface positioning", () => {
+test("Bar remains the upload radio and Showtime exposes charts and Choice without certification", () => {
   assert.ok(listenBarSource.includes("AI 音樂公播池與投稿入口"));
   assert.ok(listenBarSource.includes("也會出現在探索 AI 音樂"));
-  assert.ok(
-    showtimeSource.includes("收錄保留已獲得反應、正式戰績或策展認可的作品： 入選後不再接受挑戰"),
-  );
-  assert.ok(showtimeSource.includes("入選後不再接受挑戰"));
-  assert.ok(showtimeSource.includes("/api/ai-music/tracks"));
-  assert.ok(showtimeSource.includes("ai_music_showtime_certified"));
-  assert.ok(showtimeSource.includes('href={`/ai-music${navSuffix}`}'));
+  assert.ok(showtimeSource.includes("月排行榜"));
+  assert.ok(showtimeSource.includes("MonthlyChart"));
+  assert.ok(showtimeSource.includes("PublicChoiceGallery"));
+  assert.equal(showtimeSource.includes("ai_music_showtime_certified"), false);
+  assert.ok(showtimeSource.includes('href={`/ai-music?lang=${lang}`}'));
   assert.equal(showtimeSource.includes("href={`/battle/setup${navSuffix}`}"), false);
 });

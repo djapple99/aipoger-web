@@ -9,6 +9,11 @@ test("Showtime recognition keeps the same public audio eligible for Bar airplay"
   for (const reason of [
     { is_active: false }, { hidden_at: "2026-09-08" }, { removed_at: "2026-09-08" },
     { ai_music_showtime_public_removed_at: "2026-09-08" }, { audio_path: " " },
-    ...["hidden", "removed", "completed", "rejected"].map(review_status => ({ review_status })),
+    ...["hidden", "removed", "completed", "rejected", "pending", "moderation_hold", "moderation hold", "moderation-hold", "unknown", ""].map(review_status => ({ review_status })),
   ]) assert.equal(isPublicBarAirplayTrack({ ...row, ai_music_showtime_certified: true, ...reason }), false);
+});
+
+test("legacy null approval remains public, certification never overrides moderation", () => {
+  assert.equal(isPublicBarAirplayTrack({ audio_path: 'song.mp3', review_status: null }), true);
+  assert.equal(isPublicBarAirplayTrack({ audio_path: 'song.mp3', review_status: 'pending', ai_music_showtime_certified: true }), false);
 });

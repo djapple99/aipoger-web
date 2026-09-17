@@ -4,7 +4,6 @@ import {
   cleanShowtimeSupportLabel,
   cleanShowtimeSupportUrl,
   AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS,
-  isAiMusicPersistedShowtimeCertified,
 } from "@/lib/ai-music-showtime";
 import {
   LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS,
@@ -141,7 +140,7 @@ function cleanOwnedShowtimeCoverPath(value: unknown, userId: string) {
 
 async function readUser(admin: AdminClient, request: NextRequest) {
   const token = tokenFromRequest(request);
-  if (!token) return { userId: null, error: jsonError("請先登入後再管理 Showtime 作品。", 401) };
+  if (!token) return { userId: null, error: jsonError("請先登入後再管理作品。", 401) };
   const { data, error } = await admin.auth.getUser(token);
   if (error || !data.user) return { userId: null, error: jsonError("登入狀態已過期，請重新登入。", 401) };
   return { userId: data.user.id, error: null };
@@ -156,7 +155,7 @@ async function readOwnedShowtimeTrack(admin: AdminClient, trackId: string, userI
     .eq("source", "community")
     .maybeSingle() as ShowtimeSingleResult;
   if (error) return { track: null, error };
-  if (!data || !isAiMusicPersistedShowtimeCertified(data)) return { track: null, error: null };
+  if (!data) return { track: null, error: null };
   return { track: data, error: null };
 }
 
@@ -170,15 +169,14 @@ export async function GET(request: NextRequest) {
 
   const auth = await readUser(admin, request);
   if (auth.error) return auth.error;
-  if (!auth.userId) return jsonError("請先登入後再管理 Showtime 作品。", 401);
+  if (!auth.userId) return jsonError("請先登入後再管理作品。", 401);
 
   const result = await admin
     .from("listen_bar_tracks")
     .select(SHOWTIME_SELECT)
     .eq("created_by", auth.userId)
     .eq("source", "community")
-    .eq("ai_music_showtime_certified", true)
-    .order("ai_music_showtime_certified_at", { ascending: false }) as ShowtimeRowsResult;
+    .order("created_at", { ascending: false }) as ShowtimeRowsResult;
 
   if (result.error) {
     if (isMissingShowtimeSchema(result.error)) return NextResponse.json({ tracks: [], schemaReady: false }, { headers: { "Cache-Control": "no-store" } });
@@ -187,7 +185,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     schemaReady: true,
-    tracks: (result.data ?? []).filter((row) => row.is_active !== false),
+    tracks: result.data ?? [],
   }, { headers: { "Cache-Control": "no-store" } });
 }
 
@@ -201,14 +199,14 @@ export async function PATCH(request: NextRequest) {
 
   const auth = await readUser(admin, request);
   if (auth.error) return auth.error;
-  if (!auth.userId) return jsonError("請先登入後再管理 Showtime 作品。", 401);
+  if (!auth.userId) return jsonError("請先登入後再管理作品。", 401);
 
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   if (!isUuid(body?.trackId)) return jsonError("Invalid track id.");
 
   const { track, error: readError } = await readOwnedShowtimeTrack(admin, body.trackId, auth.userId);
   if (readError) return jsonError(readError.message, isMissingShowtimeSchema(readError) ? 409 : 500);
-  if (!track) return jsonError("找不到可管理的 Showtime 作品。", 404);
+  if (!track) return jsonError("找不到可管理的作品。", 404);
 
   const now = new Date().toISOString();
   if (body.hidePublic === true) {
@@ -217,7 +215,7 @@ export async function PATCH(request: NextRequest) {
       .update({
         ai_music_showtime_public_removed_at: now,
         ai_music_showtime_public_removed_by: auth.userId,
-        ai_music_showtime_public_removal_note: "Creator removed own Showtime public display.",
+        ai_music_showtime_public_removal_note: "Creator removed own public display.",
         ai_music_challenge_status: "showcase",
         ai_music_showtime_updated_at: now,
         updated_at: now,
@@ -232,7 +230,7 @@ export async function PATCH(request: NextRequest) {
 
   const title = hasField(body, "title")
     ? cleanText(body.title, 500)
-    : track.title?.trim() || "AIPOGER Showtime";
+    : track.title?.trim() || "AIPOGER Song";
   if (!title) return jsonError("歌名必填。", 400);
 
   const artist = hasField(body, "artist")
@@ -243,7 +241,7 @@ export async function PATCH(request: NextRequest) {
   const genre = hasField(body, "genre")
     ? cleanText(body.genre, 80)
     : track.genre ?? "Original 自我風格";
-  if (!genre || !allowedGenreValues.has(genre)) return jsonError("請從固定類型選單選擇 Showtime 類型。", 400);
+  if (!genre || !allowedGenreValues.has(genre)) return jsonError("請從固定類型選單選擇歌曲類型。", 400);
 
   const aiTool = hasField(body, "aiTool")
     ? cleanShortField(body.aiTool) ?? "AI Music"
@@ -258,7 +256,7 @@ export async function PATCH(request: NextRequest) {
     : track.youtube_url ?? null;
   const incomingCoverPath = hasField(body, "coverPath") ? cleanOwnedShowtimeCoverPath(body.coverPath, auth.userId) : null;
   if (hasField(body, "coverPath") && incomingCoverPath === null) {
-    return jsonError("Showtime 封面必須使用自己的已上傳圖片。", 400);
+    return jsonError("作品封面必須使用自己的已上傳圖片。", 400);
   }
 
   const supportUrl = Object.prototype.hasOwnProperty.call(body, "supportUrl")
@@ -295,8 +293,6 @@ export async function PATCH(request: NextRequest) {
     support_url: incomingSupport === "" ? null : supportUrl,
     support_url_label: supportUrl ? supportLabel : null,
     support_url_status: supportUrlStatus,
-    ai_music_challenge_status: "showcase",
-    ai_music_showtime_updated_at: now,
     updated_at: now,
   };
 
@@ -306,11 +302,10 @@ export async function PATCH(request: NextRequest) {
     .eq("id", track.id)
     .eq("created_by", auth.userId)
     .eq("source", "community")
-    .eq("ai_music_showtime_certified", true)
     .select(SHOWTIME_SELECT)
     .maybeSingle() as ShowtimeSingleResult;
 
   if (error) return jsonError(error.message, error.code === "23514" ? 400 : 500);
-  if (!data) return jsonError("找不到可管理的 Showtime 作品。", 404);
+  if (!data) return jsonError("找不到可管理的作品。", 404);
   return NextResponse.json({ track: data });
 }

@@ -132,7 +132,7 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
       rank: {
         eyebrow: "SHOWTIME",
         title: "AIPOGER Showtime",
-        body: "リスナーに認められたAI音楽のステージ。Weekly Choiceの候補もここから見えてくる。",
+        body: "月間チャートと、クリエイターが選ぶChoiceプレイリスト。",
         tone: "cyan",
       },
     };
@@ -161,7 +161,7 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
       rank: {
         eyebrow: "SHOWTIME",
         title: "AIPOGER Showtime",
-        body: "청중에게 인정받은 AI 음악이 서는 무대. Weekly Choice 후보도 여기서 이어집니다.",
+        body: "월간 차트와 크리에이터가 고른 Choice 플레이리스트를 만나보세요.",
         tone: "cyan",
       },
     };
@@ -190,7 +190,7 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
       rank: {
         eyebrow: "SHOWTIME",
         title: "AIPOGER Showtime",
-        body: "Recognized AI music takes the stage here. AIPOGER Choice Weekly will grow from these records.",
+        body: "Monthly charts and Choice playlists selected by creators.",
         tone: "cyan",
       },
     };
@@ -218,7 +218,7 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
     rank: {
       eyebrow: "SHOWTIME",
       title: "AIPOGER Showtime",
-      body: ["被聽眾認可的 AI 音樂在這裡上台", "AIPOGER Choice Weekly 也會從這裡長出來"],
+      body: ["聽聽本月上榜歌曲", "探索創作者的 Choice 推薦歌單"],
       tone: "cyan",
     },
   };
@@ -943,7 +943,7 @@ export default function HomePage() {
     ? [
         { href: withLang("/ai-music"), title: "AI 音樂作品", desc: "先聽歌、送愛心，再發起挑戰" },
         { href: aiMusicBibleHref, title: t("home_analyze_music_title"), desc: "Suno、歌詞、Prompt 與實戰資料庫" },
-        { href: withLang("/rank"), title: "AIPOGER Showtime", desc: "被認可作品的音樂舞台" },
+        { href: withLang("/rank"), title: "AIPOGER Showtime", desc: "月排行榜與 Choice 推薦歌單" },
         { href: choiceWeeklyHref, title: "AIPOGER Choice Weekly", desc: "每週策展與 DJ 選歌方向" },
         { href: withLang("/about"), title: "關於愛播歌", desc: "AI 創作者作品認可系統" },
       ]
@@ -951,7 +951,7 @@ export default function HomePage() {
       ? [
           { href: withLang("/ai-music"), title: "AI音楽作品", desc: "聴いて、保存して、挑戦へ" },
           { href: aiMusicBibleHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
-          { href: withLang("/rank"), title: "AIPOGER Showtime", desc: "認められたAI音楽のステージ" },
+          { href: withLang("/rank"), title: "AIPOGER Showtime", desc: "月間チャートとChoiceプレイリスト" },
           { href: choiceWeeklyHref, title: "AIPOGER Choice Weekly", desc: "週次キュレーションとDJ選曲の方向" },
           { href: withLang("/about"), title: "AIPOGERについて", desc: "AIクリエイターが成長し、作品が認められるシステム" },
         ]
@@ -959,14 +959,14 @@ export default function HomePage() {
         ? [
             { href: withLang("/ai-music"), title: "AI 음악 작품", desc: "듣고, 저장하고, 도전으로" },
             { href: aiMusicBibleHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
-            { href: withLang("/rank"), title: "AIPOGER Showtime", desc: "인정받은 AI 음악이 서는 무대" },
+            { href: withLang("/rank"), title: "AIPOGER Showtime", desc: "월간 차트와 Choice 플레이리스트" },
             { href: choiceWeeklyHref, title: "AIPOGER Choice Weekly", desc: "주간 큐레이션과 DJ 선택 방향" },
             { href: withLang("/about"), title: "AIPOGER 소개", desc: "AI 크리에이터가 성장하고 작품이 인정받는 시스템" },
           ]
     : [
         { href: withLang("/ai-music"), title: "AI Music Works", desc: "Listen, save, then challenge" },
         { href: aiMusicBibleHref, title: t("home_analyze_music_title"), desc: t("home_analyze_music_desc") },
-        { href: withLang("/rank"), title: "AIPOGER Showtime", desc: "The stage for recognized AI music" },
+        { href: withLang("/rank"), title: "AIPOGER Showtime", desc: "Monthly charts and Choice playlists" },
         { href: choiceWeeklyHref, title: "AIPOGER Choice Weekly", desc: "Weekly curation and DJ choice direction" },
         { href: withLang("/about"), title: "About AIPOGER", desc: "AI creator growth and music recognition system" },
       ];

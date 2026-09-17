@@ -6,7 +6,7 @@ const sharedPage = readFileSync(new URL("../src/app/choice/[id]/page.tsx", impor
 const sharedRoute = readFileSync(new URL("../src/app/api/choice/[id]/route.ts", import.meta.url), "utf8");
 const savedRoute = readFileSync(new URL("../src/app/api/choice/saved/route.ts", import.meta.url), "utf8");
 const profilePage = readFileSync(new URL("../src/app/profile/page.tsx", import.meta.url), "utf8");
-const rankPage = readFileSync(new URL("../src/app/rank/page.tsx", import.meta.url), "utf8");
+const publicGallery = readFileSync(new URL("../src/components/public-choice-gallery.tsx", import.meta.url), "utf8");
 const choiceShelf = readFileSync(new URL("../src/components/showtime-choice-shelf.tsx", import.meta.url), "utf8");
 const commentsDialog = readFileSync(new URL("../src/components/choice-comments-dialog.tsx", import.meta.url), "utf8");
 const commentsRoute = readFileSync(new URL("../src/app/api/choice/comments/route.ts", import.meta.url), "utf8");
@@ -91,7 +91,7 @@ test("signed-in Profile exposes saved Choice playlists and removal", () => {
 });
 
 test("official Choice shelf shares a unique public page instead of the rank anchor", () => {
-  assert.match(rankPage, /choicePublicPath\(choiceCollection\.id, "official"\)/);
+  assert.match(publicGallery, /choicePublicPath\(collection\.id, "official"\)/);
 });
 
 test("Choice comments are collection-level, authenticated for writes, and owner-removable", () => {
@@ -111,5 +111,6 @@ test("publishing Choice persists the visible title and recommendation copy in th
   assert.match(creatorChoiceRoute, /hasDraftFields/);
   assert.match(creatorChoiceRoute, /title: cleanText\(body\?\.title, 120\)/);
   assert.match(adminChoiceRoute, /curator_identity: curatorIdentity\(body\?\.curatorIdentity\)/);
-  assert.match(profileChoicePage, /isPublished: !selected\.isPublished, weekStart, title, intro/);
+  assert.match(profileChoicePage, /isPublished: !selected\.isPublished, \.\.\.draft/);
+  assert.match(profileChoicePage, /type Draft = \{ weekStart: string; title: string; intro: string \}/);
 });

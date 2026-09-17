@@ -7,6 +7,7 @@ import {
   type AipogerChoiceCuratorIdentity,
 } from "@/lib/aipoger-choice";
 import { loadChoiceSelectionCatalog } from "@/lib/server-choice-catalog";
+import { loadCreatorChoicePlaybackCatalog } from "@/lib/server-creator-choice-catalog";
 import { LISTEN_BAR_COVER_BUCKET } from "@/lib/listen-bar";
 
 type CollectionKind = "official" | "creator";
@@ -126,7 +127,9 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     const kind: CollectionKind = request.nextUrl.searchParams.get("kind") === "official" ? "official" : "creator";
     if (!isUuid(id)) return NextResponse.json({ error: "找不到這份 Choice。" }, { status: 404 });
     const admin = adminClient();
-    const catalog = await loadChoiceSelectionCatalog(admin);
+    const catalog = kind === "creator"
+      ? await loadCreatorChoicePlaybackCatalog(admin)
+      : await loadChoiceSelectionCatalog(admin);
     if (!catalog.schemaReady) return NextResponse.json({ error: "Showtime 資料尚未準備完成。" }, { status: 409 });
 
     if (kind === "official") {

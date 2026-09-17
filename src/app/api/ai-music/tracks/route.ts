@@ -2,12 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   AI_MUSIC_CHALLENGE_BATTLE_TYPE,
-  AI_MUSIC_SHOWTIME_DEFENSE_SUCCESS_TARGET,
-  aiMusicShowtimeDefenseRemaining,
 } from "@/lib/ai-music-challenge-rules";
 import { buildAiMusicSurfaceLifecycleMap, isAiMusicLifecycleSchemaMissing } from "@/lib/ai-music-surface-lifecycle";
 import { AI_MUSIC_HEAT_WINDOW_MS } from "@/lib/ai-music-heat";
-import { isAiMusicPersistedShowtimeCertified, AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS } from "@/lib/ai-music-showtime";
+import { AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS } from "@/lib/ai-music-showtime";
 import { isOfficialDropBattleResult } from "@/lib/drop-battle-rematch";
 import {
   LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
@@ -16,6 +14,7 @@ import {
 } from "@/lib/listen-bar";
 import { isCurrentMusicGenre } from "@/lib/music-genres";
 import { readEarwormAffinityMap } from "@/lib/earworm-affinity";
+import { isPublicBarAirplayTrack } from "@/lib/listen-bar-airplay";
 
 type AdminClient = SupabaseClient;
 
@@ -162,16 +161,8 @@ function applyLegacyOpeningGrace(rows: ListenBarTrackRow[]): ListenBarTrackRow[]
 }
 
 function isPublicPlayableTrack(row: ListenBarTrackRow) {
-  const status = row.review_status?.toLowerCase();
-  const moderationHeld = status === "moderation_hold" || status === "moderation hold";
   return (
-    row.is_active !== false &&
-    status !== "hidden" &&
-    status !== "removed" &&
-    !moderationHeld &&
-    !row.hidden_at &&
-    !row.removed_at &&
-    Boolean(row.audio_path?.trim()) &&
+    isPublicBarAirplayTrack(row) &&
     isCurrentMusicGenre(row.genre) &&
     row.source !== "official" &&
     !row.is_featured_official
@@ -272,11 +263,9 @@ async function readRecentHeat(admin: AdminClient, trackIds: string[]) {
   return heatByTrackId;
 }
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     const admin = adminClient();
-    const url = new URL(request.url);
-    const surface = url.searchParams.get("surface") === "showtime" ? "showtime" : "explore";
     const modern = await admin
       .from("listen_bar_tracks")
       .select(MODERN_SELECT)
@@ -315,17 +304,13 @@ export async function GET(request: Request) {
         const lifecycle = lifecycleByTrackId.get(row.id);
         const recentHeat = recentHeatByTrackId.get(row.id);
         const affinity = affinityByTrackId.get(row.id);
-        const persistedShowtimeCertified = isAiMusicPersistedShowtimeCertified(row);
-        const showtimeCertified = persistedShowtimeCertified || lifecycle?.isShowtimeCertified || false;
         return {
           ...row,
+          ai_music_legacy_retirement_exempt: lifecycle?.isShowtimeCertified ?? false,
           ai_music_challenge_status: row.ai_music_challenge_status ?? "showcase",
-          ai_music_showtime_certified: showtimeCertified,
           ai_music_explore_retired: lifecycle?.retiredFromExplore ?? false,
           ai_music_official_challenge_count: lifecycle?.officialChallengeCount ?? 0,
           ai_music_official_defense_successes: lifecycle?.officialDefenseSuccesses ?? 0,
-          ai_music_showtime_defense_target: AI_MUSIC_SHOWTIME_DEFENSE_SUCCESS_TARGET,
-          ai_music_showtime_defense_remaining: aiMusicShowtimeDefenseRemaining(lifecycle?.officialDefenseSuccesses ?? 0),
           ai_music_official_wins: lifecycle?.officialWins ?? 0,
           ai_music_official_losses: lifecycle?.officialLosses ?? 0,
           ai_music_official_audience_votes: lifecycle?.officialAudienceVotes ?? 0,
@@ -336,10 +321,7 @@ export async function GET(request: Request) {
           earworm_affinity_percent: affinity?.percent ?? null,
         };
       })
-      .filter((row) => {
-        if (surface === "showtime") return row.ai_music_showtime_certified;
-        return !row.ai_music_showtime_certified && !row.ai_music_explore_retired;
-      });
+      .filter((row) => !row.ai_music_explore_retired);
 
     return NextResponse.json({ tracks }, {
       headers: {

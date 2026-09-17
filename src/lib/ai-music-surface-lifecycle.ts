@@ -1,7 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   AI_MUSIC_CHALLENGE_BATTLE_TYPE,
-  shouldCertifyAiMusicTrackForShowtimeByDefense,
   shouldRetireAiMusicTrackFromExplore,
 } from "@/lib/ai-music-challenge-rules";
 import { isOfficialDropBattleResult } from "@/lib/drop-battle-rematch";
@@ -169,10 +168,8 @@ export async function buildAiMusicSurfaceLifecycleMap(admin: AdminClient, rows: 
   for (const row of rows) {
     const stats = challengeStats.get(row.id) ?? cloneEmptyStats();
     const persistedShowtimeCertified = isAiMusicPersistedShowtimeCertified(row);
-    stats.isShowtimeCertified = persistedShowtimeCertified || shouldCertifyAiMusicTrackForShowtimeByDefense({
-      officialDefenseSuccesses: stats.officialDefenseSuccesses,
-      isShowtimeCertified: persistedShowtimeCertified,
-    });
+    // Historical flag preserves the existing eight-loss exemption, not a badge.
+    stats.isShowtimeCertified = persistedShowtimeCertified;
     stats.retiredFromExplore = shouldRetireAiMusicTrackFromExplore({
       officialLosses: stats.officialLosses,
       isShowtimeCertified: stats.isShowtimeCertified,

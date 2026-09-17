@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS, isAiMusicPersistedShowtimeCertified } from "@/lib/ai-music-showtime";
+import { AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS } from "@/lib/ai-music-showtime";
 
 type ListenBarRemoveTrackDatabase = {
   public: {
@@ -106,9 +106,6 @@ export async function POST(request: NextRequest) {
     if (trackError) return jsonError(trackError.message, 500);
     if (!track || track.source !== "community" || !track.is_active) return jsonError("Track not found.", 404);
     if (track.created_by !== userData.user.id) return jsonError("只能撤下自己的歌曲。", 403);
-    if (isAiMusicPersistedShowtimeCertified(track)) {
-      return jsonError("Showtime 作品請改用 Showtime 展示管理；不能從傷心酒吧流程移除底層認可紀錄。", 409);
-    }
 
     const now = new Date().toISOString();
     let updateResult = await admin

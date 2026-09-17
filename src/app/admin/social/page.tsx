@@ -373,7 +373,7 @@ export default function AdminSocialPage() {
           </div>
           <nav className="flex flex-wrap gap-2 text-xs font-black">
             <Link href="/admin/choice" className="rounded-full border border-white/15 px-3 py-2 text-zinc-200">Choice 管理</Link>
-            <Link href="/admin/showtime" className="rounded-full border border-white/15 px-3 py-2 text-zinc-200">Showtime 管理</Link>
+            <Link href="/admin/listen-bar" className="rounded-full border border-white/15 px-3 py-2 text-zinc-200">作品管理</Link>
             <Link href="/admin/analytics" className="rounded-full border border-white/15 px-3 py-2 text-zinc-200">數據</Link>
           </nav>
         </header>

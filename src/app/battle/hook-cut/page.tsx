@@ -97,7 +97,7 @@ const T = {
     rematchDesc: '請在 120 秒內完成上傳，這場會沿用上一場 genre。',
     rematchComplete: '守擂挑戰已接上，前往下一場 Battle。',
     fullSongTitle: '勝出後公開完整作品',
-    fullSongDesc: 'Battle 仍只播放你的 Drop。勾選後，正式勝出時完整歌曲會在 Showtime 公開；YouTube MV 連結可在勝出後再提交。',
+    fullSongDesc: 'Battle 仍只播放你的 Drop。勾選後，正式勝出時完整歌曲會在戰報公開；YouTube MV 連結可在勝出後再提交。',
   },
   en: {
     title: 'Drop Battle Cut',
@@ -141,7 +141,7 @@ const T = {
     rematchDesc: 'Finish uploading within 120 seconds. This battle keeps the previous genre.',
     rematchComplete: 'Rematch connected. Entering the next Battle.',
     fullSongTitle: 'Publish the full song after a win',
-    fullSongDesc: 'The battle still uses your Drop. If enabled, the full song appears in Showtime after an official win; you can submit the YouTube MV link after the result.',
+    fullSongDesc: 'The battle still uses your Drop. If enabled, the full song appears with the official battle record after a win; you can submit the YouTube MV link after the result.',
   },
 } as const;
 

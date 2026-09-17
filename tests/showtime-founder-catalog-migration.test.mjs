@@ -18,7 +18,6 @@ const applyScriptSource = readFileSync(new URL("../scripts/showtime-founder-cata
 const migrationSource = readFileSync(new URL("../supabase/20260710_showtime_founder_catalog.sql", import.meta.url), "utf8");
 const archiveRemovalMigrationSource = readFileSync(new URL("../supabase/20260710_showtime_archive_public_removal.sql", import.meta.url), "utf8");
 const supportUrlMigrationSource = readFileSync(new URL("../supabase/20260710_listen_bar_support_url_schema.sql", import.meta.url), "utf8");
-const productRulesSource = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
 const listenBarSource = readFileSync(new URL("../src/app/listen-bar/page.tsx", import.meta.url), "utf8");
 
 test("founder catalog uses persisted Showtime state instead of old dynamic Heart/day eligibility", () => {
@@ -28,27 +27,22 @@ test("founder catalog uses persisted Showtime state instead of old dynamic Heart
   assert.ok(lifecycleSource.includes("isAiMusicPersistedShowtimeCertified"));
   assert.equal(lifecycleSource.includes("showtimeTrackIdsFromListenBarRows"), false);
   assert.equal(lifecycleSource.includes("listenBarIsHonorEligible"), false);
-  assert.ok(productRulesSource.includes("persisted recognition state"));
-  assert.ok(productRulesSource.includes("public_time <= now() - 30 days"));
-  assert.ok(productRulesSource.includes("including works exactly 30 days old"));
-  assert.ok(productRulesSource.includes("not a public or recurring `30 days -> Showtime` promise"));
+  assert.ok(migrationSource.includes("ai_music_showtime_certified_at"));
 });
 
-test("Explore keeps its current catalog while Bar allows recognized airplay", () => {
-  assert.ok(aiMusicTracksRouteSource.includes('surface = url.searchParams.get("surface") === "showtime"'));
-  assert.ok(aiMusicTracksRouteSource.includes('if (surface === "showtime") return row.ai_music_showtime_certified'));
-  assert.ok(aiMusicTracksRouteSource.includes("return !row.ai_music_showtime_certified && !row.ai_music_explore_retired"));
+test("Explore and Bar no longer exclude historical certified community songs", () => {
+  assert.equal(aiMusicTracksRouteSource.includes('surface === "showtime"'), false);
+  assert.ok(aiMusicTracksRouteSource.includes('.filter((row) => !row.ai_music_explore_retired)'));
   assert.ok(listenBarTracksRouteSource.includes("isPublicBarAirplayTrack"));
-  assert.ok(rankSource.includes("surface=showtime"));
+  assert.equal(rankSource.includes("surface=showtime"), false);
   assert.equal(rankSource.includes("listenBarIsHonorEligible"), false);
 });
 
-test("Showtime works cannot be challenged or removed through old Bar flows", () => {
-  assert.ok(challengeRouteSource.includes("Showtime 作品入選後不再接受挑戰"));
-  assert.ok(challengeRouteSource.includes("isAiMusicPersistedShowtimeCertified(track)"));
-  assert.ok(challengeRouteSource.includes("不能修改守擂設定"));
-  assert.ok(removeTrackRouteSource.includes("Showtime 作品請改用 Showtime 展示管理"));
-  assert.ok(removeTrackRouteSource.includes("不能從傷心酒吧流程移除底層認可紀錄"));
+test("historical recognition no longer gates explicit creator challenge preferences or soft removal", () => {
+  assert.equal(challengeRouteSource.includes("isAiMusicPersistedShowtimeCertified(track)"), false);
+  assert.ok(challengeRouteSource.includes('ai_music_challenge_status: body.status'));
+  assert.ok(removeTrackRouteSource.includes('review_status: "removed"'));
+  assert.equal(removeTrackRouteSource.includes('isAiMusicPersistedShowtimeCertified'), false);
 });
 
 test("creator Showtime management only exposes display metadata and reviewed support URL", () => {
@@ -57,7 +51,8 @@ test("creator Showtime management only exposes display metadata and reviewed sup
   assert.ok(showtimeMyTracksRouteSource.includes('ai_music_challenge_status: "showcase"'));
   assert.equal(showtimeMyTracksRouteSource.includes("audio_path: body"), false);
   assert.equal(showtimeMyTracksRouteSource.includes("ai_music_showtime_certified: body"), false);
-  assert.ok(profileSource.includes('showtime: "Showtime 展示"'));
+  assert.ok(profileSource.includes('listenBar: "我的作品"'));
+  assert.equal(showtimeMyTracksRouteSource.includes('.eq("ai_music_showtime_certified", true)'), false);
   assert.ok(profileSource.includes("/api/showtime/my-tracks"));
   assert.ok(profileSource.includes("copy.showtimeSupportPending"));
 });
@@ -85,8 +80,6 @@ test("Battle archive Showtime public removals keep history but leave the public 
   assert.ok(archiveRemovalMigrationSource.includes("showtime_public_removed_at"));
   assert.ok(archiveRemovalMigrationSource.includes("battle_result_archives_showtime_public_idx"));
   assert.ok(archiveRemovalMigrationSource.includes("keeps the original battle archive/result history intact"));
-  assert.ok(rankSource.includes(".is(\"showtime_public_removed_at\", null)"));
-  assert.ok(rankSource.includes("row.showtimePublicRemovedAt"));
   assert.ok(honorInteractionsRouteSource.includes(".is(\"showtime_public_removed_at\", null)"));
   assert.ok(dropFullSongsRouteSource.includes(".is(\"showtime_public_removed_at\", null)"));
   assert.equal(archiveRemovalMigrationSource.includes("delete from public.battle_result_archives"), false);
@@ -97,5 +90,5 @@ test("Showtime API schema includes support URL fields so modern selects do not f
   assert.ok(supportUrlMigrationSource.includes("support_url_status text not null default 'none'"));
   assert.ok(supportUrlMigrationSource.includes("listen_bar_tracks_support_url_status_check"));
   assert.ok(aiMusicTracksRouteSource.includes("AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS"));
-  assert.ok(aiMusicTracksRouteSource.includes("surface === \"showtime\""));
+  assert.ok(aiMusicTracksRouteSource.includes("isPublicBarAirplayTrack(row)"));
 });

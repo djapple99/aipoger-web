@@ -29,7 +29,7 @@ type TrackRow = {
   review_status?: string | null;
   hidden_at?: string | null;
   removed_at?: string | null;
-  ai_music_showtime_certified?: boolean | null;
+  ai_music_showtime_public_removed_at?: string | null;
 };
 
 type EarwormDatabase = SupabaseClient;
@@ -53,7 +53,7 @@ const BASE_SELECT = [
   "removed_at",
 ].join(",");
 
-const MODERN_SELECT = `${BASE_SELECT},ai_music_showtime_certified`;
+const MODERN_SELECT = `${BASE_SELECT},ai_music_showtime_public_removed_at`;
 
 function adminClient(): EarwormDatabase {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -77,9 +77,12 @@ function isPlayable(row: TrackRow) {
     !row.is_featured_official &&
     status !== "hidden" &&
     status !== "removed" &&
+    status !== "rejected" &&
+    status !== "moderation_hold" &&
+    status !== "moderation hold" &&
     !row.hidden_at &&
     !row.removed_at &&
-    !row.ai_music_showtime_certified &&
+    !row.ai_music_showtime_public_removed_at &&
     Boolean(row.audio_path?.trim()) &&
     isCurrentMusicGenre(row.genre)
   );

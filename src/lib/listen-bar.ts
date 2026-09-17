@@ -100,6 +100,7 @@ export type ListenBarTrackRow = {
   ai_music_defender_drop_lyrics?: string | null;
   ai_music_defender_drop_prepared_at?: string | null;
   ai_music_showtime_certified?: boolean | null;
+  ai_music_certification_retired_at?: string | null;
   ai_music_showtime_certified_at?: string | null;
   ai_music_showtime_certification_source?: string | null;
   ai_music_showtime_public_removed_at?: string | null;

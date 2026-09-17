@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { AipogerChoiceCatalogItem } from "@/lib/aipoger-choice";
 import type { AipogerPublicCreatorChoiceCollection } from "@/lib/creator-choice";
-import { loadChoiceSelectionCatalog } from "@/lib/server-choice-catalog";
+import { loadCreatorChoicePlaybackCatalog } from "@/lib/server-creator-choice-catalog";
 import { LISTEN_BAR_COVER_BUCKET } from "@/lib/listen-bar";
 
 type ChoiceItemRow = {
@@ -126,7 +126,7 @@ export async function GET() {
 
     const creatorIds = rows.map((row) => row.creator_id);
     const [catalog, fighterProfiles, userProfiles] = await Promise.all([
-      loadChoiceSelectionCatalog(admin),
+      loadCreatorChoicePlaybackCatalog(admin),
       admin.from("fighter_profiles").select("id,avatar_url").in("id", creatorIds),
       admin.from("user_profiles").select("id,avatar_url").in("id", creatorIds),
     ]);

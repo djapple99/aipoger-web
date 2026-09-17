@@ -43,18 +43,19 @@ test("upload asks only for post-win full-song consent and delays the MV URL", ()
   assert.equal(hookCut.includes("YouTube MV 連結（必填）"), false);
 });
 
-test("Battle Records and Showtime carry the creator-submitted MV link", () => {
+test("Battle Records retain the creator-submitted MV link independently of monthly charts", () => {
   assert.ok(fullSongRoute.includes("full_song_youtube_url"));
   assert.ok(fullSongRoute.includes("youtubeUrl:"));
   assert.ok(results.includes("BattleWinnerReleaseLink"));
   assert.ok(results.includes("觀看勝出作品 MV"));
-  assert.ok(rank.includes("youtubeUrl"));
-  assert.ok(rank.includes("觀看勝出作品 MV"));
+  assert.ok(rank.includes("MonthlyChart"));
+  assert.equal(rank.includes("fetchBattleArchivesForRank"), false);
 });
 
 test("winner release rules and release checklist are documented", () => {
   assert.ok(productRules.includes("only the winning creator may submit or update a YouTube MV URL"));
-  assert.ok(productRules.includes("complete audio is also playable in Showtime"));
+  assert.ok(productRules.includes("upload-time full-song consent"));
+  assert.ok(productRules.includes("only the winning creator may submit or update a YouTube MV URL"));
   assert.ok(releaseChecklist.includes("20260802143000_battle_winner_release_links.sql"));
   assert.ok(releaseChecklist.includes("only the winning creator can submit an HTTPS YouTube MV URL"));
 });

@@ -23,14 +23,13 @@ test("creator Choice has a separate creator-owned schema and does not replace th
   assert.match(migration, /revoke all on table public\.aipoger_creator_choice_items from anon, authenticated/i);
 });
 
-test("any signed-in creator can manage a Choice while selection includes cross-creator new releases", () => {
-  assert.match(creatorChoiceRoute, /\.eq\("created_by", userId\)/);
-  assert.match(creatorChoiceRoute, /\.eq\("ai_music_showtime_certified", true\)/);
+test("any signed-in creator can manage a Choice from their public playable favorites", () => {
+  assert.doesNotMatch(creatorChoiceRoute, /\.eq\("ai_music_showtime_certified", true\)/);
   assert.match(creatorChoiceRoute, /eligible: true/);
   assert.match(creatorChoiceHelper, /登入後即可建立自己的 Choice/);
   assert.doesNotMatch(creatorChoiceRoute, /需要至少一首已認證 Showtime 的作品/);
-  assert.match(creatorChoiceRoute, /loadChoiceSelectionCatalog\(admin\)/);
-  assert.match(creatorChoiceRoute, /Showtime 認證作品或 30 天內新歌/);
+  assert.match(creatorChoiceRoute, /loadCreatorChoiceSelectionCatalog\(guard.admin, guard.user.id\)/);
+  assert.match(creatorChoiceRoute, /自己已收藏且目前公開可播放的歌曲/);
   assert.match(creatorChoiceRoute, /item\.isPublic && item\.selectable/);
   assert.doesNotMatch(creatorChoiceRoute, /\.eq\("created_by", guard\.user\.id\).*sourceKind/s);
 });
@@ -42,7 +41,8 @@ test("creator Choice can be shared only after publication and keeps 5-10 curated
   assert.match(publicChoiceRoute, /\.eq\("is_published", true\)/);
   assert.match(publicChoiceRoute, /source\?\.isPublic/);
   assert.match(profileChoicePage, /creatorChoicePublicPath/);
-  assert.match(profileChoicePage, /不需要先有 Showtime 作品/);
+  assert.match(profileChoicePage, /!selected.isPublished && !canPublish/);
+  assert.match(profileChoicePage, /selected.isPublished \? <>/);
 });
 
 test("owner can remove a creator Choice without touching its songs", () => {
@@ -51,16 +51,18 @@ test("owner can remove a creator Choice without touching its songs", () => {
   assert.match(adminChoicePage, /刪除創作者 Choice/);
 });
 
-test("Choice selected tracks use a compact responsive editor with direct position input", () => {
+test("creator sorting exposes mobile up/down controls and owner direct position input remains", () => {
   assert.match(profileChoicePage, /pb-28 pt-24[^\"]*sm:pt-8/);
-  assert.match(profileChoicePage, /<ChoiceSelectedWorks/);
+  assert.match(profileChoicePage, /<ArrowUp/);
+  assert.match(profileChoicePage, /<ArrowDown/);
+  assert.match(profileChoicePage, /disabled=\{busy \|\| index === 0\}/);
+  assert.match(profileChoicePage, /disabled=\{busy \|\| index === count - 1\}/);
   assert.match(adminChoicePage, /<ChoiceSelectedWorks/);
   assert.match(selectedWorks, /type="number"/);
   assert.match(selectedWorks, /md:grid-cols-2/);
   assert.match(selectedWorks, /grid-cols-\[2\.5rem_2\.5rem_minmax\(0,1fr\)_auto\]/);
   assert.match(selectedWorks, /<Play/);
   assert.match(selectedWorks, /<Trash2/);
-  assert.doesNotMatch(selectedWorks, /aria-label="上移"|aria-label="下移"/);
   assert.match(creatorChoiceRoute, /requestedPosition/);
   assert.match(adminChoiceRoute, /requestedPosition/);
   assert.match(creatorChoiceRoute, /items\.splice\(targetIndex, 0, moved\)/);
@@ -68,14 +70,18 @@ test("Choice selected tracks use a compact responsive editor with direct positio
 });
 
 test("creator Choice can create a draft from the first selected song", () => {
-  assert.match(profileChoicePage, /const ensureChoiceCollection = useCallback/);
-  assert.match(profileChoicePage, /const addChoiceItem = useCallback/);
-  assert.match(profileChoicePage, /void addChoiceItem\(item\)/);
+  assert.match(profileChoicePage, /async function ensureChoiceCollection/);
+  assert.match(profileChoicePage, /async function toggleChoiceItem/);
+  assert.match(profileChoicePage, /requestAction\("ensure_collection", draft\)/);
+  assert.match(profileChoicePage, /type="checkbox" checked=\{added\}/);
+  assert.match(profileChoicePage, /void toggleChoiceItem\(item\)/);
   assert.doesNotMatch(profileChoicePage, /disabled=\{!selected \|\| added \|\| busy !== ""\}/);
-  assert.match(profileChoicePage, /按＋會自動建立本週草稿/);
-  assert.match(profileChoicePage, /ChoicePreviewPlayer/);
-  assert.match(profileChoicePage, /setPreviewTrack\(item\)/);
-  assert.match(profileChoicePage, /左下播放鈕可直接試聽/);
+  assert.match(profileChoicePage, /mutationLock.current = true/);
+  assert.match(profileChoicePage, /localStorage.setItem\(draftKey/);
+  assert.match(profileChoicePage, /musicPlayer\?\.start/);
+  assert.match(profileChoicePage, /aria-label=\{copy.search\}/);
+  assert.match(profileChoicePage, /aria-label=\{copy.genre\}/);
+  assert.doesNotMatch(profileChoicePage, /honor-board\/interactions|action: "favorite"|action: "removeFavorite"/);
 });
 
 test("creator Showtime management supports an explanatory external-link label without payment handling", () => {
@@ -84,6 +90,7 @@ test("creator Showtime management supports an explanatory external-link label wi
   assert.match(showtimeRoute, /supportLabel/);
   assert.match(showtimeRoute, /請先填寫 HTTPS 外部連結，再設定連結用途/);
   assert.match(profilePage, /連結用途/);
-  assert.match(profileChoicePage, /YouTube 頻道、MV 或外部支持／打賞頁/);
+  assert.doesNotMatch(profileChoicePage, /openSupportEditor|saveSupportLink|ownShowtimeWorks|api\/showtime\/my-tracks/);
+  assert.match(profileChoicePage, /href=\{`\/profile\?lang=\$\{lang\}`\}/);
   assert.match(profilePage, /AIPOGER 不處理付款或金額/);
 });

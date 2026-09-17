@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { buildAiMusicExploreGenreLanes } from "../src/lib/ai-music-explore-order.ts";
+import { isPublicBarAirplayTrack } from "../src/lib/listen-bar-airplay.ts";
 
 const aiMusicSource = readFileSync(new URL("../src/app/ai-music/ai-music-client.tsx", import.meta.url), "utf8");
 const aiMusicTracksRouteSource = readFileSync(new URL("../src/app/api/ai-music/tracks/route.ts", import.meta.url), "utf8");
@@ -82,6 +83,19 @@ test("one creator cannot fill the compact lane with multiple NEW works, but expa
   assert.deepEqual(kpop?.tracks.map((track) => track.id), ["newest-a", "newer-a", "older-a", "old-1", "old-2", "old-3"]);
 });
 
+test("historical certification does not exclude public works or change arrival ordering", () => {
+  const tracks = [
+    { ...work("old-certified", "K-Pop 韓式動感", "2026-07-01T12:00:00.000Z", "Old", 99), ai_music_showtime_certified: true },
+    { ...work("new-certified", "K-Pop 韓式動感", "2026-07-09T12:00:00.000Z", "New", 0), ai_music_showtime_certified: true },
+    { ...work("new-regular", "K-Pop 韓式動感", "2026-07-08T12:00:00.000Z", "Regular", 10), ai_music_showtime_certified: false },
+  ].map((track) => ({ ...track, audio_path: "song.mp3", review_status: "approved" }));
+  const eligible = tracks.filter(isPublicBarAirplayTrack);
+  assert.equal(eligible.length, 3);
+  const lane = buildAiMusicExploreGenreLanes(eligible, now).find((entry) => entry.genre === "K-Pop 韓式動感");
+  assert.deepEqual(lane.tracks.map((track) => track.id), ["new-certified", "new-regular", "old-certified"]);
+  assert.equal(isPublicBarAirplayTrack({ ...tracks[0], review_status: "moderation_hold" }), false);
+});
+
 test("Explore has no standalone latest shelf and only orders eligible tracks by created_at", () => {
   assert.ok(aiMusicSource.includes("buildAiMusicExploreGenreLanes"));
   assert.ok(aiMusicSource.includes("group.collapsedTracks"));
@@ -89,7 +103,8 @@ test("Explore has no standalone latest shelf and only orders eligible tracks by 
   assert.equal(aiMusicSource.includes("最新上架"), false);
   assert.equal(aiMusicSource.includes("72 小時新歌"), false);
   assert.ok(aiMusicTracksRouteSource.includes("isCurrentMusicGenre(row.genre)"));
-  assert.ok(aiMusicTracksRouteSource.includes('status === "moderation_hold"'));
+  assert.ok(aiMusicTracksRouteSource.includes("isPublicBarAirplayTrack(row)"));
+  assert.equal(aiMusicTracksRouteSource.includes("!row.ai_music_showtime_certified"), false);
   assert.equal(aiMusicTracksRouteSource.includes('"updated_at"'), false);
   assert.ok(productRulesSource.includes("rolling seven-day NEW window is both the badge and sorting window"));
   assert.ok(productRulesSource.includes("No standalone `最新上架` / `New Arrivals` / `72 小時新歌` shelf"));

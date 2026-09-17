@@ -56,7 +56,7 @@ type ListenBarTrack = {
   ai_music_defender_drop_prepared_at?: string | null;
 };
 
-type ShowtimeTrack = {
+type ShowtimeTrack = ListenBarTrack & {
   id: string;
   title?: string | null;
   artist?: string | null;
@@ -181,7 +181,7 @@ type CreatorItem = {
   showtimeTrack?: ShowtimeTrack | null;
 };
 
-type CreatorFilter = "all" | "listenBar" | "showtime" | "battle" | "records" | "wins" | "favorites";
+type CreatorFilter = "all" | "listenBar" | "battle" | "records" | "wins" | "favorites";
 
 type ShowtimeEditForm = {
   title: string;
@@ -361,8 +361,7 @@ function ProfileInner() {
             removeSavedChoice: "取消收藏",
             error: "部分創作資料暫時讀不到，頁面先顯示可取得的內容。",
             battle: "Drop 戰帖",
-            listenBar: "傷心酒吧",
-            showtime: "Showtime 展示",
+            listenBar: "我的作品",
             records: "對戰場次",
             wins: "勝出封存",
             favorites: "收藏歌曲",
@@ -394,14 +393,14 @@ function ProfileInner() {
             songTapToSelect: "點擊選取",
             songBatchConfirm: "確定撤下已選取的歌曲？撤下後會離開前台公播/挑戰池。",
             showtimeEdit: "編輯展示",
-            showtimeSave: "儲存 Showtime",
+            showtimeSave: "儲存作品",
             showtimeCancel: "取消",
             showtimeHide: "隱藏展示",
             showtimeHidden: "已隱藏公開展示",
             showtimeSupportPending: "支持連結待審核，審核通過才會出現在前台。",
             showtimeSupportApproved: "支持連結已核准",
-            showtimeHideConfirm: "確定隱藏這首 Showtime 作品的公開展示？不會刪除底層音檔、戰績、收藏或認可紀錄。",
-            showtimeSaveFailed: "Showtime 展示資料儲存失敗，請稍後再試。",
+            showtimeHideConfirm: "確定隱藏這首作品的公開展示？不會刪除音檔、戰績或收藏。",
+            showtimeSaveFailed: "作品資料儲存失敗，請稍後再試。",
             previousPage: "上一頁",
             nextPage: "下一頁",
             perPageHint: "每頁 10 首",
@@ -451,8 +450,7 @@ function ProfileInner() {
             removeSavedChoice: "Remove save",
             error: "Some creator data could not be loaded, so this page is showing what is available.",
             battle: "Drop Cards",
-            listenBar: "Listen Bar",
-            showtime: "Showtime Display",
+            listenBar: "My Works",
             records: "Battle Matches",
             wins: "Archived Wins",
             favorites: "Saved Songs",
@@ -484,14 +482,14 @@ function ProfileInner() {
             songTapToSelect: "Tap to select",
             songBatchConfirm: "Remove the selected songs from public/battle surfaces?",
             showtimeEdit: "Edit Display",
-            showtimeSave: "Save Showtime",
+            showtimeSave: "Save Work",
             showtimeCancel: "Cancel",
             showtimeHide: "Hide Display",
             showtimeHidden: "Public display hidden",
             showtimeSupportPending: "Support link pending review. It appears publicly only after approval.",
             showtimeSupportApproved: "Support link approved",
-            showtimeHideConfirm: "Hide this Showtime work from public display? Audio, records, favorites, and recognition history stay intact.",
-            showtimeSaveFailed: "Could not save Showtime display data. Please try again.",
+            showtimeHideConfirm: "Hide this work from public display? Audio, records, and favorites stay intact.",
+            showtimeSaveFailed: "Could not save work metadata. Please try again.",
             previousPage: "Previous",
             nextPage: "Next",
             perPageHint: "10 per page",
@@ -1297,6 +1295,7 @@ function ProfileInner() {
       if (!response.ok) throw new Error(result?.error ?? "showtime update failed");
       if (result?.track) {
         setShowtimeTracks((current) => current.map((track) => (track.id === trackId ? result.track! : track)));
+        setBarTracks((current) => current.map((track) => (track.id === trackId ? { ...track, ...result.track! } : track)));
       }
       return result?.track ?? null;
     } catch (error) {
@@ -1361,7 +1360,9 @@ function ProfileInner() {
         .filter((invite) => invite.status === "pending")
         .map((invite) => [invite.defender_track_id, invite]),
     );
-    const tracks = barTracks.map((track) => {
+    const ownedTracks = new Map<string, ShowtimeTrack>(barTracks.map((track) => [track.id, track]));
+    for (const track of showtimeTracks) ownedTracks.set(track.id, { ...track, ...ownedTracks.get(track.id) });
+    const tracks = Array.from(ownedTracks.values()).map((track) => {
       const challengeStatus = normalizeAiMusicChallengeStatus(track.ai_music_challenge_status);
       const hasDefenderDrop = hasPreparedAiMusicDefenderDrop(track.ai_music_defender_drop_audio_path);
       return {
@@ -1373,6 +1374,7 @@ function ProfileInner() {
           track.artist?.trim(),
           track.ai_tool?.trim(),
           track.genre?.trim(),
+          track.ai_music_showtime_public_removed_at || track.is_active === false ? copy.showtimeHidden : null,
           aiMusicChallengeStatusLabel(challengeStatus, lang),
           hasDefenderDrop ? copy.defenderDropReady : copy.defenderDropMissing,
           `${track.heart_count ?? track.positive_reaction_count ?? 0} ${isZh ? "反應" : "reactions"}`,
@@ -1386,43 +1388,11 @@ function ProfileInner() {
         aiTool: track.ai_tool,
         audioUrl: storagePublicUrl(LISTEN_BAR_AUDIO_BUCKET, track.audio_path),
         trackId: track.id,
+        showtimeTrack: track,
+        coverUrl: storagePublicUrl(LISTEN_BAR_COVER_BUCKET, track.cover_path) ?? DEFAULT_LISTEN_BAR_COVER,
         challengeStatus,
         hasDefenderDrop,
         pendingChallengeInvite: pendingInviteByTrackId.get(track.id) ?? null,
-      };
-    });
-
-    const showtimeItems = showtimeTracks.map((track) => {
-      const publicHidden = Boolean(track.ai_music_showtime_public_removed_at);
-      const supportStatus = track.support_url?.trim()
-        ? track.support_url_status === "approved"
-          ? copy.showtimeSupportApproved
-          : copy.showtimeSupportPending
-        : "";
-      return {
-        id: `showtime-${track.id}`,
-        category: "showtime" as const,
-        kind: copy.showtime,
-        title: track.title?.trim() || (isZh ? "未命名 Showtime 作品" : "Untitled Showtime Work"),
-        meta: [
-          track.artist?.trim(),
-          track.ai_tool?.trim(),
-          track.genre?.trim(),
-          supportStatus,
-          publicHidden ? copy.showtimeHidden : null,
-          `${track.heart_count ?? track.positive_reaction_count ?? 0} ${isZh ? "愛心" : "hearts"}`,
-        ]
-          .filter(Boolean)
-          .join(" / "),
-        href: lang === "en" ? "/rank?lang=en" : "/rank?lang=zh",
-        date: track.ai_music_showtime_certified_at ?? track.created_at,
-        artist: track.artist,
-        genre: track.genre,
-        aiTool: track.ai_tool,
-        audioUrl: storagePublicUrl(LISTEN_BAR_AUDIO_BUCKET, track.audio_path),
-        coverUrl: storagePublicUrl(LISTEN_BAR_COVER_BUCKET, track.cover_path) ?? DEFAULT_LISTEN_BAR_COVER,
-        trackId: track.id,
-        showtimeTrack: track,
       };
     });
 
@@ -1464,8 +1434,8 @@ function ProfileInner() {
       const kind =
         record.targetKind === "bar"
           ? isZh
-            ? "Showtime 認證"
-            : "Showtime certified"
+            ? "社群歌曲"
+            : "Community song"
           : isZh
             ? "Drop 勝利作品"
             : "Drop Winner";
@@ -1502,7 +1472,7 @@ function ProfileInner() {
     const favoriteRank = new Map(orderedFavoriteIds.map((id, index) => [id, index]));
     const orderedFavorites = [...favorites].sort((a, b) => (favoriteRank.get(a.id) ?? 9999) - (favoriteRank.get(b.id) ?? 9999));
 
-    return [...showtimeItems, ...tracks, ...queues, ...battleRecords, ...archivedWins, ...orderedFavorites]
+    return [...tracks, ...queues, ...battleRecords, ...archivedWins, ...orderedFavorites]
       .sort((a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime());
   }, [
     barTracks,
@@ -1514,10 +1484,7 @@ function ProfileInner() {
     copy.defenderDropReady,
     copy.honorFavorite,
     copy.listenBar,
-    copy.showtime,
     copy.showtimeHidden,
-    copy.showtimeSupportApproved,
-    copy.showtimeSupportPending,
     copy.records,
     copy.wins,
     favoriteOrder,
@@ -1536,8 +1503,7 @@ function ProfileInner() {
   );
 
   const stats = [
-    { key: "listenBar" as const, label: copy.listenBar, value: barTracks.length, sub: `${barTracks.filter((track) => track.is_active).length} ${copy.active}` },
-    { key: "showtime" as const, label: copy.showtime, value: showtimeTracks.length, sub: isZh ? "認證作品" : "certified works" },
+    { key: "listenBar" as const, label: copy.listenBar, value: creatorItems.filter((item) => item.category === "listenBar").length, sub: isZh ? "已投稿歌曲" : "submitted songs" },
     { key: "battle" as const, label: copy.battle, value: battleQueues.length, sub: isZh ? "已上傳戰帖" : "uploaded cards" },
     { key: "records" as const, label: copy.records, value: battles.length, sub: isZh ? "已進場對戰" : "entered matches" },
     { key: "wins" as const, label: copy.wins, value: wins.length, sub: isZh ? "勝利作品" : "winning tracks" },
@@ -1717,8 +1683,8 @@ function ProfileInner() {
                   <Link className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm font-bold text-zinc-100 transition hover:border-orange-300/50" href="/admin/social">
                     社群
                   </Link>
-                  <Link className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm font-bold text-zinc-100 transition hover:border-yellow-300/50" href="/admin/showtime">
-                    Showtime
+                  <Link className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm font-bold text-zinc-100 transition hover:border-yellow-300/50" href="/admin/listen-bar">
+                    {isZh ? "作品管理" : "Work Management"}
                   </Link>
                   <Link className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm font-bold text-zinc-100 transition hover:border-cyan-300/50" href="/admin/choice">
                     Choice
@@ -2027,14 +1993,15 @@ function ProfileInner() {
                     const isFavoriteSelected = selectedFavoriteIdSet.has(item.id);
                     const showListenBarBatchControls = creatorFilter === "listenBar" && item.category === "listenBar";
                     const isListenBarSelected = selectedListenBarItemIdSet.has(item.id);
-                    const showShowtimeControls = creatorFilter === "showtime" && item.category === "showtime" && Boolean(item.showtimeTrack);
+                    const showShowtimeControls = item.category === "listenBar" && Boolean(item.showtimeTrack);
                     const showtimeTrack = item.showtimeTrack ?? null;
                     const selectionModeActive = (favoriteSelectionMode && showFavoriteControls) || (listenBarSelectionMode && showListenBarBatchControls);
                     const isSelectionSelected = isFavoriteSelected || isListenBarSelected;
                     const selectionSelectedLabel = showListenBarBatchControls ? copy.songSelected : copy.favoriteSelected;
                     const selectionTapLabel = showListenBarBatchControls ? copy.songTapToSelect : copy.favoriteTapToSelect;
                     const isMarqueeSelected = selectedMarqueeItemId === item.id;
-                    const showAiMusicChallengeControls = item.category === "listenBar" && Boolean(item.trackId);
+                    const showAiMusicChallengeControls = item.category === "listenBar" && Boolean(item.trackId)
+                      && item.showtimeTrack?.is_active !== false && !item.showtimeTrack?.ai_music_showtime_public_removed_at;
                     const challengeStatus = item.challengeStatus ?? "showcase";
                     const hasDefenderDrop = Boolean(item.hasDefenderDrop);
                     const pendingChallengeInvite = item.pendingChallengeInvite ?? null;
@@ -2290,6 +2257,11 @@ function ProfileInner() {
                               >
                                 {copy.showtimeEdit}
                               </button>
+                              {showAiMusicChallengeControls && challengeStatus === "custom" && item.audioUrl ? (
+                                <button type="button" onClick={() => openChallengeCut(item)} className="rounded-full border border-orange-300/35 bg-orange-400/10 px-3 py-1.5 text-xs font-black text-orange-100">
+                                  {isZh ? "自定開戰" : "Custom Battle"}
+                                </button>
+                              ) : null}
                               <button
                                 type="button"
                                 disabled={Boolean(showtimeBusy[showtimeTrack.id]) || Boolean(showtimeTrack.ai_music_showtime_public_removed_at)}
@@ -2303,7 +2275,7 @@ function ProfileInner() {
                                 {showtimeTrack.ai_music_showtime_public_removed_at ? copy.showtimeHidden : copy.showtimeHide}
                               </button>
                             </span>
-                          ) : !selectionModeActive && item.audioUrl && item.category !== "favorites" && item.category !== "showtime" && (item.category !== "listenBar" || challengeStatus === "custom") ? (
+                          ) : !selectionModeActive && item.audioUrl && item.category !== "favorites" && (item.category !== "listenBar" || challengeStatus === "custom") ? (
                             <button
                               type="button"
                               onClick={() => openChallengeCut(item)}
@@ -2327,7 +2299,7 @@ function ProfileInner() {
                               />
                               <div className="min-w-0 flex-1">
                                 <p className="text-xs font-black text-zinc-200">{isZh ? "作品封面" : "Cover Art"}</p>
-                                <p className="mt-1 text-[11px] font-bold text-zinc-500">{isZh ? "可更換展示封面，不會更動音檔或認可紀錄。" : "Updates display art only. Audio and recognition stay locked."}</p>
+                                <p className="mt-1 text-[11px] font-bold text-zinc-500">{isZh ? "音檔與戰績維持不變。" : "Audio and battle records remain unchanged."}</p>
                               </div>
                               <label className="cursor-pointer rounded-full border border-yellow-200/30 bg-yellow-300/10 px-3 py-1.5 text-xs font-black text-yellow-100 transition hover:border-yellow-100/60">
                                 {isZh ? "更換封面" : "Replace Cover"}

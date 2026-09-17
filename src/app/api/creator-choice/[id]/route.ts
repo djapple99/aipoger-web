@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { AipogerChoiceCatalogItem } from "@/lib/aipoger-choice";
 import type { AipogerCreatorChoiceCollection } from "@/lib/creator-choice";
-import { loadChoiceSelectionCatalog } from "@/lib/server-choice-catalog";
+import { loadCreatorChoicePlaybackCatalog } from "@/lib/server-creator-choice-catalog";
 
 type ChoiceItemRow = {
   id: string;
@@ -84,7 +84,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     if (error) throw error;
     if (!data) return NextResponse.json({ error: "這份 Choice 尚未發布或已撤回。" }, { status: 404 });
 
-    const catalog = await loadChoiceSelectionCatalog(admin);
+    const catalog = await loadCreatorChoicePlaybackCatalog(admin);
     if (!catalog.schemaReady) return NextResponse.json({ error: "Choice 選歌資料尚未準備完成。" }, { status: 409 });
     return NextResponse.json({ collection: resolveCollection(data as ChoiceCollectionRow, catalog.items) }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

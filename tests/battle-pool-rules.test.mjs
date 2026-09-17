@@ -338,7 +338,7 @@ test("Explore AI Music challenges keep defender tie advantage and a six invite d
   assert.equal(shouldRetireAiMusicTrackFromExplore({ officialLosses: 8, isShowtimeCertified: false }), true);
   assert.equal(shouldRetireAiMusicTrackFromExplore({ officialLosses: 12, isShowtimeCertified: true }), false);
   assert.equal(shouldCertifyAiMusicTrackForShowtimeByDefense({ officialDefenseSuccesses: 5, isShowtimeCertified: false }), false);
-  assert.equal(shouldCertifyAiMusicTrackForShowtimeByDefense({ officialDefenseSuccesses: 6, isShowtimeCertified: false }), true);
+  assert.equal(shouldCertifyAiMusicTrackForShowtimeByDefense({ officialDefenseSuccesses: 6, isShowtimeCertified: false }), false);
   assert.equal(shouldCertifyAiMusicTrackForShowtimeByDefense({ officialDefenseSuccesses: 9, isShowtimeCertified: true }), false);
   assert.equal(
     isAiMusicTrackChallengeableOnExplore("open", "battle-audio/defender.wav", { officialLosses: 0, isShowtimeCertified: false }),
@@ -350,7 +350,7 @@ test("Explore AI Music challenges keep defender tie advantage and a six invite d
   );
   assert.equal(
     isAiMusicTrackChallengeableOnExplore("open", "battle-audio/defender.wav", { officialLosses: 0, isShowtimeCertified: true }),
-    false,
+    true,
   );
 });
 

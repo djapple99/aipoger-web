@@ -233,6 +233,17 @@ export default function GlobalMusicPlayer() {
     return () => { controller.abort(); window.clearInterval(timer); };
   }, [session?.sourceKey, close, playTrack]);
 
+  useEffect(() => {
+    const syncHeart = (event: Event) => {
+      const detail = (event as CustomEvent<{ trackId?: string; heartedToday?: boolean }>).detail;
+      if (detail?.trackId && typeof detail.heartedToday === "boolean") {
+        setHearted(current => ({ ...current, [detail.trackId!]: detail.heartedToday === true }));
+      }
+    };
+    window.addEventListener("aipoger:music-heart", syncHeart);
+    return () => window.removeEventListener("aipoger:music-heart", syncHeart);
+  }, []);
+
   const sendHeart = async () => {
     const id = track?.heartTrackId;
     if (!id || heartBusy) return;

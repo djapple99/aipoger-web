@@ -1,459 +1,372 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarDays, CheckCircle2, Pencil, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { ArrowDown, ArrowUp, Check, Copy, Eye, ExternalLink, Pencil, Play, Plus, Save, Search, Trash2, Upload, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AIPOGER_CHOICE_INTRO_MAX_LENGTH, choiceItemCountMessage, choiceWeekStart, type AipogerChoiceCatalogItem } from "@/lib/aipoger-choice";
-import {
-  creatorChoiceEligibilityMessage,
-  creatorChoicePublicPath,
-  type AipogerCreatorChoiceCollection,
-  type CreatorChoiceEligibility,
-} from "@/lib/creator-choice";
+import { AIPOGER_CHOICE_INTRO_MAX_LENGTH, type AipogerChoiceCatalogItem } from "@/lib/aipoger-choice";
+import { creatorChoicePublicPath, creatorChoiceWeekStart, type AipogerCreatorChoiceCollection } from "@/lib/creator-choice";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
-import { LISTEN_BAR_COVER_BUCKET } from "@/lib/listen-bar";
 import { rememberAuthNextPath } from "@/lib/auth-urls";
 import { supabase } from "@/lib/supabase";
-import { ChoicePreviewPlayer } from "@/components/choice-preview-player";
-import { ChoiceSelectedWorks } from "@/components/choice-selected-works";
+import { musicPlayer } from "@/lib/music-player-store";
 import { AipogerChoiceCover } from "@/components/aipoger-choice-cover";
-
-type OwnShowtimeWork = {
-  id: string;
-  title?: string | null;
-  artist?: string | null;
-  genre?: string | null;
-  cover_path?: string | null;
-  support_url?: string | null;
-  support_url_label?: string | null;
-  support_url_status?: string | null;
-  ai_music_showtime_certified_at?: string | null;
-  ai_music_showtime_public_removed_at?: string | null;
-};
+import { useI18n } from "@/lib/i18n";
+import { creatorChoiceCopy, creatorChoiceError } from "@/lib/creator-choice-copy";
+import { ChoiceRequestError, createCreatorChoiceRequestScope, type CreatorChoiceRequestScope } from "@/lib/creator-choice-client";
 
 type ChoicePayload = {
   schemaReady?: boolean;
-  eligibility?: CreatorChoiceEligibility;
-  ownShowtimeWorks?: OwnShowtimeWork[];
   catalog?: AipogerChoiceCatalogItem[];
   collections?: AipogerCreatorChoiceCollection[];
   error?: string;
 };
-
-const MAX_COVER_BYTES = 10 * 1024 * 1024;
-const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
-
-function coverUrl(path: string | null | undefined) {
-  const clean = path?.trim();
-  if (!clean) return AIPOGER_BRAND_LOGO;
-  if (/^https?:/i.test(clean)) return clean;
-  return supabase.storage.from(LISTEN_BAR_COVER_BUCKET).getPublicUrl(clean).data.publicUrl || AIPOGER_BRAND_LOGO;
-}
-
-function isAcceptedCover(file: File) {
-  return ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)
-    && file.size > 0
-    && file.size <= MAX_COVER_BYTES;
-}
-
-function displayDate(value: string | null | undefined) {
-  if (!value) return "未設定";
-  const date = new Date(`${value.slice(0, 10)}T00:00:00.000Z`);
-  if (!Number.isFinite(date.getTime())) return value;
-  return new Intl.DateTimeFormat("zh-TW", { year: "numeric", month: "short", day: "numeric" }).format(date);
-}
+type Draft = { weekStart: string; title: string; intro: string };
+const emptyDraft = (): Draft => ({ weekStart: creatorChoiceWeekStart(), title: "", intro: "" });
+const itemKey = (item: AipogerChoiceCatalogItem) => `${item.sourceKind}:${item.id}`;
+const fieldClass = "w-full min-w-0 border border-white/15 bg-black px-3 py-2 text-sm text-white outline-none focus:border-orange-300 disabled:opacity-50";
+const buttonClass = "inline-flex min-h-11 items-center justify-center gap-2 border border-white/20 px-3 py-2 text-xs font-bold text-zinc-200 hover:border-orange-300 disabled:cursor-not-allowed disabled:opacity-40";
+const iconClass = "inline-flex h-11 w-11 shrink-0 items-center justify-center border border-white/15 text-zinc-200 hover:border-orange-300 disabled:opacity-30";
 
 export default function CreatorChoicePage() {
+  const { lang } = useI18n();
+  const copy = creatorChoiceCopy[lang];
   const router = useRouter();
   const searchParams = useSearchParams();
+  const requestedId = searchParams.get("collection");
   const [loading, setLoading] = useState(true);
   const [schemaReady, setSchemaReady] = useState(true);
-  const [eligibility, setEligibility] = useState<CreatorChoiceEligibility>({ eligible: false, showtimeWorkCount: 0 });
-  const [ownWorks, setOwnWorks] = useState<OwnShowtimeWork[]>([]);
   const [catalog, setCatalog] = useState<AipogerChoiceCatalogItem[]>([]);
   const [collections, setCollections] = useState<AipogerCreatorChoiceCollection[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [weekStart, setWeekStart] = useState(choiceWeekStart());
-  const [title, setTitle] = useState("");
-  const [intro, setIntro] = useState("");
+  const [draft, setDraft] = useState<Draft>(emptyDraft);
+  const [draftKey, setDraftKey] = useState("");
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState("");
   const [query, setQuery] = useState("");
-  const [busy, setBusy] = useState("");
+  const [genre, setGenre] = useState("");
+  const [view, setView] = useState<"favorites" | "selected">("favorites");
+  const [preview, setPreview] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [editingLinkTrackId, setEditingLinkTrackId] = useState<string | null>(null);
-  const [supportUrl, setSupportUrl] = useState("");
-  const [supportLabel, setSupportLabel] = useState("");
-  const [previewTrack, setPreviewTrack] = useState<AipogerChoiceCatalogItem | null>(null);
+  const [scope, setScope] = useState<CreatorChoiceRequestScope | null>();
+  const scopeRef = useRef<CreatorChoiceRequestScope | null>(null);
+  const [retry, setRetry] = useState(0);
+  const [syncing, setSyncing] = useState(false);
+  const mutationLock = useRef(false);
+  const activeId = useRef<string | null | undefined>(undefined);
+  const selected = collections.find((collection) => collection.id === selectedId) ?? null;
+  const selectedItems = selected?.items ?? [];
+  const selectedByKey = new Map(selectedItems.map((item) => [itemKey(item), item]));
+  const count = selectedItems.length;
+  const canPublish = count >= 5 && count <= 10 && selectedItems.every((item) => item.isPublic && item.audioUrl);
+  const nextPath = `/profile/choice?lang=${lang}${requestedId ? `&collection=${encodeURIComponent(requestedId)}` : ""}`;
+  const signIn = useCallback(() => {
+    rememberAuthNextPath(nextPath);
+    router.replace(`/auth?lang=${lang}&next=${encodeURIComponent(nextPath)}`);
+  }, [lang, nextPath, router]);
 
-  const authHeader = useCallback(async (): Promise<Record<string, string>> => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+  useEffect(() => {
+    let alive = true;
+    let authEventSeen = false;
+    let currentUserId: string | null | undefined;
+    const updateSession = (id: string | null, token: string | null) => {
+      if (!alive) return;
+      if (id === currentUserId) {
+        if (token) scopeRef.current?.updateAccessToken(token);
+        return;
+      }
+      currentUserId = id;
+      scopeRef.current?.controller.abort();
+      const next = id && token ? createCreatorChoiceRequestScope(id, token) : null;
+      scopeRef.current = next;
+      activeId.current = undefined;
+      mutationLock.current = false;
+      setCatalog([]); setCollections([]); setSelectedId(null); setDraft(emptyDraft()); setDraftKey("");
+      setCoverFile(null); setCoverPreview(""); setPreview(false); setQuery(""); setGenre(""); setView("favorites");
+      setMessage(""); setError(""); setBusy(false); setSyncing(false); setLoading(Boolean(next));
+      setScope(next);
+    };
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      authEventSeen = true;
+      updateSession(session?.user.id ?? null, session?.access_token ?? null);
+    });
+    const timer = setTimeout(() => { if (!authEventSeen) updateSession(null, null); }, 15_000);
+    void supabase.auth.getSession().then(({ data, error }) => {
+      if (!alive || authEventSeen) return;
+      if (error) updateSession(null, null);
+      else updateSession(data.session?.user.id ?? null, data.session?.access_token ?? null);
+    }).catch(() => { if (!authEventSeen) updateSession(null, null); }).finally(() => clearTimeout(timer));
+    return () => { alive = false; clearTimeout(timer); subscription.unsubscribe(); scopeRef.current?.controller.abort(); };
+  }, []);
+
+  useEffect(() => { if (scope === null) signIn(); }, [scope, signIn]);
+
+  const openCollection = useCallback((collection: AipogerCreatorChoiceCollection | null) => {
+    const id = collection?.id ?? null;
+    activeId.current = id;
+    setSelectedId(id);
+    const key = `aipoger:creator-choice-draft:${scopeRef.current?.userId}:${id ?? "new"}`;
+    let next = collection ? { weekStart: collection.weekStart, title: collection.title, intro: collection.intro } : emptyDraft();
+    try {
+      const saved = JSON.parse(localStorage.getItem(key) || "null") as Draft | null;
+      if (saved && typeof saved.weekStart === "string" && typeof saved.title === "string" && typeof saved.intro === "string") next = saved;
+    } catch { /* Server draft remains available when local storage is disabled. */ }
+    setDraft(next);
+    setDraftKey(key);
+    setCoverFile(null);
+    setCoverPreview("");
+    setPreview(false);
   }, []);
 
   const loadData = useCallback(async (preferredId?: string | null) => {
-    setError("");
-    const response = await fetch("/api/creator-choice", { headers: await authHeader(), cache: "no-store" });
-    const payload = (await response.json().catch(() => null)) as ChoicePayload | null;
-    if (response.status === 401) {
-      rememberAuthNextPath("/profile/choice");
-      router.replace("/auth?next=%2Fprofile%2Fchoice");
-      return;
-    }
-    if (!response.ok) {
-      setError(payload?.error || "無法讀取自己的 Choice。");
-      return;
-    }
-    const nextCollections = payload?.collections ?? [];
-    setSchemaReady(payload?.schemaReady !== false);
-    setEligibility(payload?.eligibility ?? { eligible: false, showtimeWorkCount: 0 });
-    setOwnWorks(payload?.ownShowtimeWorks ?? []);
-    setCatalog(payload?.catalog ?? []);
+    if (!scope) return [];
+    const payload = await scope.request<ChoicePayload>("/api/creator-choice");
+    const nextCollections = payload.collections ?? [];
+    setSchemaReady(payload.schemaReady !== false);
+    setCatalog(payload.catalog ?? []);
     setCollections(nextCollections);
-    setSelectedId((current) => {
-      if (preferredId && nextCollections.some((item) => item.id === preferredId)) return preferredId;
-      if (current && nextCollections.some((item) => item.id === current)) return current;
-      return nextCollections[0]?.id ?? null;
+    const id = preferredId === undefined ? activeId.current : preferredId;
+    const next = id ? nextCollections.find((item) => item.id === id) ?? null
+      : id === null ? null : nextCollections.find((item) => item.weekStart === creatorChoiceWeekStart()) ?? null;
+    if (activeId.current === undefined || activeId.current !== (next?.id ?? null)) openCollection(next);
+    return nextCollections;
+  }, [openCollection, scope]);
+
+  useEffect(() => {
+    if (!scope) return;
+    let alive = true;
+    void loadData(requestedId || undefined).catch((cause) => {
+      if (!alive || scope.controller.signal.aborted) return;
+      if (cause instanceof ChoiceRequestError && cause.status === 401) signIn();
+      setError(copy.loadFailed);
+    }).finally(() => { if (alive && !scope.controller.signal.aborted) setLoading(false); });
+    return () => { alive = false; };
+  }, [copy.loadFailed, loadData, requestedId, retry, scope, signIn]);
+
+  useEffect(() => {
+    if (!draftKey || !scope || scope.controller.signal.aborted || !draftKey.startsWith(`aipoger:creator-choice-draft:${scope.userId}:`)) return;
+    try { localStorage.setItem(draftKey, JSON.stringify(draft)); } catch { /* Explicit server saves still work. */ }
+  }, [draft, draftKey, scope]);
+
+  useEffect(() => () => { if (coverPreview.startsWith("blob:")) URL.revokeObjectURL(coverPreview); }, [coverPreview]);
+
+  const requestAction = useCallback(async (action: string, body: Record<string, unknown>) => {
+    if (!scope) throw new Error(copy.login);
+    return scope.request<{ collectionId?: string; created?: boolean }>("/api/creator-choice", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, ...body }),
     });
-  }, [authHeader, router]);
+  }, [copy.login, scope]);
 
   useEffect(() => {
-    void loadData(searchParams.get("collection")).finally(() => setLoading(false));
-  }, [loadData, searchParams]);
+    if (!scope || !selected || selected.isPublished || busy || error ||
+      (draft.weekStart === selected.weekStart && draft.title === selected.title && draft.intro === selected.intro)) return;
+    const timer = setTimeout(() => {
+      if (mutationLock.current || scope.controller.signal.aborted) return;
+      mutationLock.current = true;
+      setBusy(true); setSyncing(true);
+      void requestAction("save_collection", { collectionId: selected.id, ...draft })
+        .then(() => loadData(selected.id))
+        .then(() => { if (!scope.controller.signal.aborted) setMessage(copy.synced); })
+        .catch((cause) => {
+          if (scope.controller.signal.aborted) return;
+          if (cause instanceof ChoiceRequestError && cause.status === 401) signIn();
+          setError(copy.saveFailed);
+        }).finally(() => {
+          if (scope.controller.signal.aborted) return;
+          mutationLock.current = false; setBusy(false); setSyncing(false);
+        });
+    }, 900);
+    return () => clearTimeout(timer);
+  }, [busy, copy.saveFailed, copy.synced, draft, error, loadData, requestAction, scope, selected, signIn]);
 
-  const selected = useMemo(
-    () => collections.find((collection) => collection.id === selectedId) ?? null,
-    [collections, selectedId],
-  );
-  const selectedItemKeys = useMemo(
-    () => new Set((selected?.items ?? []).map((item) => `${item.sourceKind}:${item.id}`)),
-    [selected],
-  );
-
-  useEffect(() => {
-    if (!selected) {
-      setWeekStart(choiceWeekStart());
-      setTitle("");
-      setIntro("");
-      setCoverFile(null);
-      setCoverPreview("");
-      return;
-    }
-    setWeekStart(selected.weekStart);
-    setTitle(selected.title);
-    setIntro(selected.intro);
-    setCoverFile(null);
-    setCoverPreview(selected.coverUrl?.trim() || selected.avatarUrl?.trim() || AIPOGER_BRAND_LOGO);
-  }, [selected]);
-
-  useEffect(() => () => {
-    if (coverPreview.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
-  }, [coverPreview]);
-
-  const runAction = useCallback(async (action: string, body: Record<string, unknown>, successMessage: string, preferredId?: string | null) => {
-    setBusy(action);
-    setError("");
-    setMessage("");
+  // One lock spans draft creation, mutation and refresh, including rapid double taps.
+  async function runOperation(operation: () => Promise<string | null>, success: string) {
+    if (!scope || scope.controller.signal.aborted || mutationLock.current) return;
+    mutationLock.current = true;
+    setBusy(true); setError(""); setMessage("");
     try {
-      const response = await fetch("/api/creator-choice", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", ...(await authHeader()) },
-        body: JSON.stringify({ action, ...body }),
-      });
-      const payload = (await response.json().catch(() => null)) as { error?: string; message?: string; collectionId?: string } | null;
-      if (!response.ok) throw new Error(payload?.error || "Choice 操作失敗。");
-      setMessage(payload?.message || successMessage);
-      await loadData(payload?.collectionId ?? preferredId ?? selectedId);
-      return { ...payload, collectionId: payload?.collectionId ?? preferredId ?? selectedId };
-    } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : "Choice 操作失敗。");
-      return null;
-    } finally {
-      setBusy("");
-    }
-  }, [authHeader, loadData, selectedId]);
+      const id = await operation();
+      scope.controller.signal.throwIfAborted();
+      await loadData(id);
+      setMessage(success);
+    } catch (cause) {
+      if (scope.controller.signal.aborted) return;
+      if (cause instanceof ChoiceRequestError && cause.status === 401) signIn();
+      setError(cause instanceof ChoiceRequestError ? creatorChoiceError(cause.message, lang) : copy.failed);
+    } finally { if (!scope.controller.signal.aborted) { mutationLock.current = false; setBusy(false); } }
+  }
 
-  const saveCollection = useCallback(async () => {
-    const pendingCoverFile = coverFile;
-    const result = await runAction("save_collection", { collectionId: selected?.id, weekStart, title, intro }, selected ? "Choice 草稿已儲存。" : "已建立自己的 Choice 草稿。", selected?.id);
-    const collectionId = result?.collectionId ?? selected?.id;
-    if (!collectionId || !pendingCoverFile) return;
-    setBusy("upload_cover");
-    setError("");
-    try {
-      const form = new FormData();
-      form.set("collectionId", collectionId);
-      form.set("file", pendingCoverFile);
-      const response = await fetch("/api/creator-choice", { method: "POST", headers: await authHeader(), body: form });
-      const payload = (await response.json().catch(() => null)) as { message?: string; error?: string; coverUrl?: string } | null;
-      if (!response.ok) throw new Error(payload?.error || "Choice 封面上傳失敗。");
-      setMessage(payload?.message || "本期 Choice 封面已更新。");
-      setCoverFile(null);
-      if (payload?.coverUrl) setCoverPreview(payload.coverUrl);
-      await loadData(collectionId);
-    } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "Choice 封面上傳失敗。");
-    } finally {
-      setBusy("");
+  async function ensureChoiceCollection() {
+    if (selected) return selected.id;
+    const result = await requestAction("ensure_collection", draft);
+    if (!result.collectionId) throw new Error(copy.createFailed);
+    if (result.created && coverFile) await persistDraft(result.collectionId);
+    return result.collectionId;
+  }
+
+  async function persistDraft(collectionId: string) {
+    await requestAction("save_collection", { collectionId, ...draft });
+    if (coverFile) {
+      const form = new FormData(); form.set("collectionId", collectionId); form.set("file", coverFile);
+      if (!scope) throw new Error(copy.login);
+      await scope.request("/api/creator-choice", { method: "POST", body: form });
+      setCoverFile(null); setCoverPreview("");
     }
-  }, [authHeader, coverFile, intro, loadData, runAction, selected, title, weekStart]);
+    try { localStorage.removeItem(draftKey); } catch { /* No local draft to clear. */ }
+  }
+
+  async function saveCollection() {
+    await runOperation(async () => {
+      if (selected) { await persistDraft(selected.id); return selected.id; }
+      const result = await requestAction("save_collection", draft);
+      if (!result.collectionId) throw new Error(copy.createFailed);
+      await persistDraft(result.collectionId);
+      return result.collectionId;
+    }, copy.saved);
+  }
+
+  async function toggleChoiceItem(item: AipogerChoiceCatalogItem) {
+    await runOperation(async () => {
+      const collectionId = await ensureChoiceCollection();
+      // Do not overwrite an existing week's draft when ensure_collection reopens it.
+      if (selected) await persistDraft(collectionId);
+      const existing = selectedByKey.get(itemKey(item));
+      await requestAction(existing ? "remove_item" : "add_item", existing
+        ? { collectionId, itemId: existing.itemId }
+        : { collectionId, sourceKind: item.sourceKind, sourceId: item.id });
+      if (!selected) {
+        try { localStorage.removeItem(draftKey); } catch { /* The new server draft is already saved. */ }
+      }
+      return collectionId;
+    }, copy.selectionSaved);
+  }
+
+  async function moveItem(itemId: string, direction: "up" | "down") {
+    if (!selected) return;
+    await runOperation(async () => {
+      await persistDraft(selected.id);
+      await requestAction("move_item", { collectionId: selected.id, itemId, direction });
+      return selected.id;
+    }, copy.orderSaved);
+  }
+
+  function play(items: AipogerChoiceCatalogItem[], item?: AipogerChoiceCatalogItem) {
+    const queue = items.filter((track): track is AipogerChoiceCatalogItem & { audioUrl: string } => Boolean(track.audioUrl && track.isPublic))
+      .map((track) => ({ ...track, id: itemKey(track) }));
+    if (!queue.length) return;
+    void musicPlayer?.start(queue, item ? Math.max(0, queue.findIndex((track) => track.id === itemKey(item))) : 0, draft.title.trim() || copy.workspace);
+  }
 
   function onCoverChange(file: File | null) {
     if (!file) return;
-    if (!isAcceptedCover(file)) {
-      setError("封面只接受 JPG、PNG、WebP、GIF，且檔案需小於 10MB。");
-      return;
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type) || file.size <= 0 || file.size > 10 * 1024 * 1024) {
+      setError(copy.coverInvalid); return;
     }
-    if (coverPreview.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
-    setCoverFile(file);
-    setCoverPreview(URL.createObjectURL(file));
-    setError("");
+    setCoverFile(file); setCoverPreview(URL.createObjectURL(file));
   }
 
-  async function clearChoiceCover() {
-    if (!selected) return;
-    if (coverFile) {
-      if (coverPreview.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
-      setCoverFile(null);
-      setCoverPreview(selected.coverUrl?.trim() || selected.avatarUrl?.trim() || AIPOGER_BRAND_LOGO);
-      return;
-    }
-    await runAction("clear_cover", { collectionId: selected.id }, "已移除本期 Choice 封面。", selected.id);
-  }
+  const sourceItems = view === "selected" ? selectedItems : catalog;
+  const genres = useMemo(() => [...new Set([...catalog, ...collections.flatMap((collection) => collection.items)].map((item) => item.genre).filter(Boolean))].sort(), [catalog, collections]);
+  const filteredCatalog = sourceItems.filter((item) => (!genre || item.genre === genre)
+    && `${item.isPublic ? item.title : copy.unavailable} ${item.artist} ${item.genre}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+  const currentCover = coverPreview || selected?.coverUrl || selected?.avatarUrl || AIPOGER_BRAND_LOGO;
 
-  const ensureChoiceCollection = useCallback(async () => {
-    if (selected) return selected.id;
-    const result = await runAction(
-      "save_collection",
-      { weekStart, title, intro },
-      "已建立自己的 Choice 草稿。",
-    );
-    return result?.collectionId ?? null;
-  }, [intro, runAction, selected, title, weekStart]);
-
-  const addChoiceItem = useCallback(async (item: AipogerChoiceCatalogItem) => {
-    if (busy !== "" || selectedItemKeys.has(`${item.sourceKind}:${item.id}`)) return;
-    const collectionId = await ensureChoiceCollection();
-    if (!collectionId) return;
-    await runAction(
-      "add_item",
-      { collectionId, sourceKind: item.sourceKind, sourceId: item.id },
-      "已加入你的 Choice。",
-      collectionId,
-    );
-  }, [busy, ensureChoiceCollection, runAction, selectedItemKeys]);
-
-  const moveChoiceItem = useCallback(async (itemId: string, position: number) => {
-    if (!selected) return false;
-    const result = await runAction(
-      "move_item",
-      { collectionId: selected.id, itemId, position },
-      "Choice 順序已更新。",
-      selected.id,
-    );
-    return Boolean(result);
-  }, [runAction, selected]);
-
-  const deleteChoice = useCallback(async () => {
-    if (!selected) return;
-    if (!window.confirm(`確定刪除「${selected.title.trim() || "這一期 Choice"}」？這一期的歌曲排序與封面會一併移除，但不會刪除歌曲本身。`)) return;
-    await runAction("delete_collection", { collectionId: selected.id, confirmed: true }, "這一期 Choice 已刪除。", null);
-  }, [runAction, selected]);
-
-  const openSupportEditor = useCallback((work: OwnShowtimeWork) => {
-    setEditingLinkTrackId(work.id);
-    setSupportUrl(work.support_url?.trim() ?? "");
-    setSupportLabel(work.support_url_label?.trim() ?? "");
-  }, []);
-
-  const saveSupportLink = useCallback(async () => {
-    if (!editingLinkTrackId) return;
-    setBusy(`support:${editingLinkTrackId}`);
-    setError("");
-    setMessage("");
-    try {
-      const response = await fetch("/api/showtime/my-tracks", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", ...(await authHeader()) },
-        body: JSON.stringify({ trackId: editingLinkTrackId, supportUrl, supportLabel }),
-      });
-      const payload = (await response.json().catch(() => null)) as { track?: OwnShowtimeWork; error?: string } | null;
-      if (!response.ok) throw new Error(payload?.error || "連結儲存失敗。");
-      if (payload?.track) {
-        setOwnWorks((current) => current.map((work) => (work.id === editingLinkTrackId ? { ...work, ...payload.track } : work)));
-      }
-      setEditingLinkTrackId(null);
-      setMessage("外部連結已儲存，更新後會重新確認公開狀態。");
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "連結儲存失敗。");
-    } finally {
-      setBusy("");
-    }
-  }, [authHeader, editingLinkTrackId, supportLabel, supportUrl]);
-
-  const filteredCatalog = useMemo(() => {
-    const needle = query.trim().toLocaleLowerCase();
-    if (!needle) return catalog;
-    return catalog.filter((item) => `${item.title} ${item.artist} ${item.genre} ${item.recognition}`.toLocaleLowerCase().includes(needle));
-  }, [catalog, query]);
-
-  const copyPublicLink = useCallback(async () => {
-    if (!selected) return;
-    const href = new URL(creatorChoicePublicPath(selected.id), window.location.origin).toString();
-    try {
-      await navigator.clipboard.writeText(href);
-      setMessage("公開 Choice 連結已複製。");
-    } catch {
-      setError("無法複製連結，請從公開頁手動複製網址。");
-    }
-  }, [selected]);
-
-  if (loading) {
-    return <main className="min-h-screen bg-[#050505] px-5 pb-10 pt-24 text-sm font-black text-zinc-400 sm:pt-10">正在準備你的 Choice...</main>;
-  }
+  if (loading || !scope) return <main className="min-h-screen bg-[#050505] px-5 pb-28 pt-24 text-sm text-zinc-400">{copy.loading}</main>;
 
   return (
     <main className="min-h-screen bg-[#050505] px-4 pb-28 pt-24 text-zinc-100 sm:px-7 sm:pt-8 lg:px-10">
-      <div className="mx-auto max-w-7xl">
-        <header className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-5">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.24em] text-yellow-100/70">CREATOR DESK</p>
-            <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">我的 Choice / Showtime</h1>
-            <p className="mt-2 max-w-3xl text-sm font-bold leading-6 text-zinc-400">登入後就能建立每週一份自己的 Choice，從公開 Showtime 認證作品與 30 天內新歌中挑選 5–10 首；不需要先有 Showtime 作品。</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/rank?lang=zh" className="rounded-full border border-white/15 px-3 py-2 text-xs font-black text-zinc-200 transition hover:border-yellow-200/55">看 Showtime</Link>
-            <Link href="/profile" className="rounded-full border border-white/15 px-3 py-2 text-xs font-black text-zinc-200 transition hover:border-yellow-200/55">回個人資料</Link>
-          </div>
+      <div className="mx-auto max-w-[1440px]">
+        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-white/15 pb-5">
+          <h1 className="text-3xl font-black text-white">{copy.workspace}</h1>
+          <nav className="flex flex-wrap gap-2"><Link href={`/profile?lang=${lang}`} className={buttonClass}>{copy.myWorks}</Link><Link href={`/rank?lang=${lang}#choice-weekly`} className={buttonClass}>{copy.publicChoice}<ExternalLink size={14} /></Link></nav>
         </header>
-
-        {!schemaReady ? <p className="mt-5 rounded-xl border border-red-200/30 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-100">Creator Choice 資料尚未準備完成。系統套用後會自動開放。</p> : null}
-        {message ? <p className="mt-5 rounded-xl border border-emerald-200/25 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-100">{message}</p> : null}
-        {error ? <p className="mt-5 rounded-xl border border-red-200/25 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-100">{error}</p> : null}
-
-        <section className="mt-6 border-y border-yellow-200/15 py-5">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-yellow-100/70">CURATOR STATUS</p>
-              <h2 className="mt-1 text-xl font-black text-white">Choice 已對登入創作者開放</h2>
-              <p className="mt-1 text-sm font-bold text-zinc-400">{creatorChoiceEligibilityMessage(eligibility)}</p>
-            </div>
-            <Link href="/profile" className="rounded-full border border-yellow-200/30 bg-yellow-300/10 px-4 py-2 text-xs font-black text-yellow-100 transition hover:border-yellow-100/70">編輯所有作品展示資料</Link>
-          </div>
-          {ownWorks.length ? (
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              {ownWorks.map((work) => (
-                <article key={work.id} className="min-w-0 border border-white/10 bg-black/35 p-2.5">
-                  <div className="relative aspect-square overflow-hidden bg-zinc-950">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={coverUrl(work.cover_path)} alt="" className="h-full w-full object-cover" />
-                    {work.ai_music_showtime_public_removed_at ? <span className="absolute bottom-1 left-1 rounded bg-zinc-950/90 px-1.5 py-1 text-[10px] font-black text-zinc-300">已收回展示</span> : <span className="absolute bottom-1 left-1 rounded bg-yellow-300 px-1.5 py-1 text-[10px] font-black text-black">SHOWTIME</span>}
-                  </div>
-                  <h3 className="mt-2 truncate text-sm font-black text-white">{work.title?.trim() || "未命名作品"}</h3>
-                  <p className="mt-1 truncate text-xs font-bold text-zinc-500">{work.artist?.trim() || "AIPOGER 創作者"}</p>
-                  <button type="button" onClick={() => openSupportEditor(work)} className="mt-3 w-full border border-white/12 px-2 py-1.5 text-[11px] font-black text-zinc-200 transition hover:border-yellow-200/55 hover:text-yellow-100">{work.support_url?.trim() ? "設定連結" : "加入導流連結"}</button>
-                </article>
-              ))}
-            </div>
-          ) : null}
-        </section>
-
-        {editingLinkTrackId ? (
-          <section className="mt-5 border border-yellow-200/22 bg-yellow-300/[0.045] p-4">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div><p className="text-xs font-black uppercase tracking-[0.2em] text-yellow-100/70">EXTERNAL LINK</p><h2 className="mt-1 text-lg font-black text-white">設定作品導流連結</h2></div>
-              <button type="button" onClick={() => setEditingLinkTrackId(null)} className="text-xs font-black text-zinc-400 hover:text-white">關閉</button>
-            </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <label className="grid gap-1 text-xs font-black text-zinc-300">HTTPS 連結
-                <input value={supportUrl} onChange={(event) => setSupportUrl(event.target.value)} placeholder="https://" maxLength={500} className="h-10 border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none focus:border-yellow-100/60" />
-              </label>
-              <label className="grid gap-1 text-xs font-black text-zinc-300">連結用途
-                <input value={supportLabel} onChange={(event) => setSupportLabel(event.target.value)} placeholder="例如：前往 YouTube 頻道" maxLength={80} className="h-10 border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none focus:border-yellow-100/60" />
-              </label>
-            </div>
-            <p className="mt-3 text-xs font-bold leading-5 text-zinc-500">可以連到 YouTube 頻道、MV 或外部支持／打賞頁。AIPOGER 不代收款、不處理付款或金額；新增或修改後會重新確認公開狀態。</p>
-            <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => setEditingLinkTrackId(null)} className="border border-white/12 px-4 py-2 text-xs font-black text-zinc-300">取消</button><button type="button" disabled={busy.startsWith("support:")} onClick={() => void saveSupportLink()} className="border border-yellow-200/45 bg-yellow-300 px-4 py-2 text-xs font-black text-black disabled:opacity-50">{busy.startsWith("support:") ? "儲存中" : "儲存連結"}</button></div>
-          </section>
-        ) : null}
-
-        {schemaReady ? (
+        {message ? <p role="status" className="mt-4 text-sm text-emerald-300">{message}</p> : null}
+        {error ? <div className="mt-4 flex flex-wrap items-center gap-3"><p role="alert" className="text-sm text-red-300">{error}</p><button type="button" disabled={busy} onClick={() => { setError(""); setRetry((value) => value + 1); }} className={buttonClass}>{copy.retry}</button></div> : null}
+        {!schemaReady ? <p role="alert" className="mt-5 text-sm text-red-200">{copy.schema}</p> : (
           <>
-            <section className="mt-7 border border-white/10 bg-black/45 p-4 sm:p-5">
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div><p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-100/75">CHOICE LIBRARY</p><h2 className="mt-1 text-xl font-black text-white">我的歷期 Choice</h2><p className="mt-1 text-xs font-bold text-zinc-500">點擊任一期的小圖示，直接載入編輯、換封面、調整歌曲或重新發布。</p></div>
-                <button type="button" onClick={() => setSelectedId(null)} className="inline-flex items-center gap-2 border border-cyan-200/35 bg-cyan-300/10 px-3 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-100/70"><Pencil className="h-3.5 w-3.5" aria-hidden="true" />新增一期</button>
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-                {collections.map((collection) => {
-                  const preview = collection.coverUrl?.trim() || collection.avatarUrl?.trim() || collection.items[0]?.coverUrl?.trim() || AIPOGER_BRAND_LOGO;
-                  return <button key={collection.id} type="button" onClick={() => setSelectedId(collection.id)} aria-pressed={collection.id === selectedId} aria-label={`編輯 ${collection.title || "這一期 Choice"}`} className={`group relative flex min-w-0 items-center gap-2 border p-2 text-left transition hover:-translate-y-0.5 ${collection.id === selectedId ? "border-cyan-100/70 bg-cyan-300/12 shadow-[0_8px_24px_rgba(34,211,238,0.12)]" : "border-white/10 bg-black/45 hover:border-cyan-100/50"}`}>
-                    <AipogerChoiceCover src={preview} className="h-12 w-12 shrink-0 border border-white/10 bg-zinc-950" logoClassName="h-4 w-5" />
-                    <span className={`absolute right-0.5 top-0.5 h-2 w-2 rounded-full border border-black ${collection.isPublished ? "bg-emerald-300" : "bg-zinc-500"}`} />
-                    <span className="min-w-0"><span className="block truncate text-xs font-black text-white">{collection.title || "未命名 Choice"}</span><span className="mt-0.5 flex items-center gap-1 text-[10px] font-bold text-zinc-500"><CalendarDays className="h-3 w-3" aria-hidden="true" />{displayDate(collection.weekStart)}</span><span className={`mt-0.5 flex items-center gap-1 text-[10px] font-black ${collection.isPublished ? "text-emerald-200" : "text-zinc-500"}`}>{collection.isPublished ? <CheckCircle2 className="h-3 w-3" aria-hidden="true" /> : null}{collection.isPublished ? "已發布" : "草稿"} · {collection.items.length} 首</span></span>
-                    <Pencil className="absolute right-1.5 top-1.5 h-3 w-3 text-cyan-100" aria-hidden="true" />
-                  </button>;
-                })}
-              </div>
-            </section>
-            <section className="mt-7 border border-cyan-200/20 bg-cyan-300/[0.035] p-4 sm:p-5">
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div><p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-100/75">MY CHOICE</p><h2 className="mt-1 text-xl font-black text-white">{selected ? `我的 ${displayDate(selected.weekStart)} Choice` : "建立自己的 Choice"}</h2></div>
-                <select value={selectedId ?? ""} onChange={(event) => setSelectedId(event.target.value || null)} className="h-10 min-w-48 border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none focus:border-cyan-100/60"><option value="">新增一期 Choice</option>{collections.map((collection) => <option key={collection.id} value={collection.id}>{displayDate(collection.weekStart)}{collection.isPublished ? " · 已發布" : " · 草稿"}</option>)}</select>
-              </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-[170px_minmax(0,1fr)_minmax(0,1.4fr)]">
-                <label className="grid gap-1 text-xs font-black text-zinc-300">週次（星期一）<input type="date" value={weekStart} onChange={(event) => setWeekStart(event.target.value)} className="h-10 border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none focus:border-cyan-100/60" /></label>
-                <label className="grid gap-1 text-xs font-black text-zinc-300">標題（可選）<input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} placeholder="我的本期 Choice" className="h-10 border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none focus:border-cyan-100/60" /></label>
-                <label className="grid gap-1 text-xs font-black text-zinc-300">推薦文章（可選）<textarea value={intro} onChange={(event) => setIntro(event.target.value)} maxLength={AIPOGER_CHOICE_INTRO_MAX_LENGTH} rows={5} placeholder="寫下這期 Choice 的推薦文章。" className="border border-white/10 bg-black px-3 py-2 text-sm font-bold leading-6 text-white outline-none focus:border-cyan-100/60" /></label>
-                <div className="grid gap-2 border border-white/10 bg-black/35 p-3 md:col-span-3 md:grid-cols-[112px_minmax(0,1fr)_auto] md:items-center">
-                  <div className="relative aspect-square w-28 overflow-hidden bg-zinc-950">
-                    <AipogerChoiceCover src={coverPreview || AIPOGER_BRAND_LOGO} alt="Choice 封面預覽" className="h-full w-full" logoClassName="h-5 w-6" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-black text-zinc-200">本期 Choice 封面</p>
-                    <p className="mt-1 text-xs font-bold leading-5 text-zinc-500">JPG / PNG / WebP / GIF，最大 10MB。未設定時使用創作者頭像或預設封面。</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2 md:justify-end">
-                    <label className="cursor-pointer border border-cyan-200/45 bg-cyan-300 px-3 py-2 text-xs font-black text-black transition hover:bg-cyan-100">
-                      上傳封面
-                      <input type="file" accept={IMAGE_ACCEPT} className="sr-only" onChange={(event) => onCoverChange(event.target.files?.[0] ?? null)} />
-                    </label>
-                    {selected && (coverFile || selected.coverUrl) ? <button type="button" disabled={busy !== ""} onClick={() => void clearChoiceCover()} className="border border-white/15 px-3 py-2 text-xs font-black text-zinc-200 disabled:opacity-45">移除封面</button> : null}
-                  </div>
-                </div>
-              </div>
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4"><p className="text-xs font-bold text-zinc-500">{choiceItemCountMessage(selected?.items.length ?? 0)}</p><div className="flex flex-wrap gap-2"><button type="button" disabled={busy !== ""} onClick={() => void saveCollection()} className="border border-white/15 px-4 py-2 text-xs font-black text-zinc-100 disabled:opacity-45">{busy === "save_collection" ? "儲存中" : selected?.isPublished ? "儲存並更新發布" : selected ? "儲存草稿" : "建立草稿"}</button>{selected ? <><button type="button" disabled={busy !== ""} onClick={() => void copyPublicLink()} className="border border-white/15 px-4 py-2 text-xs font-black text-zinc-100 disabled:opacity-45">複製公開連結</button><Link href={creatorChoicePublicPath(selected.id)} className="border border-white/15 px-4 py-2 text-xs font-black text-zinc-100">看公開頁</Link><button type="button" disabled={busy !== ""} onClick={() => void runAction("set_published", { collectionId: selected.id, isPublished: !selected.isPublished, weekStart, title, intro }, selected.isPublished ? "Choice 已撤回。" : "Choice 已重新發布。", selected.id)} className={`border px-4 py-2 text-xs font-black disabled:opacity-45 ${selected.isPublished ? "border-red-200/35 bg-red-500/10 text-red-100" : "border-cyan-200/50 bg-cyan-300 text-black"}`}>{busy === "set_published" ? "處理中" : selected.isPublished ? "撤回發布" : "重新發布"}</button><button type="button" disabled={busy !== ""} onClick={() => void deleteChoice()} className="border border-red-200/25 px-4 py-2 text-xs font-black text-red-100 transition hover:border-red-200/60 disabled:opacity-45"><Trash2 className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" />刪除這一期</button></> : null}</div></div>
+            <section className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 py-4" aria-label={copy.issue}>
+              <select aria-label={copy.chooseIssue} value={selectedId ?? ""} disabled={busy} onChange={(event) => openCollection(collections.find((item) => item.id === event.target.value) ?? null)} className={`${fieldClass} sm:max-w-sm`}>
+                <option value="">{copy.newIssue}</option>
+                {collections.map((collection) => <option key={collection.id} value={collection.id}>{collection.weekStart} · {collection.isPublished ? copy.published : copy.draft} · {collection.title || copy.untitled}</option>)}
+              </select>
+              <div className="flex items-center gap-3"><span className="text-xs text-zinc-400">{selected?.isPublished ? copy.published : copy.draft} · {count} / 10</span><button type="button" disabled={busy} onClick={() => openCollection(null)} className={buttonClass}><Plus size={16} />{copy.newIssue}</button></div>
             </section>
 
-            {selected?.items.length ? (
-              <section className="mt-5 min-w-0">
-                <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-lg font-black text-white">已選作品</h2>
-                  <span className="text-xs font-bold text-zinc-500">{selected.items.length} / 10</span>
+            <div className="grid min-w-0 gap-8 py-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(360px,1fr)]">
+              <section className="min-w-0" aria-label={copy.selection}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex border-b border-white/15" role="tablist" aria-label={copy.source}>
+                    {([ ["favorites", `${copy.favorites} (${catalog.length})`], ["selected", `${copy.selected} (${count})`] ] as const).map(([value, label]) => <button key={value} role="tab" aria-selected={view === value} type="button" onClick={() => setView(value)} className={`min-h-11 border-b-2 px-3 text-sm font-bold ${view === value ? "border-orange-400 text-orange-200" : "border-transparent text-zinc-400"}`}>{label}</button>)}
+                  </div>
+                  <a href="#choice-editor" className="text-sm text-orange-200 xl:hidden">{copy.editIssue}</a>
                 </div>
-                <div className="mt-3">
-                  <ChoiceSelectedWorks
-                    items={selected.items}
-                    busy={busy !== ""}
-                    onPreview={setPreviewTrack}
-                    onMove={moveChoiceItem}
-                    onRemove={(itemId) => void runAction("remove_item", { collectionId: selected.id, itemId }, "已移除 Choice 作品。", selected.id)}
-                  />
+                <div className="mt-4 grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(120px,0.7fr)]">
+                  <label className="relative min-w-0"><Search aria-hidden="true" size={16} className="absolute left-3 top-3" /><input aria-label={copy.search} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={copy.searchPlaceholder} className={`${fieldClass} pl-9`} /></label>
+                  <select aria-label={copy.genre} value={genre} onChange={(event) => setGenre(event.target.value)} className={fieldClass}><option value="">{copy.allGenres}</option>{genres.map((value) => <option key={value} value={value}>{value}</option>)}</select>
                 </div>
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-6">
+                  {filteredCatalog.map((item) => {
+                    const added = selectedByKey.has(itemKey(item));
+                    const disabled = busy || (!added && (count >= 10 || !item.selectable || !item.audioUrl));
+                    return <article key={itemKey(item)} className="min-w-0 overflow-hidden border border-white/10 bg-zinc-950">
+                      <div className="relative aspect-square">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={item.coverUrl} alt="" className="h-full w-full object-cover" />
+                        <button type="button" disabled={!item.audioUrl || !item.isPublic} onClick={() => play(sourceItems, item)} aria-label={`${copy.play} ${item.isPublic ? item.title : copy.unavailable}`} title={item.audioUrl ? copy.play : copy.unavailable} className="absolute bottom-1 left-1 flex h-11 w-11 items-center justify-center rounded-full bg-black/85 text-white disabled:opacity-35"><Play size={18} /></button>
+                        <label className={`absolute right-1 top-1 flex h-11 w-11 items-center justify-center bg-black/85 ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}>
+                          <input type="checkbox" checked={added} disabled={disabled} onChange={() => void toggleChoiceItem(item)} aria-label={`${copy.checkSong}: ${item.isPublic ? item.title : copy.unavailable}`} className="h-5 w-5 accent-orange-400" />
+                        </label>
+                        {added ? <span className="absolute bottom-2 right-2 bg-orange-400 px-1.5 text-xs font-black text-black">{(selectedByKey.get(itemKey(item))?.position ?? 1).toString().padStart(2, "0")}</span> : null}
+                      </div>
+                      <div className="p-2"><h2 className="line-clamp-2 min-h-10 break-words text-xs font-bold leading-5">{item.isPublic ? item.title : copy.unavailable}</h2><p className="truncate text-[11px] text-zinc-400">{item.artist}</p></div>
+                    </article>;
+                  })}
+                </div>
+                {!filteredCatalog.length ? <p className="py-10 text-sm text-zinc-400">{query || genre ? copy.emptyFiltered : view === "selected" ? copy.emptySelected : copy.emptyFavorites}</p> : null}
               </section>
-            ) : null}
 
-            <section className="mt-7 border-t border-white/10 pt-5"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">CHOICE SELECTION POOL</p><h2 className="mt-1 text-xl font-black text-white">挑選認證作品與本週新歌</h2><p className="mt-1 text-xs font-bold text-zinc-500">可選全站公開 Showtime 認證作品及上架 30 天內的新歌，不限自己的歌；新歌入選 Choice 不等於取得 Showtime 認證。左下播放鈕可直接試聽，按＋會自動建立本週草稿。</p></div><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋歌名、創作者、類型" className="h-10 w-full border border-white/10 bg-black px-3 text-sm font-bold text-white outline-none focus:border-cyan-100/60 sm:w-72" /></div><div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4 xl:grid-cols-6">{filteredCatalog.map((item) => { const added = selectedItemKeys.has(`${item.sourceKind}:${item.id}`); return <article key={`${item.sourceKind}:${item.id}`} className="group min-w-0 overflow-hidden border border-white/10 bg-black/35"><div className="relative aspect-square overflow-hidden bg-zinc-950">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={item.coverUrl} alt="" className="h-full w-full object-cover transition duration-200 group-hover:scale-[1.025]" /><span className={`absolute left-1 top-1 bg-black/85 px-1.5 py-1 text-[9px] font-black ${item.choiceSource === "new_release" ? "text-lime-100" : "text-yellow-100"}`}>{item.choiceSource === "new_release" ? "CHOICE 新選" : "SHOWTIME"}</span><button type="button" disabled={!item.audioUrl} onClick={() => setPreviewTrack(item)} className="absolute bottom-1 left-1 flex h-7 w-7 items-center justify-center rounded-full border border-cyan-100/50 bg-black/80 text-xs font-black text-cyan-100 shadow-lg transition hover:bg-cyan-300 hover:text-black disabled:cursor-not-allowed disabled:opacity-35" aria-label={`播放 ${item.title}`} title={item.audioUrl ? "播放試聽" : "目前沒有可播放音檔"}>▶</button><button type="button" disabled={added || busy !== ""} onClick={() => void addChoiceItem(item)} className={`absolute bottom-1 right-1 flex h-7 min-w-7 items-center justify-center rounded-full border px-1.5 text-xs font-black shadow-lg disabled:opacity-40 ${added ? "border-emerald-200/35 bg-emerald-300/90 text-black" : "border-cyan-100/50 bg-black/80 text-cyan-100 hover:bg-cyan-300 hover:text-black"}`} aria-label={`${added ? "已選" : "加入 Choice"}：${item.title}`}>{added ? "已選" : "+"}</button></div><div className="p-2"><h3 className="line-clamp-2 min-h-9 text-xs font-black leading-4 text-white">{item.title}</h3><p className="mt-1 truncate text-[11px] font-bold text-zinc-500">{item.artist}</p></div></article>; })}</div></section>
+              <section id="choice-editor" className="min-w-0 scroll-mt-24 border-t border-white/15 pt-5 xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0" aria-label={copy.editor}>
+                <div className="mb-4 flex items-center justify-between gap-3"><h2 className="text-xl font-black">{copy.editor}</h2><button type="button" onClick={() => setPreview(!preview)} className={buttonClass}>{preview ? <Pencil size={16} /> : <Eye size={16} />}{preview ? copy.edit : copy.preview}</button></div>
+                <fieldset disabled={busy} className="min-w-0 space-y-4">
+                  {preview ? <div className="flex min-w-0 gap-4"><AipogerChoiceCover src={currentCover} className="h-24 w-24 shrink-0" /><div className="min-w-0"><p className="text-xs text-zinc-400">{draft.weekStart} · {selected?.curatorName || copy.workspace}</p><h3 className="mt-2 break-words text-xl font-black">{draft.title || copy.untitled}</h3><p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-zinc-300">{draft.intro}</p></div></div> : <>
+                    <label className="grid gap-2 text-xs text-zinc-300">{copy.week}<input type="date" value={draft.weekStart} onChange={(event) => setDraft({ ...draft, weekStart: event.target.value })} className={fieldClass} /></label>
+                    <label className="grid gap-2 text-xs text-zinc-300">{copy.title}<input value={draft.title} maxLength={120} onChange={(event) => setDraft({ ...draft, title: event.target.value })} className={fieldClass} /></label>
+                    <label className="grid gap-2 text-xs text-zinc-300">{copy.intro}<textarea value={draft.intro} rows={4} maxLength={AIPOGER_CHOICE_INTRO_MAX_LENGTH} onChange={(event) => setDraft({ ...draft, intro: event.target.value })} className={`${fieldClass} resize-y leading-6`} /></label>
+                    <div className="flex flex-wrap items-center gap-3"><AipogerChoiceCover src={currentCover} alt={copy.coverPreview} className="h-20 w-20 shrink-0" /><label className={`${buttonClass} cursor-pointer`}><Upload size={16} />{copy.cover}<input disabled={busy} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" onChange={(event) => { onCoverChange(event.target.files?.[0] ?? null); event.target.value = ""; }} /></label>{coverFile || selected?.coverUrl ? <button type="button" className={iconClass} aria-label={copy.removeCover} title={copy.removeCover} onClick={() => {
+                      if (coverFile) { setCoverFile(null); setCoverPreview(""); return; }
+                      if (selected) void runOperation(async () => { await requestAction("clear_cover", { collectionId: selected.id }); return selected.id; }, copy.coverRemoved);
+                    }}><X size={16} /></button> : null}</div>
+                  </>}
+                  <div className="flex flex-wrap gap-2"><button type="button" onClick={() => void saveCollection()} className={buttonClass}><Save size={16} />{busy ? copy.busy : selected?.isPublished ? copy.saveUpdate : copy.saveDraft}</button>{selected ? <button type="button" disabled={!selected.isPublished && !canPublish} onClick={() => void runOperation(async () => {
+                    await persistDraft(selected.id);
+                    await requestAction("set_published", { collectionId: selected.id, isPublished: !selected.isPublished, ...draft });
+                    return selected.id;
+                  }, selected.isPublished ? copy.withdrawn : copy.publishSuccess)} className={`${buttonClass} border-orange-300 bg-orange-400 text-black`}><Check size={16} />{selected.isPublished ? copy.withdraw : copy.publish}</button> : null}</div>
+                </fieldset>
+                {syncing ? <p role="status" className="mt-3 text-xs text-zinc-400">{copy.syncing}</p> : null}
+                <p className="mt-3 text-xs text-zinc-400">{(count < 5 ? copy.needCount.replace("{count}", String(5 - count)) : count > 10 ? copy.maxCount : copy.readyCount.replace("{count}", String(count)))}</p>
+                <div className="mt-6 flex items-center justify-between gap-2"><h3 className="text-sm font-bold">{copy.order}</h3><button type="button" disabled={!selectedItems.some((item) => item.audioUrl)} onClick={() => play(selectedItems)} className={buttonClass}><Play size={14} />{copy.playAll}</button></div>
+                <ol className="mt-3 space-y-2">
+                  {selectedItems.map((item, index) => <li key={item.itemId} className="min-w-0 border-b border-white/10 pb-2">
+                    <div className="flex min-w-0 items-center gap-2"><span className="w-5 shrink-0 text-xs text-orange-200">{index + 1}</span><button type="button" disabled={!item.audioUrl} onClick={() => play(selectedItems, item)} className={iconClass} title={copy.play} aria-label={`${copy.play} ${item.isPublic ? item.title : copy.unavailable}`}><Play size={14} /></button><span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold">{item.isPublic ? item.title : copy.unavailable}</span><span className="block truncate text-xs text-zinc-400">{item.artist}</span></span></div>
+                    {!preview ? <div className="mt-1 flex justify-end gap-1"><button type="button" className={iconClass} disabled={busy || index === 0} onClick={() => void moveItem(item.itemId, "up")} title={copy.up} aria-label={`${copy.up} ${item.isPublic ? item.title : copy.unavailable}`}><ArrowUp size={16} /></button><button type="button" className={iconClass} disabled={busy || index === count - 1} onClick={() => void moveItem(item.itemId, "down")} title={copy.down} aria-label={`${copy.down} ${item.isPublic ? item.title : copy.unavailable}`}><ArrowDown size={16} /></button><button type="button" className={iconClass} disabled={busy} onClick={() => void toggleChoiceItem(item)} title={copy.remove} aria-label={`${copy.remove}: ${item.isPublic ? item.title : copy.unavailable}`}><X size={16} /></button></div> : null}
+                  </li>)}
+                </ol>
+                {selected ? <div className="mt-5 flex flex-wrap gap-2 border-t border-white/10 pt-4">
+                  {selected.isPublished ? <><Link href={`${creatorChoicePublicPath(selected.id)}&lang=${lang}`} className={buttonClass}><ExternalLink size={14} />{copy.publicPage}</Link><button type="button" className={iconClass} title={copy.copyLink} aria-label={copy.copyLink} onClick={() => { void navigator.clipboard.writeText(new URL(`${creatorChoicePublicPath(selected.id)}&lang=${lang}`, window.location.origin).toString()).then(() => setMessage(copy.copied)).catch(() => setError(copy.copyFailed)); }}><Copy size={16} /></button></> : null}
+                  <button type="button" disabled={busy} className={`${iconClass} ml-auto text-red-300`} title={copy.deleteIssue} aria-label={copy.deleteIssue} onClick={() => {
+                    if (!window.confirm(copy.confirmDelete.replace("{title}", selected.title || copy.untitled))) return;
+                    void runOperation(async () => { await requestAction("delete_collection", { collectionId: selected.id, confirmed: true }); try { localStorage.removeItem(draftKey); } catch { /* Optional local cache. */ } return null; }, copy.deleted);
+                  }}><Trash2 size={16} /></button>
+                </div> : null}
+              </section>
+            </div>
           </>
-        ) : null}
+        )}
       </div>
-      <ChoicePreviewPlayer track={previewTrack} onClose={() => setPreviewTrack(null)} />
     </main>
   );
 }

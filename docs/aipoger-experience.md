@@ -1,6 +1,6 @@
 # AIPOGER 版面與使用流程
 
-更新：2026-09-06。主文件 3／6；產品門檻與權限以 [產品規則](aipoger-product-rules.md) 為準。
+更新：2026-09-17 23:15 Asia/Taipei。主文件 3／6；產品門檻與權限以 [產品規則](aipoger-product-rules.md) 為準。本次記錄使用者已確認的 Showtime 月榜／Choice 體驗，不宣稱已完成實作或部署。
 
 This document protects AIPOGER's visual identity. Use it before redesigning any page, adding major UI, or changing user-facing copy.
 
@@ -32,7 +32,7 @@ Base:
 - Black or near-black background.
 - Orange light as the main brand energy.
 - Cyan as a small electric accent.
-- Gold/yellow only for honor, qualification, or highlighted records.
+- Gold/yellow only for highlighted music records and compact accents, not retired certification or qualification badges.
 - Use glow, border, and glass-like depth sparingly; keep the interface readable.
 
 Avoid:
@@ -174,26 +174,26 @@ UI direction:
 - Use `24H Full Song` or `24H Daily Battle` consistently where appropriate.
 - Make it clear the full song is uploaded and listeners can take time.
 - Keep global active limits visible when they are implemented.
-- Treat finished winners as Showtime records, not ranked placements.
+- Keep actual finished winner records and authorized historical audio in the Battle archive flow; do not present them as Showtime certification or monthly chart placements.
 
 ## Bar Heartbreak
 
 Role:
 
-- Public survival radio for AI music.
-- The audience helps decide what stays.
+- Continuous public listening for AI music.
+- Creators submit immediately; owner curation and moderation remain available after publication.
 
 Must preserve:
 
-- No explicit play/pause control in the main public radio experience.
+- Keep play/pause and other transport controls in the shared bottom player, not a competing radio player.
 - Listening is open.
 - Voting/commenting requires sign-in.
 - Reaction copy near buttons should encourage active voting.
 - The record visual is central and should feel like a public broadcast.
 - For a track within its first rolling 7 x 24 hours after `created_at`, place the compact `NEW` badge at the now-playing cover's upper-left and beside track titles in visible queue/pool lists. Keep it static and do not add it to the moving Battle ticker.
 - Lyrics area should be substantial enough to read, visually aligned with the comments area where practical.
-- Underfilled genres send new submissions straight into the same-genre public pool.
-- Challenger is shown only when that genre is already full and the new track is in 36-hour protection before public-pool promotion.
+- Eligible submissions enter public playback immediately under the unchanged personal upload and genre limits; show actual public song counts, not capacity denominators.
+- Do not show retired Challenger seats, 36-hour protection, survival days or automatic elimination.
 - The hero's top-right cluster should stay light; do not crowd it with the main action buttons. Put `我要播歌`, bar sharing, `探索 AI 音樂`, `Drop Battle`, and `Showtime` together in the lower hero action strip, with `Drop Battle` directly beside Explore.
 - Do not show `練功聖經` or `關於愛波哥` inside the Bar Heartbreak hero action strip unless a later explicit redesign restores them.
 - The hero action strip ticker is a moving Battle marquee, not a static truncated label.
@@ -207,40 +207,44 @@ Must preserve:
 Copy direction:
 
 - Bar Heartbreak is not a ranking list.
-- It is a survival room / public radio / listener test.
+- It is a continuous public radio and listening space, not a survival game.
 - Use emotional but clear language.
 
 ## AIPOGER Showtime
 
 Role:
 
-- Certified works catalog.
-- No fake content.
-- No numbered placement language.
 - Front-stage name is `AIPOGER Showtime`; old `Honor Board` wording is legacy/internal context, not the main public name.
-- `AIPOGER Choice Weekly` is a curation direction from Showtime records, not a separate ranking chart.
+- `/rank` has two tabs, `月榜 | Choice` / `Monthly Charts | Choice`. Default to the current month; `#choice-weekly` links select the Choice tab and retain the existing shelf anchor.
+- Monthly song support and personal curation are distinct views. No certification catalog, certification badges, six-defense progress, invitation gate or fake content.
 
-Current layout:
+Monthly chart layout:
 
-- One unified catalog of certified songs.
-- No Drop victory / Bar heat source tabs.
-- No duplicate Featured row above the same results.
-- Recognition source appears in each song card intro, for example `正式 Battle 認證`, `探索守擂認證`, or `傷心酒吧公播認證`.
-- `AIPOGER Choice` is the first content shelf: a Beatport/DJ-style horizontal row of compact square editorial cover cards, never circular curator avatars. Use the curator's existing identity cover, a direct sequential-play control, a separate full-tracklist control, a visible recommendation article excerpt, and compact heart/save plus share actions. The title is large, designed `AIPOGER CHOICE`; do not render `CURATOR SETS` or `由創作者選出他們心目中的歌單`.
-- Showtime follows underneath by genre. Use 2 cards on mobile, 3 on small desktop/tablet, 4 on large tablet, and 6 on wide desktop; cards use a shared bottom player instead of embedding a full audio control in every card.
+- Keep the `AIPOGER SHOWTIME` heading compact above the tabs and working content. Replace certified-catalog density with compact ranked cover rows, not giant leaderboard tiles or an editorial hero.
+- Put month selection, overall/genre filtering and ordered playback in one compact toolbar. Month labels use Taiwan calendar months; distinguish the updating current month from frozen historical snapshots with concise state labels.
+- Each row shows actual rank, small square cover, song title, creator, genre, monthly distinct non-author supporter count, play, song Heart and share. Use fixed rank/cover/action tracks; mobile titles may wrap to two lines without covering counts or controls.
+- Show genuine competition ties such as `1, 1, 3`. Below the product-rule minimum, use a compact unranked support-building state. Do not invent ranks, crowns, full Top 10 lists or movement arrows without real snapshots.
+- The history selector contains only snapshots from launch onward; absent history, insufficient support and data errors have concise truthful states. Monthly counts must not be labeled lifetime Hearts, Battle wins, Choice popularity or Earworm affinity.
+- Hide/moderation and playback restrictions remain effective in historical views; preserve the record without exposing restricted music or silently renumbering the frozen month.
+- No Drop victory / Bar heat / certification source tabs, duplicate Featured rows, certificate subtitle or marketing paragraph explaining how the new system works. Operational labels and accessible tooltips are enough.
 
-Showtime admin layout:
+Choice shelf and selection:
 
-- `/admin/showtime` is a dense cover-led owner catalog, not a vertical list: use 6 cards per desktop row, 3 per tablet row, 2 per mobile row, and keep each card focused on cover, identity, recognition and operations.
-- `編輯本期 Choice` reveals selection checkboxes on eligible public works plus a compact weekly curation workbench. It is a selection state, not another dashboard panel or social-publishing control.
-- The work editor may change display metadata and cover only; audio, recognition source, Hearts, votes and Battle history are visibly described as locked.
-- `/profile/choice` is a creator workbench, not an owner dashboard: first show the creator's own Showtime works and their external-link controls, then a compact all-creator Showtime cover catalog for building a personal Choice. Eligibility is earned by one Showtime-certified work; selection also includes eligible public new releases under the current product rules. Keep this visually distinct from the official owner Choice and do not add social-publishing controls.
+- Retain the existing Beatport/DJ-style horizontal shelf of compact square editorial covers inside the Choice tab, never circular curator avatars or numbered chart rows. Keep curator identity cover, authored title, curator/date metadata, recommendation excerpt, sequential play, tracklist, collection Heart/save, share and comments. Do not add `CURATOR SETS`, a standalone article HUD or explanatory marketing copy.
+- `製作我的 Choice` enters `/profile/choice` private favorites selection. Any signed-in account can use it; request sign-in only at the protected action boundary and return to the intended flow. Do not display certified-work, prior-upload or invitation requirements.
+- Show all of the user's public playable favorites, regardless of song age or historical certification. Use compact cover rows with distinct selection checkboxes, play and existing song Heart/favorite controls; keep a separate selected list with ordering, title, introduction, preview, publish and withdrawal. An empty favorites state offers a direct Explore action without marketing text.
+- Selecting the first song creates/resumes the current week's draft and adds it immediately; no preliminary create-draft task. Resume persisted work rather than clearing the selection when re-entering. Keep current week and selected count visible; publish validation follows the 5-10-song, one-per-Monday-week product rule.
+- Selection checkboxes must never look like or act as Hearts. Unselecting a song does not remove its favorite; removing a favorite or cancelling its Heart does not remove it from an existing Choice. Unavailable or moderated selections retain an honest disabled state and cannot silently play.
+- Preserve the existing interactive tracklist HUD and usable `/choice/{id}` share page. Both show stored intro, ordered songs, song actions, Play All and the shared player; public Choice remains non-ranked.
+- `/admin/showtime` and `/admin/choice` retain compact official curation and moderation controls, separate from personal Choices. Remove the manual-certification review queue, certification-only catalog and award actions. Do not add social-publishing controls to the personal workbench.
 
-UI direction:
+Own works and playback:
 
-- Present records as playable music cards, not board tiles.
-- The page should feel like a certified music shelf, not a top-10 chart or presentation slide.
-- Keep the `AIPOGER SHOWTIME` heading compact and typographic; the one-sentence certified-archive subtitle uses a clearly visible yellow accent and does not contain a forced line break.
+- Merge all creator-owned community song metadata editing into `Profile / 我的作品`, including formerly certified songs. Keep one compact paginated list and editor for cover, permitted display metadata, lyrics, YouTube and reviewed external support links; do not split normal works from locked Showtime works or place that editor above Choice selection.
+- Audio, ownership, actual Battle wins/losses, votes, Hearts and historical provenance remain protected, not editable form fields. Challenge status is a separate explicit creator action in own works, never a side effect of saving metadata or appearing in a chart/Choice. Previously certified tracks require fresh opt-in after reset; keep the normal pending-invitation Drop lock.
+- Public playable historical community works appear normally on Explore and Bar without certification badges or founder-only Showtime placement. Actual Battle history remains accessible in the information HUD; remove all six-defense promotion copy.
+- Use one shared bottom player across charts, Choice, Explore, Bar and Profile, including play/pause, seek, previous/next, volume and lyrics. No native audio controls or waveforms per row. Preserve authorized historical audio/share access without displaying it as a fabricated monthly rank.
+- Preserve the existing black/orange music-stage identity. Keep controls compact, accessible and readable on desktop/mobile; use state labels and action names, not in-app redesign explanations or marketing copy.
 
 ## Account And Login
 
@@ -465,21 +469,21 @@ Avoid:
 
 - Battle 模式介紹只保留一組標籤、短句與建立按鈕；無 Q Crash 時只顯示一行空狀態。有場次時保留青色 A/B 對戰卡區，不改資料與模式順序。
 - Explore 的依類型／正在升溫控制放在個人推薦前；切到正在升溫時直接顯示熱度作品，個人推薦保留在依類型視角。
-- 一般零戰績作品收起卡面守擂 0/6、零挑戰數與不能操作的暫不接戰；資訊按鈕仍可查完整戰績。已認證、有守擂進展或開放接戰才保留卡面進度。
+- 一般零戰績作品收起零挑戰數與不能操作的暫不接戰；資訊按鈕仍可查真實完整戰績。依 2026-09-17 確認規則，所有認證標章與守擂 0/6 晉級進度退役；接戰狀態只依創作者明確選擇與實際資格顯示。
 - 資訊按鈕可用滑鼠與鍵盤操作，桌機 hover 仍保留；播放、支持、分享與真實攻擂入口不變。
 - 對戰記錄使用得票率；本月摘要和兩模式內容遵循同一月份。跨場 audienceCount 加總稱投票人次。
-- 第二批手機耳朵蟲／酒吧、Showtime／Choice 高度調整仍在 roadmap，不能當已完成。
+- 手機耳朵蟲／酒吧的未發布高度調整仍以 roadmap 為準；Showtime／Choice 依上方 2026-09-17 已確認體驗實作，文件更新不能當作完成證據。
 
 ## 音樂分析的表達框架
 
 A&R 報告使用一句真話、聲音 DNA、歌詞診斷、市場定位、最強使用場景、情緒記憶點、商業用處、最大風險、AIPOGER 投放建議與一至兩項修改方向。將聲音觀察翻成創作者能採取的行動；沒有音訊特徵抽取或歌詞時明說證據範圍，不假裝完成分析。避免只堆 BPM／Key／分數、空泛稱讚或宣稱保證爆紅。品牌、廣告、短影音、DJ 現場等適配度是建議，不是商業成功承諾；入口與登入規則以產品正文為準。
 
-## 2026-09-08 傷心酒吧持續聆聽
+## 2026-09-08 傷心酒吧持續聆聽（歷史發布記錄）
 
 - 酒吧取消曲風容量分母、容量進度条、Challenger 區與生存天數；顯示實際可播放歌曲數。
 - 投稿即公開，主人可後續策展撤下；中英日韓使用一致的簡短投稿說明。
-- Showtime 投稿歌曲沿用原 ID 回到酒吧輪播，不因此回到探索或更新 NEW 日期。
-- 三入口方向已確認：酒吧連續聽、探索找歌、Showtime 主題策展；後兩者的整合另行實作。
+- 當批 Showtime 投稿歌曲沿用原 ID 回到酒吧輪播，當時未改探索或 NEW 日期；這不是現行曝光限制。2026-09-17 確認公開可播歷史社群作品同時出現在探索與酒吧，仍不重設 NEW 日期。
+- 當批三入口為酒吧連續聽、探索找歌、Showtime 主題策展；目前 Showtime 已確認改為月榜與 Choice 頁籤，以上方正文為準。
 
 ## 2026-09-08 共用播放器
 

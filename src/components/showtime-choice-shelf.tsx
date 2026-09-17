@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, ListMusic, MessageCircle, Play, X } from "lucide-react";
+import { Heart, ListMusic, ListPlus, MessageCircle, Play, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import ChoiceCommentsDialog from "@/components/choice-comments-dialog";
@@ -38,6 +38,7 @@ type ShowtimeChoiceShelfProps = {
   entries: ShowtimeChoiceShelfEntry[];
   lang: Lang;
   loading?: boolean;
+  loadError?: string;
   onPlay: (entry: ShowtimeChoiceShelfEntry, itemId?: string) => void;
   hearts: Record<string, ShowtimeChoiceHeartState>;
   heartBusy: Record<string, boolean>;
@@ -84,6 +85,7 @@ export default function ShowtimeChoiceShelf({
   entries,
   lang,
   loading = false,
+  loadError,
   onPlay,
   hearts,
   heartBusy,
@@ -113,7 +115,8 @@ export default function ShowtimeChoiceShelf({
           <h2 className={`${fontRighteous.className} text-4xl leading-[0.88] text-white sm:text-5xl lg:text-6xl`}>
             AIPOGER <span className="text-orange-300">CHOICE</span>
           </h2>
-          <Link href="/profile/choice" className="aipo-ghost-button rounded-full px-3 py-2 text-xs font-black text-cyan-100 transition hover:text-white">
+          <Link href={`/profile/choice?lang=${lang}`} className="aipo-ghost-button inline-flex min-h-9 max-w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-black text-cyan-100 transition hover:text-white">
+            <ListPlus className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             {copy.buildMyChoice}
           </Link>
         </div>
@@ -158,13 +161,14 @@ export default function ShowtimeChoiceShelf({
                       <time dateTime={entry.weekStart} className="shrink-0 tabular-nums text-orange-200/75">{choiceDateLabel(entry.weekStart, lang)}</time>
                     </div>
                     {entry.intro ? <p className="mt-1.5 line-clamp-2 text-[11px] font-bold leading-4 text-zinc-400 sm:text-[11px]">{entry.intro}</p> : null}
-                    <div className="mt-2 flex items-center gap-1.5 border-t border-white/10 pt-2">
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-white/10 pt-2">
                       <button
                         type="button"
                         onClick={() => onToggleHeart(entry)}
                         disabled={Boolean(heartBusy[key])}
                         className={`aipo-ghost-button inline-flex h-7 min-w-7 items-center justify-center gap-1 rounded-full px-2 text-[10px] font-black transition disabled:cursor-not-allowed disabled:opacity-45 ${heart.myHeart ? "border-rose-200/45 bg-rose-500/20 text-rose-100" : "text-zinc-200 hover:text-white"}`}
                         aria-label={heart.myHeart ? copy.removeChoice : copy.favoriteChoice}
+                        aria-pressed={heart.myHeart}
                         title={heart.myHeart ? copy.removeChoice : copy.favoriteChoice}
                       >
                         <Heart className="h-3.5 w-3.5" fill={heart.myHeart ? "currentColor" : "none"} />
@@ -209,26 +213,27 @@ export default function ShowtimeChoiceShelf({
               );
             })}
           </div>
-        ) : (
+        ) : !loadError ? (
           <p className="mt-4 border-l-2 border-orange-400 pl-3 text-sm font-bold text-zinc-500">
             {copy.noPublished}
           </p>
-        )}
-        {heartError ? <p className="mt-3 text-xs font-bold text-rose-200">{heartError}</p> : null}
+        ) : null}
+        {heartError ? <p role="alert" className="mt-3 text-xs font-bold text-rose-200">{heartError}</p> : null}
       </section>
 
       {detail && typeof document !== "undefined" ? createPortal((
         <div className="fixed inset-0 z-[230] flex items-end bg-black/78 px-3 py-4 backdrop-blur-sm sm:items-center sm:justify-center" role="dialog" aria-modal="true" aria-label={copy.tracklistPreview} onClick={() => setDetail(null)}>
-          <section className="max-h-[82vh] w-full max-w-3xl overflow-hidden rounded-lg border border-yellow-100/25 bg-[#080808] shadow-[0_28px_100px_rgba(0,0,0,0.78)]" onClick={(event) => event.stopPropagation()}>
-            <header className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 border-b border-white/10 px-4 py-4 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto] sm:px-5">
+          <section className="flex max-h-[82vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-yellow-100/25 bg-[#080808] shadow-[0_28px_100px_rgba(0,0,0,0.78)]" onClick={(event) => event.stopPropagation()}>
+            <header className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] gap-4 border-b border-white/10 px-4 py-4 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto] sm:px-5">
               <div className="col-start-1 row-start-1 min-w-0 self-center">
-                <h2 className="line-clamp-2 text-xl font-black text-white">{detail.title}</h2>
+                <h2 className="line-clamp-2 break-words text-xl font-black text-white">{detail.title}</h2>
                 <time dateTime={detail.weekStart} className="mt-1 block text-xs font-black tabular-nums text-zinc-500">{choiceDateLabel(detail.weekStart, lang)}</time>
               </div>
-              {detail.intro ? <p className="col-span-2 col-start-1 row-start-2 text-sm font-bold leading-6 text-zinc-300 sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:self-center">{detail.intro}</p> : <span className="hidden sm:block" />}
+              {detail.intro ? <p className="col-span-2 col-start-1 row-start-2 max-h-24 overflow-y-auto break-words text-sm font-bold leading-6 text-zinc-300 sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:self-center">{detail.intro}</p> : <span className="hidden sm:block" />}
               <button type="button" onClick={() => setDetail(null)} className="col-start-2 row-start-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 text-zinc-300 transition hover:border-white/30 hover:text-white sm:col-start-3" aria-label={copy.closeTracklist}><X className="h-4 w-4" /></button>
             </header>
-            <div className="max-h-[58vh] overflow-y-auto p-3 sm:p-4">
+            <div className="min-h-0 max-h-[58vh] overflow-y-auto p-3 sm:p-4">
+              {heartError ? <p role="alert" className="mb-3 text-xs font-bold text-rose-200">{heartError}</p> : null}
               <div className="grid gap-2 sm:grid-cols-2">
                 {detail.items.map((item, index) => {
                   const itemKey = choiceItemRecordKey(item);
@@ -266,7 +271,7 @@ export default function ShowtimeChoiceShelf({
                 })}
               </div>
             </div>
-            <footer className="flex items-center justify-between gap-3 border-t border-white/10 px-4 py-3">
+            <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-white/10 px-4 py-3">
               <button type="button" onClick={() => {
                 onPlay(detail);
                 setDetail(null);

@@ -3,7 +3,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   listenBarChallengerSlotLimitForPublicCount,
 } from "@/lib/listen-bar";
-import { AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS, isAiMusicPersistedShowtimeCertified } from "@/lib/ai-music-showtime";
+import { AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS } from "@/lib/ai-music-showtime";
 import {
   LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS,
   LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS,
@@ -174,7 +174,7 @@ export async function GET(request: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    const tracks = applyLegacyOpeningGrace(rows ?? []).filter((track) => !isAiMusicPersistedShowtimeCertified(track));
+    const tracks = applyLegacyOpeningGrace(rows ?? []);
     const challengerCount = tracks.filter((track) => track.bar_phase !== "public").length;
     const publicCount = tracks.filter((track) => track.bar_phase === "public").length;
     const challengerLimit = listenBarChallengerSlotLimitForPublicCount(publicCount);

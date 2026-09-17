@@ -45,8 +45,9 @@ export function shouldCertifyAiMusicTrackForShowtimeByDefense(stats: {
   officialDefenseSuccesses?: number | null;
   isShowtimeCertified?: boolean | null;
 }): boolean {
-  return !stats.isShowtimeCertified
-    && aiMusicShowtimeDefenseSuccesses(stats.officialDefenseSuccesses) >= AI_MUSIC_SHOWTIME_DEFENSE_SUCCESS_TARGET;
+  // Compatibility export only. Certification is retired; results remain intact.
+  void stats;
+  return false;
 }
 
 export function isAiMusicTrackChallengeableOnExplore(
@@ -55,7 +56,6 @@ export function isAiMusicTrackChallengeableOnExplore(
   lifecycle: { officialLosses?: number | null; isShowtimeCertified?: boolean | null } = {},
 ): boolean {
   return isAiMusicChallengeReady(status, defenderDropAudioPath)
-    && !lifecycle.isShowtimeCertified
     && !shouldRetireAiMusicTrackFromExplore(lifecycle);
 }
 
