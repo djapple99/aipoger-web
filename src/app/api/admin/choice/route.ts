@@ -62,7 +62,7 @@ type ChoiceLibraryEntry = {
   href: string;
 };
 
-type ChoiceAction = "save_collection" | "add_item" | "remove_item" | "move_item" | "set_published" | "clear_cover" | "delete_collection";
+type ChoiceAction = "save_collection" | "add_item" | "remove_item" | "move_item" | "set_published" | "clear_cover" | "delete_collection" | "delete_creator_collection";
 
 const MAX_COVER_BYTES = 10 * 1024 * 1024;
 const ALLOWED_COVER_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -336,12 +336,12 @@ async function collectionCoverPath(admin: ReturnType<typeof adminClient>, collec
   return { exists: Boolean(data?.id), coverPath: typeof data?.cover_path === "string" ? data.cover_path : null };
 }
 
-async function removeChoiceEngagement(admin: ReturnType<typeof adminClient>, collectionId: string) {
+async function removeChoiceEngagement(admin: ReturnType<typeof adminClient>, collectionId: string, collectionKind: "official" | "creator" = "official") {
   for (const table of ["aipoger_choice_collection_hearts", "aipoger_choice_collection_comments"] as const) {
     const { error } = await admin
       .from(table)
       .delete()
-      .eq("collection_kind", "official")
+      .eq("collection_kind", collectionKind)
       .eq("collection_id", collectionId);
     if (error && !isMissingChoiceSchema(error)) throw error;
   }
@@ -382,6 +382,40 @@ export async function PATCH(request: NextRequest) {
     const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
     const action = body?.action as ChoiceAction | undefined;
     if (!action) return jsonError("請指定 Choice 管理操作。" );
+
+    if (action === "delete_creator_collection") {
+      const collectionId = body?.collectionId;
+      if (!isUuid(collectionId) || body?.confirmed !== true) return jsonError("刪除創作者 Choice 前需要再次確認。", 400);
+      const current = await guard.admin
+        .from("aipoger_creator_choice_collections")
+        .select("id,cover_path")
+        .eq("id", collectionId)
+        .maybeSingle();
+      let currentId = current.data?.id ?? null;
+      let currentCoverPath = typeof current.data?.cover_path === "string" ? current.data.cover_path : null;
+      if (current.error && isMissingChoiceCover(current.error)) {
+        const fallback = await guard.admin
+          .from("aipoger_creator_choice_collections")
+          .select("id")
+          .eq("id", collectionId)
+          .maybeSingle();
+        if (fallback.error) throw fallback.error;
+        currentId = fallback.data?.id ?? null;
+        currentCoverPath = null;
+      }
+      if (current.error && !isMissingChoiceCover(current.error)) throw current.error;
+      if (!currentId) return jsonError("找不到創作者 Choice。", 404);
+      await removeChoiceEngagement(guard.admin, collectionId, "creator");
+      const { error } = await guard.admin
+        .from("aipoger_creator_choice_collections")
+        .delete()
+        .eq("id", collectionId);
+      if (error) throw error;
+      if (currentCoverPath) {
+        await guard.admin.storage.from(LISTEN_BAR_COVER_BUCKET).remove([currentCoverPath]);
+      }
+      return NextResponse.json({ message: "創作者 Choice 已刪除，歌曲本身未受影響。" });
+    }
 
     if (action === "save_collection") {
       const weekStart = typeof body?.weekStart === "string" ? body.weekStart : "";
