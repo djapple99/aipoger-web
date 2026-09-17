@@ -487,3 +487,14 @@ Check:
 - 酒吧下一首預告直接讀同一個 session queue；歌單建立後不受換頁、探索排序或新投稿影響。曲風庫每分鐘核對下架資料，僅從既有酒吧佇列移除不可播歌曲，不插入新歌曲。
 - 驗證有限歌單結尾、單曲曲風循環、上一首歷史、快速連續跳歌、暫停後跨頁、拖曳後自然接播、音量、歌詞 Escape 與未登入愛心提示。桌機、手機及中英日韓控制項需渲染檢查。
 - 首頁背景音樂在已有共用播放 session 時不自動啟動；使用者主動播放其他音訊會暫停共用音訊，避免重疊。
+
+## 創作者七日上傳額度與 Choice 發布（2026-09-17 22:42 Asia/Taipei）
+
+- 正式程式提交 `86f837e`，發布分支 `codex/creator-upload-week`；從正式版基準 `034238ba` 建立乾淨 worktree，再帶入 Choice 提交 `f92356e` 與本次額度修正。未混入原工作區其他未提交變更。
+- Vercel deployment `dpl_45MNJq2frL4vRY8YbYYDnkR3j7vY` 為 READY，正式網址 https://aipoger.com；版本網址 https://aipoger-web-rnz8-kcqshch4n-yohungs-projects.vercel.app 。本節是部署後證據，文件提交不改變上述程式版本。
+- 正式 Supabase 已套用 `20260917142731_creator_upload_week.sql`。獨立帳號計數列保留刪歌後額度；原子 upsert 防止並行投稿超額。沒有回填或修改既有歌曲。
+- `tests/creator-upload-week.sql` 已以 transaction rollback 驗證第三首成功、第四首拒絕、刪除與編輯不退額度、168 小時到期重啟、失敗交易不計數及帳號隔離／權限。不是實際多連線壓測；沒有留下測試歌曲。
+- 遷移及回滾測試前後：歌曲 292、啟用 196、Heart 661 一致，額度表為 0 列。正式公播 API 回傳 196 首；公開 Choice API 為 200，未登入管理 Choice API 為 401。
+- TypeScript、37 項相關 Node 測試與正式雲端 build 通過；lint 0 errors、16 項既有 warnings。本機 build 因已遮蔽的本機金鑰出現 sitemap API-key 提示，但雲端 build 使用正式環境設定並成功。
+- 瀏覽器檢查中文桌機 1440x900、手機 390x844 與中英日韓額度文案，手機無橫向溢出；未登入提示為登入後查看。未使用登入帳號實際上傳歌曲，登入者完整端到端投稿仍需人工驗收。額度約束已由上述資料庫回滾測試驗證。
+- 原工作區保持原分支與既有未提交變更；本次程式、SQL、測試及主文件亦同步留在原 repo。後續發布須以此發布分支或更新正式版為基準，不能從較舊 HEAD 直接覆蓋正式站。
