@@ -1,8 +1,8 @@
 # AIPOGER Product Rules
 
-Last updated: 2026-09-18 00:51 Asia/Taipei。主文件 2／6。
+Last updated: 2026-09-18 02:45 Asia/Taipei。主文件 2／6。
 
-Showtime 認證已退役；月榜與收藏製作 Choice 已正式發布，取代 2026-09-17 23:09 roadmap 的待定細節與更早提案。2026-09-18 起 Choice 與月榜同頁策展，不再分頁籤；驗證與部署證據見 [最新發布紀錄](archive/2026-09-18-showtime-editorial-release.md)。
+Showtime 認證已退役；月榜與收藏製作 Choice 已正式發布，取代 2026-09-17 23:09 roadmap 的待定細節與更早提案。2026-09-18 起 Choice 與月榜同頁策展，不再分頁籤；同票 owner 裁定、純黑底及整榜分享亦已發布，見 [最新發布紀錄](archive/2026-09-18-showtime-chart-admin-release.md)。
 
 This document is the product-rule source of truth for AIPOGER. Use it before changing Battle, Bar Heartbreak, AIPOGER Showtime, auth, upload, or deployment behavior.
 
@@ -459,13 +459,16 @@ Legacy code, database tables, API routes, or historical docs may still use `hono
 - The only score is distinct signed-in non-author accounts with an effective song Heart in that month. Each account contributes at most 1 per song per month, regardless of how many days it Hearts that song. Exclude the song's author by ownership identity, not display-name text.
 - Existing public daily Heart/favorite behavior remains unchanged, including authors' ability to Heart their own songs; author Hearts simply contribute zero to the monthly chart. Cancellation/re-Heart recomputes current-month support from remaining effective records: an account counts while it has at least one effective Heart in that month, never more than once. Removing only a Profile favorite does not cancel or recount Hearts.
 - At least 3 distinct non-author supporters are required for a formal numeric rank. Below 3, show an unranked building-support state rather than inventing a placement. This is a chart threshold, not a change to the separate 3-audience official Battle rule.
-- Rank by monthly supporter count descending. Equal counts share competition ranks `1, 1, 3`; stable ID ordering may arrange tied rows but cannot break the tie or assign a different rank.
+- Rank by monthly supporter count descending. Only the owner may order songs within an equal-support group through `/admin/charts`; never alter support counts or move a song across score groups. Until decided, show `名次待定` without a numeric rank. Genre charts inherit the same relative order; a genre with only one member of the global tie has no unresolved genre tie. Score or group-membership changes invalidate the old decision and create a new pending group.
+- Owner decisions are append-only audit records containing month, score, member IDs, selected order, actor and time. Month-end still freezes source counts and candidate snapshots; unresolved groups remain pending. Each frozen group may receive one valid decision, then its order is locked. Historical removal never silently fills its reserved rank with another song.
+- The admin overview and chart workbench show pending groups across months. Duplicate hints use identical stored file hashes or same-creator normalized titles only; these are review prompts, not audio fingerprints or proof of duplicate music. Owner listening and confirmation are required for the existing soft-withdraw action; never auto-delete or merge Hearts.
 - Exclude cumulative/all-time Heart totals, favorites alone, Choice selections/collection Hearts/saves/comments, Battle wins or audience votes, Earworm affinity, play counts and invented composite scores. Explore Hot Now remains its separately defined discovery view, not a substitute monthly chart.
 - Monthly eligibility covers all public, playable Bar songs with reliable song identity and effective Heart records; certification and publication age impose no extra condition. Explore-only 8-loss retirement does not unpublish a song from Bar or exclude it from monthly charts by itself. Actual hiding, removal, moderation, inactivity, unplayable audio and valid-genre restrictions remain enforced. A Battle-only archive is not automatically a full-song public catalog entry or chart candidate.
 - The current month updates from effective records. At month close, freeze a monthly snapshot containing the actual period, scoring version, song IDs, supporter counts and ranks; retries must not create duplicate or changing settled results. Later Hearts belong to their own month and do not rewrite a frozen month.
 - Start with the launch/current month only, using reliable effective records from that month. Do not reconstruct or fabricate pre-launch monthly standings from lifetime totals, certification dates or Battle history. Historical month selection exposes only real frozen snapshots accumulated from launch; absent snapshots provide no invented winners or movement arrows.
 - Hiding or moderating a song after settlement still blocks public playback/exposure as required. Preserve its historical snapshot record and treatment state without rewriting original ranks or promoting another song to a fabricated historical win.
 - Public responses expose aggregate support counts, not supporter identities or private favorites. Empty, below-threshold and unavailable-data states must remain honest; do not fill a Top 10 with mock records.
+- Whole-chart sharing preserves the selected month, genre and language in `/rank` query parameters and the monthly-chart anchor. Keep per-song sharing as a separate action. Sharing never creates a vote, decision or frozen snapshot of an unfinished month.
 
 ### AIPOGER Choice Weekly
 

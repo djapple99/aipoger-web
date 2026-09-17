@@ -1,6 +1,6 @@
 # AIPOGER 版面與使用流程
 
-更新：2026-09-18 00:51 Asia/Taipei。主文件 3／6；產品門檻與權限以 [產品規則](aipoger-product-rules.md) 為準。Showtime 同頁策展布局已正式發布，見 [發布紀錄](archive/2026-09-18-showtime-editorial-release.md)。
+更新：2026-09-18 02:45 Asia/Taipei。主文件 3／6；產品門檻與權限以 [產品規則](aipoger-product-rules.md) 為準。Showtime 純黑底、月榜分享與管理已正式發布，見 [發布紀錄](archive/2026-09-18-showtime-chart-admin-release.md)。
 
 This document protects AIPOGER's visual identity. Use it before redesigning any page, adding major UI, or changing user-facing copy.
 
@@ -220,10 +220,12 @@ Role:
 
 Monthly chart layout:
 
-- Keep the `AIPOGER SHOWTIME` heading compact above the music with one Make My Choice action. Use neutral charcoal, restrained orange actions and cyan curator names; existing covers carry the color, not gradients, decorative panels or giant text.
+- Keep the `AIPOGER SHOWTIME` heading compact above the music with one Make My Choice action. Use the user's selected option 1 neutral pure-black base `#070809`, restrained orange actions and cyan curator names; existing real covers carry the color. Do not import generated mock covers, titles or counts.
 - Month, genre and search live under an accessible filter icon; current month/state and ordered playback remain visible. Show up to five actual rows initially and allow full expansion/collapse. Month labels use Taiwan calendar months; distinguish the updating current month from frozen historical snapshots with concise state labels.
 - Each row shows actual rank, small square cover, song title, creator, genre, monthly distinct non-author supporter count, play, song Heart and share. Use fixed rank/cover/action tracks; mobile titles may wrap to two lines without covering counts or controls.
-- Show genuine competition ties such as `1, 1, 3`. Below the product-rule minimum, use a compact unranked support-building state. Do not invent ranks, crowns, full Top 10 lists or movement arrows without real snapshots.
+- Unresolved equal-support groups show `名次待定`, not parallel numeric ranks. Owner-decided order appears only after the server validates it. Below the product-rule minimum, retain the separate compact support-building state. Do not invent ranks, crowns, full Top 10 lists or movement arrows.
+- Put whole-chart share beside the header filter/rules icons, with an accessible localized name. Its URL preserves month/genre/language and restores that view; individual song-share buttons stay in their rows.
+- `/admin/charts` provides pending-month counts, same-score preview/playback, move-up/down controls and explicit save, plus audit history and confirmed soft-withdraw for suspected duplicates. Already settled decisions are disabled. Link it to `/admin/choice` and the owner overview; retain existing official/creator Choice management rather than adding a second editor.
 - The history selector contains only snapshots from launch onward; absent history, insufficient support and data errors have concise truthful states. Monthly counts must not be labeled lifetime Hearts, Battle wins, Choice popularity or Earworm affinity.
 - Hide/moderation and playback restrictions remain effective in historical views; preserve the record without exposing restricted music or silently renumbering the frozen month.
 - No Drop victory / Bar heat / certification source tabs, duplicate Featured rows, certificate subtitle or marketing paragraph explaining how the new system works. Operational labels and accessible tooltips are enough.

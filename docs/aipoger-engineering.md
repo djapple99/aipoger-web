@@ -1,14 +1,14 @@
 # AIPOGER 開發與維運
 
-更新：2026-09-18 02:07 Asia/Taipei。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
+更新：2026-09-18 02:45 Asia/Taipei。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
 
-## 已完成程式，等待資料庫授權
+## 最新發布：排行榜管理與分享
 
-- `codex/showtime-chart-admin`：Showtime 第 1 款純黑底、整份月榜分享、owner 排行榜管理及既有 Choice 管理入口整合。正式站尚未更新，本節不能當作已發布證據。
-- 新增式遷移 `supabase/migrations/20260917180000_monthly_chart_owner_decisions.sql` 尚未套用；對話已請使用者確認正式 DB 更新，回覆前不可部署此批。資料庫先就緒，再部署程式並核對正式頁面。
-- 429 項測試（含隔離 PostgreSQL 遷移執行）、TypeScript 通過；lint 0 errors、16 項既有 warnings。細節及未完成驗收見 [準備紀錄](archive/2026-09-18-showtime-chart-admin-preparation.md)。
+- 使用者明確回覆 `do it` 後，`9f96865`／`codex/showtime-chart-admin` 已部署並 promote 至 aipoger.com：第 1 款純黑底、整份月榜分享、owner 排行榜管理與 Choice 管理入口整合。
+- Vercel `dpl_EoRgvvWvNPfDNMyZSfg1BJjgfnox` READY；Supabase 已套用本機 `20260917180000_monthly_chart_owner_decisions.sql`，正式 migration ledger 版本 `20260917184048`、名稱 `monthly_chart_owner_decisions`，兩者是同一份 SQL，不重複套用。
+- 429 項測試、TypeScript、本機及雲端 build 通過；lint 0 errors、16 項既有 warnings。正式資料／公開頁／API 權限驗證與限制見 [發布紀錄](archive/2026-09-18-showtime-chart-admin-release.md)。
 
-## 最新發布
+## 前版發布：同頁策展
 
 - Showtime 同頁策展版面：`6343ea0`，`codex/showtime-editorial` 已 push；Vercel `dpl_6q3DgSbgTmGzirmtyxdm4P5dH8RE` 已 promote 並驗證 aipoger.com。417 項測試通過，無新 DB migration。詳見 [本次發布紀錄](archive/2026-09-18-showtime-editorial-release.md)。
 

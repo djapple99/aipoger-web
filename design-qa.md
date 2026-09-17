@@ -6,7 +6,7 @@
 - Palette adaptation only: neutral `#070809`, original uploaded Choice artwork and real chart data retained. The generated mock's replacement artwork/numbers are not implementation requirements.
 - Compared source and fully loaded local production-build screenshot together. Desktop 1440x900 and mobile 390x844 have no horizontal overflow; mobile zh/en/ja/ko checked. Whole-chart share is visible; month/genre deep-link restores the selected view.
 - Browser used a read-only public API proxy at localhost:3038. No authenticated production decisions or withdrawals were exercised; owner reorder/save/conflict covered by isolated actual-component tests instead.
-- Visual result: passed for selected palette and public share control. Release status: pending production DB approval; this batch is NOT the production confirmation documented below.
+- Visual result: passed for selected palette and public share control. Follow-up approved and released on 2026-09-18 02:45 Asia/Taipei: application `9f96865`, production `dpl_EoRgvvWvNPfDNMyZSfg1BJjgfnox`. See [release checks](docs/archive/2026-09-18-showtime-chart-admin-release.md). Desktop 1440x900 and mobile 390x844 confirm the black base/share control; mobile zh/en/ja/ko have no horizontal overflow. Owner production mutations remain unexercised.
 - Evidence and remaining checks: [preparation record](docs/archive/2026-09-18-showtime-chart-admin-preparation.md).
 
 ## Previous Released Baseline
