@@ -1,6 +1,6 @@
 # AIPOGER 版面與使用流程
 
-更新：2026-09-17 23:15 Asia/Taipei。主文件 3／6；產品門檻與權限以 [產品規則](aipoger-product-rules.md) 為準。本次記錄使用者已確認的 Showtime 月榜／Choice 體驗，不宣稱已完成實作或部署。
+更新：2026-09-17 23:54 Asia/Taipei。主文件 3／6；產品門檻與權限以 [產品規則](aipoger-product-rules.md) 為準。Showtime 月榜／Choice 已發布，驗證範圍見 [發布紀錄](archive/2026-09-17-showtime-charts-choice-release.md)。
 
 This document protects AIPOGER's visual identity. Use it before redesigning any page, adding major UI, or changing user-facing copy.
 

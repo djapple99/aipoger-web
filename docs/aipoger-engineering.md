@@ -1,6 +1,11 @@
 # AIPOGER 開發與維運
 
-更新：2026-09-17。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
+更新：2026-09-17 23:54 Asia/Taipei。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
+
+## 最新發布
+
+- Showtime 月榜與收藏製作 Choice：應用 commit `79e53bd`（主實作 `e5eab5b`），分支 `codex/showtime-charts-choice`，已 push 與 promote 至 aipoger.com。
+- Vercel `dpl_8WEW1DehGhKjNfrW1vSTNF7GbjLv`；三份 Supabase 遷移已套用，405 項測試通過、0 略過。詳細資料核對、瀏覽器驗證與限制見 [發布紀錄](archive/2026-09-17-showtime-charts-choice-release.md)。
 
 ## 架構與資料來源
 
