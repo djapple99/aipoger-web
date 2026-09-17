@@ -398,6 +398,8 @@ export default function AdminChoicePage() {
             <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-zinc-400">本期 Choice · 5–10 首</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Link href="/admin/charts" className="rounded border border-orange-300/30 px-3 py-2 text-xs font-black text-orange-200">排行榜管理</Link>
+            <Link href="/admin" className="rounded border border-white/15 px-3 py-2 text-xs font-black text-zinc-200">後台總覽</Link>
             <Link href="/rank?lang=zh#choice-weekly" className="rounded-full border border-white/15 px-3 py-2 text-xs font-black text-zinc-200">看前台 Choice</Link>
             <Link href="/admin/listen-bar" className="rounded-full border border-yellow-200/30 bg-yellow-300/10 px-3 py-2 text-xs font-black text-yellow-100">作品管理</Link>
             <Link href="/admin/social" className="rounded-full border border-white/15 px-3 py-2 text-xs font-black text-zinc-200">社群發布</Link>

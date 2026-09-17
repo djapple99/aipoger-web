@@ -13,6 +13,7 @@ export type MonthlyChartTrack = {
   audioUrl: string;
   lyrics: string;
   rank: number | null;
+  rankPending?: boolean;
   supporterCount: number;
 };
 
@@ -20,7 +21,7 @@ export type MonthlyChartResponse = {
   currentMonth: string;
   availableMonths: string[];
   month: string;
-  status: "live" | "final";
+  status: "live" | "final" | "awaiting_decision";
   minSupporters: number;
   finalizedAt: string | null;
   tracks: MonthlyChartTrack[];
@@ -90,6 +91,7 @@ export function publicMonthlyChart(data: MonthlyChartRpcResponse, storageUrl: (b
       return [{
         id: track.id, title: track.title, artist: track.artist, genre: track.genre,
         aiTool: track.aiTool, lyrics: track.lyrics, rank: track.rank,
+        ...(track.rankPending !== undefined ? { rankPending: track.rankPending === true } : {}),
         supporterCount: track.supporterCount, audioUrl,
         coverUrl: mediaUrl("listen-bar-covers", track.coverPath) || AIPOGER_BRAND_LOGO,
       }];

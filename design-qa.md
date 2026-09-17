@@ -1,5 +1,16 @@
 # Showtime Editorial Design QA
 
+## Current Follow-up: Option 1 (2026-09-18 02:07 Asia/Taipei)
+
+- Selected source: `/Users/huangyihong/.codex/generated_images/019f1a49-79bb-74b3-ba79-d9229fb816c1/exec-c274b4fa-1d08-40f7-8fca-ab9f428cccf3.png`.
+- Palette adaptation only: neutral `#070809`, original uploaded Choice artwork and real chart data retained. The generated mock's replacement artwork/numbers are not implementation requirements.
+- Compared source and fully loaded local production-build screenshot together. Desktop 1440x900 and mobile 390x844 have no horizontal overflow; mobile zh/en/ja/ko checked. Whole-chart share is visible; month/genre deep-link restores the selected view.
+- Browser used a read-only public API proxy at localhost:3038. No authenticated production decisions or withdrawals were exercised; owner reorder/save/conflict covered by isolated actual-component tests instead.
+- Visual result: passed for selected palette and public share control. Release status: pending production DB approval; this batch is NOT the production confirmation documented below.
+- Evidence and remaining checks: [preparation record](docs/archive/2026-09-18-showtime-chart-admin-preparation.md).
+
+## Previous Released Baseline
+
 Updated: 2026-09-18 00:51 Asia/Taipei.
 
 Previous Explore and other design QA evidence is preserved verbatim in [historical QA](docs/archive/2026-09-18-design-qa-history.md).

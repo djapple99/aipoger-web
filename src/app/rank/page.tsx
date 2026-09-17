@@ -17,7 +17,7 @@ export default function RankPage() {
   }[lang];
 
   return (
-    <main className={`${fontGlowSans.className} min-h-screen bg-[#171717] px-4 pb-44 pt-24 text-white sm:px-6 lg:px-8`}>
+    <main className={`${fontGlowSans.className} min-h-screen bg-[#070809] px-4 pb-44 pt-24 text-white sm:px-6 lg:px-8`}>
       <div className="mx-auto max-w-7xl">
         <header className="mb-7 flex flex-wrap items-end justify-between gap-5 border-b border-white/15 pb-5">
           <div className="min-w-0">

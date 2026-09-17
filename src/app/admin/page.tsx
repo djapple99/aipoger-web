@@ -16,7 +16,8 @@ const modules = [
   { href: "/admin/listen-bar", title: "傷心酒吧", label: "音樂目錄", description: "管理公播歌曲、排序、分類與展示資料。", tone: "cyan" },
   { href: "/admin/battles", title: "Battle 管理", label: "鬥歌場", description: "檢視進行中的 Drop Battle 與結果。", tone: "orange" },
   { href: "/admin/q-crash", title: "Q Crash 編輯", label: "Q CRASH", description: "調整 Q Crash 封面與結果後的完整版連結。", tone: "cyan" },
-  { href: "/admin/choice", title: "Choice", label: "策展歌單", description: "建立、編輯與發布 AIPOGER Choice。", tone: "cyan" },
+  { href: "/admin/charts", title: "排行榜管理", label: "Showtime", description: "處理同票裁定、查看疑似重複歌曲與歷史排序。", tone: "orange" },
+  { href: "/admin/choice", title: "Choice 管理", label: "策展歌單", description: "管理官方與創作者歌單、發布及指定 Showtime 主推。", tone: "cyan" },
   { href: "/admin/social", title: "社群後台", label: "發布", description: "整理社群草稿、審核與發布節奏。", tone: "emerald" },
   { href: "/admin/quiz", title: "耳朵測驗", label: "互動內容", description: "管理 AI 音樂耳朵測驗題目。", tone: "purple" },
   { href: "/admin/gatekeeper-drops", title: "官方守門 Drop", label: "官方素材", description: "維護常駐入口使用的官方 Drop。", tone: "rose" },
@@ -33,6 +34,7 @@ const toneClasses: Record<(typeof modules)[number]["tone"], string> = {
 
 export default function AdminHomePage() {
   const [state, setState] = useState<AdminState>("checking");
+  const [chartPending, setChartPending] = useState<number | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -45,6 +47,12 @@ export default function AdminHomePage() {
       }
       const allowed = await loadIsAdmin(session.user.id);
       if (active) setState(allowed ? "ready" : "denied");
+      if (active && allowed) {
+        void fetch("/api/admin/charts", { headers: { Authorization: `Bearer ${session.access_token}` }, cache: "no-store", signal: AbortSignal.timeout(20000) })
+          .then(async (response) => { if (!response.ok) throw new Error("Unavailable"); return response.json(); })
+          .then((data) => { if (active) setChartPending((data.pendingMonths ?? []).reduce((sum: number, item: { count: number }) => sum + item.count, 0)); })
+          .catch(() => { if (active) setChartPending(null); });
+      }
     })();
     return () => {
       active = false;
@@ -121,6 +129,7 @@ export default function AdminHomePage() {
               <Link key={item.href} href={item.href} className={`group rounded-[1.2rem] border p-5 transition hover:-translate-y-0.5 ${toneClasses[item.tone]}`}>
                 <div className="flex items-start justify-between gap-3"><span className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500">{item.label}</span><ArrowRight className="h-4 w-4 text-zinc-600 transition group-hover:translate-x-1 group-hover:text-white" /></div>
                 <h3 className="mt-4 text-lg font-black text-white">{item.title}</h3>
+                {item.href === "/admin/charts" && chartPending !== null && <p className="mt-2 text-sm font-bold text-orange-200">{chartPending} 組同票待裁定</p>}
                 <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">{item.description}</p>
               </Link>
             ))}

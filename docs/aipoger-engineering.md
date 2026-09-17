@@ -1,6 +1,12 @@
 # AIPOGER 開發與維運
 
-更新：2026-09-18 00:51 Asia/Taipei。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
+更新：2026-09-18 02:07 Asia/Taipei。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
+
+## 已完成程式，等待資料庫授權
+
+- `codex/showtime-chart-admin`：Showtime 第 1 款純黑底、整份月榜分享、owner 排行榜管理及既有 Choice 管理入口整合。正式站尚未更新，本節不能當作已發布證據。
+- 新增式遷移 `supabase/migrations/20260917180000_monthly_chart_owner_decisions.sql` 尚未套用；對話已請使用者確認正式 DB 更新，回覆前不可部署此批。資料庫先就緒，再部署程式並核對正式頁面。
+- 429 項測試（含隔離 PostgreSQL 遷移執行）、TypeScript 通過；lint 0 errors、16 項既有 warnings。細節及未完成驗收見 [準備紀錄](archive/2026-09-18-showtime-chart-admin-preparation.md)。
 
 ## 最新發布
 

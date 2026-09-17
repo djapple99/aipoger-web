@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import ts from "typescript";
+import { monthlyChartSharePath } from "../src/lib/chart-management.ts";
 
 const source = readFileSync(new URL("../src/components/monthly-chart.tsx", import.meta.url), "utf8");
 const compiled = ts.transpileModule(source, {
@@ -77,6 +78,7 @@ function mount(t, options = {}) {
     useCallback(fn, dependencies) { return react.useMemo(() => fn, dependencies); },
   };
   const window = new EventTarget();
+  window.location = { search: options.search ?? "" };
   window.setInterval = (callback, delay) => { const id = ++intervalId; intervals.set(id, { callback, delay }); return id; };
   window.clearInterval = (id) => intervals.delete(id);
   window.addEventListener("aipoger:music-heart", (event) => heartEvents.push(event.detail));
@@ -135,6 +137,7 @@ function mount(t, options = {}) {
       musicPlayer: { toggle: () => { toggles++; }, start: async (...args) => { starts.push(args); } },
     },
     "@/lib/supabase": { supabase },
+    "@/lib/chart-management": { monthlyChartSharePath },
   };
   const loaded = { exports: {} };
   new Function("require", "module", "exports", "fetch", "window", "document", "Date", "CustomEvent", compiled)((id) => {
@@ -176,6 +179,7 @@ function mount(t, options = {}) {
     visibility(value) { document.visibilityState = value; document.dispatchEvent(new Event("visibilitychange")); },
     toggles: () => toggles,
     text: () => text(tree),
+    chartShare: () => nodes(tree).find((node) => node.type === "ShareButton" && node.props.label === "Share chart")?.props,
     async flush() { for (let round = 0; round < 12; round++) { await tick(); if (dirty && mounted) render(); } },
     unmount,
     intervals: () => intervals.size,
@@ -201,6 +205,18 @@ test("editorial chart limits summary to five actual rows and expands without cha
   ui.filters().onClick();
   await ui.flush();
   assert.equal(ui.filters()["aria-expanded"], true);
+});
+
+test("shared chart link restores month and genre and pending ranks stay distinct from low support", async (t) => {
+  const chart = { ...finalChart(), status: "awaiting_decision", tracks: [song("tie-a", null, { supporterCount: 3, rankPending: true }), song("tie-b", null, { supporterCount: 3, rankPending: true })] };
+  const ui = mount(t, { chart, search: "?chartMonth=2026-09&chartGenre=EDM%20%E7%99%BE%E5%A4%A7%E9%9B%BB%E9%9F%B3" });
+  await ui.flush();
+  assert.match(ui.chartReads()[0].url, /month=2026-09/);
+  assert.equal(new URL(ui.chartShare().url, "https://aipoger.com").searchParams.get("chartGenre"), "EDM 百大電音");
+  assert.match(ui.text(), /Rank pending/);
+  assert.match(ui.text(), /Awaiting decision/);
+  assert.doesNotMatch(ui.text(), /Gaining support/);
+  assert.equal(ui.rowCount(), 2);
 });
 
 test("account change while getSession is pending never sends a stale Heart POST", async (t) => {
