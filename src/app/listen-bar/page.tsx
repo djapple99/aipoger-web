@@ -2582,10 +2582,10 @@ export default function ListenBarPage() {
                     </p>
                     <p className="mt-2 text-xs font-bold leading-5 text-zinc-300">
                       {barText(lang,
-                        `上傳額度 ${uploadQuota ? `${uploadQuota.used}/3` : "確認中"}。每期從第一首成功投稿起算 7 天，最多 3 首；刪除不退額度。`,
-                        `Uploads ${uploadQuota ? `${uploadQuota.used}/3` : "checking"}. Up to 3 songs in 7 days from your first successful submission. Deletion does not restore the allowance.`,
-                        `投稿枠 ${uploadQuota ? `${uploadQuota.used}/3` : "確認中"}。最初の投稿成功から7日間で最大3曲。削除しても枠は戻りません。`,
-                        `업로드 ${uploadQuota ? `${uploadQuota.used}/3` : "확인 중"}. 첫 업로드 성공부터 7일간 최대 3곡. 삭제해도 한도는 복구되지 않습니다.`)}
+                        `上傳額度 ${uploadQuota ? `${uploadQuota.used}/3` : userId ? "確認中" : "登入後查看"}。每期從第一首成功投稿起算 7 天，最多 3 首；刪除不退額度。`,
+                        `Uploads ${uploadQuota ? `${uploadQuota.used}/3` : userId ? "checking" : "sign in to view"}. Up to 3 songs in 7 days from your first successful submission. Deletion does not restore the allowance.`,
+                        `投稿枠 ${uploadQuota ? `${uploadQuota.used}/3` : userId ? "確認中" : "ログインして確認"}。最初の投稿成功から7日間で最大3曲。削除しても枠は戻りません。`,
+                        `업로드 ${uploadQuota ? `${uploadQuota.used}/3` : userId ? "확인 중" : "로그인 후 확인"}. 첫 업로드 성공부터 7일간 최대 3곡. 삭제해도 한도는 복구되지 않습니다.`)}
                     </p>
                   </div>
                 )}
