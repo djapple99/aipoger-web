@@ -11,12 +11,12 @@ const transpile = (source) => ts.transpileModule(source,{
   compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX},
 }).outputText;
 function evaluate(source,mocks = {}) {
-  const module={exports:{}};
+  const loaded={exports:{}};
   new Function('require','module','exports',transpile(source))((name) => {
     assert.ok(name in mocks,`Unexpected import ${name}`);
     return mocks[name];
-  },module,module.exports);
-  return module.exports;
+  },loaded,loaded.exports);
+  return loaded.exports;
 }
 const jsx=(type,props) => ({type,props});
 const jsxRuntime={jsx,jsxs:jsx,Fragment:'fragment'};
