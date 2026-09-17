@@ -8,6 +8,7 @@ import {
 } from "@/lib/aipoger-choice";
 import { loadChoiceSelectionCatalog } from "@/lib/server-choice-catalog";
 import { LISTEN_BAR_COVER_BUCKET } from "@/lib/listen-bar";
+import { readPublicFeaturedChoice } from "@/lib/server-choice-featured";
 
 type ChoiceItemRow = {
   id: string;
@@ -108,6 +109,8 @@ function resolveCollection(
 export async function GET() {
   try {
     const admin = adminClient();
+    // A feature-setting failure must not hide published music.
+    const featuredKey = await readPublicFeaturedChoice(admin).catch(() => null);
     let { data, error } = await admin
       .from("aipoger_choice_collections")
       .select("id,created_by,week_start,title,intro,curator_identity,cover_path,aipoger_choice_items(id,source_kind,source_id,position)")
@@ -126,7 +129,13 @@ export async function GET() {
     }
     if (error) throw error;
     const rows = (data ?? []) as ChoiceCollectionRow[];
-    if (rows.length === 0) return NextResponse.json({ schemaReady: true, collection: null, collections: [] }, { headers: { "Cache-Control": "no-store" } });
+    if (featuredKey?.startsWith("official:") && !rows.some((row) => `official:${row.id}` === featuredKey)) {
+      const featured = await admin.from("aipoger_choice_collections")
+        .select("id,created_by,week_start,title,intro,curator_identity,cover_path,aipoger_choice_items(id,source_kind,source_id,position)")
+        .eq("id", featuredKey.split(":")[1]).eq("is_published", true).maybeSingle();
+      if (!featured.error && featured.data) rows.push(featured.data as ChoiceCollectionRow);
+    }
+    if (rows.length === 0) return NextResponse.json({ schemaReady: true, collection: null, collections: [], featuredKey }, { headers: { "Cache-Control": "no-store" } });
 
     const curatorIds = rows.map((row) => row.created_by).filter((value): value is string => Boolean(value));
     const [catalog, curatorResult] = await Promise.all([
@@ -145,6 +154,7 @@ export async function GET() {
       schemaReady: true,
       collection: collections[0] ?? null,
       collections,
+      featuredKey,
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("[choice/current] read failed", {

@@ -19,30 +19,21 @@ const experience = readSource("../docs/aipoger-experience.md");
 const model = readSource("../src/lib/aipoger-choice.ts");
 const adminApi = readSource("../src/app/api/admin/choice/route.ts");
 
-test("Showtime defaults to monthly charts with a distinct public Choice tab", () => {
-  assert.match(rank, /useState<"charts" \| "choice">\("charts"\)/);
-  assert.match(rank, /role="tablist"/);
-  assert.match(rank, /role="tab"/);
-  assert.match(rank, /aria-selected=\{view === tab\}/);
-  assert.match(rank, /role="tabpanel"/);
-  assert.match(rank, /hidden=\{view !== "charts"\}/);
-  assert.match(rank, /hidden=\{view !== "choice"\}/);
-  assert.match(rank, /view === "charts" && <MonthlyChart lang=\{lang\}/);
-  assert.match(rank, /view === "choice" && <PublicChoiceGallery lang=\{lang\}/);
-  for (const label of ["Monthly Charts", "月排行榜", "月間ランキング", "월간 차트", "ArrowLeft", "ArrowRight"]) {
-    assert.ok(rank.includes(label), label);
-  }
+test("Showtime mounts Choice and charts together with responsive editorial regions", () => {
+  assert.match(rank, /<PublicChoiceGallery lang=\{lang\} chart=\{<MonthlyChart lang=\{lang\}/);
+  assert.doesNotMatch(rank, /role="tablist"|role="tab"|role="tabpanel"|changeView/);
+  assert.match(shelf, /lg:grid-cols-\[minmax\(0,2\.2fr\)_minmax\(320px,1fr\)\]/);
+  assert.ok(shelf.indexOf('data-choice-lead') < shelf.indexOf('data-showtime-chart'));
+  assert.ok(shelf.indexOf('data-showtime-chart') < shelf.indexOf('data-choice-more'));
+  for (const label of ["Monthly Charts", "月排行榜", "月間ランキング", "월간 차트"]) assert.ok(chart.includes(label), label);
 });
 
-test("legacy Choice anchors select the Choice tab and CTAs retain language", () => {
-  assert.match(rank, /window\.location\.hash === "#choice-weekly" \? "choice" : "charts"/);
-  assert.match(rank, /addEventListener\("hashchange", update\)/);
-  assert.match(rank, /addEventListener\("popstate", update\)/);
-  assert.match(rank, /window\.history\.pushState/);
+test("legacy anchors remain native scroll targets and the single CTA retains language", () => {
   assert.match(shelf, /id="choice-weekly"/);
-  for (const source of [rank, shelf]) assert.match(source, /\/profile\/choice\?lang=\$\{lang\}/);
-  assert.match(shelf, /<ListPlus/);
-  assert.match(shelf, /copy\.buildMyChoice/);
+  assert.match(chart, /id="monthly-charts"/);
+  assert.match(rank, /\/profile\/choice\?lang=\$\{lang\}/);
+  assert.match(rank, /<ListPlus/);
+  assert.doesNotMatch(shelf, /\/profile\/choice/);
 });
 
 test("certification catalog is intentionally retired rather than moved into the gallery", () => {
@@ -59,11 +50,11 @@ test("certification catalog is intentionally retired rather than moved into the 
   assert.match(gallery, /\/api\/creator-choice\/public/);
 });
 
-test("Choice remains a non-ranked square-cover editorial shelf inside its own tab", () => {
+test("Choice remains non-ranked with real square covers and owner-selected lead", () => {
   assert.match(gallery, /<ShowtimeChoiceShelf/);
-  assert.ok(shelf.includes('AIPOGER <span className="text-orange-300">CHOICE</span>'));
+  assert.match(shelf, /recordKey\(entry\) === featuredKey/);
   assert.match(shelf, /aspect-square/);
-  assert.match(shelf, /grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6/);
+  assert.match(shelf, /grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 lg:grid-cols-4/);
   for (const retained of ["entry.coverUrl", "entry.intro", "ChoiceCommentsDialog", "<ShareButton", "onToggleHeart(entry)", "onPlay(entry)"]) {
     assert.ok(shelf.includes(retained), retained);
   }

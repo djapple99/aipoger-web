@@ -1,7 +1,7 @@
 "use client";
 
 import { RotateCw } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import ShowtimeChoiceShelf, {
   type ShowtimeChoiceHeartState,
   type ShowtimeChoiceShelfEntry,
@@ -23,7 +23,7 @@ import type { AipogerPublicCreatorChoiceCollection } from "@/lib/creator-choice"
 import type { Lang } from "@/lib/locale";
 import { supabase } from "@/lib/supabase";
 
-export type PublicChoiceGalleryProps = { lang: Lang };
+export type PublicChoiceGalleryProps = { lang: Lang; chart?: ReactNode };
 
 type HeartMap = Record<string, ShowtimeChoiceHeartState>;
 type ChoiceInteraction = ShowtimeChoiceHeartState & { recordKey: string };
@@ -88,7 +88,7 @@ async function loadBatches<T>(
   return records;
 }
 
-export default function PublicChoiceGallery({ lang }: PublicChoiceGalleryProps) {
+export default function PublicChoiceGallery({ lang, chart }: PublicChoiceGalleryProps) {
   const copy = getChoiceCopy(lang);
   const messages = GALLERY_COPY[lang];
   const [token, setToken] = useState<string | null>();
@@ -96,6 +96,7 @@ export default function PublicChoiceGallery({ lang }: PublicChoiceGalleryProps) 
   const [retry, setRetry] = useState(0);
   const [authError, setAuthError] = useState(false);
   const [entries, setEntries] = useState<ShowtimeChoiceShelfEntry[]>([]);
+  const [featuredKey, setFeaturedKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [catalogError, setCatalogError] = useState(false);
   const [interactionError, setInteractionError] = useState(false);
@@ -161,6 +162,7 @@ export default function PublicChoiceGallery({ lang }: PublicChoiceGalleryProps) 
     setInteractionError(false);
     setActionError("");
     setEntries([]);
+    setFeaturedKey(null);
     setHearts({});
     setItemHearts({});
     setHeartBusy({});
@@ -168,8 +170,8 @@ export default function PublicChoiceGallery({ lang }: PublicChoiceGalleryProps) 
 
     const load = async () => {
       const results = await Promise.allSettled([
-        requestJson<{ collections?: AipogerChoiceCollection[]; collection?: AipogerChoiceCollection | null }>("/api/choice/current", scope.controller.signal),
-        requestJson<{ collections: AipogerPublicCreatorChoiceCollection[] }>("/api/creator-choice/public", scope.controller.signal),
+        requestJson<{ collections?: AipogerChoiceCollection[]; collection?: AipogerChoiceCollection | null; featuredKey?: string | null }>("/api/choice/current", scope.controller.signal),
+        requestJson<{ collections: AipogerPublicCreatorChoiceCollection[]; featuredKey?: string | null }>("/api/creator-choice/public", scope.controller.signal),
       ]);
       if (!current()) return;
       const [official, creators] = results;
@@ -204,6 +206,7 @@ export default function PublicChoiceGallery({ lang }: PublicChoiceGalleryProps) 
         })),
       ];
       setEntries(nextEntries);
+      setFeaturedKey(officialPayload?.featuredKey ?? (creators.status === "fulfilled" ? creators.value.featuredKey : null) ?? null);
       setCatalogError(results.some((result) => result.status === "rejected"));
       setLoading(false);
       const choiceKeys = nextEntries.map(collectionKey);
@@ -319,6 +322,7 @@ export default function PublicChoiceGallery({ lang }: PublicChoiceGalleryProps) 
     <div data-public-choice-gallery>
       <ShowtimeChoiceShelf
         entries={entries} lang={lang} loading={loading}
+        featuredKey={featuredKey} chart={chart}
         loadError={catalogError ? copy.loadFailed : undefined}
         onPlay={(entry, itemId) => { void play(entry, itemId); }}
         hearts={hearts} heartBusy={heartBusy} heartError={actionError}

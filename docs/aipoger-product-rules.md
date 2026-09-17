@@ -1,6 +1,6 @@
 # AIPOGER Product Rules
 
-Last updated: 2026-09-17 23:54 Asia/Taipei。主文件 2／6。
+Last updated: 2026-09-18 00:31 Asia/Taipei。主文件 2／6。
 
 Showtime 認證已退役；月榜與收藏製作 Choice 已正式發布，取代 2026-09-17 23:09 roadmap 的待定細節與更早提案。驗證與部署證據見 [發布紀錄](archive/2026-09-17-showtime-charts-choice-release.md)。
 
@@ -49,9 +49,9 @@ Public social entry:
 
 Daily Spotlight 已退役：它不再是傷心酒吧、Explore、`/admin/listen-bar` 或社群發布的工作流，也不建立新的單曲 Spotlight 替代品。
 
-- 傷心酒吧負責投稿與公播；Explore 負責找歌、收藏、分享、明確自願的攻擂與正在升溫；Showtime 保留品牌，`/rank` 改為 `月榜 | Choice` 兩個頁籤，不再是認證作品庫。
+- 傷心酒吧負責投稿與公播；Explore 負責找歌、收藏、分享、明確自願的攻擂與正在升溫；Showtime 保留品牌，`/rank` 同頁呈現 Choice 與月榜，不分頁籤，不再是認證作品庫。
 - `AIPOGER Choice` 是唯一人為策展訊號：每個台灣週一週期一份、發布 5-10 首、不排名、可跨類型。任何登入帳號都可從 `/rank?lang=zh#choice-weekly` 的「製作我的 Choice」進入 `/profile/choice` 私人收藏選曲；來源涵蓋所有公開且可播放的收藏歌曲，不限認證、上架 30 天或受邀資格。owner 的 `/admin/showtime`、`/admin/choice` 保留官方策展管理入口，不再提供人工認證。完整選曲與週次規則見下方 Choice 章節。
-- Choice 卡片使用策展者的個人資料封面，固定顯示日期、當期自訂標題、文章摘要、歌單 Heart、分享、評論與歌單圖示；策展者名稱與標題分開呈現，不得重複拼接。推薦文章直接放在卡片與公開頁標題旁，不另做文章 HUD。
+- Choice 使用歌單既有封面（未設定時回退策展者個人資料封面），固定顯示日期、當期自訂標題、歌單 Heart、分享、評論與歌單圖示；策展者名稱與標題分開呈現，不得重複拼接。首張顯示文章摘要，完整推薦保留於歌單 HUD 與公開頁，不另做文章 HUD。
 - 歌單維持單一圖示：桌機 hover / focus 可快速看排序，點擊後開互動 HUD；手機點擊直接開 HUD。HUD 上方並排顯示當期標題／日期與推薦簡介，每首歌提供既有歌曲收藏愛心及播放，底部提供「全部播放」與完整分享頁入口；所有播放共用底部播放器。
 - Choice 評論是歌單層級內容：公開可讀，登入後可留言，作者可刪除自己的留言，其他留言可檢舉。發布／撤回同一請求必須保存當下週次、標題、推薦文章與 owner 策展身分。
 - 公開 Choice 分享頁必須在伺服器輸出專屬 Open Graph / Twitter metadata。一般創作者 Choice 與 owner 以 `愛波哥` 個人身分發布的 Choice，分享縮圖使用該策展者目前的 Profile 頭像；只有明確保存為 `官方 AIPOGER` 身分的 Choice 才使用品牌圖。分享標題與描述分別使用當期自訂標題與推薦文章，不得回退成全站通用 AIPOGER 卡片，也不得從標題猜測策展身分。
@@ -444,7 +444,7 @@ Legacy code, database tables, API routes, or historical docs may still use `hono
 
 ### Certification Retirement
 
-- Keep the Showtime name and `/rank` route. The public tabs are `月榜 | Choice` / `Monthly Charts | Choice`; the default view is the current month. Choice stays non-ranked and separate from monthly song ranks.
+- Keep the Showtime name and `/rank` route. Choice and the current monthly chart appear together on one editorial page, never in separate tabs. Choice stays non-ranked and separate from monthly song ranks.
 - There is no active Showtime certification. Retire manual/airplay certification, six-defense certification, automatic Battle-win certification, age/Heart-based promotion, certification badges and certification progress. No invitation, certified work or prior upload is needed to curate Choice.
 - Preserve every historical song and audio asset, stable IDs, existing favorites, comments, compatible share links, actual Battle wins/losses, recognition source/time and historical eligibility data. These historical fields are not current listing, editing, Choice or chart qualifications; the existing 8-loss historical exemption remains as specified in Explore rules.
 - Public playable community songs, including founder-migrated and previously certified works, appear on both Explore and Bar. The old rule that they appear only in Showtime is retired. Do not recreate tracks, refresh their publication date, reset their Battle record, or force challenge opt-in.
@@ -469,21 +469,22 @@ Legacy code, database tables, API routes, or historical docs may still use `hono
 
 ### AIPOGER Choice Weekly
 
-- Any signed-in account may create and manage its own Choice through `/profile/choice`, reached from `製作我的 Choice` on Showtime's Choice tab or Profile favorites. No certification, invitation, creator level or uploaded work is required. Official owner Choice remains a separate identity/workflow in `/admin/showtime` and `/admin/choice`.
+- Any signed-in account may create and manage its own Choice through `/profile/choice`, reached from the single `製作我的 Choice` action on Showtime or Profile favorites. No certification, invitation, creator level or uploaded work is required. Official owner Choice remains a separate identity/workflow in `/admin/choice`; legacy `/admin/showtime` redirects to works management.
 - The personal selection source is the user's private favorites across ALL currently public, playable songs, including older and formerly certified works; there is no 30-day cutoff or certification filter. Official selection uses the same public/playable eligibility boundary. A song may be in multiple curators' Choices without changing its source record.
 - Keep song Heart/favorite, Choice-selection checkbox, and collection-level Choice save separate. Selecting or deselecting a song does not Heart/unheart or favorite/unfavorite it. Removing a favorite or cancelling a Heart must not remove an existing draft/published Choice selection; removing a Choice selection must not remove the favorite. Visibility and playback restrictions still apply independently.
 - Selecting the first song automatically creates that week's draft, then adds the song. Reuse the existing weekly draft when one exists, including on retry; never disable first selection because a draft has not been created manually. Preserve draft continuation, selected list, ordering, title, introduction, preview, publish and withdrawal.
 - Each account may publish one Choice collection per Asia/Taipei Monday week, `[Monday 00:00, next Monday 00:00)`, with 5-10 distinct songs. Drafts may have fewer; publish revalidates count, ownership and current public/playable eligibility. Withdrawal and editing reuse that week's collection rather than enabling a second issue. This calendar week is distinct from the personal 168-hour upload allowance.
 - Ageing never removes a selected song. Later hiding, removal, inactivity, missing audio, moderation hold or applicable retirement must stop public playback without erasing historical selection data or restoring the song. Only the curator may edit their own collection; owner moderation can remove a Choice and its collection interactions without altering any selected song.
-- Keep the existing compact square editorial cover shelf inside the Choice tab. Creator Choices use the curator's current Profile identity cover/avatar and display name. Only the owner may explicitly save `官方 AIPOGER` or personal `愛波哥` identity per collection; never infer it from the title. Keep issue title, curator and date separate.
+- Choice uses real square editorial covers in a lead/companion/more layout beside the monthly chart. Creator Choices use the curator's current Profile identity cover/avatar and display name. Only the owner may explicitly save `官方 AIPOGER` or personal `愛波哥` identity per collection; never infer it from the title. Keep issue title, curator and date separate.
+- Only the owner may designate one published official or creator Choice as the Showtime feature through `/admin/choice`. Reuse its existing cover/title/curator; do not create another banner editor. Selection requires public playable content and never changes song data, ownership, scores or visibility. An unset, withdrawn, deleted or unavailable selection has no featured label; present available Choices normally, without fabricating an endorsement or reserving an empty promotional slot.
 - Cards retain the authored recommendation excerpt, sequential play, one tracklist icon, share, comments and toggleable collection-level Heart/save. Desktop hover/focus may preview order; clicking opens the existing interactive HUD on desktop/mobile, with title/date, intro, song Heart/favorite actions, individual play, Play All and full share-page link. Song actions reuse existing records, never Choice-only song totals. Do not add marketing explanations, a separate article HUD or duplicate Featured/Top shelves.
-- Keep `#choice-weekly` compatible: homepage links, `/today` and older shares must select the Choice tab and reach its shelf. Published playlists retain `/choice/{id}?kind=official|creator`, curator identity, date, introduction, share, comments, collection save, tracklist, individual play and Play All; do not redirect away from the usable playlist.
+- Keep `#choice-weekly` and `#monthly-charts` as native same-page anchors: homepage links, `/today` and older shares reach their section without hiding the other section. Published playlists retain `/choice/{id}?kind=official|creator`, curator identity, date, introduction, share, comments, collection save, tracklist, individual play and Play All; do not redirect away from the usable playlist.
 - Signed-in listeners retain saved Choice playlists in Profile through `/api/choice/saved`, with direct open/remove actions. Collection interactions do not change song Hearts, monthly scores, Battle records or Explore ordering. Choice is curation, never certification or an automated weekly winner.
 - Choice selection never auto-creates social drafts or publishes externally. Keep the existing approval and explicit-send requirements in the social publishing rules.
 
 ### Playback And Presentation
 
-- Monthly charts use compact ranked cover rows; Choice retains its existing square-cover shelf. Both use the shared bottom queue player with play/pause, seek, previous/next and mobile volume. Chart play-all follows the displayed chart order; Choice playback follows curator order.
+- Desktop gives approximately 70% width to Choice and 30% to compact monthly cover rows. Mobile order is lead Choice, chart summary, more Choices. The chart initially shows at most five real tracks, with an explicit expand/collapse control; never fill missing ranks with fake Top 10 entries. Filters remain available in a disclosure. Both use the shared bottom queue player with play/pause, seek, previous/next and mobile volume. Chart play-all follows the complete filtered ranked order, independent of summary expansion; Choice playback follows curator order.
 - Historical authorized Battle audio remains accessible through compatible archive/share paths without requiring a fake monthly rank. `Full Song` is available only with the winning creator's explicit complete-song authorization; otherwise expose only the authorized archived Drop clip.
 - Retain lyrics viewing with preserved line breaks and a readable HUD/modal; absent lyrics show `歌詞未提供` / `No Lyrics`. Display actual metadata and compact functional controls, not certification labels or marketing copy explaining the redesign.
 

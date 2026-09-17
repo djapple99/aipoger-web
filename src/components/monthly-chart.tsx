@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, Info, Pause, Play, RefreshCw, Search, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Heart, Info, Pause, Play, RefreshCw, Search, SlidersHorizontal, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ShareButton from "@/components/share-button";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
@@ -21,6 +21,14 @@ const COPY = {
 
 export default function MonthlyChart({ lang }: { lang: Lang }) {
   const copy = COPY[lang];
+  const layoutCopy = {
+    zh: { title: "月排行榜", filters: "篩選榜單", more: "查看完整榜單", less: "收起榜單" },
+    en: { title: "Monthly Charts", filters: "Filter chart", more: "View full chart", less: "Show less" },
+    ja: { title: "月間ランキング", filters: "絞り込み", more: "ランキングをすべて見る", less: "折りたたむ" },
+    ko: { title: "월간 차트", filters: "차트 필터", more: "전체 차트 보기", less: "접기" },
+  }[lang];
+  const [expanded, setExpanded] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const { t } = useI18n();
   const [month, setMonth] = useState("");
   const [genre, setGenre] = useState("all");
@@ -156,38 +164,45 @@ export default function MonthlyChart({ lang }: { lang: Lang }) {
     return <ol className="divide-y divide-white/10">{list.map((track) => {
       const playing = player.playing && player.session?.queue[player.session.index]?.id === `bar:${track.id}`;
       const genreLabel = t(MUSIC_GENRE_OPTIONS.find((item) => item.value === track.genre)?.labelKey ?? "") || track.genre;
-      return <li key={track.id} className="grid grid-cols-[1.5rem_3.5rem_minmax(0,1fr)_2.5rem] items-center gap-x-2 gap-y-1 py-3 sm:grid-cols-[2.5rem_4rem_minmax(0,1fr)_8rem_5rem_auto] sm:gap-x-4">
+      return <li key={track.id} className="grid grid-cols-[1.25rem_3rem_minmax(0,1fr)_2rem] items-center gap-x-2 gap-y-1 py-3">
         <span className={`text-center text-lg font-black tabular-nums ${track.rank !== null && track.rank <= 3 ? "text-orange-400" : "text-zinc-500"}`}>{track.rank ?? "·"}</span>
-        <button type="button" disabled={!track.audioUrl} onClick={() => play(track)} title={`${playing ? copy.pause : copy.play} ${track.title}`} aria-label={`${playing ? copy.pause : copy.play} ${track.title}`} className="group relative h-14 w-14 overflow-hidden rounded sm:h-16 sm:w-16 disabled:opacity-40">
+        <button type="button" disabled={!track.audioUrl} onClick={() => play(track)} title={`${playing ? copy.pause : copy.play} ${track.title}`} aria-label={`${playing ? copy.pause : copy.play} ${track.title}`} className="group relative h-12 w-12 overflow-hidden disabled:opacity-40">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={track.coverUrl || AIPOGER_BRAND_LOGO} alt="" className="h-full w-full object-cover" />
           <span className="absolute bottom-1 left-1 flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 text-black">{playing ? <Pause className="h-3 w-3" fill="currentColor" /> : <Play className="h-3 w-3" fill="currentColor" />}</span>
         </button>
-        <div className="min-w-0"><p className="line-clamp-2 break-words text-sm font-bold text-white">{track.title}</p><p className="mt-1 truncate text-xs text-zinc-400">{track.artist}</p><p className="mt-1 truncate text-[11px] text-zinc-500">{track.aiTool}</p></div>
-        <span className="hidden text-xs text-zinc-400 sm:block">{genreLabel}</span>
-        <span className="col-start-3 row-start-2 text-[11px] tabular-nums text-emerald-300 sm:col-auto sm:row-auto sm:text-right sm:text-sm">{track.supporterCount} <span className="sm:hidden">{copy.count}</span></span>
-        <div className="col-start-4 row-span-2 row-start-1 flex flex-col gap-1 sm:col-auto sm:row-span-1 sm:row-auto sm:flex-row">
-          <button type="button" disabled={busy[track.id]} onClick={() => void toggleHeart(track)} title={hearts[track.id] ? copy.remove : copy.heart} aria-label={`${hearts[track.id] ? copy.remove : copy.heart}: ${track.title}`} aria-pressed={Boolean(hearts[track.id])} className={`flex h-10 w-10 items-center justify-center rounded disabled:opacity-40 ${hearts[track.id] ? "text-rose-400" : "text-zinc-400 hover:text-rose-300"}`}><Heart className="h-4 w-4" fill={hearts[track.id] ? "currentColor" : "none"} /></button>
-          <ShareButton title={track.title} text={`${track.artist} · ${track.title}`} url={`/ai-music?lang=${lang}&track=${track.id}`} label={copy.share} copiedLabel={copy.copied} iconOnly className="h-10 w-10 !rounded !border-0 !p-0 text-zinc-400" />
+        <div className="min-w-0"><p className="line-clamp-2 break-words text-sm font-bold text-white">{track.title}</p><p className="mt-1 truncate text-xs text-cyan-200">{track.artist}</p><p className="mt-1 truncate text-[11px] text-zinc-500" title={`${genreLabel} · ${track.aiTool}`}>{genreLabel}</p></div>
+        <span className="col-start-3 row-start-2 text-[11px] tabular-nums text-zinc-400">{track.supporterCount} {copy.count}</span>
+        <div className="col-start-4 row-span-2 row-start-1 flex flex-col gap-1">
+          <button type="button" disabled={busy[track.id]} onClick={() => void toggleHeart(track)} title={hearts[track.id] ? copy.remove : copy.heart} aria-label={`${hearts[track.id] ? copy.remove : copy.heart}: ${track.title}`} aria-pressed={Boolean(hearts[track.id])} className={`flex h-9 w-8 items-center justify-center rounded disabled:opacity-40 ${hearts[track.id] ? "text-rose-400" : "text-zinc-400 hover:text-rose-300"}`}><Heart className="h-4 w-4" fill={hearts[track.id] ? "currentColor" : "none"} /></button>
+          <ShareButton title={track.title} text={`${track.artist} · ${track.title}`} url={`/ai-music?lang=${lang}&track=${track.id}`} label={copy.share} copiedLabel={copy.copied} iconOnly className="h-9 w-8 !rounded !border-0 !p-0 text-zinc-400" />
         </div>
       </li>;
     })}</ol>;
   }
 
-  return <div id="monthly-charts" className="py-5">
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-[10rem_14rem_minmax(0,1fr)_auto] sm:items-end">
+  return <section id="monthly-charts" aria-labelledby="monthly-chart-heading" className="scroll-mt-24">
+    <header className="mb-4 flex items-center justify-between gap-2">
+      <h2 id="monthly-chart-heading" className="text-xl font-bold">{layoutCopy.title}</h2>
+      <div className="flex shrink-0"><button type="button" onClick={() => setFiltersOpen((value) => !value)} aria-expanded={filtersOpen} aria-controls="chart-filters" title={layoutCopy.filters} aria-label={layoutCopy.filters} className={`flex h-9 w-9 items-center justify-center ${filtersOpen ? "text-orange-300" : "text-zinc-400 hover:text-white"}`}><SlidersHorizontal className="h-4 w-4" /></button><button type="button" onClick={() => dialog.current?.showModal()} title={copy.rules} aria-label={copy.rules} className="flex h-9 w-9 items-center justify-center text-zinc-400 hover:text-white"><Info className="h-4 w-4" /></button></div>
+    </header>
+    {!filtersOpen && (genre !== "all" || search.trim()) && <p className="mb-3 break-words text-xs text-orange-200">{genre === "all" ? copy.all : t(MUSIC_GENRE_OPTIONS.find((item) => item.value === genre)?.labelKey ?? "") || genre}{search.trim() ? ` · ${search.trim()}` : ""}</p>}
+    <div id="chart-filters" hidden={!filtersOpen}>
+    <div className="grid grid-cols-2 gap-3 border-b border-white/15 pb-4">
       <label className="grid gap-1 text-xs text-zinc-400">{copy.month}<select aria-label={copy.month} value={month || data?.month || ""} disabled={!data} onChange={(event) => setMonth(event.target.value)} className="h-10 min-w-0 rounded border border-white/20 bg-[#111314] px-2 text-sm text-white">{!data && <option value="">—</option>}{data?.availableMonths.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
       <label className="grid gap-1 text-xs text-zinc-400">{copy.style}<select aria-label={copy.style} value={genre} onChange={(event) => setGenre(event.target.value)} className="h-10 min-w-0 rounded border border-white/20 bg-[#111314] px-2 text-sm text-white"><option value="all">{copy.all}</option>{MUSIC_GENRE_OPTIONS.map((item) => <option key={item.value} value={item.value}>{t(item.labelKey)}</option>)}</select></label>
-      <label className="relative col-span-2 sm:col-span-1"><Search className="absolute left-3 top-3 h-4 w-4 text-zinc-500" /><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={copy.search} aria-label={copy.search} className="h-10 w-full rounded border border-white/20 bg-[#111314] pl-9 pr-3 text-sm text-white outline-none focus:border-orange-400" /></label>
-      <div className="col-span-2 flex justify-end gap-2 sm:col-span-1"><button type="button" onClick={() => setRefresh((n) => n + 1)} title={copy.retry} aria-label={copy.retry} className="flex h-10 w-10 items-center justify-center text-zinc-400 hover:text-white"><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /></button><button type="button" onClick={() => dialog.current?.showModal()} title={copy.rules} aria-label={copy.rules} className="flex h-10 w-10 items-center justify-center text-zinc-400 hover:text-white"><Info className="h-5 w-5" /></button></div>
+      <label className="relative col-span-2"><Search className="absolute left-3 top-3 h-4 w-4 text-zinc-500" /><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={copy.search} aria-label={copy.search} className="h-10 w-full rounded border border-white/20 bg-[#111314] pl-9 pr-3 text-sm text-white outline-none focus:border-orange-400" /></label>
+      <button type="button" onClick={() => setRefresh((n) => n + 1)} title={copy.retry} aria-label={copy.retry} className="col-span-2 flex h-9 items-center justify-end gap-2 text-xs text-zinc-400 hover:text-white"><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />{copy.retry}</button>
     </div>
-    <div className="my-4 flex items-center justify-between gap-3 border-b border-white/15 pb-3"><span className="inline-flex items-center gap-2 text-xs font-bold text-zinc-400"><span className={`h-1.5 w-1.5 rounded-full ${data?.status === "final" ? "bg-zinc-500" : "bg-emerald-400"}`} />{data?.status === "final" ? copy.final : copy.live}</span><button type="button" disabled={!ranked.length || loading || error} onClick={() => { if (ranked[0]) play(ranked[0], ranked, true); }} className="inline-flex min-h-9 items-center gap-2 text-xs font-bold text-orange-300 disabled:opacity-30"><Play className="h-3.5 w-3.5" />{copy.playAll}</button></div>
+    </div>
+    <div className="mb-2 flex flex-wrap items-center justify-between gap-2 border-b border-white/15 pb-3"><span className="inline-flex flex-wrap items-center gap-2 text-xs text-zinc-400"><span className={`h-1.5 w-1.5 rounded-full ${data?.status === "final" ? "bg-zinc-500" : "bg-emerald-400"}`} />{data?.month} · {data?.status === "final" ? copy.final : copy.live}</span><button type="button" disabled={!ranked.length || loading || error} onClick={() => { if (ranked[0]) play(ranked[0], ranked, true); }} className="inline-flex min-h-9 items-center gap-2 text-xs font-bold text-orange-300 disabled:opacity-30"><Play className="h-3.5 w-3.5" />{copy.playAll}</button></div>
     {notice && <div role="status" className="mb-4 flex flex-wrap gap-3 border-l-2 border-orange-400 pl-3 text-sm text-orange-200">{notice === "login" ? copy.login : copy.heartFailed}{notice === "login" && <Link className="underline" href={`/auth?next=${encodeURIComponent(`/rank?lang=${lang}`)}`}>{copy.signIn}</Link>}</div>}
     {error ? <div role="alert" className="py-12 text-center text-sm text-zinc-400"><p>{copy.failed}</p><button type="button" onClick={() => setRefresh((n) => n + 1)} className="mt-3 text-orange-300">{copy.retry}</button></div> : loading ? <div role="status" aria-label={copy.loading} className="animate-pulse divide-y divide-white/10">{[0, 1, 2].map((index) => <div key={index} className="flex items-center gap-4 py-4"><div className="h-14 w-14 rounded bg-white/5" /><div className="h-3 w-1/3 rounded bg-white/5" /></div>)}</div> : <>
-      {ranked.length > 0 && <><div className="hidden justify-end pr-24 text-[11px] text-zinc-500 sm:flex">{copy.supporters}</div>{rows(ranked)}</>}
+      {ranked.length > 0 && rows(expanded ? ranked : ranked.slice(0, 5))}
       {ranked.length === 0 && <div className="py-10 text-center"><p className="text-sm text-zinc-400">{search ? copy.noMatch : copy.empty}</p><Link className="mt-3 inline-block text-sm font-bold text-orange-300" href={`/ai-music?lang=${lang}`}>{copy.explore}</Link></div>}
-      {accumulating.length > 0 && <section className="mt-5 border-t border-white/15 pt-5"><h2 className="text-sm font-bold text-zinc-400">{copy.accumulating}</h2>{rows(accumulating)}</section>}
+      {accumulating.length > 0 && (expanded || ranked.length < 5) && <section className="mt-4 border-t border-white/15 pt-4"><h3 className="text-xs font-bold text-zinc-500">{copy.accumulating}</h3>{rows(expanded ? accumulating : accumulating.slice(0, Math.max(0, 5 - ranked.length)))}</section>}
+      {visible.length > 5 && <button type="button" onClick={() => setExpanded((value) => !value)} aria-expanded={expanded} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 border-y border-white/15 text-xs font-bold text-zinc-300 hover:text-white">{expanded ? layoutCopy.less : layoutCopy.more}{expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</button>}
     </>}
     <dialog ref={dialog} aria-labelledby="chart-rules-title" className="m-auto w-[calc(100%-2rem)] max-w-lg rounded-lg border border-white/20 bg-[#111314] p-5 text-white backdrop:bg-black/80" onClick={(event) => { if (event.target === event.currentTarget) dialog.current?.close(); }}><div onClick={(event) => event.stopPropagation()}><header className="flex items-center justify-between gap-3"><h2 id="chart-rules-title" className="text-lg font-bold">{copy.rules}</h2><button type="button" onClick={() => dialog.current?.close()} aria-label={copy.close} className="flex h-10 w-10 items-center justify-center"><X className="h-5 w-5" /></button></header><p className="mt-3 text-sm leading-7 text-zinc-300">{copy.ruleText}</p></div></dialog>
-  </div>;
+  </section>;
 }

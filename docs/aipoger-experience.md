@@ -1,6 +1,6 @@
 # AIPOGER 版面與使用流程
 
-更新：2026-09-17 23:54 Asia/Taipei。主文件 3／6；產品門檻與權限以 [產品規則](aipoger-product-rules.md) 為準。Showtime 月榜／Choice 已發布，驗證範圍見 [發布紀錄](archive/2026-09-17-showtime-charts-choice-release.md)。
+更新：2026-09-18 00:31 Asia/Taipei。主文件 3／6；產品門檻與權限以 [產品規則](aipoger-product-rules.md) 為準。Showtime 採同頁策展布局；此前月榜底層發布見 [發布紀錄](archive/2026-09-17-showtime-charts-choice-release.md)。
 
 This document protects AIPOGER's visual identity. Use it before redesigning any page, adding major UI, or changing user-facing copy.
 
@@ -215,13 +215,13 @@ Copy direction:
 Role:
 
 - Front-stage name is `AIPOGER Showtime`; old `Honor Board` wording is legacy/internal context, not the main public name.
-- `/rank` has two tabs, `月榜 | Choice` / `Monthly Charts | Choice`. Default to the current month; `#choice-weekly` links select the Choice tab and retain the existing shelf anchor.
-- Monthly song support and personal curation are distinct views. No certification catalog, certification badges, six-defense progress, invitation gate or fake content.
+- `/rank` presents Choice and Monthly Charts together. No view tabs; `#choice-weekly` and `#monthly-charts` remain real section anchors.
+- Desktop uses approximately 70/30 columns: Choice lead/companion and more covers on the left, compact monthly rows on the right. Mobile reads lead Choice, chart summary, more Choices. Sparse catalogs collapse absent sections rather than showing empty ad slots. Monthly song support and personal curation remain different signals. No certification catalog, certification badges, six-defense progress, invitation gate or fake content.
 
 Monthly chart layout:
 
-- Keep the `AIPOGER SHOWTIME` heading compact above the tabs and working content. Replace certified-catalog density with compact ranked cover rows, not giant leaderboard tiles or an editorial hero.
-- Put month selection, overall/genre filtering and ordered playback in one compact toolbar. Month labels use Taiwan calendar months; distinguish the updating current month from frozen historical snapshots with concise state labels.
+- Keep the `AIPOGER SHOWTIME` heading compact above the music with one Make My Choice action. Use neutral charcoal, restrained orange actions and cyan curator names; existing covers carry the color, not gradients, decorative panels or giant text.
+- Month, genre and search live under an accessible filter icon; current month/state and ordered playback remain visible. Show up to five actual rows initially and allow full expansion/collapse. Month labels use Taiwan calendar months; distinguish the updating current month from frozen historical snapshots with concise state labels.
 - Each row shows actual rank, small square cover, song title, creator, genre, monthly distinct non-author supporter count, play, song Heart and share. Use fixed rank/cover/action tracks; mobile titles may wrap to two lines without covering counts or controls.
 - Show genuine competition ties such as `1, 1, 3`. Below the product-rule minimum, use a compact unranked support-building state. Do not invent ranks, crowns, full Top 10 lists or movement arrows without real snapshots.
 - The history selector contains only snapshots from launch onward; absent history, insufficient support and data errors have concise truthful states. Monthly counts must not be labeled lifetime Hearts, Battle wins, Choice popularity or Earworm affinity.
@@ -230,13 +230,13 @@ Monthly chart layout:
 
 Choice shelf and selection:
 
-- Retain the existing Beatport/DJ-style horizontal shelf of compact square editorial covers inside the Choice tab, never circular curator avatars or numbered chart rows. Keep curator identity cover, authored title, curator/date metadata, recommendation excerpt, sequential play, tracklist, collection Heart/save, share and comments. Do not add `CURATOR SETS`, a standalone article HUD or explanatory marketing copy.
+- Use Beatport-inspired square artwork hierarchy, not a branded clone: larger lead cover, smaller companion, compact more-cover grid. The owner selects the feature from published Choices in the existing admin library. Without a valid designation the heading is simply Choice Playlists, not Featured. Preserve original cover proportions and do not invent separate campaign artwork. Keep authored title, curator/date, recommendation excerpt on the lead, full intro in HUD/share page, sequential play, tracklist, collection Heart/save, share and comments. Do not add `CURATOR SETS`, a standalone article HUD or explanatory marketing copy.
 - `製作我的 Choice` enters `/profile/choice` private favorites selection. Any signed-in account can use it; request sign-in only at the protected action boundary and return to the intended flow. Do not display certified-work, prior-upload or invitation requirements.
 - Show all of the user's public playable favorites, regardless of song age or historical certification. Use compact cover rows with distinct selection checkboxes, play and existing song Heart/favorite controls; keep a separate selected list with ordering, title, introduction, preview, publish and withdrawal. An empty favorites state offers a direct Explore action without marketing text.
 - Selecting the first song creates/resumes the current week's draft and adds it immediately; no preliminary create-draft task. Resume persisted work rather than clearing the selection when re-entering. Keep current week and selected count visible; publish validation follows the 5-10-song, one-per-Monday-week product rule.
 - Selection checkboxes must never look like or act as Hearts. Unselecting a song does not remove its favorite; removing a favorite or cancelling its Heart does not remove it from an existing Choice. Unavailable or moderated selections retain an honest disabled state and cannot silently play.
 - Preserve the existing interactive tracklist HUD and usable `/choice/{id}` share page. Both show stored intro, ordered songs, song actions, Play All and the shared player; public Choice remains non-ranked.
-- `/admin/showtime` and `/admin/choice` retain compact official curation and moderation controls, separate from personal Choices. Remove the manual-certification review queue, certification-only catalog and award actions. Do not add social-publishing controls to the personal workbench.
+- `/admin/choice` retains official curation/moderation and the owner-only featured selector; `/admin/showtime` redirects to works management. No manual-certification review queue, certification-only catalog or award actions. Do not add social-publishing controls to the personal workbench.
 
 Own works and playback:
 

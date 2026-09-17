@@ -23,6 +23,7 @@ type ChoicePayload = {
   catalog?: AipogerChoiceCatalogItem[];
   collections?: AipogerChoiceCollection[];
   library?: ChoiceLibraryEntry[];
+  featuredKey?: string | null;
   error?: string;
 };
 
@@ -136,6 +137,7 @@ export default function AdminChoicePage() {
   const [catalog, setCatalog] = useState<AipogerChoiceCatalogItem[]>([]);
   const [collections, setCollections] = useState<AipogerChoiceCollection[]>([]);
   const [library, setLibrary] = useState<ChoiceLibraryEntry[]>([]);
+  const [featuredKey, setFeaturedKey] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [weekStart, setWeekStart] = useState(choiceWeekStart());
   const [title, setTitle] = useState("");
@@ -165,6 +167,7 @@ export default function AdminChoicePage() {
     setSchemaReady(payload?.schemaReady !== false);
     setCatalog(payload?.catalog ?? []);
     setCollections(nextCollections);
+    setFeaturedKey(payload?.featuredKey ?? "");
     setLibrary(payload?.library ?? nextCollections.map((collection) => ({
       id: collection.id,
       kind: "official" as const,
@@ -421,6 +424,14 @@ export default function AdminChoicePage() {
               新增一期
             </button>
           </div>
+          <label className="mt-4 flex flex-wrap items-center gap-3 text-sm font-bold text-orange-200">
+            Showtime 主推 Choice
+            <select aria-label="Showtime 主推 Choice" value={featuredKey} disabled={busy !== ""} onChange={(event) => { void runAction("set_featured", { featuredKey: event.target.value || null }, "主推已更新。").catch(() => { setError("主推更新失敗，請重試。"); setBusy(""); }); }} className="h-11 min-w-0 max-w-full rounded border border-white/20 bg-black px-3 text-sm text-white">
+              <option value="">不指定主推</option>
+              {featuredKey && !library.some((entry) => entry.isPublished && `${entry.kind}:${entry.id}` === featuredKey) ? <option value={featuredKey}>原主推已撤下</option> : null}
+              {library.filter((entry) => entry.isPublished).map((entry) => <option key={`${entry.kind}:${entry.id}`} value={`${entry.kind}:${entry.id}`}>{entry.curatorName} · {libraryDisplayTitle(entry)}</option>)}
+            </select>
+          </label>
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
             {library.map((entry) => <ChoiceLibraryCard key={`${entry.kind}:${entry.id}`} entry={entry} active={entry.kind === "official" && entry.id === selectedId} editHref={entry.kind === "creator" && entry.creatorId === currentUserId ? `/profile/choice?collection=${encodeURIComponent(entry.id)}` : undefined} onDeleteCreator={entry.kind === "creator" ? () => void deleteCreatorChoice(entry) : undefined} onSelect={() => selectOfficialChoice(entry.id)} />)}
             {library.length === 0 ? <p className="col-span-full rounded-xl border border-dashed border-white/10 px-3 py-7 text-center text-sm font-bold text-zinc-500">尚未建立 Choice，按「新增一期」開始。</p> : null}

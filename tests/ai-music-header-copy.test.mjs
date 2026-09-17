@@ -58,8 +58,7 @@ test("Explore share links stay on the shared work in the Explore catalog", () =>
 test("Bar remains the upload radio and Showtime exposes charts and Choice without certification", () => {
   assert.ok(listenBarSource.includes("AI 音樂公播池與投稿入口"));
   assert.ok(listenBarSource.includes("也會出現在探索 AI 音樂"));
-  assert.ok(showtimeSource.includes("月排行榜"));
-  assert.ok(showtimeSource.includes("MonthlyChart"));
+  assert.ok(showtimeSource.includes("chart={<MonthlyChart lang={lang} />"));
   assert.ok(showtimeSource.includes("PublicChoiceGallery"));
   assert.equal(showtimeSource.includes("ai_music_showtime_certified"), false);
   assert.ok(showtimeSource.includes('href={`/ai-music?lang=${lang}`}'));

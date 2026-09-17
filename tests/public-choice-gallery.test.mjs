@@ -370,15 +370,14 @@ test("playback rejection is surfaced without an unhandled promise", async (t) =>
   assert.match(gallery.shelf().heartError, /Playback failed/);
 });
 
-test("reusable shelf keeps the HUD, comments, share, language CTA and independent saves", () => {
-  assert.match(shelfSource, /href=\{`\/profile\/choice\?lang=\$\{lang\}`\}/);
-  assert.match(shelfSource, /<ListPlus/);
+test("reusable shelf keeps HUD, comments, share and independent saves without duplicate CTA", () => {
+  assert.doesNotMatch(shelfSource, /\/profile\/choice/);
   assert.match(shelfSource, /<ChoiceCommentsDialog/);
   assert.match(shelfSource, /<ShareButton/);
   assert.match(shelfSource, /createPortal/);
   assert.match(shelfSource, /onToggleItemHeart\(item\)/);
   assert.match(shelfSource, /aria-pressed=\{heart\.myHeart\}/);
   assert.match(shelfSource, /aria-pressed=\{itemHeart\.myHeart\}/);
-  assert.match(source, /export type PublicChoiceGalleryProps = \{ lang: Lang \}/);
+  assert.match(source, /export type PublicChoiceGalleryProps = \{ lang: Lang; chart\?: ReactNode \}/);
   assert.doesNotMatch(source, /\/api\/(?:ai-music|listen-bar|showtime|monthly)|\.from\(|<audio|sort\(/);
 });

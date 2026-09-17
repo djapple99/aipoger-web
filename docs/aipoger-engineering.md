@@ -1,6 +1,6 @@
 # AIPOGER 開發與維運
 
-更新：2026-09-17 23:54 Asia/Taipei。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
+更新：2026-09-18 00:31 Asia/Taipei。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
 
 ## 最新發布
 
@@ -379,7 +379,9 @@ Check:
 
 ## Showtime 月榜與 Choice 驗收（2026-09-17）
 
-- /rank 保留 AIPOGER Showtime 品牌，預設月排行榜，Choice 是另一頁籤；#choice-weekly 舊入口直接選中 Choice，瀏覽器上一頁／下一頁同步頁籤。
+- /rank 保留 AIPOGER Showtime 品牌，Choice 與月榜同時掛載，不用頁籤；#choice-weekly／#monthly-charts 是原生錨點。桌機約 70/30，手機為主推、月榜摘要、更多 Choice；僅一個製作入口，空／少內容不留廣告占位。
+- 主推設定存於私有 listen-bar-data/choice/featured.json；僅 /api/admin/choice 的 owner guard 後可寫入。set_featured 驗證 kind、UUID、已發布及可播歌曲；公開讀取排除草稿／撤下／刪除，畫面再與公開可播歌單交集，不能靠主推繞過可見性。無 DB schema 變更，不修改認證、曲庫、票數或收藏。
+- 月榜摘要最多五筆；完整展開及月份／類型／搜尋可用，Play All 依完整篩選名次。測試實際 API 權限與主推儲存失敗，既有 auth race／跨日愛心／共享播放器測試必須保留。
 - 月榜讀 /api/charts/monthly，DB 依台灣曆月逐筆有效 Heart 去重、排除作者自投，至少 3 位支持才列名次，同分 1、1、3；類型榜使用各類型名次。不得從前端陣列索引或累積愛心捏造順位。
 - 月份選單只顯示啟用後真實月份；本期更新、過期封存，零支持月份仍封存一次。歷史榜不得因下架重排；下架、未公開、審核中或無音檔歌曲不可播放。
 - monthly_charts migration 的讀取／封存 RPC 僅 service_role 可執行；表格 RLS 開啟。來源寫入與月末封存共用 advisory lock；以獨立 PostgreSQL 測試驗證去重、跨月、取消支持、同分、權限、不可改寫及超過 1000 筆。

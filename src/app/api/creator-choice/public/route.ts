@@ -4,6 +4,7 @@ import type { AipogerChoiceCatalogItem } from "@/lib/aipoger-choice";
 import type { AipogerPublicCreatorChoiceCollection } from "@/lib/creator-choice";
 import { loadCreatorChoicePlaybackCatalog } from "@/lib/server-creator-choice-catalog";
 import { LISTEN_BAR_COVER_BUCKET } from "@/lib/listen-bar";
+import { readPublicFeaturedChoice } from "@/lib/server-choice-featured";
 
 type ChoiceItemRow = {
   id: string;
@@ -120,6 +121,13 @@ export async function GET() {
     if (error) throw error;
 
     const rows = (data ?? []) as ChoiceCollectionRow[];
+    const featuredKey = await readPublicFeaturedChoice(admin).catch(() => null);
+    if (featuredKey?.startsWith("creator:") && !rows.some((row) => `creator:${row.id}` === featuredKey)) {
+      const featured = await admin.from("aipoger_creator_choice_collections")
+        .select("id,creator_id,curator_name,week_start,title,intro,cover_path,published_at,aipoger_creator_choice_items(id,source_kind,source_id,position)")
+        .eq("id", featuredKey.split(":")[1]).eq("is_published", true).maybeSingle();
+      if (!featured.error && featured.data) rows.push(featured.data as ChoiceCollectionRow);
+    }
     if (rows.length === 0) {
       return NextResponse.json({ schemaReady: true, collections: [] }, { headers: { "Cache-Control": "no-store" } });
     }
@@ -142,7 +150,7 @@ export async function GET() {
       .map((row) => resolveCollection(admin, row, catalog.items, fighterById.get(row.creator_id) || userById.get(row.creator_id) || ""))
       .filter((collection) => collection.items.length > 0);
 
-    return NextResponse.json({ schemaReady: true, collections }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ schemaReady: true, collections, featuredKey }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("[creator-choice/public] read failed", {
       code: error && typeof error === "object" ? (error as { code?: string }).code : undefined,

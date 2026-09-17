@@ -165,6 +165,9 @@ function mount(t, options = {}) {
     heart: (id = "first") => button((props) => "aria-pressed" in props && props["aria-label"].endsWith(`: Song ${id}`)),
     cover: (id = "first") => button((props) => /^(Play|Pause) Song /.test(props["aria-label"] ?? "") && props["aria-label"].endsWith(`Song ${id}`)),
     playAll: () => button((props) => text(props.children) === "Play chart"),
+    expand: () => button((props) => /View full chart|Show less/.test(text(props.children))),
+    filters: () => button((props) => props["aria-label"] === "Filter chart"),
+    rowCount: () => nodes(tree).filter((node) => node.type === "li").length,
     search(value) { nodes(tree).find((node) => node.type === "input").props.onChange({ target: { value } }); },
     auth(user, event = "SIGNED_IN", token) { authSession = session(user, token); authCallback(event, authSession); },
     queueSession(promise) { sessions.push(promise); },
@@ -179,6 +182,26 @@ function mount(t, options = {}) {
     unsubscribed: () => unsubscribed,
   };
 }
+
+test("editorial chart limits summary to five actual rows and expands without changing queue order", async (t) => {
+  const chart = finalChart();
+  chart.tracks = Array.from({ length: 8 }, (_, index) => song(String(index), index < 3 ? index + 1 : null));
+  const ui = mount(t, { chart });
+  await ui.flush();
+  assert.equal(ui.rowCount(), 5);
+  ui.expand().onClick();
+  await ui.flush();
+  assert.equal(ui.rowCount(), 8);
+  ui.playAll().onClick();
+  assert.deepEqual(ui.starts[0][0].map((track) => track.id), ["bar:0", "bar:1", "bar:2"]);
+  ui.expand().onClick();
+  await ui.flush();
+  assert.equal(ui.rowCount(), 5);
+  assert.equal(ui.filters()["aria-expanded"], false);
+  ui.filters().onClick();
+  await ui.flush();
+  assert.equal(ui.filters()["aria-expanded"], true);
+});
 
 test("account change while getSession is pending never sends a stale Heart POST", async (t) => {
   const pending = deferred(), chart = mount(t);

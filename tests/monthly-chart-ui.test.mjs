@@ -6,14 +6,11 @@ const rank = readFileSync(new URL("../src/app/rank/page.tsx", import.meta.url), 
 const chart = readFileSync(new URL("../src/components/monthly-chart.tsx", import.meta.url), "utf8");
 const layout = readFileSync(new URL("../src/app/rank/layout.tsx", import.meta.url), "utf8");
 
-test("Showtime replaces certification with accessible monthly chart and Choice tabs", () => {
+test("Showtime presents Choice and monthly chart on one page without tabs", () => {
   assert.match(rank, /MonthlyChart/);
   assert.match(rank, /PublicChoiceGallery/);
-  assert.match(rank, /role="tablist"/);
-  assert.match(rank, /aria-selected/);
-  assert.match(rank, /ArrowLeft/);
-  assert.match(rank, /#choice-weekly/);
-  assert.match(rank, /hashchange/);
+  assert.doesNotMatch(rank, /role="tablist"|role="tabpanel"|setView/);
+  assert.match(rank, /chart=\{<MonthlyChart lang=\{lang\}/);
   assert.doesNotMatch(rank, /fetchBattleArchivesForRank|fetchAiMusicTracksForRank|certified|認證/);
   assert.doesNotMatch(layout, /認證|被認可/);
 });

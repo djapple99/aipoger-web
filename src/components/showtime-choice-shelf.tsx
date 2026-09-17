@@ -1,15 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, ListMusic, ListPlus, MessageCircle, Play, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Heart, ListMusic, MessageCircle, Play, X } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import ChoiceCommentsDialog from "@/components/choice-comments-dialog";
 import ShareButton from "@/components/share-button";
 import { AipogerChoiceCover } from "@/components/aipoger-choice-cover";
 import { choiceItemRecordKey, type AipogerChoiceItem } from "@/lib/aipoger-choice";
 import { getChoiceCopy } from "@/lib/choice-copy";
-import { fontRighteous } from "@/lib/fonts";
 import type { Lang } from "@/lib/locale";
 
 export type ShowtimeChoiceShelfEntry = {
@@ -36,6 +35,8 @@ export type ShowtimeChoiceItemHeartState = {
 
 type ShowtimeChoiceShelfProps = {
   entries: ShowtimeChoiceShelfEntry[];
+  featuredKey?: string | null;
+  chart?: ReactNode;
   lang: Lang;
   loading?: boolean;
   loadError?: string;
@@ -83,6 +84,8 @@ function TracklistPreview({ entry }: { entry: ShowtimeChoiceShelfEntry }) {
 
 export default function ShowtimeChoiceShelf({
   entries,
+  featuredKey,
+  chart,
   lang,
   loading = false,
   loadError,
@@ -96,71 +99,67 @@ export default function ShowtimeChoiceShelf({
   onToggleItemHeart,
 }: ShowtimeChoiceShelfProps) {
   const copy = getChoiceCopy(lang);
-  const [detail, setDetail] = useState<ShowtimeChoiceShelfEntry | null>(null);
-  const [commentsEntry, setCommentsEntry] = useState<ShowtimeChoiceShelfEntry | null>(null);
+  const [detailKey, setDetailKey] = useState<string | null>(null);
+  const [commentsKey, setCommentsKey] = useState<string | null>(null);
+  const detail = entries.find((entry) => recordKey(entry) === detailKey) ?? null;
+  const commentsEntry = entries.find((entry) => recordKey(entry) === commentsKey) ?? null;
+  const setDetail = (entry: ShowtimeChoiceShelfEntry | null) => setDetailKey(entry ? recordKey(entry) : null);
+  const setCommentsEntry = (entry: ShowtimeChoiceShelfEntry | null) => setCommentsKey(entry ? recordKey(entry) : null);
+  const editorial = {
+    zh: { featured: "本期主推", choices: "Choice 歌單", more: "更多 Choice" },
+    en: { featured: "Featured Choice", choices: "Choice Playlists", more: "More Choices" },
+    ja: { featured: "注目の Choice", choices: "Choice プレイリスト", more: "もっと Choice" },
+    ko: { featured: "추천 Choice", choices: "Choice 플레이리스트", more: "더 많은 Choice" },
+  }[lang];
+  const playableEntries = entries.filter((entry) => entry.items.some((item) => Boolean(item.audioUrl)));
+  const featured = playableEntries.find((entry) => recordKey(entry) === featuredKey);
+  const lead = featured ?? playableEntries[0];
+  const remaining = playableEntries.filter((entry) => entry !== lead);
+  const side = remaining.slice(0, 1);
+  const more = remaining.slice(1);
 
   useEffect(() => {
     if (!detail) return;
     const close = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setDetail(null);
+      if (event.key === "Escape") setDetailKey(null);
     };
     window.addEventListener("keydown", close);
     return () => window.removeEventListener("keydown", close);
   }, [detail]);
 
-  return (
-    <>
-      <section id="choice-weekly" className="scroll-mt-20 border-y border-yellow-100/15 py-5 sm:py-6">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className={`${fontRighteous.className} text-4xl leading-[0.88] text-white sm:text-5xl lg:text-6xl`}>
-            AIPOGER <span className="text-orange-300">CHOICE</span>
-          </h2>
-          <Link href={`/profile/choice?lang=${lang}`} className="aipo-ghost-button inline-flex min-h-9 max-w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-black text-cyan-100 transition hover:text-white">
-            <ListPlus className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            {copy.buildMyChoice}
-          </Link>
-        </div>
+  useEffect(() => {
+    if (detailKey && !detail) setDetailKey(null);
+    if (commentsKey && !commentsEntry) setCommentsKey(null);
+  }, [detailKey, detail, commentsKey, commentsEntry]);
 
-        {loading && entries.length === 0 ? (
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6" role="status" aria-label={copy.loading}>
-            {Array.from({ length: 2 }).map((_, index) => (
-              <div key={index} className="animate-pulse rounded-md border border-yellow-100/10 bg-black/35 p-2">
-                <div className="aspect-square rounded-md bg-white/[0.08]" />
-                <div className="mt-3 h-4 w-4/5 rounded bg-white/[0.08]" />
-                <div className="mt-2 h-3 w-3/5 rounded bg-white/[0.06]" />
-              </div>
-            ))}
-          </div>
-        ) : entries.length > 0 ? (
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-            {entries.map((entry) => {
+  function renderCard(entry: ShowtimeChoiceShelfEntry, large = false) {
               const key = recordKey(entry);
               const heart = hearts[key] ?? { heartCount: 0, myHeart: false };
               const playable = entry.items.some((item) => Boolean(item.audioUrl));
               return (
-                <article key={key} className="group min-w-0 rounded-md border border-yellow-100/20 bg-black/35 p-2 shadow-[0_10px_26px_rgba(0,0,0,0.24)] transition hover:-translate-y-0.5 hover:border-yellow-100/40 sm:p-1.5">
-                  <div className="group relative aspect-square overflow-hidden rounded-md bg-[#090909]">
+                <article key={key} data-choice-key={key} className="group min-w-0">
+                  <div className="group relative aspect-square overflow-hidden bg-[#222]">
                     <AipogerChoiceCover src={entry.coverUrl} alt={`${entry.curatorName} Choice`} className="absolute inset-0 transition duration-300 group-hover:scale-[1.025]" />
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent" />
+                    <button type="button" onClick={() => setDetail(entry)} aria-label={`${copy.previewTracklist}: ${entry.title}`} className="absolute inset-0 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-orange-400" />
                     <button
                       type="button"
                       onClick={() => onPlay(entry)}
                       disabled={!playable}
-                      className="absolute bottom-2 left-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 text-black shadow-[0_8px_18px_rgba(0,0,0,0.44)] transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-35"
+                      className={`absolute bottom-3 left-3 inline-flex items-center justify-center rounded-full bg-orange-500 text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-35 ${large ? "h-12 w-12" : "h-10 w-10"}`}
                       aria-label={copy.playTrack(entry.title)}
                     >
                       <Play className="h-3.5 w-3.5" fill="currentColor" />
                     </button>
                   </div>
-                  <div className="px-0.5 pb-0.5 pt-2">
-                    <button type="button" onClick={() => setDetail(entry)} className="block w-full line-clamp-2 min-h-[2.3rem] text-left text-[13px] font-black leading-[1.15rem] text-white transition hover:text-orange-100 sm:min-h-10 sm:text-sm sm:leading-5" title={entry.title}>
+                  <div className="pt-3">
+                    <button type="button" onClick={() => setDetail(entry)} className={`block w-full break-words text-left font-bold leading-snug text-white hover:text-orange-200 ${large ? "text-xl sm:text-2xl" : "line-clamp-2 text-sm"}`} title={entry.title}>
                       {entry.title}
                     </button>
-                    <div className="mt-1 flex items-center justify-between gap-2 text-[10px] font-black sm:mt-0.5 sm:text-[11px]">
-                      <p className="truncate text-cyan-100">{entry.curatorName}</p>
-                      <time dateTime={entry.weekStart} className="shrink-0 tabular-nums text-orange-200/75">{choiceDateLabel(entry.weekStart, lang)}</time>
+                    <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs">
+                      <p className="min-w-0 truncate text-cyan-200">{entry.curatorName}</p>
+                      <time dateTime={entry.weekStart} className="tabular-nums text-zinc-500">{choiceDateLabel(entry.weekStart, lang)}</time>
                     </div>
-                    {entry.intro ? <p className="mt-1.5 line-clamp-2 text-[11px] font-bold leading-4 text-zinc-400 sm:text-[11px]">{entry.intro}</p> : null}
+                    {large && entry.intro ? <p className="mt-2 line-clamp-1 text-sm leading-6 text-zinc-400">{entry.intro}</p> : null}
                     <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-white/10 pt-2">
                       <button
                         type="button"
@@ -211,15 +210,28 @@ export default function ShowtimeChoiceShelf({
                   </div>
                 </article>
               );
-            })}
+  }
+
+  return (
+    <>
+      <div className="grid items-start gap-x-7 gap-y-8 lg:grid-cols-[minmax(0,2.2fr)_minmax(320px,1fr)]" data-showtime-editorial>
+        <section id="choice-weekly" className="min-w-0 scroll-mt-24 lg:col-start-1 lg:row-start-1" aria-labelledby="choice-heading">
+          <h2 id="choice-heading" className="mb-4 text-xl font-bold">{featured ? editorial.featured : editorial.choices}</h2>
+          {lead ? <div className={`grid items-start gap-5 ${side.length ? "lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]" : "max-w-lg"}`}>
+            <div data-choice-lead>{renderCard(lead, true)}</div>
+            {side.length > 0 && <div className="hidden gap-6 lg:grid">{side.map((entry) => renderCard(entry))}</div>}
+          </div> : loading ? <div role="status" aria-label={copy.loading} className="aspect-square max-w-lg animate-pulse bg-white/5" /> : !loadError ? <p className="py-6 text-sm text-zinc-400">{copy.noPublished}</p> : null}
+          {heartError ? <p role="alert" className="mt-3 text-xs font-bold text-rose-200">{heartError}</p> : null}
+        </section>
+        {chart && <aside className="min-w-0 border-t border-white/15 pt-5 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0" data-showtime-chart>{chart}</aside>}
+        {remaining.length > 0 && <section className={`min-w-0 lg:col-start-1 lg:row-start-2 ${more.length === 0 ? "lg:hidden" : ""}`} aria-labelledby="more-choice-heading" data-choice-more>
+          <h2 id="more-choice-heading" className="mb-4 text-xl font-bold">{editorial.more}</h2>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 lg:grid-cols-4">
+            {side.map((entry) => <div key={recordKey(entry)} className="min-w-0 lg:hidden">{renderCard(entry)}</div>)}
+            {more.map((entry) => renderCard(entry))}
           </div>
-        ) : !loadError ? (
-          <p className="mt-4 border-l-2 border-orange-400 pl-3 text-sm font-bold text-zinc-500">
-            {copy.noPublished}
-          </p>
-        ) : null}
-        {heartError ? <p role="alert" className="mt-3 text-xs font-bold text-rose-200">{heartError}</p> : null}
-      </section>
+        </section>}
+      </div>
 
       {detail && typeof document !== "undefined" ? createPortal((
         <div className="fixed inset-0 z-[230] flex items-end bg-black/78 px-3 py-4 backdrop-blur-sm sm:items-center sm:justify-center" role="dialog" aria-modal="true" aria-label={copy.tracklistPreview} onClick={() => setDetail(null)}>

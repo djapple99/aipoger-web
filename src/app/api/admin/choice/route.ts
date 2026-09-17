@@ -14,6 +14,7 @@ import {
 } from "@/lib/aipoger-choice";
 import { loadChoiceSelectionCatalog } from "@/lib/server-choice-catalog";
 import { LISTEN_BAR_COVER_BUCKET } from "@/lib/listen-bar";
+import { isFeaturedChoiceKey, readFeaturedChoice, writeFeaturedChoice } from "@/lib/server-choice-featured";
 
 type ChoiceCollectionRow = {
   id: string;
@@ -62,7 +63,7 @@ type ChoiceLibraryEntry = {
   href: string;
 };
 
-type ChoiceAction = "save_collection" | "add_item" | "remove_item" | "move_item" | "set_published" | "clear_cover" | "delete_collection" | "delete_creator_collection";
+type ChoiceAction = "save_collection" | "add_item" | "remove_item" | "move_item" | "set_published" | "clear_cover" | "delete_collection" | "delete_creator_collection" | "set_featured";
 
 const MAX_COVER_BYTES = 10 * 1024 * 1024;
 const ALLOWED_COVER_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -368,6 +369,7 @@ export async function GET(request: NextRequest) {
       catalog: catalog.items,
       collections: normalizeCollections(guard.admin, rows, catalog.items),
       library,
+      featuredKey: await readFeaturedChoice(guard.admin),
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (isMissingChoiceSchema(error)) return NextResponse.json({ schemaReady: false, catalog: [], collections: [] });
@@ -382,6 +384,23 @@ export async function PATCH(request: NextRequest) {
     const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
     const action = body?.action as ChoiceAction | undefined;
     if (!action) return jsonError("請指定 Choice 管理操作。" );
+
+    if (action === "set_featured") {
+      const key = body?.featuredKey;
+      if (key !== null && !isFeaturedChoiceKey(key)) return jsonError("請選擇已發布的 Choice。");
+      if (key !== null) {
+        const [kind, id] = key.split(":");
+        const table = kind === "official" ? "aipoger_choice_collections" : "aipoger_creator_choice_collections";
+        const itemsTable = kind === "official" ? "aipoger_choice_items" : "aipoger_creator_choice_items";
+        const { data, error } = await guard.admin.from(table).select(`id,${itemsTable}(source_kind,source_id)`).eq("id", id).eq("is_published", true).maybeSingle();
+        if (error) throw error;
+        const items = (data as unknown as Record<string, Array<{ source_kind: string; source_id: string }>> | null)?.[itemsTable] ?? [];
+        const catalog = await loadChoiceSelectionCatalog(guard.admin);
+        if (!data || !items.some((item) => catalog.items.some((source) => source.sourceKind === item.source_kind && source.id === item.source_id && source.isPublic && source.audioUrl))) return jsonError("主推歌單必須已發布，且有公開可播放的歌曲。");
+      }
+      await writeFeaturedChoice(guard.admin, key);
+      return NextResponse.json({ message: key ? "Showtime 主推 Choice 已更新。" : "已取消主推 Choice。" });
+    }
 
     if (action === "delete_creator_collection") {
       const collectionId = body?.collectionId;
