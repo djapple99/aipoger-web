@@ -1,8 +1,8 @@
 # AIPOGER Product Rules
 
-Last updated: 2026-09-18 00:31 Asia/Taipei。主文件 2／6。
+Last updated: 2026-09-18 00:51 Asia/Taipei。主文件 2／6。
 
-Showtime 認證已退役；月榜與收藏製作 Choice 已正式發布，取代 2026-09-17 23:09 roadmap 的待定細節與更早提案。驗證與部署證據見 [發布紀錄](archive/2026-09-17-showtime-charts-choice-release.md)。
+Showtime 認證已退役；月榜與收藏製作 Choice 已正式發布，取代 2026-09-17 23:09 roadmap 的待定細節與更早提案。2026-09-18 起 Choice 與月榜同頁策展，不再分頁籤；驗證與部署證據見 [最新發布紀錄](archive/2026-09-18-showtime-editorial-release.md)。
 
 This document is the product-rule source of truth for AIPOGER. Use it before changing Battle, Bar Heartbreak, AIPOGER Showtime, auth, upload, or deployment behavior.
 

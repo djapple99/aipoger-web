@@ -1,6 +1,6 @@
 # Showtime Editorial Design QA
 
-Updated: 2026-09-18 00:42 Asia/Taipei.
+Updated: 2026-09-18 00:51 Asia/Taipei.
 
 Previous Explore and other design QA evidence is preserved verbatim in [historical QA](docs/archive/2026-09-18-design-qa-history.md).
 
@@ -41,3 +41,5 @@ Previous Explore and other design QA evidence is preserved verbatim in [historic
 - Authenticated owner UI save is not exercised against production; actual route execution is covered with isolated I/O tests.
 
 final result: passed
+
+Production confirmation: `https://aipoger.com/rank?lang=zh`, deployment `dpl_6q3DgSbgTmGzirmtyxdm4P5dH8RE`. All eight viewport/language checks passed with real APIs and no pageerrors; Choice and chart audio advance with readyState 4. Actual interaction console errors: zero. See [release evidence](docs/archive/2026-09-18-showtime-editorial-release.md); final capture `output/playwright/showtime-editorial-production-final.png`.

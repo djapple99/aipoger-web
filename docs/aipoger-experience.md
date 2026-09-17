@@ -1,6 +1,6 @@
 # AIPOGER 版面與使用流程
 
-更新：2026-09-18 00:31 Asia/Taipei。主文件 3／6；產品門檻與權限以 [產品規則](aipoger-product-rules.md) 為準。Showtime 採同頁策展布局；此前月榜底層發布見 [發布紀錄](archive/2026-09-17-showtime-charts-choice-release.md)。
+更新：2026-09-18 00:51 Asia/Taipei。主文件 3／6；產品門檻與權限以 [產品規則](aipoger-product-rules.md) 為準。Showtime 同頁策展布局已正式發布，見 [發布紀錄](archive/2026-09-18-showtime-editorial-release.md)。
 
 This document protects AIPOGER's visual identity. Use it before redesigning any page, adding major UI, or changing user-facing copy.
 
