@@ -35,19 +35,16 @@ import {
   DEFAULT_LISTEN_BAR_COVER,
   LISTEN_BAR_AUDIO_BUCKET,
   LISTEN_BAR_COVER_BUCKET,
-  LISTEN_BAR_CREATOR_DAILY_UPLOAD_LIMIT_AFTER_TOTAL_PUBLIC,
   LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT,
-  LISTEN_BAR_CREATOR_PUBLIC_UPLOAD_LIMIT_STARTED_AT,
-  LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD,
   EMPTY_LISTEN_BAR_TRACK,
   fallbackOfficialPlaylist,
-  listenBarCreatorDailyUploadLimitReached,
   listenBarCreatorGenrePublicLimitReached,
   listenBarRowToTrack,
   type ListenBarTrack,
   type ListenBarTrackRow,
 } from "@/lib/listen-bar";
 import { usePresenceCount } from "@/lib/use-presence-count";
+import { useCreatorUploadQuota } from "@/lib/use-creator-upload-quota";
 import { logAnalyticsEvent } from "@/lib/analytics-client";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import { listenBarShortPath } from "@/lib/share-short-links";
@@ -196,24 +193,6 @@ const STOP_HOME_BGM_EVENT = "aipoger:stop-home-bgm";
 
 const LISTEN_BAR_GENRES = MUSIC_GENRE_OPTIONS;
 const LISTEN_BAR_GENRE_SLUGS = new Map<string, string>(LISTEN_BAR_GENRES.map((genre, index) => [genre.value, String(index + 1)]));
-const listenBarUploadLimitStartedAtMs = new Date(LISTEN_BAR_CREATOR_PUBLIC_UPLOAD_LIMIT_STARTED_AT).getTime();
-const taipeiDayFormatter = new Intl.DateTimeFormat("en-US", {
-  timeZone: "Asia/Taipei",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
-function taipeiDayKey(value: string | number | Date | null | undefined) {
-  const date = value instanceof Date ? value : new Date(value ?? "");
-  const ms = date.getTime();
-  if (!Number.isFinite(ms)) return "";
-  return taipeiDayFormatter.formatToParts(date)
-    .filter((part) => part.type !== "literal")
-    .map((part) => part.value)
-    .join("-");
-}
-
 function taipeiVoteDate(now = new Date()) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Taipei",
@@ -871,31 +850,30 @@ export default function ListenBarPage() {
   );
   const creatorGenrePublicLimitFull = Boolean(uploadGenre)
     && listenBarCreatorGenrePublicLimitReached(myPublicStatsForUploadGenre.length);
-  const todayTaipeiKey = taipeiDayKey(Date.now());
-  const myUploadsTodayAfterLimitStart = useMemo(
-    () => myBroadcastStats.filter((track) => {
-      const createdAtMs = new Date(track.createdAt ?? "").getTime();
-      if (!Number.isFinite(createdAtMs) || createdAtMs < listenBarUploadLimitStartedAtMs) return false;
-      return taipeiDayKey(createdAtMs) === todayTaipeiKey;
-    }).length,
-    [myBroadcastStats, todayTaipeiKey],
-  );
-  const creatorDailyUploadLimitFull = listenBarCreatorDailyUploadLimitReached(myPublicStats.length, myUploadsTodayAfterLimitStart);
-  const publicUploadBlocked = creatorGenrePublicLimitFull || creatorDailyUploadLimitFull;
+  const { quota: uploadQuota, refresh: refreshUploadQuota } = useCreatorUploadQuota(userId);
+  const creatorWeeklyUploadLimitFull = Boolean(uploadQuota && uploadQuota.used >= uploadQuota.limit);
+  const quotaResetLabel = uploadQuota?.resetsAt ? new Date(uploadQuota.resetsAt).toLocaleString(
+    lang === "zh" ? "zh-TW" : lang === "ja" ? "ja-JP" : lang === "ko" ? "ko-KR" : "en-US",
+    { timeZone: "Asia/Taipei", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" },
+  ) : "";
+  const creatorWeeklyUploadLimitMessage = barText(lang,
+    `本期已上傳 3/3 首，${quotaResetLabel}（台灣時間）恢復額度。刪除不退額度。`,
+    `3/3 uploads used. Available again ${quotaResetLabel} (Taiwan time). Deleting songs does not restore the allowance.`,
+    `今期は3/3曲投稿済み。${quotaResetLabel}（台湾時間）に再開。削除しても枠は戻りません。`,
+    `이번 기간 3/3곡 업로드 완료. ${quotaResetLabel} (대만 시간)에 재개됩니다. 삭제해도 한도는 복구되지 않습니다.`);
+  const publicUploadBlocked = creatorGenrePublicLimitFull || creatorWeeklyUploadLimitFull;
   const uploadGenreDisplayName = uploadGenre ? genreDisplayLabel(uploadGenre, lang) : "";
   const uploadPhaseNoticeTitle = creatorGenrePublicLimitFull
       ? (isZh ? "此類公播已嚴重超標" : "Genre Public Limit Exceeded")
-      : creatorDailyUploadLimitFull
-        ? (isZh ? "今日上傳額度已滿" : "Daily Upload Limit Reached")
+      : creatorWeeklyUploadLimitFull
+        ? barText(lang, "本期上傳額度已滿", "Upload allowance used", "今期の投稿上限に到達", "이번 기간 업로드 한도 소진")
     : barText(lang, "投稿後直接公開", "Public immediately", "投稿後すぐ公開", "업로드 후 즉시 공개");
   const uploadPhaseNoticeBody = creatorGenrePublicLimitFull
       ? (isZh
         ? `你在 ${uploadGenreDisplayName} 公播池已有 ${myPublicStatsForUploadGenre.length}/${LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT} 首，已超過同類公播上限。這個種類必須先降到 4 首公播以下，才可以再傳第 5 首。`
         : `You already have ${myPublicStatsForUploadGenre.length}/${LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT} public tracks in ${uploadGenreDisplayName}. This genre must be reduced to 4 public tracks before you can upload the 5th again.`)
-      : creatorDailyUploadLimitFull
-        ? (isZh
-          ? `你的公播歌曲已達 ${myPublicStats.length}/${LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD} 首；新規生效後每天最多成功上傳 ${LISTEN_BAR_CREATOR_DAILY_UPLOAD_LIMIT_AFTER_TOTAL_PUBLIC} 首。今天已用完，明天再傳，或先撤下一首公播歌曲讓總數低於 ${LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD}。`
-          : `You have ${myPublicStats.length}/${LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD} public tracks. After the new rule, creators at this level can upload ${LISTEN_BAR_CREATOR_DAILY_UPLOAD_LIMIT_AFTER_TOTAL_PUBLIC} track per day. Try tomorrow, or remove one public track to go below ${LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD}.`)
+      : creatorWeeklyUploadLimitFull
+        ? creatorWeeklyUploadLimitMessage
     : barText(lang,
         `${uploadGenreDisplayName} 目前有 ${uploadGenreStats.public} 首歌曲。投稿後直接公開，加入同類輪播。`,
         `${uploadGenreDisplayName} has ${uploadGenreStats.public} tracks. Uploads join public airplay immediately.`,
@@ -904,13 +882,10 @@ export default function ListenBarPage() {
   const creatorGenrePublicLimitMessage = isZh
     ? `你在 ${uploadGenre || "此類型"} 公播池已有 ${myPublicStatsForUploadGenre.length}/${LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT} 首，已超過同類公播上限。這個種類必須先降到 4 首公播以下，才可以再傳第 5 首。`
     : `You already have ${myPublicStatsForUploadGenre.length}/${LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT} public tracks in ${uploadGenre || "this genre"}. This genre must be reduced to 4 public tracks before you can upload the 5th again.`;
-  const creatorDailyUploadLimitMessage = isZh
-    ? `你的公播歌曲已達 ${myPublicStats.length}/${LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD} 首，新規生效後每天最多成功上傳 ${LISTEN_BAR_CREATOR_DAILY_UPLOAD_LIMIT_AFTER_TOTAL_PUBLIC} 首。今天已用完，明天再傳，或先撤下一首公播歌曲。`
-    : `You have ${myPublicStats.length}/${LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD} public tracks. After the new rule, creators at this level can upload ${LISTEN_BAR_CREATOR_DAILY_UPLOAD_LIMIT_AFTER_TOTAL_PUBLIC} track per day. Try tomorrow, or remove one public track.`;
   const publicUploadBlockedMessage = creatorGenrePublicLimitFull
     ? creatorGenrePublicLimitMessage
-    : creatorDailyUploadLimitFull
-      ? creatorDailyUploadLimitMessage
+    : creatorWeeklyUploadLimitFull
+      ? creatorWeeklyUploadLimitMessage
       : "";
 
   useEffect(() => {
@@ -1634,6 +1609,15 @@ export default function ListenBarPage() {
     let audioPath: string | null = null;
     let coverPath: string | null = null;
     try {
+      const quota = await refreshUploadQuota();
+      if (!quota) {
+        setPublicUploadError(barText(lang, "暫時無法確認上傳額度，請稍後再試。", "Could not check your upload allowance. Try again shortly.", "投稿枠を確認できません。しばらくして再試行してください。", "업로드 한도를 확인할 수 없습니다. 잠시 후 다시 시도하세요."));
+        return;
+      }
+      if (quota.used >= quota.limit) {
+        setPublicUploadError(barText(lang, "本期已成功上傳 3 首，請等 7 天週期結束後再傳。刪除不退額度。", "All 3 uploads in this 7-day period have been used. Deletion does not restore the allowance.", "この7日間の投稿枠3曲は使用済みです。削除しても枠は戻りません。", "이번 7일간 업로드 3곡을 모두 사용했습니다. 삭제해도 한도는 복구되지 않습니다."));
+        return;
+      }
       const audioSha256 = await sha256File(publicAudioFile);
       const duplicateCheck = await supabase
         .from("listen_bar_tracks")
@@ -1784,7 +1768,13 @@ export default function ListenBarPage() {
     } catch (submitError) {
       void cleanupPublicUploadAssets({ audioPath, coverPath });
       setPublicUploadError(
-        isDuplicateAudioHashError(submitError)
+        String((submitError as { message?: string })?.message ?? submitError).includes("CREATOR_WEEKLY_UPLOAD_LIMIT")
+          ? barText(lang,
+            "本期 7 天內已成功上傳 3 首，請等本期結束後再投稿。刪除歌曲不會退還額度。",
+            "You have uploaded 3 songs in this 7-day period. Please wait until it ends. Deletion does not restore the allowance.",
+            "今期の7日間で3曲投稿済みです。期間終了後に再投稿できます。削除しても枠は戻りません。",
+            "이번 7일 기간에 이미 3곡을 업로드했습니다. 기간이 끝난 후 다시 제출하세요. 삭제해도 한도는 복구되지 않습니다.")
+          : isDuplicateAudioHashError(submitError)
           ? isZh
             ? "這個音檔已經上傳過了，請換另一首歌。"
             : "This exact audio file has already been uploaded. Please choose another track."
@@ -1798,6 +1788,7 @@ export default function ListenBarPage() {
       );
     } finally {
       setPublicUploadBusy(false);
+      void refreshUploadQuota();
     }
   };
 
@@ -2589,6 +2580,13 @@ export default function ListenBarPage() {
                     <p className="mt-1 text-xs font-bold leading-5 text-zinc-400">
                       {uploadPhaseNoticeBody}
                     </p>
+                    <p className="mt-2 text-xs font-bold leading-5 text-zinc-300">
+                      {barText(lang,
+                        `上傳額度 ${uploadQuota ? `${uploadQuota.used}/3` : "確認中"}。每期從第一首成功投稿起算 7 天，最多 3 首；刪除不退額度。`,
+                        `Uploads ${uploadQuota ? `${uploadQuota.used}/3` : "checking"}. Up to 3 songs in 7 days from your first successful submission. Deletion does not restore the allowance.`,
+                        `投稿枠 ${uploadQuota ? `${uploadQuota.used}/3` : "確認中"}。最初の投稿成功から7日間で最大3曲。削除しても枠は戻りません。`,
+                        `업로드 ${uploadQuota ? `${uploadQuota.used}/3` : "확인 중"}. 첫 업로드 성공부터 7일간 최대 3곡. 삭제해도 한도는 복구되지 않습니다.`)}
+                    </p>
                   </div>
                 )}
 
@@ -2625,8 +2623,8 @@ export default function ListenBarPage() {
                     ? barText(lang, "上傳中...", "Uploading...", "投稿中…", "업로드 중…")
                     : creatorGenrePublicLimitFull
                       ? barText(lang, "此類須降到4首", "Reduce Genre to 4", "同ジャンルを4曲に減らす", "이 장르를 4곡으로 줄이기")
-                      : creatorDailyUploadLimitFull
-                        ? barText(lang, "今日額度已滿", "Daily Limit Used", "本日の上限に到達", "오늘 한도 소진")
+                      : creatorWeeklyUploadLimitFull
+                        ? barText(lang, "本期額度已滿", "Allowance used", "今期の上限に到達", "이번 기간 한도 소진")
                         : listenCopy.playMySong}
                 </button>
               </form>

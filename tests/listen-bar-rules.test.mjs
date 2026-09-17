@@ -1,16 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  LISTEN_BAR_CREATOR_DAILY_UPLOAD_LIMIT_AFTER_TOTAL_PUBLIC,
   LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT,
-  LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD,
   LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
   LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD,
   LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS,
   LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
   listenBarChallengerSlotLimitForPublicCount,
-  listenBarCreatorDailyUploadLimitActive,
-  listenBarCreatorDailyUploadLimitReached,
   listenBarCreatorGenrePublicLimitReached,
   listenBarIsHonorEligible,
   listenBarPublicDisplayDay,
@@ -48,15 +44,6 @@ test("listen bar creator genre public cap requires reducing to four before uploa
   assert.equal(listenBarCreatorGenrePublicLimitReached(4), false);
   assert.equal(listenBarCreatorGenrePublicLimitReached(5), true);
   assert.equal(listenBarCreatorGenrePublicLimitReached(26), true);
-});
-
-test("listen bar creator daily upload limit starts at thirty active public songs", () => {
-  assert.equal(LISTEN_BAR_CREATOR_TOTAL_PUBLIC_DAILY_LIMIT_THRESHOLD, 30);
-  assert.equal(LISTEN_BAR_CREATOR_DAILY_UPLOAD_LIMIT_AFTER_TOTAL_PUBLIC, 1);
-  assert.equal(listenBarCreatorDailyUploadLimitActive(29), false);
-  assert.equal(listenBarCreatorDailyUploadLimitActive(30), true);
-  assert.equal(listenBarCreatorDailyUploadLimitReached(30, 0), false);
-  assert.equal(listenBarCreatorDailyUploadLimitReached(30, 1), true);
 });
 
 test("listen bar honor eligibility allows 30 positive reactions", () => {
