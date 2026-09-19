@@ -32,36 +32,29 @@ export function AvatarCropUploadModal({ open, imageDataUrl, userId, onClose, onU
     setBusy(true);
     try {
       const blob = await getCroppedPngBlob(imageDataUrl, croppedAreaPixels, 512);
-      const storagePath = `${userId}/avatar.png`;
-      const { error: upErr } = await supabase.storage
-        .from("avatars")
-        .upload(storagePath, blob, { contentType: "image/png", upsert: true });
-      if (upErr) {
-        console.error("[avatar upload]", upErr);
-        alert(t("avatar_crop_fail"));
+      const { data: sessionData } = await supabase.auth.getSession();
+      const session = sessionData.session;
+      const token = session?.access_token;
+      if (!token || session?.user.id !== userId) {
+        alert(t("profile_need_login"));
         return;
       }
-      const { data: pub } = supabase.storage.from("avatars").getPublicUrl(storagePath);
-      const publicUrl = pub.publicUrl;
 
-      const { data: row } = await supabase.from("user_profiles").select("id").eq("id", userId).maybeSingle();
-      if (row) {
-        const { error: uErr } = await supabase.from("user_profiles").update({ avatar_url: publicUrl }).eq("id", userId);
-        if (uErr) {
-          console.error("[user_profiles update]", uErr);
-          alert(t("avatar_crop_fail"));
-          return;
-        }
-      } else {
-        const { error: iErr } = await supabase.from("user_profiles").insert({ id: userId, avatar_url: publicUrl });
-        if (iErr) {
-          console.error("[user_profiles insert]", iErr);
-          alert(t("avatar_crop_fail"));
-          return;
-        }
+      const formData = new FormData();
+      formData.append("avatar", blob, "avatar.png");
+      const response = await fetch("/api/profile/avatar", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const payload = (await response.json().catch(() => null)) as { avatarUrl?: string; error?: string } | null;
+      if (!response.ok || !payload?.avatarUrl) {
+        console.error("[avatar upload api]", payload);
+        alert(payload?.error || t("avatar_crop_fail"));
+        return;
       }
 
-      onUploaded(publicUrl);
+      onUploaded(payload.avatarUrl);
       onClose();
     } catch (e) {
       console.error(e);

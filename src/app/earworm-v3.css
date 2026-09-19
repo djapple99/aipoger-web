@@ -1,0 +1,221 @@
+/* Earworm V3 interaction and result CTA overrides. */
+.earworm-autoplay-resume:focus-visible,
+.earworm-next-button:focus-visible,
+.earworm-explore-result-link:focus-visible {
+  outline: 2px solid rgba(98, 213, 216, 0.9);
+  outline-offset: 3px;
+}
+
+.earworm-solo-player .earworm-heard-status.is-ready {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+.earworm-autoplay-resume {
+  display: inline-flex;
+  min-height: 2.6rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 1px solid rgba(103, 212, 215, 0.48);
+  border-radius: 999px;
+  padding: 0.55rem 0.75rem;
+  background: rgba(64, 184, 188, 0.12);
+  color: rgba(177, 243, 244, 0.9);
+  cursor: pointer;
+  font-size: 0.66rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.earworm-autoplay-resume:hover {
+  border-color: rgba(135, 237, 239, 0.82);
+  background: rgba(64, 184, 188, 0.22);
+  color: white;
+}
+
+.earworm-player-side {
+  display: flex;
+  min-width: 8.7rem;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.55rem;
+}
+
+.earworm-player-side .earworm-heard-status.is-ready {
+  min-height: 1.25rem;
+  justify-content: center;
+  text-align: center;
+}
+
+.earworm-next-button {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid rgba(255, 163, 96, 0.48);
+  border-radius: 0.3rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 106, 27, 0.11);
+  color: rgba(255, 211, 178, 0.88);
+  cursor: pointer;
+  font-size: 0.73rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  transition: border-color 180ms ease, background 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.earworm-next-button > span {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.1;
+}
+
+.earworm-next-button small {
+  color: rgba(255, 214, 183, 0.48);
+  font-size: 0.55rem;
+  letter-spacing: 0.04em;
+}
+
+.earworm-next-button:hover:not(:disabled) {
+  border-color: rgba(255, 177, 119, 0.9);
+  background: rgba(255, 106, 27, 0.22);
+  color: white;
+  transform: translateX(2px);
+}
+
+.earworm-next-button:disabled {
+  cursor: wait;
+  opacity: 0.42;
+}
+
+.earworm-next-note {
+  margin: 0.8rem 0 0;
+  color: rgba(255, 224, 201, 0.46);
+  font-size: 0.68rem;
+  text-align: right;
+}
+
+.earworm-explore-result-link {
+  order: initial;
+  display: grid;
+  width: 100%;
+  min-height: 4.8rem;
+  flex: none;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.85rem;
+  margin-inline: 0;
+  border: 1px solid rgba(255, 177, 111, 0.88);
+  border-radius: 0.35rem;
+  padding: 0.8rem 1rem;
+  background: linear-gradient(105deg, #e95a12, #ff8a37);
+  color: #150803;
+  text-align: left;
+  box-shadow: 0 12px 34px rgba(243, 111, 28, 0.2);
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+}
+
+.earworm-result-actions {
+  display: grid;
+  width: min(100%, 48rem);
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+  margin: 1.4rem auto 0;
+}
+
+.earworm-result-actions > * {
+  width: 100%;
+}
+
+.earworm-explore-result-link.is-bar {
+  border-color: rgba(129, 234, 236, 0.82);
+  background: linear-gradient(105deg, #2eb4b8, #71dadd);
+  color: #041213;
+  box-shadow: 0 12px 34px rgba(57, 191, 195, 0.17);
+}
+
+.earworm-explore-result-link.is-bar:hover {
+  border-color: #e2ffff;
+  background: linear-gradient(105deg, #46c8cc, #95ebed);
+  color: #020b0c;
+  box-shadow: 0 16px 38px rgba(57, 191, 195, 0.25);
+}
+
+.earworm-explore-result-link.is-bar small {
+  color: rgba(4, 25, 26, 0.7);
+}
+
+.earworm-listen-result-link.is-primary {
+  min-height: 3.35rem;
+}
+
+.earworm-explore-result-link:hover {
+  border-color: #ffe0c7;
+  background: linear-gradient(105deg, #ff6f1c, #ffa361);
+  color: #080403;
+  transform: translateY(-2px);
+  box-shadow: 0 16px 38px rgba(243, 111, 28, 0.3);
+}
+
+.earworm-explore-result-icon {
+  display: inline-flex;
+  width: 2.7rem;
+  height: 2.7rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(24, 10, 4, 0.25);
+  border-radius: 50%;
+  background: rgba(20, 8, 3, 0.1);
+}
+
+.earworm-explore-result-link > span:nth-child(2) {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.earworm-explore-result-link strong {
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+}
+
+.earworm-explore-result-link small {
+  color: rgba(30, 12, 5, 0.7);
+  font-size: 0.67rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+@media (max-width: 800px) {
+  .earworm-player-side {
+    min-width: 8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .earworm-player-side {
+    grid-column: 1 / -1;
+    min-width: 0;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .earworm-player-side > * {
+    flex: 1;
+  }
+
+  .earworm-next-note {
+    text-align: center;
+  }
+
+  .earworm-explore-result-link {
+    min-height: 5.25rem;
+  }
+}

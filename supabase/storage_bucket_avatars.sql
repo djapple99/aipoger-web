@@ -1,4 +1,4 @@
--- 公開頭像 bucket：僅 JPEG / PNG / WebP，單檔 2MB
+-- 公開頭像 bucket：僅 JPG / PNG / WebP / GIF，單檔 2MB
 -- 物件路徑建議：{auth.uid()}/avatar.png（與 App 上傳一致）
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
@@ -6,7 +6,7 @@ values (
   'avatars',
   true,
   2097152,
-  array['image/jpeg', 'image/png', 'image/webp']::text[]
+  array['image/jpeg', 'image/png', 'image/webp', 'image/gif']::text[]
 )
 on conflict (id) do update
 set

@@ -1,6 +1,6 @@
 -- AIPOGER 傷心酒吧 Bar Heartbreak：單曲永久評論
 -- 在 Supabase SQL Editor 執行。可重複執行。
--- 與 listen_bar_messages 不同：listen_bar_messages 是 24H 即時交流；本表是綁定歌曲的長期評論。
+-- 與 listen_bar_messages 不同：listen_bar_messages 是 8H AI 音樂交流區；本表是綁定歌曲的長期評論。
 
 create table if not exists public.listen_bar_track_comments (
   id uuid primary key default gen_random_uuid(),

@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import type { User } from "@supabase/supabase-js";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
-import { getFreshSession } from "@/lib/auth-session";
 import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
-import { cancelCurrentBattleIntent } from "@/lib/battle-pool-client";
+import { cancelCurrentBattleIntent, isDropBattleEndedOrPastExpectedEnd, resolveDropBattleScheduledStart, shouldExpireOpenDropQueue } from "@/lib/battle-pool-client";
 
 type BattleCall = {
   id: string;
@@ -37,6 +37,10 @@ type BattleNotificationRow = {
     dailyBattleId?: string | null;
     dailyEntryId?: string | null;
     winnerEntryId?: string | null;
+    trackId?: string | null;
+    trackTitle?: string | null;
+    commenterName?: string | null;
+    href?: string | null;
   } | null;
   read_at?: string | null;
   created_at?: string | null;
@@ -48,6 +52,7 @@ type ActiveBattleNotice = {
   battleId?: string | null;
   status: string;
   createdAt?: string | null;
+  scheduledStartAt?: string | null;
 };
 
 const ACTIVE_NOTICE_QUEUE_STATUSES = [
@@ -57,8 +62,6 @@ const ACTIVE_NOTICE_QUEUE_STATUSES = [
   "waiting",
   "waiting_challenge",
   "confirming",
-  "matched",
-  "active",
   "ghost_battle",
   "public_voting",
 ];
@@ -76,6 +79,103 @@ const ACTIVE_NOTICE_BATTLE_STATUSES = [
 
 const FIXED_BATTLE_ROUTES = new Set(["setup", "hook-cut", "matchmaking", "result"]);
 const DEMO_CALL_EVENT = "aipoger:battle-call-demo";
+const ACCOUNT_NOTICE_COLLAPSED_KEY = "aipoger:account-notice-collapsed";
+const ACCOUNT_NOTICE_DISMISSED_KEY = "aipoger:account-notice-dismissed";
+const ACCOUNT_NOTICE_URGENT_DISMISSED_KEY = "aipoger:account-notice-urgent-dismissed";
+const ACCOUNT_DOCK_POSITION_KEY = "aipoger:account-dock-position-v2";
+const ACCOUNT_DOCK_MARGIN = 8;
+const ACCOUNT_DOCK_SIZE = 56;
+const ACCOUNT_DOCK_SAFE_RIGHT_GAP = 88;
+const BATTLE_START_ALERT_LEAD_MS = 60 * 1000;
+const LISTEN_BAR_COMMENT_NOTICE_TYPE = "listen_bar_track_comment";
+const AI_MUSIC_CHALLENGE_INVITE_NOTICE_TYPE = "ai_music_challenge_invite";
+
+type AccountDockPosition = { x: number; y: number };
+type StoredAccountDockPosition = {
+  version: 2;
+  horizontalAnchor: "left" | "right";
+  edgeOffset: number;
+  yRatio: number;
+};
+
+function accountDockBounds() {
+  if (typeof window === "undefined") {
+    return { minX: ACCOUNT_DOCK_MARGIN, maxX: ACCOUNT_DOCK_MARGIN, minY: ACCOUNT_DOCK_MARGIN, maxY: ACCOUNT_DOCK_MARGIN };
+  }
+  return {
+    minX: ACCOUNT_DOCK_MARGIN,
+    maxX: Math.max(ACCOUNT_DOCK_MARGIN, window.innerWidth - ACCOUNT_DOCK_SIZE - ACCOUNT_DOCK_MARGIN),
+    minY: ACCOUNT_DOCK_MARGIN,
+    maxY: Math.max(ACCOUNT_DOCK_MARGIN, window.innerHeight - ACCOUNT_DOCK_SIZE - ACCOUNT_DOCK_MARGIN),
+  };
+}
+
+function clampAccountDockPosition(position: AccountDockPosition): AccountDockPosition {
+  if (typeof window === "undefined") return position;
+  const bounds = accountDockBounds();
+  return {
+    x: Math.min(Math.max(bounds.minX, position.x), bounds.maxX),
+    y: Math.min(Math.max(bounds.minY, position.y), bounds.maxY),
+  };
+}
+
+function defaultAccountDockPosition(): AccountDockPosition {
+  if (typeof window === "undefined") return { x: 0, y: 16 };
+  return clampAccountDockPosition({
+    x: window.innerWidth - ACCOUNT_DOCK_SIZE - ACCOUNT_DOCK_SAFE_RIGHT_GAP,
+    y: 16,
+  });
+}
+
+function encodeAccountDockPosition(position: AccountDockPosition): StoredAccountDockPosition {
+  const bounds = accountDockBounds();
+  const clamped = clampAccountDockPosition(position);
+  const leftOffset = clamped.x - bounds.minX;
+  const rightOffset = bounds.maxX - clamped.x;
+  const ySpan = Math.max(1, bounds.maxY - bounds.minY);
+  return {
+    version: 2,
+    horizontalAnchor: leftOffset <= rightOffset ? "left" : "right",
+    edgeOffset: Math.max(0, Math.min(leftOffset, rightOffset)),
+    yRatio: Math.max(0, Math.min(1, (clamped.y - bounds.minY) / ySpan)),
+  };
+}
+
+function decodeAccountDockPosition(stored: StoredAccountDockPosition): AccountDockPosition {
+  const bounds = accountDockBounds();
+  const x = stored.horizontalAnchor === "left"
+    ? bounds.minX + stored.edgeOffset
+    : bounds.maxX - stored.edgeOffset;
+  const y = bounds.minY + Math.max(0, Math.min(1, stored.yRatio)) * Math.max(1, bounds.maxY - bounds.minY);
+  return clampAccountDockPosition({ x, y });
+}
+
+function readAccountDockPosition(): AccountDockPosition | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(ACCOUNT_DOCK_POSITION_KEY) ?? "null") as Partial<StoredAccountDockPosition> | null;
+    if (
+      stored?.version === 2 &&
+      (stored.horizontalAnchor === "left" || stored.horizontalAnchor === "right") &&
+      Number.isFinite(stored.edgeOffset) &&
+      Number.isFinite(stored.yRatio)
+    ) {
+      return decodeAccountDockPosition(stored as StoredAccountDockPosition);
+    }
+  } catch {
+    // Use the safe default when storage is unavailable or invalid.
+  }
+  return null;
+}
+
+function persistAccountDockPosition(position: AccountDockPosition) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(ACCOUNT_DOCK_POSITION_KEY, JSON.stringify(encodeAccountDockPosition(position)));
+  } catch {
+    // Ignore storage failures in hardened browsers.
+  }
+}
 
 function BellIcon() {
   return (
@@ -95,20 +195,92 @@ function SwordIcon() {
   );
 }
 
-function toBattleCall(row: BattleNotificationRow, fallbackOpponent: string): BattleCall | null {
+function toBattleCall(row: BattleNotificationRow): BattleCall | null {
   if (row.type !== "battle_matched" || !row.battle_id) return null;
+  return null;
+}
 
+function buildCompletedDropNotice(battleId: string): BattleNotificationRow {
   return {
-    id: row.id,
-    battleId: row.battle_id,
-    queueId: row.queue_id,
-    opponentName: row.metadata?.opponentName || fallbackOpponent,
-    title: row.title || "找到對手了",
-    body: row.body || "請在期限內回來確認參戰。",
-    stakeApc: row.metadata?.stakeApc ?? null,
-    potApc: row.metadata?.potApc ?? null,
-    createdAt: row.created_at || new Date().toISOString(),
+    id: `synthetic-battle-finished-${battleId}`,
+    battle_id: battleId,
+    type: "battle_finished",
+    created_at: new Date().toISOString(),
   };
+}
+
+function authAvatarUrl(user: User | null | undefined) {
+  const metadata = user?.user_metadata as Record<string, unknown> | undefined;
+  const avatar = metadata?.avatar_url;
+  const picture = metadata?.picture;
+  if (typeof avatar === "string" && avatar.trim()) return avatar.trim();
+  if (typeof picture === "string" && picture.trim()) return picture.trim();
+  return null;
+}
+
+function isDismissedNotice(id: string) {
+  try {
+    const raw = window.localStorage.getItem(ACCOUNT_NOTICE_DISMISSED_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) && parsed.includes(id);
+  } catch {
+    return false;
+  }
+}
+
+function rememberDismissedNotice(id: string) {
+  try {
+    const raw = window.localStorage.getItem(ACCOUNT_NOTICE_DISMISSED_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    const next = [id, ...(Array.isArray(parsed) ? parsed : [])].slice(0, 36);
+    window.localStorage.setItem(ACCOUNT_NOTICE_DISMISSED_KEY, JSON.stringify(Array.from(new Set(next))));
+  } catch {
+    // Ignore localStorage write errors.
+  }
+}
+
+function activeNoticeKey(notice: ActiveBattleNotice | null) {
+  if (!notice) return "";
+  return `${notice.kind}:${notice.id}:${notice.battleId ?? ""}`;
+}
+
+function isDismissedUrgentNotice(id: string) {
+  try {
+    const raw = window.localStorage.getItem(ACCOUNT_NOTICE_URGENT_DISMISSED_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) && parsed.includes(id);
+  } catch {
+    return false;
+  }
+}
+
+function rememberDismissedUrgentNotice(id: string) {
+  if (!id) return;
+  try {
+    const raw = window.localStorage.getItem(ACCOUNT_NOTICE_URGENT_DISMISSED_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    const next = [id, ...(Array.isArray(parsed) ? parsed : [])].slice(0, 48);
+    window.localStorage.setItem(ACCOUNT_NOTICE_URGENT_DISMISSED_KEY, JSON.stringify(Array.from(new Set(next))));
+  } catch {
+    // Ignore localStorage write errors.
+  }
+}
+
+function timestampMs(value: string | null | undefined) {
+  const ms = new Date(value ?? "").getTime();
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function pickActiveNoticeCandidate(candidates: ActiveBattleNotice[], nowMs = Date.now()) {
+  if (candidates.length === 0) return null;
+  const urgent = candidates
+    .filter((notice) => {
+      const startMs = timestampMs(notice.scheduledStartAt);
+      return startMs !== null && startMs - nowMs <= BATTLE_START_ALERT_LEAD_MS;
+    })
+    .sort((left, right) => (timestampMs(left.scheduledStartAt) ?? Infinity) - (timestampMs(right.scheduledStartAt) ?? Infinity));
+  if (urgent[0]) return urgent[0];
+  return [...candidates].sort((left, right) => (timestampMs(right.createdAt) ?? 0) - (timestampMs(left.createdAt) ?? 0))[0] ?? null;
 }
 
 export default function GlobalBattleCallOverlay() {
@@ -124,29 +296,69 @@ export default function GlobalBattleCallOverlay() {
   const [accessToken, setAccessToken] = useState("");
   const [activeNotice, setActiveNotice] = useState<ActiveBattleNotice | null>(null);
   const [activeNoticeOpen, setActiveNoticeOpen] = useState(false);
+  const [activeNoticeCollapsed, setActiveNoticeCollapsed] = useState(false);
   const [activeNoticeBusy, setActiveNoticeBusy] = useState(false);
   const [activeNoticeError, setActiveNoticeError] = useState("");
+  const [activeNoticeUrgentDismissed, setActiveNoticeUrgentDismissed] = useState(false);
+  const [noticeClockMs, setNoticeClockMs] = useState(() => Date.now());
   const [expiredNotice, setExpiredNotice] = useState<BattleNotificationRow | null>(null);
   const [expiredNoticeOpen, setExpiredNoticeOpen] = useState(true);
+  const [expiredNoticeCollapsed, setExpiredNoticeCollapsed] = useState(false);
+  const [accountAvatarUrl, setAccountAvatarUrl] = useState<string | null>(null);
+  const [accountInitial, setAccountInitial] = useState("A");
+  const [accountUserId, setAccountUserId] = useState<string | null>(isAuthBypassEnabled ? "auth-bypass" : null);
+  const [accountSessionResolved, setAccountSessionResolved] = useState(isAuthBypassEnabled);
+  const [unreadAccountNoticeCount, setUnreadAccountNoticeCount] = useState(0);
+  const [accountDockPosition, setAccountDockPosition] = useState<AccountDockPosition | null>(null);
+  const [accountDockDragging, setAccountDockDragging] = useState(false);
+  const accountDockPositionRef = useRef<AccountDockPosition | null>(null);
+  const accountDockDragRef = useRef<{
+    pointerId: number;
+    offsetX: number;
+    offsetY: number;
+    startX: number;
+    startY: number;
+    target: HTMLElement;
+    active: boolean;
+  } | null>(null);
+  const suppressAccountDockClickRef = useRef(false);
 
   const routeTone = useMemo(() => {
     const seg = pathname?.match(/^\/battle\/([^/]+)$/)?.[1];
     const isArena = Boolean(seg && !FIXED_BATTLE_ROUTES.has(seg));
+    const isQCrashArena = Boolean(pathname?.match(/^\/battle\/q-crash\/[^/]+$/));
     const isCreatorFlow = pathname === "/battle/setup" || pathname === "/battle/hook-cut" || pathname === "/battle/matchmaking";
-    if (isArena) return "watching";
+    if (isArena || isQCrashArena) return "watching";
     if (isCreatorFlow) return "creator";
     return "default";
   }, [pathname]);
+  const isListenBarPage = pathname === "/listen-bar";
+  const accountDockStaticClassName = "fixed right-24 top-4 z-[92] flex items-center gap-2";
+  const accountDockClassName = `fixed z-[92] flex touch-none select-none items-center gap-2 ${accountDockDragging ? "cursor-grabbing" : "cursor-grab"}`;
+  const accountNoticePanelClassName = isListenBarPage
+    ? "fixed right-4 top-44 z-[92] w-[min(calc(100vw-2rem),340px)] sm:right-5"
+    : "fixed right-4 top-24 z-[92] w-[min(calc(100vw-2rem),340px)] sm:right-5";
 
   const arenaHref = call ? `/battle/${encodeURIComponent(call.battleId)}?lang=${lang}` : "/battle";
+  const profileNoticeHref = `/profile?lang=${lang}#pending-ai-music-challenges`;
+  const activeUrgentKey = activeNoticeKey(activeNotice);
+  const activeNoticeStartMs = timestampMs(activeNotice?.scheduledStartAt);
+  const activeNoticeUrgent = Boolean(
+    activeNotice &&
+      activeNoticeStartMs !== null &&
+      activeNoticeStartMs - noticeClockMs <= BATTLE_START_ALERT_LEAD_MS &&
+      !activeNoticeUrgentDismissed,
+  );
 
   const markRead = useCallback(async (id: string) => {
-    if (id.startsWith("demo-") || isAuthBypassEnabled) return;
+    if (id.startsWith("demo-") || id.startsWith("synthetic-") || isAuthBypassEnabled) return;
     await supabase.from("battle_notifications").update({ read_at: new Date().toISOString() }).eq("id", id);
+    setUnreadAccountNoticeCount((count) => Math.max(0, count - 1));
   }, []);
 
   const showCall = useCallback(
     (next: BattleCall) => {
+      if (routeTone === "watching") return;
       if (pathname?.startsWith(`/battle/${next.battleId}`)) return;
       setExpiredNotice(null);
       setCall(next);
@@ -155,12 +367,138 @@ export default function GlobalBattleCallOverlay() {
       setSecondsLeft(15);
       setPulseKey((value) => value + 1);
     },
-    [pathname],
+    [pathname, routeTone],
   );
+
+  useEffect(() => {
+    if (routeTone !== "watching") return;
+    setCall(null);
+    setAccepted(false);
+    setCollapsed(false);
+  }, [routeTone]);
 
   useEffect(() => {
     setReady(true);
   }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    const position = readAccountDockPosition() ?? defaultAccountDockPosition();
+    accountDockPositionRef.current = position;
+    setAccountDockPosition(position);
+
+    const keepVisible = () => {
+      const next = readAccountDockPosition() ?? clampAccountDockPosition(accountDockPositionRef.current ?? defaultAccountDockPosition());
+      accountDockPositionRef.current = next;
+      setAccountDockPosition(next);
+      persistAccountDockPosition(next);
+    };
+    window.addEventListener("resize", keepVisible);
+    return () => window.removeEventListener("resize", keepVisible);
+  }, [ready]);
+
+  const beginAccountDockDrag = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== "touch" && event.button !== 0) return;
+    const position = accountDockPositionRef.current ?? defaultAccountDockPosition();
+    suppressAccountDockClickRef.current = false;
+    accountDockDragRef.current = {
+      pointerId: event.pointerId,
+      offsetX: event.clientX - position.x,
+      offsetY: event.clientY - position.y,
+      startX: event.clientX,
+      startY: event.clientY,
+      target: event.currentTarget,
+      active: false,
+    };
+  }, []);
+
+  const moveAccountDock = useCallback((event: PointerEvent) => {
+    const drag = accountDockDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > 8) {
+      if (!drag.active) {
+        drag.active = true;
+        drag.target.setPointerCapture?.(event.pointerId);
+      }
+      suppressAccountDockClickRef.current = true;
+      setAccountDockDragging(true);
+      event.preventDefault();
+    }
+    if (!drag.active) return;
+    const next = clampAccountDockPosition({ x: event.clientX - drag.offsetX, y: event.clientY - drag.offsetY });
+    accountDockPositionRef.current = next;
+    setAccountDockPosition(next);
+  }, []);
+
+  const finishAccountDockDrag = useCallback((event: PointerEvent) => {
+    const drag = accountDockDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    accountDockDragRef.current = null;
+    if (drag.active && drag.target.hasPointerCapture?.(event.pointerId)) {
+      drag.target.releasePointerCapture?.(event.pointerId);
+    }
+    setAccountDockDragging(false);
+    const position = accountDockPositionRef.current ?? defaultAccountDockPosition();
+    persistAccountDockPosition(position);
+    window.setTimeout(() => {
+      suppressAccountDockClickRef.current = false;
+    }, 0);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("pointermove", moveAccountDock, { passive: false });
+    window.addEventListener("pointerup", finishAccountDockDrag, true);
+    window.addEventListener("pointercancel", finishAccountDockDrag, true);
+    return () => {
+      window.removeEventListener("pointermove", moveAccountDock);
+      window.removeEventListener("pointerup", finishAccountDockDrag, true);
+      window.removeEventListener("pointercancel", finishAccountDockDrag, true);
+    };
+  }, [finishAccountDockDrag, moveAccountDock]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNoticeClockMs(Date.now()), 5000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const handleAccountNoticesRead = () => setUnreadAccountNoticeCount(0);
+    window.addEventListener("aipoger:account-notices-read", handleAccountNoticesRead);
+    return () => window.removeEventListener("aipoger:account-notices-read", handleAccountNoticesRead);
+  }, []);
+
+  useEffect(() => {
+    if (!ready || !activeUrgentKey) {
+      setActiveNoticeUrgentDismissed(false);
+      return;
+    }
+    setActiveNoticeUrgentDismissed(isDismissedUrgentNotice(activeUrgentKey));
+  }, [activeUrgentKey, ready]);
+
+  const setAccountNoticeCollapsed = useCallback((next: boolean) => {
+    setActiveNoticeCollapsed(next);
+    setExpiredNoticeCollapsed(next);
+    try {
+      window.localStorage.setItem(ACCOUNT_NOTICE_COLLAPSED_KEY, next ? "1" : "0");
+    } catch {
+      // localStorage can be unavailable in private browsing.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    try {
+      const saved = window.localStorage.getItem(ACCOUNT_NOTICE_COLLAPSED_KEY);
+      if (saved === "1") setAccountNoticeCollapsed(true);
+    } catch {
+      // Ignore storage read errors.
+    }
+  }, [ready, setAccountNoticeCollapsed]);
+
+  useEffect(() => {
+    if (routeTone !== "watching") return;
+    setAccountNoticeCollapsed(true);
+  }, [routeTone, setAccountNoticeCollapsed]);
 
   useEffect(() => {
     if (!ready) return undefined;
@@ -171,7 +509,7 @@ export default function GlobalBattleCallOverlay() {
         battleId: "mock-call-waiting-room",
         queueId: "mock-call-queue",
         opponentName: isZh ? "測試對手" : "Test Rival",
-        title: isZh ? "找到對手了" : "Opponent found",
+        title: isZh ? "找到對手了" : "Opponent Found",
         body: isZh ? "測試對手正在等待確認。" : "Test Rival is waiting for confirmation.",
         stakeApc: 200,
         potApc: 400,
@@ -189,70 +527,162 @@ export default function GlobalBattleCallOverlay() {
     let mounted = true;
     let channel: ReturnType<typeof supabase.channel> | null = null;
 
+    const { data: authState } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!mounted) return;
+      const nextUser = nextSession?.user ?? null;
+      setAccountUserId(nextUser?.id ?? null);
+      setAccountSessionResolved(true);
+      setAccessToken(nextSession?.access_token ?? "");
+      setAccountInitial((nextUser?.email ?? nextUser?.user_metadata?.full_name ?? "A").slice(0, 1).toUpperCase());
+      setAccountAvatarUrl(authAvatarUrl(nextUser));
+      if (!nextUser) {
+        setUnreadAccountNoticeCount(0);
+        setActiveNotice(null);
+        setExpiredNotice(null);
+        if (channel) {
+          void supabase.removeChannel(channel);
+          channel = null;
+        }
+      }
+    });
+
     void (async () => {
-      const session = await getFreshSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       const uid = session?.user?.id;
-      if (!mounted || !uid) return;
+      if (!mounted) return;
+      setAccountUserId(uid ?? null);
+      setAccountSessionResolved(true);
+      if (!uid) return;
       setAccessToken(session?.access_token ?? "");
+      setAccountInitial((session?.user?.email ?? session?.user?.user_metadata?.full_name ?? "A").slice(0, 1).toUpperCase());
+
+      const [profileAvatar, fighterAvatar] = await Promise.all([
+        supabase.from("user_profiles").select("avatar_url").eq("id", uid).maybeSingle<{ avatar_url?: string | null }>(),
+        supabase.from("fighter_profiles").select("avatar_url").eq("id", uid).maybeSingle<{ avatar_url?: string | null }>(),
+      ]);
+      if (mounted) {
+        setAccountAvatarUrl(
+          (typeof fighterAvatar.data?.avatar_url === "string" && fighterAvatar.data.avatar_url.trim()) ||
+            (typeof profileAvatar.data?.avatar_url === "string" && profileAvatar.data.avatar_url.trim()) ||
+            authAvatarUrl(session?.user) ||
+            null,
+        );
+      }
+
+      const { count: unreadCount } = await supabase
+        .from("battle_notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", uid)
+        .is("read_at", null);
+      if (mounted) setUnreadAccountNoticeCount(unreadCount ?? 0);
 
       const { data: activeQueueRows } = await supabase
         .from("battle_queue")
-        .select("id, status, match_group_id, expires_at, created_at")
+        .select("id, status, match_group_id, expires_at, scheduled_start_at, cancellation_evaluation_at, created_at")
         .eq("user_id", uid)
         .in("status", ACTIVE_NOTICE_QUEUE_STATUSES)
         .order("created_at", { ascending: false })
-        .limit(1);
-      const activeQueue = activeQueueRows?.[0] as { id: string; status: string; match_group_id?: string | null; expires_at?: string | null; created_at?: string | null } | undefined;
-      const activeQueueExpired =
-        Boolean(activeQueue?.expires_at) &&
-        Number.isFinite(new Date(activeQueue?.expires_at ?? "").getTime()) &&
-        new Date(activeQueue?.expires_at ?? "").getTime() <= Date.now();
-      if (mounted && activeQueue?.id && !activeQueueExpired) {
-        setActiveNotice({
-          kind: "queue",
-          id: activeQueue.id,
-          battleId: activeQueue.match_group_id ?? null,
-          status: activeQueue.status,
-          createdAt: activeQueue.created_at ?? null,
-        });
-      } else {
-        const { data: activeBattleRows } = await supabase
-          .from("battles")
-          .select("id, status, created_at")
-          .or(`fighter_a_user_id.eq.${uid},fighter_b_user_id.eq.${uid}`)
-          .in("status", ACTIVE_NOTICE_BATTLE_STATUSES)
-          .order("created_at", { ascending: false })
-          .limit(1);
-        const activeBattle = activeBattleRows?.[0] as { id: string; status: string; created_at?: string | null } | undefined;
-        if (mounted && activeBattle?.id) {
-          setActiveNotice({
-            kind: "battle",
-            id: activeBattle.id,
-            battleId: activeBattle.id,
-            status: activeBattle.status,
-            createdAt: activeBattle.created_at ?? null,
+        .limit(8);
+      const activeNoticeCandidates: ActiveBattleNotice[] = [];
+      for (const activeQueue of (activeQueueRows ?? []) as Array<{
+        id: string;
+        status: string;
+        match_group_id?: string | null;
+        expires_at?: string | null;
+        scheduled_start_at?: string | null;
+        cancellation_evaluation_at?: string | null;
+        created_at?: string | null;
+      }>) {
+        if (shouldExpireOpenDropQueue(activeQueue)) continue;
+        let linkedQueueBattleEnded = false;
+        let linkedQueueBattleStartAt: string | null = null;
+        if (activeQueue.match_group_id) {
+          const { data: linkedBattle } = await supabase
+            .from("battles")
+            .select("id, status, created_at, scheduled_start_at, started_at, battle_started_at, battle_ended_at")
+            .eq("id", activeQueue.match_group_id)
+            .maybeSingle<{ id: string; status: string; created_at?: string | null; scheduled_start_at?: string | null; started_at?: string | null; battle_started_at?: string | null; battle_ended_at?: string | null }>();
+          linkedQueueBattleEnded = isDropBattleEndedOrPastExpectedEnd(linkedBattle);
+          linkedQueueBattleStartAt = linkedBattle?.scheduled_start_at ?? linkedBattle?.battle_started_at ?? linkedBattle?.started_at ?? null;
+          const syntheticNotice = linkedBattle?.id ? buildCompletedDropNotice(linkedBattle.id) : null;
+          if (mounted && syntheticNotice && linkedQueueBattleEnded && !isDismissedNotice(syntheticNotice.id)) {
+            setCall(null);
+            setExpiredNotice(syntheticNotice);
+            setExpiredNoticeOpen(true);
+            setAccountNoticeCollapsed(true);
+          }
+        }
+        if (!linkedQueueBattleEnded) {
+          activeNoticeCandidates.push({
+            kind: "queue",
+            id: activeQueue.id,
+            battleId: activeQueue.match_group_id ?? null,
+            status: activeQueue.status,
+            createdAt: activeQueue.created_at ?? null,
+            scheduledStartAt: linkedQueueBattleStartAt ?? resolveDropBattleScheduledStart(activeQueue),
           });
         }
-        if (mounted && !activeBattle?.id) setActiveNotice(null);
+      }
+
+      const { data: activeBattleRows } = await supabase
+        .from("battles")
+        .select("id, status, created_at, scheduled_start_at, started_at, battle_started_at, battle_ended_at")
+        .or(`fighter_a_user_id.eq.${uid},fighter_b_user_id.eq.${uid}`)
+        .in("status", ACTIVE_NOTICE_BATTLE_STATUSES)
+        .is("battle_ended_at", null)
+        .order("created_at", { ascending: false })
+        .limit(8);
+      for (const activeBattle of (activeBattleRows ?? []) as Array<{ id: string; status: string; created_at?: string | null; scheduled_start_at?: string | null; started_at?: string | null; battle_started_at?: string | null; battle_ended_at?: string | null }>) {
+        const syntheticNotice = activeBattle.id ? buildCompletedDropNotice(activeBattle.id) : null;
+        if (isDropBattleEndedOrPastExpectedEnd(activeBattle)) {
+          if (mounted && syntheticNotice && !isDismissedNotice(syntheticNotice.id)) {
+            setCall(null);
+            setExpiredNotice(syntheticNotice);
+            setExpiredNoticeOpen(true);
+            setAccountNoticeCollapsed(true);
+          }
+          continue;
+        }
+        activeNoticeCandidates.push({
+          kind: "battle",
+          id: activeBattle.id,
+          battleId: activeBattle.id,
+          status: activeBattle.status,
+          createdAt: activeBattle.created_at ?? null,
+          scheduledStartAt: activeBattle.scheduled_start_at ?? activeBattle.battle_started_at ?? activeBattle.started_at ?? null,
+        });
+      }
+
+      const pickedActiveNotice = pickActiveNoticeCandidate(activeNoticeCandidates);
+      if (mounted && pickedActiveNotice) {
+        setActiveNotice(pickedActiveNotice);
+        if (routeTone !== "watching") {
+          setActiveNoticeOpen(true);
+          setAccountNoticeCollapsed(true);
+        }
+      } else if (mounted) {
+        setActiveNotice(null);
       }
 
       const { data: latest } = await supabase
         .from("battle_notifications")
         .select("id, queue_id, battle_id, type, title, body, metadata, read_at, created_at")
         .eq("user_id", uid)
-        .in("type", ["battle_matched", "battle_queue_expired", "daily_battle_expired", "daily_battle_finished"])
         .is("read_at", null)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle<BattleNotificationRow>();
 
-      const latestCall = latest ? toBattleCall(latest, isZh ? "對手" : "Opponent") : null;
+      const latestCall = latest ? toBattleCall(latest) : null;
       if (mounted && latestCall) showCall(latestCall);
-      if (mounted && (latest?.type === "battle_queue_expired" || latest?.type === "daily_battle_expired" || latest?.type === "daily_battle_finished")) {
+      if (mounted && latest?.type === "battle_matched") void markRead(latest.id);
+      if (mounted && latest && latest.type !== "battle_matched" && !latestCall) {
         setCall(null);
-        setActiveNotice(null);
         setExpiredNotice(latest);
         setExpiredNoticeOpen(true);
+        setAccountNoticeCollapsed(true);
       }
 
       channel = supabase
@@ -262,13 +692,15 @@ export default function GlobalBattleCallOverlay() {
           { event: "INSERT", schema: "public", table: "battle_notifications", filter: `user_id=eq.${uid}` },
           (payload) => {
             const row = payload.new as BattleNotificationRow;
-            const next = toBattleCall(row, isZh ? "對手" : "Opponent");
+            setUnreadAccountNoticeCount((count) => Math.min(99, count + 1));
+            const next = toBattleCall(row);
             if (next) showCall(next);
-            if (row.type === "battle_queue_expired" || row.type === "daily_battle_expired" || row.type === "daily_battle_finished") {
+            if (row.type === "battle_matched") void markRead(row.id);
+            if (row.type !== "battle_matched" && !next) {
               setCall(null);
-              setActiveNotice(null);
               setExpiredNotice(row);
               setExpiredNoticeOpen(true);
+              setAccountNoticeCollapsed(true);
             }
           },
         )
@@ -277,9 +709,10 @@ export default function GlobalBattleCallOverlay() {
 
     return () => {
       mounted = false;
+      authState.subscription.unsubscribe();
       if (channel) void supabase.removeChannel(channel);
     };
-  }, [isZh, ready, showCall]);
+  }, [isZh, markRead, ready, routeTone, setAccountNoticeCollapsed, showCall]);
 
   useEffect(() => {
     if (!call || accepted || collapsed) return undefined;
@@ -309,19 +742,32 @@ export default function GlobalBattleCallOverlay() {
   };
 
   const dismissExpiredNotice = () => {
-    if (expiredNotice) void markRead(expiredNotice.id);
+    if (expiredNotice) {
+      rememberDismissedNotice(expiredNotice.id);
+      void markRead(expiredNotice.id);
+    }
     setExpiredNotice(null);
     setExpiredNoticeOpen(false);
   };
 
+  const dismissActiveUrgentNotice = () => {
+    if (!activeNoticeUrgent || !activeUrgentKey) return;
+    rememberDismissedUrgentNotice(activeUrgentKey);
+    setActiveNoticeUrgentDismissed(true);
+  };
+
   const cancelActiveNotice = async () => {
     if (!activeNotice || !accessToken) return;
-    const ok = window.confirm(isZh ? "要取消目前未完成的 Battle 嗎？取消後才可以重新上傳下一首最強抓波Drop Battle。" : "Cancel your unfinished Battle so you can upload another Drop Battle clip?");
+    const ok = window.confirm(isZh ? "要取消目前未完成的 Battle 嗎？取消後才可以重新上傳下一首最強抓波 Drop Battle。" : "Cancel your unfinished Battle so you can upload another Drop Battle clip?");
     if (!ok) return;
     setActiveNoticeError("");
     setActiveNoticeBusy(true);
     try {
-      await cancelCurrentBattleIntent({ accessToken, battleId: activeNotice.kind === "battle" ? activeNotice.id : activeNotice.battleId ?? undefined });
+      await cancelCurrentBattleIntent({
+        accessToken,
+        battleId: activeNotice.kind === "battle" ? activeNotice.id : activeNotice.battleId ?? undefined,
+        queueId: activeNotice.kind === "queue" && !activeNotice.battleId ? activeNotice.id : undefined,
+      });
       setActiveNotice(null);
       setActiveNoticeOpen(false);
     } catch (error) {
@@ -333,79 +779,283 @@ export default function GlobalBattleCallOverlay() {
 
   if (!ready) return null;
 
+  const AccountNoticeDock = ({
+    hasNotice,
+    urgent,
+    unreadCount = 0,
+    onBellClick,
+  }: {
+    hasNotice: boolean;
+    urgent?: boolean;
+    unreadCount?: number;
+    onBellClick?: () => void;
+  }) => {
+    if (!accountSessionResolved) return null;
+    if (!accountUserId) {
+      if (pathname === "/" || pathname === "/auth") return null;
+      const nextPath = `${pathname || "/"}?lang=${lang}`;
+      const signInLabel = lang === "ja" ? "ログイン" : lang === "ko" ? "로그인" : lang === "en" ? "Sign in" : "登入";
+      return (
+        <div className={accountDockStaticClassName}>
+          <Link
+            href={`/auth?next=${encodeURIComponent(nextPath)}`}
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-cyan-200/25 bg-black/82 px-4 text-sm font-black text-cyan-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_24px_rgba(0,203,255,0.1)] backdrop-blur-xl transition hover:border-cyan-100 hover:text-white"
+            aria-label={`${signInLabel} AIPOGER`}
+          >
+            {signInLabel}
+          </Link>
+        </div>
+      );
+    }
+
+    const avatarClassName = `relative flex h-12 w-12 items-center justify-center overflow-visible rounded-full border bg-black/82 text-sm font-black shadow-[0_18px_58px_rgba(0,0,0,0.45)] backdrop-blur-xl transition ${
+      hasNotice
+        ? urgent
+          ? "animate-pulse border-red-300/80 text-red-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_34px_rgba(248,113,113,0.62)] hover:border-red-100"
+          : "border-orange-200/55 text-orange-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_28px_rgba(255,106,0,0.2)] hover:border-orange-100"
+        : "border-cyan-200/30 text-cyan-100 shadow-[0_18px_58px_rgba(0,0,0,0.45),0_0_24px_rgba(0,203,255,0.14)] hover:border-cyan-100 hover:text-white"
+    }`;
+    const avatarVisual = (
+      <>
+        {accountAvatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={accountAvatarUrl} alt="" className="h-full w-full rounded-full object-cover" referrerPolicy="no-referrer" />
+        ) : (
+          accountInitial
+        )}
+        {hasNotice && (
+          unreadCount > 0 ? (
+            <span
+              className={`absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-black ${
+                urgent ? "bg-red-500 text-white shadow-[0_0_16px_rgba(248,113,113,1)]" : "bg-red-500 text-white shadow-[0_0_14px_rgba(248,113,113,0.9)]"
+              }`}
+            >
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          ) : (
+            <span
+              className={`absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full ${
+                urgent ? "bg-red-400 shadow-[0_0_16px_rgba(248,113,113,1)]" : "bg-orange-400 shadow-[0_0_14px_rgba(255,106,0,0.9)]"
+              }`}
+            />
+          )
+        )}
+      </>
+    );
+
+    const openNotice = onBellClick ?? (() => {
+      setAccountNoticeCollapsed(false);
+      setActiveNoticeOpen(true);
+      setExpiredNoticeOpen(true);
+    });
+
+    return (
+      <div
+        className={accountDockClassName}
+        style={accountDockPosition ? { left: accountDockPosition.x, top: accountDockPosition.y } : { right: 96, top: 16 }}
+        onPointerDown={beginAccountDockDrag}
+        onClickCapture={(event) => {
+          if (!suppressAccountDockClickRef.current) return;
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+        aria-label={isZh ? "帳號頭像，可拖曳移動" : "Account avatar, draggable"}
+        title={isZh ? "拖曳可移動" : "Drag to move"}
+      >
+        <Link
+          href={`/profile?lang=${lang}`}
+          className={avatarClassName}
+          aria-label={isZh ? "個人資料" : "Profile"}
+          title={isZh ? "開啟個人資料" : "Open profile"}
+        >
+          {avatarVisual}
+        </Link>
+        <button
+          type="button"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={openNotice}
+          className={`absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-black bg-black/88 text-orange-100 shadow-[0_0_18px_rgba(255,106,0,0.24)] transition hover:bg-orange-500 hover:text-black ${hasNotice ? "opacity-100" : "opacity-70"}`}
+          aria-label={isZh ? "帳號消息" : "Account notices"}
+          title={isZh ? "帳號消息" : "Account notices"}
+        >
+          <BellIcon />
+        </button>
+      </div>
+    );
+  };
+
   if (!call && expiredNotice) {
     const isDailyFinishedNotice = expiredNotice.type === "daily_battle_finished";
     const isDailyExpiredNotice = expiredNotice.type === "daily_battle_expired";
+    const isDropFinishedNotice = expiredNotice.type === "battle_finished";
+    const isDropNoContestNotice = expiredNotice.type === "battle_no_contest";
+    const isListenBarCommentNotice = expiredNotice.type === LISTEN_BAR_COMMENT_NOTICE_TYPE;
+    const isAiMusicChallengeInviteNotice = expiredNotice.type === AI_MUSIC_CHALLENGE_INVITE_NOTICE_TYPE;
+    const isSyntheticDropFinishedNotice = expiredNotice.id.startsWith("synthetic-battle-finished-");
+    const metadataHref = expiredNotice.metadata?.href?.trim();
     const title =
       expiredNotice.title ||
-      (isDailyFinishedNotice
+      (isAiMusicChallengeInviteNotice
         ? isZh
-          ? "24H Battle 已結束"
-          : "24H Battle finished"
-        : isDailyExpiredNotice
+          ? "有人向你的作品攻擂"
+          : "New Challenge Invite"
+        : isListenBarCommentNotice
+        ? isZh
+          ? "你的歌曲收到新留言"
+          : "New Comment on Your Song"
+        : isDropFinishedNotice
+        ? isZh
+          ? "你剛完成了一場戰鬥"
+          : "You Just Finished a Battle"
+        : isDropNoContestNotice
           ? isZh
-            ? "24H Full Song 已過期"
-            : "24H Full Song expired"
-          : isZh
-            ? "Drop Battle 已取消"
-            : "Drop Battle cancelled");
+            ? "Battle 已結束"
+            : "Battle Ended"
+          : isDailyFinishedNotice
+            ? isZh
+              ? "24H Battle 已結束"
+              : "24H Battle Finished"
+            : isDailyExpiredNotice
+              ? isZh
+                ? "24H Full Song 已過期"
+                : "24H Full Song Expired"
+              : expiredNotice.type
+                ? isZh
+                  ? "帳號消息"
+                  : "Account Notice"
+                : isZh
+                  ? "帳號消息"
+                  : "Account Notice");
     const body =
       expiredNotice.body ||
-      (isDailyFinishedNotice
+      (isAiMusicChallengeInviteNotice
         ? isZh
-          ? "你的 24H Full Song 對決已結束，結果已可查看。"
-          : "Your 24H Full Song battle has finished. Results are ready."
-        : isDailyExpiredNotice
+          ? "有創作者從探索 AI 音樂挑戰你的作品，請到 Profile 的待接戰區回覆。"
+          : "A creator challenged your Explore AI Music work. Reply from Profile pending challenges."
+        : isListenBarCommentNotice
+        ? isZh
+          ? "有人在你投稿到傷心酒吧的歌曲下面留下了評論。"
+          : "Someone commented on your Bar Heartbreak track."
+        : isDropFinishedNotice
+        ? isZh
+          ? "你剛完成了一場 Drop Battle，可以查看戰鬥卡，也可以再開一場。"
+          : "Your Drop Battle has finished. View the card or open a new one."
+        : isDropNoContestNotice
           ? isZh
-            ? "你剛有一場 24H Full Song 因 24 小時內沒有對手接受，已從公開挑戰池移除。"
-            : "One 24H Full Song card expired because no challenger joined within 24 hours."
-          : isZh
-            ? "你剛有一場 Drop Battle 因等待時間結束，已從公開挑戰池移除。可以重新上傳或開新戰帖。"
-            : "One Drop Battle waiting card ended and was removed from the public pool. You can open a new card.");
+            ? "這場 Drop Battle 已結束，但沒有觀眾投票，不產生成果卡。"
+            : "This Drop Battle ended with no audience votes, so no result card was created."
+          : isDailyFinishedNotice
+            ? isZh
+              ? "你的 24H Full Song 對決已結束，結果已可查看。"
+              : "Your 24H Full Song battle has finished. Results are ready."
+            : isDailyExpiredNotice
+              ? isZh
+                ? "你剛有一場 24H Full Song 因 24 小時內沒有對手接受，已從公開挑戰池移除。"
+                : "One 24H Full Song card expired because no challenger joined within 24 hours."
+              : isZh
+                ? "你有一則新的帳號消息。打開查看或按知道了清除通知。"
+                : "You have a new account notice. Open it or dismiss the notification.");
     const primaryHref =
-      isDailyFinishedNotice && expiredNotice.metadata?.dailyBattleId
-        ? `/battle/daily/${encodeURIComponent(expiredNotice.metadata.dailyBattleId)}?lang=${lang}`
-        : isDailyExpiredNotice
-          ? `/battle/setup?battleMode=daily&from=expired-card&lang=${lang}`
-          : `/battle/setup?battleMode=instant&from=expired-card&lang=${lang}`;
+      metadataHref ||
+      (isAiMusicChallengeInviteNotice
+        ? profileNoticeHref
+        : isListenBarCommentNotice
+        ? `/listen-bar?lang=${lang}`
+        : isSyntheticDropFinishedNotice && expiredNotice.battle_id
+        ? `/battle/${encodeURIComponent(expiredNotice.battle_id)}?lang=${lang}`
+        : isDropFinishedNotice && expiredNotice.battle_id
+        ? `/battle/result?battleId=${encodeURIComponent(expiredNotice.battle_id)}&lang=${lang}`
+        : isDropNoContestNotice && expiredNotice.battle_id
+          ? `/battle/${encodeURIComponent(expiredNotice.battle_id)}?lang=${lang}`
+          : isDailyFinishedNotice && expiredNotice.metadata?.dailyBattleId
+            ? `/battle/daily/${encodeURIComponent(expiredNotice.metadata.dailyBattleId)}?lang=${lang}`
+            : isDailyExpiredNotice
+              ? `/battle/setup?battleMode=daily&from=expired-card&lang=${lang}`
+              : `/profile?lang=${lang}`);
     const primaryLabel =
-      isDailyFinishedNotice
+      isAiMusicChallengeInviteNotice
         ? isZh
-          ? "查看結果"
+          ? "去待接戰"
+          : "Open Pending"
+        : isListenBarCommentNotice
+        ? isZh
+          ? "去聽這首歌"
+          : "Open Bar"
+        : isSyntheticDropFinishedNotice
+        ? isZh
+          ? "查看戰鬥卡"
+          : "View Battle"
+        : isDropFinishedNotice
+        ? isZh
+          ? "查看戰果"
           : "View Result"
-        : isDailyExpiredNotice
-          ? isZh
-            ? "重新開 24H"
-            : "Open New 24H"
-          : isZh
-            ? "重新開 Drop"
-            : "Open New Drop";
+        : isDropNoContestNotice
+            ? isZh
+              ? "查看戰鬥卡"
+              : "View Battle"
+          : isDailyFinishedNotice
+            ? isZh
+              ? "查看結果"
+              : "View Result"
+            : isDailyExpiredNotice
+              ? isZh
+                ? "重新開 24H"
+                : "Open New 24H"
+              : isZh
+                ? "查看"
+                : "Open";
+    if (expiredNoticeCollapsed) {
+      return (
+        <AccountNoticeDock hasNotice unreadCount={unreadAccountNoticeCount} onBellClick={() => setAccountNoticeCollapsed(false)} />
+      );
+    }
     return (
-      <div className="fixed right-4 top-20 z-[92] w-[min(calc(100vw-2rem),340px)] sm:right-5">
+      <div className={accountNoticePanelClassName}>
         <div className="overflow-hidden rounded-2xl border border-cyan-200/25 bg-black/82 text-white shadow-[0_22px_76px_rgba(0,0,0,0.52),0_0_30px_rgba(0,203,255,0.12)] backdrop-blur-xl">
-          <button
-            type="button"
-            onClick={() => setExpiredNoticeOpen((value) => !value)}
-            className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-white/[0.04]"
-          >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cyan-300 text-black">
-              <BellIcon />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-cyan-100/80">
-                {isZh ? "帳號消息" : "Account Notice"}
+          <div className="flex items-center gap-2 pr-3">
+            <button
+              type="button"
+              onClick={() => setExpiredNoticeOpen((value) => !value)}
+              className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left transition hover:bg-white/[0.04]"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cyan-300 text-black">
+                <BellIcon />
               </span>
-              <span className="block truncate text-sm font-black">{title}</span>
-            </span>
-            <span className="rounded-full border border-zinc-200/20 bg-white/10 px-2 py-1 text-[10px] font-black text-zinc-200">
-              {isDailyFinishedNotice ? (isZh ? "已結束" : "Finished") : isDailyExpiredNotice ? (isZh ? "已過期" : "Expired") : (isZh ? "已取消" : "Cancelled")}
-            </span>
-          </button>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-cyan-100/80">
+                  {isZh ? "帳號消息" : "Account Notice"}
+                </span>
+                <span className="block truncate text-sm font-black">{title}</span>
+              </span>
+              <span className="rounded-full border border-zinc-200/20 bg-white/10 px-2 py-1 text-[10px] font-black text-zinc-200">
+                {isListenBarCommentNotice
+                  ? (isZh ? "新留言" : "Comment")
+                  : isAiMusicChallengeInviteNotice
+                    ? (isZh ? "待接戰" : "Challenge")
+                  : isDropFinishedNotice || isDropNoContestNotice || isDailyFinishedNotice
+                    ? (isZh ? "已結束" : "Finished")
+                    : isDailyExpiredNotice
+                      ? (isZh ? "已過期" : "Expired")
+                      : (isZh ? "消息" : "Notice")}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setAccountNoticeCollapsed(true)}
+              className="shrink-0 rounded-full border border-white/12 bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-black text-zinc-300 transition hover:border-cyan-100/60 hover:text-white"
+            >
+              {isZh ? "收合" : "Hide"}
+            </button>
+          </div>
           {expiredNoticeOpen ? (
             <div className="space-y-3 border-t border-white/10 px-4 py-4">
               <p className="text-sm font-bold leading-6 text-zinc-300">{body}</p>
               <div className="grid grid-cols-2 gap-2 text-xs font-black">
-                <Link href={primaryHref} className="rounded-xl bg-cyan-300 px-3 py-3 text-center text-black transition hover:bg-cyan-100">
+                <Link
+                  href={primaryHref}
+                  onClick={() => void markRead(expiredNotice.id)}
+                  className="rounded-xl bg-cyan-300 px-3 py-3 text-center text-black transition hover:bg-cyan-100"
+                >
                   {primaryLabel}
                 </Link>
                 <button
@@ -430,56 +1080,95 @@ export default function GlobalBattleCallOverlay() {
       ["searching", "waiting", "waiting_challenge", "public_voting"].includes(activeNotice.status) &&
       !activeNotice.battleId;
     const activeHref = isPoolWaitingNotice
-      ? `/battle/waiting-room/${encodeURIComponent(activeNotice.id)}?lang=${lang}`
+      ? `/battle/${encodeURIComponent(activeNotice.id)}?lang=${lang}`
       : isQueueNotice && activeNotice.battleId
         ? `/battle/${encodeURIComponent(activeNotice.battleId)}?lang=${lang}`
         : activeNotice.battleId
           ? `/battle/${encodeURIComponent(activeNotice.battleId)}?lang=${lang}`
-          : `/battle?lang=${lang}&focusQueue=${encodeURIComponent(activeNotice.id)}`;
-    const activeTitle = isPoolWaitingNotice
+          : `/battle/${encodeURIComponent(activeNotice.id)}?lang=${lang}`;
+    const activeTitle = activeNoticeUrgent
       ? isZh
-        ? "你的最強抓波Drop Battle 正在等待挑戰"
+        ? "你的 Battle 即將開打"
+        : "Your Battle starts soon"
+      : isPoolWaitingNotice
+        ? isZh
+        ? "你的最強抓波 Drop Battle 正在等待挑戰"
         : "Your Drop Battle is waiting"
       : isZh
         ? "有一場 Battle 尚未完成"
         : "Unfinished Battle";
-    const activeBody = isPoolWaitingNotice
+    const activeBody = activeNoticeUrgent
       ? isZh
-        ? "目前還沒有配到對手。你可以進等待場看倒數、確認作品還在掛池，也可以取消後重新上傳。"
-        : "No opponent yet. Enter the waiting room for countdown, confirm your card is still listed, or cancel and upload again."
+        ? "開打時間已進入最後一分鐘。你可以立刻回到場內；若不想再提醒，收合這則消息即可。"
+        : "Start time is within the final minute. Enter now, or hide this notice to stop the flashing bell."
+      : isPoolWaitingNotice
+        ? isZh
+        ? "目前還沒有配到對手。你可以回鬥歌場確認作品還在掛池，也可以取消後重新上傳。"
+        : "No opponent yet. Return to Battle to confirm your card is still listed, or cancel and upload again."
       : isZh
-        ? "目前帳號一次只能保留一場 Battle。你可以回到場內，或直接取消後重新上傳。"
-        : "One account can only hold one active Battle. Enter it or cancel to upload again.";
+        ? "目前有一場 Drop Battle 尚未完成。你可以回到場內，或直接取消後重新上傳 Drop。"
+        : "You have one unfinished Drop Battle. Enter it or cancel to upload another Drop.";
     const activeCta = isPoolWaitingNotice
       ? isZh
-        ? "進入等待場"
-        : "Enter Waiting Room"
+        ? "查看戰帖"
+        : "View Card"
       : isZh
         ? "回到場內"
         : "Enter";
+    if (activeNoticeCollapsed) {
+      return (
+        <AccountNoticeDock
+          hasNotice
+          urgent={activeNoticeUrgent}
+          unreadCount={unreadAccountNoticeCount}
+          onBellClick={() => {
+            setAccountNoticeCollapsed(false);
+            setActiveNoticeOpen(true);
+          }}
+        />
+      );
+    }
     return (
-      <div className="fixed right-4 top-20 z-[92] w-[min(calc(100vw-2rem),340px)] sm:right-5">
-        <div className="overflow-hidden rounded-2xl border border-cyan-200/25 bg-black/82 text-white shadow-[0_22px_76px_rgba(0,0,0,0.52),0_0_30px_rgba(0,203,255,0.12)] backdrop-blur-xl">
-          <button
-            type="button"
-            onClick={() => setActiveNoticeOpen((value) => !value)}
-            className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-white/[0.04]"
-          >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cyan-300 text-black">
-              <BellIcon />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-cyan-100/80">
-                {isZh ? "帳號消息" : "Account Notice"}
+      <div className={accountNoticePanelClassName}>
+        <div
+          className={`overflow-hidden rounded-2xl border bg-black/82 text-white shadow-[0_22px_76px_rgba(0,0,0,0.52)] backdrop-blur-xl ${
+            activeNoticeUrgent
+              ? "border-red-300/45 shadow-[0_22px_76px_rgba(0,0,0,0.52),0_0_34px_rgba(248,113,113,0.22)]"
+              : "border-cyan-200/25 shadow-[0_22px_76px_rgba(0,0,0,0.52),0_0_30px_rgba(0,203,255,0.12)]"
+          }`}
+        >
+          <div className="flex items-center gap-2 pr-3">
+            <button
+              type="button"
+              onClick={() => setActiveNoticeOpen((value) => !value)}
+              className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left transition hover:bg-white/[0.04]"
+            >
+              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${activeNoticeUrgent ? "animate-pulse bg-red-400 text-white" : "bg-cyan-300 text-black"}`}>
+                <BellIcon />
               </span>
-              <span className="block truncate text-sm font-black">
-                {activeTitle}
+              <span className="min-w-0 flex-1">
+                <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-cyan-100/80">
+                  {isZh ? "帳號消息" : "Account Notice"}
+                </span>
+                <span className="block truncate text-sm font-black">
+                  {activeTitle}
+                </span>
               </span>
-            </span>
-            <span className="rounded-full border border-yellow-200/25 bg-yellow-300/10 px-2 py-1 text-[10px] font-black text-yellow-100">
-              {activeNotice.status}
-            </span>
-          </button>
+              <span className="rounded-full border border-yellow-200/25 bg-yellow-300/10 px-2 py-1 text-[10px] font-black text-yellow-100">
+                {activeNotice.status}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                dismissActiveUrgentNotice();
+                setAccountNoticeCollapsed(true);
+              }}
+              className="shrink-0 rounded-full border border-white/12 bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-black text-zinc-300 transition hover:border-cyan-100/60 hover:text-white"
+            >
+              {isZh ? "收合" : "Hide"}
+            </button>
+          </div>
           {activeNoticeOpen ? (
             <div className="space-y-3 border-t border-white/10 px-4 py-4">
               <p className="text-sm font-bold leading-6 text-zinc-300">
@@ -510,7 +1199,11 @@ export default function GlobalBattleCallOverlay() {
     );
   }
 
-  if (!call) return null;
+  if (!call && unreadAccountNoticeCount > 0) {
+    return <AccountNoticeDock hasNotice unreadCount={unreadAccountNoticeCount} />;
+  }
+
+  if (!call) return <AccountNoticeDock hasNotice={false} />;
 
   const contextLine =
     routeTone === "watching"

@@ -25,6 +25,16 @@ export async function GET() {
     const ready = response.ok && !isRenderWakePage(text);
     return NextResponse.json({ ready, status: response.status });
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      return NextResponse.json(
+        {
+          ready: false,
+          warming: true,
+          error: "Music analysis service is waking up",
+        },
+        { status: 202 },
+      );
+    }
     return NextResponse.json(
       {
         ready: false,

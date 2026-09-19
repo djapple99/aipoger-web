@@ -6,9 +6,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import LangToggle from "@/components/lang-toggle";
 import ShareButton from "@/components/share-button";
 import { useI18n } from "@/lib/i18n";
+import { dailyEntryShortPath } from "@/lib/share-short-links";
 import { supabase } from "@/lib/supabase";
-import { getFreshSession } from "@/lib/auth-session";
-import { dailyChallengeSetupPath, dailyChallengeSharePath } from "@/lib/short-battle-links";
 
 type DailyEntryRoomRow = {
   id: string;
@@ -72,7 +71,9 @@ export default function DailyWaitingRoomPage() {
         return;
       }
 
-      const session = await getFreshSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       const { data, error: queryError } = await supabase
         .from("daily_battle_entries")
         .select("id,user_id,title,genre,ai_tool,audio_path,cover_url,status,matched_battle_id,created_at")
@@ -94,11 +95,11 @@ export default function DailyWaitingRoomPage() {
         return;
       }
       if (data.user_id && !session?.user?.id) {
-        router.replace(dailyChallengeSetupPath(entryId, lang));
+        router.replace(`/battle/setup?battleMode=daily&dailyPairing=invite&challengeDailyEntryId=${encodeURIComponent(entryId)}&lang=${lang}`);
         return;
       }
       if (data.user_id && session?.user?.id && data.user_id !== session.user.id) {
-        router.replace(dailyChallengeSetupPath(entryId, lang));
+        router.replace(`/battle/setup?battleMode=daily&dailyPairing=invite&challengeDailyEntryId=${encodeURIComponent(entryId)}&genre=${encodeURIComponent(data.genre || "")}&lang=${lang}`);
         return;
       }
 
@@ -154,7 +155,7 @@ export default function DailyWaitingRoomPage() {
     setCancelBusy(true);
     setCancelError("");
     try {
-      const token = (await getFreshSession())?.access_token;
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
       if (!token) throw new Error(isZh ? "請先登入後再取消 24H Full Song。" : "Sign in to cancel.");
       const response = await fetch("/api/daily-battle/cancel-entry", {
         method: "POST",
@@ -190,7 +191,7 @@ export default function DailyWaitingRoomPage() {
         {loading ? (
           <div className="py-24 text-center">
             <p className="text-xs font-black uppercase tracking-[0.34em] text-cyan-100/70">24H FULL SONG WAITING ROOM</p>
-            <h1 className="mt-4 text-3xl font-black">{isZh ? "正在讀取 24H 等待房…" : "Loading 24H waiting room..."}</h1>
+            <h1 className="mt-4 text-3xl font-black">{isZh ? "正在讀取 24H 等待房…" : "Loading 24H Waiting Room..."}</h1>
           </div>
         ) : error ? (
           <div className="py-20 text-center">
@@ -204,7 +205,7 @@ export default function DailyWaitingRoomPage() {
             <div>
               <p className="text-xs font-black uppercase tracking-[0.34em] text-cyan-100/70">24H FULL SONG WAITING ROOM</p>
               <h1 className="mt-4 text-4xl font-black leading-tight md:text-6xl">
-                {isEnded ? (isZh ? "這張戰帖已結束" : "This card has ended") : isZh ? "等待整首歌挑戰者" : "Waiting for full-track challenger"}
+                {isEnded ? (isZh ? "這張戰帖已結束" : "This Card Has Ended") : isZh ? "等待整首歌挑戰者" : "Waiting for Full-Track Challenger"}
               </h1>
               <p className="mt-4 max-w-2xl text-base font-bold leading-8 text-zinc-300">
                 {isEnded
@@ -223,9 +224,9 @@ export default function DailyWaitingRoomPage() {
                       ? `《${row.title || "未命名作品"}》正在等人接 24H 整首歌對決。`
                       : `"${row.title || "Untitled Track"}" is waiting for a 24H full-track challenger.`
                   }
-                  url={dailyChallengeSharePath(row.id, lang)}
+                  url={dailyEntryShortPath(row.id, lang)}
                   label={isZh ? "分享戰帖" : "Share Card"}
-                  copiedLabel={isZh ? "戰帖已複製" : "Card copied"}
+                  copiedLabel={isZh ? "戰帖已複製" : "Card Copied"}
                   className="px-5 py-3 text-sm"
                 />
                 <Link href={`/battle?lang=${lang}`} className="rounded-full border border-cyan-200/35 bg-cyan-300/10 px-5 py-3 text-sm font-black text-cyan-50 transition hover:border-cyan-100">

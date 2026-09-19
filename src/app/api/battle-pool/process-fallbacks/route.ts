@@ -1,5 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import {
+  DROP_BATTLE_EXPECTED_END_BUFFER_MS,
+  isDropBattleEndedOrPastExpectedEnd,
+  shouldExpireOpenDropQueue,
+} from "@/lib/battle-pool-client";
+import { cancelStalePendingDropBattles, isMissingScheduleColumn } from "@/lib/battle-pool-maintenance";
+import { battleSeedForId } from "@/lib/battle-90s-system";
+import { DROP_BATTLE_OFFICIAL_AUDIENCE_MIN } from "@/lib/drop-battle-rematch";
+import { pickDropBattleWinnerForRules } from "@/lib/ai-music-challenge-rules";
+import { settleQCrashBattle } from "@/lib/server-q-crash";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 type SupabaseAdmin = SupabaseClient;
 
@@ -13,13 +24,25 @@ type HookBattleRow = {
   fighter_b_name: string;
   song_a_name: string;
   song_b_name: string;
+  song_a_cover?: string | null;
+  song_b_cover?: string | null;
+  status?: string | null;
   created_at: string;
+  scheduled_start_at?: string | null;
   started_at?: string | null;
   battle_started_at?: string | null;
+  battle_ended_at?: string | null;
   battle_number?: string | null;
+  result_archived_at?: string | null;
+  ai_tool_a?: string | null;
+  ai_tool_b?: string | null;
+  winner?: string | null;
+  battle_type?: string | null;
 };
 
-type VoteRow = { voted_for: string | null };
+type VoteRow = { voted_for: string | null; user_id?: string | null; voter_role?: string | null };
+type GuestVoteRow = { voted_for: string | null; guest_id?: string | null };
+const missingGuestVoteTablePattern = /battle_guest_votes|schema cache|relation.*does not exist|Could not find the table|PGRST205/i;
 
 type DailyBattleRow = {
   id: string;
@@ -47,6 +70,21 @@ type ExpiredHookQueueRow = {
   original_file_name?: string | null;
   status?: string | null;
   expires_at?: string | null;
+  scheduled_start_at?: string | null;
+  cancellation_evaluation_at?: string | null;
+};
+
+type AiMusicChallengeInviteRow = {
+  id: string;
+  defender_track_id: string;
+  defender_user_id: string;
+  challenger_user_id: string;
+  defender_queue_id?: string | null;
+  challenger_queue_id?: string | null;
+  battle_id?: string | null;
+  status?: string | null;
+  scheduled_start_at?: string | null;
+  expires_at?: string | null;
 };
 
 export async function GET(request: NextRequest) {
@@ -58,13 +96,9 @@ export async function POST(request: NextRequest) {
 }
 
 async function processFallbacks(request: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const auth = request.headers.get("authorization") ?? "";
-    const token = auth.startsWith("Bearer ") ? auth.slice("Bearer ".length) : request.nextUrl.searchParams.get("secret");
-    if (token !== cronSecret) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const authorization = authorizeCronRequest(request);
+  if (!authorization.ok) {
+    return NextResponse.json({ error: authorization.error }, { status: authorization.status });
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -92,29 +126,262 @@ async function processFallbacks(request: NextRequest) {
   }
 
   const hookSettled = await settleStaleHookBattles(admin, warnings);
+  const hookArchived = await archiveFinishedUnarchivedHookBattles(admin, warnings);
   const dailySettled = await settleExpiredDailyBattles(admin, warnings);
   const expiredHookQueue = await expireStaleHookQueue(admin, warnings);
   const expiredDailyQueue = await expireStaleDailyQueue(admin, warnings);
+  const expiredRematchClaims = await expireStaleRematchClaims(admin, warnings);
+  const expiredAiMusicInvites = await expireStaleAiMusicChallengeInvites(admin, warnings);
+  const expiredQCrashInvites = await expireStaleQCrashInvites(admin, warnings);
+  const qCrashSettled = await settleExpiredQCrashBattles(admin, warnings);
+  const stalePendingBattles = await cancelStalePendingDropBattles(admin);
+  warnings.push(...stalePendingBattles.errors);
 
   return NextResponse.json({
-    processed: poolProcessed + hookSettled + dailySettled + expiredHookQueue + expiredDailyQueue,
+    processed: poolProcessed + hookSettled + hookArchived + dailySettled + expiredHookQueue + expiredDailyQueue + expiredRematchClaims + expiredAiMusicInvites + expiredQCrashInvites + qCrashSettled + stalePendingBattles.cancelled,
     poolProcessed,
     hookSettled,
+    hookArchived,
     dailySettled,
     expiredHookQueue,
     expiredDailyQueue,
+    expiredRematchClaims,
+    expiredAiMusicInvites,
+    expiredQCrashInvites,
+    qCrashSettled,
+    stalePendingBattles: stalePendingBattles.cancelled,
     warnings,
   });
 }
 
-async function expireStaleHookQueue(admin: SupabaseAdmin, warnings: string[]) {
+async function settleExpiredQCrashBattles(admin: SupabaseAdmin, warnings: string[]) {
   const now = new Date().toISOString();
   const { data, error } = await admin
-    .from("battle_queue")
-    .update({ status: "expired", updated_at: now })
-    .in("status", ["searching", "waiting", "waiting_challenge", "public_voting", "ghost_battle"])
+    .from("battles")
+    .select("id")
+    .eq("battle_type", "q_crash")
+    .eq("status", "q_crash_voting")
+    .lte("voting_ends_at", now)
+    .order("voting_ends_at", { ascending: true })
+    .limit(50);
+  if (error) {
+    if (!/q_crash|voting_ends_at|schema cache|does not exist|PGRST/i.test(error.message)) {
+      warnings.push(`Q Crash settlement query: ${error.message}`);
+    }
+    return 0;
+  }
+
+  let settled = 0;
+  for (const row of data ?? []) {
+    try {
+      const result = await settleQCrashBattle(admin, row.id);
+      if (result.state === "official" || result.state === "insufficient" || result.state === "already_settled") {
+        settled += 1;
+      }
+    } catch (error) {
+      warnings.push(`Q Crash settle ${row.id}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  return settled;
+}
+
+async function expireStaleQCrashInvites(admin: SupabaseAdmin, warnings: string[]) {
+  const now = new Date().toISOString();
+  const { data, error } = await admin
+    .from("q_crash_cards")
+    .select("id,founder_user_id,founder_queue_id,invited_user_id")
+    .eq("status", "q_crash_pending_invite")
+    .lte("invite_expires_at", now)
+    .order("invite_expires_at", { ascending: true })
+    .limit(50);
+  if (error) {
+    if (!/q_crash_cards|schema cache|does not exist|PGRST/i.test(error.message)) {
+      warnings.push(`Q Crash invite expiry query: ${error.message}`);
+    }
+    return 0;
+  }
+
+  let expired = 0;
+  for (const row of data ?? []) {
+    const { data: updated, error: updateError } = await admin
+      .from("q_crash_cards")
+      .update({ status: "q_crash_cancelled", cancelled_at: now, updated_at: now })
+      .eq("id", row.id)
+      .eq("status", "q_crash_pending_invite")
+      .select("id")
+      .maybeSingle<{ id: string }>();
+    if (updateError) {
+      warnings.push(`Q Crash invite expiry ${row.id}: ${updateError.message}`);
+      continue;
+    }
+    if (!updated?.id) continue;
+    const queueResult = await admin
+      .from("battle_queue")
+      .update({ status: "expired", updated_at: now })
+      .eq("id", row.founder_queue_id);
+    if (queueResult.error) warnings.push(`Q Crash invite queue expiry ${row.id}: ${queueResult.error.message}`);
+
+    const recipients = new Set([row.founder_user_id, row.invited_user_id].filter((id): id is string => Boolean(id)));
+    const noticeResult = await admin.from("battle_notifications").insert(
+      [...recipients].map((userId) => ({
+        user_id: userId,
+        queue_id: row.founder_queue_id,
+        type: "q_crash_invite_expired",
+        title: "Q Crash 邀請已失效",
+        body: "作品 B 未在 24 小時內加入；這張卡已取消，不產生投票或戰績。",
+        metadata: { cardId: row.id, battleType: "q_crash" },
+      })),
+    );
+    if (noticeResult.error) warnings.push(`Q Crash invite expiry notice ${row.id}: ${noticeResult.error.message}`);
+    expired += 1;
+  }
+  return expired;
+}
+
+async function expireStaleAiMusicChallengeInvites(admin: SupabaseAdmin, warnings: string[]) {
+  const now = new Date().toISOString();
+  const { data: candidates, error: readError } = await admin
+    .from("ai_music_challenge_invites")
+    .select("id,defender_track_id,defender_user_id,challenger_user_id,defender_queue_id,challenger_queue_id,battle_id,status,scheduled_start_at,expires_at")
+    .eq("status", "pending")
     .lte("expires_at", now)
-    .select("id,user_id,original_file_name,status,expires_at");
+    .limit(50);
+
+  if (readError) {
+    if (!/ai_music_challenge_invites|schema cache|does not exist|Could not find/i.test(readError.message)) {
+      warnings.push(`expire ai music challenge invites: ${readError.message}`);
+    }
+    return 0;
+  }
+
+  const rows = (candidates ?? []) as AiMusicChallengeInviteRow[];
+  if (rows.length === 0) return 0;
+
+  const ids = rows.map((row) => row.id);
+  const { error: updateError } = await admin
+    .from("ai_music_challenge_invites")
+    .update({ status: "expired", responded_at: now, updated_at: now })
+    .in("id", ids)
+    .eq("status", "pending");
+  if (updateError) {
+    warnings.push(`expire ai music challenge invites: ${updateError.message}`);
+    return 0;
+  }
+
+  const battleIds = Array.from(new Set(rows.map((row) => row.battle_id).filter((id): id is string => Boolean(id))));
+  if (battleIds.length > 0) {
+    const battleResult = await admin
+      .from("battles")
+      .update({ status: "expired", battle_ended_at: now, updated_at: now })
+      .in("id", battleIds);
+    if (battleResult.error) warnings.push(`expire ai music challenge battles: ${battleResult.error.message}`);
+  }
+
+  const queueIds = Array.from(new Set(rows.flatMap((row) => [row.defender_queue_id, row.challenger_queue_id]).filter((id): id is string => Boolean(id))));
+  if (queueIds.length > 0) {
+    const queueResult = await admin.from("battle_queue").update({ status: "expired", updated_at: now }).in("id", queueIds);
+    if (queueResult.error) warnings.push(`expire ai music challenge queues: ${queueResult.error.message}`);
+  }
+
+  const noticeRows = rows.flatMap((row) => ([
+    {
+      user_id: row.defender_user_id,
+      queue_id: row.defender_queue_id ?? null,
+      battle_id: row.battle_id ?? null,
+      type: "ai_music_challenge_expired",
+      title: "攻擂邀請已失效",
+      body: "未在預定開打前回覆，這場不算戰績、不進 Showtime，也不算任何一方勝敗。",
+      metadata: { inviteId: row.id, defenderTrackId: row.defender_track_id, expiredAt: now, href: "/profile#pending-ai-music-challenges" },
+    },
+    {
+      user_id: row.challenger_user_id,
+      queue_id: row.challenger_queue_id ?? null,
+      battle_id: row.battle_id ?? null,
+      type: "ai_music_challenge_expired",
+      title: "攻擂邀請已失效",
+      body: "關主未在期限內回覆，這場不算戰績、不進 Showtime，也不算任何一方勝敗。",
+      metadata: { inviteId: row.id, defenderTrackId: row.defender_track_id, expiredAt: now },
+    },
+  ]));
+  const noticeResult = await admin.from("battle_notifications").insert(noticeRows);
+  if (noticeResult.error) warnings.push(`notify expired ai music invites: ${noticeResult.error.message}`);
+
+  return rows.length;
+}
+
+async function expireStaleRematchClaims(admin: SupabaseAdmin, warnings: string[]) {
+  const now = new Date().toISOString();
+  const { data: openExpired, error: openError } = await admin
+    .from("drop_battle_rematch_claims")
+    .update({ status: "expired", updated_at: now })
+    .eq("status", "open")
+    .lte("claim_window_ends_at", now)
+    .select("id");
+  if (openError) {
+    if (!/schema cache|does not exist|Could not find/i.test(openError.message)) {
+      warnings.push(`expire open rematch claims: ${openError.message}`);
+    }
+    return 0;
+  }
+
+  const { data: claimedExpired, error: claimedError } = await admin
+    .from("drop_battle_rematch_claims")
+    .update({ status: "expired", updated_at: now })
+    .eq("status", "claimed")
+    .lte("upload_deadline_at", now)
+    .select("id");
+  if (claimedError) {
+    if (!/schema cache|does not exist|Could not find/i.test(claimedError.message)) {
+      warnings.push(`expire claimed rematch claims: ${claimedError.message}`);
+    }
+    return openExpired?.length ?? 0;
+  }
+
+  return (openExpired?.length ?? 0) + (claimedExpired?.length ?? 0);
+}
+
+async function expireStaleHookQueue(admin: SupabaseAdmin, warnings: string[]) {
+  const now = new Date().toISOString();
+  let usesLegacySchedule = false;
+  const scheduledRead = await admin
+    .from("battle_queue")
+    .select("id,user_id,original_file_name,status,expires_at,scheduled_start_at,cancellation_evaluation_at")
+    .in("status", ["searching", "waiting", "waiting_challenge", "public_voting", "ghost_battle"])
+    .or(`expires_at.lte.${now},scheduled_start_at.lte.${now},cancellation_evaluation_at.lte.${now}`);
+  let candidates = scheduledRead.data as ExpiredHookQueueRow[] | null;
+  let readError = scheduledRead.error;
+
+  if (readError && isMissingScheduleColumn(readError)) {
+    usesLegacySchedule = true;
+    const legacyRead = await admin
+      .from("battle_queue")
+      .select("id,user_id,original_file_name,status,expires_at")
+      .in("status", ["searching", "waiting", "waiting_challenge", "public_voting", "ghost_battle"])
+      .lte("expires_at", now);
+    candidates = legacyRead.data as ExpiredHookQueueRow[] | null;
+    readError = legacyRead.error;
+  }
+
+  if (readError) {
+    warnings.push(`expire stale 90s queue: ${readError.message}`);
+    return 0;
+  }
+
+  const expiredIds = ((candidates ?? []) as ExpiredHookQueueRow[])
+    .filter((row) => shouldExpireOpenDropQueue(row, Date.parse(now)))
+    .map((row) => row.id);
+
+  const { data, error } = expiredIds.length > 0
+    ? await admin
+        .from("battle_queue")
+        .update({ status: "expired", updated_at: now })
+        .in("id", expiredIds)
+        .select(
+          usesLegacySchedule
+            ? "id,user_id,original_file_name,status,expires_at"
+            : "id,user_id,original_file_name,status,expires_at,scheduled_start_at,cancellation_evaluation_at",
+        )
+    : { data: [], error: null };
 
   if (error) {
     warnings.push(`expire stale 90s queue: ${error.message}`);
@@ -136,6 +403,7 @@ async function expireStaleHookQueue(admin: SupabaseAdmin, warnings: string[]) {
           expiredAt: now,
           sourceStatus: row.status ?? null,
           expiresAt: row.expires_at ?? null,
+          scheduledStartAt: row.scheduled_start_at ?? null,
         },
       })),
     );
@@ -187,16 +455,32 @@ async function expireStaleDailyQueue(admin: SupabaseAdmin, warnings: string[]) {
 }
 
 async function settleStaleHookBattles(admin: SupabaseAdmin, warnings: string[]) {
-  const staleBefore = new Date(Date.now() - 20 * 60 * 1000).toISOString();
-  const { data, error } = await admin
+  const candidateCreatedBefore = new Date(Date.now() - DROP_BATTLE_EXPECTED_END_BUFFER_MS).toISOString();
+  let { data, error } = await admin
     .from("battles")
     .select(
-      "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,created_at,started_at,battle_started_at,battle_number",
+      "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,song_a_cover,song_b_cover,status,created_at,scheduled_start_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner,battle_type",
     )
     .in("status", ["live", "active", "ghost_battle", "public_voting"])
     .is("battle_ended_at", null)
-    .lt("created_at", staleBefore)
+    .lt("created_at", candidateCreatedBefore)
+    .order("created_at", { ascending: true })
     .limit(25);
+
+  if (error && isMissingScheduleColumn(error)) {
+    const legacyRead = await admin
+      .from("battles")
+      .select(
+        "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,song_a_cover,song_b_cover,status,created_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner,battle_type",
+      )
+      .in("status", ["live", "active", "ghost_battle", "public_voting"])
+      .is("battle_ended_at", null)
+      .lt("created_at", candidateCreatedBefore)
+      .order("created_at", { ascending: true })
+      .limit(25);
+    data = legacyRead.data as typeof data;
+    error = legacyRead.error;
+  }
 
   if (error) {
     warnings.push(`stale 90s query: ${error.message}`);
@@ -206,23 +490,24 @@ async function settleStaleHookBattles(admin: SupabaseAdmin, warnings: string[]) 
   const rows = (data ?? []) as HookBattleRow[];
   let settled = 0;
   for (const battle of rows) {
-    const referenceTime = battle.battle_started_at ?? battle.started_at ?? battle.created_at;
-    if (Date.parse(referenceTime) > Date.now() - 20 * 60 * 1000) continue;
+    if (!isDropBattleEndedOrPastExpectedEnd(battle)) continue;
 
-    const { data: votes, error: voteError } = await admin
-      .from("battle_votes")
-      .select("voted_for")
-      .eq("battle_id", battle.id);
-
-    if (voteError) {
-      warnings.push(`90s votes ${battle.id}: ${voteError.message}`);
+    const voteRead = await readCombined90sVotes(admin, battle.id);
+    if (voteRead.error) {
+      warnings.push(`90s votes ${battle.id}: ${voteRead.error}`);
       continue;
     }
 
-    const counts = countSides((votes ?? []) as VoteRow[]);
-    const winner = pickWinner(counts.fighter_a, counts.fighter_b);
+    const counts = voteRead.counts;
+    if (voteRead.audienceCount < DROP_BATTLE_OFFICIAL_AUDIENCE_MIN) {
+      await expireHookBattle(admin, battle, warnings, counts, voteRead.audienceCount);
+      settled += 1;
+      continue;
+    }
+
+    const winner = pickDropBattleWinnerForRules(counts, battle.id, null, battle.battle_type);
     if (!winner) {
-      await expireHookBattle(admin, battle, warnings, counts);
+      await expireHookBattle(admin, battle, warnings, counts, voteRead.audienceCount);
       settled += 1;
       continue;
     }
@@ -246,12 +531,51 @@ async function settleStaleHookBattles(admin: SupabaseAdmin, warnings: string[]) 
     }
 
     await completeQueues(admin, battle, "completed", warnings);
-    await archiveHookBattleResult(admin, battle, winner, counts, warnings);
-    await notifyHookBattleResult(admin, battle, winner, counts, warnings);
+    await archiveHookBattleResult(admin, battle, winner, counts, voteRead.audienceCount, true, warnings);
+    await notifyHookBattleResult(admin, battle, winner, counts, warnings, voteRead.audienceCount, true);
     await recordHookBattleHistory(admin, battle, winner, counts, warnings);
     settled += 1;
   }
   return settled;
+}
+
+async function archiveFinishedUnarchivedHookBattles(admin: SupabaseAdmin, warnings: string[]) {
+  const { data, error } = await admin
+    .from("battles")
+    .select(
+      "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,song_a_cover,song_b_cover,status,created_at,scheduled_start_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner,battle_type",
+    )
+    .eq("status", "finished")
+    .neq("battle_type", "q_crash")
+    .not("winner", "is", null)
+    .is("result_archived_at", null)
+    .order("battle_ended_at", { ascending: true, nullsFirst: false })
+    .limit(25);
+
+  if (error) {
+    if (!/schema cache|does not exist|Could not find/i.test(error.message)) {
+      warnings.push(`finished 90s archive query: ${error.message}`);
+    }
+    return 0;
+  }
+
+  let archived = 0;
+  for (const battle of (data ?? []) as HookBattleRow[]) {
+    const winner = battle.winner === "fighter_a" || battle.winner === "fighter_b" ? battle.winner : null;
+    if (!winner) continue;
+
+    const voteRead = await readCombined90sVotes(admin, battle.id);
+    if (voteRead.error) {
+      warnings.push(`finished 90s votes ${battle.id}: ${voteRead.error}`);
+      continue;
+    }
+    const counts = voteRead.counts;
+    if (voteRead.audienceCount < DROP_BATTLE_OFFICIAL_AUDIENCE_MIN) continue;
+
+    await archiveHookBattleResult(admin, battle, winner, counts, voteRead.audienceCount, true, warnings);
+    archived += 1;
+  }
+  return archived;
 }
 
 async function expireHookBattle(
@@ -259,6 +583,7 @@ async function expireHookBattle(
   battle: HookBattleRow,
   warnings: string[],
   counts: { fighter_a: number; fighter_b: number },
+  audienceCount = 0,
 ) {
   const result = await admin
     .from("battles")
@@ -269,8 +594,7 @@ async function expireHookBattle(
     return;
   }
   await completeQueues(admin, battle, "expired", warnings);
-  await notifyHookBattleResult(admin, battle, null, counts, warnings);
-  await recordHookBattleHistory(admin, battle, null, counts, warnings);
+  await notifyHookBattleResult(admin, battle, null, counts, warnings, audienceCount, false);
 }
 
 async function completeQueues(admin: SupabaseAdmin, battle: HookBattleRow, status: "completed" | "expired", warnings: string[]) {
@@ -291,10 +615,45 @@ function countSides(votes: VoteRow[]) {
   );
 }
 
-function pickWinner(a: number, b: number): "fighter_a" | "fighter_b" | null {
-  if (a === b) return null;
-  if (a === 0 && b === 0) return null;
-  return a > b ? "fighter_a" : "fighter_b";
+function isAudienceVote(row: VoteRow) {
+  return !row.voter_role || row.voter_role === "audience";
+}
+
+function distinctTextCount(values: Array<string | null | undefined>) {
+  return new Set(values.map((value) => String(value || "").trim()).filter(Boolean)).size;
+}
+
+async function readCombined90sVotes(admin: SupabaseAdmin, battleId: string) {
+  const { data: votes, error: voteError } = await admin
+    .from("battle_votes")
+    .select("voted_for,user_id,voter_role")
+    .eq("battle_id", battleId);
+  if (voteError) return { counts: { fighter_a: 0, fighter_b: 0 }, audienceCount: 0, error: voteError.message };
+
+  const signedRows = ((votes ?? []) as VoteRow[]).filter(isAudienceVote);
+  const counts = countSides(signedRows);
+  const signedAudienceCount = distinctTextCount(signedRows.map((row) => row.user_id));
+  const { data: guestVotes, error: guestVoteError } = await admin
+    .from("battle_guest_votes")
+    .select("voted_for,guest_id")
+    .eq("battle_id", battleId);
+  if (guestVoteError) {
+    const msg = `${guestVoteError.message ?? ""} ${guestVoteError.details ?? ""}`;
+    if (!missingGuestVoteTablePattern.test(msg)) return { counts, audienceCount: signedAudienceCount, error: guestVoteError.message };
+    return { counts, audienceCount: signedAudienceCount, error: null };
+  }
+
+  const guestRows = (guestVotes ?? []) as GuestVoteRow[];
+  const guestCounts = countSides(guestRows);
+  const guestAudienceCount = distinctTextCount(guestRows.map((row) => row.guest_id));
+  return {
+    counts: {
+      fighter_a: counts.fighter_a + guestCounts.fighter_a,
+      fighter_b: counts.fighter_b + guestCounts.fighter_b,
+    },
+    audienceCount: signedAudienceCount + guestAudienceCount,
+    error: null,
+  };
 }
 
 async function notifyHookBattleResult(
@@ -303,17 +662,23 @@ async function notifyHookBattleResult(
   winner: "fighter_a" | "fighter_b" | null,
   counts: { fighter_a: number; fighter_b: number },
   warnings: string[],
+  audienceCount = 0,
+  official = true,
 ) {
   const noContest = !winner;
+  const audienceInsufficientBody =
+    `這場 Drop Battle 需要至少 ${DROP_BATTLE_OFFICIAL_AUDIENCE_MIN} 位非參賽者投票才成立；本場只有 ${audienceCount}/${DROP_BATTLE_OFFICIAL_AUDIENCE_MIN} 位，不產生成果卡、不進 Showtime、不算勝敗。`;
   const rows = [
     {
       user_id: battle.fighter_a_user_id,
       queue_id: battle.queue_a_id,
       battle_id: battle.id,
-      type: noContest ? "battle_no_contest" : "battle_finished",
-      title: noContest ? "Battle 已結束：未分勝負" : winner === "fighter_a" ? "Battle 勝利！" : "Battle 結束",
+      type: noContest || !official ? "battle_no_contest" : "battle_finished",
+      title: noContest || !official ? "Battle 已結束：觀眾不足" : winner === "fighter_a" ? "Battle 勝利！" : "Battle 結束",
       body: noContest
-        ? "這場 90s Drop Battle 票數不足或平手，已結束並從場上移除。"
+        ? audienceInsufficientBody
+        : !official
+          ? audienceInsufficientBody
         : winner === "fighter_a"
           ? `你擊敗了 ${battle.fighter_b_name}，成果已可查看。`
           : `${battle.fighter_b_name} 贏下這場，成果已可查看。`,
@@ -321,6 +686,8 @@ async function notifyHookBattleResult(
         battleNumber: battle.battle_number,
         votesA: counts.fighter_a,
         votesB: counts.fighter_b,
+        audienceCount,
+        officialAudienceMin: DROP_BATTLE_OFFICIAL_AUDIENCE_MIN,
         winner,
       },
     },
@@ -328,10 +695,12 @@ async function notifyHookBattleResult(
       user_id: battle.fighter_b_user_id,
       queue_id: battle.queue_b_id,
       battle_id: battle.id,
-      type: noContest ? "battle_no_contest" : "battle_finished",
-      title: noContest ? "Battle 已結束：未分勝負" : winner === "fighter_b" ? "Battle 勝利！" : "Battle 結束",
+      type: noContest || !official ? "battle_no_contest" : "battle_finished",
+      title: noContest || !official ? "Battle 已結束：觀眾不足" : winner === "fighter_b" ? "Battle 勝利！" : "Battle 結束",
       body: noContest
-        ? "這場 90s Drop Battle 票數不足或平手，已結束並從場上移除。"
+        ? audienceInsufficientBody
+        : !official
+          ? audienceInsufficientBody
         : winner === "fighter_b"
           ? `你擊敗了 ${battle.fighter_a_name}，成果已可查看。`
           : `${battle.fighter_a_name} 贏下這場，成果已可查看。`,
@@ -339,6 +708,8 @@ async function notifyHookBattleResult(
         battleNumber: battle.battle_number,
         votesA: counts.fighter_a,
         votesB: counts.fighter_b,
+        audienceCount,
+        officialAudienceMin: DROP_BATTLE_OFFICIAL_AUDIENCE_MIN,
         winner,
       },
     },
@@ -353,8 +724,14 @@ async function archiveHookBattleResult(
   battle: HookBattleRow,
   winner: "fighter_a" | "fighter_b",
   counts: { fighter_a: number; fighter_b: number },
+  audienceCount: number,
+  isOfficial: boolean,
   warnings: string[],
 ) {
+  if (!isOfficial) {
+    return;
+  }
+
   const archive = await admin.rpc("archive_battle_result", {
     p_battle_id: battle.id,
     p_winner: winner,
@@ -365,15 +742,119 @@ async function archiveHookBattleResult(
         ? `${battle.fighter_a_name} 以 ${counts.fighter_a}:${counts.fighter_b} 拿下這場 Drop Battle。`
         : `${battle.fighter_b_name} 以 ${counts.fighter_b}:${counts.fighter_a} 拿下這場 Drop Battle。`,
     p_result_payload: {
-      source: "cron",
+      source: "drop_battle",
+      battleType: "formal",
       votesA: counts.fighter_a,
       votesB: counts.fighter_b,
+      audienceCount,
+      officialAudienceMin: DROP_BATTLE_OFFICIAL_AUDIENCE_MIN,
       settledAt: new Date().toISOString(),
     },
   });
-  if (archive.error && !/schema cache|does not exist|function.*does not exist/i.test(archive.error.message)) {
-    warnings.push(`archive 90s ${battle.id}: ${archive.error.message}`);
+  if (!archive.error) return;
+
+  const direct = await archiveHookBattleResultDirect(admin, battle, winner, counts, audienceCount, true);
+  if (direct.error) {
+    warnings.push(`archive 90s ${battle.id}: ${archive.error.message}; direct archive: ${direct.error}`);
   }
+}
+
+async function archiveHookBattleResultDirect(
+  admin: SupabaseAdmin,
+  battle: HookBattleRow,
+  winner: "fighter_a" | "fighter_b",
+  counts: { fighter_a: number; fighter_b: number },
+  audienceCount: number,
+  isOfficial: boolean,
+) {
+  const fresh = await admin
+    .from("battles")
+    .select(
+      "id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,song_a_cover,song_b_cover,battle_number,ai_tool_a,ai_tool_b,winner",
+    )
+    .eq("id", battle.id)
+    .maybeSingle();
+
+  if (fresh.error && !/schema cache|does not exist|Could not find/i.test(fresh.error.message)) {
+    return { error: fresh.error.message };
+  }
+
+  const row = ((fresh.data as HookBattleRow | null) ?? battle) as HookBattleRow;
+  const battleNumber = Number(row.battle_number ?? battle.battle_number);
+  if (!Number.isFinite(battleNumber) || battleNumber <= 0) {
+    return { error: "missing battle_number for direct archive" };
+  }
+
+  const effectiveWinner = row.winner === "fighter_a" || row.winner === "fighter_b" ? row.winner : winner;
+  const winnerIsA = effectiveWinner === "fighter_a";
+  const now = new Date().toISOString();
+  const totalVotes = Math.max(0, counts.fighter_a) + Math.max(0, counts.fighter_b);
+  const winnerCoverUrl = winnerIsA ? row.song_a_cover ?? null : row.song_b_cover ?? null;
+  const opponentCoverUrl = winnerIsA ? row.song_b_cover ?? null : row.song_a_cover ?? null;
+  const audienceReview = winnerIsA
+    ? `${row.fighter_a_name} 以 ${counts.fighter_a}:${counts.fighter_b} 拿下這場 Drop Battle。`
+    : `${row.fighter_b_name} 以 ${counts.fighter_b}:${counts.fighter_a} 拿下這場 Drop Battle。`;
+
+  const upsert = await admin
+    .from("battle_result_archives")
+    .upsert(
+      {
+        battle_id: battle.id,
+        battle_number: battleNumber,
+        battle_code: `AIPO-${String(battleNumber).padStart(6, "0")}`,
+        winner: effectiveWinner,
+        winner_user_id: winnerIsA ? row.fighter_a_user_id : row.fighter_b_user_id,
+        winner_name: winnerIsA ? row.fighter_a_name : row.fighter_b_name,
+        winner_song_name: winnerIsA ? row.song_a_name : row.song_b_name,
+        winner_ai_tool: winnerIsA ? row.ai_tool_a ?? null : row.ai_tool_b ?? null,
+        opponent_user_id: winnerIsA ? row.fighter_b_user_id : row.fighter_a_user_id,
+        opponent_name: winnerIsA ? row.fighter_b_name : row.fighter_a_name,
+        opponent_song_name: winnerIsA ? row.song_b_name : row.song_a_name,
+        final_vote_left: Math.max(0, counts.fighter_a),
+        final_vote_right: Math.max(0, counts.fighter_b),
+        total_votes: totalVotes,
+        audience_review: audienceReview,
+        result_payload: {
+          source: "drop_battle",
+          battleType: "formal",
+          archiveScope: "official-result",
+          isOfficial: true,
+          votesA: counts.fighter_a,
+          votesB: counts.fighter_b,
+          audienceCount,
+          coverUrl: winnerCoverUrl,
+          opponentCoverUrl,
+          officialAudienceMin: DROP_BATTLE_OFFICIAL_AUDIENCE_MIN,
+          settledAt: now,
+        },
+        archived_at: now,
+      },
+      { onConflict: "battle_id" },
+    );
+
+  if (upsert.error) return { error: upsert.error.message };
+
+  if (isOfficial) {
+    const stats = await admin.rpc("record_battle_song_stats_for_battle", {
+      p_battle_id: battle.id,
+      p_winner: effectiveWinner,
+      p_final_vote_left: counts.fighter_a,
+      p_final_vote_right: counts.fighter_b,
+    });
+    if (stats.error && !/schema cache|does not exist|Could not find|PGRST/i.test(stats.error.message)) {
+      return { error: stats.error.message };
+    }
+  }
+
+  const marked = await admin
+    .from("battles")
+    .update({ result_archived_at: now, winner: effectiveWinner, status: "finished", updated_at: now })
+    .eq("id", battle.id);
+  if (marked.error && !/schema cache|does not exist|Could not find/i.test(marked.error.message)) {
+    return { error: marked.error.message };
+  }
+
+  return { error: null };
 }
 
 async function recordHookBattleHistory(
@@ -461,7 +942,7 @@ async function settleExpiredDailyBattles(admin: SupabaseAdmin, warnings: string[
 
     const votesA = (votes ?? []).filter((vote: { picked_entry_id?: string | null }) => vote.picked_entry_id === entryA.id).length;
     const votesB = (votes ?? []).filter((vote: { picked_entry_id?: string | null }) => vote.picked_entry_id === entryB.id).length;
-    const winnerEntryId = votesA === votesB ? null : votesA > votesB ? entryA.id : entryB.id;
+    const winnerEntryId = pickDailyWinnerEntryId(votesA, votesB, battle.id, entryA.id, entryB.id);
 
     const updated = await admin
       .from("daily_battles")
@@ -495,16 +976,16 @@ async function notifyDailyBattleResult(
 ) {
   const rows = [entryA, entryB].map((entry) => {
     const opponent = entry.id === entryA.id ? entryB : entryA;
+    const noContest = winnerEntryId === null;
     const won = winnerEntryId === entry.id;
-    const tied = winnerEntryId === null;
     return {
       user_id: entry.user_id,
       queue_id: null,
       battle_id: null,
       type: "daily_battle_finished",
-      title: tied ? "24H Battle 已結束：平手" : won ? "24H Battle 勝利！" : "24H Battle 已結束",
-      body: tied
-        ? `你和 ${opponent.title} 票數相同，這場 24H Battle 已留檔。`
+      title: noContest ? "24H Battle 已結束：No contest" : won ? "24H Battle 勝利！" : "24H Battle 已結束",
+      body: noContest
+        ? "這場 24H Battle 沒有任何觀眾投票，不產生成果，也不進 Showtime。"
         : won
           ? `你的作品贏下 24H Battle，成果已留檔。`
           : `${opponent.title} 贏下這場 24H Battle，成果已留檔。`,
@@ -519,4 +1000,11 @@ async function notifyDailyBattleResult(
 
   const result = await admin.from("battle_notifications").insert(rows);
   if (result.error) warnings.push(`notify daily ${dailyBattleId}: ${result.error.message}`);
+}
+
+function pickDailyWinnerEntryId(votesA: number, votesB: number, battleId: string, entryAId: string, entryBId: string) {
+  if (votesA + votesB <= 0) return null;
+  if (votesA > votesB) return entryAId;
+  if (votesB > votesA) return entryBId;
+  return battleSeedForId(battleId) % 2 === 0 ? entryAId : entryBId;
 }

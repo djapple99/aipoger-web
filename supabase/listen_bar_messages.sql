@@ -1,6 +1,6 @@
 -- AIPOGER Bar Heartbreak persistent chat
 -- 在 Supabase SQL Editor 執行。可重複執行。
--- 讓傷心酒吧留言刷新後仍保留，並透過 Realtime 同步新留言。
+-- 讓傷心的故事傾訴留言刷新後仍保留 24H，並透過 Realtime 同步新留言。
 
 create table if not exists public.listen_bar_messages (
   id uuid primary key default gen_random_uuid(),

@@ -1,0 +1,3002 @@
+{
+  "generated_at": "2026-07-10T09:59:55.631Z",
+  "cutoff_public_before": "2026-06-10T09:59:55.631Z",
+  "write_safe": false,
+  "demo_confirmation": {
+    "status": "ambiguous_or_not_exactly_two_do_not_apply",
+    "count": 0,
+    "candidates": []
+  },
+  "founder_catalog": {
+    "candidate_count": 45,
+    "exclusion_count": 140,
+    "candidates": [
+      {
+        "id": "a8b9b0d9-e5dd-4cec-a6b6-1d42d586700d",
+        "title": "十塊便當",
+        "creator": "強尼",
+        "creator_user_id": "3c830dd6-6af3-404c-8514-4a5d8d2c3e6c",
+        "genre": "Rap 街頭說唱",
+        "public_time": "2026-05-22T22:40:01.369075+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 0,
+        "official_losses": 0
+      },
+      {
+        "id": "006f0bc1-9417-4020-898d-e50c5524fa44",
+        "title": "殘酷誠實（uplifting ver.）",
+        "creator": "Lin Johnny",
+        "creator_user_id": "3c830dd6-6af3-404c-8514-4a5d8d2c3e6c",
+        "genre": "Rap 街頭說唱",
+        "public_time": "2026-05-22T22:42:39.625966+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0
+      },
+      {
+        "id": "0506bc30-0047-45f6-a7e3-198e19ce7531",
+        "title": "帶刺重量",
+        "creator": "Lin Johnny",
+        "creator_user_id": "3c830dd6-6af3-404c-8514-4a5d8d2c3e6c",
+        "genre": "Rap 街頭說唱",
+        "public_time": "2026-05-22T22:44:58.473667+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 0,
+        "official_losses": 0
+      },
+      {
+        "id": "71d24c81-8293-4f90-8639-8f224bf4494e",
+        "title": "如果沒有遇見你",
+        "creator": "愛波哥",
+        "creator_user_id": "3336dd37-7fe8-4203-bd55-9eb1067ca047",
+        "genre": "Disco / Funk / City-Pop",
+        "public_time": "2026-05-23T15:40:13.917841+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0
+      },
+      {
+        "id": "b62138ad-6ddf-43fe-a024-8e57fc0abcbe",
+        "title": "come again   m flo – FUNKY AI Arrange (Disco Funk AOR)   J POP Cover",
+        "creator": "愛波哥",
+        "creator_user_id": "3336dd37-7fe8-4203-bd55-9eb1067ca047",
+        "genre": "Disco / Funk / City-Pop",
+        "public_time": "2026-05-23T15:45:14.469269+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 6,
+        "official_losses": 0
+      },
+      {
+        "id": "dbde4b10-6b0e-4745-9393-0f6f155a0f90",
+        "title": "若有天再相見（男聲版）",
+        "creator": "⭐️jarjar⭐️珈珈",
+        "creator_user_id": "3e04107d-f311-40d0-b0ea-d26c44c47631",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-05-23T17:26:20.335472+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0
+      },
+      {
+        "id": "0a1654db-ec7c-42f0-9c64-b8043ff5df3f",
+        "title": "霧中潮汐",
+        "creator": "akirabb",
+        "creator_user_id": "1eef85da-cecf-4315-bd03-cd94ed3e6dc5",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-05-23T19:24:03.343025+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0
+      },
+      {
+        "id": "645a272e-37b6-4ae5-9151-3b99a2e2f9b3",
+        "title": "靠過來別走開",
+        "creator": "akirabb",
+        "creator_user_id": "1eef85da-cecf-4315-bd03-cd94ed3e6dc5",
+        "genre": "台語熊high",
+        "public_time": "2026-05-23T19:55:34.609517+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 4,
+        "official_losses": 0
+      },
+      {
+        "id": "4ab1448d-e9e2-4ec4-b0cf-34e3b4ea783a",
+        "title": "向天借膽",
+        "creator": "飄浪-勇哥ĺ",
+        "creator_user_id": "1eef85da-cecf-4315-bd03-cd94ed3e6dc5",
+        "genre": "Band Rock 熱血搖滾",
+        "public_time": "2026-05-23T19:59:54.179057+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 0,
+        "official_losses": 0
+      },
+      {
+        "id": "43e4f64d-8be2-4292-961c-c8be80ce7be5",
+        "title": "《L.M.C｜愛的鼓勵》",
+        "creator": "Tank Lu",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "Band Rock 熱血搖滾",
+        "public_time": "2026-05-24T00:51:56.768969+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0
+      },
+      {
+        "id": "a1643e40-01a0-4d80-af1e-cc8d8576dcb2",
+        "title": "🌒《月面殘缺》",
+        "creator": "小毛毯",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "Band Rock 熱血搖滾",
+        "public_time": "2026-05-24T01:17:09.516572+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0
+      },
+      {
+        "id": "2089dec5-9319-4c82-80b0-e682120266a1",
+        "title": "내가 어떻게 我怎麼辦",
+        "creator": "珊悠",
+        "creator_user_id": "7a923fe7-d564-45b8-b8bd-06b2d788d0eb",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-05-24T01:36:03.897486+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0
+      },
+      {
+        "id": "f470c182-252f-49c0-891d-62fbe5cbaa13",
+        "title": "繞口令",
+        "creator": "珊悠",
+        "creator_user_id": "7a923fe7-d564-45b8-b8bd-06b2d788d0eb",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-05-24T01:45:31.541058+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 0,
+        "official_losses": 0
+      },
+      {
+        "id": "d2cf4502-8a25-400d-a977-c450519c9d98",
+        "title": "你好嗎？",
+        "creator": "珊悠",
+        "creator_user_id": "7a923fe7-d564-45b8-b8bd-06b2d788d0eb",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-05-24T01:45:55.035759+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0
+      },
+      {
+        "id": "65dc3d41-0c3f-4f55-b6b1-f3f6ea7adbf1",
+        "title": "好事一直來（Good Things Love Me）",
+        "creator": "MagicPeter MP",
+        "creator_user_id": "30c16ff8-ef65-4cd5-94c6-fe3ee8e2fc16",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-05-24T03:11:51.233521+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0
+      },
+      {
+        "id": "463ac097-3845-4469-b6a5-684de8e54488",
+        "title": "《L.M.C｜憂鬱蘋果男孩》",
+        "creator": "Tank Lu",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-05-24T03:20:24.504351+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0
+      },
+      {
+        "id": "17be5654-644d-4d2e-af66-2fe99532abca",
+        "title": "小王子》",
+        "creator": "Tank Lu",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T13:55:05.834588+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0
+      },
+      {
+        "id": "3a4f0760-02bf-4065-b717-71f404f15cb7",
+        "title": "🎤《唉。愛》",
+        "creator": "⭐️jarjar⭐️珈珈",
+        "creator_user_id": "3e04107d-f311-40d0-b0ea-d26c44c47631",
+        "genre": "Band Rock 熱血搖滾",
+        "public_time": "2026-05-25T14:31:56.928665+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0
+      },
+      {
+        "id": "3b7cc690-d62f-4d9f-b7c4-b7ca55619bba",
+        "title": "💪《繼續拼》👍",
+        "creator": "⭐️jarjar⭐️珈珈",
+        "creator_user_id": "3e04107d-f311-40d0-b0ea-d26c44c47631",
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T14:35:22.428768+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0
+      },
+      {
+        "id": "2812b547-9196-4cd3-bb53-394f0f4c471b",
+        "title": "❤️柏拉圖式愛情",
+        "creator": "⭐️jarjar⭐️珈珈",
+        "creator_user_id": "3e04107d-f311-40d0-b0ea-d26c44c47631",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-05-25T14:39:57.300149+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 4,
+        "official_losses": 0
+      },
+      {
+        "id": "484a0d6a-4cca-46cc-ac9a-b6500a2f87a1",
+        "title": "愛像風暴捲起我",
+        "creator": "akirabb",
+        "creator_user_id": "1eef85da-cecf-4315-bd03-cd94ed3e6dc5",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-05-25T14:58:11.316646+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0
+      },
+      {
+        "id": "20c2184e-46ee-439b-9b50-114a4c95bb3e",
+        "title": "想到你就心酸酸",
+        "creator": "akirabb",
+        "creator_user_id": "1eef85da-cecf-4315-bd03-cd94ed3e6dc5",
+        "genre": "台語熊high",
+        "public_time": "2026-05-25T15:08:00.165775+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0
+      },
+      {
+        "id": "9b146649-fae7-445c-aec7-c05328df6a49",
+        "title": "人生尾路",
+        "creator": "akirabb",
+        "creator_user_id": "1eef85da-cecf-4315-bd03-cd94ed3e6dc5",
+        "genre": "台語熊high",
+        "public_time": "2026-05-25T15:13:03.157954+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0
+      },
+      {
+        "id": "db062c01-a27f-4b35-9626-db901caadaa6",
+        "title": "《l.n.c｜偶像人形》",
+        "creator": "Tank Lu",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-26T06:48:32.213936+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0
+      },
+      {
+        "id": "1e73273c-b368-44d0-8a93-6b1b842529ff",
+        "title": "沒有了我們",
+        "creator": "⭐️jarjar⭐️珈珈",
+        "creator_user_id": "3e04107d-f311-40d0-b0ea-d26c44c47631",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-05-26T07:15:24.280581+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 0,
+        "official_losses": 0
+      },
+      {
+        "id": "dc3c7377-47da-4f5a-ac98-1b124401276c",
+        "title": "《愛我自己》",
+        "creator": "⭐️jarjar⭐️珈珈",
+        "creator_user_id": "3e04107d-f311-40d0-b0ea-d26c44c47631",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-05-26T07:21:37.562346+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0
+      },
+      {
+        "id": "39f1b9c6-1a66-4ebe-bfd2-870537abf7fc",
+        "title": "⭐️《第六次之後》❤️",
+        "creator": "⭐️jarjar⭐️珈珈",
+        "creator_user_id": "3e04107d-f311-40d0-b0ea-d26c44c47631",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-05-26T07:41:13.827494+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0
+      },
+      {
+        "id": "23c513bc-3d49-4497-8d57-55223202b041",
+        "title": "彼間南美咖啡廳",
+        "creator": "愛波哥",
+        "creator_user_id": "3336dd37-7fe8-4203-bd55-9eb1067ca047",
+        "genre": "台語熊high",
+        "public_time": "2026-05-26T15:06:58.897951+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 6,
+        "official_losses": 0
+      },
+      {
+        "id": "3d6d9636-d11d-42c1-99c2-b314cb5c61de",
+        "title": "Right now",
+        "creator": "珊悠",
+        "creator_user_id": "7a923fe7-d564-45b8-b8bd-06b2d788d0eb",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-05-28T01:17:20.014221+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0
+      },
+      {
+        "id": "eed79d2a-9a80-40e0-8c85-d59e71c379a8",
+        "title": "網路尋人啟事 電音版 BREAKS",
+        "creator": "CNC",
+        "creator_user_id": "05b33814-750c-4503-bd79-d6e2b9150bfb",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-05-29T14:59:23.72073+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0
+      },
+      {
+        "id": "9e024d2e-b10f-4c5d-95f3-29b9f13353dc",
+        "title": "洗淚靠 (男)",
+        "creator": "鄭志龍",
+        "creator_user_id": "fa962446-57d6-4132-b8c7-2f1bb3330827",
+        "genre": "Rap 街頭說唱",
+        "public_time": "2026-05-29T15:03:35.266169+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0
+      },
+      {
+        "id": "8153db64-3d5d-484c-8a60-346dccc933d9",
+        "title": "《l.n.c｜打馬膠》",
+        "creator": "Tank Lu",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-29T15:28:07.521023+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 6,
+        "official_losses": 0
+      },
+      {
+        "id": "cbeb325d-0f76-4671-9a89-2afc97d67dc5",
+        "title": "網路尋人啟事（Original Mix)",
+        "creator": "CNC",
+        "creator_user_id": "05b33814-750c-4503-bd79-d6e2b9150bfb",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-05-29T15:31:03.19463+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0
+      },
+      {
+        "id": "782c6289-3d1f-41c3-a6d3-23df1b7a2da4",
+        "title": "《l.n.c｜天烏烏》",
+        "creator": "Tank Lu",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-29T16:22:33.004225+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0
+      },
+      {
+        "id": "d5e34c75-a645-4a48-a5d9-4a040e412117",
+        "title": "李多娜 - 台北雨，首爾你",
+        "creator": "筠芙得利",
+        "creator_user_id": "fd929e6d-bc24-49b8-b5b0-6a7da3836768",
+        "genre": "台語熊high",
+        "public_time": "2026-05-30T07:02:27.337135+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0
+      },
+      {
+        "id": "32ea71a0-5299-4dac-94d5-36b030b21ff2",
+        "title": "紀時宇 - 螂菸再起",
+        "creator": "筠芙得利",
+        "creator_user_id": "fd929e6d-bc24-49b8-b5b0-6a7da3836768",
+        "genre": "Band Rock 熱血搖滾",
+        "public_time": "2026-05-30T07:03:34.402029+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0
+      },
+      {
+        "id": "f3e202c6-0757-47d1-80dd-bf7af9e8968a",
+        "title": "讓世界看一眼",
+        "creator": "珊悠",
+        "creator_user_id": "7a923fe7-d564-45b8-b8bd-06b2d788d0eb",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-06-03T01:54:04.428969+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0
+      },
+      {
+        "id": "2b3227fb-b15c-42e4-a657-d056c063dc7f",
+        "title": "《l.n.c｜靈魂方舟》",
+        "creator": "Tank Lu",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "Band Rock 熱血搖滾",
+        "public_time": "2026-06-04T14:24:26.846372+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0
+      },
+      {
+        "id": "04deeebc-0872-49e4-88c7-e805ff7b643f",
+        "title": "什麼狗屁的愛",
+        "creator": "愛波哥",
+        "creator_user_id": "3336dd37-7fe8-4203-bd55-9eb1067ca047",
+        "genre": "Disco / Funk / City-Pop",
+        "public_time": "2026-06-04T16:48:52.191492+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 6,
+        "official_losses": 0
+      },
+      {
+        "id": "7aedf025-9a58-49d6-8aec-93dfe8616415",
+        "title": "酸掉的DISCO",
+        "creator": "DJ 大衛",
+        "creator_user_id": "c9633224-d2c2-49b6-95bf-6bce50980c4b",
+        "genre": "Disco / Funk / City-Pop",
+        "public_time": "2026-06-04T17:01:05.58649+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0
+      },
+      {
+        "id": "f4389894-43e2-44cf-9050-581bbb5c77a0",
+        "title": "《市場裡的 Wobble》",
+        "creator": "DJ 大衛",
+        "creator_user_id": "c9633224-d2c2-49b6-95bf-6bce50980c4b",
+        "genre": "Disco / Funk / City-Pop",
+        "public_time": "2026-06-04T23:05:07.708704+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 5,
+        "official_losses": 0
+      },
+      {
+        "id": "643b55b0-2a14-4e6e-b643-d2f9aa9f7911",
+        "title": "Illit - Not Cute Anymore (Skyth Remix)",
+        "creator": "Skyth",
+        "creator_user_id": "da5f3f1a-397c-4812-84a1-7762d75da2f4",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-06-05T13:45:58.11501+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 0,
+        "official_losses": 0
+      },
+      {
+        "id": "010f9f0b-265e-4174-bad9-75877f19b3b5",
+        "title": "《l.n.c｜聽狂暴夜雨慢慢入睡》",
+        "creator": "moTAN",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-06-07T03:50:29.316541+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0
+      },
+      {
+        "id": "42b98b85-a8f6-4fa5-898c-7d8be8b8f06f",
+        "title": "《l.n.c｜孤獨的電子羊》",
+        "creator": "moTAN",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-06-07T16:36:15.682986+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0
+      },
+      {
+        "id": "55b2efb1-9c06-4d65-ac31-1b299864bf4b",
+        "title": "《l.n.c｜45小時。狂奔》",
+        "creator": "moTAN",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-06-08T19:23:03.256896+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0
+      }
+    ],
+    "exclusions": [
+      {
+        "id": "253e8009-1242-4fab-aa9b-945d26b7c292",
+        "title": "愛波哥生日快樂",
+        "creator": "喵喵喵",
+        "creator_user_id": "b7a3329a-3e39-45b4-9e6a-7d86e46b646e",
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-24T05:19:00.69695+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_playable",
+          "hidden",
+          "removed"
+        ]
+      },
+      {
+        "id": "ecd35b99-e748-4ef6-ba0d-aa37315c52ba",
+        "title": "ラブ・ストーリーは突然に   小田和正 (DISCO Cover)フジテレビ系ドラマ『東京ラブストーリー』主題歌 ｜ 70 DISCO RECORDS",
+        "creator": "愛波哥",
+        "creator_user_id": "3336dd37-7fe8-4203-bd55-9eb1067ca047",
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-24T05:33:11.307555+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_playable",
+          "hidden",
+          "removed"
+        ]
+      },
+      {
+        "id": "8af455d1-8448-4317-97c8-d68214f1b5b1",
+        "title": "Starlight Spain ver jocelyn brown House Ver 1",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "65826e11-7ad2-4302-a23f-14cc6cca665b",
+        "title": "Libiamo! 矜澀的夜～但",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "3669b68c-cdff-499a-b736-4b0b19707373",
+        "title": "NOTICE Me",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "17332f63-8a71-4752-a833-e4616746a2d8",
+        "title": "dj你好狠好狠的心2026",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "11d5534a-d7f2-4db8-af18-6498146b0c3f",
+        "title": "Stay with Angel and me",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "09579d88-587d-4681-a1a6-7afbd6458d78",
+        "title": "Stay with me （oprea2）wav",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "28b8586f-021e-44d5-9d30-eff5ef0464e3",
+        "title": "echo 請准許我愛你 (COVER)",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "cdacf533-976a-4cb1-b7ec-58cf620c5683",
+        "title": "來勾引我跳舞💃",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "431392fa-2c9f-4a61-94a4-bc69d9f1d4aa",
+        "title": "你要冰的還是要冷凍？",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "f7542015-1e7b-467d-9158-323d1566136c",
+        "title": "✦《魔法原形術陣》",
+        "creator": "ZOO TOUR",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "0baf1e3e-a111-4b43-a9d7-a98c086e9a73",
+        "title": "孤獨的舞池",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "08eec1d3-7a9f-4d83-9593-88d34b9b31d6",
+        "title": "Singing Last Christmas to Nobody",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "768778c4-3a1f-4d26-bb06-586e8dfd72a8",
+        "title": "我和靈感 談著戀愛Oh, Mon amour",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "9421ac37-7dc0-4262-bada-a2021341d516",
+        "title": "收音機裡傳來的City-Pop",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "b3385ca7-3e22-4002-a1df-c9e4acd5d2d7",
+        "title": "晝夜的執念",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "e1c570ed-b2f7-42d6-8455-64c91791ca36",
+        "title": "我和靈感 談著戀愛Oh, Mon amour2（輕快版）wav",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "29628b45-abaa-4ee4-92eb-21783d768e01",
+        "title": "溫柔的媽祖（French Disco ver)",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "708c5231-5aff-46fc-8da3-3f7e13e3b2e9",
+        "title": "爽就對了10",
+        "creator": "老魏",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "5a1eec2e-02c6-42f8-a164-9870ee2f9068",
+        "title": "為什麼這麼壞",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "636e5986-e967-4636-a1be-5fc6fc9eabc6",
+        "title": "羅曼蒂克的日子（魷魚螺肉蒜remix）",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "8e093698-48f3-4834-9ea9-93a4e6ab9139",
+        "title": "悲傷的黑白郎君（City-pop ver）",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "d42ce673-f974-4035-899b-3b4f3f1fa904",
+        "title": "再會吧！心愛的棒瓜乾一杯",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "f295133e-8ec9-4c60-9057-5ae2f1c2b58e",
+        "title": "男模會館 （愛波哥）",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "62303113-8460-4a48-a25b-ddb35a48c606",
+        "title": "DJ你好狠心拉丁版",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "97ea7aa5-db2b-4483-8bd4-8f9da848eefc",
+        "title": "Mango Ice2",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "4c9f1d81-ff1a-425b-bb9a-70337b0f7a3c",
+        "title": "走味的威士忌(螺肉魷魚蒜 remix)",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "576c76f2-d9ae-4978-8d6d-fabb0b0ca9d1",
+        "title": "膽小黨雙子座",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "bea1a490-13e3-4e77-a9b8-27e904aa860b",
+        "title": "dj好狠心把我推下海",
+        "creator": "愛波哥",
+        "creator_user_id": null,
+        "genre": "Original 自我風格",
+        "public_time": "2026-05-25T12:02:52.554638+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_community_upload",
+          "official_featured",
+          "not_playable",
+          "hidden",
+          "removed",
+          "missing_creator_account"
+        ]
+      },
+      {
+        "id": "0ec5d344-79f2-4d52-910b-b947373b0fd7",
+        "title": "I'll Have To Say I Love You In A Song",
+        "creator": "Jim Croce",
+        "creator_user_id": "da5f3f1a-397c-4812-84a1-7762d75da2f4",
+        "genre": "Original 自我風格",
+        "public_time": "2026-06-04T16:18:49.14031+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_playable",
+          "hidden",
+          "removed"
+        ]
+      },
+      {
+        "id": "65caeebd-dda8-4b89-b797-1fdb8f978caa",
+        "title": "Thankyou (Album Version)",
+        "creator": "Dido",
+        "creator_user_id": "da5f3f1a-397c-4812-84a1-7762d75da2f4",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-06-05T13:55:11.373742+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_playable",
+          "hidden",
+          "removed"
+        ]
+      },
+      {
+        "id": "500f255e-7daf-448e-97a4-1af67b9b926f",
+        "title": "DISCO",
+        "creator": "V",
+        "creator_user_id": "da5f3f1a-397c-4812-84a1-7762d75da2f4",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-06-09T14:22:48.547092+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "not_playable",
+          "hidden",
+          "removed"
+        ]
+      },
+      {
+        "id": "72125f8d-9633-4867-a0f0-efb047bbbf01",
+        "title": "8月18日",
+        "creator": "凡夫俗子",
+        "creator_user_id": "30013493-1e12-49ad-97c0-68b4c2eca5ee",
+        "genre": "Band Rock 熱血搖滾",
+        "public_time": "2026-06-12T00:30:30.087845+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "0db5b66e-ea7d-4638-a86f-084224212569",
+        "title": "我是一個人在流浪",
+        "creator": "凡夫俗子",
+        "creator_user_id": "30013493-1e12-49ad-97c0-68b4c2eca5ee",
+        "genre": "Band Rock 熱血搖滾",
+        "public_time": "2026-06-12T00:37:53.499457+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "f91146ba-764e-42e2-9ebf-39b8ee22f25a",
+        "title": "換季-靜靜飄落(中文版)",
+        "creator": "凡夫俗子",
+        "creator_user_id": "30013493-1e12-49ad-97c0-68b4c2eca5ee",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-06-12T00:59:03.024948+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "bfd93c54-b4fd-4fef-8e86-1ed82252e26d",
+        "title": "說長不短的旅行",
+        "creator": "凡夫俗子",
+        "creator_user_id": "30013493-1e12-49ad-97c0-68b4c2eca5ee",
+        "genre": "Band Rock 熱血搖滾",
+        "public_time": "2026-06-12T01:18:50.364611+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "27cfc242-403d-45d8-b672-0f938223895a",
+        "title": "《l.n.c｜彼岸花》",
+        "creator": "Tank Lu",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "Band Rock 熱血搖滾",
+        "public_time": "2026-06-16T17:12:10.06322+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "24331745-86c0-4ed9-94c1-2a867da8a29d",
+        "title": "今宵杯中映明月",
+        "creator": "虞小鱼同学",
+        "creator_user_id": "f6131e73-b846-4325-80c4-20320a9f4a1a",
+        "genre": "Chinese Fusion 新派古風",
+        "public_time": "2026-06-17T02:20:55.965597+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "9c45ae2e-cd35-451c-ae14-36d9b561aa10",
+        "title": "一百個故事",
+        "creator": "bears",
+        "creator_user_id": "00f8a296-1345-4311-9ff2-be2cc0592a27",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-06-17T06:50:52.539625+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "f115bbfc-2314-40e7-a8e9-a6441569d77b",
+        "title": "加辣不加蔥的蚵仔煎",
+        "creator": "initialmusic",
+        "creator_user_id": "e35f4e13-9c0f-4bd0-968e-ce9cb2475cce",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-06-17T07:28:16.888072+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "3370ae3b-00b6-4121-9777-414b21d574aa",
+        "title": "若無妳我欲去佗位",
+        "creator": "飄浪a勇哥",
+        "creator_user_id": "1eef85da-cecf-4315-bd03-cd94ed3e6dc5",
+        "genre": "台語熊high",
+        "public_time": "2026-06-17T08:59:27.821265+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "e336786d-fdd1-4b07-a97a-4fbb75c3ebec",
+        "title": "請妳原諒我",
+        "creator": "akirabb",
+        "creator_user_id": "1eef85da-cecf-4315-bd03-cd94ed3e6dc5",
+        "genre": "台語熊high",
+        "public_time": "2026-06-17T10:05:51.793911+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "fec3ff44-521d-4bf2-a282-96a1f8446b12",
+        "title": "花影玉阶",
+        "creator": "akirabb",
+        "creator_user_id": "1eef85da-cecf-4315-bd03-cd94ed3e6dc5",
+        "genre": "Chinese Fusion 新派古風",
+        "public_time": "2026-06-17T10:08:08.996389+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "c86ffb1a-d259-4498-beda-5729aae1edce",
+        "title": "手術刀與幽靈 The Scalpel & The Ghost：進化 Evolution",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-06-17T10:30:32.703484+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 7,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "9ee94ead-e9e4-4459-9c85-c34aed0f977b",
+        "title": "手術刀與幽靈 El bisturí y el fantasma：進化 Evolution",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-06-17T10:36:41.703635+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 5,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "99eb6e7e-e648-42d5-a557-cad33a1c6698",
+        "title": "手術刀與幽靈 メスと亡霊：進化 Evolution",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-06-17T10:43:42.432163+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 7,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "bf7e7d32-01c1-4ec8-837c-3cb4cefcdca2",
+        "title": "《l.n.c｜橘貓。女巫。月》",
+        "creator": "Tank Lu",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-06-17T12:27:57.809855+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 8,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "f59f799b-e2bf-451c-ab73-736b041ba928",
+        "title": "水晶深淵",
+        "creator": "Mochi Pulse",
+        "creator_user_id": "a58e43e4-9423-4fd8-9476-dc9ce6420b2e",
+        "genre": "Band Rock 熱血搖滾",
+        "public_time": "2026-06-17T12:41:33.229739+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "8c2394ee-2141-4647-a8bc-bd71841d04dd",
+        "title": "I Know We're Under the Same Stars",
+        "creator": "宇宙裡的小小小生命",
+        "creator_user_id": "f4d251d3-7d96-4914-b0c9-18380a85b560",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-06-17T14:28:59.130793+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 4,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "91b9b289-6fdb-427e-8a5b-47814d8c1792",
+        "title": "日落夕陽",
+        "creator": "Mochi Pulse",
+        "creator_user_id": "a58e43e4-9423-4fd8-9476-dc9ce6420b2e",
+        "genre": "Band Rock 熱血搖滾",
+        "public_time": "2026-06-17T14:46:27.806654+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "5941a3ae-cbda-4ea8-8375-5fb0b824c1e2",
+        "title": "《l.n.c｜刺蝟》",
+        "creator": "Tank Lu",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "Band Rock 熱血搖滾",
+        "public_time": "2026-06-17T17:14:57.439144+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "f167fca4-caee-457e-8def-fc80e9d6601a",
+        "title": "心跳跟著步伐走",
+        "creator": "桑尼泰泰",
+        "creator_user_id": "c28df4d9-a8f7-49cc-8ab1-1b3722c56eae",
+        "genre": "Disco / Funk / City-Pop",
+        "public_time": "2026-06-17T18:32:25.422561+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "00e2779f-9119-45ee-927a-dfcf27abc038",
+        "title": "桌上宇宙",
+        "creator": "Turtle 烏龜",
+        "creator_user_id": "2454e22b-f62d-4bfe-a654-166117c5f79d",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-06-18T04:29:19.948812+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "7740d4ca-aed3-4fa6-8693-63293580e993",
+        "title": "手術刀與幽靈 O bisturi e o fantasma：進化 Evolution",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-06-18T11:06:48.678536+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 7,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "1519fa3c-3ca6-4e6f-bc90-9134443226a9",
+        "title": "手術刀與幽靈 Das Skalpell und der Geist：進化 Evolution",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-06-18T11:08:16.073154+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 4,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "247f86a0-109f-4503-8727-4d05fedc172c",
+        "title": "手術刀與幽靈 Le scalpel et le fantôme：進化 Evolution",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-06-18T11:10:05.563184+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 6,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "9da971d2-fac4-44ef-98cb-04fa07c9992f",
+        "title": "《l.n.c｜雜訊 》",
+        "creator": "Tank Lu",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "Band Rock 熱血搖滾",
+        "public_time": "2026-06-18T17:17:56.801185+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "69b5fe9b-fe43-4a42-a483-608d61a858d4",
+        "title": "《l.n.c｜雜訊》",
+        "creator": "Tank Lu",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "Original 自我風格",
+        "public_time": "2026-06-19T06:49:20.780768+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "755838e5-df66-4d21-b677-5f144fbd3adb",
+        "title": "手術刀與幽靈 Скальпель и призрак：進化 Evolution",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-06-19T10:34:58.008873+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 5,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "5a2b1943-7b31-4bdb-a7ea-fbf2ed74fa3d",
+        "title": "手術刀與幽靈 Il bisturi e il fantasma：進化 Evolution",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-06-19T10:37:08.282943+00:00",
+        "current_surface": "hidden",
+        "playable": false,
+        "review_status": "hidden",
+        "heart_count": 4,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days",
+          "not_playable",
+          "hidden"
+        ]
+      },
+      {
+        "id": "898eb055-a0d0-4a2a-b460-3fe872c10bc8",
+        "title": "手術刀與幽靈 Το νυστέρι και το φάντασμα：進化 Evolution",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-06-19T10:38:22.629832+00:00",
+        "current_surface": "hidden",
+        "playable": false,
+        "review_status": "hidden",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days",
+          "not_playable",
+          "hidden"
+        ]
+      },
+      {
+        "id": "5d5c0dfe-8d9c-4bc9-beca-c9f018eb4167",
+        "title": "香路V1.2",
+        "creator": "知羽",
+        "creator_user_id": "ce49f633-9cea-4d5c-8b97-7c7745e845af",
+        "genre": "Spiritual / Ambient 放鬆宇宙",
+        "public_time": "2026-06-19T11:19:49.388844+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 5,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "90fc86ff-c6a1-47ee-8ac2-511b2dfabd2b",
+        "title": "更像自己 (soulful acoustic version)",
+        "creator": "Agent J",
+        "creator_user_id": "3c830dd6-6af3-404c-8514-4a5d8d2c3e6c",
+        "genre": "Rap 街頭說唱",
+        "public_time": "2026-06-19T12:29:47.279838+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 6,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "75f5d27c-be0f-4e68-a2ab-ea1aa775e8a2",
+        "title": "盔甲裂縫",
+        "creator": "Agent J",
+        "creator_user_id": "3c830dd6-6af3-404c-8514-4a5d8d2c3e6c",
+        "genre": "Rap 街頭說唱",
+        "public_time": "2026-06-19T12:35:24.94562+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "42b7b3b5-54f4-40f7-9288-a255b95a0367",
+        "title": "紫禁城：化身 ft. 黃副總",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-06-20T01:43:48.495801+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "61de15d9-cb5f-438b-8def-58b7124ca231",
+        "title": "喵 Miau Evolution",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-06-20T01:47:07.381333+00:00",
+        "current_surface": "hidden",
+        "playable": false,
+        "review_status": "hidden",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days",
+          "not_playable",
+          "hidden"
+        ]
+      },
+      {
+        "id": "ab3e3b51-227b-4ee9-a0a1-07a9f774a098",
+        "title": "味覺盲盒 The Flavor Blind Box：進化 Evolution",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-06-20T01:50:10.091199+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "55484129-aa25-4a8c-a2d1-44e9d147c111",
+        "title": "《退路》",
+        "creator": "約翰康納",
+        "creator_user_id": "5824eefa-c06f-4d27-92ff-1b8edf0fd716",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-06-20T06:33:26.139808+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "3cae011b-bb26-4e7d-a92f-a20f0e97ef3a",
+        "title": "沒有你的演算法 (Love without A.I.)",
+        "creator": "Smith",
+        "creator_user_id": "62cd2dfb-13ca-436c-ace4-f9b3ef51bd41",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-06-22T16:00:07.297+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "3d2ff074-0a30-4587-9b23-095bb0222357",
+        "title": "Not Today - Taipei Remastered",
+        "creator": "PHASE 3",
+        "creator_user_id": "fff98dac-e185-47eb-90c5-f28228425737",
+        "genre": "Band Rock 熱血搖滾",
+        "public_time": "2026-06-22T20:01:06.938+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "3684b048-414b-4b9b-8cb1-dd876ae38f7f",
+        "title": "紫禁城：輪迴 ft. 黃副總",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "Chinese Fusion 新派古風",
+        "public_time": "2026-06-23T00:01:03.631+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "99c6165e-f0f1-40e0-a471-021315a42997",
+        "title": "折萬花 敍事詩(FINAL)",
+        "creator": "都可以吧",
+        "creator_user_id": "7c1a3ad3-8fa6-443e-8e8a-d3298523c548",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-06-23T08:00:45.196+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "8c669bd5-ebe1-47c4-83cd-b308e3b43693",
+        "title": "紫禁城：戰魂 ft. 黃副總",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "Chinese Fusion 新派古風",
+        "public_time": "2026-06-23T16:00:09.239+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 4,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "8a5b682a-6198-4edc-8bb1-20cb49d0f6ba",
+        "title": "《l.n.c｜迷迷糊糊地醒來》",
+        "creator": "Tank Lu",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "Band Rock 熱血搖滾",
+        "public_time": "2026-06-24T16:01:04.472+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "b12d2517-e9bf-4181-9a5c-d226588f82d6",
+        "title": "我是一只小鸡",
+        "creator": "汽水音乐人-我是小柒",
+        "creator_user_id": "8cc75292-cb14-4300-be2b-3ebe673ac33d",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-06-25T08:00:57.886+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "1bba21fb-e7e2-448f-b4f9-82943ecb0b8f",
+        "title": "哪吒之我命由我不由天",
+        "creator": "汽水音乐人-我是小柒",
+        "creator_user_id": "8cc75292-cb14-4300-be2b-3ebe673ac33d",
+        "genre": "Band Rock 熱血搖滾",
+        "public_time": "2026-06-25T08:00:57.886+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "4892c896-57ed-4c8a-ad11-8be56f6c1e3a",
+        "title": "我是一只小猫",
+        "creator": "汽水音乐人-我是小柒",
+        "creator_user_id": "8cc75292-cb14-4300-be2b-3ebe673ac33d",
+        "genre": "K-Pop 韓式動感",
+        "public_time": "2026-06-25T08:00:57.886+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "94ffc3ef-d806-4105-9909-5660e8e38c97",
+        "title": "血色糖果屋",
+        "creator": "Fly Angel",
+        "creator_user_id": "8d295af2-626b-49af-8070-8277bca6e15b",
+        "genre": "Band Rock 熱血搖滾",
+        "public_time": "2026-06-25T16:00:56.186+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "8f42aba8-d94c-4d50-a8a0-4831e7012887",
+        "title": "回憶停更",
+        "creator": "WadiiC",
+        "creator_user_id": "57805ef4-4490-4b27-a07b-abb1a61239fe",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-06-25T16:00:56.186+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 5,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "621d8194-6927-4fac-8762-2af8c250fdff",
+        "title": "《你底咧叨位》",
+        "creator": "jsleetw",
+        "creator_user_id": "fc77433d-0467-4ce7-be4a-6dd5e754c18a",
+        "genre": "台語熊high",
+        "public_time": "2026-06-25T20:01:02.284+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "fd84c28e-6c12-494a-a7f4-ab2b7b0bb01c",
+        "title": "討厭又喜歡",
+        "creator": "珊悠",
+        "creator_user_id": "7a923fe7-d564-45b8-b8bd-06b2d788d0eb",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-06-26T00:01:02.884+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "71d48eb1-1bca-4404-bdf1-995f69e4c16e",
+        "title": "討厭又喜歡 詞：珊悠",
+        "creator": "珊悠",
+        "creator_user_id": "7a923fe7-d564-45b8-b8bd-06b2d788d0eb",
+        "genre": "Band Rock 熱血搖滾",
+        "public_time": "2026-06-26T00:01:02.884+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "ea157d1b-44bf-4c93-b7b1-8cb28bf0b798",
+        "title": "我是球王梅西",
+        "creator": "汽水音乐人-我是小柒",
+        "creator_user_id": "8cc75292-cb14-4300-be2b-3ebe673ac33d",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-06-26T04:01:05.049+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "96e3a4a3-b2eb-4489-bf93-ce52066f294a",
+        "title": "般若波罗蜜多心经",
+        "creator": "汽水音乐人-我是小柒",
+        "creator_user_id": "8cc75292-cb14-4300-be2b-3ebe673ac33d",
+        "genre": "Spiritual / Ambient 放鬆宇宙",
+        "public_time": "2026-06-26T08:00:58.46+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "94162f8d-7640-447b-a3b5-21286137c7fb",
+        "title": "女声班若波罗蜜多心经",
+        "creator": "汽水音乐人-我是小柒",
+        "creator_user_id": "8cc75292-cb14-4300-be2b-3ebe673ac33d",
+        "genre": "Spiritual / Ambient 放鬆宇宙",
+        "public_time": "2026-06-26T08:00:58.46+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "52728ea6-6a8e-4242-91de-0dd3bf3ce3e0",
+        "title": "《l.n.c｜slow down》",
+        "creator": "Tank Lu",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "Original 自我風格",
+        "public_time": "2026-06-26T08:00:58.46+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "8dce09ab-9600-41e6-86e8-41d86a00eca4",
+        "title": "《l.n.c｜我也是。》",
+        "creator": "Tank Lu",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "Band Rock 熱血搖滾",
+        "public_time": "2026-06-26T12:01:05.805+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "055acd78-7ef4-43e5-9218-8981b9369019",
+        "title": "雨夜霓虹",
+        "creator": "A - M e o w ⧫ 阿喵 ⧫ ♡",
+        "creator_user_id": "8e99ac55-ab1a-4a24-8c5a-8256a0da5dfd",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-06-26T12:01:05.805+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "b286d851-0de8-4e38-8d60-f4cc7e8e716d",
+        "title": "On My Phone Tonight",
+        "creator": "A - M e o w ⧫ 阿喵 ⧫ ♡",
+        "creator_user_id": "8e99ac55-ab1a-4a24-8c5a-8256a0da5dfd",
+        "genre": "Disco / Funk / City-Pop",
+        "public_time": "2026-06-27T12:00:58.133+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 4,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "2f5e30a6-4839-4bf9-99fa-e1e07fbac1c0",
+        "title": "霓虹落雨",
+        "creator": "A - M e o w ⧫ 阿喵 ⧫ ♡",
+        "creator_user_id": "8e99ac55-ab1a-4a24-8c5a-8256a0da5dfd",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-06-29T11:00:49.978988+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "c853303c-5d8a-4e06-951a-8d8d0d2c81bf",
+        "title": "赤焰星 The Crimson Planet：戰魂 Revenant",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "Chinese Fusion 新派古風",
+        "public_time": "2026-06-28T08:01:00.741+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 4,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "d7965c67-8d90-45d1-8bd2-1046f8fc0037",
+        "title": "煙雨入江南【原創】",
+        "creator": "Jasper",
+        "creator_user_id": "7a8236b5-abd4-40ec-8c70-533415faa58c",
+        "genre": "Chinese Fusion 新派古風",
+        "public_time": "2026-06-29T11:00:49.978988+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "fdfd8dde-8832-4ea1-b7c9-c2cdcc2b0ef6",
+        "title": "徹底登出 (Log Out)",
+        "creator": "FuFu",
+        "creator_user_id": "4c16afff-0167-4060-9118-8dc2ce41f9c4",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-06-29T11:00:49.978988+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "e9d1271c-60ff-4045-875c-bed782aabdcd",
+        "title": "《l.n.c｜咚菊的睡時惡夢》",
+        "creator": "Tank Lu",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "Original 自我風格",
+        "public_time": "2026-06-29T11:00:49.978988+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 4,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "b10c24ac-50d7-4557-bc22-704697a7535b",
+        "title": "你又忘記帶傘",
+        "creator": "Smith",
+        "creator_user_id": "62cd2dfb-13ca-436c-ace4-f9b3ef51bd41",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-06-29T11:00:49.978988+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "4bdbcca9-0121-437a-b471-62d4e17f7fe7",
+        "title": "Dream Floor",
+        "creator": "Mochi Pulse",
+        "creator_user_id": "a58e43e4-9423-4fd8-9476-dc9ce6420b2e",
+        "genre": "Disco / Funk / City-Pop",
+        "public_time": "2026-06-29T11:00:49.978988+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 5,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "7db00725-ff06-4632-a821-0ace2f0c88e5",
+        "title": "來都來了",
+        "creator": "哲勳張",
+        "creator_user_id": "f087825b-7621-4d6e-816c-d154c97ca53f",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-06-29T23:54:39.391074+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "3f5f02df-ec3f-4713-a627-8cfac01fb51a",
+        "title": "童声般若波罗蜜心经",
+        "creator": "汽水音乐人-我是小柒",
+        "creator_user_id": "8cc75292-cb14-4300-be2b-3ebe673ac33d",
+        "genre": "Spiritual / Ambient 放鬆宇宙",
+        "public_time": "2026-06-30T00:19:00.856285+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "9719e621-9d13-4f41-81eb-423b4c09cec9",
+        "title": "《l.n.c｜超頻 overdrive》",
+        "creator": "Tank Lu",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-06-30T06:04:38.639043+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "ea4ca021-3df3-4f79-8c72-1f0bca700ed7",
+        "title": "《l.n.c｜神明攏佇咧》",
+        "creator": "Tank Lu",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-06-30T12:34:26.86209+00:00",
+        "current_surface": "removed",
+        "playable": false,
+        "review_status": "removed",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days",
+          "not_playable",
+          "removed"
+        ]
+      },
+      {
+        "id": "882117f9-0773-4c5e-8dcf-40a21ae4b80d",
+        "title": "Midnight",
+        "creator": "(Dr.JerryJ)",
+        "creator_user_id": "4249faf3-a4c3-44bf-9dc7-5ccdfb0d7bf8",
+        "genre": "Band Rock 熱血搖滾",
+        "public_time": "2026-06-30T12:52:50.274198+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "d8c0f6f8-0d64-412f-8007-30e11a4942e8",
+        "title": "最後ㄟ情歌",
+        "creator": "珊悠",
+        "creator_user_id": "7a923fe7-d564-45b8-b8bd-06b2d788d0eb",
+        "genre": "台語熊high",
+        "public_time": "2026-06-30T23:46:27.613481+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "4bc73828-49e9-4bca-998a-7d7d2d497dff",
+        "title": "台上一分钟",
+        "creator": "汽水音乐人-我是小柒",
+        "creator_user_id": "8cc75292-cb14-4300-be2b-3ebe673ac33d",
+        "genre": "Chinese Fusion 新派古風",
+        "public_time": "2026-07-01T06:46:43.459514+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "5d696018-52b2-48b5-a747-fc522cbf0ca1",
+        "title": "伊人伊人",
+        "creator": "iamaisinger",
+        "creator_user_id": "8cc75292-cb14-4300-be2b-3ebe673ac33d",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-07-01T06:57:07.510212+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "0efd7587-5326-47f5-8f9e-ee64afde10c3",
+        "title": "紅塵過客",
+        "creator": "The Silent Lyricist",
+        "creator_user_id": "00c9139c-91c8-44d6-908d-3addc14d381b",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-07-01T07:43:04.899628+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "cf47c3c6-eb46-4b53-a3ec-21dfb0e1da44",
+        "title": "原來你只是剛好孤單",
+        "creator": "The Silent Lyricist",
+        "creator_user_id": "00c9139c-91c8-44d6-908d-3addc14d381b",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-07-01T08:00:31.981975+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "9fbeb932-0d18-4a87-9489-c1c9eb010100",
+        "title": "窒海",
+        "creator": "The Silent Lyricist",
+        "creator_user_id": "00c9139c-91c8-44d6-908d-3addc14d381b",
+        "genre": "R&B 深情瞬間",
+        "public_time": "2026-07-01T08:50:32.426422+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "0009b879-c515-4fde-831d-57a76dc99d1e",
+        "title": "Mango Ice (Bossa edit)",
+        "creator": "愛波哥",
+        "creator_user_id": "3336dd37-7fe8-4203-bd55-9eb1067ca047",
+        "genre": "Jazz / Bossa 微醺時刻",
+        "public_time": "2026-07-02T02:29:30.464749+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 5,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "64b73e03-0099-432a-90b0-7f6b40b87e7a",
+        "title": "三寶協議 Evolution ft. 黃副總",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-07-02T03:39:43.955971+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 5,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "02424488-9dda-4e5e-b783-3fe9cb52451b",
+        "title": "Boom Boom暴走心跳",
+        "creator": "Mochi Pulse",
+        "creator_user_id": "a58e43e4-9423-4fd8-9476-dc9ce6420b2e",
+        "genre": "Band Rock 熱血搖滾",
+        "public_time": "2026-07-02T12:35:51.049344+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "a3773e3f-9d03-4b49-9e54-f1537da43f04",
+        "title": "盲盒燈謎：Evolution 進化 ft. 味旅 轉轉",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-07-02T13:36:36.562676+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 5,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "6fe7fc45-b8c5-424a-b4da-bd23f717b78b",
+        "title": "盲盒燈謎：Incarnation 化身 ft. 味旅 轉轉",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "Chinese Fusion 新派古風",
+        "public_time": "2026-07-02T13:46:17.76566+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 5,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "ff0f86d7-9122-4fd7-a457-183f4b7148a5",
+        "title": "白雪紛飛",
+        "creator": "Wadii C",
+        "creator_user_id": "57805ef4-4490-4b27-a07b-abb1a61239fe",
+        "genre": "台語熊high",
+        "public_time": "2026-07-03T07:29:22.002322+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "7427f24f-888d-4fe2-b7a5-095b5ef5ce6c",
+        "title": "《djn ｜journey 004｜成謎（沉迷）》",
+        "creator": "Tank Lu",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "Original 自我風格",
+        "public_time": "2026-07-03T13:52:04.780382+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 0,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "0e04d620-86fe-42db-812b-fc20a2a0464d",
+        "title": "💓《微醺》💓",
+        "creator": "⭐️jarjar⭐️珈珈",
+        "creator_user_id": "3e04107d-f311-40d0-b0ea-d26c44c47631",
+        "genre": "Jazz / Bossa 微醺時刻",
+        "public_time": "2026-07-03T15:56:42.503787+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 4,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "71921326-4bb8-4cca-acb7-1fc20a48a04f",
+        "title": "擱一杯Johnnie Walker",
+        "creator": "愛波哥",
+        "creator_user_id": "3336dd37-7fe8-4203-bd55-9eb1067ca047",
+        "genre": "Jazz / Bossa 微醺時刻",
+        "public_time": "2026-07-03T18:07:20.640568+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 5,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "0b907796-98dd-498a-a2a0-716960870cdf",
+        "title": "Great Compassion 大悲咒 Evolution",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-07-03T19:30:56.367659+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "bc84bffe-1642-4ce8-9111-732a06e220d6",
+        "title": "Yellow Wealth 黃財神咒 Evolution",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-07-03T19:35:12.801764+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "9c36f51b-c9e5-4699-b68c-a41de06f63ca",
+        "title": "The Golden Light 金光神咒 Evolution",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-07-03T19:38:03.874523+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "43ea681f-843d-4684-a399-8ecdc75ff660",
+        "title": "🎧 《djn｜2049hz》",
+        "creator": "Tank Lu",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "Original 自我風格",
+        "public_time": "2026-07-04T05:27:19.284721+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "56845ac0-5aa3-4fd1-be7d-f1b07f24fc4d",
+        "title": "问君能有几多愁.电子古风",
+        "creator": "iamaisinger",
+        "creator_user_id": "8cc75292-cb14-4300-be2b-3ebe673ac33d",
+        "genre": "Chinese Fusion 新派古風",
+        "public_time": "2026-07-04T10:00:49.232101+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "bc1653c6-5c67-4154-89dd-b0a4cd167f73",
+        "title": "天灵灵地灵灵",
+        "creator": "汽水音乐人-我是小柒",
+        "creator_user_id": "8cc75292-cb14-4300-be2b-3ebe673ac33d",
+        "genre": "Original 自我風格",
+        "public_time": "2026-07-04T11:27:39.618503+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "b8e60fcc-43bf-4098-945c-a2bac1dc443c",
+        "title": "这里真的好冷啊.女鬼诅咒",
+        "creator": "汽水音乐人-我是小柒",
+        "creator_user_id": "8cc75292-cb14-4300-be2b-3ebe673ac33d",
+        "genre": "Original 自我風格",
+        "public_time": "2026-07-05T07:11:50.903244+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "3163da0b-4249-43bb-8015-ed70567cfc54",
+        "title": "Misogi 身禊祓 Evolution",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-07-05T08:37:24.33318+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "06aa53c7-7960-437a-a09b-f77c6117f3c2",
+        "title": "Oharai 大祓詞 Evolution",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-07-05T08:42:26.657318+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "fd37f0d4-da71-44ff-a188-f4c85427031a",
+        "title": "Ryujin 龍神祝詞 Evolution",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-07-05T08:48:29.329966+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "75ac917b-e3a4-4baf-b1fe-e923d7d5087b",
+        "title": "Bismillah 奉名 Evolution",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-07-05T22:52:48.546632+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "6c124e94-a792-4c70-b176-85af4077b509",
+        "title": "Allahu Akbar 至大 Evolution",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-07-05T22:58:28.930097+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "62501427-8a9d-4d7e-b59e-c1c19c08c9ad",
+        "title": "La Ilaha Illa Allah 唯主 Evolution",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-07-05T23:04:53.349+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 3,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "8da088b0-288a-4f90-a0c1-1459ecf86ab4",
+        "title": "Ganesha 象頭神咒 Evolution",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-07-06T22:22:17.609355+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "c3236666-dfbc-4f6f-8e3b-a307f6581a6b",
+        "title": "Kurukulla 作明佛母 Evolution",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-07-06T22:29:22.691503+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "60bf108d-af55-4a54-b550-0f65fa141630",
+        "title": "Mahakala 大黑天咒 Evolution",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-07-06T22:34:46.109226+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 4,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "1a66d563-2184-478f-b755-7ba374e5bf2b",
+        "title": "心經 new Age",
+        "creator": "愛波哥",
+        "creator_user_id": "3336dd37-7fe8-4203-bd55-9eb1067ca047",
+        "genre": "Spiritual / Ambient 放鬆宇宙",
+        "public_time": "2026-07-07T06:11:47.027003+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "562c645d-3b26-4a10-9f18-eb8d2f9bb256",
+        "title": "手術刀與幽靈 The Scalpel & The Ghost：反思 Reflection",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "Jazz / Bossa 微醺時刻",
+        "public_time": "2026-07-07T17:28:42.420311+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "048fe4d9-9f9c-466e-96be-06ae478ff6c3",
+        "title": "手術刀與幽靈 The Scalpel & The Ghost：冥想 Meditation",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "Original 自我風格",
+        "public_time": "2026-07-07T17:31:08.076202+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "456bcc16-6a55-44fe-820e-96724a8800da",
+        "title": "手術刀與幽靈 The Scalpel & The Ghost：奇點 Singularity",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "Original 自我風格",
+        "public_time": "2026-07-07T17:34:45.375239+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 2,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "7abd0801-9a7b-4e39-8362-7ec9281c0b70",
+        "title": "手術刀與幽靈 Das Skalpell und der Geist：宿命 Destiny",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "Original 自我風格",
+        "public_time": "2026-07-09T10:25:11.412158+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "dbe5fdce-060a-46ba-b83f-1be5813764cf",
+        "title": "《djn x l.n.c｜海上漂流》",
+        "creator": "Tank Lu",
+        "creator_user_id": "64667ac8-9c43-45e0-8ebb-83cd16ba94d6",
+        "genre": "EDM 百大電音",
+        "public_time": "2026-07-09T11:34:51.846818+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      },
+      {
+        "id": "d9c7e0e9-d2fc-4319-83a6-fcdd9f892d97",
+        "title": "手術刀與幽靈 O bisturi e o fantasma：宿命 Destiny",
+        "creator": "風土策展人",
+        "creator_user_id": "1d6c0f92-e0d0-481f-aaba-b545cb230772",
+        "genre": "Original 自我風格",
+        "public_time": "2026-07-09T20:29:14.684742+00:00",
+        "current_surface": "bar_public/explore",
+        "playable": true,
+        "review_status": "approved",
+        "heart_count": 1,
+        "official_losses": 0,
+        "exclusion_reasons": [
+          "public_less_than_30_days"
+        ]
+      }
+    ]
+  },
+  "apply_guard": "Do not run apply without explicit owner confirmation of demo IDs and founder catalog candidate IDs."
+}

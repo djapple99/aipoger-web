@@ -1,5 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import {
+  buildDropBattleSchedulePayloadFromQueues,
+  isDropBattleEndedOrPastExpectedEnd,
+  isDropChallengeAcceptable,
+} from "@/lib/battle-pool-client";
+import {
+  ACTIVE_DROP_BATTLE_STATUSES,
+  ACTIVE_DROP_QUEUE_STATUSES,
+  dropBattleRoleForChallengeTarget,
+  dropBattleRoleLockMessage,
+  isSameDropBattleRole,
+} from "@/lib/battle-pool-rules";
 
 type QueueRow = {
   id: string;
@@ -13,33 +25,15 @@ type QueueRow = {
   status: string;
   match_group_id?: string | null;
   opponent_user_id?: string | null;
+  challenge_target_queue_id?: string | null;
   expires_at?: string | null;
+  scheduled_start_at?: string | null;
+  cancellation_evaluation_at?: string | null;
+  official_gatekeeper_role?: string | null;
 };
 
 const OPEN_QUEUE_STATUSES = ["searching", "waiting", "waiting_challenge"];
-const ACTIVE_QUEUE_STATUSES = [
-  "queued",
-  "pending",
-  "searching",
-  "waiting",
-  "waiting_challenge",
-  "confirming",
-  "matched",
-  "active",
-  "ghost_battle",
-  "public_voting",
-];
-const ACTIVE_BATTLE_STATUSES = [
-  "waiting",
-  "confirming",
-  "matched",
-  "countdown",
-  "live",
-  "active",
-  "ghost_battle",
-  "public_voting",
-  "settling",
-];
+const CLOSED_BATTLE_STATUSES = ["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"];
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -55,6 +49,11 @@ function trimOrNull(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function isMissingOfficialGatekeeperColumn(error: { message?: string; details?: string | null; hint?: string | null; code?: string } | null) {
+  const msg = `${error?.message ?? ""} ${error?.details ?? ""} ${error?.hint ?? ""} ${error?.code ?? ""}`;
+  return /official_gatekeeper_role|schema cache|column.*does not exist|PGRST204/i.test(msg);
+}
+
 function firstText(...values: unknown[]) {
   for (const value of values) {
     if (typeof value === "string" && value.trim()) return value.trim();
@@ -62,20 +61,19 @@ function firstText(...values: unknown[]) {
   return null;
 }
 
+function pickRandomQueue(rows: QueueRow[]) {
+  if (rows.length <= 1) return rows[0] ?? null;
+  return rows[Math.floor(Math.random() * rows.length)] ?? null;
+}
+
 function battleStartFromRows(meRow: QueueRow, opponentRow: QueueRow, targetQueueId?: string | null) {
-  const scheduled =
-    targetQueueId
-      ? opponentRow.expires_at
-      : meRow.status === "waiting_challenge"
-        ? meRow.expires_at
-        : opponentRow.status === "waiting_challenge"
-          ? opponentRow.expires_at
-          : null;
-  const scheduledMs = scheduled ? new Date(scheduled).getTime() : NaN;
+  const schedulePayload = buildDropBattleSchedulePayloadFromQueues(meRow, opponentRow, targetQueueId);
+  const scheduledMs = schedulePayload?.scheduled_start_at ? new Date(schedulePayload.scheduled_start_at).getTime() : NaN;
   const startMs = Number.isFinite(scheduledMs) && scheduledMs > Date.now() ? scheduledMs : Date.now();
   const startedAt = new Date(startMs).toISOString();
   const waitingRoomStartedAt = new Date(Date.now()).toISOString();
-  return { startedAt, waitingRoomStartedAt };
+  const status = startMs > Date.now() ? "active" : "live";
+  return { startedAt, waitingRoomStartedAt, status };
 }
 
 export async function POST(request: NextRequest) {
@@ -121,54 +119,139 @@ export async function POST(request: NextRequest) {
 
   if (meError) return jsonError(meError.message, 500);
   if (!meRow || meRow.user_id !== user.id) return jsonError("Queue row not found", 404);
+  if (meRow.match_group_id) return NextResponse.json({ row: meRow });
   if (!OPEN_QUEUE_STATUSES.includes(meRow.status)) return NextResponse.json({ row: meRow });
   if (meRow.status === "waiting_challenge" && !targetQueueId) {
     return NextResponse.json({ row: meRow });
   }
+  const requestedRole = dropBattleRoleForChallengeTarget(meRow.challenge_target_queue_id ?? targetQueueId ?? null);
 
-  const { data: otherActiveQueues, error: otherActiveQueueError } = await admin
+  let { data: otherActiveQueues, error: otherActiveQueueError } = await admin
     .from("battle_queue")
-    .select("id, status")
+    .select("id, status, match_group_id, challenge_target_queue_id, official_gatekeeper_role")
     .eq("user_id", user.id)
     .neq("id", meRow.id)
-    .in("status", ACTIVE_QUEUE_STATUSES)
-    .limit(1);
+    .in("status", [...ACTIVE_DROP_QUEUE_STATUSES])
+    .limit(12);
+
+  if (otherActiveQueueError && isMissingOfficialGatekeeperColumn(otherActiveQueueError)) {
+    const legacy = await admin
+      .from("battle_queue")
+      .select("id, status, match_group_id, challenge_target_queue_id")
+      .eq("user_id", user.id)
+      .neq("id", meRow.id)
+      .in("status", [...ACTIVE_DROP_QUEUE_STATUSES])
+      .limit(12);
+    otherActiveQueues = legacy.data as typeof otherActiveQueues;
+    otherActiveQueueError = legacy.error;
+  }
 
   if (otherActiveQueueError) return jsonError(otherActiveQueueError.message, 500);
-  if ((otherActiveQueues ?? []).length > 0) {
-    return jsonError("同一個帳號一次只能保留一場 Battle。請先完成或取消目前這場，再開始下一場。", 409);
+  let blockingActiveQueueCount = 0;
+  for (const queue of otherActiveQueues ?? []) {
+    if (queue.official_gatekeeper_role === "defender") continue;
+    const matchGroupId = typeof queue.match_group_id === "string" ? queue.match_group_id : null;
+    if (matchGroupId) {
+      const { data: linkedBattle, error: linkedBattleError } = await admin
+        .from("battles")
+        .select("id, status, battle_ended_at, scheduled_start_at, started_at, battle_started_at, created_at")
+        .eq("id", matchGroupId)
+        .maybeSingle<{ id: string; status?: string | null; battle_ended_at?: string | null; scheduled_start_at?: string | null; started_at?: string | null; battle_started_at?: string | null; created_at?: string | null }>();
+      if (linkedBattleError) return jsonError(linkedBattleError.message, 500);
+      if (linkedBattle?.battle_ended_at || CLOSED_BATTLE_STATUSES.includes(linkedBattle?.status ?? "") || isDropBattleEndedOrPastExpectedEnd(linkedBattle)) {
+        await admin.from("battle_queue").update({ status: "completed", updated_at: new Date().toISOString() }).eq("id", queue.id);
+        if (linkedBattle?.id && isDropBattleEndedOrPastExpectedEnd(linkedBattle)) {
+          await admin
+            .from("battles")
+            .update({ status: "finished", battle_ended_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+            .eq("id", linkedBattle.id);
+        }
+        continue;
+      }
+    }
+    if (isSameDropBattleRole(meRow.challenge_target_queue_id ?? targetQueueId ?? null, queue.challenge_target_queue_id ?? null)) {
+      blockingActiveQueueCount += 1;
+    }
+  }
+  if (blockingActiveQueueCount > 0) {
+    return jsonError(dropBattleRoleLockMessage(requestedRole, "zh"), 409);
   }
 
   const { data: activeBattles, error: activeBattleError } = await admin
     .from("battles")
-    .select("id, status")
+    .select("id, queue_a_id, queue_b_id, fighter_a_user_id, fighter_b_user_id, status, battle_ended_at, started_at, battle_started_at, created_at")
     .or(`fighter_a_user_id.eq.${user.id},fighter_b_user_id.eq.${user.id}`)
-    .in("status", ACTIVE_BATTLE_STATUSES)
-    .limit(1);
+    .in("status", [...ACTIVE_DROP_BATTLE_STATUSES])
+    .is("battle_ended_at", null)
+    .limit(8);
 
   if (activeBattleError) return jsonError(activeBattleError.message, 500);
-  if ((activeBattles ?? []).length > 0) {
-    return jsonError("你目前已有一場 Battle 進行中。請先完成或取消目前這場，再開始下一場。", 409);
+  const blockingActiveBattles = [];
+  for (const battle of activeBattles ?? []) {
+    if (isDropBattleEndedOrPastExpectedEnd(battle)) {
+      const now = new Date().toISOString();
+      await admin.from("battles").update({ status: "finished", battle_ended_at: now, updated_at: now }).eq("id", battle.id);
+      const queueIds = [battle.queue_a_id, battle.queue_b_id].filter((id): id is string => typeof id === "string" && id.length > 0);
+      if (queueIds.length > 0) {
+        await admin.from("battle_queue").update({ status: "completed", updated_at: now }).in("id", queueIds);
+      }
+      continue;
+    }
+    const userQueueId =
+      battle.fighter_a_user_id === user.id
+        ? battle.queue_a_id
+        : battle.fighter_b_user_id === user.id
+          ? battle.queue_b_id
+          : null;
+    if (!userQueueId) continue;
+    let { data: userBattleQueue, error: userBattleQueueError } = await admin
+      .from("battle_queue")
+      .select("id, challenge_target_queue_id, official_gatekeeper_role")
+      .eq("id", userQueueId)
+      .maybeSingle<{ id: string; challenge_target_queue_id?: string | null; official_gatekeeper_role?: string | null }>();
+    if (userBattleQueueError && isMissingOfficialGatekeeperColumn(userBattleQueueError)) {
+      const legacy = await admin
+        .from("battle_queue")
+        .select("id, challenge_target_queue_id")
+        .eq("id", userQueueId)
+        .maybeSingle<{ id: string; challenge_target_queue_id?: string | null; official_gatekeeper_role?: string | null }>();
+      userBattleQueue = legacy.data;
+      userBattleQueueError = legacy.error;
+    }
+    if (userBattleQueueError) return jsonError(userBattleQueueError.message, 500);
+    if (userBattleQueue?.official_gatekeeper_role === "defender") continue;
+    if (dropBattleRoleForChallengeTarget(userBattleQueue?.challenge_target_queue_id ?? null) === requestedRole) {
+      blockingActiveBattles.push(battle);
+    }
+  }
+  if (blockingActiveBattles.length > 0) {
+    return jsonError(dropBattleRoleLockMessage(requestedRole, "zh"), 409);
   }
 
   let opponentQuery = admin
     .from("battle_queue")
     .select("*")
     .in("status", OPEN_QUEUE_STATUSES)
-    .neq("user_id", meRow.user_id)
     .neq("id", meRow.id)
     .eq("genre", meRow.genre)
+    .is("match_group_id", null)
     .order("created_at", { ascending: true })
-    .limit(1);
+    .limit(targetQueueId ? 1 : 25);
 
   if (targetQueueId) {
     opponentQuery = opponentQuery.eq("id", targetQueueId);
+  } else {
+    opponentQuery = opponentQuery.neq("user_id", meRow.user_id);
   }
 
   const { data: opponents, error: opponentError } = await opponentQuery.returns<QueueRow[]>();
   if (opponentError) return jsonError(opponentError.message, 500);
 
-  const opponentRow = opponents?.[0] ?? null;
+  const acceptableOpponents = (opponents ?? []).filter((row) => {
+    if (targetQueueId) return isDropChallengeAcceptable(row);
+    return row.status !== "waiting_challenge" || isDropChallengeAcceptable(row);
+  });
+  const opponentRow = targetQueueId ? (acceptableOpponents[0] ?? null) : pickRandomQueue(acceptableOpponents);
   if (!opponentRow) {
     if (targetQueueId) {
       await admin
@@ -181,6 +264,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ row: meRow });
   }
 
+  const battleTiming = battleStartFromRows(meRow, opponentRow, targetQueueId);
   const battleInsertBase = {
     queue_a_id: meRow.id,
     queue_b_id: opponentRow.id,
@@ -193,9 +277,8 @@ export async function POST(request: NextRequest) {
     audio_a_path: meRow.audio_path,
     audio_b_path: opponentRow.audio_path,
     genre: meRow.genre,
-    status: "live",
+    status: battleTiming.status,
   };
-  const battleTiming = battleStartFromRows(meRow, opponentRow, targetQueueId);
   const [{ data: fighterA }, { data: fighterB }, { data: userA }, { data: userB }] = await Promise.all([
     admin.from("fighter_profiles").select("avatar_url, song_cover_url").eq("id", meRow.user_id).maybeSingle(),
     admin.from("fighter_profiles").select("avatar_url, song_cover_url").eq("id", opponentRow.user_id).maybeSingle(),
@@ -217,7 +300,18 @@ export async function POST(request: NextRequest) {
     pot_apc: 0,
     vote_stake_apc: 0,
   };
+  const battleSchedule = buildDropBattleSchedulePayloadFromQueues(meRow, opponentRow, targetQueueId);
+  const battleInsertCoreWithSchedule = battleSchedule
+    ? { ...battleInsertCore, ...battleSchedule }
+    : battleInsertCore;
   const battleInsertFull = {
+    ...battleInsertCoreWithSchedule,
+    song_a_cover: firstText(fighterA?.song_cover_url),
+    song_b_cover: firstText(fighterB?.song_cover_url),
+    fighter_a_avatar: firstText(fighterA?.avatar_url, userA?.avatar_url),
+    fighter_b_avatar: firstText(fighterB?.avatar_url, userB?.avatar_url),
+  };
+  const battleInsertFullWithoutSchedule = {
     ...battleInsertCore,
     song_a_cover: firstText(fighterA?.song_cover_url),
     song_b_cover: firstText(fighterB?.song_cover_url),
@@ -230,6 +324,18 @@ export async function POST(request: NextRequest) {
     .insert(battleInsertFull)
     .select("id")
     .single<{ id: string }>();
+
+  if (battleError && /column|schema cache|PGRST204/i.test(`${battleError.message} ${battleError.details ?? ""}`)) {
+    const fallback = await admin.from("battles").insert(battleInsertFullWithoutSchedule).select("id").single<{ id: string }>();
+    battleRow = fallback.data;
+    battleError = fallback.error;
+  }
+
+  if (battleError && /column|schema cache|PGRST204/i.test(`${battleError.message} ${battleError.details ?? ""}`)) {
+    const fallback = await admin.from("battles").insert(battleInsertCoreWithSchedule).select("id").single<{ id: string }>();
+    battleRow = fallback.data;
+    battleError = fallback.error;
+  }
 
   if (battleError && /column|schema cache|PGRST204/i.test(`${battleError.message} ${battleError.details ?? ""}`)) {
     const fallback = await admin.from("battles").insert(battleInsertCore).select("id").single<{ id: string }>();

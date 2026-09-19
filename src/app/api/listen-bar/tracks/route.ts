@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
-  LISTEN_BAR_PUBLIC_REACTION_THRESHOLD,
-  LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
+  listenBarPromotionProtectionActive,
 } from "@/lib/listen-bar";
+import { AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS, isAiMusicPersistedShowtimeCertified } from "@/lib/ai-music-showtime";
+import { readEarwormAffinityMap } from "@/lib/earworm-affinity";
 
 type ListenBarTrackRow = {
   id: string;
@@ -13,6 +14,8 @@ type ListenBarTrackRow = {
   ai_tool: string | null;
   genre: string | null;
   mood: string | null;
+  description?: string | null;
+  youtube_url?: string | null;
   bpm: number | null;
   duration_seconds: number | null;
   audio_path: string | null;
@@ -21,6 +24,9 @@ type ListenBarTrackRow = {
   lyrics: string | null;
   sort_order: number | null;
   is_active: boolean | null;
+  review_status?: string | null;
+  hidden_at?: string | null;
+  removed_at?: string | null;
   source?: "official" | "community" | null;
   is_featured_official?: boolean | null;
   bar_phase?: "challenger" | "public" | null;
@@ -32,6 +38,10 @@ type ListenBarTrackRow = {
   created_at?: string | null;
   updated_at?: string | null;
   promoted_at?: string | null;
+  ai_music_showtime_certified?: boolean | null;
+  ai_music_showtime_public_removed_at?: string | null;
+  support_url?: string | null;
+  support_url_status?: string | null;
 };
 
 type ListenBarTracksDatabase = {
@@ -60,6 +70,8 @@ const MODERN_SELECT = [
   "ai_tool",
   "genre",
   "mood",
+  "description",
+  "youtube_url",
   "bpm",
   "duration_seconds",
   "audio_path",
@@ -68,6 +80,9 @@ const MODERN_SELECT = [
   "lyrics",
   "sort_order",
   "is_active",
+  "review_status",
+  "hidden_at",
+  "removed_at",
   "source",
   "is_featured_official",
   "bar_phase",
@@ -79,6 +94,36 @@ const MODERN_SELECT = [
   "created_at",
   "updated_at",
   "promoted_at",
+  AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS,
+].join(",");
+
+const LEGACY_WITH_DESCRIPTION_SELECT = [
+  "id",
+  "title",
+  "artist",
+  "ai_tool",
+  "genre",
+  "mood",
+  "description",
+  "bpm",
+  "duration_seconds",
+  "audio_path",
+  "cover_path",
+  "lyrics",
+  "sort_order",
+  "is_active",
+  "review_status",
+  "hidden_at",
+  "removed_at",
+  "source",
+  "is_featured_official",
+  "positive_reaction_count",
+  "heart_count",
+  "star_count",
+  "thumb_count",
+  "happy_count",
+  "created_at",
+  "updated_at",
 ].join(",");
 
 const LEGACY_SELECT = [
@@ -124,11 +169,14 @@ function isMissingColumnError(error: unknown): boolean {
         (error as { code?: string }).code,
       ].filter(Boolean).join(" ")
     : String(error ?? "");
-  return /schema cache|column.*does not exist|PGRST204|bar_phase|promoted_at|audio_sha256/i.test(text);
+  return /schema cache|column.*does not exist|PGRST204|bar_phase|promoted_at|audio_sha256|ai_music_showtime|support_url|description|youtube_url/i.test(text);
 }
 
 function applyLegacyOpeningGrace(rows: ListenBarTrackRow[]): ListenBarTrackRow[] {
-  if (rows.length <= LISTEN_BAR_PUBLIC_ROTATION_LIMIT) {
+  const hasPersistedPhase = rows.some((row) => Object.prototype.hasOwnProperty.call(row, "bar_phase"));
+  if (hasPersistedPhase) return rows;
+
+  if (listenBarPromotionProtectionActive()) {
     return rows.map((row) => ({
       ...row,
       bar_phase: "public",
@@ -136,24 +184,17 @@ function applyLegacyOpeningGrace(rows: ListenBarTrackRow[]): ListenBarTrackRow[]
     }));
   }
 
-  const hasPersistedPhase = rows.some((row) => Object.prototype.hasOwnProperty.call(row, "bar_phase"));
-  if (hasPersistedPhase) return rows;
-
   const observationCutoffMs = Date.now() - LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS * 60 * 60 * 1000;
   const eligiblePublicIds = new Set(
     rows
       .filter((row) => {
         const createdAtMs = new Date(row.created_at ?? 0).getTime();
         return Number.isFinite(createdAtMs)
-          && createdAtMs < observationCutoffMs
-          && (row.positive_reaction_count ?? 0) >= LISTEN_BAR_PUBLIC_REACTION_THRESHOLD;
+          && createdAtMs < observationCutoffMs;
       })
       .sort((a, b) => {
-        const positiveDiff = (b.positive_reaction_count ?? 0) - (a.positive_reaction_count ?? 0);
-        if (positiveDiff !== 0) return positiveDiff;
         return new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime();
       })
-      .slice(0, LISTEN_BAR_PUBLIC_ROTATION_LIMIT)
       .map((row) => row.id),
   );
 
@@ -162,6 +203,19 @@ function applyLegacyOpeningGrace(rows: ListenBarTrackRow[]): ListenBarTrackRow[]
     bar_phase: eligiblePublicIds.has(row.id) ? "public" : "challenger",
     promoted_at: eligiblePublicIds.has(row.id) ? (row.promoted_at ?? row.created_at) : row.promoted_at,
   }));
+}
+
+function isPublicPlayableTrack(row: ListenBarTrackRow) {
+  const status = row.review_status?.toLowerCase();
+  return (
+    row.is_active !== false &&
+    status !== "hidden" &&
+    status !== "removed" &&
+    !row.hidden_at &&
+    !row.removed_at &&
+    !isAiMusicPersistedShowtimeCertified(row) &&
+    Boolean(row.audio_path?.trim())
+  );
 }
 
 export async function GET() {
@@ -180,20 +234,49 @@ export async function GET() {
     if (error && isMissingColumnError(error)) {
       const legacyResult = await admin
         .from("listen_bar_tracks")
-        .select(LEGACY_SELECT)
+        .select(LEGACY_WITH_DESCRIPTION_SELECT)
         .eq("source", "community")
         .eq("is_active", true)
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: false });
       rows = (legacyResult.data as ListenBarTrackRow[] | null) ?? null;
       error = legacyResult.error;
+
+      if (error && isMissingColumnError(error)) {
+        const basicLegacyResult = await admin
+          .from("listen_bar_tracks")
+          .select(LEGACY_SELECT)
+          .eq("source", "community")
+          .eq("is_active", true)
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: false });
+        rows = (basicLegacyResult.data as ListenBarTrackRow[] | null) ?? null;
+        error = basicLegacyResult.error;
+      }
     }
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ tracks: applyLegacyOpeningGrace(rows ?? []) });
+    const playableRows = applyLegacyOpeningGrace((rows ?? []).filter(isPublicPlayableTrack));
+    const affinityByTrackId = await readEarwormAffinityMap(
+      admin as unknown as SupabaseClient,
+      playableRows.map((row) => row.id),
+    );
+    const tracks = playableRows.map((row) => {
+      const affinity = affinityByTrackId.get(row.id);
+      return {
+        ...row,
+        earworm_affinity_sample_count: affinity?.sampleCount ?? 0,
+        earworm_affinity_percent: affinity?.percent ?? null,
+      };
+    });
+
+    return NextResponse.json(
+      { tracks },
+      { headers: { "Cache-Control": "no-store, max-age=0" } },
+    );
   } catch (error) {
     return NextResponse.json({ error: String((error as { message?: string })?.message ?? error) }, { status: 500 });
   }

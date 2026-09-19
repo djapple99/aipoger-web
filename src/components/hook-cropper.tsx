@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type WaveSurfer from "wavesurfer.js";
 
-const MAX_HOOK_SECONDS = 45;
+const DEFAULT_MAX_HOOK_SECONDS = 60;
 
 type HookCropperProps = {
   file: File;
@@ -14,6 +14,14 @@ type HookCropperProps = {
     end: number;
     duration: number;
   }) => Promise<void> | void;
+  maxSeconds?: number;
+  eyebrow?: string;
+  title?: string;
+  description?: string;
+  backLabel?: string;
+  fullPlayLabel?: string;
+  previewLabel?: string;
+  confirmLabel?: string;
 };
 
 type WaveRegion = {
@@ -189,7 +197,19 @@ async function trimAudioToHook(file: File, start: number, end: number): Promise<
   }
 }
 
-export function HookCropper({ file, onBack, onConfirm }: HookCropperProps) {
+export function HookCropper({
+  file,
+  onBack,
+  onConfirm,
+  maxSeconds = DEFAULT_MAX_HOOK_SECONDS,
+  eyebrow = "AIPOGER",
+  title = "最強抓波 Drop Battle 裁切工具",
+  description,
+  backLabel = "返回修改資料",
+  fullPlayLabel = "播放全曲",
+  previewLabel = "預聽 Drop",
+  confirmLabel = "確認 Drop 並上傳",
+}: HookCropperProps) {
   const waveformRef = useRef<HTMLDivElement | null>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
   const regionRef = useRef<WaveRegion | null>(null);
@@ -199,6 +219,8 @@ export function HookCropper({ file, onBack, onConfirm }: HookCropperProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [regionStart, setRegionStart] = useState(0);
   const [regionEnd, setRegionEnd] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -221,6 +243,8 @@ export function HookCropper({ file, onBack, onConfirm }: HookCropperProps) {
         cursorColor: "#f7ede7",
         height: 140,
         normalize: true,
+        interact: true,
+        dragToSeek: true,
         barWidth: 2,
         barGap: 1,
         barRadius: 2,
@@ -232,7 +256,8 @@ export function HookCropper({ file, onBack, onConfirm }: HookCropperProps) {
       wavesurfer.on("ready", () => {
         if (!mounted) return;
         const duration = wavesurfer.getDuration();
-        const initialEnd = Math.min(duration, MAX_HOOK_SECONDS);
+        const initialEnd = Math.min(duration, maxSeconds);
+        setAudioDuration(duration);
         regionRef.current = regions.addRegion({
           start: 0,
           end: initialEnd,
@@ -242,28 +267,36 @@ export function HookCropper({ file, onBack, onConfirm }: HookCropperProps) {
         });
         setRegionStart(0);
         setRegionEnd(initialEnd);
+        setCurrentTime(0);
         setIsReady(true);
       });
 
       wavesurfer.on("play", () => setIsPlaying(true));
       wavesurfer.on("pause", () => setIsPlaying(false));
+      wavesurfer.on("timeupdate", (nextTime) => setCurrentTime(nextTime));
+      wavesurfer.on("interaction", (nextTime) => setCurrentTime(nextTime));
+      wavesurfer.on("seeking", (nextTime) => setCurrentTime(nextTime));
 
       regions.on("region-updated", (region: WaveRegion) => {
         const duration = wavesurfer.getDuration();
         let start = Math.max(0, region.start);
         let end = Math.min(duration, region.end);
 
-        if (end - start > MAX_HOOK_SECONDS) {
+        if (end - start > maxSeconds) {
           if (region.end > region.start) {
-            end = start + MAX_HOOK_SECONDS;
+            end = start + maxSeconds;
           } else {
-            start = end - MAX_HOOK_SECONDS;
+            start = end - maxSeconds;
           }
           region.setOptions({ start, end });
         }
 
         setRegionStart(start);
         setRegionEnd(end);
+        if (wavesurfer.getCurrentTime() < start || wavesurfer.getCurrentTime() > end) {
+          wavesurfer.setTime(start);
+          setCurrentTime(start);
+        }
       });
     };
 
@@ -281,13 +314,24 @@ export function HookCropper({ file, onBack, onConfirm }: HookCropperProps) {
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [file]);
+  }, [file, maxSeconds]);
 
   const playRegion = () => {
     const wavesurfer = wavesurferRef.current;
     const region = regionRef.current;
     if (!wavesurfer || !region) return;
-    wavesurfer.play(region.start, region.end);
+    const cursor = wavesurfer.getCurrentTime();
+    const start = cursor >= region.start && cursor < region.end ? cursor : region.start;
+    wavesurfer.play(start, region.end);
+  };
+
+  const seekTo = (nextTime: number) => {
+    const wavesurfer = wavesurferRef.current;
+    if (!wavesurfer) return;
+    const duration = wavesurfer.getDuration() || audioDuration || 0;
+    const clamped = Math.max(0, Math.min(nextTime, duration));
+    wavesurfer.setTime(clamped);
+    setCurrentTime(clamped);
   };
 
   const handleConfirm = async () => {
@@ -309,9 +353,11 @@ export function HookCropper({ file, onBack, onConfirm }: HookCropperProps) {
 
   return (
     <section className="rounded-3xl border border-[#4d5258] bg-[#1f2226]/90 p-6 md:p-8">
-      <p className="text-xs tracking-[0.38em] text-[#8f847e]">AIPOGER</p>
-      <h2 className="mt-3 text-2xl font-semibold tracking-[0.16em] text-[#f4f0ed]">最強抓波Drop Battle 裁切工具</h2>
-      <p className="mt-3 text-sm text-[#cfc7c2]">拖曳橘色區塊選取 Drop（最多 45 秒），先預聽再確認上傳。</p>
+      <p className="text-xs tracking-[0.38em] text-[#8f847e]">{eyebrow}</p>
+      <h2 className="mt-3 text-2xl font-semibold tracking-[0.16em] text-[#f4f0ed]">{title}</h2>
+      <p className="mt-3 text-sm text-[#cfc7c2]">
+        {description ?? `拖曳橘色區塊選取 Drop（最多 ${maxSeconds} 秒），先預聽再確認上傳。`}
+      </p>
 
       <div className="mt-6 rounded-2xl border border-[#3f444b] bg-[#24282d] p-4">
         <div ref={waveformRef} className="w-full overflow-hidden rounded-lg bg-[#2b2f34] px-2 py-4" />
@@ -320,7 +366,27 @@ export function HookCropper({ file, onBack, onConfirm }: HookCropperProps) {
       <div className="mt-4 grid grid-cols-1 gap-2 text-sm text-[#d9d2cc] md:grid-cols-3">
         <p>開始：{regionStart.toFixed(2)}s</p>
         <p>結束：{regionEnd.toFixed(2)}s</p>
-        <p>長度：{Math.max(0, regionEnd - regionStart).toFixed(2)}s / 45s</p>
+        <p>長度：{Math.max(0, regionEnd - regionStart).toFixed(2)}s / {maxSeconds}s</p>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-[#3f444b] bg-black/25 px-4 py-3">
+        <div className="mb-2 flex items-center justify-between text-xs font-bold text-[#aaa19a]">
+          <span>播放位置</span>
+          <span className="tabular-nums text-[#ffd6bd]">
+            {currentTime.toFixed(2)}s / {audioDuration.toFixed(2)}s
+          </span>
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={Math.max(0.01, audioDuration)}
+          step={0.01}
+          value={Math.min(currentTime, Math.max(0, audioDuration))}
+          disabled={!isReady || audioDuration <= 0}
+          onChange={(event) => seekTo(Number(event.currentTarget.value))}
+          className="h-3 w-full cursor-pointer accent-[#ff8d40] disabled:cursor-not-allowed disabled:opacity-45"
+          aria-label="調整播放位置"
+        />
       </div>
 
       {errorMessage && <p className="mt-4 text-sm text-[#ffba92]">{errorMessage}</p>}
@@ -331,7 +397,7 @@ export function HookCropper({ file, onBack, onConfirm }: HookCropperProps) {
           onClick={onBack}
           className="rounded-xl border border-[#5d636a] px-4 py-2 text-sm tracking-[0.1em] text-[#ddd6d1] transition hover:border-[#ff8d40] hover:text-[#ffd6bd]"
         >
-          返回修改資料
+          {backLabel}
         </button>
         <button
           type="button"
@@ -339,7 +405,7 @@ export function HookCropper({ file, onBack, onConfirm }: HookCropperProps) {
           onClick={() => wavesurferRef.current?.playPause()}
           className="rounded-xl border border-[#6f757c] bg-gradient-to-b from-[#626870] to-[#4a5057] px-4 py-2 text-sm tracking-[0.1em] text-[#f7f1ed] transition hover:border-[#ff8d40] hover:shadow-[0_0_14px_rgba(255,121,40,0.42)] disabled:opacity-50"
         >
-          {isPlaying ? "暫停" : "播放全曲"}
+          {isPlaying ? "暫停" : fullPlayLabel}
         </button>
         <button
           type="button"
@@ -347,7 +413,7 @@ export function HookCropper({ file, onBack, onConfirm }: HookCropperProps) {
           onClick={playRegion}
           className="rounded-xl border border-[#6f757c] bg-gradient-to-b from-[#626870] to-[#4a5057] px-4 py-2 text-sm tracking-[0.1em] text-[#f7f1ed] transition hover:border-[#ff8d40] hover:shadow-[0_0_14px_rgba(255,121,40,0.42)] disabled:opacity-50"
         >
-          預聽 Drop
+          {previewLabel}
         </button>
         <button
           type="button"
@@ -355,7 +421,7 @@ export function HookCropper({ file, onBack, onConfirm }: HookCropperProps) {
           onClick={handleConfirm}
           className="rounded-xl border border-[#767c83] bg-gradient-to-b from-[#666c73] to-[#4a5057] px-4 py-2 text-sm font-semibold tracking-[0.12em] text-[#f8f3ef] transition hover:border-[#ff8d40] hover:shadow-[0_0_18px_rgba(255,121,40,0.45)] disabled:opacity-60"
         >
-          {isExporting ? "裁切上傳中..." : "確認 Drop 並上傳"}
+          {isExporting ? "裁切上傳中..." : confirmLabel}
         </button>
       </div>
     </section>

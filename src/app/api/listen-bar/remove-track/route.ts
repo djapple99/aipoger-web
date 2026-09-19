@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS, isAiMusicPersistedShowtimeCertified } from "@/lib/ai-music-showtime";
 
 type ListenBarRemoveTrackDatabase = {
   public: {
@@ -12,12 +13,15 @@ type ListenBarRemoveTrackDatabase = {
           source: "official" | "community" | null;
           bar_phase?: "challenger" | "public" | null;
           is_active: boolean | null;
+          ai_music_showtime_certified?: boolean | null;
+          ai_music_showtime_public_removed_at?: string | null;
         };
         Insert: Record<string, never>;
         Update: {
           is_active?: boolean;
           review_status?: "removed";
           removed_at?: string;
+          moderation_note?: string;
           updated_at?: string;
         };
         Relationships: [];
@@ -31,6 +35,11 @@ type ListenBarRemoveTrackDatabase = {
 };
 
 type AdminClient = SupabaseClient<ListenBarRemoveTrackDatabase>;
+type RemoveTrackRow = ListenBarRemoveTrackDatabase["public"]["Tables"]["listen_bar_tracks"]["Row"];
+type TrackResult = {
+  data: RemoveTrackRow | null;
+  error: { message: string; details?: string; hint?: string; code?: string } | null;
+};
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -55,7 +64,7 @@ function isMissingColumnError(error: unknown): boolean {
         (error as { code?: string }).code,
       ].filter(Boolean).join(" ")
     : String(error ?? "");
-  return /schema cache|column.*does not exist|PGRST204|bar_phase|review_status|removed_at/i.test(text);
+  return /schema cache|column.*does not exist|PGRST204|bar_phase|review_status|removed_at|moderation_note|ai_music_showtime/i.test(text);
 }
 
 function adminClient(): AdminClient {
@@ -81,22 +90,25 @@ export async function POST(request: NextRequest) {
 
     let trackResult = await admin
       .from("listen_bar_tracks")
-      .select("id,title,created_by,source,bar_phase,is_active")
+      .select(`id,title,created_by,source,bar_phase,is_active,${AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS}`)
       .eq("id", body.trackId)
-      .maybeSingle();
+      .maybeSingle() as TrackResult;
 
     if (trackResult.error && isMissingColumnError(trackResult.error)) {
       trackResult = await admin
         .from("listen_bar_tracks")
         .select("id,title,created_by,source,is_active")
         .eq("id", body.trackId)
-        .maybeSingle();
+        .maybeSingle() as TrackResult;
     }
 
     const { data: track, error: trackError } = trackResult;
     if (trackError) return jsonError(trackError.message, 500);
     if (!track || track.source !== "community" || !track.is_active) return jsonError("Track not found.", 404);
     if (track.created_by !== userData.user.id) return jsonError("只能撤下自己的歌曲。", 403);
+    if (isAiMusicPersistedShowtimeCertified(track)) {
+      return jsonError("Showtime 作品請改用 Showtime 展示管理；不能從傷心酒吧流程移除底層認可紀錄。", 409);
+    }
 
     const now = new Date().toISOString();
     let updateResult = await admin
@@ -105,6 +117,7 @@ export async function POST(request: NextRequest) {
         is_active: false,
         review_status: "removed",
         removed_at: now,
+        moderation_note: "Creator removed own Bar Heartbreak track.",
         updated_at: now,
       })
       .eq("id", track.id);

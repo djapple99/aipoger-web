@@ -50,8 +50,9 @@ export async function POST(request: NextRequest) {
   const token = tokenFromRequest(request);
   if (!token) return jsonError("Unauthorized", 401);
 
-  const body = (await request.json().catch(() => null)) as { battleId?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as { battleId?: unknown; queueId?: unknown } | null;
   const battleId = isUuid(body?.battleId) ? body.battleId : null;
+  const queueId = isUuid(body?.queueId) ? body.queueId : null;
   const admin = createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -62,16 +63,58 @@ export async function POST(request: NextRequest) {
   } = await admin.auth.getUser(token);
   if (userError || !user) return jsonError("Unauthorized", 401);
 
-  let battleQuery = admin
-    .from("battles")
-    .select("id, queue_a_id, queue_b_id, status")
-    .in("status", ACTIVE_BATTLE_STATUSES)
-    .or(`fighter_a_user_id.eq.${user.id},fighter_b_user_id.eq.${user.id}`);
+  let pendingQCrashCard: {
+    id: string;
+    founder_user_id: string;
+    founder_queue_id: string;
+    invited_user_id: string | null;
+    status: string;
+  } | null = null;
+  if (queueId || battleId) {
+    let qCrashQuery = admin
+      .from("q_crash_cards")
+      .select("id,founder_user_id,founder_queue_id,invited_user_id,status")
+      .limit(1);
+    qCrashQuery = battleId
+      ? qCrashQuery.eq("battle_id", battleId)
+      : qCrashQuery.or(`founder_queue_id.eq.${queueId},challenger_queue_id.eq.${queueId}`);
+    const { data: qCrashCard, error: qCrashError } = await qCrashQuery.maybeSingle<{
+      id: string;
+      founder_user_id: string;
+      founder_queue_id: string;
+      invited_user_id: string | null;
+      status: string;
+    }>();
+    if (qCrashError && !/q_crash_cards|schema cache|does not exist|PGRST/i.test(qCrashError.message)) {
+      return jsonError(qCrashError.message, 500);
+    }
+    if (qCrashCard?.id) {
+      if (qCrashCard.status === "q_crash_joining" || qCrashCard.status === "q_crash_voting") {
+        return jsonError("Q Crash 投票開始後不能取消或改期限。", 409);
+      }
+      if (qCrashCard.status === "q_crash_pending_invite") {
+        if (qCrashCard.founder_user_id !== user.id || queueId !== qCrashCard.founder_queue_id) {
+          return jsonError("只有開卡者可以取消等待中的 Q Crash。", 403);
+        }
+        pendingQCrashCard = qCrashCard;
+      }
+    }
+  }
 
-  if (battleId) battleQuery = battleQuery.eq("id", battleId);
+  let activeBattles: Array<{ id: string; queue_a_id?: string | null; queue_b_id?: string | null; status?: string | null }> = [];
+  if (!queueId || battleId) {
+    let battleQuery = admin
+      .from("battles")
+      .select("id, queue_a_id, queue_b_id, status")
+      .in("status", ACTIVE_BATTLE_STATUSES)
+      .or(`fighter_a_user_id.eq.${user.id},fighter_b_user_id.eq.${user.id}`);
 
-  const { data: activeBattles, error: battleReadError } = await battleQuery;
-  if (battleReadError) return jsonError(battleReadError.message, 500);
+    if (battleId) battleQuery = battleQuery.eq("id", battleId);
+
+    const { data, error: battleReadError } = await battleQuery;
+    if (battleReadError) return jsonError(battleReadError.message, 500);
+    activeBattles = data ?? [];
+  }
 
   const activeBattleIds = (activeBattles ?? []).map((row) => row.id).filter(Boolean);
   const linkedQueueIds = (activeBattles ?? [])
@@ -79,6 +122,29 @@ export async function POST(request: NextRequest) {
     .filter((id): id is string => typeof id === "string" && id.length > 0);
 
   const now = new Date().toISOString();
+
+  if (pendingQCrashCard) {
+    const { data: cancelledQCrash, error: qCrashCancelError } = await admin
+      .from("q_crash_cards")
+      .update({ status: "q_crash_cancelled", cancelled_at: now, updated_at: now })
+      .eq("id", pendingQCrashCard.id)
+      .eq("status", "q_crash_pending_invite")
+      .select("id")
+      .maybeSingle<{ id: string }>();
+    if (qCrashCancelError) return jsonError(qCrashCancelError.message, 500);
+    if (!cancelledQCrash?.id) return jsonError("Q Crash 已被接受，現在不能取消。", 409);
+    if (pendingQCrashCard.invited_user_id) {
+      const { error: noticeError } = await admin.from("battle_notifications").insert({
+        user_id: pendingQCrashCard.invited_user_id,
+        queue_id: pendingQCrashCard.founder_queue_id,
+        type: "q_crash_cancelled",
+        title: "Q Crash 邀請已取消",
+        body: "開卡者已取消這張 Q Crash；不產生投票或戰績。",
+        metadata: { cardId: pendingQCrashCard.id, battleType: "q_crash" },
+      });
+      if (noticeError) console.error("[q-crash cancellation notice]", noticeError.message);
+    }
+  }
 
   if (activeBattleIds.length > 0) {
     const { error } = await admin
@@ -94,6 +160,7 @@ export async function POST(request: NextRequest) {
     .in("status", ACTIVE_QUEUE_STATUSES)
     .eq("user_id", user.id);
 
+  if (queueId) queueQuery = queueQuery.eq("id", queueId);
   if (battleId) queueQuery = queueQuery.eq("match_group_id", battleId);
   const { data: ownQueues, error: ownQueueReadError } = await queueQuery;
   if (ownQueueReadError) return jsonError(ownQueueReadError.message, 500);

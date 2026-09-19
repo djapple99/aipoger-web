@@ -5,17 +5,32 @@ import NextImage from "next/image";
 import LangToggle from "@/components/lang-toggle";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
-import type { CSSProperties } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { FormEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { isAuthBypassEnabled, mockUserId } from "@/lib/auth-bypass";
 import { useI18n } from "@/lib/i18n";
 import { fontGlowSansBattle } from "@/lib/fonts";
 import { supabase } from "@/lib/supabase";
-import { getFreshSession } from "@/lib/auth-session";
 import ShareButton from "@/components/share-button";
+import ReportButton from "@/components/report-button";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { rankLabelForLevel } from "@/lib/battle-pool-rules";
+import {
+  cancelCurrentBattleIntent,
+  claimDropRematchIntent,
+  completeBattleCardIntent,
+  isDropChallengeAcceptable,
+  openDropRematchWindowIntent,
+  resolveDropBattleScheduledStart,
+  type DropRematchClaimPayload,
+} from "@/lib/battle-pool-client";
+import { battleSeedForId } from "@/lib/battle-90s-system";
+import { AI_MUSIC_CHALLENGE_BATTLE_TYPE, pickDropBattleWinnerForRules } from "@/lib/ai-music-challenge-rules";
+import { DROP_BATTLE_OFFICIAL_AUDIENCE_MIN, rematchDeadlineSecondsLeft } from "@/lib/drop-battle-rematch";
+import { rememberAuthNextPath } from "@/lib/auth-urls";
+import { battleGuestDisplayName, getBattleGuestId } from "@/lib/battle-guest";
+import { battleShortPath } from "@/lib/share-short-links";
 import type { User } from "@supabase/supabase-js";
 
 type SenderType = "audience" | "fighter_a" | "fighter_b";
@@ -33,8 +48,11 @@ type ChatMessage = {
 
 type BattleData = {
   id: string;
+  arena_kind?: "battle" | "queue";
+  match_group_id?: string | null;
+  queue_status?: string | null;
   fighter_a_user_id: string;
-  fighter_b_user_id: string;
+  fighter_b_user_id: string | null;
   fighter_a_name: string;
   fighter_b_name: string;
   song_a_name: string;
@@ -52,24 +70,62 @@ type BattleData = {
   lyrics_a: string | null;
   lyrics_b: string | null;
   genre: string;
+  battle_type?: string | null;
+  scheduled_start_at?: string | null;
+  cancellation_evaluation_at?: string | null;
   battle_started_at?: string | null;
   started_at?: string | null;
-  status: "live" | "finished" | "cancelled";
+  cancellation_reason?: "no_challenger" | "founder_manual" | null;
+  status: "pending" | "matched" | "active" | "live" | "finished" | "expired" | "cancelled" | "cancelled_no_challenger" | "cancelled_founder";
 };
 
-type VoteCount = { fighter_a: number; fighter_b: number };
+type QueueArenaRow = {
+  id: string;
+  user_id: string | null;
+  fighter_name: string | null;
+  original_file_name: string | null;
+  genre: string | null;
+  ai_tool: string | null;
+  lyrics?: string | null;
+  audio_path: string | null;
+  status: string | null;
+  match_group_id: string | null;
+  expires_at: string | null;
+  scheduled_start_at?: string | null;
+  cancellation_evaluation_at?: string | null;
+  created_at: string | null;
+};
+
+type BattleLinkResolutionPayload =
+  | { action: "stay"; reason?: string }
+  | { action: "redirect"; href: string; reason?: string };
+type BattleArenaEntryPayload =
+  | { action: "redirect"; href: string; reason?: string }
+  | { action: "battle"; battle: BattleData };
+
+type DropRematchClaimRow = {
+  id: string;
+  source_battle_id: string;
+  winner_user_id: string;
+  winner_side: "fighter_a" | "fighter_b";
+  defender_queue_id: string;
+  claimer_user_id: string | null;
+  status: string;
+  claim_window_started_at: string;
+  claim_window_ends_at: string;
+  claimed_at: string | null;
+  upload_deadline_at: string | null;
+  next_battle_id: string | null;
+  next_queue_id: string | null;
+};
+
+type VoteSide = "fighter_a" | "fighter_b";
+type VoteCount = Record<VoteSide, number>;
+type BattleVoteRow = { voted_for: VoteSide | null; user_id?: string | null; voter_role?: string | null };
 type DeckKey = "A" | "B";
-type BattlePlaybackPhase = "rps" | "ready" | "playing" | "paused" | "transition" | "final";
+type BattlePlaybackPhase = "rps" | "ready" | "playing" | "paused" | "echo" | "transition" | "final";
 type FeedbackKey = "rhyme" | "impact" | "melody" | "emotion" | "structure";
 type FeedbackCounts = Record<DeckKey, Record<FeedbackKey, number>>;
-type ReactionBurst = {
-  id: string;
-  symbol: string;
-  x: number;
-  y: number;
-  size: number;
-};
-
 type DanmakuItem = {
   id: string;
   text: string;
@@ -83,15 +139,28 @@ const VINYL_COVER_PLACEHOLDER = AIPOGER_BRAND_LOGO;
 const DEMO_BATTLE_AUDIO_SRC = "/music/home-bgm.mp3";
 const HOOK_BATTLE_SECONDS = 45;
 const PRE_BATTLE_TEASER_SECONDS = 5;
+const FINAL_PRESTART_HYPE_SECONDS = 5;
+const PRE_BATTLE_AD_FADE_OUT_SECONDS = 6;
+const FINAL_PRESTART_HYPE_TEXT = "Ladies and gentlemen, fighters!";
+const FINAL_PRESTART_HYPE_SFX_SRC = "/sfx/drop-battle-announcer.wav";
+const PRE_BATTLE_AD_VIDEO_SRC = "/music/AIPOGER%20AD1.mp4";
 const MAX_PAUSE_MS = 1000;
+const ARENA_ECHO_HOLD_MS = 1000;
+const ARENA_ECHO_HOLD_SECONDS = ARENA_ECHO_HOLD_MS / 1000;
 const SCRATCH_TRANSITION_SECONDS = 2;
 const SCRATCH_TRANSITION_MS = SCRATCH_TRANSITION_SECONDS * 1000;
 const SCRATCH_TRANSITION_SRC = "/sfx/scratch-sample-a.mp3";
+const WINNER_COUNTDOWN_SFX_SRC = "/sfx/you-win.wav";
 const WINNER_REVEAL_SFX_SRC = "/sfx/audience-shouts-1.mp3";
-const SECOND_DECK_START_SECONDS = HOOK_BATTLE_SECONDS + SCRATCH_TRANSITION_SECONDS;
-const BATTLE_PLAYBACK_SECONDS = HOOK_BATTLE_SECONDS * 2 + SCRATCH_TRANSITION_SECONDS;
+const SCRATCH_TRANSITION_START_SECONDS = HOOK_BATTLE_SECONDS + ARENA_ECHO_HOLD_SECONDS;
+const SECOND_DECK_START_SECONDS = SCRATCH_TRANSITION_START_SECONDS + SCRATCH_TRANSITION_SECONDS;
+const BATTLE_PLAYBACK_SECONDS = SECOND_DECK_START_SECONDS + HOOK_BATTLE_SECONDS;
+const FINAL_RESULT_CUE_DELAY_MS = ARENA_ECHO_HOLD_MS;
 const FINAL_VOTE_SECONDS = 5;
-const WINNER_REVEAL_MS = 3000;
+const WINNER_COUNTDOWN_FALLBACK_MS = 7600;
+const WINNER_REVEAL_MS = 5000;
+const REMATCH_CHALLENGE_ENABLED = false;
+const QUEUE_ARENA_REFRESH_MS = 2500;
 const RPS_CYCLE_MS = 240;
 const ARENA_ECHO_LEAD_SECONDS = 1;
 const ARENA_ECHO_TAPS = [
@@ -107,9 +176,8 @@ const DANMAKU_COLOR_CLASSES = [
   "border-fuchsia-200/30 bg-fuchsia-400/14 text-fuchsia-50 shadow-[0_0_22px_rgba(217,70,239,0.22)]",
   "border-white/16 bg-black/48 text-white shadow-[0_0_18px_rgba(0,0,0,0.45),0_0_20px_rgba(255,106,0,0.14)]",
 ] as const;
-const QUICK_DANMAKU_EMOJIS = ["🔥", "💔", "⚡", "🙌", "💥", "👑", "🚀", "😭"] as const;
+const QUICK_DANMAKU_PHRASES = ["好聽", "爆點", "再來", "太狠"] as const;
 const rpsCycle = ["✊", "✌️", "✋"] as const;
-const hypeReactions = ["❤️", "👍"] as const;
 const feedbackButtons: Array<{ key: FeedbackKey; zh: string; en: string }> = [
   { key: "rhyme", zh: "押韻", en: "Rhyme" },
   { key: "impact", zh: "爆點", en: "Impact" },
@@ -117,10 +185,43 @@ const feedbackButtons: Array<{ key: FeedbackKey; zh: string; en: string }> = [
   { key: "emotion", zh: "情緒", en: "Emotion" },
   { key: "structure", zh: "結構", en: "Structure" },
 ];
+
+function isUuid(value: string | null | undefined) {
+  return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
+}
+
+function rematchClaimFromRow(row: DropRematchClaimRow, genre: string): DropRematchClaimPayload {
+  return {
+    claimId: row.id,
+    sourceBattleId: row.source_battle_id,
+    winnerUserId: row.winner_user_id,
+    winnerSide: row.winner_side,
+    defenderQueueId: row.defender_queue_id,
+    claimerUserId: row.claimer_user_id,
+    status: row.status,
+    claimWindowStartedAt: row.claim_window_started_at,
+    claimWindowEndsAt: row.claim_window_ends_at,
+    claimedAt: row.claimed_at,
+    uploadDeadlineAt: row.upload_deadline_at,
+    nextBattleId: row.next_battle_id,
+    nextQueueId: row.next_queue_id,
+    genre,
+  };
+}
+
 const emptyFeedbackCounts = (): FeedbackCounts => ({
   A: { rhyme: 0, impact: 0, melody: 0, emotion: 0, structure: 0 },
   B: { rhyme: 0, impact: 0, melody: 0, emotion: 0, structure: 0 },
 });
+
+function applyVoteDelta(votes: VoteCount, previousVote: VoteSide | null, nextVote: VoteSide): VoteCount {
+  const next = { ...votes };
+  if (previousVote && previousVote !== nextVote) {
+    next[previousVote] = Math.max(0, next[previousVote] - 1);
+  }
+  next[nextVote] += 1;
+  return next;
+}
 const rpsWinPairs = [
   { winner: "✊", loser: "✌️" },
   { winner: "✌️", loser: "✋" },
@@ -154,12 +255,8 @@ function isHttpOrDataImageUrl(s: string): boolean {
   return /^https?:\/\//i.test(t) || /^data:image\//i.test(t) || /^blob:/i.test(t) || t.startsWith("/");
 }
 
-function battleSeed(value: string): number {
-  return [...value].reduce((sum, char, index) => sum + char.charCodeAt(0) * (index + 3), 0);
-}
-
 function rpsResultForBattle(battleId: string): { firstDeck: DeckKey; choiceA: string; choiceB: string } {
-  const seed = battleSeed(battleId || "aipoger");
+  const seed = battleSeedForId(battleId || "aipoger");
   const firstDeck: DeckKey = seed % 2 === 0 ? "A" : "B";
   const pair = rpsWinPairs[seed % rpsWinPairs.length];
   return firstDeck === "A"
@@ -174,6 +271,10 @@ function timestampParamMs(value: string | null | undefined): number | null {
   if (Number.isFinite(asNumber) && asNumber > 0) return asNumber > 10_000_000_000 ? asNumber : asNumber * 1000;
   const asDate = Date.parse(raw);
   return Number.isFinite(asDate) ? asDate : null;
+}
+
+function scheduledStartMsForBattle(battle: Pick<BattleData, "scheduled_start_at" | "started_at">): number | null {
+  return timestampParamMs(battle.scheduled_start_at) ?? timestampParamMs(battle.started_at);
 }
 
 function deckParam(value: string | null | undefined): DeckKey | null {
@@ -229,6 +330,11 @@ function authDisplayName(user: User | null | undefined): string | null {
     if (typeof value === "string" && value.trim()) return value.trim();
   }
   return null;
+}
+
+function currentReturnPath() {
+  if (typeof window === "undefined") return "/battle";
+  return `${window.location.pathname}${window.location.search}${window.location.hash}`;
 }
 
 async function resolveMediaUrl(raw: string | null | undefined): Promise<string | null> {
@@ -372,7 +478,6 @@ function VinylDisc({
   playDisabled,
   playLabel,
   turnLabel,
-  onAvatarReact,
   color,
   aiTool,
   accent,
@@ -389,7 +494,6 @@ function VinylDisc({
   playDisabled?: boolean;
   playLabel?: string;
   turnLabel?: string;
-  onAvatarReact?: () => void;
   color: string;
   aiTool: string | null;
   accent: "orange" | "blue";
@@ -492,10 +596,7 @@ function VinylDisc({
         {side === "left" && (
           <button
             type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onAvatarReact?.();
-            }}
+            onClick={(event) => event.stopPropagation()}
             className={`absolute z-30 transition hover:scale-105 ${avatarBubbleBase}`}
             style={{
               top: "var(--avatar-top)",
@@ -539,6 +640,22 @@ function VinylDisc({
           aria-disabled={playDisabled}
           aria-label={isPlaying ? t("deck_pause_aria") : t("deck_play_aria")}
         >
+          <div
+            className={`pointer-events-none absolute inset-0 z-[5] rounded-full ${isPlaying ? "animate-spin" : ""}`}
+            style={{
+              animationDuration: isPlaying ? "2.8s" : undefined,
+              animationTimingFunction: "linear",
+            }}
+          >
+            <div
+              className="absolute inset-0 rounded-full opacity-80"
+              style={{
+                background:
+                  "conic-gradient(from 18deg, rgba(255,255,255,0.14), transparent 10deg, transparent 64deg, rgba(255,106,0,0.2) 76deg, transparent 92deg, transparent 170deg, rgba(103,232,249,0.14) 184deg, transparent 202deg, transparent 360deg)",
+              }}
+            />
+            <div className="absolute left-1/2 top-[7%] h-[12%] w-1 -translate-x-1/2 rounded-full bg-white/18 blur-[1px]" />
+          </div>
           <div
             className="absolute inset-0 rounded-full"
             style={{
@@ -609,10 +726,7 @@ function VinylDisc({
         {side === "right" && (
           <button
             type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onAvatarReact?.();
-            }}
+            onClick={(event) => event.stopPropagation()}
             className={`absolute right-0 top-0 z-30 transition hover:scale-105 ${avatarBubbleBase}`}
             style={{
               width: "var(--avatar-size)",
@@ -708,34 +822,54 @@ function VoteHeartButton({
   selected,
   voteLocked,
   onVote,
+  label,
+  tone = "orange",
 }: {
   selected: boolean;
   voteLocked: boolean;
   onVote: () => void;
+  label: string;
+  tone?: "orange" | "blue";
 }) {
   const { t } = useI18n();
   const notChosenOther = voteLocked && !selected;
+  const activeTone =
+    tone === "blue"
+      ? "border-cyan-200/90 bg-cyan-400/20 shadow-[0_0_30px_rgba(34,211,238,0.32)]"
+      : "border-orange-200/90 bg-orange-500/20 shadow-[0_0_30px_rgba(255,106,0,0.32)]";
+  const openTone =
+    tone === "blue"
+      ? "border-cyan-200/45 bg-cyan-400/[0.12] shadow-[0_0_18px_rgba(34,211,238,0.12)] hover:border-cyan-100 hover:bg-cyan-400/18"
+      : "border-orange-200/45 bg-orange-500/[0.12] shadow-[0_0_18px_rgba(255,106,0,0.12)] hover:border-orange-100 hover:bg-orange-500/18";
+  const strokeColor = selected ? (tone === "blue" ? "#67e8f9" : "#fb923c") : notChosenOther ? "#52525b" : "#f5f5f5";
+  const fillColor = selected ? (tone === "blue" ? "#0891b2" : "#ea580c") : "none";
 
   return (
     <button
       type="button"
       onClick={() => void onVote()}
+      onContextMenu={(event) => event.preventDefault()}
       disabled={voteLocked}
       title={t("battle_vote_heart_aria")}
       aria-label={t("battle_vote_heart_aria")}
       aria-pressed={selected}
-      className={`p-1 transition drop-shadow-[0_0_14px_rgba(255,255,255,0.22)] ${
-        voteLocked && !selected ? "opacity-40" : ""
+      className={`group flex min-h-[7.4rem] w-full touch-manipulation select-none items-center justify-center gap-3 rounded-[1.75rem] border px-4 py-4 text-left transition active:scale-[0.97] [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] [-webkit-user-select:none] md:min-h-[5.25rem] md:rounded-[1.6rem] ${
+        selected
+          ? activeTone
+          : voteLocked
+            ? "border-white/10 bg-white/[0.035] opacity-45"
+            : openTone
       }`}
     >
-      <svg viewBox="0 0 24 24" className="h-10 w-10 md:h-12 md:w-12">
+      <svg viewBox="0 0 24 24" className="pointer-events-none h-20 w-20 shrink-0 drop-shadow-[0_0_18px_rgba(255,255,255,0.28)] md:h-14 md:w-14">
         <path
-          fill={selected ? "#ef4444" : "none"}
-          stroke={selected ? "#ef4444" : notChosenOther ? "#52525b" : "#e5e5e5"}
+          fill={fillColor}
+          stroke={strokeColor}
           strokeWidth={1.5}
           d="M12 21.35l-1.05-.96C6.96 17.06 4 13.92 4 10.94 4 8.73 5.71 7 8.02 7c1.53 0 3.04.93 4 2.43.96-1.5 2.47-2.43 4-2.43C18.29 7 20 8.73 20 10.94c0 3-2.97 6.17-7.94 11.43L12 21.35z"
         />
       </svg>
+      <span className="pointer-events-none min-w-0 break-words text-[clamp(1rem,4.4vw,1.22rem)] font-black leading-tight text-zinc-100 md:text-sm">{label}</span>
     </button>
   );
 }
@@ -754,7 +888,8 @@ function BattleArenaContent() {
   const [battle, setBattle] = useState<BattleData | null>(null);
   const [chatInput, setChatInput] = useState("");
   const [votes, setVotes] = useState<VoteCount>({ fighter_a: 0, fighter_b: 0 });
-  const [hasVoted, setHasVoted] = useState<"fighter_a" | "fighter_b" | null>(null);
+  const [audienceVoteCount, setAudienceVoteCount] = useState(0);
+  const [hasVoted, setHasVoted] = useState<VoteSide | null>(null);
   const [activeDeck, setActiveDeck] = useState<"A" | "B" | null>(null);
   const [playedDecks, setPlayedDecks] = useState<{ A: boolean; B: boolean }>({ A: false, B: false });
   const [voteOpen, setVoteOpen] = useState(false);
@@ -764,7 +899,6 @@ function BattleArenaContent() {
   const [battlePhase, setBattlePhase] = useState<BattlePlaybackPhase>("rps");
   const [rpsChoices, setRpsChoices] = useState<{ A: string; B: string }>({ A: "✊", B: "✌️" });
   const [rpsPressed, setRpsPressed] = useState<{ A: boolean; B: boolean }>({ A: false, B: false });
-  const [reactionBursts, setReactionBursts] = useState<ReactionBurst[]>([]);
   const [feedbackCounts, setFeedbackCounts] = useState<FeedbackCounts>(() => emptyFeedbackCounts());
   const [danmakuItems, setDanmakuItems] = useState<DanmakuItem[]>([]);
   const [audioGlowLevel, setAudioGlowLevel] = useState(0);
@@ -772,15 +906,29 @@ function BattleArenaContent() {
   const [preStartSecondsLeft, setPreStartSecondsLeft] = useState<number | null>(null);
   const [teaserDeck, setTeaserDeck] = useState<DeckKey | null>(null);
   const [teaserSecondsLeft, setTeaserSecondsLeft] = useState(PRE_BATTLE_TEASER_SECONDS);
+  const [adVideoMuted, setAdVideoMuted] = useState(false);
+  const [adVideoPosition, setAdVideoPosition] = useState<{ x: number; y: number } | null>(null);
+  const [echoDeck, setEchoDeck] = useState<DeckKey | null>(null);
+  const [echoSecondsLeft, setEchoSecondsLeft] = useState(ARENA_ECHO_HOLD_SECONDS);
   const [transitionDeck, setTransitionDeck] = useState<DeckKey | null>(null);
   const [transitionSecondsLeft, setTransitionSecondsLeft] = useState(SCRATCH_TRANSITION_SECONDS);
   const [transitionEndsAtMs, setTransitionEndsAtMs] = useState<number | null>(null);
   const [winnerRevealOpen, setWinnerRevealOpen] = useState(false);
+  const [noContestOpen, setNoContestOpen] = useState(false);
+  const [rematchPromptReady, setRematchPromptReady] = useState(false);
+  const [rematchClaim, setRematchClaim] = useState<DropRematchClaimPayload | null>(null);
+  const [rematchBusy, setRematchBusy] = useState(false);
+  const [rematchError, setRematchError] = useState<string | null>(null);
+  const [rematchNowMs, setRematchNowMs] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [founderCancelBusy, setFounderCancelBusy] = useState(false);
+  const [founderCancelError, setFounderCancelError] = useState<string | null>(null);
   const [myUserId, setMyUserId] = useState<string>("");
   const [myDisplayName, setMyDisplayName] = useState<string>("我");
+  const [battleGuestId, setBattleGuestId] = useState("");
   const [audioUrls, setAudioUrls] = useState<{ A: string | null; B: string | null }>({ A: null, B: null });
+  const [mobileAudioBlocked, setMobileAudioBlocked] = useState(false);
   const [coverDisplayA, setCoverDisplayA] = useState<string | null>(null);
   const [coverDisplayB, setCoverDisplayB] = useState<string | null>(null);
   const [avatarDisplayA, setAvatarDisplayA] = useState<string | null>(null);
@@ -803,7 +951,20 @@ function BattleArenaContent() {
   const teaserStopTimerRef = useRef<number | null>(null);
   const teaserTickTimerRef = useRef<number | null>(null);
   const scratchAudioRef = useRef<HTMLAudioElement | null>(null);
+  const finalPreStartHypeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const scratchPrimeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const winnerCountdownPrimeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const winnerRevealPrimeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const winnerCountdownAudioRef = useRef<HTMLAudioElement | null>(null);
+  const winnerCountdownPromiseRef = useRef<Promise<void> | null>(null);
+  const winnerCountdownResolveRef = useRef<(() => void) | null>(null);
+  const winnerCountdownTimerRef = useRef<number | null>(null);
   const winnerRevealAudioRef = useRef<HTMLAudioElement | null>(null);
+  const adVideoRef = useRef<HTMLVideoElement | null>(null);
+  const adVideoDragRef = useRef<{ pointerId: number; dx: number; dy: number } | null>(null);
+  const adVideoAutoUnmuteRetriedRef = useRef(false);
+  const echoHoldTimerRef = useRef<number | null>(null);
+  const echoHoldTickTimerRef = useRef<number | null>(null);
   const scratchTransitionTimerRef = useRef<number | null>(null);
   const scratchTransitionTickTimerRef = useRef<number | null>(null);
   const preBattleStartedRef = useRef<string | null>(null);
@@ -811,12 +972,90 @@ function BattleArenaContent() {
   const sharedClockAppliedRef = useRef<string | null>(null);
   const finalCountdownSeedRef = useRef(FINAL_VOTE_SECONDS);
   const finalCountdownActiveRef = useRef(false);
+  const finalPreStartHypeRef = useRef<string | null>(null);
   const resultRedirectArmedRef = useRef(false);
   const resultRedirectTimerRef = useRef<number | null>(null);
+  const resultSequenceRef = useRef(0);
   const battleResultHrefRef = useRef<string | null>(null);
+  const rematchResultRedirectRef = useRef<string | null>(null);
+  const rematchOpenedBattleRef = useRef<string | null>(null);
+  const rematchFallbackTimerRef = useRef<number | null>(null);
   const mockSyncChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const arenaEntryRefreshInFlightRef = useRef(false);
+  const voteIntentInFlightRef = useRef<VoteSide | null>(null);
+  const mobileAudioUnlockedRef = useRef(false);
+  const mobileAudioPrimingRef = useRef<Promise<boolean> | null>(null);
+  const pendingDeckAutoResumeRef = useRef<{ deck: DeckKey; restart: boolean; startAtSeconds: number } | null>(null);
+  const currentSessionUserIdRef = useRef<string>("");
+  const shownDanmakuMessageIdsRef = useRef<Set<string>>(new Set());
+  const shownDanmakuFingerprintsRef = useRef<Map<string, number>>(new Map());
 
+  const isMockBattle = battleId.startsWith("mock-");
   const isPreBattle = (preStartSecondsLeft ?? 0) > 0;
+  const isQueueArena = battle?.arena_kind === "queue";
+  const isAiMusicChallenge = battle?.battle_type === AI_MUSIC_CHALLENGE_BATTLE_TYPE;
+  const isAiMusicAwaitingDefender = !isQueueArena && isAiMusicChallenge && battle?.status === "pending";
+  const isQueueChallengeOpen = isQueueArena && isDropChallengeAcceptable({
+    status: battle?.queue_status,
+    scheduled_start_at: battle?.scheduled_start_at,
+    cancellation_evaluation_at: battle?.cancellation_evaluation_at,
+  });
+  const isArenaWarmup = isPreBattle || isQueueChallengeOpen || isAiMusicAwaitingDefender;
+  const isFinalPreStartCountdown =
+    !isQueueArena &&
+    (preStartSecondsLeft ?? 0) > 0 &&
+    (preStartSecondsLeft ?? 0) <= FINAL_PRESTART_HYPE_SECONDS;
+  const renderPreBattleAd = isArenaWarmup && (isQueueArena || (preStartSecondsLeft ?? 0) > 0);
+  const showPreBattleAd = isArenaWarmup && (isQueueArena || (preStartSecondsLeft ?? 0) > PRE_BATTLE_AD_FADE_OUT_SECONDS);
+
+  useEffect(() => {
+    setBattleGuestId(getBattleGuestId());
+  }, []);
+
+  const clampAdVideoPosition = useCallback((x: number, y: number) => {
+    if (typeof window === "undefined") return { x, y };
+    const panelWidth = Math.min(window.innerWidth - 32, window.innerWidth < 640 ? 300 : window.innerWidth < 1280 ? 300 : 340);
+    const panelHeight = panelWidth * 0.5625 + 44;
+    const bottomReserve = window.innerWidth < 768 ? 124 : 86;
+    const maxX = Math.max(12, window.innerWidth - panelWidth - 12);
+    const maxY = Math.max(84, window.innerHeight - panelHeight - bottomReserve);
+    return {
+      x: Math.min(maxX, Math.max(12, x)),
+      y: Math.min(maxY, Math.max(84, y)),
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!renderPreBattleAd || adVideoPosition || typeof window === "undefined") return;
+    const panelWidth = Math.min(window.innerWidth - 32, window.innerWidth < 640 ? 300 : window.innerWidth < 1280 ? 300 : 340);
+    const defaultX = window.innerWidth < 900 ? (window.innerWidth - panelWidth) / 2 : window.innerWidth - panelWidth - 24;
+    const defaultY = window.innerWidth < 900 ? 104 : 116;
+    setAdVideoPosition(clampAdVideoPosition(defaultX, defaultY));
+  }, [adVideoPosition, clampAdVideoPosition, renderPreBattleAd]);
+
+  const handleAdVideoDragStart = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!adVideoPosition) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    adVideoDragRef.current = {
+      pointerId: event.pointerId,
+      dx: event.clientX - adVideoPosition.x,
+      dy: event.clientY - adVideoPosition.y,
+    };
+  }, [adVideoPosition]);
+
+  const handleAdVideoDragMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = adVideoDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    setAdVideoPosition(clampAdVideoPosition(event.clientX - drag.dx, event.clientY - drag.dy));
+  }, [clampAdVideoPosition]);
+
+  const handleAdVideoDragEnd = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (adVideoDragRef.current?.pointerId === event.pointerId) {
+      adVideoDragRef.current = null;
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }, []);
 
   const stopTeaser = useCallback(() => {
     teaserAudioRef.current?.pause();
@@ -836,7 +1075,7 @@ function BattleArenaContent() {
   const playTeaser = useCallback(
     (deck: DeckKey) => {
       const url = audioUrls[deck];
-      if (!url || !isPreBattle) return;
+      if (!url || !isArenaWarmup) return;
       stopTeaser();
       const teaser = new Audio(url);
       teaser.preload = "auto";
@@ -854,8 +1093,71 @@ function BattleArenaContent() {
       }, PRE_BATTLE_TEASER_SECONDS * 1000);
       void teaser.play().catch(() => stopTeaser());
     },
-    [audioUrls, isPreBattle, stopTeaser],
+    [audioUrls, isArenaWarmup, stopTeaser],
   );
+
+  useEffect(() => {
+    const video = adVideoRef.current;
+    if (!video) return;
+    if (!showPreBattleAd) {
+      video.pause();
+      adVideoAutoUnmuteRetriedRef.current = false;
+      return;
+    }
+
+    video.loop = true;
+    video.volume = 0.78;
+    video.muted = adVideoMuted;
+    const startPlayback = async () => {
+      try {
+        await video.play();
+      } catch {
+        if (adVideoMuted || adVideoAutoUnmuteRetriedRef.current) {
+          video.muted = true;
+          setAdVideoMuted(true);
+          await video.play().catch(() => undefined);
+          return;
+        }
+        video.muted = true;
+        setAdVideoMuted(true);
+        await video.play().catch(() => undefined);
+        adVideoAutoUnmuteRetriedRef.current = true;
+        window.setTimeout(() => {
+          if (!adVideoRef.current || !showPreBattleAd) return;
+          adVideoRef.current.muted = false;
+          adVideoRef.current.volume = 0.78;
+          setAdVideoMuted(false);
+          void adVideoRef.current.play().catch(() => {
+            if (!adVideoRef.current) return;
+            adVideoRef.current.muted = true;
+            setAdVideoMuted(true);
+            void adVideoRef.current.play().catch(() => undefined);
+          });
+        }, 240);
+      }
+    };
+    void startPlayback();
+  }, [adVideoMuted, adVideoPosition, renderPreBattleAd, showPreBattleAd]);
+
+  const handleAdVideoEnded = useCallback(() => {
+    const video = adVideoRef.current;
+    if (!video || !showPreBattleAd) return;
+    video.currentTime = 0;
+    void video.play().catch(() => undefined);
+  }, [showPreBattleAd]);
+
+  const clearDeckEchoHold = useCallback(() => {
+    if (echoHoldTimerRef.current != null) {
+      window.clearTimeout(echoHoldTimerRef.current);
+      echoHoldTimerRef.current = null;
+    }
+    if (echoHoldTickTimerRef.current != null) {
+      window.clearInterval(echoHoldTickTimerRef.current);
+      echoHoldTickTimerRef.current = null;
+    }
+    setEchoDeck(null);
+    setEchoSecondsLeft(ARENA_ECHO_HOLD_SECONDS);
+  }, []);
 
   const clearScratchTransitionMedia = useCallback(() => {
     scratchAudioRef.current?.pause();
@@ -879,6 +1181,7 @@ function BattleArenaContent() {
 
   const queueScratchTransition = useCallback(
     (nextDeck: DeckKey, remainingMs = SCRATCH_TRANSITION_MS) => {
+      clearDeckEchoHold();
       stopScratchTransition();
       setCurrentDeck(nextDeck);
       setActiveDeck(null);
@@ -887,7 +1190,41 @@ function BattleArenaContent() {
       setTransitionEndsAtMs(Date.now() + remainingMs);
       setBattlePhase("transition");
     },
-    [stopScratchTransition],
+    [clearDeckEchoHold, stopScratchTransition],
+  );
+
+  const queueDeckEchoHold = useCallback(
+    (nextDeck: DeckKey, remainingMs = ARENA_ECHO_HOLD_MS) => {
+      clearDeckEchoHold();
+      stopScratchTransition();
+      const boundedRemainingMs = Math.max(0, remainingMs);
+      const echoEndsAtMs = Date.now() + boundedRemainingMs;
+
+      setCurrentDeck(nextDeck);
+      setActiveDeck(null);
+      setEchoDeck(nextDeck);
+      setEchoSecondsLeft(Math.max(0, Math.ceil(boundedRemainingMs / 1000)));
+      setBattlePhase("echo");
+
+      if (boundedRemainingMs <= 0) {
+        queueScratchTransition(nextDeck);
+        return;
+      }
+
+      const updateEchoCountdown = () => {
+        const remaining = Math.max(0, echoEndsAtMs - Date.now());
+        setEchoSecondsLeft(Math.max(0, Math.ceil(remaining / 1000)));
+      };
+
+      updateEchoCountdown();
+      echoHoldTickTimerRef.current = window.setInterval(updateEchoCountdown, 120);
+      echoHoldTimerRef.current = window.setTimeout(() => {
+        clearDeckEchoHold();
+        if (completedDecksRef.current[nextDeck]) return;
+        queueScratchTransition(nextDeck);
+      }, boundedRemainingMs);
+    },
+    [clearDeckEchoHold, queueScratchTransition, stopScratchTransition],
   );
 
   const stopWinnerRevealSfx = useCallback(() => {
@@ -895,17 +1232,188 @@ function BattleArenaContent() {
     winnerRevealAudioRef.current = null;
   }, []);
 
+  const stopWinnerCountdownSfx = useCallback(() => {
+    if (winnerCountdownTimerRef.current != null) {
+      window.clearTimeout(winnerCountdownTimerRef.current);
+      winnerCountdownTimerRef.current = null;
+    }
+    winnerCountdownAudioRef.current?.pause();
+    winnerCountdownAudioRef.current = null;
+    const resolve = winnerCountdownResolveRef.current;
+    winnerCountdownResolveRef.current = null;
+    winnerCountdownPromiseRef.current = null;
+    resolve?.();
+  }, []);
+
+  const playWinnerCountdownSfx = useCallback(() => {
+    stopWinnerCountdownSfx();
+    const audio = winnerCountdownPrimeAudioRef.current ?? new Audio(WINNER_COUNTDOWN_SFX_SRC);
+    audio.preload = "auto";
+    audio.muted = false;
+    audio.volume = 0.94;
+    try {
+      audio.currentTime = 0;
+    } catch {
+      // Some browsers block seek until metadata is ready.
+    }
+    winnerCountdownAudioRef.current = audio;
+
+    let settle: () => void = () => undefined;
+    const promise = new Promise<void>((resolve) => {
+      let settled = false;
+      settle = () => {
+        if (settled) return;
+        settled = true;
+        audio.removeEventListener("ended", settle);
+        audio.removeEventListener("error", settle);
+        if (winnerCountdownTimerRef.current != null) {
+          window.clearTimeout(winnerCountdownTimerRef.current);
+          winnerCountdownTimerRef.current = null;
+        }
+        if (winnerCountdownAudioRef.current === audio) {
+          winnerCountdownAudioRef.current = null;
+        }
+        if (winnerCountdownResolveRef.current === settle) {
+          winnerCountdownResolveRef.current = null;
+        }
+        if (winnerCountdownPromiseRef.current === promise) {
+          winnerCountdownPromiseRef.current = null;
+        }
+        resolve();
+      };
+
+      winnerCountdownResolveRef.current = settle;
+      audio.addEventListener("ended", settle, { once: true });
+      audio.addEventListener("error", settle, { once: true });
+      winnerCountdownTimerRef.current = window.setTimeout(settle, WINNER_COUNTDOWN_FALLBACK_MS);
+    });
+
+    winnerCountdownPromiseRef.current = promise;
+    void audio.play().catch(() => {
+      setMobileAudioBlocked(true);
+      settle();
+    });
+    return promise;
+  }, [stopWinnerCountdownSfx]);
+
   const playWinnerRevealSfx = useCallback(() => {
     stopWinnerRevealSfx();
-    const audio = new Audio(WINNER_REVEAL_SFX_SRC);
+    const audio = winnerRevealPrimeAudioRef.current ?? new Audio(WINNER_REVEAL_SFX_SRC);
     audio.preload = "auto";
+    audio.muted = false;
     audio.volume = 0.88;
+    try {
+      audio.currentTime = 0;
+    } catch {
+      // Ignore rewind failures on not-yet-loaded media.
+    }
     winnerRevealAudioRef.current = audio;
-    void audio.play().catch(() => undefined);
+    void audio.play().catch(() => setMobileAudioBlocked(true));
   }, [stopWinnerRevealSfx]);
+
+  const primeBattleAudioForMobile = useCallback(() => {
+    if (mobileAudioUnlockedRef.current && !mobileAudioBlocked) return Promise.resolve(true);
+    if (mobileAudioPrimingRef.current) return mobileAudioPrimingRef.current;
+
+    const primeAudio = async (audio: HTMLAudioElement | null) => {
+      if (!audio?.src) return null;
+      if (!audio.paused) return true;
+      const previousTime = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+      const previousMuted = audio.muted;
+      const previousVolume = audio.volume;
+      audio.muted = true;
+      audio.volume = 0;
+      if (audio.readyState === 0) audio.load();
+      try {
+        await audio.play();
+        audio.pause();
+        try {
+          audio.currentTime = previousTime;
+        } catch {
+          // Some mobile browsers reject seek before metadata is ready.
+        }
+        audio.muted = previousMuted;
+        audio.volume = previousVolume;
+        return true;
+      } catch {
+        audio.muted = previousMuted;
+        audio.volume = previousVolume;
+        return false;
+      }
+    };
+
+    mobileAudioPrimingRef.current = Promise.all([
+      primeAudio(audioARef.current),
+      primeAudio(audioBRef.current),
+      primeAudio(finalPreStartHypeAudioRef.current),
+      primeAudio(scratchPrimeAudioRef.current),
+      primeAudio(winnerCountdownPrimeAudioRef.current),
+      primeAudio(winnerRevealPrimeAudioRef.current),
+    ]).then((results) => {
+      const unlocked = results.some((result) => result === true);
+      mobileAudioUnlockedRef.current = unlocked;
+      if (unlocked) setMobileAudioBlocked(false);
+      return unlocked;
+    }).finally(() => {
+      mobileAudioPrimingRef.current = null;
+    });
+
+    return mobileAudioPrimingRef.current;
+  }, [mobileAudioBlocked]);
+
+  const playFinalPreStartHype = useCallback(() => {
+    void primeBattleAudioForMobile();
+    const announcer = finalPreStartHypeAudioRef.current ?? new Audio(FINAL_PRESTART_HYPE_SFX_SRC);
+    announcer.preload = "auto";
+    announcer.muted = false;
+    announcer.volume = 0.94;
+    try {
+      announcer.currentTime = 0;
+    } catch {
+      // Keep going; playback is more important than a perfect rewind.
+    }
+    void announcer.play().catch(() => {
+      setMobileAudioBlocked(true);
+      try {
+        if ("speechSynthesis" in window) {
+          const utterance = new SpeechSynthesisUtterance(FINAL_PRESTART_HYPE_TEXT);
+          utterance.lang = "en-US";
+          utterance.rate = 0.94;
+          utterance.pitch = 0.72;
+          utterance.volume = 1;
+          window.speechSynthesis.speak(utterance);
+          return;
+        }
+      } catch {
+        // Fall through to the crowd sample when speech synthesis is unavailable.
+      }
+
+      const audio = new Audio(WINNER_REVEAL_SFX_SRC);
+      audio.preload = "auto";
+      audio.volume = 0.82;
+      void audio.play().catch(() => undefined);
+    });
+  }, [primeBattleAudioForMobile]);
+
+  const closeBattleCardAfterResult = useCallback(
+    async (outcome: "completed" | "expired" = "completed") => {
+      if (!isUuid(battleId) || isAuthBypassEnabled) return;
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) return;
+      await completeBattleCardIntent({ accessToken, battleId, outcome });
+    },
+    [battleId],
+  );
 
   const beginBattleWithFirstDeck = useCallback((deck: DeckKey, startedAtMs = Date.now(), delayMs = 0) => {
     resultRedirectArmedRef.current = false;
+    resultSequenceRef.current += 1;
+    clearDeckEchoHold();
+    stopScratchTransition();
+    stopWinnerCountdownSfx();
     stopWinnerRevealSfx();
     setBattleStartedAtMs(startedAtMs);
     setFirstDeck(deck);
@@ -913,6 +1421,10 @@ function BattleArenaContent() {
     setVoteOpen(true);
     setVoteCountdown(null);
     setWinnerRevealOpen(false);
+    setNoContestOpen(false);
+    setRematchPromptReady(false);
+    setRematchClaim(null);
+    setRematchError(null);
     setActiveDeck(null);
     setRpsPressed({ A: true, B: true });
     setBattlePhase("ready");
@@ -925,20 +1437,37 @@ function BattleArenaContent() {
         setBattlePhase("ready");
       }, delayMs);
     }
-  }, [stopWinnerRevealSfx]);
+  }, [clearDeckEchoHold, stopScratchTransition, stopWinnerCountdownSfx, stopWinnerRevealSfx]);
 
   const pushResultForEveryone = useCallback((delayMs = 0, broadcast = true, hrefOverride?: string) => {
     if (resultRedirectArmedRef.current) return;
     resultRedirectArmedRef.current = true;
+    const resultSequence = resultSequenceRef.current + 1;
+    resultSequenceRef.current = resultSequence;
     if (resultRedirectTimerRef.current != null) {
       window.clearTimeout(resultRedirectTimerRef.current);
       resultRedirectTimerRef.current = null;
     }
-    setWinnerRevealOpen(true);
+    if (rematchFallbackTimerRef.current != null) {
+      window.clearTimeout(rematchFallbackTimerRef.current);
+      rematchFallbackTimerRef.current = null;
+    }
     setVoteOpen(false);
-    playWinnerRevealSfx();
+    setRematchPromptReady(false);
 
     const href = hrefOverride || battleResultHrefRef.current;
+    if (!href) {
+      stopWinnerCountdownSfx();
+      if (resultSequenceRef.current !== resultSequence) return;
+      void closeBattleCardAfterResult("expired").catch((err) => {
+        console.warn("[battle cleanup no contest]", err);
+      });
+      setWinnerRevealOpen(false);
+      setRematchPromptReady(false);
+      setNoContestOpen(true);
+      return;
+    }
+
     if (broadcast && href) {
       void mockSyncChannelRef.current?.send({
         type: "broadcast",
@@ -947,12 +1476,23 @@ function BattleArenaContent() {
       });
     }
 
+    stopWinnerCountdownSfx();
+    if (resultSequenceRef.current !== resultSequence) return;
+    setWinnerRevealOpen(true);
+    setNoContestOpen(false);
+    playWinnerRevealSfx();
+
     resultRedirectTimerRef.current = window.setTimeout(() => {
       resultRedirectTimerRef.current = null;
-      const targetHref = hrefOverride || battleResultHrefRef.current;
-      if (targetHref) router.push(targetHref);
+      if (resultSequenceRef.current !== resultSequence) return;
+      setWinnerRevealOpen(false);
+      if (REMATCH_CHALLENGE_ENABLED) {
+        setRematchPromptReady(true);
+      } else {
+        router.push(href);
+      }
     }, Math.max(delayMs, WINNER_REVEAL_MS));
-  }, [playWinnerRevealSfx, router]);
+  }, [closeBattleCardAfterResult, playWinnerRevealSfx, router, stopWinnerCountdownSfx]);
 
   const markDeckPlayed = useCallback((deck: "A" | "B") => {
     setPlayedDecks((prev) => (prev[deck] ? prev : { ...prev, [deck]: true }));
@@ -1000,20 +1540,27 @@ function BattleArenaContent() {
   useEffect(() => {
     const getUser = async () => {
       if (battleId.startsWith("mock-")) {
+        currentSessionUserIdRef.current = "mock-audience";
         setMyUserId("mock-audience");
         setMyDisplayName(searchParams.get("viewerName")?.trim() || searchParams.get("displayName")?.trim() || "AIPOGER 觀眾");
         return;
       }
       if (isAuthBypassEnabled) {
+        currentSessionUserIdRef.current = mockUserId;
         setMyUserId(mockUserId);
         setMyDisplayName(searchParams.get("fighterName")?.trim() || "我");
         return;
       }
-      const session = await getFreshSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) {
-        router.replace("/auth?intent=battle");
+        currentSessionUserIdRef.current = "";
+        setMyUserId("");
+        setMyDisplayName(searchParams.get("viewerName")?.trim() || searchParams.get("displayName")?.trim() || "AIPOGER 觀眾");
         return;
       }
+      currentSessionUserIdRef.current = session.user.id;
       setMyUserId(session.user.id);
       const metadataName = authDisplayName(session.user);
       const [{ data: fighterProfile }, { data: userProfile }] = await Promise.all([
@@ -1029,7 +1576,37 @@ function BattleArenaContent() {
       );
     };
     void getUser();
-  }, [battleId, router, searchParams]);
+  }, [battleId, lang, router, searchParams]);
+
+  const refreshArenaEntry = useCallback(async () => {
+    if (!battleId || battleId.startsWith("mock-") || isAuthBypassEnabled) return "skip" as const;
+
+    const response = await fetch(
+      `/api/battle-pool/arena-entry?id=${encodeURIComponent(battleId)}&lang=${lang}`,
+      { cache: "no-store" },
+    ).catch(() => null);
+
+    if (response?.ok) {
+      const payload = (await response.json().catch(() => null)) as BattleArenaEntryPayload | null;
+      if (payload?.action === "redirect" && payload.href) {
+        router.replace(payload.href);
+        return "redirect" as const;
+      }
+      if (payload?.action === "battle" && payload.battle?.id) {
+        setBattle(payload.battle);
+        setError(null);
+        setLoading(false);
+        return "battle" as const;
+      }
+    }
+
+    if (response?.status === 404) {
+      router.replace(`/listen-bar?lang=${lang}`);
+      return "redirect" as const;
+    }
+
+    return "miss" as const;
+  }, [battleId, lang, router]);
 
   // ── 載入 Battle 資料（查詢前先 await getSession，避免 JWT 未就緒被 RLS 擋）────
   useEffect(() => {
@@ -1050,6 +1627,7 @@ function BattleArenaContent() {
         const qGenre = searchParams.get("genre")?.trim() ?? "";
         const qLyrics = searchParams.get("lyrics")?.trim() ?? "";
         const qBattleStartedAt = searchParams.get("battleStartedAtMs")?.trim() || searchParams.get("battleStartedAt")?.trim() || "";
+        const qScheduledStartAt = searchParams.get("scheduledStartAtMs")?.trim() || searchParams.get("scheduledStartAt")?.trim() || "";
         const testFlag = searchParams.get("test") === "1";
 
         let profileAvatar: string | null = null;
@@ -1057,7 +1635,9 @@ function BattleArenaContent() {
         let fighterProfileCover: string | null = null;
         let oauthAv: string | null = null;
         if (!isAuthBypassEnabled) {
-          const session = await getFreshSession();
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
           oauthAv = oauthProviderAvatar(session?.user);
           const uid = session?.user?.id;
           if (uid) {
@@ -1106,6 +1686,7 @@ function BattleArenaContent() {
           lyrics_a: qLyrics || null,
           lyrics_b: null,
           genre: qGenre || "AI Music",
+          scheduled_start_at: qScheduledStartAt ? new Date(timestampParamMs(qScheduledStartAt) ?? Date.now()).toISOString() : null,
           battle_started_at: qBattleStartedAt ? new Date(timestampParamMs(qBattleStartedAt) ?? Date.now()).toISOString() : null,
           started_at: null,
           status: "live",
@@ -1114,9 +1695,20 @@ function BattleArenaContent() {
         return;
       }
 
-      const authed = await getFreshSession();
-      if (!isAuthBypassEnabled && !authed?.user && !battleId.startsWith("mock-")) {
-        if (mounted) setLoading(false);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      // 還原 session 可能略晚於首次 render，短重試避免 RLS 擋讀
+      let authed = session;
+      for (let i = 0; i < 6 && !authed?.user && !isAuthBypassEnabled; i++) {
+        await new Promise((r) => setTimeout(r, 80));
+        const { data: d2 } = await supabase.auth.getSession();
+        authed = d2.session;
+      }
+
+      const arenaEntryResult = await refreshArenaEntry();
+      if (!mounted) return;
+      if (arenaEntryResult === "battle" || arenaEntryResult === "redirect") {
         return;
       }
 
@@ -1128,9 +1720,93 @@ function BattleArenaContent() {
 
       if (!mounted) return;
       if (battleError || !data) {
-        console.error("[battle load]", battleError);
+        let { data: queueRow, error: queueError } = await supabase
+          .from("battle_queue")
+          .select("id,user_id,fighter_name,original_file_name,genre,ai_tool,lyrics,audio_path,status,match_group_id,expires_at,scheduled_start_at,cancellation_evaluation_at,created_at")
+          .eq("id", battleId)
+          .maybeSingle<QueueArenaRow>();
+
+        if (queueError) {
+          const msg = `${queueError.message ?? ""} ${queueError.details ?? ""} ${queueError.hint ?? ""}`;
+          const missingScheduleColumn = /scheduled_start_at|cancellation_evaluation_at|schema cache|column.*does not exist|PGRST204/i.test(msg);
+          if (missingScheduleColumn) {
+            const legacyRead = await supabase
+              .from("battle_queue")
+              .select("id,user_id,fighter_name,original_file_name,genre,ai_tool,lyrics,audio_path,status,match_group_id,expires_at,created_at")
+              .eq("id", battleId)
+              .maybeSingle<QueueArenaRow>();
+            queueRow = legacyRead.data;
+            queueError = legacyRead.error;
+          }
+        }
+
+        if (!mounted) return;
+        if (queueRow?.match_group_id) {
+          router.replace(`/battle/${encodeURIComponent(queueRow.match_group_id)}?lang=${lang}`);
+          return;
+        }
+
+        if (queueRow?.id) {
+          if (!isDropChallengeAcceptable({
+            status: queueRow.status,
+            scheduled_start_at: queueRow.scheduled_start_at,
+            cancellation_evaluation_at: queueRow.cancellation_evaluation_at,
+            expires_at: queueRow.expires_at,
+          })) {
+            router.replace(`/listen-bar?lang=${lang}`);
+            return;
+          }
+
+          const [{ data: fighterProfile }, { data: userProfile }] = queueRow.user_id
+            ? await Promise.all([
+                supabase.from("fighter_profiles").select("avatar_url, song_cover_url").eq("id", queueRow.user_id).maybeSingle(),
+                supabase.from("user_profiles").select("avatar_url, level").eq("id", queueRow.user_id).maybeSingle(),
+              ])
+            : [{ data: null }, { data: null }];
+          const queueStatus = queueRow.status ?? "waiting_challenge";
+          setBattle({
+            id: queueRow.id,
+            arena_kind: "queue",
+            match_group_id: queueRow.match_group_id,
+            queue_status: queueStatus,
+            fighter_a_user_id: queueRow.user_id ?? "",
+            fighter_b_user_id: null,
+            fighter_a_name: queueRow.fighter_name || "AIPOGER",
+            fighter_b_name: lang === "zh" ? "等待挑戰者" : "Waiting Rival",
+            song_a_name: queueRow.original_file_name || "60s Drop",
+            song_b_name: lang === "zh" ? "挑戰者 Drop" : "Rival Drop",
+            audio_a_path: queueRow.audio_path,
+            audio_b_path: null,
+            fighter_a_avatar: firstAvatarUrl(userProfile?.avatar_url, fighterProfile?.avatar_url),
+            fighter_b_avatar: null,
+            fighter_a_rank: rankLabelForLevel(typeof userProfile?.level === "number" ? userProfile.level : 1, queueRow.fighter_name || "AIPOGER"),
+            fighter_b_rank: null,
+            song_a_cover: fighterProfile?.song_cover_url ?? null,
+            song_b_cover: null,
+            ai_tool_a: queueRow.ai_tool?.trim() || "AI Music",
+            ai_tool_b: lang === "zh" ? "挑戰者進場後顯示" : "Shows after rival enters",
+            lyrics_a: typeof queueRow.lyrics === "string" && queueRow.lyrics.trim() ? queueRow.lyrics : null,
+            lyrics_b: null,
+            genre: queueRow.genre || "AI Music",
+            scheduled_start_at: resolveDropBattleScheduledStart(queueRow),
+            cancellation_evaluation_at: queueRow.cancellation_evaluation_at ?? null,
+            battle_started_at: null,
+            started_at: null,
+            status:
+              queueStatus === "expired"
+                ? "cancelled_no_challenger"
+                : queueStatus === "cancelled"
+                  ? "cancelled"
+                  : "pending",
+          });
+          setLoading(false);
+          return;
+        }
+
+        console.error("[battle load]", battleError ?? queueError);
         if (!data || battleError?.code === "PGRST116") {
-          setError("i18n:battle_not_found");
+          router.replace(`/listen-bar?lang=${lang}`);
+          return;
         } else {
           setError(battleError?.message ?? "i18n:battle_load_failed");
         }
@@ -1139,28 +1815,48 @@ function BattleArenaContent() {
       }
 
       const bdata = data as BattleData;
+      if (!battleId.startsWith("mock-") && !isAuthBypassEnabled) {
+        const resolutionResponse = await fetch(
+          `/api/battle-pool/resolve-battle-link?battleId=${encodeURIComponent(battleId)}&lang=${lang}`,
+          { cache: "no-store" },
+        ).catch(() => null);
+        if (resolutionResponse?.ok) {
+          const resolution = (await resolutionResponse.json().catch(() => null)) as BattleLinkResolutionPayload | null;
+          if (resolution?.action === "redirect" && resolution.href) {
+            router.replace(resolution.href);
+            return;
+          }
+        }
+      }
+
       // 同步載入兩邊的 fighter_profiles（頭像 + 封面；必須取 .data）
       const [{ data: rowA }, { data: rowB }, { data: profA }, { data: profB }] = await Promise.all([
         supabase.from("fighter_profiles").select("avatar_url, song_cover_url").eq("id", bdata.fighter_a_user_id).maybeSingle(),
-        supabase.from("fighter_profiles").select("avatar_url, song_cover_url").eq("id", bdata.fighter_b_user_id).maybeSingle(),
+        bdata.fighter_b_user_id
+          ? supabase.from("fighter_profiles").select("avatar_url, song_cover_url").eq("id", bdata.fighter_b_user_id).maybeSingle()
+          : Promise.resolve({ data: null }),
         supabase.from("user_profiles").select("avatar_url, level").eq("id", bdata.fighter_a_user_id).maybeSingle(),
-        supabase.from("user_profiles").select("avatar_url, level").eq("id", bdata.fighter_b_user_id).maybeSingle(),
+        bdata.fighter_b_user_id
+          ? supabase.from("user_profiles").select("avatar_url, level").eq("id", bdata.fighter_b_user_id).maybeSingle()
+          : Promise.resolve({ data: null }),
       ]);
       setBattle({
         ...(data as BattleData),
+        arena_kind: "battle",
         fighter_a_user_id: bdata.fighter_a_user_id,
         fighter_b_user_id: bdata.fighter_b_user_id,
         fighter_a_avatar: firstAvatarUrl(profA?.avatar_url, rowA?.avatar_url),
         fighter_b_avatar: firstAvatarUrl(profB?.avatar_url, rowB?.avatar_url),
         fighter_a_rank: rankLabelForLevel(typeof profA?.level === "number" ? profA.level : 1, bdata.fighter_a_name),
         fighter_b_rank: rankLabelForLevel(typeof profB?.level === "number" ? profB.level : 1, bdata.fighter_b_name),
-        song_a_cover: rowA?.song_cover_url ?? (bdata.song_a_cover as string | null | undefined) ?? null,
-        song_b_cover: rowB?.song_cover_url ?? (bdata.song_b_cover as string | null | undefined) ?? null,
+        song_a_cover: (bdata.song_a_cover as string | null | undefined) ?? rowA?.song_cover_url ?? null,
+        song_b_cover: (bdata.song_b_cover as string | null | undefined) ?? rowB?.song_cover_url ?? null,
         ai_tool_a: (bdata.ai_tool_a as string | null | undefined) ?? null,
         ai_tool_b: (bdata.ai_tool_b as string | null | undefined) ?? null,
         lyrics_a: typeof bdata.lyrics_a === "string" && bdata.lyrics_a.length > 0 ? bdata.lyrics_a : null,
         lyrics_b: typeof bdata.lyrics_b === "string" && bdata.lyrics_b.length > 0 ? bdata.lyrics_b : null,
         genre: typeof bdata.genre === "string" && bdata.genre.trim() ? bdata.genre : "AI Music",
+        scheduled_start_at: (bdata.scheduled_start_at as string | null | undefined) ?? null,
         battle_started_at: (bdata.battle_started_at as string | null | undefined) ?? null,
         started_at: (bdata.started_at as string | null | undefined) ?? null,
       });
@@ -1171,7 +1867,91 @@ function BattleArenaContent() {
     return () => {
       mounted = false;
     };
-  }, [battleId, searchParams, t]);
+  }, [battleId, lang, refreshArenaEntry, router, searchParams, t]);
+
+  useEffect(() => {
+    if (!battleId || loading || battle?.arena_kind !== "queue") return;
+
+    let disposed = false;
+    const refreshFromResolver = async () => {
+      if (disposed || arenaEntryRefreshInFlightRef.current) return;
+      arenaEntryRefreshInFlightRef.current = true;
+      try {
+        await refreshArenaEntry();
+      } finally {
+        arenaEntryRefreshInFlightRef.current = false;
+      }
+    };
+    const redirectToBattle = (nextBattleId: unknown) => {
+      if (typeof nextBattleId !== "string" || !nextBattleId) return false;
+      router.replace(`/battle/${encodeURIComponent(nextBattleId)}?lang=${lang}`);
+      return true;
+    };
+
+    const channel = supabase
+      .channel(`battle-queue-arena-${battleId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "battle_queue", filter: `id=eq.${battleId}` },
+        (payload) => {
+          const next = payload.new as QueueArenaRow;
+          if (redirectToBattle(next?.match_group_id)) {
+            return;
+          }
+          if (next?.id) {
+            setBattle((current) =>
+              current?.id === next.id && current.arena_kind === "queue"
+                ? {
+                    ...current,
+                    queue_status: next.status,
+                    status:
+                      next.status === "expired"
+                        ? "cancelled_no_challenger"
+                        : next.status === "cancelled"
+                          ? "cancelled"
+                          : "pending",
+                    scheduled_start_at: resolveDropBattleScheduledStart(next) ?? current.scheduled_start_at,
+                    cancellation_evaluation_at: next.cancellation_evaluation_at ?? current.cancellation_evaluation_at,
+                  }
+                : current,
+            );
+          }
+          void refreshFromResolver();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "battles", filter: `queue_a_id=eq.${battleId}` },
+        (payload) => {
+          if (!redirectToBattle((payload.new as { id?: unknown })?.id)) void refreshFromResolver();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "battles", filter: `queue_b_id=eq.${battleId}` },
+        (payload) => {
+          if (!redirectToBattle((payload.new as { id?: unknown })?.id)) void refreshFromResolver();
+        },
+      )
+      .subscribe();
+
+    const immediateTimer = window.setTimeout(refreshFromResolver, 450);
+    const interval = window.setInterval(refreshFromResolver, QUEUE_ARENA_REFRESH_MS);
+    const handleVisibilityRefresh = () => {
+      if (document.visibilityState === "visible") void refreshFromResolver();
+    };
+    window.addEventListener("focus", handleVisibilityRefresh);
+    document.addEventListener("visibilitychange", handleVisibilityRefresh);
+
+    return () => {
+      disposed = true;
+      window.clearTimeout(immediateTimer);
+      window.clearInterval(interval);
+      window.removeEventListener("focus", handleVisibilityRefresh);
+      document.removeEventListener("visibilitychange", handleVisibilityRefresh);
+      void supabase.removeChannel(channel);
+    };
+  }, [battle?.arena_kind, battleId, lang, loading, refreshArenaEntry, router]);
 
   // ── 封面（中心唱片貼紙）與頭像（左上角）分開解析 ────
   useEffect(() => {
@@ -1248,6 +2028,10 @@ function BattleArenaContent() {
 
       for (const [deck, path] of paths) {
         if (!path || path.startsWith("mock-")) continue;
+        if (/^(https?:|data:|\/)/i.test(path)) {
+          next[deck] = path;
+          continue;
+        }
         const { data: signed, error: signErr } = await supabase.storage
           .from("battle-audio")
           .createSignedUrl(path, 60 * 60);
@@ -1269,28 +2053,39 @@ function BattleArenaContent() {
 
   // ── 即時觀戰人數（Presence）────────────────────────────
   useEffect(() => {
-    if (!battleId || loading || isAuthBypassEnabled || !myUserId || battleId.startsWith("mock-")) return;
+    if (!battleId || loading || battleId.startsWith("mock-")) return;
+
+    const presenceKey = myUserId || battleGuestId;
+    if (!presenceKey) return;
 
     const channel = supabase.channel(`presence-battle-${battleId}`, {
-      config: { presence: { key: myUserId } },
+      config: { presence: { key: presenceKey } },
     });
 
     const countFromState = () => {
       const state = channel.presenceState();
       const users = new Set<string>();
       for (const presences of Object.values(state)) {
-        for (const p of presences as { user_id?: string }[]) {
-          if (p?.user_id) users.add(p.user_id);
+        for (const p of presences as { user_id?: string | null; guest_id?: string | null }[]) {
+          const id = p?.user_id || p?.guest_id;
+          if (id) users.add(id);
         }
       }
       setViewerCount(Math.max(1, users.size));
     };
 
-    channel.on("presence", { event: "sync" }, countFromState);
+    channel
+      .on("presence", { event: "sync" }, countFromState)
+      .on("presence", { event: "join" }, countFromState)
+      .on("presence", { event: "leave" }, countFromState);
 
     void channel.subscribe(async (status) => {
       if (status === "SUBSCRIBED") {
-        await channel.track({ user_id: myUserId, at: Date.now() });
+        await channel.track({
+          user_id: myUserId || null,
+          guest_id: battleGuestId || null,
+          at: Date.now(),
+        });
         countFromState();
       }
     });
@@ -1298,9 +2093,27 @@ function BattleArenaContent() {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [battleId, loading, myUserId]);
+  }, [battleGuestId, battleId, loading, myUserId]);
 
   const fireDanmaku = useCallback((message: ChatMessage | string) => {
+    if (typeof message !== "string") {
+      const stableMessageId = message.id?.trim();
+      if (stableMessageId) {
+        if (shownDanmakuMessageIdsRef.current.has(stableMessageId)) return;
+        shownDanmakuMessageIdsRef.current.add(stableMessageId);
+        if (shownDanmakuMessageIdsRef.current.size > 120) {
+          shownDanmakuMessageIdsRef.current = new Set(Array.from(shownDanmakuMessageIdsRef.current).slice(-80));
+        }
+      }
+      const fingerprint = `${message.user_id || ""}:${message.sender_type}:${message.content.trim()}`;
+      const now = Date.now();
+      const lastShownAt = shownDanmakuFingerprintsRef.current.get(fingerprint) ?? 0;
+      if (now - lastShownAt < 3500) return;
+      shownDanmakuFingerprintsRef.current.set(fingerprint, now);
+      if (shownDanmakuFingerprintsRef.current.size > 120) {
+        shownDanmakuFingerprintsRef.current = new Map(Array.from(shownDanmakuFingerprintsRef.current.entries()).slice(-80));
+      }
+    }
     const fallbackSender =
       typeof message === "string"
         ? ""
@@ -1380,17 +2193,40 @@ function BattleArenaContent() {
     const loadVotes = async () => {
       const { data: voteData } = await supabase
         .from("battle_votes")
-        .select("voted_for, user_id")
+        .select("voted_for,user_id,voter_role")
         .eq("battle_id", battleId);
 
-      if (voteData) {
-        setVotes({
-          fighter_a: voteData.filter((v) => v.voted_for === "fighter_a").length,
-          fighter_b: voteData.filter((v) => v.voted_for === "fighter_b").length,
-        });
-        const myVote = voteData.find((v) => v.user_id === myUserId);
-        if (myVote) setHasVoted(myVote.voted_for as "fighter_a" | "fighter_b");
+      let combinedCounts: VoteCount | null = null;
+      let combinedAudienceCount: number | null = null;
+      let guestVote: "fighter_a" | "fighter_b" | null = null;
+      const guestState = await fetch(
+        `/api/battle-pool/guest-vote?battleId=${encodeURIComponent(battleId)}&guestId=${encodeURIComponent(battleGuestId || getBattleGuestId())}`,
+        { cache: "no-store" },
+      )
+        .then((res) => (res.ok ? res.json() : null))
+        .catch(() => null) as
+        | { counts?: { fighter_a?: number; fighter_b?: number }; audienceCount?: number; guestVote?: "fighter_a" | "fighter_b" | null }
+        | null;
+      if (guestState?.counts) {
+        combinedCounts = {
+          fighter_a: Math.max(0, Number(guestState?.counts?.fighter_a) || 0),
+          fighter_b: Math.max(0, Number(guestState?.counts?.fighter_b) || 0),
+        };
+        combinedAudienceCount = Math.max(0, Number(guestState.audienceCount) || 0);
+        guestVote = guestState?.guestVote ?? null;
       }
+
+      const signedRows = ((voteData ?? []) as BattleVoteRow[]).filter((row) => !row.voter_role || row.voter_role === "audience");
+      const signedCounts = {
+        fighter_a: signedRows.filter((v) => v.voted_for === "fighter_a").length,
+        fighter_b: signedRows.filter((v) => v.voted_for === "fighter_b").length,
+      };
+      const signedAudienceCount = new Set(signedRows.map((row) => String(row.user_id || "").trim()).filter(Boolean)).size;
+      setVotes(combinedCounts ?? signedCounts);
+      setAudienceVoteCount(combinedAudienceCount ?? signedAudienceCount);
+      const myVote = signedRows.find((v) => v.user_id === myUserId);
+      if (myVote) setHasVoted(myVote.voted_for as "fighter_a" | "fighter_b");
+      else if (!myUserId && guestVote) setHasVoted(guestVote);
     };
 
     void loadVotes();
@@ -1405,11 +2241,22 @@ function BattleArenaContent() {
         },
       )
       .subscribe();
+    const guestChannel = supabase
+      .channel(`battle-guest-votes-${battleId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "battle_guest_votes", filter: `battle_id=eq.${battleId}` },
+        () => {
+          void loadVotes();
+        },
+      )
+      .subscribe();
 
     return () => {
       void supabase.removeChannel(channel);
+      void supabase.removeChannel(guestChannel);
     };
-  }, [battleId, loading, myUserId]);
+  }, [battleGuestId, battleId, loading, myUserId]);
 
   useEffect(() => {
     setPlayedDecks({ A: false, B: false });
@@ -1419,8 +2266,18 @@ function BattleArenaContent() {
     clearArenaEcho();
     setVoteOpen(false);
     setVoteCountdown(null);
+    setAudienceVoteCount(0);
     setWinnerRevealOpen(false);
+    setRematchPromptReady(false);
+    setNoContestOpen(false);
+    setRematchClaim(null);
+    setRematchBusy(false);
+    setRematchError(null);
     setHasVoted(null);
+    voteIntentInFlightRef.current = null;
+    pendingDeckAutoResumeRef.current = null;
+    mobileAudioUnlockedRef.current = false;
+    setMobileAudioBlocked(false);
     setActiveDeck(null);
     setFirstDeck(null);
     setCurrentDeck(null);
@@ -1428,14 +2285,17 @@ function BattleArenaContent() {
     setBattleStartedAtMs(null);
     setRpsChoices({ A: "✊", B: "✌️" });
     setRpsPressed({ A: false, B: false });
-    setReactionBursts([]);
     setFeedbackCounts(emptyFeedbackCounts());
     resumeDeckOffsetRef.current = null;
     sharedClockAppliedRef.current = null;
     finalCountdownSeedRef.current = FINAL_VOTE_SECONDS;
     finalCountdownActiveRef.current = false;
     resultRedirectArmedRef.current = false;
+    resultSequenceRef.current += 1;
     battleResultHrefRef.current = null;
+    rematchOpenedBattleRef.current = null;
+    shownDanmakuMessageIdsRef.current.clear();
+    shownDanmakuFingerprintsRef.current.clear();
     if (resultRedirectTimerRef.current != null) {
       window.clearTimeout(resultRedirectTimerRef.current);
       resultRedirectTimerRef.current = null;
@@ -1444,14 +2304,21 @@ function BattleArenaContent() {
       window.clearTimeout(pauseResumeTimerRef.current);
       pauseResumeTimerRef.current = null;
     }
-    audioARef.current?.pause();
-    audioBRef.current?.pause();
+    [audioARef.current, audioBRef.current].forEach((audio) => {
+      if (!audio) return;
+      audio.pause();
+      audio.loop = false;
+      audio.volume = 1;
+      audio.muted = false;
+    });
     stopTeaser();
+    clearDeckEchoHold();
     stopScratchTransition();
+    stopWinnerCountdownSfx();
     stopWinnerRevealSfx();
     setPreStartSecondsLeft(null);
     preBattleStartedRef.current = null;
-  }, [battleId, clearArenaEcho, stopScratchTransition, stopTeaser, stopWinnerRevealSfx]);
+  }, [battleId, clearArenaEcho, clearDeckEchoHold, stopScratchTransition, stopTeaser, stopWinnerCountdownSfx, stopWinnerRevealSfx]);
 
   useEffect(() => {
     if (loading || !battle || !battleId) return;
@@ -1467,8 +2334,12 @@ function BattleArenaContent() {
 
   useEffect(() => {
     if (loading || !battle || !battleId) return undefined;
+    if (isAiMusicAwaitingDefender) {
+      setPreStartSecondsLeft(null);
+      return undefined;
+    }
 
-    const scheduledStartMs = timestampParamMs(battle.started_at);
+    const scheduledStartMs = scheduledStartMsForBattle(battle);
     const alreadyStartedMs =
       timestampParamMs(searchParams.get("battleStartedAtMs")) ??
       timestampParamMs(searchParams.get("battleStartedAt")) ??
@@ -1481,13 +2352,17 @@ function BattleArenaContent() {
 
     const startKey = `${battleId}:${scheduledStartMs}`;
     const tick = () => {
-      const remaining = Math.ceil((scheduledStartMs - Date.now()) / 1000);
-      if (remaining > 0) {
-        setPreStartSecondsLeft(remaining);
+      const secondsUntilStart = Math.floor((scheduledStartMs - Date.now()) / 1000);
+      const remaining = Math.max(0, secondsUntilStart);
+      setPreStartSecondsLeft(remaining);
+      if (secondsUntilStart > 0) {
         return;
       }
 
-      setPreStartSecondsLeft(0);
+      if (battle.arena_kind === "queue") {
+        return;
+      }
+
       stopTeaser();
       if (preBattleStartedRef.current === startKey) return;
       preBattleStartedRef.current = startKey;
@@ -1503,21 +2378,22 @@ function BattleArenaContent() {
     tick();
     const timer = window.setInterval(tick, 1000);
     return () => window.clearInterval(timer);
-  }, [battle, battleId, beginBattleWithFirstDeck, loading, searchParams, stopTeaser]);
+  }, [battle, battleId, beginBattleWithFirstDeck, isAiMusicAwaitingDefender, loading, searchParams, stopTeaser]);
 
   useEffect(() => {
     return () => clearArenaEcho();
   }, [clearArenaEcho]);
 
   useEffect(() => {
-    if (loading || !battle || !battleId) return;
+    if (loading || !battle || !battleId || battle.arena_kind === "queue") return;
+    if (isAiMusicAwaitingDefender) return;
 
     const sharedStartedAtMs =
       timestampParamMs(searchParams.get("battleStartedAtMs")) ??
       timestampParamMs(searchParams.get("battleStartedAt")) ??
       timestampParamMs(battle.battle_started_at) ??
       (() => {
-        const scheduledStartMs = timestampParamMs(battle.started_at);
+        const scheduledStartMs = scheduledStartMsForBattle(battle);
         return scheduledStartMs && scheduledStartMs <= Date.now() ? scheduledStartMs : null;
       })();
     if (!sharedStartedAtMs) return;
@@ -1537,6 +2413,7 @@ function BattleArenaContent() {
     setRpsPressed({ A: true, B: true });
     setFirstDeck(sharedFirstDeck);
     resultRedirectArmedRef.current = false;
+    setNoContestOpen(false);
 
     if (elapsed < HOOK_BATTLE_SECONDS) {
       completedDecksRef.current = { A: false, B: false };
@@ -1547,6 +2424,25 @@ function BattleArenaContent() {
       setVoteCountdown(null);
       setBattlePhase("ready");
       resumeDeckOffsetRef.current = { deck: sharedFirstDeck, seconds: elapsed };
+      autoStartedDecksRef.current = { A: false, B: false };
+      return;
+    }
+
+    if (elapsed < SCRATCH_TRANSITION_START_SECONDS) {
+      completedDecksRef.current = {
+        A: sharedFirstDeck === "A",
+        B: sharedFirstDeck === "B",
+      };
+      setPlayedDecks({
+        A: sharedFirstDeck === "A",
+        B: sharedFirstDeck === "B",
+      });
+      setCurrentDeck(secondDeck);
+      setActiveDeck(null);
+      setVoteOpen(true);
+      setVoteCountdown(null);
+      queueDeckEchoHold(secondDeck, Math.max(0, SCRATCH_TRANSITION_START_SECONDS * 1000 - elapsedMs));
+      resumeDeckOffsetRef.current = null;
       autoStartedDecksRef.current = { A: false, B: false };
       return;
     }
@@ -1590,15 +2486,24 @@ function BattleArenaContent() {
       return;
     }
 
+    const finalVoteStartsAtMs = BATTLE_PLAYBACK_SECONDS * 1000 + FINAL_RESULT_CUE_DELAY_MS;
     completedDecksRef.current = { A: true, B: true };
     setPlayedDecks({ A: true, B: true });
     setCurrentDeck(null);
     setActiveDeck(null);
     setBattlePhase("final");
 
+    if (elapsedMs < finalVoteStartsAtMs) {
+      finalCountdownSeedRef.current = FINAL_VOTE_SECONDS;
+      finalCountdownActiveRef.current = false;
+      setVoteOpen(false);
+      setVoteCountdown(null);
+      return;
+    }
+
     const remainingVoteSeconds = Math.max(
       0,
-      Math.ceil((BATTLE_PLAYBACK_SECONDS * 1000 + FINAL_VOTE_SECONDS * 1000 - elapsedMs) / 1000),
+      Math.ceil((finalVoteStartsAtMs + FINAL_VOTE_SECONDS * 1000 - elapsedMs) / 1000),
     );
     if (remainingVoteSeconds > 0) {
       finalCountdownSeedRef.current = remainingVoteSeconds;
@@ -1611,10 +2516,11 @@ function BattleArenaContent() {
       setVoteCountdown(0);
       pushResultForEveryone(950);
     }
-  }, [battle, battleId, loading, pushResultForEveryone, queueScratchTransition, searchParams]);
+  }, [battle, battleId, isAiMusicAwaitingDefender, loading, pushResultForEveryone, queueDeckEchoHold, queueScratchTransition, searchParams]);
 
   useEffect(() => {
-    if (loading || !battle || !battleId || battlePhase !== "rps" || (rpsPressed.A && rpsPressed.B)) return;
+    if (loading || !battle || !battleId || battle.arena_kind === "queue" || battlePhase !== "rps" || (rpsPressed.A && rpsPressed.B)) return;
+    if (isAiMusicAwaitingDefender) return;
     const cycle = window.setInterval(() => {
       setRpsChoices((prev) => ({
         A: rpsCycle[(rpsCycle.indexOf(prev.A as (typeof rpsCycle)[number]) + 1) % rpsCycle.length],
@@ -1622,20 +2528,22 @@ function BattleArenaContent() {
       }));
     }, RPS_CYCLE_MS);
     return () => window.clearInterval(cycle);
-  }, [battle, battleId, battlePhase, loading, rpsPressed.A, rpsPressed.B]);
+  }, [battle, battleId, battlePhase, isAiMusicAwaitingDefender, loading, rpsPressed.A, rpsPressed.B]);
 
   useEffect(() => {
-    if (loading || !battle || !battleId || battlePhase !== "rps" || !rpsPressed.A || !rpsPressed.B) return;
+    if (loading || !battle || !battleId || battle.arena_kind === "queue" || battlePhase !== "rps" || !rpsPressed.A || !rpsPressed.B) return;
+    if (isAiMusicAwaitingDefender) return;
     const result = rpsResultForBattle(battleId);
     setRpsChoices({ A: result.choiceA, B: result.choiceB });
     const reveal = window.setTimeout(() => {
       beginBattleWithFirstDeck(result.firstDeck);
     }, 520);
     return () => window.clearTimeout(reveal);
-  }, [battle, battleId, battlePhase, beginBattleWithFirstDeck, loading, rpsPressed.A, rpsPressed.B]);
+  }, [battle, battleId, battlePhase, beginBattleWithFirstDeck, isAiMusicAwaitingDefender, loading, rpsPressed.A, rpsPressed.B]);
 
   useEffect(() => {
-    if (loading || !battle || !battleId || battlePhase !== "rps") return;
+    if (loading || !battle || !battleId || battle.arena_kind === "queue" || battlePhase !== "rps") return;
+    if (isAiMusicAwaitingDefender) return;
     if (rpsPressed.A === rpsPressed.B) return;
     const fallbackFirstDeck: DeckKey = rpsPressed.A ? "B" : "A";
     const timeout = window.setTimeout(() => {
@@ -1646,7 +2554,7 @@ function BattleArenaContent() {
       beginBattleWithFirstDeck(fallbackFirstDeck);
     }, 5000);
     return () => window.clearTimeout(timeout);
-  }, [battle, battleId, battlePhase, beginBattleWithFirstDeck, loading, rpsPressed.A, rpsPressed.B]);
+  }, [battle, battleId, battlePhase, beginBattleWithFirstDeck, isAiMusicAwaitingDefender, loading, rpsPressed.A, rpsPressed.B]);
 
   useEffect(() => {
     if (!playedDecks.A || !playedDecks.B) return;
@@ -1655,30 +2563,61 @@ function BattleArenaContent() {
     finalCountdownActiveRef.current = true;
     const initialSeconds = Math.max(1, Math.min(FINAL_VOTE_SECONDS, Math.ceil(finalCountdownSeedRef.current)));
     finalCountdownSeedRef.current = FINAL_VOTE_SECONDS;
-    setVoteOpen(true);
-    setVoteCountdown(initialSeconds);
     setBattlePhase("final");
     setCurrentDeck(null);
     setActiveDeck(null);
+    setVoteOpen(false);
+    setVoteCountdown(null);
 
-    const interval = window.setInterval(() => {
-      setVoteCountdown((prev) => {
-        if (prev === null) return null;
-        if (prev <= 1) {
-          window.clearInterval(interval);
-          setVoteOpen(false);
-          pushResultForEveryone(850);
-          return 0;
-        }
-        return prev - 1;
+    let interval: number | null = null;
+    let cancelled = false;
+    let visualCountdownSettled = false;
+    let resolveVisualCountdown: () => void = () => undefined;
+    const visualCountdownDone = new Promise<void>((resolve) => {
+      resolveVisualCountdown = resolve;
+    });
+    const settleVisualCountdown = () => {
+      if (visualCountdownSettled) return;
+      visualCountdownSettled = true;
+      setVoteOpen(false);
+      resolveVisualCountdown();
+    };
+
+    const startCountdownTimer = window.setTimeout(() => {
+      const countdownAudioDone = playWinnerCountdownSfx();
+      setVoteOpen(true);
+      setVoteCountdown(initialSeconds);
+
+      interval = window.setInterval(() => {
+        setVoteCountdown((prev) => {
+          if (prev === null) return null;
+          if (prev <= 1) {
+            if (interval != null) {
+              window.clearInterval(interval);
+              interval = null;
+            }
+            settleVisualCountdown();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      void Promise.all([visualCountdownDone, countdownAudioDone]).then(() => {
+        if (cancelled) return;
+        pushResultForEveryone(850);
       });
-    }, 1000);
+    }, FINAL_RESULT_CUE_DELAY_MS);
 
-    return () => window.clearInterval(interval);
-  }, [playedDecks.A, playedDecks.B, pushResultForEveryone]);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(startCountdownTimer);
+      if (interval != null) window.clearInterval(interval);
+    };
+  }, [playedDecks.A, playedDecks.B, playWinnerCountdownSfx, pushResultForEveryone]);
 
   // ── 播放控制 ──────────────────────────────────────────
-  const playDeck = useCallback((deck: DeckKey, restart: boolean, startAtSeconds = 0) => {
+  const playDeck = useCallback((deck: DeckKey, restart: boolean, startAtSeconds = 0): Promise<boolean> => {
     const target = deck === "A" ? audioARef.current : audioBRef.current;
     const other = deck === "A" ? audioBRef.current : audioARef.current;
     other?.pause();
@@ -1690,23 +2629,36 @@ function BattleArenaContent() {
       completedDecksRef.current[deck] = true;
       markDeckPlayed(deck);
       setActiveDeck(null);
-      return;
+      return Promise.resolve(false);
     }
     if (restart) {
       arenaEchoTriggeredRef.current[deck] = false;
       target.currentTime = Math.max(0, Math.min(HOOK_BATTLE_SECONDS - 0.25, startAtSeconds));
     }
-    void target
+    target.loop = false;
+    target.muted = false;
+    target.volume = 1;
+    return target
       .play()
       .then(() => {
+        pendingDeckAutoResumeRef.current = null;
+        setMobileAudioBlocked(false);
         setCurrentDeck(deck);
         setActiveDeck(deck);
         setBattlePhase("playing");
+        return true;
       })
       .catch(() => {
+        pendingDeckAutoResumeRef.current = {
+          deck,
+          restart: false,
+          startAtSeconds: Number.isFinite(target.currentTime) ? target.currentTime : startAtSeconds,
+        };
+        setMobileAudioBlocked(true);
         setCurrentDeck(deck);
         setActiveDeck(null);
         setBattlePhase("ready");
+        return false;
       });
   }, [markDeckPlayed]);
 
@@ -1715,8 +2667,9 @@ function BattleArenaContent() {
 
     clearScratchTransitionMedia();
     const remainingMs = Math.max(0, transitionEndsAtMs - Date.now());
-    const scratch = new Audio(SCRATCH_TRANSITION_SRC);
+    const scratch = scratchPrimeAudioRef.current ?? new Audio(SCRATCH_TRANSITION_SRC);
     scratch.preload = "auto";
+    scratch.muted = false;
     scratch.volume = 0.86;
     try {
       scratch.currentTime = Math.max(0, SCRATCH_TRANSITION_SECONDS - remainingMs / 1000);
@@ -1739,12 +2692,11 @@ function BattleArenaContent() {
       setTransitionEndsAtMs(null);
       setTransitionSecondsLeft(SCRATCH_TRANSITION_SECONDS);
       setCurrentDeck(transitionDeck);
-      autoStartedDecksRef.current[transitionDeck] = true;
       setBattlePhase("ready");
-      playDeck(transitionDeck, true);
+      void playDeck(transitionDeck, true);
     }, remainingMs);
 
-    void scratch.play().catch(() => undefined);
+    void scratch.play().catch(() => setMobileAudioBlocked(true));
 
     return () => clearScratchTransitionMedia();
   }, [battlePhase, clearScratchTransitionMedia, playDeck, transitionDeck, transitionEndsAtMs]);
@@ -1761,19 +2713,20 @@ function BattleArenaContent() {
 
       const otherDeck: DeckKey = deck === "A" ? "B" : "A";
       if (!completedDecksRef.current[otherDeck]) {
-        queueScratchTransition(otherDeck);
+        queueDeckEchoHold(otherDeck);
       } else {
         setCurrentDeck(null);
         setBattlePhase("final");
       }
     },
-    [markDeckPlayed, queueScratchTransition, triggerArenaEcho],
+    [markDeckPlayed, queueDeckEchoHold, triggerArenaEcho],
   );
 
   const handleToggleDeck = useCallback(
     (deck: DeckKey) => {
       if (
         battlePhase === "rps" ||
+        battlePhase === "echo" ||
         battlePhase === "transition" ||
         battlePhase === "final" ||
         deck !== currentDeck ||
@@ -1807,7 +2760,7 @@ function BattleArenaContent() {
   const handleDeckTimeUpdate = useCallback(
     (deck: DeckKey) => {
       const current = deck === "A" ? audioARef.current : audioBRef.current;
-      if (!current || completedDecksRef.current[deck]) return;
+      if (!current || completedDecksRef.current[deck] || battlePhase !== "playing" || activeDeck !== deck) return;
       const naturalDuration = Number.isFinite(current.duration) && current.duration > 0 ? current.duration : HOOK_BATTLE_SECONDS;
       const deckEndAt = Math.min(HOOK_BATTLE_SECONDS, naturalDuration);
       if (current.currentTime >= Math.max(0, deckEndAt - ARENA_ECHO_LEAD_SECONDS)) {
@@ -1818,7 +2771,7 @@ function BattleArenaContent() {
         completeDeck(deck);
       }
     },
-    [completeDeck, triggerArenaEcho],
+    [activeDeck, battlePhase, completeDeck, triggerArenaEcho],
   );
 
   useEffect(() => {
@@ -1827,9 +2780,81 @@ function BattleArenaContent() {
     autoStartedDecksRef.current[currentDeck] = true;
     const resume = resumeDeckOffsetRef.current?.deck === currentDeck ? resumeDeckOffsetRef.current.seconds : 0;
     resumeDeckOffsetRef.current = null;
-    const timer = window.setTimeout(() => playDeck(currentDeck, true, resume), 220);
-    return () => window.clearTimeout(timer);
+    let cancelled = false;
+    let retryTimer: number | null = null;
+    let attempts = 0;
+
+    const attemptPlay = () => {
+      attempts += 1;
+      void playDeck(currentDeck, true, resume).then((started) => {
+        if (cancelled) return;
+        if (started) return;
+        if (attempts < 4) {
+          retryTimer = window.setTimeout(attemptPlay, 420);
+          return;
+        }
+        autoStartedDecksRef.current[currentDeck] = false;
+      });
+    };
+
+    const timer = window.setTimeout(attemptPlay, 220);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      if (retryTimer != null) window.clearTimeout(retryTimer);
+    };
   }, [audioUrls, battlePhase, currentDeck, playDeck]);
+
+  const handleBattleAudioGesture = useCallback(() => {
+    void primeBattleAudioForMobile().then((unlocked) => {
+      if (!unlocked) {
+        setMobileAudioBlocked(true);
+        return;
+      }
+
+      const pending = pendingDeckAutoResumeRef.current;
+      if (pending && !completedDecksRef.current[pending.deck]) {
+        pendingDeckAutoResumeRef.current = null;
+        void playDeck(pending.deck, pending.restart, pending.startAtSeconds);
+        return;
+      }
+
+      if (isFinalPreStartCountdown) {
+        const announcer = finalPreStartHypeAudioRef.current;
+        if (announcer?.paused) {
+          announcer.muted = false;
+          announcer.volume = 0.94;
+          try {
+            announcer.currentTime = 0;
+          } catch {
+            // Keep the gesture path focused on playback.
+          }
+          void announcer.play().catch(() => setMobileAudioBlocked(true));
+        }
+      }
+
+      if (battlePhase !== "ready" || !currentDeck || completedDecksRef.current[currentDeck] || !audioUrls[currentDeck]) return;
+      const resume = resumeDeckOffsetRef.current?.deck === currentDeck ? resumeDeckOffsetRef.current.seconds : 0;
+      resumeDeckOffsetRef.current = null;
+      void playDeck(currentDeck, true, resume);
+    });
+  }, [audioUrls, battlePhase, currentDeck, isFinalPreStartCountdown, playDeck, primeBattleAudioForMobile]);
+
+  useEffect(() => {
+    if (!battleStartedAtMs || battle?.arena_kind === "queue" || (playedDecks.A && playedDecks.B) || battlePhase === "final") return;
+    const finalAtMs = battleStartedAtMs + BATTLE_PLAYBACK_SECONDS * 1000 + 180;
+    const timer = window.setTimeout(() => {
+      if (completedDecksRef.current.A && completedDecksRef.current.B) return;
+      audioARef.current?.pause();
+      audioBRef.current?.pause();
+      completedDecksRef.current = { A: true, B: true };
+      setPlayedDecks({ A: true, B: true });
+      setActiveDeck(null);
+      setCurrentDeck(null);
+      setBattlePhase("final");
+    }, Math.max(0, finalAtMs - Date.now()));
+    return () => window.clearTimeout(timer);
+  }, [battle?.arena_kind, battlePhase, battleStartedAtMs, playedDecks.A, playedDecks.B]);
 
   useEffect(() => {
     if (battlePhase !== "playing" || !activeDeck) {
@@ -1848,35 +2873,25 @@ function BattleArenaContent() {
     return () => window.cancelAnimationFrame(frame);
   }, [activeDeck, battlePhase]);
 
+  useEffect(() => {
+    if (!isFinalPreStartCountdown || !battleId) return;
+    const hypeKey = `${battleId}:${battle?.scheduled_start_at ?? battle?.started_at ?? battleStartedAtMs ?? "warmup"}`;
+    if (finalPreStartHypeRef.current === hypeKey) return;
+    finalPreStartHypeRef.current = hypeKey;
+    playFinalPreStartHype();
+  }, [
+    battle?.scheduled_start_at,
+    battle?.started_at,
+    battleId,
+    battleStartedAtMs,
+    isFinalPreStartCountdown,
+    playFinalPreStartHype,
+  ]);
+
   const handleRpsPress = useCallback((deck: DeckKey) => {
     if (battlePhase !== "rps") return;
     setRpsPressed((prev) => ({ ...prev, [deck]: true }));
   }, [battlePhase]);
-
-  const fireHypeReaction = useCallback((symbol: string, anchor: "left" | "center" | "right" = "center", broadcast = true) => {
-    const id = `${symbol}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const baseX = anchor === "left" ? 24 : anchor === "right" ? 76 : 50;
-    setReactionBursts((prev) => [
-      ...prev.slice(-22),
-      {
-        id,
-        symbol,
-        x: Math.max(8, Math.min(92, baseX + Math.round((Math.random() - 0.5) * 18))),
-        y: 18 + Math.round(Math.random() * 36),
-        size: 26 + Math.round(Math.random() * 14),
-      },
-    ]);
-    window.setTimeout(() => {
-      setReactionBursts((prev) => prev.filter((reaction) => reaction.id !== id));
-    }, 1850);
-    if (broadcast && (battleId.startsWith("mock-") || isAuthBypassEnabled)) {
-      void mockSyncChannelRef.current?.send({
-        type: "broadcast",
-        event: "reaction",
-        payload: { symbol, anchor },
-      });
-    }
-  }, [battleId]);
 
   const handleFeedbackTap = useCallback((deck: DeckKey, key: FeedbackKey, broadcast = true) => {
     if (!broadcast) {
@@ -1891,15 +2906,8 @@ function BattleArenaContent() {
         },
       }));
       fireDanmaku(label);
-      fireHypeReaction(deck === "A" ? "❤️" : "👍", deck === "A" ? "left" : "right", false);
       return;
     }
-
-    const isCurrentUserFighter = Boolean(
-      myUserId && battle && (myUserId === battle.fighter_a_user_id || myUserId === battle.fighter_b_user_id),
-    );
-    const canTapFeedback = !isCurrentUserFighter && battlePhase === "playing" && activeDeck === deck;
-    if (!canTapFeedback) return;
 
     const meta = feedbackButtons.find((item) => item.key === key);
     const label = lang === "zh" ? meta?.zh : meta?.en;
@@ -1912,7 +2920,6 @@ function BattleArenaContent() {
       },
     }));
     fireDanmaku(label);
-    fireHypeReaction(deck === "A" ? "❤️" : "👍", deck === "A" ? "left" : "right", false);
     if (broadcast) {
       void mockSyncChannelRef.current?.send({
         type: "broadcast",
@@ -1920,22 +2927,15 @@ function BattleArenaContent() {
         payload: { deck, key },
       });
     }
-  }, [activeDeck, battle, battleId, battlePhase, fireDanmaku, fireHypeReaction, lang, myUserId]);
+  }, [fireDanmaku, lang]);
 
-  function FeedbackBar({ deck, tone }: { deck: DeckKey; tone: "orange" | "blue" }) {
-    const isCurrentUserFighter = Boolean(
-      myUserId && battle && (myUserId === battle.fighter_a_user_id || myUserId === battle.fighter_b_user_id),
-    );
-    const activeForFeedback = !isCurrentUserFighter && battlePhase === "playing" && activeDeck === deck;
-    const disabledReason = isCurrentUserFighter
+  const renderFeedbackBar = (deck: DeckKey, tone: "orange" | "blue") => {
+    const activeForFeedback = Boolean(battleId);
+    const disabledReason = !activeForFeedback
       ? lang === "zh"
-        ? "鬥歌者只能投最終票，不能按反應鈕"
-        : "Fighters can only vote, not tap feedback"
-      : activeDeck !== deck || battlePhase !== "playing"
-        ? lang === "zh"
-          ? "只有這邊 Drop 正在播放時可按"
-          : "Available only while this Drop is playing"
-        : "";
+        ? "觀眾進場後就可以按反應鈕"
+        : "Listener Signal Is Live in the Arena"
+      : "";
     const toneClass =
       tone === "orange"
         ? activeForFeedback
@@ -1946,24 +2946,39 @@ function BattleArenaContent() {
           : "border-cyan-200/12 bg-cyan-400/[0.035] text-cyan-100/45";
     const countClass = tone === "orange" ? "text-orange-200" : "text-cyan-100";
     return (
-      <div className="mt-1 grid grid-cols-5 gap-1.5">
+      <div className="mt-2 grid touch-manipulation select-none grid-cols-3 gap-3 [-webkit-touch-callout:none] [-webkit-user-select:none] sm:grid-cols-5 sm:gap-1.5">
         {feedbackButtons.map((item) => (
           <button
             key={item.key}
             type="button"
             disabled={!activeForFeedback}
             onClick={() => handleFeedbackTap(deck, item.key)}
+            onContextMenu={(event) => event.preventDefault()}
             aria-label={`${deck === "A" ? "A SIDE" : "B SIDE"} ${lang === "zh" ? item.zh : item.en}`}
-            className={`min-h-9 rounded-xl border px-1.5 py-1.5 text-center text-[11px] font-black leading-tight transition active:scale-[0.96] disabled:cursor-not-allowed ${toneClass}`}
+            className={`min-h-16 touch-manipulation select-none rounded-2xl border px-3 py-3 text-center text-[15px] font-black leading-tight transition active:scale-[0.95] disabled:cursor-not-allowed [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] [-webkit-user-select:none] sm:min-h-10 sm:rounded-xl sm:px-1.5 sm:py-1.5 sm:text-[11px] ${toneClass}`}
             title={activeForFeedback ? (lang === "zh" ? `送出${item.zh}彈幕` : `Send ${item.en} feedback`) : disabledReason}
           >
-            <span className="block truncate">{lang === "zh" ? item.zh : item.en}</span>
-            <span className={`mt-0.5 block font-mono text-[10px] ${countClass}`}>{feedbackCounts[deck][item.key]}</span>
+            <span className="pointer-events-none block truncate">{lang === "zh" ? item.zh : item.en}</span>
+            <span className={`pointer-events-none mt-0.5 block font-mono text-[12px] sm:text-[10px] ${countClass}`}>{feedbackCounts[deck][item.key]}</span>
           </button>
         ))}
       </div>
     );
-  }
+  };
+
+  const applyRematchClaim = useCallback(
+    (claim: DropRematchClaimPayload) => {
+      if (!claim?.claimId) return;
+      if (rematchFallbackTimerRef.current != null) {
+        window.clearTimeout(rematchFallbackTimerRef.current);
+        rematchFallbackTimerRef.current = null;
+      }
+      setRematchPromptReady(true);
+      setRematchClaim(claim);
+      if (claim.nextBattleId) router.push(`/battle/${claim.nextBattleId}?lang=${lang}`);
+    },
+    [lang, router],
+  );
 
   useEffect(() => {
     if (!battleId) return;
@@ -1976,11 +2991,6 @@ function BattleArenaContent() {
         if (!message?.id || !message.content) return;
         fireDanmaku(message);
       })
-      .on("broadcast", { event: "reaction" }, (payload) => {
-        const data = payload.payload as { symbol?: string; anchor?: "left" | "center" | "right" };
-        if (typeof data.symbol !== "string" || !hypeReactions.includes(data.symbol as (typeof hypeReactions)[number])) return;
-        fireHypeReaction(data.symbol, data.anchor ?? "center", false);
-      })
       .on("broadcast", { event: "feedback" }, (payload) => {
         const data = payload.payload as { deck?: DeckKey; key?: FeedbackKey };
         const feedbackKey = feedbackButtons.find((item) => item.key === data.key)?.key;
@@ -1991,7 +3001,22 @@ function BattleArenaContent() {
       .on("broadcast", { event: "result-ready" }, (payload) => {
         const href = (payload.payload as { href?: unknown }).href;
         if (typeof href !== "string" || !href.startsWith("/battle/result")) return;
+        const countdownAudioDone = winnerCountdownPromiseRef.current;
+        if (countdownAudioDone) {
+          void countdownAudioDone.then(() => pushResultForEveryone(120, false, href));
+          return;
+        }
         pushResultForEveryone(120, false, href);
+      })
+      .on("broadcast", { event: "rematch-open" }, (payload) => {
+        const claim = (payload.payload as { claim?: DropRematchClaimPayload }).claim;
+        if (!claim?.claimId) return;
+        applyRematchClaim(claim);
+      })
+      .on("broadcast", { event: "rematch-claim" }, (payload) => {
+        const claim = (payload.payload as { claim?: DropRematchClaimPayload }).claim;
+        if (!claim?.claimId) return;
+        applyRematchClaim(claim);
       })
       .subscribe();
     mockSyncChannelRef.current = channel;
@@ -1999,92 +3024,380 @@ function BattleArenaContent() {
       mockSyncChannelRef.current = null;
       void supabase.removeChannel(channel);
     };
-  }, [battleId, fireDanmaku, fireHypeReaction, handleFeedbackTap, pushResultForEveryone]);
+  }, [applyRematchClaim, battleId, fireDanmaku, handleFeedbackTap, pushResultForEveryone]);
+
+  const readCurrentSessionUser = useCallback(async () => {
+    if (battleId.startsWith("mock-") || isAuthBypassEnabled) return { id: myUserId || "mock-audience" };
+    if (currentSessionUserIdRef.current || myUserId) return { id: currentSessionUserIdRef.current || myUserId };
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session?.user?.id) {
+      currentSessionUserIdRef.current = session.user.id;
+      if (!myUserId) setMyUserId(session.user.id);
+      return { id: session.user.id };
+    }
+    return null;
+  }, [battleId, myUserId]);
 
   const sendChatContent = useCallback(async (content: string) => {
     const trimmed = content.trim();
     if (!trimmed || !battleId) return;
+    const optimisticUserId = currentSessionUserIdRef.current || myUserId || battleGuestId || getBattleGuestId();
+    if (!battleGuestId && optimisticUserId.startsWith("guest-")) setBattleGuestId(optimisticUserId);
 
-    const senderType: SenderType =
-      myUserId === battle?.fighter_a_user_id
+    const optimisticSenderType: SenderType =
+      optimisticUserId === battle?.fighter_a_user_id
         ? "fighter_a"
-        : myUserId === battle?.fighter_b_user_id
+        : optimisticUserId === battle?.fighter_b_user_id
           ? "fighter_b"
           : "audience";
-    const senderName =
-      senderType === "fighter_a"
+    const optimisticSenderName =
+      optimisticSenderType === "fighter_a"
         ? battle?.fighter_a_name || myDisplayName
-        : senderType === "fighter_b"
+        : optimisticSenderType === "fighter_b"
           ? battle?.fighter_b_name || myDisplayName
-          : myDisplayName;
-
+          : optimisticUserId.startsWith("guest-")
+            ? battleGuestDisplayName(optimisticUserId)
+            : myDisplayName;
     const localMessage: ChatMessage = {
       id: `local-${Date.now()}`,
       battle_id: battleId,
-      user_id: myUserId,
-      sender_type: senderType,
+      user_id: optimisticUserId,
+      sender_type: optimisticSenderType,
       content: trimmed,
       created_at: new Date().toISOString(),
-      display_name: senderName || "AIPOGER 觀眾",
+      display_name: optimisticSenderName || "AIPOGER 觀眾",
     };
     fireDanmaku(localMessage);
 
-    if (battleId.startsWith("mock-") || isAuthBypassEnabled) {
+    void (async () => {
+      const actor = await readCurrentSessionUser();
+      const actorUserId = actor?.id ?? optimisticUserId;
+      if (!battleGuestId && actorUserId.startsWith("guest-")) setBattleGuestId(actorUserId);
+      const senderType: SenderType =
+        actorUserId === battle?.fighter_a_user_id
+          ? "fighter_a"
+          : actorUserId === battle?.fighter_b_user_id
+            ? "fighter_b"
+            : "audience";
+      const broadcastMessage: ChatMessage = {
+        ...localMessage,
+        user_id: actorUserId,
+        sender_type: senderType,
+      };
+
+      if (battleId.startsWith("mock-") || isAuthBypassEnabled || battle?.arena_kind === "queue" || actorUserId.startsWith("guest-")) {
+        void mockSyncChannelRef.current?.send({
+          type: "broadcast",
+          event: "chat",
+          payload: { message: broadcastMessage },
+        });
+        return;
+      }
+
+      await supabase.from("chat_messages").insert({
+        battle_id: battleId,
+        user_id: actorUserId,
+        sender_type: senderType,
+        content: trimmed,
+      });
+    })().catch((err) => {
+      console.warn("[battle chat send]", err);
       void mockSyncChannelRef.current?.send({
         type: "broadcast",
         event: "chat",
         payload: { message: localMessage },
       });
-      return;
-    }
-
-    await supabase.from("chat_messages").insert({
-      battle_id: battleId,
-      user_id: myUserId,
-      sender_type: senderType,
-      content: trimmed,
     });
-  }, [battle, battleId, fireDanmaku, myDisplayName, myUserId]);
+  }, [battle, battleGuestId, battleId, fireDanmaku, myDisplayName, myUserId, readCurrentSessionUser]);
 
   // ── 發送訊息 ──────────────────────────────────────────
-  const handleSend = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSend = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmed = chatInput.trim();
     if (!trimmed) return;
     setChatInput("");
-    await sendChatContent(trimmed);
+    void sendChatContent(trimmed);
   };
 
   // ── 投票 ──────────────────────────────────────────────
-  const handleVote = async (target: "fighter_a" | "fighter_b") => {
+  const handleVote = async (target: VoteSide) => {
     if (!voteOpen || !battleId) return;
+    if (isAiMusicAwaitingDefender) {
+      alert(lang === "zh" ? "等待關主接戰中，現在只能聽 5 秒預覽，不能投票。" : "Waiting for defender acceptance. Only 5s previews are open.");
+      return;
+    }
     if (hasVoted === target) {
       return;
     }
-    const previousVote = hasVoted;
+    if (voteIntentInFlightRef.current) return;
 
-    if (battleId.startsWith("mock-") || isAuthBypassEnabled) {
+    const previousVote = hasVoted;
+    voteIntentInFlightRef.current = target;
+    setHasVoted(target);
+    setVotes((prev) => applyVoteDelta(prev, previousVote, target));
+    if (!previousVote) setAudienceVoteCount((prev) => prev + 1);
+
+    const rollbackVote = () => {
+      setHasVoted(previousVote);
       setVotes((prev) => {
         const next = { ...prev };
-        if (previousVote) next[previousVote] = Math.max(0, next[previousVote] - 1);
-        next[target] += 1;
+        next[target] = Math.max(0, next[target] - 1);
+        if (previousVote) next[previousVote] += 1;
         return next;
       });
-      setHasVoted(target);
+      if (!previousVote) setAudienceVoteCount((prev) => Math.max(0, prev - 1));
+    };
+
+    if (battleId.startsWith("mock-") || isAuthBypassEnabled) {
+      voteIntentInFlightRef.current = null;
       return;
     }
 
-    const { error: voteError } = await supabase.rpc("cast_vote", {
-      p_battle_id: battleId,
-      p_voted_for: target,
-    });
+    try {
+      const actor = await readCurrentSessionUser();
 
-    if (voteError) {
-      alert(voteError.message.includes("Not authenticated") ? "請先登入再投票" : voteError.message);
-      return;
+      if (!actor?.id) {
+        const guestId = battleGuestId || getBattleGuestId();
+        if (!battleGuestId) setBattleGuestId(guestId);
+        const response = await fetch("/api/battle-pool/guest-vote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ battleId, guestId, votedFor: target }),
+        });
+        const payload = (await response.json().catch(() => null)) as
+          | { error?: string; counts?: { fighter_a: number; fighter_b: number }; audienceCount?: number }
+          | null;
+        if (!response.ok) {
+          rollbackVote();
+          alert(payload?.error ?? (lang === "zh" ? "投票失敗，請稍後再試。" : "Vote failed. Try again."));
+          return;
+        }
+        if (payload?.counts) setVotes(payload.counts);
+        if (typeof payload?.audienceCount === "number") setAudienceVoteCount(Math.max(0, payload.audienceCount));
+        return;
+      }
+
+      const { error: voteError } = await supabase.rpc("cast_vote", {
+        p_battle_id: battleId,
+        p_voted_for: target,
+      });
+
+      if (voteError) {
+        rollbackVote();
+        alert(voteError.message.includes("Not authenticated") ? "請先登入再投票" : voteError.message);
+      }
+    } catch (err) {
+      rollbackVote();
+      console.warn("[battle vote]", err);
+      alert(lang === "zh" ? "投票失敗，請稍後再試。" : "Vote failed. Try again.");
+    } finally {
+      if (voteIntentInFlightRef.current === target) voteIntentInFlightRef.current = null;
     }
-    setHasVoted(target);
   };
+
+  const handleFounderCancelChallenge = useCallback(async () => {
+    if (!battle || !battleId || founderCancelBusy) return;
+    setFounderCancelError(null);
+
+    if (battle.fighter_a_user_id !== myUserId) return;
+    if (battle.fighter_b_user_id) {
+      const msg = lang === "zh" ? "已有人接受挑戰，無法取消" : "A challenger has already accepted this battle.";
+      setFounderCancelError(msg);
+      return;
+    }
+    if (battle.status === "cancelled_founder") return;
+
+    const confirmed = window.confirm(lang === "zh" ? "確定要取消這場挑戰？取消後無法恢復。" : "Cancel this challenge? This cannot be undone.");
+    if (!confirmed) return;
+
+    setFounderCancelBusy(true);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        throw new Error(lang === "zh" ? "請先登入再取消挑戰。" : "Sign in before cancelling the challenge.");
+      }
+
+      if (battle.arena_kind === "queue") {
+        await cancelCurrentBattleIntent({ accessToken: token, queueId: battle.id });
+        setBattle((current) =>
+          current?.id === battleId
+            ? { ...current, status: "cancelled_founder", queue_status: "cancelled", cancellation_reason: "founder_manual" }
+            : current,
+        );
+        return;
+      }
+
+      const response = await fetch("/api/battle-pool/cancel-founder-challenge", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ battleId }),
+      });
+      const payload = (await response.json().catch(() => null)) as { error?: string; notificationError?: string | null } | null;
+      if (!response.ok) {
+        throw new Error(payload?.error || (lang === "zh" ? "取消挑戰失敗。" : "Failed to cancel the challenge."));
+      }
+
+      if (payload?.notificationError) {
+        console.warn("[battle founder cancel notification]", payload.notificationError);
+      }
+      setBattle((current) =>
+        current?.id === battleId
+          ? { ...current, status: "cancelled_founder", cancellation_reason: "founder_manual" }
+          : current,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : lang === "zh" ? "取消挑戰失敗。" : "Failed to cancel the challenge.";
+      setFounderCancelError(msg);
+      alert(msg);
+    } finally {
+      setFounderCancelBusy(false);
+    }
+  }, [battle, battleId, founderCancelBusy, lang, myUserId]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setRematchNowMs(Date.now()), 500);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!REMATCH_CHALLENGE_ENABLED) return;
+    const href = battleResultHrefRef.current;
+    const expiredClaim =
+      rematchClaim?.status === "expired" ||
+      (rematchClaim?.status === "open" &&
+        rematchDeadlineSecondsLeft(rematchClaim.claimWindowEndsAt, rematchNowMs) <= 0);
+    if (!href || !expiredClaim) return;
+    const redirectKey = `${rematchClaim.claimId}:${href}`;
+    if (rematchResultRedirectRef.current === redirectKey) return;
+    rematchResultRedirectRef.current = redirectKey;
+    router.push(href);
+  }, [rematchClaim?.claimId, rematchClaim?.claimWindowEndsAt, rematchClaim?.status, rematchNowMs, router]);
+
+  useEffect(() => {
+    if (!REMATCH_CHALLENGE_ENABLED) return;
+    if (!battleId || loading || battleId.startsWith("mock-") || isAuthBypassEnabled) return;
+    const channel = supabase
+      .channel(`drop-rematch-claims-${battleId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "drop_battle_rematch_claims", filter: `source_battle_id=eq.${battleId}` },
+        (payload) => {
+          const next = payload.new as Partial<DropRematchClaimRow> | null;
+          if (!next?.id || next.winner_side !== "fighter_a" && next.winner_side !== "fighter_b") return;
+          applyRematchClaim(rematchClaimFromRow(next as DropRematchClaimRow, battle?.genre || "AI Music"));
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [applyRematchClaim, battle?.genre, battleId, loading]);
+
+  const queueResultFallback = useCallback(
+    (delayMs = 1200) => {
+      const href = battleResultHrefRef.current;
+      if (!href) return;
+      if (rematchFallbackTimerRef.current != null) return;
+      rematchFallbackTimerRef.current = window.setTimeout(() => {
+        rematchFallbackTimerRef.current = null;
+        const latestHref = battleResultHrefRef.current;
+        if (latestHref) router.push(latestHref);
+      }, delayMs);
+    },
+    [router],
+  );
+
+  useEffect(() => {
+    if (!REMATCH_CHALLENGE_ENABLED) return;
+    if (loading || !battle || battle.arena_kind === "queue" || !playedDecks.A || !playedDecks.B || voteOpen || !rematchPromptReady || winnerRevealOpen) return;
+    if (battleId.startsWith("mock-") || isAuthBypassEnabled) return;
+    const winnerSideForWindow = pickDropBattleWinnerForRules(votes, battleId, firstDeck, battle.battle_type);
+    if (!winnerSideForWindow || votes.fighter_a + votes.fighter_b <= 0) return;
+    if (audienceVoteCount < DROP_BATTLE_OFFICIAL_AUDIENCE_MIN) {
+      queueResultFallback(700);
+      return;
+    }
+    const key = `${battleId}:${winnerSideForWindow}`;
+    if (rematchOpenedBattleRef.current === key) return;
+    rematchOpenedBattleRef.current = key;
+    setRematchError(null);
+    void openDropRematchWindowIntent({ battleId, winnerSide: winnerSideForWindow })
+      .then((claim) => {
+        applyRematchClaim(claim);
+        void mockSyncChannelRef.current?.send({
+          type: "broadcast",
+          event: "rematch-open",
+          payload: { claim },
+        });
+      })
+      .catch((err) => {
+        const message = err instanceof Error ? err.message : String(err);
+        if (!/No valid rematch window|not found/i.test(message)) setRematchError(message);
+        queueResultFallback(/No valid rematch window|not found/i.test(message) ? 700 : 1400);
+      });
+  }, [applyRematchClaim, audienceVoteCount, battle, battleId, firstDeck, loading, playedDecks.A, playedDecks.B, queueResultFallback, rematchPromptReady, voteOpen, votes, winnerRevealOpen]);
+
+  useEffect(() => {
+    if (!REMATCH_CHALLENGE_ENABLED) return;
+    if (!rematchClaim || !["open", "claimed"].includes(rematchClaim.status)) return;
+    if (battleId.startsWith("mock-") || isAuthBypassEnabled) return;
+    const timer = window.setInterval(() => {
+      void openDropRematchWindowIntent({ battleId: rematchClaim.sourceBattleId, winnerSide: rematchClaim.winnerSide })
+        .then((claim) => {
+          applyRematchClaim(claim);
+        })
+        .catch((err) => {
+          const message = err instanceof Error ? err.message : String(err);
+          if (!/No valid rematch window|not found/i.test(message)) setRematchError(message);
+        });
+    }, 800);
+    return () => window.clearInterval(timer);
+  }, [applyRematchClaim, battleId, rematchClaim]);
+
+  const handleClaimRematch = useCallback(async () => {
+    if (!rematchClaim || rematchBusy) return;
+    if (rematchClaim.winnerUserId === myUserId) {
+      setRematchError(lang === "zh" ? "擂主不能挑戰自己。" : "The defender cannot challenge themself.");
+      return;
+    }
+    setRematchBusy(true);
+    setRematchError(null);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        rememberAuthNextPath(currentReturnPath());
+        router.push(`/auth?next=${encodeURIComponent(currentReturnPath())}`);
+        return;
+      }
+      const result = await claimDropRematchIntent({
+        accessToken,
+        sourceBattleId: rematchClaim.sourceBattleId,
+        lang,
+      });
+      setRematchClaim(result.claim);
+      void mockSyncChannelRef.current?.send({
+        type: "broadcast",
+        event: "rematch-claim",
+        payload: { claim: result.claim },
+      });
+      router.push(result.uploadUrl);
+    } catch (err) {
+      setRematchError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setRematchBusy(false);
+    }
+  }, [lang, myUserId, rematchBusy, rematchClaim, router]);
 
   const totalVotes = votes.fighter_a + votes.fighter_b;
   const pctA = totalVotes > 0 ? Math.round((votes.fighter_a / totalVotes) * 100) : 50;
@@ -2143,11 +3456,64 @@ function BattleArenaContent() {
     );
   }
 
+  if (isQueueArena && !isQueueChallengeOpen) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#050505] px-5 text-zinc-200">
+        <div className="w-full max-w-xl rounded-[2rem] border border-orange-300/28 bg-black/72 p-7 text-center shadow-[0_0_70px_rgba(255,106,0,0.16)]">
+          <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-200/80">DROP BATTLE ARENA</p>
+          <h1 className="mt-4 text-3xl font-black text-white">
+            {lang === "zh" ? "這張戰帖已結束" : "This arena has ended"}
+          </h1>
+          <p className="mt-3 text-sm font-bold leading-7 text-zinc-400">
+            {lang === "zh"
+              ? "這個 Drop Battle 戰場已取消或過期。可以回鬥歌場開新戰帖。"
+              : "This Drop Battle arena was cancelled or expired. Open a new card from the Battle page."}
+          </p>
+          <Link
+            href={`/battle?lang=${lang}`}
+            className="mt-6 inline-flex rounded-full bg-orange-500 px-6 py-3 text-sm font-black text-black transition hover:bg-orange-300"
+          >
+            {lang === "zh" ? "回鬥歌場" : "Back to Battle"}
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const lyricA = battle.lyrics_a?.trim() ?? "";
   const lyricB = battle.lyrics_b?.trim() ?? "";
   const currentUserSide: DeckKey | null =
     myUserId === battle.fighter_a_user_id ? "A" : myUserId === battle.fighter_b_user_id ? "B" : null;
-  const isMockBattle = battleId.startsWith("mock-");
+  const isBattleFounder = Boolean(myUserId && myUserId === battle.fighter_a_user_id);
+  const hasChallengerAccepted = Boolean(battle.fighter_b_user_id);
+  const founderCancelDisabled =
+    founderCancelBusy ||
+    hasChallengerAccepted ||
+    battle.status === "cancelled_founder" ||
+    battle.status === "cancelled_no_challenger" ||
+    battle.status === "finished" ||
+    battle.status === "cancelled";
+  const founderCancelTitle = hasChallengerAccepted
+    ? lang === "zh"
+      ? "已有人接受挑戰，無法取消"
+      : "A challenger has already accepted this battle."
+    : battle.status === "cancelled_founder"
+      ? lang === "zh"
+        ? "已取消"
+        : "Cancelled"
+      : undefined;
+  const founderCancelLabel =
+    battle.status === "cancelled_founder"
+      ? lang === "zh"
+        ? "已取消"
+        : "Cancelled"
+      : founderCancelBusy
+        ? lang === "zh"
+          ? "取消中..."
+          : "Cancelling..."
+        : lang === "zh"
+          ? "取消挑戰"
+          : "Cancel Challenge";
   const canControlDeck = (deck: DeckKey) => isMockBattle || currentUserSide === deck;
   const currentFighterName = currentDeck === "A" ? battle.fighter_a_name : currentDeck === "B" ? battle.fighter_b_name : "";
   const firstFighterName = firstDeck === "A" ? battle.fighter_a_name : firstDeck === "B" ? battle.fighter_b_name : "";
@@ -2158,7 +3524,7 @@ function BattleArenaContent() {
     return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   })();
   const preStartTimeLabel = (() => {
-    const scheduledStartMs = timestampParamMs(battle.started_at);
+    const scheduledStartMs = scheduledStartMsForBattle(battle);
     if (!scheduledStartMs) return "";
     return new Intl.DateTimeFormat(lang === "zh" ? "zh-TW" : "en", {
       month: "2-digit",
@@ -2168,7 +3534,11 @@ function BattleArenaContent() {
       hour12: false,
     }).format(new Date(scheduledStartMs));
   })();
-  const voteStatusText = voteOpen
+  const voteStatusText = isAiMusicAwaitingDefender
+    ? lang === "zh"
+      ? "等待關主接戰"
+      : "Waiting Defender"
+    : voteOpen
     ? battlePlaybackComplete
       ? `截止倒數 ${voteCountdown ?? FINAL_VOTE_SECONDS}`
       : "投票開放"
@@ -2176,20 +3546,28 @@ function BattleArenaContent() {
       ? "投票截止"
       : lang === "zh"
         ? "投票尚未開放"
-        : "Voting not open";
+        : "Voting Not Open";
   const ritualStatusText =
-    isPreBattle
+    isAiMusicAwaitingDefender
       ? lang === "zh"
-        ? `開戰倒數 ${preStartClock} · 先聽 5 秒 teaser`
-        : `Starts in ${preStartClock} · 5s teasers open`
+        ? "等待關主接戰 · 可聽 5 秒預播 · 投票未開放"
+        : "Waiting for defender · 5s previews open · Voting closed"
+      : isArenaWarmup
+      ? lang === "zh"
+        ? isQueueArena
+          ? `${preStartSecondsLeft && preStartSecondsLeft > 0 ? `開戰倒數 ${preStartClock}` : "鬥場暖場中"} · 可離開再回來`
+          : `開戰倒數 ${preStartClock} · 先聽 5 秒預播`
+        : isQueueArena
+          ? `${preStartSecondsLeft && preStartSecondsLeft > 0 ? `Starts in ${preStartClock}` : "Arena Warmup"} · Re-Enter Anytime`
+          : `Starts in ${preStartClock} · 5s previews open`
       : battlePhase === "rps"
       ? lang === "zh"
         ? rpsPressed.A || rpsPressed.B
           ? "等待另一位參賽者按下猜拳"
           : "請兩位參賽者同時按下猜拳"
         : rpsPressed.A || rpsPressed.B
-          ? "Waiting for the other fighter"
-          : "Both fighters press to throw"
+          ? "Waiting for the Other Fighter"
+          : "Both Fighters Press to Throw"
       : battlePhase === "ready"
         ? lang === "zh"
           ? `${currentFighterName || firstFighterName} 先攻 · 請按 PLAY`
@@ -2202,41 +3580,67 @@ function BattleArenaContent() {
             ? lang === "zh"
               ? "暫停最多 1 秒，馬上續播"
               : "Pause max 1s, resuming"
-            : battlePhase === "transition"
+            : battlePhase === "echo"
               ? lang === "zh"
-                ? `Scratch 過場 · ${transitionDeck === "A" ? battle.fighter_a_name : battle.fighter_b_name} 準備進場`
-                : `Scratch transition · ${transitionDeck === "A" ? battle.fighter_a_name : battle.fighter_b_name} entering`
-            : voteOpen
-              ? lang === "zh"
-                ? `剩最後 ${voteCountdown ?? FINAL_VOTE_SECONDS} 秒投票`
-                : `${voteCountdown ?? FINAL_VOTE_SECONDS}s left to vote`
-              : voteStatusText;
+                ? `尾韻延伸 · ${echoDeck === "A" ? battle.fighter_a_name : battle.fighter_b_name} Scratch 準備`
+                : `Echo tail · ${echoDeck === "A" ? battle.fighter_a_name : battle.fighter_b_name} scratch incoming`
+              : battlePhase === "transition"
+                ? lang === "zh"
+                  ? `Scratch 過場 · ${transitionDeck === "A" ? battle.fighter_a_name : battle.fighter_b_name} 準備進場`
+                  : `Scratch transition · ${transitionDeck === "A" ? battle.fighter_a_name : battle.fighter_b_name} entering`
+                : voteOpen
+                  ? lang === "zh"
+                    ? `剩最後 ${voteCountdown ?? FINAL_VOTE_SECONDS} 秒投票`
+                    : `${voteCountdown ?? FINAL_VOTE_SECONDS}s left to vote`
+                  : voteStatusText;
   const voteCenterText =
     showFinalVoteStats && totalVotes > 0
       ? `${voteStatusText} · ${t("battle_vote_total", { count: totalVotes })}`
       : `${ritualStatusText} · ${lang === "zh" ? "請依照音樂感動去最終投票支持" : "Final support should follow the feeling of the music."}`;
+  const voteHeartLabelA = showFinalVoteStats
+    ? t("battle_deck_vote_line", { n: votes.fighter_a })
+    : lang === "zh"
+      ? "投 A"
+      : "Vote A";
+  const voteHeartLabelB = showFinalVoteStats
+    ? t("battle_deck_vote_line", { n: votes.fighter_b })
+    : lang === "zh"
+      ? "投 B"
+      : "Vote B";
+  const desktopVoteHeartLabelA = showFinalVoteStats
+    ? `A SIDE · ${voteHeartLabelA}`
+    : `A SIDE · ${battle.fighter_a_name}`;
+  const desktopVoteHeartLabelB = showFinalVoteStats
+    ? `B SIDE · ${voteHeartLabelB}`
+    : `B SIDE · ${battle.fighter_b_name}`;
   const viewerBadge = (() => {
     if (viewerCount <= 1) {
       return (
-        <span className="inline-flex items-center justify-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-orange-300 shadow-[0_0_10px_rgba(251,146,60,0.72)]" />
-          {lang === "zh" ? "等待聽眾進場 · Bar 推播中" : "Waiting for listeners · Bar push active"}
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-yellow-300 shadow-[0_0_14px_rgba(250,204,21,0.9)]" />
+          {lang === "zh" ? "等待聽眾" : "Waiting"}
         </span>
       );
     }
-    const parts = t("arena_viewers").split("{{n}}");
-    if (parts.length === 2) {
-      return (
-        <>
-          {parts[0]}
-          <span className="mx-0.5 font-semibold text-orange-300">{viewerCount}</span>
-          {parts[1]}
-        </>
-      );
-    }
-    return t("arena_viewers", { n: viewerCount });
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <span className="h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_14px_rgba(103,232,249,0.95)]" />
+        {lang === "zh" ? (
+          <>
+            觀戰 <span className="font-mono text-yellow-200">{viewerCount}</span> 人
+          </>
+        ) : (
+          <>
+            <span className="font-mono text-yellow-200">{viewerCount}</span> Live
+          </>
+        )}
+      </span>
+    );
   })();
-  const winnerIsB = votes.fighter_b > votes.fighter_a;
+  const resultEligible = audienceVoteCount >= DROP_BATTLE_OFFICIAL_AUDIENCE_MIN;
+  const winnerRpcSide = resultEligible ? pickDropBattleWinnerForRules(votes, battleId, firstDeck, battle.battle_type) : null;
+  const hasResultWinner = Boolean(winnerRpcSide);
+  const winnerIsB = winnerRpcSide === "fighter_b";
   const winnerSide: DeckKey = winnerIsB ? "B" : "A";
   const winnerName = winnerIsB ? battle.fighter_b_name : battle.fighter_a_name;
   const winnerSong = winnerIsB ? battle.song_b_name : battle.song_a_name;
@@ -2249,6 +3653,7 @@ function BattleArenaContent() {
   const opponentCover = winnerIsB ? vinylCoverA : vinylCoverB;
   const opponentAvatar = winnerIsB ? vinylAvatarA : vinylAvatarB;
   const battleResultHref = (() => {
+    if (!winnerRpcSide) return "";
     const params = new URLSearchParams({
       winner: winnerName,
       song: winnerSong,
@@ -2263,11 +3668,12 @@ function BattleArenaContent() {
       finalVoteLeft: String(pctA),
       finalVoteRight: String(pctB),
       votesTotal: String(totalVotes),
+      audienceCount: String(audienceVoteCount),
       accuracy: String(Math.max(pctA, pctB)),
       feedbackA: JSON.stringify(feedbackCounts.A),
       feedbackB: JSON.stringify(feedbackCounts.B),
       battleId,
-      winnerSide: winnerSide === "B" ? "fighter_b" : "fighter_a",
+      winnerSide: winnerRpcSide,
     });
     if (winnerCover) params.set("coverUrl", winnerCover);
     if (winnerAvatar) params.set("avatarUrl", winnerAvatar);
@@ -2275,16 +3681,56 @@ function BattleArenaContent() {
     if (opponentAvatar) params.set("opponentAvatarUrl", opponentAvatar);
     return `/battle/result?${params.toString()}`;
   })();
-  battleResultHrefRef.current = battleResultHref;
+  battleResultHrefRef.current = battleResultHref || null;
+
+  const rematchClaimSecondsLeft = rematchDeadlineSecondsLeft(rematchClaim?.claimWindowEndsAt, rematchNowMs);
+  const rematchUploadSecondsLeft = rematchDeadlineSecondsLeft(rematchClaim?.uploadDeadlineAt, rematchNowMs);
+  const rematchOpenForClaim = rematchClaim?.status === "open" && rematchClaimSecondsLeft > 0;
+  const rematchClaimed = rematchClaim?.status === "claimed" && rematchUploadSecondsLeft > 0;
+  const rematchExpired = rematchClaim?.status === "expired" || (rematchClaim?.status === "open" && rematchClaimSecondsLeft <= 0);
+  const rematchStatusTitle =
+    rematchClaimed
+      ? lang === "zh"
+        ? "挑戰者準備中"
+        : "Challenger Preparing"
+      : rematchExpired
+        ? lang === "zh"
+          ? "守擂挑戰已截止"
+          : "Rematch Closed"
+        : lang === "zh"
+          ? "有人要挑戰擂主嗎？"
+          : "Who Wants the Defender?";
+  const rematchStatusDesc =
+    rematchClaimed
+      ? lang === "zh"
+        ? `擂主守擂中，挑戰者還有 ${rematchUploadSecondsLeft} 秒上傳 Drop。`
+        : `The defender is holding the stage. Challenger has ${rematchUploadSecondsLeft}s to upload.`
+      : rematchExpired
+        ? lang === "zh"
+          ? "沒有人接戰，這場 Battle 已結束。"
+          : "No challenger claimed the slot. This Battle is complete."
+        : lang === "zh"
+          ? "第一個按下的人取得挑戰席，接著有 120 秒上傳 Drop。"
+          : "First tap gets the slot, then 120 seconds to upload a Drop.";
+  const rematchClaimDisabled =
+    rematchBusy ||
+    !rematchOpenForClaim ||
+    (Boolean(myUserId) && myUserId === rematchClaim?.winnerUserId);
 
   const battleShareUrl = (() => {
     const params = new URLSearchParams({ lang });
+    if (isQueueArena) {
+      return battleShortPath(battleId, lang);
+    }
+    if (!isMockBattle && !isAuthBypassEnabled) {
+      return battleShortPath(battleId, lang);
+    }
     params.set("l", battle.fighter_a_name);
     params.set("r", battle.fighter_b_name);
     params.set("ls", battle.song_a_name);
     params.set("rs", battle.song_b_name);
     params.set("g", battle.genre);
-    params.set("bt", "90s Drop Battle");
+    params.set("bt", "60s Drop Battle");
     if (battle.ai_tool_a) params.set("ta", battle.ai_tool_a);
     if (battle.ai_tool_b) params.set("tb", battle.ai_tool_b);
     if (battleStartedAtMs) params.set("s", String(battleStartedAtMs));
@@ -2294,19 +3740,49 @@ function BattleArenaContent() {
     }
     return `/battle/invite/${encodeURIComponent(battleId)}?${params.toString()}`;
   })();
-  const battleShareTitle = `${battle.fighter_a_name} VS ${battle.fighter_b_name} | AIPOGER Drop Battle`;
+  const battleShareTitle = isQueueArena
+    ? `${battle.fighter_a_name} 的 AIPOGER Drop Battle 戰場`
+    : `${battle.fighter_a_name} VS ${battle.fighter_b_name} | AIPOGER Drop Battle`;
+  const battleStartShareLine = preStartTimeLabel
+    ? lang === "zh"
+      ? `開戰時間: ${preStartTimeLabel}（台灣時間）。請大家提前進場。`
+      : `Starts: ${preStartTimeLabel} Taiwan time. Please enter 1 minute early.`
+    : lang === "zh"
+      ? "請大家提前進場。"
+      : "Please enter 1 minute early.";
   const battleShareText =
     lang === "zh"
-      ? isPreBattle
-        ? `${battle.fighter_a_name} 對上 ${battle.fighter_b_name}，已進 AIPOGER 鬥歌場倒數。進來先聽 5 秒 teaser，時間到開打！`
+      ? isQueueArena
+        ? `${battle.fighter_a_name}的《${battle.song_a_name}》AIPOGER Drop Battle 戰帖已開。${battleStartShareLine}進場聽 5 秒預播、聊天預測，或直接接戰。`
+        : isPreBattle
+        ? `${battle.fighter_a_name} 對上 ${battle.fighter_b_name}，已進 AIPOGER 鬥歌場倒數。${battleStartShareLine}進來先聽 5 秒預播，時間到開打！`
         : `${battle.fighter_a_name} 對上 ${battle.fighter_b_name}，正在 AIPOGER 鬥歌場開打。進來聽 Drop、投票、丟彈幕！`
-      : isPreBattle
-        ? `${battle.fighter_a_name} vs ${battle.fighter_b_name} is counting down on AIPOGER. Hear the 5s teasers before it starts.`
-        : `${battle.fighter_a_name} vs ${battle.fighter_b_name} is live on AIPOGER. Listen, vote, and make some noise.`;
+      : isQueueArena
+        ? `${battle.fighter_a_name}'s AIPOGER Drop Battle card is open. ${battleStartShareLine} Enter for the 5-second teaser, chat, or step in as the challenger.`
+        : isPreBattle
+        ? `${battle.fighter_a_name} vs ${battle.fighter_b_name} is counting down on AIPOGER. ${battleStartShareLine} Hear the 5s previews before it starts.`
+        : `${battle.fighter_a_name} vs ${battle.fighter_b_name} is LIVE on AIPOGER. Listen, vote, and make some noise.`;
+  const isOpenChallengeStage = isQueueArena && isQueueChallengeOpen;
+  const activeSidePanelClass = (side: DeckKey) => {
+    const active = battlePhase === "playing" && activeDeck === side;
+    const dimmed = battlePhase === "playing" && activeDeck && activeDeck !== side;
+    const tone =
+      side === "A"
+        ? active
+          ? "border-orange-200/60 bg-orange-500/[0.075] shadow-[0_30px_100px_rgba(255,106,0,0.28),inset_0_1px_0_rgba(255,255,255,0.08)]"
+          : "border-orange-400/18 bg-black/45 shadow-[0_24px_90px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.05)]"
+        : active
+          ? "border-cyan-100/60 bg-cyan-400/[0.07] shadow-[0_30px_100px_rgba(34,211,238,0.22),inset_0_1px_0_rgba(255,255,255,0.08)]"
+          : "border-blue-400/18 bg-black/45 shadow-[0_24px_90px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.05)]";
+    return `${tone} ${active ? "scale-[1.012]" : ""} ${dimmed ? "opacity-62 brightness-75" : ""}`;
+  };
 
   return (
     <div
-      className={`${fontGlowSansBattle.className} relative flex h-screen min-h-screen flex-col overflow-hidden bg-black text-zinc-100 antialiased ${vinylDebugMode ? "pb-24" : ""}`}
+      className={`${fontGlowSansBattle.className} aipoger-battle-touch relative flex min-h-[100svh] flex-col overflow-x-hidden overflow-y-auto bg-black text-zinc-100 antialiased md:h-screen md:min-h-screen md:overflow-y-auto ${vinylDebugMode ? "pb-24" : ""}`}
+      onClickCapture={handleBattleAudioGesture}
+      onPointerDownCapture={handleBattleAudioGesture}
+      onTouchStartCapture={handleBattleAudioGesture}
     >
       <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_18%_16%,rgba(255,106,0,0.18),transparent_32%),radial-gradient(circle_at_84%_18%,rgba(59,130,246,0.18),transparent_32%),linear-gradient(180deg,#020202_0%,#050505_44%,#0d0806_100%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.13] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:52px_52px]" />
@@ -2317,6 +3793,69 @@ function BattleArenaContent() {
           <div className="absolute inset-x-0 top-1/2 h-px bg-gradient-to-r from-transparent via-cyan-100/60 to-transparent shadow-[0_0_42px_rgba(103,232,249,0.48)]" />
         </div>
       )}
+      {mobileAudioBlocked && !winnerRevealOpen && !noContestOpen ? (
+        <button
+          type="button"
+          onPointerDown={(event) => {
+            event.stopPropagation();
+            handleBattleAudioGesture();
+          }}
+          onClick={handleBattleAudioGesture}
+          className="fixed left-1/2 top-[4.25rem] z-[120] flex min-h-12 -translate-x-1/2 touch-manipulation select-none items-center justify-center rounded-full border border-yellow-200/70 bg-yellow-300 px-5 py-3 text-sm font-black tracking-[0.08em] text-black shadow-[0_0_34px_rgba(250,204,21,0.42)] transition active:scale-[0.97] md:top-5"
+        >
+          {lang === "zh" ? "點一下開聲續播" : "Tap to resume sound"}
+        </button>
+      ) : null}
+      {renderPreBattleAd && adVideoPosition ? (
+        <div className="pointer-events-none fixed inset-0 z-[44]">
+          <div
+            className={`pointer-events-auto overflow-hidden rounded-[1.15rem] border border-orange-100/24 bg-black/54 shadow-[0_24px_74px_rgba(0,0,0,0.52),0_0_42px_rgba(255,106,0,0.2)] backdrop-blur-xl transition-opacity duration-1000 ${
+              showPreBattleAd ? "opacity-[0.82]" : "opacity-0"
+            }`}
+            style={{
+              width: "min(calc(100vw - 2rem), 340px)",
+              transform: `translate3d(${adVideoPosition.x}px, ${adVideoPosition.y}px, 0)`,
+            }}
+            onPointerMove={handleAdVideoDragMove}
+            onPointerUp={handleAdVideoDragEnd}
+            onPointerCancel={handleAdVideoDragEnd}
+          >
+            <div
+              className="flex cursor-grab touch-none items-center justify-between gap-2 border-b border-white/10 bg-black/58 px-3 py-2 active:cursor-grabbing"
+              onPointerDown={handleAdVideoDragStart}
+            >
+              <span className="truncate text-[10px] font-black uppercase tracking-[0.18em] text-orange-100/84">
+                {lang === "zh" ? "AIPOGER 浮空暖場" : "AIPOGER Warmup"}
+              </span>
+              <span className="rounded-full border border-white/14 bg-white/[0.06] px-2 py-0.5 text-[10px] font-black text-zinc-200">
+                {lang === "zh" ? "拖動" : "Drag"}
+              </span>
+            </div>
+            <div className="relative aspect-video bg-black">
+              <video
+                ref={adVideoRef}
+                src={PRE_BATTLE_AD_VIDEO_SRC}
+                autoPlay
+                playsInline
+                loop
+                preload="auto"
+                muted={adVideoMuted}
+                onEnded={handleAdVideoEnded}
+                className="h-full w-full object-contain opacity-[0.86]"
+              />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,transparent,rgba(0,0,0,0.28)_76%)]" />
+              <button
+                type="button"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={() => setAdVideoMuted((value) => !value)}
+                className="absolute bottom-2 right-2 rounded-full border border-white/16 bg-black/68 px-3 py-1 text-[10px] font-black text-white/86 backdrop-blur transition hover:border-orange-100 hover:text-white"
+              >
+                {adVideoMuted ? (lang === "zh" ? "開聲" : "Sound") : (lang === "zh" ? "靜音" : "Mute")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {battlePlaybackComplete && voteOpen && (
         <div className="pointer-events-none absolute inset-0 z-[95] flex items-center justify-center bg-black/28 backdrop-blur-[1px]">
           <div className="relative flex h-[min(54vw,430px)] w-[min(54vw,430px)] flex-col items-center justify-center rounded-full border border-yellow-200/40 bg-[radial-gradient(circle,rgba(255,191,74,0.18),rgba(0,0,0,0.72)_58%,rgba(0,0,0,0.08)_76%)] shadow-[0_0_90px_rgba(255,106,0,0.46),inset_0_0_80px_rgba(255,255,255,0.06)] [animation:aipogerVotePulse_1s_ease-in-out_infinite]">
@@ -2334,6 +3873,24 @@ function BattleArenaContent() {
           </div>
         </div>
       )}
+      {voteOpen && !winnerRevealOpen && !noContestOpen ? (
+        <div className="fixed inset-x-2 bottom-[7.25rem] z-[100] grid grid-cols-2 gap-2 sm:hidden">
+          <VoteHeartButton
+            selected={hasVoted === "fighter_a"}
+            voteLocked={!voteOpen}
+            onVote={() => handleVote("fighter_a")}
+            label={`A SIDE · ${battle.fighter_a_name}`}
+            tone="orange"
+          />
+          <VoteHeartButton
+            selected={hasVoted === "fighter_b"}
+            voteLocked={!voteOpen}
+            onVote={() => handleVote("fighter_b")}
+            label={`B SIDE · ${battle.fighter_b_name}`}
+            tone="blue"
+          />
+        </div>
+      ) : null}
       {winnerRevealOpen && (
         <div className="pointer-events-none absolute inset-0 z-[98] flex items-center justify-center overflow-hidden bg-black/72 backdrop-blur-[2px]">
           <div className="absolute h-[min(98vw,760px)] w-[min(98vw,760px)] rounded-full bg-[conic-gradient(from_0deg,transparent,rgba(255,214,120,0.34),transparent,rgba(103,232,249,0.22),transparent)] blur-sm [animation:aipogerWinnerRays_3s_linear_infinite]" />
@@ -2368,12 +3925,67 @@ function BattleArenaContent() {
               {winnerName}
             </p>
             <p className="mt-3 rounded-full border border-white/14 bg-black/60 px-5 py-2 text-[clamp(0.92rem,2.5vw,1.12rem)] font-black text-white/86">
-              {lang === "zh" ? "成果卡產生中" : "Creating result card"}
+              {lang === "zh" ? "成果卡產生中" : "Creating Result Card"}
             </p>
           </div>
         </div>
       )}
-      <div className="pointer-events-none absolute inset-x-0 top-[4.8rem] z-[45] h-[54vh] overflow-hidden">
+      {REMATCH_CHALLENGE_ENABLED && rematchClaim && battlePlaybackComplete && hasResultWinner && !winnerRevealOpen && !noContestOpen && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/78 px-5 text-center backdrop-blur-[2px]">
+          <div className="relative w-[min(94vw,680px)] overflow-hidden rounded-[2rem] border border-orange-200/45 bg-black/88 px-6 py-7 shadow-[0_0_110px_rgba(255,106,0,0.36),inset_0_0_80px_rgba(255,255,255,0.045)]">
+            <div className="pointer-events-none absolute inset-x-[-18%] top-0 h-px bg-gradient-to-r from-transparent via-orange-200 to-transparent shadow-[0_0_48px_rgba(255,106,0,0.7)]" />
+            <p className="text-[11px] font-black uppercase tracking-[0.32em] text-orange-200/78">
+              {lang === "zh" ? "擂主挑戰時間" : "Challenge Window"}
+            </p>
+            <h2 className="mt-3 text-[clamp(2.1rem,8vw,4.8rem)] font-black leading-none text-white drop-shadow-[0_0_40px_rgba(255,106,0,0.42)]">
+              {rematchStatusTitle}
+            </h2>
+            {rematchOpenForClaim ? (
+              <p className="mx-auto mt-4 flex h-[clamp(8rem,32vw,13rem)] w-[clamp(8rem,32vw,13rem)] items-center justify-center rounded-full border border-yellow-100/50 bg-[radial-gradient(circle,rgba(255,214,120,0.28),rgba(255,106,0,0.18)_46%,rgba(0,0,0,0.7)_72%)] text-[clamp(5rem,20vw,9rem)] font-black leading-none text-yellow-100 shadow-[0_0_80px_rgba(255,106,0,0.44)] [animation:aipogerVotePulse_1s_ease-in-out_infinite]">
+                {rematchClaimSecondsLeft}
+              </p>
+            ) : null}
+            <p className="mx-auto mt-4 max-w-[34rem] text-sm font-bold leading-7 text-zinc-300">{rematchStatusDesc}</p>
+            {rematchError && <p className="mt-3 text-sm font-bold text-red-300">{rematchError}</p>}
+            <button
+              type="button"
+              onClick={() => void handleClaimRematch()}
+              disabled={rematchClaimDisabled}
+              className="mt-6 min-h-14 w-full rounded-full border border-orange-100/70 bg-orange-500 px-6 py-4 text-base font-black text-black shadow-[0_0_34px_rgba(255,106,0,0.34)] transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:border-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-500 sm:w-auto sm:min-w-[16rem]"
+            >
+              {rematchBusy
+                ? lang === "zh"
+                  ? "搶席中"
+                  : "Claiming"
+                : lang === "zh"
+                  ? "我要挑戰擂主"
+                  : "Challenge Defender"}
+            </button>
+          </div>
+        </div>
+      )}
+      {noContestOpen && (
+        <div className="absolute inset-0 z-[98] flex items-center justify-center bg-black/76 px-5 text-center backdrop-blur-[2px]">
+          <div className="w-[min(92vw,560px)] rounded-[1.8rem] border border-white/12 bg-black/72 px-6 py-7 shadow-[0_0_80px_rgba(0,0,0,0.5)]">
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-zinc-400">NO CONTEST</p>
+            <h2 className="mt-3 text-3xl font-black text-white">
+              {lang === "zh" ? "觀眾不足，戰績未成立" : "Audience Too Small"}
+            </h2>
+            <p className="mt-3 text-sm font-bold leading-6 text-zinc-300">
+              {lang === "zh"
+                ? `正式戰績需要至少 ${DROP_BATTLE_OFFICIAL_AUDIENCE_MIN} 位非參賽者投票；目前 ${audienceVoteCount}/${DROP_BATTLE_OFFICIAL_AUDIENCE_MIN}，不產生成果卡、不進 Showtime、不算勝敗。`
+                : `Official records need at least ${DROP_BATTLE_OFFICIAL_AUDIENCE_MIN} non-fighter votes. Current audience voters: ${audienceVoteCount}/${DROP_BATTLE_OFFICIAL_AUDIENCE_MIN}. No result card, no Showtime entry, no win/loss.`}
+            </p>
+            <Link
+              href={`/battle?lang=${lang}`}
+              className="mt-5 inline-flex rounded-full border border-orange-300/45 bg-orange-500 px-5 py-3 text-sm font-black text-black transition hover:bg-orange-300"
+            >
+              {lang === "zh" ? "回鬥歌場" : "Back to Battle"}
+            </Link>
+          </div>
+        </div>
+      )}
+      <div className={`pointer-events-none fixed inset-x-0 top-[4.6rem] z-[75] overflow-hidden ${voteOpen ? "bottom-[16.4rem] md:bottom-[5.25rem]" : "bottom-[7.6rem] md:bottom-[5.25rem]"}`}>
         {danmakuItems.map((item) => (
           <span
             key={item.id}
@@ -2388,28 +4000,18 @@ function BattleArenaContent() {
           </span>
         ))}
       </div>
-      <div className="pointer-events-none absolute inset-0 z-40 overflow-hidden">
-        {reactionBursts.map((reaction) => (
-          <span
-            key={reaction.id}
-            className="absolute rounded-full border border-white/15 bg-black/68 px-3 py-2 shadow-[0_0_30px_rgba(255,106,0,0.32)]"
-            style={{
-              left: `${reaction.x}%`,
-              bottom: `${reaction.y}%`,
-              fontSize: `${reaction.size}px`,
-              animation: "aipogerArenaReaction 1.85s ease-out forwards",
-            }}
-          >
-            {reaction.symbol}
-          </span>
-        ))}
-      </div>
 
       {/* 頂部：歌擂台｜Drop Battle 招牌｜語言 */}
-      <header className="sticky top-0 z-30 grid grid-cols-3 items-center border-b border-white/10 bg-black/70 px-4 py-2.5 backdrop-blur-xl">
-        <Link href="/" className="min-w-0 text-[clamp(14px,2.8vw,16px)] font-medium tracking-wide text-white hover:opacity-85">
-          {t("battle_arena_nav")}
-        </Link>
+      <header className="sticky top-0 z-30 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-b border-white/10 bg-black/70 px-3 py-2.5 backdrop-blur-xl sm:px-4">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0 rounded-full border border-orange-300/35 bg-orange-500/10 px-2 py-1 text-[10px] font-black tracking-[0.14em] text-orange-100 shadow-[0_0_18px_rgba(255,106,0,0.18)] sm:px-3 sm:tracking-[0.18em]">
+            <span className="sm:hidden">AI</span>
+            <span className="hidden sm:inline">AIPOGER</span>
+          </span>
+          <span className="inline-flex min-h-8 min-w-0 max-w-[7rem] items-center justify-center rounded-full border border-yellow-200/65 bg-yellow-300/14 px-2 py-1 text-[10px] font-black text-yellow-50 shadow-[0_0_24px_rgba(250,204,21,0.24)] sm:max-w-none sm:px-3 sm:text-xs">
+            {viewerBadge}
+          </span>
+        </div>
         <div className="flex justify-center">
           <NextImage
             src="/hook-warfare-sign.svg"
@@ -2430,16 +4032,43 @@ function BattleArenaContent() {
               copiedLabel="已複製"
               className="hidden sm:inline-flex"
             />
+            <ReportButton
+              targetType="battle"
+              targetId={battleId}
+              targetTitle={`${battle.fighter_a_name} VS ${battle.fighter_b_name}`}
+              targetUrl={battleShareUrl}
+              context={`Battle arena status=${battle.status}; phase=${battlePhase}; A=${battle.song_a_name}; B=${battle.song_b_name}`}
+              lang={lang}
+              className="hidden sm:inline-flex"
+            />
             <LangToggle variant="inline" />
           </div>
         </div>
       </header>
 
       {/* 擂台主體 */}
-      <main className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-2 md:px-7">
-        <section className="mx-auto grid w-full max-w-[1540px] shrink-0 items-start gap-y-3 lg:grid-cols-[1fr_auto_1fr] lg:gap-x-7 lg:gap-y-0">
+      <main className="relative z-10 flex min-h-0 flex-1 flex-col overflow-visible px-4 pb-44 pt-2 md:overflow-visible md:px-7 md:pb-32">
+        <section className="mx-auto mb-3 hidden w-full max-w-[1540px] grid-cols-[1fr_auto_1fr] items-center gap-4 rounded-[1.15rem] border border-white/10 bg-black/46 px-4 py-3 shadow-[0_18px_70px_rgba(0,0,0,0.26)] backdrop-blur-xl lg:grid">
+          <div className="min-w-0">
+            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-orange-200/75">A SIDE</p>
+            <p className="mt-1 truncate text-lg font-black text-white">{battle.fighter_a_name}</p>
+            <p className="truncate text-xs font-bold text-zinc-500">{battle.song_a_name}</p>
+          </div>
+          <div className="min-w-[19rem] rounded-full border border-orange-300/24 bg-black/56 px-5 py-2 text-center shadow-[0_0_28px_rgba(255,106,0,0.12)]">
+            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-zinc-500">
+              {battle.genre || "AI Music"} · {voteStatusText}
+            </p>
+            <p className="mt-1 text-sm font-black text-orange-100">{ritualStatusText}</p>
+          </div>
+          <div className="min-w-0 text-right">
+            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-100/75">B SIDE</p>
+            <p className="mt-1 truncate text-lg font-black text-white">{battle.fighter_b_name}</p>
+            <p className="truncate text-xs font-bold text-zinc-500">{battle.song_b_name}</p>
+          </div>
+        </section>
+        <section className="mx-auto grid w-full max-w-[1540px] items-start gap-y-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.72fr)_minmax(0,1fr)] lg:gap-x-6 lg:gap-y-0">
           {/* 左欄 */}
-          <div className="order-2 flex flex-col self-start overflow-hidden rounded-[2rem] border border-orange-400/18 bg-black/45 px-4 pb-2 pt-3 shadow-[0_24px_90px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl md:px-6 lg:order-none">
+          <div className={`order-2 flex flex-col self-start overflow-hidden rounded-[2rem] border px-4 pb-2 pt-3 backdrop-blur-xl transition-[opacity,filter,transform,box-shadow,border-color,background-color] duration-300 md:px-6 lg:order-none ${activeSidePanelClass("A")}`}>
             <div className="-mx-4 -mt-3 mb-2 h-1 bg-gradient-to-r from-orange-500 via-orange-300 to-transparent md:-mx-6" />
             <VinylDisc
               side="left"
@@ -2450,11 +4079,11 @@ function BattleArenaContent() {
               avatarUrl={vinylAvatarA}
               isPlaying={activeDeck === "A"}
               onToggle={() => handleToggleDeck("A")}
-              onAvatarReact={() => fireHypeReaction("❤️", "left")}
               playDisabled={
-                isPreBattle ||
+                isArenaWarmup ||
                 !canControlDeck("A") ||
                 battlePhase === "rps" ||
+                battlePhase === "echo" ||
                 battlePhase === "transition" ||
                 battlePhase === "final" ||
                 currentDeck !== "A" ||
@@ -2466,32 +4095,25 @@ function BattleArenaContent() {
               aiTool={battle.ai_tool_a}
               layoutNumbers={vinylLayout}
             />
-            <FeedbackBar deck="A" tone="orange" />
+            {renderFeedbackBar("A", "orange")}
             <div className="lyric-pitch-scroll lyric-pitch-scroll-orange mt-1.5 flex min-h-[58px] max-h-[78px] items-start justify-center overflow-y-auto whitespace-pre-wrap rounded-[1.05rem] bg-black/25 px-4 py-2 text-center text-[clamp(0.66rem,0.82vw,0.78rem)] font-semibold leading-[1.08] text-white/80 shadow-[inset_0_0_44px_rgba(255,255,255,0.022)] md:min-h-[66px] md:max-h-[88px]">
               {lyricA || t("battle_lyrics_empty")}
             </div>
             <div className="mt-1 flex flex-col gap-1 pb-0.5 pt-0.5">
-              <div className="flex w-full justify-start pr-8">
+              <div className="hidden w-full justify-start sm:flex">
                 <VoteHeartButton
                   selected={hasVoted === "fighter_a"}
                   voteLocked={!voteOpen}
                   onVote={() => handleVote("fighter_a")}
+                  label={desktopVoteHeartLabelA}
+                  tone="orange"
                 />
-              </div>
-              <div className="w-full">
-                <div className="flex justify-between text-[11px] text-zinc-500">
-                  <span>{showFinalVoteStats ? t("battle_deck_vote_line", { n: votes.fighter_a }) : lang === "zh" ? "最終投票隱藏中" : "Final vote hidden"}</span>
-                  <span>{showFinalVoteStats ? `${pctA}%` : "MUSIC FIRST"}</span>
-                </div>
-                <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-neutral-950 ring-1 ring-white/5">
-                  <div className="h-full rounded-full bg-gradient-to-r from-orange-600 to-orange-300 transition-all" style={{ width: showFinalVoteStats ? `${pctA}%` : "50%" }} />
-                </div>
               </div>
             </div>
           </div>
 
           {/* 中：LOGO + VS */}
-          <div className="order-1 flex flex-col items-center justify-center gap-3 lg:order-none lg:w-[min(330px,23vw)]">
+          <div className="order-1 flex flex-col items-center justify-center gap-3 lg:order-none lg:w-full">
             <div className="relative flex min-h-[270px] w-full max-w-[320px] flex-col items-center justify-center overflow-visible px-4 py-4">
               <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_50%_28%,rgba(255,106,0,0.2),transparent_36%)]" />
               <div
@@ -2524,51 +4146,140 @@ function BattleArenaContent() {
                 className="relative h-[clamp(160px,18vw,240px)] w-[clamp(160px,18vw,240px)] select-none object-contain drop-shadow-[0_0_38px_rgba(255,255,255,0.22)]"
                 priority
               />
-              {isPreBattle ? (
+              {isArenaWarmup ? (
                 <div className="relative -mt-1 w-full rounded-[1.4rem] border border-orange-300/30 bg-black/62 px-4 py-4 text-center shadow-[0_0_44px_rgba(255,106,0,0.18)]">
                   <p className="text-[11px] font-black uppercase tracking-[0.22em] text-orange-200/80">
-                    {lang === "zh" ? "已進鬥場 · 等時間開打" : "Arena Open · Battle Starts Soon"}
+                    {isAiMusicAwaitingDefender
+                      ? lang === "zh"
+                        ? "等待關主接戰"
+                        : "Waiting Defender"
+                      : isQueueArena
+                      ? lang === "zh"
+                        ? "鬥場已開 · 可離開再回來"
+                        : "Arena Open · Re-enter Anytime"
+                      : lang === "zh"
+                        ? "已進鬥場 · 等時間開打"
+                        : "Arena Open · Battle Starts Soon"}
                   </p>
                   <p className="mt-2 bg-gradient-to-b from-white via-orange-200 to-orange-500 bg-clip-text text-[clamp(3.2rem,9vw,5.4rem)] font-black leading-none text-transparent drop-shadow-[0_0_34px_rgba(255,106,0,0.55)]">
-                    {preStartClock}
+                    {isAiMusicAwaitingDefender ? "PENDING" : preStartClock}
                   </p>
+                  {isFinalPreStartCountdown ? (
+                    <div className="mx-auto mt-3 max-w-[17rem] rounded-2xl border border-red-100/70 bg-red-600 px-3 py-2 text-white shadow-[0_0_28px_rgba(220,38,38,0.34)]">
+                      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-white/80">
+                        {lang === "zh" ? "最後倒數" : "Final Countdown"}
+                      </p>
+                      <p className="mt-1 text-3xl font-black leading-none">{preStartSecondsLeft}</p>
+                      <p className="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-white">
+                        Ladies & Gentlemen, Fighters!
+                      </p>
+                    </div>
+                  ) : null}
                   <p className="mt-2 text-xs font-bold leading-5 text-zinc-300">
-                    {lang === "zh"
-                      ? `${preStartTimeLabel ? `${preStartTimeLabel} ` : ""}時間到自動開打。先分享戰帖，觀眾可進場聽雙方 5 秒 teaser。`
-                      : `${preStartTimeLabel ? `${preStartTimeLabel} ` : ""}Auto-starts on time. Share the card and let listeners hear both 5s teasers.`}
+                    {isAiMusicAwaitingDefender
+                      ? lang === "zh"
+                        ? "攻擂邀請已送出；關主接受後才會依預定時間開打。等待期間雙方可聽 5 秒預播，但不能投票。"
+                        : "The challenge invite is sent. The battle starts at the scheduled time only after defender acceptance. 5s previews are open; voting is closed."
+                      : isQueueArena
+                      ? lang === "zh"
+                        ? `${preStartTimeLabel ? `${preStartTimeLabel} 開戰。` : ""}你可以在時間內出去再進來；挑戰者進場後會自動切入正式猜拳開打。`
+                        : `${preStartTimeLabel ? `${preStartTimeLabel} start. ` : ""}Leave and re-enter before the time. When a rival joins, this arena switches into the formal throw.`
+                      : lang === "zh"
+                        ? `${preStartTimeLabel ? `${preStartTimeLabel} ` : ""}時間到自動開打。先分享戰帖，觀眾可進場聽雙方 5 秒預播。`
+                        : `${preStartTimeLabel ? `${preStartTimeLabel} ` : ""}Auto-starts on time. Share the card and let listeners hear both 5s previews.`}
                   </p>
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => playTeaser("A")}
                       disabled={!audioUrls.A}
-                      className="rounded-2xl border border-orange-300/30 bg-orange-500/12 px-3 py-3 text-left transition hover:border-orange-200/70 hover:bg-orange-500/20 disabled:cursor-not-allowed disabled:opacity-45"
+                      className="rounded-2xl border border-red-200/70 bg-red-600 px-3 py-3 text-left text-white shadow-[0_0_24px_rgba(220,38,38,0.22)] transition hover:border-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-45"
                     >
-                      <p className="truncate text-[11px] font-black text-orange-100">{battle.fighter_a_name}</p>
-                      <p className="mt-1 text-sm font-black text-white">
-                        {teaserDeck === "A" ? `TEASER ${teaserSecondsLeft}s` : "PLAY 5S"}
+                      <p className="truncate text-[11px] font-black text-white/82">{battle.fighter_a_name}</p>
+                      <p className="mt-1 text-sm font-black tracking-[0.06em] text-white">
+                        {teaserDeck === "A"
+                          ? lang === "zh"
+                            ? `預播中 ${teaserSecondsLeft}秒`
+                            : `PREVIEW ${teaserSecondsLeft}s`
+                          : lang === "zh"
+                            ? "預播 5 秒"
+                            : "PREVIEW 5S"}
                       </p>
                     </button>
                     <button
                       type="button"
-                      onClick={() => playTeaser("B")}
-                      disabled={!audioUrls.B}
-                      className="rounded-2xl border border-cyan-200/30 bg-cyan-400/12 px-3 py-3 text-left transition hover:border-cyan-100/70 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-45"
+                      onClick={() => {
+                        if (isQueueChallengeOpen && !isBattleFounder) {
+                          router.push(`/battle/accept/${encodeURIComponent(battleId)}?lang=${lang}`);
+                          return;
+                        }
+                        playTeaser("B");
+                      }}
+                      disabled={!isQueueChallengeOpen && !audioUrls.B}
+                      className={`rounded-2xl border px-3 py-3 text-left text-white transition ${
+                        isQueueChallengeOpen
+                          ? "border-cyan-100/85 bg-cyan-400/22 shadow-[0_0_34px_rgba(103,232,249,0.38)] hover:border-white hover:bg-cyan-300/28"
+                          : "border-red-200/70 bg-red-600 shadow-[0_0_24px_rgba(220,38,38,0.22)] hover:border-white hover:bg-red-500 disabled:cursor-not-allowed disabled:border-cyan-200/25 disabled:bg-cyan-400/10 disabled:text-cyan-50 disabled:opacity-55"
+                      }`}
                     >
-                      <p className="truncate text-[11px] font-black text-cyan-100">{battle.fighter_b_name}</p>
-                      <p className="mt-1 text-sm font-black text-white">
-                        {teaserDeck === "B" ? `TEASER ${teaserSecondsLeft}s` : "PLAY 5S"}
+                      <p className="truncate text-[11px] font-black text-white/82">{battle.fighter_b_name}</p>
+                      <p className="mt-1 text-sm font-black tracking-[0.06em] text-white">
+                        {isQueueArena
+                          ? lang === "zh"
+                            ? isQueueChallengeOpen && !isBattleFounder
+                              ? "點我挑戰"
+                              : "等待挑戰者"
+                            : isQueueChallengeOpen && !isBattleFounder
+                              ? "CHALLENGE"
+                              : "WAITING"
+                          : teaserDeck === "B"
+                            ? lang === "zh"
+                              ? `預播中 ${teaserSecondsLeft}秒`
+                              : `PREVIEW ${teaserSecondsLeft}s`
+                            : lang === "zh"
+                              ? "預播 5 秒"
+                              : "PREVIEW 5S"}
                       </p>
                     </button>
                   </div>
-                  <ShareButton
-                    title={battleShareTitle}
-                    text={battleShareText}
-                    url={battleShareUrl}
-                    label={lang === "zh" ? "分享約人進場" : "Share Arena"}
-                    copiedLabel={lang === "zh" ? "鬥場連結已複製" : "Arena copied"}
-                    className="mt-3 w-full justify-center px-4 py-2.5 text-xs"
-                  />
+                  <div className={`mt-3 grid gap-2 ${isBattleFounder || isQueueArena ? "sm:grid-cols-2" : ""}`}>
+                    <ShareButton
+                      title={battleShareTitle}
+                      text={battleShareText}
+                      url={battleShareUrl}
+                      label={lang === "zh" ? "分享約人進場" : "Share Arena"}
+                      copiedLabel={lang === "zh" ? "鬥場連結已複製" : "Arena Copied"}
+                      className="w-full justify-center px-4 py-2.5 text-xs"
+                    />
+                    {isQueueChallengeOpen && !isBattleFounder ? (
+                      <Link
+                        href={`/battle/accept/${encodeURIComponent(battleId)}?lang=${lang}`}
+                        className="rounded-full border border-orange-300/65 bg-orange-500 px-4 py-2.5 text-center text-xs font-black text-black shadow-[0_0_22px_rgba(255,106,0,0.22)] transition hover:bg-orange-300"
+                      >
+                        {lang === "zh" ? "我要接戰" : "Answer Battle"}
+                      </Link>
+                    ) : null}
+                    {isBattleFounder ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleFounderCancelChallenge()}
+                        disabled={founderCancelDisabled}
+                        title={founderCancelTitle}
+                        className={`rounded-full border px-4 py-2.5 text-xs font-black transition ${
+                          battle.status === "cancelled_founder"
+                            ? "cursor-not-allowed border-zinc-500/35 bg-zinc-600/10 text-zinc-400"
+                            : "border-red-300/55 bg-red-500/10 text-red-100 hover:border-red-200 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:border-zinc-600/40 disabled:bg-zinc-700/12 disabled:text-zinc-500"
+                        }`}
+                      >
+                        {founderCancelLabel}
+                      </button>
+                    ) : null}
+                  </div>
+                  {founderCancelError ? (
+                    <p className="mt-2 rounded-xl border border-red-300/25 bg-red-500/10 px-3 py-2 text-xs font-bold leading-5 text-red-100">
+                      {founderCancelError}
+                    </p>
+                  ) : null}
                 </div>
               ) : battlePhase === "rps" ? (
                 <div className="relative -mt-1 w-full rounded-[1.4rem] border border-orange-300/25 bg-black/58 px-4 py-4 text-center shadow-[0_0_44px_rgba(255,106,0,0.16)]">
@@ -2606,6 +4317,22 @@ function BattleArenaContent() {
                     </button>
                   </div>
                 </div>
+              ) : battlePhase === "echo" ? (
+                <div className="relative -mt-1 flex w-full flex-col items-center rounded-[1.4rem] border border-orange-200/18 bg-black/60 px-4 py-4 text-center shadow-[0_0_42px_rgba(255,106,0,0.18),inset_0_0_40px_rgba(255,255,255,0.035)]">
+                  <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[1.4rem]">
+                    <div className="absolute inset-x-8 top-1/2 h-px -translate-y-1/2 bg-gradient-to-r from-transparent via-orange-200/70 to-transparent shadow-[0_0_28px_rgba(255,191,74,0.44)]" />
+                    <div className="absolute inset-x-14 top-[58%] h-px -translate-y-1/2 bg-gradient-to-r from-transparent via-cyan-100/40 to-transparent" />
+                  </div>
+                  <p className="relative text-[11px] font-black uppercase tracking-[0.28em] text-orange-100/80">ECHO TAIL</p>
+                  <p className="relative mt-2 bg-gradient-to-b from-white via-orange-100 to-orange-500 bg-clip-text text-[clamp(2.4rem,6vw,4rem)] font-black leading-none text-transparent drop-shadow-[0_0_28px_rgba(255,106,0,0.38)]">
+                    {echoSecondsLeft || 1}
+                  </p>
+                  <p className="relative mt-2 text-sm font-black text-white">
+                    {lang === "zh"
+                      ? `${echoDeck === "A" ? battle.fighter_a_name : battle.fighter_b_name} 準備 Scratch 進場`
+                      : `${echoDeck === "A" ? battle.fighter_a_name : battle.fighter_b_name} scratch incoming`}
+                  </p>
+                </div>
               ) : battlePhase === "transition" ? (
                 <div className="relative -mt-1 flex w-full flex-col items-center rounded-[1.4rem] border border-white/15 bg-black/64 px-4 py-4 text-center shadow-[0_0_48px_rgba(255,106,0,0.2),inset_0_0_44px_rgba(103,232,249,0.06)]">
                   <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[1.4rem]">
@@ -2632,23 +4359,7 @@ function BattleArenaContent() {
               <p className="relative mt-2 rounded-full border border-orange-400/20 bg-black/40 px-3 py-1.5 text-[12px] text-orange-300">
                 {voteCenterText}
               </p>
-              <p className="relative mt-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-center text-[11px] text-zinc-300 shadow-[0_0_22px_rgba(255,106,0,0.08)]">
-                {viewerBadge}
-              </p>
-              <div className="relative mt-2 flex items-center justify-center gap-2">
-                {hypeReactions.map((reaction) => (
-                  <button
-                    key={reaction}
-                    type="button"
-                    onClick={() => fireHypeReaction(reaction)}
-                    className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-xl shadow-[0_0_20px_rgba(255,255,255,0.05)] transition hover:border-orange-200/55 hover:bg-orange-400/15"
-                    aria-label={lang === "zh" ? `送出 ${reaction}` : `Send ${reaction}`}
-                  >
-                    {reaction}
-                  </button>
-                ))}
-              </div>
-              {battlePlaybackComplete && !voteOpen && (
+              {battlePlaybackComplete && !voteOpen && hasResultWinner && battleResultHref && (isMockBattle || isAuthBypassEnabled || rematchExpired || !REMATCH_CHALLENGE_ENABLED) && (
                 <Link
                   href={battleResultHref}
                   className="relative mt-3 inline-flex items-center justify-center rounded-full border border-orange-300/45 bg-orange-500 px-4 py-2 text-[12px] font-black tracking-[0.12em] text-black shadow-[0_0_24px_rgba(255,106,0,0.24)] transition hover:bg-orange-300"
@@ -2660,92 +4371,133 @@ function BattleArenaContent() {
           </div>
 
           {/* 右欄 */}
-          <div className="order-3 flex flex-col self-start overflow-hidden rounded-[2rem] border border-blue-400/18 bg-black/45 px-4 pb-2 pt-3 shadow-[0_24px_90px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl md:px-6">
+          <div className={`order-3 flex flex-col self-start overflow-hidden rounded-[2rem] border px-4 pb-2 pt-3 backdrop-blur-xl transition-[opacity,filter,transform,box-shadow,border-color,background-color] duration-300 md:px-6 ${activeSidePanelClass("B")}`}>
             <div className="-mx-4 -mt-3 mb-2 h-1 bg-gradient-to-l from-blue-500 via-cyan-300 to-transparent md:-mx-6" />
-            <VinylDisc
-              side="right"
-              fighterName={battle.fighter_b_name}
-              rankLabel={battle.fighter_b_rank}
-              songName={battle.song_b_name}
-              coverUrl={vinylCoverB ?? VINYL_COVER_PLACEHOLDER}
-              avatarUrl={vinylAvatarB}
-              isPlaying={activeDeck === "B"}
-              onToggle={() => handleToggleDeck("B")}
-              onAvatarReact={() => fireHypeReaction("👍", "right")}
-              playDisabled={
-                isPreBattle ||
-                !canControlDeck("B") ||
-                battlePhase === "rps" ||
-                battlePhase === "transition" ||
-                battlePhase === "final" ||
-                currentDeck !== "B" ||
-                playedDecks.B
-              }
-              playLabel={currentDeck === "B" && battlePhase === "paused" ? "RESUME" : currentDeck === "B" && firstDeck === "B" ? "START" : currentDeck === "B" ? "PLAY" : "WAIT"}
-              color="#3b82f6"
-              accent="blue"
-              aiTool={battle.ai_tool_b}
-              layoutNumbers={vinylLayout}
-            />
-            <FeedbackBar deck="B" tone="blue" />
-            <div className="lyric-pitch-scroll lyric-pitch-scroll-blue mt-1.5 flex min-h-[58px] max-h-[78px] items-start justify-center overflow-y-auto whitespace-pre-wrap rounded-[1.05rem] bg-black/25 px-4 py-2 text-center text-[clamp(0.66rem,0.82vw,0.78rem)] font-semibold leading-[1.08] text-white/80 shadow-[inset_0_0_44px_rgba(255,255,255,0.022)] md:min-h-[66px] md:max-h-[88px]">
-              {lyricB || t("battle_lyrics_empty")}
-            </div>
-            <div className="mt-1 flex flex-col gap-1 pb-0.5 pt-0.5">
-              <div className="flex w-full justify-end pl-8">
-                <VoteHeartButton
-                  selected={hasVoted === "fighter_b"}
-                  voteLocked={!voteOpen}
-                  onVote={() => handleVote("fighter_b")}
+            {isOpenChallengeStage ? (
+              <div className="flex min-h-[min(78vw,520px)] flex-col items-center justify-center rounded-[1.55rem] border border-cyan-200/20 bg-[radial-gradient(circle_at_50%_34%,rgba(34,211,238,0.14),transparent_42%),rgba(0,0,0,0.34)] px-5 py-7 text-center shadow-[inset_0_0_70px_rgba(34,211,238,0.035)]">
+                <div className="relative flex aspect-square w-[min(58vw,310px)] items-center justify-center rounded-full border border-dashed border-cyan-100/34 bg-black/44 shadow-[0_0_46px_rgba(34,211,238,0.13),inset_0_0_70px_rgba(255,255,255,0.035)]">
+                  <div className="absolute inset-[13%] rounded-full border border-cyan-100/16" />
+                  <div className="absolute inset-[27%] rounded-full border border-white/10" />
+                  <div className="relative z-10 rounded-full border border-cyan-100/34 bg-black/72 px-5 py-3 text-sm font-black tracking-[0.2em] text-cyan-100">
+                    B SIDE
+                  </div>
+                </div>
+                <p className="mt-5 text-xs font-black uppercase tracking-[0.32em] text-cyan-100/70">
+                  {lang === "zh" ? "空擂台席位" : "Open Arena Slot"}
+                </p>
+                <h2 className="mt-2 text-[clamp(1.65rem,5vw,2.7rem)] font-black leading-none text-white">
+                  {lang === "zh" ? "等待挑戰者" : "Waiting Challenger"}
+                </h2>
+                <p className="mx-auto mt-3 max-w-sm text-sm font-bold leading-6 text-zinc-400">
+                  {lang === "zh"
+                    ? "這裡不是海報，是已開場的鬥歌席位。接戰者上傳 Drop 後，右邊唱片會直接進場。"
+                    : "This is a live arena slot. Once a challenger uploads a Drop, the right deck enters here."}
+                </p>
+                {!isBattleFounder ? (
+                  <Link
+                    href={`/battle/accept/${encodeURIComponent(battleId)}?lang=${lang}`}
+                    className="mt-5 inline-flex min-h-12 items-center justify-center rounded-full border border-cyan-100/70 bg-cyan-300 px-6 py-3 text-sm font-black text-black shadow-[0_0_26px_rgba(34,211,238,0.26)] transition hover:bg-cyan-100"
+                  >
+                    {lang === "zh" ? "我要接戰" : "Answer Battle"}
+                  </Link>
+                ) : (
+                  <ShareButton
+                    title={battleShareTitle}
+                    text={battleShareText}
+                    url={battleShareUrl}
+                    label={lang === "zh" ? "分享找挑戰者" : "Find Challenger"}
+                    copiedLabel={lang === "zh" ? "鬥場連結已複製" : "Arena Copied"}
+                    className="mt-5 justify-center px-5 py-2.5 text-xs"
+                  />
+                )}
+              </div>
+            ) : (
+              <>
+                <VinylDisc
+                  side="right"
+                  fighterName={battle.fighter_b_name}
+                  rankLabel={battle.fighter_b_rank}
+                  songName={battle.song_b_name}
+                  coverUrl={vinylCoverB ?? VINYL_COVER_PLACEHOLDER}
+                  avatarUrl={vinylAvatarB}
+                  isPlaying={activeDeck === "B"}
+                  onToggle={() => handleToggleDeck("B")}
+                  playDisabled={
+                    isArenaWarmup ||
+                    !canControlDeck("B") ||
+                    battlePhase === "rps" ||
+                    battlePhase === "echo" ||
+                    battlePhase === "transition" ||
+                    battlePhase === "final" ||
+                    currentDeck !== "B" ||
+                    playedDecks.B
+                  }
+                  playLabel={currentDeck === "B" && battlePhase === "paused" ? "RESUME" : currentDeck === "B" && firstDeck === "B" ? "START" : currentDeck === "B" ? "PLAY" : "WAIT"}
+                  color="#3b82f6"
+                  accent="blue"
+                  aiTool={battle.ai_tool_b}
+                  layoutNumbers={vinylLayout}
                 />
-              </div>
-              <div className="w-full">
-                <div className="flex justify-between text-[11px] text-zinc-500">
-                  <span>{showFinalVoteStats ? t("battle_deck_vote_line", { n: votes.fighter_b }) : lang === "zh" ? "最終投票隱藏中" : "Final vote hidden"}</span>
-                  <span>{showFinalVoteStats ? `${pctB}%` : "MUSIC FIRST"}</span>
+                {renderFeedbackBar("B", "blue")}
+                <div className="lyric-pitch-scroll lyric-pitch-scroll-blue mt-1.5 flex min-h-[58px] max-h-[78px] items-start justify-center overflow-y-auto whitespace-pre-wrap rounded-[1.05rem] bg-black/25 px-4 py-2 text-center text-[clamp(0.66rem,0.82vw,0.78rem)] font-semibold leading-[1.08] text-white/80 shadow-[inset_0_0_44px_rgba(255,255,255,0.022)] md:min-h-[66px] md:max-h-[88px]">
+                  {lyricB || t("battle_lyrics_empty")}
                 </div>
-                <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-neutral-950 ring-1 ring-white/5">
-                  <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-300 transition-all" style={{ width: showFinalVoteStats ? `${pctB}%` : "50%" }} />
+                <div className="mt-1 flex flex-col gap-1 pb-0.5 pt-0.5">
+                  <div className="hidden w-full justify-end sm:flex">
+                    <VoteHeartButton
+                      selected={hasVoted === "fighter_b"}
+                      voteLocked={!voteOpen}
+                      onVote={() => handleVote("fighter_b")}
+                      label={desktopVoteHeartLabelB}
+                      tone="blue"
+                    />
+                  </div>
                 </div>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         </section>
 
         {/* 彈幕輸入：留言送出後會橫向跑過整個 Battle 畫面 */}
-        <section className="fixed bottom-3 left-3 right-3 z-[120] mx-auto w-[calc(100%-1.5rem)] max-w-[1120px] rounded-full border-2 border-yellow-300/75 bg-black/84 px-2 py-2 shadow-[0_16px_64px_rgba(0,0,0,0.52),0_0_32px_rgba(250,204,21,0.2)] backdrop-blur-xl md:bottom-4">
-          <div className="flex items-center gap-2">
+        <section className={`pointer-events-none fixed bottom-2 left-3 right-3 z-[80] mx-auto w-[calc(100%-1.5rem)] max-w-[1120px] touch-manipulation select-none rounded-[1.55rem] border-2 border-yellow-300/75 bg-black/86 px-2.5 py-2.5 shadow-[0_16px_64px_rgba(0,0,0,0.52),0_0_32px_rgba(250,204,21,0.2)] backdrop-blur-xl transition-opacity [-webkit-touch-callout:none] [-webkit-user-select:none] md:bottom-4 md:rounded-full md:px-2 md:py-2 ${voteOpen ? "opacity-[0.82]" : ""}`}>
+          <div className="flex flex-col gap-2 md:flex-row md:items-center">
             <span className="hidden shrink-0 pl-3 text-[10px] font-black tracking-[0.18em] text-yellow-200/80 sm:inline">
               {lang === "zh" ? "全場彈幕" : "Arena Danmaku"}
             </span>
-            <span className="rounded-full border border-yellow-200/30 bg-yellow-300/10 px-2 py-1 text-[10px] font-black text-yellow-100">
-              {lang === "zh" ? "彈幕開啟" : "Danmaku On"}
-            </span>
-            <div className="flex max-w-[9.6rem] shrink-0 items-center gap-1 overflow-x-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:max-w-none">
-              {QUICK_DANMAKU_EMOJIS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => void sendChatContent(emoji)}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.055] text-lg transition hover:border-yellow-200/70 hover:bg-yellow-300/15"
-                  aria-label={`${lang === "zh" ? "送出" : "Send"} ${emoji}`}
-                >
-                  {emoji}
-                </button>
-              ))}
+            <div className={`min-w-0 items-center gap-2 md:flex md:shrink-0 ${voteOpen ? "hidden" : "flex"}`}>
+              <span className="shrink-0 rounded-full border border-yellow-200/30 bg-yellow-300/10 px-2 py-1 text-[10px] font-black text-yellow-100">
+                {lang === "zh" ? "彈幕" : "Danmaku"}
+              </span>
+              <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:max-w-none">
+                {QUICK_DANMAKU_PHRASES.map((phrase) => (
+                  <button
+                    key={phrase}
+                    type="button"
+                    onClick={() => void sendChatContent(phrase)}
+                    onContextMenu={(event) => event.preventDefault()}
+                    className="pointer-events-auto flex h-12 min-w-16 shrink-0 touch-manipulation select-none items-center justify-center rounded-full border border-white/10 bg-white/[0.055] px-4 text-sm font-black text-white transition active:scale-[0.96] hover:border-yellow-200/70 hover:bg-yellow-300/15 [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] [-webkit-user-select:none] md:h-9 md:min-w-12 md:px-3 md:text-xs"
+                    aria-label={`${lang === "zh" ? "送出" : "Send"} ${phrase}`}
+                  >
+                    {phrase}
+                  </button>
+                ))}
+              </div>
             </div>
-            <form className="flex min-w-0 flex-1 gap-2" onSubmit={handleSend}>
+            <form className={`flex min-w-0 flex-1 gap-2.5 md:gap-2 ${isArenaWarmup ? "md:hidden" : ""}`} onSubmit={handleSend}>
               <input
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 placeholder={t("chat_placeholder")}
                 maxLength={200}
-                className="min-w-0 flex-1 rounded-full border border-yellow-300/45 bg-black/72 px-4 py-3 text-sm font-bold text-zinc-100 placeholder:text-zinc-500 focus:border-yellow-200 focus:outline-none focus:ring-2 focus:ring-yellow-300/30"
+                enterKeyHint="send"
+                autoComplete="off"
+                className="pointer-events-auto min-h-14 min-w-0 flex-1 select-text rounded-full border border-yellow-300/45 bg-black/72 px-4 py-3 text-base font-bold text-zinc-100 placeholder:text-zinc-500 focus:border-yellow-200 focus:outline-none focus:ring-2 focus:ring-yellow-300/30 md:min-h-12 md:text-sm"
               />
               <button
                 type="submit"
                 disabled={!chatInput.trim()}
-                className="rounded-full bg-yellow-300 px-5 py-3 text-sm font-black text-black transition hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-40 sm:px-6"
+                onContextMenu={(event) => event.preventDefault()}
+                className="pointer-events-auto min-h-14 min-w-[6.2rem] touch-manipulation select-none rounded-full bg-yellow-300 px-5 py-3 text-base font-black text-black transition active:scale-[0.97] hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-40 [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] [-webkit-user-select:none] sm:px-6 md:min-h-12 md:min-w-[4.8rem] md:text-sm"
               >
                 {t("chat_send")}
               </button>
@@ -2758,25 +4510,47 @@ function BattleArenaContent() {
       <audio
         ref={audioARef}
         src={audioUrls.A ?? undefined}
+        preload="auto"
         onTimeUpdate={() => handleDeckTimeUpdate("A")}
         onEnded={() => completeDeck("A")}
       />
       <audio
         ref={audioBRef}
         src={audioUrls.B ?? undefined}
+        preload="auto"
         onTimeUpdate={() => handleDeckTimeUpdate("B")}
         onEnded={() => completeDeck("B")}
       />
+      <audio ref={finalPreStartHypeAudioRef} src={FINAL_PRESTART_HYPE_SFX_SRC} preload="auto" />
+      <audio ref={scratchPrimeAudioRef} src={SCRATCH_TRANSITION_SRC} preload="auto" />
+      <audio ref={winnerCountdownPrimeAudioRef} src={WINNER_COUNTDOWN_SFX_SRC} preload="auto" />
+      <audio ref={winnerRevealPrimeAudioRef} src={WINNER_REVEAL_SFX_SRC} preload="auto" />
 
       <style>{`
+        .aipoger-battle-touch {
+          -webkit-tap-highlight-color: transparent;
+        }
+        .aipoger-battle-touch button,
+        .aipoger-battle-touch [role="button"] {
+          touch-action: manipulation;
+          -webkit-touch-callout: none;
+          -webkit-user-select: none;
+          user-select: none;
+        }
+        .aipoger-battle-touch button *,
+        .aipoger-battle-touch [role="button"] * {
+          -webkit-touch-callout: none;
+          -webkit-user-select: none;
+          user-select: none;
+        }
+        .aipoger-battle-touch input,
+        .aipoger-battle-touch textarea {
+          -webkit-user-select: text;
+          user-select: text;
+        }
         @keyframes aipogerDanmaku {
           0% { transform: translateX(104vw); }
           100% { transform: translateX(-120vw); }
-        }
-        @keyframes aipogerArenaReaction {
-          0% { opacity: 0; transform: translate3d(-50%, 22px, 0) scale(0.82); }
-          12% { opacity: 1; }
-          100% { opacity: 0; transform: translate3d(-50%, -170px, 0) scale(1.28); }
         }
         @keyframes aipogerDeckSwapSweep {
           0% { opacity: 0; transform: translateX(-80vw) skewX(-14deg); }

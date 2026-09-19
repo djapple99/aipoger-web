@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import { usePresenceCount } from "@/lib/use-presence-count";
 
-const HIDDEN_PREFIXES = ["/battle/waiting-room", "/battle/mock-"];
+const HIDDEN_PREFIXES = ["/battle/mock-"];
 const HIDDEN_EXACT = new Set(["/listen-bar", "/auth"]);
 const FIXED_BATTLE_ROUTES = new Set(["setup", "hook-cut", "matchmaking", "result"]);
 
@@ -29,10 +29,10 @@ export default function GlobalSitePresenceBadge() {
     count <= 1
       ? isZh
         ? "AIPOGER 現場升溫中"
-        : "AIPOGER is warming up"
+        : "AIPOGER Stage Warming Up"
       : isZh
         ? `AIPOGER 現場 ${count} 人`
-        : `${count} live on AIPOGER`;
+        : `${count} LIVE ON AIPOGER`;
 
   return (
     <div className="pointer-events-none fixed left-1/2 top-4 z-40 hidden -translate-x-1/2 sm:block">
