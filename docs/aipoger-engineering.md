@@ -2,6 +2,12 @@
 
 更新：2026-09-18 05:04 Asia/Taipei。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
 
+## 本機待發布：曲風建議與 14 類音樂
+
+- 2026-09-20 使用者確認作者自主接受曲風建議，並新增兒歌、Latin / Reggae 與電影配樂。網站元件、受保護 API、既有 Python 分析服務與增量分類 SQL 已完成本機驗證；未部署／未套用正式 SQL。
+- 發布需協調 `20260920120000_three_music_genres.sql`、分析 worker 的 `genre` dependency／enable flag／共享 server secret，以及網站 server-only endpoint。服務缺少配置時，手動選擇和投稿仍可用。
+- 詳見 [本機驗證與發布前提](archive/2026-09-20-genre-suggestions-local.md)，包含少量真實音訊檢查的限制及既有本機建置環境問題。
+
 ## 最新發布：Choice 管理精簡與收藏順序
 
 - 應用 `147dbc6`／`codex/choice-management-simplify`；Vercel `dpl_FfPbhR4V3nXbMaJswnNf5vZ9Yw5t` READY，2026-09-18 05:04 Asia/Taipei 已 promote 至 aipoger.com。

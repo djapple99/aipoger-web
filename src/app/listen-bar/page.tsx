@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AudioLines } from "lucide-react";
 import { ChangeEvent, FormEvent, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import LangToggle from "@/components/lang-toggle";
+import GenreSuggestion, { genreCopy } from "@/components/genre-suggestion";
 import SafetyNotice from "@/components/safety-notice";
 import { useI18n } from "@/lib/i18n";
 import { parseAudioMetadata } from "@/lib/audio-metadata";
@@ -711,6 +712,7 @@ export default function ListenBarPage() {
   const [playlistStatus, setPlaylistStatus] = useState<"loading" | "database" | "fallback">("loading");
   const [publicUploadForm, setPublicUploadForm] = useState<PublicUploadForm>(initialPublicUploadForm);
   const [publicAudioFile, setPublicAudioFile] = useState<File | null>(null);
+  const publicAudioSelectionRef = useRef(0);
   const [publicCoverFile, setPublicCoverFile] = useState<File | null>(null);
   const [publicLyricsText, setPublicLyricsText] = useState("");
   const [publicUploadBusy, setPublicUploadBusy] = useState(false);
@@ -1453,6 +1455,7 @@ export default function ListenBarPage() {
     const file = event.target.files?.[0] ?? null;
     setPublicUploadError("");
     if (!file) return;
+    const selection = ++publicAudioSelectionRef.current;
     if (!isAllowedListenBarAudioFile(file)) {
       setPublicAudioFile(null);
       setPublicUploadError(isZh ? "請使用 MP3、M4A、AAC 或 OGG 音檔。" : "Use MP3, M4A, AAC, or OGG audio.");
@@ -1469,7 +1472,8 @@ export default function ListenBarPage() {
     }
     setPublicAudioFile(file);
 
-    const metadata = await parseAudioMetadata(file);
+    const metadata = await parseAudioMetadata(file).catch(() => null);
+    if (!metadata || selection !== publicAudioSelectionRef.current) return;
     setPublicUploadForm((current) => ({
       ...current,
       title: current.title.trim() || metadata.title || metadata.fallbackTitle,
@@ -1477,7 +1481,6 @@ export default function ListenBarPage() {
         current.artist.trim() && current.artist !== userName ? current.artist : metadata.artist || current.artist,
         LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS,
       ),
-      genre: current.genre.trim() ? current.genre : metadata.genre || current.genre,
       album: limitListenBarDisplayText(current.album.trim() || metadata.album || current.album, LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
     }));
 
@@ -1588,7 +1591,7 @@ export default function ListenBarPage() {
       setPublicUploadError(isZh ? "請輸入歌曲名稱。" : "Enter a track title.");
       return;
     }
-    if (!publicUploadForm.genre.trim()) {
+    if (!MUSIC_GENRE_OPTIONS.some(option => option.value === publicUploadForm.genre)) {
       setPublicUploadError(t("listen_bar_genre_required"));
       return;
     }
@@ -1752,6 +1755,7 @@ export default function ListenBarPage() {
           ...tracks.filter((track) => track.id !== normalizedTrack.id),
         ]);
       }
+      publicAudioSelectionRef.current += 1;
       setPublicAudioFile(null);
       setPublicCoverFile(null);
       setPublicLyricsText("");
@@ -2475,8 +2479,12 @@ export default function ListenBarPage() {
                         : barText(lang, "必填", "Required", "必須", "필수")}
                     </span>
                   </span>
-                  <input type="file" accept={LISTEN_BAR_AUDIO_UPLOAD_ACCEPT} onChange={handlePublicAudioChange} className="hidden" />
+                  <input type="file" disabled={publicUploadBusy} accept={LISTEN_BAR_AUDIO_UPLOAD_ACCEPT} onChange={handlePublicAudioChange} className="hidden" />
                 </label>
+
+                <p className="text-xs leading-relaxed text-zinc-400">{genreCopy(lang).privacy}</p>
+                <GenreSuggestion file={publicAudioFile} userId={userId} lang={lang} selectedGenre={publicUploadForm.genre} disabled={publicUploadBusy}
+                  onAccept={(genre) => setPublicUploadForm(current => ({ ...current, genre }))} label={t} />
 
                 <div className="grid gap-2 sm:grid-cols-2">
                   <input
@@ -2511,6 +2519,7 @@ export default function ListenBarPage() {
                   />
                   <select
                     value={publicUploadForm.genre}
+                    disabled={publicUploadBusy}
                     onChange={(event) => setPublicUploadForm((current) => ({ ...current, genre: event.target.value }))}
                     required
                     aria-label={t("genre")}

@@ -15,6 +15,9 @@ export const MUSIC_GENRE_OPTIONS: MusicGenreOption[] = [
   { value: "Chinese Fusion 新派古風", labelKey: "genre_chinese_fusion" },
   { value: "台語熊high", labelKey: "genre_taiwanese_bear_high" },
   { value: "Original 自我風格", labelKey: "genre_custom" },
+  { value: "Children's Music 兒歌", labelKey: "genre_children" },
+  { value: "Latin / Reggae 拉丁雷鬼", labelKey: "genre_latin_reggae" },
+  { value: "Cinematic 電影配樂", labelKey: "genre_cinematic" },
 ];
 
 export const MUSIC_GENRE_VALUES = MUSIC_GENRE_OPTIONS.map((genre) => genre.value);

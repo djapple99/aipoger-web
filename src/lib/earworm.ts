@@ -38,6 +38,9 @@ export const EARWORM_GENRE_PERSONALITY: Record<string, { keywords: string[]; des
   "Spiritual / Ambient 放鬆宇宙": { keywords: ["空間", "氛圍", "沉浸"], description: "你會被聲音的空間包住，音樂不一定要有答案，但必須讓你進入另一個狀態。" },
   "Chinese Fusion 新派古風": { keywords: ["東方旋律", "敘事", "融合"], description: "你對東方旋律與新聲響的交會特別敏感，喜歡作品有畫面，也有故事。" },
   "台語熊high": { keywords: ["台味", "直覺", "熱鬧"], description: "你的耳朵很誠實，接地氣、夠有趣、能讓現場一起動起來的歌最容易打中你。" },
+  "Children's Music 兒歌": { keywords: ["童趣", "好記旋律", "輕快"], description: "簡單好唱、充滿童趣的旋律容易吸引你的耳朵。" },
+  "Latin / Reggae 拉丁雷鬼": { keywords: ["切分律動", "拉丁節奏", "搖擺"], description: "你容易被拉丁打擊樂、雷鬼反拍與自然搖擺的律動吸引。" },
+  "Cinematic 電影配樂": { keywords: ["畫面感", "情緒起伏", "敘事"], description: "你喜歡能帶出場景、推進故事，讓情緒隨音樂展開的作品。" },
   "Original 自我風格": { keywords: ["驚喜", "非典型", "探索"], description: "你不急著替音樂分類，反而會被沒聽過的組合、怪點子與個人辨識度吸引。" },
 };
 

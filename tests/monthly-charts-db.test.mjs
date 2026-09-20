@@ -11,6 +11,7 @@ import { canonicalMusicGenre, MUSIC_GENRE_VALUES } from "../src/lib/music-genres
 const modulePath = process.env.MONTHLY_CHART_PGLITE_MODULE;
 const migration = await readFile(new URL("../supabase/migrations/20260917151525_monthly_charts.sql", import.meta.url), "utf8");
 const genreMigration = await readFile(new URL("../supabase/migrations/20260917153446_monthly_chart_canonical_genres.sql", import.meta.url), "utf8");
+const addedGenresMigration = await readFile(new URL("../supabase/migrations/20260920120000_three_music_genres.sql", import.meta.url), "utf8");
 const dbTest = (name, fn) => test(name, { skip: !modulePath && "Set MONTHLY_CHART_PGLITE_MODULE to run isolated PostgreSQL tests" }, fn);
 const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 
@@ -37,7 +38,7 @@ async function fixture(t, { canonicalGenres = true } = {}) {
   // Freeze only the DB clock in this disposable database, including launch time.
   const fixedMigration = migration.replace("select date_trunc('month', clock_timestamp() at time zone 'Asia/Taipei')::date;", "select date '2026-09-01';");
   await db.exec(fixedMigration);
-  if (canonicalGenres) await db.exec(genreMigration);
+  if (canonicalGenres) { await db.exec(genreMigration); await db.exec(addedGenresMigration); }
   const month = async (value) => db.exec(`create or replace function public.monthly_chart_current_month()
     returns date language sql volatile set search_path = '' as $$ select date '${value}-01'; $$;`);
   const track = async (n, genre = "EDM 百大電音") => db.query(`insert into public.listen_bar_tracks
@@ -401,4 +402,18 @@ dbTest("small-data write/closure timing is observable without imposing environme
   const closeStart = performance.now();
   await db.query("select public.finalize_monthly_charts()");
   t.diagnostic(`Isolated PGlite (not production): 196 tracks, 100 serialized writes ${writes.toFixed(1)}ms (${(writes / 100).toFixed(2)}ms/write); empty live read ${readMs.toFixed(1)}ms; empty month closure ${(performance.now() - closeStart).toFixed(1)}ms.`);
+});
+
+// New labels must be accepted by the actual DB filter as well as the web menu.
+dbTest("three added genres support live chart filters and idempotent migration", async t => {
+  const { db, track, heart, read } = await fixture(t);
+  await db.exec(addedGenresMigration);
+  for (const [index, genre] of MUSIC_GENRE_VALUES.slice(-3).entries()) {
+    await track(index + 1, genre);
+    await heart(index + 1, 1); await heart(index + 1, 2); await heart(index + 1, 3);
+    const result = await read(null, genre);
+    assert.equal(result.tracks.length, 1);
+    assert.equal(result.tracks[0].genre, genre);
+    assert.equal(result.tracks[0].supporterCount, 3);
+  }
 });
