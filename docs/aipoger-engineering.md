@@ -2,13 +2,14 @@
 
 更新：2026-09-18 05:04 Asia/Taipei。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
 
-## 本機待發布：曲風建議與 14 類音樂
+## 最新發布：14 類音樂；曲風建議待分析服務啟用
 
-- 2026-09-20 使用者確認作者自主接受曲風建議，並新增兒歌、Latin / Reggae 與電影配樂。網站元件、受保護 API、既有 Python 分析服務與增量分類 SQL 已完成本機驗證；未部署／未套用正式 SQL。
-- 發布需協調 `20260920120000_three_music_genres.sql`、分析 worker 的 `genre` dependency／enable flag／共享 server secret，以及網站 server-only endpoint。服務缺少配置時，手動選擇和投稿仍可用。
-- 詳見 [本機驗證與發布前提](archive/2026-09-20-genre-suggestions-local.md)，包含少量真實音訊檢查的限制及既有本機建置環境問題。
+- 2026-09-20：Web `e08687e`／`codex/genre-suggestions` 已 push；Vercel `dpl_CfrCok6hkdHSv3AGjK7RzNP56zdt` READY 並已 alias 至 aipoger.com。三個新分類及 15 個播放頻道已正式生效。
+- Supabase `three_music_genres` 已套用，ledger `20260920055213`，對應本機 `20260920120000_three_music_genres.sql`，不要重複執行。
+- 自動音訊建議尚未啟用：worker `c8f7d7f` 已準備並 push，等待使用者完成 Render 管理台登入，再核對資源與配置兩端服務。現時保留手動選擇／投稿。
+- 450 項測試、TypeScript、本機／雲端 build、正式頁面和桌機／手機檢查通過。完整狀態與接續步驟見 [發布紀錄](archive/2026-09-20-genre-release.md)。
 
-## 最新發布：Choice 管理精簡與收藏順序
+## 前版發布：Choice 管理精簡與收藏順序
 
 - 應用 `147dbc6`／`codex/choice-management-simplify`；Vercel `dpl_FfPbhR4V3nXbMaJswnNf5vZ9Yw5t` READY，2026-09-18 05:04 Asia/Taipei 已 promote 至 aipoger.com。
 - 444 項測試、TypeScript、本機／雲端 build 通過；lint 0 errors／16 既有 warnings。無 SQL migration、歷史收藏時間回填或正式資料刪除。
