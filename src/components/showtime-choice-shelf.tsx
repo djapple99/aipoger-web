@@ -302,7 +302,7 @@ export default function ShowtimeChoiceShelf({
           collectionKind={commentsEntry.kind}
           collectionId={commentsEntry.id}
           title={commentsEntry.title}
-          isZh={lang === "zh"}
+          lang={lang}
           onClose={() => setCommentsEntry(null)}
         />
       ) : null}

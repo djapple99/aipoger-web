@@ -58,7 +58,6 @@ export default function PublicChoicePage() {
   const [itemHearts, setItemHearts] = useState<Record<string, ShowtimeChoiceItemHeartState>>({});
   const [itemHeartBusy, setItemHeartBusy] = useState<Record<string, boolean>>({});
   const [tracklistOpen, setTracklistOpen] = useState(false);
-  const [commentsOpen, setCommentsOpen] = useState(false);
   const playerRef = useRef<ShowtimeQueuePlayerHandle>(null);
 
   useEffect(() => {
@@ -243,7 +242,7 @@ export default function PublicChoicePage() {
                 <button type="button" onClick={() => void toggleHeart()} disabled={heartBusy} className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 py-2 text-sm font-black transition disabled:cursor-wait disabled:opacity-45 ${heart.myHeart ? "border-pink-200/60 bg-pink-300/15 text-pink-100" : "border-white/20 bg-white/[0.03] text-zinc-200 hover:border-pink-200/45"}`} aria-label={heart.myHeart ? copy.removeChoice : copy.favoriteChoice} aria-pressed={heart.myHeart} title={heart.myHeart ? copy.removeChoice : copy.favoriteChoice}>
                   <Heart className="h-4 w-4" fill={heart.myHeart ? "currentColor" : "none"} /> {heart.heartCount}
                 </button>
-                <button type="button" onClick={() => setCommentsOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 bg-white/[0.03] px-4 py-2 text-sm font-black text-zinc-200 transition hover:border-cyan-100/45 hover:text-white" aria-label={copy.viewComments}><MessageCircle className="h-4 w-4" />{copy.comments}</button>
+                <a href="#choice-comments" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 bg-white/[0.03] px-4 py-2 text-sm font-black text-zinc-200 transition hover:border-cyan-100/45 hover:text-white" aria-label={copy.viewComments}><MessageCircle className="h-4 w-4" />{copy.comments}</a>
                 <ShareButton title={title} text={collection.intro || copy.choiceDescription(collection.curatorName || "AIPOGER")} url={sharePath} label={copy.shareChoice} copiedLabel={copy.copied} />
               </div>
             </div>
@@ -284,6 +283,7 @@ export default function PublicChoicePage() {
           </div>
         </section>
 
+        <ChoiceCommentsDialog key={`${kind}:${choiceId}`} inline collectionKind={kind} collectionId={choiceId} title={title} lang={lang} />
       </div>
 
       {tracklistOpen ? (
@@ -315,7 +315,6 @@ export default function PublicChoicePage() {
         </div>
       ) : null}
 
-      <ChoiceCommentsDialog open={commentsOpen} collectionKind={kind} collectionId={choiceId} title={title} isZh={lang === "zh"} onClose={() => setCommentsOpen(false)} />
       <ShowtimeQueuePlayer ref={playerRef} isZh={lang === "zh"} />
     </main>
   );
