@@ -17,4 +17,3 @@
 - 正式 Chrome 已登入編輯器讀取 87 首收藏／4 期，10 首上限與數字順位控制正常。暫改中英文標題及第十首移到第一首，顯示尚未儲存；另讀公開 API 確認標題與順序維持原值。試編已完整還原，未按儲存、發布或撤回。
 - 桌機 Showtime 一大兩小實際封面排列正確；390px 手機 Showtime 與編輯器無橫向溢出。正式瀏覽器 error logs 為空。
 - migration 後 collections=4 / items=30 與之前一致；RPC grants 僅 postgres/service_role，固定 search_path；intro constraint 3000 字已確認。實際儲存交易由本地同元件測試與 PGlite 驗證，未為 QA 改寫使用者正式歌單。
-
