@@ -33,7 +33,7 @@ type CreatorChoiceCollectionRow = {
   aipoger_creator_choice_items?: CreatorChoiceItemRow[] | null;
 };
 
-type ChoiceAction = "ensure_collection" | "save_collection" | "add_item" | "remove_item" | "move_item" | "set_published" | "clear_cover" | "delete_collection";
+type ChoiceAction = "save_editor" | "ensure_collection" | "save_collection" | "add_item" | "remove_item" | "move_item" | "set_published" | "clear_cover" | "delete_collection";
 
 const MAX_COVER_BYTES = 10 * 1024 * 1024;
 const ALLOWED_COVER_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -282,6 +282,51 @@ export async function PATCH(request: NextRequest) {
     const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
     const action = body?.action as ChoiceAction | undefined;
     if (!action) return jsonError("請指定 Choice 管理操作。");
+
+    if (action === "save_editor") {
+      const collectionId = body?.collectionId;
+      if (collectionId != null && !isUuid(collectionId)) return jsonError("Choice 資料不完整。");
+      const weekStart = typeof body?.weekStart === "string" ? body.weekStart : "";
+      if (!isMonday(weekStart)) return jsonError("Choice 週期必須選擇星期一。");
+      if (body?.isPublished !== undefined && typeof body.isPublished !== "boolean") return jsonError("請指定發布狀態。");
+      if (!Array.isArray(body?.items) || body.items.length > AIPOGER_CHOICE_MAX_ITEMS) return jsonError("Choice 每期最多 10 首作品。");
+      const items = body.items as { sourceKind: unknown; sourceId: unknown }[];
+      if (items.some(item => !item || !isAipogerChoiceSourceKind(item.sourceKind) || !isUuid(item.sourceId))) return jsonError("Choice 作品資料不完整。");
+      const keys = items.map(item => catalogKey(String(item.sourceKind), String(item.sourceId)));
+      if (new Set(keys).size !== keys.length) return jsonError("Choice 不可重複選曲。");
+      let published = false;
+      let existing: CreatorChoiceItemRow[] = [];
+      if (isUuid(collectionId)) {
+        const state = await guard.admin.from("aipoger_creator_choice_collections").select("is_published")
+          .eq("id", collectionId).eq("creator_id", guard.user.id).maybeSingle();
+        if (state.error) throw state.error;
+        if (!state.data) return jsonError("找不到自己的 Choice。", 404);
+        published = state.data.is_published;
+        existing = await collectionItems(guard.admin, collectionId);
+      }
+      published = typeof body.isPublished === "boolean" ? body.isPublished : published;
+      if (published && items.length < AIPOGER_CHOICE_MIN_ITEMS) return jsonError("已發布 Choice 至少保留 5 首；請先撤回發布再移除。");
+      const catalog = await loadCreatorChoiceSelectionCatalog(guard.admin, guard.user.id);
+      const byKey = new Map(catalog.items.map(item => [catalogKey(item.sourceKind, item.id), item]));
+      const retained = new Set(existing.map(item => catalogKey(item.source_kind, item.source_id)));
+      for (const key of keys) {
+        const source = byKey.get(key);
+        if (!retained.has(key) && (!source?.selectable || !source.isPublic || !source.audioUrl)) return jsonError("只能加入自己已收藏且目前公開可播放的歌曲。");
+        if (published && (!source?.isPublic || !source.audioUrl)) return jsonError("歌單含有無法公開播放的作品，請先移除或替換。");
+      }
+      const { data, error } = await guard.admin.rpc("save_creator_choice_editor", {
+        p_user_id: guard.user.id, p_collection_id: collectionId ?? null, p_week_start: weekStart,
+        p_curator_name: (await loadCreatorName(guard.admin, guard.user)).slice(0, 80),
+        p_title: cleanText(body.title, 120), p_intro: cleanText(body.intro, AIPOGER_CHOICE_INTRO_MAX_LENGTH),
+        p_items: items.map(item => ({ sourceKind: item.sourceKind, sourceId: String(item.sourceId).toLowerCase() })),
+        p_expected: body.expected ?? null, p_is_published: body.isPublished ?? null, p_clear_cover: body.clearCover === true,
+      });
+      if (error?.code === "40001") return jsonError("歌單已在其他視窗更新。請重新載入。", 409);
+      if (error?.code === "P0002") return jsonError("找不到自己的 Choice。", 404);
+      if (error?.code === "22023") return jsonError(error.message);
+      if (error) throw error;
+      return NextResponse.json({ collectionId: data, message: "Choice 已儲存。" });
+    }
 
     if (action === "save_collection" || action === "ensure_collection") {
       const weekStart = typeof body?.weekStart === "string" ? body.weekStart : "";

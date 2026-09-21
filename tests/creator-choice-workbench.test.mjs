@@ -7,7 +7,7 @@ const creatorChoiceRoute = readFileSync(new URL("../src/app/api/creator-choice/r
 const creatorChoiceHelper = readFileSync(new URL("../src/lib/creator-choice.ts", import.meta.url), "utf8");
 const adminChoiceRoute = readFileSync(new URL("../src/app/api/admin/choice/route.ts", import.meta.url), "utf8");
 const publicChoiceRoute = readFileSync(new URL("../src/app/api/creator-choice/[id]/route.ts", import.meta.url), "utf8");
-const profileChoicePage = readFileSync(new URL("../src/app/profile/choice/page.tsx", import.meta.url), "utf8");
+const profileChoicePage = readFileSync(new URL("../src/components/creator-choice-workbench.tsx", import.meta.url), "utf8");
 const adminChoicePage = readFileSync(new URL("../src/app/admin/choice/page.tsx", import.meta.url), "utf8");
 const selectedWorks = readFileSync(new URL("../src/components/choice-selected-works.tsx", import.meta.url), "utf8");
 const profilePage = readFileSync(new URL("../src/app/profile/page.tsx", import.meta.url), "utf8");
@@ -41,7 +41,7 @@ test("creator Choice can be shared only after publication and keeps 5-10 curated
   assert.match(publicChoiceRoute, /\.eq\("is_published", true\)/);
   assert.match(publicChoiceRoute, /source\?\.isPublic/);
   assert.match(profileChoicePage, /creatorChoicePublicPath/);
-  assert.match(profileChoicePage, /!selected.isPublished && !canPublish/);
+  assert.match(profileChoicePage, /!selected\?.isPublished && !canPublish/);
   assert.match(profileChoicePage, /selected.isPublished \? <>/);
 });
 
@@ -53,10 +53,9 @@ test("owner can remove a creator Choice without touching its songs", () => {
 
 test("personal creator sorting remains; retired owner editor is absent", () => {
   assert.match(profileChoicePage, /pb-28 pt-24[^\"]*sm:pt-8/);
-  assert.match(profileChoicePage, /<ArrowUp/);
-  assert.match(profileChoicePage, /<ArrowDown/);
-  assert.match(profileChoicePage, /disabled=\{busy \|\| index === 0\}/);
-  assert.match(profileChoicePage, /disabled=\{busy \|\| index === count - 1\}/);
+  assert.match(profileChoicePage, /moveChoiceToPosition/);
+  assert.match(profileChoicePage, /aria-label=\{`\$\{copy.position\}/);
+  assert.doesNotMatch(profileChoicePage, /<ArrowUp|<ArrowDown/);
   assert.doesNotMatch(adminChoicePage, /<ChoiceSelectedWorks/);
   assert.match(selectedWorks, /type="number"/);
   assert.match(selectedWorks, /md:grid-cols-2/);
@@ -69,19 +68,13 @@ test("personal creator sorting remains; retired owner editor is absent", () => {
   assert.doesNotMatch(adminChoiceRoute, /items\.splice\(targetIndex, 0, moved\)/);
 });
 
-test("creator Choice can create a draft from the first selected song", () => {
-  assert.match(profileChoicePage, /async function ensureChoiceCollection/);
-  assert.match(profileChoicePage, /async function toggleChoiceItem/);
-  assert.match(profileChoicePage, /requestAction\("ensure_collection", draft\)/);
-  assert.match(profileChoicePage, /type="checkbox" checked=\{added\}/);
-  assert.match(profileChoicePage, /void toggleChoiceItem\(item\)/);
-  assert.doesNotMatch(profileChoicePage, /disabled=\{!selected \|\| added \|\| busy !== ""\}/);
-  assert.match(profileChoicePage, /mutationLock.current = true/);
-  assert.match(profileChoicePage, /localStorage.setItem\(draftKey/);
+test("creator Choice confirms a local batch before one explicit save", () => {
+  assert.match(profileChoicePage, /function toggleChoiceItem/);
+  assert.match(profileChoicePage, /setPendingItems\(current => toggleChoiceSelection/);
+  assert.match(profileChoicePage, /onClick=\{confirmSelection\}/);
+  assert.match(profileChoicePage, /requestAction\("save_editor"/);
+  assert.doesNotMatch(profileChoicePage, /requestAction\("(?:add_item|move_item|remove_item|ensure_collection)"/);
   assert.match(profileChoicePage, /musicPlayer\?\.start/);
-  assert.match(profileChoicePage, /aria-label=\{copy.search\}/);
-  assert.match(profileChoicePage, /aria-label=\{copy.genre\}/);
-  assert.doesNotMatch(profileChoicePage, /honor-board\/interactions|action: "favorite"|action: "removeFavorite"/);
 });
 
 test("creator Showtime management supports an explanatory external-link label without payment handling", () => {

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { choiceDisplayTitle } from "@/lib/aipoger-choice";
 import { getChoiceCopy } from "@/lib/choice-copy";
 import { isSupportedLang, type Lang } from "@/lib/locale";
@@ -6,7 +7,7 @@ import { loadChoiceShareMetadata } from "@/lib/server-choice-share-metadata";
 import { publicSiteUrl } from "@/lib/site-url";
 
 const siteUrl = publicSiteUrl();
-const defaultImageUrl = `${siteUrl}/aipoger-og-card-20260522.png`;
+const defaultImageUrl = new URL(AIPOGER_BRAND_LOGO, siteUrl).href;
 
 export async function generateMetadata({
   params,

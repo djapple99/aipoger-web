@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
 import ChoiceCommentsDialog from "@/components/choice-comments-dialog";
 import ShareButton from "@/components/share-button";
 import { AipogerChoiceCover } from "@/components/aipoger-choice-cover";
-import { choiceItemRecordKey, type AipogerChoiceItem } from "@/lib/aipoger-choice";
+import { choiceItemRecordKey, choicePublicPath, type AipogerChoiceItem } from "@/lib/aipoger-choice";
 import { getChoiceCopy } from "@/lib/choice-copy";
 import type { Lang } from "@/lib/locale";
 
@@ -54,8 +54,8 @@ function recordKey(entry: ShowtimeChoiceShelfEntry) {
   return `${entry.kind}:${entry.id}`;
 }
 
-function shareUrl(entry: ShowtimeChoiceShelfEntry) {
-  return entry.href || "/rank#choice-weekly";
+function shareUrl(entry: ShowtimeChoiceShelfEntry, lang: Lang) {
+  return `${choicePublicPath(entry.id, entry.kind)}&lang=${lang}`;
 }
 
 function choiceDateLabel(value: string, lang: Lang) {
@@ -115,8 +115,8 @@ export default function ShowtimeChoiceShelf({
   const featured = playableEntries.find((entry) => recordKey(entry) === featuredKey);
   const lead = featured ?? playableEntries[0];
   const remaining = playableEntries.filter((entry) => entry !== lead);
-  const side = remaining.slice(0, 1);
-  const more = remaining.slice(1);
+  const side = remaining.slice(0, 2);
+  const more = remaining.slice(2);
 
   useEffect(() => {
     if (!detail) return;
@@ -132,32 +132,33 @@ export default function ShowtimeChoiceShelf({
     if (commentsKey && !commentsEntry) setCommentsKey(null);
   }, [detailKey, detail, commentsKey, commentsEntry]);
 
-  function renderCard(entry: ShowtimeChoiceShelfEntry, large = false) {
+  function renderCard(entry: ShowtimeChoiceShelfEntry, large = false, hero = false) {
               const key = recordKey(entry);
               const heart = hearts[key] ?? { heartCount: 0, myHeart: false };
               const playable = entry.items.some((item) => Boolean(item.audioUrl));
               return (
-                <article key={key} data-choice-key={key} className="group min-w-0">
+                <article key={key} data-choice-key={key} className={`group relative min-w-0 ${hero ? "sm:h-full" : ""}`}>
                   <div className="group relative aspect-square overflow-hidden bg-[#222]">
                     <AipogerChoiceCover src={entry.coverUrl} alt={`${entry.curatorName} Choice`} className="absolute inset-0 transition duration-300 group-hover:scale-[1.025]" />
+                    {hero && <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden bg-gradient-to-t from-black/95 via-black/10 to-transparent sm:block" />}
                     <button type="button" onClick={() => setDetail(entry)} aria-label={`${copy.previewTracklist}: ${entry.title}`} className="absolute inset-0 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-orange-400" />
                     <button
                       type="button"
                       onClick={() => onPlay(entry)}
                       disabled={!playable}
-                      className={`absolute bottom-3 left-3 inline-flex items-center justify-center rounded-full bg-orange-500 text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-35 ${large ? "h-12 w-12" : "h-10 w-10"}`}
+                      className={`absolute z-10 inline-flex items-center justify-center rounded-full bg-orange-500 text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-35 ${hero ? "bottom-3 left-3 sm:bottom-auto sm:left-auto sm:right-3 sm:top-3" : "bottom-3 left-3"} ${large ? "h-12 w-12" : "h-10 w-10"}`}
                       aria-label={copy.playTrack(entry.title)}
                     >
                       <Play className="h-3.5 w-3.5" fill="currentColor" />
                     </button>
                   </div>
-                  <div className="pt-3">
-                    <button type="button" onClick={() => setDetail(entry)} className={`block w-full break-words text-left font-bold leading-snug text-white hover:text-orange-200 ${large ? "text-xl sm:text-2xl" : "line-clamp-2 text-sm"}`} title={entry.title}>
+                  <div className={`pt-3 ${hero ? "sm:absolute sm:inset-x-0 sm:bottom-0 sm:p-3" : ""} ${hero && large ? "sm:p-5" : ""}`}>
+                    <button type="button" onClick={() => setDetail(entry)} className={`block w-full break-words text-left font-bold leading-snug text-white hover:text-orange-200 ${large ? "line-clamp-2 text-xl sm:text-2xl" : "line-clamp-2 text-sm"}`} title={entry.title}>
                       {entry.title}
                     </button>
                     <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs">
                       <p className="min-w-0 truncate text-cyan-200">{entry.curatorName}</p>
-                      <time dateTime={entry.weekStart} className="tabular-nums text-zinc-500">{choiceDateLabel(entry.weekStart, lang)}</time>
+                      <time dateTime={entry.weekStart} className="tabular-nums text-zinc-300">{choiceDateLabel(entry.weekStart, lang)}</time>
                     </div>
                     {large && entry.intro ? <p className="mt-2 line-clamp-1 text-sm leading-6 text-zinc-400">{entry.intro}</p> : null}
                     <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-white/10 pt-2">
@@ -176,7 +177,7 @@ export default function ShowtimeChoiceShelf({
                       <ShareButton
                         title={entry.title}
                         text={entry.intro || entry.title}
-                        url={shareUrl(entry)}
+                        url={shareUrl(entry, lang)}
                         label={copy.shareChoice}
                         copiedLabel={copy.copied}
                         iconOnly
@@ -217,17 +218,16 @@ export default function ShowtimeChoiceShelf({
       <div className="grid items-start gap-x-7 gap-y-8 lg:grid-cols-[minmax(0,2.2fr)_minmax(320px,1fr)]" data-showtime-editorial>
         <section id="choice-weekly" className="min-w-0 scroll-mt-24 lg:col-start-1 lg:row-start-1" aria-labelledby="choice-heading">
           <h2 id="choice-heading" className="mb-4 text-xl font-bold">{featured ? editorial.featured : editorial.choices}</h2>
-          {lead ? <div className={`grid items-start gap-5 ${side.length ? "lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]" : "max-w-lg"}`}>
-            <div data-choice-lead>{renderCard(lead, true)}</div>
-            {side.length > 0 && <div className="hidden gap-6 lg:grid">{side.map((entry) => renderCard(entry))}</div>}
+          {lead ? <div className={`grid grid-cols-2 gap-4 ${side.length === 2 ? "sm:grid-cols-3" : side.length === 0 ? "max-w-lg" : ""}`} data-choice-feature-grid>
+            <div data-choice-lead className={`col-span-2 min-w-0 ${side.length === 2 ? "sm:row-span-2" : side.length === 1 ? "sm:col-span-1" : ""}`}>{renderCard(lead, true, side.length > 0)}</div>
+            {side.map((entry) => <div key={recordKey(entry)} data-choice-companion className="min-w-0">{renderCard(entry, false, true)}</div>)}
           </div> : loading ? <div role="status" aria-label={copy.loading} className="aspect-square max-w-lg animate-pulse bg-white/5" /> : !loadError ? <p className="py-6 text-sm text-zinc-400">{copy.noPublished}</p> : null}
           {heartError ? <p role="alert" className="mt-3 text-xs font-bold text-rose-200">{heartError}</p> : null}
         </section>
         {chart && <aside className="min-w-0 border-t border-white/15 pt-5 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0" data-showtime-chart>{chart}</aside>}
-        {remaining.length > 0 && <section className={`min-w-0 lg:col-start-1 lg:row-start-2 ${more.length === 0 ? "lg:hidden" : ""}`} aria-labelledby="more-choice-heading" data-choice-more>
+        {more.length > 0 && <section className="min-w-0 lg:col-start-1 lg:row-start-2" aria-labelledby="more-choice-heading" data-choice-more>
           <h2 id="more-choice-heading" className="mb-4 text-xl font-bold">{editorial.more}</h2>
           <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 lg:grid-cols-4">
-            {side.map((entry) => <div key={recordKey(entry)} className="min-w-0 lg:hidden">{renderCard(entry)}</div>)}
             {more.map((entry) => renderCard(entry))}
           </div>
         </section>}

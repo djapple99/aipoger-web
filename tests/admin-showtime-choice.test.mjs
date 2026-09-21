@@ -10,7 +10,7 @@ const choiceAdminRoute = readFileSync(new URL("../src/app/api/admin/choice/route
 const choiceCurrentRoute = readFileSync(new URL("../src/app/api/choice/current/route.ts", import.meta.url), "utf8");
 const creatorChoicePublicRoute = readFileSync(new URL("../src/app/api/creator-choice/public/route.ts", import.meta.url), "utf8");
 const creatorChoiceRoute = readFileSync(new URL("../src/app/api/creator-choice/route.ts", import.meta.url), "utf8");
-const creatorChoiceProfilePage = readFileSync(new URL("../src/app/profile/choice/page.tsx", import.meta.url), "utf8");
+const creatorChoiceProfilePage = readFileSync(new URL("../src/components/creator-choice-workbench.tsx", import.meta.url), "utf8");
 const choiceHelper = readFileSync(new URL("../src/lib/aipoger-choice.ts", import.meta.url), "utf8");
 const choiceCatalog = readFileSync(new URL("../src/lib/server-choice-catalog.ts", import.meta.url), "utf8");
 const rankPage = readFileSync(new URL("../src/app/rank/page.tsx", import.meta.url), "utf8");
@@ -92,7 +92,7 @@ test("profile exposes dedicated owner entry points for works and Choice", () => 
 
 test("Choice history opens creator editing and supports confirmed deletion", () => {
   const creatorChoiceRoute = readFileSync(new URL("../src/app/api/creator-choice/route.ts", import.meta.url), "utf8");
-  const creatorChoiceProfile = readFileSync(new URL("../src/app/profile/choice/page.tsx", import.meta.url), "utf8");
+  const creatorChoiceProfile = readFileSync(new URL("../src/components/creator-choice-workbench.tsx", import.meta.url), "utf8");
   assert.ok(creatorChoiceRoute.includes('action === "delete_collection"'));
   assert.ok(creatorChoiceRoute.includes("confirmed !== true"));
   assert.match(creatorChoiceProfile, /collections.map/);

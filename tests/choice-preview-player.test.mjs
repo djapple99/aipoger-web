@@ -5,7 +5,7 @@ import test from "node:test";
 const playerSource = readFileSync(new URL("../src/components/choice-preview-player.tsx", import.meta.url), "utf8");
 const adminChoiceSource = readFileSync(new URL("../src/app/admin/choice/page.tsx", import.meta.url), "utf8");
 const globalPlayerSource = readFileSync(new URL("../src/components/global-music-player.tsx", import.meta.url), "utf8");
-const creatorChoiceSource = readFileSync(new URL("../src/app/profile/choice/page.tsx", import.meta.url), "utf8");
+const creatorChoiceSource = readFileSync(new URL("../src/components/creator-choice-workbench.tsx", import.meta.url), "utf8");
 
 test("Choice preview player provides a compact bottom audio surface", () => {
   assert.ok(playerSource.includes("data-choice-preview-player"));

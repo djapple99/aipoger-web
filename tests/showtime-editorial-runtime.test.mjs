@@ -30,11 +30,14 @@ function shelf() {
 }
 test("valid owner feature leads without ranking Choices or duplicating a visible lead", () => {
   const render = shelf();
-  const tree = render([entry("new"), entry("picked"), entry("old")], "creator:picked");
+  const tree = render([entry("new"), entry("picked"), entry("old"), entry("fourth")], "creator:picked");
   const all = nodes(tree);
   const lead = all.find((node) => "data-choice-lead" in node.props);
   assert.equal(nodes(lead).find((node) => node.type === "article").props["data-choice-key"], "creator:picked");
   assert.equal(content(all.find((node) => node.props.id === "choice-heading")), "Featured Choice");
+  assert.equal(all.filter((node) => "data-choice-companion" in node.props).length, 2);
+  assert.deepEqual(all.filter((node) => node.type === "article").map((node) => node.props["data-choice-key"]), ["creator:picked", "creator:new", "creator:old", "creator:fourth"]);
+  assert.deepEqual(all.filter((node) => node.type === "Share").map((node) => node.props.url), ["picked", "new", "old", "fourth"].map(id => `/choice/${id}?kind=creator&lang=en`));
   assert.ok(all.findIndex((node) => "data-choice-lead" in node.props) < all.findIndex((node) => "data-showtime-chart" in node.props));
   assert.ok(all.findIndex((node) => "data-showtime-chart" in node.props) < all.findIndex((node) => "data-choice-more" in node.props));
 });

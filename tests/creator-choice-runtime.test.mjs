@@ -156,3 +156,20 @@ test("ordered selections persist and published playlists cannot fall below five 
   assert.equal((await patch("remove_item", { itemId: uuid(101) })).status, 200);
   assert.deepEqual(admin.tables.aipoger_creator_choice_items.map((item) => item.position).sort(), [1, 2, 3, 4]);
 });
+
+test("batch editor validates owner, favorites, duplicates and publication before one atomic RPC", async () => {
+  const { admin, patch } = setup(0);
+  const calls=[];admin.rpc=async(name,args)=>{calls.push({name,args});return {data:collectionId,error:null};};
+  const refs=Array.from({length:10},(_,i)=>({sourceKind:'listen_bar_track',sourceId:uuid(10+i)}));
+  const fields={weekStart:'2026-09-14',title:'中文 title',intro:'Introduction',items:refs,expected:{}};
+  assert.equal((await patch('save_editor',fields)).status,400);assert.equal(calls.length,0);
+  for(let i=10;i<20;i++)favorite(admin,i);
+  assert.equal((await patch('save_editor',{...fields,items:[refs[0],refs[0]]})).status,400);
+  assert.equal((await patch('save_editor',{...fields,isPublished:true,items:refs.slice(0,4)})).status,400);
+  assert.equal((await patch('save_editor',fields,'expired')).status,401);
+  assert.equal((await patch('save_editor',fields)).status,200);
+  assert.equal(calls.length,1);assert.equal(calls[0].name,'save_creator_choice_editor');
+  assert.deepEqual(calls[0].args.p_items,refs);assert.equal(calls[0].args.p_title,'中文 title');
+  admin.tables.aipoger_creator_choice_collections[0].creator_id=uuid(2);
+  assert.equal((await patch('save_editor',fields)).status,404);assert.equal(calls.length,1);
+});

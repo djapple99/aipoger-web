@@ -13,7 +13,7 @@ const commentsRoute = readFileSync(new URL("../src/app/api/choice/comments/route
 const commentsMigration = readFileSync(new URL("../supabase/migrations/20260716094500_choice_collection_comments.sql", import.meta.url), "utf8");
 const creatorChoiceRoute = readFileSync(new URL("../src/app/api/creator-choice/route.ts", import.meta.url), "utf8");
 const adminChoiceRoute = readFileSync(new URL("../src/app/api/admin/choice/route.ts", import.meta.url), "utf8");
-const profileChoicePage = readFileSync(new URL("../src/app/profile/choice/page.tsx", import.meta.url), "utf8");
+const profileChoicePage = readFileSync(new URL("../src/components/creator-choice-workbench.tsx", import.meta.url), "utf8");
 const choiceModel = readFileSync(new URL("../src/lib/aipoger-choice.ts", import.meta.url), "utf8");
 const choiceCopy = readFileSync(new URL("../src/lib/choice-copy.ts", import.meta.url), "utf8");
 const choiceLayout = readFileSync(new URL("../src/app/choice/[id]/layout.tsx", import.meta.url), "utf8");
@@ -111,6 +111,6 @@ test("publishing Choice persists the visible title and recommendation copy in th
   assert.match(creatorChoiceRoute, /hasDraftFields/);
   assert.match(creatorChoiceRoute, /title: cleanText\(body\?\.title, 120\)/);
   assert.doesNotMatch(adminChoiceRoute, /curator_identity: curatorIdentity\(body\?\.curatorIdentity\)/);
-  assert.match(profileChoicePage, /isPublished: !selected\.isPublished, \.\.\.draft/);
+  assert.match(profileChoicePage, /requestAction\("save_editor"/);
   assert.match(profileChoicePage, /type Draft = \{ weekStart: string; title: string; intro: string \}/);
 });

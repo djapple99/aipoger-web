@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { createCreatorChoiceRequestScope, ChoiceRequestError } from "../src/lib/creator-choice-client.ts";
 import { creatorChoiceCopy, creatorChoiceError } from "../src/lib/creator-choice-copy.ts";
 
-const source = readFileSync(new URL("../src/app/profile/choice/page.tsx", import.meta.url), "utf8");
+const source = readFileSync(new URL("../src/components/creator-choice-workbench.tsx", import.meta.url), "utf8");
 
 test("a switched account invalidates delayed GET and mutation responses and prevents subsequent old writes", async () => {
   const originalFetch = global.fetch;
@@ -80,15 +80,13 @@ test("all four languages have complete workspace, state, action, confirmation an
   assert.match(source, /creatorChoicePublicPath\(selected.id\)\}&lang=\$\{lang\}/);
 });
 
-test("auth cleanup clears private state and existing drafts debounce to the server", () => {
+test("auth cleanup clears private edits and saves are explicit rather than debounced", () => {
   assert.match(source, /onAuthStateChange/);
   assert.match(source, /subscription.unsubscribe\(\)/);
   assert.match(source, /scopeRef.current\?\.controller.abort\(\)/);
-  assert.match(source, /setCatalog\(\[\]\); setCollections\(\[\]\); setSelectedId\(null\); setDraft\(emptyDraft\(\)\); setDraftKey\(""\)/);
-  assert.match(source, /scope.userId/);
-  assert.match(source, /requestAction\("save_collection", \{ collectionId: selected.id, \.\.\.draft \}\)/);
-  assert.match(source, /\}, 900\)/);
-  assert.match(source, /clearTimeout\(timer\)/);
-  assert.match(source, /isPublished: !selected.isPublished, \.\.\.draft/);
-  assert.doesNotMatch(source, /isPublished: !selected.isPublished, \.\.\.selected/);
+  assert.match(source, /setSelectedItems\(\[\]\); setPendingItems\(\[\]\)/);
+  assert.match(source, /requestAction\("save_editor"/);
+  assert.doesNotMatch(source, /localStorage.setItem|\}, 900\)|setSyncing/);
+  assert.match(source, /beforeunload/);
+  assert.match(source, /expected: editorSnapshot.current/);
 });
