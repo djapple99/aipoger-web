@@ -1,6 +1,6 @@
 # AIPOGER 開發與維運
 
-2026-09-21 Choice 頁底評論：沿用既有 collection comments API，新增直接可見評論區、名稱回覆及四語文案；463 測試通過，無資料庫 migration。[發布紀錄](archive/2026-09-21-choice-inline-comments.md)。
+2026-09-21 Choice 頁底評論已上線（app `0a49e0b`）：沿用既有 collection comments API，新增直接可見評論區、名稱回覆及四語文案；463 測試通過，無資料庫 migration。[發布紀錄](archive/2026-09-21-choice-inline-comments.md)。
 
 2026-09-21 Choice 整批發布已上線（app `6564a8a`）：版面、分享封面與批次編輯完成，459 項測試通過。正式 migration `20260921132314_creator_choice_batch_editor` 已套用；[發布紀錄](archive/2026-09-21-choice-batch-release.md)。
 
