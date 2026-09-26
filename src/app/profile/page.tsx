@@ -1621,6 +1621,9 @@ function ProfileInner() {
                   <Link href="/profile/choice" className="rounded-2xl border border-yellow-200/30 bg-yellow-300/10 px-4 py-2 text-sm font-black text-yellow-100 transition hover:border-yellow-100/65">
                     我的 Choice
                   </Link>
+                  <Link href={`/profile/insights?lang=${lang}`} className="rounded-2xl border border-orange-300/30 bg-orange-400/10 px-4 py-2 text-sm font-black text-orange-100 transition hover:border-orange-200">
+                    {lang === "zh" ? "作品表現" : lang === "ja" ? "作品の分析" : lang === "ko" ? "작품 분석" : "Work insights"}
+                  </Link>
                   {isAdmin && (
                     <Link href="/admin" className="rounded-2xl border border-amber-300/40 bg-amber-300/10 px-4 py-2 text-sm font-black text-amber-100 transition hover:border-amber-200 hover:bg-amber-300/20 hover:text-white">
                       {copy.adminEntryButton}

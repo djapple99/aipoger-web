@@ -8,6 +8,7 @@ import AuthRequiredDialog from "@/components/auth-required-dialog";
 import { supabase } from "@/lib/supabase";
 import { nextMusicIndex, playableMusicQueue } from "@/lib/music-queue";
 import { logAnalyticsEvent } from "@/lib/analytics-client";
+import { createListeningMeasurement, listeningTrackId } from "@/lib/music-listening-measurement";
 import { useI18n } from "@/lib/i18n";
 import { publishMusicPlayer, registerMusicPlayer, type MusicSession as ShowtimePlayerSession } from "@/lib/music-player-store";
 
@@ -21,6 +22,7 @@ export default function GlobalMusicPlayer() {
   const isZh = lang === "zh";
   const label = useCallback((zh: string, en: string, ja: string, ko: string) => lang === "ja" ? ja : lang === "ko" ? ko : isZh ? zh : en, [isZh, lang]);
   const playbackSegmentRef = useRef<{ id: string; title: string; artist: string; source: string; pagePath: string; seconds: number; lastTime: number } | null>(null);
+  const listeningRef = useRef<ReturnType<typeof createListeningMeasurement> | null>(null);
   const [heartBusy, setHeartBusy] = useState(false);
   const [hearted, setHearted] = useState<Record<string, boolean>>({});
   const [authOpen, setAuthOpen] = useState(false);
@@ -48,8 +50,20 @@ export default function GlobalMusicPlayer() {
     if (!segment) return;
     playbackSegmentRef.current = null;
     void logAnalyticsEvent({ eventType, songId: segment.id, source: segment.source, pagePath: segment.pagePath,
-      metadata: { title: segment.title, artist: segment.artist, playedSeconds: Math.round(segment.seconds) } });
+      metadata: { title: segment.title, artist: segment.artist, playedSeconds: Math.round(segment.seconds), ...listeningRef.current?.snapshot(audioRef.current?.duration ?? 0) } });
+    listeningRef.current?.reset();
   }, []);
+  useEffect(() => {
+    let user: string | null | undefined;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const next = session?.user.id ?? null;
+      if (user !== undefined && user !== next) listeningRef.current = null;
+      user = next;
+    });
+    const flush = () => finishSegment("song_pause");
+    window.addEventListener("pagehide", flush);
+    return () => { subscription.unsubscribe(); window.removeEventListener("pagehide", flush); };
+  }, [finishSegment]);
   const applyVolume = useCallback((audio: HTMLAudioElement, value: number) => {
     const normalized = clampMediaVolume(value);
     volumeRef.current = normalized;
@@ -93,7 +107,7 @@ export default function GlobalMusicPlayer() {
     if (context && context.state !== "closed") void context.close();
   }, []);
 
-  const playTrack = useCallback(async (nextSession: ShowtimePlayerSession, autoplay = true) => {
+  const playTrack = useCallback(async (nextSession: ShowtimePlayerSession, autoplay = true, intentional = true) => {
     const audio = audioRef.current;
     const nextTrack = nextSession.queue[nextSession.index];
     if (!audio || !nextTrack) return false;
@@ -109,6 +123,7 @@ export default function GlobalMusicPlayer() {
       if (media instanceof HTMLMediaElement && media !== audio) media.pause();
     });
     audio.pause();
+    listeningRef.current = createListeningMeasurement(crypto.randomUUID(), intentional, new Date().toISOString());
     audio.src = nextTrack.audioUrl;
     applyVolume(audio, volumeRef.current);
     audio.load();
@@ -141,6 +156,7 @@ export default function GlobalMusicPlayer() {
       audio.load();
     }
     sessionRef.current = null;
+    listeningRef.current = null;
     setSession(null);
     setPlaying(false);
     setCurrentTime(0);
@@ -148,7 +164,7 @@ export default function GlobalMusicPlayer() {
     setPlaybackError("");
   }, []);
 
-  const move = useCallback((direction: -1 | 1) => {
+  const move = useCallback((direction: -1 | 1, intentional = true) => {
     const current = sessionRef.current;
     if (!current) return;
     if (direction === -1) {
@@ -161,7 +177,7 @@ export default function GlobalMusicPlayer() {
     if (index === null) return;
     historyRef.current.push(current);
     setHistoryDepth(historyRef.current.length);
-    void playTrack({ ...current, index });
+    void playTrack({ ...current, index }, true, intentional);
   }, [playTrack]);
 
   const togglePlayback = useCallback(() => {
@@ -225,7 +241,7 @@ export default function GlobalMusicPlayer() {
           setSession(next);
         } else {
           const following = [...current.queue.slice(current.index + 1), ...current.queue.slice(0, current.index)].find(track => allowed.has(track.id));
-          void playTrack({ ...current, queue, index: Math.max(0, queue.findIndex(track => track.id === following?.id)) }, !audioRef.current?.paused);
+          void playTrack({ ...current, queue, index: Math.max(0, queue.findIndex(track => track.id === following?.id)) }, !audioRef.current?.paused, false);
         }
       } catch { /* Keep the current queue on transient network failure. */ }
     };
@@ -380,19 +396,29 @@ export default function GlobalMusicPlayer() {
           setPlaying(true);
           const session = sessionRef.current;
           const current = session?.queue[session.index];
-          const id = current?.heartTrackId || current?.id;
+          const id = current ? listeningTrackId(current) : null;
           if (current && id && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(id)) {
             const source = session?.sourceKey?.startsWith("bar:") ? "bar_heartbreak" : "music_player";
             const pagePath = session?.sourceKey?.startsWith("bar:") ? "/listen-bar" : window.location.pathname;
             playbackSegmentRef.current = { id, title: current.title, artist: current.artist, source, pagePath, seconds: 0, lastTime: audioRef.current?.currentTime || 0 };
-            void logAnalyticsEvent({ eventType: "song_play", songId: id, source, pagePath, metadata: { title: current.title, artist: current.artist } });
+            listeningRef.current?.sample(audioRef.current?.currentTime ?? 0, performance.now());
+            void logAnalyticsEvent({ eventType: "song_play", songId: id, source, pagePath, metadata: { title: current.title, artist: current.artist, ...listeningRef.current?.snapshot(audioRef.current?.duration ?? 0) } });
           }
         }}
         onPause={(event) => { setPlaying(false); if (!event.currentTarget.ended) finishSegment("song_pause"); }}
+        onSeeking={() => listeningRef.current?.reset()}
+        onSeeked={(event) => { listeningRef.current?.reset(); if (!event.currentTarget.paused) listeningRef.current?.sample(event.currentTarget.currentTime, performance.now()); }}
         onError={() => { setPlaying(false); setPlaybackError(label("音檔載入失敗，請重試或播放下一首。", "Audio failed to load. Retry or play the next track.", "音源を読み込めません。再試行するか次の曲を再生してください。", "오디오를 불러오지 못했습니다. 다시 시도하거나 다음 곡을 재생하세요.")); }}
         onTimeUpdate={(event) => {
           const time = event.currentTarget.currentTime;
           const segment = playbackSegmentRef.current;
+          if (!event.currentTarget.paused && !event.currentTarget.seeking) {
+            listeningRef.current?.sample(time, performance.now(), event.currentTarget.playbackRate);
+            if (segment && listeningRef.current?.due()) {
+              void logAnalyticsEvent({ eventType: "song_resume", songId: segment.id, source: segment.source, pagePath: segment.pagePath,
+                metadata: listeningRef.current.snapshot(event.currentTarget.duration) });
+            }
+          }
           if (segment) {
             const delta = time - segment.lastTime;
             if (delta > 0 && delta < 2) segment.seconds += delta;
@@ -408,7 +434,7 @@ export default function GlobalMusicPlayer() {
           finishSegment("song_finish");
           const current = sessionRef.current;
           if (current && (current.repeat || current.index < current.queue.length - 1)) {
-            move(1);
+            move(1, false);
           } else {
             setPlaying(false);
           }
