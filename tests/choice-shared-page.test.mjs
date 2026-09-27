@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const sharedPage = readFileSync(new URL("../src/app/choice/[id]/page.tsx", import.meta.url), "utf8");
+const sharedPage = readFileSync(new URL("../src/app/choice/[id]/choice-client.tsx", import.meta.url), "utf8");
 const sharedRoute = readFileSync(new URL("../src/app/api/choice/[id]/route.ts", import.meta.url), "utf8");
 const savedRoute = readFileSync(new URL("../src/app/api/choice/saved/route.ts", import.meta.url), "utf8");
 const profilePage = readFileSync(new URL("../src/app/profile/page.tsx", import.meta.url), "utf8");
@@ -16,7 +16,7 @@ const adminChoiceRoute = readFileSync(new URL("../src/app/api/admin/choice/route
 const profileChoicePage = readFileSync(new URL("../src/components/creator-choice-workbench.tsx", import.meta.url), "utf8");
 const choiceModel = readFileSync(new URL("../src/lib/aipoger-choice.ts", import.meta.url), "utf8");
 const choiceCopy = readFileSync(new URL("../src/lib/choice-copy.ts", import.meta.url), "utf8");
-const choiceLayout = readFileSync(new URL("../src/app/choice/[id]/layout.tsx", import.meta.url), "utf8");
+const choiceLayout = readFileSync(new URL("../src/app/choice/[id]/page.tsx", import.meta.url), "utf8");
 const choiceShareMetadata = readFileSync(new URL("../src/lib/server-choice-share-metadata.ts", import.meta.url), "utf8");
 
 test("shared Choice links resolve official and creator collections to the playable public page", () => {
