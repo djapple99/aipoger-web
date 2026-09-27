@@ -1,10 +1,30 @@
 # AIPOGER Product Rules
 
-Last updated: 2026-09-18 05:04 Asia/Taipei。主文件 2／6。
+文件整理：2026-09-27 Asia/Taipei；產品實作基準：2026-09-27。主文件 2／6。創作者私人作品表現已正式發布；文件整理與功能發布分別查核。
 
-Showtime 認證已退役；月榜與收藏製作 Choice 已正式發布，取代 2026-09-17 23:09 roadmap 的待定細節與更早提案。2026-09-18 起 Choice 與月榜同頁策展，不再分頁籤；同票 owner 裁定、純黑底及整榜分享亦已發布，見 [最新發布紀錄](archive/2026-09-18-showtime-chart-admin-release.md)。
+Showtime 認證已退役；月榜與收藏製作 Choice 已正式發布，取代 2026-09-17 23:09 roadmap 的待定細節與更早提案。2026-09-18 起 Choice 與月榜同頁策展，不再分頁籤；同票 owner 裁定、純黑底及整榜分享亦已發布，見 [最新發布紀錄](releases/2026-09-18-showtime-chart-admin-release.md)。
 
 This document is the product-rule source of truth for AIPOGER. Use it before changing Battle, Bar Heartbreak, AIPOGER Showtime, auth, upload, or deployment behavior.
+
+## 現行狀態邊界
+
+- APC 尚未啟用為產品點數經濟，不宣稱儲值、下注、獎勵或廣告換點已上線；歷史常數、欄位和字串不構成產品能力。
+- 酒吧投稿不自動轉為 Battle；Explore 接戰依創作者明確選擇與準備好的 Drop。Drop／Q Crash 自願對戰保留。
+- 酒吧生存淘汰、Showtime 認證與 Daily Spotlight 已退役；以下提到的历史資料保存是資料完整性要求，不是要恢復那些玩法。
+- 自動音訊曲風建議 worker 尚待啟用；手動投稿與已發布分類選單可用。
+- 創作者私人作品表現第一版已於 2026-09-27 上線，定義見下節。既有 owner analytics 與 Earworm 反應選項是不同資料來源，不可把重播意願當成實際重播。
+
+## 創作者私人作品表現
+
+2026-09-27 正式發布；[發布驗證](releases/2026-09-27-creator-insights.md)。數據只提供創作者本人，公開歌曲卡片與月榜計分保持原規則。
+
+- 入口：個人頁「作品表現」，路徑 `/profile/insights`；伺服器依驗證後的登入身分取得自有作品，不能以網址指定別人。回傳彙總，不回傳聽眾身分；登出或換帳號清空私人資料。
+- 第一版顯示最近 28 天有效登入聽眾、完聽率、主動重播率、聽後 Heart／收藏轉換率；另列目前不同非作者支持者／收藏者及本人的正式已結算對戰得票率。數據缺失顯示累積中，讀取失敗顯示錯誤，不補假零。
+- 新聆聽紀錄：一次播放滿 30 秒算有效；暫停／恢復保持同一次。完聽是實際覆蓋至少 85% 不重複音訊區間；拖曳不算已聽。重播須另一個主動開始且滿 30 秒的播放，自動接播／酒吧循環不算。
+- 聽後轉換以有效登入聽眾為分母，計其有效聆聽之後記錄且目前仍保留的支持／收藏；舊收藏無個人保存時間不能假設為新轉換。Heart 連動收藏，兩項不可相加。這是觀察到的現存轉換，不是歷史所有按下次數或因果歸因。
+- 新版比例只用新版紀錄與登入非作者聽眾；舊事件與訪客不混入，不能宣稱上線前已有完整歷史。Earworm 的 replay 意願選項仍不等於實際重播。
+- 只列目前啟用且屬於本人的公播曲庫作品；正式對戰另列已結算且符合正式觀眾門檻的 Drop Battle／Q Crash，不揭露進行中的密封票。
+- 無效或未登入請求被拒絕，私人回應禁止快取。分母為零顯示資料累積中；少於 20 位有效聽眾提醒樣本較少。
 
 ## Product Principle
 
@@ -494,7 +514,7 @@ Legacy code, database tables, API routes, or historical docs may still use `hono
 
 ### Playback And Presentation
 
-- Desktop gives approximately 70% width to Choice and 30% to compact monthly cover rows. Mobile order is lead Choice, chart summary, more Choices. The chart initially shows at most five real tracks, with an explicit expand/collapse control; never fill missing ranks with fake Top 10 entries. Filters remain available in a disclosure. Both use the shared bottom queue player with play/pause, seek, previous/next and mobile volume. Chart play-all follows the complete filtered ranked order, independent of summary expansion; Choice playback follows curator order.
+- Desktop gives approximately 70% width to Choice and 30% to compact monthly cover rows. Mobile order is lead Choice, two companion cards when available, chart summary, then more Choices. The chart initially shows at most five real tracks, with an explicit expand/collapse control; never fill missing ranks with fake Top 10 entries. Filters remain available in a disclosure. Both use the shared bottom queue player with play/pause, seek, previous/next and mobile volume. Chart play-all follows the complete filtered ranked order, independent of summary expansion; Choice playback follows curator order.
 - Historical authorized Battle audio remains accessible through compatible archive/share paths without requiring a fake monthly rank. `Full Song` is available only with the winning creator's explicit complete-song authorization; otherwise expose only the authorized archived Drop clip.
 - Retain lyrics viewing with preserved line breaks and a readable HUD/modal; absent lyrics show `歌詞未提供` / `No Lyrics`. Display actual metadata and compact functional controls, not certification labels or marketing copy explaining the redesign.
 
@@ -506,27 +526,7 @@ Creator stages:
 
 ## Storage And Bandwidth
 
-Latest measured usage on 2026-05-29:
-
-- Total Supabase Storage: about 1.78 GB.
-- `battle-audio`: about 1.15 GB across 152 files.
-- `listen-bar-audio`: about 606.5 MB across 62 files.
-- `listen-bar-covers`: about 34.0 MB across 32 files.
-- Largest observed file: about 44.7 MB.
-
-Plan assumption:
-
-- The project is believed to be on Supabase Pro.
-- Supabase Pro includes 100 GB file storage.
-- Storage is currently not the bottleneck if Pro is active.
-- 24H Full Song bandwidth and playback load are more important early risks than raw storage.
-
-Operating guidance:
-
-- Keep 24H Full Song active count conservative at launch.
-- Prefer blocking full-song uploads before storage upload when the global active cap is reached.
-- Keep duplicate-file checks active for Battle and 24H surfaces.
-- Consider cleanup policies for cancelled, expired, or orphaned uploaded files before public scale.
+Storage and bandwidth usage, subscription limits and active-battle load must be measured for the current operation. Do not reuse May storage snapshots or assume a paid plan is active without checking. Preserve duplicate-file protection and review orphaned uploads only under a specific cleanup scope.
 
 Mobile playback guidance:
 

@@ -1,44 +1,46 @@
 # AIPOGER 開發與維運
 
-2026-09-21 Choice 頁底評論已上線（app `0a49e0b`）：沿用既有 collection comments API，新增直接可見評論區、名稱回覆及四語文案；463 測試通過，無資料庫 migration。[發布紀錄](archive/2026-09-21-choice-inline-comments.md)。
+2026-09-27 創作者私人作品表現已上線（app `952c1bc`，分支 `codex/creator-insights`）：個人頁入口、28 天聆聽與轉換指標、目前支持與收藏、正式結算得票率；同步修復 Choice 分享 metadata 的頁面入口。Vercel `dpl_Bfniz6ZbAyzAzAj4VcBH43x64hrV` Ready 並已 promote 至 aipoger.com。441 測試通過、31 原有可選資料庫測試略過、0 失敗；無新資料庫 migration。[發布紀錄](releases/2026-09-27-creator-insights.md)。
 
-2026-09-21 Choice 整批發布已上線（app `6564a8a`）：版面、分享封面與批次編輯完成，459 項測試通過。正式 migration `20260921132314_creator_choice_batch_editor` 已套用；[發布紀錄](archive/2026-09-21-choice-batch-release.md)。
+2026-09-21 Choice 頁底評論已上線（app `0a49e0b`）：沿用既有 collection comments API，新增直接可見評論區、名稱回覆及四語文案；463 測試通過，無資料庫 migration。[發布紀錄](releases/2026-09-21-choice-inline-comments.md)。
 
-更新：2026-09-18 05:04 Asia/Taipei。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
+2026-09-21 Choice 整批發布已上線（app `6564a8a`）：版面、分享封面與批次編輯完成，459 項測試通過。正式 migration `20260921132314_creator_choice_batch_editor` 已套用；[發布紀錄](releases/2026-09-21-choice-batch-release.md)。
 
-## 最新發布：14 類音樂；曲風建議待分析服務啟用
+文件整理：2026-09-27；產品實作基準：2026-09-27。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
+
+## 分類服務：分類已發布，worker 尚待啟用
 
 - 2026-09-20：Web `e08687e`／`codex/genre-suggestions` 已 push；Vercel `dpl_CfrCok6hkdHSv3AGjK7RzNP56zdt` READY 並已 alias 至 aipoger.com。三個新分類及 15 個播放頻道已正式生效。
 - Supabase `three_music_genres` 已套用，ledger `20260920055213`，對應本機 `20260920120000_three_music_genres.sql`，不要重複執行。
 - 自動音訊建議尚未啟用：worker `c8f7d7f` 已準備並 push，等待使用者完成 Render 管理台登入，再核對資源與配置兩端服務。現時保留手動選擇／投稿。
-- 450 項測試、TypeScript、本機／雲端 build、正式頁面和桌機／手機檢查通過。完整狀態與接續步驟見 [發布紀錄](archive/2026-09-20-genre-release.md)。
+- 450 項測試、TypeScript、本機／雲端 build、正式頁面和桌機／手機檢查通過。完整狀態與接續步驟見 [發布紀錄](releases/2026-09-20-genre-release.md)。
 
 ## 前版發布：Choice 管理精簡與收藏順序
 
 - 應用 `147dbc6`／`codex/choice-management-simplify`；Vercel `dpl_FfPbhR4V3nXbMaJswnNf5vZ9Yw5t` READY，2026-09-18 05:04 Asia/Taipei 已 promote 至 aipoger.com。
 - 444 項測試、TypeScript、本機／雲端 build 通過；lint 0 errors／16 既有 warnings。無 SQL migration、歷史收藏時間回填或正式資料刪除。
-- 收藏時間為私有 interactions store 的 per-user 欄位，由 Heart 與 favorite 路徑共同維護；只影響個人 Choice 選曲順序。新歌宣傳／官方草稿不再進入待辦彙總。詳見 [發布紀錄](archive/2026-09-18-choice-management-simplify-release.md)。
+- 收藏時間為私有 interactions store 的 per-user 欄位，由 Heart 與 favorite 路徑共同維護；只影響個人 Choice 選曲順序。新歌宣傳／官方草稿不再進入待辦彙總。詳見 [發布紀錄](releases/2026-09-18-choice-management-simplify-release.md)。
 
 ## 前版發布：頭像後台待辦
 
 - `9fc7074`／`codex/owner-task-avatar`：全站 owner 頭像紅色待辦數、後台彙總及分類入口；不取代 Profile 或原帳號通知。Vercel `dpl_CYiSQUWJWdaXxnQCGG4neeZFwoAw` READY 並 promote 至 aipoger.com。
 - 無 DB migration／正式資料寫入。437 項測試、TypeScript、本機及雲端 build 通過；lint 0 errors／16 既有 warnings。正式 API 未登入／無效 token 為 401；owner 真實登入操作未執行，隔離 runtime 已涵蓋帳號切換、更新及紅點顯示。
-- 新後台工作流要接入 `src/lib/admin-tasks.ts` 及 `/api/admin/tasks` 的真實待處理來源；新歌宣傳、所有 Choice 草稿、普通活動、已停用頁面或完成紀錄均不得誤算成待辦。詳見 [發布紀錄](archive/2026-09-18-owner-task-avatar-release.md)。
+- 新後台工作流要接入 `src/lib/admin-tasks.ts` 及 `/api/admin/tasks` 的真實待處理來源；新歌宣傳、所有 Choice 草稿、普通活動、已停用頁面或完成紀錄均不得誤算成待辦。詳見 [發布紀錄](releases/2026-09-18-owner-task-avatar-release.md)。
 
 ## 前版：排行榜管理與分享
 
 - 使用者明確回覆 `do it` 後，`9f96865`／`codex/showtime-chart-admin` 已部署並 promote 至 aipoger.com：第 1 款純黑底、整份月榜分享、owner 排行榜管理與 Choice 管理入口整合。
 - Vercel `dpl_EoRgvvWvNPfDNMyZSfg1BJjgfnox` READY；Supabase 已套用本機 `20260917180000_monthly_chart_owner_decisions.sql`，正式 migration ledger 版本 `20260917184048`、名稱 `monthly_chart_owner_decisions`，兩者是同一份 SQL，不重複套用。
-- 429 項測試、TypeScript、本機及雲端 build 通過；lint 0 errors、16 項既有 warnings。正式資料／公開頁／API 權限驗證與限制見 [發布紀錄](archive/2026-09-18-showtime-chart-admin-release.md)。
+- 429 項測試、TypeScript、本機及雲端 build 通過；lint 0 errors、16 項既有 warnings。正式資料／公開頁／API 權限驗證與限制見 [發布紀錄](releases/2026-09-18-showtime-chart-admin-release.md)。
 
 ## 前版發布：同頁策展
 
-- Showtime 同頁策展版面：`6343ea0`，`codex/showtime-editorial` 已 push；Vercel `dpl_6q3DgSbgTmGzirmtyxdm4P5dH8RE` 已 promote 並驗證 aipoger.com。417 項測試通過，無新 DB migration。詳見 [本次發布紀錄](archive/2026-09-18-showtime-editorial-release.md)。
+- Showtime 同頁策展版面：`6343ea0`，`codex/showtime-editorial` 已 push；Vercel `dpl_6q3DgSbgTmGzirmtyxdm4P5dH8RE` 已 promote 並驗證 aipoger.com。417 項測試通過，無新 DB migration。詳見 [本次發布紀錄](releases/2026-09-18-showtime-editorial-release.md)。
 
 ## 前一版基礎發布
 
 - Showtime 月榜與收藏製作 Choice：應用 commit `79e53bd`（主實作 `e5eab5b`），分支 `codex/showtime-charts-choice`，已 push 與 promote 至 aipoger.com。
-- Vercel `dpl_8WEW1DehGhKjNfrW1vSTNF7GbjLv`；三份 Supabase 遷移已套用，405 項測試通過、0 略過。詳細資料核對、瀏覽器驗證與限制見 [發布紀錄](archive/2026-09-17-showtime-charts-choice-release.md)。
+- Vercel `dpl_8WEW1DehGhKjNfrW1vSTNF7GbjLv`；三份 Supabase 遷移已套用，405 項測試通過、0 略過。詳細資料核對、瀏覽器驗證與限制見 [發布紀錄](releases/2026-09-17-showtime-charts-choice-release.md)。
 
 ## 架構與資料來源
 
@@ -137,7 +139,7 @@ Check:
 - Battle setup page loads.
 - Audio upload/cut flow still works.
 - Duplicate active Drop audio is blocked when audio hash exists.
-- User cannot keep multiple active Drop Battle intents.
+- One active Drop founder intent and one active challenger intent may coexist; reject extra intents within the same role.
 - A user with an active Drop Battle can still start one active 24H Full Song challenge.
 - Drop challenge cards older than 24 hours are cancelled by cleanup.
 - If no instant opponent exists, user can open a Drop Battle challenge card.
@@ -259,7 +261,7 @@ Check:
 - Page loads at `/listen-bar?lang=zh`.
 - Public listening works without sign-in.
 - The lower hero action strip shows `Drop Battle` directly beside `探索 AI 音樂`; it links to `/battle?lang=<lang>`. On mobile, both actions remain centered side by side on the second row without horizontal overflow.
-- There is no explicit play/pause button in the public radio UI.
+- Play/pause, seek and volume use the shared bottom player; do not require a competing radio player.
 - Record/cover image renders.
 - Progress bar and public volume control render.
 - Lyrics area is readable and does not collapse too short.
@@ -275,24 +277,17 @@ Check:
 - Track comments notify the song creator through account notifications, except self-comments.
 - Upload requires sign-in.
 - Upload policy copy is visible.
-- My Bar Tracks shows creator's Challenger/public tracks after sign-in.
-- Creator can remove own Challenger.
+- My Bar Tracks shows the creator's community tracks after sign-in; retired Challenger state must not be presented as a current admission requirement.
 - Creator can remove own public-pool song.
 
-Challenger and public pool:
+Current airplay and submission:
 
-- Visitors can switch Bar Heartbreak playback between all public airplay and the 11 fixed music genres.
-- Genre filter UI shows current track counts, with each genre using a 36-track public-pool target.
-- New submissions enter the selected genre's public pool while that genre has fewer than 36 active public songs; full genres send new submissions into same-genre Challenger with 36-hour protection.
-- New submissions are blocked when the creator already has 5 or more active public-pool songs in the selected genre; the creator must reduce that genre to 4 public songs before uploading that genre again.
-- Creators with 30 or more active public-pool songs across all genres can successfully upload at most 1 active song per Taiwan day.
-- Creator upload flows require a fixed genre and must not silently default missing genres.
-- Creator Challenger slots use the per-creator, per-genre 3/2/1 ladder: 0-2 same-genre active public songs allows 3 active Challengers, 3-5 allows 2, and 6+ allows 1.
-- Public-pool songs do not occupy Challenger slots and must not be removed by this slot limit.
-- Public pool progress shows current total over 396 and per-genre counts over 36.
-- Public-pool elimination starts only when a genre has more than 36 public songs and removes at most 3 per pass from overfull genre pools.
-- `GET /api/listen-bar/process-rotation` is manual/monitoring dry-run preview only.
-- Mutation requires protected POST and `LISTEN_BAR_ROTATION_ENABLED=true`.
+- All public airplay plus 14 fixed genres provide 15 playback choices; actual song counts are shown without capacity denominators.
+- Eligible submissions become public immediately. No Challenger seats, protection timer, capacity elimination or survival days.
+- A creator may submit at most three own songs per personal 168-hour window; failed uploads do not count and deleting songs does not refund quota. The five-active-songs-per-creator-per-genre limit remains.
+- A fixed genre is required; no silent default. Three new genres are available; audio suggestions must fail safely to manual selection while the worker is unavailable.
+- GET/POST process-rotation and the database rotation function make zero mutations, even with old callers or flags. No rotation cron may re-enable elimination.
+- Public audio formats and limits follow product rules. Creator/admin/moderation removals remain explicit.
 
 Choice and retired Spotlight:
 
@@ -305,7 +300,7 @@ Choice and retired Spotlight:
 - `/listen-bar?spotlight=YYYY-MM-DD&lang=zh` returns normal Bar Heartbreak with no specified-song playback or Spotlight panel.
 - `/today?lang=zh` returns 307 to `/rank?lang=zh#choice-weekly`.
 - `/admin/social` remains the only draft, approval, and manual publishing console; Discord publishing still requires an approved draft plus its explicit publish action.
-- /admin/showtime 不再提供授證；舊入口導至 Choice 管理，作品管理使用 /admin/listen-bar。音檔、實際 Battle 結果、票數及 Heart 不可改寫。
+- /admin/showtime 不再提供授證；舊入口導至作品管理 /admin/listen-bar。音檔、實際 Battle 結果、票數及 Heart 不可改寫。
 - /admin/choice 僅管理已發布歌單，owner 統一使用 /profile/choice 製作。官方新增／編輯／發布／封面 API 回傳 410，管理 GET 不返回草稿或選曲庫，分頁讀取全部已發布歌單；不自動生成社群草稿或對外發布。
 - Existing `listen_bar_daily_spotlights`, historical assets, and old social drafts are not deleted during this retirement.
 
@@ -410,23 +405,23 @@ Check:
 - Earworm writes no formal Battle votes, results, wins/losses, defense progress, or Showtime state.
 - Verify 1440x900 and 390x844 layouts, Explore invitation/skip/reopen, the single recommendation shelf, public favorability labels without personal-answer chips in Explore and Bar, first-load autoplay fallback, play/pause, seek, immediate reactions, `下一首`, next-track autoplay after a user gesture, tenth-answer result, the exact five-action result order, retest, and no browser console errors.
 
-## Showtime 月榜與 Choice 驗收（2026-09-17）
+## Showtime 月榜與 Choice 現行驗收
 
 - /rank 保留 AIPOGER Showtime 品牌，Choice 與月榜同時掛載，不用頁籤；#choice-weekly／#monthly-charts 是原生錨點。桌機約 70/30，手機為主推、月榜摘要、更多 Choice；僅一個製作入口，空／少內容不留廣告占位。
 - 主推設定存於私有 listen-bar-data/choice/featured.json；僅 /api/admin/choice 的 owner guard 後可寫入。set_featured 驗證 kind、UUID、已發布及可播歌曲；公開讀取排除草稿／撤下／刪除，畫面再與公開可播歌單交集，不能靠主推繞過可見性。無 DB schema 變更，不修改認證、曲庫、票數或收藏。
 - 月榜摘要最多五筆；完整展開及月份／類型／搜尋可用，Play All 依完整篩選名次。測試實際 API 權限與主推儲存失敗，既有 auth race／跨日愛心／共享播放器測試必須保留。
-- 月榜讀 /api/charts/monthly，DB 依台灣曆月逐筆有效 Heart 去重、排除作者自投，至少 3 位支持才列名次，同分 1、1、3；類型榜使用各類型名次。不得從前端陣列索引或累積愛心捏造順位。
+- 月榜讀 /api/charts/monthly，DB 依台灣曆月逐筆有效 Heart 去重、排除作者自投，至少 3 位支持才列名次，同分顯示名次待定，由 owner 在同支持數組內裁定；類型榜依產品規則繼承相對順序。不得從前端陣列索引或累積愛心捏造順位。
 - 月份選單只顯示啟用後真實月份；本期更新、過期封存，零支持月份仍封存一次。歷史榜不得因下架重排；下架、未公開、審核中或無音檔歌曲不可播放。
 - monthly_charts migration 的讀取／封存 RPC 僅 service_role 可執行；表格 RLS 開啟。來源寫入與月末封存共用 advisory lock；以獨立 PostgreSQL 測試驗證去重、跨月、取消支持、同分、權限、不可改寫及超過 1000 筆。
 - /api/cron/monthly-charts 驗證 CRON_SECRET，每日台灣 00:05 執行；資料讀取與來源寫入也會補結算已完成月份。缺少 schema／權限不可偽装成正常空榜。
 - 圖片、播放、收藏與分享沿用真實歌曲。月榜愛心使用歌曲 /api/listen-bar/reaction，Choice 歌單收藏與既有歌曲收藏保持各自語意；不新增第二套歌曲人氣分數。
 - 公開 Choice 使用 PublicChoiceGallery 與 ShowtimeChoiceShelf，保留策展者身分封面、期別、標題、推薦介紹、HUD、評論、獨立歌單收藏與分享頁。官方／個人身分不可從標題猜測。
-- 任何登入創作者可從 /profile/choice 開啟自己的收藏選曲；搜尋／類型篩選、獨立勾選框、已選清單、第一首自動建草稿、排序與手機上下移動、預覽、發布 5–10 首。單週一份 Choice 不改。
+- 任何登入創作者可從 /profile/choice 開啟自己的收藏選曲；搜尋／類型篩選、獨立勾選最多十首後確認、已選清單、數字指定順位、預覽、發布 5–10 首。只有明確儲存或發布／撤回才提交整批內容，第一次明確儲存才建立草稿；單週一份 Choice 不改。
 - 取消收藏不連帶刪除已選 Choice，移出 Choice 不取消歌曲收藏；未收藏新歌不可繞過 API 加入。既有公開歌單及舊 Battle 選曲保留來源 ID／音檔公開同意，不會因認證退役而消失。
 - 所有創作者自有作品由 Profile 管理顯示資料與外部支持連結，音檔、戰績、票數不可改寫；修改外部支持連結仍進既有審核。平台不處理支付或金額。
 - 認證入口、六次守擂認證進度、官方認證標章及認證資格 gating 移除。舊認證 metadata 僅歷史保存，新增資料不得授證。
 - 原認證歌曲在退休遷移時一次設為 showcase；創作者可自行重新 opt in，重跑遷移不得覆蓋之後設定。歷史 8 敗豁免保留，未新增或恢復酒吧淘汰。
-- 中英日韓、桌機 1440x900／手機 390x844 檢查：封面可见、文字換行、無橫向溢出、頁籤鍵盤操作、規則 HUD 關閉、底部唯一播放器不遮操作。
+- 中英日韓、桌機 1440x900／手機 390x844 檢查：封面可见、文字換行、無橫向溢出、同頁錨點鍵盤操作、規則 HUD 關閉、底部唯一播放器不遮操作。
 - 未登入者可聽歌與看榜；收藏／管理要求登入。驗證 auth 切換時清除舊私人資料，忽略舊請求，錯誤能重試且不鎖死 busy 狀態。
 
 ## Storage Checklist
@@ -440,15 +435,7 @@ Before large upload-related releases, check:
 - Current 24H queued/live count.
 - Current Drop open challenge count.
 
-Reference measurement from 2026-05-29:
-
-- Total Storage: about 1.78 GB.
-- `battle-audio`: about 1.15 GB.
-- `listen-bar-audio`: about 606.5 MB.
-- Largest observed file: about 44.7 MB.
-- Drop open: 0.
-- 24H queued: 1.
-- 24H live: 0.
+Record fresh measurements for the current task; do not use historical snapshots as current usage.
 
 ## Mobile Checklist
 
@@ -497,13 +484,10 @@ Check:
 - 對戰記錄切換月份後，兩模式與本月摘要一致；超過 12 場 Q Crash 也不截斷本月小計。
 - 4:3 顯示得票率 57%；缺少雙方票數不捏造百分比。
 
-## 傷心酒吧持續聆聽切換（2026-09-08）
+## 酒吧遷移與回復邊界
 
-- `supabase/migrations/20260907182740_retire_bar_survival.sql` 已套用正式 Supabase；先以 transaction rollback 驗證，再正式套用，RPC 回傳全零。
-- Vercel rotation cron 移除，GET/POST 相容端點不讀寫資料；DB 仍阻擋系統容量淘汰，保留明確人工撤下。
-- 曲庫 API 分頁讀取並嚴格檢查公開狀態，Showtime 認證不再排除酒吧播放；前端不截斷 396 首。
-- 遷移前後：280 筆作品、628 愛心、45 筆認證、91 筆非公開狀態一致。可公開播放的社群作品為 189 首。
-- 回復程式不會回復 DB；原函式定義保存在私人 audits/2026-09-08-bar/database-functions-before.json。不要為回復畫面自動恢復淘汰。
+- `20260907182740_retire_bar_survival.sql` 已套用。回復應用不會撤銷 DB；原函式回復證據保留於私人 audits/2026-09-08-bar/database-functions-before.json。
+- 不得為回復畫面而重啟淘汰；公開曲庫不限 396 首且保留既有可見性保護。
 
 ## 共用播放器回歸（2026-09-08）
 
@@ -512,13 +496,7 @@ Check:
 - 驗證有限歌單結尾、單曲曲風循環、上一首歷史、快速連續跳歌、暫停後跨頁、拖曳後自然接播、音量、歌詞 Escape 與未登入愛心提示。桌機、手機及中英日韓控制項需渲染檢查。
 - 首頁背景音樂在已有共用播放 session 時不自動啟動；使用者主動播放其他音訊會暫停共用音訊，避免重疊。
 
-## 創作者七日上傳額度與 Choice 發布（2026-09-17 22:42 Asia/Taipei）
+## 七日額度遷移
 
-- 正式程式提交 `86f837e`，發布分支 `codex/creator-upload-week`；從正式版基準 `034238ba` 建立乾淨 worktree，再帶入 Choice 提交 `f92356e` 與本次額度修正。未混入原工作區其他未提交變更。
-- Vercel deployment `dpl_45MNJq2frL4vRY8YbYYDnkR3j7vY` 為 READY，正式網址 https://aipoger.com；版本網址 https://aipoger-web-rnz8-kcqshch4n-yohungs-projects.vercel.app 。本節是部署後證據，文件提交不改變上述程式版本。
-- 正式 Supabase 已套用 `20260917142731_creator_upload_week.sql`。獨立帳號計數列保留刪歌後額度；原子 upsert 防止並行投稿超額。沒有回填或修改既有歌曲。
-- `tests/creator-upload-week.sql` 已以 transaction rollback 驗證第三首成功、第四首拒絕、刪除與編輯不退額度、168 小時到期重啟、失敗交易不計數及帳號隔離／權限。不是實際多連線壓測；沒有留下測試歌曲。
-- 遷移及回滾測試前後：歌曲 292、啟用 196、Heart 661 一致，額度表為 0 列。正式公播 API 回傳 196 首；公開 Choice API 為 200，未登入管理 Choice API 為 401。
-- TypeScript、37 項相關 Node 測試與正式雲端 build 通過；lint 0 errors、16 項既有 warnings。本機 build 因已遮蔽的本機金鑰出現 sitemap API-key 提示，但雲端 build 使用正式環境設定並成功。
-- 瀏覽器檢查中文桌機 1440x900、手機 390x844 與中英日韓額度文案，手機無橫向溢出；未登入提示為登入後查看。未使用登入帳號實際上傳歌曲，登入者完整端到端投稿仍需人工驗收。額度約束已由上述資料庫回滾測試驗證。
-- 原工作區保持原分支與既有未提交變更；本次程式、SQL、測試及主文件亦同步留在原 repo。後續發布須以此發布分支或更新正式版為基準，不能從較舊 HEAD 直接覆蓋正式站。
+- `20260917142731_creator_upload_week.sql` 已套用；刪歌不退額度、原子計數與帳號隔離須維持。資料庫既有驗證不等於實際多連線壓測。
+- 後續發布須從最新已驗證正式版建立，不能用目前較舊工作分支 HEAD 覆蓋正式站。需要重新驗收登入投稿／owner 寫入時，使用授權範圍內的真實流程。

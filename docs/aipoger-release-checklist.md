@@ -1,6 +1,3 @@
-# 已整併：aipoger-release-checklist
+# 相容入口
 
-此路徑只保留舊引用相容，不再維護規則。
-
-- [現行主文件](<aipoger-engineering.md>)
-- [歷史原文（2026-09-06 整併前）](<archive/2026-09-06-consolidation/docs/aipoger-release-checklist.md>)
+既有 skill 使用此路徑；唯一現行正文為 [開發與維運](aipoger-engineering.md)。此檔不維護驗收清單。

@@ -1,6 +1,6 @@
 # AIPOGER 版面與使用流程
 
-更新：2026-09-18 05:04 Asia/Taipei。主文件 3／6；產品門檻與權限以 [產品規則](aipoger-product-rules.md) 為準。Showtime 純黑底、月榜分享與管理已正式發布；Choice 管理精簡與收藏順序見 [最新發布紀錄](archive/2026-09-18-choice-management-simplify-release.md)。
+文件整理：2026-09-27；產品實作基準：2026-09-27。主文件 3／6；產品門檻與權限以 [產品規則](aipoger-product-rules.md) 為準。Showtime 純黑底、月榜分享與管理已正式發布；Choice 管理精簡與收藏順序見 [最新發布紀錄](releases/2026-09-18-choice-management-simplify-release.md)。
 
 This document protects AIPOGER's visual identity. Use it before redesigning any page, adding major UI, or changing user-facing copy.
 
@@ -250,6 +250,13 @@ Own works and playback:
 - Use one shared bottom player across charts, Choice, Explore, Bar and Profile, including play/pause, seek, previous/next, volume and lyrics. No native audio controls or waveforms per row. Preserve authorized historical audio/share access without displaying it as a fabricated monthly rank.
 - Preserve the existing black/orange music-stage identity. Keep controls compact, accessible and readable on desktop/mobile; use state labels and action names, not in-app redesign explanations or marketing copy.
 
+## 創作者作品表現
+
+- 個人頁提供「作品表現」入口，前往 `/profile/insights?lang=<lang>`；中英日韓介面，顯示「只有你看得到」及返回我的作品。
+- 最近 28 天、作品搜尋、每首歌曲的聆聽與轉換數據集中在私人頁；目前支持者／收藏者另標為目前狀態。正式對戰得票率獨立列出，不混成歌曲總評分。
+- 桌機四欄、手機兩欄數據，保留黑橘視覺與全站首頁 Logo。詳細定義預設收合；比例同時顯示分子／分母，資料不足與錯誤均有真實狀態。
+- 登出或換帳號立即清除舊資料，未登入保留返回路徑前往登入。公開歌曲頁不加整排分析數據。
+
 ## Account And Login
 
 Owner task badge (2026-09-18): show the red pending-task count at the avatar's upper-right, separately linked to the admin task list; retain Profile at the avatar center and account/Battle notices at the bell. When both notice types exist, move the existing account-count marker to the upper-left so counts do not overlap. Red badge labels support zh/en/ja/ko. Admin overview lists actionable categories and counts with direct module links; opening it never dismisses unresolved work. New-song promotion and all Choice drafts are excluded. The existing Bar promotion count remains inside Bar admin for manual checking.
@@ -478,20 +485,13 @@ Avoid:
 - 一般零戰績作品收起零挑戰數與不能操作的暫不接戰；資訊按鈕仍可查真實完整戰績。依 2026-09-17 確認規則，所有認證標章與守擂 0/6 晉級進度退役；接戰狀態只依創作者明確選擇與實際資格顯示。
 - 資訊按鈕可用滑鼠與鍵盤操作，桌機 hover 仍保留；播放、支持、分享與真實攻擂入口不變。
 - 對戰記錄使用得票率；本月摘要和兩模式內容遵循同一月份。跨場 audienceCount 加總稱投票人次。
-- 手機耳朵蟲／酒吧的未發布高度調整仍以 roadmap 為準；Showtime／Choice 依上方 2026-09-17 已確認體驗實作，文件更新不能當作完成證據。
+- Showtime／Choice 以本文件上方 2026-09-21 版面與編輯流程為準；未完成項目只列在 roadmap，文件整理不能當作發布證據。
 
 ## 音樂分析的表達框架
 
 A&R 報告使用一句真話、聲音 DNA、歌詞診斷、市場定位、最強使用場景、情緒記憶點、商業用處、最大風險、AIPOGER 投放建議與一至兩項修改方向。將聲音觀察翻成創作者能採取的行動；沒有音訊特徵抽取或歌詞時明說證據範圍，不假裝完成分析。避免只堆 BPM／Key／分數、空泛稱讚或宣稱保證爆紅。品牌、廣告、短影音、DJ 現場等適配度是建議，不是商業成功承諾；入口與登入規則以產品正文為準。
 
-## 2026-09-08 傷心酒吧持續聆聽（歷史發布記錄）
-
-- 酒吧取消曲風容量分母、容量進度条、Challenger 區與生存天數；顯示實際可播放歌曲數。
-- 投稿即公開，主人可後續策展撤下；中英日韓使用一致的簡短投稿說明。
-- 當批 Showtime 投稿歌曲沿用原 ID 回到酒吧輪播，當時未改探索或 NEW 日期；這不是現行曝光限制。2026-09-17 確認公開可播歷史社群作品同時出現在探索與酒吧，仍不重設 NEW 日期。
-- 當批三入口為酒吧連續聽、探索找歌、Showtime 主題策展；目前 Showtime 已確認改為月榜與 Choice 頁籤，以上方正文為準。
-
-## 2026-09-08 共用播放器
+## 共用播放器
 
 - 酒吧、探索、Showtime／Choice、個人歌單使用同一個底部播放器：播放／暫停、上一首、下一首、拖曳進度、手機與桌機音量、歌詞及關閉。酒吧與探索公播作品可在播放器送愛心；其他來源維持原卡片收藏語意。
 - 酒吧六首預覽改為一行下一首，必須與共用佇列實際下一首一致。顯示播放範圍與本首曲風，保留各曲風真實歌曲數。
