@@ -6,10 +6,14 @@ const { createListeningMeasurement, listeningTrackId } = loadTs("src/lib/music-l
 const owner = USER, listener = uuid(2), song = uuid(10);
 const track = { id: song, title: "Song", artist: "Creator", created_by: owner };
 const from = "2026-09-01T00:00:00Z", to = "2026-09-29T00:00:00Z";
-test("Choice and Explore resolve the same song without mixing archived Battle IDs", () => {
+test("Choice, Explore and Profile resolve the same song without mixing archived Battle IDs", () => {
   assert.equal(listeningTrackId({ id: `listen_bar_track:${song}` }), song);
   assert.equal(listeningTrackId({ id: `bar:${song}`, heartTrackId: song }), song);
   assert.equal(listeningTrackId({ id: `battle_archive:${song}` }), null);
+  assert.equal(listeningTrackId({ id: `bar-${song}` }), song);
+  assert.equal(listeningTrackId({ id: `favorite-bar:${song}` }), song);
+  assert.equal(listeningTrackId({ id: `favorite-battle:${song}` }), null);
+  assert.equal(listeningTrackId({ id: `queue-${song}` }), null);
 });
 function event(id, seconds = 90, extra = {}, user = listener) {
   return { id: uuid(30), song_id: song, user_id: user, created_at: "2026-09-02T00:02:00Z", metadata: {

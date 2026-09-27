@@ -1,5 +1,7 @@
 export function listeningTrackId(track: { id: string; heartTrackId?: string }) {
-  const id = track.heartTrackId || track.id.replace(/^listen_bar_track:/, "");
+  // Choice and Profile use display IDs; preserve the underlying song identity
+  // without allowing Battle archives or upload queues into song analytics.
+  const id = track.heartTrackId || track.id.replace(/^(?:listen_bar_track:|bar-|favorite-bar:)/, "");
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id) ? id : null;
 }
 
