@@ -12,3 +12,5 @@
 - [2026-09-21-choice-inline-comments](2026-09-21-choice-inline-comments.md)
 
 - [2026-09-27-creator-insights](2026-09-27-creator-insights.md)
+
+- [2026-09-28-music-bible-2](2026-09-28-music-bible-2.md)

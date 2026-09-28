@@ -1,12 +1,14 @@
 # AIPOGER 開發與維運
 
+2026-09-28 Music Bible 2.0 已發布（app `ae1f196`，分支 `codex/music-bible-2`）：五個創作入口、全部既有資料保留，前台不標新舊／生命週期狀態；Ask Music Agent 隱藏。Vercel `dpl_J3kTgFEt1nof95Nb2wSvxZ6gcQnr` Ready 並已 promote 至 aipoger.com；447 測試通過，無 SQL migration。[發布證據](releases/2026-09-28-music-bible-2.md)。
+
 2026-09-27 創作者私人作品表現已上線（app `952c1bc`，分支 `codex/creator-insights`）：個人頁入口、28 天聆聽與轉換指標、目前支持與收藏、正式結算得票率；同步修復 Choice 分享 metadata 的頁面入口。Vercel `dpl_Bfniz6ZbAyzAzAj4VcBH43x64hrV` Ready 並已 promote 至 aipoger.com。441 測試通過、31 原有可選資料庫測試略過、0 失敗；無新資料庫 migration。[發布紀錄](releases/2026-09-27-creator-insights.md)。
 
 2026-09-21 Choice 頁底評論已上線（app `0a49e0b`）：沿用既有 collection comments API，新增直接可見評論區、名稱回覆及四語文案；463 測試通過，無資料庫 migration。[發布紀錄](releases/2026-09-21-choice-inline-comments.md)。
 
 2026-09-21 Choice 整批發布已上線（app `6564a8a`）：版面、分享封面與批次編輯完成，459 項測試通過。正式 migration `20260921132314_creator_choice_batch_editor` 已套用；[發布紀錄](releases/2026-09-21-choice-batch-release.md)。
 
-文件整理：2026-09-27；產品實作基準：2026-09-27。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
+文件整理：2026-09-28；產品實作基準：2026-09-28。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
 
 ## 分類服務：分類已發布，worker 尚待啟用
 
@@ -42,37 +44,16 @@
 - Showtime 月榜與收藏製作 Choice：應用 commit `79e53bd`（主實作 `e5eab5b`），分支 `codex/showtime-charts-choice`，已 push 與 promote 至 aipoger.com。
 - Vercel `dpl_8WEW1DehGhKjNfrW1vSTNF7GbjLv`；三份 Supabase 遷移已套用，405 項測試通過、0 略過。詳細資料核對、瀏覽器驗證與限制見 [發布紀錄](releases/2026-09-17-showtime-charts-choice-release.md)。
 
-## Music Bible 2.0：第一階段本機實作，尚未發布
+## Music Bible 2.0：已發布的第一階段
 
-- 工作分支 `codex/music-bible-2`；隔離 checkout `/Users/huangyihong/Documents/GitHub/aipoger-music-bible-2`，基於現行發布分支 `codex/creator-insights` 的文件提交 `e1a74ba`。原工作目錄的既有修改保留。
-- 盤點：`ai-music-bible-page.tsx` 管理會員入口、內容載入與台語庫；`suno-practice-library-section.tsx` 管理招式、歌詞、曲風與六步流程；`suno-inspiration-index-section.tsx` 管理 DNA／配方搜尋、分頁與評論；`suno-reference-guide-section.tsx` 管理起手式、排錯與版本／權利。`/api/ai-music-bible/content` 在驗證會員後合併靜態內容與 owner overrides。
-- 新增 `BibleMetadata`：`platform: string`、`model: string | null`、`modelVersion: string | null`、`lastVerifiedAt: YYYY-MM-DD | null`、`status: Verified | Experimental | Legacy | Deprecated`，以每筆 `metadata` 承載。未知模型、版本與日期留 null，既有資料默认 Legacy。原 evidence／sources 保留，不能等同新狀態。
-- 資料範圍：163 Prompt moves、21 lyric moves、38 Taiwanese entries、772 artist DNA、747 recipes。只擴充 metadata，不刪除、改寫或重新去重歷史 Prompt；所有 ID、搜尋文字、原文及順序保留。
-- 原三種 owner 可編輯條目沿用 `ai_music_bible_content_overrides.payload.metadata` JSONB，不需 SQL migration。Verified 必須帶模型、版本及有效日曆日期；編輯時間不作驗證時間。DNA／747 配方先提供型別與 API metadata，逐筆後台編輯仍待下一階段。
-- 新增 `bible-home.tsx` 六入口與可複製創作需求單；Agent 未接模型，不會傳送／保存需求。修正 command dock 切換 hash 時未通知收合章節的問題。會員驗證、private no-store 與缺表時的靜態回退沿用。
-- 第一階段不部署、不改正式資料庫。驗收需包含保留內容逐筆比對、舊 payload 相容、非法日期／不完整 Verified 拒絕、會員 API 401／私有快取／缺表回退，以及中英桌機手機入口與搜尋複製。正式 owner 登入儲存與發布驗收尚待執行。
+- 首頁五入口：Knowledge、Style DNA、Prompts、Workflows、Solve My Problem。沿用章節 ID、會員搜尋、複製、評論及試聽；command dock 的 hash 切換會通知章節展開。Ask Music Agent 完全隱藏，未啟用模型或需求單。
+- 程式分工：`ai-music-bible-page.tsx` 管會員入口與台語庫；`bible-home.tsx` 管創作入口；`suno-practice-library-section.tsx` 管招式／歌詞／流程；`suno-inspiration-index-section.tsx` 管 DNA／配方；`suno-reference-guide-section.tsx` 保留起手式與排錯。API 在會員驗證後合併靜態內容與 owner overrides。
+- 每筆新增 `metadata`：`platform: string`、`model: string | null`、`modelVersion: string | null`、`lastVerifiedAt: YYYY-MM-DD | null`、`status: Verified | Experimental | Legacy | Deprecated`。未知模型、版本、日期留 null；既有資料內部預設 Legacy，但會員前台不顯示新舊分類、狀態或 metadata 面板，也不依狀態隱藏資料。原 evidence／sources 保留。
+- 全部來源內容、ID、排序和搜尋文字保持：163 Prompt moves、21 lyric moves、38 Taiwanese entries、772 DNA、747 recipes；此次沒有刪除、重新去重或改寫內容。
+- 三種既有 owner 可編輯條目沿用 `ai_music_bible_content_overrides.payload.metadata` JSONB，無需 SQL migration。Verified 必須有模型、版本及有效日曆日期；編輯日期不可當驗證日期。metadata-only 更新保留原文，舊客戶端更新保留既有 metadata。DNA／747 recipes 逐筆後台編輯仍待擴充。
+- 會員驗證、private no-store、缺表靜態回退保留。正式站已實測登入後五入口、收合章節、搜尋／複製、四語切換與 command search；owner 儲存由隔離 runtime 驗證，此次未為測試而寫入正式內容。
+- 修改檔案與完整驗收見 [發布證據](releases/2026-09-28-music-bible-2.md)。後續工作讀私人 roadmap。
 
-本次檔案清單（均位於上述隔離 checkout）：
-
-- `src/components/bible-home.tsx`
-- `src/components/ai-music-bible-page.tsx`
-- `src/components/bible-command-dock.tsx`
-- `src/components/bible-entry-metadata.tsx`
-- `src/components/suno-practice-library-section.tsx`
-- `src/components/suno-inspiration-index-section.tsx`
-- `src/lib/bible-metadata.ts`
-- `src/lib/ai-music-bible-content.ts`
-- `src/lib/suno-practice-library.ts`
-- `src/lib/suno-inspiration-index.ts`
-- `src/lib/taiwanese-lyrics-lab.ts`
-- `src/app/api/ai-music-bible/content/route.ts`
-- `src/app/api/admin/ai-music-bible/content/route.ts`
-- `src/app/admin/ai-music-bible/page.tsx`
-- `tests/music-bible-2.test.mjs`
-- `docs/aipoger-engineering.md`
-- `docs/aipoger-experience.md`
-
-另更新既有私人 `aipoger-roadmap.md`；三份正文均使用既有 Drive ID 原地同步。驗證：447 tests passed、31 optional DB tests skipped、0 failed；lint 0 errors／16 既有 warnings。桌機 1440×900、手機 390×844 檢視、英文及日韓英文回退無水平溢出；隔離 UI 中六入口、收合章節、搜尋與複製、Agent 需求單、command search 通過。實際 `/ai-music-bible` 未登入仍顯示登入對話框，不含會員資料。UI fixture 使用測試資料與假環境值，不等於真實 owner 帳號驗收；臨時預覽路由已移除。
 
 ## 架構與資料來源
 

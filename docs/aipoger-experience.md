@@ -1,6 +1,6 @@
 # AIPOGER 版面與使用流程
 
-文件整理：2026-09-27；產品實作基準：2026-09-27。主文件 3／6；產品門檻與權限以 [產品規則](aipoger-product-rules.md) 為準。Showtime 純黑底、月榜分享與管理已正式發布；Choice 管理精簡與收藏順序見 [最新發布紀錄](releases/2026-09-18-choice-management-simplify-release.md)。
+文件整理：2026-09-28；產品實作基準：2026-09-28。主文件 3／6；產品門檻與權限以 [產品規則](aipoger-product-rules.md) 為準。Showtime 純黑底、月榜分享與管理已正式發布；Choice 管理精簡與收藏順序見 [最新發布紀錄](releases/2026-09-18-choice-management-simplify-release.md)。
 
 This document protects AIPOGER's visual identity. Use it before redesigning any page, adding major UI, or changing user-facing copy.
 
@@ -289,12 +289,14 @@ Direction:
 
 ## AI Music Practice Bible
 
-### Music Bible 2.0 待發布介面
+### Music Bible 2.0 已發布介面
 
-- 本機第一階段在既有會員頁 hero／章節導航後加入六入口：Knowledge、Style DNA、Prompts、Workflows、Solve My Problem、Ask Music Agent。原 practice map、章節 ID、搜尋、評論、複製與試聽保留。
-- Knowledge 導向曲風詞彙、歌曲段落／人聲及拆軌；Style DNA 導向既有索引；Prompts 導向招式庫；Workflows 提供三段創作路徑及既有六步流程；Solve My Problem 展開既有排錯；Ask Music Agent 明示準備中，只提供可編輯、可複製的需求單。
-- 舊資料標示 Reference / Legacy Library；條目顯示平台、模型、版本、最後驗證與狀態。Legacy 不等於失效，Deprecated 仍可查考；未知值顯示未記錄／尚未驗證。歷史 V5.5 文件核對不再表述為目前最新模型。
-- 新內容採繁中／英文；日韓會員內容沿用現有英文回退。公開會員登入入口維持既有四語，不把會員資料移到公開頁。
+- 會員頁 hero／章節導航後提供五入口：Knowledge、Style DNA、Prompts、Workflows、Solve My Problem。原 practice map、章節 ID、搜尋、評論、複製與試聽保留。
+- Knowledge 導向曲風詞彙、歌曲段落／人聲及拆軌；Style DNA 導向既有索引；Prompts 導向招式庫；Workflows 提供三段創作路徑及既有六步流程；Solve My Problem 展開既有排錯。
+- 前台不把資料標為新／舊或 Reference / Legacy Library，也不顯示新增 metadata 狀態。所有資料照常可搜尋與複製；平台、模型、版本、最後驗證與狀態先保留在資料層及 owner 編輯介面。原證據與來源說明保留。
+- Ask Music Agent 尚未成立，入口與準備中需求單皆隱藏；待真正功能完成後另行開放。
+- 新入口採繁中／英文；日韓會員內容沿用英文回退。公開登入入口維持四語，會員資料不移至公開頁。
+
 
 - Studio Mastering Prompt examples use one compact `15 秒試聽` action only on cards with a real audio asset.
 - Route every Prompt example through the shared fixed bottom player. Do not autoplay, expand card height with waveforms, or place a native audio control in each card.
