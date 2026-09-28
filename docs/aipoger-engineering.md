@@ -1,5 +1,7 @@
 # AIPOGER 開發與維運
 
+2026-09-28 音樂分析外站工具入口已上線（app `52e66c6`／`codex/music-analysis-tools`）：三個網站、免費條件與使用步驟。Vercel `dpl_EPwbVwxBDdZqYYtSoy5RswCHgdAB` READY 並已 promote 至 aipoger.com。[發布證據](releases/2026-09-28-music-analysis-tools.md)。
+
 2026-09-28 Music Bible 2.0 已發布（app `ae1f196`，分支 `codex/music-bible-2`）：五個創作入口、全部既有資料保留，前台不標新舊／生命週期狀態；Ask Music Agent 隱藏。Vercel `dpl_J3kTgFEt1nof95Nb2wSvxZ6gcQnr` Ready 並已 promote 至 aipoger.com；447 測試通過，無 SQL migration。[發布證據](releases/2026-09-28-music-bible-2.md)。
 
 2026-09-27 創作者私人作品表現已上線（app `952c1bc`，分支 `codex/creator-insights`）：個人頁入口、28 天聆聽與轉換指標、目前支持與收藏、正式結算得票率；同步修復 Choice 分享 metadata 的頁面入口。Vercel `dpl_Bfniz6ZbAyzAzAj4VcBH43x64hrV` Ready 並已 promote 至 aipoger.com。441 測試通過、31 原有可選資料庫測試略過、0 失敗；無新資料庫 migration。[發布紀錄](releases/2026-09-27-creator-insights.md)。
@@ -54,6 +56,14 @@
 - 會員驗證、private no-store、缺表靜態回退保留。正式站已實測登入後五入口、收合章節、搜尋／複製、四語切換與 command search；owner 儲存由隔離 runtime 驗證，此次未為測試而寫入正式內容。
 - 修改檔案與完整驗收見 [發布證據](releases/2026-09-28-music-bible-2.md)。後續工作讀私人 roadmap。
 
+
+## 音樂分析工具入口
+
+- 應用 `52e66c6`／`codex/music-analysis-tools`。`src/app/music-analysis/page.tsx` 改為純外站導覽；`src/lib/music-analysis-tools.ts` 集中官方 URL、核對日期與四語文案；`src/components/ai-music-bible-page.tsx` 更新兩處入口說明。
+- 頁面不再讀取 `NEXT_PUBLIC_MUSIC_ANALYSIS_URL`、輪詢 health 或嵌入 iframe；既有 `/api/music-analysis/health` 與獨立曲風建議 API 未改。未新增套件、API key、付費服務、SQL 或正式資料寫入。
+- 三入口均使用固定 HTTPS URL、`target=_blank`、`rel=noopener noreferrer`；不向外站附帶帳號、音檔或其他資料。此頁公開，受保護會員功能不變。
+- 官方資訊核對 2026-09-28；外站提供者可能修改免費條件。沒有使用使用者歌曲測試第三方分析品質，也未替使用者註冊或購買外站服務。
+- 驗收及部署 ID 見 [發布證據](releases/2026-09-28-music-analysis-tools.md)。
 
 ## 架構與資料來源
 
@@ -353,7 +363,7 @@ Check:
 ## AI Music Practice Bible Checklist
 
 - Homepage lower navigation shows `AI 音樂練功聖經` with the book icon and links to `/ai-music-bible?lang=zh`; the old homepage `歌曲分析` card is absent.
-- `/ai-music-bible?lang=zh` returns 200. Signed-out visitors see the normal Bible title/value preview, a focused sign-in dialog, and public links to Explore and Bar Heartbreak; signed-in members see the complete Bible and A&R Gate remains only inside its practice map/toolbox.
+- `/ai-music-bible?lang=zh` returns 200. Signed-out visitors see the normal Bible title/value preview, a focused sign-in dialog, and public links to Explore and Bar Heartbreak; signed-in members see the complete Bible and the external analysis-tool directory is linked from its practice map/toolbox.
 - The Bible Hero exposes a clear localized `分享聖經` / `Share Bible` action in both access states. It keeps the current `lang` in the shared URL, uses native sharing when available, and shows the copy fallback without requiring sign-in.
 - Desktop at 1440x900 keeps the full `AI 音樂練功聖經` title together without a single orphan character; mobile at 390x844 has no horizontal page overflow.
 - `#suno-prompt-library` and nested `#lyric-control-library` are directly reachable from the practice map and render complete Chinese and English variants.
@@ -486,7 +496,7 @@ Check:
 - `/battle/results?lang=zh` uses `對戰記錄`; `/battle/results?lang=en` uses `Battle Records`. No public entry should still say `成果牆` / `Result Wall`.
 - Bar Heartbreak shows one static Explore hint when there are no live Battle messages; duplicated marquee content is reserved for an active scrolling ticker.
 - Legacy `/watch?lang=<lang>` keeps the supported language when it redirects to `/battle`.
-- Music analysis cold starts return a non-error warming response while Render wakes; an actual upstream failure still returns a service error.
+- The retained analysis-health route handles warming versus upstream failure, but the public music-analysis directory no longer polls or embeds this service.
 
 
 ## 第一批版面與戰績回歸

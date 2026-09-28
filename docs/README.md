@@ -11,7 +11,7 @@
 
 ## 現況與查找順序
 
-- 文件整理：2026-09-28；已查核產品發布基準：2026-09-28，應用 `ae1f196`，分支 `codex/music-bible-2`；[Music Bible 2.0 發布證據](releases/2026-09-28-music-bible-2.md)。
+- 文件整理：2026-09-28；已查核產品發布基準：2026-09-28，應用 `52e66c6`，分支 `codex/music-analysis-tools`；[音樂分析工具入口發布證據](releases/2026-09-28-music-analysis-tools.md)。
 - 傷心酒吧持續公播與投稿、Explore、Drop Battle、Q Crash、Showtime 月榜與 Choice、共用播放器、耳朵蟲與練功聖經仍保留。
 - 酒吧容量生存淘汰、Challenger 保護、Showtime 認證、Daily Spotlight 已退役；24H Full Song Battle 隱藏於前台。
 - APC 未啟用；自動音訊曲風建議的前端已發布，worker 尚待啟用。創作者私人「作品表現」第一版已發布；新版聆聽比例從發布後開始累積，不能補成歷史完整數據。
@@ -39,4 +39,4 @@ Google Drive 使用固定檔名和既有檔案 ID 原地更新；不可每次另
 | [aipoger-growth.md](https://drive.google.com/file/d/1Q-taa0s8_UKtQwun3VujI-vqpdIsgx0-/view?usp=drivesdk) | 內容與營運 | `1Q-taa0s8_UKtQwun3VujI-vqpdIsgx0-` |
 | [aipoger-roadmap.md](https://drive.google.com/file/d/1i2J3rehyYFdQCCvTJZZVFPw_yhcxar_d/view?usp=drivesdk) | 待辦與未完成項目 | `1i2J3rehyYFdQCCvTJZZVFPw_yhcxar_d` |
 
-雲端固定入口：[00-AIPOGER-最新文件索引.md](https://drive.google.com/file/d/1tBZJ3jW2WJbeIpGWrHSo6eF4lOtALaHs/view?usp=drivesdk)。索引 ID：`1tBZJ3jW2WJbeIpGWrHSo6eF4lOtALaHs`。六份現行正文與雲端索引持續原地更新；GitHub 網站正文以 `codex/music-bible-2` 為發布來源，私人協作／營運／待辦以本機及 Drive 為準。
+雲端固定入口：[00-AIPOGER-最新文件索引.md](https://drive.google.com/file/d/1tBZJ3jW2WJbeIpGWrHSo6eF4lOtALaHs/view?usp=drivesdk)。索引 ID：`1tBZJ3jW2WJbeIpGWrHSo6eF4lOtALaHs`。六份現行正文與雲端索引持續原地更新；GitHub 網站正文以 `codex/music-analysis-tools` 為發布來源，私人協作／營運／待辦以本機及 Drive 為準。

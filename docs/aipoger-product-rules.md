@@ -83,11 +83,11 @@ Daily Spotlight 已退役：它不再是傷心酒吧、Explore、`/admin/listen-
 ## Auth Rules
 
 - Anyone can listen to public music surfaces.
-- Sign-in is required for uploading, protected voting/commenting, music analysis, Battle participation, and creator-owned track deletion. The anonymous Drop arena exception is defined in the Drop Battle section; Q Crash voting still requires sign-in.
+- Sign-in is required for uploading, protected voting/commenting, protected analysis APIs, Battle participation, and creator-owned track deletion. The anonymous Drop arena exception is defined in the Drop Battle section; Q Crash voting still requires sign-in.
 - Bar Heartbreak voting and track comments require sign-in.
 - Bar Heartbreak listening does not require sign-in.
 - Bar Heartbreak must remain publicly listenable; do not block the radio/player behind auth.
-- Music analysis entry and any future analysis API must require sign-in before upload, scoring, or report generation.
+- The public music-analysis tool directory contains external links only. Existing protected analysis APIs still require sign-in; no upload or scoring is added to the directory.
 - These auth rules are system behavior rules. Do not surface them as a long rule block in the product UI unless a help/legal page explicitly needs them.
 - A signed-in account can keep one active Heart per Bar Heartbreak track per Asia/Taipei calendar day. The active Heart is also a saved song.
 - Re-pressing an active Heart on the same track cancels that day's Heart, removes the saved song, and decrements the shared total. The listener may Heart it again afterward.
@@ -110,21 +110,15 @@ Owner task alerts (2026-09-18): the global avatar has a separate red task-count 
 - The dock listens for Supabase auth state changes so signed-in users, owners, sign-outs, and account switches receive the correct avatar and Profile entry without relying on a full page reload. Logged-out visitors continue to see the sign-in entry on routes where the dock is shown.
 - Owner administration remains available from Profile. The floating avatar itself is not an owner-only admin shortcut; only its explicitly labeled red task badge links directly to the owner workbench.
 
-## Music Analysis / AI A&R Gate
+## Music Analysis / 外部分析工具入口
 
-Current behavior target:
+- `/music-analysis` 提供三個外站入口及中英日韓使用說明；不再承諾站內音訊分析、歌詞診斷、市場評分或顯示假報告。Music Bible 的「分析你的音樂」仍連至此頁。
+- 三入口：Tunebat 免費 BPM／Key；Loudness Penalty 免費串流音量調整預估；Cyanite 需註冊，每月 5 首免費分析且功能有限。各卡保留官方說明連結與免費條件核對日期，配額改變時更新同一份文案。
+- 使用者自行在外站選擇或上傳音檔。Tunebat、Loudness Penalty 官方表示基本分析在本機瀏覽器處理；Cyanite 將歌曲上傳其服務。Suno／YouTube 分享網址不能被承諾為可直接分析的音檔。
+- 依使用者最新要求，本頁只放入口和使用方法，不嵌入外部工具、不接付費 API／MCP、不提供貼回結果表單、筆記下載、自動評分或模型報告。外站另開分頁且不附帶帳號或歌曲資料。
+- 本頁為公開導覽，不需要 AIPOGER 登入；不含會員資料。Music Bible、投稿及既有受保護 API 的權限維持不變。後續若要加入站內上傳／分析需另行定義功能與權限。
+- 工具讀數為參考：BPM／Key 需以聆聽校對；音量調整不是品質分數或固定母帶目標；曲風情緒標籤不等於作品好壞或商業成功。
 
-- The homepage `分析你的音樂` entry must open an AIPOGER-owned route first, not a localhost URL.
-- Visitors who are not signed in should be sent to auth before they can upload or analyze a song.
-- Signed-in users may continue to the configured analysis service when `NEXT_PUBLIC_MUSIC_ANALYSIS_URL` is set.
-- If no production analysis service URL is configured, the entry should fail closed with a clear internal connection state rather than sending users to `127.0.0.1`.
-- Analysis output is advisory. AI-assisted judgement should support creator decisions, not replace creator instinct.
-- AIPOGER's analysis product should feel like an AI music A&R Gate, not a generic audio metric report.
-- The analysis framework should combine sonic DNA, lyric diagnostic, market positioning, content-use fit, AIPOGER routing, and one or two actionable revision suggestions.
-- Sonic DNA may cover rhythm, harmony, instrumentation, production texture, genre fusion, and energy arc, but the user-facing output should translate those traits into market meaning.
-- Lyric diagnostic may cover cliche, hook clarity, emotional depth, register fit, singability, and structure. If lyrics are not provided, the report should clearly say the judgement is sound-led.
-- Do not claim deep audio feature extraction unless the analysis service actually extracted audio features. If the service only has upload metadata and user-provided lyrics, phrase output as A&R judgement based on submitted data.
-- User-facing analysis should not mention external Codex skills or implementation tools.
 
 ## AI Music Practice Bible / AI 音樂練功聖經
 
@@ -138,8 +132,8 @@ Current public entry and learning-surface rules:
 - The Bible hero keeps a public, localized share action in both the signed-out value preview and the signed-in library. It shares `/ai-music-bible?lang=<lang>` through the system share sheet when available and falls back to copying the link; sharing the Bible itself does not require sign-in.
 - Public listening remains the low-friction entrance: `/ai-music` and `/listen-bar` can play public music without sign-in. Hearts, saved favorites, comments, contributions, and the Bible require sign-in. On listening surfaces, request sign-in at the moment a protected action is pressed instead of placing login rules in the hero copy.
 - After the member gate, the Bible includes a `LINE 實測討論區` field-room card with direct join and QR actions. It uses the same canonical LINE community URL as the public social cluster and is a handoff for sharing tests, questions, and new findings—not a replacement for the searchable Bible.
-- A&R Gate is not deleted. `分析你的音樂` lives inside the Bible's practice map and toolbox as an optional second-opinion tool after a creator has made something.
-- The Bible is a living, searchable practice database rather than one long static resource article. Its primary areas are prompts, lyrics, Stem separation, Drop practice, rights, AIPOGER tutorials, and the A&R tool.
+- `分析你的音樂` remains in the Bible practice map and toolbox, linking to the public external-tool directory.
+- The Bible is a living, searchable practice database rather than one long static resource article. Its primary areas are prompts, lyrics, Stem separation, Drop practice, rights, AIPOGER tutorials, and external analysis tools.
 - `Prompt 招式庫` and `歌詞控制` are the Bible's prompt-first practice surface. They adapt nine owner-provided Suno PDFs, DOCX files, a genre screenshot, the credited NuNaught community prompting guide, the expanded Studio Mastering prompt pack, and a modular instrument-tone pack into 163 bilingual prompt moves, 21 bilingual lyric-control moves, 93 normalized genre terms, a six-step production workflow, and the large inspiration indexes below.
 - The modular `音色與混音` prompt pack adds 40 copyable directions for drums, drum machines, electric guitar and amps, piano and keys, synthesizers, bass, microphones and recording perspectives, effects, mix/master balance, acoustic guitar, strings, brass, and hand percussion. Brand and model names are only tonal references paired with audible traits; they are version-sensitive prompts, not exact hardware emulation or endorsement claims.
 - The free `錄音室 Mastering` prompt category contains the original 55 genre-, culture-, or era-specific Style prompts—including five new Disco directions: 70s Classic Disco, Italo Disco, Eurodisco, Hi-NRG Disco, and Boogie / Post-Disco—plus 45 Beatport screenshot expansion prompts. The Beatport expansion covers every screenshot type except `DJ Tools / Acapellas`; `DJ Edits` remains included. These are generation directions with version-sensitive behavior, not guarantees of post-production mastering; users should export and measure the final master separately. The category keeps one main mastering filter and exposes 15 music-family filters: `Electronic`, `Hip-Hop`, `Soul & R&B`, `New Age & Ambient`, `Rock & Roll`, `Indie Dance`, `Disco & Funk`, `Jazz & Bossa`, `Pop`, `Classical & Cinematic`, `Latin & Caribbean`, `African & Amapiano`, `Asian & Middle Eastern`, `Country & Folk`, and `DJ Edit / Extended`. The family taxonomy describes musical culture and listening character; it is intentionally broader than the source screenshot's DJ-oriented genre columns.

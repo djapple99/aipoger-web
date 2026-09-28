@@ -287,6 +287,10 @@ Direction:
 - Repeated filter and sorting controls in one toolbar must share a consistent height, radius, type scale, and responsive grid. Do not let one control wrap into a tall pill while its neighbors remain short.
 - Music-review lists use one compact play button per item and one fixed bottom preview player; do not embed a separate native audio bar inside every management card.
 
+## 音樂分析工具入口
+
+`/music-analysis` 使用精簡標題與三張工具卡：Tunebat、Loudness Penalty、Cyanite。每張說明用途、免費範圍與「怎麼使用」，主要按鈕另開外站，次要連結為官方說明。頁尾可回 Music Bible；桌機三欄、手機單欄，四語皆有完整文案。沒有登入等待、分析引擎狀態、範例評分、站內上傳、貼回結果表單或下載筆記。所有音樂分析由使用者自行在外站操作。
+
 ## AI Music Practice Bible
 
 ### Music Bible 2.0 已發布介面

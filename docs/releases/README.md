@@ -14,3 +14,5 @@
 - [2026-09-27-creator-insights](2026-09-27-creator-insights.md)
 
 - [2026-09-28-music-bible-2](2026-09-28-music-bible-2.md)
+
+- [2026-09-28-music-analysis-tools](2026-09-28-music-analysis-tools.md)
