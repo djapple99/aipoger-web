@@ -1,6 +1,5 @@
 "use client";
 
-import BibleEntryMetadata from "@/components/bible-entry-metadata";
 import {
   BadgeCheck,
   BookOpenText,
@@ -168,7 +167,7 @@ function TechniqueCard({
             {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
         </div>
-        <BibleEntryMetadata metadata={item.metadata} locale={locale} />
+
         <p className="mt-3 text-sm font-bold leading-7 text-zinc-400">{sunoLibraryText(item.summary, locale)}</p>
         {hasAudioPreview ? (
           <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -345,8 +344,8 @@ export default function SunoPracticeLibrarySection({
           <div className="rounded-xl border border-yellow-300/18 bg-yellow-300/[0.055] p-4 text-sm font-bold leading-6 text-yellow-50/85">
             <BadgeCheck className="mb-3 h-5 w-5 text-yellow-200" />
             {isZh
-              ? "Reference / Legacy Library：原資料以 V4.5／V5 為主，既有文件核對涵蓋 V5.5，並非目前模型的適用保證。原證據層級保留；是否已重新驗證，請看各筆狀態與日期。"
-              : "Reference / Legacy Library: source material focuses on V4.5/V5, with historical documentation checks covering V5.5. This does not establish compatibility with your current model. Original evidence labels remain; check each entry's status and verification date."}
+              ? "依照歌曲目標挑選 Prompt，複製後調整曲風、人聲與編曲。標籤是生成提示，不是命令保證；可比較不同設定的結果，找到適合你的做法。"
+              : "Choose a prompt for your song, then adapt its genre, vocals, and arrangement. Tags are generation signals, not guaranteed commands; compare settings to find what works for you."}
           </div>
         </div>
         <div className="mt-7 grid grid-cols-2 gap-3 border-t border-white/10 pt-5 text-center sm:max-w-3xl sm:grid-cols-4">

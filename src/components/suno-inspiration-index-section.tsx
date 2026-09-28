@@ -1,6 +1,5 @@
 "use client";
 
-import BibleEntryMetadata from "@/components/bible-entry-metadata";
 
 import {
   Check,
@@ -335,7 +334,7 @@ export default function SunoInspirationIndexSection({ isZh, artistDnaEntries, pr
                         <span key={tag} className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-bold text-zinc-300">{tag}</span>
                       ))}
                     </div>
-                    <BibleEntryMetadata metadata={entry.metadata} locale={isZh ? "zh" : "en"} />
+
                     <p className="mt-4 line-clamp-3 break-words text-xs font-bold leading-6 text-zinc-500">{entry.prompt}</p>
                     <div className="mt-auto grid grid-cols-[minmax(0,1fr)_auto] gap-2 pt-5">
                       <button
@@ -387,7 +386,7 @@ export default function SunoInspirationIndexSection({ isZh, artistDnaEntries, pr
                         </div>
                       ))}
                     </dl>
-                    <BibleEntryMetadata metadata={entry.metadata} locale={isZh ? "zh" : "en"} />
+
                     <p className="mt-4 line-clamp-3 break-words text-xs font-bold leading-6 text-zinc-500">{entry.prompt}</p>
                     <div className="mt-auto grid grid-cols-[minmax(0,1fr)_auto] gap-2 pt-5">
                       <button

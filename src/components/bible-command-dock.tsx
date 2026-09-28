@@ -28,10 +28,9 @@ type DockItem = {
 };
 
 const BIBLE_DOCK_ITEMS: readonly DockItem[] = [
-  { id: "bible-home", eyebrow: "2.0", zh: "六大入口", en: "Bible home", keywords: "home 首頁", icon: ListTree, accent: "orange" },
+  { id: "bible-home", eyebrow: "2.0", zh: "創作入口", en: "Bible home", keywords: "home 首頁", icon: ListTree, accent: "orange" },
   { id: "bible-knowledge", eyebrow: "KNOWLEDGE", zh: "音樂知識", en: "Knowledge", keywords: "音樂 知識", icon: BookOpenText, accent: "orange" },
   { id: "bible-workflows", eyebrow: "WORKFLOWS", zh: "創作流程", en: "Workflows", keywords: "workflow 工作流程", icon: ListTree, accent: "orange" },
-  { id: "bible-agent", eyebrow: "AGENT", zh: "Ask Music Agent · 準備中", en: "Ask Music Agent · In preparation", keywords: "agent brief 需求 助手", icon: WandSparkles, accent: "orange" },
   { id: "practice-map", eyebrow: "MAP", zh: "練功地圖", en: "Practice map", keywords: "入口 route tools 工具", icon: ListTree, accent: "orange" },
   { id: "suno-control-desk", eyebrow: "START", zh: "Suno 起手式", en: "Suno quick start", keywords: "style lyrics title 起手 template 模板", icon: SlidersHorizontal, accent: "cyan" },
   { id: "suno-preflight", eyebrow: "CHECK", zh: "生成前檢查", en: "Pre-flight check", keywords: "checklist prompt 生成 檢查", icon: CheckSquare, accent: "orange" },
@@ -120,7 +119,7 @@ export default function BibleCommandDock({ locale }: { locale: "zh" | "en" }) {
     }
   };
 
-  const visibleDockItems = ["bible-knowledge", "suno-inspiration-index", "suno-prompt-library", "bible-workflows", "suno-troubleshooting", "bible-agent"].flatMap((id) => BIBLE_DOCK_ITEMS.filter((item) => item.id === id));
+  const visibleDockItems = ["bible-knowledge", "suno-inspiration-index", "suno-prompt-library", "bible-workflows", "suno-troubleshooting"].flatMap((id) => BIBLE_DOCK_ITEMS.filter((item) => item.id === id));
 
   return (
     <>
