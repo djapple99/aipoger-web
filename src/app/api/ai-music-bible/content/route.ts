@@ -1,3 +1,4 @@
+import { withBibleMetadata } from "@/lib/bible-metadata";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import {
@@ -65,8 +66,8 @@ export async function GET(request: NextRequest) {
       lyricCategories: SUNO_LYRIC_CATEGORIES,
       stemEngines: STEM_ENGINES,
       stemGoals: STEM_GOALS,
-      artistDnaEntries: SUNO_ARTIST_DNA_ENTRIES,
-      promptRecipes: SUNO_PROMPT_RECIPES,
+      artistDnaEntries: SUNO_ARTIST_DNA_ENTRIES.map(withBibleMetadata),
+      promptRecipes: SUNO_PROMPT_RECIPES.map(withBibleMetadata),
       recipeGenres: SUNO_RECIPE_GENRES,
       defaultsAvailable: Boolean(bibleCatalogDefaults()),
     }, { headers: { "Cache-Control": "private, no-store" } });

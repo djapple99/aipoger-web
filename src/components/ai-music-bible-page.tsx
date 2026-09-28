@@ -39,6 +39,8 @@ import StemSeparationGuideSection from "@/components/stem-separation-guide-secti
 import SunoPracticeLibrarySection from "@/components/suno-practice-library-section";
 import SunoReferenceGuideSection from "@/components/suno-reference-guide-section";
 import SunoCommandReferenceSection from "@/components/suno-command-reference-section";
+import BibleEntryMetadata from "@/components/bible-entry-metadata";
+import BibleHome from "@/components/bible-home";
 import BibleCommandDock from "@/components/bible-command-dock";
 import AuthRequiredDialog from "@/components/auth-required-dialog";
 import ShareButton from "@/components/share-button";
@@ -539,7 +541,7 @@ export default function AiMusicBiblePage() {
           <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-300/60 to-transparent" />
           <div className="relative z-10">
             <div className="flex flex-wrap items-center gap-3">
-              <span className={`${fontRighteous.className} text-xs uppercase tracking-[0.38em] text-cyan-200/80`}>AIPOGER CREATOR CODEX</span>
+              <span className={`${fontRighteous.className} text-xs uppercase tracking-[0.38em] text-cyan-200/80`}>MUSIC BIBLE 2.0</span>
               <span className="rounded-full border border-orange-300/24 bg-orange-400/[0.09] px-3 py-1 text-[11px] font-black text-orange-200">{ui.updated}</span>
             </div>
             <h1 className="mt-5 max-w-5xl text-[clamp(2.65rem,5.2vw,5.5rem)] font-black leading-[0.96] tracking-[-0.04em] text-[#fff8ed] [text-shadow:0_18px_45px_rgba(0,0,0,0.8)]">
@@ -547,14 +549,14 @@ export default function AiMusicBiblePage() {
             </h1>
             <p className="mt-6 max-w-3xl text-base font-bold leading-8 text-zinc-300 md:text-xl md:leading-9">
               {isZh
-                ? "不是看完就算的教學頁。這裡收集 Suno、Prompt、歌詞、Drop 與發表實戰，大家一起測、一起回報，把踩過的坑變成下一首歌的捷徑。"
-                : "A living field guide for Suno, prompts, lyrics, Drops, rights, and real-world AI music practice."}
+                ? "從音樂知識、風格拆解與 Prompt 到創作流程，找到下一首歌的方向。所有既有資料保留，陪你一起測、一起改。"
+                : "A living field guide for musical knowledge, style DNA, prompts, and creative workflows. Every existing reference stays available."}
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <a href="#suno-prompt-library" className="aipo-primary-button inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-sm font-black">
                 {ui.enterLab} <ArrowRight className="h-4 w-4" />
               </a>
-              <a href="#practice-map" className="aipo-ghost-button inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-sm font-black text-white">
+              <a href="#bible-home" className="aipo-ghost-button inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-sm font-black text-white">
                 {ui.viewMap}
               </a>
               <ShareButton
@@ -587,6 +589,7 @@ export default function AiMusicBiblePage() {
         </section>
 
         <BibleCommandDock locale={isZh ? "zh" : "en"} />
+        <BibleHome locale={isZh ? "zh" : "en"} />
 
         <section id="practice-map" className="scroll-mt-24 py-12">
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -723,7 +726,7 @@ export default function AiMusicBiblePage() {
                   <button type="button" onClick={() => void handleCopy(entry.key, entry.sunoWriting)} className="group/copy flex min-w-0 items-center gap-2 pr-4 text-left font-black text-cyan-100 hover:text-white" title={ui.copy}>
                     <span className="min-w-0 break-words">{entry.sunoWriting}</span>{copiedKey === entry.key ? <Check className="h-4 w-4 shrink-0 text-emerald-300" /> : <Clipboard className="h-4 w-4 shrink-0 opacity-35 group-hover/copy:opacity-100" />}
                   </button>
-                  <span className="pr-4 text-xs font-bold leading-6 text-zinc-500">{entry.note}</span>
+                  <div className="pr-4 text-xs font-bold leading-6 text-zinc-500">{entry.note}<BibleEntryMetadata metadata={entry.metadata} locale={isZh ? "zh" : "en"} /></div>
                   <FeedbackButtons entryKey={entry.key} state={feedbackState[entry.key]} onFeedback={handleFeedback} labels={ui} />
                 </div>
               ))}
@@ -733,7 +736,7 @@ export default function AiMusicBiblePage() {
               {visibleTaiwaneseEntries.map((entry) => (
                 <article key={entry.key} className="rounded-xl border border-white/10 bg-black/48 p-4">
                   <div className="flex items-start justify-between gap-3"><div><span className="text-[10px] font-black tracking-[0.16em] text-zinc-600">{isZh ? entry.category : categoryLabels[entry.category]}</span><h3 className="mt-1 text-xl font-black text-white">{entry.meaning}</h3></div><FeedbackButtons compact entryKey={entry.key} state={feedbackState[entry.key]} onFeedback={handleFeedback} labels={ui} /></div>
-                  <div className="mt-4 grid gap-2 text-sm"><p className="text-zinc-500"><span className="mr-2 text-xs font-black text-zinc-700">{ui.recommended}</span>{entry.recommended}</p><button type="button" onClick={() => void handleCopy(entry.key, entry.sunoWriting)} title={ui.copy} className="flex items-center justify-between rounded-lg border border-cyan-200/14 bg-cyan-300/[0.055] px-3 py-3 text-left font-black text-cyan-50"><span>{entry.sunoWriting}</span>{copiedKey === entry.key ? <Check className="h-4 w-4 text-emerald-300" /> : <Clipboard className="h-4 w-4 text-cyan-200/55" />}</button><p className="pt-1 text-xs font-bold leading-6 text-zinc-500">{entry.note}</p></div>
+                  <div className="mt-4 grid gap-2 text-sm"><p className="text-zinc-500"><span className="mr-2 text-xs font-black text-zinc-700">{ui.recommended}</span>{entry.recommended}</p><button type="button" onClick={() => void handleCopy(entry.key, entry.sunoWriting)} title={ui.copy} className="flex items-center justify-between rounded-lg border border-cyan-200/14 bg-cyan-300/[0.055] px-3 py-3 text-left font-black text-cyan-50"><span>{entry.sunoWriting}</span>{copiedKey === entry.key ? <Check className="h-4 w-4 text-emerald-300" /> : <Clipboard className="h-4 w-4 text-cyan-200/55" />}</button><p className="pt-1 text-xs font-bold leading-6 text-zinc-500">{entry.note}</p><BibleEntryMetadata metadata={entry.metadata} locale={isZh ? "zh" : "en"} /></div>
                 </article>
               ))}
             </div>

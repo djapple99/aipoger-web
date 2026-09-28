@@ -1,9 +1,11 @@
+import type { BibleMetadata } from "./bible-metadata.ts";
 import { SUNO_ARTIST_DNA_RAW } from "./suno-artist-dna-data.ts";
 import { SUNO_PROMPT_RECIPE_RAW, SUNO_RECIPE_DIMENSIONS } from "./suno-prompt-recipe-data.ts";
 
 export type SunoInspirationKind = "artist_dna" | "prompt_recipe";
 
 export type SunoArtistDnaEntry = {
+  metadata?: BibleMetadata;
   key: string;
   artist: string;
   source: "encyclopedia" | "aipoger";
@@ -16,6 +18,7 @@ export type SunoArtistDnaEntry = {
 };
 
 export type SunoPromptRecipe = {
+  metadata?: BibleMetadata;
   key: string;
   sourceIndex: number;
   genre: string;

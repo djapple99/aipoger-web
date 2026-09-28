@@ -121,8 +121,16 @@ export async function PATCH(request: NextRequest) {
     }
 
     const payload = sanitizeBiblePayload(body?.payload);
-    if (!payload) return NextResponse.json({ error: "請至少填寫一個內容欄位。" }, { status: 400 });
-    const result = await admin.from(TABLE).upsert({ content_kind: kind, content_key: key, payload, updated_by: userId, updated_at: new Date().toISOString() }, { onConflict: "content_kind,content_key" }).select("content_kind,content_key,payload,updated_by,updated_at").single();
+    if (!payload) return NextResponse.json({ error: "請填寫有效內容；驗證資料須包含平台，Verified 另需模型、版本與有效日期。" }, { status: 400 });
+    // Metadata-only edits must retain existing editorial text, and older clients
+    // that omit metadata must not erase a previous verification record.
+    const existing = await admin.from(TABLE).select("payload").eq("content_kind", kind).eq("content_key", key).maybeSingle();
+    if (existing.error) {
+      if (missingTable(existing.error)) return NextResponse.json({ error: "資料表尚未部署，請先套用最新 Supabase migration。" }, { status: 503 });
+      throw existing.error;
+    }
+    const mergedPayload = { ...(sanitizeBiblePayload(existing.data?.payload) ?? {}), ...payload };
+    const result = await admin.from(TABLE).upsert({ content_kind: kind, content_key: key, payload: mergedPayload, updated_by: userId, updated_at: new Date().toISOString() }, { onConflict: "content_kind,content_key" }).select("content_kind,content_key,payload,updated_by,updated_at").single();
     if (result.error) {
       if (missingTable(result.error)) return NextResponse.json({ error: "資料表尚未部署，請先套用最新 Supabase migration。" }, { status: 503 });
       throw result.error;

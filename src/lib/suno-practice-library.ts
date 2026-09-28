@@ -1,3 +1,4 @@
+import type { BibleMetadata } from "./bible-metadata.ts";
 import { SUNO_STUDIO_MASTERING_MOVES } from "./suno-studio-mastering-prompts.ts";
 import { SUNO_INSTRUMENT_TONE_PROMPTS } from "./suno-instrument-tone-prompts.ts";
 
@@ -45,6 +46,7 @@ export type SunoLyricCategory =
   | "atmosphere";
 
 export type SunoTechnique<Category extends string> = {
+  metadata?: BibleMetadata;
   key: string;
   category: Category;
   title: SunoLocalizedText;

@@ -289,6 +289,13 @@ Direction:
 
 ## AI Music Practice Bible
 
+### Music Bible 2.0 待發布介面
+
+- 本機第一階段在既有會員頁 hero／章節導航後加入六入口：Knowledge、Style DNA、Prompts、Workflows、Solve My Problem、Ask Music Agent。原 practice map、章節 ID、搜尋、評論、複製與試聽保留。
+- Knowledge 導向曲風詞彙、歌曲段落／人聲及拆軌；Style DNA 導向既有索引；Prompts 導向招式庫；Workflows 提供三段創作路徑及既有六步流程；Solve My Problem 展開既有排錯；Ask Music Agent 明示準備中，只提供可編輯、可複製的需求單。
+- 舊資料標示 Reference / Legacy Library；條目顯示平台、模型、版本、最後驗證與狀態。Legacy 不等於失效，Deprecated 仍可查考；未知值顯示未記錄／尚未驗證。歷史 V5.5 文件核對不再表述為目前最新模型。
+- 新內容採繁中／英文；日韓會員內容沿用現有英文回退。公開會員登入入口維持既有四語，不把會員資料移到公開頁。
+
 - Studio Mastering Prompt examples use one compact `15 秒試聽` action only on cards with a real audio asset.
 - Route every Prompt example through the shared fixed bottom player. Do not autoplay, expand card height with waveforms, or place a native audio control in each card.
 - Keep the example disclaimer visible and quiet: the clip demonstrates a sound direction and does not promise an identical Suno generation.

@@ -7,8 +7,11 @@ import { fontRighteous } from "@/lib/fonts";
 import { getActiveAuthSession, loadIsAdmin, refreshActiveAuthSession } from "@/lib/user-profile-admin";
 import type { BibleContentKind, BibleContentPayload } from "@/lib/ai-music-bible-content";
 
+import { BIBLE_STATUSES, legacyBibleMetadata, type BibleMetadata, type BibleStatus } from "@/lib/bible-metadata";
+
 type AdminState = "checking" | "login" | "denied" | "ready";
 type EditorValue = {
+  metadata?: BibleMetadata;
   key: string;
   title?: { zh: string; en: string };
   summary?: { zh: string; en: string };
@@ -51,7 +54,7 @@ const taiwaneseFields = [
   ["sunoWriting", "Suno 實測寫法"], ["note", "發音眉角／備註"], ["category", "分類"],
 ] as const;
 const categoryOptions: Record<BibleContentKind, string[]> = {
-  prompt_move: ["foundation", "workflow", "dance", "production", "theory", "recipe"],
+  prompt_move: ["foundation", "workflow", "dance", "production", "mastering", "theory", "recipe"],
   lyric_move: ["structure", "formatting", "vocal", "emotion", "duet", "atmosphere"],
   taiwanese_entry: ["人稱", "動作與狀態", "時間", "情緒與口語", "空間與疑問"],
 };
@@ -64,14 +67,17 @@ async function authHeader(accessToken?: string): Promise<Record<string, string>>
 
 function draftFromItem(item: EditorItem): Draft {
   const value = item.item;
+  const metadata = value.metadata ?? legacyBibleMetadata();
+  const metadataDraft = { platform: metadata.platform, model: metadata.model ?? "", modelVersion: metadata.modelVersion ?? "", lastVerifiedAt: metadata.lastVerifiedAt ?? "", status: metadata.status };
   if (item.kind === "taiwanese_entry") {
-    return { meaning: value.meaning ?? "", recommended: value.recommended ?? "", sunoWriting: value.sunoWriting ?? "", note: value.note ?? "", category: value.category ?? "" };
+    return { ...metadataDraft, meaning: value.meaning ?? "", recommended: value.recommended ?? "", sunoWriting: value.sunoWriting ?? "", note: value.note ?? "", category: value.category ?? "" };
   }
   const title = value.title ?? { zh: "", en: "" };
   const summary = value.summary ?? { zh: "", en: "" };
   const use = value.use ?? { zh: "", en: "" };
   const copy = value.copy ?? { zh: "", en: "" };
   return {
+    ...metadataDraft,
     titleZh: title.zh, titleEn: title.en,
     summaryZh: summary.zh, summaryEn: summary.en,
     useZh: use.zh, useEn: use.en,
@@ -81,10 +87,13 @@ function draftFromItem(item: EditorItem): Draft {
 }
 
 function payloadFromDraft(kind: BibleContentKind, draft: Draft): BibleContentPayload {
+  const metadata: BibleMetadata = { platform: draft.platform, model: draft.model.trim() || null, modelVersion: draft.modelVersion.trim() || null, lastVerifiedAt: draft.lastVerifiedAt || null, status: draft.status as BibleStatus };
   if (kind === "taiwanese_entry") return {
+    metadata,
     meaning: draft.meaning, recommended: draft.recommended, sunoWriting: draft.sunoWriting, note: draft.note, category: draft.category,
   };
   return {
+    metadata,
     title: { zh: draft.titleZh, en: draft.titleEn },
     summary: { zh: draft.summaryZh, en: draft.summaryEn },
     use: { zh: draft.useZh, en: draft.useEn },
@@ -212,6 +221,11 @@ export default function AdminAiMusicBiblePage() {
           <section className="rounded-[1.3rem] border border-orange-300/20 bg-black/45 p-5 sm:p-7">
             {selected ? <>
               <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-5"><div><span className="rounded-full border border-orange-300/25 bg-orange-400/[0.08] px-3 py-1 text-[11px] font-black text-orange-100">{kindLabels[selected.kind]}</span><h2 className="mt-3 text-3xl font-black text-white">{selected.item.title?.zh ?? selected.item.meaning}</h2><p className="mt-1 text-xs font-bold text-zinc-600">{selected.key} · {selected.hasOverride ? displayTime(selected.updatedAt) : "使用程式預設內容"}</p></div><Sparkles className="h-7 w-7 text-orange-300" /></div>
+              <fieldset className="mt-6 rounded-xl border border-orange-300/20 p-4"><legend className="px-2 font-bold text-orange-200">適用模型與驗證狀態</legend>
+                <p className="mb-4 text-xs leading-6 text-zinc-400">未知資訊請留空。Verified 必須填寫模型、版本與實際驗證日期；這與原本的證據層級不同。Legacy／Deprecated 仍保留在資料庫。</p>
+                <div className="grid gap-4 md:grid-cols-2">{([["platform", "適用平台"], ["model", "適用模型"], ["modelVersion", "模型版本"], ["lastVerifiedAt", "最後驗證日期"]] as const).map(([name, label]) => <label key={name} className="grid gap-2 text-sm text-zinc-300">{label}<input type={name === "lastVerifiedAt" ? "date" : "text"} maxLength={120} value={draft[name] ?? ""} onChange={(event) => setDraft((current) => ({ ...current, [name]: event.target.value }))} className="h-12 rounded-xl border border-white/15 bg-black/60 px-4 text-white" /></label>)}
+                <label className="grid gap-2 text-sm text-zinc-300">狀態<select value={draft.status ?? "Legacy"} onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value }))} className="h-12 rounded-xl border border-white/15 bg-black/60 px-4 text-white">{BIBLE_STATUSES.map((status) => <option key={status}>{status}</option>)}</select></label></div>
+              </fieldset>
               <div className="mt-6 grid gap-4 md:grid-cols-2">{fields.map(([name, label]) => <label key={name} className={`grid gap-2 text-sm font-black text-zinc-300 ${name.toLowerCase().includes("copy") || name === "note" || name.toLowerCase().includes("summary") ? "md:col-span-2" : ""}`}>{label}{name === "evidence" ? <select value={draft[name] ?? ""} onChange={(event) => setDraft((current) => ({ ...current, [name]: event.target.value }))} className="h-12 rounded-xl border border-white/12 bg-black/60 px-4 font-bold text-white outline-none"><option value="official">官方功能可確認</option><option value="field">愛波哥實測整理</option><option value="version">版本敏感・請重測</option></select> : name === "category" ? <select value={draft[name] ?? ""} onChange={(event) => setDraft((current) => ({ ...current, [name]: event.target.value }))} className="h-12 rounded-xl border border-white/12 bg-black/60 px-4 font-bold text-white outline-none focus:border-cyan-200/55">{categoryOptions[selected.kind].map((option) => <option key={option} value={option}>{option}</option>)}</select> : name.toLowerCase().includes("copy") || name === "note" || name.toLowerCase().includes("summary") ? <textarea rows={name.toLowerCase().includes("copy") ? 5 : 3} value={draft[name] ?? ""} onChange={(event) => setDraft((current) => ({ ...current, [name]: event.target.value }))} className="rounded-xl border border-white/12 bg-black/60 px-4 py-3 font-bold leading-6 text-white outline-none focus:border-cyan-200/55" /> : <input value={draft[name] ?? ""} onChange={(event) => setDraft((current) => ({ ...current, [name]: event.target.value }))} className="h-12 rounded-xl border border-white/12 bg-black/60 px-4 font-bold text-white outline-none focus:border-cyan-200/55" />}</label>)}</div>
               {message && <p className="mt-5 rounded-xl border border-emerald-300/20 bg-emerald-300/[0.06] px-4 py-3 text-sm font-bold text-emerald-100">{message}</p>}{error && <p className="mt-5 rounded-xl border border-red-300/20 bg-red-400/[0.06] px-4 py-3 text-sm font-bold text-red-100">{error}</p>}
               <div className="mt-6 flex flex-wrap justify-end gap-3"><button type="button" disabled={busy || !schemaReady} onClick={() => void save("reset")} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/12 px-5 text-sm font-black text-zinc-300 hover:border-white/30 hover:text-white disabled:opacity-40"><RotateCcw className="h-4 w-4" />恢復預設</button><button type="button" disabled={busy || !schemaReady} onClick={() => void save("save")} className="aipo-primary-button inline-flex min-h-11 items-center gap-2 rounded-full px-6 text-sm font-black disabled:opacity-40"><Save className="h-4 w-4" />{busy ? "儲存中…" : "儲存這筆"}</button></div>

@@ -1,3 +1,4 @@
+import { sanitizeBibleMetadata, withBibleMetadata, type BibleMetadata } from "./bible-metadata.ts";
 import {
   SUNO_LYRIC_CATEGORIES,
   SUNO_LYRIC_MOVES,
@@ -21,6 +22,7 @@ export type BibleContentKind = "prompt_move" | "lyric_move" | "taiwanese_entry";
 export type BibleTechnique = SunoTechnique<SunoPromptCategory> | SunoTechnique<SunoLyricCategory>;
 
 export type BibleContentPayload = {
+  metadata?: BibleMetadata;
   title?: { zh?: string; en?: string };
   summary?: { zh?: string; en?: string };
   use?: { zh?: string; en?: string };
@@ -84,6 +86,11 @@ export function sanitizeBiblePayload(value: unknown): BibleContentPayload | null
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const input = value as Record<string, unknown>;
   const output: BibleContentPayload = {};
+  if (Object.hasOwn(input, "metadata")) {
+    const metadata = sanitizeBibleMetadata(input.metadata);
+    if (!metadata) return null;
+    output.metadata = metadata;
+  }
   for (const field of ["title", "summary", "use", "copy"] as const) {
     const localized = cleanLocalized(input[field]);
     if (localized) output[field] = localized;
@@ -117,7 +124,8 @@ function applyTechniqueOverride<T extends BibleTechnique>(base: T, payload: Bibl
     || (lyricCategoryKeys.has(payload.category as SunoLyricCategory) && lyricCategoryKeys.has(base.category as SunoLyricCategory))
   ) ? payload.category : base.category;
   return {
-    ...base,
+    ...withBibleMetadata(base),
+    ...(payload.metadata ? { metadata: payload.metadata } : {}),
     title: localizedOverride(base.title, payload.title),
     summary: localizedOverride(base.summary, payload.summary),
     use: localizedOverride(base.use, payload.use),
@@ -133,7 +141,8 @@ function applyTaiwaneseOverride(base: TaiwaneseLyricsEntry, payload: BibleConten
     ? payload.category as TaiwaneseLyricsCategory
     : base.category;
   return {
-    ...base,
+    ...withBibleMetadata(base),
+    ...(payload.metadata ? { metadata: payload.metadata } : {}),
     category,
     meaning: payload.meaning ?? base.meaning,
     recommended: payload.recommended ?? base.recommended,
@@ -144,9 +153,9 @@ function applyTaiwaneseOverride(base: TaiwaneseLyricsEntry, payload: BibleConten
 
 export function bibleCatalogDefaults(): BibleCatalog {
   return {
-    promptMoves: SUNO_PROMPT_MOVES,
-    lyricMoves: SUNO_LYRIC_MOVES,
-    taiwaneseEntries: TAIWANESE_LYRICS_ENTRIES,
+    promptMoves: SUNO_PROMPT_MOVES.map(withBibleMetadata),
+    lyricMoves: SUNO_LYRIC_MOVES.map(withBibleMetadata),
+    taiwaneseEntries: TAIWANESE_LYRICS_ENTRIES.map(withBibleMetadata),
   };
 }
 

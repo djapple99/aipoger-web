@@ -1,5 +1,6 @@
 "use client";
 
+import BibleEntryMetadata from "@/components/bible-entry-metadata";
 import {
   BadgeCheck,
   BookOpenText,
@@ -167,6 +168,7 @@ function TechniqueCard({
             {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
         </div>
+        <BibleEntryMetadata metadata={item.metadata} locale={locale} />
         <p className="mt-3 text-sm font-bold leading-7 text-zinc-400">{sunoLibraryText(item.summary, locale)}</p>
         {hasAudioPreview ? (
           <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -252,6 +254,8 @@ export default function SunoPracticeLibrarySection({
 
   useEffect(() => {
     const openForHash = () => {
+      if (window.location.hash === "#bible-genres") setGenreCrateOpen(true);
+      if (window.location.hash === "#bible-production-flow") setProductionFlowOpen(true);
       if (window.location.hash === "#lyric-control-library") {
         setLyricLibraryOpen(true);
         window.setTimeout(() => document.getElementById("lyric-control-library")?.scrollIntoView({ block: "start" }), 0);
@@ -341,8 +345,8 @@ export default function SunoPracticeLibrarySection({
           <div className="rounded-xl border border-yellow-300/18 bg-yellow-300/[0.055] p-4 text-sm font-bold leading-6 text-yellow-50/85">
             <BadgeCheck className="mb-3 h-5 w-5 text-yellow-200" />
             {isZh
-              ? "原資料以 V4.5／V5 為主；Suno 現行官方版本已到 V5.5。標籤是生成提示，不是命令保證，因此本站分成官方功能、愛波哥實測與版本敏感三種證據層級。"
-              : "The supplied material focuses on V4.5/V5, while Suno's current official line is V5.5. Tags are generation signals, not guaranteed commands, so entries distinguish official features, field tests, and version-sensitive behavior."}
+              ? "Reference / Legacy Library：原資料以 V4.5／V5 為主，既有文件核對涵蓋 V5.5，並非目前模型的適用保證。原證據層級保留；是否已重新驗證，請看各筆狀態與日期。"
+              : "Reference / Legacy Library: source material focuses on V4.5/V5, with historical documentation checks covering V5.5. This does not establish compatibility with your current model. Original evidence labels remain; check each entry's status and verification date."}
           </div>
         </div>
         <div className="mt-7 grid grid-cols-2 gap-3 border-t border-white/10 pt-5 text-center sm:max-w-3xl sm:grid-cols-4">
@@ -452,7 +456,7 @@ export default function SunoPracticeLibrarySection({
               <h3 className="mt-2 text-2xl font-black text-white sm:text-3xl">{isZh ? "曲風唱片箱" : "Genre crate"}</h3>
               <p className="mt-2 text-sm font-bold leading-6 text-zinc-500">{isZh ? "依使用者提供的曲風截圖重新校字與分組；曲風名稱是起點，不是完整 Prompt。" : "Cleaned and regrouped from the supplied genre screenshot. A genre name is a starting point, not a complete prompt."}</p>
             </div>
-            <button type="button" onClick={() => setGenreCrateOpen((value) => !value)} aria-expanded={genreCrateOpen} aria-controls="genre-crate-content" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-cyan-200/35 bg-cyan-300/[0.08] px-5 text-sm font-black text-cyan-50 transition hover:border-cyan-100/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100">
+            <button id="bible-genres" type="button" onClick={() => setGenreCrateOpen((value) => !value)} aria-expanded={genreCrateOpen} aria-controls="genre-crate-content" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-cyan-200/35 bg-cyan-300/[0.08] px-5 text-sm font-black text-cyan-50 transition hover:border-cyan-100/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100">
               {genreCrateOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               {genreCrateOpen ? (isZh ? "收起曲風唱片箱" : "Collapse genre crate") : (isZh ? `展開 ${genreResults.length} 組曲風` : `Open ${genreResults.length} genre groups`)}
             </button>
@@ -654,7 +658,7 @@ export default function SunoPracticeLibrarySection({
               <h3 className="mt-3 text-2xl font-black text-white sm:text-3xl">{isZh ? "AI 音樂製作流程" : "AI music production flow"}</h3>
               <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-zinc-500">{isZh ? "從生成、A&R 聽感驗證、Drop／Q Crash，到 Showtime／Choice 發表與保存，共 6 個步驟。" : "Six steps from rendering and A&R validation through Drop/Q Crash, Showtime/Choice release, and archiving."}</p>
             </div>
-            <button type="button" onClick={() => setProductionFlowOpen((value) => !value)} aria-expanded={productionFlowOpen} aria-controls="production-flow-content" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-orange-300/28 bg-black/35 px-5 text-xs font-black text-orange-50 transition hover:border-orange-200/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200">
+            <button id="bible-production-flow" type="button" onClick={() => setProductionFlowOpen((value) => !value)} aria-expanded={productionFlowOpen} aria-controls="production-flow-content" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-orange-300/28 bg-black/35 px-5 text-xs font-black text-orange-50 transition hover:border-orange-200/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200">
               {productionFlowOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               {productionFlowOpen ? (isZh ? "收起 6 步流程" : "Collapse 6-step flow") : (isZh ? "展開 6 步流程" : "Open 6-step flow")}
             </button>
