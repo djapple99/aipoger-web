@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ShowtimeQueuePlayer, {
   type ShowtimePlayerTrack,
@@ -655,13 +656,16 @@ export default function SunoPracticeLibrarySection({
             <div>
               <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.25em] text-orange-300/75`}>FROM MATERIAL TO WORK</p>
               <h3 className="mt-3 text-2xl font-black text-white sm:text-3xl">{isZh ? "AI 音樂製作流程" : "AI music production flow"}</h3>
-              <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-zinc-500">{isZh ? "從生成、A&R 聽感驗證、Drop／Q Crash，到 Showtime／Choice 發表與保存，共 6 個步驟。" : "Six steps from rendering and A&R validation through Drop/Q Crash, Showtime/Choice release, and archiving."}</p>
+              <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-zinc-500">{isZh ? "從生成、按需使用分析工具、Drop／Q Crash 試聽，到 Showtime 月榜、Choice 策展與保存，共 6 個步驟。" : "Six steps from rendering and optional analysis tools to Drop/Q Crash listening, Showtime charts, Choice curation, and archiving."}</p>
             </div>
             <button id="bible-production-flow" type="button" onClick={() => setProductionFlowOpen((value) => !value)} aria-expanded={productionFlowOpen} aria-controls="production-flow-content" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-orange-300/28 bg-black/35 px-5 text-xs font-black text-orange-50 transition hover:border-orange-200/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200">
               {productionFlowOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               {productionFlowOpen ? (isZh ? "收起 6 步流程" : "Collapse 6-step flow") : (isZh ? "展開 6 步流程" : "Open 6-step flow")}
             </button>
           </div>
+          {productionFlowOpen && <Link href={`/music-analysis?lang=${locale}`} className="mt-4 inline-flex min-h-11 items-center rounded-full border border-cyan-200/30 px-5 text-sm font-black text-cyan-100 transition hover:border-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200">
+            {isZh ? "查看三種分析工具與用法 →" : "Explore the three analysis tools →"}
+          </Link>}
           {productionFlowOpen && <div id="production-flow-content" className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {productionFlow.map((step) => (
               <article key={step.title.en} className="rounded-xl border border-white/9 bg-black/38 p-4">

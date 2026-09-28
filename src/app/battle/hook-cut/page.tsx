@@ -1270,7 +1270,7 @@ function HookCutContent() {
       let queueIdForNav: string;
       let nextPath: string;
 
-      // 公測期 Battle 不以 APC 作為入場限制；APC 只保留作為獎勵、榮譽與互動點數。
+      // APC 尚未啟用；配對不設 APC 入場限制。
       if (!isAuthBypassEnabled) {
         // 先確保 user_profiles 存在（第一次報名時建立）
         const { error: profileErr } = await supabase

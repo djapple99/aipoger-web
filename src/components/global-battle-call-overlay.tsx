@@ -1291,11 +1291,6 @@ export default function GlobalBattleCallOverlay() {
               <span className="rounded-full border border-yellow-200/25 bg-yellow-300/10 px-2.5 py-1 text-[10px] font-black text-yellow-100">
                 {accepted ? (isZh ? "已接受" : "Accepted") : `${secondsLeft}s`}
               </span>
-              {call.potApc ? (
-                <span className="rounded-full border border-cyan-200/20 bg-cyan-300/10 px-2.5 py-1 text-[10px] font-black text-cyan-100">
-                  {call.potApc} APC POT
-                </span>
-              ) : null}
             </div>
             <h2 className="mt-2 text-xl font-black leading-snug sm:text-2xl">
               {accepted

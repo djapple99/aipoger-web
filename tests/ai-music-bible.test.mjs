@@ -245,7 +245,7 @@ test("genre crate and production flow remain complete and bilingual", () => {
   assert.ok(SUNO_GENRE_GROUPS.every((group) => group.key && group.label.zh && group.label.en && group.terms.length > 0));
   assert.equal(AI_PRODUCTION_FLOW.length, 6);
   assert.ok(AI_PRODUCTION_FLOW.every((step) => step.title.zh && step.title.en && step.body.zh && step.body.en));
-  assert.ok(AI_PRODUCTION_FLOW.some((step) => step.body.zh.includes("A&R") && step.body.zh.includes("留言")));
+  assert.ok(["Tunebat", "Loudness Penalty", "Cyanite"].every((tool) => AI_PRODUCTION_FLOW[2].body.zh.includes(tool) && AI_PRODUCTION_FLOW[2].body.en.includes(tool)));
   assert.ok(AI_PRODUCTION_FLOW.some((step) => step.title.zh.includes("發表") && step.body.zh.includes("Showtime") && step.body.zh.includes("Choice")));
 });
 

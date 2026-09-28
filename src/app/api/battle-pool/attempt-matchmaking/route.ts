@@ -390,7 +390,7 @@ export async function POST(request: NextRequest) {
       battle_id: battleId,
       type: "battle_matched",
       title: "找到對手了",
-      body: "找到對手了！公測期免 APC 入場，請回來確認參戰。",
+      body: "找到對手了！請回來確認參戰。",
       metadata: { opponentName: opponentRow.fighter_name, stakeApc: 0, potApc: 0 },
     },
     {
@@ -399,7 +399,7 @@ export async function POST(request: NextRequest) {
       battle_id: battleId,
       type: "battle_matched",
       title: "找到對手了",
-      body: "找到對手了！公測期免 APC 入場，請回來確認參戰。",
+      body: "找到對手了！請回來確認參戰。",
       metadata: { opponentName: meRow.fighter_name, stakeApc: 0, potApc: 0 },
     },
   ]);

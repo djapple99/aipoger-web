@@ -628,9 +628,9 @@ export const SUNO_GENRE_GROUPS: SunoGenreGroup[] = [
 export const AI_PRODUCTION_FLOW: { title: SunoLocalizedText; body: SunoLocalizedText }[] = [
   { title: { zh: "01 定義方向", en: "01 Define" }, body: { zh: "用 Prompt、情境與記憶點定義這一版只要測什麼；歌詞與選擇仍由人負責。", en: "Define the one thing this version must test with a prompt, scene, and memory point; people still own the lyric and decisions." } },
   { title: { zh: "02 生成三版", en: "02 Render three" }, body: { zh: "同一組設定先做三版，再挑旋律、能量與人聲身份最穩的版本，不靠一次中獎。", en: "Render three versions from the same setup, then select the most stable melody, energy, and vocal identity instead of hoping for one lucky take." } },
-  { title: { zh: "03 AIPOGER 聽感驗證", en: "03 Validate" }, body: { zh: "上傳作品交給 A&R Gate，看聲音 DNA、歌詞記憶點與最適合的內容路線；再用留言、愛心與收藏觀察反應。", en: "Bring the track to A&R Gate for sonic DNA, lyric memory, and route judgement; then watch comments, Hearts, and saves for audience signals." } },
+  { title: { zh: "03 三種分析工具", en: "03 Three analysis tools" }, body: { zh: "依需要前往外部網站：Tunebat 查 BPM／調性、Loudness Penalty 看串流播放的音量調整、Cyanite 補充曲風與情緒標籤。免費範圍與用法見工具入口。", en: "Choose an external tool as needed: Tunebat for BPM/key, Loudness Penalty for streaming playback gain, or Cyanite for genre and mood tags. See the tools page for free limits and instructions." } },
   { title: { zh: "04 選擇測試場", en: "04 Test in public" }, body: { zh: "需要短片段比較就走 Drop；需要兩首歌對決就走 Q Crash；完整作品先進探索或傷心酒吧累積真實聆聽。", en: "Use Drop for focused short tests, Q Crash for a two-song decision, and Explore or Bar Heartbreak for full-song listening." } },
-  { title: { zh: "05 發表與策展", en: "05 Release and curate" }, body: { zh: "通過驗證的作品才往 Showtime；想做方向策展，就進 Choice，讓歌曲有被記住與被分享的出口。", en: "Move validated work toward Showtime; use Choice when a curated direction can give the songs a memorable, shareable home." } },
+  { title: { zh: "05 發表與策展", en: "05 Release and curate" }, body: { zh: "在 Showtime 查看月榜；從收藏的公開可播放歌曲製作 Choice 歌單，讓喜歡的作品被更多人聽見。", en: "Explore the monthly charts in Showtime; curate a Choice playlist from saved, publicly playable songs to help more people hear them." } },
   { title: { zh: "06 保存歷程", en: "06 Archive" }, body: { zh: "保存 Prompt、歌詞草稿、模型版本、工程檔、授權與發表紀錄，讓成功條件可以重現。", en: "Keep prompts, lyric drafts, model version, project files, rights, and release records so successful conditions can be reproduced." } },
 ];
 

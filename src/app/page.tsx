@@ -118,9 +118,9 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
         tone: "orange",
       },
       bar: {
-        eyebrow: "SURVIVAL BAR",
+        eyebrow: "BAR HEARTBREAK",
         title: "Bar Heartbreak",
-        body: "AI音楽を無料で途切れず聴ける。ここは楽曲の生存Bar、作品を出して愛心を集めよう。",
+        body: "AI音楽を無料で連続再生。作品を投稿して、リスナーに届けよう。",
         tone: "orange",
       },
       battle: {
@@ -147,9 +147,9 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
         tone: "orange",
       },
       bar: {
-        eyebrow: "SURVIVAL BAR",
+        eyebrow: "BAR HEARTBREAK",
         title: "Bar Heartbreak",
-        body: "AI 음악을 무료로 끊김 없이 들을 수 있어요. 작품을 올리고 더 많은 하트를 모으는 생존 Bar입니다.",
+        body: "AI 음악을 무료로 연속 재생하세요. 작품을 올려 청취자에게 들려줄 수도 있어요.",
         tone: "orange",
       },
       battle: {
@@ -176,9 +176,9 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
         tone: "orange",
       },
       bar: {
-        eyebrow: "SURVIVAL BAR",
+        eyebrow: "BAR HEARTBREAK",
         title: "Bar Heartbreak",
-        body: "Listen to AI music nonstop for free. It is also a survival Bar where your song can earn more hearts.",
+        body: "Listen to AI music nonstop for free, or submit your own track for listeners to discover.",
         tone: "orange",
       },
       battle: {
@@ -204,9 +204,9 @@ function homeActionPrompts(lang: string): Record<HomeActionKey, HomeActionPrompt
       tone: "orange",
     },
     bar: {
-      eyebrow: "SURVIVAL BAR",
+      eyebrow: "BAR HEARTBREAK",
       title: "傷心酒吧",
-      body: ["免費不間斷聽 AI 音樂", "歌曲生存 Bar 上傳作品 收穫更多愛心"],
+      body: ["免費不間斷聽 AI 音樂", "投稿你的作品，讓更多聽眾聽見"],
       tone: "orange",
     },
     battle: {

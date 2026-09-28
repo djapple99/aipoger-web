@@ -1850,7 +1850,7 @@ function BattlePoolList() {
                         ? isZh
                           ? `${entry.ai_tool || "AI Tool"} · 接受挑戰先上傳 Drop；觀戰才進戰場`
                           : `${entry.ai_tool || "AI Tool"} · Accept by uploading a Drop; watch enters the arena`
-                        : `${entry.ai_tool || "AI Tool"} ${isPublicVoting && entry.public_vote_score ? `· +${entry.public_vote_score} APC` : ""}`}
+                        : (entry.ai_tool || "AI Tool")}
                   </p>
                   {isMine ? (
                     <div className="mt-4 flex flex-wrap gap-2">

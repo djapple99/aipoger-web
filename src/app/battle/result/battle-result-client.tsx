@@ -779,14 +779,14 @@ function BattleResultContent() {
                 {isOfficialBattleResult ? (lang === "zh" ? "成果卡分享連結" : "Share This Result Card") : lang === "zh" ? "非正式戰果分享" : "Share Unofficial Result"}
               </p>
               <span className="shrink-0 rounded-full border border-yellow-200/35 bg-yellow-300/15 px-2.5 py-1 text-[0.68rem] font-black text-yellow-100 shadow-[0_0_18px_rgba(250,204,21,0.2)]">
-                {isOfficialBattleResult ? (lang === "zh" ? "分享 +188 APC" : "Share +188 APC") : lang === "zh" ? `${audienceCount}/${officialAudienceMin} 觀眾` : `${audienceCount}/${officialAudienceMin} voters`}
+                {isOfficialBattleResult ? (lang === "zh" ? "正式戰果" : "Official Result") : lang === "zh" ? `${audienceCount}/${officialAudienceMin} 觀眾` : `${audienceCount}/${officialAudienceMin} voters`}
               </span>
             </div>
             <ShareButton
               title={isOfficialBattleResult ? t("result_share_title") : lang === "zh" ? "AIPOGER 非正式 Drop Battle 戰果" : "AIPOGER Unofficial Drop Battle Result"}
               text={shareText}
               url={resultShareUrl}
-              label={isOfficialBattleResult ? (lang === "zh" ? "分享成果卡 · +188 APC" : "Share Result Card · +188 APC") : lang === "zh" ? "分享非正式戰果" : "Share Unofficial Result"}
+              label={isOfficialBattleResult ? (lang === "zh" ? "分享成果卡" : "Share Result Card") : lang === "zh" ? "分享非正式戰果" : "Share Unofficial Result"}
               copiedLabel={t("common_copied")}
               className="w-full border-orange-200/55 bg-orange-500 px-5 py-3 text-base font-black text-black shadow-[0_0_28px_rgba(255,106,0,0.24)] hover:bg-orange-300"
             />

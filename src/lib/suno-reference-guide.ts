@@ -65,7 +65,7 @@ export const SUNO_PROBLEM_ROUTES: readonly SunoProblemRoute[] = [
   {
     key: "release",
     title: { zh: "準備發表", en: "I am preparing a release" },
-    body: { zh: "先查權利，再走 A&R、Drop／Q Crash，最後進 Showtime 或 Choice。", en: "Check rights, validate through A&R and Drop/Q Crash, then move toward Showtime or Choice." },
+    body: { zh: "先查權利，按需用外部工具分析，再用 Drop／Q Crash 收集聽眾反應；也可從收藏歌曲製作 Choice 歌單。", en: "Check rights, use external analysis tools as needed, and gather listener feedback through Drop/Q Crash; you can also curate saved songs into a Choice playlist." },
     href: "#rights-release",
   },
 ] as const;
