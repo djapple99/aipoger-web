@@ -118,6 +118,7 @@ Owner task alerts (2026-09-18): the global avatar has a separate red task-count 
 - 依使用者最新要求，本頁只放入口和使用方法，不嵌入外部工具、不接付費 API／MCP、不提供貼回結果表單、筆記下載、自動評分或模型報告。外站另開分頁且不附帶帳號或歌曲資料。
 - 本頁為公開導覽，不需要 AIPOGER 登入；不含會員資料。Music Bible、投稿及既有受保護 API 的權限維持不變。後續若要加入站內上傳／分析需另行定義功能與權限。
 - 工具讀數為參考：BPM／Key 需以聆聽校對；音量調整不是品質分數或固定母帶目標；曲風情緒標籤不等於作品好壞或商業成功。
+- Music Bible 六步流程與準備發表提示同步採用外部工具按需自查；不要求三站全部通過、不提供 AIPOGER 認證，也不以分析結果作為 Showtime／Choice 的前置資格。所有入口、首頁提示、戰果分享與配對通知不得承諾未啟用的 APC 獎勵或酒吧生存玩法。
 
 
 ## AI Music Practice Bible / AI 音樂練功聖經

@@ -11,7 +11,7 @@
 
 ## 現況與查找順序
 
-- 文件整理：2026-09-28；已查核產品發布基準：2026-09-28，應用 `52e66c6`，分支 `codex/music-analysis-tools`；[音樂分析工具入口發布證據](releases/2026-09-28-music-analysis-tools.md)。
+- 文件整理：2026-09-28；已查核產品發布基準：2026-09-28，應用 `3618ef7`，分支 `codex/music-analysis-tools`；[全站文案一致性修正發布證據](releases/2026-09-28-copy-consistency.md)。
 - 傷心酒吧持續公播與投稿、Explore、Drop Battle、Q Crash、Showtime 月榜與 Choice、共用播放器、耳朵蟲與練功聖經仍保留。
 - 酒吧容量生存淘汰、Challenger 保護、Showtime 認證、Daily Spotlight 已退役；24H Full Song Battle 隱藏於前台。
 - APC 未啟用；自動音訊曲風建議的前端已發布，worker 尚待啟用。創作者私人「作品表現」第一版已發布；新版聆聽比例從發布後開始累積，不能補成歷史完整數據。

@@ -1,5 +1,7 @@
 # AIPOGER 開發與維運
 
+2026-09-28 全站文案一致性修正已上線（app `3618ef7`／`codex/music-analysis-tools`）：Music Bible 六步與準備發表提示改為外部工具按需自查；首頁酒吧四語移除生存玩法；Battle 分享、卡片、配對通知移除 APC 承諾。Vercel `dpl_9u5dxcQCnJFYfWkvUotFaLNZEspc` READY 並已 promote 至 aipoger.com。448 測試通過，31 原有可選資料庫測試略過；無 SQL migration。[發布證據](releases/2026-09-28-copy-consistency.md)。
+
 2026-09-28 音樂分析外站工具入口已上線（app `52e66c6`／`codex/music-analysis-tools`）：三個網站、免費條件與使用步驟。Vercel `dpl_EPwbVwxBDdZqYYtSoy5RswCHgdAB` READY 並已 promote 至 aipoger.com。[發布證據](releases/2026-09-28-music-analysis-tools.md)。
 
 2026-09-28 Music Bible 2.0 已發布（app `ae1f196`，分支 `codex/music-bible-2`）：五個創作入口、全部既有資料保留，前台不標新舊／生命週期狀態；Ask Music Agent 隱藏。Vercel `dpl_J3kTgFEt1nof95Nb2wSvxZ6gcQnr` Ready 並已 promote 至 aipoger.com；447 測試通過，無 SQL migration。[發布證據](releases/2026-09-28-music-bible-2.md)。

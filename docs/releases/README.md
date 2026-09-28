@@ -16,3 +16,5 @@
 - [2026-09-28-music-bible-2](2026-09-28-music-bible-2.md)
 
 - [2026-09-28-music-analysis-tools](2026-09-28-music-analysis-tools.md)
+
+- [2026-09-28-copy-consistency](2026-09-28-copy-consistency.md)
