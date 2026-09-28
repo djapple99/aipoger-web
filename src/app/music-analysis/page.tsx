@@ -1,217 +1,113 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
-import LangToggle from "@/components/lang-toggle";
-import { supabase } from "@/lib/supabase";
-import { useI18n } from "@/lib/i18n";
-import { fontRighteous } from "@/lib/fonts";
+import Link from 'next/link';
+import { useState } from 'react';
+import { ArrowUpRight, ArrowRight, Check, Copy, Download, Music2, Activity, Tags } from 'lucide-react';
+import LangToggle from '@/components/lang-toggle';
+import { useI18n } from '@/lib/i18n';
+import { fontRighteous } from '@/lib/fonts';
+import { ANALYSIS_COPY, ANALYSIS_TOOLS, ANALYSIS_TOOLS_CHECKED_AT, buildAnalysisRequest, type AnalysisNotes } from '@/lib/music-analysis-tools';
 
-function appendLang(url: string, lang: string) {
-  return `${url}${url.includes("?") ? "&" : "?"}lang=${lang}`;
-}
+const icons = [Music2, Activity, Tags];
+const fields = ['title', 'goal', 'source', 'results', 'lyrics'] as const;
+const limits = [200, 1500, 400, 12000, 8000];
+const blankNotes: AnalysisNotes = { title: '', goal: '', source: '', results: '', lyrics: '' };
 
 export default function MusicAnalysisPage() {
   const { lang } = useI18n();
-  const isZh = lang === "zh";
-  const [session, setSession] = useState<Session | null>(null);
-  const [checking, setChecking] = useState(true);
-  const [analysisReady, setAnalysisReady] = useState(false);
-  const [analysisProbeCount, setAnalysisProbeCount] = useState(0);
-  const configuredAnalysisUrl = process.env.NEXT_PUBLIC_MUSIC_ANALYSIS_URL?.trim() || "";
+  const c = ANALYSIS_COPY[lang];
+  const [notes, setNotes] = useState<AnalysisNotes>(blankNotes);
+  const [notice, setNotice] = useState<'copied' | 'failed' | 'downloaded' | null>(null);
+  const packet = buildAnalysisRequest(notes, lang);
+  const nextLinks = [`/ai-music-bible?lang=${lang}#suno-inspiration-index`, `/ai-music-bible?lang=${lang}#suno-troubleshooting`, `/listen-bar?lang=${lang}`];
 
-  const analysisUrl = useMemo(() => {
-    if (!configuredAnalysisUrl) return null;
-    return appendLang(configuredAnalysisUrl, lang);
-  }, [configuredAnalysisUrl, lang]);
-
-  useEffect(() => {
-    let mounted = true;
-    void supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setSession(data.session ?? null);
-      setChecking(false);
-    });
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const nextPath = `/music-analysis?lang=${lang}`;
-  const loginHref = `/auth?next=${encodeURIComponent(nextPath)}`;
-  const shouldWakeAnalysis = !checking && Boolean(session && analysisUrl);
-  const embeddedAnalysisUrl = shouldWakeAnalysis && analysisReady && analysisUrl ? analysisUrl : null;
-  const previewCards = useMemo(
-    () => isZh
-      ? [
-          ["聲音 DNA", "拆出節奏、編曲、製作質感與能量曲線，判斷作品真正的聲音賣點。"],
-          ["歌詞診斷", "找出記憶句、老梗風險與情緒深度，判斷觀眾能不能帶走一句話。"],
-          ["A&R 路線", "判斷作品該先進 Drop Battle、傷心酒吧、短影音測試，還是先回去修改。"],
-        ]
-      : [
-          ["Sonic DNA", "Break down rhythm, arrangement, production texture, and energy arc to find the real sonic selling point."],
-          ["Lyric Diagnostic", "Catch memorable lines, cliche risk, and emotional depth so the audience has something to carry away."],
-          ["A&R Route", "Decide whether the track should test in Drop Battle, Bar Heartbreak, short video, or go back for revision."],
-        ],
-    [isZh],
-  );
-  const sampleRows = useMemo(
-    () => isZh
-      ? [
-          ["一句真話", "聲音有畫面，但目前缺一句能被觀眾記住的歌詞。"],
-          ["市場用途", "城市夜景 / 情緒短片 / AI MV / 生活風格品牌"],
-          ["下一步", "裁 60 秒內 Drop Battle 測投票；若歌詞反應弱，再補副歌鉤子。"],
-        ]
-      : [
-          ["Hard Truth", "The sound has a scene, but the lyric needs a line people can remember."],
-          ["Use Case", "City night / emotional shorts / AI MV / lifestyle brand"],
-          ["Next Step", "Cut a Drop up to 60 seconds for Drop Battle; if lyrics underperform, rewrite the chorus hook."],
-        ],
-    [isZh],
-  );
-
-  useEffect(() => {
-    if (!shouldWakeAnalysis) {
-      setAnalysisReady(false);
-      setAnalysisProbeCount(0);
-      return;
+  async function copyRequest() {
+    try {
+      await navigator.clipboard.writeText(packet);
+      setNotice('copied');
+    } catch {
+      setNotice('failed');
     }
-
-    let mounted = true;
-    let timer: number | undefined;
-
-    const probe = async () => {
-      try {
-        const response = await fetch("/api/music-analysis/health", { cache: "no-store" });
-        const payload = (await response.json().catch(() => null)) as { ready?: boolean } | null;
-        if (!mounted) return;
-        setAnalysisProbeCount((count) => count + 1);
-        if (payload?.ready) {
-          setAnalysisReady(true);
-          return;
-        }
-      } catch {
-        if (!mounted) return;
-        setAnalysisProbeCount((count) => count + 1);
-      }
-      if (mounted) timer = window.setTimeout(probe, 3000);
-    };
-
-    void probe();
-    return () => {
-      mounted = false;
-      if (timer) window.clearTimeout(timer);
-    };
-  }, [shouldWakeAnalysis]);
-
-  if (embeddedAnalysisUrl) {
-    return (
-      <main className="aipo-stage-bg flex min-h-screen flex-col text-white">
-        <header className="aipo-control-panel relative z-10 m-3 flex min-h-16 items-center justify-between gap-3 rounded-[1.15rem] px-4 md:px-6">
-          <div className="h-10 w-14" aria-hidden="true" />
-          <div className="min-w-0 text-center">
-            <p className={`${fontRighteous.className} truncate text-xs uppercase tracking-[0.24em] text-cyan-200/80`}>
-              AIPOGER A&R GATE
-            </p>
-            <p className="mt-0.5 truncate text-xs font-bold text-zinc-400">
-              {isZh ? "已連接主網站帳號入口" : "Connected through the main site"}
-            </p>
-          </div>
-          <LangToggle variant="inline" />
-        </header>
-        <iframe
-          src={embeddedAnalysisUrl}
-          title={isZh ? "AIPOGER 音樂分析引擎" : "AIPOGER Music Analysis Engine"}
-          className="min-h-[calc(100vh-4rem)] w-full flex-1 border-0 bg-[#050505]"
-          referrerPolicy="strict-origin-when-cross-origin"
-          allow="clipboard-write"
-        />
-      </main>
-    );
+  }
+  function downloadNotes() {
+    const url = URL.createObjectURL(new Blob([packet], { type: 'text/plain;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'aipoger-music-notes.txt';
+    a.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setNotice('downloaded');
   }
 
   return (
-    <main className="aipo-stage-bg relative min-h-screen overflow-hidden px-4 py-6 text-white md:px-8">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_22%_22%,rgba(255,106,0,0.28),transparent_34%),radial-gradient(circle_at_82%_28%,rgba(45,212,191,0.18),transparent_32%),linear-gradient(135deg,#050505_0%,#15100c_48%,#021213_100%)]" />
-      <header className="relative z-10 mx-auto flex max-w-5xl items-center justify-between gap-3">
+    <main className="aipo-stage-bg min-h-screen px-4 pb-20 pt-6 text-[#fffaf1] md:px-8">
+      <header className="mx-auto flex max-w-6xl items-center justify-between gap-4">
         <div className="h-10 w-14" aria-hidden="true" />
         <LangToggle variant="inline" />
       </header>
+      <div className="mx-auto max-w-6xl">
+        <section className="pb-8 pt-10 md:pt-14" aria-labelledby="music-analysis-heading">
+          <p className={`${fontRighteous.className} text-xs tracking-[0.28em] text-orange-200`}>AIPOGER MUSIC WORKBENCH</p>
+          <h1 id="music-analysis-heading" className="mt-4 text-4xl font-black leading-tight md:text-6xl">{c.title}</h1>
+          <p className="mt-4 max-w-3xl text-base leading-7 text-zinc-300 md:text-lg">{c.intro}</p>
+          <ol className="mt-6 flex flex-wrap gap-x-6 gap-y-3 text-sm font-bold text-orange-100">
+            {c.steps.map((step, i) => <li key={step} className="flex items-center gap-2"><span className="text-orange-400">0{i + 1}</span>{step}{i < 2 && <ArrowRight aria-hidden="true" className="ml-2 h-4 w-4 text-zinc-500" />}</li>)}
+          </ol>
+        </section>
 
-      <section className="relative z-10 mx-auto flex min-h-[calc(100vh-6rem)] max-w-5xl items-center justify-center py-10">
-        <div className="aipo-control-panel aipo-panel-line w-full rounded-[1.35rem] px-5 py-7 md:px-8 md:py-10">
-          <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.42em] text-cyan-200/80`}>
-            AIPOGER A&R GATE
-          </p>
-          <h1 className="mt-5 text-[clamp(2.45rem,8vw,5.5rem)] font-black leading-none text-[#fffaf1] [text-shadow:0_18px_38px_rgba(0,0,0,0.78)]">
-            {isZh ? "分析你的音樂" : "Analyze Your Music"}
-          </h1>
-          <p className="mt-5 max-w-2xl text-base font-bold leading-7 text-zinc-300 md:text-lg">
-            {isZh
-              ? "登入後上傳歌曲，AIPOGER 會用聲音 DNA、歌詞診斷與市場定位，判斷作品該去哪裡被聽見、被挑戰、被記住。"
-              : "Sign in to upload a track. AIPOGER checks its sonic DNA, lyric memory, market lane, and best path to be heard, challenged, and remembered."}
-          </p>
-
-          <div className="mt-7">
-            {checking ? (
-              <p className="text-sm font-black text-zinc-400">{isZh ? "檢查登入狀態中..." : "Checking session..."}</p>
-            ) : !session ? (
-              <Link
-                href={loginHref}
-                className="aipo-primary-button inline-flex min-h-14 items-center justify-center rounded-2xl px-8 text-base font-black transition"
-              >
-                {isZh ? "登入後分析歌曲" : "Sign In and Analyze"}
-              </Link>
-            ) : analysisUrl ? (
-              <div className="max-w-xl rounded-2xl border border-cyan-200/22 bg-cyan-300/[0.07] px-5 py-5">
-                <p className="text-base font-black text-cyan-50">
-                  {analysisReady ? (isZh ? "分析引擎已連線" : "Analysis engine is ready") : isZh ? "AIPOGER 正在喚醒分析引擎…" : "AIPOGER is waking the analysis engine..."}
-                </p>
-                <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">
-                  {isZh
-                    ? analysisProbeCount > 2
-                      ? "Render 服務冷啟動中，請留在這裡；主站會自動接入，不會顯示 Render 等待頁。"
-                      : "正在確認服務狀態，完成後會自動進入音樂分析台。"
-                    : analysisProbeCount > 2
-                      ? "The Render service is cold-starting. Stay here; the main site will connect automatically."
-                      : "Checking service status. The music analysis console opens automatically when ready."}
-                </p>
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-orange-300/22 bg-orange-500/8 px-5 py-4 text-sm font-bold leading-6 text-orange-100">
-                {isZh
-                  ? "分析引擎尚未接上正式網址；入口已保護，不會再導向無效的本機位址。"
-                  : "The analysis engine has no production URL yet; this entry no longer points to an invalid localhost address."}
-              </div>
-            )}
+        <section aria-labelledby="tools-title">
+          <h2 id="tools-title" className="text-2xl font-black">{c.toolsTitle}</h2>
+          <p className="mt-2 max-w-4xl text-sm leading-6 text-zinc-400">{c.fileHint}</p>
+          <div className="mt-5 grid gap-4 lg:grid-cols-3">
+            {ANALYSIS_TOOLS.map((tool, i) => {
+              const t = c.toolCopy[i]; const Icon = icons[i];
+              return <article key={tool.key} className="aipo-control-panel flex flex-col rounded-2xl p-5 md:p-6">
+                <div className="flex items-center justify-between gap-3"><Icon aria-hidden="true" className="h-6 w-6 shrink-0 text-orange-300" /><span className="rounded-full border border-orange-200/20 bg-orange-300/5 px-3 py-1 text-xs font-bold leading-5 text-orange-100">{t.price}</span></div>
+                <h3 className="mt-5 text-xl font-black leading-7">{t.question}</h3>
+                <p className="mt-1 text-sm font-bold text-cyan-200">{tool.name}</p>
+                <p className="mt-4 text-sm leading-6 text-zinc-200">{t.description}</p>
+                <p className="mt-3 text-xs leading-6 text-zinc-400">{t.detail}</p>
+                <div className="my-5 border-l-2 border-orange-300/60 pl-3"><p className="text-xs font-bold text-orange-200">{c.bringLabel}</p><p className="mt-1 text-sm leading-6 text-zinc-200">{t.bring}</p></div>
+                <p className="mb-5 text-xs leading-6 text-zinc-400">{t.caution}</p>
+                <a href={tool.href} target="_blank" rel="noopener noreferrer" className="aipo-primary-button mt-auto inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-sm font-black focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-300" aria-label={`${c.open} — ${tool.name}`}>{c.open}<ArrowUpRight aria-hidden="true" className="h-4 w-4" /></a>
+                <a href={tool.source} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex min-h-11 items-center justify-center text-xs text-zinc-400 underline underline-offset-4" aria-label={`${tool.name} — ${c.sourceLink}`}>{c.sourceLink}</a>
+              </article>;
+            })}
           </div>
+          <p className="mt-4 text-xs leading-6 text-zinc-400">{c.checked}：{ANALYSIS_TOOLS_CHECKED_AT} · {c.external}</p>
+        </section>
 
-          <div className="mt-7 grid gap-3 md:grid-cols-3">
-            {previewCards.map(([title, body]) => (
-              <div key={title} className="aipo-control-panel rounded-2xl p-4">
-                <p className="text-sm font-black text-orange-200">{title}</p>
-                <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">{body}</p>
+        <section className="mt-12 border-t border-white/10 pt-9" aria-labelledby="notes-title">
+          <h2 id="notes-title" className="text-2xl font-black">{c.notesTitle}</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-300">{c.notesIntro}</p>
+          <div className="mt-6 grid gap-7 lg:grid-cols-2">
+            <div className="space-y-4">
+              {fields.map((key, i) => <div key={key}>
+                <label htmlFor={`analysis-${key}`} className="mb-2 block text-sm font-bold text-zinc-200">{c.fields[i]}</label>
+                {key === 'title' || key === 'source'
+                  ? <input id={`analysis-${key}`} value={notes[key]} maxLength={limits[i]} placeholder={c.placeholders[i]} onChange={e => { setNotes(n => ({ ...n, [key]: e.target.value })); setNotice(null); }} className="min-h-12 w-full rounded-xl border border-white/20 bg-black/50 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-orange-300" />
+                  : <textarea id={`analysis-${key}`} value={notes[key]} maxLength={limits[i]} rows={key === 'results' ? 6 : 3} placeholder={c.placeholders[i]} onChange={e => { setNotes(n => ({ ...n, [key]: e.target.value })); setNotice(null); }} className="w-full resize-y rounded-xl border border-white/20 bg-black/50 px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-zinc-500 focus:border-orange-300" />}
+              </div>)}
+              <p className="text-xs leading-6 text-zinc-400">{c.privacy}</p>
+            </div>
+            <div className="aipo-control-panel flex flex-col rounded-2xl p-5 md:p-6">
+              <label htmlFor="analysis-request" className="text-lg font-black">{c.output}</label>
+              <p className="mt-3 text-sm leading-6 text-zinc-400">{c.empty}</p>
+              <textarea id="analysis-request" value={packet} readOnly rows={14} className="mt-5 min-h-72 w-full flex-1 resize-y rounded-xl border border-white/15 bg-black/40 p-4 text-sm leading-7 text-zinc-200 focus:outline-orange-300" />
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button type="button" disabled={!packet} onClick={copyRequest} className="aipo-primary-button inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 text-sm font-black disabled:cursor-not-allowed disabled:opacity-40">{notice === 'copied' ? <Check aria-hidden="true" className="h-4 w-4" /> : <Copy aria-hidden="true" className="h-4 w-4" />}{c.copy}</button>
+                <button type="button" disabled={!packet} onClick={downloadNotes} className="aipo-ghost-button inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40"><Download aria-hidden="true" className="h-4 w-4" />{c.download}</button>
               </div>
-            ))}
-          </div>
-
-          <div className="aipo-control-panel mt-5 rounded-2xl p-4 md:p-5">
-            <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.26em] text-cyan-200/80`}>
-              {isZh ? "分析結果會像這樣" : "Preview of the output"}
-            </p>
-            <div className="mt-4 grid gap-3">
-              {sampleRows.map(([label, value]) => (
-                <div key={label} className="grid gap-1 rounded-xl border border-white/8 bg-black/36 px-4 py-3 md:grid-cols-[8rem_minmax(0,1fr)] md:items-center">
-                  <span className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">{label}</span>
-                  <span className="text-sm font-black leading-6 text-cyan-50">{value}</span>
-                </div>
-              ))}
+              <p role="status" aria-live="polite" className="mt-3 min-h-6 text-sm leading-6 text-orange-200">{notice ? c[notice] : ''}</p>
             </div>
           </div>
-
-        </div>
-      </section>
+        </section>
+        <section className="mt-10 border-t border-white/10 pt-7" aria-labelledby="next-title">
+          <h2 id="next-title" className="text-xl font-black">{c.nextTitle}</h2>
+          <div className="mt-4 flex flex-wrap gap-3">{c.next.map((label, i) => <Link key={label} href={nextLinks[i]} className="aipo-ghost-button inline-flex min-h-12 items-center gap-2 rounded-xl px-4 py-3 text-sm font-bold">{label}<ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0" /></Link>)}</div>
+          <p className="mt-3 text-xs leading-6 text-zinc-400">{c.nextNote}</p>
+        </section>
+      </div>
     </main>
   );
 }
