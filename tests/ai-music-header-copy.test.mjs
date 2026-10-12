@@ -6,44 +6,28 @@ const aiMusicSource = readFileSync(new URL("../src/app/ai-music/ai-music-client.
 const listenBarSource = readFileSync(new URL("../src/app/listen-bar/page.tsx", import.meta.url), "utf8");
 const showtimeSource = readFileSync(new URL("../src/app/rank/page.tsx", import.meta.url), "utf8");
 
-test("Explore AI Music uses a compact catalog masthead and current navigation order", () => {
-  assert.ok(aiMusicSource.includes("依照風格快速瀏覽作品，聽歌、送愛心，或向你喜歡的作品發起挑戰。"));
-  assert.ok(aiMusicSource.includes("text-yellow-200"));
-  assert.ok(aiMusicSource.includes("上傳音樂讓大家看到你的作品"));
-  assert.ok(aiMusicSource.includes("catalogMetadata"));
-  assert.ok(aiMusicSource.includes("首公開作品"));
-  assert.ok(aiMusicSource.includes('catalog: localeText(lang, "作品庫", "Catalog", "作品カタログ", "작품 카탈로그")'));
+test("Explore uses the shared navigation and compact searchable layout", () => {
+  const header = readFileSync(new URL("../src/components/editorial-header.tsx", import.meta.url), "utf8");
+  assert.ok(aiMusicSource.includes('<EditorialHeader active="explore" />'));
+  assert.ok(aiMusicSource.includes('找到對味的歌，讓好作品被聽見。'));
+  assert.ok(aiMusicSource.includes('type="search"'));
+  assert.ok(aiMusicSource.includes('filterAiMusicTracks'));
+  assert.ok(aiMusicSource.includes('連續聽電台'));
   assert.ok(aiMusicSource.includes('setWorksView("genre")'));
   assert.ok(aiMusicSource.includes('setWorksView("heat")'));
-  assert.ok(aiMusicSource.includes("正在升溫"));
-  assert.equal(aiMusicSource.includes("Live Drop Signal"), false);
-  assert.equal(aiMusicSource.includes("60s READY"), false);
-  assert.ok(aiMusicSource.includes("ai-music-hero-title"));
-  assert.ok(aiMusicSource.includes('#play-request'));
-  assert.ok(aiMusicSource.includes("這裡怎麼玩？"));
+  assert.ok(header.includes('/listen-bar#play-request'));
+  assert.equal(aiMusicSource.includes('ai-music-hero-title'), false);
+  assert.equal(aiMusicSource.includes('explore-frequency-stage.webp'), false);
+  assert.ok(aiMusicSource.includes('catalogMetadata'));
   assert.ok(aiMusicSource.includes('src="/guide.png"'));
+  assert.ok(existsSync(new URL("../public/guide.png", import.meta.url)));
   assert.ok(aiMusicSource.includes('role="dialog"'));
   assert.ok(aiMusicSource.includes('aria-modal="true"'));
-  assert.ok(aiMusicSource.includes("closeGuide"));
-  assert.equal(aiMusicSource.includes("<details"), false);
-  assert.ok(existsSync(new URL("../public/guide.png", import.meta.url)));
-  assert.ok(aiMusicSource.includes("愛心會同步加入收藏"));
-  assert.ok(aiMusicSource.includes("Profile 可整理收藏歌曲"));
-  assert.ok(aiMusicSource.includes("已準備 60s Drop"));
-  assert.ok(aiMusicSource.includes("正式戰績"));
-  assert.equal(aiMusicSource.includes("再守下"), false);
-  const worksIndex = aiMusicSource.indexOf('label: copy.browseWorks');
-  const barIndex = aiMusicSource.indexOf('label: copy.bar');
-  const dropIndex = aiMusicSource.indexOf('label: "Drop Battle"');
-  const showtimeIndex = aiMusicSource.indexOf('label: "Showtime"');
-  const choiceIndex = aiMusicSource.indexOf('label: "Choice"');
-  assert.ok(worksIndex > -1 && worksIndex < barIndex);
-  assert.ok(barIndex < dropIndex);
-  assert.ok(dropIndex < showtimeIndex);
-  assert.ok(showtimeIndex < choiceIndex);
-  assert.ok(aiMusicSource.includes("公開作品"));
-  assert.equal(aiMusicSource.includes("真實資料，不含 mock"), false);
-  assert.equal(aiMusicSource.includes("Real records only"), false);
+  assert.ok(aiMusicSource.includes('closeGuide'));
+  assert.ok(aiMusicSource.includes('愛心會同步加入收藏'));
+  assert.ok(aiMusicSource.includes('Profile 可整理收藏歌曲'));
+  assert.ok(aiMusicSource.includes('已準備 60s Drop'));
+  assert.ok(aiMusicSource.includes('正式戰績'));
 });
 
 test("Explore share links stay on the shared work in the Explore catalog", () => {

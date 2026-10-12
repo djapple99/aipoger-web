@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 import LangToggle from "@/components/lang-toggle";
 import styles from "./home-editorial.module.css";
 
-export default function EditorialHeader({ active }: { active: "home" | "mv" }) {
+export default function EditorialHeader({ active }: { active: "home" | "mv" | "explore" }) {
   const { lang } = useI18n(); const copy = homeCopy(lang);
   const [signedIn, setSignedIn] = useState(false);
   const withLang = (path: string) => { const [url, hash] = path.split("#"); return `${url}${url.includes("?") ? "&" : "?"}lang=${lang}${hash ? `#${hash}` : ""}`; };
@@ -27,7 +27,7 @@ export default function EditorialHeader({ active }: { active: "home" | "mv" }) {
         </Link>
         <nav className={styles.navigation} aria-label={copy.explore}>
           <Link href={withLang("/")} className={active === "home" ? styles.active : undefined} aria-current={active === "home" ? "page" : undefined}>{copy.featured}</Link>
-          <Link href={withLang("/ai-music")}>{copy.explore}</Link>
+          <Link href={withLang("/ai-music")} className={active === "explore" ? styles.active : undefined} aria-current={active === "explore" ? "page" : undefined}>{copy.explore}</Link>
           <Link href={withLang("/mv")} className={active === "mv" ? styles.active : undefined} aria-current={active === "mv" ? "page" : undefined}>{copy.mv}</Link>
           <Link href={withLang("/rank")}>Showtime</Link>
           <Link href={withLang("/battle")}>Battle</Link>
@@ -36,7 +36,7 @@ export default function EditorialHeader({ active }: { active: "home" | "mv" }) {
         <div className={styles.headerActions}>
           <Link href={withLang("/listen-bar#play-request")} className={styles.submit}>{copy.submit}</Link>
           <LangToggle variant="inline" />
-          {signedIn ? <span className={styles.accountSpace} /> : <Link href={active === "mv" ? `/auth?lang=${lang}&next=${encodeURIComponent(`/mv?lang=${lang}`)}` : withLang("/auth")} className={styles.signIn}>{copy.signIn}</Link>}
+          {signedIn ? <span className={styles.accountSpace} /> : <Link href={active !== "home" ? `/auth?lang=${lang}&next=${encodeURIComponent(`/${active === "mv" ? "mv" : "ai-music"}?lang=${lang}`)}` : withLang("/auth")} className={styles.signIn}>{copy.signIn}</Link>}
         </div>
       </div>
     </header>;

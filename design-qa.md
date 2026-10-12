@@ -58,3 +58,31 @@ Desktop 1487 × 1058 and mobile 390 × 844 have no document overflow in all four
 Full suite: 513 tests, 482 passed, 31 existing optional DB skips, 0 failures. TypeScript and build passed; lint 0 errors and 16 existing warnings. Runtime tests cover batch private daily state, direct reaction/favorite synchronization, duplicate-click lock, failure preservation, account-change races, dialog video/draft behavior and login routing. Authenticated writes used mocks; no live signed-in owner session, production votes/comments, uploads or database migrations were used.
 
 Production: app `5d1178d`, READY deployment `dpl_J97UK5nFW6KQJaHurB9yoNJC7fhE`, promoted to `https://aipoger.com/mv?lang=zh` and apex verified. `production-desktop.jpg`, `production-mobile-cards.jpg`, `production-comments-mobile.jpg` inspected. Real YouTube playback at 2 seconds, public empty comments, iframe unloading, focus restoration and guest Heart's `/mv` login return verified. Console has no errors. Catalog retains 48 videos and 3 channels; homepage and gallery featured deduplication intact.
+
+
+## Explore redesign — 2026-10-13
+
+final result: passed
+
+Target: exact user-approved `/Users/huangyihong/.codex/generated_images/01a11410-a7ad-7352-bd36-4ff0b48ba73f/exec-d7da2cc1-89e8-452d-8b10-0230f51108ec.png` (1487 × 1058). Render: `http://localhost:3111/ai-music?lang=zh`, loaded actual public catalog, Jazz / Bossa guest profile completed through the existing Earworm interface. Actual creator names and covers replace illustrative names/artwork. Source depicts a signed-in avatar; rendered guest view retains the normal sign-in action. Both paired captures show active playback; the existing shared player is intentionally preserved. No fake listening time, account, score or track was inserted.
+
+Evidence: `/Users/huangyihong/Documents/New project/outputs/aipoger-explore-release/`. Source/live captures are 1487 × 1058 at CSS viewport 1487 × 1058, density 1. Explicit screenshot clips were required because the default IAB screenshot reflected its surrounding window dimensions. `comparison-final.jpg`, `comparison-header.jpg`, and `comparison-cards.jpg` contain source and implementation together; these combined inputs were opened and visually inspected.
+
+Findings and iterations:
+
+- [P2, fixed] At 320px in English, the genre selector shrank to 55px. A full-width selector row below the mode/guide controls now measures 284px. Evidence: `06-local-mobile-320-en.png` → `07-local-mobile-320-en-fixed.png`; the latter was opened and inspected.
+- [P2, fixed] The first desktop headline was 50px against the mock's roughly 60px display heading. The final heading is 59.48px at the reference viewport, with first covers at y=334.42 versus y=331 in the reference. Evidence: updated `11-local-final-playing.png` and paired final/header comparisons.
+- [P2, fixed] Hovering artwork exposed a large Battle HUD over the new cover-led layout. Record details now open explicitly through the original info action on desktop/mobile; hover/focus reveals the compact info/share controls. Actual Battle counts remain available.
+- [P2, fixed] Old recommendations could persist above a loading/error state during a locale reload. Recommendation rendering now requires ready data; no stale success catalog is shown after a failed fetch.
+
+Required fidelity surfaces:
+
+- Fonts/typography: existing site sans/CJK fallbacks preserve the black/orange design's clean hierarchy. Heading ~60px desktop/36px phone; section titles 30px desktop/24px phone; song titles 20px/17px; creators 14px/13px. Actual longer work names clamp at two lines and retain full accessible/link text. Larger orange heart glyphs sit beside titles within 44px targets.
+- Spacing/layout: compact common header, left title, right search/radio CTA, one control strip, six square covers on desktop and two columns on phones. No giant hero or nested recommendation panel. Existing recommendation IDs are excluded from lower lanes without changing original lane order or playback queues. Authentic long names and the bottom challenge action account for additional row height relative to short illustrative titles. Main frame's 9px reference inset difference is acceptable P3.
+- Colors/tokens: #050505 background, #ff6a00 radio CTA, white titles, restrained gray metadata, orange selected state/heart; no new gradients or glow panel in the catalog. Existing red challenge and yellow NEW badges retain their semantic meaning.
+- Image quality: original creator imagery, original approved logo and original covers only; no fabricated replacements or code-drawn artwork. Square cover crops and source artwork text remain intact. Lucide library icons match the outlined controls.
+- Copy/content: h1 探索音樂, subtitle 找到對味的歌，讓好作品被聽見。, clear 傷心酒吧／連續聽電台, recommendation taste caption, more music and original genres. All four locales checked; actual work names/creators never transcreated into demo names. Total 225 public works/14 genres is truthful at QA time, placed below the catalog.
+
+Interaction evidence: full catalog search (7 actual 愛波哥 tracks); Jazz intersection (2 tracks); no-match/reset; 0 duplicate card IDs; direct guest heart opens auth with the original work return path; playing real audio advances to >21s with readyState=4; close player; info expand/collapse; full guest Earworm completion and return; genre/Hot Now toggle and real recent rank; guide focus trap, Escape and return. Desktop and phone zh/en/ja/ko plus 320/768/1280 widths inspected; no page overflow; local console errors none.
+
+Implementation checklist: all P0/P1/P2 findings resolved; responsive and interaction checks passed; real data/assets verified; production gate can proceed. Remaining P3: the authentic titles, support counts, public affinity badge, preserved player and signed-out account action intentionally differ from the illustrative mock. No further polish loop.

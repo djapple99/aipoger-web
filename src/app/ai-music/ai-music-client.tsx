@@ -1,12 +1,14 @@
 "use client";
 
 import { musicPlayer, useMusicPlayer } from "@/lib/music-player-store";
-import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, AudioLines, Headphones, Upload } from "lucide-react";
+import { ArrowRight, AudioLines, Headphones, Heart, Info, Pause, Play, Search, Share2, Swords, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
-import { fontGlowSans, fontRighteous, fontSourceSerifTC } from "@/lib/fonts";
+import { fontRighteous } from "@/lib/fonts";
+import EditorialHeader from "@/components/editorial-header";
+import { filterAiMusicTracks } from "@/lib/ai-music-filter";
+import styles from "./ai-music.module.css";
 import { useI18n } from "@/lib/i18n";
 import {
   canonicalMusicGenre,
@@ -106,10 +108,10 @@ function exploreCopy(lang: string) {
     works: localeText(lang, "音樂作品", "Music Works", "音楽作品", "음악 작품"),
     subtitle: localeText(
       lang,
-      "依照風格快速瀏覽作品，聽歌、送愛心，或向你喜歡的作品發起挑戰。",
-      "Browse tracks by style, listen, send hearts, or start a challenge from music you like.",
-      "ジャンルから作品を探して聴き、Heartを送り、気になる曲へ挑戦できます。",
-      "장르별로 작품을 듣고 Heart를 보내거나 마음에 드는 곡에 도전해 보세요.",
+      "找到對味的歌，讓好作品被聽見。",
+      "Find your sound. Give great music a place to be heard.",
+      "好きな音楽を見つけ、素敵な作品に出会おう。",
+      "취향에 맞는 노래를 찾고 좋은 음악을 함께 발견해요.",
     ),
     uploadPrefix: localeText(lang, "上傳音樂讓大家看到你的作品，請從 ", "Upload your music so listeners can find it here. Submit through ", "作品を公開するには、", "내 음악을 공개하려면 "),
     uploadLink: localeText(lang, "傷心酒吧投稿", "Bar Heartbreak", "Bar Heartbreakから投稿", "Bar Heartbreak에서 업로드"),
@@ -118,7 +120,7 @@ function exploreCopy(lang: string) {
     browseWorks: localeText(lang, "作品瀏覽", "Works", "作品を見る", "작품 보기"),
     bar: localeText(lang, "傷心酒吧", "Bar Heartbreak", "Bar Heartbreak", "Bar Heartbreak"),
     browseMode: localeText(lang, "作品瀏覽方式", "Works browsing mode", "作品の表示方法", "작품 탐색 방식"),
-    byStyle: localeText(lang, "依類型", "By Style", "ジャンル別", "장르별"),
+    byStyle: localeText(lang, "依曲風", "By Style", "ジャンル別", "장르별"),
     hotNow: localeText(lang, "正在升溫", "Hot Now", "注目上昇中", "인기 상승 중"),
     uploadAction: localeText(lang, "我要上傳我的音樂", "Upload My Music", "音楽を投稿", "내 음악 업로드"),
     guideLabel: localeText(lang, "這裡怎麼玩？", "How this works", "使い方を見る", "이용 방법"),
@@ -359,45 +361,6 @@ function mergeDuplicateTracks(rows: AiMusicTrack[]) {
   return Array.from(bySignature.values());
 }
 
-function PlayIcon({ playing = false, loading = false }: { playing?: boolean; loading?: boolean }) {
-  if (loading) {
-    return <span className="block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden="true" />;
-  }
-  return playing ? (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
-      <path d="M7 5h3.5v14H7V5Zm6.5 0H17v14h-3.5V5Z" />
-    </svg>
-  ) : (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
-      <path d="M8 5.4v13.2L18.4 12 8 5.4Z" />
-    </svg>
-  );
-}
-
-function HeartIcon({ filled = false }: { filled?: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill={filled ? "currentColor" : "none"} aria-hidden="true">
-      <path
-        d="M12 20.2s-7.4-4.4-8.7-9.1C2.5 8.1 4.4 5.5 7.2 5.5c1.7 0 3.1.9 3.8 2.1.7-1.2 2.1-2.1 3.8-2.1 2.8 0 4.7 2.6 3.9 5.6C17.4 15.8 12 20.2 12 20.2Z"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function ShareIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-      <path d="M8.4 10.6 15.7 6.7M8.4 13.4l7.3 3.9" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
-      <circle cx="6.5" cy="12" r="2.7" stroke="currentColor" strokeWidth="1.9" />
-      <circle cx="17.5" cy="5.8" r="2.7" stroke="currentColor" strokeWidth="1.9" />
-      <circle cx="17.5" cy="18.2" r="2.7" stroke="currentColor" strokeWidth="1.9" />
-    </svg>
-  );
-}
-
 function TrackCover({ track, className = "" }: { track: AiMusicTrack; className?: string }) {
   return (
     <div className={`overflow-hidden bg-black ${className}`}>
@@ -483,15 +446,9 @@ function EarwormAffinityStatus({
     ? localeText(lang, `好感度 ${track.earwormAffinityPercent}%`, `Affinity ${track.earwormAffinityPercent}%`, `好感度 ${track.earwormAffinityPercent}%`, `호감도 ${track.earwormAffinityPercent}%`)
     : localeText(lang, "好感度累積中", "Building affinity", "好感度を集計中", "호감도 집계 중");
   return (
-    <div className="pointer-events-none absolute inset-x-2 bottom-0 z-30 flex translate-y-1/2 justify-center">
-      <span
-        className="inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-full border border-orange-100/80 bg-[linear-gradient(100deg,#f97316_0%,#fb4f73_56%,#ff8a3d_100%)] px-2.5 py-1 text-[10px] font-black leading-4 text-white shadow-[0_0_24px_rgba(251,79,115,0.56),0_7px_20px_rgba(0,0,0,0.6)]"
-        title={track.earwormAffinitySampleCount > 0 ? `${track.earwormAffinitySampleCount} responses` : undefined}
-      >
-        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-black/22 ring-1 ring-white/20">
-          <AudioLines className="h-3.5 w-3.5" strokeWidth={2.6} aria-hidden="true" />
-        </span>
-        <span className="truncate">{publicLabel}</span>
+    <div className={styles.affinity}>
+      <span title={track.earwormAffinitySampleCount > 0 ? `${track.earwormAffinitySampleCount} responses` : undefined}>
+        <AudioLines aria-hidden="true" />{publicLabel}
       </span>
     </div>
   );
@@ -499,7 +456,6 @@ function EarwormAffinityStatus({
 
 function TrackCard({
   track,
-  isZh,
   isPlaying,
   isExpanded,
   heartBusy,
@@ -514,7 +470,6 @@ function TrackCard({
   onShare,
 }: {
   track: AiMusicTrack;
-  isZh: boolean;
   isPlaying: boolean;
   isExpanded: boolean;
   heartBusy: boolean;
@@ -531,109 +486,55 @@ function TrackCard({
   const heartCount = Math.max(0, track.heartCount);
   const showNewBadge = isNewlyPublishedMusic(track.createdAt);
   const showChallengeReadyBadge = track.openForChallenge && Boolean(track.audioUrl);
-  const showEarwormAffinity = track.earwormAffinityPercent !== null || track.earwormAffinitySampleCount > 0;
   const heartActionLabel = heartedToday
     ? localeText(lang, "取消愛心與收藏", "Remove Heart and saved track", "Heartと保存を解除", "Heart와 저장 취소")
     : localeText(lang, "送出愛心支持", "Send a heart", "Heartを送る", "Heart 보내기");
   return (
-    <article id={`ai-music-work-${track.sourceId}`} className="group relative w-[12.5rem] shrink-0 snap-start overflow-hidden rounded-md border border-white/10 bg-black/54 shadow-[0_18px_54px_rgba(0,0,0,0.34)] backdrop-blur transition hover:border-orange-200/45 hover:bg-orange-500/[0.055] sm:w-full">
-      <div className="relative aspect-square">
+    <article id={`ai-music-work-${track.sourceId}`} className={`group ${styles.card}`}>
+      <div className={styles.cover}>
         <TrackCover track={track} className="h-full w-full" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/12 to-transparent" />
-        {showNewBadge ? (
-          <NewMusicBadge
-            lang={lang}
-            className="absolute left-3 top-3 z-20 transition-opacity md:group-hover:opacity-0"
-          />
-        ) : null}
+        {showNewBadge ? <NewMusicBadge lang={lang} className="absolute left-3 top-3 z-20" /> : null}
         {catalogLabel ? (
-          <span className={`${fontRighteous.className} absolute left-3 ${showNewBadge ? "top-10" : "top-3"} rounded-sm border border-orange-100/40 bg-black/72 px-2 py-1 text-[10px] font-black tracking-[0.12em] text-orange-50 shadow-[0_0_18px_rgba(255,106,0,0.16)] backdrop-blur`}>
+          <span className={`absolute left-3 ${showNewBadge ? "top-10" : "top-3"} rounded-sm border border-white/40 bg-black/75 px-2 py-1 text-[11px] font-bold text-white`}>
             {catalogLabel}
           </span>
         ) : null}
         {showChallengeReadyBadge ? <ChallengeReadyBadge lang={lang} /> : null}
-        <button
-          type="button"
-          onPointerDown={() => onPrepare(track)}
-          onFocus={() => onPrepare(track)}
-          onClick={() => onPlay(track)}
-          disabled={!track.audioUrl}
-          className="absolute bottom-5 left-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-black shadow-[0_0_26px_rgba(255,106,0,0.36)] transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
-          aria-label={isPlaying ? localeText(lang, "暫停", "Pause", "一時停止", "일시정지") : localeText(lang, `播放 ${track.title}`, `Play ${track.title}`, `${track.title}を再生`, `${track.title} 재생`)}
-        >
-          <PlayIcon playing={isPlaying} />
+        <button type="button" className={styles.play}
+          onPointerDown={() => onPrepare(track)} onFocus={() => onPrepare(track)}
+          onClick={() => onPlay(track)} disabled={!track.audioUrl}
+          aria-label={isPlaying ? localeText(lang, "暫停", "Pause", "一時停止", "일시정지") : localeText(lang, `播放 ${track.title}`, `Play ${track.title}`, `${track.title}を再生`, `${track.title} 재생`)}>
+          {isPlaying ? <Pause fill="currentColor" aria-hidden="true" /> : <Play fill="currentColor" aria-hidden="true" />}
         </button>
-        <button
-          type="button"
-          onClick={() => onToggleExpand(track)}
-          className="absolute bottom-5 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/18 bg-black/62 text-xs font-black text-white backdrop-blur transition hover:border-cyan-100/50 focus-visible:ring-2 focus-visible:ring-cyan-100"
-          aria-expanded={isExpanded}
-          aria-label={localeText(lang, "顯示戰績資訊", "Show record info", "戦績情報を表示", "전적 정보 보기")}
-        >
-          i
-        </button>
-        <div className={`pointer-events-none absolute inset-x-3 top-3 hidden transition duration-200 md:block ${isExpanded ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100"}`}>
-          <TrackHud track={track} lang={lang} />
+        <div className={styles.coverTools}>
+          <button type="button" onClick={() => onToggleExpand(track)} aria-expanded={isExpanded}
+            aria-label={localeText(lang, "顯示戰績資訊", "Show record info", "戦績情報を表示", "전적 정보 보기")}>
+            <Info aria-hidden="true" />
+          </button>
+          <button type="button" onClick={() => onShare(track)} aria-label={localeText(lang, "分享", "Share", "共有", "공유")}>
+            <Share2 aria-hidden="true" />
+          </button>
         </div>
+        {isExpanded ? <div className="pointer-events-none absolute inset-x-3 top-3 hidden md:block">
+          <TrackHud track={track} lang={lang} />
+        </div> : null}
         <EarwormAffinityStatus track={track} lang={lang} />
       </div>
-
-      <div className={`grid gap-2 px-3 pb-3 ${showEarwormAffinity ? "pt-6" : "pt-3"}`}>
-        <div className="min-w-0">
-          <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-black leading-5 text-white">{track.title}</h3>
-          <p className="mt-1 truncate text-[11px] font-bold text-zinc-400">
-            {isZh ? "by" : "by"} {track.creator} · {track.aiTool}
-          </p>
-          {catalogNote ? <p className="mt-1 line-clamp-2 text-[10px] font-black leading-4 text-orange-100/82">{catalogNote}</p> : null}
-        </div>
-        <div className="flex items-center justify-between gap-2 text-[11px] font-black text-zinc-300">
-          <span className="inline-flex items-center gap-1 text-rose-100">
-            <HeartIcon filled />
-            {heartCount}
-          </span>
-          {track.challengeCount > 0 ? <span className="text-orange-100">⚔ {track.challengeCount}</span> : null}
-        </div>
-        {track.challengeCount > 0 ? <p className="rounded-sm border border-white/15 px-2 py-1.5 text-[10px] font-black leading-4 text-zinc-200">
-          {formatRecord(track, lang)}
-        </p> : null}
-        {isExpanded ? (
-          <div className="md:hidden">
-            <TrackHud track={track} lang={lang} />
-          </div>
-        ) : null}
-        <div className={`grid gap-1.5 ${track.openForChallenge ? "grid-cols-3" : "grid-cols-2"}`}>
-          <button
-            type="button"
-            onClick={() => onHeart(track)}
-            disabled={heartBusy}
-            className={`inline-flex min-h-9 items-center justify-center rounded-md border px-2 text-[11px] font-black transition disabled:cursor-wait disabled:opacity-55 ${
-              heartedToday
-                ? "border-rose-200/55 bg-rose-500/18 text-rose-50 shadow-[0_0_18px_rgba(244,63,94,0.2)] hover:border-rose-100/70"
-                : "border-white/10 bg-white/[0.04] text-zinc-300 hover:border-rose-200/40 hover:text-rose-100"
-            }`}
-            aria-label={heartActionLabel}
-            title={heartActionLabel}
-          >
-            <HeartIcon filled={heartedToday} />
-          </button>
-          <button
-            type="button"
-            onClick={() => onShare(track)}
-            className="inline-flex min-h-9 items-center justify-center rounded-md border border-white/10 bg-white/[0.04] px-2 text-[11px] font-black text-zinc-300 transition hover:border-cyan-100/40 hover:text-white"
-            aria-label={localeText(lang, "分享", "Share", "共有", "공유")}
-          >
-            <ShareIcon />
-          </button>
-          {track.openForChallenge ? (
-            <Link
-              href={aiMusicChallengeHref(track, lang)}
-              className="inline-flex min-h-9 items-center justify-center rounded-md border border-orange-200/38 bg-orange-500/15 px-2 text-[11px] font-black text-orange-50 transition hover:border-orange-100/65 hover:bg-orange-500/22"
-            >
-              {localeText(lang, "攻擂", "Challenge", "挑戦", "도전")}
-            </Link>
-          ) : null}
-        </div>
+      <div className={styles.titleRow}>
+        <h3><Link href={track.href}>{track.title}</Link></h3>
+        <button type="button" className={styles.heart} onClick={() => onHeart(track)} disabled={heartBusy}
+          aria-pressed={heartedToday} aria-label={heartActionLabel} title={heartActionLabel}>
+          <Heart fill={heartedToday ? "currentColor" : "none"} aria-hidden="true" /><span>{heartCount}</span>
+        </button>
       </div>
+      <div className={styles.creatorRow}>
+        <p className={styles.creator} title={`${track.creator} · ${track.aiTool}`}>{track.creator}</p>
+        {track.openForChallenge ? <Link href={aiMusicChallengeHref(track, lang)} className={styles.challenge}>
+          <Swords aria-hidden="true" />{localeText(lang, "攻擂", "Challenge", "挑戦", "도전")}
+        </Link> : null}
+      </div>
+      {catalogNote ? <p className={styles.note}>{catalogNote}</p> : null}
+      {isExpanded ? <div className="mt-2 md:hidden"><TrackHud track={track} lang={lang} /></div> : null}
     </article>
   );
 }
@@ -651,7 +552,8 @@ function heatReason(track: AiMusicTrack, lang: string) {
 
 function HeatList({
   tracks,
-  isZh,
+  query,
+  genre,
   currentTrackId,
   isPlaying,
   expandedHud,
@@ -665,7 +567,8 @@ function HeatList({
   onShare,
 }: {
   tracks: AiMusicTrack[];
-  isZh: boolean;
+  query: string;
+  genre: string;
   currentTrackId: string | null;
   isPlaying: boolean;
   expandedHud: Record<string, boolean>;
@@ -678,26 +581,26 @@ function HeatList({
   onHeart: (track: AiMusicTrack) => void;
   onShare: (track: AiMusicTrack) => void;
 }) {
-  const rows = buildAiMusicHeatList(tracks);
+  const matchingIds = new Set(filterAiMusicTracks(tracks, query, genre).map(track => track.id));
+  const rows = buildAiMusicHeatList(tracks).filter(row => matchingIds.has(row.track.id));
   return (
-    <section className="grid gap-3" aria-label={localeText(lang, "正在升溫作品", "Hot Now works", "注目上昇中の作品", "인기 상승 작품")}>
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-orange-200/18 pb-3">
+    <section className={styles.section} aria-label={localeText(lang, "正在升溫作品", "Hot Now works", "注目上昇中の作品", "인기 상승 작품")}>
+      <div className={styles.sectionHeading}>
         <div>
           <p className={`${fontRighteous.className} text-[10px] uppercase tracking-[0.2em] text-orange-100/68`}>AIPOGER HEAT</p>
-          <h2 className="mt-1 text-xl font-black text-white">{localeText(lang, "正在升溫", "Hot Now", "注目上昇中", "인기 상승 중")}</h2>
+          <h2 >{localeText(lang, "正在升溫", "Hot Now", "注目上昇中", "인기 상승 중")}</h2>
         </div>
         <p className="max-w-sm text-xs font-bold leading-5 text-zinc-500">
           {localeText(lang, "依近 7 日不同帳號支持與已成立正式 Battle 有效票排序。", "Ordered by 7-day distinct supporters and official Battle audience votes.", "直近7日間の異なるアカウントからの支持と、成立した公式Battleの有効票で並びます。", "최근 7일간 서로 다른 계정의 지지와 성립된 공식 Battle 유효표 순으로 정렬합니다.")}
         </p>
       </div>
 
-      <div className="flex snap-x gap-3 overflow-x-auto pb-2 [scrollbar-width:thin] sm:grid sm:grid-cols-3 sm:overflow-visible md:grid-cols-4 xl:grid-cols-6">
+      <div className={styles.grid}>
         {rows.map(({ track, rank, hasRecentSignal }) => {
           return (
             <TrackCard
               key={track.id}
               track={track}
-              isZh={isZh}
               isPlaying={currentTrackId === track.id && isPlaying}
               isExpanded={Boolean(expandedHud[track.id])}
               heartBusy={Boolean(heartBusy[track.recordKey])}
@@ -720,11 +623,12 @@ function HeatList({
 
 export default function AiMusicClient() {
   const { lang, t } = useI18n();
-  const isZh = lang === "zh";
   const copy = exploreCopy(lang);
   const earwormCopy = earwormExploreCopy(lang);
   const [tracks, setTracks] = useState<AiMusicTrack[]>([]);
   const [worksView, setWorksView] = useState<"genre" | "heat">("genre");
+  const [query, setQuery] = useState("");
+  const [selectedGenre, setSelectedGenre] = useState("");
   const [guideOpen, setGuideOpen] = useState(false);
   const [earwormPromptOpen, setEarwormPromptOpen] = useState(false);
   const [earwormProfile, setEarwormProfile] = useState<EarwormLocalProfile | null>(null);
@@ -957,7 +861,7 @@ export default function AiMusicClient() {
     };
   }, [tracks, userId]);
 
-  const groupedTracks = useMemo(() => {
+  const allGroupedTracks = useMemo(() => {
     return buildAiMusicExploreGenreLanes(tracks).map((group) => ({
       ...group,
       label: t(MUSIC_GENRE_OPTIONS.find((option) => option.value === group.genre)?.labelKey ?? ""),
@@ -975,6 +879,17 @@ export default function AiMusicClient() {
       .sort((left, right) => right.heartCount - left.heartCount || left.sourceId.localeCompare(right.sourceId));
     return [...relevant.slice(0, 4), ...discovery.slice(0, 2)].slice(0, 6);
   }, [earwormProfile, tracks]);
+
+  const filteredTracks = useMemo(() => filterAiMusicTracks(tracks, query, selectedGenre), [tracks, query, selectedGenre]);
+  const visibleRecommendations = useMemo(() => filterAiMusicTracks(earwormRecommendations, query, selectedGenre), [earwormRecommendations, query, selectedGenre]);
+  const groupedTracks = useMemo(() => {
+    const recommendedIds = new Set(visibleRecommendations.map(track => track.id));
+    const genreOrder = new Map(allGroupedTracks.map((group, index) => [group.genre, index]));
+    return buildAiMusicExploreGenreLanes(filteredTracks.filter(track => !recommendedIds.has(track.id)))
+      .filter(group => group.tracks.length > 0)
+      .sort((left, right) => (genreOrder.get(left.genre) ?? 0) - (genreOrder.get(right.genre) ?? 0))
+      .map(group => ({ ...group, label: t(MUSIC_GENRE_OPTIONS.find(option => option.value === group.genre)?.labelKey ?? "") }));
+  }, [allGroupedTracks, filteredTracks, visibleRecommendations, t]);
 
   useEffect(() => {
     if (!earwormProfile || loadState !== "ready") return;
@@ -1000,7 +915,7 @@ export default function AiMusicClient() {
     if (currentTrack?.id === track.id) { musicPlayer?.toggle(); return; }
     const sourceTracks = worksView === "heat"
       ? buildAiMusicHeatList(tracks).map(row => row.track)
-      : groupedTracks.find(group => group.genre === track.genre)?.tracks ?? tracks;
+      : allGroupedTracks.find(group => group.genre === track.genre)?.tracks ?? tracks;
     const queue = sourceTracks.filter(item => item.audioUrl).map(item => ({
       id: item.id, heartTrackId: item.source === "bar" ? item.sourceId : undefined, title: item.title, artist: item.creator, coverUrl: item.coverUrl,
       audioUrl: item.audioUrl!, lyrics: item.lyrics ?? undefined, genre: item.genre,
@@ -1088,292 +1003,114 @@ export default function AiMusicClient() {
     }
   };
 
-  const totalVisibleTracks = groupedTracks.reduce((sum, group) => sum + group.tracks.length, 0);
-  const navItems = [
-    { href: "#works", label: copy.browseWorks },
-    { href: withLang("/listen-bar"), label: copy.bar },
-    { href: withLang("/battle"), label: "Drop Battle" },
-    { href: withLang("/rank"), label: "Showtime" },
-    { href: `/rank?lang=${lang}#choice-weekly`, label: "Choice" },
-  ];
-  const catalogMetadata = localeText(
-    lang,
+  const totalVisibleTracks = allGroupedTracks.reduce((sum, group) => sum + group.tracks.length, 0);
+  const catalogMetadata = localeText(lang,
     `${totalVisibleTracks} 首公開作品 · ${MUSIC_GENRE_OPTIONS.length} 種風格`,
     `${totalVisibleTracks} public works · ${MUSIC_GENRE_OPTIONS.length} styles`,
     `公開作品 ${totalVisibleTracks}曲 · ${MUSIC_GENRE_OPTIONS.length}ジャンル`,
-    `공개 작품 ${totalVisibleTracks}곡 · ${MUSIC_GENRE_OPTIONS.length}개 장르`,
-  );
+    `공개 작품 ${totalVisibleTracks}곡 · ${MUSIC_GENRE_OPTIONS.length}개 장르`);
+  const hasFilters = Boolean(query.trim() || selectedGenre);
+  const resetFilters = () => { setQuery(""); setSelectedGenre(""); };
+  const renderTrack = (track: AiMusicTrack, catalogLabel?: string) => <TrackCard
+    key={track.id} track={track} lang={lang} catalogLabel={catalogLabel}
+    isPlaying={currentTrack?.id === track.id && isPlaying}
+    isExpanded={Boolean(expandedHud[track.id])} heartBusy={Boolean(heartBusy[track.recordKey])}
+    heartedToday={Boolean(heartStates[track.recordKey])}
+    onPrepare={prepareTrack} onPlay={handlePlayTrack}
+    onToggleExpand={item => setExpandedHud(current => ({ ...current, [item.id]: !current[item.id] }))}
+    onHeart={item => void sendHeart(item)} onShare={item => void shareTrack(item)} />;
+  const earTestButton = <button type="button" className={styles.earTest} onClick={() => setEarwormPromptOpen(true)}>
+    <Headphones aria-hidden="true" />{earwormCopy.reopen}
+  </button>;
+  const showRecommendations = loadState === "ready" && worksView === "genre" && visibleRecommendations.length > 0;
 
   return (
-    <main className={`${fontGlowSans.className} aipo-stage-bg relative min-h-screen overflow-hidden px-4 pb-28 pt-20 text-white sm:px-6 lg:px-8`}>
-      <div className="relative z-10 mx-auto w-full max-w-7xl">
-        <header className="relative mb-3 overflow-hidden border-y border-orange-200/20 bg-black text-center shadow-[0_26px_80px_rgba(0,0,0,0.38)]">
-          <Image
-            src="/ai-music/explore-frequency-stage.webp"
-            alt=""
-            fill
-            priority
-            sizes="(max-width: 1280px) 100vw, 1280px"
-            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-80"
-          />
-          <div className="pointer-events-none absolute inset-0 bg-black/28" aria-hidden="true" />
-
-          <div className="relative flex flex-col items-center px-3 pb-3 pt-4 sm:px-6 sm:pb-4 sm:pt-5">
-            <div className="flex items-center justify-center gap-2.5 text-[10px] uppercase sm:text-[11px]">
-              <span className={`${fontRighteous.className} tracking-[0.3em] text-orange-100/78`}>Explore</span>
-              <span className="font-black text-cyan-200" aria-hidden="true">/</span>
-              <span className={`${fontRighteous.className} tracking-[0.3em] text-zinc-400`}>AI Music</span>
-            </div>
-
-            <div className="mt-2.5 inline-flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 border-y border-orange-100/20 bg-black/48 px-3 py-1.5 text-[10px] font-black text-orange-100/84 backdrop-blur-sm sm:text-[11px]">
-              <span className={`${fontRighteous.className} uppercase tracking-[0.14em] text-orange-200`}>
-                {copy.catalog}
-              </span>
-              <span className="text-orange-400/70" aria-hidden="true">/</span>
-              <span className="text-zinc-200">{catalogMetadata}</span>
-            </div>
-
-            <h1 className="ai-music-hero-title mt-3 flex items-center justify-center gap-3 sm:gap-5">
-              <span className={`${fontRighteous.className} text-[2.9rem] leading-[0.78] tracking-[-0.08em] text-orange-50/86 sm:text-[4.4rem] lg:text-[5.25rem]`}>
-                AI
-              </span>
-              <span className="h-12 w-px bg-orange-100/36 sm:h-16" aria-hidden="true" />
-              <span className={`${isZh ? fontSourceSerifTC.className : fontRighteous.className} text-[2.45rem] font-black leading-[0.86] tracking-[-0.07em] text-[#fff8e9] drop-shadow-[0_8px_22px_rgba(0,0,0,0.86)] sm:text-[3.9rem] lg:text-[4.65rem]`}>
-                {copy.works}
-              </span>
-            </h1>
-
-            <p className="mt-3 max-w-3xl text-[13px] font-black leading-5 text-yellow-200 drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] sm:text-base sm:leading-6">
-              {copy.subtitle}
-            </p>
-            <p className="mt-1 text-[11px] font-bold leading-5 text-orange-50/82 sm:text-sm sm:leading-6">
-              {copy.uploadPrefix}
-              <Link href={`${withLang("/listen-bar")}#play-request`} className="font-black text-cyan-100 underline decoration-cyan-200/55 underline-offset-4 transition hover:text-white">
-                {copy.uploadLink}
-              </Link>
-              {copy.uploadSuffix}
-            </p>
+    <div className={styles.page}>
+      <EditorialHeader active="explore" />
+      <main className={styles.main}>
+        <div className={styles.intro}>
+          <div>
+            <h1>{localeText(lang, "探索音樂", "Explore Music", "音楽を探す", "음악 탐색")}</h1>
+            <p>{copy.subtitle}</p>
           </div>
-
-          <nav className="relative flex justify-center overflow-x-auto border-t border-orange-100/16 bg-black/72 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label={copy.navigation}>
-            <div className="flex min-w-max gap-0.5 px-2 sm:mx-auto sm:gap-1 sm:px-4">
-              {navItems.map((item, index) => (
-                <Link key={item.href} href={item.href} className={`inline-flex min-h-11 shrink-0 items-center border-b-2 px-2.5 text-[11px] font-black transition sm:px-4 sm:text-xs ${index === 0 ? "border-orange-400 text-orange-200" : "border-transparent text-zinc-400 hover:border-cyan-100/55 hover:text-white"}`}>
-                  {item.label}
-                </Link>
-              ))}
+          <div className={styles.introActions}>
+            <div className={styles.search}>
+              <Search aria-hidden="true" />
+              <input type="search" value={query} onChange={event => setQuery(event.target.value)}
+                aria-label={localeText(lang, "搜尋作品或創作者", "Search tracks or creators", "曲やクリエイターを検索", "곡 또는 크리에이터 검색")}
+                placeholder={localeText(lang, "搜尋作品或創作者", "Search tracks or creators", "曲やクリエイターを検索", "곡 또는 크리에이터 검색")} />
+              {query ? <button type="button" onClick={() => setQuery("")} aria-label={localeText(lang, "清除搜尋", "Clear search", "検索をクリア", "검색 지우기")}><X aria-hidden="true" /></button> : null}
             </div>
-          </nav>
-        </header>
-
-        <section id="works" className="grid gap-5 scroll-mt-24">
-          <div className="flex justify-center border-b border-white/10 pb-3 pt-1">
-            <div className="flex max-w-full flex-wrap items-center justify-center gap-2 rounded-lg border border-orange-100/18 bg-black/76 p-1.5 shadow-[0_16px_42px_rgba(0,0,0,0.36)]">
-              <div className="inline-flex" role="group" aria-label={copy.browseMode}>
-                <button
-                  type="button"
-                  onClick={() => setWorksView("genre")}
-                  aria-pressed={worksView === "genre"}
-                  className={`min-h-10 rounded-md px-4 text-xs font-black transition sm:px-5 ${worksView === "genre" ? "bg-orange-500 text-black shadow-[0_0_22px_rgba(255,106,0,0.24)]" : "text-zinc-300 hover:bg-white/6 hover:text-white"}`}
-                >
-                  {copy.byStyle}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setWorksView("heat")}
-                  aria-pressed={worksView === "heat"}
-                  className={`min-h-10 rounded-md px-4 text-xs font-black transition sm:px-5 ${worksView === "heat" ? "bg-orange-500 text-black shadow-[0_0_22px_rgba(255,106,0,0.24)]" : "text-zinc-300 hover:bg-white/6 hover:text-white"}`}
-                >
-                  {copy.hotNow}
-                </button>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-7 w-px bg-white/12" aria-hidden="true" />
-                <button
-                  type="button"
-                  onClick={() => setEarwormPromptOpen(true)}
-                  className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-cyan-100/22 bg-cyan-300/[0.06] px-3 text-[11px] font-black text-cyan-50/82 transition hover:border-cyan-100/50 hover:text-white"
-                >
-                  <Headphones className="h-4 w-4" aria-hidden="true" />
-                  {earwormCopy.reopen}
-                </button>
-                <span className="h-7 w-px bg-white/12" aria-hidden="true" />
-                <button
-                  ref={guideButtonRef}
-                  type="button"
-                  onClick={() => setGuideOpen(true)}
-                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-orange-200/32 bg-orange-500/8 p-1.5 transition hover:border-orange-100/70 hover:bg-orange-500/16 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-100"
-                  aria-label={copy.guideLabel}
-                  title={copy.guideLabel}
-                >
-                  <img src="/guide.png" alt="" className="h-full w-full object-contain" />
-                </button>
-              </div>
-              <Link
-                href={`${withLang("/listen-bar")}#play-request`}
-                className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-md border border-orange-100/80 bg-orange-500 px-3 text-[11px] font-black text-black shadow-[0_0_22px_rgba(255,106,0,0.22)] transition hover:border-orange-50 hover:bg-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-100"
-              >
-                <Upload className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
-                {copy.uploadAction}
-              </Link>
-            </div>
+            <Link href={withLang("/listen-bar")} className={styles.radio}>
+              <Headphones aria-hidden="true" /><span><strong>{copy.bar}</strong><small>{localeText(lang, "連續聽電台", "Nonstop radio", "ラジオを聴く", "논스톱 라디오")}</small></span><ArrowRight aria-hidden="true" />
+            </Link>
           </div>
-
-          {earwormProfile && worksView === "genre" ? (
-            <section id="earworm-for-you" className="scroll-mt-24 border-y border-orange-200/20 bg-[linear-gradient(115deg,rgba(255,106,0,0.13),rgba(0,202,255,0.045),rgba(0,0,0,0.72))] px-3 py-5 shadow-[0_22px_70px_rgba(0,0,0,0.32)] sm:px-5">
-              <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/10 pb-4">
-                <div>
-                  <p className={`${fontRighteous.className} text-[10px] tracking-[0.2em] text-orange-200/72`}>{earwormCopy.profileEyebrow}</p>
-                  <h2 className="mt-1 text-2xl font-black text-white">
-                    {earwormCopy.profileTitle}：<span className="text-orange-200">{earwormProfile.primaryGenre}</span>
-                  </h2>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {earwormProfile.keywords.map((keyword) => (
-                      <span key={keyword} className="rounded-full border border-cyan-100/20 bg-cyan-300/[0.06] px-2.5 py-1 text-[10px] font-black text-cyan-50/78">{keyword}</span>
-                    ))}
+        </div>
+        <section id="works">
+          <div className={styles.controls}>
+            <div className={styles.modes} role="group" aria-label={copy.browseMode}>
+              <button type="button" onClick={() => setWorksView("genre")} aria-pressed={worksView === "genre"}>{copy.byStyle}</button>
+              <button type="button" onClick={() => setWorksView("heat")} aria-pressed={worksView === "heat"}>{copy.hotNow}</button>
+            </div>
+            <select value={selectedGenre} onChange={event => setSelectedGenre(event.target.value)} aria-label={localeText(lang, "選擇曲風", "Choose genre", "ジャンルを選ぶ", "장르 선택")}>
+              <option value="">{localeText(lang, "全部曲風", "All genres", "すべてのジャンル", "모든 장르")}</option>
+              {MUSIC_GENRE_OPTIONS.map(option => <option key={option.value} value={option.value}>{t(option.labelKey)}</option>)}
+            </select>
+            <button ref={guideButtonRef} type="button" className={styles.guide} onClick={() => setGuideOpen(true)} aria-label={copy.guideLabel}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/guide.png" alt="" /><span>{copy.guideLabel}</span>
+            </button>
+          </div>
+          <div className={styles.catalog}>
+            {loadState === "loading" ? <p className={styles.state} role="status">{copy.loading}</p> : null}
+            {loadState === "error" ? <p className={styles.state} role="alert">{copy.loadError} {loadError}</p> : null}
+            {loadState === "ready" && filteredTracks.length === 0 ? <div className={styles.state} role="status">
+              {localeText(lang, "沒有找到符合條件的作品。", "No tracks match your search.", "条件に合う作品が見つかりません。", "조건에 맞는 곡이 없습니다.")}
+              {hasFilters ? <button type="button" onClick={resetFilters}>{localeText(lang, "清除篩選", "Clear filters", "絞り込みをクリア", "필터 지우기")}</button> : null}
+            </div> : null}
+            {showRecommendations ? <section id="earworm-for-you" className={styles.section}>
+              <div className={styles.sectionHeading}>
+                <div className={styles.headingText}>
+                  <h2>{localeText(lang, "為你推薦", "For You", "あなたへのおすすめ", "맞춤 추천")}</h2>
+                  <span>{t(MUSIC_GENRE_OPTIONS.find(option => option.value === earwormProfile?.primaryGenre)?.labelKey ?? "")}</span>
+                </div>
+                <div className={styles.sectionActions}>{earTestButton}</div>
+              </div>
+              <div className={styles.grid}>{visibleRecommendations.map(track => renderTrack(track))}</div>
+            </section> : null}
+            {loadState === "ready" && worksView === "heat" ? <>
+              <div className={styles.sectionActions}>{earTestButton}</div>
+              <HeatList tracks={tracks} query={query} genre={selectedGenre}
+                currentTrackId={currentTrack?.id ?? null} isPlaying={isPlaying}
+                expandedHud={expandedHud} heartBusy={heartBusy} heartStates={heartStates} lang={lang}
+                onPrepare={prepareTrack} onPlay={handlePlayTrack}
+                onToggleExpand={item => setExpandedHud(current => ({ ...current, [item.id]: !current[item.id] }))}
+                onHeart={item => void sendHeart(item)} onShare={item => void shareTrack(item)} />
+            </> : null}
+            {loadState === "ready" && worksView === "genre" ? groupedTracks.map((group, index) => {
+              const expanded = Boolean(expandedGenres[group.genre]);
+              const visible = query.trim() || expanded ? group.tracks : group.collapsedTracks;
+              return <section key={group.genre} className={styles.section}>
+                <div className={styles.sectionHeading}>
+                  <div className={styles.headingText}>
+                    <h2>{index === 0 ? localeText(lang, "更多音樂", "More Music", "もっと音楽を", "더 많은 음악") : group.label}</h2>
+                    {index === 0 ? <span>{group.label}</span> : null}
+                  </div>
+                  <div className={styles.sectionActions}>
+                    {index === 0 && !showRecommendations ? earTestButton : null}
+                    <span>{group.tracks.length}</span>
+                    {group.tracks.length > group.collapsedTracks.length && !query.trim() ? <button type="button" onClick={() => setExpandedGenres(current => ({ ...current, [group.genre]: !expanded }))} aria-expanded={expanded}>
+                      {expanded ? copy.less : copy.more}
+                    </button> : null}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setEarwormPromptOpen(true)}
-                  className="inline-flex min-h-10 items-center gap-2 rounded-md border border-orange-200/35 bg-orange-500/12 px-3 text-xs font-black text-orange-50 transition hover:border-orange-100/65 hover:bg-orange-500/20"
-                >
-                  <Headphones className="h-4 w-4" aria-hidden="true" />
-                  {earwormCopy.reopen}
-                </button>
-              </div>
-
-              <div className="mt-5 grid gap-3">
-                <div className="flex flex-wrap items-end justify-between gap-3">
-                  <div>
-                    <h3 className="text-lg font-black text-white">{earwormCopy.recommendedTitle}</h3>
-                    <p className="mt-1 max-w-2xl text-xs font-bold leading-5 text-zinc-400">{earwormCopy.recommendedBody}</p>
-                  </div>
-                  <span className="text-[10px] font-black tracking-[0.12em] text-orange-100/60">70% MATCH / 30% DISCOVERY</span>
-                </div>
-                {earwormRecommendations.length > 0 ? (
-                  <div className="flex snap-x gap-3 overflow-x-auto pb-2 [scrollbar-width:thin] sm:grid sm:grid-cols-3 sm:overflow-visible md:grid-cols-4 xl:grid-cols-6">
-                    {earwormRecommendations.map((track) => {
-                      const catalogLabel = track.genre === earwormProfile.primaryGenre
-                        ? localeText(lang, "主場", "HOME", "本命", "주 취향")
-                        : earwormProfile.secondaryGenres.includes(track.genre)
-                          ? localeText(lang, "靠近", "NEARBY", "近い", "가까움")
-                          : localeText(lang, "探索", "DISCOVER", "発見", "탐색");
-                      return (
-                        <TrackCard
-                          key={`earworm-pick-${track.id}`}
-                          track={track}
-                          isZh={isZh}
-                          isPlaying={currentTrack?.id === track.id && isPlaying}
-                          isExpanded={Boolean(expandedHud[track.id])}
-                          heartBusy={Boolean(heartBusy[track.recordKey])}
-                          heartedToday={Boolean(heartStates[track.recordKey])}
-                          lang={lang}
-                          catalogLabel={catalogLabel}
-                          onPrepare={prepareTrack}
-                          onPlay={handlePlayTrack}
-                          onToggleExpand={(item) => setExpandedHud((current) => ({ ...current, [item.id]: !current[item.id] }))}
-                          onHeart={(item) => void sendHeart(item)}
-                          onShare={(item) => void shareTrack(item)}
-                        />
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="rounded-md border border-white/10 bg-black/30 px-4 py-4 text-sm font-bold text-zinc-500">
-                    {localeText(lang, "符合你耳朵方向的新作品正在補進來。", "More tracks for your profile are on the way.", "あなた向けの新しい曲を準備中です。", "취향에 맞는 새 곡을 준비 중이에요.")}
-                  </p>
-                )}
-              </div>
-            </section>
-          ) : null}
-
-          {loadState === "loading" ? (
-            <div className="rounded-md border border-white/10 bg-black/46 px-5 py-12 text-center text-sm font-bold text-zinc-400">
-              {copy.loading}
-            </div>
-          ) : null}
-          {loadState === "error" ? (
-            <div className="rounded-md border border-red-200/25 bg-red-500/10 px-5 py-8 text-sm font-bold text-red-100">
-              {copy.loadError} {loadError}
-            </div>
-          ) : null}
-          {loadState === "ready" && worksView === "heat" ? (
-            <HeatList
-              tracks={tracks}
-              isZh={isZh}
-              currentTrackId={currentTrack?.id ?? null}
-              isPlaying={isPlaying}
-              expandedHud={expandedHud}
-              heartBusy={heartBusy}
-              heartStates={heartStates}
-              lang={lang}
-              onPrepare={prepareTrack}
-              onPlay={handlePlayTrack}
-              onToggleExpand={(item) => setExpandedHud((current) => ({ ...current, [item.id]: !current[item.id] }))}
-              onHeart={(track) => void sendHeart(track)}
-              onShare={(track) => void shareTrack(track)}
-            />
-          ) : null}
-          {loadState === "ready" && worksView === "genre"
-            ? groupedTracks.map((group) => {
-                const expanded = Boolean(expandedGenres[group.genre]);
-                const visible = expanded ? group.tracks : group.collapsedTracks;
-                return (
-                  <section key={group.genre} className="grid gap-3">
-                    <div className="flex flex-wrap items-end justify-between gap-3 border-b border-white/10 pb-3">
-                      <div className="min-w-0">
-                        <p className={`${fontRighteous.className} text-[10px] uppercase tracking-[0.18em] text-orange-100/58`}>
-                          {copy.styleLane}
-                        </p>
-                        <h2 className="mt-1 text-xl font-black text-white">{group.label}</h2>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-black text-zinc-400">
-                          {group.tracks.length}
-                        </span>
-                        {group.tracks.length > 6 ? (
-                          <button
-                            type="button"
-                            onClick={() => setExpandedGenres((current) => ({ ...current, [group.genre]: !expanded }))}
-                            className="rounded-md border border-orange-200/35 bg-orange-500/12 px-3 py-1.5 text-[11px] font-black text-orange-50 transition hover:border-orange-100/60 hover:bg-orange-500/20"
-                          >
-                            {expanded ? copy.less : copy.more}
-                          </button>
-                        ) : null}
-                      </div>
-                    </div>
-                    {visible.length > 0 ? (
-                      <div className="flex snap-x gap-3 overflow-x-auto pb-2 [scrollbar-width:thin] sm:grid sm:grid-cols-3 sm:overflow-visible md:grid-cols-4 xl:grid-cols-6">
-                        {visible.map((track) => (
-                          <TrackCard
-                            key={track.id}
-                            track={track}
-                            isZh={isZh}
-                            isPlaying={currentTrack?.id === track.id && isPlaying}
-                            isExpanded={Boolean(expandedHud[track.id])}
-                            heartBusy={Boolean(heartBusy[track.recordKey])}
-                            heartedToday={Boolean(heartStates[track.recordKey])}
-                            lang={lang}
-                            onPrepare={prepareTrack}
-                            onPlay={handlePlayTrack}
-                            onToggleExpand={(item) => setExpandedHud((current) => ({ ...current, [item.id]: !current[item.id] }))}
-                            onHeart={(item) => void sendHeart(item)}
-                            onShare={(item) => void shareTrack(item)}
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="rounded-md border border-white/10 bg-black/34 px-4 py-6 text-sm font-bold text-zinc-500">
-                        {copy.empty}
-                      </div>
-                    )}
-                  </section>
-                );
-              })
-            : null}
+                <div className={styles.grid}>{visible.map(track => renderTrack(track))}</div>
+              </section>;
+            }) : null}
+          </div>
+          {loadState === "ready" ? <p className={styles.count}>{catalogMetadata}</p> : null}
         </section>
-      </div>
+      </main>
 
       {notice ? (
         <div className="fixed bottom-24 left-1/2 z-[60] w-[min(92vw,28rem)] -translate-x-1/2 rounded-md border border-orange-200/28 bg-black/92 px-4 py-3 text-center text-sm font-bold text-orange-50 shadow-[0_18px_50px_rgba(0,0,0,0.52)]">
@@ -1503,6 +1240,6 @@ export default function AiMusicClient() {
         onClose={() => setAuthPromptTrack(null)}
       />
 
-    </main>
+    </div>
   );
 }
