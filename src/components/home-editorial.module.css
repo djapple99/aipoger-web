@@ -163,12 +163,17 @@
 @media (prefers-reduced-motion: reduce) { .page * { transition: none !important; } }
 .feedbackDialog { width: min(620px, calc(100% - 32px)); max-height: 85svh; margin: auto; padding: 0; border: 1px solid #ffffff30; border-radius: 8px; background: #0a0a0a; color: #f5f5f5; overflow-y: auto; }
 .feedbackDialog::backdrop { background: #000c; backdrop-filter: blur(6px); }
+.feedbackWithVideo { width: min(880px, calc(100% - 32px)); }
+.feedbackVideo { position: relative; aspect-ratio: 16/9; background: #111; margin-top: 22px; }
+.feedbackVideo iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.feedbackSource { display: inline-block; margin-top: 12px; color: #ff9a45; font-size: 13px; }
+.feedbackVideo button:focus-visible, .feedbackSource:focus-visible { outline: 2px solid #ff9a45; outline-offset: 3px; }
 .feedbackInner { padding: 28px; }
 .feedbackHeading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .feedbackHeading p { margin: 0 0 8px; color: #ff6a00; font-size: 13px; }
 .feedbackHeading h2 { margin: 0 0 8px; font-size: 27px; font-weight: 750; overflow-wrap: anywhere; }
 .feedbackHeading span { color: #a1a1aa; font-size: 14px; }
-.feedbackHeading button { border: 0; background: transparent; color: white; padding: 6px; }
+.feedbackHeading button { border: 0; background: transparent; color: white; padding: 6px; min-width: 44px; min-height: 44px; flex-shrink: 0; }
 .feedbackNote { color: #a1a1aa; font-size: 12px; line-height: 1.7; margin: 22px 0 16px; }
 .feedbackHeart, .feedbackAuth { display: inline-flex; gap: 9px; align-items: center; border: 1px solid #ff6a0070; background: #ff6a0012; border-radius: 4px; padding: 10px 15px; font-size: 14px; color: #ff9a45; }
 .feedbackHeart[aria-pressed="true"] { background: #ff6a0025; }

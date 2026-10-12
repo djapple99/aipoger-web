@@ -42,3 +42,17 @@ Production verification: `https://aipoger.com/mv?lang=zh`, deployment `dpl_6ntBx
 ## Featured exposure deduplication — 2026-10-13
 
 PASSED. App `8689575`, deployment `dpl_7Bs119NdHNPPncf4bTqjQRbaaSAQ`, promoted and verified on `aipoger.com`. At 1487 × 1058 desktop and 390 × 844 mobile, the featured 救生圈 appears only in the hero; the MV first row shows 還沒學會忘記, V O R A C I O U S and 聲聲攏是愛. Full expansion under support sorting shows 47 other works; the source catalog retains all 48 plus 3 channel links. Searching the featured work points back to the hero. Homepage singles also exclude featured IDs and fill with other songs. No horizontal overflow or console errors. Evidence: `/Users/huangyihong/Documents/New project/outputs/aipoger-feature-dedup-release/`.
+
+## MV card support and comments — 2026-10-13
+
+final result: passed
+
+Source: user-approved `/Users/huangyihong/.codex/generated_images/01a11410-a7ad-7352-bd36-4ff0b48ba73f/exec-d7c8d193-05ec-4812-924e-56b1f7d9e60b.png`. Implementation: production build at `http://localhost:3110/mv?lang=zh`. Evidence directory: `/Users/huangyihong/Documents/New project/outputs/aipoger-mv-actions-release/`.
+
+`comparison-initial.jpg` and `comparison-detail-initial.jpg` exposed a P2 mismatch: title and action icons were too small for the approved hierarchy. Title increased to 22px, creator to 15px, icons to 34px inside targets of at least 44px. `comparison-final.jpg` places source and built implementation side by side at exactly 1487 × 1058 CSS/pixel viewports, density 1; `comparison-detail-final.jpg` pairs their metadata rows. Both inspected together. No remaining actionable P0/P1/P2 differences.
+
+Five fidelity surfaces checked: existing font stack and clear title/creator hierarchy; two-row metadata with actions beside the title and no third control row; original black/orange tokens; existing authentic artwork and its original 16:9 crop; localized real titles, creators and truthful weekly counts. Lucide MessageCircleMore is the existing library's comment symbol. The generated reference slightly shortened the posters; implementation preserves original artwork/aspect ratio. Official logo, navigation, hero, ranking and featured deduplication remain intact.
+
+Desktop 1487 × 1058 and mobile 390 × 844 have no document overflow in all four languages. `local-built-desktop.jpg`, `local-mobile-cards.jpg`, `local-comments-desktop.jpg` and `local-comments-mobile.jpg` show the two-row controls and combined video/comment dialog. Public comments open for the selected original work; explicit Watch starts the real YouTube video and pauses shared audio. Actual playback observed. Collapsing video unloads the iframe while retaining the dialog. Guest Heart routes to login with `/mv` as return path. Fresh built-page console has no errors.
+
+Full suite: 513 tests, 482 passed, 31 existing optional DB skips, 0 failures. TypeScript and build passed; lint 0 errors and 16 existing warnings. Runtime tests cover batch private daily state, direct reaction/favorite synchronization, duplicate-click lock, failure preservation, account-change races, dialog video/draft behavior and login routing. Authenticated writes used mocks; no live signed-in owner session, production votes/comments, uploads or database migrations were used.

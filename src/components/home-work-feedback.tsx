@@ -2,15 +2,17 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Heart, X } from "lucide-react";
+import { Heart, Play, X } from "lucide-react";
+import WorkImage from "@/components/work-image";
 import { useI18n } from "@/lib/i18n";
 import { homeCopy } from "@/lib/home-copy";
 import { supabase } from "@/lib/supabase";
 import type { HomeWork } from "@/lib/home-discovery";
+import { musicPlayer, useMusicPlayer } from "@/lib/music-player-store";
 import styles from "./home-editorial.module.css";
 
 type Comment = { id: string; name: string; text: string; createdAt: string };
-export default function HomeWorkFeedback({ work, onClose, onChange, returnPath = "/" }: { work: HomeWork; onClose: () => void; onChange: () => void; returnPath?: string }) {
+export default function HomeWorkFeedback({ work, onClose, onChange, returnPath = "/", showVideo = false }: { work: HomeWork; onClose: () => void; onChange: () => void; returnPath?: string; showVideo?: boolean }) {
   const { lang } = useI18n(); const copy = homeCopy(lang);
   const dialog = useRef<HTMLDialogElement>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -23,6 +25,9 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState("");
   const [saved, setSaved] = useState(false);
+  const [videoOpen, setVideoOpen] = useState(false);
+  const player = useMusicPlayer();
+  const withVideo = Boolean(showVideo && work.videoId);
   const authHref = `/auth?lang=${lang}&next=${encodeURIComponent(`${returnPath}?lang=${lang}`)}`;
 
   useEffect(() => {
@@ -30,6 +35,7 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
     element?.showModal();
     return () => { element?.close(); if (previous instanceof HTMLElement) previous.focus(); };
   }, []);
+  useEffect(() => { if (player.playing) setVideoOpen(false); }, [player.playing]);
 
   useEffect(() => {
     const controller = new AbortController(); let active = true;
@@ -93,12 +99,23 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
   };
   const comment = (event: FormEvent) => { event.preventDefault(); void submit("comment"); };
 
-  return <dialog ref={dialog} className={styles.feedbackDialog} aria-labelledby="home-feedback-title" onCancel={onClose}
+  return <dialog ref={dialog} className={`${styles.feedbackDialog} ${withVideo ? styles.feedbackWithVideo : ""}`} aria-labelledby="home-feedback-title" onCancel={onClose}
     onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
     <div className={styles.feedbackInner}>
       <div className={styles.feedbackHeading}><div><p>{copy.discuss}</p><h2 id="home-feedback-title">{work.title}</h2><span>{work.artist}</span></div>
-        <button type="button" onClick={onClose} aria-label={copy.closeFeedback}><X size={22} /></button>
+        <button autoFocus type="button" onClick={onClose} aria-label={copy.closeFeedback}><X size={22} /></button>
       </div>
+      {withVideo ? <>
+        <div className={styles.feedbackVideo}>
+          {videoOpen ? <><iframe src={`https://www.youtube-nocookie.com/embed/${work.videoId}?autoplay=1&rel=0`} title={work.title}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
+            <button type="button" className={styles.closeVideo} onClick={() => setVideoOpen(false)} aria-label={copy.closeVideo}><X size={22} /></button></>
+            : <button type="button" className={styles.poster} onClick={() => { if (player.playing) musicPlayer?.toggle(); setVideoOpen(true); }} aria-label={`${copy.watch} · ${work.title}`}>
+              <WorkImage work={work} video /><span className={styles.posterPlay}><Play size={27} fill="currentColor" /></span><span className={styles.videoSource}>{copy.source}</span>
+            </button>}
+        </div>
+        <a className={styles.feedbackSource} href={work.youtubeUrl!} target="_blank" rel="noopener noreferrer">{copy.openYouTube}</a>
+      </> : null}
       <p className={styles.feedbackNote}>{copy.supportNote}</p>
       {signedIn ? <button className={styles.feedbackHeart} type="button" disabled={busy || hearted === null} aria-pressed={hearted === true}
         onClick={() => void submit("heart")}><Heart size={18} fill={hearted ? "currentColor" : "none"} />{hearted ? copy.removeHeart : copy.sendHeart}</button>

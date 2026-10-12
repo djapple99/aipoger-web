@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowRight, ChevronLeft, ChevronRight, Heart, Play, Search, X } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight, Heart, MessageCircleMore, Play, Search, X } from "lucide-react";
 import EditorialHeader from "@/components/editorial-header";
 import WorkImage from "@/components/work-image";
 import HomeWorkFeedback from "@/components/home-work-feedback";
@@ -13,6 +14,7 @@ import { filterMvWorks, type MvDiscovery, type MvSort } from "@/lib/mv-discovery
 import { excludeFeaturedWorks, type HomeWork } from "@/lib/home-discovery";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import { musicPlayer, useMusicPlayer } from "@/lib/music-player-store";
+import { useMvHearts } from "@/lib/use-mv-hearts";
 import base from "./home-editorial.module.css";
 import styles from "./mv-gallery.module.css";
 
@@ -45,6 +47,8 @@ export default function MvGallery() {
   const [query, setQuery] = useState(""); const [genre, setGenre] = useState("");
   const [sort, setSort] = useState<MvSort>("latest"); const [limit, setLimit] = useState(12);
   const player = useMusicPlayer();
+  const router = useRouter();
+  const support = useMvHearts((data?.works ?? []).map(work => work.id));
   const withLang = (path: string) => { const [url, hash] = path.split("#"); return `${url}${url.includes("?") ? "&" : "?"}lang=${lang}${hash ? `#${hash}` : ""}`; };
   const selected = data?.featured.find(work => work.id === selectedId) ?? data?.featured[0];
   const selectedIndex = data?.featured.findIndex(work => work.id === selected?.id) ?? 0;
@@ -81,6 +85,12 @@ export default function MvGallery() {
     if (!data?.featured.length) return;
     setHeroVideo(null); setSelectedId(data.featured[(selectedIndex + direction + data.featured.length) % data.featured.length].id);
   };
+  const openFeedback = (work: HomeWork) => {
+    setHeroVideo(null); setDialogWork(null); setFeedbackWork(work);
+  };
+  const sendHeart = async (work: HomeWork) => {
+    if (await support.toggle(work.id) === "login") router.push(`/auth?lang=${lang}&next=${encodeURIComponent(`/mv?lang=${lang}`)}`);
+  };
   const reset = () => { setQuery(""); setGenre(""); setSort("latest"); setLimit(12); };
   return <div className={base.page}>
     <EditorialHeader active="mv" />
@@ -104,7 +114,7 @@ export default function MvGallery() {
               <div className={base.quote}><p>{selected.comment ? copy.comments : copy.creatorSays}</p><blockquote>{selected.comment?.text || selected.description || copy.noComment}</blockquote>
                 {selected.comment ? <cite>{selected.comment.name}</cite> : null}</div>
               <button className={base.primary} onClick={videoOpen ? () => setHeroVideo(null) : () => watch(selected, true)}>{videoOpen ? <X size={21} /> : <Play size={21} fill="currentColor" />}{videoOpen ? copy.closeVideo : copy.watch}</button>
-              <div className={base.workLinks}><button onClick={() => setFeedbackWork(selected)}>{copy.discuss}<ArrowRight size={17} /></button>
+              <div className={base.workLinks}><button onClick={() => openFeedback(selected)}>{copy.discuss}<ArrowRight size={17} /></button>
                 <a href={selected.youtubeUrl!} target="_blank" rel="noopener noreferrer">{copy.openYouTube}<ArrowRight size={17} /></a></div>
               {(data?.featured.length ?? 0) > 1 ? <div className={base.featureControls}><span>{selectedIndex + 1} / {data!.featured.length}</span>
                 <button onClick={() => moveFeatured(-1)} aria-label={copy.previous}><ChevronLeft size={20} /></button><button onClick={() => moveFeatured(1)} aria-label={copy.next}><ChevronRight size={20} /></button></div> : null}
@@ -122,12 +132,25 @@ export default function MvGallery() {
             <label className={styles.search}><Search size={18} /><input type="search" aria-label={mv.search} placeholder={mv.search} value={query} onChange={event => { setQuery(event.target.value); setLimit(12); }} />
               {query ? <button onClick={() => { setQuery(""); setLimit(12); }} aria-label={mv.clear}><X size={16} /></button> : null}</label>
           </div>
-
+          {support.error ? <div role="alert" className={styles.supportError}>{support.error === "read" ? mv.heartReadError : mv.heartWriteError}
+            {support.error === "read" ? <button onClick={() => void support.reload()}>{copy.retry}</button> : null}</div> : null}
           <div className={styles.grid}>{works.slice(0, limit).map(work => <article key={work.id} className={styles.card}>
             <button className={styles.cardPoster} onClick={() => watch(work)} aria-label={`${copy.watch} · ${work.title}`}><WorkImage work={work} video />
               <span className={styles.cardPlay}><Play size={20} fill="currentColor" /></span><span className={base.videoSource}>YouTube</span></button>
-            <h3><Link href={withLang(`/ai-music?track=${encodeURIComponent(work.id)}`)}>{work.title}</Link></h3><p className={styles.cardArtist}>{work.artist}</p>
-            <button className={styles.cardFeedback} onClick={() => setFeedbackWork(work)} aria-label={`${copy.discuss} · ${work.title}`}><Heart size={15} /><span>{mv.support} {work.supporterCount}</span><ArrowRight size={15} /></button>
+            <div className={styles.cardTitleRow}>
+              <h3><Link href={withLang(`/ai-music?track=${encodeURIComponent(work.id)}`)}>{work.title}</Link></h3>
+              <div className={styles.cardActions}>
+                <button className={styles.cardHeart} onClick={() => void sendHeart(work)} aria-label={`${support.hearts[work.id] ? copy.removeHeart : copy.sendHeart} · ${work.title}`}
+                  title={support.hearts[work.id] ? copy.removeHeart : copy.sendHeart} aria-pressed={Boolean(support.hearts[work.id])} aria-describedby={`mv-support-${work.id}`}
+                  aria-busy={support.busyId === work.id} disabled={!support.ready || support.busyId !== null || support.error === "read"}>
+                  <Heart size={34} strokeWidth={1.9} fill={support.hearts[work.id] ? "currentColor" : "none"} />
+                  <span id={`mv-support-${work.id}`}><span className={styles.srOnly}>{mv.support} </span>{work.supporterCount}</span>
+                </button>
+                <button className={styles.cardComments} onClick={() => openFeedback(work)} title={mv.readComments} aria-label={`${mv.readComments} · ${work.title}`}>
+                  <MessageCircleMore size={34} strokeWidth={1.9} />
+                </button>
+              </div>
+            </div><p className={styles.cardArtist}>{work.artist}</p>
           </article>)}</div>
           {!works.length ? <div className={styles.noResults}>
             <p>{matchingFeatured.length ? mv.shownAbove : mv.noResults}</p>
@@ -142,7 +165,7 @@ export default function MvGallery() {
       <aside className={styles.submission}><div><h2>{mv.yourMv}</h2><p>{mv.submitNote}</p></div><div><Link href={withLang("/profile")}>{mv.myWorks}<ArrowRight size={17} /></Link><Link href={withLang("/listen-bar#play-request")}>{copy.submit}<ArrowRight size={17} /></Link></div></aside>
       <footer className={base.footer}><p>{copy.footer}</p><div><Link href={withLang("/ai-music")}>{copy.explore}</Link><Link href={withLang("/about")}>{copy.about}</Link><Link href={withLang("/partners")}>{copy.contact}</Link></div></footer>
     </main>
-    {dialogWork ? <VideoDialog key={dialogWork.id} work={dialogWork} onClose={() => setDialogWork(null)} onFeedback={() => { setFeedbackWork(dialogWork); setDialogWork(null); }} /> : null}
-    {feedbackWork ? <HomeWorkFeedback key={feedbackWork.id} work={feedbackWork} returnPath="/mv" onClose={() => setFeedbackWork(null)} onChange={() => void load()} /> : null}
+    {dialogWork ? <VideoDialog key={dialogWork.id} work={dialogWork} onClose={() => setDialogWork(null)} onFeedback={() => openFeedback(dialogWork)} /> : null}
+    {feedbackWork ? <HomeWorkFeedback key={feedbackWork.id} work={feedbackWork} showVideo returnPath="/mv" onClose={() => setFeedbackWork(null)} onChange={() => void load()} /> : null}
   </div>;
 }

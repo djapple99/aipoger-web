@@ -14,7 +14,8 @@ const nodes=x=>Array.isArray(x)?x.flatMap(nodes):x&&typeof x==='object'?[x,...no
 const text=x=>Array.isArray(x)?x.map(text).join(''):x&&typeof x==='object'?text(x.props?.children):x==null||typeof x==='boolean'?'':String(x);
 const work={id:'actual-work',title:'Real Song',artist:'Real Creator',genre:'EDM 百大電音',description:'A real description',coverUrl:'/cover.jpg',audioUrl:'/song.mp3',lyrics:'Lyrics',videoId:'MdxaU0l3FzI',youtubeUrl:'https://www.youtube.com/watch?v=MdxaU0l3FzI',supporterCount:2,publishedAt:'2026-10-13'};
 async function mount(t,lang='zh',payload={featureKind:'community',featured:[work],works:[work,{...work,id:'other-work',title:'Other Song'}],channels:[]},unavailable=false) {
- let cursor=0,tree,dirty=true; const states=[],effects=[],memos=[],starts=[]; let toggles=0,fail=unavailable;
+ let cursor=0,tree,dirty=true; const states=[],effects=[],memos=[],starts=[],navigations=[]; let toggles=0,fail=unavailable;
+ const support={hearts:{},ready:true,busyId:null,error:null,result:'done',called:[],reload(){},async toggle(id){support.called.push(id);return support.result;}};
  const react={
   useRef:()=>({current:null}),
   useState(initial){const i=cursor++; if(!(i in states))states[i]=initial;return [states[i],v=>{states[i]=typeof v==='function'?v(states[i]):v;dirty=true;}];},
@@ -25,8 +26,9 @@ async function mount(t,lang='zh',payload={featureKind:'community',featured:[work
  window.setInterval=()=>1;window.clearInterval=()=>{};
  const modules={
   react,'react/jsx-runtime':{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})},
-  'next/link':{__esModule:true,default:'link'},'next/image':{__esModule:true,default:'image'},
-  'lucide-react':Object.fromEntries(['ArrowRight','ChevronLeft','ChevronRight','Heart','Pause','Play','Radio','Search','X'].map(x=>[x,x])),
+  'next/link':{__esModule:true,default:'link'},'next/image':{__esModule:true,default:'image'},'next/navigation':{useRouter:()=>({push:url=>navigations.push(url)})},
+  'lucide-react':Object.fromEntries(['ArrowRight','ChevronLeft','ChevronRight','Heart','MessageCircleMore','Pause','Play','Radio','Search','X'].map(x=>[x,x])),
+  '@/lib/use-mv-hearts':{useMvHearts:()=>support},
   '@/lib/brand':{AIPOGER_BRAND_LOGO:'/brand.png'},'@/lib/i18n':{useI18n:()=>({lang,t:key=>key})},'@/lib/home-copy':{homeCopy},'@/lib/mv-copy':{mvCopy},'@/lib/mv-discovery':{filterMvWorks},'@/lib/home-discovery':{excludeFeaturedWorks},'@/lib/music-genres':{MUSIC_GENRE_OPTIONS:[{value:'EDM 百大電音',labelKey:'genre_edm'}]},
   '@/lib/music-player-store':{useMusicPlayer:()=>player,musicPlayer:{toggle:()=>toggles++,start:async(...args)=>{starts.push(args);return true;}}},
   '@/lib/supabase':{supabase:{auth:{getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})}}},
@@ -41,7 +43,7 @@ async function mount(t,lang='zh',payload={featureKind:'community',featured:[work
  function render(){cursor=0;dirty=false;tree=loaded.exports.default();}
  async function flush(){for(let i=0;i<5;i++){await new Promise(setImmediate);if(dirty)render();}}
  render(); await flush(); t.after(()=>effects.forEach(e=>e?.cleanup?.()));
- return {player,nodes:()=>nodes(tree),text:()=>text(tree),starts,toggles:()=>toggles,flush,setAvailable(){fail=false;},button(label){const match=nodes(tree).find(x=>x.type==='button'&&(x.props['aria-label']===label||text(x)===label));assert.ok(match,label);return match.props;}};
+ return {player,support,navigations,nodes:()=>nodes(tree),text:()=>text(tree),starts,toggles:()=>toggles,flush,rerender:render,setAvailable(){fail=false;},button(label){const match=nodes(tree).find(x=>x.type==='button'&&(x.props['aria-label']===label||text(x)===label));assert.ok(match,label);return match.props;}};
 }
 
 for(const lang of ['zh','en','ja','ko']) test(`MV catalog localizes actions and preserves original work links (${lang})`,async t=>{
@@ -58,7 +60,7 @@ test('gallery playback and feedback keep the chosen original work and return to 
  const second={...work,id:'older',title:'Older Work',publishedAt:'2026-05-01'};
  const ui=await mount(t,'zh',{featureKind:'community',featured:[work],works:[work,second],channels:[]});
  ui.button('觀看 MV · Older Work').onClick();await ui.flush();const dialog=ui.nodes().find(x=>x.type?.name==='VideoDialog');assert.equal(dialog.props.work.id,'older');assert.equal(ui.toggles(),1);
- dialog.props.onFeedback();await ui.flush();const feedback=ui.nodes().find(x=>x.type==='feedback');assert.equal(feedback.props.work.id,'older');assert.equal(feedback.props.returnPath,'/mv');assert.equal(ui.nodes().some(x=>x.type?.name==='VideoDialog'),false);
+ dialog.props.onFeedback();await ui.flush();const feedback=ui.nodes().find(x=>x.type==='feedback');assert.equal(feedback.props.work.id,'older');assert.equal(feedback.props.returnPath,'/mv');assert.equal(feedback.props.showVideo,true);assert.equal(ui.nodes().some(x=>x.type?.name==='VideoDialog'),false);
 });
 test('search finds older works beyond the initial 12 cards; reset and load-more expose all items',async t=>{
  const works=Array.from({length:25},(_,i)=>({...work,id:`work-${i}`,title:`Song ${i}`,artist:'Actual Artist',publishedAt:String(100-i)}));
@@ -91,4 +93,23 @@ test('MV cards exclude all featured works before search, sorting and pagination 
  const jump=ui.nodes().find(x=>x.type==='a'&&x.props.href==='#featured-mv');assert.ok(jump);jump.props.onClick();await ui.flush();
  assert.ok(ui.nodes().some(x=>x.type==='h2'&&text(x)==='Real Song'));
  ui.button('重設篩選').onClick();await ui.flush();assert.equal(cardIds().length,12);
+});
+
+test('MV cards have separate heart and comment actions in the title row; direct support never opens comments',async t=>{
+ const ui=await mount(t);
+ const card=ui.nodes().find(x=>x.type==='article');
+ const row=card.props.children[1];assert.equal(row.type,'div');
+ const actions=nodes(row).filter(x=>x.type==='button');assert.equal(actions.length,2);
+ assert.ok(nodes(row).some(x=>x.type==='h3'));assert.equal(card.props.children[2].type,'p');
+ await ui.button('送出愛心與收藏 · Other Song').onClick();await ui.flush();
+ assert.deepEqual(ui.support.called,['other-work']);assert.equal(ui.nodes().some(x=>x.type==='feedback'),false);
+ ui.button('觀看 MV 與評論 · Other Song').onClick();await ui.flush();
+ const feedback=ui.nodes().find(x=>x.type==='feedback');assert.equal(feedback.props.work.id,'other-work');assert.equal(feedback.props.showVideo,true);
+ feedback.props.onClose();await ui.flush();assert.equal(ui.nodes().some(x=>x.type==='feedback'),false);
+});
+test('MV guest support preserves the MV login return path and never claims success',async t=>{
+ const ui=await mount(t);ui.support.result='login';
+ await ui.button('送出愛心與收藏 · Other Song').onClick();await ui.flush();
+ assert.deepEqual(ui.navigations,['/auth?lang=zh&next=%2Fmv%3Flang%3Dzh']);
+ assert.equal(ui.button('送出愛心與收藏 · Other Song')['aria-pressed'],false);
 });
