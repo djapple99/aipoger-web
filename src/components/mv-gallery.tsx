@@ -10,7 +10,7 @@ import { useI18n } from "@/lib/i18n";
 import { homeCopy } from "@/lib/home-copy";
 import { mvCopy } from "@/lib/mv-copy";
 import { filterMvWorks, type MvDiscovery, type MvSort } from "@/lib/mv-discovery";
-import type { HomeWork } from "@/lib/home-discovery";
+import { excludeFeaturedWorks, type HomeWork } from "@/lib/home-discovery";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import { musicPlayer, useMusicPlayer } from "@/lib/music-player-store";
 import base from "./home-editorial.module.css";
@@ -49,7 +49,8 @@ export default function MvGallery() {
   const selected = data?.featured.find(work => work.id === selectedId) ?? data?.featured[0];
   const selectedIndex = data?.featured.findIndex(work => work.id === selected?.id) ?? 0;
   const videoOpen = Boolean(selected?.videoId && selected.videoId === heroVideo);
-  const works = filterMvWorks(data?.works ?? [], query, genre, sort);
+  const works = filterMvWorks(excludeFeaturedWorks(data?.works ?? [], data?.featured ?? []), query, genre, sort);
+  const matchingFeatured = filterMvWorks(data?.featured ?? [], query, genre, sort);
   const channels = filterMvWorks(data?.channels ?? [], query, genre, sort);
   const load = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -84,7 +85,7 @@ export default function MvGallery() {
   return <div className={base.page}>
     <EditorialHeader active="mv" />
     <main className={base.main}>
-      <section className={base.featured} aria-labelledby="mv-page-title">
+      <section id="featured-mv" className={base.featured} aria-labelledby="mv-page-title">
         <div className={`${base.sectionIntro} ${styles.intro}`}><p className={base.eyebrow}>MUSIC VIDEO</p><h1 id="mv-page-title">{mv.title}</h1><p className={base.intro}>{copy.intro}</p></div>
         {loading && !data ? <div className={base.status} role="status">{copy.loading}</div>
           : failed && !data ? <div className={base.status} role="alert"><p>{copy.error}</p><button onClick={() => { setLoading(true); void load(); }}>{copy.retry}<ArrowRight size={18} /></button></div>
@@ -128,7 +129,11 @@ export default function MvGallery() {
             <h3><Link href={withLang(`/ai-music?track=${encodeURIComponent(work.id)}`)}>{work.title}</Link></h3><p className={styles.cardArtist}>{work.artist}</p>
             <button className={styles.cardFeedback} onClick={() => setFeedbackWork(work)} aria-label={`${copy.discuss} · ${work.title}`}><Heart size={15} /><span>{mv.support} {work.supporterCount}</span><ArrowRight size={15} /></button>
           </article>)}</div>
-          {!works.length ? <div className={styles.noResults}><p>{mv.noResults}</p><button onClick={reset}>{mv.reset}<ArrowRight size={17} /></button></div> : null}
+          {!works.length ? <div className={styles.noResults}>
+            <p>{matchingFeatured.length ? mv.shownAbove : mv.noResults}</p>
+            {matchingFeatured.length ? <a href="#featured-mv" onClick={() => { setHeroVideo(null); setSelectedId(matchingFeatured[0].id); }}>{mv.viewFeatured}<ArrowRight size={17} /></a> : null}
+            <button onClick={reset}>{mv.reset}<ArrowRight size={17} /></button>
+          </div> : null}
           {works.length > limit ? <div className={styles.more}><button onClick={() => setLimit(current => current + 12)}>{mv.loadMore}<span>{Math.min(limit, works.length)} / {works.length}</span></button></div> : null}
         </section>
         {channels.length ? <section className={styles.channels} aria-labelledby="mv-channels-title"><h2 id="mv-channels-title">{mv.channels}</h2><p>{mv.channelNote}</p>

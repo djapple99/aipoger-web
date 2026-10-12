@@ -24,7 +24,7 @@ test('only eligible MV works compete; all top ties are shown without formal rank
  const result=buildHomeDiscovery(rows,hearts,media,now);
  assert.equal(result.featureKind,'community');
  assert.deepEqual(result.featured.map(w=>[w.id,w.supporterCount]),[['a',1],['b',1]]);
- assert.deepEqual(result.singles.map(w=>w.id),['a','audio','b']);
+ assert.deepEqual(result.singles.map(w=>w.id),['audio']);
  for(const work of [...result.featured,...result.singles]) {
   assert.equal('created_by' in work,false); assert.equal('user_id' in work,false); assert.equal('rank' in work,false);
  }
@@ -53,4 +53,16 @@ test('homepage reads every page rather than silently truncating support', async 
  assert.deepEqual(rows,values); assert.deepEqual(requested,[[0,1],[2,3],[4,5]]);
  await assert.rejects(readAllHomePages(async()=>({data:null,error:{message:'Unavailable'}})),/Unavailable/);
  await assert.rejects(readAllHomePages(async()=>({data:null,error:null})),/Missing discovery/);
+});
+
+test('homepage fills three discovery slots after excluding every featured work, including ties', () => {
+ const rows=[row('a'),row('b'),row('c'),row('d'),row('e')];
+ const result=buildHomeDiscovery(rows,[heart('a','one'),heart('b','two')],media,now);
+ assert.deepEqual(result.featured.map(w=>w.id),['a','b']);
+ assert.deepEqual(result.singles.map(w=>w.id),['c','d','e']);
+ const fallback=buildHomeDiscovery(rows,[],media,now);
+ assert.deepEqual(fallback.featured.map(w=>w.id),['a']);
+ assert.deepEqual(fallback.singles.map(w=>w.id),['b','c','d']);
+ const scarce=buildHomeDiscovery([row('only')],[],media,now);
+ assert.deepEqual(scarce.singles,[]);
 });

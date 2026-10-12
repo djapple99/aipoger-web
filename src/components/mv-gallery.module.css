@@ -30,7 +30,7 @@
 .cardFeedback:hover { color: #ff9a45; }
 .cardFeedback svg:last-child { margin-left: 4px; }
 .noResults { text-align: center; padding: 45px 15px; color: #aaa; }
-.noResults button { display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; color: #ff9a45; margin-top: 15px; }
+.noResults button, .noResults a { display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; color: #ff9a45; margin: 15px 12px 0; }
 .more { display: flex; justify-content: center; margin-top: 35px; }
 .more button { padding: 12px 25px; display: flex; align-items: center; gap: 18px; border: 1px solid #ffffff30; border-radius: 4px; color: white; background: transparent; font-size: 14px; }
 .more button:hover { border-color: #ff6a00; }

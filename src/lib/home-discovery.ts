@@ -23,6 +23,11 @@ export type HomeHeartRow = {
   track_id?: string | null; user_id?: string | null; vote_date?: string | null; reaction?: string | null;
 };
 
+export function excludeFeaturedWorks<T extends { id: string }>(works: T[], featured: { id: string }[]): T[] {
+  const featuredIds = new Set(featured.map(work => work.id));
+  return works.filter(work => !featuredIds.has(work.id));
+}
+
 const DAY = 86_400_000;
 // Calendar dates are explicit; the server timezone must not determine the week.
 export function taipeiHomeWeek(now: Date = new Date()) {
@@ -90,7 +95,7 @@ export function buildHomeDiscovery(rows: HomeTrackRow[], hearts: HomeHeartRow[],
   const topSupport = Math.max(0, ...mvs.map(work => work.supporterCount));
   // A tie is shared exposure, never a fabricated sole winner or personal endorsement.
   const featured = topSupport > 0 ? mvs.filter(work => work.supporterCount === topSupport) : mvs.slice(0, 1);
-  return { week, featured, featureKind: topSupport > 0 ? "community" : featured.length ? "new" : "empty", singles: works.slice(0, 3) };
+  return { week, featured, featureKind: topSupport > 0 ? "community" : featured.length ? "new" : "empty", singles: excludeFeaturedWorks(works, featured).slice(0, 3) };
 }
 
 type PageResult<T> = { data: T[] | null; error: { message: string } | null };
