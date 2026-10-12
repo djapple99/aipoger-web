@@ -22,3 +22,5 @@
 - [2026-10-13-homepage-mv](2026-10-13-homepage-mv.md)
 
 - [2026-10-13-mv-gallery](2026-10-13-mv-gallery.md)
+
+- [2026-10-13-featured-dedup](2026-10-13-featured-dedup.md)
