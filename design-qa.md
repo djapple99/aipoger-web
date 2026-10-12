@@ -1,56 +1,24 @@
-# Showtime Editorial Design QA
-
-## Current Follow-up: Option 1 (2026-09-18 02:07 Asia/Taipei)
-
-- Selected source: `/Users/huangyihong/.codex/generated_images/019f1a49-79bb-74b3-ba79-d9229fb816c1/exec-c274b4fa-1d08-40f7-8fca-ab9f428cccf3.png`.
-- Palette adaptation only: neutral `#070809`, original uploaded Choice artwork and real chart data retained. The generated mock's replacement artwork/numbers are not implementation requirements.
-- Compared source and fully loaded local production-build screenshot together. Desktop 1440x900 and mobile 390x844 have no horizontal overflow; mobile zh/en/ja/ko checked. Whole-chart share is visible; month/genre deep-link restores the selected view.
-- Browser used a read-only public API proxy at localhost:3038. No authenticated production decisions or withdrawals were exercised; owner reorder/save/conflict covered by isolated actual-component tests instead.
-- Visual result: passed for selected palette and public share control. Follow-up approved and released on 2026-09-18 02:45 Asia/Taipei: application `9f96865`, production `dpl_EoRgvvWvNPfDNMyZSfg1BJjgfnox`. See [release checks](docs/archive/2026-09-18-showtime-chart-admin-release.md). Desktop 1440x900 and mobile 390x844 confirm the black base/share control; mobile zh/en/ja/ko have no horizontal overflow. Owner production mutations remain unexercised.
-- Evidence and remaining checks: [preparation record](docs/archive/2026-09-18-showtime-chart-admin-preparation.md).
-
-## Previous Released Baseline
-
-Updated: 2026-09-18 00:51 Asia/Taipei.
-
-Previous Explore and other design QA evidence is preserved verbatim in [historical QA](docs/archive/2026-09-18-design-qa-history.md).
-
-## Visual Target
-
-- Source: user-provided Beatport reference, `/var/folders/z5/42v3w_nj2_b36bxx5c2559ph0000gn/T/TemporaryItems/NSIRD_screencaptureui_qMhc31/截屏2026-09-18 凌晨12.13.08.png` (2352 x 1478 pixels).
-- This is an approved structural adaptation, not a pixel clone: Choice artwork replaces release advertising; monthly song support replaces sales ranks. No invented ad, exclusive ribbon, New Releases shelf or extra placeholder content.
-- Local implementation: `http://localhost:3037/rank?lang=zh`, real production public GET data intercepted only in the test browser; no production content writes.
-- Desktop viewport: 1440 x 900 CSS px, deviceScaleFactor 1; full-page evidence `output/playwright/editorial-zh-1440.png` (1440 x 1149). Mobile: 390 x 844 CSS px, full-page evidence `output/playwright/editorial-{zh,en,ja,ko}-390.png`. Source and implementation opened together in one comparison input; compared composition at proportional display scale, not raw pixel identity across different products.
-
-## Findings And Iteration
-
-- Initial P2: lead cover at the 1440px content width pushed title/actions too far below the first viewport. Fixed with a 1280px content constraint and a one-line lead excerpt. Re-captured the eight desktop/mobile language views.
-- Initial captures sometimes preceded image completion. Replaced those evidence captures after checking every visible image was complete with nonzero natural width. This was a capture timing issue, not missing production assets.
-- Local HTTP preview proxy prevented development hydration. Rechecked through direct Next dev connection with test-browser public GET interception. Local analytics lacks a service key and returns 500; later interaction checks stubbed only that local analytics write. Production is verified separately in the release report.
-- No remaining actionable P0/P1/P2 visual findings in the revised capture.
-
-## Required Surfaces
-
-- Typography: existing Glow Sans/Righteous identity; compact 24/30px page title, 20px section headings; track titles wrap to two lines and do not collide with rank/actions. Zero added letter spacing.
-- Layout: approximately 70/30 desktop grid; square lead/companion artwork; unframed sections, restrained rules. Mobile lead -> chart summary -> more Choices. One create action, no view tabs, no horizontal overflow at either size in zh/en/ja/ko.
-- Colors: charcoal base, orange primary playback/action, cyan artist identity. Artwork supplies the varied color. No decorative gradients or ad placeholder.
-- Images: existing uploaded covers and AIPOGER watermark retained; no generated replacement artwork. All visible images loaded in the revised eight captures. Aspect ratios remain square.
-- Copy: clear Choice/monthly labels, honest unranked support-building section; no certification, fake Top 10 or automatic endorsement label. Source-image promotional copy is not an instruction or site copy.
-- Focused review: mobile interactive tracklist `output/playwright/editorial-mobile-hud.png`; title, full intro, bounded scrolling rows and bottom actions remain readable. The reference does not include a modal/mobile state, so these are native product adaptations.
-
-## Interaction Evidence
-
-- Summary five rows, expand 27 real records, collapse; Taiwanese genre filter four records.
-- Native chart-rules dialog opens/closes; ten-song Choice HUD opens; Play All starts actual audio with readyState 4 and advancing time; no mobile overflow.
-- Automated runtime tests cover featured selection, missing/unplayable feature, HUD freshness/removal, summary/expansion and full ranked queue.
-- Owner API tests cover 401/403, invalid keys, withdrawn/deleted/unplayable selections, clear, private storage errors and featured collections beyond the usual read limit. No real account mutation used for QA.
-
-## Residual Scope
-
-- Only two public Choices currently exist; no more-cover desktop shelf is fabricated. Additional real entries populate the existing grid.
-- Previously documented comments-network-rejection/localization follow-up is unchanged; not a new editor or comments rewrite.
-- Authenticated owner UI save is not exercised against production; actual route execution is covered with isolated I/O tests.
+# Homepage design QA
 
 final result: passed
 
-Production confirmation: `https://aipoger.com/rank?lang=zh`, deployment `dpl_6q3DgSbgTmGzirmtyxdm4P5dH8RE`. All eight viewport/language checks passed with real APIs and no pageerrors; Choice and chart audio advance with readyState 4. Actual interaction console errors: zero. See [release evidence](docs/archive/2026-09-18-showtime-editorial-release.md); final capture `output/playwright/showtime-editorial-production-final.png`.
+Target: user-selected homepage mock, `/Users/huangyihong/Documents/New project/outputs/aipoger-homepage-concepts/01-home-editorial-mv-focus-revision.png` (1487 × 1058). Implementation: `http://localhost:3107/?lang=zh`, signed out, black theme, loaded authentic public works. Captures are 1487 × 1058 pixels at a 1487 × 1058 CSS viewport, density 1. The source has illustrative works; real creators, covers, descriptions and current-week zero-support state intentionally replace those illustrations. No fake vote state was inserted to match the mock.
+
+Evidence directory: `/Users/huangyihong/Documents/New project/outputs/aipoger-homepage-release/`.
+
+Iteration 1: `comparison-before.jpg` places the source and live screenshot in the same image. P2: the 16:9 desktop poster pushed discovery too low relative to the selected panoramic composition. P2: 480px YouTube artwork looked soft at desktop scale, and 155px single artwork reduced discovery's visual presence. P2: the main frame inset was 20px wider and header branding was too small.
+
+Fixes: desktop poster uses a 2.28 ratio, mobile preserves 16:9; real YouTube maximum-resolution thumbnails fall back through standard resolutions and actual cover artwork; single covers enlarged to 210px; main frame aligns to 1360px; header branding enlarged using the existing official logo. No raster artwork was replaced with fabricated SVG or CSS art.
+
+Iteration 2: `comparison-after.jpg` places the revised capture and the same source together. No remaining actionable P0/P1/P2 differences. The source's composition and hierarchy remain clear: compact navigation, featured MV and work details, orange viewing action, three singles and radio entry. Short authentic titles, attribution, truthful release label, added language switch and support action are intentional product differences. The real cover crop retains the subject; source text baked into the creator thumbnail remains creator artwork.
+
+Fidelity surfaces:
+- Fonts/typography: existing Inter/Noto Sans TC/PingFang stack; strong 50px editorial heading, 48px work title, readable 14–20px body/card text; responsive line wrapping and accessible control names. Brand uses the official raster logo plus live wordmark text; the mock's illustrative lettering is not treated as a new logo.
+- Spacing/layout rhythm: matching frame and panoramic poster, 36px hero gutter, fine separator, larger square artwork; mobile stacks with 18px side margins and separate row covers. Focused hero/title/header details inspected in the same paired captures. No overlaps or horizontal document overflow at 1487, 1440, or 390px.
+- Colors/tokens: #050505 background, #f5f5f5 primary text, #ff6a00 accent, quiet white-opacity rules. Computed primary button is rgb(255,106,0). No new ornamental gradients or card grid treatment.
+- Image quality: authentic 1280px YouTube thumbnail loads for the real featured MV; original single covers load. Higher-resolution selection fixes the first pass softness; fallback avoids missing or tiny placeholder thumbnails. Existing brand asset retained.
+- Copy/content: first viewport is MV-only, discovery is singles-only; no albums. Community labels only accompany positive real support. Actual comments carry their authors, otherwise the creator description is labeled honestly. Navigation preserves existing destinations; future MV gallery is not fabricated.
+
+Additional UI evidence: `mobile-zh.jpg`, `mobile-en.jpg`, `comments-mobile.jpg`. Four languages checked through the language control. The modal traps focus through native dialog behavior, closes with Escape, restores focus, and shows a real no-comments state. Guest access offers login; authenticated write/auth/failure behavior is covered by runtime tests, without posting test comments or hearts to production. The existing shared player plays a real single; user-initiated YouTube playback succeeds and pauses that audio. Support deduplication, week boundaries, ties, empty and unavailable states have targeted tests.
+
+Limitations: no live signed-in owner session was used for UI QA. Existing account/notification components are preserved; authenticated feedback transport is tested with mocks. No production test votes, comments, submissions or database migrations.

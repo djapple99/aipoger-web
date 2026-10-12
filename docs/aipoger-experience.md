@@ -1,6 +1,6 @@
 # AIPOGER 版面與使用流程
 
-文件整理：2026-09-28；產品實作基準：2026-09-28。主文件 3／6；產品門檻與權限以 [產品規則](aipoger-product-rules.md) 為準。Showtime 純黑底、月榜分享與管理已正式發布；Choice 管理精簡與收藏順序見 [最新發布紀錄](releases/2026-09-18-choice-management-simplify-release.md)。
+文件整理：2026-10-13；產品實作基準：2026-10-13。主文件 3／6；產品門檻與權限以 [產品規則](aipoger-product-rules.md) 為準。Showtime 純黑底、月榜分享與管理已正式發布；Choice 管理精簡與收藏順序見 [最新發布紀錄](releases/2026-09-18-choice-management-simplify-release.md)。
 
 This document protects AIPOGER's visual identity. Use it before redesigning any page, adding major UI, or changing user-facing copy.
 
@@ -68,67 +68,16 @@ Avoid:
 
 ## Homepage
 
-Role:
+2026-10-13 首頁改版：以使用者選定的黑橘編輯式首頁為方向，主視覺「本週值得一看」只展示 MV，下方「探索音樂」展示最新三首公開可播單曲；首頁不展示專輯區塊。桌機為左側寬幅封面、右側作品資訊；手機依序放封面、資訊與單曲列。
 
-- First-viewport brand stage.
-- Give users clear routes into AI music discovery, Bar Heartbreak, AIPOGER Showtime, and Battle as a next action.
-
-Must preserve:
-
-- AIPOGER as the first signal.
-- Music/stage energy.
-- Primary action to `探索 AI 音樂`.
-- Secondary paths to public listening and rules.
-
-### Homepage 2026-07-09 Explore Entry
-
-- Homepage first-layer main entry uses `探索 AI 音樂`, not `AI 音樂鬥歌場`.
-- Link the primary action to `/ai-music`.
-- Use the supporting idea `先探索 AI 音樂，再從喜歡的作品發起挑戰`.
-- The AI music works page then contains `Drop Battle` / `AI 音樂鬥歌場` as internal options.
-- Explore work cards use a compact yellow `NEW` badge at the cover's top-left for the first rolling 7 x 24 hours after `created_at`; the red angled `接戰` status stays at the top-right. Neither badge may cover the play control or each other.
-
-### Homepage 2026-06-24 Baseline
-
-Today’s homepage baseline should be preserved unless the user explicitly redesigns it again.
-
-Copy:
-
-- Use `AI 音樂擂台` for the large desktop Chinese title.
-- Do not use `AI 音樂播台` as the large title; it feels off-brand and has been rejected.
-- Mobile hero should not visually show the large Chinese `AI 音樂擂台` title. Keep it as screen-reader-only if semantic heading structure is needed.
-- Mobile hero copy should read as two centered lines:
-  - `探索 AI 音樂`
-  - `喜歡再發起挑戰`
-- The mobile first action label should be `探索`, and the signal body should describe browsing AI music works before challenging.
-- The desktop stat row should use `公播 / 60s / 酒吧`; do not show the retired `90s` Drop Battle label.
-
-Desktop layout:
-
-- The left hero stack should align visually with the top of the right-side action panel.
-- Do not let the left hero block drift lower than the right-side panel; avoid vertical centering that makes the stage feel unbalanced.
-- The desktop `AIPOGER` wordmark should be large, dominant, and left-stage, while the right-side logo panel supports navigation rather than competing as the primary brand signal.
-- The right-side panel logo area should feel centered inside its upper disc zone. If the AIPOGER logo looks small or off-center, enlarge the disc/logo together and verify the visual center in a rendered desktop screenshot.
-- The right-side logo should remain bigger than the small header logo and should feel like a record/emblem, not a tiny icon.
-- The right-side action panel has four destinations in this order: `探索 AI 音樂`, `傷心酒吧`, `Drop Battle`, `Showtime`. Explore remains the only solid-orange primary action; the other three stay dark secondary actions with their own hover/focus color.
-- Adding the fourth destination must not make the panel collide with the lower navigation cards at 1440x900. Keep the panel footprint compact by reducing the upper record/logo zone and tightening button spacing instead of simply extending the panel downward.
-- Desktop social icons belong under the left hero stats/social area, replacing the left waveform position. Do not place them as a floating orphan under the right panel.
-- Remove decorative waveforms that sit under the right panel or create clutter near the social icons. Keep only waveforms that support the center stage composition.
-- The row of lower navigation cards should sit close enough to the main hero to feel connected. Do not let it sink too low with excessive empty space.
-
-Mobile layout:
-
-- The mobile `AIPOGER` wordmark must be centered within its visible section and should not feel optically left-heavy.
-- Social icons on mobile should sit below the Drop Signal card, bright enough to read quickly.
-- The four homepage destinations use a readable 2 x 2 grid in the same order: Explore, Bar Heartbreak, Drop Battle, Showtime. Do not shrink them into four cramped one-line targets.
-- Do not add extra explanatory labels such as `與音波同行`; the icons should speak for themselves.
-
-Social icons:
-
-- Use official brand icon paths for LINE, Instagram, Discord, and Facebook, rendered inside one consistent AIPOGER stage-button treatment. Do not mix hand-drawn sticker shapes, emoji, or unrelated glow styles.
-- Discord uses the permanent invite URL `https://discord.gg/3bWVgyPKk`.
-- Facebook should link to the AIPOGER group when using the public social cluster.
-- LINE is the community action; its QR control opens a compact modal instead of permanently placing a QR image in the homepage strip.
+- 導覽：精選、探索音樂、MV、Showtime、Battle、創作聖經。探索連到 `/ai-music`，Showtime 保持 `/rank`，Battle 保持 `/battle`，創作聖經沿用 `/ai-music-bible`；MV 專頁尚未開發，首頁 MV 導覽先定位至主視覺，不連到不存在的路徑。
+- 主視覺使用真實創作者作品、YouTube 封面與既有 optional MV URL。支援高解析封面逐級回退。按「觀看 MV」才嵌入官方播放器；切換至 MV 先暫停共用音訊，改播單曲則移除 MV 播放器，不讓兩種音源重疊。
+- 社群支持最多的 MV 標「本週社群精選」，展示不同非作者支持者數；同票提供左右切換與「同票精選」，不宣稱正式冠軍。全週零支持時只展示最新 MV，標「新作放映」，不冒充社群入選。沒有有效 MV、沒有可播音訊及資料讀取失敗各有真實狀態。
+- 推薦理由優先展示公開且 moderation-visible 的非作者留言，保留留言者署名；沒有可展示留言時標「作品介紹」，使用創作者原文。不將社群入選冒署為「愛波哥推薦」。
+- 「評論與支持」開啟首頁原作品視窗，公開評論可讀；登入會員透過既有留言與 Heart API 參與，沿用相同作品 ID、收藏與審核。留言失敗保留文字，客人先登入；不因觀看、留言或 Heart 發點數。原有 Explore 卡片仍能送 Heart，但沒有獨立歌曲評論功能，所以首頁不將此按鈕誤連到卡片。
+- 三首單曲使用既有底部共用播放器，歌曲標題連回 Explore 原作品；保留「進傷心酒吧」的持續聆聽入口。「投稿作品」沿用 `/listen-bar#play-request`，手機頁尾也能投稿；不新增 MV 重複投稿表。
+- 頂欄沿用官方 Logo、四語切換與登入入口；登入後保留原有帳號頭像／通知與 owner 後台入口。首頁隱藏中央固定 presence badge，避免蓋住導覽；其他頁維持原樣。
+- 中英日韓文案與類型名稱一起本地化，創作者的作品名稱與介紹保留原文。Explore 卡片原有首次上架 7 × 24 小時 `NEW` 與 `接戰` 角標規則保留，不能互相蓋住或遮住播放操作。
 
 ## Drop Battle
 

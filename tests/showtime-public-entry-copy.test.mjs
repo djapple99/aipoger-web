@@ -30,20 +30,6 @@ function text(tree) {
   if (tree && typeof tree === 'object') return text(tree.props?.children);
   return typeof tree==='string' ? tree : '';
 }
-const ast=ts.createSourceFile('home.tsx',home,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
-function declaration(name,predicate) {
-  let found;
-  const visit=(node) => {
-    if (predicate(node) && node.name?.getText(ast)===name) found=node;
-    ts.forEachChild(node,visit);
-  };
-  visit(ast);
-  assert.ok(found,`Missing ${name}`);
-  return found;
-}
-const prompts=evaluate(`${declaration('homeActionPrompts',ts.isFunctionDeclaration).getText(ast)}\nexports.prompts=homeActionPrompts;`).prompts;
-const infoLinks=new Function('isZh','lang','withLang','aiMusicBibleHref','t','choiceWeeklyHref',
-  `return (${declaration('infoLinks',ts.isVariableDeclaration).initializer.getText(ast)});`);
 const locale=evaluate(read('lib/locale.ts'));
 const languages={
   zh:{chart:'月排行榜',saved:'自己收藏的歌曲',headline:'本月上榜歌曲',own:'自己的作品編排'},
@@ -53,19 +39,6 @@ const languages={
 };
 
 for (const [lang,copy] of Object.entries(languages)) {
-  test(`home Showtime prompt and entry describe monthly charts and Choice (${lang})`,() => {
-    const prompt=prompts(lang).rank;
-    const body=Array.isArray(prompt.body) ? prompt.body.join(' ') : prompt.body;
-    assert.equal(prompt.title,'AIPOGER Showtime');
-    assert.ok(body.includes(copy.headline));
-    assert.ok(body.includes('Choice'));
-    const links=infoLinks(lang==='zh',lang,(href) => `${href}?lang=${lang}`,'/bible',(key) => key,'/rank#choice-weekly');
-    const entry=links.find((link) => link.title==='AIPOGER Showtime');
-    assert.equal(entry.href,`/rank?lang=${lang}`);
-    assert.ok(entry.desc.includes(copy.chart));
-    assert.ok(entry.desc.includes('Choice'));
-  });
-
   test(`About rendered introduction uses saved songs, not certification or own uploads (${lang})`,() => {
     const shell=evaluate(info,{
       'react/jsx-runtime':jsxRuntime,'next/link':{default:'link'},
