@@ -1,5 +1,7 @@
 # AIPOGER 開發與維運
 
+2026-10-13 MV 放映室已上線（app `6d36364`／`codex/homepage-mv-editorial`）。Vercel `dpl_6ntBxCmThoX1rXVpFqCzFy87xNPU` READY 並已 promote 至 aipoger.com；以真實公開既有連結聚合 48 支 MV、另列 3 個頻道（驗收當下數量），最早投稿為 2026-05-26。501 測試中 470 通過、31 既有可選 DB 測試略過、0 失敗；TypeScript、lint 0 errors／16 既有 warnings、本機與雲端 build 通過。四語桌機／手機、實際歷史影片播放、搜尋／篩選／全量展開及原作品評論驗收；沒有 SQL migration、環境變更或生產測試留言／Heart。[發布證據](releases/2026-10-13-mv-gallery.md)。
+
 2026-10-13 首頁 MV 與單曲探索改版已上線（app `91f207c`／`codex/homepage-mv-editorial`）。Vercel `dpl_DZJ9WQDd6yfJPawf5Dq5BuViNghM` READY，先用 production 環境不分配自訂網域部署，驗證真實資料後 promote 至 aipoger.com；舊正式基準 `3618ef7` 的程式加上 `4256e4b` 文件為起點，原工作區既有變更未混入。457 測試通過、31 原有可選資料庫測試略過，TypeScript、lint 0 errors／16 既有 warnings、本機與雲端 build 通過；無 SQL migration、無點數啟用。[發布證據](releases/2026-10-13-homepage-mv.md)。
 
 2026-09-28 全站文案一致性修正已上線（app `3618ef7`／`codex/music-analysis-tools`）：Music Bible 六步與準備發表提示改為外部工具按需自查；首頁酒吧四語移除生存玩法；Battle 分享、卡片、配對通知移除 APC 承諾。Vercel `dpl_9u5dxcQCnJFYfWkvUotFaLNZEspc` READY 並已 promote 至 aipoger.com。448 測試通過，31 原有可選資料庫測試略過；無 SQL migration。[發布證據](releases/2026-09-28-copy-consistency.md)。
@@ -14,7 +16,7 @@
 
 2026-09-21 Choice 整批發布已上線（app `6564a8a`）：版面、分享封面與批次編輯完成，459 項測試通過。正式 migration `20260921132314_creator_choice_batch_editor` 已套用；[發布紀錄](releases/2026-09-21-choice-batch-release.md)。
 
-文件整理：2026-09-28；產品實作基準：2026-09-28。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
+文件整理：2026-10-13；產品實作基準：2026-10-13。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
 
 ## 分類服務：分類已發布，worker 尚待啟用
 

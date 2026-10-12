@@ -20,3 +20,5 @@
 - [2026-09-28-copy-consistency](2026-09-28-copy-consistency.md)
 
 - [2026-10-13-homepage-mv](2026-10-13-homepage-mv.md)
+
+- [2026-10-13-mv-gallery](2026-10-13-mv-gallery.md)

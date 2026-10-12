@@ -11,8 +11,8 @@
 
 ## 現況與查找順序
 
-- 文件整理與產品發布基準：2026-10-13；應用 `91f207c`，分支 `codex/homepage-mv-editorial`；[首頁 MV 與音樂探索發布證據](releases/2026-10-13-homepage-mv.md)。
-- 首頁為精選 MV、三首單曲與社群評論／支持入口；傷心酒吧持續公播與投稿、Explore、Drop Battle、Q Crash、Showtime 月榜與 Choice、共用播放器、耳朵蟲與練功聖經仍保留。
+- 文件整理與產品發布基準：2026-10-13；應用 `6d36364`，分支 `codex/homepage-mv-editorial`；[MV 放映室發布證據](releases/2026-10-13-mv-gallery.md)。
+- 首頁為精選 MV、三首單曲與社群評論／支持入口，`/mv` 集中既有公開影片及頻道連結，提供搜尋／曲風／排序與原作品評論；傷心酒吧持續公播與投稿、Explore、Drop Battle、Q Crash、Showtime 月榜與 Choice、共用播放器、耳朵蟲與練功聖經仍保留。
 - 酒吧容量生存淘汰、Challenger 保護、Showtime 認證、Daily Spotlight 已退役；24H Full Song Battle 隱藏於前台。
 - APC 未啟用；自動音訊曲風建議的前端已發布，worker 尚待啟用。創作者私人「作品表現」第一版已發布；新版聆聽比例從發布後開始累積，不能補成歷史完整數據。
 - 優先讀本機六份正文，其次讀 [Google Drive 最新規格資料夾](https://drive.google.com/drive/folders/1C_mLLcpRvTNh6m6ZkWVhPN_QWVr9CrCN)；雲端是本機同步副本，發布狀態仍需工程證據。Library 可搜尋 `AIPOGER 最新文件索引`、`aipoger-product-rules.md`。
