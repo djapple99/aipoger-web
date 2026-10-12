@@ -18,3 +18,5 @@
 - [2026-09-28-music-analysis-tools](2026-09-28-music-analysis-tools.md)
 
 - [2026-09-28-copy-consistency](2026-09-28-copy-consistency.md)
+
+- [2026-10-13-homepage-mv](2026-10-13-homepage-mv.md)

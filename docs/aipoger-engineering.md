@@ -1,5 +1,7 @@
 # AIPOGER 開發與維運
 
+2026-10-13 首頁 MV 與單曲探索改版已上線（app `91f207c`／`codex/homepage-mv-editorial`）。Vercel `dpl_DZJ9WQDd6yfJPawf5Dq5BuViNghM` READY，先用 production 環境不分配自訂網域部署，驗證真實資料後 promote 至 aipoger.com；舊正式基準 `3618ef7` 的程式加上 `4256e4b` 文件為起點，原工作區既有變更未混入。457 測試通過、31 原有可選資料庫測試略過，TypeScript、lint 0 errors／16 既有 warnings、本機與雲端 build 通過；無 SQL migration、無點數啟用。[發布證據](releases/2026-10-13-homepage-mv.md)。
+
 2026-09-28 全站文案一致性修正已上線（app `3618ef7`／`codex/music-analysis-tools`）：Music Bible 六步與準備發表提示改為外部工具按需自查；首頁酒吧四語移除生存玩法；Battle 分享、卡片、配對通知移除 APC 承諾。Vercel `dpl_9u5dxcQCnJFYfWkvUotFaLNZEspc` READY 並已 promote 至 aipoger.com。448 測試通過，31 原有可選資料庫測試略過；無 SQL migration。[發布證據](releases/2026-09-28-copy-consistency.md)。
 
 2026-09-28 音樂分析外站工具入口已上線（app `52e66c6`／`codex/music-analysis-tools`）：三個網站、免費條件與使用步驟。Vercel `dpl_EPwbVwxBDdZqYYtSoy5RswCHgdAB` READY 並已 promote 至 aipoger.com。[發布證據](releases/2026-09-28-music-analysis-tools.md)。
@@ -519,7 +521,7 @@ Check:
 - 根 layout 透過 GlobalListenBarDock 掛載唯一 GlobalMusicPlayer；ShowtimeQueuePlayer 保留 imperative API 作為無音訊的相容入口。頁面使用 music-player-store 訂閱目前歌曲及進度。
 - 酒吧下一首預告直接讀同一個 session queue；歌單建立後不受換頁、探索排序或新投稿影響。曲風庫每分鐘核對下架資料，僅從既有酒吧佇列移除不可播歌曲，不插入新歌曲。
 - 驗證有限歌單結尾、單曲曲風循環、上一首歷史、快速連續跳歌、暫停後跨頁、拖曳後自然接播、音量、歌詞 Escape 與未登入愛心提示。桌機、手機及中英日韓控制項需渲染檢查。
-- 首頁背景音樂在已有共用播放 session 時不自動啟動；使用者主動播放其他音訊會暫停共用音訊，避免重疊。
+- 2026-10-13 首頁不再自動啟動背景音樂；單曲由使用者按下播放，使用共用 session。切換 MV 先暫停共用音訊；改播單曲移除 MV iframe。
 
 ## 七日額度遷移
 
