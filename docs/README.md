@@ -11,7 +11,7 @@
 
 ## 現況與查找順序
 
-- 文件整理與產品發布基準：2026-10-13；應用 `8689575`，分支 `codex/homepage-mv-editorial`；[首頁與 MV 曝光去重證據](releases/2026-10-13-featured-dedup.md)、[MV 放映室發布證據](releases/2026-10-13-mv-gallery.md)。
+- 文件整理與產品發布基準：2026-10-13；應用 `5d1178d`，分支 `codex/homepage-mv-editorial`；[MV 卡片愛心與評論發布證據](releases/2026-10-13-mv-card-actions.md)、[首頁與 MV 曝光去重證據](releases/2026-10-13-featured-dedup.md)、[MV 放映室發布證據](releases/2026-10-13-mv-gallery.md)。
 - 首頁為精選 MV、三首單曲與社群評論／支持入口，`/mv` 集中既有公開影片及頻道連結，提供搜尋／曲風／排序與原作品評論；傷心酒吧持續公播與投稿、Explore、Drop Battle、Q Crash、Showtime 月榜與 Choice、共用播放器、耳朵蟲與練功聖經仍保留。
 - 酒吧容量生存淘汰、Challenger 保護、Showtime 認證、Daily Spotlight 已退役；24H Full Song Battle 隱藏於前台。
 - APC 未啟用；自動音訊曲風建議的前端已發布，worker 尚待啟用。創作者私人「作品表現」第一版已發布；新版聆聽比例從發布後開始累積，不能補成歷史完整數據。

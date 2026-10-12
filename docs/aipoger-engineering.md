@@ -1,5 +1,7 @@
 # AIPOGER 開發與維運
 
+2026-10-13 MV 卡片愛心與評論改版已上線（app `5d1178d`／`codex/homepage-mv-editorial`）。Vercel `dpl_J97UK5nFW6KQJaHurB9yoNJC7fhE` READY 並已 promote 至 aipoger.com；歌名右側大愛心／週票／評論、下一排創作者，直接切換既有 Heart／收藏，評論 dialog 包含同一支 MV。513 測試中 482 通過、31 既有可選 DB 測試略過、0 失敗；TypeScript、本機／雲端 build 通過，lint 0 errors／16 既有 warnings。正式桌機／手機、實際影片播放、公開評論、關閉回卡片及訪客返回路徑驗證，原 48 支影片／3 個頻道及曝光去重保留。登入寫入使用 runtime mocks 驗證，未使用 live owner session。無 SQL migration 或生產測試留言／Heart。[發布證據](releases/2026-10-13-mv-card-actions.md)。
+
 2026-10-13 首頁與 MV 曝光去重修復已上線（app `8689575`／`codex/homepage-mv-editorial`）。Vercel `dpl_7Bs119NdHNPPncf4bTqjQRbaaSAQ` READY 並已 promote 至 aipoger.com；下方單曲／MV 先排除全部精選作品 ID 再補位，包含同票精選，搜尋精選可跳回上方。503 測試中 472 通過、31 既有可選 DB 測試略過、0 失敗；TypeScript、本機／雲端 build 通過，lint 0 errors／16 既有 warnings。正式桌機／手機、全量列表及精選搜尋驗證，原 48 支影片／3 個頻道資料保留。沒有 SQL migration 或生產資料寫入。[發布證據](releases/2026-10-13-featured-dedup.md)。
 
 2026-10-13 MV 放映室已上線（app `6d36364`／`codex/homepage-mv-editorial`）。Vercel `dpl_6ntBxCmThoX1rXVpFqCzFy87xNPU` READY 並已 promote 至 aipoger.com；以真實公開既有連結聚合 48 支 MV、另列 3 個頻道（驗收當下數量），最早投稿為 2026-05-26。501 測試中 470 通過、31 既有可選 DB 測試略過、0 失敗；TypeScript、lint 0 errors／16 既有 warnings、本機與雲端 build 通過。四語桌機／手機、實際歷史影片播放、搜尋／篩選／全量展開及原作品評論驗收；沒有 SQL migration、環境變更或生產測試留言／Heart。[發布證據](releases/2026-10-13-mv-gallery.md)。
