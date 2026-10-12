@@ -1,5 +1,7 @@
 # AIPOGER 開發與維運
 
+2026-10-13 探索音樂改版已上線（app `e8f2977`／`codex/homepage-mv-editorial`）。Vercel `dpl_M3wZ23ATz3CPV6vjo9uUZkiYgKZW` READY 並已 promote 至 aipoger.com；使用者選定的黑橘精簡探索頁、醒目傷心酒吧入口、全曲庫搜尋／曲風交集、推薦去重、歌名旁大愛心與資訊操作已發布。519 測試中 488 通過、31 既有可選 DB 測試略過、0 失敗；TypeScript、本機／雲端 build 通過，lint 0 errors／15 既有 warnings。正式站實際播放、訪客 Heart 返回原曲、搜尋／無結果／重設、升溫與四語版面驗證；225 首公開作品、14 曲風及原播放／戰績／資格資料保留。未使用 live owner session 或寫入生產留言／Heart，無 SQL migration、環境變更或點數啟用。[發布證據](releases/2026-10-13-explore-redesign.md)。
+
 2026-10-13 MV 卡片愛心與評論改版已上線（app `5d1178d`／`codex/homepage-mv-editorial`）。Vercel `dpl_J97UK5nFW6KQJaHurB9yoNJC7fhE` READY 並已 promote 至 aipoger.com；歌名右側大愛心／週票／評論、下一排創作者，直接切換既有 Heart／收藏，評論 dialog 包含同一支 MV。513 測試中 482 通過、31 既有可選 DB 測試略過、0 失敗；TypeScript、本機／雲端 build 通過，lint 0 errors／16 既有 warnings。正式桌機／手機、實際影片播放、公開評論、關閉回卡片及訪客返回路徑驗證，原 48 支影片／3 個頻道及曝光去重保留。登入寫入使用 runtime mocks 驗證，未使用 live owner session。無 SQL migration 或生產測試留言／Heart。[發布證據](releases/2026-10-13-mv-card-actions.md)。
 
 2026-10-13 首頁與 MV 曝光去重修復已上線（app `8689575`／`codex/homepage-mv-editorial`）。Vercel `dpl_7Bs119NdHNPPncf4bTqjQRbaaSAQ` READY 並已 promote 至 aipoger.com；下方單曲／MV 先排除全部精選作品 ID 再補位，包含同票精選，搜尋精選可跳回上方。503 測試中 472 通過、31 既有可選 DB 測試略過、0 失敗；TypeScript、本機／雲端 build 通過，lint 0 errors／16 既有 warnings。正式桌機／手機、全量列表及精選搜尋驗證，原 48 支影片／3 個頻道資料保留。沒有 SQL migration 或生產資料寫入。[發布證據](releases/2026-10-13-featured-dedup.md)。
@@ -342,27 +344,26 @@ Choice and retired Spotlight:
 Check:
 
 - Homepage first-layer primary action says `探索 AI 音樂` and links to `/ai-music?lang=zh`.
-- `/ai-music?lang=zh` returns 200 and uses the main title `AI 音樂作品`.
-- The `/ai-music` header is a compact, centered catalog stage. Its eyebrow, live `[作品庫] {count} 首公開作品 · 11 種風格` marker, title, yellow subtitle, submission prompt, cross-surface navigation, and local view control share one central axis; the public UI does not show `真實資料，不含 mock` / `Real records only`.
-- The `/ai-music` header includes the upload prompt `上傳音樂讓大家看到你的作品，請從傷心酒吧投稿。` and links it to Bar Heartbreak submission.
-- The `/ai-music` internal navigation order is `作品瀏覽` -> `傷心酒吧` -> `Drop Battle` -> `Showtime` -> `Choice`.
-- The fixed icon-only `/guide.png` button opens the `/ai-music` GUIDE HUD. Verify its accessible name, X, Escape, backdrop close, focus trap and focus return, its Chinese and English copy, mobile scrolling above the mini player, and that no visible `<details>` explainer remains.
+- `/ai-music?lang=zh` returns 200 and uses `探索音樂` with subtitle `找到對味的歌，讓好作品被聽見。`, a shared editorial header, search and a prominent orange radio entry. No old giant centered catalog hero, duplicate fixed chrome or nested taste panel remains.
+- Shared header links and the Bar radio/submission entries preserve `lang`, proper `#play-request`, Explore login return and the existing signed-in account/owner dock.
+- Search the complete loaded eligible catalog by title/creator/AI tool, combining the selected genre; matches beyond the collapsed six render, no-match/reset works, original IDs/counts are preserved. Filters on Hot Now must retain global rank labels.
+- Earworm recommendation IDs do not occur again in lower lanes; lower-lane order still follows the complete original genre ordering, and playback queues retain original genre/heat sources. No profile means normal catalog plus test entry. Locale/data reloads show no stale recommendation success after loading/error.
+- The local `/guide.png` action opens the existing accessible dialog: verify X, Escape, backdrop, focus trap/return and mobile scrolling. Desktop adds the concise guide text; phones retain the icon.
 - An Explore share URL has the shape `/ai-music?lang=<lang>&track=<id>#works`, stays on Explore rather than Bar Heartbreak, expands the matching style lane, and scrolls to the shared work without autoplay.
 - The masthead is compact and cover-led: the first genre title and first covers are visible at 1440x900 and 390x844 without a fake waveform, `Live Drop Signal`, `60s READY`, dashboard cards, or a long gameplay explainer occupying the first screen.
-- `依類型 | 正在升溫` is a local Explore control. The default preserves genre lanes; Hot Now remains separate from Showtime and Choice, but uses the same compact cover-card density: mobile horizontal scrolling and desktop 3 / 4 / 6-column grid, never a wide rank table.
+- `依曲風 | 正在升溫` is a local Explore control. The default preserves genre lanes; Hot Now remains separate from Showtime and Choice, but uses the same compact cover-card density: phone two-column and tablet/desktop 3 / 4 / 6-column grids, never a wide rank table; 320px genre selector occupies its own full-width row.
 - Hot Now reads only 7-day distinct Heart supporters, official Battle audience votes from archives meeting the 3-voter threshold, latest qualified interaction, then created_at/id. It never uses all-time Hearts, play counts, mock scores, or Heat Score. Signal-less works are `正在累積` with no rank number; this remains separate from monthly chart counting.
-- The page groups works by the current 11 fixed music genres and shows at most 6 cards per genre before `看更多`.
+- The page groups works by the current 14 fixed music genres and shows at most 6 cards per genre before `看更多`.
 - Explore has no standalone `最新上架` / `New Arrivals` / `72 小時新歌` shelf, route, category, or independent `看更多`; new eligible works appear at the front of their existing genre lane.
 - `NEW` uses `created_at` younger than a rolling 7 x 24 hours for both its badge and Explore sorting priority; it expires from both at the seven-day boundary and never reads `updated_at`.
 - Explore places `NEW` at the cover top-left and keeps `接戰` at the top-right without overlap on desktop/mobile. Bar Heartbreak shows `NEW` on the now-playing cover and beside new tracks in the visible queue, Challenger pool, and creator track list.
 - A NEW work (within rolling 7 x 24 hours by `created_at`, never `updated_at`) appears ahead of established works in its genre lane; lanes with NEW works lead the wall by newest NEW `created_at`, while lanes without NEW works keep the fixed genre order.
 - The collapsed first 6 cards in a genre lane show at most one NEW work per creator; all other NEW works remain visible after that lane's `看更多` expansion.
-- Cards show song title, creator, AI tool, heart count, and challenge count.
+- Cards put the title beside a large orange Heart/total count and creator below; creator metadata retains AI tool, and the information action reveals actual challenge counts/W/L. Controls retain 44px-high targets, busy/disabled state and original work identity.
 - Cards that are truly challenge-ready show a non-clickable red angled `接戰` badge at the cover's top-right on desktop and mobile; non-ready, retired, hidden/removed/moderation-held, missing-drop, or unplayable works do not show it. Old certification alone is no longer a gate; the creator must explicitly opt in after the one-time reset.
 - The card's bottom `攻擂` button remains the only challenge action; the `接戰` badge must not replace it or use `攻擂` as badge text.
 - Signed-in users with today's active Heart see the Heart button lit on `/ai-music` cards and the bottom mini player; re-pressing it cancels the Heart and synchronized favorite while the card still shows only total Heart count publicly.
-- Desktop hover exposes the Battle Record HUD.
-- Mobile exposes an equivalent expanded HUD via the info action.
+- Desktop/mobile information action expands the Battle Record HUD. Desktop hover/focus reveals compact info/share controls; phone controls remain visible, and closed details do not obscure artwork.
 - Cards and Battle HUD retain actual wins/losses; six-defense certification progress and promotion promises are removed.
 - Card play opens the bottom mini player and does not expand per-card audio controls.
 - `Drop Battle`, `Showtime`, `傷心酒吧`, and `Choice` are internal options on `/ai-music`.

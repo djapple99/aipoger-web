@@ -26,3 +26,5 @@
 - [2026-10-13-featured-dedup](2026-10-13-featured-dedup.md)
 
 - [2026-10-13-mv-card-actions](2026-10-13-mv-card-actions.md)
+
+- [2026-10-13-explore-redesign](2026-10-13-explore-redesign.md)
