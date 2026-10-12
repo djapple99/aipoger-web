@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ArrowRight, ChevronLeft, ChevronRight, Heart, Pause, Play, Radio, X } from "lucide-react";
@@ -9,20 +8,11 @@ import { useI18n } from "@/lib/i18n";
 import { homeCopy } from "@/lib/home-copy";
 import { musicPlayer, useMusicPlayer } from "@/lib/music-player-store";
 import type { HomeDiscovery, HomeWork } from "@/lib/home-discovery";
-import { supabase } from "@/lib/supabase";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import HomeWorkFeedback from "@/components/home-work-feedback";
-import LangToggle from "@/components/lang-toggle";
+import EditorialHeader from "@/components/editorial-header";
+import WorkImage from "@/components/work-image";
 import styles from "./home-editorial.module.css";
-
-function WorkImage({ work, video = false, priority = false }: { work: HomeWork; video?: boolean; priority?: boolean }) {
-  const candidates = video && work.videoId ? ["maxresdefault", "sddefault", "hqdefault"].map(size => `https://i.ytimg.com/vi/${work.videoId}/${size}.jpg`) : [];
-  const [failed, setFailed] = useState<string[]>([]);
-  const src = [...candidates, work.coverUrl, AIPOGER_BRAND_LOGO].find(value => value && !failed.includes(value));
-  return src ? <Image src={src} alt={work.title} width={video ? 960 : 240} height={video ? 540 : 240}
-    unoptimized priority={priority} className={styles.artwork} onError={() => setFailed(current => [...current, src])}
-    onLoad={event => { if (video && candidates.includes(src) && event.currentTarget.naturalWidth < 200) setFailed(current => [...current, src]); }} /> : null;
-}
 
 export default function HomeEditorial() {
   const { lang, t } = useI18n();
@@ -30,7 +20,6 @@ export default function HomeEditorial() {
   const [data, setData] = useState<HomeDiscovery | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
-  const [signedIn, setSignedIn] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [playingVideo, setPlayingVideo] = useState<string | null>(null);
   const [playError, setPlayError] = useState(false);
@@ -65,13 +54,6 @@ export default function HomeEditorial() {
     return () => { controller.abort(); window.clearInterval(timer); window.removeEventListener("aipoger:music-heart", refresh); document.removeEventListener("visibilitychange", refresh); };
   }, [load]);
 
-  useEffect(() => {
-    let active = true;
-    void supabase.auth.getSession().then(({ data: sessionData }) => { if (active) setSignedIn(Boolean(sessionData.session)); });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSignedIn(Boolean(session)));
-    return () => { active = false; subscription.unsubscribe(); };
-  }, []);
-
   const watch = () => {
     if (!selected?.videoId) return;
     if (player.playing) musicPlayer?.toggle();
@@ -94,27 +76,7 @@ export default function HomeEditorial() {
   };
 
   return <div className={styles.page}>
-    <header className={styles.header}>
-      <div className={styles.headerInner}>
-        <Link href={withLang("/")} className={styles.brand} aria-label="AIPOGER">
-          <Image src={AIPOGER_BRAND_LOGO} alt="" width={52} height={52} priority />
-          <span>AIPOGER</span>
-        </Link>
-        <nav className={styles.navigation} aria-label={copy.explore}>
-          <a href="#featured-mv" className={styles.active} aria-current="page">{copy.featured}</a>
-          <Link href={withLang("/ai-music")}>{copy.explore}</Link>
-          <a href="#featured-mv">{copy.mv}</a>
-          <Link href={withLang("/rank")}>Showtime</Link>
-          <Link href={withLang("/battle")}>Battle</Link>
-          <Link href={withLang("/ai-music-bible")}>{copy.bible}</Link>
-        </nav>
-        <div className={styles.headerActions}>
-          <Link href={withLang("/listen-bar#play-request")} className={styles.submit}>{copy.submit}</Link>
-          <LangToggle variant="inline" />
-          {signedIn ? <span className={styles.accountSpace} /> : <Link href={withLang("/auth")} className={styles.signIn}>{copy.signIn}</Link>}
-        </div>
-      </div>
-    </header>
+    <EditorialHeader active="home" />
 
     <main className={styles.main}>
       <section id="featured-mv" className={styles.featured} aria-labelledby="home-feature-title">

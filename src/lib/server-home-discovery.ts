@@ -2,8 +2,9 @@ import { createClient } from "@supabase/supabase-js";
 import { buildAiMusicSurfaceLifecycleMap } from "./ai-music-surface-lifecycle";
 import { buildHomeDiscovery, readAllHomePages, taipeiHomeWeek, type HomeHeartRow, type HomeTrackRow } from "./home-discovery";
 import type { ListenBarTrackRow } from "./listen-bar";
+import { buildMvDiscovery } from "./mv-discovery";
 
-export async function readHomeDiscovery() {
+async function readDiscoverySource() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY;
   if (!url || !key) throw new Error("Missing discovery configuration.");
@@ -26,7 +27,11 @@ export async function readHomeDiscovery() {
     if (/^[a-z][a-z\d+.-]*:/i.test(clean) || clean.startsWith("//")) return "";
     return admin.storage.from(bucket).getPublicUrl(clean).data.publicUrl;
   };
-  const result = buildHomeDiscovery(rows.filter(row => !lifecycle.get(row.id)?.retiredFromExplore), hearts, mediaUrl, now);
+  return { rows: rows.filter(row => !lifecycle.get(row.id)?.retiredFromExplore), hearts, mediaUrl, now, admin };
+}
+
+async function addFeaturedComments(result: { featured: { id: string; comment?: { name: string; text: string } }[] }, source: Awaited<ReturnType<typeof readDiscoverySource>>) {
+  const { rows, admin } = source;
   // Only moderation-visible public excerpts; raw voter identities stay on the server.
   await Promise.all(result.featured.slice(0, 6).map(async work => {
     const author = rows.find(row => row.id === work.id)?.created_by;
@@ -39,5 +44,18 @@ export async function readHomeDiscovery() {
       work.comment = { name: comment.display_name.trim(), text: comment.body.trim().slice(0, 280) };
     }
   }));
+}
+
+export async function readHomeDiscovery() {
+  const source = await readDiscoverySource();
+  const result = buildHomeDiscovery(source.rows, source.hearts, source.mediaUrl, source.now);
+  await addFeaturedComments(result, source);
+  return result;
+}
+
+export async function readMvDiscovery() {
+  const source = await readDiscoverySource();
+  const result = buildMvDiscovery(source.rows, source.hearts, source.mediaUrl, source.now);
+  await addFeaturedComments(result, source);
   return result;
 }

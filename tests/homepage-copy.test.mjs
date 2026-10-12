@@ -4,6 +4,8 @@ import test from 'node:test';
 import ts from 'typescript';
 import { homeCopy } from '../src/lib/home-copy.ts';
 const source=readFileSync(new URL('../src/components/home-editorial.tsx',import.meta.url),'utf8');
+const headerSource=readFileSync(new URL('../src/components/editorial-header.tsx',import.meta.url),'utf8');
+const headerCompiled=ts.transpileModule(headerSource,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
 const compiled=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
 const nodes=x=>Array.isArray(x)?x.flatMap(nodes):x&&typeof x==='object'?[x,...nodes(x.props?.children)]:[];
 const text=x=>Array.isArray(x)?x.map(text).join(''):x&&typeof x==='object'?text(x.props?.children):x==null||typeof x==='boolean'?'':String(x);
@@ -18,7 +20,7 @@ async function mount(t,lang='zh',payload={featureKind:'community',featured:[work
  const player={playing:true,session:null}; const window=new EventTarget();const document=new EventTarget();document.hidden=false;
  window.setInterval=()=>1;window.clearInterval=()=>{};
  const modules={
-  react,'react/jsx-runtime':{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})},
+  react,'react/jsx-runtime':{jsx:(type,props)=>typeof type==='function'?type(props):({type,props}),jsxs:(type,props)=>typeof type==='function'?type(props):({type,props})},
   'next/link':{__esModule:true,default:'link'},'next/image':{__esModule:true,default:'image'},
   'lucide-react':Object.fromEntries(['ArrowRight','ChevronLeft','ChevronRight','Heart','Pause','Play','Radio','X'].map(x=>[x,x])),
   '@/lib/brand':{AIPOGER_BRAND_LOGO:'/brand.png'},'@/lib/i18n':{useI18n:()=>({lang,t:key=>key})},'@/lib/home-copy':{homeCopy},'@/lib/music-genres':{MUSIC_GENRE_OPTIONS:[{value:'EDM 百大電音',labelKey:'genre_edm'}]},
@@ -26,6 +28,10 @@ async function mount(t,lang='zh',payload={featureKind:'community',featured:[work
   '@/lib/supabase':{supabase:{auth:{getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})}}},
   '@/components/home-work-feedback':{__esModule:true,default:'feedback'},'@/components/lang-toggle':{__esModule:true,default:'lang-toggle'},'./home-editorial.module.css':{__esModule:true,default:{}},
  };
+ const header={exports:{}};
+ new Function('require','module','exports',headerCompiled)(name=>{assert.ok(name in modules,name);return modules[name];},header,header.exports);
+ modules['@/components/editorial-header']=header.exports;
+ modules['@/components/work-image']={__esModule:true,default:'work-image'};
  const loaded={exports:{}};
  new Function('require','module','exports','fetch','window','document',compiled)(name=>{assert.ok(name in modules,name);return modules[name];},loaded,loaded.exports,async()=>({ok:!fail,json:async()=>structuredClone(payload)}),window,document);
  function render(){cursor=0;dirty=false;tree=loaded.exports.default();}
@@ -35,7 +41,7 @@ async function mount(t,lang='zh',payload={featureKind:'community',featured:[work
 }
 for(const lang of ['zh','en','ja','ko']) test(`homepage preserves real routes and localized discovery (${lang})`,async t=>{
  const ui=await mount(t,lang);const copy=homeCopy(lang);const hrefs=ui.nodes().filter(x=>x.type==='link').map(x=>x.props.href);
- for(const route of ['/ai-music','/rank','/battle','/ai-music-bible','/listen-bar','/auth'])assert.ok(hrefs.includes(`${route}?lang=${lang}`),route);
+ for(const route of ['/mv','/ai-music','/rank','/battle','/ai-music-bible','/listen-bar','/auth'])assert.ok(hrefs.includes(`${route}?lang=${lang}`),route);
  assert.ok(hrefs.includes(`/ai-music?track=actual-work&lang=${lang}`));assert.ok(ui.text().includes(copy.title));assert.ok(ui.text().includes(copy.exploreTitle));assert.ok(ui.text().includes('Real Creator'));
 });
 test('MV playback is user initiated and pauses shared audio; singles use the existing shared queue',async t=>{

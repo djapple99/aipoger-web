@@ -63,8 +63,8 @@ export function homeSupportCounts(rows: HomeTrackRow[], hearts: HomeHeartRow[], 
   return new Map(rows.map(row => [row.id, voters.get(row.id)?.size ?? 0]));
 }
 
-export function buildHomeDiscovery(rows: HomeTrackRow[], hearts: HomeHeartRow[],
-  mediaUrl: (bucket: string, path: string | null | undefined) => string, now = new Date()): HomeDiscovery {
+export function buildPublicHomeWorks(rows: HomeTrackRow[], hearts: HomeHeartRow[],
+  mediaUrl: (bucket: string, path: string | null | undefined) => string, now = new Date()): HomeWork[] {
   const week = taipeiHomeWeek(now);
   const eligible = rows.filter(row => isPublicBarAirplayTrack(row)
     && isCurrentMusicGenre(row.genre) && row.source === "community" && !row.is_featured_official);
@@ -79,6 +79,13 @@ export function buildHomeDiscovery(rows: HomeTrackRow[], hearts: HomeHeartRow[],
       youtubeUrl: videoId ? `https://www.youtube.com/watch?v=${videoId}` : null,
       supporterCount: counts.get(row.id) ?? 0, publishedAt: row.created_at ?? "" }];
   }).sort((a, b) => b.publishedAt.localeCompare(a.publishedAt) || a.id.localeCompare(b.id));
+  return works;
+}
+
+export function buildHomeDiscovery(rows: HomeTrackRow[], hearts: HomeHeartRow[],
+  mediaUrl: (bucket: string, path: string | null | undefined) => string, now = new Date()): HomeDiscovery {
+  const week = taipeiHomeWeek(now);
+  const works = buildPublicHomeWorks(rows, hearts, mediaUrl, now);
   const mvs = works.filter(work => work.videoId);
   const topSupport = Math.max(0, ...mvs.map(work => work.supporterCount));
   // A tie is shared exposure, never a fabricated sole winner or personal endorsement.

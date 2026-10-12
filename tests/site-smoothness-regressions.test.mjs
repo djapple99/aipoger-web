@@ -31,7 +31,7 @@ test("the signed-in practice Bible offers a LINE field room", () => {
 
 test("logged-out account dock does not present a fake notification bell", () => {
   assert.ok(overlaySource.includes("accountSessionResolved"));
-  assert.ok(overlaySource.includes('pathname === "/" || pathname === "/auth"'));
+  assert.ok(overlaySource.includes('pathname === "/" || pathname === "/mv" || pathname === "/auth"'));
   assert.ok(overlaySource.includes('const signInLabel = lang === "ja" ? "ログイン" : lang === "ko" ? "로그인" : lang === "en" ? "Sign in" : "登入";'));
   assert.ok(overlaySource.includes('aria-label={`${signInLabel} AIPOGER`}'));
   assert.ok(overlaySource.includes('"fixed right-24 top-4'));

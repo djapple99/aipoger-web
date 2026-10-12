@@ -73,6 +73,7 @@ function parseDate(value: string | null | undefined) {
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const routes: MetadataRoute.Sitemap = [
     { url: `${siteUrl}/`, priority: 1, changeFrequency: "daily" },
+    ...localizedRoutes("/mv", SUPPORTED_LANGS, 0.95, "daily"),
     ...localizedRoutes("/ai-music", SUPPORTED_LANGS, 0.95, "hourly"),
     ...localizedRoutes("/listen-bar", SUPPORTED_LANGS, 0.9, "hourly"),
     ...localizedRoutes("/battle", SUPPORTED_LANGS, 0.82, "daily"),

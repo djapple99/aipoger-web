@@ -796,7 +796,7 @@ export default function GlobalBattleCallOverlay() {
   }) => {
     if (!accountSessionResolved) return null;
     if (!accountUserId) {
-      if (pathname === "/" || pathname === "/auth") return null;
+      if (pathname === "/" || pathname === "/mv" || pathname === "/auth") return null;
       const nextPath = `${pathname || "/"}?lang=${lang}`;
       const signInLabel = lang === "ja" ? "ログイン" : lang === "ko" ? "로그인" : lang === "en" ? "Sign in" : "登入";
       return (

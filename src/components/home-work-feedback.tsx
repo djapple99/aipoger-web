@@ -10,7 +10,7 @@ import type { HomeWork } from "@/lib/home-discovery";
 import styles from "./home-editorial.module.css";
 
 type Comment = { id: string; name: string; text: string; createdAt: string };
-export default function HomeWorkFeedback({ work, onClose, onChange }: { work: HomeWork; onClose: () => void; onChange: () => void }) {
+export default function HomeWorkFeedback({ work, onClose, onChange, returnPath = "/" }: { work: HomeWork; onClose: () => void; onChange: () => void; returnPath?: string }) {
   const { lang } = useI18n(); const copy = homeCopy(lang);
   const dialog = useRef<HTMLDialogElement>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -23,7 +23,7 @@ export default function HomeWorkFeedback({ work, onClose, onChange }: { work: Ho
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState("");
   const [saved, setSaved] = useState(false);
-  const authHref = `/auth?lang=${lang}&next=${encodeURIComponent(`/?lang=${lang}`)}`;
+  const authHref = `/auth?lang=${lang}&next=${encodeURIComponent(`${returnPath}?lang=${lang}`)}`;
 
   useEffect(() => {
     const element = dialog.current; const previous = document.activeElement;
