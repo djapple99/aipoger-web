@@ -61,6 +61,9 @@ type AiMusicTrack = AiMusicExploreOrderTrack & AiMusicHeatTrack & {
   createdAt: string;
   heartCount: number;
   poolSupporterCount: number;
+  blindSampleCount?: number;
+  blindPreferencePoints?: number;
+  popularityScore?: number;
   earwormAffinitySampleCount: number;
   earwormAffinityPercent: number | null;
   positiveReactionCount: number;
@@ -93,6 +96,9 @@ type LoadState = "loading" | "ready" | "error";
 type HeartState = Record<string, boolean>;
 type AiMusicApiTrackRow = ListenBarTrackRow & {
   ai_music_pool_supporter_count?: number | null;
+  ai_music_blind_sample_count?: number | null;
+  ai_music_blind_preference_points?: number | null;
+  ai_music_popularity_score?: number | null;
   ai_music_legacy_retirement_exempt?: boolean | null;
   ai_music_explore_retired?: boolean | null;
   ai_music_official_challenge_count?: number | null;
@@ -292,6 +298,9 @@ async function tracksFromListenBar(lang: string) {
         createdAt: safeDate(track.createdAt),
         heartCount: numberValue(row.heart_count ?? track.positiveReactionCount),
         poolSupporterCount: numberValue(lifecycleRow.ai_music_pool_supporter_count),
+        blindSampleCount: lifecycleRow.ai_music_blind_sample_count ?? undefined,
+        blindPreferencePoints: lifecycleRow.ai_music_blind_preference_points ?? undefined,
+        popularityScore: lifecycleRow.ai_music_popularity_score ?? undefined,
         positiveReactionCount: numberValue(row.positive_reaction_count ?? track.positiveReactionCount),
         earwormAffinitySampleCount: numberValue(row.earworm_affinity_sample_count),
         earwormAffinityPercent: typeof row.earworm_affinity_percent === "number"

@@ -1,0 +1,128 @@
+import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { creatorAdmin } from "./server-creator-auth";
+import { readAllHomePages } from "./home-discovery";
+import { isInMusicPool } from "./music-pool";
+import { isCurrentMusicGenre } from "./music-genres";
+import { buildAiMusicSurfaceLifecycleMap } from "./ai-music-surface-lifecycle";
+import { blindPairKey, type BlindSide, type BlindSummary } from "./blind-listening";
+import type { ListenBarTrackRow } from "./listen-bar";
+export type BlindRow = {
+  id: string; title: string; artist: string; genre: string; created_by: string | null;
+  created_at: string; audio_path: string; cover_path: string | null; duration_seconds: number;
+  source: string; is_active: boolean; is_featured_official: boolean; review_status: string;
+  hidden_at: string | null; removed_at: string | null; ai_music_showtime_public_removed_at: string | null;
+};
+export type QuestionRow = {
+  id: string; user_id: string; track_a_id: string; track_b_id: string; state: string;
+  choice: string | null; expires_at: string; heard_a: number; heard_b: number;
+};
+const fields = "id,title,artist,genre,created_by,created_at,audio_path,cover_path,duration_seconds,source,is_active,is_featured_official,review_status,hidden_at,removed_at,ai_music_showtime_public_removed_at,ai_music_showtime_certified,ai_music_showtime_certified_at,ai_music_showtime_certification_source";
+export function blindStorageUrl(admin: SupabaseClient, path: string | null, bucket = "listen-bar-audio") {
+  if (!path?.trim()) return "";
+  const origin = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).origin;
+  const url = /^https?:/i.test(path) ? path : admin.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+  try {
+    const parsed = new URL(url);
+    return parsed.origin === origin && parsed.pathname.startsWith("/storage/v1/object/public/" + bucket + "/")
+      && !parsed.username && !parsed.password ? parsed.href : "";
+  } catch { return ""; }
+}
+function secret() {
+  const value = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY;
+  if (!value) throw new Error("Missing server configuration");
+  return value;
+}
+export function makeBlindAudioToken(question: QuestionRow, side: BlindSide) {
+  const payload = Buffer.from(JSON.stringify({ id: question.id, side, exp: Date.parse(question.expires_at) })).toString("base64url");
+  return payload + "." + createHmac("sha256", secret()).update("blind-audio-v1:" + payload).digest("base64url");
+}
+export function readBlindAudioToken(token: string) {
+  try {
+    if (token.length > 500) return null;
+    const [payload, signature, extra] = token.split(".");
+    if (!payload || !signature || extra) return null;
+    const actual = Buffer.from(signature, "base64url");
+    const expected = createHmac("sha256", secret()).update("blind-audio-v1:" + payload).digest();
+    if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return null;
+    const value = JSON.parse(Buffer.from(payload, "base64url").toString());
+    return typeof value.id === "string" && /^[0-9a-f-]{36}$/i.test(value.id)
+      && (value.side === "A" || value.side === "B") && Number.isFinite(value.exp) && value.exp > Date.now()
+      ? value as { id: string; side: BlindSide; exp: number } : null;
+  } catch { return null; }
+}
+export async function blindSummaries(admin = creatorAdmin()) {
+  const { data, error } = await admin.rpc("blind_popularity_summaries");
+  if (error || !Array.isArray(data)) throw new Error("Blind summaries unavailable");
+  return new Map<string, BlindSummary>(data.map(r => [r.track_id, { people: Number(r.people), preferencePoints: Number(r.preference_points) }]));
+}
+export async function readCredit(admin: SupabaseClient, userId: string) {
+  const all = await readAllHomePages<{ id: string; delta: number; reason: string; created_at: string }>(async (from, to) => {
+    const result = await admin.from("creator_credit_entries").select("id,delta,reason,created_at")
+      .eq("user_id", userId).order("created_at", { ascending: false }).order("id").range(from, to);
+    return { data: result.data, error: result.error };
+  });
+  return { enabled: true, balance: all.reduce((sum, r) => sum + r.delta, 0), entries: all.slice(0, 50) };
+}
+export async function blindCatalog(admin: SupabaseClient, userId: string) {
+  const rows = await readAllHomePages<BlindRow>(async (from, to) => {
+    const r = await admin.from("listen_bar_tracks").select(fields).eq("source", "community").eq("is_active", true)
+      .eq("review_status", "approved").gte("duration_seconds", 45).order("id").range(from, to);
+    return { data: r.data as unknown as BlindRow[], error: r.error };
+  });
+  const eligible = rows.filter(r => !r.is_featured_official && !r.hidden_at && !r.removed_at
+    && !r.ai_music_showtime_public_removed_at && r.created_by !== userId && isInMusicPool(r.created_at)
+    && isCurrentMusicGenre(r.genre) && Boolean(blindStorageUrl(admin, r.audio_path)));
+  const lifecycle = await buildAiMusicSurfaceLifecycleMap(admin, eligible as unknown as ListenBarTrackRow[]);
+  return eligible.filter(r => !lifecycle.get(r.id)?.retiredFromExplore);
+}
+export async function questionForUser(admin: SupabaseClient, userId: string, id: string) {
+  const { data, error } = await admin.from("blind_listen_questions").select("*").eq("id", id).eq("user_id", userId).maybeSingle();
+  if (error || !data) throw new Error("QUESTION_UNAVAILABLE");
+  return data as QuestionRow;
+}
+export function anonymousQuestion(q: QuestionRow) {
+  return { id: q.id, expiresAt: q.expires_at, heardA: Number(q.heard_a), heardB: Number(q.heard_b),
+    audioA: "/api/blind-listen/audio?token=" + makeBlindAudioToken(q, "A"),
+    audioB: "/api/blind-listen/audio?token=" + makeBlindAudioToken(q, "B") };
+}
+export async function nextBlindQuestion(admin: SupabaseClient, userId: string) {
+  const catalog = await blindCatalog(admin, userId);
+  const eligible = new Map(catalog.map(r => [r.id, r]));
+  const seen = await readAllHomePages<QuestionRow>(async (from, to) => {
+    const r = await admin.from("blind_listen_questions").select("id,user_id,track_a_id,track_b_id,state,choice,expires_at,heard_a,heard_b")
+      .eq("user_id", userId).order("id").range(from, to);
+    return { data: r.data, error: r.error };
+  });
+  const pending = seen.find(q => q.state === "pending" && Date.parse(q.expires_at) > Date.now() && eligible.has(q.track_a_id) && eligible.has(q.track_b_id));
+  if (pending) return anonymousQuestion(pending);
+  const previous = new Set(seen.map(q => blindPairKey(q.track_a_id, q.track_b_id)));
+  const summaries = await blindSummaries(admin);
+  // Prefer under-sampled songs; randomize ties and A/B positions. Same genre only.
+  const shuffled = catalog.map(track => ({ track, random: randomInt(1_000_000) }))
+    .sort((a, b) => (summaries.get(a.track.id)?.people ?? 0) - (summaries.get(b.track.id)?.people ?? 0) || a.random - b.random);
+  for (const { track: a } of shuffled) {
+    for (const { track: b } of shuffled) {
+      if (a.id === b.id || a.genre !== b.genre || previous.has(blindPairKey(a.id, b.id))) continue;
+      const pair = randomInt(2) ? [a, b] : [b, a];
+      const { data, error } = await admin.rpc("issue_blind_question", { p_user: userId, p_a: pair[0].id, p_b: pair[1].id });
+      if (error) throw new Error("QUESTION_UNAVAILABLE");
+      if (data) return anonymousQuestion(await questionForUser(admin, userId, data));
+    }
+  }
+  return null;
+}
+export async function revealBlindQuestion(admin: SupabaseClient, userId: string, id: string) {
+  const q = await questionForUser(admin, userId, id);
+  if (q.state !== "voted") throw new Error("QUESTION_UNAVAILABLE");
+  const { data, error } = await admin.from("listen_bar_tracks").select(fields).in("id", [q.track_a_id, q.track_b_id]);
+  if (error) throw new Error("REVEAL_UNAVAILABLE");
+  const valid = (data as unknown as BlindRow[]).filter(r => r.is_active && r.review_status === "approved"
+    && !r.hidden_at && !r.removed_at && !r.ai_music_showtime_public_removed_at && isInMusicPool(r.created_at));
+  return { choice: q.choice, works: [q.track_a_id, q.track_b_id].map((id, i) => {
+    const r = valid.find(row => row.id === id);
+    return r ? { side: i ? "B" : "A", id: r.id, title: r.title, artist: r.artist,
+      coverUrl: blindStorageUrl(admin, r.cover_path, "listen-bar-covers"),
+      href: "/ai-music?track=" + r.id + "#works" } : { side: i ? "B" : "A", unavailable: true };
+  }) };
+}

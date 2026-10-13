@@ -79,7 +79,7 @@ const ACTIVE_NOTICE_BATTLE_STATUSES = [
   "settling",
 ];
 
-const FIXED_BATTLE_ROUTES = new Set(["setup", "hook-cut", "matchmaking", "result"]);
+const FIXED_BATTLE_ROUTES = new Set(["setup", "hook-cut", "matchmaking", "result", "listen"]);
 const DEMO_CALL_EVENT = "aipoger:battle-call-demo";
 const ACCOUNT_NOTICE_COLLAPSED_KEY = "aipoger:account-notice-collapsed";
 const ACCOUNT_NOTICE_DISMISSED_KEY = "aipoger:account-notice-dismissed";
@@ -803,7 +803,7 @@ export default function GlobalBattleCallOverlay() {
   }) => {
     if (!accountSessionResolved) return null;
     if (!accountUserId) {
-      if (pathname === "/" || pathname === "/mv" || pathname === "/auth" || pathname === "/ai-music" || pathname === "/profile") return null;
+      if (pathname === "/" || pathname === "/mv" || pathname === "/auth" || pathname === "/ai-music" || pathname === "/profile" || pathname === "/battle" || pathname === "/battle/listen") return null;
       const nextPath = `${pathname || "/"}?lang=${lang}`;
       const signInLabel = lang === "ja" ? "ログイン" : lang === "ko" ? "로그인" : lang === "en" ? "Sign in" : "登入";
       return (

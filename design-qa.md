@@ -1,129 +1,49 @@
-# Homepage design QA
+# Battle 與盲聽設計驗收
 
 final result: passed
 
-Target: user-selected homepage mock, `/Users/huangyihong/Documents/New project/outputs/aipoger-homepage-concepts/01-home-editorial-mv-focus-revision.png` (1487 × 1058). Implementation: `http://localhost:3107/?lang=zh`, signed out, black theme, loaded authentic public works. Captures are 1487 × 1058 pixels at a 1487 × 1058 CSS viewport, density 1. The source has illustrative works; real creators, covers, descriptions and current-week zero-support state intentionally replace those illustrations. No fake vote state was inserted to match the mock.
+## 比對來源與狀態
 
-Evidence directory: `/Users/huangyihong/Documents/New project/outputs/aipoger-homepage-release/`.
+- 來源主頁：`/Users/huangyihong/.codex/generated_images/01a11410-a7ad-7352-bd36-4ff0b48ba73f/exec-3064c547-4040-4f7d-be43-f94d00d6073a.png`。
+- 來源內頁：同目錄 `exec-8317403d-f31d-48f8-a7f9-6ed35dd2671d.png`。
+- 實際實作：`http://localhost:3112/battle?lang=zh`、`/battle/listen?lang=zh`。
+- 截圖目錄：`/Users/huangyihong/Documents/New project/outputs/aipoger-blind-release/`。最終主頁 `local-landing-desktop-final.jpg`、內頁 `fixture-room-desktop-final.jpg`、手機 `local-landing-mobile.jpg`／`fixture-room-mobile.jpg`。
+- 來源1487×1058px，桌機實作1440×1024 CSS px／截圖px，密度1，比例皆約1.406；按0.968比例比較內容，未含瀏覽器邊框。來源与最終截圖放在同一次工具輸入成對檢視，未宣稱拼圖式並排。
+- 主頁實際無Q Crash場次，保留一行空狀態，因此Drop區比概念稿多約44px偏移；不是多餘留白。內頁隔離fixture使用實際React元件與公開原音訊，模擬登入、題目及投票回應，沒有更改正式Auth或留下正式投票／Credit。概念稿可選狀態與fixture聽完後未選狀態比對；實際guest登入提示另驗收，不把未登入 disabled 誤判為缺失。
+- 手機390×844與320×812 CSS px；中英日韓兩頁document scrollWidth等於viewport，沒有水平溢出。
 
-Iteration 1: `comparison-before.jpg` places the source and live screenshot in the same image. P2: the 16:9 desktop poster pushed discovery too low relative to the selected panoramic composition. P2: 480px YouTube artwork looked soft at desktop scale, and 155px single artwork reduced discovery's visual presence. P2: the main frame inset was 20px wider and header branding was too small.
+## 比較歷史與修正
 
-Fixes: desktop poster uses a 2.28 ratio, mobile preserves 16:9; real YouTube maximum-resolution thumbnails fall back through standard resolutions and actual cover artwork; single covers enlarged to 210px; main frame aligns to 1360px; header branding enlarged using the existing official logo. No raster artwork was replaced with fabricated SVG or CSS art.
+1. [P2，已修正] 主頁徽章與開始按鈕擠同排、主要標題偏小：按鈕改獨立flex，58px標題，縮短標題列。最終主頁截圖確認主次清楚。
+2. [P2，已修正] 全域guest登入入口重複：新兩路由保留Editorial Header入口，移除overlay重複登入。guest DOM確認只保留正常頂欄及必要操作登入提示。
+3. [P2，已修正] 內頁底部純黑區缺乏空間感：使用原插畫桌面下緣。首輪重複露出播放器，改200%背景裁切取桌面，最終1440×1024截圖確認沒有重複設備。
+4. [P2，已修正] 手機長語系標題與reward可能相撞：title可換行，入口reward使用正常文流。四語320px實際DOM及390px截圖確認單排A／平手／B和文字可讀。
 
-Iteration 2: `comparison-after.jpg`; final recheck: `comparison-final.jpg` and full-size work-info detail `comparison-detail.jpg`. Both pair the source and implementation. `comparison-after.jpg` places the revised capture and the same source together. No remaining actionable P0/P1/P2 differences. The source's composition and hierarchy remain clear: compact navigation, featured MV and work details, orange viewing action, three singles and radio entry. Short authentic titles, attribution, truthful release label, added language switch and support action are intentional product differences. The real cover crop retains the subject; source text baked into the creator thumbnail remains creator artwork.
+## 五項必要表面
 
-Fidelity surfaces:
-- Fonts/typography: existing Inter/Noto Sans TC/PingFang stack; strong 50px editorial heading, 48px work title, readable 14–20px body/card text; responsive line wrapping and accessible control names. Brand uses the official raster logo plus live wordmark text; the mock's illustrative lettering is not treated as a new logo.
-- Spacing/layout rhythm: matching frame and panoramic poster, 36px hero gutter, fine separator, larger square artwork; mobile stacks with 18px side margins and separate row covers. Focused hero/title/header details inspected in the same paired captures. No overlaps or horizontal document overflow at 1487, 1440, or 390px.
-- Colors/tokens: #050505 background, #f5f5f5 primary text, #ff6a00 accent, quiet white-opacity rules. Computed primary button is rgb(255,106,0). No new ornamental gradients or card grid treatment.
-- Image quality: authentic 1280px YouTube thumbnail loads for the real featured MV; original single covers load. Higher-resolution selection fixes the first pass softness; fallback avoids missing or tiny placeholder thumbnails. Existing brand asset retained.
-- Copy/content: first viewport is MV-only, discovery is singles-only; no albums. Community labels only accompany positive real support. Actual comments carry their authors, otherwise the creator description is labeled honestly. Navigation preserves existing destinations; future MV gallery is not fabricated.
+- 字體：沿用全站sans與繁中字型fallback；重標題、一般操作及較輕說明層級清楚。沒有為插畫烘焙UI字。來源標題光學尺寸／原logo字型未完全等同，列P3；文字皆真實HTML且可選取、翻譯。手機文字自然換行。
+- 版面：全寬工作室＋三模式順序保留，盲聽雙欄和三個選擇單排，Next置右。手機按鈕至少44px高；主播放與三選擇實測54px以上，窄屏不隱藏主要選擇。桌面選擇區68px，沒有新增表單排。
+- 顏色：深灰藍基底、暖橘主要CTA、薄荷Q Crash CTA、深色介面維持整站黑底； disabled／selected、focus-visible可辨。沒有白色大面积底或全黑空洞。
+- 影像：四張WebP插畫為生成的真實raster，無手繪CSS／SVG設備替代。設備、檯燈、桌面裁切、銳利度及壓縮可接受；手機仍能區分A／B。標準Lucide功能icon／文字VS為實際UI，非插畫替代。原作品封面只在投票後顯示。
+- 文案：獨立可用的短行為語，30秒／第15–45秒、平手也3點、排名影響、登入返回路徑一致。未混入設計提案、工程流程或未啟用登入／評論／投稿扣點承諾。
 
-Additional UI evidence: `mobile-zh.jpg`, `mobile-en.jpg`, `comments-mobile.jpg`. Four languages checked through the language control. The modal traps focus through native dialog behavior, closes with Escape, restores focus, and shows a real no-comments state. Guest access offers login; authenticated write/auth/failure behavior is covered by runtime tests, without posting test comments or hearts to production. The existing shared player plays a real single; user-initiated YouTube playback succeeds and pauses that audio. Support deduplication, week boundaries, ties, empty and unavailable states have targeted tests.
+## 操作與證據
 
-Limitations: no live signed-in owner session was used for UI QA. Existing account/notification components are preserved; authenticated feedback transport is tested with mocks. No production test votes, comments, submissions or database migrations.
+- 主頁開始盲聽直接進`/battle/listen`；返回、Q Crash建立、Drop挑戰、規則及對戰記錄連結保留真實路徑。既有Q／Drop對戰卡及官方關卡保留。
+- 隔離瀏覽器實際播放A與B，各原歌15–45秒，audio paused=true且currentTime=45；單一audio切換，不與全站播放器重疊。
+- 平手後3點提示、揭示兩首真實原作品與前往支持／Creator Center入口可见；此為fixture UI測試。實際原子發點、retry不重發、同一pair交換A/B不重發、own-song排除、隱藏／到期拒絕由已回滾的SQL交易測試驗證。
+- Next清空題目、失敗重試保留原選擇、換帳號清私人資料、guest返回原入口由runtime tests驗證；未使用正式會員留下測試票。
+- 中英日韓320px兩路由console error檢查為空；開發工具N徽章和Chrome翻譯擴充浮鈕不屬於產品，正式截圖另在發布證據記錄。
+- 全景中的標題／按鈕／控制字在1440px原圖皆可辨；另以390px控制與選擇實際截圖確認觸控佈局，不需要另做有損放大crop。成對比對的控制區、reward和模式CTA亦逐項檢視。
 
-# MV gallery design QA — 2026-10-13
+## 後續P3
 
-final result: passed
+- 概念稿紙牌A/B與手写器材小標未逐像素複製；正式稿以真實匿名標籤與無識別設備plate呈現，避免烘焙功能文字。
+- 盲聽第一版限現有音檔；連結作品保持一般探索／Heart資格。無可用題目、失敗與guest狀態已實作，來源概念未包含這些狀態。
 
-Target: user-selected `/Users/huangyihong/Documents/New project/outputs/aipoger-mv-concepts/01-mv-curated.png`, 1487 × 1058. Implementation: `/mv?lang=zh`. Evidence: `/Users/huangyihong/Documents/New project/outputs/aipoger-mv-release/`.
+## 完成檢查
 
-`comparison.jpg` combines the selected source and loaded implementation at the same 1487 × 1058 viewport in one image, visually inspected together. P2 issues repaired: the initial desktop poster was too tall and moved the catalog too low; the global guest account control duplicated the inline login; a separate filter row disrupted the three-card composition. Revised panoramic poster, shared header with MV active, hidden duplicate global guest chrome and compact combined catalog controls resolve them. No remaining actionable P0/P1/P2 differences.
-
-Fidelity: black #050505 canvas, orange action, official existing raster logo, large editorial heading, left poster/right information, hairline separators and three 16:9 cards. Actual 48 public creator videos replace illustrative mock artwork. Current-week support is zero, so the truthful New Release label and creator description replace fabricated community endorsement. Latest/support and actual musical genres replace unsupported narrative/animation metadata. Existing four-language control is intentional. Higher-resolution YouTube thumbnail fallback is verified, including standard-resolution fallback on a real older video.
-
-Mobile 390 × 844: stacked hero, horizontally scrollable nav, one-column cards, full-width search, usable genre select, native focus-trapping video/comments dialogs, no document overflow. English/Japanese/Korean tested through the real language switch, without overflow. Evidence: `local-mobile*.jpg`, `local-comments-mobile.jpg`; desktop `local-desktop.jpg`. Search locates a May historical submission outside the first 12 cards; actual user-initiated YouTube playback succeeds (`historical-playback.jpg`). Search/genre intersection, empty result/reset, original feedback work ID and guest login return to `/mv` verified. All links retain creator text and original work identity. Guest comments loaded to a real empty state. No test comments, hearts or uploads were posted.
-
-Authenticated writes are covered by runtime mocks; no live owner session was used. Existing signed-in account/notice control remains preserved. Battle-specific winner-release links retain their separate permissions and original record surface; database inventory currently contains no such release URL. This gallery aggregates existing public community music submissions, including historical Showtime metadata, and separately preserves three submitted channel URLs.
-
-Production verification: `https://aipoger.com/mv?lang=zh`, deployment `dpl_6ntBxCmThoX1rXVpFqCzFy87xNPU`, app `6d36364`. Loaded all 48 cards and preserved 3 channel links; historical work search and actual comments read succeeded. `production-desktop.jpg`, `production-mobile.jpg`, `production-comments-mobile.jpg`; no horizontal overflow or console errors.
-
-## Featured exposure deduplication — 2026-10-13
-
-PASSED. App `8689575`, deployment `dpl_7Bs119NdHNPPncf4bTqjQRbaaSAQ`, promoted and verified on `aipoger.com`. At 1487 × 1058 desktop and 390 × 844 mobile, the featured 救生圈 appears only in the hero; the MV first row shows 還沒學會忘記, V O R A C I O U S and 聲聲攏是愛. Full expansion under support sorting shows 47 other works; the source catalog retains all 48 plus 3 channel links. Searching the featured work points back to the hero. Homepage singles also exclude featured IDs and fill with other songs. No horizontal overflow or console errors. Evidence: `/Users/huangyihong/Documents/New project/outputs/aipoger-feature-dedup-release/`.
-
-## MV card support and comments — 2026-10-13
-
-final result: passed
-
-Source: user-approved `/Users/huangyihong/.codex/generated_images/01a11410-a7ad-7352-bd36-4ff0b48ba73f/exec-d7c8d193-05ec-4812-924e-56b1f7d9e60b.png`. Implementation: production build at `http://localhost:3110/mv?lang=zh`. Evidence directory: `/Users/huangyihong/Documents/New project/outputs/aipoger-mv-actions-release/`.
-
-`comparison-initial.jpg` and `comparison-detail-initial.jpg` exposed a P2 mismatch: title and action icons were too small for the approved hierarchy. Title increased to 22px, creator to 15px, icons to 34px inside targets of at least 44px. `comparison-final.jpg` places source and built implementation side by side at exactly 1487 × 1058 CSS/pixel viewports, density 1; `comparison-detail-final.jpg` pairs their metadata rows. Both inspected together. No remaining actionable P0/P1/P2 differences.
-
-Five fidelity surfaces checked: existing font stack and clear title/creator hierarchy; two-row metadata with actions beside the title and no third control row; original black/orange tokens; existing authentic artwork and its original 16:9 crop; localized real titles, creators and truthful weekly counts. Lucide MessageCircleMore is the existing library's comment symbol. The generated reference slightly shortened the posters; implementation preserves original artwork/aspect ratio. Official logo, navigation, hero, ranking and featured deduplication remain intact.
-
-Desktop 1487 × 1058 and mobile 390 × 844 have no document overflow in all four languages. `local-built-desktop.jpg`, `local-mobile-cards.jpg`, `local-comments-desktop.jpg` and `local-comments-mobile.jpg` show the two-row controls and combined video/comment dialog. Public comments open for the selected original work; explicit Watch starts the real YouTube video and pauses shared audio. Actual playback observed. Collapsing video unloads the iframe while retaining the dialog. Guest Heart routes to login with `/mv` as return path. Fresh built-page console has no errors.
-
-Full suite: 513 tests, 482 passed, 31 existing optional DB skips, 0 failures. TypeScript and build passed; lint 0 errors and 16 existing warnings. Runtime tests cover batch private daily state, direct reaction/favorite synchronization, duplicate-click lock, failure preservation, account-change races, dialog video/draft behavior and login routing. Authenticated writes used mocks; no live signed-in owner session, production votes/comments, uploads or database migrations were used.
-
-Production: app `5d1178d`, READY deployment `dpl_J97UK5nFW6KQJaHurB9yoNJC7fhE`, promoted to `https://aipoger.com/mv?lang=zh` and apex verified. `production-desktop.jpg`, `production-mobile-cards.jpg`, `production-comments-mobile.jpg` inspected. Real YouTube playback at 2 seconds, public empty comments, iframe unloading, focus restoration and guest Heart's `/mv` login return verified. Console has no errors. Catalog retains 48 videos and 3 channels; homepage and gallery featured deduplication intact.
-
-
-## Explore redesign — 2026-10-13
-
-final result: passed
-
-Target: exact user-approved `/Users/huangyihong/.codex/generated_images/01a11410-a7ad-7352-bd36-4ff0b48ba73f/exec-d7da2cc1-89e8-452d-8b10-0230f51108ec.png` (1487 × 1058). Render: `http://localhost:3111/ai-music?lang=zh`, loaded actual public catalog, Jazz / Bossa guest profile completed through the existing Earworm interface. Actual creator names and covers replace illustrative names/artwork. Source depicts a signed-in avatar; rendered guest view retains the normal sign-in action. Both paired captures show active playback; the existing shared player is intentionally preserved. No fake listening time, account, score or track was inserted.
-
-Evidence: `/Users/huangyihong/Documents/New project/outputs/aipoger-explore-release/`. Source/live captures are 1487 × 1058 at CSS viewport 1487 × 1058, density 1. Explicit screenshot clips were required because the default IAB screenshot reflected its surrounding window dimensions. `comparison-final.jpg`, `comparison-header.jpg`, and `comparison-cards.jpg` contain source and implementation together; these combined inputs were opened and visually inspected.
-
-Findings and iterations:
-
-- [P2, fixed] At 320px in English, the genre selector shrank to 55px. A full-width selector row below the mode/guide controls now measures 284px. Evidence: `06-local-mobile-320-en.png` → `07-local-mobile-320-en-fixed.png`; the latter was opened and inspected.
-- [P2, fixed] The first desktop headline was 50px against the mock's roughly 60px display heading. The final heading is 59.48px at the reference viewport, with first covers at y=334.42 versus y=331 in the reference. Evidence: updated `11-local-final-playing.png` and paired final/header comparisons.
-- [P2, fixed] Hovering artwork exposed a large Battle HUD over the new cover-led layout. Record details now open explicitly through the original info action on desktop/mobile; hover/focus reveals the compact info/share controls. Actual Battle counts remain available.
-- [P2, fixed] Old recommendations could persist above a loading/error state during a locale reload. Recommendation rendering now requires ready data; no stale success catalog is shown after a failed fetch.
-
-Required fidelity surfaces:
-
-- Fonts/typography: existing site sans/CJK fallbacks preserve the black/orange design's clean hierarchy. Heading ~60px desktop/36px phone; section titles 30px desktop/24px phone; song titles 20px/17px; creators 14px/13px. Actual longer work names clamp at two lines and retain full accessible/link text. Larger orange heart glyphs sit beside titles within 44px targets.
-- Spacing/layout: compact common header, left title, right search/radio CTA, one control strip, six square covers on desktop and two columns on phones. No giant hero or nested recommendation panel. Existing recommendation IDs are excluded from lower lanes without changing original lane order or playback queues. Authentic long names and the bottom challenge action account for additional row height relative to short illustrative titles. Main frame's 9px reference inset difference is acceptable P3.
-- Colors/tokens: #050505 background, #ff6a00 radio CTA, white titles, restrained gray metadata, orange selected state/heart; no new gradients or glow panel in the catalog. Existing red challenge and yellow NEW badges retain their semantic meaning.
-- Image quality: original creator imagery, original approved logo and original covers only; no fabricated replacements or code-drawn artwork. Square cover crops and source artwork text remain intact. Lucide library icons match the outlined controls.
-- Copy/content: h1 探索音樂, subtitle 找到對味的歌，讓好作品被聽見。, clear 傷心酒吧／連續聽電台, recommendation taste caption, more music and original genres. All four locales checked; actual work names/creators never transcreated into demo names. Total 225 public works/14 genres is truthful at QA time, placed below the catalog.
-
-Interaction evidence: full catalog search (7 actual 愛波哥 tracks); Jazz intersection (2 tracks); no-match/reset; 0 duplicate card IDs; direct guest heart opens auth with the original work return path; playing real audio advances to >21s with readyState=4; close player; info expand/collapse; full guest Earworm completion and return; genre/Hot Now toggle and real recent rank; guide focus trap, Escape and return. Desktop and phone zh/en/ja/ko plus 320/768/1280 widths inspected; no page overflow; local console errors none.
-
-Implementation checklist: all P0/P1/P2 findings resolved; responsive and interaction checks passed; real data/assets verified; production gate can proceed. Remaining P3: the authentic titles, support counts, public affinity badge, preserved player and signed-out account action intentionally differ from the illustrative mock. No further polish loop.
-
-Production verification: app `e8f2977`, READY deployment `dpl_M3wZ23ATz3CPV6vjo9uUZkiYgKZW`, promoted to apex and www. Actual public catalog remains 225 works at acceptance time. The existing production-origin K-Pop guest profile remains intact. Full catalog search finds 7 愛波哥 songs, Jazz intersection finds 2, no-match/reset and 0 duplicated visible work IDs verified; original global Hot Now ranks and guest Heart return path preserved. Real audio advanced beyond 34 seconds at readyState 4, then the shared player was closed. Record info expanded/collapsed successfully. Production desktop and 390px phone in zh/en/ja/ko have no document overflow; screenshots `13-production-desktop.png` through `17-production-mobile-ja.png` saved privately. Homepage/MV/auth/radio still return HTTP 200. No live owner writes, test support, comments, submissions or SQL changes.
-
-## Explore radio + current-pool charts (2026-10-13)
-
-Reference: user-selected `exec-f709c1d4-b7d1-48f2-85fb-ccb5d3a3e093.png`, 1487x1058. Latest user instruction overrides its Top10 comment icons: remove them from rankings; retain comments on radio, cards and dock. Original artwork, creators, scores and NEW/Battle state replace illustrative reference data. No new design asset or fabricated personal result.
-
-Local acceptance uses real public work IDs and the production build. Evidence is private at `New project/outputs/aipoger-radio-chart-release`; `09-reference-comparison.png` pairs reference and actual desktop at identical dimensions. Five surfaces inspected:
-
-- Composition: compact radio first, title/search/control strip, left two-column-width Top10 and four-cover gallery; all ten chart works and two cover rows visible on the 1487x1058 desktop. Removed old bar hero/chat/lyrics wall. Tightened desktop gaps and cover crop after first review pushed second-row metadata below fold.
-- Type/content: Traditional Chinese-first live localized copy, readable heading and creator hierarchy, chart explanation describes distinct supporter count rather than total repeated daily hearts. No-profile visitors see real genre lanes; actual completed guest Earworm yields four recommendations (three nearby plus one discovery).
-- Spacing: icons beside title without a new row; mobile controls retain 44px hit targets, two cards per row and compact chart preview. Fixed English 320/390 radio selector crowding by removing optional mobile radio subtitle, not adding empty rows.
-- Shape/style: existing official logo, black/orange palette, original covers, Lucide orange Heart and white comment outline; source aspect follows mock crop on desktop and square mobile cards. Existing account controls remain.
-- Interaction/state: shared root audio played Jazz and City-Pop, advanced >30s with readyState4, seek/volume/history and card takeover verified. Inline-visible dock hidden while audio remains mounted. Top50 contains 50 original works; chart song name clears incompatible filter, expands matching genre and focuses original card. Rankings have zero comment icons. Radio/card comments open original work modal, show existing comments and correct post-login return; no live public writes. Daily Heart/favorite paths preserved; three calendar-month eligibility and distinct-support ties covered by tests. Profile upload extraction covers success/failure, draft retention, capacity, account changes and concurrent submit using isolated mocked dependencies.
-
-Automated acceptance: 532 tests, 501 passed, 31 existing optional DB skips, zero failures. TypeScript and production build passed; lint zero errors / 15 existing warnings. No SQL migration, deletion, environment change or APC activation. Expiration removes public discovery/radio/home-single/chart exposure only; creator/history/storage retained. Logged-in production upload and owner actions were not performed. Production acceptance is recorded after promotion in release evidence.
-
-Production acceptance: app `6342878`, READY deployment `dpl_BjHkGMG8YcpcFXtHBCXNcrDBb5iB`, promoted to apex/www. API and radio share 113 eligible original IDs, 66 works with distinct support. Real Jazz audio advanced >88s at readyState4. Top50 has 50 original works; chart name clears an incompatible search, expands/focuses the original card; no chart comment icons. Original public comments and exact work/comment auth return verified, without writes. Production 390px zh/en/ja/ko and desktop checked, no document overflow; private `13-production-desktop.png`, `14-production-comments.png`, `15-production-mobile-*.png`. Existing production K-Pop taste result remains intact. Six updated existing Drive targets (five changed masters plus index) read back byte-equivalent to local UTF-8 texts. Full suite after docs changes: 501 pass, 31 existing optional DB skips, 0 fail. Physical storage cleanup, points and complete Profile Data design remain outside this release.
-
-# Creator Center design QA — 2026-10-13
-
-final result: passed
-
-Source: `/Users/huangyihong/.codex/generated_images/01a11410-a7ad-7352-bd36-4ff0b48ba73f/exec-3bf8d7de-80d8-4441-ab88-23a7dca2842d.png`, 1487×1058 raster. Target: https://aipoger.com/profile?lang=zh, authenticated real owner, black/orange. CSS viewport1487×1058, DPR1; desktop content width1472 due15px native scrollbar. Screenshot API viewport capture can be scaled/clipped by Chrome's actual window; full-page/content capture is used for final whole-layout evidence and this density difference is explicitly not treated as a typography finding.
-
-Evidence directory: `/Users/huangyihong/Documents/New project/outputs/aipoger-creator-center-release/`. `desktop-preview-before`, `desktop-preview-compact`, `desktop-final`, `desktop-viewport-final`, `editor-focused`, `file-form-desktop`, `mobile-zh/en/ja/ko`, `mobile-320-ko`, `mobile-320-ko-after`, `tablet-ko-after` retain raw browser JPEG captures (initially named .png; normalized final delivery uses .jpg). Source and actual implementation were provided together in a single image comparison input, including focused examination of the summary, table and preview; source typography/content and actual UI are readable at full resolution. No code-drawn substitutes for original artwork.
-
-Iteration1 findings: P1 individual Edit opened all old lists before its form. P2 title/subtitle and Credit height plus10-row summary pushed recent comments and final preview controls too low. P2 duplicated mobile support/comment subline was accidentally visible on desktop, increasing each row height. Fixes: focused same-ID editor dialog and cancel-close; inline desktop heading, compact Credit,4-row overview (full legacy10-row manager preserved); explicit desktop hide/mobile inline counts; title/creator editable details and compact source/status/allowance.
-
-Iteration2 finding: P2 saved account-avatar position obscured mobile navigation. Fix: on Profile at≤920px, unsafe top positions use the reserved header corner without rewriting saved preference; drag/notifications remain available. Post-fix real320px screenshot and DOM box x231/y8/width48 show nav clear. No horizontal document overflow at320,390,768,1280,1487 CSS widths. Final style and source-metadata fix ship in68949a5.
-
-Five fidelity surfaces:
-- Fonts/typography: existing Inter/Noto Sans TC/PingFang stack,44px/36px/32px title hierarchy,16px work titles,12–15px metadata/controls,16px mobile inputs. Genre and long real titles truncate without changing stored text. Four new-center languages checked after authentic data loaded; original legacy UI retains its existing language behavior.
-- Spacing/layout rhythm: source-like wide frame, three metrics plus adjacent Credit, left four-row work overview/recent feedback and right inline submission. Field pairs, optional metadata and focused editor reduce empty/mixed regions. Tablet/mobile stack uploader after metrics. The official16:9 player is taller than the generated panoramic example; ordinary scroll may expose the last button border/helper notes. Confirmation label remains visible near the desktop fold; this is P3, not a hidden persistent control.
-- Colors/tokens: #050505 surface, white headings, low-opacity rules, #ff6a00/#ff7518 accents; honest ended/hidden/unknown states. Pending Credit is explicit; no invented active balance.
-- Images/assets: existing official logo and real user/creator artwork, original-platform players and standard Lucide icons; mock rain/neon art and invented avatars deliberately replaced by actual authorized originals. No handmade replacement image assets.
-- Copy/content:8 real works,97 saves and0 actual commenters replace12/38/17/64 mock values. Publication dates/statuses are real, including7 ended and1 hidden. No fabricated comments, credits, listening duration, playback success or new Battle rules.
-
-Interactions: owner data; own4-row pagination, saves10-row pagination and Choice entrance, received-comment empty state, original editor cancel, settings close, file source and collapsed optional data, source preview and YouTube play-event gate, error/auth/duplicate/quota/identity runtime checks. Console error capture empty. DB role-based rollback test validated insert/quota with329 original rows retained; no permanent test posting. Other members' private ownership/owner gating covered by verified-auth runtime tests; no second real member account used.
-
-No actionable P0/P1/P2 findings remain. P3 follow-up: minor generated-vs-official-player height/action-icon differences and additional tab/dialog semantic polish. No claim of a full WCAG audit.
+- [x] 來源與同狀態實作成對比較及修正迭代
+- [x] 桌機／手機與四語檢查
+- [x] 真實音訊播放及評測控制
+- [x] 無剩餘P0／P1／P2；P3明列

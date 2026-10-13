@@ -29,18 +29,6 @@ test("product rules lock the no all-styles Battle Pool filter rule", () => {
   assert.ok(productRulesSource.includes("Clicking an already selected Battle Pool genre clears the selection"));
 });
 
-test("Battle Pool compact navigation starts with Explore and keeps share separate", () => {
-  const exploreIndex = battlePageSource.indexOf('href: `/ai-music?lang=${lang}`');
-  const listenBarIndex = battlePageSource.indexOf('href: `/listen-bar?lang=${lang}`');
-  const recordsIndex = battlePageSource.indexOf('href: `/battle/results?lang=${lang}`');
-  assert.ok(exploreIndex >= 0);
-  assert.ok(exploreIndex < listenBarIndex);
-  assert.ok(listenBarIndex < recordsIndex);
-  assert.ok(battlePageSource.includes('className="battle-stage-share-action"'));
-  assert.equal(battlePageSource.includes("battle-stage-waveform"), false);
-  assert.equal(battlePageSource.includes("battle-stage-deck"), false);
-  assert.equal(battlePageSource.includes("battle-stage-eq"), false);
-});
 
 test("creator-owned waiting cards expose intentional self challenge", () => {
   assert.ok(battlePageSource.includes("用另一首 Drop 挑戰"));

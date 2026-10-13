@@ -6,7 +6,7 @@ import LangToggle from '@/components/lang-toggle';
 /** 首頁頂欄自行放置語系按鈕，其餘頁面用固定右上角 */
 export default function GlobalLangToggle() {
   const pathname = usePathname();
-  if (!pathname || (pathname === '/' || pathname === '/mv' || pathname === '/ai-music' || pathname === '/profile')) return null;
+  if (!pathname || (pathname === '/' || pathname === '/mv' || pathname === '/ai-music' || pathname === '/profile' || pathname === '/battle' || pathname === '/battle/listen')) return null;
   const battleArenaMatch = pathname.match(/^\/battle\/([^/]+)$/);
   const battlePanelIds = ['setup', 'hook-cut', 'matchmaking'];
   const routesWithLocalLangToggle = new Set([

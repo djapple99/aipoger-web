@@ -33,7 +33,6 @@ const cardClientSource = source("../src/components/q-crash-card-client.tsx");
 const battlePoolSource = source("../src/app/battle/page.tsx");
 const battlePageSource = source("../src/app/battle/[id]/page.tsx");
 const qCrashRulesSource = source("../src/lib/q-crash-rules.ts");
-const globalStylesSource = source("../src/app/globals.css");
 const productRulesSource = source("../docs/aipoger-product-rules.md");
 const analyticsRouteSource = source("../src/app/api/admin/analytics/route.ts");
 const analyticsPageSource = source("../src/app/admin/analytics/page.tsx");
@@ -130,15 +129,6 @@ test("Battle Pool renders one grouped Q Crash card and removes its two queue row
   assert.match(battlePoolSource, /q-crash-matchups[\s\S]*?qCrashCards\.map[\s\S]*?drop-battle-pool/);
 });
 
-test("Battle Pool keeps Q Crash cyan, Drop Battle red, and solid actions dark", () => {
-  assert.ok(battlePoolSource.includes('<BattlePanelLabel tone="cyan">Q CRASH</BattlePanelLabel>'));
-  assert.ok(battlePoolSource.includes('<BattlePanelLabel tone="cyan" wide>Q CRASH MATCHUPS</BattlePanelLabel>'));
-  assert.ok(battlePoolSource.includes('<BattlePanelLabel tone="red" wide>60S DROP BATTLE POOL</BattlePanelLabel>'));
-  assert.ok(battlePoolSource.includes("q-crash-solid-cta"));
-  assert.ok(battlePoolSource.includes("drop-battle-solid-cta"));
-  assert.match(globalStylesSource, /\.q-crash-solid-cta \{[\s\S]*?color: #020708 !important;/);
-  assert.match(globalStylesSource, /\.drop-battle-solid-cta \{[\s\S]*?color: #160604 !important;/);
-});
 
 test("Q Crash comments are optional at vote confirmation and locked afterward", () => {
   assert.ok(commentMigrationSource.includes("q_crash_comments_one_per_voter unique (battle_id, user_id)"));

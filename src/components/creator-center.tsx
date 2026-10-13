@@ -317,17 +317,17 @@ export function CreatorCenterLayout({
               <strong>
                 {data?.isOwner
                   ? tx("免扣點", "No deduction", "ポイント免除", "포인트 면제")
-                  : tx("尚未啟用", "Not active", "準備中", "준비 중")}
+                  : data?.credits.enabled ? String(data.credits.balance ?? "—") : tx("尚未啟用", "Not active", "準備中", "준비 중")}
               </strong>
               <small>
                 {data?.isOwner
                   ? tx(
-                      "OWNER 專屬權限 · 點數尚未啟用",
-                      "OWNER exemption · credits not active",
+                      data?.credits.enabled ? "OWNER 免扣點 · 盲聽獎勵已啟用" : "OWNER 專屬權限 · 點數尚未啟用",
+                      data?.credits.enabled ? "OWNER exemption · blind rewards active" : "OWNER exemption · credits not active",
                     )
                   : tx(
-                      "啟用後顯示實際可用積分",
-                      "Your actual balance will appear when activated",
+                      data?.credits.enabled ? "盲聽獎勵已啟用" : "啟用後顯示實際可用積分",
+                      data?.credits.enabled ? "Blind listening rewards active" : "Your actual balance will appear when activated",
                     )}
               </small>
               <button onClick={() => setDialog("credit")}>
@@ -803,12 +803,14 @@ export function CreatorCenterLayout({
               title={external.title}
             />
           ) : dialog === "credit" ? (
-            <p>
-              {tx(
-                "點數尚未啟用，目前沒有點數收支紀錄。Owner 啟用後仍免扣點。",
-                "Credits are not active, so there are no credit transactions. Owner deductions remain exempt when activated.",
-              )}
-            </p>
+            <div>
+              <p>{data?.credits.enabled
+                ? tx("目前每題盲聽獎勵3點；每日登入、評論獎勵及點數投稿尚待啟用。Owner 保持免扣點。", "Blind comparisons earn 3 Credit. Login/comment rewards and extra submissions are not active yet. Owner deductions stay exempt.")
+                : tx("點數尚未啟用，目前沒有點數收支紀錄。", "Credits are not active yet.")}</p>
+              {data?.credits.entries?.length ? <ul>{data.credits.entries.map(entry => <li key={entry.id} style={{display:"flex",justifyContent:"space-between",gap:16,padding:"12px 0",borderBottom:"1px solid #34434b"}}>
+                <span>{tx("盲聽評測", "Blind comparison")} · {new Date(entry.created_at).toLocaleDateString()}</span><strong>+{entry.delta}</strong>
+              </li>)}</ul> : data?.credits.enabled ? <p>{tx("尚無點數紀錄，完成盲聽就會累積。", "No transactions yet. Complete a blind comparison to start.")}</p> : null}
+            </div>
           ) : (
             <div className={styles.legacy} data-mode={dialog ?? "works"}>
               {props.legacy}

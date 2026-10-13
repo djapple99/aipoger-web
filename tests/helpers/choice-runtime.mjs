@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -11,7 +11,8 @@ export const USER = uuid(1);
 
 // Execute the actual TypeScript modules with mocked I/O, not source-pattern assertions.
 export function loadTs(relativePath, mocks = {}, cache = new Map()) {
-  const filename = path.resolve(root, relativePath);
+  let filename = path.resolve(root, relativePath);
+  if (!existsSync(filename) && existsSync(filename + ".ts")) filename += ".ts";
   if (cache.has(filename)) return cache.get(filename).exports;
   const loaded = { exports: {} };
   cache.set(filename, loaded);

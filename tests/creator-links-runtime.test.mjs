@@ -229,7 +229,7 @@ test("private summary reads all own submissions including expired records, hides
   assert.equal(p.commentCount, 1);
   assert.equal(p.comments[0].user_id, undefined);
   assert.equal(p.isOwner, false);
-  assert.deepEqual(p.credits, { enabled: false, balance: null });
+  assert.deepEqual(p.credits, { enabled: true, balance: 0, entries: [] });
   assert.equal(
     (await mount(admin, { owner: true }).get(request(null))).status,
     200,

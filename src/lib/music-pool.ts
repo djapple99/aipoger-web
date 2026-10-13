@@ -1,3 +1,4 @@
+import { popularityScore } from "./blind-listening.ts";
 // Three calendar months from publication, measured in Asia/Taipei.
 // This is display eligibility; it never deletes or rewrites a work.
 const TAIPEI_OFFSET = 8 * 3_600_000;
@@ -13,14 +14,19 @@ export function isInMusicPool(createdAt: string | null | undefined, now = Date.n
   const published = createdAt ? Date.parse(createdAt) : NaN;
   return Number.isFinite(published) && published <= now && now < musicPoolExpiresAt(createdAt);
 }
-export type PoolRankTrack = { id: string; createdAt: string; poolSupporterCount: number };
+export type PoolRankTrack = { id: string; createdAt: string; poolSupporterCount: number; blindSampleCount?: number; blindPreferencePoints?: number; popularityScore?: number };
 export function rankMusicPool<T extends PoolRankTrack>(tracks: T[], now = Date.now()) {
-  const sorted = tracks.filter(track => isInMusicPool(track.createdAt, now) && Number.isFinite(track.poolSupporterCount) && track.poolSupporterCount > 0)
-    .sort((a, b) => b.poolSupporterCount - a.poolSupporterCount || b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id));
+  const current = tracks.filter(track => isInMusicPool(track.createdAt, now) && Number.isFinite(track.poolSupporterCount));
+  const mixed = current.some(track => typeof track.blindSampleCount === "number");
+  const maxHearts = Math.max(0, ...current.map(track => track.poolSupporterCount));
+  const score = (track: T) => mixed ? popularityScore(track.poolSupporterCount, maxHearts,
+    { people: track.blindSampleCount ?? 0, preferencePoints: track.blindPreferencePoints ?? 0 }) : track.poolSupporterCount;
+  const sorted = current.filter(track => track.poolSupporterCount > 0 || (track.blindPreferencePoints ?? 0) > 0)
+    .sort((a, b) => score(b) - score(a) || b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id));
   let rank = 0;
   return sorted.map((track, index) => {
-    if (index === 0 || track.poolSupporterCount !== sorted[index - 1].poolSupporterCount) rank = index + 1;
-    return { track, rank };
+    if (index === 0 || score(track) !== score(sorted[index - 1])) rank = index + 1;
+    return { track: mixed ? { ...track, popularityScore: score(track) } : track, rank };
   });
 }
 export function musicPoolSupportCounts(tracks: { id: string; created_by?: string | null; created_at?: string | null }[],

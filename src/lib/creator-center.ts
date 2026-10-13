@@ -30,6 +30,6 @@ export type CreatorSummary = {
   commenters: number;
   commentCount: number;
   comments: CreatorComment[];
-  credits: { enabled: false; balance: null };
+  credits: { enabled: boolean; balance: number | null; entries?: { id: string; delta: number; reason: string; created_at: string }[] };
   linkSubmissionReady: boolean;
 };

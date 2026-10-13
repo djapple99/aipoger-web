@@ -4,11 +4,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { BadgeCheck, BookOpen, ChevronsRight, Clock3, Compass, History, Radio, Swords } from "lucide-react";
+import { ChevronsRight, Clock3, Swords } from "lucide-react";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
 import ShareButton from "@/components/share-button";
+import EditorialHeader from "@/components/editorial-header";
+import { BattleRetroIntro, DropRetroIntro } from "@/components/battle-retro";
+import retroStyles from "@/components/battle-retro.module.css";
 import SafetyNotice from "@/components/safety-notice";
 import { rememberAuthNextPath } from "@/lib/auth-urls";
 import { rankLabelForLevel } from "@/lib/battle-pool-rules";
@@ -64,8 +67,6 @@ const mockBattleData: BattleViewData = {
 const DAILY_BATTLE_QUEUE_MS = 24 * 60 * 60 * 1000;
 const SHOW_DAILY_BATTLE_SECTION = false;
 const DROP_BATTLE_GENRE_OPTIONS = MUSIC_GENRE_OPTIONS;
-const BATTLE_FEMALE_ASSET = "/images/battle/battle-fighter-citypop-female.png";
-const BATTLE_MALE_ASSET = "/images/battle/battle-fighter-gatekeeper-male.png";
 
 function normalizeGenreFilter(value: string | null | undefined) {
   return String(value || "").trim().toLowerCase();
@@ -182,116 +183,12 @@ function dedupeLiveBattleRows(rows: LiveBattleRow[]) {
   });
 }
 
-function BattleStageHero({
-  isZh,
-  lang,
-  t,
-}: {
-  isZh: boolean;
-  lang: ReturnType<typeof useI18n>["lang"];
-  t: ReturnType<typeof useI18n>["t"];
-}) {
-  const startLabel = isZh ? "發起挑戰" : "Start a Challenge";
-  const startHref = `/battle/setup?lang=${lang}`;
-  const quickLinks = [
-    { href: `/ai-music?lang=${lang}`, label: isZh ? "探索音樂" : "Explore Music", Icon: Compass },
-    { href: `/listen-bar?lang=${lang}`, label: t("btn_listen_bar"), Icon: Radio },
-    { href: `/battle/results?lang=${lang}`, label: t("watch_result_card"), Icon: History },
-    { href: `/rank?lang=${lang}`, label: t("watch_rank"), Icon: BadgeCheck },
-    { href: `/drop-guide?lang=${lang}`, label: isZh ? "Drop 規則" : "Drop Rules", Icon: BookOpen },
-  ];
-
-  return (
-    <header className="battle-stage-hero">
-      <div className="battle-stage-visual" aria-hidden="true">
-        <Image
-          src={BATTLE_FEMALE_ASSET}
-          alt=""
-          width={851}
-          height={1148}
-          priority
-          className="battle-stage-fighter battle-stage-fighter-female"
-        />
-        <Image
-          src={BATTLE_MALE_ASSET}
-          alt=""
-          width={870}
-          height={1132}
-          priority
-          className="battle-stage-fighter battle-stage-fighter-male"
-        />
-        <div className="battle-stage-vs">VS</div>
-      </div>
-
-      <div className="battle-stage-copy">
-        <p className="battle-stage-kicker">AIPOGER BATTLE POOL</p>
-        <h1>{t("watch_page_title")}</h1>
-        <p className="battle-stage-subtitle">
-          {isZh ? "挑戰 AI、對決全場。用 60 秒 Drop 讓聽眾投票。" : "Challenge AI, face the room, and let listeners vote on a 60s Drop."}
-        </p>
-        <div className="battle-stage-primary-actions">
-          <Link href={startHref} className="battle-stage-primary-cta">
-            <Swords aria-hidden="true" size={18} strokeWidth={2.4} />
-            <span>{startLabel}</span>
-          </Link>
-          <ShareButton
-            title={t("watch_share_title")}
-            text={t("watch_share_text")}
-            label={isZh ? "分享鬥歌場" : "Share Battle Hall"}
-            copiedLabel={t("common_copied")}
-            className="battle-stage-share-action"
-          />
-        </div>
-      </div>
-
-      <nav className="battle-stage-actions" aria-label={isZh ? "Battle 快速入口" : "Battle Quick Links"}>
-        {quickLinks.map(({ href, label, Icon }) => (
-          <Link key={href} href={href} className="battle-stage-action-link">
-            <Icon aria-hidden="true" size={16} strokeWidth={2.2} />
-            <span>{label}</span>
-          </Link>
-        ))}
-      </nav>
-    </header>
-  );
-}
-
 function BattlePanelLabel({ tone, wide = false, children }: { tone: "cyan" | "red"; wide?: boolean; children: string }) {
   return (
     <div className={`battle-panel-label battle-panel-label-${tone}${wide ? " battle-panel-label-wide" : ""}`}>
       <span>{children}</span>
       <ChevronsRight aria-hidden="true" size={24} strokeWidth={3} />
     </div>
-  );
-}
-
-function QCrashModePanel({ isZh, lang }: { isZh: boolean; lang: string }) {
-  const displayLang = qCrashDisplayLang(lang);
-  return (
-    <section className="q-crash-mode-panel mt-5 overflow-hidden rounded-[1.4rem] border border-cyan-300/35 bg-[radial-gradient(circle_at_82%_24%,rgba(34,211,238,0.15),transparent_34%),linear-gradient(115deg,rgba(3,20,29,0.92),rgba(0,0,0,0.68))] px-4 py-4 shadow-[0_0_40px_rgba(34,211,238,0.09)] md:px-5 md:py-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0 flex-1 basis-52">
-          <div className="flex flex-wrap items-center gap-3">
-            <BattlePanelLabel tone="cyan">Q CRASH</BattlePanelLabel>
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-black tracking-[0.12em] text-cyan-100">
-              <Clock3 size={14} /> ASYNC FULL SONG
-            </span>
-          </div>
-          <p className="mt-2 max-w-2xl text-xs font-bold leading-5 text-zinc-300">
-            {isZh
-              ? "兩首完整歌曲，隨時來聽、來投。截止才公開結果。"
-              : "Two full songs. Listen and vote in your own time. Results open at the deadline."}
-          </p>
-        </div>
-        <Link
-          href={`/battle/q-crash/new?lang=${displayLang}`}
-          className="battle-mode-action-cta q-crash-solid-cta shrink-0 bg-cyan-400 shadow-[0_0_28px_rgba(34,211,238,0.2)] transition hover:bg-cyan-300 md:mt-0"
-        >
-          <Swords size={18} />
-          {isZh ? "建立 Q Crash" : "Create Q Crash"}
-        </Link>
-      </div>
-    </section>
   );
 }
 
@@ -1503,6 +1400,7 @@ function BattlePoolList() {
         </p>
       )}
 
+      <DropRetroIntro />
       <section id="drop-battle-pool" className="battle-pool-shell aipo-panel-line mt-5 scroll-mt-24 rounded-xl border-red-400/30 p-4 md:p-5">
       <div className="battle-pool-head mb-4">
         <div>
@@ -2156,13 +2054,10 @@ function LiveBattleList() {
   }, [activeGenre, rows]);
 
   return (
-    <main className="aipo-stage-bg relative min-h-screen overflow-hidden text-[#ece9e6]">
-      <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_18%_20%,rgba(255,106,0,0.2),transparent_32%),radial-gradient(circle_at_82%_8%,rgba(0,203,255,0.14),transparent_28%),linear-gradient(180deg,#050505,#0b0908)]" />
-      <div className="pointer-events-none absolute inset-0 opacity-[0.12] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:48px_48px]" />
-
-      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 pb-10 pt-24 sm:px-6 md:px-10">
-        <BattleStageHero isZh={isZh} lang={lang} t={t} />
-        <QCrashModePanel isZh={isZh} lang={lang} />
+    <main className={retroStyles.page}>
+      <EditorialHeader active="battle" />
+      <div className={retroStyles.container}>
+        <BattleRetroIntro />
 
         {isAuthBypassEnabled && (
           <p className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/90">
@@ -2170,7 +2065,7 @@ function LiveBattleList() {
           </p>
         )}
 
-        <BattlePoolList />
+        <div className={retroStyles.details}><BattlePoolList /></div>
 
         {cancelError ? (
           <div className="mt-6 rounded-2xl border border-red-400/35 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-100">

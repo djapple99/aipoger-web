@@ -5,6 +5,7 @@ import { isAdminEmail } from "@/lib/admin-emails";
 import { externalMusicFromRow, parseExternalMusic } from "@/lib/external-music";
 import { isInMusicPool, musicPoolSupportCounts } from "@/lib/music-pool";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
+import { readCredit } from "@/lib/server-blind-listening";
 export async function GET(request: Request) {
   const headers = { "Cache-Control": "private, no-store" };
   try {
@@ -157,7 +158,7 @@ export async function GET(request: Request) {
             text: c.body,
             createdAt: c.created_at,
           })),
-        credits: { enabled: false, balance: null },
+        credits: await readCredit(admin, user.id),
         linkSubmissionReady: true,
       },
       { headers },
