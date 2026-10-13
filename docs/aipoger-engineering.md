@@ -1,5 +1,11 @@
 # AIPOGER 開發與維運
 
+2026-10-13 MV統一觀看／評分與連播已正式發布（app `9cb1b9b`，`codex/homepage-mv-editorial`）。572項測試：541通過、31既有可選DB測試略過、0失敗；TypeScript、本機正式build通過，lint 0 errors／15既有warnings。新增migration `20261013131336_mv_ratings.sql` 已實際套用Supabase；評分與留言使用service-only SECURITY INVOKER RPC，已登入user由伺服器getUser驗證，不接受客戶端user ID或自行宣稱owner。兩張新表啟用RLS並撤銷anon／authenticated直接權限；新RPC只有service_role可執行。一次評價原子儲存，receipt防止重送重複評論；原作品評論／管理與通知共用既有資料。公開discovery只回平均分及人數，私密個人分數由驗證Bearer讀取。交易式資料庫測試確認修改、不同人數／平均、作者限制、隱藏／moderation及grants，所有fixture、評論、通知及quota完整回滾。Security advisor新增兩筆service-only無policy的INFO，沒有新增WARN；既有definer RPC／Auth警告另存既有維運待辦。
+
+Vercel `dpl_CqDWx7SYkY1t2ktMpjMxqpZfy8xN` READY並promote至aipoger.com，MV頁與discovery正式／保護環境HTTP200。新migration檔名對齊實際Supabase歷史version `20261013131336`；MV discovery使用no-store，評價後讀取最新摘要，不使用舊CDN評分。
+
+一個YouTube IFrame API播放器按完整篩選清單loadVideoById接播；真實第一支播完至第二支（widget6維持同一播放器）已驗證，手動切換、pause及各作品草稿由runtime tests驗證。四語320px手機及桌機十個分數同排、無水平溢出，分享／歌名不自動播放。Credit不啟用，Heart／首頁人氣規則不改。[發布證據](releases/2026-10-13-mv-ratings-continuous.md)。
+
 2026-10-13 投稿額度與MV分享／評論提示已更新（app `3719612`／`codex/homepage-mv-editorial`）。一般會員連結與音檔共用168小時三首，取消同曲風五首active上限，Owner數量豁免由資料庫核對confirmed primary Auth identity。MV加入原生／複製分享，站內連結定位原MV評論視窗、無自動播放；橘色捲軸與可點向下評論提示、兩行卡片標題保留原資料，點歌名直接開MV視窗看全名。555項測試中524通過、31既有可選DB略過、0失敗；TypeScript、本機／雲端build及lint 0 errors／15既有warnings通過。Vercel `dpl_4MjsjhKvzXNLJG6ALa8SvT5ry66v` READY並promote；正式MV／Profile 200，私人API未登入401。點數每日15／至少20字有效評論10／增額60已定案但系統未啟用。部署及正式驗收讀[本次證據](releases/2026-10-13-submission-quota-mv-sharing.md)。
 
 
