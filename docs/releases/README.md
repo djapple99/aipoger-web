@@ -2,6 +2,7 @@
 
 僅供驗證目前版本、資料庫遷移及尚待啟用服務。產品規則以 [現行正文](../aipoger-product-rules.md) 為準；發布紀錄不是待辦或新授權。
 
+- [2026-10-13 創作者中心與連結投稿](2026-10-13-creator-center-links.md)：私人統計、投稿預覽、owner入口、兩份來源schema遷移與正式驗收。
 - [2026-09-17-showtime-charts-choice-release](2026-09-17-showtime-charts-choice-release.md)
 - [2026-09-18-choice-management-simplify-release](2026-09-18-choice-management-simplify-release.md)
 - [2026-09-18-owner-task-avatar-release](2026-09-18-owner-task-avatar-release.md)

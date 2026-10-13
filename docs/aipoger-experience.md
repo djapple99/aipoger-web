@@ -86,7 +86,7 @@ Avoid:
 - 有耳朵主場才顯示單列四首「為你推薦」，約三主場／近鄰＋一探索；下方曲風列排除其ID。未測驗先展示實際曲風牆。每類收合四首，既有七日NEW／每創作者首屏最多一首NEW規則保留，完整展開可看其餘同曲風作品。
 - 搜尋涵蓋全部符合三個月展示資格的原作品，作品／創作者／工具与曲風交集；無結果可重設、錯誤不偽裝空曲庫。資料每分鐘及回到頁面時刷新，保留訪客篩選、展開及定位。
 - 封面下是歌名旁大橘心與白評論，下行創作者，接戰作品保留攻擂；分享／戰績在原封面位置，不增加互動橫列。按評論開原作品modal，公開可讀，登入才留言／按心。榜單數字是不同非作者支持人数，累計每日Heart在按鈕提示／無障礙文字可查，不混為榜票。
-- 所有投稿入口進 `/profile?submit=1&lang=...#submit-work`，登入後打開自己的「我的作品」上傳表；既有檔案、metadata、手選曲風、額度与審核流程沿用。到期作品在自己的資料區標記推廣期結束並保留管理／預覽，完整頭像Data改版及歷史最高名次是後續設計。
+- 所有投稿入口進 `/profile?submit=1&lang=...#submit-work`，登入後打開自己的「我的作品」上傳表；既有檔案、metadata、手選曲風、額度与審核流程沿用。到期作品在新版創作者中心標記推廣期結束並保留管理／預覽；歷史最高名次仍是後續設計。
 - GUIDE保留X、Escape、backdrop、focus trap／return，四語完整；舊 `/listen-bar` 和 `/l/...` 保留曲風／語言導到小電台，舊投稿hash導到Profile。原戰績與攻擂明確同意機制保留。
 
 ## Homepage
@@ -218,6 +218,19 @@ Rules:
 - Protected actions ask users to sign in at the action boundary. Anonymous Drop arena exceptions and Q Crash requirements follow the product rules.
 - Error copy should explain what is blocked and what remains open.
 - Profile saved music follows the same compact fixed-bottom player language as Explore, Showtime, and Choice. Keep one play action in each song row; do not place waveforms, native audio controls, or competing mini players inside the account list.
+
+## 創作者中心：個人資料、作品與投稿
+
+`/profile` 沿用選定的黑橘桌機稿：簡短標題與身分列、三項私人統計、同位置 Credit、左側作品／收藏／收到的評論、右側投稿。一般會員只看自己的資料；owner 多一個後台入口，原大型身分區移到「編輯資料」。
+
+- 作品表每頁 4 件，提供封面播放、狀態、有效支持人數、評論與編輯；搜尋及狀態篩選保留。桌機數據有獨立欄，手機把支持／評論數收進歌名下既有資訊行，維持 44px 圖示操作，不增設整排工具區。完整歷史原資料管理仍每頁 10 件。
+- 收藏統計含歌曲及 Choice；歌曲列表分頁，Choice 與批次收藏管理從明確入口進原管理介面。收到的評論可打開原作品的既有評論 dialog；最新兩則可見評論放在表下。沒有評論就顯示真實空狀態，不填示意評論。
+- 單首「編輯」只展開該首原編輯表，取消或儲存後關閉；Battle／對戰／勝出／Choice 等原操作集中在「更多紀錄」。原待接戰、批次管理、個人作品表現、頭像與身分修改仍可從這些入口取得。
+- 投稿來源為「貼作品連結／上傳音檔」。連結先在同面板預覽實際播放器，顯示取得的歌名、自己的創作者顯示名與來源，歌名及作者可展開修改。必選曲風與 AI 工具保持紧凑並排；YouTube 的 MV 勾選、權利確認及最後確認按鈕放在同區。
+- 音檔先在本機預覽，播放與確認權利後才送出。封面、歌詞、MV、專輯與介紹等選填資料可展開；既有格式、大小、手選曲風、可選分析及審核規範保留。
+- 預覽讀取和實際可播放是不同狀態；YouTube 用實際播放事件，另外兩種來源由作者手動確認。預覽不發布、不用額度，換來源重置播放／權利確認。連結只走可見來源播放器，持續小電台不以外站網址冒充音檔。
+- 統計載入顯示「—」；讀取失敗有重試。Credit 保留位置，未啟用時不顯示數字餘額或虛構交易；owner 顯示免扣點。
+- 桌機左右分欄；平板與手機把投稿區接在總覽下方，接著作品區。保留既有帳號／通知 dock，撤下 Profile 的重複首頁圖示、語言與現場 badge。手機／平板的帳號通知避開頂欄導覽，其他頁儲存位置不改。新中心與投稿文案有中英日韓；原管理細節沿用原介面。
 
 ## Admin / Operational UI
 

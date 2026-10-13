@@ -1,5 +1,8 @@
 # AIPOGER 開發與維運
 
+2026-10-13 創作者中心與連結投稿已上線（app `68949a5`／`codex/homepage-mv-editorial`）。Vercel `dpl_S9cenbAZ6TEnKTq5AC5siMwe6w6S` READY 並 promote 至 apex／www。個人統計、4件作品總覽、單首編輯、原管理入口、Credit未啟用／owner免扣點、YouTube／Suno／Spotify可見預覽後確認與音檔預覽已發布。543項測試中512通過、31既有可選DB略過、0失敗；TypeScript、本機／雲端build通過，lint0 errors／15既有warnings。两份加法式schema migration已套用；RLS、grants與原投稿額度trigger未修改，329筆原作品保留。正式owner帳號與四語桌機／手機證據見[發布證據](releases/2026-10-13-creator-center-links.md)。
+
+
 2026-10-13 傷心酒吧整合、三個月曲庫與Profile投稿已上線（app `6342878`／`codex/homepage-mv-editorial`）。Vercel `dpl_BjHkGMG8YcpcFXtHBCXNcrDBb5iB` READY，先以正式環境不綁網域核對113首與66件有支持的真實資料，再promote至apex／www。小電台／Top10／Top50／四封面、原ID評論／定位與Profile自己的上傳區已發布；532測試中501通過、31既有可選DB略過、0失敗，TypeScript／本機與雲端build通過，lint0 errors／15既有warnings。無SQL／環境變更、點數啟用或音檔刪除；到期仅退出公開展示，歷史／storage／原active額度保留。正式四語桌機／手機與真實音訊、排行榜、評論、舊路由及投稿登入返回驗收見[發布證據](releases/2026-10-13-radio-chart-profile.md)。
 
 2026-10-13 探索音樂改版已上線（app `e8f2977`／`codex/homepage-mv-editorial`）。Vercel `dpl_M3wZ23ATz3CPV6vjo9uUZkiYgKZW` READY 並已 promote 至 aipoger.com；使用者選定的黑橘精簡探索頁、醒目傷心酒吧入口、全曲庫搜尋／曲風交集、推薦去重、歌名旁大愛心與資訊操作已發布。519 測試中 488 通過、31 既有可選 DB 測試略過、0 失敗；TypeScript、本機／雲端 build 通過，lint 0 errors／15 既有 warnings。正式站實際播放、訪客 Heart 返回原曲、搜尋／無結果／重設、升溫與四語版面驗證；225 首公開作品、14 曲風及原播放／戰績／資格資料保留。未使用 live owner session 或寫入生產留言／Heart，無 SQL migration、環境變更或點數啟用。[發布證據](releases/2026-10-13-explore-redesign.md)。
@@ -78,6 +81,19 @@
 - 三入口均使用固定 HTTPS URL、`target=_blank`、`rel=noopener noreferrer`；不向外站附帶帳號、音檔或其他資料。此頁公開，受保護會員功能不變。
 - 官方資訊核對 2026-09-28；外站提供者可能修改免費條件。沒有使用使用者歌曲測試第三方分析品質，也未替使用者註冊或購買外站服務。
 - 驗收及部署 ID 見 [發布證據](releases/2026-09-28-music-analysis-tools.md)。
+
+## 創作者中心與來源預覽
+
+- `GET /api/creator-center`：先驗證 bearer 身分，僅 service-read 本人 community tracks，包含 inactive／期滿歷史；按500筆分頁，逐100首分批讀取去重支持及其他會員可見評論。回應 private/no-store，不回傳评论者userid或假餘額。收藏沿用原私人 honors／Choice API，不建立第二套資料。
+- `POST /api/creator-links`：preview 只向固定官方來源取 metadata，8秒逾時／1.5MB上限／拒絕任意host與redirect；Suno短分享僅接受一次官方受限轉向。以30分鐘HMAC綁定user及canonical source。簽名是解析與來源綁定，不是版權或伺服器播放保證。
+- submit 要求有效本人preview token、播放／權利確認、手選現行曲風及名稱；以本人 bearer + anon key INSERT，經原RLS與168h／3件、active genre5件trigger，不能以service INSERT繞過。相同新來源unique index及既有同作者YT連結防重複；同ID支援MV與評論。
+- `20261013090019_creator_link_submission.sql` 增加來源provider／mediaID／URL與MV旗標、允許audio_path空、有效來源CHECK與部分unique index；`20261013094836_creator_link_required_fields.sql` 補SQL CHECK nullable三欄必填。兩份均已套用並validated，沒有改舊列、政策、grants或函數。
+- 實際authenticated role的可回滾SQL交易驗證無音檔連結INSERT與quota+1；ROLLBACK後重查仍329列、0個link row、0個測試作品，UI仍0/3。沒有永久測試投稿、評論或Heart；訪站原analytics／presence照常。
+- 外站播放器可見：YouTube官方IFrame API事件；Suno／Spotify由作者手動確認，Spotify試聽長度由來源決定。嵌入失敗不假成功，不抽取audio或放入radio/root audio queue。原音檔試播是本機ObjectURL，成功確認前不upload。
+- Owner沿用既有本人主email驗證，不以可編輯metadata email授權；一般帳號沒有後台入口。Credit沒有ledger／發扣點；不能以殘留APC欄位當作餘額。
+- 原私人metadata、Choice、batch favorites、Battle與作品表現入口保留在focused dialog；新總覽4件／頁，原完整manager10件／頁。修改metadata不重置年齡／額度／戰績。
+- 回復程式可promote舊READY版本；加法schema留在DB，不DROP來源欄位、不刪舊作品。若已有人提交新連結，舊app可能不展示無音檔列，但資料仍在，需先評估後再回復。
+- Supabase advisor現有提醒含service-only表RLS無policy、既有可執行SECURITY DEFINER RPC與Auth密碼保護；本次未新增表／授權或展開無關hardening。[DB linter](https://supabase.com/docs/guides/database/database-linter)、[Auth密碼保護](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection)。這不是整站安全稽核完成聲明。
 
 ## 架構與資料來源
 

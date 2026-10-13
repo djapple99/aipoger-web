@@ -8,6 +8,8 @@ This document is the product-rule source of truth for AIPOGER. Use it before cha
 
 ## 現行狀態邊界
 
+- 新版創作者中心與三種來源連結預覽／確認投稿已發布；Credit 尚未啟用。
+
 - APC 尚未啟用為產品點數經濟，不宣稱儲值、下注、獎勵或廣告換點已上線；歷史常數、欄位和字串不構成產品能力。
 - Profile 投稿不自動轉為 Battle；Explore 接戰依創作者明確選擇與準備好的 Drop。Drop／Q Crash 自願對戰保留。
 - 酒吧生存淘汰、Showtime 認證與 Daily Spotlight 已退役；以下提到的历史資料保存是資料完整性要求，不是要恢復那些玩法。
@@ -103,6 +105,18 @@ Public social entry:
 - The public social icon cluster includes the AIPOGER LINE community invite alongside Discord, Instagram, and the Facebook group.
 - LINE is the direct mobile action; a separate QR control opens a compact modal for desktop visitors, with the same canonical invite URL and a copy action.
 - Keep the QR code out of the permanent homepage layout so it does not add clutter or create a useless mobile scan step.
+
+## 創作者中心與連結投稿
+
+- `/profile` 為個人創作者中心：音樂投稿總數、目前推廣／期滿／下架狀態、私人收藏歌曲與 Choice 總數、其他會員的可見評論人數及則數集中呈現。總覽作品每頁 4 件；完整原作品管理仍每頁 10 件。私人歷史不因三個月公開推廣期結束而抹除，不補過往最高排名。
+- 所有投稿入口進個人的投稿區。接受上傳音檔及 YouTube 影片、Suno 單曲、Spotify 單曲連結；不接受此入口的專輯、歌單或任意網站。連結只保留來源與 metadata，以原平台可見播放器播放，不下載或另存外站影音。來源讀取／播放失敗不自動發布，保留來源輸入供重試。
+- 兩種來源均先預覽、確認能播放及權利、再明確確認投稿；預覽不消耗投稿額度、不產生公開作品。YouTube 由官方播放事件確認；Suno／Spotify 由投稿者在實際預覽中手動確認，介面明示「已由你確認」。Spotify 的播放長度由來源決定。這不是伺服器對版權或完整可播放性的保證。
+- 音檔與連結共用原個人首件成功起算 168 小時／3 件、每位創作者每個曲風最多 5 件 active 的規則，刪除不退個人期間額度。保留原 ownership、moderation、正式投票與接戰規則；連結投稿預設僅展示，不自動加入 Battle。
+- YouTube 作品由投稿者勾選是否包含 MV；勾選後在音樂與 MV 面共用同一原作品 ID、愛心和評論，不另填第二筆。重複同作者同來源單曲不新增；既有音檔作品已附相同 YouTube 影片時，從原作品編輯。
+- 連結作品可進探索與同一三個月人氣榜，使用可見外站播放器。持續小電台、共用音檔佇列及現有 Choice 選曲仍要求實際可播放音檔；不能將外站 URL 填成音檔或藏起 YouTube 播放。音檔投稿預覽可使用一次性的本機音訊控制，不是每列新增播放器。
+- 私人統計只查經伺服器驗證的本人資料；支持人数按不同會員去重且排除作者，評論只計其他會員在現行 DB 的可見評論。資料讀取失敗顯示未知與重試，不偽造零分／餘額。舊 Storage-only 留言沒有可驗證的會員 ID，未補成完整歷史評論人數。
+- 唯一 owner 保留既有受驗證的本人身分，平台後台只向 owner 顯示並沿用伺服器授權。不能用顯示名稱或可自行修改的 user metadata email 授權。其他會員只管理自己的資料。
+- Credit 尚未啟用：一般會員顯示「尚未啟用」，owner 顯示「免扣點」及未啟用說明；點數紀錄不顯示假交易／無限餘額。本次不啟用登入、投稿或評論獎勵，也不加聖經扣點。Owner 的點數豁免不代表免除投稿容量、投票或 Battle 規則。
 
 ## AIPOGER Choice 與社群發布
 
@@ -372,7 +386,7 @@ Current rules:
 - On the Profile community submission form, selecting an audio file requests optional genre suggestions using up to 21 seconds from different parts of the actual audio. Show up to three current canonical genres. The uploader alone chooses the final genre: only an explicit accept click fills it, and the menu remains editable. Embedded metadata must not silently select a genre. New files cancel/discard stale analysis; analysis never changes a manually selected genre, grants eligibility or consumes submission quota. Declining, silence, undecodable audio, timeout, unavailable service or uncertain output must leave manual submission usable. Never display model similarity as accuracy or probability. Excerpts are temporary and not publicly served or retained in the catalog.
 - New submissions must include a fixed music genre. Do not silently default missing genre values to `Original 自我風格`.
 - New Bar Heartbreak audio submissions accept MP3, M4A, AAC, or OGG only, with a 30MB single-file limit. Do not accept new WAV or AIFF submissions in the public or admin Bar Heartbreak upload surfaces.
-- Bar Heartbreak is the continuous radio inside Explore; creators submit from Profile, with owner curation after publication. No pre-publication manual listening gate is added.
+- Bar Heartbreak is the continuous radio inside Explore; creators submit from Profile, with owner curation after publication. Publication does not require owner/judge review. The submitting creator confirms playback in the preview before confirming submission.
 - There is no per-genre or total library capacity. Genre controls show actual publicly playable track counts, never capacity denominators.
 - New eligible submissions enter public airplay immediately. Challenger admission, seat limits, 36-hour protection, survival days and automatic capacity elimination are retired.
 - Creator uploads (confirmed 2026-09-17 22:27 Asia/Taipei): every creator may successfully submit at most three own community songs in a personal 168-hour window. The first successful submission after rollout starts the window; at expiry, the next successful submission starts a fresh window. No calendar-Monday reset or carryover. Deleting, hiding, or changing the display status of a successfully submitted song never refunds quota. Failed/rolled-back uploads, metadata edits, listening, favorites, and Choice selection do not consume it; existing songs are not backfilled or changed. An atomic database counter independent of track deletion enforces the limit, including concurrent requests. This replaces the old 30-public-songs / one-per-Taiwan-day rule. The existing five-active-public-songs-per-genre cap remains; official-library uploads are outside the community-submission allowance.
@@ -388,7 +402,7 @@ Current rules:
 - A listener must sign in to press Heart or comment. Pressing Heart on a Bar Heartbreak track creates that day's active Heart and saves the track to the listener's favorites; re-pressing Heart cancels both. Removing it later from favorites in Profile remains a separate saved-song action and does not cancel or recount the active Heart reaction.
 - Profile `收藏歌曲` is the user's saved-song manager. It should support batch selection and batch removal of saved favorites, while keeping historical Heart reactions intact.
 - Creator and listener accounts use the same fixed bottom queue player for Profile saved songs. Each saved-song row exposes one play action; play/pause, seek, previous/next, mobile volume, and close controls live in the shared player. Do not bring back invisible playback or separate native audio controls inside saved-song rows.
-- Profile creator-song management should list songs in pages of 10. Profile creator-song management for the user's own Bar Heartbreak songs should support batch selection and batch removal from the public/battle surfaces through the creator-owned remove flow.
+- Profile overview lists four songs per page; its complete legacy creator-song manager retains pages of 10. Profile creator-song management for the user's own Bar Heartbreak songs should support batch selection and batch removal from the public/battle surfaces through the creator-owned remove flow.
 - `Profile / 我的作品` is the single metadata editor for all of a creator's community songs, including previously certified works; remove the separate locked Showtime-work editing split. Creators may edit their own cover and permitted display metadata, lyrics, YouTube and external support links under existing validation/review rules. Metadata edits never replace audio, alter ownership, rewrite historical recognition, actual Battle wins/losses, votes or Hearts, reset publication age/upload quota, restore removed works, or change challenge consent. Challenge settings remain a separate explicit action in the same own-works area; pending-battle Drop locks still apply.
 - Bar Heartbreak's old room-message surface is retired. Historical room-message APIs and cleanup retain the same 24-hour cutoff in database and storage fallback; they are not a current public interaction surface.
 - Explore AI Music cards sourced from Bar Heartbreak retain the same total Heart data and original reaction path. Total is available in the button tooltip/accessibility text; the popularity chart shows distinct non-author supporters as a separate metric.
