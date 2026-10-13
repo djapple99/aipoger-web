@@ -134,7 +134,7 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
         : <Link className={styles.feedbackAuth} href={authHref}>{copy.loginFeedback}</Link>}
       {heartReadFailed ? <p role="alert" className={styles.refreshError}>{copy.error}</p> : null}
       {withVideo ? <div ref={commentArea} id="mv-comment-area">
-        <MvRatingForm key={work.id} trackId={work.id} signedIn={signedIn} drafts={reviewDrafts.current} onBusy={onReviewBusy ?? (() => {})} onSaved={item => { if (currentWork.current !== work.id) return; if (item) setComments(current => [...current, item]); onChange(); }} />
+        <MvRatingForm key={work.id} trackId={work.id} signedIn={signedIn} drafts={reviewDrafts.current} onBusy={onReviewBusy ?? (() => {})} onSaved={item => { if (currentWork.current !== work.id) return; if (item) setComments(current => current.some(comment => comment.id === item.id) ? current : [...current, item]); onChange(); }} />
       </div> : null}
       <section id={withVideo ? "mv-public-comments" : "mv-comment-area"} className={styles.feedbackComments} aria-label={copy.comments}>
         {loading ? <p role="status">{copy.loadingComments}</p> : readFailed ? <p role="alert">{copy.error}</p>

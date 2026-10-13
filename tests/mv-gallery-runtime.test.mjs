@@ -147,3 +147,11 @@ test('continuous queue uses search, skips unplayable clips and supports previous
  const old=ui.nodes().find(x=>x.type==='feedback').props;old.onVideoUnavailable();old.onVideoEnded();await ui.flush();assert.equal(ui.nodes().find(x=>x.type==='feedback').props.work.id,'b');
  nodes(ui.nodes().find(x=>x.type==='feedback').props.videoControls).find(x=>x.type==='button'&&x.props['aria-label']===mvCopy('zh').previousMv).props.onClick();await ui.flush();assert.equal(ui.nodes().find(x=>x.type==='feedback').props.work.id,'a');
 });
+
+test('closing a pending review clears the deferred END before a new continuous session',async t=>{
+ const works=[{...work,id:'a',publishedAt:'3'},{...work,id:'b',publishedAt:'2'}];
+ const ui=await mount(t,'zh',{featured:[],works,channels:[],featureKind:'empty'});
+ const dialog=()=>ui.nodes().find(x=>x.type==='feedback').props;
+ ui.button(mvCopy('zh').continuous).onClick();await ui.flush();dialog().onReviewBusy(true);await ui.flush();dialog().onVideoEnded();await ui.flush();assert.equal(dialog().work.id,'a');
+ dialog().onClose();await ui.flush();ui.button(mvCopy('zh').continuous).onClick();await ui.flush();assert.equal(dialog().work.id,'a');
+});

@@ -88,7 +88,7 @@ export default function MvGallery() {
   useEffect(() => { if (player.playing) setViewAutoPlay(false); }, [player.playing]);
   const openFeedback = (work: HomeWork, play = false) => {
     if (play && player.playing) musicPlayer?.toggle();
-    setQueue(null); setQueueEnded(false); setReviewBusy(false); setViewAutoPlay(play); setFeedbackWork(work);
+    setQueue(null); setPendingEnd(false); setQueueEnded(false); setReviewBusy(false); setViewAutoPlay(play); setFeedbackWork(work);
   };
   const watch = (work: HomeWork) => { if (work.videoId) openFeedback(work, true); };
   const moveFeatured = (direction: number) => {
@@ -99,7 +99,7 @@ export default function MvGallery() {
     const playlist = filterMvWorks(data?.works ?? [], query, genre, sort);
     if (!playlist.length) return;
     if (player.playing) musicPlayer?.toggle();
-    lastAdvance.current = null; setQueue(playlist); setQueueEnded(false); setViewAutoPlay(true); setFeedbackWork(playlist[0]);
+    lastAdvance.current = null; setPendingEnd(false); setQueue(playlist); setQueueEnded(false); setViewAutoPlay(true); setFeedbackWork(playlist[0]);
   };
   const queueIndex = queue?.findIndex(work => work.id === feedbackWork?.id) ?? -1;
   const stepQueue = (direction: number, automatic = false) => {
@@ -199,13 +199,13 @@ export default function MvGallery() {
       <aside className={styles.submission}><div><h2>{mv.yourMv}</h2><p>{mv.submitNote}</p></div><div><Link href={withLang("/profile")}>{mv.myWorks}<ArrowRight size={17} /></Link><Link href={withLang("/listen-bar#play-request")}>{copy.submit}<ArrowRight size={17} /></Link></div></aside>
       <footer className={base.footer}><p>{copy.footer}</p><div><Link href={withLang("/ai-music")}>{copy.explore}</Link><Link href={withLang("/about")}>{copy.about}</Link><Link href={withLang("/partners")}>{copy.contact}</Link></div></footer>
     </main>
-    {feedbackWork ? <HomeWorkFeedback work={feedbackWork} onClose={() => { setFeedbackWork(null); setQueue(null); setReviewBusy(false); }} onChange={() => void load()} returnPath="/mv" showVideo autoPlay={viewAutoPlay}
+    {feedbackWork ? <HomeWorkFeedback work={feedbackWork} onClose={() => { setFeedbackWork(null); setQueue(null); setPendingEnd(false); setReviewBusy(false); }} onChange={() => void load()} returnPath="/mv" showVideo autoPlay={viewAutoPlay}
       onReviewBusy={setReviewBusy} onVideoEnded={queue ? () => stepQueue(1, true) : undefined} onVideoUnavailable={queue ? () => stepQueue(1, true) : undefined}
       videoControls={queue ? <div className={styles.queueControls}>
         <span>{queueEnded ? mv.queueEnded : `${mv.continuousActive} · ${queueIndex + 1} / ${queue.length}`}</span>
         <button type="button" disabled={reviewBusy || queueIndex <= 0} onClick={() => stepQueue(-1)} aria-label={mv.previousMv}><ChevronLeft size={20} /></button>
         <button type="button" disabled={reviewBusy || queueIndex >= queue.length - 1} onClick={() => stepQueue(1)} aria-label={mv.nextMv}><ChevronRight size={20} /></button>
-        <button type="button" onClick={() => setQueue(null)}>{mv.stopContinuous}</button><MvShare work={feedbackWork} />
+        <button type="button" onClick={() => { setQueue(null); setPendingEnd(false); }}>{mv.stopContinuous}</button><MvShare work={feedbackWork} />
       </div> : <MvShare work={feedbackWork} />} /> : null}
   </div>;
 }
