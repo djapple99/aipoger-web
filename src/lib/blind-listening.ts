@@ -1,6 +1,7 @@
 export const BLIND_START = 15;
 export const BLIND_END = 45;
 export const BLIND_SECONDS = 30;
+export const BLIND_MIN_SECONDS = 8;
 export const BLIND_CREDIT = 3;
 export type BlindChoice = "A" | "B" | "tie";
 export type BlindSide = "A" | "B";

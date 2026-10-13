@@ -64,10 +64,12 @@ export async function readCredit(admin: SupabaseClient, userId: string) {
   });
   return { enabled: true, balance: all.reduce((sum, r) => sum + r.delta, 0), entries: all.slice(0, 50) };
 }
-export async function blindCatalog(admin: SupabaseClient, userId: string) {
+export async function blindCatalog(admin: SupabaseClient, userId: string, trackIds?: string[]) {
   const rows = await readAllHomePages<BlindRow>(async (from, to) => {
-    const r = await admin.from("listen_bar_tracks").select(fields).eq("source", "community").eq("is_active", true)
-      .eq("review_status", "approved").gte("duration_seconds", 45).order("id").range(from, to);
+    let query = admin.from("listen_bar_tracks").select(fields).eq("source", "community").eq("is_active", true)
+      .eq("review_status", "approved").gte("duration_seconds", 45);
+    if (trackIds) query = query.in("id", trackIds);
+    const r = await query.order("id").range(from, to);
     return { data: r.data as unknown as BlindRow[], error: r.error };
   });
   const eligible = rows.filter(r => !r.is_featured_official && !r.hidden_at && !r.removed_at
@@ -87,17 +89,19 @@ export function anonymousQuestion(q: QuestionRow) {
     audioB: "/api/blind-listen/audio?token=" + makeBlindAudioToken(q, "B") };
 }
 export async function nextBlindQuestion(admin: SupabaseClient, userId: string) {
-  const catalog = await blindCatalog(admin, userId);
-  const eligible = new Map(catalog.map(r => [r.id, r]));
-  const seen = await readAllHomePages<QuestionRow>(async (from, to) => {
+  const [catalog, seen, summaries] = await Promise.all([
+    blindCatalog(admin, userId),
+    readAllHomePages<QuestionRow>(async (from, to) => {
     const r = await admin.from("blind_listen_questions").select("id,user_id,track_a_id,track_b_id,state,choice,expires_at,heard_a,heard_b")
       .eq("user_id", userId).order("id").range(from, to);
     return { data: r.data, error: r.error };
-  });
+    }),
+    blindSummaries(admin),
+  ]);
+  const eligible = new Map(catalog.map(r => [r.id, r]));
   const pending = seen.find(q => q.state === "pending" && Date.parse(q.expires_at) > Date.now() && eligible.has(q.track_a_id) && eligible.has(q.track_b_id));
   if (pending) return anonymousQuestion(pending);
   const previous = new Set(seen.map(q => blindPairKey(q.track_a_id, q.track_b_id)));
-  const summaries = await blindSummaries(admin);
   // Prefer under-sampled songs; randomize ties and A/B positions. Same genre only.
   const shuffled = catalog.map(track => ({ track, random: randomInt(1_000_000) }))
     .sort((a, b) => (summaries.get(a.track.id)?.people ?? 0) - (summaries.get(b.track.id)?.people ?? 0) || a.random - b.random);

@@ -38,7 +38,18 @@ begin
   update public.blind_listen_questions set last_tick_at=clock_timestamp()-interval '1.7 seconds' where id=q;
   r:=public.tick_blind_question(listener,q,'A','progress',21);
   if (r->>'heardA')::numeric<5.9 then raise exception 'Network jitter incorrectly penalized real listening'; end if;
-  update public.blind_listen_questions set heard_a=30,heard_b=30 where id=q;
+  if public.blind_audio_source(q,'A')<>'fixture/a.mp3' or public.blind_audio_source(q,'X') is not null then raise exception 'Anonymous source lookup failed'; end if;
+  update public.blind_listen_questions set heard_a=7.999,heard_b=8 where id=q;
+  begin
+    perform public.complete_blind_question(listener,q,'tie'); raise exception 'Under-eight-second A accepted';
+  exception when invalid_parameter_value then null;
+  end;
+  update public.blind_listen_questions set heard_a=8,heard_b=7.999 where id=q;
+  begin
+    perform public.complete_blind_question(listener,q,'tie'); raise exception 'Under-eight-second B accepted';
+  exception when invalid_parameter_value then null;
+  end;
+  update public.blind_listen_questions set heard_a=8,heard_b=8 where id=q;
   r:=public.complete_blind_question(listener,q,'tie');
   if (r->>'awarded')::integer<>3 then raise exception 'Tie must earn3'; end if;
   r:=public.complete_blind_question(listener,q,'B');
@@ -49,12 +60,14 @@ begin
   q2:=public.issue_blind_question(listener,c,b);
   update public.blind_listen_questions set heard_a=30,heard_b=30 where id=q2;
   update public.listen_bar_tracks set hidden_at=now() where id=b;
+  if public.blind_audio_source(q2,'B') is not null then raise exception 'Hidden audio source leaked'; end if;
   begin
     perform public.complete_blind_question(listener,q2,'A'); raise exception 'Hidden work accepted';
   exception when insufficient_privilege then null;
   end;
   update public.listen_bar_tracks set hidden_at=null where id=b;
   update public.blind_listen_questions set expires_at=now()-interval '1 second' where id=q2;
+  if public.blind_audio_source(q2,'A') is not null then raise exception 'Expired audio source leaked'; end if;
   begin
     perform public.complete_blind_question(listener,q2,'A'); raise exception 'Expired task accepted';
   exception when insufficient_privilege then null;
@@ -68,6 +81,7 @@ begin
   select sum(delta) into total from public.creator_credit_entries where user_id=listener;
   if total<>6 then raise exception 'Source removal erased earned Credit'; end if;
   if has_function_privilege('anon','public.complete_blind_question(uuid,uuid,text)','execute')
+    or has_function_privilege('authenticated','public.blind_audio_source(uuid,text)','execute')
     or has_table_privilege('authenticated','public.creator_credit_entries','insert') then raise exception 'Direct public minting permitted'; end if;
 end;
 $$;

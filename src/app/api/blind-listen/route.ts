@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { creatorAuth } from "@/lib/server-creator-auth";
-import { blindCatalog, nextBlindQuestion, questionForUser, readCredit, revealBlindQuestion } from "@/lib/server-blind-listening";
+import { blindCatalog, nextBlindQuestion, questionForUser, revealBlindQuestion } from "@/lib/server-blind-listening";
 import { isBlindChoice } from "@/lib/blind-listening";
 const headers = { "Cache-Control": "private, no-store" };
 const uuid = (value: unknown): value is string => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     const auth = await creatorAuth(request);
     if (!auth) return NextResponse.json({ error: "AUTH_REQUIRED" }, { status: 401, headers });
     const question = await nextBlindQuestion(auth.admin, auth.user.id);
-    return NextResponse.json({ question, credits: await readCredit(auth.admin, auth.user.id) }, { headers });
+    return NextResponse.json({ question }, { headers });
   } catch { return NextResponse.json({ error: "LOAD_FAILED" }, { status: 503, headers }); }
 }
 export async function POST(request: Request) {
@@ -35,13 +35,19 @@ export async function POST(request: Request) {
     }
     if (p.action === "vote" && isBlindChoice(p.choice)) {
       if (q.state !== "voted") {
-        const catalog = await blindCatalog(auth.admin, auth.user.id);
+        const catalog = await blindCatalog(auth.admin, auth.user.id, [q.track_a_id, q.track_b_id]);
         if (Date.parse(q.expires_at) <= Date.now() || !catalog.some(r => r.id === q.track_a_id) || !catalog.some(r => r.id === q.track_b_id))
           return NextResponse.json({ error: "WORK_UNAVAILABLE" }, { status: 409, headers });
       }
       const { data, error } = await auth.admin.rpc("complete_blind_question", { p_user: auth.user.id, p_question: q.id, p_choice: p.choice });
       if (error) return NextResponse.json({ error: error.message.includes("Listen to") ? "LISTEN_FIRST" : "SAVE_FAILED" }, { status: 409, headers });
-      return NextResponse.json({ ...data, ...await revealBlindQuestion(auth.admin, auth.user.id, q.id) }, { headers });
+      // Completion is already committed. A failed next-pair read must never look
+      // like a failed vote, or prompt the user to choose/earn again.
+      try {
+        return NextResponse.json({ ...data, nextQuestion: await nextBlindQuestion(auth.admin, auth.user.id), nextError: false }, { headers });
+      } catch {
+        return NextResponse.json({ ...data, nextQuestion: null, nextError: true }, { headers });
+      }
     }
     return NextResponse.json({ error: "INVALID_REQUEST" }, { status: 400, headers });
   } catch { return NextResponse.json({ error: "SAVE_FAILED" }, { status: 503, headers }); }

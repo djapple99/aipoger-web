@@ -51,3 +51,13 @@ final result: passed
 ## 正式發布補驗
 
 正式app0a36bf6／dpl_2cEZeFgVyCoywmn4ktnUz9vjZ2CS已promote。production-battle-desktop.jpg及production-listen-desktop.jpg為1440×1024；production-battle-mobile.jpg、production-listen-mobile.jpg為390×844。正式四語兩路由320×812無水平溢出、console error空。真實登入session實際A／B均播放15–45秒並停在45，後端heard兩側30秒，三選擇解鎖；保留pending，未代人選偏好，0正式票／0Credit。
+
+## 8秒／自動接題修訂驗收
+
+依使用者2026-10-14實測回饋，本輪以各側至少8秒、成功即自動新題、常駐「離開評測」覆蓋概念稿的Next／揭示停留。沿用同一插畫與三選擇單排，標題下和狀態區明示最低8秒；雙audio提前metadata載入、定位15秒、僅一側可播放。
+
+隔離實際元件Chrome1440×1024：A／B尚未播放均readyState4且currentTime15；A實際播放9.231875秒、B9.201568秒，A單獨達標仍不可選，B達標三選擇解鎖，未等30秒即可送出。偏好A後同回應換至fixture-q4，上一題3點提示保留、選擇重設，沒有Next按鈕，離開一直可用。平手也實測自動接題；fixture不寫正式票／Credit。新證據blind8-local-desktop.jpg／blind8-local-mobile.jpg。
+
+四語runtime確認7.9秒任一側不可選、8秒解鎖、30秒仍停在45；送出後不多GET，新題失敗只重讀、不重投或重領。退出停止兩側音訊且不投票。SQL交易測試對7.999／8秒界線、原子發點、無序pair及source privacy完整回滾；所有service-only權限保留。
+
+本次新文案與離開是已確認的功能變更，沒有額外視覺P0／P1／P2。final result: passed。

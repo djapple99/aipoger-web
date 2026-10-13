@@ -7,13 +7,9 @@ export async function GET(request: Request) {
     const token = readBlindAudioToken(new URL(request.url).searchParams.get("token") ?? "");
     if (!token) return fail();
     const admin = creatorAdmin();
-    const { data: q, error } = await admin.from("blind_listen_questions").select("track_a_id,track_b_id,user_id,state,expires_at").eq("id", token.id).maybeSingle();
-    if (error || !q || q.state === "skipped" || Date.parse(q.expires_at) <= Date.now()) return fail();
-    const id = token.side === "A" ? q.track_a_id : q.track_b_id;
-    const { data: eligible } = await admin.rpc("blind_track_eligible", { p_track: id, p_user: q.user_id });
-    if (!eligible) return fail();
-    const { data: track } = await admin.from("listen_bar_tracks").select("audio_path").eq("id", id).maybeSingle();
-    const url = blindStorageUrl(admin, track?.audio_path);
+    const { data: path, error } = await admin.rpc("blind_audio_source", { p_question: token.id, p_side: token.side });
+    if (error || typeof path !== "string") return fail();
+    const url = blindStorageUrl(admin, path);
     if (!url) return fail();
     const range = request.headers.get("range");
     if (range && !/^bytes=\d*-\d*$/.test(range)) return new Response(null, { status: 416 });

@@ -19,14 +19,14 @@ test("blind proxy only resolves audio inside the configured public Storage bucke
  for(const path of ["https://attacker.test/song.mp3","http://127.0.0.1/a","https://unit-test.invalid/other","../private/audio.mp3"])
    assert.equal(server.blindStorageUrl(admin,path),"");
 });
-function mount({expired=false,authenticated=true}={}) {
+function mount({expired=false,authenticated=true,nextFails=false}={}) {
  const calls=[],id=uuid(12),q={id,state:"pending",track_a_id:"a",track_b_id:"b",expires_at:new Date(Date.now()+(expired?-1000:60000)).toISOString()};
  const admin={rpc:async(name,args)=>{calls.push({name,args});return {data:name==="complete_blind_question"?{choice:"tie",awarded:3,balance:3}:{heardA:30,heardB:30},error:null};}};
  const api=loadTs("src/app/api/blind-listen/route.ts",{
    "@/lib/server-creator-auth":{creatorAuth:async()=>authenticated?{admin,user:{id:USER}}:null},
-   "@/lib/server-blind-listening":{nextBlindQuestion:async()=>({id}),readCredit:async()=>({enabled:true,balance:3}),
+   "@/lib/server-blind-listening":{nextBlindQuestion:async()=>{if(nextFails)throw Error("Next unavailable");return {id:uuid(13)};},
      questionForUser:async(_admin,user,asked)=>{assert.equal(user,USER);if(asked!==id)throw Error("Unavailable");return q;},
-     blindCatalog:async()=>[{id:"a"},{id:"b"}],revealBlindQuestion:async()=>({choice:"tie",works:[]})},
+     blindCatalog:async(_admin,_user,ids)=>{assert.deepEqual(ids,["a","b"]);return [{id:"a"},{id:"b"}];},revealBlindQuestion:async()=>({choice:"tie",works:[]})},
  });
  const request=body=>new Request("https://site.test/api/blind-listen",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({questionId:id,...body})});
  return {api,calls,request};
@@ -36,9 +36,13 @@ test("blind API keeps auth mandatory and never trusts body user/credit/listening
  assert.equal((await guest.api.GET(new Request("https://site.test"))).status,401);
  assert.equal((await guest.api.POST(guest.request({action:"vote",choice:"tie"}))).status,401);
  const ui=mount();const result=await ui.api.POST(ui.request({action:"vote",choice:"tie",userId:uuid(99),credit:999,heardA:999,heardB:999}));
- assert.equal(result.status,200);assert.equal((await result.json()).awarded,3);
+ assert.equal(result.status,200);const payload=await result.json();assert.equal(payload.awarded,3);assert.equal(payload.nextQuestion.id,uuid(13));
  assert.deepEqual(ui.calls[0].args,{p_user:USER,p_question:uuid(12),p_choice:"tie"});
  assert.equal((await ui.api.GET(new Request("https://site.test"))).headers.get("cache-control"),"private, no-store");
+});
+test("next-pair failure after completion preserves success and never asks for another vote",async()=>{
+ const ui=mount({nextFails:true});const response=await ui.api.POST(ui.request({action:"vote",choice:"tie"}));
+ const payload=await response.json();assert.equal(response.status,200);assert.equal(payload.awarded,3);assert.equal(payload.nextError,true);assert.equal(payload.nextQuestion,null);
 });
 test("blind API rejects invalid IDs, choices, positions and expired pairs before minting",async()=>{
  const ui=mount();
@@ -54,12 +58,13 @@ test("blind API rejects invalid IDs, choices, positions and expired pairs before
 test("audio endpoint forwards safe ranges without creator filenames or upstream URLs",async t=>{
  const q={id:uuid(17),track_a_id:uuid(18),track_b_id:uuid(19),user_id:USER,state:"pending",expires_at:new Date(Date.now()+60000).toISOString()};
  const admin=mockAdmin({blind_listen_questions:[q],listen_bar_tracks:[{id:uuid(18),audio_path:"https://unit-test.invalid/storage/v1/object/public/listen-bar-audio/creator-name.mp3"}]});
- admin.rpc=async()=>({data:true,error:null});
+ const lookups=[];admin.rpc=async(name,args)=>{lookups.push({name,args});return {data:"https://unit-test.invalid/storage/v1/object/public/listen-bar-audio/creator-name.mp3",error:null};};
  const api=loadTs("src/app/api/blind-listen/audio/route.ts",{"@/lib/server-creator-auth":{creatorAdmin:()=>admin}});
  let upstream;t.mock.method(globalThis,"fetch",async(url,init)=>{upstream={url,init};return new Response(new Uint8Array([1,2,3]),{status:206,headers:{"Content-Type":"audio/mpeg","Content-Range":"bytes 0-2/100","Accept-Ranges":"bytes","Content-Disposition":"filename=creator-name.mp3"}});});
  const token=server.makeBlindAudioToken(q,"A");
  const response=await api.GET(new Request("https://site.test/api/blind-listen/audio?token="+token,{headers:{Range:"bytes=0-2"}}));
  assert.equal(response.status,206);assert.equal(response.headers.get("content-disposition"),null);
+ assert.deepEqual(lookups[0],{name:"blind_audio_source",args:{p_question:q.id,p_side:"A"}});
  assert.equal(response.headers.get("content-range"),"bytes 0-2/100");assert.equal(upstream.init.redirect,"error");
  assert.equal(upstream.init.headers.Range,"bytes=0-2");
  assert.equal((await api.GET(new Request("https://site.test/api/blind-listen/audio?token="+token,{headers:{Range:"bytes=0-2,3-5"}}))).status,416);
