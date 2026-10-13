@@ -1,4 +1,6 @@
 "use client";
+import ExternalMusicPlayer from "@/components/external-music-player";
+import type { ExternalMusic } from "@/lib/external-music";
 
 import { musicPlayer, useMusicPlayer } from "@/lib/music-player-store";
 import Link from "next/link";
@@ -54,6 +56,7 @@ type AiMusicTrack = AiMusicExploreOrderTrack & AiMusicHeatTrack & {
   aiTool: string;
   coverUrl: string;
   audioUrl: string | null;
+  external?: ExternalMusic | null;
   lyrics: string | null;
   createdAt: string;
   heartCount: number;
@@ -284,7 +287,7 @@ async function tracksFromListenBar(lang: string) {
         aiTool: track.tool || "AI Music",
         genre,
         coverUrl: track.coverUrl || storagePublicUrl("listen-bar-covers", row.cover_path) || AIPOGER_BRAND_LOGO,
-        audioUrl: listenBarAudioPlaybackUrl(row.audio_path) || track.audioUrl || storagePublicUrl("listen-bar-audio", row.audio_path),
+        audioUrl: listenBarAudioPlaybackUrl(row.audio_path) || track.audioUrl || storagePublicUrl("listen-bar-audio", row.audio_path), external: track.external,
         lyrics: row.lyrics?.trim() || track.lyrics?.trim() || null,
         createdAt: safeDate(track.createdAt),
         heartCount: numberValue(row.heart_count ?? track.positiveReactionCount),
@@ -464,7 +467,7 @@ function TrackCard({
         {showChallengeReadyBadge ? <ChallengeReadyBadge lang={lang} /> : null}
         <button type="button" className={styles.play}
           onPointerDown={() => onPrepare(track)} onFocus={() => onPrepare(track)}
-          onClick={() => onPlay(track)} disabled={!track.audioUrl}
+          onClick={() => onPlay(track)} disabled={!track.audioUrl && !track.external}
           aria-label={isPlaying ? localeText(lang, "暫停", "Pause", "一時停止", "일시정지") : localeText(lang, `播放 ${track.title}`, `Play ${track.title}`, `${track.title}を再生`, `${track.title} 재생`)}>
           {isPlaying ? <Pause fill="currentColor" aria-hidden="true" /> : <Play fill="currentColor" aria-hidden="true" />}
         </button>
@@ -597,6 +600,9 @@ export default function AiMusicClient() {
   const [commentTrack, setCommentTrack] = useState<AiMusicTrack | null>(null);
   const [chartOpen, setChartOpen] = useState(false);
   const chartDialog = useRef<HTMLDialogElement>(null);
+  const [externalTrack, setExternalTrack] = useState<AiMusicTrack | null>(null);
+  const externalDialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => { if(externalTrack) externalDialog.current?.showModal(); else externalDialog.current?.close(); }, [externalTrack]);
   const [locateVersion, setLocateVersion] = useState(0);
   const located = useRef("");
   const preparedLocate = useRef("");
@@ -917,6 +923,7 @@ export default function AiMusicClient() {
   }, [notice]);
 
   const handlePlayTrack = (track: AiMusicTrack) => {
+    if(track.external) { setExternalTrack(track); return; }
     if (!track.audioUrl) {
       setNotice(localeText(lang, "這首作品目前沒有可播放音檔。", "This track has no playable audio yet.", "この作品には再生できる音源がまだありません。", "이 작품에는 아직 재생 가능한 음원이 없습니다."));
       return;
@@ -1024,6 +1031,10 @@ export default function AiMusicClient() {
   return (
     <div className={styles.page}>
       <EditorialHeader active="explore" />
+      <dialog ref={externalDialog} className={styles.chartDialog} aria-label={externalTrack?.title} onCancel={() => setExternalTrack(null)} onClick={e=>{if(e.target===e.currentTarget)setExternalTrack(null);}}>
+        <button autoFocus className={styles.chartClose} aria-label={copy.close} onClick={()=>setExternalTrack(null)}><X/></button>
+        {externalTrack?.external ? <ExternalMusicPlayer media={externalTrack.external} title={externalTrack.title}/> : null}
+      </dialog>
       {feedbackWork ? <HomeWorkFeedback key={feedbackWork.id} work={feedbackWork} supportNote={localeText(lang, "人氣榜依不同會員的有效支持排序；作者自己的愛心不計入。評論共用同一作品。", "Popularity follows distinct non-author supporters. Comments belong to the same work.", "人気ランキングは作者以外の会員の有効な支持人数順です。コメントは同じ作品に集まります。", "인기 차트는 작가를 제외한 회원의 유효 지지 수 순입니다. 댓글은 같은 작품에 연결됩니다.")} returnPath={`/ai-music?track=${feedbackWork.id}#works`} onClose={() => setCommentTrack(null)} onChange={() => setLoadVersion(value => value + 1)} /> : null}
       <dialog ref={chartDialog} className={styles.chartDialog} aria-label={localeText(lang, "人氣 Top 50", "Popular Top 50", "人気 Top 50", "인기 Top 50")} onCancel={() => setChartOpen(false)} onClick={event => { if (event.target === event.currentTarget) setChartOpen(false); }}>
         <button autoFocus type="button" className={styles.chartClose} onClick={() => setChartOpen(false)} aria-label={copy.close}><X /></button>

@@ -16,7 +16,7 @@ import {
 } from "@/lib/listen-bar";
 import { isCurrentMusicGenre } from "@/lib/music-genres";
 import { readEarwormAffinityMap } from "@/lib/earworm-affinity";
-import { isPublicBarAirplayTrack } from "@/lib/listen-bar-airplay";
+import { isPublicDiscoveryTrack } from "@/lib/listen-bar-airplay";
 
 type AdminClient = SupabaseClient;
 
@@ -61,7 +61,7 @@ const MODERN_SELECT = [
   "youtube_url",
   "bpm",
   "duration_seconds",
-  "audio_path",
+  "audio_path", "external_url", "external_provider", "external_media_id", "is_music_video",
   "cover_path",
   "lyrics",
   "sort_order",
@@ -164,7 +164,7 @@ function applyLegacyOpeningGrace(rows: ListenBarTrackRow[]): ListenBarTrackRow[]
 
 function isPublicPlayableTrack(row: ListenBarTrackRow) {
   return (
-    isPublicBarAirplayTrack(row) &&
+    isPublicDiscoveryTrack(row) &&
     isCurrentMusicGenre(row.genre) &&
     row.source !== "official" &&
     !row.is_featured_official

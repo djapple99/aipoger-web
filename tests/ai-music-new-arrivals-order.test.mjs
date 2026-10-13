@@ -103,7 +103,7 @@ test("Explore has no standalone latest shelf and only orders eligible tracks by 
   assert.equal(aiMusicSource.includes("最新上架"), false);
   assert.equal(aiMusicSource.includes("72 小時新歌"), false);
   assert.ok(aiMusicTracksRouteSource.includes("isCurrentMusicGenre(row.genre)"));
-  assert.ok(aiMusicTracksRouteSource.includes("isPublicBarAirplayTrack(row)"));
+  assert.ok(aiMusicTracksRouteSource.includes("isPublicDiscoveryTrack(row)"));
   assert.equal(aiMusicTracksRouteSource.includes("!row.ai_music_showtime_certified"), false);
   assert.equal(aiMusicTracksRouteSource.includes('"updated_at"'), false);
   assert.ok(productRulesSource.includes("rolling seven-day NEW window is both the badge and sorting window"));

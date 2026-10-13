@@ -21,6 +21,7 @@ export function loadTs(relativePath, mocks = {}, cache = new Map()) {
   const require = (specifier) => {
     if (Object.hasOwn(mocks, specifier)) return mocks[specifier];
     if (specifier.startsWith("@/")) return loadTs(`src/${specifier.slice(2)}.ts`, mocks, cache);
+    if (specifier.startsWith(".")) return loadTs(path.relative(root, path.resolve(path.dirname(filename), specifier)), mocks, cache);
     return nativeRequire(specifier);
   };
   new Function("require", "module", "exports", compiled)(require, loaded, loaded.exports);
@@ -50,6 +51,7 @@ export function mockAdmin(seed = {}) {
       const query = {
         select: () => query,
         eq: (key, value) => { filters.push((row) => row[key] === value); return query; },
+        neq: (key, value) => { filters.push((row) => row[key] !== value); return query; },
         is: (key, value) => { filters.push((row) => (row[key] ?? null) === value); return query; },
         in: (key, values) => { filters.push((row) => values.includes(row[key])); return query; },
         order: (key, options = {}) => { sorts.push({ key, ascending: options.ascending !== false }); return query; },

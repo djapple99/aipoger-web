@@ -85,9 +85,12 @@ test("published Creator Choice keeps history and supports a dedicated cover", ()
   assert.match(creatorChoiceProfilePage, /accept="image\/jpeg,image\/png,image\/webp,image\/gif"/);
 });
 
-test("profile exposes dedicated owner entry points for works and Choice", () => {
-  assert.ok(profilePage.includes('href="/admin/listen-bar"'));
-  assert.ok(profilePage.includes('href="/admin/choice"'));
+test("profile consolidates owner management into one verified owner entrance", () => {
+  const center = readFileSync(new URL("../src/components/creator-center.tsx", import.meta.url), "utf8");
+  assert.match(center, /data\?\.isOwner\s*\?\s*\(\s*<Link\s+href=\{`\/admin\?lang=/);
+  assert.ok(!profilePage.includes('href="/admin/listen-bar"'));
+  assert.ok(!profilePage.includes('href="/admin/choice"'));
+  assert.ok(profilePage.includes('CreatorCenter'));
 });
 
 test("Choice history opens creator editing and supports confirmed deletion", () => {

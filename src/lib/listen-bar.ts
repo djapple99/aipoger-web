@@ -1,3 +1,4 @@
+import { externalMusicFromRow, type ExternalMusic } from "@/lib/external-music";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { AIPOGER_PERSONAL_RANK, isAipogerIdentity } from "@/lib/battle-pool-rules";
 import { supabase } from "@/lib/supabase";
@@ -43,6 +44,7 @@ export type ListenBarTrack = {
   mood: string;
   duration: number;
   audioUrl?: string;
+  external?: ExternalMusic | null;
   coverUrl?: string;
   lyrics?: string;
   queuedBy: string;
@@ -68,6 +70,10 @@ export type ListenBarTrackRow = {
   bpm: number | null;
   duration_seconds: number | null;
   audio_path: string | null;
+  external_url?: string | null;
+  external_provider?: string | null;
+  external_media_id?: string | null;
+  is_music_video?: boolean;
   cover_path: string | null;
   audio_sha256?: string | null;
   lyrics: string | null;
@@ -159,7 +165,8 @@ export function listenBarRowToTrack(row: ListenBarTrackRow): ListenBarTrack | nu
   }
 
   const audioUrl = publicStorageUrl(LISTEN_BAR_AUDIO_BUCKET, row.audio_path);
-  if (!audioUrl) return null;
+  const external = externalMusicFromRow(row);
+  if (!audioUrl && !external) return null;
 
   const genre = row.genre?.trim() || "Original 自我風格";
   const album = displayAlbumOrMood(row.mood);
@@ -181,7 +188,7 @@ export function listenBarRowToTrack(row: ListenBarTrackRow): ListenBarTrack | nu
     youtubeUrl: row.youtube_url?.trim() || undefined,
     mood: tags.join(" / ") || "官方輪播",
     duration: Math.max(1, Math.round(row.duration_seconds ?? 45)),
-    audioUrl,
+    audioUrl, external,
     coverUrl: publicStorageUrl(LISTEN_BAR_COVER_BUCKET, row.cover_path) ?? DEFAULT_LISTEN_BAR_COVER,
     lyrics: row.lyrics?.trim() || undefined,
     queuedBy,

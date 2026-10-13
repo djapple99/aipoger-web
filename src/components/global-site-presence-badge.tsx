@@ -5,7 +5,7 @@ import { useI18n } from "@/lib/i18n";
 import { usePresenceCount } from "@/lib/use-presence-count";
 
 const HIDDEN_PREFIXES = ["/battle/mock-"];
-const HIDDEN_EXACT = new Set(["/", "/mv", "/ai-music", "/listen-bar", "/auth"]);
+const HIDDEN_EXACT = new Set(["/", "/mv", "/ai-music", "/profile", "/listen-bar", "/auth"]);
 const FIXED_BATTLE_ROUTES = new Set(["setup", "hook-cut", "matchmaking", "result"]);
 
 function shouldHide(pathname: string | null) {

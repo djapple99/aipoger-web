@@ -14,7 +14,7 @@ export default function NavHomeLink() {
   /** 僅擂台單場（/battle/:id）；排除列表與固定子路徑 */
   const seg = pathname?.match(/^\/battle\/([^/]+)$/)?.[1];
   const isBattleArena = Boolean(seg && !BATTLE_FIXED_ROUTES.includes(seg));
-  if (!pathname || (pathname === '/' || pathname === '/mv' || pathname === '/ai-music')) return null;
+  if (!pathname || (pathname === '/' || pathname === '/mv' || pathname === '/ai-music' || pathname === '/profile')) return null;
 
   const linkClassName = isBattleArena
     ? 'fixed left-2 top-2 z-50 rounded-2xl bg-black/68 p-1 ring-1 ring-orange-300/25 backdrop-blur transition hover:bg-black/78 sm:left-3 sm:top-3'

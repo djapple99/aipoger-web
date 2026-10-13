@@ -1,4 +1,5 @@
-import { isPublicBarAirplayTrack } from "./listen-bar-airplay.ts";
+import { externalMusicFromRow } from "./external-music.ts";
+import { isPublicDiscoveryTrack } from "./listen-bar-airplay.ts";
 import { isCurrentMusicGenre } from "./music-genres.ts";
 import { isInMusicPool } from "./music-pool.ts";
 
@@ -15,6 +16,7 @@ export type HomeDiscovery = {
 export type HomeTrackRow = {
   id: string; title: string; artist: string; genre: string | null;
   description?: string | null; audio_path?: string | null; cover_path?: string | null;
+  external_url?: string | null; is_music_video?: boolean;
   youtube_url?: string | null; lyrics?: string | null; created_at?: string | null;
   created_by?: string | null; source?: string | null; is_featured_official?: boolean | null;
   is_active?: boolean | null; review_status?: string | null; hidden_at?: string | null;
@@ -72,13 +74,14 @@ export function homeSupportCounts(rows: HomeTrackRow[], hearts: HomeHeartRow[], 
 export function buildPublicHomeWorks(rows: HomeTrackRow[], hearts: HomeHeartRow[],
   mediaUrl: (bucket: string, path: string | null | undefined) => string, now = new Date()): HomeWork[] {
   const week = taipeiHomeWeek(now);
-  const eligible = rows.filter(row => isPublicBarAirplayTrack(row)
+  const eligible = rows.filter(row => isPublicDiscoveryTrack(row)
     && isCurrentMusicGenre(row.genre) && row.source === "community" && !row.is_featured_official);
   const counts = homeSupportCounts(eligible, hearts, week);
   const works: HomeWork[] = eligible.flatMap(row => {
     const audioUrl = mediaUrl("listen-bar-audio", row.audio_path);
-    if (!audioUrl) return [];
-    const videoId = homeYouTubeId(row.youtube_url);
+    const external = externalMusicFromRow(row);
+    if (!audioUrl && !external) return [];
+    const videoId = external ? (row.is_music_video && external.provider === "youtube" ? external.mediaId : homeYouTubeId(row.youtube_url)) : homeYouTubeId(row.youtube_url);
     return [{ id: row.id, title: row.title, artist: row.artist, genre: row.genre ?? "",
       description: row.description?.trim() ?? "", coverUrl: mediaUrl("listen-bar-covers", row.cover_path),
       audioUrl, lyrics: row.lyrics ?? "", videoId,
@@ -96,7 +99,7 @@ export function buildHomeDiscovery(rows: HomeTrackRow[], hearts: HomeHeartRow[],
   const topSupport = Math.max(0, ...mvs.map(work => work.supporterCount));
   // A tie is shared exposure, never a fabricated sole winner or personal endorsement.
   const featured = topSupport > 0 ? mvs.filter(work => work.supporterCount === topSupport) : mvs.slice(0, 1);
-  return { week, featured, featureKind: topSupport > 0 ? "community" : featured.length ? "new" : "empty", singles: excludeFeaturedWorks(works, featured).filter(work => isInMusicPool(work.publishedAt, now.getTime())).slice(0, 3) };
+  return { week, featured, featureKind: topSupport > 0 ? "community" : featured.length ? "new" : "empty", singles: excludeFeaturedWorks(works, featured).filter(work => work.audioUrl && isInMusicPool(work.publishedAt, now.getTime())).slice(0, 3) };
 }
 
 type PageResult<T> = { data: T[] | null; error: { message: string } | null };

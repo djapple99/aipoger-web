@@ -35,6 +35,7 @@ type HonorTargetMeta = {
   createdAt: string | null;
   audioUrl?: string | null;
   ownerId?: string | null;
+  externalUrl?: string | null;
 };
 
 type StoredHonorData = {
@@ -66,6 +67,7 @@ type HonorInteractionDatabase = {
           genre: string | null;
           mood: string | null;
           audio_path: string | null;
+          external_url: string | null;
           created_by: string | null;
           created_at: string | null;
         };
@@ -327,7 +329,7 @@ async function fetchTargetMetadata(admin: AdminClient, records: StoredHonorRecor
   if (uuidBarTargets.length > 0) {
     const readBars = await admin
       .from("listen_bar_tracks")
-      .select("id,title,artist,genre,mood,audio_path,created_by,created_at")
+      .select("id,title,artist,genre,mood,audio_path,external_url,created_by,created_at")
       .in("id", uuidBarTargets);
     if (!readBars.error) {
       for (const row of readBars.data ?? []) {
@@ -336,7 +338,7 @@ async function fetchTargetMetadata(admin: AdminClient, records: StoredHonorRecor
           artist: cleanText(row.artist, 80),
           genre: cleanText(row.genre, 80) || cleanText(row.mood, 80),
           audioUrl: publicStorageUrl(admin, LISTEN_BAR_AUDIO_BUCKET, row.audio_path),
-          ownerId: row.created_by ?? null,
+          ownerId: row.created_by ?? null, externalUrl: row.external_url ?? null,
           createdAt: row.created_at ?? null,
         });
       }
@@ -356,7 +358,7 @@ function withTargetMetadata(record: StoredHonorRecord, metadata: Map<string, Hon
     targetTitle: record.targetTitle || [meta.artist, meta.title].filter(Boolean).join(" / ") || undefined,
     targetArtist: record.targetArtist || meta.artist || undefined,
     targetGenre: record.targetGenre || meta.genre || undefined,
-    audioUrl: meta.audioUrl ?? undefined,
+    audioUrl: meta.audioUrl ?? undefined, externalUrl: meta.externalUrl ?? undefined,
     targetOwnerId: meta.ownerId ?? undefined,
     updatedAt: record.updatedAt || meta.createdAt || new Date().toISOString(),
   };

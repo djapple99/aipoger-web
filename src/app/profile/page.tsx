@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import ProfileMusicUpload from "@/components/profile-music-upload";
+import CreatorCenter from "@/components/creator-center";
 import { isInMusicPool } from "@/lib/music-pool";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -123,6 +123,7 @@ type HonorFavoriteRecord = {
   targetGenre?: string | null;
   targetOwnerId?: string | null;
   audioUrl?: string | null;
+  externalUrl?: string | null;
   favoriteCount?: number | null;
   myFavorited?: boolean | null;
   updatedAt?: string | null;
@@ -174,6 +175,7 @@ type CreatorItem = {
   genre?: string | null;
   aiTool?: string | null;
   audioUrl?: string | null;
+  externalUrl?: string | null;
   coverUrl?: string | null;
   favoriteRecord?: HonorFavoriteRecord | null;
   trackId?: string | null;
@@ -278,11 +280,11 @@ function ProfileInner() {
   const isZh = lang === "zh";
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [submitOpen, setSubmitOpen] = useState(false);
+  const [, setSubmitOpen] = useState(false);
 
   const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState("");
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [, setIsAdmin] = useState(false);
   const [fighterName, setFighterName] = useState("");
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [cropModalOpen, setCropModalOpen] = useState(false);
@@ -1464,7 +1466,7 @@ function ProfileInner() {
         date: record.updatedAt,
         artist: record.targetArtist,
         genre: record.targetGenre,
-        audioUrl: record.audioUrl,
+        audioUrl: record.audioUrl, externalUrl: record.externalUrl,
         coverUrl: DEFAULT_LISTEN_BAR_COVER,
         favoriteRecord: record,
       };
@@ -1571,8 +1573,8 @@ function ProfileInner() {
   }, [searchParams, userId]);
 
 
-  return (
-    <div className="aipo-stage-bg min-h-screen px-4 pb-40 pt-24 text-white sm:pb-28 sm:pt-10">
+  const legacyContent = (
+    <div data-legacy-root className="aipo-stage-bg min-h-screen px-4 pb-40 pt-24 text-white sm:pb-28 sm:pt-10">
       <div className="relative z-10 mx-auto w-full max-w-6xl space-y-6">
         <header className="max-w-3xl">
           <p className="aipo-section-kicker">{copy.kicker}</p>
@@ -1580,24 +1582,14 @@ function ProfileInner() {
           <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base">{copy.subtitle}</p>
         </header>
 
-        <div className="grid gap-5 lg:grid-cols-[0.92fr_1.08fr]">
+        <div data-legacy-grid className="grid gap-5 lg:grid-cols-[0.92fr_1.08fr]">
           <section ref={avatarSectionRef} id="avatar-upload" className="aipo-control-panel rounded-[1.35rem] p-5 sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-xl font-black text-zinc-50">{copy.identity}</h2>
                 <p className="mt-1 text-xs leading-5 text-zinc-500">{copy.avatarHelp}</p>
               </div>
-              {isAdmin && (
-                <Link
-                  href="/admin"
-                  aria-label={copy.adminEntryButton}
-                  title={copy.adminEntryButton}
-                  className="group inline-flex items-center gap-1.5 rounded-full border border-amber-300/45 bg-amber-300/10 px-3 py-1 text-xs font-black text-amber-100 transition hover:border-amber-200 hover:bg-amber-300/20 hover:text-white"
-                >
-                  <span>管理員</span>
-                  <span aria-hidden="true" className="text-[11px] transition-transform group-hover:translate-x-0.5">↗</span>
-                </Link>
-              )}
+
             </div>
 
             <div className="mt-6 flex flex-col gap-5 sm:flex-row sm:items-center">
@@ -1636,11 +1628,7 @@ function ProfileInner() {
                   <Link href={`/profile/insights?lang=${lang}`} className="rounded-2xl border border-orange-300/30 bg-orange-400/10 px-4 py-2 text-sm font-black text-orange-100 transition hover:border-orange-200">
                     {lang === "zh" ? "作品表現" : lang === "ja" ? "作品の分析" : lang === "ko" ? "작품 분석" : "Work insights"}
                   </Link>
-                  {isAdmin && (
-                    <Link href="/admin" className="rounded-2xl border border-amber-300/40 bg-amber-300/10 px-4 py-2 text-sm font-black text-amber-100 transition hover:border-amber-200 hover:bg-amber-300/20 hover:text-white">
-                      {copy.adminEntryButton}
-                    </Link>
-                  )}
+
                 </div>
               </div>
             </div>
@@ -1674,64 +1662,20 @@ function ProfileInner() {
               {fighterSaved && <p className="mt-2 text-xs text-green-400">{t("profile_fighter_saved")}</p>}
             </div>
 
-            {isAdmin && (
-              <div className="mt-5 rounded-2xl border border-amber-300/18 bg-amber-300/[0.05] p-4">
-                <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                  <div>
-                    <h3 className="text-lg font-black text-amber-100">{copy.adminEntry}</h3>
-                    <p className="mt-1 text-xs leading-5 text-zinc-500">{copy.adminHelp}</p>
-                  </div>
-                </div>
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  <Link className="rounded-xl border border-orange-300/30 bg-orange-400/[0.12] px-3 py-2 text-sm font-bold text-orange-50 transition hover:border-orange-200/70" href="/admin">
-                    後台總覽
-                  </Link>
-                  <Link className="rounded-xl border border-yellow-300/20 bg-yellow-300/[0.08] px-3 py-2 text-sm font-bold text-yellow-100 transition hover:border-yellow-300/50" href="/admin/analytics">
-                    Analytics
-                  </Link>
-                  <Link className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm font-bold text-zinc-100 transition hover:border-orange-300/50" href="/admin/listen-bar">
-                    傷心酒吧
-                  </Link>
-                  <Link className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm font-bold text-zinc-100 transition hover:border-orange-300/50" href="/admin/battles">
-                    Battle
-                  </Link>
-                  <Link className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm font-bold text-zinc-100 transition hover:border-orange-300/50" href="/admin/social">
-                    社群
-                  </Link>
-                  <Link className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm font-bold text-zinc-100 transition hover:border-yellow-300/50" href="/admin/listen-bar">
-                    {isZh ? "作品管理" : "Work Management"}
-                  </Link>
-                  <Link className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm font-bold text-zinc-100 transition hover:border-cyan-300/50" href="/admin/choice">
-                    Choice
-                  </Link>
-                  <Link className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm font-bold text-zinc-100 transition hover:border-orange-300/50" href="/admin/quiz">
-                    Quiz
-                  </Link>
-                  <Link className="rounded-xl border border-orange-300/25 bg-orange-400/[0.08] px-3 py-2 text-sm font-bold text-orange-100 transition hover:border-orange-300/60" href="/admin/ai-music-bible">
-                    聖經編輯
-                  </Link>
-                </div>
-              </div>
-            )}
+
           </section>
 
-          <section id="my-works" className="aipo-control-panel rounded-[1.35rem] p-5 sm:p-6">
+          <section id="legacy-my-works" className="aipo-control-panel rounded-[1.35rem] p-5 sm:p-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h2 className="text-xl font-black text-zinc-50">{copy.creations}</h2>
                 <p className="mt-1 text-xs leading-5 text-zinc-500">{copy.creationsHelp}</p>
               </div>
-              <button type="button" className="aipo-primary-button rounded-xl px-4 py-2 text-sm font-bold" onClick={() => { setSubmitOpen(true); setCreatorFilter("listenBar"); window.requestAnimationFrame(() => document.getElementById("submit-work")?.scrollIntoView({ block: "start" })); }}>{lang === "zh" ? "投稿作品" : lang === "ja" ? "作品を投稿" : lang === "ko" ? "작품 제출" : "Submit work"}</button>
+
               {creatorLoading && <span className="text-xs font-bold text-orange-200">{t("common_loading")}</span>}
             </div>
 
-            <details id="submit-work" open={submitOpen} onToggle={event => setSubmitOpen(event.currentTarget.open)} className="mt-4 scroll-mt-6 rounded-xl border border-orange-300/25 bg-black/35 p-4">
-              <summary className="cursor-pointer text-base font-bold text-orange-100">{lang === "zh" ? "新增作品・上傳與投稿" : lang === "ja" ? "新しい作品・アップロードと投稿" : lang === "ko" ? "새 작품 · 업로드와 제출" : "New work · upload and submit"}</summary>
-              {submitOpen && userId ? <ProfileMusicUpload key={userId} userId={userId} creatorDefaultName={fighterName} onSubmitted={() => {
-                setCreatorFilter("listenBar");
-                void supabase.auth.getSession().then(({ data }) => { if (data.session?.user.id === userId) void loadCreatorData(userId, data.session.access_token); });
-              }} /> : null}
-            </details>
+
             {creatorError && <p className="mt-4 rounded-2xl border border-orange-300/20 bg-orange-300/10 px-4 py-3 text-xs text-orange-100">{creatorError}</p>}
 
             <section id="pending-ai-music-challenges" className="mt-5 rounded-2xl border border-red-300/24 bg-red-500/[0.055] p-4 shadow-[0_0_34px_rgba(220,38,38,0.08)]">
@@ -2510,6 +2454,11 @@ function ProfileInner() {
       <ShowtimeQueuePlayer ref={profilePlayerRef} isZh={isZh} />
     </div>
   );
+  return <CreatorCenter userId={userId} name={fighterName} avatar={avatarPreview}
+    favorites={creatorItems.filter(item => item.category === "favorites")} savedChoiceCount={savedChoices.length} privateLoading={creatorLoading} privateError={creatorError}
+    legacy={legacyContent} onLegacy={kind => { setCreatorFilter(kind === "settings" ? "listenBar" : kind as typeof creatorFilter); }}
+    onManage={id => { const item = creatorItems.find(item => item.trackId === id); if (item?.showtimeTrack) { openShowtimeEditor(item.showtimeTrack); const index=creatorItems.filter(item=>item.category === "listenBar").findIndex(item=>item.trackId===id); setCreatorPage(Math.floor(Math.max(0,index)/CREATOR_ITEMS_PER_PAGE)+1); } }}
+    onSubmitted={() => { void supabase.auth.getSession().then(({data}) => { if (data.session?.user.id === userId) void loadCreatorData(userId!,data.session.access_token); }); }} />;
 }
 
 export default function ProfilePage() {

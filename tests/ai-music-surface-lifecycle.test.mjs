@@ -27,7 +27,7 @@ test("Explore includes historical certified works and only blocks challenges for
   assert.equal(aiMusicTracksRouteSource.includes('ai_music_showtime_defense_target'), false);
   assert.equal(aiMusicTracksRouteSource.includes('surface === "showtime"'), false);
   assert.ok(aiMusicTracksRouteSource.includes('.filter((row) => !row.ai_music_explore_retired)'));
-  assert.ok(aiMusicTracksRouteSource.includes('isPublicBarAirplayTrack(row)'));
+  assert.ok(aiMusicTracksRouteSource.includes('isPublicDiscoveryTrack(row)'));
   assert.ok(aiMusicChallengeRouteSource.includes('buildAiMusicSurfaceLifecycleMap'));
   assert.equal(aiMusicChallengeRouteSource.includes('isAiMusicPersistedShowtimeCertified'), false);
   assert.ok(aiMusicChallengeRouteSource.includes('isPublicBarAirplayTrack(track)'));

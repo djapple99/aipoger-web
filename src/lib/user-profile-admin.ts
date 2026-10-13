@@ -4,9 +4,7 @@ import { isAdminEmail } from "@/lib/admin-emails";
 
 function userIsAdminByEmail(user: User | null | undefined): boolean {
   if (!user) return false;
-  if (isAdminEmail(user.email)) return true;
-  const meta = user.user_metadata as Record<string, unknown> | undefined;
-  return isAdminEmail(typeof meta?.email === "string" ? meta.email : null);
+  return isAdminEmail(user.email);
 }
 
 /** Read the active session without returning a user-only snapshot that cannot authorize API calls. */

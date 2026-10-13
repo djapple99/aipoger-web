@@ -34,7 +34,7 @@ test("Explore and Bar no longer exclude historical certified community songs", (
   assert.equal(aiMusicTracksRouteSource.includes('surface === "showtime"'), false);
   assert.ok(aiMusicTracksRouteSource.includes('.filter((row) => !row.ai_music_explore_retired)'));
   assert.ok(listenBarTracksRouteSource.includes('export { GET } from "@/app/api/ai-music/tracks/route"'));
-  assert.ok(aiMusicTracksRouteSource.includes("isPublicBarAirplayTrack"));
+  assert.ok(aiMusicTracksRouteSource.includes("isPublicDiscoveryTrack"));
   assert.equal(rankSource.includes("surface=showtime"), false);
   assert.equal(rankSource.includes("listenBarIsHonorEligible"), false);
 });
@@ -91,5 +91,5 @@ test("Showtime API schema includes support URL fields so modern selects do not f
   assert.ok(supportUrlMigrationSource.includes("support_url_status text not null default 'none'"));
   assert.ok(supportUrlMigrationSource.includes("listen_bar_tracks_support_url_status_check"));
   assert.ok(aiMusicTracksRouteSource.includes("AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS"));
-  assert.ok(aiMusicTracksRouteSource.includes("isPublicBarAirplayTrack(row)"));
+  assert.ok(aiMusicTracksRouteSource.includes("isPublicDiscoveryTrack(row)"));
 });

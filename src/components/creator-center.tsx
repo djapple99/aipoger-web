@@ -1,0 +1,836 @@
+/* eslint-disable @next/next/no-img-element -- Original creator artwork and avatars have dynamic source dimensions. */
+"use client";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
+import {
+  Coins,
+  Heart,
+  MessageCircleMore,
+  Music2,
+  Play,
+  Pencil,
+  X,
+} from "lucide-react";
+import EditorialHeader from "@/components/editorial-header";
+import { creatorText } from "@/lib/creator-center-copy";
+import { useI18n } from "@/lib/i18n";
+import { supabase } from "@/lib/supabase";
+import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
+import { musicPlayer, getMusicPlayerState } from "@/lib/music-player-store";
+import { parseExternalMusic } from "@/lib/external-music";
+import type { CreatorSummary, CreatorWork } from "@/lib/creator-center";
+import CreatorLinkUpload from "@/components/creator-link-upload";
+import ProfileMusicUpload from "@/components/profile-music-upload";
+import ExternalMusicPlayer from "@/components/external-music-player";
+import HomeWorkFeedback from "@/components/home-work-feedback";
+import styles from "@/components/creator-center.module.css";
+type Favorite = {
+  id: string;
+  title: string;
+  artist?: string | null;
+  genre?: string | null;
+  coverUrl?: string | null;
+  audioUrl?: string | null;
+  externalUrl?: string | null;
+};
+type Props = {
+  userId: string | null;
+  name: string;
+  avatar: string | null;
+  favorites: Favorite[];
+  savedChoiceCount: number;
+  privateLoading: boolean;
+  privateError: string;
+  legacy: ReactNode;
+  onManage: (id: string) => void;
+  onLegacy: (kind: string) => void;
+  onSubmitted: () => void;
+};
+export default function CreatorCenter(props: Props) {
+  const [data, setData] = useState<CreatorSummary | null>(null),
+    [error, setError] = useState(""),
+    [loading, setLoading] = useState(true),
+    [version, setVersion] = useState(0);
+  const { userId } = props;
+  useEffect(() => {
+    let active = true;
+    setData(null);
+    setLoading(true);
+    setError("");
+    if (!userId) {
+      setLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+    void (async () => {
+      try {
+        const { data: d } = await supabase.auth.getSession();
+        if (d.session?.user.id !== userId) throw new Error("AUTH_REQUIRED");
+        const r = await fetch("/api/creator-center", {
+          headers: { Authorization: `Bearer ${d.session.access_token}` },
+          cache: "no-store",
+        });
+        const p = await r.json();
+        if (!r.ok) throw new Error(p.error || "LOAD_FAILED");
+        if (active) setData(p);
+      } catch {
+        if (active) setError("LOAD_FAILED");
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [userId, version]);
+  const refresh = () => {
+    setVersion((v) => v + 1);
+    props.onSubmitted();
+  };
+  return (
+    <CreatorCenterLayout
+      {...props}
+      data={data}
+      loading={loading}
+      error={error}
+      onRefresh={refresh}
+    />
+  );
+}
+export function CreatorCenterLayout({
+  data,
+  loading,
+  error,
+  onRefresh,
+  ...props
+}: Props & {
+  data: CreatorSummary | null;
+  loading: boolean;
+  error: string;
+  onRefresh: () => void;
+}) {
+  const { lang } = useI18n();
+  const tx = (zh: string, en: string, ja?: string, ko?: string) =>
+    creatorText(lang, zh, en, ja, ko);
+  const [tab, setTab] = useState("works"),
+    [source, setSource] = useState("link"),
+    [query, setQuery] = useState(""),
+    [status, setStatus] = useState("all"),
+    [page, setPage] = useState(1),
+    [dialog, setDialog] = useState<string | null>(null),
+    [comment, setComment] = useState<CreatorWork | null>(null),
+    [external, setExternal] = useState<CreatorWork | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (dialog || external) dialogRef.current?.showModal();
+    else dialogRef.current?.close();
+  }, [dialog, external]);
+  useEffect(() => {
+    setPage(1);
+  }, [query, status, tab]);
+  const count = data?.works.length;
+  const active = data?.works.filter((w) => w.status === "public").length;
+  const ended = data?.works.filter((w) => w.status === "ended").length;
+  const list = useMemo(
+    () =>
+      data?.works.filter(
+        (w) =>
+          (status === "all" || w.status === status) &&
+          `${w.title} ${w.artist} ${w.genre}`
+            .normalize("NFKC")
+            .toLowerCase()
+            .includes(query.normalize("NFKC").trim().toLowerCase()),
+      ) ?? [],
+    [data, status, query],
+  );
+  const displayed = tab === "favorites" ? props.favorites : list;
+  const pages = Math.max(1, Math.ceil(displayed.length / 10)),
+    safePage = Math.min(page, pages),
+    rows = list.slice((safePage - 1) * 10, safePage * 10);
+  const play = (w: CreatorWork) => {
+    if (w.external) {
+      if (getMusicPlayerState().playing) musicPlayer?.toggle();
+      setExternal(w);
+      return;
+    }
+    if (!w.audioUrl) return;
+    void musicPlayer?.start(
+      [
+        {
+          id: w.id,
+          heartTrackId: w.id,
+          title: w.title,
+          artist: w.artist,
+          coverUrl: w.coverUrl,
+          audioUrl: w.audioUrl,
+          lyrics: w.lyrics,
+          genre: w.genre,
+        },
+      ],
+      0,
+      tx("我的作品", "My Works"),
+      { sourceKey: "creator-center" },
+    );
+  };
+  const close = () => {
+    setDialog(null);
+    setExternal(null);
+  };
+  const showLegacy = (kind: string, id?: string) => {
+    props.onLegacy(kind);
+    if (id) props.onManage(id);
+    setDialog(kind === "settings" ? "settings" : "works");
+  };
+  const safeFavorites =
+    !props.userId || props.privateLoading || props.privateError
+      ? null
+      : props.favorites.length + props.savedChoiceCount;
+  const fallback = (n: number | null | undefined) =>
+    n == null ? "—" : n.toLocaleString();
+  const statusLabel = (s: string) =>
+    s === "public"
+      ? tx("推廣中", "Promoting", "公開中", "공개 중")
+      : s === "ended"
+        ? tx("推廣期結束", "Promotion ended", "公開期間終了", "공개 기간 종료")
+        : tx("已下架", "Hidden", "非公開", "비공개");
+  return (
+    <div className={styles.page}>
+      <EditorialHeader active="creator" />
+      <main className={styles.main}>
+        <header className={styles.heading}>
+          <div>
+            <h1>
+              {tx(
+                "創作者中心",
+                "Creator Center",
+                "クリエイターセンター",
+                "창작자 센터",
+              )}
+            </h1>
+            <p>
+              {tx(
+                "作品、收藏與回饋，一次掌握。",
+                "Your works, saves and feedback in one place.",
+                "作品・保存・反応をひと目で。",
+                "작품, 저장, 피드백을 한눈에.",
+              )}
+            </p>
+          </div>
+          <div className={styles.identity}>
+            <img
+              className={styles.avatar}
+              src={props.avatar || AIPOGER_BRAND_LOGO}
+              alt=""
+            />
+            <strong>{props.name || tx("我的帳號", "My Account")}</strong>
+            {data?.isOwner ? <span className={styles.owner}>OWNER</span> : null}
+            <button
+              className={styles.secondary}
+              onClick={() => showLegacy("settings")}
+            >
+              {tx(
+                "編輯資料",
+                "Edit profile",
+                "プロフィール編集",
+                "프로필 편집",
+              )}
+            </button>
+            {data?.isOwner ? (
+              <Link href={`/admin?lang=${lang}`} className={styles.secondary}>
+                {tx("後台管理", "Owner console", "管理画面", "관리 화면")} ↗
+              </Link>
+            ) : null}
+          </div>
+        </header>
+        <div className={styles.overview}>
+          <div className={styles.metrics}>
+            <button className={styles.metric} onClick={() => setTab("works")}>
+              <Music2 className={styles.metricIcon} />
+              <div>
+                <span>
+                  {tx(
+                    "已投稿作品",
+                    "Submitted works",
+                    "投稿した作品",
+                    "제출 작품",
+                  )}
+                </span>
+                <b>{fallback(count)}</b>
+                <small>
+                  {fallback(active)} {tx("件推廣中", "promoting")} ·{" "}
+                  {fallback(ended)} {tx("件已結束", "ended")}
+                </small>
+              </div>
+            </button>
+            <button
+              className={styles.metric}
+              onClick={() => setTab("favorites")}
+            >
+              <Heart className={styles.metricIcon} />
+              <div>
+                <span>
+                  {tx("我的收藏", "My saves", "保存した作品", "내 저장")}
+                </span>
+                <b>{fallback(safeFavorites)}</b>
+                <small>
+                  {tx(
+                    "歌曲與歌單",
+                    "Songs and playlists",
+                    "曲とプレイリスト",
+                    "곡과 플레이리스트",
+                  )}
+                </small>
+              </div>
+            </button>
+            <button
+              className={styles.metric}
+              onClick={() => setTab("comments")}
+            >
+              <MessageCircleMore className={styles.metricIcon} />
+              <div>
+                <span>
+                  {tx(
+                    "評價我的人",
+                    "People commenting",
+                    "コメントした人数",
+                    "댓글 작성자",
+                  )}
+                </span>
+                <b>{fallback(data?.commenters)}</b>
+                <small>
+                  {tx("共", "Total")} {fallback(data?.commentCount)}{" "}
+                  {tx("則評論", "comments")}
+                </small>
+              </div>
+            </button>
+          </div>
+          <div className={styles.credit}>
+            <Coins className={styles.creditIcon} />
+            <div>
+              {tx("我的 Credit", "My Credit")}
+              <strong>
+                {data?.isOwner
+                  ? tx("免扣點", "No deduction", "ポイント免除", "포인트 면제")
+                  : tx("尚未啟用", "Not active", "準備中", "준비 중")}
+              </strong>
+              <small>
+                {data?.isOwner
+                  ? tx(
+                      "OWNER 專屬權限 · 點數尚未啟用",
+                      "OWNER exemption · credits not active",
+                    )
+                  : tx(
+                      "啟用後顯示實際可用積分",
+                      "Your actual balance will appear when activated",
+                    )}
+              </small>
+              <br />
+              <button onClick={() => setDialog("credit")}>
+                {tx(
+                  "點數紀錄",
+                  "Credit history",
+                  "ポイント履歴",
+                  "포인트 내역",
+                )}{" "}
+                →
+              </button>
+            </div>
+          </div>
+        </div>
+        {loading ? (
+          <p role="status" className={styles.hint}>
+            {tx("正在讀取你的作品資料…", "Loading your works…")}
+          </p>
+        ) : null}
+        {error ? (
+          <p role="alert" className={styles.error}>
+            {tx(
+              "資料暫時無法讀取，請重試。",
+              "Could not load your data. Retry.",
+            )}{" "}
+            <button onClick={onRefresh}>{tx("重試", "Retry")}</button>
+          </p>
+        ) : null}
+        {props.privateError ? (
+          <p role="alert" className={styles.error}>
+            {props.privateError}
+          </p>
+        ) : null}
+        <div className={styles.workspace}>
+          <section id="my-works">
+            <div
+              className={styles.tabs}
+              role="tablist"
+              aria-label={tx("創作者資料", "Creator data")}
+            >
+              {[
+                ["works", tx("我的作品", "My works", "作品", "내 작품"), count],
+                [
+                  "favorites",
+                  tx("我的收藏", "My saves", "保存", "내 저장"),
+                  safeFavorites,
+                ],
+                [
+                  "comments",
+                  tx(
+                    "收到的評論",
+                    "Comments received",
+                    "コメント",
+                    "받은 댓글",
+                  ),
+                  data?.commentCount,
+                ],
+              ].map(([key, label, num]) => (
+                <button
+                  key={String(key)}
+                  role="tab"
+                  aria-selected={tab === key}
+                  onClick={() => setTab(String(key))}
+                >
+                  {label} {fallback(num as number | undefined)}
+                </button>
+              ))}
+              <select
+                aria-label={tx("更多紀錄", "More records")}
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) showLegacy(e.target.value);
+                }}
+              >
+                <option value="">{tx("更多紀錄", "More records")}</option>
+                <option value="battle">Drop / Q Crash</option>
+                <option value="records">
+                  {tx("對戰紀錄", "Battle records")}
+                </option>
+                <option value="wins">{tx("勝利作品", "Winning works")}</option>
+                <option value="favorites">Choice</option>
+              </select>
+            </div>
+            {tab === "works" ? (
+              <>
+                <div className={styles.toolbar}>
+                  <input
+                    type="search"
+                    aria-label={tx("搜尋我的作品", "Search my works")}
+                    placeholder={tx("搜尋我的作品", "Search my works")}
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                  />
+                  <select
+                    aria-label={tx("作品狀態", "Work status")}
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                  >
+                    <option value="all">{tx("全部狀態", "All status")}</option>
+                    {["public", "ended", "hidden"].map((s) => (
+                      <option value={s} key={s}>
+                        {statusLabel(s)}
+                      </option>
+                    ))}
+                  </select>
+                  <span>
+                    {list.length} {tx("件作品", "works")}
+                  </span>
+                </div>
+                <div className={styles.rowHeader}>
+                  <span>{tx("作品", "Work")}</span>
+                  <span>{tx("狀態", "Status")}</span>
+                  <span>{tx("支持人數", "Supporters")}</span>
+                  <span>{tx("評論", "Comments")}</span>
+                  <span>{tx("操作", "Actions")}</span>
+                </div>
+                {rows.map((w) => (
+                  <article key={w.id} className={styles.workRow}>
+                    <div className={styles.workInfo}>
+                      <button
+                        className={styles.cover}
+                        aria-label={tx(`播放 ${w.title}`, `Play ${w.title}`)}
+                        onClick={() => play(w)}
+                        disabled={!w.audioUrl && !w.external}
+                      >
+                        <img src={w.coverUrl} alt="" />
+                        <Play fill="currentColor" />
+                      </button>
+                      <div className={styles.workName}>
+                        <b title={w.title}>{w.title}</b>
+                        <small title={w.genre}>
+                          {w.genre} · {w.aiTool}
+                          {w.isMusicVideo ? " · MV" : ""}
+                        </small>
+                        <small>
+                          {new Date(w.createdAt).toLocaleDateString(
+                            lang === "zh" ? "zh-TW" : lang,
+                          )}
+                        </small>
+                      </div>
+                    </div>
+                    <span className={styles.status} data-status={w.status}>
+                      {statusLabel(w.status)}
+                    </span>
+                    <span className={styles.count}>{w.supporters}</span>
+                    <span className={styles.count}>{w.comments}</span>
+                    <div className={styles.rowActions}>
+                      <button
+                        title={tx("評論", "Comments")}
+                        aria-label={tx(
+                          `評論 ${w.title}`,
+                          `Comments on ${w.title}`,
+                        )}
+                        onClick={() => setComment(w)}
+                      >
+                        <MessageCircleMore />
+                      </button>
+                      <button
+                        title={tx("編輯", "Edit")}
+                        aria-label={tx(`編輯 ${w.title}`, `Edit ${w.title}`)}
+                        disabled={!w.active}
+                        onClick={() => showLegacy("listenBar", w.id)}
+                      >
+                        <Pencil />
+                      </button>
+                    </div>
+                  </article>
+                ))}
+                {!loading && !error && data && !rows.length ? (
+                  <p className={styles.empty}>
+                    {query || status !== "all"
+                      ? tx("沒有符合的作品。", "No matching works.")
+                      : tx(
+                          "還沒有投稿作品，從右側開始。",
+                          "No submissions yet. Start on the right.",
+                        )}
+                  </p>
+                ) : null}
+                <div className={styles.pagination}>
+                  <span>
+                    {rows.length ? (safePage - 1) * 10 + 1 : 0}–
+                    {Math.min(safePage * 10, list.length)} / {list.length}
+                  </span>
+                  <div>
+                    <button
+                      aria-label={tx("上一頁", "Previous page")}
+                      disabled={safePage === 1}
+                      onClick={() => setPage((p) => p - 1)}
+                    >
+                      ‹
+                    </button>
+                    <span>
+                      {safePage} / {pages}
+                    </span>
+                    <button
+                      aria-label={tx("下一頁", "Next page")}
+                      disabled={safePage === pages}
+                      onClick={() => setPage((p) => p + 1)}
+                    >
+                      ›
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : null}
+            {tab === "favorites" ? (
+              <>
+                <p className={styles.footerNote}>
+                  {tx(
+                    "收藏不會改變作品的歷史支持紀錄。",
+                    "Removing saves does not alter support history.",
+                  )}{" "}
+                  <button
+                    className={styles.legacyLink}
+                    onClick={() => showLegacy("favorites")}
+                  >
+                    {tx(
+                      "管理收藏與製作 Choice",
+                      "Manage saves and create Choice",
+                    )}
+                  </button>
+                </p>
+                {props.favorites
+                  .slice((safePage - 1) * 10, safePage * 10)
+                  .map((f) => (
+                    <article className={styles.comment} key={f.id}>
+                      <strong>{f.title}</strong>
+                      <p>
+                        {f.artist} · {f.genre}
+                      </p>
+                      <button
+                        className={styles.secondary}
+                        disabled={!f.audioUrl && !f.externalUrl}
+                        onClick={() => {
+                          if (f.externalUrl) {
+                            const media = parseExternalMusic(f.externalUrl);
+                            if (media)
+                              setExternal({
+                                id: f.id,
+                                title: f.title,
+                                artist: f.artist || "",
+                                genre: f.genre || "",
+                                coverUrl: f.coverUrl || AIPOGER_BRAND_LOGO,
+                                external: media,
+                                audioUrl: "",
+                                aiTool: "",
+                                createdAt: "",
+                                active: true,
+                                status: "public",
+                                supporters: 0,
+                                comments: 0,
+                                lyrics: "",
+                                isMusicVideo: false,
+                              });
+                            return;
+                          }
+                          if (f.audioUrl)
+                            void musicPlayer?.start(
+                              [
+                                {
+                                  id: f.id,
+                                  title: f.title,
+                                  artist: f.artist || "",
+                                  audioUrl: f.audioUrl,
+                                  coverUrl: f.coverUrl || AIPOGER_BRAND_LOGO,
+                                },
+                              ],
+                              0,
+                              tx("我的收藏", "My saves"),
+                            );
+                        }}
+                      >
+                        {tx("播放", "Play")}
+                      </button>
+                    </article>
+                  ))}
+                {!props.privateLoading &&
+                !props.privateError &&
+                !props.favorites.length ? (
+                  <p className={styles.empty}>
+                    {tx("還沒有收藏歌曲。", "No saved songs yet.")}
+                  </p>
+                ) : null}
+                <div className={styles.pagination}>
+                  <span>
+                    {props.favorites.length} {tx("首歌曲", "songs", "曲", "곡")}
+                  </span>
+                  <div>
+                    <button
+                      aria-label={tx("上一頁", "Previous page")}
+                      disabled={safePage === 1}
+                      onClick={() => setPage((p) => p - 1)}
+                    >
+                      ‹
+                    </button>
+                    <span>
+                      {safePage} / {pages}
+                    </span>
+                    <button
+                      aria-label={tx("下一頁", "Next page")}
+                      disabled={safePage === pages}
+                      onClick={() => setPage((p) => p + 1)}
+                    >
+                      ›
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : null}
+            {tab === "comments"
+              ? data?.comments.map((c) => (
+                  <article className={styles.comment} key={c.id}>
+                    <div className={styles.commentHead}>
+                      <strong>{c.name}</strong>
+                      <small>
+                        {new Date(c.createdAt).toLocaleDateString()}
+                      </small>
+                    </div>
+                    <p>{c.text}</p>
+                    <button
+                      className={styles.legacyLink}
+                      onClick={() => {
+                        const w = data.works.find((w) => w.id === c.trackId);
+                        if (w) setComment(w);
+                      }}
+                    >
+                      {c.title}
+                    </button>
+                  </article>
+                ))
+              : null}
+            {tab === "comments" &&
+            !loading &&
+            !error &&
+            data &&
+            !data.comments.length ? (
+              <p className={styles.empty}>
+                {tx(
+                  "還沒有收到其他會員的評論。",
+                  "No comments from other members yet.",
+                )}
+              </p>
+            ) : null}
+            {tab === "works" ? (
+              <section className={styles.recent}>
+                <div className={styles.recentHead}>
+                  <h2>
+                    {tx(
+                      "最新收到的評論",
+                      "Latest comments",
+                      "最近のコメント",
+                      "최근 댓글",
+                    )}
+                  </h2>
+                  <button onClick={() => setTab("comments")}>
+                    {tx("查看全部", "View all")} →
+                  </button>
+                </div>
+                <div className={styles.recentList}>
+                  {data?.comments.slice(0, 2).map((c) => (
+                    <div key={c.id}>
+                      <div className={styles.commentHead}>
+                        <b>{c.name}</b>
+                        <small>
+                          {new Date(c.createdAt).toLocaleDateString()}
+                        </small>
+                      </div>
+                      <p className={styles.hint}>{c.title}</p>
+                      <p>{c.text}</p>
+                    </div>
+                  ))}
+                </div>
+                {!loading && !error && data && !data.comments.length ? (
+                  <p className={styles.hint}>
+                    {tx(
+                      "作品收到評論後會出現在這裡。",
+                      "Comments will appear here when received.",
+                    )}
+                  </p>
+                ) : null}
+              </section>
+            ) : null}
+          </section>
+          <aside className={styles.uploader} id="submit-work">
+            <h2>
+              {tx("投稿新作品", "Submit a work", "作品を投稿", "작품 제출")}
+            </h2>
+            <div
+              className={styles.sourceTabs}
+              role="tablist"
+              aria-label={tx("投稿來源", "Submission source")}
+            >
+              <button
+                role="tab"
+                aria-selected={source === "link"}
+                onClick={() => setSource("link")}
+              >
+                {tx("貼作品連結", "Paste link", "リンク", "링크 붙여넣기")}
+              </button>
+              <button
+                role="tab"
+                aria-selected={source === "file"}
+                onClick={() => setSource("file")}
+              >
+                {tx(
+                  "上傳音檔",
+                  "Upload audio",
+                  "音声アップロード",
+                  "음원 업로드",
+                )}
+              </button>
+            </div>
+            {props.userId ? (
+              source === "link" ? (
+                <CreatorLinkUpload
+                  key={props.userId}
+                  userId={props.userId}
+                  name={props.name}
+                  onSubmitted={onRefresh}
+                />
+              ) : (
+                <div className={styles.fileUpload}>
+                  <ProfileMusicUpload
+                    key={props.userId}
+                    userId={props.userId}
+                    creatorDefaultName={props.name}
+                    onSubmitted={onRefresh}
+                  />
+                </div>
+              )
+            ) : (
+              <p>{tx("登入後即可投稿。", "Sign in to submit.")}</p>
+            )}
+            <p className={styles.footerNote}>
+              {tx(
+                "公開推廣三個月；作品與紀錄留在自己的資料區。",
+                "Three months of public promotion; works and records stay in your account.",
+              )}
+            </p>
+          </aside>
+        </div>
+        <dialog
+          ref={dialogRef}
+          className={styles.dialog}
+          onCancel={close}
+          onClick={(e) => {
+            if (e.currentTarget === e.target) close();
+          }}
+        >
+          <div className={styles.dialogHeader}>
+            <h2>
+              {external?.title ||
+                (dialog === "credit"
+                  ? tx("我的 Credit", "My Credit")
+                  : dialog === "settings"
+                    ? tx("編輯資料", "Edit profile")
+                    : tx("作品與更多紀錄", "Works and records"))}
+            </h2>
+            <button autoFocus aria-label={tx("關閉", "Close")} onClick={close}>
+              <X />
+            </button>
+          </div>
+          {external?.external ? (
+            <ExternalMusicPlayer
+              media={external.external}
+              title={external.title}
+            />
+          ) : dialog === "credit" ? (
+            <p>
+              {tx(
+                "點數尚未啟用，目前沒有點數收支紀錄。Owner 啟用後仍免扣點。",
+                "Credits are not active, so there are no credit transactions. Owner deductions remain exempt when activated.",
+              )}
+            </p>
+          ) : (
+            <div className={styles.legacy} data-mode={dialog ?? "works"}>
+              {props.legacy}
+            </div>
+          )}
+        </dialog>
+        {comment ? (
+          <HomeWorkFeedback
+            key={comment.id}
+            work={{
+              id: comment.id,
+              title: comment.title,
+              artist: comment.artist,
+              genre: comment.genre,
+              coverUrl: comment.coverUrl,
+              audioUrl: comment.audioUrl,
+              description: "",
+              lyrics: comment.lyrics,
+              videoId: null,
+              youtubeUrl: null,
+              supporterCount: comment.supporters,
+              publishedAt: comment.createdAt,
+            }}
+            returnPath={`/profile?lang=${lang}`}
+            supportNote={tx(
+              "評論共用原作品；支持人數不包含作者自己。",
+              "Comments belong to the original work; supporters exclude its author.",
+            )}
+            onClose={() => setComment(null)}
+            onChange={onRefresh}
+          />
+        ) : null}
+      </main>
+    </div>
+  );
+}

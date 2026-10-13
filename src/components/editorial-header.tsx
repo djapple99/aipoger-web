@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 import LangToggle from "@/components/lang-toggle";
 import styles from "./home-editorial.module.css";
 
-export default function EditorialHeader({ active }: { active: "home" | "mv" | "explore" }) {
+export default function EditorialHeader({ active }: { active: "home" | "mv" | "explore" | "creator" }) {
   const { lang } = useI18n(); const copy = homeCopy(lang);
   const [signedIn, setSignedIn] = useState(false);
   const withLang = (path: string) => { const [url, hash] = path.split("#"); return `${url}${url.includes("?") ? "&" : "?"}lang=${lang}${hash ? `#${hash}` : ""}`; };
@@ -34,9 +34,9 @@ export default function EditorialHeader({ active }: { active: "home" | "mv" | "e
           <Link href={withLang("/ai-music-bible")}>{copy.bible}</Link>
         </nav>
         <div className={styles.headerActions}>
-          <Link href={withLang("/profile?submit=1#submit-work")} className={styles.submit}>{copy.submit}</Link>
+          {active !== "creator" ? <Link href={withLang("/profile?submit=1#submit-work")} className={styles.submit}>{copy.submit}</Link> : null}
           <LangToggle variant="inline" />
-          {signedIn ? <span className={styles.accountSpace} /> : <Link href={active !== "home" ? `/auth?lang=${lang}&next=${encodeURIComponent(`/${active === "mv" ? "mv" : "ai-music"}?lang=${lang}`)}` : withLang("/auth")} className={styles.signIn}>{copy.signIn}</Link>}
+          {signedIn ? <span className={styles.accountSpace} /> : <Link href={active !== "home" ? `/auth?lang=${lang}&next=${encodeURIComponent(`/${active === "mv" ? "mv" : active === "creator" ? "profile" : "ai-music"}?lang=${lang}`)}` : withLang("/auth")} className={styles.signIn}>{copy.signIn}</Link>}
         </div>
       </div>
     </header>;
