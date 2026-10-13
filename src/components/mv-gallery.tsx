@@ -163,7 +163,7 @@ export default function MvGallery() {
             <button className={styles.cardPoster} onClick={() => watch(work)} aria-label={`${copy.watch} · ${work.title}`}><WorkImage work={work} video />
               <span className={styles.cardPlay}><Play size={20} fill="currentColor" /></span><span className={base.videoSource}>YouTube</span></button>
             <div className={styles.cardTitleRow}>
-              <h3 title={work.title}><Link href={withLang(`/ai-music?track=${encodeURIComponent(work.id)}`)}>{work.title}</Link></h3>
+              <h3 title={work.title}><button type="button" onClick={() => openFeedback(work)} aria-label={`${mv.openWork} · ${work.title}`}>{work.title}</button></h3>
               <div className={styles.cardActions}>
                 <button className={styles.cardHeart} onClick={() => void sendHeart(work)} aria-label={`${support.hearts[work.id] ? copy.removeHeart : copy.sendHeart} · ${work.title}`}
                   title={support.hearts[work.id] ? copy.removeHeart : copy.sendHeart} aria-pressed={Boolean(support.hearts[work.id])} aria-describedby={`mv-support-${work.id}`}

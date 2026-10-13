@@ -49,7 +49,7 @@ async function mount(t,lang='zh',payload={featureKind:'community',featured:[work
 
 for(const lang of ['zh','en','ja','ko']) test(`MV catalog localizes actions and preserves original work links (${lang})`,async t=>{
  const ui=await mount(t,lang);assert.ok(ui.text().includes(mvCopy(lang).title));assert.ok(ui.text().includes('Real Creator'));
- assert.ok(ui.nodes().some(x=>x.type==='link'&&x.props.href===`/ai-music?track=other-work&lang=${lang}`));
+ ui.button(`${mvCopy(lang).openWork} · Other Song`).onClick();await ui.flush();assert.equal(ui.nodes().find(x=>x.type==='feedback').props.work.id,'other-work');
  assert.equal(ui.nodes().some(x=>x.type==='iframe'),false);
 });
 test('MV hero playback is initiated by a click and pauses the shared music player',async t=>{
@@ -100,7 +100,7 @@ test('MV cards have separate heart and comment actions in the title row; direct 
  const ui=await mount(t);
  const card=ui.nodes().find(x=>x.type==='article');
  const row=card.props.children[1];assert.equal(row.type,'div');
- const actions=nodes(row).filter(x=>x.type==='button');assert.equal(actions.length,2);
+ const actions=nodes(row).filter(x=>x.type==='button'&&!x.props['aria-label']?.startsWith(mvCopy('zh').openWork));assert.equal(actions.length,2);
  assert.ok(nodes(row).some(x=>x.type==='h3'));assert.equal(card.props.children[2].type,'p');
  await ui.button('送出愛心與收藏 · Other Song').onClick();await ui.flush();
  assert.deepEqual(ui.support.called,['other-work']);assert.equal(ui.nodes().some(x=>x.type==='feedback'),false);
