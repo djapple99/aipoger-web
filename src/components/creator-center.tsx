@@ -39,6 +39,7 @@ type Props = {
   avatar: string | null;
   favorites: Favorite[];
   savedChoiceCount: number;
+  editingWorkId: string | null;
   privateLoading: boolean;
   privateError: string;
   legacy: ReactNode;
@@ -129,6 +130,9 @@ export function CreatorCenterLayout({
   useEffect(() => {
     setPage(1);
   }, [query, status, tab]);
+  useEffect(() => {
+    if (dialog === "edit" && !props.editingWorkId) setDialog(null);
+  }, [dialog, props.editingWorkId]);
   const count = data?.works.length;
   const active = data?.works.filter((w) => w.status === "public").length;
   const ended = data?.works.filter((w) => w.status === "ended").length;
@@ -145,9 +149,10 @@ export function CreatorCenterLayout({
     [data, status, query],
   );
   const displayed = tab === "favorites" ? props.favorites : list;
-  const pages = Math.max(1, Math.ceil(displayed.length / 10)),
+  const pageSize = tab === "favorites" ? 10 : 4;
+  const pages = Math.max(1, Math.ceil(displayed.length / pageSize)),
     safePage = Math.min(page, pages),
-    rows = list.slice((safePage - 1) * 10, safePage * 10);
+    rows = list.slice((safePage - 1) * pageSize, safePage * pageSize);
   const play = (w: CreatorWork) => {
     if (w.external) {
       if (getMusicPlayerState().playing) musicPlayer?.toggle();
@@ -180,7 +185,7 @@ export function CreatorCenterLayout({
   const showLegacy = (kind: string, id?: string) => {
     props.onLegacy(kind);
     if (id) props.onManage(id);
-    setDialog(kind === "settings" ? "settings" : "works");
+    setDialog(id ? "edit" : kind === "settings" ? "settings" : "works");
   };
   const safeFavorites =
     !props.userId || props.privateLoading || props.privateError
@@ -325,7 +330,6 @@ export function CreatorCenterLayout({
                       "Your actual balance will appear when activated",
                     )}
               </small>
-              <br />
               <button onClick={() => setDialog("credit")}>
                 {tx(
                   "點數紀錄",
@@ -458,10 +462,14 @@ export function CreatorCenterLayout({
                           {w.genre} · {w.aiTool}
                           {w.isMusicVideo ? " · MV" : ""}
                         </small>
-                        <small>
+                        <small className={styles.workDate}>
                           {new Date(w.createdAt).toLocaleDateString(
                             lang === "zh" ? "zh-TW" : lang,
                           )}
+                        </small>
+                        <small className={styles.mobileCounts}>
+                          <Heart aria-hidden="true" /> {w.supporters}{" "}
+                          <MessageCircleMore aria-hidden="true" /> {w.comments}
                         </small>
                       </div>
                     </div>
@@ -504,8 +512,8 @@ export function CreatorCenterLayout({
                 ) : null}
                 <div className={styles.pagination}>
                   <span>
-                    {rows.length ? (safePage - 1) * 10 + 1 : 0}–
-                    {Math.min(safePage * 10, list.length)} / {list.length}
+                    {rows.length ? (safePage - 1) * pageSize + 1 : 0}–
+                    {Math.min(safePage * pageSize, list.length)} / {list.length}
                   </span>
                   <div>
                     <button
@@ -544,6 +552,9 @@ export function CreatorCenterLayout({
                       "管理收藏與製作 Choice",
                       "Manage saves and create Choice",
                     )}
+                    {props.savedChoiceCount > 0
+                      ? ` · ${props.savedChoiceCount} Choice`
+                      : ""}
                   </button>
                 </p>
                 {props.favorites

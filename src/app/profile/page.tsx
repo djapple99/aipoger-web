@@ -1992,6 +1992,7 @@ function ProfileInner() {
                     return (
                       <article
                         key={item.id}
+                        data-creator-row
                         onClick={() => {
                           setSelectedMarqueeItemId(item.id);
                           if (favoriteSelectionMode && showFavoriteControls) toggleFavoriteSelection(item.id);
@@ -2254,6 +2255,7 @@ function ProfileInner() {
                         </span>
                         {showShowtimeControls && showtimeTrack && editingShowtimeTrackId === showtimeTrack.id ? (
                           <div
+                            data-creator-editor
                             className="col-span-2 rounded-2xl border border-yellow-200/18 bg-yellow-300/[0.045] p-3 sm:col-span-4"
                             onClick={(event) => event.stopPropagation()}
                           >
@@ -2455,7 +2457,7 @@ function ProfileInner() {
     </div>
   );
   return <CreatorCenter userId={userId} name={fighterName} avatar={avatarPreview}
-    favorites={creatorItems.filter(item => item.category === "favorites")} savedChoiceCount={savedChoices.length} privateLoading={creatorLoading} privateError={creatorError}
+    favorites={creatorItems.filter(item => item.category === "favorites")} savedChoiceCount={savedChoices.length} editingWorkId={editingShowtimeTrackId} privateLoading={creatorLoading} privateError={creatorError}
     legacy={legacyContent} onLegacy={kind => { setCreatorFilter(kind === "settings" ? "listenBar" : kind as typeof creatorFilter); }}
     onManage={id => { const item = creatorItems.find(item => item.trackId === id); if (item?.showtimeTrack) { openShowtimeEditor(item.showtimeTrack); const index=creatorItems.filter(item=>item.category === "listenBar").findIndex(item=>item.trackId===id); setCreatorPage(Math.floor(Math.max(0,index)/CREATOR_ITEMS_PER_PAGE)+1); } }}
     onSubmitted={() => { void supabase.auth.getSession().then(({data}) => { if (data.session?.user.id === userId) void loadCreatorData(userId!,data.session.access_token); }); }} />;

@@ -544,36 +544,6 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
                       </option>
                     ))}
                   </select>
-                  <input
-                    value={publicUploadForm.album}
-                    onChange={(event) => setPublicUploadForm((current) => ({
-                      ...current,
-                      album: limitListenBarDisplayText(event.target.value, LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
-                    }))}
-                    placeholder={barText(lang, "專輯名稱（12字內，選填）", "Album Name (24 chars max)", "アルバム名（任意・24文字以内）", "앨범명(선택, 24자 이내)")}
-                    maxLength={LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS}
-                    title={listenBarShortFieldHint(isZh)}
-                    className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
-                  />
-                  <input
-                    value={publicUploadForm.description}
-                    onChange={(event) => setPublicUploadForm((current) => ({
-                      ...current,
-                      description: limitListenBarDisplayText(event.target.value, LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS),
-                    }))}
-                    placeholder={barText(lang, "一句歌曲介紹（16字內，選填）", "One-Line Description (32 chars max)", "曲の紹介（任意・32文字以内）", "한 줄 곡 소개(선택, 32자 이내)")}
-                    maxLength={LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS}
-                    title={listenBarDescriptionHint(isZh)}
-                    className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
-                  />
-                  <input
-                    type="url"
-                    value={publicUploadForm.youtubeUrl}
-                    onChange={(event) => setPublicUploadForm((current) => ({ ...current, youtubeUrl: event.target.value.slice(0, 300) }))}
-                    placeholder={barText(lang, "YouTube MV 連結（選填）", "YouTube MV Link (optional)", "YouTube MVリンク（任意）", "YouTube MV 링크(선택)")}
-                    maxLength={300}
-                    className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18 sm:col-span-2"
-                  />
                 </div>
 
                 {uploadGenre && (
@@ -611,7 +581,37 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
                   </div>
                 )}
 
-                <details><summary className="cursor-pointer text-sm">{barText(lang,"封面與歌詞（選填）","Artwork and lyrics (optional)","画像と歌詞（任意）","표지와 가사(선택)")}</summary><div className="mt-2">                <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                <details><summary className="cursor-pointer text-sm">{barText(lang,"封面、歌詞與更多資料（選填）","Artwork, lyrics and more (optional)","画像・歌詞・追加情報（任意）","표지, 가사, 추가 정보(선택)")}</summary><div className="mt-2"><div className="mb-2 grid gap-2 sm:grid-cols-2">                  <input
+                    value={publicUploadForm.album}
+                    onChange={(event) => setPublicUploadForm((current) => ({
+                      ...current,
+                      album: limitListenBarDisplayText(event.target.value, LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS),
+                    }))}
+                    placeholder={barText(lang, "專輯名稱（12字內，選填）", "Album Name (24 chars max)", "アルバム名（任意・24文字以内）", "앨범명(선택, 24자 이내)")}
+                    maxLength={LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS}
+                    title={listenBarShortFieldHint(isZh)}
+                    className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
+                  />
+                  <input
+                    value={publicUploadForm.description}
+                    onChange={(event) => setPublicUploadForm((current) => ({
+                      ...current,
+                      description: limitListenBarDisplayText(event.target.value, LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS),
+                    }))}
+                    placeholder={barText(lang, "一句歌曲介紹（16字內，選填）", "One-Line Description (32 chars max)", "曲の紹介（任意・32文字以内）", "한 줄 곡 소개(선택, 32자 이내)")}
+                    maxLength={LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS}
+                    title={listenBarDescriptionHint(isZh)}
+                    className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
+                  />
+                  <input
+                    type="url"
+                    value={publicUploadForm.youtubeUrl}
+                    onChange={(event) => setPublicUploadForm((current) => ({ ...current, youtubeUrl: event.target.value.slice(0, 300) }))}
+                    placeholder={barText(lang, "YouTube MV 連結（選填）", "YouTube MV Link (optional)", "YouTube MVリンク（任意）", "YouTube MV 링크(선택)")}
+                    maxLength={300}
+                    className="h-11 rounded-xl border border-white/12 bg-black/58 px-3 text-sm font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18 sm:col-span-2"
+                  />
+</div><div className="grid gap-2 sm:grid-cols-[1fr_auto]">
                   <label className="flex h-11 cursor-pointer items-center justify-center rounded-xl border border-cyan-200/18 bg-cyan-300/[0.055] px-3 text-xs font-black text-cyan-100 transition hover:border-cyan-100/50">
                     {publicCoverFile?.name ?? barText(lang, "封面可選", "Optional Cover", "カバー画像（任意）", "커버 이미지(선택)")}
                     <input

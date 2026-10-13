@@ -6,7 +6,7 @@
 }
 .main {
   width: calc(100% - 88px);
-  max-width: 1360px;
+  max-width: 1400px;
   margin: auto;
 }
 .heading {
@@ -782,5 +782,122 @@
 @media (prefers-reduced-motion: reduce) {
   .page * {
     scroll-behavior: auto;
+  }
+}
+
+.mobileCounts {
+  display: none;
+}
+@media (max-width: 540px) {
+  .workName .workDate {
+    display: none;
+  }
+  .workName .mobileCounts {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+  }
+  .mobileCounts svg {
+    width: 13px;
+    height: 13px;
+  }
+}
+.legacy[data-mode="edit"] :global(#avatar-upload) {
+  display: none;
+}
+.legacy[data-mode="edit"]
+  :global(#legacy-my-works)
+  *:not(:has([data-creator-editor])):not([data-creator-editor]):not(
+    [data-creator-editor] *
+  ) {
+  display: none;
+}
+.legacy[data-mode="edit"] :global(#legacy-my-works),
+.legacy[data-mode="edit"] [data-creator-row] {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  margin: 0;
+}
+.legacy[data-mode="edit"] [data-creator-editor] {
+  border: 0;
+  border-radius: 4px;
+  margin: 0;
+  background: transparent;
+  padding: 0;
+}
+.legacy[data-mode="edit"] [data-creator-editor] button {
+  border-radius: 4px;
+  min-height: 44px;
+}
+
+.heading > div:first-child {
+  display: flex;
+  align-items: baseline;
+  gap: 20px;
+}
+.credit {
+  padding: 18px 24px;
+}
+.credit strong {
+  line-height: 1.1;
+}
+.credit button {
+  display: block;
+  margin-top: 6px;
+  line-height: 1.2;
+  min-height: 24px;
+}
+.uploader {
+  position: relative;
+}
+.uploader h2 {
+  padding-right: 130px;
+}
+.allowance {
+  position: absolute;
+  right: 18px;
+  top: 23px;
+  font-size: 12px;
+  color: #aaa;
+}
+.previewName {
+  min-width: 0;
+}
+.previewName b {
+  display: block;
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.previewName small {
+  color: #aaa;
+  font-size: 12px;
+}
+.previewEdit summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: #bbb;
+  min-height: 24px;
+}
+.previewEdit .fieldPair {
+  margin-top: 8px;
+}
+@media (max-width: 1200px) {
+  .heading > div:first-child {
+    display: block;
+  }
+}
+@media (max-width: 540px) {
+  .uploader h2 {
+    padding-right: 0;
+  }
+  .allowance {
+    position: static;
+  }
+  .credit {
+    padding: 15px 20px;
   }
 }

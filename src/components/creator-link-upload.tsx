@@ -138,15 +138,9 @@ export default function CreatorLinkUpload({
   };
   return (
     <div className={styles.linkForm}>
-      <p className={styles.hint}>
-        {text("本期已投稿", "Used this period", "今期の投稿", "이번 기간 제출")}{" "}
-        {quota ? `${quota.used} / ${quota.limit}` : "—"} ·{" "}
-        {text(
-          "音檔與連結共用額度",
-          "Audio and links share an allowance",
-          "音声とリンクは共通枠",
-          "음원과 링크는 같은 한도 사용",
-        )}
+      <p className={styles.allowance}>
+        {text("本期已用", "Used", "今期使用", "기간 사용")}{" "}
+        {quota ? `${quota.used} / ${quota.limit}` : "—"}
       </p>
       <label>
         {text("作品連結", "Work link", "作品リンク", "작품 링크")}
@@ -238,26 +232,47 @@ export default function CreatorLinkUpload({
                 )
               : null}
           </p>
-          <div className={styles.fieldPair}>
-            <label>
-              {text("歌名", "Title", "曲名", "제목")}
-              <input
-                value={title}
-                maxLength={160}
-                onChange={(e) => setTitle(e.target.value)}
-                disabled={busy}
-              />
-            </label>
-            <label>
-              {text("創作者", "Creator", "作者", "창작자")}
-              <input
-                value={artist}
-                maxLength={24}
-                onChange={(e) => setArtist(e.target.value)}
-                disabled={busy}
-              />
-            </label>
+          <div className={styles.previewName}>
+            <b title={title}>{title}</b>
+            <small>
+              {artist} ·{" "}
+              {preview.media.provider === "youtube"
+                ? "YouTube"
+                : preview.media.provider === "suno"
+                  ? "Suno"
+                  : "Spotify"}
+            </small>
           </div>
+          <details className={styles.previewEdit}>
+            <summary>
+              {text(
+                "編輯歌名與創作者",
+                "Edit title and creator",
+                "曲名と作者を編集",
+                "제목과 창작자 수정",
+              )}
+            </summary>
+            <div className={styles.fieldPair}>
+              <label>
+                {text("歌名", "Title", "曲名", "제목")}
+                <input
+                  value={title}
+                  maxLength={160}
+                  onChange={(e) => setTitle(e.target.value)}
+                  disabled={busy}
+                />
+              </label>
+              <label>
+                {text("創作者", "Creator", "作者", "창작자")}
+                <input
+                  value={artist}
+                  maxLength={24}
+                  onChange={(e) => setArtist(e.target.value)}
+                  disabled={busy}
+                />
+              </label>
+            </div>
+          </details>
           <div className={styles.fieldPair}>
             <label>
               {text(
