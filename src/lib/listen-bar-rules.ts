@@ -11,7 +11,6 @@ export const LISTEN_BAR_CHALLENGER_HOURLY_LIMIT = 8;
 export const LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS = 36;
 export const LISTEN_BAR_JUDGMENT_INTERVAL_HOURS = 8;
 export const LISTEN_BAR_PUBLIC_EVICTION_LIMIT = 3;
-export const LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT = 5;
 export const LISTEN_BAR_PROMOTION_PROTECTION_STARTED_AT = "2026-06-29T00:00:00+08:00";
 export const LISTEN_BAR_PROMOTION_PROTECTION_UNTIL = "2026-07-06T00:00:00+08:00";
 
@@ -28,11 +27,6 @@ export function listenBarSubmissionPhaseForGenrePublicCount(_publicTrackCount: n
   // Capacity no longer controls submission. Kept for older callers.
   void _publicTrackCount;
   return "public";
-}
-
-export function listenBarCreatorGenrePublicLimitReached(publicTrackCount: number): boolean {
-  const count = Math.max(0, Math.floor(Number.isFinite(publicTrackCount) ? publicTrackCount : 0));
-  return count >= LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT;
 }
 
 type ListenBarHonorTrack = {

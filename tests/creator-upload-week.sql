@@ -9,7 +9,9 @@ declare
   v_quota jsonb;
 begin
   select u.id into v_user from auth.users u
-  where not exists (select 1 from public.listen_bar_creator_upload_windows w where w.creator_id = u.id)
+  where lower(coalesce(u.email,'')) not in ('djapple99@gmail.com','aipoger99@gmail.com')
+    and u.email_confirmed_at is not null and u.is_anonymous is not true
+    and not exists (select 1 from public.listen_bar_creator_upload_windows w where w.creator_id = u.id)
     and not exists (select 1 from public.listen_bar_tracks t where t.created_by = u.id)
   limit 1;
   if v_user is null then raise exception 'No unused test identity available'; end if;
@@ -59,6 +61,22 @@ begin
   assert (public.listen_bar_my_upload_quota()->>'used')::integer = 1;
   assert (select started_at=v_started from public.listen_bar_creator_upload_windows where creator_id=v_user);
 
+  -- The former five-active-song cap must not block later weekly submissions.
+  for i in 1..7 loop
+    update public.listen_bar_creator_upload_windows
+      set started_at=clock_timestamp()-interval '168 hours' where creator_id=v_user;
+    insert into public.listen_bar_tracks(title,audio_path,source,created_by,genre,is_active)
+      values ('Quota rollback genre test','quota-rollback/' || gen_random_uuid() || '.mp3',
+        'community',v_user,'EDM 百大電音',true);
+  end loop;
+  assert (select count(*) >= 7 from public.listen_bar_tracks where created_by=v_user
+    and genre='EDM 百大電音' and is_active=true and bar_phase='public');
+  -- Editable claims cannot turn an ordinary creator into an unlimited Owner.
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', v_user, 'role', 'authenticated',
+    'email','djapple99@gmail.com','user_metadata',jsonb_build_object('email','djapple99@gmail.com','is_admin',true))::text,true);
+  assert (public.listen_bar_my_upload_quota()->>'unlimited')::boolean = false;
+  assert (public.listen_bar_my_upload_quota()->>'limit')::integer = 3;
+
   perform set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);
   assert (public.listen_bar_my_upload_quota()->>'used')::integer = 0;
   assert not has_table_privilege('authenticated','public.listen_bar_creator_upload_windows','UPDATE');
@@ -66,5 +84,5 @@ begin
   assert not has_function_privilege('anon','public.listen_bar_my_upload_quota()','EXECUTE');
 end;
 $$;
-select 'Quota assertions passed: third allowed, fourth blocked, deletion and edits retain count, 168-hour expiry, rollback and access isolation' as result;
+select 'Quota assertions passed: third allowed, fourth blocked, deletion/edits retain count, 168-hour expiry, seven same-genre active songs allowed, forged claims still capped' as result;
 rollback;

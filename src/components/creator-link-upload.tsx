@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
 import { useCreatorUploadQuota } from "@/lib/use-creator-upload-quota";
+import { creatorUploadLimitReached } from "@/lib/creator-upload-quota";
 import { creatorText } from "@/lib/creator-center-copy";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
@@ -61,7 +62,7 @@ export default function CreatorLinkUpload({
           SOURCE_UNAVAILABLE: "來源暫時無法讀取，請確認作品可公開開啟後重試。",
           PREVIEW_EXPIRED: "預覽已過期，請重新預覽。",
           LINK_ALREADY_SUBMITTED: "這個作品連結已投稿過，請從我的作品編輯。",
-          UPLOAD_LIMIT: "本期投稿或此曲風額度已滿，刪除不退額度。",
+          UPLOAD_LIMIT: "本期 7 天三首投稿額度已滿，刪除不退額度。",
           GENRE_REQUIRED: "請選擇曲風。",
         } as Record<string, string>
       )[code] ?? "投稿未完成，輸入已保留，請稍後重試。",
@@ -139,8 +140,7 @@ export default function CreatorLinkUpload({
   return (
     <div className={styles.linkForm}>
       <p className={styles.allowance}>
-        {text("本期已用", "Used", "今期使用", "기간 사용")}{" "}
-        {quota ? `${quota.used} / ${quota.limit}` : "—"}
+        {quota?.unlimited ? text("Owner · 投稿不限數量", "Owner · Unlimited submissions", "Owner · 投稿数の制限なし", "Owner · 제출 수 제한 없음") : <>{text("本期已用", "Used", "今期使用", "기간 사용")}{" "}{quota ? `${quota.used} / ${quota.limit}` : "—"} · {text("7 天最多三首，連結與音檔共用", "3 per 7 days, shared by links and files", "7日間で3曲、リンクと音源で共通", "7일간 3곡, 링크와 파일 공통")}</>}
       </p>
       <label>
         <span>
@@ -378,7 +378,7 @@ export default function CreatorLinkUpload({
               !genre ||
               !title.trim() ||
               !artist.trim() ||
-              (quota !== null && quota.used >= quota.limit)
+              creatorUploadLimitReached(quota)
             }
             onClick={() => void submit()}
           >

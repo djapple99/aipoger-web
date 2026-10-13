@@ -9,12 +9,13 @@ import { logAnalyticsEvent } from "@/lib/analytics-client";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import { normalizeYouTubeUrl } from "@/lib/youtube-url";
 import { useCreatorUploadQuota } from "@/lib/use-creator-upload-quota";
+import { creatorUploadLimitReached } from "@/lib/creator-upload-quota";
 import GenreSuggestion, { genreCopy } from "@/components/genre-suggestion";
 import SafetyNotice from "@/components/safety-notice";
 import { IMAGE_UPLOAD_ACCEPT, imageContentType, isAllowedImageUploadFile } from "@/lib/image-upload-policy";
 import { LISTEN_BAR_DESCRIPTION_DISPLAY_UNITS, LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS, limitListenBarDisplayText } from "@/lib/listen-bar-field-limits";
 import { LISTEN_BAR_AUDIO_UPLOAD_ACCEPT, LISTEN_BAR_AUDIO_UPLOAD_MAX_BYTES, LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL, isAllowedListenBarAudioFile, isListenBarStorageSizeLimitError, listenBarAudioContentType, listenBarAudioSizeLabel, uploadListenBarAudioFile } from "@/lib/listen-bar-upload-policy";
-import { LISTEN_BAR_AUDIO_BUCKET, LISTEN_BAR_COVER_BUCKET, LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT, listenBarCreatorGenrePublicLimitReached, type ListenBarTrackRow } from "@/lib/listen-bar";
+import { LISTEN_BAR_AUDIO_BUCKET, LISTEN_BAR_COVER_BUCKET, type ListenBarTrackRow } from "@/lib/listen-bar";
 type PublicUploadForm = { title: string; artist: string; aiTool: string; genre: string; album: string; description: string; youtubeUrl: string };
 const initialPublicUploadForm: PublicUploadForm = { title: "", artist: "", aiTool: "", genre: "", album: "", description: "", youtubeUrl: "" };
 function barText(lang: string, zh: string, en: string, ja: string, ko: string) {
@@ -109,7 +110,6 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
   const [publicUploadBusy, setPublicUploadBusy] = useState(false);
   const [publicUploadMessage, setPublicUploadMessage] = useState("");
   const [publicUploadError, setPublicUploadError] = useState("");
-  const [myTracks, setMyTracks] = useState<ListenBarTrackRow[]>([]);
   const [privateReady, setPrivateReady] = useState(false);
   const publicAudioSelectionRef = useRef(0);
   const uploadLock = useRef(false);
@@ -117,16 +117,12 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
   const uploadGenre = publicUploadForm.genre.trim();
   const uploadSubmissionPhase = "public" as const;
   const { quota: uploadQuota, refresh: refreshUploadQuota } = useCreatorUploadQuota(userId);
-  const myPublicStatsForUploadGenre = myTracks.filter(row => row.is_active !== false && !row.hidden_at && !row.removed_at && row.bar_phase === "public" && row.genre === uploadGenre);
-  const creatorGenrePublicLimitFull = Boolean(uploadGenre) && listenBarCreatorGenrePublicLimitReached(myPublicStatsForUploadGenre.length);
-  const creatorWeeklyUploadLimitFull = Boolean(uploadQuota && uploadQuota.used >= uploadQuota.limit);
-  const publicUploadBlocked = !privateReady || creatorGenrePublicLimitFull || creatorWeeklyUploadLimitFull;
+  const creatorWeeklyUploadLimitFull = creatorUploadLimitReached(uploadQuota);
+  const publicUploadBlocked = !privateReady || creatorWeeklyUploadLimitFull;
   const publicUploadBlockedMessage = !privateReady ? barText(lang, "請等作品庫讀取完成後再投稿。", "Wait for your works to load before submitting.", "作品の読み込み後に投稿してください。", "작품 목록을 불러온 후 제출하세요.")
-    : creatorGenrePublicLimitFull ? barText(lang, `此曲風已上架 ${LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT} 首，請先整理我的作品。`, `${LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT} active tracks in this genre. Manage your works first.`, `同ジャンルは${LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT}曲公開済み。作品を整理してください。`, `이 장르에 ${LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT}곡이 공개되어 있습니다. 작품을 먼저 정리하세요.`)
     : barText(lang, "本期上傳額度已滿，刪除不退額度。", "This period's upload allowance is used. Deletion does not restore it.", "今期の投稿枠は使用済みです。削除しても枠は戻りません。", "이번 기간 업로드 한도를 사용했습니다. 삭제해도 복구되지 않습니다.");
   const uploadPhaseNoticeTitle = publicUploadBlocked ? publicUploadBlockedMessage : barText(lang, "投稿後直接公開", "Public immediately", "投稿後すぐ公開", "업로드 후 즉시 공개");
   const uploadPhaseNoticeBody = barText(lang, "作品公開三個月，加入電台、探索與人氣榜。", "Works appear in radio, Explore and the popularity chart for three months.", "作品は3か月間、ラジオ・Explore・人気ランキングに掲載されます。", "작품은 3개월간 라디오, Explore, 인기 차트에 공개됩니다.");
-  const uploadGenreStats = { public: myPublicStatsForUploadGenre.length };
   useEffect(() => {
     let active = true; setPrivateReady(false);
     void (async () => {
@@ -136,7 +132,7 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
         const response = await fetch("/api/listen-bar/my-tracks", { cache: "no-store", headers: { Authorization: `Bearer ${data.session.access_token}` } });
         const payload = await response.json();
         if (!response.ok || !Array.isArray(payload.tracks)) throw new Error("Could not read works");
-        if (active) { setMyTracks(payload.tracks); setPrivateReady(true); }
+        if (active) setPrivateReady(true);
       } catch { if (active) setPublicUploadError(barText(lang, "作品庫讀取失敗，請重新整理。", "Your works could not be loaded. Refresh this page.", "作品を読み込めません。ページを更新してください。", "작품을 불러올 수 없습니다. 페이지를 새로고침하세요.")); }
     })();
     return () => { active = false; publicAudioSelectionRef.current += 1; };
@@ -313,7 +309,7 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
         setPublicUploadError(barText(lang, "暫時無法確認上傳額度，請稍後再試。", "Could not check your upload allowance. Try again shortly.", "投稿枠を確認できません。しばらくして再試行してください。", "업로드 한도를 확인할 수 없습니다. 잠시 후 다시 시도하세요."));
         return;
       }
-      if (quota.used >= quota.limit) {
+      if (creatorUploadLimitReached(quota)) {
         setPublicUploadError(barText(lang, "本期已成功上傳 3 首，請等 7 天週期結束後再傳。刪除不退額度。", "All 3 uploads in this 7-day period have been used. Deletion does not restore the allowance.", "この7日間の投稿枠3曲は使用済みです。削除しても枠は戻りません。", "이번 7일간 업로드 3곡을 모두 사용했습니다. 삭제해도 한도는 복구되지 않습니다."));
         return;
       }
@@ -404,7 +400,6 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
       if (error) throw error;
 
       if (!insertedTrackRow) throw new Error(barText(lang, "無法確認投稿結果，請重新整理作品庫。", "Could not confirm the submission. Refresh your works.", "投稿結果を確認できません。作品一覧を更新してください。", "업로드 결과를 확인할 수 없습니다. 작품 목록을 새로고침하세요."));
-      setMyTracks(current => [insertedTrackRow, ...current.filter(row => row.id !== insertedTrackRow.id)]);
       void logAnalyticsEvent({ eventType: "upload_song", songId: isUuid(insertedTrackRow.id) ? insertedTrackRow.id : null,
         pagePath: "/profile", source: "creator_submission", metadata: { title: insertedTrackRow.title, genre: insertedTrackRow.genre } });
       onSubmitted();
@@ -564,15 +559,12 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
                       >
                         {uploadPhaseNoticeTitle}
                       </p>
-                      <span className="rounded-full border border-white/10 bg-black/28 px-2.5 py-1 text-[11px] font-black text-white/82">
-                        {uploadGenreStats.public}
-                      </span>
                     </div>
                     <p className="mt-1 text-xs font-bold leading-5 text-zinc-400">
                       {uploadPhaseNoticeBody}
                     </p>
                     <p className="mt-2 text-xs font-bold leading-5 text-zinc-300">
-                      {barText(lang,
+                      {uploadQuota?.unlimited ? barText(lang, "Owner · 投稿不限數量", "Owner · Unlimited submissions", "Owner · 投稿数の制限なし", "Owner · 제출 수 제한 없음") : barText(lang,
                         `上傳額度 ${uploadQuota ? `${uploadQuota.used}/3` : userId ? "確認中" : "登入後查看"}。每期從第一首成功投稿起算 7 天，最多 3 首；刪除不退額度。`,
                         `Uploads ${uploadQuota ? `${uploadQuota.used}/3` : userId ? "checking" : "sign in to view"}. Up to 3 songs in 7 days from your first successful submission. Deletion does not restore the allowance.`,
                         `投稿枠 ${uploadQuota ? `${uploadQuota.used}/3` : userId ? "確認中" : "ログインして確認"}。最初の投稿成功から7日間で最大3曲。削除しても枠は戻りません。`,
@@ -642,9 +634,7 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
                 >
                   {publicUploadBusy
                     ? barText(lang, "上傳中...", "Uploading...", "投稿中…", "업로드 중…")
-                    : creatorGenrePublicLimitFull
-                      ? barText(lang, "此類須降到4首", "Reduce Genre to 4", "同ジャンルを4曲に減らす", "이 장르를 4곡으로 줄이기")
-                      : creatorWeeklyUploadLimitFull
+                    : creatorWeeklyUploadLimitFull
                         ? barText(lang, "本期額度已滿", "Allowance used", "今期の上限に到達", "이번 기간 한도 소진")
                         : previewOpen ? barText(lang, "確認投稿", "Confirm submission", "投稿を確定", "제출 확인") : barText(lang, "預覽作品", "Preview work", "作品をプレビュー", "작품 미리 보기")}
                 </button>

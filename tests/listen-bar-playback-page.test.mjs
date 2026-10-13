@@ -33,10 +33,10 @@ test("shared player provides volume fallback for bar", () => {
   assert.ok(playerSource.includes('crossOrigin="anonymous"'));
 });
 
-test("submission moved to Profile and preserves genre/weekly constraints", () => {
+test("submission moved to Profile and preserves weekly quota with no genre cap", () => {
   const upload = readFileSync(new URL("../src/components/profile-music-upload.tsx", import.meta.url), "utf8");
   assert.ok(upload.includes("投稿後直接公開"));
-  assert.ok(upload.includes("listenBarCreatorGenrePublicLimitReached"));
+  assert.equal(upload.includes("listenBarCreatorGenrePublicLimitReached"), false);
   assert.ok(upload.includes("publicUploadBlocked"));
   assert.ok(upload.includes("refreshUploadQuota"));
   assert.equal(listenBarPageSource.includes("<form"), false);

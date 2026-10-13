@@ -1,13 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT,
   LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS,
   LISTEN_BAR_HONOR_ROLL_REACTION_THRESHOLD,
   LISTEN_BAR_HONOR_ROLL_SURVIVAL_DAYS,
   LISTEN_BAR_PUBLIC_ROTATION_LIMIT,
   listenBarChallengerSlotLimitForPublicCount,
-  listenBarCreatorGenrePublicLimitReached,
   listenBarIsHonorEligible,
   listenBarPublicDisplayDay,
   listenBarPublicSurvivalDays,
@@ -37,13 +35,6 @@ test("listen bar submissions remain public above former genre capacity", () => {
 
 test("listen bar challenger protection period is thirty six hours", () => {
   assert.equal(LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS, 36);
-});
-
-test("listen bar creator genre public cap requires reducing to four before uploading again", () => {
-  assert.equal(LISTEN_BAR_CREATOR_GENRE_PUBLIC_LIMIT, 5);
-  assert.equal(listenBarCreatorGenrePublicLimitReached(4), false);
-  assert.equal(listenBarCreatorGenrePublicLimitReached(5), true);
-  assert.equal(listenBarCreatorGenrePublicLimitReached(26), true);
 });
 
 test("listen bar honor eligibility allows 30 positive reactions", () => {

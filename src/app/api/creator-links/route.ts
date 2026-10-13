@@ -119,7 +119,7 @@ export async function POST(request: Request) {
       const status =
         result.error.code === "23505"
           ? 409
-          : /CREATOR_WEEKLY_UPLOAD_LIMIT|公播上限/.test(msg)
+          : /CREATOR_WEEKLY_UPLOAD_LIMIT/.test(msg)
             ? 429
             : 500;
       return NextResponse.json(
