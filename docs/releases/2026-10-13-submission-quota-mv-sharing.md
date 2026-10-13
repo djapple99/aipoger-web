@@ -1,11 +1,11 @@
 # 投稿額度、MV分享與評論導覽發布證據
 
-產品發布：2026-10-13 Asia/Taipei。應用 `a01f7aa1f9ba110c63c4b12d57fd9f3efe5f2f60`，分支 `codex/homepage-mv-editorial`。正式網址 [MV](https://aipoger.com/mv?lang=zh)、[創作者中心](https://aipoger.com/profile?lang=zh)。
+產品發布：2026-10-13 Asia/Taipei。應用 `371961233b22c18d9b152a00d2d6fac474ad2920`，分支 `codex/homepage-mv-editorial`。正式網址 [MV](https://aipoger.com/mv?lang=zh)、[創作者中心](https://aipoger.com/profile?lang=zh)。
 
 ## 正式部署
 
 - 投稿數量先以 `f47b35e` 發布，Vercel `dpl_G3scGvCJZk18BJQdKgZ6n8RAVvqr` READY／promote。
-- 最終加入MV分享與評論提示，Vercel `dpl_7j4ZennvAK8X7dXh2PemENqmWjKo` READY，先使用正式環境與skip-domain部署；保護網址以Vercel curl驗證200後promote。正式apex的MV與Profile回200，未登入私人Creator Center API回401。
+- 最終加入MV分享與評論提示，Vercel `dpl_4MjsjhKvzXNLJG6ALa8SvT5ry66v` READY，先使用正式環境與skip-domain部署；保護網址以Vercel curl驗證200後promote。正式apex的MV與Profile回200，未登入私人Creator Center API回401。
 - 本機／雲端build、TypeScript通過；lint 0 errors／15既有warnings。555項測試中524通過、31既有可選DB略過、0失敗。
 
 ## 投稿資料庫規則
@@ -22,7 +22,7 @@
 - 精選、卡片及觀看視窗加入分享鍵；每件作品的站內連結保留lang與原track ID。系統分享、取消、複製、原生失敗回退及手動連結由runtime測試覆蓋。背景自動化Chrome的原生分享完成狀態未冒充實機收件分享驗收，沒有向他人傳送測試訊息。
 - 真實公開分享連結可打開對應的原MV／評論視窗；只顯示封面，不自動播放。超過首12張的作品及不可公開ID由runtime驗證。分享不加Heart／排行／Credit。
 - MV留言視窗使用orange scrollbar，真實computed color為`rgb(255,143,50) rgb(24,18,12)`；評論仍在下方時顯示可點的向下提示，點擊後留言欄可見且提示收起。播放與捲動仍保留草稿，不自動POST。
-- 320px手機驗證無橫向溢出；長卡片標題收為兩行，實測58px／29px行高，原完整文字、title與作品資料保留。完整歌名可從封面打開觀看視窗閱讀；本次不新增跑馬燈或將卡片歌名既有Explore連結改成新路由。
+- 320px手機驗證無橫向溢出；長卡片標題收為兩行，實測58px／29px行高，原完整文字、title與作品資料保留。完整歌名可點封面或歌名打開MV觀看／評論視窗閱讀；歌名使用原視窗，不新增單獨作品頁或跑馬燈。
 - 新分享／捲動提示四語已驗證，Owner連結／音檔的不限數量提示四語亦驗證。正式Owner畫面、可見評論欄與Orange scrollbar完成檢查；沒有藉UI提交測試評論或點Heart。
 - 圖像證據在本機工作區`outputs/aipoger-creator-center-release/`：`owner-quota-desktop.jpg`、`owner-quota-file-mobile.jpg`、`mv-comments-scroll-production.jpg`，並保留local桌機／手機問題與修正驗收。
 
