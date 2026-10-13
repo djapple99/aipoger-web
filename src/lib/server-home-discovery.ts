@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { buildAiMusicSurfaceLifecycleMap } from "./ai-music-surface-lifecycle";
 import { buildHomeDiscovery, readAllHomePages, taipeiHomeWeek, type HomeHeartRow, type HomeTrackRow } from "./home-discovery";
 import type { ListenBarTrackRow } from "./listen-bar";
+import { mvRatingSummaries } from "./server-mv-reviews";
 import { buildMvDiscovery } from "./mv-discovery";
 
 async function readDiscoverySource() {
@@ -56,6 +57,8 @@ export async function readHomeDiscovery() {
 export async function readMvDiscovery() {
   const source = await readDiscoverySource();
   const result = buildMvDiscovery(source.rows, source.hearts, source.mediaUrl, source.now);
+  const summaries = await mvRatingSummaries(source.admin);
+  for (const work of [...result.works, ...result.featured]) Object.assign(work, summaries.get(work.id) ?? { ratingAverage: null, ratingCount: 0 });
   await addFeaturedComments(result, source);
   return result;
 }

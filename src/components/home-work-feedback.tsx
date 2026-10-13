@@ -1,23 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type FormEvent } from "react";
-import { ArrowDown, Heart, Play, X } from "lucide-react";
-import WorkImage from "@/components/work-image";
+import { useEffect, useRef, useState, type ReactNode, type FormEvent } from "react";
+import { ArrowDown, Heart, X } from "lucide-react";
+import MvPlayer from "@/components/mv-player";
+import MvRatingForm, { type MvReviewDraft } from "@/components/mv-rating-form";
 import { useI18n } from "@/lib/i18n";
 import { homeCopy } from "@/lib/home-copy";
 import { mvCopy } from "@/lib/mv-copy";
 import { supabase } from "@/lib/supabase";
 import type { HomeWork } from "@/lib/home-discovery";
-import { musicPlayer, useMusicPlayer } from "@/lib/music-player-store";
 import styles from "./home-editorial.module.css";
 
 type Comment = { id: string; name: string; text: string; createdAt: string };
-export default function HomeWorkFeedback({ work, onClose, onChange, returnPath = "/", showVideo = false, supportNote }: { work: HomeWork; onClose: () => void; onChange: () => void; returnPath?: string; showVideo?: boolean; supportNote?: string }) {
+export default function HomeWorkFeedback({ work, onClose, onChange, returnPath = "/", showVideo = false, supportNote, autoPlay = false, videoControls, onVideoEnded, onVideoUnavailable, onReviewBusy }: { work: HomeWork; onClose: () => void; onChange: () => void; returnPath?: string; showVideo?: boolean; supportNote?: string; autoPlay?: boolean; videoControls?: ReactNode; onVideoEnded?: () => void; onVideoUnavailable?: () => void; onReviewBusy?: (busy: boolean) => void }) {
   const { lang } = useI18n(); const copy = homeCopy(lang);
   const dialog = useRef<HTMLDialogElement>(null);
   const scrollArea = useRef<HTMLDivElement>(null);
-  const commentArea = useRef<HTMLElement>(null);
+  const commentArea = useRef<HTMLDivElement>(null);
+  const reviewDrafts = useRef(new Map<string, MvReviewDraft>());
   const [showCommentCue, setShowCommentCue] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,11 +30,11 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState("");
   const [saved, setSaved] = useState(false);
-  const [videoOpen, setVideoOpen] = useState(false);
-  const player = useMusicPlayer();
+  const currentWork = useRef(work.id); currentWork.current = work.id;
   const withVideo = Boolean(showVideo && work.videoId);
   const destination = new URL(returnPath, "https://aipoger.com");
   destination.searchParams.set("lang", lang);
+  if (destination.pathname === "/mv") destination.searchParams.set("track", work.id);
   if (destination.pathname === "/ai-music") { destination.searchParams.set("track", work.id); destination.searchParams.set("comments", "1"); }
   const authHref = `/auth?lang=${lang}&next=${encodeURIComponent(destination.pathname + destination.search + destination.hash)}`;
 
@@ -42,7 +43,6 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
     element?.showModal();
     return () => { element?.close(); if (previous instanceof HTMLElement) previous.focus(); };
   }, []);
-  useEffect(() => { if (player.playing) setVideoOpen(false); }, [player.playing]);
   useEffect(() => {
     const scroll = scrollArea.current; const comments = commentArea.current;
     if (!withVideo || !scroll || !comments) return;
@@ -53,10 +53,11 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
     observer?.observe(scroll); observer?.observe(comments);
     return () => { scroll.removeEventListener("scroll", update); window.removeEventListener("resize", update); observer?.disconnect(); };
-  }, [withVideo]);
+  }, [withVideo, work.id]);
 
   useEffect(() => {
     const controller = new AbortController(); let active = true;
+    setLoading(true); setComments([]); setReadFailed(false); setWriteFailed(false); setSaved(false); setDraft("");
     void (async () => {
       try {
         const response = await fetch(`/api/listen-bar/track-comments?trackId=${encodeURIComponent(work.id)}`, { signal: controller.signal, cache: "no-store" });
@@ -106,7 +107,7 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
       const payload = await response.json();
       if (!response.ok) { if (response.status === 401) setSignedIn(false); throw new Error("Unavailable"); }
       if (kind === "heart") {
-        setHearted(payload.heartedToday === true);
+        if (currentWork.current === work.id) setHearted(payload.heartedToday === true);
         window.dispatchEvent(new CustomEvent("aipoger:music-heart", { detail: { trackId: work.id, ...payload } }));
       } else if (payload.comment) {
         setComments(current => [...current, payload.comment]); setDraft(""); setSaved(true);
@@ -124,27 +125,23 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
         <button autoFocus type="button" onClick={onClose} aria-label={copy.closeFeedback}><X size={22} /></button>
       </div>
       {withVideo ? <>
-        <div className={styles.feedbackVideo}>
-          {videoOpen ? <><iframe src={`https://www.youtube-nocookie.com/embed/${work.videoId}?autoplay=1&rel=0`} title={work.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
-            <button type="button" className={styles.closeVideo} onClick={() => setVideoOpen(false)} aria-label={copy.closeVideo}><X size={22} /></button></>
-            : <button type="button" className={styles.poster} onClick={() => { if (player.playing) musicPlayer?.toggle(); setVideoOpen(true); }} aria-label={`${copy.watch} · ${work.title}`}>
-              <WorkImage work={work} video /><span className={styles.posterPlay}><Play size={27} fill="currentColor" /></span><span className={styles.videoSource}>{copy.source}</span>
-            </button>}
-        </div>
-        <a className={styles.feedbackSource} href={work.youtubeUrl!} target="_blank" rel="noopener noreferrer">{copy.openYouTube}</a>
+        <MvPlayer work={work} autoPlay={autoPlay} onEnded={onVideoEnded} onUnavailable={onVideoUnavailable} />
+        <div className={styles.mvViewLinks}><a className={styles.feedbackSource} href={work.youtubeUrl!} target="_blank" rel="noopener noreferrer">{copy.openYouTube}</a>{videoControls}</div>
       </> : null}
       <p className={styles.feedbackNote}>{supportNote ?? copy.supportNote}</p>
       {signedIn ? <button className={styles.feedbackHeart} type="button" disabled={busy || hearted === null} aria-pressed={hearted === true}
         onClick={() => void submit("heart")}><Heart size={18} fill={hearted ? "currentColor" : "none"} />{hearted ? copy.removeHeart : copy.sendHeart}</button>
         : <Link className={styles.feedbackAuth} href={authHref}>{copy.loginFeedback}</Link>}
       {heartReadFailed ? <p role="alert" className={styles.refreshError}>{copy.error}</p> : null}
-      <section ref={commentArea} id="mv-comment-area" className={styles.feedbackComments} aria-label={copy.comments}>
+      {withVideo ? <div ref={commentArea} id="mv-comment-area">
+        <MvRatingForm key={work.id} trackId={work.id} signedIn={signedIn} drafts={reviewDrafts.current} onBusy={onReviewBusy ?? (() => {})} onSaved={item => { if (currentWork.current !== work.id) return; if (item) setComments(current => [...current, item]); onChange(); }} />
+      </div> : null}
+      <section id={withVideo ? "mv-public-comments" : "mv-comment-area"} className={styles.feedbackComments} aria-label={copy.comments}>
         {loading ? <p role="status">{copy.loadingComments}</p> : readFailed ? <p role="alert">{copy.error}</p>
           : comments.length ? comments.map(item => <article key={item.id}><strong>{item.name}</strong><p>{item.text}</p></article>)
             : <p>{copy.firstComment}</p>}
       </section>
-      {signedIn ? <form onSubmit={comment} className={styles.feedbackForm}>
+      {signedIn && !withVideo ? <form onSubmit={comment} className={styles.feedbackForm}>
         <label htmlFor="home-comment">{copy.writeComment}</label>
         <textarea id="home-comment" value={draft} onChange={event => { setDraft(event.target.value); setSaved(false); }} maxLength={280} rows={3} placeholder={copy.commentHint} />
         <div><span>{draft.length} / 280</span><button type="submit" disabled={busy || !draft.trim()}>{busy ? copy.sending : copy.sendComment}</button></div>

@@ -199,3 +199,35 @@
 @media (max-width: 700px) { .feedbackInner { padding: 22px; } }
 
 .workLinks button { border-top: 0; border-right: 0; border-left: 0; background: transparent; padding-left: 0; padding-right: 0; }
+.mvPlayerMount { position: absolute; inset: 0; width: 100%; height: 100%; }
+.mvPlaybackControls, .mvViewLinks { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.mvPlaybackControls { margin: -10px 0 12px; font-size: 13px; }
+.mvPlaybackControls button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #ffffff30; background: #161616; color: #ffb47f; padding: 8px 10px; border-radius: 4px; }
+.mvViewLinks .feedbackSource { margin: 0; }
+.mvRatingForm { padding-top: 18px; border-top: 1px solid #ffffff26; }
+.ratingHeading { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.ratingHeading h3 { font-size: 18px; font-weight: 700; margin: 0; }
+.ratingHeading > span { font-size: 13px; color: #ffb47f; }
+.ratingNumbers { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 0; border: 1px solid #ffffff40; border-radius: 5px; padding: 0; margin: 12px 0 6px; min-width: 0; overflow: hidden; }
+.mvRatingForm .ratingNumbers label { position: relative; display: grid; place-items: center; height: 44px; min-width: 0; margin: 0; font-size: 17px; font-weight: 700; background: #161616; color: #e7e7e7; border-right: 1px solid #ffffff26; cursor: pointer; }
+.mvRatingForm .ratingNumbers label:last-child { border-right: 0; }
+.ratingNumbers input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.ratingNumbers label[data-selected="true"] { background: #ff6a00; color: #080808; }
+.ratingNumbers label:focus-within { outline: 2px solid #ffd29c; outline-offset: -3px; }
+.ratingNumbers:disabled label { opacity: .5; cursor: default; }
+.ratingNote { margin: 5px 0 15px; color: #a5a5ae; font-size: 12px; line-height: 1.5; }
+.mvRatingForm > label { display: block; margin-bottom: 8px; }
+.feedbackWithVideo .feedbackNote { font-size: 12px; margin: 14px 0 10px; }
+@media (max-width: 700px) { .mvRatingForm .ratingNumbers label { font-size: 15px; } .ratingHeading h3 { font-size: 17px; } }
+
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; margin: -1px; padding: 0; border: 0; }
+.feedbackWithVideo { width: min(880px, calc(100vw - 24px)); max-width: none; }
+.feedbackHeading > div { min-width: 0; flex: 1; }
+@media (max-width: 700px) {
+  .feedbackWithVideo .feedbackInner { padding: 16px; }
+  .feedbackWithVideo .feedbackHeading { display: block; position: relative; }
+  .feedbackWithVideo .feedbackHeading > div > p { padding-right: 44px; }
+  .feedbackWithVideo .feedbackHeading h2 { font-size: 18px; line-height: 1.5; }
+  .feedbackWithVideo .feedbackHeading > button { position: absolute; right: -5px; top: -5px; }
+  .feedbackWithVideo .feedbackVideo { margin-top: 14px; }
+}

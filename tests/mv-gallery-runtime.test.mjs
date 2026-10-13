@@ -52,16 +52,16 @@ for(const lang of ['zh','en','ja','ko']) test(`MV catalog localizes actions and 
  ui.button(`${mvCopy(lang).openWork} · Other Song`).onClick();await ui.flush();assert.equal(ui.nodes().find(x=>x.type==='feedback').props.work.id,'other-work');
  assert.equal(ui.nodes().some(x=>x.type==='iframe'),false);
 });
-test('MV hero playback is initiated by a click and pauses the shared music player',async t=>{
+test('MV cover play opens the unified original-work review with explicit autoplay',async t=>{
  const ui=await mount(t);ui.button('觀看 MV').onClick();await ui.flush();assert.equal(ui.toggles(),1);
- assert.equal(ui.nodes().find(x=>x.type==='iframe').props.src,'https://www.youtube-nocookie.com/embed/MdxaU0l3FzI?autoplay=1&rel=0');
- ui.button('收起影片').onClick();await ui.flush();assert.equal(ui.nodes().some(x=>x.type==='iframe'),false);
+ const dialog=ui.nodes().find(x=>x.type==='feedback');assert.equal(dialog.props.autoPlay,true);assert.equal(dialog.props.showVideo,true);
+ dialog.props.onClose();await ui.flush();assert.equal(ui.nodes().some(x=>x.type==='feedback'),false);
 });
-test('gallery playback and feedback keep the chosen original work and return to the MV page after login',async t=>{
+test('gallery covers and comments use one review view, preserving the original ID and auth return',async t=>{
  const second={...work,id:'older',title:'Older Work',publishedAt:'2026-05-01'};
  const ui=await mount(t,'zh',{featureKind:'community',featured:[work],works:[work,second],channels:[]});
- ui.button('觀看 MV · Older Work').onClick();await ui.flush();const dialog=ui.nodes().find(x=>x.type?.name==='VideoDialog');assert.equal(dialog.props.work.id,'older');assert.equal(ui.toggles(),1);
- dialog.props.onFeedback();await ui.flush();const feedback=ui.nodes().find(x=>x.type==='feedback');assert.equal(feedback.props.work.id,'older');assert.equal(feedback.props.returnPath,'/mv');assert.equal(feedback.props.showVideo,true);assert.equal(ui.nodes().some(x=>x.type?.name==='VideoDialog'),false);
+ ui.button('觀看 MV · Older Work').onClick();await ui.flush();const dialog=ui.nodes().find(x=>x.type==='feedback');
+ assert.equal(dialog.props.work.id,'older');assert.equal(dialog.props.returnPath,'/mv');assert.equal(dialog.props.showVideo,true);assert.equal(dialog.props.autoPlay,true);
 });
 test('search finds older works beyond the initial 12 cards; reset and load-more expose all items',async t=>{
  const works=Array.from({length:25},(_,i)=>({...work,id:`work-${i}`,title:`Song ${i}`,artist:'Actual Artist',publishedAt:String(100-i)}));
@@ -129,4 +129,21 @@ test('shared links find an older public MV beyond the first twelve without autop
 });
 test('unavailable shared MV does not leak a title or invent playback',async t=>{
  const ui=await mount(t,'en',undefined,false,'hidden-id');assert.ok(ui.text().includes(mvCopy('en').sharedUnavailable));assert.equal(ui.nodes().some(x=>x.type==='feedback'),false);
+});
+
+test('continuous MV queue includes the complete filtered result beyond 12 cards, advances on END, and stops at the end',async t=>{
+ const works=Array.from({length:15},(_,i)=>({...work,id:`queue-${i}`,title:`Queue ${i}`,publishedAt:new Date(Date.UTC(2026,9,20-i)).toISOString()}));
+ const ui=await mount(t,'zh',{featureKind:'community',featured:[works[0]],works,channels:[]});
+ ui.button(mvCopy('zh').continuous).onClick();await ui.flush();
+ let dialog=()=>ui.nodes().find(x=>x.type==='feedback').props;
+ assert.equal(dialog().work.id,'queue-0');assert.equal(dialog().autoPlay,true);
+ for(let i=1;i<15;i++){dialog().onVideoEnded();await ui.flush();assert.equal(dialog().work.id,`queue-${i}`);}
+ dialog().onVideoEnded();await ui.flush();assert.ok(text(dialog().videoControls).includes(mvCopy('zh').queueEnded));assert.equal(dialog().work.id,'queue-14');
+});
+test('continuous queue uses search, skips unplayable clips and supports previous without duplicate END advance',async t=>{
+ const works=[{...work,id:'a',title:'Match A',publishedAt:'3'},{...work,id:'b',title:'Match B',publishedAt:'2'},{...work,id:'c',title:'Other',publishedAt:'1'}];
+ const ui=await mount(t,'zh',{featured:[],works,channels:[],featureKind:'empty'});
+ ui.nodes().find(x=>x.type==='input').props.onChange({target:{value:'Match'}});await ui.flush();ui.button(mvCopy('zh').continuous).onClick();await ui.flush();
+ const old=ui.nodes().find(x=>x.type==='feedback').props;old.onVideoUnavailable();old.onVideoEnded();await ui.flush();assert.equal(ui.nodes().find(x=>x.type==='feedback').props.work.id,'b');
+ nodes(ui.nodes().find(x=>x.type==='feedback').props.videoControls).find(x=>x.type==='button'&&x.props['aria-label']===mvCopy('zh').previousMv).props.onClick();await ui.flush();assert.equal(ui.nodes().find(x=>x.type==='feedback').props.work.id,'a');
 });

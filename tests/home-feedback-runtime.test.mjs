@@ -11,7 +11,7 @@ async function mount(t,{signedIn=true,failWrite=false,showVideo=false,commentsBe
  const session=signedIn?{access_token:'test-token',user:{id:'reader',user_metadata:{display_name:'Listener'}}}:null;
  let cursor=0,tree,dirty=true,changed=0,toggles=0;const states=[],refs=[],effects=[],requests=[];const player={playing:true};let scrolls=0,commentTop=commentsBelow?800:0;const scrollListeners=[];
  const react={useState(initial){const i=cursor++;if(!(i in states))states[i]=initial;return [states[i],v=>{states[i]=typeof v==='function'?v(states[i]):v;dirty=true;}];},useRef(){return refs[cursor++]??={current:{showModal(){},close(){},getBoundingClientRect(){return {top:commentTop,bottom:500}},addEventListener(type,fn){scrollListeners.push(fn)},removeEventListener(){},scrollIntoView(){scrolls++;commentTop=40;scrollListeners.forEach(fn=>fn())}}};},useEffect(fn){const i=cursor++;if(!effects[i])effects[i]={cleanup:fn()};}};
- const modules={react,'react/jsx-runtime':{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})},'next/link':{__esModule:true,default:'link'},'lucide-react':{ArrowDown:'ArrowDown',Heart:'Heart',Play:'Play',X:'X'},'@/components/work-image':{__esModule:true,default:'work-image'},'@/lib/music-player-store':{useMusicPlayer:()=>player,musicPlayer:{toggle(){toggles++;player.playing=false;}}},'@/lib/i18n':{useI18n:()=>({lang:'zh'})},'@/lib/mv-copy':{mvCopy},'@/lib/home-copy':{homeCopy},'./home-editorial.module.css':{__esModule:true,default:{}},'@/lib/supabase':{supabase:{auth:{getSession:async()=>({data:{session}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},from(){const q={select(){return q;},eq(){return q;},maybeSingle:async()=>({data:null,error:null})};return q;}}}};
+ const modules={react,'react/jsx-runtime':{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})},'next/link':{__esModule:true,default:'link'},'lucide-react':{ArrowDown:'ArrowDown',Heart:'Heart',Play:'Play',X:'X'},'@/components/mv-player':{__esModule:true,default:'mv-player'},'@/components/mv-rating-form':{__esModule:true,default:'rating-form'},'@/components/work-image':{__esModule:true,default:'work-image'},'@/lib/music-player-store':{useMusicPlayer:()=>player,musicPlayer:{toggle(){toggles++;player.playing=false;}}},'@/lib/i18n':{useI18n:()=>({lang:'zh'})},'@/lib/mv-copy':{mvCopy},'@/lib/home-copy':{homeCopy},'./home-editorial.module.css':{__esModule:true,default:{}},'@/lib/supabase':{supabase:{auth:{getSession:async()=>({data:{session}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},from(){const q={select(){return q;},eq(){return q;},maybeSingle:async()=>({data:null,error:null})};return q;}}}};
  const fetch=async(url,init={})=>{requests.push({url,...init});const post=init.method==='POST';return {ok:!(post&&failWrite),status:post&&failWrite?500:200,json:async()=>post?url.endsWith('reaction')?{heartedToday:true}:{comment:{id:'saved',name:'Listener',text:JSON.parse(init.body).text}}:{comments:[{id:'public',name:'Creator fan',text:'Real public comment'}]}};};
  const loaded={exports:{}};const window=new EventTarget();window.matchMedia=()=>({matches:false});const document={activeElement:null};
  class HTMLElement{};class CustomEvent extends Event{constructor(type,init){super(type);this.detail=init.detail;}}
@@ -35,17 +35,13 @@ test('homepage hearts reuse the existing reaction endpoint and refresh discovery
  const ui=await mount(t);ui.button('送出愛心與收藏').onClick();await ui.flush();const request=ui.requests.find(r=>r.method==='POST');assert.equal(request.url,'/api/listen-bar/reaction');assert.deepEqual(JSON.parse(request.body),{trackId:'target-work',reaction:'heart'});assert.equal(ui.button('取消今日愛心與收藏')['aria-pressed'],true);assert.equal(ui.changed(),1);
 });
 
-test('MV comment dialog offers playback without autoplay and keeps the comment draft when video closes',async t=>{
+test('MV feedback shares one persistent player and puts rating input before public comments',async t=>{
  const ui=await mount(t,{showVideo:true});assert.equal(ui.find('iframe'),undefined);
- ui.find('textarea').onChange({target:{value:'Keep my impression while watching'}});await ui.flush();
- ui.button('觀看 MV · The MV').onClick();await ui.flush();
- assert.equal(ui.find('iframe').src,'https://www.youtube-nocookie.com/embed/MdxaU0l3FzI?autoplay=1&rel=0');assert.equal(ui.toggles(),1);
- assert.equal(ui.find('textarea').value,'Keep my impression while watching');
- ui.button('收起影片').onClick();await ui.flush();assert.equal(ui.find('iframe'),undefined);assert.equal(ui.find('textarea').value,'Keep my impression while watching');
+ assert.equal(ui.find('mv-player').autoPlay,false);assert.equal(ui.find('rating-form').trackId,'target-work');
+ ui.find('rating-form').onSaved({id:'new',name:'Listener',text:'Saved impression'});await ui.flush();assert.ok(ui.text().includes('Saved impression'));assert.equal(ui.changed(),1);
 });
 
 test('MV comment cue jumps within the dialog and hides once comments are visible without losing a draft',async t=>{
  const ui=await mount(t,{showVideo:true,commentsBelow:true});assert.ok(ui.button(mvCopy('zh').scrollComments));
- ui.find('textarea').onChange({target:{value:'Keep this review while scrolling'}});await ui.flush();
- ui.button(mvCopy('zh').scrollComments).onClick();await ui.flush();assert.equal(ui.scrolls(),1);assert.equal(ui.button(mvCopy('zh').scrollComments),undefined);assert.equal(ui.find('textarea').value,'Keep this review while scrolling');assert.equal(ui.requests.some(r=>r.method==='POST'),false);
+ ui.button(mvCopy('zh').scrollComments).onClick();await ui.flush();assert.equal(ui.scrolls(),1);assert.equal(ui.button(mvCopy('zh').scrollComments),undefined);assert.equal(ui.find('rating-form').trackId,'target-work');assert.equal(ui.requests.some(r=>r.method==='POST'),false);
 });
