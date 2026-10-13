@@ -1,5 +1,7 @@
 # AIPOGER 開發與維運
 
+2026-10-13 傷心酒吧整合、三個月曲庫與Profile投稿已上線（app `6342878`／`codex/homepage-mv-editorial`）。Vercel `dpl_BjHkGMG8YcpcFXtHBCXNcrDBb5iB` READY，先以正式環境不綁網域核對113首與66件有支持的真實資料，再promote至apex／www。小電台／Top10／Top50／四封面、原ID評論／定位與Profile自己的上傳區已發布；532測試中501通過、31既有可選DB略過、0失敗，TypeScript／本機與雲端build通過，lint0 errors／15既有warnings。無SQL／環境變更、點數啟用或音檔刪除；到期仅退出公開展示，歷史／storage／原active額度保留。正式四語桌機／手機與真實音訊、排行榜、評論、舊路由及投稿登入返回驗收見[發布證據](releases/2026-10-13-radio-chart-profile.md)。
+
 2026-10-13 探索音樂改版已上線（app `e8f2977`／`codex/homepage-mv-editorial`）。Vercel `dpl_M3wZ23ATz3CPV6vjo9uUZkiYgKZW` READY 並已 promote 至 aipoger.com；使用者選定的黑橘精簡探索頁、醒目傷心酒吧入口、全曲庫搜尋／曲風交集、推薦去重、歌名旁大愛心與資訊操作已發布。519 測試中 488 通過、31 既有可選 DB 測試略過、0 失敗；TypeScript、本機／雲端 build 通過，lint 0 errors／15 既有 warnings。正式站實際播放、訪客 Heart 返回原曲、搜尋／無結果／重設、升溫與四語版面驗證；225 首公開作品、14 曲風及原播放／戰績／資格資料保留。未使用 live owner session 或寫入生產留言／Heart，無 SQL migration、環境變更或點數啟用。[發布證據](releases/2026-10-13-explore-redesign.md)。
 
 2026-10-13 MV 卡片愛心與評論改版已上線（app `5d1178d`／`codex/homepage-mv-editorial`）。Vercel `dpl_J97UK5nFW6KQJaHurB9yoNJC7fhE` READY 並已 promote 至 aipoger.com；歌名右側大愛心／週票／評論、下一排創作者，直接切換既有 Heart／收藏，評論 dialog 包含同一支 MV。513 測試中 482 通過、31 既有可選 DB 測試略過、0 失敗；TypeScript、本機／雲端 build 通過，lint 0 errors／16 既有 warnings。正式桌機／手機、實際影片播放、公開評論、關閉回卡片及訪客返回路徑驗證，原 48 支影片／3 個頻道及曝光去重保留。登入寫入使用 runtime mocks 驗證，未使用 live owner session。無 SQL migration 或生產測試留言／Heart。[發布證據](releases/2026-10-13-mv-card-actions.md)。
@@ -289,40 +291,16 @@ When the 10 active limit is implemented, also check:
 - The 11th active 24H Full Song entry is blocked before storage upload.
 - User-facing copy says the 24H Full Song field is full.
 
-## Bar Heartbreak Checklist
+## Bar Heartbreak / Profile Submission Checklist
 
-Check:
-
-- Page loads at `/listen-bar?lang=zh`.
-- Public listening works without sign-in.
-- The lower hero action strip shows `Drop Battle` directly beside `探索 AI 音樂`; it links to `/battle?lang=<lang>`. On mobile, both actions remain centered side by side on the second row without horizontal overflow.
-- Play/pause, seek and volume use the shared bottom player; do not require a competing radio player.
-- Record/cover image renders.
-- Progress bar and public volume control render.
-- Lyrics area is readable and does not collapse too short.
-- Comment box appears near reactions.
-- Logged-out voting shows sign-in message.
-- Logged-out commenting shows sign-in message.
-- Logged-in Heart reactions allow one active Heart per track per Asia/Taipei day.
-- Re-pressing Heart on the same track cancels that day's Heart and synchronized favorite, decrements the shared total, and allows a subsequent new Heart.
-- Bar Heartbreak room-message surface title is `傷心的故事傾訴留言`, not `AI 音樂交流區`, and general room messages are retained for 24H.
-- Public music surfaces show total Heart count only as the public metric; the viewer's own Heart button may light to show today's active Heart, but the page must not show public favorite state, favorite-user count, or who saved the song.
-- Explore AI Music and Bar Heartbreak show the same total Heart count for the same `listen_bar_tracks` song and write through the same reaction flow.
-- Track comments persist.
-- Track comments notify the song creator through account notifications, except self-comments.
-- Upload requires sign-in.
-- Upload policy copy is visible.
-- My Bar Tracks shows the creator's community tracks after sign-in; retired Challenger state must not be presented as a current admission requirement.
-- Creator can remove own public-pool song.
-
-Current airplay and submission:
-
-- All public airplay plus 14 fixed genres provide 15 playback choices; actual song counts are shown without capacity denominators.
-- Eligible submissions become public immediately. No Challenger seats, protection timer, capacity elimination or survival days.
-- A creator may submit at most three own songs per personal 168-hour window; failed uploads do not count and deleting songs does not refund quota. The five-active-songs-per-creator-per-genre limit remains.
-- A fixed genre is required; no silent default. Three new genres are available; audio suggestions must fail safely to manual selection while the worker is unavailable.
-- GET/POST process-rotation and the database rotation function make zero mutations, even with old callers or flags. No rotation cron may re-enable elimination.
-- Public audio formats and limits follow product rules. Creator/admin/moderation removals remain explicit.
+- `/listen-bar` 與 `/l/all`／原14曲風短鏈導向 `/ai-music#explore-radio`，保留語言、曲風与原曲深連結；`#play-request`／submit=1導Profile上傳。Spotlight參數忽略，不指定播放。
+- `/api/listen-bar/tracks`直接沿用`/api/ai-music/tracks`，完整分頁讀取資格候選，三個日曆月期限与公開moderation／lifecycle條件一致；不得把讀取失敗當零歌曲或零票。
+- 電台與卡片使用music-player-store／唯一root audio；驗證實際自然播放、seek、volume、上一首歷史、下一首循環、卡片接替、跨頁持續與滾動切換控制。Inline IntersectionObserver只隱藏dock控制，音訊留在root；進頁不自動播放。
+- 電台／卡片／dock評論開原ID modal、登入return带track/comments=1；每曲評論持久保存与原通知審核保留，創作者自留言不通知自己。Top10／50無評論圖示。
+- 新ProfileMusicUpload抽出原有處理，只在自己的作品區開啟；guest引導登入后保留submit/語言/hash。Private讀取錯誤不得假裝無作品；上傳前與INSERT前重新核對同一帳號，同步鎖防雙重提交，失敗保留draft並清理僅該次新資產。
+- 手選14曲風、21秒可選分析告知／worker未啟用手選回退、原格式30MB、metadata/cover/lyrics/YT、雜湊、個人168小時三首及每曲風五首active的DB原子限制均保留。上傳格式／限制按產品規則，失敗不計額度、刪除不退額度。
+- Profile自己的到期作品仍可管理／預覽，標示公開推廣期結束；到期不改DB active/quota、音檔、Heart或Battle記錄。Production驗證不以live owner或真實投稿／留言／Heart產生测试資料；mock runtime驗證寫入成功及失敗。
+- 舊公開聊天與故事／歌詞牆撤下，24小時訊息API及清理只保留歷史相容。GET/POST process-rotation及DB rotation函式依舊零變動，不能重啟生存淘汰。
 
 Choice and retired Spotlight:
 
@@ -332,7 +310,7 @@ Choice and retired Spotlight:
 - `/admin/listen-bar` metadata and bulk-metadata saves preserve the current visibility, genre, month, search, sort, and page view; editing while sorted by upload time must not jump to update-time sorting.
 - `/admin/listen-bar` upload preview and track rows each expose one play action. Every preview switches the same fixed bottom player with play/pause, seek, volume, and close controls; no track card renders its own native audio control.
 - `/admin/listen-bar` has no Daily Spotlight selector, date, copy, media, preview, save, or draft-generation controls, and makes no Daily Spotlight API request.
-- `/listen-bar?spotlight=YYYY-MM-DD&lang=zh` returns normal Bar Heartbreak with no specified-song playback or Spotlight panel.
+- `/listen-bar?spotlight=YYYY-MM-DD&lang=zh` redirects to Explore radio, ignoring Spotlight without specified-song playback.
 - `/today?lang=zh` returns 307 to `/rank?lang=zh#choice-weekly`.
 - `/admin/social` remains the only draft, approval, and manual publishing console; Discord publishing still requires an approved draft plus its explicit publish action.
 - /admin/showtime 不再提供授證；舊入口導至作品管理 /admin/listen-bar。音檔、實際 Battle 結果、票數及 Heart 不可改寫。
@@ -344,28 +322,28 @@ Choice and retired Spotlight:
 Check:
 
 - Homepage first-layer primary action says `探索 AI 音樂` and links to `/ai-music?lang=zh`.
-- `/ai-music?lang=zh` returns 200 and uses `探索音樂` with subtitle `找到對味的歌，讓好作品被聽見。`, a shared editorial header, search and a prominent orange radio entry. No old giant centered catalog hero, duplicate fixed chrome or nested taste panel remains.
-- Shared header links and the Bar radio/submission entries preserve `lang`, proper `#play-request`, Explore login return and the existing signed-in account/owner dock.
-- Search the complete loaded eligible catalog by title/creator/AI tool, combining the selected genre; matches beyond the collapsed six render, no-match/reset works, original IDs/counts are preserved. Filters on Hot Now must retain global rank labels.
+- `/ai-music?lang=zh` returns 200 and uses `探索音樂` with subtitle `找到對味的歌，讓好作品被聽見。`, a shared editorial header, search and compact Bar Heartbreak radio above the title. No old giant centered catalog hero, duplicate fixed chrome or nested taste panel remains.
+- Shared header / homepage footer submission links preserve `lang` and open `/profile?submit=1#submit-work`; legacy `#play-request` redirects there. Guest auth return keeps intent, Explore work/comment links and account/owner dock remain intact.
+- Search the complete loaded eligible catalog by title/creator/AI tool, combining the selected genre; matches beyond the collapsed four render, no-match/reset works, original IDs/counts are preserved. Filters on Hot Now must retain global rank labels.
 - Earworm recommendation IDs do not occur again in lower lanes; lower-lane order still follows the complete original genre ordering, and playback queues retain original genre/heat sources. No profile means normal catalog plus test entry. Locale/data reloads show no stale recommendation success after loading/error.
 - The local `/guide.png` action opens the existing accessible dialog: verify X, Escape, backdrop, focus trap/return and mobile scrolling. Desktop adds the concise guide text; phones retain the icon.
 - An Explore share URL has the shape `/ai-music?lang=<lang>&track=<id>#works`, stays on Explore rather than Bar Heartbreak, expands the matching style lane, and scrolls to the shared work without autoplay.
-- The masthead is compact and cover-led: the first genre title and first covers are visible at 1440x900 and 390x844 without a fake waveform, `Live Drop Signal`, `60s READY`, dashboard cards, or a long gameplay explainer occupying the first screen.
-- `依曲風 | 正在升溫` is a local Explore control. The default preserves genre lanes; Hot Now remains separate from Showtime and Choice, but uses the same compact cover-card density: phone two-column and tablet/desktop 3 / 4 / 6-column grids, never a wide rank table; 320px genre selector occupies its own full-width row.
+- Desktop masthead is compact and cover-led: small radio, title/search/control strip, left Top10 and right four-card gallery. Phone uses two cards and a three-work chart preview with Top50 available; tablet previews four. Check 320/390/768/1280/1487 widths and zh/en/ja/ko without document overflow.
+- `依曲風 | 正在升溫` is a local Explore control. The default preserves genre lanes; Hot Now remains separate from Showtime and Choice, but uses the same compact cover-card density: phone two-column and narrow-screen/desktop 3 / 4-column grids, never a wide rank table; 320px genre selector occupies its own full-width row.
 - Hot Now reads only 7-day distinct Heart supporters, official Battle audience votes from archives meeting the 3-voter threshold, latest qualified interaction, then created_at/id. It never uses all-time Hearts, play counts, mock scores, or Heat Score. Signal-less works are `正在累積` with no rank number; this remains separate from monthly chart counting.
-- The page groups works by the current 14 fixed music genres and shows at most 6 cards per genre before `看更多`.
+- The page groups works by the current 14 fixed music genres and shows at most 4 cards per genre before `看更多`.
 - Explore has no standalone `最新上架` / `New Arrivals` / `72 小時新歌` shelf, route, category, or independent `看更多`; new eligible works appear at the front of their existing genre lane.
 - `NEW` uses `created_at` younger than a rolling 7 x 24 hours for both its badge and Explore sorting priority; it expires from both at the seven-day boundary and never reads `updated_at`.
-- Explore places `NEW` at the cover top-left and keeps `接戰` at the top-right without overlap on desktop/mobile. Bar Heartbreak shows `NEW` on the now-playing cover and beside new tracks in the visible queue, Challenger pool, and creator track list.
+- Explore places `NEW` at the cover top-left and keeps `接戰` at the top-right without overlap on desktop/mobile. Bar Heartbreak shows `NEW` on the now-playing cover; creator track list preserves the original window.
 - A NEW work (within rolling 7 x 24 hours by `created_at`, never `updated_at`) appears ahead of established works in its genre lane; lanes with NEW works lead the wall by newest NEW `created_at`, while lanes without NEW works keep the fixed genre order.
-- The collapsed first 6 cards in a genre lane show at most one NEW work per creator; all other NEW works remain visible after that lane's `看更多` expansion.
-- Cards put the title beside a large orange Heart/total count and creator below; creator metadata retains AI tool, and the information action reveals actual challenge counts/W/L. Controls retain 44px-high targets, busy/disabled state and original work identity.
+- The collapsed first 4 cards in a genre lane show at most one NEW work per creator; all other NEW works remain visible after that lane's `看更多` expansion.
+- Cards put title beside large orange Heart and white comment, creator below; cumulative Heart is in tooltip/accessibility text, distinct supporter score in chart. Preserve original work ID, Battle HUD, actual W/L and 44px-high action targets without another row.
 - Cards that are truly challenge-ready show a non-clickable red angled `接戰` badge at the cover's top-right on desktop and mobile; non-ready, retired, hidden/removed/moderation-held, missing-drop, or unplayable works do not show it. Old certification alone is no longer a gate; the creator must explicitly opt in after the one-time reset.
 - The card's bottom `攻擂` button remains the only challenge action; the `接戰` badge must not replace it or use `攻擂` as badge text.
-- Signed-in users with today's active Heart see the Heart button lit on `/ai-music` cards and the bottom mini player; re-pressing it cancels the Heart and synchronized favorite while the card still shows only total Heart count publicly.
+- Signed-in users' card/radio Heart lights for today's active reaction; re-press cancels current-day Heart and synchronized favorite. Read private state in ID batches, protect against account change, prevent duplicate pending writes; distinct support can remain if previous-day Heart exists.
 - Desktop/mobile information action expands the Battle Record HUD. Desktop hover/focus reveals compact info/share controls; phone controls remain visible, and closed details do not obscure artwork.
 - Cards and Battle HUD retain actual wins/losses; six-defense certification progress and promotion promises are removed.
-- Card play opens the bottom mini player and does not expand per-card audio controls.
+- Card play uses root audio and inline radio/dock controls, never per-card audio. Chart cover plays the same queue; song name expands/locates original card without autoplay.
 - `Drop Battle`, `Showtime`, `傷心酒吧`, and `Choice` are internal options on `/ai-music`.
 - Old genre labels are not shown as current category headings.
 - /api/ai-music/tracks 不再排除舊認證作品；8 敗退場及既有歷史豁免仍在。挑戰由公開狀態、未退場、創作者自行 opt in 和準備好的 Drop 決定。
@@ -521,12 +499,12 @@ Check:
 ## 酒吧遷移與回復邊界
 
 - `20260907182740_retire_bar_survival.sql` 已套用。回復應用不會撤銷 DB；原函式回復證據保留於私人 audits/2026-09-08-bar/database-functions-before.json。
-- 不得為回復畫面而重啟淘汰；公開曲庫不限 396 首且保留既有可見性保護。
+- 不得為回復畫面而重啟淘汰；公開曲庫不設396首容量上限；目前展示另遵守三個日曆月期限與既有可見性保護。
 
 ## 共用播放器回歸（2026-09-08）
 
 - 根 layout 透過 GlobalListenBarDock 掛載唯一 GlobalMusicPlayer；ShowtimeQueuePlayer 保留 imperative API 作為無音訊的相容入口。頁面使用 music-player-store 訂閱目前歌曲及進度。
-- 酒吧下一首預告直接讀同一個 session queue；歌單建立後不受換頁、探索排序或新投稿影響。曲風庫每分鐘核對下架資料，僅從既有酒吧佇列移除不可播歌曲，不插入新歌曲。
+- 酒吧下一首預告直接讀同一個 session queue；歌單建立後不受換頁、探索排序或新投稿影響。曲風庫每分鐘核對下架與三個月到期資料，僅從既有酒吧佇列移除不可播歌曲，不插入新歌曲。
 - 驗證有限歌單結尾、單曲曲風循環、上一首歷史、快速連續跳歌、暫停後跨頁、拖曳後自然接播、音量、歌詞 Escape 與未登入愛心提示。桌機、手機及中英日韓控制項需渲染檢查。
 - 2026-10-13 首頁不再自動啟動背景音樂；單曲由使用者按下播放，使用共用 session。切換 MV 先暫停共用音訊；改播單曲移除 MV iframe。
 

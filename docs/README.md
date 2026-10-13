@@ -11,8 +11,8 @@
 
 ## 現況與查找順序
 
-- 文件整理與產品發布基準：2026-10-13；應用 `e8f2977`，分支 `codex/homepage-mv-editorial`；[探索音樂改版發布證據](releases/2026-10-13-explore-redesign.md)、[MV 卡片愛心與評論發布證據](releases/2026-10-13-mv-card-actions.md)、[首頁與 MV 曝光去重證據](releases/2026-10-13-featured-dedup.md)、[MV 放映室發布證據](releases/2026-10-13-mv-gallery.md)。
-- 首頁為精選 MV、三首單曲與社群評論／支持入口，`/mv` 集中既有公開影片及頻道連結，提供搜尋／曲風／排序與原作品評論；探索音樂以精簡封面牆、全曲庫搜尋／曲風篩選、推薦去重及醒目酒吧入口呈現；傷心酒吧持續公播與投稿、Drop Battle、Q Crash、Showtime 月榜與 Choice、共用播放器、耳朵蟲與練功聖經仍保留。
+- 文件整理與產品發布基準：2026-10-13；應用 `6342878`，分支 `codex/homepage-mv-editorial`；[電台與三個月曲庫發布證據](releases/2026-10-13-radio-chart-profile.md)、[探索音樂改版發布證據](releases/2026-10-13-explore-redesign.md)、[MV 卡片愛心與評論發布證據](releases/2026-10-13-mv-card-actions.md)、[首頁與 MV 曝光去重證據](releases/2026-10-13-featured-dedup.md)、[MV 放映室發布證據](releases/2026-10-13-mv-gallery.md)。
+- 首頁為精選 MV、三首單曲與社群評論／支持入口，`/mv` 集中既有公開影片及頻道連結，提供搜尋／曲風／排序與原作品評論；探索音樂合併傷心酒吧小電台、左側Top10與右側四首封面、Top50及同作品評論；目前公開單曲按三個日曆月展示，投稿搬到Profile自己的作品區，原酒吧聊天撤下；Drop Battle、Q Crash、Showtime 月榜與 Choice、共用播放器、耳朵蟲與練功聖經仍保留。
 - 酒吧容量生存淘汰、Challenger 保護、Showtime 認證、Daily Spotlight 已退役；24H Full Song Battle 隱藏於前台。
 - APC 未啟用；自動音訊曲風建議的前端已發布，worker 尚待啟用。創作者私人「作品表現」第一版已發布；新版聆聽比例從發布後開始累積，不能補成歷史完整數據。
 - 優先讀本機六份正文，其次讀 [Google Drive 最新規格資料夾](https://drive.google.com/drive/folders/1C_mLLcpRvTNh6m6ZkWVhPN_QWVr9CrCN)；雲端是本機同步副本，發布狀態仍需工程證據。Library 可搜尋 `AIPOGER 最新文件索引`、`aipoger-product-rules.md`。

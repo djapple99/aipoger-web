@@ -79,13 +79,15 @@ Avoid:
 
 ## 探索音樂
 
-`/ai-music` 沿用使用者選定的黑橘參考圖：共用精選／MV 頂欄、左側大標「探索音樂」，右側作品／創作者搜尋與醒目的橘色「傷心酒吧／連續聽電台」。原大舞台圖、中央 presence 與多層推薦面板已移除，歌曲直接進入第一屏。
+`/ai-music` 沿用選定黑橘參考圖，共用頂欄。第一層是「傷心酒吧」小電台，接著左側「探索音樂」大標、右側搜尋與測驗，再接分類控制與緊湊雙區布局；撤下原酒吧舞台、聊天、歌詞牆及投稿區。
 
-- 本機耳朵主場存在時，顯示單列「為你推薦」與主場曲風；測驗入口保留。推薦歌曲不在下方曲風列重複占位。未做測驗時先展示公開曲庫，不能冒充個人推薦。
-- 「依曲風／正在升溫」切換及全部曲風選單集中在一條工具列；搜尋涵蓋全部作品，不只已展开卡片，搜尋與曲風交集可清除。升溫篩選保留原全站名次，不重新編號。
-- 桌機六欄、較窄桌機四欄、平板三欄、手機兩欄正方形封面；320px 選單獨立成一列。歌名旁是大橘色愛心及原累計愛心數，下面是創作者；接戰作品的攻擂入口與創作者同排，分享及資訊操作在封面右下。圖示操作範圍至少 44px高。
-- 資訊按鈕開關真實 Battle Record；桌機 hover／鍵盤焦點顯示資訊與分享，手機常駐。保留 NEW、接戰角標與公共好感度門檻；封面、作品名稱及創作者使用真實資料，較長歌名最多兩行，沒有示意歌曲／假票數。
-- 原共用播放器、每曲 Heart／收藏、Deep Link、投稿入口與 owner 通知維持。GUIDE 維持可關閉、Escape、focus trap／return；四語介面，無結果與載入失敗誠實呈現，不顯示舊推薦冒充新載入結果。
+- Radio 有全部／Jazz-Bossa／R&B／City-Pop 捷徑與完整14曲風選單；封面、歌名、創作者、上一首／播放／下一首、進度、音量、橘心及白評論同行。手機分配緊湊控制，不新增裝飾空行；歌曲採唯一共用音訊，電台可見時收起固定底部控制。
+- 桌機左側 Top10 約占原六欄的兩欄，右側四封面一列；窄屏三欄、手機兩欄。手機榜單先顯示三首、平板四首，完整排行從 Top50 開啟原生可關閉視窗。Top10 不放評論標誌：點封面播放、Heart支持、歌名清除不相符篩選並展開、定位與短暫標亮原卡。
+- 有耳朵主場才顯示單列四首「為你推薦」，約三主場／近鄰＋一探索；下方曲風列排除其ID。未測驗先展示實際曲風牆。每類收合四首，既有七日NEW／每創作者首屏最多一首NEW規則保留，完整展開可看其餘同曲風作品。
+- 搜尋涵蓋全部符合三個月展示資格的原作品，作品／創作者／工具与曲風交集；無結果可重設、錯誤不偽裝空曲庫。資料每分鐘及回到頁面時刷新，保留訪客篩選、展開及定位。
+- 封面下是歌名旁大橘心與白評論，下行創作者，接戰作品保留攻擂；分享／戰績在原封面位置，不增加互動橫列。按評論開原作品modal，公開可讀，登入才留言／按心。榜單數字是不同非作者支持人数，累計每日Heart在按鈕提示／無障礙文字可查，不混為榜票。
+- 所有投稿入口進 `/profile?submit=1&lang=...#submit-work`，登入後打開自己的「我的作品」上傳表；既有檔案、metadata、手選曲風、額度与審核流程沿用。到期作品在自己的資料區標記推廣期結束並保留管理／預覽，完整頭像Data改版及歷史最高名次是後續設計。
+- GUIDE保留X、Escape、backdrop、focus trap／return，四語完整；舊 `/listen-bar` 和 `/l/...` 保留曲風／語言導到小電台，舊投稿hash導到Profile。原戰績與攻擂明確同意機制保留。
 
 ## Homepage
 
@@ -96,7 +98,7 @@ Avoid:
 - 社群支持最多的 MV 標「本週社群精選」，展示不同非作者支持者數；同票提供左右切換與「同票精選」，不宣稱正式冠軍。全週零支持時只展示最新 MV，標「新作放映」，不冒充社群入選。沒有有效 MV、沒有可播音訊及資料讀取失敗各有真實狀態。
 - 推薦理由優先展示公開且 moderation-visible 的非作者留言，保留留言者署名；沒有可展示留言時標「作品介紹」，使用創作者原文。不將社群入選冒署為「愛波哥推薦」。
 - 「評論與支持」開啟首頁原作品視窗，公開評論可讀；登入會員透過既有留言與 Heart API 參與，沿用相同作品 ID、收藏與審核。留言失敗保留文字，客人先登入；不因觀看、留言或 Heart 發點數。原有 Explore 卡片仍能送 Heart，但沒有獨立歌曲評論功能，所以首頁不將此按鈕誤連到卡片。
-- 三首單曲使用既有底部共用播放器，歌曲標題連回 Explore 原作品；保留「進傷心酒吧」的持續聆聽入口。「投稿作品」沿用 `/listen-bar#play-request`，手機頁尾也能投稿；不新增 MV 重複投稿表。
+- 三首單曲使用既有底部共用播放器，歌曲標題連回 Explore 原作品；保留「進傷心酒吧」的持續聆聽入口。「投稿作品」進入 `/profile?submit=1&lang=...#submit-work`，手機頁尾也能投稿；不新增 MV 重複投稿表。
 - 頂欄沿用官方 Logo、四語切換與登入入口；登入後保留原有帳號頭像／通知與 owner 後台入口。首頁、MV 放映室與探索音樂隱藏中央固定 presence badge 及重複的固定 Logo／語系／訪客登入控制；登入後帳號與通知保留。
 - 中英日韓文案與類型名稱一起本地化，創作者的作品名稱與介紹保留原文。Explore 卡片原有首次上架 7 × 24 小時 `NEW` 與 `接戰` 角標規則保留，不能互相蓋住或遮住播放操作。
 
@@ -148,38 +150,12 @@ UI direction:
 
 ## Bar Heartbreak
 
-Role:
+「傷心酒吧」是探索音樂上方的持續電台，詳見上一節；不再提供獨立大型酒吧布局或聊天。選擇曲風才建立循環佇列，進頁不自動播放；歌曲、音量、進度與卡片／固定底部播放器同步。
 
-- Continuous public listening for AI music.
-- Creators submit immediately; owner curation and moderation remain available after publication.
-
-Must preserve:
-
-- Keep play/pause and other transport controls in the shared bottom player, not a competing radio player.
-- Listening is open.
-- Voting/commenting requires sign-in.
-- Reaction copy near buttons should encourage active voting.
-- The record visual is central and should feel like a public broadcast.
-- For a track within its first rolling 7 x 24 hours after `created_at`, place the compact `NEW` badge at the now-playing cover's upper-left and beside track titles in visible queue/pool lists. Keep it static and do not add it to the moving Battle ticker.
-- Lyrics area should be substantial enough to read, visually aligned with the comments area where practical.
-- Upload genre suggestions sit in a compact orange panel between audio selection and metadata fields. Disclose the short excerpt analysis before choosing a file. Loading, no suggestion, unavailable/retry and self-selection states are localized in zh/en/ja/ko. Every recommendation has its own `採用建議` button; `自行選擇` dismisses/cancels analysis. Neither receiving suggestions nor reading embedded tags changes the genre field. Keep the required manual menu usable throughout analysis; author confirmation controls the final genre. The three new genres and advisory UI are deployed; actual audio suggestions require activation of the analysis worker.
-- Eligible submissions enter public playback immediately under the unchanged personal upload and genre limits; show actual public song counts, not capacity denominators.
-- Do not show retired Challenger seats, 36-hour protection, survival days or automatic elimination.
-- The hero's top-right cluster should stay light; do not crowd it with the main action buttons. Put `我要播歌`, bar sharing, `探索 AI 音樂`, `Drop Battle`, and `Showtime` together in the lower hero action strip, with `Drop Battle` directly beside Explore.
-- Do not show `練功聖經` or `關於愛波哥` inside the Bar Heartbreak hero action strip unless a later explicit redesign restores them.
-- The hero action strip ticker is a moving Battle marquee, not a static truncated label.
-- The queue header should expose a selected-genre share action so listeners can share the exact Bar Heartbreak category they are hearing.
-- The Bar Heartbreak hero sign must remain text-driven and localizable. Do not replace the sign title/subtitle with a bitmap containing Chinese text, because language switching must keep working.
-- The sign may visually reference the dark gold sci-fi plaque style, but the title, `AIPOGER RADIO`, `BAR HEARTBREAK`, and subtitle must be live text. The subtitle should use the same gold dimensional text family as the main title, scaled down for hierarchy.
-- On desktop, keep the Bar Heartbreak sign compact rather than full-width. The plaque should sit around two-thirds of the previous oversized desktop treatment so it reads as a sign, not a giant banner that pushes the radio content down.
-- On mobile, the lower hero action strip should place `我要播歌`, `分享吧台`, and `Showtime` on the first row, with `探索 AI 音樂` and `Drop Battle` centered side by side on the second row.
-- The now-playing song title should keep short names dramatic, but long mixed Chinese/English titles must auto-size down and allow two lines before truncation. Do not lock every title to the largest fixed display size.
-
-Copy direction:
-
-- Bar Heartbreak is not a ranking list.
-- It is a continuous public radio and listening space, not a survival game.
-- Use emotional but clear language.
+- 歌曲與評論沿用原ID；公開聽歌不用登入，Heart／留言需登入。NEW保留七日語意；正式Battle及Showtime月榜另依原規則。
+- 投稿搬到Profile自己的作品區；手動曲風与可選音訊建議面板、上傳前21秒片段告知、建議逐一採用／自行選擇、worker未啟用時手選回退均保留。讀metadata不默改曲風。
+- 不呈現Challenger席位、保護時間、生存日數、容量淘汰、房間故事留言、舊移動跑馬燈或大型金色招牌。舊聊天24小時API是歷史相容，不是前台入口。
+- 個人投稿168小時／三首與每曲風五首active規則保留，公開展示三個日曆月不等於刪檔或退額度。物理容量處理待另行設計。
 
 ## AIPOGER Showtime
 
@@ -476,6 +452,6 @@ Avoid:
 
 ## 共用播放器
 
-- 酒吧、探索、Showtime／Choice、個人歌單使用同一個底部播放器：播放／暫停、上一首、下一首、拖曳進度、手機與桌機音量、歌詞及關閉。酒吧與探索公播作品可在播放器送愛心；其他來源維持原卡片收藏語意。
-- 酒吧六首預覽改為一行下一首，必須與共用佇列實際下一首一致。顯示播放範圍與本首曲風，保留各曲風真實歌曲數。
-- 酒吧上方移除獨立音量與進度區；換頁維持目前音訊與佇列，選歌或選曲風才換佇列。新投稿不插入既有佇列。
+- 酒吧、探索、Showtime／Choice、個人歌單使用唯一root播放器：播放／暫停、歷史上一首、下一首、進度、手機／桌機音量、歌詞、關閉；電台可見時使用其緊湊控制，離開可視區再顯示底部控制，音訊不卸載。原公播作品可按心與開同作品評論，其他來源沿用原收藏語意。
+- 電台沒有舊六首佇列預覽或聊天室；顯示目前歌名／創作者及曲風，無聲音／無曲風作品時呈現明確狀態。
+- 換頁維持目前音訊與佇列；選歌／選曲風才換佇列，新投稿不插入既有佇列。三個月到期或既有公開資格不符的歌曲由相同API剔除。

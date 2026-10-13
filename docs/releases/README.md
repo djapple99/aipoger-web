@@ -28,3 +28,5 @@
 - [2026-10-13-mv-card-actions](2026-10-13-mv-card-actions.md)
 
 - [2026-10-13-explore-redesign](2026-10-13-explore-redesign.md)
+
+- [2026-10-13-radio-chart-profile](2026-10-13-radio-chart-profile.md)
