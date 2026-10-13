@@ -264,3 +264,11 @@ test("owner status cannot come from editable metadata or anonymous sign-in", asy
   });
   assert.equal(await auth.creatorAuth(request(null)), null);
 });
+
+test('Suno titles preserve apostrophes and encoded characters, and reject arbitrary artwork hosts',async t=>{
+  t.mock.method(globalThis,'fetch',async()=>new Response(`<meta property="og:title" content="Don&#x27;t Stop &amp; Moon's Night | Suno"><meta property="og:image" content="https://untrusted.example/art.jpg">`));
+  const preview=await server.resolveLinkPreview('https://suno.com/song/e6f08dcd-f454-4a8b-9172-a45f5e79754c',USER);
+  assert.equal(preview.title,"Don't Stop & Moon's Night");
+  assert.equal(preview.coverUrl,'');
+  assert.ok(server.verifyLinkPreview(preview.token,USER));
+});

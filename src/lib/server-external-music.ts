@@ -81,13 +81,17 @@ const decode = (s: string) =>
     .replace(/&amp;/g, "&")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    .replace(/&#(?:x([0-9a-f]+)|([0-9]+));/gi, (raw, hex, decimal) => {
+      const point = parseInt(hex ?? decimal, hex ? 16 : 10);
+      return point <= 0x10ffff ? String.fromCodePoint(point) : raw;
+    })
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">");
 function meta(html: string, name: string) {
   const tags = html.match(/<meta\s[^>]*>/gi) ?? [];
   for (const tag of tags) {
     if (new RegExp(`(?:property|name)=["']${name}["']`, "i").test(tag)) {
-      const v = tag.match(/content=["']([^"']*)["']/i)?.[1];
+      const v = tag.match(/content=(["'])(.*?)\1/i)?.[2];
       if (v) return decode(v);
     }
   }
