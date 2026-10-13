@@ -115,10 +115,17 @@ function accountDockBounds() {
 function clampAccountDockPosition(position: AccountDockPosition): AccountDockPosition {
   if (typeof window === "undefined") return position;
   const bounds = accountDockBounds();
-  return {
+  const clamped = {
     x: Math.min(Math.max(bounds.minX, position.x), bounds.maxX),
     y: Math.min(Math.max(bounds.minY, position.y), bounds.maxY),
   };
+  // The creator header reserves its right corner for the account dock. Avoid
+  // covering the inline language switch or the mobile navigation with a saved
+  // position; keep the saved preference itself and other pages unchanged.
+  if (window.location.pathname === "/profile" && window.innerWidth <= 920 && clamped.y < 128) {
+    return { x: Math.max(bounds.minX, document.documentElement.clientWidth - ACCOUNT_DOCK_SIZE - 18), y: 8 };
+  }
+  return clamped;
 }
 
 function defaultAccountDockPosition(): AccountDockPosition {
