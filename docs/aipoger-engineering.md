@@ -1,5 +1,8 @@
 # AIPOGER 開發與維運
 
+2026-10-13 投稿額度與MV分享／評論提示已更新（app `a01f7aa`／`codex/homepage-mv-editorial`）。一般會員連結與音檔共用168小時三首，取消同曲風五首active上限，Owner數量豁免由資料庫核對confirmed primary Auth identity。MV加入原生／複製分享，站內連結定位原MV評論視窗、無自動播放；橘色捲軸與可點向下評論提示、兩行卡片標題保留原資料。555項測試中524通過、31既有可選DB略過、0失敗；TypeScript、本機／雲端build及lint 0 errors／15既有warnings通過。Vercel `dpl_7j4ZennvAK8X7dXh2PemENqmWjKo` READY並promote；正式MV／Profile 200，私人API未登入401。點數每日15／至少20字有效評論10／增額60已定案但系統未啟用。部署及正式驗收讀[本次證據](releases/2026-10-13-submission-quota-mv-sharing.md)。
+
+
 2026-10-13 創作者中心與連結投稿已上線（app `68949a5`／`codex/homepage-mv-editorial`）。Vercel `dpl_S9cenbAZ6TEnKTq5AC5siMwe6w6S` READY 並 promote 至 apex／www。個人統計、4件作品總覽、單首編輯、原管理入口、Credit未啟用／owner免扣點、YouTube／Suno／Spotify可見預覽後確認與音檔預覽已發布。543項測試中512通過、31既有可選DB略過、0失敗；TypeScript、本機／雲端build通過，lint0 errors／15既有warnings。两份加法式schema migration已套用；RLS、grants與原投稿額度trigger未修改，329筆原作品保留。正式owner帳號與四語桌機／手機證據見[發布證據](releases/2026-10-13-creator-center-links.md)。
 
 
@@ -314,7 +317,7 @@ When the 10 active limit is implemented, also check:
 - 電台與卡片使用music-player-store／唯一root audio；驗證實際自然播放、seek、volume、上一首歷史、下一首循環、卡片接替、跨頁持續與滾動切換控制。Inline IntersectionObserver只隱藏dock控制，音訊留在root；進頁不自動播放。
 - 電台／卡片／dock評論開原ID modal、登入return带track/comments=1；每曲評論持久保存与原通知審核保留，創作者自留言不通知自己。Top10／50無評論圖示。
 - 新ProfileMusicUpload抽出原有處理，只在自己的作品區開啟；guest引導登入后保留submit/語言/hash。Private讀取錯誤不得假裝無作品；上傳前與INSERT前重新核對同一帳號，同步鎖防雙重提交，失敗保留draft並清理僅該次新資產。
-- 手選14曲風、21秒可選分析告知／worker未啟用手選回退、原格式30MB、metadata/cover/lyrics/YT、雜湊、個人168小時三首及每曲風五首active的DB原子限制均保留。上傳格式／限制按產品規則，失敗不計額度、刪除不退額度。
+- 手選14曲風、21秒可選分析告知／worker未啟用手選回退、原格式30MB、metadata/cover/lyrics/YT、雜湊、一般會員連結／音檔共用個人168小時三首的DB原子限制保留，Owner不限數量；每曲風五首active上限取消。上傳格式／限制按產品規則，失敗不計額度、刪除不退額度。
 - Profile自己的到期作品仍可管理／預覽，標示公開推廣期結束；到期不改DB active/quota、音檔、Heart或Battle記錄。Production驗證不以live owner或真實投稿／留言／Heart產生测试資料；mock runtime驗證寫入成功及失敗。
 - 舊公開聊天與故事／歌詞牆撤下，24小時訊息API及清理只保留歷史相容。GET/POST process-rotation及DB rotation函式依舊零變動，不能重啟生存淘汰。
 
