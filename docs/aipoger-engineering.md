@@ -1,5 +1,7 @@
 # AIPOGER 開發與維運
 
+2026-10-14盲聽實測修訂已發布（app `621e2b3`）：各側最低8秒、成功自動新題、常駐離開評測；片段仍為原歌15–45秒，三種答案各3點。新migration `20261013173824_blind_eight_second_flow.sql`已套用；complete RPC驗證7.999秒拒絕／8秒成功，新的service-only音訊RPC把原三次DB讀取合成一次。答案回應併入下一題、取消揭示與後續GET；獨立配對讀取並行、驗票只查本題兩首、不在取題讀完整Credit。雙audio預備metadata及15秒定位，只允許一側播放。588測試557通過、31既有可選DB略過、0失敗；TypeScript、本機／雲端build通過，lint0 errors／15既有warnings；交易fixtures完整回滾，advisor沒有新增WARN。[正式驗收證據](releases/2026-10-14-blind-eight-second-flow.md)。
+
 2026-10-14 Battle復古入口與30秒盲聽已正式發布（app `0a36bf6`，`codex/homepage-mv-editorial`）；Vercel `dpl_2cEZeFgVyCoywmn4ktnUz9vjZ2CS` READY並promote至apex／www。每題3Credit含平手，愛心50%＋盲聽50%接探索Top10／Top50，Creator Center讀獨立真實ledger；登入15／有效評論10／增額投稿60與聖經扣點未啟用。585項測試：554通過、31既有可選DB略過、0失敗；TypeScript、本機及雲端正式build通過，lint0 errors／15既有warnings。三個加法式migration已套用，題目／Credit RLS與service-only invoker RPC；交易測試完整回滾。Security advisor沒有新增WARN，仅兩張service-only表新增無policy INFO。[發布與正式驗收證據](releases/2026-10-14-blind-listening-retro.md)。
 
 2026-10-13 MV統一觀看／評分與連播已正式發布（app `9cb1b9b`，`codex/homepage-mv-editorial`）。572項測試：541通過、31既有可選DB測試略過、0失敗；TypeScript、本機正式build通過，lint 0 errors／15既有warnings。新增migration `20261013131336_mv_ratings.sql` 已實際套用Supabase；評分與留言使用service-only SECURITY INVOKER RPC，已登入user由伺服器getUser驗證，不接受客戶端user ID或自行宣稱owner。兩張新表啟用RLS並撤銷anon／authenticated直接權限；新RPC只有service_role可執行。一次評價原子儲存，receipt防止重送重複評論；原作品評論／管理與通知共用既有資料。公開discovery只回平均分及人數，私密個人分數由驗證Bearer讀取。交易式資料庫測試確認修改、不同人數／平均、作者限制、隱藏／moderation及grants，所有fixture、評論、通知及quota完整回滾。Security advisor新增兩筆service-only無policy的INFO，沒有新增WARN；既有definer RPC／Auth警告另存既有維運待辦。

@@ -61,3 +61,5 @@ final result: passed
 四語runtime確認7.9秒任一側不可選、8秒解鎖、30秒仍停在45；送出後不多GET，新題失敗只重讀、不重投或重領。退出停止兩側音訊且不投票。SQL交易測試對7.999／8秒界線、原子發點、無序pair及source privacy完整回滾；所有service-only權限保留。
 
 本次新文案與離開是已確認的功能變更，沒有額外視覺P0／P1／P2。final result: passed。
+
+正式版本621e2b3／dpl_Dpfro1VPxLnjYbta7xs3S3jRjmvE已promote：桌機雙側readyState4／time15，B播放時A維持paused，離開回Battle並卸載盲聽audio。中文說明縮短後沒有2字孤行；正式四語與390px／320px截圖另存在私人outputs。沒有代使用者選偏好或寫測試Credit。
