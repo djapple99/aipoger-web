@@ -143,7 +143,10 @@ export default function CreatorLinkUpload({
         {quota ? `${quota.used} / ${quota.limit}` : "—"}
       </p>
       <label>
-        {text("作品連結", "Work link", "作品リンク", "작품 링크")}
+        <span>
+          {text("作品連結", "Work link", "作品リンク", "작품 링크")}
+          <small className={styles.sourceHint}>YouTube · Suno · Spotify</small>
+        </span>
         <div className={styles.urlRow}>
           <input
             type="url"
@@ -170,10 +173,6 @@ export default function CreatorLinkUpload({
           </button>
         </div>
       </label>
-      <p className={styles.hint}>
-        YouTube · Suno · Spotify{" "}
-        {text("單曲連結", "single-track links", "単曲リンク", "단일 곡 링크")}
-      </p>
       {error ? (
         <p role="alert" className={styles.error}>
           {error}
@@ -207,42 +206,54 @@ export default function CreatorLinkUpload({
               );
             }}
           />
-          <p className={styles.hint}>
-            {played
-              ? text(
-                  preview.media.provider === "youtube"
-                    ? "已可播放"
-                    : "已由你確認可播放",
-                  "Playback confirmed",
-                  "再生確認済み",
-                  "재생 확인 완료",
-                )
-              : text(
-                  "請先在上方預覽中試播。",
-                  "Try playback in the preview above.",
-                  "上のプレビューで再生を確認してください。",
-                  "위 미리 보기에서 재생해 보세요.",
-                )}
-            {preview.media.provider === "spotify"
-              ? text(
-                  " · 試聽長度由 Spotify 決定。",
-                  " · Spotify determines playback length.",
-                  " · 再生時間はSpotifyが決定します。",
-                  " · 재생 길이는 Spotify가 결정합니다.",
-                )
-              : null}
-          </p>
-          <div className={styles.previewName}>
-            <b title={title}>{title}</b>
-            <small>
-              {artist} ·{" "}
-              {preview.media.provider === "youtube"
-                ? "YouTube"
-                : preview.media.provider === "suno"
-                  ? "Suno"
-                  : "Spotify"}
-            </small>
+          <div className={styles.previewIdentity}>
+            <div className={styles.previewName}>
+              <b title={title}>{title}</b>
+              <small>
+                {artist} ·{" "}
+                {preview.media.provider === "youtube"
+                  ? "YouTube"
+                  : preview.media.provider === "suno"
+                    ? "Suno"
+                    : "Spotify"}
+              </small>
+            </div>
+            <span
+              className={styles.previewState}
+              style={{ color: played ? "#66df8f" : "#aaa" }}
+            >
+              {played
+                ? preview.media.provider === "youtube"
+                  ? text(
+                      "已可播放",
+                      "Playback confirmed",
+                      "再生確認済み",
+                      "재생 확인 완료",
+                    )
+                  : text(
+                      "已由你確認",
+                      "Confirmed by you",
+                      "本人確認済み",
+                      "직접 확인 완료",
+                    )
+                : text(
+                    "請先試播",
+                    "Try playback",
+                    "再生を確認",
+                    "재생해 보세요",
+                  )}
+            </span>
           </div>
+          {preview.media.provider === "spotify" ? (
+            <p className={styles.hint}>
+              {text(
+                "試聽長度由 Spotify 決定。",
+                "Spotify determines playback length.",
+                "再生時間はSpotifyが決定します。",
+                "재생 길이는 Spotify가 결정합니다.",
+              )}
+            </p>
+          ) : null}
           <details className={styles.previewEdit}>
             <summary>
               {text(

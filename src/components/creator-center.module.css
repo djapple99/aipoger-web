@@ -785,7 +785,7 @@
   }
 }
 
-.mobileCounts {
+.workName .mobileCounts {
   display: none;
 }
 @media (max-width: 540px) {
@@ -899,5 +899,43 @@
   }
   .credit {
     padding: 15px 20px;
+  }
+}
+
+.credit {
+  padding: 12px 24px;
+}
+.uploader h2 {
+  line-height: 1.2;
+}
+.linkForm {
+  gap: 6px;
+}
+.sourceHint {
+  margin-left: 10px;
+  font-size: 11px;
+  color: #999;
+}
+.previewIdentity {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.previewIdentity .previewName {
+  flex: 1;
+}
+.previewState {
+  flex-shrink: 0;
+  font-size: 12px;
+  max-width: 110px;
+}
+@media (max-width: 540px) {
+  .credit {
+    padding: 15px 20px;
+  }
+  .sourceHint {
+    display: block;
+    margin-left: 0;
   }
 }
