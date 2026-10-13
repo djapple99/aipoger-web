@@ -1,5 +1,7 @@
 # AIPOGER 開發與維運
 
+2026-10-14 Battle復古入口與30秒盲聽已正式發布（app `0a36bf6`，`codex/homepage-mv-editorial`）；Vercel `dpl_2cEZeFgVyCoywmn4ktnUz9vjZ2CS` READY並promote至apex／www。每題3Credit含平手，愛心50%＋盲聽50%接探索Top10／Top50，Creator Center讀獨立真實ledger；登入15／有效評論10／增額投稿60與聖經扣點未啟用。585項測試：554通過、31既有可選DB略過、0失敗；TypeScript、本機及雲端正式build通過，lint0 errors／15既有warnings。三個加法式migration已套用，題目／Credit RLS與service-only invoker RPC；交易測試完整回滾。Security advisor沒有新增WARN，仅兩張service-only表新增無policy INFO。[發布與正式驗收證據](releases/2026-10-14-blind-listening-retro.md)。
+
 2026-10-13 MV統一觀看／評分與連播已正式發布（app `9cb1b9b`，`codex/homepage-mv-editorial`）。572項測試：541通過、31既有可選DB測試略過、0失敗；TypeScript、本機正式build通過，lint 0 errors／15既有warnings。新增migration `20261013131336_mv_ratings.sql` 已實際套用Supabase；評分與留言使用service-only SECURITY INVOKER RPC，已登入user由伺服器getUser驗證，不接受客戶端user ID或自行宣稱owner。兩張新表啟用RLS並撤銷anon／authenticated直接權限；新RPC只有service_role可執行。一次評價原子儲存，receipt防止重送重複評論；原作品評論／管理與通知共用既有資料。公開discovery只回平均分及人數，私密個人分數由驗證Bearer讀取。交易式資料庫測試確認修改、不同人數／平均、作者限制、隱藏／moderation及grants，所有fixture、評論、通知及quota完整回滾。Security advisor新增兩筆service-only無policy的INFO，沒有新增WARN；既有definer RPC／Auth警告另存既有維運待辦。
 
 Vercel `dpl_CqDWx7SYkY1t2ktMpjMxqpZfy8xN` READY並promote至aipoger.com，MV頁與discovery正式／保護環境HTTP200。新migration檔名對齊實際Supabase歷史version `20261013131336`；MV discovery使用no-store，評價後讀取最新摘要，不使用舊CDN評分。
@@ -36,7 +38,7 @@ Vercel `dpl_CqDWx7SYkY1t2ktMpjMxqpZfy8xN` READY並promote至aipoger.com，MV頁�
 
 2026-09-21 Choice 整批發布已上線（app `6564a8a`）：版面、分享封面與批次編輯完成，459 項測試通過。正式 migration `20260921132314_creator_choice_batch_editor` 已套用；[發布紀錄](releases/2026-09-21-choice-batch-release.md)。
 
-文件整理：2026-10-13；產品實作基準：2026-10-13。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
+文件整理：2026-10-14；產品實作基準：2026-10-14。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
 
 ## 分類服務：分類已發布，worker 尚待啟用
 
@@ -99,7 +101,7 @@ Vercel `dpl_CqDWx7SYkY1t2ktMpjMxqpZfy8xN` READY並promote至aipoger.com，MV頁�
 - `20261013090019_creator_link_submission.sql` 增加來源provider／mediaID／URL與MV旗標、允許audio_path空、有效來源CHECK與部分unique index；`20261013094836_creator_link_required_fields.sql` 補SQL CHECK nullable三欄必填。兩份均已套用並validated，沒有改舊列、政策、grants或函數。
 - 實際authenticated role的可回滾SQL交易驗證無音檔連結INSERT與quota+1；ROLLBACK後重查仍329列、0個link row、0個測試作品，UI仍0/3。沒有永久測試投稿、評論或Heart；訪站原analytics／presence照常。
 - 外站播放器可見：YouTube官方IFrame API事件；Suno／Spotify由作者手動確認，Spotify試聽長度由來源決定。嵌入失敗不假成功，不抽取audio或放入radio/root audio queue。原音檔試播是本機ObjectURL，成功確認前不upload。
-- Owner沿用既有本人主email驗證，不以可編輯metadata email授權；一般帳號沒有後台入口。Credit沒有ledger／發扣點；不能以殘留APC欄位當作餘額。
+- Owner沿用既有本人主email驗證，不以可編輯metadata email授權；一般帳號沒有後台入口。Credit使用獨立creator_credit_entries ledger，只啟用盲聽3點；不能以殘留APC欄位冒充餘額，登入／評論／投稿扣點未啟用。
 - 原私人metadata、Choice、batch favorites、Battle與作品表現入口保留在focused dialog；新總覽4件／頁，原完整manager10件／頁。修改metadata不重置年齡／額度／戰績。
 - 回復程式可promote舊READY版本；加法schema留在DB，不DROP來源欄位、不刪舊作品。若已有人提交新連結，舊app可能不展示無音檔列，但資料仍在，需先評估後再回復。
 - Supabase advisor現有提醒含service-only表RLS無policy、既有可執行SECURITY DEFINER RPC與Auth密碼保護；本次未新增表／授權或展開無關hardening。[DB linter](https://supabase.com/docs/guides/database/database-linter)、[Auth密碼保護](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection)。這不是整站安全稽核完成聲明。
@@ -238,7 +240,7 @@ Check:
 - Voting begins only after both works lock. Both creators see the same battle ID and `/b/{shortId}` share link.
 - Battle Pool shows exactly one paired Q Crash card for that ID and suppresses both A/B queue rows from the ordinary card list.
 - Battle Pool places Q Crash matchup cards in a distinct blue/cyan section directly below the Q Crash introduction. The red/orange `Drop Battle 公開挑戰池` contains only official/public Drop cards and its genre filters do not hide Q Crash cards.
-- At 1440x900 and the 1092px desktop reference width, Q Crash introduction/matchups read as one cyan system and the public Drop Battle pool reads as a separate red/coral system. Cyan/red live-text ribbons and solid primary CTAs use black text; ordinary card titles remain white, and the page has no horizontal overflow.
+- Q Crash入口為薄荷色，原場次卡保留青色；Drop入口及正式池維持暖橘／紅辨識，手機沒有水平溢出。新盲聽位於最上區，不受Q投票或正式池曲風篩選影響。
 - Server time sets the immutable 30-minute / 2-hour / 12-hour / custom-up-to-3-day deadline; 2 hours is the default. Custom windows use whole-minute values from 30 minutes through 3 days.
 - Logged-out visitors can open, listen to either full song, switch A/B playback, pause, seek, see time remaining, and share. Suno works resolve their public media metadata and playback-rights handshake, then play inside the Q Crash player; a failed source shows an in-app error and never silently falls back to opening Suno. Pressing the protected vote path returns through sign-in to the exact card.
 - Before leaving for sign-in, the selected A/B draft is stored with the voting deadline. Email and OAuth callbacks keep the exact return target until the Q Crash destination really loads, use a full-page return navigation, restore the draft without auto-submitting it, and do not fall back to `/`.
@@ -504,9 +506,9 @@ Look for:
 Check:
 
 - The desktop Battle Pool start-challenge artwork stays inside its header and does not cover genre filters or challenge cards.
-- The Battle Pool first viewport shows `探索音樂` / `Explore Music`, `傷心酒吧`, `對戰記錄`, `Showtime`, and `Drop 規則` in that order; share is separate from destination navigation.
-- At 1440x900 and 390x844, the public challenge-pool heading is visible without a fake waveform, decorative play control, deck/EQ decoration, oversized navigation cards, character overlap, or mobile `VS`.
-- Desktop Battle Pool shows a large, legible `VS` between the fighters. The signed-in account dock defaults to the safe upper-right slot and does not jump back or drift into central content after drag, reload, or viewport resize.
+- Battle入口使用Editorial頂欄、對戰記錄／規則與盲聽／Q Crash／Drop三區；Explore與電台仍從全站探索導覽進入。
+- 1440x1024及390x844／320x812驗收三區和盲聽內頁，圖片設備與真實播放器區分；A/B／平手操作不重疊或水平溢出。手機允許捲至下方挑戰池。
+- Battle新插畫設備保留VS訊號，撤下人物；帳號dock仍使用既有安全邊緣位置，不因拖曳／換頁／resize遮住評测主要操作。
 - `/battle/results?lang=zh` uses `對戰記錄`; `/battle/results?lang=en` uses `Battle Records`. No public entry should still say `成果牆` / `Result Wall`.
 - Bar Heartbreak shows one static Explore hint when there are no live Battle messages; duplicated marquee content is reserved for an active scrolling ticker.
 - Legacy `/watch?lang=<lang>` keeps the supported language when it redirects to `/battle`.

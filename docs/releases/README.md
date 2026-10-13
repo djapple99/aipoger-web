@@ -2,6 +2,7 @@
 
 僅供驗證目前版本、資料庫遷移及尚待啟用服務。產品規則以 [現行正文](../aipoger-product-rules.md) 為準；發布紀錄不是待辦或新授權。
 
+- [2026-10-14 Battle復古入口、盲聽Credit與混合人氣榜](2026-10-14-blind-listening-retro.md)：兩頁插畫、15–45秒匿名比較、平手3點、service-only遷移及50／50榜單。
 - [2026-10-13 MV統一評價與連播](2026-10-13-mv-ratings-continuous.md)：原作品十分制、唯一影片播放器、完整清單連播與service-only評價遷移。
 - [2026-10-13 投稿額度與MV分享／評論提示](2026-10-13-submission-quota-mv-sharing.md)：Owner數量豁免、取消曲風庫存上限、MV深連結分享與橘色捲軸。
 - [2026-10-13 創作者中心與連結投稿](2026-10-13-creator-center-links.md)：私人統計、投稿預覽、owner入口、兩份來源schema遷移與正式驗收。

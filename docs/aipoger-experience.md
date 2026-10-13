@@ -1,6 +1,6 @@
 # AIPOGER 版面與使用流程
 
-文件整理：2026-10-13；產品實作基準：2026-10-13。主文件 3／6；產品門檻與權限以 [產品規則](aipoger-product-rules.md) 為準。Showtime 純黑底、月榜分享與管理已正式發布；Choice 管理精簡與收藏順序見 [最新發布紀錄](releases/2026-09-18-choice-management-simplify-release.md)。
+文件整理：2026-10-14；產品實作基準：2026-10-14。主文件 3／6；產品門檻與權限以 [產品規則](aipoger-product-rules.md) 為準。Showtime 純黑底、月榜分享與管理已正式發布；Choice 管理精簡與收藏順序見 [最新發布紀錄](releases/2026-09-18-choice-management-simplify-release.md)。
 
 This document protects AIPOGER's visual identity. Use it before redesigning any page, adding major UI, or changing user-facing copy.
 
@@ -89,7 +89,7 @@ Avoid:
 - 桌機左側 Top10 約占原六欄的兩欄，右側四封面一列；窄屏三欄、手機兩欄。手機榜單先顯示三首、平板四首，完整排行從 Top50 開啟原生可關閉視窗。Top10 不放評論標誌：點封面播放、Heart支持、歌名清除不相符篩選並展開、定位與短暫標亮原卡。
 - 有耳朵主場才顯示單列四首「為你推薦」，約三主場／近鄰＋一探索；下方曲風列排除其ID。未測驗先展示實際曲風牆。每類收合四首，既有七日NEW／每創作者首屏最多一首NEW規則保留，完整展開可看其餘同曲風作品。
 - 搜尋涵蓋全部符合三個月展示資格的原作品，作品／創作者／工具与曲風交集；無結果可重設、錯誤不偽裝空曲庫。資料每分鐘及回到頁面時刷新，保留訪客篩選、展開及定位。
-- 封面下是歌名旁大橘心與白評論，下行創作者，接戰作品保留攻擂；分享／戰績在原封面位置，不增加互動橫列。按評論開原作品modal，公開可讀，登入才留言／按心。榜單數字是不同非作者支持人数，累計每日Heart在按鈕提示／無障礙文字可查，不混為榜票。
+- 封面下是歌名旁大橘心與白評論，下行創作者，接戰作品保留攻擂；分享／戰績在原封面位置，不增加互動橫列。按評論開原作品modal，公開可讀，登入才留言／按心。榜單數字是50%愛心＋50%盲聽的綜合分，標明「分」及樣本校正；提示提供不同Heart支持人數和盲聽人數，Top10仍不加評論圖示。
 - 所有投稿入口進 `/profile?submit=1&lang=...#submit-work`，登入後打開自己的「我的作品」上傳表；既有檔案、metadata、手選曲風、額度与審核流程沿用。到期作品在新版創作者中心標記推廣期結束並保留管理／預覽；歷史最高名次仍是後續設計。
 - GUIDE保留X、Escape、backdrop、focus trap／return，四語完整；舊 `/listen-bar` 和 `/l/...` 保留曲風／語言導到小電台，舊投稿hash導到Profile。原戰績與攻擂明確同意機制保留。
 
@@ -135,8 +135,8 @@ UI direction:
 - Q Crash share invitations should feel like a friend asking for a quick listen and decision, not a system announcement: `這兩首歌到底哪首比較好聽啊？我有點選不出來！進來聽完整歌曲，幫我決定哪首勝出！`
 - Q Crash uses Traditional Chinese only when `lang=zh`; English is the fallback for `en`, `ja`, and `ko`, including the card, creation flow, controls, share copy, and social metadata.
 - Final copy leads with the winning work and then its creator. Never say that a creator defeated themself when both works have one owner.
-- The Battle Pool exposes one compact `建立 Q Crash` mode panel before the ordinary public Drop challenge pool; it must not push the normal pool out of the first viewport at 1440x900 or 390x844. Every active Q Crash appears as one paired A/B battle card, never two ordinary queue cards.
-- Battle Pool mode identity must remain unmistakable on desktop and mobile: the Q Crash introduction and matchup section use cyan live-text ribbons and cyan borders, while the public Drop Battle section uses red/coral live-text ribbons and red borders. Solid cyan/red mode labels and primary actions use near-black text; ordinary dark-card titles and supporting copy remain white/gray.
+- Battle首頁改為盲聽、Q Crash、Drop Battle三區；Q Crash建立與原場次位於第二區。每個active Q Crash仍是一張A/B卡，不拆成兩張普通queue。手機保留三區順序，允許向下捲到正式挑戰池。
+- 新入口使用薄荷Q Crash及暖橘Drop，原Q場次青色／Drop正式池紅橘辨識保留。字／圖示為真實可操作UI，插畫不取代按鈕。
 
 ## 24H Full Song Battle（保留系統，非前台主推）
 
@@ -233,7 +233,7 @@ Rules:
 - 投稿來源為「貼作品連結／上傳音檔」。連結先在同面板預覽實際播放器，顯示取得的歌名、自己的創作者顯示名與來源，歌名及作者可展開修改。必選曲風與 AI 工具保持紧凑並排；YouTube 的 MV 勾選、權利確認及最後確認按鈕放在同區。
 - 音檔先在本機預覽，播放與確認權利後才送出。封面、歌詞、MV、專輯與介紹等選填資料可展開；既有格式、大小、手選曲風、可選分析及審核規範保留。
 - 預覽讀取和實際可播放是不同狀態；YouTube 用實際播放事件，另外兩種來源由作者手動確認。預覽不發布、不用額度，換來源重置播放／權利確認。連結只走可見來源播放器，持續小電台不以外站網址冒充音檔。
-- 統計載入顯示「—」；讀取失敗有重試。Credit 保留位置，未啟用時不顯示數字餘額或虛構交易；owner 顯示免扣點。
+- 統計載入顯示「—」；讀取失敗有重試。Credit同位置顯示實際餘額，展開看最近50筆盲聽收入；沒有資料顯示空狀態。Owner顯示免扣點。短說明明示登入／評論獎勵與額外投稿尚待啟用，不假稱有消費入口。
 - 桌機左右分欄；平板與手機把投稿區接在總覽下方，接著作品區。保留既有帳號／通知 dock，撤下 Profile 的重複首頁圖示、語言與現場 badge。手機／平板的帳號通知避開頂欄導覽，其他頁儲存位置不改。新中心與投稿文案有中英日韓；原管理細節沿用原介面。
 
 ## Admin / Operational UI
@@ -291,7 +291,7 @@ Use:
 - Black / near-black stage background.
 - Red and orange light as battle energy.
 - Red-orange for the main challenge CTA and small cyan accents for navigation.
-- A compact two-character stage visual that supports, rather than replaces, the working interface.
+- 復古音樂器材raster插畫支援三模式入口，撤下舊人物主視覺。
 - Dark tool surfaces with readable contrast and restrained borders.
 
 Avoid:
@@ -323,58 +323,13 @@ Rules:
 - Keep it compact, high contrast, keyboard accessible, and visually separate from share.
 - On click, it should begin the same Battle start flow as the normal `Start a Challenge` action.
 
-### Quick Navigation
+### Battle入口與盲聽內頁
 
-The Battle hero quick navigation is a compact command strip, not a row of dashboard cards.
-
-Required order:
-
-- `探索音樂`
-- `傷心酒吧`
-- `對戰記錄`
-- `Showtime`
-- `Drop 規則`
-
-Share is a separate command beside `發起挑戰`; it must not look like another destination tab.
-
-### Desktop Hero
-
-Desktop Battle Pool hero should preserve:
-
-- Eyebrow: `AIPOGER BATTLE POOL`.
-- Main headline: `AI 音樂鬥歌場`.
-- Supporting line: short, stage-like, and direct.
-- Left side: title, subtitle, primary challenge CTA, and share.
-- Right side: two character cutouts with a central `VS`.
-- Compact functional navigation at the bottom of the hero.
-
-Desktop character direction:
-
-- Use transparent PNG character cutouts.
-- Female City-pop / gold performer on the left.
-- Male gatekeeper / street fighter character on the right.
-- Characters should be large enough to create battle energy, but must not make the nav cards unreadable.
-- The `VS` can remain on desktop because there is enough space.
-- The `VS` mark should sit between the two character centers, not over one character or the title.
-
-The hero must not include a fake waveform, decorative play button, deck, or EQ. Actual audio previews remain on the Drop cards below.
-
-### Mobile Hero
-
-Mobile hero must be simpler than desktop.
-
-Approved mobile structure:
-
-- Compact copy block with eyebrow, one-line title, short subtitle, `發起挑戰`, and share.
-- Two supporting character cutouts on the right/lower side.
-- A horizontally scrollable quick navigation strip that starts with `探索音樂`.
-
-Mobile rules:
-
-- `AI 音樂鬥歌場` must stay on one line.
-- Do not display `VS`, fake waveform, decorative play control, star CTA, or dashboard cards.
-- Do not let the title, subtitle, CTA, or navigation overlap either character's face.
-- The first public challenge-pool heading must remain visible within a 390x844 first viewport.
+- 頂部使用全站Editorial導覽，Battle為目前頁；簡短「音樂鬥歌場」、對戰記錄及規則。撤下兩人物、舊大型hero及重複固定首頁／語系／guest登入／presence badge；登入後頭像與通知保留。
+- 三個復古器材插畫區依序為盲聽入口、Q Crash、Drop Battle。深灰藍牆、暖檯燈及木桌保留黑底的空間感；主CTA橘色，Q Crash薄荷色。既有正式場次與挑戰池放在對應區域，空狀態一行，沒有示意投票。
+- `開始盲聽`直達`/battle/listen`；內頁有返回、標題與3點徽章、A/B播放器、同排偏好A／平手／偏好B及Next。匿名曲目前不露封面／姓名；完成後才揭示原作品與支持／查看點數入口。
+- 播放／暫停、30秒進度與重播是實際控制；手機保持A/B並排、三選擇單排。短說明、登入／載入／失敗／無題目狀態沿用深色緊湊區，不新增假排行榜。
+- 四語文案與同路徑metadata；登入保留原`/battle/listen`及語言。手機較長title/reward可自然換行、主要控制至少44px，避免複製影片／設備字成UI。
 
 ### Battle Pool Header
 

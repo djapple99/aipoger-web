@@ -47,3 +47,7 @@ final result: passed
 - [x] 桌機／手機與四語檢查
 - [x] 真實音訊播放及評測控制
 - [x] 無剩餘P0／P1／P2；P3明列
+
+## 正式發布補驗
+
+正式app0a36bf6／dpl_2cEZeFgVyCoywmn4ktnUz9vjZ2CS已promote。production-battle-desktop.jpg及production-listen-desktop.jpg為1440×1024；production-battle-mobile.jpg、production-listen-mobile.jpg為390×844。正式四語兩路由320×812無水平溢出、console error空。真實登入session實際A／B均播放15–45秒並停在45，後端heard兩側30秒，三選擇解鎖；保留pending，未代人選偏好，0正式票／0Credit。
