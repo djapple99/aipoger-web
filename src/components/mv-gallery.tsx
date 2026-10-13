@@ -7,6 +7,7 @@ import { ArrowRight, ChevronLeft, ChevronRight, Heart, MessageCircleMore, Play, 
 import EditorialHeader from "@/components/editorial-header";
 import WorkImage from "@/components/work-image";
 import HomeWorkFeedback from "@/components/home-work-feedback";
+import ShareButton from "@/components/share-button";
 import { useI18n } from "@/lib/i18n";
 import { homeCopy } from "@/lib/home-copy";
 import { mvCopy } from "@/lib/mv-copy";
@@ -17,6 +18,14 @@ import { musicPlayer, useMusicPlayer } from "@/lib/music-player-store";
 import { useMvHearts } from "@/lib/use-mv-hearts";
 import base from "./home-editorial.module.css";
 import styles from "./mv-gallery.module.css";
+
+function MvShare({ work, className = "" }: { work: HomeWork; className?: string }) {
+  const { lang } = useI18n(); const mv = mvCopy(lang);
+  return <ShareButton title={work.title} text={`${work.artist} · ${work.title}`}
+    url={`/mv?lang=${lang}&track=${encodeURIComponent(work.id)}`} label={`${mv.share} · ${work.title}`}
+    copiedLabel={mv.copied} sharedLabel={mv.shared} manualCopyLabel={mv.manualCopy} linkLabel={mv.shareLink}
+    iconOnly iconSize={28} className={`!rounded !border-0 !bg-transparent !p-1 ${className}`} />;
+}
 
 function VideoDialog({ work, onClose, onFeedback }: { work: HomeWork; onClose: () => void; onFeedback: () => void }) {
   const { lang } = useI18n(); const copy = homeCopy(lang);
@@ -32,6 +41,7 @@ function VideoDialog({ work, onClose, onFeedback }: { work: HomeWork; onClose: (
     <div className={styles.dialogVideo}><iframe src={`https://www.youtube-nocookie.com/embed/${work.videoId}?autoplay=1&rel=0`}
       title={work.title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen /></div>
     <div className={styles.dialogLinks}><button onClick={onFeedback}>{copy.discuss}<ArrowRight size={17} /></button>
+      <MvShare work={work} />
       <a href={work.youtubeUrl!} target="_blank" rel="noopener noreferrer">{copy.openYouTube}<ArrowRight size={17} /></a></div>
   </dialog>;
 }
@@ -44,6 +54,8 @@ export default function MvGallery() {
   const [heroVideo, setHeroVideo] = useState<string | null>(null);
   const [dialogWork, setDialogWork] = useState<HomeWork | null>(null);
   const [feedbackWork, setFeedbackWork] = useState<HomeWork | null>(null);
+  const [sharedUnavailable, setSharedUnavailable] = useState(false);
+  const sharedTrack = useRef<string | null>(null);
   const [query, setQuery] = useState(""); const [genre, setGenre] = useState("");
   const [sort, setSort] = useState<MvSort>("latest"); const [limit, setLimit] = useState(12);
   const player = useMusicPlayer();
@@ -73,6 +85,17 @@ export default function MvGallery() {
     window.addEventListener("aipoger:music-heart", refresh); document.addEventListener("visibilitychange", refresh);
     return () => { controller.abort(); window.clearInterval(timer); window.removeEventListener("aipoger:music-heart", refresh); document.removeEventListener("visibilitychange", refresh); };
   }, [load]);
+  useEffect(() => {
+    if (!data || sharedTrack.current) return;
+    const id = new URLSearchParams(window.location.search).get("track");
+    if (!id) return;
+    sharedTrack.current = id;
+    const work = data.works.find(item => item.id === id && item.videoId);
+    if (work) {
+      // Open the original MV/comment view; the visitor still presses Play.
+      setFeedbackWork(work);
+    } else setSharedUnavailable(true);
+  }, [data]);
   // Starting the shared radio after a video closes the video, avoiding overlapping audio.
   useEffect(() => { if (player.playing) { setHeroVideo(null); setDialogWork(null); } }, [player.playing]);
   const watch = (work: HomeWork, hero = false) => {
@@ -95,6 +118,7 @@ export default function MvGallery() {
   return <div className={base.page}>
     <EditorialHeader active="mv" />
     <main className={base.main}>
+      {sharedUnavailable ? <p role="status" className={styles.supportError}>{mv.sharedUnavailable}</p> : null}
       <section id="featured-mv" className={base.featured} aria-labelledby="mv-page-title">
         <div className={`${base.sectionIntro} ${styles.intro}`}><p className={base.eyebrow}>MUSIC VIDEO</p><h1 id="mv-page-title">{mv.title}</h1><p className={base.intro}>{copy.intro}</p></div>
         {loading && !data ? <div className={base.status} role="status">{copy.loading}</div>
@@ -114,7 +138,8 @@ export default function MvGallery() {
               <div className={base.quote}><p>{selected.comment ? copy.comments : copy.creatorSays}</p><blockquote>{selected.comment?.text || selected.description || copy.noComment}</blockquote>
                 {selected.comment ? <cite>{selected.comment.name}</cite> : null}</div>
               <button className={base.primary} onClick={videoOpen ? () => setHeroVideo(null) : () => watch(selected, true)}>{videoOpen ? <X size={21} /> : <Play size={21} fill="currentColor" />}{videoOpen ? copy.closeVideo : copy.watch}</button>
-              <div className={base.workLinks}><button onClick={() => openFeedback(selected)}>{copy.discuss}<ArrowRight size={17} /></button>
+              <div className={`${base.workLinks} ${styles.heroActions}`}><button onClick={() => openFeedback(selected)}>{copy.discuss}<ArrowRight size={17} /></button>
+                <MvShare work={selected} />
                 <a href={selected.youtubeUrl!} target="_blank" rel="noopener noreferrer">{copy.openYouTube}<ArrowRight size={17} /></a></div>
               {(data?.featured.length ?? 0) > 1 ? <div className={base.featureControls}><span>{selectedIndex + 1} / {data!.featured.length}</span>
                 <button onClick={() => moveFeatured(-1)} aria-label={copy.previous}><ChevronLeft size={20} /></button><button onClick={() => moveFeatured(1)} aria-label={copy.next}><ChevronRight size={20} /></button></div> : null}
@@ -138,7 +163,7 @@ export default function MvGallery() {
             <button className={styles.cardPoster} onClick={() => watch(work)} aria-label={`${copy.watch} · ${work.title}`}><WorkImage work={work} video />
               <span className={styles.cardPlay}><Play size={20} fill="currentColor" /></span><span className={base.videoSource}>YouTube</span></button>
             <div className={styles.cardTitleRow}>
-              <h3><Link href={withLang(`/ai-music?track=${encodeURIComponent(work.id)}`)}>{work.title}</Link></h3>
+              <h3 title={work.title}><Link href={withLang(`/ai-music?track=${encodeURIComponent(work.id)}`)}>{work.title}</Link></h3>
               <div className={styles.cardActions}>
                 <button className={styles.cardHeart} onClick={() => void sendHeart(work)} aria-label={`${support.hearts[work.id] ? copy.removeHeart : copy.sendHeart} · ${work.title}`}
                   title={support.hearts[work.id] ? copy.removeHeart : copy.sendHeart} aria-pressed={Boolean(support.hearts[work.id])} aria-describedby={`mv-support-${work.id}`}
@@ -149,6 +174,7 @@ export default function MvGallery() {
                 <button className={styles.cardComments} onClick={() => openFeedback(work)} title={mv.readComments} aria-label={`${mv.readComments} · ${work.title}`}>
                   <MessageCircleMore size={34} strokeWidth={1.9} />
                 </button>
+                <MvShare work={work} className={styles.cardShare} />
               </div>
             </div><p className={styles.cardArtist}>{work.artist}</p>
           </article>)}</div>

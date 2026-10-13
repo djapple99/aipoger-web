@@ -23,10 +23,13 @@
 .cardPoster:hover .cardPlay { background: #ff6a00; }
 .cardPoster > span:last-child { left: auto; right: 12px; bottom: 16px; }
 .cardTitleRow { display: flex; align-items: flex-start; gap: 12px; margin-top: 5px; }
-.card h3 { flex: 1; min-width: 0; margin: 6px 0 0; font-size: 22px; font-weight: 700; line-height: 1.45; overflow-wrap: anywhere; }
+.card h3 { flex: 1; min-width: 0; margin: 6px 0 0; font-size: 22px; font-weight: 700; line-height: 1.45; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .card h3 a:hover { color: #ff9a45; }
 .cardArtist { margin: 0; color: #a9a9b0; font-size: 15px; overflow-wrap: anywhere; }
-.cardActions { display: flex; flex-shrink: 0; align-items: center; gap: 10px; }
+.cardActions { display: flex; flex-shrink: 0; align-items: center; gap: 4px; }
+.heroActions { gap: 12px; }
+.heroActions > span { flex-shrink: 0; }
+.cardShare { min-width: 44px; min-height: 44px; }
 .cardActions button { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; gap: 9px; padding: 5px; border: 0; background: transparent; color: #eee; }
 .cardActions svg { flex-shrink: 0; }
 .cardHeart svg { color: #ff7518; }

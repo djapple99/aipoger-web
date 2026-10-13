@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Heart, Play, X } from "lucide-react";
+import { ArrowDown, Heart, Play, X } from "lucide-react";
 import WorkImage from "@/components/work-image";
 import { useI18n } from "@/lib/i18n";
 import { homeCopy } from "@/lib/home-copy";
+import { mvCopy } from "@/lib/mv-copy";
 import { supabase } from "@/lib/supabase";
 import type { HomeWork } from "@/lib/home-discovery";
 import { musicPlayer, useMusicPlayer } from "@/lib/music-player-store";
@@ -15,6 +16,9 @@ type Comment = { id: string; name: string; text: string; createdAt: string };
 export default function HomeWorkFeedback({ work, onClose, onChange, returnPath = "/", showVideo = false, supportNote }: { work: HomeWork; onClose: () => void; onChange: () => void; returnPath?: string; showVideo?: boolean; supportNote?: string }) {
   const { lang } = useI18n(); const copy = homeCopy(lang);
   const dialog = useRef<HTMLDialogElement>(null);
+  const scrollArea = useRef<HTMLDivElement>(null);
+  const commentArea = useRef<HTMLElement>(null);
+  const [showCommentCue, setShowCommentCue] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [readFailed, setReadFailed] = useState(false);
@@ -39,6 +43,17 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
     return () => { element?.close(); if (previous instanceof HTMLElement) previous.focus(); };
   }, []);
   useEffect(() => { if (player.playing) setVideoOpen(false); }, [player.playing]);
+  useEffect(() => {
+    const scroll = scrollArea.current; const comments = commentArea.current;
+    if (!withVideo || !scroll || !comments) return;
+    const update = () => setShowCommentCue(comments.getBoundingClientRect().top >= scroll.getBoundingClientRect().bottom - 24);
+    update();
+    scroll.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+    observer?.observe(scroll); observer?.observe(comments);
+    return () => { scroll.removeEventListener("scroll", update); window.removeEventListener("resize", update); observer?.disconnect(); };
+  }, [withVideo]);
 
   useEffect(() => {
     const controller = new AbortController(); let active = true;
@@ -104,7 +119,7 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
 
   return <dialog ref={dialog} className={`${styles.feedbackDialog} ${withVideo ? styles.feedbackWithVideo : ""}`} aria-labelledby="home-feedback-title" onCancel={onClose}
     onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
-    <div className={styles.feedbackInner}>
+    <div ref={scrollArea} className={styles.feedbackInner}>
       <div className={styles.feedbackHeading}><div><p>{copy.discuss}</p><h2 id="home-feedback-title">{work.title}</h2><span>{work.artist}</span></div>
         <button autoFocus type="button" onClick={onClose} aria-label={copy.closeFeedback}><X size={22} /></button>
       </div>
@@ -124,7 +139,7 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
         onClick={() => void submit("heart")}><Heart size={18} fill={hearted ? "currentColor" : "none"} />{hearted ? copy.removeHeart : copy.sendHeart}</button>
         : <Link className={styles.feedbackAuth} href={authHref}>{copy.loginFeedback}</Link>}
       {heartReadFailed ? <p role="alert" className={styles.refreshError}>{copy.error}</p> : null}
-      <section className={styles.feedbackComments} aria-label={copy.comments}>
+      <section ref={commentArea} id="mv-comment-area" className={styles.feedbackComments} aria-label={copy.comments}>
         {loading ? <p role="status">{copy.loadingComments}</p> : readFailed ? <p role="alert">{copy.error}</p>
           : comments.length ? comments.map(item => <article key={item.id}><strong>{item.name}</strong><p>{item.text}</p></article>)
             : <p>{copy.firstComment}</p>}
@@ -137,5 +152,9 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
       {writeFailed ? <p role="alert" className={styles.refreshError}>{copy.feedbackError}</p> : null}
       {saved ? <p role="status" className={styles.feedbackSaved}>{copy.commentSaved}</p> : null}
     </div>
+    {withVideo && showCommentCue ? <button type="button" className={styles.commentScrollCue} aria-controls="mv-comment-area"
+      onClick={() => commentArea.current?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })}>
+      {mvCopy(lang).scrollComments}<ArrowDown size={18} aria-hidden="true" />
+    </button> : null}
   </dialog>;
 }

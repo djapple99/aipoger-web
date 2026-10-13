@@ -12,6 +12,10 @@ type ShareButtonProps = {
   className?: string;
   wrapperClassName?: string;
   iconOnly?: boolean;
+  iconSize?: number;
+  sharedLabel?: string;
+  manualCopyLabel?: string;
+  linkLabel?: string;
 };
 
 export default function ShareButton({
@@ -23,8 +27,13 @@ export default function ShareButton({
   className = "",
   wrapperClassName = "",
   iconOnly = false,
+  iconSize,
+  sharedLabel,
+  manualCopyLabel = "請手動複製網址",
+  linkLabel = "分享連結",
 }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState(false);
   const [shareUnavailable, setShareUnavailable] = useState(false);
   const [manualUrl, setManualUrl] = useState("");
 
@@ -59,8 +68,9 @@ export default function ShareButton({
     return copiedText;
   };
 
-  const flashCopied = () => {
+  const flashCopied = (didShare = false) => {
     setManualUrl("");
+    setShared(didShare);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1600);
   };
@@ -86,7 +96,7 @@ export default function ShareButton({
         setShareUnavailable(true);
         return;
       }
-      flashCopied();
+      flashCopied(true);
     } catch (error) {
       if ((error as Error)?.name === "AbortError") return;
       if (await copyWithFallback(fallbackCopy)) {
@@ -107,9 +117,10 @@ export default function ShareButton({
         aria-label={label}
         title={label}
       >
-        <Share2 className="h-4 w-4" aria-hidden="true" />
-        {iconOnly ? <span className="sr-only">{label}</span> : <span>{shareUnavailable ? "請手動複製網址" : copied ? copiedLabel : label}</span>}
+        <Share2 className="h-4 w-4" style={iconSize ? { width: iconSize, height: iconSize } : undefined} aria-hidden="true" />
+        {iconOnly ? <span className="sr-only">{label}</span> : <span>{shareUnavailable ? manualCopyLabel : copied ? (shared ? sharedLabel ?? copiedLabel : copiedLabel) : label}</span>}
       </button>
+      {iconOnly && copied ? <span role="status" className="absolute right-0 top-full z-30 whitespace-nowrap rounded bg-black px-2 py-1 text-xs text-orange-100">{shared ? sharedLabel ?? copiedLabel : copiedLabel}</span> : null}
       {shareUnavailable && manualUrl && (
         <span className="absolute right-0 top-[calc(100%+0.45rem)] z-30 w-[min(82vw,22rem)] rounded-2xl border border-orange-200/35 bg-black/95 p-2 shadow-[0_18px_50px_rgba(0,0,0,0.45)]">
           <input
@@ -117,7 +128,7 @@ export default function ShareButton({
             value={manualUrl}
             onFocus={(event) => event.currentTarget.select()}
             className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-xs font-bold text-orange-50 outline-none"
-            aria-label="分享連結"
+            aria-label={linkLabel}
           />
         </span>
       )}

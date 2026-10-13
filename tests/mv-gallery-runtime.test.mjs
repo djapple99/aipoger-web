@@ -13,16 +13,17 @@ const compiled=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarge
 const nodes=x=>Array.isArray(x)?x.flatMap(nodes):x&&typeof x==='object'?[x,...nodes(x.props?.children)]:[];
 const text=x=>Array.isArray(x)?x.map(text).join(''):x&&typeof x==='object'?text(x.props?.children):x==null||typeof x==='boolean'?'':String(x);
 const work={id:'actual-work',title:'Real Song',artist:'Real Creator',genre:'EDM 百大電音',description:'A real description',coverUrl:'/cover.jpg',audioUrl:'/song.mp3',lyrics:'Lyrics',videoId:'MdxaU0l3FzI',youtubeUrl:'https://www.youtube.com/watch?v=MdxaU0l3FzI',supporterCount:2,publishedAt:'2026-10-13'};
-async function mount(t,lang='zh',payload={featureKind:'community',featured:[work],works:[work,{...work,id:'other-work',title:'Other Song'}],channels:[]},unavailable=false) {
- let cursor=0,tree,dirty=true; const states=[],effects=[],memos=[],starts=[],navigations=[]; let toggles=0,fail=unavailable;
+async function mount(t,lang='zh',payload={featureKind:'community',featured:[work],works:[work,{...work,id:'other-work',title:'Other Song'}],channels:[]},unavailable=false,sharedId='') {
+ let cursor=0,tree,dirty=true; const states=[],effects=[],memos=[],refs=[],starts=[],navigations=[]; let toggles=0,fail=unavailable;
  const support={hearts:{},ready:true,busyId:null,error:null,result:'done',called:[],reload(){},async toggle(id){support.called.push(id);return support.result;}};
  const react={
-  useRef:()=>({current:null}),
+  useRef:(value)=>refs[cursor++]??={current:value},
   useState(initial){const i=cursor++; if(!(i in states))states[i]=initial;return [states[i],v=>{states[i]=typeof v==='function'?v(states[i]):v;dirty=true;}];},
-  useEffect(fn,deps){const i=cursor++;if(!effects[i])effects[i]={deps,cleanup:fn()};},
+  useEffect(fn,deps){const i=cursor++;if(!effects[i]||deps.some((v,j)=>!Object.is(v,effects[i].deps[j]))){effects[i]?.cleanup?.();effects[i]={deps,cleanup:fn()};}},
   useCallback(fn,deps){const i=cursor++;return (memos[i]??={fn,deps}).fn;},
  };
  const player={playing:true,session:null}; const window=new EventTarget();const document=new EventTarget();document.hidden=false;
+ window.location={search:sharedId?'?lang='+lang+'&track='+encodeURIComponent(sharedId):''};
  window.setInterval=()=>1;window.clearInterval=()=>{};
  const modules={
   react,'react/jsx-runtime':{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})},
@@ -32,7 +33,7 @@ async function mount(t,lang='zh',payload={featureKind:'community',featured:[work
   '@/lib/brand':{AIPOGER_BRAND_LOGO:'/brand.png'},'@/lib/i18n':{useI18n:()=>({lang,t:key=>key})},'@/lib/home-copy':{homeCopy},'@/lib/mv-copy':{mvCopy},'@/lib/mv-discovery':{filterMvWorks},'@/lib/home-discovery':{excludeFeaturedWorks},'@/lib/music-genres':{MUSIC_GENRE_OPTIONS:[{value:'EDM 百大電音',labelKey:'genre_edm'}]},
   '@/lib/music-player-store':{useMusicPlayer:()=>player,musicPlayer:{toggle:()=>toggles++,start:async(...args)=>{starts.push(args);return true;}}},
   '@/lib/supabase':{supabase:{auth:{getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})}}},
-  '@/components/home-work-feedback':{__esModule:true,default:'feedback'},'@/components/lang-toggle':{__esModule:true,default:'lang-toggle'},'./home-editorial.module.css':{__esModule:true,default:{}},'./mv-gallery.module.css':{__esModule:true,default:{}},
+  '@/components/share-button':{__esModule:true,default:'share-button'},'@/components/home-work-feedback':{__esModule:true,default:'feedback'},'@/components/lang-toggle':{__esModule:true,default:'lang-toggle'},'./home-editorial.module.css':{__esModule:true,default:{}},'./mv-gallery.module.css':{__esModule:true,default:{}},
  };
  const header={exports:{}};
  new Function('require','module','exports',headerCompiled)(name=>{assert.ok(name in modules,name);return modules[name];},header,header.exports);
@@ -112,4 +113,20 @@ test('MV guest support preserves the MV login return path and never claims succe
  await ui.button('送出愛心與收藏 · Other Song').onClick();await ui.flush();
  assert.deepEqual(ui.navigations,['/auth?lang=zh&next=%2Fmv%3Flang%3Dzh']);
  assert.equal(ui.button('送出愛心與收藏 · Other Song')['aria-pressed'],false);
+});
+
+test('MV shares target the exact original work with language, including the featured work',async t=>{
+ const ui=await mount(t,'ko');
+ const shares=ui.nodes().filter(x=>x.type?.name==='MvShare');assert.equal(shares.length,2);
+ for(const node of shares){const button=node.type(node.props);assert.equal(button.type,'share-button');assert.equal(button.props.url,`/mv?lang=ko&track=${node.props.work.id}`);assert.equal(button.props.iconOnly,true);assert.equal(button.props.sharedLabel,mvCopy('ko').shared);}
+ assert.equal(ui.support.called.length,0);
+});
+test('shared links find an older public MV beyond the first twelve without autoplay',async t=>{
+ const works=Array.from({length:25},(_,i)=>({...work,id:`work-${i}`,title:`Song ${i}`}));
+ const ui=await mount(t,'zh',{featureKind:'community',featured:[work],works,channels:[]},false,'work-24');
+ const feedback=ui.nodes().find(x=>x.type==='feedback');assert.ok(feedback);assert.equal(feedback.props.work.id,'work-24');assert.equal(feedback.props.showVideo,true);assert.equal(ui.nodes().some(x=>x.type==='iframe'),false);
+ feedback.props.onClose();await ui.flush();assert.equal(ui.nodes().some(x=>x.type==='feedback'),false);
+});
+test('unavailable shared MV does not leak a title or invent playback',async t=>{
+ const ui=await mount(t,'en',undefined,false,'hidden-id');assert.ok(ui.text().includes(mvCopy('en').sharedUnavailable));assert.equal(ui.nodes().some(x=>x.type==='feedback'),false);
 });
