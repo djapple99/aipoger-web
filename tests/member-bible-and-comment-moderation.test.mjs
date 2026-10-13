@@ -48,8 +48,8 @@ test("signed-out Hearts open the shared system prompt and preserve the track ret
   assert.match(explorePage, /setAuthPromptTrack\(track\)/);
   assert.match(explorePage, /kind="heart"/);
   assert.match(explorePage, /aiMusicTrackHref\(authPromptTrack\.sourceId, lang\)/);
-  assert.match(listenBarPage, /setAuthPromptOpen\(true\)/);
-  assert.match(listenBarPage, /kind="heart"/);
+  assert.match(listenBarPage, /ai-music/);
+  assert.match(explorePage, /onHeart=\{id/);
   assert.match(authDialog, /愛心會同步收藏這首歌/);
   assert.match(authDialog, /role="dialog"/);
   assert.match(authDialog, /aria-modal="true"/);

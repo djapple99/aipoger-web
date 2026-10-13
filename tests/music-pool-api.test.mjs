@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import ts from 'typescript';
+import {readFileSync} from 'node:fs';
+import {isInMusicPool,musicPoolSupportCounts} from '../src/lib/music-pool.ts';
+import {readAllHomePages} from '../src/lib/home-discovery.ts';
+import {isPublicBarAirplayTrack} from '../src/lib/listen-bar-airplay.ts';
+import {isCurrentMusicGenre} from '../src/lib/music-genres.ts';
+const source=readFileSync(new URL('../src/app/api/ai-music/tracks/route.ts',import.meta.url),'utf8');
+const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText;
+function mount(tracks,hearts,{failHearts=false,retired=[]}={}){
+ const ranges=[];
+ const admin={from(table){const filters=[];let from=0,to=499;const query={select(){return query},eq(k,v){filters.push(r=>r[k]===v);return query},in(k,vs){filters.push(r=>vs.includes(r[k]));return query},gte(k,v){filters.push(r=>r[k]>=v);return query},lte(k,v){filters.push(r=>r[k]<=v);return query},not(){return query},order(){return query},limit(n){to=n-1;return query},range(a,b){from=a;to=b;ranges.push({table,from,to});return query},then(resolve,reject){const rows=table==='listen_bar_tracks'?tracks:table==='listen_bar_track_reactions'?hearts:[];return Promise.resolve({data:rows.filter(r=>filters.every(fn=>fn(r))).slice(from,to+1),error:failHearts&&table==='listen_bar_track_reactions'?{message:'reaction storage unavailable'}:null}).then(resolve,reject)}};return query}};
+ const modules={'next/server':{NextResponse:{json:(data,init={})=>({data,status:init.status??200})}},'@supabase/supabase-js':{createClient:()=>admin},'@/lib/music-pool':{isInMusicPool,musicPoolSupportCounts},'@/lib/home-discovery':{readAllHomePages},'@/lib/ai-music-challenge-rules':{AI_MUSIC_CHALLENGE_BATTLE_TYPE:'drop'},'@/lib/ai-music-surface-lifecycle':{buildAiMusicSurfaceLifecycleMap:async()=>new Map(retired.map(id=>[id,{retiredFromExplore:true}])),isAiMusicLifecycleSchemaMissing:()=>false},'@/lib/ai-music-heat':{AI_MUSIC_HEAT_WINDOW_MS:7*86400000},'@/lib/ai-music-showtime':{AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS:''},'@/lib/drop-battle-rematch':{isOfficialDropBattleResult:()=>false},'@/lib/listen-bar':{listenBarPromotionProtectionActive:()=>false,LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS:0},'@/lib/music-genres':{isCurrentMusicGenre},'@/lib/earworm-affinity':{readEarwormAffinityMap:async()=>new Map()},'@/lib/listen-bar-airplay':{isPublicBarAirplayTrack}};
+ const loaded={exports:{}};new Function('require','module','exports','process',compiled)(name=>{assert.ok(name in modules,name);return modules[name]},loaded,loaded.exports,{env:{NEXT_PUBLIC_SUPABASE_URL:'https://test.invalid',SUPABASE_SERVICE_ROLE_KEY:'unit-test-only'}});
+ return {get:loaded.exports.GET,ranges};
+}
+const recent=new Date(Date.now()-5*86400000).toISOString(),heartTime=new Date(Date.now()-3*86400000).toISOString();
+const row=id=>({id,title:id,artist:'Creator',genre:'Jazz / Bossa 微醺時刻',audio_path:'audio.mp3',is_active:true,review_status:'approved',source:'community',created_by:'author',created_at:recent,bar_phase:'public'});
+test('pool API reads every catalog page and does not stop at the old 500-track cap',async()=>{
+ const tracks=Array.from({length:501},(_,i)=>row(`work-${i}`));const ui=mount(tracks,[]);const result=await ui.get();assert.equal(result.status,200);assert.equal(result.data.tracks.length,501);assert.ok(ui.ranges.some(r=>r.table==='listen_bar_tracks'&&r.from===500));
+});
+test('pool API paginates all effective reactions, deduplicates and excludes author; public response has only counts',async()=>{
+ const tracks=[row('song')];const hearts=Array.from({length:1200},(_,i)=>({track_id:'song',user_id:`reader-${i}`,reaction:'heart',created_at:heartTime,vote_date:heartTime.slice(0,10)}));
+ hearts.push({...hearts[0]},{...hearts[0],user_id:'author'},{...hearts[0],user_id:null},{...hearts[0],user_id:'star',reaction:'star'});
+ const ui=mount(tracks,hearts);const result=await ui.get();assert.equal(result.status,200);assert.equal(result.data.tracks[0].ai_music_pool_supporter_count,1200);assert.ok(ui.ranges.some(r=>r.table==='listen_bar_track_reactions'&&r.from===1000));assert.equal(JSON.stringify(result.data).includes('reader-'),false);
+});
+test('pool API excludes expired, hidden, official and lifecycle-retired works',async()=>{
+ const tracks=[row('keep'),{...row('old'),created_at:'2020-01-01T00:00:00Z'},{...row('hidden'),hidden_at:recent},{...row('official'),source:'official'},row('retired')];const result=await mount(tracks,[],{retired:['retired']}).get();assert.deepEqual(result.data.tracks.map(r=>r.id),['keep']);
+});
+test('support read failure never produces a fake zero ranking',async()=>{const result=await mount([row('song')],[],{failHearts:true}).get();assert.equal(result.status,500);assert.equal(result.data.tracks,undefined);assert.match(result.data.error,/unavailable/)});

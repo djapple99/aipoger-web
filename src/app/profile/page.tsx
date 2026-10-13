@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import ProfileMusicUpload from "@/components/profile-music-upload";
+import { isInMusicPool } from "@/lib/music-pool";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -276,6 +278,7 @@ function ProfileInner() {
   const isZh = lang === "zh";
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [submitOpen, setSubmitOpen] = useState(false);
 
   const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState("");
@@ -691,9 +694,9 @@ function ProfileInner() {
     if (!session?.user) {
       setUserId(null);
       setCreatorLoading(false);
-      const nextPath = `/profile?lang=${lang}`;
+      const nextPath = `/profile?${searchParams.toString() || `lang=${lang}`}${searchParams.get("submit") === "1" ? "#submit-work" : ""}`;
       rememberAuthNextPath(nextPath);
-      router.replace(`/auth?next=${encodeURIComponent(nextPath)}`);
+      router.replace(`/auth?lang=${lang}&next=${encodeURIComponent(nextPath)}`);
       return;
     }
     const uid = session.user.id;
@@ -1374,6 +1377,7 @@ function ProfileInner() {
           track.artist?.trim(),
           track.ai_tool?.trim(),
           track.genre?.trim(),
+          !isInMusicPool(track.created_at) ? (lang === "zh" ? "公開推廣期已結束" : lang === "ja" ? "公開プロモーション期間終了" : lang === "ko" ? "공개 홍보 기간 종료" : "Public promotion ended") : null,
           track.ai_music_showtime_public_removed_at || track.is_active === false ? copy.showtimeHidden : null,
           aiMusicChallengeStatusLabel(challengeStatus, lang),
           hasDefenderDrop ? copy.defenderDropReady : copy.defenderDropMissing,
@@ -1381,7 +1385,8 @@ function ProfileInner() {
         ]
           .filter(Boolean)
           .join(" / "),
-        href: "/listen-bar",
+        href: `/ai-music?lang=${lang}&track=${track.id}#works`,
+        canNavigate: isInMusicPool(track.created_at),
         date: track.created_at,
         artist: track.artist,
         genre: track.genre,
@@ -1441,7 +1446,7 @@ function ProfileInner() {
             : "Drop Winner";
       const isOwnBarTrack = record.targetKind === "bar" && Boolean(userId && record.targetOwnerId === userId);
       const isHonorBoardFavorite = record.targetKind === "battle";
-      const href = isOwnBarTrack ? "/listen-bar" : isHonorBoardFavorite ? (lang === "en" ? "/rank?lang=en" : "/rank?lang=zh") : "";
+      const href = isOwnBarTrack ? `/ai-music?lang=${lang}&track=${record.targetId}#works` : isHonorBoardFavorite ? (lang === "en" ? "/rank?lang=en" : "/rank?lang=zh") : "";
       return {
         id: `favorite-${record.recordKey}`,
         category: "favorites" as const,
@@ -1558,6 +1563,13 @@ function ProfileInner() {
     ? copy.recent
     : stats.find((stat) => stat.key === creatorFilter)?.label ?? copy.recent;
   const creatorEmptyText = creatorFilter === "favorites" ? copy.favoriteEmpty : copy.empty;
+  useEffect(() => {
+    if (searchParams.get("submit") !== "1" || !userId) return;
+    setSubmitOpen(true); setCreatorFilter("listenBar");
+    const frame = window.requestAnimationFrame(() => document.getElementById("submit-work")?.scrollIntoView({ block: "start" }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [searchParams, userId]);
+
 
   return (
     <div className="aipo-stage-bg min-h-screen px-4 pb-40 pt-24 text-white sm:pb-28 sm:pt-10">
@@ -1703,15 +1715,23 @@ function ProfileInner() {
             )}
           </section>
 
-          <section className="aipo-control-panel rounded-[1.35rem] p-5 sm:p-6">
+          <section id="my-works" className="aipo-control-panel rounded-[1.35rem] p-5 sm:p-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h2 className="text-xl font-black text-zinc-50">{copy.creations}</h2>
                 <p className="mt-1 text-xs leading-5 text-zinc-500">{copy.creationsHelp}</p>
               </div>
+              <button type="button" className="aipo-primary-button rounded-xl px-4 py-2 text-sm font-bold" onClick={() => { setSubmitOpen(true); setCreatorFilter("listenBar"); window.requestAnimationFrame(() => document.getElementById("submit-work")?.scrollIntoView({ block: "start" })); }}>{lang === "zh" ? "投稿作品" : lang === "ja" ? "作品を投稿" : lang === "ko" ? "작품 제출" : "Submit work"}</button>
               {creatorLoading && <span className="text-xs font-bold text-orange-200">{t("common_loading")}</span>}
             </div>
 
+            <details id="submit-work" open={submitOpen} onToggle={event => setSubmitOpen(event.currentTarget.open)} className="mt-4 scroll-mt-6 rounded-xl border border-orange-300/25 bg-black/35 p-4">
+              <summary className="cursor-pointer text-base font-bold text-orange-100">{lang === "zh" ? "新增作品・上傳與投稿" : lang === "ja" ? "新しい作品・アップロードと投稿" : lang === "ko" ? "새 작품 · 업로드와 제출" : "New work · upload and submit"}</summary>
+              {submitOpen && userId ? <ProfileMusicUpload key={userId} userId={userId} creatorDefaultName={fighterName} onSubmitted={() => {
+                setCreatorFilter("listenBar");
+                void supabase.auth.getSession().then(({ data }) => { if (data.session?.user.id === userId) void loadCreatorData(userId, data.session.access_token); });
+              }} /> : null}
+            </details>
             {creatorError && <p className="mt-4 rounded-2xl border border-orange-300/20 bg-orange-300/10 px-4 py-3 text-xs text-orange-100">{creatorError}</p>}
 
             <section id="pending-ai-music-challenges" className="mt-5 rounded-2xl border border-red-300/24 bg-red-500/[0.055] p-4 shadow-[0_0_34px_rgba(220,38,38,0.08)]">

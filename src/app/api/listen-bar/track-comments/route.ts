@@ -294,7 +294,7 @@ export async function POST(request: NextRequest) {
           trackTitle,
           commentId: comment.id,
           commenterName: displayName,
-          href: "/listen-bar",
+          href: `/ai-music?track=${body.trackId}&comments=1#works`,
         },
       });
       if (notificationResult.error) {

@@ -3,12 +3,14 @@ import { useSyncExternalStore } from "react";
 
 export type MusicTrack = { id: string; title: string; artist: string; coverUrl: string; audioUrl: string; heartTrackId?: string; genre?: string; lyrics?: string };
 export type MusicSession = { queue: MusicTrack[]; index: number; sourceLabel: string; sourceKey?: string; repeat?: boolean };
-export type MusicPlayerState = { session: MusicSession | null; playing: boolean; currentTime: number; duration: number };
+export type MusicPlayerState = { session: MusicSession | null; playing: boolean; currentTime: number; duration: number; volume?: number; historyDepth?: number; playbackError?: string };
 export type MusicPlayerHandle = {
   start: (queue: MusicTrack[], index?: number, sourceLabel?: string, options?: { sourceKey?: string; repeat?: boolean }) => Promise<boolean>;
   close: () => void;
   toggle: () => void;
   move: (direction: -1 | 1) => void;
+  seek?: (seconds: number) => void;
+  setVolume?: (volume: number) => void;
 };
 const empty: MusicPlayerState = { session: null, playing: false, currentTime: 0, duration: 0 };
 let state = empty;

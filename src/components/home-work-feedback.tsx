@@ -12,7 +12,7 @@ import { musicPlayer, useMusicPlayer } from "@/lib/music-player-store";
 import styles from "./home-editorial.module.css";
 
 type Comment = { id: string; name: string; text: string; createdAt: string };
-export default function HomeWorkFeedback({ work, onClose, onChange, returnPath = "/", showVideo = false }: { work: HomeWork; onClose: () => void; onChange: () => void; returnPath?: string; showVideo?: boolean }) {
+export default function HomeWorkFeedback({ work, onClose, onChange, returnPath = "/", showVideo = false, supportNote }: { work: HomeWork; onClose: () => void; onChange: () => void; returnPath?: string; showVideo?: boolean; supportNote?: string }) {
   const { lang } = useI18n(); const copy = homeCopy(lang);
   const dialog = useRef<HTMLDialogElement>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -28,7 +28,10 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
   const [videoOpen, setVideoOpen] = useState(false);
   const player = useMusicPlayer();
   const withVideo = Boolean(showVideo && work.videoId);
-  const authHref = `/auth?lang=${lang}&next=${encodeURIComponent(`${returnPath}?lang=${lang}`)}`;
+  const destination = new URL(returnPath, "https://aipoger.com");
+  destination.searchParams.set("lang", lang);
+  if (destination.pathname === "/ai-music") { destination.searchParams.set("track", work.id); destination.searchParams.set("comments", "1"); }
+  const authHref = `/auth?lang=${lang}&next=${encodeURIComponent(destination.pathname + destination.search + destination.hash)}`;
 
   useEffect(() => {
     const element = dialog.current; const previous = document.activeElement;
@@ -116,7 +119,7 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
         </div>
         <a className={styles.feedbackSource} href={work.youtubeUrl!} target="_blank" rel="noopener noreferrer">{copy.openYouTube}</a>
       </> : null}
-      <p className={styles.feedbackNote}>{copy.supportNote}</p>
+      <p className={styles.feedbackNote}>{supportNote ?? copy.supportNote}</p>
       {signedIn ? <button className={styles.feedbackHeart} type="button" disabled={busy || hearted === null} aria-pressed={hearted === true}
         onClick={() => void submit("heart")}><Heart size={18} fill={hearted ? "currentColor" : "none"} />{hearted ? copy.removeHeart : copy.sendHeart}</button>
         : <Link className={styles.feedbackAuth} href={authHref}>{copy.loginFeedback}</Link>}

@@ -122,3 +122,152 @@
   .guide { order: 2; }
   .controls select { order: 3; flex-basis: 100%; width: 100%; }
 }
+/* Integrated radio and current-pool chart. */
+.main { width: min(100% - 128px, 1360px); }
+.intro { padding: 18px 0 10px; }
+.intro h1 { font-size: clamp(34px, 3.3vw, 48px); }
+.introActions .search { width: min(27vw, 355px); }
+.discovery { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.03fr); gap: 28px; padding-top: 12px; }
+.chartColumn { min-width: 0; border-right: 1px solid #ffffff28; padding-right: 26px; }
+.chart h2 { margin: 0; font-size: 30px; font-weight: 750; line-height: 1.25; }
+.chartNote { margin: 3px 0 6px; color: #aaa; font-size: 13px; }
+.chartScore { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.chartRows { padding: 0; margin: 0; list-style: none; }
+.chartRows li { display: grid; grid-template-columns: 32px 44px minmax(0,1fr) 44px 34px; align-items: center; gap: 9px; border-bottom: 1px solid #ffffff24; min-height: 50px; }
+.rank { font-size: 22px; font-weight: 750; color: #bbb; font-variant-numeric: tabular-nums; }
+.leadingRank { color: #ff7518; }
+.chartPlay { width: 44px; height: 44px; position: relative; display: grid; place-items: center; overflow: hidden; border-radius: 3px; cursor: pointer; }
+.chartPlay img { width: 100%; height: 100%; object-fit: cover; }
+.chartPlay svg { position: absolute; width: 19px; height: 19px; filter: drop-shadow(0 1px 3px #000); opacity: 0; }
+.chartPlay:hover svg, .chartPlay:focus-visible svg { opacity: 1; }
+.chartIdentity { min-width: 0; }
+.chartIdentity button { display: block; width: 100%; min-height: 25px; overflow: hidden; text-align: left; white-space: nowrap; text-overflow: ellipsis; font-size: 15px; font-weight: 650; cursor: pointer; }
+.chartIdentity button:hover { color: #ff7518; }
+.chartIdentity span { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: #aaa; font-size: 12px; }
+.chart .heart svg { width: 27px; height: 27px; }
+.supporters { color: #ccc; font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+.fullChart { color: #ff7518; font-size: 17px; font-weight: 700; min-height: 48px; cursor: pointer; }
+.catalog { padding-top: 0; gap: 16px; }
+.grid { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 18px; }
+.sectionHeading { margin-bottom: 8px; min-height: 40px; }
+.sectionHeading h2 { font-size: 28px; }
+.headingText { gap: 15px; }
+.headingText > span { font-size: 14px; }
+.titleRow { gap: 2px; }
+.titleRow h3 { font-size: 18px; margin-top: 6px; }
+.titleRow .heart svg { width: 27px; height: 27px; }
+.comment { display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; flex-shrink: 0; color: #eee; cursor: pointer; }
+.comment svg { width: 26px; height: 26px; stroke-width: 1.8; }
+.comment:disabled { opacity: .4; cursor: default; }
+.highlighted { outline: 2px solid #ff7518; outline-offset: 5px; border-radius: 4px; }
+.chartDialog { position: fixed; inset: 0; margin: auto; width: min(94vw,660px); max-height: 88dvh; overflow-y: auto; border: 1px solid #ffffff35; border-radius: 6px; padding: 25px; background: #080808; color: #fff; }
+.chartDialog::backdrop { background: #000b; }
+.chartClose { display: grid; place-items: center; width: 44px; height: 44px; float: right; cursor: pointer; }
+.radioStation { padding: 20px 0 14px; border-bottom: 1px solid #ffffff28; }
+.radioHeading { display: flex; align-items: center; gap: 27px; min-height: 44px; margin-bottom: 15px; }
+.stationName { display: flex; align-items: center; gap: 17px; flex-shrink: 0; }
+.stationName h2 { margin: 0; color: #ff7518; font-size: 28px; font-weight: 750; }
+.stationName span { color: #ccc; font-size: 16px; }
+.radioGenres { display: flex; align-items: center; gap: 8px; }
+.radioGenres > span { font-size: 15px; font-weight: 600; margin-right: 8px; }
+.radioGenres button { border: 1px solid #ffffff28; border-radius: 4px; min-height: 44px; padding: 0 18px; font-size: 15px; cursor: pointer; }
+.radioGenres button[aria-pressed=true] { background: #ff6a00; border-color: #ff6a00; color: #fff; }
+.radioGenres button:disabled { opacity: .4; cursor: default; }
+.radioHeading select { margin-left: auto; width: 175px; min-width: 0; min-height: 44px; border: 1px solid #ffffff28; border-radius: 4px; background: #0b0b0b; color: #ddd; padding: 0 12px; font-size: 14px; }
+.radioPlayer { display: grid; grid-template-columns: minmax(190px,1fr) auto minmax(100px,1.7fr) 145px auto; align-items: center; gap: 25px; min-height: 82px; }
+.nowPlaying { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.nowPlaying > img { width: 80px; height: 80px; object-fit: cover; border-radius: 3px; }
+.nowPlaying > div { min-width: 0; }
+.nowPlaying strong { display: block; font-size: 20px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nowPlaying span { display: block; margin-top: 5px; color: #bbb; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.transport { display: flex; align-items: center; gap: 12px; }
+.transport button { display: grid; place-items: center; width: 44px; height: 44px; cursor: pointer; }
+.transport svg { width: 24px; height: 24px; }
+.transport .radioPlay { width: 60px; height: 60px; border-radius: 50%; background: #ff6a00; }
+.transport button:disabled { opacity: .4; cursor: default; }
+.radioSeek { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 12px; }
+.radioSeek span { color: #bbb; font-size: 13px; font-variant-numeric: tabular-nums; }
+.radioStation input[type=range] { accent-color: #ff6a00; cursor: pointer; min-width: 0; width: 100%; height: 24px; }
+.radioVolume { display: flex; align-items: center; gap: 12px; }
+.radioVolume svg { width: 24px; flex-shrink: 0; }
+.radioFeedback { display: flex; gap: 4px; }
+.radioFeedback svg { width: 32px; height: 32px; }
+.playbackError { margin-top: 8px; color: #ffc494; font-size: 13px; }
+@media (max-width: 1200px) {
+ .main { width: calc(100% - 64px); }
+ .radioHeading { flex-wrap: wrap; gap: 10px 20px; }
+ .radioGenres { order: 3; }
+ .radioPlayer { grid-template-columns: minmax(180px,1fr) auto minmax(80px,1fr) auto; gap: 15px; }
+ .radioVolume { display: none; }
+ .discovery { grid-template-columns: 300px minmax(0,1fr); gap: 20px; }
+ .chartColumn { padding-right: 18px; }
+ .chartRows li { grid-template-columns: 26px 36px minmax(0,1fr) 40px 24px; gap: 5px; }
+ .chartPlay { width: 36px; }
+ .grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+ .headingText { display: block; }
+ .headingText > span { display: block; font-size: 13px; }
+ .introActions { flex-wrap: wrap; justify-content: flex-end; }
+ .introActions .search { width: 290px; }
+}
+@media (max-width: 920px) {
+ .discovery { grid-template-columns: 1fr; }
+ .chartColumn { border-right: 0; padding: 0 0 12px; border-bottom: 1px solid #ffffff28; }
+ .chartRows { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 18px; }
+ .chartRows li { grid-template-columns: 28px 40px minmax(0,1fr) 44px 30px; gap: 7px; }
+ .chartPlay { width: 40px; }
+ .chart h2 { font-size: 26px; }
+ .chartRows li:nth-child(n+5) { display: none; }
+ .chartDialog .chartRows { display: block; }
+ .chartDialog .chartRows li { display: grid; }
+ .radioPlayer { grid-template-columns: minmax(150px,1fr) auto auto; }
+ .radioSeek { grid-column: 1 / -1; }
+ .nowPlaying > img { width: 60px; height: 60px; }
+ .radioVolume { display: flex; grid-column: 1; }
+}
+@media (max-width: 540px) {
+ .main { width: calc(100% - 36px); }
+ .radioStation { padding-top: 14px; }
+ .radioHeading { gap: 10px; margin-bottom: 10px; }
+ .stationName { gap: 10px; }
+ .stationName h2 { font-size: 23px; }
+ .stationName span { font-size: 12px; }
+ .radioHeading select { flex: 1; width: 110px; font-size: 12px; }
+ .radioGenres { width: 100%; overflow-x: auto; gap: 6px; }
+ .radioGenres > span { display: none; }
+ .radioGenres button { padding: 0 12px; flex-shrink: 0; font-size: 13px; }
+ .radioPlayer { grid-template-columns: minmax(0,1fr) auto; gap: 10px; }
+ .nowPlaying { gap: 10px; }
+ .nowPlaying > img { width: 48px; height: 48px; }
+ .nowPlaying strong { font-size: 16px; }
+ .nowPlaying span { font-size: 12px; margin-top: 1px; }
+ .transport { gap: 0; }
+ .transport button { width: 36px; }
+ .transport .radioPlay { width: 44px; height: 44px; }
+ .transport svg { width: 20px; height: 20px; }
+ .radioSeek { grid-column: 1 / -1; }
+ .radioFeedback { grid-column: 2; grid-row: 3; }
+ .radioVolume { grid-row: 3; }
+ .radioFeedback svg { width: 29px; height: 29px; }
+ .introActions .search { width: 100%; }
+ .introActions { justify-content: space-between; gap: 8px; }
+ .introActions .sectionActions { margin-left: auto; }
+ .intro h1 { font-size: 34px; }
+ .intro p { font-size: 14px; }
+ .grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px 14px; }
+ .chartRows { display: block; }
+ .chartRows li:nth-child(n+4) { display: none; }
+ .chartDialog .chartRows li { display: grid; }
+ .titleRow h3 { font-size: 16px; }
+ .titleRow .heart, .titleRow .comment { min-width: 36px; min-height: 44px; }
+ .titleRow .heart svg, .titleRow .comment svg { width: 25px; height: 25px; }
+ .sectionHeading h2 { font-size: 24px; }
+}
+@media (prefers-reduced-motion: reduce) { .page * { scroll-behavior: auto; } }
+@media (min-width: 921px) {
+ .catalog { gap: 8px; }
+ .section + .section { padding-top: 8px; }
+ .sectionHeading { min-height: 36px; }
+ .cover { aspect-ratio: 1.15; }
+}
+@media (max-width: 540px) { .stationName span { display: none; } }
+@media (max-width: 360px) { .stationName h2 { font-size: 20px; } }

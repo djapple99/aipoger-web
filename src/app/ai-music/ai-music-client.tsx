@@ -2,12 +2,17 @@
 
 import { musicPlayer, useMusicPlayer } from "@/lib/music-player-store";
 import Link from "next/link";
-import { ArrowRight, AudioLines, Headphones, Heart, Info, Pause, Play, Search, Share2, Swords, X } from "lucide-react";
+import { ArrowRight, AudioLines, Headphones, Heart, Info, MessageCircleMore, Pause, Play, Search, Share2, Swords, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { fontRighteous } from "@/lib/fonts";
 import EditorialHeader from "@/components/editorial-header";
 import { filterAiMusicTracks } from "@/lib/ai-music-filter";
+import ExploreRadio from "@/components/explore-radio";
+import MusicPoolChart from "@/components/music-pool-chart";
+import HomeWorkFeedback from "@/components/home-work-feedback";
+import { isInMusicPool, rankMusicPool } from "@/lib/music-pool";
+import type { HomeWork } from "@/lib/home-discovery";
 import styles from "./ai-music.module.css";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -52,6 +57,7 @@ type AiMusicTrack = AiMusicExploreOrderTrack & AiMusicHeatTrack & {
   lyrics: string | null;
   createdAt: string;
   heartCount: number;
+  poolSupporterCount: number;
   earwormAffinitySampleCount: number;
   earwormAffinityPercent: number | null;
   positiveReactionCount: number;
@@ -83,6 +89,7 @@ type ListenBarReactionPayload = {
 type LoadState = "loading" | "ready" | "error";
 type HeartState = Record<string, boolean>;
 type AiMusicApiTrackRow = ListenBarTrackRow & {
+  ai_music_pool_supporter_count?: number | null;
   ai_music_legacy_retirement_exempt?: boolean | null;
   ai_music_explore_retired?: boolean | null;
   ai_music_official_challenge_count?: number | null;
@@ -165,14 +172,7 @@ function numberValue(value: unknown) {
   return Math.max(0, Math.round(number));
 }
 
-function normalizeTitleKey(value: string | null | undefined) {
-  return String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/\.(mp3|wav|aiff|aif|m4a|aac|ogg)$/i, "")
-    .replace(/[《》"']/g, "")
-    .replace(/\s+/g, " ");
-}
+
 
 function canonicalGenreBucket(value: string | null | undefined) {
   const genre = canonicalMusicGenre(value);
@@ -288,6 +288,7 @@ async function tracksFromListenBar(lang: string) {
         lyrics: row.lyrics?.trim() || track.lyrics?.trim() || null,
         createdAt: safeDate(track.createdAt),
         heartCount: numberValue(row.heart_count ?? track.positiveReactionCount),
+        poolSupporterCount: numberValue(lifecycleRow.ai_music_pool_supporter_count),
         positiveReactionCount: numberValue(row.positive_reaction_count ?? track.positiveReactionCount),
         earwormAffinitySampleCount: numberValue(row.earworm_affinity_sample_count),
         earwormAffinityPercent: typeof row.earworm_affinity_percent === "number"
@@ -314,51 +315,8 @@ async function tracksFromListenBar(lang: string) {
 }
 
 function mergeDuplicateTracks(rows: AiMusicTrack[]) {
-  const bySignature = new Map<string, AiMusicTrack>();
-  for (const row of rows) {
-    const signature = `${normalizeTitleKey(row.creator)}:${normalizeTitleKey(row.title)}:${row.genre}`;
-    const current = bySignature.get(signature);
-    if (!current) {
-      bySignature.set(signature, row);
-      continue;
-    }
-    const currentCreatedAt = new Date(current.createdAt).getTime();
-    const nextCreatedAt = new Date(row.createdAt).getTime();
-    if (nextCreatedAt > currentCreatedAt || (nextCreatedAt === currentCreatedAt && row.id.localeCompare(current.id) > 0)) {
-      bySignature.set(signature, {
-        ...row,
-        heartCount: Math.max(row.heartCount, current.heartCount),
-        positiveReactionCount: Math.max(row.positiveReactionCount, current.positiveReactionCount),
-        recentHeartSupporters: Math.max(row.recentHeartSupporters, current.recentHeartSupporters),
-        recentOfficialAudienceVotes: Math.max(row.recentOfficialAudienceVotes, current.recentOfficialAudienceVotes),
-        recentQualifiedInteractionAt: new Date(row.recentQualifiedInteractionAt ?? 0).getTime() >= new Date(current.recentQualifiedInteractionAt ?? 0).getTime()
-          ? row.recentQualifiedInteractionAt
-          : current.recentQualifiedInteractionAt,
-        challengeCount: Math.max(row.challengeCount, current.challengeCount),
-        defenseSuccesses: Math.max(row.defenseSuccesses, current.defenseSuccesses),
-        wins: Math.max(row.wins, current.wins),
-        losses: Math.max(row.losses, current.losses),
-        audienceVotes: Math.max(row.audienceVotes, current.audienceVotes),
-      });
-    } else {
-      bySignature.set(signature, {
-        ...current,
-        heartCount: Math.max(row.heartCount, current.heartCount),
-        positiveReactionCount: Math.max(row.positiveReactionCount, current.positiveReactionCount),
-        recentHeartSupporters: Math.max(row.recentHeartSupporters, current.recentHeartSupporters),
-        recentOfficialAudienceVotes: Math.max(row.recentOfficialAudienceVotes, current.recentOfficialAudienceVotes),
-        recentQualifiedInteractionAt: new Date(row.recentQualifiedInteractionAt ?? 0).getTime() >= new Date(current.recentQualifiedInteractionAt ?? 0).getTime()
-          ? row.recentQualifiedInteractionAt
-          : current.recentQualifiedInteractionAt,
-        challengeCount: Math.max(row.challengeCount, current.challengeCount),
-        defenseSuccesses: Math.max(row.defenseSuccesses, current.defenseSuccesses),
-        wins: Math.max(row.wins, current.wins),
-        losses: Math.max(row.losses, current.losses),
-        audienceVotes: Math.max(row.audienceVotes, current.audienceVotes),
-      });
-    }
-  }
-  return Array.from(bySignature.values());
+  // Different versions can share a title/creator; original work IDs are authoritative.
+  return Array.from(new Map(rows.map(row => [row.id, row])).values());
 }
 
 function TrackCover({ track, className = "" }: { track: AiMusicTrack; className?: string }) {
@@ -463,11 +421,13 @@ function TrackCard({
   lang,
   catalogLabel,
   catalogNote,
+  highlighted = false,
   onPrepare,
   onPlay,
   onToggleExpand,
   onHeart,
   onShare,
+  onComment,
 }: {
   track: AiMusicTrack;
   isPlaying: boolean;
@@ -477,11 +437,13 @@ function TrackCard({
   lang: string;
   catalogLabel?: string;
   catalogNote?: string;
+  highlighted?: boolean;
   onPrepare: (track: AiMusicTrack) => void;
   onPlay: (track: AiMusicTrack) => void;
   onToggleExpand: (track: AiMusicTrack) => void;
   onHeart: (track: AiMusicTrack) => void;
   onShare: (track: AiMusicTrack) => void;
+  onComment?: (track: AiMusicTrack) => void;
 }) {
   const heartCount = Math.max(0, track.heartCount);
   const showNewBadge = isNewlyPublishedMusic(track.createdAt);
@@ -490,7 +452,7 @@ function TrackCard({
     ? localeText(lang, "取消愛心與收藏", "Remove Heart and saved track", "Heartと保存を解除", "Heart와 저장 취소")
     : localeText(lang, "送出愛心支持", "Send a heart", "Heartを送る", "Heart 보내기");
   return (
-    <article id={`ai-music-work-${track.sourceId}`} className={`group ${styles.card}`}>
+    <article tabIndex={-1} id={`ai-music-work-${track.sourceId}`} className={`group ${styles.card} ${highlighted ? styles.highlighted : ""}`}>
       <div className={styles.cover}>
         <TrackCover track={track} className="h-full w-full" />
         {showNewBadge ? <NewMusicBadge lang={lang} className="absolute left-3 top-3 z-20" /> : null}
@@ -523,9 +485,10 @@ function TrackCard({
       <div className={styles.titleRow}>
         <h3><Link href={track.href}>{track.title}</Link></h3>
         <button type="button" className={styles.heart} onClick={() => onHeart(track)} disabled={heartBusy}
-          aria-pressed={heartedToday} aria-label={heartActionLabel} title={heartActionLabel}>
-          <Heart fill={heartedToday ? "currentColor" : "none"} aria-hidden="true" /><span>{heartCount}</span>
+          aria-pressed={heartedToday} aria-label={heartActionLabel} title={`${heartActionLabel} · ${heartCount}`}>
+          <Heart fill={heartedToday ? "currentColor" : "none"} aria-hidden="true" /><span className="sr-only">{heartCount}</span>
         </button>
+        <button type="button" className={styles.comment} onClick={() => onComment?.(track)} aria-label={localeText(lang, `評論 ${track.title}`, `Comment on ${track.title}`, `${track.title}のコメント`, `${track.title} 댓글`)}><MessageCircleMore aria-hidden="true" /></button>
       </div>
       <div className={styles.creatorRow}>
         <p className={styles.creator} title={`${track.creator} · ${track.aiTool}`}>{track.creator}</p>
@@ -565,6 +528,7 @@ function HeatList({
   onToggleExpand,
   onHeart,
   onShare,
+  onComment,
 }: {
   tracks: AiMusicTrack[];
   query: string;
@@ -580,6 +544,7 @@ function HeatList({
   onToggleExpand: (track: AiMusicTrack) => void;
   onHeart: (track: AiMusicTrack) => void;
   onShare: (track: AiMusicTrack) => void;
+  onComment?: (track: AiMusicTrack) => void;
 }) {
   const matchingIds = new Set(filterAiMusicTracks(tracks, query, genre).map(track => track.id));
   const rows = buildAiMusicHeatList(tracks).filter(row => matchingIds.has(row.track.id));
@@ -613,6 +578,7 @@ function HeatList({
               onToggleExpand={onToggleExpand}
               onHeart={onHeart}
               onShare={onShare}
+              onComment={onComment}
             />
           );
         })}
@@ -625,6 +591,18 @@ export default function AiMusicClient() {
   const { lang, t } = useI18n();
   const copy = exploreCopy(lang);
   const earwormCopy = earwormExploreCopy(lang);
+  const [loadVersion, setLoadVersion] = useState(0);
+  const loadLanguage = useRef("");
+  const [poolNow, setPoolNow] = useState(Date.now());
+  const [commentTrack, setCommentTrack] = useState<AiMusicTrack | null>(null);
+  const [chartOpen, setChartOpen] = useState(false);
+  const chartDialog = useRef<HTMLDialogElement>(null);
+  const [locateVersion, setLocateVersion] = useState(0);
+  const located = useRef("");
+  const preparedLocate = useRef("");
+  const heartLocks = useRef(new Set<string>());
+  const authIdentity = useRef<string | null>(null);
+  const [highlightedId, setHighlightedId] = useState("");
   const [tracks, setTracks] = useState<AiMusicTrack[]>([]);
   const [worksView, setWorksView] = useState<"genre" | "heat">("genre");
   const [query, setQuery] = useState("");
@@ -643,7 +621,10 @@ export default function AiMusicClient() {
   const [notice, setNotice] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const player = useMusicPlayer();
-  const currentTrack = player.session?.sourceKey === "explore" ? tracks.find(track => track.id === player.session?.queue[player.session.index]?.id) ?? null : null;
+  const activePlayerTrack = player.session?.queue[player.session.index];
+  const currentTrack = tracks.find(track => track.sourceId === activePlayerTrack?.heartTrackId || track.id === activePlayerTrack?.id) ?? null;
+  const poolTracks = useMemo(() => tracks.filter(track => isInMusicPool(track.createdAt, poolNow)), [tracks, poolNow]);
+  const chartRows = useMemo(() => rankMusicPool(poolTracks, poolNow), [poolTracks, poolNow]);
   const isPlaying = Boolean(currentTrack && player.playing);
   const guideButtonRef = useRef<HTMLButtonElement | null>(null);
   const guideDialogRef = useRef<HTMLDivElement | null>(null);
@@ -652,7 +633,7 @@ export default function AiMusicClient() {
   const earwormDialogRef = useRef<HTMLDivElement | null>(null);
   const earwormStartRef = useRef<HTMLAnchorElement | null>(null);
 
-  const withLang = useCallback((href: string) => `${href}${href.includes("?") ? "&" : "?"}lang=${lang}`, [lang]);
+
   const closeGuide = useCallback(() => {
     guideReturnFocusRef.current = true;
     setGuideOpen(false);
@@ -746,6 +727,7 @@ export default function AiMusicClient() {
     const updateSharedTrack = () => {
       const trackId = new URLSearchParams(window.location.search).get("track")?.trim() || null;
       setSharedTrackSourceId(trackId);
+      setLocateVersion(version => version + 1);
     };
     updateSharedTrack();
     window.addEventListener("popstate", updateSharedTrack);
@@ -755,12 +737,13 @@ export default function AiMusicClient() {
   useEffect(() => {
     let mounted = true;
     void supabase.auth.getSession().then(({ data }) => {
-      if (mounted) setUserId(data.session?.user.id ?? null);
+      if (mounted) { authIdentity.current = data.session?.user.id ?? null; setUserId(authIdentity.current); }
     });
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserId(session?.user.id ?? null);
+      authIdentity.current = session?.user.id ?? null; setUserId(authIdentity.current);
+      setHeartStates({}); setAuthPromptTrack(null);
     });
     return () => {
       mounted = false;
@@ -771,7 +754,7 @@ export default function AiMusicClient() {
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      setLoadState("loading");
+      if (loadLanguage.current !== lang) { setLoadState("loading"); loadLanguage.current = lang; }
       setLoadError("");
       try {
         const barTracks = await tracksFromListenBar(lang);
@@ -792,30 +775,64 @@ export default function AiMusicClient() {
     return () => {
       cancelled = true;
     };
-  }, [lang]);
+  }, [lang, loadVersion]);
+
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState === "visible") { setPoolNow(Date.now()); setLoadVersion(value => value + 1); } };
+    const timer = window.setInterval(refresh, 60_000);
+    window.addEventListener("focus", refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener("focus", refresh); };
+  }, []);
 
   useEffect(() => {
     if (!sharedTrackSourceId || tracks.length === 0) return;
     const sharedTrack = tracks.find((track) => track.sourceId === sharedTrackSourceId);
     if (!sharedTrack) return;
+    const key = `${sharedTrackSourceId}:${locateVersion}`;
+    if (preparedLocate.current === key) return;
+    preparedLocate.current = key;
     setWorksView("genre");
+    setQuery(""); setSelectedGenre("");
     setExpandedGenres((current) => (
       current[sharedTrack.genre] ? current : { ...current, [sharedTrack.genre]: true }
     ));
-  }, [sharedTrackSourceId, tracks]);
+  }, [sharedTrackSourceId, tracks, locateVersion]);
 
   useEffect(() => {
-    if (!sharedTrackSourceId || worksView !== "genre") return;
-    const sharedTrack = tracks.find((track) => track.sourceId === sharedTrackSourceId);
-    if (!sharedTrack || !expandedGenres[sharedTrack.genre]) return;
+    if (!sharedTrackSourceId || worksView !== "genre" || loadState !== "ready") return;
+    const sharedTrack = poolTracks.find(track => track.sourceId === sharedTrackSourceId);
+    if (!sharedTrack || !expandedGenres[sharedTrack.genre] || query || selectedGenre) return;
+    const key = `${sharedTrackSourceId}:${locateVersion}`;
+    if (located.current === key) return;
     const frame = window.requestAnimationFrame(() => {
-      document.getElementById(`ai-music-work-${sharedTrack.sourceId}`)?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
+      const element = document.getElementById(`ai-music-work-${sharedTrack.sourceId}`);
+      if (!element) return;
+      located.current = key;
+      element.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "center" });
+      element.focus({ preventScroll: true });
+      setHighlightedId(sharedTrack.sourceId);
+      if (new URLSearchParams(window.location.search).get("comments") === "1") setCommentTrack(sharedTrack);
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [expandedGenres, sharedTrackSourceId, tracks, worksView]);
+  }, [expandedGenres, sharedTrackSourceId, poolTracks, worksView, loadState, query, selectedGenre, locateVersion]);
+  useEffect(() => {
+    if (!highlightedId) return;
+    const timer = window.setTimeout(() => setHighlightedId(""), 4000);
+    return () => window.clearTimeout(timer);
+  }, [highlightedId]);
+  useEffect(() => {
+    const element = chartDialog.current;
+    if (!chartOpen) return;
+    const previous = document.activeElement;
+    element?.showModal();
+    return () => { element?.close(); if (previous instanceof HTMLElement) previous.focus(); };
+  }, [chartOpen]);
+  const locateTrack = (track: AiMusicTrack) => {
+    setChartOpen(false); setWorksView("genre"); setQuery(""); setSelectedGenre("");
+    setSharedTrackSourceId(track.sourceId); setLocateVersion(version => version + 1);
+    const url = new URL(window.location.href); url.searchParams.set("track", track.sourceId); url.searchParams.delete("comments"); url.hash = "works";
+    window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+  };
 
   useEffect(() => {
     if (!userId || tracks.length === 0) {
@@ -826,31 +843,23 @@ export default function AiMusicClient() {
     let mounted = true;
     const loadHeartStates = async () => {
       const barTracks = tracks.filter((track) => track.source === "bar");
-      const sourceIds = Array.from(new Set(barTracks.map((track) => track.sourceId))).slice(0, 240);
+      const sourceIds = Array.from(new Set(barTracks.map((track) => track.sourceId)));
       if (sourceIds.length === 0) {
         if (mounted) setHeartStates({});
         return;
       }
       const recordKeyBySourceId = new Map(barTracks.map((track) => [track.sourceId, track.recordKey]));
       const voteDate = taipeiVoteDate();
-      const { data, error } = await supabase
-        .from("listen_bar_track_reactions")
-        .select("track_id, reaction")
-        .eq("user_id", userId)
-        .eq("reaction", "heart")
-        .eq("vote_date", voteDate)
-        .in("track_id", sourceIds);
-
-      if (!mounted) return;
-      if (error) {
-        console.warn("[ai-music heart states]", error);
-        return;
-      }
-
       const states: HeartState = {};
-      for (const row of (data ?? []) as Array<{ track_id?: string | null }>) {
-        const recordKey = row.track_id ? recordKeyBySourceId.get(row.track_id) : null;
-        if (recordKey) states[recordKey] = true;
+      for (let offset = 0; offset < sourceIds.length; offset += 100) {
+        const { data, error } = await supabase.from("listen_bar_track_reactions").select("track_id, reaction")
+          .eq("user_id", userId).eq("reaction", "heart").eq("vote_date", voteDate).in("track_id", sourceIds.slice(offset, offset + 100));
+        if (!mounted) return;
+        if (error) { console.warn("[ai-music heart states]", error); return; }
+        for (const row of (data ?? []) as Array<{ track_id?: string | null }>) {
+          const recordKey = row.track_id ? recordKeyBySourceId.get(row.track_id) : null;
+          if (recordKey) states[recordKey] = true;
+        }
       }
       setHeartStates(states);
     };
@@ -862,25 +871,25 @@ export default function AiMusicClient() {
   }, [tracks, userId]);
 
   const allGroupedTracks = useMemo(() => {
-    return buildAiMusicExploreGenreLanes(tracks).map((group) => ({
+    return buildAiMusicExploreGenreLanes(poolTracks).map((group) => ({
       ...group,
       label: t(MUSIC_GENRE_OPTIONS.find((option) => option.value === group.genre)?.labelKey ?? ""),
     }));
-  }, [tracks, t]);
+  }, [poolTracks, t]);
 
   const earwormRecommendations = useMemo(() => {
     if (!earwormProfile) return [];
     const preferredGenres = [earwormProfile.primaryGenre, ...earwormProfile.secondaryGenres];
-    const relevant = tracks
+    const relevant = poolTracks
       .filter((track) => preferredGenres.includes(track.genre))
       .sort((left, right) => preferredGenres.indexOf(left.genre) - preferredGenres.indexOf(right.genre) || right.heartCount - left.heartCount || left.sourceId.localeCompare(right.sourceId));
-    const discovery = tracks
+    const discovery = poolTracks
       .filter((track) => !preferredGenres.includes(track.genre))
       .sort((left, right) => right.heartCount - left.heartCount || left.sourceId.localeCompare(right.sourceId));
-    return [...relevant.slice(0, 4), ...discovery.slice(0, 2)].slice(0, 6);
-  }, [earwormProfile, tracks]);
+    return [...relevant.slice(0, 3), ...discovery.slice(0, 1), ...relevant.slice(3), ...discovery.slice(1)].slice(0, 4);
+  }, [earwormProfile, poolTracks]);
 
-  const filteredTracks = useMemo(() => filterAiMusicTracks(tracks, query, selectedGenre), [tracks, query, selectedGenre]);
+  const filteredTracks = useMemo(() => filterAiMusicTracks(poolTracks, query, selectedGenre), [poolTracks, query, selectedGenre]);
   const visibleRecommendations = useMemo(() => filterAiMusicTracks(earwormRecommendations, query, selectedGenre), [earwormRecommendations, query, selectedGenre]);
   const groupedTracks = useMemo(() => {
     const recommendedIds = new Set(visibleRecommendations.map(track => track.id));
@@ -888,7 +897,7 @@ export default function AiMusicClient() {
     return buildAiMusicExploreGenreLanes(filteredTracks.filter(track => !recommendedIds.has(track.id)))
       .filter(group => group.tracks.length > 0)
       .sort((left, right) => (genreOrder.get(left.genre) ?? 0) - (genreOrder.get(right.genre) ?? 0))
-      .map(group => ({ ...group, label: t(MUSIC_GENRE_OPTIONS.find(option => option.value === group.genre)?.labelKey ?? "") }));
+      .map(group => ({ ...group, collapsedTracks: group.collapsedTracks.slice(0,4), label: t(MUSIC_GENRE_OPTIONS.find(option => option.value === group.genre)?.labelKey ?? "") }));
   }, [allGroupedTracks, filteredTracks, visibleRecommendations, t]);
 
   useEffect(() => {
@@ -914,7 +923,7 @@ export default function AiMusicClient() {
     }
     if (currentTrack?.id === track.id) { musicPlayer?.toggle(); return; }
     const sourceTracks = worksView === "heat"
-      ? buildAiMusicHeatList(tracks).map(row => row.track)
+      ? buildAiMusicHeatList(poolTracks).map(row => row.track)
       : allGroupedTracks.find(group => group.genre === track.genre)?.tracks ?? tracks;
     const queue = sourceTracks.filter(item => item.audioUrl).map(item => ({
       id: item.id, heartTrackId: item.source === "bar" ? item.sourceId : undefined, title: item.title, artist: item.creator, coverUrl: item.coverUrl,
@@ -928,6 +937,7 @@ export default function AiMusicClient() {
     const updateHeart = (event: Event) => {
       const detail = (event as CustomEvent).detail;
       if (!detail?.trackId || !detail.counts) return;
+      setLoadVersion(value => value + 1);
       setTracks(current => current.map(track => track.sourceId === detail.trackId ? { ...track, heartCount: detail.counts.heart } : track));
       setHeartStates(current => ({ ...current, [`bar:${detail.trackId}`]: detail.heartedToday === true }));
     };
@@ -935,49 +945,33 @@ export default function AiMusicClient() {
     return () => window.removeEventListener("aipoger:music-heart", updateHeart);
   }, []);
   const sendHeart = async (track: AiMusicTrack) => {
+    if (track.source !== "bar" || heartLocks.current.has(track.recordKey)) return;
+    heartLocks.current.add(track.recordKey);
+    setHeartBusy(current => ({ ...current, [track.recordKey]: true }));
     setNotice("");
-    if (track.source !== "bar") {
-      setNotice(localeText(lang, "這筆展示紀錄目前沒有公播愛心資料。", "This showcase record has no public-airplay heart data yet.", "この展示作品には公開放送のHeartデータがまだありません。", "이 쇼케이스 작품에는 아직 공개 방송 Heart 데이터가 없습니다."));
-      return;
-    }
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session?.access_token) {
-      setAuthPromptTrack(track);
-      return;
-    }
-
-    setHeartBusy((current) => ({ ...current, [track.recordKey]: true }));
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) { setAuthPromptTrack(track); return; }
       const response = await fetch("/api/listen-bar/reaction", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          trackId: track.sourceId,
-          reaction: "heart",
-        }),
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ trackId: track.sourceId, reaction: "heart" }),
       });
-      const payload = (await response.json().catch(() => null)) as ListenBarReactionPayload | null;
-      if (!response.ok || !payload?.counts) {
-        setNotice(payload?.error || localeText(lang, "愛心送出失敗，請稍後再試。", "Heart failed. Try again later.", "Heartを送れませんでした。しばらくしてから再試行してください。", "Heart 전송에 실패했습니다. 잠시 후 다시 시도해 주세요."));
-        return;
-      }
-      const heartCount = Math.max(0, numberValue(payload.counts.heart));
-      setTracks((current) =>
-        current.map((item) => (item.recordKey === track.recordKey ? { ...item, heartCount } : item)),
-      );
-      setHeartStates((current) => ({ ...current, [track.recordKey]: payload.heartedToday === true }));
+      const payload = await response.json().catch(() => null) as ListenBarReactionPayload | null;
+      if (!response.ok || !payload?.counts) throw new Error(payload?.error || localeText(lang, "愛心送出失敗，請稍後再試。", "Heart failed. Try again later.", "Heartを送れませんでした。", "Heart 전송에 실패했습니다."));
+      setLoadVersion(value => value + 1);
+      if (authIdentity.current !== session.user.id) return;
+      const heartCount = numberValue(payload.counts.heart);
+      setTracks(current => current.map(item => item.recordKey === track.recordKey ? { ...item, heartCount } : item));
+      setHeartStates(current => ({ ...current, [track.recordKey]: payload.heartedToday === true }));
       setNotice(payload.heartedToday
-        ? localeText(lang, "愛心已送出，歌曲已同步收藏到你的後台。", "Heart sent. The track is saved in your profile.", "Heartを送り、この曲をProfileに保存しました。", "Heart를 보냈고 곡이 Profile에 저장되었습니다.")
+        ? localeText(lang, "已送出愛心並加入收藏。", "Heart sent and track saved.", "Heartを送り、保存しました。", "Heart를 보내고 저장했습니다.")
         : localeText(lang, "已取消愛心與收藏。", "Heart and saved track removed.", "Heartと保存を解除しました。", "Heart와 저장을 취소했습니다."));
-    } catch {
-      setNotice(localeText(lang, "愛心送出失敗，請稍後再試。", "Heart failed. Try again later.", "Heartを送れませんでした。しばらくしてから再試行してください。", "Heart 전송에 실패했습니다. 잠시 후 다시 시도해 주세요."));
+      window.dispatchEvent(new CustomEvent("aipoger:music-heart", { detail: { trackId: track.sourceId, ...payload } }));
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : localeText(lang, "愛心送出失敗。", "Heart failed.", "Heartを送れませんでした。", "Heart 전송에 실패했습니다."));
     } finally {
-      setHeartBusy((current) => ({ ...current, [track.recordKey]: false }));
+      heartLocks.current.delete(track.recordKey);
+      setHeartBusy(current => ({ ...current, [track.recordKey]: false }));
     }
   };
 
@@ -1012,22 +1006,33 @@ export default function AiMusicClient() {
   const hasFilters = Boolean(query.trim() || selectedGenre);
   const resetFilters = () => { setQuery(""); setSelectedGenre(""); };
   const renderTrack = (track: AiMusicTrack, catalogLabel?: string) => <TrackCard
-    key={track.id} track={track} lang={lang} catalogLabel={catalogLabel}
+    key={track.id} track={track} lang={lang} catalogLabel={catalogLabel} highlighted={highlightedId === track.sourceId}
     isPlaying={currentTrack?.id === track.id && isPlaying}
     isExpanded={Boolean(expandedHud[track.id])} heartBusy={Boolean(heartBusy[track.recordKey])}
     heartedToday={Boolean(heartStates[track.recordKey])}
     onPrepare={prepareTrack} onPlay={handlePlayTrack}
     onToggleExpand={item => setExpandedHud(current => ({ ...current, [item.id]: !current[item.id] }))}
-    onHeart={item => void sendHeart(item)} onShare={item => void shareTrack(item)} />;
+    onHeart={item => void sendHeart(item)} onShare={item => void shareTrack(item)} onComment={setCommentTrack} />;
   const earTestButton = <button type="button" className={styles.earTest} onClick={() => setEarwormPromptOpen(true)}>
     <Headphones aria-hidden="true" />{earwormCopy.reopen}
   </button>;
+  const feedbackWork: HomeWork | null = commentTrack ? { id: commentTrack.sourceId, title: commentTrack.title, artist: commentTrack.creator, genre: commentTrack.genre, description: "", coverUrl: commentTrack.coverUrl, audioUrl: commentTrack.audioUrl ?? "", lyrics: commentTrack.lyrics ?? "", videoId: null, youtubeUrl: null, supporterCount: commentTrack.poolSupporterCount, publishedAt: commentTrack.createdAt } : null;
+  const radioTracks = useMemo(() => poolTracks.filter(track => track.audioUrl).map(track => ({ id: track.sourceId, heartTrackId: track.sourceId, title: track.title, artist: track.creator, coverUrl: track.coverUrl, audioUrl: track.audioUrl!, genre: track.genre, lyrics: track.lyrics ?? undefined })), [poolTracks]);
+  const chartProps = { rows: chartRows, ready: loadState === "ready", error: loadState === "error", heartStates, heartBusy, onPlay: handlePlayTrack, onLocate: locateTrack, onHeart: (track: AiMusicTrack) => void sendHeart(track) };
   const showRecommendations = loadState === "ready" && worksView === "genre" && visibleRecommendations.length > 0;
 
   return (
     <div className={styles.page}>
       <EditorialHeader active="explore" />
+      {feedbackWork ? <HomeWorkFeedback key={feedbackWork.id} work={feedbackWork} supportNote={localeText(lang, "人氣榜依不同會員的有效支持排序；作者自己的愛心不計入。評論共用同一作品。", "Popularity follows distinct non-author supporters. Comments belong to the same work.", "人気ランキングは作者以外の会員の有効な支持人数順です。コメントは同じ作品に集まります。", "인기 차트는 작가를 제외한 회원의 유효 지지 수 순입니다. 댓글은 같은 작품에 연결됩니다.")} returnPath={`/ai-music?track=${feedbackWork.id}#works`} onClose={() => setCommentTrack(null)} onChange={() => setLoadVersion(value => value + 1)} /> : null}
+      <dialog ref={chartDialog} className={styles.chartDialog} aria-label={localeText(lang, "人氣 Top 50", "Popular Top 50", "人気 Top 50", "인기 Top 50")} onCancel={() => setChartOpen(false)} onClick={event => { if (event.target === event.currentTarget) setChartOpen(false); }}>
+        <button autoFocus type="button" className={styles.chartClose} onClick={() => setChartOpen(false)} aria-label={copy.close}><X /></button>
+        <MusicPoolChart {...chartProps} limit={50} />
+      </dialog>
       <main className={styles.main}>
+        <ExploreRadio tracks={radioTracks} ready={loadState === "ready"} hearted={Boolean(currentTrack && heartStates[currentTrack.recordKey])} heartBusy={Boolean(currentTrack && heartBusy[currentTrack.recordKey])}
+          onHeart={id => { const track = poolTracks.find(track => track.sourceId === id); if (track) void sendHeart(track); }}
+          onComment={id => { const track = poolTracks.find(track => track.sourceId === id); if (track) setCommentTrack(track); }} />
         <div className={styles.intro}>
           <div>
             <h1>{localeText(lang, "探索音樂", "Explore Music", "音楽を探す", "음악 탐색")}</h1>
@@ -1041,9 +1046,7 @@ export default function AiMusicClient() {
                 placeholder={localeText(lang, "搜尋作品或創作者", "Search tracks or creators", "曲やクリエイターを検索", "곡 또는 크리에이터 검색")} />
               {query ? <button type="button" onClick={() => setQuery("")} aria-label={localeText(lang, "清除搜尋", "Clear search", "検索をクリア", "검색 지우기")}><X aria-hidden="true" /></button> : null}
             </div>
-            <Link href={withLang("/listen-bar")} className={styles.radio}>
-              <Headphones aria-hidden="true" /><span><strong>{copy.bar}</strong><small>{localeText(lang, "連續聽電台", "Nonstop radio", "ラジオを聴く", "논스톱 라디오")}</small></span><ArrowRight aria-hidden="true" />
-            </Link>
+            <div className={styles.sectionActions}>{earTestButton}</div>
           </div>
         </div>
         <section id="works">
@@ -1061,7 +1064,9 @@ export default function AiMusicClient() {
               <img src="/guide.png" alt="" /><span>{copy.guideLabel}</span>
             </button>
           </div>
-          <div className={styles.catalog}>
+          <div className={styles.discovery}>
+            <aside className={styles.chartColumn}><MusicPoolChart {...chartProps} onMore={() => setChartOpen(true)} /></aside>
+          <div className={styles.catalog} data-highlighted-work={highlightedId}>
             {loadState === "loading" ? <p className={styles.state} role="status">{copy.loading}</p> : null}
             {loadState === "error" ? <p className={styles.state} role="alert">{copy.loadError} {loadError}</p> : null}
             {loadState === "ready" && filteredTracks.length === 0 ? <div className={styles.state} role="status">
@@ -1074,18 +1079,16 @@ export default function AiMusicClient() {
                   <h2>{localeText(lang, "為你推薦", "For You", "あなたへのおすすめ", "맞춤 추천")}</h2>
                   <span>{t(MUSIC_GENRE_OPTIONS.find(option => option.value === earwormProfile?.primaryGenre)?.labelKey ?? "")}</span>
                 </div>
-                <div className={styles.sectionActions}>{earTestButton}</div>
               </div>
               <div className={styles.grid}>{visibleRecommendations.map(track => renderTrack(track))}</div>
             </section> : null}
             {loadState === "ready" && worksView === "heat" ? <>
-              <div className={styles.sectionActions}>{earTestButton}</div>
-              <HeatList tracks={tracks} query={query} genre={selectedGenre}
+              <HeatList tracks={poolTracks} query={query} genre={selectedGenre}
                 currentTrackId={currentTrack?.id ?? null} isPlaying={isPlaying}
                 expandedHud={expandedHud} heartBusy={heartBusy} heartStates={heartStates} lang={lang}
                 onPrepare={prepareTrack} onPlay={handlePlayTrack}
                 onToggleExpand={item => setExpandedHud(current => ({ ...current, [item.id]: !current[item.id] }))}
-                onHeart={item => void sendHeart(item)} onShare={item => void shareTrack(item)} />
+                onHeart={item => void sendHeart(item)} onShare={item => void shareTrack(item)} onComment={setCommentTrack} />
             </> : null}
             {loadState === "ready" && worksView === "genre" ? groupedTracks.map((group, index) => {
               const expanded = Boolean(expandedGenres[group.genre]);
@@ -1097,7 +1100,6 @@ export default function AiMusicClient() {
                     {index === 0 ? <span>{group.label}</span> : null}
                   </div>
                   <div className={styles.sectionActions}>
-                    {index === 0 && !showRecommendations ? earTestButton : null}
                     <span>{group.tracks.length}</span>
                     {group.tracks.length > group.collapsedTracks.length && !query.trim() ? <button type="button" onClick={() => setExpandedGenres(current => ({ ...current, [group.genre]: !expanded }))} aria-expanded={expanded}>
                       {expanded ? copy.less : copy.more}
@@ -1107,6 +1109,7 @@ export default function AiMusicClient() {
                 <div className={styles.grid}>{visible.map(track => renderTrack(track))}</div>
               </section>;
             }) : null}
+          </div>
           </div>
           {loadState === "ready" ? <p className={styles.count}>{catalogMetadata}</p> : null}
         </section>

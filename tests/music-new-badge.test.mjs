@@ -30,10 +30,9 @@ test("Explore shows NEW at the cover top-left while challenge-ready remains top-
   assert.ok(badgeSource.includes("上架 7 天內"));
 });
 
-test("Bar Heartbreak marks new now-playing and visible list tracks", () => {
-  assert.ok(listenBarSource.includes("isNew={isNewlyPublishedMusic(nowTrack.createdAt)}"));
-  assert.ok(listenBarSource.includes('className="absolute left-[20%] top-[11%]'));
-  assert.ok((listenBarSource.match(/isNewlyPublishedMusic\(track\.createdAt\)/g) ?? []).length >= 1);
+test("merged Bar keeps the Explore NEW cards and original created-at window", () => {
+  assert.ok(listenBarSource.includes('/ai-music?'));
+  assert.ok(aiMusicSource.includes('isNewlyPublishedMusic(track.createdAt)'));
 });
 
 test("product rules use the same seven-day window for NEW display and ordering", () => {

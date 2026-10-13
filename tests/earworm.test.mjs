@@ -78,8 +78,8 @@ test("好感度 UI stays public and does not expose per-song personal reactions"
   assert.doesNotMatch(explore, /catalogLabel=\{localeText\(lang, "命中"/);
   assert.doesNotMatch(explore, /你的反應：/);
   assert.doesNotMatch(explore, /盲聽好感/);
-  assert.match(listenBar, /好感度累積中/);
-  assert.match(listenBar, /AudioLines/);
+  assert.match(listenBar, /ai-music/);
+  assert.doesNotMatch(listenBar, /setTrackComments/);
   assert.doesNotMatch(listenBar, /你的反應：/);
   assert.doesNotMatch(listenBar, /盲聽好感/);
 });

@@ -1,3 +1,5 @@
+import { isInMusicPool, musicPoolSupportCounts } from "@/lib/music-pool";
+import { readAllHomePages } from "@/lib/home-discovery";
 import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
@@ -266,34 +268,31 @@ async function readRecentHeat(admin: AdminClient, trackIds: string[]) {
 export async function GET() {
   try {
     const admin = adminClient();
-    const modern = await admin
-      .from("listen_bar_tracks")
-      .select(MODERN_SELECT)
-      .eq("source", "community")
-      .eq("is_active", true)
-      .order("positive_reaction_count", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(500);
-
-    let rows = (modern.data as ListenBarTrackRow[] | null) ?? [];
-    let error = modern.error;
-
-    if (error && isMissingTrackColumn(error)) {
-      const legacy = await admin
-        .from("listen_bar_tracks")
-        .select(LEGACY_SELECT)
-        .eq("source", "community")
-        .eq("is_active", true)
-        .order("positive_reaction_count", { ascending: false })
-        .order("created_at", { ascending: false })
-        .limit(500);
-      rows = (legacy.data as ListenBarTrackRow[] | null) ?? [];
-      error = legacy.error;
+    const readTracks = (fields: string) => readAllHomePages<ListenBarTrackRow>(async (from, to) => {
+      const result = await admin.from("listen_bar_tracks").select(fields)
+        .eq("source", "community").eq("is_active", true)
+        .order("created_at", { ascending: false }).order("id", { ascending: true }).range(from, to);
+      return { data: result.data as unknown as ListenBarTrackRow[] | null, error: result.error };
+    });
+    let rows: ListenBarTrackRow[];
+    try { rows = await readTracks(MODERN_SELECT); }
+    catch (error) {
+      if (!isMissingTrackColumn(error as { message?: string })) throw error;
+      rows = await readTracks(LEGACY_SELECT);
     }
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-    const playableRows = applyLegacyOpeningGrace(rows).filter(isPublicPlayableTrack);
+    const now = Date.now();
+    const playableRows = applyLegacyOpeningGrace(rows).filter(row => isPublicPlayableTrack(row) && isInMusicPool(row.created_at, now));
+    const hearts: { track_id: string; user_id: string; reaction: string; created_at: string }[] = [];
+    for (let offset = 0; offset < playableRows.length; offset += 100) {
+      const ids = playableRows.slice(offset, offset + 100).map(row => row.id);
+      hearts.push(...await readAllHomePages(async (from, to) => {
+        const result = await admin.from("listen_bar_track_reactions").select("track_id,user_id,reaction,created_at")
+          .in("track_id", ids).eq("reaction", "heart").lte("created_at", new Date(now).toISOString())
+          .order("track_id", { ascending: true }).order("user_id", { ascending: true }).order("vote_date", { ascending: true }).range(from, to);
+        return { data: result.data, error: result.error };
+      }));
+    }
+    const poolSupportCounts = musicPoolSupportCounts(playableRows, hearts);
     const [lifecycleByTrackId, recentHeatByTrackId, affinityByTrackId] = await Promise.all([
       buildAiMusicSurfaceLifecycleMap(admin, playableRows),
       readRecentHeat(admin, playableRows.map((row) => row.id)),
@@ -306,6 +305,7 @@ export async function GET() {
         const affinity = affinityByTrackId.get(row.id);
         return {
           ...row,
+          ai_music_pool_supporter_count: poolSupportCounts.get(row.id) ?? 0,
           ai_music_legacy_retirement_exempt: lifecycle?.isShowtimeCertified ?? false,
           ai_music_challenge_status: row.ai_music_challenge_status ?? "showcase",
           ai_music_explore_retired: lifecycle?.retiredFromExplore ?? false,

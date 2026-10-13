@@ -36,7 +36,7 @@ test("logged-out account dock does not present a fake notification bell", () => 
   assert.ok(overlaySource.includes('aria-label={`${signInLabel} AIPOGER`}'));
   assert.ok(overlaySource.includes('"fixed right-24 top-4'));
   assert.ok(profileSource.includes("rememberAuthNextPath(nextPath)"));
-  assert.ok(profileSource.includes("router.replace(`/auth?next=${encodeURIComponent(nextPath)}`)"));
+  assert.ok(profileSource.includes("router.replace(`/auth?lang=${lang}&next=${encodeURIComponent(nextPath)}`)"));
 });
 
 test("signed-in account dock can be dragged without losing its saved position", () => {
@@ -77,9 +77,10 @@ test("battle desktop CTA stays inside the pool header", () => {
   assert.match(globalsSource, /\.battle-pool-head[\s\S]*?overflow: hidden;[\s\S]*?padding-right: 10rem;/);
 });
 
-test("listen bar only duplicates ticker content when live battle messages exist", () => {
-  assert.ok(listenBarSource.includes('battleTickerMessages.length > 0 ? "aipo-marquee-track text-left" : "w-full text-center"'));
-  assert.ok(listenBarSource.includes("battleTickerMessages.length > 0 ? ("));
+test("retired Bar ticker no longer occupies the listening surface", () => {
+  assert.equal(listenBarSource.includes("aipo-marquee-track"), false);
+  assert.equal(listenBarSource.includes("battleTickerMessages"), false);
+  assert.ok(listenBarSource.includes("router.replace"));
 });
 
 test("legacy watch entry preserves a supported language", () => {

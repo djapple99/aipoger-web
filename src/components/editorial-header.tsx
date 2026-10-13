@@ -34,7 +34,7 @@ export default function EditorialHeader({ active }: { active: "home" | "mv" | "e
           <Link href={withLang("/ai-music-bible")}>{copy.bible}</Link>
         </nav>
         <div className={styles.headerActions}>
-          <Link href={withLang("/listen-bar#play-request")} className={styles.submit}>{copy.submit}</Link>
+          <Link href={withLang("/profile?submit=1#submit-work")} className={styles.submit}>{copy.submit}</Link>
           <LangToggle variant="inline" />
           {signedIn ? <span className={styles.accountSpace} /> : <Link href={active !== "home" ? `/auth?lang=${lang}&next=${encodeURIComponent(`/${active === "mv" ? "mv" : "ai-music"}?lang=${lang}`)}` : withLang("/auth")} className={styles.signIn}>{copy.signIn}</Link>}
         </div>

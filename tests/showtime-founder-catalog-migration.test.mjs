@@ -33,7 +33,8 @@ test("founder catalog uses persisted Showtime state instead of old dynamic Heart
 test("Explore and Bar no longer exclude historical certified community songs", () => {
   assert.equal(aiMusicTracksRouteSource.includes('surface === "showtime"'), false);
   assert.ok(aiMusicTracksRouteSource.includes('.filter((row) => !row.ai_music_explore_retired)'));
-  assert.ok(listenBarTracksRouteSource.includes("isPublicBarAirplayTrack"));
+  assert.ok(listenBarTracksRouteSource.includes('export { GET } from "@/app/api/ai-music/tracks/route"'));
+  assert.ok(aiMusicTracksRouteSource.includes("isPublicBarAirplayTrack"));
   assert.equal(rankSource.includes("surface=showtime"), false);
   assert.equal(rankSource.includes("listenBarIsHonorEligible"), false);
 });
@@ -73,7 +74,7 @@ test("public Bar Heartbreak copy no longer promises Heart/day Showtime eligibili
   assert.equal(listenBarSource.includes("Showtime 入選資格"), false);
   assert.equal(listenBarSource.includes("makes it Showtime eligible"), false);
   assert.equal(listenBarSource.includes("顆心，或公播存活"), false);
-  assert.ok(listenBarSource.includes("愛波哥會持續選曲與整理"));
+  assert.ok(listenBarSource.includes("/ai-music?"));
 });
 
 test("Battle archive Showtime public removals keep history but leave the public catalog", () => {

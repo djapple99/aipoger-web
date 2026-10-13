@@ -1,5 +1,6 @@
 import { isPublicBarAirplayTrack } from "./listen-bar-airplay.ts";
 import { isCurrentMusicGenre } from "./music-genres.ts";
+import { isInMusicPool } from "./music-pool.ts";
 
 export type HomeWork = {
   id: string; title: string; artist: string; genre: string; description: string;
@@ -95,7 +96,7 @@ export function buildHomeDiscovery(rows: HomeTrackRow[], hearts: HomeHeartRow[],
   const topSupport = Math.max(0, ...mvs.map(work => work.supporterCount));
   // A tie is shared exposure, never a fabricated sole winner or personal endorsement.
   const featured = topSupport > 0 ? mvs.filter(work => work.supporterCount === topSupport) : mvs.slice(0, 1);
-  return { week, featured, featureKind: topSupport > 0 ? "community" : featured.length ? "new" : "empty", singles: excludeFeaturedWorks(works, featured).slice(0, 3) };
+  return { week, featured, featureKind: topSupport > 0 ? "community" : featured.length ? "new" : "empty", singles: excludeFeaturedWorks(works, featured).filter(work => isInMusicPool(work.publishedAt, now.getTime())).slice(0, 3) };
 }
 
 type PageResult<T> = { data: T[] | null; error: { message: string } | null };

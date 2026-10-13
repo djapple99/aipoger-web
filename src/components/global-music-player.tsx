@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ListMusic, FileText, Heart, Pause, Play, SkipBack, SkipForward, Volume2, X } from "lucide-react";
+import { ListMusic, FileText, Heart, MessageCircleMore, Pause, Play, SkipBack, SkipForward, Volume2, X } from "lucide-react";
+import HomeWorkFeedback from "@/components/home-work-feedback";
 import { clampMediaVolume, setNativeMediaVolume } from "@/lib/media-volume-control";
 
 import AuthRequiredDialog from "@/components/auth-required-dialog";
@@ -26,6 +27,8 @@ export default function GlobalMusicPlayer() {
   const [heartBusy, setHeartBusy] = useState(false);
   const [hearted, setHearted] = useState<Record<string, boolean>>({});
   const [authOpen, setAuthOpen] = useState(false);
+  const [inlineVisible, setInlineVisible] = useState(false);
+  const [commentTrack, setCommentTrack] = useState<ShowtimePlayerSession["queue"][number] | null>(null);
   const historyRef = useRef<ShowtimePlayerSession[]>([]);
   const [historyDepth, setHistoryDepth] = useState(0);
   const lyricsDialogRef = useRef<HTMLDialogElement>(null);
@@ -44,6 +47,12 @@ export default function GlobalMusicPlayer() {
   const [volume, setVolume] = useState(0.85);
   const [playbackError, setPlaybackError] = useState("");
   const track = session?.queue[session.index] ?? null;
+
+  useEffect(() => {
+    const sync = (event: Event) => setInlineVisible((event as CustomEvent).detail === true);
+    window.addEventListener("aipoger:player-inline-visible", sync);
+    return () => window.removeEventListener("aipoger:player-inline-visible", sync);
+  }, []);
 
   const finishSegment = useCallback((eventType: "song_pause" | "song_finish" | "song_skip") => {
     const segment = playbackSegmentRef.current;
@@ -204,10 +213,20 @@ export default function GlobalMusicPlayer() {
         return playTrack({ queue: playable, index, sourceLabel, ...options });
       },
       close, toggle: togglePlayback, move,
+      seek: (seconds) => {
+        const audio = audioRef.current;
+        if (!audio || !Number.isFinite(audio.duration) || !Number.isFinite(seconds)) return;
+        const next = Math.min(audio.duration, Math.max(0, seconds));
+        audio.currentTime = next; setCurrentTime(next);
+      },
+      setVolume: (value) => {
+        const next = clampMediaVolume(value); setVolume(next); volumeRef.current = next;
+        if (audioRef.current) { applyVolume(audioRef.current, next); void ensureVolumeControl(audioRef.current); }
+      },
     });
     return () => registerMusicPlayer(null);
-  }, [close, move, playTrack, togglePlayback]);
-  useEffect(() => { publishMusicPlayer({ session, playing, currentTime, duration }); }, [session, playing, currentTime, duration]);
+  }, [applyVolume, close, ensureVolumeControl, move, playTrack, togglePlayback]);
+  useEffect(() => { publishMusicPlayer({ session, playing, currentTime, duration, volume, historyDepth, playbackError }); }, [session, playing, currentTime, duration, volume, historyDepth, playbackError]);
   useEffect(() => {
     if (!session) return;
     const pauseOtherMedia = (event: Event) => {
@@ -284,14 +303,19 @@ export default function GlobalMusicPlayer() {
     else dialog?.close();
   }, [lyricsOpen, track]);
   useEffect(() => {
-    if (!session) return;
+    if (!session || inlineVisible) return;
     document.body.style.paddingBottom = "150px";
     return () => { document.body.style.paddingBottom = ""; };
-  }, [session]);
+  }, [session, inlineVisible]);
 
   return (
     <>
-      <AuthRequiredDialog open={authOpen} kind="heart" lang={lang} nextPath={`/listen-bar?lang=${lang}`} onClose={() => setAuthOpen(false)} />
+      {commentTrack?.heartTrackId ? <HomeWorkFeedback key={commentTrack.heartTrackId}
+        work={{ id: commentTrack.heartTrackId, title: commentTrack.title, artist: commentTrack.artist, genre: commentTrack.genre ?? "", coverUrl: commentTrack.coverUrl, audioUrl: commentTrack.audioUrl, lyrics: commentTrack.lyrics ?? "", description: "", videoId: null, youtubeUrl: null, supporterCount: 0, publishedAt: "" }}
+        supportNote={label("愛心會同步收藏；歌曲評論共用同一作品。", "Hearts also save the track. Comments belong to the same work.", "Heartを送ると保存されます。コメントは同じ作品に集まります。", "Heart는 곡을 저장합니다. 댓글은 같은 작품에 연결됩니다.")}
+        returnPath={typeof window === "undefined" ? "/ai-music" : window.location.pathname + window.location.search + window.location.hash}
+        onClose={() => setCommentTrack(null)} onChange={() => {}} /> : null}
+      <AuthRequiredDialog open={authOpen} kind="heart" lang={lang} nextPath={`/ai-music?lang=${lang}${track?.heartTrackId ? `&track=${track.heartTrackId}#works` : ""}`} onClose={() => setAuthOpen(false)} />
       <dialog ref={lyricsDialogRef} onClose={() => setLyricsOpen(false)} className="fixed inset-0 m-auto max-h-[75dvh] w-[min(92vw,36rem)] overflow-y-auto rounded-2xl border border-orange-300/25 bg-zinc-950 p-5 text-white backdrop:bg-black/70" aria-label={label("歌詞", "Lyrics", "歌詞", "가사")}>
         <div className="mb-4 flex items-center justify-between gap-3"><h2 className="font-bold">{track?.title}</h2><button autoFocus onClick={() => setLyricsOpen(false)} aria-label={label("關閉歌詞", "Close lyrics", "歌詞を閉じる", "가사 닫기")}><X /></button></div>
         <p className="whitespace-pre-wrap text-sm leading-8">{track?.lyrics || label("歌詞未提供", "Lyrics not provided", "歌詞は未提供です", "가사가 없습니다")}</p>
@@ -299,6 +323,7 @@ export default function GlobalMusicPlayer() {
       {track && session ? (
         <div
           data-showtime-queue-player
+          hidden={inlineVisible}
           className="fixed inset-x-0 bottom-0 z-[70] border-t border-yellow-100/25 bg-[#070707]/96 px-3 py-2.5 shadow-[0_-18px_55px_rgba(0,0,0,0.72)] backdrop-blur-xl sm:px-5"
         >
           <div className="mx-auto grid max-w-7xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 lg:grid-cols-[auto_minmax(9rem,0.75fr)_minmax(16rem,1.5fr)_auto] sm:gap-4">
@@ -363,6 +388,7 @@ export default function GlobalMusicPlayer() {
                 />
               </label>
               {track.heartTrackId ? <button type="button" disabled={heartBusy} onClick={() => void sendHeart()} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-orange-300 disabled:opacity-40" aria-label={label("愛心與收藏", "Heart and save", "Heartと保存", "Heart 및 저장")}><Heart className="h-4 w-4" fill={hearted[track.heartTrackId] ? "currentColor" : "none"} /></button> : null}
+              {track.heartTrackId ? <button type="button" onClick={() => setCommentTrack(track)} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-white" aria-label={label("歌曲評論", "Track comments", "曲のコメント", "곡 댓글")}><MessageCircleMore className="h-5 w-5" /></button> : null}
               <button type="button" onClick={() => setLyricsOpen(true)} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 hover:text-white" aria-label={label("看歌詞", "View lyrics", "歌詞を見る", "가사 보기")}><FileText className="h-4 w-4" /></button>
               <button type="button" onClick={close} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition hover:bg-white/10 hover:text-white" aria-label={label("關閉播放器", "Close player", "プレーヤーを閉じる", "플레이어 닫기")}><X className="h-4 w-4" /></button>
             </div>

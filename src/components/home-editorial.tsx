@@ -160,7 +160,7 @@ export default function HomeEditorial() {
         {playError ? <p role="alert" className={styles.refreshError}>{copy.playError}</p> : null}
       </section>
       <footer className={styles.footer}><p>{copy.footer}</p><div>
-        <Link href={withLang("/listen-bar#play-request")}>{copy.submit}</Link><Link href={withLang("/about")}>{copy.about}</Link><Link href={withLang("/partners")}>{copy.contact}</Link>
+        <Link href={withLang("/profile?submit=1#submit-work")}>{copy.submit}</Link><Link href={withLang("/about")}>{copy.about}</Link><Link href={withLang("/partners")}>{copy.contact}</Link>
       </div></footer>
     </main>
     {feedbackWork ? <HomeWorkFeedback key={feedbackWork.id} work={feedbackWork} onClose={() => setFeedbackWork(null)} onChange={() => void load()} /> : null}

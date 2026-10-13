@@ -35,14 +35,11 @@ test("Explore AI Music lights and cancels only the viewer's active Taiwan-day He
   assert.equal(aiMusicSource.includes("HEART_COOLDOWN_MS"), false);
 });
 
-test("Bar Heartbreak repeats a Heart press as a same-day cancel", () => {
-  assert.ok(listenBarSource.includes("const next = previous === key ? null : key;"));
-  assert.ok(listenBarSource.includes("const today = taipeiVoteDate();"));
-  assert.ok(listenBarSource.includes('.eq("vote_date", today)'));
-  assert.ok(listenBarSource.includes("再按一次即可取消"));
-  assert.ok(listenBarSource.includes("取消愛心與收藏"));
+test("merged radio sends Hearts through the same original Explore handler", () => {
+  assert.ok(aiMusicSource.includes('onHeart={id =>'));
+  assert.ok(aiMusicSource.includes('void sendHeart(track)'));
+  assert.ok(aiMusicSource.includes('取消愛心與收藏'));
   assert.equal(listenBarSource.includes("HEART_COOLDOWN_MS"), false);
-  assert.equal(listenBarSource.includes("heartCooldownSince"), false);
 });
 
 test("Listen Bar reaction API deletes today's repeated Heart and synchronizes saved songs", () => {

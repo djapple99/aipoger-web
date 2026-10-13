@@ -12,10 +12,10 @@ test("Explore uses the shared navigation and compact searchable layout", () => {
   assert.ok(aiMusicSource.includes('找到對味的歌，讓好作品被聽見。'));
   assert.ok(aiMusicSource.includes('type="search"'));
   assert.ok(aiMusicSource.includes('filterAiMusicTracks'));
-  assert.ok(aiMusicSource.includes('連續聽電台'));
+  assert.ok(aiMusicSource.includes('<ExploreRadio'));
   assert.ok(aiMusicSource.includes('setWorksView("genre")'));
   assert.ok(aiMusicSource.includes('setWorksView("heat")'));
-  assert.ok(header.includes('/listen-bar#play-request'));
+  assert.ok(header.includes('/profile?submit=1#submit-work'));
   assert.equal(aiMusicSource.includes('ai-music-hero-title'), false);
   assert.equal(aiMusicSource.includes('explore-frequency-stage.webp'), false);
   assert.ok(aiMusicSource.includes('catalogMetadata'));
@@ -39,9 +39,10 @@ test("Explore share links stay on the shared work in the Explore catalog", () =>
   assert.ok(aiMusicSource.includes("scrollIntoView"));
 });
 
-test("Bar remains the upload radio and Showtime exposes charts and Choice without certification", () => {
-  assert.ok(listenBarSource.includes("AI 音樂公播池與投稿入口"));
-  assert.ok(listenBarSource.includes("也會出現在探索 AI 音樂"));
+test("Bar redirects to integrated Explore and Showtime keeps charts and Choice", () => {
+  assert.ok(listenBarSource.includes("/ai-music?"));
+  assert.ok(listenBarSource.includes("/profile?submit=1"));
+  assert.equal(listenBarSource.includes("setChatInput"), false);
   assert.ok(showtimeSource.includes("chart={<MonthlyChart lang={lang} />"));
   assert.ok(showtimeSource.includes("PublicChoiceGallery"));
   assert.equal(showtimeSource.includes("ai_music_showtime_certified"), false);
