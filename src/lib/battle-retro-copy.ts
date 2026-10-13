@@ -20,7 +20,7 @@ export function battleRetroCopy(lang: string) {
     dropCreate: v("發起挑戰", "Start a challenge", "挑戦する", "도전 시작"),
     pool: v("挑戰池", "Challenge pool", "挑戦プール", "도전 풀"),
     back: v("返回 Battle", "Back to Battle", "Battleに戻る", "Battle로 돌아가기"),
-    listenDescription: v("每首至少聽 8 秒，選完自動接下一題。", "Listen at least 8 seconds each. Choose to move on automatically.", "各曲8秒以上試聴。選ぶと自動で次へ。", "각 곡을 8초 이상 듣고 선택하면 자동으로 다음 문제로 이동해요."),
+    listenDescription: v("每首聽滿 8 秒，選完自動換題。", "Listen 8 seconds each. Choose to continue.", "各曲8秒以上試聴。選ぶと自動で次へ。", "각 곡을 8초 이상 듣고 선택하면 자동으로 다음 문제로 이동해요."),
     play: v("播放", "Play", "再生", "재생"), pause: v("暫停", "Pause", "一時停止", "일시정지"),
     replay: v("重播", "Replay", "もう一度", "다시 듣기"),
     prefer: v("比較喜歡", "Prefer", "こちらが好き", "더 좋아요"),
