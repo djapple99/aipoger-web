@@ -152,7 +152,7 @@ export default function CreatorLinkUpload({
       <p className={styles.allowance}>
         {quota?.unlimited ? text("Owner · 投稿不限數量", "Owner · Unlimited submissions", "Owner · 投稿数の制限なし", "Owner · 제출 수 제한 없음") : <>{text("本期已用", "Used", "今期使用", "기간 사용")}{" "}{quota ? `${quota.used} / ${quota.limit}` : "—"} · {text("每168小時三件免費，之後每件60 Credit", "3 free per 168 hours, then 60 Credit each", "168時間に3件無料、その後は1件60 Credit", "168시간에3건 무료, 이후 건당60 Credit")}</>}
       </p>
-      <p>{creditCopy(lang).allowance} · Credit {quota?.balance ?? "—"}{quota?.debt ? ` · ${creditCopy(lang).debt} ${quota.debt}` : ""}</p>
+      {!quota?.unlimited ? <p>{creditCopy(lang).allowance} · Credit {quota?.balance ?? "—"}{quota?.debt ? ` · ${creditCopy(lang).debt} ${quota.debt}` : ""}</p> : null}
       {quota && !quota.unlimited && quota.used >= 3 ? <label><input type="checkbox" checked={confirmedCredit} onChange={e => setConfirmedCredit(e.target.checked)} /> {creditCopy(lang).consent}</label> : null}
       <label>
         <span>

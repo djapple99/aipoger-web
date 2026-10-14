@@ -21,6 +21,7 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
   const reviewDrafts = useRef(new Map<string, MvReviewDraft>());
   const [showCommentCue, setShowCommentCue] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
+  const [commentsVersion, setCommentsVersion] = useState(0);
   const [loading, setLoading] = useState(true);
   const [readFailed, setReadFailed] = useState(false);
   const [writeFailed, setWriteFailed] = useState(false);
@@ -65,6 +66,11 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
       } catch { if (active) setReadFailed(true); }
       finally { if (active) setLoading(false); }
     })();
+    return () => { active = false; controller.abort(); };
+  }, [work.id, commentsVersion]);
+
+  useEffect(() => {
+    let active = true;
     const readHeart = async () => {
       setHearted(null);
       setHeartReadFailed(false);
@@ -87,7 +93,7 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
       if (detail?.trackId === work.id && typeof detail.heartedToday === "boolean") setHearted(detail.heartedToday);
     };
     window.addEventListener("aipoger:music-heart", syncHeart);
-    return () => { active = false; controller.abort(); subscription.unsubscribe(); window.removeEventListener("aipoger:music-heart", syncHeart); };
+    return () => { active = false; subscription.unsubscribe(); window.removeEventListener("aipoger:music-heart", syncHeart); };
   }, [work.id]);
 
   const submitHeart = async () => {
@@ -126,7 +132,12 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
         : <Link className={styles.feedbackAuth} href={authHref}>{copy.loginFeedback}</Link>}
       {heartReadFailed ? <p role="alert" className={styles.refreshError}>{copy.error}</p> : null}
       <div ref={commentArea} id="mv-comment-area">
-        <MvRatingForm key={work.id} trackId={work.id} signedIn={signedIn} surface={work.videoId ? "mv" : "music"} drafts={reviewDrafts.current} onBusy={onReviewBusy ?? (() => {})} onSaved={item => { if (currentWork.current !== work.id) return; if (item) setComments(current => current.some(comment => comment.id === item.id) ? current : [...current, item]); onChange(); }} />
+        <MvRatingForm key={work.id} trackId={work.id} signedIn={signedIn} surface={work.videoId ? "mv" : "music"} drafts={reviewDrafts.current} onBusy={onReviewBusy ?? (() => {})} onSaved={item => {
+          if (currentWork.current !== work.id) return;
+          if (item) setComments(current => current.some(comment => comment.id === item.id) ? current.map(comment => comment.id === item.id ? item : comment) : [...current, item]);
+          setCommentsVersion(version => version + 1);
+          onChange();
+        }} />
       </div>
       <section id="mv-public-comments" className={styles.feedbackComments} aria-label={copy.comments}>
         {loading ? <p role="status">{copy.loadingComments}</p> : readFailed ? <p role="alert">{copy.error}</p>

@@ -62,8 +62,10 @@ export default function MvRatingForm({ trackId, signedIn, onSaved, onBusy, draft
       const {data}=await supabase.auth.getSession(); if(!data.session) throw new Error("Sign in");
       const r=await fetch(endpoint,{method:"PATCH",headers:{"Content-Type":"application/json",Authorization:`Bearer ${data.session.access_token}`},body:JSON.stringify({commentId:myComment.id,text:myComment.text,active:false})});
       if(!r.ok) throw new Error("Unavailable");
+      if (!alive.current) return;
       setMyComment(null);setEditing(false);setText("");onSaved(null);setRetry(v=>v+1);window.dispatchEvent(new CustomEvent("aipoger:credit"));
-    } catch {setFailed(true);} finally {setBusy(false);onBusy(false);}
+      window.dispatchEvent(new CustomEvent("aipoger:mv-rating", { detail: { trackId } }));
+    } catch {if (alive.current) setFailed(true);} finally {if (alive.current) {setBusy(false);onBusy(false);}}
   };
   const edit = () => { receipt.current = null; setSaved(false); };
   return <form onSubmit={submit} className={`${styles.feedbackForm} ${styles.mvRatingForm}`}>

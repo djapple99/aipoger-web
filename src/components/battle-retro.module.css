@@ -4,7 +4,7 @@
 .titleRow>div {display:flex;align-items:center;gap:26px;}
 .titleRow h1 {margin:0;font-size:clamp(26px,3vw,38px);font-weight:900;line-height:1.2;}
 .titleRow p {font-size:16px;color:#d0d5d6;}
-.titleRow nav {display:flex;gap:24px;font-size:15px;}
+.titleRow nav {display:flex;align-items:center;flex-wrap:wrap;gap:24px;font-size:15px;}
 .titleRow a,.modeActions>a {display:inline-flex;align-items:center;gap:12px;}
 .entry,.mode {position:relative;isolation:isolate;border-bottom:1px solid #40505a;overflow:hidden;background:#1d2930;}
 .entry {min-height:350px;display:flex;align-items:center;}
@@ -85,7 +85,7 @@
   .station{height:400px}.controls{left:15px;right:15px;gap:8px}.replay{display:none}.controls time{font-size:12px}.play{font-size:14px}
 }
 @media(max-width:640px){
-  .titleRow{padding:18px 18px;align-items:flex-start;gap:12px}.titleRow nav{gap:12px;font-size:13px;padding-top:5px}.titleRow h1{font-size:25px}.titleRow a svg{display:none}
+  .titleRow{padding:18px 18px;align-items:flex-start;flex-wrap:wrap;gap:8px}.titleRow nav{gap:12px;font-size:13px;padding-top:0}.titleRow h1{font-size:25px}.titleRow a svg{display:none}
   .entry{min-height:424px;align-items:flex-start}.entry .backdrop{height:230px!important;top:auto!important;bottom:0!important;object-position:75% center}
   .entryCopy{width:100%;padding:22px 18px 200px}.entryCopy h2{font-size:32px;display:inline-block;margin-right:14px}.entryCopy p{font-size:15px;margin-bottom:6px}
   .accent,.mintAccent{width:40px;height:5px;margin-bottom:12px}.entryCopy .reward{font-size:12px;position:static;margin-bottom:6px}

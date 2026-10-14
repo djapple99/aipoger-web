@@ -1,6 +1,6 @@
-.trigger { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:44px; padding:2px 5px; background:transparent; border:0; color:#a1a1aa; font-size:13px; font-weight:600; white-space:nowrap; cursor:pointer; }
+.trigger { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:44px; max-width:100%; padding:2px 10px; background:#ff8f3210; border:1px solid #ff8f3266; border-radius:4px; color:#ffd0a2; font-size:15px; font-weight:750; white-space:nowrap; cursor:pointer; }
 .trigger img { width:29px; height:22px; object-fit:contain; }
-.trigger:hover { color:#fff; }
+.trigger:hover { color:#fff; background:#ff8f3224; border-color:#ff8f32; }
 .trigger:focus-visible,.dialog button:focus-visible { outline:2px solid #ff963f; outline-offset:3px; }
 .dialog { margin:auto; width:calc(100% - 32px); max-width:560px; max-height:calc(100svh - 48px); padding:0; overflow:auto; border:1px solid #f9b97c66; background:#090807; color:white; box-shadow:0 28px 90px #000b; overscroll-behavior:contain; }
 .dialog::backdrop { background:#000c; backdrop-filter:blur(4px); }

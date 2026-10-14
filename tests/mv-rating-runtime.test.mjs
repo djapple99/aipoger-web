@@ -43,3 +43,15 @@ test('out-of-range and two-decimal entries retain the draft and cannot be submit
  assert.equal(ui.calls.some(x=>x.method==='POST'),false);assert.equal(ui.find('textarea').value,'A real comment');
  ui.find('input').onChange({target:{value:'10'}});await ui.flush();assert.equal(ui.button().disabled,false);
 });
+
+test('withdrawing a review refreshes ratings and Credit while preserving the same work ID',async t=>{
+ const events=[];const win=new EventTarget();class CustomEvent extends Event{constructor(name,data={}){super(name);this.detail=data.detail;}};
+ for(const name of ['aipoger:mv-rating','aipoger:credit'])win.addEventListener(name,e=>events.push({name:e.type,...e.detail}));
+ let active=true;const saved=[];const session={access_token:'test',user:{id:'reader'}};
+ const ui=await mountMv(t,'src/components/mv-rating-form.tsx',{trackId:'first',signedIn:true,onSaved:c=>saved.push(c),onBusy(){}},
+  {'@/lib/credit-copy':{creditCopy},'@/lib/i18n':{useI18n:()=>({lang:'zh'})},'@/lib/mv-copy':{mvCopy},'@/lib/home-copy':{homeCopy},'@/lib/work-rating':{parseWorkRating},'./home-editorial.module.css':{__esModule:true,default:{}},'@/lib/supabase':{supabase:{auth:{getSession:async()=>({data:{session}})}}}},
+  {window:win,CustomEvent,crypto:{randomUUID:()=> 'request-id'},fetch:async(_url,init={})=>{if(init.method==='PATCH')active=false;return {ok:true,json:async()=>init.method==='PATCH'?{ok:true}:{myScore:8.7,canRate:true,myComment:active?{id:'comment',text:'My original review'}:null,ratingAverage:active?8.7:null,ratingCount:active?1:0}}}});
+ const button=ui.nodes().find(n=>n.type==='button'&&n.props.children===creditCopy('zh').withdraw);await button.props.onClick();await ui.flush();
+ assert.deepEqual(saved,[null]);assert.equal(events.filter(e=>e.name==='aipoger:mv-rating')[0].trackId,'first');assert.equal(events.filter(e=>e.name==='aipoger:credit').length,1);
+ assert.equal(ui.nodes().some(n=>n.type==='button'&&n.props.children===creditCopy('zh').withdraw),false);
+});

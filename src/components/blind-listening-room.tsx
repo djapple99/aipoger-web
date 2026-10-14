@@ -40,6 +40,11 @@ export default function BlindListeningRoom() {
     if (!response.ok) throw new Error(payload.error || "LOAD_FAILED");
     return payload;
   }, []);
+  useEffect(() => {
+    if (!question?.id || !userId) return;
+    // While the two clips are heard, prepare only. Completion still owns issuance.
+    void api({ action: "prepare", questionId: question.id }).catch(() => {});
+  }, [api, question?.id, userId]);
   const stopAudio = useCallback(() => {
     for (const el of [audioA.current, audioB.current]) { if (el) { el.pause(); el.removeAttribute("src"); el.load(); } }
     startGeneration.current++; playbackAuthorized.current = false; sideRef.current = null; setSide(null); setPlaying(false); setArming(null);

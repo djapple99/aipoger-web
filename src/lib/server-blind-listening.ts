@@ -56,8 +56,9 @@ export async function blindSummaries(admin = creatorAdmin()) {
   if (error || !Array.isArray(data)) throw new Error("Blind summaries unavailable");
   return new Map<string, BlindSummary>(data.map(r => [r.track_id, { people: Number(r.people), preferencePoints: Number(r.preference_points) }]));
 }
-export async function readCredit(admin: SupabaseClient, userId: string) {
-  const { data, error } = await admin.rpc("creator_credit_summary", { p_user: userId });
+export async function readCredit(admin: SupabaseClient, userId: string, signal?: AbortSignal) {
+  const request = admin.rpc("creator_credit_summary", { p_user: userId });
+  const { data, error } = await (signal ? request.abortSignal(signal) : request);
   if (error || !data || !Number.isSafeInteger(data.balance) || data.balance < 0 || !Number.isSafeInteger(data.debt) || data.debt < 0 || !Array.isArray(data.entries)) throw new Error("Credit unavailable");
   return data as { enabled: boolean; balance: number; debt: number; entries: { id: string; delta: number; reason: string; created_at: string }[] };
 }

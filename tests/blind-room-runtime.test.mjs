@@ -24,6 +24,7 @@ async function mount(t,{lang="zh",guest=false,failVote=false,nextFails=false,lag
      if((lagTicks&&body.event!=="play")||(lagPlay&&body.event==="play"))await new Promise(resolve=>releases.push(resolve));
      return {ok:true,json:async()=>({heardA:heard.A,heardB:heard.B})};
    }
+   if(body.action==="prepare")return {ok:true,json:async()=>({prepared:true})};
    if(failVote)return {ok:false,json:async()=>({error:"SAVE_FAILED"})};
    counter++;heard.A=heard.B=0;active=null;
    return {ok:true,json:async()=>({choice:body.choice,awarded:3,balance:3,nextQuestion:nextFails?null:question(),nextError:nextFails})};

@@ -22,7 +22,7 @@
 .modes button[aria-pressed=true] { color: #ff7518; }
 .modes button[aria-pressed=true]::after { content: ""; position: absolute; height: 3px; background: #ff7518; bottom: -11px; left: 0; right: 0; }
 .controls select { margin-left: 8px; border: 1px solid #ffffff28; border-radius: 5px; min-height: 42px; width: 230px; background: #0b0b0c; padding: 0 14px; font-size: 14px; color: #d2d2d7; }
-.guide { margin-left: auto; display: flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; gap: 7px; color: #aaa; font-size: 14px; cursor: pointer; }
+.guide { margin-left: auto; min-width: 44px; }
 .guide img { width: 22px; height: 26px; object-fit: contain; }
 .catalog { display: grid; gap: 22px; padding-top: 12px; }
 .section { min-width: 0; scroll-margin-top: 24px; }

@@ -24,6 +24,7 @@ function mount({expired=false,authenticated=true,nextFails=false}={}) {
  const admin={rpc:async(name,args)=>{calls.push({name,args});return {data:name==="complete_blind_question"?{choice:"tie",awarded:3,balance:3}:{heardA:30,heardB:30},error:null};}};
  const api=loadTs("src/app/api/blind-listen/route.ts",{
    "@/lib/server-creator-auth":{creatorAuth:async()=>authenticated?{admin,user:{id:USER}}:null},
+   "@/lib/server-blind-preparation":{warmBlindPreparation:async()=>{calls.push({name:"warm"});},takeBlindPreparation:async()=>{calls.push({name:"prepare"});if(nextFails)throw Error("Next unavailable");return {pairs:[["c","b"]]};}},
    "@/lib/server-blind-listening":{nextBlindQuestion:async()=>({id:uuid(13)}),
      prepareBlindQuestion:async()=>{calls.push({name:"prepare"});if(nextFails)throw Error("Next unavailable");return {pairs:[["c","b"]]};},
      issuePreparedBlindQuestion:async()=>{calls.push({name:"issue"});return {id:uuid(13)};},
@@ -94,4 +95,63 @@ test("parallel preparation excludes the just-completed pair and does not issue a
  assert.ok(next.pairs.every(pair=>!pair.includes(uuid(23))&&!(pair.includes(uuid(20))&&pair.includes(uuid(21)))));
  // If a candidate becomes unavailable, continue through prepared alternatives.
  await blindServer.issuePreparedBlindQuestion(admin,USER,next);assert.equal(issued,2);
+});
+
+test('next question is issued while a slow Credit refresh is still pending',async()=>{
+ let releaseCredit,startedNext=false;const credit=new Promise(resolve=>{releaseCredit=resolve;});
+ const q={id:uuid(12),state:'voted',track_a_id:'a',track_b_id:'b'};
+ const api=loadTs('src/app/api/blind-listen/route.ts',{
+  '@/lib/server-creator-auth':{creatorAuth:async()=>({admin:{rpc:async()=>({data:{awarded:3},error:null})},user:{id:USER}})},
+  '@/lib/server-blind-preparation':{takeBlindPreparation:async()=>({pairs:[['c','d']]})},
+  '@/lib/server-blind-listening':{questionForUser:async()=>q,prepareBlindQuestion:async()=>({pairs:[['c','d']]}),
+   readCredit:async(_admin,_user,signal)=>{assert.ok(signal instanceof AbortSignal);return credit;},
+   issuePreparedBlindQuestion:async()=>{startedNext=true;releaseCredit({balance:18,debt:0});return {id:uuid(13)};}},
+ });
+ const r=await api.POST(new Request('https://site.test/api/blind-listen',{method:'POST',body:JSON.stringify({action:'vote',questionId:q.id,choice:'tie'})}));
+ const p=await r.json();assert.equal(startedNext,true);assert.equal(p.balance,18);assert.equal(p.nextError,false);
+});
+test('an aborted balance read keeps the earned reward and next round usable',async()=>{
+ const q={id:uuid(12),state:'voted',track_a_id:'a',track_b_id:'b'};
+ const api=loadTs('src/app/api/blind-listen/route.ts',{
+  '@/lib/server-creator-auth':{creatorAuth:async()=>({admin:{rpc:async()=>({data:{awarded:3,balance:999},error:null})},user:{id:USER}})},
+  '@/lib/server-blind-preparation':{takeBlindPreparation:async()=>({pairs:[]})},
+  '@/lib/server-blind-listening':{questionForUser:async()=>q,prepareBlindQuestion:async()=>({pairs:[]}),
+   readCredit:async()=>{throw Error('Credit timeout');},issuePreparedBlindQuestion:async()=>({id:uuid(13)})},
+ });
+ const p=await (await api.POST(new Request('https://site.test/api/blind-listen',{method:'POST',body:JSON.stringify({action:'vote',questionId:q.id,choice:'tie'})}))).json();
+ assert.equal(p.awarded,3);assert.equal(p.creditError,true);assert.equal(p.balance,null);assert.equal(p.nextQuestion.id,uuid(13));
+});
+
+
+test('optional preparation verifies ownership and exposes no work identity or reward',async()=>{
+ const ui=mount();const r=await ui.api.POST(ui.request({action:'prepare',userId:uuid(99)}));
+ assert.equal(r.status,200);assert.deepEqual(await r.json(),{prepared:true});assert.deepEqual(ui.calls,[{name:'warm'}]);
+ assert.equal((await ui.api.POST(ui.request({action:'prepare',questionId:uuid(99)}))).status,503);
+ assert.equal(ui.calls.length,1);const expired=mount({expired:true});
+ assert.deepEqual(await (await expired.api.POST(expired.request({action:'prepare'}))).json(),{prepared:false});assert.equal(expired.calls.length,0);
+});
+test('warmed candidates are checked again and unavailable works never enter the next round',async()=>{
+ const q={id:uuid(12),state:'voted',track_a_id:'a',track_b_id:'b'};let issued,rebuilt=0;
+ const api=loadTs('src/app/api/blind-listen/route.ts',{
+  '@/lib/server-creator-auth':{creatorAuth:async()=>({admin:{rpc:async()=>({data:{awarded:3},error:null})},user:{id:USER}})},
+  '@/lib/server-blind-preparation':{takeBlindPreparation:async()=>({pending:null,pairs:[['removed','c']],revalidate:true})},
+  '@/lib/server-blind-listening':{questionForUser:async()=>q,blindCatalog:async()=>[{id:'c'}],readCredit:async()=>({balance:3,debt:0}),
+   prepareBlindQuestion:async()=>{rebuilt++;return {pending:null,pairs:[['fresh','c']]};},
+   issuePreparedBlindQuestion:async(_db,_user,plan)=>{issued=plan.pairs;return {id:uuid(13)};}},
+ });
+ const r=await api.POST(new Request('https://site.test/api/blind-listen',{method:'POST',body:JSON.stringify({action:'vote',questionId:q.id,choice:'tie'})}));
+ assert.equal(r.status,200);assert.deepEqual(issued,[['fresh','c']]);assert.equal(rebuilt,1);
+});
+
+test('a warmed pending round from another tab is refreshed before it can be returned',async()=>{
+ const q={id:uuid(12),state:'voted'};let issued;
+ const api=loadTs('src/app/api/blind-listen/route.ts',{
+  '@/lib/server-creator-auth':{creatorAuth:async()=>({admin:{rpc:async()=>({data:{awarded:3},error:null})},user:{id:USER}})},
+  '@/lib/server-blind-preparation':{takeBlindPreparation:async()=>({pending:{id:'old-pending'},pairs:[],revalidate:true})},
+  '@/lib/server-blind-listening':{questionForUser:async()=>q,readCredit:async()=>({balance:3,debt:0}),
+   prepareBlindQuestion:async()=>({pending:null,pairs:[['fresh','current']]}),
+   issuePreparedBlindQuestion:async(_db,_user,plan)=>{issued=plan;return {id:uuid(13)};}},
+ });
+ const r=await api.POST(new Request('https://site.test/api/blind-listen',{method:'POST',body:JSON.stringify({action:'vote',questionId:q.id,choice:'tie'})}));
+ assert.equal(r.status,200);assert.equal(issued.pending,null);assert.deepEqual(issued.pairs,[['fresh','current']]);
 });

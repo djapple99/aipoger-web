@@ -118,7 +118,7 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
   const creatorWeeklyUploadLimitFull = creatorUploadLimitReached(uploadQuota);
   const publicUploadBlocked = !privateReady || (!pendingSubmission.current && creatorWeeklyUploadLimitFull);
   const publicUploadBlockedMessage = !privateReady ? barText(lang, "請等作品庫讀取完成後再投稿。", "Wait for your works to load before submitting.", "作品の読み込み後に投稿してください。", "작품 목록을 불러온 후 제출하세요.")
-    : barText(lang, "額外投稿需60 Credit，待追回欠額補足前不能花點。", "Extra submissions need 60 Credit and no outstanding debt.", "今期の投稿枠は使用済みです。削除しても枠は戻りません。", "이번 기간 업로드 한도를 사용했습니다. 삭제해도 복구되지 않습니다.");
+    : barText(lang, "額外投稿需60 Credit，待追回欠額補足前不能花點。", "Extra submissions need 60 Credit and no outstanding debt.", "追加投稿には60 Creditが必要です。未回収額を補うまで使用できません。", "추가 제출에는60 Credit이 필요합니다. 미회수 금액을 채우기 전에는 사용할 수 없습니다.");
   const uploadPhaseNoticeTitle = publicUploadBlocked ? publicUploadBlockedMessage : barText(lang, "投稿後直接公開", "Public immediately", "投稿後すぐ公開", "업로드 후 즉시 공개");
   const uploadPhaseNoticeBody = barText(lang, "作品公開三個月，加入電台、探索與人氣榜。", "Works appear in radio, Explore and the popularity chart for three months.", "作品は3か月間、ラジオ・Explore・人気ランキングに掲載されます。", "작품은 3개월간 라디오, Explore, 인기 차트에 공개됩니다.");
   useEffect(() => {
@@ -423,7 +423,7 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
     }
   };
   return <div className="mt-4">
-    <p className="text-sm text-zinc-300">{creditCopy(lang).allowance} · Credit {uploadQuota?.balance ?? "—"}{uploadQuota?.debt ? ` · ${creditCopy(lang).debt} ${uploadQuota.debt}` : ""}</p>
+    {!uploadQuota?.unlimited ? <p className="text-sm text-zinc-300">{creditCopy(lang).allowance} · Credit {uploadQuota?.balance ?? "—"}{uploadQuota?.debt ? ` · ${creditCopy(lang).debt} ${uploadQuota.debt}` : ""}</p> : null}
     {uploadQuota && !uploadQuota.unlimited && uploadQuota.used >= 3 ? <label className="flex gap-2 my-3"><input type="checkbox" checked={confirmedCredit} onChange={e => setConfirmedCredit(e.target.checked)} />{creditCopy(lang).consent}</label> : null}
     <SafetyNotice kind="upload" compact className="mb-3" />
     {publicUploadMessage ? <p role="status" className="mb-3 text-sm text-orange-100">{publicUploadMessage}</p> : null}
@@ -548,8 +548,8 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
                       {uploadQuota?.unlimited ? barText(lang, "Owner · 投稿不限數量", "Owner · Unlimited submissions", "Owner · 投稿数の制限なし", "Owner · 제출 수 제한 없음") : barText(lang,
                         `上傳額度 ${uploadQuota ? `${uploadQuota.used}/3` : userId ? "確認中" : "登入後查看"}。每期從第一首成功投稿起算168小時，三件免費，之後每件60 Credit；刪除不退額度。`,
                         `Uploads ${uploadQuota ? `${uploadQuota.used}/3` : userId ? "checking" : "sign in to view"}. 3 free submissions per 168 hours, then 60 Credit each. Deletion does not restore the allowance.`,
-                        `投稿枠 ${uploadQuota ? `${uploadQuota.used}/3` : userId ? "確認中" : "ログインして確認"}。最初の投稿成功から7日間で最大3曲。削除しても枠は戻りません。`,
-                        `업로드 ${uploadQuota ? `${uploadQuota.used}/3` : userId ? "확인 중" : "로그인 후 확인"}. 첫 업로드 성공부터 7일간 최대 3곡. 삭제해도 한도는 복구되지 않습니다.`)}
+                        `無料投稿枠 ${uploadQuota ? `${uploadQuota.used}/3` : userId ? "確認中" : "ログインして確認"}。最初の投稿成功から168時間、3曲まで無料。その後は1曲60 Credit。削除しても枠は戻りません。`,
+                        `무료 제출 ${uploadQuota ? `${uploadQuota.used}/3` : userId ? "확인 중" : "로그인 후 확인"}. 첫 제출 성공부터168시간 동안3곡 무료, 이후 곡당60 Credit. 삭제해도 무료 한도는 복구되지 않습니다.`)}
                     </p>
                   </div>
                 )}
