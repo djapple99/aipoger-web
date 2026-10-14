@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type ReactNode, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowDown, Heart, X } from "lucide-react";
 import MvPlayer from "@/components/mv-player";
 import MvRatingForm, { type MvReviewDraft } from "@/components/mv-rating-form";
@@ -28,8 +28,6 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
   const [hearted, setHearted] = useState<boolean | null>(null);
   const [heartReadFailed, setHeartReadFailed] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [draft, setDraft] = useState("");
-  const [saved, setSaved] = useState(false);
   const currentWork = useRef(work.id); currentWork.current = work.id;
   const withVideo = Boolean(showVideo && work.videoId);
   const destination = new URL(returnPath, "https://aipoger.com");
@@ -57,7 +55,7 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
 
   useEffect(() => {
     const controller = new AbortController(); let active = true;
-    setLoading(true); setComments([]); setReadFailed(false); setWriteFailed(false); setSaved(false); setDraft("");
+    setLoading(true); setComments([]); setReadFailed(false); setWriteFailed(false);
     void (async () => {
       try {
         const response = await fetch(`/api/listen-bar/track-comments?trackId=${encodeURIComponent(work.id)}`, { signal: controller.signal, cache: "no-store" });
@@ -92,31 +90,25 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
     return () => { active = false; controller.abort(); subscription.unsubscribe(); window.removeEventListener("aipoger:music-heart", syncHeart); };
   }, [work.id]);
 
-  const submit = async (kind: "heart" | "comment") => {
-    if (busy || (kind === "comment" && !draft.trim())) return;
-    setBusy(true); setWriteFailed(false); setSaved(false);
+  const submitHeart = async () => {
+    if (busy) return;
+    setBusy(true); setWriteFailed(false);
     try {
       const { data } = await supabase.auth.getSession();
       const session = data.session;
       if (!session) { setSignedIn(false); return; }
-      const name = session.user.user_metadata?.display_name || session.user.user_metadata?.nickname || session.user.user_metadata?.full_name || session.user.user_metadata?.name || copy.member;
-      const response = await fetch(kind === "heart" ? "/api/listen-bar/reaction" : "/api/listen-bar/track-comments", {
+      const response = await fetch("/api/listen-bar/reaction", {
         method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify(kind === "heart" ? { trackId: work.id, reaction: "heart" } : { trackId: work.id, displayName: name, text: draft.trim() }),
+        body: JSON.stringify({ trackId: work.id, reaction: "heart" }),
       });
       const payload = await response.json();
       if (!response.ok) { if (response.status === 401) setSignedIn(false); throw new Error("Unavailable"); }
-      if (kind === "heart") {
-        if (currentWork.current === work.id) setHearted(payload.heartedToday === true);
-        window.dispatchEvent(new CustomEvent("aipoger:music-heart", { detail: { trackId: work.id, ...payload } }));
-      } else if (payload.comment) {
-        setComments(current => [...current, payload.comment]); setDraft(""); setSaved(true);
-      } else { throw new Error("Missing comment"); }
+      if (currentWork.current === work.id) setHearted(payload.heartedToday === true);
+      window.dispatchEvent(new CustomEvent("aipoger:music-heart", { detail: { trackId: work.id, ...payload } }));
       onChange();
     } catch { setWriteFailed(true); }
     finally { setBusy(false); }
   };
-  const comment = (event: FormEvent) => { event.preventDefault(); void submit("comment"); };
 
   return <dialog ref={dialog} className={`${styles.feedbackDialog} ${withVideo ? styles.feedbackWithVideo : ""}`} aria-labelledby="home-feedback-title" onCancel={onClose}
     onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
@@ -130,24 +122,18 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
       </> : null}
       <p className={styles.feedbackNote}>{supportNote ?? copy.supportNote}</p>
       {signedIn ? <button className={styles.feedbackHeart} type="button" disabled={busy || hearted === null} aria-pressed={hearted === true}
-        onClick={() => void submit("heart")}><Heart size={18} fill={hearted ? "currentColor" : "none"} />{hearted ? copy.removeHeart : copy.sendHeart}</button>
+        onClick={() => void submitHeart()}><Heart size={18} fill={hearted ? "currentColor" : "none"} />{hearted ? copy.removeHeart : copy.sendHeart}</button>
         : <Link className={styles.feedbackAuth} href={authHref}>{copy.loginFeedback}</Link>}
       {heartReadFailed ? <p role="alert" className={styles.refreshError}>{copy.error}</p> : null}
-      {withVideo ? <div ref={commentArea} id="mv-comment-area">
-        <MvRatingForm key={work.id} trackId={work.id} signedIn={signedIn} drafts={reviewDrafts.current} onBusy={onReviewBusy ?? (() => {})} onSaved={item => { if (currentWork.current !== work.id) return; if (item) setComments(current => current.some(comment => comment.id === item.id) ? current : [...current, item]); onChange(); }} />
-      </div> : null}
-      <section id={withVideo ? "mv-public-comments" : "mv-comment-area"} className={styles.feedbackComments} aria-label={copy.comments}>
+      <div ref={commentArea} id="mv-comment-area">
+        <MvRatingForm key={work.id} trackId={work.id} signedIn={signedIn} surface={withVideo ? "mv" : "music"} drafts={reviewDrafts.current} onBusy={onReviewBusy ?? (() => {})} onSaved={item => { if (currentWork.current !== work.id) return; if (item) setComments(current => current.some(comment => comment.id === item.id) ? current : [...current, item]); onChange(); }} />
+      </div>
+      <section id="mv-public-comments" className={styles.feedbackComments} aria-label={copy.comments}>
         {loading ? <p role="status">{copy.loadingComments}</p> : readFailed ? <p role="alert">{copy.error}</p>
           : comments.length ? comments.map(item => <article key={item.id}><strong>{item.name}</strong><p>{item.text}</p></article>)
             : <p>{copy.firstComment}</p>}
       </section>
-      {signedIn && !withVideo ? <form onSubmit={comment} className={styles.feedbackForm}>
-        <label htmlFor="home-comment">{copy.writeComment}</label>
-        <textarea id="home-comment" value={draft} onChange={event => { setDraft(event.target.value); setSaved(false); }} maxLength={280} rows={3} placeholder={copy.commentHint} />
-        <div><span>{draft.length} / 280</span><button type="submit" disabled={busy || !draft.trim()}>{busy ? copy.sending : copy.sendComment}</button></div>
-      </form> : null}
       {writeFailed ? <p role="alert" className={styles.refreshError}>{copy.feedbackError}</p> : null}
-      {saved ? <p role="status" className={styles.feedbackSaved}>{copy.commentSaved}</p> : null}
     </div>
     {withVideo && showCommentCue ? <button type="button" className={styles.commentScrollCue} aria-controls="mv-comment-area"
       onClick={() => commentArea.current?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })}>

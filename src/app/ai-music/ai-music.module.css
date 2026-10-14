@@ -138,7 +138,7 @@
 .chartNote { margin: 3px 0 6px; color: #aaa; font-size: 13px; }
 .chartScore { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .chartRows { padding: 0; margin: 0; list-style: none; }
-.chartRows li { display: grid; grid-template-columns: 32px 44px minmax(0,1fr) 44px 34px; align-items: center; gap: 9px; border-bottom: 1px solid #ffffff24; min-height: 50px; }
+.chartRows li { display: grid; grid-template-columns: 32px 44px minmax(0,1fr) 44px 54px; align-items: center; gap: 9px; border-bottom: 1px solid #ffffff24; min-height: 50px; }
 .rank { font-size: 22px; font-weight: 750; color: #bbb; font-variant-numeric: tabular-nums; }
 .leadingRank { color: #ff7518; }
 .chartPlay { width: 44px; height: 44px; position: relative; display: grid; place-items: center; overflow: hidden; border-radius: 3px; cursor: pointer; }
@@ -150,7 +150,7 @@
 .chartIdentity button:hover { color: #ff7518; }
 .chartIdentity span { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: #aaa; font-size: 12px; }
 .chart .heart svg { width: 27px; height: 27px; }
-.supporters { color: #ccc; font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+.supporters { min-width: 0; overflow-wrap: anywhere; color: #ccc; font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
 .fullChart { display: none; color: #ff7518; font-size: 17px; font-weight: 700; min-height: 48px; cursor: pointer; }
 .catalog { padding-top: 0; gap: 16px; }
 .grid { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 18px; }
@@ -206,7 +206,7 @@
  .radioVolume { display: none; }
  .discovery { grid-template-columns: 300px minmax(0,1fr); gap: 20px; }
  .chartColumn { padding-right: 18px; }
- .chartRows li { grid-template-columns: 26px 36px minmax(0,1fr) 40px 24px; gap: 5px; }
+ .chartRows li { grid-template-columns: 26px 36px minmax(0,1fr) 40px 48px; gap: 5px; }
  .chartPlay { width: 36px; }
  .grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
  .headingText { display: block; }
@@ -218,7 +218,7 @@
  .discovery { grid-template-columns: 1fr; }
  .chartColumn { border-right: 0; padding: 0 0 12px; border-bottom: 1px solid #ffffff28; }
  .chartRows { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 18px; }
- .chartRows li { grid-template-columns: 28px 40px minmax(0,1fr) 44px 30px; gap: 7px; }
+ .chartRows li { grid-template-columns: 28px 40px minmax(0,1fr) 44px 52px; gap: 7px; }
  .chartPlay { width: 40px; }
  .chart h2 { font-size: 26px; }
  .chartRows[data-expanded="false"] li:nth-child(n+5) { display: none; }
@@ -274,3 +274,5 @@
 }
 @media (max-width: 540px) { .stationName span { display: none; } }
 @media (max-width: 360px) { .stationName h2 { font-size: 20px; } }
+
+.trackRating { flex-shrink: 0; color: #ffb47f; font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }

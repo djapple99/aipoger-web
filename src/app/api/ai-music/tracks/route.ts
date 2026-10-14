@@ -18,6 +18,7 @@ import { isCurrentMusicGenre } from "@/lib/music-genres";
 import { readEarwormAffinityMap } from "@/lib/earworm-affinity";
 import { isPublicDiscoveryTrack } from "@/lib/listen-bar-airplay";
 import { blindSummaries } from "@/lib/server-blind-listening";
+import { mvRatingSummaries } from "@/lib/server-mv-reviews";
 
 type AdminClient = SupabaseClient;
 
@@ -323,18 +324,19 @@ export async function GET() {
         };
       })
       .filter((row) => !row.ai_music_explore_retired);
-    const blind = await blindSummaries(admin);
-    const maxHearts = Math.max(0, ...tracks.map(row => row.ai_music_pool_supporter_count));
+    const [blind, ratings] = await Promise.all([blindSummaries(admin), mvRatingSummaries(admin)]);
     const rankedTracks = tracks.map(row => {
       const summary = blind.get(row.id) ?? { people: 0, preferencePoints: 0 };
+      const rating = ratings.get(row.id) ?? { ratingAverage: null, ratingCount: 0, ratingTotal: 0 };
       return { ...row, ai_music_blind_sample_count: summary.people,
         ai_music_blind_preference_points: summary.preferencePoints,
-        ai_music_popularity_score: musicPoolPopularityScore(row.id, row.created_at, row.ai_music_pool_supporter_count, maxHearts, summary, now) };
+        ai_music_rating_average: rating.ratingAverage, ai_music_rating_count: rating.ratingCount, ai_music_rating_total: rating.ratingTotal,
+        ai_music_popularity_score: musicPoolPopularityScore(row.id, row.created_at, row.ai_music_pool_supporter_count, summary, rating.ratingTotal, now) };
     });
 
     return NextResponse.json({ tracks: rankedTracks }, {
       headers: {
-        "Cache-Control": "public, max-age=0, s-maxage=15, stale-while-revalidate=15",
+        "Cache-Control": "no-store",
       },
     });
   } catch (error) {

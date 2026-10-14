@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { buildAiMusicSurfaceLifecycleMap } from "./ai-music-surface-lifecycle";
-import { buildHomeDiscovery, readAllHomePages, taipeiHomeWeek, type HomeHeartRow, type HomeTrackRow } from "./home-discovery";
+import { buildHomeDiscovery, buildPublicHomeWorks, readAllHomePages, taipeiHomeWeek, type HomeHeartRow, type HomeTrackRow } from "./home-discovery";
+import { isInDiscoveryMusicPool } from "./music-pool";
 import type { ListenBarTrackRow } from "./listen-bar";
 import { mvRatingSummaries } from "./server-mv-reviews";
 import { buildMvDiscovery } from "./mv-discovery";
@@ -58,7 +59,16 @@ export async function readMvDiscovery() {
   const source = await readDiscoverySource();
   const result = buildMvDiscovery(source.rows, source.hearts, source.mediaUrl, source.now);
   const summaries = await mvRatingSummaries(source.admin);
-  for (const work of [...result.works, ...result.featured]) Object.assign(work, summaries.get(work.id) ?? { ratingAverage: null, ratingCount: 0 });
+  for (const work of [...result.works, ...result.featured]) Object.assign(work, summaries.get(work.id) ?? { ratingAverage: null, ratingCount: 0, ratingTotal: 0 });
   await addFeaturedComments(result, source);
   return result;
+}
+
+export async function readMusicReviewWork(trackId: string) {
+  const source = await readDiscoverySource();
+  const work = buildPublicHomeWorks(source.rows, source.hearts, source.mediaUrl, source.now)
+    .find(item => item.id === trackId && isInDiscoveryMusicPool(item.publishedAt, item.id, source.now.getTime()));
+  if (!work) return null;
+  const summaries = await mvRatingSummaries(source.admin);
+  return { ...work, ...(summaries.get(work.id) ?? { ratingAverage: null, ratingCount: 0, ratingTotal: 0 }) };
 }

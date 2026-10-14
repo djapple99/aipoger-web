@@ -24,12 +24,9 @@ async function mount(t,{signedIn=true,failWrite=false,showVideo=false,commentsBe
 test('homepage feedback reads public comments but guests cannot send a write',async t=>{
  const ui=await mount(t,{signedIn:false});assert.ok(ui.text().includes('Real public comment'));assert.equal(ui.find('textarea'),undefined);assert.equal(ui.requests.some(r=>r.method==='POST'),false);assert.ok(ui.find('link').href.startsWith('/auth?'));
 });
-test('homepage comments retain the work identity and authenticated author; successful comments appear only after save',async t=>{
- const ui=await mount(t);ui.find('textarea').onChange({target:{value:'The chorus and rain scene work together.'}});await ui.flush();ui.find('form').onSubmit({preventDefault(){}});await ui.flush();
- const request=ui.requests.find(r=>r.method==='POST');assert.equal(request.url,'/api/listen-bar/track-comments');assert.deepEqual(JSON.parse(request.body),{trackId:'target-work',displayName:'Listener',text:'The chorus and rain scene work together.'});assert.equal(request.headers.Authorization,'Bearer test-token');assert.equal(ui.find('textarea').value,'');assert.ok(ui.text().includes('The chorus and rain scene work together.'));assert.equal(ui.changed(),1);
-});
-test('failed comment submission preserves the draft and does not invent a saved comment',async t=>{
- const ui=await mount(t,{failWrite:true});ui.find('textarea').onChange({target:{value:'Keep this draft'}});await ui.flush();ui.find('form').onSubmit({preventDefault(){}});await ui.flush();assert.equal(ui.find('textarea').value,'Keep this draft');assert.equal(ui.changed(),0);assert.ok(ui.text().includes(homeCopy('zh').feedbackError));
+test('song feedback uses the shared decimal rating form and saved comments retain the original work',async t=>{
+ const ui=await mount(t);const rating=ui.find('rating-form');assert.equal(rating.trackId,'target-work');assert.equal(rating.surface,'music');assert.equal(rating.signedIn,true);assert.equal(ui.find('textarea'),undefined);
+ rating.onSaved({id:'saved',name:'Listener',text:'The chorus and rain scene work together.'});await ui.flush();assert.ok(ui.text().includes('The chorus and rain scene work together.'));assert.equal(ui.changed(),1);
 });
 test('homepage hearts reuse the existing reaction endpoint and refresh discovery after confirmation',async t=>{
  const ui=await mount(t);ui.button('送出愛心與收藏').onClick();await ui.flush();const request=ui.requests.find(r=>r.method==='POST');assert.equal(request.url,'/api/listen-bar/reaction');assert.deepEqual(JSON.parse(request.body),{trackId:'target-work',reaction:'heart'});assert.equal(ui.button('取消今日愛心與收藏')['aria-pressed'],true);assert.equal(ui.changed(),1);

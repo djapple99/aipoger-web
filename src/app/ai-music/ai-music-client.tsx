@@ -65,6 +65,9 @@ type AiMusicTrack = AiMusicExploreOrderTrack & AiMusicHeatTrack & {
   blindSampleCount?: number;
   blindPreferencePoints?: number;
   popularityScore?: number;
+  ratingAverage?: number | null;
+  ratingCount?: number;
+  ratingTotal?: number;
   earwormAffinitySampleCount: number;
   earwormAffinityPercent: number | null;
   positiveReactionCount: number;
@@ -100,6 +103,9 @@ type AiMusicApiTrackRow = ListenBarTrackRow & {
   ai_music_blind_sample_count?: number | null;
   ai_music_blind_preference_points?: number | null;
   ai_music_popularity_score?: number | null;
+  ai_music_rating_average?: number | null;
+  ai_music_rating_count?: number | null;
+  ai_music_rating_total?: number | null;
   ai_music_legacy_retirement_exempt?: boolean | null;
   ai_music_explore_retired?: boolean | null;
   ai_music_official_challenge_count?: number | null;
@@ -302,6 +308,9 @@ async function tracksFromListenBar(lang: string) {
         blindSampleCount: lifecycleRow.ai_music_blind_sample_count ?? undefined,
         blindPreferencePoints: lifecycleRow.ai_music_blind_preference_points ?? undefined,
         popularityScore: lifecycleRow.ai_music_popularity_score ?? undefined,
+        ratingAverage: lifecycleRow.ai_music_rating_average ?? null,
+        ratingCount: lifecycleRow.ai_music_rating_count ?? 0,
+        ratingTotal: lifecycleRow.ai_music_rating_total ?? 0,
         positiveReactionCount: numberValue(row.positive_reaction_count ?? track.positiveReactionCount),
         earwormAffinitySampleCount: numberValue(row.earworm_affinity_sample_count),
         earwormAffinityPercent: typeof row.earworm_affinity_percent === "number"
@@ -460,6 +469,7 @@ function TrackCard({
       </div>
       <div className={styles.creatorRow}>
         <p className={styles.creator} title={`${track.creator} · ${track.aiTool}`}>{track.creator}</p>
+        {track.ratingCount && track.ratingAverage != null ? <span className={styles.trackRating} title={localeText(lang, `${track.ratingCount} 人評分`, `${track.ratingCount} raters`, `${track.ratingCount}人が評価`, `${track.ratingCount}명 평가`)}>{track.ratingAverage.toFixed(1)} / 10</span> : null}
         {track.openForChallenge ? <Link href={aiMusicChallengeHref(track, lang)} className={styles.challenge}>
           <Swords aria-hidden="true" />{localeText(lang, "攻擂", "Challenge", "挑戦", "도전")}
         </Link> : null}
@@ -742,7 +752,8 @@ export default function AiMusicClient() {
     const refresh = () => { if (document.visibilityState === "visible") { setPoolNow(Date.now()); setLoadVersion(value => value + 1); } };
     const timer = window.setInterval(refresh, 60_000);
     window.addEventListener("focus", refresh);
-    return () => { window.clearInterval(timer); window.removeEventListener("focus", refresh); };
+    window.addEventListener("aipoger:mv-rating", refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener("focus", refresh); window.removeEventListener("aipoger:mv-rating", refresh); };
   }, []);
 
   useEffect(() => {
@@ -1004,7 +1015,7 @@ export default function AiMusicClient() {
         <button autoFocus className={styles.chartClose} aria-label={copy.close} onClick={()=>setExternalTrack(null)}><X/></button>
         {externalTrack?.external ? <ExternalMusicPlayer media={externalTrack.external} title={externalTrack.title}/> : null}
       </dialog>
-      {feedbackWork ? <HomeWorkFeedback key={feedbackWork.id} work={feedbackWork} supportNote={localeText(lang, "人氣榜依不同會員的有效支持排序；作者自己的愛心不計入。評論共用同一作品。", "Popularity follows distinct non-author supporters. Comments belong to the same work.", "人気ランキングは作者以外の会員の有効な支持人数順です。コメントは同じ作品に集まります。", "인기 차트는 작가를 제외한 회원의 유효 지지 수 순입니다. 댓글은 같은 작품에 연결됩니다.")} returnPath={`/ai-music?track=${feedbackWork.id}#works`} onClose={() => setCommentTrack(null)} onChange={() => setLoadVersion(value => value + 1)} /> : null}
+      {feedbackWork ? <HomeWorkFeedback key={feedbackWork.id} work={feedbackWork} supportNote={localeText(lang, "愛心、填寫的分數與盲聽支持累積成排行總分；留言文字本身不加分。自己的作品不自評。", "Hearts, numeric ratings and blind preferences contribute to total chart points. Comment text adds no chart points. Creators cannot rate their own work.", "支持・入力した評価・ブラインド試聴の支持を累積して順位を決めます。コメント本文は加点されません。自分の作品には採点できません。", "하트, 입력한 평점, 블라인드 선호를 누적해 순위를 정해요. 댓글 내용 자체는 차트 점수를 더하지 않아요. 내 작품은 평가할 수 없어요.")} returnPath={`/ai-music?track=${feedbackWork.id}#works`} onClose={() => setCommentTrack(null)} onChange={() => setLoadVersion(value => value + 1)} /> : null}
       <main className={styles.main}>
         <ExploreRadio tracks={radioTracks} ready={loadState === "ready"} hearted={Boolean(currentTrack && heartStates[currentTrack.recordKey])} heartBusy={Boolean(currentTrack && heartBusy[currentTrack.recordKey])}
           onHeart={id => { const track = poolTracks.find(track => track.sourceId === id); if (track) void sendHeart(track); }}

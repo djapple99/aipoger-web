@@ -8,12 +8,12 @@ export type BlindSide = "A" | "B";
 export function blindPairKey(a: string, b: string) { return [a, b].sort().join(":"); }
 export function isBlindChoice(value: unknown): value is BlindChoice { return value === "A" || value === "B" || value === "tie"; }
 export type BlindSummary = { people: number; preferencePoints: number };
-// Both terms are 0..1. Ten neutral prior observations soften tiny blind samples.
-// No-sample works receive neutral confidence, not a negative rating.
-export function popularityScore(hearts: number, maxHearts: number, blind: BlindSummary) {
-  const people = Math.max(0, blind.people);
-  const points = Math.max(0, Math.min(people, blind.preferencePoints));
-  const heartRate = maxHearts > 0 ? Math.min(1, Math.max(0, hearts) / maxHearts) : 0;
-  const preference = (points + 5) / (people + 10);
-  return Math.round((50 * heartRate + 50 * preference) * 10000) / 10000;
+// Cumulative audience support: one retained heart = 3, one blind preference = 3.
+// Blind summaries already average each listener's choices per work (tie = 0.5).
+// Each listener's latest 1..10 work rating contributes its actual decimal score.
+export function popularityScore(hearts: number, blind: BlindSummary, ratingTotal = 0) {
+  const positive = (value: number) => Number.isFinite(value) ? Math.max(0, value) : 0;
+  const people = positive(blind.people);
+  const points = Math.min(people, positive(blind.preferencePoints));
+  return Math.round((3 * positive(hearts) + 3 * points + positive(ratingTotal)) * 1e6) / 1e6;
 }

@@ -8,7 +8,7 @@ export type HomeWork = {
   coverUrl: string; audioUrl: string; lyrics: string; videoId: string | null;
   youtubeUrl: string | null; supporterCount: number; publishedAt: string;
   comment?: { name: string; text: string };
-  ratingAverage?: number | null; ratingCount?: number;
+  ratingAverage?: number | null; ratingCount?: number; ratingTotal?: number;
 };
 export type HomeDiscovery = {
   week: { startDate: string; endDate: string };

@@ -4,15 +4,21 @@ import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
 import { mvCopy } from "@/lib/mv-copy";
 import { homeCopy } from "@/lib/home-copy";
+import { parseWorkRating } from "@/lib/work-rating";
 import styles from "./home-editorial.module.css";
 
 export type MvReviewComment = { id: string; name: string; text: string; createdAt: string };
-export type MvReviewDraft = { score: number | null; text: string };
-export default function MvRatingForm({ trackId, signedIn, onSaved, onBusy, drafts }: {
-  trackId: string; signedIn: boolean; onSaved: (comment: MvReviewComment | null) => void; onBusy: (busy: boolean) => void; drafts?: Map<string, MvReviewDraft>;
+export type MvReviewDraft = { score: number | null; scoreInput?: string; text: string };
+export default function MvRatingForm({ trackId, signedIn, onSaved, onBusy, drafts, surface = "mv" }: {
+  trackId: string; signedIn: boolean; onSaved: (comment: MvReviewComment | null) => void; onBusy: (busy: boolean) => void; drafts?: Map<string, MvReviewDraft>; surface?: "music" | "mv";
 }) {
   const { lang } = useI18n(); const mv = mvCopy(lang); const copy = homeCopy(lang);
-  const [score, setScore] = useState<number | null>(drafts?.get(trackId)?.score ?? null); const [text, setText] = useState(drafts?.get(trackId)?.text ?? "");
+  const cached = drafts?.get(trackId);
+  const [scoreInput, setScoreInput] = useState(cached?.scoreInput ?? (cached?.score == null ? "" : String(cached.score))); const [text, setText] = useState(cached?.text ?? "");
+  const score = parseWorkRating(scoreInput);
+  const invalidScore = Boolean(scoreInput.trim() && score === null);
+  const endpoint = surface === "music" ? "/api/listen-bar/review" : "/api/mv/review";
+  const question = surface === "music" ? mv.rateSongQuestion : mv.rateQuestion;
   const [ready, setReady] = useState(false); const [canRate, setCanRate] = useState(false);
   const [failed, setFailed] = useState(false); const [busy, setBusy] = useState(false); const [saved, setSaved] = useState(false);
   const [summary, setSummary] = useState<{ ratingAverage: number | null; ratingCount: number } | null>(null);
@@ -23,20 +29,20 @@ export default function MvRatingForm({ trackId, signedIn, onSaved, onBusy, draft
     void (async () => {
       try {
         const { data } = await supabase.auth.getSession();
-        const response = await fetch(`/api/mv/review?trackId=${encodeURIComponent(trackId)}`, { signal: controller.signal, cache: "no-store", headers: data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {} });
+        const response = await fetch(`${endpoint}?trackId=${encodeURIComponent(trackId)}`, { signal: controller.signal, cache: "no-store", headers: data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {} });
         const payload = await response.json(); if (!response.ok) throw new Error("Unavailable");
-        if (active) { setScore(drafts?.get(trackId)?.score ?? payload.myScore ?? null); setCanRate(payload.canRate === true); setSummary(payload); setReady(true); }
+        if (active) { const draft = drafts?.get(trackId); setScoreInput(draft?.scoreInput ?? (draft?.score != null ? String(draft.score) : payload.myScore == null ? "" : String(payload.myScore))); setCanRate(payload.canRate === true); setSummary(payload); setReady(true); }
       } catch { if (active) setFailed(true); }
     })();
     return () => { active = false; controller.abort(); };
-  }, [trackId, signedIn, retry, drafts]);
+  }, [trackId, signedIn, retry, drafts, endpoint]);
   const submit = async (event: FormEvent) => {
-    event.preventDefault(); if (busy || !ready || !signedIn || (score === null && !text.trim())) return;
+    event.preventDefault(); if (busy || !ready || !signedIn || (canRate && score === null) || (!canRate && !text.trim())) return;
     setBusy(true); onBusy(true); setFailed(false); setSaved(false);
     try {
       const { data } = await supabase.auth.getSession(); if (!data.session) throw new Error("Sign in");
       receipt.current ??= crypto.randomUUID();
-      const response = await fetch("/api/mv/review", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session.access_token}` },
+      const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session.access_token}` },
         body: JSON.stringify({ trackId, score: canRate ? score : null, text: text.trim(), requestId: receipt.current }) });
       const payload = await response.json(); if (!response.ok) throw new Error("Unavailable");
       if (!alive.current) return;
@@ -48,19 +54,25 @@ export default function MvRatingForm({ trackId, signedIn, onSaved, onBusy, draft
   };
   const edit = () => { receipt.current = null; setSaved(false); };
   return <form onSubmit={submit} className={`${styles.feedbackForm} ${styles.mvRatingForm}`}>
-    <div className={styles.ratingHeading}><h3>{mv.rateQuestion}</h3><span>{summary?.ratingCount ? `${summary.ratingAverage?.toFixed(1)} ${mv.points}｜${summary.ratingCount} ${mv.raters}` : mv.unrated}</span></div>
-    <fieldset className={styles.ratingNumbers} disabled={!ready || !signedIn || !canRate || busy}>
-      <legend className={styles.srOnly}>{mv.rateQuestion}</legend>
-      {Array.from({ length: 10 }, (_, i) => i + 1).map(value => <label key={value} data-selected={score === value}>
-        <input type="radio" name={`mv-rating-${trackId}`} value={value} checked={score === value} onChange={() => { edit(); drafts?.set(trackId, { score: value, text }); setScore(value); }} aria-label={`${value} / 10`} /><span>{value}</span>
-      </label>)}
-    </fieldset>
-    <p className={styles.ratingNote}>{ready && signedIn && !canRate ? mv.ownWork : mv.ratingNote}</p>
+    <div className={styles.ratingHeading}><h3>{question}</h3><span>{summary?.ratingCount ? `${summary.ratingAverage?.toFixed(1)} ${mv.points}｜${summary.ratingCount} ${mv.raters}` : mv.unrated}</span></div>
+    <div className={styles.ratingInputRow}>
+      <label htmlFor={`work-score-${trackId}`} className={styles.srOnly}>{question}</label>
+      <div className={styles.ratingInputWrap}>
+        <input id={`work-score-${trackId}`} type="text" inputMode="decimal" value={scoreInput} placeholder="8.7" maxLength={4}
+          pattern="(?:[1-9](?:[.,][0-9])?|10(?:[.,]0)?)" required={signedIn && canRate} autoComplete="off"
+          disabled={!ready || !signedIn || !canRate || busy} aria-invalid={invalidScore} aria-describedby={`work-score-note-${trackId}`}
+          onChange={event => { edit(); const value = event.target.value; setScoreInput(value); drafts?.set(trackId, { score: parseWorkRating(value), scoreInput: value, text }); }} />
+        <span aria-hidden="true">/ 10</span>
+      </div>
+      <span>{mv.scoreHint}</span>
+    </div>
+    {invalidScore ? <p className={styles.ratingInvalid} role="alert">{mv.scoreError}</p> : null}
+    <p id={`work-score-note-${trackId}`} className={styles.ratingNote}>{ready && signedIn && !canRate ? mv.ownWork : mv.ratingNote}</p>
     {signedIn ? <>
       <label htmlFor={`mv-thoughts-${trackId}`}>{mv.thoughts}</label>
       <textarea id={`mv-thoughts-${trackId}`} value={text} maxLength={280} rows={3} placeholder={mv.thoughts} disabled={busy}
-        onChange={event => { edit(); drafts?.set(trackId, { score, text: event.target.value }); setText(event.target.value); }} />
-      <div><span>{text.length} / 280</span><button type="submit" disabled={!ready || busy || (score === null && !text.trim())}>{busy ? copy.sending : mv.sendReview}</button></div>
+        onChange={event => { edit(); drafts?.set(trackId, { score, scoreInput, text: event.target.value }); setText(event.target.value); }} />
+      <div><span>{text.length} / 280</span><button type="submit" disabled={!ready || busy || (canRate ? score === null : !text.trim())}>{busy ? copy.sending : mv.sendReview}</button></div>
     </> : null}
     {failed ? <p role="alert" className={styles.refreshError}>{mv.ratingError}<button type="button" onClick={() => setRetry(value => value + 1)}>{copy.retry}</button></p> : null}
     {saved ? <p role="status" className={styles.feedbackSaved}>{mv.reviewSaved}</p> : null}

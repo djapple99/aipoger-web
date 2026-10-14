@@ -8,8 +8,8 @@ export function mvReviewAdmin() {
 }
 
 export async function mvRatingSummaries(admin = mvReviewAdmin()) {
-  const { data, error } = await admin.rpc("mv_rating_summaries");
+  const { data, error } = await admin.rpc("work_rating_summaries");
   if (error || !Array.isArray(data)) throw new Error("Ratings unavailable");
-  return new Map<string, { ratingAverage: number | null; ratingCount: number }>(data.map(row =>
-    [row.track_id, { ratingAverage: Number(row.average), ratingCount: Number(row.people) }]));
+  return new Map<string, { ratingAverage: number | null; ratingCount: number; ratingTotal: number }>(data.map(row =>
+    [row.track_id, { ratingAverage: Number(row.average), ratingCount: Number(row.people), ratingTotal: Number(row.total) }]));
 }

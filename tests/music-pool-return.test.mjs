@@ -30,10 +30,10 @@ test("missing, invalid or rewritten future publication cannot use a cohort ID to
 });
 test("five points apply once to expired return works and expire without changing real scoring inputs", () => {
   const blind = { people: 10, preferencePoints: 5 };
-  assert.equal(musicPoolPopularityScore(id, old, 5, 10, blind, now), 55);
-  assert.equal(musicPoolPopularityScore(id, old, 5, 10, blind, now), 55);
+  assert.equal(musicPoolPopularityScore(id, old, 5, blind, 0, now), 35);
+  assert.equal(musicPoolPopularityScore(id, old, 5, blind, 0, now), 35);
   assert.deepEqual(blind, { people: 10, preferencePoints: 5 });
-  assert.equal(musicPoolPopularityScore(id, old, 5, 10, blind, MUSIC_POOL_RETURN_END), 50);
+  assert.equal(musicPoolPopularityScore(id, old, 5, blind, 0, MUSIC_POOL_RETURN_END), 30);
   assert.equal(musicPoolReturnBonus("2026-09-15T00:00:00Z", id, now), 0);
   assert.equal(isInDiscoveryMusicPool("2026-10-14T00:00:00Z", "new-work", MUSIC_POOL_RETURN_END), true);
 });
@@ -42,8 +42,8 @@ test("Top10/50 use source IDs consistently and do not double-add an API-provided
   const returned = { ...normal, id: "bar-" + id, sourceId: id, createdAt: old, popularityScore: 80 };
   const ranked = rankMusicPool([normal, returned], now);
   assert.equal(ranked[0].track.sourceId, id);
-  assert.equal(ranked[0].track.popularityScore, 80);
-  assert.equal(ranked[1].track.popularityScore, 75);
+  assert.equal(ranked[0].track.popularityScore, 8);
+  assert.equal(ranked[1].track.popularityScore, 3);
   assert.equal(rankMusicPool([normal, returned], MUSIC_POOL_RETURN_END).length, 1);
   assert.equal(rankMusicPool([{ ...returned, poolSupporterCount: 0 }], now).length, 0);
 });

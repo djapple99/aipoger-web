@@ -30,21 +30,18 @@ export function musicPoolNewSongBonus(createdAt: string | null | undefined, now 
   return Number.isFinite(published) && published <= now && now < published + MUSIC_POOL_NEW_SONG_WINDOW
     ? MUSIC_POOL_NEW_SONG_POINTS : 0;
 }
-export function musicPoolPopularityScore(id: string, createdAt: string | null | undefined, hearts: number, maxHearts: number, blind: BlindSummary, now = Date.now()) {
-  return popularityScore(hearts, maxHearts, blind) + musicPoolReturnBonus(createdAt, id, now) + musicPoolNewSongBonus(createdAt, now);
+export function musicPoolPopularityScore(id: string, createdAt: string | null | undefined, hearts: number, blind: BlindSummary, ratingTotal = 0, now = Date.now()) {
+  return popularityScore(hearts, blind, ratingTotal) + musicPoolReturnBonus(createdAt, id, now) + musicPoolNewSongBonus(createdAt, now);
 }
-export type PoolRankTrack = { id: string; sourceId?: string; createdAt: string; poolSupporterCount: number; blindSampleCount?: number; blindPreferencePoints?: number; popularityScore?: number };
+export type PoolRankTrack = { id: string; sourceId?: string; createdAt: string; poolSupporterCount: number; blindSampleCount?: number; blindPreferencePoints?: number; ratingTotal?: number; ratingCount?: number; popularityScore?: number };
 export function rankMusicPool<T extends PoolRankTrack>(tracks: T[], now = Date.now()) {
   const current = tracks.filter(track => isInDiscoveryMusicPool(track.createdAt, track.sourceId ?? track.id, now) && Number.isFinite(track.poolSupporterCount));
-  const mixed = current.some(track => typeof track.blindSampleCount === "number");
-  const maxHearts = Math.max(0, ...current.map(track => track.poolSupporterCount));
-  const score = (track: T) => (mixed ? popularityScore(track.poolSupporterCount, maxHearts,
-    { people: track.blindSampleCount ?? 0, preferencePoints: track.blindPreferencePoints ?? 0 }) : track.poolSupporterCount)
-    + musicPoolReturnBonus(track.createdAt, track.sourceId ?? track.id, now) + musicPoolNewSongBonus(track.createdAt, now);
-  const sorted = current.filter(track => track.poolSupporterCount > 0 || (track.blindPreferencePoints ?? 0) > 0)
+  const score = (track: T) => musicPoolPopularityScore(track.sourceId ?? track.id, track.createdAt, track.poolSupporterCount,
+    { people: track.blindSampleCount ?? 0, preferencePoints: track.blindPreferencePoints ?? 0 }, track.ratingTotal ?? 0, now);
+  const sorted = current.filter(track => track.poolSupporterCount > 0 || (track.blindPreferencePoints ?? 0) > 0 || ((track.ratingCount ?? 0) > 0 && (track.ratingTotal ?? 0) > 0))
     .sort((a, b) => score(b) - score(a) || Date.parse(b.createdAt) - Date.parse(a.createdAt) || a.id.localeCompare(b.id));
   return sorted.map((track, index) => ({
-    track: mixed ? { ...track, popularityScore: score(track) } : track, rank: index + 1,
+    track: { ...track, popularityScore: score(track) }, rank: index + 1,
   }));
 }
 export function musicPoolSupportCounts(tracks: { id: string; created_by?: string | null; created_at?: string | null }[],

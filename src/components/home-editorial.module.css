@@ -161,7 +161,10 @@
   .status { min-height: 260px; font-size: 14px; }
 }
 @media (prefers-reduced-motion: reduce) { .page * { transition: none !important; } }
-.feedbackDialog { width: min(620px, calc(100% - 32px)); max-height: 85svh; margin: auto; padding: 0; border: 1px solid #ffffff30; border-radius: 8px; background: #0a0a0a; color: #f5f5f5; overflow-y: auto; }
+.feedbackDialog { width: min(620px, calc(100% - 32px)); max-height: 85svh; margin: auto; padding: 0; border: 1px solid #ffffff30; border-radius: 8px; background: #0a0a0a; color: #f5f5f5; overflow-y: auto; scrollbar-gutter: stable; scrollbar-width: auto; scrollbar-color: #ff8f32 #18120c; }
+.feedbackDialog::-webkit-scrollbar { width: 14px; }
+.feedbackDialog::-webkit-scrollbar-track { background: #18120c; }
+.feedbackDialog::-webkit-scrollbar-thumb { background: #ff8f32; border: 3px solid #18120c; border-radius: 8px; }
 .feedbackDialog::backdrop { background: #000c; backdrop-filter: blur(6px); }
 .feedbackWithVideo { width: min(880px, calc(100% - 32px)); position: fixed; inset: 0; height: fit-content; overflow: hidden; }
 .feedbackWithVideo .feedbackInner { max-height: calc(85svh - 2px); overflow-y: auto; scrollbar-gutter: stable; scrollbar-width: auto; scrollbar-color: #ff8f32 #18120c; }
@@ -196,7 +199,7 @@
 .feedbackForm button { background: #ff6a00; color: white; border: 0; border-radius: 4px; padding: 10px 17px; font-size: 14px; }
 .feedbackSaved { color: #ff9a45; font-size: 13px; margin-top: 18px; }
 .feedbackDialog textarea:focus-visible { outline: 2px solid #ff9a45; outline-offset: 3px; }
-@media (max-width: 700px) { .feedbackInner { padding: 22px; } }
+@media (max-width: 700px) { .feedbackInner { padding: 20px; } .feedbackHeading { gap: 12px; } .feedbackHeading h2 { font-size: 20px; line-height: 1.35; } }
 
 .workLinks button { border-top: 0; border-right: 0; border-left: 0; background: transparent; padding-left: 0; padding-right: 0; }
 .mvPlayerMount { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -208,13 +211,16 @@
 .ratingHeading { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .ratingHeading h3 { font-size: 18px; font-weight: 700; margin: 0; }
 .ratingHeading > span { font-size: 13px; color: #ffb47f; }
-.ratingNumbers { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 0; border: 1px solid #ffffff40; border-radius: 5px; padding: 0; margin: 12px 0 6px; min-width: 0; overflow: hidden; }
-.mvRatingForm .ratingNumbers label { position: relative; display: grid; place-items: center; height: 44px; min-width: 0; margin: 0; font-size: 17px; font-weight: 700; background: #161616; color: #e7e7e7; border-right: 1px solid #ffffff26; cursor: pointer; }
-.mvRatingForm .ratingNumbers label:last-child { border-right: 0; }
-.ratingNumbers input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
-.ratingNumbers label[data-selected="true"] { background: #ff6a00; color: #080808; }
-.ratingNumbers label:focus-within { outline: 2px solid #ffd29c; outline-offset: -3px; }
-.ratingNumbers:disabled label { opacity: .5; cursor: default; }
+.mvRatingForm > .ratingInputRow { display: flex; justify-content: flex-start; align-items: center; flex-wrap: wrap; gap: 12px; margin: 12px 0 6px; }
+.ratingInputWrap { display: inline-flex; align-items: center; gap: 10px; }
+.ratingInputWrap input { width: 100px; min-height: 48px; padding: 8px 12px; border: 1px solid #ff9a4580; border-radius: 5px; background: #15100b; color: #fff; font: inherit; font-size: 24px; font-weight: 700; text-align: center; }
+.ratingInputWrap input::placeholder { color: #777; font-weight: 400; }
+.ratingInputWrap input:focus-visible { outline: 2px solid #ff9a45; outline-offset: 3px; }
+.ratingInputWrap input[aria-invalid="true"] { border-color: #ff8578; }
+.ratingInputWrap input:disabled { opacity: .5; }
+.ratingInputWrap > span { font-size: 21px; font-weight: 700; color: #ffb47f; white-space: nowrap; }
+.ratingInputRow > span { flex: 1 1 140px; min-width: 0; color: #a5a5ae; font-size: 12px; line-height: 1.5; }
+.ratingInvalid { margin: 6px 0; color: #ff9c91; font-size: 12px; }
 .ratingNote { margin: 5px 0 15px; color: #a5a5ae; font-size: 12px; line-height: 1.5; }
 .mvRatingForm > label { display: block; margin-bottom: 8px; }
 .feedbackWithVideo .feedbackNote { font-size: 12px; margin: 14px 0 10px; }
