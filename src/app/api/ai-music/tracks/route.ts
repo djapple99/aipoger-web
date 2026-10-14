@@ -1,4 +1,4 @@
-import { isInMusicPool, musicPoolSupportCounts } from "@/lib/music-pool";
+import { isInDiscoveryMusicPool, musicPoolPopularityScore, musicPoolSupportCounts } from "@/lib/music-pool";
 import { readAllHomePages } from "@/lib/home-discovery";
 import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -18,7 +18,6 @@ import { isCurrentMusicGenre } from "@/lib/music-genres";
 import { readEarwormAffinityMap } from "@/lib/earworm-affinity";
 import { isPublicDiscoveryTrack } from "@/lib/listen-bar-airplay";
 import { blindSummaries } from "@/lib/server-blind-listening";
-import { popularityScore } from "@/lib/blind-listening";
 
 type AdminClient = SupabaseClient;
 
@@ -283,7 +282,7 @@ export async function GET() {
       rows = await readTracks(LEGACY_SELECT);
     }
     const now = Date.now();
-    const playableRows = applyLegacyOpeningGrace(rows).filter(row => isPublicPlayableTrack(row) && isInMusicPool(row.created_at, now));
+    const playableRows = applyLegacyOpeningGrace(rows).filter(row => isPublicPlayableTrack(row) && isInDiscoveryMusicPool(row.created_at, row.id, now));
     const hearts: { track_id: string; user_id: string; reaction: string; created_at: string }[] = [];
     for (let offset = 0; offset < playableRows.length; offset += 100) {
       const ids = playableRows.slice(offset, offset + 100).map(row => row.id);
@@ -330,7 +329,7 @@ export async function GET() {
       const summary = blind.get(row.id) ?? { people: 0, preferencePoints: 0 };
       return { ...row, ai_music_blind_sample_count: summary.people,
         ai_music_blind_preference_points: summary.preferencePoints,
-        ai_music_popularity_score: popularityScore(row.ai_music_pool_supporter_count, maxHearts, summary) };
+        ai_music_popularity_score: musicPoolPopularityScore(row.id, row.created_at, row.ai_music_pool_supporter_count, maxHearts, summary, now) };
     });
 
     return NextResponse.json({ tracks: rankedTracks }, {

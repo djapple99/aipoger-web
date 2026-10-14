@@ -14,7 +14,7 @@ import LyricsPopover from "@/components/lyrics-popover";
 import ExploreRadio from "@/components/explore-radio";
 import MusicPoolChart from "@/components/music-pool-chart";
 import HomeWorkFeedback from "@/components/home-work-feedback";
-import { isInMusicPool, rankMusicPool } from "@/lib/music-pool";
+import { isInDiscoveryMusicPool, rankMusicPool } from "@/lib/music-pool";
 import type { HomeWork } from "@/lib/home-discovery";
 import styles from "./ai-music.module.css";
 import { useI18n } from "@/lib/i18n";
@@ -586,7 +586,7 @@ export default function AiMusicClient() {
   const player = useMusicPlayer();
   const activePlayerTrack = player.session?.queue[player.session.index];
   const currentTrack = tracks.find(track => track.sourceId === activePlayerTrack?.heartTrackId || track.id === activePlayerTrack?.id) ?? null;
-  const poolTracks = useMemo(() => tracks.filter(track => isInMusicPool(track.createdAt, poolNow)), [tracks, poolNow]);
+  const poolTracks = useMemo(() => tracks.filter(track => isInDiscoveryMusicPool(track.createdAt, track.sourceId, poolNow)), [tracks, poolNow]);
   const chartRows = useMemo(() => rankMusicPool(poolTracks, poolNow), [poolTracks, poolNow]);
   const isPlaying = Boolean(currentTrack && player.playing);
   const guideButtonRef = useRef<HTMLButtonElement | null>(null);

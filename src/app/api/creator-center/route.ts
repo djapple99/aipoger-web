@@ -3,7 +3,7 @@ import { creatorAuth } from "@/lib/server-creator-auth";
 import { readAllHomePages } from "@/lib/home-discovery";
 import { isAdminEmail } from "@/lib/admin-emails";
 import { externalMusicFromRow, parseExternalMusic } from "@/lib/external-music";
-import { isInMusicPool, musicPoolSupportCounts } from "@/lib/music-pool";
+import { isInDiscoveryMusicPool, musicPoolSupportCounts } from "@/lib/music-pool";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { readCredit } from "@/lib/server-blind-listening";
 export async function GET(request: Request) {
@@ -133,7 +133,7 @@ export async function GET(request: Request) {
         t.ai_music_showtime_public_removed_at ||
         (t.review_status != null && t.review_status !== "approved")
           ? "hidden"
-          : isInMusicPool(t.created_at)
+          : isInDiscoveryMusicPool(t.created_at, t.id)
             ? "public"
             : "ended",
     }));

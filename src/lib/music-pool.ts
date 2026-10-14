@@ -1,4 +1,5 @@
-import { popularityScore } from "./blind-listening.ts";
+import { popularityScore, type BlindSummary } from "./blind-listening.ts";
+import { isMusicPoolReturnCandidate, isMusicPoolReturnExcluded, MUSIC_POOL_RETURN_POINTS } from "./music-pool-return.ts";
 // Three calendar months from publication, measured in Asia/Taipei.
 // This is display eligibility; it never deletes or rewrites a work.
 const TAIPEI_OFFSET = 8 * 3_600_000;
@@ -14,13 +15,25 @@ export function isInMusicPool(createdAt: string | null | undefined, now = Date.n
   const published = createdAt ? Date.parse(createdAt) : NaN;
   return Number.isFinite(published) && published <= now && now < musicPoolExpiresAt(createdAt);
 }
-export type PoolRankTrack = { id: string; createdAt: string; poolSupporterCount: number; blindSampleCount?: number; blindPreferencePoints?: number; popularityScore?: number };
+// Explore's temporary cohort never overrides moderation/public-playability checks.
+// Blind listening and homepage singles continue to use the ordinary expiry above.
+export function isInDiscoveryMusicPool(createdAt: string | null | undefined, id: string | undefined, now = Date.now()): boolean {
+  return !isMusicPoolReturnExcluded(id, now) && (isInMusicPool(createdAt, now) || isMusicPoolReturnCandidate(id, createdAt, now));
+}
+export function musicPoolReturnBonus(createdAt: string | null | undefined, id: string | undefined, now = Date.now()): number {
+  return !isInMusicPool(createdAt, now) && isMusicPoolReturnCandidate(id, createdAt, now) ? MUSIC_POOL_RETURN_POINTS : 0;
+}
+export function musicPoolPopularityScore(id: string, createdAt: string | null | undefined, hearts: number, maxHearts: number, blind: BlindSummary, now = Date.now()) {
+  return popularityScore(hearts, maxHearts, blind) + musicPoolReturnBonus(createdAt, id, now);
+}
+export type PoolRankTrack = { id: string; sourceId?: string; createdAt: string; poolSupporterCount: number; blindSampleCount?: number; blindPreferencePoints?: number; popularityScore?: number };
 export function rankMusicPool<T extends PoolRankTrack>(tracks: T[], now = Date.now()) {
-  const current = tracks.filter(track => isInMusicPool(track.createdAt, now) && Number.isFinite(track.poolSupporterCount));
+  const current = tracks.filter(track => isInDiscoveryMusicPool(track.createdAt, track.sourceId ?? track.id, now) && Number.isFinite(track.poolSupporterCount));
   const mixed = current.some(track => typeof track.blindSampleCount === "number");
   const maxHearts = Math.max(0, ...current.map(track => track.poolSupporterCount));
-  const score = (track: T) => mixed ? popularityScore(track.poolSupporterCount, maxHearts,
-    { people: track.blindSampleCount ?? 0, preferencePoints: track.blindPreferencePoints ?? 0 }) : track.poolSupporterCount;
+  const score = (track: T) => (mixed ? popularityScore(track.poolSupporterCount, maxHearts,
+    { people: track.blindSampleCount ?? 0, preferencePoints: track.blindPreferencePoints ?? 0 }) : track.poolSupporterCount)
+    + musicPoolReturnBonus(track.createdAt, track.sourceId ?? track.id, now);
   const sorted = current.filter(track => track.poolSupporterCount > 0 || (track.blindPreferencePoints ?? 0) > 0)
     .sort((a, b) => score(b) - score(a) || b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id));
   let rank = 0;

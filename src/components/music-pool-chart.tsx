@@ -12,7 +12,7 @@ export default function MusicPoolChart<T extends MusicChartTrack>({ rows, limit 
   const text = (zh: string, en: string, ja: string, ko: string) => lang === "en" ? en : lang === "ja" ? ja : lang === "ko" ? ko : zh;
   return <section className={styles.chart} aria-label={text(`人氣 Top ${limit}`, `Popular Top ${limit}`, `人気 Top ${limit}`, `인기 Top ${limit}`)}>
     <h2>{text(`人氣 Top ${limit}`, `Popular Top ${limit}`, `人気 Top ${limit}`, `인기 Top ${limit}`)}</h2>
-    <p className={styles.chartNote}>{text("目前曲庫・近三個月上架作品", "Current catalog · released within 3 months", "公開カタログ・公開から3か月以内", "현재 카탈로그 · 공개 후 3개월 이내")}</p>
+    <p className={styles.chartNote}>{text("目前公開曲庫", "Current public catalog", "現在の公開カタログ", "현재 공개 카탈로그")}</p>
     <p className={styles.chartScore}>{text("愛心 50%＋盲聽 50% · 樣本校正", "50% hearts + 50% blind preference · sample adjusted", "支持50%＋試聴50%・サンプル補正", "하트 50%＋블라인드 50% · 표본 보정")}</p>
     {!ready ? <p className={styles.state} role={error ? "alert" : "status"}>{error ? text("榜單暫時無法讀取", "Chart is unavailable", "ランキングを読み込めません", "차트를 불러올 수 없습니다") : text("正在讀取榜單…", "Loading chart…", "ランキングを読み込み中…", "차트 불러오는 중…")}</p> : rows.length === 0 ? <p className={styles.state}>{text("作品正在累積支持，還沒有上榜歌曲。", "Tracks are building support. No chart entries yet.", "作品への支持を集計中。ランク入りはまだありません。", "작품의 지지를 모으고 있어요. 아직 순위에 오른 곡이 없습니다.")}</p> : <ol className={styles.chartRows}>
       {rows.slice(0, limit).map(({ track, rank }) => <li key={track.id} data-chart-work={track.sourceId}>

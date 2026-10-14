@@ -2,17 +2,18 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import ts from 'typescript';
 import {readFileSync} from 'node:fs';
-import {isInMusicPool,musicPoolSupportCounts} from '../src/lib/music-pool.ts';
+import {isInDiscoveryMusicPool,musicPoolPopularityScore,musicPoolSupportCounts} from '../src/lib/music-pool.ts';
 import {readAllHomePages} from '../src/lib/home-discovery.ts';
 import {isPublicDiscoveryTrack} from '../src/lib/listen-bar-airplay.ts';
 import {isCurrentMusicGenre} from '../src/lib/music-genres.ts';
 import {popularityScore} from '../src/lib/blind-listening.ts';
+import {MUSIC_POOL_RETURN_IDS,MUSIC_POOL_RETURN_EXCLUDED_IDS} from '../src/lib/music-pool-return.ts';
 const source=readFileSync(new URL('../src/app/api/ai-music/tracks/route.ts',import.meta.url),'utf8');
 const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText;
 function mount(tracks,hearts,{failHearts=false,retired=[]}={}){
  const ranges=[];
  const admin={from(table){const filters=[];let from=0,to=499;const query={select(){return query},eq(k,v){filters.push(r=>r[k]===v);return query},in(k,vs){filters.push(r=>vs.includes(r[k]));return query},gte(k,v){filters.push(r=>r[k]>=v);return query},lte(k,v){filters.push(r=>r[k]<=v);return query},not(){return query},order(){return query},limit(n){to=n-1;return query},range(a,b){from=a;to=b;ranges.push({table,from,to});return query},then(resolve,reject){const rows=table==='listen_bar_tracks'?tracks:table==='listen_bar_track_reactions'?hearts:[];return Promise.resolve({data:rows.filter(r=>filters.every(fn=>fn(r))).slice(from,to+1),error:failHearts&&table==='listen_bar_track_reactions'?{message:'reaction storage unavailable'}:null}).then(resolve,reject)}};return query}};
- const modules={'next/server':{NextResponse:{json:(data,init={})=>({data,status:init.status??200})}},'@supabase/supabase-js':{createClient:()=>admin},'@/lib/music-pool':{isInMusicPool,musicPoolSupportCounts},'@/lib/home-discovery':{readAllHomePages},'@/lib/ai-music-challenge-rules':{AI_MUSIC_CHALLENGE_BATTLE_TYPE:'drop'},'@/lib/ai-music-surface-lifecycle':{buildAiMusicSurfaceLifecycleMap:async()=>new Map(retired.map(id=>[id,{retiredFromExplore:true}])),isAiMusicLifecycleSchemaMissing:()=>false},'@/lib/ai-music-heat':{AI_MUSIC_HEAT_WINDOW_MS:7*86400000},'@/lib/ai-music-showtime':{AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS:''},'@/lib/drop-battle-rematch':{isOfficialDropBattleResult:()=>false},'@/lib/listen-bar':{listenBarPromotionProtectionActive:()=>false,LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS:0},'@/lib/music-genres':{isCurrentMusicGenre},'@/lib/earworm-affinity':{readEarwormAffinityMap:async()=>new Map()},'@/lib/listen-bar-airplay':{isPublicDiscoveryTrack}};
+ const modules={'next/server':{NextResponse:{json:(data,init={})=>({data,status:init.status??200})}},'@supabase/supabase-js':{createClient:()=>admin},'@/lib/music-pool':{isInDiscoveryMusicPool,musicPoolPopularityScore,musicPoolSupportCounts},'@/lib/home-discovery':{readAllHomePages},'@/lib/ai-music-challenge-rules':{AI_MUSIC_CHALLENGE_BATTLE_TYPE:'drop'},'@/lib/ai-music-surface-lifecycle':{buildAiMusicSurfaceLifecycleMap:async()=>new Map(retired.map(id=>[id,{retiredFromExplore:true}])),isAiMusicLifecycleSchemaMissing:()=>false},'@/lib/ai-music-heat':{AI_MUSIC_HEAT_WINDOW_MS:7*86400000},'@/lib/ai-music-showtime':{AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS:''},'@/lib/drop-battle-rematch':{isOfficialDropBattleResult:()=>false},'@/lib/listen-bar':{listenBarPromotionProtectionActive:()=>false,LISTEN_BAR_CHALLENGER_OBSERVATION_HOURS:0},'@/lib/music-genres':{isCurrentMusicGenre},'@/lib/earworm-affinity':{readEarwormAffinityMap:async()=>new Map()},'@/lib/listen-bar-airplay':{isPublicDiscoveryTrack}};
  modules['@/lib/server-blind-listening']={blindSummaries:async()=>new Map()};
  modules['@/lib/blind-listening']={popularityScore};
  const loaded={exports:{}};new Function('require','module','exports','process',compiled)(name=>{assert.ok(name in modules,name);return modules[name]},loaded,loaded.exports,{env:{NEXT_PUBLIC_SUPABASE_URL:'https://test.invalid',SUPABASE_SERVICE_ROLE_KEY:'unit-test-only'}});
@@ -32,3 +33,13 @@ test('pool API excludes expired, hidden, official and lifecycle-retired works',a
  const tracks=[row('keep'),{...row('old'),created_at:'2020-01-01T00:00:00Z'},{...row('hidden'),hidden_at:recent},{...row('official'),source:'official'},row('retired')];const result=await mount(tracks,[],{retired:['retired']}).get();assert.deepEqual(result.data.tracks.map(r=>r.id),['keep']);
 });
 test('support read failure never produces a fake zero ranking',async()=>{const result=await mount([row('song')],[],{failHearts:true}).get();assert.equal(result.status,500);assert.equal(result.data.tracks,undefined);assert.match(result.data.error,/unavailable/)});
+test('return cohort cannot revive later removal, creator deletion, moderation hold or lifecycle retirement',async(t)=>{
+ t.mock.method(Date,'now',()=>Date.parse('2026-10-14T08:00:00+08:00'));
+ const id=MUSIC_POOL_RETURN_IDS[0],old={...row(id),created_at:'2026-05-22T22:40:01Z'};
+ const eligible=await mount([old],[]).get();assert.equal(eligible.data.tracks.length,1);assert.equal(eligible.data.tracks[0].ai_music_pool_supporter_count,0);assert.equal(eligible.data.tracks[0].ai_music_popularity_score,30);
+ for(const patch of [{is_active:false},{hidden_at:recent},{removed_at:recent},{review_status:'removed'},{review_status:'pending'},{ai_music_showtime_public_removed_at:recent},{source:'official'}]){
+  assert.equal((await mount([{...old,...patch}],[]).get()).data.tracks.length,0);
+ }
+ assert.equal((await mount([old],[],{retired:[id]}).get()).data.tracks.length,0);
+ assert.equal((await mount([{...row(MUSIC_POOL_RETURN_EXCLUDED_IDS[0]),created_at:'2026-08-01T00:00:00Z'}],[]).get()).data.tracks.length,0);
+});

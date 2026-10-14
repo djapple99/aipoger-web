@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import CreatorCenter from "@/components/creator-center";
-import { isInMusicPool } from "@/lib/music-pool";
+import { isInDiscoveryMusicPool } from "@/lib/music-pool";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -1379,7 +1379,7 @@ function ProfileInner() {
           track.artist?.trim(),
           track.ai_tool?.trim(),
           track.genre?.trim(),
-          !isInMusicPool(track.created_at) ? (lang === "zh" ? "公開推廣期已結束" : lang === "ja" ? "公開プロモーション期間終了" : lang === "ko" ? "공개 홍보 기간 종료" : "Public promotion ended") : null,
+          !isInDiscoveryMusicPool(track.created_at, track.id) ? (lang === "zh" ? "公開推廣期已結束" : lang === "ja" ? "公開プロモーション期間終了" : lang === "ko" ? "공개 홍보 기간 종료" : "Public promotion ended") : null,
           track.ai_music_showtime_public_removed_at || track.is_active === false ? copy.showtimeHidden : null,
           aiMusicChallengeStatusLabel(challengeStatus, lang),
           hasDefenderDrop ? copy.defenderDropReady : copy.defenderDropMissing,
@@ -1388,7 +1388,7 @@ function ProfileInner() {
           .filter(Boolean)
           .join(" / "),
         href: `/ai-music?lang=${lang}&track=${track.id}#works`,
-        canNavigate: isInMusicPool(track.created_at),
+        canNavigate: isInDiscoveryMusicPool(track.created_at, track.id),
         date: track.created_at,
         artist: track.artist,
         genre: track.genre,
