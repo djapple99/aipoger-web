@@ -41,3 +41,5 @@
 - [2026-10-13-explore-redesign](2026-10-13-explore-redesign.md)
 
 - [2026-10-13-radio-chart-profile](2026-10-13-radio-chart-profile.md)
+
+- [2026-10-14 Showtime Choice／社群舞台發布](2026-10-14-showtime-community.md)：app `b4e2efa`，read-only社群Top5／原Choice與正式驗收。
