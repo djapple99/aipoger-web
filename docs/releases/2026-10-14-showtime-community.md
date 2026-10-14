@@ -1,7 +1,7 @@
 # Showtime Choice／社群人物舞台改版
 
-發布日期：2026-10-14 Asia/Taipei。應用 `b4e2efa`，發布分支 `codex/homepage-mv-editorial`。
-Vercel `dpl_E7WZmgmGe3wc3TqABKEoN2czcvWF`，`https://aipoger-web-rnz8-hhdt8f7ws-yohungs-projects.vercel.app`，Ready並promote；正式`https://aipoger.com/rank?lang=zh`及新public API已核實。
+發布日期：2026-10-14 Asia/Taipei。應用 `32157e8`，發布分支 `codex/homepage-mv-editorial`。
+Vercel `dpl_7rHpdCrj5N5BXG2GgYp1x9QFVpRu`，`https://aipoger-web-rnz8-ajdt1t16b-yohungs-projects.vercel.app`，Ready並promote；正式`https://aipoger.com/rank?lang=zh`及新public API已核實。
 
 ## 最終行為
 
@@ -20,3 +20,7 @@ Vercel `dpl_E7WZmgmGe3wc3TqABKEoN2czcvWF`，`https://aipoger-web-rnz8-hhdt8f7ws-
 - 使用乾淨commit worktree部署，不複製環境檔／圖片／密鑰。先用保護部署public API驗證，再promote；正式新API200與真實聚合核實。設計QA位於root `design-qa.md`，source／Chrome畫面已同時比對，兩項P2（guest重複登入、少量Choice過大）修正後passed。
 
 驗收圖在私人工作區 `outputs/aipoger-showtime/`；本機Turbopack dev對既有nested API產生404，改webpack及正式build檢查通過，正式站無此失敗。此限制不作為跳過真實頁面驗證的理由。
+
+## 窄平板收尾驗證
+
+初始主改版為`b4e2efa`，收尾修訂`32157e8`只調整1100px以下的少量Choice卡片排法；520px原tracklist按鍵突出13px，修後320／520／768／1024／1440px的頁面與卡片按鍵overflow均0。16項相關回歸與本機／雲端build通過，無新DB操作；613項總回歸（582pass／31skip）及原計算／語言／API維持。最新deployment已promote，前一驗證版保留作回退。
