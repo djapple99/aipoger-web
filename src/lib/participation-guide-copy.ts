@@ -19,7 +19,7 @@ const COPY = {
         },
         {
           "title": "作品的推廣期",
-          "body": "單曲通常公開推廣三個日曆月，期滿只退出展示。目前部分舊歌回歸至 2026 年 11 月 1 日台灣時間 00:00，符合條件的期滿回歸作品加 5 排行分。"
+          "body": "單曲通常公開推廣三個日曆月，期滿只退出展示。目前部分舊歌回歸至 2026 年 11 月 1 日台灣時間 00:00。"
         }
       ]
     },
@@ -93,7 +93,7 @@ const COPY = {
         },
         {
           "title": "Promotion period",
-          "body": "Singles normally appear for three calendar months. Selected expired works return until Nov 1, 2026 at 00:00 Taiwan time, with 5 popularity points when eligible. Expiry removes public promotion, without deleting the work."
+          "body": "Singles normally appear for three calendar months. Selected expired works return until Nov 1, 2026 at 00:00 Taiwan time. Expiry removes public promotion, without deleting the work."
         }
       ]
     },
@@ -167,7 +167,7 @@ const COPY = {
         },
         {
           "title": "作品の公開期間",
-          "body": "通常は3暦月の公開紹介。一部の期限切れ作品は台湾時間2026年11月1日0時まで復帰し、対象作品は人気5点加算。期限切れで展示は終了しますが作品は削除しません。"
+          "body": "通常は3暦月の公開紹介。一部の期限切れ作品は台湾時間2026年11月1日0時まで復帰します。期限切れで展示は終了しますが作品は削除しません。"
         }
       ]
     },
@@ -241,7 +241,7 @@ const COPY = {
         },
         {
           "title": "작품 공개 기간",
-          "body": "싱글은 보통 달력 기준 3개월 동안 소개합니다. 일부 만료 작품은 대만 시간 2026년 11월 1일 0시까지 돌아오며 조건에 맞으면 인기 5점 추가. 만료는 공개 소개 종료이며 삭제가 아닙니다."
+          "body": "싱글은 보통 달력 기준 3개월 동안 소개합니다. 일부 만료 작품은 대만 시간 2026년 11월 1일 0시까지 돌아옵니다. 만료는 공개 소개 종료이며 삭제가 아닙니다."
         }
       ]
     },
