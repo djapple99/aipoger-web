@@ -1,6 +1,6 @@
 # AIPOGER Product Rules
 
-文件整理：2026-10-14 Asia/Taipei；產品實作基準：2026-10-14。主文件 2／6。創作者私人作品表現已正式發布；文件整理與功能發布分別查核。
+文件整理：2026-10-15 Asia/Taipei；產品實作基準：2026-10-15。主文件 2／6。創作者私人作品表現已正式發布；文件整理與功能發布分別查核。
 
 Showtime 認證已退役；2026-10-14前台改為Choice選曲與社群人物Top5，移除頁面歌曲月榜；月榜原資料與Owner管理仍保留。Choice與人物排行是不同訊號，不更改探索人氣、正式Battle或Credit。
 
@@ -30,7 +30,7 @@ This document is the product-rule source of truth for AIPOGER. Use it before cha
 - 桌機左側排行約占原六欄中的兩欄，直接顯示人氣Top50，右側四首一列；不再另開排行榜視窗。手機先預覽3首、平板4首，按「展開Top50」在原頁展開，亦可收起。榜單不放評論圖示：封面播放、Heart支持，歌名定位原歌曲卡，清除不相符的搜尋／曲風並展開原分類。電台、歌曲卡與共用底部播放器提供原作品評論視窗，不另建立歌曲頁或重複評論資料。
 - 2026-10-14探索歌曲封面原「戰績資訊」改為「顯示歌詞」，旁邊保留分享。閱讀同一公開原作品的既有歌詞，不另啟播放器、不要求登入；缺詞或純音樂显示「歌詞未提供」，不自行生成。小面板保留換行、獨立捲動和關閉，點面板外／再按同鍵／Esc收起；開別首只保留一個，頁面捲動／resize也收起，面板內捲動和選字不收起。底部播放器原歌詞視窗同樣可點外關閉。正式戰績資料、排名與原接戰同意規則沿用；接受挑戰的呈現方式另列待議。
 - Radio 以目前曲庫建立曲風循環的 session snapshot；進頁不自動播放，使用者選曲風／播放才啟動。電台與單曲使用唯一 root audio，電台可見時收起底部控制，往下捲則顯示底部控制；音訊保持掛載。新投稿不插入既有佇列，失去公開資格或到期才從原電台佇列剔除。
-- 投稿入口統一 `/profile?submit=1&lang=...#submit-work`，登入後直接開原上传表。一般會員三首／個人168小時限制，Owner 投稿不限數量，取消每作者每曲風五首 active 上限；手選曲風、音檔格式／30MB、權利告知、雜湊、審核與失敗清理均保留；展示到期不退還已使用的每期投稿額度。帳號改變／私人曲庫讀取失敗／重複提交不得誤寫作品。
+- 投稿入口統一 `/profile?submit=1&lang=...#submit-work`，登入後直接開原上传表。一般會員個人168小時前三首免費、之後每首成功投稿60 Credit且需明確確認，Owner 投稿不限數量，取消每作者每曲風五首 active 上限；手選曲風、音檔格式／30MB、權利告知、雜湊、審核與失敗清理均保留；展示到期不退還已使用的每期投稿額度。帳號改變／私人曲庫讀取失敗／重複提交不得誤寫作品。
 - `/listen-bar` 舊一般入口與 `/l/...` 曲風短鏈導向 Explore 電台，保留語言／曲風；原 `#play-request` 投稿深連結導 Profile。舊聊天室24小時 API與清理僅供歷史相容，沒有公開聊天介面。每曲評論仍持久保存並可交流；APC仍未啟用；會員Credit收支見下節。
 
 ## 30秒盲聽評測與Credit
@@ -61,7 +61,7 @@ This document is the product-rule source of truth for AIPOGER. Use it before cha
 - Heart 寫入仍沿用既有每日切換與收藏連動。取消今日 Heart 只移除今日紀錄；若本週其他日期仍保有 Heart，該會員仍計一份支持。首頁不宣稱能一鍵取消整週歷史紀錄，也不改 Showtime 月榜原有取消及計分語意。
 - 全部 MV 本週支持為零時，選最新公開 MV 並標新作放映；沒有 MV 時呈現投稿／探索入口。資料讀取失敗顯示錯誤，不填假票數；支持者身分不透過公開首頁 API 回傳。
 - 首頁探索單曲先套用三個月曲庫資格；MV 頁「更多 MV」保留歷史外部連結。兩處均按作品 ID 排除上方全部精選，再依原排序補位；同票精選也全部排除。首頁最多三首不同作品，候選不足時少顯示，不重複填滿。完整作品資料、評論與支持仍保留。
-- 評論提供交流與推薦理由，不將留言／回覆次數換算支持票。主視覺只引用可公開展示的非作者留言，沒有留言就展示作品介紹；首頁評論視窗沿用現行 280 字留言 API。MV 專頁共用此曝光與評論機制，提供與歌曲共用的1–10小數整體評價，符合探索資格的作品計入人氣總分；不提供三項分項模型、點數獎勵、流量獎勵或首頁購買曝光。
+- 評論提供交流與推薦理由，不將留言／回覆次數換算支持票。主視覺只引用可公開展示的非作者留言，沒有留言就展示作品介紹；首頁評論視窗沿用現行 280 字留言 API。MV 專頁共用此曝光與評論機制，提供與歌曲共用的1–10小數整體評價，符合探索資格的作品計入人氣總分；不提供三項分項模型、流量獎勵或首頁購買曝光；符合會員Credit条件的站內評分評論／Heart按下方Credit規則計算。
 - 嵌入 YouTube 僅在使用者按下觀看後載入，不下載或重新託管影片；本階段保留現有音訊投稿方式，不啟用三個月自動刪除，也不刪歷史作品、評論、支持或戰績。
 
 ## MV 作品放映室
@@ -74,7 +74,7 @@ This document is the product-rule source of truth for AIPOGER. Use it before cha
 - 下方卡片及件數排除上方全部精選作品，切換排序／篩選或載入更多不重複展示。搜尋只符合上方精選時，提示已在上方展示並提供跳轉，選中對應精選作品；不誤報作品不存在。
 - 主視覺與首頁使用相同台北週界、不同非作者支持者數、同票共享及零支持新作規則。留言只提供交流，不增加支持票權。卡片與主視覺的評論／Heart 都接原作品 API；訪客登入後返回 `/mv`。
 - MV 卡片愛心直接切換原作品當日 Heart，沿用既有收藏連動；顯示的票數仍是本週不同非作者支持者數，不以當日狀態或 API 累計數冒充週票。評論圖示開啟同一作品的 MV／留言視窗，公開評論可讀，登入後才送出留言或 Heart；關閉返回原卡片。
-- 使用者點擊才載入 YouTube 官方播放器；可關閉並在原平台開啟。不下載或另存影片，不發放會員點數；連結投稿仍由創作者中心先預覽再確認。
+- 使用者點擊才載入 YouTube 官方播放器；可關閉並在原平台開啟。不下載或另存影片，不以影片觀看發放點數；站內有效評分評論／Heart另按Credit規則計算，連結投稿仍由創作者中心先預覽再確認。
 - 封面與觀看按鍵直接進同一MV觀看／評價視窗並播放；歌名／評論／分享接收連結開相同視窗但不自動播放。評分與留言不另開播放器或重播；自己的評價輸入放在公開留言清單之前。
 - 登入非作者會員可手填1–10分、最多一位小數（例如4.8／6.8），顯示輸入欄位／10，撤下一排十個數字按鍵；音樂與MV共用此評價及原作品ID。每人每作品一筆最新分數，可修改，修改不增加評分人數。作者（含Owner）可留言自己的作品但不能自評；Owner投稿扣點豁免不增加評分權。一般評價表單要求填分數，搭配選填的280字留言一起原子儲存；作者仍可只留言，既有留言API與舊客戶端的只留言討論保持相容。20字是有效評論得點條件，不是禁止短留言的門檻。
 - 封面右上顯示平均分（四捨五入至一位小數）｜不同評分會員人數，不是分數總和或留言則數。無分數顯示「尚未評分」，不填假0分；有關聯留言被隱藏的分數不計入公開平均。原留言及管理／通知沿用同作品ID。
@@ -139,7 +139,7 @@ Public social entry:
 - `/profile` 為個人創作者中心：音樂投稿總數、目前推廣／期滿／下架狀態、私人收藏歌曲與 Choice 總數、其他會員的可見評論人數及則數集中呈現。總覽作品每頁 4 件；完整原作品管理仍每頁 10 件。私人歷史不因三個月公開推廣期結束而抹除，不補過往最高排名。
 - 所有投稿入口進個人的投稿區。接受上傳音檔及 YouTube 影片、Suno 單曲、Spotify 單曲連結；不接受此入口的專輯、歌單或任意網站。連結只保留來源與 metadata，以原平台可見播放器播放，不下載或另存外站影音。來源讀取／播放失敗不自動發布，保留來源輸入供重試。
 - 兩種來源均先預覽、確認能播放及權利、再明確確認投稿；預覽不消耗投稿額度、不產生公開作品。YouTube 由官方播放事件確認；Suno／Spotify 由投稿者在實際預覽中手動確認，介面明示「已由你確認」。Spotify 的播放長度由來源決定。這不是伺服器對版權或完整可播放性的保證。
-- 音檔與連結共用個人首件成功起算168小時／3件；取消每作者每曲風5件active庫存上限，唯一Owner不限投稿數量。刪除不退個人期間額度。保留原 ownership、moderation、正式投票與接戰規則；連結投稿預設僅展示，不自動加入 Battle。
+- 音檔與連結共用個人首件成功起算168小時的前三件免費額度，額外成功作品每件60 Credit；取消每作者每曲風5件active庫存上限，唯一Owner不限投稿數量。刪除不退個人期間額度。保留原 ownership、moderation、正式投票與接戰規則；連結投稿預設僅展示，不自動加入 Battle。
 - YouTube 作品由投稿者勾選是否包含 MV；勾選後在音樂與 MV 面共用同一原作品 ID、愛心和評論，不另填第二筆。重複同作者同來源單曲不新增；既有音檔作品已附相同 YouTube 影片時，從原作品編輯。
 - 連結作品可進探索與同一三個月人氣榜，使用可見外站播放器。持續小電台、共用音檔佇列及現有 Choice 選曲仍要求實際可播放音檔；不能將外站 URL 填成音檔或藏起 YouTube 播放。音檔投稿預覽可使用一次性的本機音訊控制，不是每列新增播放器。
 - 私人統計只查經伺服器驗證的本人資料；支持人数按不同會員去重且排除作者，評論只計其他會員在現行 DB 的可見評論。資料讀取失敗顯示未知與重試，不偽造零分／餘額。舊 Storage-only 留言沒有可驗證的會員 ID，未補成完整歷史評論人數。
@@ -147,6 +147,15 @@ Public social entry:
 - 本次Credit發布：伺服器以Asia/Taipei日期認定每日首次有效會員回訪15點；他人歌曲／MV原作品送愛心3點；評分搭配至少20個文字／數字、通過基本反灌水及正規化複製檢查的評論10點。短留言照常可送出，基本檢查不保證語意品質。每人同作品的愛心／評論淨獎勵最多3／10點；取消愛心、修改成不合格或撤回獲獎評論會追回，恢復有效互動恢復同份獎勵。新增短討論不撤回另一則仍有效的獲獎評論。已花掉的部分記待追回欠額，後續收入先補欠額，補足前不能花點。整首歌下架不自動追回歷史獎勵。
 - 保留原盲聽每題3點、所有既有盲聽收支與168小時免費投稿窗口，不承接APC，不追溯批量發點。每個窗口前三件免費，之後每件成功投稿60點；投稿前需明確確認扣點，作品與扣點同成同敗，失敗、預覽及重試同一件不多扣。Owner依既有已確認Auth主信箱免投稿數量／扣點，不偽造無限餘額、不增加投票／評分權。
 - 一般會員看真實可用餘額、待追回欠額及最近50筆本人收支。新增流水與舊盲聽歷史合併讀取；餘額、發點、追回與編輯RPC的會員身分只由驗證後伺服器取得。APC、付款、作者收到愛心獎勵及聖經扣點均未啟用。
+
+### Credit 正式數值與對外文案邊界
+
+2026-10-15核對：每日回訪15、有效評分評論10、他人作品Heart3、盲聽每题3与額外成功投稿60已正式啟用；原盲聽流水保留，無歷史補發。取消／撤回追回、恢復同份獎勵、欠額先補足及基本反灌水後發點，是使用者在「檢視 Aipoger 最新改版進度」中的明确選擇，不能當成未授權提案撤回。正式遷移為`20261014164151_credit_participation`。
+
+- 每日回訪依台灣日期一天一次；評測不同作品不限每日次數。同會員同作品Heart／評論淨獎勵各最多3／10；短留言仍可討論，只有有效分數＋至少20文字／數字並通過基本反灌水的評論符合10點条件。基本規則不保證語意品質。
+- 只有使用者本人沿既有Owner身份免投稿數量／扣點；不提高投票權或排行權重。豁免屬內部權限，公開四頁指南與公開點數規則不顯示Owner免扣說明。本人私人中心與後台仍按既有權限可用。
+- 舊歌回歸+5是內部排行計算，公開指南不顯示數值或加分標示；正常三個月推廣及11月1日回歸結束資訊可保留。
+- 投稿送10、Choice／聖經貢獻20、創作者收到Heart獎勵、聖經2點解鎖與APC／現金收款均未啟用；不得從過時草案推定已可領點或扣點。
 
 ## AIPOGER Choice 與社群發布
 
@@ -419,7 +428,7 @@ Current rules:
 - Bar Heartbreak is the continuous radio inside Explore; creators submit from Profile, with owner curation after publication. Publication does not require owner/judge review. The submitting creator confirms playback in the preview before confirming submission.
 - There is no per-genre or total library capacity. Genre controls show actual publicly playable track counts, never capacity denominators.
 - New eligible submissions enter public airplay immediately. Challenger admission, seat limits, 36-hour protection, survival days and automatic capacity elimination are retired.
-- Creator uploads (updated 2026-10-13): ordinary members may successfully submit at most three own community songs in a personal 168-hour window, shared by link and audio-file submissions. The first successful submission starts the window; at expiry, the next successful submission starts a fresh window. No calendar-Monday reset or carryover. Deleting, hiding, or changing display status never refunds quota. Failed/rolled-back submissions, previews, metadata edits, listening, favorites, and Choice selection do not consume it. The Owner is exempt from all submission-count limits, verified against confirmed primary Auth email and the existing owner identity list, never editable profile/metadata claims. Owner community submissions still use the caller's RLS identity and preserve ownership, genre, rights/preview and duplicate checks. No per-creator/per-genre active-song inventory cap remains; submitting in one genre across multiple weeks is permitted. Existing songs and quota history remain intact. Official-library uploads remain outside the community allowance. After the first three free submissions, a successful extra work costs 60 Credit with explicit confirmation and no outstanding debt; the database rechecks funds atomically.
+- Creator uploads (updated 2026-10-13): ordinary members receive three free own community song submissions in a personal 168-hour window, shared by link and audio-file submissions. The first successful submission starts the window; at expiry, the next successful submission starts a fresh window. No calendar-Monday reset or carryover. Deleting, hiding, or changing display status never refunds quota. Failed/rolled-back submissions, previews, metadata edits, listening, favorites, and Choice selection do not consume it. The Owner is exempt from all submission-count limits, verified against confirmed primary Auth email and the existing owner identity list, never editable profile/metadata claims. Owner community submissions still use the caller's RLS identity and preserve ownership, genre, rights/preview and duplicate checks. No per-creator/per-genre active-song inventory cap remains; submitting in one genre across multiple weeks is permitted. Existing songs and quota history remain intact. Official-library uploads remain outside the community allowance. After the first three free submissions, a successful extra work costs 60 Credit with explicit confirmation and no outstanding debt; the database rechecks funds atomically.
 - Existing active, visible Challenger records become public without modifying creation time, audio, reactions or recognition. Previously hidden/removed/rejected works are not restored.
 - Both GET and POST `/api/listen-bar/process-rotation` are inert compatibility responses, even if an old environment flag or caller remains. Vercel no longer schedules rotation. Database `process_listen_bar_rotation_limits()` is also inert; explicit creator/owner/admin/moderation removals remain supported.
 - Previously Showtime-certified community songs that are public, playable and within the current three-month pool remain in Bar airplay and appear on Explore using the original track ID, audio, Hearts, favorites and comments. Historical certification never excludes them from either listening surface. Explicit `ai_music_showtime_public_removed_at` and all existing hide/removal/moderation restrictions still apply. No duplicate upload or new publication time is created.
@@ -475,7 +484,7 @@ This page is the AI music works browser. It should:
 - Place the compact Bar Heartbreak player above the title; put search beside the desktop title and stack clearly on phones. Search the complete current eligible catalog by title, creator or AI tool, intersect genre, preserve IDs and show all matches beyond collapsed lanes. No-match offers reset; read failure never claims zero songs or votes.
 - The Earworm taste mix is one compact `為你推薦` row with up to four works: three main/nearby picks and one discovery pick, filling from remaining eligible works when needed. Exclude those IDs from lower lanes without changing original queues/order. No taste profile means real genre lanes and test entry, never fabricated recommendations.
 - Keep `更多音樂` and actual genre lanes immediately below the recommendation row. Footer catalog count uses the complete eligible catalog and current 14 genres; the first screen is cover-led, with no large decorative hero or nested taste panel.
-- The `/guide.png` GUIDE action is in the local control strip (text plus icon on desktop, compact icon on phones). Its accessible dialog preserves X, Escape, backdrop close, focus trap/return and the current Heart/favorite, prepared 60s Drop and official-result explanations.
+- The shared `/guide.png` action is in each listening/Showtime/Battle local control strip, with text and icon. Its accessible dialog preserves X, Escape, backdrop close and focus trap/return, explaining the current surface and member Credit. Public copy does not disclose the temporary expired-return +5 popularity boost or the unique Owner Credit exemption; both actual behaviors remain in force and are documented internally.
 - Within the works browser, provide `依曲風 | 正在升溫` / `By Style | Hot Now`; genre remains the default and preserves rolling seven-day NEW ordering. Both use cover cards, two columns on phones, three on narrower screens and four in the right desktop gallery; desktop covers use the reference crop, mobile covers are square. At 320px the genre selector receives a separate full-width row. Do not turn Hot Now into a wide rank table, Showtime, Choice, or an absolute cross-genre music score. Filters retain a work's original global Hot Now rank; they do not re-rank the subset.
 - Hot Now / 正在升溫 only uses explainable 7-day signals from real data: distinct account Heart supporters first, audience votes from officially established Battles second, latest qualified interaction third, then `created_at desc` and `id desc`. It must not use all-time Heart totals, unverified play counts, mock values, or an opaque Heat Score. Official Battle votes count only when the archive meets the 3 distinct non-participant audience threshold.
 - Hot Now includes otherwise eligible historically certified works without a gold `SHOWTIME` certification badge. Its existing recent-discovery ordering is separate from the monthly Heart-only chart and must not be reused as monthly scores or ranks. Works with no recent valid signal stay at the bottom as `正在累積` / `Building recent support` and receive no fabricated rank number. Existing recent-order markers must remain scoped to Hot Now. Hidden, removed, moderation-held, Explore-retired, invalid-genre, inactive, or unplayable works remain excluded; challenge actions follow current explicit creator consent, not certification history.

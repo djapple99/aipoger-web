@@ -1,5 +1,8 @@
 # AIPOGER 開發與維運
 
+目前應用發布基準：2026-10-15／`b18931a`／`codex/public-rule-copy`，Vercel `dpl_BmR5kgXpmzCRsVAE2P6ik3dTYHyg` READY且aipoger.com／www已指向此版。繼承`4bfc46f`的Credit與四頁指南；本次只撤下公開舊歌+5及Owner免扣文案。40項現行流程測試、1項PGlite整合測試、TypeScript、改動檔lint及雲端build通過；16個指南／語言組合核對。原參與遷移`20261014164151`存在，12筆／36點舊盲聽流水保留，8個新增trigger及私有grants只讀核對；本輪無正式SQL寫入、額外發點或投稿測試。桌機正式指南已打開並截圖；390px指南DOM無橫向溢出，非iOS真機。[Credit整合及公開文案修訂證據](releases/2026-10-15-credit-public-copy.md)。
+
+
 2026-10-14 Showtime社群舞台已發布（app `32157e8`／`codex/homepage-mv-editorial`，Vercel `dpl_7rHpdCrj5N5BXG2GgYp1x9QFVpRu` READY並promote）：移除前台歌曲月榜、保留Choice原功能，融合第二稿主版面與第三稿右側文字／近30天樂評、創作與盲聽Top5；真實3份Choice／2位樂評／5位創作／1位盲聽，不灌示意資料。service-only read-only invoker RPC／索引已套用，無原資料或Credit／人氣分數修改；去重／8秒／隱藏／資格與grants交易測試回滾，0fixtures保留。613項測試582通過／31既有可選DB略過／0失敗，TypeScript、本機及雲端build、lint0errors／15既有warnings通過；Security advisor無新WARN。四語320px、桌機、評論HUD／共用播放／歌單排序及正式public API／Owner入口核對；手機非iOS真機。[發布及比對證據](releases/2026-10-14-showtime-community.md)。
 
 2026-10-14歌曲／MV小數評分與累積人氣榜已正式發布（app `831354a`，`codex/homepage-mv-editorial`）：共用原作品ID、每會員一筆最新分數與原留言，手填1–10／最多一位小數、輸入框／10、decimal鍵盤，API及numeric欄位同步驗證。`work_rating_summaries`回有效平均／不同人數／原始總和，`save_work_review`以service-only SECURITY INVOKER原子寫入及receipt重試；保留舊integer RPC相容，首頁MV入口以作品影片資格決定評測來源，不依播放器是否顯示。`20261014082709_decimal_work_ratings.sql`已實際套用；交易測試4.8／6.8、修改／重送／跨面、作者、moderation、文字不加分與grants完整回滾，評分／receipt仍0筆，沒有測試投票留在正式站。Top50改為3×不同Heart支持者＋實際評分總和＋3×盲聽偏好點＋適用新歌3／回歸5；相同最終總分直接原上架時刻新歌優先、名次連續。無neutral假分／最大Heart歸一化，不把總分再乘人數。609測試578通過、31既有可選DB略過、0失敗；TypeScript、本機及雲端build通過，lint0 errors／15既有warnings。Security advisor無新增WARN（21 INFO／14 definer WARN／1 Auth WARN均原有）。Vercel `dpl_EfQmaeynk7U43oSjxt4bEzkvtQKo` READY並promote；218公開作品／50名、逐筆總分與同分排序核對通過。正式桌機及320px手機的歌曲／MV評分可輸入8.7，8.75停用並提示；公開評論及作者姓名保留，未提交真實評價。本次沒有啟用登入／評論／送愛心Credit獎勵，盲聽3Credit維持。[發布證據](releases/2026-10-14-decimal-ratings.md)。
@@ -557,7 +560,7 @@ Check:
 
 ## Credit 參與整合發布
 
-隔離分支 `codex/participation-credit-live`，基準 `a2e156c`。2026-10-14收到具體正式遷移與部署授權，`20261014164151_credit_participation`已在單一交易成功套用；網站部署進行中，部署證據於完成後補上。
+隔離分支 `codex/participation-credit-live`，基準 `a2e156c`。2026-10-14收到具體正式遷移與部署授權，`20261014164151_credit_participation`已在單一交易成功套用；其後已發布`4bfc46f`（Vercel `dpl_4GFbsbawZCWqAgRM7qbpPaQzxQEs`），目前由同一基準的公開文案修訂`b18931a`接續。
 
 正式遷移使用 `supabase/migrations/20261014164151_credit_participation.sql`，完整可核對來源亦保留 `supabase/credit_participation.sql`，QA 夾具與斷言位於 `tests/sql/credit-participation-*.sql`，禁止送到正式專案。新方案保留 `creator_credit_entries` 的全部歷史、delta=3／blind_compare限制、來源唯一性、RLS與grants；參與新收支寫入獨立表，由security-invoker歷史view及service-only summary RPC合併，使用單一snapshot取實際餘額／欠額及最近50筆。負淨額記欠額、未補足前禁止花點，後續收入先補欠額。
 
