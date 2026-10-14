@@ -73,3 +73,13 @@ final result: passed
 正式app c20f7c4／dpl_4Q9gXXNBLUZ96zWWm2oQEWHd5T8T已promote；1440×1024及390×844 screenshots為blind-hud-production-ready-desktop.jpg、blind-hud-production-vote-desktop.jpg及blind-hud-production-vote-mobile.jpg。A7.503661秒仍鎖定，B8.315950／A8.879882秒已解鎖；拉A至片段起點不取消已達標狀態，未提交正式偏好。四語320px無水平溢出、console errors空。Chrome翻譯擴充浮鈕不是產品UI。
 
 發布SQL、RPC權限與完整回滾證據讀[本輪發布紀錄](docs/releases/2026-10-14-blind-hud-seek.md)。只有來源／冷啟動的等待依網路而異，HUD不把它算進8秒。無新增P0／P1／P2；final result: passed。
+
+## 探索封面歌詞與點外收合修訂
+
+2026-10-14使用者錄屏中的BATTLE RECORD入口改為歌詞，不新增卡片操作列；資訊圓形圖示替換文件圖示，分享／播放／歌名旁Heart及評論维持位置。Popup黑底暖橘邊框、獨立橘色捲軸、清楚44px關閉鍵，原入口保持在面板之外；小螢幕依viewport換上／下方定位。
+
+實際Chrome：歌詞按鍵／點外／Esc／另一曲／X／頁面scroll和resize能收起；內部PageDown仍開啟，原作品換行可讀；純音樂缺詞只顯示compact空狀態。只有一個Popup，不沿用會多開的戰績map。Global歌詞dialog點外收起且不停止音訊，原padding／文字點擊保留。沒有改正式戰績資料或接戰同意。
+
+正式app567ce28／dpl_7uAYD1ktw42T3SR7ESvGWby5uy3L已promote；截图lyrics-production-desktop.jpg、lyrics-production-desktop-full.jpg及lyrics-production-mobile.jpg在私人outputs/aipoger-explore-lyrics，桌機／手機无溢出。四語本機與正式站320px、中文桌機／手機檢查通過，console errors空；正式四語每次點外都收回0個popover。
+
+無新P0／P1／P2，接受挑戰入口呈現保留roadmap待議。final result: passed。
