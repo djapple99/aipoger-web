@@ -1,5 +1,7 @@
 # AIPOGER 必要發布證據
 
+- [2026-10-15 參與流程修復與一般會員驗收](2026-10-15-participation-flow-fixes.md)
+
 - [2026-10-15 Credit整合核對與公開文案修訂](2026-10-15-credit-public-copy.md)
 
 僅供驗證目前版本、資料庫遷移及尚待啟用服務。產品規則以 [現行正文](../aipoger-product-rules.md) 為準；發布紀錄不是待辦或新授權。

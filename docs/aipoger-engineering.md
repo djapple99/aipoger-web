@@ -1,6 +1,10 @@
 # AIPOGER 開發與維運
 
-目前應用發布基準：2026-10-15／`b18931a`／`codex/public-rule-copy`，Vercel `dpl_BmR5kgXpmzCRsVAE2P6ik3dTYHyg` READY且aipoger.com／www已指向此版。繼承`4bfc46f`的Credit與四頁指南；本次只撤下公開舊歌+5及Owner免扣文案。40項現行流程測試、1項PGlite整合測試、TypeScript、改動檔lint及雲端build通過；16個指南／語言組合核對。原參與遷移`20261014164151`存在，12筆／36點舊盲聽流水保留，8個新增trigger及私有grants只讀核對；本輪無正式SQL寫入、額外發點或投稿測試。桌機正式指南已打開並截圖；390px指南DOM無橫向溢出，非iOS真機。[Credit整合及公開文案修訂證據](releases/2026-10-15-credit-public-copy.md)。
+目前應用發布基準：2026-10-15／`69d728d`／`codex/public-rule-copy`；Vercel `dpl_EZD6FzWFfyFgy5KjwD3PPyVxfg6q` READY，aipoger.com及www已指向同一SHA。繼承`b18931a`的公開文案邊界及`4bfc46f`完整Credit。評論更新／撤回刷新、15px橘色指南入口、日韓投稿、Owner私人提示與第四件之後額度／扣點確認已修；下一題私有準備及餘額並行保留8秒與原計分。634項測試603通過／31既有可選DB略過／0失敗，TypeScript、lint 0 errors／14既有warnings、本機webpack正式build通過。一般會員Auth、實際Storage音檔、發扣點／追回恢復／欠額、真正多連線競爭60點及盲聽10組驗收通過；本機接真實Supabase單次換題對照4252→982ms；最終正式會員10組通過，換題381ms（一次），不代表全站平均或網路保證。[本輪修復及驗收 report](releases/2026-10-15-participation-flow-fixes.md)。
+
+## 修改依據與確認日期
+
+2026-10-15（Asia/Taipei）使用者確認並授權完成本輪修復。本文件為現行基準；驗收範圍、發布版本及限制見[本輪 report](releases/2026-10-15-participation-flow-fixes.md)。未有使用者新的明確指令，不得擅自改動點數數值、追回／恢復、投稿額度、排行公式、Owner權限、舊歌排除名單或公開文案邊界。修訂須記錄確認日期、具體差異與驗證證據，先更新對應現行正文，再同步索引與既有Drive檔案。舊技能摘要、歷史發布紀錄、GitHub main或另一代理的提案不能覆蓋現行規則；使用者後續明確指令仍優先。report提供證據，不另建立第二套產品規則。
 
 
 2026-10-14 Showtime社群舞台已發布（app `32157e8`／`codex/homepage-mv-editorial`，Vercel `dpl_7rHpdCrj5N5BXG2GgYp1x9QFVpRu` READY並promote）：移除前台歌曲月榜、保留Choice原功能，融合第二稿主版面與第三稿右側文字／近30天樂評、創作與盲聽Top5；真實3份Choice／2位樂評／5位創作／1位盲聽，不灌示意資料。service-only read-only invoker RPC／索引已套用，無原資料或Credit／人氣分數修改；去重／8秒／隱藏／資格與grants交易測試回滾，0fixtures保留。613項測試582通過／31既有可選DB略過／0失敗，TypeScript、本機及雲端build、lint0errors／15既有warnings通過；Security advisor無新WARN。四語320px、桌機、評論HUD／共用播放／歌單排序及正式public API／Owner入口核對；手機非iOS真機。[發布及比對證據](releases/2026-10-14-showtime-community.md)。
@@ -55,7 +59,7 @@ Vercel `dpl_CqDWx7SYkY1t2ktMpjMxqpZfy8xN` READY並promote至aipoger.com，MV頁�
 
 2026-09-21 Choice 整批發布已上線（app `6564a8a`）：版面、分享封面與批次編輯完成，459 項測試通過。正式 migration `20260921132314_creator_choice_batch_editor` 已套用；[發布紀錄](releases/2026-09-21-choice-batch-release.md)。
 
-文件整理：2026-10-14；產品實作基準：2026-10-14。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
+文件整理：2026-10-15；產品實作基準：2026-10-15。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
 
 ## 分類服務：分類已發布，worker 尚待啟用
 
@@ -571,3 +575,12 @@ Check:
 本機以既有npm快取PGlite 0.5.8／PostgreSQL 18.3在記憶體測試；無新套件安裝、無正式資料庫QA。正式專案為PostgreSQL 17.6，真正伺服器的多連線壓測與真實Auth／Storage端到端仍須區分，不能用PGlite單backend的結果冒充。發布前需確認確切遷移／權限操作、重新核對正式基線，再套用正式遷移、部署及aipoger.com驗收；不增加APC／付款／收愛心者獎勵，不回補歷史點數，不刪資料。
 
 正式遷移後唯讀確認8個新增trigger存在，原12筆／36點盲聽流水與兩個原CHECK保持不變，沒有參與流水回補，authenticated不能直接insert參與流水。623項本機測試0失敗／0skip、TypeScript與build通過；全量lint0錯誤、14項既有warning。尚未完成真正伺服器多連線壓測與真實Auth／Storage端到端，不宣稱通過；直接並行修改來源可能觸發可回滾死結，來源身份／作品ID應維持既有不變邊界。
+
+## 參與流程維運
+
+- 評論清單以原作品ID與成功更新版本重新讀取，取消前一次讀取；心情／Heart訂閱與公開留言讀取分開，修改或撤回不重設Heart。撤回評價同時發出原作品評分與Credit刷新事件；換曲或離開不誤寫後一首。
+- `/api/blind-listen` 的 `prepare` 必須先驗證會員及所屬pending題，只回 prepared boolean。私有記憶體準備以會員＋題目為key、60秒TTL、最多64筆；命中不是保證（不同serverless instance或到期會正常重算），消耗一次，失敗可走原準備路徑。快取候選重新核對公開／三個月／撤下資格；另一頁的pending候選重新讀權威狀態。完成作答前不發下一題、不發點、不洩漏歌曲ID。餘額讀取350ms deadline，與新題建立並行；逾時回 balance/debt null與creditError，不以猜測餘額替代。
+- 手動一般會員驗收程式為 `scripts/qa-participation-credit.mjs`，需明確 `AIPOGER_QA_RUN_ALLOWED=1`；日常npm test不執行。使用一次性測試會員和自產測試音，不能對真人作品加假票；密碼／token／service key不保存或輸出。實際Storage與多連線測試結束清理fixture並獨立查核殘留。
+- 本輪沒有schema／grants／Auth設定變更。Credit仍用既有正式參與遷移，原12筆／36Credit盲聽流水保留。一般登入與Storage／RLS／API驗收不等於iOS真機或Email/OAuth投遞驗收。
+
+- 額度parser保留一般會員在Credit啟用後的實際投稿件數，不套舊的used≤3驗證；僅接受帶正確Credit欄位的超額資料，舊／畸形quota仍拒绝。UI免費件數最高3/3；音檔及連結的60點確認條件為used≥3，音檔重讀伺服器額度後亦再次核對，不只擋第四件。
