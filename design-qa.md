@@ -23,7 +23,8 @@ Five fidelity surfaces:
 
 1. P2: guest floating login overlapped the mobile editorial navigation. Added `/rank` to the existing guest-dock suppression list and kept the header's single auth return link. Final Chrome mobile capture confirms no duplicate login.
 2. P2: two companions expanded into oversized tiles, pushing the weekly review area below the desktop frame. For at most two companions, desktop uses compact cover/metadata pairs; mobile keeps cover tiles. Final desktop capture includes the review heading/prompt without enlarging blank sections.
-3. Rejected stale/incorrect-size IAB captures. Verified desktop in Chrome at explicit1440×1024 and checked dimensions, complete assets and scroll position.
+3. P2: at520px a companion tracklist button extended13px outside the viewport. Below1100px, small companion sets now use ordinary cover cards, preserving the inline action row. Actual320/520/768/1024/1440px checks found0 page or card-button overflows; evidence `outputs/aipoger-showtime/tablet-fixed.png`.
+4. Rejected stale/incorrect-size IAB captures. Verified desktop in Chrome at explicit1440×1024 and checked dimensions, complete assets and scroll position.
 
 ## Interactions and verification
 
