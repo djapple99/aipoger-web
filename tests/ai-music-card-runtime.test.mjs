@@ -14,6 +14,7 @@ const icons=new Proxy({}, {get:(_,name)=>String(name)});
 const testModule={exports:{}};
 new Function('require','module','exports',compiled)(name=>{
   if(name==='react/jsx-runtime')return {jsx,jsxs:jsx};
+  if(name==='@/components/lyrics-popover')return {__esModule:true,default:'LyricsPopover'};
   if(name==='next/link')return {__esModule:true,default:'a'};
   if(name==='lucide-react')return icons;
   if(name==='./ai-music.module.css')return {__esModule:true,default:styles};
@@ -25,8 +26,8 @@ new Function('require','module','exports',compiled)(name=>{
 },testModule,testModule.exports);
 const nodes=x=>Array.isArray(x)?x.flatMap(nodes):x&&typeof x==='object'?[x,...nodes(x.props?.children)]:[];
 const text=x=>Array.isArray(x)?x.map(text).join(''):x&&typeof x==='object'?text(x.props?.children):x==null||typeof x==='boolean'?'':String(x);
-const track={id:'bar-original',sourceId:'original',recordKey:'bar:original',source:'bar',title:'Real Song',creator:'Real Creator',aiTool:'Suno',genre:'Jazz',audioUrl:'/original.mp3',coverUrl:'/original.jpg',href:'/ai-music?track=original&lang=zh#works',heartCount:28,createdAt:'2026-06-01T00:00:00Z',openForChallenge:false,earwormAffinityPercent:null,earwormAffinitySampleCount:0,recentHeartSupporters:1,recentOfficialAudienceVotes:0,recentQualifiedInteractionAt:null};
-const props={track,lang:'zh',isPlaying:false,isExpanded:false,heartBusy:false,heartedToday:false,onPrepare(){},onPlay(){},onToggleExpand(){},onHeart(){},onShare(){}};
+const track={id:'bar-original',sourceId:'original',recordKey:'bar:original',source:'bar',title:'Real Song',creator:'Real Creator',aiTool:'Suno',genre:'Jazz',audioUrl:'/original.mp3',lyrics:'Verse one\nVerse two',coverUrl:'/original.jpg',href:'/ai-music?track=original&lang=zh#works',heartCount:28,createdAt:'2026-06-01T00:00:00Z',openForChallenge:false,earwormAffinityPercent:null,earwormAffinitySampleCount:0,recentHeartSupporters:1,recentOfficialAudienceVotes:0,recentQualifiedInteractionAt:null};
+const props={track,lang:'zh',isPlaying:false,heartBusy:false,heartedToday:false,onPrepare(){},onPlay(){},onHeart(){},onShare(){}};
 
 test('card keeps the heart next to the title and invokes actions for the original work',()=>{
   const actions=[];
@@ -39,6 +40,9 @@ test('card keeps the heart next to the title and invokes actions for the origina
   heart.props.onClick();nodes(tree).find(x=>x.props?.className==='play').props.onClick();
   nodes(tree).find(x=>x.props?.['aria-label']==='分享').props.onClick();
   assert.deepEqual(actions,[['heart',track],['play',track],['share',track]]);
+  const lyrics=nodes(tree).find(x=>x.type==='LyricsPopover');
+  assert.equal(lyrics.props.title,track.title);assert.equal(lyrics.props.artist,track.creator);assert.equal(lyrics.props.lyrics,track.lyrics);
+  assert.equal(nodes(tree).some(x=>x.props?.['aria-label']==='顯示戰績資訊'),false);
   assert.equal(tree.props.id,'ai-music-work-original');
 });
 test('busy and selected hearts remain accessible; disabled audio cannot play',()=>{
@@ -50,7 +54,7 @@ test('busy and selected hearts remain accessible; disabled audio cannot play',()
 });
 test('filtering the heat list preserves the global rank and source count',()=>{
   const other={...track,id:'bar-top',sourceId:'top',title:'Top Song',genre:'Rap',recentHeartSupporters:20};
-  const tree=testModule.exports.HeatList({tracks:[track,other],query:'Real',genre:'Jazz',lang:'zh',currentTrackId:null,isPlaying:false,expandedHud:{},heartBusy:{},heartStates:{},onPrepare(){},onPlay(){},onToggleExpand(){},onHeart(){},onShare(){}});
+  const tree=testModule.exports.HeatList({tracks:[track,other],query:'Real',genre:'Jazz',lang:'zh',currentTrackId:null,isPlaying:false,heartBusy:{},heartStates:{},onPrepare(){},onPlay(){},onHeart(){},onShare(){}});
   const cards=nodes(tree).filter(x=>x.type===testModule.exports.TrackCard);
   assert.equal(cards.length,1);assert.equal(cards[0].props.track,track);
   assert.equal(cards[0].props.catalogLabel,'#02');assert.equal(cards[0].props.track.heartCount,28);

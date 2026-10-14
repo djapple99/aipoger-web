@@ -4,12 +4,13 @@ import type { ExternalMusic } from "@/lib/external-music";
 
 import { musicPlayer, useMusicPlayer } from "@/lib/music-player-store";
 import Link from "next/link";
-import { ArrowRight, AudioLines, Headphones, Heart, Info, MessageCircleMore, Pause, Play, Search, Share2, Swords, X } from "lucide-react";
+import { ArrowRight, AudioLines, Headphones, Heart, MessageCircleMore, Pause, Play, Search, Share2, Swords, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { fontRighteous } from "@/lib/fonts";
 import EditorialHeader from "@/components/editorial-header";
 import { filterAiMusicTracks } from "@/lib/ai-music-filter";
+import LyricsPopover from "@/components/lyrics-popover";
 import ExploreRadio from "@/components/explore-radio";
 import MusicPoolChart from "@/components/music-pool-chart";
 import HomeWorkFeedback from "@/components/home-work-feedback";
@@ -368,41 +369,6 @@ function ChallengeReadyBadge({ lang }: { lang: string }) {
   );
 }
 
-function formatRecord(track: AiMusicTrack, lang: string) {
-  if (track.challengeCount <= 0) {
-    return localeText(lang, "尚未形成正式戰績", "No official record yet", "公式戦績はまだありません", "아직 공식 전적이 없습니다");
-  }
-  return `${track.wins}W / ${track.losses}L · ${track.winRate}%`;
-}
-
-function TrackHud({ track, lang }: { track: AiMusicTrack; lang: string }) {
-  const hasOfficialRecord = track.challengeCount > 0;
-  return (
-    <div className="grid gap-2 rounded-md border border-white/14 bg-black/76 p-3 text-left shadow-[0_18px_44px_rgba(0,0,0,0.46)] backdrop-blur">
-      <p className={`${fontRighteous.className} text-[10px] uppercase tracking-[0.18em] text-cyan-100/75`}>
-        Battle Record
-      </p>
-      <p className="text-sm font-black text-white">
-        {formatRecord(track, lang)}
-      </p>
-      <div className="grid grid-cols-2 gap-2 text-[11px] font-bold text-zinc-300">
-        <span>{localeText(lang, "有效投票", "Valid votes", "有効投票", "유효 투표")} {track.audienceVotes}</span>
-        <span>{localeText(lang, "挑戰", "Battles", "挑戦", "도전")} {track.challengeCount}</span>
-        <span>{localeText(lang, "同類型勝率", "Style win rate", "同ジャンル勝率", "동일 장르 승률")} {track.winRate}%</span>
-        <span>{track.statusLabel}</span>
-      </div>
-      <p className="rounded-sm border border-yellow-200/18 bg-yellow-300/[0.08] px-2.5 py-2 text-[11px] font-black leading-5 text-yellow-100">
-        {track.statusLabel}
-      </p>
-      {!hasOfficialRecord ? (
-        <p className="text-[11px] font-bold leading-5 text-zinc-500">
-          {localeText(lang, "正式戰績需要至少 3 位非參賽者投票。", "Official records need at least 3 non-fighter votes.", "公式戦績には参加者以外の投票が3票以上必要です。", "공식 전적은 참가자가 아닌 사용자의 투표가 3표 이상 필요합니다.")}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
 function EarwormAffinityStatus({
   track,
   lang,
@@ -427,7 +393,6 @@ function EarwormAffinityStatus({
 function TrackCard({
   track,
   isPlaying,
-  isExpanded,
   heartBusy,
   heartedToday,
   lang,
@@ -436,14 +401,12 @@ function TrackCard({
   highlighted = false,
   onPrepare,
   onPlay,
-  onToggleExpand,
   onHeart,
   onShare,
   onComment,
 }: {
   track: AiMusicTrack;
   isPlaying: boolean;
-  isExpanded: boolean;
   heartBusy: boolean;
   heartedToday: boolean;
   lang: string;
@@ -452,7 +415,6 @@ function TrackCard({
   highlighted?: boolean;
   onPrepare: (track: AiMusicTrack) => void;
   onPlay: (track: AiMusicTrack) => void;
-  onToggleExpand: (track: AiMusicTrack) => void;
   onHeart: (track: AiMusicTrack) => void;
   onShare: (track: AiMusicTrack) => void;
   onComment?: (track: AiMusicTrack) => void;
@@ -481,17 +443,11 @@ function TrackCard({
           {isPlaying ? <Pause fill="currentColor" aria-hidden="true" /> : <Play fill="currentColor" aria-hidden="true" />}
         </button>
         <div className={styles.coverTools}>
-          <button type="button" onClick={() => onToggleExpand(track)} aria-expanded={isExpanded}
-            aria-label={localeText(lang, "顯示戰績資訊", "Show record info", "戦績情報を表示", "전적 정보 보기")}>
-            <Info aria-hidden="true" />
-          </button>
+          <LyricsPopover title={track.title} artist={track.creator} lyrics={track.lyrics} lang={lang} />
           <button type="button" onClick={() => onShare(track)} aria-label={localeText(lang, "分享", "Share", "共有", "공유")}>
             <Share2 aria-hidden="true" />
           </button>
         </div>
-        {isExpanded ? <div className="pointer-events-none absolute inset-x-3 top-3 hidden md:block">
-          <TrackHud track={track} lang={lang} />
-        </div> : null}
         <EarwormAffinityStatus track={track} lang={lang} />
       </div>
       <div className={styles.titleRow}>
@@ -509,7 +465,6 @@ function TrackCard({
         </Link> : null}
       </div>
       {catalogNote ? <p className={styles.note}>{catalogNote}</p> : null}
-      {isExpanded ? <div className="mt-2 md:hidden"><TrackHud track={track} lang={lang} /></div> : null}
     </article>
   );
 }
@@ -531,13 +486,11 @@ function HeatList({
   genre,
   currentTrackId,
   isPlaying,
-  expandedHud,
   heartBusy,
   heartStates,
   lang,
   onPrepare,
   onPlay,
-  onToggleExpand,
   onHeart,
   onShare,
   onComment,
@@ -547,13 +500,11 @@ function HeatList({
   genre: string;
   currentTrackId: string | null;
   isPlaying: boolean;
-  expandedHud: Record<string, boolean>;
   heartBusy: Record<string, boolean>;
   heartStates: HeartState;
   lang: string;
   onPrepare: (track: AiMusicTrack) => void;
   onPlay: (track: AiMusicTrack) => void;
-  onToggleExpand: (track: AiMusicTrack) => void;
   onHeart: (track: AiMusicTrack) => void;
   onShare: (track: AiMusicTrack) => void;
   onComment?: (track: AiMusicTrack) => void;
@@ -579,7 +530,6 @@ function HeatList({
               key={track.id}
               track={track}
               isPlaying={currentTrackId === track.id && isPlaying}
-              isExpanded={Boolean(expandedHud[track.id])}
               heartBusy={Boolean(heartBusy[track.recordKey])}
               heartedToday={Boolean(heartStates[track.recordKey])}
               lang={lang}
@@ -587,7 +537,6 @@ function HeatList({
               catalogNote={hasRecentSignal ? heatReason(track, lang) : undefined}
               onPrepare={onPrepare}
               onPlay={onPlay}
-              onToggleExpand={onToggleExpand}
               onHeart={onHeart}
               onShare={onShare}
               onComment={onComment}
@@ -629,7 +578,6 @@ export default function AiMusicClient() {
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [loadError, setLoadError] = useState("");
   const [expandedGenres, setExpandedGenres] = useState<Record<string, boolean>>({});
-  const [expandedHud, setExpandedHud] = useState<Record<string, boolean>>({});
   const [heartBusy, setHeartBusy] = useState<Record<string, boolean>>({});
   const [heartStates, setHeartStates] = useState<HeartState>({});
   const [authPromptTrack, setAuthPromptTrack] = useState<AiMusicTrack | null>(null);
@@ -1024,10 +972,9 @@ export default function AiMusicClient() {
   const renderTrack = (track: AiMusicTrack, catalogLabel?: string) => <TrackCard
     key={track.id} track={track} lang={lang} catalogLabel={catalogLabel} highlighted={highlightedId === track.sourceId}
     isPlaying={currentTrack?.id === track.id && isPlaying}
-    isExpanded={Boolean(expandedHud[track.id])} heartBusy={Boolean(heartBusy[track.recordKey])}
+    heartBusy={Boolean(heartBusy[track.recordKey])}
     heartedToday={Boolean(heartStates[track.recordKey])}
     onPrepare={prepareTrack} onPlay={handlePlayTrack}
-    onToggleExpand={item => setExpandedHud(current => ({ ...current, [item.id]: !current[item.id] }))}
     onHeart={item => void sendHeart(item)} onShare={item => void shareTrack(item)} onComment={setCommentTrack} />;
   const earTestButton = <button type="button" className={styles.earTest} onClick={() => setEarwormPromptOpen(true)}>
     <Headphones aria-hidden="true" />{earwormCopy.reopen}
@@ -1105,9 +1052,8 @@ export default function AiMusicClient() {
             {loadState === "ready" && worksView === "heat" ? <>
               <HeatList tracks={poolTracks} query={query} genre={selectedGenre}
                 currentTrackId={currentTrack?.id ?? null} isPlaying={isPlaying}
-                expandedHud={expandedHud} heartBusy={heartBusy} heartStates={heartStates} lang={lang}
+                heartBusy={heartBusy} heartStates={heartStates} lang={lang}
                 onPrepare={prepareTrack} onPlay={handlePlayTrack}
-                onToggleExpand={item => setExpandedHud(current => ({ ...current, [item.id]: !current[item.id] }))}
                 onHeart={item => void sendHeart(item)} onShare={item => void shareTrack(item)} onComment={setCommentTrack} />
             </> : null}
             {loadState === "ready" && worksView === "genre" ? groupedTracks.map((group, index) => {

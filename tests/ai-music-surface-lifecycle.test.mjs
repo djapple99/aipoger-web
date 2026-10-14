@@ -34,8 +34,10 @@ test("Explore includes historical certified works and only blocks challenges for
   assert.ok(aiMusicChallengeRouteSource.includes('已累積 8 場正式敗績'));
 });
 
-test("Explore presents genuine W/L without a certification badge or six-defense progress", () => {
-  assert.ok(clientSource.includes('track.wins}W / ${track.losses}L'));
+test("Explore retains official result data without using the former record card or certification progress", () => {
+  assert.ok(aiMusicTracksRouteSource.includes('ai_music_official_wins'));
+  assert.ok(aiMusicTracksRouteSource.includes('ai_music_official_losses'));
+  assert.equal(clientSource.includes('function TrackHud('), false);
   assert.equal(clientSource.includes('defenseProgress'), false);
   assert.equal(clientSource.includes('Showtime certified'), false);
   assert.equal(clientSource.includes('Showtime 認證'), false);

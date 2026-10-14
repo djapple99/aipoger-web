@@ -316,7 +316,11 @@ export default function GlobalMusicPlayer() {
         returnPath={typeof window === "undefined" ? "/ai-music" : window.location.pathname + window.location.search + window.location.hash}
         onClose={() => setCommentTrack(null)} onChange={() => {}} /> : null}
       <AuthRequiredDialog open={authOpen} kind="heart" lang={lang} nextPath={`/ai-music?lang=${lang}${track?.heartTrackId ? `&track=${track.heartTrackId}#works` : ""}`} onClose={() => setAuthOpen(false)} />
-      <dialog ref={lyricsDialogRef} onClose={() => setLyricsOpen(false)} className="fixed inset-0 m-auto max-h-[75dvh] w-[min(92vw,36rem)] overflow-y-auto rounded-2xl border border-orange-300/25 bg-zinc-950 p-5 text-white backdrop:bg-black/70" aria-label={label("歌詞", "Lyrics", "歌詞", "가사")}>
+      <dialog ref={lyricsDialogRef} onClose={() => setLyricsOpen(false)} onClick={event => {
+        if (event.target !== event.currentTarget) return;
+        const rect = event.currentTarget.getBoundingClientRect();
+        if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) setLyricsOpen(false);
+      }} className="fixed inset-0 m-auto max-h-[75dvh] w-[min(92vw,36rem)] overflow-y-auto rounded-2xl border border-orange-300/25 bg-zinc-950 p-5 text-white backdrop:bg-black/70" aria-label={label("歌詞", "Lyrics", "歌詞", "가사")}>
         <div className="mb-4 flex items-center justify-between gap-3"><h2 className="font-bold">{track?.title}</h2><button autoFocus onClick={() => setLyricsOpen(false)} aria-label={label("關閉歌詞", "Close lyrics", "歌詞を閉じる", "가사 닫기")}><X /></button></div>
         <p className="whitespace-pre-wrap text-sm leading-8">{track?.lyrics || label("歌詞未提供", "Lyrics not provided", "歌詞は未提供です", "가사가 없습니다")}</p>
       </dialog>
