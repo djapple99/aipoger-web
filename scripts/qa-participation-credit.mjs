@@ -3,6 +3,7 @@ import {createRequire} from 'node:module';
 import {randomUUID,createHash,randomBytes} from 'node:crypto';
 import {writeFile,mkdir} from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import {parseCreatorUploadQuota} from '../src/lib/creator-upload-quota.ts';
 const require=createRequire(import.meta.url);
 if(process.env.AIPOGER_QA_RUN_ALLOWED!=='1') throw Error('Explicit QA run authorization is required.');
 require('@next/env').loadEnvConfig(process.env.AIPOGER_QA_ENV_ROOT??process.cwd(),true,{info(){},error(){}});
@@ -24,7 +25,7 @@ let serial=0;
 async function asset(user){const bytes=wav(220+(++serial)*23),path=`${user.id}/community/qa-${run}-${serial}.wav`;unwrap(await user.db.storage.from('listen-bar-audio').upload(path,bytes,{contentType:'audio/wav',upsert:false}),'QA audio upload');assets.push({bucket:'listen-bar-audio',path});await manifest();return {path,hash:createHash('sha256').update(bytes).digest('hex')};}
 async function payload(user,paid=false){const a=await asset(user);return {id:randomUUID(),title:'AIPOGER QA '+run.slice(0,8)+' '+serial,artist:'AIPOGER QA',genre:'Original 自我風格',ai_tool:'QA test tone',audio_path:a.path,audio_sha256:a.hash,duration_seconds:46,source:'community',created_by:user.id,is_active:true,is_featured_official:false,review_status:'approved',bar_phase:'public',ai_music_challenge_status:'showcase',credit_submission_confirmed:paid};}
 async function submit(user,paid=false){const p=await payload(user,paid);const r=await user.db.from('listen_bar_tracks').insert(p).select('id').single();if(r.error)return {error:r.error,p};works.push({id:r.data.id,userId:user.id});await manifest();return {id:r.data.id,p};}
-async function credits(user){const r=await api('/api/credit',user);assert.equal(r.status,200);return r.data.credits;}
+async function credits(user){const r=await api('/api/credit',user);assert.equal(r.status,200);assert.ok(parseCreatorUploadQuota(r.data.quota),'Real API quota must remain readable after extra submissions');return r.data.credits;}
 async function cleanup(){let failures=[];const ids=users.map(u=>u.id),trackIds=works.map(w=>w.id);if(ids.length){
  for(const table of ['listen_bar_track_comments','listen_bar_track_reactions','mv_work_ratings','blind_listen_questions','creator_credit_awards','creator_credit_review_texts','creator_credit_participation_entries']){const r=await admin.from(table).delete().in('user_id',ids);if(r.error)failures.push(table);}
  if(trackIds.length){const r=await admin.from('listen_bar_tracks').delete().in('id',trackIds).in('created_by',ids);if(r.error)failures.push('QA works');

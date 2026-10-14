@@ -281,7 +281,7 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
       setPublicUploadError(t("listen_bar_genre_required"));
       return;
     }
-    if (publicUploadBlocked || (!pendingSubmission.current && uploadQuota?.used === 3 && !uploadQuota.unlimited && !confirmedCredit)) {
+    if (publicUploadBlocked || (!pendingSubmission.current && !!uploadQuota && uploadQuota.used >= 3 && !uploadQuota.unlimited && !confirmedCredit)) {
       setPublicUploadError(publicUploadBlockedMessage);
       return;
     }
@@ -309,7 +309,7 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
         setPublicUploadError(barText(lang, "暫時無法確認上傳額度，請稍後再試。", "Could not check your upload allowance. Try again shortly.", "投稿枠を確認できません。しばらくして再試行してください。", "업로드 한도를 확인할 수 없습니다. 잠시 후 다시 시도하세요."));
         return;
       }
-      if (creatorUploadLimitReached(quota)) {
+      if (creatorUploadLimitReached(quota) || (!quota.unlimited && quota.used >= 3 && !confirmedCredit)) {
         setPublicUploadError(barText(lang, "額外投稿需60 Credit，待追回欠額補足前不能花點。", "Extra submissions need 60 Credit and no outstanding debt.", "追加投稿には60 Creditと未回収額なしが必要です。", "추가 제출에는60 Credit과 미회수 금액 없음이 필요합니다."));
         return;
       }
@@ -546,10 +546,10 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
                     </p>
                     <p className="mt-2 text-xs font-bold leading-5 text-zinc-300">
                       {uploadQuota?.unlimited ? barText(lang, "Owner · 投稿不限數量", "Owner · Unlimited submissions", "Owner · 投稿数の制限なし", "Owner · 제출 수 제한 없음") : barText(lang,
-                        `上傳額度 ${uploadQuota ? `${uploadQuota.used}/3` : userId ? "確認中" : "登入後查看"}。每期從第一首成功投稿起算168小時，三件免費，之後每件60 Credit；刪除不退額度。`,
-                        `Uploads ${uploadQuota ? `${uploadQuota.used}/3` : userId ? "checking" : "sign in to view"}. 3 free submissions per 168 hours, then 60 Credit each. Deletion does not restore the allowance.`,
-                        `無料投稿枠 ${uploadQuota ? `${uploadQuota.used}/3` : userId ? "確認中" : "ログインして確認"}。最初の投稿成功から168時間、3曲まで無料。その後は1曲60 Credit。削除しても枠は戻りません。`,
-                        `무료 제출 ${uploadQuota ? `${uploadQuota.used}/3` : userId ? "확인 중" : "로그인 후 확인"}. 첫 제출 성공부터168시간 동안3곡 무료, 이후 곡당60 Credit. 삭제해도 무료 한도는 복구되지 않습니다.`)}
+                        `免費額度 ${uploadQuota ? `${Math.min(uploadQuota.used, 3)}/3` : userId ? "確認中" : "登入後查看"}。每期從第一首成功投稿起算168小時，三件免費，之後每件60 Credit；刪除不退額度。`,
+                        `Free uploads ${uploadQuota ? `${Math.min(uploadQuota.used, 3)}/3` : userId ? "checking" : "sign in to view"}. 3 free submissions per 168 hours, then 60 Credit each. Deletion does not restore the allowance.`,
+                        `無料投稿枠 ${uploadQuota ? `${Math.min(uploadQuota.used, 3)}/3` : userId ? "確認中" : "ログインして確認"}。最初の投稿成功から168時間、3曲まで無料。その後は1曲60 Credit。削除しても枠は戻りません。`,
+                        `무료 제출 ${uploadQuota ? `${Math.min(uploadQuota.used, 3)}/3` : userId ? "확인 중" : "로그인 후 확인"}. 첫 제출 성공부터168시간 동안3곡 무료, 이후 곡당60 Credit. 삭제해도 무료 한도는 복구되지 않습니다.`)}
                     </p>
                   </div>
                 )}
@@ -610,7 +610,7 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
 </div></details>
                 <button
                   type="submit"
-                  disabled={publicUploadBusy || publicUploadBlocked || (!pendingSubmission.current && uploadQuota?.used === 3 && !uploadQuota.unlimited && !confirmedCredit) || !publicAudioFile || (previewOpen && (!previewPlayed || !rightsConfirmed))}
+                  disabled={publicUploadBusy || publicUploadBlocked || (!pendingSubmission.current && !!uploadQuota && uploadQuota.used >= 3 && !uploadQuota.unlimited && !confirmedCredit) || !publicAudioFile || (previewOpen && (!previewPlayed || !rightsConfirmed))}
                   className="h-12 rounded-xl bg-orange-500 px-5 text-sm font-black tracking-[0.12em] text-black shadow-[0_0_28px_rgba(255,106,0,0.24)] transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:border disabled:border-white/10 disabled:bg-white/[0.045] disabled:text-zinc-500 disabled:shadow-none"
                 >
                   {publicUploadBusy

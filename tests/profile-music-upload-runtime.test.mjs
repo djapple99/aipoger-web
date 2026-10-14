@@ -9,9 +9,9 @@ import {creatorUploadLimitReached} from '../src/lib/creator-upload-quota.ts';
 import {limitListenBarDisplayText} from '../src/lib/listen-bar-field-limits.ts';
 const code=ts.transpileModule(readFileSync(new URL('../src/components/profile-music-upload.tsx',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
 const nodes=x=>Array.isArray(x)?x.flatMap(nodes):x&&typeof x==='object'?[x,...nodes(x.props?.children)]:[];
-async function mount(t,{failInsert=false,quotaUsed=0,privateFailure=false,sessionId='creator',unlimited=false,existingTracks=[]}={}){
+async function mount(t,{failInsert=false,quotaUsed=0,privateFailure=false,sessionId='creator',unlimited=false,creditBalance=null,existingTracks=[]}={}){
  let cursor=0,tree,dirty=true,submitted=0;const state=[],refs=[],effects=[],uploads=[],inserts=[],requests=[];
- const quota={limit:unlimited?null:3,used:unlimited?0:quotaUsed,unlimited};
+ const quota={limit:unlimited?null:3,used:unlimited?0:quotaUsed,unlimited,...(creditBalance===null?{}:{creditEnabled:true,balance:creditBalance,debt:0,extraCost:60,canSubmit:creditBalance>=60})};
  const session={access_token:'unit-test-only',user:{id:sessionId}};
  const react={useState(v){const i=cursor++;if(!(i in state))state[i]=v;return [state[i],v=>{state[i]=typeof v==='function'?v(state[i]):v;dirty=true}]},useRef(v){return refs[cursor++]??={current:v}},useEffect(fn,deps){const i=cursor++;if(!effects[i]||deps?.some((v,j)=>!Object.is(v,effects[i].deps?.[j]))){effects[i]?.cleanup?.();effects[i]={deps,cleanup:fn()}}}};
  const supabase={auth:{getSession:async()=>({data:{session}})},storage:{from:bucket=>({upload:async(path)=>{uploads.push({bucket,path});return {error:null}},remove:async()=>({error:null})})},from(){let insert=false,payload;const q={select(){return q},eq(){return q},limit(){return q},insert(v){insert=true;payload=v;inserts.push(v);return q},maybeSingle:async()=>insert?{data:failInsert?null:{...payload,id:'11111111-1111-4111-8111-111111111111',created_at:new Date().toISOString()},error:failInsert?{message:'insert rejected',code:'23514'}:null}:{data:null,error:null}};return q}};
@@ -25,7 +25,7 @@ async function mount(t,{failInsert=false,quotaUsed=0,privateFailure=false,sessio
  render();await flush();t.after(()=>effects.forEach(e=>e?.cleanup?.()));
  const find=(type,filter=()=>true)=>nodes(tree).find(n=>n.type===type&&filter(n.props))?.props;
  async function prepare({confirm=true}={}){await find('input',p=>p.accept==='.mp3,.m4a,.aac,.ogg').onChange({target:{files:[new File(['audio'],'song.mp3',{type:'audio/mpeg'})]}});await flush();find('select').onChange({target:{value:'Jazz / Bossa 微醺時刻'}});await flush();if(confirm){await find('form').onSubmit({preventDefault(){}});await flush();assert.equal(uploads.length,0);find('audio').onPlaying();await flush();find('input',p=>p.type==='checkbox').onChange({target:{checked:true}});await flush()}}
- return {prepare,flush,find,uploads,inserts,requests,submitted:()=>submitted,submit:()=>find('form').onSubmit({preventDefault(){}})};
+ return {prepare,flush,find,checkboxes:()=>nodes(tree).filter(n=>n.type==='input'&&n.props.type==='checkbox').map(n=>n.props),uploads,inserts,requests,submitted:()=>submitted,submit:()=>find('form').onSubmit({preventDefault(){}})};
 }
 test('moved submission preserves manual genre, original ownership, audio hash and public insertion',async t=>{
  const ui=await mount(t);await ui.prepare();assert.equal(ui.find('select').value,'Jazz / Bossa 微醺時刻');await ui.submit();await ui.flush();assert.equal(ui.inserts.length,1);assert.equal(ui.inserts[0].genre,'Jazz / Bossa 微醺時刻');assert.equal(ui.inserts[0].created_by,'creator');assert.equal(ui.inserts[0].bar_phase,'public');assert.equal(ui.inserts[0].audio_sha256,'test-hash');assert.equal(ui.uploads.length,1);assert.equal(ui.submitted(),1);assert.equal(ui.find('select').value,'');
@@ -57,4 +57,12 @@ test('owner can submit a file without a numeric allowance',async t=>{
 test('members with five existing songs in one genre may submit within their weekly allowance',async t=>{
  const existingTracks=Array.from({length:8},(_,i)=>({id:String(i),genre:'Jazz / Bossa 微醺時刻',is_active:true,bar_phase:'public'}));
  const ui=await mount(t,{existingTracks});await ui.prepare();await ui.submit();await ui.flush();assert.equal(ui.inserts.length,1);assert.equal(ui.submitted(),1);
+});
+
+test('fifth audio submission requires explicit 60 Credit consent even after four successful works',async t=>{
+ const ui=await mount(t,{quotaUsed:4,creditBalance:60});await ui.prepare({confirm:false});await ui.submit();await ui.flush();
+ ui.find('audio').onPlaying();await ui.flush();ui.checkboxes()[1].onChange({target:{checked:true}});await ui.flush();
+ await ui.submit();await ui.flush();assert.equal(ui.uploads.length,0,'preview and rights alone do not authorize Credit spending');
+ ui.checkboxes()[0].onChange({target:{checked:true}});await ui.flush();await ui.submit();await ui.flush();
+ assert.equal(ui.uploads.length,1);assert.equal(ui.inserts.length,1);assert.equal(ui.inserts[0].credit_submission_confirmed,true);
 });
