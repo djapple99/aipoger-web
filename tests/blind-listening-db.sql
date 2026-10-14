@@ -39,6 +39,19 @@ begin
   r:=public.tick_blind_question(listener,q,'A','progress',21);
   if (r->>'heardA')::numeric<5.9 then raise exception 'Network jitter incorrectly penalized real listening'; end if;
   if public.blind_audio_source(q,'A')<>'fixture/a.mp3' or public.blind_audio_source(q,'X') is not null then raise exception 'Anonymous source lookup failed'; end if;
+  begin
+    perform public.tick_blind_question(listener,q,'B','seek',30); raise exception 'Seeking unlocked before eight seconds';
+  exception when invalid_parameter_value then null;
+  end;
+  update public.blind_listen_questions set heard_a=8,heard_b=0,active_side='B',last_position=16 where id=q;
+  r:=public.tick_blind_question(listener,q,'A','seek',40);
+  if (r->>'heardA')::numeric<>8 or (select active_side from public.blind_listen_questions where id=q)<>'B'
+    or (select last_position from public.blind_listen_questions where id=q)<>16 then raise exception 'Inactive seek disturbed playback or minted time'; end if;
+  update public.blind_listen_questions set active_side='A',last_position=23,last_tick_at=clock_timestamp()-interval '5 seconds' where id=q;
+  r:=public.tick_blind_question(listener,q,'A','seek',40);
+  if (r->>'heardA')::numeric<>8 then raise exception 'Seeking minted listened time'; end if;
+  r:=public.tick_blind_question(listener,q,'A','progress',41);
+  if (r->>'heardA')::numeric>=8.1 then raise exception 'Seek failed to rebase the clock'; end if;
   update public.blind_listen_questions set heard_a=7.999,heard_b=8 where id=q;
   begin
     perform public.complete_blind_question(listener,q,'tie'); raise exception 'Under-eight-second A accepted';

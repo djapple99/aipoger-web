@@ -21,6 +21,16 @@
   "functions": {
     "src/app/api/upload-hook/route.ts": {
       "maxDuration": 120
+    },
+    "src/app/api/blind-listen/route.ts": {
+      "regions": [
+        "hnd1"
+      ]
+    },
+    "src/app/api/blind-listen/audio/route.ts": {
+      "regions": [
+        "hnd1"
+      ]
     }
   }
 }

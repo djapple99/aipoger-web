@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import { mountMv, text } from "./helpers/mv-runtime.mjs";
 import { battleRetroCopy } from "../src/lib/battle-retro-copy.ts";
 import { BLIND_END, BLIND_MIN_SECONDS, BLIND_START } from "../src/lib/blind-listening.ts";
-async function mount(t,{lang="zh",guest=false,failVote=false,nextFails=false}={}) {
+async function mount(t,{lang="zh",guest=false,failVote=false,nextFails=false,lagTicks=false,lagPlay=false}={}) {
  let session=guest?null:{access_token:"test",user:{id:"reader"}},authChanged,clock=0,active=null,last=15,counter=0;
- const calls=[],heard={A:0,B:0};
+ const releases=[];const calls=[],heard={A:0,B:0};
  const question=()=>({id:session.user.id+"-q"+counter,audioA:"/anonymous-a-"+session.user.id+counter,audioB:"/anonymous-b-"+session.user.id+counter,heardA:0,heardB:0,expiresAt:"2099-01-01"});
  const icons=Object.fromEntries(["ArrowLeft","Equal","Heart","Pause","Play","RotateCcw"].map(k=>[k,()=>null]));
  const ui=await mountMv(t,"src/components/blind-listening-room.tsx",{},{
@@ -19,8 +19,9 @@ async function mount(t,{lang="zh",guest=false,failVote=false,nextFails=false}={}
    const body=init.body?JSON.parse(init.body):null;calls.push(body);
    if(!body)return {ok:true,json:async()=>({question:question()})};
    if(body.action==="tick"){
-     if(active===body.side)heard[body.side]=Math.min(30,heard[body.side]+Math.max(0,body.position-last));
-     last=body.position;active=body.event==="pause"?null:body.side;
+     if(body.event!=="seek"&&active===body.side)heard[body.side]=Math.min(30,heard[body.side]+Math.max(0,body.position-last));
+     if(body.event!=="seek"||active===body.side)last=body.position;if(body.event!=="seek")active=body.event==="pause"?null:body.side;
+     if((lagTicks&&body.event!=="play")||(lagPlay&&body.event==="play"))await new Promise(resolve=>releases.push(resolve));
      return {ok:true,json:async()=>({heardA:heard.A,heardB:heard.B})};
    }
    if(failVote)return {ok:false,json:async()=>({error:"SAVE_FAILED"})};
@@ -40,12 +41,12 @@ async function mount(t,{lang="zh",guest=false,failVote=false,nextFails=false}={}
    for(let s=from;s<until;){s=Math.min(until,s+1);clock+=1100;els[side].currentTime=15+s;audioProps(side).onTimeUpdate();await ui.flush();}
    if(until<30){button(battleRetroCopy(lang).pause+" "+side).onClick();await ui.flush();}
  }
- return {...ui,button,listen,calls,els,audioProps,sync,async switchUser(id){session={access_token:"new",user:{id}};heard.A=heard.B=0;authChanged("SIGNED_IN",session);await ui.flush();sync();}};
+ return {...ui,button,listen,calls,els,audioProps,sync,advance(seconds){clock+=seconds*1000;},releaseTick(){releases.shift()?.();},async switchUser(id){session={access_token:"new",user:{id}};heard.A=heard.B=0;authChanged("SIGNED_IN",session);await ui.flush();sync();}};
 }
 for(const lang of ["zh","en","ja","ko"])test("blind room "+lang+" requires eight seconds on both sides then automatically advances",async t=>{
  const ui=await mount(t,{lang}),c=battleRetroCopy(lang);
  assert.ok(ui.text().includes(c.listenFirst));assert.equal(ui.button(c.tie).disabled,true);
- assert.equal(ui.audioProps("A").preload,"metadata");assert.ok(ui.audioProps("B").src,"B is prepared before clicking play");
+ assert.equal(ui.audioProps("A").preload,"auto");assert.ok(ui.audioProps("B").src,"B is prepared before clicking play");
  assert.equal(ui.button(c.next),undefined);assert.ok(ui.nodes().some(n=>n.type==="a"&&text(n)===c.exit));
  await ui.listen("A",7.9);await ui.listen("B",8);assert.equal(ui.button(c.tie).disabled,true);
  await ui.button(c.tie).onClick();await ui.flush();assert.equal(ui.calls.filter(x=>x?.action==="vote").length,0);
@@ -88,4 +89,36 @@ test("leave stops both sources without voting; switching accounts clears the las
  const exit=ui.nodes().find(n=>n.type==="a"&&text(n)===c.exit);exit.props.onClick();await ui.flush();
  assert.equal(ui.els.A.src,"");assert.equal(ui.els.B.src,"");assert.equal(ui.calls.filter(x=>x?.action==="vote").length,0);
  await ui.switchUser("other");assert.equal(ui.text().includes(c.awarded),false);assert.match(ui.audioProps("A").src,/other0$/);assert.equal(ui.button(c.tie).disabled,true);
+});
+
+test("eight real seconds unlock seeking and the voting HUD without waiting for telemetry replies",async t=>{
+ const ui=await mount(t,{lagTicks:true}),c=battleRetroCopy("zh");
+ assert.ok(ui.text().includes(c.hudReady));
+ let seek=()=>ui.nodes().find(n=>n.type==="input"&&n.props["aria-label"]===c.seek+" A").props;
+ assert.equal(seek().disabled,true);seek().onChange({target:{value:"29"}});assert.equal(ui.els.A.currentTime,15);
+ ui.button(c.play+" A").onClick();await ui.flush();assert.ok(ui.text().includes(c.hudListening));
+ for(let sec=1;sec<=8;sec++){ui.advance(1);ui.els.A.currentTime=15+sec;ui.audioProps("A").onTimeUpdate();await ui.flush();}
+ assert.equal(seek().disabled,false,"do not wait for the queued 2-second heartbeat response");
+ assert.equal(ui.button(c.tie).disabled,true,"B still needs eight seconds");
+ // Seeking is no substitute for hearing B, and emits an explicit no-credit event.
+ seek().onChange({target:{value:"2"}});await ui.flush();assert.equal(ui.els.A.currentTime,17);assert.equal(ui.button(c.tie).disabled,true);
+ for(let n=0;n<8;n++){ui.releaseTick();await ui.flush();}
+ assert.ok(ui.calls.some(x=>x?.event==="seek"&&x.position===17));
+ ui.button(c.play+" B").onClick();await ui.flush();ui.releaseTick();await ui.flush();
+ for(let sec=1;sec<=8;sec++){ui.advance(1);ui.els.B.currentTime=15+sec;ui.audioProps("B").onTimeUpdate();await ui.flush();}
+ assert.equal(ui.button(c.tie).disabled,false);assert.ok(ui.text().includes(c.hudVote));
+});
+test("a forged forward jump before eight seconds cannot unlock voting or seeking",async t=>{
+ const ui=await mount(t),c=battleRetroCopy("zh");ui.button(c.play+" A").onClick();await ui.flush();
+ ui.advance(.1);ui.els.A.currentTime=44;ui.audioProps("A").onTimeUpdate();await ui.flush();
+ assert.equal(ui.nodes().find(n=>n.type==="input"&&n.props["aria-label"]===c.seek+" A").props.disabled,true);
+ assert.equal(ui.button(c.tie).disabled,true);
+});
+
+test("pending clock acknowledgement primes media permission but does not play or count waiting",async t=>{
+ const ui=await mount(t,{lagPlay:true}),c=battleRetroCopy("zh");
+ ui.button(c.play+" A").onClick();await ui.flush();assert.equal(ui.els.A.paused,true);assert.ok(ui.text().includes(c.hudBuffering));
+ ui.advance(12);ui.audioProps("A").onTimeUpdate();await ui.flush();assert.equal(ui.button(c.tie).disabled,true);
+ assert.equal(ui.nodes().find(n=>n.type==="input"&&n.props["aria-label"]===c.seek+" A").props.disabled,true);
+ ui.releaseTick();await ui.flush();assert.equal(ui.els.A.paused,false);assert.ok(ui.text().includes(c.hudListening));
 });

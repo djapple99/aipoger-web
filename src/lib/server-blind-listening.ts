@@ -88,7 +88,7 @@ export function anonymousQuestion(q: QuestionRow) {
     audioA: "/api/blind-listen/audio?token=" + makeBlindAudioToken(q, "A"),
     audioB: "/api/blind-listen/audio?token=" + makeBlindAudioToken(q, "B") };
 }
-export async function nextBlindQuestion(admin: SupabaseClient, userId: string) {
+export async function prepareBlindQuestion(admin: SupabaseClient, userId: string, completedId?: string) {
   const [catalog, seen, summaries] = await Promise.all([
     blindCatalog(admin, userId),
     readAllHomePages<QuestionRow>(async (from, to) => {
@@ -99,22 +99,33 @@ export async function nextBlindQuestion(admin: SupabaseClient, userId: string) {
     blindSummaries(admin),
   ]);
   const eligible = new Map(catalog.map(r => [r.id, r]));
-  const pending = seen.find(q => q.state === "pending" && Date.parse(q.expires_at) > Date.now() && eligible.has(q.track_a_id) && eligible.has(q.track_b_id));
-  if (pending) return anonymousQuestion(pending);
+  const pending = seen.find(q => q.id !== completedId && q.state === "pending" && Date.parse(q.expires_at) > Date.now() && eligible.has(q.track_a_id) && eligible.has(q.track_b_id));
+  if (pending) return { pending, pairs: [] as string[][] };
   const previous = new Set(seen.map(q => blindPairKey(q.track_a_id, q.track_b_id)));
   // Prefer under-sampled songs; randomize ties and A/B positions. Same genre only.
   const shuffled = catalog.map(track => ({ track, random: randomInt(1_000_000) }))
     .sort((a, b) => (summaries.get(a.track.id)?.people ?? 0) - (summaries.get(b.track.id)?.people ?? 0) || a.random - b.random);
+  const pairs: string[][] = [];
   for (const { track: a } of shuffled) {
     for (const { track: b } of shuffled) {
       if (a.id === b.id || a.genre !== b.genre || previous.has(blindPairKey(a.id, b.id))) continue;
       const pair = randomInt(2) ? [a, b] : [b, a];
-      const { data, error } = await admin.rpc("issue_blind_question", { p_user: userId, p_a: pair[0].id, p_b: pair[1].id });
-      if (error) throw new Error("QUESTION_UNAVAILABLE");
-      if (data) return anonymousQuestion(await questionForUser(admin, userId, data));
+      pairs.push([pair[0].id, pair[1].id]); previous.add(blindPairKey(a.id, b.id));
     }
   }
+  return { pending: null, pairs };
+}
+export async function issuePreparedBlindQuestion(admin: SupabaseClient, userId: string, prepared: Awaited<ReturnType<typeof prepareBlindQuestion>>) {
+  if (prepared.pending) return anonymousQuestion(prepared.pending);
+  for (const pair of prepared.pairs) {
+    const { data, error } = await admin.rpc("issue_blind_question", { p_user: userId, p_a: pair[0], p_b: pair[1] });
+    if (error) throw new Error("QUESTION_UNAVAILABLE");
+    if (data) return anonymousQuestion(await questionForUser(admin, userId, data));
+  }
   return null;
+}
+export async function nextBlindQuestion(admin: SupabaseClient, userId: string) {
+  return issuePreparedBlindQuestion(admin, userId, await prepareBlindQuestion(admin, userId));
 }
 export async function revealBlindQuestion(admin: SupabaseClient, userId: string, id: string) {
   const q = await questionForUser(admin, userId, id);
