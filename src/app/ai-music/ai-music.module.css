@@ -126,6 +126,11 @@
 .main { width: min(100% - 128px, 1360px); }
 .intro { padding: 18px 0 10px; }
 .intro h1 { font-size: clamp(34px, 3.3vw, 48px); }
+.introTitle { display: flex; align-items: center; gap: 10px; }
+.introTitle h1 { min-width: 0; }
+.shareExplore { display: grid; place-items: center; flex-shrink: 0; width: 44px; height: 44px; border: 1px solid #ff751870; border-radius: 4px; color: #ff8a38; cursor: pointer; }
+.shareExplore svg { width: 22px; height: 22px; }
+.shareExplore:hover { background: #ff75181a; border-color: #ff7518; }
 .introActions .search { width: min(27vw, 355px); }
 .discovery { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.03fr); gap: 28px; padding-top: 12px; }
 .chartColumn { min-width: 0; border-right: 1px solid #ffffff28; padding-right: 26px; }
@@ -146,7 +151,7 @@
 .chartIdentity span { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: #aaa; font-size: 12px; }
 .chart .heart svg { width: 27px; height: 27px; }
 .supporters { color: #ccc; font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
-.fullChart { color: #ff7518; font-size: 17px; font-weight: 700; min-height: 48px; cursor: pointer; }
+.fullChart { display: none; color: #ff7518; font-size: 17px; font-weight: 700; min-height: 48px; cursor: pointer; }
 .catalog { padding-top: 0; gap: 16px; }
 .grid { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 18px; }
 .sectionHeading { margin-bottom: 8px; min-height: 40px; }
@@ -216,9 +221,8 @@
  .chartRows li { grid-template-columns: 28px 40px minmax(0,1fr) 44px 30px; gap: 7px; }
  .chartPlay { width: 40px; }
  .chart h2 { font-size: 26px; }
- .chartRows li:nth-child(n+5) { display: none; }
- .chartDialog .chartRows { display: block; }
- .chartDialog .chartRows li { display: grid; }
+ .chartRows[data-expanded="false"] li:nth-child(n+5) { display: none; }
+ .fullChart { display: inline-flex; align-items: center; }
  .radioPlayer { grid-template-columns: minmax(150px,1fr) auto auto; }
  .radioSeek { grid-column: 1 / -1; }
  .nowPlaying > img { width: 60px; height: 60px; }
@@ -255,8 +259,7 @@
  .intro p { font-size: 14px; }
  .grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px 14px; }
  .chartRows { display: block; }
- .chartRows li:nth-child(n+4) { display: none; }
- .chartDialog .chartRows li { display: grid; }
+ .chartRows[data-expanded="false"] li:nth-child(n+4) { display: none; }
  .titleRow h3 { font-size: 16px; }
  .titleRow .heart, .titleRow .comment { min-width: 36px; min-height: 44px; }
  .titleRow .heart svg, .titleRow .comment svg { width: 25px; height: 25px; }

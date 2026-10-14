@@ -11,15 +11,15 @@ function component(path,extra={}){
   if(name==='lucide-react')return new Proxy({}, {get:(_,key)=>String(key)});
   if(name.endsWith('ai-music.module.css'))return {__esModule:true,default:new Proxy({}, {get:(_,key)=>String(key)})};
   if(name==='@/lib/i18n')return {useI18n:()=>({lang:'zh',t:key=>key})};
-  if(name==='react')return {useEffect(){},useRef:()=>({current:null}),useState:x=>[x,()=>{}]};
+  if(name==='react')return {useEffect(){},useRef:()=>({current:null}),useState:x=>[x,()=>{}],useId:()=>':chart-list:'};
   return extra[name]??{};
  },loaded,loaded.exports);return loaded.exports.default;
 }
-test('Top10 keeps original IDs and separate play, locate and Heart actions; has no comment icon',()=>{
+test('inline Top50 keeps original IDs and separate play, locate and Heart actions; has no comment icon',()=>{
  const Chart=component('../src/components/music-pool-chart.tsx');const actions=[];
- const rows=Array.from({length:12},(_,i)=>({rank:i+1,track:{id:'bar-'+i,sourceId:String(i),recordKey:'bar:'+i,title:'Song '+i,creator:'Creator',coverUrl:'/cover.jpg',poolSupporterCount:30-i}}));
+ const rows=Array.from({length:55},(_,i)=>({rank:i+1,track:{id:'bar-'+i,sourceId:String(i),recordKey:'bar:'+i,title:'Song '+i,creator:'Creator',coverUrl:'/cover.jpg',poolSupporterCount:60-i}}));
  const tree=Chart({rows,ready:true,error:false,heartStates:{},heartBusy:{},onPlay:t=>actions.push(['play',t.sourceId]),onLocate:t=>actions.push(['locate',t.sourceId]),onHeart:t=>actions.push(['heart',t.sourceId])});
- assert.equal(nodes(tree).filter(n=>n.type==='li').length,10);
+ assert.equal(nodes(tree).filter(n=>n.type==='li').length,50);
  assert.equal(nodes(tree).some(n=>n.type==='MessageCircleMore'),false);
  const first=nodes(tree).find(n=>n.type==='li');assert.equal(first.props['data-chart-work'],'0');
  nodes(first).filter(n=>n.type==='button').forEach(n=>n.props.onClick());assert.deepEqual(actions,[['play','0'],['locate','0'],['heart','0']]);
@@ -28,7 +28,7 @@ test('Top50 keeps real rank values and empty/error states do not fabricate ten w
  const Chart=component('../src/components/music-pool-chart.tsx');const props={rows:[],ready:true,error:false,heartStates:{},heartBusy:{},onPlay(){},onLocate(){},onHeart(){}};
  assert.equal(nodes(Chart(props)).filter(n=>n.type==='li').length,0);
  assert.equal(nodes(Chart({...props,ready:false,error:true})).some(n=>n.props?.role==='alert'),true);
- const rows=Array.from({length:66},(_,i)=>({rank:i<2?1:i+1,track:{id:String(i),sourceId:String(i),recordKey:String(i),title:'Work',creator:'C',coverUrl:'/cover',poolSupporterCount:1}}));
+ const rows=Array.from({length:66},(_,i)=>({rank:i+1,track:{id:String(i),sourceId:String(i),recordKey:String(i),title:'Work',creator:'C',coverUrl:'/cover',poolSupporterCount:1}}));
  assert.equal(nodes(Chart({...props,rows,limit:50})).filter(n=>n.type==='li').length,50);
 });
 test('radio changes genre through one repeating shared queue and preserves feedback identity',()=>{

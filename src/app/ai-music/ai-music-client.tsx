@@ -556,8 +556,6 @@ export default function AiMusicClient() {
   const loadLanguage = useRef("");
   const [poolNow, setPoolNow] = useState(Date.now());
   const [commentTrack, setCommentTrack] = useState<AiMusicTrack | null>(null);
-  const [chartOpen, setChartOpen] = useState(false);
-  const chartDialog = useRef<HTMLDialogElement>(null);
   const [externalTrack, setExternalTrack] = useState<AiMusicTrack | null>(null);
   const externalDialog = useRef<HTMLDialogElement>(null);
   useEffect(() => { if(externalTrack) externalDialog.current?.showModal(); else externalDialog.current?.close(); }, [externalTrack]);
@@ -783,15 +781,8 @@ export default function AiMusicClient() {
     const timer = window.setTimeout(() => setHighlightedId(""), 4000);
     return () => window.clearTimeout(timer);
   }, [highlightedId]);
-  useEffect(() => {
-    const element = chartDialog.current;
-    if (!chartOpen) return;
-    const previous = document.activeElement;
-    element?.showModal();
-    return () => { element?.close(); if (previous instanceof HTMLElement) previous.focus(); };
-  }, [chartOpen]);
   const locateTrack = (track: AiMusicTrack) => {
-    setChartOpen(false); setWorksView("genre"); setQuery(""); setSelectedGenre("");
+    setWorksView("genre"); setQuery(""); setSelectedGenre("");
     setSharedTrackSourceId(track.sourceId); setLocateVersion(version => version + 1);
     const url = new URL(window.location.href); url.searchParams.set("track", track.sourceId); url.searchParams.delete("comments"); url.hash = "works";
     window.history.replaceState(null, "", url.pathname + url.search + url.hash);
@@ -939,6 +930,28 @@ export default function AiMusicClient() {
     }
   };
 
+  const shareExplore = async () => {
+    const url = `https://aipoger.com/ai-music?lang=${lang}`;
+    const title = localeText(lang, "探索音樂｜AIPOGER", "Explore Music | AIPOGER", "音楽を探す｜AIPOGER", "음악 탐색 | AIPOGER");
+    const text = localeText(lang, "在 AIPOGER 發現好音樂，一起聽歌、評分。", "Discover music on AIPOGER. Listen and share your ratings.", "AIPOGERで音楽を見つけて、聴いて評価しよう。", "AIPOGER에서 음악을 발견하고 함께 듣고 평가해요.");
+    const copied = localeText(lang, "探索音樂連結已複製。", "Explore Music link copied.", "音楽探索のリンクをコピーしました。", "음악 탐색 링크를 복사했습니다.");
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, text, url });
+        return;
+      }
+      await navigator.clipboard.writeText(`${text}\n${url}`);
+      setNotice(copied);
+    } catch (error) {
+      if ((error as Error)?.name === "AbortError") return;
+      try {
+        await navigator.clipboard.writeText(`${text}\n${url}`);
+        setNotice(copied);
+      } catch {
+        setNotice(localeText(lang, "分享失敗，請稍後再試。", "Share failed. Try again later.", "共有できませんでした。しばらくしてから再試行してください。", "공유에 실패했습니다. 잠시 후 다시 시도해 주세요."));
+      }
+    }
+  };
   const shareTrack = async (track: AiMusicTrack) => {
     const url = typeof window !== "undefined" ? `${window.location.origin}${track.href}` : track.href;
     const text = localeText(lang, `在 AIPOGER 聽 ${track.creator} 的《${track.title}》`, `Listen to "${track.title}" by ${track.creator} on AIPOGER`, `AIPOGERで${track.creator}の「${track.title}」を聴く`, `AIPOGER에서 ${track.creator}의 '${track.title}' 듣기`);
@@ -992,17 +1005,20 @@ export default function AiMusicClient() {
         {externalTrack?.external ? <ExternalMusicPlayer media={externalTrack.external} title={externalTrack.title}/> : null}
       </dialog>
       {feedbackWork ? <HomeWorkFeedback key={feedbackWork.id} work={feedbackWork} supportNote={localeText(lang, "人氣榜依不同會員的有效支持排序；作者自己的愛心不計入。評論共用同一作品。", "Popularity follows distinct non-author supporters. Comments belong to the same work.", "人気ランキングは作者以外の会員の有効な支持人数順です。コメントは同じ作品に集まります。", "인기 차트는 작가를 제외한 회원의 유효 지지 수 순입니다. 댓글은 같은 작품에 연결됩니다.")} returnPath={`/ai-music?track=${feedbackWork.id}#works`} onClose={() => setCommentTrack(null)} onChange={() => setLoadVersion(value => value + 1)} /> : null}
-      <dialog ref={chartDialog} className={styles.chartDialog} aria-label={localeText(lang, "人氣 Top 50", "Popular Top 50", "人気 Top 50", "인기 Top 50")} onCancel={() => setChartOpen(false)} onClick={event => { if (event.target === event.currentTarget) setChartOpen(false); }}>
-        <button autoFocus type="button" className={styles.chartClose} onClick={() => setChartOpen(false)} aria-label={copy.close}><X /></button>
-        <MusicPoolChart {...chartProps} limit={50} />
-      </dialog>
       <main className={styles.main}>
         <ExploreRadio tracks={radioTracks} ready={loadState === "ready"} hearted={Boolean(currentTrack && heartStates[currentTrack.recordKey])} heartBusy={Boolean(currentTrack && heartBusy[currentTrack.recordKey])}
           onHeart={id => { const track = poolTracks.find(track => track.sourceId === id); if (track) void sendHeart(track); }}
           onComment={id => { const track = poolTracks.find(track => track.sourceId === id); if (track) setCommentTrack(track); }} />
         <div className={styles.intro}>
           <div>
-            <h1>{localeText(lang, "探索音樂", "Explore Music", "音楽を探す", "음악 탐색")}</h1>
+            <div className={styles.introTitle}>
+              <h1>{localeText(lang, "探索音樂", "Explore Music", "音楽を探す", "음악 탐색")}</h1>
+              <button type="button" className={styles.shareExplore} onClick={() => void shareExplore()}
+                aria-label={localeText(lang, "分享探索音樂", "Share Explore Music", "音楽探索を共有", "음악 탐색 공유")}
+                title={localeText(lang, "分享探索音樂", "Share Explore Music", "音楽探索を共有", "음악 탐색 공유")}>
+                <Share2 aria-hidden="true" />
+              </button>
+            </div>
             <p>{copy.subtitle}</p>
           </div>
           <div className={styles.introActions}>
@@ -1032,7 +1048,7 @@ export default function AiMusicClient() {
             </button>
           </div>
           <div className={styles.discovery}>
-            <aside className={styles.chartColumn}><MusicPoolChart {...chartProps} onMore={() => setChartOpen(true)} /></aside>
+            <aside className={styles.chartColumn}><MusicPoolChart {...chartProps} /></aside>
           <div className={styles.catalog} data-highlighted-work={highlightedId}>
             {loadState === "loading" ? <p className={styles.state} role="status">{copy.loading}</p> : null}
             {loadState === "error" ? <p className={styles.state} role="alert">{copy.loadError} {loadError}</p> : null}

@@ -21,9 +21,9 @@ test('support counts deduplicate retained daily hearts, exclude authors, other r
  assert.equal(musicPoolSupportCounts(tracks,rows.filter(r=>r.created_at!=='2026-09-03T00:00:00Z')).get('a'),1);
  assert.equal(musicPoolSupportCounts(tracks,rows.filter(r=>r.user_id!=='u')).get('a'),0);
 });
-test('pool chart is independent of play counts, old totals, comments and monthly boundaries; ties share rank',()=>{
+test('pool chart keeps sequential ranks and prefers newer publication when scores tie',()=>{
  const now=Date.parse('2026-10-13T00:00:00Z'); const base={createdAt:'2026-09-01T00:00:00Z',poolSupporterCount:2};
  const rows=rankMusicPool([{...base,id:'b'},{...base,id:'a',createdAt:'2026-10-01T00:00:00Z'},{...base,id:'top',poolSupporterCount:3},{...base,id:'zero',poolSupporterCount:0,heartCount:99999},{...base,id:'expired',createdAt:'2026-04-01T00:00:00Z',poolSupporterCount:500}],now);
- assert.deepEqual(rows.map(r=>[r.track.id,r.rank]),[['top',1],['a',2],['b',2]]);
+ assert.deepEqual(rows.map(r=>[r.track.id,r.rank]),[['top',1],['a',2],['b',3]]);
  assert.equal(rankMusicPool([{...base,id:'a'}],Date.parse('2026-10-31T23:59:59Z'))[0].rank,1);
 });
