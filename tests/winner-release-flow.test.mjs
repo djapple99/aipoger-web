@@ -48,7 +48,8 @@ test("Battle Records retain the creator-submitted MV link independently of month
   assert.ok(fullSongRoute.includes("youtubeUrl:"));
   assert.ok(results.includes("BattleWinnerReleaseLink"));
   assert.ok(results.includes("觀看勝出作品 MV"));
-  assert.ok(rank.includes("MonthlyChart"));
+  assert.ok(rank.includes("PublicChoiceGallery"));
+  assert.equal(rank.includes("MonthlyChart"), false);
   assert.equal(rank.includes("fetchBattleArchivesForRank"), false);
 });
 

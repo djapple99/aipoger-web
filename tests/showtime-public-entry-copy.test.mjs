@@ -32,10 +32,10 @@ function text(tree) {
 }
 const locale=evaluate(read('lib/locale.ts'));
 const languages={
-  zh:{chart:'月排行榜',saved:'自己收藏的歌曲',headline:'本月上榜歌曲',own:'自己的作品編排'},
-  en:{chart:'Monthly charts',saved:'their saved songs',headline:'Monthly charts',own:'from their own works'},
-  ja:{chart:'月間チャート',saved:'お気に入りに保存した曲',headline:'月間チャート',own:'自分の作品からChoice'},
-  ko:{chart:'월간 차트',saved:'즐겨찾기에 저장한 곡',headline:'월간 차트',own:'자신의 작품으로 Choice'},
+  zh:{chart:'社群 Top5',saved:'自己收藏的歌曲',headline:'本月上榜歌曲',own:'自己的作品編排'},
+  en:{chart:'Community Top 5',saved:'their saved songs',headline:'Monthly charts',own:'from their own works'},
+  ja:{chart:'コミュニティ Top5',saved:'お気に入りに保存した曲',headline:'月間チャート',own:'自分の作品からChoice'},
+  ko:{chart:'커뮤니티 Top5',saved:'즐겨찾기에 저장한 곡',headline:'월간 차트',own:'자신의 작품으로 Choice'},
 };
 
 for (const [lang,copy] of Object.entries(languages)) {

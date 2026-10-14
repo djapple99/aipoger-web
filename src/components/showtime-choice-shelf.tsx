@@ -10,6 +10,8 @@ import { AipogerChoiceCover } from "@/components/aipoger-choice-cover";
 import { choiceItemRecordKey, choicePublicPath, type AipogerChoiceItem } from "@/lib/aipoger-choice";
 import { getChoiceCopy } from "@/lib/choice-copy";
 import type { Lang } from "@/lib/locale";
+import { showtimeCopy } from "@/lib/showtime-copy";
+import styles from "./showtime.module.css";
 
 export type ShowtimeChoiceShelfEntry = {
   id: string;
@@ -19,6 +21,7 @@ export type ShowtimeChoiceShelfEntry = {
   title: string;
   intro: string;
   weekStart: string;
+  publishedAt?: string | null;
   href?: string;
   items: AipogerChoiceItem[];
 };
@@ -37,6 +40,7 @@ type ShowtimeChoiceShelfProps = {
   entries: ShowtimeChoiceShelfEntry[];
   featuredKey?: string | null;
   chart?: ReactNode;
+  commentCounts?: Record<string, number>;
   lang: Lang;
   loading?: boolean;
   loadError?: string;
@@ -86,6 +90,7 @@ export default function ShowtimeChoiceShelf({
   entries,
   featuredKey,
   chart,
+  commentCounts,
   lang,
   loading = false,
   loadError,
@@ -105,18 +110,21 @@ export default function ShowtimeChoiceShelf({
   const commentsEntry = entries.find((entry) => recordKey(entry) === commentsKey) ?? null;
   const setDetail = (entry: ShowtimeChoiceShelfEntry | null) => setDetailKey(entry ? recordKey(entry) : null);
   const setCommentsEntry = (entry: ShowtimeChoiceShelfEntry | null) => setCommentsKey(entry ? recordKey(entry) : null);
-  const editorial = {
-    zh: { featured: "本期主推", choices: "Choice 歌單", more: "更多 Choice" },
-    en: { featured: "Featured Choice", choices: "Choice Playlists", more: "More Choices" },
-    ja: { featured: "注目の Choice", choices: "Choice プレイリスト", more: "もっと Choice" },
-    ko: { featured: "추천 Choice", choices: "Choice 플레이리스트", more: "더 많은 Choice" },
-  }[lang];
+  const editorial = showtimeCopy(lang);
+  const [sort, setSort] = useState<"featured" | "latest" | "saved">("featured");
   const playableEntries = entries.filter((entry) => entry.items.some((item) => Boolean(item.audioUrl)));
-  const featured = playableEntries.find((entry) => recordKey(entry) === featuredKey);
-  const lead = featured ?? playableEntries[0];
-  const remaining = playableEntries.filter((entry) => entry !== lead);
-  const side = remaining.slice(0, 2);
-  const more = remaining.slice(2);
+  const ordered = [...playableEntries].sort((a, b) => {
+    if (sort === "saved") {
+      const difference = (hearts[recordKey(b)]?.heartCount ?? 0) - (hearts[recordKey(a)]?.heartCount ?? 0);
+      if (difference) return difference;
+    }
+    return (b.publishedAt || b.weekStart).localeCompare(a.publishedAt || a.weekStart) || recordKey(a).localeCompare(recordKey(b));
+  });
+  const featured = sort === "featured" ? ordered.find((entry) => recordKey(entry) === featuredKey) : undefined;
+  const lead = featured ?? ordered[0];
+  const remaining = ordered.filter((entry) => entry !== lead);
+  const companions = remaining.slice(0, 4);
+  const more = remaining.slice(4);
 
   useEffect(() => {
     if (!detail) return;
@@ -132,106 +140,56 @@ export default function ShowtimeChoiceShelf({
     if (commentsKey && !commentsEntry) setCommentsKey(null);
   }, [detailKey, detail, commentsKey, commentsEntry]);
 
-  function renderCard(entry: ShowtimeChoiceShelfEntry, large = false, hero = false) {
-              const key = recordKey(entry);
-              const heart = hearts[key] ?? { heartCount: 0, myHeart: false };
-              const playable = entry.items.some((item) => Boolean(item.audioUrl));
-              return (
-                <article key={key} data-choice-key={key} className={`group relative min-w-0 ${hero ? "sm:h-full" : ""}`}>
-                  <div className="group relative aspect-square overflow-hidden bg-[#222]">
-                    <AipogerChoiceCover src={entry.coverUrl} alt={`${entry.curatorName} Choice`} className="absolute inset-0 transition duration-300 group-hover:scale-[1.025]" />
-                    {hero && <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden bg-gradient-to-t from-black/95 via-black/10 to-transparent sm:block" />}
-                    <button type="button" onClick={() => setDetail(entry)} aria-label={`${copy.previewTracklist}: ${entry.title}`} className="absolute inset-0 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-orange-400" />
-                    <button
-                      type="button"
-                      onClick={() => onPlay(entry)}
-                      disabled={!playable}
-                      className={`absolute z-10 inline-flex items-center justify-center rounded-full bg-orange-500 text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-35 ${hero ? "bottom-3 left-3 sm:bottom-auto sm:left-auto sm:right-3 sm:top-3" : "bottom-3 left-3"} ${large ? "h-12 w-12" : "h-10 w-10"}`}
-                      aria-label={copy.playTrack(entry.title)}
-                    >
-                      <Play className="h-3.5 w-3.5" fill="currentColor" />
-                    </button>
-                  </div>
-                  <div className={`pt-3 ${hero ? "sm:absolute sm:inset-x-0 sm:bottom-0 sm:p-3" : ""} ${hero && large ? "sm:p-5" : ""}`}>
-                    <button type="button" onClick={() => setDetail(entry)} className={`block w-full break-words text-left font-bold leading-snug text-white hover:text-orange-200 ${large ? "line-clamp-2 text-xl sm:text-2xl" : "line-clamp-2 text-sm"}`} title={entry.title}>
-                      {entry.title}
-                    </button>
-                    <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs">
-                      <p className="min-w-0 truncate text-cyan-200">{entry.curatorName}</p>
-                      <time dateTime={entry.weekStart} className="tabular-nums text-zinc-300">{choiceDateLabel(entry.weekStart, lang)}</time>
-                    </div>
-                    {large && entry.intro ? <p className="mt-2 line-clamp-1 text-sm leading-6 text-zinc-400">{entry.intro}</p> : null}
-                    <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-white/10 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => onToggleHeart(entry)}
-                        disabled={Boolean(heartBusy[key])}
-                        className={`aipo-ghost-button inline-flex h-7 min-w-7 items-center justify-center gap-1 rounded-full px-2 text-[10px] font-black transition disabled:cursor-not-allowed disabled:opacity-45 ${heart.myHeart ? "border-rose-200/45 bg-rose-500/20 text-rose-100" : "text-zinc-200 hover:text-white"}`}
-                        aria-label={heart.myHeart ? copy.removeChoice : copy.favoriteChoice}
-                        aria-pressed={heart.myHeart}
-                        title={heart.myHeart ? copy.removeChoice : copy.favoriteChoice}
-                      >
-                        <Heart className="h-3.5 w-3.5" fill={heart.myHeart ? "currentColor" : "none"} />
-                        <span className="tabular-nums">{heart.heartCount}</span>
-                      </button>
-                      <ShareButton
-                        title={entry.title}
-                        text={entry.intro || entry.title}
-                        url={shareUrl(entry, lang)}
-                        label={copy.shareChoice}
-                        copiedLabel={copy.copied}
-                        iconOnly
-                        className="h-7 w-7 rounded-full p-0 text-cyan-100"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setCommentsEntry(entry)}
-                        className="aipo-ghost-button inline-flex h-7 w-7 items-center justify-center rounded-full text-cyan-100 transition hover:text-white"
-                        aria-label={copy.viewComments}
-                        title={copy.comments}
-                      >
-                        <MessageCircle className="h-3.5 w-3.5" />
-                      </button>
-                      <div className="group/tracklist relative ml-auto">
-                        <button
-                          type="button"
-                          onClick={() => setDetail(entry)}
-                          className="aipo-ghost-button inline-flex h-7 w-7 items-center justify-center rounded-full text-cyan-100 transition hover:text-white"
-                          aria-label={copy.previewTracklist}
-                          title={copy.hoverToPreview}
-                        >
-                          <ListMusic className="h-3.5 w-3.5" />
-                        </button>
-                        <div className="pointer-events-none invisible absolute bottom-[calc(100%+0.5rem)] right-0 z-[90] hidden w-72 translate-y-1 rounded-md border border-yellow-100/25 bg-[#080808]/98 p-3 opacity-0 shadow-[0_22px_70px_rgba(0,0,0,0.72)] backdrop-blur-xl transition duration-150 group-hover/tracklist:visible group-hover/tracklist:translate-y-0 group-hover/tracklist:opacity-100 group-focus-within/tracklist:visible group-focus-within/tracklist:translate-y-0 group-focus-within/tracklist:opacity-100 lg:block">
-                          <p className="mb-2 line-clamp-2 text-xs font-black text-white">{entry.title}</p>
-                          <TracklistPreview entry={entry} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </article>
-              );
+  function renderCard(entry: ShowtimeChoiceShelfEntry, mode: "lead" | "tile" | "wide" = "tile") {
+    const key = recordKey(entry);
+    const heart = hearts[key] ?? { heartCount: 0, myHeart: false };
+    const isLead = mode === "lead";
+    return <article key={key} data-choice-key={key} data-choice-lead={isLead || undefined} className={isLead ? styles.lead : mode === "wide" ? styles.wide : undefined}>
+      <div className={styles.cover}>
+        <AipogerChoiceCover src={entry.coverUrl} alt={`${entry.curatorName} Choice`} className="absolute inset-0" />
+        <button type="button" className={styles.coverButton} onClick={() => setDetail(entry)} aria-label={`${copy.previewTracklist}: ${entry.title}`} />
+        {!isLead ? <button type="button" className={styles.coverPlay} onClick={() => onPlay(entry)} aria-label={copy.playTrack(entry.title)}><Play size={17} fill="currentColor" /></button> : null}
+      </div>
+      <div className={styles.info}>
+        <button type="button" onClick={() => setDetail(entry)} className={styles.title} title={entry.title}>{entry.title}</button>
+        <p className={styles.curator}>{entry.curatorName}</p>
+        {isLead && entry.intro ? <p className={styles.intro}>{entry.intro}</p> : null}
+        <p className={styles.metadata}>{entry.items.length} {editorial.tracks}<time dateTime={entry.weekStart}>{choiceDateLabel(entry.weekStart, lang)}</time></p>
+        {isLead ? <button type="button" className={styles.playLead} onClick={() => onPlay(entry)} aria-label={copy.playTrack(entry.title)}><Play size={19} fill="currentColor" />{editorial.play}</button> : null}
+        <div className={styles.actions}>
+          <button type="button" onClick={() => onToggleHeart(entry)} disabled={Boolean(heartBusy[key])} className={styles.heart} aria-label={heart.myHeart ? copy.removeChoice : copy.favoriteChoice} aria-pressed={heart.myHeart} title={heart.myHeart ? copy.removeChoice : copy.favoriteChoice}>
+            <Heart size={isLead ? 26 : 20} fill={heart.myHeart ? "currentColor" : "none"} /><span className="tabular-nums">{heartBusy[key] ? "–" : heart.heartCount}</span>
+          </button>
+          <button type="button" onClick={() => setCommentsEntry(entry)} aria-label={copy.viewComments} title={copy.comments}><MessageCircle size={isLead ? 24 : 19} /><span>{commentCounts ? commentCounts[key] ?? 0 : "–"}</span></button>
+          <ShareButton title={entry.title} text={entry.intro || entry.title} url={shareUrl(entry, lang)} label={copy.shareChoice} copiedLabel={copy.copied} iconOnly iconSize={isLead ? 22 : 19} />
+          <div className={styles.tracklist}>
+            <button type="button" onClick={() => setDetail(entry)} aria-label={copy.previewTracklist} title={copy.hoverToPreview}><ListMusic size={isLead ? 23 : 19} /></button>
+            <div className={styles.tracklistPreview}><p className="mb-2 text-sm font-bold">{entry.title}</p><TracklistPreview entry={entry} /></div>
+          </div>
+        </div>
+      </div>
+    </article>;
   }
 
   return (
     <>
-      <div className="grid items-start gap-x-7 gap-y-8 lg:grid-cols-[minmax(0,2.2fr)_minmax(320px,1fr)]" data-showtime-editorial>
-        <section id="choice-weekly" className="min-w-0 scroll-mt-24 lg:col-start-1 lg:row-start-1" aria-labelledby="choice-heading">
-          <h2 id="choice-heading" className="mb-4 text-xl font-bold">{featured ? editorial.featured : editorial.choices}</h2>
-          {lead ? <div className={`grid grid-cols-2 gap-4 ${side.length === 2 ? "sm:grid-cols-3" : side.length === 0 ? "max-w-lg" : ""}`} data-choice-feature-grid>
-            <div data-choice-lead className={`col-span-2 min-w-0 ${side.length === 2 ? "sm:row-span-2" : side.length === 1 ? "sm:col-span-1" : ""}`}>{renderCard(lead, true, side.length > 0)}</div>
-            {side.map((entry) => <div key={recordKey(entry)} data-choice-companion className="min-w-0">{renderCard(entry, false, true)}</div>)}
-          </div> : loading ? <div role="status" aria-label={copy.loading} className="aspect-square max-w-lg animate-pulse bg-white/5" /> : !loadError ? <p className="py-6 text-sm text-zinc-400">{copy.noPublished}</p> : null}
-          {heartError ? <p role="alert" className="mt-3 text-xs font-bold text-rose-200">{heartError}</p> : null}
-        </section>
-        {chart && <aside className="min-w-0 border-t border-white/15 pt-5 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0" data-showtime-chart>{chart}</aside>}
-        {more.length > 0 && <section className="min-w-0 lg:col-start-1 lg:row-start-2" aria-labelledby="more-choice-heading" data-choice-more>
-          <h2 id="more-choice-heading" className="mb-4 text-xl font-bold">{editorial.more}</h2>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 lg:grid-cols-4">
-            {more.map((entry) => renderCard(entry))}
+      <section id="choice-weekly" className="min-w-0 scroll-mt-24" aria-labelledby="choice-heading">
+        <header className={styles.shelfHeader}>
+          <h2 id="choice-heading">{editorial.choices}</h2>
+          <div className={styles.sorts} role="group" aria-label={editorial.choices}>
+            {(["featured", "latest", "saved"] as const).map(value => <button key={value} type="button" onClick={() => setSort(value)} aria-pressed={sort === value}>{editorial[value]}</button>)}
           </div>
-        </section>}
-      </div>
+        </header>
+        {lead ? <div data-choice-feature-grid>
+          {renderCard(lead, "lead")}
+          {companions.length > 0 ? <div className={`${styles.tiles} ${companions.length <= 2 ? styles.fewTiles : ""}`}>
+            {companions.map(entry => renderCard(entry))}
+          </div> : null}
+          {more.map(entry => renderCard(entry, "wide"))}
+        </div> : loading ? <p role="status" className="py-6 text-sm text-zinc-400">{copy.loading}</p> : !loadError ? <p className="py-6 text-sm text-zinc-400">{copy.noPublished}</p> : null}
+        {heartError ? <p role="alert" className="mt-3 text-sm text-orange-200">{heartError}</p> : null}
+      </section>
+      {chart ? <aside>{chart}</aside> : null}
 
       {detail && typeof document !== "undefined" ? createPortal((
         <div className="fixed inset-0 z-[230] flex items-end bg-black/78 px-3 py-4 backdrop-blur-sm sm:items-center sm:justify-center" role="dialog" aria-modal="true" aria-label={copy.tracklistPreview} onClick={() => setDetail(null)}>

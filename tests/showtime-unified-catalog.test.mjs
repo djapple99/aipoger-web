@@ -19,20 +19,18 @@ const experience = readSource("../docs/aipoger-experience.md");
 const model = readSource("../src/lib/aipoger-choice.ts");
 const adminApi = readSource("../src/app/api/admin/choice/route.ts");
 
-test("Showtime mounts Choice and charts together with responsive editorial regions", () => {
-  assert.match(rank, /<PublicChoiceGallery lang=\{lang\} chart=\{<MonthlyChart lang=\{lang\}/);
-  assert.doesNotMatch(rank, /role="tablist"|role="tab"|role="tabpanel"|changeView/);
-  assert.match(shelf, /lg:grid-cols-\[minmax\(0,2\.2fr\)_minmax\(320px,1fr\)\]/);
-  assert.ok(shelf.indexOf('data-choice-lead') < shelf.indexOf('data-showtime-chart'));
-  assert.ok(shelf.indexOf('data-showtime-chart') < shelf.indexOf('data-choice-more'));
-  for (const label of ["Monthly Charts", "月排行榜", "月間ランキング", "월간 차트"]) assert.ok(chart.includes(label), label);
+test("Showtime mounts Choice and real community boards without song charts", () => {
+  assert.match(rank, /<PublicChoiceGallery lang=\{lang\}/);
+  assert.match(rank, /<ShowtimeCommunityRail/);
+  assert.doesNotMatch(rank, /MonthlyChart/);
+  assert.match(rank, /data-showtime-editorial/);
 });
 
 test("legacy anchors remain native scroll targets and the single CTA retains language", () => {
   assert.match(shelf, /id="choice-weekly"/);
   assert.match(chart, /id="monthly-charts"/);
   assert.match(rank, /\/profile\/choice\?lang=\$\{lang\}/);
-  assert.match(rank, /<ListPlus/);
+  assert.match(rank, /<ArrowRight/);
   assert.doesNotMatch(shelf, /\/profile\/choice/);
 });
 
@@ -53,8 +51,9 @@ test("certification catalog is intentionally retired rather than moved into the 
 test("Choice remains non-ranked with real square covers and owner-selected lead", () => {
   assert.match(gallery, /<ShowtimeChoiceShelf/);
   assert.match(shelf, /recordKey\(entry\) === featuredKey/);
-  assert.match(shelf, /aspect-square/);
-  assert.match(shelf, /grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 lg:grid-cols-4/);
+  const styles = readSource("../src/components/showtime.module.css");
+  assert.match(styles, /\.lead \.cover \{ aspect-ratio:1;/);
+  assert.match(styles, /grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
   for (const retained of ["entry.coverUrl", "entry.intro", "ChoiceCommentsDialog", "<ShareButton", "onToggleHeart(entry)", "onPlay(entry)"]) {
     assert.ok(shelf.includes(retained), retained);
   }
@@ -94,7 +93,7 @@ test("creator Choice preserves cover fallback and public playback independent of
 
 test("Choice tracklist HUD retains order preview, song favorites, individual playback and Play All", () => {
   for (const retained of [
-    "TracklistPreview", "group-hover/tracklist:visible", "setDetail(entry)", "createPortal((",
+    "TracklistPreview", "styles.tracklistPreview", "setDetail(entry)", "createPortal((",
     "document.body", "choiceDateLabel(entry.weekStart, lang)", "choiceItemRecordKey(item)",
     "onToggleItemHeart(item)", "onPlay(detail, item.itemId)", "onPlay(detail)", "copy.openSharePage",
   ]) assert.ok(shelf.includes(retained), retained);

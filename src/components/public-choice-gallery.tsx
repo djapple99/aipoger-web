@@ -23,7 +23,7 @@ import type { AipogerPublicCreatorChoiceCollection } from "@/lib/creator-choice"
 import type { Lang } from "@/lib/locale";
 import { supabase } from "@/lib/supabase";
 
-export type PublicChoiceGalleryProps = { lang: Lang; chart?: ReactNode };
+export type PublicChoiceGalleryProps = { lang: Lang; chart?: ReactNode; commentCounts?: Record<string, number> };
 
 type HeartMap = Record<string, ShowtimeChoiceHeartState>;
 type ChoiceInteraction = ShowtimeChoiceHeartState & { recordKey: string };
@@ -88,7 +88,7 @@ async function loadBatches<T>(
   return records;
 }
 
-export default function PublicChoiceGallery({ lang, chart }: PublicChoiceGalleryProps) {
+export default function PublicChoiceGallery({ lang, chart, commentCounts }: PublicChoiceGalleryProps) {
   const copy = getChoiceCopy(lang);
   const messages = GALLERY_COPY[lang];
   const [token, setToken] = useState<string | null>();
@@ -201,6 +201,7 @@ export default function PublicChoiceGallery({ lang, chart }: PublicChoiceGallery
           title: choiceDisplayTitle(collection.curatorName, collection.title),
           intro: collection.intro,
           weekStart: collection.weekStart,
+          publishedAt: collection.publishedAt,
           href: `${choicePublicPath(collection.id, "creator")}&lang=${lang}`,
           items: collection.items,
         })),
@@ -322,7 +323,7 @@ export default function PublicChoiceGallery({ lang, chart }: PublicChoiceGallery
     <div data-public-choice-gallery>
       <ShowtimeChoiceShelf
         entries={entries} lang={lang} loading={loading}
-        featuredKey={featuredKey} chart={chart}
+        featuredKey={featuredKey} chart={chart} commentCounts={commentCounts}
         loadError={catalogError ? copy.loadFailed : undefined}
         onPlay={(entry, itemId) => { void play(entry, itemId); }}
         hearts={hearts} heartBusy={heartBusy} heartError={actionError}

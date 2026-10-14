@@ -42,11 +42,11 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
       navTitle: "關於愛播歌",
       title: "AIPOGER 愛播歌是 AI 創作者一起成長、讓作品被認可的音樂舞台。",
       lead:
-        "在 AIPOGER 探索 AI 音樂、收聽傷心酒吧、參與 Drop Battle，也能在 Showtime 聽月排行榜與創作者的 Choice 推薦歌單。",
+        "在 AIPOGER 探索 AI 音樂、收聽傷心酒吧、參與 Drop Battle，也能在 Showtime 探索 Choice 推薦歌單與社群 Top5。",
       contactLabel: "聯絡我們",
       cards: [
         { label: "Mission", value: "Creator Growth", detail: "陪 AI 創作者累積作品、戰績、聽眾反應與舞台紀錄" },
-        { label: "Listen", value: "Showtime", detail: "月排行榜與創作者的 Choice 推薦歌單" },
+        { label: "Listen", value: "Showtime", detail: "社群 Top5與創作者的 Choice 推薦歌單" },
         { label: "Rights", value: "Original Only", detail: "僅接受原創、已授權或具合法使用依據的音樂內容" },
         { label: "Contact", value: "Email", detail: mail, href: `mailto:${mail}` },
       ],
@@ -54,8 +54,8 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
         {
           title: "平台定位",
           body:
-            "AIPOGER 讓創作者分享作品、累積聽眾反應，也讓每個人找到喜歡的 AI 音樂。Showtime 呈現月排行榜與 Choice 推薦歌單；創作者可從自己收藏的歌曲編排 Choice，不需要先贏得 Battle。",
-          items: ["AI 音樂 Drop 上傳與鬥歌", "傷心酒吧 Bar Heartbreak 公播與聽眾反應", "Showtime 月排行榜與 Choice 推薦歌單", "創作者從自己收藏的歌曲編排、發布 Choice"],
+            "AIPOGER 讓創作者分享作品、累積聽眾反應，也讓每個人找到喜歡的 AI 音樂。Showtime 呈現社群 Top5與 Choice 推薦歌單；創作者可從自己收藏的歌曲編排 Choice，不需要先贏得 Battle。",
+          items: ["AI 音樂 Drop 上傳與鬥歌", "傷心酒吧 Bar Heartbreak 公播與聽眾反應", "Showtime 社群 Top5與 Choice 推薦歌單", "創作者從自己收藏的歌曲編排、發布 Choice"],
         },
         {
           title: "著作權與上傳原則",
@@ -104,11 +104,11 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
       navTitle: "About AIPOGER",
       title: "AIPOGER is where AI creators grow and their music gets heard.",
       lead:
-        "Explore AI music, tune into Bar Heartbreak, join a Drop Battle, and listen to monthly charts and creator-selected Choice playlists on Showtime.",
+        "Explore AI music, tune into Bar Heartbreak, join a Drop Battle, and explore Choice playlists and community contributors on Showtime.",
       contactLabel: "Contact",
       cards: [
         { label: "Mission", value: "Creator Growth", detail: "Build tracks, battle records, listener signals, and stage presence" },
-        { label: "Listen", value: "Showtime", detail: "Monthly charts and creator-selected Choice playlists" },
+        { label: "Listen", value: "Showtime", detail: "Community Top 5 and creator-selected Choice playlists" },
         { label: "Rights", value: "Original Only", detail: "Only original, licensed, or lawfully usable music content is allowed" },
         { label: "Contact", value: "Email", detail: mail, href: `mailto:${mail}` },
       ],
@@ -116,8 +116,8 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
         {
           title: "What AIPOGER Is",
           body:
-            "AIPOGER helps creators share their work and hear from listeners, while everyone can discover AI music they enjoy. Showtime brings together monthly charts and Choice playlists. Creators can curate Choice from their saved songs without winning a Battle first.",
-          items: ["AI Music Drop uploads and battles", "Bar Heartbreak airplay and listener reactions", "Showtime monthly charts and Choice playlists", "Creators curate and publish Choice from their saved songs"],
+            "AIPOGER helps creators share their work and hear from listeners, while everyone can discover AI music they enjoy. Showtime brings together community Top 5 and Choice playlists. Creators can curate Choice from their saved songs without winning a Battle first.",
+          items: ["AI Music Drop uploads and battles", "Bar Heartbreak airplay and listener reactions", "Showtime community Top 5 and Choice playlists", "Creators curate and publish Choice from their saved songs"],
         },
         {
           title: "Copyright and Upload Rules",
@@ -539,19 +539,19 @@ const localizedAbout: Record<"ja" | "ko", InfoPageContent> = {
     ...content.about.en,
     navTitle: "AIPOGERについて",
     title: "AIPOGERは、AIクリエイターが成長し、音楽を届けるステージです。",
-    lead: "AI音楽を探し、Bar Heartbreakを聴き、Drop Battleに参加。Showtimeでは月間チャートとクリエイターのChoiceプレイリストを楽しめます。",
+    lead: "AI音楽を探し、Bar Heartbreakを聴き、Drop Battleに参加。Showtimeではコミュニティ Top5とクリエイターのChoiceプレイリストを楽しめます。",
     contactLabel: "お問い合わせ",
     cards: [
       { label: "Mission", value: "Creator Growth", detail: "作品、対戦記録、リスナーの反応を積み重ねる" },
-      { label: "Listen", value: "Showtime", detail: "月間チャートとクリエイターのChoiceプレイリスト" },
+      { label: "Listen", value: "Showtime", detail: "コミュニティ Top5とクリエイターのChoiceプレイリスト" },
       { label: "Rights", value: "Original Only", detail: "オリジナル、許諾済み、または適法に利用できる音楽のみ" },
       { label: "Contact", value: "Email", detail: mail, href: `mailto:${mail}` },
     ],
     sections: [
       {
         title: "AIPOGERとは",
-        body: "クリエイターが作品を共有し、リスナーの反応を受け取り、誰もが好きなAI音楽に出会える場所です。Showtimeには月間チャートとChoiceプレイリストが並びます。クリエイターはお気に入りに保存した曲からChoiceを作成でき、Battleでの勝利は必要ありません。",
-        items: ["AI音楽のDrop投稿と対戦", "Bar Heartbreakの公開再生とリスナーの反応", "Showtimeの月間チャートとChoiceプレイリスト", "お気に入りに保存した曲からChoiceを作成・公開"],
+        body: "クリエイターが作品を共有し、リスナーの反応を受け取り、誰もが好きなAI音楽に出会える場所です。Showtimeにはコミュニティ Top5とChoiceプレイリストが並びます。クリエイターはお気に入りに保存した曲からChoiceを作成でき、Battleでの勝利は必要ありません。",
+        items: ["AI音楽のDrop投稿と対戦", "Bar Heartbreakの公開再生とリスナーの反応", "Showtimeのコミュニティ Top5とChoiceプレイリスト", "お気に入りに保存した曲からChoiceを作成・公開"],
       },
       ...content.about.en.sections.slice(1),
     ],
@@ -562,19 +562,19 @@ const localizedAbout: Record<"ja" | "ko", InfoPageContent> = {
     ...content.about.en,
     navTitle: "AIPOGER 소개",
     title: "AIPOGER는 AI 크리에이터가 성장하고 음악을 들려주는 무대입니다.",
-    lead: "AI 음악을 탐색하고 Bar Heartbreak를 듣고 Drop Battle에 참여하세요. Showtime에서는 월간 차트와 크리에이터의 Choice 플레이리스트를 만날 수 있습니다.",
+    lead: "AI 음악을 탐색하고 Bar Heartbreak를 듣고 Drop Battle에 참여하세요. Showtime에서는 커뮤니티 Top5와 크리에이터의 Choice 플레이리스트를 만날 수 있습니다.",
     contactLabel: "문의",
     cards: [
       { label: "Mission", value: "Creator Growth", detail: "작품, 배틀 기록, 청중의 반응을 쌓아가는 공간" },
-      { label: "Listen", value: "Showtime", detail: "월간 차트와 크리에이터의 Choice 플레이리스트" },
+      { label: "Listen", value: "Showtime", detail: "커뮤니티 Top5와 크리에이터의 Choice 플레이리스트" },
       { label: "Rights", value: "Original Only", detail: "창작물, 허가받은 음악 또는 합법적으로 이용 가능한 음악만 허용" },
       { label: "Contact", value: "Email", detail: mail, href: `mailto:${mail}` },
     ],
     sections: [
       {
         title: "AIPOGER란",
-        body: "크리에이터는 작품을 공유하고 청중의 반응을 받아보며, 누구나 좋아하는 AI 음악을 발견할 수 있습니다. Showtime은 월간 차트와 Choice 플레이리스트를 모아 보여줍니다. 크리에이터는 즐겨찾기에 저장한 곡으로 Choice를 만들 수 있으며, Battle에서 먼저 승리할 필요는 없습니다.",
-        items: ["AI 음악 Drop 업로드와 배틀", "Bar Heartbreak 공개 재생과 청중 반응", "Showtime 월간 차트와 Choice 플레이리스트", "즐겨찾기에 저장한 곡으로 Choice를 구성하고 공개"],
+        body: "크리에이터는 작품을 공유하고 청중의 반응을 받아보며, 누구나 좋아하는 AI 음악을 발견할 수 있습니다. Showtime은 커뮤니티 Top5와 Choice 플레이리스트를 모아 보여줍니다. 크리에이터는 즐겨찾기에 저장한 곡으로 Choice를 만들 수 있으며, Battle에서 먼저 승리할 필요는 없습니다.",
+        items: ["AI 음악 Drop 업로드와 배틀", "Bar Heartbreak 공개 재생과 청중 반응", "Showtime 커뮤니티 Top5와 Choice 플레이리스트", "즐겨찾기에 저장한 곡으로 Choice를 구성하고 공개"],
       },
       ...content.about.en.sections.slice(1),
     ],

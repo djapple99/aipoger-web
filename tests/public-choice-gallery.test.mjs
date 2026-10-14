@@ -378,6 +378,6 @@ test("reusable shelf keeps HUD, comments, share and independent saves without du
   assert.match(shelfSource, /onToggleItemHeart\(item\)/);
   assert.match(shelfSource, /aria-pressed=\{heart\.myHeart\}/);
   assert.match(shelfSource, /aria-pressed=\{itemHeart\.myHeart\}/);
-  assert.match(source, /export type PublicChoiceGalleryProps = \{ lang: Lang; chart\?: ReactNode \}/);
+  assert.match(source, /export type PublicChoiceGalleryProps = \{ lang: Lang; chart\?: ReactNode; commentCounts\?: Record<string, number> \}/);
   assert.doesNotMatch(source, /\/api\/(?:ai-music|listen-bar|showtime|monthly)|\.from\(|<audio|sort\(/);
 });

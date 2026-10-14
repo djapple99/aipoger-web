@@ -39,13 +39,14 @@ test("Explore share links stay on the shared work in the Explore catalog", () =>
   assert.ok(aiMusicSource.includes("scrollIntoView"));
 });
 
-test("Bar redirects to integrated Explore and Showtime keeps charts and Choice", () => {
+test("Bar redirects to integrated Explore and Showtime keeps Choice and community recognition", () => {
   assert.ok(listenBarSource.includes("/ai-music?"));
   assert.ok(listenBarSource.includes("/profile?submit=1"));
   assert.equal(listenBarSource.includes("setChatInput"), false);
-  assert.ok(showtimeSource.includes("chart={<MonthlyChart lang={lang} />"));
+  assert.ok(showtimeSource.includes("ShowtimeCommunityRail"));
+  assert.equal(showtimeSource.includes("MonthlyChart"), false);
   assert.ok(showtimeSource.includes("PublicChoiceGallery"));
   assert.equal(showtimeSource.includes("ai_music_showtime_certified"), false);
-  assert.ok(showtimeSource.includes('href={`/ai-music?lang=${lang}`}'));
+  assert.ok(showtimeSource.includes('<EditorialHeader active="showtime"'));
   assert.equal(showtimeSource.includes("href={`/battle/setup${navSuffix}`}"), false);
 });

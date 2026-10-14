@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 import LangToggle from "@/components/lang-toggle";
 import styles from "./home-editorial.module.css";
 
-export default function EditorialHeader({ active, returnPath }: { active: "home" | "mv" | "explore" | "creator" | "battle"; returnPath?: string }) {
+export default function EditorialHeader({ active, returnPath }: { active: "home" | "mv" | "explore" | "creator" | "battle" | "showtime"; returnPath?: string }) {
   const { lang } = useI18n(); const copy = homeCopy(lang);
   const [signedIn, setSignedIn] = useState(false);
   const withLang = (path: string) => { const [url, hash] = path.split("#"); return `${url}${url.includes("?") ? "&" : "?"}lang=${lang}${hash ? `#${hash}` : ""}`; };
@@ -29,7 +29,7 @@ export default function EditorialHeader({ active, returnPath }: { active: "home"
           <Link href={withLang("/")} className={active === "home" ? styles.active : undefined} aria-current={active === "home" ? "page" : undefined}>{copy.featured}</Link>
           <Link href={withLang("/ai-music")} className={active === "explore" ? styles.active : undefined} aria-current={active === "explore" ? "page" : undefined}>{copy.explore}</Link>
           <Link href={withLang("/mv")} className={active === "mv" ? styles.active : undefined} aria-current={active === "mv" ? "page" : undefined}>{copy.mv}</Link>
-          <Link href={withLang("/rank")}>Showtime</Link>
+          <Link href={withLang("/rank")} className={active === "showtime" ? styles.active : undefined} aria-current={active === "showtime" ? "page" : undefined}>Showtime</Link>
           <Link href={withLang("/battle")} className={active === "battle" ? styles.active : undefined} aria-current={active === "battle" ? "page" : undefined}>Battle</Link>
           <Link href={withLang("/ai-music-bible")}>{copy.bible}</Link>
         </nav>
