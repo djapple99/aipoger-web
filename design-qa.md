@@ -63,3 +63,13 @@ final result: passed
 本次新文案與離開是已確認的功能變更，沒有額外視覺P0／P1／P2。final result: passed。
 
 正式版本621e2b3／dpl_Dpfro1VPxLnjYbta7xs3S3jRjmvE已promote：桌機雙側readyState4／time15，B播放時A維持paused，離開回Battle並卸載盲聽audio。中文說明縮短後沒有2字孤行；正式四語與390px／320px截圖另存在私人outputs。沒有代使用者選偏好或寫測試Credit。
+
+## 8秒可拖曳與HUD修訂驗收
+
+依2026-10-14最新授權，在同一插畫舞台內加入緊湊狀態HUD，不新增大面積空白或多一步開始／下一題按鈕。YOU READY?、聆聽、LET’S GO評選、NEXT ROUND與音訊準備皆有明確狀態；薄荷評選與暖橘聆聽、各側0–7/8s／可拖曳識別，reduced-motion停用動態。每側8秒解鎖slider及重播，三選擇仍單排。
+
+本機實際元件A8.323911／B8.338375秒已解鎖；兩首開始前片段準備好，假跳秒／網路等待不當聆聽。手機390×844 HUD未遮play／slider／選擇，沒有水平溢出；VS已往下移，與HUD不重疊。
+
+正式app c20f7c4／dpl_4Q9gXXNBLUZ96zWWm2oQEWHd5T8T已promote；1440×1024及390×844 screenshots為blind-hud-production-ready-desktop.jpg、blind-hud-production-vote-desktop.jpg及blind-hud-production-vote-mobile.jpg。A7.503661秒仍鎖定，B8.315950／A8.879882秒已解鎖；拉A至片段起點不取消已達標狀態，未提交正式偏好。四語320px無水平溢出、console errors空。Chrome翻譯擴充浮鈕不是產品UI。
+
+發布SQL、RPC權限與完整回滾證據讀[本輪發布紀錄](docs/releases/2026-10-14-blind-hud-seek.md)。只有來源／冷啟動的等待依網路而異，HUD不把它算進8秒。無新增P0／P1／P2；final result: passed。

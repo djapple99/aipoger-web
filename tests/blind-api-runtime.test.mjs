@@ -88,10 +88,10 @@ test("parallel preparation excludes the just-completed pair and does not issue a
  const tracks=[20,21,22,23].map(n=>({id:uuid(n),source:"community",is_active:true,review_status:"approved",genre:"Original 自我風格",created_by:n===23?USER:uuid(2),created_at:new Date().toISOString(),duration_seconds:120,audio_path:"https://unit-test.invalid/storage/v1/object/public/listen-bar-audio/"+n+".mp3"}));
  const admin=mockAdmin({listen_bar_tracks:tracks,blind_listen_questions:[q]});const from=admin.from;admin.from=table=>{const query=from(table);query.gte=()=>query;return query;};
  let issued=0;admin.rpc=async name=>{if(name==="blind_popularity_summaries")return {data:[],error:null};issued++;return {data:null,error:null};};
- const module=loadTs("src/lib/server-blind-listening.ts",{"./ai-music-surface-lifecycle":{buildAiMusicSurfaceLifecycleMap:async()=>new Map()}});
- const resume=await module.prepareBlindQuestion(admin,USER);assert.equal(resume.pending.id,q.id);assert.equal(issued,0);
- const next=await module.prepareBlindQuestion(admin,USER,q.id);assert.equal(next.pending,null);assert.equal(next.pairs.length,2);assert.equal(issued,0);
+ const blindServer=loadTs("src/lib/server-blind-listening.ts",{"./ai-music-surface-lifecycle":{buildAiMusicSurfaceLifecycleMap:async()=>new Map()}});
+ const resume=await blindServer.prepareBlindQuestion(admin,USER);assert.equal(resume.pending.id,q.id);assert.equal(issued,0);
+ const next=await blindServer.prepareBlindQuestion(admin,USER,q.id);assert.equal(next.pending,null);assert.equal(next.pairs.length,2);assert.equal(issued,0);
  assert.ok(next.pairs.every(pair=>!pair.includes(uuid(23))&&!(pair.includes(uuid(20))&&pair.includes(uuid(21)))));
  // If a candidate becomes unavailable, continue through prepared alternatives.
- await module.issuePreparedBlindQuestion(admin,USER,next);assert.equal(issued,2);
+ await blindServer.issuePreparedBlindQuestion(admin,USER,next);assert.equal(issued,2);
 });
