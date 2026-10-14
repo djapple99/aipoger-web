@@ -19,15 +19,19 @@ test("Explore uses the shared navigation and compact searchable layout", () => {
   assert.equal(aiMusicSource.includes('ai-music-hero-title'), false);
   assert.equal(aiMusicSource.includes('explore-frequency-stage.webp'), false);
   assert.ok(aiMusicSource.includes('catalogMetadata'));
-  assert.ok(aiMusicSource.includes('src="/guide.png"'));
+  assert.ok(aiMusicSource.includes('<ParticipationGuide surface="explore"'));
+  assert.ok(readFileSync(new URL('../src/components/participation-guide.tsx', import.meta.url), 'utf8').includes('src="/guide.png"'));
   assert.ok(existsSync(new URL("../public/guide.png", import.meta.url)));
-  assert.ok(aiMusicSource.includes('role="dialog"'));
-  assert.ok(aiMusicSource.includes('aria-modal="true"'));
-  assert.ok(aiMusicSource.includes('closeGuide'));
-  assert.ok(aiMusicSource.includes('愛心會同步加入收藏'));
-  assert.ok(aiMusicSource.includes('Profile 可整理收藏歌曲'));
-  assert.ok(aiMusicSource.includes('已準備 60s Drop'));
-  assert.ok(aiMusicSource.includes('正式戰績'));
+  const sharedGuide = readFileSync(new URL('../src/components/participation-guide.tsx', import.meta.url), 'utf8');
+  const guideCopy = readFileSync(new URL('../src/lib/participation-guide-copy.ts', import.meta.url), 'utf8');
+  assert.ok(sharedGuide.includes('<dialog'));
+  assert.ok(sharedGuide.includes('showModal()'));
+  assert.ok(sharedGuide.includes('onCancel'));
+  assert.ok(sharedGuide.includes('trigger?.focus()'));
+  assert.ok(guideCopy.includes('人氣 Top50'));
+  assert.ok(guideCopy.includes('creditBody: creditCopy(locale).rules'));
+  assert.ok(guideCopy.includes('正式 Battle 戰績各自計算'));
+
 });
 
 test("Explore share links stay on the shared work in the Explore catalog", () => {

@@ -18,19 +18,24 @@ export async function GET(request: NextRequest) {
     if (!work) return reply({ error: "Unavailable work" }, 404);
     const admin = mvReviewAdmin();
     const bearer = token(request);
-    let myScore: number | null = null; let canRate = false;
+    let myScore: number | null = null; let canRate = false; let myComment: object | null = null;
     if (bearer) {
       const { data, error } = await admin.auth.getUser(bearer);
-      if (error || !data.user) return reply({ error: "Sign in again" }, 401);
+      if (error || !data.user || data.user.is_anonymous) return reply({ error: "Sign in again" }, 401);
       const [track, own] = await Promise.all([
         admin.from("listen_bar_tracks").select("created_by").eq("id", trackId).single(),
-        admin.from("mv_work_ratings").select("score").eq("track_id", trackId).eq("user_id", data.user.id).maybeSingle(),
+        admin.from("mv_work_ratings").select("score,comment_id").eq("track_id", trackId).eq("user_id", data.user.id).maybeSingle(),
       ]);
       if (track.error || own.error) throw new Error("Read failed");
       canRate = track.data.created_by !== data.user.id;
       myScore = own.data?.score ?? null;
+      if (own.data?.comment_id) {
+        const c = await admin.from("listen_bar_track_comments").select("id,body,moderation_status").eq("id", own.data.comment_id).eq("user_id", data.user.id).maybeSingle();
+        if (c.error) throw c.error;
+        if (c.data?.moderation_status === "visible") myComment = { id: c.data.id, text: c.data.body };
+      }
     }
-    return reply({ myScore, canRate, ratingAverage: work.ratingAverage ?? null, ratingCount: work.ratingCount ?? 0, ratingTotal: work.ratingTotal ?? 0 });
+    return reply({ myScore, myComment, canRate, ratingAverage: work.ratingAverage ?? null, ratingCount: work.ratingCount ?? 0, ratingTotal: work.ratingTotal ?? 0 });
   } catch { return reply({ error: "Reviews unavailable" }, 503); }
 }
 
@@ -43,7 +48,7 @@ export async function POST(request: NextRequest) {
   try {
     const admin = mvReviewAdmin();
     const { data: user, error: authError } = await admin.auth.getUser(bearer);
-    if (authError || !user.user) return reply({ error: "Sign in again" }, 401);
+    if (authError || !user.user || user.user.is_anonymous) return reply({ error: "Sign in again" }, 401);
     // Use the same lifecycle/visibility rules as the public MV catalogue.
     if (!(await reviewWork(request, body.trackId))) return reply({ error: "Unavailable work" }, 404);
     const metadata = user.user.user_metadata;
@@ -54,5 +59,20 @@ export async function POST(request: NextRequest) {
     });
     if (error) return reply({ error: "Review could not be saved" }, error.code === "42501" ? 403 : 503);
     return reply(data);
+  } catch { return reply({ error: "Reviews unavailable" }, 503); }
+}
+
+export async function PATCH(request: NextRequest) {
+  const bearer = token(request);
+  if (!bearer) return reply({ error: "Sign in first" }, 401);
+  const body = await request.json().catch(() => null);
+  if (!uuid(body?.commentId) || typeof body.text !== "string" || !body.text.trim() || body.text.trim().length > 280 || typeof body.active !== "boolean") return reply({ error: "Invalid review" }, 400);
+  try {
+    const admin = mvReviewAdmin();
+    const { data, error } = await admin.auth.getUser(bearer);
+    if (error || !data.user || data.user.is_anonymous) return reply({ error: "Sign in again" }, 401);
+    const saved = await admin.rpc("edit_work_review", { p_user: data.user.id, p_comment: body.commentId, p_body: body.text.trim(), p_active: body.active });
+    if (saved.error) return reply({ error: "Review could not be changed" }, saved.error.code === "42501" ? 403 : 503);
+    return reply(saved.data);
   } catch { return reply({ error: "Reviews unavailable" }, 503); }
 }

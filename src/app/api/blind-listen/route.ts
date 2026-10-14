@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { creatorAuth } from "@/lib/server-creator-auth";
-import { blindCatalog, issuePreparedBlindQuestion, nextBlindQuestion, prepareBlindQuestion, questionForUser, revealBlindQuestion } from "@/lib/server-blind-listening";
+import { readCredit, blindCatalog, issuePreparedBlindQuestion, nextBlindQuestion, prepareBlindQuestion, questionForUser, revealBlindQuestion } from "@/lib/server-blind-listening";
 import { isBlindChoice } from "@/lib/blind-listening";
 const headers = { "Cache-Control": "private, no-store" };
 const uuid = (value: unknown): value is string => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
@@ -47,13 +47,16 @@ export async function POST(request: Request) {
       if (error) return NextResponse.json({ error: error.message.includes("Listen to") ? "LISTEN_FIRST" : "SAVE_FAILED" }, { status: 409, headers });
       // Completion is already committed. A failed next-pair read must never look
       // like a failed vote, or prompt the user to choose/earn again.
+      let credit: {balance:number;debt:number}|null = null;
+      try { const summary=await readCredit(auth.admin,auth.user.id);credit={balance:summary.balance,debt:summary.debt}; } catch { /* The vote is committed even if balance refresh fails. */ }
+      const result = { ...data, balance: credit?.balance ?? null, debt: credit?.debt ?? null, creditError: credit === null };
       try {
         const plan = await prepared;
         if (!plan.value) throw new Error("NEXT_UNAVAILABLE");
         const nextQuestion = await issuePreparedBlindQuestion(auth.admin, auth.user.id, plan.value);
-        return NextResponse.json({ ...data, nextQuestion, nextError: false }, { headers });
+        return NextResponse.json({ ...result, nextQuestion, nextError: false }, { headers });
       } catch {
-        return NextResponse.json({ ...data, nextQuestion: null, nextError: true }, { headers });
+        return NextResponse.json({ ...result, nextQuestion: null, nextError: true }, { headers });
       }
     }
     return NextResponse.json({ error: "INVALID_REQUEST" }, { status: 400, headers });

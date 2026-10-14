@@ -1,4 +1,5 @@
 "use client";
+import ParticipationGuide from "./participation-guide";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -128,7 +129,7 @@ export default function MvGallery() {
     <main className={base.main}>
       {sharedUnavailable ? <p role="status" className={styles.supportError}>{mv.sharedUnavailable}</p> : null}
       <section id="featured-mv" className={base.featured} aria-labelledby="mv-page-title">
-        <div className={`${base.sectionIntro} ${styles.intro}`}><p className={base.eyebrow}>MUSIC VIDEO</p><h1 id="mv-page-title">{mv.title}</h1><p className={base.intro}>{copy.intro}</p></div>
+        <div className={`${base.sectionIntro} ${styles.intro}`}><p className={base.eyebrow}>MUSIC VIDEO</p><h1 id="mv-page-title">{mv.title}</h1><p className={base.intro}>{copy.intro}</p><div className="mt-3 flex justify-end"><ParticipationGuide surface="mv" lang={lang} /></div></div>
         {loading && !data ? <div className={base.status} role="status">{copy.loading}</div>
           : failed && !data ? <div className={base.status} role="alert"><p>{copy.error}</p><button onClick={() => { setLoading(true); void load(); }}>{copy.retry}<ArrowRight size={18} /></button></div>
           : selected ? <div className={`${base.hero} ${styles.hero}`}>

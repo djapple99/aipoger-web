@@ -91,7 +91,7 @@
   .modes { gap: 20px; }
   .modes button { font-size: 16px; }
   .modes button[aria-pressed=true]::after { bottom: 0; }
-  .guide span { display: none; }
+  .guide span { display: inline; }
   .headingText { display: block; }
   .headingText > span { display: block; font-size: 13px; margin-top: 3px; }
   .sectionHeading h2 { font-size: 24px; }

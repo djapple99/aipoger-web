@@ -1,0 +1,26 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {pathToFileURL} from 'node:url';
+const modulePath=process.env.AIPOGER_CREDIT_PGLITE_MODULE;
+test('isolated PostgreSQL: rewards, restoration, debt, free/paid submission, rollback and private boundaries', {skip:!modulePath&&'Set AIPOGER_CREDIT_PGLITE_MODULE to an existing PGlite module'}, async t=>{
+ const {PGlite}=await import(pathToFileURL(modulePath).href);
+ const db=new PGlite();t.after(()=>db.close());
+ await db.exec('create role anon; create role authenticated; create role service_role bypassrls;');
+ await db.exec(await readFile(new URL('./sql/credit-participation-fixture.sql',import.meta.url),'utf8'));
+ const windowBefore=(await db.query("select * from public.listen_bar_creator_upload_windows")).rows;
+ const legacy=(await db.query("select * from public.creator_credit_entries")).rows;
+ await db.exec(await readFile(new URL('../supabase/credit_participation.sql',import.meta.url),'utf8'));
+ assert.deepEqual((await db.query("select * from public.listen_bar_creator_upload_windows")).rows,windowBefore);
+ await db.exec(await readFile(new URL('./sql/credit-participation-assertions.sql',import.meta.url),'utf8'));
+ assert.deepEqual((await db.query("select * from public.creator_credit_entries where source_id='00000000-0000-4000-8000-000000000099'")).rows,legacy);
+ const constraints=(await db.query("select pg_get_constraintdef(oid) as definition from pg_constraint where conrelid='public.creator_credit_entries'::regclass")).rows;
+ assert.ok(constraints.some(r=>r.definition.includes("delta = 3")));
+ assert.ok(constraints.some(r=>r.definition.includes("blind_compare")));
+ await db.exec('set role service_role;');
+ const summary=(await db.query("select public.creator_credit_summary('00000000-0000-4000-8000-000000000003') as data")).rows[0].data;
+ assert.equal(summary.balance,12);assert.equal(summary.debt,0);assert.ok(summary.entries.some(e=>e.reason==='extra_submission'&&e.delta===-60));
+ await db.query("select public.creator_credit_visit('00000000-0000-4000-8000-000000000003')");
+ await db.exec('reset role;');
+ assert.equal((await db.query("select has_table_privilege('authenticated','public.creator_credit_participation_entries','insert') as allowed")).rows[0].allowed,false);
+});

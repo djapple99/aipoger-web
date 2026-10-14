@@ -57,12 +57,9 @@ export async function blindSummaries(admin = creatorAdmin()) {
   return new Map<string, BlindSummary>(data.map(r => [r.track_id, { people: Number(r.people), preferencePoints: Number(r.preference_points) }]));
 }
 export async function readCredit(admin: SupabaseClient, userId: string) {
-  const all = await readAllHomePages<{ id: string; delta: number; reason: string; created_at: string }>(async (from, to) => {
-    const result = await admin.from("creator_credit_entries").select("id,delta,reason,created_at")
-      .eq("user_id", userId).order("created_at", { ascending: false }).order("id").range(from, to);
-    return { data: result.data, error: result.error };
-  });
-  return { enabled: true, balance: all.reduce((sum, r) => sum + r.delta, 0), entries: all.slice(0, 50) };
+  const { data, error } = await admin.rpc("creator_credit_summary", { p_user: userId });
+  if (error || !data || !Number.isSafeInteger(data.balance) || data.balance < 0 || !Number.isSafeInteger(data.debt) || data.debt < 0 || !Array.isArray(data.entries)) throw new Error("Credit unavailable");
+  return data as { enabled: boolean; balance: number; debt: number; entries: { id: string; delta: number; reason: string; created_at: string }[] };
 }
 export async function blindCatalog(admin: SupabaseClient, userId: string, trackIds?: string[]) {
   const rows = await readAllHomePages<BlindRow>(async (from, to) => {

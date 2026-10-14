@@ -1,4 +1,5 @@
 "use client";
+import ParticipationGuide from "./participation-guide";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Play, Swords } from "lucide-react";
@@ -9,7 +10,7 @@ export function BattleRetroIntro() {
   const { lang } = useI18n(); const c = battleRetroCopy(lang);
   return <>
     <div className={styles.titleRow}><div><h1>{c.title}</h1><p>{c.subtitle}</p></div>
-      <nav aria-label={c.title}><Link href={"/battle/results?lang=" + lang}>{c.records}<ArrowRight size={17}/></Link><Link href={"/drop-guide?lang=" + lang}>{c.rules}</Link></nav></div>
+      <nav aria-label={c.title}><ParticipationGuide surface="battle" lang={lang} /><Link href={"/battle/results?lang=" + lang}>{c.records}<ArrowRight size={17}/></Link><Link href={"/drop-guide?lang=" + lang}>{c.rules}</Link></nav></div>
     <section className={styles.entry} aria-labelledby="blind-entry-title">
       <Image src="/images/battle-retro/blind-entry.webp" alt="" fill priority sizes="100vw" className={styles.backdrop}/>
       <div className={styles.entryCopy}><span className={styles.accent}/><h2 id="blind-entry-title">{c.blind}</h2><p>{c.blindDescription}</p>

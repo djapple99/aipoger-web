@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { creatorAuth } from "@/lib/server-creator-auth";
@@ -28,6 +29,13 @@ export async function POST(request: Request) {
       );
     if (body.action !== "submit")
       return NextResponse.json({ error: "INVALID_REQUEST" }, { status: 400 });
+    if (body.requestId !== undefined && (typeof body.requestId !== "string" || !/^[0-9a-f-]{36}$/i.test(body.requestId))) return NextResponse.json({error:"INVALID_REQUEST"},{status:400});
+    const requestId: string = body.requestId ?? randomUUID();
+    if (body.requestId) {
+      const prior = await auth.admin.from("listen_bar_tracks").select("id").eq("id",requestId).eq("created_by",auth.user.id).maybeSingle();
+      if (prior.error) throw prior.error;
+      if (prior.data) return NextResponse.json({trackId:prior.data.id,replayed:true},{headers:{"Cache-Control":"private, no-store"}});
+    }
     const p = verifyLinkPreview(body.previewToken, auth.user.id);
     if (!p)
       return NextResponse.json({ error: "PREVIEW_EXPIRED" }, { status: 400 });
@@ -85,6 +93,8 @@ export async function POST(request: Request) {
     const result = await db
       .from("listen_bar_tracks")
       .insert({
+        id: requestId,
+        credit_submission_confirmed: body.confirmedCredit === true,
         title,
         artist,
         ai_tool:
@@ -115,11 +125,13 @@ export async function POST(request: Request) {
       .select("id")
       .single();
     if (result.error) {
+      const retry = await auth.admin.from("listen_bar_tracks").select("id").eq("id",requestId).eq("created_by",auth.user.id).maybeSingle();
+      if (retry.data) return NextResponse.json({trackId:retry.data.id,replayed:true},{headers:{"Cache-Control":"private, no-store"}});
       const msg = result.error.message;
       const status =
         result.error.code === "23505"
           ? 409
-          : /CREATOR_WEEKLY_UPLOAD_LIMIT/.test(msg)
+          : /CREATOR_WEEKLY_UPLOAD_LIMIT|CREDIT_/.test(msg)
             ? 429
             : 500;
       return NextResponse.json(
@@ -128,7 +140,7 @@ export async function POST(request: Request) {
             status === 409
               ? "LINK_ALREADY_SUBMITTED"
               : status === 429
-                ? "UPLOAD_LIMIT"
+                ? /CREATOR_WEEKLY_UPLOAD_LIMIT/.test(msg) ? "UPLOAD_LIMIT" : msg.split(":")[0]
                 : msg,
         },
         { status },

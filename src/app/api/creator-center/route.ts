@@ -139,7 +139,7 @@ export async function GET(request: Request) {
     }));
     return NextResponse.json(
       {
-        isOwner: isAdminEmail(user.email),
+        isOwner: Boolean(user.email_confirmed_at) && isAdminEmail(user.email),
         works,
         commenters: new Set(comments.map((c) => c.user_id).filter(Boolean))
           .size,

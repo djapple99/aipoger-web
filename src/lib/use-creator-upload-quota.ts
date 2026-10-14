@@ -12,9 +12,12 @@ export function useCreatorUploadQuota(userId: string | null) {
     if (!userId) return null;
     const current = generation.current;
     try {
-      const { data, error } = await supabase.rpc("listen_bar_my_upload_quota");
-      if (error) throw error;
-      const next = parseCreatorUploadQuota(data);
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.user.id !== userId) throw new Error("AUTH_REQUIRED");
+      const response = await fetch("/api/credit", { headers: { Authorization: `Bearer ${data.session.access_token}` }, cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok) throw new Error("Credit unavailable");
+      const next = parseCreatorUploadQuota(payload.quota);
       if (!next) throw new Error("Invalid upload quota");
       if (current !== generation.current) return null;
       setQuota(next);

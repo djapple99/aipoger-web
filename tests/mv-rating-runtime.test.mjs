@@ -3,13 +3,14 @@ import test from 'node:test';
 import { mountMv } from './helpers/mv-runtime.mjs';
 import { mvCopy } from '../src/lib/mv-copy.ts';
 import { homeCopy } from '../src/lib/home-copy.ts';
+import {creditCopy} from '../src/lib/credit-copy.ts';
 import {parseWorkRating} from '../src/lib/work-rating.ts';
 async function mount(t,{lang='zh',canRate=true,fail=false,surface='mv'}={}){
  const calls=[],saved=[],busy=[];let nextId=1;
  const session={access_token:'test',user:{id:'reader'}};
- const window=new EventTarget();class CustomEvent extends Event {constructor(name,data){super(name);this.detail=data.detail;}}
+ const window=new EventTarget();class CustomEvent extends Event {constructor(name,data={}){super(name);this.detail=data.detail;}}
  const ui=await mountMv(t,'src/components/mv-rating-form.tsx',{trackId:'first',signedIn:true,surface,onSaved:c=>saved.push(c),onBusy:b=>busy.push(b)},
- {'@/lib/i18n':{useI18n:()=>({lang})},'@/lib/mv-copy':{mvCopy},'@/lib/home-copy':{homeCopy},'@/lib/work-rating':{parseWorkRating},'./home-editorial.module.css':{__esModule:true,default:{}},'@/lib/supabase':{supabase:{auth:{getSession:async()=>({data:{session}})}}}},
+ {'@/lib/credit-copy':{creditCopy},'@/lib/i18n':{useI18n:()=>({lang})},'@/lib/mv-copy':{mvCopy},'@/lib/home-copy':{homeCopy},'@/lib/work-rating':{parseWorkRating},'./home-editorial.module.css':{__esModule:true,default:{}},'@/lib/supabase':{supabase:{auth:{getSession:async()=>({data:{session}})}}}},
  {window,CustomEvent,crypto:{randomUUID:()=>`receipt-${nextId++}`},fetch:async(url,init={})=>{calls.push({url,...init});return {ok:init.method==='POST'?!fail:true,json:async()=>init.method==='POST'?{comment:null}:{myScore:null,canRate,ratingAverage:null,ratingCount:0}};}});
  return {...ui,calls,saved,busy,button:()=>ui.nodes().find(x=>x.type==='button'&&x.props.type==='submit')?.props};
 }

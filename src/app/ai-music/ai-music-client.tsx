@@ -1,4 +1,5 @@
 "use client";
+import ParticipationGuide from "@/components/participation-guide";
 import ExternalMusicPlayer from "@/components/external-music-player";
 import type { ExternalMusic } from "@/lib/external-music";
 
@@ -146,24 +147,13 @@ function exploreCopy(lang: string) {
     byStyle: localeText(lang, "依曲風", "By Style", "ジャンル別", "장르별"),
     hotNow: localeText(lang, "正在升溫", "Hot Now", "注目上昇中", "인기 상승 중"),
     uploadAction: localeText(lang, "我要上傳我的音樂", "Upload My Music", "音楽を投稿", "내 음악 업로드"),
-    guideLabel: localeText(lang, "這裡怎麼玩？", "How this works", "使い方を見る", "이용 방법"),
     loading: localeText(lang, "正在載入 AI 音樂作品...", "Loading AI music works...", "AI音楽作品を読み込んでいます…", "AI 음악 작품을 불러오는 중…"),
     loadError: localeText(lang, "作品載入失敗：", "Could not load works: ", "作品を読み込めませんでした：", "작품을 불러오지 못했습니다: "),
     less: localeText(lang, "收合", "Show Less", "閉じる", "접기"),
     more: localeText(lang, "看更多", "See More", "もっと見る", "더 보기"),
     empty: localeText(lang, "這個類型目前還沒有可展示作品。", "No public works in this style yet.", "このジャンルには公開作品がまだありません。", "이 장르에는 아직 공개 작품이 없습니다."),
     styleLane: localeText(lang, "風格分類", "Style Lane", "ジャンルレーン", "장르 레인"),
-    closeGuide: localeText(lang, "關閉說明", "Close guide", "ガイドを閉じる", "가이드 닫기"),
     close: localeText(lang, "關閉", "Close", "閉じる", "닫기"),
-    guideTitle: localeText(lang, "探索怎麼玩？", "How Explore Works", "Exploreの使い方", "Explore 이용 방법"),
-    guideBrowseTitle: localeText(lang, "逛作品", "Browse works", "作品を探す", "작품 둘러보기"),
-    guideBrowseBody: localeText(lang, "依風格播放作品，喜歡就送愛心。", "Play works by style and send a Heart when a track lands.", "ジャンル別に再生し、気に入ったらHeartを送れます。", "장르별로 재생하고 마음에 들면 Heart를 보낼 수 있습니다."),
-    guideSaveTitle: localeText(lang, "收藏歌曲", "Save tracks", "曲を保存", "곡 저장"),
-    guideSaveBody: localeText(lang, "愛心會同步加入收藏；再按一次會取消。從右上角頭像進入 Profile 可整理收藏歌曲。", "A Heart also saves the track. Tap it again to remove it, or manage saved tracks from Profile through the avatar at the top right.", "Heartを送ると曲も保存されます。もう一度押すと解除でき、右上のアバターからProfileで整理できます。", "Heart를 보내면 곡도 저장됩니다. 다시 누르면 취소되며, 오른쪽 위 아바타의 Profile에서 정리할 수 있습니다."),
-    guideChallengeTitle: localeText(lang, "發起攻擂", "Start a challenge", "挑戦を始める", "도전 시작"),
-    guideChallengeBody: localeText(lang, "看到作品封面右上紅色「接戰」角標，表示原作者已準備 60s Drop 並開放攻擂。", "A red OPEN badge at a cover's top right means the creator has prepared a 60s Drop and opened the work to challenges.", "カバー右上の赤い「挑戦可」は、原作者が60秒のDropを用意して挑戦を受け付けている印です。", "커버 오른쪽 위의 빨간 ‘도전 가능’ 표시는 원작자가 60초 Drop을 준비해 도전을 받고 있다는 뜻입니다."),
-    guideRecordTitle: localeText(lang, "正式戰績", "Official results", "公式戦績", "공식 전적"),
-    guideRecordBody: localeText(lang, "至少 3 位非參賽者完成投票才成立正式戰績。", "An official result needs at least three non-participant voters.", "参加者以外の投票者が3人以上で公式戦績になります。", "참가자가 아닌 사용자 3명 이상이 투표해야 공식 전적이 됩니다."),
   };
 }
 
@@ -579,7 +569,6 @@ export default function AiMusicClient() {
   const [worksView, setWorksView] = useState<"genre" | "heat">("genre");
   const [query, setQuery] = useState("");
   const [selectedGenre, setSelectedGenre] = useState("");
-  const [guideOpen, setGuideOpen] = useState(false);
   const [earwormPromptOpen, setEarwormPromptOpen] = useState(false);
   const [earwormProfile, setEarwormProfile] = useState<EarwormLocalProfile | null>(null);
   const [sharedTrackSourceId, setSharedTrackSourceId] = useState<string | null>(null);
@@ -597,18 +586,10 @@ export default function AiMusicClient() {
   const poolTracks = useMemo(() => tracks.filter(track => isInDiscoveryMusicPool(track.createdAt, track.sourceId, poolNow)), [tracks, poolNow]);
   const chartRows = useMemo(() => rankMusicPool(poolTracks, poolNow), [poolTracks, poolNow]);
   const isPlaying = Boolean(currentTrack && player.playing);
-  const guideButtonRef = useRef<HTMLButtonElement | null>(null);
-  const guideDialogRef = useRef<HTMLDivElement | null>(null);
-  const guideCloseButtonRef = useRef<HTMLButtonElement | null>(null);
-  const guideReturnFocusRef = useRef(false);
   const earwormDialogRef = useRef<HTMLDivElement | null>(null);
   const earwormStartRef = useRef<HTMLAnchorElement | null>(null);
 
 
-  const closeGuide = useCallback(() => {
-    guideReturnFocusRef.current = true;
-    setGuideOpen(false);
-  }, []);
   const closeEarwormPrompt = useCallback(() => {
     markEarwormPromptSkipped();
     setEarwormPromptOpen(false);
@@ -653,46 +634,6 @@ export default function AiMusicClient() {
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [closeEarwormPrompt, earwormPromptOpen]);
-
-  useEffect(() => {
-    if (guideOpen) {
-      const frame = window.requestAnimationFrame(() => guideCloseButtonRef.current?.focus());
-      return () => window.cancelAnimationFrame(frame);
-    }
-    if (!guideReturnFocusRef.current) return;
-    guideReturnFocusRef.current = false;
-    const frame = window.requestAnimationFrame(() => guideButtonRef.current?.focus());
-    return () => window.cancelAnimationFrame(frame);
-  }, [guideOpen]);
-
-  useEffect(() => {
-    if (!guideOpen) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        closeGuide();
-        return;
-      }
-      if (event.key !== "Tab") return;
-      const dialog = guideDialogRef.current;
-      if (!dialog) return;
-      const focusable = Array.from(
-        dialog.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'),
-      );
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [closeGuide, guideOpen]);
 
   useEffect(() => {
     const updateSharedTrack = () => {
@@ -1053,10 +994,7 @@ export default function AiMusicClient() {
               <option value="">{localeText(lang, "全部曲風", "All genres", "すべてのジャンル", "모든 장르")}</option>
               {MUSIC_GENRE_OPTIONS.map(option => <option key={option.value} value={option.value}>{t(option.labelKey)}</option>)}
             </select>
-            <button ref={guideButtonRef} type="button" className={styles.guide} onClick={() => setGuideOpen(true)} aria-label={copy.guideLabel}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/guide.png" alt="" /><span>{copy.guideLabel}</span>
-            </button>
+            <ParticipationGuide surface="explore" lang={lang} className={styles.guide} />
           </div>
           <div className={styles.discovery}>
             <aside className={styles.chartColumn}><MusicPoolChart {...chartProps} /></aside>
@@ -1159,69 +1097,6 @@ export default function AiMusicClient() {
                 <p className="mt-3 text-[10px] font-bold leading-4 text-zinc-500">
                   {localeText(lang, "訪客也能得到個人結果；公開好感只統計登入帳號，滿 20 人才顯示百分比。", "Guests still get a personal result; public affinity appears after 20 signed-in responses.", "ゲストも個人結果を取得でき、公開好感はログイン回答20件から表示します。", "게스트도 개인 결과를 받고, 공개 호감도는 로그인 응답 20명부터 표시돼요.")}
                 </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {guideOpen ? (
-        <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/78 px-4 py-6 backdrop-blur-sm"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) closeGuide();
-          }}
-        >
-          <div
-            ref={guideDialogRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="ai-music-guide-title"
-            className="max-h-[min(42rem,calc(100svh-3rem))] w-full max-w-xl overflow-y-auto border border-orange-200/40 bg-[#090807] shadow-[0_28px_90px_rgba(0,0,0,0.72)]"
-          >
-            <div className="flex items-center justify-between gap-4 border-b border-orange-200/22 px-5 py-4 sm:px-6">
-              <div className="flex min-w-0 items-center gap-3">
-                <img src="/guide.png" alt="" className="h-8 w-11 shrink-0 object-contain" />
-                <p className={`${fontRighteous.className} text-[11px] uppercase tracking-[0.18em] text-orange-100/72`}>Guide</p>
-              </div>
-              <button
-                ref={guideCloseButtonRef}
-                type="button"
-                onClick={closeGuide}
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center border border-white/12 text-xl leading-none text-zinc-300 transition hover:border-orange-100/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-100"
-                aria-label={copy.closeGuide}
-                title={copy.close}
-              >
-                <span aria-hidden="true">×</span>
-              </button>
-            </div>
-            <div className="px-5 py-5 sm:px-6">
-              <h2 id="ai-music-guide-title" className="text-2xl font-black text-white">{copy.guideTitle}</h2>
-              <div className="mt-5 divide-y divide-white/10 border-y border-white/10">
-                <div className="py-4 first:pt-0">
-                  <h3 className="text-sm font-black text-orange-100">{copy.guideBrowseTitle}</h3>
-                  <p className="mt-1.5 text-sm font-bold leading-6 text-zinc-300">
-                    {copy.guideBrowseBody}
-                  </p>
-                </div>
-                <div className="py-4">
-                  <h3 className="text-sm font-black text-orange-100">{copy.guideSaveTitle}</h3>
-                  <p className="mt-1.5 text-sm font-bold leading-6 text-zinc-300">
-                    {copy.guideSaveBody}
-                  </p>
-                </div>
-                <div className="py-4">
-                  <h3 className="text-sm font-black text-orange-100">{copy.guideChallengeTitle}</h3>
-                  <p className="mt-1.5 text-sm font-bold leading-6 text-zinc-300">
-                    {copy.guideChallengeBody}
-                  </p>
-                </div>
-                <div className="py-4 last:pb-0">
-                  <h3 className="text-sm font-black text-orange-100">{copy.guideRecordTitle}</h3>
-                  <p className="mt-1.5 text-sm font-bold leading-6 text-zinc-300">
-                    {copy.guideRecordBody}
-                  </p>
-                </div>
               </div>
             </div>
           </div>

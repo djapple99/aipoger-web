@@ -9,6 +9,7 @@ import NavHomeLink from "@/components/nav-home-link";
 import GlobalBattleCallOverlay from "@/components/global-battle-call-overlay";
 import GlobalListenBarDock from "@/components/global-listen-bar-dock";
 import GlobalSitePresenceBadge from "@/components/global-site-presence-badge";
+import CreditVisit from "@/components/credit-visit";
 import AnalyticsEvents from "@/components/analytics-events";
 import SeoJsonLd from "@/components/seo-json-ld";
 import { publicSiteUrl } from "@/lib/site-url";
@@ -122,7 +123,8 @@ export default async function RootLayout({
         <SeoJsonLd data={{ ...aipogerOrganizationSchema, "@id": `${siteUrl}/#organization` }} />
         <SeoJsonLd data={aipogerWebSiteSchema} />
         <I18nProvider initialLang={initialLang}>
-          <AnalyticsEvents />
+          <CreditVisit />
+            <AnalyticsEvents />
           <NavHomeLink />
           <GlobalSitePresenceBadge />
 

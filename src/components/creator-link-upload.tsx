@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
+import { creditCopy } from "@/lib/credit-copy";
 import { useCreatorUploadQuota } from "@/lib/use-creator-upload-quota";
 import { creatorUploadLimitReached } from "@/lib/creator-upload-quota";
 import { creatorText } from "@/lib/creator-center-copy";
@@ -35,6 +36,8 @@ export default function CreatorLinkUpload({
     [success, setSuccess] = useState(false);
   const version = useRef(0),
     lock = useRef(false);
+  const [confirmedCredit, setConfirmedCredit] = useState(false);
+  const submissionId = useRef<string | null>(null);
   const { quota, refresh } = useCreatorUploadQuota(userId);
   const api = async (body: object) => {
     const { data } = await supabase.auth.getSession();
@@ -53,6 +56,7 @@ export default function CreatorLinkUpload({
   };
   const humanError = (value: unknown) => {
     const code = value instanceof Error ? value.message : "";
+    if (/^CREDIT_/.test(code)) return text("額外投稿需60 Credit、沒有待追回欠額，並確認扣點。", "Extra submissions need 60 Credit, no outstanding debt and spending confirmation.", "追加投稿には60 Credit、未回収額なし、使用の同意が必要です。", "추가 제출에는60 Credit, 미회수 금액 없음, 사용 동의가 필요합니다.");
     return text(
       (
         {
@@ -84,6 +88,7 @@ export default function CreatorLinkUpload({
   };
   const load = async () => {
     if (lock.current) return;
+    submissionId.current = null;
     const v = ++version.current;
     lock.current = true;
     setBusy(true);
@@ -114,6 +119,8 @@ export default function CreatorLinkUpload({
     try {
       await api({
         action: "submit",
+        requestId: submissionId.current ??= crypto.randomUUID(),
+        confirmedCredit,
         previewToken: preview.token,
         title,
         artist,
@@ -123,6 +130,8 @@ export default function CreatorLinkUpload({
         confirmedPlayback: played,
         confirmedRights: rights,
       });
+      submissionId.current = null; setConfirmedCredit(false);
+      window.dispatchEvent(new CustomEvent("aipoger:credit"));
       setSuccess(true);
       setPreview(null);
       setUrl("");
@@ -135,13 +144,16 @@ export default function CreatorLinkUpload({
     } finally {
       lock.current = false;
       setBusy(false);
+      void refresh();
     }
   };
   return (
     <div className={styles.linkForm}>
       <p className={styles.allowance}>
-        {quota?.unlimited ? text("Owner · 投稿不限數量", "Owner · Unlimited submissions", "Owner · 投稿数の制限なし", "Owner · 제출 수 제한 없음") : <>{text("本期已用", "Used", "今期使用", "기간 사용")}{" "}{quota ? `${quota.used} / ${quota.limit}` : "—"} · {text("7 天最多三首，連結與音檔共用", "3 per 7 days, shared by links and files", "7日間で3曲、リンクと音源で共通", "7일간 3곡, 링크와 파일 공통")}</>}
+        {quota?.unlimited ? text("Owner · 投稿不限數量", "Owner · Unlimited submissions", "Owner · 投稿数の制限なし", "Owner · 제출 수 제한 없음") : <>{text("本期已用", "Used", "今期使用", "기간 사용")}{" "}{quota ? `${quota.used} / ${quota.limit}` : "—"} · {text("每168小時三件免費，之後每件60 Credit", "3 free per 168 hours, then 60 Credit each", "168時間に3件無料、その後は1件60 Credit", "168시간에3건 무료, 이후 건당60 Credit")}</>}
       </p>
+      <p>{creditCopy(lang).allowance} · Credit {quota?.balance ?? "—"}{quota?.debt ? ` · ${creditCopy(lang).debt} ${quota.debt}` : ""}</p>
+      {quota && !quota.unlimited && quota.used >= 3 ? <label><input type="checkbox" checked={confirmedCredit} onChange={e => setConfirmedCredit(e.target.checked)} /> {creditCopy(lang).consent}</label> : null}
       <label>
         <span>
           {text("作品連結", "Work link", "作品リンク", "작품 링크")}
@@ -378,7 +390,7 @@ export default function CreatorLinkUpload({
               !genre ||
               !title.trim() ||
               !artist.trim() ||
-              creatorUploadLimitReached(quota)
+              creatorUploadLimitReached(quota) || (quota?.used === 3 && !quota.unlimited && !confirmedCredit)
             }
             onClick={() => void submit()}
           >

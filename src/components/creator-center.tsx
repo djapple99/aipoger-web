@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import EditorialHeader from "@/components/editorial-header";
+import { creditCopy, creditReason } from "@/lib/credit-copy";
 import { creatorText } from "@/lib/creator-center-copy";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
@@ -53,6 +54,7 @@ export default function CreatorCenter(props: Props) {
     [loading, setLoading] = useState(true),
     [version, setVersion] = useState(0);
   const { userId } = props;
+  useEffect(() => { const refreshCredit = () => setVersion(v => v + 1); window.addEventListener("aipoger:credit", refreshCredit); return () => window.removeEventListener("aipoger:credit", refreshCredit); }, []);
   useEffect(() => {
     let active = true;
     setData(null);
@@ -322,12 +324,12 @@ export function CreatorCenterLayout({
               <small>
                 {data?.isOwner
                   ? tx(
-                      data?.credits.enabled ? "OWNER 免扣點 · 盲聽獎勵已啟用" : "OWNER 專屬權限 · 點數尚未啟用",
-                      data?.credits.enabled ? "OWNER exemption · blind rewards active" : "OWNER exemption · credits not active",
+                      data?.credits.enabled ? "OWNER 免扣投稿點數 · Credit 已啟用" : "OWNER 專屬權限 · 點數尚未啟用",
+                      data?.credits.enabled ? "OWNER submission exemption · Credit active" : "OWNER exemption · credits not active",
                     )
                   : tx(
-                      data?.credits.enabled ? "盲聽獎勵已啟用" : "啟用後顯示實際可用積分",
-                      data?.credits.enabled ? "Blind listening rewards active" : "Your actual balance will appear when activated",
+                      data?.credits.enabled ? "Credit 獎勵已啟用" : "啟用後顯示實際可用積分",
+                      data?.credits.enabled ? "Credit rewards active" : "Your actual balance will appear when activated",
                     )}
               </small>
               <button onClick={() => setDialog("credit")}>
@@ -805,11 +807,12 @@ export function CreatorCenterLayout({
           ) : dialog === "credit" ? (
             <div>
               <p>{data?.credits.enabled
-                ? tx("目前每題盲聽獎勵3點；每日登入、評論獎勵及點數投稿尚待啟用。Owner 保持免扣點。", "Blind comparisons earn 3 Credit. Login/comment rewards and extra submissions are not active yet. Owner deductions stay exempt.")
+                ? creditCopy(lang).rules
                 : tx("點數尚未啟用，目前沒有點數收支紀錄。", "Credits are not active yet.")}</p>
+              {data?.credits.debt ? <p role="status">{creditCopy(lang).debt}：{data.credits.debt} Credit</p> : null}
               {data?.credits.entries?.length ? <ul>{data.credits.entries.map(entry => <li key={entry.id} style={{display:"flex",justifyContent:"space-between",gap:16,padding:"12px 0",borderBottom:"1px solid #34434b"}}>
-                <span>{tx("盲聽評測", "Blind comparison")} · {new Date(entry.created_at).toLocaleDateString()}</span><strong>+{entry.delta}</strong>
-              </li>)}</ul> : data?.credits.enabled ? <p>{tx("尚無點數紀錄，完成盲聽就會累積。", "No transactions yet. Complete a blind comparison to start.")}</p> : null}
+                <span>{creditReason(lang, entry.reason)} · {new Date(entry.created_at).toLocaleDateString()}</span><strong>{entry.delta > 0 ? "+" : ""}{entry.delta}</strong>
+              </li>)}</ul> : data?.credits.enabled ? <p>{tx("尚無點數紀錄，回訪、愛心、有效評論與盲聽都會累積。", "No transactions yet. Visits, Hearts, qualifying reviews and blind comparisons earn Credit.")}</p> : null}
             </div>
           ) : (
             <div className={styles.legacy} data-mode={dialog ?? "works"}>

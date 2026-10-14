@@ -8,7 +8,7 @@ This document is the product-rule source of truth for AIPOGER. Use it before cha
 
 ## 現行狀態邊界
 
-- 新版創作者中心與三種來源連結預覽／確認投稿已發布；Credit 已啟用每題盲聽3點及私人收支，登入15／有效評論10／送愛心者3／增額投稿60與聖經扣點尚未啟用。
+- 新版創作者中心與三種來源連結預覽／確認投稿已發布；本次Credit發布包含台灣每日回訪15、有效評分評論10、歌曲／MV送愛心者3、盲聽每題3及額外成功投稿60；聖經扣點與APC仍未啟用。
 
 - APC 尚未啟用為產品點數經濟，不宣稱儲值、下注、獎勵或廣告換點已上線；歷史常數、欄位和字串不構成產品能力。
 - Profile 投稿不自動轉為 Battle；Explore 接戰依創作者明確選擇與準備好的 Drop。Drop／Q Crash 自願對戰保留。
@@ -31,7 +31,7 @@ This document is the product-rule source of truth for AIPOGER. Use it before cha
 - 2026-10-14探索歌曲封面原「戰績資訊」改為「顯示歌詞」，旁邊保留分享。閱讀同一公開原作品的既有歌詞，不另啟播放器、不要求登入；缺詞或純音樂显示「歌詞未提供」，不自行生成。小面板保留換行、獨立捲動和關閉，點面板外／再按同鍵／Esc收起；開別首只保留一個，頁面捲動／resize也收起，面板內捲動和選字不收起。底部播放器原歌詞視窗同樣可點外關閉。正式戰績資料、排名與原接戰同意規則沿用；接受挑戰的呈現方式另列待議。
 - Radio 以目前曲庫建立曲風循環的 session snapshot；進頁不自動播放，使用者選曲風／播放才啟動。電台與單曲使用唯一 root audio，電台可見時收起底部控制，往下捲則顯示底部控制；音訊保持掛載。新投稿不插入既有佇列，失去公開資格或到期才從原電台佇列剔除。
 - 投稿入口統一 `/profile?submit=1&lang=...#submit-work`，登入後直接開原上传表。一般會員三首／個人168小時限制，Owner 投稿不限數量，取消每作者每曲風五首 active 上限；手選曲風、音檔格式／30MB、權利告知、雜湊、審核與失敗清理均保留；展示到期不退還已使用的每期投稿額度。帳號改變／私人曲庫讀取失敗／重複提交不得誤寫作品。
-- `/listen-bar` 舊一般入口與 `/l/...` 曲風短鏈導向 Explore 電台，保留語言／曲風；原 `#play-request` 投稿深連結導 Profile。舊聊天室24小時 API與清理僅供歷史相容，沒有公開聊天介面。每曲評論仍持久保存並可交流；APC、登入／評論獎勵與扣點投稿仍未啟用；獨立盲聽Credit狀態見下節。
+- `/listen-bar` 舊一般入口與 `/l/...` 曲風短鏈導向 Explore 電台，保留語言／曲風；原 `#play-request` 投稿深連結導 Profile。舊聊天室24小時 API與清理僅供歷史相容，沒有公開聊天介面。每曲評論仍持久保存並可交流；APC仍未啟用；會員Credit收支見下節。
 
 ## 30秒盲聽評測與Credit
 
@@ -49,7 +49,7 @@ This document is the product-rule source of truth for AIPOGER. Use it before cha
 - MV卡片歌名最多兩行，點歌名開原MV／評論視窗閱讀完整標題，不自動播放或跑馬燈；精選、作品卡及觀看視窗提供分享按鍵，沿用原資訊列，不新增操作排。分享連結為`/mv?lang=...&track=原作品ID`，手機支援系統分享時使用原生選單，其他環境複製作品名稱／作者與站內連結；取消分享不假稱成功，複製失敗提供手動連結。
 - 分享接收者直接開原作品的MV／評論視窗，仍須按播放才啟動YouTube。全量公開MV可定位，包括不在前12張或精選中的作品；已隱藏或不可公開MV不洩漏作品資料，只提示目前不可觀看。
 - MV評論視窗使用橘色捲軸；評論區尚在畫面下方時，右下角顯示「往下看評論」按鍵，捲至評論區後收起。捲动／播放不送出評論或Heart，也不改動留言草稿。尊重減少動畫設定。
-- 分享不增加Heart、排行榜分數或點數；點數方案的每日15、至少20字有效評論10及額外投稿60已由使用者定案，發扣點系統尚待實作，現階段沒有點數兌換投稿。
+- 分享不增加Heart、排行榜分數或點數；本次點數方案為每日回訪15、至少20字有效評分評論10、他人歌曲／MV送愛心3與額外成功投稿60；分享不發點。
 
 ## 首頁 MV 社群曝光
 
@@ -76,11 +76,11 @@ This document is the product-rule source of truth for AIPOGER. Use it before cha
 - MV 卡片愛心直接切換原作品當日 Heart，沿用既有收藏連動；顯示的票數仍是本週不同非作者支持者數，不以當日狀態或 API 累計數冒充週票。評論圖示開啟同一作品的 MV／留言視窗，公開評論可讀，登入後才送出留言或 Heart；關閉返回原卡片。
 - 使用者點擊才載入 YouTube 官方播放器；可關閉並在原平台開啟。不下載或另存影片，不發放會員點數；連結投稿仍由創作者中心先預覽再確認。
 - 封面與觀看按鍵直接進同一MV觀看／評價視窗並播放；歌名／評論／分享接收連結開相同視窗但不自動播放。評分與留言不另開播放器或重播；自己的評價輸入放在公開留言清單之前。
-- 登入非作者會員可手填1–10分、最多一位小數（例如4.8／6.8），顯示輸入欄位／10，撤下一排十個數字按鍵；音樂與MV共用此評價及原作品ID。每人每作品一筆最新分數，可修改，修改不增加評分人數。作者（含Owner）可留言自己的作品但不能自評；Owner投稿／未啟用點數豁免不增加評分權。一般評價表單要求填分數，搭配選填的280字留言一起原子儲存；作者仍可只留言，既有留言API與舊客戶端的只留言討論保持相容。20字是後續有效評論得點條件，不是禁止短留言的門檻。
+- 登入非作者會員可手填1–10分、最多一位小數（例如4.8／6.8），顯示輸入欄位／10，撤下一排十個數字按鍵；音樂與MV共用此評價及原作品ID。每人每作品一筆最新分數，可修改，修改不增加評分人數。作者（含Owner）可留言自己的作品但不能自評；Owner投稿扣點豁免不增加評分權。一般評價表單要求填分數，搭配選填的280字留言一起原子儲存；作者仍可只留言，既有留言API與舊客戶端的只留言討論保持相容。20字是有效評論得點條件，不是禁止短留言的門檻。
 - 封面右上顯示平均分（四捨五入至一位小數）｜不同評分會員人數，不是分數總和或留言則數。無分數顯示「尚未評分」，不填假0分；有關聯留言被隱藏的分數不計入公開平均。原留言及管理／通知沿用同作品ID。
 - 「連播 MV」按當前搜尋、曲風與排序建立完整公開清單（含精選，不限首12張）；以原作品ID去重，保留不同作品合法使用同影片的情況。明確啟動才播放，一個YouTube播放器接播，提供上一支／下一支／暫停及停止連播。播完清單即停止；私密、不存在或禁止嵌入影片跳至下一支，手機阻擋自動播放時顯示點擊繼續。來源讀取失敗可重試，不將載入失敗假稱完播。
 - 連播切換同步原作品、評分與留言，分數／未送出文字草稿按作品保留於本次視窗。送出評價時暫停切換，結束事件延後到提交完成；發送中的請求仍綁原作品，重送相同receipt不重複儲存留言。刷新公開清單會剔除不可公開作品，正在觀看作品失去資格會關閉視窗。
-- MV與歌曲的同作品有效填寫分數共同計入Explore人氣總分；MV本週Heart、首頁精選及Showtime／正式Battle仍沿各自規則，不把人氣總分寫成正式戰績。這次沒有啟用新的Credit發扣點，也不以觀看秒數／完播／外站互動換點。
+- MV與歌曲的同作品有效填寫分數共同計入Explore人氣總分；MV本週Heart、首頁精選及Showtime／正式Battle仍沿各自規則，不把人氣總分寫成正式戰績。會員Credit另計，也不以觀看秒數／完播／外站互動換點。
 - Battle 的勝出發布 URL 保持原有正式結果、作者權限及上傳時完整歌曲公開同意條件，仍顯示於原 Battle Record／授權封存作品，不混入 community 歌曲 ID 或繞過公開資格。此階段沒有新增 Battle 連結展示規則。
 
 ## 創作者私人作品表現
@@ -144,7 +144,9 @@ Public social entry:
 - 連結作品可進探索與同一三個月人氣榜，使用可見外站播放器。持續小電台、共用音檔佇列及現有 Choice 選曲仍要求實際可播放音檔；不能將外站 URL 填成音檔或藏起 YouTube 播放。音檔投稿預覽可使用一次性的本機音訊控制，不是每列新增播放器。
 - 私人統計只查經伺服器驗證的本人資料；支持人数按不同會員去重且排除作者，評論只計其他會員在現行 DB 的可見評論。資料讀取失敗顯示未知與重試，不偽造零分／餘額。舊 Storage-only 留言沒有可驗證的會員 ID，未補成完整歷史評論人數。
 - 唯一 owner 保留既有受驗證的本人身分，平台後台只向 owner 顯示並沿用伺服器授權。不能用顯示名稱或可自行修改的 user metadata email 授權。其他會員只管理自己的資料。
-- Credit目前只啟用盲聽每題3點；一般會員看實際餘額和最近50筆本人收入，無紀錄顯示真實空狀態。唯一Owner顯示免扣點，不偽造無限數字；豁免不增加投票／評分權。登入15、至少20字有效評論10、送愛心者3Credit、額外投稿60與聖經扣點尚未實作，既有三首免費額度超過時仍不能花點投稿。
+- 本次Credit發布：伺服器以Asia/Taipei日期認定每日首次有效會員回訪15點；他人歌曲／MV原作品送愛心3點；評分搭配至少20個文字／數字、通過基本反灌水及正規化複製檢查的評論10點。短留言照常可送出，基本檢查不保證語意品質。每人同作品的愛心／評論淨獎勵最多3／10點；取消愛心、修改成不合格或撤回獲獎評論會追回，恢復有效互動恢復同份獎勵。新增短討論不撤回另一則仍有效的獲獎評論。已花掉的部分記待追回欠額，後續收入先補欠額，補足前不能花點。整首歌下架不自動追回歷史獎勵。
+- 保留原盲聽每題3點、所有既有盲聽收支與168小時免費投稿窗口，不承接APC，不追溯批量發點。每個窗口前三件免費，之後每件成功投稿60點；投稿前需明確確認扣點，作品與扣點同成同敗，失敗、預覽及重試同一件不多扣。Owner依既有已確認Auth主信箱免投稿數量／扣點，不偽造無限餘額、不增加投票／評分權。
+- 一般會員看真實可用餘額、待追回欠額及最近50筆本人收支。新增流水與舊盲聽歷史合併讀取；餘額、發點、追回與編輯RPC的會員身分只由驗證後伺服器取得。APC、付款、作者收到愛心獎勵及聖經扣點均未啟用。
 
 ## AIPOGER Choice 與社群發布
 
@@ -417,7 +419,7 @@ Current rules:
 - Bar Heartbreak is the continuous radio inside Explore; creators submit from Profile, with owner curation after publication. Publication does not require owner/judge review. The submitting creator confirms playback in the preview before confirming submission.
 - There is no per-genre or total library capacity. Genre controls show actual publicly playable track counts, never capacity denominators.
 - New eligible submissions enter public airplay immediately. Challenger admission, seat limits, 36-hour protection, survival days and automatic capacity elimination are retired.
-- Creator uploads (updated 2026-10-13): ordinary members may successfully submit at most three own community songs in a personal 168-hour window, shared by link and audio-file submissions. The first successful submission starts the window; at expiry, the next successful submission starts a fresh window. No calendar-Monday reset or carryover. Deleting, hiding, or changing display status never refunds quota. Failed/rolled-back submissions, previews, metadata edits, listening, favorites, and Choice selection do not consume it. The Owner is exempt from all submission-count limits, verified against confirmed primary Auth email and the existing owner identity list, never editable profile/metadata claims. Owner community submissions still use the caller's RLS identity and preserve ownership, genre, rights/preview and duplicate checks. No per-creator/per-genre active-song inventory cap remains; submitting in one genre across multiple weeks is permitted. Existing songs and quota history remain intact. Official-library uploads remain outside the community allowance. Credit is not enabled and cannot yet buy extra submissions.
+- Creator uploads (updated 2026-10-13): ordinary members may successfully submit at most three own community songs in a personal 168-hour window, shared by link and audio-file submissions. The first successful submission starts the window; at expiry, the next successful submission starts a fresh window. No calendar-Monday reset or carryover. Deleting, hiding, or changing display status never refunds quota. Failed/rolled-back submissions, previews, metadata edits, listening, favorites, and Choice selection do not consume it. The Owner is exempt from all submission-count limits, verified against confirmed primary Auth email and the existing owner identity list, never editable profile/metadata claims. Owner community submissions still use the caller's RLS identity and preserve ownership, genre, rights/preview and duplicate checks. No per-creator/per-genre active-song inventory cap remains; submitting in one genre across multiple weeks is permitted. Existing songs and quota history remain intact. Official-library uploads remain outside the community allowance. After the first three free submissions, a successful extra work costs 60 Credit with explicit confirmation and no outstanding debt; the database rechecks funds atomically.
 - Existing active, visible Challenger records become public without modifying creation time, audio, reactions or recognition. Previously hidden/removed/rejected works are not restored.
 - Both GET and POST `/api/listen-bar/process-rotation` are inert compatibility responses, even if an old environment flag or caller remains. Vercel no longer schedules rotation. Database `process_listen_bar_rotation_limits()` is also inert; explicit creator/owner/admin/moderation removals remain supported.
 - Previously Showtime-certified community songs that are public, playable and within the current three-month pool remain in Bar airplay and appear on Explore using the original track ID, audio, Hearts, favorites and comments. Historical certification never excludes them from either listening surface. Explicit `ai_music_showtime_public_removed_at` and all existing hide/removal/moderation restrictions still apply. No duplicate upload or new publication time is created.

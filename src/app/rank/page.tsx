@@ -1,5 +1,6 @@
 "use client";
 
+import ParticipationGuide from "@/components/participation-guide";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import EditorialHeader from "@/components/editorial-header";
@@ -21,7 +22,7 @@ export default function RankPage() {
         <div className={styles.layout} data-showtime-editorial>
           <header className={styles.heading}>
             <div><h1>SHOWTIME</h1><p>{copy.subtitle}</p></div>
-            <Link href={`/profile/choice?lang=${lang}`} className={styles.make}>{copy.make}<ArrowRight size={18} /></Link>
+            <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1"><ParticipationGuide surface="showtime" lang={lang} /><Link href={`/profile/choice?lang=${lang}`} className={styles.make}>{copy.make}<ArrowRight size={18} /></Link></div>
           </header>
           <div className={styles.content}>
             <div id="monthly-charts" className="scroll-mt-24" aria-hidden="true" />

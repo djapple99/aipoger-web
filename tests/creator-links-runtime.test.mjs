@@ -47,6 +47,7 @@ function mount(admin, { owner = false } = {}) {
   };
   const mocks = {
     ...mocksFor(admin),
+    "@/lib/server-blind-listening": { readCredit: async () => ({ enabled:true,balance:0,debt:0,entries:[] }) },
     "@supabase/supabase-js": {
       createClient: (url, key, options) => {
         writes.push({ key, options });
@@ -69,6 +70,7 @@ function mount(admin, { owner = false } = {}) {
               token: "valid",
               user: {
                 id: USER,
+                email_confirmed_at: "2026-01-01T00:00:00Z",
                 email: owner ? "djapple99@gmail.com" : "creator@example.test",
               },
             }
@@ -229,7 +231,7 @@ test("private summary reads all own submissions including expired records, hides
   assert.equal(p.commentCount, 1);
   assert.equal(p.comments[0].user_id, undefined);
   assert.equal(p.isOwner, false);
-  assert.deepEqual(p.credits, { enabled: true, balance: 0, entries: [] });
+  assert.deepEqual(p.credits, { enabled: true, balance: 0, debt: 0, entries: [] });
   assert.equal(
     (await mount(admin, { owner: true }).get(request(null))).status,
     200,

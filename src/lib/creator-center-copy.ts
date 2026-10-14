@@ -1,4 +1,7 @@
 const translations: Record<string, [string, string]> = {
+  "OWNER submission exemption · Credit active": ["OWNER投稿はポイント免除・Credit開始済み", "OWNER 제출 포인트 면제 · Credit 사용 가능"],
+  "Credit rewards active": ["Credit報酬開始済み", "Credit 보상 사용 가능"],
+  "No transactions yet. Visits, Hearts, qualifying reviews and blind comparisons earn Credit.": ["まだ履歴はありません。訪問・Heart・有効レビュー・ブラインド比較でCreditが貯まります。", "내역이 없습니다. 방문, Heart, 유효 리뷰, 블라인드 비교로 Credit을 모을 수 있습니다."],
   "My Account": ["マイアカウント", "내 계정"],
   promoting: ["公開中", "공개 중"],
   ended: ["終了", "종료"],

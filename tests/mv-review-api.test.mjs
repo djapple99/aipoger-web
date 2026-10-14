@@ -12,7 +12,7 @@ function api({visible=true,author=uuid(44),musicVisible=visible}={}){
  return {route,calls,req};
 }
 test('MV review GET exposes only current rating and aggregate, excluding author scoring',async()=>{
- const x=api({author:USER});const result=await x.route.GET(x.req());assert.equal(result.status,200);assert.deepEqual(await result.json(),{myScore:7,canRate:false,ratingAverage:7,ratingCount:1,ratingTotal:7});
+ const x=api({author:USER});const result=await x.route.GET(x.req());assert.equal(result.status,200);assert.deepEqual(await result.json(),{myScore:7,myComment:null,canRate:false,ratingAverage:7,ratingCount:1,ratingTotal:7});
 });
 test('MV review POST binds bearer identity, ignores forged user/name, and saves rating with comment atomically',async()=>{
  const x=api();const result=await x.route.POST(x.req({trackId,requestId,score:9,text:'  Good music and visual timing  ',userId:uuid(99),displayName:'Forged'}));assert.equal(result.status,200);assert.equal(x.calls.length,1);assert.equal(x.calls[0].args.p_user_id,USER);assert.equal(x.calls[0].args.p_body,'Good music and visual timing');assert.equal(x.calls[0].args.p_score,9);assert.equal(x.calls[0].name,'save_work_review');

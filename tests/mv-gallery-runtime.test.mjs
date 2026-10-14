@@ -39,6 +39,7 @@ async function mount(t,lang='zh',payload={featureKind:'community',featured:[work
  new Function('require','module','exports',headerCompiled)(name=>{assert.ok(name in modules,name);return modules[name];},header,header.exports);
  modules['@/components/editorial-header']=header.exports;
  modules['@/components/work-image']={__esModule:true,default:'work-image'};
+ modules['./participation-guide']={__esModule:true,default:'participation-guide'};
  const loaded={exports:{}};
  new Function('require','module','exports','fetch','window','document',compiled)(name=>{assert.ok(name in modules,name);return modules[name];},loaded,loaded.exports,async()=>({ok:!fail,json:async()=>structuredClone(payload)}),window,document);
  function render(){cursor=0;dirty=false;tree=loaded.exports.default();}

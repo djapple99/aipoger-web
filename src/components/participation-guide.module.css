@@ -1,0 +1,18 @@
+.trigger { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:44px; padding:2px 5px; background:transparent; border:0; color:#a1a1aa; font-size:13px; font-weight:600; white-space:nowrap; cursor:pointer; }
+.trigger img { width:29px; height:22px; object-fit:contain; }
+.trigger:hover { color:#fff; }
+.trigger:focus-visible,.dialog button:focus-visible { outline:2px solid #ff963f; outline-offset:3px; }
+.dialog { margin:auto; width:calc(100% - 32px); max-width:560px; max-height:calc(100svh - 48px); padding:0; overflow:auto; border:1px solid #f9b97c66; background:#090807; color:white; box-shadow:0 28px 90px #000b; overscroll-behavior:contain; }
+.dialog::backdrop { background:#000c; backdrop-filter:blur(4px); }
+.header { position:sticky; top:0; z-index:1; background:#090807; display:flex; align-items:center; gap:12px; padding:12px 20px; border-bottom:1px solid #f9b97c38; }
+.header img { width:44px; height:32px; object-fit:contain; }
+.header span { font-size:11px; letter-spacing:.18em; color:#ffd6b0; }
+.header button { margin-left:auto; min-width:44px; min-height:44px; border:1px solid #ffffff20; background:transparent; color:#ddd; font-size:26px; cursor:pointer; }
+.body { padding:20px 24px; }
+.body h2 { margin:0 0 14px; font-size:24px; font-weight:800; }
+.body section { border-top:1px solid #ffffff19; padding:14px 0; }
+.body h3 { margin:0 0 5px; font-size:14px; font-weight:750; color:#ffcda5; }
+.body p { margin:0; font-size:14px; line-height:1.8; color:#d4d4d8; overflow-wrap:anywhere; }
+.body .credit { border-color:#ff780d55; }
+.body .note { color:#9c9ca7; font-size:12px; }
+@media(max-width:480px) { .body { padding:17px 19px; } .body h2 { font-size:21px; } .dialog { max-height:calc(100svh - 32px); } }

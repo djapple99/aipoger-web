@@ -553,3 +553,18 @@ Check:
 
 - `20260917142731_creator_upload_week.sql` 已套用；刪歌不退額度、原子計數與帳號隔離須維持。資料庫既有驗證不等於實際多連線壓測。
 - 後續發布須從最新已驗證正式版建立，不能用目前較舊工作分支 HEAD 覆蓋正式站。需要重新驗收登入投稿／owner 寫入時，使用授權範圍內的真實流程。
+
+
+## Credit 參與整合發布
+
+隔離分支 `codex/participation-credit-live`，基準 `a2e156c`。2026-10-14收到具體正式遷移與部署授權，`20261014164151_credit_participation`已在單一交易成功套用；網站部署進行中，部署證據於完成後補上。
+
+正式遷移使用 `supabase/migrations/20261014164151_credit_participation.sql`，完整可核對來源亦保留 `supabase/credit_participation.sql`，QA 夾具與斷言位於 `tests/sql/credit-participation-*.sql`，禁止送到正式專案。新方案保留 `creator_credit_entries` 的全部歷史、delta=3／blind_compare限制、來源唯一性、RLS與grants；參與新收支寫入獨立表，由security-invoker歷史view及service-only summary RPC合併，使用單一snapshot取實際餘額／欠額及最近50筆。負淨額記欠額、未補足前禁止花點，後續收入先補欠額。
+
+新獎勵憑證按會員／原作品／類別唯一，來源修改及流水同一交易。評論文本的正規化簽章防止重複複製；短討論不撤回另一則仍有效的獲獎評論。Heart綁定其來源日期，處理舊日反應不會撤回目前獎勵。新增before-trigger先取得與既有save_work_review相同的會員交易鎖，再進既有monthly chart hooks，避免鎖順序反轉；發點及扣點也沿同鎖。原盲聽表仍只有正收入，並行入帳最多造成保守的暫時不足，不會讓花點超支。
+
+投稿沿用原Auth身份、確認過的Owner主信箱及168小時免費額度；免費額度使用到3後，只有明確確認60點且無欠額／餘額足夠的成功作品才扣點。穩定作品UUID讓重試讀回同件；音檔寫入結果不確定時保留素材，避免清理已成功作品。評論撤回為可恢復隱藏，不能用作者操作恢復管理員隱藏的內容。
+
+本機以既有npm快取PGlite 0.5.8／PostgreSQL 18.3在記憶體測試；無新套件安裝、無正式資料庫QA。正式專案為PostgreSQL 17.6，真正伺服器的多連線壓測與真實Auth／Storage端到端仍須區分，不能用PGlite單backend的結果冒充。發布前需確認確切遷移／權限操作、重新核對正式基線，再套用正式遷移、部署及aipoger.com驗收；不增加APC／付款／收愛心者獎勵，不回補歷史點數，不刪資料。
+
+正式遷移後唯讀確認8個新增trigger存在，原12筆／36點盲聽流水與兩個原CHECK保持不變，沒有參與流水回補，authenticated不能直接insert參與流水。623項本機測試0失敗／0skip、TypeScript與build通過；全量lint0錯誤、14項既有warning。尚未完成真正伺服器多連線壓測與真實Auth／Storage端到端，不宣稱通過；直接並行修改來源可能觸發可回滾死結，來源身份／作品ID應維持既有不變邊界。

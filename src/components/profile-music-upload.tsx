@@ -8,6 +8,8 @@ import { sha256File } from "@/lib/file-hash";
 import { logAnalyticsEvent } from "@/lib/analytics-client";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import { normalizeYouTubeUrl } from "@/lib/youtube-url";
+import { creditCopy } from "@/lib/credit-copy";
+import { saveCreatorSubmission, type CreatorSubmissionDb } from "@/lib/creator-submission";
 import { useCreatorUploadQuota } from "@/lib/use-creator-upload-quota";
 import { creatorUploadLimitReached } from "@/lib/creator-upload-quota";
 import GenreSuggestion, { genreCopy } from "@/components/genre-suggestion";
@@ -34,12 +36,6 @@ function isMissingListenBarSubmissionColumn(error: unknown): boolean {
       ].filter(Boolean).join(" ")
     : String(error ?? "");
   return code === "PGRST204" || /schema cache|column .* does not exist|could not find .* column/i.test(text);
-}
-
-function missingListenBarDescriptionColumnMessage(isZh: boolean) {
-  return isZh
-    ? "歌曲介紹暫時無法儲存，請稍後再試。"
-    : "The song description cannot be saved right now. Try again later.";
 }
 
 function isDuplicateAudioHashError(error: unknown): boolean {
@@ -113,14 +109,16 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
   const [privateReady, setPrivateReady] = useState(false);
   const publicAudioSelectionRef = useRef(0);
   const uploadLock = useRef(false);
+  const pendingSubmission = useRef<Record<string,unknown>|null>(null);
+  const [confirmedCredit,setConfirmedCredit] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const uploadGenre = publicUploadForm.genre.trim();
   const uploadSubmissionPhase = "public" as const;
   const { quota: uploadQuota, refresh: refreshUploadQuota } = useCreatorUploadQuota(userId);
   const creatorWeeklyUploadLimitFull = creatorUploadLimitReached(uploadQuota);
-  const publicUploadBlocked = !privateReady || creatorWeeklyUploadLimitFull;
+  const publicUploadBlocked = !privateReady || (!pendingSubmission.current && creatorWeeklyUploadLimitFull);
   const publicUploadBlockedMessage = !privateReady ? barText(lang, "請等作品庫讀取完成後再投稿。", "Wait for your works to load before submitting.", "作品の読み込み後に投稿してください。", "작품 목록을 불러온 후 제출하세요.")
-    : barText(lang, "本期上傳額度已滿，刪除不退額度。", "This period's upload allowance is used. Deletion does not restore it.", "今期の投稿枠は使用済みです。削除しても枠は戻りません。", "이번 기간 업로드 한도를 사용했습니다. 삭제해도 복구되지 않습니다.");
+    : barText(lang, "額外投稿需60 Credit，待追回欠額補足前不能花點。", "Extra submissions need 60 Credit and no outstanding debt.", "今期の投稿枠は使用済みです。削除しても枠は戻りません。", "이번 기간 업로드 한도를 사용했습니다. 삭제해도 복구되지 않습니다.");
   const uploadPhaseNoticeTitle = publicUploadBlocked ? publicUploadBlockedMessage : barText(lang, "投稿後直接公開", "Public immediately", "投稿後すぐ公開", "업로드 후 즉시 공개");
   const uploadPhaseNoticeBody = barText(lang, "作品公開三個月，加入電台、探索與人氣榜。", "Works appear in radio, Explore and the popularity chart for three months.", "作品は3か月間、ラジオ・Explore・人気ランキングに掲載されます。", "작품은 3개월간 라디오, Explore, 인기 차트에 공개됩니다.");
   useEffect(() => {
@@ -283,7 +281,7 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
       setPublicUploadError(t("listen_bar_genre_required"));
       return;
     }
-    if (publicUploadBlocked) {
+    if (publicUploadBlocked || (!pendingSubmission.current && uploadQuota?.used === 3 && !uploadQuota.unlimited && !confirmedCredit)) {
       setPublicUploadError(publicUploadBlockedMessage);
       return;
     }
@@ -300,17 +298,19 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
     setPublicUploadBusy(true);
     let audioPath: string | null = null;
     let coverPath: string | null = null;
+    let uncertain = false;
     try {
     const { data: auth } = await supabase.auth.getSession();
     if (!auth.session || auth.session.user.id !== userId) { setPublicUploadError(barText(lang, "登入狀態已改變，請重新整理作品庫。", "Your sign-in changed. Refresh your works.", "ログインが変わりました。作品一覧を更新してください。", "로그인이 변경되었습니다. 작품 목록을 새로고침하세요.")); return; }
 
+      if (!pendingSubmission.current) {
       const quota = await refreshUploadQuota();
       if (!quota) {
         setPublicUploadError(barText(lang, "暫時無法確認上傳額度，請稍後再試。", "Could not check your upload allowance. Try again shortly.", "投稿枠を確認できません。しばらくして再試行してください。", "업로드 한도를 확인할 수 없습니다. 잠시 후 다시 시도하세요."));
         return;
       }
       if (creatorUploadLimitReached(quota)) {
-        setPublicUploadError(barText(lang, "本期已成功上傳 3 首，請等 7 天週期結束後再傳。刪除不退額度。", "All 3 uploads in this 7-day period have been used. Deletion does not restore the allowance.", "この7日間の投稿枠3曲は使用済みです。削除しても枠は戻りません。", "이번 7일간 업로드 3곡을 모두 사용했습니다. 삭제해도 한도는 복구되지 않습니다."));
+        setPublicUploadError(barText(lang, "額外投稿需60 Credit，待追回欠額補足前不能花點。", "Extra submissions need 60 Credit and no outstanding debt.", "追加投稿には60 Creditと未回収額なしが必要です。", "추가 제출에는60 Credit과 미회수 금액 없음이 필요합니다."));
         return;
       }
       const audioSha256 = await sha256File(publicAudioFile);
@@ -340,6 +340,8 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
         : null;
 
       const insertPayload = {
+        id: crypto.randomUUID(),
+        credit_submission_confirmed: confirmedCredit,
         title: publicUploadForm.title.trim(),
         artist: limitListenBarDisplayText(
           publicUploadForm.artist.trim() || creatorDefaultName || (isZh ? "創作者" : "Creator"),
@@ -366,40 +368,16 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
         created_by: userId,
       };
 
+      pendingSubmission.current = insertPayload;
+      }
       const { data: latestAuth } = await supabase.auth.getSession();
       if (latestAuth.session?.user.id !== userId) throw new Error("Sign-in changed during upload.");
-      let insertResult = await supabase
-        .from("listen_bar_tracks")
-        .insert(insertPayload)
-        .select("*")
-        .maybeSingle<ListenBarTrackRow>();
-      if (insertResult.error && isMissingListenBarSubmissionColumn(insertResult.error)) {
-        const fallbackPayload = { ...insertPayload };
-        delete (fallbackPayload as Partial<typeof insertPayload>).audio_sha256;
-        delete (fallbackPayload as Partial<typeof insertPayload>).bar_phase;
-        delete (fallbackPayload as Partial<typeof insertPayload>).youtube_url;
-        insertResult = await supabase
-          .from("listen_bar_tracks")
-          .insert(fallbackPayload)
-          .select("*")
-          .maybeSingle<ListenBarTrackRow>();
-
-        if (insertResult.error && isMissingListenBarSubmissionColumn(insertResult.error)) {
-          if (insertPayload.description) {
-            throw new Error(missingListenBarDescriptionColumnMessage(isZh));
-          }
-          delete (fallbackPayload as Partial<typeof insertPayload>).description;
-          insertResult = await supabase
-            .from("listen_bar_tracks")
-            .insert(fallbackPayload)
-            .select("*")
-            .maybeSingle<ListenBarTrackRow>();
-        }
-      }
-      const { data: insertedTrackRow, error } = insertResult;
-      if (error) throw error;
-
-      if (!insertedTrackRow) throw new Error(barText(lang, "無法確認投稿結果，請重新整理作品庫。", "Could not confirm the submission. Refresh your works.", "投稿結果を確認できません。作品一覧を更新してください。", "업로드 결과를 확인할 수 없습니다. 작품 목록을 새로고침하세요."));
+      const insertResult = await saveCreatorSubmission(supabase as unknown as CreatorSubmissionDb, pendingSubmission.current!);
+      uncertain = insertResult.uncertain;
+      const insertedTrackRow = insertResult.data as unknown as ListenBarTrackRow | null;
+      if (insertResult.error || !insertedTrackRow) throw insertResult.error ?? new Error("Submission result is unconfirmed");
+      pendingSubmission.current = null; setConfirmedCredit(false);
+      window.dispatchEvent(new CustomEvent("aipoger:credit"));
       void logAnalyticsEvent({ eventType: "upload_song", songId: isUuid(insertedTrackRow.id) ? insertedTrackRow.id : null,
         pagePath: "/profile", source: "creator_submission", metadata: { title: insertedTrackRow.title, genre: insertedTrackRow.genre } });
       onSubmitted();
@@ -417,14 +395,15 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
         `投稿完了！${publicUploadForm.genre}の再生に加わりました。`,
         `업로드 완료! ${publicUploadForm.genre} 재생에 추가되었습니다.`));
     } catch (submitError) {
-      void cleanupPublicUploadAssets({ audioPath, coverPath });
+      if (!uncertain) { pendingSubmission.current = null; void cleanupPublicUploadAssets({ audioPath, coverPath }); }
       setPublicUploadError(
-        String((submitError as { message?: string })?.message ?? submitError).includes("CREATOR_WEEKLY_UPLOAD_LIMIT")
+        uncertain ? barText(lang,"投稿結果尚待確認，請按確認投稿重試；同一件不會重複扣點。", "Submission is unconfirmed. Retry to recover the same work without another debit.", "投稿結果を確認中です。同じ作品は再送しても追加の使用はありません。", "제출 결과 확인 중입니다. 재시도해도 같은 작품에 중복 차감하지 않습니다.")
+          : /CREDIT_|CREATOR_WEEKLY_UPLOAD_LIMIT/.test(String((submitError as { message?: string })?.message ?? submitError))
           ? barText(lang,
-            "本期 7 天內已成功上傳 3 首，請等本期結束後再投稿。刪除歌曲不會退還額度。",
-            "You have uploaded 3 songs in this 7-day period. Please wait until it ends. Deletion does not restore the allowance.",
-            "今期の7日間で3曲投稿済みです。期間終了後に再投稿できます。削除しても枠は戻りません。",
-            "이번 7일 기간에 이미 3곡을 업로드했습니다. 기간이 끝난 후 다시 제출하세요. 삭제해도 한도는 복구되지 않습니다.")
+            "本期免費額度已滿。額外投稿需60 Credit、沒有待追回欠額，並確認扣點。",
+            "Free allowance used. An extra submission needs 60 Credit, no outstanding debt and spending confirmation.",
+            "追加投稿には60 Credit、未回収額なし、使用の同意が必要です。",
+            "추가 제출에는60 Credit, 미회수 금액 없음, 사용 동의가 필요합니다.")
           : isDuplicateAudioHashError(submitError)
           ? isZh
             ? "這個音檔已經上傳過了，請換另一首歌。"
@@ -444,6 +423,8 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
     }
   };
   return <div className="mt-4">
+    <p className="text-sm text-zinc-300">{creditCopy(lang).allowance} · Credit {uploadQuota?.balance ?? "—"}{uploadQuota?.debt ? ` · ${creditCopy(lang).debt} ${uploadQuota.debt}` : ""}</p>
+    {uploadQuota && !uploadQuota.unlimited && uploadQuota.used >= 3 ? <label className="flex gap-2 my-3"><input type="checkbox" checked={confirmedCredit} onChange={e => setConfirmedCredit(e.target.checked)} />{creditCopy(lang).consent}</label> : null}
     <SafetyNotice kind="upload" compact className="mb-3" />
     {publicUploadMessage ? <p role="status" className="mb-3 text-sm text-orange-100">{publicUploadMessage}</p> : null}
     {publicUploadError ? <p role="alert" className="mb-3 text-sm text-red-200">{publicUploadError}</p> : null}
@@ -565,8 +546,8 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
                     </p>
                     <p className="mt-2 text-xs font-bold leading-5 text-zinc-300">
                       {uploadQuota?.unlimited ? barText(lang, "Owner · 投稿不限數量", "Owner · Unlimited submissions", "Owner · 投稿数の制限なし", "Owner · 제출 수 제한 없음") : barText(lang,
-                        `上傳額度 ${uploadQuota ? `${uploadQuota.used}/3` : userId ? "確認中" : "登入後查看"}。每期從第一首成功投稿起算 7 天，最多 3 首；刪除不退額度。`,
-                        `Uploads ${uploadQuota ? `${uploadQuota.used}/3` : userId ? "checking" : "sign in to view"}. Up to 3 songs in 7 days from your first successful submission. Deletion does not restore the allowance.`,
+                        `上傳額度 ${uploadQuota ? `${uploadQuota.used}/3` : userId ? "確認中" : "登入後查看"}。每期從第一首成功投稿起算168小時，三件免費，之後每件60 Credit；刪除不退額度。`,
+                        `Uploads ${uploadQuota ? `${uploadQuota.used}/3` : userId ? "checking" : "sign in to view"}. 3 free submissions per 168 hours, then 60 Credit each. Deletion does not restore the allowance.`,
                         `投稿枠 ${uploadQuota ? `${uploadQuota.used}/3` : userId ? "確認中" : "ログインして確認"}。最初の投稿成功から7日間で最大3曲。削除しても枠は戻りません。`,
                         `업로드 ${uploadQuota ? `${uploadQuota.used}/3` : userId ? "확인 중" : "로그인 후 확인"}. 첫 업로드 성공부터 7일간 최대 3곡. 삭제해도 한도는 복구되지 않습니다.`)}
                     </p>
@@ -629,7 +610,7 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
 </div></details>
                 <button
                   type="submit"
-                  disabled={publicUploadBusy || publicUploadBlocked || !publicAudioFile || (previewOpen && (!previewPlayed || !rightsConfirmed))}
+                  disabled={publicUploadBusy || publicUploadBlocked || (!pendingSubmission.current && uploadQuota?.used === 3 && !uploadQuota.unlimited && !confirmedCredit) || !publicAudioFile || (previewOpen && (!previewPlayed || !rightsConfirmed))}
                   className="h-12 rounded-xl bg-orange-500 px-5 text-sm font-black tracking-[0.12em] text-black shadow-[0_0_28px_rgba(255,106,0,0.24)] transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:border disabled:border-white/10 disabled:bg-white/[0.045] disabled:text-zinc-500 disabled:shadow-none"
                 >
                   {publicUploadBusy
