@@ -7,7 +7,7 @@ import { homeCopy } from '../src/lib/home-copy.ts';
 const compiled=ts.transpileModule(readFileSync(new URL('../src/components/home-work-feedback.tsx',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
 const nodes=x=>Array.isArray(x)?x.flatMap(nodes):x&&typeof x==='object'?[x,...nodes(x.props?.children)]:[];
 const text=x=>Array.isArray(x)?x.map(text).join(''):x&&typeof x==='object'?text(x.props?.children):typeof x==='string'?x:'';
-async function mount(t,{signedIn=true,failWrite=false,showVideo=false,commentsBelow=false}={}) {
+async function mount(t,{signedIn=true,failWrite=false,showVideo=false,commentsBelow=false,hasVideo=showVideo}={}) {
  const session=signedIn?{access_token:'test-token',user:{id:'reader',user_metadata:{display_name:'Listener'}}}:null;
  let cursor=0,tree,dirty=true,changed=0,toggles=0;const states=[],refs=[],effects=[],requests=[];const player={playing:true};let scrolls=0,commentTop=commentsBelow?800:0;const scrollListeners=[];
  const react={useState(initial){const i=cursor++;if(!(i in states))states[i]=initial;return [states[i],v=>{states[i]=typeof v==='function'?v(states[i]):v;dirty=true;}];},useRef(){return refs[cursor++]??={current:{showModal(){},close(){},getBoundingClientRect(){return {top:commentTop,bottom:500}},addEventListener(type,fn){scrollListeners.push(fn)},removeEventListener(){},scrollIntoView(){scrolls++;commentTop=40;scrollListeners.forEach(fn=>fn())}}};},useEffect(fn){const i=cursor++;if(!effects[i])effects[i]={cleanup:fn()};}};
@@ -16,7 +16,7 @@ async function mount(t,{signedIn=true,failWrite=false,showVideo=false,commentsBe
  const loaded={exports:{}};const window=new EventTarget();window.matchMedia=()=>({matches:false});const document={activeElement:null};
  class HTMLElement{};class CustomEvent extends Event{constructor(type,init){super(type);this.detail=init.detail;}}
  new Function('require','module','exports','fetch','window','document','HTMLElement','CustomEvent',compiled)(name=>{assert.ok(name in modules,name);return modules[name];},loaded,loaded.exports,fetch,window,document,HTMLElement,CustomEvent);
- function render(){cursor=0;dirty=false;tree=loaded.exports.default({work:{id:'target-work',title:'The MV',artist:'Creator',videoId:'MdxaU0l3FzI',youtubeUrl:'https://www.youtube.com/watch?v=MdxaU0l3FzI'},showVideo,onClose(){},onChange(){changed++;}});}
+ function render(){cursor=0;dirty=false;tree=loaded.exports.default({work:{id:'target-work',title:'The MV',artist:'Creator',videoId:hasVideo?'MdxaU0l3FzI':null,youtubeUrl:'https://www.youtube.com/watch?v=MdxaU0l3FzI'},showVideo,onClose(){},onChange(){changed++;}});}
  async function flush(){for(let i=0;i<6;i++){await new Promise(setImmediate);if(dirty)render();}}
  render();await flush();t.after(()=>effects.forEach(e=>e?.cleanup?.()));
  return {scrolls:()=>scrolls,requests,flush,toggles:()=>toggles,changed:()=>changed,text:()=>text(tree),find:type=>nodes(tree).find(x=>x.type===type)?.props,button:label=>nodes(tree).find(x=>x.type==='button'&&(text(x)===label||x.props['aria-label']===label))?.props};
@@ -41,4 +41,8 @@ test('MV feedback shares one persistent player and puts rating input before publ
 test('MV comment cue jumps within the dialog and hides once comments are visible without losing a draft',async t=>{
  const ui=await mount(t,{showVideo:true,commentsBelow:true});assert.ok(ui.button(mvCopy('zh').scrollComments));
  ui.button(mvCopy('zh').scrollComments).onClick();await ui.flush();assert.equal(ui.scrolls(),1);assert.equal(ui.button(mvCopy('zh').scrollComments),undefined);assert.equal(ui.find('rating-form').trackId,'target-work');assert.equal(ui.requests.some(r=>r.method==='POST'),false);
+});
+
+test('homepage MV feedback retains MV eligibility even when the video player is not displayed',async t=>{
+ const ui=await mount(t,{hasVideo:true,showVideo:false});assert.equal(ui.find('rating-form').surface,'mv');assert.equal(ui.find('mv-player'),undefined);
 });

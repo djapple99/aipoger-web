@@ -126,7 +126,7 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
         : <Link className={styles.feedbackAuth} href={authHref}>{copy.loginFeedback}</Link>}
       {heartReadFailed ? <p role="alert" className={styles.refreshError}>{copy.error}</p> : null}
       <div ref={commentArea} id="mv-comment-area">
-        <MvRatingForm key={work.id} trackId={work.id} signedIn={signedIn} surface={withVideo ? "mv" : "music"} drafts={reviewDrafts.current} onBusy={onReviewBusy ?? (() => {})} onSaved={item => { if (currentWork.current !== work.id) return; if (item) setComments(current => current.some(comment => comment.id === item.id) ? current : [...current, item]); onChange(); }} />
+        <MvRatingForm key={work.id} trackId={work.id} signedIn={signedIn} surface={work.videoId ? "mv" : "music"} drafts={reviewDrafts.current} onBusy={onReviewBusy ?? (() => {})} onSaved={item => { if (currentWork.current !== work.id) return; if (item) setComments(current => current.some(comment => comment.id === item.id) ? current : [...current, item]); onChange(); }} />
       </div>
       <section id="mv-public-comments" className={styles.feedbackComments} aria-label={copy.comments}>
         {loading ? <p role="status">{copy.loadingComments}</p> : readFailed ? <p role="alert">{copy.error}</p>
