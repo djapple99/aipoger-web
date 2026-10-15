@@ -179,6 +179,12 @@ Daily Spotlight 已退役：它不再是傷心酒吧、Explore、`/admin/listen-
 
 ## Auth Rules
 
+### 公開署名（2026-10-15 隱私修復）
+
+- 歌曲／MV、舊歌曲留言入口、Choice與創作聖經的新留言使用創作者中心已儲存的舞台名稱，與本人資料設定一致；不得以客戶端傳入名稱、OAuth full_name／name、帳號display_name或Email前綴覆蓋。Choice新建策展人及分享預覽的名稱回退同樣遵守。
+- 先讀 `user_profiles.fighter_name`，再讀經核對不是登入帳號預設姓名的舊 `fighter_profiles.display_name`；沒有公開名稱時使用一般稱呼。讀取失敗不得回退私密身分，送出維持失敗可重試。
+- 原留言是發表時的署名快照，改名不自動改寫所有歷史內容。本輪僅修正使用者指出的本名外洩留言及其通知／重送紀錄；保留留言文字、原時間、評分和Credit。後續修復需依驗證會員與具體留言定位，不能按名字模糊比對後批次改動別人的資料。
+
 - Anyone can listen to public music surfaces.
 - Sign-in is required for uploading, protected voting/commenting, protected analysis APIs, Battle participation, and creator-owned track deletion. The anonymous Drop arena exception is defined in the Drop Battle section; Q Crash voting still requires sign-in.
 - Bar Heartbreak voting and track comments require sign-in.
