@@ -126,7 +126,10 @@ export default function AccountNotifications({ userId }: { userId: string }) {
         </div>
         <p className={styles.body}>{row.body}</p>
         <footer><time dateTime={row.created_at}>{new Date(row.created_at).toLocaleString(lang === "zh" ? "zh-TW" : lang, { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</time>
-          <Link href={accountNotificationHref(row, lang)} onClick={() => { if (!row.read_at) void markRead([row.id]); }}>{row.type === "listen_bar_track_comment" ? tx("查看作品與評論", "View work and comments", "作品とコメントを見る", "작품과 댓글 보기") : tx("查看詳情", "View details", "詳細を見る", "자세히 보기")}<ArrowUpRight size={15}/></Link>
+          <Link href={accountNotificationHref(row, lang)} onClick={() => {
+            if (!row.read_at) void markRead([row.id]);
+            if (accountNotificationHref(row, lang).endsWith("#pending-ai-music-challenges")) window.dispatchEvent(new Event("aipoger:open-pending-challenges"));
+          }}>{row.type === "listen_bar_track_comment" ? tx("查看作品與評論", "View work and comments", "作品とコメントを見る", "작품과 댓글 보기") : tx("查看詳情", "View details", "詳細を見る", "자세히 보기")}<ArrowUpRight size={15}/></Link>
         </footer>
       </article>)}
       {loading ? <p role="status">{tx("讀取通知中…", "Loading notifications…", "通知を読み込み中…", "알림 불러오는 중…")}</p> : !error && !rows.length ? <p className={styles.empty}>{unreadOnly ? tx("沒有未讀消息。", "No unread notifications.", "未読の通知はありません。", "읽지 않은 알림이 없습니다.") : tx("收到評論與互動消息後，會在這裡告訴你。", "Comments and interaction notices will appear here.", "コメントや交流の通知がここに表示されます。", "댓글과 활동 알림이 여기에 표시됩니다.")}</p> : null}

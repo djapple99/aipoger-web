@@ -127,12 +127,17 @@ export function CreatorCenterLayout({
     [external, setExternal] = useState<CreatorWork | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   useEffect(() => {
+    const openChallenge = () => setDialog("works");
     const revealChallenge = () => {
-      if (window.location.hash === "#pending-ai-music-challenges") setDialog("works");
+      if (window.location.hash === "#pending-ai-music-challenges") openChallenge();
     };
     revealChallenge();
     window.addEventListener("hashchange", revealChallenge);
-    return () => window.removeEventListener("hashchange", revealChallenge);
+    window.addEventListener("aipoger:open-pending-challenges", openChallenge);
+    return () => {
+      window.removeEventListener("hashchange", revealChallenge);
+      window.removeEventListener("aipoger:open-pending-challenges", openChallenge);
+    };
   }, []);
   useEffect(() => {
     if (dialog || external) dialogRef.current?.showModal();
