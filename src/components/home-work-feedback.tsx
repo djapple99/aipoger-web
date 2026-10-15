@@ -13,7 +13,7 @@ import type { HomeWork } from "@/lib/home-discovery";
 import styles from "./home-editorial.module.css";
 
 type Comment = { id: string; name: string; text: string; createdAt: string };
-export default function HomeWorkFeedback({ work, onClose, onChange, returnPath = "/", showVideo = false, supportNote, autoPlay = false, videoControls, onVideoEnded, onVideoUnavailable, onReviewBusy }: { work: HomeWork; onClose: () => void; onChange: () => void; returnPath?: string; showVideo?: boolean; supportNote?: string; autoPlay?: boolean; videoControls?: ReactNode; onVideoEnded?: () => void; onVideoUnavailable?: () => void; onReviewBusy?: (busy: boolean) => void }) {
+export default function HomeWorkFeedback({ work, onClose, onChange, returnPath = "/", showVideo = false, supportNote, autoPlay = false, videoControls, shareControl, onVideoEnded, onVideoUnavailable, onReviewBusy }: { work: HomeWork; onClose: () => void; onChange: () => void; returnPath?: string; showVideo?: boolean; supportNote?: string; autoPlay?: boolean; videoControls?: ReactNode; shareControl?: ReactNode; onVideoEnded?: () => void; onVideoUnavailable?: () => void; onReviewBusy?: (busy: boolean) => void }) {
   const { lang } = useI18n(); const copy = homeCopy(lang);
   const dialog = useRef<HTMLDialogElement>(null);
   const scrollArea = useRef<HTMLDivElement>(null);
@@ -122,14 +122,15 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
       <div className={styles.feedbackHeading}><div><p>{copy.discuss}</p><h2 id="home-feedback-title">{work.title}</h2><span>{work.artist}</span></div>
         <button autoFocus type="button" onClick={onClose} aria-label={copy.closeFeedback}><X size={22} /></button>
       </div>
-      {withVideo ? <>
-        <MvPlayer work={work} autoPlay={autoPlay} onEnded={onVideoEnded} onUnavailable={onVideoUnavailable} />
-        <div className={styles.mvViewLinks}><a className={styles.feedbackSource} href={work.youtubeUrl!} target="_blank" rel="noopener noreferrer">{copy.openYouTube}</a>{videoControls}</div>
-      </> : null}
-      <p className={styles.feedbackNote}>{supportNote ?? copy.supportNote}</p>
-      {signedIn ? <button className={styles.feedbackHeart} type="button" disabled={busy || hearted === null} aria-pressed={hearted === true}
-        onClick={() => void submitHeart()}><Heart size={18} fill={hearted ? "currentColor" : "none"} />{hearted ? copy.removeHeart : copy.sendHeart}</button>
-        : <Link className={styles.feedbackAuth} href={authHref}>{copy.loginFeedback}</Link>}
+      {withVideo ? <MvPlayer work={work} autoPlay={autoPlay} onEnded={onVideoEnded} onUnavailable={onVideoUnavailable} /> : null}
+      <div className={styles.feedbackSupportRow}>
+        {signedIn ? <button className={styles.feedbackHeart} type="button" disabled={busy || hearted === null} aria-pressed={hearted === true}
+          onClick={() => void submitHeart()}><Heart size={18} fill={hearted ? "currentColor" : "none"} />{hearted ? copy.removeHeart : copy.sendHeart}</button>
+          : <Link className={styles.feedbackAuth} href={authHref}>{copy.loginFeedback}</Link>}
+        <p className={styles.feedbackNote}>{supportNote ?? copy.supportNote}</p>
+        {withVideo && shareControl ? <div className={styles.feedbackShare}>{shareControl}</div> : null}
+      </div>
+      {withVideo && videoControls ? <div className={styles.mvViewLinks}>{videoControls}</div> : null}
       {heartReadFailed ? <p role="alert" className={styles.refreshError}>{copy.error}</p> : null}
       <div ref={commentArea} id="mv-comment-area">
         <MvRatingForm key={work.id} trackId={work.id} signedIn={signedIn} surface={work.videoId ? "mv" : "music"} drafts={reviewDrafts.current} onBusy={onReviewBusy ?? (() => {})} onSaved={item => {

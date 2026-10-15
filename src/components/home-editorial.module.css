@@ -182,16 +182,18 @@
 .commentScrollCue:focus-visible { outline: 2px solid #ffb46b; outline-offset: 3px; }
 .feedbackVideo { position: relative; aspect-ratio: 16/9; background: #111; margin-top: 22px; }
 .feedbackVideo iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
-.feedbackSource { display: inline-block; margin-top: 12px; color: #ff9a45; font-size: 13px; }
-.feedbackVideo button:focus-visible, .feedbackSource:focus-visible { outline: 2px solid #ff9a45; outline-offset: 3px; }
+.feedbackVideo button:focus-visible { outline: 2px solid #ff9a45; outline-offset: 3px; }
 .feedbackInner { padding: 28px; }
 .feedbackHeading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .feedbackHeading p { margin: 0 0 8px; color: #ff6a00; font-size: 13px; }
 .feedbackHeading h2 { margin: 0 0 8px; font-size: 27px; font-weight: 750; overflow-wrap: anywhere; }
 .feedbackHeading span { color: #a1a1aa; font-size: 14px; }
 .feedbackHeading button { border: 0; background: transparent; color: white; padding: 6px; min-width: 44px; min-height: 44px; flex-shrink: 0; }
-.feedbackNote { color: #a1a1aa; font-size: 12px; line-height: 1.7; margin: 22px 0 16px; }
-.feedbackHeart, .feedbackAuth { display: inline-flex; gap: 9px; align-items: center; border: 1px solid #ff6a0070; background: #ff6a0012; border-radius: 4px; padding: 10px 15px; font-size: 14px; color: #ff9a45; }
+.feedbackSupportRow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; margin: 12px 0; }
+.feedbackNote { min-width: 0; color: #a1a1aa; font-size: 12px; line-height: 1.6; margin: 0; overflow-wrap: anywhere; }
+.feedbackShare { display: flex; align-items: center; justify-content: flex-end; min-width: 44px; }
+.feedbackHeart, .feedbackAuth { display: inline-flex; gap: 9px; align-items: center; min-height: 44px; border: 1px solid #ff6a0070; background: #ff6a0012; border-radius: 4px; padding: 9px 12px; font-size: 14px; color: #ff9a45; }
+.feedbackHeart svg { flex-shrink: 0; }
 .feedbackHeart[aria-pressed="true"] { background: #ff6a0025; }
 .feedbackDialog button:disabled { opacity: .45; cursor: default; }
 .feedbackComments { margin: 24px 0; border-top: 1px solid #ffffff26; padding-top: 16px; color: #a1a1aa; font-size: 14px; }
@@ -211,8 +213,9 @@
 .mvPlaybackControls, .mvViewLinks { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .mvPlaybackControls { margin: -10px 0 12px; font-size: 13px; }
 .mvPlaybackControls button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #ffffff30; background: #161616; color: #ffb47f; padding: 8px 10px; border-radius: 4px; }
-.mvViewLinks .feedbackSource { margin: 0; }
-.mvRatingForm { padding-top: 18px; border-top: 1px solid #ffffff26; }
+.mvViewLinks { margin: 0 0 10px; }
+.mvRatingForm { padding-top: 12px; border-top: 1px solid #ffffff26; }
+.mvRatingForm > .ratingHeading { margin-top: 0; }
 .ratingHeading { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .ratingHeading h3 { font-size: 18px; font-weight: 700; margin: 0; }
 .ratingHeading > span { font-size: 13px; color: #ffb47f; }
@@ -226,9 +229,8 @@
 .ratingInputWrap > span { font-size: 21px; font-weight: 700; color: #ffb47f; white-space: nowrap; }
 .ratingInputRow > span { flex: 1 1 140px; min-width: 0; color: #a5a5ae; font-size: 12px; line-height: 1.5; }
 .ratingInvalid { margin: 6px 0; color: #ff9c91; font-size: 12px; }
-.ratingNote { margin: 5px 0 15px; color: #a5a5ae; font-size: 12px; line-height: 1.5; }
+.ratingNote { margin: 6px 0 10px; color: #a5a5ae; font-size: 12px; line-height: 1.5; }
 .mvRatingForm > label { display: block; margin-bottom: 8px; }
-.feedbackWithVideo .feedbackNote { font-size: 12px; margin: 14px 0 10px; }
 @media (max-width: 700px) { .mvRatingForm .ratingNumbers label { font-size: 15px; } .ratingHeading h3 { font-size: 17px; } }
 
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; margin: -1px; padding: 0; border: 0; }
@@ -241,6 +243,14 @@
   .feedbackWithVideo .feedbackHeading h2 { font-size: 18px; line-height: 1.5; }
   .feedbackWithVideo .feedbackHeading > button { position: absolute; right: -5px; top: -5px; }
   .feedbackWithVideo .feedbackVideo { margin-top: 14px; }
+  .feedbackSupportRow { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 10px; }
+  .feedbackSupportRow > .feedbackHeart, .feedbackSupportRow > .feedbackAuth { justify-self: start; }
+  .feedbackSupportRow > .feedbackNote { grid-column: 1 / -1; grid-row: 2; }
+  .feedbackShare { grid-column: 2; grid-row: 1; }
+  .ratingInputWrap { gap: 8px; }
+  .ratingInputWrap input { width: 76px; min-height: 44px; padding: 6px 8px; }
+  .ratingInputWrap > span { font-size: 20px; }
+  .ratingInputRow > span { flex-basis: 100px; }
 }
 
 .mobileSubmitLabel { display: none; }

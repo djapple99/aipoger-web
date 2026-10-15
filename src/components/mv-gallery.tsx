@@ -202,11 +202,11 @@ export default function MvGallery() {
     </main>
     {feedbackWork ? <HomeWorkFeedback work={feedbackWork} onClose={() => { setFeedbackWork(null); setQueue(null); setPendingEnd(false); setReviewBusy(false); }} onChange={() => void load()} returnPath="/mv" showVideo autoPlay={viewAutoPlay}
       onReviewBusy={setReviewBusy} onVideoEnded={queue ? () => stepQueue(1, true) : undefined} onVideoUnavailable={queue ? () => stepQueue(1, true) : undefined}
-      videoControls={queue ? <div className={styles.queueControls}>
+      shareControl={<MvShare work={feedbackWork} />} videoControls={queue ? <div className={styles.queueControls}>
         <span>{queueEnded ? mv.queueEnded : `${mv.continuousActive} · ${queueIndex + 1} / ${queue.length}`}</span>
         <button type="button" disabled={reviewBusy || queueIndex <= 0} onClick={() => stepQueue(-1)} aria-label={mv.previousMv}><ChevronLeft size={20} /></button>
         <button type="button" disabled={reviewBusy || queueIndex >= queue.length - 1} onClick={() => stepQueue(1)} aria-label={mv.nextMv}><ChevronRight size={20} /></button>
-        <button type="button" onClick={() => { setQueue(null); setPendingEnd(false); }}>{mv.stopContinuous}</button><MvShare work={feedbackWork} />
-      </div> : <MvShare work={feedbackWork} />} /> : null}
+        <button type="button" onClick={() => { setQueue(null); setPendingEnd(false); }}>{mv.stopContinuous}</button>
+      </div> : null} /> : null}
   </div>;
 }

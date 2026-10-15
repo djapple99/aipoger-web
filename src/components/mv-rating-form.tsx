@@ -79,10 +79,9 @@ export default function MvRatingForm({ trackId, signedIn, onSaved, onBusy, draft
           onChange={event => { edit(); const value = event.target.value; setScoreInput(value); drafts?.set(trackId, { score: parseWorkRating(value), scoreInput: value, text }); }} />
         <span aria-hidden="true">/ 10</span>
       </div>
-      <span>{mv.scoreHint}</span>
+      <span id={`work-score-note-${trackId}`}>{mv.scoreHint} · {ready && signedIn && !canRate ? mv.ownWork : mv.ratingNote}</span>
     </div>
     {invalidScore ? <p className={styles.ratingInvalid} role="alert">{mv.scoreError}</p> : null}
-    <p id={`work-score-note-${trackId}`} className={styles.ratingNote}>{ready && signedIn && !canRate ? mv.ownWork : mv.ratingNote}</p>
     {signedIn ? <>
       <p className={styles.ratingNote}>{creditCopy(lang).reviewHint}</p>
       {myComment ? <div><button type="button" disabled={busy} onClick={() => { setEditing(!editing); setText(editing ? "" : myComment.text); }}>{editing ? creditCopy(lang).cancelEdit : creditCopy(lang).edit}</button><button type="button" disabled={busy} onClick={() => void withdraw()}>{creditCopy(lang).withdraw}</button></div> : null}
