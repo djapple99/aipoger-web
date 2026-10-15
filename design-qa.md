@@ -1,37 +1,39 @@
-# Showtime fusion design QA
+# Creation Bible design QA — 2026-10-15
 
 final result: passed
 
-Source visual truth: `/Users/huangyihong/.codex/generated_images/01a11410-a7ad-7352-bd36-4ff0b48ba73f/exec-33df0bfa-6aa4-41eb-a4ac-8a6eeb59df20.png`.
-Implementation: `/Users/huangyihong/Documents/New project/outputs/aipoger-showtime/chrome-desktop-final.png` and `chrome-mobile-final.png`.
-State: zh, Featured Choice, signed-out public reader, all actual covers and interaction counts loaded, scrollY=0; no song chart, no test writes.
-Desktop CSS viewport1440×1024, devicePixelRatio1. Reference raster1487×1058; browser screenshot1425×1013. Their aspect ratios match within0.2%; compare proportionally, accounting for screenshot surface scaling/scrollbar. The earlier IAB background screenshot was360px despite the requested desktop state and was rejected, not used to pass desktop fidelity.
+## Visual truth and evidence
 
-## Comparison evidence
+- Approved source: `/Users/huangyihong/Documents/New project/output/designs/2026-10-15-bible/creation-bible-desktop.png` (1487×1058 raster; no authoritative CSS frame).
+- Browser implementation: `/Users/huangyihong/Documents/New project/audits/2026-10-15-bible-redesign/production-desktop.png` (1425×1013 capture); Chrome viewport override 1440×1024 CSS px, actual client 1425×1024, devicePixelRatio 1. Browser capture excludes its scrollbars. Compared source uniformly normalized to implementation width (~0.9583), preserving the virtually identical aspect ratio.
+- Mobile: `production-mobile.png` in the same evidence directory, 375×812 capture from 390×844 override; 320px also checked (305px client after scrollbar).
+- State: live signed-in member, loaded real catalog (163 Prompt moves), Chinese, landing chapters closed. Production `6878560`, `dpl_7rPqErjZbvMsNiQqWUBbrrP3Vmk8` READY and apex/www aliases.
+- Full source and full implementation were displayed together; focused comparison covered header/title, four route blocks, three lessons, and the common-moves/problem pair. These are vector/text UI, so separate asset crop comparison was unnecessary.
 
-Source and final Chrome screenshot were opened together in the same comparison input. Full-view comparison preserves the selected second-concept feature/companion hierarchy and the third-concept right-message/three-board rail. Focused comparison used visible header, lead controls and people rows; these are legible at the full raster size, so separate enlarged crops were unnecessary.
+## Findings and resolutions
 
-Five fidelity surfaces:
+- No remaining actionable P0/P1/P2 findings.
+- P2 fixed during implementation: repeated anchors could leave a collapsed chapter hidden; explicit hash notification and chapter matching now reopen it. Runtime test and real navigation passed.
+- P2 fixed: search text could be lost before the lazy DNA index mounted; persist `bibleSearch` in the URL and restore on index mount/hash navigation. Tested with the actual index search.
+- P2 fixed: mobile native category scrollbar was too bright; applied thin orange/dark styling, balanced color-block subtitles. Primary copy targets remain 44px.
+- Initial temporary fixture used another URL and therefore showed old global overlays. Final local fixture used the actual route and production confirms one editorial header, no duplicate home/language/presence overlay. All fixture code was removed before TypeScript/build/commit; production fixture URL returns 404.
 
-- Fonts/typography: strong white sans-serif SHOWTIME, distinct Choice and board headings, muted curator/count metadata, two-line clamp for authored titles/intro. Existing brand header is retained. Natural zh/en/ja/ko copy renders without320px horizontal overflow.
-- Spacing/layout: desktop approximately70/30, one lead cover with adjacent metadata/actions, aligned companion area, single thin sidebar divider. Mobile Choice first and one switchable people board. Genuine three-playlist data intentionally reflows to two compact companions rather than the six mock examples.
-- Colors/tokens: black#070809 base, white headings, gray secondary copy, orange#ff6a00 actions and rank01. No new gradients, card stacks, empty hero or invented status badges.
-- Images/assets: all original published playlist covers/Profile fallback and existing logo are retained. No mock covers, avatars, titles or illustrative counts are imported. Images were checked complete with nonzero naturalWidth before final capture.
-- Copy/content: exact selected right-column message retained. People counts, collection saves/comments and weekly excerpt state come from real data. Two reviewers and one blind listener are an intentional truthful shorter list. No qualifying weekly excerpts currently exist; the actual empty prompt replaces mock quotations.
+## Required fidelity surfaces
 
-## Comparison history
+- Typography: native site sans stack, bold H1 46px desktop/34px phone, section heads 27px desktop/21px phone, short readable descriptions. The mock's illustrative lettering is approximated with the existing site family; CJK weight and hierarchy are preserved, not replaced by an unrelated display face. English and ja/ko member fallback were checked without horizontal overflow.
+- Spacing/layout: four equal route columns, compact three-column lesson block, lower content roughly 2.25:1; 10–16px section gutters. Mobile routes are 2×2, lessons stack, long move descriptions are hidden. Full material is retained below in five collapsible chapters, an intentional functional extension beyond the mock's crop.
+- Colors: charcoal #0b0d10 / #101419, orange #ff8c38, green #6ed2b5, purple #b79be9, blue #83b9f4. Dark colored route surfaces preserve depth and distinguish categories. No white-page jump.
+- Assets: existing AIPOGER brand logo remains sharp; standard lucide piano/sliders/music/disc/mic icons use the established UI library. No generated illustration or product photography was required. Real account avatar and language control replace the mock's generic avatar as expected.
+- Copy/content: matches approved four routes and three starter lessons. Seven-part DNA includes genre, subgenre, mood, instruments, tempo, key and texture. Common moves use actual editable catalog titles/copy rather than fabricated lesson content; summaries may be two-line truncated. No invented progress/popularity or Credit pricing.
 
-1. P2: guest floating login overlapped the mobile editorial navigation. Added `/rank` to the existing guest-dock suppression list and kept the header's single auth return link. Final Chrome mobile capture confirms no duplicate login.
-2. P2: two companions expanded into oversized tiles, pushing the weekly review area below the desktop frame. For at most two companions, desktop uses compact cover/metadata pairs; mobile keeps cover tiles. Final desktop capture includes the review heading/prompt without enlarging blank sections.
-3. P2: at520px a companion tracklist button extended13px outside the viewport. Below1100px, small companion sets now use ordinary cover cards, preserving the inline action row. Actual320/520/768/1024/1440px checks found0 page or card-button overflows; evidence `outputs/aipoger-showtime/tablet-fixed.png`.
-4. Rejected stale/incorrect-size IAB captures. Verified desktop in Chrome at explicit1440×1024 and checked dimensions, complete assets and scroll position.
+## Interaction and production checks
 
-## Interactions and verification
+- Local real browser: category change, full-text clipboard readback, direct move reveal, chorus recipe reveal, cross-index query, actual 15-second mastering audio playing (11.15s observed), shared bottom player.
+- Production real member: 163 moves loaded, search “七格” opens correct expanded DNA move, mobile share clipboard contains the canonical Bible URL. Chinese, English, Japanese and Korean entrances checked; ja/ko member material follows existing English fallback. Widths: 390px override client=scroll=375; 320px client=scroll=305.
+- Production console error log empty. Local dev had an extension-injected HTML hydration attribute and temporary local analytics configuration warnings; these did not reproduce on production.
+- Signed-out API returns 401; signed-out IAB shows public preview/sign-in dialog, preserving the original membership boundary. No auth bypass or fixture route shipped.
+- Full suite: 647 tests, 615 passed, 32 optional database tests skipped, zero failed. TypeScript and webpack production build passed. Lint zero errors / 14 pre-existing warnings outside touched files.
 
-Actual shared audio played with readyState4, duration278.68s and advancing currentTime; paused/closed after checking. Existing comments loaded with reviewer name. Tracklist HUD retained all ten actual songs, per-song favorites/play, Play All and share-page link. Most saved moved the real5-save playlist ahead of3/2-save lists; Featured restored the current lead. Mobile Creator/Blind buttons switched the single visible board. Guest saving/writing remains protected; no actual review, rating, favorite or Credit was created for QA. Four-language320px DOM checks had no overflow; current page console errors were empty.
+## Residual scope
 
-Database fixture tests ran within a transaction and rolled back: duplicate/self/short/hidden/old reviews, hidden uploads, tie versus incomplete8-second rounds, Top5 limit and private-RPC grants. Post-check found0 QA users/works and original real aggregates unchanged. Actual API tests verify no private user IDs/email fields, no fake zero summary on failure.
-
-## Findings / follow-up
-
-No actionable P0/P1/P2 remain. No separate mobile design was supplied; mobile is the approved responsive adaptation. Device testing is viewport-based, not iOS hardware validation. Future additional playlists/people populate the same existing layout naturally.
+No physical iOS/Safari device test. Public FAQ and member entry comments retain their existing behavior. No SQL, scoring, credit, price, permissions or storage changes. Documentation records the new route arrangement as the current design.

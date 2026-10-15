@@ -1,6 +1,6 @@
 # AIPOGER 開發與維運
 
-目前應用發布基準：2026-10-15／`6d76764`／`codex/public-rule-copy`；Vercel `dpl_AWSBy2LU4krfPneNFZ71Z2UT6bnu` READY，aipoger.com及www已指向同一SHA。YouTube曲風隨機混合連播、投稿預覽／試播選用及手機投稿入口／版面已發布；613項測試通過、31既有可選DB略過、0失敗（644項），含隔離PGlite；TypeScript及本機webpack正式build通過，lint 0 errors／14既有warnings。最後YouTube啟動／逾時恢復及載入文案修正另通過runtime、TypeScript及ESLint，雲端build通過。[本輪發布report](releases/2026-10-15-radio-link-submission.md)。繼承`69d728d`的Credit、私人權限、排行與一般會員驗收，詳見[參與流程修復report](releases/2026-10-15-participation-flow-fixes.md)。本輪未改SQL、Auth或Storage規則。
+目前應用發布基準：2026-10-15／`6878560`／`codex/public-rule-copy`；Vercel `dpl_7rPqErjZbvMsNiQqWUBbrrP3Vmk8` READY，aipoger.com與www已指向同一SHA。創作聖經四色學習路線、入門三招、常用招式與收合章節已發布；647項測試中615通過、32既有可選DB略過、0失敗，TypeScript／本機webpack正式build及雲端build通過，lint0 errors／14既有warnings。正式會員搜尋／分享／163招資料與手機四語驗收通過；無SQL、Auth、Storage或Credit修改。[本輪發布report](releases/2026-10-15-bible-redesign.md)。繼承`6d76764`的YouTube曲風混合電台、選用預覽投稿及手機入口（[前輪report](releases/2026-10-15-radio-link-submission.md)），Credit、排行及一般會員權限以[參與流程report](releases/2026-10-15-participation-flow-fixes.md)為證據。
 
 ## 修改依據與確認日期
 

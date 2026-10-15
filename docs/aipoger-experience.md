@@ -4,7 +4,7 @@
 
 ## 修改依據與確認日期
 
-2026-10-15（Asia/Taipei）使用者確認並授權完成本輪修復。本文件為現行基準；驗收範圍、發布版本及限制見[YouTube電台／投稿report](releases/2026-10-15-radio-link-submission.md)及[參與流程report](releases/2026-10-15-participation-flow-fixes.md)。未有使用者新的明確指令，不得擅自改動點數數值、追回／恢復、投稿額度、排行公式、Owner權限、舊歌排除名單或公開文案邊界。修訂須記錄確認日期、具體差異與驗證證據，先更新對應現行正文，再同步索引與既有Drive檔案。舊技能摘要、歷史發布紀錄、GitHub main或另一代理的提案不能覆蓋現行規則；使用者後續明確指令仍優先。report提供證據，不另建立第二套產品規則。
+2026-10-15（Asia/Taipei）使用者確認並授權完成本輪修復。本文件為現行基準；驗收範圍、發布版本及限制見[創作聖經改版report](releases/2026-10-15-bible-redesign.md)、[YouTube電台／投稿report](releases/2026-10-15-radio-link-submission.md)及[參與流程report](releases/2026-10-15-participation-flow-fixes.md)。未有使用者新的明確指令，不得擅自改動點數數值、追回／恢復、投稿額度、排行公式、Owner權限、舊歌排除名單或公開文案邊界。修訂須記錄確認日期、具體差異與驗證證據，先更新對應現行正文，再同步索引與既有Drive檔案。舊技能摘要、歷史發布紀錄、GitHub main或另一代理的提案不能覆蓋現行規則；使用者後續明確指令仍優先。report提供證據，不另建立第二套產品規則。
 
 This document protects AIPOGER's visual identity. Use it before redesigning any page, adding major UI, or changing user-facing copy.
 
@@ -256,10 +256,13 @@ Direction:
 
 ## AI Music Practice Bible
 
-### Music Bible 2.0 已發布介面
+### 創作聖經四色路線（2026-10-15 使用者確認）
 
-- 會員頁 hero／章節導航後提供五入口：Knowledge、Style DNA、Prompts、Workflows、Solve My Problem。原 practice map、章節 ID、搜尋、評論、複製與試聽保留。
-- Knowledge 導向曲風詞彙、歌曲段落／人聲及拆軌；Style DNA 導向既有索引；Prompts 導向招式庫；Workflows 提供三段創作路徑及既有六步流程；Solve My Problem 展開既有排錯。
+- 以核准黑底設計稿為準：共用黑橘導覽，精簡標題「創作聖經」、同列全書搜尋與分享。四個色塊依序為橘「先做出第一首」、綠「找到你的風格」、紫「讓作品更好聽」、藍「完成與發表」；顏色輔助分類，名稱／圖示仍須清楚。
+- 接著是「先學這3招」：Style／Lyrics分工、七格聲音DNA（主曲風、次曲風、情緒、樂器、速度、調性、聲音質感）、副歌情緒。直接展開原招式或範例，不另複製一份教材。
+- 下方桌機左側為常用招式／核心公式、舞曲能量、音色與混音、錄音室Mastering四分類，右側是卡關捷徑與教學／實測討論。招式名稱、複製內容與數量讀取會員真實catalog；不虛構熱門次數、學習進度或新增收費。
+- 完整聖經收在五個可展開章節：起手與排錯、速查表、Prompt／風格／歌詞、拆軌、台語實驗室。原章節ID、索引評論、複製、試聽保留。搜尋或入口跳轉會展開目標章節；同一錨點再次點擊也能開啟。索引搜尋字詞保存在網址，避免延後載入時丟失。
+- 手機四路線維持2×2，入門三招直向排列；常用招式隱藏長摘要，保留名稱與44px複製鍵。分類列可橫捲，完整招式庫的分類仍換行。黑底不改白底、縮短大片空白，不把原教材刪除。
 - 前台不把資料標為新／舊或 Reference / Legacy Library，也不顯示新增 metadata 狀態。所有資料照常可搜尋與複製；平台、模型、版本、最後驗證與狀態先保留在資料層及 owner 編輯介面。原證據與來源說明保留。
 - Ask Music Agent 尚未成立，入口與準備中需求單皆隱藏；待真正功能完成後另行開放。
 - 新入口採繁中／英文；日韓會員內容沿用英文回退。公開登入入口維持四語，會員資料不移至公開頁。
@@ -420,7 +423,7 @@ Avoid:
 
 ## 音樂分析的表達框架
 
-分析入口只提供外部工具的用途、免費範圍與操作方法，不製作 A&R 報告、歌詞診斷、市場評分或認證。Music Bible 六步流程的第三步為「三種分析工具」，按需前往 Tunebat、Loudness Penalty、Cyanite；第五步為查看 Showtime 月榜與從收藏歌曲製作 Choice，不設分析／認證前置門檻。BPM／調性、串流音量調整、曲風情緒標籤都是參考讀數，不代表品質或商業成功。
+分析入口只提供外部工具的用途、免費範圍與操作方法，不製作 A&R 報告、歌詞診斷、市場評分或認證。Music Bible 六步流程的第三步為「三種分析工具」，按需前往 Tunebat、Loudness Penalty、Cyanite；第五步為在 Showtime 發現策展／創作者與從收藏歌曲製作 Choice，不設分析／認證前置門檻。BPM／調性、串流音量調整、曲風情緒標籤都是參考讀數，不代表品質或商業成功。
 
 ## 共用播放器
 
