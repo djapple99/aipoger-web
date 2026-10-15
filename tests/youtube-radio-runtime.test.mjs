@@ -9,7 +9,7 @@ async function setup(t){
  const apiPromise=new Promise(r=>resolveAPI=r);
  const ui=await mountMv(t,'src/components/youtube-radio-player.tsx',{videoId:'abcdefghijk',requestId:1,autoplay:true,volume:.85,title:'Test song',playerRef,onPlaying:v=>states.push(v),onProgress:(...p)=>progress.push(p),onEnded:()=>ended++,onError:b=>errors.push(b)}, {'@/lib/youtube-player-api':{loadYouTubeAPI:()=>apiPromise}}, {
  document:{body:{},get hidden(){return hidden},querySelector:()=>modal?{}:null,querySelectorAll:()=>[],createElement:()=>({}),addEventListener:(n,f)=>listeners[n]=f,removeEventListener(){}},
- window:{location:{origin:'https://aipoger.com'},setInterval:fn=>{listeners.tick=fn;return 1},clearInterval(){}},
+ window:{setTimeout:fn=>{listeners.timeout=fn;return 2},clearTimeout(){},location:{origin:'https://aipoger.com'},setInterval:fn=>{listeners.tick=fn;return 1},clearInterval(){}},
  MutationObserver:class{constructor(f){observer=f}observe(){}disconnect(){}},HTMLMediaElement:class{}
  });
  ui.refs[0].current={appendChild(){},querySelector:()=>({})};

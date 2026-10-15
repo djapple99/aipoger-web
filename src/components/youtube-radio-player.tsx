@@ -22,6 +22,7 @@ export default function YouTubeRadioPlayer(props: {
   useEffect(() => {
     let active = true;
     let player: YouTubePlayer | null = null;
+    const timeout = window.setTimeout(() => { if (active && !ready.current) latest.current.onError(false); }, 15_000);
     const obscured = () => document.hidden || Boolean(document.querySelector('dialog[open], [role="dialog"][aria-modal="true"]'));
     const pauseIfObscured = () => {
       if (obscured()) { suspended.current = true; player?.pauseVideo(); }
@@ -42,10 +43,11 @@ export default function YouTubeRadioPlayer(props: {
       player = new api.Player(child, {
         width: "100%", height: "100%", host: "https://www.youtube-nocookie.com",
         videoId: latest.current.videoId,
-        playerVars: { origin: window.location.origin, playsinline: 1, rel: 0 },
+        playerVars: { origin: window.location.origin, playsinline: 1, rel: 0, autoplay: latest.current.autoplay && !obscured() ? 1 : 0 },
         events: {
           onReady: () => {
             if (!active) return;
+            window.clearTimeout(timeout);
             ready.current = true;
             latest.current.playerRef.current = player;
             const frame = mount.current?.querySelector("iframe");
@@ -82,7 +84,7 @@ export default function YouTubeRadioPlayer(props: {
     const observer = new MutationObserver(pauseIfObscured);
     observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["open"] });
     return () => {
-      active = false; ready.current = false; observer.disconnect(); window.clearInterval(timer);
+      active = false; ready.current = false; observer.disconnect(); window.clearInterval(timer); window.clearTimeout(timeout);
       document.removeEventListener("visibilitychange", pauseIfObscured);
       latest.current.playerRef.current = null;
       player?.destroy();

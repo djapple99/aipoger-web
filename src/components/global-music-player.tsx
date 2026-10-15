@@ -51,6 +51,7 @@ export default function GlobalMusicPlayer() {
   const track = session?.queue[session.index] ?? null;
   const youtubeRef = useRef<YouTubePlayer | null>(null);
   const [youtubeRequest, setYoutubeRequest] = useState({ id: 0, autoplay: true });
+  const [youtubeMount, setYoutubeMount] = useState(0);
   const isYouTube = Boolean(track?.youtubeId && !track.audioUrl);
   const currentIsYouTube = useCallback(() => {
     const current = sessionRef.current;
@@ -146,6 +147,7 @@ export default function GlobalMusicPlayer() {
     setPlaying(false);
     if (nextTrack.youtubeId && !nextTrack.audioUrl) {
       audio.removeAttribute("src"); audio.load(); listeningRef.current = null;
+      if (!youtubeRef.current) setYoutubeMount(value => value + 1);
       setYoutubeRequest({ id: request, autoplay });
       return true;
     }
@@ -213,7 +215,7 @@ export default function GlobalMusicPlayer() {
       const player = youtubeRef.current;
       if (player?.getPlayerState() === 1) player.pauseVideo();
       else if (player) player.playVideo();
-      else setYoutubeRequest(value => ({ ...value, autoplay: true }));
+      else { setYoutubeMount(value => value + 1); setYoutubeRequest(value => ({ ...value, autoplay: true })); }
       return;
     }
     const audio = audioRef.current;
@@ -362,7 +364,7 @@ export default function GlobalMusicPlayer() {
           <span className="min-w-0 truncate text-xs" title={track.title}>{track.title}</span>
           <button type="button" onClick={close} className="h-10 w-10 shrink-0" aria-label={label("關閉播放器", "Close player", "プレーヤーを閉じる", "플레이어 닫기")}><X className="mx-auto h-5 w-5" /></button>
         </div>
-        <YouTubeRadioPlayer videoId={track.youtubeId!} requestId={youtubeRequest.id} autoplay={youtubeRequest.autoplay} volume={volume} title={track.title} playerRef={youtubeRef}
+        <YouTubeRadioPlayer key={youtubeMount} videoId={track.youtubeId!} requestId={youtubeRequest.id} autoplay={youtubeRequest.autoplay} volume={volume} title={track.title} playerRef={youtubeRef}
           onPlaying={value => { setPlaying(value); if (value) setPlaybackError(""); }}
           onProgress={(time, length) => { setCurrentTime(time); setDuration(length); }}
           onEnded={() => move(1, false)}
