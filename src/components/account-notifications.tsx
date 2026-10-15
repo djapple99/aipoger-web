@@ -124,11 +124,11 @@ export default function AccountNotifications({ userId }: { userId: string }) {
   const deleteLabel = tx("刪除通知", "Delete notification", "通知を削除", "알림 삭제");
   const controls = (row: AccountNotification, mobile = false) => <>
     <button className={styles.iconButton} aria-label={`${row.kept_at ? unkeepLabel : keepLabel}：${row.title}`} title={row.kept_at ? unkeepLabel : keepLabel}
-      aria-pressed={!!row.kept_at} disabled={busy.includes(row.id)} onClick={() => void act(row.id, row.kept_at ? "unkeep" : "keep")}>
+      aria-pressed={!!row.kept_at} disabled={loading || busy.includes(row.id)} onClick={() => void act(row.id, row.kept_at ? "unkeep" : "keep")}>
       <Bookmark size={18} fill={row.kept_at ? "currentColor" : "none"}/>{mobile ? <span>{row.kept_at ? unkeepLabel : keepLabel}</span> : null}
     </button>
     <button className={styles.iconButton} aria-label={`${deleteLabel}：${row.title}`} title={deleteLabel}
-      disabled={busy.includes(row.id)} onClick={() => void act(row.id, "delete")}><Trash2 size={18}/>{mobile ? <span>{deleteLabel}</span> : null}</button>
+      disabled={loading || busy.includes(row.id)} onClick={() => void act(row.id, "delete")}><Trash2 size={18}/>{mobile ? <span>{deleteLabel}</span> : null}</button>
   </>;
 
   return <section id="notifications" ref={section} className={styles.section} aria-label={tx("互動通知", "Notifications", "通知", "알림")}>
@@ -141,7 +141,7 @@ export default function AccountNotifications({ userId }: { userId: string }) {
       {open ? <>
         <div className={styles.filters} aria-label={filterLabel}>{filters.map(([value, label]) => <button key={value} aria-pressed={filter === value} disabled={busy.length > 0} onClick={() => chooseFilter(value)}>{label}</button>)}</div>
         <div className={styles.pagination}>
-          <span className={styles.range} aria-live="polite">{total ? `${page * 3 + 1}–${Math.min(page * 3 + rows.length, total)} / ${total}` : "0"}</span>
+          <span className={styles.range} aria-live="polite">{loading ? "…" : total ? `${page * 3 + 1}–${Math.min(page * 3 + rows.length, total)} / ${total}` : "0"}</span>
           <button className={styles.iconButton} aria-label={tx("上一頁通知", "Previous notifications", "前の通知", "이전 알림")} disabled={loading || busy.length > 0 || page === 0} onClick={() => { setPage(value => value - 1); setExpanded(null); setMenu(null); }}><ChevronLeft size={19}/></button>
           <button className={styles.iconButton} aria-label={tx("下一頁通知", "Next notifications", "次の通知", "다음 알림")} disabled={loading || busy.length > 0 || (page + 1) * 3 >= total} onClick={() => { setPage(value => value + 1); setExpanded(null); setMenu(null); }}><ChevronRight size={19}/></button>
         </div>
@@ -155,7 +155,7 @@ export default function AccountNotifications({ userId }: { userId: string }) {
       {error ? <p role="alert">{tx("通知讀取失敗。", "Could not load notifications.", "通知を読み込めません。", "알림을 불러오지 못했습니다.")} <button onClick={() => void load()}>{tx("重試", "Retry", "再試行", "다시 시도")}</button></p> : null}
       {rows.map(row => <article key={row.id} className={styles.notice} data-unread={!row.read_at}>
         <div className={styles.row}>
-          <button className={styles.summary} aria-expanded={expanded === row.id} aria-controls={`notice-${row.id}`} onClick={() => {
+          <button className={styles.summary} disabled={loading} aria-expanded={expanded === row.id} aria-controls={`notice-${row.id}`} onClick={() => {
             setExpanded(previous => previous === row.id ? null : row.id); setMenu(null);
             if (expanded !== row.id && !row.read_at) void act(row.id, "read");
           }}>
