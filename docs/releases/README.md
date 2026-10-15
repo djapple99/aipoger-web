@@ -1,5 +1,7 @@
 # AIPOGER 必要發布證據
 
+- [2026-10-15 創作者互動通知與持久已讀](2026-10-15-notifications.md)
+
 - [2026-10-15 參與流程修復與一般會員驗收](2026-10-15-participation-flow-fixes.md)
 
 - [2026-10-15 Credit整合核對與公開文案修訂](2026-10-15-credit-public-copy.md)

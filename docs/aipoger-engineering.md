@@ -1,6 +1,8 @@
 # AIPOGER 開發與維運
 
-目前應用發布基準：2026-10-15／`6878560`／`codex/public-rule-copy`；Vercel `dpl_7rPqErjZbvMsNiQqWUBbrrP3Vmk8` READY，aipoger.com與www已指向同一SHA。創作聖經四色學習路線、入門三招、常用招式與收合章節已發布；647項測試中615通過、32既有可選DB略過、0失敗，TypeScript／本機webpack正式build及雲端build通過，lint0 errors／14既有warnings。正式會員搜尋／分享／163招資料與手機四語驗收通過；無SQL、Auth、Storage或Credit修改。[本輪發布report](releases/2026-10-15-bible-redesign.md)。繼承`6d76764`的YouTube曲風混合電台、選用預覽投稿及手機入口（[前輪report](releases/2026-10-15-radio-link-submission.md)），Credit、排行及一般會員權限以[參與流程report](releases/2026-10-15-participation-flow-fixes.md)為證據。
+目前應用發布基準：2026-10-15／`e8c99f5`／`codex/public-rule-copy`；Vercel `dpl_A9BTkBfcGc8acSCm7q33Zq2B83Lh` READY，aipoger.com與www已指向同一SHA。創作者中心私人互動通知、可見消息持久已讀、準確未讀數字、同頁／跨頁入口及Realtime訂閱清理已發布。656項測試：624通過、32既有可選DB略過、0失敗；TypeScript／webpack正式build與雲端build通過，lint 0 errors／14既有warnings。正式既有評論的紅字1→0、刷新後已讀、對應MV評論及320px四語／390px中文無溢出驗收通過；最終巡覽console errors為空。無SQL migration、Credit、排行或作品資料改動。[本輪發布report](releases/2026-10-15-notifications.md)。
+
+2026-10-15創作聖經發布：`6878560`／`codex/public-rule-copy`；Vercel `dpl_7rPqErjZbvMsNiQqWUBbrrP3Vmk8` READY，aipoger.com與www已指向同一SHA。創作聖經四色學習路線、入門三招、常用招式與收合章節已發布；647項測試中615通過、32既有可選DB略過、0失敗，TypeScript／本機webpack正式build及雲端build通過，lint0 errors／14既有warnings。正式會員搜尋／分享／163招資料與手機四語驗收通過；無SQL、Auth、Storage或Credit修改。[本輪發布report](releases/2026-10-15-bible-redesign.md)。繼承`6d76764`的YouTube曲風混合電台、選用預覽投稿及手機入口（[前輪report](releases/2026-10-15-radio-link-submission.md)），Credit、排行及一般會員權限以[參與流程report](releases/2026-10-15-participation-flow-fixes.md)為證據。
 
 ## 修改依據與確認日期
 
@@ -296,7 +298,7 @@ Check:
 - Challenging from Explore opens the 60s Drop cropper/setup flow, carries the defender track ID through upload, and requires a start time.
 - Submitted Explore challenges copy the defender's prepared Drop at invite creation; they must not use the full public-airplay song as the defender battle audio.
 - Submitted Explore challenges create a pending battle/invite; the battle room allows both 5-second previews but voting remains closed.
-- Submitted Explore challenges write a defender-side in-app notification. The right-top notification dock shows a red dot or unread number, opens a readable account-notice card, and routes Explore challenge invites to Profile's `待接戰` section.
+- Submitted Explore challenges write a defender-side in-app notification. The right-top notification dock shows a red dot or unread number, opens the private Creator Center notification inbox, and routes Explore challenge invites to Profile's `待接戰` section.
 - Profile / 我的作品 shows `待接戰` cards with song title, challenger, genre, scheduled start time, defender 5-second preview, challenger 5-second preview, Accept, and Reject.
 - The individual track row shows `待回覆` / locked defender Drop state while a pending invite exists; replacing the defender Drop is blocked until the invite is accepted, rejected, or expired.
 - Defender accept moves the battle to active/live according to the scheduled time; reject closes the invite without stats.
