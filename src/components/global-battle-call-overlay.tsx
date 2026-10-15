@@ -847,7 +847,7 @@ export default function GlobalBattleCallOverlay() {
           {avatarVisual}
         </Link>
         {unreadCount > 0 && (
-          <Link href={`/profile?lang=${lang}#notifications`}
+          <Link href={`/profile?lang=${lang}&tab=notifications`}
             onClick={() => window.dispatchEvent(new Event("aipoger:open-notifications"))}
             onPointerDown={(event) => event.stopPropagation()}
             className={`absolute ${ownerTaskCount > 0 ? "-left-2" : "-right-2"} -top-2 flex h-7 min-w-7 items-center justify-center rounded-full border-2 border-black bg-red-500 px-1 text-xs font-bold text-white`}
@@ -871,7 +871,7 @@ export default function GlobalBattleCallOverlay() {
           className="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full border border-black bg-black text-orange-100"
           aria-label={isZh ? "查看目前對戰" : "View current battle"}
         ><BellIcon /></button> : <Link
-          href={`/profile?lang=${lang}#notifications`}
+          href={`/profile?lang=${lang}&tab=notifications`}
           onClick={() => window.dispatchEvent(new Event("aipoger:open-notifications"))}
           onPointerDown={(event) => event.stopPropagation()}
           className="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full border border-black bg-black text-orange-100 shadow-[0_0_18px_rgba(255,106,0,0.24)] transition hover:bg-orange-500 hover:text-black"

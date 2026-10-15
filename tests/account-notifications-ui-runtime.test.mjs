@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mountMv } from './helpers/mv-runtime.mjs';
 import { loadTs } from './helpers/choice-runtime.mjs';
-async function mount(t, fail=false) {
-  const win=new EventTarget(),doc=new EventTarget();win.location={hash:''};doc.visibilityState='visible';
+async function mount(t, fail=false, search='') {
+  const win=new EventTarget(),doc=new EventTarget();win.location={hash:'',search};doc.visibilityState='visible';
   const calls=[],timers=new Map();let callback,serial=0;
   const row={id:'notice-1',title:'Alice commented on your song',body:'A clear, detailed review of this work.',type:'listen_bar_track_comment',read_at:null,created_at:'2026-10-15T10:00:00Z',metadata:{href:'/mv?track=1'}};
   const ui=await mountMv(t,'src/components/account-notifications.tsx',{userId:'owner'},{
@@ -28,4 +28,8 @@ test('failed read persistence retains unread status and offers a retry',async t=
 
 test('same-page notification click expands the inbox even when the router does not emit hashchange',async t=>{
  const x=await mount(t);x.win.dispatchEvent(new Event('aipoger:open-notifications'));await x.ui.flush();assert.match(x.ui.text(),/Alice commented/);assert.equal(x.calls.filter(c=>c.ids).length,0);
+});
+
+test('cross-page query entry opens notifications without relying on router fragment handling',async t=>{
+ const x=await mount(t,false,'?lang=zh&tab=notifications');assert.match(x.ui.text(),/Alice commented/);
 });

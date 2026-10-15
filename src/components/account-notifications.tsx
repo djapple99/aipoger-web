@@ -32,7 +32,7 @@ export default function AccountNotifications({ userId }: { userId: string }) {
       setOpen(true);
       section.current?.scrollIntoView({ block: "start" });
     };
-    const reveal = () => { if (window.location.hash === "#notifications") openInbox(); };
+    const reveal = () => { if (window.location.hash === "#notifications" || new URLSearchParams(window.location.search).get("tab") === "notifications") openInbox(); };
     reveal();
     window.addEventListener("hashchange", reveal);
     window.addEventListener("aipoger:open-notifications", openInbox);
