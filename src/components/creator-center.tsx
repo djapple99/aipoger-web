@@ -231,10 +231,10 @@ export function CreatorCenterLayout({
             </h1>
             <p>
               {tx(
-                "作品、收藏與回饋，一次掌握。",
-                "Your works, saves and feedback in one place.",
-                "作品・保存・反応をひと目で。",
-                "작품, 저장, 피드백을 한눈에.",
+                "作品、收藏與回饋，一次掌握。通知保留三個月，已保留的除外。",
+                "Your works, saves and feedback in one place. Notices expire after three months unless kept.",
+                "作品・保存・反応をひと目で。通知は3か月で自動削除。保存済みは対象外。",
+                "작품, 저장, 피드백을 한눈에. 알림은 3개월 후 자동 삭제되며 보관한 알림은 유지됩니다.",
               )}
             </p>
           </div>

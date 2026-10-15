@@ -835,8 +835,14 @@
 .heading > div:first-child {
   display: flex;
   align-items: baseline;
-  gap: 20px;
+  flex-wrap: wrap;
+  min-width: 0;
+  flex: 1;
+  gap: 4px 16px;
 }
+.heading h1 { flex-shrink: 0; white-space: nowrap; }
+.heading p { flex: 1; min-width: 180px; font-size: 13px; line-height: 1.6; margin: 0; }
+.identity { flex-shrink: 0; }
 .credit {
   padding: 18px 24px;
 }
