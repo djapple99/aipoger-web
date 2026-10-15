@@ -14,7 +14,7 @@ async function mount(t, fail=false) {
     '@/lib/account-notifications-client':{accountNoticeRequest:async(_id,query,ids)=>{calls.push({query,ids});if(ids){if(fail)throw Error('offline');return{readAt:'2026-10-15T11:00:00Z',readIds:ids}}return{notices:[row],hasMore:false}}}
   },{window:win,document:doc,IntersectionObserver:class{constructor(fn){callback=fn}observe(){}disconnect(){}},setTimeout:fn=>{timers.set(++serial,fn);return serial},clearTimeout:id=>timers.delete(id)});
   ui.refs.find(r=>r?.current===null).current={scrollIntoView(){},querySelectorAll:()=>[{dataset:{noticeId:row.id}}]};
-  return{ui,calls,doc,see(){callback([{target:{dataset:{noticeId:row.id}},isIntersecting:true}])},async elapse(){const list=[...timers.values()];timers.clear();list.forEach(fn=>fn());await ui.flush()},async open(){ui.nodes().find(n=>n.props?.['aria-controls']==='notification-list').props.onClick();await ui.flush()}};
+  return{ui,calls,doc,win,see(){callback([{target:{dataset:{noticeId:row.id}},isIntersecting:true}])},async elapse(){const list=[...timers.values()];timers.clear();list.forEach(fn=>fn());await ui.flush()},async open(){ui.nodes().find(n=>n.props?.['aria-controls']==='notification-list').props.onClick();await ui.flush()}};
 }
 test('collapsed, offscreen and background notifications are not marked read; visible messages persist without discarding history',async t=>{
   const x=await mount(t);assert.equal(x.calls.length,0);await x.open();assert.equal(x.calls.filter(c=>c.ids).length,0);assert.match(x.ui.text(),/Alice/);
@@ -24,4 +24,8 @@ test('collapsed, offscreen and background notifications are not marked read; vis
 });
 test('failed read persistence retains unread status and offers a retry',async t=>{
   const x=await mount(t,true);await x.open();x.see();await x.elapse();assert.equal(x.ui.nodes().find(n=>n.type==='article').props['data-unread'],true);assert.match(x.ui.text(),/Read status was not saved/);assert.ok(x.ui.nodes().some(n=>n.type==='button'&&n.props.children==='Retry'));
+});
+
+test('same-page notification click expands the inbox even when the router does not emit hashchange',async t=>{
+ const x=await mount(t);x.win.dispatchEvent(new Event('aipoger:open-notifications'));await x.ui.flush();assert.match(x.ui.text(),/Alice commented/);assert.equal(x.calls.filter(c=>c.ids).length,0);
 });

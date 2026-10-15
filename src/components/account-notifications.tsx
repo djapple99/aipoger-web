@@ -28,14 +28,19 @@ export default function AccountNotifications({ userId }: { userId: string }) {
   useEffect(() => {
     const requestRevision = revision;
     live.current = true;
-    const reveal = () => {
-      if (window.location.hash !== "#notifications") return;
+    const openInbox = () => {
       setOpen(true);
       section.current?.scrollIntoView({ block: "start" });
     };
+    const reveal = () => { if (window.location.hash === "#notifications") openInbox(); };
     reveal();
     window.addEventListener("hashchange", reveal);
-    return () => { live.current = false; requestRevision.current++; window.removeEventListener("hashchange", reveal); };
+    window.addEventListener("aipoger:open-notifications", openInbox);
+    return () => {
+      live.current = false; requestRevision.current++;
+      window.removeEventListener("hashchange", reveal);
+      window.removeEventListener("aipoger:open-notifications", openInbox);
+    };
   }, []);
 
   const load = useCallback(async (cursor?: AccountNotification) => {
