@@ -76,12 +76,24 @@ export default function SunoInspirationIndexSection({ isZh, artistDnaEntries, pr
     const openForHash = () => {
       if (window.location.hash === "#suno-inspiration-index") {
         setIndexOpen(true);
+        const initialQuery = new URLSearchParams(window.location.search).get("bibleSearch");
+        if (initialQuery !== null) { setQuery(initialQuery); setArtistGenre("all"); setRecipeGenre("all"); }
         window.setTimeout(() => document.getElementById("suno-inspiration-index")?.scrollIntoView({ block: "start" }), 0);
       }
     };
     openForHash();
     window.addEventListener("hashchange", openForHash);
     return () => window.removeEventListener("hashchange", openForHash);
+  }, []);
+
+  useEffect(() => {
+    const search = (event: Event) => {
+      const value = (event as CustomEvent<unknown>).detail;
+      if (typeof value !== "string") return;
+      setIndexOpen(true); setQuery(value); setArtistGenre("all"); setRecipeGenre("all");
+    };
+    window.addEventListener("bible-index-search", search);
+    return () => window.removeEventListener("bible-index-search", search);
   }, []);
 
   useEffect(() => {

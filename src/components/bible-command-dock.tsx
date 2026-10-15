@@ -15,10 +15,14 @@ import {
   X,
 } from "lucide-react";
 import { KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import type { BibleCatalog } from "@/lib/ai-music-bible-content";
+import { navigateBible } from "@/lib/bible-navigation";
+import styles from "./bible-home.module.css";
 import { fontRighteous } from "@/lib/fonts";
 
 type DockItem = {
   id: string;
+  indexQuery?: string;
   eyebrow: string;
   zh: string;
   en: string;
@@ -50,7 +54,7 @@ function isTypingTarget(target: EventTarget | null) {
   return tag === "input" || tag === "textarea" || tag === "select" || target.isContentEditable || target.getAttribute("role") === "textbox";
 }
 
-export default function BibleCommandDock({ locale }: { locale: "zh" | "en" }) {
+export default function BibleCommandDock({ locale, compact = false, catalog }: { locale: "zh" | "en"; compact?: boolean; catalog?: BibleCatalog }) {
   const isZh = locale === "zh";
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -58,11 +62,15 @@ export default function BibleCommandDock({ locale }: { locale: "zh" | "en" }) {
   const searchButtonRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const results = useMemo(() => {
+  const results = useMemo<readonly DockItem[]>(() => {
     const normalized = query.trim().toLocaleLowerCase();
     if (!normalized) return BIBLE_DOCK_ITEMS;
-    return BIBLE_DOCK_ITEMS.filter((item) => [item.zh, item.en, item.eyebrow, item.keywords].join(" ").toLocaleLowerCase().includes(normalized));
-  }, [query]);
+    const chapters = BIBLE_DOCK_ITEMS.filter(item => [item.zh, item.en, item.eyebrow, item.keywords].join(" ").toLocaleLowerCase().includes(normalized));
+    const moves: DockItem[] = [...(catalog?.promptMoves ?? []), ...(catalog?.lyricMoves ?? [])]
+      .filter(item => [item.title.zh, item.title.en, item.summary.zh, item.summary.en, ...item.keywords].join(" ").toLocaleLowerCase().includes(normalized))
+      .slice(0, 20).map(item => ({ id: `bible-move-${item.key}`, zh: item.title.zh, en: item.title.en, eyebrow: "PROMPT", keywords: "", icon: WandSparkles, accent: "orange" }));
+    return [...chapters, ...moves, { id: "suno-inspiration-index", indexQuery: query.trim(), zh: `在聲音 DNA／配方索引搜尋「${query.trim()}」`, en: `Search sonic DNA / recipes for “${query.trim()}”`, eyebrow: "INDEX", keywords: "", icon: LibraryBig, accent: "cyan" }];
+  }, [query, catalog]);
 
   const close = () => {
     setOpen(false);
@@ -72,11 +80,13 @@ export default function BibleCommandDock({ locale }: { locale: "zh" | "en" }) {
   };
 
   const goTo = (item: DockItem) => {
-    const target = document.getElementById(item.id);
     close();
-    window.location.hash = item.id;
-    window.dispatchEvent(new HashChangeEvent("hashchange"));
-    window.setTimeout(() => (target ?? document.getElementById(item.id))?.scrollIntoView({ behavior: "smooth", block: "start" }), 20);
+    const url = new URL(window.location.href);
+    if (item.indexQuery) url.searchParams.set("bibleSearch", item.indexQuery);
+    else url.searchParams.delete("bibleSearch");
+    window.history.replaceState(null, "", url);
+    navigateBible(item.id);
+    if (item.indexQuery) window.dispatchEvent(new CustomEvent("bible-index-search", { detail: item.indexQuery }));
   };
 
   useEffect(() => {
@@ -123,7 +133,7 @@ export default function BibleCommandDock({ locale }: { locale: "zh" | "en" }) {
 
   return (
     <>
-      <nav aria-label={isZh ? "練功聖經章節導航" : "Practice Bible section navigation"} className="sticky top-[4.6rem] z-40 mt-4 rounded-[1.15rem] border border-white/12 bg-[#080807]/88 p-2 shadow-[0_18px_50px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.055)] backdrop-blur-xl">
+      {compact ? <button ref={searchButtonRef} type="button" onClick={() => setOpen(true)} className={styles.searchTrigger} aria-label={isZh ? "搜尋整本聖經" : "Search the Bible"}><Search size={24} /><span>{isZh ? "搜尋招式、曲風或卡關問題…" : "Search moves, styles or problems…"}</span></button> : <nav aria-label={isZh ? "練功聖經章節導航" : "Practice Bible section navigation"} className="sticky top-[4.6rem] z-40 mt-4 rounded-[1.15rem] border border-white/12 bg-[#080807]/88 p-2 shadow-[0_18px_50px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.055)] backdrop-blur-xl">
         <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <button ref={searchButtonRef} type="button" onClick={() => setOpen(true)} className="group flex min-h-12 shrink-0 items-center gap-3 rounded-xl border border-orange-300/35 bg-orange-400/[0.1] px-4 text-left transition hover:border-orange-200/70 hover:bg-orange-400/[0.16] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-300/12 text-orange-100"><Search className="h-4 w-4" /></span>
@@ -143,7 +153,7 @@ export default function BibleCommandDock({ locale }: { locale: "zh" | "en" }) {
             );
           })}
         </div>
-      </nav>
+      </nav>}
 
       {open && (
         <div className="fixed inset-0 z-[150] flex items-start justify-center bg-black/78 px-3 pb-5 pt-[12vh] backdrop-blur-md" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}>
@@ -158,7 +168,7 @@ export default function BibleCommandDock({ locale }: { locale: "zh" | "en" }) {
               </div>
               <label className="mt-4 flex min-h-14 items-center gap-3 rounded-xl border-2 border-orange-300/28 bg-black/72 px-3 transition focus-within:border-orange-200/70">
                 <Search className="h-5 w-5 text-orange-200" />
-                <input ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={handleSearchKey} placeholder={isZh ? "搜尋：起手、咬字、拆軌、商用…" : "Search: starter, vocals, stems, rights…"} className="min-w-0 flex-1 bg-transparent py-3 text-base font-bold text-white outline-none placeholder:text-zinc-600" />
+                <input aria-label={isZh ? "搜尋聖經" : "Search Bible"} ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={handleSearchKey} placeholder={isZh ? "搜尋：起手、咬字、拆軌、商用…" : "Search: starter, vocals, stems, rights…"} className="min-w-0 flex-1 bg-transparent py-3 text-base font-bold text-white outline-none placeholder:text-zinc-600" />
                 <kbd className="hidden rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] font-black text-zinc-500 sm:inline">ESC</kbd>
               </label>
             </div>
@@ -167,7 +177,7 @@ export default function BibleCommandDock({ locale }: { locale: "zh" | "en" }) {
                 const Icon = item.icon;
                 const active = index === activeIndex;
                 return (
-                  <button key={item.id} type="button" role="option" aria-selected={active} onMouseEnter={() => setActiveIndex(index)} onClick={() => goTo(item)} className={`flex min-h-16 w-full items-center gap-4 rounded-xl border px-4 py-3 text-left transition ${active ? "border-orange-300/32 bg-orange-400/[0.08]" : "border-transparent hover:bg-white/[0.035]"}`}>
+                  <button key={`${item.id}-${item.indexQuery ?? ""}`} type="button" role="option" aria-selected={active} onMouseEnter={() => setActiveIndex(index)} onClick={() => goTo(item)} className={`flex min-h-16 w-full items-center gap-4 rounded-xl border px-4 py-3 text-left transition ${active ? "border-orange-300/32 bg-orange-400/[0.08]" : "border-transparent hover:bg-white/[0.035]"}`}>
                     <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${item.accent === "cyan" ? "border-cyan-200/18 bg-cyan-300/[0.055] text-cyan-200" : item.accent === "amber" ? "border-amber-200/18 bg-amber-300/[0.055] text-amber-200" : "border-orange-300/18 bg-orange-400/[0.055] text-orange-200"}`}><Icon className="h-5 w-5" /></span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600">{item.eyebrow}</span>

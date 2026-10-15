@@ -3,17 +3,13 @@
 import Link from "next/link";
 import {
   AudioWaveform,
-  ArrowRight,
   BookOpenText,
   Check,
   ChevronDown,
-  ChevronRight,
   ChevronUp,
   Clipboard,
   ExternalLink,
-  FileKey2,
   FlaskConical,
-  Gauge,
   Headphones,
   LibraryBig,
   LockKeyhole,
@@ -22,11 +18,8 @@ import {
   QrCode,
   Search,
   ShieldCheck,
-  SlidersHorizontal,
-  Sparkles,
   ThumbsDown,
   ThumbsUp,
-  Video,
   WandSparkles,
   X,
 } from "lucide-react";
@@ -34,16 +27,19 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { fontRighteous } from "@/lib/fonts";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
-import { AIPOGER_LINE_COMMUNITY_URL, AIPOGER_TUTORIAL_PLAYLIST_URL } from "@/lib/brand";
+import { AIPOGER_LINE_COMMUNITY_URL } from "@/lib/brand";
 import StemSeparationGuideSection from "@/components/stem-separation-guide-section";
 import SunoPracticeLibrarySection from "@/components/suno-practice-library-section";
 import SunoReferenceGuideSection from "@/components/suno-reference-guide-section";
 import SunoCommandReferenceSection from "@/components/suno-command-reference-section";
 import BibleHome from "@/components/bible-home";
+import BibleChapter from "@/components/bible-chapter";
+import EditorialHeader from "@/components/editorial-header";
+import styles from "./bible-home.module.css";
 import BibleCommandDock from "@/components/bible-command-dock";
 import AuthRequiredDialog from "@/components/auth-required-dialog";
 import ShareButton from "@/components/share-button";
-import { LineCommunityDialog, SocialIcon } from "@/components/social-icons";
+import { LineCommunityDialog } from "@/components/social-icons";
 import type { BibleCatalog } from "@/lib/ai-music-bible-content";
 import {
   type TaiwaneseLyricsCategory,
@@ -69,44 +65,6 @@ const BIBLE_DOCUMENT_TITLES = {
   ja: "AI音楽 実践バイブル｜Suno Sonic DNA・Prompt・歌詞｜AIPOGER",
   ko: "AI 음악 실전 바이블｜Suno Sonic DNA·Prompt·가사｜AIPOGER",
 } as const;
-
-type PracticeArea = {
-  icon: typeof WandSparkles;
-  eyebrow: string;
-  title: string;
-  body: string;
-  href: string;
-  accent: "orange" | "cyan";
-  external?: boolean;
-};
-
-function practiceAreasForLanguage(isZh: boolean): PracticeArea[] {
-  return isZh
-    ? [
-        { icon: Gauge, eyebrow: "START HERE", title: "Suno 起手式", body: "先分清 Style、Lyrics、Title，再過生成前檢查。", href: "#suno-control-desk", accent: "cyan" },
-        { icon: SlidersHorizontal, eyebrow: "QUICK REF", title: "Suno 速查表", body: "查欄位、段落標籤、滑桿與 Song Editor；每項都標出風險與證據。", href: "#suno-command-reference", accent: "orange" },
-        { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt 招式庫", body: "163 招 Prompt、含鼓、吉他、鋼琴、合成器、Bass、麥克風與混音方向。", href: "#suno-prompt-library", accent: "orange" },
-        { icon: LibraryBig, eyebrow: "1,519 INDEX", title: "聲音 DNA × Prompt 索引", body: "772 組藝術家聲音 DNA 與 747 組去重配方，可搜尋、複製與評論。", href: "#suno-inspiration-index", accent: "cyan" },
-        { icon: BookOpenText, eyebrow: "LYRICS", title: "歌詞調教", body: "段落、唱法、合唱、情緒與台語咬字實測。", href: "#lyric-control-library", accent: "cyan" },
-        { icon: Music2, eyebrow: "DROP", title: "Drop 製作練習", body: "用 30–60 秒練節奏、情緒與記憶點。", href: "/drop-guide", accent: "orange" },
-        { icon: Headphones, eyebrow: "ANALYSIS TOOLS", title: "分析你的音樂", body: "到外站查 BPM、調性、串流音量與曲風情緒。", href: "/music-analysis", accent: "cyan" },
-        { icon: AudioWaveform, eyebrow: "STEMS", title: "AI 拆軌避坑指南", body: "看懂 10 種引擎家族，避免為同一能力重複付費。", href: "#stem-separation-guide", accent: "orange" },
-        { icon: FileKey2, eyebrow: "RIGHTS", title: "權利與發行", body: "分清生成、商用與著作權，正式發行前先過風險檢查。", href: "#rights-release", accent: "cyan" },
-        { icon: Video, eyebrow: "AIPOGER", title: "愛波哥影片教學", body: "從中文實戰影片建立完整創作流程。", href: AIPOGER_TUTORIAL_PLAYLIST_URL, accent: "cyan", external: true },
-      ]
-    : [
-        { icon: Gauge, eyebrow: "START HERE", title: "Suno Quick Start", body: "Separate Style, Lyrics, and Title, then run the pre-flight check.", href: "#suno-control-desk", accent: "cyan" },
-        { icon: SlidersHorizontal, eyebrow: "QUICK REF", title: "Suno Quick Reference", body: "Look up fields, section tags, sliders, and Song Editor with evidence and caveats.", href: "#suno-command-reference", accent: "orange" },
-        { icon: WandSparkles, eyebrow: "PROMPT", title: "Prompt Moves", body: "163 prompt moves, including drums, guitars, keys, synths, bass, microphones, effects, and mix direction.", href: "#suno-prompt-library", accent: "orange" },
-        { icon: LibraryBig, eyebrow: "1,519 INDEX", title: "Sonic DNA × Prompt Index", body: "Search, copy, and discuss 772 artist DNA references and 747 unique recipes.", href: "#suno-inspiration-index", accent: "cyan" },
-        { icon: BookOpenText, eyebrow: "LYRICS", title: "Lyric Control", body: "Shape sections, delivery, duets, emotion, and Taiwanese pronunciation.", href: "#lyric-control-library", accent: "cyan" },
-        { icon: Music2, eyebrow: "DROP", title: "Drop Practice", body: "Train rhythm, emotion, and recall inside a focused 30–60 seconds.", href: "/drop-guide", accent: "orange" },
-        { icon: Headphones, eyebrow: "ANALYSIS TOOLS", title: "Analyze Your Music", body: "Find external tools for tempo, key, streaming loudness, genre, and mood.", href: "/music-analysis", accent: "cyan" },
-        { icon: AudioWaveform, eyebrow: "STEMS", title: "Stem Separation Guide", body: "Understand 10 engine families and avoid paying twice for the same capability.", href: "#stem-separation-guide", accent: "orange" },
-        { icon: FileKey2, eyebrow: "RIGHTS", title: "Rights & Release", body: "Separate generation, commercial use, and copyright before release.", href: "#rights-release", accent: "cyan" },
-        { icon: Video, eyebrow: "AIPOGER", title: "AIPOGER Tutorials", body: "Build your workflow with AIPOGER's Traditional Chinese videos.", href: AIPOGER_TUTORIAL_PLAYLIST_URL, accent: "cyan", external: true },
-      ];
-}
 
 function appendLang(href: string, lang: string) {
   if (href.startsWith("#") || href.startsWith("http")) return href;
@@ -315,7 +273,6 @@ export default function AiMusicBiblePage() {
         note: "Test note *", notePlaceholder: "Which phrase, melody, or voice worked? What usually goes wrong?", version: "Suno version", versionPlaceholder: "Example: v4.5 / v5", name: "Your name (optional)", namePlaceholder: "Display name", cancel: "Cancel", submit: "Send to review",
         submitting: "Sending to the review queue…", submitted: "Received. Your test is waiting for review before it can join the public catalog.", submitError: "Submission failed. Please try again later.", copy: "Copy Suno spelling", effective: "This spelling worked", incorrect: "This spelling was wrong", reported: "Reported", unavailable: "Unavailable",
       };
-  const practiceAreas = useMemo(() => practiceAreasForLanguage(isZh), [isZh]);
   const shareCopy = bibleShareCopyForLanguage(lang);
   const communityCopy = bibleCommunityCopyForLanguage(lang);
   const shareUrl = `/ai-music-bible?lang=${lang}`;
@@ -334,6 +291,9 @@ export default function AiMusicBiblePage() {
   const [accessState, setAccessState] = useState<AccessState>("checking");
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
   const [lineCommunityOpen, setLineCommunityOpen] = useState(false);
+  const [contentLoading, setContentLoading] = useState(true);
+  const [contentError, setContentError] = useState(false);
+  const [contentAttempt, setContentAttempt] = useState(0);
   const [bibleContent, setBibleContent] = useState<BibleCatalog>({
     promptMoves: [],
     lyricMoves: [],
@@ -361,16 +321,19 @@ export default function AiMusicBiblePage() {
   useEffect(() => {
     if (accessState !== "signedIn") return;
     let active = true;
+    setContentLoading(true);
+    setContentError(false);
     void (async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
+      if (!session?.access_token) throw new Error("Missing member session");
       const response = await fetch("/api/ai-music-bible/content", {
         cache: "no-store",
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
-      if (!response.ok) return;
+      if (!response.ok) throw new Error("Unable to load Bible content");
       const payload = await response.json().catch(() => null) as Partial<BibleCatalog> | null;
-      if (!active || !payload) return;
+      if (!active) return;
+      if (!payload || !Array.isArray(payload.promptMoves)) throw new Error("Invalid Bible content");
       setBibleContent((current) => ({
         promptMoves: Array.isArray(payload.promptMoves) ? payload.promptMoves : current.promptMoves,
         lyricMoves: Array.isArray(payload.lyricMoves) ? payload.lyricMoves : current.lyricMoves,
@@ -385,9 +348,10 @@ export default function AiMusicBiblePage() {
         promptRecipes: Array.isArray(payload.promptRecipes) ? payload.promptRecipes : current.promptRecipes,
         recipeGenres: Array.isArray(payload.recipeGenres) ? payload.recipeGenres : current.recipeGenres,
       }));
-    })();
+      window.setTimeout(() => window.dispatchEvent(new HashChangeEvent("hashchange")), 0);
+    })().catch(() => { if (active) setContentError(true); }).finally(() => { if (active) setContentLoading(false); });
     return () => { active = false; };
-  }, [accessState]);
+  }, [accessState, contentAttempt]);
 
   const filteredEntries = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
@@ -449,7 +413,7 @@ export default function AiMusicBiblePage() {
   if (accessState !== "signedIn") {
     const gateCopy = bibleGateCopyForLanguage(lang);
     return (
-      <main className="relative min-h-screen overflow-hidden bg-[#050505] px-4 pb-20 pt-24 text-zinc-100 sm:px-6">
+      <div className={styles.page}><EditorialHeader active="bible" returnPath="/ai-music-bible" /><main className="relative min-h-screen overflow-hidden bg-[#050505] px-4 pb-20 pt-8 text-zinc-100 sm:px-6">
         <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(255,106,0,0.22),transparent_32%),radial-gradient(circle_at_86%_14%,rgba(34,211,238,0.13),transparent_28%),linear-gradient(180deg,#050505_0%,#0b0806_48%,#030707_100%)]" />
         <div className="pointer-events-none fixed inset-0 opacity-[0.05] [background-image:linear-gradient(rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.1)_1px,transparent_1px)] [background-size:64px_64px]" />
         <section className="relative mx-auto grid min-h-[calc(100svh-8rem)] w-full max-w-6xl place-items-center">
@@ -526,138 +490,31 @@ export default function AiMusicBiblePage() {
           nextPath={`/ai-music-bible?lang=${lang}`}
           onClose={() => setAuthPromptOpen(false)}
         />
-      </main>
+      </main></div>
     );
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#050505] text-zinc-100">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(255,106,0,0.19),transparent_30%),radial-gradient(circle_at_88%_18%,rgba(52,211,153,0.11),transparent_27%),linear-gradient(180deg,#050505_0%,#0b0806_45%,#030707_100%)]" />
-      <div className="pointer-events-none fixed inset-0 opacity-[0.055] [background-image:linear-gradient(rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.1)_1px,transparent_1px)] [background-size:64px_64px]" />
-
-      <div className="relative mx-auto w-full max-w-[1520px] px-4 pb-20 pt-24 sm:px-6 lg:px-10">
-        <section className="relative overflow-hidden rounded-[1.6rem] border border-orange-300/24 bg-black/56 px-5 py-8 shadow-[0_30px_100px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.05)] sm:px-8 lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)] lg:gap-10 lg:px-12 lg:py-12">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-300/60 to-transparent" />
-          <div className="relative z-10">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className={`${fontRighteous.className} text-xs uppercase tracking-[0.38em] text-cyan-200/80`}>MUSIC BIBLE 2.0</span>
-              <span className="rounded-full border border-orange-300/24 bg-orange-400/[0.09] px-3 py-1 text-[11px] font-black text-orange-200">{ui.updated}</span>
-            </div>
-            <h1 className="mt-5 max-w-5xl text-[clamp(2.65rem,5.2vw,5.5rem)] font-black leading-[0.96] tracking-[-0.04em] text-[#fff8ed] [text-shadow:0_18px_45px_rgba(0,0,0,0.8)]">
-              {isZh ? "AI 音樂練功聖經" : "AI Music Practice Bible"}
-            </h1>
-            <p className="mt-6 max-w-3xl text-base font-bold leading-8 text-zinc-300 md:text-xl md:leading-9">
-              {isZh
-                ? "從音樂知識、風格拆解與 Prompt 到創作流程，找到下一首歌的方向。所有既有資料保留，陪你一起測、一起改。"
-                : "A living field guide for musical knowledge, style DNA, prompts, and creative workflows. Every existing reference stays available."}
-            </p>
-            <div className="mt-7 flex flex-wrap gap-3">
-              <a href="#suno-prompt-library" className="aipo-primary-button inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-sm font-black">
-                {ui.enterLab} <ArrowRight className="h-4 w-4" />
-              </a>
-              <a href="#bible-home" className="aipo-ghost-button inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-sm font-black text-white">
-                {ui.viewMap}
-              </a>
-              <ShareButton
-                title={shareCopy.title}
-                text={shareCopy.text}
-                url={shareUrl}
-                label={shareCopy.label}
-                copiedLabel={shareCopy.copiedLabel}
-                className="min-h-12 border-cyan-200/25 bg-cyan-300/[0.06] px-6 text-cyan-50 hover:border-cyan-100/65 hover:bg-cyan-300/[0.12]"
-              />
-            </div>
-          </div>
-
-          <div className="relative mt-8 min-h-[20rem] overflow-hidden rounded-[1.35rem] border border-cyan-200/18 bg-[linear-gradient(145deg,rgba(255,106,0,0.09),rgba(0,0,0,0.72)_52%,rgba(34,211,238,0.09))] p-5 lg:mt-0">
-            <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full border border-orange-300/15 [background:repeating-radial-gradient(circle,rgba(255,255,255,0.1)_0_1px,transparent_1px_12px)]" />
-            <div className="relative flex h-full flex-col justify-between">
-              <div>
-                <LibraryBig className="h-10 w-10 text-orange-300" />
-                <p className={`${fontRighteous.className} mt-5 text-xs uppercase tracking-[0.32em] text-zinc-500`}>LIVE KNOWLEDGE BASE</p>
-                <p className="mt-2 text-3xl font-black text-white">{ui.labCount}</p>
-                <p className="mt-3 max-w-sm text-sm font-bold leading-6 text-zinc-400">{ui.seedSource}</p>
-              </div>
-              <div className="mt-8 grid grid-cols-3 gap-2">
-                {ui.traits.map((item) => (
-                  <span key={item} className="rounded-xl border border-white/10 bg-black/45 px-2 py-3 text-center text-xs font-black text-cyan-50">{item}</span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <BibleCommandDock locale={isZh ? "zh" : "en"} />
-        <BibleHome locale={isZh ? "zh" : "en"} />
-
-        <section id="practice-map" className="scroll-mt-24 py-12">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.34em] text-orange-300/80`}>PRACTICE MAP</p>
-              <h2 className="mt-3 text-3xl font-black text-white md:text-5xl">{ui.practiceTitle}</h2>
-            </div>
-            <p className="max-w-xl text-sm font-bold leading-7 text-zinc-500">{ui.practiceBody}</p>
-          </div>
-          <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {practiceAreas.map((area) => {
-              const Icon = area.icon;
-              const body = (
-                <>
-                  <div className="flex items-start justify-between gap-3">
-                    <Icon className={`h-7 w-7 ${area.accent === "cyan" ? "text-cyan-200" : "text-orange-300"}`} />
-                    <ChevronRight className="h-5 w-5 text-zinc-600 transition group-hover:translate-x-1 group-hover:text-white" />
-                  </div>
-                  <p className={`${fontRighteous.className} mt-7 text-[11px] uppercase tracking-[0.28em] text-zinc-600`}>{area.eyebrow}</p>
-                  <h3 className="mt-2 text-2xl font-black text-white group-hover:text-orange-100">{area.title}</h3>
-                  <p className="mt-3 text-sm font-bold leading-6 text-zinc-500">{area.body}</p>
-                </>
-              );
-              const className = "group min-h-[14rem] rounded-[1.15rem] border border-white/10 bg-black/48 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:-translate-y-0.5 hover:border-orange-300/45 hover:bg-orange-400/[0.055]";
-              return area.external ? (
-                <a key={area.title} href={area.href} target="_blank" rel="noreferrer" className={className}>{body}</a>
-              ) : area.href.startsWith("#") ? (
-                <a key={area.title} href={area.href} className={className}>{body}</a>
-              ) : (
-                <Link key={area.title} href={appendLang(area.href, lang)} className={className}>{body}</Link>
-              );
-            })}
-          </div>
-        </section>
-
-        <section id="line-community" className="scroll-mt-24 mt-2 overflow-hidden rounded-[1.5rem] border border-[#06c755]/25 bg-[linear-gradient(135deg,rgba(6,199,85,0.12),rgba(0,0,0,0.78)_48%,rgba(34,211,238,0.07))] shadow-[0_24px_70px_rgba(0,0,0,0.32)]">
-          <div className="relative grid gap-7 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:p-9">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#06c755]/65 to-transparent" />
-            <div className="relative flex items-start gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[#06c755]/40 bg-[#06c755]/[0.12] shadow-[0_12px_30px_rgba(6,199,85,0.16)]">
-                <SocialIcon label="LINE" className="h-8 w-8" />
-              </div>
-              <div className="min-w-0">
-                <p className={`${fontRighteous.className} text-[11px] uppercase tracking-[0.28em] text-[#7af0a1]`}>{communityCopy.eyebrow}</p>
-                <h2 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-3xl">{communityCopy.title}</h2>
-                <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-zinc-300">{communityCopy.body}</p>
-              </div>
-            </div>
-            <div className="relative flex flex-wrap gap-2 lg:justify-end">
-              <a href={AIPOGER_LINE_COMMUNITY_URL} target="_blank" rel="noreferrer" className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-[#06c755] px-5 text-sm font-black text-[#031b0b] transition hover:bg-[#38df79] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b6ffcb]">
-                {communityCopy.join}
-                <ExternalLink className="h-4 w-4" aria-hidden="true" />
-              </a>
-              <button type="button" onClick={() => setLineCommunityOpen(true)} className="inline-flex min-h-12 items-center gap-2 rounded-xl border border-[#06c755]/45 bg-black/35 px-5 text-sm font-black text-[#c8ffd7] transition hover:border-[#06c755] hover:bg-[#06c755]/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#06c755]">
-                <QrCode className="h-4 w-4" aria-hidden="true" />
-                {communityCopy.qr}
-              </button>
-            </div>
-            <p className="relative text-xs font-bold leading-6 text-[#a7d8b4]/75 lg:col-span-2">{communityCopy.note}</p>
-          </div>
-        </section>
-
+    <div className={styles.page}>
+      <EditorialHeader active="bible" returnPath="/ai-music-bible" />
+      <main className={styles.main}>
+        <div className={styles.titleRow}>
+          <div className={styles.title}><div><p className={styles.eyebrow}>MUSIC BIBLE</p><h1>{isZh ? "創作聖經" : "Creation Bible"}</h1></div><p className={styles.tagline}>{isZh ? "一次學一招，讓下一首更好聽。" : "One move at a time. Make your next track better."}</p></div>
+          <div className={styles.titleActions}><BibleCommandDock locale={isZh ? "zh" : "en"} compact catalog={bibleContent} /><ShareButton title={shareCopy.title} text={shareCopy.text} url={shareUrl} label={shareCopy.label} copiedLabel={shareCopy.copiedLabel} className={styles.share} /></div>
+        </div>
+        <BibleHome locale={isZh ? "zh" : "en"} catalog={bibleContent} loading={contentLoading} error={contentError} onRetry={() => setContentAttempt(value => value + 1)} onCommunity={() => setLineCommunityOpen(true)} />
+        <div id="practice-map" className={styles.directoryTitle}><h2>{isZh ? "完整聖經" : "Explore the full Bible"}</h2><div><a href={appendLang("/drop-guide", lang)}>{isZh ? "Drop 製作練習" : "Drop practice"}</a><a href={appendLang("/music-analysis", lang)}>{isZh ? "分析你的音樂" : "Analyze your music"}</a><a href="#rights-release" onClick={() => window.setTimeout(() => window.dispatchEvent(new HashChangeEvent("hashchange")), 0)}>{isZh ? "權利與發行" : "Rights & release"}</a></div></div>
         <LineCommunityDialog open={lineCommunityOpen} onClose={() => setLineCommunityOpen(false)} lang={lang as "zh" | "en" | "ja" | "ko"} />
 
-        <SunoReferenceGuideSection locale={isZh ? "zh" : "en"} />
+        <BibleChapter name="starter" title={isZh ? "Suno 起手式與排錯" : "Suno quick start & troubleshooting"} description={isZh ? "欄位、生成前檢查、版本與權利" : "Fields, pre-flight checks, versions & rights"} targets={["suno-control-desk", "suno-preflight", "suno-troubleshooting", "suno-version-watch", "rights-release"]}>
+          <SunoReferenceGuideSection locale={isZh ? "zh" : "en"} />
+        </BibleChapter>
 
-        <SunoCommandReferenceSection locale={isZh ? "zh" : "en"} />
+        <BibleChapter name="reference" title={isZh ? "Suno 速查表" : "Suno quick reference"} description={isZh ? "欄位、段落標籤、滑桿與編輯" : "Fields, section tags, sliders & editing"} targets={["suno-command-reference"]}>
+          <SunoCommandReferenceSection locale={isZh ? "zh" : "en"} />
+        </BibleChapter>
 
-        <div className="mt-10">
+        <BibleChapter name="library" title={isZh ? "Prompt、風格與歌詞" : "Prompts, styles & lyrics"} description={isZh ? "完整招式庫、聲音 DNA、曲風與製作流程" : "Full move library, sonic DNA, genres & production workflow"} targets={["suno-prompt-library", "suno-inspiration-index", "lyric-control-library", "bible-genres", "bible-knowledge", "bible-production-flow", "bible-workflows", "bible-move-*", "vocal-starter-*"]}>
           <SunoPracticeLibrarySection
           locale={isZh ? "zh" : "en"}
           promptMoves={bibleContent.promptMoves}
@@ -670,12 +527,13 @@ export default function AiMusicBiblePage() {
           promptRecipes={bibleContent.promptRecipes ?? []}
           recipeGenres={bibleContent.recipeGenres ?? []}
           />
-        </div>
+        </BibleChapter>
 
-        <div className="mt-10">
+        <BibleChapter name="stems" title={isZh ? "AI 拆軌避坑指南" : "AI stem separation guide"} description={isZh ? "依目標挑工具，查看引擎差異" : "Choose by goal and compare engines"} targets={["stem-separation-guide"]}>
           <StemSeparationGuideSection locale={isZh ? "zh" : "en"} engines={bibleContent.stemEngines ?? []} goals={bibleContent.stemGoals ?? []} />
-        </div>
+        </BibleChapter>
 
+        <BibleChapter name="taiwanese" title={isZh ? "台語歌詞調音實驗室" : "Taiwanese pronunciation lab"} description={isZh ? "查寫法、複製與回報實測" : "Look up spellings, copy and share test results"} targets={["taiwanese-lab"]}>
         <section id="taiwanese-lab" className="mt-10 scroll-mt-20 overflow-hidden rounded-[1.6rem] border border-orange-300/22 bg-[#070707]/90 shadow-[0_30px_100px_rgba(0,0,0,0.5)]">
           <div className="border-b border-white/10 bg-[radial-gradient(circle_at_15%_0%,rgba(255,106,0,0.18),transparent_32%),radial-gradient(circle_at_90%_10%,rgba(34,211,238,0.1),transparent_30%)] px-5 py-7 sm:px-8 lg:px-10 lg:py-10">
             <div className="flex flex-wrap items-start justify-between gap-6">
@@ -761,21 +619,9 @@ export default function AiMusicBiblePage() {
           </div>
         </section>
 
-        <section className="mt-10 grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
-          <article className="rounded-[1.35rem] border border-white/10 bg-black/48 p-6 md:p-8">
-            <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.3em] text-orange-300/75`}>WEEKLY PRACTICE</p>
-            <h2 className="mt-3 text-3xl font-black text-white">{ui.weeklyTitle}</h2>
-            <p className="mt-4 max-w-3xl text-sm font-bold leading-7 text-zinc-400">{ui.weeklyBody}</p>
-            <div className="mt-5 grid gap-2 sm:grid-cols-2">{ui.weeklyItems.map((item) => <div key={item} className="rounded-lg border border-white/8 bg-white/[0.025] px-4 py-3 text-sm font-black text-zinc-300"><Sparkles className="mr-2 inline h-4 w-4 text-orange-300" />{item}</div>)}</div>
-          </article>
-          <article className="rounded-[1.35rem] border border-cyan-200/14 bg-cyan-300/[0.04] p-6 md:p-8">
-            <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.3em] text-cyan-200/70`}>TOOLBOX</p>
-            <h2 className="mt-3 text-3xl font-black text-white">{ui.toolboxTitle}</h2>
-            <p className="mt-4 text-sm font-bold leading-7 text-zinc-400">{ui.toolboxBody}</p>
-            <Link href={appendLang("/music-analysis", lang)} className="aipo-ghost-button mt-6 inline-flex min-h-11 items-center gap-2 rounded-full px-5 text-sm font-black text-white">{ui.analyze} <ArrowRight className="h-4 w-4" /></Link>
-          </article>
-        </section>
-      </div>
+        </BibleChapter>
+        <section id="line-community" className={styles.community}><strong>{communityCopy.title}</strong><a href={AIPOGER_LINE_COMMUNITY_URL} target="_blank" rel="noreferrer">{communityCopy.join}<ExternalLink size={16} /></a><button type="button" onClick={() => setLineCommunityOpen(true)}><QrCode size={17} />{communityCopy.qr}</button></section>
+      </main>
 
       {suggestionOpen && (
         <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/78 p-0 backdrop-blur-sm sm:items-center sm:p-5" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSuggestionOpen(false); }}>
@@ -793,7 +639,7 @@ export default function AiMusicBiblePage() {
           </section>
         </div>
       )}
-    </main>
+    </div>
   );
 }
 

@@ -803,7 +803,7 @@ export default function GlobalBattleCallOverlay() {
   }) => {
     if (!accountSessionResolved) return null;
     if (!accountUserId) {
-      if (pathname === "/" || pathname === "/mv" || pathname === "/auth" || pathname === "/ai-music" || pathname === "/profile" || pathname === "/battle" || pathname === "/battle/listen" || pathname === "/rank") return null;
+      if (pathname === "/" || pathname === "/mv" || pathname === "/auth" || pathname === "/ai-music" || pathname === "/profile" || pathname === "/battle" || pathname === "/battle/listen" || pathname === "/rank" || pathname === "/ai-music-bible") return null;
       const nextPath = `${pathname || "/"}?lang=${lang}`;
       const signInLabel = lang === "ja" ? "ログイン" : lang === "ko" ? "로그인" : lang === "en" ? "Sign in" : "登入";
       return (

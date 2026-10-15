@@ -1,52 +1,75 @@
 "use client";
 
-import { ArrowUpRight, BookOpenText, Fingerprint, LibraryBig, Route, Wrench } from "lucide-react";
+import { ArrowRight, Check, ChevronRight, Copy, Disc3, ExternalLink, MessageSquare, Mic2, Music2, Piano, SlidersHorizontal, Video } from "lucide-react";
+import { useState } from "react";
+import type { BibleCatalog } from "@/lib/ai-music-bible-content";
+import type { SunoPromptCategory } from "@/lib/suno-practice-library";
+import { AIPOGER_TUTORIAL_PLAYLIST_URL } from "@/lib/brand";
+import { navigateBible } from "@/lib/bible-navigation";
+import styles from "./bible-home.module.css";
 
-export const BIBLE_HOME_AREAS = [
-  { name: "Knowledge", zh: "音樂知識", href: "#bible-knowledge", icon: BookOpenText, body: ["從曲風、段落、人聲與音色建立判斷。", "Build your vocabulary for genre, structure, vocals, and sound."] },
-  { name: "Style DNA", zh: "風格拆解", href: "#suno-inspiration-index", icon: Fingerprint, body: ["搜尋聲音參考，拆解成自己的創作方向。", "Find sonic references and shape your own direction."] },
-  { name: "Prompts", zh: "提示詞資料庫", href: "#suno-prompt-library", icon: LibraryBig, body: ["搜尋、複製與比較，找到適合這首歌的 Prompt。", "Search, copy, and compare prompts for your next track."] },
-  { name: "Workflows", zh: "創作流程", href: "#bible-workflows", icon: Route, body: ["從一句想法到生成、修正與拆軌。", "Move from an idea to generation, revision, and stems."] },
-  { name: "Solve My Problem", zh: "解決創作卡關", href: "#suno-troubleshooting", icon: Wrench, body: ["從人聲、歌詞、音質等症狀找到下一步。", "Find your next step from vocal, lyric, and sound problems."] },
+const areas = [
+  { tone: "orange", icon: Piano, target: "suno-control-desk", title: ["先做出第一首", "Make your first track"], body: ["Suno 起手式・欄位速查", "Suno basics · Field reference"] },
+  { tone: "green", icon: SlidersHorizontal, target: "bible-knowledge", title: ["找到你的風格", "Find your sound"], body: ["音樂知識・聲音 DNA", "Music knowledge · Sonic DNA"] },
+  { tone: "purple", icon: Music2, target: "suno-prompt-library", title: ["讓作品更好聽", "Shape a better track"], body: ["Prompt 招式・歌詞調教", "Prompt moves · Lyric control"] },
+  { tone: "blue", icon: Disc3, target: "bible-production-flow", title: ["完成與發表", "Finish & release"], body: ["製作流程・拆軌・發行", "Workflow · Stems · Release"] },
 ] as const;
+const categories: { key: SunoPromptCategory; zh: string; en: string }[] = [
+  { key: "foundation", zh: "核心公式", en: "Core formula" },
+  { key: "dance", zh: "舞曲能量", en: "Dance energy" },
+  { key: "production", zh: "音色與混音", en: "Sound & mix" },
+  { key: "mastering", zh: "錄音室 Mastering", en: "Studio mastering" },
+];
+const featuredKeys = ["prompt-focus", "instrument-role-map", "section-density-arc"];
 
-const linkClass = "inline-flex min-h-11 items-center rounded-xl border border-white/15 px-4 py-2 text-sm text-zinc-200 transition hover:border-orange-300 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300";
-const panelClass = "scroll-mt-36 rounded-2xl border border-white/10 bg-black/50 p-5 sm:p-7";
-
-export default function BibleHome({ locale }: { locale: "zh" | "en" }) {
+export default function BibleHome({ locale, catalog, loading, error, onRetry, onCommunity }: {
+  locale: "zh" | "en"; catalog: BibleCatalog; loading: boolean; error: boolean; onRetry: () => void; onCommunity: () => void;
+}) {
   const zh = locale === "zh";
-  return <section id="bible-home" className="scroll-mt-36 py-10">
-    <p className="text-xs font-bold tracking-[0.3em] text-orange-300">MUSIC BIBLE 2.0</p>
-    <h2 className="mt-3 text-3xl font-black text-white sm:text-4xl">{zh ? "從你想做的事開始" : "Start with what you want to make"}</h2>
-    <p className="mt-4 max-w-3xl text-sm leading-7 text-zinc-400">{zh ? "先建立音樂方向，再選工具。從知識、風格與 Prompt 找到靈感，透過創作流程與問題解法完成作品。" : "Shape the music, then choose your tools. Explore knowledge, styles, and prompts, then build your track with practical workflows and solutions."}</p>
-    <nav aria-label={zh ? "Music Bible 創作入口" : "Music Bible creative areas"} className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {BIBLE_HOME_AREAS.map(({ name, zh: title, href, icon: Icon, body }) => <a key={name} href={href} className="group rounded-2xl border border-white/15 bg-white/[0.025] p-5 transition hover:border-orange-300/70 hover:bg-orange-400/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300">
-        <div className="flex justify-between text-orange-300"><Icon className="h-6 w-6" /><ArrowUpRight className="h-5 w-5" /></div>
-        <h3 className="mt-5 text-xl font-black text-white">{name}</h3>
-        {zh && <p className="mt-1 text-sm font-bold text-orange-100">{title}</p>}
-        <p className="mt-3 text-sm leading-6 text-zinc-400">{body[zh ? 0 : 1]}</p>
-      </a>)}
+  const n = zh ? 0 : 1;
+  const [category, setCategory] = useState<SunoPromptCategory>("foundation");
+  const [copied, setCopied] = useState("");
+  const [copyError, setCopyError] = useState(false);
+  const moves = category === "foundation"
+    ? featuredKeys.flatMap(key => catalog.promptMoves.filter(item => item.key === key))
+    : catalog.promptMoves.filter(item => item.category === category).slice(0, 3);
+  const first = catalog.promptMoves.find(item => item.key === "two-field-routing");
+  const dna = catalog.promptMoves.find(item => item.key === "prompt-dna");
+  const copy = async (key: string, value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopyError(false); setCopied(key);
+      window.setTimeout(() => setCopied(current => current === key ? "" : current), 1800);
+    } catch { setCopyError(true); }
+  };
+  return <section id="bible-home" className={styles.home}>
+    <nav className={styles.areas} aria-label={zh ? "創作學習路線" : "Creative learning path"}>
+      {areas.map(({ tone, icon: Icon, target, title, body }, index) => <button type="button" key={tone} className={`${styles.area} ${styles[tone]}`} onClick={() => navigateBible(target)}>
+        <span className={styles.step}>0{index + 1}</span>
+        <span className={styles.areaBody}><Icon size={42} strokeWidth={1.65} /><span><strong>{title[n]}</strong><small>{body[n]}</small></span><ChevronRight className={styles.circleArrow} size={30} /></span>
+      </button>)}
     </nav>
-    <div className="mt-7 grid gap-4 lg:grid-cols-2">
-      <section id="bible-knowledge" className={panelClass}>
-        <h3 className="text-xl font-black">Knowledge · {zh ? "音樂知識" : "Musical foundations"}</h3>
-        <p className="mt-3 text-sm leading-7 text-zinc-400">{zh ? "從已有資料學曲風、段落與人聲；工具操作保留在各自章節。" : "Explore genre, structure, and vocals through the existing library. Tool instructions stay in their own chapters."}</p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <a className={linkClass} href="#bible-genres">{zh ? "曲風詞彙" : "Genre vocabulary"}</a>
-          <a className={linkClass} href="#lyric-control-library">{zh ? "歌曲段落與人聲" : "Structure & vocals"}</a>
-          <a className={linkClass} href="#stem-separation-guide">{zh ? "拆軌知識" : "Stems"}</a>
-          <a className={linkClass} href="#practice-map">{zh ? "全部工具與教學" : "All tools & tutorials"}</a>
+    <section className={styles.starter} aria-labelledby="bible-starter-heading">
+      <div className={styles.sectionHeading}><h2 id="bible-starter-heading">{zh ? "不知道從哪開始？先學這 3 招" : "New here? Start with these 3 moves"}</h2><button type="button" onClick={() => navigateBible("suno-control-desk")}>{zh ? "查看入門路線" : "Quick-start guide"}<ArrowRight size={18} /></button></div>
+      <div className={styles.lessons}>
+        <article className={`${styles.lesson} ${styles.orange}`}><Piano className={styles.lessonIcon} size={42} strokeWidth={1.65} /><div><span className={styles.lessonLabel}>{zh ? "入門必練" : "START HERE"}</span><h3>{first?.title[locale] ?? (zh ? "Style 管聲音，Lyrics 管演出" : "Style shapes sound, Lyrics shape delivery")}</h3><p>{zh ? "先分清欄位，生成才有得比較。" : "Separate the fields to compare your results."}</p><pre>{zh ? "Style → 曲風、人聲、樂器\nLyrics → 歌詞、段落、唱法" : "Style → Genre, voice, instruments\nLyrics → Words, sections, delivery"}</pre><button type="button" className={styles.primary} onClick={() => navigateBible("bible-move-two-field-routing")}>{zh ? "開始這一招" : "Start this move"}<ArrowRight size={17} /></button></div></article>
+        <article className={`${styles.lesson} ${styles.green}`}><SlidersHorizontal className={styles.lessonIcon} size={42} strokeWidth={1.65} /><div><span className={styles.lessonLabel}>{zh ? "建立方向" : "FIND DIRECTION"}</span><h3>{dna?.title[locale] ?? (zh ? "七格聲音 DNA" : "Seven-part sonic DNA")}</h3><p>{zh ? "把模糊的形容，變成清楚的聲音。" : "Turn vague descriptions into a clear sound."}</p><pre>{zh ? "主曲風 + 次曲風 + 情緒 + 樂器\n速度 + 調性 + 聲音質感" : "Genre + Subgenre + Mood + Instruments\nTempo + Key + Mix texture"}</pre><button type="button" className={styles.textAction} onClick={() => navigateBible("bible-move-prompt-dna")}>{zh ? "看範例" : "See example"}<ArrowRight size={17} /></button></div></article>
+        <article className={`${styles.lesson} ${styles.purple}`}><Mic2 className={styles.lessonIcon} size={42} strokeWidth={1.65} /><div><span className={styles.lessonLabel}>{zh ? "人聲控制" : "VOCAL CONTROL"}</span><h3>{zh ? "副歌：把情緒推上去" : "Chorus: lift the emotion"}</h3><p>{zh ? "把唱法放在對的段落，讓情緒有層次。" : "Shape delivery where the emotion changes."}</p><pre>[Chorus | sung | powerful | emotional]</pre><button type="button" className={styles.textAction} onClick={() => navigateBible("vocal-starter-powerful-chorus")}>{zh ? "看範例" : "See example"}<ArrowRight size={17} /></button></div></article>
+      </div>
+    </section>
+    <div className={styles.lower}>
+      <section className={styles.moves} aria-labelledby="bible-moves-heading">
+        <div className={styles.sectionHeading}><h2 id="bible-moves-heading">{zh ? "常用招式，直接拿來試" : "Practical moves to try"}</h2><button type="button" onClick={() => navigateBible("suno-prompt-library")}>{zh ? `全部 ${catalog.promptMoves.length || ""} 招` : `All ${catalog.promptMoves.length || ""} moves`}<ArrowRight size={18} /></button></div>
+        <div className={styles.tabs} role="group" aria-label={zh ? "常用招式分類" : "Featured move categories"}>{categories.map(item => <button type="button" key={item.key} aria-pressed={category === item.key} onClick={() => { setCategory(item.key); setCopyError(false); }}>{item[locale]}</button>)}</div>
+        <div className={styles.moveList} aria-live="polite">
+          {loading ? <p className={styles.status}>{zh ? "正在整理招式…" : "Loading moves…"}</p> : error ? <p className={styles.status}>{zh ? "招式暫時載入失敗。" : "Unable to load moves."}<button onClick={onRetry} type="button">{zh ? "重新載入" : "Try again"}</button></p> : moves.length ? moves.map((item, index) => <div className={styles.move} key={item.key}><span className={styles.moveNumber}>0{index + 1}</span><button className={styles.moveTitle} type="button" onClick={() => navigateBible(`bible-move-${item.key}`)}>{item.title[locale]}</button><p>{item.summary[locale]}</p><button className={styles.copy} type="button" aria-label={`${zh ? "複製" : "Copy"} ${item.title[locale]}`} onClick={() => void copy(item.key, item.copy[locale])}>{copied === item.key ? <Check size={18} /> : <Copy size={18} />}<span>{copied === item.key ? (zh ? "已複製" : "Copied") : (zh ? "複製" : "Copy")}</span></button></div>) : <p className={styles.status}>{zh ? "這個分類暫無招式，請查看完整資料庫。" : "No moves here yet. Browse the full library."}</p>}
         </div>
+        {copyError && <p className={styles.status} role="alert">{zh ? "無法使用剪貼簿，請點招式名稱開啟並選取文字。" : "Clipboard unavailable. Open the move to select its text."}</p>}
       </section>
-      <section id="bible-workflows" className={panelClass}>
-        <h3 className="text-xl font-black">Workflows · {zh ? "一步步完成作品" : "Build a track step by step"}</h3>
-        <ol className="mt-4 space-y-3 text-sm leading-7 text-zinc-300">
-          <li>1. <a className="underline decoration-orange-300/50 underline-offset-4" href="#suno-inspiration-index">{zh ? "選聲音方向" : "Choose a sonic direction"}</a> → <a className="underline" href="#suno-control-desk">{zh ? "用 Suno 起手式建立第一版" : "Build a first version with the Suno starter"}</a></li>
-          <li>2. <a className="underline decoration-orange-300/50 underline-offset-4" href="#suno-troubleshooting">{zh ? "找出卡關原因" : "Identify a problem"}</a> → <a className="underline" href="#lyric-control-library">{zh ? "調整段落與人聲，再比較" : "Adjust structure and vocals, then compare"}</a></li>
-          <li>3. <a className="underline decoration-orange-300/50 underline-offset-4" href="#stem-separation-guide">{zh ? "按目標選擇拆軌方法" : "Choose a stem workflow"}</a> → <a className="underline" href="#rights-release">{zh ? "發行前檢查" : "Review before release"}</a></li>
-        </ol>
-        <a className={`${linkClass} mt-4`} href="#bible-production-flow">{zh ? "查看既有六步製作流程" : "Open the existing six-step production flow"}</a>
-      </section>
+      <aside className={styles.help}><h2>{zh ? "卡在哪裡？" : "Where are you stuck?"}</h2><div className={styles.helpLinks}>{[
+        ["歌詞唱不清楚", "Unclear lyrics", "suno-troubleshooting"], ["副歌沒有記憶點", "A forgettable chorus", "suno-troubleshooting"], ["台語咬字不自然", "Taiwanese pronunciation", "taiwanese-lab"], ["不知道怎麼拆軌", "Choosing a stem workflow", "stem-separation-guide"],
+      ].map(([zhTitle, enTitle, id]) => <button type="button" key={zhTitle} onClick={() => navigateBible(id)}>{zh ? zhTitle : enTitle}<ArrowRight size={18} /></button>)}</div><div className={styles.helpFooter}><a href={AIPOGER_TUTORIAL_PLAYLIST_URL} target="_blank" rel="noreferrer"><Video size={20} />{zh ? "影片教學" : "Tutorials"}<ExternalLink size={13} /></a><button type="button" onClick={onCommunity}><MessageSquare size={20} />{zh ? "實測討論" : "Community"}<ExternalLink size={13} /></button></div></aside>
     </div>
+    <p className={styles.note}>{zh ? "提示是創作方向，生成後請比較與調整。" : "Prompts give direction. Compare and adjust after generating."}</p>
   </section>;
 }

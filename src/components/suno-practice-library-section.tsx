@@ -126,6 +126,11 @@ function TechniqueCard({
 }) {
   const isZh = locale === "zh";
   const [expanded, setExpanded] = useState(false);
+  useEffect(() => {
+    const reveal = () => { if (window.location.hash === `#bible-move-${item.key}`) setExpanded(true); };
+    reveal(); window.addEventListener("hashchange", reveal);
+    return () => window.removeEventListener("hashchange", reveal);
+  }, [item.key]);
   const evidenceLabel: Record<SunoEvidence, string> = {
     official: isZh ? "官方功能可確認" : "Official feature",
     field: isZh ? "愛波哥實測整理" : "AIPOGER field-tested",
@@ -142,7 +147,7 @@ function TechniqueCard({
   });
 
   return (
-    <article className="overflow-hidden rounded-[1.1rem] border border-white/10 bg-black/45">
+    <article id={`bible-move-${item.key}`} className="scroll-mt-6 overflow-hidden rounded-[1.1rem] border border-white/10 bg-black/45">
       <div className="p-5 sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
@@ -254,17 +259,25 @@ export default function SunoPracticeLibrarySection({
 
   useEffect(() => {
     const openForHash = () => {
-      if (window.location.hash === "#bible-genres") setGenreCrateOpen(true);
-      if (window.location.hash === "#bible-production-flow") setProductionFlowOpen(true);
+      if (window.location.hash === "#suno-prompt-library") { setPromptCategory("all"); setPromptStudioFamily("all"); setPromptSearch(""); setShowAllPrompt(false); }
+      const key = window.location.hash.replace(/^#bible-move-/, "");
+      if (window.location.hash.startsWith("#bible-move-")) {
+        if (promptMoves.some(item => item.key === key)) { setPromptCategory("all"); setPromptStudioFamily("all"); setPromptSearch(""); setShowAllPrompt(true); }
+        if (lyricMoves.some(item => item.key === key)) { setLyricCategory("all"); setLyricSearch(""); setShowAllLyric(true); setLyricLibraryOpen(true); }
+        window.setTimeout(() => document.getElementById(`bible-move-${key}`)?.scrollIntoView({ block: "start" }), 40);
+      }
+      if (window.location.hash === "#bible-genres" || window.location.hash === "#bible-knowledge") setGenreCrateOpen(true);
+      if (window.location.hash === "#bible-production-flow" || window.location.hash === "#bible-workflows") setProductionFlowOpen(true);
       if (window.location.hash === "#lyric-control-library") {
         setLyricLibraryOpen(true);
         window.setTimeout(() => document.getElementById("lyric-control-library")?.scrollIntoView({ block: "start" }), 0);
       }
+      if (window.location.hash.startsWith("#vocal-starter-")) setLyricLibraryOpen(true);
     };
     openForHash();
     window.addEventListener("hashchange", openForHash);
     return () => window.removeEventListener("hashchange", openForHash);
-  }, []);
+  }, [promptMoves, lyricMoves]);
 
   const promptResults = useMemo(
     () => promptMoves.filter((item) => (
@@ -497,6 +510,12 @@ export default function SunoPracticeLibrarySection({
           </div>}
         </div>
 
+        <nav id="bible-knowledge" className="mt-6 flex flex-wrap items-center gap-4 text-sm text-emerald-200" aria-label={isZh ? "音樂知識" : "Music knowledge"}>
+          <strong>{isZh ? "找到你的風格" : "Find your sound"}</strong>
+          <a href="#bible-genres">{isZh ? "曲風詞彙" : "Genre vocabulary"}</a>
+          <a href="#suno-inspiration-index">{isZh ? "聲音 DNA 與配方" : "Sonic DNA & recipes"}</a>
+          <a href="#lyric-control-library">{isZh ? "段落與人聲" : "Structure & vocals"}</a>
+        </nav>
         <div id="suno-inspiration-index" className="scroll-mt-24">
           <SunoInspirationIndexSection
             isZh={isZh}
@@ -560,7 +579,7 @@ export default function SunoPracticeLibrarySection({
               </div>
               <div className="mt-3 grid gap-3 lg:grid-cols-3">
                 {VOCAL_STARTER_RECIPES.map((recipe) => (
-                  <article key={recipe.key} className="overflow-hidden rounded-xl border border-white/10 bg-black/38">
+                  <article id={recipe.key} key={recipe.key} className="scroll-mt-6 overflow-hidden rounded-xl border border-white/10 bg-black/38">
                     <div className="p-4">
                       <h5 className="text-base font-black text-white">{sunoLibraryText(recipe.title, locale)}</h5>
                       <p className="mt-1.5 min-h-12 text-xs font-bold leading-5 text-zinc-400">{sunoLibraryText(recipe.meaning, locale)}</p>
@@ -656,8 +675,9 @@ export default function SunoPracticeLibrarySection({
             <div>
               <p className={`${fontRighteous.className} text-xs uppercase tracking-[0.25em] text-orange-300/75`}>FROM MATERIAL TO WORK</p>
               <h3 className="mt-3 text-2xl font-black text-white sm:text-3xl">{isZh ? "AI 音樂製作流程" : "AI music production flow"}</h3>
-              <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-zinc-500">{isZh ? "從生成、按需使用分析工具、Drop／Q Crash 試聽，到 Showtime 月榜、Choice 策展與保存，共 6 個步驟。" : "Six steps from rendering and optional analysis tools to Drop/Q Crash listening, Showtime charts, Choice curation, and archiving."}</p>
+              <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-zinc-500">{isZh ? "從生成、按需使用分析工具、Drop／Q Crash 試聽，到 Showtime 策展、Choice 策展與保存，共 6 個步驟。" : "Six steps from rendering and optional analysis tools to Drop/Q Crash listening, Showtime curation, Choice curation, and archiving."}</p>
             </div>
+            <span id="bible-workflows" />
             <button id="bible-production-flow" type="button" onClick={() => setProductionFlowOpen((value) => !value)} aria-expanded={productionFlowOpen} aria-controls="production-flow-content" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-orange-300/28 bg-black/35 px-5 text-xs font-black text-orange-50 transition hover:border-orange-200/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200">
               {productionFlowOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               {productionFlowOpen ? (isZh ? "收起 6 步流程" : "Collapse 6-step flow") : (isZh ? "展開 6 步流程" : "Open 6-step flow")}

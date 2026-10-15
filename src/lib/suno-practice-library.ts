@@ -630,7 +630,7 @@ export const AI_PRODUCTION_FLOW: { title: SunoLocalizedText; body: SunoLocalized
   { title: { zh: "02 生成三版", en: "02 Render three" }, body: { zh: "同一組設定先做三版，再挑旋律、能量與人聲身份最穩的版本，不靠一次中獎。", en: "Render three versions from the same setup, then select the most stable melody, energy, and vocal identity instead of hoping for one lucky take." } },
   { title: { zh: "03 三種分析工具", en: "03 Three analysis tools" }, body: { zh: "依需要前往外部網站：Tunebat 查 BPM／調性、Loudness Penalty 看串流播放的音量調整、Cyanite 補充曲風與情緒標籤。免費範圍與用法見工具入口。", en: "Choose an external tool as needed: Tunebat for BPM/key, Loudness Penalty for streaming playback gain, or Cyanite for genre and mood tags. See the tools page for free limits and instructions." } },
   { title: { zh: "04 選擇測試場", en: "04 Test in public" }, body: { zh: "需要短片段比較就走 Drop；需要兩首歌對決就走 Q Crash；完整作品先進探索或傷心酒吧累積真實聆聽。", en: "Use Drop for focused short tests, Q Crash for a two-song decision, and Explore or Bar Heartbreak for full-song listening." } },
-  { title: { zh: "05 發表與策展", en: "05 Release and curate" }, body: { zh: "在 Showtime 查看月榜；從收藏的公開可播放歌曲製作 Choice 歌單，讓喜歡的作品被更多人聽見。", en: "Explore the monthly charts in Showtime; curate a Choice playlist from saved, publicly playable songs to help more people hear them." } },
+  { title: { zh: "05 發表與策展", en: "05 Release and curate" }, body: { zh: "在 Showtime 發現策展與創作者；從收藏的公開可播放歌曲製作 Choice 歌單，讓喜歡的作品被更多人聽見。", en: "Discover curation and creators in Showtime; curate a Choice playlist from saved, publicly playable songs to help more people hear them." } },
   { title: { zh: "06 保存歷程", en: "06 Archive" }, body: { zh: "保存 Prompt、歌詞草稿、模型版本、工程檔、授權與發表紀錄，讓成功條件可以重現。", en: "Keep prompts, lyric drafts, model version, project files, rights, and release records so successful conditions can be reproduced." } },
 ];
 

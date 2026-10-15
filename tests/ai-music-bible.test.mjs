@@ -276,8 +276,7 @@ test("expanded Studio Mastering prompts are discoverable by genre, culture, and 
 });
 
 test("Prompt and lyric finders explain their controls and expose clear states", () => {
-  assert.match(biblePageComponent, /163 招 Prompt/);
-  assert.match(biblePageComponent, /163 prompt moves/);
+  assert.equal(SUNO_PROMPT_MOVES.length, 163);
   assert.match(biblePageComponent, /document\.title = BIBLE_DOCUMENT_TITLES\[lang\]/);
   assert.match(practiceLibraryComponent, /找你需要的 Prompt 招式/);
   assert.match(practiceLibraryComponent, /Jazz、1980s、印度、交響、側鏈/);
