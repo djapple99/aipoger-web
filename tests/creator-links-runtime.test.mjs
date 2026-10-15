@@ -111,7 +111,6 @@ test("preview and rejected confirmations never insert tracks or consume an uploa
     200,
   );
   for (const change of [
-    { confirmedPlayback: false },
     { confirmedRights: false },
     { genre: "" },
     { previewToken: "bad" },
@@ -273,4 +272,11 @@ test('Suno titles preserve apostrophes and encoded characters, and reject arbitr
   assert.equal(preview.title,"Don't Stop & Moon's Night");
   assert.equal(preview.coverUrl,'');
   assert.ok(server.verifyLinkPreview(preview.token,USER));
+});
+
+test("submission requires rights and verified source, but no playback confirmation", async () => {
+  for (const confirmedPlayback of [false, undefined]) {
+    const ui = mount(mockAdmin());
+    assert.equal((await ui.post(request({...submission(), confirmedPlayback}))).status, 201);
+  }
 });

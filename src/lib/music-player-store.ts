@@ -1,7 +1,7 @@
 "use client";
 import { useSyncExternalStore } from "react";
 
-export type MusicTrack = { id: string; title: string; artist: string; coverUrl: string; audioUrl: string; heartTrackId?: string; genre?: string; lyrics?: string };
+export type MusicTrack = { id: string; title: string; artist: string; coverUrl: string; audioUrl: string; youtubeId?: string; heartTrackId?: string; genre?: string; lyrics?: string };
 export type MusicSession = { queue: MusicTrack[]; index: number; sourceLabel: string; sourceKey?: string; repeat?: boolean };
 export type MusicPlayerState = { session: MusicSession | null; playing: boolean; currentTime: number; duration: number; volume?: number; historyDepth?: number; playbackError?: string };
 export type MusicPlayerHandle = {

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Heart, MessageCircleMore, Pause, Play, SkipBack, SkipForward, Volume2 } from "lucide-react";
 import { musicPlayer, useMusicPlayer, type MusicTrack } from "@/lib/music-player-store";
+import { shuffleMusicQueue } from "@/lib/music-queue";
 import { useI18n } from "@/lib/i18n";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import styles from "@/app/ai-music/ai-music.module.css";
@@ -41,7 +42,7 @@ export default function ExploreRadio({ tracks, ready, hearted, heartBusy, onHear
   }, []);
   const start = (choice: string) => {
     setGenre(choice);
-    const queue = choice === "all" ? tracks : tracks.filter(track => track.genre === choice);
+    const queue = shuffleMusicQueue(choice === "all" ? tracks : tracks.filter(track => track.genre === choice));
     if (!queue.length) return;
     const label = choice === "all" ? text("全部曲風", "All genres", "すべてのジャンル", "모든 장르") : t(MUSIC_GENRE_OPTIONS.find(option => option.value === choice)?.labelKey ?? "");
     void musicPlayer?.start(queue, 0, `${text("傷心酒吧", "Bar Heartbreak", "Bar Heartbreak", "Bar Heartbreak")} · ${label}`, { sourceKey: `bar:${choice}`, repeat: true });

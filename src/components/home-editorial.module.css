@@ -112,7 +112,12 @@
   .brand img { width: 29px; height: 38px; }
   .brand span { font-size: 20px; }
   .headerActions { gap: 12px; }
-  .submit { display: none; }
+  .submit { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; padding: 8px; font-size: 12px; }
+  .submitLabel { display: none; }
+  .submit .mobileSubmitLabel { display: inline; }
+  .headerActions { gap: 6px; }
+  .brand span { font-size: 17px; }
+  .headerActions .accountSpace { width: 32px; }
   .headerActions button { min-width: 39px; height: 34px; }
   .accountSpace { width: 51px; }
   .signIn { font-size: 13px; }
@@ -237,3 +242,5 @@
   .feedbackWithVideo .feedbackHeading > button { position: absolute; right: -5px; top: -5px; }
   .feedbackWithVideo .feedbackVideo { margin-top: 14px; }
 }
+
+.mobileSubmitLabel { display: none; }

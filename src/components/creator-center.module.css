@@ -939,3 +939,14 @@
     margin-left: 0;
   }
 }
+
+/* Keep source previews and the submit action within even the narrowest phone. */
+.workspace { grid-template-columns: minmax(0, 2fr) minmax(0, 1.07fr); }
+.workspace > *, .uploader, .linkForm, .previewIdentity, .fieldPair > *, .fileUpload { min-width: 0; }
+.linkForm { grid-template-columns: minmax(0, 1fr); }
+.fieldPair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.urlRow input { width: 0 !important; }
+.previewName b { white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.fileUpload :global(fieldset), .fileUpload :global(form), .fileUpload :global(details) { min-width: 0; max-width: 100%; }
+.fileUpload :global(input), .fileUpload :global(select), .fileUpload :global(textarea), .uploader iframe { max-width: 100%; }
+@media (max-width: 920px) { .workspace { grid-template-columns: minmax(0, 1fr); } }

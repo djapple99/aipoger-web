@@ -34,7 +34,7 @@ export default function EditorialHeader({ active, returnPath }: { active: "home"
           <Link href={withLang("/ai-music-bible")}>{copy.bible}</Link>
         </nav>
         <div className={styles.headerActions}>
-          {active !== "creator" ? <Link href={withLang("/profile?submit=1#submit-work")} className={styles.submit}>{copy.submit}</Link> : null}
+          <Link href={withLang("/profile?submit=1#submit-work")} className={styles.submit}><span className={styles.submitLabel}>{copy.submit}</span><span className={styles.mobileSubmitLabel}>{lang === "zh" || lang === "ja" ? "投稿" : lang === "ko" ? "제출" : "Submit"}</span></Link>
           <LangToggle variant="inline" />
           {signedIn ? <span className={styles.accountSpace} /> : <Link href={active !== "home" ? `/auth?lang=${lang}&next=${encodeURIComponent((returnPath ?? `/${active === "mv" ? "mv" : active === "creator" ? "profile" : active === "battle" ? "battle" : "ai-music"}`) + `?lang=${lang}`)}` : withLang("/auth")} className={styles.signIn}>{copy.signIn}</Link>}
         </div>

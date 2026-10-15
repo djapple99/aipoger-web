@@ -945,7 +945,7 @@ export default function AiMusicClient() {
     <Headphones aria-hidden="true" />{earwormCopy.reopen}
   </button>;
   const feedbackWork: HomeWork | null = commentTrack ? { id: commentTrack.sourceId, title: commentTrack.title, artist: commentTrack.creator, genre: commentTrack.genre, description: "", coverUrl: commentTrack.coverUrl, audioUrl: commentTrack.audioUrl ?? "", lyrics: commentTrack.lyrics ?? "", videoId: null, youtubeUrl: null, supporterCount: commentTrack.poolSupporterCount, publishedAt: commentTrack.createdAt } : null;
-  const radioTracks = useMemo(() => poolTracks.filter(track => track.audioUrl).map(track => ({ id: track.sourceId, heartTrackId: track.sourceId, title: track.title, artist: track.creator, coverUrl: track.coverUrl, audioUrl: track.audioUrl!, genre: track.genre, lyrics: track.lyrics ?? undefined })), [poolTracks]);
+  const radioTracks = useMemo(() => poolTracks.filter(track => track.audioUrl || track.external?.provider === "youtube").map(track => ({ id: track.sourceId, heartTrackId: track.sourceId, title: track.title, artist: track.creator, coverUrl: track.coverUrl, audioUrl: track.audioUrl ?? "", youtubeId: !track.audioUrl && track.external?.provider === "youtube" ? track.external.mediaId : undefined, genre: track.genre, lyrics: track.lyrics ?? undefined })), [poolTracks]);
   const chartProps = { rows: chartRows, ready: loadState === "ready", error: loadState === "error", heartStates, heartBusy, onPlay: handlePlayTrack, onLocate: locateTrack, onHeart: (track: AiMusicTrack) => void sendHeart(track) };
   const showRecommendations = loadState === "ready" && worksView === "genre" && visibleRecommendations.length > 0;
 

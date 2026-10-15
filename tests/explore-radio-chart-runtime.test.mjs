@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import {shuffleMusicQueue} from '../src/lib/music-queue.ts';
 import {readFileSync} from 'node:fs';
 import ts from 'typescript';
 const jsx=(type,props)=>({type,props});
@@ -11,6 +12,7 @@ function component(path,extra={}){
   if(name==='lucide-react')return new Proxy({}, {get:(_,key)=>String(key)});
   if(name.endsWith('ai-music.module.css'))return {__esModule:true,default:new Proxy({}, {get:(_,key)=>String(key)})};
   if(name==='@/lib/i18n')return {useI18n:()=>({lang:'zh',t:key=>key})};
+  if(name==='@/lib/music-queue')return {shuffleMusicQueue};
   if(name==='react')return {useEffect(){},useRef:()=>({current:null}),useState:x=>[x,()=>{}],useId:()=>':chart-list:'};
   return extra[name]??{};
  },loaded,loaded.exports);return loaded.exports.default;

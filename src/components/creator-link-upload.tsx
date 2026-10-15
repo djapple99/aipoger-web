@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { creditCopy } from "@/lib/credit-copy";
 import { useCreatorUploadQuota } from "@/lib/use-creator-upload-quota";
 import { creatorUploadLimitReached } from "@/lib/creator-upload-quota";
@@ -29,11 +29,12 @@ export default function CreatorLinkUpload({
     [tool, setTool] = useState(""),
     [genre, setGenre] = useState(""),
     [mv, setMv] = useState(false),
-    [played, setPlayed] = useState(false),
+    [showPreview, setShowPreview] = useState(false),
     [rights, setRights] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [success, setSuccess] = useState(false);
+  const [retry, setRetry] = useState(0);
   const version = useRef(0),
     lock = useRef(false);
   const [confirmedCredit, setConfirmedCredit] = useState(false);
@@ -64,7 +65,7 @@ export default function CreatorLinkUpload({
           UNSUPPORTED_LINK:
             "請貼上 YouTube 影片、Suno 歌曲或 Spotify 單曲的完整連結。",
           SOURCE_UNAVAILABLE: "來源暫時無法讀取，請確認作品可公開開啟後重試。",
-          PREVIEW_EXPIRED: "預覽已過期，請重新預覽。",
+          PREVIEW_EXPIRED: "連結資料已過期，請按重新讀取。",
           LINK_ALREADY_SUBMITTED: "這個作品連結已投稿過，請從我的作品編輯。",
           UPLOAD_LIMIT: "本期 7 天三首投稿額度已滿，刪除不退額度。",
           GENRE_REQUIRED: "請選擇曲風。",
@@ -77,7 +78,7 @@ export default function CreatorLinkUpload({
             "Use a full YouTube video, Suno song or Spotify track link.",
           SOURCE_UNAVAILABLE:
             "Source unavailable. Check public access and retry.",
-          PREVIEW_EXPIRED: "Preview expired. Preview again.",
+          PREVIEW_EXPIRED: "Link details expired. Reload the link.",
           LINK_ALREADY_SUBMITTED: "Already submitted. Edit the existing work.",
           UPLOAD_LIMIT:
             "Upload allowance is full; deletion does not refund it.",
@@ -86,33 +87,26 @@ export default function CreatorLinkUpload({
       )[code] ?? "Could not submit. Your input is retained; retry shortly.",
     );
   };
-  const load = async () => {
-    if (lock.current) return;
-    submissionId.current = null;
+  useEffect(() => {
     const v = ++version.current;
-    lock.current = true;
+    let active = true;
+    setPreview(null); setShowPreview(false); setRights(false); setMv(false);
+    setError(""); if (url.trim()) setSuccess(false); submissionId.current = null;
+    if (!url.trim()) { setBusy(false); return; }
     setBusy(true);
-    setPreview(null);
-    setPlayed(false);
-    setRights(false);
-    setError("");
-    setSuccess(false);
-    try {
-      const p = await api({ action: "preview", url });
-      if (v !== version.current) return;
-      setPreview(p.preview);
-      setTitle(p.preview.title);
-      setArtist(name || p.preview.artist);
-      setMv(false);
-    } catch (e) {
-      if (v === version.current) setError(humanError(e));
-    } finally {
-      lock.current = false;
-      setBusy(false);
-    }
-  };
+    const timer = window.setTimeout(() => {
+      void api({ action: "preview", url }).then(p => {
+        if (!active || v !== version.current) return;
+        setPreview(p.preview); setTitle(p.preview.title); setArtist(name || p.preview.artist);
+      }).catch(e => { if (active && v === version.current) setError(humanError(e)); })
+        .finally(() => { if (active && v === version.current) setBusy(false); });
+    }, 500);
+    return () => { active = false; window.clearTimeout(timer); };
+    // Request identity is tied to the source and signed-in account, not render-time helpers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url, userId, retry]);
   const submit = async () => {
-    if (lock.current || !preview || !played || !rights || !genre) return;
+    if (lock.current || busy || !preview || !rights || !genre || !title.trim() || !artist.trim()) return;
     lock.current = true;
     setBusy(true);
     setError("");
@@ -127,7 +121,6 @@ export default function CreatorLinkUpload({
         aiTool: tool,
         genre,
         isMusicVideo: mv,
-        confirmedPlayback: played,
         confirmedRights: rights,
       });
       submissionId.current = null; setConfirmedCredit(false);
@@ -135,7 +128,7 @@ export default function CreatorLinkUpload({
       setSuccess(true);
       setPreview(null);
       setUrl("");
-      setPlayed(false);
+      setShowPreview(false);
       setRights(false);
       void refresh();
       onSubmitted();
@@ -163,13 +156,13 @@ export default function CreatorLinkUpload({
           <input
             type="url"
             value={url}
-            disabled={busy}
+            disabled={lock.current}
             placeholder="https://…"
             onChange={(e) => {
               version.current++;
               setUrl(e.target.value);
               setPreview(null);
-              setPlayed(false);
+              setShowPreview(false);
               setRights(false);
               setSuccess(false);
             }}
@@ -177,11 +170,11 @@ export default function CreatorLinkUpload({
           <button
             type="button"
             disabled={busy || !url.trim()}
-            onClick={() => void load()}
+            onClick={() => setRetry(value => value + 1)}
           >
             {busy
               ? text("讀取中…", "Loading…", "読み込み中…", "불러오는 중…")
-              : text("預覽", "Preview", "プレビュー", "미리 보기")}
+              : text("重新讀取", "Reload", "再読込", "다시 읽기")}
           </button>
         </div>
       </label>
@@ -202,22 +195,10 @@ export default function CreatorLinkUpload({
       ) : null}
       {preview ? (
         <>
-          <ExternalMusicPlayer
-            media={preview.media}
-            title={preview.title}
-            onPlaying={() => setPlayed(true)}
-            onError={() => {
-              setPlayed(false);
-              setError(
-                text(
-                  "預覽播放失敗，請檢查連結或重新預覽。",
-                  "Preview failed. Check the link and retry.",
-                  "再生できません。リンクを確認して再試行してください。",
-                  "재생 실패. 링크를 확인하고 다시 시도하세요.",
-                ),
-              );
-            }}
-          />
+          <button type="button" className={styles.secondary} onClick={() => setShowPreview(value => !value)}>
+            {showPreview ? text("收起預覽", "Hide preview", "プレビューを閉じる", "미리 보기 닫기") : text("預覽作品（選看）", "Preview (optional)", "プレビュー（任意）", "미리 보기(선택)")}
+          </button>
+          {showPreview ? <ExternalMusicPlayer media={preview.media} title={preview.title} /> : null}
           <div className={styles.previewIdentity}>
             <div className={styles.previewName}>
               <b title={title}>{title}</b>
@@ -230,31 +211,6 @@ export default function CreatorLinkUpload({
                     : "Spotify"}
               </small>
             </div>
-            <span
-              className={styles.previewState}
-              style={{ color: played ? "#66df8f" : "#aaa" }}
-            >
-              {played
-                ? preview.media.provider === "youtube"
-                  ? text(
-                      "已可播放",
-                      "Playback confirmed",
-                      "再生確認済み",
-                      "재생 확인 완료",
-                    )
-                  : text(
-                      "已由你確認",
-                      "Confirmed by you",
-                      "本人確認済み",
-                      "직접 확인 완료",
-                    )
-                : text(
-                    "請先試播",
-                    "Try playback",
-                    "再生を確認",
-                    "재생해 보세요",
-                  )}
-            </span>
           </div>
           {preview.media.provider === "spotify" ? (
             <p className={styles.hint}>
@@ -334,22 +290,6 @@ export default function CreatorLinkUpload({
               />
             </label>
           </div>
-          {preview.media.provider !== "youtube" ? (
-            <label className={styles.check}>
-              <input
-                type="checkbox"
-                checked={played}
-                disabled={busy}
-                onChange={(e) => setPlayed(e.target.checked)}
-              />
-              {text(
-                "我已在預覽中確認可播放",
-                "I confirmed playback in the preview",
-                "プレビューで再生を確認しました",
-                "미리 보기에서 재생을 확인했습니다",
-              )}
-            </label>
-          ) : null}
           {preview.media.provider === "youtube" ? (
             <label className={styles.check}>
               <input
@@ -380,12 +320,13 @@ export default function CreatorLinkUpload({
               "내 작품이거나 제출 허가를 받은 작품입니다.",
             )}
           </label>
+        </>
+      ) : null}
           <button
             type="button"
             className={styles.primary}
             disabled={
-              busy ||
-              !played ||
+              busy || !preview ||
               !rights ||
               !genre ||
               !title.trim() ||
@@ -403,14 +344,12 @@ export default function CreatorLinkUpload({
                   "제출 확인",
                 )}
           </button>
-        </>
-      ) : null}
       <p className={styles.hint}>
         {text(
-          "確認後才公開；預覽不計投稿次數。",
-          "Published only after confirmation; preview uses no allowance.",
-          "確認後に公開。プレビューは投稿枠を消費しません。",
-          "확인 후 공개됩니다. 미리 보기는 한도를 사용하지 않습니다.",
+          "確認投稿後才公開；預覽與試播皆為選用。",
+          "Published after submission; preview and playback are optional.",
+          "投稿確定後に公開。プレビューと試聴は任意です。",
+          "제출 확인 후 공개됩니다. 미리 보기와 재생은 선택입니다.",
         )}
       </p>
     </div>

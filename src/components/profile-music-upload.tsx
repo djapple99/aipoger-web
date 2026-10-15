@@ -91,12 +91,10 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
   const { lang, t } = useI18n(); const isZh = lang === "zh";
   const [publicUploadForm, setPublicUploadForm] = useState<PublicUploadForm>({ ...initialPublicUploadForm, artist: limitListenBarDisplayText(creatorDefaultName, LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS) });
   const [publicAudioFile, setPublicAudioFile] = useState<File | null>(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewPlayed, setPreviewPlayed] = useState(false);
   const [rightsConfirmed, setRightsConfirmed] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
   useEffect(() => {
-    setPreviewOpen(false); setPreviewPlayed(false); setRightsConfirmed(false);
+    setRightsConfirmed(false);
     if (!publicAudioFile) { setPreviewUrl(""); return; }
     const url = URL.createObjectURL(publicAudioFile); setPreviewUrl(url);
     return () => URL.revokeObjectURL(url);
@@ -111,7 +109,6 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
   const uploadLock = useRef(false);
   const pendingSubmission = useRef<Record<string,unknown>|null>(null);
   const [confirmedCredit,setConfirmedCredit] = useState(false);
-  const previewRef = useRef<HTMLDivElement>(null);
   const uploadGenre = publicUploadForm.genre.trim();
   const uploadSubmissionPhase = "public" as const;
   const { quota: uploadQuota, refresh: refreshUploadQuota } = useCreatorUploadQuota(userId);
@@ -263,7 +260,7 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
   const handlePublicUploadSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (publicUploadBusy || uploadLock.current) return;
-    if (!previewOpen || !previewPlayed || !rightsConfirmed) { setPreviewOpen(true); window.requestAnimationFrame(() => previewRef.current?.scrollIntoView({block:"nearest"})); return; }
+    if (!rightsConfirmed) return;
     setPublicUploadError("");
     setPublicUploadMessage("");
     if (!userId) {
@@ -428,12 +425,10 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
     <SafetyNotice kind="upload" compact className="mb-3" />
     {publicUploadMessage ? <p role="status" className="mb-3 text-sm text-orange-100">{publicUploadMessage}</p> : null}
     {publicUploadError ? <p role="alert" className="mb-3 text-sm text-red-200">{publicUploadError}</p> : null}
-    {previewOpen && previewUrl ? <div ref={previewRef} className="mb-3 rounded border border-white/25 p-3">
-      <p className="mb-2 font-bold">{publicUploadForm.title || publicAudioFile?.name}</p>
-      <audio controls src={previewUrl} className="w-full" onPlaying={() => { if (getMusicPlayerState().playing) musicPlayer?.toggle(); setPreviewPlayed(true); }} onError={() => { setPreviewPlayed(false); setPublicUploadError(barText(lang,"音檔無法播放，請更換音檔。","Audio could not play. Choose another file.","音源を再生できません。別のファイルを選んでください。","재생할 수 없습니다. 다른 파일을 선택하세요.")); }} />
-      <p className="mt-2 text-xs text-zinc-400">{previewPlayed ? barText(lang,"已可播放，請確認下方資料再投稿。","Playback confirmed. Review details before submitting.","再生を確認しました。投稿情報を確認してください。","재생 확인 완료. 제출 정보를 확인하세요.") : barText(lang,"請先試播音檔，再確認投稿。","Try playback before confirming submission.","投稿前に音源を再生してください。","제출 전 음원을 재생하세요.")}</p>
-      <label className="mt-2 flex gap-2 text-sm"><input type="checkbox" checked={rightsConfirmed} onChange={e => setRightsConfirmed(e.target.checked)} />{barText(lang,"這是我的作品，或已取得投稿授權。","I own the work or have permission to submit it.","自作または投稿の許可を得た作品です。","직접 만든 작품이거나 제출 허가를 받았습니다.")}</label>
-    </div> : null}
+    {previewUrl ? <details className="mb-3 min-w-0 rounded border border-white/25 p-3">
+      <summary className="cursor-pointer text-sm">{barText(lang,"預覽作品（選看）","Preview (optional)","プレビュー（任意）","미리 보기(선택)")}</summary>
+      <audio controls preload="metadata" src={previewUrl} className="mt-2 w-full min-w-0" onPlaying={() => { if (getMusicPlayerState().playing) musicPlayer?.toggle(); }} />
+    </details> : null}
               <form onSubmit={handlePublicUploadSubmit}><fieldset disabled={publicUploadBusy} className="grid gap-3">
                 <label
                   className={`group relative flex min-h-[5.9rem] cursor-pointer overflow-hidden rounded-2xl border px-4 py-3 text-sm font-bold transition ${
@@ -608,16 +603,17 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
                   className="min-h-20 w-full resize-y rounded-xl border border-white/10 bg-black/62 px-3 py-2 text-sm font-bold leading-6 text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/18"
                 />
 </div></details>
+                <label className="flex gap-2 text-sm"><input type="checkbox" checked={rightsConfirmed} onChange={e => setRightsConfirmed(e.target.checked)} />{barText(lang,"這是我的作品，或已取得投稿授權。","I own the work or have permission to submit it.","自作または投稿の許可を得た作品です。","직접 만든 작품이거나 제출 허가를 받았습니다.")}</label>
                 <button
                   type="submit"
-                  disabled={publicUploadBusy || publicUploadBlocked || (!pendingSubmission.current && !!uploadQuota && uploadQuota.used >= 3 && !uploadQuota.unlimited && !confirmedCredit) || !publicAudioFile || (previewOpen && (!previewPlayed || !rightsConfirmed))}
+                  disabled={publicUploadBusy || publicUploadBlocked || (!pendingSubmission.current && !!uploadQuota && uploadQuota.used >= 3 && !uploadQuota.unlimited && !confirmedCredit) || !publicAudioFile || !rightsConfirmed}
                   className="h-12 rounded-xl bg-orange-500 px-5 text-sm font-black tracking-[0.12em] text-black shadow-[0_0_28px_rgba(255,106,0,0.24)] transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:border disabled:border-white/10 disabled:bg-white/[0.045] disabled:text-zinc-500 disabled:shadow-none"
                 >
                   {publicUploadBusy
                     ? barText(lang, "上傳中...", "Uploading...", "投稿中…", "업로드 중…")
                     : creatorWeeklyUploadLimitFull
                         ? barText(lang, "本期額度已滿", "Allowance used", "今期の上限に到達", "이번 기간 한도 소진")
-                        : previewOpen ? barText(lang, "確認投稿", "Confirm submission", "投稿を確定", "제출 확인") : barText(lang, "預覽作品", "Preview work", "作品をプレビュー", "작품 미리 보기")}
+                        : barText(lang, "確認投稿", "Confirm submission", "投稿を確定", "제출 확인")}
                 </button>
               </fieldset></form>
   </div>;

@@ -39,9 +39,9 @@ export async function POST(request: Request) {
     const p = verifyLinkPreview(body.previewToken, auth.user.id);
     if (!p)
       return NextResponse.json({ error: "PREVIEW_EXPIRED" }, { status: 400 });
-    if (body.confirmedPlayback !== true || body.confirmedRights !== true)
+    if (body.confirmedRights !== true)
       return NextResponse.json(
-        { error: "CONFIRM_PREVIEW_AND_RIGHTS" },
+        { error: "CONFIRM_RIGHTS" },
         { status: 400 },
       );
     if (!isCurrentMusicGenre(body.genre))

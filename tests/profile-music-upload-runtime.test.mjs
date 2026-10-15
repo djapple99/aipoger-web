@@ -47,8 +47,8 @@ test('two concurrent submit clicks produce one upload and one work',async t=>{
  const ui=await mount(t);await ui.prepare();await Promise.all([ui.submit(),ui.submit()]);await ui.flush();assert.equal(ui.uploads.length,1);assert.equal(ui.inserts.length,1);assert.equal(ui.submitted(),1);
 });
 
-test('file preview is required before persistence and changing a file clears confirmation',async t=>{
- const ui=await mount(t);await ui.prepare({confirm:false});await ui.submit();await ui.flush();assert.equal(ui.uploads.length,0);assert.equal(ui.inserts.length,0);assert.ok(ui.find('audio'));await ui.submit();await ui.flush();assert.equal(ui.uploads.length,0);ui.find('audio').onPlaying();await ui.flush();await ui.submit();await ui.flush();assert.equal(ui.uploads.length,0);ui.find('input',p=>p.type==='checkbox').onChange({target:{checked:true}});await ui.flush();await ui.find('input',p=>p.accept==='.mp3,.m4a,.aac,.ogg').onChange({target:{files:[new File(['different'],'new.mp3',{type:'audio/mpeg'})]}});await ui.flush();await ui.submit();await ui.flush();assert.equal(ui.uploads.length,0);
+test('rights are required but preview and playback are optional; changing a file clears confirmation',async t=>{
+ const ui=await mount(t);await ui.prepare({confirm:false});await ui.submit();await ui.flush();assert.equal(ui.uploads.length,0);assert.equal(ui.inserts.length,0);assert.ok(ui.find('audio'));await ui.submit();await ui.flush();assert.equal(ui.uploads.length,0);await ui.submit();await ui.flush();assert.equal(ui.uploads.length,0);ui.find('input',p=>p.type==='checkbox').onChange({target:{checked:true}});await ui.flush();await ui.find('input',p=>p.accept==='.mp3,.m4a,.aac,.ogg').onChange({target:{files:[new File(['different'],'new.mp3',{type:'audio/mpeg'})]}});await ui.flush();await ui.submit();await ui.flush();assert.equal(ui.uploads.length,0);
 });
 
 test('owner can submit a file without a numeric allowance',async t=>{
@@ -61,7 +61,7 @@ test('members with five existing songs in one genre may submit within their week
 
 test('fifth audio submission requires explicit 60 Credit consent even after four successful works',async t=>{
  const ui=await mount(t,{quotaUsed:4,creditBalance:60});await ui.prepare({confirm:false});await ui.submit();await ui.flush();
- ui.find('audio').onPlaying();await ui.flush();ui.checkboxes()[1].onChange({target:{checked:true}});await ui.flush();
+ ui.checkboxes()[1].onChange({target:{checked:true}});await ui.flush();
  await ui.submit();await ui.flush();assert.equal(ui.uploads.length,0,'preview and rights alone do not authorize Credit spending');
  ui.checkboxes()[0].onChange({target:{checked:true}});await ui.flush();await ui.submit();await ui.flush();
  assert.equal(ui.uploads.length,1);assert.equal(ui.inserts.length,1);assert.equal(ui.inserts[0].credit_submission_confirmed,true);

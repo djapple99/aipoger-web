@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ListMusic, FileText, Heart, MessageCircleMore, Pause, Play, SkipBack, SkipForward, Volume2, X } from "lucide-react";
+import YouTubeRadioPlayer from "@/components/youtube-radio-player";
+import type { YouTubePlayer } from "@/lib/youtube-player-api";
 import HomeWorkFeedback from "@/components/home-work-feedback";
 import { clampMediaVolume, setNativeMediaVolume } from "@/lib/media-volume-control";
 
@@ -47,6 +49,14 @@ export default function GlobalMusicPlayer() {
   const [volume, setVolume] = useState(0.85);
   const [playbackError, setPlaybackError] = useState("");
   const track = session?.queue[session.index] ?? null;
+  const youtubeRef = useRef<YouTubePlayer | null>(null);
+  const [youtubeRequest, setYoutubeRequest] = useState({ id: 0, autoplay: true });
+  const isYouTube = Boolean(track?.youtubeId && !track.audioUrl);
+  const currentIsYouTube = useCallback(() => {
+    const current = sessionRef.current;
+    const song = current?.queue[current.index];
+    return Boolean(song?.youtubeId && !song.audioUrl);
+  }, []);
 
   useEffect(() => {
     const sync = (event: Event) => setInlineVisible((event as CustomEvent).detail === true);
@@ -132,6 +142,13 @@ export default function GlobalMusicPlayer() {
       if (media instanceof HTMLMediaElement && media !== audio) media.pause();
     });
     audio.pause();
+    youtubeRef.current?.pauseVideo();
+    setPlaying(false);
+    if (nextTrack.youtubeId && !nextTrack.audioUrl) {
+      audio.removeAttribute("src"); audio.load(); listeningRef.current = null;
+      setYoutubeRequest({ id: request, autoplay });
+      return true;
+    }
     listeningRef.current = createListeningMeasurement(crypto.randomUUID(), intentional, new Date().toISOString());
     audio.src = nextTrack.audioUrl;
     applyVolume(audio, volumeRef.current);
@@ -164,6 +181,7 @@ export default function GlobalMusicPlayer() {
       audio.removeAttribute("src");
       audio.load();
     }
+    youtubeRef.current?.pauseVideo();
     sessionRef.current = null;
     listeningRef.current = null;
     setSession(null);
@@ -190,6 +208,14 @@ export default function GlobalMusicPlayer() {
   }, [playTrack]);
 
   const togglePlayback = useCallback(() => {
+    if (currentIsYouTube()) {
+      setPlaybackError("");
+      const player = youtubeRef.current;
+      if (player?.getPlayerState() === 1) player.pauseVideo();
+      else if (player) player.playVideo();
+      else setYoutubeRequest(value => ({ ...value, autoplay: true }));
+      return;
+    }
     const audio = audioRef.current;
     if (!audio) return;
     setPlaybackError("");
@@ -201,7 +227,7 @@ export default function GlobalMusicPlayer() {
     } else {
       audio.pause();
     }
-  }, [ensureVolumeControl, label]);
+  }, [ensureVolumeControl, label, currentIsYouTube]);
 
   useEffect(() => {
     registerMusicPlayer({
@@ -214,6 +240,11 @@ export default function GlobalMusicPlayer() {
       },
       close, toggle: togglePlayback, move,
       seek: (seconds) => {
+        if (currentIsYouTube()) {
+          const player = youtubeRef.current;
+          if (player && Number.isFinite(seconds)) player.seekTo(Math.max(0, Math.min(player.getDuration(), seconds)), true);
+          return;
+        }
         const audio = audioRef.current;
         if (!audio || !Number.isFinite(audio.duration) || !Number.isFinite(seconds)) return;
         const next = Math.min(audio.duration, Math.max(0, seconds));
@@ -221,16 +252,17 @@ export default function GlobalMusicPlayer() {
       },
       setVolume: (value) => {
         const next = clampMediaVolume(value); setVolume(next); volumeRef.current = next;
+        youtubeRef.current?.setVolume(next * 100);
         if (audioRef.current) { applyVolume(audioRef.current, next); void ensureVolumeControl(audioRef.current); }
       },
     });
     return () => registerMusicPlayer(null);
-  }, [applyVolume, close, ensureVolumeControl, move, playTrack, togglePlayback]);
+  }, [applyVolume, close, ensureVolumeControl, move, playTrack, togglePlayback, currentIsYouTube]);
   useEffect(() => { publishMusicPlayer({ session, playing, currentTime, duration, volume, historyDepth, playbackError }); }, [session, playing, currentTime, duration, volume, historyDepth, playbackError]);
   useEffect(() => {
     if (!session) return;
     const pauseOtherMedia = (event: Event) => {
-      if (event.target instanceof HTMLMediaElement && event.target !== audioRef.current) audioRef.current?.pause();
+      if (event.target instanceof HTMLMediaElement && event.target !== audioRef.current) { audioRef.current?.pause(); youtubeRef.current?.pauseVideo(); }
     };
     document.addEventListener("play", pauseOtherMedia, true);
     return () => document.removeEventListener("play", pauseOtherMedia, true);
@@ -260,13 +292,13 @@ export default function GlobalMusicPlayer() {
           setSession(next);
         } else {
           const following = [...current.queue.slice(current.index + 1), ...current.queue.slice(0, current.index)].find(track => allowed.has(track.id));
-          void playTrack({ ...current, queue, index: Math.max(0, queue.findIndex(track => track.id === following?.id)) }, !audioRef.current?.paused, false);
+          void playTrack({ ...current, queue, index: Math.max(0, queue.findIndex(track => track.id === following?.id)) }, currentIsYouTube() ? youtubeRef.current?.getPlayerState() === 1 : !audioRef.current?.paused, false);
         }
       } catch { /* Keep the current queue on transient network failure. */ }
     };
     const timer = window.setInterval(() => void refreshAvailability(), 60_000);
     return () => { controller.abort(); window.clearInterval(timer); };
-  }, [session?.sourceKey, close, playTrack]);
+  }, [session?.sourceKey, close, playTrack, currentIsYouTube]);
 
   useEffect(() => {
     const syncHeart = (event: Event) => {
@@ -303,10 +335,10 @@ export default function GlobalMusicPlayer() {
     else dialog?.close();
   }, [lyricsOpen, track]);
   useEffect(() => {
-    if (!session || inlineVisible) return;
-    document.body.style.paddingBottom = "150px";
+    if (!session || (inlineVisible && !isYouTube)) return;
+    document.body.style.paddingBottom = isYouTube ? "310px" : "150px";
     return () => { document.body.style.paddingBottom = ""; };
-  }, [session, inlineVisible]);
+  }, [session, inlineVisible, isYouTube]);
 
   return (
     <>
@@ -324,7 +356,31 @@ export default function GlobalMusicPlayer() {
         <div className="mb-4 flex items-center justify-between gap-3"><h2 className="font-bold">{track?.title}</h2><button autoFocus onClick={() => setLyricsOpen(false)} aria-label={label("關閉歌詞", "Close lyrics", "歌詞を閉じる", "가사 닫기")}><X /></button></div>
         <p className="whitespace-pre-wrap text-sm leading-8">{track?.lyrics || label("歌詞未提供", "Lyrics not provided", "歌詞は未提供です", "가사가 없습니다")}</p>
       </dialog>
-      {track && session ? (
+      {isYouTube && track && session ? <section aria-label={label("YouTube 電台播放器", "YouTube radio player", "YouTubeラジオ", "YouTube 라디오")}
+        className="fixed bottom-3 right-3 z-[70] w-[min(356px,calc(100vw-24px))] overflow-hidden rounded-md border border-orange-400/40 bg-[#080808] text-white shadow-xl">
+        <div className="flex min-h-10 items-center justify-between gap-2 px-2">
+          <span className="min-w-0 truncate text-xs" title={track.title}>{track.title}</span>
+          <button type="button" onClick={close} className="h-10 w-10 shrink-0" aria-label={label("關閉播放器", "Close player", "プレーヤーを閉じる", "플레이어 닫기")}><X className="mx-auto h-5 w-5" /></button>
+        </div>
+        <YouTubeRadioPlayer videoId={track.youtubeId!} requestId={youtubeRequest.id} autoplay={youtubeRequest.autoplay} volume={volume} title={track.title} playerRef={youtubeRef}
+          onPlaying={value => { setPlaying(value); if (value) setPlaybackError(""); }}
+          onProgress={(time, length) => { setCurrentTime(time); setDuration(length); }}
+          onEnded={() => move(1, false)}
+          onError={blocked => { setPlaying(false); setPlaybackError(blocked
+            ? label("點一下播放器繼續聽。", "Tap the player to continue.", "プレーヤーを押して再生。", "플레이어를 눌러 계속 들으세요.")
+            : label("這支影片暫時無法播放，可按下一首。", "Video unavailable. Try the next track.", "再生できません。次の曲へ進めます。", "재생할 수 없습니다. 다음 곡을 선택하세요.")); }} />
+        <div className="flex items-center justify-between gap-1 px-2">
+          <a className="min-w-0 truncate text-xs text-zinc-300" href={`https://www.youtube.com/watch?v=${track.youtubeId}`} target="_blank" rel="noopener noreferrer">YouTube ↗</a>
+          <div className="flex">
+            <button type="button" className="h-11 w-11 disabled:opacity-30" onClick={() => move(-1)} disabled={!historyDepth} aria-label={label("上一首", "Previous track", "前の曲", "이전 곡")}><SkipBack className="mx-auto h-4 w-4" /></button>
+            <button type="button" className="h-11 w-11" onClick={() => move(1)} aria-label={label("下一首", "Next track", "次の曲", "다음 곡")}><SkipForward className="mx-auto h-4 w-4" /></button>
+            <button type="button" className="h-11 w-11 text-orange-400 disabled:opacity-30" disabled={heartBusy || !track.heartTrackId} onClick={() => void sendHeart()} aria-label={label("愛心與收藏", "Heart and save", "Heartと保存", "Heart 및 저장")}><Heart className="mx-auto h-5 w-5" fill={track.heartTrackId && hearted[track.heartTrackId] ? "currentColor" : "none"} /></button>
+            <button type="button" className="h-11 w-11" onClick={() => { youtubeRef.current?.pauseVideo(); setCommentTrack(track); }} aria-label={label("歌曲評論", "Track comments", "曲のコメント", "곡 댓글")}><MessageCircleMore className="mx-auto h-5 w-5" /></button>
+          </div>
+        </div>
+        {playbackError ? <p role="status" className="px-3 pb-2 text-xs text-orange-200">{playbackError}</p> : null}
+      </section> : null}
+      {track && session && !isYouTube ? (
         <div
           data-showtime-queue-player
           hidden={inlineVisible}
@@ -423,6 +479,7 @@ export default function GlobalMusicPlayer() {
         crossOrigin="anonymous"
         preload="metadata"
         onPlay={() => {
+          if (currentIsYouTube()) return;
           setPlaying(true);
           const session = sessionRef.current;
           const current = session?.queue[session.index];
@@ -435,11 +492,12 @@ export default function GlobalMusicPlayer() {
             void logAnalyticsEvent({ eventType: "song_play", songId: id, source, pagePath, metadata: { title: current.title, artist: current.artist, ...listeningRef.current?.snapshot(audioRef.current?.duration ?? 0) } });
           }
         }}
-        onPause={(event) => { setPlaying(false); if (!event.currentTarget.ended) finishSegment("song_pause"); }}
+        onPause={(event) => { if (currentIsYouTube()) return; setPlaying(false); if (!event.currentTarget.ended) finishSegment("song_pause"); }}
         onSeeking={() => listeningRef.current?.reset()}
         onSeeked={(event) => { listeningRef.current?.reset(); if (!event.currentTarget.paused) listeningRef.current?.sample(event.currentTarget.currentTime, performance.now()); }}
-        onError={() => { setPlaying(false); setPlaybackError(label("音檔載入失敗，請重試或播放下一首。", "Audio failed to load. Retry or play the next track.", "音源を読み込めません。再試行するか次の曲を再生してください。", "오디오를 불러오지 못했습니다. 다시 시도하거나 다음 곡을 재생하세요.")); }}
+        onError={() => { if (currentIsYouTube()) return; setPlaying(false); setPlaybackError(label("音檔載入失敗，請重試或播放下一首。", "Audio failed to load. Retry or play the next track.", "音源を読み込めません。再試行するか次の曲を再生してください。", "오디오를 불러오지 못했습니다. 다시 시도하거나 다음 곡을 재생하세요.")); }}
         onTimeUpdate={(event) => {
+          if (currentIsYouTube()) return;
           const time = event.currentTarget.currentTime;
           const segment = playbackSegmentRef.current;
           if (!event.currentTarget.paused && !event.currentTarget.seeking) {
@@ -457,10 +515,12 @@ export default function GlobalMusicPlayer() {
           setCurrentTime(time);
         }}
         onLoadedMetadata={(event) => {
+          if (currentIsYouTube()) return;
           applyVolume(event.currentTarget, volumeRef.current);
           setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0);
         }}
         onEnded={() => {
+          if (currentIsYouTube()) return;
           finishSegment("song_finish");
           const current = sessionRef.current;
           if (current && (current.repeat || current.index < current.queue.length - 1)) {

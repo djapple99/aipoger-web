@@ -1,4 +1,4 @@
-export type YouTubePlayer = { destroy: () => void; loadVideoById: (id: string) => void; cueVideoById: (id: string) => void; playVideo: () => void; pauseVideo: () => void; getPlayerState: () => number; getVideoData: () => { video_id?: string }; };
+export type YouTubePlayer = { destroy: () => void; loadVideoById: (id: string) => void; cueVideoById: (id: string) => void; playVideo: () => void; pauseVideo: () => void; getPlayerState: () => number; getCurrentTime: () => number; getDuration: () => number; seekTo: (seconds: number, allowSeekAhead: boolean) => void; setVolume: (volume: number) => void; getVideoData: () => { video_id?: string }; };
 type YouTubeAPI = {
   Player: new (element: HTMLElement, options: object) => YouTubePlayer;
 };
