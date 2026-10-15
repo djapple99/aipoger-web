@@ -196,7 +196,7 @@ Daily Spotlight 已退役：它不再是傷心酒吧、Explore、`/admin/listen-
 
 ## Account Dock / 浮動帳號頭像
 
-2026-10-15通知修訂（使用者確認）：創作者中心新增私人「互動通知」，列出事件、評論者、作品、內容、時間及已讀狀態；紅字與消息鈴鐺直接連到此區，頭像本體仍連Profile。通知標題實際進入可見畫面後自動儲存已讀；收合、畫面外或背景分頁不搶先清除。支援全部／未讀、較早消息與作品評論連結；已讀歷史保留。伺服器以驗證會員限制讀寫範圍、只更新指定未讀ID，成功後同步全站數字；失敗保留提醒並提供重試，重新整理不復活已讀消息。後台待辦仍獨立，只能由完成實際工作消除。不得順帶調整Credit、排行榜或投稿規則。
+2026-10-15通知修訂（使用者確認）：創作者中心私人「互動通知」每頁最多三則，以摘要、時間及已讀／未讀狀態顯示；點開一則才展開全文並儲存該則已讀，同時只開一則。單純展開清單、翻頁或保留通知不標已讀。支援全部／未讀／已保留、前後翻頁及作品評論連結；可保留、取消保留、刪除，不能編輯通知。未保留的通知自建立時間起保留三個日曆月（Asia/Taipei），到期即不再展示或計入未讀，授權排程每小時實際刪除。保留通知不自動到期；取消保留沿用原建立時間及期限，不重新計時。手動刪除是刪除此人的通知紀錄；不影響作品、原評論、Credit或排行。原Battle／queue刪除不連帶清掉保留通知；帳號刪除仍清除本人資料。紅字與消息鈴鐺直接連到此區，頭像本體仍連Profile。伺服器以驗證會員限制所有讀寫／刪除至本人通知，忽略客戶端指定收件人與內容；成功後同步全站數字，失敗維持確認狀態並提供重試。已讀刷新後不復活。後台待辦獨立，只能由完成實際工作消除。
 
 
 Owner task alerts (2026-09-18): the global avatar has a separate red task-count link for unresolved owner work. It links to `/admin#pending-tasks`; clicking the avatar itself still opens Profile. Pending work includes cross-month chart decisions, open/reviewing work or comment reports, and unpublished visible social targets. New-song promotion (manually viewed in Bar admin), all Choice drafts including retired official drafts, ordinary comments, published/completed work, retired TikTok-only targets and unenabled workflows are not owner tasks. Opening the task list does not clear the count; completing the actual work does. This is an in-site owner-only alert, not external push or email.

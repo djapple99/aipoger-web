@@ -1,6 +1,6 @@
 # AIPOGER 開發與維運
 
-目前應用發布基準：2026-10-15／`e8c99f5`／`codex/public-rule-copy`；Vercel `dpl_A9BTkBfcGc8acSCm7q33Zq2B83Lh` READY，aipoger.com與www已指向同一SHA。創作者中心私人互動通知、可見消息持久已讀、準確未讀數字、同頁／跨頁入口及Realtime訂閱清理已發布。656項測試：624通過、32既有可選DB略過、0失敗；TypeScript／webpack正式build與雲端build通過，lint 0 errors／14既有warnings。正式既有評論的紅字1→0、刷新後已讀、對應MV評論及320px四語／390px中文無溢出驗收通過；最終巡覽console errors為空。無SQL migration、Credit、排行或作品資料改動。[本輪發布report](releases/2026-10-15-notifications.md)。
+目前應用發布基準：2026-10-15／`7fe2d58`／`codex/public-rule-copy`；Vercel `dpl_4xqwy5Ch7gNPExu8bTRqrQNNJYdx` READY，aipoger.com與www已指向同一SHA。創作者中心通知每頁三則、點開已讀、保留／取消保留／刪除、同列篩選／翻頁及副標整合保存說明已發布。Migration `20261015121956_account_notification_retention.sql` 已套用，三個日曆月到期、保留免清、權限與來源外鍵保護均驗證；每小時清除排程已配置，首次授權SQL清除122則、剩53則。659項測試：627通過、32既有可選DB略過、0失敗；TypeScript／webpack正式build通過，lint 0 errors／14既有warnings。正式保留刷新持久、取消保留、翻頁、原作品評論、同頁／跨頁入口、320px四語／390px中文／1440px桌機通過，console errors為空。原評論、作品、Credit、排行未改。[本輪發布report](releases/2026-10-15-notifications.md)。
 
 2026-10-15創作聖經發布：`6878560`／`codex/public-rule-copy`；Vercel `dpl_7rPqErjZbvMsNiQqWUBbrrP3Vmk8` READY，aipoger.com與www已指向同一SHA。創作聖經四色學習路線、入門三招、常用招式與收合章節已發布；647項測試中615通過、32既有可選DB略過、0失敗，TypeScript／本機webpack正式build及雲端build通過，lint0 errors／14既有warnings。正式會員搜尋／分享／163招資料與手機四語驗收通過；無SQL、Auth、Storage或Credit修改。[本輪發布report](releases/2026-10-15-bible-redesign.md)。繼承`6d76764`的YouTube曲風混合電台、選用預覽投稿及手機入口（[前輪report](releases/2026-10-15-radio-link-submission.md)），Credit、排行及一般會員權限以[參與流程report](releases/2026-10-15-participation-flow-fixes.md)為證據。
 
