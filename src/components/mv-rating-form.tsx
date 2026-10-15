@@ -21,6 +21,11 @@ export default function MvRatingForm({ trackId, signedIn, onSaved, onBusy, draft
   const endpoint = surface === "music" ? "/api/listen-bar/review" : "/api/mv/review";
   const question = surface === "music" ? mv.rateSongQuestion : mv.rateQuestion;
   const [myComment, setMyComment] = useState<{id:string;text:string}|null>(null); const [editing, setEditing] = useState(false);
+  const [myScore, setMyScore] = useState<number | null>(null);
+  const [canEditScore, setCanEditScore] = useState(false); const [canEditComment, setCanEditComment] = useState(false);
+  const [canDeleteComment, setCanDeleteComment] = useState(false); const [reviewBlocked, setReviewBlocked] = useState(false);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
+  const scoreLocked = myScore !== null && !canEditScore;
   const [ready, setReady] = useState(false); const [canRate, setCanRate] = useState(false);
   const [failed, setFailed] = useState(false); const [busy, setBusy] = useState(false); const [saved, setSaved] = useState(false);
   const [summary, setSummary] = useState<{ ratingAverage: number | null; ratingCount: number } | null>(null);
@@ -33,20 +38,29 @@ export default function MvRatingForm({ trackId, signedIn, onSaved, onBusy, draft
         const { data } = await supabase.auth.getSession();
         const response = await fetch(`${endpoint}?trackId=${encodeURIComponent(trackId)}`, { signal: controller.signal, cache: "no-store", headers: data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {} });
         const payload = await response.json(); if (!response.ok) throw new Error("Unavailable");
-        if (active) { const draft = drafts?.get(trackId); setScoreInput(draft?.scoreInput ?? (draft?.score != null ? String(draft.score) : payload.myScore == null ? "" : String(payload.myScore))); setCanRate(payload.canRate === true); setMyComment(payload.myComment ?? null); setSummary(payload); setReady(true); }
+        if (active) {
+          const draft = drafts?.get(trackId);
+          setMyScore(payload.myScore ?? null);
+          setScoreInput(payload.myScore != null && !payload.canEditScore ? String(payload.myScore) : draft?.scoreInput ?? (draft?.score != null ? String(draft.score) : payload.myScore == null ? "" : String(payload.myScore)));
+          setCanRate(payload.canRate === true); setMyComment(payload.myComment ?? null);
+          setCanEditScore(payload.canEditScore === true); setCanEditComment(payload.canEditComment === true);
+          setCanDeleteComment(payload.canDeleteComment === true); setReviewBlocked(payload.reviewBlocked === true);
+          setText(draft?.text ?? payload.myComment?.text ?? "");
+          setSummary(payload); setReady(true);
+        }
       } catch { if (active) setFailed(true); }
     })();
     return () => { active = false; controller.abort(); };
   }, [trackId, signedIn, retry, drafts, endpoint]);
   const submit = async (event: FormEvent) => {
-    event.preventDefault(); if (busy || !ready || !signedIn || (canRate && score === null) || (!canRate && !text.trim())) return;
-    setBusy(true); onBusy(true); setFailed(false); setSaved(false);
+    event.preventDefault(); if (busy || !ready || !signedIn || reviewBlocked || (myComment && (!editing || !canEditComment)) || (canRate && score === null) || ((!canRate || editing) && !text.trim())) return;
+    setBusy(true); onBusy(true); setFailed(false); setErrorCode(null); setSaved(false);
     try {
       const { data } = await supabase.auth.getSession(); if (!data.session) throw new Error("Sign in");
       receipt.current ??= crypto.randomUUID();
       const response = await fetch(endpoint, { method: editing && myComment ? "PATCH" : "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session.access_token}` },
-        body: JSON.stringify(editing && myComment ? { commentId: myComment.id, text: text.trim(), active:true } : { trackId, score: canRate ? score : null, text: text.trim(), requestId: receipt.current }) });
-      const payload = await response.json(); if (!response.ok) throw new Error("Unavailable");
+        body: JSON.stringify(editing && myComment ? { commentId: myComment.id, text: text.trim(), active:true, score: canEditScore ? score : null } : { trackId, score: canRate ? (scoreLocked ? myScore : score) : null, text: text.trim(), requestId: receipt.current }) });
+      const payload = await response.json(); if (!response.ok) { setErrorCode(payload.code ?? null); throw new Error("Unavailable"); }
       if (!alive.current) return;
       setEditing(false); window.dispatchEvent(new CustomEvent("aipoger:credit"));
       receipt.current = null; drafts?.delete(trackId); setText(""); setSaved(true); onSaved(payload.comment ?? null);
@@ -56,7 +70,7 @@ export default function MvRatingForm({ trackId, signedIn, onSaved, onBusy, draft
     finally { if (alive.current) { setBusy(false); onBusy(false); } }
   };
   const withdraw = async () => {
-    if (!myComment || busy) return;
+    if (!myComment || busy || !canDeleteComment) return;
     setBusy(true); onBusy(true); setFailed(false);
     try {
       const {data}=await supabase.auth.getSession(); if(!data.session) throw new Error("Sign in");
@@ -75,22 +89,26 @@ export default function MvRatingForm({ trackId, signedIn, onSaved, onBusy, draft
       <div className={styles.ratingInputWrap}>
         <input id={`work-score-${trackId}`} type="text" inputMode="decimal" value={scoreInput} placeholder="8.7" maxLength={4}
           pattern="(?:[1-9](?:[.,][0-9])?|10(?:[.,]0)?)" required={signedIn && canRate} autoComplete="off"
-          disabled={!ready || !signedIn || !canRate || busy || editing} aria-invalid={invalidScore} aria-describedby={`work-score-note-${trackId}`}
+          disabled={!ready || !signedIn || !canRate || busy || scoreLocked || reviewBlocked || Boolean(myComment && !editing) || (editing && !canEditScore)} aria-invalid={invalidScore} aria-describedby={`work-score-note-${trackId}`}
           onChange={event => { edit(); const value = event.target.value; setScoreInput(value); drafts?.set(trackId, { score: parseWorkRating(value), scoreInput: value, text }); }} />
         <span aria-hidden="true">/ 10</span>
       </div>
-      <span id={`work-score-note-${trackId}`}>{mv.scoreHint} · {ready && signedIn && !canRate ? mv.ownWork : mv.ratingNote}</span>
+      <span id={`work-score-note-${trackId}`}>{mv.scoreHint}{ready && canEditScore ? "" : ` · ${ready && signedIn && !canRate ? mv.ownWork : mv.ratingNote}`}</span>
     </div>
     {invalidScore ? <p className={styles.ratingInvalid} role="alert">{mv.scoreError}</p> : null}
     {signedIn ? <>
       <p className={styles.ratingNote}>{creditCopy(lang).reviewHint}</p>
-      {myComment ? <div><button type="button" disabled={busy} onClick={() => { setEditing(!editing); setText(editing ? "" : myComment.text); }}>{editing ? creditCopy(lang).cancelEdit : creditCopy(lang).edit}</button><button type="button" disabled={busy} onClick={() => void withdraw()}>{creditCopy(lang).withdraw}</button></div> : null}
+      {myComment ? <div className={styles.reviewActions}>
+        {canEditComment ? <button type="button" disabled={busy || !ready} onClick={() => { setEditing(!editing); setText(myComment.text); setErrorCode(null); setFailed(false); receipt.current = null; drafts?.delete(trackId); }}>{editing ? creditCopy(lang).cancelEdit : canDeleteComment ? creditCopy(lang).edit : creditCopy(lang).editOnce}</button> : <span>{creditCopy(lang).edited}</span>}
+        {canDeleteComment ? <button type="button" disabled={busy} onClick={() => void withdraw()}>{creditCopy(lang).withdraw}</button> : null}
+      </div> : null}
       <label htmlFor={`mv-thoughts-${trackId}`}>{mv.thoughts}</label>
-      <textarea id={`mv-thoughts-${trackId}`} value={text} maxLength={280} rows={3} placeholder={mv.thoughts} disabled={busy}
+      <textarea id={`mv-thoughts-${trackId}`} value={text} maxLength={280} rows={3} placeholder={mv.thoughts} disabled={busy || !ready || reviewBlocked} readOnly={Boolean(myComment && !editing)}
         onChange={event => { edit(); drafts?.set(trackId, { score, scoreInput, text: event.target.value }); setText(event.target.value); }} />
-      <div><span>{text.length} / 280</span><button type="submit" disabled={!ready || busy || (canRate ? score === null : !text.trim())}>{busy ? copy.sending : editing ? creditCopy(lang).saveEdit : mv.sendReview}</button></div>
+      <div><span>{text.length} / 280</span>{(!myComment || editing) && !reviewBlocked ? <button type="submit" disabled={!ready || busy || (canRate ? score === null : !text.trim()) || (editing && !text.trim())}>{busy ? copy.sending : editing ? creditCopy(lang).saveEdit : mv.sendReview}</button> : null}</div>
+      {reviewBlocked ? <p className={styles.ratingNote}>{creditCopy(lang).reviewUnavailable}</p> : null}
     </> : null}
-    {failed ? <p role="alert" className={styles.refreshError}>{mv.ratingError}<button type="button" onClick={() => setRetry(value => value + 1)}>{copy.retry}</button></p> : null}
+    {failed ? <p role="alert" className={styles.refreshError}>{errorCode === "REVIEW_CONTENT_REQUIRED" ? creditCopy(lang).contentRequired : errorCode === "REVIEW_EDIT_LIMIT" ? creditCopy(lang).edited : errorCode === "REVIEW_SCORE_LOCKED" ? mv.ratingNote : errorCode === "REVIEW_ALREADY_EXISTS" ? creditCopy(lang).reviewExists : mv.ratingError}<button type="button" onClick={() => { setEditing(false); setRetry(value => value + 1); }}>{copy.retry}</button></p> : null}
     {saved ? <p role="status" className={styles.feedbackSaved}>{mv.reviewSaved}</p> : null}
   </form>;
 }

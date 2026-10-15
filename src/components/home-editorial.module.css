@@ -216,6 +216,9 @@
 .mvViewLinks { margin: 0 0 10px; }
 .mvRatingForm { padding-top: 12px; border-top: 1px solid #ffffff26; }
 .mvRatingForm > .ratingHeading { margin-top: 0; }
+.mvRatingForm > .reviewActions { justify-content: flex-end; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+.reviewActions > span { color: #a5a5ae; font-size: 12px; }
+.reviewActions > button { min-height: 44px; }
 .ratingHeading { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .ratingHeading h3 { font-size: 18px; font-weight: 700; margin: 0; }
 .ratingHeading > span { font-size: 13px; color: #ffb47f; }

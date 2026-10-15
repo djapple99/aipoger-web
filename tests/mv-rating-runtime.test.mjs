@@ -44,14 +44,31 @@ test('out-of-range and two-decimal entries retain the draft and cannot be submit
  ui.find('input').onChange({target:{value:'10'}});await ui.flush();assert.equal(ui.button().disabled,false);
 });
 
-test('withdrawing a review refreshes ratings and Credit while preserving the same work ID',async t=>{
+test('owner deletion refreshes the same work without showing an award-reclaim action',async t=>{
  const events=[];const win=new EventTarget();class CustomEvent extends Event{constructor(name,data={}){super(name);this.detail=data.detail;}};
  for(const name of ['aipoger:mv-rating','aipoger:credit'])win.addEventListener(name,e=>events.push({name:e.type,...e.detail}));
  let active=true;const saved=[];const session={access_token:'test',user:{id:'reader'}};
  const ui=await mountMv(t,'src/components/mv-rating-form.tsx',{trackId:'first',signedIn:true,onSaved:c=>saved.push(c),onBusy(){}},
   {'@/lib/credit-copy':{creditCopy},'@/lib/i18n':{useI18n:()=>({lang:'zh'})},'@/lib/mv-copy':{mvCopy},'@/lib/home-copy':{homeCopy},'@/lib/work-rating':{parseWorkRating},'./home-editorial.module.css':{__esModule:true,default:{}},'@/lib/supabase':{supabase:{auth:{getSession:async()=>({data:{session}})}}}},
-  {window:win,CustomEvent,crypto:{randomUUID:()=> 'request-id'},fetch:async(_url,init={})=>{if(init.method==='PATCH')active=false;return {ok:true,json:async()=>init.method==='PATCH'?{ok:true}:{myScore:8.7,canRate:true,myComment:active?{id:'comment',text:'My original review'}:null,ratingAverage:active?8.7:null,ratingCount:active?1:0}}}});
+  {window:win,CustomEvent,crypto:{randomUUID:()=> 'request-id'},fetch:async(_url,init={})=>{if(init.method==='PATCH')active=false;return {ok:true,json:async()=>init.method==='PATCH'?{ok:true}:{myScore:8.7,canRate:true,canEditScore:true,canEditComment:true,canDeleteComment:true,myComment:active?{id:'comment',text:'My original review'}:null,ratingAverage:active?8.7:null,ratingCount:active?1:0}}}});
  const button=ui.nodes().find(n=>n.type==='button'&&n.props.children===creditCopy('zh').withdraw);await button.props.onClick();await ui.flush();
  assert.deepEqual(saved,[null]);assert.equal(events.filter(e=>e.name==='aipoger:mv-rating')[0].trackId,'first');assert.equal(events.filter(e=>e.name==='aipoger:credit').length,1);
  assert.equal(ui.nodes().some(n=>n.type==='button'&&n.props.children===creditCopy('zh').withdraw),false);
+});
+
+for(const owner of [false,true]) test(`existing review locks member scores and grants appropriate edit/delete controls (owner=${owner})`,async t=>{
+ let count=0,body='原本的評論文字，音樂編排與低音聲部相互呼應十分好聽。';const calls=[];
+ const ui=await mountMv(t,'src/components/mv-rating-form.tsx',{trackId:'first',signedIn:true,onSaved(){},onBusy(){}},
+ {'@/lib/credit-copy':{creditCopy},'@/lib/i18n':{useI18n:()=>({lang:'zh'})},'@/lib/mv-copy':{mvCopy},'@/lib/home-copy':{homeCopy},'@/lib/work-rating':{parseWorkRating},'./home-editorial.module.css':{__esModule:true,default:{}},'@/lib/supabase':{supabase:{auth:{getSession:async()=>({data:{session:{access_token:'test'}}})}}}},
+ {window:new EventTarget(),CustomEvent:class extends Event{constructor(name){super(name)}},crypto:{randomUUID:()=> 'request'},fetch:async(url,init={})=>{calls.push({url,...init});if(init.method==='PATCH'){count++;body=JSON.parse(init.body).text;}return {ok:true,json:async()=>init.method?{ok:true}:{myScore:8.7,canRate:true,canEditScore:owner,canDeleteComment:owner,canEditComment:owner||count===0,myComment:{id:'comment',text:body}}};}});
+ assert.equal(ui.find('input').disabled,true);assert.equal(ui.find('textarea').readOnly,true);
+ const deletion=()=>ui.nodes().find(n=>n.type==='button'&&n.props.children===creditCopy('zh').withdraw);
+ assert.equal(Boolean(deletion()),owner);
+ const edit=()=>ui.nodes().find(n=>n.type==='button'&&n.props.children===(owner?creditCopy('zh').edit:creditCopy('zh').editOnce));
+ edit().props.onClick();await ui.flush();assert.equal(ui.find('input').disabled,!owner);
+ if(owner)ui.find('input').onChange({target:{value:'9.2'}});
+ ui.find('textarea').onChange({target:{value:'補充第二次聽到的細節，弦樂鋪陳與主旋律之間很有層次。'}});await ui.flush();await ui.find('form').onSubmit({preventDefault(){}});await ui.flush();
+ const patch=JSON.parse(calls.find(c=>c.method==='PATCH').body);assert.equal(patch.score,owner?9.2:null);assert.equal(patch.active,true);
+ assert.equal(Boolean(edit()),owner);assert.equal(ui.find('textarea').readOnly,true);
+ if(!owner)assert.ok(ui.text().includes(creditCopy('zh').edited));
 });

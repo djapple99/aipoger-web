@@ -356,9 +356,15 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (action === "delete") {
-      const { data, error } = await admin.from(TABLES[source]).delete().eq("id", commentId).select("id").maybeSingle();
-      if (error) throw error;
-      if (!data) return NextResponse.json({ error: "找不到這則評論。" }, { status: 404 });
+      if (source === "listen_bar") {
+        // Keep the rating's comment reference so deletion cannot revive its score or reset its lock.
+        const { error } = await admin.rpc("edit_work_review", { p_user: userId, p_comment: commentId, p_body: "", p_active: false, p_score: null });
+        if (error) throw error;
+      } else {
+        const { data, error } = await admin.from(TABLES[source]).delete().eq("id", commentId).select("id").maybeSingle();
+        if (error) throw error;
+        if (!data) return NextResponse.json({ error: "找不到這則評論。" }, { status: 404 });
+      }
     }
 
     if (action !== "restore") {
