@@ -29,16 +29,16 @@ test("Profile exposes pending defense inbox with five-second previews and locked
   assert.ok(profilePage.includes("challengerPreviewUrl"));
   assert.ok(profilePage.includes("守擂 Drop 已鎖定，回覆前不可修改。"));
   assert.ok(profilePage.includes("接受接戰"));
-  assert.ok(profilePage.includes("aipoger:account-notices-read"));
+  assert.ok(!profilePage.includes('.from("battle_notifications")'));
 });
 
 test("Global notification dock shows unread account notices and routes to pending challenges", () => {
   assert.ok(globalOverlay.includes("unreadAccountNoticeCount"));
-  assert.ok(globalOverlay.includes('select("id", { count: "exact", head: true })'));
+  assert.ok(globalOverlay.includes("useAccountNotices(accountUserId)"));
   assert.ok(globalOverlay.includes("profileNoticeHref"));
   assert.ok(globalOverlay.includes("pending-ai-music-challenges"));
   assert.ok(globalOverlay.includes('AI_MUSIC_CHALLENGE_INVITE_NOTICE_TYPE = "ai_music_challenge_invite"'));
-  assert.ok(globalOverlay.includes("setExpiredNotice(latest)"));
+  assert.ok(globalOverlay.includes('.eq("type", "battle_matched")'));
   assert.ok(globalOverlay.includes("去待接戰"));
   assert.ok(globalOverlay.includes("onClick={() => void markRead(expiredNotice.id)}"));
   assert.ok(globalOverlay.includes("aipoger:account-notices-read"));

@@ -24,6 +24,7 @@ import CreatorLinkUpload from "@/components/creator-link-upload";
 import ProfileMusicUpload from "@/components/profile-music-upload";
 import ExternalMusicPlayer from "@/components/external-music-player";
 import HomeWorkFeedback from "@/components/home-work-feedback";
+import AccountNotifications from "@/components/account-notifications";
 import styles from "@/components/creator-center.module.css";
 type Favorite = {
   id: string;
@@ -125,6 +126,14 @@ export function CreatorCenterLayout({
     [comment, setComment] = useState<CreatorWork | null>(null),
     [external, setExternal] = useState<CreatorWork | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const revealChallenge = () => {
+      if (window.location.hash === "#pending-ai-music-challenges") setDialog("works");
+    };
+    revealChallenge();
+    window.addEventListener("hashchange", revealChallenge);
+    return () => window.removeEventListener("hashchange", revealChallenge);
+  }, []);
   useEffect(() => {
     if (dialog || external) dialogRef.current?.showModal();
     else dialogRef.current?.close();
@@ -250,6 +259,7 @@ export function CreatorCenterLayout({
             ) : null}
           </div>
         </header>
+        {props.userId ? <AccountNotifications key={props.userId} userId={props.userId} /> : null}
         <div className={styles.overview}>
           <div className={styles.metrics}>
             <button className={styles.metric} onClick={() => setTab("works")}>

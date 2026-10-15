@@ -54,7 +54,7 @@ test("signed-in account dock can be dragged without losing its saved position", 
 
 test("floating account avatar always opens Profile while the bell remains a separate notice action", () => {
   assert.ok(overlaySource.includes('href={`/profile?lang=${lang}`}'));
-  assert.ok(overlaySource.includes('aria-label={isZh ? "帳號消息" : "Account notices"}'));
+  assert.ok(overlaySource.includes('href={`/profile?lang=${lang}#notifications`}'));
   assert.ok(overlaySource.includes('onPointerDown={(event) => event.stopPropagation()}'));
   assert.ok(overlaySource.includes("supabase.auth.onAuthStateChange"));
   assert.ok(overlaySource.includes("drag.target.setPointerCapture?.(event.pointerId)"));

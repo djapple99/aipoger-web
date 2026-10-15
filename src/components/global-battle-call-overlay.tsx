@@ -7,6 +7,8 @@ import type { User } from "@supabase/supabase-js";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
+import { useAccountNotices } from "@/lib/use-account-notices";
+import { accountNoticeRequest } from "@/lib/account-notifications-client";
 import { useAdminTasks } from "@/lib/use-admin-tasks";
 import { adminTaskLabel, adminTaskTotal } from "@/lib/admin-tasks";
 import { cancelCurrentBattleIntent, isDropBattleEndedOrPastExpectedEnd, resolveDropBattleScheduledStart, shouldExpireOpenDropQueue } from "@/lib/battle-pool-client";
@@ -317,7 +319,7 @@ export default function GlobalBattleCallOverlay() {
   const [accountInitial, setAccountInitial] = useState("A");
   const [accountUserId, setAccountUserId] = useState<string | null>(isAuthBypassEnabled ? "auth-bypass" : null);
   const [accountSessionResolved, setAccountSessionResolved] = useState(isAuthBypassEnabled);
-  const [unreadAccountNoticeCount, setUnreadAccountNoticeCount] = useState(0);
+  const unreadAccountNoticeCount = useAccountNotices(accountUserId);
   const ownerTasks = useAdminTasks();
   const ownerTaskCount = adminTaskTotal(ownerTasks.data);
   const [accountDockPosition, setAccountDockPosition] = useState<AccountDockPosition | null>(null);
@@ -363,9 +365,9 @@ export default function GlobalBattleCallOverlay() {
 
   const markRead = useCallback(async (id: string) => {
     if (id.startsWith("demo-") || id.startsWith("synthetic-") || isAuthBypassEnabled) return;
-    await supabase.from("battle_notifications").update({ read_at: new Date().toISOString() }).eq("id", id);
-    setUnreadAccountNoticeCount((count) => Math.max(0, count - 1));
-  }, []);
+    if (!accountUserId) return;
+    try { await accountNoticeRequest(accountUserId, "", [id]); } catch { /* Keep the unread badge until persistence succeeds. */ }
+  }, [accountUserId]);
 
   const showCall = useCallback(
     (next: BattleCall) => {
@@ -473,7 +475,7 @@ export default function GlobalBattleCallOverlay() {
   }, []);
 
   useEffect(() => {
-    const handleAccountNoticesRead = () => setUnreadAccountNoticeCount(0);
+    const handleAccountNoticesRead = () => setExpiredNotice(null);
     window.addEventListener("aipoger:account-notices-read", handleAccountNoticesRead);
     return () => window.removeEventListener("aipoger:account-notices-read", handleAccountNoticesRead);
   }, []);
@@ -547,7 +549,6 @@ export default function GlobalBattleCallOverlay() {
       setAccountInitial((nextUser?.email ?? nextUser?.user_metadata?.full_name ?? "A").slice(0, 1).toUpperCase());
       setAccountAvatarUrl(authAvatarUrl(nextUser));
       if (!nextUser) {
-        setUnreadAccountNoticeCount(0);
         setActiveNotice(null);
         setExpiredNotice(null);
         if (channel) {
@@ -581,13 +582,6 @@ export default function GlobalBattleCallOverlay() {
             null,
         );
       }
-
-      const { count: unreadCount } = await supabase
-        .from("battle_notifications")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", uid)
-        .is("read_at", null);
-      if (mounted) setUnreadAccountNoticeCount(unreadCount ?? 0);
 
       const { data: activeQueueRows } = await supabase
         .from("battle_queue")
@@ -681,6 +675,7 @@ export default function GlobalBattleCallOverlay() {
         .from("battle_notifications")
         .select("id, queue_id, battle_id, type, title, body, metadata, read_at, created_at")
         .eq("user_id", uid)
+        .eq("type", "battle_matched")
         .is("read_at", null)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -689,12 +684,7 @@ export default function GlobalBattleCallOverlay() {
       const latestCall = latest ? toBattleCall(latest) : null;
       if (mounted && latestCall) showCall(latestCall);
       if (mounted && latest?.type === "battle_matched") void markRead(latest.id);
-      if (mounted && latest && latest.type !== "battle_matched" && !latestCall) {
-        setCall(null);
-        setExpiredNotice(latest);
-        setExpiredNoticeOpen(true);
-        setAccountNoticeCollapsed(true);
-      }
+
 
       channel = supabase
         .channel(`global-battle-call-${uid}`)
@@ -703,16 +693,10 @@ export default function GlobalBattleCallOverlay() {
           { event: "INSERT", schema: "public", table: "battle_notifications", filter: `user_id=eq.${uid}` },
           (payload) => {
             const row = payload.new as BattleNotificationRow;
-            setUnreadAccountNoticeCount((count) => Math.min(99, count + 1));
             const next = toBattleCall(row);
             if (next) showCall(next);
             if (row.type === "battle_matched") void markRead(row.id);
-            if (row.type !== "battle_matched" && !next) {
-              setCall(null);
-              setExpiredNotice(row);
-              setExpiredNoticeOpen(true);
-              setAccountNoticeCollapsed(true);
-            }
+
           },
         )
         .subscribe();
@@ -834,31 +818,9 @@ export default function GlobalBattleCallOverlay() {
         ) : (
           accountInitial
         )}
-        {hasNotice && (
-          unreadCount > 0 ? (
-            <span
-              className={`absolute ${ownerTaskCount > 0 ? "-left-1" : "-right-1"} -top-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-black ${
-                urgent ? "bg-red-500 text-white shadow-[0_0_16px_rgba(248,113,113,1)]" : "bg-red-500 text-white shadow-[0_0_14px_rgba(248,113,113,0.9)]"
-              }`}
-            >
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
-          ) : (
-            <span
-              className={`absolute ${ownerTaskCount > 0 ? "left-1.5" : "right-1.5"} top-1.5 h-2.5 w-2.5 rounded-full ${
-                urgent ? "bg-red-400 shadow-[0_0_16px_rgba(248,113,113,1)]" : "bg-orange-400 shadow-[0_0_14px_rgba(255,106,0,0.9)]"
-              }`}
-            />
-          )
-        )}
+
       </>
     );
-
-    const openNotice = onBellClick ?? (() => {
-      setAccountNoticeCollapsed(false);
-      setActiveNoticeOpen(true);
-      setExpiredNoticeOpen(true);
-    });
 
     return (
       <div
@@ -881,6 +843,14 @@ export default function GlobalBattleCallOverlay() {
         >
           {avatarVisual}
         </Link>
+        {unreadCount > 0 && (
+          <Link href={`/profile?lang=${lang}#notifications`}
+            onPointerDown={(event) => event.stopPropagation()}
+            className={`absolute ${ownerTaskCount > 0 ? "-left-2" : "-right-2"} -top-2 flex h-7 min-w-7 items-center justify-center rounded-full border-2 border-black bg-red-500 px-1 text-xs font-bold text-white`}
+            aria-label={isZh ? `${unreadCount} 則未讀通知` : `${unreadCount} unread notifications`}>
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </Link>
+        )}
         {ownerTaskCount > 0 && (
           <Link
             href={`/admin?lang=${lang}#pending-tasks`}
@@ -892,16 +862,19 @@ export default function GlobalBattleCallOverlay() {
             {ownerTaskCount > 99 ? "99+" : ownerTaskCount}
           </Link>
         )}
-        <button
-          type="button"
+        {onBellClick && unreadCount === 0 ? <button
+          type="button" onPointerDown={(event) => event.stopPropagation()} onClick={onBellClick}
+          className="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full border border-black bg-black text-orange-100"
+          aria-label={isZh ? "查看目前對戰" : "View current battle"}
+        ><BellIcon /></button> : <Link
+          href={`/profile?lang=${lang}#notifications`}
           onPointerDown={(event) => event.stopPropagation()}
-          onClick={openNotice}
-          className={`absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-black bg-black/88 text-orange-100 shadow-[0_0_18px_rgba(255,106,0,0.24)] transition hover:bg-orange-500 hover:text-black ${hasNotice ? "opacity-100" : "opacity-70"}`}
-          aria-label={isZh ? "帳號消息" : "Account notices"}
-          title={isZh ? "帳號消息" : "Account notices"}
+          className="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full border border-black bg-black text-orange-100 shadow-[0_0_18px_rgba(255,106,0,0.24)] transition hover:bg-orange-500 hover:text-black"
+          aria-label={lang === "ja" ? "通知" : lang === "ko" ? "알림" : isZh ? "互動通知" : "Notifications"}
+          title={isZh ? "開啟互動通知" : "Open notifications"}
         >
           <BellIcon />
-        </button>
+        </Link>}
       </div>
     );
   };

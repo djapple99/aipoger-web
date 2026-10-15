@@ -196,13 +196,16 @@ Daily Spotlight 已退役：它不再是傷心酒吧、Explore、`/admin/listen-
 
 ## Account Dock / 浮動帳號頭像
 
+2026-10-15通知修訂（使用者確認）：創作者中心新增私人「互動通知」，列出事件、評論者、作品、內容、時間及已讀狀態；紅字與消息鈴鐺直接連到此區，頭像本體仍連Profile。通知標題實際進入可見畫面後自動儲存已讀；收合、畫面外或背景分頁不搶先清除。支援全部／未讀、較早消息與作品評論連結；已讀歷史保留。伺服器以驗證會員限制讀寫範圍、只更新指定未讀ID，成功後同步全站數字；失敗保留提醒並提供重試，重新整理不復活已讀消息。後台待辦仍獨立，只能由完成實際工作消除。不得順帶調整Credit、排行榜或投稿規則。
+
+
 Owner task alerts (2026-09-18): the global avatar has a separate red task-count link for unresolved owner work. It links to `/admin#pending-tasks`; clicking the avatar itself still opens Profile. Pending work includes cross-month chart decisions, open/reviewing work or comment reports, and unpublished visible social targets. New-song promotion (manually viewed in Bar admin), all Choice drafts including retired official drafts, ordinary comments, published/completed work, retired TikTok-only targets and unenabled workflows are not owner tasks. Opening the task list does not clear the count; completing the actual work does. This is an in-site owner-only alert, not external push or email.
 
 - Recheck visible pages every 30 seconds, on focus/visibility return and route changes. Sign-out or account switch clears private task state. Read failures retain last known positive counts and show an unavailable state in the workbench, never a false successful zero.
 - Task sources are explicitly registered in `src/lib/admin-tasks.ts` and the protected summary API. Future enabled administrative workflows must register their real pending/resolved state and destination here; a new admin page alone does not automatically become a task.
 
 - The signed-in floating account avatar is always the Profile entry for every account, including owners. A Battle or account notice must never replace the avatar link with a notice-opening button.
-- The notification bell is a separate, smaller control attached to the avatar. Clicking the avatar opens `/profile?lang=<lang>`; clicking the bell opens or expands the account-notice panel.
+- The notification bell is a separate, smaller control attached to the avatar. Clicking the avatar opens `/profile?lang=<lang>`; clicking the unread badge or notification bell opens `/profile?lang=<lang>#notifications`. An ongoing Battle with no unread message may retain its separate live-state bell action.
 - Dragging is an enhancement, not the primary action: pointer capture must begin only after the pointer has moved more than 8px. A normal click must reach the Profile link, and a real drag must persist the edge-relative position across release, reload, and viewport resize.
 - The dock listens for Supabase auth state changes so signed-in users, owners, sign-outs, and account switches receive the correct avatar and Profile entry without relying on a full page reload. Logged-out visitors continue to see the sign-in entry on routes where the dock is shown.
 - Owner administration remains available from Profile. The floating avatar itself is not an owner-only admin shortcut; only its explicitly labeled red task badge links directly to the owner workbench.
@@ -520,7 +523,7 @@ Explore direct challenge loop:
 - Open Explore challenges always use the 60s Drop Battle cropper. The challenger selects or uploads their own Drop, sets the start time, and sends an invite to the defender.
 - When the challenger sends the invite, the system locks the defender's current prepared Drop by copying that Drop into the battle/queue rows. If the track has a pending attack invite, the defender cannot replace the prepared defender Drop.
 - The created battle starts in a pending defender-acceptance state. While pending, the battle room allows both sides' 5-second previews and arena sharing, but voting is closed.
-- Creating an Explore attack invite must write an in-app `battle_notifications` account notice for the defender. The right-top / 右上角通知 dock shows a red dot or unread number and must open a readable account-notice card; Explore attack invites route the defender to `Profile / 我的作品` -> `待接戰`.
+- Creating an Explore attack invite must write an in-app `battle_notifications` account notice for the defender. The right-top / 右上角通知 dock shows a red dot or unread number and must open the private Creator Center notification inbox; Explore attack invites route the defender to `Profile / 我的作品` -> `待接戰`.
 - `待接戰` cards show the track title, challenger, genre, scheduled start time, defender 5-second preview, challenger 5-second preview, Accept, and Reject. The matching track row must also show that the defender Drop is locked while the invite is pending.
 - Email is auxiliary only. It may point the defender back to AIPOGER, but it must not be the only notice path and must not contain direct accept/reject actions.
 - Pending invites expire if the defender has not answered by the scheduled start time. Expired, rejected, under-threshold, or unstarted invites create no result and no win/loss for either side.

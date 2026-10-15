@@ -655,15 +655,7 @@ function ProfileInner() {
             })),
           );
           setAiMusicInvites(invitesWithPreviewUrls);
-          void supabase
-            .from("battle_notifications")
-            .update({ read_at: new Date().toISOString() })
-            .eq("user_id", uid)
-            .eq("type", "ai_music_challenge_invite")
-            .is("read_at", null)
-            .then(() => {
-              window.dispatchEvent(new CustomEvent("aipoger:account-notices-read"));
-          });
+
         }
 
         if (savedChoicesResult.status === "fulfilled") {
