@@ -27,6 +27,7 @@ export default function MvRatingForm({ trackId, signedIn, onSaved, onBusy, draft
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const scoreLocked = myScore !== null && !canEditScore;
   const [ready, setReady] = useState(false); const [canRate, setCanRate] = useState(false);
+  const requiresScore = canRate && (!editing || canEditScore);
   const [failed, setFailed] = useState(false); const [busy, setBusy] = useState(false); const [saved, setSaved] = useState(false);
   const [summary, setSummary] = useState<{ ratingAverage: number | null; ratingCount: number } | null>(null);
   const [retry, setRetry] = useState(0); const receipt = useRef<string | null>(null); const alive = useRef(true);
@@ -53,7 +54,7 @@ export default function MvRatingForm({ trackId, signedIn, onSaved, onBusy, draft
     return () => { active = false; controller.abort(); };
   }, [trackId, signedIn, retry, drafts, endpoint]);
   const submit = async (event: FormEvent) => {
-    event.preventDefault(); if (busy || !ready || !signedIn || reviewBlocked || (myComment && (!editing || !canEditComment)) || (canRate && score === null) || ((!canRate || editing) && !text.trim())) return;
+    event.preventDefault(); if (busy || !ready || !signedIn || reviewBlocked || (myComment && (!editing || !canEditComment)) || (requiresScore && score === null) || ((!canRate || editing) && !text.trim())) return;
     setBusy(true); onBusy(true); setFailed(false); setErrorCode(null); setSaved(false);
     try {
       const { data } = await supabase.auth.getSession(); if (!data.session) throw new Error("Sign in");
@@ -88,7 +89,7 @@ export default function MvRatingForm({ trackId, signedIn, onSaved, onBusy, draft
       <label htmlFor={`work-score-${trackId}`} className={styles.srOnly}>{question}</label>
       <div className={styles.ratingInputWrap}>
         <input id={`work-score-${trackId}`} type="text" inputMode="decimal" value={scoreInput} placeholder="8.7" maxLength={4}
-          pattern="(?:[1-9](?:[.,][0-9])?|10(?:[.,]0)?)" required={signedIn && canRate} autoComplete="off"
+          pattern="(?:[1-9](?:[.,][0-9])?|10(?:[.,]0)?)" required={signedIn && requiresScore} autoComplete="off"
           disabled={!ready || !signedIn || !canRate || busy || scoreLocked || reviewBlocked || Boolean(myComment && !editing) || (editing && !canEditScore)} aria-invalid={invalidScore} aria-describedby={`work-score-note-${trackId}`}
           onChange={event => { edit(); const value = event.target.value; setScoreInput(value); drafts?.set(trackId, { score: parseWorkRating(value), scoreInput: value, text }); }} />
         <span aria-hidden="true">/ 10</span>
@@ -99,13 +100,13 @@ export default function MvRatingForm({ trackId, signedIn, onSaved, onBusy, draft
     {signedIn ? <>
       <p className={styles.ratingNote}>{creditCopy(lang).reviewHint}</p>
       {myComment ? <div className={styles.reviewActions}>
-        {canEditComment ? <button type="button" disabled={busy || !ready} onClick={() => { setEditing(!editing); setText(myComment.text); setErrorCode(null); setFailed(false); receipt.current = null; drafts?.delete(trackId); }}>{editing ? creditCopy(lang).cancelEdit : canDeleteComment ? creditCopy(lang).edit : creditCopy(lang).editOnce}</button> : <span>{creditCopy(lang).edited}</span>}
+        {canEditComment ? <button type="button" disabled={busy || !ready} onClick={() => { setEditing(!editing); setText(myComment.text); setScoreInput(myScore === null ? "" : String(myScore)); setErrorCode(null); setFailed(false); receipt.current = null; drafts?.delete(trackId); }}>{editing ? creditCopy(lang).cancelEdit : canDeleteComment ? creditCopy(lang).edit : creditCopy(lang).editOnce}</button> : <span>{creditCopy(lang).edited}</span>}
         {canDeleteComment ? <button type="button" disabled={busy} onClick={() => void withdraw()}>{creditCopy(lang).withdraw}</button> : null}
       </div> : null}
       <label htmlFor={`mv-thoughts-${trackId}`}>{mv.thoughts}</label>
       <textarea id={`mv-thoughts-${trackId}`} value={text} maxLength={280} rows={3} placeholder={mv.thoughts} disabled={busy || !ready || reviewBlocked} readOnly={Boolean(myComment && !editing)}
         onChange={event => { edit(); drafts?.set(trackId, { score, scoreInput, text: event.target.value }); setText(event.target.value); }} />
-      <div><span>{text.length} / 280</span>{(!myComment || editing) && !reviewBlocked ? <button type="submit" disabled={!ready || busy || (canRate ? score === null : !text.trim()) || (editing && !text.trim())}>{busy ? copy.sending : editing ? creditCopy(lang).saveEdit : mv.sendReview}</button> : null}</div>
+      <div><span>{text.length} / 280</span>{(!myComment || editing) && !reviewBlocked ? <button type="submit" disabled={!ready || busy || (requiresScore ? score === null : !text.trim()) || (editing && !text.trim())}>{busy ? copy.sending : editing ? creditCopy(lang).saveEdit : mv.sendReview}</button> : null}</div>
       {reviewBlocked ? <p className={styles.ratingNote}>{creditCopy(lang).reviewUnavailable}</p> : null}
     </> : null}
     {failed ? <p role="alert" className={styles.refreshError}>{errorCode === "REVIEW_CONTENT_REQUIRED" ? creditCopy(lang).contentRequired : errorCode === "REVIEW_EDIT_LIMIT" ? creditCopy(lang).edited : errorCode === "REVIEW_SCORE_LOCKED" ? mv.ratingNote : errorCode === "REVIEW_ALREADY_EXISTS" ? creditCopy(lang).reviewExists : mv.ratingError}<button type="button" onClick={() => { setEditing(false); setRetry(value => value + 1); }}>{copy.retry}</button></p> : null}

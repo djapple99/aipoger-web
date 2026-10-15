@@ -66,9 +66,28 @@ for(const owner of [false,true]) test(`existing review locks member scores and g
  assert.equal(Boolean(deletion()),owner);
  const edit=()=>ui.nodes().find(n=>n.type==='button'&&n.props.children===(owner?creditCopy('zh').edit:creditCopy('zh').editOnce));
  edit().props.onClick();await ui.flush();assert.equal(ui.find('input').disabled,!owner);
- if(owner)ui.find('input').onChange({target:{value:'9.2'}});
+ if(owner){
+  ui.find('input').onChange({target:{value:'7.1'}});await ui.flush();
+  ui.nodes().find(n=>n.type==='button'&&n.props.children===creditCopy('zh').cancelEdit).props.onClick();await ui.flush();
+  assert.equal(ui.find('input').value,'8.7');assert.equal(ui.find('input').disabled,true);
+  edit().props.onClick();await ui.flush();ui.find('input').onChange({target:{value:'9.2'}});
+ }
  ui.find('textarea').onChange({target:{value:'補充第二次聽到的細節，弦樂鋪陳與主旋律之間很有層次。'}});await ui.flush();await ui.find('form').onSubmit({preventDefault(){}});await ui.flush();
  const patch=JSON.parse(calls.find(c=>c.method==='PATCH').body);assert.equal(patch.score,owner?9.2:null);assert.equal(patch.active,true);
  assert.equal(Boolean(edit()),owner);assert.equal(ui.find('textarea').readOnly,true);
  if(!owner)assert.ok(ui.text().includes(creditCopy('zh').edited));
+});
+
+
+test('a legacy comment without a score can still use its one text correction',async t=>{
+ const calls=[];
+ const ui=await mountMv(t,'src/components/mv-rating-form.tsx',{trackId:'first',signedIn:true,onSaved(){},onBusy(){}},
+ {'@/lib/credit-copy':{creditCopy},'@/lib/i18n':{useI18n:()=>({lang:'zh'})},'@/lib/mv-copy':{mvCopy},'@/lib/home-copy':{homeCopy},'@/lib/work-rating':{parseWorkRating},'./home-editorial.module.css':{__esModule:true,default:{}},'@/lib/supabase':{supabase:{auth:{getSession:async()=>({data:{session:{access_token:'test'}}})}}}},
+ {window:new EventTarget(),CustomEvent:class extends Event{constructor(name){super(name)}},crypto:{randomUUID:()=> 'request'},fetch:async(url,init={})=>{calls.push({url,...init});return {ok:true,json:async()=>init.method?{ok:true}:{myScore:null,canRate:true,canEditScore:false,canDeleteComment:false,canEditComment:true,myComment:{id:'legacy',text:'原本還沒有分數的文字評論'}}};}});
+ ui.nodes().find(n=>n.type==='button'&&n.props.children===creditCopy('zh').editOnce).props.onClick();await ui.flush();
+ assert.equal(ui.find('input').required,false);assert.equal(ui.find('input').disabled,true);
+ ui.find('textarea').onChange({target:{value:'補充原本評論的一些創作細節與音樂感受'}});await ui.flush();
+ assert.equal(ui.nodes().find(n=>n.type==='button'&&n.props.type==='submit').props.disabled,false);
+ await ui.find('form').onSubmit({preventDefault(){}});await ui.flush();
+ assert.equal(JSON.parse(calls.find(c=>c.method==='PATCH').body).score,null);
 });

@@ -15,7 +15,7 @@ const COPY = {
         },
         {
           "title": "人氣 Top50 怎麼算",
-          "body": "不同愛心支持者每人 3 分，加上每人最新評分總和與盲聽偏好。相同聽眾對同歌的盲聽先平均；新歌上架 7 天內加 3 排行分，同總分新歌優先。"
+          "body": "不同愛心支持者每人 3 分，加上每人的有效評分總和與盲聽偏好。相同聽眾對同歌的盲聽先平均；新歌上架 7 天內加 3 排行分，同總分新歌優先。"
         },
         {
           "title": "作品的推廣期",
@@ -32,7 +32,7 @@ const COPY = {
         },
         {
           "title": "一首作品，一份評價",
-          "body": "歌曲與 MV 共用原作品、愛心、評論及 1–10 分評價，最多一位小數。每人一筆最新分數，修改不增加人數；作者可以留言，但不能自評。"
+          "body": "歌曲與 MV 共用原作品、愛心、評論及 1–10 分評價，最多一位小數。每人每作品一個分數，送出後不能修改；文字評論可修改一次，不能自行刪除。作者可以留言，但不能自評。"
         },
         {
           "title": "本週支持與平均分",
@@ -53,7 +53,7 @@ const COPY = {
         },
         {
           "title": "不同貢獻分開看",
-          "body": "同作品重評、補 MV 或編輯不重複加件。人物榜不代表專業認證，也不另送 Credit；Choice 收藏不增加歌曲排行分數。"
+          "body": "同作品補 MV 或修改評論不重複加件。人物榜不代表專業認證，也不另送 Credit；Choice 收藏不增加歌曲排行分數。"
         }
       ]
     },
@@ -105,8 +105,8 @@ const COPY = {
           "body": "Press a cover to watch, or play the full filtered list continuously. Sign in to Heart, save and rate. Share links take friends to the same work."
         },
         {
-          "title": "One work, one current rating",
-          "body": "Music and MV share the original work, Hearts, comments and 1–10 rating, with one decimal place. Editing replaces your rating without adding another rater. Authors can comment, but cannot rate themselves."
+          "title": "One work, one rating",
+          "body": "Music and MV share the original work, Hearts, comments and 1–10 rating, with one decimal place. Your score is final after submission. Comment text can be edited once and cannot be deleted by its author. Authors can comment, but cannot rate themselves."
         },
         {
           "title": "Weekly support and average ratings",
@@ -127,7 +127,7 @@ const COPY = {
         },
         {
           "title": "Keep each contribution distinct",
-          "body": "Re-rating, adding an MV or editing does not create another work. Boards are participation counts, without certification or extra Credit. Saving a Choice does not add song popularity."
+          "body": "Adding an MV or editing a comment does not create another work. Boards are participation counts, without certification or extra Credit. Saving a Choice does not add song popularity."
         }
       ]
     },
@@ -163,7 +163,7 @@ const COPY = {
         },
         {
           "title": "人気Top50",
-          "body": "異なるHeart支持者1人につき3点に、最新の評価合計とブラインド選好を加算。同じ人の同じ曲への選好は平均し、新曲は7日間3点加算。同点は新しい曲が先です。"
+          "body": "異なるHeart支持者1人につき3点に、有効な評価の合計とブラインド選好を加算。同じ人の同じ曲への選好は平均し、新曲は7日間3点加算。同点は新しい曲が先です。"
         },
         {
           "title": "作品の公開期間",
@@ -179,8 +179,8 @@ const COPY = {
           "body": "カバーで視聴、連続再生で検索・並べ替え後の全リストを再生。ログインするとHeart・保存・評価ができ、共有リンクで同じ作品を紹介できます。"
         },
         {
-          "title": "同じ作品に最新の評価を1件",
-          "body": "音楽とMVは作品ID・Heart・コメント・1〜10点評価を共有。小数1桁まで。変更は元の評価を置き換え、評価人数は増えません。作者はコメントできますが自己評価はできません。"
+          "title": "同じ作品に評価を1件",
+          "body": "音楽とMVは作品ID・Heart・コメント・1〜10点評価を共有。小数1桁まで。点数は送信後に変更できません。コメント文は1回だけ編集でき、投稿者による削除はできません。作者はコメントできますが自己評価はできません。"
         },
         {
           "title": "今週の応援と平均点",
@@ -201,7 +201,7 @@ const COPY = {
         },
         {
           "title": "貢献は別々に集計",
-          "body": "再評価・MV追加・編集は作品を増やしません。ランキングは参加数で、認証や追加Creditではありません。Choice保存は曲の人気点になりません。"
+          "body": "MV追加・コメント編集は作品を増やしません。ランキングは参加数で、認証や追加Creditではありません。Choice保存は曲の人気点になりません。"
         }
       ]
     },
@@ -237,7 +237,7 @@ const COPY = {
         },
         {
           "title": "인기 Top50",
-          "body": "서로 다른 Heart 지지자 한 명당 3점에 최신 평가 합계와 블라인드 선호를 더합니다. 같은 사람의 같은 곡 선호는 평균을 사용합니다. 신곡은 7일간 3점 추가, 동점이면 새 곡이 먼저입니다."
+          "body": "서로 다른 Heart 지지자 한 명당 3점에 유효한 평가 합계와 블라인드 선호를 더합니다. 같은 사람의 같은 곡 선호는 평균을 사용합니다. 신곡은 7일간 3점 추가, 동점이면 새 곡이 먼저입니다."
         },
         {
           "title": "작품 공개 기간",
@@ -253,8 +253,8 @@ const COPY = {
           "body": "커버를 눌러 보거나 검색·정렬한 전체 목록을 연속 재생하세요. 로그인하면 Heart·저장·평가할 수 있고, 공유 링크는 같은 작품으로 연결됩니다."
         },
         {
-          "title": "한 작품에 최신 평가 하나",
-          "body": "음악과 MV는 작품·Heart·댓글·1–10점 평가를 공유하며 소수 한 자리까지 가능합니다. 수정은 이전 점수를 바꾸고 평가자 수를 늘리지 않습니다. 작가는 댓글만 가능하며 자기 평가는 불가합니다."
+          "title": "한 작품에 평가 하나",
+          "body": "음악과 MV는 작품·Heart·댓글·1–10점 평가를 공유하며 소수 한 자리까지 가능합니다. 점수는 제출 후 변경할 수 없습니다. 댓글 내용은 한 번 수정할 수 있으며 작성자가 삭제할 수 없습니다. 작가는 댓글만 가능하며 자기 평가는 불가합니다."
         },
         {
           "title": "이번 주 지지와 평균 점수",
@@ -275,7 +275,7 @@ const COPY = {
         },
         {
           "title": "기여는 각각 계산해요",
-          "body": "재평가·MV 추가·수정은 새 작품으로 세지 않습니다. 인물 순위는 참여 수이며 인증이나 추가 Credit이 아닙니다. Choice 저장은 곡 인기 점수가 아닙니다."
+          "body": "MV 추가·댓글 수정은 새 작품으로 세지 않습니다. 인물 순위는 참여 수이며 인증이나 추가 Credit이 아닙니다. Choice 저장은 곡 인기 점수가 아닙니다."
         }
       ]
     },
