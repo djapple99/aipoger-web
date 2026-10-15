@@ -1,5 +1,7 @@
 # AIPOGER 必要發布證據
 
+- [2026-10-15 MV評價版面精簡](2026-10-15-compact-mv-review.md)
+
 - [2026-10-15 公開留言署名隱私修復](2026-10-15-public-display-name.md)
 
 - [2026-10-15 創作者互動通知與持久已讀](2026-10-15-notifications.md)
