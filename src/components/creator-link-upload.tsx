@@ -336,7 +336,9 @@ export default function CreatorLinkUpload({
             onClick={() => void submit()}
           >
             {busy
-              ? text("投稿中…", "Submitting…", "投稿中…", "제출 중…")
+              ? lock.current
+                ? text("投稿中…", "Submitting…", "投稿中…", "제출 중…")
+                : text("讀取連結中…", "Reading link…", "リンクを読み込み中…", "링크를 불러오는 중…")
               : text(
                   "確認投稿",
                   "Confirm submission",
