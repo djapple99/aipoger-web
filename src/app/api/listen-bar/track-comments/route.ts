@@ -1,3 +1,4 @@
+import { loadPublicIdentity } from "@/lib/server-public-identity";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
@@ -234,9 +235,8 @@ export async function POST(request: NextRequest) {
     const admin = adminClient();
     const { data: userData, error: userError } = await admin.auth.getUser(token);
     if (userError || !userData.user) return jsonError("登入狀態已過期，請重新登入。", 401);
-    const displayName = typeof body?.displayName === "string" && body.displayName.trim()
-      ? body.displayName.trim().slice(0, 48)
-      : userData.user.email?.split("@")[0] ?? "吧友";
+    const identity = await loadPublicIdentity(admin, userData.user.id);
+    const displayName = identity.displayName.slice(0, 48);
 
     const { data: trackExists, error: trackError } = await admin
       .from("listen_bar_tracks")

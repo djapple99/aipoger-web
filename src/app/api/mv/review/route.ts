@@ -1,3 +1,4 @@
+import { loadPublicIdentity } from "@/lib/server-public-identity";
 import { NextRequest, NextResponse } from "next/server";
 import { readMvDiscovery, readMusicReviewWork } from "@/lib/server-home-discovery";
 import { mvReviewAdmin } from "@/lib/server-mv-reviews";
@@ -51,8 +52,7 @@ export async function POST(request: NextRequest) {
     if (authError || !user.user || user.user.is_anonymous) return reply({ error: "Sign in again" }, 401);
     // Use the same lifecycle/visibility rules as the public MV catalogue.
     if (!(await reviewWork(request, body.trackId))) return reply({ error: "Unavailable work" }, 404);
-    const metadata = user.user.user_metadata;
-    const name = String(metadata?.display_name || metadata?.nickname || metadata?.full_name || metadata?.name || "AIPOGER").trim().slice(0, 48) || "AIPOGER";
+    const { displayName: name } = await loadPublicIdentity(admin, user.user.id);
     const { data, error } = await admin.rpc("save_work_review", {
       p_track_id: body.trackId, p_user_id: user.user.id, p_score: body.score,
       p_body: body.text.trim(), p_name: name, p_request_id: body.requestId, p_surface: isMusic(request) ? "music" : "mv",

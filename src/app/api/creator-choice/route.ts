@@ -1,3 +1,4 @@
+import { loadPublicIdentity } from "@/lib/server-public-identity";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import {
@@ -120,18 +121,7 @@ function publicCoverUrl(admin: ReturnType<typeof adminClient>, path: string | nu
 }
 
 async function loadCreatorName(admin: ReturnType<typeof adminClient>, user: { id: string; email?: string | null }) {
-  const [fighterResult, profileResult] = await Promise.all([
-    admin.from("fighter_profiles").select("display_name").eq("id", user.id).maybeSingle(),
-    admin.from("user_profiles").select("fighter_name,display_name").eq("id", user.id).maybeSingle(),
-  ]);
-  const fighterName = typeof fighterResult.data?.display_name === "string" ? fighterResult.data.display_name.trim() : "";
-  const profile = profileResult.data as { fighter_name?: string | null; display_name?: string | null } | null;
-  const profileName = typeof profile?.fighter_name === "string" && profile.fighter_name.trim()
-    ? profile.fighter_name.trim()
-    : typeof profile?.display_name === "string"
-      ? profile.display_name.trim()
-      : "";
-  return fighterName || profileName || user.email?.split("@")[0] || "AIPOGER 創作者";
+  return (await loadPublicIdentity(admin, user.id, "AIPOGER 創作者")).displayName;
 }
 
 function normalizeCollections(admin: ReturnType<typeof adminClient>, rows: CreatorChoiceCollectionRow[], catalog: AipogerChoiceCatalogItem[]): AipogerCreatorChoiceCollection[] {

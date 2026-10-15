@@ -1,4 +1,5 @@
 import "server-only";
+import { loadPublicIdentity } from "@/lib/server-public-identity";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { LISTEN_BAR_COVER_BUCKET } from "@/lib/listen-bar";
@@ -25,11 +26,6 @@ type OfficialChoiceRow = {
   title: string | null;
   intro: string | null;
   cover_path: string | null;
-};
-
-type FighterProfileRow = {
-  display_name?: string | null;
-  avatar_url?: string | null;
 };
 
 function adminClient() {
@@ -63,20 +59,14 @@ function isMissingChoiceCover(error: unknown) {
 
 async function loadProfile(admin: SupabaseClient, userId: string | null) {
   if (!userId) return { displayName: "", avatarUrl: "" };
-  const fighter = await admin.from("fighter_profiles").select("display_name,avatar_url").eq("id", userId).maybeSingle();
-  if (fighter.error) throw fighter.error;
-  const fighterProfile = fighter.data as FighterProfileRow | null;
-  const fighterDisplayName = clean(fighterProfile?.display_name);
-  const fighterAvatarUrl = clean(fighterProfile?.avatar_url);
-  if (fighterDisplayName && fighterAvatarUrl) {
-    return { displayName: fighterDisplayName, avatarUrl: fighterAvatarUrl };
-  }
+  const identity = await loadPublicIdentity(admin, userId, "AIPOGER 創作者");
+  if (identity.avatarUrl) return { displayName: identity.displayName, avatarUrl: identity.avatarUrl };
 
   const { data: authData } = await admin.auth.admin.getUserById(userId);
   const metadata = authData.user?.user_metadata ?? {};
   return {
-    displayName: fighterDisplayName || clean(metadata.display_name) || clean(metadata.name) || clean(metadata.full_name),
-    avatarUrl: fighterAvatarUrl || clean(metadata.avatar_url) || clean(metadata.picture),
+    displayName: identity.displayName,
+    avatarUrl: clean(metadata.avatar_url) || clean(metadata.picture),
   };
 }
 

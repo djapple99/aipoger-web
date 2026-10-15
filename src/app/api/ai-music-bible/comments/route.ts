@@ -1,3 +1,4 @@
+import { loadPublicIdentity } from "@/lib/server-public-identity";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 import {
@@ -100,26 +101,16 @@ async function requiredUser(request: NextRequest, admin: SupabaseClient) {
 }
 
 async function commentIdentity(admin: SupabaseClient, user: User) {
-  const [fighter, profile] = await Promise.all([
-    admin.from("fighter_profiles").select("display_name,avatar_url").eq("id", user.id).maybeSingle(),
-    admin.from("user_profiles").select("fighter_name,display_name").eq("id", user.id).maybeSingle(),
-  ]);
-  const metadata = user.user_metadata as Record<string, unknown>;
-  const displayName = fighter.data?.display_name?.trim()
-    || profile.data?.display_name?.trim()
-    || profile.data?.fighter_name?.trim()
-    || (typeof metadata.full_name === "string" ? metadata.full_name.trim() : "")
-    || (typeof metadata.name === "string" ? metadata.name.trim() : "")
-    || user.email?.split("@")[0]
-    || "AIPOGER 創作者";
+  const identity = await loadPublicIdentity(admin, user.id, "AIPOGER 創作者");
+  const metadata = user.user_metadata ?? {};
   const metadataAvatar = typeof metadata.avatar_url === "string"
     ? metadata.avatar_url.trim()
     : typeof metadata.picture === "string"
       ? metadata.picture.trim()
       : "";
   return {
-    displayName: displayName.slice(0, 80),
-    avatarUrl: fighter.data?.avatar_url?.trim() || metadataAvatar || null,
+    displayName: identity.displayName,
+    avatarUrl: identity.avatarUrl || metadataAvatar || null,
   };
 }
 

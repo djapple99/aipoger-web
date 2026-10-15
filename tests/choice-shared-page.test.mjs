@@ -68,8 +68,7 @@ test("Choice share metadata uses the curator profile avatar instead of the globa
   assert.match(choiceLayout, /choiceDisplayTitle\(choice\.curatorName, choice\.title\)/);
   assert.match(choiceShareMetadata, /aipoger_creator_choice_collections/);
   assert.match(choiceShareMetadata, /aipoger_choice_collections/);
-  assert.match(choiceShareMetadata, /from\("fighter_profiles"\)/);
-  assert.doesNotMatch(choiceShareMetadata, /from\("user_profiles"\)/);
+  assert.match(choiceShareMetadata, /loadPublicIdentity\(admin, userId/);
   assert.match(choiceShareMetadata, /auth\.admin\.getUserById/);
   assert.match(choiceShareMetadata, /publicCoverUrl\(admin, row\.cover_path\) \|\| profile\.avatarUrl/);
   assert.match(choiceShareMetadata, /personal \? profile\.avatarUrl : ""/);
