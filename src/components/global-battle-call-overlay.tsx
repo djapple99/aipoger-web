@@ -686,12 +686,15 @@ export default function GlobalBattleCallOverlay() {
       if (mounted && latest?.type === "battle_matched") void markRead(latest.id);
 
 
+      // Auth and route changes can finish an older async load after cleanup.
+      if (!mounted) return;
       channel = supabase
-        .channel(`global-battle-call-${uid}`)
+        .channel(`global-battle-call-${uid}-${crypto.randomUUID()}`)
         .on(
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "battle_notifications", filter: `user_id=eq.${uid}` },
           (payload) => {
+            if (!mounted) return;
             const row = payload.new as BattleNotificationRow;
             const next = toBattleCall(row);
             if (next) showCall(next);

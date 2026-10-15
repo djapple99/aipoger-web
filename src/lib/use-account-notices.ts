@@ -18,7 +18,7 @@ export function useAccountNotices(userId: string | null, scope = "dock") {
       } catch { /* Retain the last confirmed count; errors must not claim a successful zero. */ }
     };
     void refresh();
-    const channel = supabase.channel(`account-notice-count-${scope}-${userId}`)
+    const channel = supabase.channel(`account-notice-count-${scope}-${userId}-${crypto.randomUUID()}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "battle_notifications", filter: `user_id=eq.${userId}` }, refresh).subscribe();
     const timer = window.setInterval(refresh, 30_000);
     window.addEventListener(ACCOUNT_NOTICES_CHANGED, refresh);
