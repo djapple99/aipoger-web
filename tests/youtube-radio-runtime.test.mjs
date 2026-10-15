@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {mountMv} from './helpers/mv-runtime.mjs';
-async function setup(t){
+async function setup(t, initiallyReady = true){
  let options,resolveAPI,video='',state=2,ended=0,hidden=false,modal=false,paused=0,instances=0,volume;
  const loads=[],cues=[],errors=[],progress=[],states=[],listeners={};let observer;
  const playerRef={current:null};
@@ -13,8 +13,8 @@ async function setup(t){
  MutationObserver:class{constructor(f){observer=f}observe(){}disconnect(){}},HTMLMediaElement:class{}
  });
  ui.refs[0].current={appendChild(){},querySelector:()=>({})};
- resolveAPI({Player:class{constructor(_,opts){instances++;options=opts;return player}}});await ui.flush();options.events.onReady();
- return {ui,loads,cues,errors,progress,states,playerRef,events:options.events,ended:()=>ended,paused:()=>paused,instances:()=>instances,volume:()=>volume,hide(){hidden=true;listeners.visibilitychange()},show(){hidden=false;listeners.visibilitychange()},modal(){modal=true;observer()},tick:()=>listeners.tick(),stale(){video='stalevideo1'}};
+ resolveAPI({Player:class{constructor(_,opts){instances++;options=opts;return player}}});await ui.flush();if(initiallyReady)options.events.onReady();
+ return {ui,loads,cues,errors,progress,states,playerRef,timeout:()=>listeners.timeout(),events:options.events,ended:()=>ended,paused:()=>paused,instances:()=>instances,volume:()=>volume,hide(){hidden=true;listeners.visibilitychange()},show(){hidden=false;listeners.visibilitychange()},modal(){modal=true;observer()},tick:()=>listeners.tick(),stale(){video='stalevideo1'}};
 }
 test('radio reuses one visible YouTube player and advances once after a real end',async t=>{
  const x=await setup(t);assert.equal(x.loads[0],'abcdefghijk');assert.equal(x.volume(),85);assert.equal(x.ui.find('div').style.height,200);
@@ -31,4 +31,9 @@ test('hidden tab and modal pause YouTube and do not auto-resume or advance',asyn
 test('blocked autoplay and unavailable source remain recoverable without skipping forever',async t=>{
  const x=await setup(t);x.events.onAutoplayBlocked();x.events.onError();assert.deepEqual(x.errors,[true,false]);assert.equal(x.ended(),0);
  await x.ui.update({volume:.3});assert.equal(x.volume(),30);
+});
+
+test('stalled iframe initialization reports an actionable failure without advancing',async t=>{
+ const x=await setup(t,false);x.timeout();assert.deepEqual(x.errors,[false]);assert.equal(x.ended(),0);
+ x.events.onReady();x.timeout();assert.deepEqual(x.errors,[false]);assert.equal(x.loads[0],'abcdefghijk');
 });

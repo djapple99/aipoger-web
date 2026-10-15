@@ -1,6 +1,6 @@
 # AIPOGER 開發與維運
 
-目前應用發布基準：2026-10-15／`69d728d`／`codex/public-rule-copy`；Vercel `dpl_EZD6FzWFfyFgy5KjwD3PPyVxfg6q` READY，aipoger.com及www已指向同一SHA。繼承`b18931a`的公開文案邊界及`4bfc46f`完整Credit。評論更新／撤回刷新、15px橘色指南入口、日韓投稿、Owner私人提示與第四件之後額度／扣點確認已修；下一題私有準備及餘額並行保留8秒與原計分。634項測試603通過／31既有可選DB略過／0失敗，TypeScript、lint 0 errors／14既有warnings、本機webpack正式build通過。一般會員Auth、實際Storage音檔、發扣點／追回恢復／欠額、真正多連線競爭60點及盲聽10組驗收通過；本機接真實Supabase單次換題對照4252→982ms；最終正式會員10組通過，換題381ms（一次），不代表全站平均或網路保證。[本輪修復及驗收 report](releases/2026-10-15-participation-flow-fixes.md)。
+目前應用發布基準：2026-10-15／`6d76764`／`codex/public-rule-copy`；Vercel `dpl_AWSBy2LU4krfPneNFZ71Z2UT6bnu` READY，aipoger.com及www已指向同一SHA。YouTube曲風隨機混合連播、投稿預覽／試播選用及手機投稿入口／版面已發布；613項測試通過、31既有可選DB略過、0失敗（644項），含隔離PGlite；TypeScript及本機webpack正式build通過，lint 0 errors／14既有warnings。最後YouTube啟動／逾時恢復及載入文案修正另通過runtime、TypeScript及ESLint，雲端build通過。[本輪發布report](releases/2026-10-15-radio-link-submission.md)。繼承`69d728d`的Credit、私人權限、排行與一般會員驗收，詳見[參與流程修復report](releases/2026-10-15-participation-flow-fixes.md)。本輪未改SQL、Auth或Storage規則。
 
 ## 修改依據與確認日期
 
@@ -118,11 +118,11 @@ Vercel `dpl_CqDWx7SYkY1t2ktMpjMxqpZfy8xN` READY並promote至aipoger.com，MV頁�
 
 - `GET /api/creator-center`：先驗證 bearer 身分，僅 service-read 本人 community tracks，包含 inactive／期滿歷史；按500筆分頁，逐100首分批讀取去重支持及其他會員可見評論。回應 private/no-store，不回傳评论者userid或假餘額。收藏沿用原私人 honors／Choice API，不建立第二套資料。
 - `POST /api/creator-links`：preview 只向固定官方來源取 metadata，8秒逾時／1.5MB上限／拒絕任意host與redirect；Suno短分享僅接受一次官方受限轉向。以30分鐘HMAC綁定user及canonical source。簽名是解析與來源綁定，不是版權或伺服器播放保證。
-- submit 要求有效本人preview token、播放／權利確認、手選現行曲風及名稱；以本人 bearer + anon key INSERT，經原RLS與168h／3件、active genre5件trigger，不能以service INSERT繞過。相同新來源unique index及既有同作者YT連結防重複；同ID支援MV與評論。
+- 2026-10-15：前端輸入來源後500ms debounce自動呼叫preview解析，忽略過期請求；previewToken仍是本人來源解析憑證，不再要求按預覽或confirmedPlayback。submit要求有效本人token、權利確認、現行曲風／名稱，沿用現行原子Credit投稿與本人RLS；每168h三件免費、後續成功件60並確認，Owner不限，沒有每曲風五件限制。原同來源unique及同作者既有YT防重複保留，同ID支援MV／評論。
 - `20261013090019_creator_link_submission.sql` 增加來源provider／mediaID／URL與MV旗標、允許audio_path空、有效來源CHECK與部分unique index；`20261013094836_creator_link_required_fields.sql` 補SQL CHECK nullable三欄必填。兩份均已套用並validated，沒有改舊列、政策、grants或函數。
 - 實際authenticated role的可回滾SQL交易驗證無音檔連結INSERT與quota+1；ROLLBACK後重查仍329列、0個link row、0個測試作品，UI仍0/3。沒有永久測試投稿、評論或Heart；訪站原analytics／presence照常。
-- 外站播放器可見：YouTube官方IFrame API事件；Suno／Spotify由作者手動確認，Spotify試聽長度由來源決定。嵌入失敗不假成功，不抽取audio或放入radio/root audio queue。原音檔試播是本機ObjectURL，成功確認前不upload。
-- Owner沿用既有本人主email驗證，不以可編輯metadata email授權；一般帳號沒有後台入口。Credit使用獨立creator_credit_entries ledger，只啟用盲聽3點；不能以殘留APC欄位冒充餘額，登入／評論／投稿扣點未啟用。
+- 投稿預覽與試播選用：音檔使用本機ObjectURL，明確投稿前不upload；YouTube／Suno／Spotify使用可見官方播放器，不要求播放事件或手動試播確認。來源解析失敗可重讀，Spotify長度仍由來源決定。只有YouTube連結納入酒吧混合電台，透過youtubeId而非偽造audioUrl；Suno／Spotify、Choice及盲聽來源資格不變。
+- Owner沿用既有本人主email驗證，不以可編輯metadata email授權；一般帳號沒有後台入口。Credit沿用現行creator_credit_entries及參與ledger，已啟用回訪15、有效評論10、Heart3、盲聽3及額外成功投稿60；不能以殘留APC欄位冒充餘額。
 - 原私人metadata、Choice、batch favorites、Battle與作品表現入口保留在focused dialog；新總覽4件／頁，原完整manager10件／頁。修改metadata不重置年齡／額度／戰績。
 - 回復程式可promote舊READY版本；加法schema留在DB，不DROP來源欄位、不刪舊作品。若已有人提交新連結，舊app可能不展示無音檔列，但資料仍在，需先評估後再回復。
 - Supabase advisor現有提醒含service-only表RLS無policy、既有可執行SECURITY DEFINER RPC與Auth密碼保護；本次未新增表／授權或展開無關hardening。[DB linter](https://supabase.com/docs/guides/database/database-linter)、[Auth密碼保護](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection)。這不是整站安全稽核完成聲明。
@@ -343,7 +343,7 @@ When the 10 active limit is implemented, also check:
 
 - `/listen-bar` 與 `/l/all`／原14曲風短鏈導向 `/ai-music#explore-radio`，保留語言、曲風与原曲深連結；`#play-request`／submit=1導Profile上傳。Spotlight參數忽略，不指定播放。
 - `/api/listen-bar/tracks`直接沿用`/api/ai-music/tracks`，完整分頁讀取資格候選，三個日曆月期限与公開moderation／lifecycle條件一致；不得把讀取失敗當零歌曲或零票。
-- 電台與卡片使用music-player-store／唯一root audio；驗證實際自然播放、seek、volume、上一首歷史、下一首循環、卡片接替、跨頁持續與滾動切換控制。Inline IntersectionObserver只隱藏dock控制，音訊留在root；進頁不自動播放。
+- 電台與卡片使用music-player-store共用控制，音檔唯一root audio，YouTube使用單一可見IFrame API播放器；驗證混合佇列實際自然播放、seek、volume、上一首歷史、下一首循環、卡片接替、跨頁持續與滾動切換控制。Inline IntersectionObserver只隱藏dock控制，音訊留在root；進頁不自動播放。
 - 電台／卡片／dock評論開原ID modal、登入return带track/comments=1；每曲評論持久保存与原通知審核保留，創作者自留言不通知自己。Top10／50無評論圖示。
 - 新ProfileMusicUpload抽出原有處理，只在自己的作品區開啟；guest引導登入后保留submit/語言/hash。Private讀取錯誤不得假裝無作品；上傳前與INSERT前重新核對同一帳號，同步鎖防雙重提交，失敗保留draft並清理僅該次新資產。
 - 手選14曲風、21秒可選分析告知／worker未啟用手選回退、原格式30MB、metadata/cover/lyrics/YT、雜湊、一般會員連結／音檔共用個人168小時三首的DB原子限制保留，Owner不限數量；每曲風五首active上限取消。上傳格式／限制按產品規則，失敗不計額度、刪除不退額度。
