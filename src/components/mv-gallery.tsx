@@ -13,7 +13,7 @@ import { useI18n } from "@/lib/i18n";
 import { homeCopy } from "@/lib/home-copy";
 import { mvCopy } from "@/lib/mv-copy";
 import { filterMvWorks, type MvDiscovery, type MvSort } from "@/lib/mv-discovery";
-import { excludeFeaturedWorks, type HomeWork } from "@/lib/home-discovery";
+import type { HomeWork } from "@/lib/home-discovery";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import { musicPlayer, useMusicPlayer } from "@/lib/music-player-store";
 import { useMvHearts } from "@/lib/use-mv-hearts";
@@ -43,15 +43,16 @@ export default function MvGallery() {
   const [sharedUnavailable, setSharedUnavailable] = useState(false);
   const sharedTrack = useRef<string | null>(null);
   const [query, setQuery] = useState(""); const [genre, setGenre] = useState("");
-  const [sort, setSort] = useState<MvSort>("latest"); const [limit, setLimit] = useState(12);
+  const [sort, setSort] = useState<MvSort>("rated"); const [limit, setLimit] = useState(12);
   const player = useMusicPlayer();
   const router = useRouter();
   const support = useMvHearts((data?.works ?? []).map(work => work.id));
   const withLang = (path: string) => { const [url, hash] = path.split("#"); return `${url}${url.includes("?") ? "&" : "?"}lang=${lang}${hash ? `#${hash}` : ""}`; };
   const selected = data?.featured.find(work => work.id === selectedId) ?? data?.featured[0];
   const selectedIndex = data?.featured.findIndex(work => work.id === selected?.id) ?? 0;
-  const works = filterMvWorks(excludeFeaturedWorks(data?.works ?? [], data?.featured ?? []), query, genre, sort);
-  const matchingFeatured = filterMvWorks(data?.featured ?? [], query, genre, sort);
+  // The MV catalogue is complete: support or a review must not remove a card
+  // when that work also becomes a featured candidate above.
+  const works = filterMvWorks(data?.works ?? [], query, genre, sort);
   const channels = filterMvWorks(data?.channels ?? [], query, genre, sort);
   const load = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -123,7 +124,7 @@ export default function MvGallery() {
   const sendHeart = async (work: HomeWork) => {
     if (await support.toggle(work.id) === "login") router.push(`/auth?lang=${lang}&next=${encodeURIComponent(`/mv?lang=${lang}`)}`);
   };
-  const reset = () => { setQuery(""); setGenre(""); setSort("latest"); setLimit(12); };
+  const reset = () => { setQuery(""); setGenre(""); setSort("rated"); setLimit(12); };
   return <div className={base.page}>
     <EditorialHeader active="mv" />
     <main className={base.main}>
@@ -158,7 +159,7 @@ export default function MvGallery() {
       {data ? <>
         <section className={styles.catalog} aria-labelledby="mv-catalog-title">
           <div className={styles.catalogHeading}><h2 id="mv-catalog-title">{mv.more}</h2>
-            <div className={styles.sorts} aria-label={mv.more}>{(["latest", "support"] as const).map(value => <button key={value} aria-pressed={sort === value} onClick={() => { setSort(value); setLimit(12); }}>{mv[value]}</button>)}</div>
+            <div className={styles.sorts} aria-label={mv.more}>{(["rated", "latest", "support"] as const).map(value => <button key={value} aria-pressed={sort === value} onClick={() => { setSort(value); setLimit(12); }}>{mv[value]}</button>)}</div>
 <div className={styles.filterRow}><select aria-label={mv.all} value={genre} onChange={event => { setGenre(event.target.value); setLimit(12); }}>
             <option value="">{mv.all}</option>{MUSIC_GENRE_OPTIONS.filter(option => data.works.some(work => work.genre === option.value) || data.channels.some(work => work.genre === option.value)).map(option => <option key={option.value} value={option.value}>{t(option.labelKey)}</option>)}</select>
             <p role="status">{works.length} {mv.count}</p><button className={styles.continuousButton} type="button" onClick={startQueue} disabled={!filterMvWorks(data.works, query, genre, sort).length} title={mv.queueNote}><Play size={17} fill="currentColor" />{mv.continuous}</button></div>
@@ -188,8 +189,7 @@ export default function MvGallery() {
             </div><p className={styles.cardArtist}>{work.artist}</p>
           </article>)}</div>
           {!works.length ? <div className={styles.noResults}>
-            <p>{matchingFeatured.length ? mv.shownAbove : mv.noResults}</p>
-            {matchingFeatured.length ? <a href="#featured-mv" onClick={() => { setSelectedId(matchingFeatured[0].id); }}>{mv.viewFeatured}<ArrowRight size={17} /></a> : null}
+            <p>{mv.noResults}</p>
             <button onClick={reset}>{mv.reset}<ArrowRight size={17} /></button>
           </div> : null}
           {works.length > limit ? <div className={styles.more}><button onClick={() => setLimit(current => current + 12)}>{mv.loadMore}<span>{Math.min(limit, works.length)} / {works.length}</span></button></div> : null}

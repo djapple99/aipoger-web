@@ -2,7 +2,7 @@ import { buildHomeDiscovery, buildPublicHomeWorks, type HomeDiscovery, type Home
 
 export type MvChannel = HomeWork & { channelUrl: string };
 export type MvDiscovery = Omit<HomeDiscovery, "singles"> & { works: HomeWork[]; channels: MvChannel[] };
-export type MvSort = "latest" | "support";
+export type MvSort = "rated" | "latest" | "support";
 
 export function mvChannelUrl(value: string | null | undefined) {
   if (!value || value.length > 300) return null;
@@ -31,8 +31,11 @@ export function buildMvDiscovery(rows: HomeTrackRow[], hearts: HomeHeartRow[],
 
 export function filterMvWorks<T extends HomeWork>(works: T[], query: string, genre: string, sort: MvSort): T[] {
   const terms = query.normalize("NFKC").toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
+  // Match the public score on the cover; unrated works follow by publish date.
+  const rating = (work: HomeWork) => (work.ratingCount ?? 0) > 0 && Number.isFinite(work.ratingAverage)
+    && (work.ratingAverage ?? 0) > 0 ? Number(work.ratingAverage!.toFixed(1)) : 0;
   return works.filter(work => (!genre || work.genre === genre) && terms.every(term =>
     `${work.title} ${work.artist}`.normalize("NFKC").toLocaleLowerCase().includes(term)))
-    .sort((a, b) => (sort === "support" ? b.supporterCount - a.supporterCount : 0)
+    .sort((a, b) => (sort === "rated" ? rating(b) - rating(a) : sort === "support" ? b.supporterCount - a.supporterCount : 0)
       || b.publishedAt.localeCompare(a.publishedAt) || a.id.localeCompare(b.id));
 }

@@ -31,3 +31,19 @@ test('search normalizes text, combines artist and title terms, filters genres an
  assert.deepEqual(filterMvWorks(mv.works,'tango','EDM 百大電音','latest').map(x=>x.id),['b']);
  assert.deepEqual(filterMvWorks(mv.works,'','','support').map(x=>x.id),['a','b']);assert.deepEqual(mv.works.map(x=>x.id),before);
 });
+
+test('rated sorting uses the public average first, then newest ties and unrated submissions, without losing works',()=>{
+ const base=buildMvDiscovery([row('base')],[],media,now).works[0];
+ const works=[
+  {...base,id:'unrated-new',publishedAt:'2026-10-22'},
+  {...base,id:'rated-low',publishedAt:'2026-08-01',ratingCount:20,ratingAverage:7.5,ratingTotal:150},
+  {...base,id:'rated-high-old',publishedAt:'2026-10-20',ratingCount:5,ratingAverage:9.54,ratingTotal:47.7},
+  {...base,id:'rated-high-new',publishedAt:'2026-10-21',ratingCount:5,ratingAverage:9.46,ratingTotal:47.3},
+  {...base,id:'missing-average',publishedAt:'2026-10-21',ratingCount:1,ratingAverage:null},
+  {...base,id:'no-raters',publishedAt:'2026-10-19',ratingCount:0,ratingAverage:10},
+ ];
+ const before=structuredClone(works);
+ assert.deepEqual(filterMvWorks(works,'','','rated').map(x=>x.id),['rated-high-new','rated-high-old','rated-low','unrated-new','missing-average','no-raters']);
+ assert.deepEqual(filterMvWorks(works,'','','latest').map(x=>x.id),['unrated-new','missing-average','rated-high-new','rated-high-old','no-raters','rated-low']);
+ assert.deepEqual(works,before);
+});
