@@ -1,6 +1,8 @@
 # AIPOGER 開發與維運
 
-目前應用發布基準：2026-10-23／`0791814`／`codex/public-rule-copy`；Vercel `dpl_AJRsf7z6BByhZ9N9AzktWN5h44nW` READY並綁定aipoger.com／www。單支MV分享metadata讀同一公開清單，帶出該影片封面、歌名與作者；canonical／og:url／四語alternates保留track ID。最高解析缺圖時伺服器改用同影片標準／高畫質縮圖。33項相關測試全過；完整684項651通過／33既有可選DB略過／0失敗，TypeScript與webpack build通過，lint0 errors／14既有warnings。正式驗收與快取限制見[MV分享封面report](releases/2026-10-23-mv-share-cover.md)。沒有DB、Credit或自動發文修改。
+目前應用發布基準：2026-10-23／`c245e7d`／`codex/public-rule-copy`；Vercel `dpl_3zTxN9dLH8HKLW4JxbVHT1P2TLbM` READY並綁定aipoger.com／www。Battle盲聽、Q Crash、Drop標題旁新增分享鍵，各有1200×630復古器材縮圖；伺服器metadata、canonical及四語連結保留mode，盲聽內頁同用盲聽圖。39項相關測試通過；完整697項664通過／33既有可選DB略過／0失敗，TypeScript與webpack build通過，lint0 errors／14既有warnings。正式16組爬蟲metadata、三張PNG及實際按鍵／手機定位驗收通過；沒有DB、Credit或自動發文修改。[三模式分享report](releases/2026-10-23-battle-mode-sharing.md)。
+
+前輪應用發布基準：2026-10-23／`0791814`／`codex/public-rule-copy`；Vercel `dpl_AJRsf7z6BByhZ9N9AzktWN5h44nW` READY並綁定aipoger.com／www。單支MV分享metadata讀同一公開清單，帶出該影片封面、歌名與作者；canonical／og:url／四語alternates保留track ID。最高解析缺圖時伺服器改用同影片標準／高畫質縮圖。33項相關測試全過；完整684項651通過／33既有可選DB略過／0失敗，TypeScript與webpack build通過，lint0 errors／14既有warnings。正式驗收與快取限制見[MV分享封面report](releases/2026-10-23-mv-share-cover.md)。沒有DB、Credit或自動發文修改。
 
 前輪應用發布基準：2026-10-22／`b0593ca`／`codex/public-rule-copy`；Vercel `dpl_8QtFJJ68C93AL1mEUoB8XuAtES8A` READY並綁定aipoger.com／www。MV下方保留完整公開清單（含所有精選），預設評分優先：封面平均分高者先、同分新作先，未評分作品由新到舊接在後面；原最新投稿／本週支持可手動切換。相關25項全過；全套676項643通過／33既有可選DB略過／0失敗，TypeScript及webpack build通過，lint 0 errors／14既有warnings。沒有DB／Credit／公開資格修改。正式驗收與原評論規則繼承見[MV清單與排序report](releases/2026-10-22-mv-catalog-visibility.md)。
 

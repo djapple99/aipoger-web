@@ -1,5 +1,6 @@
 # AIPOGER 必要發布證據
 
+- [2026-10-23 Battle三模式分享鍵與專屬縮圖](2026-10-23-battle-mode-sharing.md)
 - [2026-10-23 MV分享封面與作品專屬預覽](2026-10-23-mv-share-cover.md)
 
 - [2026-10-22 MV完整清單與評分優先排序](2026-10-22-mv-catalog-visibility.md)
