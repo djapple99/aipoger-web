@@ -1,5 +1,6 @@
 "use client";
 import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import ParticipationGuide from "./participation-guide";
 import Link from "next/link";
 import Image from "next/image";
@@ -12,13 +13,16 @@ import styles from "./battle-retro.module.css";
 
 export function BattleModeShare({ mode }: { mode: BattleMode }) {
   const { lang } = useI18n(); const c = battleRetroCopy(lang);
+  const selectedMode = useSearchParams().get("mode");
   const share = battleModeShareCopy(mode, lang);
   useEffect(() => {
     // The Battle page mounts behind Suspense, after the browser's first hash
     // lookup. Restore the public mode anchor when its section becomes ready.
     const id = `battle-mode-${mode}`;
-    if (window.location.hash === `#${id}`) document.getElementById(id)?.scrollIntoView({ block: "start" });
-  }, [mode, lang]);
+    if (window.location.hash !== `#${id}`) return;
+    const frame = window.requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ block: "start" }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [mode, lang, selectedMode]);
   return <ShareButton title={share.title} text={share.text}
     url={`https://aipoger.com${battleModeSharePath(mode, lang)}`}
     label={`${c.share} · ${share.name}`} copiedLabel={c.shareCopied} sharedLabel={c.shared}

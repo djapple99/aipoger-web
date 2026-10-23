@@ -7,14 +7,14 @@ import { loadTs } from './helpers/choice-runtime.mjs';
 const sharing = loadTs('src/lib/battle-mode-sharing.ts');
 const langs = ['zh', 'en', 'ja', 'ko'];
 const jsx = { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) };
-function loadTsx(file, mocks) {
+function loadTsx(file, mocks, globals = {}) {
   const compiled = ts.transpileModule(readFileSync(new URL(`../${file}`, import.meta.url), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
   }).outputText;
   const loaded = { exports: {} };
-  new Function('require', 'module', 'exports', compiled)(name => {
+  new Function('require', 'module', 'exports', ...Object.keys(globals), compiled)(name => {
     assert.ok(Object.hasOwn(mocks, name), name); return mocks[name];
-  }, loaded, loaded.exports);
+  }, loaded, loaded.exports, ...Object.values(globals));
   return loaded.exports;
 }
 
@@ -88,6 +88,7 @@ test('direct blind listening entry also has the blind cover and its own canonica
 for (const lang of langs) test(`each rendered intro has an accessible share button beside its heading (${lang})`, () => {
   const component = loadTsx('src/components/battle-retro.tsx', {
     react: { useEffect: () => {} }, 'react/jsx-runtime': jsx, './participation-guide': 'guide',
+    'next/navigation': { useSearchParams: () => new URLSearchParams() },
     'next/link': 'a', 'next/image': 'img',
     'lucide-react': { ArrowRight: 'arrow', Play: 'play', Swords: 'swords' },
     '@/lib/i18n': { useI18n: () => ({ lang }) }, '@/lib/battle-retro-copy': loadTs('src/lib/battle-retro-copy.ts'),
@@ -114,4 +115,26 @@ for (const lang of langs) test(`each rendered intro has an accessible share butt
     const headingRow = nodes(section).find(node => node.type === 'div' && nodes(node).some(child => child.type === 'h2') && nodes(node).some(child => child.type === 'share-button') && !nodes(node).some(child => child.type === 'p'));
     assert.ok(headingRow, 'share button belongs to the heading row');
   }
+});
+
+test('mode anchors wait for the next frame and react to same-page mode changes', () => {
+  let queryMode = 'blind'; const effects = [], frames = [], scrolled = [], cancelled = [];
+  const window = { location: { hash: '#battle-mode-blind' },
+    requestAnimationFrame: callback => frames.push(callback), cancelAnimationFrame: id => cancelled.push(id) };
+  const document = { getElementById: id => ({ scrollIntoView: options => scrolled.push({ id, options }) }) };
+  const component = loadTsx('src/components/battle-retro.tsx', {
+    react: { useEffect: (callback, deps) => effects.push({ callback, deps }) }, 'react/jsx-runtime': jsx,
+    'next/navigation': { useSearchParams: () => new URLSearchParams({ mode: queryMode }) },
+    './participation-guide': 'guide', 'next/link': 'a', 'next/image': 'img', 'lucide-react': {},
+    '@/lib/i18n': { useI18n: () => ({ lang: 'zh' }) }, '@/lib/battle-retro-copy': loadTs('src/lib/battle-retro-copy.ts'),
+    './share-button': 'share-button', '@/lib/battle-mode-sharing': sharing, './battle-retro.module.css': {},
+  }, { window, document });
+  component.BattleModeShare({ mode: 'q-crash' });
+  assert.equal(effects[0].callback(), undefined); assert.equal(frames.length, 0);
+  queryMode = 'q-crash'; window.location.hash = '#battle-mode-q-crash';
+  component.BattleModeShare({ mode: 'q-crash' });
+  assert.notDeepEqual(effects[1].deps, effects[0].deps, 'changing the selected mode must rerun the anchor effect');
+  const cleanup = effects[1].callback(); assert.equal(scrolled.length, 0);
+  frames[0](); assert.deepEqual(scrolled, [{ id: 'battle-mode-q-crash', options: { block: 'start' } }]);
+  cleanup(); assert.deepEqual(cancelled, [1]);
 });
