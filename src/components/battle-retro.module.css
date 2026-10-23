@@ -24,6 +24,14 @@
 .mode {min-height:226px;display:flex;align-items:center;justify-content:space-between;}
 .modeCopy {width:35%;padding:26px 0 26px 44px;position:relative;z-index:1;}
 .modeCopy h2 {font-size:clamp(30px,4vw,56px);}
+.entry,.mode {scroll-margin-top:100px;}
+.modeHeading {display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.modeHeading h2 {margin:0;min-width:0;overflow-wrap:anywhere;}
+.modeShareWrap {position:relative;display:inline-flex;flex-shrink:0;}
+.modeShare {display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;border:1px solid #b78462;border-radius:50%;background:#101a21dc;color:#ffc095;}
+.modeShare:hover {background:#443024;color:#fff0de;}
+.modeShare:focus-visible {outline:3px solid #ffba85;outline-offset:3px;}
+[aria-label="Q Crash"] .modeShare {border-color:#7ab4a4;color:#b8ebdb;}
 .modeActions {width:25%;padding:24px 44px 24px 20px;display:flex;flex-direction:column;align-items:center;gap:20px;position:relative;z-index:1;}
 .modeActions .primary,.modeActions .mintButton {width:100%;}
 .mintButton {background:#a1dbc7;color:#142823;}.mintButton:hover{background:#b7e7d6;}
@@ -85,6 +93,7 @@
   .station{height:400px}.controls{left:15px;right:15px;gap:8px}.replay{display:none}.controls time{font-size:12px}.play{font-size:14px}
 }
 @media(max-width:640px){
+  .modeHeading {gap:10px;margin-bottom:8px;}.entryCopy .modeHeading h2,.modeCopy .modeHeading h2{font-size:clamp(24px,7vw,32px);margin:0;}.modeShareWrap{align-self:center;}
   .titleRow{padding:18px 18px;align-items:flex-start;flex-wrap:wrap;gap:8px}.titleRow nav{gap:12px;font-size:13px;padding-top:0}.titleRow h1{font-size:25px}.titleRow a svg{display:none}
   .entry{min-height:424px;align-items:flex-start}.entry .backdrop{height:230px!important;top:auto!important;bottom:0!important;object-position:75% center}
   .entryCopy{width:100%;padding:22px 18px 200px}.entryCopy h2{font-size:32px;display:inline-block;margin-right:14px}.entryCopy p{font-size:15px;margin-bottom:6px}

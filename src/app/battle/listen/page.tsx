@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import BlindListeningRoom from "@/components/blind-listening-room";
 import { headers } from "next/headers";
 import { isSupportedLang } from "@/lib/locale";
-import { battleRetroCopy } from "@/lib/battle-retro-copy";
+import { battleModeMetadata } from "@/lib/battle-mode-sharing";
 export async function generateMetadata(): Promise<Metadata> {
   const requested = (await headers()).get("x-aipoger-lang");
-  const c = battleRetroCopy(isSupportedLang(requested) ? requested : "zh");
-  return { title: { absolute: c.blind + "｜AIPOGER" }, description: c.blindDescription + " " + c.rewardNote };
+  return battleModeMetadata("blind", isSupportedLang(requested) ? requested : "zh", true);
 }
 export default function BlindListeningPage() { return <BlindListeningRoom/>; }

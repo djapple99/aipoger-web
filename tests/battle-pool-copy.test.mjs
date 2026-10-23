@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const battlePageSource = readFileSync(new URL("../src/app/battle/page.tsx", import.meta.url), "utf8");
+const battlePageSource = readFileSync(new URL("../src/app/battle/battle-client.tsx", import.meta.url), "utf8");
 const productRulesSource = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
 const i18nSource = readFileSync(new URL("../src/lib/i18n.tsx", import.meta.url), "utf8");
 const battleResultsSource = readFileSync(new URL("../src/app/battle/results/results-client.tsx", import.meta.url), "utf8");

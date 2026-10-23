@@ -1,6 +1,11 @@
 export function battleRetroCopy(lang: string) {
   const v = (zh: string, en: string, ja: string, ko: string) => lang === "en" ? en : lang === "ja" ? ja : lang === "ko" ? ko : zh;
   return {
+    share: v("分享", "Share", "共有", "공유"),
+    shareCopied: v("連結已複製", "Link copied", "リンクをコピーしました", "링크 복사 완료"),
+    shared: v("已分享", "Shared", "共有しました", "공유 완료"),
+    manualCopy: v("請手動複製網址", "Copy the link manually", "リンクを手動でコピー", "링크를 직접 복사하세요"),
+    shareLink: v("分享連結", "Share link", "共有リンク", "공유 링크"),
     title: v("音樂鬥歌場", "Music Battle", "音楽バトル", "음악 배틀"),
     subtitle: v("用音樂對話，讓好聲音被聽見。", "Let good music be heard.", "音楽で伝え、いい音を届けよう。", "음악으로 이야기하고 좋은 소리를 전해요."),
     records: v("對戰記錄", "Battle records", "対戦記録", "대결 기록"),
