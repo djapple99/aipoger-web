@@ -1,6 +1,8 @@
 # AIPOGER 開發與維運
 
-目前應用發布基準：2026-10-22／`b0593ca`／`codex/public-rule-copy`；Vercel `dpl_8QtFJJ68C93AL1mEUoB8XuAtES8A` READY並綁定aipoger.com／www。MV下方保留完整公開清單（含所有精選），預設評分優先：封面平均分高者先、同分新作先，未評分作品由新到舊接在後面；原最新投稿／本週支持可手動切換。相關25項全過；全套676項643通過／33既有可選DB略過／0失敗，TypeScript及webpack build通過，lint 0 errors／14既有warnings。沒有DB／Credit／公開資格修改。正式驗收與原評論規則繼承見[MV清單與排序report](releases/2026-10-22-mv-catalog-visibility.md)。
+目前應用發布基準：2026-10-23／`0791814`／`codex/public-rule-copy`；Vercel `dpl_AJRsf7z6BByhZ9N9AzktWN5h44nW` READY並綁定aipoger.com／www。單支MV分享metadata讀同一公開清單，帶出該影片封面、歌名與作者；canonical／og:url／四語alternates保留track ID。最高解析缺圖時伺服器改用同影片標準／高畫質縮圖。33項相關測試全過；完整684項651通過／33既有可選DB略過／0失敗，TypeScript與webpack build通過，lint0 errors／14既有warnings。正式驗收與快取限制見[MV分享封面report](releases/2026-10-23-mv-share-cover.md)。沒有DB、Credit或自動發文修改。
+
+前輪應用發布基準：2026-10-22／`b0593ca`／`codex/public-rule-copy`；Vercel `dpl_8QtFJJ68C93AL1mEUoB8XuAtES8A` READY並綁定aipoger.com／www。MV下方保留完整公開清單（含所有精選），預設評分優先：封面平均分高者先、同分新作先，未評分作品由新到舊接在後面；原最新投稿／本週支持可手動切換。相關25項全過；全套676項643通過／33既有可選DB略過／0失敗，TypeScript及webpack build通過，lint 0 errors／14既有warnings。沒有DB／Credit／公開資格修改。正式驗收與原評論規則繼承見[MV清單與排序report](releases/2026-10-22-mv-catalog-visibility.md)。
 
 前輪評論規則發布：2026-10-15／`0c0d2a6`／`codex/public-rule-copy`；Vercel `dpl_ALjK7rZuguVQ4HLfdvy1wm47gVJz` READY，aipoger.com與www均已指向同一SHA。歌曲／MV一般會員首次評分固定、文字一次修改、禁止自行刪除；Owner可刪除評論並不限次修改自己的文字／評分。評論獎勵已發不追回、不重複領；首次有效評分＋20字及反灌水保留，Heart原規則不改。正式遷移`20261015153016_review_finality`及`20261015153213_review_owner_lookup`已套用，舊RPC相容及service-only權限驗證；Owner helper固定search_path、僅server可執行。正式交易測試完整回滾，原評分與獎勵hash不變，Security advisor無新增WARN。相關22項全過，完整673項642通過／31既有可選DB略過／0失敗；TypeScript、webpack build及lint0 errors／14既有warnings通過。正式Owner編輯／取消及390px手機操作已驗證，沒有送出真實改評。一般會員由API／runtime與正式SQL驗證，未用真人會員帳號發表。[評論定案report](releases/2026-10-15-review-finality.md)。
 
