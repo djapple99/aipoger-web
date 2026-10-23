@@ -16,12 +16,15 @@ export function BattleModeShare({ mode }: { mode: BattleMode }) {
   const selectedMode = useSearchParams().get("mode");
   const share = battleModeShareCopy(mode, lang);
   useEffect(() => {
-    // The Battle page mounts behind Suspense, after the browser's first hash
-    // lookup. Restore the public mode anchor when its section becomes ready.
+    // Wait for Suspense and Next's navigation scroll restoration. The mode also
+    // identifies canonical links without a hash; other explicit anchors win.
     const id = `battle-mode-${mode}`;
-    if (window.location.hash !== `#${id}`) return;
-    const frame = window.requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ block: "start" }));
-    return () => window.cancelAnimationFrame(frame);
+    if (selectedMode !== mode) return;
+    const timer = window.setTimeout(() => {
+      if (window.location.hash && window.location.hash !== `#${id}`) return;
+      document.getElementById(id)?.scrollIntoView({ block: "start", behavior: "instant" });
+    }, 120);
+    return () => window.clearTimeout(timer);
   }, [mode, lang, selectedMode]);
   return <ShareButton title={share.title} text={share.text}
     url={`https://aipoger.com${battleModeSharePath(mode, lang)}`}

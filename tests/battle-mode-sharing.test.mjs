@@ -117,10 +117,10 @@ for (const lang of langs) test(`each rendered intro has an accessible share butt
   }
 });
 
-test('mode anchors wait for the next frame and react to same-page mode changes', () => {
+test('mode anchors wait for navigation layout and react to same-page mode changes', () => {
   let queryMode = 'blind'; const effects = [], frames = [], scrolled = [], cancelled = [];
   const window = { location: { hash: '#battle-mode-blind' },
-    requestAnimationFrame: callback => frames.push(callback), cancelAnimationFrame: id => cancelled.push(id) };
+    setTimeout: (callback, delay) => { assert.equal(delay, 120); return frames.push(callback); }, clearTimeout: id => cancelled.push(id) };
   const document = { getElementById: id => ({ scrollIntoView: options => scrolled.push({ id, options }) }) };
   const component = loadTsx('src/components/battle-retro.tsx', {
     react: { useEffect: (callback, deps) => effects.push({ callback, deps }) }, 'react/jsx-runtime': jsx,
@@ -135,6 +135,6 @@ test('mode anchors wait for the next frame and react to same-page mode changes',
   component.BattleModeShare({ mode: 'q-crash' });
   assert.notDeepEqual(effects[1].deps, effects[0].deps, 'changing the selected mode must rerun the anchor effect');
   const cleanup = effects[1].callback(); assert.equal(scrolled.length, 0);
-  frames[0](); assert.deepEqual(scrolled, [{ id: 'battle-mode-q-crash', options: { block: 'start' } }]);
+  frames[0](); assert.deepEqual(scrolled, [{ id: 'battle-mode-q-crash', options: { block: 'start', behavior: 'instant' } }]);
   cleanup(); assert.deepEqual(cancelled, [1]);
 });
