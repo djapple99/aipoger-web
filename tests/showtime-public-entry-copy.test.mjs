@@ -43,6 +43,7 @@ const languages={
 for (const [lang,copy] of Object.entries(languages)) {
   test(`About rendered introduction uses saved songs, not certification or own uploads (${lang})`,() => {
     const shell=evaluate(info,{
+      "@/lib/battle-guide-copy": {battleGuideCopy: evaluate(read("lib/battle-guide-copy.ts")).battleGuideCopy},
       'react/jsx-runtime':jsxRuntime,'next/link':{default:'link'},
       '@/lib/brand':{AIPOGER_CONTACT_EMAIL:'test@example.com',AIPOGER_SOCIAL_LINKS:[]},
       '@/lib/fonts':{fontRighteous:{className:'font'}},'@/lib/i18n':{useI18n:() => ({lang})},

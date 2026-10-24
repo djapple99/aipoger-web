@@ -1,3 +1,4 @@
+import { battlePlaybackSeconds, type BattleLinkPlayback } from "./battle-link-rules.ts";
 const DROP_BATTLE_EXPECTED_END_BUFFER_MS = (45 * 2 + 2 + 5 + 30) * 1000;
 const CLOSED_DROP_BATTLE_STATUSES = new Set([
   "finished",
@@ -9,6 +10,8 @@ const CLOSED_DROP_BATTLE_STATUSES = new Set([
 ]);
 
 export type DropBattleLinkBattleSnapshot = {
+  playback_a?: BattleLinkPlayback | null;
+  playback_b?: BattleLinkPlayback | null;
   status?: string | null;
   battle_type?: string | null;
   battle_ended_at?: string | null;
@@ -37,7 +40,7 @@ function isEndedOrPastExpectedEnd(battle: DropBattleLinkBattleSnapshot | null | 
   if (!battle) return false;
   if (battle.battle_ended_at || CLOSED_DROP_BATTLE_STATUSES.has(battle.status ?? "")) return true;
   const startMs = new Date(resolveRuntimeStart(battle) ?? "").getTime();
-  return Number.isFinite(startMs) && startMs + DROP_BATTLE_EXPECTED_END_BUFFER_MS <= nowMs;
+  return Number.isFinite(startMs) && startMs + (battle.playback_a && battle.playback_b ? (battlePlaybackSeconds(battle) + 42) * 1000 : DROP_BATTLE_EXPECTED_END_BUFFER_MS) <= nowMs;
 }
 
 export function isActiveDropRematchClaim(claim: DropBattleLinkClaimSnapshot | null | undefined, nowMs = Date.now()) {

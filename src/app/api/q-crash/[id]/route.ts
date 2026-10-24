@@ -1,3 +1,4 @@
+import { playbackAudioUrl, type BattleLinkPlayback } from "@/lib/battle-link-rules";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
@@ -50,6 +51,7 @@ type QueueRow = {
   cover_url: string | null;
   source_type: string | null;
   source_url: string | null;
+  link_playback: BattleLinkPlayback | null;
   title: string | null;
   creator: string | null;
   duration_seconds: number | null;
@@ -196,7 +198,7 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
   const [queueResult, battleResult] = await Promise.all([
     admin
       .from("battle_queue")
-      .select("id,user_id,fighter_name,original_file_name,genre,ai_tool,lyrics,audio_path,drop_duration_seconds,cover_url,source_type,source_url,title,creator,duration_seconds")
+      .select("id,user_id,fighter_name,original_file_name,genre,ai_tool,lyrics,audio_path,drop_duration_seconds,cover_url,source_type,source_url,link_playback,title,creator,duration_seconds")
       .in("id", queueIds)
       .returns<QueueRow[]>(),
     card.battle_id
@@ -262,11 +264,11 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
   const [profileA, profileB, audioA, audioB, editorialCoverA, editorialCoverB] = await Promise.all([
     profileMedia(admin, queueA.user_id),
     queueB ? profileMedia(admin, queueB.user_id) : Promise.resolve(null),
-    qCrashSourceType(queueA.source_type) === "suno"
+    queueA.link_playback ? queueA.link_playback.type === "upload" ? signedAudio(admin, queueA.link_playback.url) : Promise.resolve(playbackAudioUrl(queueA.link_playback)) : qCrashSourceType(queueA.source_type) === "suno"
       ? resolveQCrashSunoMediaSource(queueA.source_url).then((media) => media ? qCrashSunoInAppPlaybackUrl(queueA.source_url) : null)
       : signedAudio(admin, battle?.audio_a_path || queueA.audio_path),
     queueB
-      ? qCrashSourceType(queueB.source_type) === "suno"
+      ? queueB.link_playback ? queueB.link_playback.type === "upload" ? signedAudio(admin, queueB.link_playback.url) : Promise.resolve(playbackAudioUrl(queueB.link_playback)) : qCrashSourceType(queueB.source_type) === "suno"
         ? resolveQCrashSunoMediaSource(queueB.source_url).then((media) => media ? qCrashSunoInAppPlaybackUrl(queueB.source_url) : null)
         : signedAudio(admin, battle?.audio_b_path || queueB.audio_path)
       : Promise.resolve(null),
@@ -369,6 +371,7 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
           sourceUrl: qCrashSourceType(queueA.source_type) === "suno" ? queueA.source_url : null,
           durationSeconds: queueA.duration_seconds ?? queueA.drop_duration_seconds,
           audioUrl: audioA,
+          playback: queueA.link_playback,
           coverUrl: editorialCoverA || battle?.song_a_cover || queueA.cover_url || profileA.coverUrl,
           fullSongUrl: qCrashEditorialShowsFullSong(card.status) ? editorialA?.full_song_url ?? null : null,
           avatarUrl: battle?.fighter_a_avatar || profileA.avatarUrl,
@@ -386,6 +389,7 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
               sourceUrl: qCrashSourceType(queueB.source_type) === "suno" ? queueB.source_url : null,
               durationSeconds: queueB.duration_seconds ?? queueB.drop_duration_seconds,
               audioUrl: audioB,
+              playback: queueB.link_playback,
               coverUrl: editorialCoverB || battle?.song_b_cover || queueB.cover_url || profileB?.coverUrl,
               fullSongUrl: qCrashEditorialShowsFullSong(card.status) ? editorialB?.full_song_url ?? null : null,
               avatarUrl: battle?.fighter_b_avatar || profileB?.avatarUrl,

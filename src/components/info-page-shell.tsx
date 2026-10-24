@@ -1,5 +1,6 @@
 "use client";
 
+import { battleGuideCopy } from "@/lib/battle-guide-copy";
 import Link from "next/link";
 import { AIPOGER_CONTACT_EMAIL, AIPOGER_SOCIAL_LINKS, AIPOGER_TUTORIAL_PLAYLIST_URL } from "@/lib/brand";
 import { fontRighteous } from "@/lib/fonts";
@@ -98,7 +99,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
         },
       ],
       primaryCta: "聯絡愛播歌",
-      secondaryCta: "查看 Drop Battle 規則",
+      secondaryCta: "查看 Battle 玩法指南",
     },
     en: {
       navTitle: "About AIPOGER",
@@ -150,7 +151,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
         },
       ],
       primaryCta: "Contact AIPOGER",
-      secondaryCta: "Read Drop Battle Rules",
+      secondaryCta: "Read Battle Guide",
     },
   },
   partners: {
@@ -184,7 +185,7 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
         },
       ],
       primaryCta: "洽談合作",
-      secondaryCta: "查看 Drop Battle 規則",
+      secondaryCta: "查看 Battle 玩法指南",
     },
     en: {
       navTitle: "Partnerships",
@@ -216,111 +217,16 @@ const content: Record<InfoPageKind, { zh: InfoPageContent; en: InfoPageContent }
         },
       ],
       primaryCta: "Discuss Partnership",
-      secondaryCta: "Read Drop Battle Rules",
+      secondaryCta: "Read Battle Guide",
     },
   },
-  "hook-guide": {
-    zh: {
-      navTitle: "Drop Battle 規則",
-      title: "Drop Battle 與 Q Crash 怎麼玩？",
-      lead:
-        "用現場 Drop Battle 比較最抓耳的 30-60 秒；用非同步 Q Crash 讓聽眾比較兩首完整歌曲、自由播放並投票。",
-      cards: [
-        { label: "Drop", value: "30-60 秒", detail: "剪出最抓耳的爆點" },
-        { label: "Battle", value: "開戰 / 接戰", detail: "讓作品直接被比較" },
-        { label: "Vote", value: "聽眾投票", detail: "3 位有效觀眾才列正式戰績" },
-        { label: "Q Crash", value: "非同步投票", detail: "不用等大家同時上線" },
-      ],
-      sections: [
-        {
-          title: "Drop 的由來",
-          body:
-            "Drop 原本指音樂裡能勾住聽眾記憶的段落。流行歌裡常見於副歌，但在舞曲、嘻哈、電子與 AI 音樂裡，任何讓人想再聽一次的聲音都可以成為 Drop。",
-        },
-        {
-          title: "基本比賽規則",
-          body:
-            "創作者上傳歌曲後裁切 Drop，開出戰帖或接受挑戰。系統會優先讓同歌曲種類的作品對決，觀眾進場聽 A / B 兩方，再用投票留下聽眾反應。",
-          items: ["每場以 A / B 兩方對決", "Drop 最長 60 秒，可剪短", "優先配對相同歌曲種類", "一般 Drop Battle 依現行戰場流程投票", "至少 3 位非參賽觀眾完成投票才成立正式戰績", "禁止上傳非本人授權或侵權歌曲"],
-        },
-        {
-          title: "Q Crash 非同步 Full Song Battle",
-          body:
-            "Q Crash 適合大家無法同時上線時使用。兩首完整歌曲到位後立即開放投票，不限曲風；參賽者可貼公開 Suno 連結或上傳 MP3／WAV，聽眾收到連結後可在自己的時間播放、暫停、快轉與比較，截止後才一起公開結果。",
-          items: ["可放自己的兩個版本，也可邀請另一位創作者放入作品 B", "投票時間可選 30 分鐘、2 小時、12 小時或自訂，最長 3 天，預設 2 小時", "登入且非參賽的觀眾才能投票；不要求聽完整首歌，選 A／B 後必須按「確定送出」，送出後不能改票", "每位觀眾可分別替兩首作品點選押韻、爆點、旋律、情緒、結構，每項每首限一次", "完成投票後可選擇留下一則最多 120 字的評論；投票期間只有自己看得到，截止後與結果一起公開", "0-2 位有效觀眾為觀眾不足；至少 3 位才成立正式戰績與勝出作品五角分布"],
-        },
-        {
-          title: "創作者小技巧",
-          body:
-            "如果你有兩首同風格作品，但自己選不出哪一首更抓耳，可以開一場 Drop Battle，讓聽眾用投票幫你判斷哪一段更有記憶點。",
-          items: ["兩首歌都喜歡時，可以自己挑戰自己", "適合比較兩個版本、兩種編曲或兩段副歌", "只能由創作者主動指定；系統不會自動把你配給自己", "結果可作為選歌、修歌與發布前的聽眾測試"],
-        },
-        {
-          title: "戰果與紀錄",
-          body:
-            "Drop Battle 的重點不是空喊誰比較強，而是讓作品留下可信的聽眾反應。觀眾不足時不包裝成正式勝負；達到門檻後，才把結果寫進作品戰績。",
-          items: ["0-2 位非參賽觀眾：觀眾不足，不產生正式勝負、成果卡或正式戰績", "3 位以上不同非參賽觀眾完成投票，才成立正式紀錄", "參賽者自己的票不算有效觀眾", "成立的正式戰績會進入對戰記錄"],
-        },
-        {
-          title: "評分精神",
-          body:
-            "不只比音量或製作規格，而是比 Drop 是否鮮明、記憶點是否成立、情緒是否到位、AI 工具是否被用得有個人風格。",
-        },
-      ],
-      primaryCta: "開始鬥歌",
-      secondaryCta: "去傷心酒吧",
-    },
-    en: {
-      navTitle: "Drop Battle Rules",
-      title: "How Do Drop Battle and Q Crash Work?",
-      lead:
-        "Use live Drop Battle to compare the most addictive 30-60 seconds; use asynchronous Q Crash to compare two full songs that listeners can play and judge in their own time.",
-      cards: [
-        { label: "Drop", value: "30-60s", detail: "Cut the strongest moment" },
-        { label: "Battle", value: "Open / Accept", detail: "Put two tracks side by side" },
-        { label: "Vote", value: "Listener Vote", detail: "3 valid voters make it official" },
-        { label: "Q Crash", value: "Async Vote", detail: "No synchronized meetup" },
-      ],
-      sections: [
-        {
-          title: "Where Drop Comes From",
-          body:
-            "A Drop is the memorable musical idea that catches the listener. In pop it often appears in the chorus, but in dance, hip-hop, electronic, and AI music, any replayable sound can be the Drop.",
-        },
-        {
-          title: "Battle Flow",
-          body:
-            "Creators upload a track, cut a Drop, then open a challenge card or accept another creator's card. Listeners enter the room, compare A / B, and vote for the moment that lands harder.",
-          items: ["A / B battle format", "Drops can be up to 60 seconds", "Same music category is prioritized", "Standard Drop Battles follow the current arena voting flow", "An official record requires at least 3 non-participant voters", "Only original or properly licensed AI music is allowed"],
-        },
-        {
-          title: "Q Crash: Asynchronous Full Song Battle",
-          body:
-            "Q Crash is for listeners who cannot arrive at the same time. Voting opens as soon as two full songs are locked, with no same-genre requirement. Creators may paste a public Suno link or upload an MP3/WAV; listeners can play, pause, seek, and compare in their own time without a completion requirement, while the result stays sealed until the deadline.",
-          items: ["Compare two versions from the same creator or invite another creator to fill Work B", "Choose 30 minutes, 2 hours, 12 hours, or a custom window up to 3 days; 2 hours is the default", "Only signed-in non-participants may vote; a vote is not submitted until Confirm, then it cannot be changed", "Each listener may tap Rhyme, Impact, Melody, Emotion, and Structure once per work", "After voting, a listener may leave one optional comment up to 120 characters; it stays private until the result is revealed", "0-2 valid voters is insufficient; 3+ creates the official result and winning-work radar"],
-        },
-        {
-          title: "Creator Tip",
-          body:
-            "If you have two tracks in the same style and cannot choose which one hits harder, you can deliberately battle yourself and let listeners help you decide.",
-          items: ["Use it to compare two tracks you both like", "Test alternate versions, arrangements, or chorus ideas", "Self-battles must be deliberately chosen by the creator", "The system does not auto-match you against yourself"],
-        },
-        {
-          title: "Results and Records",
-          body:
-            "Drop Battle is not just about claiming a track is stronger. It creates a public listener signal that helps creators decide what to refine, share, and bring back to the stage.",
-          items: ["0-2 non-participant voters is insufficient and creates no official result, result card, or official battle record", "3+ distinct non-participant voters establishes the official record", "Participant votes do not count toward the audience threshold", "Established official results appear in Battle Records"],
-        },
-        {
-          title: "Judging Spirit",
-          body:
-            "The platform rewards memorable Drops, clear emotion, personal taste, and creative use of AI tools. Loudness alone does not earn recognition.",
-        },
-      ],
-      primaryCta: "Start Battle",
-      secondaryCta: "Go to Bar Heartbreak",
-    },
-  },
+  "hook-guide": Object.fromEntries((["zh", "en"] as const).map(lang => {
+    const c = battleGuideCopy(lang);
+    return [lang, { navTitle: c.nav, title: c.title, lead: c.intro,
+      cards: c.modes.map(m => ({ label: m.label, value: m.title, detail: m.tag })),
+      sections: c.modes.map(m => ({ title: m.title, body: m.tag, items: m.items })),
+      primaryCta: lang === "zh" ? "進入鬥場" : "Enter Battle", secondaryCta: lang === "zh" ? "探索音樂" : "Explore Music" }];
+  })) as { zh: InfoPageContent; en: InfoPageContent },
   "ai-music-bible": {
     zh: {
       navTitle: "AI 音樂練功聖經",
@@ -609,7 +515,7 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
 
   const primaryHref =
     kind === "partners" || kind === "about" ? `mailto:${mail}` : kind === "ai-music-bible" ? AIPOGER_TUTORIAL_PLAYLIST_URL : "/battle/setup";
-  const secondaryHref = kind === "partners" || kind === "about" ? "/drop-guide" : kind === "ai-music-bible" ? "/battle/setup" : "/listen-bar";
+  const secondaryHref = kind === "partners" || kind === "about" ? "/drop-guide" : kind === "ai-music-bible" ? "/battle/setup" : "/ai-music";
 
   return (
     <main className={`aipo-stage-bg relative min-h-screen overflow-hidden px-5 py-6 text-zinc-100 md:px-10 ${isPolicyPage ? "bg-[#070707]" : "bg-[#050505]"}`}>
@@ -680,7 +586,7 @@ export default function InfoPageShell({ kind }: { kind: InfoPageKind }) {
               </div>
             )}
             <div className="mt-5 flex flex-wrap gap-2">
-              {AIPOGER_SOCIAL_LINKS.map((social) => (
+              {AIPOGER_SOCIAL_LINKS.filter(social => !/discord/i.test(social.label)).map((social) => (
                 <a
                   key={social.label}
                   href={social.href}

@@ -1,3 +1,4 @@
+import type { BattleLinkPlayback } from "@/lib/battle-link-rules";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { isDropChallengeAcceptable, resolveDropBattleScheduledStart } from "@/lib/battle-pool-client";
@@ -7,6 +8,8 @@ import { resolveDropBattleLinkResolution } from "@/lib/drop-battle-link-resoluti
 type Lang = "zh" | "en";
 type ProfileMedia = { avatar_url?: string | null; song_cover_url?: string | null; level?: number | null };
 type QueueArenaRow = {
+  link_playback?: BattleLinkPlayback | null;
+  drop_playback_mode?: string | null;
   id: string;
   user_id: string | null;
   fighter_name: string | null;
@@ -23,6 +26,9 @@ type QueueArenaRow = {
   created_at: string | null;
 };
 type BattleRow = {
+  playback_a?: BattleLinkPlayback | null;
+  playback_b?: BattleLinkPlayback | null;
+  drop_playback_mode?: string | null;
   id: string;
   fighter_a_user_id: string;
   fighter_b_user_id: string | null;
@@ -114,8 +120,8 @@ async function readBattle(admin: SupabaseClient, battleId: string, lang: Lang) {
   const [profileA, profileB, audioA, audioB] = await Promise.all([
     profileMedia(admin, battle.fighter_a_user_id),
     profileMedia(admin, battle.fighter_b_user_id),
-    signedBattleAudio(admin, battle.audio_a_path),
-    signedBattleAudio(admin, battle.audio_b_path),
+    signedBattleAudio(admin, battle.playback_a?.type === "upload" ? battle.playback_a.url : battle.audio_a_path),
+    signedBattleAudio(admin, battle.playback_b?.type === "upload" ? battle.playback_b.url : battle.audio_b_path),
   ]);
 
   return {
@@ -133,6 +139,8 @@ async function readBattle(admin: SupabaseClient, battleId: string, lang: Lang) {
       song_b_cover: battle.song_b_cover ?? profileB.song_cover_url ?? null,
       audio_a_path: audioA,
       audio_b_path: audioB,
+      playback_a: battle.playback_a?.type === "upload" && audioA ? { ...battle.playback_a, url: audioA } : battle.playback_a,
+      playback_b: battle.playback_b?.type === "upload" && audioB ? { ...battle.playback_b, url: audioB } : battle.playback_b,
       genre: battle.genre || "AI Music",
       status: battle.status || "live",
     },
@@ -142,7 +150,7 @@ async function readBattle(admin: SupabaseClient, battleId: string, lang: Lang) {
 async function readQueue(admin: SupabaseClient, queueId: string, lang: Lang) {
   let { data: queue, error } = await admin
     .from("battle_queue")
-    .select("id,user_id,fighter_name,original_file_name,genre,ai_tool,lyrics,audio_path,status,match_group_id,expires_at,scheduled_start_at,cancellation_evaluation_at,created_at")
+    .select("id,user_id,fighter_name,original_file_name,genre,ai_tool,lyrics,audio_path,link_playback,drop_playback_mode,status,match_group_id,expires_at,scheduled_start_at,cancellation_evaluation_at,created_at")
     .eq("id", queueId)
     .maybeSingle<QueueArenaRow>();
 
@@ -151,7 +159,7 @@ async function readQueue(admin: SupabaseClient, queueId: string, lang: Lang) {
     if (/scheduled_start_at|cancellation_evaluation_at|schema cache|column.*does not exist|PGRST204/i.test(msg)) {
       const legacy = await admin
         .from("battle_queue")
-        .select("id,user_id,fighter_name,original_file_name,genre,ai_tool,lyrics,audio_path,status,match_group_id,expires_at,created_at")
+        .select("id,user_id,fighter_name,original_file_name,genre,ai_tool,lyrics,audio_path,link_playback,drop_playback_mode,status,match_group_id,expires_at,created_at")
         .eq("id", queueId)
         .maybeSingle<QueueArenaRow>();
       queue = legacy.data;
@@ -175,7 +183,7 @@ async function readQueue(admin: SupabaseClient, queueId: string, lang: Lang) {
     return { action: "redirect" as const, href: `/listen-bar?lang=${lang}`, reason: "queue_expired" };
   }
 
-  const [profile, audioA] = await Promise.all([profileMedia(admin, queue.user_id), signedBattleAudio(admin, queue.audio_path)]);
+  const [profile, audioA] = await Promise.all([profileMedia(admin, queue.user_id), signedBattleAudio(admin, queue.link_playback?.type === "upload" ? queue.link_playback.url : queue.audio_path)]);
   const queueStatus = queue.status ?? "waiting_challenge";
   return {
     action: "battle" as const,
@@ -192,6 +200,8 @@ async function readQueue(admin: SupabaseClient, queueId: string, lang: Lang) {
       song_b_name: lang === "zh" ? "挑戰者 Drop" : "Rival Drop",
       audio_a_path: audioA,
       audio_b_path: null,
+      playback_a: queue.link_playback?.type === "upload" && audioA ? { ...queue.link_playback, url: audioA } : queue.link_playback,
+      drop_playback_mode: queue.drop_playback_mode,
       fighter_a_avatar: profile.avatar_url ?? null,
       fighter_b_avatar: null,
       fighter_a_rank: rankLabelForLevel(profile.level ?? 1, queue.fighter_name || "AIPOGER"),

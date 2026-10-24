@@ -1,3 +1,4 @@
+import { resolveBattleLink } from "@/lib/server-battle-links";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import {
@@ -21,6 +22,7 @@ type QueueRow = {
   original_file_name: string;
   source_type: string | null;
   source_url: string | null;
+  submission_mode?: string;
   title: string | null;
   creator: string | null;
   duration_seconds: number | null;
@@ -82,13 +84,17 @@ export async function POST(request: NextRequest) {
 
   const { data: queue, error: queueError } = await admin
     .from("battle_queue")
-    .select("id,user_id,fighter_name,genre,audio_path,original_file_name,status,match_group_id,challenge_target_queue_id,source_type,source_url,title,creator,duration_seconds,rights_confirmed_at")
+    .select("id,user_id,fighter_name,genre,audio_path,original_file_name,status,match_group_id,challenge_target_queue_id,source_type,source_url,submission_mode,title,creator,duration_seconds,rights_confirmed_at")
     .eq("id", body.queueId)
     .maybeSingle<QueueRow>();
   if (queueError) return jsonError(queueError.message, 500);
   if (!queue?.id || queue.user_id !== user.id) return jsonError("作品 A 的歌曲不存在。", 404);
+  if (queue.submission_mode === "drop") return jsonError("請使用 Q Crash 的連結投稿。", 409);
   const sourceType = qCrashSourceType(queue.source_type);
   const sourceUrl = queue.source_url?.trim() || null;
+  if (sourceType === "youtube" || sourceType === "work") {
+    try { await resolveBattleLink(sourceUrl, user.id); } catch { return jsonError("作品連結目前無法公開播放。", 422); }
+  }
   if (!sourceType) return jsonError("歌曲來源資料不完整，請重新提交。", 422);
   if (sourceType === "suno" && (!isValidQCrashSunoUrl(sourceUrl) || Boolean(queue.audio_path))) {
     return jsonError("Suno 來源必須是公開 HTTPS 連結，且不能上傳或轉存 Suno 音訊。", 422);
@@ -166,7 +172,7 @@ export async function POST(request: NextRequest) {
     .from("battle_queue")
     .update({
       status: "waiting_challenge",
-      rights_confirmed_at: new Date(nowMs).toISOString(),
+      rights_confirmed_at: queue.rights_confirmed_at || new Date(nowMs).toISOString(),
       expires_at: inviteExpiresAt,
       updated_at: new Date(nowMs).toISOString(),
     })

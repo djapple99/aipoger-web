@@ -1,5 +1,7 @@
 "use client";
 
+import BattleMediaPlayer, { type BattlePlayerHandle } from "@/components/battle-media-player";
+import type { BattleLinkPlayback } from "@/lib/battle-link-rules";
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -59,6 +61,7 @@ type Work = {
   lyrics: string | null;
   durationSeconds: number | null;
   audioUrl: string | null;
+  playback?: BattleLinkPlayback | null;
   sourceType: QCrashSourceType;
   sourceUrl: string | null;
   coverUrl: string | null;
@@ -304,6 +307,7 @@ function QCrashWorkCard(props: {
   canVote: boolean;
   votingBusy: boolean;
   isZh: boolean;
+  player?: ReactNode;
   onPlay: () => void;
   onLyrics: () => void;
   onVote: () => void;
@@ -325,7 +329,7 @@ function QCrashWorkCard(props: {
     onVote,
   } = props;
   const accent = side === "A" ? "orange" : "cyan";
-  const canPlay = Boolean(work.audioUrl);
+  const canPlay = Boolean(work.audioUrl || work.playback?.type === "youtube");
   return (
     <article
       className={`relative min-w-0 overflow-hidden rounded-[1.75rem] border p-4 transition md:p-5 ${
@@ -463,6 +467,7 @@ function QCrashWorkCard(props: {
       <span className={`pointer-events-none absolute -right-12 top-7 h-px w-32 rotate-45 ${
         accent === "orange" ? "bg-orange-300/35" : "bg-cyan-300/35"
       }`} />
+      {props.player}
     </article>
   );
 }
@@ -499,6 +504,7 @@ export default function QCrashCardClient({ identifier, initialSummary }: { ident
   const [embeddedBrowserKind, setEmbeddedBrowserKind] = useState<BrowserContext>("unknown");
   const [externalBrowserFailed, setExternalBrowserFailed] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const linkedRefs = useRef<Record<Side, BattlePlayerHandle | null>>({ A: null, B: null });
   const analyticsSentRef = useRef(new Set<string>());
   const restoredDraftKeyRef = useRef<string | null>(null);
 
@@ -642,7 +648,7 @@ export default function QCrashCardClient({ identifier, initialSummary }: { ident
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || (currentSide && payload?.works?.[currentSide]?.playback?.type === "youtube")) return;
     const onTime = () => setCurrentTime(audio.currentTime || 0);
     const onDuration = () => setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
     const onPlay = () => setPlaying(true);
@@ -652,7 +658,7 @@ export default function QCrashCardClient({ identifier, initialSummary }: { ident
       setPlaying(false);
       setPlaybackLoading(false);
       setDuration(0);
-      setPlaybackError(isZh ? "這個 Suno 來源暫時無法在站內播放，請稍後重試。" : "This Suno source is temporarily unavailable for in-app playback. Try again later.");
+      setPlaybackError(isZh ? "作品來源暫時無法在站內播放，請稍後重試。" : "This source is temporarily unavailable for in-app playback. Try again later.");
     };
     const onEnded = () => {
       setPlaying(false);
@@ -678,10 +684,11 @@ export default function QCrashCardClient({ identifier, initialSummary }: { ident
       audio.removeEventListener("error", onError);
       audio.removeEventListener("ended", onEnded);
     };
-  }, [currentSide, isZh]);
+  }, [currentSide, isZh, payload?.works]);
 
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume;
+    Object.values(linkedRefs.current).forEach(p => { if (p) p.volume = volume; });
   }, [volume]);
 
   useEffect(() => {
@@ -715,19 +722,29 @@ export default function QCrashCardClient({ identifier, initialSummary }: { ident
     ? battleShortPath(payload.card.battleId, lang)
     : `/battle/q-crash/${payload?.card.id ?? identifier}?lang=${lang}`;
 
-  const playAudio = (audio: HTMLAudioElement) => {
+  const playAudio = (audio: HTMLAudioElement | BattlePlayerHandle) => {
     setPlaybackError(null);
     setPlaybackLoading(true);
     void audio.play().catch(() => {
       setPlaying(false);
       setPlaybackLoading(false);
-      setPlaybackError(isZh ? "這個 Suno 來源暫時無法在站內播放，請稍後重試。" : "This Suno source is temporarily unavailable for in-app playback. Try again later.");
+      setPlaybackError(isZh ? "作品來源暫時無法在站內播放，請稍後重試。" : "This source is temporarily unavailable for in-app playback. Try again later.");
     });
   };
 
   const playSide = (side: Side) => {
     const work = works?.[side];
-    if (!work?.audioUrl) return;
+    if (!work?.audioUrl && work?.playback?.type !== "youtube") return;
+    if (work.playback?.type === "youtube") {
+      const linked = linkedRefs.current[side];
+      if (!linked) return;
+      audioRef.current?.pause(); linkedRefs.current[side === "A" ? "B" : "A"]?.pause();
+      trackStage("play", side);
+      if (currentSide === side && !linked.paused) { linked.pause(); return; }
+      if (currentSide !== side) linked.currentTime = 0;
+      setCurrentSide(side); setDuration(work.durationSeconds || work.playback.seconds); playAudio(linked); return;
+    }
+    Object.values(linkedRefs.current).forEach(p => p?.pause());
     const audio = audioRef.current;
     if (!audio) return;
     trackStage("play", side);
@@ -737,7 +754,7 @@ export default function QCrashCardClient({ identifier, initialSummary }: { ident
       return;
     }
     audio.pause();
-    audio.src = work.audioUrl;
+    audio.src = work.audioUrl!;
     audio.load();
     audio.currentTime = 0;
     setCurrentSide(side);
@@ -747,7 +764,7 @@ export default function QCrashCardClient({ identifier, initialSummary }: { ident
   };
 
   const togglePlay = () => {
-    const audio = audioRef.current;
+    const audio = currentWork?.playback?.type === "youtube" && currentSide ? linkedRefs.current[currentSide] : audioRef.current;
     if (!audio || !currentWork) return;
     if (audio.paused) playAudio(audio);
     else audio.pause();
@@ -1052,6 +1069,7 @@ export default function QCrashCardClient({ identifier, initialSummary }: { ident
                 canVote={voteActionEnabled}
                 votingBusy={votingBusy}
                 isZh={isZh}
+                player={works?.A?.playback?.type === "youtube" ? <BattleMediaPlayer ref={p => { linkedRefs.current.A = p; }} playback={works.A.playback} title={works.A.songName} onTime={() => { const p = linkedRefs.current.A; if (p && currentSide === "A") setCurrentTime(p.currentTime); }} onPlaying={value => { if (value) { audioRef.current?.pause(); linkedRefs.current.B?.pause(); setCurrentSide("A"); } setPlaying(value); setPlaybackLoading(false); }} onEnded={() => { setPlaying(false); setPlaybackLoading(false); }} onError={() => { setPlaybackError(isZh ? "作品來源暫時無法播放，請重試。" : "Source unavailable. Please retry."); setPlaybackLoading(false); }} /> : undefined}
                 onPlay={() => playSide("A")}
                 onLyrics={() => setLyricsSide((current) => current === "A" ? null : "A")}
                 onVote={() => selectPendingVote("fighter_a")}
@@ -1076,7 +1094,8 @@ export default function QCrashCardClient({ identifier, initialSummary }: { ident
                   canVote={voteActionEnabled}
                   votingBusy={votingBusy}
                   isZh={isZh}
-                  onPlay={() => playSide("B")}
+                  player={works?.B?.playback?.type === "youtube" ? <BattleMediaPlayer ref={p => { linkedRefs.current.B = p; }} playback={works.B.playback} title={works.B.songName} onTime={() => { const p = linkedRefs.current.B; if (p && currentSide === "B") setCurrentTime(p.currentTime); }} onPlaying={value => { if (value) { audioRef.current?.pause(); linkedRefs.current.A?.pause(); setCurrentSide("B"); } setPlaying(value); setPlaybackLoading(false); }} onEnded={() => { setPlaying(false); setPlaybackLoading(false); }} onError={() => { setPlaybackError(isZh ? "作品來源暫時無法播放，請重試。" : "Source unavailable. Please retry."); setPlaybackLoading(false); }} /> : undefined}
+                onPlay={() => playSide("B")}
                   onLyrics={() => setLyricsSide((current) => current === "B" ? null : "B")}
                   onVote={() => selectPendingVote("fighter_b")}
                 />
@@ -1531,7 +1550,7 @@ export default function QCrashCardClient({ identifier, initialSummary }: { ident
                 step={0.05}
                 value={Math.min(currentTime, Math.max(duration, 0.01))}
                 onChange={(event) => {
-                  const audio = audioRef.current;
+                  const audio = currentWork?.playback?.type === "youtube" && currentSide ? linkedRefs.current[currentSide] : audioRef.current;
                   if (!audio) return;
                   audio.currentTime = Number(event.target.value);
                 }}
@@ -1555,6 +1574,7 @@ export default function QCrashCardClient({ identifier, initialSummary }: { ident
               type="button"
               onClick={() => {
                 audioRef.current?.pause();
+                Object.values(linkedRefs.current).forEach(p => p?.pause());
                 setCurrentSide(null);
                 setPlaybackLoading(false);
                 setPlaybackError(null);

@@ -1,8 +1,9 @@
 // src/app/battle/setup/page.tsx
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState, useRef, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import BattleLinkSubmission from '@/components/battle-link-submission';
 import { supabase } from '@/lib/supabase';
 import { isAuthBypassEnabled, mockUserId } from '@/lib/auth-bypass';
 import { useI18n } from '@/lib/i18n';
@@ -382,7 +383,7 @@ function scheduleErrorMessage(lang: string, error: DropBattleScheduleValidationE
     : 'Set a valid start time.';
 }
 
-export default function BattleSetupPage() {
+function LegacyBattleSetupPage() {
   const router = useRouter();
   const { t, lang } = useI18n();
 
@@ -1938,3 +1939,9 @@ export default function BattleSetupPage() {
     </div>
   );
 }
+
+function BattleSetupRoute() {
+  const params = useSearchParams();
+  return params.get("mode") === "daily" ? <LegacyBattleSetupPage /> : <BattleLinkSubmission mode="drop" />;
+}
+export default function BattleSetupPage() { return <Suspense fallback={<p>AIPOGER…</p>}><BattleSetupRoute /></Suspense>; }

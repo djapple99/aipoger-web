@@ -1,5 +1,6 @@
 "use client";
 
+import { dropModeLabel } from "@/lib/battle-link-rules";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -194,6 +195,8 @@ function BattlePanelLabel({ tone, wide = false, children }: { tone: "cyan" | "re
 }
 
 export type PoolEntryRow = {
+  drop_playback_mode?: string | null;
+  submission_mode?: string;
   id: string;
   user_id: string;
   fighter_name: string;
@@ -1104,7 +1107,8 @@ function BattlePoolList({ initialData }: { initialData?: PublicBattleSeed }) {
 
       let { data, error } = await supabase
         .from("battle_queue")
-        .select("id, user_id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, scheduled_start_at, cancellation_evaluation_at, official_gatekeeper_id, official_gatekeeper_role, public_vote_score, created_at")
+        .select("id, user_id, fighter_name, original_file_name, genre, ai_tool, status, match_group_id, expires_at, scheduled_start_at, cancellation_evaluation_at, official_gatekeeper_id, official_gatekeeper_role, public_vote_score, created_at, drop_playback_mode, submission_mode")
+        .neq("submission_mode", "q_crash")
         .in("status", ["waiting_challenge", "matched", "public_voting", "ghost_battle"])
         .order("created_at", { ascending: false })
         .limit(24);
@@ -1705,6 +1709,7 @@ function BattlePoolList({ initialData }: { initialData?: PublicBattleSeed }) {
                           : "Public Voting"}
                   </p>
                   <p className="mt-2 truncate text-lg font-black text-white">{entry.original_file_name}</p>
+                  {entry.drop_playback_mode && <span className="mt-2 inline-block rounded-full border border-orange-300/35 px-3 py-1 text-xs font-bold text-orange-200">{dropModeLabel(entry.drop_playback_mode, lang)}</span>}
                   <p className="mt-1 text-sm text-zinc-400">
                     {entry.fighter_name}
                     {entry.fighter_rank && <span className="ml-2 rounded-full border border-orange-300/25 px-2 py-0.5 text-[11px] font-bold text-orange-100">{entry.fighter_rank}</span>}

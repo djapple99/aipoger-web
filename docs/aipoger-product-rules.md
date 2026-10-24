@@ -165,7 +165,7 @@ Current behavior target:
 - Every generated post must remain a draft or review item until an admin explicitly approves it.
 - Supported first-version sources are Battle result/report drafts and manually created scheduled drafts.
 - Social post states should include `draft`, `needs_review`, `scheduled`, `published`, and `failed`.
-- Use `60s Drop Battle`, `30-60 秒抓波`, and `drop / 抓波` in social copy. Do not return to `45 秒` as the current public spec.
+- Drop新場次對外標示60秒、90秒或整首，沿發起者設定；用`drop / 抓波`。不再以30–60秒或45秒當作新場次規格。
 - Battle report copy should use winner, vote count, genre, battle/result link, and clear CTA.
 - A 0:0 no contest must not generate a Winner Circle post.
 - Winner posts that become image/video/Reels content should use the winning creator's music as the background track when rights and platform workflow allow it.
@@ -330,9 +330,9 @@ Comment moderation:
 
 Current behavior:
 
-- Drop Battle uses a short drop cut rather than the full song.
-- Drop Battle clips have a hard maximum of 60 seconds. Creators may cut shorter clips; the recommended public range is about 30-60 seconds so the hook/drop has enough time to reach its payoff without turning the battle into full-song listening.
-- Drop Battle complete-song publication still requires the winning creator's explicit upload-time consent and an official result. Retiring Showtime certification grants no new full-song rights: without that consent, only the authorized Drop clip may be exposed. Complete audio must not be publicly playable by default or republished as a community song automatically.
+- 2026-10-25確認：新 Drop Battle 由發起者選每首60秒、90秒或完整單曲，接戰者沿用；片段模式各自選起點，開始後不可改。整首模式仍屬即時同場對戰，不恢復已隱藏的24H模式。合輯／串燒不作單曲參戰。
+- 新Drop／Q Crash均改為公開Suno、YouTube或本人Aipoger公開單曲連結；只保存來源、封面、片段起點與長度，音源由既有來源播放，不新增或裁切保存大型音檔。新建Drop沒有30秒選項，預設60秒；90秒與整首另選。同場模式、來源與片段由服務端鎖定，隨機配對也須同模式；不可把Q Crash佇列配入Drop。已存在的短片段、音檔與戰績保留；接舊卡沿用舊45秒播放機制，片段不足則依原長度。
+- Legacy file-backed Drop Battle complete-song publication still requires the winning creator's explicit upload-time consent and an official result. Retiring Showtime certification grants no new full-song rights: without that consent, only the authorized Drop clip may be exposed. Complete audio must not be publicly playable by default or republished as a community song automatically.
 - When complete-song publishing is enabled, the Battle Room still uses only the Drop clip; `Full Song` is an authorized post-result playback state, not a battle playback rule or certification.
 - The complete-song decision is made during the original upload and is immutable for client-side edits. The upload form does not require a YouTube link yet; it only records whether the creator agrees to release the full work after an official win.
 - After an official result, only the winning creator may submit or update a YouTube MV URL. The server verifies the official 3-voter result, winning queue ownership, and upload-time full-song consent before saving it; admins cannot replace the creator's URL.
@@ -370,17 +370,27 @@ Current behavior:
 - Battle Records / 對戰記錄 must not preserve under-threshold battle outcomes. Public result cards require the official 3-distinct-audience threshold.
 - Historical Showtime Battle records and their authorized audio remain preserved. New official Battle results belong to Battle Records; Showtime monthly charts never consume Battle results as ranking inputs.
 - Battle history should focus on the song, not the fighter profile. Cards may show per-song challenge count, wins, losses, ties, and win rate.
-- V1 song battle stats do not open arbitrary URL upload or a full creator song-library UI. The only external link exception is the narrow post-win YouTube MV release link described above.
+- 連結投稿僅接受經伺服器解析的公開Suno、YouTube單曲／MV，或已驗證本人與公開資格的Aipoger單曲深層連結；不接受任意網站或Spotify作對戰音源。使用者明確確認權利及選定模式的公開播放後才建卡。既有本人公開音檔可沿原路徑引用，不複製檔案。外站無法播放不等於任何一方落敗。
 - Waiting cards should provide a `約人鬥歌` share action.
 - Live or public-voting cards should provide an `邀請觀戰投票` share action.
+
+
+### 對戰連結投稿與播放合約（2026-10-25確認）
+
+- 伺服器量測來源歌曲長度並簽署預覽，不採信客戶端自報時長、媒體URL、參賽帳號或接戰模式。完整模式保存各首實際長度，兩首不必一樣長；片段須足夠60／90秒且不超出來源尾端。
+- 歌名／作者／歌詞可填寫，來源封面可沿用或上傳獨立圖片；原Profile封面仍可回退。歌曲音檔上傳入口及舊upload-hook API退役（410），不影響既有素材讀取。
+- 新佇列由service-only RPC交易建立，會員由API驗證；同request重試不重建，同角色限額、本人刻意比較兩個版本、指定邀請與投票資格保留。接戰鎖定目標並再查公開狀態；已匹配來源不可改寫。
+- Battle保存不可變的A／B來源與播放區段快照；即時播放、晚到者進度、失效判斷、Cron結算及分享連結都沿相同長度。YouTube使用可見官方播放器，沒有下載或抽音。瀏覽器阻擋自動播放時須點擊開聲，晚進場依原共享時鐘續播。
+- 正式成果卡／對戰記錄可重播新連結作品；只有已完成且達原正式觀眾門檻的封存紀錄才提供新媒體讀取。私人既有音檔於讀取時簽發URL，DB快照不保存短效簽章。舊音檔、原投票與戰績不搬移、不重算、不刪除。
+- `/drop-guide`為四語「Battle玩法指南」，分盲聽／Drop／Q Crash，沿現行黑底舞台和Header。Drop／Q原對戰舞台外觀保留；Q Crash日韓沿既有英文回退，Guide與Drop表單有中英日韓。
 
 ### Q Crash / 非同步 Full Song Battle
 
 - `Q Crash` is the asynchronous Full Song Battle mode. Existing live Drop Battle remains unchanged.
 - The public promise is: `兩首完整歌曲，不用等人到齊，讓大家在自己的時間決定哪首歌勝出。`
 - Every Q Crash has exactly two work seats, A and B. The same creator may intentionally compare two own versions, or a second creator may accept the shared/targeted invitation and lock their own work into seat B.
-- Q Crash does not crop audio. Each work is a complete Track supplied either as a public HTTPS Suno link or as an uploaded MP3/WAV. Q Crash does not require matching genres: each work keeps its own fixed genre tag for display, search, and later analysis, while voting starts only after two distinct queue/work entries are locked.
-- Q Crash stores one unified Track contract: `source_type` is `suno` or `upload`, `source_url` stores the public Suno link or the private Storage object key, and `title`, `creator`, `cover_url`, and optional `duration_seconds` describe the work. A Suno source is resolved at runtime through the public page's media metadata and Suno's anonymous playback-rights handshake; the Q Crash same-origin player decrypts the encrypted stream just in time in memory when needed. AIPOGER never persists, stores in Storage, transcodes, or crops the Suno audio. If the public media source or playback-rights handshake cannot be resolved, the work is unavailable for playback and must not silently send the listener to Suno. Uploaded audio stays as the original full file.
+- Q Crash does not crop audio. New works are complete tracks supplied through public HTTPS Suno, YouTube, or the creator’s own public Aipoger single links. Existing uploaded MP3/WAV sources remain compatible; new audio-file entry is retired. Q Crash does not require matching genres: each work keeps its own fixed genre tag for display, search, and later analysis, while voting starts only after two distinct queue/work entries are locked.
+- Q Crash stores one unified Track contract: `source_type` supports `suno`, `youtube`, `work`, and historical `upload`; `source_url` stores the source link or historical private Storage key, and `title`, `creator`, `cover_url`, and optional `duration_seconds` describe the work. A Suno source is resolved at runtime through the public page's media metadata and Suno's anonymous playback-rights handshake; the Q Crash same-origin player decrypts the encrypted stream just in time in memory when needed. AIPOGER never persists, stores in Storage, transcodes, or crops the Suno audio. If the public media source or playback-rights handshake cannot be resolved, the work is unavailable for playback and must not silently send the listener to Suno. Uploaded audio stays as the original full file.
 - Every Q Crash submitter must confirm `I confirm that I created this track or have permission from the rights holder.` before the server records the work.
 - Each work may attach its own JPG, PNG, WebP, or GIF cover during the Q Crash upload flow. The cover belongs to that submitted queue/work, is copied to the matching battle side, and must not be inferred only from the creator's current profile cover; if no work cover is supplied, the profile cover remains the fallback.
 - Same-title works display explicit `版本 A` / `版本 B` labels. Results are work-first: winner storage uses the winning queue/work identifier, and the creator is read from that work.

@@ -1,5 +1,7 @@
 "use client";
 
+import BattleLinkReplay from "@/components/battle-link-replay";
+import type { BattleLinkPlayback } from "@/lib/battle-link-rules";
 import Link from "next/link";
 import { Suspense, useEffect, useId, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -26,6 +28,8 @@ type SkillKey = BattleFeedbackKey;
 type BattleWinnerSide = "fighter_a" | "fighter_b";
 
 type ResultAudioState = {
+  winnerPlayback?: BattleLinkPlayback | null;
+  opponentPlayback?: BattleLinkPlayback | null;
   winnerUrl: string | null;
   opponentUrl: string | null;
 };
@@ -94,7 +98,7 @@ function ResultAudioPanel({
   winnerSong: string;
   opponentSong: string;
 }) {
-  if (!audio.winnerUrl && !audio.opponentUrl) {
+  if (!audio.winnerUrl && !audio.opponentUrl && !audio.winnerPlayback && !audio.opponentPlayback) {
     return (
       <section className="mt-8 rounded-[1.35rem] border border-white/10 bg-black/45 p-4 shadow-[0_18px_70px_rgba(0,0,0,0.28)]">
         <p className="text-xs font-black uppercase tracking-[0.22em] text-yellow-100/70">
@@ -112,12 +116,14 @@ function ResultAudioPanel({
       label: lang === "zh" ? "勝出 Drop" : "Winning Drop",
       song: winnerSong,
       url: audio.winnerUrl,
+      playback: audio.winnerPlayback,
       tone: "orange",
     },
     {
       label: lang === "zh" ? "對手 Drop" : "Rival Drop",
       song: opponentSong,
       url: audio.opponentUrl,
+      playback: audio.opponentPlayback,
       tone: "cyan",
     },
   ];
@@ -144,7 +150,7 @@ function ResultAudioPanel({
               {row.label}
             </p>
             <p className="mt-1 truncate text-sm font-black text-white">{row.song}</p>
-            {row.url ? (
+            {row.playback ? <BattleLinkReplay playback={row.playback} title={row.song} isZh={lang === "zh"} /> : row.url ? (
               <audio controls preload="none" src={row.url} className="mt-3 h-9 w-full" />
             ) : (
               <p className="mt-3 rounded-full border border-white/10 bg-black/38 px-3 py-2 text-xs font-black text-zinc-500">
@@ -617,10 +623,12 @@ function BattleResultContent() {
     void (async () => {
       const { data, error } = await supabase
         .from("battles")
-        .select("winner,audio_a_path,audio_b_path")
+        .select("winner,audio_a_path,audio_b_path,playback_a,playback_b")
         .eq("id", battleId)
         .maybeSingle<{
           winner?: string | null;
+          playback_a?: BattleLinkPlayback | null;
+          playback_b?: BattleLinkPlayback | null;
           audio_a_path?: string | null;
           audio_b_path?: string | null;
         }>();
@@ -637,7 +645,12 @@ function BattleResultContent() {
         signedBattleAudioUrl(winnerPath),
         signedBattleAudioUrl(opponentPath),
       ]);
-      if (!cancelled) setResultAudio({ winnerUrl, opponentUrl });
+      let linked: { A?: BattleLinkPlayback; B?: BattleLinkPlayback } | null = null;
+      if (data?.playback_a || data?.playback_b) {
+        const response = await fetch(`/api/battle-links?battle=${encodeURIComponent(battleId)}`);
+        linked = response.ok ? await response.json() : null;
+      }
+      if (!cancelled) setResultAudio({ winnerUrl, opponentUrl, winnerPlayback: side === "fighter_b" ? linked?.B : linked?.A, opponentPlayback: side === "fighter_b" ? linked?.A : linked?.B });
     })();
     return () => {
       cancelled = true;

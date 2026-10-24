@@ -12,7 +12,7 @@ export const Q_CRASH_FEEDBACK_KEYS = ["rhyme", "impact", "melody", "emotion", "s
 export const Q_CRASH_COMMENT_MAX_LENGTH = 120;
 
 export type QCrashDurationMinutes = number;
-export type QCrashSourceType = "suno" | "upload";
+export type QCrashSourceType = "suno" | "upload" | "youtube" | "work";
 export type QCrashSide = "fighter_a" | "fighter_b";
 export type QCrashFeedbackKey = (typeof Q_CRASH_FEEDBACK_KEYS)[number];
 export type QCrashFeedbackCounts = Record<QCrashFeedbackKey, number>;
@@ -52,7 +52,7 @@ export function qCrashDurationLabel(minutes: number | null | undefined, isZh: bo
 }
 
 export function qCrashSourceType(value: unknown): QCrashSourceType | null {
-  return value === "suno" || value === "upload" ? value : null;
+  return value === "suno" || value === "upload" || value === "youtube" || value === "work" ? value : null;
 }
 
 export function normalizeQCrashSunoUrl(value: unknown): string | null {

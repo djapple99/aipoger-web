@@ -1,3 +1,4 @@
+import { resolveBattleLink } from "@/lib/server-battle-links";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import {
@@ -28,6 +29,7 @@ type QueueRow = {
   original_file_name: string;
   source_type: string | null;
   source_url: string | null;
+  submission_mode?: string;
   title: string | null;
   creator: string | null;
   duration_seconds: number | null;
@@ -94,7 +96,7 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
 
   let { data: queues, error: queuesError } = await admin
     .from("battle_queue")
-    .select("id,user_id,fighter_name,genre,audio_path,original_file_name,ai_tool,lyrics,cover_url,status,match_group_id,source_type,source_url,title,creator,duration_seconds,rights_confirmed_at")
+    .select("id,user_id,fighter_name,genre,audio_path,original_file_name,ai_tool,lyrics,cover_url,status,match_group_id,source_type,source_url,submission_mode,title,creator,duration_seconds,rights_confirmed_at")
     .in("id", [card.founder_queue_id, body.queueId])
     .returns<QueueRow[]>();
   if (queuesError && /cover_url|schema cache|column.*does not exist|PGRST204/i.test(queuesError.message)) {
@@ -111,6 +113,12 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
   const challengerQueue = (queues ?? []).find((queue) => queue.id === body.queueId);
   if (!founderQueue) return jsonError("作品 A 已無法讀取。", 404);
   if (!challengerQueue || challengerQueue.user_id !== user.id) return jsonError("作品 B 的歌曲不存在。", 404);
+  for (const queue of [founderQueue, challengerQueue]) {
+    if (queue.source_type === "youtube" || queue.source_type === "work") {
+      try { await resolveBattleLink(queue.source_url, queue.user_id); } catch { return jsonError("作品連結目前無法公開播放。", 422); }
+    }
+  }
+  if (challengerQueue.submission_mode === "drop") return jsonError("請使用 Q Crash 的連結投稿。", 409);
   if (founderQueue.id === challengerQueue.id) return jsonError("作品 A、B 必須使用兩首不同的歌曲。");
   const challengerSourceType = qCrashSourceType(challengerQueue.source_type) || (challengerQueue.audio_path ? "upload" : null);
   const challengerSourceUrl = challengerQueue.source_url?.trim() || (challengerSourceType === "upload" ? challengerQueue.audio_path : null);
@@ -245,7 +253,7 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
         match_group_id: battle.id,
         opponent_user_id: founderQueue.user_id,
         matched_at: nowIso,
-        rights_confirmed_at: nowIso,
+        rights_confirmed_at: challengerQueue.rights_confirmed_at || nowIso,
         ...(user.id === card.founder_user_id ? { challenge_target_queue_id: null } : {}),
         updated_at: nowIso,
       })

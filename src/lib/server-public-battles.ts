@@ -20,7 +20,7 @@ export const readPublicBattles = cache(async (): Promise<PublicBattleSeed> => {
   const client = publicClient();
   const [liveResult, poolResult, qResponse, dropResponse] = await Promise.all([
     client.from("battles").select(liveFields).in("status", ["matched", "active", "live"]).is("battle_ended_at", null).order("created_at", { ascending: false }).limit(30),
-    client.from("battle_queue").select("id,fighter_name,original_file_name,genre,ai_tool,status,match_group_id,expires_at,scheduled_start_at,cancellation_evaluation_at,official_gatekeeper_id,official_gatekeeper_role,public_vote_score,created_at")
+    client.from("battle_queue").select("id,fighter_name,original_file_name,genre,ai_tool,status,match_group_id,expires_at,scheduled_start_at,cancellation_evaluation_at,official_gatekeeper_id,official_gatekeeper_role,public_vote_score,created_at,drop_playback_mode,submission_mode").neq("submission_mode", "q_crash")
       .in("status", ["waiting_challenge", "matched", "public_voting", "ghost_battle"]).order("created_at", { ascending: false }).limit(24),
     qCrashCatalogResponse(false), officialDropsResponse(),
   ]);

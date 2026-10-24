@@ -1,6 +1,8 @@
 // src/app/battle/[id]/battle-room-client.tsx
 "use client";
 
+import BattleMediaPlayer, { type BattlePlayerHandle } from "@/components/battle-media-player";
+import { playbackAudioUrl, dropModeLabel, type BattleLinkPlayback } from "@/lib/battle-link-rules";
 import NextImage from "next/image";
 import LangToggle from "@/components/lang-toggle";
 import Link from "next/link";
@@ -47,6 +49,9 @@ type ChatMessage = {
 };
 
 type BattleData = {
+  playback_a?: BattleLinkPlayback | null;
+  playback_b?: BattleLinkPlayback | null;
+  drop_playback_mode?: string | null;
   id: string;
   arena_kind?: "battle" | "queue";
   match_group_id?: string | null;
@@ -80,6 +85,8 @@ type BattleData = {
 };
 
 type QueueArenaRow = {
+  link_playback?: BattleLinkPlayback | null;
+  drop_playback_mode?: string | null;
   id: string;
   user_id: string | null;
   fighter_name: string | null;
@@ -137,7 +144,7 @@ type DanmakuItem = {
 
 const VINYL_COVER_PLACEHOLDER = AIPOGER_BRAND_LOGO;
 const DEMO_BATTLE_AUDIO_SRC = "/music/home-bgm.mp3";
-const HOOK_BATTLE_SECONDS = 45;
+const LEGACY_DROP_SECONDS = 45;
 const PRE_BATTLE_TEASER_SECONDS = 5;
 const FINAL_PRESTART_HYPE_SECONDS = 5;
 const PRE_BATTLE_AD_FADE_OUT_SECONDS = 6;
@@ -152,9 +159,9 @@ const SCRATCH_TRANSITION_MS = SCRATCH_TRANSITION_SECONDS * 1000;
 const SCRATCH_TRANSITION_SRC = "/sfx/scratch-sample-a.mp3";
 const WINNER_COUNTDOWN_SFX_SRC = "/sfx/you-win.wav";
 const WINNER_REVEAL_SFX_SRC = "/sfx/audience-shouts-1.mp3";
-const SCRATCH_TRANSITION_START_SECONDS = HOOK_BATTLE_SECONDS + ARENA_ECHO_HOLD_SECONDS;
-const SECOND_DECK_START_SECONDS = SCRATCH_TRANSITION_START_SECONDS + SCRATCH_TRANSITION_SECONDS;
-const BATTLE_PLAYBACK_SECONDS = SECOND_DECK_START_SECONDS + HOOK_BATTLE_SECONDS;
+
+
+
 const FINAL_RESULT_CUE_DELAY_MS = ARENA_ECHO_HOLD_MS;
 const FINAL_VOTE_SECONDS = 5;
 const WINNER_COUNTDOWN_FALLBACK_MS = 7600;
@@ -896,6 +903,16 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
   const [voteCountdown, setVoteCountdown] = useState<number | null>(null);
   const [firstDeck, setFirstDeck] = useState<DeckKey | null>(null);
   const [currentDeck, setCurrentDeck] = useState<DeckKey | null>(null);
+  const durationA = Number(battle?.playback_a?.seconds) || LEGACY_DROP_SECONDS;
+  const durationB = Number(battle?.playback_b?.seconds) || LEGACY_DROP_SECONDS;
+  const deckSeconds = useCallback((deck: DeckKey) => deck === "A" ? durationA : durationB, [durationA, durationB]);
+  const clockFirstDeck = firstDeck ?? deckParam(searchParams.get("firstDeck")) ?? rpsResultForBattle(battleId).firstDeck;
+  const HOOK_BATTLE_SECONDS = deckSeconds(clockFirstDeck);
+  const SCRATCH_TRANSITION_START_SECONDS = HOOK_BATTLE_SECONDS + ARENA_ECHO_HOLD_SECONDS;
+  const SECOND_DECK_START_SECONDS = SCRATCH_TRANSITION_START_SECONDS + SCRATCH_TRANSITION_SECONDS;
+  const BATTLE_PLAYBACK_SECONDS = SECOND_DECK_START_SECONDS + deckSeconds(clockFirstDeck === "A" ? "B" : "A");
+  const [sourceError, setSourceError] = useState(false);
+
   const [battlePhase, setBattlePhase] = useState<BattlePlaybackPhase>("rps");
   const [rpsChoices, setRpsChoices] = useState<{ A: string; B: string }>({ A: "✊", B: "✌️" });
   const [rpsPressed, setRpsPressed] = useState<{ A: boolean; B: boolean }>({ A: false, B: false });
@@ -939,15 +956,15 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
   const [vinylLayout, setVinylLayout] = useState<VinylLayoutNumbers>(() => ({ ...VINYL_LAYOUT_DEFAULTS }));
 
   // Refs
-  const audioARef = useRef<HTMLAudioElement>(null);
-  const audioBRef = useRef<HTMLAudioElement>(null);
+  const audioARef = useRef<HTMLAudioElement | BattlePlayerHandle>(null);
+  const audioBRef = useRef<HTMLAudioElement | BattlePlayerHandle>(null);
   const completedDecksRef = useRef<{ A: boolean; B: boolean }>({ A: false, B: false });
   const autoStartedDecksRef = useRef<{ A: boolean; B: boolean }>({ A: false, B: false });
   const pauseResumeTimerRef = useRef<number | null>(null);
   const arenaEchoTimersRef = useRef<number[]>([]);
   const arenaEchoAudioRefs = useRef<HTMLAudioElement[]>([]);
   const arenaEchoTriggeredRef = useRef<{ A: boolean; B: boolean }>({ A: false, B: false });
-  const teaserAudioRef = useRef<HTMLAudioElement | null>(null);
+  const teaserAudioRef = useRef<HTMLAudioElement | BattlePlayerHandle | null>(null);
   const teaserStopTimerRef = useRef<number | null>(null);
   const teaserTickTimerRef = useRef<number | null>(null);
   const scratchAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -1077,8 +1094,10 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
       const url = audioUrls[deck];
       if (!url || !isArenaWarmup) return;
       stopTeaser();
-      const teaser = new Audio(url);
-      teaser.preload = "auto";
+      const linked = deck === "A" ? battle?.playback_a : battle?.playback_b;
+      const teaser = linked ? (deck === "A" ? audioARef.current : audioBRef.current) : new Audio(url);
+      if (!teaser) return;
+      if (teaser instanceof HTMLAudioElement) teaser.preload = "auto";
       teaser.currentTime = 0;
       teaserAudioRef.current = teaser;
       setTeaserDeck(deck);
@@ -1093,7 +1112,7 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
       }, PRE_BATTLE_TEASER_SECONDS * 1000);
       void teaser.play().catch(() => stopTeaser());
     },
-    [audioUrls, isArenaWarmup, stopTeaser],
+    [audioUrls, battle?.playback_a, battle?.playback_b, isArenaWarmup, stopTeaser],
   );
 
   useEffect(() => {
@@ -1315,7 +1334,7 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
     if (mobileAudioUnlockedRef.current && !mobileAudioBlocked) return Promise.resolve(true);
     if (mobileAudioPrimingRef.current) return mobileAudioPrimingRef.current;
 
-    const primeAudio = async (audio: HTMLAudioElement | null) => {
+    const primeAudio = async (audio: HTMLAudioElement | BattlePlayerHandle | null) => {
       if (!audio?.src) return null;
       if (!audio.paused) return true;
       const previousTime = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
@@ -1509,12 +1528,12 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
   }, []);
 
   const triggerArenaEcho = useCallback((deck: DeckKey) => {
-    if (arenaEchoTriggeredRef.current[deck]) return;
+    if (battle?.playback_a || battle?.playback_b || arenaEchoTriggeredRef.current[deck]) return;
     const source = deck === "A" ? audioARef.current : audioBRef.current;
     if (!source?.src) return;
 
     arenaEchoTriggeredRef.current[deck] = true;
-    const sampleAt = Math.max(0, Math.min(source.currentTime, HOOK_BATTLE_SECONDS) - 0.08);
+    const sampleAt = Math.max(0, Math.min(source.currentTime, LEGACY_DROP_SECONDS) - 0.08);
 
     ARENA_ECHO_TAPS.forEach((tap) => {
       const timer = window.setTimeout(() => {
@@ -1534,7 +1553,7 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
       }, tap.delayMs);
       arenaEchoTimersRef.current.push(timer);
     });
-  }, []);
+  }, [battle?.playback_a, battle?.playback_b]);
 
   // ── 取得目前用戶 ──────────────────────────────────────
   useEffect(() => {
@@ -1722,7 +1741,7 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
       if (battleError || !data) {
         let { data: queueRow, error: queueError } = await supabase
           .from("battle_queue")
-          .select("id,user_id,fighter_name,original_file_name,genre,ai_tool,lyrics,audio_path,status,match_group_id,expires_at,scheduled_start_at,cancellation_evaluation_at,created_at")
+          .select("id,user_id,fighter_name,original_file_name,genre,ai_tool,lyrics,audio_path,link_playback,drop_playback_mode,status,match_group_id,expires_at,scheduled_start_at,cancellation_evaluation_at,created_at")
           .eq("id", battleId)
           .maybeSingle<QueueArenaRow>();
 
@@ -1732,7 +1751,7 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
           if (missingScheduleColumn) {
             const legacyRead = await supabase
               .from("battle_queue")
-              .select("id,user_id,fighter_name,original_file_name,genre,ai_tool,lyrics,audio_path,status,match_group_id,expires_at,created_at")
+              .select("id,user_id,fighter_name,original_file_name,genre,ai_tool,lyrics,audio_path,link_playback,drop_playback_mode,status,match_group_id,expires_at,created_at")
               .eq("id", battleId)
               .maybeSingle<QueueArenaRow>();
             queueRow = legacyRead.data;
@@ -1775,6 +1794,8 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
             fighter_b_name: lang === "zh" ? "等待挑戰者" : "Waiting Rival",
             song_a_name: queueRow.original_file_name || "60s Drop",
             song_b_name: lang === "zh" ? "挑戰者 Drop" : "Rival Drop",
+            playback_a: queueRow.link_playback,
+            drop_playback_mode: queueRow.drop_playback_mode,
             audio_a_path: queueRow.audio_path,
             audio_b_path: null,
             fighter_a_avatar: firstAvatarUrl(userProfile?.avatar_url, fighterProfile?.avatar_url),
@@ -2022,8 +2043,8 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
     const resolveUrls = async () => {
       const next: { A: string | null; B: string | null } = { A: null, B: null };
       const paths: Array<["A" | "B", string | null]> = [
-        ["A", battle.audio_a_path],
-        ["B", battle.audio_b_path],
+        ["A", battle.playback_a ? playbackAudioUrl(battle.playback_a) || battle.playback_a.url : battle.audio_a_path],
+        ["B", battle.playback_b ? playbackAudioUrl(battle.playback_b) || battle.playback_b.url : battle.audio_b_path],
       ];
 
       for (const [deck, path] of paths) {
@@ -2415,7 +2436,7 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
     resultRedirectArmedRef.current = false;
     setNoContestOpen(false);
 
-    if (elapsed < HOOK_BATTLE_SECONDS) {
+    if (elapsed < deckSeconds(sharedFirstDeck)) {
       completedDecksRef.current = { A: false, B: false };
       setPlayedDecks({ A: false, B: false });
       setCurrentDeck(sharedFirstDeck);
@@ -2516,7 +2537,7 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
       setVoteCountdown(0);
       pushResultForEveryone(950);
     }
-  }, [battle, battleId, isAiMusicAwaitingDefender, loading, pushResultForEveryone, queueDeckEchoHold, queueScratchTransition, searchParams]);
+  }, [BATTLE_PLAYBACK_SECONDS, SCRATCH_TRANSITION_START_SECONDS, SECOND_DECK_START_SECONDS, deckSeconds, battle, battleId, isAiMusicAwaitingDefender, loading, pushResultForEveryone, queueDeckEchoHold, queueScratchTransition, searchParams]);
 
   useEffect(() => {
     if (loading || !battle || !battleId || battle.arena_kind === "queue" || battlePhase !== "rps" || (rpsPressed.A && rpsPressed.B)) return;
@@ -2626,14 +2647,13 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
       pauseResumeTimerRef.current = null;
     }
     if (!target?.src) {
-      completedDecksRef.current[deck] = true;
-      markDeckPlayed(deck);
+      setSourceError(true);
       setActiveDeck(null);
       return Promise.resolve(false);
     }
     if (restart) {
       arenaEchoTriggeredRef.current[deck] = false;
-      target.currentTime = Math.max(0, Math.min(HOOK_BATTLE_SECONDS - 0.25, startAtSeconds));
+      target.currentTime = Math.max(0, Math.min(deckSeconds(deck) - 0.25, startAtSeconds));
     }
     target.loop = false;
     target.muted = false;
@@ -2660,7 +2680,7 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
         setBattlePhase("ready");
         return false;
       });
-  }, [markDeckPlayed]);
+  }, [deckSeconds]);
 
   useEffect(() => {
     if (battlePhase !== "transition" || !transitionDeck || !transitionEndsAtMs) return;
@@ -2757,12 +2777,26 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
     [activeDeck, battlePhase, completeDeck, currentDeck, playDeck],
   );
 
+  const linkedPlaybackChanged = (deck: DeckKey, playing: boolean) => {
+    const media = deck === "A" ? audioARef.current : audioBRef.current;
+    if (playing) {
+      if ((isArenaWarmup && teaserDeck !== deck) || (!isArenaWarmup && currentDeck !== deck)) { media?.pause(); return; }
+      (deck === "A" ? audioBRef.current : audioARef.current)?.pause();
+      setSourceError(false);
+    } else if (activeDeck === deck && battlePhase === "playing" && !completedDecksRef.current[deck]) {
+      if (pauseResumeTimerRef.current !== null) window.clearTimeout(pauseResumeTimerRef.current);
+      pauseResumeTimerRef.current = window.setTimeout(() => {
+        if (!completedDecksRef.current[deck]) void playDeck(deck, false);
+      }, MAX_PAUSE_MS);
+    }
+  };
+
   const handleDeckTimeUpdate = useCallback(
     (deck: DeckKey) => {
       const current = deck === "A" ? audioARef.current : audioBRef.current;
       if (!current || completedDecksRef.current[deck] || battlePhase !== "playing" || activeDeck !== deck) return;
-      const naturalDuration = Number.isFinite(current.duration) && current.duration > 0 ? current.duration : HOOK_BATTLE_SECONDS;
-      const deckEndAt = Math.min(HOOK_BATTLE_SECONDS, naturalDuration);
+      const naturalDuration = Number.isFinite(current.duration) && current.duration > 0 ? current.duration : deckSeconds(deck);
+      const deckEndAt = Math.min(deckSeconds(deck), naturalDuration);
       if (current.currentTime >= Math.max(0, deckEndAt - ARENA_ECHO_LEAD_SECONDS)) {
         triggerArenaEcho(deck);
       }
@@ -2771,7 +2805,7 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
         completeDeck(deck);
       }
     },
-    [activeDeck, battlePhase, completeDeck, triggerArenaEcho],
+    [deckSeconds, activeDeck, battlePhase, completeDeck, triggerArenaEcho],
   );
 
   useEffect(() => {
@@ -2854,7 +2888,7 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
       setBattlePhase("final");
     }, Math.max(0, finalAtMs - Date.now()));
     return () => window.clearTimeout(timer);
-  }, [battle?.arena_kind, battlePhase, battleStartedAtMs, playedDecks.A, playedDecks.B]);
+  }, [BATTLE_PLAYBACK_SECONDS, battle?.arena_kind, battlePhase, battleStartedAtMs, playedDecks.A, playedDecks.B]);
 
   useEffect(() => {
     if (battlePhase !== "playing" || !activeDeck) {
@@ -3461,7 +3495,7 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#050505] px-5 text-zinc-200">
         <div className="w-full max-w-xl rounded-[2rem] border border-orange-300/28 bg-black/72 p-7 text-center shadow-[0_0_70px_rgba(255,106,0,0.16)]">
-          <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-200/80">DROP BATTLE ARENA</p>
+          <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-200/80">DROP BATTLE ARENA {battle.drop_playback_mode ? `· ${dropModeLabel(battle.drop_playback_mode, lang)}` : ""}</p>
           <h1 className="mt-4 text-3xl font-black text-white">
             {lang === "zh" ? "這張戰帖已結束" : "This arena has ended"}
           </h1>
@@ -3575,8 +3609,8 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
           : `${currentFighterName || firstFighterName} starts · Tap PLAY`
         : battlePhase === "playing"
           ? lang === "zh"
-            ? `${currentFighterName} Drop 播放中 · 最多 ${HOOK_BATTLE_SECONDS} 秒`
-            : `${currentFighterName} Drop playing · max ${HOOK_BATTLE_SECONDS}s`
+            ? `${currentFighterName} Drop 播放中 · 最多 ${Math.ceil(deckSeconds(currentDeck || "A"))} 秒`
+            : `${currentFighterName} Drop playing · max ${Math.ceil(deckSeconds(currentDeck || "A"))}s`
           : battlePhase === "paused"
             ? lang === "zh"
               ? "暫停最多 1 秒，馬上續播"
@@ -4096,6 +4130,7 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
               aiTool={battle.ai_tool_a}
               layoutNumbers={vinylLayout}
             />
+            {battle.playback_a && <BattleMediaPlayer ref={node => { audioARef.current = node; }} playback={battle.playback_a} audioUrl={audioUrls.A} title={battle.song_a_name} onPlaying={playing => linkedPlaybackChanged("A", playing)} onTime={() => handleDeckTimeUpdate("A")} onEnded={() => { if (activeDeck === "A" && battlePhase === "playing") completeDeck("A"); }} onError={() => { setSourceError(true); setMobileAudioBlocked(true); }} />}
             {renderFeedbackBar("A", "orange")}
             <div className="lyric-pitch-scroll lyric-pitch-scroll-orange mt-1.5 flex min-h-[58px] max-h-[78px] items-start justify-center overflow-y-auto whitespace-pre-wrap rounded-[1.05rem] bg-black/25 px-4 py-2 text-center text-[clamp(0.66rem,0.82vw,0.78rem)] font-semibold leading-[1.08] text-white/80 shadow-[inset_0_0_44px_rgba(255,255,255,0.022)] md:min-h-[66px] md:max-h-[88px]">
               {lyricA || t("battle_lyrics_empty")}
@@ -4439,6 +4474,7 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
                   aiTool={battle.ai_tool_b}
                   layoutNumbers={vinylLayout}
                 />
+                {battle.playback_b && <BattleMediaPlayer ref={node => { audioBRef.current = node; }} playback={battle.playback_b} audioUrl={audioUrls.B} title={battle.song_b_name} onPlaying={playing => linkedPlaybackChanged("B", playing)} onTime={() => handleDeckTimeUpdate("B")} onEnded={() => { if (activeDeck === "B" && battlePhase === "playing") completeDeck("B"); }} onError={() => { setSourceError(true); setMobileAudioBlocked(true); }} />}
                 {renderFeedbackBar("B", "blue")}
                 <div className="lyric-pitch-scroll lyric-pitch-scroll-blue mt-1.5 flex min-h-[58px] max-h-[78px] items-start justify-center overflow-y-auto whitespace-pre-wrap rounded-[1.05rem] bg-black/25 px-4 py-2 text-center text-[clamp(0.66rem,0.82vw,0.78rem)] font-semibold leading-[1.08] text-white/80 shadow-[inset_0_0_44px_rgba(255,255,255,0.022)] md:min-h-[66px] md:max-h-[88px]">
                   {lyricB || t("battle_lyrics_empty")}
@@ -4507,21 +4543,22 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
         </section>
       </main>
 
+      {sourceError && <p role="alert" className="fixed bottom-28 left-4 right-4 z-[150] mx-auto max-w-lg rounded-xl border border-orange-300/50 bg-black p-4 text-sm text-orange-100">{lang === "zh" ? "作品暫時無法播放，請重新載入或按播放器重試；不會判定任何一方落敗。" : "Playback unavailable. Reload or retry the player; this is not a loss."}</p>}
       {/* 隱藏音檔 */}
-      <audio
-        ref={audioARef}
+      {!battle.playback_a && <audio
+        ref={node => { audioARef.current = node; }}
         src={audioUrls.A ?? undefined}
         preload="auto"
         onTimeUpdate={() => handleDeckTimeUpdate("A")}
         onEnded={() => completeDeck("A")}
-      />
-      <audio
-        ref={audioBRef}
+      />}
+      {!battle.playback_b && <audio
+        ref={node => { audioBRef.current = node; }}
         src={audioUrls.B ?? undefined}
         preload="auto"
         onTimeUpdate={() => handleDeckTimeUpdate("B")}
         onEnded={() => completeDeck("B")}
-      />
+      />}
       <audio ref={finalPreStartHypeAudioRef} src={FINAL_PRESTART_HYPE_SFX_SRC} preload="auto" />
       <audio ref={scratchPrimeAudioRef} src={SCRATCH_TRANSITION_SRC} preload="auto" />
       <audio ref={winnerCountdownPrimeAudioRef} src={WINNER_COUNTDOWN_SFX_SRC} preload="auto" />

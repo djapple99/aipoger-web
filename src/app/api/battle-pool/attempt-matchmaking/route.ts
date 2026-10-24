@@ -14,6 +14,8 @@ import {
 } from "@/lib/battle-pool-rules";
 
 type QueueRow = {
+  submission_mode?: string;
+  drop_playback_mode?: string | null;
   id: string;
   user_id: string;
   fighter_name: string;
@@ -120,6 +122,12 @@ export async function POST(request: NextRequest) {
   if (meError) return jsonError(meError.message, 500);
   if (!meRow || meRow.user_id !== user.id) return jsonError("Queue row not found", 404);
   if (meRow.match_group_id) return NextResponse.json({ row: meRow });
+  if (meRow.submission_mode === "q_crash") return jsonError("Use Q Crash", 409);
+  if (meRow.submission_mode === "drop") {
+    const actorDb = createClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { global: { headers: { Authorization: `Bearer ${token}` } }, auth: { persistSession: false } });
+    const result = await actorDb.rpc("attempt_matchmaking", { p_queue_id: queueId, p_target_queue_id: targetQueueId || null });
+    return result.error ? jsonError(result.error.message, 409) : NextResponse.json({ row: result.data });
+  }
   if (!OPEN_QUEUE_STATUSES.includes(meRow.status)) return NextResponse.json({ row: meRow });
   if (meRow.status === "waiting_challenge" && !targetQueueId) {
     return NextResponse.json({ row: meRow });
@@ -154,7 +162,7 @@ export async function POST(request: NextRequest) {
     if (matchGroupId) {
       const { data: linkedBattle, error: linkedBattleError } = await admin
         .from("battles")
-        .select("id, status, battle_ended_at, scheduled_start_at, started_at, battle_started_at, created_at")
+        .select("id, status, battle_ended_at, scheduled_start_at, started_at, battle_started_at, created_at, playback_a, playback_b")
         .eq("id", matchGroupId)
         .maybeSingle<{ id: string; status?: string | null; battle_ended_at?: string | null; scheduled_start_at?: string | null; started_at?: string | null; battle_started_at?: string | null; created_at?: string | null }>();
       if (linkedBattleError) return jsonError(linkedBattleError.message, 500);
@@ -179,7 +187,7 @@ export async function POST(request: NextRequest) {
 
   const { data: activeBattles, error: activeBattleError } = await admin
     .from("battles")
-    .select("id, queue_a_id, queue_b_id, fighter_a_user_id, fighter_b_user_id, status, battle_ended_at, started_at, battle_started_at, created_at")
+    .select("id, queue_a_id, queue_b_id, fighter_a_user_id, fighter_b_user_id, status, battle_ended_at, started_at, battle_started_at, created_at, playback_a, playback_b")
     .or(`fighter_a_user_id.eq.${user.id},fighter_b_user_id.eq.${user.id}`)
     .in("status", [...ACTIVE_DROP_BATTLE_STATUSES])
     .is("battle_ended_at", null)
@@ -234,6 +242,8 @@ export async function POST(request: NextRequest) {
     .in("status", OPEN_QUEUE_STATUSES)
     .neq("id", meRow.id)
     .eq("genre", meRow.genre)
+    .neq("submission_mode", "q_crash")
+    .is("drop_playback_mode", null)
     .is("match_group_id", null)
     .order("created_at", { ascending: true })
     .limit(targetQueueId ? 1 : 25);

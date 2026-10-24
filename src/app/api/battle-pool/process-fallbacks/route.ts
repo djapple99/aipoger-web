@@ -459,7 +459,7 @@ async function settleStaleHookBattles(admin: SupabaseAdmin, warnings: string[]) 
   let { data, error } = await admin
     .from("battles")
     .select(
-      "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,song_a_cover,song_b_cover,status,created_at,scheduled_start_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner,battle_type",
+      "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,song_a_cover,song_b_cover,status,created_at,scheduled_start_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner,battle_type,playback_a,playback_b",
     )
     .in("status", ["live", "active", "ghost_battle", "public_voting"])
     .is("battle_ended_at", null)
@@ -471,7 +471,7 @@ async function settleStaleHookBattles(admin: SupabaseAdmin, warnings: string[]) 
     const legacyRead = await admin
       .from("battles")
       .select(
-        "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,song_a_cover,song_b_cover,status,created_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner,battle_type",
+        "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,song_a_cover,song_b_cover,status,created_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner,battle_type,playback_a,playback_b",
       )
       .in("status", ["live", "active", "ghost_battle", "public_voting"])
       .is("battle_ended_at", null)
@@ -543,7 +543,7 @@ async function archiveFinishedUnarchivedHookBattles(admin: SupabaseAdmin, warnin
   const { data, error } = await admin
     .from("battles")
     .select(
-      "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,song_a_cover,song_b_cover,status,created_at,scheduled_start_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner,battle_type",
+      "id,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,song_a_cover,song_b_cover,status,created_at,scheduled_start_at,started_at,battle_started_at,battle_ended_at,battle_number,result_archived_at,ai_tool_a,ai_tool_b,winner,battle_type,playback_a,playback_b",
     )
     .eq("status", "finished")
     .neq("battle_type", "q_crash")

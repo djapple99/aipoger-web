@@ -1,5 +1,7 @@
 "use client";
 
+import BattleLinkReplay from "@/components/battle-link-replay";
+import type { BattleLinkPlayback } from "@/lib/battle-link-rules";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import ShareButton from "@/components/share-button";
@@ -33,6 +35,8 @@ type ArchiveRow = {
 };
 
 type BattleAudioRow = {
+  playback_a?: BattleLinkPlayback | null;
+  playback_b?: BattleLinkPlayback | null;
   id?: string | null;
   winner?: string | null;
   audio_a_path?: string | null;
@@ -65,6 +69,7 @@ type QCrashPublicMediaItem = {
 };
 
 type ResultRecord = {
+  playback?: BattleLinkPlayback | null;
   id: string;
   battleId: string | null;
   battleCode: string;
@@ -203,7 +208,7 @@ async function attachMedia(records: ResultRecord[]) {
   if (ids.length === 0) return records;
 
   const selectAttempts = [
-    "id,winner,audio_a_path,audio_b_path,lyrics_a,lyrics_b,song_a_cover,song_b_cover,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id",
+    "id,winner,playback_a,playback_b,audio_a_path,audio_b_path,lyrics_a,lyrics_b,song_a_cover,song_b_cover,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id",
     "id,winner,audio_a_path,audio_b_path,song_a_cover,song_b_cover,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id",
     "id,winner,audio_a_path,audio_b_path,queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id",
     "id,winner,audio_a_path,audio_b_path",
@@ -287,7 +292,7 @@ async function attachMedia(records: ResultRecord[]) {
     }
   }
 
-  const mediaByBattle = new Map<string, { audioUrl: string | null; coverUrl: string | null; fullSongUrl: string | null; youtubeUrl: string | null }>();
+  const mediaByBattle = new Map<string, { playback?: BattleLinkPlayback | null; audioUrl: string | null; coverUrl: string | null; fullSongUrl: string | null; youtubeUrl: string | null }>();
   await Promise.all(
     (rows ?? []).map(async (battle) => {
       if (!battle.id) return;
@@ -307,9 +312,15 @@ async function attachMedia(records: ResultRecord[]) {
         battleAssetPathToUrl(path),
         battleAssetPathToUrl(coverCandidate),
       ]);
+      let playback: BattleLinkPlayback | null = null;
+      if (battle.playback_a || battle.playback_b) {
+        const response = await fetch(`/api/battle-links?battle=${encodeURIComponent(battle.id)}`);
+        const media = response.ok ? await response.json() : null;
+        playback = winnerIsB ? media?.B : media?.A;
+      }
       const fullSong = fullSongByBattle.get(battle.id);
       mediaByBattle.set(battle.id, {
-        audioUrl,
+        playback, audioUrl,
         coverUrl,
         fullSongUrl: qCrashWork?.fullSongUrl ?? fullSong?.audioUrl ?? null,
         youtubeUrl: fullSong?.youtubeUrl ?? null,
@@ -319,6 +330,7 @@ async function attachMedia(records: ResultRecord[]) {
 
   return records.map((record) => ({
     ...record,
+    playback: record.battleId ? mediaByBattle.get(record.battleId)?.playback ?? null : null,
     audioUrl: record.battleId ? mediaByBattle.get(record.battleId)?.audioUrl ?? null : null,
     coverUrl: record.coverUrl || (record.battleId ? mediaByBattle.get(record.battleId)?.coverUrl ?? "" : ""),
     fullSongUrl: record.fullSongUrl || (record.battleId ? mediaByBattle.get(record.battleId)?.fullSongUrl ?? null : null),
@@ -349,6 +361,7 @@ function coverPalette(record: ResultRecord) {
 }
 
 function ResultAudio({ record, isZh }: { record: ResultRecord; isZh: boolean }) {
+  if (record.playback) return <BattleLinkReplay playback={record.playback} title={record.winnerSong} isZh={isZh} />;
   if (!record.audioUrl) {
     return (
       <p className="mt-2 rounded-lg border border-white/10 bg-black/45 px-2 py-1.5 text-[10px] font-black text-zinc-500">

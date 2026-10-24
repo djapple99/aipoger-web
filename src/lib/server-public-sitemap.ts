@@ -29,7 +29,7 @@ const buildSitemap = unstable_cache(async (): Promise<MetadataRoute.Sitemap> => 
   const entries: MetadataRoute.Sitemap = [
     ...["/", "/mv", "/ai-music", "/rank", "/battle", "/ai-music-bible", "/about", "/partners", "/music-analysis"].flatMap(path => localized(path)),
     ...localized("/ai-music", { view: "albums" }),
-    ...["zh", "en"].map(lang => ({ url: publicUrl("/drop-guide", lang as "zh" | "en") })),
+    ...PUBLIC_LANGS.map(lang => ({ url: publicUrl("/drop-guide", lang) })),
     { url: publicUrl("/earworm", "zh") },
     ...validWorks.flatMap(work => work ? localized(`/works/${work.id}`) : []),
     ...official.flatMap(choice => localized(`/choice/${choice.id}`, { kind: "official" }).map(entry => ({ ...entry, ...(choice.updated_at && Number.isFinite(Date.parse(choice.updated_at)) ? { lastModified: new Date(choice.updated_at) } : {}) }))),

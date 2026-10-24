@@ -20,7 +20,7 @@ export function battleRetroCopy(lang: string) {
     qNote: v("截止才公開結果。", "Results open at the deadline.", "締切後に結果を公開。", "마감 후 결과 공개."),
     qCreate: v("建立 Q Crash", "Create Q Crash", "Q Crashを作成", "Q Crash 만들기"),
     qView: v("查看對戰", "View matchups", "対戦を見る", "대결 보기"),
-    dropDescription: v("30–60秒抓波，現場對決。", "30–60-second Drops. Face the room.", "30〜60秒のDropでライブ対決。", "30–60초 Drop으로 실시간 대결."),
+    dropDescription: v("60秒、90秒或整首，現場對決。", "60s, 90s, or full tracks. Face the room.", "60秒・90秒・フル楽曲で対戦。", "60초, 90초, 전체 곡으로 실시간 대결."),
     dropNote: v("用你的 Drop，讓聽眾投票。", "Let listeners vote on your Drop.", "あなたのDropを聴衆の投票へ。", "당신의 Drop에 청중이 투표해요."),
     dropCreate: v("發起挑戰", "Start a challenge", "挑戦する", "도전 시작"),
     pool: v("挑戰池", "Challenge pool", "挑戦プール", "도전 풀"),

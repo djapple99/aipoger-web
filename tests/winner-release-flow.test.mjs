@@ -36,11 +36,12 @@ test("winner release API verifies an official result, winner ownership, and uplo
   assert.ok(route.includes('update({ full_song_youtube_url: youtubeUrl })'));
 });
 
-test("upload asks only for post-win full-song consent and delays the MV URL", () => {
-  assert.ok(hookCut.includes("勝出後公開完整作品"));
-  assert.ok(hookCut.includes("YouTube MV 連結可在勝出後再提交"));
-  assert.ok(hookCut.includes("Publish the full song after a win"));
-  assert.equal(hookCut.includes("YouTube MV 連結（必填）"), false);
+test("new link entries confirm the selected public format, while legacy winner-release guards remain", () => {
+  const form = readFileSync(new URL("../src/components/battle-link-submission.tsx", import.meta.url), "utf8");
+  assert.ok(hookCut.includes('mode="drop"'));
+  assert.ok(form.includes("confirmedRights: rights"));
+  assert.ok(form.includes("consent to public playback in this format"));
+  assert.equal(form.includes("audioBase64"), false);
 });
 
 test("Battle Records retain the creator-submitted MV link independently of monthly charts", () => {

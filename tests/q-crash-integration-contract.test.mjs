@@ -26,7 +26,8 @@ const cancelCurrentRouteSource = source("../src/app/api/battle-pool/cancel-curre
 const settlementSource = source("../src/lib/server-q-crash.ts");
 const fallbackSource = source("../src/app/api/battle-pool/process-fallbacks/route.ts");
 const hookCutSource = source("../src/app/battle/hook-cut/page.tsx");
-const qCrashNewSource = source("../src/app/battle/q-crash/new/page.tsx");
+const qCrashNewRouteSource = source("../src/app/battle/q-crash/new/page.tsx");
+const qCrashNewSource = source("../src/components/battle-link-submission.tsx");
 const qCrashNewLayoutSource = source("../src/app/battle/q-crash/new/layout.tsx");
 const qCrashPageSource = source("../src/app/battle/q-crash/[id]/page.tsx");
 const cardClientSource = source("../src/components/q-crash-card-client.tsx");
@@ -56,14 +57,14 @@ test("Q Crash migration seals votes and stores full-song track sources", () => {
 test("Q Crash stores work-specific covers and keeps a profile fallback", () => {
   assert.ok(coverMigrationSource.includes("add column if not exists cover_url text"));
   assert.ok(qCrashNewSource.includes("作品封面（選填）"));
-  assert.ok(qCrashNewSource.includes("MAX_Q_CRASH_COVER_BYTES"));
-  assert.ok(qCrashNewSource.includes("Paste Suno Link"));
-  assert.ok(qCrashNewSource.includes("Upload Audio File"));
+  assert.ok(qCrashNewSource.includes("10 * 1024 * 1024"));
+  assert.ok(qCrashNewSource.includes("Suno / YouTube / Aipoger"));
+  assert.equal(qCrashNewSource.includes("Upload Audio File"), false);
   assert.ok(qCrashNewSource.includes("12 小時"));
-  assert.ok(qCrashNewSource.includes("自訂投票分鐘數"));
-  assert.ok(qCrashNewSource.includes("I confirm that I created this track or have permission from the rights holder."));
+  assert.ok(qCrashNewSource.includes("Minutes (30–4320)"));
+  assert.ok(qCrashNewSource.includes("I created this track or have permission from its rights holder, and consent to public playback in this format."));
   assert.ok(qCrashNewLayoutSource.includes("Q Crash | AIPOGER Full Song Battle"));
-  assert.ok(qCrashNewSource.includes("parseAudioMetadata"));
+  assert.equal(qCrashNewSource.includes("parseAudioMetadata"), false);
   assert.equal(qCrashNewSource.includes("/battle/hook-cut"), false);
   assert.equal(hookCutSource.includes("qCrashCreate"), false);
   assert.ok(poolRouteSource.includes("queueA.cover_url"));
@@ -74,7 +75,7 @@ test("Q Crash stores work-specific covers and keeps a profile fallback", () => {
 
 test("Q Crash uses Traditional Chinese only for zh and English for every other language", () => {
   assert.ok(qCrashRulesSource.includes('return value === null || value === undefined || value === "zh" ? "zh" : "en";'));
-  assert.ok(qCrashNewSource.includes("qCrashDisplayLang(searchParams.get(\"lang\"))"));
+  assert.ok(qCrashNewSource.includes("qCrashDisplayLang(params.get(\"lang\"))"));
   assert.ok(cardClientSource.includes("qCrashDisplayLang(searchParams.get(\"lang\"))"));
   assert.ok(battlePoolSource.includes("const displayLang = qCrashDisplayLang(lang);"));
   assert.ok(qCrashPageSource.includes("publicBattleMetadata"));
@@ -231,8 +232,8 @@ test("generic queue cancellation synchronizes pending Q Crash and protects start
 
 test("Q Crash uses full-song sources and keeps the sealed-vote presentation", () => {
   assert.equal(hookCutSource.includes("qCrash"), false);
-  assert.ok(qCrashNewSource.includes("source_type"));
-  assert.ok(qCrashNewSource.includes("source_url"));
+  assert.ok(qCrashNewRouteSource.includes('mode="q_crash"'));
+  assert.ok(qCrashNewSource.includes('"/api/battle-links"'));
   assert.ok(sunoMediaSource.includes("cdn1\\\\.suno\\\\.ai"));
   assert.ok(sunoMediaSource.includes("d2lwuy8qc234o3.cloudfront.net"));
   assert.ok(cardRouteSource.includes("resolveQCrashSunoMediaSource"));
@@ -240,7 +241,7 @@ test("Q Crash uses full-song sources and keeps the sealed-vote presentation", ()
   assert.ok(sunoPlaybackRouteSource.includes("/api/mango/rights"));
   assert.ok(sunoPlaybackRouteSource.includes("createDecipheriv"));
   assert.ok(sunoPlaybackRouteSource.includes("private, no-store"));
-  assert.ok(cardClientSource.includes("這個 Suno 來源暫時無法在站內播放"));
+  assert.ok(cardClientSource.includes("作品來源暫時無法在站內播放"));
   assert.equal(cardClientSource.includes("Open in Suno"), false);
   assert.ok(cardClientSource.includes("Suno link · In-app playback"));
   assert.ok(cardClientSource.includes("formatTrackDuration"));

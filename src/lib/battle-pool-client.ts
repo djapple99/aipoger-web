@@ -1,3 +1,4 @@
+import { battlePlaybackSeconds, type BattleLinkPlayback } from "./battle-link-rules.ts";
 export type MatchmakingQueueRow = {
   id: string;
   status: string;
@@ -63,6 +64,8 @@ export type DropBattleCancellationSnapshot = {
 };
 
 export type DropBattleRuntimeSnapshot = {
+  playback_a?: BattleLinkPlayback | null;
+  playback_b?: BattleLinkPlayback | null;
   status?: string | null;
   battle_ended_at?: string | null;
   scheduled_start_at?: string | null;
@@ -136,7 +139,7 @@ export function isDropBattleEndedOrPastExpectedEnd(
   if (!battle) return false;
   if (battle.battle_ended_at || isClosedDropBattleStatus(battle.status)) return true;
   const startMs = new Date(resolveDropBattleRuntimeStart(battle) ?? "").getTime();
-  return Number.isFinite(startMs) && startMs + DROP_BATTLE_EXPECTED_END_BUFFER_MS <= nowMs;
+  return Number.isFinite(startMs) && startMs + (battle.playback_a && battle.playback_b ? (battlePlaybackSeconds(battle) + 42) * 1000 : DROP_BATTLE_EXPECTED_END_BUFFER_MS) <= nowMs;
 }
 
 export function validateDropBattleScheduledStart(

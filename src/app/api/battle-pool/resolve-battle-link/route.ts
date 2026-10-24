@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 
   const { data: battle, error: battleError } = await admin
     .from("battles")
-    .select("id,status,battle_type,battle_ended_at,scheduled_start_at,battle_started_at,started_at,created_at")
+    .select("id,status,battle_type,battle_ended_at,scheduled_start_at,battle_started_at,started_at,created_at,playback_a,playback_b")
     .eq("id", battleId)
     .maybeSingle<BattleRow>();
   if (battleError) return jsonError(battleError.message, 500);
