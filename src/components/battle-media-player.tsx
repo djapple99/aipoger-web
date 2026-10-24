@@ -1,5 +1,5 @@
 "use client";
-import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { loadYouTubeAPI, type YouTubePlayer } from "@/lib/youtube-player-api";
 import { playbackYouTubeId, playbackAudioUrl, type BattleLinkPlayback } from "@/lib/battle-link-rules";
 
@@ -20,6 +20,7 @@ const BattleMediaPlayer = forwardRef<BattlePlayerHandle, {
   const volume = useRef(1); const muted = useRef(false); const ended = useRef(false); const started = useRef(false);
   const desiredTime = useRef(0); const playing = useRef(false); const ready = useRef<Promise<void>>(Promise.resolve());
   const videoId = playbackYouTubeId(props.playback);
+  const [attempt, setAttempt] = useState(0);
   useImperativeHandle(ref, () => ({
     get src() { return latest.current.audioUrl || playbackAudioUrl(latest.current.playback) || latest.current.playback.url; },
     get currentSrc() { return native.current?.currentSrc || latest.current.playback.url; },
@@ -59,11 +60,17 @@ const BattleMediaPlayer = forwardRef<BattlePlayerHandle, {
   useEffect(() => {
     started.current = false; ended.current = false; desiredTime.current = 0;
     if (!videoId) { ready.current = Promise.resolve(); return; }
-    let active = true; let resolveReady: () => void = () => {}; let rejectReady: (e: Error) => void = () => {};
+    const host = mount.current;
+    let active = true; let instance: YouTubePlayer | null = null; let resolveReady: () => void = () => {}; let rejectReady: (e: Error) => void = () => {};
     ready.current = new Promise<void>((resolve, reject) => { resolveReady = resolve; rejectReady = reject; });
     // A failed load is surfaced through onError even before someone presses play.
     void ready.current.catch(() => {});
-    const timer = window.setTimeout(() => { rejectReady(new Error("Player unavailable")); latest.current.onError?.(); }, 15000);
+    // A first iframe can remain blank while the API initializes. Recreate it once
+    // before reporting failure; never replace a ready/playing iframe.
+    const timer = window.setTimeout(() => {
+      rejectReady(new Error("Player unavailable"));
+      if (attempt === 0) setAttempt(1); else latest.current.onError?.();
+    }, attempt === 0 ? 5000 : 15000);
     void loadYouTubeAPI().then(api => {
       if (!active || !mount.current) return;
       const child = document.createElement("div"); mount.current.appendChild(child);
@@ -82,9 +89,10 @@ const BattleMediaPlayer = forwardRef<BattlePlayerHandle, {
           onAutoplayBlocked: () => { pending.current?.reject(new Error("Tap to play")); pending.current = null; latest.current.onPlaying?.(false); },
         },
       });
+      instance = p;
     }).catch(() => { rejectReady(new Error("Player unavailable")); latest.current.onError?.(); });
-    return () => { active = false; window.clearTimeout(timer); pending.current?.reject(new Error("Player closed")); pending.current = null; yt.current?.destroy(); yt.current = null; };
-  }, [videoId, props.playback.url]);
+    return () => { active = false; window.clearTimeout(timer); pending.current?.reject(new Error("Player closed")); pending.current = null; instance?.destroy(); yt.current = null; host?.replaceChildren(); };
+  }, [videoId, props.playback.url, attempt]);
   const tick = () => {
     const p = latest.current.playback;
     const measured = yt.current?.getDuration() || 0;
