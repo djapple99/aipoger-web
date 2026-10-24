@@ -8,13 +8,20 @@ export type AccountNotification = {
   read_at: string | null;
   kept_at: string | null;
   expires_at: string;
-  metadata?: { href?: string; trackId?: string; commenterName?: string } | null;
+  metadata?: { href?: string; trackId?: string; commenterName?: string; replierName?: string; trackTitle?: string } | null;
   battle_id?: string | null;
 };
 export type AccountNoticeAction = "read" | "keep" | "unkeep" | "delete";
 export const ACCOUNT_NOTICE_PAGE_SIZE = 3;
 
 export function accountNotificationSummary(notice: AccountNotification, lang: string) {
+  if (notice.type === "work_comment_reply" && notice.metadata?.replierName) {
+    const name = notice.metadata.replierName;
+    if (lang === "en") return `${name} replied to your comment`;
+    if (lang === "ja") return `${name} があなたのコメントに返信しました`;
+    if (lang === "ko") return `${name} 님이 내 댓글에 답글을 남겼습니다`;
+    return `${name} 回覆了你的評論`;
+  }
   const work = /^你的作品〈([\s\S]+)〉收到新留言$/.exec(notice.title)?.[1];
   const name = notice.metadata?.commenterName;
   if (!work || !name) return notice.title;

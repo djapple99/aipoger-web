@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import WorkCommentReplies, { useWorkCommentReplies } from "@/components/work-comment-replies";
+import { workReplyCopy } from "@/lib/work-reply-copy";
+import LyricsPopover from "@/components/lyrics-popover";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowDown, Heart, X } from "lucide-react";
 import MvPlayer from "@/components/mv-player";
@@ -21,6 +24,12 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
   const dialog = useRef<HTMLDialogElement>(null);
   const scrollArea = useRef<HTMLDivElement>(null);
   const commentArea = useRef<HTMLDivElement>(null);
+  const reviewActivity = useRef(new Set<string>());
+  const setReviewActivity = (key: string, active: boolean) => {
+    if (active) reviewActivity.current.add(key); else reviewActivity.current.delete(key);
+    onReviewBusy?.(reviewActivity.current.size > 0);
+  };
+  const anchoredComment = useRef("");
   const reviewDrafts = useRef(new Map<string, MvReviewDraft>());
   const [showCommentCue, setShowCommentCue] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -29,6 +38,7 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
   const [readFailed, setReadFailed] = useState(false);
   const [writeFailed, setWriteFailed] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
+  const replyState = useWorkCommentReplies(work.id, signedIn);
   const [hearted, setHearted] = useState<boolean | null>(null);
   const [heartReadFailed, setHeartReadFailed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -98,6 +108,13 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
   }, [work.id, commentsVersion]);
 
   useEffect(() => {
+    const hash = window.location?.hash;
+    if (loading || !hash?.startsWith("#comment-") || anchoredComment.current === hash) return;
+    const target = document.getElementById(hash.slice(1));
+    if (target) { target.scrollIntoView({ block: "center" }); anchoredComment.current = hash; }
+  }, [loading, comments]);
+
+  useEffect(() => {
     let active = true;
     const readHeart = async () => {
       setHearted(null);
@@ -146,7 +163,7 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
 
   return <Container ref={inline ? undefined : dialog} className={`${styles.feedbackDialog} ${withMedia ? styles.feedbackWithVideo : ""} ${inline ? styles.feedbackInline : ""}`} aria-labelledby={inline ? "public-work-title" : "home-feedback-title"} onCancel={onClose}
     onClick={event => { if (!inline && event.target === event.currentTarget) onClose(); }}>
-    <div className={styles.feedbackInner}>
+    <div ref={withMedia && !inline ? scrollArea : undefined} className={styles.feedbackInner}>
       {!inline ? <div className={styles.feedbackHeading}><div><p>{copy.discuss}</p><h2 id="home-feedback-title">{work.title}</h2><span>{work.artist}</span></div>
         {!inline ? <button autoFocus type="button" onClick={onClose} aria-label={copy.closeFeedback}><X size={22} /></button> : null}
       </div> : null}
@@ -156,17 +173,18 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
             : externalMedia ? <ExternalMusicPlayer media={externalMedia} title={work.title} /> : mediaContent ?? null}
           {withVideo && videoControls ? <div className={styles.mvViewLinks}>{videoControls}</div> : null}
         </div> : null}
-        <div ref={scrollArea} className={styles.feedbackDiscussion}>
+        <div ref={!withMedia || inline ? scrollArea : undefined} className={styles.feedbackDiscussion}>
           <div className={styles.feedbackSupportRow}>
             {signedIn ? <button className={styles.feedbackHeart} type="button" disabled={busy || hearted === null} aria-pressed={hearted === true}
               onClick={() => void submitHeart()}><Heart size={18} fill={hearted ? "currentColor" : "none"} />{hearted ? copy.removeHeart : copy.sendHeart}</button>
               : <Link className={styles.feedbackAuth} href={authHref}>{copy.loginFeedback}</Link>}
             <p className={styles.feedbackNote}>{work.workKind === "album" ? albumCopy(lang).note : supportNote ?? copy.supportNote}</p>
+            {!withVideo && work.lyrics?.trim() ? <LyricsPopover title={work.title} artist={work.artist} lyrics={work.lyrics} lang={lang} /> : null}
             {(withVideo || inline) && shareControl ? <div className={styles.feedbackShare}>{shareControl}</div> : null}
           </div>
           {heartReadFailed ? <p role="alert" className={styles.refreshError}>{copy.error}</p> : null}
           <div ref={commentArea} id="mv-comment-area">
-            <MvRatingForm key={work.id} trackId={work.id} workKind={work.workKind} signedIn={signedIn} surface={reviewSurface ?? (work.videoId ? "mv" : "music")} drafts={reviewDrafts.current} onBusy={onReviewBusy ?? (() => {})} onSaved={item => {
+            <MvRatingForm key={work.id} trackId={work.id} workKind={work.workKind} signedIn={signedIn} surface={reviewSurface ?? (work.videoId ? "mv" : "music")} drafts={reviewDrafts.current} onBusy={active => setReviewActivity("review", active)} onSaved={item => {
               if (currentWork.current !== work.id) return;
               if (item) setComments(current => current.some(comment => comment.id === item.id) ? current.map(comment => comment.id === item.id ? item : comment) : [...current, item]);
               setCommentsVersion(version => version + 1);
@@ -175,9 +193,10 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
           </div>
           <section id="mv-public-comments" className={styles.feedbackComments} aria-label={copy.comments}>
             {loading ? <p role="status">{copy.loadingComments}</p> : readFailed ? <p role="alert">{copy.error}</p>
-              : comments.length ? comments.map(item => <article key={item.id}><strong>{item.name}</strong><p>{item.text}</p></article>)
+              : comments.length ? comments.map(item => <article key={item.id} id={`comment-${item.id}`}><strong>{item.name}</strong><p>{item.text}</p><WorkCommentReplies commentId={item.id} lang={lang} state={replyState} onBusy={active => setReviewActivity(item.id, active)} /></article>)
                 : <p>{copy.firstComment}</p>}
           </section>
+          {replyState.failed ? <div role="alert" className={styles.replyError}>{workReplyCopy(lang).error} <button type="button" onClick={replyState.retry}>{workReplyCopy(lang).retry}</button></div> : null}
           {writeFailed ? <p role="alert" className={styles.refreshError}>{copy.feedbackError}</p> : null}
         </div>
       </div>
