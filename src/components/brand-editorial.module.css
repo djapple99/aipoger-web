@@ -1,0 +1,159 @@
+.page { background: #050505; color: #f5f5f5; min-height: 100svh; }
+.main { max-width: 1600px; margin: auto; }
+.breadcrumb { min-height: 60px; display: flex; align-items: center; gap: 12px; padding: 15px 4.4%; font-size: 14px; color: #999; }
+.breadcrumb [aria-current] { color: #ff6a00; font-weight: 650; }
+.aboutHero { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.aboutImage { position: relative; aspect-ratio: 1.45; min-width: 0; }
+.aboutImage img { object-fit: cover; }
+.aboutCopy { align-self: center; padding: 36px 6% 36px 9%; min-width: 0; }
+.page .aboutCopy h1 { font-size: clamp(40px, 6.9vw, 96px); }
+.page:lang(en) .aboutCopy h1, .page:lang(ko) .aboutCopy h1 { font-size: clamp(38px, 4.3vw, 64px); }
+.page:lang(ja) .aboutCopy h1 { font-size: clamp(36px, 4.1vw, 60px); }
+.aboutCopy .lead { font-size: 13px; }
+.eyebrow { margin: 0 0 15px; color: #ff6a00; font-size: 15px; font-weight: 650; letter-spacing: .04em; }
+.eyebrow > span:last-child { font-size: 12px; letter-spacing: .13em; white-space: nowrap; }
+.page h1 { font-size: clamp(40px, 6.1vw, 86px); font-weight: 900; line-height: 1.16; letter-spacing: -.035em; margin: 0; }
+.page h1 > span, .mission h2 > span { display: block; }
+.lead { margin: 22px 0 34px; font-size: 15px; line-height: 1.9; color: #ddd; text-wrap: pretty; }
+.primary { display: inline-flex; justify-content: center; align-items: center; gap: 17px; padding: 11px 30px; min-height: 50px; background: #ff6a00; color: #fff; border-radius: 4px; font-size: 18px; font-weight: 650; transition: background .18s; }
+.primary:hover { background: #f57c25; }
+.heroActions { display: flex; flex-wrap: wrap; align-items: center; gap: 26px; }
+.textLink { padding: 10px 0 5px; border-bottom: 1px solid #ffffff60; font-size: 15px; white-space: nowrap; }
+.mission { border-block: 1px solid #ffffff20; margin-top: 34px; padding: 42px 4.4%; }
+.missionInner { display: grid; grid-template-columns: 2.15fr repeat(3, 1fr); max-width: 1460px; margin: auto; }
+.mission h2 { align-self: center; margin: 0; padding-right: 25px; font-size: clamp(26px, 3.3vw, 46px); font-weight: 800; line-height: 1.35; letter-spacing: -.025em; }
+.pillar { border-left: 1px solid #ffffff30; padding: 9px 23px; }
+.number { color: #ff6a00; font-size: 19px; }
+.pillar h3 { font-size: 24px; font-weight: 750; margin: 11px 0 8px; line-height: 1.35; }
+.pillar p { font-size: 15px; line-height: 1.7; margin: 0; color: #ddd; }
+.policies { margin: 46px 4.4% 30px; }
+.policy { border-top: 1px solid #ffffff30; }
+.policy:last-child { border-bottom: 1px solid #ffffff30; }
+.policy summary { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 74px; padding: 20px 0; font-weight: 700; font-size: 22px; cursor: pointer; list-style: none; }
+.policy summary::-webkit-details-marker, .format summary::-webkit-details-marker { display: none; }
+.policy summary svg { flex-shrink: 0; transition: transform .18s; }
+.policy[open] summary svg { transform: rotate(45deg); }
+.policyBody { padding: 2px 0 28px; max-width: 940px; }
+.policyText + .policyText { margin-top: 28px; }
+.policyText h3 { font-size: 17px; font-weight: 650; margin: 0 0 8px; }
+.policyText p, .policyText li, .formatBody p { color: #c5c5ca; font-size: 15px; line-height: 1.9; }
+.policyText p { margin: 0; }
+.policyText ul { padding-left: 22px; margin: 16px 0; }
+.policyLinks { margin-top: 20px; display: grid; gap: 18px; }
+.policyLinks a { display: block; color: #ff9a45; overflow-wrap: anywhere; }
+.policyLinks svg { display: inline; vertical-align: middle; margin-left: 8px; }
+.policyLinks small { display: block; margin-top: 5px; color: #aaa; }
+.socials { display: flex; flex-wrap: wrap; gap: 22px; margin-top: 24px; }
+.socials a { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.page[data-brand-page="partners"] .breadcrumb { position: relative; z-index: 2; }
+.partnersHero { min-height: 530px; position: relative; margin-top: -60px; padding-top: 60px; }
+.partnersImage { object-fit: cover; object-position: center; width: 78% !important; left: 22% !important; }
+.heroShade { position: absolute; inset: 0; background: linear-gradient(90deg,#050505 0%,#050505f5 24%,#050505b3 37%,#05050520 60%,transparent 72%); }
+.partnersCopy { position: relative; z-index: 1; padding: 28px 4.4% 34px; width: 62%; }
+.partnersCopy h1 { font-size: clamp(40px, 5.95vw, 84px); }
+.partnersCopy .lead { max-width: 330px; font-size: 20px; line-height: 1.65; margin: 22px 0 36px; }
+.partnersCopy .primary { min-width: 272px; font-size: 22px; }
+.contactSmall { display: flex; flex-wrap: wrap; gap: 12px; font-size: 15px; margin: 18px 0 0; }
+.contactSmall > span { color: #999; }
+.formats { margin: 24px 4.4% 26px; border-top: 1px solid #ffffff30; }
+.formats > h2 { font-size: 18px; font-weight: 650; margin: 18px 0 4px; }
+.format { border-bottom: 1px solid #ffffff30; }
+.format summary { display: grid; grid-template-columns: 96px minmax(210px, 270px) 1fr 30px; align-items: center; gap: 40px; min-height: 103px; padding: 16px 0; cursor: pointer; list-style: none; }
+.formatNumber { font-size: 50px; line-height: 1.15; color: #ff6a00; font-weight: 600; letter-spacing: -.04em; border-right: 1px solid #ffffff70; }
+.format h3 { font-size: 32px; font-weight: 750; margin: 0; line-height: 1.35; }
+.format summary p { font-size: 17px; color: #ddd; margin: 0; line-height: 1.6; }
+.format summary > svg { transition: transform .18s; }
+.format[open] summary > svg { transform: rotate(90deg); }
+.formatBody { margin: 0 70px 28px 136px; max-width: 860px; }
+.formatBody p { margin: 0 0 18px; }
+.formatBody a { display: inline-flex; align-items: center; gap: 12px; color: #ff9a45; min-height: 44px; }
+.contactBanner { min-height: 225px; position: relative; border-block: 1px solid #ffffff30; }
+.contactBanner > img { object-fit: cover; object-position: center; }
+.bannerShade { position: absolute; inset: 0; background: linear-gradient(90deg,#050505 0%,#050505e8 24%,#05050580 43%,transparent 75%); }
+.contactCopy { position: relative; padding: 40px 4.4%; }
+.contactCopy h2 { font-size: clamp(28px, 3.8vw, 48px); line-height: 1.3; font-weight: 800; margin: 0 0 10px; max-width: 720px; }
+.contactCopy > a { display: inline-flex; gap: 16px; align-items: center; color: #ff6a00; font-size: clamp(20px, 2.4vw, 30px); overflow-wrap: anywhere; }
+.contactCopy p { font-size: 16px; margin: 12px 0 0; color: #ddd; }
+.footer { max-width: 1460px; margin: auto; padding: 36px 4.4% 55px; display: flex; align-items: center; gap: 30px; font-size: 13px; }
+.footerBrand { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.footerBrand img { object-fit: contain; }
+.footerBrand span { font-size: 24px; font-weight: 700; }
+.footerMail { display: flex; align-items: center; gap: 12px; border-left: 1px solid #ffffff30; padding-left: 30px; }
+.footer nav { display: flex; flex-wrap: wrap; gap: 20px; margin-left: auto; }
+.footer nav a + a { border-left: 1px solid #ffffff50; padding-left: 20px; }
+.page a:hover, .policy summary:hover, .format summary:hover { color: #ff9a45; }
+.page .primary:hover { color: #fff; }
+.page a:focus-visible, .page summary:focus-visible { outline: 2px solid #ff9a45; outline-offset: 5px; }
+@media (min-width: 1101px) {
+  .page > header > div { width: calc(100% - 100px); gap: 30px; }
+  .page > header a[aria-label="AIPOGER"] span { font-size: 29px; }
+  .page > header nav { gap: 27px; }
+  .page > header nav a { font-size: 15px; }
+  .page > header a[href*="submit=1"] { padding-inline: 21px; font-size: 14px; }
+}
+@media (max-width: 1100px) {
+  .aboutCopy { padding-left: 8%; }
+  .page h1 { font-size: 5.8vw; }
+  .eyebrow { font-size: 12px; }
+  .eyebrow > span:last-child { font-size: 10px; }
+  .heroActions { gap: 16px; }
+  .primary { padding-inline: 20px; font-size: 16px; }
+  .pillar { padding-inline: 18px; }
+  .pillar h3 { font-size: 21px; }
+  .format summary { grid-template-columns: 76px minmax(195px, 250px) 1fr 28px; gap: 22px; }
+  .format h3 { font-size: 28px; }
+  .formatNumber { font-size: 43px; }
+}
+@media (max-width: 760px) {
+  .breadcrumb { min-height: 54px; padding-inline: 20px; font-size: 12px; }
+  .aboutHero { display: flex; flex-direction: column; }
+  .aboutImage { width: 100%; aspect-ratio: 1.5; }
+  .aboutCopy { align-self: stretch; padding: 30px 20px 12px; }
+  .eyebrow { font-size: 12px; margin-bottom: 15px; }
+  .eyebrow > span:last-child { font-size: 10px; }
+  .page h1 { font-size: clamp(38px, 9vw, 66px); }
+  .page .aboutCopy h1 { font-size: clamp(38px, 9vw, 66px); }
+  .aboutCopy .lead { font-size: 15px; }
+  .lead { margin: 18px 0 24px; font-size: 15px; }
+  .primary { min-height: 48px; padding-inline: 24px; font-size: 17px; }
+  .heroActions { gap: 26px; }
+  .mission { margin-top: 28px; padding: 28px 20px; }
+  .missionInner { grid-template-columns: 1fr; gap: 22px; }
+  .mission h2 { font-size: 29px; padding: 0 0 10px; }
+  .pillar { padding: 0 0 0 18px; display: grid; grid-template-columns: 34px 1fr; column-gap: 13px; }
+  .number { grid-row: 1 / 3; font-size: 19px; }
+  .pillar h3 { margin: 0 0 6px; font-size: 22px; }
+  .pillar p { font-size: 14px; }
+  .policies { margin: 30px 20px 14px; }
+  .policy summary { min-height: 72px; font-size: 19px; }
+  .policyText p, .policyText li, .formatBody p { font-size: 14px; }
+  .partnersHero { display: flex; flex-direction: column; min-height: 0; margin-top: 0; padding-top: 0; }
+  .partnersHero .partnersImage { position: relative !important; width: 100% !important; left: 0 !important; height: auto !important; aspect-ratio: 1.55; object-fit: cover; object-position: 70% center; }
+  .heroShade { display: none; }
+  .partnersCopy { width: 100%; padding: 28px 20px 10px; }
+  .partnersCopy h1 { font-size: clamp(37px, 8.7vw, 64px); }
+  .partnersCopy .lead { font-size: 16px; line-height: 1.8; margin: 20px 0 26px; max-width: 520px; }
+  .partnersCopy .primary { font-size: 19px; min-width: 230px; }
+  .contactSmall { font-size: 13px; gap: 8px; }
+  .formats { margin: 30px 20px 26px; }
+  .formats > h2 { font-size: 16px; margin-bottom: 8px; }
+  .format summary { grid-template-columns: 48px 1fr 22px; gap: 10px 16px; padding-block: 24px; min-height: 100px; }
+  .formatNumber { font-size: 32px; grid-row: 1 / 3; align-self: stretch; display: flex; align-items: center; }
+  .format h3 { font-size: 24px; }
+  .format summary p { grid-column: 2; font-size: 14px; }
+  .format summary > svg { grid-column: 3; grid-row: 1 / 3; width: 22px; }
+  .formatBody { margin: 0 0 24px 64px; }
+  .contactBanner { min-height: 230px; }
+  .contactBanner > img { object-position: 66% center; }
+  .bannerShade { background: #050505ad; }
+  .contactCopy { padding: 32px 20px; }
+  .contactCopy h2 { font-size: 29px; max-width: 490px; }
+  .contactCopy > a { font-size: 20px; gap: 10px; }
+  .contactCopy p { font-size: 14px; max-width: 440px; line-height: 1.8; }
+  .footer { padding: 28px 20px 100px; flex-wrap: wrap; gap: 20px 24px; }
+  .footerBrand span { font-size: 21px; }
+  .footerBrand img { width: 34px; height: 42px; }
+  .footerMail { padding-left: 0; border: 0; font-size: 12px; gap: 8px; }
+  .footer nav { margin-left: 0; width: 100%; font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) { .page * { transition: none; } }

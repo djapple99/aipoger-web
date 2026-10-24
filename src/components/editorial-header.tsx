@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 import LangToggle from "@/components/lang-toggle";
 import styles from "./home-editorial.module.css";
 
-export default function EditorialHeader({ active, returnPath }: { active: "home" | "mv" | "explore" | "creator" | "battle" | "showtime" | "bible"; returnPath?: string }) {
+export default function EditorialHeader({ active, returnPath }: { active: "home" | "mv" | "explore" | "creator" | "battle" | "showtime" | "bible" | "about" | "partners"; returnPath?: string }) {
   const { lang } = useI18n(); const copy = homeCopy(lang);
   const [signedIn, setSignedIn] = useState(false);
   const withLang = (path: string) => { const [url, hash] = path.split("#"); return `${url}${url.includes("?") ? "&" : "?"}lang=${lang}${hash ? `#${hash}` : ""}`; };

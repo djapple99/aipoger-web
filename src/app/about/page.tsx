@@ -1,5 +1,5 @@
-import InfoPageShell from "@/components/info-page-shell";
+import BrandEditorial from "@/components/brand-editorial";
 
 export default function AboutPage() {
-  return <InfoPageShell kind="about" />;
+  return <BrandEditorial kind="about" />;
 }
