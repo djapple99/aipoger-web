@@ -166,12 +166,15 @@ export default function HomeEditorial() {
       </section>
       <footer className={styles.footer}>
         <div className={styles.footerCommunity}>
-          <div><h2 id="home-community-title">{copy.joinCommunity}</h2><p>{copy.footer}</p></div>
-          <nav aria-labelledby="home-community-title" className={styles.communityLinks}>
-            {communityLinks.map(social => <a key={social.label} href={social.href} target="_blank" rel="noopener noreferrer">
-              <SocialIcon label={social.label} className={styles.communityIcon} /><span>{social.label}</span>
-            </a>)}
-          </nav>
+          <div className={styles.communityHeading}>
+            <h2 id="home-community-title">{copy.joinCommunity}</h2>
+            <nav aria-labelledby="home-community-title" className={styles.communityLinks}>
+              {communityLinks.map(social => <a key={social.label} href={social.href} target="_blank" rel="noopener noreferrer" aria-label={social.label} title={`${social.label} ${social.handle}`}>
+                <SocialIcon label={social.label} className={styles.communityIcon} />
+              </a>)}
+            </nav>
+          </div>
+          <p>{copy.footer}</p>
         </div>
         <div className={styles.footerLinks}>
           <Link href={withLang("/profile?submit=1#submit-work")}>{copy.submit}</Link><Link href={withLang("/about")}>{copy.about}</Link><Link href={withLang("/partners")}>{copy.contact}</Link>
