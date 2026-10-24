@@ -35,6 +35,36 @@
       "regions": [
         "hnd1"
       ]
+    },
+    "src/app/api/ai-music/tracks/route.ts": {
+      "regions": [
+        "hnd1"
+      ]
+    },
+    "src/app/api/listen-bar/tracks/route.ts": {
+      "regions": [
+        "hnd1"
+      ]
+    },
+    "src/app/api/home/discovery/route.ts": {
+      "regions": [
+        "hnd1"
+      ]
+    },
+    "src/app/api/mv/discovery/route.ts": {
+      "regions": [
+        "hnd1"
+      ]
+    },
+    "src/app/api/albums/route.ts": {
+      "regions": [
+        "hnd1"
+      ]
+    },
+    "src/app/api/creator-center/route.ts": {
+      "regions": [
+        "hnd1"
+      ]
     }
   }
 }
