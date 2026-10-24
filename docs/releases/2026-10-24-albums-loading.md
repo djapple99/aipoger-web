@@ -23,7 +23,7 @@ Explore新增專輯模式，支援完整合輯連結／音檔，以及本人2–
 - 完整709項：676通過、33既有選用DB測試略過、0失敗。
 - TypeScript及本機webpack build通過；雲端Turbopack build READY。Lint 0 errors／14既有warnings。
 - 實際Supabase交易測試：authenticated角色有序選曲、重複／巢狀／別人作品拒絕、一般角色不可轉類；原評分保留、album新評分與改分拒絕、單曲仍能評分、專輯可留言、anon公開播放與service-only grants。全部回滾，fixture residue為0。
-- Security及performance advisor相較發布前沒有新增項目。
+- Security及performance advisor沒有新增WARN；performance新增一筆剛建立的`listen_bar_album_catalog`未使用索引INFO。既有WARN數量維持不變，[未使用索引說明](https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index)。
 - 正式HTTP：單曲catalog無該ID；album catalog同ID／videoId／1464秒，舊短音檔未被拿來替代完整影片；MV條目album標記、評分0；review API回canRate=false。四語OG圖為該MV可用封面，canonical保留專輯ID。
 - 正式瀏覽器：桌機MV實際播放來源正確，原3則留言可讀，無單曲評分欄；390px手機專輯卡片；320px中英日韓無水平溢出，未點播放時iframe數為0。
 - 真正已登入的Owner創作者中心：專輯CTA預選類型，三種來源可切換，選兩首自己的作品及交換順序成功；未按發布，沒有留下測試專輯或扣點。限額／所有權／冪等／拒絕路徑另由API runtime與正式SQL驗證。
