@@ -1,94 +1,46 @@
+export const preferredRegion = "hnd1";
 import type { MetadataRoute } from "next";
+import { unstable_cache } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
-import { choicePublicPath } from "@/lib/aipoger-choice";
-import { creatorChoicePublicPath } from "@/lib/creator-choice";
-import { publicSiteUrl } from "@/lib/site-url";
+import { readAllHomePages } from "@/lib/home-discovery";
+import { readPublicWorkIndex } from "@/lib/server-home-discovery";
+import { readPublicAlbums } from "@/lib/server-albums";
+import { readPublicBattles } from "@/lib/server-public-battles";
+import { BIBLE_PUBLIC_SLUGS } from "@/lib/bible-public-articles";
+import { PUBLIC_LANGS, publicUrl, publicAlternates } from "@/lib/public-seo";
 
-const siteUrl = publicSiteUrl();
-const SUPPORTED_LANGS = ["zh", "en", "ja", "ko"] as const;
-const INFO_LANGS = ["zh", "en"] as const;
-
-type PublicChoiceRow = {
-  id: string;
-  week_start: string | null;
-};
-
-function localizedRoutes(path: string, langs: readonly string[], priority: number, changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"]): MetadataRoute.Sitemap {
-  return langs.map((lang) => ({
-    url: `${siteUrl}${path}?lang=${lang}`,
-    changeFrequency,
-    priority,
-  }));
+// Runtime generation avoids freezing the catalog at build time. Only the public
+// URL index is cached; page HTML still checks current publication/moderation.
+export const dynamic = "force-dynamic";
+function localized(path: string, params: Record<string, string> = {}): MetadataRoute.Sitemap {
+  return PUBLIC_LANGS.map(lang => ({ url: publicUrl(path, lang, params), alternates: { languages: publicAlternates(path, lang, params)?.languages as Record<string, string> } }));
 }
-
-async function loadPublishedChoiceUrls(): Promise<MetadataRoute.Sitemap> {
+const buildSitemap = unstable_cache(async (): Promise<MetadataRoute.Sitemap> => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return [];
-
-  const admin = createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
-  const [officialResult, creatorResult] = await Promise.all([
-    admin
-      .from("aipoger_choice_collections")
-      .select("id,week_start")
-      .eq("is_published", true)
-      .order("week_start", { ascending: false })
-      .limit(500),
-    admin
-      .from("aipoger_creator_choice_collections")
-      .select("id,week_start")
-      .eq("is_published", true)
-      .order("week_start", { ascending: false })
-      .limit(500),
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) throw new Error("Public index configuration unavailable");
+  const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const [works, official, creators, battles] = await Promise.all([
+    readPublicWorkIndex(),
+    readAllHomePages<{ id: string; updated_at?: string }>((from, to) => admin.from("aipoger_choice_collections").select("id,updated_at").eq("is_published", true).order("id").range(from, to)),
+    readAllHomePages<{ id: string; updated_at?: string }>((from, to) => admin.from("aipoger_creator_choice_collections").select("id,updated_at").eq("is_published", true).order("id").range(from, to)),
+    readPublicBattles(),
   ]);
-
-  if (officialResult.error) throw officialResult.error;
-  if (creatorResult.error) throw creatorResult.error;
-
-  const officialUrls = ((officialResult.data ?? []) as PublicChoiceRow[]).map((row) => ({
-    url: `${siteUrl}${choicePublicPath(row.id, "official")}&lang=zh`,
-    lastModified: parseDate(row.week_start),
-    changeFrequency: "weekly" as const,
-    priority: 0.78,
-  }));
-  const creatorUrls = ((creatorResult.data ?? []) as PublicChoiceRow[]).map((row) => ({
-    url: `${siteUrl}${creatorChoicePublicPath(row.id)}?lang=zh`,
-    lastModified: parseDate(row.week_start),
-    changeFrequency: "weekly" as const,
-    priority: 0.72,
-  }));
-
-  return [...officialUrls, ...creatorUrls].filter((entry) => entry.url);
-}
-
-function parseDate(value: string | null | undefined) {
-  if (!value) return undefined;
-  const date = new Date(value);
-  return Number.isFinite(date.getTime()) ? date : undefined;
-}
-
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const routes: MetadataRoute.Sitemap = [
-    { url: `${siteUrl}/`, priority: 1, changeFrequency: "daily" },
-    ...localizedRoutes("/mv", SUPPORTED_LANGS, 0.95, "daily"),
-    ...localizedRoutes("/ai-music", SUPPORTED_LANGS, 0.95, "hourly"),
-    ...localizedRoutes("/listen-bar", SUPPORTED_LANGS, 0.9, "hourly"),
-    ...localizedRoutes("/battle", SUPPORTED_LANGS, 0.82, "daily"),
-    ...localizedRoutes("/rank", SUPPORTED_LANGS, 0.8, "daily"),
-    ...localizedRoutes("/ai-music-bible", SUPPORTED_LANGS, 0.78, "weekly"),
-    ...localizedRoutes("/drop-guide", INFO_LANGS, 0.76, "weekly"),
-    ...localizedRoutes("/about", INFO_LANGS, 0.55, "monthly"),
-    ...localizedRoutes("/partners", INFO_LANGS, 0.5, "monthly"),
-    { url: `${siteUrl}/earworm`, priority: 0.62, changeFrequency: "weekly" },
+  const validWorks = await Promise.all(works.map(async work => work.workKind !== "album" || (await readPublicAlbums(work.id)).length ? work : null));
+  const entries: MetadataRoute.Sitemap = [
+    ...["/", "/mv", "/ai-music", "/rank", "/battle", "/ai-music-bible", "/about", "/partners", "/music-analysis"].flatMap(path => localized(path)),
+    ...localized("/ai-music", { view: "albums" }),
+    ...["zh", "en"].map(lang => ({ url: publicUrl("/drop-guide", lang as "zh" | "en") })),
+    { url: publicUrl("/earworm", "zh") },
+    ...validWorks.flatMap(work => work ? localized(`/works/${work.id}`) : []),
+    ...official.flatMap(choice => localized(`/choice/${choice.id}`, { kind: "official" }).map(entry => ({ ...entry, ...(choice.updated_at && Number.isFinite(Date.parse(choice.updated_at)) ? { lastModified: new Date(choice.updated_at) } : {}) }))),
+    ...creators.flatMap(choice => localized(`/choice/${choice.id}`, { kind: "creator" }).map(entry => ({ ...entry, ...(choice.updated_at && Number.isFinite(Date.parse(choice.updated_at)) ? { lastModified: new Date(choice.updated_at) } : {}) }))),
+    ...BIBLE_PUBLIC_SLUGS.flatMap(slug => localized(`/ai-music-bible/${slug}`)),
+    ...[...battles.live.map(row => row.id), ...battles.pool.map(row => row.id)].flatMap(id => localized(`/battle/${id}`)),
+    ...battles.qCrash.flatMap(card => ["zh", "en"].map(lang => ({ url: publicUrl(`/battle/q-crash/${card.cardId}`, lang as "zh" | "en"), alternates: { languages: {
+      "zh-Hant": publicUrl(`/battle/q-crash/${card.cardId}`, "zh"), en: publicUrl(`/battle/q-crash/${card.cardId}`, "en"),
+    } } }))),
   ];
-
-  try {
-    return [...routes, ...(await loadPublishedChoiceUrls())];
-  } catch (error) {
-    console.error("[sitemap] Failed to load published Choice URLs", error);
-    return routes;
-  }
-}
+  return [...new Map(entries.map(entry => [entry.url, entry])).values()];
+}, ["aipoger-public-sitemap-v1"], { revalidate: 300 });
+export default async function sitemap() { return buildSitemap(); }

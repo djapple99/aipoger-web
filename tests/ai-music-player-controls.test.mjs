@@ -13,7 +13,8 @@ test("shared player preserves accessible scrollable lyrics", () => {
   assert.ok(player.includes("<dialog"));
   assert.ok(player.includes("showModal()"));
   assert.ok(player.includes("overflow-y-auto"));
-  assert.ok(player.includes("歌詞未提供"));
+  assert.ok(!player.includes("歌詞未提供"));
+  assert.ok(player.includes("track?.lyrics?.trim()"));
   assert.ok(player.includes("View lyrics"));
 });
 test("shared player supports mobile volume and native-volume fallback", () => {

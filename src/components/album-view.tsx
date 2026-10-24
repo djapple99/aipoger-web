@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { MessageCircleMore, Play, Share2 } from "lucide-react";
@@ -13,18 +13,19 @@ import styles from "./album-view.module.css";
 const MvPlayer = dynamic(() => import("./mv-player"));
 const ExternalMusicPlayer = dynamic(() => import("./external-music-player"));
 const HomeWorkFeedback = dynamic(() => import("./home-work-feedback"));
-export default function AlbumView({ initialId, query = "", genre = "" }: { initialId?: string | null; query?: string; genre?: string }) {
+export default function AlbumView({ initialId, initialAlbums, query = "", genre = "" }: { initialId?: string | null; initialAlbums?: PublicAlbum[]; query?: string; genre?: string }) {
   const { lang } = useI18n(); const c = albumCopy(lang);
-  const [albums, setAlbums] = useState<PublicAlbum[]>([]); const [loading, setLoading] = useState(true); const [failed, setFailed] = useState(false); const [retry, setRetry] = useState(0);
-  const [selected, setSelected] = useState<string | null>(null); const [trackIndex, setTrackIndex] = useState(0); const [playing, setPlaying] = useState(false); const [comment, setComment] = useState<PublicAlbum | null>(null); const [shared, setShared] = useState("");
+  const catalogLoaded = useRef(Boolean(initialAlbums));
+  const [albums, setAlbums] = useState<PublicAlbum[]>(initialAlbums ?? []); const [loading, setLoading] = useState(!initialAlbums); const [failed, setFailed] = useState(false); const [retry, setRetry] = useState(0);
+  const [selected, setSelected] = useState<string | null>(initialId ?? null); const [trackIndex, setTrackIndex] = useState(0); const [playing, setPlaying] = useState(false); const [comment, setComment] = useState<PublicAlbum | null>(null); const [shared, setShared] = useState("");
   useEffect(() => {
-    let active = true; const controller = new AbortController(); setLoading(true); setFailed(false);
+    let active = true; const controller = new AbortController(); setLoading(!catalogLoaded.current); setFailed(false);
     void (async () => {
       try {
         const r = await fetch("/api/albums", { signal: controller.signal }); const data = await r.json(); if (!r.ok || !Array.isArray(data.albums)) throw new Error();
         let items: PublicAlbum[] = data.albums;
         if (initialId && !items.some(a => a.id === initialId)) { const one = await fetch(`/api/albums?id=${encodeURIComponent(initialId)}`, { signal: controller.signal }); const p = await one.json(); if (!one.ok) throw new Error(); items = [...(p.albums ?? []), ...items]; }
-        if (active) { setAlbums(items); if (initialId && items.some(a => a.id === initialId)) { setSelected(initialId); setTrackIndex(0); setPlaying(false); if (new URLSearchParams(window.location.search).get("comments") === "1") setComment(items.find(a => a.id === initialId) ?? null); } }
+        if (active) { catalogLoaded.current = true; setAlbums(items); if (initialId && items.some(a => a.id === initialId)) { setSelected(initialId); setTrackIndex(0); setPlaying(false); if (new URLSearchParams(window.location.search).get("comments") === "1") setComment(items.find(a => a.id === initialId) ?? null); } }
       } catch { if (active) setFailed(true); } finally { if (active) setLoading(false); }
     })(); return () => { active = false; controller.abort(); };
   }, [initialId, retry]);
@@ -52,7 +53,7 @@ export default function AlbumView({ initialId, query = "", genre = "" }: { initi
     {!loading && !failed && !filtered.length ? <p role="status">{c.empty}</p> : null}
     <div className={styles.grid}>{filtered.map(a => <article key={a.id} className={styles.card}>
       <button className={styles.cover} onClick={() => { setSelected(a.id); setTrackIndex(0); setPlaying(false); }} aria-label={`${c.open} · ${a.title}`}><WorkImage work={a} video={Boolean(a.videoId)} /><span>{c.label}{a.durationSeconds ? ` · ${Math.floor(a.durationSeconds / 60)}:${String(a.durationSeconds % 60).padStart(2, "0")}` : a.tracks.length ? ` · ${a.tracks.length}` : ""}</span></button>
-      <h3><button onClick={() => { setSelected(a.id); setTrackIndex(0); setPlaying(false); }}>{a.title}</button></h3><p>{a.artist}</p>
+      <h3><Link prefetch={false} href={`/works/${encodeURIComponent(a.id)}?lang=${lang}`}>{a.title}</Link></h3><p>{a.artist}</p>
       <div className={styles.actions}><button onClick={() => start(a)} aria-label={`${c.play} · ${a.title}`}><Play size={19} /></button><button onClick={() => setComment(a)} aria-label={`${c.comments} · ${a.title}`}><MessageCircleMore size={19} /></button><button onClick={() => void share(a)} aria-label={`${lang === "zh" ? "分享" : lang === "ja" ? "共有" : lang === "ko" ? "공유" : "Share"} · ${a.title}`}><Share2 size={19} /></button>{shared === a.id ? <span role="status">{lang === "zh" ? "已複製連結" : lang === "ja" ? "リンクをコピーしました" : lang === "ko" ? "링크 복사됨" : "Link copied"}</span> : null}</div>
     </article>)}</div>
     {comment ? <HomeWorkFeedback key={comment.id} work={comment} returnPath={albumPath(comment.id, lang)} onClose={() => setComment(null)} onChange={() => {}} /> : null}

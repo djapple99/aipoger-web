@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
+import type { PublicBattleSeed } from "@/lib/server-public-battles";
 import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronsRight, Clock3, Swords } from "lucide-react";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
@@ -142,7 +143,7 @@ function VoteButton({ team }: { team: "A" | "B" }) {
   );
 }
 
-type LiveBattleRow = {
+export type LiveBattleRow = {
   id: string;
   status?: string | null;
   fighter_a_user_id: string;
@@ -192,7 +193,7 @@ function BattlePanelLabel({ tone, wide = false, children }: { tone: "cyan" | "re
   );
 }
 
-type PoolEntryRow = {
+export type PoolEntryRow = {
   id: string;
   user_id: string;
   fighter_name: string;
@@ -211,7 +212,7 @@ type PoolEntryRow = {
   created_at: string;
 };
 
-type QCrashPoolCardRow = {
+export type QCrashPoolCardRow = {
   cardId: string;
   battleId: string | null;
   status: string;
@@ -1017,19 +1018,19 @@ function DailyBattleList() {
   );
 }
 
-function BattlePoolList() {
+function BattlePoolList({ initialData }: { initialData?: PublicBattleSeed }) {
   const { t, lang } = useI18n();
   const isZh = lang === "zh";
   const startChallengeLabel = isZh ? "發起挑戰" : "Start a Challenge";
   const startChallengeHref = `/battle/setup?lang=${lang}`;
   const searchParams = useSearchParams();
   const focusQueueId = searchParams.get("focusQueue");
-  const [rows, setRows] = useState<PoolEntryRow[]>([]);
-  const [officialDrops, setOfficialDrops] = useState<OfficialGatekeeperDrop[]>([]);
-  const [qCrashCards, setQCrashCards] = useState<QCrashPoolCardRow[]>([]);
+  const [rows, setRows] = useState<PoolEntryRow[]>(initialData?.pool ?? []);
+  const [officialDrops, setOfficialDrops] = useState<OfficialGatekeeperDrop[]>(initialData?.drops ?? []);
+  const [qCrashCards, setQCrashCards] = useState<QCrashPoolCardRow[]>(initialData?.qCrash ?? []);
   const [acceptedBattleRows, setAcceptedBattleRows] = useState<LiveBattleRow[]>([]);
   const [hookSongStats, setHookSongStats] = useState<Record<string, SongBattleStats>>({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialData);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [cancelQueueId, setCancelQueueId] = useState<string | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
@@ -1853,19 +1854,19 @@ function BattlePoolList() {
   );
 }
 
-function LiveBattleList() {
+function LiveBattleList({ initialData }: { initialData?: PublicBattleSeed }) {
   const { t, lang } = useI18n();
   const isZh = lang === "zh";
   const searchParams = useSearchParams();
   const focusQueueId = searchParams.get("focusQueue");
   const focusBattleId = searchParams.get("focusBattle");
-  const [rows, setRows] = useState<LiveBattleRow[]>([]);
+  const [rows, setRows] = useState<LiveBattleRow[]>(initialData?.live ?? []);
   const [liveSongStats, setLiveSongStats] = useState<Record<string, SongBattleStats>>({});
   const [archivedBattleIds, setArchivedBattleIds] = useState<Set<string>>(() => new Set());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [cancelBattleId, setCancelBattleId] = useState<string | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
   const [activeGenre, setActiveGenre] = useState("all");
 
@@ -2067,7 +2068,7 @@ function LiveBattleList() {
           </p>
         )}
 
-        <div className={retroStyles.details}><BattlePoolList /></div>
+        <div className={retroStyles.details}><BattlePoolList initialData={initialData} /></div>
 
         {cancelError ? (
           <div className="mt-6 rounded-2xl border border-red-400/35 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-100">
@@ -2494,7 +2495,7 @@ function BattleArena({ matchId }: { matchId: string }) {
   );
 }
 
-function BattleContent() {
+function BattleContent({ initialData }: { initialData?: PublicBattleSeed }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const matchId = searchParams.get("matchId");
@@ -2509,7 +2510,7 @@ function BattleContent() {
   }, [focusBattleId, focusQueueId, lang, router]);
 
   if (!matchId) {
-    return <LiveBattleList />;
+    return <LiveBattleList initialData={initialData} />;
   }
 
   return <BattleArena matchId={matchId} />;
@@ -2526,10 +2527,10 @@ function BattleSuspenseFallback() {
 
 // ─── Page export（只負責 Suspense 包裝）─────────────────────────────────────
 
-export default function BattlePage() {
+export default function BattlePage({ initialData }: { initialData?: PublicBattleSeed } = {}) {
   return (
     <Suspense fallback={<BattleSuspenseFallback />}>
-      <BattleContent />
+      <BattleContent initialData={initialData} />
     </Suspense>
   );
 }

@@ -4,13 +4,13 @@ import test from "node:test";
 
 const showtimeHelperSource = readFileSync(new URL("../src/lib/ai-music-showtime.ts", import.meta.url), "utf8");
 const lifecycleSource = readFileSync(new URL("../src/lib/ai-music-surface-lifecycle.ts", import.meta.url), "utf8");
-const aiMusicTracksRouteSource = readFileSync(new URL("../src/app/api/ai-music/tracks/route.ts", import.meta.url), "utf8");
+const aiMusicTracksRouteSource = readFileSync(new URL("../src/lib/server-public-music.ts", import.meta.url), "utf8");
 const listenBarTracksRouteSource = readFileSync(new URL("../src/app/api/listen-bar/tracks/route.ts", import.meta.url), "utf8");
 const challengeRouteSource = readFileSync(new URL("../src/app/api/ai-music/challenges/route.ts", import.meta.url), "utf8");
 const removeTrackRouteSource = readFileSync(new URL("../src/app/api/listen-bar/remove-track/route.ts", import.meta.url), "utf8");
 const showtimeMyTracksRouteSource = readFileSync(new URL("../src/app/api/showtime/my-tracks/route.ts", import.meta.url), "utf8");
 const profileSource = readFileSync(new URL("../src/app/profile/page.tsx", import.meta.url), "utf8");
-const rankSource = readFileSync(new URL("../src/app/rank/page.tsx", import.meta.url), "utf8");
+const rankSource = readFileSync(new URL("../src/app/rank/rank-client.tsx", import.meta.url), "utf8");
 const honorInteractionsRouteSource = readFileSync(new URL("../src/app/api/honor-board/interactions/route.ts", import.meta.url), "utf8");
 const dropFullSongsRouteSource = readFileSync(new URL("../src/app/api/honor-board/drop-full-songs/route.ts", import.meta.url), "utf8");
 const previewScriptSource = readFileSync(new URL("../scripts/showtime-founder-catalog-preview.mjs", import.meta.url), "utf8");

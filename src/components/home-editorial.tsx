@@ -19,11 +19,11 @@ import styles from "./home-editorial.module.css";
 const communityLinks = ["Facebook", "LINE"].flatMap(label =>
   AIPOGER_SOCIAL_LINKS.filter(link => link.label === label));
 
-export default function HomeEditorial() {
+export default function HomeEditorial({ initialData }: { initialData?: HomeDiscovery } = {}) {
   const { lang, t } = useI18n();
   const copy = homeCopy(lang);
-  const [data, setData] = useState<HomeDiscovery | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<HomeDiscovery | null>(initialData ?? null);
+  const [loading, setLoading] = useState(!initialData);
   const [failed, setFailed] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [playingVideo, setPlayingVideo] = useState<string | null>(null);
@@ -31,7 +31,7 @@ export default function HomeEditorial() {
   const [feedbackWork, setFeedbackWork] = useState<HomeWork | null>(null);
   const player = useMusicPlayer();
   const withLang = (path: string) => { const [url, hash] = path.split("#"); return `${url}${url.includes("?") ? "&" : "?"}lang=${lang}${hash ? `#${hash}` : ""}`; };
-  const workHref = (work: HomeWork) => withLang(`/ai-music?track=${encodeURIComponent(work.id)}`);
+  const workHref = (work: HomeWork) => withLang(`/works/${encodeURIComponent(work.id)}`);
   const selected = data?.featured.find(work => work.id === selectedId) ?? data?.featured[0];
   const selectedIndex = data?.featured.findIndex(work => work.id === selected?.id) ?? 0;
   const videoOpen = Boolean(selected?.videoId && playingVideo === selected.videoId);
@@ -107,7 +107,7 @@ export default function HomeEditorial() {
             </div>
             <div className={styles.workInfo}>
               <p className={styles.workLabel}>{data?.featureKind === "community" ? copy.community : copy.newWork}</p>
-              <h2 title={selected.title}>{selected.title}</h2>
+              <h2 title={selected.title}><Link prefetch={false} href={workHref(selected)}>{selected.title}</Link></h2>
               <p className={styles.artist}>{selected.artist}</p>
               {data?.featureKind === "community" ? <div className={styles.support}>
                 <Heart size={18} /> <span>{copy.supporters} <strong>{selected.supporterCount}</strong> {copy.people}</span>
@@ -155,7 +155,7 @@ export default function HomeEditorial() {
                 <span className={styles.singlePlay}>{playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}</span>
               </button>
               <div className={styles.singleInfo}>
-                <Link href={workHref(work)} title={work.title}><h3>{work.title}</h3></Link>
+                <Link prefetch={false} href={workHref(work)} title={work.title}><h3>{work.title}</h3></Link>
                 <p>{work.artist}</p><p className={styles.genre}>{t(MUSIC_GENRE_OPTIONS.find(option => option.value === work.genre)?.labelKey ?? "genre_custom")}</p>
               </div>
             </article>;

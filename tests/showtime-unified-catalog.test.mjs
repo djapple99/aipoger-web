@@ -3,14 +3,14 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const readSource = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
-const rank = readSource("../src/app/rank/page.tsx");
+const rank = readSource("../src/app/rank/rank-client.tsx");
 const gallery = readSource("../src/components/public-choice-gallery.tsx");
 const chart = readSource("../src/components/monthly-chart.tsx");
 const shelf = readSource("../src/components/showtime-choice-shelf.tsx");
 const player = readSource("../src/components/global-music-player.tsx");
 const adapter = readSource("../src/components/showtime-queue-player.tsx");
-const creatorApi = readSource("../src/app/api/creator-choice/public/route.ts");
-const officialApi = readSource("../src/app/api/choice/current/route.ts");
+const creatorApi = readSource("../src/lib/server-creator-choices.ts");
+const officialApi = readSource("../src/lib/server-choice-current.ts");
 const interactions = readSource("../src/app/api/choice/interactions/route.ts");
 const heartMigration = readSource("../supabase/migrations/20260715083000_choice_collection_hearts.sql");
 const identityMigration = readSource("../supabase/migrations/20260715085800_choice_curator_identity.sql");
@@ -20,7 +20,7 @@ const model = readSource("../src/lib/aipoger-choice.ts");
 const adminApi = readSource("../src/app/api/admin/choice/route.ts");
 
 test("Showtime mounts Choice and real community boards without song charts", () => {
-  assert.match(rank, /<PublicChoiceGallery lang=\{lang\}/);
+  assert.match(rank, /<PublicChoiceGallery initialData=\{initialData\} lang=\{lang\}/);
   assert.match(rank, /<ShowtimeCommunityRail/);
   assert.doesNotMatch(rank, /MonthlyChart/);
   assert.match(rank, /data-showtime-editorial/);

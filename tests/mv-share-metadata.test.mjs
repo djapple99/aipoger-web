@@ -1,7 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import ts from 'typescript';
 import { loadTs, uuid } from './helpers/choice-runtime.mjs';
 
 const id = uuid(22);
@@ -16,19 +14,26 @@ function loader(works = [work]) {
 }
 
 function page(load) {
-  const compiled = ts.transpileModule(readFileSync(new URL('../src/app/mv/page.tsx', import.meta.url), 'utf8'), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
-  }).outputText;
-  const modules = {
-    'react/jsx-runtime': {}, 'next/headers': { headers: async () => new Headers({ 'x-aipoger-lang': 'zh' }) },
+  const shared = loadTs('src/lib/public-seo.ts');
+  const workSeo = loadTs('src/lib/server-work-seo.ts', {
+    'server-only': {}, '@/lib/public-seo': shared,
+    '@/lib/choice-share': loadTs('src/lib/choice-share.ts'),
+    '@/lib/share-cover-source': { canRenderShareCover: () => true },
+  });
+  const loaded = loadTs('src/app/mv/page.tsx', {
+    'react/jsx-runtime': {}, 'next/navigation': { notFound() { throw new Error('404'); } },
     '@/components/mv-gallery': {}, '@/lib/mv-copy': loadTs('src/lib/mv-copy.ts'),
-    '@/lib/locale': loadTs('src/lib/locale.ts'), '@/lib/server-mv-share-metadata': { loadMvShareMetadata: load },
-  };
-  const loaded = { exports: {} };
-  new Function('require', 'module', 'exports', compiled)(name => {
-    assert.ok(Object.hasOwn(modules, name), name); return modules[name];
-  }, loaded, loaded.exports);
-  return query => loaded.exports.generateMetadata({ searchParams: Promise.resolve(query) });
+    '@/lib/server-public-locale': { requestLang: async value => shared.publicLang(value) },
+    '@/lib/public-seo': shared, '@/lib/server-work-seo': workSeo,
+    '@/lib/server-home-discovery': {
+      readMvDiscovery: async () => ({ works: [] }),
+      readPublicWorkDetail: async value => {
+        const result = await load(value);
+        return result ? { work: { genre: 'Pop', coverUrl: result.image?.url, ...result } } : null;
+      },
+    },
+  });
+  return query => loaded.generateMetadata({ searchParams: Promise.resolve(query) });
 }
 
 test('MV metadata selects the matching public work and highest available video cover', async t => {
@@ -75,20 +80,19 @@ for (const lang of ['zh', 'en', 'ja', 'ko']) test(`MV sharing preserves cover, i
   const metadata = await page(async value => { assert.equal(value, id); return { ...work, image }; })({ lang, track: id, private: 'discard' });
   assert.equal(metadata.title.absolute, `${work.title} — ${work.artist}｜AIPOGER`);
   assert.ok(metadata.description.includes(work.description));
-  assert.equal(metadata.alternates.canonical, `/mv?lang=${lang}&track=${id}`);
+  assert.equal(metadata.alternates.canonical, `https://aipoger.com/works/${id}?lang=${lang}`);
   assert.equal(metadata.openGraph.url, metadata.alternates.canonical);
-  assert.equal(metadata.openGraph.images[0].url, image.url);
-  assert.deepEqual(metadata.twitter.images, [image.url]);
-  for (const path of Object.values(metadata.alternates.languages)) assert.ok(path.endsWith(`&track=${id}`));
+  const socialImage = metadata.openGraph.images[0];
+  assert.match(socialImage.url, new RegExp(`^https://aipoger.com/works/${id}/opengraph-image\\?v=cover3-`));
+  assert.equal(socialImage.width, 1200); assert.equal(socialImage.height, 630);
+  assert.deepEqual(metadata.twitter.images, [socialImage.url]);
+  for (const path of Object.values(metadata.alternates.languages)) assert.ok(path.includes(`/works/${id}?lang=`));
 });
 
-test('gallery, unavailable work, repeated parameters and source failures retain generic safe metadata', async () => {
-  for (const query of [{ lang: 'en' }, { lang: 'en', track: id }, { lang: ['en', 'ko'], track: [id, uuid(23)] }]) {
-    const metadata = await page(async () => null)(query);
-    assert.ok(!metadata.alternates.canonical.includes('track='));
-    assert.equal(metadata.openGraph.images[0].alt, 'AIPOGER');
-  }
-  const metadata = await page(async () => { throw new Error('discovery offline'); })({ track: id });
-  assert.equal(metadata.alternates.canonical, '/mv?lang=zh');
-  assert.ok(!JSON.stringify(metadata).includes(work.title));
+test('gallery has localized canonical metadata; unavailable requested works are not indexed and source outages retry', async () => {
+  const metadata = await page(async () => null)({ lang: 'en' });
+  assert.equal(metadata.alternates.canonical, 'https://aipoger.com/mv?lang=en');
+  assert.equal(metadata.openGraph.images[0].alt, 'AIPOGER');
+  assert.deepEqual(await page(async () => null)({ lang: 'en', track: id }), { robots: { index: false } });
+  await assert.rejects(page(async () => { throw new Error('discovery offline'); })({ track: id }), /discovery offline/);
 });

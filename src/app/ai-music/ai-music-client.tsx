@@ -13,6 +13,7 @@ import { filterAiMusicTracks } from "@/lib/ai-music-filter";
 import LyricsPopover from "@/components/lyrics-popover";
 import ExploreRadio from "@/components/explore-radio";
 import MusicPoolChart from "@/components/music-pool-chart";
+import type { PublicAlbum } from "@/lib/album";
 import dynamic from "next/dynamic";
 import { albumCopy } from "@/lib/album-copy";
 const AlbumView = dynamic(() => import("@/components/album-view"));
@@ -102,7 +103,7 @@ type ListenBarReactionPayload = {
 
 type LoadState = "loading" | "ready" | "error";
 type HeartState = Record<string, boolean>;
-type AiMusicApiTrackRow = ListenBarTrackRow & {
+export type AiMusicApiTrackRow = ListenBarTrackRow & {
   ai_music_pool_supporter_count?: number | null;
   ai_music_blind_sample_count?: number | null;
   ai_music_blind_preference_points?: number | null;
@@ -222,8 +223,7 @@ function aiMusicChallengeHref(track: AiMusicTrack, lang: string) {
 }
 
 function aiMusicTrackHref(id: string, lang: string) {
-  const params = new URLSearchParams({ lang, track: id });
-  return `/ai-music?${params.toString()}#works`;
+  return `/works/${encodeURIComponent(id)}?lang=${encodeURIComponent(lang)}`;
 }
 
 function storagePublicUrl(bucket: string, path: string | null | undefined) {
@@ -249,7 +249,11 @@ async function tracksFromListenBar(lang: string) {
     throw new Error(payload?.error || "Could not load AI music tracks.");
   }
 
-  return payload.tracks
+  return tracksFromRows(payload.tracks, lang);
+}
+
+function tracksFromRows(rows: AiMusicApiTrackRow[], lang: string) {
+  return rows
     .map((row) => ({ row, track: listenBarRowToTrack(row) }))
     .filter((item): item is { row: ListenBarTrackRow; track: NonNullable<ReturnType<typeof listenBarRowToTrack>> } => {
       return Boolean(item.track && item.track.source !== "official");
@@ -455,7 +459,7 @@ function TrackCard({
         <EarwormAffinityStatus track={track} lang={lang} />
       </div>
       <div className={styles.titleRow}>
-        <h3><Link href={track.href}>{track.title}</Link></h3>
+        <h3><Link prefetch={false} href={track.href}>{track.title}</Link></h3>
         <button type="button" className={styles.heart} onClick={() => onHeart(track)} disabled={heartBusy}
           aria-pressed={heartedToday} aria-label={heartActionLabel} title={`${heartActionLabel} · ${heartCount}`}>
           <Heart fill={heartedToday ? "currentColor" : "none"} aria-hidden="true" /><span className="sr-only">{heartCount}</span>
@@ -559,12 +563,12 @@ function HeatList({
   );
 }
 
-export default function AiMusicClient({ initialView = "genre", initialAlbumId = null }: { initialView?: "genre" | "albums"; initialAlbumId?: string | null } = {}) {
+export default function AiMusicClient({ initialView = "genre", initialAlbumId = null, initialRows, initialLang, initialAlbums }: { initialView?: "genre" | "albums"; initialAlbumId?: string | null; initialRows?: AiMusicApiTrackRow[]; initialLang?: string; initialAlbums?: PublicAlbum[] } = {}) {
   const { lang, t } = useI18n();
   const copy = exploreCopy(lang);
   const earwormCopy = earwormExploreCopy(lang);
   const [loadVersion, setLoadVersion] = useState(0);
-  const loadLanguage = useRef("");
+  const loadLanguage = useRef(initialRows ? initialLang ?? "" : "");
   const [poolNow, setPoolNow] = useState(Date.now());
   const [commentTrack, setCommentTrack] = useState<AiMusicTrack | null>(null);
   const [locateVersion, setLocateVersion] = useState(0);
@@ -573,7 +577,7 @@ export default function AiMusicClient({ initialView = "genre", initialAlbumId = 
   const heartLocks = useRef(new Set<string>());
   const authIdentity = useRef<string | null>(null);
   const [highlightedId, setHighlightedId] = useState("");
-  const [tracks, setTracks] = useState<AiMusicTrack[]>([]);
+  const [tracks, setTracks] = useState<AiMusicTrack[]>(() => initialRows ? mergeDuplicateTracks(tracksFromRows(initialRows, lang)) : []);
   const [albumId, setAlbumId] = useState<string | null>(initialAlbumId);
   const [worksView, setWorksView] = useState<"genre" | "heat" | "albums">(initialView);
   const [query, setQuery] = useState("");
@@ -581,7 +585,7 @@ export default function AiMusicClient({ initialView = "genre", initialAlbumId = 
   const [earwormPromptOpen, setEarwormPromptOpen] = useState(false);
   const [earwormProfile, setEarwormProfile] = useState<EarwormLocalProfile | null>(null);
   const [sharedTrackSourceId, setSharedTrackSourceId] = useState<string | null>(null);
-  const [loadState, setLoadState] = useState<LoadState>("loading");
+  const [loadState, setLoadState] = useState<LoadState>(initialRows ? "ready" : "loading");
   const [loadError, setLoadError] = useState("");
   const [expandedGenres, setExpandedGenres] = useState<Record<string, boolean>>({});
   const [heartBusy, setHeartBusy] = useState<Record<string, boolean>>({});
@@ -643,6 +647,10 @@ export default function AiMusicClient({ initialView = "genre", initialAlbumId = 
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [closeEarwormPrompt, earwormPromptOpen]);
+
+  useEffect(() => {
+    if (window.location.hash === "#play-request") window.location.replace(`/profile?lang=${lang}&submit=1#submit-work`);
+  }, [lang]);
 
   useEffect(() => {
     const updateSharedTrack = () => {
@@ -1013,7 +1021,7 @@ export default function AiMusicClient({ initialView = "genre", initialAlbumId = 
             </select>
             <ParticipationGuide surface="explore" lang={lang} className={styles.guide} />
           </div>
-          {worksView === "albums" ? <AlbumView initialId={albumId} query={query} genre={selectedGenre} /> : <div className={styles.discovery}>
+          {worksView === "albums" ? <AlbumView initialAlbums={initialAlbums} initialId={albumId} query={query} genre={selectedGenre} /> : <div className={styles.discovery}>
             <aside className={styles.chartColumn}><MusicPoolChart {...chartProps} /></aside>
           <div className={styles.catalog} data-highlighted-work={highlightedId}>
             {loadState === "loading" ? <p className={styles.state} role="status">{copy.loading}</p> : null}

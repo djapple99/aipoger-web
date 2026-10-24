@@ -42,9 +42,9 @@ test("submission moved to Profile and preserves weekly quota with no genre cap",
   assert.equal(listenBarPageSource.includes("<form"), false);
 });
 test("old radio links keep genre and old submission bookmarks lead to Profile", () => {
-  assert.ok(listenBarPageSource.includes('new URLSearchParams(window.location.search)'));
-  assert.ok(listenBarPageSource.includes('window.location.hash === "#play-request"'));
-  assert.ok(listenBarPageSource.includes('/profile?submit=1'));
+  assert.ok(listenBarPageSource.includes('permanentRedirect'));
+  assert.ok(readFileSync(new URL('../src/app/ai-music/ai-music-client.tsx', import.meta.url), 'utf8').includes('window.location.hash === "#play-request"'));
+  assert.ok(listenBarPageSource.includes('/profile?${params.toString()}#submit-work'));
   assert.ok(listenBarShortRouteSource.includes('target.searchParams.set("genre"'));
 });
 test("integrated radio controls hide the fixed player only while visible", () => {

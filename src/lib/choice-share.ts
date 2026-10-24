@@ -6,7 +6,7 @@ import type { Lang } from "@/lib/locale";
 export function choiceCoverVersion(coverUrl: string) {
   let hash = 2166136261;
   for (const character of coverUrl) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619);
-  return `cover2-${(hash >>> 0).toString(36)}`;
+  return `cover3-${(hash >>> 0).toString(36)}`;
 }
 
 export function choiceSharePath(id: string, kind: "official" | "creator", lang: Lang, coverUrl: string) {

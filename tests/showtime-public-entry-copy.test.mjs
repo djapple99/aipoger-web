@@ -1,3 +1,4 @@
+import { loadTs } from "./helpers/choice-runtime.mjs";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -11,6 +12,7 @@ const transpile = (source) => ts.transpileModule(source,{
   compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX},
 }).outputText;
 function evaluate(source,mocks = {}) {
+  mocks = { "@/lib/public-seo": loadTs("src/lib/public-seo.ts"), ...mocks };
   const loaded={exports:{}};
   new Function('require','module','exports',transpile(source))((name) => {
     assert.ok(name in mocks,`Unexpected import ${name}`);
@@ -60,10 +62,10 @@ for (const [lang,copy] of Object.entries(languages)) {
     const metadata=await layout.generateMetadata();
     assert.ok(metadata.description.toLowerCase().includes(copy.chart.toLowerCase()));
     assert.ok(metadata.description.includes('Choice'));
-    assert.deepEqual(Object.keys(metadata.alternates.languages),['zh-Hant','en','ja','ko']);
+    assert.deepEqual(Object.keys(metadata.alternates.languages),['zh-Hant','en','ja','ko','x-default']);
     const structured=nodes(await layout.default({children:null})).find((node) => node.type==='jsonld').props.data;
     assert.equal(structured.description,metadata.description);
-    assert.equal(structured.name,metadata.title);
+    assert.equal(structured.name,metadata.title.absolute);
     assert.equal(structured.url,`https://aipoger.com/about?lang=${lang}`);
     assert.equal(structured.inLanguage,lang==='zh' ? 'zh-Hant' : lang);
   });

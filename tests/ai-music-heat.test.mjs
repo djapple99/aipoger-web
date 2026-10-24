@@ -4,7 +4,7 @@ import test from "node:test";
 import { buildAiMusicHeatList } from "../src/lib/ai-music-heat.ts";
 
 const aiMusicSource = readFileSync(new URL("../src/app/ai-music/ai-music-client.tsx", import.meta.url), "utf8");
-const aiMusicTracksRouteSource = readFileSync(new URL("../src/app/api/ai-music/tracks/route.ts", import.meta.url), "utf8");
+const aiMusicTracksRouteSource = readFileSync(new URL("../src/lib/server-public-music.ts", import.meta.url), "utf8");
 const productRulesSource = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
 
 function work(id, values = {}) {

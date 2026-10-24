@@ -16,7 +16,7 @@ import type { HomeWork } from "@/lib/home-discovery";
 import styles from "./home-editorial.module.css";
 
 type Comment = { id: string; name: string; text: string; createdAt: string };
-export default function HomeWorkFeedback({ work, onClose, onChange, returnPath = "/", showVideo = false, externalMedia, reviewSurface, supportNote, autoPlay = false, videoControls, shareControl, onVideoEnded, onVideoUnavailable, onReviewBusy }: { work: HomeWork; onClose: () => void; onChange: () => void; returnPath?: string; showVideo?: boolean; externalMedia?: ExternalMusic | null; reviewSurface?: "music" | "mv"; supportNote?: string; autoPlay?: boolean; videoControls?: ReactNode; shareControl?: ReactNode; onVideoEnded?: () => void; onVideoUnavailable?: () => void; onReviewBusy?: (busy: boolean) => void }) {
+export default function HomeWorkFeedback({ work, onClose, onChange, returnPath = "/", showVideo = false, externalMedia, mediaContent, inline = false, reviewSurface, supportNote, autoPlay = false, videoControls, shareControl, onVideoEnded, onVideoUnavailable, onReviewBusy }: { work: HomeWork; onClose: () => void; onChange: () => void; returnPath?: string; showVideo?: boolean; externalMedia?: ExternalMusic | null; mediaContent?: ReactNode; inline?: boolean; reviewSurface?: "music" | "mv"; supportNote?: string; autoPlay?: boolean; videoControls?: ReactNode; shareControl?: ReactNode; onVideoEnded?: () => void; onVideoUnavailable?: () => void; onReviewBusy?: (busy: boolean) => void }) {
   const { lang } = useI18n(); const copy = homeCopy(lang);
   const dialog = useRef<HTMLDialogElement>(null);
   const scrollArea = useRef<HTMLDivElement>(null);
@@ -34,7 +34,8 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
   const [busy, setBusy] = useState(false);
   const currentWork = useRef(work.id); currentWork.current = work.id;
   const withVideo = Boolean(showVideo && work.videoId);
-  const withMedia = withVideo || Boolean(externalMedia);
+  const withMedia = withVideo || Boolean(externalMedia) || Boolean(mediaContent);
+  const Container = inline ? "section" : "dialog";
   const destination = new URL(returnPath, "https://aipoger.com");
   destination.searchParams.set("lang", lang);
   if (destination.pathname === "/mv") destination.searchParams.set("track", work.id);
@@ -143,16 +144,16 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
     finally { setBusy(false); }
   };
 
-  return <dialog ref={dialog} className={`${styles.feedbackDialog} ${withMedia ? styles.feedbackWithVideo : ""}`} aria-labelledby="home-feedback-title" onCancel={onClose}
-    onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
+  return <Container ref={inline ? undefined : dialog} className={`${styles.feedbackDialog} ${withMedia ? styles.feedbackWithVideo : ""} ${inline ? styles.feedbackInline : ""}`} aria-labelledby="home-feedback-title" onCancel={onClose}
+    onClick={event => { if (!inline && event.target === event.currentTarget) onClose(); }}>
     <div className={styles.feedbackInner}>
       <div className={styles.feedbackHeading}><div><p>{copy.discuss}</p><h2 id="home-feedback-title">{work.title}</h2><span>{work.artist}</span></div>
-        <button autoFocus type="button" onClick={onClose} aria-label={copy.closeFeedback}><X size={22} /></button>
+        {!inline ? <button autoFocus type="button" onClick={onClose} aria-label={copy.closeFeedback}><X size={22} /></button> : null}
       </div>
       <div className={styles.feedbackBody}>
         {withMedia ? <div className={styles.feedbackMedia}>
           {withVideo ? <MvPlayer work={work} autoPlay={autoPlay} onEnded={onVideoEnded} onUnavailable={onVideoUnavailable} />
-            : externalMedia ? <ExternalMusicPlayer media={externalMedia} title={work.title} /> : null}
+            : externalMedia ? <ExternalMusicPlayer media={externalMedia} title={work.title} /> : mediaContent ?? null}
           {withVideo && videoControls ? <div className={styles.mvViewLinks}>{videoControls}</div> : null}
         </div> : null}
         <div ref={scrollArea} className={styles.feedbackDiscussion}>
@@ -185,5 +186,5 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
       onClick={() => commentArea.current?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })}>
       {mvCopy(lang).scrollComments}<ArrowDown size={18} aria-hidden="true" />
     </button> : null}
-  </dialog>;
+  </Container>;
 }

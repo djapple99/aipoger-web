@@ -7,8 +7,8 @@ const catalog = read("../src/lib/server-choice-catalog.ts");
 const playback = read("../src/lib/server-creator-choice-catalog.ts");
 const adminRoute = read("../src/app/api/admin/choice/route.ts");
 const creatorRoute = read("../src/app/api/creator-choice/route.ts");
-const publicRoute = read("../src/app/api/choice/[id]/route.ts");
-const currentRoute = read("../src/app/api/choice/current/route.ts");
+const publicRoute = read("../src/lib/server-choice-detail.ts");
+const currentRoute = read("../src/lib/server-choice-current.ts");
 const adminPage = read("../src/app/admin/choice/page.tsx");
 
 test("Choice catalog no longer uses age, certification or ownership as selection gates", () => {

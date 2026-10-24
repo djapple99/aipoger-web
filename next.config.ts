@@ -4,10 +4,15 @@ const defaultHtmlLimitedBots = /[\w-]+-Google|Google-[\w-]+|Chrome-Lighthouse|Sl
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  htmlLimitedBots: new RegExp(`${defaultHtmlLimitedBots.source}|line-poker|\\bLine/`, "i"),
+  htmlLimitedBots: new RegExp(`${defaultHtmlLimitedBots.source}|line-poker|\\bLine/|Googlebot|meta-externalagent|meta-externalfetcher|TelegramBot|Pinterestbot`, "i"),
   // Include libvips alongside sharp's native binding in the deployed thumbnail
   // function. Turbopack's external-module trace can otherwise omit the .so file.
   outputFileTracingIncludes: {
+    "/works/*/opengraph-image": [
+      "./node_modules/@img/sharp-linux-x64/**/*",
+      "./node_modules/@img/sharp-libvips-linux-x64/**/*",
+    ],
+
     "/choice/*/share-image": [
       "./node_modules/@img/sharp-linux-x64/**/*",
       "./node_modules/@img/sharp-libvips-linux-x64/**/*",

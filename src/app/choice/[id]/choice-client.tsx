@@ -43,7 +43,7 @@ function playableQueue(items: AipogerChoiceItem[]): ShowtimePlayerTrack[] {
     }));
 }
 
-export default function PublicChoicePage() {
+export default function PublicChoicePage({ initialCollection }: { initialCollection?: AipogerChoiceCollection } = {}) {
   const { lang } = useI18n();
   const copy = getChoiceCopy(lang);
   const params = useParams<{ id: string }>();
@@ -51,8 +51,9 @@ export default function PublicChoicePage() {
   const router = useRouter();
   const choiceId = typeof params.id === "string" ? params.id : "";
   const kind: CollectionKind = searchParams.get("kind") === "official" ? "official" : "creator";
-  const [collection, setCollection] = useState<AipogerChoiceCollection | null>(null);
-  const [loading, setLoading] = useState(true);
+  const initialChoiceId = useRef(initialCollection?.id);
+  const [collection, setCollection] = useState<AipogerChoiceCollection | null>(initialCollection ?? null);
+  const [loading, setLoading] = useState(!initialCollection);
   const [error, setError] = useState("");
   const [heart, setHeart] = useState<HeartState>({ heartCount: 0, myHeart: false });
   const [heartBusy, setHeartBusy] = useState(false);
@@ -64,7 +65,7 @@ export default function PublicChoicePage() {
   useEffect(() => {
     if (!choiceId) return;
     let alive = true;
-    setLoading(true);
+    setLoading(initialChoiceId.current !== choiceId);
     setError("");
     void fetch(`/api/choice/${encodeURIComponent(choiceId)}?kind=${kind}`, { cache: "no-store" })
       .then(async (response) => {
@@ -272,7 +273,7 @@ export default function PublicChoicePage() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={item.coverUrl} alt="" className="h-14 w-14 shrink-0 rounded object-cover" />
                 <div className="min-w-0 flex-1">
-                  <h3 className="truncate text-sm font-black text-white">{item.title}</h3>
+                  <h3 className="truncate text-sm font-black text-white"><Link prefetch={false} href={`/${item.sourceKind === "listen_bar_track" ? "works" : "battle"}/${encodeURIComponent(item.id)}?lang=${lang}`}>{item.title}</Link></h3>
                   <p className="mt-1 truncate text-xs font-bold text-zinc-400">{item.artist}</p>
                   <p className="mt-1 truncate text-[11px] font-bold text-zinc-600">{item.genre} · {item.recognition}</p>
                 </div>

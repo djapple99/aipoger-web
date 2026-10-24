@@ -168,3 +168,15 @@
   .chapterContent :global(.whitespace-nowrap) { white-space:normal; }
 }
 @media(prefers-reduced-motion:reduce) { .area { transition:none; } }
+
+.conversionCard { position: relative; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 24px; margin: 36px auto; padding: clamp(22px, 4vw, 36px); border: 1px solid #ff983b45; border-radius: 14px; background: linear-gradient(125deg, #ff8f320c, #0b0b0b 65%); color: #f5eee7; max-width: 1152px; }
+.conversionCopy { flex: 1 1 280px; min-width: 0; }
+.conversionCopy > p { margin: 0 0 12px; font-size: 10px; letter-spacing: .15em; color: #ffa75b; }
+.conversionCopy h2 { margin: 0 0 12px; font-size: clamp(21px, 3vw, 27px); font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
+.conversionCopy > span { display: block; color: #aaa29a; font-size: 14px; line-height: 1.8; }
+.conversionActions { display: flex; flex-wrap: wrap; gap: 10px; }
+.conversionActions a { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 12px 19px; border-radius: 999px; font-size: 14px; font-weight: 700; text-align: center; }
+.conversionPrimary { color: #100b05; background: #ffa04c; border: 1px solid #ffa04c; }
+.conversionSecondary { color: #f6ddc8; background: #ffffff03; border: 1px solid #ffffff30; }
+.conversionActions a:focus-visible { outline: 2px solid #ffe0b9; outline-offset: 4px; }
+@media (max-width: 600px) { .conversionCard { margin-block: 26px; } .conversionActions { width: 100%; } .conversionActions a { flex: 1 1 120px; } }

@@ -5,7 +5,7 @@ import { buildAiMusicExploreGenreLanes } from "../src/lib/ai-music-explore-order
 import { isPublicBarAirplayTrack } from "../src/lib/listen-bar-airplay.ts";
 
 const aiMusicSource = readFileSync(new URL("../src/app/ai-music/ai-music-client.tsx", import.meta.url), "utf8");
-const aiMusicTracksRouteSource = readFileSync(new URL("../src/app/api/ai-music/tracks/route.ts", import.meta.url), "utf8");
+const aiMusicTracksRouteSource = readFileSync(new URL("../src/lib/server-public-music.ts", import.meta.url), "utf8");
 const productRulesSource = readFileSync(new URL("../docs/aipoger-product-rules.md", import.meta.url), "utf8");
 
 const now = new Date("2026-07-10T12:00:00.000Z");

@@ -12,7 +12,7 @@ const form = source("../src/components/battle-winner-release-link.tsx");
 const hookCut = source("../src/app/battle/hook-cut/page.tsx");
 const fullSongRoute = source("../src/app/api/honor-board/drop-full-songs/route.ts");
 const results = source("../src/app/battle/results/results-client.tsx");
-const rank = source("../src/app/rank/page.tsx");
+const rank = source("../src/app/rank/rank-client.tsx");
 const productRules = source("../docs/aipoger-product-rules.md");
 const releaseChecklist = source("../docs/aipoger-engineering.md");
 

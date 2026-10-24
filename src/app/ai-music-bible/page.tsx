@@ -1,5 +1,9 @@
+import BibleCreationCta from "@/components/bible-creation-cta";
+import { requestLang } from "@/lib/server-public-locale";
+import { publicMetadata } from "@/lib/public-seo";
 import type { Metadata } from "next";
 import AiMusicBiblePage from "@/components/ai-music-bible-page";
+import BiblePublicIndex from "@/components/bible-public-index";
 import PublicBibleFaq from "@/components/public-bible-faq";
 import { PUBLIC_BIBLE_FAQ, type PublicFaqLocale } from "@/lib/suno-reference-guide";
 
@@ -7,7 +11,7 @@ type PageProps = { searchParams: Promise<{ lang?: string }> };
 
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
   const { lang } = await searchParams;
-  const locale: PublicFaqLocale = lang === "ja" || lang === "ko" || lang === "en" ? lang : "zh";
+  const locale: PublicFaqLocale = await requestLang(lang);
   const localized = locale === "ja"
     ? {
         title: "AI音楽 実践バイブル｜Suno Sonic DNA・Prompt・歌詞",
@@ -28,36 +32,8 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
             description: "AIPOGER 的 AI 音樂實戰資料庫：772 組聲音 DNA、747 組去重 Prompt 配方、歌詞控制、台語調音、AI Stem 拆軌與製作流程。",
           };
 
-  return {
-    ...localized,
-    keywords: locale === "zh"
-      ? ["Suno 教學", "Suno Prompt", "AI 音樂", "歌詞調教", "Stem 拆軌", "AI 音樂版權", "AIPOGER"]
-      : ["Suno guide", "Suno prompts", "AI music", "lyric control", "stem separation", "AI music rights", "AIPOGER"],
-    alternates: {
-      canonical: `/ai-music-bible?lang=${locale}`,
-      languages: {
-        "zh-Hant": "/ai-music-bible?lang=zh",
-        en: "/ai-music-bible?lang=en",
-        ja: "/ai-music-bible?lang=ja",
-        ko: "/ai-music-bible?lang=ko",
-      },
-    },
-    openGraph: {
-      ...localized,
-      type: "article",
-      url: `/ai-music-bible?lang=${locale}`,
-      siteName: "AIPOGER 愛播歌",
-      publishedTime: "2026-07-16T00:00:00+08:00",
-      modifiedTime: "2026-07-28T00:00:00+08:00",
-      images: [{ url: "/aipoger-og-card-20260522.png", width: 1200, height: 630, alt: localized.title }],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: localized.title,
-      description: localized.description,
-      images: ["/aipoger-og-card-20260522.png"],
-    },
-  };
+  return publicMetadata({ path: "/ai-music-bible", lang: locale, title: localized.title, description: localized.description,
+    image: { url: `/ai-music-bible/opengraph-image?lang=${locale}`, width: 1200, height: 630, alt: localized.title } });
 }
 
 function safeJsonLd(value: unknown) {
@@ -66,20 +42,18 @@ function safeJsonLd(value: unknown) {
 
 export default async function Page({ searchParams }: PageProps) {
   const { lang } = await searchParams;
-  const locale: PublicFaqLocale = lang === "ja" || lang === "ko" || lang === "en" ? lang : "zh";
+  const locale: PublicFaqLocale = await requestLang(lang);
   const pageUrl = `https://aipoger.com/ai-music-bible?lang=${locale}`;
   const schemas = [
     {
       "@context": "https://schema.org",
-      "@type": "TechArticle",
+      "@type": "CollectionPage",
       headline: locale === "zh" ? "AI 音樂練功聖經" : locale === "ja" ? "AI音楽 実践バイブル" : locale === "ko" ? "AI 음악 실전 바이블" : "AI Music Practice Bible",
       description: locale === "zh"
         ? "AIPOGER 的 Suno、Prompt、歌詞、聲音 DNA、Stem 拆軌與權利發行實戰資料庫。"
         : "AIPOGER's field database for Suno, prompts, lyrics, sonic DNA, stem separation, and release rights.",
       url: pageUrl,
       inLanguage: locale === "zh" ? "zh-Hant" : locale,
-      datePublished: "2026-07-16",
-      dateModified: "2026-07-28",
       author: { "@type": "Organization", name: "AIPOGER 愛播歌", url: "https://aipoger.com" },
       publisher: { "@type": "Organization", name: "AIPOGER 愛播歌", url: "https://aipoger.com" },
       mainEntityOfPage: pageUrl,
@@ -99,7 +73,9 @@ export default async function Page({ searchParams }: PageProps) {
   return (
     <>
       <AiMusicBiblePage />
+      <BiblePublicIndex lang={locale} />
       <PublicBibleFaq lang={locale} />
+      <div className="px-4"><BibleCreationCta lang={locale} /></div>
       {schemas.map((schema, index) => (
         <script key={index} type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(schema) }} />
       ))}

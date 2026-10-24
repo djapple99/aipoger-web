@@ -23,7 +23,9 @@ import type { AipogerPublicCreatorChoiceCollection } from "@/lib/creator-choice"
 import type { Lang } from "@/lib/locale";
 import { supabase } from "@/lib/supabase";
 
-export type PublicChoiceGalleryProps = { lang: Lang; chart?: ReactNode; commentCounts?: Record<string, number> };
+import type { PublicChoiceSeed } from "@/lib/server-public-choice";
+
+export type PublicChoiceGalleryProps = { initialData?: PublicChoiceSeed; lang: Lang; chart?: ReactNode; commentCounts?: Record<string, number> };
 
 type HeartMap = Record<string, ShowtimeChoiceHeartState>;
 type ChoiceInteraction = ShowtimeChoiceHeartState & { recordKey: string };
@@ -88,16 +90,46 @@ async function loadBatches<T>(
   return records;
 }
 
-export default function PublicChoiceGallery({ lang, chart, commentCounts }: PublicChoiceGalleryProps) {
+function choiceEntries(officialCollections: AipogerChoiceCollection[], creatorCollections: PublicChoiceSeed["creators"], lang: Lang): ShowtimeChoiceShelfEntry[] {
+  return [
+        ...officialCollections.filter((collection) => collection.items.length > 0).map((collection) => ({
+          id: collection.id,
+          kind: "official" as const,
+          curatorName: collection.curatorName || "AIPOGER",
+          coverUrl: collection.coverUrl?.trim() || (collection.curatorIdentity === "personal"
+            ? collection.avatarUrl?.trim() || AIPOGER_BRAND_LOGO : AIPOGER_BRAND_LOGO),
+          title: choiceDisplayTitle(collection.curatorName, collection.title),
+          intro: collection.intro,
+          weekStart: collection.weekStart,
+          href: `${choicePublicPath(collection.id, "official")}&lang=${lang}`,
+          items: collection.items,
+        })),
+        ...creatorCollections.map((collection) => ({
+          id: collection.id,
+          kind: "creator" as const,
+          curatorName: collection.curatorName,
+          coverUrl: collection.coverUrl?.trim() || collection.avatarUrl?.trim() || AIPOGER_BRAND_LOGO,
+          title: choiceDisplayTitle(collection.curatorName, collection.title),
+          intro: collection.intro,
+          weekStart: collection.weekStart,
+          publishedAt: collection.publishedAt,
+          href: `${choicePublicPath(collection.id, "creator")}&lang=${lang}`,
+          items: collection.items,
+        })),
+      ];
+}
+
+export default function PublicChoiceGallery({ lang, chart, commentCounts, initialData }: PublicChoiceGalleryProps) {
   const copy = getChoiceCopy(lang);
   const messages = GALLERY_COPY[lang];
   const [token, setToken] = useState<string | null>();
   const tokenRef = useRef<string | null | undefined>(undefined);
+  const catalogLoaded = useRef(Boolean(initialData));
   const [retry, setRetry] = useState(0);
   const [authError, setAuthError] = useState(false);
-  const [entries, setEntries] = useState<ShowtimeChoiceShelfEntry[]>([]);
-  const [featuredKey, setFeaturedKey] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [entries, setEntries] = useState<ShowtimeChoiceShelfEntry[]>(() => initialData ? choiceEntries(initialData.official, initialData.creators, lang) : []);
+  const [featuredKey, setFeaturedKey] = useState<string | null>(initialData?.featuredKey ?? null);
+  const [loading, setLoading] = useState(!initialData);
   const [catalogError, setCatalogError] = useState(false);
   const [interactionError, setInteractionError] = useState(false);
   const [actionError, setActionError] = useState("");
@@ -157,7 +189,7 @@ export default function PublicChoiceGallery({ lang, chart, commentCounts }: Publ
     };
     scopeRef.current = scope;
     const current = () => !scope.controller.signal.aborted;
-    setLoading(true);
+    setLoading(!catalogLoaded.current);
     setCatalogError(false);
     setInteractionError(false);
     setActionError("");
@@ -180,32 +212,8 @@ export default function PublicChoiceGallery({ lang, chart, commentCounts }: Publ
         ?? (officialPayload?.collection ? [officialPayload.collection] : []);
       const creatorCollections = creators.status === "fulfilled" ? creators.value.collections : [];
       if (!Array.isArray(officialCollections) || !Array.isArray(creatorCollections)) throw new Error("Invalid Choice catalog");
-      const nextEntries: ShowtimeChoiceShelfEntry[] = [
-        ...officialCollections.filter((collection) => collection.items.length > 0).map((collection) => ({
-          id: collection.id,
-          kind: "official" as const,
-          curatorName: collection.curatorName || "AIPOGER",
-          coverUrl: collection.coverUrl?.trim() || (collection.curatorIdentity === "personal"
-            ? collection.avatarUrl?.trim() || AIPOGER_BRAND_LOGO : AIPOGER_BRAND_LOGO),
-          title: choiceDisplayTitle(collection.curatorName, collection.title),
-          intro: collection.intro,
-          weekStart: collection.weekStart,
-          href: `${choicePublicPath(collection.id, "official")}&lang=${lang}`,
-          items: collection.items,
-        })),
-        ...creatorCollections.map((collection) => ({
-          id: collection.id,
-          kind: "creator" as const,
-          curatorName: collection.curatorName,
-          coverUrl: collection.coverUrl?.trim() || collection.avatarUrl?.trim() || AIPOGER_BRAND_LOGO,
-          title: choiceDisplayTitle(collection.curatorName, collection.title),
-          intro: collection.intro,
-          weekStart: collection.weekStart,
-          publishedAt: collection.publishedAt,
-          href: `${choicePublicPath(collection.id, "creator")}&lang=${lang}`,
-          items: collection.items,
-        })),
-      ];
+      const nextEntries = choiceEntries(officialCollections, creatorCollections, lang);
+      catalogLoaded.current = true;
       setEntries(nextEntries);
       setFeaturedKey(officialPayload?.featuredKey ?? (creators.status === "fulfilled" ? creators.value.featuredKey : null) ?? null);
       setCatalogError(results.some((result) => result.status === "rejected"));

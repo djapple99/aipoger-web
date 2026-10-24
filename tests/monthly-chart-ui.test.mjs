@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const rank = readFileSync(new URL("../src/app/rank/page.tsx", import.meta.url), "utf8");
+const rank = readFileSync(new URL("../src/app/rank/rank-client.tsx", import.meta.url), "utf8");
 const chart = readFileSync(new URL("../src/components/monthly-chart.tsx", import.meta.url), "utf8");
 const layout = readFileSync(new URL("../src/app/rank/layout.tsx", import.meta.url), "utf8");
 

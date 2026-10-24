@@ -67,6 +67,7 @@ test('committed covers are valid 1200×630 PNGs with different content', () => {
 
 test('Battle server metadata selects query mode and drops unrelated/private query data', async () => {
   const page = loadTsx('src/app/battle/page.tsx', {
+    'react/jsx-runtime': jsx, '@/lib/server-public-battles': { readPublicBattles: async () => ({}) },
     'next/headers': { headers: async () => new Headers({ 'x-aipoger-lang': 'ko' }) },
     './battle-client': {}, '@/lib/battle-mode-sharing': sharing, '@/lib/locale': loadTs('src/lib/locale.ts'),
   });

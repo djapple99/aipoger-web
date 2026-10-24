@@ -1,3 +1,6 @@
+export const preferredRegion = "hnd1";
+import { notFound } from "next/navigation";
+import { readPublicChoice } from "@/lib/server-public-choice";
 import type { Metadata } from "next";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { choiceDisplayTitle } from "@/lib/aipoger-choice";
@@ -5,7 +8,8 @@ import { getChoiceCopy } from "@/lib/choice-copy";
 import { isSupportedLang, type Lang } from "@/lib/locale";
 import { loadChoiceShareMetadata } from "@/lib/server-choice-share-metadata";
 import { publicSiteUrl } from "@/lib/site-url";
-import { choiceShareImagePath, choiceSharePath } from "@/lib/choice-share";
+import { publicMetadata } from "@/lib/public-seo";
+import { choiceShareImagePath } from "@/lib/choice-share";
 import { isChoiceStorageCover } from "@/lib/choice-share-cover";
 
 const siteUrl = publicSiteUrl();
@@ -16,7 +20,7 @@ export async function generateMetadata({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ lang?: string }>;
+  searchParams: Promise<{ lang?: string; kind?: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
   const requestedLang = (await searchParams)?.lang;
@@ -30,29 +34,8 @@ export async function generateMetadata({
     const description = choice.intro || copy.choiceDescription(curator);
     const hasCover = isChoiceStorageCover(choice.imageUrl);
     const imageUrl = hasCover ? new URL(choiceShareImagePath(id, choice.imageUrl), siteUrl).href : choice.imageUrl || defaultImageUrl;
-    const shareUrl = new URL(choiceSharePath(id, choice.kind, lang, choice.imageUrl || AIPOGER_BRAND_LOGO), siteUrl).href;
-    const siteName = lang === "zh" ? "AIPOGER 愛播歌" : "AIPOGER";
-    const locale = lang === "zh" ? "zh_TW" : lang === "ja" ? "ja_JP" : lang === "ko" ? "ko_KR" : "en_US";
-    return {
-      title,
-      description,
-      alternates: { canonical: shareUrl },
-      openGraph: {
-        title,
-        description,
-        url: shareUrl,
-        siteName,
-        locale,
-        type: "article",
-        images: [{ url: imageUrl, alt: title, ...(hasCover ? { width: 800, height: 800, type: "image/jpeg" } : {}) }],
-      },
-      twitter: {
-        card: "summary_large_image",
-        title,
-        description,
-        images: [imageUrl],
-      },
-    };
+    return publicMetadata({ path: `/choice/${encodeURIComponent(id)}`, lang, params: { kind: choice.kind }, title, description, type: "article",
+      image: { url: imageUrl, alt: title, ...(hasCover ? { width: 1200, height: 630, type: "image/jpeg" } : {}) } });
   } catch (error) {
     console.error("[choice-share-metadata] Failed to build Choice metadata", error);
     return {};
@@ -61,4 +44,10 @@ export async function generateMetadata({
 
 import PublicChoicePage from "./choice-client";
 
-export default PublicChoicePage;
+export default async function ChoicePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ kind?: string }> }) {
+  const { id } = await params;
+  const { kind } = await searchParams;
+  const collection = await readPublicChoice(id, kind === "official" ? "official" : "creator");
+  if (!collection) notFound();
+  return <PublicChoicePage key={id} initialCollection={collection} />;
+}

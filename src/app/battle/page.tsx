@@ -1,3 +1,5 @@
+export const preferredRegion = "hnd1";
+import { readPublicBattles } from "@/lib/server-public-battles";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import BattlePage from "./battle-client";
@@ -13,4 +15,4 @@ export async function generateMetadata({ searchParams }: {
   return battleModeMetadata(isBattleMode(query.mode) ? query.mode : null, lang);
 }
 
-export default BattlePage;
+export default async function Page() { return <BattlePage initialData={await readPublicBattles()} />; }

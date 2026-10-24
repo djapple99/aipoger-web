@@ -4,7 +4,7 @@ import test from "node:test";
 
 const aiMusicSource = readFileSync(new URL("../src/app/ai-music/ai-music-client.tsx", import.meta.url), "utf8");
 const listenBarSource = readFileSync(new URL("../src/app/listen-bar/page.tsx", import.meta.url), "utf8");
-const showtimeSource = readFileSync(new URL("../src/app/rank/page.tsx", import.meta.url), "utf8");
+const showtimeSource = readFileSync(new URL("../src/app/rank/rank-client.tsx", import.meta.url), "utf8");
 
 test("Explore uses the shared navigation and compact searchable layout", () => {
   const header = readFileSync(new URL("../src/components/editorial-header.tsx", import.meta.url), "utf8");
@@ -34,9 +34,9 @@ test("Explore uses the shared navigation and compact searchable layout", () => {
 
 });
 
-test("Explore share links stay on the shared work in the Explore catalog", () => {
+test("Explore shares point to the original work canonical page", () => {
   assert.ok(aiMusicSource.includes("function aiMusicTrackHref"));
-  assert.ok(aiMusicSource.includes("return `/ai-music?${params.toString()}#works`;"));
+  assert.ok(aiMusicSource.includes("return `/works/${encodeURIComponent(id)}?lang=${encodeURIComponent(lang)}`;"));
   assert.equal(aiMusicSource.includes("function listenBarHref"), false);
   assert.ok(aiMusicSource.includes('params.get("track")'));
   assert.ok(aiMusicSource.includes('id={`ai-music-work-${track.sourceId}`}'));
@@ -45,7 +45,7 @@ test("Explore share links stay on the shared work in the Explore catalog", () =>
 
 test("Bar redirects to integrated Explore and Showtime keeps Choice and community recognition", () => {
   assert.ok(listenBarSource.includes("/ai-music?"));
-  assert.ok(listenBarSource.includes("/profile?submit=1"));
+  assert.ok(listenBarSource.includes("/profile?${params.toString()}#submit-work"));
   assert.equal(listenBarSource.includes("setChatInput"), false);
   assert.ok(showtimeSource.includes("ShowtimeCommunityRail"));
   assert.equal(showtimeSource.includes("MonthlyChart"), false);

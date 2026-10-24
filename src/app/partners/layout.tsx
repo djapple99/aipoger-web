@@ -1,3 +1,4 @@
+import { publicMetadata } from "@/lib/public-seo";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import SeoJsonLd from "@/components/seo-json-ld";
@@ -12,18 +13,7 @@ async function readPartnersCopy() {
 
 export async function generateMetadata(): Promise<Metadata> {
   const copy = await readPartnersCopy();
-  return {
-  title: copy.partnersLabel,
-  description: copy.partnersLead,
-  alternates: {
-    languages: {
-      "zh-Hant": "/partners?lang=zh",
-      en: "/partners?lang=en",
-      ja: "/partners?lang=ja",
-      ko: "/partners?lang=ko",
-    },
-  },
-  };
+  return publicMetadata({ path: "/partners", lang: copy.lang, title: copy.partnersLabel, description: copy.partnersLead });
 }
 
 export default async function PartnersLayout({ children }: Readonly<{ children: React.ReactNode }>) {

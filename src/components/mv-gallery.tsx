@@ -25,15 +25,15 @@ import styles from "./mv-gallery.module.css";
 function MvShare({ work, className = "" }: { work: HomeWork; className?: string }) {
   const { lang } = useI18n(); const mv = mvCopy(lang);
   return <ShareButton title={work.title} text={`${work.artist} · ${work.title}`}
-    url={`/mv?lang=${lang}&track=${encodeURIComponent(work.id)}`} label={`${mv.share} · ${work.title}`}
+    url={`/works/${encodeURIComponent(work.id)}?lang=${lang}`} label={`${mv.share} · ${work.title}`}
     copiedLabel={mv.copied} sharedLabel={mv.shared} manualCopyLabel={mv.manualCopy} linkLabel={mv.shareLink}
     iconOnly iconSize={28} className={`!rounded !border-0 !bg-transparent !p-1 ${className}`} />;
 }
 
-export default function MvGallery() {
+export default function MvGallery({ initialData }: { initialData?: MvDiscovery } = {}) {
   const { lang, t } = useI18n(); const copy = homeCopy(lang); const mv = mvCopy(lang);
-  const [data, setData] = useState<MvDiscovery | null>(null);
-  const [loading, setLoading] = useState(true); const [failed, setFailed] = useState(false);
+  const [data, setData] = useState<MvDiscovery | null>(initialData ?? null);
+  const [loading, setLoading] = useState(!initialData); const [failed, setFailed] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [viewAutoPlay, setViewAutoPlay] = useState(false);
   const [queue, setQueue] = useState<HomeWork[] | null>(null);
@@ -143,7 +143,7 @@ export default function MvGallery() {
               </button>
             </div>
             <div className={base.workInfo}><p className={base.workLabel}>{data?.featureKind === "community" ? copy.community : copy.newWork}</p>
-              <h2 title={selected.title}>{selected.title}</h2><p className={base.artist}>{selected.artist}</p>
+              <h2 title={selected.title}><Link prefetch={false} href={`/works/${encodeURIComponent(selected.id)}?lang=${lang}`}>{selected.title}</Link></h2><p className={base.artist}>{selected.artist}</p>
               {data?.featureKind === "community" ? <div className={base.support}><Heart size={18} /><span>{copy.supporters} <strong>{selected.supporterCount}</strong> {copy.people}</span>
                 {data.featured.length > 1 ? <span className={base.tieLabel}>{copy.tied}</span> : null}</div> : <p className={base.supportBuilding}>{copy.noSupport}</p>}
               <div className={base.quote}><p>{selected.comment ? copy.comments : copy.creatorSays}</p><blockquote>{selected.comment?.text || selected.description || copy.noComment}</blockquote>
@@ -175,7 +175,7 @@ export default function MvGallery() {
               <span className={styles.ratingBadge}>{work.workKind === "album" ? albumCopy(lang).label : work.ratingCount ? `${work.ratingAverage?.toFixed(1)} ${mv.points}｜${work.ratingCount} ${mv.raters}` : mv.unrated}</span>
               <span className={styles.cardPlay}><Play size={20} fill="currentColor" /></span><span className={base.videoSource}>YouTube</span></button>
             <div className={styles.cardTitleRow}>
-              <h3 title={work.title}><button type="button" onClick={() => openFeedback(work)} aria-label={`${mv.openWork} · ${work.title}`}>{work.title}</button></h3>
+              <h3 title={work.title}><Link prefetch={false} href={`/works/${encodeURIComponent(work.id)}?lang=${lang}`}>{work.title}</Link></h3>
               <div className={styles.cardActions}>
                 <button className={styles.cardHeart} onClick={() => void sendHeart(work)} aria-label={`${support.hearts[work.id] ? copy.removeHeart : copy.sendHeart} · ${work.title}`}
                   title={support.hearts[work.id] ? copy.removeHeart : copy.sendHeart} aria-pressed={Boolean(support.hearts[work.id])} aria-describedby={`mv-support-${work.id}`}

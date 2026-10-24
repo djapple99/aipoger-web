@@ -1,3 +1,4 @@
+import { publicMetadata } from "@/lib/public-seo";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { isSupportedLang } from "@/lib/locale";
@@ -8,12 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const requested = (await headers()).get("x-aipoger-lang");
   const lang = isSupportedLang(requested) ? requested : "zh";
   const copy = showtimeCopy(lang);
-  return {
-    title: { absolute: copy.metaTitle }, description: copy.metaDescription,
-    alternates: { canonical: `/rank?lang=${lang}`, languages: {
-      "zh-Hant": "/rank?lang=zh", en: "/rank?lang=en", ja: "/rank?lang=ja", ko: "/rank?lang=ko",
-    } },
-  };
+  return publicMetadata({ path: "/rank", lang: lang, title: copy.metaTitle, description: copy.metaDescription });
 }
 
 export default async function RankLayout({ children }: Readonly<{ children: React.ReactNode }>) {

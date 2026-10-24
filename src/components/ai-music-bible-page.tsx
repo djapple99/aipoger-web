@@ -12,7 +12,6 @@ import {
   FlaskConical,
   Headphones,
   LibraryBig,
-  LockKeyhole,
   MessageCirclePlus,
   Music2,
   QrCode,
@@ -417,13 +416,6 @@ export default function AiMusicBiblePage() {
         <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(255,106,0,0.22),transparent_32%),radial-gradient(circle_at_86%_14%,rgba(34,211,238,0.13),transparent_28%),linear-gradient(180deg,#050505_0%,#0b0806_48%,#030707_100%)]" />
         <div className="pointer-events-none fixed inset-0 opacity-[0.05] [background-image:linear-gradient(rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.1)_1px,transparent_1px)] [background-size:64px_64px]" />
         <section className="relative mx-auto grid min-h-[calc(100svh-8rem)] w-full max-w-6xl place-items-center">
-          {accessState === "checking" ? (
-            <div className="text-center" role="status">
-              <LockKeyhole className="mx-auto h-9 w-9 animate-pulse text-orange-300" />
-              <p className={`${fontRighteous.className} mt-5 text-xs uppercase tracking-[0.34em] text-cyan-200/70`}>CHECKING MEMBER ACCESS</p>
-              <p className="mt-3 text-sm font-black text-zinc-500">{isZh ? "正在確認會員狀態…" : "Checking member access…"}</p>
-            </div>
-          ) : (
             <div className="w-full overflow-hidden rounded-[1.7rem] border border-orange-300/24 bg-black/62 shadow-[0_35px_120px_rgba(0,0,0,0.68),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(21rem,0.85fr)]">
               <div className="relative px-5 py-9 sm:px-9 lg:px-12 lg:py-14">
                 <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-300/70 to-transparent" />
@@ -481,7 +473,6 @@ export default function AiMusicBiblePage() {
                 </div>
               </aside>
             </div>
-          )}
         </section>
         <AuthRequiredDialog
           open={authPromptOpen}

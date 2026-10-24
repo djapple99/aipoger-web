@@ -1,60 +1,38 @@
+export const preferredRegion = "hnd1";
+import { readPublicMusic } from "@/lib/server-public-music";
 import type { Metadata } from "next";
 import { readPublicAlbums } from "@/lib/server-albums";
-import { albumPath } from "@/lib/album";
-import { youtubeShareImage } from "@/lib/server-mv-share-metadata";
+import { notFound } from "next/navigation";
+import { homeCopy } from "@/lib/home-copy";
+import { requestLang } from "@/lib/server-public-locale";
+import { publicMetadata } from "@/lib/public-seo";
+import { readPublicWorkDetail } from "@/lib/server-home-discovery";
+import { workMetadata } from "@/lib/server-work-seo";
 import { albumCopy } from "@/lib/album-copy";
 import AiMusicClient from "./ai-music-client";
 
-type PageProps = { searchParams: Promise<{ lang?: string; album?: string; view?: string }> };
+type PageProps = { searchParams: Promise<{ lang?: string; album?: string; view?: string; track?: string }> };
 
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
-  const { lang, album } = await searchParams;
-  const locale = lang === "ja" || lang === "ko" || lang === "en" ? lang : "zh";
-  if (album && /^[0-9a-f-]{36}$/i.test(album)) {
-    const work = await readPublicAlbums(album).then(rows => rows[0]).catch(() => null);
-    if (work) {
-      const path = albumPath(work.id, locale).split("#")[0];
-      const title = `${work.title}｜${work.artist} · AIPOGER`;
-      const description = work.description || albumCopy(locale).intro;
-      const image = work.videoId ? (await youtubeShareImage(work.videoId)).url : work.coverUrl;
-      return { title: { absolute: title }, description, alternates: { canonical: path, languages: Object.fromEntries(["zh", "en", "ja", "ko"].map(language => [language === "zh" ? "zh-Hant" : language, albumPath(work.id, language).split("#")[0]])) }, openGraph: { title, description, url: path, images: image ? [{ url: image }] : [] }, twitter: { card: "summary_large_image", title, description, images: image ? [image] : [] } };
-    }
+  const query = await searchParams; const lang = await requestLang(query.lang); const id = query.track || query.album;
+  if (id) {
+    const detail = await readPublicWorkDetail(id);
+    if (!detail) return { robots: { index: false } };
+    return workMetadata(detail.work, lang);
   }
-  const localized = lang === "ja"
-    ? {
-        title: "AI音楽を探す",
-        description: "ジャンル別にAI音楽作品を再生し、Heartで保存し、気になる曲からDrop Battleへ挑戦できます。",
-      }
-      : lang === "ko"
-      ? {
-          title: "AI 음악 탐색",
-          description: "장르별 AI 음악 작품을 듣고 Heart로 저장하거나 마음에 드는 곡에서 Drop Battle에 도전하세요.",
-        }
-      : lang === "en"
-        ? {
-            title: "Explore AI Music",
-            description: "Browse AI music by style, play and save tracks with a Heart, then start a Drop Battle from music you like.",
-          }
-        : {
-            title: "探索 AI 音樂｜AIPOGER",
-            description: "依照風格瀏覽 AIPOGER 的 AI 音樂作品，播放、送愛心，並從喜歡的作品延伸到 Drop Battle、Showtime 與傷心酒吧。",
-          };
-  return {
-    ...localized,
-    alternates: {
-      canonical: `/ai-music?lang=${locale}`,
-      languages: {
-        "zh-Hant": "/ai-music?lang=zh",
-        en: "/ai-music?lang=en",
-        ja: "/ai-music?lang=ja",
-        ko: "/ai-music?lang=ko",
-      },
-    },
-    openGraph: { ...localized, url: `/ai-music?lang=${locale}` },
-  };
+  const title = { zh: "探索音樂｜AIPOGER", en: "Explore Music | AIPOGER", ja: "音楽を探す｜AIPOGER", ko: "음악 탐색 | AIPOGER" }[lang];
+  return publicMetadata({ path: "/ai-music", lang, title: query.view === "albums" ? `${albumCopy(lang).albums}｜AIPOGER` : title,
+    description: query.view === "albums" ? albumCopy(lang).intro : homeCopy(lang).metaDescription,
+    params: query.view === "albums" ? { view: "albums" } : undefined });
 }
 
 export default async function AiMusicPage({ searchParams }: PageProps) {
-  const { album, view } = await searchParams;
-  return <AiMusicClient initialView={view === "albums" || album ? "albums" : "genre"} initialAlbumId={album ?? null} />;
+  const query = await searchParams; const lang = await requestLang(query.lang); const id = query.track || query.album;
+  const detail = id ? await readPublicWorkDetail(id) : null;
+  if (id && !detail) notFound();
+  const album = query.album || (detail?.work.workKind === "album" ? id : null);
+  const view = album || query.view === "albums" ? "albums" : "genre";
+  const [rows, allAlbums] = await Promise.all([readPublicMusic(), view === "albums" ? readPublicAlbums() : Promise.resolve(undefined)]);
+  if (album && allAlbums && !allAlbums.some(item => item.id === album)) allAlbums.unshift(...await readPublicAlbums(album));
+  return <AiMusicClient initialAlbums={allAlbums} initialRows={rows} initialLang={lang} initialView={view} initialAlbumId={album ?? null} />;
 }

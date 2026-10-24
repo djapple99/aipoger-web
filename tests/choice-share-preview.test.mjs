@@ -32,6 +32,8 @@ function imageRoute(choice) {
   return loadTs("src/app/choice/[id]/share-image/route.ts", {
     sharp: { default: sharp },
     "@/lib/server-choice-share-metadata": { loadChoiceShareMetadata: async () => choice },
+    "@/lib/server-public-choice": { readPublicChoice: async () => null },
+    "@/lib/share-cover-source": { canRenderShareCover: url => coverModel.isChoiceStorageCover(String(url), storage) },
     "@/lib/choice-share-cover": { isChoiceStorageCover: url => coverModel.isChoiceStorageCover(url, storage) },
   }).GET;
 }
@@ -41,6 +43,8 @@ test("playlist metadata points to its own JPEG cover and agrees with the share b
     const choice = { kind, title: "酒到濃時愛聽歌", curatorName: "愛波哥", intro: "這是歌單介紹", imageUrl: cover };
     const { generateMetadata } = loadTs("src/app/choice/[id]/page.tsx", {
       "@/lib/server-choice-share-metadata": { loadChoiceShareMetadata: async () => choice },
+    "@/lib/server-public-choice": { readPublicChoice: async () => null },
+    "@/lib/share-cover-source": { canRenderShareCover: url => coverModel.isChoiceStorageCover(String(url), storage) },
       "@/lib/choice-share-cover": { isChoiceStorageCover: url => coverModel.isChoiceStorageCover(url, storage) },
       "./choice-client": { default: () => null },
     });
@@ -48,19 +52,21 @@ test("playlist metadata points to its own JPEG cover and agrees with the share b
       const metadata = await generateMetadata({ params: Promise.resolve({ id: uuid(1) }), searchParams: Promise.resolve({ lang }) });
       assert.equal(metadata.openGraph.title, choice.title);
       assert.equal(metadata.openGraph.description, choice.intro);
-      assert.equal(new URL(metadata.openGraph.url).pathname + new URL(metadata.openGraph.url).search, share.choiceSharePath(uuid(1), kind, lang, cover));
-      assert.deepEqual(metadata.openGraph.images[0], { url: `https://aipoger.com${share.choiceShareImagePath(uuid(1), cover)}`, alt: choice.title, width: 800, height: 800, type: "image/jpeg" });
+      assert.equal(new URL(metadata.openGraph.url).pathname + new URL(metadata.openGraph.url).search, `/choice/${uuid(1)}?lang=${lang}&kind=${kind}`);
+      assert.deepEqual(metadata.openGraph.images[0], { url: `https://aipoger.com${share.choiceShareImagePath(uuid(1), cover)}`, alt: choice.title, width: 1200, height: 630, type: "image/jpeg" });
       assert.equal(metadata.twitter.images[0], metadata.openGraph.images[0].url);
       assert.equal(metadata.alternates.canonical, metadata.openGraph.url);
+      assert.ok(!metadata.alternates.canonical.includes("share="));
+      assert.equal(metadata.openGraph.locale, {zh:"zh_TW",en:"en_US",ja:"ja_JP",ko:"ko_KR"}[lang]);
     }
   }
 });
 
-test("published cover thumbnail is a small 800px JPEG and preserves the complete artwork", async () => {
+test("published cover thumbnail is a small 1200×630 JPEG and preserves the complete artwork", async () => {
   const input = await sharp({ create: { width: 1600, height: 800, channels: 4, background: "#ee6600" } }).webp().toBuffer();
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url, options) => {
-    assert.equal(url, cover); assert.equal(options.redirect, "error");
+    assert.equal(String(url), cover); assert.equal(options.redirect, "error");
     return new Response(input, { headers: { "Content-Type": "image/webp" } });
   };
   try {
@@ -71,8 +77,8 @@ test("published cover thumbnail is a small 800px JPEG and preserves the complete
     const output = Buffer.from(await response.arrayBuffer());
     assert.ok(output.byteLength < 200_000);
     const metadata = await sharp(output).metadata();
-    assert.equal(metadata.width, 800); assert.equal(metadata.height, 800); assert.equal(metadata.format, "jpeg");
-    const pixel = await sharp(output).extract({ left: 400, top: 100, width: 1, height: 1 }).raw().toBuffer();
+    assert.equal(metadata.width, 1200); assert.equal(metadata.height, 630); assert.equal(metadata.format, "jpeg");
+    const pixel = await sharp(output).extract({ left: 600, top: 5, width: 1, height: 1 }).raw().toBuffer();
     assert.ok(pixel[0] < 30 && pixel[1] < 30, "wide cover must be contained, not cropped");
   } finally { globalThis.fetch = originalFetch; }
 });

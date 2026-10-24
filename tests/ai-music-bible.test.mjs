@@ -387,9 +387,9 @@ test("public starter stays compact, multilingual, and indexable without exposing
   assert.match(publicFaqComponent, /useI18n/);
   assert.match(publicFaqComponent, /setLang\(activeLang\)/);
   assert.doesNotMatch(publicFaqComponent, /SUNO_ARTIST_DNA_ENTRIES|SUNO_PROMPT_RECIPES/);
-  assert.match(bibleRoute, /"@type": "TechArticle"/);
+  assert.match(bibleRoute, /"@type": "CollectionPage"/);
   assert.match(bibleRoute, /"@type": "FAQPage"/);
-  assert.match(bibleRoute, /summary_large_image/);
+  assert.match(bibleRoute, /publicMetadata/);
   assert.match(bibleRoute, /dangerouslySetInnerHTML/);
 });
 

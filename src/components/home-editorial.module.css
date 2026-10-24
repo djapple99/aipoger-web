@@ -297,3 +297,10 @@
   .feedbackWithVideo .feedbackHeading h2 { font-size: 16px; -webkit-line-clamp: 1; padding-right: 38px; }
   .feedbackWithVideo .feedbackBody { gap: 8px; margin-top: 8px; }
 }
+
+/* The canonical work page reuses the review flow without a second modal. */
+.feedbackInline, .feedbackInline.feedbackWithVideo { display: block; position: relative; inset: auto; top: auto; margin: 0; width: 100%; max-width: none; height: auto; max-height: none; color: #eee; }
+.feedbackInline.feedbackWithVideo .feedbackInner { height: auto; overflow: visible; }
+.feedbackInline.feedbackWithVideo .feedbackBody { min-height: 430px; align-items: start; }
+.feedbackInline.feedbackWithVideo .feedbackMedia, .feedbackInline.feedbackWithVideo .feedbackDiscussion { overflow: visible; }
+@media (max-width: 700px) { .feedbackInline.feedbackWithVideo .feedbackBody { min-height: 0; grid-template-rows: auto auto; } }

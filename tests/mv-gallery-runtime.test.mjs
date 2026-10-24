@@ -52,7 +52,8 @@ async function mount(t,lang='zh',payload={featureKind:'community',featured:[work
 
 for(const lang of ['zh','en','ja','ko']) test(`MV catalog localizes actions and preserves original work links (${lang})`,async t=>{
  const ui=await mount(t,lang);assert.ok(ui.text().includes(mvCopy(lang).title));assert.ok(ui.text().includes('Real Creator'));
- ui.button(`${mvCopy(lang).openWork} · Other Song`).onClick();await ui.flush();assert.equal(ui.nodes().find(x=>x.type==='feedback').props.work.id,'other-work');
+ assert.ok(ui.nodes().some(x=>x.props?.href===`/works/other-work?lang=${lang}`));
+ ui.button(`${homeCopy(lang).watch} · Other Song`).onClick();await ui.flush();assert.equal(ui.nodes().find(x=>x.type==='feedback').props.work.id,'other-work');
  assert.equal(ui.nodes().some(x=>x.type==='iframe'),false);
 });
 test('MV cover play opens the unified original-work review with explicit autoplay',async t=>{
@@ -134,7 +135,7 @@ test('MV guest support preserves the MV login return path and never claims succe
 test('MV shares target the exact original work with language, including the featured work',async t=>{
  const ui=await mount(t,'ko');
  const shares=ui.nodes().filter(x=>x.type?.name==='MvShare');assert.equal(shares.length,3);
- for(const node of shares){const button=node.type(node.props);assert.equal(button.type,'share-button');assert.equal(button.props.url,`/mv?lang=ko&track=${node.props.work.id}`);assert.equal(button.props.iconOnly,true);assert.equal(button.props.sharedLabel,mvCopy('ko').shared);}
+ for(const node of shares){const button=node.type(node.props);assert.equal(button.type,'share-button');assert.equal(button.props.url,`/works/${node.props.work.id}?lang=ko`);assert.equal(button.props.iconOnly,true);assert.equal(button.props.sharedLabel,mvCopy('ko').shared);}
  assert.equal(ui.support.called.length,0);
 });
 test('shared links find an older public MV beyond the first twelve without autoplay',async t=>{

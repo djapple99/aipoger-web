@@ -17,10 +17,11 @@ export function loadTs(relativePath, mocks = {}, cache = new Map()) {
   const loaded = { exports: {} };
   cache.set(filename, loaded);
   const compiled = ts.transpileModule(readFileSync(filename, "utf8"), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
   }).outputText;
   const require = (specifier) => {
     if (Object.hasOwn(mocks, specifier)) return mocks[specifier];
+    if (specifier === "server-only") return {};
     if (specifier.startsWith("@/")) return loadTs(`src/${specifier.slice(2)}.ts`, mocks, cache);
     if (specifier.startsWith(".")) return loadTs(path.relative(root, path.resolve(path.dirname(filename), specifier)), mocks, cache);
     return nativeRequire(specifier);

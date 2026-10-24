@@ -80,7 +80,7 @@ test("battle desktop CTA stays inside the pool header", () => {
 test("retired Bar ticker no longer occupies the listening surface", () => {
   assert.equal(listenBarSource.includes("aipo-marquee-track"), false);
   assert.equal(listenBarSource.includes("battleTickerMessages"), false);
-  assert.ok(listenBarSource.includes("router.replace"));
+  assert.ok(listenBarSource.includes("permanentRedirect"));
 });
 
 test("legacy watch entry preserves a supported language", () => {

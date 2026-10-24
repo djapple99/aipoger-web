@@ -45,7 +45,7 @@ async function mount(t,lang='zh',payload={featureKind:'community',featured:[work
 for(const lang of ['zh','en','ja','ko']) test(`homepage preserves real routes and localized discovery (${lang})`,async t=>{
  const ui=await mount(t,lang);const copy=homeCopy(lang);const hrefs=ui.nodes().filter(x=>x.type==='link').map(x=>x.props.href);
  for(const route of ['/mv','/ai-music','/rank','/battle','/ai-music-bible','/listen-bar','/auth'])assert.ok(hrefs.includes(`${route}?lang=${lang}`),route);
- assert.ok(hrefs.includes(`/ai-music?track=actual-work&lang=${lang}`));assert.ok(ui.text().includes(copy.title));assert.ok(ui.text().includes(copy.exploreTitle));assert.ok(ui.text().includes('Real Creator'));
+ assert.ok(hrefs.includes(`/works/actual-work?lang=${lang}`));assert.ok(ui.text().includes(copy.title));assert.ok(ui.text().includes(copy.exploreTitle));assert.ok(ui.text().includes('Real Creator'));
 });
 test('MV playback is user initiated and pauses shared audio; singles use the existing shared queue',async t=>{
  const ui=await mount(t);assert.equal(ui.nodes().some(x=>x.type==='iframe'),false);

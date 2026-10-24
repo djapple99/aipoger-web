@@ -44,6 +44,7 @@ export default function LyricsPopover({ title, artist, lyrics, lang }: {
       document.removeEventListener("pointerdown", dismiss); document.removeEventListener("keydown", escape);
     };
   }, [open, fallback]);
+  if (!lyrics?.trim()) return null;
   return <>
     <button type="button" ref={trigger} popoverTarget={id} aria-expanded={open} aria-controls={id}
       aria-label={`${label} ${title}`} title={label} onClick={prepare}><FileText aria-hidden="true" /></button>
@@ -55,7 +56,7 @@ export default function LyricsPopover({ title, artist, lyrics, lang }: {
           <button type="button" onClick={() => { close(); trigger.current?.focus({ preventScroll: true }); }}
             aria-label={text("關閉歌詞", "Close lyrics", "歌詞を閉じる", "가사 닫기")}><X aria-hidden="true" /></button>
         </div>
-        <div className={styles.body} tabIndex={0}><p>{lyrics?.trim() || text("歌詞未提供", "Lyrics not provided", "歌詞は未提供です", "가사가 없습니다")}</p></div>
+        <div className={styles.body} tabIndex={0}><p>{lyrics.trim()}</p></div>
       </>}
     </div>
   </>;

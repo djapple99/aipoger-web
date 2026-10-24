@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const sharedPage = readFileSync(new URL("../src/app/choice/[id]/choice-client.tsx", import.meta.url), "utf8");
-const sharedRoute = readFileSync(new URL("../src/app/api/choice/[id]/route.ts", import.meta.url), "utf8");
+const sharedRoute = readFileSync(new URL("../src/lib/server-choice-detail.ts", import.meta.url), "utf8");
 const savedRoute = readFileSync(new URL("../src/app/api/choice/saved/route.ts", import.meta.url), "utf8");
 const profilePage = readFileSync(new URL("../src/app/profile/page.tsx", import.meta.url), "utf8");
 const publicGallery = readFileSync(new URL("../src/components/public-choice-gallery.tsx", import.meta.url), "utf8");
@@ -58,13 +58,13 @@ test("Choice UI copy follows the four-region language policy", () => {
   assert.match(sharedPage, /getChoiceCopy\(lang\)/);
   assert.match(sharedPage, /isZh=\{lang === "zh"\}/);
   assert.match(choiceLayout, /isSupportedLang/);
-  assert.match(choiceLayout, /locale = lang === "zh"/);
+  assert.match(choiceLayout, /publicMetadata/);
 });
 
 test("Choice share metadata uses the curator profile avatar instead of the global brand card", () => {
   assert.match(choiceLayout, /generateMetadata/);
   assert.match(choiceLayout, /loadChoiceShareMetadata/);
-  assert.match(choiceLayout, /images: \[\{ url: imageUrl/);
+  assert.match(choiceLayout, /image: \{ url: imageUrl/);
   assert.match(choiceLayout, /choiceDisplayTitle\(choice\.curatorName, choice\.title\)/);
   assert.match(choiceShareMetadata, /aipoger_creator_choice_collections/);
   assert.match(choiceShareMetadata, /aipoger_choice_collections/);

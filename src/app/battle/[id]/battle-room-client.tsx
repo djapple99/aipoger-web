@@ -5,7 +5,7 @@ import NextImage from "next/image";
 import LangToggle from "@/components/lang-toggle";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import type { ReactNode, CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { FormEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { isAuthBypassEnabled, mockUserId } from "@/lib/auth-bypass";
@@ -877,7 +877,7 @@ function VoteHeartButton({
 // ─── 聊天泡泡 ──────────────────────────────────────────────
 // ─── 主內容（useParams 需在 Suspense 內）───────────────────
 
-function BattleArenaContent() {
+function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) {
   const { t, lang } = useI18n();
   const router = useRouter();
   const params = useParams();
@@ -3432,6 +3432,7 @@ function BattleArenaContent() {
   }, [battle?.fighter_b_avatar, avatarDisplayB]);
 
   if (loading) {
+    if (initialSummary) return <>{initialSummary}</>;
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] text-orange-400">
         <div className="text-center">
@@ -4636,11 +4637,11 @@ function BattleArenaSuspenseFallback() {
   );
 }
 
-export default function BattleArenaPage() {
+export default function BattleArenaPage({ initialSummary }: { initialSummary?: ReactNode } = {}) {
   return (
     <>
       <Suspense fallback={<BattleArenaSuspenseFallback />}>
-        <BattleArenaContent />
+        <BattleArenaContent initialSummary={initialSummary} />
       </Suspense>
       <DebugPanel vars={vinylVars} />
     </>

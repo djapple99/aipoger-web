@@ -13,7 +13,7 @@ const feedbackMigrationSource = source("../supabase/20260731193000_q_crash_feedb
 const commentMigrationSource = source("../supabase/20260731233000_q_crash_voter_comments.sql");
 const battleStatsRepairMigrationSource = source("../supabase/20260731122043_battle_song_stats_runtime_dependencies.sql");
 const battleStatsIndexMigrationSource = source("../supabase/20260731123402_battle_song_stats_fk_indexes.sql");
-const poolRouteSource = source("../src/app/api/q-crash/route.ts");
+const poolRouteSource = source("../src/lib/server-q-crash-catalog.ts");
 const cardRouteSource = source("../src/app/api/q-crash/[id]/route.ts");
 const sunoPlaybackRouteSource = source("../src/app/api/q-crash/suno-playback/route.ts");
 const sunoMediaSource = source("../src/lib/q-crash-suno-media.ts");
@@ -77,9 +77,9 @@ test("Q Crash uses Traditional Chinese only for zh and English for every other l
   assert.ok(qCrashNewSource.includes("qCrashDisplayLang(searchParams.get(\"lang\"))"));
   assert.ok(cardClientSource.includes("qCrashDisplayLang(searchParams.get(\"lang\"))"));
   assert.ok(battlePoolSource.includes("const displayLang = qCrashDisplayLang(lang);"));
-  assert.ok(qCrashPageSource.includes("Q Crash | AIPOGER Async Full Song Battle"));
-  assert.ok(qCrashPageSource.includes("Which song sounds better? I can't decide!"));
-  assert.ok(battlePageSource.includes("const isZh = qCrashDisplayLang(rawLang) === \"zh\";"));
+  assert.ok(qCrashPageSource.includes("publicBattleMetadata"));
+  assert.ok(qCrashPageSource.includes("readPublicBattle"));
+  assert.ok(battlePageSource.includes("publicBattleMetadata"));
 });
 
 test("Q Crash API returns tallies only after the card reaches a final state", () => {

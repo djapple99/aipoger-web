@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useId, useRef, useState, type ComponentType } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
@@ -467,7 +467,7 @@ function QCrashWorkCard(props: {
   );
 }
 
-export default function QCrashCardClient({ identifier }: { identifier: string }) {
+export default function QCrashCardClient({ identifier, initialSummary }: { identifier: string; initialSummary?: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -929,6 +929,7 @@ export default function QCrashCardClient({ identifier }: { identifier: string })
   };
 
   if (loading) {
+    if (initialSummary) return <>{initialSummary}</>;
     return <main className="min-h-screen bg-black p-8 pt-28 text-center text-sm font-black text-zinc-400">Q CRASH · LOADING</main>;
   }
 

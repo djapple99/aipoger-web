@@ -1,33 +1,17 @@
-import type { Metadata } from "next";
+export const preferredRegion = "hnd1";
+import { notFound } from "next/navigation";
 import QCrashCardClient from "@/components/q-crash-card-client";
-import { siteOrigin } from "@/lib/battle-og";
-import { qCrashDisplayLang } from "@/lib/q-crash-rules";
-
-type QCrashCardPageProps = {
-  params: Promise<{ id: string }>;
-  searchParams?: Promise<Record<string, string | string[] | undefined>>;
-};
-
-export async function generateMetadata({ params, searchParams }: QCrashCardPageProps): Promise<Metadata> {
-  const { id } = await params;
-  const query = (await searchParams) ?? {};
-  const rawLang = Array.isArray(query.lang) ? query.lang[0] : query.lang;
-  const isZh = qCrashDisplayLang(rawLang) === "zh";
-  const canonical = `${siteOrigin()}/battle/q-crash/${encodeURIComponent(id)}`;
-  const title = isZh ? "Q Crash｜AIPOGER 非同步 Full Song Battle" : "Q Crash | AIPOGER Async Full Song Battle";
-  const description = isZh
-    ? "這兩首歌到底哪首比較好聽啊？我有點選不出來！進來聽完整歌曲，幫我決定哪首勝出！"
-    : "Which song sounds better? I can't decide! Listen to both full songs and help me pick a winner.";
-  return {
-    title,
-    description,
-    alternates: { canonical },
-    openGraph: { title, description, type: "website", url: canonical },
-    twitter: { card: "summary_large_image", title, description },
-  };
+import PublicBattleSummaryView from "@/components/public-battle-summary";
+import { readPublicBattle } from "@/lib/server-public-battles";
+import { publicBattleMetadata } from "@/lib/server-battle-seo";
+import { requestLang } from "@/lib/server-public-locale";
+type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ lang?: string }> };
+export async function generateMetadata({ params, searchParams }: Props) {
+  const { id } = await params; const lang = await requestLang((await searchParams).lang); const battle = await readPublicBattle(id);
+  return battle?.battle_type === "q_crash" ? publicBattleMetadata(battle, lang, `/battle/q-crash/${id}`) : { robots: { index: false } };
 }
-
-export default async function QCrashCardPage({ params }: QCrashCardPageProps) {
-  const { id } = await params;
-  return <QCrashCardClient identifier={id} />;
+export default async function QCrashPage({ params, searchParams }: Props) {
+  const { id } = await params; const lang = await requestLang((await searchParams).lang); const battle = await readPublicBattle(id);
+  if (!battle || battle.battle_type !== "q_crash") notFound();
+  return <QCrashCardClient identifier={id} initialSummary={<PublicBattleSummaryView battle={battle} lang={lang} />} />;
 }

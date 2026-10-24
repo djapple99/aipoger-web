@@ -334,7 +334,7 @@ export default function GlobalMusicPlayer() {
   };
   useEffect(() => {
     const dialog = lyricsDialogRef.current;
-    if (lyricsOpen && track) dialog?.showModal();
+    if (lyricsOpen && track?.lyrics?.trim()) dialog?.showModal();
     else dialog?.close();
   }, [lyricsOpen, track]);
   useEffect(() => {
@@ -351,14 +351,14 @@ export default function GlobalMusicPlayer() {
         returnPath={typeof window === "undefined" ? "/ai-music" : window.location.pathname + window.location.search + window.location.hash}
         onClose={() => setCommentTrack(null)} onChange={() => {}} /> : null}
       <AuthRequiredDialog open={authOpen} kind="heart" lang={lang} nextPath={`/ai-music?lang=${lang}${track?.heartTrackId ? `&track=${track.heartTrackId}#works` : ""}`} onClose={() => setAuthOpen(false)} />
-      <dialog ref={lyricsDialogRef} onClose={() => setLyricsOpen(false)} onClick={event => {
+      {track?.lyrics?.trim() ? <dialog ref={lyricsDialogRef} onClose={() => setLyricsOpen(false)} onClick={event => {
         if (event.target !== event.currentTarget) return;
         const rect = event.currentTarget.getBoundingClientRect();
         if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) setLyricsOpen(false);
       }} className="fixed inset-0 m-auto max-h-[75dvh] w-[min(92vw,36rem)] overflow-y-auto rounded-2xl border border-orange-300/25 bg-zinc-950 p-5 text-white backdrop:bg-black/70" aria-label={label("歌詞", "Lyrics", "歌詞", "가사")}>
         <div className="mb-4 flex items-center justify-between gap-3"><h2 className="font-bold">{track?.title}</h2><button autoFocus onClick={() => setLyricsOpen(false)} aria-label={label("關閉歌詞", "Close lyrics", "歌詞を閉じる", "가사 닫기")}><X /></button></div>
-        <p className="whitespace-pre-wrap text-sm leading-8">{track?.lyrics || label("歌詞未提供", "Lyrics not provided", "歌詞は未提供です", "가사가 없습니다")}</p>
-      </dialog>
+        <p className="whitespace-pre-wrap text-sm leading-8">{track.lyrics.trim()}</p>
+      </dialog> : null}
       {isYouTube && track && session ? <section aria-label={label("YouTube 電台播放器", "YouTube radio player", "YouTubeラジオ", "YouTube 라디오")}
         className="fixed bottom-3 right-3 z-[70] w-[min(356px,calc(100vw-24px))] overflow-hidden rounded-md border border-orange-400/40 bg-[#080808] text-white shadow-xl">
         <div className="flex min-h-10 items-center justify-between gap-2 px-2">
@@ -452,7 +452,7 @@ export default function GlobalMusicPlayer() {
               </label>
               {track.heartTrackId ? <button type="button" disabled={heartBusy} onClick={() => void sendHeart()} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-orange-300 disabled:opacity-40" aria-label={label("愛心與收藏", "Heart and save", "Heartと保存", "Heart 및 저장")}><Heart className="h-4 w-4" fill={hearted[track.heartTrackId] ? "currentColor" : "none"} /></button> : null}
               {track.heartTrackId ? <button type="button" onClick={() => setCommentTrack(track)} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-white" aria-label={label("歌曲評論", "Track comments", "曲のコメント", "곡 댓글")}><MessageCircleMore className="h-5 w-5" /></button> : null}
-              <button type="button" onClick={() => setLyricsOpen(true)} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 hover:text-white" aria-label={label("看歌詞", "View lyrics", "歌詞を見る", "가사 보기")}><FileText className="h-4 w-4" /></button>
+              {track.lyrics?.trim() ? <button type="button" onClick={() => setLyricsOpen(true)} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 hover:text-white" aria-label={label("看歌詞", "View lyrics", "歌詞を見る", "가사 보기")}><FileText className="h-4 w-4" /></button> : null}
               <button type="button" onClick={close} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition hover:bg-white/10 hover:text-white" aria-label={label("關閉播放器", "Close player", "プレーヤーを閉じる", "플레이어 닫기")}><X className="h-4 w-4" /></button>
             </div>
 
