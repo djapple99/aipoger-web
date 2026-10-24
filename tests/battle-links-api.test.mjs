@@ -49,3 +49,16 @@ test('archived link playback is public only after an official finished result an
   x.admin.tables.battle_result_archives[0].result_payload.audienceCount=2;
   assert.equal((await x.route.GET(req())).status,404);
 });
+test('publishing a founder card waits for acceptance instead of silently matching another founder',async()=>{
+  const saved=[process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY];
+  process.env.NEXT_PUBLIC_SUPABASE_URL='https://fixture.supabase.co';process.env.SUPABASE_SERVICE_ROLE_KEY='fixture-only';
+  try {
+    const admin=mockAdmin({battle_queue:[{id:uuid(80),user_id:USER,status:'waiting_challenge',match_group_id:null,submission_mode:'drop'}]});
+    let matched=false;admin.rpc=async()=>{matched=true;return{data:null,error:null};};
+    const route=loadTs('src/app/api/battle-pool/attempt-matchmaking/route.ts',{'@supabase/supabase-js':{createClient:()=>admin},'next/server':{NextResponse:{json:(value,init)=>Response.json(value,init)}}});
+    const r=await route.POST(new Request('https://aipoger.com/api/battle-pool/attempt-matchmaking',{method:'POST',headers:{Authorization:'Bearer valid','Content-Type':'application/json'},body:JSON.stringify({queueId:uuid(80)})}));
+    assert.equal(r.status,200);assert.equal((await r.json()).row.id,uuid(80));assert.equal(matched,false);
+  }finally{
+    for(const [key,value] of [['NEXT_PUBLIC_SUPABASE_URL',saved[0]],['SUPABASE_SERVICE_ROLE_KEY',saved[1]]]){if(value===undefined)delete process.env[key];else process.env[key]=value;}
+  }
+});

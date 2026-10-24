@@ -58,6 +58,9 @@ test('battle link SQL: immutable modes, matching, retries, old media, roles and 
     await db.exec('reset role');
     const full = (await db.query(`select * from battles where queue_a_id='${uid(6)}'`)).rows[0];
     assert.equal(full.playback_a.seconds,370); assert.equal(full.playback_b.seconds,260);
+    await assert.rejects(db.query(`update battles set status='finished' where id=$1`,[full.id]),/BATTLE_STILL_PLAYING/);
+    await db.query(`update battles set started_at=now()-interval '20 minutes' where id=$1`,[full.id]);
+    await db.query(`update battles set status='finished' where id=$1`,[full.id]);
     assert.deepEqual((await db.query(`select audio_path,drop_duration_seconds from battle_queue where id='${uid(90)}'`)).rows[0],{audio_path:'keep/old.wav',drop_duration_seconds:'30'});
     await db.exec(`set role authenticated; select set_config('request.jwt.claim.role','authenticated',false);`);
     await assert.rejects(create(7,7),/permission denied/);

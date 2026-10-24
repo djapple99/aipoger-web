@@ -122,6 +122,7 @@ export async function POST(request: NextRequest) {
   if (meError) return jsonError(meError.message, 500);
   if (!meRow || meRow.user_id !== user.id) return jsonError("Queue row not found", 404);
   if (meRow.match_group_id) return NextResponse.json({ row: meRow });
+  if (meRow.status === "waiting_challenge" && !targetQueueId) return NextResponse.json({ row: meRow });
   if (meRow.submission_mode === "q_crash") return jsonError("Use Q Crash", 409);
   if (meRow.submission_mode === "drop") {
     const actorDb = createClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { global: { headers: { Authorization: `Bearer ${token}` } }, auth: { persistSession: false } });

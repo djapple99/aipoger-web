@@ -128,6 +128,11 @@ begin
     if new.drop_playback_mode is distinct from old.drop_playback_mode or new.playback_a is distinct from old.playback_a or new.playback_b is distinct from old.playback_b then
       raise exception 'Battle playback is locked.' using errcode='42501';
     end if;
+    if old.battle_type='formal' and old.playback_a is not null and old.playback_b is not null
+       and new.status in ('finished','completed') and new.status is distinct from old.status
+       and now() < coalesce(old.scheduled_start_at,old.battle_started_at,old.started_at,old.created_at)
+         + make_interval(secs => (old.playback_a->>'seconds')::double precision + (old.playback_b->>'seconds')::double precision + 8)
+    then raise exception 'BATTLE_STILL_PLAYING'; end if;
     return new;
   end if;
   select * into a from public.battle_queue where id=new.queue_a_id;
