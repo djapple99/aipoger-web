@@ -1,6 +1,8 @@
 # AIPOGER 開發與維運
 
-目前應用發布基準：2026-10-24／`9b3236e`／`codex/public-rule-copy`；Vercel `dpl_91yTRNjHBDtrG7bNoPVHacX5yKbJ` READY並綁定aipoger.com／www。探索人氣Top50與歌曲卡分開顯示平均／10、評分人數及實際去重收藏人數，隱藏混合人氣分；208件可排序作品名次與原人氣分完整對帳不變。收藏從既有私人Storage並行唯讀彙總、只回傳數量，失敗不補零。755測試722通過／33既有選用DB略過／0失敗，TypeScript、webpack build通過；lint0 errors／14既有warnings，正式四語320px、1440px桌機、HTTP及console通過。無DB遷移／Auth／Credit或正式資料寫入。[人氣顯示發布驗收](releases/2026-10-24-popularity-display.md)。
+目前應用發布基準：2026-10-25／`d744ac3`／`codex/public-rule-copy`；Vercel `dpl_5g3YnGwCYCeUr3pH94MofS5HrJjs` READY並綁定aipoger.com／www。探索外部作品與共用MV評論視窗改為桌機左播右評、手機上播下評；打字、送出與刷新保留同一播放器，visualViewport只調整CSS尺寸。760測試727通過／33既有選用DB略過／0失敗，TypeScript與webpack build通過，lint0 errors／14既有warnings；四語1440／320px、390×500模擬可視高度、實際YouTube播放中隔離送出及原評論保留通過。正式HTTP、Chrome登入原9.1評價／文字、公開API發布前後完全相同及console驗收通過。沒有DB migration或正式測試評論／評分／Heart。[播放與評價同窗驗收](releases/2026-10-25-listen-review.md)。
+
+前輪人氣顯示發布基準：2026-10-24／`9b3236e`／`codex/public-rule-copy`；Vercel `dpl_91yTRNjHBDtrG7bNoPVHacX5yKbJ` READY並綁定aipoger.com／www。探索人氣Top50與歌曲卡分開顯示平均／10、評分人數及實際去重收藏人數，隱藏混合人氣分；208件可排序作品名次與原人氣分完整對帳不變。收藏從既有私人Storage並行唯讀彙總、只回傳數量，失敗不補零。755測試722通過／33既有選用DB略過／0失敗，TypeScript、webpack build通過；lint0 errors／14既有warnings，正式四語320px、1440px桌機、HTTP及console通過。無DB遷移／Auth／Credit或正式資料寫入。[人氣顯示發布驗收](releases/2026-10-24-popularity-display.md)。
 
 前輪首頁發布基準：2026-10-24／`7936c34`／`codex/public-rule-copy`；Vercel `dpl_85sUMtwJs5VfnJ2qmm2XjfoYEMBR` READY並綁定aipoger.com／www。精選首頁新增Facebook／LINE社群入口，圖示緊接「加入創作討論社群」標題，介紹文字與關於／合作連結上提合併；Discord依使用者後續確認暫不放。TypeScript、webpack build、lint0 errors／14既有warnings及相關23項／精簡後首頁7項測試通過；四語桌機及320px、正式HTTP／真實作品與console驗收完成。無DB／Credit／Auth或Drop規則變更。[首頁社群發布驗收](releases/2026-10-24-community-footer.md)。
 
