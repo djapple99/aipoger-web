@@ -1,6 +1,8 @@
 # AIPOGER 開發與維運
 
-目前應用發布基準：2026-10-24／`317331c`／`codex/public-rule-copy`；Vercel `dpl_HDBZnYxRjh7mrZiJyvfyyqzbQgBZ` READY並綁定aipoger.com／www。專輯區、單曲／專輯投稿、本人作品組專輯、四語指南與讀取優化已發布。709項測試676通過／33既有選用DB略過／0失敗，TypeScript、webpack與雲端建置通過；lint0 errors／14既有warnings。正式資料轉類以交易內hash斷言確認原作品資料、4筆評分、3則留言、47筆愛心歷次記錄、4筆收據及所有Credit紀錄保留；只允許既有updated_at觸發器更新維護時間，created_at不變。資料庫遷移`20261024070956_album_classification`、`20261024071251_album_single_chart_eligibility`已套用，檔名對齊正式歷史；轉類是獨立授權的operations SQL，不混入通用schema遷移。詳見[專輯與載入驗收](releases/2026-10-24-albums-loading.md)。
+目前應用發布基準：2026-10-24／`98b7274`／`codex/public-rule-copy`；Vercel `dpl_Eh7nMAM14soP4pnq8ZuH292kw9iY` READY並綁定aipoger.com／www。盲聽投票前隱藏全部作品身分，成功單選只揭曉選中作品、平手揭曉兩首；上一題小卡保留愛心收藏與共用播放器完整版。伺服器只依已提交choice揭曉；揭曉失敗獨立重讀，不重投／重發Credit。736項測試703通過／33既有選用DB略過／0失敗，TypeScript與webpack build通過，lint0 errors／14既有warnings。四語320px、390px中文與1440px桌機及播放互停驗收通過；完整互動使用本機fixtures，未向正式站新增測試投票或愛心，非iOS真機。沒有DB／Auth／RLS或Storage設定變更。[選中才揭曉驗收](releases/2026-10-24-blind-chosen-reveal.md)。
+
+前輪應用發布基準：2026-10-24／`317331c`／`codex/public-rule-copy`；Vercel `dpl_HDBZnYxRjh7mrZiJyvfyyqzbQgBZ` READY並綁定aipoger.com／www。專輯區、單曲／專輯投稿、本人作品組專輯、四語指南與讀取優化已發布。709項測試676通過／33既有選用DB略過／0失敗，TypeScript、webpack與雲端建置通過；lint0 errors／14既有warnings。正式資料轉類以交易內hash斷言確認原作品資料、4筆評分、3則留言、47筆愛心歷次記錄、4筆收據及所有Credit紀錄保留；只允許既有updated_at觸發器更新維護時間，created_at不變。資料庫遷移`20261024070956_album_classification`、`20261024071251_album_single_chart_eligibility`已套用，檔名對齊正式歷史；轉類是獨立授權的operations SQL，不混入通用schema遷移。詳見[專輯與載入驗收](releases/2026-10-24-albums-loading.md)。
 
 前輪應用發布基準：2026-10-23／`8efdc79`／`codex/public-rule-copy`；Vercel `dpl_9HfZnBskqRMPKCtNuCu6s6BKs8kX` READY並綁定aipoger.com／www。Battle盲聽、Q Crash、Drop標題旁新增分享鍵，各有1200×630復古器材縮圖；伺服器metadata、canonical及四語連結保留mode，盲聽內頁同用盲聽圖。40項相關測試通過；完整698項665通過／33既有可選DB略過／0失敗，TypeScript與webpack build通過，lint0 errors／14既有warnings。正式16組爬蟲metadata、三張PNG及實際按鍵／手機定位驗收通過；沒有DB、Credit或自動發文修改。[三模式分享report](releases/2026-10-23-battle-mode-sharing.md)。
 
