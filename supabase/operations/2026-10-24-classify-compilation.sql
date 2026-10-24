@@ -1,5 +1,7 @@
 -- Explicitly authorized one-work classification. Keeps original IDs/assets/time,
 -- every interaction row and all Credit records; aborts if any preservation check fails.
+-- The existing update trigger advances updated_at for this classification edit;
+-- original created_at, media, counters and every other field must remain identical.
 begin isolation level repeatable read;
 do $$
 declare v_id uuid:='95450736-b981-442a-9da5-6eb9bf49097e'; v_before jsonb; v_after jsonb; v_count integer;
@@ -20,7 +22,7 @@ begin
     'creator_credit_history',(select jsonb_build_object('count',count(*),'hash',md5(coalesce(string_agg(to_jsonb(x)::text,'' order by to_jsonb(x)::text),''))) from public.creator_credit_history x where true),
     'creator_credit_awards',(select jsonb_build_object('count',count(*),'hash',md5(coalesce(string_agg(to_jsonb(x)::text,'' order by to_jsonb(x)::text),''))) from public.creator_credit_awards x where true),
     'creator_credit_review_texts',(select jsonb_build_object('count',count(*),'hash',md5(coalesce(string_agg(to_jsonb(x)::text,'' order by to_jsonb(x)::text),''))) from public.creator_credit_review_texts x where true),
-    'original_work',(select to_jsonb(t)-array['work_kind','album_track_ids','album_duration_seconds','work_classified_at','work_classification_note'] from public.listen_bar_tracks t where id=v_id)
+    'original_work',(select to_jsonb(t)-array['work_kind','album_track_ids','album_duration_seconds','work_classified_at','work_classification_note','updated_at'] from public.listen_bar_tracks t where id=v_id)
   ) into v_before;
   update public.listen_bar_tracks set work_kind='album',album_duration_seconds=1464,
     work_classified_at=now(),work_classification_note='多首歌曲連續合輯，依單曲／專輯內容分類規則移至專輯區；原互動與評分紀錄保留，不計入單曲榜。'
@@ -37,7 +39,7 @@ begin
     'creator_credit_history',(select jsonb_build_object('count',count(*),'hash',md5(coalesce(string_agg(to_jsonb(x)::text,'' order by to_jsonb(x)::text),''))) from public.creator_credit_history x where true),
     'creator_credit_awards',(select jsonb_build_object('count',count(*),'hash',md5(coalesce(string_agg(to_jsonb(x)::text,'' order by to_jsonb(x)::text),''))) from public.creator_credit_awards x where true),
     'creator_credit_review_texts',(select jsonb_build_object('count',count(*),'hash',md5(coalesce(string_agg(to_jsonb(x)::text,'' order by to_jsonb(x)::text),''))) from public.creator_credit_review_texts x where true),
-    'original_work',(select to_jsonb(t)-array['work_kind','album_track_ids','album_duration_seconds','work_classified_at','work_classification_note'] from public.listen_bar_tracks t where id=v_id)
+    'original_work',(select to_jsonb(t)-array['work_kind','album_track_ids','album_duration_seconds','work_classified_at','work_classification_note','updated_at'] from public.listen_bar_tracks t where id=v_id)
   ) into v_after;
   assert v_before=v_after, 'Classification changed original work data, interactions or Credit records';
   assert not exists(select 1 from public.work_rating_summaries() where track_id=v_id), 'Album still in rating summaries';

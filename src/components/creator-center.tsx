@@ -132,6 +132,7 @@ export function CreatorCenterLayout({
     [dialog, setDialog] = useState<string | null>(null),
     [comment, setComment] = useState<CreatorWork | null>(null),
     [external, setExternal] = useState<CreatorWork | null>(null);
+  useEffect(() => { if (new URLSearchParams(window.location.search).get("kind") === "album") setKind("album"); }, []);
   const dialogRef = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const openChallenge = () => setDialog("works");

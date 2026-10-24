@@ -30,6 +30,7 @@ export default function AlbumView({ initialId, query = "", genre = "" }: { initi
   }, [initialId, retry]);
   const globalPlayer = useMusicPlayer();
   useEffect(() => { if (globalPlayer.playing) setPlaying(false); }, [globalPlayer.playing]);
+  useEffect(() => { if (selected && typeof document !== "undefined") document.getElementById("album-detail")?.scrollIntoView({ block: "nearest" }); }, [selected]);
   const album = albums.find(a => a.id === selected); const track: AlbumMember | PublicAlbum | undefined = album?.tracks.length ? album.tracks[trackIndex] : album;
   const media = parseExternalMusic(track?.externalUrl);
   const start = (a: PublicAlbum, index = 0) => { if (getMusicPlayerState().playing) musicPlayer?.toggle(); setSelected(a.id); setTrackIndex(index); setPlaying(true); };
@@ -37,9 +38,9 @@ export default function AlbumView({ initialId, query = "", genre = "" }: { initi
   const share = async (a: PublicAlbum) => { const url = new URL(albumPath(a.id, lang), window.location.origin).href; try { if (navigator.share) await navigator.share({ title: a.title, url }); else { await navigator.clipboard.writeText(url); setShared(a.id); } } catch { /* Cancellation leaves the album unchanged. */ } };
   const filtered = albums.filter(a => (!genre || a.genre === genre) && `${a.title} ${a.artist}`.normalize("NFKC").toLowerCase().includes(query.normalize("NFKC").trim().toLowerCase()));
   return <div className={styles.root}>
-    <div className={styles.heading}><div><h2>{c.albums}</h2><p>{c.intro}</p><p>{c.note}</p></div><Link href={`/profile?lang=${lang}#submit-work`}>{c.submit} ↗</Link></div>
+    <div className={styles.heading}><div><h2>{c.albums}</h2><p>{c.intro}</p><p>{c.note}</p></div><Link href={`/profile?lang=${lang}&kind=album&submit=1#submit-work`}>{c.submit} ↗</Link></div>
     {loading ? <p role="status">{c.loading}</p> : null}{failed ? <p role="alert">{c.loadError}<button onClick={() => setRetry(i => i + 1)}>{c.retry}</button></p> : null}
-    {album && track ? <section className={styles.detail} aria-label={album.title}>
+    {album && track ? <section id="album-detail" className={styles.detail} aria-label={album.title}>
       <div className={styles.detailHeading}><div><span>{c.label}</span><h3>{album.title}</h3><p>{album.artist}</p></div><button onClick={() => { setSelected(null); setPlaying(false); }}>{c.close}</button></div>
       <p>{album.description}</p>
       {playing ? <div className={styles.player} key={track.id}>
