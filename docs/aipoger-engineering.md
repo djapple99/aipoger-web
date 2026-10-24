@@ -1,6 +1,8 @@
 # AIPOGER 開發與維運
 
-目前應用發布基準：2026-10-24／`555b529`／`codex/public-rule-copy`；Vercel `dpl_BqduXPi2ESjXsLozsXmGqNg84FdY` READY並綁定aipoger.com／www。依確認稿完成關於愛播歌與廣告合作新版，四語、可展開政策／合作內容及郵件入口，三張獨立WebP約520KB。TypeScript、webpack build、lint0 errors／14既有warnings、750測試717通過／33選用DB略過／0失敗；桌機與手機320／390px、完整設計比對及正式頁面驗收完成。舊授權正文保留，無Drop Battle規則、DB／Credit／Auth設定修改。[兩頁發布驗收](releases/2026-10-24-brand-pages.md)。
+目前應用發布基準：2026-10-24／`7936c34`／`codex/public-rule-copy`；Vercel `dpl_85sUMtwJs5VfnJ2qmm2XjfoYEMBR` READY並綁定aipoger.com／www。精選首頁新增Facebook／LINE社群入口，圖示緊接「加入創作討論社群」標題，介紹文字與關於／合作連結上提合併；Discord依使用者後續確認暫不放。TypeScript、webpack build、lint0 errors／14既有warnings及相關23項／精簡後首頁7項測試通過；四語桌機及320px、正式HTTP／真實作品與console驗收完成。無DB／Credit／Auth或Drop規則變更。[首頁社群發布驗收](releases/2026-10-24-community-footer.md)。
+
+前輪關於與合作發布基準：2026-10-24／`555b529`／`codex/public-rule-copy`；Vercel `dpl_BqduXPi2ESjXsLozsXmGqNg84FdY` READY並綁定aipoger.com／www。依確認稿完成關於愛播歌與廣告合作新版，四語、可展開政策／合作內容及郵件入口，三張獨立WebP約520KB。TypeScript、webpack build、lint0 errors／14既有warnings、750測試717通過／33選用DB略過／0失敗；桌機與手機320／390px、完整設計比對及正式頁面驗收完成。舊授權正文保留，無Drop Battle規則、DB／Credit／Auth設定修改。[兩頁發布驗收](releases/2026-10-24-brand-pages.md)。
 
 前輪盲聽評論發布基準：2026-10-24／`02180e1`／`codex/public-rule-copy`；Vercel `dpl_EzKLEtKFcpqUWUYMv7JgavE38jyj` READY並綁定aipoger.com／www。盲聽揭曉區增加原作品最近兩則評論／署名、評論與十分制評價視窗、已有MV才顯示完整觀看。歌曲與MV沿同一原作品ID／評分及評論；開窗暫停盲聽、MV明確點擊才載入。750項測試717通過／33既有選用DB略過／0失敗，TypeScript與webpack build通過，lint0 errors／14既有warnings。1440px與四語320px、8.75阻擋／8.7儲存後鎖定、預覽刷新及MV播放互停通過；互動為隔離fixture，正式原作品資料只讀核對，沒有測試發表。沒有DB／Auth／RLS或Storage設定變更。[評論與MV驗收](releases/2026-10-24-blind-reveal-feedback.md)。
 

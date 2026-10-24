@@ -1,5 +1,6 @@
 # AIPOGER 必要發布證據
 
+- [2026-10-24 首頁社群入口與緊湊頁尾](2026-10-24-community-footer.md)
 - [2026-10-24 關於愛播歌與廣告合作新版](2026-10-24-brand-pages.md)
 
 - [2026-10-23 Battle三模式分享鍵與專屬縮圖](2026-10-23-battle-mode-sharing.md)
