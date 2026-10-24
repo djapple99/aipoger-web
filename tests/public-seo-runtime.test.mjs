@@ -41,6 +41,7 @@ for (const lang of ['zh', 'en', 'ja', 'ko']) test(`initial Home and MV HTML cont
 
 for (const lang of ['zh', 'en', 'ja', 'ko']) test(`public guide renders only approved FAQ content, localized CTA and stable metadata (${lang})`, async () => {
   const mocks = common(lang);
+  mocks['@/components/share-button'] = loadTs('src/components/share-button.tsx', mocks);
   mocks['@/components/bible-creation-cta'] = loadTs('src/components/bible-creation-cta.tsx', mocks);
   mocks['@/components/seo-json-ld'] = { default: nothing };
   const articles = loadTs('src/lib/bible-public-articles.ts');

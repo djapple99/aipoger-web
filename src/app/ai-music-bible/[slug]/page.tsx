@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import EditorialHeader from "@/components/editorial-header";
 import ShareButton from "@/components/share-button";
+import { publicShareCopy } from "@/lib/public-share-copy";
 import SeoJsonLd from "@/components/seo-json-ld";
 import { biblePublicCopy, publicBibleArticle, BIBLE_PUBLIC_SLUGS } from "@/lib/bible-public-articles";
 import { requestLang } from "@/lib/server-public-locale";
@@ -23,7 +24,7 @@ export default async function BibleArticlePage({ params, searchParams }: Props) 
     <article className="mx-auto max-w-3xl space-y-7">
       <Link className="inline-flex min-h-11 items-center text-orange-200" href={`/ai-music-bible?lang=${lang}#bible-public-guides`}>← {copy.back}</Link>
       <header><p className="mb-4 text-xs tracking-[.2em] text-orange-300">AIPOGER · CREATION BIBLE</p><h1 className="text-3xl font-bold leading-snug md:text-5xl">{article.title}</h1></header>
-      <ShareButton title={article.title} text={article.summary} url={`${path}?lang=${lang}`} />
+      <ShareButton {...publicShareCopy(lang)} title={article.title} text={article.summary} url={`${path}?lang=${lang}`} />
       <div className="border-y border-white/15 py-8 text-lg leading-9 text-zinc-200"><p>{article.summary}</p></div>
       <p className="text-sm leading-7 text-zinc-400">{copy.note}</p>
       <Link className="inline-flex min-h-12 items-center rounded-full border border-orange-300/40 px-5 font-bold text-orange-200" href={`/ai-music-bible?lang=${lang}`}>{copy.member} ↗</Link>
