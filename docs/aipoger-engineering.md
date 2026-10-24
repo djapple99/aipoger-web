@@ -1,6 +1,8 @@
 # AIPOGER 開發與維運
 
-目前應用發布基準：2026-10-24／`02180e1`／`codex/public-rule-copy`；Vercel `dpl_EzKLEtKFcpqUWUYMv7JgavE38jyj` READY並綁定aipoger.com／www。盲聽揭曉區增加原作品最近兩則評論／署名、評論與十分制評價視窗、已有MV才顯示完整觀看。歌曲與MV沿同一原作品ID／評分及評論；開窗暫停盲聽、MV明確點擊才載入。750項測試717通過／33既有選用DB略過／0失敗，TypeScript與webpack build通過，lint0 errors／14既有warnings。1440px與四語320px、8.75阻擋／8.7儲存後鎖定、預覽刷新及MV播放互停通過；互動為隔離fixture，正式原作品資料只讀核對，沒有測試發表。沒有DB／Auth／RLS或Storage設定變更。[評論與MV驗收](releases/2026-10-24-blind-reveal-feedback.md)。
+目前應用發布基準：2026-10-24／`555b529`／`codex/public-rule-copy`；Vercel `dpl_BqduXPi2ESjXsLozsXmGqNg84FdY` READY並綁定aipoger.com／www。依確認稿完成關於愛播歌與廣告合作新版，四語、可展開政策／合作內容及郵件入口，三張獨立WebP約520KB。TypeScript、webpack build、lint0 errors／14既有warnings、750測試717通過／33選用DB略過／0失敗；桌機與手機320／390px、完整設計比對及正式頁面驗收完成。舊授權正文保留，無Drop Battle規則、DB／Credit／Auth設定修改。[兩頁發布驗收](releases/2026-10-24-brand-pages.md)。
+
+前輪盲聽評論發布基準：2026-10-24／`02180e1`／`codex/public-rule-copy`；Vercel `dpl_EzKLEtKFcpqUWUYMv7JgavE38jyj` READY並綁定aipoger.com／www。盲聽揭曉區增加原作品最近兩則評論／署名、評論與十分制評價視窗、已有MV才顯示完整觀看。歌曲與MV沿同一原作品ID／評分及評論；開窗暫停盲聽、MV明確點擊才載入。750項測試717通過／33既有選用DB略過／0失敗，TypeScript與webpack build通過，lint0 errors／14既有warnings。1440px與四語320px、8.75阻擋／8.7儲存後鎖定、預覽刷新及MV播放互停通過；互動為隔離fixture，正式原作品資料只讀核對，沒有測試發表。沒有DB／Auth／RLS或Storage設定變更。[評論與MV驗收](releases/2026-10-24-blind-reveal-feedback.md)。
 
 前輪應用發布基準：2026-10-24／`98b7274`／`codex/public-rule-copy`；Vercel `dpl_Eh7nMAM14soP4pnq8ZuH292kw9iY` READY並綁定aipoger.com／www。盲聽投票前隱藏全部作品身分，成功單選只揭曉選中作品、平手揭曉兩首；上一題小卡保留愛心收藏與共用播放器完整版。伺服器只依已提交choice揭曉；揭曉失敗獨立重讀，不重投／重發Credit。736項測試703通過／33既有選用DB略過／0失敗，TypeScript與webpack build通過，lint0 errors／14既有warnings。四語320px、390px中文與1440px桌機及播放互停驗收通過；完整互動使用本機fixtures，未向正式站新增測試投票或愛心，非iOS真機。沒有DB／Auth／RLS或Storage設定變更。[選中才揭曉驗收](releases/2026-10-24-blind-chosen-reveal.md)。
 
