@@ -19,6 +19,7 @@ import { readEarwormAffinityMap } from "@/lib/earworm-affinity";
 import { isPublicDiscoveryTrack } from "@/lib/listen-bar-airplay";
 import { blindSummaries } from "@/lib/server-blind-listening";
 import { mvRatingSummaries } from "@/lib/server-mv-reviews";
+import { readWorkFavoriteCounts } from "@/lib/server-work-favorites";
 
 type AdminClient = SupabaseClient;
 
@@ -287,7 +288,7 @@ export async function GET() {
     const now = Date.now();
     const playableRows = applyLegacyOpeningGrace(rows).filter(row => isPublicPlayableTrack(row) && isInDiscoveryMusicPool(row.created_at, row.id, now));
     const heartBatches = Array.from({ length: Math.ceil(playableRows.length / 100) }, (_, index) => playableRows.slice(index * 100, index * 100 + 100).map(row => row.id));
-    const [heartPages, lifecycleByTrackId, recentHeatByTrackId, affinityByTrackId, blind, ratings] = await Promise.all([
+    const [heartPages, lifecycleByTrackId, recentHeatByTrackId, affinityByTrackId, blind, ratings, favorites] = await Promise.all([
       Promise.all(heartBatches.map(ids => readAllHomePages<{ track_id: string; user_id: string; reaction: string; created_at: string }>(async (from, to) => {
         const result = await admin.from("listen_bar_track_reactions").select("track_id,user_id,reaction,created_at")
           .in("track_id", ids).eq("reaction", "heart").lte("created_at", new Date(now).toISOString())
@@ -298,6 +299,7 @@ export async function GET() {
       readRecentHeat(admin, playableRows.map((row) => row.id)),
       readEarwormAffinityMap(admin, playableRows.map((row) => row.id)),
       blindSummaries(admin), mvRatingSummaries(admin),
+      readWorkFavoriteCounts(admin, playableRows.map(row => row.id)),
     ]);
     const poolSupportCounts = musicPoolSupportCounts(playableRows, heartPages.flat());
     const tracks = playableRows
@@ -329,6 +331,7 @@ export async function GET() {
       const rating = ratings.get(row.id) ?? { ratingAverage: null, ratingCount: 0, ratingTotal: 0 };
       return { ...row, ai_music_blind_sample_count: summary.people,
         ai_music_blind_preference_points: summary.preferencePoints,
+        ai_music_favorite_count: favorites === null ? null : favorites.get(row.id) ?? 0,
         ai_music_rating_average: rating.ratingAverage, ai_music_rating_count: rating.ratingCount, ai_music_rating_total: rating.ratingTotal,
         ai_music_popularity_score: musicPoolPopularityScore(row.id, row.created_at, row.ai_music_pool_supporter_count, summary, rating.ratingTotal, now) };
     });

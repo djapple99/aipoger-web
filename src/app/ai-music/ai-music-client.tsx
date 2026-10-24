@@ -72,6 +72,7 @@ type AiMusicTrack = AiMusicExploreOrderTrack & AiMusicHeatTrack & {
   ratingAverage?: number | null;
   ratingCount?: number;
   ratingTotal?: number;
+  favoriteCount?: number | null;
   earwormAffinitySampleCount: number;
   earwormAffinityPercent: number | null;
   positiveReactionCount: number;
@@ -110,6 +111,7 @@ type AiMusicApiTrackRow = ListenBarTrackRow & {
   ai_music_rating_average?: number | null;
   ai_music_rating_count?: number | null;
   ai_music_rating_total?: number | null;
+  ai_music_favorite_count?: number | null;
   ai_music_legacy_retirement_exempt?: boolean | null;
   ai_music_explore_retired?: boolean | null;
   ai_music_official_challenge_count?: number | null;
@@ -304,6 +306,7 @@ async function tracksFromListenBar(lang: string) {
         ratingAverage: lifecycleRow.ai_music_rating_average ?? null,
         ratingCount: lifecycleRow.ai_music_rating_count ?? 0,
         ratingTotal: lifecycleRow.ai_music_rating_total ?? 0,
+        favoriteCount: lifecycleRow.ai_music_favorite_count ?? null,
         positiveReactionCount: numberValue(row.positive_reaction_count ?? track.positiveReactionCount),
         earwormAffinitySampleCount: numberValue(row.earworm_affinity_sample_count),
         earwormAffinityPercent: typeof row.earworm_affinity_percent === "number"
@@ -462,10 +465,16 @@ function TrackCard({
       </div>
       <div className={styles.creatorRow}>
         <p className={styles.creator} title={`${track.creator} · ${track.aiTool}`}>{track.creator}</p>
-        {track.ratingCount && track.ratingAverage != null ? <span className={styles.trackRating} title={localeText(lang, `${track.ratingCount} 人評分`, `${track.ratingCount} raters`, `${track.ratingCount}人が評価`, `${track.ratingCount}명 평가`)}>{track.ratingAverage.toFixed(1)} / 10</span> : null}
         {track.openForChallenge ? <Link href={aiMusicChallengeHref(track, lang)} className={styles.challenge}>
           <Swords aria-hidden="true" />{localeText(lang, "攻擂", "Challenge", "挑戦", "도전")}
         </Link> : null}
+      </div>
+      <div className={styles.workStats}>
+        <span className={styles.trackRating}>{track.ratingCount && track.ratingAverage != null
+          ? `${track.ratingAverage.toFixed(1)} / 10 · ` + localeText(lang, `${track.ratingCount} 人評分`, `${track.ratingCount} ${track.ratingCount === 1 ? "rating" : "ratings"}`, `${track.ratingCount}人が評価`, `${track.ratingCount}명 평가`)
+          : localeText(lang, "尚未評分", "Not rated yet", "評価はまだありません", "아직 평가 없음")}</span>
+        <span>{track.favoriteCount == null ? localeText(lang, "收藏暫不可用", "Saves unavailable", "保存数を取得できません", "저장 수 확인 불가")
+          : localeText(lang, `${track.favoriteCount} 人收藏`, `${track.favoriteCount} ${track.favoriteCount === 1 ? "save" : "saves"}`, `${track.favoriteCount}人が保存`, `${track.favoriteCount}명 저장`)}</span>
       </div>
       {catalogNote ? <p className={styles.note}>{catalogNote}</p> : null}
     </article>

@@ -19,7 +19,7 @@ test("Explore AI Music hearts use the shared Bar Heartbreak total", () => {
   assert.equal(aiMusicSource.includes("battle_song_stats"), false);
   assert.equal(aiMusicSource.includes("/api/honor-board/interactions?keys="), false);
   assert.equal(aiMusicSource.includes("myFavorited"), false);
-  assert.equal(aiMusicSource.includes("favoriteCount"), false);
+  assert.ok(aiMusicSource.includes("favoriteCount: lifecycleRow.ai_music_favorite_count ?? null"));
 });
 
 test("Explore AI Music lights and cancels only the viewer's active Taiwan-day Heart", () => {
@@ -58,6 +58,6 @@ test("Listen Bar reaction API deletes today's repeated Heart and synchronizes sa
 
 test("product rules keep private active state separate from public totals", () => {
   assert.ok(productRulesSource.includes("Re-pressing an active Heart on the same track cancels that day's Heart"));
-  assert.ok(productRulesSource.includes("Public music surfaces must show total Heart count only as the public metric"));
+  assert.ok(productRulesSource.includes("Explore shows actual unique favorite membership separately from Heart totals and ranking points"));
   assert.ok(productRulesSource.includes("Explore AI Music and Bar Heartbreak must read and update the same `listen_bar_tracks` Heart totals"));
 });
