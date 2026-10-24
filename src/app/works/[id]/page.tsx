@@ -27,8 +27,8 @@ export default async function WorkPage({ params, searchParams }: Props) {
   const { work, externalMedia } = detail;
   const albums = work.workKind === "album" ? await readPublicAlbums(id) : null;
   if (albums && !albums.length) notFound();
-  return <main className="min-h-screen bg-[#050505] pb-28 pt-24 text-zinc-100"><EditorialHeader active={work.videoId ? "mv" : "explore"} returnPath={`/works/${id}`} />
-    <article className="mx-auto w-full max-w-[1180px] space-y-5 px-4">
+  return <main className="min-h-screen bg-[#050505] pb-28 text-zinc-100"><EditorialHeader active={work.videoId ? "mv" : "explore"} returnPath={`/works/${id}`} />
+    <article className="mx-auto w-full max-w-[1180px] space-y-5 px-4 pt-8">
       <Link className="inline-block min-h-11 text-sm text-orange-200" href={work.videoId ? `/mv?lang=${lang}` : `/ai-music?lang=${lang}`}>← {work.videoId ? "MV" : homeCopy(lang).allMusic}</Link>
       <header className="space-y-3"><p className="text-xs uppercase tracking-widest text-orange-300">{work.workKind === "album" ? albumCopy(lang).label : work.genre}</p>
         <h1 id="public-work-title" className="break-words text-3xl font-bold leading-snug md:text-5xl">{work.title}</h1><p className="text-lg text-zinc-300">{work.artist}</p>

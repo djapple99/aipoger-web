@@ -20,8 +20,8 @@ export async function generateMetadata({ params, searchParams }: Props) {
 export default async function BibleArticlePage({ params, searchParams }: Props) {
   const { slug } = await params; const lang = await requestLang((await searchParams).lang); const article = publicBibleArticle(slug, lang);
   if (!article) notFound(); const copy = biblePublicCopy[lang]; const path = `/ai-music-bible/${slug}`;
-  return <main className="min-h-screen bg-[#050505] px-4 pb-28 pt-28 text-zinc-100"><EditorialHeader active="bible" returnPath={path} />
-    <article className="mx-auto max-w-3xl space-y-7">
+  return <main className="min-h-screen bg-[#050505] pb-28 text-zinc-100"><EditorialHeader active="bible" returnPath={path} />
+    <article className="mx-auto max-w-3xl space-y-7 px-4 pt-8">
       <Link className="inline-flex min-h-11 items-center text-orange-200" href={`/ai-music-bible?lang=${lang}#bible-public-guides`}>← {copy.back}</Link>
       <header><p className="mb-4 text-xs tracking-[.2em] text-orange-300">AIPOGER · CREATION BIBLE</p><h1 className="text-3xl font-bold leading-snug md:text-5xl">{article.title}</h1></header>
       <ShareButton {...publicShareCopy(lang)} title={article.title} text={article.summary} url={`${path}?lang=${lang}`} />
