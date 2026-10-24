@@ -333,9 +333,9 @@ Current behavior:
 - 2026-10-25確認：新 Drop Battle 由發起者選每首60秒、90秒或完整單曲，接戰者沿用；片段模式各自選起點，開始後不可改。整首模式仍屬即時同場對戰，不恢復已隱藏的24H模式。合輯／串燒不作單曲參戰。
 - 新Drop／Q Crash均改為公開Suno、YouTube或本人Aipoger公開單曲連結；只保存來源、封面、片段起點與長度，音源由既有來源播放，不新增或裁切保存大型音檔。新建Drop沒有30秒選項，預設60秒；90秒與整首另選。同場模式、來源與片段由服務端鎖定，隨機配對也須同模式；不可把Q Crash佇列配入Drop。已存在的短片段、音檔與戰績保留；接舊卡沿用舊45秒播放機制，片段不足則依原長度。
 - Legacy file-backed Drop Battle complete-song publication still requires the winning creator's explicit upload-time consent and an official result. Retiring Showtime certification grants no new full-song rights: without that consent, only the authorized Drop clip may be exposed. Complete audio must not be publicly playable by default or republished as a community song automatically.
-- When complete-song publishing is enabled, the Battle Room still uses only the Drop clip; `Full Song` is an authorized post-result playback state, not a battle playback rule or certification.
-- The complete-song decision is made during the original upload and is immutable for client-side edits. The upload form does not require a YouTube link yet; it only records whether the creator agrees to release the full work after an official win.
-- After an official result, only the winning creator may submit or update a YouTube MV URL. The server verifies the official 3-voter result, winning queue ownership, and upload-time full-song consent before saving it; admins cannot replace the creator's URL.
+- For legacy file-backed battles, when complete-song publishing is enabled, the Battle Room still uses only the Drop clip; `Full Song` is an authorized post-result playback state, not a battle playback rule or certification.
+- For legacy file-backed battles, the complete-song decision is made during the original upload and is immutable for client-side edits. The upload form does not require a YouTube link yet; it only records whether the creator agrees to release the full work after an official win.
+- For legacy file-backed battles, after an official result, only the winning creator may submit or update a YouTube MV URL. The server verifies the official 3-voter result, winning queue ownership, and upload-time full-song consent before saving it; admins cannot replace the creator's URL.
 - A submitted YouTube MV link is shown only on the official Battle Record and its corresponding authorized archived work. Historical Showtime links and authorized audio remain compatible; full-song playback still requires upload-time consent. The Battle Room remains Drop-only.
 - Drop Battle quick start options are relative to successful battle-card publishing: `發布後 10 / 15 / 20 分鐘`. Custom start time is an absolute user-selected time and should not move with upload/cutting duration.
 - `battle_queue.expires_at` is only a cleanup/expiry deadline. It must never be used as a Battle start time; opening time must come from `scheduled_start_at` or `cancellation_evaluation_at`.
@@ -377,7 +377,7 @@ Current behavior:
 
 ### 對戰連結投稿與播放合約（2026-10-25確認）
 
-- 伺服器量測來源歌曲長度並簽署預覽，不採信客戶端自報時長、媒體URL、參賽帳號或接戰模式。完整模式保存各首實際長度，兩首不必一樣長；片段須足夠60／90秒且不超出來源尾端。
+- 伺服器驗證來源、會員與公開資格並簽署預覽，優先讀取來源長度；YouTube雲端頁面沒有時長時，由可見官方嵌入播放器讀取，標記embedded_player並在實際播放時再核對（差異超過2秒停止並提示）。這個回退不是伺服器獨立證明時長；API僅在已驗證YouTube缺時長時接受有限正值，不允許覆蓋已取得的伺服器長度或來源URL／參賽帳號／接戰模式。完整模式保存各首長度，兩首不必一樣長；片段須足夠60／90秒且不超出來源尾端。
 - 歌名／作者／歌詞可填寫，來源封面可沿用或上傳獨立圖片；原Profile封面仍可回退。歌曲音檔上傳入口及舊upload-hook API退役（410），不影響既有素材讀取。
 - 新佇列由service-only RPC交易建立，會員由API驗證；同request重試不重建，同角色限額、本人刻意比較兩個版本、指定邀請與投票資格保留。接戰鎖定目標並再查公開狀態；已匹配來源不可改寫。
 - Battle保存不可變的A／B來源與播放區段快照；即時播放、晚到者進度、失效判斷、Cron結算及分享連結都沿相同長度。YouTube使用可見官方播放器，沒有下載或抽音。瀏覽器阻擋自動播放時須點擊開聲，晚進場依原共享時鐘續播。
