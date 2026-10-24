@@ -153,3 +153,9 @@ test('full-song listening pauses the next blind clip, preserves heard progress a
  const closed=ui.playerCalls.filter(x=>x.action==='close').length;
  await ui.listen('A',8);await ui.listen('B',8);assert.equal(ui.button(c.tie).disabled,false);assert.ok(ui.playerCalls.filter(x=>x.action==='close').length>closed);
 });
+test('opening selected reviews or MV pauses the next blind clip without discarding its real progress',async t=>{
+ const ui=await mount(t),c=battleRetroCopy('zh');await ui.listen('A');await ui.listen('B');await ui.button(c.prefer+' A').onClick();await ui.flush();ui.sync();
+ await ui.listen('A',4);ui.button(c.play+' A').onClick();await ui.flush();const src=ui.audioProps('A').src;
+ ui.reveal().onPause();await ui.flush();assert.equal(ui.els.A.paused,true);assert.equal(ui.els.B.paused,true);assert.equal(ui.audioProps('A').src,src);
+ await ui.listen('A',8);await ui.listen('B',8);assert.equal(ui.button(c.tie).disabled,false);
+});

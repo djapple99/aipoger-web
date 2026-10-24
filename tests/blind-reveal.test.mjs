@@ -41,3 +41,10 @@ test('new anonymous question contains no work IDs, titles, authors, covers or or
  assert.deepEqual(Object.keys(result).sort(),['id','expiresAt','heardA','heardB','audioA','audioB'].sort());
  const serialized=JSON.stringify(result);for(const secret of [q.track_a_id,q.track_b_id,'Secret title','Public stage name','private-name'])assert.equal(serialized.includes(secret),false);
 });
+test('only a selected valid MV is revealed; the other side never supplies a fallback video',async()=>{
+ const {q,admin}=fixture('A');admin.tables.listen_bar_tracks[1].youtube_url='https://youtu.be/lmnopqrstuv';
+ assert.equal((await normal.revealBlindQuestion(admin,USER,q.id)).works[0].videoId,null);
+ admin.tables.listen_bar_tracks[0].youtube_url='https://www.youtube.com/watch?v=abcdefghijk';
+ const r=await normal.revealBlindQuestion(admin,USER,q.id);assert.equal(r.works[0].videoId,'abcdefghijk');assert.equal(JSON.stringify(r).includes('lmnopqrstuv'),false);
+ admin.tables.listen_bar_tracks[0].youtube_url='https://attacker.example/watch?v=abcdefghijk';assert.equal((await normal.revealBlindQuestion(admin,USER,q.id)).works[0].videoId,null);
+});

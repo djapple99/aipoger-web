@@ -62,7 +62,7 @@ const COPY = {
       "sections": [
         {
           "title": "先盲聽，用耳朵選",
-          "body": "登入比較同曲風兩首歌的第 15–45 秒，選擇前只顯示 A／B。每側實際聽滿 8 秒後可選偏好或平手，也可拖曳重聽。選中才揭曉歌名、作者與封面；平手揭曉兩首，可各自愛心收藏或聽完整版。成功作答自動接下一題，保留上一題揭曉，隨時能離開。"
+          "body": "登入比較同曲風兩首歌的第 15–45 秒，選擇前只顯示 A／B。每側實際聽滿 8 秒後可選偏好或平手，也可拖曳重聽。選中才揭曉歌名、作者與封面；平手揭曉兩首，可各自愛心收藏、聽完整版，並看聽眾評論、留下與探索共用的評論及評分；有MV可完整觀看。成功作答自動接下一題，保留上一題揭曉，隨時能離開。"
         },
         {
           "title": "每題 3 Credit",
@@ -136,7 +136,7 @@ const COPY = {
       "sections": [
         {
           "title": "Let your ears choose",
-          "body": "Compare seconds 15–45 of two same-genre songs, labeled only A and B. Listen for 8 seconds each to choose or tie and unlock seeking. Only your pick's title, creator and cover are revealed; a tie reveals both. Heart and save, or play the full song. The next pair loads automatically while your last reveal stays available. Leave anytime."
+          "body": "Compare seconds 15–45 of two same-genre songs, labeled only A and B. Listen for 8 seconds each to choose or tie and unlock seeking. Only your pick's title, creator and cover are revealed; a tie reveals both. Heart and save, play the full song, read listener comments or leave a shared Explore comment and rating. Watch the full MV when available. The next pair loads automatically while your last reveal stays available. Leave anytime."
         },
         {
           "title": "3 Credit per question",
@@ -210,7 +210,7 @@ const COPY = {
       "sections": [
         {
           "title": "耳で選ぶブラインド比較",
-          "body": "同ジャンル2曲の15〜45秒を、曲名も作者も伏せたA/Bで比較。各8秒聴くと選択・引き分けとシークが可能に。選んだ曲のタイトル・作者・ジャケットだけ公開し、引き分けは両方公開。ハートで保存したり、フルで聴けます。回答後は前の公開情報を残して自動で次の問題へ。いつでも退出できます。"
+          "body": "同ジャンル2曲の15〜45秒を、曲名も作者も伏せたA/Bで比較。各8秒聴くと選択・引き分けとシークが可能に。選んだ曲のタイトル・作者・ジャケットだけ公開し、引き分けは両方公開。ハートで保存、フル試聴、リスナーのコメント閲覧やExploreと共通のコメント・評価ができます。MVがあればフル視聴も可能。回答後は前の公開情報を残して自動で次の問題へ。いつでも退出できます。"
         },
         {
           "title": "1問につき3 Credit",
@@ -284,7 +284,7 @@ const COPY = {
       "sections": [
         {
           "title": "귀로 고르는 블라인드 비교",
-          "body": "같은 장르 두 곡의 15–45초를 제목과 창작자를 숨긴 A/B로 비교하세요. 각 8초를 들으면 선택·무승부와 구간 이동이 열려요. 고른 곡의 제목·창작자·커버만 공개하고 무승부면 두 곡 모두 공개해요. 하트로 저장하거나 전체 곡을 들을 수 있어요. 직전 공개 정보는 남긴 채 자동으로 다음 문제로 이동하며 언제든 나갈 수 있어요."
+          "body": "같은 장르 두 곡의 15–45초를 제목과 창작자를 숨긴 A/B로 비교하세요. 각 8초를 들으면 선택·무승부와 구간 이동이 열려요. 고른 곡의 제목·창작자·커버만 공개하고 무승부면 두 곡 모두 공개해요. 하트로 저장하고 전체 곡을 듣거나 청취자 댓글을 보고 탐색과 같은 댓글·평점을 남길 수 있어요. MV가 있으면 전체 영상도 볼 수 있어요. 직전 공개 정보는 남긴 채 자동으로 다음 문제로 이동하며 언제든 나갈 수 있어요."
         },
         {
           "title": "문제당 3 Credit",

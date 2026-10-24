@@ -7,7 +7,7 @@ export type BlindChoice = "A" | "B" | "tie";
 export type BlindSide = "A" | "B";
 export type BlindRevealedWork = { side: BlindSide; unavailable: true } | {
   side: BlindSide; id: string; title: string; artist: string;
-  coverUrl: string; audioUrl: string; href: string; unavailable?: false;
+  coverUrl: string; audioUrl: string; videoId?: string | null; href: string; unavailable?: false;
 };
 export type BlindReveal = { choice: BlindChoice; works: BlindRevealedWork[] };
 export function blindPairKey(a: string, b: string) { return [a, b].sort().join(":"); }

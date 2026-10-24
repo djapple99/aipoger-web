@@ -1,7 +1,7 @@
 import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { creatorAdmin } from "./server-creator-auth";
-import { readAllHomePages } from "./home-discovery";
+import { homeYouTubeId, readAllHomePages } from "./home-discovery";
 import { isInMusicPool } from "./music-pool";
 import { isCurrentMusicGenre } from "./music-genres";
 import { buildAiMusicSurfaceLifecycleMap } from "./ai-music-surface-lifecycle";
@@ -9,6 +9,7 @@ import { blindPairKey, isBlindChoice, type BlindReveal, type BlindSide, type Bli
 import type { ListenBarTrackRow } from "./listen-bar";
 export type BlindRow = {
   id: string; title: string; artist: string; genre: string; created_by: string | null;
+  youtube_url?: string | null;
   created_at: string; audio_path: string; cover_path: string | null; duration_seconds: number;
   work_kind?: string; source: string; is_active: boolean; is_featured_official: boolean; review_status: string;
   hidden_at: string | null; removed_at: string | null; ai_music_showtime_public_removed_at: string | null;
@@ -17,7 +18,7 @@ export type QuestionRow = {
   id: string; user_id: string; track_a_id: string; track_b_id: string; state: string;
   choice: string | null; expires_at: string; heard_a: number; heard_b: number;
 };
-const fields = "id,work_kind,title,artist,genre,created_by,created_at,audio_path,cover_path,duration_seconds,source,is_active,is_featured_official,review_status,hidden_at,removed_at,ai_music_showtime_public_removed_at,ai_music_showtime_certified,ai_music_showtime_certified_at,ai_music_showtime_certification_source";
+const fields = "id,work_kind,title,artist,genre,created_by,created_at,audio_path,cover_path,youtube_url,duration_seconds,source,is_active,is_featured_official,review_status,hidden_at,removed_at,ai_music_showtime_public_removed_at,ai_music_showtime_certified,ai_music_showtime_certified_at,ai_music_showtime_certification_source";
 export function blindStorageUrl(admin: SupabaseClient, path: string | null, bucket = "listen-bar-audio") {
   if (!path?.trim()) return "";
   const origin = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).origin;
@@ -138,6 +139,7 @@ export async function revealBlindQuestion(admin: SupabaseClient, userId: string,
     return r ? { side, id: r.id, title: r.title, artist: r.artist,
       coverUrl: blindStorageUrl(admin, r.cover_path, "listen-bar-covers"),
       audioUrl: blindStorageUrl(admin, r.audio_path),
+      videoId: homeYouTubeId(r.youtube_url),
       href: "/ai-music?track=" + r.id + "#works" } : { side, unavailable: true };
   }) };
 }

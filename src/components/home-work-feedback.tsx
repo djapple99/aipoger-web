@@ -14,7 +14,7 @@ import type { HomeWork } from "@/lib/home-discovery";
 import styles from "./home-editorial.module.css";
 
 type Comment = { id: string; name: string; text: string; createdAt: string };
-export default function HomeWorkFeedback({ work, onClose, onChange, returnPath = "/", showVideo = false, supportNote, autoPlay = false, videoControls, shareControl, onVideoEnded, onVideoUnavailable, onReviewBusy }: { work: HomeWork; onClose: () => void; onChange: () => void; returnPath?: string; showVideo?: boolean; supportNote?: string; autoPlay?: boolean; videoControls?: ReactNode; shareControl?: ReactNode; onVideoEnded?: () => void; onVideoUnavailable?: () => void; onReviewBusy?: (busy: boolean) => void }) {
+export default function HomeWorkFeedback({ work, onClose, onChange, returnPath = "/", showVideo = false, reviewSurface, supportNote, autoPlay = false, videoControls, shareControl, onVideoEnded, onVideoUnavailable, onReviewBusy }: { work: HomeWork; onClose: () => void; onChange: () => void; returnPath?: string; showVideo?: boolean; reviewSurface?: "music" | "mv"; supportNote?: string; autoPlay?: boolean; videoControls?: ReactNode; shareControl?: ReactNode; onVideoEnded?: () => void; onVideoUnavailable?: () => void; onReviewBusy?: (busy: boolean) => void }) {
   const { lang } = useI18n(); const copy = homeCopy(lang);
   const dialog = useRef<HTMLDialogElement>(null);
   const scrollArea = useRef<HTMLDivElement>(null);
@@ -134,7 +134,7 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
       {withVideo && videoControls ? <div className={styles.mvViewLinks}>{videoControls}</div> : null}
       {heartReadFailed ? <p role="alert" className={styles.refreshError}>{copy.error}</p> : null}
       <div ref={commentArea} id="mv-comment-area">
-        <MvRatingForm key={work.id} trackId={work.id} workKind={work.workKind} signedIn={signedIn} surface={work.videoId ? "mv" : "music"} drafts={reviewDrafts.current} onBusy={onReviewBusy ?? (() => {})} onSaved={item => {
+        <MvRatingForm key={work.id} trackId={work.id} workKind={work.workKind} signedIn={signedIn} surface={reviewSurface ?? (work.videoId ? "mv" : "music")} drafts={reviewDrafts.current} onBusy={onReviewBusy ?? (() => {})} onSaved={item => {
           if (currentWork.current !== work.id) return;
           if (item) setComments(current => current.some(comment => comment.id === item.id) ? current.map(comment => comment.id === item.id ? item : comment) : [...current, item]);
           setCommentsVersion(version => version + 1);

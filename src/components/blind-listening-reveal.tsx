@@ -2,29 +2,42 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Disc3, Heart, Pause, Play } from "lucide-react";
+import dynamic from "next/dynamic";
+import { Disc3, Heart, Pause, Play, Video } from "lucide-react";
 import type { BlindReveal, BlindRevealedWork } from "@/lib/blind-listening";
 import { battleRetroCopy } from "@/lib/battle-retro-copy";
 import { useI18n } from "@/lib/i18n";
 import { useMvHearts } from "@/lib/use-mv-hearts";
 import { musicPlayer, useMusicPlayer } from "@/lib/music-player-store";
+import type { HomeWork } from "@/lib/home-discovery";
+import BlindWorkComments from "./blind-work-comments";
 import styles from "./battle-retro.module.css";
+const HomeWorkFeedback = dynamic(() => import("./home-work-feedback"));
 
-export default function BlindListeningReveal({ result, failed, loading, onRetry, onListen }: {
+export default function BlindListeningReveal({ result, failed, loading, onRetry, onListen, onPause }: {
   result: BlindReveal | null; failed: boolean; loading: boolean;
-  onRetry: () => void; onListen: (work: BlindRevealedWork) => Promise<boolean>;
+  onRetry: () => void; onListen: (work: BlindRevealedWork) => Promise<boolean>; onPause: () => void;
 }) {
   const { lang } = useI18n(), c = battleRetroCopy(lang);
   const ids = result?.works.flatMap(work => work.unavailable ? [] : [work.id]) ?? [];
   const hearts = useMvHearts(ids), player = useMusicPlayer();
   const [playFailed, setPlayFailed] = useState(false), [loginRequired, setLoginRequired] = useState(false);
+  const [feedback, setFeedback] = useState<{ work: HomeWork; video: boolean } | null>(null);
+  const [commentsVersion, setCommentsVersion] = useState(0);
+  const openFeedback = (work: BlindRevealedWork, video = false) => {
+    if (work.unavailable || (video && !work.videoId)) return;
+    onPause(); musicPlayer?.close();
+    setFeedback({ video, work: { id: work.id, title: work.title, artist: work.artist, coverUrl: work.coverUrl, audioUrl: work.audioUrl,
+      videoId: work.videoId ?? null, youtubeUrl: work.videoId ? "https://www.youtube.com/watch?v=" + work.videoId : null,
+      genre: "", description: "", lyrics: "", supporterCount: 0, publishedAt: "" } });
+  };
   return <section className={styles.reveal} aria-labelledby="blind-reveal-title">
     <div className={styles.revealHeading}><h2 id="blind-reveal-title" aria-live="polite">{result?.choice === "tie" ? c.revealedTie : c.revealedChoice}</h2>
       <span>{c.revealHint}</span></div>
     {failed ? <div className={styles.revealError} role="alert"><p>{c.revealFailed}</p><button disabled={loading} onClick={onRetry}>{loading ? c.loading : c.retry}</button></div> : null}
     {result ? <div className={styles.revealRows} data-count={result.works.length}>
       {result.works.map(work => work.unavailable ? <p className={styles.revealedWork} key={work.side}>{work.side} · {c.unavailable}</p> : <article className={styles.revealedWork} key={work.id}>
-        <div className={styles.revealCover}>{work.coverUrl ? <img src={work.coverUrl} alt="" loading="lazy" decoding="async" width={72} height={72} onError={event => { event.currentTarget.hidden = true; }} /> : null}<Disc3 aria-hidden="true" size={30}/><span>{work.side}</span></div>
+        <div className={styles.revealSummary}><div className={styles.revealCover}>{work.coverUrl ? <img src={work.coverUrl} alt="" loading="lazy" decoding="async" width={72} height={72} onError={event => { event.currentTarget.hidden = true; }} /> : null}<Disc3 aria-hidden="true" size={30}/><span>{work.side}</span></div>
         <div className={styles.revealInfo}><Link href={work.href.replace("?", "?lang=" + lang + "&")}>{work.title}</Link><p>{work.artist}</p>
           <div className={styles.revealActions}>
             <button type="button" aria-pressed={Boolean(hearts.hearts[work.id])} title={hearts.hearts[work.id] ? c.removeHeart : c.heart} disabled={!hearts.ready || hearts.busyId !== null || hearts.error === "read"}
@@ -34,12 +47,16 @@ export default function BlindListeningReveal({ result, failed, loading, onRetry,
               if (player.session?.queue[player.session.index]?.id === work.id && player.playing) { musicPlayer?.toggle(); return; }
               setPlayFailed(!await onListen(work));
             }}>{player.session?.queue[player.session.index]?.id === work.id && player.playing ? <Pause size={17}/> : <Play size={17}/>}<span>{player.session?.queue[player.session.index]?.id === work.id && player.playing ? c.pause : c.fullSong}</span></button>
+            {work.videoId ? <button type="button" onClick={() => openFeedback(work, true)}><Video size={17}/>{c.fullMv}</button> : null}
           </div>
-        </div>
+        </div></div>
+        <BlindWorkComments trackId={work.id} version={commentsVersion} onReview={() => openFeedback(work)}/>
       </article>)}
     </div> : null}
     {hearts.error ? <p className={styles.revealError} role="alert">{c.heartFailed}{hearts.error === "read" ? <button onClick={() => void hearts.reload()}>{c.retry}</button> : null}</p> : null}
     {playFailed ? <p className={styles.revealError} role="alert">{c.fullSongFailed}</p> : null}
     {loginRequired ? <Link className={styles.revealError} href={"/auth?lang=" + lang + "&next=" + encodeURIComponent("/battle/listen?lang=" + lang)}>{c.loginNote}</Link> : null}
+    {feedback ? <HomeWorkFeedback work={feedback.work} returnPath="/battle/listen" showVideo={feedback.video} autoPlay={feedback.video} reviewSurface={feedback.video ? "mv" : "music"}
+      supportNote={c.reviewSyncNote} onClose={() => setFeedback(null)} onChange={() => setCommentsVersion(n => n + 1)}/> : null}
   </section>;
 }

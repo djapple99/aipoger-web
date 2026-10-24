@@ -197,6 +197,13 @@ export default function BlindListeningRoom() {
     try { return await musicPlayer.start([{ id: work.id, title: work.title, artist: work.artist, coverUrl: work.coverUrl, audioUrl: work.audioUrl, heartTrackId: work.id }], 0, c.revealedChoice, { sourceKey: "blind-reveal:" + work.id, repeat: false }); }
     catch { return false; }
   };
+  const pauseForFeedback = () => {
+    const current = sideRef.current, el = current === "A" ? audioA.current : current === "B" ? audioB.current : null;
+    if (current && el) measure(current, el);
+    playbackAuthorized.current = false; ++startGeneration.current;
+    audioA.current?.pause(); audioB.current?.pause(); setPlaying(false); setArming(null);
+    if (current && el) void sendTick("pause", current, el.currentTime);
+  };
   const message = error === "LISTEN_FIRST" ? c.listenFirst : error === "SAVE_FAILED" ? c.saveFailed
     : error === "LISTENING_UNAVAILABLE" || error === "WORK_UNAVAILABLE" ? c.playbackFailed : c.loadFailed;
   const hudState = error || playbackError ? "error" : busy ? "next" : !question ? "loading" : canVote ? "vote" : arming || (!playing && (!mediaReady.A || !mediaReady.B)) ? "buffering" : playing ? "listening" : "ready";
@@ -235,7 +242,7 @@ export default function BlindListeningRoom() {
       {error || playbackError ? <div className={styles.state + " " + styles.error} role="alert"><p>{playbackError ? c.playbackFailed : message}</p>
         <button onClick={retry} disabled={busy}>{c.retry}</button>
       </div> : null}
-      {revealed ? <BlindListeningReveal key={revealed.questionId} result={revealed.result} failed={revealed.failed} loading={revealing} onRetry={() => void retryReveal()} onListen={listenFull}/> : null}
+      {revealed ? <BlindListeningReveal key={revealed.questionId} result={revealed.result} failed={revealed.failed} loading={revealing} onRetry={() => void retryReveal()} onListen={listenFull} onPause={pauseForFeedback}/> : null}
       <div className={styles.decision}>
         <div className={styles.choices}>
           {(["A", "tie", "B"] as BlindChoice[]).map(choice => <button key={choice} disabled={!canVote} onClick={() => void vote(choice)}>
