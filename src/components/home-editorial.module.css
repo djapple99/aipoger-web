@@ -268,3 +268,32 @@
 }
 
 .mobileSubmitLabel { display: none; }
+
+/* One persistent media mount, with an independently scrolling review pane. */
+.feedbackWithVideo { width: min(1180px, calc(100% - 24px)); scrollbar-gutter: auto; height: var(--feedback-dialog-height, min(800px, calc(100dvh - 24px))); max-height: none; inset: auto 0 auto; top: var(--feedback-dialog-top, 12px); margin: 0 auto; }
+.feedbackWithVideo .feedbackInner { display: flex; flex-direction: column; height: 100%; max-height: none; overflow: hidden; scrollbar-gutter: auto; padding: 24px; }
+.feedbackWithVideo .feedbackHeading { flex-shrink: 0; }
+.feedbackWithVideo .feedbackHeading h2 { font-size: 23px; line-height: 1.35; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.feedbackWithVideo .feedbackBody { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(320px, 1fr); gap: 24px; flex: 1; min-height: 0; margin-top: 16px; }
+.feedbackMedia, .feedbackDiscussion { min-width: 0; }
+.feedbackWithVideo .feedbackMedia, .feedbackWithVideo .feedbackDiscussion { min-height: 0; overflow-y: auto; scrollbar-gutter: stable; scrollbar-color: #ff8f32 #18120c; scrollbar-width: thin; overscroll-behavior: contain; }
+.feedbackWithVideo .feedbackDiscussion { padding-right: 10px; scroll-padding-block: 16px; }
+.feedbackWithVideo .feedbackVideo { margin-top: 0; }
+.feedbackWithVideo .feedbackSupportRow { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; margin-top: 0; }
+.feedbackWithVideo .feedbackSupportRow > .feedbackHeart, .feedbackWithVideo .feedbackSupportRow > .feedbackAuth { justify-self: start; }
+.feedbackWithVideo .feedbackNote { grid-column: 1 / -1; grid-row: 2; }
+.feedbackWithVideo .feedbackForm textarea { resize: none; font-size: 16px; }
+@media (max-width: 700px) {
+  .feedbackWithVideo { width: calc(100% - 16px); }
+  .feedbackWithVideo .feedbackInner { padding: 12px; }
+  .feedbackWithVideo .feedbackHeading p { margin-bottom: 4px; }
+  .feedbackWithVideo .feedbackHeading h2 { font-size: 18px; margin-bottom: 4px; }
+  .feedbackWithVideo .feedbackBody { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 12px; margin-top: 12px; }
+  .feedbackWithVideo .feedbackMedia { overflow: visible; scrollbar-gutter: auto; }
+  .feedbackWithVideo .feedbackDiscussion { padding-right: 6px; }
+}
+@media (max-width: 700px) and (max-height: 540px) {
+  .feedbackWithVideo .feedbackHeading p { display: none; }
+  .feedbackWithVideo .feedbackHeading h2 { font-size: 16px; -webkit-line-clamp: 1; padding-right: 38px; }
+  .feedbackWithVideo .feedbackBody { gap: 8px; margin-top: 8px; }
+}

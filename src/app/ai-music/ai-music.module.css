@@ -163,9 +163,6 @@
 .comment svg { width: 26px; height: 26px; stroke-width: 1.8; }
 .comment:disabled { opacity: .4; cursor: default; }
 .highlighted { outline: 2px solid #ff7518; outline-offset: 5px; border-radius: 4px; }
-.chartDialog { position: fixed; inset: 0; margin: auto; width: min(94vw,660px); max-height: 88dvh; overflow-y: auto; border: 1px solid #ffffff35; border-radius: 6px; padding: 25px; background: #080808; color: #fff; }
-.chartDialog::backdrop { background: #000b; }
-.chartClose { display: grid; place-items: center; width: 44px; height: 44px; float: right; cursor: pointer; }
 .radioStation { padding: 20px 0 14px; border-bottom: 1px solid #ffffff28; }
 .radioHeading { display: flex; align-items: center; gap: 27px; min-height: 44px; margin-bottom: 15px; }
 .stationName { display: flex; align-items: center; gap: 17px; flex-shrink: 0; }

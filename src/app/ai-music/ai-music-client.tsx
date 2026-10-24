@@ -1,6 +1,5 @@
 "use client";
 import ParticipationGuide from "@/components/participation-guide";
-import ExternalMusicPlayer from "@/components/external-music-player";
 import type { ExternalMusic } from "@/lib/external-music";
 
 import { musicPlayer, useMusicPlayer } from "@/lib/music-player-store";
@@ -568,9 +567,6 @@ export default function AiMusicClient({ initialView = "genre", initialAlbumId = 
   const loadLanguage = useRef("");
   const [poolNow, setPoolNow] = useState(Date.now());
   const [commentTrack, setCommentTrack] = useState<AiMusicTrack | null>(null);
-  const [externalTrack, setExternalTrack] = useState<AiMusicTrack | null>(null);
-  const externalDialog = useRef<HTMLDialogElement>(null);
-  useEffect(() => { if(externalTrack) externalDialog.current?.showModal(); else externalDialog.current?.close(); }, [externalTrack]);
   const [locateVersion, setLocateVersion] = useState(0);
   const located = useRef("");
   const preparedLocate = useRef("");
@@ -847,7 +843,7 @@ export default function AiMusicClient({ initialView = "genre", initialAlbumId = 
   }, [notice]);
 
   const handlePlayTrack = (track: AiMusicTrack) => {
-    if(track.external) { setExternalTrack(track); return; }
+    if(track.external) { setCommentTrack(track); return; }
     if (!track.audioUrl) {
       setNotice(localeText(lang, "這首作品目前沒有可播放音檔。", "This track has no playable audio yet.", "この作品には再生できる音源がまだありません。", "이 작품에는 아직 재생 가능한 음원이 없습니다."));
       return;
@@ -976,11 +972,7 @@ export default function AiMusicClient({ initialView = "genre", initialAlbumId = 
   return (
     <div className={styles.page}>
       <EditorialHeader active="explore" />
-      <dialog ref={externalDialog} className={styles.chartDialog} aria-label={externalTrack?.title} onCancel={() => setExternalTrack(null)} onClick={e=>{if(e.target===e.currentTarget)setExternalTrack(null);}}>
-        <button autoFocus className={styles.chartClose} aria-label={copy.close} onClick={()=>setExternalTrack(null)}><X/></button>
-        {externalTrack?.external ? <ExternalMusicPlayer media={externalTrack.external} title={externalTrack.title}/> : null}
-      </dialog>
-      {feedbackWork ? <HomeWorkFeedback key={feedbackWork.id} work={feedbackWork} supportNote={localeText(lang, "愛心、填寫的分數與盲聽支持累積成排行總分；留言文字本身不加分。自己的作品不自評。", "Hearts, numeric ratings and blind preferences contribute to total chart points. Comment text adds no chart points. Creators cannot rate their own work.", "支持・入力した評価・ブラインド試聴の支持を累積して順位を決めます。コメント本文は加点されません。自分の作品には採点できません。", "하트, 입력한 평점, 블라인드 선호를 누적해 순위를 정해요. 댓글 내용 자체는 차트 점수를 더하지 않아요. 내 작품은 평가할 수 없어요.")} returnPath={`/ai-music?track=${feedbackWork.id}#works`} onClose={() => setCommentTrack(null)} onChange={() => setLoadVersion(value => value + 1)} /> : null}
+      {feedbackWork ? <HomeWorkFeedback key={feedbackWork.id} work={feedbackWork} externalMedia={commentTrack?.external} reviewSurface="music" supportNote={localeText(lang, "邊聽邊寫下感受，並留下你的評分。", "Listen while you write your thoughts and leave a rating.", "聴きながら感想を書いて、評価を残しましょう。", "음악을 들으며 감상과 평점을 남겨 보세요.")} returnPath={`/ai-music?track=${feedbackWork.id}#works`} onClose={() => setCommentTrack(null)} onChange={() => setLoadVersion(value => value + 1)} /> : null}
       <main className={styles.main}>
         {worksView !== "albums" ? <ExploreRadio tracks={radioTracks} ready={loadState === "ready"} hearted={Boolean(currentTrack && heartStates[currentTrack.recordKey])} heartBusy={Boolean(currentTrack && heartBusy[currentTrack.recordKey])}
           onHeart={id => { const track = poolTracks.find(track => track.sourceId === id); if (track) void sendHeart(track); }}

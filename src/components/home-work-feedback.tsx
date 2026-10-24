@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowDown, Heart, X } from "lucide-react";
 import MvPlayer from "@/components/mv-player";
+import ExternalMusicPlayer from "@/components/external-music-player";
+import type { ExternalMusic } from "@/lib/external-music";
 import MvRatingForm, { type MvReviewDraft } from "@/components/mv-rating-form";
 import { useI18n } from "@/lib/i18n";
 import { albumCopy } from "@/lib/album-copy";
@@ -14,7 +16,7 @@ import type { HomeWork } from "@/lib/home-discovery";
 import styles from "./home-editorial.module.css";
 
 type Comment = { id: string; name: string; text: string; createdAt: string };
-export default function HomeWorkFeedback({ work, onClose, onChange, returnPath = "/", showVideo = false, reviewSurface, supportNote, autoPlay = false, videoControls, shareControl, onVideoEnded, onVideoUnavailable, onReviewBusy }: { work: HomeWork; onClose: () => void; onChange: () => void; returnPath?: string; showVideo?: boolean; reviewSurface?: "music" | "mv"; supportNote?: string; autoPlay?: boolean; videoControls?: ReactNode; shareControl?: ReactNode; onVideoEnded?: () => void; onVideoUnavailable?: () => void; onReviewBusy?: (busy: boolean) => void }) {
+export default function HomeWorkFeedback({ work, onClose, onChange, returnPath = "/", showVideo = false, externalMedia, reviewSurface, supportNote, autoPlay = false, videoControls, shareControl, onVideoEnded, onVideoUnavailable, onReviewBusy }: { work: HomeWork; onClose: () => void; onChange: () => void; returnPath?: string; showVideo?: boolean; externalMedia?: ExternalMusic | null; reviewSurface?: "music" | "mv"; supportNote?: string; autoPlay?: boolean; videoControls?: ReactNode; shareControl?: ReactNode; onVideoEnded?: () => void; onVideoUnavailable?: () => void; onReviewBusy?: (busy: boolean) => void }) {
   const { lang } = useI18n(); const copy = homeCopy(lang);
   const dialog = useRef<HTMLDialogElement>(null);
   const scrollArea = useRef<HTMLDivElement>(null);
@@ -32,6 +34,7 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
   const [busy, setBusy] = useState(false);
   const currentWork = useRef(work.id); currentWork.current = work.id;
   const withVideo = Boolean(showVideo && work.videoId);
+  const withMedia = withVideo || Boolean(externalMedia);
   const destination = new URL(returnPath, "https://aipoger.com");
   destination.searchParams.set("lang", lang);
   if (destination.pathname === "/mv") destination.searchParams.set("track", work.id);
@@ -44,8 +47,31 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
     return () => { element?.close(); if (previous instanceof HTMLElement) previous.focus(); };
   }, []);
   useEffect(() => {
+    if (!withMedia) return;
+    const viewport = window.visualViewport;
+    const resize = () => {
+      const height = viewport?.height ?? window.innerHeight;
+      if (!Number.isFinite(height)) return;
+      const gutter = window.innerWidth <= 700 ? 8 : 12;
+      const panelHeight = Math.min(800, height - gutter * 2);
+      // Resize the layout for the mobile keyboard without touching the player.
+      dialog.current?.style.setProperty("--feedback-dialog-height", `${panelHeight}px`);
+      dialog.current?.style.setProperty("--feedback-dialog-top", `${(viewport?.offsetTop ?? 0) + (height - panelHeight) / 2}px`);
+    };
+    resize();
+    window.addEventListener("resize", resize);
+    viewport?.addEventListener("resize", resize);
+    viewport?.addEventListener("scroll", resize);
+    return () => {
+      window.removeEventListener("resize", resize);
+      viewport?.removeEventListener("resize", resize);
+      viewport?.removeEventListener("scroll", resize);
+    };
+  }, [withMedia]);
+
+  useEffect(() => {
     const scroll = scrollArea.current; const comments = commentArea.current;
-    if (!withVideo || !scroll || !comments) return;
+    if (!withMedia || !scroll || !comments) return;
     const update = () => setShowCommentCue(comments.getBoundingClientRect().top >= scroll.getBoundingClientRect().bottom - 24);
     update();
     scroll.addEventListener("scroll", update, { passive: true });
@@ -53,7 +79,7 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
     observer?.observe(scroll); observer?.observe(comments);
     return () => { scroll.removeEventListener("scroll", update); window.removeEventListener("resize", update); observer?.disconnect(); };
-  }, [withVideo, work.id]);
+  }, [withMedia, work.id]);
 
   useEffect(() => {
     const controller = new AbortController(); let active = true;
@@ -117,38 +143,45 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
     finally { setBusy(false); }
   };
 
-  return <dialog ref={dialog} className={`${styles.feedbackDialog} ${withVideo ? styles.feedbackWithVideo : ""}`} aria-labelledby="home-feedback-title" onCancel={onClose}
+  return <dialog ref={dialog} className={`${styles.feedbackDialog} ${withMedia ? styles.feedbackWithVideo : ""}`} aria-labelledby="home-feedback-title" onCancel={onClose}
     onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
-    <div ref={scrollArea} className={styles.feedbackInner}>
+    <div className={styles.feedbackInner}>
       <div className={styles.feedbackHeading}><div><p>{copy.discuss}</p><h2 id="home-feedback-title">{work.title}</h2><span>{work.artist}</span></div>
         <button autoFocus type="button" onClick={onClose} aria-label={copy.closeFeedback}><X size={22} /></button>
       </div>
-      {withVideo ? <MvPlayer work={work} autoPlay={autoPlay} onEnded={onVideoEnded} onUnavailable={onVideoUnavailable} /> : null}
-      <div className={styles.feedbackSupportRow}>
-        {signedIn ? <button className={styles.feedbackHeart} type="button" disabled={busy || hearted === null} aria-pressed={hearted === true}
-          onClick={() => void submitHeart()}><Heart size={18} fill={hearted ? "currentColor" : "none"} />{hearted ? copy.removeHeart : copy.sendHeart}</button>
-          : <Link className={styles.feedbackAuth} href={authHref}>{copy.loginFeedback}</Link>}
-        <p className={styles.feedbackNote}>{work.workKind === "album" ? albumCopy(lang).note : supportNote ?? copy.supportNote}</p>
-        {withVideo && shareControl ? <div className={styles.feedbackShare}>{shareControl}</div> : null}
+      <div className={styles.feedbackBody}>
+        {withMedia ? <div className={styles.feedbackMedia}>
+          {withVideo ? <MvPlayer work={work} autoPlay={autoPlay} onEnded={onVideoEnded} onUnavailable={onVideoUnavailable} />
+            : externalMedia ? <ExternalMusicPlayer media={externalMedia} title={work.title} /> : null}
+          {withVideo && videoControls ? <div className={styles.mvViewLinks}>{videoControls}</div> : null}
+        </div> : null}
+        <div ref={scrollArea} className={styles.feedbackDiscussion}>
+          <div className={styles.feedbackSupportRow}>
+            {signedIn ? <button className={styles.feedbackHeart} type="button" disabled={busy || hearted === null} aria-pressed={hearted === true}
+              onClick={() => void submitHeart()}><Heart size={18} fill={hearted ? "currentColor" : "none"} />{hearted ? copy.removeHeart : copy.sendHeart}</button>
+              : <Link className={styles.feedbackAuth} href={authHref}>{copy.loginFeedback}</Link>}
+            <p className={styles.feedbackNote}>{work.workKind === "album" ? albumCopy(lang).note : supportNote ?? copy.supportNote}</p>
+            {withVideo && shareControl ? <div className={styles.feedbackShare}>{shareControl}</div> : null}
+          </div>
+          {heartReadFailed ? <p role="alert" className={styles.refreshError}>{copy.error}</p> : null}
+          <div ref={commentArea} id="mv-comment-area">
+            <MvRatingForm key={work.id} trackId={work.id} workKind={work.workKind} signedIn={signedIn} surface={reviewSurface ?? (work.videoId ? "mv" : "music")} drafts={reviewDrafts.current} onBusy={onReviewBusy ?? (() => {})} onSaved={item => {
+              if (currentWork.current !== work.id) return;
+              if (item) setComments(current => current.some(comment => comment.id === item.id) ? current.map(comment => comment.id === item.id ? item : comment) : [...current, item]);
+              setCommentsVersion(version => version + 1);
+              onChange();
+            }} />
+          </div>
+          <section id="mv-public-comments" className={styles.feedbackComments} aria-label={copy.comments}>
+            {loading ? <p role="status">{copy.loadingComments}</p> : readFailed ? <p role="alert">{copy.error}</p>
+              : comments.length ? comments.map(item => <article key={item.id}><strong>{item.name}</strong><p>{item.text}</p></article>)
+                : <p>{copy.firstComment}</p>}
+          </section>
+          {writeFailed ? <p role="alert" className={styles.refreshError}>{copy.feedbackError}</p> : null}
+        </div>
       </div>
-      {withVideo && videoControls ? <div className={styles.mvViewLinks}>{videoControls}</div> : null}
-      {heartReadFailed ? <p role="alert" className={styles.refreshError}>{copy.error}</p> : null}
-      <div ref={commentArea} id="mv-comment-area">
-        <MvRatingForm key={work.id} trackId={work.id} workKind={work.workKind} signedIn={signedIn} surface={reviewSurface ?? (work.videoId ? "mv" : "music")} drafts={reviewDrafts.current} onBusy={onReviewBusy ?? (() => {})} onSaved={item => {
-          if (currentWork.current !== work.id) return;
-          if (item) setComments(current => current.some(comment => comment.id === item.id) ? current.map(comment => comment.id === item.id ? item : comment) : [...current, item]);
-          setCommentsVersion(version => version + 1);
-          onChange();
-        }} />
-      </div>
-      <section id="mv-public-comments" className={styles.feedbackComments} aria-label={copy.comments}>
-        {loading ? <p role="status">{copy.loadingComments}</p> : readFailed ? <p role="alert">{copy.error}</p>
-          : comments.length ? comments.map(item => <article key={item.id}><strong>{item.name}</strong><p>{item.text}</p></article>)
-            : <p>{copy.firstComment}</p>}
-      </section>
-      {writeFailed ? <p role="alert" className={styles.refreshError}>{copy.feedbackError}</p> : null}
     </div>
-    {withVideo && showCommentCue ? <button type="button" className={styles.commentScrollCue} aria-controls="mv-comment-area"
+    {withMedia && showCommentCue ? <button type="button" className={styles.commentScrollCue} aria-controls="mv-comment-area"
       onClick={() => commentArea.current?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })}>
       {mvCopy(lang).scrollComments}<ArrowDown size={18} aria-hidden="true" />
     </button> : null}
