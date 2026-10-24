@@ -19,7 +19,7 @@ test("blind proxy only resolves audio inside the configured public Storage bucke
  for(const path of ["https://attacker.test/song.mp3","http://127.0.0.1/a","https://unit-test.invalid/other","../private/audio.mp3"])
    assert.equal(server.blindStorageUrl(admin,path),"");
 });
-function mount({expired=false,authenticated=true,nextFails=false}={}) {
+function mount({expired=false,authenticated=true,nextFails=false,revealFails=false}={}) {
  const calls=[],reads=[],id=uuid(12),q={id,state:"pending",track_a_id:"a",track_b_id:"b",expires_at:new Date(Date.now()+(expired?-1000:60000)).toISOString()};
  const admin={rpc:async(name,args)=>{calls.push({name,args});return {data:name==="complete_blind_question"?{choice:"tie",awarded:3,balance:3}:{heardA:30,heardB:30},error:null};}};
  const api=loadTs("src/app/api/blind-listen/route.ts",{
@@ -29,7 +29,7 @@ function mount({expired=false,authenticated=true,nextFails=false}={}) {
      prepareBlindQuestion:async()=>{calls.push({name:"prepare"});if(nextFails)throw Error("Next unavailable");return {pairs:[["c","b"]]};},
      issuePreparedBlindQuestion:async()=>{calls.push({name:"issue"});return {id:uuid(13)};},
      questionForUser:async(_admin,user,asked)=>{reads.push(asked);assert.equal(user,USER);if(asked!==id)throw Error("Unavailable");return q;},
-     blindCatalog:async(_admin,_user,ids)=>{assert.deepEqual(ids,["a","b"]);return [{id:"a"},{id:"b"}];},revealBlindQuestion:async()=>({choice:"tie",works:[]})},
+     blindCatalog:async(_admin,_user,ids)=>{assert.deepEqual(ids,["a","b"]);return [{id:"a"},{id:"b"}];},revealBlindQuestion:async()=>{assert.ok(calls.some(x=>x.name==="complete_blind_question"));if(revealFails)throw Error("Reveal unavailable");return {choice:"tie",works:[]};}},
  });
  const request=body=>new Request("https://site.test/api/blind-listen",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({questionId:id,...body})});
  return {api,calls,request,reads};
@@ -46,6 +46,12 @@ test("blind API keeps auth mandatory and never trusts body user/credit/listening
 test("next-pair failure after completion preserves success and never asks for another vote",async()=>{
  const ui=mount({nextFails:true});const response=await ui.api.POST(ui.request({action:"vote",choice:"tie"}));
  const payload=await response.json();assert.equal(response.status,200);assert.equal(payload.awarded,3);assert.equal(payload.nextError,true);assert.equal(payload.nextQuestion,null);
+});
+test("reveal failure after completion preserves the award and next anonymous question",async()=>{
+ const ui=mount({revealFails:true});const response=await ui.api.POST(ui.request({action:"vote",choice:"A"}));
+ const payload=await response.json();assert.equal(response.status,200);assert.equal(payload.awarded,3);
+ assert.equal(payload.reveal,null);assert.equal(payload.revealError,true);assert.equal(payload.nextQuestion.id,uuid(13));
+ assert.equal(ui.calls.filter(x=>x.name==="complete_blind_question").length,1);
 });
 test("blind API rejects invalid IDs, choices, positions and expired pairs before minting",async()=>{
  const ui=mount();
@@ -104,7 +110,7 @@ test('next question is issued while a slow Credit refresh is still pending',asyn
   '@/lib/server-creator-auth':{creatorAuth:async()=>({admin:{rpc:async()=>({data:{awarded:3},error:null})},user:{id:USER}})},
   '@/lib/server-blind-preparation':{takeBlindPreparation:async()=>({pairs:[['c','d']]})},
   '@/lib/server-blind-listening':{questionForUser:async()=>q,prepareBlindQuestion:async()=>({pairs:[['c','d']]}),
-   readCredit:async(_admin,_user,signal)=>{assert.ok(signal instanceof AbortSignal);return credit;},
+   revealBlindQuestion:async()=>({choice:'tie',works:[]}),readCredit:async(_admin,_user,signal)=>{assert.ok(signal instanceof AbortSignal);return credit;},
    issuePreparedBlindQuestion:async()=>{startedNext=true;releaseCredit({balance:18,debt:0});return {id:uuid(13)};}},
  });
  const r=await api.POST(new Request('https://site.test/api/blind-listen',{method:'POST',body:JSON.stringify({action:'vote',questionId:q.id,choice:'tie'})}));
@@ -116,7 +122,7 @@ test('an aborted balance read keeps the earned reward and next round usable',asy
   '@/lib/server-creator-auth':{creatorAuth:async()=>({admin:{rpc:async()=>({data:{awarded:3,balance:999},error:null})},user:{id:USER}})},
   '@/lib/server-blind-preparation':{takeBlindPreparation:async()=>({pairs:[]})},
   '@/lib/server-blind-listening':{questionForUser:async()=>q,prepareBlindQuestion:async()=>({pairs:[]}),
-   readCredit:async()=>{throw Error('Credit timeout');},issuePreparedBlindQuestion:async()=>({id:uuid(13)})},
+   revealBlindQuestion:async()=>({choice:'tie',works:[]}),readCredit:async()=>{throw Error('Credit timeout');},issuePreparedBlindQuestion:async()=>({id:uuid(13)})},
  });
  const p=await (await api.POST(new Request('https://site.test/api/blind-listen',{method:'POST',body:JSON.stringify({action:'vote',questionId:q.id,choice:'tie'})}))).json();
  assert.equal(p.awarded,3);assert.equal(p.creditError,true);assert.equal(p.balance,null);assert.equal(p.nextQuestion.id,uuid(13));
@@ -135,7 +141,7 @@ test('warmed candidates are checked again and unavailable works never enter the 
  const api=loadTs('src/app/api/blind-listen/route.ts',{
   '@/lib/server-creator-auth':{creatorAuth:async()=>({admin:{rpc:async()=>({data:{awarded:3},error:null})},user:{id:USER}})},
   '@/lib/server-blind-preparation':{takeBlindPreparation:async()=>({pending:null,pairs:[['removed','c']],revalidate:true})},
-  '@/lib/server-blind-listening':{questionForUser:async()=>q,blindCatalog:async()=>[{id:'c'}],readCredit:async()=>({balance:3,debt:0}),
+  '@/lib/server-blind-listening':{questionForUser:async()=>q,revealBlindQuestion:async()=>({choice:'tie',works:[]}),blindCatalog:async()=>[{id:'c'}],readCredit:async()=>({balance:3,debt:0}),
    prepareBlindQuestion:async()=>{rebuilt++;return {pending:null,pairs:[['fresh','c']]};},
    issuePreparedBlindQuestion:async(_db,_user,plan)=>{issued=plan.pairs;return {id:uuid(13)};}},
  });
@@ -148,7 +154,7 @@ test('a warmed pending round from another tab is refreshed before it can be retu
  const api=loadTs('src/app/api/blind-listen/route.ts',{
   '@/lib/server-creator-auth':{creatorAuth:async()=>({admin:{rpc:async()=>({data:{awarded:3},error:null})},user:{id:USER}})},
   '@/lib/server-blind-preparation':{takeBlindPreparation:async()=>({pending:{id:'old-pending'},pairs:[],revalidate:true})},
-  '@/lib/server-blind-listening':{questionForUser:async()=>q,readCredit:async()=>({balance:3,debt:0}),
+  '@/lib/server-blind-listening':{questionForUser:async()=>q,revealBlindQuestion:async()=>({choice:'tie',works:[]}),readCredit:async()=>({balance:3,debt:0}),
    prepareBlindQuestion:async()=>({pending:null,pairs:[['fresh','current']]}),
    issuePreparedBlindQuestion:async(_db,_user,plan)=>{issued=plan;return {id:uuid(13)};}},
  });

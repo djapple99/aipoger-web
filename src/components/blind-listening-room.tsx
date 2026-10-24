@@ -2,15 +2,17 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { ArrowLeft, Equal, Heart, Pause, Play, RotateCcw } from "lucide-react";
 import EditorialHeader from "./editorial-header";
 import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
 import { battleRetroCopy } from "@/lib/battle-retro-copy";
-import { BLIND_END, BLIND_MIN_SECONDS, BLIND_START, type BlindChoice, type BlindSide } from "@/lib/blind-listening";
+import { BLIND_END, BLIND_MIN_SECONDS, BLIND_START, type BlindChoice, type BlindSide, type BlindReveal, type BlindRevealedWork } from "@/lib/blind-listening";
 import { musicPlayer } from "@/lib/music-player-store";
 import styles from "./battle-retro.module.css";
 type Question = { id: string; audioA: string; audioB: string; heardA: number; heardB: number; expiresAt: string };
+const BlindListeningReveal = dynamic(() => import("./blind-listening-reveal"));
 export default function BlindListeningRoom() {
   const { lang } = useI18n(); const c = battleRetroCopy(lang);
   const [userId, setUserId] = useState<string | null>(null), [authReady, setAuthReady] = useState(false);
@@ -23,6 +25,9 @@ export default function BlindListeningRoom() {
   const startGeneration = useRef(0), playbackAuthorized = useRef(false);
   const [mediaReady, setMediaReady] = useState({ A: false, B: false });
   const [notice, setNotice] = useState<"earned" | "recorded" | null>(null);
+  const [revealed, setRevealed] = useState<{ questionId: string; result: BlindReveal | null; failed: boolean } | null>(null);
+  const [revealing, setRevealing] = useState(false);
+  const revealGeneration = useRef(0);
   const audioA = useRef<HTMLAudioElement | null>(null), audioB = useRef<HTMLAudioElement | null>(null);
   const account = useRef<string | null>(null), questionRef = useRef<Question | null>(null), sideRef = useRef<BlindSide | null>(null);
   const requestGeneration = useRef(0), tickQueue = useRef<Promise<unknown>>(Promise.resolve()), lastTick = useRef(0);
@@ -57,7 +62,7 @@ export default function BlindListeningRoom() {
   }, [stopAudio]);
   const load = useCallback(async (preserveNotice = false) => {
     const generation = invalidateRequests();
-    adoptQuestion(null); setBusy(false); if (!preserveNotice) { setNotice(null); setRound(1); }
+    adoptQuestion(null); setBusy(false); if (!preserveNotice) { setNotice(null); setRound(1); setRevealed(null); setRevealing(false); ++revealGeneration.current; }
     if (!account.current) { setLoading(false); return; }
     setLoading(true);
     try {
@@ -67,7 +72,7 @@ export default function BlindListeningRoom() {
     finally { if (generation === requestGeneration.current) setLoading(false); }
   }, [api, adoptQuestion, invalidateRequests]);
   useEffect(() => {
-    let alive = true;
+    let alive = true; const revealClock = revealGeneration;
     const update = (id: string | null) => {
       if (!alive) return;
       account.current = id; setUserId(id); setAuthReady(true); void load();
@@ -76,7 +81,7 @@ export default function BlindListeningRoom() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const next = session?.user.id ?? null; if (next !== account.current) update(next);
     });
-    return () => { alive = false; account.current = null; invalidateRequests(); subscription.unsubscribe(); stopAudio(); };
+    return () => { alive = false; account.current = null; invalidateRequests(); ++revealClock.current; subscription.unsubscribe(); stopAudio(); };
   }, [load, stopAudio, invalidateRequests]);
   const sendTick = useCallback((event: "play" | "progress" | "pause" | "seek", target: BlindSide, position: number) => {
     const q = questionRef.current, expected = account.current;
@@ -158,6 +163,8 @@ export default function BlindListeningRoom() {
       const payload = await api({ action: "vote", questionId: q.id, choice });
       if (account.current !== expected || generation !== requestGeneration.current || questionRef.current?.id !== q.id) return;
       setNotice(payload.replayed ? "recorded" : "earned"); setRound(n => n + 1);
+      ++revealGeneration.current; setRevealing(false);
+      setRevealed({ questionId: q.id, result: payload.reveal ?? null, failed: !payload.reveal || payload.revealError === true });
       adoptQuestion(payload.nextQuestion ?? null);
       if (payload.nextError) setError("LOAD_FAILED");
     } catch (e) { if (account.current === expected && generation === requestGeneration.current) setError(e instanceof Error ? e.message : "SAVE_FAILED"); }
@@ -166,6 +173,29 @@ export default function BlindListeningRoom() {
   const retry = () => {
     if (error === "SAVE_FAILED" && lastChoice.current && questionRef.current) void vote(lastChoice.current);
     else void load(Boolean(notice));
+  };
+  const retryReveal = async () => {
+    if (!revealed || revealing) return;
+    const id = revealed.questionId, expected = account.current, generation = ++revealGeneration.current;
+    setRevealing(true);
+    try {
+      const result = await api({ action: "reveal", questionId: id });
+      if (expected === account.current && generation === revealGeneration.current) setRevealed({ questionId: id, result, failed: false });
+    } catch { if (expected === account.current && generation === revealGeneration.current) setRevealed({ questionId: id, result: null, failed: true }); }
+    finally { if (expected === account.current && generation === revealGeneration.current) setRevealing(false); }
+  };
+  const listenFull = async (work: BlindRevealedWork) => {
+    if (work.unavailable || !musicPlayer || !account.current) return false;
+    const expected = account.current, generation = requestGeneration.current, current = sideRef.current;
+    const el = current === "A" ? audioA.current : current === "B" ? audioB.current : null;
+    if (current && el) measure(current, el);
+    playbackAuthorized.current = false; const playbackGeneration = ++startGeneration.current; el?.pause(); setPlaying(false); setArming(null);
+    if (current && el) await sendTick("pause", current, el.currentTime);
+    // Full playback never supplies seconds to the next blind round. Resuming A/B
+    // closes the shared player and keeps the round's real heard progress.
+    if (expected !== account.current || generation !== requestGeneration.current || playbackGeneration !== startGeneration.current) return false;
+    try { return await musicPlayer.start([{ id: work.id, title: work.title, artist: work.artist, coverUrl: work.coverUrl, audioUrl: work.audioUrl, heartTrackId: work.id }], 0, c.revealedChoice, { sourceKey: "blind-reveal:" + work.id, repeat: false }); }
+    catch { return false; }
   };
   const message = error === "LISTEN_FIRST" ? c.listenFirst : error === "SAVE_FAILED" ? c.saveFailed
     : error === "LISTENING_UNAVAILABLE" || error === "WORK_UNAVAILABLE" ? c.playbackFailed : c.loadFailed;
@@ -205,6 +235,7 @@ export default function BlindListeningRoom() {
       {error || playbackError ? <div className={styles.state + " " + styles.error} role="alert"><p>{playbackError ? c.playbackFailed : message}</p>
         <button onClick={retry} disabled={busy}>{c.retry}</button>
       </div> : null}
+      {revealed ? <BlindListeningReveal key={revealed.questionId} result={revealed.result} failed={revealed.failed} loading={revealing} onRetry={() => void retryReveal()} onListen={listenFull}/> : null}
       <div className={styles.decision}>
         <div className={styles.choices}>
           {(["A", "tie", "B"] as BlindChoice[]).map(choice => <button key={choice} disabled={!canVote} onClick={() => void vote(choice)}>

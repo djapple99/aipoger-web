@@ -51,6 +51,8 @@ export async function POST(request: Request) {
       }
       const { data, error } = await auth.admin.rpc("complete_blind_question", { p_user: auth.user.id, p_question: q.id, p_choice: p.choice });
       if (error) return NextResponse.json({ error: error.message.includes("Listen to") ? "LISTEN_FIRST" : "SAVE_FAILED" }, { status: 409, headers });
+      const revealPromise = revealBlindQuestion(auth.admin, auth.user.id, q.id)
+        .then(reveal => ({ reveal, revealError: false }), () => ({ reveal: null, revealError: true }));
       // Completion is already committed. A failed next-pair read must never look
       // like a failed vote, or prompt the user to choose/earn again.
       const creditPromise = (async () => {
@@ -77,8 +79,8 @@ export async function POST(request: Request) {
       } catch {
         return { nextQuestion: null, nextError: true };
       } })();
-      const [credit, next] = await Promise.all([creditPromise, nextPromise]);
-      return NextResponse.json({ ...data, balance: credit?.balance ?? null, debt: credit?.debt ?? null, creditError: credit === null, ...next }, { headers });
+      const [credit, next, reveal] = await Promise.all([creditPromise, nextPromise, revealPromise]);
+      return NextResponse.json({ ...data, balance: credit?.balance ?? null, debt: credit?.debt ?? null, creditError: credit === null, ...next, ...reveal }, { headers });
     }
     return NextResponse.json({ error: "INVALID_REQUEST" }, { status: 400, headers });
   } catch { return NextResponse.json({ error: "SAVE_FAILED" }, { status: 503, headers }); }

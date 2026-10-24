@@ -5,7 +5,7 @@ import { readAllHomePages } from "./home-discovery";
 import { isInMusicPool } from "./music-pool";
 import { isCurrentMusicGenre } from "./music-genres";
 import { buildAiMusicSurfaceLifecycleMap } from "./ai-music-surface-lifecycle";
-import { blindPairKey, type BlindSide, type BlindSummary } from "./blind-listening";
+import { blindPairKey, isBlindChoice, type BlindReveal, type BlindSide, type BlindSummary } from "./blind-listening";
 import type { ListenBarTrackRow } from "./listen-bar";
 export type BlindRow = {
   id: string; title: string; artist: string; genre: string; created_by: string | null;
@@ -125,17 +125,19 @@ export async function issuePreparedBlindQuestion(admin: SupabaseClient, userId: 
 export async function nextBlindQuestion(admin: SupabaseClient, userId: string) {
   return issuePreparedBlindQuestion(admin, userId, await prepareBlindQuestion(admin, userId));
 }
-export async function revealBlindQuestion(admin: SupabaseClient, userId: string, id: string) {
+export async function revealBlindQuestion(admin: SupabaseClient, userId: string, id: string): Promise<BlindReveal> {
   const q = await questionForUser(admin, userId, id);
-  if (q.state !== "voted") throw new Error("QUESTION_UNAVAILABLE");
-  const { data, error } = await admin.from("listen_bar_tracks").select(fields).in("id", [q.track_a_id, q.track_b_id]);
-  if (error) throw new Error("REVEAL_UNAVAILABLE");
-  const valid = (data as unknown as BlindRow[]).filter(r => r.is_active && r.review_status === "approved"
-    && !r.hidden_at && !r.removed_at && !r.ai_music_showtime_public_removed_at && isInMusicPool(r.created_at));
-  return { choice: q.choice, works: [q.track_a_id, q.track_b_id].map((id, i) => {
+  if (q.state !== "voted" || !isBlindChoice(q.choice)) throw new Error("QUESTION_UNAVAILABLE");
+  // Only the committed choice controls disclosure, including retries with a
+  // different request choice. Never read or return the unselected identity.
+  const sides: BlindSide[] = q.choice === "tie" ? ["A", "B"] : [q.choice];
+  const selected = sides.map(side => ({ side, id: side === "A" ? q.track_a_id : q.track_b_id }));
+  const valid = await blindCatalog(admin, userId, selected.map(work => work.id));
+  return { choice: q.choice, works: selected.map(({ side, id }) => {
     const r = valid.find(row => row.id === id);
-    return r ? { side: i ? "B" : "A", id: r.id, title: r.title, artist: r.artist,
+    return r ? { side, id: r.id, title: r.title, artist: r.artist,
       coverUrl: blindStorageUrl(admin, r.cover_path, "listen-bar-covers"),
-      href: "/ai-music?track=" + r.id + "#works" } : { side: i ? "B" : "A", unavailable: true };
+      audioUrl: blindStorageUrl(admin, r.audio_path),
+      href: "/ai-music?track=" + r.id + "#works" } : { side, unavailable: true };
   }) };
 }

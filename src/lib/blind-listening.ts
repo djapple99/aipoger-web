@@ -5,6 +5,11 @@ export const BLIND_MIN_SECONDS = 8;
 export const BLIND_CREDIT = 3;
 export type BlindChoice = "A" | "B" | "tie";
 export type BlindSide = "A" | "B";
+export type BlindRevealedWork = { side: BlindSide; unavailable: true } | {
+  side: BlindSide; id: string; title: string; artist: string;
+  coverUrl: string; audioUrl: string; href: string; unavailable?: false;
+};
+export type BlindReveal = { choice: BlindChoice; works: BlindRevealedWork[] };
 export function blindPairKey(a: string, b: string) { return [a, b].sort().join(":"); }
 export function isBlindChoice(value: unknown): value is BlindChoice { return value === "A" || value === "B" || value === "tie"; }
 export type BlindSummary = { people: number; preferencePoints: number };

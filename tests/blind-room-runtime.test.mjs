@@ -3,17 +3,19 @@ import assert from "node:assert/strict";
 import { mountMv, text } from "./helpers/mv-runtime.mjs";
 import { battleRetroCopy } from "../src/lib/battle-retro-copy.ts";
 import { BLIND_END, BLIND_MIN_SECONDS, BLIND_START } from "../src/lib/blind-listening.ts";
-async function mount(t,{lang="zh",guest=false,failVote=false,nextFails=false,lagTicks=false,lagPlay=false}={}) {
+async function mount(t,{lang="zh",guest=false,failVote=false,nextFails=false,revealFails=false,lagTicks=false,lagPlay=false}={}) {
  let session=guest?null:{access_token:"test",user:{id:"reader"}},authChanged,clock=0,active=null,last=15,counter=0;
- const releases=[];const calls=[],heard={A:0,B:0};
+ const releases=[];const calls=[],playerCalls=[],heard={A:0,B:0};let lastReveal;
+ const work=side=>({id:"work-"+side,side,title:"Hidden title "+side,artist:"Hidden creator "+side,audioUrl:"/full-"+side,coverUrl:"/cover-"+side,href:"/ai-music?track=work-"+side+"#works"});
  const question=()=>({id:session.user.id+"-q"+counter,audioA:"/anonymous-a-"+session.user.id+counter,audioB:"/anonymous-b-"+session.user.id+counter,heardA:0,heardB:0,expiresAt:"2099-01-01"});
  const icons=Object.fromEntries(["ArrowLeft","Equal","Heart","Pause","Play","RotateCcw"].map(k=>[k,()=>null]));
  const ui=await mountMv(t,"src/components/blind-listening-room.tsx",{},{
    "next/link":{__esModule:true,default:"a"},
    "lucide-react":icons,"./editorial-header":{__esModule:true,default:()=>null},
+   "./blind-listening-reveal":{__esModule:true,default:"reveal-view"},
    "@/lib/i18n":{useI18n:()=>({lang})},"@/lib/battle-retro-copy":{battleRetroCopy},
    "@/lib/blind-listening":{BLIND_END,BLIND_MIN_SECONDS,BLIND_START},"./battle-retro.module.css":{__esModule:true,default:{}},
-   "@/lib/music-player-store":{musicPlayer:{close(){}}},
+   "@/lib/music-player-store":{musicPlayer:{close(){playerCalls.push({action:"close"});},async start(...args){playerCalls.push({action:"start",args});return true;}}},
    "@/lib/supabase":{supabase:{auth:{getSession:async()=>({data:{session}}),onAuthStateChange(fn){authChanged=fn;return {data:{subscription:{unsubscribe(){}}}};}}}},
  },{performance:{now:()=>clock},fetch:async(url,init={})=>{
    const body=init.body?JSON.parse(init.body):null;calls.push(body);
@@ -25,9 +27,11 @@ async function mount(t,{lang="zh",guest=false,failVote=false,nextFails=false,lag
      return {ok:true,json:async()=>({heardA:heard.A,heardB:heard.B})};
    }
    if(body.action==="prepare")return {ok:true,json:async()=>({prepared:true})};
+   if(body.action==="reveal")return {ok:true,json:async()=>lastReveal};
    if(failVote)return {ok:false,json:async()=>({error:"SAVE_FAILED"})};
+   lastReveal={choice:body.choice,works:(body.choice==="tie"?["A","B"]:[body.choice]).map(work)};
    counter++;heard.A=heard.B=0;active=null;
-   return {ok:true,json:async()=>({choice:body.choice,awarded:3,balance:3,nextQuestion:nextFails?null:question(),nextError:nextFails})};
+   return {ok:true,json:async()=>({choice:body.choice,awarded:3,balance:3,nextQuestion:nextFails?null:question(),nextError:nextFails,reveal:revealFails?null:lastReveal,revealError:revealFails})};
  }});
  const audioProps=side=>ui.nodes().find(n=>n.type==="audio"&&n.props["data-side"]===side).props;
  const els=Object.fromEntries(["A","B"].map(side=>[side,{src:"",currentTime:0,duration:120,readyState:4,paused:true,
@@ -42,7 +46,7 @@ async function mount(t,{lang="zh",guest=false,failVote=false,nextFails=false,lag
    for(let s=from;s<until;){s=Math.min(until,s+1);clock+=1100;els[side].currentTime=15+s;audioProps(side).onTimeUpdate();await ui.flush();}
    if(until<30){button(battleRetroCopy(lang).pause+" "+side).onClick();await ui.flush();}
  }
- return {...ui,button,listen,calls,els,audioProps,sync,advance(seconds){clock+=seconds*1000;},releaseTick(){releases.shift()?.();},async switchUser(id){session={access_token:"new",user:{id}};heard.A=heard.B=0;authChanged("SIGNED_IN",session);await ui.flush();sync();}};
+ return {...ui,button,listen,calls,playerCalls,els,audioProps,sync,reveal:()=>ui.nodes().find(n=>n.type==="reveal-view")?.props,advance(seconds){clock+=seconds*1000;},releaseTick(){releases.shift()?.();},async switchUser(id){session={access_token:"new",user:{id}};heard.A=heard.B=0;authChanged("SIGNED_IN",session);await ui.flush();sync();}};
 }
 for(const lang of ["zh","en","ja","ko"])test("blind room "+lang+" requires eight seconds on both sides then automatically advances",async t=>{
  const ui=await mount(t,{lang}),c=battleRetroCopy(lang);
@@ -122,4 +126,30 @@ test("pending clock acknowledgement primes media permission but does not play or
  ui.advance(12);ui.audioProps("A").onTimeUpdate();await ui.flush();assert.equal(ui.button(c.tie).disabled,true);
  assert.equal(ui.nodes().find(n=>n.type==="input"&&n.props["aria-label"]===c.seek+" A").props.disabled,true);
  ui.releaseTick();await ui.flush();assert.equal(ui.els.A.paused,false);assert.ok(ui.text().includes(c.hudListening));
+});
+
+for(const choice of ['A','B','tie'])test('room reveals only the selected '+choice+' after success and clears on account change',async t=>{
+ const ui=await mount(t),c=battleRetroCopy('zh');assert.equal(ui.reveal(),undefined);
+ await ui.listen('A');await ui.listen('B');await ui.button(choice==='tie'?c.tie:c.prefer+' '+choice).onClick();await ui.flush();ui.sync();
+ assert.deepEqual(ui.reveal().result.works.map(w=>w.side),choice==='tie'?['A','B']:[choice]);
+ assert.equal(ui.calls.some(x=>x?.reaction),false,'voting never automatically sends a Heart');
+ await ui.switchUser('other');assert.equal(ui.reveal(),undefined);
+});
+test('reveal retry only fetches the committed result and keeps the next blind round',async t=>{
+ const ui=await mount(t,{revealFails:true}),c=battleRetroCopy('zh');
+ await ui.listen('A');await ui.listen('B');await ui.button(c.prefer+' A').onClick();await ui.flush();ui.sync();
+ assert.equal(ui.reveal().failed,true);assert.ok(ui.text().includes(c.awarded));
+ const next=ui.audioProps('A').src;ui.reveal().onRetry();await ui.flush();
+ assert.equal(ui.reveal().failed,false);assert.equal(ui.audioProps('A').src,next);
+ assert.equal(ui.calls.filter(x=>x?.action==='vote').length,1);assert.equal(ui.calls.filter(x=>x?.action==='reveal').length,1);
+});
+test('full-song listening pauses the next blind clip, preserves heard progress and resuming closes the shared player',async t=>{
+ const ui=await mount(t),c=battleRetroCopy('zh');await ui.listen('A');await ui.listen('B');await ui.button(c.prefer+' B').onClick();await ui.flush();ui.sync();
+ await ui.listen('A',4);ui.button(c.play+' A').onClick();await ui.flush();assert.equal(ui.els.A.paused,false);
+ const before=ui.audioProps('A').src;assert.equal(await ui.reveal().onListen(ui.reveal().result.works[0]),true);await ui.flush();
+ assert.equal(ui.els.A.paused,true);assert.equal(ui.els.B.paused,true);assert.equal(ui.audioProps('A').src,before);
+ const start=ui.playerCalls.find(x=>x.action==='start');assert.equal(start.args[0][0].id,'work-B');assert.equal(start.args[0][0].heartTrackId,'work-B');assert.equal(start.args[3].repeat,false);
+ ui.advance(60);ui.audioProps('A').onTimeUpdate();await ui.flush();assert.equal(ui.button(c.tie).disabled,true,'full playback never supplies blind seconds');
+ const closed=ui.playerCalls.filter(x=>x.action==='close').length;
+ await ui.listen('A',8);await ui.listen('B',8);assert.equal(ui.button(c.tie).disabled,false);assert.ok(ui.playerCalls.filter(x=>x.action==='close').length>closed);
 });
