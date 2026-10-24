@@ -8,7 +8,7 @@ import { homeCopy } from '../src/lib/home-copy.ts';
 const compiled=ts.transpileModule(readFileSync(new URL('../src/components/home-work-feedback.tsx',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
 const nodes=x=>Array.isArray(x)?x.flatMap(nodes):x&&typeof x==='object'?[x,...nodes(x.props?.children)]:[];
 const text=x=>Array.isArray(x)?x.map(text).join(''):x&&typeof x==='object'?text(x.props?.children):typeof x==='string'?x:'';
-async function mount(t,{signedIn=true,failWrite=false,showVideo=false,commentsBelow=false,hasVideo=showVideo,reviewSurface,externalMedia}={}) {
+async function mount(t,{signedIn=true,failWrite=false,showVideo=false,commentsBelow=false,hasVideo=showVideo,reviewSurface,externalMedia,inline=false}={}) {
  const session=signedIn?{access_token:'test-token',user:{id:'reader',user_metadata:{display_name:'Listener'}}}:null;
  let cursor=0,tree,dirty=true,changed=0,toggles=0;const states=[],refs=[],effects=[],requests=[];let publicComments=[{id:"public",name:"Creator fan",text:"Real public comment"}];const player={playing:true};let scrolls=0,commentTop=commentsBelow?800:0;const scrollListeners=[];
  const react={useState(initial){const i=cursor++;if(!(i in states))states[i]=initial;return [states[i],v=>{states[i]=typeof v==='function'?v(states[i]):v;dirty=true;}];},useRef(initial){return refs[cursor++]??={current:initial??{showModal(){},close(){},getBoundingClientRect(){return {top:commentTop,bottom:500}},addEventListener(type,fn){scrollListeners.push(fn)},removeEventListener(){},scrollIntoView(){scrolls++;commentTop=40;scrollListeners.forEach(fn=>fn())}}};},useEffect(fn,deps=[]){const i=cursor++;if(!effects[i]||deps.some((value,j)=>!Object.is(value,effects[i].deps[j]))){effects[i]?.cleanup?.();effects[i]={deps,cleanup:fn()};}}};
@@ -17,7 +17,8 @@ async function mount(t,{signedIn=true,failWrite=false,showVideo=false,commentsBe
  const loaded={exports:{}};const window=new EventTarget();window.matchMedia=()=>({matches:false});const document={activeElement:null};
  class HTMLElement{};class CustomEvent extends Event{constructor(type,init){super(type);this.detail=init.detail;}}
  new Function('require','module','exports','fetch','window','document','HTMLElement','CustomEvent',compiled)(name=>{assert.ok(name in modules,name);return modules[name];},loaded,loaded.exports,fetch,window,document,HTMLElement,CustomEvent);
- function render(){cursor=0;dirty=false;tree=loaded.exports.default({work:{id:'target-work',title:'The MV',artist:'Creator',videoId:hasVideo?'MdxaU0l3FzI':null,youtubeUrl:'https://www.youtube.com/watch?v=MdxaU0l3FzI'},showVideo,reviewSurface,externalMedia,onClose(){},onChange(){changed++;}});}
+ const work={id:'target-work',title:'The MV',artist:'Creator',videoId:hasVideo?'MdxaU0l3FzI':null,youtubeUrl:'https://www.youtube.com/watch?v=MdxaU0l3FzI'};
+ function render(){cursor=0;dirty=false;tree=loaded.exports.default({work,showVideo,reviewSurface,externalMedia,inline,onClose(){},onChange(){changed++;}});}
  async function flush(){for(let i=0;i<6;i++){await new Promise(setImmediate);if(dirty)render();}}
  render();await flush();t.after(()=>effects.forEach(e=>e?.cleanup?.()));
  return {setPublicComments(value){publicComments=value;},persistComment(item){publicComments=[...publicComments,item];nodes(tree).find(x=>x.type==='rating-form').props.onSaved(item);},scrolls:()=>scrolls,requests,flush,toggles:()=>toggles,changed:()=>changed,text:()=>text(tree),find:type=>nodes(tree).find(x=>x.type===type)?.props,button:label=>nodes(tree).find(x=>x.type==='button'&&(text(x)===label||x.props['aria-label']===label))?.props};
@@ -70,4 +71,15 @@ for(const provider of ['youtube','suno','spotify'])test(`${provider} playback an
  ui.persistComment({id:'saved',name:'Listener',text:'A real impression'});await ui.flush();
  assert.equal(ui.find('external-player').media,externalMedia);assert.equal(ui.find('rating-form').drafts,drafts);
  assert.equal(drafts.get('target-work').text,'Writing while listening');assert.ok(ui.text().includes('A real impression'));assert.equal(ui.toggles(),0);
+});
+
+
+test('inline public work retains the same player and draft after saving to the original review', async t => {
+ const ui=await mount(t,{showVideo:true,inline:true});
+ assert.equal(ui.find('dialog'),undefined);assert.equal(ui.find('section')['aria-labelledby'],'public-work-title');
+ const media=ui.find('mv-player'),drafts=ui.find('rating-form').drafts;
+ drafts.set('target-work',{score:8.7,text:'Listening while writing'});
+ ui.persistComment({id:'saved',name:'Listener',text:'New impression'});await ui.flush();
+ assert.equal(ui.find('mv-player').work,media.work);assert.equal(ui.find('mv-player').autoPlay,media.autoPlay);
+ assert.equal(ui.find('rating-form').drafts,drafts);assert.ok(ui.text().includes('Real public comment'));assert.ok(ui.text().includes('New impression'));assert.equal(ui.toggles(),0);
 });

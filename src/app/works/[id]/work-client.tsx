@@ -22,7 +22,8 @@ function WorkAudio({ work }: { work: HomeWork }) {
 export default function WorkClient({ work, externalMedia }: { work: HomeWork; externalMedia: ExternalMusic | null }) {
   const { lang } = useI18n(); const path = workPath(work.id, lang);
   const share = <ShareButton title={`${work.title} — ${work.artist}`} text={work.description || work.title} url={path} />;
-  return <><div className="mb-5">{share}</div><HomeWorkFeedback inline work={work} showVideo={Boolean(work.videoId)}
+  const note = { zh: "喜歡就送愛心收藏，也可以留下你的評價。", en: "Save a favorite and share your review.", ja: "気に入ったら保存して、感想も聞かせてください。", ko: "마음에 들면 저장하고 감상도 남겨 주세요." }[lang];
+  return <HomeWorkFeedback inline work={work} showVideo={Boolean(work.videoId)}
     externalMedia={work.videoId ? undefined : externalMedia} mediaContent={!work.videoId && !externalMedia ? <WorkAudio work={work} /> : undefined}
-    shareControl={share} returnPath={path} onClose={() => {}} onChange={() => {}} /></>;
+    shareControl={share} supportNote={note} returnPath={path} onClose={() => {}} onChange={() => {}} />;
 }

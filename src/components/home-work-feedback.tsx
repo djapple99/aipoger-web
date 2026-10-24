@@ -144,12 +144,12 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
     finally { setBusy(false); }
   };
 
-  return <Container ref={inline ? undefined : dialog} className={`${styles.feedbackDialog} ${withMedia ? styles.feedbackWithVideo : ""} ${inline ? styles.feedbackInline : ""}`} aria-labelledby="home-feedback-title" onCancel={onClose}
+  return <Container ref={inline ? undefined : dialog} className={`${styles.feedbackDialog} ${withMedia ? styles.feedbackWithVideo : ""} ${inline ? styles.feedbackInline : ""}`} aria-labelledby={inline ? "public-work-title" : "home-feedback-title"} onCancel={onClose}
     onClick={event => { if (!inline && event.target === event.currentTarget) onClose(); }}>
     <div className={styles.feedbackInner}>
-      <div className={styles.feedbackHeading}><div><p>{copy.discuss}</p><h2 id="home-feedback-title">{work.title}</h2><span>{work.artist}</span></div>
+      {!inline ? <div className={styles.feedbackHeading}><div><p>{copy.discuss}</p><h2 id="home-feedback-title">{work.title}</h2><span>{work.artist}</span></div>
         {!inline ? <button autoFocus type="button" onClick={onClose} aria-label={copy.closeFeedback}><X size={22} /></button> : null}
-      </div>
+      </div> : null}
       <div className={styles.feedbackBody}>
         {withMedia ? <div className={styles.feedbackMedia}>
           {withVideo ? <MvPlayer work={work} autoPlay={autoPlay} onEnded={onVideoEnded} onUnavailable={onVideoUnavailable} />
@@ -162,7 +162,7 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
               onClick={() => void submitHeart()}><Heart size={18} fill={hearted ? "currentColor" : "none"} />{hearted ? copy.removeHeart : copy.sendHeart}</button>
               : <Link className={styles.feedbackAuth} href={authHref}>{copy.loginFeedback}</Link>}
             <p className={styles.feedbackNote}>{work.workKind === "album" ? albumCopy(lang).note : supportNote ?? copy.supportNote}</p>
-            {withVideo && shareControl ? <div className={styles.feedbackShare}>{shareControl}</div> : null}
+            {(withVideo || inline) && shareControl ? <div className={styles.feedbackShare}>{shareControl}</div> : null}
           </div>
           {heartReadFailed ? <p role="alert" className={styles.refreshError}>{copy.error}</p> : null}
           <div ref={commentArea} id="mv-comment-area">

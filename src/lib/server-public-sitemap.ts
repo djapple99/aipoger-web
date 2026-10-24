@@ -1,4 +1,4 @@
-export const preferredRegion = "hnd1";
+import "server-only";
 import type { MetadataRoute } from "next";
 import { unstable_cache } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
@@ -11,7 +11,6 @@ import { PUBLIC_LANGS, publicUrl, publicAlternates } from "@/lib/public-seo";
 
 // Runtime generation avoids freezing the catalog at build time. Only the public
 // URL index is cached; page HTML still checks current publication/moderation.
-export const dynamic = "force-dynamic";
 function localized(path: string, params: Record<string, string> = {}): MetadataRoute.Sitemap {
   return PUBLIC_LANGS.map(lang => ({ url: publicUrl(path, lang, params), alternates: { languages: publicAlternates(path, lang, params)?.languages as Record<string, string> } }));
 }
@@ -43,4 +42,4 @@ const buildSitemap = unstable_cache(async (): Promise<MetadataRoute.Sitemap> => 
   ];
   return [...new Map(entries.map(entry => [entry.url, entry])).values()];
 }, ["aipoger-public-sitemap-v1"], { revalidate: 300 });
-export default async function sitemap() { return buildSitemap(); }
+export async function readPublicSitemap() { return buildSitemap(); }

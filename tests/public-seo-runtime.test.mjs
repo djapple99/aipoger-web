@@ -87,7 +87,7 @@ test('sitemap paginates published playlists, deduplicates, localizes real pages 
     aipoger_creator_choice_collections: [{ id: uuid(82), is_published: true }],
   });
   let fail = false;
-  const { default: sitemap } = loadTs('src/app/sitemap.ts', {
+  const { readPublicSitemap: sitemap } = loadTs('src/lib/server-public-sitemap.ts', {
     'next/cache': { unstable_cache: fn => fn }, '@supabase/supabase-js': { createClient: () => admin },
     '@/lib/server-home-discovery': { readPublicWorkIndex: async () => { if (fail) throw new Error('incomplete'); return [work, work, { ...work, id: uuid(83), workKind: 'album' }]; } },
     '@/lib/server-albums': { readPublicAlbums: async () => [] },
@@ -127,4 +127,23 @@ test('missing and whitespace lyrics render no trigger or dialog, while real lyri
   for (const lyrics of [null, '', '   \n']) assert.equal(renderToStaticMarkup(React.createElement(Lyrics, { title: work.title, artist: work.artist, lyrics, lang: 'en' })), '');
   const html = renderToStaticMarkup(React.createElement(Lyrics, { title: work.title, artist: work.artist, lyrics: 'Real lyric', lang: 'en' }));
   assert.ok(html.includes('View lyrics')); assert.ok(!html.includes('Lyrics not provided'));
+});
+
+
+test('sitemap XML escapes query separators and attribute characters without changing actual URLs', () => {
+  const { sitemapXml } = loadTs('src/lib/sitemap-xml.ts');
+  const url = 'https://aipoger.com/choice/test?lang=zh&kind=creator';
+  const xml = sitemapXml([{ url, alternates: { languages: { en: url.replace('zh', 'en') } } }]);
+  assert.ok(xml.includes('<loc>https://aipoger.com/choice/test?lang=zh&amp;kind=creator</loc>'));
+  assert.ok(xml.includes('href="https://aipoger.com/choice/test?lang=en&amp;kind=creator"'));
+  assert.ok(!xml.includes('&kind=')); assert.ok(!xml.includes('&amp;amp;'));
+});
+
+for (const path of ['/works/' + uuid(70), '/ai-music-bible/short-prompts']) test(`editorial subpages suppress the legacy floating home and language controls (${path})`, () => {
+  const mocks = { ...common('zh'), 'next/navigation': { usePathname: () => path }, 'next/image': { default: nothing },
+    '@/components/lang-toggle': { default: () => { throw new Error('duplicate toggle'); } } };
+  for (const name of ['nav-home-link', 'global-lang-toggle']) {
+    const Component = loadTs(`src/components/${name}.tsx`, mocks).default;
+    assert.equal(renderToStaticMarkup(React.createElement(Component)), '');
+  }
 });
