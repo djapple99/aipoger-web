@@ -13,6 +13,7 @@ import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { choiceDisplayTitle, choiceItemRecordKey, type AipogerChoiceCollection, type AipogerChoiceItem } from "@/lib/aipoger-choice";
 import { rememberAuthNextPath } from "@/lib/auth-urls";
 import { getChoiceCopy } from "@/lib/choice-copy";
+import { choiceSharePath } from "@/lib/choice-share";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
 
@@ -218,7 +219,7 @@ export default function PublicChoicePage() {
 
   const coverUrl = collection.coverUrl?.trim() || collection.avatarUrl?.trim() || AIPOGER_BRAND_LOGO;
   const title = choiceDisplayTitle(collection.curatorName, collection.title);
-  const sharePath = `/choice/${encodeURIComponent(choiceId)}?kind=${kind}&lang=${lang}`;
+  const sharePath = choiceSharePath(choiceId, kind, lang, coverUrl);
 
   return (
     <main className="min-h-screen bg-[#050505] px-4 pb-28 pt-24 text-zinc-100 sm:px-7 lg:px-10">

@@ -5,6 +5,8 @@ import { getChoiceCopy } from "@/lib/choice-copy";
 import { isSupportedLang, type Lang } from "@/lib/locale";
 import { loadChoiceShareMetadata } from "@/lib/server-choice-share-metadata";
 import { publicSiteUrl } from "@/lib/site-url";
+import { choiceShareImagePath, choiceSharePath } from "@/lib/choice-share";
+import { isChoiceStorageCover } from "@/lib/choice-share-cover";
 
 const siteUrl = publicSiteUrl();
 const defaultImageUrl = new URL(AIPOGER_BRAND_LOGO, siteUrl).href;
@@ -26,10 +28,9 @@ export async function generateMetadata({
     const title = choiceDisplayTitle(choice.curatorName, choice.title);
     const curator = choice.curatorName || "AIPOGER";
     const description = choice.intro || copy.choiceDescription(curator);
-    const imageUrl = choice.imageUrl || defaultImageUrl;
-    const query = new URLSearchParams({ lang });
-    if (choice.kind === "official") query.set("kind", "official");
-    const shareUrl = `${siteUrl}/choice/${encodeURIComponent(id)}?${query.toString()}`;
+    const hasCover = isChoiceStorageCover(choice.imageUrl);
+    const imageUrl = hasCover ? new URL(choiceShareImagePath(id, choice.imageUrl), siteUrl).href : choice.imageUrl || defaultImageUrl;
+    const shareUrl = new URL(choiceSharePath(id, choice.kind, lang, choice.imageUrl || AIPOGER_BRAND_LOGO), siteUrl).href;
     const siteName = lang === "zh" ? "AIPOGER 愛播歌" : "AIPOGER";
     const locale = lang === "zh" ? "zh_TW" : lang === "ja" ? "ja_JP" : lang === "ko" ? "ko_KR" : "en_US";
     return {
@@ -43,7 +44,7 @@ export async function generateMetadata({
         siteName,
         locale,
         type: "article",
-        images: [{ url: imageUrl, alt: `${choice.curatorName} Choice` }],
+        images: [{ url: imageUrl, alt: title, ...(hasCover ? { width: 800, height: 800, type: "image/jpeg" } : {}) }],
       },
       twitter: {
         card: "summary_large_image",

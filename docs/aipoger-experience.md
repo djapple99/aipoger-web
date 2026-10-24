@@ -217,6 +217,7 @@ Choice shelf and selection:
 - Selection checkboxes must never look like or act as Hearts. Unselecting a song does not remove its favorite; removing a favorite or cancelling its Heart does not remove it from an existing Choice. Unavailable or moderated selections retain an honest disabled state and cannot silently play.
 - Choice 完整頁的曲目列表下方直接顯示評論區，頂部評論入口跳到 `#choice-comments`。顯示留言者頭像、名稱、時間與回覆入口；未登入者可閱讀並在留言時登入，返回原歌單評論位置。Showtime 卡片仍保留快速評論視窗，與頁面共用留言資料；中英日韓介面，送出失敗保留文字。
 - Preserve the existing interactive tracklist HUD and usable `/choice/{id}` share page. Both show stored intro, ordered songs, song actions, Play All and the shared player; public Choice remains non-ranked.
+- Choice 分享鍵與完整頁共用附封面版本的連結；LINE 預覽用同一張歌單封面轉成 800×800 JPEG，完整構圖等比縮放、不另製海報。LINE crawler 在 head 取得完整預覽資料；一般瀏覽器維持 metadata streaming。舊聊天卡片不保證自動刷新，重新從分享鍵取得新版連結。
 - `/admin/choice` is a compact published-only management list with search, pagination, real covers, curator/date/song count, public-view link, owner-only feature toggle and confirmed deletion. No official editor, draft creation, cover upload or selection pool. The owner uses `/profile/choice` to create, like everyone else; `/admin/showtime` redirects to works management. No manual-certification review queue, certification-only catalog or award actions. Do not add social-publishing controls to the personal workbench.
 
 Own works and playback:

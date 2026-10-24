@@ -7,7 +7,8 @@ import { createPortal } from "react-dom";
 import ChoiceCommentsDialog from "@/components/choice-comments-dialog";
 import ShareButton from "@/components/share-button";
 import { AipogerChoiceCover } from "@/components/aipoger-choice-cover";
-import { choiceItemRecordKey, choicePublicPath, type AipogerChoiceItem } from "@/lib/aipoger-choice";
+import { choiceItemRecordKey, type AipogerChoiceItem } from "@/lib/aipoger-choice";
+import { choiceSharePath } from "@/lib/choice-share";
 import { getChoiceCopy } from "@/lib/choice-copy";
 import type { Lang } from "@/lib/locale";
 import { showtimeCopy } from "@/lib/showtime-copy";
@@ -59,7 +60,7 @@ function recordKey(entry: ShowtimeChoiceShelfEntry) {
 }
 
 function shareUrl(entry: ShowtimeChoiceShelfEntry, lang: Lang) {
-  return `${choicePublicPath(entry.id, entry.kind)}&lang=${lang}`;
+  return choiceSharePath(entry.id, entry.kind, lang, entry.coverUrl);
 }
 
 function choiceDateLabel(value: string, lang: Lang) {

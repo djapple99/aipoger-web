@@ -22,6 +22,7 @@ function shelf() {
     "@/components/aipoger-choice-cover": { AipogerChoiceCover: "Cover" },
     "@/lib/showtime-copy": loadTs("src/lib/showtime-copy.ts"), "./showtime.module.css": { __esModule: true, default: {} },
     "@/lib/aipoger-choice": loadTs("src/lib/aipoger-choice.ts"), "@/lib/choice-copy": loadTs("src/lib/choice-copy.ts"),
+    "@/lib/choice-share": loadTs("src/lib/choice-share.ts"),
   };
   new Function("require", "module", "exports", "document", code)((key) => { assert.ok(key in modules, key); return modules[key]; }, loaded, loaded.exports, { body: {} });
   return (entries, featuredKey = null, options = {}) => {
@@ -38,7 +39,7 @@ test("valid owner feature leads without ranking Choices or duplicating a visible
   assert.equal(content(all.find((node) => node.props.id === "choice-heading")), "Choice Playlists");
   assert.equal(all.filter((node) => node.type === "article").length, 4);
   assert.deepEqual(all.filter((node) => node.type === "article").map((node) => node.props["data-choice-key"]), ["creator:picked", "creator:fourth", "creator:new", "creator:old"]);
-  assert.deepEqual(all.filter((node) => node.type === "Share").map((node) => node.props.url), ["picked", "fourth", "new", "old"].map(id => `/choice/${id}?kind=creator&lang=en`));
+  assert.deepEqual(all.filter((node) => node.type === "Share").map((node) => node.props.url), ["picked", "fourth", "new", "old"].map(id => loadTs("src/lib/choice-share.ts").choiceSharePath(id, "creator", "en", "/real-cover.png")));
 });
 test("missing or unplayable feature has no endorsement, fake cards or empty companion", () => {
   const render = shelf();
