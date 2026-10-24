@@ -103,6 +103,7 @@ test("failed cover downloads are retryable and never cached as successful images
 
 test("LINE crawlers get blocking metadata without dropping Next's existing crawler coverage", () => {
   const config = loadTs("next.config.ts").default;
+  assert.ok(config.outputFileTracingIncludes["/choice/*/share-image"].includes("./node_modules/@img/sharp-libvips-linux-x64/**/*"));
   const { HTML_LIMITED_BOT_UA_RE } = loadTs("node_modules/next/dist/shared/lib/router/utils/html-bots.js");
   for (const agent of HTML_LIMITED_BOT_UA_RE.source.split("|")) {
     if (!agent.includes("[")) assert.ok(config.htmlLimitedBots.test(agent), agent);
