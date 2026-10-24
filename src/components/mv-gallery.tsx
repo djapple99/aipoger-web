@@ -7,7 +7,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, ChevronLeft, ChevronRight, Heart, MessageCircleMore, Play, Search, X } from "lucide-react";
 import EditorialHeader from "@/components/editorial-header";
 import WorkImage from "@/components/work-image";
-import HomeWorkFeedback from "@/components/home-work-feedback";
+import { albumCopy } from "@/lib/album-copy";
+import dynamic from "next/dynamic";
+const HomeWorkFeedback = dynamic(() => import("@/components/home-work-feedback"));
 import ShareButton from "@/components/share-button";
 import { useI18n } from "@/lib/i18n";
 import { homeCopy } from "@/lib/home-copy";
@@ -137,7 +139,7 @@ export default function MvGallery() {
             <div className={`${base.video} ${styles.heroVideo}`}>
               <button className={base.poster} onClick={() => watch(selected)} aria-label={`${copy.watch} · ${selected.title}`}>
                 <WorkImage key={selected.id} work={selected} video priority /><span className={base.posterPlay}><Play size={27} fill="currentColor" /></span><span className={base.videoSource}>{copy.source}</span>
-                <span className={styles.ratingBadge}>{selected.ratingCount ? `${selected.ratingAverage?.toFixed(1)} ${mv.points}｜${selected.ratingCount} ${mv.raters}` : mv.unrated}</span>
+                <span className={styles.ratingBadge}>{selected.workKind === "album" ? albumCopy(lang).label : selected.ratingCount ? `${selected.ratingAverage?.toFixed(1)} ${mv.points}｜${selected.ratingCount} ${mv.raters}` : mv.unrated}</span>
               </button>
             </div>
             <div className={base.workInfo}><p className={base.workLabel}>{data?.featureKind === "community" ? copy.community : copy.newWork}</p>
@@ -170,7 +172,7 @@ export default function MvGallery() {
             {support.error === "read" ? <button onClick={() => void support.reload()}>{copy.retry}</button> : null}</div> : null}
           <div className={styles.grid}>{works.slice(0, limit).map(work => <article key={work.id} className={styles.card}>
             <button className={styles.cardPoster} onClick={() => watch(work)} aria-label={`${copy.watch} · ${work.title}`}><WorkImage work={work} video />
-              <span className={styles.ratingBadge}>{work.ratingCount ? `${work.ratingAverage?.toFixed(1)} ${mv.points}｜${work.ratingCount} ${mv.raters}` : mv.unrated}</span>
+              <span className={styles.ratingBadge}>{work.workKind === "album" ? albumCopy(lang).label : work.ratingCount ? `${work.ratingAverage?.toFixed(1)} ${mv.points}｜${work.ratingCount} ${mv.raters}` : mv.unrated}</span>
               <span className={styles.cardPlay}><Play size={20} fill="currentColor" /></span><span className={base.videoSource}>YouTube</span></button>
             <div className={styles.cardTitleRow}>
               <h3 title={work.title}><button type="button" onClick={() => openFeedback(work)} aria-label={`${mv.openWork} · ${work.title}`}>{work.title}</button></h3>

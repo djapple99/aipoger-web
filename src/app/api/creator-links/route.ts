@@ -29,6 +29,8 @@ export async function POST(request: Request) {
       );
     if (body.action !== "submit")
       return NextResponse.json({ error: "INVALID_REQUEST" }, { status: 400 });
+    if (body.workKind !== undefined && body.workKind !== "single" && body.workKind !== "album")
+      return NextResponse.json({ error: "INVALID_WORK_KIND" }, { status: 400 });
     if (body.requestId !== undefined && (typeof body.requestId !== "string" || !/^[0-9a-f-]{36}$/i.test(body.requestId))) return NextResponse.json({error:"INVALID_REQUEST"},{status:400});
     const requestId: string = body.requestId ?? randomUUID();
     if (body.requestId) {
@@ -94,6 +96,7 @@ export async function POST(request: Request) {
       .from("listen_bar_tracks")
       .insert({
         id: requestId,
+        work_kind: body.workKind ?? "single",
         credit_submission_confirmed: body.confirmedCredit === true,
         title,
         artist,
@@ -103,6 +106,7 @@ export async function POST(request: Request) {
             LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS,
           ) || "AI Music",
         genre: body.genre,
+        description: typeof body.description === "string" ? body.description.trim().slice(0, 2000) || null : null,
         audio_path: null,
         cover_path: p.coverUrl || null,
         external_provider: p.media.provider,

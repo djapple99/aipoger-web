@@ -13,6 +13,7 @@ const styles=new Proxy({}, {get:(_,name)=>String(name)});
 const icons=new Proxy({}, {get:(_,name)=>String(name)});
 const testModule={exports:{}};
 new Function('require','module','exports',compiled)(name=>{
+  if(name==='next/dynamic')return {__esModule:true,default:()=> 'lazy-component'};
   if(name==='react/jsx-runtime')return {jsx,jsxs:jsx};
   if(name==='@/components/lyrics-popover')return {__esModule:true,default:'LyricsPopover'};
   if(name==='next/link')return {__esModule:true,default:'a'};

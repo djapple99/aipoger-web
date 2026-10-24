@@ -1,3 +1,4 @@
+import { lazyRuntime } from "./helpers/lazy-runtime.mjs";
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -32,6 +33,7 @@ async function mount(t,lang='zh',payload={featureKind:'community',featured:[work
  new Function('require','module','exports',headerCompiled)(name=>{assert.ok(name in modules,name);return modules[name];},header,header.exports);
  modules['@/components/editorial-header']=header.exports;
  modules['@/components/work-image']={__esModule:true,default:'work-image'};
+ modules['next/dynamic']=lazyRuntime(modules);
  const loaded={exports:{}};
  new Function('require','module','exports','fetch','window','document',compiled)(name=>{assert.ok(name in modules,name);return modules[name];},loaded,loaded.exports,async()=>({ok:!fail,json:async()=>structuredClone(payload)}),window,document);
  function render(){cursor=0;dirty=false;tree=loaded.exports.default();}

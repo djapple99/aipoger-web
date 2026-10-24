@@ -10,7 +10,12 @@ export async function loadMvShareMetadata(trackId: string) {
   const work = works.find(item => item.id === trackId);
   if (!work?.videoId || !/^[a-zA-Z0-9_-]{11}$/.test(work.videoId)) return null;
 
-  const base = `https://i.ytimg.com/vi/${work.videoId}`;
+  return { id: work.id, title: work.title, artist: work.artist, description: work.description, image: await youtubeShareImage(work.videoId) };
+}
+
+export async function youtubeShareImage(videoId: string) {
+  if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) throw new Error("Invalid video ID");
+  const base = `https://i.ytimg.com/vi/${videoId}`;
   const candidates = [
     { url: `${base}/maxresdefault.jpg`, width: 1280, height: 720 },
     { url: `${base}/sddefault.jpg`, width: 640, height: 480 },
@@ -23,12 +28,9 @@ export async function loadMvShareMetadata(trackId: string) {
         method: "HEAD", redirect: "error", signal: AbortSignal.timeout(2000),
       });
       if (response.ok && response.headers.get("content-type")?.startsWith("image/")) {
-        return { id: work.id, title: work.title, artist: work.artist, description: work.description, image };
+        return image;
       }
     } catch { /* Try the next thumbnail; keep sharing available during an outage. */ }
   }
-  return {
-    id: work.id, title: work.title, artist: work.artist, description: work.description,
-    image: { url: `${base}/hqdefault.jpg`, width: 480, height: 360 },
-  };
+  return { url: `${base}/hqdefault.jpg`, width: 480, height: 360 };
 }

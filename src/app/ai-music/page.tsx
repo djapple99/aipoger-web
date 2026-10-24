@@ -1,11 +1,25 @@
 import type { Metadata } from "next";
+import { readPublicAlbums } from "@/lib/server-albums";
+import { albumPath } from "@/lib/album";
+import { youtubeShareImage } from "@/lib/server-mv-share-metadata";
+import { albumCopy } from "@/lib/album-copy";
 import AiMusicClient from "./ai-music-client";
 
-type PageProps = { searchParams: Promise<{ lang?: string }> };
+type PageProps = { searchParams: Promise<{ lang?: string; album?: string; view?: string }> };
 
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
-  const { lang } = await searchParams;
+  const { lang, album } = await searchParams;
   const locale = lang === "ja" || lang === "ko" || lang === "en" ? lang : "zh";
+  if (album && /^[0-9a-f-]{36}$/i.test(album)) {
+    const work = await readPublicAlbums(album).then(rows => rows[0]).catch(() => null);
+    if (work) {
+      const path = albumPath(work.id, locale).split("#")[0];
+      const title = `${work.title}｜${work.artist} · AIPOGER`;
+      const description = work.description || albumCopy(locale).intro;
+      const image = work.videoId ? (await youtubeShareImage(work.videoId)).url : work.coverUrl;
+      return { title: { absolute: title }, description, alternates: { canonical: path, languages: Object.fromEntries(["zh", "en", "ja", "ko"].map(language => [language === "zh" ? "zh-Hant" : language, albumPath(work.id, language).split("#")[0]])) }, openGraph: { title, description, url: path, images: image ? [{ url: image }] : [] }, twitter: { card: "summary_large_image", title, description, images: image ? [image] : [] } };
+    }
+  }
   const localized = lang === "ja"
     ? {
         title: "AI音楽を探す",
@@ -40,6 +54,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   };
 }
 
-export default function AiMusicPage() {
-  return <AiMusicClient />;
+export default async function AiMusicPage({ searchParams }: PageProps) {
+  const { album, view } = await searchParams;
+  return <AiMusicClient initialView={view === "albums" || album ? "albums" : "genre"} initialAlbumId={album ?? null} />;
 }

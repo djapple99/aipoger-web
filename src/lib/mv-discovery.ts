@@ -32,7 +32,7 @@ export function buildMvDiscovery(rows: HomeTrackRow[], hearts: HomeHeartRow[],
 export function filterMvWorks<T extends HomeWork>(works: T[], query: string, genre: string, sort: MvSort): T[] {
   const terms = query.normalize("NFKC").toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
   // Match the public score on the cover; unrated works follow by publish date.
-  const rating = (work: HomeWork) => (work.ratingCount ?? 0) > 0 && Number.isFinite(work.ratingAverage)
+  const rating = (work: HomeWork) => work.workKind !== "album" && (work.ratingCount ?? 0) > 0 && Number.isFinite(work.ratingAverage)
     && (work.ratingAverage ?? 0) > 0 ? Number(work.ratingAverage!.toFixed(1)) : 0;
   return works.filter(work => (!genre || work.genre === genre) && terms.every(term =>
     `${work.title} ${work.artist}`.normalize("NFKC").toLocaleLowerCase().includes(term)))

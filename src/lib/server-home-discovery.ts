@@ -13,7 +13,7 @@ async function readDiscoverySource() {
   const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
   const now = new Date(); const week = taipeiHomeWeek(now);
   const rows = await readAllHomePages<HomeTrackRow>((from, to) => admin.from("listen_bar_tracks")
-    .select("id,title,artist,genre,description,audio_path,external_url,is_music_video,cover_path,youtube_url,lyrics,created_at,created_by,source,is_featured_official,is_active,review_status,hidden_at,removed_at,ai_music_showtime_public_removed_at,ai_music_showtime_certified,ai_music_showtime_certified_at,ai_music_showtime_certification_source")
+    .select("id,title,artist,genre,description,work_kind,album_track_ids,audio_path,external_url,is_music_video,cover_path,youtube_url,lyrics,created_at,created_by,source,is_featured_official,is_active,review_status,hidden_at,removed_at,ai_music_showtime_public_removed_at,ai_music_showtime_certified,ai_music_showtime_certified_at,ai_music_showtime_certification_source")
     .eq("source", "community").eq("is_active", true).order("id").range(from, to));
   const [lifecycle, hearts] = await Promise.all([
     buildAiMusicSurfaceLifecycleMap(admin, rows as ListenBarTrackRow[]),
@@ -56,9 +56,8 @@ export async function readHomeDiscovery() {
 }
 
 export async function readMvDiscovery() {
-  const source = await readDiscoverySource();
+  const [source, summaries] = await Promise.all([readDiscoverySource(), mvRatingSummaries()]);
   const result = buildMvDiscovery(source.rows, source.hearts, source.mediaUrl, source.now);
-  const summaries = await mvRatingSummaries(source.admin);
   for (const work of [...result.works, ...result.featured]) Object.assign(work, summaries.get(work.id) ?? { ratingAverage: null, ratingCount: 0, ratingTotal: 0 });
   await addFeaturedComments(result, source);
   return result;
@@ -67,7 +66,7 @@ export async function readMvDiscovery() {
 export async function readMusicReviewWork(trackId: string) {
   const source = await readDiscoverySource();
   const work = buildPublicHomeWorks(source.rows, source.hearts, source.mediaUrl, source.now)
-    .find(item => item.id === trackId && isInDiscoveryMusicPool(item.publishedAt, item.id, source.now.getTime()));
+    .find(item => item.id === trackId && (item.workKind === "album" || isInDiscoveryMusicPool(item.publishedAt, item.id, source.now.getTime())));
   if (!work) return null;
   const summaries = await mvRatingSummaries(source.admin);
   return { ...work, ...(summaries.get(work.id) ?? { ratingAverage: null, ratingCount: 0, ratingTotal: 0 }) };

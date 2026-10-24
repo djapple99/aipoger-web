@@ -6,6 +6,7 @@ import { ArrowDown, Heart, X } from "lucide-react";
 import MvPlayer from "@/components/mv-player";
 import MvRatingForm, { type MvReviewDraft } from "@/components/mv-rating-form";
 import { useI18n } from "@/lib/i18n";
+import { albumCopy } from "@/lib/album-copy";
 import { homeCopy } from "@/lib/home-copy";
 import { mvCopy } from "@/lib/mv-copy";
 import { supabase } from "@/lib/supabase";
@@ -34,7 +35,7 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
   const destination = new URL(returnPath, "https://aipoger.com");
   destination.searchParams.set("lang", lang);
   if (destination.pathname === "/mv") destination.searchParams.set("track", work.id);
-  if (destination.pathname === "/ai-music") { destination.searchParams.set("track", work.id); destination.searchParams.set("comments", "1"); }
+  if (destination.pathname === "/ai-music") { if (work.workKind === "album") { destination.searchParams.delete("track"); destination.searchParams.set("view", "albums"); destination.searchParams.set("album", work.id); } else destination.searchParams.set("track", work.id); destination.searchParams.set("comments", "1"); }
   const authHref = `/auth?lang=${lang}&next=${encodeURIComponent(destination.pathname + destination.search + destination.hash)}`;
 
   useEffect(() => {
@@ -127,13 +128,13 @@ export default function HomeWorkFeedback({ work, onClose, onChange, returnPath =
         {signedIn ? <button className={styles.feedbackHeart} type="button" disabled={busy || hearted === null} aria-pressed={hearted === true}
           onClick={() => void submitHeart()}><Heart size={18} fill={hearted ? "currentColor" : "none"} />{hearted ? copy.removeHeart : copy.sendHeart}</button>
           : <Link className={styles.feedbackAuth} href={authHref}>{copy.loginFeedback}</Link>}
-        <p className={styles.feedbackNote}>{supportNote ?? copy.supportNote}</p>
+        <p className={styles.feedbackNote}>{work.workKind === "album" ? albumCopy(lang).note : supportNote ?? copy.supportNote}</p>
         {withVideo && shareControl ? <div className={styles.feedbackShare}>{shareControl}</div> : null}
       </div>
       {withVideo && videoControls ? <div className={styles.mvViewLinks}>{videoControls}</div> : null}
       {heartReadFailed ? <p role="alert" className={styles.refreshError}>{copy.error}</p> : null}
       <div ref={commentArea} id="mv-comment-area">
-        <MvRatingForm key={work.id} trackId={work.id} signedIn={signedIn} surface={work.videoId ? "mv" : "music"} drafts={reviewDrafts.current} onBusy={onReviewBusy ?? (() => {})} onSaved={item => {
+        <MvRatingForm key={work.id} trackId={work.id} workKind={work.workKind} signedIn={signedIn} surface={work.videoId ? "mv" : "music"} drafts={reviewDrafts.current} onBusy={onReviewBusy ?? (() => {})} onSaved={item => {
           if (currentWork.current !== work.id) return;
           if (item) setComments(current => current.some(comment => comment.id === item.id) ? current.map(comment => comment.id === item.id ? item : comment) : [...current, item]);
           setCommentsVersion(version => version + 1);

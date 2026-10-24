@@ -57,6 +57,8 @@ export type ListenBarTrack = {
 };
 
 export type ListenBarTrackRow = {
+  work_kind?: "single" | "album";
+  album_track_ids?: string[];
   id: string;
   title: string;
   artist: string;

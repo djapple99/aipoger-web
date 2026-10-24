@@ -28,6 +28,7 @@ export async function GET(request: Request) {
       audio_path: string | null;
       external_url: string | null;
       is_music_video: boolean;
+      work_kind: "single" | "album";
       youtube_url: string | null;
       lyrics: string | null;
       is_active: boolean;
@@ -40,7 +41,7 @@ export async function GET(request: Request) {
       const r = await admin
         .from("listen_bar_tracks")
         .select(
-          "id,title,artist,ai_tool,genre,created_at,created_by,cover_path,audio_path,external_url,is_music_video,youtube_url,lyrics,is_active,hidden_at,removed_at,review_status,ai_music_showtime_public_removed_at",
+          "id,title,artist,ai_tool,genre,created_at,created_by,cover_path,audio_path,external_url,is_music_video,work_kind,youtube_url,lyrics,is_active,hidden_at,removed_at,review_status,ai_music_showtime_public_removed_at",
         )
         .eq("created_by", user.id)
         .eq("source", "community")
@@ -111,6 +112,8 @@ export async function GET(request: Request) {
           : admin.storage.from(bucket).getPublicUrl(p).data.publicUrl;
     const works = tracks.map((t) => ({
       id: t.id,
+      workKind: t.work_kind,
+      coverPath: t.cover_path,
       title: t.title,
       artist: t.artist,
       aiTool: t.ai_tool || "AI Music",

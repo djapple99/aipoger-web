@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
         admin.from("mv_work_ratings").select("score,comment_id").eq("track_id", trackId).eq("user_id", data.user.id).maybeSingle(),
       ]);
       if (track.error || own.error) throw new Error("Read failed");
-      canRate = track.data.created_by !== data.user.id;
+      canRate = work.workKind !== "album" && track.data.created_by !== data.user.id;
       const owner = isAdminEmail(data.user.email) && Boolean(data.user.email_confirmed_at);
       canEditScore = owner && canRate;
       myScore = own.data?.score ?? null;
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
         }
       }
     }
-    return reply({ myScore, myComment, canRate, canEditScore, canEditComment, canDeleteComment, reviewBlocked, ratingAverage: work.ratingAverage ?? null, ratingCount: work.ratingCount ?? 0, ratingTotal: work.ratingTotal ?? 0 });
+    return reply({ workKind: work.workKind ?? "single", myScore: work.workKind === "album" ? null : myScore, myComment, canRate, canEditScore, canEditComment, canDeleteComment, reviewBlocked, ratingAverage: work.ratingAverage ?? null, ratingCount: work.ratingCount ?? 0, ratingTotal: work.ratingTotal ?? 0 });
   } catch { return reply({ error: "Reviews unavailable" }, 503); }
 }
 
@@ -63,7 +63,9 @@ export async function POST(request: NextRequest) {
     const { data: user, error: authError } = await admin.auth.getUser(bearer);
     if (authError || !user.user || user.user.is_anonymous) return reply({ error: "Sign in again" }, 401);
     // Use the same lifecycle/visibility rules as the public MV catalogue.
-    if (!(await reviewWork(request, body.trackId))) return reply({ error: "Unavailable work" }, 404);
+    const work = await reviewWork(request, body.trackId);
+    if (!work) return reply({ error: "Unavailable work" }, 404);
+    if (work.workKind === "album" && body.score !== null) return reply({ error: "Albums do not accept single ratings", code: "ALBUM_RATING_DISABLED" }, 403);
     const { displayName: name } = await loadPublicIdentity(admin, user.user.id);
     const { data, error } = await admin.rpc("save_work_review", {
       p_track_id: body.trackId, p_user_id: user.user.id, p_score: body.score,

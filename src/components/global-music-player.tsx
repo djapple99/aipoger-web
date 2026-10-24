@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ListMusic, FileText, Heart, MessageCircleMore, Pause, Play, SkipBack, SkipForward, Volume2, X } from "lucide-react";
 import YouTubeRadioPlayer from "@/components/youtube-radio-player";
 import type { YouTubePlayer } from "@/lib/youtube-player-api";
-import HomeWorkFeedback from "@/components/home-work-feedback";
+import dynamic from "next/dynamic";
+const HomeWorkFeedback = dynamic(() => import("@/components/home-work-feedback"));
 import { clampMediaVolume, setNativeMediaVolume } from "@/lib/media-volume-control";
 
 import AuthRequiredDialog from "@/components/auth-required-dialog";

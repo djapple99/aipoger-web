@@ -14,7 +14,10 @@ import { filterAiMusicTracks } from "@/lib/ai-music-filter";
 import LyricsPopover from "@/components/lyrics-popover";
 import ExploreRadio from "@/components/explore-radio";
 import MusicPoolChart from "@/components/music-pool-chart";
-import HomeWorkFeedback from "@/components/home-work-feedback";
+import dynamic from "next/dynamic";
+import { albumCopy } from "@/lib/album-copy";
+const AlbumView = dynamic(() => import("@/components/album-view"));
+const HomeWorkFeedback = dynamic(() => import("@/components/home-work-feedback"));
 import { isInDiscoveryMusicPool, rankMusicPool } from "@/lib/music-pool";
 import type { HomeWork } from "@/lib/home-discovery";
 import styles from "./ai-music.module.css";
@@ -548,7 +551,7 @@ function HeatList({
   );
 }
 
-export default function AiMusicClient() {
+export default function AiMusicClient({ initialView = "genre", initialAlbumId = null }: { initialView?: "genre" | "albums"; initialAlbumId?: string | null } = {}) {
   const { lang, t } = useI18n();
   const copy = exploreCopy(lang);
   const earwormCopy = earwormExploreCopy(lang);
@@ -566,7 +569,8 @@ export default function AiMusicClient() {
   const authIdentity = useRef<string | null>(null);
   const [highlightedId, setHighlightedId] = useState("");
   const [tracks, setTracks] = useState<AiMusicTrack[]>([]);
-  const [worksView, setWorksView] = useState<"genre" | "heat">("genre");
+  const [albumId, setAlbumId] = useState<string | null>(initialAlbumId);
+  const [worksView, setWorksView] = useState<"genre" | "heat" | "albums">(initialView);
   const [query, setQuery] = useState("");
   const [selectedGenre, setSelectedGenre] = useState("");
   const [earwormPromptOpen, setEarwormPromptOpen] = useState(false);
@@ -637,7 +641,10 @@ export default function AiMusicClient() {
 
   useEffect(() => {
     const updateSharedTrack = () => {
-      const trackId = new URLSearchParams(window.location.search).get("track")?.trim() || null;
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get("album");
+      if (params.get("view") === "albums" || id) { setWorksView("albums"); setAlbumId(id); }
+      const trackId = params.get("track")?.trim() || null;
       setSharedTrackSourceId(trackId);
       setLocateVersion(version => version + 1);
     };
@@ -664,6 +671,7 @@ export default function AiMusicClient() {
   }, []);
 
   useEffect(() => {
+    if (worksView === "albums") return;
     let cancelled = false;
     const load = async () => {
       if (loadLanguage.current !== lang) { setLoadState("loading"); loadLanguage.current = lang; }
@@ -687,7 +695,7 @@ export default function AiMusicClient() {
     return () => {
       cancelled = true;
     };
-  }, [lang, loadVersion]);
+  }, [lang, loadVersion, worksView]);
 
   useEffect(() => {
     const refresh = () => { if (document.visibilityState === "visible") { setPoolNow(Date.now()); setLoadVersion(value => value + 1); } };
@@ -696,6 +704,13 @@ export default function AiMusicClient() {
     window.addEventListener("aipoger:mv-rating", refresh);
     return () => { window.clearInterval(timer); window.removeEventListener("focus", refresh); window.removeEventListener("aipoger:mv-rating", refresh); };
   }, []);
+
+  useEffect(() => {
+    if (!sharedTrackSourceId || loadState !== "ready" || tracks.some(t => t.sourceId === sharedTrackSourceId)) return;
+    let active = true;
+    void fetch(`/api/albums?id=${encodeURIComponent(sharedTrackSourceId)}`).then(r => r.ok ? r.json() : null).then(p => { if (active && p?.albums?.length) { setAlbumId(sharedTrackSourceId); setWorksView("albums"); } }).catch(() => {});
+    return () => { active = false; };
+  }, [sharedTrackSourceId, tracks, loadState]);
 
   useEffect(() => {
     if (!sharedTrackSourceId || tracks.length === 0) return;
@@ -958,9 +973,9 @@ export default function AiMusicClient() {
       </dialog>
       {feedbackWork ? <HomeWorkFeedback key={feedbackWork.id} work={feedbackWork} supportNote={localeText(lang, "愛心、填寫的分數與盲聽支持累積成排行總分；留言文字本身不加分。自己的作品不自評。", "Hearts, numeric ratings and blind preferences contribute to total chart points. Comment text adds no chart points. Creators cannot rate their own work.", "支持・入力した評価・ブラインド試聴の支持を累積して順位を決めます。コメント本文は加点されません。自分の作品には採点できません。", "하트, 입력한 평점, 블라인드 선호를 누적해 순위를 정해요. 댓글 내용 자체는 차트 점수를 더하지 않아요. 내 작품은 평가할 수 없어요.")} returnPath={`/ai-music?track=${feedbackWork.id}#works`} onClose={() => setCommentTrack(null)} onChange={() => setLoadVersion(value => value + 1)} /> : null}
       <main className={styles.main}>
-        <ExploreRadio tracks={radioTracks} ready={loadState === "ready"} hearted={Boolean(currentTrack && heartStates[currentTrack.recordKey])} heartBusy={Boolean(currentTrack && heartBusy[currentTrack.recordKey])}
+        {worksView !== "albums" ? <ExploreRadio tracks={radioTracks} ready={loadState === "ready"} hearted={Boolean(currentTrack && heartStates[currentTrack.recordKey])} heartBusy={Boolean(currentTrack && heartBusy[currentTrack.recordKey])}
           onHeart={id => { const track = poolTracks.find(track => track.sourceId === id); if (track) void sendHeart(track); }}
-          onComment={id => { const track = poolTracks.find(track => track.sourceId === id); if (track) setCommentTrack(track); }} />
+          onComment={id => { const track = poolTracks.find(track => track.sourceId === id); if (track) setCommentTrack(track); }} /> : null}
         <div className={styles.intro}>
           <div>
             <div className={styles.introTitle}>
@@ -989,6 +1004,7 @@ export default function AiMusicClient() {
             <div className={styles.modes} role="group" aria-label={copy.browseMode}>
               <button type="button" onClick={() => setWorksView("genre")} aria-pressed={worksView === "genre"}>{copy.byStyle}</button>
               <button type="button" onClick={() => setWorksView("heat")} aria-pressed={worksView === "heat"}>{copy.hotNow}</button>
+              <button type="button" onClick={() => setWorksView("albums")} aria-pressed={worksView === "albums"}>{albumCopy(lang).albums}</button>
             </div>
             <select value={selectedGenre} onChange={event => setSelectedGenre(event.target.value)} aria-label={localeText(lang, "選擇曲風", "Choose genre", "ジャンルを選ぶ", "장르 선택")}>
               <option value="">{localeText(lang, "全部曲風", "All genres", "すべてのジャンル", "모든 장르")}</option>
@@ -996,7 +1012,7 @@ export default function AiMusicClient() {
             </select>
             <ParticipationGuide surface="explore" lang={lang} className={styles.guide} />
           </div>
-          <div className={styles.discovery}>
+          {worksView === "albums" ? <AlbumView initialId={albumId} query={query} genre={selectedGenre} /> : <div className={styles.discovery}>
             <aside className={styles.chartColumn}><MusicPoolChart {...chartProps} /></aside>
           <div className={styles.catalog} data-highlighted-work={highlightedId}>
             {loadState === "loading" ? <p className={styles.state} role="status">{copy.loading}</p> : null}
@@ -1024,7 +1040,7 @@ export default function AiMusicClient() {
             {loadState === "ready" && worksView === "genre" ? groupedTracks.map((group, index) => {
               const expanded = Boolean(expandedGenres[group.genre]);
               const visible = query.trim() || expanded ? group.tracks : group.collapsedTracks;
-              return <section key={group.genre} className={styles.section}>
+              return <section key={group.genre} className={styles.section} style={index > 0 ? { contentVisibility: "auto", containIntrinsicSize: "auto 500px" } : undefined}>
                 <div className={styles.sectionHeading}>
                   <div className={styles.headingText}>
                     <h2>{index === 0 ? localeText(lang, "更多音樂", "More Music", "もっと音楽を", "더 많은 음악") : group.label}</h2>
@@ -1042,7 +1058,8 @@ export default function AiMusicClient() {
             }) : null}
           </div>
           </div>
-          {loadState === "ready" ? <p className={styles.count}>{catalogMetadata}</p> : null}
+          }
+          {loadState === "ready" && worksView !== "albums" ? <p className={styles.count}>{catalogMetadata}</p> : null}
         </section>
       </main>
 

@@ -14,7 +14,9 @@ export default function CreatorLinkUpload({
   userId,
   name,
   onSubmitted,
+  workKind = "single",
 }: {
+  workKind?: "single" | "album";
   userId: string;
   name: string;
   onSubmitted: () => void;
@@ -34,6 +36,7 @@ export default function CreatorLinkUpload({
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [success, setSuccess] = useState(false);
+  const [description, setDescription] = useState("");
   const [retry, setRetry] = useState(0);
   const version = useRef(0),
     lock = useRef(false);
@@ -113,6 +116,7 @@ export default function CreatorLinkUpload({
     try {
       await api({
         action: "submit",
+        workKind, description,
         requestId: submissionId.current ??= crypto.randomUUID(),
         confirmedCredit,
         previewToken: preview.token,
@@ -222,6 +226,7 @@ export default function CreatorLinkUpload({
               )}
             </p>
           ) : null}
+          {workKind === "album" ? <label>{text("專輯介紹", "Album introduction", "アルバム紹介", "앨범 소개")}<textarea value={description} maxLength={2000} onChange={e => setDescription(e.target.value)} disabled={busy} /></label> : null}
           <details className={styles.previewEdit}>
             <summary>
               {text(

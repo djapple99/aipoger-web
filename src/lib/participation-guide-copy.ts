@@ -298,8 +298,9 @@ const COPY = {
     }
   }
 } as const;
+import { albumCopy } from "./album-copy";
 export function participationGuideCopy(surface: GuideSurface, lang: string) {
   const locale = lang === "en" || lang === "ja" || lang === "ko" ? lang : "zh";
   const c = COPY[locale];
-  return { ...c[surface], trigger: c.trigger, close: c.close, creditTitle: c.creditTitle, creditBody: creditCopy(locale).rules, note: c.note };
+  return { ...c[surface], sections: [...c[surface].sections, ...(surface === "explore" || surface === "mv" ? [{ title: albumCopy(locale).rulesTitle, body: albumCopy(locale).rules }] : [])], trigger: c.trigger, close: c.close, creditTitle: c.creditTitle, creditBody: creditCopy(locale).rules, note: c.note };
 }

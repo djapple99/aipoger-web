@@ -8,7 +8,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 import { useI18n } from "@/lib/i18n";
-import { AvatarCropUploadModal } from "@/components/avatar-crop-upload-modal";
+import dynamic from "next/dynamic";
+const AvatarCropUploadModal = dynamic(() => import("@/components/avatar-crop-upload-modal").then(m => m.AvatarCropUploadModal));
 import ShowtimeQueuePlayer, {
   type ShowtimePlayerTrack,
   type ShowtimeQueuePlayerHandle,
@@ -2430,7 +2431,7 @@ function ProfileInner() {
         </div>
       </div>
 
-      {userId ? (
+      {userId && cropModalOpen ? (
         <AvatarCropUploadModal
           open={cropModalOpen}
           imageDataUrl={cropImageSrc}

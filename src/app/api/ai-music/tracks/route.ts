@@ -53,6 +53,7 @@ type RecentHeat = {
 };
 
 const MODERN_SELECT = [
+  "work_kind",
   "id",
   "title",
   "artist",
@@ -89,6 +90,7 @@ const MODERN_SELECT = [
 ].join(",");
 
 const LEGACY_SELECT = [
+  "work_kind",
   "id",
   "title",
   "artist",
@@ -284,22 +286,20 @@ export async function GET() {
     }
     const now = Date.now();
     const playableRows = applyLegacyOpeningGrace(rows).filter(row => isPublicPlayableTrack(row) && isInDiscoveryMusicPool(row.created_at, row.id, now));
-    const hearts: { track_id: string; user_id: string; reaction: string; created_at: string }[] = [];
-    for (let offset = 0; offset < playableRows.length; offset += 100) {
-      const ids = playableRows.slice(offset, offset + 100).map(row => row.id);
-      hearts.push(...await readAllHomePages(async (from, to) => {
+    const heartBatches = Array.from({ length: Math.ceil(playableRows.length / 100) }, (_, index) => playableRows.slice(index * 100, index * 100 + 100).map(row => row.id));
+    const [heartPages, lifecycleByTrackId, recentHeatByTrackId, affinityByTrackId, blind, ratings] = await Promise.all([
+      Promise.all(heartBatches.map(ids => readAllHomePages<{ track_id: string; user_id: string; reaction: string; created_at: string }>(async (from, to) => {
         const result = await admin.from("listen_bar_track_reactions").select("track_id,user_id,reaction,created_at")
           .in("track_id", ids).eq("reaction", "heart").lte("created_at", new Date(now).toISOString())
           .order("track_id", { ascending: true }).order("user_id", { ascending: true }).order("vote_date", { ascending: true }).range(from, to);
         return { data: result.data, error: result.error };
-      }));
-    }
-    const poolSupportCounts = musicPoolSupportCounts(playableRows, hearts);
-    const [lifecycleByTrackId, recentHeatByTrackId, affinityByTrackId] = await Promise.all([
+      }))),
       buildAiMusicSurfaceLifecycleMap(admin, playableRows),
       readRecentHeat(admin, playableRows.map((row) => row.id)),
       readEarwormAffinityMap(admin, playableRows.map((row) => row.id)),
+      blindSummaries(admin), mvRatingSummaries(admin),
     ]);
+    const poolSupportCounts = musicPoolSupportCounts(playableRows, heartPages.flat());
     const tracks = playableRows
       .map((row) => {
         const lifecycle = lifecycleByTrackId.get(row.id);
@@ -324,7 +324,6 @@ export async function GET() {
         };
       })
       .filter((row) => !row.ai_music_explore_retired);
-    const [blind, ratings] = await Promise.all([blindSummaries(admin), mvRatingSummaries(admin)]);
     const rankedTracks = tracks.map(row => {
       const summary = blind.get(row.id) ?? { people: 0, preferencePoints: 0 };
       const rating = ratings.get(row.id) ?? { ratingAverage: null, ratingCount: 0, ratingTotal: 0 };

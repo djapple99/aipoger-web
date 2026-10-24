@@ -19,12 +19,17 @@ import { supabase } from "@/lib/supabase";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { musicPlayer, getMusicPlayerState } from "@/lib/music-player-store";
 import { parseExternalMusic } from "@/lib/external-music";
+import { albumCopy } from "@/lib/album-copy";
+import { albumPath, type WorkKind } from "@/lib/album";
+const AlbumBuilder = dynamic(() => import("@/components/album-builder"));
 import type { CreatorSummary, CreatorWork } from "@/lib/creator-center";
-import CreatorLinkUpload from "@/components/creator-link-upload";
-import ProfileMusicUpload from "@/components/profile-music-upload";
-import ExternalMusicPlayer from "@/components/external-music-player";
-import HomeWorkFeedback from "@/components/home-work-feedback";
-import AccountNotifications from "@/components/account-notifications";
+const CreatorLinkUpload = dynamic(() => import("@/components/creator-link-upload"));
+const ProfileMusicUpload = dynamic(() => import("@/components/profile-music-upload"));
+const ExternalMusicPlayer = dynamic(() => import("@/components/external-music-player"));
+import dynamic from "next/dynamic";
+const HomeWorkFeedback = dynamic(() => import("@/components/home-work-feedback"));
+const AccountNotifications = dynamic(() => import("@/components/account-notifications"));
+import DeferredSection from "@/components/deferred-section";
 import styles from "@/components/creator-center.module.css";
 type Favorite = {
   id: string;
@@ -117,6 +122,8 @@ export function CreatorCenterLayout({
   const { lang } = useI18n();
   const tx = (zh: string, en: string, ja?: string, ko?: string) =>
     creatorText(lang, zh, en, ja, ko);
+  const albums = albumCopy(lang);
+  const [kind, setKind] = useState<WorkKind>("single");
   const [tab, setTab] = useState("works"),
     [source, setSource] = useState("link"),
     [query, setQuery] = useState(""),
@@ -170,6 +177,7 @@ export function CreatorCenterLayout({
     safePage = Math.min(page, pages),
     rows = list.slice((safePage - 1) * pageSize, safePage * pageSize);
   const play = (w: CreatorWork) => {
+    if (w.workKind === "album") { window.location.assign(albumPath(w.id, lang)); return; }
     if (w.external) {
       if (getMusicPlayerState().playing) musicPlayer?.toggle();
       setExternal(w);
@@ -477,7 +485,7 @@ export function CreatorCenterLayout({
                         <b title={w.title}>{w.title}</b>
                         <small title={w.genre}>
                           {w.genre} · {w.aiTool}
-                          {w.isMusicVideo ? " · MV" : ""}
+                          {w.workKind === "album" ? ` · ${albums.label}` : w.isMusicVideo ? " · MV" : ""}
                         </small>
                         <small className={styles.workDate}>
                           {new Date(w.createdAt).toLocaleDateString(
@@ -739,6 +747,8 @@ export function CreatorCenterLayout({
             <h2>
               {tx("投稿新作品", "Submit a work", "作品を投稿", "작품 제출")}
             </h2>
+            <label>{albums.kind}<select value={kind} onChange={e => { setKind(e.target.value as WorkKind); setSource("link"); }}><option value="single">{albums.single}</option><option value="album">{albums.label}</option></select></label>
+            {kind === "album" ? <p>{albums.intro} {albums.note}</p> : null}
             <div
               className={styles.sourceTabs}
               role="tablist"
@@ -763,11 +773,14 @@ export function CreatorCenterLayout({
                   "음원 업로드",
                 )}
               </button>
+              {kind === "album" ? <button role="tab" aria-selected={source === "collection"} onClick={() => setSource("collection")}>{albums.create}</button> : null}
             </div>
+            <DeferredSection label={tx("正在準備投稿工具…", "Preparing submission tools…", "投稿ツールを準備中…", "제출 도구 준비 중…")}>
             {props.userId ? (
-              source === "link" ? (
+              source === "collection" ? <AlbumBuilder key={props.userId} userId={props.userId} name={props.name} works={data?.works ?? []} onSubmitted={onRefresh} /> : source === "link" ? (
                 <CreatorLinkUpload
-                  key={props.userId}
+                  key={`${props.userId}:${kind}`}
+                  workKind={kind}
                   userId={props.userId}
                   name={props.name}
                   onSubmitted={onRefresh}
@@ -775,7 +788,8 @@ export function CreatorCenterLayout({
               ) : (
                 <div className={styles.fileUpload}>
                   <ProfileMusicUpload
-                    key={props.userId}
+                    key={`${props.userId}:${kind}`}
+                    workKind={kind}
                     userId={props.userId}
                     creatorDefaultName={props.name}
                     onSubmitted={onRefresh}
@@ -785,6 +799,7 @@ export function CreatorCenterLayout({
             ) : (
               <p>{tx("登入後即可投稿。", "Sign in to submit.")}</p>
             )}
+            </DeferredSection>
             <p className={styles.footerNote}>
               {tx(
                 "公開推廣三個月；作品與紀錄留在自己的資料區。",
@@ -840,6 +855,7 @@ export function CreatorCenterLayout({
             key={comment.id}
             work={{
               id: comment.id,
+              workKind: comment.workKind,
               title: comment.title,
               artist: comment.artist,
               genre: comment.genre,

@@ -7,6 +7,7 @@ import { signedBattleAudioUrl } from "@/lib/official-gatekeeper-media";
 import { favoriteSavedTime } from "@/lib/favorite-recency";
 
 type TrackRow = {
+  work_kind?: "single" | "album";
   id: string; title: string | null; artist: string | null; genre: string | null;
   audio_path: string | null; cover_path: string | null; created_at: string | null;
   is_active: boolean | null; review_status: string | null; hidden_at: string | null;
@@ -34,7 +35,7 @@ export async function loadCreatorChoicePlaybackCatalog(admin: SupabaseClient) {
   const pageSize = 500;
   for (let offset = 0; ; offset += pageSize) {
     const result = await admin.from("listen_bar_tracks")
-      .select("id,title,artist,genre,audio_path,cover_path,created_at,is_active,review_status,hidden_at,removed_at,ai_music_showtime_public_removed_at")
+      .select("id,work_kind,title,artist,genre,audio_path,cover_path,created_at,is_active,review_status,hidden_at,removed_at,ai_music_showtime_public_removed_at")
       .eq("is_active", true).order("id").range(offset, offset + pageSize - 1);
     if (result.error) throw result.error;
     const rows = (result.data ?? []) as TrackRow[];

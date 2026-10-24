@@ -10,6 +10,8 @@ export type CreatorWork = {
   audioUrl: string;
   external: ExternalMusic | null;
   isMusicVideo: boolean;
+  workKind?: "single" | "album";
+  coverPath?: string | null;
   active: boolean;
   status: "public" | "ended" | "hidden";
   supporters: number;

@@ -38,7 +38,7 @@ test("Explore share links stay on the shared work in the Explore catalog", () =>
   assert.ok(aiMusicSource.includes("function aiMusicTrackHref"));
   assert.ok(aiMusicSource.includes("return `/ai-music?${params.toString()}#works`;"));
   assert.equal(aiMusicSource.includes("function listenBarHref"), false);
-  assert.ok(aiMusicSource.includes('new URLSearchParams(window.location.search).get("track")'));
+  assert.ok(aiMusicSource.includes('params.get("track")'));
   assert.ok(aiMusicSource.includes('id={`ai-music-work-${track.sourceId}`}'));
   assert.ok(aiMusicSource.includes("scrollIntoView"));
 });

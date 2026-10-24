@@ -10,14 +10,14 @@ import type { ListenBarTrackRow } from "./listen-bar";
 export type BlindRow = {
   id: string; title: string; artist: string; genre: string; created_by: string | null;
   created_at: string; audio_path: string; cover_path: string | null; duration_seconds: number;
-  source: string; is_active: boolean; is_featured_official: boolean; review_status: string;
+  work_kind?: string; source: string; is_active: boolean; is_featured_official: boolean; review_status: string;
   hidden_at: string | null; removed_at: string | null; ai_music_showtime_public_removed_at: string | null;
 };
 export type QuestionRow = {
   id: string; user_id: string; track_a_id: string; track_b_id: string; state: string;
   choice: string | null; expires_at: string; heard_a: number; heard_b: number;
 };
-const fields = "id,title,artist,genre,created_by,created_at,audio_path,cover_path,duration_seconds,source,is_active,is_featured_official,review_status,hidden_at,removed_at,ai_music_showtime_public_removed_at,ai_music_showtime_certified,ai_music_showtime_certified_at,ai_music_showtime_certification_source";
+const fields = "id,work_kind,title,artist,genre,created_by,created_at,audio_path,cover_path,duration_seconds,source,is_active,is_featured_official,review_status,hidden_at,removed_at,ai_music_showtime_public_removed_at,ai_music_showtime_certified,ai_music_showtime_certified_at,ai_music_showtime_certification_source";
 export function blindStorageUrl(admin: SupabaseClient, path: string | null, bucket = "listen-bar-audio") {
   if (!path?.trim()) return "";
   const origin = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).origin;
@@ -70,7 +70,7 @@ export async function blindCatalog(admin: SupabaseClient, userId: string, trackI
     const r = await query.order("id").range(from, to);
     return { data: r.data as unknown as BlindRow[], error: r.error };
   });
-  const eligible = rows.filter(r => !r.is_featured_official && !r.hidden_at && !r.removed_at
+  const eligible = rows.filter(r => r.work_kind !== "album" && !r.is_featured_official && !r.hidden_at && !r.removed_at
     && !r.ai_music_showtime_public_removed_at && r.created_by !== userId && isInMusicPool(r.created_at)
     && isCurrentMusicGenre(r.genre) && Boolean(blindStorageUrl(admin, r.audio_path)));
   const lifecycle = await buildAiMusicSurfaceLifecycleMap(admin, eligible as unknown as ListenBarTrackRow[]);

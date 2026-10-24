@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
+import { albumCopy } from "@/lib/album-copy";
 import { mvCopy } from "@/lib/mv-copy";
 import { homeCopy } from "@/lib/home-copy";
 import { creditCopy } from "@/lib/credit-copy";
@@ -10,10 +11,12 @@ import styles from "./home-editorial.module.css";
 
 export type MvReviewComment = { id: string; name: string; text: string; createdAt: string };
 export type MvReviewDraft = { score: number | null; scoreInput?: string; text: string };
-export default function MvRatingForm({ trackId, signedIn, onSaved, onBusy, drafts, surface = "mv" }: {
-  trackId: string; signedIn: boolean; onSaved: (comment: MvReviewComment | null) => void; onBusy: (busy: boolean) => void; drafts?: Map<string, MvReviewDraft>; surface?: "music" | "mv";
+export default function MvRatingForm({ trackId, signedIn, onSaved, onBusy, drafts, surface = "mv", workKind }: {
+  trackId: string; signedIn: boolean; onSaved: (comment: MvReviewComment | null) => void; onBusy: (busy: boolean) => void; drafts?: Map<string, MvReviewDraft>; surface?: "music" | "mv"; workKind?: "single" | "album";
 }) {
   const { lang } = useI18n(); const mv = mvCopy(lang); const copy = homeCopy(lang);
+  const [isAlbum, setIsAlbum] = useState(workKind === "album");
+  const albums = albumCopy(lang);
   const cached = drafts?.get(trackId);
   const [scoreInput, setScoreInput] = useState(cached?.scoreInput ?? (cached?.score == null ? "" : String(cached.score))); const [text, setText] = useState(cached?.text ?? "");
   const score = parseWorkRating(scoreInput);
@@ -41,6 +44,7 @@ export default function MvRatingForm({ trackId, signedIn, onSaved, onBusy, draft
         const payload = await response.json(); if (!response.ok) throw new Error("Unavailable");
         if (active) {
           const draft = drafts?.get(trackId);
+          setIsAlbum(workKind === "album" || payload.workKind === "album");
           setMyScore(payload.myScore ?? null);
           setScoreInput(payload.myScore != null && !payload.canEditScore ? String(payload.myScore) : draft?.scoreInput ?? (draft?.score != null ? String(draft.score) : payload.myScore == null ? "" : String(payload.myScore)));
           setCanRate(payload.canRate === true); setMyComment(payload.myComment ?? null);
@@ -52,7 +56,7 @@ export default function MvRatingForm({ trackId, signedIn, onSaved, onBusy, draft
       } catch { if (active) setFailed(true); }
     })();
     return () => { active = false; controller.abort(); };
-  }, [trackId, signedIn, retry, drafts, endpoint]);
+  }, [trackId, signedIn, retry, drafts, endpoint, workKind]);
   const submit = async (event: FormEvent) => {
     event.preventDefault(); if (busy || !ready || !signedIn || reviewBlocked || (myComment && (!editing || !canEditComment)) || (requiresScore && score === null) || ((!canRate || editing) && !text.trim())) return;
     setBusy(true); onBusy(true); setFailed(false); setErrorCode(null); setSaved(false);
@@ -84,6 +88,7 @@ export default function MvRatingForm({ trackId, signedIn, onSaved, onBusy, draft
   };
   const edit = () => { receipt.current = null; setSaved(false); };
   return <form onSubmit={submit} className={`${styles.feedbackForm} ${styles.mvRatingForm}`}>
+    {isAlbum ? <><h3>{albums.comments}</h3><p>{albums.note}</p></> : <>
     <div className={styles.ratingHeading}><h3>{question}</h3><span>{summary?.ratingCount ? `${summary.ratingAverage?.toFixed(1)} ${mv.points}｜${summary.ratingCount} ${mv.raters}` : mv.unrated}</span></div>
     <div className={styles.ratingInputRow}>
       <label htmlFor={`work-score-${trackId}`} className={styles.srOnly}>{question}</label>
@@ -97,6 +102,7 @@ export default function MvRatingForm({ trackId, signedIn, onSaved, onBusy, draft
       <span id={`work-score-note-${trackId}`}>{mv.scoreHint}{ready && canEditScore ? "" : ` · ${ready && signedIn && !canRate ? mv.ownWork : mv.ratingNote}`}</span>
     </div>
     {invalidScore ? <p className={styles.ratingInvalid} role="alert">{mv.scoreError}</p> : null}
+    </>}
     {signedIn ? <>
       <p className={styles.ratingNote}>{creditCopy(lang).reviewHint}</p>
       {myComment ? <div className={styles.reviewActions}>

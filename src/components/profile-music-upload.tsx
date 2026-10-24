@@ -87,7 +87,7 @@ function listenBarDescriptionHint(isZh: boolean) {
   return isZh ? "中文 16 字內；英文約 32 字元" : "16 CJK chars; about 32 English characters";
 }
 
-export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmitted }: { userId: string; creatorDefaultName: string; onSubmitted: () => void }) {
+export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmitted, workKind = "single" }: { userId: string; creatorDefaultName: string; onSubmitted: () => void; workKind?: "single" | "album" }) {
   const { lang, t } = useI18n(); const isZh = lang === "zh";
   const [publicUploadForm, setPublicUploadForm] = useState<PublicUploadForm>({ ...initialPublicUploadForm, artist: limitListenBarDisplayText(creatorDefaultName, LISTEN_BAR_SHORT_FIELD_DISPLAY_UNITS) });
   const [publicAudioFile, setPublicAudioFile] = useState<File | null>(null);
@@ -339,6 +339,7 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
       const insertPayload = {
         id: crypto.randomUUID(),
         credit_submission_confirmed: confirmedCredit,
+        work_kind: workKind,
         title: publicUploadForm.title.trim(),
         artist: limitListenBarDisplayText(
           publicUploadForm.artist.trim() || creatorDefaultName || (isZh ? "創作者" : "Creator"),

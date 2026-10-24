@@ -117,9 +117,9 @@ type DefenderDropPayload = {
 };
 
 const CLOSED_BATTLE_STATUSES = ["finished", "cancelled", "cancelled_no_challenger", "cancelled_founder", "completed", "expired"];
-const LIFECYCLE_TRACK_SELECT_LEGACY = "id,title,artist,ai_tool,genre,mood,bpm,duration_seconds,audio_path,cover_path,lyrics,is_active,review_status,hidden_at,removed_at,source,is_featured_official,bar_phase,positive_reaction_count,heart_count,star_count,thumb_count,happy_count,created_at,promoted_at";
+const LIFECYCLE_TRACK_SELECT_LEGACY = "id,work_kind,title,artist,ai_tool,genre,mood,bpm,duration_seconds,audio_path,cover_path,lyrics,is_active,review_status,hidden_at,removed_at,source,is_featured_official,bar_phase,positive_reaction_count,heart_count,star_count,thumb_count,happy_count,created_at,promoted_at";
 const LIFECYCLE_TRACK_SELECT = `${LIFECYCLE_TRACK_SELECT_LEGACY},${AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS}`;
-const DEFENDER_TRACK_SELECT_LEGACY = "id,title,artist,ai_tool,genre,lyrics,audio_path,cover_path,created_by,source,bar_phase,is_active,review_status,hidden_at,removed_at,ai_music_challenge_status,ai_music_defender_drop_audio_path,ai_music_defender_drop_audio_sha256,ai_music_defender_drop_original_name,ai_music_defender_drop_duration_seconds,ai_music_defender_drop_lyrics,ai_music_defender_drop_prepared_at";
+const DEFENDER_TRACK_SELECT_LEGACY = "id,work_kind,title,artist,ai_tool,genre,lyrics,audio_path,cover_path,created_by,source,bar_phase,is_active,review_status,hidden_at,removed_at,ai_music_challenge_status,ai_music_defender_drop_audio_path,ai_music_defender_drop_audio_sha256,ai_music_defender_drop_original_name,ai_music_defender_drop_duration_seconds,ai_music_defender_drop_lyrics,ai_music_defender_drop_prepared_at";
 const DEFENDER_TRACK_SELECT = `${DEFENDER_TRACK_SELECT_LEGACY},${AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS}`;
 const PROTECTED_TRACK_SELECT_LEGACY = LIFECYCLE_TRACK_SELECT_LEGACY + ",created_by";
 const PROTECTED_TRACK_SELECT = `${PROTECTED_TRACK_SELECT_LEGACY},${AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS}`;

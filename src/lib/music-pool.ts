@@ -33,9 +33,9 @@ export function musicPoolNewSongBonus(createdAt: string | null | undefined, now 
 export function musicPoolPopularityScore(id: string, createdAt: string | null | undefined, hearts: number, blind: BlindSummary, ratingTotal = 0, now = Date.now()) {
   return popularityScore(hearts, blind, ratingTotal) + musicPoolReturnBonus(createdAt, id, now) + musicPoolNewSongBonus(createdAt, now);
 }
-export type PoolRankTrack = { id: string; sourceId?: string; createdAt: string; poolSupporterCount: number; blindSampleCount?: number; blindPreferencePoints?: number; ratingTotal?: number; ratingCount?: number; popularityScore?: number };
+export type PoolRankTrack = { id: string; workKind?: "single" | "album"; sourceId?: string; createdAt: string; poolSupporterCount: number; blindSampleCount?: number; blindPreferencePoints?: number; ratingTotal?: number; ratingCount?: number; popularityScore?: number };
 export function rankMusicPool<T extends PoolRankTrack>(tracks: T[], now = Date.now()) {
-  const current = tracks.filter(track => isInDiscoveryMusicPool(track.createdAt, track.sourceId ?? track.id, now) && Number.isFinite(track.poolSupporterCount));
+  const current = tracks.filter(track => track.workKind !== "album" && isInDiscoveryMusicPool(track.createdAt, track.sourceId ?? track.id, now) && Number.isFinite(track.poolSupporterCount));
   const score = (track: T) => musicPoolPopularityScore(track.sourceId ?? track.id, track.createdAt, track.poolSupporterCount,
     { people: track.blindSampleCount ?? 0, preferencePoints: track.blindPreferencePoints ?? 0 }, track.ratingTotal ?? 0, now);
   const sorted = current.filter(track => track.poolSupporterCount > 0 || (track.blindPreferencePoints ?? 0) > 0 || ((track.ratingCount ?? 0) > 0 && (track.ratingTotal ?? 0) > 0))
