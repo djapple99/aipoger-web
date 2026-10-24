@@ -1,5 +1,7 @@
 # AIPOGER 必要發布證據
 
+- [2026-10-25 播放器還原與作者回覆2點](2026-10-25-creator-replies.md)
+
 - [2026-10-25 公開HTML、SEO、社群分享與聖經CTA](2026-10-25-seo-architecture.md)
 
 - [2026-10-25 Choice 歌單 LINE 分享縮圖](2026-10-25-choice-share-preview.md)
