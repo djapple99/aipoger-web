@@ -1,7 +1,7 @@
 import { parseExternalMusic } from "./external-music.ts";
 
 export type DropPlaybackMode = "60" | "90" | "full" | "legacy45";
-export type BattleLinkPlayback = { type: "suno" | "youtube" | "upload"; url: string; start: number; seconds: number };
+export type BattleLinkPlayback = { type: "suno" | "youtube" | "upload"; url: string; start: number; seconds: number; sourceSeconds?: number; durationOrigin?: "server" | "embedded_player" };
 export function dropPlaybackMode(value: unknown): DropPlaybackMode | null {
   return value === "60" || value === "90" || value === "full" || value === "legacy45" ? value : null;
 }

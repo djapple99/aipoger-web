@@ -32,6 +32,7 @@ async function sourceDuration(url: string, type: "youtube" | "suno") {
   const precise = type === "youtube" ? Number(html.match(/"approxDurationMs"\s*:\s*"?(\d+)/)?.[1]) / 1000 : NaN;
   const rounded = Number(match?.[1]);
   const duration = Number.isFinite(precise) && precise > 0 && Math.abs(precise - rounded) < 2 ? precise : rounded;
+  if ((!Number.isFinite(duration) || duration <= 0) && type === "youtube") return 0;
   if (!Number.isFinite(duration) || duration <= 0) throw new Error("SOURCE_DURATION_UNAVAILABLE");
   return duration;
 }

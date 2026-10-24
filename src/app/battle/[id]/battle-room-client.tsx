@@ -3157,7 +3157,7 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
 
   // ── 投票 ──────────────────────────────────────────────
   const handleVote = async (target: VoteSide) => {
-    if (!voteOpen || !battleId) return;
+    if (!voteOpen || !battleId || sourceError) return;
     if (isAiMusicAwaitingDefender) {
       alert(lang === "zh" ? "等待關主接戰中，現在只能聽 5 秒預覽，不能投票。" : "Waiting for defender acceptance. Only 5s previews are open.");
       return;
@@ -3912,14 +3912,14 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
         <div className="fixed inset-x-2 bottom-[7.25rem] z-[100] grid grid-cols-2 gap-2 sm:hidden">
           <VoteHeartButton
             selected={hasVoted === "fighter_a"}
-            voteLocked={!voteOpen}
+            voteLocked={!voteOpen || sourceError}
             onVote={() => handleVote("fighter_a")}
             label={`A SIDE · ${battle.fighter_a_name}`}
             tone="orange"
           />
           <VoteHeartButton
             selected={hasVoted === "fighter_b"}
-            voteLocked={!voteOpen}
+            voteLocked={!voteOpen || sourceError}
             onVote={() => handleVote("fighter_b")}
             label={`B SIDE · ${battle.fighter_b_name}`}
             tone="blue"
@@ -4139,7 +4139,7 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
               <div className="hidden w-full justify-start sm:flex">
                 <VoteHeartButton
                   selected={hasVoted === "fighter_a"}
-                  voteLocked={!voteOpen}
+                  voteLocked={!voteOpen || sourceError}
                   onVote={() => handleVote("fighter_a")}
                   label={desktopVoteHeartLabelA}
                   tone="orange"
@@ -4483,7 +4483,7 @@ function BattleArenaContent({ initialSummary }: { initialSummary?: ReactNode }) 
                   <div className="hidden w-full justify-end sm:flex">
                     <VoteHeartButton
                       selected={hasVoted === "fighter_b"}
-                      voteLocked={!voteOpen}
+                      voteLocked={!voteOpen || sourceError}
                       onVote={() => handleVote("fighter_b")}
                       label={desktopVoteHeartLabelB}
                       tone="blue"

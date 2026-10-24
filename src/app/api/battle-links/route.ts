@@ -76,7 +76,11 @@ export async function POST(request: Request) {
         }
       }
     } else mode = "full";
-    const clip = mode && battleClip(mode, fresh.duration, body.clipStart);
+    const embeddedDuration = Number(body.measuredDuration);
+    const needsPlayerDuration = fresh.playback.type === "youtube" && fresh.duration === 0;
+    const duration = needsPlayerDuration && Number.isFinite(embeddedDuration) && embeddedDuration > 0 && embeddedDuration <= 86400 ? embeddedDuration : fresh.duration;
+    if (!(duration > 0)) return json({ error: "PLAYER_DURATION_REQUIRED" }, 400);
+    const clip = mode && battleClip(mode, duration, body.clipStart);
     if (!clip) return json({ error: "CLIP_OUT_OF_RANGE" }, 400);
     const profile = await auth.admin.from("fighter_profiles").select("song_cover_url").eq("id", auth.user.id).maybeSingle();
     let cover = fresh.cover || profile.data?.song_cover_url || "";
@@ -91,7 +95,7 @@ export async function POST(request: Request) {
       genre: body.genre, aiTool: typeof body.aiTool === "string" ? body.aiTool.trim().slice(0, 80) : "AI Music",
       lyrics: typeof body.lyrics === "string" ? body.lyrics.trim().slice(0, 8000) : null,
       sourceType: fresh.sourceType, sourceUrl: fresh.sourceUrl, workId: fresh.workId, cover,
-      duration: fresh.duration, playback: { ...fresh.playback, ...clip }, scheduledStartAt: schedule?.scheduled_start_at ?? null,
+      duration, playback: { ...fresh.playback, ...clip, sourceSeconds: duration, durationOrigin: needsPlayerDuration ? "embedded_player" : "server" }, scheduledStartAt: schedule?.scheduled_start_at ?? null,
       cancellationEvaluationAt: schedule?.cancellation_evaluation_at ?? null,
     } });
     if (error) return json({ error: /ACTIVE_BATTLE|TARGET_|MODE_|ROLE_/.test(error.message) ? error.message : "ENTRY_UNAVAILABLE" }, 409);

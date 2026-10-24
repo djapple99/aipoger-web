@@ -12,7 +12,7 @@ test('preview tokens bind source, measured duration, creator and expiry; sources
     assert.equal(previewModule.verifyBattlePreview(p.token,uuid(2)),null);
     assert.equal(previewModule.verifyBattlePreview(p.token+'x',USER),null);
     globalThis.fetch=async()=>new Response('No duration here');
-    await assert.rejects(previewModule.resolveBattleLink('x',USER),/SOURCE_DURATION_UNAVAILABLE/);
+    assert.equal((await previewModule.resolveBattleLink('x',USER)).duration,0);
     assert.deepEqual(urls,['https://www.youtube.com/watch?v=5n-CNfo63Ng']);
   }finally{globalThis.fetch=oldFetch;if(old===undefined)delete process.env.SUPABASE_SERVICE_ROLE_KEY;else process.env.SUPABASE_SERVICE_ROLE_KEY=old;}
 });

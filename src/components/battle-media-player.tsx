@@ -11,6 +11,7 @@ export type BattlePlayerHandle = {
 /** Relative segment clock; the visible official YouTube player is never extracted or hidden. */
 const BattleMediaPlayer = forwardRef<BattlePlayerHandle, {
   playback: BattleLinkPlayback; title: string; audioUrl?: string | null;
+  onDuration?: (seconds: number) => void;
   onTime?: () => void; onEnded?: () => void; onPlaying?: (value: boolean) => void; onError?: () => void;
 }>((props, ref) => {
   const native = useRef<HTMLAudioElement>(null); const mount = useRef<HTMLDivElement>(null);
@@ -86,10 +87,15 @@ const BattleMediaPlayer = forwardRef<BattlePlayerHandle, {
   }, [videoId, props.playback.url]);
   const tick = () => {
     const p = latest.current.playback;
+    const measured = yt.current?.getDuration() || 0;
+    if (measured > 0) latest.current.onDuration?.(measured);
+    if (measured > 0 && p.sourceSeconds && Math.abs(measured - p.sourceSeconds) > 2) {
+      yt.current?.pauseVideo(); latest.current.onError?.(); return;
+    }
     const time = yt.current?.getCurrentTime() ?? native.current?.currentTime ?? p.start;
     desiredTime.current = Math.max(0, time - p.start);
     latest.current.onTime?.();
-    if (started.current && time >= p.start + p.seconds - 0.08 && !ended.current) {
+    if (started.current && p.seconds > 0 && time >= p.start + p.seconds - 0.08 && !ended.current) {
       ended.current = true; yt.current?.pauseVideo(); native.current?.pause(); latest.current.onEnded?.();
     } else if (started.current && time < p.start - 0.25) {
       yt.current?.seekTo(p.start, true); if (native.current) native.current.currentTime = p.start;
