@@ -13,7 +13,7 @@ const zh = {
   error: "作品暫時無法載入，請再試一次。", retry: "重新載入", empty: "下一支值得一看的 MV，等你投稿。",
   emptyBody: "先探索大家的音樂，也可以在自己的作品中加入 MV 連結。", emptySongs: "目前沒有可公開播放的作品。",
   noSupport: "本週支持正在累積，先看看這支新作。", playError: "暫時無法播放，請到作品頁重試。",
-  about: "關於愛播歌", contact: "合作與聯絡", footer: "發現作品，交流感受，讓好音樂被聽見。",
+  about: "關於愛播歌", contact: "合作與聯絡", joinCommunity: "加入創作討論社群", footer: "發現作品，交流感受，讓好音樂被聽見。",
 };
 export type HomeCopy = typeof zh;
 const copies: Record<Lang, HomeCopy> = {
@@ -31,7 +31,7 @@ const copies: Record<Lang, HomeCopy> = {
     error: "Works are temporarily unavailable. Please try again.", retry: "Try Again", empty: "Your MV could be the next discovery.",
     emptyBody: "Explore community music, or add an MV link to your own work.", emptySongs: "No publicly playable works are available yet.",
     noSupport: "This week's support is building. Discover a new release.", playError: "Playback is unavailable. Try the work page.",
-    about: "About AIPOGER", contact: "Partners & Contact", footer: "Discover works, share impressions, and help great music be heard.",
+    about: "About AIPOGER", contact: "Partners & Contact", joinCommunity: "Join the creator conversation", footer: "Discover works, share impressions, and help great music be heard.",
   },
   ja: {
     closeFeedback: "コメントを閉じる", member: "メンバー", supportNote: "今週のHeartを作品ごとに一人一票として集計。作者自身のHeartは含みません。", sendHeart: "Heartを送り保存", removeHeart: "今日のHeartと保存を解除", loginFeedback: "ログインしてコメント・応援", loadingComments: "コメントを読み込み中…", firstComment: "まだコメントはありません。最初の感想をどうぞ。", writeComment: "感想を書く", commentHint: "印象に残った音や映像は？", sending: "送信中…", sendComment: "コメントを送信", feedbackError: "送信できませんでした。文章は保持されています。", commentSaved: "コメントを送信しました。",
@@ -46,7 +46,7 @@ const copies: Record<Lang, HomeCopy> = {
     error: "作品を読み込めません。もう一度お試しください。", retry: "再読み込み", empty: "次に観たい MV は、あなたの作品かもしれません。",
     emptyBody: "音楽を探すか、自分の作品に MV リンクを追加できます。", emptySongs: "公開再生できる作品はまだありません。",
     noSupport: "今週の支持を集計中。まずは新作をご覧ください。", playError: "再生できません。作品ページでお試しください。",
-    about: "AIPOGER について", contact: "協力・お問い合わせ", footer: "作品に出会い、感想を交わし、良い音楽を届けよう。",
+    about: "AIPOGER について", contact: "協力・お問い合わせ", joinCommunity: "創作を語り合うコミュニティへ", footer: "作品に出会い、感想を交わし、良い音楽を届けよう。",
   },
   ko: {
     closeFeedback: "댓글 닫기", member: "회원", supportNote: "이번 주 Heart를 회원당 작품별 한 표로 집계합니다. 창작자 본인의 Heart는 제외됩니다.", sendHeart: "Heart 보내기 및 저장", removeHeart: "오늘의 Heart 및 저장 취소", loginFeedback: "로그인하여 댓글과 응원 보내기", loadingComments: "댓글을 불러오는 중…", firstComment: "아직 댓글이 없어요. 첫 감상을 나눠 주세요.", writeComment: "감상 남기기", commentHint: "어떤 음악이나 장면이 기억에 남나요?", sending: "보내는 중…", sendComment: "댓글 게시", feedbackError: "보내지 못했습니다. 작성한 내용은 유지됩니다.", commentSaved: "댓글이 게시되었습니다.",
@@ -61,7 +61,7 @@ const copies: Record<Lang, HomeCopy> = {
     error: "작품을 불러올 수 없습니다. 다시 시도해 주세요.", retry: "다시 불러오기", empty: "다음에 발견할 MV는 당신의 작품일 수 있어요.",
     emptyBody: "음악을 탐색하거나 내 작품에 MV 링크를 추가해 보세요.", emptySongs: "공개 재생할 수 있는 작품이 아직 없습니다.",
     noSupport: "이번 주 지지가 쌓이고 있어요. 신작을 먼저 만나보세요.", playError: "재생할 수 없습니다. 작품 페이지에서 다시 시도해 주세요.",
-    about: "AIPOGER 소개", contact: "협업 및 문의", footer: "작품을 발견하고 감상을 나누며 좋은 음악을 들려주세요.",
+    about: "AIPOGER 소개", contact: "협업 및 문의", joinCommunity: "창작 이야기를 나누는 커뮤니티", footer: "작품을 발견하고 감상을 나누며 좋은 음악을 들려주세요.",
   },
 };
 export function homeCopy(lang: Lang): HomeCopy { return copies[lang]; }

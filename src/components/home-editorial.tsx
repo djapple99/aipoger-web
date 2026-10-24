@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ArrowRight, ChevronLeft, ChevronRight, Heart, Pause, Play, Radio, X } from "lucide-react";
-import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
+import { AIPOGER_BRAND_LOGO, AIPOGER_SOCIAL_LINKS } from "@/lib/brand";
 import { useI18n } from "@/lib/i18n";
 import { homeCopy } from "@/lib/home-copy";
 import { musicPlayer, useMusicPlayer } from "@/lib/music-player-store";
@@ -13,7 +13,11 @@ import dynamic from "next/dynamic";
 const HomeWorkFeedback = dynamic(() => import("@/components/home-work-feedback"));
 import EditorialHeader from "@/components/editorial-header";
 import WorkImage from "@/components/work-image";
+import { SocialIcon } from "@/components/social-icons";
 import styles from "./home-editorial.module.css";
+
+const communityLinks = ["Facebook", "LINE"].flatMap(label =>
+  AIPOGER_SOCIAL_LINKS.filter(link => link.label === label));
 
 export default function HomeEditorial() {
   const { lang, t } = useI18n();
@@ -160,9 +164,19 @@ export default function HomeEditorial() {
         {!loading && !failed && !data?.singles.length ? <p className={styles.noSongs}>{copy.emptySongs}</p> : null}
         {playError ? <p role="alert" className={styles.refreshError}>{copy.playError}</p> : null}
       </section>
-      <footer className={styles.footer}><p>{copy.footer}</p><div>
-        <Link href={withLang("/profile?submit=1#submit-work")}>{copy.submit}</Link><Link href={withLang("/about")}>{copy.about}</Link><Link href={withLang("/partners")}>{copy.contact}</Link>
-      </div></footer>
+      <footer className={styles.footer}>
+        <div className={styles.footerCommunity}>
+          <div><h2 id="home-community-title">{copy.joinCommunity}</h2><p>{copy.footer}</p></div>
+          <nav aria-labelledby="home-community-title" className={styles.communityLinks}>
+            {communityLinks.map(social => <a key={social.label} href={social.href} target="_blank" rel="noopener noreferrer">
+              <SocialIcon label={social.label} className={styles.communityIcon} /><span>{social.label}</span>
+            </a>)}
+          </nav>
+        </div>
+        <div className={styles.footerLinks}>
+          <Link href={withLang("/profile?submit=1#submit-work")}>{copy.submit}</Link><Link href={withLang("/about")}>{copy.about}</Link><Link href={withLang("/partners")}>{copy.contact}</Link>
+        </div>
+      </footer>
     </main>
     {feedbackWork ? <HomeWorkFeedback key={feedbackWork.id} work={feedbackWork} onClose={() => setFeedbackWork(null)} onChange={() => void load()} /> : null}
   </div>;

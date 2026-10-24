@@ -70,9 +70,16 @@
 .singleInfo a:hover { color: #ff9a45; }
 .singleInfo p { margin: 0; font-size: 14px; color: #bcbcc3; line-height: 1.5; overflow-wrap: anywhere; }
 .singleInfo .genre { font-size: 12px; margin-top: 11px; color: #929299; }
-.footer { display: flex; justify-content: space-between; gap: 20px; padding: 30px 0 115px; color: #77777f; font-size: 12px; }
-.footer p { margin: 0; }
-.footer > div { display: flex; gap: 22px; }
+.footer { padding: 30px 0 115px; color: #9999a2; font-size: 12px; }
+.footerCommunity { display: flex; align-items: center; justify-content: space-between; gap: 28px; padding: 0 0 26px; border-bottom: 1px solid #ffffff20; }
+.footerCommunity h2 { margin: 0 0 9px; color: #f5f5f5; font-size: 24px; font-weight: 700; letter-spacing: -.02em; line-height: 1.4; }
+.footerCommunity p { margin: 0; line-height: 1.7; }
+.communityLinks { display: flex; flex-shrink: 0; gap: 12px; }
+.communityLinks a { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 10px 15px; border: 1px solid #ffffff26; border-radius: 4px; color: #dedee3; font-size: 14px; transition: border-color .18s, background .18s; }
+.communityLinks a:hover { border-color: #ff9a4580; background: #ff6a000a; }
+.communityIcon { width: 25px; height: 25px; flex-shrink: 0; }
+.footerLinks { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px 22px; padding-top: 18px; }
+.footerLinks a { display: inline-flex; align-items: center; min-height: 44px; }
 .footer a:hover { color: #ddd; }
 .status { min-height: 340px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; color: #a1a1aa; }
 .status button, .empty a { display: inline-flex; gap: 10px; align-items: center; color: #ff9a45; border: 0; background: transparent; }
@@ -150,9 +157,9 @@
   .exploreHeading { flex-direction: column; align-items: flex-start; gap: 18px; margin-bottom: 24px; }
   .exploreHeading h2 { font-size: 25px; }
   .exploreHeading p { font-size: 13px; }
-  .exploreLinks { gap: 19px; width: 100%; justify-content: space-between; }
+  .exploreLinks { flex-wrap: wrap; gap: 12px 19px; width: 100%; justify-content: space-between; }
   .exploreLinks a { font-size: 12px; gap: 6px; }
-  .exploreLinks a + a { padding-left: 16px; }
+  .exploreLinks a + a { border-left: 0; padding-left: 0; }
   .singles { grid-template-columns: minmax(0, 1fr); gap: 21px; }
   .single { flex-direction: row; align-items: center; gap: 17px; }
   .singleCover { width: 100px; height: 100px; flex-shrink: 0; }
@@ -160,7 +167,13 @@
   .singleInfo h3 { font-size: 18px; }
   .singleInfo p { font-size: 13px; }
   .singleInfo .genre { margin-top: 7px; font-size: 11px; }
-  .footer { flex-direction: column; gap: 18px; padding-top: 31px; font-size: 11px; }
+  .footer { padding-top: 31px; font-size: 12px; }
+  .footerCommunity { align-items: stretch; flex-direction: column; gap: 20px; padding-bottom: 24px; }
+  .footerCommunity h2 { font-size: 22px; }
+  .communityLinks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .communityLinks a { gap: 9px; padding: 10px 12px; font-size: 13px; }
+  .communityIcon { width: 24px; height: 24px; }
+  .footerLinks { justify-content: flex-start; gap: 8px 20px; }
   .empty { min-height: 230px; padding: 40px 0; }
   .empty h2 { font-size: 24px; }
   .status { min-height: 260px; font-size: 14px; }
