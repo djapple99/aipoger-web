@@ -11,7 +11,9 @@
 
 ## 現況與查找順序
 
-- 最新應用基準 `d7dfdeb`／`codex/public-rule-copy`：2026-10-25已發布「我的作品」本人刪除入口，正式部署 `dpl_8PV9p2tbVF31a6aXPeGE1sTNv12x`；一般會員與Owner均可自行下架，歷史與原額度／Credit規則保留。852項測試816通過／36選用略過，正式刪除鍵及訪客401驗收完成，沒有刪除真人作品。見[本人作品刪除report](releases/2026-10-25-creator-work-delete.md)。文件整理：2026-10-26。
+- 最新應用基準 `8579b7a`／`codex/public-rule-copy`（2026-10-26）：修復d7dfdeb刪除操作標記被資料庫guard拒絕的問題，依錯誤種類給重試提示；正式部署 `dpl_GD8r35wYea9VmtJWh7BveXZbXdUq`，無SQL規則或作品資料變更。18項定向及全套820項測試通過／36選用略過，包含真實PostgreSQL guard驗證。見[刪除失敗修復report](releases/2026-10-26-creator-delete-guard.md)。
+
+- 前輪刪除入口 `d7dfdeb`／`codex/public-rule-copy`：2026-10-25已發布「我的作品」本人刪除入口，正式部署 `dpl_8PV9p2tbVF31a6aXPeGE1sTNv12x`；一般會員與Owner均可自行下架，歷史與原額度／Credit規則保留。852項測試816通過／36選用略過，正式刪除鍵及訪客401驗收完成，沒有刪除真人作品。見[本人作品刪除report](releases/2026-10-25-creator-work-delete.md)。文件整理：2026-10-26。
 
 - 2026-10-25首頁新作輪替已發布：`544736f`，保留最新MV與近期作品輪替／一個週支持席次；探索三首改一首最新＋兩首輪替，納入YouTube／Suno／Spotify連結，原播放／評論不中斷。正式部署 `dpl_DYaF89v334r7SmmgnqXeqJepc7Bz`。見[首頁新作曝光report](releases/2026-10-25-home-rotation.md)。
 

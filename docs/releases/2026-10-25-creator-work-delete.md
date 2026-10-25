@@ -1,5 +1,7 @@
 # 本人已發布作品刪除入口修復 — 2026-10-25
 
+**後續修正：** d7dfdeb雖補回入口，卻改短內部刪除標記，與既有正式DB guard不相容，造成公開作品下架失敗；本輪mock及正式按鈕／訪客401驗收未涵蓋此觸發器，不能作為成功下架的證據。2026-10-26以8579b7a修復，補真實PostgreSQL測試與正式guard來源對帳，見[後續report](2026-10-26-creator-delete-guard.md)。以下保留當輪實際驗收範圍。
+
 使用者回報一般會員不能刪除自己誤發的作品。應用 `d7dfdeb`、分支 `codex/public-rule-copy`，Vercel `dpl_8PV9p2tbVF31a6aXPeGE1sTNv12x`（`aipoger-web-rnz8-elb37nyk3-yohungs-projects.vercel.app`）於台灣時間2026-10-25 23:44:47 READY，已promote至aipoger.com／www。正式網域與部署ID／SHA已回查一致。文件收尾：2026-10-26。
 
 ## 原因與結果
