@@ -5,7 +5,7 @@ import { Bell, ChevronDown, ChevronLeft, ChevronRight, ArrowUpRight, Check, Book
 import { useI18n } from "@/lib/i18n";
 import { creatorText } from "@/lib/creator-center-copy";
 import { accountNotificationHref, accountNotificationSummary, ACCOUNT_NOTICE_PAGE_SIZE, type AccountNotification, type AccountNoticeAction } from "@/lib/account-notifications";
-import { accountNoticeRequest } from "@/lib/account-notifications-client";
+import { accountNoticeRequest, readAccountNoticeInbox } from "@/lib/account-notifications-client";
 import { useAccountNotices } from "@/lib/use-account-notices";
 import styles from "./account-notifications.module.css";
 
@@ -14,13 +14,14 @@ export default function AccountNotifications({ userId }: { userId: string }) {
   const { lang } = useI18n();
   const tx = (zh: string, en: string, ja: string, ko: string) => creatorText(lang, zh, en, ja, ko);
   const count = useAccountNotices(userId, "inbox");
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [filter, setFilter] = useState<Filter>("all");
   const [page, setPage] = useState(0);
   const [rows, setRows] = useState<AccountNotification[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const [unreadSaveFailed, setUnreadSaveFailed] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [menu, setMenu] = useState<string | null>(null);
   const [busy, setBusy] = useState<string[]>([]);
@@ -74,13 +75,32 @@ export default function AccountNotifications({ userId }: { userId: string }) {
       if (page > lastPage) { setPage(lastPage); return; }
       setRows(result.notices); setTotal(result.total);
       setExpanded(previous => result.notices.some((row: AccountNotification) => row.id === previous) ? previous : null);
+      // Seeing the inbox acknowledges the current snapshot, independently of replying.
+      // A later notification must stay unread, even if it arrives during this request.
+      if (document.visibilityState === "visible") {
+        try {
+          const saved = await readAccountNoticeInbox(userId, result.readThrough);
+          if (!live.current || request !== revision.current) return;
+          setRows(previous => previous.map(row => !row.read_at && Date.parse(row.created_at) <= Date.parse(saved.readThrough) ? { ...row, read_at: saved.readAt } : row));
+          setUnreadSaveFailed(false);
+        } catch {
+          if (live.current && request === revision.current) setUnreadSaveFailed(true);
+        }
+      }
     } catch {
       if (live.current && request === revision.current) setError(true);
     } finally {
       if (live.current && request === revision.current) setLoading(false);
     }
   }, [userId, filter, page]);
-  useEffect(() => { if (open) void load(); }, [open, load]);
+  useEffect(() => {
+    const requestRevision = revision;
+    if (!open) { revision.current++; return; }
+    void load();
+    const visible = () => { if (document.visibilityState === "visible") void load(); };
+    document.addEventListener("visibilitychange", visible);
+    return () => { requestRevision.current++; document.removeEventListener("visibilitychange", visible); };
+  }, [open, load]);
 
   const act = useCallback(async (id: string, action: AccountNoticeAction) => {
     if (pending.current.has(id)) return;
@@ -153,6 +173,7 @@ export default function AccountNotifications({ userId }: { userId: string }) {
     </div>
     {open ? <div id="notification-list" className={styles.content} aria-busy={loading}>
       {error ? <p role="alert">{tx("通知讀取失敗。", "Could not load notifications.", "通知を読み込めません。", "알림을 불러오지 못했습니다.")} <button onClick={() => void load()}>{tx("重試", "Retry", "再試行", "다시 시도")}</button></p> : null}
+      {unreadSaveFailed ? <p role="alert">{tx("已讀狀態尚未儲存。", "Read status was not saved.", "既読状態を保存できません。", "읽음 상태가 저장되지 않았습니다.")} <button onClick={() => void load()}>{tx("重試", "Retry", "再試行", "다시 시도")}</button></p> : null}
       {rows.map(row => <article key={row.id} className={styles.notice} data-unread={!row.read_at}>
         <div className={styles.row}>
           <button className={styles.summary} disabled={loading} aria-expanded={expanded === row.id} aria-controls={`notice-${row.id}`} onClick={() => {

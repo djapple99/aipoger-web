@@ -22,3 +22,19 @@ test('late responses cannot restore another account badge after sign out or acco
   ui.switchUser(null);assert.equal(ui.value,0);resolve({unreadCount:99});await ui.flush();assert.equal(ui.value,0);
   ui.delay=null;ui.count=3;ui.switchUser('bob');assert.equal(ui.value,0);await ui.flush();assert.equal(ui.value,3);
 });
+
+test('confirmed inbox acknowledgement clears the badge immediately and stale count requests cannot revive it',async t=>{
+ const ui=mount(t);await ui.flush();assert.equal(ui.value,1);
+ let resolveOld,resolveNew;ui.delay=new Promise(r=>resolveOld=r);ui.win.dispatchEvent(new Event('focus'));
+ ui.delay=new Promise(r=>resolveNew=r);
+ ui.win.dispatchEvent(new CustomEvent('aipoger:account-notices-read',{detail:{userId:'alice',unreadCount:0}}));await ui.flush();assert.equal(ui.value,0);
+ resolveOld({unreadCount:1});await ui.flush();assert.equal(ui.value,0);
+ resolveNew({unreadCount:2});await ui.flush();assert.equal(ui.value,2,'a new notice still updates the badge');
+ ui.fail=true;ui.delay=null;ui.win.dispatchEvent(new CustomEvent('aipoger:account-notices-read',{detail:{userId:'bob',unreadCount:0}}));await ui.flush();assert.equal(ui.value,2,'another account cannot clear this badge');
+});
+
+test('acknowledging in a hidden tab also invalidates its older pending badge read',async t=>{
+ const ui=mount(t);await ui.flush();let resolve;ui.delay=new Promise(r=>resolve=r);ui.win.dispatchEvent(new Event('focus'));
+ ui.doc.visibilityState='hidden';ui.win.dispatchEvent(new CustomEvent('aipoger:account-notices-read',{detail:{userId:'alice',unreadCount:0}}));await ui.flush();assert.equal(ui.value,0);
+ resolve({unreadCount:5});await ui.flush();assert.equal(ui.value,0);
+});

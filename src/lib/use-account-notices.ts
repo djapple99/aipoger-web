@@ -9,9 +9,14 @@ export function useAccountNotices(userId: string | null, scope = "dock") {
   useEffect(() => {
     if (!userId || userId === "auth-bypass") return;
     let active = true, revision = 0;
-    const refresh = async () => {
-      if (document.visibilityState === "hidden") return;
+    const refresh = async (event?: Event) => {
+      const detail = (event as CustomEvent | undefined)?.detail;
+      if (event?.type === ACCOUNT_NOTICES_CHANGED && detail?.userId === userId
+        && Number.isInteger(detail.unreadCount) && detail.unreadCount >= 0) {
+        setState({ userId, count: detail.unreadCount });
+      }
       const request = ++revision;
+      if (document.visibilityState === "hidden") return;
       try {
         const payload = await accountNoticeRequest(userId, "?count=1");
         if (active && request === revision) setState({ userId, count: payload.unreadCount });
@@ -19,7 +24,7 @@ export function useAccountNotices(userId: string | null, scope = "dock") {
     };
     void refresh();
     const channel = supabase.channel(`account-notice-count-${scope}-${userId}-${crypto.randomUUID()}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "battle_notifications", filter: `user_id=eq.${userId}` }, refresh).subscribe();
+      .on("postgres_changes", { event: "*", schema: "public", table: "battle_notifications", filter: `user_id=eq.${userId}` }, () => void refresh()).subscribe();
     const timer = window.setInterval(refresh, 30_000);
     window.addEventListener(ACCOUNT_NOTICES_CHANGED, refresh);
     window.addEventListener("focus", refresh);

@@ -85,3 +85,27 @@ test('notification links retain the work and language without accepting external
   assert.equal(accountNotificationHref({metadata:{href:'/mv?track=123'}},'zh'),'/mv?track=123&lang=zh');
   for(const href of ['https://evil.test','//evil.test','/\\evil.test','javascript:alert(1)'])assert.equal(accountNotificationHref({metadata:{href}},'ja'),'/profile?lang=ja');
 });
+
+test('opening the inbox acknowledges all existing own notices across pages, preserving later arrivals and other recipients',async()=>{
+ const through='2026-10-25T05:00:00.000Z';
+ const later={...notice(99),created_at:'2090-01-01T00:00:00.000Z'};
+ const expired={...notice(98),expires_at:'2020-01-01T00:00:00.000Z'};
+ const kept={...notice(97),expires_at:'2020-01-01T00:00:00.000Z',kept_at:through};
+ const original=Array.from({length:65},(_,i)=>notice(i+10));
+ const db=setup([...original,later,notice(96,other),expired,kept]);
+ assert.ok((await (await db.route.GET(db.req())).json()).readThrough);
+ assert.equal((await db.route.PATCH(db.req('',{action:'read_inbox',readThrough:through},'invalid'))).status,401);
+ const saved=await(await db.route.PATCH(db.req('',{action:'read_inbox',readThrough:through,userId:other}))).json();
+ assert.equal(saved.unreadCount,1);assert.equal(saved.readThrough,through);assert.equal(db.rows.length,69);
+ assert.ok(db.rows.filter(r=>original.some(o=>o.id===r.id)||r.id===kept.id).every(r=>r.read_at));
+ assert.equal(db.rows.find(r=>r.id===later.id).read_at,null);assert.equal(db.rows.find(r=>r.id===expired.id).read_at,null);assert.equal(db.rows.find(r=>r.user_id===other).read_at,null);
+ const firstRead=db.rows[0].read_at;await db.route.PATCH(db.req('',{action:'read_inbox',readThrough:through}));assert.equal(db.rows[0].read_at,firstRead);
+ assert.equal((await(await db.route.GET(db.req('?filter=unread'))).json()).total,1);
+ assert.equal(db.rows.find(r=>r.id===kept.id).kept_at,through);
+});
+test('inbox acknowledgements reject invalid cutoffs, cap future cutoffs, and preserve failure state',async()=>{
+ const db=setup([notice(10),{...notice(11),created_at:'2090-01-01T00:00:00.000Z'}]);
+ for(const readThrough of [undefined,null,0,'','invalid'])assert.equal((await db.route.PATCH(db.req('',{action:'read_inbox',readThrough}))).status,400);
+ db.fail=true;assert.equal((await db.route.PATCH(db.req('',{action:'read_inbox',readThrough:'2026-10-25T06:00:00Z'}))).status,500);assert.equal(db.rows[0].read_at,null);
+ db.fail=false;const saved=await(await db.route.PATCH(db.req('',{action:'read_inbox',readThrough:'2099-01-01T00:00:00Z'}))).json();assert.ok(Date.parse(saved.readThrough)<=Date.now());assert.equal(saved.unreadCount,1);assert.equal(db.rows[1].read_at,null);
+});

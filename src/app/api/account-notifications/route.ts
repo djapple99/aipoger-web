@@ -18,6 +18,7 @@ export async function GET(request: Request) {
     const page = Number(pageText);
     const filter = params.get("filter") ?? (params.get("unread") === "1" ? "unread" : "all");
     if (!["all", "unread", "kept"].includes(filter)) return json({ error: "INVALID_FILTER" }, 400);
+    const readThrough = new Date().toISOString();
     const visibility = visible();
     const count = await admin.from("battle_notifications").select("id", { count: "exact", head: true })
       .eq("user_id", user.id).or(visibility).is("read_at", null);
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
     const result = await query.order("created_at", { ascending: false }).order("id", { ascending: false })
       .range(page * ACCOUNT_NOTICE_PAGE_SIZE, (page + 1) * ACCOUNT_NOTICE_PAGE_SIZE - 1);
     if (result.error) throw result.error;
-    return json({ notices: result.data ?? [], total: result.count ?? 0, unreadCount: count.count ?? 0 });
+    return json({ notices: result.data ?? [], total: result.count ?? 0, unreadCount: count.count ?? 0, readThrough });
   } catch {
     return json({ error: "NOTICES_LOAD_FAILED" }, 500);
   }
@@ -42,6 +43,19 @@ async function mutate(request: Request, deleting = false) {
     const auth = await creatorAuth(request);
     if (!auth) return json({ error: "AUTH_REQUIRED" }, 401);
     const body = await request.json().catch(() => null);
+    if (!deleting && body?.action === "read_inbox") {
+      const cutoff = typeof body.readThrough === "string" ? Date.parse(body.readThrough) : NaN;
+      if (!Number.isFinite(cutoff)) return json({ error: "INVALID_READ_THROUGH" }, 400);
+      const now = new Date().toISOString();
+      const readThrough = new Date(Math.min(cutoff, Date.parse(now))).toISOString();
+      const result = await auth.admin.from("battle_notifications").update({ read_at: now })
+        .eq("user_id", auth.user.id).is("read_at", null).lte("created_at", readThrough).or(visible());
+      if (result.error) throw result.error;
+      const count = await auth.admin.from("battle_notifications").select("id", { count: "exact", head: true })
+        .eq("user_id", auth.user.id).is("read_at", null).or(visible());
+      if (count.error) throw count.error;
+      return json({ readAt: now, readThrough, unreadCount: count.count ?? 0 });
+    }
     if (!Array.isArray(body?.ids) || !body.ids.length || body.ids.length > 50 || body.ids.some((id: unknown) => typeof id !== "string" || !uuid.test(id)))
       return json({ error: "INVALID_NOTICE_IDS" }, 400);
     const action = deleting ? "delete" : body.action ?? "read";
