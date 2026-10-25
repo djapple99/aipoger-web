@@ -234,6 +234,9 @@ export function CreatorCenterLayout({
         body: JSON.stringify({ trackId: work.id }),
       });
       const result = await response.json();
+      if (response.status === 401) throw new Error("AUTH_REQUIRED");
+      if (response.status === 403) throw new Error("REMOVE_FORBIDDEN");
+      if (response.status === 409) throw new Error("REMOVE_CONFLICT");
       if (!response.ok || result.ok !== true) throw new Error("REMOVE_FAILED");
       if (currentUser.current !== userId) return;
       setRemovedIds(ids => [...new Set([...ids, work.id])]);
@@ -244,8 +247,17 @@ export function CreatorCenterLayout({
       if (comment?.id === work.id) setComment(null);
       setRemoveSuccess(tx("作品已刪除，歷史紀錄可在「已下架」查看。", "Work deleted. Its history remains under Hidden.", "作品を削除しました。履歴は「非公開」で確認できます。", "작품이 삭제되었습니다. 기록은 ‘비공개’에서 확인할 수 있습니다."));
       onRefresh();
-    } catch {
-      if (currentUser.current === userId) setRemoveError(tx("未能刪除作品，請確認登入後重試。", "Could not delete the work. Check your sign-in and retry.", "削除できませんでした。ログインを確認して再試行してください。", "삭제하지 못했습니다. 로그인 상태를 확인하고 다시 시도하세요."));
+    } catch (error) {
+      if (currentUser.current === userId) {
+        const code = error instanceof Error ? error.message : "REMOVE_FAILED";
+        setRemoveError(code === "AUTH_REQUIRED"
+          ? tx("登入已失效，作品仍保留，請重新登入後再試。", "Your sign-in has expired. Your work is kept. Sign in again and retry.", "ログインの有効期限が切れました。作品は保持されています。再ログインしてお試しください。", "로그인이 만료되었습니다. 작품은 보관됩니다. 다시 로그인한 후 시도하세요.")
+          : code === "REMOVE_FORBIDDEN"
+            ? tx("只能刪除自己的作品，請重新整理後再試。", "You can only delete your own works. Refresh and retry.", "削除できるのは自分の作品のみです。更新して再試行してください。", "본인 작품만 삭제할 수 있습니다. 새로고침 후 다시 시도하세요.")
+            : code === "REMOVE_CONFLICT"
+              ? tx("作品狀態已變更，請重新整理後再試。", "The work's status has changed. Refresh and retry.", "作品の状態が変わりました。更新して再試行してください。", "작품 상태가 변경되었습니다. 새로고침 후 다시 시도하세요.")
+              : tx("未能刪除作品，作品仍保留，請稍後重試。", "Could not delete the work. Your work is kept. Please retry later.", "削除できませんでした。作品は保持されています。しばらくしてから再試行してください。", "삭제하지 못했습니다. 작품은 보관됩니다. 잠시 후 다시 시도하세요."));
+      }
     } finally { removeBusy.current = false; setRemovingId(null); }
   };
   const showLegacy = (kind: string, id?: string) => {

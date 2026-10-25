@@ -58,7 +58,7 @@ test('the final write rechecks ownership and reports a concurrent change instead
  assert.equal(a.tables.listen_bar_tracks[0].is_active,true);
 });
 
-async function mount(t,{lang='zh',confirmed=true,sessionUser=USER,failed=false,delay=false,playingId=uuid(2)}={}){
+async function mount(t,{lang='zh',confirmed=true,sessionUser=USER,failed=false,status,delay=false,playingId=uuid(2)}={}){
  let cursor=0,dirty=true,tree;const states=[],refs=[],effects=[],requests=[],confirms=[];let refreshed=0,closed=0,resolveRequest;
  let props={userId:USER,name:'Test creator',avatar:null,favorites:[],savedChoiceCount:0,editingWorkId:null,privateLoading:false,privateError:'',legacy:null,onManage(){},onLegacy(){},onSubmitted(){},loading:false,error:'',onRefresh(){refreshed++},data:{isOwner:false,works:[{id:uuid(2),title:'Published MV',artist:'Test creator',genre:'Original 自我風格',aiTool:'Suno',createdAt:'2026-10-25T00:00:00Z',coverUrl:'/cover.jpg',audioUrl:'',external:{provider:'youtube',mediaId:'MdxaU0l3FzI',url:'https://youtu.be/MdxaU0l3FzI'},isMusicVideo:true,active:true,status:'public',supporters:3,comments:2,lyrics:''}],comments:[],commenters:2,commentCount:2,credits:{enabled:true,balance:15},linkSubmissionReady:true}};
  const react={useState(initial){const i=cursor++;if(!(i in states))states[i]=initial;return[states[i],v=>{states[i]=typeof v==='function'?v(states[i]):v;dirty=true}]},useRef(initial){return refs[cursor++]??={current:initial}},useMemo(fn){cursor++;return fn()},useEffect(fn,deps=[]){const i=cursor++;if(!effects[i]||deps.some((v,n)=>!Object.is(v,effects[i].deps[n]))){effects[i]?.cleanup?.();effects[i]={deps,cleanup:fn()}}}};
@@ -68,7 +68,7 @@ async function mount(t,{lang='zh',confirmed=true,sessionUser=USER,failed=false,d
  modules['next/dynamic']=lazyRuntime(modules);
  const component=loadTs('src/components/creator-center.tsx',modules).CreatorCenterLayout;
  const originalWindow=globalThis.window,originalFetch=globalThis.fetch;
- globalThis.window=window;globalThis.fetch=async(url,init)=>{requests.push({url,...init});if(delay)return new Promise(resolve=>{resolveRequest=resolve});return {ok:!failed,json:async()=>({ok:!failed})}};
+ globalThis.window=window;globalThis.fetch=async(url,init)=>{requests.push({url,...init});if(delay)return new Promise(resolve=>{resolveRequest=resolve});return {ok:!failed,status:status??(failed?500:200),json:async()=>({ok:!failed})}};
  const render=()=>{cursor=0;dirty=false;tree=component(props)};
  async function flush(){for(let i=0;i<8;i++){await new Promise(setImmediate);if(dirty)render()}}
  render();await flush();t.after(()=>{effects.forEach(e=>e?.cleanup?.());globalThis.window=originalWindow;globalThis.fetch=originalFetch});
@@ -89,10 +89,15 @@ test('confirmed removal uses the owned ID, updates the row only after success an
 test('failed removal keeps the work available and retryable without stopping playback',async t=>{
  const u=await mount(t,{failed:true});u.button().onClick();await u.flush();
  assert.equal(u.refreshed(),0);assert.equal(u.closed(),0);assert.equal(u.button().disabled,false);assert.match(u.text(),/未能刪除作品/);
+ assert.doesNotMatch(u.text(),/確認登入|重新登入/);
 });
 
 test('an absent or switched login cannot submit a deletion',async t=>{
- const u=await mount(t,{sessionUser:uuid(8)});u.button().onClick();await u.flush();assert.equal(u.requests.length,0);assert.match(u.text(),/未能刪除作品/);
+ const u=await mount(t,{sessionUser:uuid(8)});u.button().onClick();await u.flush();assert.equal(u.requests.length,0);assert.match(u.text(),/登入已失效/);
+});
+
+for(const [status,message] of [[401,/登入已失效/],[403,/只能刪除自己的作品/],[409,/作品狀態已變更/]])test(`removal failure ${status} provides the right recovery without changing the work`,async t=>{
+ const u=await mount(t,{failed:true,status});u.button().onClick();await u.flush();assert.match(u.text(),message);assert.equal(u.refreshed(),0);assert.equal(u.closed(),0);assert.equal(u.button().disabled,false);
 });
 
 test('double clicks cannot submit twice and deleting another work does not stop playback',async t=>{

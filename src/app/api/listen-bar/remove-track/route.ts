@@ -115,7 +115,9 @@ export async function POST(request: NextRequest) {
         is_active: false,
         review_status: "removed",
         removed_at: now,
-        moderation_note: "Creator removed own work.",
+        // This internal marker is recognized by the existing database removal
+        // guard. Keep it stable even though the public product name has changed.
+        moderation_note: "Creator removed own Bar Heartbreak track.",
         updated_at: now,
       })
       .eq("id", track.id).eq("created_by", userData.user.id).eq("source", "community").eq("is_active", true)
